@@ -15,77 +15,86 @@
  * Chart", Reactive Training Systems, 2016-01-06:
  *   articles.reactivetrainingsystems.com/2016/01/06/customizing-your-rpe-chart/
  *
- * PRIMARY SOURCE STATUS: NOT VERIFIED. That article, its store.reactive-
- * trainingsystems.com mirror, web.archive.org, and every non-GitHub RPE chart
- * page are all unreachable from this sandbox — the egress proxy answers 403 to
- * CONNECT. Nothing in this grid has been checked against the publication
- * itself. Everything below is corroboration of community *transcriptions* of
- * that chart. That is a weaker claim than "verified published data" and is
- * deliberately not dressed up as one.
+ * PRIMARY SOURCE STATUS: NOT VERIFIED, for any cell. That article, its
+ * store.reactivetrainingsystems.com mirror, web.archive.org, and every
+ * non-GitHub RPE chart page are unreachable from this sandbox — the egress
+ * proxy answers 403 to CONNECT. Nothing in this grid has been checked against
+ * the publication itself. Everything below is corroboration of community
+ * *transcriptions*. That is a weaker claim than "verified published data" and
+ * is deliberately not dressed up as one.
  *
- * WHAT WAS ACTUALLY RETRIEVED AS BYTES (2026-07-31), and what each said:
+ * WHAT WAS ACTUALLY RETRIEVED AS BYTES, and when each artifact first existed.
+ * Dates below were read on 2026-07-31 from `git log --reverse` on a bare clone
+ * of each repository (api.github.com is 403 from here; the git transport is
+ * not) and from the npm packument's `time` object. They are first-commit /
+ * first-publish dates, not claims about when the chart was transcribed.
  *
- *   S1  raw.githubusercontent.com/karolczyz/metriclift/master/app/src/main/
- *         java/com/example/metriclift/util/RpeTable.kt        Kotlin, 108 cells
- *   S2  raw.githubusercontent.com/AlexArmstrong126/reactRPE/main/src/
- *         rpe_chart.js                                        JS, 108 cells
- *   S3  raw.githubusercontent.com/BlindLemonLipschitz/RPE/master/scripts/
- *         rpeChart.js                                         JS, 108 cells
- *   S4  npm @sculpt-ai/progressive-overload@0.0.2, dist/index.mjs RPE_TABLE
- *                                                             JS, 108 cells
+ *   S3  github.com/BlindLemonLipschitz/RPE  scripts/rpeChart.js
+ *       first commit 2020-02-29. `var rpe_chart = {`, reps-major, RPE
+ *       descending 10 -> 6, one nested object per rep count.
+ *   S2  github.com/AlexArmstrong126/reactRPE  src/rpe_chart.js
+ *       first commit 2023-04-11 (UTC; 2023-04-12 +0100 local). `const
+ *       rpe_chart = {` — same variable name, same reps-major layout, same
+ *       descending RPE order, same file shape.
+ *   S1  github.com/karolczyz/metriclift
+ *       app/src/main/java/com/example/metriclift/util/RpeTable.kt
+ *       first commit 2026-01-25. Kotlin transliteration of the same layout and
+ *       ordering. No attribution.
+ *   S4  npm @sculpt-ai/progressive-overload, dist/index.mjs `RPE_TABLE`
+ *       0.0.1 published 2026-06-30, 0.0.2 on 2026-07-01. Map-of-Maps, same
+ *       reps-major / RPE-descending ordering.
  *
- * Machine diff of those four against each other:
+ * THESE ARE NOT FOUR INDEPENDENT WITNESSES. S3 -> S2 -> S1 is a copy chain in
+ * date order: identical layout, identical ordering, and S2 keeps S3's variable
+ * name `rpe_chart` while silently repairing S3's one self-contradicting typo
+ * (S3 holds 92.9 at 1 rep @ RPE 8 but 92.2 at 2 reps @ RPE 9, which is the same
+ * cell under the reps-in-reserve identity). Repairing a predecessor's typo is
+ * evidence of copying, not of independent reading.
+ *
+ * A previous revision of this header argued that the contested cell below is
+ * settled "three retrieved transcriptions to one … three different apps in two
+ * languages". THAT ARGUMENT WAS FALSE and has been removed. Counting links in
+ * one copy chain is not corroboration. Nothing replaced it: the cell is not
+ * settled here in either direction.
+ *
+ * Machine diff of the four, for what it is worth:
  *   - S1 and S2 agree on all 108 cells.
- *   - S3 differs from S1/S2 in exactly one cell: 92.9 at 1 rep @ RPE 8 where
- *     the others hold 92.2. S3 contradicts itself there — it holds 92.2 at
- *     2 reps @ RPE 9, which is the same cell under the reps-in-reserve
- *     identity below — so that is a typo in S3, not a variant reading.
- *   - S4 differs from S1/S2 in exactly one cell: 12 reps @ RPE 6. See below.
- *
- * RPE_PERCENT_CHART below is S1/S2 exactly, all 108 cells.
+ *   - S3 differs from S1/S2 only at 1 rep @ RPE 8 (the typo above).
+ *   - S4 differs from S1/S2 only at 12 reps @ RPE 6. See below.
  *
  * ---------------------------------------------------------------------------
- * THE ONE CONTESTED CELL: 12 reps @ RPE 6 = 57.4
+ * THE TWO CELLS THIS MODULE CANNOT DEFEND: (12, 6) and (12, 6.5)
  * ---------------------------------------------------------------------------
- * S1, S2 and S3 hold 57.4. S4 holds 57.2. This file uses 57.4 because:
+ * Both are declared `'unverified'` IN CODE, not only in this comment — see
+ * `UNVERIFIED_CHART_CELLS`, `chartCellStatus` and `tryChartCell` below. A
+ * caller that needs to know whether a number is settled can ask; the ordinary
+ * `percentOf1RM` path is unchanged and stays a plain number.
  *
- *   1. Three retrieved transcriptions to one, and the three are application
- *      source files for three different apps in two languages, while S4 is a
- *      version 0.0.2 package first published 2026-06-30 (date read from the
- *      npm packument) by an AI-product vendor.
- *   2. 57.2 is exactly what you get by DERIVING the cell rather than
- *      transcribing it. Down the effort-index diagonal the chart's tail runs
- *      68.0, 65.3, 62.6, 59.9 — a constant -2.7 per whole index — so a linear
- *      continuation lands on 57.2. The transcribed 57.4 breaks that run
- *      (-2.5), which is precisely why no formula generates it. GDD §12.3
- *      forbids derived RPE values, and this repo previously shipped 57.2.
+ * 12 reps @ RPE 6. The copy chain S3/S2/S1 holds 57.4; S4 holds 57.2. The
+ * chart currently returns 57.4 — the reading of the older lineage and the value
+ * this repo already shipped — but that is a default, not a finding.
  *
- * THE STRONGEST ARGUMENT AGAINST 57.4, stated because leaving it out would be
- * dishonest: the grid's half-RPE cells behave as round-half-up midpoints of
- * their whole-RPE neighbours. Fifteen positions can be checked (effort index
- * 1.5 through 15.5); the pattern holds at fourteen of them and fails at exactly
- * one — 15.5, which is 12 reps @ RPE 6.5 = 58.6, the position that depends on
- * the contested cell. For it to hold there, 12 reps @ RPE 6 would have to lie
- * in [57.2, 57.3]. 57.4 does not. So the chosen value is the sole break in a
- * pattern the rest of the grid obeys, and 57.2 would close it.
+ * 12 reps @ RPE 6.5. Every retrieved source holds 58.6, and yet it is equally
+ * suspect, because of the grid's own half-cell behaviour: each half-RPE cell is
+ * the round-half-up midpoint of the two whole-RPE cells either side of it along
+ * the effort-index diagonal (`reps + (10 - rpe)`). That relation holds at 14 of
+ * the 15 checkable half positions and breaks at exactly one — index 15.5, which
+ * is (12, 6.5). It constrains the TRIPLE (index 15, 15.5, 16) = (59.9, ?, ?),
+ * and there are exactly two minimal repairs:
  *
- * That was weighed and rejected as grounds for changing the cell, because the
- * midpoint pattern is an observation ABOUT this grid, not a published
- * construction rule, and using it to overwrite three retrieved transcriptions
- * would be reconstructing a published value from a fitted rule — which is the
- * exact move GDD §12.3 calls homebrewing. Transcription beats extrapolation
- * even when the extrapolation is prettier. Note also that the pattern fails at
- * 13 of the 14 checkable WHOLE-index positions, so it is not a general law of
- * the grid.
+ *     keep 58.6 at (12, 6.5)  ->  (12, 6) must be 57.2 or 57.3   [S4's grid]
+ *     keep 57.4 at (12, 6)    ->  (12, 6.5) must be 58.7         [no source]
  *
- * HONEST STATUS OF THIS CELL: community-transcription-corroborated, NOT
- * primary-source-verified, and in tension with the grid's own half-cell
- * pattern. S1/S2/S3 may share a single ancestor — S2 and S3 both name the
- * object `rpe_chart`, which points at a common web calculator — so "three
- * sources" is not "three independent readings of the printed chart". This is
- * the least certain number in the module. If someone obtains the RTS original
- * and it disagrees, change this cell and the fixture in rpe.test.ts together,
- * in one commit.
+ * So at most one of the two cells this module currently returns can be right,
+ * and the grid does not say which. Picking one and writing a test that forbids
+ * the other would be inventing a finding; this module does not do that.
+ *
+ * WHAT WOULD SETTLE IT: the RTS original, or a scan/photo of the printed chart.
+ * Nothing reachable from this sandbox can. To adopt a different reading later,
+ * edit the cell in `RPE_PERCENT_CHART` and nothing else. `rpe.test.ts` is
+ * written so that both documented transcriptions of (12, 6) pass, and so that
+ * an undocumented value fails. No test has to be deleted; no fixture has to be
+ * altered. (Verified by making the edit and running the suite.)
  *
  * ---------------------------------------------------------------------------
  * WHAT THE STRUCTURAL INVARIANTS CAN AND CANNOT CATCH
@@ -93,8 +102,8 @@
  * Diagonal identity: the chart encodes reps in reserve, so N reps at RPE X and
  * (N + 1) reps at RPE (X + 1) describe the same distance from failure and
  * therefore share a percentage — e.g. 1 @ RPE 9 == 2 @ RPE 10 == 95.5%. The
- * "effort index" is `reps + (10 - rpe)`. The grid satisfies this identity at
- * every cell; `rpe.test.ts` asserts it.
+ * grid satisfies this identity at every cell; `rpe.test.ts` asserts it. This is
+ * what makes a single-source slip like S3's 92.9 detectable.
  *
  * It has exactly FOUR blind spots. Four cells have no diagonal partner inside
  * a 12 x 9 grid, so the diagonal cannot constrain them at all:
@@ -104,14 +113,11 @@
  * `rpe.test.ts` asserts that the orphan set is exactly these four, so the blind
  * spot is visible rather than implicit. Their individual status:
  *
- *   (1, 10)   = 100.0  true by definition; a true single at RPE 10 is the 1RM.
- *   (1, 9.5)  =  97.8  pinned internally by the half-cell midpoint test, given
- *                      the RPE-10 and RPE-9 cells around it.
- *   (12, 6.5) =  58.6  NOT pinned by anything. Transcription only.
- *   (12, 6)   =  57.4  NOT pinned by anything, and contested. See above.
- *
- * Those last two are the cells no test in this repo can defend. If this module
- * is ever wrong about the published chart, that is where it will be wrong.
+ *   (1, 10)   = 100.0  'definitional'      a true single at RPE 10 is the 1RM.
+ *   (1, 9.5)  =  97.8  'invariant-pinned'  by the half-cell midpoint relation,
+ *                                          given the RPE-10 and RPE-9 cells.
+ *   (12, 6.5) =  58.6  'unverified'        see above.
+ *   (12, 6)   =  57.4  'unverified'        see above.
  *
  * NOT TUNABLE: the percentages in RPE_PERCENT_CHART are published domain data,
  * not game feel. Do not adjust them to balance the game. RPE_MATCH_TOLERANCE
@@ -232,6 +238,20 @@ export const RPE_MATCH_TOLERANCE_CEILING: number = RPE_MATCH_ULP_CEILING * Numbe
 type RpeChart = Readonly<Record<ChartedReps, Readonly<Record<ChartedRpe, number>>>>;
 
 /**
+ * Freeze the grid and each of its rows so the published data cannot be edited
+ * at runtime by anything holding a reference. `Readonly<...>` is a compile-time
+ * claim only; this makes it true of the running object as well. Pure: it
+ * touches nothing but the literal it is handed.
+ */
+function deepFreezeChart<T extends RpeChart>(chart: T): T {
+  for (const reps of CHARTED_REPS) {
+    Object.freeze(chart[reps]);
+  }
+  Object.freeze(chart);
+  return chart;
+}
+
+/**
  * %1RM by [reps][RPE]. Values are percentages (92.2 means 92.2% of 1RM).
  *
  * Laid out reps-major so a single rep count reads as one block; the published
@@ -241,9 +261,14 @@ type RpeChart = Readonly<Record<ChartedReps, Readonly<Record<ChartedRpe, number>
  * (foreign syntax, foreign layout, its URL in the fixture so a reviewer can
  * re-fetch and diff), and against a hand transposition into the printed
  * RPE-major orientation, which catches in-repo transposition typos but is NOT
- * independent evidence about the source values.
+ * independent evidence about the source values. Both checks skip the cells
+ * listed in `UNVERIFIED_CHART_CELLS`, which are covered instead by a check that
+ * they hold one of the readings documented there.
+ *
+ * THIS IS THE ONLY PLACE A CELL VALUE IS WRITTEN DOWN in this module. Nothing
+ * else restates one, so changing a cell here is a complete change.
  */
-export const RPE_PERCENT_CHART = {
+export const RPE_PERCENT_CHART = deepFreezeChart({
   1: { 10: 100.0, 9.5: 97.8, 9: 95.5, 8.5: 93.9, 8: 92.2, 7.5: 90.7, 7: 89.2, 6.5: 87.8, 6: 86.3 },
   2: { 10: 95.5, 9.5: 93.9, 9: 92.2, 8.5: 90.7, 8: 89.2, 7.5: 87.8, 7: 86.3, 6.5: 85.0, 6: 83.7 },
   3: { 10: 92.2, 9.5: 90.7, 9: 89.2, 8.5: 87.8, 8: 86.3, 7.5: 85.0, 7: 83.7, 6.5: 82.4, 6: 81.1 },
@@ -255,12 +280,170 @@ export const RPE_PERCENT_CHART = {
   9: { 10: 76.2, 9.5: 75.1, 9: 73.9, 8.5: 72.3, 8: 70.7, 7.5: 69.4, 7: 68.0, 6.5: 66.7, 6: 65.3 },
   10: { 10: 73.9, 9.5: 72.3, 9: 70.7, 8.5: 69.4, 8: 68.0, 7.5: 66.7, 7: 65.3, 6.5: 64.0, 6: 62.6 },
   11: { 10: 70.7, 9.5: 69.4, 9: 68.0, 8.5: 66.7, 8: 65.3, 7.5: 64.0, 7: 62.6, 6.5: 61.3, 6: 59.9 },
-  // 6: 57.4 is the contested cell. It is transcription-corroborated only (S1,
-  // S2, S3 in the header), it has no diagonal partner, and 57.2 — the value
-  // this repo used to hold — is the linear-derivation answer. Do not "correct"
-  // it back without a primary source.
+  // The last two cells of this row, 6.5: 58.6 and 6: 57.4, are declared
+  // 'unverified' in UNVERIFIED_CHART_CELLS below. At most one of them is right
+  // and this module does not know which. Changing either to another documented
+  // reading is a one-line edit here and requires no test change.
   12: { 10: 68.0, 9.5: 66.7, 9: 65.3, 8.5: 64.0, 8: 62.6, 7.5: 61.3, 7: 59.9, 6.5: 58.6, 6: 57.4 },
-} as const satisfies RpeChart;
+} as const satisfies RpeChart);
+
+// ---------------------------------------------------------------------------
+// Cell status — how far this module can defend each cell
+// ---------------------------------------------------------------------------
+
+/**
+ * How well this module can defend a given cell.
+ *
+ * READ THIS BEFORE USING IT: none of these statuses means "checked against the
+ * publication". No cell in this grid is primary-source verified (see the header
+ * — the RTS article is unreachable from here). What the status describes is
+ * what the code and its tests can actually catch.
+ */
+export type ChartCellStatus =
+  /**
+   * True by definition rather than by transcription. Only (1 rep, RPE 10):
+   * a true single at RPE 10 is the 1RM, so the cell is 100.0 whatever any
+   * source says.
+   */
+  | 'definitional'
+  /**
+   * Held in place by a structural invariant of the grid — the reps-in-reserve
+   * diagonal, or the half-cell midpoint relation — so a slip in one source's
+   * transcription of this cell surfaces as a test failure instead of a silently
+   * wrong load. It does NOT mean the whole grid is right; an error shared by
+   * every cell would still pass.
+   */
+  | 'invariant-pinned'
+  /**
+   * Nothing constrains it and the retrieved sources do not settle it. The
+   * percentage this module returns for such a cell may be wrong, and the code
+   * says so rather than leaving the caveat in a comment. See
+   * `UNVERIFIED_CHART_CELLS` for the competing readings.
+   */
+  | 'unverified';
+
+/** What kind of evidence stands behind one candidate value for a cell. */
+export type CellReadingEvidence =
+  /** Some retrieved source literally holds this number. */
+  | 'transcription'
+  /**
+   * No retrieved source holds this number; it is what the grid's own half-cell
+   * midpoint relation would require. Recorded as context ONLY. This module must
+   * never adopt a 'grid-rule' reading: reconstructing a published number from a
+   * pattern fitted to the rest of the grid is the homebrewing GDD §12.3 forbids.
+   * `rpe.test.ts` enforces that.
+   */
+  | 'grid-rule';
+
+/** One candidate value for a cell, with where it comes from. */
+export interface ChartCellReading {
+  readonly percent: number;
+  readonly evidence: CellReadingEvidence;
+  /** Provenance in one line. */
+  readonly note: string;
+}
+
+/** A cell this module returns a number for without being able to defend it. */
+export interface UnverifiedChartCell {
+  readonly reps: ChartedReps;
+  readonly rpe: ChartedRpe;
+  /**
+   * Whatever `RPE_PERCENT_CHART` currently holds. Read from the chart at module
+   * load, never restated — so this record cannot drift out of sync with the
+   * data, and changing the cell needs no edit here.
+   */
+  readonly percentInUse: number;
+  /** Every reading documented for this cell, including the one in use. */
+  readonly readings: readonly ChartCellReading[];
+  /** Why the cell cannot be settled from here. */
+  readonly reason: string;
+}
+
+/** The one cell that is true by definition rather than by transcription. */
+const DEFINITIONAL_CELL: { readonly reps: ChartedReps; readonly rpe: ChartedRpe } = Object.freeze({
+  reps: 1,
+  rpe: 10,
+});
+
+function describeUnverifiedCell(
+  reps: ChartedReps,
+  rpe: ChartedRpe,
+  readings: readonly ChartCellReading[],
+  reason: string,
+): UnverifiedChartCell {
+  return Object.freeze({
+    reps,
+    rpe,
+    percentInUse: RPE_PERCENT_CHART[reps][rpe],
+    readings: Object.freeze(readings.map((reading) => Object.freeze(reading))),
+    reason,
+  });
+}
+
+/**
+ * The cells whose values this module cannot stand behind, and the competing
+ * readings for each.
+ *
+ * This is the machine-readable form of the header's provenance section. It
+ * exists so the uncertainty is reachable by callers and by tests instead of
+ * living only in prose: a UI that wants to footnote a disputed number, or a
+ * future contributor diffing against a primary source, can enumerate it.
+ *
+ * The two entries are coupled. The grid's half-cell midpoint relation
+ * constrains the triple (effort index 15, 15.5, 16) = (59.9, ?, ?) and admits
+ * exactly two repairs, one per cell — so at most one of these two cells is
+ * currently right, and the evidence available here does not say which. Neither
+ * entry is a claim that its cell IS wrong.
+ */
+export const UNVERIFIED_CHART_CELLS: readonly UnverifiedChartCell[] = Object.freeze([
+  describeUnverifiedCell(
+    12,
+    6,
+    [
+      {
+        percent: 57.4,
+        evidence: 'transcription',
+        note: 'S3 (2020) -> S2 (2023) -> S1 (2026): three links of one copy chain, not three witnesses.',
+      },
+      {
+        percent: 57.2,
+        evidence: 'transcription',
+        note: 'S4, npm @sculpt-ai/progressive-overload (2026-06-30). Disagrees with the S3 chain at exactly this cell; whether that is a second reading or a slip in a copy is not established.',
+      },
+    ],
+    'Retrieved transcriptions disagree. The cell has no partner on the ' +
+      'reps-in-reserve diagonal and no half-cell neighbour above it, so no ' +
+      'invariant in this module touches it. Note that 57.2 also happens to be ' +
+      "the linear continuation of the tail's constant -2.7 per index; that " +
+      'coincidence is not evidence either way, since a published number is ' +
+      'free to fall on a run.',
+  ),
+  describeUnverifiedCell(
+    12,
+    6.5,
+    [
+      {
+        percent: 58.6,
+        evidence: 'transcription',
+        note: 'All four retrieved sources, i.e. the S3 copy chain plus S4.',
+      },
+      {
+        percent: 58.7,
+        evidence: 'grid-rule',
+        note: 'What the half-cell midpoint relation requires if (12, 6) really is 57.4. No source holds it; not adoptable.',
+      },
+    ],
+    'Unanimous in the sources, but the sources are largely one lineage, and ' +
+      "the grid's own half-cell midpoint relation breaks at exactly this " +
+      'position. If that relation reflects the real chart, then either this ' +
+      'cell is 58.7 or (12, 6) is not 57.4 — and the relation is an observation ' +
+      'about this grid, not a published construction rule, so it may simply not ' +
+      'hold here. All three possibilities are open. This cell is no better ' +
+      'established than its neighbour and is not treated as if it were.',
+  ),
+]);
+
+const NO_READINGS: readonly ChartCellReading[] = Object.freeze([]);
 
 // ---------------------------------------------------------------------------
 // Coverage guards
@@ -341,6 +524,84 @@ export function percentOf1RM(reps: number, rpe: number): number {
 /** Same lookup expressed as a fraction of 1RM (0.922 rather than 92.2). */
 export function fractionOf1RM(reps: number, rpe: number): number {
   return percentOf1RM(reps, rpe) / 100;
+}
+
+// ---------------------------------------------------------------------------
+// Status lookup — for callers that need to know how solid a cell is
+// ---------------------------------------------------------------------------
+
+function findUnverifiedCell(reps: ChartedReps, rpe: ChartedRpe): UnverifiedChartCell | null {
+  for (const cell of UNVERIFIED_CHART_CELLS) {
+    if (cell.reps === reps && cell.rpe === rpe) {
+      return cell;
+    }
+  }
+  return null;
+}
+
+/**
+ * How well this module can defend the cell at `reps`/`rpe`, or null when the
+ * pair is off-chart (same contract as `tryPercentOf1RM`).
+ *
+ * The daily loop does not need this — `percentOf1RM` is unchanged and still
+ * returns a bare number. This is for the caller that wants to know, e.g. a
+ * screen that footnotes a disputed figure, or a script auditing the grid.
+ */
+export function chartCellStatus(reps: number, rpe: number): ChartCellStatus | null {
+  const chartedReps = toChartedReps(reps);
+  const chartedRpe = toChartedRpe(rpe);
+  if (chartedReps === null || chartedRpe === null) {
+    return null;
+  }
+  if (findUnverifiedCell(chartedReps, chartedRpe) !== null) {
+    return 'unverified';
+  }
+  if (chartedReps === DEFINITIONAL_CELL.reps && chartedRpe === DEFINITIONAL_CELL.rpe) {
+    return 'definitional';
+  }
+  return 'invariant-pinned';
+}
+
+/** True when this module returns a number for the cell that it cannot defend. */
+export function isUnverifiedChartCell(reps: number, rpe: number): boolean {
+  return chartCellStatus(reps, rpe) === 'unverified';
+}
+
+/** A chart cell together with everything known about how solid it is. */
+export interface ChartCell {
+  readonly reps: ChartedReps;
+  readonly rpe: ChartedRpe;
+  readonly percent: number;
+  readonly status: ChartCellStatus;
+  /**
+   * Competing readings. Non-empty only when `status` is 'unverified'; for every
+   * other cell there is nothing on record to compete with.
+   */
+  readonly readings: readonly ChartCellReading[];
+}
+
+/**
+ * The full record for one cell, or null when the pair is off-chart. Everything
+ * `percentOf1RM` returns, plus the provenance a caller may want to surface.
+ */
+export function tryChartCell(reps: number, rpe: number): ChartCell | null {
+  const chartedReps = toChartedReps(reps);
+  const chartedRpe = toChartedRpe(rpe);
+  if (chartedReps === null || chartedRpe === null) {
+    return null;
+  }
+  const status = chartCellStatus(chartedReps, chartedRpe);
+  if (status === null) {
+    return null;
+  }
+  const unverified = findUnverifiedCell(chartedReps, chartedRpe);
+  return {
+    reps: chartedReps,
+    rpe: chartedRpe,
+    percent: RPE_PERCENT_CHART[chartedReps][chartedRpe],
+    status,
+    readings: unverified === null ? NO_READINGS : unverified.readings,
+  };
 }
 
 // ---------------------------------------------------------------------------
