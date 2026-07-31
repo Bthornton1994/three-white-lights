@@ -157,9 +157,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work \u2014 NOW GRADEABLE, reference committed.",
-      "status": "failed",
+      "status": "building",
       "verifiable": true,
-      "note": "CRAFT HALF GRADED FOR THE FIRST TIME, AND SENT BACK. The reference wrestlers are ~55px against our 60px, so the critic ruled that pixel budget and figure scale are NOT the gap \u2014 what the pixels are spent on is. It inventoried the hand-placed marks on our 60px figure and found about six: two eyes, a mouth, a sternum notch, a chalked knuckle per hand. Everything else is a Lambert-shaded capsule. The belt is a 3-row grey band with no buckle pixel; the shoes are 9x3 lumps with no sole line; the singlet is flat with no seam or strap shadow; and the ramp on every limb runs straight and full-length, breaking at no anatomy. The reference spends the same budget on objects and landmarks \u2014 waistband trim, knee-pad band, boot sole line, and an arm highlight broken into deltoid and biceps masses. It was equally specific about what IS era-correct and must not regress: non-mirrored values under a real key light, a hue-shifting skin ramp, selective warm/cool outline, and plate colour language good enough to read the attempt weight off the sprite. The heaviness half stays passed.",
+      "note": "Rework merged; 529 tests green. Authored marks now live in a data table \u2014 25 named marks as ASCII bitmaps anchored to pose landmarks, so moving the buckle down a row is editing an integer, not a shading model. The builder measured against the RENDERED grid rather than the source and found something the critic could not see: of the six hand-placed marks it counted, only ONE reached the screen. despeckle was eating both eyes, the mouth and both chalked knuckles, and the survivor was painting SKIN_MID onto a pixel that was already SKIN_MID. The true starting count was effectively zero; it is now 202 rendered authored pixels at lockout. Two unrelated defects surfaced on the way: the neck drew after the torso and left a 4x3 block of pure outline on the bare chest, and a dead constant made the shoe sole and upper the same pixel. Second blind A/B grading now.",
       "evidence": "A1-lockout-6x.png"
     },
     {
