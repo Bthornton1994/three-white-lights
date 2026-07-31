@@ -117,9 +117,9 @@
       "id": "M4",
       "name": "Meet engine",
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
-      "status": "building",
+      "status": "majority",
       "verifiable": true,
-      "note": "Rework 4 merged; 395 tests green (meet: 134). The message and the decision can no longer disagree because they are no longer computed separately \u2014 five weight gates collapsed into one refuseWeightNow, and the hint re-runs every weight it is about to name back through that same chain for that exact state, dropping anything that fails. The builder also found the identical lie in a read model, where AttemptContext could report 200 as the lightest legal call while declareAttempt refused it. Verified here: 12 named weights across good-lift and miss states, zero refused. Fifth-pass critic grading, asked specifically whether the file should now be smaller."
+      "note": "THE MEET STRUCTURE WINS ITS BAR. A critic re-derived the whole state machine and found no rule a competitive powerlifter would fault, verified the citations against live OpenLifter bytes, and adjudicated four of the builder\u2019s self-doubts as non-defects. The remaining gap is not the sport model: the rules-seal subsystem is out of proportion \u2014 ~150 lines defending against one in-repo accident that a compile-time opaque type prevents for free, in a module CLAUDE.md already says should be server-authoritative. Its justification comment is also arithmetically false for the third time in this module, and the test written to catch exactly that re-derives the formula instead of parsing the printed digits. I had verified that arithmetic myself two rounds ago and missed it \u2014 I checked the formula and never compared it to the number the comment prints."
     },
     {
       "id": "M5",
