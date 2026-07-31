@@ -117,9 +117,9 @@
       "id": "M4",
       "name": "Meet engine",
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
-      "status": "failed",
+      "status": "building",
       "verifiable": true,
-      "note": "SENT BACK a fourth time. The state machine itself was confirmed defect-free \u2014 order, three attempts, majority judging, totalling, bomb-out all correct. But the engine\u2019s player-facing hint names weights it then refuses. Reproduced here: after three white lights at 200, declaring 201 answers \"the nearest legal calls are 200 and 202.5\" \u2014 200 is REPEAT_AFTER_GOOD_LIFT. Declaring 199 names 197.5 and 200, and BOTH are illegal. The hint is computed from the two weight gates and cannot see the three progression gates applied straight after. Every existing hint test runs from a fresh meet, where no progression constraint exists and the hint is accidentally true \u2014 which is why it survived four rounds."
+      "note": "Rework 4 merged; 395 tests green (meet: 134). The message and the decision can no longer disagree because they are no longer computed separately \u2014 five weight gates collapsed into one refuseWeightNow, and the hint re-runs every weight it is about to name back through that same chain for that exact state, dropping anything that fails. The builder also found the identical lie in a read model, where AttemptContext could report 200 as the lightest legal call while declareAttempt refused it. Verified here: 12 named weights across good-lift and miss states, zero refused. Fifth-pass critic grading, asked specifically whether the file should now be smaller."
     },
     {
       "id": "M5",
