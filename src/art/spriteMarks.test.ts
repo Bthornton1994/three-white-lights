@@ -148,8 +148,8 @@ describe('the mark table', () => {
 /**
  * Floor on hand-placed pixels present in a finished frame.
  *
- * Measured at this authoring: the worst frame in the whole pose space lands 260
- * of a 346-cell budget (the shortfall is marks the body covers at that pose,
+ * Measured at this authoring: the worst frame in the whole pose space lands 256
+ * of a 342-cell budget (the shortfall is marks the body covers at that pose,
  * chiefly the quad sweep once the singlet hem and the knee sleeve meet over the
  * thigh and there is no bare thigh left to draw on). The number to compare it
  * against is what the sprite had before this file existed: SIX marks were
@@ -167,8 +167,8 @@ const FLOOR_MARK_PIXELS_PER_FRAME = 210;
  * — shoes, sleeves, belt, wraps, trim, patch, hair — on a bare-armed,
  * bare-legged figure whose largest surface is skin. "Lots of authored pixels"
  * and "the flesh is drawn" turned out to be different claims, so both are
- * floored. Measured at this authoring: anatomy is 49% of all painted authored
- * pixels, and the worst frame lands 108.
+ * floored. Measured at this authoring: flesh is 50% of every painted authored
+ * pixel over the whole pose space, against 24% before this pass.
  */
 const FLOOR_ANATOMY_PIXELS_PER_FRAME = 90;
 
@@ -578,7 +578,7 @@ describe('authored pixel budget', () => {
     // failure this module was written to avoid.
     for (const depth of [0, 0.5, 1]) {
       poseAtDepth(depth, 'ASCENT');
-      expect(authoredPixelBudget()).toBe(346);
+      expect(authoredPixelBudget()).toBe(342);
     }
   });
 });

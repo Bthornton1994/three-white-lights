@@ -720,9 +720,13 @@ export const MARKS: readonly Mark[] = [
   // of one ramp step from the shoulder to the elbow — the shader can only give
   // a limb one value per cross-section, so the break has to be drawn.
   //
-  // The near map is a two-wide highlight over the biceps belly with a shadow
-  // run down its outboard side, which is the triceps in shade; the far map is
-  // the same shape one ramp step down.
+  // These are highlight clusters with NO dark row of their own, and that is
+  // deliberate. An arm is about eleven rows tall here; with a shadow row in the
+  // deltoid, the biceps, the elbow and the forearm it stops reading as a limb
+  // and starts reading as a barcode. The reference wrestler's arm has exactly
+  // two dark breaks in it — the deltoid insertion and the elbow — and large
+  // flat mid-tone between the highlights. So the breaks live in
+  // DELTOID_MASS_* and ELBOW_CREASE, and everything else is a cluster.
   {
     name: 'BICEPS_MASS_NEAR',
     depicts: 'FLESH',
@@ -733,7 +737,7 @@ export const MARKS: readonly Mark[] = [
     map: [
       'hh ',
       'hhl',
-      'sss',
+      ' ll',
     ],
   },
   {
@@ -745,8 +749,8 @@ export const MARKS: readonly Mark[] = [
     origin: [-1, -1],
     map: [
       ' ll',
-      'sll',
-      'sss',
+      'lll',
+      ' ll',
     ],
   },
   // Elbow crease. Two pixels, and the whole job of them is that the forearm
@@ -777,7 +781,7 @@ export const MARKS: readonly Mark[] = [
     map: [
       'hh ',
       'hhl',
-      'lss',
+      ' ll',
     ],
   },
   {
@@ -789,8 +793,8 @@ export const MARKS: readonly Mark[] = [
     origin: [-1, -1],
     map: [
       'll ',
-      'lls',
-      'sss',
+      'lll',
+      ' ll',
     ],
   },
   // Wrist wraps. An object, so the forearm cannot read as one tapered tube from
