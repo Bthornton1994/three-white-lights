@@ -163,10 +163,10 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit SNES/Genesis sprite work. Maximal attempt must animate heavier.",
-      "status": "failed",
+      "status": "building",
       "verifiable": false,
-      "note": "Half the bar UNVERIFIABLE (no reference retrievable), half SENT BACK. The timing model genuinely clears \"not merely slower\" \u2014 ascent shape in normalised time, stall at the authored height, bar-path divergence, all quantified and load-monotone. But the heaviness is carried by the barbell and the clock, not the lifter. Both loads walk the same eleven authored poses; the critic did the arithmetic and found the light rep peaks at strain level 1 and the maximal at 3, giving body deltas of 0.6-1.6px on a 60px figure \u2014 several of which will not survive rounding. Confirmed by eye on the pose sheet: strain rows 1 and 2 are indistinguishable, and 3-4 separate mainly by an open-mouth grimace and a ruddier skin ramp. Strip the bar out and the two lifters are the same drawing. Also: the forward-drift term is clamped away on heavy reps so it only ever changes the LIGHT rep, and the strongest pixel test compares strain 0 vs 3 \u2014 levels the animation never produces \u2014 asserting only that something differs.",
-      "evidence": "A1-contact-sheet.png"
+      "note": "Rework merged; 510 tests green. Strain deltas are now an authored table per level rather than one vector scaled by a scalar \u2014 so the heavy drawing is a different drawing, not a louder light one, with two fields that exist only at level 3. At matched depth with an identical 250kg bar, 188 silhouette pixels change with the head masked out. Forward drift became its own channel instead of a term folded into strain, so it now reaches the pixels on a heavy rep. Depth honesty got stronger, not traded: no strain or pitch level moves the shoulder line at any depth, and a new guard stops hip-shoot raising the hip back above the knee. Floors were calibrated against the OLD model \u2014 reinstating it fails five assertions. Confirmed by eye: the difference is distributed down the thighs, feet and arms, not a face swap.",
+      "evidence": "A1-body-load.png"
     },
     {
       "id": "A2",
