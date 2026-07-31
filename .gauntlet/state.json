@@ -64,9 +64,9 @@
       "detail": "blocked at proxy (403 CONNECT) \u2014 no images, video or PDFs from any host"
     },
     {
-      "name": "Reference source code from GitHub",
+      "name": "Reference source code from GitHub + GitLab",
       "ok": true,
-      "detail": "raw.githubusercontent.com is reachable \u2014 DOTS coefficients verified against fetched OpenPowerlifting source, not search summaries"
+      "detail": "raw.githubusercontent.com and gitlab.com both reachable \u2014 DOTS verified against OpenPowerlifting source, meet loading rules against OpenLifter, the real meet software"
     },
     {
       "name": "Critics running tests themselves",
@@ -112,9 +112,9 @@
       "id": "M4",
       "name": "Meet engine",
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
-      "status": "failed",
+      "status": "ungraded",
       "verifiable": true,
-      "note": "SENT BACK. The engine exposed a caller-supplied recordAttempt flag that silently switched off BOTH loading invariants \u2014 granularity 2.5kg\u21920.5kg and the minimum increase \u2014 with no way to check the condition that makes the exception legal. The critic showed a clean exploit path through the public API and traced the rule the file cited to a fabricated anchor: real practice measures a record attempt against the standing record, not the lifter\u2019s previous attempt. A test was enshrining the invented behaviour. Rework in flight."
+      "note": "Rework merged; 329 tests green suite-wide (meet: 91). The record-attempt flag is gone entirely rather than validated \u2014 the builder argued an engine holding one lifter\u2019s card cannot honestly source a federation/division/class record, so accepting a caller-supplied record weight would move the fabrication up a level instead of removing it. Removal is documented in-file so nobody re-adds the hole. Bar floor, final-vs-running total, and the aliasing hole all fixed. Fresh critic grading now."
     },
     {
       "id": "M5",

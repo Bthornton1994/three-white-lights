@@ -1,5 +1,5 @@
 EVIDENCE BUNDLE — piece M4
-generated 2026-07-31T03:45:34.144Z
+generated 2026-07-31T05:39:16.871Z
 repo /home/user/three-white-lights
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -12,43 +12,54 @@ $ npx vitest run src/game/meet.test.ts --reporter=verbose
 
  RUN  v4.1.10 /home/user/three-white-lights
 
- ✓ src/game/meet.test.ts > module purity > has no imports at all, so it cannot reach React, I/O or sibling modules 3ms
+ ✓ src/game/meet.test.ts > module purity > has no imports at all, so it cannot reach React, I/O or sibling modules 2ms
  ✓ src/game/meet.test.ts > module purity > reads no clock and rolls no dice 1ms
  ✓ src/game/meet.test.ts > module purity > names the CLAUDE.md / GDD §6.3 conflict rather than silently resolving it 0ms
+ ✓ src/game/meet.test.ts > module purity > says what it can and cannot cite for its loading numbers 0ms
  ✓ src/game/meet.test.ts > meet structure > runs squat then bench then deadlift 1ms
- ✓ src/game/meet.test.ts > meet structure > allows three attempts per lift, judged by three referees, majority carrying 1ms
+ ✓ src/game/meet.test.ts > meet structure > allows three attempts per lift, judged by three referees, majority carrying 0ms
  ✓ src/game/meet.test.ts > meet structure > opens on the first squat attempt 1ms
- ✓ src/game/meet.test.ts > three-light judging > counts white lights 1ms
- ✓ src/game/meet.test.ts > three-light judging > passes a lift on a majority of white lights 0ms
- ✓ src/game/meet.test.ts > three-light judging > flags split decisions and not unanimous ones 1ms
- ✓ src/game/meet.test.ts > three-light judging > rejects panels that are not three red/white lights 1ms
- ✓ src/game/meet.test.ts > three-light judging > records the panel on the judged attempt 1ms
+ ✓ src/game/meet.test.ts > three-light judging > counts white lights 0ms
+ ✓ src/game/meet.test.ts > three-light judging > passes a lift on a majority of white lights 1ms
+ ✓ src/game/meet.test.ts > three-light judging > flags split decisions and not unanimous ones 0ms
+ ✓ src/game/meet.test.ts > three-light judging > rejects panels that are not three red/white lights 0ms
+ ✓ src/game/meet.test.ts > three-light judging > records the panel on the judged attempt 0ms
+ ✓ src/game/meet.test.ts > three-light judging > copies the panel instead of aliasing the caller’s array 1ms
  ✓ src/game/meet.test.ts > three-light judging > rejects a malformed panel at resolve time 0ms
  ✓ src/game/meet.test.ts > a 9-for-9 meet > finishes with a total 0ms
  ✓ src/game/meet.test.ts > a 9-for-9 meet > totals the best successful attempt on each lift 0ms
- ✓ src/game/meet.test.ts > a 9-for-9 meet > records all nine attempts in order 2ms
+ ✓ src/game/meet.test.ts > a 9-for-9 meet > records all nine attempts in order 1ms
  ✓ src/game/meet.test.ts > a 9-for-9 meet > marks every lift complete 0ms
  ✓ src/game/meet.test.ts > a 9-for-9 meet > refuses any further action 0ms
  ✓ src/game/meet.test.ts > total calculation with mixed makes and misses > uses the best successful attempt per lift and ignores misses 1ms
- ✓ src/game/meet.test.ts > total calculation with mixed makes and misses > keeps the heaviest good lift, not the last one taken 1ms
+ ✓ src/game/meet.test.ts > total calculation with mixed makes and misses > keeps the heaviest good lift, not the last one taken 0ms
  ✓ src/game/meet.test.ts > total calculation with mixed makes and misses > takes the heaviest good lift even if the attempts arrive out of order 0ms
- ✓ src/game/meet.test.ts > total calculation with mixed makes and misses > reports no total until the meet is finished 0ms
  ✓ src/game/meet.test.ts > total calculation with mixed makes and misses > adds fractional attempts without float drift 0ms
+ ✓ src/game/meet.test.ts > a running sum is never mistaken for a total > reports in-progress with no total before the meet starts 0ms
+ ✓ src/game/meet.test.ts > a running sum is never mistaken for a total > still has NO total once every lift has a good attempt but the meet is live 0ms
+ ✓ src/game/meet.test.ts > a running sum is never mistaken for a total > reports no-total, not a number, for a bomb-out that had lifts on the board 0ms
+ ✓ src/game/meet.test.ts > a running sum is never mistaken for a total > mid-lift, before the deadlift opener, there is no total either 0ms
  ✓ src/game/meet.test.ts > bombing out > ends the meet on three missed squats with no total 1ms
  ✓ src/game/meet.test.ts > bombing out > ends the meet on the bench and banks nothing toward a total 1ms
  ✓ src/game/meet.test.ts > bombing out > ends the meet on the deadlift with no total despite squat and bench 1ms
- ✓ src/game/meet.test.ts > bombing out > is distinct from a completed meet, not a total of zero 1ms
+ ✓ src/game/meet.test.ts > bombing out > is distinct from a completed meet, not a total of zero 0ms
  ✓ src/game/meet.test.ts > the non-decreasing weight invariant > rejects a lighter attempt after a miss 0ms
  ✓ src/game/meet.test.ts > the non-decreasing weight invariant > rejects a lighter attempt after a good lift 0ms
  ✓ src/game/meet.test.ts > the non-decreasing weight invariant > rejects a drop-down on the third attempt too 0ms
  ✓ src/game/meet.test.ts > the non-decreasing weight invariant > allows repeating the weight after a miss 0ms
  ✓ src/game/meet.test.ts > the non-decreasing weight invariant > refuses to repeat a weight after a good lift 0ms
- ✓ src/game/meet.test.ts > the non-decreasing weight invariant > requires at least the minimum increase when going up 1ms
+ ✓ src/game/meet.test.ts > the non-decreasing weight invariant > requires at least the minimum increase when going up 0ms
  ✓ src/game/meet.test.ts > the non-decreasing weight invariant > resets the constraint at the start of each lift 0ms
  ✓ src/game/meet.test.ts > the non-decreasing weight invariant > is not fooled by a passed attempt in between 0ms
+ ✓ src/game/meet.test.ts > loadable weights > builds the minimum from a named bar weight and a named collar weight 0ms
+ ✓ src/game/meet.test.ts > loadable weights > rejects an attempt lighter than the bar and collars 0ms
+ ✓ src/game/meet.test.ts > loadable weights > measures granularity from the bar, not from zero 0ms
+ ✓ src/game/meet.test.ts > loadable weights > honours a per-lift bar weight 0ms
+ ✓ src/game/meet.test.ts > loadable weights > never rounds an attempt suggestion below the bar 0ms
+ ✓ src/game/meet.test.ts > loadable weights > rejects nonsense meet rules loudly instead of skipping the check 0ms
  ✓ src/game/meet.test.ts > rejected transitions > rejects lifting out of order 0ms
  ✓ src/game/meet.test.ts > rejected transitions > rejects going back to a finished lift, and calls it what it is 0ms
- ✓ src/game/meet.test.ts > rejected transitions > never offers a fourth attempt on a lift 1ms
+ ✓ src/game/meet.test.ts > rejected transitions > never offers a fourth attempt on a lift 0ms
  ✓ src/game/meet.test.ts > rejected transitions > rejects a mismatched attempt number 0ms
  ✓ src/game/meet.test.ts > rejected transitions > rejects declaring twice before the lights come up 0ms
  ✓ src/game/meet.test.ts > rejected transitions > rejects resolving the same attempt twice 0ms
@@ -56,26 +67,29 @@ $ npx vitest run src/game/meet.test.ts --reporter=verbose
  ✓ src/game/meet.test.ts > rejected transitions > rejects resolving an attempt that is not the one on the platform 0ms
  ✓ src/game/meet.test.ts > rejected transitions > rejects nonsense weights 0ms
  ✓ src/game/meet.test.ts > rejected transitions > rejects weights the bar cannot be loaded to 0ms
- ✓ src/game/meet.test.ts > rejected transitions > can have loadable-weight enforcement turned off for other federations 0ms
- ✓ src/game/meet.test.ts > record attempts > allows the finer record increment above a good lift 0ms
- ✓ src/game/meet.test.ts > record attempts > still refuses to go down on a record attempt 0ms
- ✓ src/game/meet.test.ts > passing an attempt > uses up the attempt and moves on 1ms
+ ✓ src/game/meet.test.ts > rejected transitions > lets a federation with finer discs declare that once, for the whole meet 0ms
+ ✓ src/game/meet.test.ts > record attempts are a declared non-goal > has no per-attempt flag that loosens a loading rule 0ms
+ ✓ src/game/meet.test.ts > record attempts are a declared non-goal > ignores a legacy record flag instead of honouring it 0ms
+ ✓ src/game/meet.test.ts > record attempts are a declared non-goal > will not let a record flag smuggle an unloadable opener onto the platform 0ms
+ ✓ src/game/meet.test.ts > record attempts are a declared non-goal > does not let a record flag shrink the minimum increase either 0ms
+ ✓ src/game/meet.test.ts > record attempts are a declared non-goal > reports the same minimum whatever the caller thinks it is attempting 2ms
+ ✓ src/game/meet.test.ts > passing an attempt > uses up the attempt and moves on 0ms
  ✓ src/game/meet.test.ts > passing an attempt > closes the lift when the last attempt is passed 0ms
  ✓ src/game/meet.test.ts > passing an attempt > leaves a lifter with no total if every attempt on a lift is passed 0ms
  ✓ src/game/meet.test.ts > passing an attempt > does not count a passed attempt toward the best lift 0ms
- ✓ src/game/meet.test.ts > attempt context > leaves the opener unconstrained 0ms
+ ✓ src/game/meet.test.ts > attempt context > floors the opener at the bar and collars and nothing else 0ms
  ✓ src/game/meet.test.ts > attempt context > after a good lift, requires a heavier attempt 0ms
  ✓ src/game/meet.test.ts > attempt context > after a miss, allows the same weight again 0ms
- ✓ src/game/meet.test.ts > attempt context > uses the record increment when a record attempt is planned 0ms
+ ✓ src/game/meet.test.ts > attempt context > only ever offers a minimum the bar can actually take 0ms
  ✓ src/game/meet.test.ts > attempt context > is null while an attempt is on the platform or the meet is over 0ms
- ✓ src/game/meet.test.ts > attempt selection > has no drop-down strategy, because the bar never goes down within a lift 1ms
+ ✓ src/game/meet.test.ts > attempt selection > has no drop-down strategy, because the bar never goes down within a lift 0ms
  ✓ src/game/meet.test.ts > attempt selection > repeats the weight after a miss 0ms
  ✓ src/game/meet.test.ts > attempt selection > refuses to repeat after a good lift 0ms
- ✓ src/game/meet.test.ts > attempt selection > orders the jumps conservative < standard < aggressive 1ms
- ✓ src/game/meet.test.ts > attempt selection > suggests legal, loadable weights the engine will accept 1ms
+ ✓ src/game/meet.test.ts > attempt selection > orders the jumps conservative < standard < aggressive 0ms
+ ✓ src/game/meet.test.ts > attempt selection > suggests legal, loadable weights the engine will accept 0ms
  ✓ src/game/meet.test.ts > attempt selection > never suggests less than the minimum legal increase 0ms
  ✓ src/game/meet.test.ts > attempt selection > suggests strictly increasing weights across strategies for a heavy squat 0ms
- ✓ src/game/meet.test.ts > attempt selection > clamps a too-small jump up to the minimum legal increase 5ms
+ ✓ src/game/meet.test.ts > attempt selection > clamps a too-small jump up to the minimum legal increase 0ms
  ✓ src/game/meet.test.ts > attempt selection > will not suggest a next attempt for an opener 0ms
  ✓ src/game/meet.test.ts > attempt selection > will not suggest anything while an attempt is on the platform 0ms
  ✓ src/game/meet.test.ts > opener suggestion > rounds the configured fraction of a 1RM down to a loadable weight 0ms
@@ -85,14 +99,15 @@ $ npx vitest run src/game/meet.test.ts --reporter=verbose
  ✓ src/game/meet.test.ts > weight rounding > snaps to the nearest loadable increment by default 0ms
  ✓ src/game/meet.test.ts > weight rounding > rounds up and down on request without float drift 0ms
  ✓ src/game/meet.test.ts > weight rounding > recognises loadable weights 0ms
- ✓ src/game/meet.test.ts > immutability > never mutates the state it is given 1ms
+ ✓ src/game/meet.test.ts > immutability > never mutates the state it is given 0ms
+ ✓ src/game/meet.test.ts > immutability > copies the rules it is given instead of aliasing them 0ms
  ✓ src/game/meet.test.ts > immutability > replays deterministically — same inputs, same meet 0ms
- ✓ src/game/meet.test.ts > meet card > exposes an attempt-by-attempt breakdown for the recap 1ms
+ ✓ src/game/meet.test.ts > meet card > exposes an attempt-by-attempt breakdown for the recap 0ms
 
  Test Files  1 passed (1)
-      Tests  76 passed (76)
-   Start at  03:45:35
-   Duration  526ms (transform 185ms, setup 0ms, import 232ms, tests 47ms, environment 0ms)
+      Tests  91 passed (91)
+   Start at  05:39:17
+   Duration  360ms (transform 135ms, setup 0ms, import 164ms, tests 29ms, environment 0ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
