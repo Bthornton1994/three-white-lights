@@ -1,0 +1,581 @@
+/**
+ * Lifter sprite composition — pose + bar + plates into one index grid.
+ *
+ * Pure: no React, no I/O, no randomness. Same inputs, same pixels.
+ *
+ * Draw order is back to front, the way a sprite sheet is layered:
+ *
+ *     bar and plates            (behind the lifter; the bar sits on the traps)
+ *     far-side leg / near leg
+ *     torso, singlet, belt
+ *     arms
+ *     head, hair, face
+ *     hands on the bar          (in front of the bar, gripping it)
+ *     chalk
+ *     outline pass, despeckle
+ *
+ * The frontal view has no true far and near side, so the sprite is shaded as if
+ * the lifter were turned a couple of degrees: the screen-right limbs render one
+ * ramp step darker (SHADING.FAR_LIMB_STEP_BIAS). Together with the upper-left
+ * key light and the off-centre head this is what stops a mirror-symmetric pose
+ * from rendering as a mirror-symmetric image, which is the giveaway of a sprite
+ * that was generated rather than drawn.
+ */
+
+import {
+  BAR,
+  BEND,
+  CENTER_X,
+  SHADING,
+  SHADOW,
+  STRAIN,
+  RESOLUTION,
+} from './spriteTuning';
+import { PAL, RAMPS, type Ramp } from './palette';
+import {
+  CELL,
+  RIG_GEOMETRY,
+  applyStrain,
+  barYForPose,
+  poseAtDepth,
+  strainForLevel,
+  type Pose,
+  type RepDirection,
+} from './rig';
+import {
+  createGrid,
+  drawEllipsoid,
+  drawLimb,
+  drawPlateEdge,
+  drawTrunk,
+  despeckle,
+  outlinePass,
+  setPx,
+  type IndexGrid,
+} from './raster';
+import {
+  BAR_AND_COLLARS_KG,
+  PLATE_HUE_RAMPS,
+  layoutSleeve,
+  visualPlateStack,
+  type SleeveLayout,
+} from './plates';
+import type { SquatFrame } from './squatAnimation';
+
+const DEG = Math.PI / 180;
+
+export interface LifterFrameSpec {
+  /** 0 = standing, 1 = bottom of the hole. Quantised by the animation. */
+  readonly depth: number;
+  readonly direction: RepDirection;
+  /** Quantised strain level, 0..STRAIN.LEVELS-1. */
+  readonly strainLevel: number;
+  readonly barLateralPx: number;
+  readonly barTiltDeg: number;
+  readonly barBendPx: number;
+  readonly chalkMotes: number;
+  /** Total weight on the bar including bar and collars, kg. */
+  readonly totalKg: number;
+  readonly barKg?: number;
+}
+
+/** Everything the renderer resolved, for callers that need to draw alongside. */
+export interface RenderedFrame {
+  readonly grid: IndexGrid;
+  readonly pose: Pose;
+  readonly barCenterY: number;
+  readonly sleeve: SleeveLayout;
+  readonly strain: number;
+}
+
+export function frameSpecFrom(frame: SquatFrame, totalKg: number, barKg?: number): LifterFrameSpec {
+  return {
+    depth: frame.poseDepth,
+    direction: frame.direction,
+    strainLevel: frame.strainLevel,
+    barLateralPx: frame.barLateralPx,
+    barTiltDeg: frame.barTiltDeg,
+    barBendPx: frame.barBendPx,
+    chalkMotes: frame.chalkMotes,
+    totalKg,
+    ...(barKg === undefined ? {} : { barKg }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Bar
+// ---------------------------------------------------------------------------
+
+/**
+ * Vertical offset of the bar at a signed distance from its centre.
+ *
+ * Tilt is linear in dx. Bend is `bendPx * (|dx| / HALF_SPAN)^EXPONENT`, so the
+ * shaft between the sleeves stays nearly flat and the loaded ends droop — which
+ * is what a loaded bar does. A uniformly curved bar is a bar nobody looked at.
+ */
+export function barOffsetAt(dx: number, tiltDeg: number, bendPx: number): number {
+  const tilt = Math.tan(tiltDeg * DEG) * dx;
+  const droop = bendPx * Math.pow(Math.abs(dx) / BAR.HALF_SPAN_PX, BEND.EXPONENT);
+  return tilt + droop;
+}
+
+function drawSteelSpan(
+  g: IndexGrid,
+  cx: number,
+  barCy: number,
+  fromDx: number,
+  toDx: number,
+  thickness: number,
+  tiltDeg: number,
+  bendPx: number,
+  ramp: Ramp,
+): void {
+  for (let dx = fromDx; dx <= toDx; dx += 1) {
+    const y = barCy + barOffsetAt(dx, tiltDeg, bendPx);
+    const top = Math.round(y - thickness / 2);
+    for (let i = 0; i < thickness; i += 1) {
+      // Top row catches the key light, bottom row is in shadow: a 2px bar has
+      // room for exactly one highlight and one shadow, and no more.
+      const idx = i === 0 ? (ramp[ramp.length - 1] ?? 0) : (ramp[0] ?? 0);
+      setPx(g, Math.round(cx + dx), top + i, idx);
+    }
+  }
+}
+
+function drawBarAndPlates(
+  g: IndexGrid,
+  barCy: number,
+  lateralPx: number,
+  tiltDeg: number,
+  bendPx: number,
+  sleeve: SleeveLayout,
+): void {
+  const cx = CENTER_X + lateralPx;
+
+  // Shaft, then the thicker sleeves out to the ends. The shaft uses the dark
+  // half of the steel ramp: a 2px full-brightness line across the whole cell
+  // out-values the lifter and drags the eye off him.
+  drawSteelSpan(
+    g,
+    cx,
+    barCy,
+    -BAR.SHAFT_HALF_PX,
+    BAR.SHAFT_HALF_PX,
+    BAR.SHAFT_THICKNESS_PX,
+    tiltDeg,
+    bendPx,
+    RAMPS.SHAFT,
+  );
+  for (const sign of [-1, 1]) {
+    const from = sign < 0 ? -BAR.HALF_SPAN_PX : BAR.SHAFT_HALF_PX;
+    const to = sign < 0 ? -BAR.SHAFT_HALF_PX : BAR.HALF_SPAN_PX;
+    drawSteelSpan(g, cx, barCy, from, to, BAR.SHAFT_THICKNESS_PX + 1, tiltDeg, bendPx, RAMPS.SHAFT);
+  }
+
+  // Knurl rings: two darker marks where a lifter measures grip width.
+  for (const ringDx of BAR.KNURL_RING_DX) {
+    for (const sign of [-1, 1]) {
+      const dx = sign * ringDx;
+      const y = barCy + barOffsetAt(dx, tiltDeg, bendPx);
+      setPx(g, Math.round(cx + dx), Math.round(y - BAR.SHAFT_THICKNESS_PX / 2), PAL.STEEL_DARK);
+    }
+  }
+
+  // Discs, inboard first, mirrored onto both sleeves.
+  for (const slot of sleeve.slots) {
+    const ramp = PLATE_HUE_RAMPS[slot.plate.spec.hue];
+    for (const sign of [-1, 1]) {
+      const dxMid = sign * (slot.dxInner + slot.facePx / 2);
+      const cy = barCy + barOffsetAt(dxMid, tiltDeg, bendPx);
+      const xInner =
+        sign < 0
+          ? Math.round(cx - slot.dxInner - slot.facePx)
+          : Math.round(cx + slot.dxInner);
+      drawPlateEdge(g, xInner, slot.facePx, cy, slot.plate.diameterPx, ramp);
+    }
+  }
+
+  // Collars.
+  for (const sign of [-1, 1]) {
+    const dxMid = sign * (sleeve.collarDxInner + BAR.COLLAR_WIDTH_PX / 2);
+    const cy = barCy + barOffsetAt(dxMid, tiltDeg, bendPx);
+    const xInner =
+      sign < 0
+        ? Math.round(cx - sleeve.collarDxInner - BAR.COLLAR_WIDTH_PX)
+        : Math.round(cx + sleeve.collarDxInner);
+    drawPlateEdge(g, xInner, BAR.COLLAR_WIDTH_PX, cy, BAR.COLLAR_HEIGHT_PX, RAMPS.CHROME);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Body
+// ---------------------------------------------------------------------------
+
+function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
+  const cx = CENTER_X;
+  const hipX = cx + sign * pose.hipHalfW * RIG_GEOMETRY.ATTACH.THIGH_ROOT;
+  const kneeX = cx + sign * pose.kneeHalfW;
+  const ankleX = cx + sign * pose.ankleHalfW;
+  const opts = { stepBias: bias, edge: true };
+
+  drawLimb(
+    g,
+    hipX,
+    pose.hipY,
+    kneeX,
+    pose.kneeY,
+    RIG_GEOMETRY.THIGH_R[0],
+    RIG_GEOMETRY.THIGH_R[1],
+    RAMPS.SKIN,
+    opts,
+  );
+  drawLimb(
+    g,
+    kneeX,
+    pose.kneeY,
+    ankleX,
+    pose.ankleY,
+    RIG_GEOMETRY.SHIN_R[0],
+    RIG_GEOMETRY.SHIN_R[1],
+    RAMPS.SKIN,
+    opts,
+  );
+
+  // Knee sleeve, following the leg's own axis through the joint rather than a
+  // vertical, so it stays on the knee when the knee is out at depth.
+  const KS = RIG_GEOMETRY.KNEE_SLEEVE;
+  const upX = kneeX + (hipX - kneeX) * KS.TOWARD_HIP;
+  const upY = pose.kneeY + (pose.hipY - pose.kneeY) * KS.TOWARD_HIP;
+  const dnX = kneeX + (ankleX - kneeX) * KS.TOWARD_ANKLE;
+  const dnY = pose.kneeY + (pose.ankleY - pose.kneeY) * KS.TOWARD_ANKLE;
+  drawLimb(g, upX, upY, dnX, dnY, KS.R[0], KS.R[1], RAMPS.GEAR, opts);
+
+  // Shoe.
+  drawTrunk(
+    g,
+    ankleX + sign * RIG_GEOMETRY.FOOT_FLARE,
+    pose.ankleY + RIG_GEOMETRY.FOOT_DROP,
+    CELL.FLOOR_Y - 1,
+    RIG_GEOMETRY.FOOT_W / 2 - 1,
+    RIG_GEOMETRY.FOOT_W / 2,
+    RAMPS.GEAR,
+    { stepBias: bias, edge: true },
+  );
+}
+
+function drawArm(g: IndexGrid, pose: Pose, sign: number, bias: number, skin: Ramp): void {
+  const cx = CENTER_X;
+  const shX = cx + sign * pose.shoulderHalfW * RIG_GEOMETRY.ATTACH.ARM_ROOT;
+  const elX = cx + sign * pose.elbowHalfW;
+  const grip = pose.handHalfW + (sign > 0 ? RIG_GEOMETRY.GRIP_ASYMMETRY_PX : 0);
+  const haX = cx + sign * grip;
+  const opts = { stepBias: bias, edge: true };
+
+  drawLimb(
+    g,
+    shX,
+    pose.shoulderY,
+    elX,
+    pose.elbowY,
+    RIG_GEOMETRY.UPPER_ARM_R[0],
+    RIG_GEOMETRY.UPPER_ARM_R[1],
+    RAMPS.SKIN,
+    opts,
+  );
+  drawLimb(
+    g,
+    elX,
+    pose.elbowY,
+    haX,
+    pose.handY,
+    RIG_GEOMETRY.FOREARM_R[0],
+    RIG_GEOMETRY.FOREARM_R[1],
+    skin,
+    opts,
+  );
+}
+
+function drawHand(
+  g: IndexGrid,
+  pose: Pose,
+  sign: number,
+  barCy: number,
+  lateralPx: number,
+  tiltDeg: number,
+  bendPx: number,
+  bias: number,
+): void {
+  const grip = pose.handHalfW + (sign > 0 ? RIG_GEOMETRY.GRIP_ASYMMETRY_PX : 0);
+  const dx = sign * grip;
+  const x = CENTER_X + lateralPx + dx;
+  const y = barCy + barOffsetAt(dx, tiltDeg, bendPx);
+  drawEllipsoid(
+    g,
+    x,
+    y,
+    RIG_GEOMETRY.HAND_R,
+    RIG_GEOMETRY.HAND_R + RIG_GEOMETRY.NUDGE.HAND_TALL,
+    RAMPS.SKIN,
+    {
+      stepBias: bias,
+      edge: true,
+    },
+  );
+  // Chalked knuckle: one bright pixel. At a 4px hand that is the whole read,
+  // and two would turn the hand into a highlight instead of a hand.
+  setPx(g, Math.round(x - 1), Math.round(y - 1), PAL.GEAR_LIGHT);
+}
+
+function drawHead(g: IndexGrid, pose: Pose, strain: number, skin: Ramp): void {
+  const hx = CENTER_X + pose.headDx;
+  const hy = pose.headY;
+  const G = RIG_GEOMETRY;
+
+  drawLimb(
+    g,
+    hx,
+    hy + G.HEAD_RY - G.NECK_OVERLAP,
+    CENTER_X,
+    pose.shoulderY + G.NECK_OVERLAP,
+    G.NECK_R,
+    G.NECK_R + G.NUDGE.NECK_FLARE,
+    skin,
+    { edge: true },
+  );
+  drawEllipsoid(g, hx, hy, G.HEAD_RX, G.HEAD_RY, skin, {
+    edge: true,
+    stepBias: G.HEAD_STEP_BIAS,
+  });
+  drawEllipsoid(g, hx, hy - G.HEAD_RY + G.HAIR_RY, G.HEAD_RX - 0.1, G.HAIR_RY, RAMPS.HAIR, {});
+
+  // Face. Two eye pixels and a mouth: at 7px of head width there is room for
+  // nothing else, and anything else would read as detail noise.
+  const grimacing = strain > STRAIN.FLUSH_THRESHOLD;
+  const eyeY = Math.round(hy + G.EYE_DY);
+  const mouthY = Math.round(hy + G.MOUTH_DY);
+  setPx(g, Math.round(hx - G.EYE_DX), eyeY, PAL.OUTLINE);
+  setPx(g, Math.round(hx + G.EYE_DX), eyeY, PAL.OUTLINE);
+  if (grimacing) {
+    // Braced and grimacing: brow bar down over the eyes, mouth open.
+    setPx(g, Math.round(hx - G.EYE_DX - 1), eyeY - 1, PAL.OUTLINE);
+    setPx(g, Math.round(hx - 1), eyeY - 1, PAL.OUTLINE);
+    setPx(g, Math.round(hx + 1), eyeY - 1, PAL.OUTLINE);
+    setPx(g, Math.round(hx + G.EYE_DX + 1), eyeY - 1, PAL.OUTLINE);
+    setPx(g, Math.round(hx - 1), mouthY, PAL.OUTLINE);
+    setPx(g, Math.round(hx), mouthY, PAL.OUTLINE);
+    setPx(g, Math.round(hx + 1), mouthY, PAL.OUTLINE);
+  } else {
+    setPx(g, Math.round(hx), mouthY, PAL.OUTLINE);
+  }
+}
+
+function drawTorso(g: IndexGrid, pose: Pose, skin: Ramp): void {
+  const cx = CENTER_X;
+  const A = RIG_GEOMETRY.ATTACH;
+  const trapTop = pose.shoulderY - A.TRAP_RISE;
+  const trapHalf = pose.shoulderHalfW * A.TRAP_HALF_W;
+
+  // Traps and shoulders first, high enough to swallow the bar behind the neck:
+  // from the front you see the bar emerge past the delts, not cross the throat.
+  drawTrunk(g, cx, trapTop, pose.hipY, trapHalf, pose.hipHalfW, RAMPS.SKIN, {});
+
+  // Deltoid caps: without these the shoulder line is a straight cut and the
+  // whole figure reads as a mannequin.
+  for (const sign of [-1, 1]) {
+    drawEllipsoid(
+      g,
+      cx + sign * pose.shoulderHalfW * A.DELTOID,
+      pose.shoulderY + RIG_GEOMETRY.NUDGE.DELTOID_DROP,
+      A.DELTOID_R,
+      A.DELTOID_R,
+      RAMPS.SKIN,
+      { stepBias: sign > 0 ? SHADING.FAR_LIMB_STEP_BIAS : 0 },
+    );
+  }
+
+  // Singlet, starting where the straps meet the chest. Its top half-width has
+  // to match the torso's half-width at that row or the singlet overhangs the
+  // body, so it is interpolated from the same trapezoid the torso used.
+  const chestHalf =
+    trapHalf +
+    (pose.hipHalfW - trapHalf) *
+      ((pose.chestY - trapTop) / Math.max(1, pose.hipY - trapTop));
+
+  drawTrunk(
+    g,
+    cx,
+    pose.chestY,
+    pose.hipY + A.SINGLET_HEM,
+    chestHalf,
+    pose.hipHalfW + RIG_GEOMETRY.NUDGE.SINGLET_FLARE,
+    RAMPS.SINGLET,
+    {},
+  );
+
+  for (const sign of [-1, 1]) {
+    drawLimb(
+      g,
+      cx + sign * pose.shoulderHalfW * A.STRAP_TOP,
+      pose.shoulderY - RIG_GEOMETRY.NUDGE.STRAP_LIFT,
+      cx + sign * pose.shoulderHalfW * A.STRAP_BOTTOM,
+      pose.chestY,
+      A.STRAP_R[0],
+      A.STRAP_R[1],
+      RAMPS.SINGLET,
+      {},
+    );
+  }
+
+  // Belt.
+  drawTrunk(
+    g,
+    cx,
+    pose.waistY - RIG_GEOMETRY.BELT_H / 2,
+    pose.waistY + RIG_GEOMETRY.BELT_H / 2,
+    pose.waistHalfW + RIG_GEOMETRY.BELT_OVERHANG,
+    pose.waistHalfW + RIG_GEOMETRY.BELT_OVERHANG,
+    RAMPS.GEAR,
+    { edge: true },
+  );
+
+  // Sternum notch, the one skin detail the singlet leaves visible.
+  setPx(
+    g,
+    Math.round(cx),
+    Math.round(pose.chestY - RIG_GEOMETRY.NUDGE.STERNUM_LIFT),
+    skin[1] ?? PAL.SKIN_MID,
+  );
+}
+
+/**
+ * Inner-leg seam.
+ *
+ * A front-on squat's two thighs meet in one continuous mass of pixels at the
+ * hip, and without a line down the middle the whole lower body reads as a
+ * single blob — which is what kills the depth cue that the squat is supposed to
+ * deliver. Artists draw this line by hand. It is stamped only over pixels that
+ * are already body, so when the legs are apart it does nothing at all.
+ */
+function drawInnerLegSeam(g: IndexGrid, pose: Pose): void {
+  const x = Math.round(CENTER_X);
+  const top = Math.round(Math.min(pose.hipY, pose.kneeY) + RIG_GEOMETRY.SEAM.TOP_OFFSET);
+  const bottom = Math.round(pose.ankleY - RIG_GEOMETRY.SEAM.BOTTOM_OFFSET);
+  for (let y = top; y <= bottom; y += 1) {
+    const here = g.data[y * g.w + x];
+    if (here === undefined || here === 0) continue;
+    setPx(g, x, y, PAL.OUTLINE);
+  }
+}
+
+/** Deterministic chalk motes. Fixed offsets, not noise — this is pure code. */
+const CHALK_MOTE_OFFSETS: readonly (readonly [number, number])[] = [
+  [0, -2],
+  [2, -4],
+  [-2, -3],
+  [4, -6],
+  [-4, -5],
+  [1, -7],
+  [-1, -9],
+];
+
+function drawChalk(
+  g: IndexGrid,
+  pose: Pose,
+  motes: number,
+  barCy: number,
+  lateralPx: number,
+): void {
+  if (motes <= 0) return;
+  for (const sign of [-1, 1]) {
+    const baseX = CENTER_X + lateralPx + sign * pose.handHalfW;
+    for (let i = 0; i < Math.min(motes, CHALK_MOTE_OFFSETS.length); i += 1) {
+      const off = CHALK_MOTE_OFFSETS[i];
+      if (off === undefined) continue;
+      setPx(g, Math.round(baseX + sign * off[0]), Math.round(barCy + off[1]), PAL.CHALK);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Entry points
+// ---------------------------------------------------------------------------
+
+/** Render one animation frame to an index grid with a transparent background. */
+export function renderLifterFrame(spec: LifterFrameSpec): RenderedFrame {
+  const strain = strainForLevel(spec.strainLevel);
+  const pose = applyStrain(poseAtDepth(spec.depth, spec.direction), strain);
+  const barCy = barYForPose(pose);
+  const stack = visualPlateStack(spec.totalKg, spec.barKg ?? BAR_AND_COLLARS_KG);
+  const sleeve = layoutSleeve(stack);
+  const skin = strain > STRAIN.FLUSH_THRESHOLD ? RAMPS.SKIN_FLUSHED : RAMPS.SKIN;
+
+  const g = createGrid(CELL.W, CELL.H);
+
+  drawBarAndPlates(g, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, sleeve);
+
+  drawLeg(g, pose, 1, SHADING.FAR_LIMB_STEP_BIAS);
+  drawLeg(g, pose, -1, 0);
+  drawTorso(g, pose, skin);
+  drawInnerLegSeam(g, pose);
+  drawArm(g, pose, 1, SHADING.FAR_LIMB_STEP_BIAS, skin);
+  drawArm(g, pose, -1, 0, skin);
+  drawHead(g, pose, strain, skin);
+  drawHand(g, pose, 1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, SHADING.FAR_LIMB_STEP_BIAS);
+  drawHand(g, pose, -1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, 0);
+  drawChalk(g, pose, spec.chalkMotes, barCy, spec.barLateralPx);
+
+  // Order matters. Despeckle first, on the raw silhouette: it replaces isolated
+  // pixels with a neighbour, and run afterwards it would happily eat a lone
+  // outline pixel and leave a hole in the silhouette. Outline last, so the
+  // outline is the final word on the shape.
+  despeckle(g);
+  outlinePass(g);
+
+  return { grid: g, pose, barCenterY: barCy, sleeve, strain };
+}
+
+/**
+ * Contact shadow, as a separate layer so the sprite itself stays a sprite.
+ * Narrows as the lifter descends: the key light is high, so a body closer to
+ * the floor throws less.
+ */
+export function renderContactShadow(pose: Pose, depth: number): IndexGrid {
+  const g = createGrid(CELL.W, CELL.H);
+  const halfW =
+    (SHADOW.BASE_HALF_W_PX + SHADOW.STANCE_GAIN * pose.ankleHalfW) *
+    (1 - (1 - SHADOW.DEPTH_SHRINK) * Math.min(1, Math.max(0, depth)));
+  const cy = CELL.FLOOR_Y;
+  for (let y = Math.round(cy - SHADOW.HALF_H_PX); y <= Math.round(cy + SHADOW.HALF_H_PX); y += 1) {
+    const ny = (y - cy) / SHADOW.HALF_H_PX;
+    const span = halfW * Math.sqrt(Math.max(0, 1 - ny * ny));
+    for (let x = Math.round(CENTER_X - span); x <= Math.round(CENTER_X + span); x += 1) {
+      setPx(g, x, y, PAL.CONTACT_SHADOW);
+    }
+  }
+  return g;
+}
+
+/** Flat backdrop and platform, for inspecting a frame in isolation. */
+export function renderStage(): IndexGrid {
+  const g = createGrid(CELL.W, CELL.H, PAL.BACKDROP_DARK);
+  for (let y = 0; y < CELL.FLOOR_Y; y += 1) {
+    const idx = y > CELL.FLOOR_Y - 18 ? PAL.BACKDROP_MID : PAL.BACKDROP_DARK;
+    for (let x = 0; x < CELL.W; x += 1) setPx(g, x, y, idx);
+  }
+  for (let y = CELL.FLOOR_Y; y < CELL.H; y += 1) {
+    const idx =
+      y === CELL.FLOOR_Y
+        ? PAL.PLATFORM_LIGHT
+        : y === CELL.FLOOR_Y + 1
+          ? PAL.PLATFORM_MID
+          : PAL.PLATFORM_DARK;
+    for (let x = 0; x < CELL.W; x += 1) setPx(g, x, y, idx);
+  }
+  return g;
+}
+
+/** Cell size, re-exported so a renderer needs one import. */
+export const SPRITE_CELL = {
+  W: RESOLUTION.CELL_W,
+  H: RESOLUTION.CELL_H,
+} as const;
