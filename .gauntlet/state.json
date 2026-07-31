@@ -93,9 +93,9 @@
       "id": "M1",
       "name": "RPE \u2192 %1RM table",
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
-      "status": "failed",
+      "status": "building",
       "verifiable": true,
-      "note": "THE GRID WINS ITS BAR ON VALUES \u2014 a critic re-fetched both pinned sources and checked all 108 cells, and verified byte-for-byte that the committed fixtures had not been reformatted by the refactor. The remaining gap is an inconsistency: the module argues at length that compile-time readonly is not enough and freezes the chart, the sources and the provenance record \u2014 but leaves the three objects that GATE the lookup unfrozen. Verified here: pushing 7.3 onto CHARTED_RPES makes isChartedRpe(7.3) true and tryPercentOf1RM returns undefined, which is neither number nor null. The quieter variant produces no error at all \u2014 shifting MAX_RPE by half a step moves every prescribed load and every e1RM while all 66 tests stay green. The provenance footnotes are protected from mutation; the definition of which RPEs exist is not."
+      "note": "Grid already confirmed to win its bar on values. Sixth rework closes the unfrozen lookup gate \u2014 and the builder audited rather than just fixing what it was handed, finding two more unfrozen objects nobody had named, where setting ROUNDING_INCREMENT.kg moved every prescribed load from 162.5 to 200. It also diagnosed WHY the type system missed the undefined leak: Record over a finite union is a mapped type, so the compiler proves the cell exists from the key\u2019s type \u2014 a proof only as strong as the predicate that made the key. A third instance needed no mutation at all: an unknown rounding unit returned NaN silently through the whole prescription path. Hot path was measured rather than assumed. All verified here."
     },
     {
       "id": "M2",
