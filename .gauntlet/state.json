@@ -157,9 +157,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work \u2014 NOW GRADEABLE, reference committed.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Third craft rework merged; 545 tests green. The guaranteed longitudinal stripe is gone \u2014 raster.ts was computing the along-limb position and discarding it, so an axial term now feeds the shade call in both the limb and trunk paths, with a test that reproduces the old constant column under a flat profile as a counterexample. Nine flesh marks added (pec shelf with sternum split, trap ridges, biceps, forearm bellies, shin crests); kit-vs-flesh authored pixels move 76/24 to 50/50, and the anatomy marks that landed 31-68% now land 78-100%. The lifter carries the top of the value range rather than the barbell: STEEL_LIGHT no longer renders at all, and the collars keep a 2px specular the palette comment had claimed for a colour nothing actually drew.",
+      "note": "Third blind A/B: no regressions \u2014 the critic re-read 250kg off the plates, confirmed the non-mirrored key light survived, and said the arm now reads deltoid cluster to insertion break to biceps cluster to elbow crease to forearm belly, so round two\u2019s finding is genuinely closed. New gap, and it is one the earlier fix created: the value lift was applied to the SKIN ramp and never to GEAR, which draws the belt, both knee sleeves and both shoes. Verified here by computing the ramps \u2014 SKIN runs luma 62/114/172/217 while GEAR runs 51/93/143, so GEAR\u2019s darkest step is BELOW the backdrop and its lightest never reaches SKIN\u2019s third step. Since gear owns the lower body by area, and 133 of 416 frames have no bare thigh at all, everything below the belt collapses into one dark band. At native scale the lifter reads as a bright chest over a smear where the reference wrestler reads as a whole body.",
       "evidence": "A1-lockout-6x.png"
     },
     {
