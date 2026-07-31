@@ -20,10 +20,10 @@
       "consequence": "Dispatch is working again. The queue resumed in priority order: close the e1RM send-back first, then grade the two modules that were merged but never judged. The art and UI half of the run still has not started."
     },
     {
-      "severity": "critical",
-      "title": "Reference material cannot be retrieved in this sandbox",
-      "body": "Egress policy allows the npm registry and GitHub, and WebSearch returns text results. Everything else \u2014 Wikipedia/Wikimedia, openpowerlifting.org, sprite archives, image hosts \u2014 is refused at the proxy with a 403 on CONNECT. No image, video, or PDF reference can be fetched.",
-      "consequence": "Every GDD \u00a712.2 bar that requires blind A/B against real reference art is structurally unverifiable here: lifter sprites, gym/environment art, result card vs. real federation sheets, anime cut-ins, and meet-day tension vs. broadcast footage. Per CLAUDE.md these are reported unverifiable rather than passed on reasoning alone. More loop rounds cannot fix this \u2014 it needs reference files supplied locally."
+      "severity": "partly resolved",
+      "title": "Reference now exists for some bars; four of the five still have no artifact",
+      "body": "Five reference files are committed. That unblocks the sprite craft bar, which is being graded against a native-resolution SNES sprite for the first time \u2014 every earlier pass reported it unverifiable.",
+      "consequence": "The other four previously-unverifiable bars cannot be re-run: the result card, gym art, meet-day sequence and cut-ins are not built yet, so there is nothing to compare. Their references are staged. Two limits remain even then \u2014 the meet photos are stills, so meet-day tension's \"judge pacing and sound\" half stays unverifiable without video, and the scoresheet is a live in-meet attempt board rather than a published federation results sheet."
     }
   ],
   "capabilities": [
@@ -53,11 +53,6 @@
       "detail": "vitest on pure modules, node environment"
     },
     {
-      "name": "Reference image retrieval",
-      "ok": false,
-      "detail": "blocked at proxy (403 CONNECT) \u2014 no images, video or PDFs from any host"
-    },
-    {
       "name": "Reference source code from GitHub + GitLab",
       "ok": true,
       "detail": "raw.githubusercontent.com and gitlab.com both reachable \u2014 DOTS verified against OpenPowerlifting source, meet loading rules against OpenLifter, the real meet software"
@@ -71,6 +66,11 @@
       "name": "Git transport where the GitHub API is blocked",
       "ok": true,
       "detail": "api.github.com is 403, but bare-cloning works \u2014 a builder read first-commit dates directly from git log to prove a source copy chain"
+    },
+    {
+      "name": "Reference art (committed, not fetched)",
+      "ok": true,
+      "detail": "5 files in docs/reference/ \u2014 one at native SNES 256x224, so pixel sizes compare directly. Image hosts are still blocked; these arrived via the repo"
     }
   ],
   "pieces": [
