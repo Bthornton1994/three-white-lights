@@ -71,6 +71,11 @@
       "name": "Reference art (committed, not fetched)",
       "ok": true,
       "detail": "5 files in docs/reference/ \u2014 one at native SNES 256x224, so pixel sizes compare directly. Image hosts are still blocked; these arrived via the repo"
+    },
+    {
+      "name": "Grading evidence is now self-cleaning",
+      "ok": true,
+      "detail": "the sprite harness left stale frames beside new ones under the same names; a critic and the lead both graded an hours-old frame before it was caught"
     }
   ],
   "pieces": [
@@ -157,9 +162,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work \u2014 NOW GRADEABLE, reference committed.",
-      "status": "failed",
+      "status": "building",
       "verifiable": true,
-      "note": "Fourth blind A/B: no regressions \u2014 250kg still readable off the sprite AT 1x, key light holds, palette era-legal, and the two-edge-treatments worry was examined and explicitly dropped. But it REFUTED the builder\u2019s own prediction of uniform dimness. The real gap is pose-dependent and inverts: in the hole the knee sleeves are the BRIGHTEST thing below the belt, with the thigh a flat dark mass behind them \u2014 the IPF squat photo with its values swapped. Confirmed here by eye and by arithmetic, GEAR_LIGHT at 149 out-values SKIN_MID at 117, violating the rule palette.ts states about itself: sleeves must read as dark objects ON a lit leg, not as the leg. Mechanism named: the limb shader takes its normal from the limb\u2019s own perpendicular, so peak lambert depends on SCREEN ANGLE \u2014 a vertical thigh clears the top threshold, a thigh rotated into a squat cannot reach it at all and drops a step or two across its whole width. Nothing in the pipeline notices a limb has fallen out of its band. Worst in the money pose, which is the frame the game is built around.",
+      "note": "Fifth craft rework merged; 565 tests green. The builder verified the critic\u2019s mechanism and found a deeper one: angle-dependence is real, but normalising for it alone would NOT have fixed the hole. The actual fault is that the femur is drawn FORESHORTENED \u2014 hip-to-knee collapses from 15.1px standing to 2.5px in the hole \u2014 and the shader read that as a limb lying sideways, so the only visible part of the thigh was its shadow flank. Fixed by tipping the normal toward the camera by a tilt derived from drawn-vs-natural bone length. Measured: leg-poses where the sleeve out-values its thigh, 20/112 to 0/112, and the reference\u2019s own flesh-to-kit ratio measured at 1.59 against ours at 1.46. Also fixed a defect in the GRADING EVIDENCE: the harness never cleaned its frame directory, so a shorter reel left old frames beside new ones under the same names \u2014 a critic and I both cited a frame that was hours stale.",
       "evidence": "A1-hole-6x.png"
     },
     {
