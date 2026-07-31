@@ -13,6 +13,7 @@ import {
   LIFT_ORDER,
   MIN_ATTEMPT_INCREMENT_KG,
   MIN_LOADABLE_WEIGHT_KG,
+  NEAREST_CALL_PROBE_STEPS,
   OPENER_FRACTION_OF_1RM,
   POUND_BAR_AND_COLLARS_LB,
   POUND_DECLARATION_INCREMENT_LB,
@@ -28,20 +29,22 @@ import {
   declareAttempt,
   finalMeetTotal,
   isBombedOut,
+  isCallableWeightIgnoringTheCard,
+  isCallableWeightNow,
   isDeclarableWeight,
   isGoodLift,
-  isLegalAttemptWeight,
   isMeetComplete,
   isOnIncrementGrid,
   isSplitDecision,
   isValidJudgePanel,
+  lightestCallableWeightIgnoringTheCard,
   meetOutcome,
-  minimumAttemptWeight,
+  nearestCallableWeightsNow,
   passAttempt,
   readTotal,
   resolveAttempt,
+  roundToCallableWeightIgnoringTheCard,
   roundToIncrement,
-  roundToLegalAttemptWeight,
   suggestNextAttempt,
   suggestOpener,
   totalOnTheBoard,
@@ -60,6 +63,7 @@ import type {
   MeetLoadingRules,
   MeetRulesSeal,
   MeetState,
+  NearestCallableWeights,
   Result,
 } from './meet';
 
@@ -285,12 +289,30 @@ describe('module purity', () => {
     expect(source).toMatch(/UNDER-PERMISSIVE/);
   });
 
+  it('builds every sentence that names a legal call in exactly one function', () => {
+    // The fourth send-back was a second place that named legal calls, computed
+    // from the two weight gates instead of from the meet. One builder means one
+    // thing to keep true, and `nearestCallHint` verifies what it names through
+    // the same gate chain `declareAttempt` decides with.
+    const codeLines = source.split('\n').filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line));
+    const naming = codeLines.filter((line) => line.includes('legal call'));
+    expect(naming.length).toBeGreaterThan(0);
+
+    const start = source.indexOf('function nearestCallHint(');
+    expect(start).toBeGreaterThan(0);
+    const end = source.indexOf('\n}', start);
+    const body = source.slice(start, end);
+    for (const line of naming) {
+      expect(body).toContain(line.trim());
+    }
+  });
+
   it('interpolates no message claiming a weight cannot be loaded', () => {
     // The module has no plate inventory, so any sentence of this shape is a
     // fabrication. Prose ABOUT the removed claim is fine and is why this looks
     // for the interpolation rather than the words: a real message would have to
-    // name the weight. (`nearestLegalCallsHint` is checked behaviourally in
-    // "legal declaration, with no opinion on plates".)
+    // name the weight. (The steering sentence is checked behaviourally in
+    // "a hint never names a weight the engine then refuses".)
     expect(source).not.toMatch(/no way to load \$\{/);
     expect(source).not.toMatch(/cannot be loaded[^\n]*\$\{/);
     expect(source).not.toMatch(/\$\{[^}]*\} cannot be loaded/);
@@ -813,7 +835,7 @@ describe('the plate ladder the engine refuses to model', () => {
     // computed 47.5 - 45 = 2.5, found it off the 1 lb grid, and answered
     // WEIGHT_NOT_LOADABLE — "there is no way to load 47.5" — which is false.
     expect(isLoadableInReality(LB_LOADS, POUND_BAR_AND_COLLARS_LB, 47.5)).toBe(true);
-    expect(isLegalAttemptWeight(47.5, 'squat', POUND_MEET_RULES)).toBe(true);
+    expect(isCallableWeightIgnoringTheCard(47.5, 'squat', POUND_MEET_RULES)).toBe(true);
     expect(unwrap(declareAttempt(createMeet(POUND_MEET_RULES), { weight: 47.5 })).phase.kind).toBe(
       'attempt-declared',
     );
@@ -887,7 +909,7 @@ describe('the plate ladder the engine refuses to model', () => {
         if (!isLoadableInReality(loads, bar, weight)) {
           throw new Error(`${weight} is on the declaration grid but the kit cannot load it`);
         }
-        expect(isLegalAttemptWeight(weight, 'squat', rules)).toBe(true);
+        expect(isCallableWeightIgnoringTheCard(weight, 'squat', rules)).toBe(true);
       }
     }
   });
@@ -921,11 +943,11 @@ describe('legal declaration, with no opinion on plates', () => {
   it('refuses 201 and 200.5 as calls, making no claim about the bar either way', () => {
     for (const weight of [200.5, 201, 201.5, 202]) {
       expect(isDeclarableWeight(weight)).toBe(false);
-      expect(isLegalAttemptWeight(weight, 'squat')).toBe(false);
+      expect(isCallableWeightIgnoringTheCard(weight, 'squat')).toBe(false);
     }
     for (const weight of [200, 202.5, 205]) {
       expect(isDeclarableWeight(weight)).toBe(true);
-      expect(isLegalAttemptWeight(weight, 'squat')).toBe(true);
+      expect(isCallableWeightIgnoringTheCard(weight, 'squat')).toBe(true);
     }
   });
 
@@ -934,12 +956,19 @@ describe('legal declaration, with no opinion on plates', () => {
     // engine emitted "there is no way to load 201" (false — a competition kit
     // loads it), and then "there is no way to load 47.5" (false for the same
     // reason). It now says only what it knows.
-    const error = expectError(declareAttempt(createMeet(), { weight: 201 }));
+    const opener = createMeet();
+    const error = expectError(declareAttempt(opener, { weight: 201 }));
     expect(error.code).toBe('WEIGHT_NOT_DECLARABLE');
     expect(error.message).toContain('declared in steps of 2.5');
-    expect(error.message).toContain('200 and 202.5');
+    expect(error.message).toContain('The nearest legal calls right now are 200 and 202.5.');
     expect(error.message).not.toMatch(/load/i);
     expect(error.message).not.toMatch(/plate/i);
+    // On an opener both named weights really are declarable. That is the case
+    // the old state-blind hint got right by accident — see the send-back suite
+    // "a hint never names a weight the engine then refuses" for the eight
+    // attempts of a meet where it did not.
+    expect(declareAttempt(opener, { weight: 200 }).ok).toBe(true);
+    expect(declareAttempt(opener, { weight: 202.5 }).ok).toBe(true);
 
     // Weights off every grid are refused the same way, because there is only one
     // grid left to be off.
@@ -968,18 +997,446 @@ describe('legal declaration, with no opinion on plates', () => {
     };
     expect(validateMeetRules(oddBar)).toBeNull();
     expect(barAndCollarsWeight('squat', oddBar)).toBe(26);
-    expect(minimumAttemptWeight('squat', oddBar)).toBe(27.5);
-    expect(isLegalAttemptWeight(26, 'squat', oddBar)).toBe(false);
-    expect(isLegalAttemptWeight(25.5, 'squat', oddBar)).toBe(false); // under the bar
-    expect(isLegalAttemptWeight(27.5, 'squat', oddBar)).toBe(true);
+    expect(lightestCallableWeightIgnoringTheCard('squat', oddBar)).toBe(27.5);
+    expect(isCallableWeightIgnoringTheCard(26, 'squat', oddBar)).toBe(false);
+    expect(isCallableWeightIgnoringTheCard(25.5, 'squat', oddBar)).toBe(false); // under the bar
+    expect(isCallableWeightIgnoringTheCard(27.5, 'squat', oddBar)).toBe(true);
 
     const state = createMeet(oddBar);
     expect(expectError(declareAttempt(state, { weight: 25 })).code).toBe('WEIGHT_BELOW_BAR');
     const uncallable = expectError(declareAttempt(state, { weight: 26 }));
     expect(uncallable.code).toBe('WEIGHT_NOT_DECLARABLE');
-    // The hint collapses to one number when the weight sits under the floor.
-    expect(uncallable.message).toContain('lightest legal call is 27.5');
+    // The hint collapses to one number when the weight sits under the floor:
+    // 25 is on the grid but under this bar, so there is nothing legal below 26.
+    expect(uncallable.message).toContain('The lightest legal call right now is 27.5.');
+    expect(nearestCallableWeightsNow(state, 26)).toEqual({ below: null, above: 27.5 });
     expect(unwrap(declareAttempt(state, { weight: 27.5 })).phase.kind).toBe('attempt-declared');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A hint never names a weight the engine then refuses
+//
+// The fourth send-back. `nearestLegalCallsHint` was computed from the two weight
+// gates alone, so for the eight non-opener attempts of a meet it steered players
+// to weights `declareAttempt` refused on the very next call:
+//
+//   after a good 200:  "declare 201" -> "the nearest legal calls are 200 and
+//                      202.5", while 200 is REPEAT_AFTER_GOOD_LIFT;
+//                      "declare 199" -> "197.5 and 200", both illegal.
+//
+// The old suite could not catch it: every hint assertion ran on a fresh
+// createMeet(), where no progression constraint exists and the hint is true by
+// accident. Everything below starts from a NON-OPENER state.
+// ---------------------------------------------------------------------------
+
+/**
+ * Every sentence shape the engine may use to name a weight as a legal call.
+ * A message that says "legal call" and matches none of these is an unaudited
+ * claim, and `namedLegalCalls` fails rather than passing it over.
+ */
+const HINT_BOTH_SIDES = /The nearest legal calls right now are ([\d.]+) and ([\d.]+)\./;
+const HINT_LIGHTEST = /The lightest legal call right now is ([\d.]+)\./;
+const HINT_SINGLE = /(?:^| )([\d.]+) is a legal call right now\./;
+const CALL_HINT_PATTERNS: readonly RegExp[] = [HINT_BOTH_SIDES, HINT_LIGHTEST, HINT_SINGLE];
+
+/** The weights a message offers as legal calls, or [] if it offers none. */
+function namedLegalCalls(message: string): readonly number[] {
+  const found: number[] = [];
+  for (const pattern of CALL_HINT_PATTERNS) {
+    const match = pattern.exec(message);
+    if (match === null) continue;
+    for (const group of match.slice(1)) found.push(Number(group));
+  }
+  if (found.length === 0 && /legal calls?/.test(message)) {
+    throw new Error(`message names legal calls in a shape this suite does not audit: ${message}`);
+  }
+  return found;
+}
+
+/**
+ * Ceiling on the brute-force scan below. Only a test-harness guard: a hint that
+ * names a wild weight must fail this suite in seconds rather than appear to hang
+ * it, which is how the state-blind hint behaved when it was mutated back in to
+ * check that these tests catch it.
+ */
+const GRID_SCAN_MAX_STEPS = 4000;
+
+/**
+ * Every weight on this meet's declaration grid in [low, high] the engine will
+ * accept right now. Deliberately brute force: it is the oracle the hint is
+ * measured against, so it must not share the hint's reasoning.
+ */
+function callableGridWeights(state: MeetState, low: number, high: number): readonly number[] {
+  const increment = state.rules.declarationIncrement;
+  const first = Math.ceil(low / increment - 1e-9);
+  const found: number[] = [];
+  for (let step = first; step * increment <= high + 1e-9; step += 1) {
+    if (step - first > GRID_SCAN_MAX_STEPS) {
+      throw new Error(`refusing to scan more than ${GRID_SCAN_MAX_STEPS} grid steps from ${low} to ${high}`);
+    }
+    const weight = Number((step * increment).toFixed(3));
+    if (isCallableWeightNow(state, weight)) found.push(weight);
+  }
+  return found;
+}
+
+/**
+ * The assertion this whole rework exists for: every weight the message offers as
+ * a legal call is one `declareAttempt` accepts FROM THIS EXACT STATE, and the
+ * "nearest"/"lightest" claims are true against a brute-force scan of the grid.
+ */
+function expectHintTellsTheTruth(state: MeetState, typed: number, message: string): void {
+  const named = namedLegalCalls(message);
+  for (const weight of named) {
+    expect(declareAttempt(state, { weight })).toMatchObject({ ok: true });
+    expect(isCallableWeightNow(state, weight)).toBe(true);
+  }
+  if (named.length === 0) return;
+  for (const weight of named) {
+    if (!Number.isFinite(weight)) throw new Error(`named a non-finite weight: ${message}`);
+  }
+  if (!Number.isFinite(typed)) {
+    throw new Error(`named a legal call for a weight that is not a number: ${message}`);
+  }
+
+  const lift = state.phase.kind === 'awaiting-declaration' ? state.phase.lift : 'squat';
+  const bar = barAndCollarsWeight(lift, state.rules);
+  const ceiling = Math.max(typed, ...named) + 4 * state.rules.declarationIncrement;
+  const callable = callableGridWeights(state, bar, ceiling);
+
+  const pair = HINT_BOTH_SIDES.exec(message);
+  if (pair !== null) {
+    const below = Number(pair[1]);
+    const above = Number(pair[2]);
+    expect(below).toBeLessThanOrEqual(typed);
+    expect(above).toBeGreaterThanOrEqual(typed);
+    // "nearest": nothing callable sits between either named weight and the
+    // number the lifter actually typed.
+    expect(callable.filter((weight) => weight > below && weight <= typed)).toEqual([]);
+    expect(callable.filter((weight) => weight >= typed && weight < above)).toEqual([]);
+    return;
+  }
+  const lightest = HINT_LIGHTEST.exec(message);
+  if (lightest !== null) {
+    // "lightest" is a claim about the whole meet state, not just about weights
+    // above the typed one: nothing callable may be lighter.
+    expect(callable.filter((weight) => weight < Number(lightest[1]))).toEqual([]);
+  }
+}
+
+describe('a hint never names a weight the engine then refuses', () => {
+  it('after a good lift, offers only the minimum increase — not the repeat, not a decrease', () => {
+    // The exact reproduction from the send-back.
+    const state = takeAttempt(createMeet(), 200, THREE_WHITE);
+
+    const at201 = expectError(declareAttempt(state, { weight: 201 }));
+    expect(at201.code).toBe('WEIGHT_NOT_DECLARABLE');
+    expect(at201.message).toBe(
+      'Attempts are declared in steps of 2.5, and 201 is not one of them. ' +
+        'The lightest legal call right now is 202.5.',
+    );
+    expect(at201.message).not.toContain('200 and 202.5');
+    expectHintTellsTheTruth(state, 201, at201.message);
+
+    const at199 = expectError(declareAttempt(state, { weight: 199 }));
+    expect(at199.code).toBe('WEIGHT_NOT_DECLARABLE');
+    expect(at199.message).toContain('The lightest legal call right now is 202.5.');
+    expect(at199.message).not.toContain('197.5');
+    expectHintTellsTheTruth(state, 199, at199.message);
+
+    // ...and the weights the old hint named are still refused, which is what
+    // made naming them a lie.
+    expect(declareAttempt(state, { weight: 202.5 }).ok).toBe(true);
+    expect(expectError(declareAttempt(state, { weight: 200 })).code).toBe('REPEAT_AFTER_GOOD_LIFT');
+    expect(expectError(declareAttempt(state, { weight: 197.5 })).code).toBe('WEIGHT_DECREASED');
+  });
+
+  it('after a miss, offers the repeat as the call below', () => {
+    const state = takeAttempt(createMeet(), 200, ONE_WHITE);
+
+    const at201 = expectError(declareAttempt(state, { weight: 201 }));
+    expect(at201.message).toContain('The nearest legal calls right now are 200 and 202.5.');
+    expectHintTellsTheTruth(state, 201, at201.message);
+
+    // 197.5 is on the grid and refused as a decrease, so the repeat at 200 is
+    // the lightest thing left — even though it is HEAVIER than what was typed.
+    const at199 = expectError(declareAttempt(state, { weight: 199 }));
+    expect(at199.message).toContain('The lightest legal call right now is 200.');
+    expect(at199.message).not.toContain('197.5');
+    expectHintTellsTheTruth(state, 199, at199.message);
+
+    expect(nearestCallableWeightsNow(state, 201)).toEqual({ below: 200, above: 202.5 });
+    expect(nearestCallableWeightsNow(state, 199)).toEqual({ below: null, above: 200 });
+  });
+
+  it('steers a decrease to a weight that is still legal instead of just refusing it', () => {
+    const state = takeAttempt(createMeet(), 200, THREE_WHITE);
+    const error = expectError(declareAttempt(state, { weight: 197.5 }));
+    expect(error.code).toBe('WEIGHT_DECREASED');
+    expect(error.message).toContain('The lightest legal call right now is 202.5.');
+    expectHintTellsTheTruth(state, 197.5, error.message);
+  });
+
+  it('steers a repeat-after-a-good-lift to the next legal call', () => {
+    const state = takeAttempt(createMeet(), 200, TWO_WHITE);
+    const error = expectError(declareAttempt(state, { weight: 200 }));
+    expect(error.code).toBe('REPEAT_AFTER_GOOD_LIFT');
+    expect(error.message).toContain('The lightest legal call right now is 202.5.');
+    expectHintTellsTheTruth(state, 200, error.message);
+  });
+
+  it('steers a sub-minimum jump, and names the repeat only when a repeat is legal', () => {
+    // Half-kilo calls with a 2.5 minimum increase: this is the rule set where
+    // INSUFFICIENT_INCREASE is reachable, and where the callable set has a hole
+    // between the repeat weight and the minimum jump.
+    const made = takeAttempt(createMeet(HALF_KILO_DECLARATION_RULES), 200, THREE_WHITE);
+    const afterGood = expectError(declareAttempt(made, { weight: 201 }));
+    expect(afterGood.code).toBe('INSUFFICIENT_INCREASE');
+    expect(afterGood.message).toContain('The lightest legal call right now is 202.5.');
+    expectHintTellsTheTruth(made, 201, afterGood.message);
+
+    const missed = takeAttempt(createMeet(HALF_KILO_DECLARATION_RULES), 200, THREE_RED);
+    const afterMiss = expectError(declareAttempt(missed, { weight: 201 }));
+    expect(afterMiss.code).toBe('INSUFFICIENT_INCREASE');
+    expect(afterMiss.message).toContain('The nearest legal calls right now are 200 and 202.5.');
+    expectHintTellsTheTruth(missed, 201, afterMiss.message);
+    // The hole is real: 200.5, 201 and 202 are legal CALLS at this meet and none
+    // of them is legal right now.
+    for (const weight of [200.5, 201, 201.5, 202]) {
+      expect(isCallableWeightIgnoringTheCard(weight, 'squat', HALF_KILO_DECLARATION_RULES)).toBe(true);
+      expect(isCallableWeightNow(missed, weight)).toBe(false);
+    }
+  });
+
+  it('steers a below-the-bar weight to what is legal now, not to the bar', () => {
+    const opener = createMeet();
+    const atOpener = expectError(declareAttempt(opener, { weight: 10 }));
+    expect(atOpener.code).toBe('WEIGHT_BELOW_BAR');
+    expect(atOpener.message).toContain('The lightest legal call right now is 25.');
+    expectHintTellsTheTruth(opener, 10, atOpener.message);
+
+    // Mid-lift the same typo cannot be answered with the bar weight: 25 is a
+    // legal call at this meet and an illegal one on this attempt.
+    const state = takeAttempt(opener, 200, THREE_WHITE);
+    const midLift = expectError(declareAttempt(state, { weight: 10 }));
+    expect(midLift.code).toBe('WEIGHT_BELOW_BAR');
+    expect(midLift.message).toContain('The lightest legal call right now is 202.5.');
+    expect(midLift.message).not.toContain('legal call right now is 25');
+    expectHintTellsTheTruth(state, 10, midLift.message);
+  });
+
+  it('uses the bar of the lift on deck, not the one just finished', () => {
+    const perLiftBars: MeetLoadingRules = {
+      ...DEFAULT_MEET_RULES,
+      barAndCollarsWeight: { squat: 30, bench: 25, deadlift: 25 },
+    };
+    const state = takeLift(createMeet(perLiftBars), [
+      [200, THREE_WHITE],
+      [210, THREE_WHITE],
+      [220, THREE_WHITE],
+    ]);
+    expect(state.phase).toEqual({ kind: 'awaiting-declaration', lift: 'bench', attemptNumber: 1 });
+    const error = expectError(declareAttempt(state, { weight: 24 }));
+    expect(error.code).toBe('WEIGHT_BELOW_BAR');
+    expect(error.message).toContain('bench bar and collars already weigh 25');
+    expect(error.message).toContain('The lightest legal call right now is 25.');
+    expectHintTellsTheTruth(state, 24, error.message);
+  });
+
+  it('names nothing at all when it cannot verify a weight', () => {
+    // A refusal that is not about the weight gets no steering sentence, because
+    // there is no number the engine can offer that would fix it.
+    const finished = runNineForNine();
+    expect(expectError(declareAttempt(finished, { weight: 300 })).message).not.toMatch(/legal call/);
+
+    const declared = unwrap(declareAttempt(createMeet(), { weight: 200 }));
+    expect(expectError(declareAttempt(declared, { weight: 205 })).message).not.toMatch(/legal call/);
+
+    // NaN cannot be placed on the grid, so there is no "nearest" to compute and
+    // the engine says less rather than guessing.
+    const nonsense = expectError(declareAttempt(createMeet(), { weight: Number.NaN }));
+    expect(nonsense.code).toBe('INVALID_WEIGHT');
+    expect(nonsense.message).not.toMatch(/legal call/);
+    expect(nearestCallableWeightsNow(createMeet(), Number.NaN)).toEqual({ below: null, above: null });
+
+    // A tampered rules object is refused as tampering; nothing is offered off
+    // rules the engine has stopped trusting.
+    const state = createMeet();
+    const relaxed: MeetState = { ...state, rules: { ...state.rules, declarationIncrement: 0.5 } };
+    expect(expectError(declareAttempt(relaxed, { weight: 200.5 })).message).not.toMatch(/legal call/);
+    expect(nearestCallableWeightsNow(relaxed, 200.5)).toEqual({ below: null, above: null });
+  });
+
+  it('sweeps every refusal a meet can produce and checks each named weight against the engine', () => {
+    // The general version of all of the above: nine card states across four rule
+    // sets, and for each of them every typed weight that might tempt a hint out.
+    // A named weight that this state would refuse fails here.
+    const typed: readonly number[] = [
+      -5, 0, 1, 10, 24, 24.9, 25, 26, 27.5, 99.9, 100, 100.5, 190, 197.5, 199, 199.5, 200, 200.25, 200.5, 201,
+      201.5, 202, 202.5, 203, 205, 207.5, 210, 211, 300, 402.5, 405, 875, Number.NaN, Number.POSITIVE_INFINITY,
+    ];
+    let refusals = 0;
+    let hinted = 0;
+    const codesSeen = new Set<string>();
+    for (const rules of ALL_RULE_SETS) {
+      const opener = createMeet(rules);
+      const states: readonly MeetState[] = [
+        opener,
+        takeAttempt(opener, 200, THREE_WHITE),
+        takeAttempt(opener, 200, TWO_WHITE),
+        takeAttempt(opener, 200, ONE_WHITE),
+        takeAttempt(opener, 200, THREE_RED),
+        takeAttempt(takeAttempt(opener, 200, THREE_WHITE), 210, THREE_WHITE),
+        takeAttempt(takeAttempt(opener, 200, THREE_WHITE), 210, THREE_RED),
+        takeAttempt(takeAttempt(opener, 200, THREE_RED), 200, THREE_WHITE),
+        unwrap(passAttempt(takeAttempt(opener, 200, THREE_WHITE))),
+      ];
+      for (const state of states) {
+        for (const weight of typed) {
+          const result = declareAttempt(state, { weight });
+          if (result.ok) continue;
+          refusals += 1;
+          codesSeen.add(result.error.code);
+          if (/legal call/.test(result.error.message)) hinted += 1;
+          expectHintTellsTheTruth(state, weight, result.error.message);
+        }
+      }
+    }
+    // Both branches have to be genuinely exercised, or the sweep proves nothing.
+    expect(refusals).toBeGreaterThan(100);
+    expect(hinted).toBeGreaterThan(100);
+    // ...and every refusal that can carry a hint has to be among them, or the
+    // sweep could pass while only ever seeing one of them.
+    expect([...codesSeen].sort()).toEqual([
+      'INSUFFICIENT_INCREASE',
+      'INVALID_WEIGHT',
+      'REPEAT_AFTER_GOOD_LIFT',
+      'WEIGHT_BELOW_BAR',
+      'WEIGHT_DECREASED',
+      'WEIGHT_NOT_DECLARABLE',
+    ]);
+  });
+
+  it('offers the same weights `AttemptContext` does, so the UI and the message agree', () => {
+    for (const rules of ALL_RULE_SETS) {
+      const opener = createMeet(rules);
+      for (const state of [opener, takeAttempt(opener, 200, THREE_WHITE), takeAttempt(opener, 200, THREE_RED)]) {
+        const context = currentAttemptContext(state);
+        if (context === null) throw new Error('expected a declaration to be pending');
+        // The floor the read-model reports is callable right now...
+        expect(isCallableWeightNow(state, context.minimumWeight)).toBe(true);
+        expect(declareAttempt(state, { weight: context.minimumWeight }).ok).toBe(true);
+        if (context.minimumIncreaseWeight !== null) {
+          expect(isCallableWeightNow(state, context.minimumIncreaseWeight)).toBe(true);
+        }
+        // ...and it is exactly what the hint offers below that floor.
+        const under = context.minimumWeight - rules.declarationIncrement;
+        expect(nearestCallableWeightsNow(state, under).above).toBe(context.minimumWeight);
+      }
+    }
+  });
+
+  it('reports no floor the engine refuses, even when the minimum increase is finer than float noise', () => {
+    // The read-model tells a UI what the lightest legal call is, which is the
+    // same promise a hint makes and is held to the same standard. With a minimum
+    // increase below WEIGHT_EPSILON, 200 + minIncrement rounds back onto 200:
+    // the floor has to step up to the next grid point or it names a weight
+    // `declareAttempt` refuses as REPEAT_AFTER_GOOD_LIFT.
+    const hairline: MeetLoadingRules = { ...DEFAULT_MEET_RULES, minIncrement: 1e-9 };
+    const state = takeAttempt(createMeet(hairline), 200, THREE_WHITE);
+    const context = currentAttemptContext(state);
+    expect(context?.minimumIncreaseWeight).toBe(202.5);
+    expect(context?.minimumWeight).toBe(202.5);
+    expect(isCallableWeightNow(state, 202.5)).toBe(true);
+    expect(isCallableWeightNow(state, 200)).toBe(false);
+
+    // ...and that floor changes only which weight is REPORTED. The accepted set
+    // is still every on-grid weight above the previous attempt and nothing else,
+    // because nothing on the grid sits between 200 and 202.5 to be refused.
+    for (const weight of [199, 200, 200.5, 201, 202]) {
+      expect(declareAttempt(state, { weight }).ok).toBe(false);
+    }
+    for (const weight of [202.5, 205, 207.5]) {
+      expect(declareAttempt(state, { weight }).ok).toBe(true);
+    }
+    expect(unwrap(suggestNextAttempt(state, 'conservative'))).toBeGreaterThanOrEqual(202.5);
+    expect(nearestCallableWeightsNow(state, 201)).toEqual({ below: null, above: 202.5 });
+  });
+
+  it('agrees with a brute-force scan of the grid, on both sides, from every card state', () => {
+    // `nearestCallableWeightsNow` computes its candidates in closed form. This
+    // checks that closed form against an exhaustive scan, which is the only way
+    // to know "nearest" means nearest rather than "the first thing we thought of".
+    for (const rules of ALL_RULE_SETS) {
+      const opener = createMeet(rules);
+      const states: readonly MeetState[] = [
+        opener,
+        takeAttempt(opener, 200, THREE_WHITE),
+        takeAttempt(opener, 200, THREE_RED),
+        takeAttempt(takeAttempt(opener, 200, THREE_WHITE), 210, THREE_RED),
+      ];
+      for (const state of states) {
+        // One scan per state, well past anything typed below, so that "nothing
+        // callable is lighter" and "nothing callable sits in between" are both
+        // decided against the same exhaustive list.
+        const window = callableGridWeights(state, 0, 400);
+        for (let weight = 20; weight <= 230; weight += 0.25) {
+          const typed = Number(weight.toFixed(3));
+          const nearest: NearestCallableWeights = nearestCallableWeightsNow(state, typed);
+          const below = window.filter((candidate) => candidate <= typed + 1e-9);
+          const above = window.filter((candidate) => candidate >= typed - 1e-9);
+          expect(nearest.below).toBe(below.length === 0 ? null : below[below.length - 1]);
+          expect(nearest.above).toBe(above.length === 0 ? null : above[0]);
+        }
+      }
+    }
+  });
+
+  it('answers "no" rather than "yes" for every state where there is nothing to declare', () => {
+    // `isCallableWeightNow` is what a keypad greys out with, so a state it cannot
+    // reason about has to read as not-callable rather than as callable.
+    const opener = createMeet();
+    expect(isCallableWeightNow(opener, 200)).toBe(true);
+
+    const declared = unwrap(declareAttempt(opener, { weight: 200 }));
+    expect(isCallableWeightNow(declared, 205)).toBe(false); // an attempt is on the platform
+    expect(isCallableWeightNow(runNineForNine(), 300)).toBe(false); // the meet is over
+
+    const broken: MeetLoadingRules = { ...DEFAULT_MEET_RULES, declarationIncrement: 0 };
+    expect(isCallableWeightNow(createMeet(broken), 200)).toBe(false);
+
+    const tampered: MeetState = { ...opener, rules: { ...opener.rules, declarationIncrement: 0.5 } };
+    expect(isCallableWeightNow(tampered, 200.5)).toBe(false);
+    expect(isCallableWeightNow(tampered, 200)).toBe(false);
+
+    for (const weight of [Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 24, 201]) {
+      expect(isCallableWeightNow(opener, weight)).toBe(false);
+    }
+  });
+
+  it('agrees with declareAttempt on every weight, from every card state', () => {
+    // The two must never disagree: one is the other, as a boolean.
+    for (const rules of ALL_RULE_SETS) {
+      const opener = createMeet(rules);
+      const states: readonly MeetState[] = [
+        opener,
+        takeAttempt(opener, 200, THREE_WHITE),
+        takeAttempt(opener, 200, THREE_RED),
+        unwrap(passAttempt(takeAttempt(opener, 200, THREE_RED))),
+      ];
+      for (const state of states) {
+        for (let weight = 20; weight <= 220; weight += 0.5) {
+          const typed = Number(weight.toFixed(3));
+          expect(isCallableWeightNow(state, typed)).toBe(declareAttempt(state, { weight: typed }).ok);
+        }
+      }
+    }
+  });
+
+  it('keeps the probe bound a named constant rather than a magic number', () => {
+    expect(NEAREST_CALL_PROBE_STEPS).toBeGreaterThanOrEqual(0);
+    expect(Number.isInteger(NEAREST_CALL_PROBE_STEPS)).toBe(true);
   });
 });
 
@@ -989,7 +1446,7 @@ describe('loadable weights', () => {
     for (const lift of LIFT_ORDER) {
       expect(barAndCollarsWeight(lift)).toBe(MIN_LOADABLE_WEIGHT_KG);
       // 25 is itself a multiple of 2.5, so the empty bar is a legal call.
-      expect(minimumAttemptWeight(lift)).toBe(MIN_LOADABLE_WEIGHT_KG);
+      expect(lightestCallableWeightIgnoringTheCard(lift)).toBe(MIN_LOADABLE_WEIGHT_KG);
     }
   });
 
@@ -1007,8 +1464,8 @@ describe('loadable weights', () => {
       ...DEFAULT_MEET_RULES,
       barAndCollarsWeight: { squat: 30, bench: 25, deadlift: 25 },
     };
-    expect(minimumAttemptWeight('squat', heavySquatBar)).toBe(30);
-    expect(minimumAttemptWeight('bench', heavySquatBar)).toBe(25);
+    expect(lightestCallableWeightIgnoringTheCard('squat', heavySquatBar)).toBe(30);
+    expect(lightestCallableWeightIgnoringTheCard('bench', heavySquatBar)).toBe(25);
     const state = createMeet(heavySquatBar);
     expect(expectError(declareAttempt(state, { weight: 27.5 })).code).toBe('WEIGHT_BELOW_BAR');
     expect(unwrap(declareAttempt(state, { weight: 30 })).phase.kind).toBe('attempt-declared');
@@ -1017,20 +1474,20 @@ describe('loadable weights', () => {
   it('rounds onto the declaration grid, never below the bar', () => {
     // There is one grid to round onto, and it is a rule, not a plate rack.
     // Declaration grid: 2.5, so these land where an attempt card would.
-    expect(roundToLegalAttemptWeight(0, 'squat')).toBe(MIN_LOADABLE_WEIGHT_KG);
-    expect(roundToLegalAttemptWeight(10, 'squat')).toBe(MIN_LOADABLE_WEIGHT_KG);
-    expect(roundToLegalAttemptWeight(26, 'squat', DEFAULT_MEET_RULES, 'down')).toBe(MIN_LOADABLE_WEIGHT_KG);
-    expect(roundToLegalAttemptWeight(26, 'squat', DEFAULT_MEET_RULES, 'up')).toBe(27.5);
-    expect(roundToLegalAttemptWeight(201, 'squat')).toBe(200);
-    expect(roundToLegalAttemptWeight(201, 'squat', DEFAULT_MEET_RULES, 'up')).toBe(202.5);
+    expect(roundToCallableWeightIgnoringTheCard(0, 'squat')).toBe(MIN_LOADABLE_WEIGHT_KG);
+    expect(roundToCallableWeightIgnoringTheCard(10, 'squat')).toBe(MIN_LOADABLE_WEIGHT_KG);
+    expect(roundToCallableWeightIgnoringTheCard(26, 'squat', DEFAULT_MEET_RULES, 'down')).toBe(MIN_LOADABLE_WEIGHT_KG);
+    expect(roundToCallableWeightIgnoringTheCard(26, 'squat', DEFAULT_MEET_RULES, 'up')).toBe(27.5);
+    expect(roundToCallableWeightIgnoringTheCard(201, 'squat')).toBe(200);
+    expect(roundToCallableWeightIgnoringTheCard(201, 'squat', DEFAULT_MEET_RULES, 'up')).toBe(202.5);
   });
 
   it('always rounds to something the engine will actually accept', () => {
     for (const rules of ALL_RULE_SETS) {
       for (const target of [0, 24.9, 25, 26, 44, 47.5, 100.3, 200.25, 201, 337.6]) {
         for (const mode of ['nearest', 'up', 'down'] as const) {
-          const rounded = roundToLegalAttemptWeight(target, 'squat', rules, mode);
-          expect(isLegalAttemptWeight(rounded, 'squat', rules)).toBe(true);
+          const rounded = roundToCallableWeightIgnoringTheCard(target, 'squat', rules, mode);
+          expect(isCallableWeightIgnoringTheCard(rounded, 'squat', rules)).toBe(true);
           expect(declareAttempt(createMeet(rules), { weight: rounded }).ok).toBe(true);
         }
       }
@@ -1085,7 +1542,7 @@ describe('loadable weights', () => {
       barAndCollarsWeight: { squat: 25.1, bench: 25, deadlift: 25 },
     };
     expect(validateMeetRules(offGridBar)).toBeNull();
-    expect(minimumAttemptWeight('squat', offGridBar)).toBe(27.5);
+    expect(lightestCallableWeightIgnoringTheCard('squat', offGridBar)).toBe(27.5);
     expect(expectError(declareAttempt(createMeet(offGridBar), { weight: 25 })).code).toBe('WEIGHT_BELOW_BAR');
     expect(declareAttempt(createMeet(offGridBar), { weight: 27.5 }).ok).toBe(true);
   });
@@ -1444,7 +1901,7 @@ describe('attempt context', () => {
       const state = takeAttempt(createMeet(rules), 200, THREE_WHITE);
       const minimum = currentAttemptContext(state)?.minimumIncreaseWeight ?? 0;
       expect(isDeclarableWeight(minimum, rules)).toBe(true);
-      expect(isLegalAttemptWeight(minimum, 'squat', rules)).toBe(true);
+      expect(isCallableWeightIgnoringTheCard(minimum, 'squat', rules)).toBe(true);
       expect(declareAttempt(state, { weight: minimum }).ok).toBe(true);
     }
   });
@@ -1504,7 +1961,7 @@ describe('attempt selection', () => {
             expect(suggestion.error.code).toBe('REPEAT_AFTER_GOOD_LIFT');
             continue;
           }
-          expect(isLegalAttemptWeight(suggestion.value, 'squat', rules)).toBe(true);
+          expect(isCallableWeightIgnoringTheCard(suggestion.value, 'squat', rules)).toBe(true);
           expect(isDeclarableWeight(suggestion.value, rules)).toBe(true);
           expect(declareAttempt(state, { weight: suggestion.value }).ok).toBe(true);
         }
@@ -1564,7 +2021,7 @@ describe('opener suggestion', () => {
   it('produces a weight the engine accepts as an opener', () => {
     for (const lift of LIFT_ORDER) {
       const opener = unwrap(suggestOpener(lift, 180));
-      expect(isLegalAttemptWeight(opener, lift)).toBe(true);
+      expect(isCallableWeightIgnoringTheCard(opener, lift)).toBe(true);
       expect(opener).toBeGreaterThanOrEqual(MIN_LOADABLE_WEIGHT_KG);
     }
     const state = createMeet();
