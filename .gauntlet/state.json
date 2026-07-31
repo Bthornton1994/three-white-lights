@@ -3,7 +3,7 @@
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
     "wave": 2,
-    "waveName": "Wave 2 \u2014 math modules under repeated grading; art/UI not started",
+    "waveName": "Wave 2 \u2014 closing math send-backs; art started",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
@@ -117,9 +117,9 @@
       "id": "M4",
       "name": "Meet engine",
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Rework 3 merged; 372 tests green (meet: 118). The physical-loadability gate is GONE rather than repaired \u2014 real kits are not lattices and not semigroups either, since pair counts are finite, so the builder showed even an unbounded-denomination model would still be wrong. The set of weights accepted is unchanged; what changed is that refusals name a true reason and pound configs run. Seal arithmetic made true rather than reworded, verified here. Fourth-pass critic grading."
+      "note": "SENT BACK a fourth time. The state machine itself was confirmed defect-free \u2014 order, three attempts, majority judging, totalling, bomb-out all correct. But the engine\u2019s player-facing hint names weights it then refuses. Reproduced here: after three white lights at 200, declaring 201 answers \"the nearest legal calls are 200 and 202.5\" \u2014 200 is REPEAT_AFTER_GOOD_LIFT. Declaring 199 names 197.5 and 200, and BOTH are illegal. The hint is computed from the two weight gates and cannot see the three progression gates applied straight after. Every existing hint test runs from a fresh meet, where no progression constraint exists and the hint is accidentally true \u2014 which is why it survived four rounds."
     },
     {
       "id": "M5",
@@ -163,9 +163,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit SNES/Genesis sprite work. Maximal attempt must animate heavier.",
-      "status": "pending",
+      "status": "building",
       "verifiable": false,
-      "note": "Builder killed by spend limit after starting a palette; nothing committed, worktree discarded. Reference for its bar is also unreachable here."
+      "note": "Restarted after the earlier budget kill. Sprite data generated in code, plus a script that renders frames to PNGs and a contact sheet putting a light attempt beside a maximal one, so the weight difference is inspectable without running the app. The blind-A/B half of its bar remains unverifiable here; the \"maximal attempt animates heavier\" half is fully checkable and will be."
     },
     {
       "id": "A2",
