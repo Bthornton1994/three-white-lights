@@ -334,8 +334,15 @@ function deepFreezeChart<T extends RpeChart>(chart: T): T {
  *      half-cell midpoint relation), which relate our cells to our own cells
  *      and cannot catch an error the whole grid shares.
  *
- * THIS IS THE ONLY PLACE A CELL VALUE IS WRITTEN DOWN in this module. Nothing
- * else restates one, so changing a cell here is a complete change.
+ * This is the only place a cell value is BINDING. Changing a cell here changes
+ * what the module returns, and no test needs editing to follow.
+ *
+ * It is not, however, the only place a cell value is written down: the header
+ * above discusses (12, 6) and its neighbours in prose, and those figures are
+ * tied to nothing. Adopting the other reading of a contested cell means
+ * editing here AND re-reading the header, or the file ends up documenting a
+ * value it does not return. An earlier version of this comment claimed the
+ * literal was the only mention, which was false about its own file.
  */
 export const RPE_PERCENT_CHART = deepFreezeChart({
   1: { 10: 100.0, 9.5: 97.8, 9: 95.5, 8.5: 93.9, 8: 92.2, 7.5: 90.7, 7: 89.2, 6.5: 87.8, 6: 86.3 },

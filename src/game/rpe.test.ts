@@ -758,7 +758,8 @@ describe('RPE_PERCENT_CHART — published source values', () => {
   /**
    * The lists above are not a description of the chart, they are the gate:
    * `toChartedRpe` hands an element of CHARTED_RPES to the chart as a key the
-   * compiler has already stopped checking (see `readByUntrustedKey` in rpe.ts).
+   * compiler has already stopped checking (see the UNTRUSTED KEY reads in
+   * rpe.ts — deliberately written inline rather than via a shared helper).
    * If either list ever drifts from the chart's own keys, that handover starts
    * lying. This is the test rpe.ts names as the reason its two lookup guards
    * are unreachable, so it is the reason those guards may stay untested.

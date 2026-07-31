@@ -93,9 +93,9 @@
       "id": "M1",
       "name": "RPE \u2192 %1RM table",
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
-      "status": "building",
+      "status": "passed",
       "verifiable": true,
-      "note": "Grid already confirmed to win its bar on values. Sixth rework closes the unfrozen lookup gate \u2014 and the builder audited rather than just fixing what it was handed, finding two more unfrozen objects nobody had named, where setting ROUNDING_INCREMENT.kg moved every prescribed load from 162.5 to 200. It also diagnosed WHY the type system missed the undefined leak: Record over a finite union is a mapped type, so the compiler proves the cell exists from the key\u2019s type \u2014 a proof only as strong as the predicate that made the key. A third instance needed no mutation at all: an unknown rounding unit returned NaN silently through the whole prescription path. Hot path was measured rather than assumed. All verified here."
+      "note": "WINS ITS BAR after six rounds. The final critic re-fetched both sources live at the pinned SHAs and confirmed every sampled cell matches the bytes, that the one documented disagreement is real and exactly where the module says it is, that no export remains mutable, that no indexed read can leak undefined past a null check, and that the hot path is unchanged. It named two stale-prose residuals and explicitly said not to spawn a round for them \u2014 folded into this touch instead. The chart still cannot be checked against the RTS publication from here, and the module claims no more than that."
     },
     {
       "id": "M2",
