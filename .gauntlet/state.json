@@ -24,6 +24,12 @@
       "title": "GDD \u00a76.3 contradicts CLAUDE.md on decreasing attempt weight",
       "body": "CLAUDE.md states attempts may not go down in weight within a lift. GDD \u00a76.3 offers, after a miss, to \"repeat the weight \u2026 vs. drop down (guaranteed banked total, no PR)\". Both cannot hold.",
       "consequence": "Real-sport rules side with CLAUDE.md \u2014 within a lift a weight may be repeated after a miss but never decreased \u2014 so the meet engine enforces non-decreasing and the conflict is flagged rather than silently resolved. If \u00a76.3's \"drop down\" meant taking a smaller jump rather than going below the last attempt, the GDD wording needs updating; if it meant a real decrease, that is a deliberate departure from the sport and the engine needs changing. Your call \u2014 CLAUDE.md forbids me picking one quietly."
+    },
+    {
+      "severity": "needs a decision",
+      "title": "CLAUDE.md names Epley/Brzycki; the e1RM fix now leads with the RPE chart",
+      "body": "CLAUDE.md's Domain Correctness rule says e1RM should use \"an established formula (Epley or Brzycki)\". Closing the e1RM send-back meant making the estimate RPE-aware, and the cleanest published route was the Tuchscherer chart itself \u2014 its own structure already collapses to one curve over effective rep max. Epley is gone; Brzycki survives only past the chart's coverage.",
+      "consequence": "Both remedies the critic named led here, and GDD \u00a712.2 lists \"published RPE charts\" alongside e1RM formulas, so nothing homebrewed is involved \u2014 but it is a judgement call about which published source dominates, and it departs from CLAUDE.md's literal wording. Flagged rather than settled. Either CLAUDE.md's e1RM sentence needs widening, or the chart-first approach needs reverting."
     }
   ],
   "capabilities": [
@@ -90,9 +96,9 @@
       "id": "M2",
       "name": "e1RM formulas",
       "bar": "Published e1RM formulas. Binary and testable.",
-      "status": "building",
+      "status": "ungraded",
       "verifiable": true,
-      "note": "Under rework against its send-back: Epley/Brzycki are rep-max formulas but GDD \u00a73.3 makes nearly every logged set submaximal, so RPE could not move e1RM at all for singles. Being rerouted through the published RPE chart."
+      "note": "Rework merged; 314 tests green suite-wide. RPE is now required on every estimate and routes through effective rep max, so a 200kg single reads 200 at RPE 10 and 224.2 at RPE 7 where both previously read 200. Its critic is deliberately held until the RPE chart rework lands \u2014 e1rm.ts reasons from the exact cell under repair, so grading now would judge it against a value about to change."
     },
     {
       "id": "M3",
