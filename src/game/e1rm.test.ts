@@ -476,7 +476,9 @@ describe('agreement with rpe.ts', () => {
 
   it('round-trips a plate-rounded prescribed load to within one rounding step', () => {
     const startingE1rm = 200;
-    // 2.5 kg increment => at most 1.25 kg of rounding, magnified by 1/57.2%.
+    // 2.5 kg increment => at most 1.25 kg of rounding, magnified by the
+    // reciprocal of the chart's smallest percentage (its top-edge cell).
+    // Read from the chart, not restated, so it cannot go stale.
     const worstCaseDrift = 1.25 / (percentOf1RM(12, 6) / 100);
     for (const reps of CHARTED_REPS) {
       for (const rpe of CHARTED_RPES) {

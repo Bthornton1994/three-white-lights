@@ -88,9 +88,9 @@
  *     e1RM = w * 36 / (37 - r)
  *
  * The reason is arithmetic and checkable, not an empirical accuracy claim.
- * At the chart's top edge the chart reads 57.2% of 1RM, i.e. 1.7483 x w:
+ * At the chart's top edge the chart reads 57.4% of 1RM, i.e. 1.7422 x w:
  *
- *     chart   at rep max 16.0  ->  1.7483 * w
+ *     chart   at rep max 16.0  ->  1.7422 * w
  *     Brzycki at rep max 16.5  ->  36 / 20.5  =  1.7561 * w   (continues up)
  *     Epley   at rep max 16.5  ->  1 + 16.5/30 =  1.5500 * w   (steps DOWN)
  *
@@ -100,6 +100,20 @@
  * domain. `e1rm.test.ts` asserts both the monotonic join and that Epley fails
  * it — that is the entire justification, and it is reproducible from the
  * numbers above.
+ *
+ * That argument does not rest on the exact top-edge cell: the join stays
+ * monotonic for any cell value at or below 56.94%, and the chart's is 57.4%.
+ * Read the current figure from `rpe.ts` rather than trusting this comment —
+ * an earlier revision of this passage quoted 57.2% and went stale when the
+ * chart was corrected, which is the failure mode the paragraph below is about.
+ *
+ * PROVENANCE WARNING for the top of the curve. Effective rep maxes 15.5 and
+ * 16.0 are read from exactly two chart cells — (12 reps, RPE 6.5) and
+ * (12 reps, RPE 6) — and `rpe.ts` marks both as pinned by nothing but
+ * community transcription, one of them explicitly contested. Those same two
+ * cells define `CHART_MAX_REP_MAX` and therefore where the seam sits. The
+ * figures above are stated to four significant figures; their underlying
+ * source is the least certain in the module.
  *
  * (An earlier revision of this file justified Epley with an uncited claim
  * about which formula validation studies favour at 2-5 vs 6-10 reps. No
