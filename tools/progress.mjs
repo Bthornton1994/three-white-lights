@@ -38,6 +38,7 @@ const DECISION = {
   majority: { lights: ['w', 'w', 'r'], label: 'Good lift — majority', tone: 'good' },
   failed: { lights: ['r', 'r', 'r'], label: 'No lift — sent back', tone: 'bad' },
   building: { lights: ['p', 'p', 'p'], label: 'On the platform', tone: 'active' },
+  ungraded: { lights: ['o', 'o', 'o'], label: 'Lifted — no decision given', tone: 'warn' },
   pending: { lights: ['o', 'o', 'o'], label: 'Not yet called', tone: 'idle' },
   unverifiable: { lights: ['h', 'h', 'h'], label: 'Cannot be judged here', tone: 'warn' },
 };

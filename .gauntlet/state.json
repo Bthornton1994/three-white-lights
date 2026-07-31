@@ -3,10 +3,16 @@
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
     "wave": 1,
-    "waveName": "Foundation + lifting math",
+    "waveName": "Wave 1 halted \u2014 subagent budget exhausted",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
+    {
+      "severity": "run halted",
+      "title": "Monthly spend limit reached \u2014 six agents killed mid-flight",
+      "body": "Six subagents terminated with \"You've hit your monthly spend limit\": the RPE critic, the meet-engine critic, the e1RM rework builder, the fatigue builder, the streak builder, and the sprite builder. Two had begun work; neither had committed anything usable and both worktrees were discarded.",
+      "consequence": "No further builders or critics can be dispatched until the limit is raised. Everything merged so far is intact and green \u2014 278 tests across four modules \u2014 but three merged modules were never graded, and the whole art/UI half of the run never started. Nothing here is lost; it is paused. Raising the limit resumes it from exactly this state."
+    },
     {
       "severity": "critical",
       "title": "Reference material cannot be retrieved in this sandbox",
@@ -76,9 +82,9 @@
       "id": "M1",
       "name": "RPE \u2192 %1RM table",
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
-      "status": "building",
+      "status": "ungraded",
       "verifiable": true,
-      "note": "Merged. 108-cell Tuchscherer chart, cross-checked against two independent transcriptions; 50 tests green. Fresh critic verifying cell values now."
+      "note": "Merged and green (50 tests). 108-cell Tuchscherer chart cross-checked against two independent transcriptions. Its critic was killed by the spend limit before reporting \u2014 this module is built but never independently graded."
     },
     {
       "id": "M2",
@@ -86,37 +92,39 @@
       "bar": "Published e1RM formulas. Binary and testable.",
       "status": "failed",
       "verifiable": true,
-      "note": "SENT BACK by critic: Epley/Brzycki are rep-max formulas, but GDD \u00a73.3 makes almost every logged set deliberately submaximal. RPE could not move e1RM at all for singles. Rework in flight, routing through the published RPE chart."
+      "note": "SENT BACK by its critic and NOT yet fixed: Epley/Brzycki are rep-max formulas, but GDD \u00a73.3 makes nearly every logged set deliberately submaximal, so RPE could not move e1RM at all for singles. The rework builder was killed by the spend limit before writing anything. This is the top of the queue on resume."
     },
     {
       "id": "M3",
       "name": "DOTS scoring",
       "bar": "Published DOTS coefficients. Binary and testable.",
-      "status": "building",
+      "status": "majority",
       "verifiable": true,
-      "note": "Merged. Coefficients taken from fetched OpenPowerlifting source bytes rather than search summaries; 68 tests green. Builder also corrected a bad plausibility anchor in its own brief. Fresh critic verifying now."
+      "note": "WINS ITS BAR \u2014 the only piece to be graded and pass. All ten coefficients verified by the critic against source bytes it fetched itself from OpenPowerlifting, term order checked by hand two ways. Noted gap: no test pins any DOTS value to anything outside the repo, so a wrong digit at authoring time could not fail the suite."
     },
     {
       "id": "M4",
       "name": "Meet engine",
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
-      "status": "building",
+      "status": "ungraded",
       "verifiable": true,
-      "note": "Merged. 76 tests green; invariants returned as typed errors, no throws, deterministic replay. Bomb-out modelled as a distinct outcome rather than a zero total. The GDD \u00a76.3 conflict is flagged in-file and asserted by a test so it cannot be quietly deleted. Fresh critic grading now."
+      "note": "Merged and green (76 tests). Typed invariants, no throws, deterministic replay; bomb-out modelled as a distinct outcome rather than a zero. Its critic was killed by the spend limit before reporting \u2014 built but never independently graded."
     },
     {
       "id": "M5",
       "name": "Fatigue / readiness",
       "bar": "Plausible game-feel abstraction. No visible fatigue meter (\u00a712.3).",
-      "status": "building",
-      "verifiable": true
+      "status": "pending",
+      "verifiable": true,
+      "note": "Builder killed by spend limit before writing anything."
     },
     {
       "id": "M6",
       "name": "Streak / Recovery Days",
       "bar": "Never punishes daily engagement. Manual token use, hold cap, first-break tutorial.",
-      "status": "building",
-      "verifiable": true
+      "status": "pending",
+      "verifiable": true,
+      "note": "Builder killed by spend limit before writing anything."
     },
     {
       "id": "T1",
@@ -146,7 +154,7 @@
       "bar": "Blind A/B against real 16-bit SNES/Genesis sprite work. Maximal attempt must animate heavier.",
       "status": "pending",
       "verifiable": false,
-      "note": "Reference unreachable \u2014 bar will report unverifiable."
+      "note": "Builder killed by spend limit after starting a palette; nothing committed, worktree discarded. Reference for its bar is also unreachable here."
     },
     {
       "id": "A2",
@@ -179,6 +187,14 @@
       "status": "pending",
       "verifiable": false,
       "note": "Real sheets unreachable \u2014 bar will report unverifiable."
+    },
+    {
+      "id": "X1",
+      "name": "Cross-module inconsistency (found, unfixed)",
+      "bar": "The four modes must feel like one game \u2014 the smoothing-pass concern.",
+      "status": "failed",
+      "verifiable": true,
+      "note": "The DOTS critic caught it while grading something else: meet.ts models a bomb-out as total: null, while dots.ts assumes a bomb-out arrives as 0. Two modules disagree about the shape of the same event. Real bug, recorded, not yet fixed."
     }
   ]
 }
