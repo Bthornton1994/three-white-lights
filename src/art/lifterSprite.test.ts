@@ -2,23 +2,27 @@ import { describe, expect, it } from 'vitest';
 import {
   SPRITE_CELL,
   barOffsetAt,
+  bodyPixelDiff,
   frameSpecFrom,
+  headBox,
   renderContactShadow,
   renderLifterFrame,
   renderStage,
+  unionRect,
   type LifterFrameSpec,
 } from './lifterSprite';
-import { buildSquatRep } from './squatAnimation';
+import { buildSquatRep, stickingPointFrame } from './squatAnimation';
 import { BANK_SIZE, PAL, colorAt, isTransparentIndex, rgb5ToRgb8 } from './palette';
 import { findUnallocatedIndices, gridToRgba, usedIndices } from './rgba';
 import { getPx, upscaleGrid, type IndexGrid } from './raster';
-import { BAR, BEND, LOAD_PRESETS, RESOLUTION, STRAIN } from './spriteTuning';
-import { POSES, poseAtDepth } from './rig';
+import { BAR, BEND, LOAD_PRESETS, PITCH, RESOLUTION, STRAIN } from './spriteTuning';
+import { POSES, deformPose, poseAtDepth } from './rig';
 
 const BASE: LifterFrameSpec = {
   depth: 0,
   direction: 'DESCENT',
   strainLevel: 0,
+  pitchLevel: 0,
   barLateralPx: 0,
   barTiltDeg: 0,
   barBendPx: 0,
@@ -122,21 +126,224 @@ describe('rendered frame integrity', () => {
   });
 });
 
-describe('the drawing responds to load, not only the clock', () => {
-  it('changes pixels when strain changes at the same depth and same bar', () => {
+// ---------------------------------------------------------------------------
+// THE BODY-ONLY MAGNITUDE FLOORS
+//
+// The whole point of this block is that "the grids differ" is not a claim worth
+// making. A grimace is seven pixels and a skin ramp swap is a palette index; a
+// test that only asks whether something changed passes on both while the
+// lifter's body is the same drawing at every load.
+//
+// So every assertion below is a COUNT with a floor, measured on the LIFTER bank
+// only (the barbell is excluded structurally, by palette bank) with the two
+// frames drawn at the same depth, the same direction and the SAME barbell —
+// same weight, same bend, same tilt, same shake. And the sharpest of them is
+// measured with the head box masked out entirely, so neither the grimace nor
+// the flushed face can contribute a single pixel to the number.
+//
+// `silhouette` counts pixels that are body in one frame and not body in the
+// other. It is pure shape, and it is the load-bearing number here: a palette
+// change cannot move it at all, so neither a grimace nor a ruddier skin ramp
+// can carry it. `changed` is the weaker of the two precisely because the flush
+// ramp inflates it, and it is floored as a secondary check, not a primary one.
+//
+// FLOORS ARE CALIBRATED AGAINST THE PREVIOUS MODEL, not just against zero.
+// Before this rework the strain response was one delta vector scaled linearly,
+// and it was not a no-op — at the same matched depth and bar it moved 98
+// silhouette px, which is why a bare "the grids differ" assertion had nothing
+// to say about it. Every floor below sits above what that model produced and
+// below what this one does, so it discriminates between the two rather than
+// merely between something and nothing. The measured values for both are on
+// each constant.
+// ---------------------------------------------------------------------------
+
+/**
+ * At the sticking point — the frame the whole comparison is about.
+ * This tuning: 188 silhouette / 717 changed. Previous model: 98 / 406.
+ */
+const FLOOR_STICK_SILHOUETTE = 140;
+const FLOOR_STICK_CHANGED = 520;
+/**
+ * Everywhere on the depth ladder, so no depth is a dead spot.
+ * This tuning, worst depth: 143 / 514. Previous model, worst depth: 40 / 251.
+ */
+const FLOOR_SWEEP_SILHOUETTE = 110;
+const FLOOR_SWEEP_CHANGED = 380;
+/**
+ * Every adjacent authored strain rung must move a body. Not a comparison
+ * against the old model — a check that no rung is decoration.
+ * This tuning, worst rung: 27 silhouette / 212 changed.
+ */
+const FLOOR_ADJACENT_RUNG_SILHOUETTE = 15;
+const FLOOR_ADJACENT_RUNG_CHANGED = 100;
+/**
+ * Forward-drift response, measured on a frame ALREADY at maximum strain.
+ * This tuning: 146 changed / 13 silhouette. Previous model: 0 and 0.
+ */
+const FLOOR_PITCH_ON_MAX_STRAIN_CHANGED = 60;
+/** Fraction of the light-vs-maximal difference that must be off the head. */
+const MIN_SHARE_OUTSIDE_HEAD = 0.6;
+
+/** The drawing a rep reaches at its sticking point, as a render spec. */
+function stickSpec(loadRatio: number, over: Partial<LifterFrameSpec> = {}): LifterFrameSpec {
+  const frame = stickingPointFrame(buildSquatRep(loadRatio));
+  if (frame === undefined) throw new Error(`no sticking-point frame at ${loadRatio}`);
+  // Identical barbell on both sides: the bar's own load cues are not what this
+  // is measuring, so they are held fixed rather than allowed to differ.
+  return spec({
+    depth: frame.poseDepth,
+    direction: frame.direction,
+    strainLevel: frame.strainLevel,
+    pitchLevel: frame.pitchLevel,
+    totalKg: 250,
+    ...over,
+  });
+}
+
+describe('the LIFTER carries the load, not only the bar and the clock', () => {
+  const lightStick = stickingPointFrame(buildSquatRep(LOAD_PRESETS.LIGHT));
+  const maxStick = stickingPointFrame(buildSquatRep(LOAD_PRESETS.MAXIMAL));
+
+  it('compares the levels the animation actually produces, not the endpoints', () => {
+    // If this ever fails, every floor below is measuring the wrong pair. The
+    // previous version of this file compared strain 0 against STRAIN.LEVELS-1,
+    // a comparison no two reps in the animation ever make.
+    expect(lightStick?.strainLevel).toBe(1);
+    expect(maxStick?.strainLevel).toBe(3);
+    expect(maxStick?.pitchLevel).toBe(3);
+    expect(lightStick?.poseDepth).toBe(maxStick?.poseDepth);
+  });
+
+  it('changes a large, counted number of BODY pixels between a light rep and a maximal one', () => {
+    // Measured at this tuning: 218 silhouette / 829 changed of 1366 body px.
+    const light = renderLifterFrame(stickSpec(LOAD_PRESETS.LIGHT));
+    const maximal = renderLifterFrame(stickSpec(LOAD_PRESETS.MAXIMAL));
+    const diff = bodyPixelDiff(light.grid, maximal.grid);
+
+    expect(diff.bodyArea).toBeGreaterThan(500);
+    expect(diff.silhouette).toBeGreaterThan(FLOOR_STICK_SILHOUETTE);
+    expect(diff.changed).toBeGreaterThan(FLOOR_STICK_CHANGED);
+  });
+
+  it('still clears the floor with the entire head masked out — it is not a face swap', () => {
+    // Measured at this tuning: 188 silhouette / 717 changed, and 86% of all
+    // changed body pixels fall outside the head box.
+    const light = renderLifterFrame(stickSpec(LOAD_PRESETS.LIGHT));
+    const maximal = renderLifterFrame(stickSpec(LOAD_PRESETS.MAXIMAL));
+    const box = unionRect(headBox(light.pose), headBox(maximal.pose));
+
+    const all = bodyPixelDiff(light.grid, maximal.grid);
+    const noHead = bodyPixelDiff(light.grid, maximal.grid, box);
+
+    expect(noHead.silhouette).toBeGreaterThan(FLOOR_STICK_SILHOUETTE);
+    expect(noHead.changed).toBeGreaterThan(FLOOR_STICK_CHANGED);
+    expect(noHead.changed / all.changed).toBeGreaterThan(MIN_SHARE_OUTSIDE_HEAD);
+  });
+
+  it('holds that floor at every authored depth step, not just at the sticking point', () => {
+    // Measured minimum over the whole depth ladder and both directions:
+    // 143 silhouette / 514 changed with the head masked.
+    for (let step = 0; step <= 12; step += 1) {
+      const depth = step / 12;
+      for (const direction of ['DESCENT', 'ASCENT'] as const) {
+        const light = renderLifterFrame(stickSpec(LOAD_PRESETS.LIGHT, { depth, direction }));
+        const maximal = renderLifterFrame(stickSpec(LOAD_PRESETS.MAXIMAL, { depth, direction }));
+        const box = unionRect(headBox(light.pose), headBox(maximal.pose));
+        const noHead = bodyPixelDiff(light.grid, maximal.grid, box);
+        expect(noHead.silhouette, `depth ${depth.toFixed(2)} ${direction}`).toBeGreaterThan(
+          FLOOR_SWEEP_SILHOUETTE,
+        );
+        expect(noHead.changed, `depth ${depth.toFixed(2)} ${direction}`).toBeGreaterThan(
+          FLOOR_SWEEP_CHANGED,
+        );
+      }
+    }
+  });
+
+  it('gives every authored strain rung a body of its own', () => {
+    // No rung may be decoration. Measured, head masked: 27/212, 93/334, 93/421.
+    for (let level = 1; level < STRAIN.LEVELS; level += 1) {
+      const lower = renderLifterFrame(
+        spec({ depth: 0.66, direction: 'ASCENT', strainLevel: level - 1, totalKg: 250 }),
+      );
+      const upper = renderLifterFrame(
+        spec({ depth: 0.66, direction: 'ASCENT', strainLevel: level, totalKg: 250 }),
+      );
+      const box = unionRect(headBox(lower.pose), headBox(upper.pose));
+      const diff = bodyPixelDiff(lower.grid, upper.grid, box);
+      expect(diff.silhouette, `strain ${level - 1} -> ${level}`).toBeGreaterThan(
+        FLOOR_ADJACENT_RUNG_SILHOUETTE,
+      );
+      expect(diff.changed, `strain ${level - 1} -> ${level}`).toBeGreaterThan(
+        FLOOR_ADJACENT_RUNG_CHANGED,
+      );
+    }
+  });
+
+  it('lets forward bar drift reach the pixels of a rep that is ALREADY at maximum strain', () => {
+    // The regression this exists for: drift used to be a term added into
+    // strain. On a maximal grind the strain term is already at the top of its
+    // range, the sum clamps, and the drift changed no pixels at all — it moved
+    // the light rep and nothing else. Here the two frames are identical in
+    // every respect including strain level; only the drift response differs.
+    // Measured: 146 changed / 13 silhouette.
+    const top = STRAIN.LEVELS - 1;
+    const noDrift = renderLifterFrame(
+      spec({ depth: 0.66, direction: 'ASCENT', strainLevel: top, pitchLevel: 0, totalKg: 250 }),
+    );
+    const drifted = renderLifterFrame(
+      spec({
+        depth: 0.66,
+        direction: 'ASCENT',
+        strainLevel: top,
+        pitchLevel: PITCH.LEVELS - 1,
+        totalKg: 250,
+      }),
+    );
+    const diff = bodyPixelDiff(noDrift.grid, drifted.grid);
+    expect(diff.changed).toBeGreaterThan(FLOOR_PITCH_ON_MAX_STRAIN_CHANGED);
+    expect(diff.silhouette).toBeGreaterThan(0);
+  });
+
+  it('does the same on the maximal rep as it is actually built', () => {
+    // Not a hand-built spec: the real frame, with its pitch level knocked out.
+    // Measured: 158 changed / 18 silhouette.
+    if (maxStick === undefined) throw new Error('no maximal sticking-point frame');
+    const asBuilt = renderLifterFrame(frameSpecFrom(maxStick, 250));
+    const flattened = renderLifterFrame({ ...frameSpecFrom(maxStick, 250), pitchLevel: 0 });
+    expect(maxStick.strainLevel).toBe(STRAIN.LEVELS - 1);
+    expect(bodyPixelDiff(asBuilt.grid, flattened.grid).changed).toBeGreaterThan(
+      FLOOR_PITCH_ON_MAX_STRAIN_CHANGED,
+    );
+  });
+
+  it('measures the body and only the body', () => {
+    // The diff must be blind to the barbell, or every floor above is inflated
+    // by discs. Two frames identical except for 100 kg of plates must read as
+    // zero body change.
+    const lightBar = renderLifterFrame(spec({ depth: 0.66, direction: 'ASCENT', totalKg: 100 }));
+    const heavyBar = renderLifterFrame(spec({ depth: 0.66, direction: 'ASCENT', totalKg: 250 }));
+    expect(gridsEqual(lightBar.grid, heavyBar.grid)).toBe(false);
+    const diff = bodyPixelDiff(lightBar.grid, heavyBar.grid);
+    expect(diff.changed).toBe(0);
+    expect(diff.silhouette).toBe(0);
+  });
+
+  it('deforms in the direction the model claims: hips up, knees in, elbows in', () => {
     const relaxed = renderLifterFrame(spec({ depth: 0.66, direction: 'ASCENT', strainLevel: 0 }));
     const strained = renderLifterFrame(
       spec({ depth: 0.66, direction: 'ASCENT', strainLevel: STRAIN.LEVELS - 1 }),
     );
-    expect(gridsEqual(relaxed.grid, strained.grid)).toBe(false);
-    // And it changes them the way the strain model says: hips up, knees in.
     expect(strained.pose.hipY).toBeLessThan(relaxed.pose.hipY);
     expect(strained.pose.kneeHalfW).toBeLessThan(relaxed.pose.kneeHalfW);
     expect(strained.pose.headY).toBeLessThan(relaxed.pose.headY);
-    // The bar must not move: depth has to stay honest under strain.
-    expect(strained.barCenterY).toBe(relaxed.barCenterY);
+    expect(strained.pose.elbowHalfW).toBeLessThan(relaxed.pose.elbowHalfW);
+    expect(strained.pose.shoulderHalfW).toBeGreaterThan(relaxed.pose.shoulderHalfW);
+    expect(strained.pose.ankleHalfW).toBeGreaterThan(relaxed.pose.ankleHalfW);
   });
+});
 
+describe('the drawing responds to load, not only the clock', () => {
   it('changes pixels when the bar gets heavier at the same pose', () => {
     const lightBar = renderLifterFrame(spec({ totalKg: 100 }));
     const heavyBar = renderLifterFrame(spec({ totalKg: 250 }));
@@ -228,6 +435,57 @@ describe('depth is honest', () => {
     // actual judging criterion — is hipY > kneeY here.
     expect(POSES.HOLE.hipY).toBeGreaterThan(POSES.HOLE.kneeY);
     expect(POSES.STAND.hipY).toBeLessThan(POSES.STAND.kneeY);
+  });
+
+  it('never moves the bar by one pixel at any strain or pitch level', () => {
+    // The load response is allowed to make him uglier. It is not allowed to
+    // move the bar, because the bar's height IS the squat's depth. Every
+    // combination of the two channels must land on the same centre-line.
+    for (const depth of [0, 0.25, 0.5, 0.75, 1]) {
+      for (const direction of ['DESCENT', 'ASCENT'] as const) {
+        const expected = renderLifterFrame(
+          spec({ depth, direction, strainLevel: 0, pitchLevel: 0 }),
+        ).barCenterY;
+        for (let s = 0; s < STRAIN.LEVELS; s += 1) {
+          for (let p = 0; p < PITCH.LEVELS; p += 1) {
+            const at = renderLifterFrame(
+              spec({ depth, direction, strainLevel: s, pitchLevel: p }),
+            );
+            expect(at.barCenterY, `d${depth} ${direction} s${s} p${p}`).toBe(expected);
+            expect(at.pose.shoulderY, `d${depth} ${direction} s${s} p${p}`).toBe(
+              poseAtDepth(depth, direction).shoulderY,
+            );
+          }
+        }
+      }
+    }
+  });
+
+  it('never lets strain raise a hip that was below the knee back above it', () => {
+    // The second judging cue. HIP_SHOOT raises the hip, so without a guard a
+    // maximally strained frame in the hole could draw itself out of depth —
+    // uglier is fine, shallower is not.
+    for (const [key, pose] of Object.entries(POSES)) {
+      if (pose.hipY <= pose.kneeY) continue;
+      for (let s = 0; s <= 1.0001; s += 0.1) {
+        for (let p = 0; p <= 1.0001; p += 0.25) {
+          const out = deformPose(pose, Math.min(1, s), Math.min(1, p));
+          expect(out.hipY, `${key} s${s.toFixed(1)} p${p.toFixed(2)}`).toBeGreaterThan(out.kneeY);
+        }
+      }
+    }
+  });
+
+  it('never lets the knees cave inside the hips, at any strain', () => {
+    for (const [key, pose] of Object.entries(POSES)) {
+      for (let s = 0; s <= 1.0001; s += 0.1) {
+        const out = deformPose(pose, Math.min(1, s), 1);
+        expect(out.kneeHalfW, `${key} s${s.toFixed(1)}`).toBeGreaterThan(0);
+        expect(out.kneeHalfW, `${key} s${s.toFixed(1)}`).toBeGreaterThanOrEqual(
+          Math.min(pose.kneeHalfW, out.hipHalfW * STRAIN.KNEE_MIN_VS_HIP) - 1e-9,
+        );
+      }
+    }
   });
 
   it('descends monotonically along both pose ladders', () => {

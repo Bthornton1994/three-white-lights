@@ -7,17 +7,21 @@ import {
   ascentTickFraction,
   ascentVelocity,
   buildSquatRep,
+  distinctDrawingCount,
   longestAscentPoseRunTicks,
   longestStall,
   normalisedAscentProfile,
   peakBendPx,
   peakForwardDeviationPx,
   peakLateralDeviationPx,
+  peakPitchLevel,
+  peakStrainLevel,
   phaseTickCounts,
+  stickingPointFrame,
   type RepPhase,
   type SquatRep,
 } from './squatAnimation';
-import { BEND, LOAD_PRESETS, LOAD_RANGE, STICK, loadT } from './spriteTuning';
+import { BEND, LOAD_PRESETS, LOAD_RANGE, PITCH, STICK, STRAIN, loadT } from './spriteTuning';
 
 const light = buildSquatRep(LOAD_PRESETS.LIGHT);
 const maximal = buildSquatRep(LOAD_PRESETS.MAXIMAL);
@@ -301,9 +305,70 @@ describe('strain', () => {
     for (const ratio of SWEEP) {
       for (const f of buildSquatRep(ratio).frames) {
         expect(f.strainLevel).toBeGreaterThanOrEqual(0);
+        expect(f.strainLevel).toBeLessThan(STRAIN.LEVELS);
         expect(Number.isInteger(f.strainLevel)).toBe(true);
+        expect(f.pitchLevel).toBeGreaterThanOrEqual(0);
+        expect(f.pitchLevel).toBeLessThan(PITCH.LEVELS);
+        expect(Number.isInteger(f.pitchLevel)).toBe(true);
       }
     }
+  });
+
+  it('spreads the named load presets across the authored strain levels', () => {
+    // The authored levels are only worth authoring if reps land on them. If a
+    // tuning pass collapses two presets onto one rung, or pushes the light rep
+    // down to the undeformed drawing, this is where it shows up — and every
+    // pixel floor in lifterSprite.test.ts is calibrated against this map.
+    const peaks = Object.fromEntries(
+      Object.entries(LOAD_PRESETS).map(([k, v]) => [k, peakStrainLevel(buildSquatRep(v))]),
+    );
+    expect(peaks).toEqual({ WARMUP: 0, LIGHT: 1, MODERATE: 1, HEAVY: 2, MAXIMAL: 3 });
+    assertNonDecreasing('peak strain level', peakStrainLevel);
+  });
+
+  it('costs the maximal rep noticeably more of the sheet than the light one', () => {
+    // Distinct BODY drawings, bar state excluded. A grind that reuses the light
+    // rep's drawings more slowly is the thing this is watching for.
+    expect(distinctDrawingCount(maximal)).toBeGreaterThan(distinctDrawingCount(light) * 1.25);
+  });
+});
+
+describe('forward bar drift reaches the drawing', () => {
+  it('quantises drift into its own channel, which the maximal rep tops out', () => {
+    expect(peakPitchLevel(maximal)).toBe(PITCH.LEVELS - 1);
+    expect(peakPitchLevel(light)).toBeLessThan(peakPitchLevel(maximal));
+    assertNonDecreasing('peak pitch level', peakPitchLevel);
+  });
+
+  it('is NOT clamped away by strain at the sticking point', () => {
+    // THE regression. Drift used to be a term added into strain and then
+    // clamped to 1. At the maximal sticking point the strain term is already
+    // at the top of its range, so the drift contributed exactly nothing to any
+    // drawn pixel — its only effect was on the light rep, the one rep whose
+    // bar path is not interesting. A separate channel is the fix, and these
+    // two levels being independently at maximum is what says so.
+    const stick = stickingPointFrame(maximal);
+    expect(stick).toBeDefined();
+    expect(stick?.strainLevel).toBe(STRAIN.LEVELS - 1);
+    expect(stick?.pitchLevel).toBe(PITCH.LEVELS - 1);
+  });
+
+  it('draws more distinct bodies than strain alone could account for', () => {
+    // Strain has STRAIN.LEVELS rungs and the sheet has DEPTH_STEPS+1 depths per
+    // direction. If pitch were inert, every frame at a given depth and strain
+    // would be one drawing; the count below rises only because it is not.
+    const byStrainOnly = new Set(
+      maximal.frames.map((f) => `${f.direction}:${f.poseDepth}:${f.strainLevel}`),
+    );
+    expect(distinctDrawingCount(maximal)).toBeGreaterThan(byStrainOnly.size);
+  });
+
+  it('keeps the drift itself monotone in load and peaked at the stick', () => {
+    // Unchanged behaviour, restated here because the pitch channel now depends
+    // on it: if the drift stops peaking near the sticking point, the ugliest
+    // drawing stops being the one at the sticking point.
+    const stick = stickingPointFrame(maximal);
+    expect(Math.abs((stick?.sample.barHeight ?? 0) - STICK.HEIGHT_FRAC)).toBeLessThan(0.05);
   });
 });
 

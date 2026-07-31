@@ -26,17 +26,19 @@ import {
   BAR,
   BEND,
   CENTER_X,
+  CHALK,
   SHADING,
   SHADOW,
   STRAIN,
   RESOLUTION,
 } from './spriteTuning';
-import { PAL, RAMPS, type Ramp } from './palette';
+import { BANK_SIZE, PAL, RAMPS, isTransparentIndex, type Ramp } from './palette';
 import {
   CELL,
   RIG_GEOMETRY,
-  applyStrain,
   barYForPose,
+  deformPose,
+  pitchForLevel,
   poseAtDepth,
   strainForLevel,
   type Pose,
@@ -49,6 +51,7 @@ import {
   drawPlateEdge,
   drawTrunk,
   despeckle,
+  getPx,
   outlinePass,
   setPx,
   type IndexGrid,
@@ -70,6 +73,8 @@ export interface LifterFrameSpec {
   readonly direction: RepDirection;
   /** Quantised strain level, 0..STRAIN.LEVELS-1. */
   readonly strainLevel: number;
+  /** Quantised pitch level, 0..PITCH.LEVELS-1. Defaults to 0 when omitted. */
+  readonly pitchLevel?: number;
   readonly barLateralPx: number;
   readonly barTiltDeg: number;
   readonly barBendPx: number;
@@ -86,6 +91,7 @@ export interface RenderedFrame {
   readonly barCenterY: number;
   readonly sleeve: SleeveLayout;
   readonly strain: number;
+  readonly pitch: number;
 }
 
 export function frameSpecFrom(frame: SquatFrame, totalKg: number, barKg?: number): LifterFrameSpec {
@@ -93,6 +99,7 @@ export function frameSpecFrom(frame: SquatFrame, totalKg: number, barKg?: number
     depth: frame.poseDepth,
     direction: frame.direction,
     strainLevel: frame.strainLevel,
+    pitchLevel: frame.pitchLevel,
     barLateralPx: frame.barLateralPx,
     barTiltDeg: frame.barTiltDeg,
     barBendPx: frame.barBendPx,
@@ -467,17 +474,6 @@ function drawInnerLegSeam(g: IndexGrid, pose: Pose): void {
   }
 }
 
-/** Deterministic chalk motes. Fixed offsets, not noise — this is pure code. */
-const CHALK_MOTE_OFFSETS: readonly (readonly [number, number])[] = [
-  [0, -2],
-  [2, -4],
-  [-2, -3],
-  [4, -6],
-  [-4, -5],
-  [1, -7],
-  [-1, -9],
-];
-
 function drawChalk(
   g: IndexGrid,
   pose: Pose,
@@ -486,12 +482,52 @@ function drawChalk(
   lateralPx: number,
 ): void {
   if (motes <= 0) return;
+  const offsets = CHALK.MOTE_OFFSETS;
   for (const sign of [-1, 1]) {
     const baseX = CENTER_X + lateralPx + sign * pose.handHalfW;
-    for (let i = 0; i < Math.min(motes, CHALK_MOTE_OFFSETS.length); i += 1) {
-      const off = CHALK_MOTE_OFFSETS[i];
+    for (let i = 0; i < Math.min(motes, offsets.length); i += 1) {
+      const off = offsets[i];
       if (off === undefined) continue;
       setPx(g, Math.round(baseX + sign * off[0]), Math.round(barCy + off[1]), PAL.CHALK);
+    }
+  }
+}
+
+/**
+ * Muscle cording — drawn only at STRAIN.CORD.MIN_LEVEL and above.
+ *
+ * A mark that exists in the grind drawing and does not exist in the light one
+ * at all. Stamped over skin only, so it cannot escape the silhouette and cannot
+ * land on the singlet or the belt, and always as a vertical run of RUN_PX so
+ * `despeckle` does not eat it as noise.
+ */
+function drawCording(g: IndexGrid, pose: Pose, strainLevelValue: number): void {
+  if (strainLevelValue < STRAIN.CORD.MIN_LEVEL) return;
+  const C = STRAIN.CORD;
+  const skin = new Set<number>([PAL.SKIN_SHADOW, PAL.SKIN_MID, PAL.SKIN_LIGHT, PAL.SKIN_HI, PAL.SKIN_FLUSH]);
+
+  const stampRun = (x: number, yTop: number): void => {
+    for (let k = 0; k < C.RUN_PX; k += 1) {
+      const y = yTop + k;
+      if (!skin.has(getPx(g, x, y))) return;
+    }
+    for (let k = 0; k < C.RUN_PX; k += 1) setPx(g, x, yTop + k, PAL.SKIN_SHADOW);
+  };
+
+  // Neck cords, either side of the throat, between the jaw and the traps.
+  const neckMidY = Math.round((pose.neckY + pose.shoulderY) / 2 + C.NECK_DY);
+  for (const sign of [-1, 1]) {
+    stampRun(Math.round(CENTER_X + pose.headDx + sign * C.NECK_DX), neckMidY);
+  }
+
+  // Quad separation down the outer thigh, following the leg's own axis.
+  for (const sign of [-1, 1]) {
+    const hipX = CENTER_X + sign * pose.hipHalfW * RIG_GEOMETRY.ATTACH.THIGH_ROOT;
+    const kneeX = CENTER_X + sign * pose.kneeHalfW;
+    for (const frac of C.THIGH_FRACS) {
+      const x = hipX + (kneeX - hipX) * frac + sign * C.THIGH_DX;
+      const y = pose.hipY + (pose.kneeY - pose.hipY) * frac;
+      stampRun(Math.round(x), Math.round(y));
     }
   }
 }
@@ -503,7 +539,8 @@ function drawChalk(
 /** Render one animation frame to an index grid with a transparent background. */
 export function renderLifterFrame(spec: LifterFrameSpec): RenderedFrame {
   const strain = strainForLevel(spec.strainLevel);
-  const pose = applyStrain(poseAtDepth(spec.depth, spec.direction), strain);
+  const pitch = pitchForLevel(spec.pitchLevel ?? 0);
+  const pose = deformPose(poseAtDepth(spec.depth, spec.direction), strain, pitch);
   const barCy = barYForPose(pose);
   const stack = visualPlateStack(spec.totalKg, spec.barKg ?? BAR_AND_COLLARS_KG);
   const sleeve = layoutSleeve(stack);
@@ -522,6 +559,7 @@ export function renderLifterFrame(spec: LifterFrameSpec): RenderedFrame {
   drawHead(g, pose, strain, skin);
   drawHand(g, pose, 1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, SHADING.FAR_LIMB_STEP_BIAS);
   drawHand(g, pose, -1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, 0);
+  drawCording(g, pose, spec.strainLevel);
   drawChalk(g, pose, spec.chalkMotes, barCy, spec.barLateralPx);
 
   // Order matters. Despeckle first, on the raw silhouette: it replaces isolated
@@ -531,7 +569,106 @@ export function renderLifterFrame(spec: LifterFrameSpec): RenderedFrame {
   despeckle(g);
   outlinePass(g);
 
-  return { grid: g, pose, barCenterY: barCy, sleeve, strain };
+  return { grid: g, pose, barCenterY: barCy, sleeve, strain, pitch };
+}
+
+// ---------------------------------------------------------------------------
+// Body-only measurement
+// ---------------------------------------------------------------------------
+
+/**
+ * Is this palette index part of the LIFTER, as opposed to the bar?
+ *
+ * Bank 0 is the character and bank 1 is the equipment (see `palette.ts`), and
+ * the banks are the reason this question has an exact answer rather than a
+ * bounding box. Everything the barbell contributes — shaft, discs, collars and
+ * their outline — is bank 1. The hands, which are drawn in front of the bar,
+ * are bank 0 and count as body.
+ */
+export function isBodyIndex(index: number): boolean {
+  return !isTransparentIndex(index) && Math.floor(index / BANK_SIZE) === 0;
+}
+
+/** An inclusive pixel rectangle, for excluding a region from a diff. */
+export interface PixelRect {
+  readonly x0: number;
+  readonly y0: number;
+  readonly x1: number;
+  readonly y1: number;
+}
+
+export interface BodyPixelDiff {
+  /** Body pixels whose palette index differs. Colour changes count. */
+  readonly changed: number;
+  /**
+   * Pixels that are body in one grid and not body in the other. Pure shape:
+   * a palette swap cannot move this number, so it is the honest measure of
+   * "the silhouette is different", not "the lifter went redder".
+   */
+  readonly silhouette: number;
+  /** Body pixels present in either grid — the denominator for the above. */
+  readonly bodyArea: number;
+}
+
+/**
+ * Compare two rendered frames at the body only.
+ *
+ * Everything the barbell draws is excluded by bank, so two frames rendered with
+ * the same `totalKg` and the same bend/tilt differ here only where the LIFTER
+ * differs. `exclude` drops a rectangle — the caller passes the head box to ask
+ * the sharper question: with the face taken away, is anything else happening?
+ */
+export function bodyPixelDiff(a: IndexGrid, b: IndexGrid, exclude?: PixelRect): BodyPixelDiff {
+  let changed = 0;
+  let silhouette = 0;
+  let bodyArea = 0;
+  const w = Math.min(a.w, b.w);
+  const h = Math.min(a.h, b.h);
+
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      if (
+        exclude !== undefined &&
+        x >= exclude.x0 &&
+        x <= exclude.x1 &&
+        y >= exclude.y0 &&
+        y <= exclude.y1
+      ) {
+        continue;
+      }
+      const va = getPx(a, x, y);
+      const vb = getPx(b, x, y);
+      const ba = isBodyIndex(va);
+      const bb = isBodyIndex(vb);
+      if (!ba && !bb) continue;
+      bodyArea += 1;
+      if (ba !== bb) silhouette += 1;
+      if (va !== vb) changed += 1;
+    }
+  }
+
+  return { changed, silhouette, bodyArea };
+}
+
+/** Bounding box of the head, padded, for excluding the face from a diff. */
+export function headBox(pose: Pose, pad: number = 2): PixelRect {
+  const cx = CENTER_X + pose.headDx;
+  return {
+    x0: Math.floor(cx - RIG_GEOMETRY.HEAD_RX - pad),
+    x1: Math.ceil(cx + RIG_GEOMETRY.HEAD_RX + pad),
+    y0: Math.floor(pose.headY - RIG_GEOMETRY.HEAD_RY - pad),
+    y1: Math.ceil(pose.headY + RIG_GEOMETRY.HEAD_RY + pad),
+  };
+}
+
+/** Smallest rectangle containing both. Used to exclude two frames' heads. */
+export function unionRect(a: PixelRect, b: PixelRect): PixelRect {
+  return {
+    x0: Math.min(a.x0, b.x0),
+    y0: Math.min(a.y0, b.y0),
+    x1: Math.max(a.x1, b.x1),
+    y1: Math.max(a.y1, b.y1),
+  };
 }
 
 /**

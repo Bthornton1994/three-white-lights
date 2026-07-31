@@ -35,7 +35,17 @@
  * that can be turned in isolation the way a tick count is.
  */
 
-import { RESOLUTION, BAR, STRAIN, CENTER_X } from './spriteTuning';
+import {
+  RESOLUTION,
+  BAR,
+  BRACE_SETTLE_DEPTH,
+  DEFORM_FOLLOW,
+  STRAIN,
+  PITCH,
+  CENTER_X,
+  type PitchPoseDelta,
+  type StrainPoseDelta,
+} from './spriteTuning';
 
 export type PoseKey =
   | 'STAND'
@@ -349,7 +359,8 @@ export interface PoseAnchor {
 export const POSE_DEPTH_ANCHORS: Readonly<Record<RepDirection, readonly PoseAnchor[]>> = {
   DESCENT: [
     { key: 'STAND', depth: 0 },
-    { key: 'BRACE', depth: 0.06 },
+    // Reads the same constant the brace phase settles to; see spriteTuning.
+    { key: 'BRACE', depth: BRACE_SETTLE_DEPTH },
     { key: 'DESC_1', depth: 0.33 },
     { key: 'DESC_2', depth: 0.62 },
     { key: 'DESC_3', depth: 0.86 },
@@ -511,33 +522,146 @@ export function poseAtDepth(depth: number, direction: RepDirection): Pose {
   return blendPose(POSES[lo.key], POSES[hi.key], t);
 }
 
+// ---------------------------------------------------------------------------
+// Deformation: how load changes the drawing
+// ---------------------------------------------------------------------------
+//
+// Two channels, quantised separately, composed once:
+//
+//   STRAIN — how hard this rep is. Authored per level in spriteTuning; the
+//            renderer only ever asks for a level, so each level is a drawing.
+//   PITCH  — the body's share of the sagittal forward bar drift, which the
+//            front view cannot show directly. Its own channel because strain
+//            saturates on exactly the rep where the drift is largest.
+//
+// Both obey the same hard rule: NEITHER MAY MOVE THE SHOULDER LINE. The bar
+// rides the shoulders, so any deformation that moved them would let a strained
+// frame misreport squat depth. `shoulderY` does not appear on the left of an
+// assignment anywhere below, and a test asserts the bar's y is identical across
+// all strain and pitch levels.
+
+/** Blend between the two authored entries a continuous 0..1 position falls in. */
+function levelBlend<T, R>(
+  table: readonly T[],
+  t01: number,
+  lerpFn: (a: T, b: T, f: number) => R,
+): R {
+  const last = table.length - 1;
+  if (last <= 0) {
+    const only = table[0];
+    if (only === undefined) throw new Error('empty level table');
+    return lerpFn(only, only, 0);
+  }
+  const pos = Math.min(1, Math.max(0, t01)) * last;
+  const lo = Math.min(last, Math.floor(pos));
+  const hi = Math.min(last, lo + 1);
+  const a = table[lo];
+  const b = table[hi];
+  if (a === undefined || b === undefined) throw new Error('ragged level table');
+  return lerpFn(a, b, pos - lo);
+}
+
 /**
- * Deform a pose by strain (0..1).
+ * Authored strain deformation at a continuous strain value.
+ *
+ * Exact on the authored levels — `strainForLevel` lands on them by
+ * construction, and the renderer only ever passes those — and interpolated in
+ * between so a caller sweeping strain does not see steps that the sheet does
+ * not have.
+ */
+export function strainDeltaAt(strain: number): StrainPoseDelta {
+  return levelBlend(STRAIN.LEVEL_DELTAS, strain, (a, b, f) => ({
+    HIP_SHOOT: lerp(a.HIP_SHOOT, b.HIP_SHOOT, f),
+    HEAD_CRANE: lerp(a.HEAD_CRANE, b.HEAD_CRANE, f),
+    SHOULDER_SHRUG: lerp(a.SHOULDER_SHRUG, b.SHOULDER_SHRUG, f),
+    KNEE_VALGUS: lerp(a.KNEE_VALGUS, b.KNEE_VALGUS, f),
+    ELBOW_TUCK: lerp(a.ELBOW_TUCK, b.ELBOW_TUCK, f),
+    STANCE_SPREAD: lerp(a.STANCE_SPREAD, b.STANCE_SPREAD, f),
+    CHEST_COLLAPSE: lerp(a.CHEST_COLLAPSE, b.CHEST_COLLAPSE, f),
+  }));
+}
+
+/** Authored pitch deformation at a continuous pitch value. */
+export function pitchDeltaAt(pitch: number): PitchPoseDelta {
+  return levelBlend(PITCH.LEVEL_DELTAS, pitch, (a, b, f) => ({
+    HIP_RISE: lerp(a.HIP_RISE, b.HIP_RISE, f),
+    CHEST_DROP: lerp(a.CHEST_DROP, b.CHEST_DROP, f),
+    TORSO_NARROW: lerp(a.TORSO_NARROW, b.TORSO_NARROW, f),
+    HEAD_CRANE: lerp(a.HEAD_CRANE, b.HEAD_CRANE, f),
+  }));
+}
+
+/**
+ * Deform a pose by strain and pitch, both 0..1.
  *
  * This is what makes a maximal attempt look different in a *still* frame, with
  * timing stripped out: hips shoot ahead of the shoulders, knees cave, traps
- * bunch, the head cranes up, the elbows drag down, the feet spread. None of
- * these move the bar's height — the bar is glued to the shoulders and the
- * shoulders are the one landmark strain leaves alone — so depth stays honest
- * and a strained frame cannot cheat its way to looking shallower or deeper.
+ * bunch, the head cranes and the neck stretches, the elbows drag down into the
+ * ribs, the chest caves, the feet spread into the platform.
+ *
+ * Two clamps, both there to protect depth rather than to look nice:
+ *
+ *   - The knees may not cave inside KNEE_MIN_VS_HIP of the hip half-width.
+ *     Legs cannot cross, and it stops a standing pose going knock-kneed.
+ *   - Where the authored drawing has the hip crease below the top of the knee
+ *     — i.e. where the drawing is at legal depth — the combined hip rise may
+ *     not bring it closer than HIP_DEPTH_MARGIN_PX. A strained frame is
+ *     allowed to be uglier than a clean one. It is not allowed to be shallower.
  */
-export function applyStrain(pose: Pose, strain: number): Pose {
+export function deformPose(pose: Pose, strain: number, pitch: number): Pose {
   const s = Math.min(1, Math.max(0, strain));
-  if (s === 0) return pose;
-  const d = STRAIN.DELTA_PX;
+  const p = Math.min(1, Math.max(0, pitch));
+  if (s === 0 && p === 0) return pose;
 
+  const d = strainDeltaAt(s);
+  const q = pitchDeltaAt(p);
+
+  // Hip. Both channels raise it; the depth guard is applied once, to the sum.
+  const hipRaw = pose.hipY - d.HIP_SHOOT - q.HIP_RISE;
+  const atDepth = pose.hipY > pose.kneeY;
+  const hipFloor = atDepth ? Math.min(pose.hipY, pose.kneeY + STRAIN.HIP_DEPTH_MARGIN_PX) : -Infinity;
+  const hipY = Math.max(hipRaw, hipFloor);
+  // The waist rides most of whatever the hip actually got, not what it asked
+  // for, so the belt does not detach from the pelvis when the guard binds.
+  const hipTravel = pose.hipY - hipY;
+
+  // MIN_HALF_W is a degenerate-geometry guard, not a feel value: a half-width
+  // of zero collapses the trunk rasteriser's normal and there is nothing to
+  // shade. It is not reachable at any authored level.
+  const MIN_HALF_W = 1;
+  const hipHalfW = Math.max(MIN_HALF_W, pose.hipHalfW - q.TORSO_NARROW);
+  const kneeFloor = hipHalfW * STRAIN.KNEE_MIN_VS_HIP;
+  const kneeHalfW = Math.max(Math.min(pose.kneeHalfW, kneeFloor), pose.kneeHalfW - d.KNEE_VALGUS);
+
+  const F = DEFORM_FOLLOW;
   return {
     ...pose,
-    headY: pose.headY - d.HEAD_CRANE * s,
-    neckY: pose.neckY - d.HEAD_CRANE * s * 0.4,
-    shoulderHalfW: pose.shoulderHalfW + d.SHOULDER_SHRUG * s,
-    waistY: pose.waistY - d.HIP_SHOOT * s * 0.7,
-    hipY: pose.hipY - d.HIP_SHOOT * s,
-    kneeHalfW: pose.kneeHalfW - d.KNEE_VALGUS * s,
-    elbowHalfW: pose.elbowHalfW - d.ELBOW_TUCK * s,
-    elbowY: pose.elbowY + d.ELBOW_TUCK * s * 0.5,
-    ankleHalfW: pose.ankleHalfW + d.STANCE_SPREAD * s,
+    headY: pose.headY - d.HEAD_CRANE - q.HEAD_CRANE,
+    neckY: pose.neckY - (d.HEAD_CRANE + q.HEAD_CRANE) * F.NECK_OF_HEAD_CRANE,
+    shoulderHalfW: pose.shoulderHalfW + d.SHOULDER_SHRUG,
+    chestY: pose.chestY + d.CHEST_COLLAPSE + q.CHEST_DROP,
+    waistY: pose.waistY - hipTravel * F.WAIST_OF_HIP_TRAVEL,
+    waistHalfW: Math.max(
+      MIN_HALF_W,
+      pose.waistHalfW - q.TORSO_NARROW * F.WAIST_WIDTH_OF_TORSO_NARROW,
+    ),
+    hipY,
+    hipHalfW,
+    kneeHalfW,
+    elbowHalfW: pose.elbowHalfW - d.ELBOW_TUCK,
+    elbowY: pose.elbowY + d.ELBOW_TUCK * F.ELBOW_DROP_OF_TUCK,
+    ankleHalfW: pose.ankleHalfW + d.STANCE_SPREAD,
   };
+}
+
+/** Strain alone. Kept as a named entry point; pitch defaults to none. */
+export function applyStrain(pose: Pose, strain: number): Pose {
+  return deformPose(pose, strain, 0);
+}
+
+/** Pitch alone. */
+export function applyPitch(pose: Pose, pitch: number): Pose {
+  return deformPose(pose, 0, pitch);
 }
 
 /** Quantise strain to the fixed number of authored levels. */
@@ -550,6 +674,18 @@ export function strainLevel(strain: number): number {
 export function strainForLevel(level: number): number {
   const clamped = Math.min(STRAIN.LEVELS - 1, Math.max(0, Math.round(level)));
   return STRAIN.LEVELS <= 1 ? 0 : clamped / (STRAIN.LEVELS - 1);
+}
+
+/** Quantise a forward bar drift, in px, to the authored pitch levels. */
+export function pitchLevelForDriftPx(forwardPx: number): number {
+  const t = Math.min(1, Math.max(0, Math.abs(forwardPx) / PITCH.FULL_PX));
+  return Math.min(PITCH.LEVELS - 1, Math.floor(t * PITCH.LEVELS));
+}
+
+/** Representative pitch value for a quantised level. */
+export function pitchForLevel(level: number): number {
+  const clamped = Math.min(PITCH.LEVELS - 1, Math.max(0, Math.round(level)));
+  return PITCH.LEVELS <= 1 ? 0 : clamped / (PITCH.LEVELS - 1);
 }
 
 /** Cell bounds, re-exported so drawing code has one import for geometry. */

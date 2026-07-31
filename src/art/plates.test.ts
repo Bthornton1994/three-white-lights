@@ -82,11 +82,17 @@ describe('disc diameters', () => {
     expect(plateDiameterPx(spec)).toBeLessThan(16);
   });
 
-  it('marks the change-disc diameters as unsourced rather than pretending', () => {
-    const sourced = PLATE_SPECS.filter((s) => s.diameterSourced).map((s) => s.kg);
-    const estimated = PLATE_SPECS.filter((s) => !s.diameterSourced).map((s) => s.kg);
-    expect(sourced).toEqual([25, 20, 15, 10, 5, 2.5, 1.25]);
-    expect(estimated).toEqual([1, 0.75, 0.5, 0.25]);
+  it('claims no diameter is sourced, because none of them is', () => {
+    // The rulebook PDFs are 403 from this sandbox and OpenLifter — the one
+    // source that could be read — carries denominations and colours, not
+    // geometry. The competition ladder is COMMON_LADDER (widely published,
+    // unverified by us) and the change discs are ESTIMATED. Neither is a
+    // claim to have read a source, and there is no third grade that is.
+    const common = PLATE_SPECS.filter((s) => s.diameterProvenance === 'COMMON_LADDER');
+    const estimated = PLATE_SPECS.filter((s) => s.diameterProvenance === 'ESTIMATED');
+    expect(common.map((s) => s.kg)).toEqual([25, 20, 15, 10, 5, 2.5, 1.25]);
+    expect(estimated.map((s) => s.kg)).toEqual([1, 0.75, 0.5, 0.25]);
+    expect(common.length + estimated.length).toBe(PLATE_SPECS.length);
   });
 });
 

@@ -26,25 +26,31 @@
  *   3. Bar path. Sagittal forward drift peaks at the sticking point and scales
  *      hard with load; frontal-plane lateral shake and bar tilt appear only
  *      under real weight.
- *   4. Pose. Strain deforms the drawing itself — hips shoot, knees cave, head
- *      cranes. A single still frame from the maximal rep looks different from
- *      the same-depth still frame of the light one, with timing removed.
+ *   4. Pose. Two quantised channels deform the drawing itself — `strainLevel`
+ *      and `pitchLevel`. A single still frame from the maximal rep is a
+ *      different drawing from the same-depth still frame of the light one,
+ *      with timing removed and with the same bar on the shoulders.
  *
  * ---------------------------------------------------------------------------
  * THE VIEW PROBLEM, STATED RATHER THAN GLOSSED
  * ---------------------------------------------------------------------------
  * `barForwardPx` is sagittal — toward the toes. The sprite is a front view (see
- * `rig.ts` for why), so forward drift is NOT drawn as a horizontal offset. It
- * is drawn indirectly, by feeding strain, and it is exposed as data so a
- * side-on bar-path trace can plot it honestly. Anyone reading a frontal sprite
- * expecting to see 4px of forward drift will not find it, and should not: the
- * camera cannot see it. The inspection contact sheet plots the sagittal path as
- * a graph beside the sprites for exactly this reason.
+ * `rig.ts` for why), so forward drift is NOT drawn as a horizontal offset, and
+ * anyone reading a frontal sprite expecting to see 4 px of sideways travel will
+ * not find it: the camera cannot see it. What the camera CAN see is the body's
+ * share of it — hips back and up, torso folding away from the lens, head
+ * craning to fight it — and that is `pitchLevel`, quantised from this value
+ * through `pitchLevelForDriftPx` and drawn from PITCH's authored deltas.
+ *
+ * The raw px figure stays on the sample so a side-on bar-path trace can plot it
+ * honestly, and the inspection contact sheet graphs it beside the sprites.
  */
 
 import {
   TICK_MS,
   TIMING,
+  QUANTISE,
+  BRACE_SETTLE_DEPTH,
   DESCENT,
   STICK,
   BAR_PATH,
@@ -56,7 +62,12 @@ import {
   ticksByLoad,
   clampLoadRatio,
 } from './spriteTuning';
-import { barYAtDepth, strainLevel, type RepDirection } from './rig';
+import {
+  barYAtDepth,
+  pitchLevelForDriftPx,
+  strainLevel,
+  type RepDirection,
+} from './rig';
 
 export type RepPhase = 'BRACE' | 'DESCENT' | 'HOLE' | 'ASCENT' | 'LOCKOUT';
 
@@ -101,6 +112,8 @@ export interface SquatFrame {
   /** Depth quantised to the sheet's authored steps. Identifies the drawing. */
   readonly poseDepth: number;
   readonly strainLevel: number;
+  /** Quantised body response to sagittal forward drift. See the header. */
+  readonly pitchLevel: number;
   readonly barLateralPx: number;
   readonly barTiltDeg: number;
   readonly barBendPx: number;
@@ -120,15 +133,14 @@ export interface SquatRep {
 
 // ---------------------------------------------------------------------------
 // Quantisation of drawn state. A 16-bit game ships a finite sheet; continuous
-// per-frame deformation is a modern-engine tell. These say how finite.
+// per-frame deformation is a modern-engine tell. These say how finite, and they
+// are tunables, so they live in spriteTuning.QUANTISE. Re-exported here under
+// their working names because this is the module that uses them.
 // ---------------------------------------------------------------------------
 
-/** Distinct authored depth steps per direction. */
-export const DEPTH_STEPS = 12;
-/** Bar tilt is drawn in whole degrees of this size. */
-export const TILT_QUANTUM_DEG = 1;
-/** Sleeve droop is drawn to this precision, px. */
-export const BEND_QUANTUM_PX = 0.5;
+export const DEPTH_STEPS = QUANTISE.DEPTH_STEPS;
+export const TILT_QUANTUM_DEG = QUANTISE.TILT_QUANTUM_DEG;
+export const BEND_QUANTUM_PX = QUANTISE.BEND_QUANTUM_PX;
 
 function clamp01(v: number): number {
   return Math.min(1, Math.max(0, v));
@@ -163,10 +175,15 @@ function movingAverage(values: readonly number[], window: number): number[] {
 // Ascent velocity model
 // ---------------------------------------------------------------------------
 
-/** Grid resolution for integrating dt = dh / v(h). */
+/**
+ * Grid resolution for integrating dt = dh / v(h).
+ *
+ * Deliberately NOT in spriteTuning: this is numerical accuracy, not feel.
+ * Doubling it does not change how the rep looks, only how exactly the integral
+ * is evaluated. STICK.MIN_VELOCITY, which does change how the rep looks, is a
+ * tunable and lives there.
+ */
 const VELOCITY_GRID = 1024;
-/** Floor on v(h) so the integral cannot diverge. */
-const MIN_VELOCITY = 0.02;
 
 /**
  * Normalised ascent velocity at bar height h.
@@ -176,7 +193,7 @@ const MIN_VELOCITY = 0.02;
 export function ascentVelocity(h: number, loadRatio: number): number {
   const depth = byLoad(STICK.DEPTH, loadRatio);
   const v = 1 - depth * gauss(h, STICK.HEIGHT_FRAC, STICK.WIDTH);
-  return Math.max(MIN_VELOCITY, v);
+  return Math.max(STICK.MIN_VELOCITY, v);
 }
 
 /**
@@ -230,9 +247,6 @@ function ascentHeightSampler(loadRatio: number): (u: number) => number {
 // Per-phase depth
 // ---------------------------------------------------------------------------
 
-/** Depth the brace settles to before the eccentric proper starts. */
-const BRACE_SETTLE_DEPTH = 0.06;
-
 function descentDepth(u: number, loadRatio: number): number {
   const mix = byLoad(DESCENT.SMOOTHSTEP_MIX, loadRatio);
   const smooth = u * u * (3 - 2 * u);
@@ -247,7 +261,7 @@ function descentDepth(u: number, loadRatio: number): number {
 function forwardDriftDescent(depth: number, loadRatio: number): number {
   const atHole = byLoad(BAR_PATH.FORWARD_AT_HOLE_PX, loadRatio);
   // Drift accumulates late in the eccentric, as the hips travel back.
-  return atHole * Math.pow(clamp01(depth), 1.5);
+  return atHole * Math.pow(clamp01(depth), BAR_PATH.FORWARD_DESCENT_EXPONENT);
 }
 
 function forwardDriftAscent(h: number, loadRatio: number): number {
@@ -268,13 +282,13 @@ function grindWobble(
   tickInPhase: number,
   loadRatio: number,
 ): { lateral: number; tiltDeg: number } {
-  const envelope = gauss(h, STICK.HEIGHT_FRAC, STICK.WIDTH * 1.5);
+  const envelope = gauss(h, STICK.HEIGHT_FRAC, STICK.WIDTH * STICK.WOBBLE_ENVELOPE_WIDEN);
   const phase = (2 * Math.PI * tickInPhase) / STICK.OSCILLATION_PERIOD_TICKS;
   const shake = byLoad(STICK.OSCILLATION_PX, loadRatio) * Math.sin(phase);
   const lean = byLoad(BAR_PATH.LATERAL_PX, loadRatio);
   const tilt = byLoad(BAR_PATH.TILT_DEG, loadRatio);
   return {
-    lateral: envelope * (lean * 0.5 + shake),
+    lateral: envelope * (lean * BAR_PATH.LATERAL_LEAN_SHARE + shake),
     tiltDeg: envelope * tilt * Math.cos(phase),
   };
 }
@@ -305,15 +319,20 @@ function phaseWeight(phase: RepPhase, depth: number, h: number): number {
   }
 }
 
-function strainFor(
-  phase: RepPhase,
-  depth: number,
-  h: number,
-  forwardPx: number,
-  loadRatio: number,
-): number {
+/**
+ * Strain at a point in the rep.
+ *
+ * Load times where-you-are, and nothing else. Forward bar drift used to be
+ * added in here with a gain; it is not, and must not come back. On a maximal
+ * grind — the only rep whose drift is worth drawing — the load term is already
+ * near the top of the range and anything added to it is clamped straight back
+ * off, so the drift's contribution reached the pixels of the LIGHT rep only.
+ * Drift is now its own channel (`pitchLevelForDriftPx`), which is what lets it
+ * be seen on the rep that has it.
+ */
+function strainFor(phase: RepPhase, depth: number, h: number, loadRatio: number): number {
   const base = byLoad(STRAIN.FROM_LOAD, loadRatio);
-  return clamp01(base * phaseWeight(phase, depth, h) + STRAIN.FORWARD_TO_PITCH * forwardPx);
+  return clamp01(base * phaseWeight(phase, depth, h));
 }
 
 // ---------------------------------------------------------------------------
@@ -450,7 +469,7 @@ export function buildSquatRep(loadRatio: number): SquatRep {
       barLateralPx: r.lateralPx,
       barTiltDeg: r.tiltDeg,
       barBendPx: bend,
-      strain: strainFor(r.phase, r.depth, h, r.forwardPx, load),
+      strain: strainFor(r.phase, r.depth, h, load),
       chalkPuff: r.chalkPuff,
     };
   });
@@ -474,6 +493,7 @@ interface DrawKey {
   direction: RepDirection;
   poseDepth: number;
   strainLevel: number;
+  pitchLevel: number;
   lateral: number;
   tilt: number;
   bend: number;
@@ -486,6 +506,7 @@ function drawKeyFor(s: SquatSample): DrawKey {
     direction: s.direction,
     poseDepth: Math.round(clamp01(s.depth) * DEPTH_STEPS) / DEPTH_STEPS,
     strainLevel: strainLevel(s.strain),
+    pitchLevel: pitchLevelForDriftPx(s.barForwardPx),
     lateral: Math.round(s.barLateralPx),
     tilt: quantize(s.barTiltDeg, TILT_QUANTUM_DEG),
     bend: quantize(s.barBendPx, BEND_QUANTUM_PX),
@@ -499,6 +520,7 @@ function sameDrawing(a: DrawKey, b: DrawKey): boolean {
     a.direction === b.direction &&
     a.poseDepth === b.poseDepth &&
     a.strainLevel === b.strainLevel &&
+    a.pitchLevel === b.pitchLevel &&
     a.lateral === b.lateral &&
     a.tilt === b.tilt &&
     a.bend === b.bend &&
@@ -540,6 +562,7 @@ function coalesceFrames(samples: readonly SquatSample[]): SquatFrame[] {
       direction: key.direction,
       poseDepth: key.poseDepth,
       strainLevel: key.strainLevel,
+      pitchLevel: key.pitchLevel,
       barLateralPx: key.lateral,
       barTiltDeg: key.tilt,
       barBendPx: key.bend,
@@ -716,13 +739,50 @@ export function longestAscentPoseRunTicks(rep: SquatRep): number {
   return best;
 }
 
-/** Distinct drawings a rep needs — i.e. how much sheet it costs. */
+/**
+ * Distinct BODY drawings a rep needs — i.e. how much sheet the lifter costs.
+ *
+ * Deliberately keyed on the body's own state only. Bar bend, tilt and lateral
+ * shake are drawn on the bar, not on him, and counting them here would let a
+ * shaking barbell inflate the figure "the lifter is more animated under load".
+ */
 export function distinctDrawingCount(rep: SquatRep): number {
   const seen = new Set<string>();
   for (const f of rep.frames) {
-    seen.add(`${f.direction}:${f.poseDepth}:${f.strainLevel}`);
+    seen.add(`${f.direction}:${f.poseDepth}:${f.strainLevel}:${f.pitchLevel}`);
   }
   return seen.size;
+}
+
+/** Highest strain level the rep ever draws. */
+export function peakStrainLevel(rep: SquatRep): number {
+  return rep.frames.reduce((m, f) => Math.max(m, f.strainLevel), 0);
+}
+
+/** Highest pitch level the rep ever draws. */
+export function peakPitchLevel(rep: SquatRep): number {
+  return rep.frames.reduce((m, f) => Math.max(m, f.pitchLevel), 0);
+}
+
+/**
+ * The frame a rep is drawing at its sticking point — the ugliest frame it has.
+ *
+ * Defined as the concentric frame whose sample is nearest STICK.HEIGHT_FRAC,
+ * so it is the same point of the lift for every load rather than the same tick.
+ * This is the frame the light-vs-maximal body comparison is made at.
+ */
+export function stickingPointFrame(rep: SquatRep): SquatFrame | undefined {
+  let best: SquatFrame | undefined;
+  let bestErr = Infinity;
+  for (const f of rep.frames) {
+    if (f.phase !== 'ASCENT') continue;
+    const err = Math.abs(f.sample.barHeight - STICK.HEIGHT_FRAC);
+    if (err < bestErr) {
+      bestErr = err;
+      best = f;
+    }
+  }
+  return best;
 }
 
 /** Convenience: the two reps the contact sheet compares. */

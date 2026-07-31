@@ -25,13 +25,24 @@
  * of `palette.ts` for the full provenance note and for what could NOT be
  * verified (the IPF rulebook PDF is 403 through this sandbox's proxy).
  *
- * Diameters: the 450 / 450 / 400 / 325 / 228 / 190 / 160 mm ladder for
- * 25 / 20 / 15 / 10 / 5 / 2.5 / 1.25 kg is the standard IWF/IPF calibrated-disc
- * ladder as commonly published. It could NOT be verified against the rulebook
- * from this sandbox and is marked per-entry below. The sub-1.25 kg change discs
- * are ESTIMATED — they are drawn 2-4 px tall regardless, so the estimate is
- * visually inconsequential, but it is an estimate and is labelled as one rather
- * than being passed off as sourced.
+ * Diameters: NOTHING IN THIS FILE HAS A VERIFIED DIAMETER, and the per-entry
+ * flag says so. OpenLifter, the one source that could actually be read from
+ * here, records denominations and colours; it does not record disc geometry.
+ * Every federation rulebook PDF is HTTP 403 through this sandbox's proxy, and
+ * retrying is not going to change that.
+ *
+ * So the flag distinguishes the two grades of unverified rather than pretending
+ * one of them is sourced:
+ *   COMMON_LADDER — the 450 / 450 / 400 / 325 / 228 / 190 / 160 mm ladder for
+ *     25 / 20 / 15 / 10 / 5 / 2.5 / 1.25 kg, which is what plate vendors and
+ *     secondary guides publish as the IWF/IPF calibrated set. Widely agreed on,
+ *     never read from the rules by us.
+ *   ESTIMATED — our own number. The sub-1.25 kg change discs. They are drawn
+ *     2-4 px tall regardless, so the estimate is visually inconsequential, but
+ *     it is an estimate.
+ *
+ * An earlier revision of this file marked the first group `diameterSourced:
+ * true` while this header said the opposite. The header was right.
  *
  * Bar + collars default to 25 kg (20 kg bar, 2.5 kg collars), matching
  * OpenLifter's `defaultBarAndCollarsWeightKg = 25`.
@@ -42,12 +53,18 @@ import { RAMPS, type Ramp } from './palette';
 
 export type PlateHue = 'RED' | 'BLUE' | 'YELLOW' | 'GREEN' | 'BLACK';
 
+/**
+ * How much is known about a diameter. There is no `SOURCED` member, because
+ * nothing here is sourced — see the header. Adding one would require actually
+ * reading a rulebook, which this sandbox cannot do.
+ */
+export type DiameterProvenance = 'COMMON_LADDER' | 'ESTIMATED';
+
 export interface PlateSpec {
   readonly kg: number;
   readonly hue: PlateHue;
   readonly diameterMm: number;
-  /** false where the diameter is our estimate rather than a sourced figure. */
-  readonly diameterSourced: boolean;
+  readonly diameterProvenance: DiameterProvenance;
 }
 
 /**
@@ -57,17 +74,17 @@ export interface PlateSpec {
  * on a game sprite would misrepresent what a meet looks like.
  */
 export const PLATE_SPECS: readonly PlateSpec[] = [
-  { kg: 25, hue: 'RED', diameterMm: 450, diameterSourced: true },
-  { kg: 20, hue: 'BLUE', diameterMm: 450, diameterSourced: true },
-  { kg: 15, hue: 'YELLOW', diameterMm: 400, diameterSourced: true },
-  { kg: 10, hue: 'GREEN', diameterMm: 325, diameterSourced: true },
-  { kg: 5, hue: 'BLACK', diameterMm: 228, diameterSourced: true },
-  { kg: 2.5, hue: 'BLACK', diameterMm: 190, diameterSourced: true },
-  { kg: 1.25, hue: 'BLACK', diameterMm: 160, diameterSourced: true },
-  { kg: 1, hue: 'BLUE', diameterMm: 140, diameterSourced: false },
-  { kg: 0.75, hue: 'RED', diameterMm: 130, diameterSourced: false },
-  { kg: 0.5, hue: 'GREEN', diameterMm: 120, diameterSourced: false },
-  { kg: 0.25, hue: 'BLUE', diameterMm: 110, diameterSourced: false },
+  { kg: 25, hue: 'RED', diameterMm: 450, diameterProvenance: 'COMMON_LADDER' },
+  { kg: 20, hue: 'BLUE', diameterMm: 450, diameterProvenance: 'COMMON_LADDER' },
+  { kg: 15, hue: 'YELLOW', diameterMm: 400, diameterProvenance: 'COMMON_LADDER' },
+  { kg: 10, hue: 'GREEN', diameterMm: 325, diameterProvenance: 'COMMON_LADDER' },
+  { kg: 5, hue: 'BLACK', diameterMm: 228, diameterProvenance: 'COMMON_LADDER' },
+  { kg: 2.5, hue: 'BLACK', diameterMm: 190, diameterProvenance: 'COMMON_LADDER' },
+  { kg: 1.25, hue: 'BLACK', diameterMm: 160, diameterProvenance: 'COMMON_LADDER' },
+  { kg: 1, hue: 'BLUE', diameterMm: 140, diameterProvenance: 'ESTIMATED' },
+  { kg: 0.75, hue: 'RED', diameterMm: 130, diameterProvenance: 'ESTIMATED' },
+  { kg: 0.5, hue: 'GREEN', diameterMm: 120, diameterProvenance: 'ESTIMATED' },
+  { kg: 0.25, hue: 'BLUE', diameterMm: 110, diameterProvenance: 'ESTIMATED' },
 ];
 
 export const PLATE_HUE_RAMPS: Record<PlateHue, Ramp> = {
