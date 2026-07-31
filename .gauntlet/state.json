@@ -100,21 +100,22 @@
       "id": "M4",
       "name": "Meet engine",
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
-      "status": "pending",
-      "verifiable": true
+      "status": "building",
+      "verifiable": true,
+      "note": "Merged. 76 tests green; invariants returned as typed errors, no throws, deterministic replay. Bomb-out modelled as a distinct outcome rather than a zero total. The GDD \u00a76.3 conflict is flagged in-file and asserted by a test so it cannot be quietly deleted. Fresh critic grading now."
     },
     {
       "id": "M5",
       "name": "Fatigue / readiness",
       "bar": "Plausible game-feel abstraction. No visible fatigue meter (\u00a712.3).",
-      "status": "pending",
+      "status": "building",
       "verifiable": true
     },
     {
       "id": "M6",
       "name": "Streak / Recovery Days",
       "bar": "Never punishes daily engagement. Manual token use, hold cap, first-break tutorial.",
-      "status": "pending",
+      "status": "building",
       "verifiable": true
     },
     {
