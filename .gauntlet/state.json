@@ -163,9 +163,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit SNES/Genesis sprite work. Maximal attempt must animate heavier.",
-      "status": "building",
+      "status": "majority",
       "verifiable": false,
-      "note": "Rework merged; 510 tests green. Strain deltas are now an authored table per level rather than one vector scaled by a scalar \u2014 so the heavy drawing is a different drawing, not a louder light one, with two fields that exist only at level 3. At matched depth with an identical 250kg bar, 188 silhouette pixels change with the head masked out. Forward drift became its own channel instead of a term folded into strain, so it now reaches the pixels on a heavy rep. Depth honesty got stronger, not traded: no strain or pitch level moves the shoulder line at any depth, and a new guard stops hip-shoot raising the hip back above the knee. Floors were calibrated against the OLD model \u2014 reinstating it fails five assertions. Confirmed by eye: the difference is distributed down the thighs, feet and arms, not a face swap.",
+      "note": "CHECKABLE HALF WINS ITS BAR; the blind-A/B half stays unverifiable and always will here. The critic formed its view from the pixels before reading a number, then verified the experiment was genuinely controlled rather than trusting it \u2014 head mask tight at ~12x16px, barbell excluded by palette bank with a test proving a 100kg and a 250kg bar read as ZERO body change, and floors that cannot be cleared by inflating one field because six landmark directions must hold at once. Its residual, which it said does not disqualify the pass: the evidence sheet holds one strain/pitch pair fixed while sweeping depth, so it overstates how uniform the separation is. At the brace \u2014 32 of 199 ticks, the first half-second the player sees \u2014 both loads draw the same body. Defensible as authored intent, but the sheet should not imply otherwise.",
       "evidence": "A1-body-load.png"
     },
     {

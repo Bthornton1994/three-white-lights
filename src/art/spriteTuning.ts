@@ -89,6 +89,8 @@ export const QUANTISE = {
   TILT_QUANTUM_DEG: 1,
   /** Sleeve droop is drawn to this precision, px. */
   BEND_QUANTUM_PX: 0.5,
+  /** Lateral bar shake is drawn to this precision, px. */
+  LATERAL_QUANTUM_PX: 1,
 } as const;
 
 /**
@@ -374,6 +376,14 @@ export interface StrainPoseDelta {
  * elbow tuck is more than eight times level 1's, not three times, so a grind
  * is a pose the light rep never passes through rather than a faster version of
  * the one it does.
+ *
+ * Be precise about how far that claim goes. Only KNEE_VALGUS, ELBOW_TUCK,
+ * STANCE_SPREAD and CHEST_COLLAPSE are genuinely authored per level — those
+ * four carry the qualitative change. HIP_SHOOT, HEAD_CRANE and SHOULDER_SHRUG
+ * currently share one ladder (0 / 0.5 / 1.3 / 2.2), which is a scalar written
+ * out three times. That is a deliberate resting point, not a finished
+ * decision: they are the fields a playtester is most likely to want to pull
+ * apart, and the table shape is what makes doing so a one-line edit.
  *
  * The load presets map one-to-one onto the levels, which is what makes the
  * table worth authoring:

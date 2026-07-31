@@ -141,6 +141,7 @@ export interface SquatRep {
 export const DEPTH_STEPS = QUANTISE.DEPTH_STEPS;
 export const TILT_QUANTUM_DEG = QUANTISE.TILT_QUANTUM_DEG;
 export const BEND_QUANTUM_PX = QUANTISE.BEND_QUANTUM_PX;
+export const LATERAL_QUANTUM_PX = QUANTISE.LATERAL_QUANTUM_PX;
 
 function clamp01(v: number): number {
   return Math.min(1, Math.max(0, v));
@@ -507,7 +508,7 @@ function drawKeyFor(s: SquatSample): DrawKey {
     poseDepth: Math.round(clamp01(s.depth) * DEPTH_STEPS) / DEPTH_STEPS,
     strainLevel: strainLevel(s.strain),
     pitchLevel: pitchLevelForDriftPx(s.barForwardPx),
-    lateral: Math.round(s.barLateralPx),
+    lateral: quantize(s.barLateralPx, LATERAL_QUANTUM_PX),
     tilt: quantize(s.barTiltDeg, TILT_QUANTUM_DEG),
     bend: quantize(s.barBendPx, BEND_QUANTUM_PX),
     motes: Math.round(s.chalkPuff * CHALK.MAX_MOTES),
