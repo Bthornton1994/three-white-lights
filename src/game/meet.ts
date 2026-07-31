@@ -1088,9 +1088,9 @@ export function currentAttemptContext(state: MeetState): AttemptContext | null {
     };
   }
   const mayRepeatWeight = previous.status === 'no-lift';
-  // Rounded up onto the DECLARATION grid, not the plate grid: the number handed
-  // to the UI has to be one the lifter may actually call, and `declareAttempt`
-  // would refuse a merely-loadable one.
+  // Rounded UP onto the declaration grid: `minIncrement` says how far the bar
+  // must move, which is not necessarily a number the lifter may call. The value
+  // handed to the UI has to be one `declareAttempt` will actually accept.
   const minimumIncreaseWeight = roundToLegalAttemptWeight(
     previous.weight + state.rules.minIncrement,
     lift,
