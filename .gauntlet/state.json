@@ -49,7 +49,17 @@
     {
       "name": "Reference image retrieval",
       "ok": false,
-      "detail": "blocked at proxy (403 CONNECT)"
+      "detail": "blocked at proxy (403 CONNECT) \u2014 no images, video or PDFs from any host"
+    },
+    {
+      "name": "Reference source code from GitHub",
+      "ok": true,
+      "detail": "raw.githubusercontent.com is reachable \u2014 DOTS coefficients verified against fetched OpenPowerlifting source, not search summaries"
+    },
+    {
+      "name": "Critics running tests themselves",
+      "ok": false,
+      "detail": "critic tool allowlist has no Bash; harness captures raw test output to .gauntlet/evidence/ instead"
     }
   ],
   "pieces": [
@@ -68,15 +78,15 @@
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
       "status": "building",
       "verifiable": true,
-      "note": "Tuchscherer-style RIR chart. Builder instructed to corroborate across sources and mark uncorroborated cells."
+      "note": "Merged. 108-cell Tuchscherer chart, cross-checked against two independent transcriptions; 50 tests green. Fresh critic verifying cell values now."
     },
     {
       "id": "M2",
       "name": "e1RM formulas",
       "bar": "Published e1RM formulas. Binary and testable.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Merged: Epley + Brzycki, Epley as the single default. 84 unit tests green under project config. Fresh critic now verifying formulas against published sources."
+      "note": "SENT BACK by critic: Epley/Brzycki are rep-max formulas, but GDD \u00a73.3 makes almost every logged set deliberately submaximal. RPE could not move e1RM at all for singles. Rework in flight, routing through the published RPE chart."
     },
     {
       "id": "M3",
@@ -84,7 +94,7 @@
       "bar": "Published DOTS coefficients. Binary and testable.",
       "status": "building",
       "verifiable": true,
-      "note": "Builder warned that DOTS search results are contaminated \u2014 an earlier search returned a fabricated acronym expansion."
+      "note": "Merged. Coefficients taken from fetched OpenPowerlifting source bytes rather than search summaries; 68 tests green. Builder also corrected a bad plausibility anchor in its own brief. Fresh critic verifying now."
     },
     {
       "id": "M4",

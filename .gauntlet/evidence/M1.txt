@@ -1,0 +1,79 @@
+EVIDENCE BUNDLE — piece M1
+generated 2026-07-31T03:40:48.593Z
+repo /home/user/three-white-lights
+
+This file is raw, unedited output of the commands shown. It is produced by
+the run harness, not by the agent that wrote the code under test.
+
+======================================================================
+$ npx vitest run src/game/rpe.test.ts --reporter=verbose
+[tests] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/three-white-lights
+
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > matches the published chart in all 108 cells 11ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > covers exactly reps 1-12 and RPE 6-10 in 0.5 steps, and nothing else 4ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 1 reps @ RPE 10 is 100% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 1 reps @ RPE 9 is 95.5% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 1 reps @ RPE 8 is 92.2% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 2 reps @ RPE 10 is 95.5% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 3 reps @ RPE 10 is 92.2% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 3 reps @ RPE 8 is 86.3% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 5 reps @ RPE 8 is 81.1% undefined of 1RM 1ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 5 reps @ RPE 10 is 86.3% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 6 reps @ RPE 9 is 81.1% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 8 reps @ RPE 8 is 73.9% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 10 reps @ RPE 10 is 73.9% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 10 reps @ RPE 8 is 68% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 12 reps @ RPE 10 is 68% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 12 reps @ RPE 6 is 57.2% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 1 reps @ RPE 6 is 86.3% undefined of 1RM 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > preserves the reps-in-reserve diagonal: N @ RPE X equals N+1 @ RPE X+1 2ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > is strictly decreasing as reps rise at a fixed RPE 3ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > is strictly increasing as RPE rises at a fixed rep count 9ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > never exceeds 100% and never drops below the published floor 5ms
+ ✓ src/game/rpe.test.ts > coverage guards > accepts only charted rep counts 1ms
+ ✓ src/game/rpe.test.ts > coverage guards > accepts only charted RPE values 1ms
+ ✓ src/game/rpe.test.ts > coverage guards > does not silently interpolate uncharted RPE values 1ms
+ ✓ src/game/rpe.test.ts > coverage guards > does not extrapolate past 12 reps or below RPE 6 1ms
+ ✓ src/game/rpe.test.ts > coverage guards > absorbs float noise but nothing wider 0ms
+ ✓ src/game/rpe.test.ts > coverage guards > reports its own coverage honestly 0ms
+ ✓ src/game/rpe.test.ts > fractionOf1RM > is the percentage over 100 0ms
+ ✓ src/game/rpe.test.ts > repsInReserve > RPE 10 means 0 reps in reserve 0ms
+ ✓ src/game/rpe.test.ts > repsInReserve > RPE 9.5 means 0.5 reps in reserve 0ms
+ ✓ src/game/rpe.test.ts > repsInReserve > RPE 9 means 1 reps in reserve 0ms
+ ✓ src/game/rpe.test.ts > repsInReserve > RPE 8.5 means 1.5 reps in reserve 0ms
+ ✓ src/game/rpe.test.ts > repsInReserve > RPE 8 means 2 reps in reserve 0ms
+ ✓ src/game/rpe.test.ts > repsInReserve > RPE 7.5 means 2.5 reps in reserve 0ms
+ ✓ src/game/rpe.test.ts > repsInReserve > RPE 7 means 3 reps in reserve 0ms
+ ✓ src/game/rpe.test.ts > repsInReserve > RPE 6.5 means 3.5 reps in reserve 0ms
+ ✓ src/game/rpe.test.ts > repsInReserve > RPE 6 means 4 reps in reserve 0ms
+ ✓ src/game/rpe.test.ts > repsInReserve > rejects uncharted RPE and RIR 0ms
+ ✓ src/game/rpe.test.ts > load prescription > computes the raw load straight off the chart 0ms
+ ✓ src/game/rpe.test.ts > load prescription > snaps to the default kg increment 0ms
+ ✓ src/game/rpe.test.ts > load prescription > snaps to the default lb increment 0ms
+ ✓ src/game/rpe.test.ts > load prescription > honours an explicit increment 0ms
+ ✓ src/game/rpe.test.ts > load prescription > rounds without float noise 0ms
+ ✓ src/game/rpe.test.ts > load prescription > uses the tunable default mode and unit 0ms
+ ✓ src/game/rpe.test.ts > load prescription > rejects unusable inputs 1ms
+ ✓ src/game/rpe.test.ts > e1rmFromChartedSet > inverts the load calculation 3ms
+ ✓ src/game/rpe.test.ts > e1rmFromChartedSet > matches hand-worked examples 0ms
+ ✓ src/game/rpe.test.ts > e1rmFromChartedSet > rejects unusable inputs 1ms
+ ✓ src/game/rpe.test.ts > purity > is referentially transparent 0ms
+ ✓ src/game/rpe.test.ts > purity > does not let a caller mutate the shared chart through the lookup 0ms
+
+ Test Files  1 passed (1)
+      Tests  50 passed (50)
+   Start at  03:40:49
+   Duration  456ms (transform 84ms, setup 0ms, import 113ms, tests 53ms, environment 0ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx tsc --noEmit
+[typecheck] exit code: 0
+======================================================================
+(no output)

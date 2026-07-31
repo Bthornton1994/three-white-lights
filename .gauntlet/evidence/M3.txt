@@ -1,0 +1,97 @@
+EVIDENCE BUNDLE — piece M3
+generated 2026-07-31T03:41:54.878Z
+repo /home/user/three-white-lights
+
+This file is raw, unedited output of the commands shown. It is produced by
+the run harness, not by the agent that wrote the code under test.
+
+======================================================================
+$ npx vitest run src/game/dots.test.ts --reporter=verbose
+[tests] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/three-white-lights
+
+ ✓ src/game/dots.test.ts > published DOTS coefficients > matches the published male coefficients exactly 2ms
+ ✓ src/game/dots.test.ts > published DOTS coefficients > matches the published female coefficients exactly 0ms
+ ✓ src/game/dots.test.ts > published DOTS coefficients > uses the published numerator of 500 0ms
+ ✓ src/game/dots.test.ts > published DOTS coefficients > uses the published bodyweight domain: [40, 210] kg male, [40, 150] kg female 1ms
+ ✓ src/game/dots.test.ts > published DOTS coefficients > orders the coefficients so that c0 is the constant term and c4 the bw^4 term 1ms
+ ✓ src/game/dots.test.ts > dotsDenominator > reproduces the reference denominator for a 93 kg male 0ms
+ ✓ src/game/dots.test.ts > dotsDenominator > reproduces the reference denominator for a 63 kg female 0ms
+ ✓ src/game/dots.test.ts > dotsDenominator > is consistent with the coefficient: coefficient === 500 / denominator 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 40 kg -> 1.271110010858 1ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 74 kg -> 0.723651953014 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 83 kg -> 0.675087375654 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 93 kg -> 0.636251177745 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 100 kg -> 0.61551576456 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 105 kg -> 0.603096398494 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 120 kg -> 0.574306019068 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 165 kg -> 0.524428587128 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 210 kg -> 0.495620661788 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > female at 40 kg -> 1.484796568082 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > female at 47 kg -> 1.310563822471 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > female at 57 kg -> 1.145695204637 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > female at 63 kg -> 1.075514957805 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > female at 76 kg -> 0.967225826967 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > female at 84 kg -> 0.920153576737 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > female at 150 kg -> 0.770756646539 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > male, 93 kg bw, 700 kg total -> 445.3758244217 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > male, 74 kg bw, 800 kg total -> 578.9215624111 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > male, 83 kg bw, 700 kg total -> 472.5611629581 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > male, 105 kg bw, 800 kg total -> 482.4771187954 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > male, 120 kg bw, 500 kg total -> 287.1530095341 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > male, 100 kg bw, 600 kg total -> 369.3094587358 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > male, 165 kg bw, 1152.5 kg total -> 604.4039466647 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > male, 40 kg bw, 400 kg total -> 508.4440043433 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > male, 210 kg bw, 1000 kg total -> 495.6206617883 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > female, 63 kg bw, 400 kg total -> 430.2059831222 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > female, 84 kg bw, 645 kg total -> 593.4990569957 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > female, 57 kg bw, 300 kg total -> 343.708561391 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > female, 47 kg bw, 250 kg total -> 327.6409556178 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > female, 76 kg bw, 500 kg total -> 483.6129134833 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > female, 40 kg bw, 250 kg total -> 371.1991420204 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > female, 150 kg bw, 600 kg total -> 462.4539879237 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > female, 69 kg bw, 200 kg total -> 203.8983981512 DOTS 0ms
+ ✓ src/game/dots.test.ts > bodyweight domain > treats the exact bounds as in-domain 0ms
+ ✓ src/game/dots.test.ts > bodyweight domain > reports below-minimum bodyweights 0ms
+ ✓ src/game/dots.test.ts > bodyweight domain > reports above-maximum bodyweights, with different limits per sex 0ms
+ ✓ src/game/dots.test.ts > bodyweight domain > clamps out-of-domain bodyweights to the boundary instead of extrapolating 0ms
+ ✓ src/game/dots.test.ts > bodyweight domain > would produce nonsense if the polynomial were extrapolated far past the domain 0ms
+ ✓ src/game/dots.test.ts > evaluateDots > returns the score together with the domain information 0ms
+ ✓ src/game/dots.test.ts > evaluateDots > preserves the supplied bodyweight while reporting the clamped one 0ms
+ ✓ src/game/dots.test.ts > evaluateDots > agrees with dotsScore 0ms
+ ✓ src/game/dots.test.ts > structural properties > scales linearly with the total 0ms
+ ✓ src/game/dots.test.ts > structural properties > equals coefficient x total 0ms
+ ✓ src/game/dots.test.ts > structural properties > gives a strictly decreasing coefficient across the whole male domain 16ms
+ ✓ src/game/dots.test.ts > structural properties > gives a strictly decreasing coefficient across the whole female domain 8ms
+ ✓ src/game/dots.test.ts > structural properties > gives female lifters a higher coefficient than male lifters at equal bodyweight 0ms
+ ✓ src/game/dots.test.ts > structural properties > keeps two lifters with equal totals ordered by bodyweight 0ms
+ ✓ src/game/dots.test.ts > input handling > scores a bombed-out meet (0 kg total) as 0 rather than throwing 2ms
+ ✓ src/game/dots.test.ts > input handling > rejects non-finite input 1ms
+ ✓ src/game/dots.test.ts > input handling > rejects non-positive bodyweight and negative totals 0ms
+ ✓ src/game/dots.test.ts > display helpers > rounds to the number of decimals federations print 0ms
+ ✓ src/game/dots.test.ts > display helpers > formats with trailing zeros the way a result sheet does 0ms
+ ✓ src/game/dots.test.ts > plausibility sanity check > 'untrained male' lands in a plausible DOTS band 0ms
+ ✓ src/game/dots.test.ts > plausibility sanity check > 'novice male' lands in a plausible DOTS band 0ms
+ ✓ src/game/dots.test.ts > plausibility sanity check > 'intermediate male' lands in a plausible DOTS band 0ms
+ ✓ src/game/dots.test.ts > plausibility sanity check > 'advanced male' lands in a plausible DOTS band 0ms
+ ✓ src/game/dots.test.ts > plausibility sanity check > 'novice female' lands in a plausible DOTS band 0ms
+ ✓ src/game/dots.test.ts > plausibility sanity check > 'advanced female' lands in a plausible DOTS band 0ms
+ ✓ src/game/dots.test.ts > plausibility sanity check > puts the elite threshold where the community puts it (~500 for a male raw lifter) 0ms
+ ✓ src/game/dots.test.ts > plausibility sanity check > scores real all-time-great totals in the 550-650 range, and nothing above 700 0ms
+
+ Test Files  1 passed (1)
+      Tests  68 passed (68)
+   Start at  03:41:55
+   Duration  358ms (transform 77ms, setup 0ms, import 104ms, tests 45ms, environment 0ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx tsc --noEmit
+[typecheck] exit code: 0
+======================================================================
+(no output)
