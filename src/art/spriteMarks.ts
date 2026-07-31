@@ -113,7 +113,7 @@
 
 import { PAL } from './palette';
 import { CENTER_X } from './spriteTuning';
-import { RIG_GEOMETRY, type Pose } from './rig';
+import { RIG_GEOMETRY, kneeSleeveSpan, singletHemY, type Pose } from './rig';
 import { getPx, setPx, type IndexGrid } from './raster';
 
 // ---------------------------------------------------------------------------
@@ -304,7 +304,7 @@ export function anchorPoint(key: MarkAnchorKey, pose: Pose, sign: number): Ancho
     case 'BELT':
       return at(CENTER_X, pose.waistY);
     case 'HEM':
-      return at(CENTER_X, pose.hipY + G.ATTACH.SINGLET_HEM);
+      return at(CENTER_X, singletHemY(pose));
     case 'DELTOID':
       return at(
         CENTER_X + sign * pose.shoulderHalfW * G.ATTACH.DELTOID,
@@ -351,17 +351,10 @@ export function anchorPoint(key: MarkAnchorKey, pose: Pose, sign: number): Ancho
     case 'SLEEVE_TOP':
     case 'SLEEVE_MID':
     case 'SLEEVE_BOTTOM': {
-      const KS = G.KNEE_SLEEVE;
-      const hipX = CENTER_X + sign * pose.hipHalfW * G.ATTACH.THIGH_ROOT;
-      const kneeX = CENTER_X + sign * pose.kneeHalfW;
-      const ankleX = CENTER_X + sign * pose.ankleHalfW;
-      const upX = kneeX + (hipX - kneeX) * KS.TOWARD_HIP;
-      const upY = pose.kneeY + (pose.hipY - pose.kneeY) * KS.TOWARD_HIP;
-      const dnX = kneeX + (ankleX - kneeX) * KS.TOWARD_ANKLE;
-      const dnY = pose.kneeY + (pose.ankleY - pose.kneeY) * KS.TOWARD_ANKLE;
-      if (key === 'SLEEVE_TOP') return at(upX, upY);
-      if (key === 'SLEEVE_BOTTOM') return at(dnX, dnY);
-      return at((upX + dnX) / 2, (upY + dnY) / 2);
+      const s = kneeSleeveSpan(pose, sign);
+      if (key === 'SLEEVE_TOP') return at(s.topX, s.topY);
+      if (key === 'SLEEVE_BOTTOM') return at(s.botX, s.botY);
+      return at((s.topX + s.botX) / 2, (s.topY + s.botY) / 2);
     }
     case 'CALF':
     case 'SHIN': {
@@ -623,13 +616,19 @@ export const MARKS: readonly Mark[] = [
   },
   // Leg-opening trim. The reference trunks all carry a lighter band at the hem;
   // without it the singlet is a flat field with one vertical gradient.
+  //
+  // ON the hem row, not one above it. The hem is a fraction along the thigh now
+  // (`singletHemY`), which puts it closer to the belt at depth under strain —
+  // and at depth 0.5 / strain 3 the row above the hem was inside the belt's own
+  // edge ring, so the trim landed 0 px there. The last row of cloth is where a
+  // leg-opening band belongs anyway.
   {
     name: 'SINGLET_HEM_TRIM',
     depicts: 'KIT',
     anchor: 'HEM',
     side: 'CENTER',
     over: 'SINGLET',
-    origin: [-7, -1],
+    origin: [-7, 0],
     map: ['333333333333333'],
   },
   // --- belt ---------------------------------------------------------------
@@ -816,12 +815,21 @@ export const MARKS: readonly Mark[] = [
   // Quad sweep: the vastus bulge above the knee, and the shadow that ends it.
   // Near and far again, one ramp step apart.
   //
-  // THIS IS A SHALLOW-DEPTH MARK AND IT IS SUPPOSED TO DISAPPEAR. Below about
-  // half depth the thigh folds up until the singlet hem and the knee sleeve
-  // meet over it and there is no bare thigh left to draw on — measured, the
-  // quad marks paint 8 px a side at lockout and 0 in the hole. The `over: SKIN`
-  // test is what makes that a non-event instead of a mark floating on a
-  // singlet, and it is the reason the surface test exists at all.
+  // THIS IS A SHALLOW-DEPTH MARK AND IT IS SUPPOSED TO DISAPPEAR. Past about
+  // two thirds depth the thigh folds up until the singlet hem and the knee
+  // sleeve meet over it and there is no bare thigh left to draw on — measured,
+  // the quad marks paint 8 px a side at lockout and 0 in the hole. The
+  // `over: SKIN` test is what makes that a non-event instead of a mark floating
+  // on a singlet, and it is the reason the surface test exists at all.
+  //
+  // WHERE THAT LIMIT MOVED TO, and why it was worth moving: it used to be half
+  // depth, and 133 of the 416 pose/strain/pitch combinations had no bare thigh
+  // anywhere in the frame. Those frames are the whole bottom half of every rep,
+  // and through them the legs were two kit tubes with nothing but more kit
+  // drawn on them. A shorter, narrower knee sleeve and a hem that rides the
+  // thigh instead of the hip landmark (`RIG_GEOMETRY.KNEE_SLEEVE`,
+  // `singletHemY`) took that to 105 and 107 frames. It is not zero and must not
+  // be: at full depth a front-on thigh really is two rows tall.
   {
     name: 'QUAD_SWEEP_NEAR',
     depicts: 'FLESH',

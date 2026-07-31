@@ -704,6 +704,15 @@ export const SHADING = {
   VERTICAL_GAIN: 0.17,
   /** Far-side limbs drop this many ramp steps for depth separation. */
   FAR_LIMB_STEP_BIAS: -1,
+  /**
+   * How many ramp steps the 1px edge ring sits under the fill beside it, for
+   * parts drawn with `PartOptions.edgeFollowsLight`.
+   *
+   * 1 is a rim; 2 reads as a keyline again and undoes the point of the option;
+   * 0 makes the ring invisible and the mass loses its boundary. This is a feel
+   * value and will be moved by hand — it decides how hard-edged the figure is.
+   */
+  EDGE_STEP_DROP: 1,
   /** Rim of a plate: fraction of the disc's height that catches the key light. */
   PLATE_RIM_LIT_FRAC: 0.42,
 

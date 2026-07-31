@@ -403,7 +403,18 @@ export const RIG_GEOMETRY = {
   FOREARM_R: [2.0, 1.7] as const,
   HAND_R: 1.9,
   THIGH_R: [4.3, 3.1] as const,
-  SHIN_R: [2.9, 1.9] as const,
+  /**
+   * Calf below the knee, tapering to the ankle.
+   *
+   * Was [2.9, 1.9], which made the bare shin a 4-6px waist between a 6.4px knee
+   * sleeve and a 9px shoe — the one stretch of flesh that is bare at EVERY
+   * depth was the narrowest thing on the leg, so the lower body read as two
+   * dark blocks with a gap. A squatter's gastroc at the sleeve hem is close to
+   * knee width (meet-photo-ref-1), and sprite-ref-1's calf is as wide as its
+   * boot. This still tapers hard into the ankle, which is what stops it
+   * reading as a stovepipe.
+   */
+  SHIN_R: [3.4, 2.1] as const,
 
   FOOT_W: 9,
   /**
@@ -418,15 +429,60 @@ export const RIG_GEOMETRY = {
   FOOT_DROP: 0,
   FOOT_FLARE: 0.5,
 
+  /**
+   * How much a part drawn with an interior edge ring grows by, in px.
+   *
+   * `PartOptions.edge` stamps the ring OUTSIDE the shape, so a part whose
+   * extent has to land on an exact row — the shoe, whose sole must sit on the
+   * platform's top row and not over it — subtracts this from both ends. It was
+   * invisible while the ring was near-black and read as outline; now the ring is
+   * the material's own shadow step it is part of the drawn object, and a shoe
+   * that quietly grew a row would have covered the pale floor its sole is
+   * supposed to read against.
+   */
+  EDGE_INSET_PX: 1,
+
   /** Belt height, centred on waistY, and how far it stands off the waist. */
   BELT_H: 3,
   BELT_OVERHANG: 1.1,
+  /**
+   * Ramp steps the belt sits below the rest of the GEAR kit.
+   *
+   * The belt is the widest single flat mass on the figure — three rows across
+   * the whole waist — so it takes the largest share of any change to the GEAR
+   * ramp. When GEAR was lifted so the knee sleeves would stop vanishing into
+   * the backdrop, the belt came with it and became the brightest large area on
+   * the body, which is a silver belt. Every belt in the references is black or
+   * black-with-a-patch (meet-photo-ref-1, meet-photo-ref-2, and the black waist
+   * band in sprite-ref-2). One step down puts its lit centre at GEAR_MID and
+   * its flanks at GEAR_DARK: leather catching a little light.
+   *
+   * The knee sleeves and shoes deliberately do NOT take this bias — they are
+   * small, they are the parts the ramp was lifted for, and their own marks
+   * (top band, hem, sole, laces) supply their internal contrast.
+   */
+  BELT_STEP_BIAS: -1,
 
-  /** Knee sleeve: fractions along thigh and shin, plus its radii. */
+  /**
+   * Knee sleeve: fractions along thigh and shin, plus its radii.
+   *
+   * SHORTER AND NARROWER THAN IT WAS ([0.26, 0.24], R [3.2, 2.9]). A 7 mm
+   * sleeve on a real lifter covers the joint and a hand's width either side of
+   * it — meet-photo-ref-1 has a clear band of bare quad above the sleeve and
+   * bare calf below it even at the bottom of the squat. Ours reached a quarter
+   * of the way up the thigh from both ends and was WIDER than the shin it sat
+   * on, so from about half depth the sleeve met the singlet hem and the whole
+   * leg was kit. Pulling both fractions in and taking the radii under the new
+   * SHIN_R puts flesh back on both sides of the joint at every depth.
+   *
+   * These four numbers decide how much bare leg the figure has and will be
+   * moved by hand; they are the lower-body counterpart of the arm's break
+   * positions.
+   */
   KNEE_SLEEVE: {
-    TOWARD_HIP: 0.26,
-    TOWARD_ANKLE: 0.24,
-    R: [3.2, 2.9] as const,
+    TOWARD_HIP: 0.19,
+    TOWARD_ANKLE: 0.17,
+    R: [3.0, 2.6] as const,
   },
 
   /** Attachment fractions of the matching pose half-widths. */
@@ -441,8 +497,24 @@ export const RIG_GEOMETRY = {
     STRAP_TOP: 0.5,
     STRAP_BOTTOM: 0.42,
     STRAP_R: [1.5, 1.7] as const,
-    /** Singlet hem below the hip landmark. */
-    SINGLET_HEM: 3,
+    /**
+     * Singlet hem, as a fraction ALONG the thigh from hip toward knee — not, as
+     * it was, a fixed number of rows below the hip landmark.
+     *
+     * A fixed drop is only right while the hip is the highest point of the
+     * thigh. At the bottom of a squat the hip is BELOW the knee, so `hipY + 3`
+     * put the hem four rows below the kneecap: the singlet grew a trouser leg
+     * exactly when the lifter needed to show his quad. A fraction of the
+     * hip->knee segment stays on the thigh at every depth and shortens the
+     * drawn hem as the thigh foreshortens, which is what a leg opening does.
+     *
+     * DEPTH HONESTY IS PRESERVED, and deliberately so: at full depth the thigh
+     * has about two rows of vertical extent, so the hem and the sleeve still
+     * close over it and the quad marks still have nothing to paint on. That is
+     * a fact about a squat seen from the front, not a bug — see the coverage
+     * floor in `spriteMarks.test.ts`.
+     */
+    SINGLET_HEM_ALONG_THIGH: 0.2,
   },
 
   /** Inner-leg seam extent, relative to the hip/knee and ankle landmarks. */
@@ -475,6 +547,35 @@ export const RIG_GEOMETRY = {
 /** Bar centre-line for a pose: it rides the traps, so it tracks the shoulders. */
 export function barYForPose(pose: Pose): number {
   return pose.shoulderY - BAR.SHOULDER_OFFSET_PX;
+}
+
+/**
+ * Bottom row of the singlet's leg opening, on the thigh axis.
+ *
+ * One function rather than the same expression in the composer and in the mark
+ * table: they used to hold `pose.hipY + ATTACH.SINGLET_HEM` independently, and
+ * a hem that the drawing and the mark anchor disagree about is trim floating
+ * off the cloth.
+ */
+export function singletHemY(pose: Pose): number {
+  return pose.hipY + (pose.kneeY - pose.hipY) * RIG_GEOMETRY.ATTACH.SINGLET_HEM_ALONG_THIGH;
+}
+
+/** Top and bottom of the knee sleeve on the leg axis, as (x, y) pairs. */
+export function kneeSleeveSpan(
+  pose: Pose,
+  sign: number,
+): { readonly topX: number; readonly topY: number; readonly botX: number; readonly botY: number } {
+  const KS = RIG_GEOMETRY.KNEE_SLEEVE;
+  const hipX = CENTER_X + sign * pose.hipHalfW * RIG_GEOMETRY.ATTACH.THIGH_ROOT;
+  const kneeX = CENTER_X + sign * pose.kneeHalfW;
+  const ankleX = CENTER_X + sign * pose.ankleHalfW;
+  return {
+    topX: kneeX + (hipX - kneeX) * KS.TOWARD_HIP,
+    topY: pose.kneeY + (pose.hipY - pose.kneeY) * KS.TOWARD_HIP,
+    botX: kneeX + (ankleX - kneeX) * KS.TOWARD_ANKLE,
+    botY: pose.kneeY + (pose.ankleY - pose.kneeY) * KS.TOWARD_ANKLE,
+  };
 }
 
 /** Standing and bottom bar heights, derived from the drawings, not declared. */

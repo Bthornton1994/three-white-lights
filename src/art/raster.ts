@@ -171,6 +171,19 @@ export interface PartOptions {
   /** Outline colour for `edge`. Defaults to the part's own bank outline. */
   readonly edgeIndex?: number;
   /**
+   * Shade the edge ring from the same lamp as the fill, `SHADING.EDGE_STEP_DROP`
+   * steps under it, instead of stamping one flat colour all the way round.
+   *
+   * A flat ring is a rim of the ramp's floor on every side of the mass at once —
+   * the lit flank gets the same near-black as the shadow flank, which is the one
+   * thing a lamp cannot do. Sampled off sprite-ref-1 at native scale, a bare
+   * thigh row reads 80 / 152 / 200 / 233 / 233 / 233 / 233 / 116 / 152 / 116:
+   * one dark pixel where the light leaves the form, and a MID step, not a dark
+   * one, on the other side. That asymmetry is most of what makes the reference's
+   * limbs read as lit cylinders rather than as outlined tubes.
+   */
+  readonly edgeFollowsLight?: boolean;
+  /**
    * How value varies ALONG this mass. Limbs default to `SHADING.AXIAL_LIMB`
    * (flesh, so a muscle belly and two joints); trunks default to
    * `SHADING.AXIAL_FLAT`, because the trunk primitive draws worn kit — belt,
@@ -227,6 +240,7 @@ export function drawLimb(
   const stepBias = opts?.stepBias ?? 0;
   const wantEdge = opts?.edge === true;
   const edgeIdx = edgeIndexFor(ramp, opts);
+  const litEdge = opts?.edgeFollowsLight === true;
   const axial = opts?.axial ?? SHADING.AXIAL_LIMB;
 
   // Two passes so the outline never overwrites fill drawn later in the same part.
@@ -247,16 +261,21 @@ export function drawLimb(
         const dist = Math.hypot(perp, overA + overB);
         if (dist > r) continue;
 
-        if (pass === 0) {
-          setPx(g, x, y, edgeIdx);
-          continue;
-        }
         const rCore = Math.max(0.5, r);
         const n = Math.min(1, Math.max(-1, perp / rCore));
         const nz = Math.sqrt(Math.max(0, 1 - n * n));
         // `t` is the position DOWN the limb. Reading it here is the whole
         // difference between a modelled limb and an extruded stripe.
         const lit = Math.min(1, Math.max(0, lambert(px * n, py * n, nz) + axialTerm(axial, t)));
+        if (pass === 0) {
+          setPx(
+            g,
+            x,
+            y,
+            litEdge ? shadeToIndex(ramp, lit, stepBias - SHADING.EDGE_STEP_DROP) : edgeIdx,
+          );
+          continue;
+        }
         setPx(g, x, y, shadeToIndex(ramp, lit, stepBias));
       }
     }
@@ -320,6 +339,7 @@ export function drawTrunk(
   const stepBias = opts?.stepBias ?? 0;
   const wantEdge = opts?.edge === true;
   const edgeIdx = edgeIndexFor(ramp, opts);
+  const litEdge = opts?.edgeFollowsLight === true;
   // Kit by default: see PartOptions.axial. The torso opts into a real profile.
   const axial = opts?.axial ?? SHADING.AXIAL_FLAT;
   const yA = Math.round(yTop);
@@ -336,16 +356,21 @@ export function drawTrunk(
       for (let x = x0; x <= x1; x += 1) {
         const nx = (x - cx) / Math.max(0.5, hw);
         if (Math.abs(nx) > 1) continue;
-        if (pass === 0) {
-          setPx(g, x, y, edgeIdx);
-          continue;
-        }
         const nz = Math.sqrt(Math.max(0, 1 - nx * nx));
         const vertical = SHADING.VERTICAL_GAIN * (1 - 2 * f);
         const lit = Math.min(
           1,
           Math.max(0, lambert(nx, 0, nz) + vertical + axialTerm(axial, f)),
         );
+        if (pass === 0) {
+          setPx(
+            g,
+            x,
+            y,
+            litEdge ? shadeToIndex(ramp, lit, stepBias - SHADING.EDGE_STEP_DROP) : edgeIdx,
+          );
+          continue;
+        }
         setPx(g, x, y, shadeToIndex(ramp, lit, stepBias));
       }
     }

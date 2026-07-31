@@ -149,11 +149,56 @@ const LIFTER_COLORS: readonly Rgb5[] = [
   [14, 18, 28], //  9 SINGLET_LIGHT
   [5, 4, 6], // 10 HAIR_DARK
   [11, 8, 10], // 11 HAIR_LIGHT
-  [7, 6, 6], // 12 GEAR_DARK       belt / knee sleeves / shoes
-  [13, 11, 10], // 13 GEAR_MID
-  [19, 17, 16], // 14 GEAR_LIGHT
+  // GEAR — belt, both knee sleeves, both shoes. WHY THESE THREE MOVED, AND WHY
+  // THEY DID NOT MOVE FURTHER: see the block comment directly below the bank.
+  [7, 7, 9], // 12 GEAR_DARK
+  [12, 12, 14], // 13 GEAR_MID
+  [18, 18, 19], // 14 GEAR_LIGHT
   [30, 30, 29], // 15 CHALK
 ];
+
+/*
+ * WHY THE GEAR RAMP MOVED, AND WHY IT DID NOT MOVE FURTHER.
+ *
+ * The skin ramp was lifted once already (see SKIN_LIGHT above) and the gear ramp
+ * was left behind, so the figure carried the top of its range only above the
+ * belt: GEAR draws the belt, both knee sleeves and both shoes, which is most of
+ * the lower body by area, and its old steps were 51 / 93 / 143 (Rec.601 luma of
+ * the expanded 8-bit colour). Its darkest step was BELOW BACKDROP_MID's own 54,
+ * so a sleeve's shaded flank was invisible against the backdrop it stood in
+ * front of.
+ *
+ * MEASURED, in this sandbox, off sprite-ref-1 at native scale — the blond
+ * wrestler, masked by colour and split at his own vertical midpoint:
+ *
+ *                       mean luma   px at luma >= 150   composition below mid
+ *   reference, upper       113.7          32.6%
+ *   reference, lower       109.0          21.7%        skin 54% kit 37% line 4%
+ *   ours (was), upper       81.4          22.5%
+ *   ours (was), lower       54.3           4.8%        line 52% kit 29% skin 13%
+ *
+ * The reference's own kit ramp — the wrestler's trunks, knee pad and boots,
+ * which are one saturated pink ramp — measures 53 / 91 / 140. That is within a
+ * few luma of what ours already was. So the gap was NOT mostly the ramp's
+ * values; it was area. Half the lower body was near-black separation line, and
+ * bare flesh was 13% where the reference's is 54%.
+ *
+ * Hence three coordinated changes rather than one big lift:
+ *   1. GEAR moves 51/93/143 -> 59/101/149 and the steps even out (42, 48).
+ *      Enough to clear the backdrop, not enough to out-value flesh.
+ *   2. BACKDROP drops (see STAGE bank) to the reference's own crowd value, so
+ *      GEAR_DARK now sits 23 luma clear of the backdrop instead of 3 below it.
+ *   3. The near-black interior separation line comes off the legs entirely —
+ *      see INTERIOR_EDGE — and the sleeve, hem and shin geometry changes in
+ *      `rig.ts` put bare thigh and calf back into the frame.
+ *
+ * DELIBERATELY NOT DONE: pushing GEAR_LIGHT up to or past SKIN_LIGHT (175).
+ * The reference's kit tops out at 140 against a skin third step of 152 — its
+ * kit stays UNDER flesh. Sleeves, belts and shoes are black kit in this sport
+ * (see meet-photo-ref-1); they must read as dark objects ON a lit leg, not as
+ * the leg. GEAR_LIGHT at 149 is 26 luma under SKIN_LIGHT, which is the same
+ * side of flesh the reference's kit is on.
+ */
 
 // ---------------------------------------------------------------------------
 // Bank 1 — EQUIPMENT
@@ -201,13 +246,32 @@ const EQUIPMENT_COLORS: readonly Rgb5[] = [
 // Bank 2 — STAGE (inspection only, see header)
 // ---------------------------------------------------------------------------
 
+/*
+ * THE STAGE GETS OUT OF THE FIGURE'S WAY.
+ *
+ * A stage is not neutral: whatever the lifter stands in front of decides how
+ * much of the value range he has left. sprite-ref-1 is emphatic about this and
+ * it is measurable — sampled here, its crowd (the whole band behind the ring)
+ * runs mean 38.8 / median 36, i.e. the busiest, most detailed area of the
+ * screen is held to the bottom sixth of the range so the wrestlers can own
+ * everything above it. Its mat, which the figures stand ON rather than in front
+ * of, is the opposite: mean 93.4 / median 102 / p90 120, a pale floor for dark
+ * boots to sit against.
+ *
+ * Ours had that backwards at the top: BACKDROP_MID was 54, ABOVE GEAR_DARK's
+ * own 51, so the lower body was drawn in front of something brighter than its
+ * own kit. BACKDROP now lands on the reference's crowd values and PLATFORM on
+ * its mat values, which also fixes the shoe contact — a dark sole on a pale
+ * platform is what meet-photo-ref-1 shows, and it is the only reason a shoe
+ * reads as standing on something rather than melting into it.
+ */
 const STAGE_COLORS: readonly Rgb5[] = [
   [31, 0, 31], // 0 transparent sentinel
-  [4, 4, 8], // 1 BACKDROP_DARK
-  [7, 6, 11], // 2 BACKDROP_MID
-  [9, 6, 4], // 3 PLATFORM_DARK
-  [14, 10, 6], // 4 PLATFORM_MID
-  [19, 14, 9], // 5 PLATFORM_LIGHT
+  [3, 3, 6], // 1 BACKDROP_DARK    luma 27 (was 35)
+  [5, 4, 8], // 2 BACKDROP_MID     luma 37 (was 54); ref crowd median 36
+  [12, 9, 6], // 3 PLATFORM_DARK   luma 78 (was 53)
+  [17, 13, 9], // 4 PLATFORM_MID   luma 112 (was 87); ref mat median 102
+  [22, 17, 12], // 5 PLATFORM_LIGHT luma 146 (was 121); ref mat p90 120
   [2, 2, 3], // 6 CONTACT_SHADOW
 ];
 
@@ -331,4 +395,63 @@ export type Ramp = readonly number[];
  */
 export function outlineIndexForBank(index: number): number {
   return Math.floor(index / BANK_SIZE) === 1 ? PAL.EQ_OUTLINE : PAL.OUTLINE;
+}
+
+/**
+ * INTERIOR SEPARATION LINES — the line between two overlapping masses that are
+ * BOTH inside the silhouette. Not the same job as `outlineIndexForBank`, which
+ * draws the boundary between the sprite and the world.
+ *
+ * Every part is stamped with a 1px ring before it is filled (`PartOptions.edge`)
+ * so the near leg reads in front of the far one and the sleeve reads in front of
+ * the leg. That ring used to be PAL.OUTLINE — near-black, luma 19 — everywhere,
+ * and `outlinePass` then adds a second near-black pixel outside it, so a 5px-wide
+ * leg carried four columns of black. Measured on the lower half of the figure,
+ * near-black was 52% of the body's own pixels; on the same split of sprite-ref-1
+ * it is 4%, and that reference's arms and thighs are edged with the darkest step
+ * of their OWN material (skin shadow, luma 80) with no keyline at all.
+ *
+ * So on the lower body the ring is now the material's own darkest step. The
+ * silhouette keyline is untouched — `outlinePass` still puts one near-black
+ * pixel outside everything, which is what keeps the figure readable at phone
+ * scale against an unknown background (GDD §12.2).
+ *
+ * TUNING: setting any of these back to PAL.OUTLINE restores the old heavy
+ * keyline for that material and nothing else changes. The upper body is
+ * deliberately absent from this table — the dark breaks at the deltoid, elbow
+ * and wrist are doing anatomical work there and are not separation lines.
+ */
+export const INTERIOR_EDGE = {
+  SKIN: PAL.SKIN_SHADOW,
+  GEAR: PAL.GEAR_DARK,
+  SINGLET: PAL.SINGLET_DARK,
+} as const;
+
+/**
+ * The interior separation colour for whatever material is already at a pixel.
+ *
+ * Used by the hand-drawn inner-leg seam, which has to sit on skin at one row and
+ * on the singlet three rows up. Anything not in `INTERIOR_EDGE` — hair, chalk,
+ * equipment — falls back to the keyline, because for those the black line is
+ * still the right answer.
+ */
+export function interiorEdgeFor(index: number): number {
+  switch (index) {
+    case PAL.SKIN_SHADOW:
+    case PAL.SKIN_MID:
+    case PAL.SKIN_LIGHT:
+    case PAL.SKIN_HI:
+    case PAL.SKIN_FLUSH:
+      return INTERIOR_EDGE.SKIN;
+    case PAL.GEAR_DARK:
+    case PAL.GEAR_MID:
+    case PAL.GEAR_LIGHT:
+      return INTERIOR_EDGE.GEAR;
+    case PAL.SINGLET_DARK:
+    case PAL.SINGLET_MID:
+    case PAL.SINGLET_LIGHT:
+      return INTERIOR_EDGE.SINGLET;
+    default:
+      return PAL.OUTLINE;
+  }
 }
