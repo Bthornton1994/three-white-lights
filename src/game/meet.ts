@@ -23,24 +23,36 @@
  *   - Within a lift the bar weight never decreases (see the conflict note
  *     below). After a good lift it must go UP by at least the federation's
  *     minimum increase; after a no-lift it may be repeated exactly.
- *   - The bar must be loadable. Loadable means two things, both enforced:
- *     it is not lighter than the bar and collars alone, and the load above the
- *     bar is a whole number of the federation's smallest plate pair. Both come
- *     from `MeetLoadingRules`, which is fixed for the whole meet at
- *     `createMeet` — there is no per-attempt way to relax either one.
+ *   - An attempt weight has to clear THREE separate gates, which are three
+ *     different kinds of thing and are never collapsed into one number:
+ *       (1) PHYSICS — the bar floor. Nothing lighter than the bar and collars
+ *           can be on the platform. `WEIGHT_BELOW_BAR`.
+ *       (2) PHYSICS — the plate grid. The load above the bar has to be a whole
+ *           number of the smallest plate PAIR the meet stocks.
+ *           `MeetLoadingRules.loadableIncrement`, default 0.5.
+ *           `WEIGHT_NOT_LOADABLE`.
+ *       (3) RULE — the declaration grid. A weight the bar can physically take
+ *           is still not necessarily a weight a lifter is allowed to call.
+ *           `MeetLoadingRules.declarationIncrement`, default 2.5.
+ *           `WEIGHT_NOT_DECLARABLE`.
+ *     (2) and (3) were ONE field in an earlier version of this module, which
+ *     made every refusal of e.g. 201 kg claim the bar could not be loaded to
+ *     it. That was false: an IPF-standard plate set loads 201 kg without
+ *     difficulty. 201 is refused because it is not a legal declaration.
  *
  * ---------------------------------------------------------------------------
  * SOURCING — WHAT IS CITED HERE AND WHAT IS NOT
  * ---------------------------------------------------------------------------
  * No primary federation rulebook was reachable from the environment this module
- * was written in — review reports that the IPF, USAPL and USPA sites all refuse
- * the request as a matter of egress policy, and that was not re-tested here.
- * Nothing below is presented as a quotation of a rulebook, and no number here
- * should be read as "the IPF says so".
+ * was written in — the IPF, USAPL and USPA sites refuse the request as a matter
+ * of egress policy. Nothing below is presented as a quotation of a rulebook,
+ * and no number here should be read as "the IPF says so".
  *
- * What WAS actually retrieved (2026-07-31) is OpenLifter, the open-source meet
- * software published by the OpenPowerlifting project and used to run real
- * competitions — https://gitlab.com/openpowerlifting/openlifter :
+ * What WAS actually retrieved, and re-verified byte-for-byte on 2026-07-31, is
+ * OpenLifter, the open-source meet software published by the OpenPowerlifting
+ * project and used to run real competitions —
+ * https://gitlab.com/openpowerlifting/openlifter (HTTP 200 on the raw endpoint
+ * for both files below):
  *
  *   - `src/reducers/meetReducer.ts`:
  *       `const defaultBarAndCollarsWeightKg = 25; // Assuming metal 2.5kg collars.`
@@ -49,20 +61,49 @@
  *       `deadliftBarAndCollarsWeightKg` all defaulting to it. That is the source
  *       of MIN_LOADABLE_WEIGHT_KG and of the decision to make the bar weight
  *       per-lift and federation-configurable.
- *       Its default kg plate set is commented "allowing for increments of
- *       0.5kg" — the fine discs are normal meet equipment, which is why fine
- *       loading is a meet-level rule here and not a per-attempt exception.
- *   - `src/components/lifting/AttemptInput.tsx` (`validate()`): a weight lower
- *     than a previous attempt is an ERROR; repeating a weight that was already
- *     lifted successfully is an ERROR; and `asNumber % 2.5 !== 0` is a
- *     WARNING, not an error. It carries no "record attempt" flag at all.
  *
- * That is a secondary source — one project's reading of the rules, not the
- * rules. Treat every constant below as a tunable federation setting rather than
- * a verified rulebook value. In particular the 2.5 kg *minimum increase between
- * attempts* is widely-repeated federation lore that could not be verified here
- * at all, which is why it lives in `MeetLoadingRules.minIncrement` and is not
- * claimed to be universal.
+ *       Its default kg plate set is introduced by the comment
+ *       `// Default kg plates, allowing for increments of 0.5kg.` and the array
+ *       `defaultPlatesKg` stocks `pairCount: 1` of each of the 1.25, 1, 0.75,
+ *       0.5 AND 0.25 kg discs (0.25 kg is the last entry). A PAIR of 0.25 kg
+ *       discs changes the bar by 0.5 kg, which is exactly what that comment
+ *       says. `LOADABLE_WEIGHT_INCREMENT_KG = 0.5` is read off this array; it
+ *       is not a guess, and the default meet plainly does stock change discs.
+ *       (25 kg pairCount is 8, 20/15/10/5/2.5 are pairCount 1, and 50/2/1.5
+ *       are pairCount 0.)
+ *
+ *   - `src/components/lifting/AttemptInput.tsx` (`validate()`): a weight lower
+ *     than a previous attempt is an ERROR ("Disallow this weight if it's a
+ *     decrease from a previous attempt"); repeating a weight already lifted
+ *     successfully is an ERROR; and the last check before returning is
+ *     `if (asNumber % 2.5 !== 0) return "warning";` — a WARNING, not an error,
+ *     applied to the DECLARED NUMBER measured from zero, not from the bar. It
+ *     carries no "record attempt" flag at all.
+ *
+ * WHAT THAT DOES AND DOES NOT SUPPORT:
+ *   - CITED: 0.5 kg is the granularity real meet software assumes the bar can
+ *     be loaded to by default, because the default kit includes 0.25 kg discs.
+ *   - CITED: real meet software treats a declaration that is not a multiple of
+ *     2.5 as anomalous — but flags it rather than refusing it, and measures the
+ *     multiple from zero. `DECLARATION_INCREMENT_KG` is anchored at zero for
+ *     that reason.
+ *   - UNCITED: that any federation's rulebook *requires* declarations to be
+ *     multiples of 2.5 kg. OpenLifter's warning is consistent with it but does
+ *     not establish it, and OpenLifter is meet-director tooling that has to
+ *     accept record attempts, unit conversions and data corrections, so its
+ *     permissiveness is a UI posture rather than a claim about the rules.
+ *   - UNCITED: the 2.5 kg minimum increase between attempts. Project review
+ *     adjudicated it in this engine's favour on the reasoning that the IPF's
+ *     automatic-increment provision (a lifter who submits nothing inside the
+ *     one-minute allowance is granted +2.5 kg) only makes sense if 2.5 kg is
+ *     the standard progression. That reasoning was NOT verifiable here against
+ *     a primary rulebook and is recorded as an adjudication, not a citation.
+ *   - UNCITED: which discs any particular federation certifies for competition.
+ *     Equipment-approval lists live on federation sites, which are unreachable.
+ *
+ * OpenLifter is in any case a secondary source — one project's reading of the
+ * rules, not the rules. Every value below is a tunable federation setting on
+ * `MeetLoadingRules`, not a verified rulebook constant.
  *
  * ---------------------------------------------------------------------------
  * DESIGN CONFLICT — NEEDS A HUMAN DECISION. NOT RESOLVED HERE.
@@ -96,11 +137,11 @@
  * REMOVED FEATURE — `recordAttempt`. Read before re-adding it.
  * ---------------------------------------------------------------------------
  * An earlier version of this module took a per-attempt `recordAttempt` boolean
- * that dropped BOTH the loading granularity and the minimum increase to 0.5 kg,
- * measured from the lifter's own previous attempt. Nothing validated the flag,
- * so its only effect was to switch two invariants off on request: `declare 200
- * good` then `declare 201 recordAttempt: true` was accepted, and 201 went into
- * the total.
+ * that dropped BOTH the declaration granularity and the minimum increase to
+ * 0.5 kg, measured from the lifter's own previous attempt. Nothing validated
+ * the flag, so its only effect was to switch two invariants off on request:
+ * `declare 200 good` then `declare 201 recordAttempt: true` was accepted, and
+ * 201 went into the total.
  *
  * It has been removed rather than repaired, for two reasons:
  *
@@ -122,9 +163,46 @@
  *      not remove it.
  *
  * Federation records are therefore an explicit NON-GOAL (below). A federation
- * that really does load to 0.5 kg says so once, for the whole meet, in
- * `MeetLoadingRules.loadableIncrement`. It is never a per-attempt claim, and
- * nothing a caller passes to `declareAttempt` can loosen a loading rule.
+ * that really does let attempts be called on the half-kilo says so once, for
+ * the whole meet, in `MeetLoadingRules.declarationIncrement`. It is never a
+ * per-attempt claim, and nothing a caller passes to `declareAttempt` can loosen
+ * a rule.
+ * ---------------------------------------------------------------------------
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THE RULES CARRY A SEAL — AND EXACTLY WHAT IT IS WORTH
+ * ---------------------------------------------------------------------------
+ * `MeetLoadingRules` is fixed for the whole meet at `createMeet`. That used to
+ * be prose rather than an invariant: `MeetState` is a transparent object, so
+ *
+ *     declareAttempt(
+ *       { ...state, rules: { ...state.rules, declarationIncrement: 0.5 } },
+ *       { weight: 200.5 },
+ *     )
+ *
+ * type-checked in strict mode with no cast and was accepted. The per-attempt
+ * escape hatch had not disappeared; it had moved up one level.
+ *
+ * `SealedMeetRules` closes that. `createMeet` folds the rule values into a
+ * `seal`, and every entry point that lets a rule decide an outcome
+ * (`declareAttempt`, `suggestNextAttempt`) recomputes it and refuses on a
+ * mismatch with `MEET_RULES_TAMPERED`. The spread above still type-checks — a
+ * spread copies the old seal verbatim, and no type can stop that — but it is
+ * now REJECTED at runtime, which is the property the prose was claiming.
+ *
+ * What the seal is NOT: it is not a security boundary and is not claimed to be
+ * one. The fold is plain arithmetic, right here in the source, over a handful
+ * of numbers; a caller determined to forge a seal can reimplement it in a
+ * dozen lines. `sealMeetRules` is deliberately not exported so that forging is
+ * a deliberate act rather than an accident, and that is the whole claim: the
+ * ORDINARY mutation — the one that type-checks and looks innocent in a diff —
+ * does not work. Real tamper-resistance belongs on the server, per CLAUDE.md
+ * "Server-authoritative progression"; this is the client-side half.
+ *
+ * `currentAttemptContext` deliberately does NOT check the seal: it is a
+ * read-model that cannot fail, and callers use it to render. Hand it tampered
+ * rules and it will report the numbers those rules imply — but nothing it
+ * returns can get past `declareAttempt`, which does check.
  * ---------------------------------------------------------------------------
  *
  * DELIBERATE NON-GOALS (so their absence is not mistaken for an error):
@@ -137,10 +215,15 @@
  *     declaration before calling `declareAttempt`.
  *   - Out-of-competition fourth attempts: they do not affect the total and are
  *     not modelled.
- *   - Exact plate math (which discs go on the bar, in what order). Loadability
- *     is modelled as "bar and collars, plus a whole number of the smallest
- *     plate pair", which is the constraint attempt selection needs; the bar-load
- *     display can compute the actual discs from the weight.
+ *   - Exact plate math (which discs go on the bar, in what order) and plate
+ *     INVENTORY. Loadability is modelled as "bar and collars, plus a whole
+ *     number of the smallest plate pair", which is the constraint attempt
+ *     selection needs. It assumes the meet owns enough discs to reach any
+ *     multiple of that pair — true of the retrieved default kit within any
+ *     sane range, false in general. A bar-load display computing the actual
+ *     discs must read `loadableIncrement` (0.5 by default), never
+ *     `declarationIncrement`, or it will draw a plate rack with no change
+ *     plates in it.
  *   - Timing of the one-minute clock: this module holds no clock (see purity).
  *   - DOTS/Wilks scoring and e1RM live in their own modules and are not
  *     imported here.
@@ -184,21 +267,76 @@ export const COLLAR_PAIR_WEIGHT_KG = 5;
  */
 export const MIN_LOADABLE_WEIGHT_KG = COMPETITION_BAR_WEIGHT_KG + COLLAR_PAIR_WEIGHT_KG;
 
-/** Smallest legal increase between two attempts on the same lift. */
+/**
+ * Smallest legal increase between two attempts on the same lift.
+ *
+ * UNCITED as a rulebook value — see the sourcing note. Adjudicated by project
+ * review on the automatic-increment argument, not read out of a rulebook here.
+ * Distinct from `DECLARATION_INCREMENT_KG`: this is how far the bar must MOVE,
+ * that is which numbers may be CALLED. They happen to coincide at 2.5 under the
+ * defaults, which is why `INSUFFICIENT_INCREASE` cannot fire under
+ * `DEFAULT_MEET_RULES` — see that constant's note.
+ */
 export const MIN_ATTEMPT_INCREMENT_KG = 2.5;
 
 /**
- * Granularity the bar can be loaded to ABOVE the bar-and-collars weight — i.e.
- * twice the smallest plate the meet stocks a pair of. 2.5 kg is a pair of
- * 1.25 kg discs; a meet stocking 0.25 kg discs sets this to 0.5.
+ * PHYSICS. The smallest change disc the meet stocks a PAIR of.
+ *
+ * CITED: the last entry of OpenLifter's `defaultPlatesKg` is
+ * `{ weightKg: 0.25, pairCount: 1, ... }`. The default meet stocks 0.25 kg
+ * discs; this is not an exotic federation setting.
  */
-export const LOADABLE_WEIGHT_INCREMENT_KG = 2.5;
+export const SMALLEST_CHANGE_PLATE_KG = 0.25;
+
+/**
+ * PHYSICS. Granularity the bar can be loaded to ABOVE the bar-and-collars
+ * weight: one disc per side, so twice the smallest disc.
+ *
+ * CITED: 2 x 0.25 = 0.5, which is exactly what OpenLifter's own comment over
+ * that array says — "Default kg plates, allowing for increments of 0.5kg."
+ *
+ * This is the number a bar-load / plate-rack renderer wants. It is NOT the
+ * number attempt declaration is validated against — that is
+ * `DECLARATION_INCREMENT_KG`. A meet that genuinely stocks nothing finer than
+ * 1.25 kg discs sets this to 2.5.
+ */
+export const LOADABLE_WEIGHT_INCREMENT_KG = SMALLEST_CHANGE_PLATE_KG * 2;
+
+/**
+ * RULE, NOT PHYSICS. Granularity an attempt may be DECLARED on, measured from
+ * zero rather than from the bar.
+ *
+ * The bar can be loaded to 201 kg without difficulty (see
+ * `LOADABLE_WEIGHT_INCREMENT_KG`). 201 is refused because a lifter may not call
+ * it, not because the plates cannot make it, and `WEIGHT_NOT_DECLARABLE` says
+ * so in as many words.
+ *
+ * PARTIALLY CITED: real meet software flags `declared % 2.5 !== 0` as anomalous
+ * and measures the multiple from zero, which fixes both the value and the
+ * anchoring. That it is a hard rule in any federation's book is UNCITED here —
+ * no rulebook was reachable. Federations that allow finer calls (record
+ * attempts, lb-native meets) set `MeetLoadingRules.declarationIncrement`.
+ */
+export const DECLARATION_INCREMENT_KG = 2.5;
 
 /** Float slop tolerated when comparing weights. */
 export const WEIGHT_EPSILON = 1e-6;
 
 /** Decimal places weights are normalised to, to keep float math tidy. */
 export const WEIGHT_DECIMAL_PLACES = 3;
+
+/**
+ * Seal-fold parameters. NOT game-feel values and not tuning knobs — they only
+ * have to be fixed, so that the same rules always fold to the same seal. Named
+ * rather than inline because unexplained magic numbers in a hash read as
+ * cargo cult. Kept small enough that every intermediate stays exact in a
+ * double: seal < 2^31, times the prime, is under 2^53.
+ */
+const RULES_SEAL_BASIS = 2166136261;
+const RULES_SEAL_PRIME = 16777619;
+const RULES_SEAL_MODULUS = 2 ** 31;
+/** Stand-in for a non-finite rule value, so the fold always yields a number. */
+const RULES_SEAL_NON_FINITE = -1;
 
 /**
  * Suggested jump for the next attempt, as a fraction of the previous attempt's
@@ -304,23 +442,54 @@ export interface LiftProgress {
 
 /**
  * Federation-configurable loading rules. Fixed for the whole meet at
- * `createMeet`. Deliberately has no per-attempt escape hatch: if a rule can be
- * relaxed, it is relaxed for every attempt of the meet, visibly, in one place.
+ * `createMeet` — see the seal note at the top of this file for how that is
+ * enforced rather than merely asserted. Deliberately has no per-attempt escape
+ * hatch: if a rule can be relaxed, it is relaxed for every attempt of the meet,
+ * visibly, in one place.
+ *
+ * The three knobs are three different KINDS of thing. Do not merge them.
  */
 export interface MeetLoadingRules {
   /**
-   * Weight of the bar and collars with no plates, per lift. Per-lift because
-   * some meets run a different bar for one of the three (OpenLifter carries
-   * `squat`/`bench`/`deadliftBarAndCollarsWeightKg` separately). This is also
-   * the minimum declarable weight.
+   * PHYSICS. Weight of the bar and collars with no plates, per lift. Per-lift
+   * because some meets run a different bar for one of the three (OpenLifter
+   * carries `squat`/`bench`/`deadliftBarAndCollarsWeightKg` separately).
+   *
+   * This is the physical floor, NOT necessarily the minimum declarable weight:
+   * if it does not itself sit on the declaration grid, the lightest legal call
+   * is heavier than the empty bar. `minimumAttemptWeight` returns that; this
+   * field is what `barAndCollarsWeight()` returns.
    */
   readonly barAndCollarsWeight: Readonly<Record<LiftKind, number>>;
-  /** Minimum legal increase between attempts on the same lift. */
+  /**
+   * RULE. Minimum legal increase between attempts on the same lift — how far
+   * the bar must MOVE, not which numbers may be called.
+   */
   readonly minIncrement: number;
-  /** Granularity the bar can be loaded to above `barAndCollarsWeight`. */
+  /**
+   * PHYSICS. Granularity the bar can be loaded to above `barAndCollarsWeight`,
+   * i.e. twice the smallest disc the meet stocks a pair of. Default 0.5.
+   * A plate-rack renderer reads THIS.
+   */
   readonly loadableIncrement: number;
+  /**
+   * RULE. Granularity an attempt may be declared on, measured from zero.
+   * Default 2.5. Attempt validation reads THIS. It is normally coarser than
+   * `loadableIncrement` — the bar can hold weights a lifter may not call.
+   */
+  readonly declarationIncrement: number;
 }
 
+/**
+ * NOTE ON `INSUFFICIENT_INCREASE`: under these defaults `minIncrement` and
+ * `declarationIncrement` are both 2.5, so the next legal call after a good 200
+ * is 202.5 either way and `INSUFFICIENT_INCREASE` cannot fire — 201 is refused
+ * one gate earlier, as `WEIGHT_NOT_DECLARABLE`. That is correct, not dead code:
+ * the two rules genuinely coincide at 2.5/2.5. The error exists for a
+ * federation that declares on a finer grid than it requires between attempts
+ * (`declarationIncrement: 0.5, minIncrement: 2.5`), and the tests exercise it
+ * with exactly those rules.
+ */
 export const DEFAULT_MEET_RULES: MeetLoadingRules = {
   barAndCollarsWeight: {
     squat: MIN_LOADABLE_WEIGHT_KG,
@@ -329,7 +498,22 @@ export const DEFAULT_MEET_RULES: MeetLoadingRules = {
   },
   minIncrement: MIN_ATTEMPT_INCREMENT_KG,
   loadableIncrement: LOADABLE_WEIGHT_INCREMENT_KG,
+  declarationIncrement: DECLARATION_INCREMENT_KG,
 };
+
+declare const MEET_RULES_SEAL: unique symbol;
+
+/**
+ * Opaque tag proving a `MeetLoadingRules` came out of `createMeet` unchanged.
+ * Branded so it cannot be produced by accident; see the seal note at the top of
+ * this file for what that does and does not buy.
+ */
+export type MeetRulesSeal = number & { readonly [MEET_RULES_SEAL]: 'meet-rules' };
+
+/** The rules as they live inside `MeetState`: sealed at `createMeet`. */
+export interface SealedMeetRules extends MeetLoadingRules {
+  readonly seal: MeetRulesSeal;
+}
 
 interface MeetOutcomeBase {
   /** Best good lift per lift; null where a lift was bombed or never contested. */
@@ -372,7 +556,7 @@ export type MeetPhase =
   | { readonly kind: 'complete'; readonly outcome: MeetOutcome };
 
 export interface MeetState {
-  readonly rules: MeetLoadingRules;
+  readonly rules: SealedMeetRules;
   readonly phase: MeetPhase;
   readonly lifts: Readonly<Record<LiftKind, LiftProgress>>;
 }
@@ -390,13 +574,23 @@ export type MeetErrorCode =
   | 'WRONG_ATTEMPT_NUMBER'
   | 'TOO_MANY_ATTEMPTS'
   | 'INVALID_WEIGHT'
+  /** PHYSICS: lighter than the bar and collars. */
   | 'WEIGHT_BELOW_BAR'
+  /** PHYSICS: the plates cannot make this weight. Genuinely unloadable. */
   | 'WEIGHT_NOT_LOADABLE'
+  /**
+   * RULE: the bar could take it, but it is not a weight a lifter may call.
+   * Never conflate this with `WEIGHT_NOT_LOADABLE` — telling a player that
+   * 201 kg "cannot be loaded" is a false statement about the equipment.
+   */
+  | 'WEIGHT_NOT_DECLARABLE'
   | 'WEIGHT_DECREASED'
   | 'REPEAT_AFTER_GOOD_LIFT'
   | 'INSUFFICIENT_INCREASE'
   | 'INVALID_JUDGING_PANEL'
   | 'INVALID_MEET_RULES'
+  /** The meet's rules object was altered after `createMeet` sealed it. */
+  | 'MEET_RULES_TAMPERED'
   | 'NO_PREVIOUS_ATTEMPT';
 
 export interface MeetError {
@@ -428,16 +622,11 @@ function normalizeWeight(weight: number): number {
 export type RoundingMode = 'nearest' | 'up' | 'down';
 
 /**
- * Snaps a weight to a whole number of `increment`s. This is pure granularity
- * arithmetic and knows nothing about the bar — for anything that has to go on
- * a platform use `roundToLoadableAttemptWeight`, which also honours the bar and
- * collars.
+ * Snaps a weight to a whole number of `increment`s, measured from zero. Pure
+ * grid arithmetic: it knows nothing about bars, plates or federations, and the
+ * caller decides which grid it is snapping to.
  */
-export function roundToLoadableWeight(
-  weight: number,
-  increment: number = LOADABLE_WEIGHT_INCREMENT_KG,
-  mode: RoundingMode = 'nearest',
-): number {
+export function roundToIncrement(weight: number, increment: number, mode: RoundingMode = 'nearest'): number {
   const steps = weight / increment;
   const rounded =
     mode === 'up'
@@ -448,8 +637,8 @@ export function roundToLoadableWeight(
   return normalizeWeight(rounded * increment);
 }
 
-/** True when `weight` is a whole number of `increment`s. Granularity only. */
-export function isLoadableWeight(weight: number, increment: number = LOADABLE_WEIGHT_INCREMENT_KG): boolean {
+/** True when `weight` is a whole number of `increment`s from zero. */
+export function isOnIncrementGrid(weight: number, increment: number): boolean {
   if (!Number.isFinite(weight) || !Number.isFinite(increment) || increment <= 0) return false;
   const steps = weight / increment;
   return Math.abs(steps - Math.round(steps)) * increment < WEIGHT_EPSILON;
@@ -463,28 +652,69 @@ function isSameWeight(a: number, b: number): boolean {
   return Math.abs(a - b) < WEIGHT_EPSILON;
 }
 
-/** The bar and collars for this lift: the lightest declarable weight. */
-export function minimumAttemptWeight(lift: LiftKind, rules: MeetLoadingRules = DEFAULT_MEET_RULES): number {
+// --- The three gates, one function each. ------------------------------------
+
+/**
+ * PHYSICS. The weight of the empty loaded bar for this lift. Nothing lighter
+ * can be on the platform. Not necessarily a legal declaration — see
+ * `minimumAttemptWeight`.
+ */
+export function barAndCollarsWeight(lift: LiftKind, rules: MeetLoadingRules = DEFAULT_MEET_RULES): number {
   return rules.barAndCollarsWeight[lift];
 }
 
 /**
- * Can this weight actually be on the bar? Both halves of the rule at once:
- * at least bar-and-collars, and a whole number of plate pairs above it.
+ * PHYSICS. Can the plates actually make this weight on this bar? At least
+ * bar-and-collars, and a whole number of smallest-plate-PAIRS above it,
+ * measured FROM THE BAR.
+ *
+ * Under the defaults this is a 0.5 grid, so 200.5 and 201 both pass — the bar
+ * really does load to them. Whether either may be DECLARED is a separate
+ * question: see `isDeclarableWeight`. A bar-load display wants this function.
  */
 export function isLoadableAttemptWeight(
   weight: number,
   lift: LiftKind,
   rules: MeetLoadingRules = DEFAULT_MEET_RULES,
 ): boolean {
-  const minimum = minimumAttemptWeight(lift, rules);
-  if (!Number.isFinite(weight) || !isAtLeast(weight, minimum)) return false;
-  return isLoadableWeight(normalizeWeight(weight - minimum), rules.loadableIncrement);
+  const bar = barAndCollarsWeight(lift, rules);
+  if (!Number.isFinite(weight) || !isAtLeast(weight, bar)) return false;
+  return isOnIncrementGrid(normalizeWeight(weight - bar), rules.loadableIncrement);
 }
 
 /**
- * Snaps a weight to something that can actually go on the platform for this
- * lift. Never returns less than bar-and-collars, whatever the rounding mode.
+ * RULE. May a lifter call this number at all? A whole number of
+ * `declarationIncrement`s measured FROM ZERO (the anchoring real meet software
+ * uses). Says nothing about whether the bar could take it.
+ */
+export function isDeclarableWeight(weight: number, rules: MeetLoadingRules = DEFAULT_MEET_RULES): boolean {
+  return isOnIncrementGrid(weight, rules.declarationIncrement);
+}
+
+/** Both gates: a weight the bar can take AND the lifter is allowed to call. */
+export function isLegalAttemptWeight(
+  weight: number,
+  lift: LiftKind,
+  rules: MeetLoadingRules = DEFAULT_MEET_RULES,
+): boolean {
+  return isLoadableAttemptWeight(weight, lift, rules) && isDeclarableWeight(weight, rules);
+}
+
+/**
+ * The lightest weight that is BOTH loadable and declarable for this lift: the
+ * bar and collars rounded up onto the declaration grid. Equals the bar itself
+ * whenever the bar sits on that grid, which it does under the defaults (25 is a
+ * multiple of 2.5).
+ */
+export function minimumAttemptWeight(lift: LiftKind, rules: MeetLoadingRules = DEFAULT_MEET_RULES): number {
+  return roundToIncrement(barAndCollarsWeight(lift, rules), rules.declarationIncrement, 'up');
+}
+
+/**
+ * PHYSICS ONLY. Snaps a weight onto the plate grid for this lift, never below
+ * the bar. The result may not be a legal declaration — for anything a lifter is
+ * going to call, use `roundToLegalAttemptWeight`. This exists for equipment-
+ * facing code (bar-load display, plate rack).
  */
 export function roundToLoadableAttemptWeight(
   weight: number,
@@ -492,22 +722,60 @@ export function roundToLoadableAttemptWeight(
   rules: MeetLoadingRules = DEFAULT_MEET_RULES,
   mode: RoundingMode = 'nearest',
 ): number {
-  const minimum = minimumAttemptWeight(lift, rules);
-  if (!Number.isFinite(weight) || weight <= minimum + WEIGHT_EPSILON) return normalizeWeight(minimum);
-  const above = roundToLoadableWeight(weight - minimum, rules.loadableIncrement, mode);
-  return normalizeWeight(minimum + Math.max(above, 0));
+  const bar = barAndCollarsWeight(lift, rules);
+  if (!Number.isFinite(weight) || weight <= bar + WEIGHT_EPSILON) return normalizeWeight(bar);
+  const above = roundToIncrement(weight - bar, rules.loadableIncrement, mode);
+  return normalizeWeight(bar + Math.max(above, 0));
+}
+
+/**
+ * Snaps a weight to something a lifter may actually declare: on the declaration
+ * grid, and never below `minimumAttemptWeight`. This is what every suggestion
+ * in this module goes through.
+ *
+ * Assumes `validateMeetRules` has passed. That check guarantees the declaration
+ * grid is a sub-grid of the plate grid, so a result on the declaration grid is
+ * loadable for free and no second search is needed.
+ */
+export function roundToLegalAttemptWeight(
+  weight: number,
+  lift: LiftKind,
+  rules: MeetLoadingRules = DEFAULT_MEET_RULES,
+  mode: RoundingMode = 'nearest',
+): number {
+  const floor = minimumAttemptWeight(lift, rules);
+  if (!Number.isFinite(weight) || weight <= floor + WEIGHT_EPSILON) return normalizeWeight(floor);
+  return normalizeWeight(Math.max(roundToIncrement(weight, rules.declarationIncrement, mode), floor));
 }
 
 /**
  * Are these rules usable at all? Nonsense configuration must fail loudly at the
- * point of use rather than quietly disabling a loading check.
+ * point of use rather than quietly disabling a check.
+ *
+ * Beyond "every number is positive", this enforces the one relationship the
+ * rest of the module relies on: THE DECLARATION GRID MUST BE REACHABLE WITH THE
+ * PLATES. If it is not, every legal call would be unloadable and the engine
+ * would happily suggest weights it then refused. Two conditions make it true —
+ * the declaration step is a whole number of plate steps, and the bar sits on
+ * the plate grid measured from zero.
  */
 export function validateMeetRules(rules: MeetLoadingRules): MeetError | null {
   if (!Number.isFinite(rules.loadableIncrement) || rules.loadableIncrement <= 0) {
     return { code: 'INVALID_MEET_RULES', message: 'The loadable increment must be a positive number.' };
   }
+  if (!Number.isFinite(rules.declarationIncrement) || rules.declarationIncrement <= 0) {
+    return { code: 'INVALID_MEET_RULES', message: 'The declaration increment must be a positive number.' };
+  }
   if (!Number.isFinite(rules.minIncrement) || rules.minIncrement <= 0) {
     return { code: 'INVALID_MEET_RULES', message: 'The minimum attempt increase must be a positive number.' };
+  }
+  if (!isOnIncrementGrid(rules.declarationIncrement, rules.loadableIncrement)) {
+    return {
+      code: 'INVALID_MEET_RULES',
+      message:
+        `Attempts are declared in steps of ${rules.declarationIncrement}, but the plates only change the bar ` +
+        `in steps of ${rules.loadableIncrement}; declared weights would not be loadable.`,
+    };
   }
   for (const lift of LIFT_ORDER) {
     const barWeight = rules.barAndCollarsWeight[lift];
@@ -517,13 +785,61 @@ export function validateMeetRules(rules: MeetLoadingRules): MeetError | null {
         message: `The ${lift} bar and collars must weigh a positive number.`,
       };
     }
+    if (!isOnIncrementGrid(barWeight, rules.loadableIncrement)) {
+      return {
+        code: 'INVALID_MEET_RULES',
+        message:
+          `The ${lift} bar and collars weigh ${barWeight}, which is not a whole number of ${rules.loadableIncrement} ` +
+          `plate steps from zero; no declared weight could be loaded on it.`,
+      };
+    }
   }
   return null;
 }
 
-/** Defensive copy: meet state must not alias a caller-owned rules object. */
-function copyRules(rules: MeetLoadingRules): MeetLoadingRules {
+/**
+ * Folds the rule values into a seal. Deterministic, total, and DELIBERATELY NOT
+ * EXPORTED — see the seal note at the top of this file for exactly how much
+ * that is worth (it stops the accidental spread, not a determined forger).
+ */
+function sealMeetRules(rules: MeetLoadingRules): MeetRulesSeal {
+  const factor = 10 ** WEIGHT_DECIMAL_PLACES;
+  const fields: readonly number[] = [
+    rules.barAndCollarsWeight.squat,
+    rules.barAndCollarsWeight.bench,
+    rules.barAndCollarsWeight.deadlift,
+    rules.minIncrement,
+    rules.loadableIncrement,
+    rules.declarationIncrement,
+  ];
+  let seal = RULES_SEAL_BASIS;
+  for (const field of fields) {
+    const value = Number.isFinite(field) ? Math.round(field * factor) : RULES_SEAL_NON_FINITE;
+    seal = (seal * RULES_SEAL_PRIME + value) % RULES_SEAL_MODULUS;
+  }
+  return Math.abs(seal) as MeetRulesSeal;
+}
+
+/**
+ * Has this meet's rules object been altered since `createMeet` sealed it?
+ * Returns the error to report, or null if the seal still matches.
+ */
+export function checkMeetRulesSeal(rules: SealedMeetRules): MeetError | null {
+  if (rules.seal === sealMeetRules(rules)) return null;
   return {
+    code: 'MEET_RULES_TAMPERED',
+    message:
+      'The meet’s loading rules were changed after the meet started. Rules are fixed for the whole meet at ' +
+      'createMeet; start a new meet instead of editing them mid-card.',
+  };
+}
+
+/**
+ * Defensive copy plus seal: meet state must not alias a caller-owned rules
+ * object, and must be able to tell later if someone swapped one in.
+ */
+function copyAndSealRules(rules: MeetLoadingRules): SealedMeetRules {
+  const copied: MeetLoadingRules = {
     barAndCollarsWeight: {
       squat: rules.barAndCollarsWeight.squat,
       bench: rules.barAndCollarsWeight.bench,
@@ -531,7 +847,9 @@ function copyRules(rules: MeetLoadingRules): MeetLoadingRules {
     },
     minIncrement: rules.minIncrement,
     loadableIncrement: rules.loadableIncrement,
+    declarationIncrement: rules.declarationIncrement,
   };
+  return { ...copied, seal: sealMeetRules(copied) };
 }
 
 // ---------------------------------------------------------------------------
@@ -615,9 +933,10 @@ export interface AttemptContext {
   /** Repeating the exact weight is legal only after a no-lift. */
   readonly mayRepeatWeight: boolean;
   /**
-   * Lowest legal declaration. On the opener that is the bar and collars; after
-   * a no-lift it is the repeat weight; after a good lift it is the minimum
-   * increase. Never null — there is always a floor.
+   * Lowest legal declaration. On the opener that is `minimumAttemptWeight`
+   * (normally the bar and collars); after a no-lift it is the repeat weight;
+   * after a good lift it is the minimum increase. Never null — there is always
+   * a floor.
    */
   readonly minimumWeight: number;
   /**
@@ -645,8 +964,10 @@ export function currentAttemptContext(state: MeetState): AttemptContext | null {
     };
   }
   const mayRepeatWeight = previous.status === 'no-lift';
-  // Rounded up so the number handed to the UI is one the bar can actually take.
-  const minimumIncreaseWeight = roundToLoadableAttemptWeight(
+  // Rounded up onto the DECLARATION grid, not the plate grid: the number handed
+  // to the UI has to be one the lifter may actually call, and `declareAttempt`
+  // would refuse a merely-loadable one.
+  const minimumIncreaseWeight = roundToLegalAttemptWeight(
     previous.weight + state.rules.minIncrement,
     lift,
     state.rules,
@@ -676,9 +997,18 @@ function initialLiftProgress(lift: LiftKind): LiftProgress {
   };
 }
 
+/**
+ * Start a meet. The rules handed in are copied and sealed here and are fixed
+ * for the whole meet: nothing downstream can relax one, and an altered rules
+ * object is refused with `MEET_RULES_TAMPERED` rather than honoured.
+ *
+ * Nonsense rules are NOT rejected here — `createMeet` has no way to report an
+ * error and a throwing constructor would break the Result discipline. They are
+ * caught at the point of use, by `validateMeetRules`, with a message.
+ */
 export function createMeet(rules: MeetLoadingRules = DEFAULT_MEET_RULES): MeetState {
   return {
-    rules: copyRules(rules),
+    rules: copyAndSealRules(rules),
     phase: { kind: 'awaiting-declaration', lift: LIFT_ORDER[0], attemptNumber: 1 },
     lifts: {
       squat: initialLiftProgress('squat'),
@@ -753,14 +1083,21 @@ export interface DeclareAttemptInput {
   /** Optional guard: rejected unless it matches the attempt on deck. */
   readonly attemptNumber?: AttemptNumber;
   readonly weight: number;
-  // NOTE: there is deliberately no flag here that loosens a loading rule. See
-  // the REMOVED FEATURE note at the top of this file before adding one.
+  // NOTE: there is deliberately no flag here that loosens a loading or
+  // declaration rule. See the REMOVED FEATURE note at the top of this file
+  // before adding one.
 }
 
 /**
  * Declare the weight for the attempt on deck. Enforces the non-decreasing
- * invariant (see the DESIGN CONFLICT note at the top of this file) and both
- * halves of loadability. Nothing in `input` can switch either off.
+ * invariant (see the DESIGN CONFLICT note at the top of this file) and all
+ * three weight gates. Nothing in `input` can switch any of them off, and
+ * nothing done to `state.rules` after `createMeet` can either.
+ *
+ * The gates run physics-first, so a refusal always names the most concrete true
+ * reason: an unloadable weight is reported as unloadable, and a loadable weight
+ * that is merely not callable is reported as not declarable. They are never
+ * reported as each other.
  */
 export function declareAttempt(state: MeetState, input: DeclareAttemptInput): Result<MeetState> {
   const targetError = checkTarget(state, input);
@@ -771,6 +1108,8 @@ export function declareAttempt(state: MeetState, input: DeclareAttemptInput): Re
   }
   const rulesError = validateMeetRules(state.rules);
   if (rulesError !== null) return { ok: false, error: rulesError };
+  const sealError = checkMeetRulesSeal(state.rules);
+  if (sealError !== null) return { ok: false, error: sealError };
 
   const { lift, attemptNumber } = state.phase;
   const weight = input.weight;
@@ -779,17 +1118,25 @@ export function declareAttempt(state: MeetState, input: DeclareAttemptInput): Re
     return fail('INVALID_WEIGHT', 'An attempt weight must be a positive number.');
   }
 
-  const minimum = minimumAttemptWeight(lift, state.rules);
-  if (!isAtLeast(weight, minimum)) {
+  const bar = barAndCollarsWeight(lift, state.rules);
+  if (!isAtLeast(weight, bar)) {
     return fail(
       'WEIGHT_BELOW_BAR',
-      `The ${lift} bar and collars already weigh ${minimum}; ${weight} cannot be loaded.`,
+      `The ${lift} bar and collars already weigh ${bar}; nothing lighter than that can go on the platform.`,
     );
   }
   if (!isLoadableAttemptWeight(weight, lift, state.rules)) {
     return fail(
       'WEIGHT_NOT_LOADABLE',
-      `Above the ${minimum} bar the plates only load in ${state.rules.loadableIncrement} increments; ${weight} cannot be loaded.`,
+      `Above the ${bar} bar and collars the plates only change the load in steps of ` +
+        `${state.rules.loadableIncrement}; there is no way to load ${weight}.`,
+    );
+  }
+  if (!isDeclarableWeight(weight, state.rules)) {
+    return fail(
+      'WEIGHT_NOT_DECLARABLE',
+      `Attempts are declared in steps of ${state.rules.declarationIncrement}, and ${weight} is not one of them. ` +
+        `The bar loads to ${weight} without trouble — it is the declaration rule that refuses it, not the plates.`,
     );
   }
 
@@ -1079,6 +1426,8 @@ export type AttemptStrategy = ProgressiveAttemptStrategy | 'repeat';
 export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy): Result<number> {
   const rulesError = validateMeetRules(state.rules);
   if (rulesError !== null) return { ok: false, error: rulesError };
+  const sealError = checkMeetRulesSeal(state.rules);
+  if (sealError !== null) return { ok: false, error: sealError };
   const context = currentAttemptContext(state);
   if (context === null) {
     return fail('NO_ATTEMPT_DECLARED', 'No attempt is on deck to suggest a weight for.');
@@ -1097,9 +1446,9 @@ export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy):
 
   const minimum =
     context.minimumIncreaseWeight ??
-    roundToLoadableAttemptWeight(previousWeight + state.rules.minIncrement, context.lift, state.rules, 'up');
+    roundToLegalAttemptWeight(previousWeight + state.rules.minIncrement, context.lift, state.rules, 'up');
   const jumped = previousWeight * (1 + ATTEMPT_JUMP_FRACTION[context.lift][strategy]);
-  const rounded = roundToLoadableAttemptWeight(jumped, context.lift, state.rules, 'up');
+  const rounded = roundToLegalAttemptWeight(jumped, context.lift, state.rules, 'up');
   if (isAtLeast(rounded, minimum)) return ok(rounded);
   return ok(minimum);
 }
@@ -1107,8 +1456,12 @@ export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy):
 /**
  * Suggested opening attempt from a one-rep-max estimate (GDD §6.1).
  * `oneRepMax` is supplied by the caller — this module does not compute e1RM.
- * Rounds down, because an opener you miss is how meets go wrong, but never
- * below the bar and collars: there is no such thing as a lighter attempt.
+ * Rounds down onto the declaration grid, because an opener you miss is how
+ * meets go wrong, but never below `minimumAttemptWeight`: there is no such
+ * thing as a lighter legal attempt.
+ *
+ * Takes bare rules rather than a `MeetState`, so there is no seal to check —
+ * it does not read or alter a running meet.
  */
 export function suggestOpener(
   lift: LiftKind,
@@ -1121,5 +1474,5 @@ export function suggestOpener(
     return fail('INVALID_WEIGHT', 'A one-rep-max estimate must be a positive number.');
   }
   const target = oneRepMax * OPENER_FRACTION_OF_1RM[lift];
-  return ok(roundToLoadableAttemptWeight(target, lift, rules, 'down'));
+  return ok(roundToLegalAttemptWeight(target, lift, rules, 'down'));
 }
