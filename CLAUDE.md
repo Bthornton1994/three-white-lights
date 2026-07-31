@@ -90,8 +90,14 @@ These are checkable by real powerlifters and must be correct, not approximated:
 
 - **RPE → %1RM**: use a standard reps-in-reserve chart (Tuchscherer-style). Do
   not invent values.
-- **e1RM**: use an established formula (Epley or Brzycki). State which one is
-  used in a comment and be consistent.
+- **e1RM**: **Epley**, and only Epley: `1RM = weight × (1 + reps/30)`. Not
+  "Epley or Brzycki" — one formula, named here, used everywhere, so two parts of
+  the app can never report different numbers for the same set. Brzycki is not a
+  fallback and should not appear in the codebase.
+  Note that Epley is a *rep-max* formula: it reads `reps` as reps to failure. A
+  submaximal set must be converted to its rep-max equivalent first, via the RPE
+  chart above (reps + reps in reserve), before Epley is applied. Applying Epley
+  directly to an RPE-targeted set under-reports e1RM and is a bug.
 - **DOTS / Wilks**: use the published coefficients. Do not homebrew.
 - **Meet structure**: squat → bench → deadlift, three attempts each, total is the
   sum of best successful attempt per lift, attempts may not go down in weight

@@ -256,11 +256,24 @@ Per attempt:
 
 ### 6.3 Attempt Selection — The Real Tension
 
-After a **make**: conservative next attempt (lock in total) vs. aggressive
-(bigger total, higher miss risk).
+**Attempts within a lift never decrease.** This is the competition rule, not a
+difficulty choice: once a weight is taken, the next attempt on that lift either
+repeats it or goes up. There is no dropping down, so every attempt decision is
+a one-way ratchet — which is exactly where the tension comes from.
 
-After a **miss**: repeat the weight (use the last attempt) vs. drop down
-(guaranteed banked total, no PR).
+After a **make**: a small increase (lock in a bigger total, low miss risk) vs. a
+big one (a PR on the line, higher miss risk). The floor is already banked; the
+question is how much of the remaining attempt to spend.
+
+After a **miss**: **repeat vs. increase**. Repeating is the safe play — the same
+weight, a second chance at banking it, nothing gained beyond what was already
+on the bar. Increasing after a miss is the aggressive one: it concedes the
+missed weight is not coming back and reaches past it, which either rescues the
+lift outright or spends the last attempt for nothing.
+
+The bite is that a miss does not lower the floor — it *raises* it. A lifter who
+misses their opener cannot retreat to something safe; the lightest thing they
+can still take is the weight that just beat them.
 
 **Bombing out** (missing all three on a lift) ends the meet with zero on that
 lift. This is real and feared in the actual sport. Give it a distinct, somber
