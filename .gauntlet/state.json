@@ -9,6 +9,12 @@
   "blockers": [
     {
       "severity": "resolved",
+      "title": "Both open design questions decided by the human",
+      "body": "Attempt weight: the GDD's \"drop down\" option is removed \u2014 within a lift, attempts repeat or increase, never decrease, and the tension is rewritten accordingly. e1RM: Epley named specifically, one formula, Brzycki banned from the codebase.",
+      "consequence": "The meet engine already enforced non-decreasing, so that decision cost no code. The Epley decision did: Brzycki was the fallback past the chart's coverage precisely because Epley steps DOWN there (chart 1.7422w at rep max 16 vs Epley 1.5500w at 16.5). Rather than ship a non-monotonic curve or keep a banned formula, the module now refuses past a 16 effective rep max \u2014 a real capability loss, spelled out in its header and enumerated in tests."
+    },
+    {
+      "severity": "resolved",
       "title": "Run halted once on the subagent spend limit, now resumed",
       "body": "Six agents were killed mid-flight when the monthly limit was hit: two critics, the e1RM rework, and the fatigue, streak and sprite builders. No usable work was lost \u2014 neither partially-started builder had committed anything, and their worktrees were discarded.",
       "consequence": "Dispatch is working again. The queue resumed in priority order: close the e1RM send-back first, then grade the two modules that were merged but never judged. The art and UI half of the run still has not started."
@@ -18,18 +24,6 @@
       "title": "Reference material cannot be retrieved in this sandbox",
       "body": "Egress policy allows the npm registry and GitHub, and WebSearch returns text results. Everything else \u2014 Wikipedia/Wikimedia, openpowerlifting.org, sprite archives, image hosts \u2014 is refused at the proxy with a 403 on CONNECT. No image, video, or PDF reference can be fetched.",
       "consequence": "Every GDD \u00a712.2 bar that requires blind A/B against real reference art is structurally unverifiable here: lifter sprites, gym/environment art, result card vs. real federation sheets, anime cut-ins, and meet-day tension vs. broadcast footage. Per CLAUDE.md these are reported unverifiable rather than passed on reasoning alone. More loop rounds cannot fix this \u2014 it needs reference files supplied locally."
-    },
-    {
-      "severity": "needs a decision",
-      "title": "GDD \u00a76.3 contradicts CLAUDE.md on decreasing attempt weight",
-      "body": "CLAUDE.md states attempts may not go down in weight within a lift. GDD \u00a76.3 offers, after a miss, to \"repeat the weight \u2026 vs. drop down (guaranteed banked total, no PR)\". Both cannot hold.",
-      "consequence": "Real-sport rules side with CLAUDE.md \u2014 within a lift a weight may be repeated after a miss but never decreased \u2014 so the meet engine enforces non-decreasing and the conflict is flagged rather than silently resolved. If \u00a76.3's \"drop down\" meant taking a smaller jump rather than going below the last attempt, the GDD wording needs updating; if it meant a real decrease, that is a deliberate departure from the sport and the engine needs changing. Your call \u2014 CLAUDE.md forbids me picking one quietly."
-    },
-    {
-      "severity": "needs a decision",
-      "title": "CLAUDE.md names Epley/Brzycki; the e1RM fix now leads with the RPE chart",
-      "body": "CLAUDE.md's Domain Correctness rule says e1RM should use \"an established formula (Epley or Brzycki)\". Closing the e1RM send-back meant making the estimate RPE-aware, and the cleanest published route was the Tuchscherer chart itself \u2014 its own structure already collapses to one curve over effective rep max. Epley is gone; Brzycki survives only past the chart's coverage.",
-      "consequence": "Both remedies the critic named led here, and GDD \u00a712.2 lists \"published RPE charts\" alongside e1RM formulas, so nothing homebrewed is involved \u2014 but it is a judgement call about which published source dominates, and it departs from CLAUDE.md's literal wording. Flagged rather than settled. Either CLAUDE.md's e1RM sentence needs widening, or the chart-first approach needs reverting."
     }
   ],
   "capabilities": [
@@ -101,9 +95,9 @@
       "id": "M2",
       "name": "e1RM formulas",
       "bar": "Published e1RM formulas. Binary and testable.",
-      "status": "majority",
+      "status": "building",
       "verifiable": true,
-      "note": "Graded: mathematics verified sound by hand \u2014 RPE moves the estimate correctly, RIR substitution applied consistently, composite curve strictly increasing, seam continuous, no invented values anywhere. Failed only on auditability: the header quoted chart figures that had gone stale, which I introduced when merging the chart fix and have now corrected, along with an inverted inequality the critic also caught in my correction."
+      "note": "Rebuilt to the human\u2019s decision: Epley only, Brzycki gone from code, types, constants and prose. Past the chart\u2019s coverage the module now refuses rather than extrapolating, because Epley cannot join the top of the chart without the curve stepping down. Verified here: the two widest accepted sets (12 reps @ RPE 6 and 16 @ RPE 10, both effective rep max 16) agree exactly at 348.43, and anything past that refuses. The builder mutation-tested rather than trusting green \u2014 reinstating an Epley fallback fails 10 tests, applying Epley to raw reps fails 22. It also flagged a doc/code tension in the new rule\u2019s wording rather than quietly satisfying it."
     },
     {
       "id": "M3",

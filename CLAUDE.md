@@ -91,9 +91,18 @@ These are checkable by real powerlifters and must be correct, not approximated:
 - **RPE → %1RM**: use a standard reps-in-reserve chart (Tuchscherer-style). Do
   not invent values.
 - **e1RM**: **Epley**, and only Epley: `1RM = weight × (1 + reps/30)`. Not
-  "Epley or Brzycki" — one formula, named here, used everywhere, so two parts of
-  the app can never report different numbers for the same set. Brzycki is not a
-  fallback and should not appear in the codebase.
+  "Epley or Brzycki" — one formula, so two parts of the app can never report
+  different numbers for the same set. Brzycki is not a fallback and must not
+  appear in the codebase, under any name.
+  Where the published RPE chart covers a set, the estimate is the chart read
+  backwards, because that is the curve loads are prescribed from and using
+  anything else would make a lifter's e1RM drift every time they hit their
+  target exactly. Past the chart's coverage the app **refuses** rather than
+  extrapolating: Epley cannot be joined onto the top of the chart without the
+  curve stepping down, and a second formula is banned. So Epley is the one
+  rep-max formula the codebase may ever reach for, not a curve the player-facing
+  path currently runs through — say that plainly rather than claiming it is
+  applied everywhere.
   Note that Epley is a *rep-max* formula: it reads `reps` as reps to failure. A
   submaximal set must be converted to its rep-max equivalent first, via the RPE
   chart above (reps + reps in reserve), before Epley is applied. Applying Epley

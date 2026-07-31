@@ -853,9 +853,11 @@ export function loadForRpeTarget(
  * Chart-based e1RM implied by a completed set: weight lifted for `reps` at
  * `rpe`. This is the algebraic inverse of the same lookup table.
  *
- * NOTE: this is *chart-derived*, not a rep-max formula. Epley/Brzycki e1RM
- * lives in its own module (CLAUDE.md "Domain Correctness"); do not use this
- * function as a substitute for it.
+ * NOTE: this is *chart-derived*, not a rep-max formula. e1RM lives in its own
+ * module (CLAUDE.md "Domain Correctness"), which routes through this same
+ * chart; do not use this function as a substitute for it. CLAUDE.md names
+ * Epley as the codebase's only rep-max formula — no second one belongs here or
+ * anywhere else.
  */
 export function e1rmFromChartedSet(weight: number, reps: number, rpe: number): number {
   if (!Number.isFinite(weight) || weight <= 0) {
