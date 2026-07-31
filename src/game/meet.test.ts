@@ -22,7 +22,6 @@ import {
   allCompletedAttempts,
   barAndCollarsWeight,
   bestSuccessfulAttempt,
-  checkMeetRulesSeal,
   countWhiteLights,
   createMeet,
   currentAttemptContext,
@@ -38,6 +37,7 @@ import {
   isSplitDecision,
   isValidJudgePanel,
   lightestCallableWeightIgnoringTheCard,
+  meetLoadingRules,
   meetOutcome,
   nearestCallableWeightsNow,
   passAttempt,
@@ -61,7 +61,7 @@ import type {
   LiftProgress,
   MeetError,
   MeetLoadingRules,
-  MeetRulesSeal,
+  MeetRules,
   MeetState,
   NearestCallableWeights,
   Result,
@@ -1068,7 +1068,7 @@ const GRID_SCAN_MAX_STEPS = 4000;
  * measured against, so it must not share the hint's reasoning.
  */
 function callableGridWeights(state: MeetState, low: number, high: number): readonly number[] {
-  const increment = state.rules.declarationIncrement;
+  const increment = meetLoadingRules(state).declarationIncrement;
   const first = Math.ceil(low / increment - 1e-9);
   const found: number[] = [];
   for (let step = first; step * increment <= high + 1e-9; step += 1) {
@@ -1101,8 +1101,9 @@ function expectHintTellsTheTruth(state: MeetState, typed: number, message: strin
   }
 
   const lift = state.phase.kind === 'awaiting-declaration' ? state.phase.lift : 'squat';
-  const bar = barAndCollarsWeight(lift, state.rules);
-  const ceiling = Math.max(typed, ...named) + 4 * state.rules.declarationIncrement;
+  const rules = meetLoadingRules(state);
+  const bar = barAndCollarsWeight(lift, rules);
+  const ceiling = Math.max(typed, ...named) + 4 * rules.declarationIncrement;
   const callable = callableGridWeights(state, bar, ceiling);
 
   const pair = HINT_BOTH_SIDES.exec(message);
@@ -1259,13 +1260,6 @@ describe('a hint never names a weight the engine then refuses', () => {
     expect(nonsense.code).toBe('INVALID_WEIGHT');
     expect(nonsense.message).not.toMatch(/legal call/);
     expect(nearestCallableWeightsNow(createMeet(), Number.NaN)).toEqual({ below: null, above: null });
-
-    // A tampered rules object is refused as tampering; nothing is offered off
-    // rules the engine has stopped trusting.
-    const state = createMeet();
-    const relaxed: MeetState = { ...state, rules: { ...state.rules, declarationIncrement: 0.5 } };
-    expect(expectError(declareAttempt(relaxed, { weight: 200.5 })).message).not.toMatch(/legal call/);
-    expect(nearestCallableWeightsNow(relaxed, 200.5)).toEqual({ below: null, above: null });
   });
 
   it('sweeps every refusal a meet can produce and checks each named weight against the engine', () => {
@@ -1406,10 +1400,6 @@ describe('a hint never names a weight the engine then refuses', () => {
     const broken: MeetLoadingRules = { ...DEFAULT_MEET_RULES, declarationIncrement: 0 };
     expect(isCallableWeightNow(createMeet(broken), 200)).toBe(false);
 
-    const tampered: MeetState = { ...opener, rules: { ...opener.rules, declarationIncrement: 0.5 } };
-    expect(isCallableWeightNow(tampered, 200.5)).toBe(false);
-    expect(isCallableWeightNow(tampered, 200)).toBe(false);
-
     for (const weight of [Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 24, 201]) {
       expect(isCallableWeightNow(opener, weight)).toBe(false);
     }
@@ -1519,6 +1509,10 @@ describe('loadable weights', () => {
       declarationIncrement: Number.POSITIVE_INFINITY,
     };
     expect(validateMeetRules(infiniteGrid)?.code).toBe('INVALID_MEET_RULES');
+    // ...and a meet started on them is refused at the point of use rather than
+    // quietly running with a check disabled.
+    expect(expectError(declareAttempt(createMeet(infiniteGrid), { weight: 200 })).code).toBe('INVALID_MEET_RULES');
+    expect(expectError(suggestNextAttempt(createMeet(infiniteGrid), 'standard')).code).toBe('INVALID_MEET_RULES');
   });
 
   it('no longer rejects a configuration for disagreeing with a plate grid it does not have', () => {
@@ -1549,146 +1543,184 @@ describe('loadable weights', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The rules are fixed for the whole meet — enforced, not merely asserted
+// The rules are fixed for the whole meet — enforced by the type, not by a check
+//
+// `MeetState.rules` is a `MeetRules`: one property, under a symbol meet.ts does
+// not export. There is no runtime tamper check to test. What is tested is
+// (a) that the values still come back out correctly, (b) that the spread which
+// used to relax a rule no longer COMPILES, and (c) that the ways round the
+// compiler buy nothing, because the values are not where a caller can reach.
+//
+// (b) is graded by `tsc --noEmit`, not by vitest — vitest strips types without
+// checking them. Each `@ts-expect-error` below FAILS THE BUILD if the line under
+// it starts compiling, so these are not claims about types written in prose;
+// they are the compiler's own verdict.
+//
+// TO CHECK THAT THEY STILL BITE (a type-level test that has gone vacuous looks
+// exactly like one that passes): in meet.ts replace `MeetRules` with
+// `= MeetLoadingRules`, `stateRules` with `return state.rules`, and createMeet's
+// wrapper with `copyLoadingRules(rules)`. `tsc --noEmit` must then report TS2578
+// "Unused '@ts-expect-error' directive" on six of the seven directives here, and
+// `vitest run` must fail four of this block's tests on the runtime half. The
+// seventh directive is the `seal` one: it needs a `seal: number` field added
+// back to the same structural type before it reports TS2578. Both variants were
+// run against this suite.
 // ---------------------------------------------------------------------------
 
-describe('meet rules are sealed at createMeet', () => {
-  it('accepts the rules it sealed itself', () => {
+describe('meet rules are opaque', () => {
+  it('hands the values back through meetLoadingRules, as a copy', () => {
     for (const rules of ALL_RULE_SETS) {
-      expect(checkMeetRulesSeal(createMeet(rules).rules)).toBeNull();
+      expect(meetLoadingRules(createMeet(rules))).toEqual(rules);
     }
+    const state = createMeet();
+    // A copy all the way down: two reads share no object.
+    expect(meetLoadingRules(state)).not.toBe(meetLoadingRules(state));
+    expect(meetLoadingRules(state).barAndCollarsWeight).not.toBe(meetLoadingRules(state).barAndCollarsWeight);
   });
 
-  it('refuses the spread that used to reopen the escape hatch', () => {
-    // This exact expression type-checks in strict mode with no cast. It used to
-    // be accepted, which meant "no per-attempt way to relax a rule" was prose
-    // rather than an invariant: the hatch had moved up one level, not closed.
+  it('cannot be edited through the object meetLoadingRules returns', () => {
+    // `readonly` is compile-time only, so the copy is what makes this hold at
+    // runtime. Handing back the live object would reopen the hatch in the one
+    // direction opacity does not close by itself.
     const state = createMeet();
+    const escaped: {
+      barAndCollarsWeight: Record<LiftKind, number>;
+      minIncrement: number;
+      declarationIncrement: number;
+    } = meetLoadingRules(state);
+    escaped.declarationIncrement = 0.5;
+    escaped.minIncrement = 0.5;
+    escaped.barAndCollarsWeight.squat = 5;
+
+    expect(meetLoadingRules(state)).toEqual(DEFAULT_MEET_RULES);
+    expect(expectError(declareAttempt(state, { weight: 200.5 })).code).toBe('WEIGHT_NOT_DECLARABLE');
+    expect(expectError(declareAttempt(state, { weight: 10 })).code).toBe('WEIGHT_BELOW_BAR');
+  });
+
+  it('does not compile the spread that used to reopen the escape hatch', () => {
+    const state = createMeet();
+
+    // POSITIVE CONTROL, and it is load-bearing: an untouched re-spread must
+    // still compile and still run. Without it, a `MeetRules` that had become
+    // uninhabitable would satisfy every directive below for the wrong reason.
+    const untouched: MeetState = { ...state, rules: { ...state.rules } };
+    expect(declareAttempt(untouched, { weight: 200 }).ok).toBe(true);
+    expect(meetLoadingRules(untouched)).toEqual(DEFAULT_MEET_RULES);
+
+    // THE ACCIDENT. This exact expression used to type-check in strict mode
+    // with no cast, and the meet then honoured the relaxed rule.
     const relaxed: MeetState = {
       ...state,
+      // @ts-expect-error — `declarationIncrement` is not a property of MeetRules.
       rules: { ...state.rules, declarationIncrement: 0.5, minIncrement: 0.5 },
     };
-    const error = expectError(declareAttempt(relaxed, { weight: 200.5 }));
-    expect(error.code).toBe('MEET_RULES_TAMPERED');
-    expect(checkMeetRulesSeal(relaxed.rules)?.code).toBe('MEET_RULES_TAMPERED');
-  });
+    // ...and even having written it, nothing was relaxed.
+    expect(expectError(declareAttempt(relaxed, { weight: 200.5 })).code).toBe('WEIGHT_NOT_DECLARABLE');
+    expect(meetLoadingRules(relaxed)).toEqual(DEFAULT_MEET_RULES);
 
-  it('catches a tampered rule mid-meet, not just at the opener', () => {
-    const state = takeAttempt(createMeet(), 200, THREE_WHITE);
-    const relaxed: MeetState = { ...state, rules: { ...state.rules, minIncrement: 0.5 } };
-    expect(expectError(declareAttempt(relaxed, { weight: 200.5 })).code).toBe('MEET_RULES_TAMPERED');
-    // ...and the suggestion path refuses too, so nothing recommends a weight
-    // the declaration path would reject.
-    expect(expectError(suggestNextAttempt(relaxed, 'conservative')).code).toBe('MEET_RULES_TAMPERED');
-  });
-
-  it('notices every rule field, including a swapped bar weight', () => {
-    const state = createMeet();
-    const fields: readonly MeetState[] = [
-      { ...state, rules: { ...state.rules, declarationIncrement: 1 } },
-      { ...state, rules: { ...state.rules, minIncrement: 5 } },
-      {
-        ...state,
-        rules: { ...state.rules, barAndCollarsWeight: { squat: 20, bench: 25, deadlift: 25 } },
-      },
-      {
-        ...state,
-        rules: { ...state.rules, barAndCollarsWeight: { squat: 25, bench: 20, deadlift: 25 } },
-      },
-      {
-        ...state,
-        rules: { ...state.rules, barAndCollarsWeight: { squat: 25, bench: 25, deadlift: 20 } },
-      },
-    ];
-    for (const tampered of fields) {
-      expect(checkMeetRulesSeal(tampered.rules)?.code).toBe('MEET_RULES_TAMPERED');
-    }
-  });
-
-  it('is not satisfied by an arbitrary number in the seal field', () => {
-    const state = createMeet();
-    const forged: MeetState = {
+    // One field at a time, so no directive can be passing on a single unlucky
+    // property name.
+    const bar: MeetState = {
       ...state,
-      rules: { ...state.rules, declarationIncrement: 0.5, seal: 0 as MeetRulesSeal },
+      // @ts-expect-error — nor is `barAndCollarsWeight`.
+      rules: { ...state.rules, barAndCollarsWeight: { squat: 5, bench: 5, deadlift: 5 } },
     };
-    expect(checkMeetRulesSeal(forged.rules)?.code).toBe('MEET_RULES_TAMPERED');
+    expect(expectError(declareAttempt(bar, { weight: 10 })).code).toBe('WEIGHT_BELOW_BAR');
+    const jump: MeetState = {
+      ...state,
+      // @ts-expect-error — nor is `minIncrement`.
+      rules: { ...state.rules, minIncrement: 0.5 },
+    };
+    expect(meetLoadingRules(jump)).toEqual(DEFAULT_MEET_RULES);
   });
 
-  // The module's seal-parameter note makes an arithmetic CLAIM: that every
-  // intermediate of the fold stays exact in a double. A previous version made
-  // the same claim with a modulus of 2^31, where it was false by a factor of
-  // four, and the tests could not tell — the fold still discriminated every
-  // field while silently dropping its low bits. These check the claim itself.
-  describe('the seal fold is exactly the arithmetic it says it is', () => {
-    const source = readFileSync(new URL('./meet.ts', import.meta.url), 'utf8');
-    const read = (pattern: RegExp): number => {
-      const found = pattern.exec(source)?.[1];
-      if (found === undefined) throw new Error(`could not read ${String(pattern)} out of meet.ts`);
-      return Number(found);
-    };
-    const basis = read(/const RULES_SEAL_BASIS = (\d+);/);
-    const prime = read(/const RULES_SEAL_PRIME = (\d+);/);
-    const modulus = 2 ** read(/const RULES_SEAL_MODULUS = 2 \*\* (\d+);/);
-    const decimals = read(/WEIGHT_DECIMAL_PLACES = (\d+);/);
+  it('exposes no rule field to read off the wrapper, and takes no plain rules in its place', () => {
+    const state = createMeet();
 
-    it('keeps its largest intermediate under 2^53', () => {
-      // Values are reduced into [0, modulus) before folding, so the largest
-      // value the fold ever computes is (modulus - 1) * prime + (modulus - 1).
-      const worst = BigInt(modulus - 1) * BigInt(prime) + BigInt(modulus - 1);
-      expect(worst < 2n ** 53n).toBe(true);
-      // ...and doubling the modulus would break it, which is why it is this
-      // size and not a rounder one.
-      const doubled = BigInt(2 * modulus - 1) * BigInt(prime) + BigInt(2 * modulus - 1);
-      expect(doubled > 2n ** 53n).toBe(true);
-    });
+    // @ts-expect-error — MeetRules has no `declarationIncrement` to read.
+    const peeked: unknown = state.rules.declarationIncrement;
+    expect(peeked).toBeUndefined();
 
-    it('produces the same seal as the identical fold done in exact integers', () => {
-      // The real test of exactness: BigInt cannot round, so any bit the double
-      // fold loses shows up here as a mismatch.
-      for (const rules of ALL_RULE_SETS) {
-        const fields: readonly number[] = [
-          rules.barAndCollarsWeight.squat,
-          rules.barAndCollarsWeight.bench,
-          rules.barAndCollarsWeight.deadlift,
-          rules.minIncrement,
-          rules.declarationIncrement,
-        ];
-        const m = BigInt(modulus);
-        let exact = BigInt(basis) % m;
-        for (const field of fields) {
-          const scaled = BigInt(Math.round(field * 10 ** decimals));
-          exact = (exact * BigInt(prime) + (((scaled % m) + m) % m)) % m;
-        }
-        expect(BigInt(createMeet(rules).rules.seal)).toBe(exact);
-      }
-    });
+    // @ts-expect-error — MeetRules has no `seal` either; the fold is gone.
+    const seal: unknown = state.rules.seal;
+    expect(seal).toBeUndefined();
 
-    it('yields a non-negative integer inside the modulus', () => {
-      for (const rules of ALL_RULE_SETS) {
-        const seal: number = createMeet(rules).rules.seal;
-        expect(Number.isInteger(seal)).toBe(true);
-        expect(seal).toBeGreaterThanOrEqual(0);
-        expect(seal).toBeLessThan(modulus);
-      }
-    });
+    // A hand-built rules object has no symbol key, so it is not a MeetRules at
+    // all — this fails on the MISSING property rather than on an excess one,
+    // which is the stronger of the two checks. Deliberately not run through the
+    // engine: at runtime such a state has no rules for it to read.
+    // @ts-expect-error — MeetLoadingRules is not assignable to MeetRules.
+    const substituted: MeetRules = HALF_KILO_DECLARATION_RULES;
+    expect(substituted).toBe(HALF_KILO_DECLARATION_RULES);
 
-    it('still folds a non-finite rule value to a number rather than NaN', () => {
-      const nonsense: MeetLoadingRules = {
-        ...DEFAULT_MEET_RULES,
-        declarationIncrement: Number.POSITIVE_INFINITY,
-      };
-      const state = createMeet(nonsense);
-      expect(Number.isInteger(state.rules.seal)).toBe(true);
-      expect(checkMeetRulesSeal(state.rules)).toBeNull();
-      // ...and it is still refused at the point of use, by the validator.
-      expect(expectError(declareAttempt(state, { weight: 200 })).code).toBe('INVALID_MEET_RULES');
-    });
+    // ...and it does not work in the other direction either: the wrapper is not
+    // a MeetLoadingRules, so the old rules-shaped call sites do not compile.
+    // @ts-expect-error — MeetRules is not assignable to MeetLoadingRules.
+    expect(() => barAndCollarsWeight('squat', state.rules)).toThrow();
   });
 
-  it('seals deterministically, so an identical meet replays identically', () => {
-    expect(createMeet().rules.seal).toBe(createMeet().rules.seal);
-    expect(createMeet(HALF_KILO_DECLARATION_RULES).rules.seal).not.toBe(createMeet().rules.seal);
-    expect(Number.isFinite(createMeet().rules.seal)).toBe(true);
+  it('ignores a rule field bolted on past the compiler, because that is not where it reads', () => {
+    // The excess-property check is what stops the one-line spread; routing the
+    // same object through an unannotated variable first gets past it. That is
+    // exactly why the values sit behind a key a caller cannot name — the added
+    // property is inert, and the engine still reads what createMeet was given.
+    const state = createMeet();
+    const bolted = { ...state.rules, declarationIncrement: 0.5, minIncrement: 0.5 };
+    const dodged: MeetState = { ...state, rules: bolted };
+
+    expect(meetLoadingRules(dodged)).toEqual(DEFAULT_MEET_RULES);
+    expect(expectError(declareAttempt(dodged, { weight: 200.5 })).code).toBe('WEIGHT_NOT_DECLARABLE');
+    expect(isCallableWeightNow(dodged, 200.5)).toBe(false);
+    expect(declareAttempt(dodged, { weight: 200 }).ok).toBe(true);
+  });
+
+  it('ignores one bolted on mid-meet too, on both the declaring and the suggesting path', () => {
+    const state = takeAttempt(createMeet(), 200, THREE_WHITE);
+    const bolted = { ...state.rules, minIncrement: 0.5, declarationIncrement: 0.5 };
+    const dodged: MeetState = { ...state, rules: bolted };
+
+    expect(expectError(declareAttempt(dodged, { weight: 200.5 })).code).toBe('WEIGHT_NOT_DECLARABLE');
+    expect(expectError(declareAttempt(dodged, { weight: 201 })).code).toBe('WEIGHT_NOT_DECLARABLE');
+    expect(declareAttempt(dodged, { weight: 202.5 }).ok).toBe(true);
+    // 202.5 either side, not 200.5: the bolted-on half-kilo grid is not read.
+    expect(nearestCallableWeightsNow(dodged, 201)).toEqual({ below: null, above: 202.5 });
+    // The suggestion path agrees with the declaration path, as it must: both
+    // read the same rules, and neither can be handed different ones.
+    expect(unwrap(suggestNextAttempt(dodged, 'conservative'))).toBe(205);
+    expect(unwrap(suggestNextAttempt(dodged, 'conservative'))).toBe(unwrap(suggestNextAttempt(state, 'conservative')));
+    expect(currentAttemptContext(dodged)).toEqual(currentAttemptContext(state));
+  });
+
+  it('carries the same rule values through every transition of a whole meet', () => {
+    // createMeet is the only place a MeetRules is built, so every later state
+    // must be running on the values it was handed — including after a bomb-out,
+    // where the phase changes shape entirely.
+    const script: readonly (readonly [number, JudgePanel])[] = [
+      [200, THREE_WHITE],
+      [210, THREE_RED],
+      [210, TWO_WHITE],
+    ];
+    for (const rules of ALL_RULE_SETS) {
+      let state = createMeet(rules);
+      expect(meetLoadingRules(state)).toEqual(rules);
+      for (const [weight, lights] of script) {
+        state = unwrap(declareAttempt(state, { weight }));
+        expect(meetLoadingRules(state)).toEqual(rules);
+        state = unwrap(resolveAttempt(state, { lights }));
+        expect(meetLoadingRules(state)).toEqual(rules);
+      }
+      state = unwrap(passAttempt(state));
+      expect(meetLoadingRules(state)).toEqual(rules);
+
+      const bombed = takeLift(createMeet(rules), [
+        [200, THREE_RED],
+        [200, THREE_RED],
+        [200, THREE_RED],
+      ]);
+      expect(isBombedOut(bombed)).toBe(true);
+      expect(meetLoadingRules(bombed)).toEqual(rules);
+    }
+    expect(meetLoadingRules(runNineForNine())).toEqual(DEFAULT_MEET_RULES);
   });
 });
 
@@ -2103,6 +2135,11 @@ describe('immutability', () => {
     expect(JSON.stringify(declared)).toBe(declaredSnapshot);
     expect(resolved).not.toBe(declared);
     expect(start.lifts.squat.attempts).toHaveLength(0);
+    // The rules live under a symbol key, which JSON.stringify drops — so the
+    // snapshots above say nothing about them and they are checked separately.
+    for (const state of [start, declared, resolved]) {
+      expect(meetLoadingRules(state)).toEqual(DEFAULT_MEET_RULES);
+    }
   });
 
   it('copies the rules it is given instead of aliasing them', () => {
@@ -2117,15 +2154,11 @@ describe('immutability', () => {
     callerRules.declarationIncrement = 0.5;
     callerRules.barAndCollarsWeight.squat = 5;
 
-    expect(state.rules.minIncrement).toBe(2.5);
-    expect(state.rules.declarationIncrement).toBe(2.5);
-    expect(state.rules.barAndCollarsWeight.squat).toBe(25);
+    expect(meetLoadingRules(state)).toEqual(DEFAULT_MEET_RULES);
     // The meet still runs on the rules it was started with, not the caller's
     // edited ones: 200.5 is not a legal call here and 10 is under the bar.
     expect(expectError(declareAttempt(state, { weight: 200.5 })).code).toBe('WEIGHT_NOT_DECLARABLE');
     expect(expectError(declareAttempt(state, { weight: 10 })).code).toBe('WEIGHT_BELOW_BAR');
-    // Mutating the caller's object must not invalidate the seal either.
-    expect(checkMeetRulesSeal(state.rules)).toBeNull();
   });
 
   it('replays deterministically — same inputs, same meet', () => {
@@ -2137,6 +2170,8 @@ describe('immutability', () => {
     const first = takeLift(createMeet(), script);
     const second = takeLift(createMeet(), script);
     expect(JSON.stringify(first)).toBe(JSON.stringify(second));
+    // ...including the half JSON.stringify cannot see (see above).
+    expect(meetLoadingRules(first)).toEqual(meetLoadingRules(second));
   });
 });
 

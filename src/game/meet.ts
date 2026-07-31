@@ -12,6 +12,9 @@
  *   - Every transition returns a new state; inputs are never mutated, and every
  *     array or object the caller hands in is COPIED before it is stored, so a
  *     caller mutating its own object afterwards cannot reach into meet state.
+ *   - The one thing evaluated at module load is `Symbol('meet.rules')` (see THE
+ *     RULES ARE OPAQUE). It allocates and touches nothing outside this file; no
+ *     function's output depends on which symbol it got.
  *
  * SPORT RULES MODELLED (CLAUDE.md "Domain Correctness", GDD §6.2/§6.4):
  *   - Lift order is squat -> bench -> deadlift, three attempts each.
@@ -245,10 +248,11 @@
  * ---------------------------------------------------------------------------
  *
  * ---------------------------------------------------------------------------
- * WHY THE RULES CARRY A SEAL — AND EXACTLY WHAT IT IS WORTH
+ * THE RULES ARE OPAQUE — WHY `MeetState.rules` HAS NO READABLE FIELDS
  * ---------------------------------------------------------------------------
  * `MeetLoadingRules` is fixed for the whole meet at `createMeet`. That used to
- * be prose rather than an invariant: `MeetState` is a transparent object, so
+ * be prose rather than an invariant: `MeetState.rules` was a structurally open
+ * object, so
  *
  *     declareAttempt(
  *       { ...state, rules: { ...state.rules, declarationIncrement: 0.5 } },
@@ -258,32 +262,36 @@
  * type-checked in strict mode with no cast and was accepted. The per-attempt
  * escape hatch had not disappeared; it had moved up one level.
  *
- * `SealedMeetRules` closes that. `createMeet` folds the rule values into a
- * `seal`, and every entry point that lets a rule decide an outcome
- * (`declareAttempt`, `suggestNextAttempt`) recomputes it and refuses on a
- * mismatch with `MEET_RULES_TAMPERED`. The spread above still type-checks — a
- * spread copies the old seal verbatim, and no type can stop that — but it is
- * now REJECTED at runtime, which is the property the prose was claiming.
+ * The TYPE closes it, so there is nothing to check at runtime. `MeetState.rules`
+ * is a `MeetRules`: one property, under a symbol this file does not export. So
+ * the spread above does not compile — `declarationIncrement` is not a property
+ * of `MeetRules` — and neither does reading `state.rules.declarationIncrement`
+ * or handing in a plain `MeetLoadingRules` instead. `meetLoadingRules` reads the
+ * values back out, as a copy, and every read model takes a `MeetState`, so
+ * nothing downstream needs the symbol.
  *
- * What the seal is NOT: it is not a security boundary and is not claimed to be
- * one. The fold is plain arithmetic, right here in the source, over a handful
- * of numbers; a caller determined to forge a seal can reimplement it in a
- * dozen lines. `sealMeetRules` is deliberately not exported so that forging is
- * a deliberate act rather than an accident, and that is the whole claim: the
- * ORDINARY mutation — the one that type-checks and looks innocent in a diff —
- * does not work. Real tamper-resistance belongs on the server, per CLAUDE.md
- * "Server-authoritative progression"; this is the client-side half.
+ * Routing the same object through a variable first gets past the excess-property
+ * check, and buys nothing: the engine reads what is under the key, so the added
+ * property is inert. That is why the values sit there rather than beside a
+ * phantom brand.
  *
- * `currentAttemptContext` deliberately does NOT check the seal: it is a
- * read-model that cannot fail, and callers use it to render. Hand it tampered
- * rules and it will report the numbers those rules imply — but nothing it
- * returns can get past `declareAttempt`, which does check.
+ * WHAT THIS IS NOT: tamper-resistance against a determined caller. A cast, or
+ * `Object.getOwnPropertySymbols`, gets through, and nothing here tries to stop
+ * it — there is no error code for tampering and no check to fail. Authority over
+ * results belongs on the server, per CLAUDE.md "Server-authoritative
+ * progression". This closes the accident that used to type-check and look
+ * innocent in a diff, and claims nothing beyond that.
  *
- * `isCallableWeightNow` and `nearestCallableWeightsNow` are the exception among
- * read-models, and check it. They exist to tell a player a weight is legal, and
- * a rules object the engine has stopped trusting cannot be the basis of that
- * promise — so on a tampered meet they answer false and { below: null, above:
- * null } rather than an answer `declareAttempt` would then refuse.
+ * WHAT IT COSTS, disclosed rather than worked around:
+ *   - `JSON.stringify` drops symbol-keyed properties, so a meet's rules do not
+ *     survive a JSON round trip and a `MeetState` cannot be rehydrated by
+ *     parsing one. This module has no serialiser either way; a caller that must
+ *     persist a meet stores `meetLoadingRules(state)` with the attempt list and
+ *     replays it through `createMeet` / `declareAttempt` / `resolveAttempt`.
+ *   - The key is per module instance, so a bundler that loaded this file twice
+ *     in one program would give each copy meets the other cannot read. Metro and
+ *     Vite both dedupe; `Symbol.for` would fix it only by publishing the key to
+ *     everybody, which is the thing being avoided.
  * ---------------------------------------------------------------------------
  *
  * DELIBERATE NON-GOALS (so their absence is not mistaken for an error):
@@ -513,41 +521,6 @@ export const NEAREST_CALL_PROBE_STEPS = 4;
 export const WEIGHT_DECIMAL_PLACES = 3;
 
 /**
- * Seal-fold parameters. NOT game-feel values and not tuning knobs — they only
- * have to be fixed, so that the same rules always fold to the same seal. Named
- * rather than inline because unexplained magic numbers in a hash read as cargo
- * cult.
- *
- * THE MODULUS IS LOAD-BEARING ARITHMETIC, not a round number. JavaScript has no
- * integers: every intermediate of the fold has to land under 2^53 or the low
- * bits are silently rounded away and the mixing degrades. The largest value the
- * fold ever computes is
- *
- *     (MODULUS - 1) * PRIME + (MODULUS - 1)
- *
- * because `sealMeetRules` reduces each field into [0, MODULUS) before adding it.
- * At MODULUS = 2^28 that is 4,503,708,075,294,719 — a bit over half of
- * 2^53 = 9,007,199,254,740,992, so every intermediate is exact and the fold is
- * true modular arithmetic.
- *
- * 2^29 is the first power of two that does NOT fit (9,007,416,150,589,440,
- * just past 2^53), which is why this is 2^28 and not something rounder. An
- * earlier version used 2^31 with a comment claiming the same exactness; that was
- * simply false — 2^31 * PRIME is about 3.6e16, four times over 2^53 — so that
- * fold was losing its low bits on every round. It still discriminated every
- * field, so this is a strengthening, not a bug fix.
- */
-const RULES_SEAL_BASIS = 2166136261;
-const RULES_SEAL_PRIME = 16777619;
-const RULES_SEAL_MODULUS = 2 ** 28;
-/**
- * Stand-in for a non-finite rule value, so the fold always yields a number.
- * Must be in [0, RULES_SEAL_MODULUS) like every other folded value, so that the
- * seal stays non-negative and the bound above holds.
- */
-const RULES_SEAL_NON_FINITE = 1;
-
-/**
  * Suggested jump for the next attempt, as a fraction of the previous attempt's
  * weight (GDD §6.3: conservative "lock in the total" vs aggressive "chase it").
  *
@@ -650,11 +623,13 @@ export interface LiftProgress {
 }
 
 /**
- * Federation-configurable loading rules. Fixed for the whole meet at
- * `createMeet` — see the seal note at the top of this file for how that is
- * enforced rather than merely asserted. Deliberately has no per-attempt escape
- * hatch: if a rule can be relaxed, it is relaxed for every attempt of the meet,
- * visibly, in one place.
+ * Federation-configurable loading rules. This is the CALLER-FACING shape, handed
+ * to `createMeet` and to the `...IgnoringTheCard` family. Inside a running meet
+ * the same values live behind `MeetRules`, which is opaque — see THE RULES ARE
+ * OPAQUE at the top of this file for how "fixed for the whole meet" is enforced
+ * rather than merely asserted. Deliberately has no per-attempt escape hatch: if
+ * a rule can be relaxed, it is relaxed for every attempt of the meet, visibly,
+ * in one place.
  *
  * The knobs are different KINDS of thing — one measurement, two rules. Do not
  * merge them, and do not add a plate field: see WHY THERE IS NO PLATE GATE.
@@ -725,18 +700,23 @@ export const POUND_MEET_RULES: MeetLoadingRules = {
   declarationIncrement: POUND_DECLARATION_INCREMENT_LB,
 };
 
-declare const MEET_RULES_SEAL: unique symbol;
+/**
+ * The key the rule values actually live under. Module-private and a symbol, so
+ * `MeetRules` has no property a caller can name, spread over or overwrite.
+ */
+const RULE_VALUES: unique symbol = Symbol('meet.rules');
 
 /**
- * Opaque tag proving a `MeetLoadingRules` came out of `createMeet` unchanged.
- * Branded so it cannot be produced by accident; see the seal note at the top of
- * this file for what that does and does not buy.
+ * The rules as they live inside `MeetState`. OPAQUE: it has exactly one
+ * property, under a key this module does not export, so the only way to obtain
+ * one without a cast is to take it off a `MeetState` that `createMeet` built.
+ * Read the values with `meetLoadingRules`.
+ *
+ * See THE RULES ARE OPAQUE at the top of this file for what that closes and
+ * what it deliberately does not.
  */
-export type MeetRulesSeal = number & { readonly [MEET_RULES_SEAL]: 'meet-rules' };
-
-/** The rules as they live inside `MeetState`: sealed at `createMeet`. */
-export interface SealedMeetRules extends MeetLoadingRules {
-  readonly seal: MeetRulesSeal;
+export interface MeetRules {
+  readonly [RULE_VALUES]: MeetLoadingRules;
 }
 
 interface MeetOutcomeBase {
@@ -780,9 +760,47 @@ export type MeetPhase =
   | { readonly kind: 'complete'; readonly outcome: MeetOutcome };
 
 export interface MeetState {
-  readonly rules: SealedMeetRules;
+  /** Opaque — read the values with `meetLoadingRules`. */
+  readonly rules: MeetRules;
   readonly phase: MeetPhase;
   readonly lifts: Readonly<Record<LiftKind, LiftProgress>>;
+}
+
+// ---------------------------------------------------------------------------
+// Getting the rules in and out of a meet. `stateRules` is the only read of the
+// private key and `createMeet` is the only write; between them they are the
+// whole interface to a `MeetRules`.
+// ---------------------------------------------------------------------------
+
+/** Field-by-field copy, so meet state never aliases anyone else's object. */
+function copyLoadingRules(rules: MeetLoadingRules): MeetLoadingRules {
+  return {
+    barAndCollarsWeight: {
+      squat: rules.barAndCollarsWeight.squat,
+      bench: rules.barAndCollarsWeight.bench,
+      deadlift: rules.barAndCollarsWeight.deadlift,
+    },
+    minIncrement: rules.minIncrement,
+    declarationIncrement: rules.declarationIncrement,
+  };
+}
+
+/**
+ * The rule values behind the opaque wrapper. Module-private and NOT a copy:
+ * every internal read goes through here, and none of them writes.
+ */
+function stateRules(state: MeetState): MeetLoadingRules {
+  return state.rules[RULE_VALUES];
+}
+
+/**
+ * The rules this meet is running on, as a copy. The copy is the point: it is
+ * the only way out of `MeetRules`, and handing back the live object would let a
+ * caller edit the meet's rules through it — the thing the opacity exists to
+ * prevent. Editing the copy changes nothing.
+ */
+export function meetLoadingRules(state: MeetState): MeetLoadingRules {
+  return copyLoadingRules(stateRules(state));
 }
 
 // ---------------------------------------------------------------------------
@@ -816,8 +834,6 @@ export type MeetErrorCode =
   | 'INSUFFICIENT_INCREASE'
   | 'INVALID_JUDGING_PANEL'
   | 'INVALID_MEET_RULES'
-  /** The meet's rules object was altered after `createMeet` sealed it. */
-  | 'MEET_RULES_TAMPERED'
   | 'NO_PREVIOUS_ATTEMPT';
 
 export interface MeetError {
@@ -1003,67 +1019,6 @@ export function validateMeetRules(rules: MeetLoadingRules): MeetError | null {
   return null;
 }
 
-/**
- * Folds the rule values into a seal. Deterministic, total, and DELIBERATELY NOT
- * EXPORTED — see the seal note at the top of this file for exactly how much
- * that is worth (it stops the accidental spread, not a determined forger).
- */
-function sealMeetRules(rules: MeetLoadingRules): MeetRulesSeal {
-  const factor = 10 ** WEIGHT_DECIMAL_PLACES;
-  const fields: readonly number[] = [
-    rules.barAndCollarsWeight.squat,
-    rules.barAndCollarsWeight.bench,
-    rules.barAndCollarsWeight.deadlift,
-    rules.minIncrement,
-    rules.declarationIncrement,
-  ];
-  // Every value is reduced into [0, RULES_SEAL_MODULUS) BEFORE it is folded in.
-  // That is what makes the bound in the seal-parameter note hold: the largest
-  // intermediate is (MODULUS - 1) * PRIME + (MODULUS - 1), which is under 2^53,
-  // so no step of this loop loses a bit. A rule value large enough to be
-  // inexact on its own still folds deterministically, which is all the seal
-  // needs. Reducing also keeps `seal` non-negative throughout, so there is no
-  // sign to correct at the end.
-  let seal = RULES_SEAL_BASIS % RULES_SEAL_MODULUS;
-  for (const field of fields) {
-    const scaled = Number.isFinite(field) ? Math.round(field * factor) : RULES_SEAL_NON_FINITE;
-    const value = ((scaled % RULES_SEAL_MODULUS) + RULES_SEAL_MODULUS) % RULES_SEAL_MODULUS;
-    seal = (seal * RULES_SEAL_PRIME + value) % RULES_SEAL_MODULUS;
-  }
-  return seal as MeetRulesSeal;
-}
-
-/**
- * Has this meet's rules object been altered since `createMeet` sealed it?
- * Returns the error to report, or null if the seal still matches.
- */
-export function checkMeetRulesSeal(rules: SealedMeetRules): MeetError | null {
-  if (rules.seal === sealMeetRules(rules)) return null;
-  return {
-    code: 'MEET_RULES_TAMPERED',
-    message:
-      'The meet’s loading rules were changed after the meet started. Rules are fixed for the whole meet at ' +
-      'createMeet; start a new meet instead of editing them mid-card.',
-  };
-}
-
-/**
- * Defensive copy plus seal: meet state must not alias a caller-owned rules
- * object, and must be able to tell later if someone swapped one in.
- */
-function copyAndSealRules(rules: MeetLoadingRules): SealedMeetRules {
-  const copied: MeetLoadingRules = {
-    barAndCollarsWeight: {
-      squat: rules.barAndCollarsWeight.squat,
-      bench: rules.barAndCollarsWeight.bench,
-      deadlift: rules.barAndCollarsWeight.deadlift,
-    },
-    minIncrement: rules.minIncrement,
-    declarationIncrement: rules.declarationIncrement,
-  };
-  return { ...copied, seal: sealMeetRules(copied) };
-}
-
 // ---------------------------------------------------------------------------
 // Judging
 // ---------------------------------------------------------------------------
@@ -1166,6 +1121,7 @@ export interface AttemptContext {
 
 export function currentAttemptContext(state: MeetState): AttemptContext | null {
   if (state.phase.kind !== 'awaiting-declaration') return null;
+  const rules = stateRules(state);
   const { lift, attemptNumber } = state.phase;
   const previous = lastWeighedAttempt(state.lifts[lift]);
   if (previous === null) {
@@ -1175,7 +1131,7 @@ export function currentAttemptContext(state: MeetState): AttemptContext | null {
       previousWeight: null,
       previousOutcome: null,
       mayRepeatWeight: false,
-      minimumWeight: lightestCallableWeightIgnoringTheCard(lift, state.rules),
+      minimumWeight: lightestCallableWeightIgnoringTheCard(lift, rules),
       minimumIncreaseWeight: null,
     };
   }
@@ -1192,8 +1148,8 @@ export function currentAttemptContext(state: MeetState): AttemptContext | null {
   // on-grid weight strictly above the previous attempt is already at or above
   // the next grid step — only which one is reported as the smallest.
   const minimumIncreaseWeight = Math.max(
-    roundToCallableWeightIgnoringTheCard(previous.weight + state.rules.minIncrement, lift, state.rules, 'up'),
-    nextGridStepAbove(previous.weight, state.rules.declarationIncrement),
+    roundToCallableWeightIgnoringTheCard(previous.weight + rules.minIncrement, lift, rules, 'up'),
+    nextGridStepAbove(previous.weight, rules.declarationIncrement),
   );
   return {
     lift,
@@ -1225,9 +1181,9 @@ export function currentAttemptContext(state: MeetState): AttemptContext | null {
  * Every gate `declareAttempt` applies to the weight, in order — or null when the
  * weight may be declared on the attempt on deck.
  *
- * Rule validity and the seal are NOT checked here; both callers check them
- * first, because a tampered meet must be refused as tampering rather than as a
- * weight problem.
+ * Rule VALIDITY is not checked here; both callers check it first, because
+ * nonsense rules must be refused as nonsense rules rather than as a weight
+ * problem.
  *
  * NO MESSAGE BUILT HERE NAMES A LEGAL CALL. Weights appear only as context — the
  * bar, the declaration step, the previous attempt, the number the lifter typed.
@@ -1238,25 +1194,24 @@ function refuseWeightNow(state: MeetState, weight: number): MeetError | null {
   if (state.phase.kind !== 'awaiting-declaration') {
     return { code: 'NO_ATTEMPT_DECLARED', message: 'No attempt is on deck.' };
   }
+  const rules = stateRules(state);
   const lift = state.phase.lift;
 
   if (!Number.isFinite(weight) || weight <= 0) {
     return { code: 'INVALID_WEIGHT', message: 'An attempt weight must be a positive number.' };
   }
 
-  const bar = barAndCollarsWeight(lift, state.rules);
+  const bar = barAndCollarsWeight(lift, rules);
   if (!isAtLeast(weight, bar)) {
     return {
       code: 'WEIGHT_BELOW_BAR',
       message: `The ${lift} bar and collars already weigh ${bar}; nothing lighter than that can go on the platform.`,
     };
   }
-  if (!isDeclarableWeight(weight, state.rules)) {
+  if (!isDeclarableWeight(weight, rules)) {
     return {
       code: 'WEIGHT_NOT_DECLARABLE',
-      message:
-        `Attempts are declared in steps of ${state.rules.declarationIncrement}, ` +
-        `and ${weight} is not one of them.`,
+      message: `Attempts are declared in steps of ${rules.declarationIncrement}, and ${weight} is not one of them.`,
     };
   }
 
@@ -1281,7 +1236,7 @@ function refuseWeightNow(state: MeetState, weight: number): MeetError | null {
     return {
       code: 'INSUFFICIENT_INCREASE',
       message:
-        `The bar must move at least ${state.rules.minIncrement} between attempts on the same lift, ` +
+        `The bar must move at least ${rules.minIncrement} between attempts on the same lift, ` +
         `so ${weight} is not a legal jump from ${previousWeight}.`,
     };
   }
@@ -1290,7 +1245,7 @@ function refuseWeightNow(state: MeetState, weight: number): MeetError | null {
 
 /**
  * May this exact number be declared on the attempt on deck? The whole chain —
- * phase, rules, seal, both weight gates and all three progression gates.
+ * phase, rule validity, both weight gates and all three progression gates.
  *
  * This is the predicate a keypad or attempt-card UI should grey out with, and
  * the predicate to check anything before showing it to a player as a legal call.
@@ -1298,8 +1253,7 @@ function refuseWeightNow(state: MeetState, weight: number): MeetError | null {
  */
 export function isCallableWeightNow(state: MeetState, weight: number): boolean {
   if (state.phase.kind !== 'awaiting-declaration') return false;
-  if (validateMeetRules(state.rules) !== null) return false;
-  if (checkMeetRulesSeal(state.rules) !== null) return false;
+  if (validateMeetRules(stateRules(state)) !== null) return false;
   return refuseWeightNow(state, weight) === null;
 }
 
@@ -1364,13 +1318,13 @@ function firstCallableAtOrAbove(state: MeetState, start: number, increment: numb
 export function nearestCallableWeightsNow(state: MeetState, weight: number): NearestCallableWeights {
   const none: NearestCallableWeights = { below: null, above: null };
   if (state.phase.kind !== 'awaiting-declaration') return none;
-  if (validateMeetRules(state.rules) !== null) return none;
-  if (checkMeetRulesSeal(state.rules) !== null) return none;
+  const rules = stateRules(state);
+  if (validateMeetRules(rules) !== null) return none;
   if (!Number.isFinite(weight)) return none;
 
   const context = currentAttemptContext(state);
   if (context === null) return none;
-  const increment = state.rules.declarationIncrement;
+  const increment = rules.declarationIncrement;
 
   // The repeat weight is the one weight that can be callable below the open
   // range, so it is a candidate on both sides: below when the lifter typed
@@ -1460,9 +1414,10 @@ function initialLiftProgress(lift: LiftKind): LiftProgress {
 }
 
 /**
- * Start a meet. The rules handed in are copied and sealed here and are fixed
- * for the whole meet: nothing downstream can relax one, and an altered rules
- * object is refused with `MEET_RULES_TAMPERED` rather than honoured.
+ * Start a meet. THE ONLY PLACE A `MeetRules` IS BUILT. The rules handed in are
+ * copied here — so meet state never aliases the caller's object — and put behind
+ * the private key, so nothing downstream can read one out to overwrite it or
+ * substitute another. See THE RULES ARE OPAQUE at the top of this file.
  *
  * Nonsense rules are NOT rejected here — `createMeet` has no way to report an
  * error and a throwing constructor would break the Result discipline. They are
@@ -1470,7 +1425,7 @@ function initialLiftProgress(lift: LiftKind): LiftProgress {
  */
 export function createMeet(rules: MeetLoadingRules = DEFAULT_MEET_RULES): MeetState {
   return {
-    rules: copyAndSealRules(rules),
+    rules: { [RULE_VALUES]: copyLoadingRules(rules) },
     phase: { kind: 'awaiting-declaration', lift: LIFT_ORDER[0], attemptNumber: 1 },
     lifts: {
       squat: initialLiftProgress('squat'),
@@ -1554,7 +1509,8 @@ export interface DeclareAttemptInput {
  * Declare the weight for the attempt on deck. Enforces the non-decreasing
  * invariant (see the DESIGN CONFLICT note at the top of this file), both weight
  * gates and all three progression gates. Nothing in `input` can switch one of
- * them off, and nothing done to `state.rules` after `createMeet` can either.
+ * them off, and the rules it applies are the ones `createMeet` was given — a
+ * caller cannot substitute others, because `MeetRules` is opaque.
  *
  * The gates live in `refuseWeightNow` rather than inline here, so that the hint
  * on the end of a refusal is checked by the same code that decides the refusal.
@@ -1569,10 +1525,8 @@ export function declareAttempt(state: MeetState, input: DeclareAttemptInput): Re
     // Unreachable: checkTarget rejects every other phase. Kept for exhaustiveness.
     return fail('NO_ATTEMPT_DECLARED', 'No attempt is on deck.');
   }
-  const rulesError = validateMeetRules(state.rules);
+  const rulesError = validateMeetRules(stateRules(state));
   if (rulesError !== null) return { ok: false, error: rulesError };
-  const sealError = checkMeetRulesSeal(state.rules);
-  if (sealError !== null) return { ok: false, error: sealError };
 
   const { lift, attemptNumber } = state.phase;
   const weight = input.weight;
@@ -1845,10 +1799,9 @@ export type AttemptStrategy = ProgressiveAttemptStrategy | 'repeat';
  * holds, and the suite sweeps it across rule sets and card states.
  */
 export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy): Result<number> {
-  const rulesError = validateMeetRules(state.rules);
+  const rules = stateRules(state);
+  const rulesError = validateMeetRules(rules);
   if (rulesError !== null) return { ok: false, error: rulesError };
-  const sealError = checkMeetRulesSeal(state.rules);
-  if (sealError !== null) return { ok: false, error: sealError };
   const context = currentAttemptContext(state);
   if (context === null) {
     return fail('NO_ATTEMPT_DECLARED', 'No attempt is on deck to suggest a weight for.');
@@ -1867,14 +1820,9 @@ export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy):
 
   const minimum =
     context.minimumIncreaseWeight ??
-    roundToCallableWeightIgnoringTheCard(
-      previousWeight + state.rules.minIncrement,
-      context.lift,
-      state.rules,
-      'up',
-    );
+    roundToCallableWeightIgnoringTheCard(previousWeight + rules.minIncrement, context.lift, rules, 'up');
   const jumped = previousWeight * (1 + ATTEMPT_JUMP_FRACTION[context.lift][strategy]);
-  const rounded = roundToCallableWeightIgnoringTheCard(jumped, context.lift, state.rules, 'up');
+  const rounded = roundToCallableWeightIgnoringTheCard(jumped, context.lift, rules, 'up');
   if (isAtLeast(rounded, minimum)) return ok(rounded);
   return ok(minimum);
 }
@@ -1886,8 +1834,9 @@ export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy):
  * meets go wrong, but never below `lightestCallableWeightIgnoringTheCard`:
  * there is no such thing as a lighter legal attempt.
  *
- * Takes bare rules rather than a `MeetState`, so there is no seal to check — it
- * does not read or alter a running meet. Ignoring the card is sound HERE, and
+ * Takes bare rules rather than a `MeetState`: it is called before there is a
+ * meet, and it does not read or alter a running one. A caller that already has a
+ * meet passes `meetLoadingRules(state)`. Ignoring the card is sound HERE, and
  * only here, because an opener has no card behind it: the progression gates need
  * a previous attempt and there is none. Anything after the opener must go
  * through `suggestNextAttempt`, which is state-aware.
