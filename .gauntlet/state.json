@@ -1,0 +1,143 @@
+{
+  "run": {
+    "title": "Three White Lights",
+    "subtitle": "Gauntlet Loop build run",
+    "wave": 1,
+    "waveName": "Foundation + lifting math",
+    "startedIso": "2026-07-31T03:10:00Z"
+  },
+  "blockers": [
+    {
+      "severity": "critical",
+      "title": "Reference material cannot be retrieved in this sandbox",
+      "body": "Egress policy allows the npm registry and GitHub, and WebSearch returns text results. Everything else — Wikipedia/Wikimedia, openpowerlifting.org, sprite archives, image hosts — is refused at the proxy with a 403 on CONNECT. No image, video, or PDF reference can be fetched.",
+      "consequence": "Every GDD §12.2 bar that requires blind A/B against real reference art is structurally unverifiable here: lifter sprites, gym/environment art, result card vs. real federation sheets, anime cut-ins, and meet-day tension vs. broadcast footage. Per CLAUDE.md these are reported unverifiable rather than passed on reasoning alone. More loop rounds cannot fix this — it needs reference files supplied locally."
+    }
+  ],
+  "capabilities": [
+    { "name": "Expo web renders", "ok": true, "detail": "Expo 57 / RN 0.86 serving on :8081" },
+    { "name": "Skia paints on web", "ok": true, "detail": "CanvasKit WASM served from public/, app import deferred past load" },
+    { "name": "Screenshots at phone scale", "ok": true, "detail": "headless Chromium, 390x844 @2x, verified real pixels" },
+    { "name": "Critic transcript isolation", "ok": true, "detail": "probe critic returned NO PASSPHRASE KNOWN while still reading the artifact" },
+    { "name": "Unit tests", "ok": true, "detail": "vitest on pure modules, node environment" },
+    { "name": "Reference image retrieval", "ok": false, "detail": "blocked at proxy (403 CONNECT)" }
+  ],
+  "pieces": [
+    {
+      "id": "F0",
+      "name": "Foundation",
+      "bar": "Not a GDD bar — infrastructure. Must render, screenshot, and test.",
+      "status": "passed",
+      "verifiable": true,
+      "note": "Expo + TS strict + vitest + Skia-on-web + Playwright screenshot harness all verified working end to end.",
+      "evidence": "spike4.png"
+    },
+    {
+      "id": "M1",
+      "name": "RPE → %1RM table",
+      "bar": "Published RPE charts. Binary and testable — critic verifies against source values.",
+      "status": "building",
+      "verifiable": true,
+      "note": "Tuchscherer-style RIR chart. Builder instructed to corroborate across sources and mark uncorroborated cells."
+    },
+    {
+      "id": "M2",
+      "name": "e1RM formulas",
+      "bar": "Published e1RM formulas. Binary and testable.",
+      "status": "building",
+      "verifiable": true,
+      "note": "Epley + Brzycki, documented choice, 1-rep boundary handled explicitly."
+    },
+    {
+      "id": "M3",
+      "name": "DOTS scoring",
+      "bar": "Published DOTS coefficients. Binary and testable.",
+      "status": "building",
+      "verifiable": true,
+      "note": "Builder warned that DOTS search results are contaminated — an earlier search returned a fabricated acronym expansion."
+    },
+    {
+      "id": "M4",
+      "name": "Meet engine",
+      "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
+      "status": "pending",
+      "verifiable": true
+    },
+    {
+      "id": "M5",
+      "name": "Fatigue / readiness",
+      "bar": "Plausible game-feel abstraction. No visible fatigue meter (§12.3).",
+      "status": "pending",
+      "verifiable": true
+    },
+    {
+      "id": "M6",
+      "name": "Streak / Recovery Days",
+      "bar": "Never punishes daily engagement. Manual token use, hold cap, first-break tutorial.",
+      "status": "pending",
+      "verifiable": true
+    },
+    {
+      "id": "T1",
+      "name": "Tuning constants",
+      "bar": "Every game-feel value a named constant in one place. Enforced by a magic-number audit.",
+      "status": "pending",
+      "verifiable": true
+    },
+    {
+      "id": "V1",
+      "name": "Progression boundary",
+      "bar": "No client-authoritative progression writes. Shaped for Edge Functions.",
+      "status": "pending",
+      "verifiable": true
+    },
+    {
+      "id": "L1",
+      "name": "Lift input mechanic",
+      "bar": "The lift must feel good (GDD pillar 1).",
+      "status": "pending",
+      "verifiable": false,
+      "note": "Feel is not judgeable by any critic — GDD §12.1 says so outright. Deliverable is a tunable artifact, not a verdict."
+    },
+    {
+      "id": "A1",
+      "name": "Lifter sprites & animation",
+      "bar": "Blind A/B against real 16-bit SNES/Genesis sprite work. Maximal attempt must animate heavier.",
+      "status": "pending",
+      "verifiable": false,
+      "note": "Reference unreachable — bar will report unverifiable."
+    },
+    {
+      "id": "A2",
+      "name": "Gym / environment art",
+      "bar": "Blind A/B, same era. Readability at phone scale.",
+      "status": "pending",
+      "verifiable": false,
+      "note": "Reference unreachable — bar will report unverifiable."
+    },
+    {
+      "id": "S1",
+      "name": "Daily session loop",
+      "bar": "Duolingo-class session. Time-to-first-input, session length, close-out moment.",
+      "status": "pending",
+      "verifiable": false,
+      "note": "Absolute metrics measurable; blind A/B against the real app is not."
+    },
+    {
+      "id": "S2",
+      "name": "Meet day",
+      "bar": "Dread and anticipation comparable to a real third-attempt walkout.",
+      "status": "pending",
+      "verifiable": false,
+      "note": "Broadcast footage unreachable — bar will report unverifiable."
+    },
+    {
+      "id": "S3",
+      "name": "Result card",
+      "bar": "Would a competitive lifter believe ours is real? vs. real federation sheets.",
+      "status": "pending",
+      "verifiable": false,
+      "note": "Real sheets unreachable — bar will report unverifiable."
+    }
+  ]
+}

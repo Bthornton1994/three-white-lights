@@ -43,6 +43,10 @@ yarn-error.*
 # CanvasKit WASM, copied out of node_modules by tools/dev-web.sh (~8MB)
 public/canvaskit.wasm
 
-# Subagent git worktrees (builder isolation) and run scratch output
+# Subagent git worktrees (builder isolation)
 .claude/worktrees/
-.gauntlet/
+
+# Run output: state.json is tracked (it drives the progress page); the
+# generated page and the screenshot evidence are regenerable, so they are not.
+.gauntlet/shots/
+.gauntlet/progress.html
