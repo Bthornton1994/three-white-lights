@@ -88,17 +88,17 @@
       "id": "M1",
       "name": "RPE \u2192 %1RM table",
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Reworked: the contested cell is now 57.4, traced against three retrieved transcriptions after the builder tracked 57.2 to a single v0.0.2 npm package published weeks ago by an AI-product vendor. The header now records the strongest argument AGAINST that choice rather than omitting it. Second-pass critic is checking whether the rework holds \u2014 including whether the sources share one lineage, and the neighbouring blind-spot cell nobody has examined."
+      "note": "SENT BACK again, on provenance rather than arithmetic. The rework\u2019s tiebreaker \u2014 \"three retrieved transcriptions to one\" \u2014 is void: the second critic pulled repo creation dates (2020 \u2192 2023 \u2192 2026) and showed the three share one layout and ordering, i.e. a copy chain, not three witnesses. Meanwhile two tests were written to FORBID the alternative reading, so if the RTS original ever turns out to say 57.2, the correct value is a test failure here. And the grid\u2019s own midpoint rule constrains a triple, which makes the neighbouring unexamined cell (12 @ 6.5) exactly as likely to be the corrupted one. Verdict: this cell cannot be settled from this sandbox in either direction, so the fix is to represent that uncertainty in code rather than pick a winner."
     },
     {
       "id": "M2",
       "name": "e1RM formulas",
       "bar": "Published e1RM formulas. Binary and testable.",
-      "status": "building",
+      "status": "majority",
       "verifiable": true,
-      "note": "Rework merged and green (120 tests). First grading of the RPE-aware version in flight, now that the chart underneath it has settled."
+      "note": "Graded: mathematics verified sound by hand \u2014 RPE moves the estimate correctly, RIR substitution applied consistently, composite curve strictly increasing, seam continuous, no invented values anywhere. Failed only on auditability: the header quoted chart figures that had gone stale, which I introduced when merging the chart fix and have now corrected, along with an inverted inequality the critic also caught in my correction."
     },
     {
       "id": "M3",

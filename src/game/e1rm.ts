@@ -102,7 +102,9 @@
  * numbers above.
  *
  * That argument does not rest on the exact top-edge cell: the join stays
- * monotonic for any cell value at or below 56.94%, and the chart's is 57.4%.
+ * monotonic for any cell value above 56.94% (a smaller percentage means a
+ * larger e1RM, which is what would overshoot Brzycki), and both candidate
+ * readings of that cell — 57.2% and 57.4% — clear it.
  * Read the current figure from `rpe.ts` rather than trusting this comment —
  * an earlier revision of this passage quoted 57.2% and went stale when the
  * chart was corrected, which is the failure mode the paragraph below is about.
