@@ -112,9 +112,9 @@
       "id": "M4",
       "name": "Meet engine",
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
-      "status": "failed",
+      "status": "building",
       "verifiable": true,
-      "note": "SENT BACK a second time, deeper. The engine conflates physical loadability with legal declaration granularity in one field, and misreads its own cited source doing it: OpenLifter\u2019s default kg plate set stocks 0.25kg discs, so by the module\u2019s own definition that constant should be 0.5, not 2.5. The player-facing error therefore states a falsehood about competition equipment \u2014 201kg is illegal to declare, not impossible to load. Knock-ons: the documented config escape hatch legalises a 200.5kg opener (asserted in a test), and the correctly-named minimum-increase rule is unreachable under default rules. Separately, the critic ruled FOR the engine on the 2.5kg minimum increase the previous builder had doubted."
+      "note": "Rework 2 merged; 351 tests green suite-wide (meet: 108). Loadability and declaration legality are now separate gates, so a refused 201kg says the bar loads it fine and the declaration rule is what refuses it. Defaults re-fetched from OpenLifter source rather than taken on trust, each labelled cited / partially cited / uncited \u2014 and the builder caught a detail the critic had missed. The \"rules fixed for the whole meet\" claim is now enforced rather than asserted. Third-pass critic grading."
     },
     {
       "id": "M5",
