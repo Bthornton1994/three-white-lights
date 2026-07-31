@@ -165,7 +165,8 @@
       "bar": "Blind A/B against real 16-bit SNES/Genesis sprite work. Maximal attempt must animate heavier.",
       "status": "building",
       "verifiable": false,
-      "note": "Restarted after the earlier budget kill. Sprite data generated in code, plus a script that renders frames to PNGs and a contact sheet putting a light attempt beside a maximal one, so the weight difference is inspectable without running the app. The blind-A/B half of its bar remains unverifiable here; the \"maximal attempt animates heavier\" half is fully checkable and will be."
+      "note": "Merged; 477 tests green suite-wide (art: 89). Load changes the animation through four channels, not just duration \u2014 tick count, the SHAPE of the ascent in normalised time (which a slowed copy cannot have), bar-path drift peaking at the sticking point, and pose strain that deliberately leaves the shoulder line alone so squat depth stays honest. Plate hues and denominations come from OpenLifter bytes fetched in-sandbox. The builder looked at its own PNGs and fixed two real defects it found there. Its own verdict on craft \u2014 \"competent programmatic pixel art rather than drawn 16-bit sprite work\", smooth tapered limbs and no hand-placed detail \u2014 matches mine on looking at the contact sheet. The blind-A/B half of this bar stays unverifiable while image hosts are blocked.",
+      "evidence": "A1-contact-sheet.png"
     },
     {
       "id": "A2",
