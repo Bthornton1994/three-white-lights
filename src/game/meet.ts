@@ -9,7 +9,9 @@
  *     the engine the three lights that came up. Whatever decides those lights
  *     (the Arcade bar-path mechanic, a seeded NPC sim, a replay) lives outside
  *     this module so the engine stays replayable and testable.
- *   - Every transition returns a new state; inputs are never mutated.
+ *   - Every transition returns a new state; inputs are never mutated, and every
+ *     array or object the caller hands in is COPIED before it is stored, so a
+ *     caller mutating its own object afterwards cannot reach into meet state.
  *
  * SPORT RULES MODELLED (CLAUDE.md "Domain Correctness", GDD §6.2/§6.4):
  *   - Lift order is squat -> bench -> deadlift, three attempts each.
@@ -21,10 +23,46 @@
  *   - Within a lift the bar weight never decreases (see the conflict note
  *     below). After a good lift it must go UP by at least the federation's
  *     minimum increase; after a no-lift it may be repeated exactly.
- *   - The bar must be loadable: attempt weights are multiples of the loadable
- *     increment. Record attempts are the conventional exception (finer
- *     increment, and they may sit only that increment above the previous
- *     attempt).
+ *   - The bar must be loadable. Loadable means two things, both enforced:
+ *     it is not lighter than the bar and collars alone, and the load above the
+ *     bar is a whole number of the federation's smallest plate pair. Both come
+ *     from `MeetLoadingRules`, which is fixed for the whole meet at
+ *     `createMeet` — there is no per-attempt way to relax either one.
+ *
+ * ---------------------------------------------------------------------------
+ * SOURCING — WHAT IS CITED HERE AND WHAT IS NOT
+ * ---------------------------------------------------------------------------
+ * No primary federation rulebook was reachable from the environment this module
+ * was written in — review reports that the IPF, USAPL and USPA sites all refuse
+ * the request as a matter of egress policy, and that was not re-tested here.
+ * Nothing below is presented as a quotation of a rulebook, and no number here
+ * should be read as "the IPF says so".
+ *
+ * What WAS actually retrieved (2026-07-31) is OpenLifter, the open-source meet
+ * software published by the OpenPowerlifting project and used to run real
+ * competitions — https://gitlab.com/openpowerlifting/openlifter :
+ *
+ *   - `src/reducers/meetReducer.ts`:
+ *       `const defaultBarAndCollarsWeightKg = 25; // Assuming metal 2.5kg collars.`
+ *       `const defaultBarAndCollarsWeightLbs = 45; // Assuming plastic collars.`
+ *       ...with `squatBarAndCollarsWeightKg`, `benchBarAndCollarsWeightKg` and
+ *       `deadliftBarAndCollarsWeightKg` all defaulting to it. That is the source
+ *       of MIN_LOADABLE_WEIGHT_KG and of the decision to make the bar weight
+ *       per-lift and federation-configurable.
+ *       Its default kg plate set is commented "allowing for increments of
+ *       0.5kg" — the fine discs are normal meet equipment, which is why fine
+ *       loading is a meet-level rule here and not a per-attempt exception.
+ *   - `src/components/lifting/AttemptInput.tsx` (`validate()`): a weight lower
+ *     than a previous attempt is an ERROR; repeating a weight that was already
+ *     lifted successfully is an ERROR; and `asNumber % 2.5 !== 0` is a
+ *     WARNING, not an error. It carries no "record attempt" flag at all.
+ *
+ * That is a secondary source — one project's reading of the rules, not the
+ * rules. Treat every constant below as a tunable federation setting rather than
+ * a verified rulebook value. In particular the 2.5 kg *minimum increase between
+ * attempts* is widely-repeated federation lore that could not be verified here
+ * at all, which is why it lives in `MeetLoadingRules.minIncrement` and is not
+ * claimed to be universal.
  *
  * ---------------------------------------------------------------------------
  * DESIGN CONFLICT — NEEDS A HUMAN DECISION. NOT RESOLVED HERE.
@@ -54,14 +92,55 @@
  * end up agreeing.
  * ---------------------------------------------------------------------------
  *
+ * ---------------------------------------------------------------------------
+ * REMOVED FEATURE — `recordAttempt`. Read before re-adding it.
+ * ---------------------------------------------------------------------------
+ * An earlier version of this module took a per-attempt `recordAttempt` boolean
+ * that dropped BOTH the loading granularity and the minimum increase to 0.5 kg,
+ * measured from the lifter's own previous attempt. Nothing validated the flag,
+ * so its only effect was to switch two invariants off on request: `declare 200
+ * good` then `declare 201 recordAttempt: true` was accepted, and 201 went into
+ * the total.
+ *
+ * It has been removed rather than repaired, for two reasons:
+ *
+ *   1. The rule it claimed to implement is anchored to the wrong thing. Review
+ *      reports that the fine discs exist so a lifter can call a weight above a
+ *      STANDING RECORD, not above whatever they personally just lifted. That
+ *      correction could not be confirmed here against a primary rulebook (see
+ *      the sourcing note) — so this module does not assert the corrected rule
+ *      either. It stops implementing a rule it cannot state truthfully. For
+ *      what it is worth, the retrieved meet software (OpenLifter) carries no
+ *      per-attempt record flag at all.
+ *   2. Even with the anchor corrected, this engine cannot check it. A record
+ *      attempt's legality depends on a standing record in a specific
+ *      federation, division, weight class and age group. This module holds one
+ *      lifter's card and none of that context, and the GDD does not model
+ *      records anywhere (§6.4 scores a meet by Total and DOTS; §6.5's "PR
+ *      call-outs" are the player's own bests, computed elsewhere). Taking a
+ *      caller-supplied `recordToBeat` would move the fabrication up one level,
+ *      not remove it.
+ *
+ * Federation records are therefore an explicit NON-GOAL (below). A federation
+ * that really does load to 0.5 kg says so once, for the whole meet, in
+ * `MeetLoadingRules.loadableIncrement`. It is never a per-attempt claim, and
+ * nothing a caller passes to `declareAttempt` can loosen a loading rule.
+ * ---------------------------------------------------------------------------
+ *
  * DELIBERATE NON-GOALS (so their absence is not mistaken for an error):
+ *   - Federation, national or world RECORDS of any kind: no record table, no
+ *     record-attempt validation, no record call-outs. See the note above.
  *   - Multi-lifter flights, attempt (bar-loading) order within a flight, and
  *     live placing — GDD §6.6. This engine is one lifter's card.
  *   - Attempt-card changes at the scoring table (feds allow a limited number of
  *     weight changes on a declared attempt). The UI should collect the final
  *     declaration before calling `declareAttempt`.
- *   - Out-of-competition fourth attempts for records: they do not affect the
- *     total and are not modelled.
+ *   - Out-of-competition fourth attempts: they do not affect the total and are
+ *     not modelled.
+ *   - Exact plate math (which discs go on the bar, in what order). Loadability
+ *     is modelled as "bar and collars, plus a whole number of the smallest
+ *     plate pair", which is the constraint attempt selection needs; the bar-load
+ *     display can compute the actual discs from the weight.
  *   - Timing of the one-minute clock: this module holds no clock (see purity).
  *   - DOTS/Wilks scoring and e1RM live in their own modules and are not
  *     imported here.
@@ -73,9 +152,10 @@
 // CLAUDE.md "Game Feel Values Must Be Tunable": every number that gets tuned by
 // hand lives here as a named export, never inline at a call site.
 //
-// Weights are unit-agnostic numbers. The defaults below are the kg values used
-// by IPF-style federations (GDD §11 leaves the display-unit default open); an
-// lb-based federation swaps in its own `MeetLoadingRules`.
+// Weights are unit-agnostic numbers. The defaults below are kg values matching
+// the metric defaults in the retrieved OpenLifter source (GDD §11 leaves the
+// display-unit default open); an lb-based federation swaps in its own
+// `MeetLoadingRules` — OpenLifter's lb default for the same field is 45.
 // ---------------------------------------------------------------------------
 
 /** Three attempts per lift. Structural rule of the sport, not a tuning knob. */
@@ -87,17 +167,32 @@ export const JUDGE_COUNT = 3;
 /** White lights needed for a good lift — a majority of three. Structural. */
 export const JUDGES_REQUIRED_FOR_GOOD_LIFT = 2;
 
+/**
+ * The competition bar itself, with nothing on it.
+ * DERIVED, NOT CITED: the retrieved source gives only the bar-and-collars total
+ * (25) and says it assumes 2.5 kg metal collars. 20 is what is left over.
+ */
+export const COMPETITION_BAR_WEIGHT_KG = 20;
+
+/** Both collars together — 2.5 kg each, per that same comment. */
+export const COLLAR_PAIR_WEIGHT_KG = 5;
+
+/**
+ * The lightest thing that can be on the platform: bar plus collars, no plates.
+ * Nothing below this can be declared, and no suggestion may fall under it.
+ * Matches OpenLifter's `defaultBarAndCollarsWeightKg = 25` (see sourcing note).
+ */
+export const MIN_LOADABLE_WEIGHT_KG = COMPETITION_BAR_WEIGHT_KG + COLLAR_PAIR_WEIGHT_KG;
+
 /** Smallest legal increase between two attempts on the same lift. */
 export const MIN_ATTEMPT_INCREMENT_KG = 2.5;
 
-/** Granularity the bar can actually be loaded to. */
-export const LOADABLE_WEIGHT_INCREMENT_KG = 2.5;
-
 /**
- * Finer granularity permitted for a declared record attempt — it may be loaded
- * to, and sit only, this far above the previous attempt.
+ * Granularity the bar can be loaded to ABOVE the bar-and-collars weight — i.e.
+ * twice the smallest plate the meet stocks a pair of. 2.5 kg is a pair of
+ * 1.25 kg discs; a meet stocking 0.25 kg discs sets this to 0.5.
  */
-export const RECORD_ATTEMPT_INCREMENT_KG = 0.5;
+export const LOADABLE_WEIGHT_INCREMENT_KG = 2.5;
 
 /** Float slop tolerated when comparing weights. */
 export const WEIGHT_EPSILON = 1e-6;
@@ -164,14 +259,12 @@ interface AttemptIdentity {
 export interface DeclaredAttempt extends AttemptIdentity {
   readonly status: 'declared';
   readonly weight: number;
-  readonly recordAttempt: boolean;
 }
 
 /** Taken and judged. */
 export interface JudgedAttempt extends AttemptIdentity {
   readonly status: AttemptOutcome;
   readonly weight: number;
-  readonly recordAttempt: boolean;
   readonly lights: JudgePanel;
   readonly whiteLights: number;
   /** True when all three referees agreed (3 white or 3 red). */
@@ -209,30 +302,44 @@ export interface LiftProgress {
   readonly best: number | null;
 }
 
-/** Federation-configurable loading rules. */
+/**
+ * Federation-configurable loading rules. Fixed for the whole meet at
+ * `createMeet`. Deliberately has no per-attempt escape hatch: if a rule can be
+ * relaxed, it is relaxed for every attempt of the meet, visibly, in one place.
+ */
 export interface MeetLoadingRules {
+  /**
+   * Weight of the bar and collars with no plates, per lift. Per-lift because
+   * some meets run a different bar for one of the three (OpenLifter carries
+   * `squat`/`bench`/`deadliftBarAndCollarsWeightKg` separately). This is also
+   * the minimum declarable weight.
+   */
+  readonly barAndCollarsWeight: Readonly<Record<LiftKind, number>>;
   /** Minimum legal increase between attempts on the same lift. */
   readonly minIncrement: number;
-  /** Granularity the bar can be loaded to. */
+  /** Granularity the bar can be loaded to above `barAndCollarsWeight`. */
   readonly loadableIncrement: number;
-  /** Granularity and minimum increase allowed for a declared record attempt. */
-  readonly recordIncrement: number;
-  /** When false, any positive weight may be declared (useful for lb meets/tests). */
-  readonly enforceLoadableIncrement: boolean;
 }
 
 export const DEFAULT_MEET_RULES: MeetLoadingRules = {
+  barAndCollarsWeight: {
+    squat: MIN_LOADABLE_WEIGHT_KG,
+    bench: MIN_LOADABLE_WEIGHT_KG,
+    deadlift: MIN_LOADABLE_WEIGHT_KG,
+  },
   minIncrement: MIN_ATTEMPT_INCREMENT_KG,
   loadableIncrement: LOADABLE_WEIGHT_INCREMENT_KG,
-  recordIncrement: RECORD_ATTEMPT_INCREMENT_KG,
-  enforceLoadableIncrement: true,
 };
 
 interface MeetOutcomeBase {
   /** Best good lift per lift; null where a lift was bombed or never contested. */
   readonly bestByLift: Readonly<Record<LiftKind, number | null>>;
-  /** Sum of the bests actually achieved. Equals `total` on a completed meet. */
-  readonly bankedTotal: number;
+  /**
+   * Sum of the bests actually achieved. On a completed meet this equals
+   * `total`; on a bomb-out it is what was on the board when it ended, which is
+   * NOT a total (see `TotalReading`).
+   */
+  readonly totalOnTheBoard: number;
   /** Every finished attempt, in the order they happened. */
   readonly attempts: readonly CompletedAttempt[];
 }
@@ -245,8 +352,8 @@ export interface CompletedMeetOutcome extends MeetOutcomeBase {
 }
 
 /**
- * No total. A lifter who bombs a lift does not place; `bankedTotal` exists only
- * so the recap can show what was on the board when it happened.
+ * No total. A lifter who bombs a lift does not place; `totalOnTheBoard` exists
+ * only so the recap can show what was up when it happened.
  */
 export interface BombedMeetOutcome extends MeetOutcomeBase {
   readonly kind: 'bombed-out';
@@ -283,11 +390,13 @@ export type MeetErrorCode =
   | 'WRONG_ATTEMPT_NUMBER'
   | 'TOO_MANY_ATTEMPTS'
   | 'INVALID_WEIGHT'
+  | 'WEIGHT_BELOW_BAR'
   | 'WEIGHT_NOT_LOADABLE'
   | 'WEIGHT_DECREASED'
   | 'REPEAT_AFTER_GOOD_LIFT'
   | 'INSUFFICIENT_INCREASE'
   | 'INVALID_JUDGING_PANEL'
+  | 'INVALID_MEET_RULES'
   | 'NO_PREVIOUS_ATTEMPT';
 
 export interface MeetError {
@@ -318,7 +427,12 @@ function normalizeWeight(weight: number): number {
 
 export type RoundingMode = 'nearest' | 'up' | 'down';
 
-/** Snaps a weight to something that can actually be loaded on the bar. */
+/**
+ * Snaps a weight to a whole number of `increment`s. This is pure granularity
+ * arithmetic and knows nothing about the bar — for anything that has to go on
+ * a platform use `roundToLoadableAttemptWeight`, which also honours the bar and
+ * collars.
+ */
 export function roundToLoadableWeight(
   weight: number,
   increment: number = LOADABLE_WEIGHT_INCREMENT_KG,
@@ -334,8 +448,9 @@ export function roundToLoadableWeight(
   return normalizeWeight(rounded * increment);
 }
 
-/** True when `weight` is a whole number of `increment`s. */
+/** True when `weight` is a whole number of `increment`s. Granularity only. */
 export function isLoadableWeight(weight: number, increment: number = LOADABLE_WEIGHT_INCREMENT_KG): boolean {
+  if (!Number.isFinite(weight) || !Number.isFinite(increment) || increment <= 0) return false;
   const steps = weight / increment;
   return Math.abs(steps - Math.round(steps)) * increment < WEIGHT_EPSILON;
 }
@@ -348,6 +463,77 @@ function isSameWeight(a: number, b: number): boolean {
   return Math.abs(a - b) < WEIGHT_EPSILON;
 }
 
+/** The bar and collars for this lift: the lightest declarable weight. */
+export function minimumAttemptWeight(lift: LiftKind, rules: MeetLoadingRules = DEFAULT_MEET_RULES): number {
+  return rules.barAndCollarsWeight[lift];
+}
+
+/**
+ * Can this weight actually be on the bar? Both halves of the rule at once:
+ * at least bar-and-collars, and a whole number of plate pairs above it.
+ */
+export function isLoadableAttemptWeight(
+  weight: number,
+  lift: LiftKind,
+  rules: MeetLoadingRules = DEFAULT_MEET_RULES,
+): boolean {
+  const minimum = minimumAttemptWeight(lift, rules);
+  if (!Number.isFinite(weight) || !isAtLeast(weight, minimum)) return false;
+  return isLoadableWeight(normalizeWeight(weight - minimum), rules.loadableIncrement);
+}
+
+/**
+ * Snaps a weight to something that can actually go on the platform for this
+ * lift. Never returns less than bar-and-collars, whatever the rounding mode.
+ */
+export function roundToLoadableAttemptWeight(
+  weight: number,
+  lift: LiftKind,
+  rules: MeetLoadingRules = DEFAULT_MEET_RULES,
+  mode: RoundingMode = 'nearest',
+): number {
+  const minimum = minimumAttemptWeight(lift, rules);
+  if (!Number.isFinite(weight) || weight <= minimum + WEIGHT_EPSILON) return normalizeWeight(minimum);
+  const above = roundToLoadableWeight(weight - minimum, rules.loadableIncrement, mode);
+  return normalizeWeight(minimum + Math.max(above, 0));
+}
+
+/**
+ * Are these rules usable at all? Nonsense configuration must fail loudly at the
+ * point of use rather than quietly disabling a loading check.
+ */
+export function validateMeetRules(rules: MeetLoadingRules): MeetError | null {
+  if (!Number.isFinite(rules.loadableIncrement) || rules.loadableIncrement <= 0) {
+    return { code: 'INVALID_MEET_RULES', message: 'The loadable increment must be a positive number.' };
+  }
+  if (!Number.isFinite(rules.minIncrement) || rules.minIncrement <= 0) {
+    return { code: 'INVALID_MEET_RULES', message: 'The minimum attempt increase must be a positive number.' };
+  }
+  for (const lift of LIFT_ORDER) {
+    const barWeight = rules.barAndCollarsWeight[lift];
+    if (!Number.isFinite(barWeight) || barWeight <= 0) {
+      return {
+        code: 'INVALID_MEET_RULES',
+        message: `The ${lift} bar and collars must weigh a positive number.`,
+      };
+    }
+  }
+  return null;
+}
+
+/** Defensive copy: meet state must not alias a caller-owned rules object. */
+function copyRules(rules: MeetLoadingRules): MeetLoadingRules {
+  return {
+    barAndCollarsWeight: {
+      squat: rules.barAndCollarsWeight.squat,
+      bench: rules.barAndCollarsWeight.bench,
+      deadlift: rules.barAndCollarsWeight.deadlift,
+    },
+    minIncrement: rules.minIncrement,
+    loadableIncrement: rules.loadableIncrement,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Judging
 // ---------------------------------------------------------------------------
@@ -355,6 +541,11 @@ function isSameWeight(a: number, b: number): boolean {
 export function isValidJudgePanel(lights: JudgePanel): boolean {
   if (!Array.isArray(lights) || lights.length !== JUDGE_COUNT) return false;
   return lights.every((light) => light === 'white' || light === 'red');
+}
+
+/** Defensive copy: a judged attempt must not alias the caller's array. */
+function copyJudgePanel(lights: JudgePanel): JudgePanel {
+  return [lights[0], lights[1], lights[2]];
 }
 
 export function countWhiteLights(lights: JudgePanel): number {
@@ -424,22 +615,21 @@ export interface AttemptContext {
   /** Repeating the exact weight is legal only after a no-lift. */
   readonly mayRepeatWeight: boolean;
   /**
-   * Lowest legal declaration: the repeat weight after a no-lift, otherwise the
-   * minimum increase. Null on the opener, where any loadable weight goes.
+   * Lowest legal declaration. On the opener that is the bar and collars; after
+   * a no-lift it is the repeat weight; after a good lift it is the minimum
+   * increase. Never null — there is always a floor.
    */
-  readonly minimumWeight: number | null;
+  readonly minimumWeight: number;
   /**
    * If the lifter goes UP at all, this is the smallest legal weight. Anything
    * between the previous attempt and this is not a legal jump, even after a
-   * miss where the previous weight itself may be repeated.
+   * miss where the previous weight itself may be repeated. Null on the opener,
+   * where there is nothing to increase from.
    */
   readonly minimumIncreaseWeight: number | null;
 }
 
-export function currentAttemptContext(
-  state: MeetState,
-  options: { readonly recordAttempt?: boolean } = {},
-): AttemptContext | null {
+export function currentAttemptContext(state: MeetState): AttemptContext | null {
   if (state.phase.kind !== 'awaiting-declaration') return null;
   const { lift, attemptNumber } = state.phase;
   const previous = lastWeighedAttempt(state.lifts[lift]);
@@ -450,13 +640,18 @@ export function currentAttemptContext(
       previousWeight: null,
       previousOutcome: null,
       mayRepeatWeight: false,
-      minimumWeight: null,
+      minimumWeight: minimumAttemptWeight(lift, state.rules),
       minimumIncreaseWeight: null,
     };
   }
-  const increment = options.recordAttempt === true ? state.rules.recordIncrement : state.rules.minIncrement;
   const mayRepeatWeight = previous.status === 'no-lift';
-  const minimumIncreaseWeight = normalizeWeight(previous.weight + increment);
+  // Rounded up so the number handed to the UI is one the bar can actually take.
+  const minimumIncreaseWeight = roundToLoadableAttemptWeight(
+    previous.weight + state.rules.minIncrement,
+    lift,
+    state.rules,
+    'up',
+  );
   return {
     lift,
     attemptNumber,
@@ -483,7 +678,7 @@ function initialLiftProgress(lift: LiftKind): LiftProgress {
 
 export function createMeet(rules: MeetLoadingRules = DEFAULT_MEET_RULES): MeetState {
   return {
-    rules,
+    rules: copyRules(rules),
     phase: { kind: 'awaiting-declaration', lift: LIFT_ORDER[0], attemptNumber: 1 },
     lifts: {
       squat: initialLiftProgress('squat'),
@@ -558,13 +753,14 @@ export interface DeclareAttemptInput {
   /** Optional guard: rejected unless it matches the attempt on deck. */
   readonly attemptNumber?: AttemptNumber;
   readonly weight: number;
-  /** Declared record attempt: finer loading granularity and minimum increase. */
-  readonly recordAttempt?: boolean;
+  // NOTE: there is deliberately no flag here that loosens a loading rule. See
+  // the REMOVED FEATURE note at the top of this file before adding one.
 }
 
 /**
  * Declare the weight for the attempt on deck. Enforces the non-decreasing
- * invariant (see the DESIGN CONFLICT note at the top of this file).
+ * invariant (see the DESIGN CONFLICT note at the top of this file) and both
+ * halves of loadability. Nothing in `input` can switch either off.
  */
 export function declareAttempt(state: MeetState, input: DeclareAttemptInput): Result<MeetState> {
   const targetError = checkTarget(state, input);
@@ -573,24 +769,31 @@ export function declareAttempt(state: MeetState, input: DeclareAttemptInput): Re
     // Unreachable: checkTarget rejects every other phase. Kept for exhaustiveness.
     return fail('NO_ATTEMPT_DECLARED', 'No attempt is on deck.');
   }
+  const rulesError = validateMeetRules(state.rules);
+  if (rulesError !== null) return { ok: false, error: rulesError };
 
   const { lift, attemptNumber } = state.phase;
-  const recordAttempt = input.recordAttempt === true;
   const weight = input.weight;
 
   if (!Number.isFinite(weight) || weight <= 0) {
     return fail('INVALID_WEIGHT', 'An attempt weight must be a positive number.');
   }
 
-  const loadableIncrement = recordAttempt ? state.rules.recordIncrement : state.rules.loadableIncrement;
-  if (state.rules.enforceLoadableIncrement && !isLoadableWeight(weight, loadableIncrement)) {
+  const minimum = minimumAttemptWeight(lift, state.rules);
+  if (!isAtLeast(weight, minimum)) {
+    return fail(
+      'WEIGHT_BELOW_BAR',
+      `The ${lift} bar and collars already weigh ${minimum}; ${weight} cannot be loaded.`,
+    );
+  }
+  if (!isLoadableAttemptWeight(weight, lift, state.rules)) {
     return fail(
       'WEIGHT_NOT_LOADABLE',
-      `The bar can only be loaded in ${loadableIncrement} increments; ${weight} cannot be loaded.`,
+      `Above the ${minimum} bar the plates only load in ${state.rules.loadableIncrement} increments; ${weight} cannot be loaded.`,
     );
   }
 
-  const context = currentAttemptContext(state, { recordAttempt });
+  const context = currentAttemptContext(state);
   if (context !== null && context.previousWeight !== null) {
     const previousWeight = context.previousWeight;
     if (weight < previousWeight - WEIGHT_EPSILON) {
@@ -620,7 +823,6 @@ export function declareAttempt(state: MeetState, input: DeclareAttemptInput): Re
     lift,
     attemptNumber,
     weight: normalizeWeight(weight),
-    recordAttempt,
     status: 'declared',
   };
   return ok({ ...state, phase: { kind: 'attempt-declared', attempt } });
@@ -652,7 +854,7 @@ export interface ResolveAttemptInput {
   readonly lift?: LiftKind;
   /** Optional guard: rejected unless it matches the declared attempt. */
   readonly attemptNumber?: AttemptNumber;
-  /** The three lights, as decided outside this module. */
+  /** The three lights, as decided outside this module. Copied, never aliased. */
   readonly lights: JudgePanel;
 }
 
@@ -691,14 +893,17 @@ export function resolveAttempt(state: MeetState, input: ResolveAttemptInput): Re
     return fail('INVALID_JUDGING_PANEL', `Judging requires exactly ${JUDGE_COUNT} red/white lights.`);
   }
 
-  const whiteLights = countWhiteLights(input.lights);
+  // Copied, not stored by reference: `readonly` is compile-time only, and a
+  // caller that keeps and mutates its own array must not be able to rewrite a
+  // judged attempt after the fact.
+  const lights = copyJudgePanel(input.lights);
+  const whiteLights = countWhiteLights(lights);
   const judged: JudgedAttempt = {
     lift: declared.lift,
     attemptNumber: declared.attemptNumber,
     weight: declared.weight,
-    recordAttempt: declared.recordAttempt,
-    status: isGoodLift(input.lights) ? 'good' : 'no-lift',
-    lights: input.lights,
+    status: isGoodLift(lights) ? 'good' : 'no-lift',
+    lights,
     whiteLights,
     unanimous: whiteLights === 0 || whiteLights === JUDGE_COUNT,
   };
@@ -764,7 +969,7 @@ function buildCompletedOutcome(state: MeetState): CompletedMeetOutcome {
     total,
     bombedLift: null,
     bestByLift: bests,
-    bankedTotal: total,
+    totalOnTheBoard: total,
     attempts: allCompletedAttempts(state),
   };
 }
@@ -776,31 +981,70 @@ function buildBombedOutcome(state: MeetState, bombedLift: LiftKind): BombedMeetO
     total: null,
     bombedLift,
     bestByLift: bests,
-    bankedTotal: sumBests(bests),
+    totalOnTheBoard: sumBests(bests),
     attempts: allCompletedAttempts(state),
   };
 }
 
 // ---------------------------------------------------------------------------
 // Scoring
+//
+// The running sum and the official total are DIFFERENT NUMBERS and are never
+// returned by the same accessor. A meet with one good lift on each of the three
+// lifts and a deadlift attempt still to come has a sum — it does not have a
+// total. `readTotal` forces a caller to say which one it wants: `total` is a
+// number only in the 'final' case, so a mid-meet sum cannot be rendered as a
+// result by accident.
 // ---------------------------------------------------------------------------
 
-/**
- * Total = sum of the best successful attempt in each lift.
- * Returns null when any contested lift was bombed — a bombed lifter has NO
- * total, which is not the same as a total of zero.
- */
-export function meetTotal(state: MeetState): number | null {
-  const bests = bestByLift(state);
-  const bombed = LIFT_ORDER.some((lift) => state.lifts[lift].status === 'bombed');
-  if (bombed) return null;
-  if (LIFT_ORDER.some((lift) => bests[lift] === null)) return null;
-  return sumBests(bests);
+export type TotalReading =
+  /** Still lifting. There is no total yet, only what is on the board. */
+  | { readonly kind: 'in-progress'; readonly total: null; readonly totalOnTheBoard: number }
+  /** Meet over with a total. This is the official number. */
+  | { readonly kind: 'final'; readonly total: number; readonly totalOnTheBoard: number }
+  /** Meet over with a bombed lift: NO total, which is not a total of zero. */
+  | {
+      readonly kind: 'no-total';
+      readonly total: null;
+      readonly totalOnTheBoard: number;
+      readonly bombedLift: LiftKind;
+    };
+
+/** The one accessor that can tell you whether a total is final. */
+export function readTotal(state: MeetState): TotalReading {
+  const onTheBoard = sumBests(bestByLift(state));
+  if (state.phase.kind !== 'complete') {
+    return { kind: 'in-progress', total: null, totalOnTheBoard: onTheBoard };
+  }
+  const outcome = state.phase.outcome;
+  if (outcome.kind === 'bombed-out') {
+    return {
+      kind: 'no-total',
+      total: null,
+      totalOnTheBoard: outcome.totalOnTheBoard,
+      bombedLift: outcome.bombedLift,
+    };
+  }
+  return { kind: 'final', total: outcome.total, totalOnTheBoard: outcome.totalOnTheBoard };
 }
 
-/** Sum of the bests on the board so far, whether or not the meet finished. */
-export function bankedTotal(state: MeetState): number {
-  return sumBests(bestByLift(state));
+/**
+ * The meet's official total = sum of the best successful attempt in each lift.
+ * Null until the meet is actually over, and null forever if a lift was bombed —
+ * a bombed lifter has NO total, which is not the same as a total of zero.
+ * There is no way to get a provisional number out of this function.
+ */
+export function finalMeetTotal(state: MeetState): number | null {
+  return readTotal(state).total;
+}
+
+/**
+ * Sum of the bests on the board so far. PROVISIONAL while the meet is running,
+ * and NOT a result: a bombed lifter can have a large number here and no total.
+ * Use it for the live scoreboard, never for a placing or a shareable card.
+ */
+export function totalOnTheBoard(state: MeetState): number {
+  return readTotal(state).totalOnTheBoard;
 }
 
 /** The finished meet's outcome, or null while it is still running. */
@@ -833,6 +1077,8 @@ export type AttemptStrategy = ProgressiveAttemptStrategy | 'repeat';
  * engine would reject.
  */
 export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy): Result<number> {
+  const rulesError = validateMeetRules(state.rules);
+  if (rulesError !== null) return { ok: false, error: rulesError };
   const context = currentAttemptContext(state);
   if (context === null) {
     return fail('NO_ATTEMPT_DECLARED', 'No attempt is on deck to suggest a weight for.');
@@ -849,28 +1095,31 @@ export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy):
     return ok(previousWeight);
   }
 
-  const minimum = context.minimumIncreaseWeight ?? normalizeWeight(previousWeight + state.rules.minIncrement);
+  const minimum =
+    context.minimumIncreaseWeight ??
+    roundToLoadableAttemptWeight(previousWeight + state.rules.minIncrement, context.lift, state.rules, 'up');
   const jumped = previousWeight * (1 + ATTEMPT_JUMP_FRACTION[context.lift][strategy]);
-  const rounded = roundToLoadableWeight(jumped, state.rules.loadableIncrement, 'up');
+  const rounded = roundToLoadableAttemptWeight(jumped, context.lift, state.rules, 'up');
   if (isAtLeast(rounded, minimum)) return ok(rounded);
-  return ok(roundToLoadableWeight(minimum, state.rules.loadableIncrement, 'up'));
+  return ok(minimum);
 }
 
 /**
  * Suggested opening attempt from a one-rep-max estimate (GDD §6.1).
  * `oneRepMax` is supplied by the caller — this module does not compute e1RM.
- * Rounds down, because an opener you miss is how meets go wrong.
+ * Rounds down, because an opener you miss is how meets go wrong, but never
+ * below the bar and collars: there is no such thing as a lighter attempt.
  */
 export function suggestOpener(
   lift: LiftKind,
   oneRepMax: number,
   rules: MeetLoadingRules = DEFAULT_MEET_RULES,
 ): Result<number> {
+  const rulesError = validateMeetRules(rules);
+  if (rulesError !== null) return { ok: false, error: rulesError };
   if (!Number.isFinite(oneRepMax) || oneRepMax <= 0) {
     return fail('INVALID_WEIGHT', 'A one-rep-max estimate must be a positive number.');
   }
   const target = oneRepMax * OPENER_FRACTION_OF_1RM[lift];
-  const rounded = roundToLoadableWeight(target, rules.loadableIncrement, 'down');
-  if (rounded <= 0) return ok(roundToLoadableWeight(rules.loadableIncrement, rules.loadableIncrement, 'up'));
-  return ok(rounded);
+  return ok(roundToLoadableAttemptWeight(target, lift, rules, 'down'));
 }

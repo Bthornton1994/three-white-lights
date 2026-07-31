@@ -4,42 +4,53 @@ import { describe, expect, it } from 'vitest';
 import {
   ATTEMPTS_PER_LIFT,
   ATTEMPT_JUMP_FRACTION,
+  COLLAR_PAIR_WEIGHT_KG,
+  COMPETITION_BAR_WEIGHT_KG,
   DEFAULT_MEET_RULES,
   JUDGES_REQUIRED_FOR_GOOD_LIFT,
   JUDGE_COUNT,
   LIFT_ORDER,
   LOADABLE_WEIGHT_INCREMENT_KG,
   MIN_ATTEMPT_INCREMENT_KG,
+  MIN_LOADABLE_WEIGHT_KG,
   OPENER_FRACTION_OF_1RM,
-  RECORD_ATTEMPT_INCREMENT_KG,
   allCompletedAttempts,
-  bankedTotal,
   bestSuccessfulAttempt,
   countWhiteLights,
   createMeet,
   currentAttemptContext,
   declareAttempt,
+  finalMeetTotal,
   isBombedOut,
   isGoodLift,
+  isLoadableAttemptWeight,
   isLoadableWeight,
   isMeetComplete,
   isSplitDecision,
   isValidJudgePanel,
   meetOutcome,
-  meetTotal,
+  minimumAttemptWeight,
   passAttempt,
+  readTotal,
   resolveAttempt,
+  roundToLoadableAttemptWeight,
   roundToLoadableWeight,
   suggestNextAttempt,
   suggestOpener,
+  totalOnTheBoard,
+  validateMeetRules,
 } from './meet';
 import type {
   AttemptNumber,
   AttemptStrategy,
+  DeclareAttemptInput,
+  JudgeLight,
   JudgePanel,
+  JudgedAttempt,
   LiftKind,
   LiftProgress,
   MeetError,
+  MeetLoadingRules,
   MeetState,
   Result,
 } from './meet';
@@ -52,6 +63,12 @@ const THREE_WHITE: JudgePanel = ['white', 'white', 'white'];
 const TWO_WHITE: JudgePanel = ['white', 'red', 'white'];
 const ONE_WHITE: JudgePanel = ['red', 'white', 'red'];
 const THREE_RED: JudgePanel = ['red', 'red', 'red'];
+
+/**
+ * A federation that stocks the fine discs. This is the ONLY way to get 0.5 kg
+ * loading: it is declared once, for the whole meet, at `createMeet`.
+ */
+const FINE_LOADING_RULES: MeetLoadingRules = { ...DEFAULT_MEET_RULES, loadableIncrement: 0.5 };
 
 function unwrap<T>(result: Result<T>): T {
   if (!result.ok) {
@@ -76,6 +93,14 @@ function takeAttempt(state: MeetState, weight: number, lights: JudgePanel): Meet
 /** Run a whole lift's worth of attempts. */
 function takeLift(state: MeetState, attempts: readonly (readonly [number, JudgePanel])[]): MeetState {
   return attempts.reduce<MeetState>((acc, [weight, lights]) => takeAttempt(acc, weight, lights), state);
+}
+
+function judgedAttempt(state: MeetState, lift: LiftKind, index: number): JudgedAttempt {
+  const attempt = state.lifts[lift].attempts[index];
+  if (attempt === undefined || attempt.status === 'passed') {
+    throw new Error(`expected a judged ${lift} attempt at index ${index}`);
+  }
+  return attempt;
 }
 
 const NINE_FOR_NINE: Readonly<Record<LiftKind, readonly (readonly [number, JudgePanel])[]>> = {
@@ -123,6 +148,15 @@ describe('module purity', () => {
     expect(source).toMatch(/DESIGN CONFLICT/);
     expect(source).toMatch(/§6\.3/);
   });
+
+  it('says what it can and cannot cite for its loading numbers', () => {
+    // CLAUDE.md forbids asserting a rule that could not be verified. The module
+    // must keep saying which source it actually retrieved and that no primary
+    // rulebook was reachable.
+    expect(source).toMatch(/No primary federation rulebook was reachable/);
+    expect(source).toMatch(/gitlab\.com\/openpowerlifting\/openlifter/);
+    expect(source).toMatch(/secondary source/);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -146,8 +180,8 @@ describe('meet structure', () => {
     expect(state.lifts.squat.status).toBe('in-progress');
     expect(state.lifts.bench.status).toBe('upcoming');
     expect(state.lifts.deadlift.status).toBe('upcoming');
-    expect(bankedTotal(state)).toBe(0);
-    expect(meetTotal(state)).toBeNull();
+    expect(totalOnTheBoard(state)).toBe(0);
+    expect(finalMeetTotal(state)).toBeNull();
     expect(meetOutcome(state)).toBeNull();
   });
 });
@@ -187,9 +221,7 @@ describe('three-light judging', () => {
 
   it('records the panel on the judged attempt', () => {
     const state = takeAttempt(createMeet(), 200, TWO_WHITE);
-    const attempt = state.lifts.squat.attempts[0];
-    expect(attempt).toBeDefined();
-    if (attempt === undefined || attempt.status === 'passed') throw new Error('expected a judged attempt');
+    const attempt = judgedAttempt(state, 'squat', 0);
     expect(attempt.status).toBe('good');
     expect(attempt.lights).toEqual(TWO_WHITE);
     expect(attempt.whiteLights).toBe(2);
@@ -197,6 +229,25 @@ describe('three-light judging', () => {
     expect(attempt.weight).toBe(200);
     expect(attempt.attemptNumber).toBe(1);
     expect(attempt.lift).toBe('squat');
+  });
+
+  it('copies the panel instead of aliasing the caller’s array', () => {
+    // `readonly` is compile-time only. A caller that keeps its own array must
+    // not be able to rewrite a judged attempt after the lights are in.
+    const callerLights: JudgeLight[] = ['white', 'white', 'white'];
+    const declared = unwrap(declareAttempt(createMeet(), { weight: 200 }));
+    const state = unwrap(resolveAttempt(declared, { lights: callerLights as unknown as JudgePanel }));
+
+    callerLights[0] = 'red';
+    callerLights[1] = 'red';
+    callerLights[2] = 'red';
+
+    const attempt = judgedAttempt(state, 'squat', 0);
+    expect(attempt.lights).toEqual(['white', 'white', 'white']);
+    expect(attempt.lights).not.toBe(callerLights);
+    expect(attempt.whiteLights).toBe(3);
+    expect(attempt.status).toBe('good');
+    expect(state.lifts.squat.best).toBe(200);
   });
 
   it('rejects a malformed panel at resolve time', () => {
@@ -222,8 +273,8 @@ describe('a 9-for-9 meet', () => {
 
   it('totals the best successful attempt on each lift', () => {
     // 230 squat + 147.5 bench + 272.5 deadlift
-    expect(meetTotal(state)).toBe(650);
-    expect(bankedTotal(state)).toBe(650);
+    expect(finalMeetTotal(state)).toBe(650);
+    expect(totalOnTheBoard(state)).toBe(650);
     const outcome = meetOutcome(state);
     expect(outcome?.total).toBe(650);
     expect(outcome?.bestByLift).toEqual({ squat: 230, bench: 147.5, deadlift: 272.5 });
@@ -285,7 +336,7 @@ describe('total calculation with mixed makes and misses', () => {
       [230, THREE_RED], // missed
     ]);
 
-    expect(meetTotal(state)).toBe(510);
+    expect(finalMeetTotal(state)).toBe(510);
     expect(meetOutcome(state)?.bestByLift).toEqual({ squat: 190, bench: 100, deadlift: 220 });
     expect(isBombedOut(state)).toBe(false);
   });
@@ -299,7 +350,7 @@ describe('total calculation with mixed makes and misses', () => {
     ]);
     expect(state.lifts.squat.best).toBe(210);
     expect(bestSuccessfulAttempt(state.lifts.squat)).toBe(210);
-    expect(bankedTotal(state)).toBe(210);
+    expect(totalOnTheBoard(state)).toBe(210);
   });
 
   it('takes the heaviest good lift even if the attempts arrive out of order', () => {
@@ -308,24 +359,14 @@ describe('total calculation with mixed makes and misses', () => {
     const progress: LiftProgress = {
       lift: 'squat',
       attempts: [
-        { lift: 'squat', attemptNumber: 1, weight: 200, recordAttempt: false, status: 'good', lights: THREE_WHITE, whiteLights: 3, unanimous: true },
-        { lift: 'squat', attemptNumber: 2, weight: 190, recordAttempt: false, status: 'good', lights: TWO_WHITE, whiteLights: 2, unanimous: false },
-        { lift: 'squat', attemptNumber: 3, weight: 210, recordAttempt: false, status: 'no-lift', lights: THREE_RED, whiteLights: 0, unanimous: true },
+        { lift: 'squat', attemptNumber: 1, weight: 200, status: 'good', lights: THREE_WHITE, whiteLights: 3, unanimous: true },
+        { lift: 'squat', attemptNumber: 2, weight: 190, status: 'good', lights: TWO_WHITE, whiteLights: 2, unanimous: false },
+        { lift: 'squat', attemptNumber: 3, weight: 210, status: 'no-lift', lights: THREE_RED, whiteLights: 0, unanimous: true },
       ],
       status: 'complete',
       best: null,
     };
     expect(bestSuccessfulAttempt(progress)).toBe(200);
-  });
-
-  it('reports no total until the meet is finished', () => {
-    const state = takeLift(createMeet(), [
-      [200, THREE_WHITE],
-      [210, THREE_WHITE],
-      [220, THREE_WHITE],
-    ]);
-    expect(meetTotal(state)).toBeNull();
-    expect(bankedTotal(state)).toBe(220);
   });
 
   it('adds fractional attempts without float drift', () => {
@@ -345,7 +386,87 @@ describe('total calculation with mixed makes and misses', () => {
       [142.5, THREE_WHITE],
       [147.5, THREE_WHITE],
     ]);
-    expect(meetTotal(state)).toBe(330);
+    expect(finalMeetTotal(state)).toBe(330);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Running sum vs official total
+// ---------------------------------------------------------------------------
+
+describe('a running sum is never mistaken for a total', () => {
+  it('reports in-progress with no total before the meet starts', () => {
+    expect(readTotal(createMeet())).toEqual({ kind: 'in-progress', total: null, totalOnTheBoard: 0 });
+  });
+
+  it('still has NO total once every lift has a good attempt but the meet is live', () => {
+    // The trap: squat and bench are done, the deadlift opener is good, and two
+    // deadlift attempts remain. Every lift has a best, so a naive sum looks
+    // final. It is not — the lifter can still add 40 kg or bomb the platform.
+    let state = takeLift(createMeet(), [
+      [200, THREE_WHITE],
+      [210, THREE_WHITE],
+      [220, THREE_WHITE],
+    ]);
+    state = takeLift(state, [
+      [120, THREE_WHITE],
+      [125, THREE_WHITE],
+      [130, THREE_WHITE],
+    ]);
+    state = takeAttempt(state, 250, THREE_WHITE);
+
+    expect(isMeetComplete(state)).toBe(false);
+    expect(state.lifts.deadlift.best).toBe(250);
+
+    const reading = readTotal(state);
+    expect(reading.kind).toBe('in-progress');
+    expect(reading.total).toBeNull();
+    expect(reading.totalOnTheBoard).toBe(600);
+
+    expect(finalMeetTotal(state)).toBeNull();
+    expect(totalOnTheBoard(state)).toBe(600);
+
+    // ...and the number only becomes a total when the meet is actually over.
+    let finished = takeAttempt(state, 260, THREE_WHITE);
+    finished = takeAttempt(finished, 270, THREE_RED);
+    expect(readTotal(finished)).toEqual({ kind: 'final', total: 610, totalOnTheBoard: 610 });
+    expect(finalMeetTotal(finished)).toBe(610);
+  });
+
+  it('reports no-total, not a number, for a bomb-out that had lifts on the board', () => {
+    let state = takeLift(createMeet(), [
+      [200, THREE_WHITE],
+      [215, THREE_WHITE],
+      [225, THREE_WHITE],
+    ]);
+    state = takeLift(state, [
+      [140, THREE_RED],
+      [140, THREE_RED],
+      [140, ONE_WHITE],
+    ]);
+
+    const reading = readTotal(state);
+    expect(reading.kind).toBe('no-total');
+    expect(reading.total).toBeNull();
+    expect(reading.totalOnTheBoard).toBe(225);
+    expect(reading.kind === 'no-total' && reading.bombedLift).toBe('bench');
+    expect(finalMeetTotal(state)).toBeNull();
+  });
+
+  it('mid-lift, before the deadlift opener, there is no total either', () => {
+    let state = takeLift(createMeet(), [
+      [200, THREE_WHITE],
+      [210, THREE_WHITE],
+      [220, THREE_WHITE],
+    ]);
+    state = takeLift(state, [
+      [120, THREE_WHITE],
+      [125, THREE_WHITE],
+      [130, THREE_WHITE],
+    ]);
+    expect(readTotal(state).kind).toBe('in-progress');
+    expect(finalMeetTotal(state)).toBeNull();
+    expect(totalOnTheBoard(state)).toBe(350);
   });
 });
 
@@ -363,8 +484,8 @@ describe('bombing out', () => {
 
     expect(isMeetComplete(state)).toBe(true);
     expect(isBombedOut(state)).toBe(true);
-    expect(meetTotal(state)).toBeNull();
-    expect(bankedTotal(state)).toBe(0);
+    expect(finalMeetTotal(state)).toBeNull();
+    expect(totalOnTheBoard(state)).toBe(0);
 
     const outcome = meetOutcome(state);
     expect(outcome?.kind).toBe('bombed-out');
@@ -392,12 +513,12 @@ describe('bombing out', () => {
     ]);
 
     expect(isBombedOut(state)).toBe(true);
-    expect(meetTotal(state)).toBeNull();
+    expect(finalMeetTotal(state)).toBeNull();
     // The squat is on the board for the recap, but there is no total.
-    expect(bankedTotal(state)).toBe(225);
+    expect(totalOnTheBoard(state)).toBe(225);
     const outcome = meetOutcome(state);
     expect(outcome?.bombedLift).toBe('bench');
-    expect(outcome?.bankedTotal).toBe(225);
+    expect(outcome?.totalOnTheBoard).toBe(225);
     expect(outcome?.bestByLift).toEqual({ squat: 225, bench: null, deadlift: null });
     expect(outcome?.attempts).toHaveLength(6);
     expect(state.lifts.squat.status).toBe('complete');
@@ -423,8 +544,8 @@ describe('bombing out', () => {
     ]);
 
     expect(isBombedOut(state)).toBe(true);
-    expect(meetTotal(state)).toBeNull();
-    expect(bankedTotal(state)).toBe(345);
+    expect(finalMeetTotal(state)).toBeNull();
+    expect(totalOnTheBoard(state)).toBe(345);
     const outcome = meetOutcome(state);
     expect(outcome?.bombedLift).toBe('deadlift');
     expect(outcome?.bestByLift).toEqual({ squat: 215, bench: 130, deadlift: null });
@@ -479,14 +600,13 @@ describe('the non-decreasing weight invariant', () => {
   });
 
   it('requires at least the minimum increase when going up', () => {
-    const rules = { ...DEFAULT_MEET_RULES, loadableIncrement: 0.5 };
     // After a good lift: anything under +2.5 is not a legal jump.
-    const madeIt = takeAttempt(createMeet(rules), 200, THREE_WHITE);
+    const madeIt = takeAttempt(createMeet(FINE_LOADING_RULES), 200, THREE_WHITE);
     expect(expectError(declareAttempt(madeIt, { weight: 201 })).code).toBe('INSUFFICIENT_INCREASE');
     expect(unwrap(declareAttempt(madeIt, { weight: 202.5 })).phase.kind).toBe('attempt-declared');
 
     // After a miss the weight may be repeated, but a partial jump is still illegal.
-    const missed = takeAttempt(createMeet(rules), 200, THREE_RED);
+    const missed = takeAttempt(createMeet(FINE_LOADING_RULES), 200, THREE_RED);
     expect(expectError(declareAttempt(missed, { weight: 201 })).code).toBe('INSUFFICIENT_INCREASE');
     expect(unwrap(declareAttempt(missed, { weight: 200 })).phase.kind).toBe('attempt-declared');
     expect(unwrap(declareAttempt(missed, { weight: 202.5 })).phase.kind).toBe('attempt-declared');
@@ -509,6 +629,81 @@ describe('the non-decreasing weight invariant', () => {
     expect(expectError(declareAttempt(state, { weight: 195 })).code).toBe('WEIGHT_DECREASED');
     expect(expectError(declareAttempt(state, { weight: 200 })).code).toBe('REPEAT_AFTER_GOOD_LIFT');
     expect(unwrap(declareAttempt(state, { weight: 202.5 })).phase.kind).toBe('attempt-declared');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Loadability: the bar has a floor as well as a granularity
+// ---------------------------------------------------------------------------
+
+describe('loadable weights', () => {
+  it('builds the minimum from a named bar weight and a named collar weight', () => {
+    expect(MIN_LOADABLE_WEIGHT_KG).toBe(COMPETITION_BAR_WEIGHT_KG + COLLAR_PAIR_WEIGHT_KG);
+    for (const lift of LIFT_ORDER) {
+      expect(minimumAttemptWeight(lift)).toBe(MIN_LOADABLE_WEIGHT_KG);
+    }
+  });
+
+  it('rejects an attempt lighter than the bar and collars', () => {
+    const state = createMeet();
+    for (const weight of [2.5, 5, 20, 22.5]) {
+      expect(expectError(declareAttempt(state, { weight })).code).toBe('WEIGHT_BELOW_BAR');
+    }
+    // The empty loaded bar itself is legal, if absurd.
+    expect(unwrap(declareAttempt(state, { weight: MIN_LOADABLE_WEIGHT_KG })).phase.kind).toBe('attempt-declared');
+  });
+
+  it('measures granularity from the bar, not from zero', () => {
+    // A federation whose bar and collars do not land on the plate grid: legal
+    // weights are 45, 47.5, 50... and 46.25 is not one of them.
+    const oddBar: MeetLoadingRules = {
+      ...DEFAULT_MEET_RULES,
+      barAndCollarsWeight: { squat: 45, bench: 45, deadlift: 45 },
+    };
+    expect(isLoadableAttemptWeight(45, 'squat', oddBar)).toBe(true);
+    expect(isLoadableAttemptWeight(47.5, 'squat', oddBar)).toBe(true);
+    expect(isLoadableAttemptWeight(46.25, 'squat', oddBar)).toBe(false);
+    expect(isLoadableAttemptWeight(42.5, 'squat', oddBar)).toBe(false);
+
+    const state = createMeet(oddBar);
+    expect(unwrap(declareAttempt(state, { weight: 47.5 })).phase.kind).toBe('attempt-declared');
+    expect(expectError(declareAttempt(state, { weight: 46.25 })).code).toBe('WEIGHT_NOT_LOADABLE');
+  });
+
+  it('honours a per-lift bar weight', () => {
+    const heavySquatBar: MeetLoadingRules = {
+      ...DEFAULT_MEET_RULES,
+      barAndCollarsWeight: { squat: 30, bench: 25, deadlift: 25 },
+    };
+    expect(minimumAttemptWeight('squat', heavySquatBar)).toBe(30);
+    expect(minimumAttemptWeight('bench', heavySquatBar)).toBe(25);
+    const state = createMeet(heavySquatBar);
+    expect(expectError(declareAttempt(state, { weight: 27.5 })).code).toBe('WEIGHT_BELOW_BAR');
+    expect(unwrap(declareAttempt(state, { weight: 30 })).phase.kind).toBe('attempt-declared');
+  });
+
+  it('never rounds an attempt suggestion below the bar', () => {
+    expect(roundToLoadableAttemptWeight(0, 'squat')).toBe(MIN_LOADABLE_WEIGHT_KG);
+    expect(roundToLoadableAttemptWeight(10, 'squat')).toBe(MIN_LOADABLE_WEIGHT_KG);
+    expect(roundToLoadableAttemptWeight(26, 'squat', DEFAULT_MEET_RULES, 'down')).toBe(MIN_LOADABLE_WEIGHT_KG);
+    expect(roundToLoadableAttemptWeight(26, 'squat', DEFAULT_MEET_RULES, 'up')).toBe(27.5);
+    expect(roundToLoadableAttemptWeight(201, 'squat')).toBe(200);
+  });
+
+  it('rejects nonsense meet rules loudly instead of skipping the check', () => {
+    const broken: MeetLoadingRules = { ...DEFAULT_MEET_RULES, loadableIncrement: 0 };
+    expect(validateMeetRules(broken)?.code).toBe('INVALID_MEET_RULES');
+    expect(validateMeetRules(DEFAULT_MEET_RULES)).toBeNull();
+
+    const state = createMeet(broken);
+    expect(expectError(declareAttempt(state, { weight: 200 })).code).toBe('INVALID_MEET_RULES');
+    expect(expectError(suggestOpener('squat', 200, broken)).code).toBe('INVALID_MEET_RULES');
+
+    const negativeBar: MeetLoadingRules = {
+      ...DEFAULT_MEET_RULES,
+      barAndCollarsWeight: { squat: 25, bench: -1, deadlift: 25 },
+    };
+    expect(validateMeetRules(negativeBar)?.code).toBe('INVALID_MEET_RULES');
   });
 });
 
@@ -596,32 +791,55 @@ describe('rejected transitions', () => {
     expect(unwrap(declareAttempt(state, { weight: 202.5 })).phase.kind).toBe('attempt-declared');
   });
 
-  it('can have loadable-weight enforcement turned off for other federations', () => {
-    const state = createMeet({ ...DEFAULT_MEET_RULES, enforceLoadableIncrement: false });
-    expect(unwrap(declareAttempt(state, { weight: 201 })).phase.kind).toBe('attempt-declared');
+  it('lets a federation with finer discs declare that once, for the whole meet', () => {
+    const state = createMeet(FINE_LOADING_RULES);
+    expect(unwrap(declareAttempt(state, { weight: 200.5 })).phase.kind).toBe('attempt-declared');
+    // ...and it is still not a way around the floor or the minimum increase.
+    expect(expectError(declareAttempt(state, { weight: 24.5 })).code).toBe('WEIGHT_BELOW_BAR');
+    const made = takeAttempt(state, 200.5, THREE_WHITE);
+    expect(expectError(declareAttempt(made, { weight: 201 })).code).toBe('INSUFFICIENT_INCREASE');
   });
 });
 
 // ---------------------------------------------------------------------------
-// Record attempts
+// Record attempts are NOT modelled (see the REMOVED FEATURE note in meet.ts)
 // ---------------------------------------------------------------------------
 
-describe('record attempts', () => {
-  it('allows the finer record increment above a good lift', () => {
-    const state = takeAttempt(createMeet(), 200, THREE_WHITE);
-    expect(expectError(declareAttempt(state, { weight: 200.5 })).code).toBe('WEIGHT_NOT_LOADABLE');
-    const record = unwrap(declareAttempt(state, { weight: 200.5, recordAttempt: true }));
-    expect(record.phase.kind).toBe('attempt-declared');
-    const judged = unwrap(resolveAttempt(record, { lights: TWO_WHITE }));
-    expect(judged.lifts.squat.best).toBe(200.5);
-    const attempt = judged.lifts.squat.attempts[1];
-    if (attempt === undefined || attempt.status === 'passed') throw new Error('expected a judged attempt');
-    expect(attempt.recordAttempt).toBe(true);
+describe('record attempts are a declared non-goal', () => {
+  it('has no per-attempt flag that loosens a loading rule', () => {
+    // Compile-time assertions: if either key comes back, this file stops
+    // type-checking, which is the point.
+    const noFlagOnInput: 'recordAttempt' extends keyof DeclareAttemptInput ? false : true = true;
+    const noFlagOnAttempt: 'recordAttempt' extends keyof JudgedAttempt ? false : true = true;
+    expect(noFlagOnInput).toBe(true);
+    expect(noFlagOnAttempt).toBe(true);
   });
 
-  it('still refuses to go down on a record attempt', () => {
+  it('ignores a legacy record flag instead of honouring it', () => {
+    // The exact sequence that used to be accepted: 200 good, then 200.5 or 201
+    // "because it is a record attempt". Both are illegal for this lifter and
+    // both are now refused, flag or no flag.
     const state = takeAttempt(createMeet(), 200, THREE_WHITE);
-    expect(expectError(declareAttempt(state, { weight: 199.5, recordAttempt: true })).code).toBe('WEIGHT_DECREASED');
+    const halfKilo = { weight: 200.5, recordAttempt: true } as unknown as DeclareAttemptInput;
+    const oneKilo = { weight: 201, recordAttempt: true } as unknown as DeclareAttemptInput;
+    expect(expectError(declareAttempt(state, halfKilo)).code).toBe('WEIGHT_NOT_LOADABLE');
+    expect(expectError(declareAttempt(state, oneKilo)).code).toBe('WEIGHT_NOT_LOADABLE');
+  });
+
+  it('will not let a record flag smuggle an unloadable opener onto the platform', () => {
+    const opener = { weight: 100.5, recordAttempt: true } as unknown as DeclareAttemptInput;
+    expect(expectError(declareAttempt(createMeet(), opener)).code).toBe('WEIGHT_NOT_LOADABLE');
+  });
+
+  it('does not let a record flag shrink the minimum increase either', () => {
+    const state = takeAttempt(createMeet(FINE_LOADING_RULES), 200, THREE_WHITE);
+    const smallJump = { weight: 200.5, recordAttempt: true } as unknown as DeclareAttemptInput;
+    expect(expectError(declareAttempt(state, smallJump)).code).toBe('INSUFFICIENT_INCREASE');
+  });
+
+  it('reports the same minimum whatever the caller thinks it is attempting', () => {
+    const context = currentAttemptContext(takeAttempt(createMeet(), 200, THREE_WHITE));
+    expect(context?.minimumWeight).toBe(200 + MIN_ATTEMPT_INCREMENT_KG);
   });
 });
 
@@ -654,7 +872,7 @@ describe('passing an attempt', () => {
       state = unwrap(passAttempt(state));
     }
     expect(isBombedOut(state)).toBe(true);
-    expect(meetTotal(state)).toBeNull();
+    expect(finalMeetTotal(state)).toBeNull();
     expect(meetOutcome(state)?.bombedLift).toBe('squat');
   });
 
@@ -670,7 +888,7 @@ describe('passing an attempt', () => {
 // ---------------------------------------------------------------------------
 
 describe('attempt context', () => {
-  it('leaves the opener unconstrained', () => {
+  it('floors the opener at the bar and collars and nothing else', () => {
     const context = currentAttemptContext(createMeet());
     expect(context).toEqual({
       lift: 'squat',
@@ -678,7 +896,7 @@ describe('attempt context', () => {
       previousWeight: null,
       previousOutcome: null,
       mayRepeatWeight: false,
-      minimumWeight: null,
+      minimumWeight: MIN_LOADABLE_WEIGHT_KG,
       minimumIncreaseWeight: null,
     });
   });
@@ -698,9 +916,12 @@ describe('attempt context', () => {
     expect(context?.minimumIncreaseWeight).toBe(200 + MIN_ATTEMPT_INCREMENT_KG);
   });
 
-  it('uses the record increment when a record attempt is planned', () => {
-    const context = currentAttemptContext(takeAttempt(createMeet(), 200, THREE_WHITE), { recordAttempt: true });
-    expect(context?.minimumWeight).toBe(200 + RECORD_ATTEMPT_INCREMENT_KG);
+  it('only ever offers a minimum the bar can actually take', () => {
+    // 25 kg bar, 2.5 kg loading: +2.5 off 200 is 202.5, which is loadable.
+    const context = currentAttemptContext(takeAttempt(createMeet(), 200, THREE_WHITE));
+    const minimum = context?.minimumIncreaseWeight ?? 0;
+    expect(isLoadableAttemptWeight(minimum, 'squat')).toBe(true);
+    expect(declareAttempt(takeAttempt(createMeet(), 200, THREE_WHITE), { weight: minimum }).ok).toBe(true);
   });
 
   it('is null while an attempt is on the platform or the meet is over', () => {
@@ -746,7 +967,7 @@ describe('attempt selection', () => {
           expect(suggestion.error.code).toBe('REPEAT_AFTER_GOOD_LIFT');
           continue;
         }
-        expect(isLoadableWeight(suggestion.value, LOADABLE_WEIGHT_INCREMENT_KG)).toBe(true);
+        expect(isLoadableAttemptWeight(suggestion.value, 'squat')).toBe(true);
         expect(declareAttempt(state, { weight: suggestion.value }).ok).toBe(true);
       }
     }
@@ -770,8 +991,7 @@ describe('attempt selection', () => {
   it('clamps a too-small jump up to the minimum legal increase', () => {
     // With half-kilo loading, a 1.5% conservative bench jump off 100 lands on
     // 101.5, which is not a legal increase. It must be pushed to 102.5.
-    const rules = { ...DEFAULT_MEET_RULES, loadableIncrement: 0.5 };
-    let state = takeLift(createMeet(rules), [
+    let state = takeLift(createMeet(FINE_LOADING_RULES), [
       [200, THREE_WHITE],
       [210, THREE_WHITE],
       [220, THREE_WHITE],
@@ -804,16 +1024,21 @@ describe('opener suggestion', () => {
   it('produces a weight the engine accepts as an opener', () => {
     for (const lift of LIFT_ORDER) {
       const opener = unwrap(suggestOpener(lift, 180));
-      expect(isLoadableWeight(opener)).toBe(true);
-      expect(opener).toBeGreaterThan(0);
+      expect(isLoadableAttemptWeight(opener, lift)).toBe(true);
+      expect(opener).toBeGreaterThanOrEqual(MIN_LOADABLE_WEIGHT_KG);
     }
     const state = createMeet();
     expect(declareAttempt(state, { weight: unwrap(suggestOpener('squat', 180)) }).ok).toBe(true);
   });
 
   it('never suggests an unloadable empty bar for a tiny 1RM', () => {
-    const opener = unwrap(suggestOpener('bench', 1));
-    expect(opener).toBe(LOADABLE_WEIGHT_INCREMENT_KG);
+    // 90% of a 25 kg bench is 22.5, which is less than the bar and collars and
+    // therefore cannot be put on a platform. The opener is the bar itself.
+    for (const oneRepMax of [1, 10, 25]) {
+      const opener = unwrap(suggestOpener('bench', oneRepMax));
+      expect(opener).toBe(MIN_LOADABLE_WEIGHT_KG);
+      expect(declareAttempt(createMeet(), { lift: 'squat', weight: opener }).ok).toBe(true);
+    }
   });
 
   it('rejects a nonsense 1RM', () => {
@@ -844,7 +1069,8 @@ describe('weight rounding', () => {
   it('recognises loadable weights', () => {
     expect(isLoadableWeight(202.5)).toBe(true);
     expect(isLoadableWeight(200.5)).toBe(false);
-    expect(isLoadableWeight(200.5, RECORD_ATTEMPT_INCREMENT_KG)).toBe(true);
+    expect(isLoadableWeight(200.5, FINE_LOADING_RULES.loadableIncrement)).toBe(true);
+    expect(isLoadableWeight(202.5, 0)).toBe(false);
   });
 });
 
@@ -864,6 +1090,23 @@ describe('immutability', () => {
     expect(JSON.stringify(declared)).toBe(declaredSnapshot);
     expect(resolved).not.toBe(declared);
     expect(start.lifts.squat.attempts).toHaveLength(0);
+  });
+
+  it('copies the rules it is given instead of aliasing them', () => {
+    const callerRules = {
+      barAndCollarsWeight: { squat: 25, bench: 25, deadlift: 25 },
+      minIncrement: 2.5,
+      loadableIncrement: 2.5,
+    };
+    const state = createMeet(callerRules);
+
+    callerRules.loadableIncrement = 0.5;
+    callerRules.barAndCollarsWeight.squat = 5;
+
+    expect(state.rules.loadableIncrement).toBe(2.5);
+    expect(state.rules.barAndCollarsWeight.squat).toBe(25);
+    expect(expectError(declareAttempt(state, { weight: 200.5 })).code).toBe('WEIGHT_NOT_LOADABLE');
+    expect(expectError(declareAttempt(state, { weight: 10 })).code).toBe('WEIGHT_BELOW_BAR');
   });
 
   it('replays deterministically — same inputs, same meet', () => {
