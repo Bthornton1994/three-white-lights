@@ -148,16 +148,64 @@ describe('the mark table', () => {
 /**
  * Floor on hand-placed pixels present in a finished frame.
  *
- * Measured at this authoring: 208 at lockout and 177 in the hole, out of a
- * budget of 252 map cells (the difference is marks the body covers at that
- * pose, chiefly the quad sweep once the singlet hem and the knee sleeve meet
- * over the thigh). The number to compare it against is what the sprite had
- * before this file existed: SIX marks were written in the source — two eyes, a
- * mouth, a sternum notch and one chalked knuckle per hand — and `despeckle` ate
- * every isolated one of them, so the count that actually reached a PNG was
- * effectively zero.
+ * Measured at this authoring: the worst frame in the whole pose space lands 256
+ * of a 342-cell budget (the shortfall is marks the body covers at that pose,
+ * chiefly the quad sweep once the singlet hem and the knee sleeve meet over the
+ * thigh and there is no bare thigh left to draw on). The number to compare it
+ * against is what the sprite had before this file existed: SIX marks were
+ * written in the source — two eyes, a mouth, a sternum notch and one chalked
+ * knuckle per hand — and `despeckle` ate every isolated one of them, so the
+ * count that actually reached a PNG was effectively zero.
  */
-const FLOOR_MARK_PIXELS_PER_FRAME = 130;
+const FLOOR_MARK_PIXELS_PER_FRAME = 210;
+
+/**
+ * Floor on hand-placed pixels that are on BARE FLESH rather than on worn kit.
+ *
+ * The reason this is a separate number: the previous authoring pass cleared the
+ * floor above comfortably while roughly 80% of its authored pixels were objects
+ * — shoes, sleeves, belt, wraps, trim, patch, hair — on a bare-armed,
+ * bare-legged figure whose largest surface is skin. "Lots of authored pixels"
+ * and "the flesh is drawn" turned out to be different claims, so both are
+ * floored. Measured at this authoring: flesh is 50% of every painted authored
+ * pixel over the whole pose space, against 24% before this pass.
+ */
+const FLOOR_ANATOMY_PIXELS_PER_FRAME = 90;
+
+/**
+ * The marks that draw bare flesh, taken from the table's own `depicts` field.
+ *
+ * The names are ALSO written out here, and that duplication is on purpose: the
+ * field is what the tool and the floors read, and this list is what stops a
+ * future pass from quietly reclassifying a shoe as flesh to make a floor go
+ * green. If the two ever disagree, one of them is wrong and the test says so.
+ */
+const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLESH').map(
+  (m) => m.name,
+);
+
+const EXPECTED_FLESH_MARKS: readonly string[] = [
+  'FACE_CALM',
+  'FACE_STRAINED',
+  'TRAP_RIDGE_NEAR',
+  'TRAP_RIDGE_FAR',
+  'TRAP_BAR_SHADOW',
+  'PEC_SHELF',
+  'STRAP_SHADOW',
+  'DELTOID_MASS_NEAR',
+  'DELTOID_MASS_FAR',
+  'BICEPS_MASS_NEAR',
+  'BICEPS_MASS_FAR',
+  'ELBOW_CREASE',
+  'FOREARM_BELLY_NEAR',
+  'FOREARM_BELLY_FAR',
+  'QUAD_SWEEP_NEAR',
+  'QUAD_SWEEP_FAR',
+  'SHIN_CREST_NEAR',
+  'SHIN_CREST_FAR',
+  'CALF_TAPER',
+  'ANKLE_SHADOW',
+];
 
 describe('marks reach the pixels', () => {
   it('puts a large, counted number of authored pixels into every frame', () => {
@@ -169,6 +217,59 @@ describe('marks reach the pixels', () => {
         found,
         `depth ${s.depth.toFixed(2)} ${s.direction} strain ${s.strainLevel} pitch ${s.pitchLevel}`,
       ).toBeGreaterThan(FLOOR_MARK_PIXELS_PER_FRAME);
+    }
+  });
+
+  it('puts most of those pixels on FLESH, not on worn kit', () => {
+    // The finding this exists for, in the critic's words: "the kit got drawn,
+    // the flesh did not". Shoes, sleeves, belt, wraps, trim, patch and hair
+    // landed at 90-100% and accounted for four fifths of every authored pixel,
+    // while the marks meant to break the ramp at anatomy landed 31-68% of the
+    // time. A budget test cannot see that; this one can.
+    expect([...ANATOMY_MARKS].sort()).toEqual([...EXPECTED_FLESH_MARKS].sort());
+
+    for (const s of poseSpace()) {
+      const frame = renderLifterFrame(s);
+      let anatomy = 0;
+      let total = 0;
+      for (const mark of MARKS) {
+        const found = markPixelsInGrid(frame.grid, mark, frame);
+        total += found;
+        if (ANATOMY_MARKS.includes(mark.name)) anatomy += found;
+      }
+      const where = `depth ${s.depth.toFixed(2)} ${s.direction} s${s.strainLevel} p${s.pitchLevel}`;
+      expect(anatomy, where).toBeGreaterThan(FLOOR_ANATOMY_PIXELS_PER_FRAME);
+      expect(anatomy / total, `anatomy share, ${where}`).toBeGreaterThan(0.4);
+    }
+  });
+
+  it('lands every anatomy mark on most of the pixels it asks for', () => {
+    // "A mark that lands a third of the time is not doing its job." Measured
+    // over the whole pose space at this authoring, every anatomy mark clears
+    // 75% except the two quad sweeps, which cannot: below about half depth the
+    // singlet hem and the knee sleeve meet over the thigh and there is no bare
+    // thigh anywhere in the frame to paint on. That is a coverage fact about
+    // the drawing, not a misplaced mark, so they get their own lower floor
+    // rather than a fudged shared one.
+    const LOW_BY_COVERAGE = new Set(['QUAD_SWEEP_NEAR', 'QUAD_SWEEP_FAR']);
+    const req = new Map<string, number>();
+    const got = new Map<string, number>();
+    for (const s of poseSpace()) {
+      const frame = renderLifterFrame(s);
+      const strained = frame.strain > STRAIN.FLUSH_THRESHOLD;
+      for (const mark of MARKS) {
+        if (!ANATOMY_MARKS.includes(mark.name)) continue;
+        req.set(mark.name, (req.get(mark.name) ?? 0) + markTargets(mark, frame.pose, strained).length);
+        got.set(mark.name, (got.get(mark.name) ?? 0) + markPixelsInGrid(frame.grid, mark, frame));
+      }
+    }
+    for (const name of ANATOMY_MARKS) {
+      const asked = req.get(name) ?? 0;
+      expect(asked, name).toBeGreaterThan(0);
+      const rate = (got.get(name) ?? 0) / asked;
+      expect(rate, `${name} landed ${(rate * 100).toFixed(0)}%`).toBeGreaterThan(
+        LOW_BY_COVERAGE.has(name) ? 0.35 : 0.7,
+      );
     }
   });
 
@@ -244,19 +345,39 @@ describe('marks reach the pixels', () => {
 describe('marks are stamped after despeckle, and that matters', () => {
   it('would lose authored pixels if despeckle ran after them', () => {
     // Not a hypothetical. Run the pass the marks currently escape and count
-    // what it takes: if this number is ever 0, the ordering constraint has
-    // stopped being load-bearing and the comment explaining it is stale.
-    const frame = renderLifterFrame(spec({ depth: 0 }));
-    const after = cloneGrid(frame.grid);
-    despeckle(after);
-
+    // what it takes, over the whole pose space rather than one frame: a single
+    // frame can drift down to one or two casualties as maps get fatter, and at
+    // that point "the ordering is load-bearing" is being asserted by an
+    // accident rather than demonstrated.
+    //
+    // Measured at this authoring: 389 of 416 frames would lose at least one
+    // authored pixel and 1188 would go in total, the worst hit being the pec
+    // shelf's one-pixel sternum notch and both drawings of the face.
     let eaten = 0;
-    for (const mark of MARKS) {
-      for (const t of markTargets(mark, frame.pose, frame.strain > STRAIN.FLUSH_THRESHOLD)) {
-        if (getPx(frame.grid, t.x, t.y) === t.ink && getPx(after, t.x, t.y) !== t.ink) eaten += 1;
+    let framesHit = 0;
+    const byMark = new Map<string, number>();
+    for (const s of poseSpace()) {
+      const frame = renderLifterFrame(s);
+      const after = cloneGrid(frame.grid);
+      despeckle(after);
+      let here = 0;
+      for (const mark of MARKS) {
+        for (const t of markTargets(mark, frame.pose, frame.strain > STRAIN.FLUSH_THRESHOLD)) {
+          if (getPx(frame.grid, t.x, t.y) === t.ink && getPx(after, t.x, t.y) !== t.ink) {
+            here += 1;
+            byMark.set(mark.name, (byMark.get(mark.name) ?? 0) + 1);
+          }
+        }
       }
+      eaten += here;
+      if (here > 0) framesHit += 1;
     }
-    expect(eaten).toBeGreaterThan(0);
+    expect(eaten).toBeGreaterThan(400);
+    expect(framesHit / poseSpace().length).toBeGreaterThan(0.5);
+    // And the face specifically, because that is the failure this ordering was
+    // introduced for: eyes and a mouth that existed in the source and in no
+    // rendered PNG.
+    expect((byMark.get('FACE_CALM') ?? 0) + (byMark.get('FACE_STRAINED') ?? 0)).toBeGreaterThan(0);
   });
 
   it('reports placements that agree with the finished grid', () => {
@@ -477,7 +598,7 @@ describe('authored pixel budget', () => {
     // failure this module was written to avoid.
     for (const depth of [0, 0.5, 1]) {
       poseAtDepth(depth, 'ASCENT');
-      expect(authoredPixelBudget()).toBe(252);
+      expect(authoredPixelBudget()).toBe(342);
     }
   });
 });

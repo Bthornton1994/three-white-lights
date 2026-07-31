@@ -18,12 +18,18 @@
  *     outline pass
  *
  * Everything above the marks line is an underpainting: masses resolved from
- * geometry under one key light, which is all a shading model can give you. The
- * marks line is where the objects and the anatomy go on — buckle, sole line,
- * singlet trim, strap shadow, face, hair fringe, knee-sleeve banding, and the
- * breaks in the value ramp at the deltoid, elbow, wrist and knee. It sits after
- * `despeckle` on purpose: that pass cannot tell a deliberate one-pixel eye from
- * noise, and it used to eat them.
+ * geometry under one key light, plus `axialTerm`'s belly-and-joints profile so
+ * a limb is not a constant column down its length. That is all a shading model
+ * can give you. The marks line is where the objects AND THE FLESH go on —
+ * buckle, sole line, singlet trim, face, hair fringe, knee-sleeve banding, and
+ * the pec shelf, trap ridge, deltoid, biceps, forearm belly, quad sweep and
+ * shin crest. It sits after `despeckle` on purpose: that pass cannot tell a
+ * deliberate one-pixel eye from noise, and it used to eat them.
+ *
+ * The split between those two groups is tracked, not assumed: every mark says
+ * whether it depicts KIT or FLESH, and the tests floor the flesh share. A
+ * previous pass cleared a large authored-pixel budget with four fifths of it on
+ * worn objects and the body itself almost untouched.
  *
  * The frontal view has no true far and near side, so the sprite is shaded as if
  * the lifter were turned a couple of degrees: the screen-right limbs render one
@@ -221,7 +227,9 @@ function drawBarAndPlates(
     }
   }
 
-  // Collars.
+  // Collars, plus their single specular pixel. The collar body is mid steel on
+  // purpose (see RAMPS.CHROME): a bright block here out-values the lifter's own
+  // skin, and the figure is supposed to be the brightest thing in his frame.
   for (const sign of [-1, 1]) {
     const dxMid = sign * (sleeve.collarDxInner + BAR.COLLAR_WIDTH_PX / 2);
     const cy = barCy + barOffsetAt(dxMid, tiltDeg, bendPx);
@@ -230,6 +238,15 @@ function drawBarAndPlates(
         ? Math.round(cx - sleeve.collarDxInner - BAR.COLLAR_WIDTH_PX)
         : Math.round(cx + sleeve.collarDxInner);
     drawPlateEdge(g, xInner, BAR.COLLAR_WIDTH_PX, cy, BAR.COLLAR_HEIGHT_PX, RAMPS.CHROME);
+    const top = Math.round(cy - BAR.COLLAR_HEIGHT_PX / 2);
+    for (let k = 0; k < BAR.COLLAR_SPECULAR.RUN_PX; k += 1) {
+      setPx(
+        g,
+        xInner + BAR.COLLAR_SPECULAR.DX,
+        top + BAR.COLLAR_SPECULAR.DY + k,
+        PAL.CHROME_HI,
+      );
+    }
   }
 }
 
@@ -407,7 +424,13 @@ function drawTorso(g: IndexGrid, pose: Pose): void {
 
   // Traps and shoulders first, high enough to swallow the bar behind the neck:
   // from the front you see the bar emerge past the delts, not cross the throat.
-  drawTrunk(g, cx, trapTop, pose.hipY, trapHalf, pose.hipHalfW, RAMPS.SKIN, {});
+  //
+  // AXIAL_TRUNK, not the flat profile the other trunk calls take: this one is
+  // flesh. It puts the pec shelf high and lets the value fall into the waist,
+  // so the bare chest is not one field at one ramp step.
+  drawTrunk(g, cx, trapTop, pose.hipY, trapHalf, pose.hipHalfW, RAMPS.SKIN, {
+    axial: SHADING.AXIAL_TRUNK,
+  });
 
   // Deltoid caps: without these the shoulder line is a straight cut and the
   // whole figure reads as a mannequin.

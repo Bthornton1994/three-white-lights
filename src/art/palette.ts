@@ -123,8 +123,25 @@ const LIFTER_COLORS: readonly Rgb5[] = [
   [3, 2, 3], //  1 L_OUTLINE       warm near-black
   [13, 7, 8], //  2 SKIN_SHADOW     red-violet lean
   [20, 12, 10], //  3 SKIN_MID
-  [25, 17, 13], //  4 SKIN_LIGHT
-  [29, 23, 18], //  5 SKIN_HI         yellow lean
+  [26, 20, 15], //  4 SKIN_LIGHT     Lifted with SKIN_HI, not left behind it.
+  //                                 The four skin steps have to be roughly
+  //                                 evenly spaced in luma or the ramp reads as
+  //                                 blotches instead of as a modelled surface:
+  //                                 at the old (206,140,107) the jump from here
+  //                                 to the highlight was 61 luma against 29 for
+  //                                 the step below it, and the flesh came out
+  //                                 spotty. Reference steps (sprite-ref-1) are
+  //                                 evenly spaced at 34-44 luma apart.
+  [30, 26, 19], //  5 SKIN_HI         yellow lean. THE TOP OF THE FIGURE'S RANGE.
+  //                                 Sampled off sprite-ref-1 at native scale,
+  //                                 the wrestlers' skin runs (115,74,33) up
+  //                                 through (231,198,132) to (247,231,214), and
+  //                                 the top two steps cover ~15% of the body —
+  //                                 the figures carry the brightest pixels in
+  //                                 the frame and the crowd behind them sits at
+  //                                 luma 16-80. Ours topped out at (239,190,148),
+  //                                 a hair under the steel of its own collars,
+  //                                 so the barbell out-valued the lifter.
   [26, 11, 9], //  6 SKIN_FLUSH     strain redness: SKIN_MID pushed ruddy, not
   //                                 pure red — it has to still read as a face
   [5, 6, 14], //  7 SINGLET_DARK
@@ -283,8 +300,18 @@ export const RAMPS = {
   STEEL: [PAL.STEEL_DARK, PAL.STEEL_MID, PAL.STEEL_LIGHT],
   /** Bar shaft only: deliberately dim so it does not out-value the lifter. */
   SHAFT: [PAL.STEEL_DARK, PAL.STEEL_MID],
-  /** Collar clamp. CHROME_HI is reserved for a single specular pixel. */
-  CHROME: [PAL.STEEL_DARK, PAL.STEEL_LIGHT],
+  /**
+   * Collar clamp body — and it is deliberately dim.
+   *
+   * This used to be [STEEL_DARK, STEEL_LIGHT], and the comment beside it said
+   * "CHROME_HI is reserved for a single specular pixel" while CHROME_HI was not
+   * drawn anywhere at all. The result was a 20 px block of the brightest
+   * equipment colour at each end of the bar, out-valuing the skin ramp, which
+   * is how a sprite ends up duller than its own barbell. A specular is a dot,
+   * not a block: the body is mid steel and `BAR.COLLAR_SPECULAR` places the one
+   * CHROME_HI pixel that makes it read as chrome.
+   */
+  CHROME: [PAL.STEEL_DARK, PAL.STEEL_MID],
   PLATE_RED: [PAL.PLATE_RED_SHADE, PAL.PLATE_RED_LIGHT],
   PLATE_BLUE: [PAL.PLATE_BLUE_SHADE, PAL.PLATE_BLUE_LIGHT],
   PLATE_YELLOW: [PAL.PLATE_YELLOW_SHADE, PAL.PLATE_YELLOW_LIGHT],

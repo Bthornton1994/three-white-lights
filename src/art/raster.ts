@@ -29,6 +29,14 @@
  * direction fixes that — the value structure ends up a function of geometry
  * only, never of anatomy or of an object.
  *
+ * That stripe was not a tendency, it was an identity. Shading from the
+ * across-limb offset alone gives every cross-section of a limb the same value,
+ * so the lit column was constant from shoulder to wrist by construction. The
+ * fix is `axialTerm` below: one more term, a function of position ALONG the
+ * mass, so a limb can be bright at the muscle belly and darker at the joints.
+ * It is still an underpainting and it is still cheap — a belly and two ends,
+ * not a muscle map — but the guarantee is gone.
+ *
  * So the model here is the UNDERPAINTING. It establishes the lamp and the
  * masses. Everything that makes the figure read as a drawn object rather than a
  * shaded solid — belt lever, shoe sole, singlet trim, strap shadow, hair
@@ -42,7 +50,7 @@
  * the hardware did not have.
  */
 
-import { SHADING } from './spriteTuning';
+import { SHADING, type AxialProfile } from './spriteTuning';
 import { isTransparentIndex, outlineIndexForBank, type Ramp } from './palette';
 
 export interface IndexGrid {
@@ -103,6 +111,34 @@ export function lambert(nx: number, ny: number, nz: number): number {
   return Math.min(1, SHADING.AMBIENT + (1 - SHADING.AMBIENT) * lit);
 }
 
+/**
+ * Value modulation along a mass's own axis, added to the Lambert term before
+ * quantisation.
+ *
+ * THIS IS THE TERM THAT WAS MISSING. Without it `drawLimb` shaded purely from
+ * the across-limb offset, so every pixel at the same distance from the limb's
+ * centre-line got the same ramp step no matter how far down the limb it was —
+ * a longitudinal stripe, guaranteed by the maths rather than chosen. One
+ * unbroken light column ran down each forearm and each shin in every rendered
+ * frame, and no mark table could fix it, because a mark is a handful of pixels
+ * and this was the whole limb.
+ *
+ * The shape is two bumps and nothing else: `BELLY_GAIN` raised over a Gaussian
+ * at `BELLY_FRAC`, and `JOINT_DROP` subtracted over the outer `JOINT_WIDTH` at
+ * each end. A limb therefore reads bright at the muscle belly, steps down past
+ * it, and goes darkest where it meets the joint — which is the value structure
+ * the reference wrestlers' arms have and the structure a smooth gradient does
+ * not. `t` is 0 at the mass's start and 1 at its end.
+ */
+export function axialTerm(profile: AxialProfile, t: number): number {
+  const u = Math.min(1, Math.max(0, t));
+  const d = (u - profile.BELLY_FRAC) / Math.max(1e-6, profile.BELLY_WIDTH);
+  const belly = Math.exp(-d * d);
+  const w = Math.max(1e-6, profile.JOINT_WIDTH);
+  const joint = Math.max(Math.max(0, 1 - u / w), Math.max(0, 1 - (1 - u) / w));
+  return profile.BELLY_GAIN * belly - profile.JOINT_DROP * joint;
+}
+
 function thresholdsFor(steps: number): readonly number[] {
   if (steps >= 4) return SHADING.THRESHOLDS_4;
   if (steps === 3) return SHADING.THRESHOLDS_3;
@@ -134,6 +170,14 @@ export interface PartOptions {
   readonly edge?: boolean;
   /** Outline colour for `edge`. Defaults to the part's own bank outline. */
   readonly edgeIndex?: number;
+  /**
+   * How value varies ALONG this mass. Limbs default to `SHADING.AXIAL_LIMB`
+   * (flesh, so a muscle belly and two joints); trunks default to
+   * `SHADING.AXIAL_FLAT`, because the trunk primitive draws worn kit — belt,
+   * shoe, singlet — as often as it draws a body, and a muscle belly on a belt
+   * reads as a dent. The torso passes `SHADING.AXIAL_TRUNK` explicitly.
+   */
+  readonly axial?: AxialProfile;
 }
 
 function edgeIndexFor(ramp: Ramp, opts?: PartOptions): number {
@@ -147,6 +191,11 @@ function edgeIndexFor(ramp: Ramp, opts?: PartOptions): number {
  * Shaded as a cylinder: the normal's in-plane component runs across the limb's
  * width, so a limb angled up-left is lit along its upper-left flank and a limb
  * angled up-right is lit along its upper-right flank, from the same lamp.
+ *
+ * AND along its length, by `axialTerm`. The across-limb normal on its own gives
+ * every cross-section the same value, which is a stripe from end to end however
+ * good the lamp is; the axial term is what puts a highlight cluster on the
+ * muscle belly and a darker step at each joint.
  */
 export function drawLimb(
   g: IndexGrid,
@@ -178,6 +227,7 @@ export function drawLimb(
   const stepBias = opts?.stepBias ?? 0;
   const wantEdge = opts?.edge === true;
   const edgeIdx = edgeIndexFor(ramp, opts);
+  const axial = opts?.axial ?? SHADING.AXIAL_LIMB;
 
   // Two passes so the outline never overwrites fill drawn later in the same part.
   for (let pass = wantEdge ? 0 : 1; pass < 2; pass += 1) {
@@ -204,7 +254,10 @@ export function drawLimb(
         const rCore = Math.max(0.5, r);
         const n = Math.min(1, Math.max(-1, perp / rCore));
         const nz = Math.sqrt(Math.max(0, 1 - n * n));
-        setPx(g, x, y, shadeToIndex(ramp, lambert(px * n, py * n, nz), stepBias));
+        // `t` is the position DOWN the limb. Reading it here is the whole
+        // difference between a modelled limb and an extruded stripe.
+        const lit = Math.min(1, Math.max(0, lambert(px * n, py * n, nz) + axialTerm(axial, t)));
+        setPx(g, x, y, shadeToIndex(ramp, lit, stepBias));
       }
     }
   }
@@ -267,6 +320,8 @@ export function drawTrunk(
   const stepBias = opts?.stepBias ?? 0;
   const wantEdge = opts?.edge === true;
   const edgeIdx = edgeIndexFor(ramp, opts);
+  // Kit by default: see PartOptions.axial. The torso opts into a real profile.
+  const axial = opts?.axial ?? SHADING.AXIAL_FLAT;
   const yA = Math.round(yTop);
   const yB = Math.round(yBottom);
   if (yB < yA) return;
@@ -287,7 +342,10 @@ export function drawTrunk(
         }
         const nz = Math.sqrt(Math.max(0, 1 - nx * nx));
         const vertical = SHADING.VERTICAL_GAIN * (1 - 2 * f);
-        const lit = Math.min(1, lambert(nx, 0, nz) + vertical);
+        const lit = Math.min(
+          1,
+          Math.max(0, lambert(nx, 0, nz) + vertical + axialTerm(axial, f)),
+        );
         setPx(g, x, y, shadeToIndex(ramp, lit, stepBias));
       }
     }
