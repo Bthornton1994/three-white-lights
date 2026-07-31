@@ -112,6 +112,41 @@ export function lambert(nx: number, ny: number, nz: number): number {
 }
 
 /**
+ * Peak Lambert value a cylinder lying in the screen plane can reach, for an
+ * axis at `angleRad` on screen. Exported because it is the arithmetic behind
+ * `SHADING.FORESHORTEN`, and a claim about the shading model that the tests can
+ * check is worth more than a claim about it in a comment.
+ *
+ * A cylinder's brightest surface point is where its normal lies in the plane of
+ * the light and the axis, so the peak is `|L - (L.u)u|` — the light's component
+ * perpendicular to the axis. It is therefore MAXIMAL for an axis square to the
+ * lamp and MINIMAL for an axis pointing at it, which is the whole problem: it
+ * makes a limb's value band a function of the angle it happens to be drawn at.
+ */
+export function cylinderPeakLit(angleRad: number): number {
+  const ux = Math.cos(angleRad);
+  const uy = Math.sin(angleRad);
+  const along = ux * LX + uy * LY;
+  const perp = Math.sqrt(Math.max(0, 1 - along * along));
+  return Math.min(1, SHADING.AMBIENT + (1 - SHADING.AMBIENT) * perp);
+}
+
+/**
+ * Blend weight for the camera-facing normal, from a limb's out-of-plane tilt.
+ *
+ * `tilt` is 0 for a limb lying in the screen plane and 1 for one pointing
+ * straight at the viewer; `rig.ts` derives it from the drawn length of a bone
+ * against its unforeshortened length. See `SHADING.FORESHORTEN` for why this
+ * exists at all.
+ */
+export function cameraBlendForTilt(tilt: number): number {
+  const t = Math.min(1, Math.max(0, tilt));
+  return (
+    SHADING.FORESHORTEN.CAMERA_BLEND * Math.pow(t, SHADING.FORESHORTEN.TILT_EXPONENT)
+  );
+}
+
+/**
  * Value modulation along a mass's own axis, added to the Lambert term before
  * quantisation.
  *
@@ -191,6 +226,18 @@ export interface PartOptions {
    * reads as a dent. The torso passes `SHADING.AXIAL_TRUNK` explicitly.
    */
   readonly axial?: AxialProfile;
+  /**
+   * How far out of the screen plane this mass has rotated: 0 for a limb lying
+   * in the frontal plane, 1 for one pointing straight at the camera.
+   *
+   * Omitted means 0, and at 0 the shading is bit-for-bit the pure cylinder it
+   * always was — so every part that does not opt in is untouched. The only
+   * masses that pass it are the ones this rig actually draws foreshortened: the
+   * femur, and the knee sleeve worn on it. `rig.ts`'s `femurTilt` computes it
+   * from the drawn bone length; `SHADING.FORESHORTEN` says what is done with it
+   * and why the cylinder model needs correcting at all.
+   */
+  readonly outOfPlane?: number;
 }
 
 function edgeIndexFor(ramp: Ramp, opts?: PartOptions): number {
@@ -209,6 +256,12 @@ function edgeIndexFor(ramp: Ramp, opts?: PartOptions): number {
  * every cross-section the same value, which is a stripe from end to end however
  * good the lamp is; the axial term is what puts a highlight cluster on the
  * muscle belly and a darker step at each joint.
+ *
+ * AND, for a limb that is not lying in the screen plane, tipped toward the
+ * camera by `PartOptions.outOfPlane`. A cylinder shaded from its screen angle
+ * alone has no way to tell a limb lying sideways from one pointing at the
+ * viewer, and gets the second one exactly backwards — dark down the middle of
+ * the mass the camera is looking straight into. See `SHADING.FORESHORTEN`.
  */
 export function drawLimb(
   g: IndexGrid,
@@ -242,6 +295,10 @@ export function drawLimb(
   const edgeIdx = edgeIndexFor(ramp, opts);
   const litEdge = opts?.edgeFollowsLight === true;
   const axial = opts?.axial ?? SHADING.AXIAL_LIMB;
+  // 0 for a limb in the screen plane, and then this is the old cylinder exactly.
+  const camera = cameraBlendForTilt(opts?.outOfPlane ?? 0);
+  const cyl = 1 - camera;
+  const axialScale = 1 - SHADING.FORESHORTEN.AXIAL_FADE * camera;
 
   // Two passes so the outline never overwrites fill drawn later in the same part.
   for (let pass = wantEdge ? 0 : 1; pass < 2; pass += 1) {
@@ -264,9 +321,21 @@ export function drawLimb(
         const rCore = Math.max(0.5, r);
         const n = Math.min(1, Math.max(-1, perp / rCore));
         const nz = Math.sqrt(Math.max(0, 1 - n * n));
+        // Cylinder normal, tipped toward the camera by however far this mass has
+        // rotated out of the screen plane. At `camera` 0 the multiply and the
+        // renormalise are the identity and this is the plain cylinder; at 1 the
+        // mass is a face pointing at the viewer, which is what the front of a
+        // thigh IS at the bottom of a squat. See SHADING.FORESHORTEN.
+        const bx = cyl * px * n;
+        const by = cyl * py * n;
+        const bz = cyl * nz + camera;
+        const inv = 1 / Math.max(1e-6, Math.sqrt(bx * bx + by * by + bz * bz));
         // `t` is the position DOWN the limb. Reading it here is the whole
         // difference between a modelled limb and an extruded stripe.
-        const lit = Math.min(1, Math.max(0, lambert(px * n, py * n, nz) + axialTerm(axial, t)));
+        const lit = Math.min(
+          1,
+          Math.max(0, lambert(bx * inv, by * inv, bz * inv) + axialScale * axialTerm(axial, t)),
+        );
         if (pass === 0) {
           setPx(
             g,

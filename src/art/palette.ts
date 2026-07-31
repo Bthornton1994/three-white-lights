@@ -198,6 +198,15 @@ const LIFTER_COLORS: readonly Rgb5[] = [
  * (see meet-photo-ref-1); they must read as dark objects ON a lit leg, not as
  * the leg. GEAR_LIGHT at 149 is 26 luma under SKIN_LIGHT, which is the same
  * side of flesh the reference's kit is on.
+ *
+ * AND THAT RULE IS NOW ENFORCED RATHER THAN STATED. A ramp ordering is only a
+ * promise about what CAN be drawn; the renderer broke the promise anyway, by
+ * shading a bent thigh out of its band. GEAR_LIGHT (149) out-valued SKIN_MID
+ * (117), so wherever a thigh fell to SKIN_MID the sleeve on it was the brighter
+ * object — measured at 20 of 112 leg-poses over the pose space, worst in the
+ * hole. `SHADING.FORESHORTEN` is the fix and it is on the SKIN side, not this
+ * one: no colour in this file moved. `lifterSprite.test.ts` sweeps the pose
+ * space and fails if a sleeve ever out-values the thigh it is worn on.
  */
 
 // ---------------------------------------------------------------------------
