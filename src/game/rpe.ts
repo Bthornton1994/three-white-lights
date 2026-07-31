@@ -6,62 +6,118 @@
  *
  * ---------------------------------------------------------------------------
  * SOURCE OF THE NUMBERS  (GDD §3.3 / §12.3 — homebrewed RPE values are a hard
- * refusal condition, so the provenance is documented here in full.)
+ * refusal condition, so the provenance is documented here in full, including
+ * what could NOT be established.)
  * ---------------------------------------------------------------------------
  *
  * Chart: the standard Mike Tuchscherer / Reactive Training Systems RPE chart,
- * reps 1-12 x RPE 6-10 in 0.5 steps. Originally published by RTS; the version
- * most widely circulated in the powerlifting community traces to
- * "Customizing Your RPE Chart", Reactive Training Systems, 2016-01-06
- * (articles.reactivetrainingsystems.com/2016/01/06/customizing-your-rpe-chart/,
- * later mirrored at store.reactivetrainingsystems.com/blogs/advanced-concepts/
- * customizing-your-rpe-chart).
+ * reps 1-12 x RPE 6-10 in 0.5 steps, as published in "Customizing Your RPE
+ * Chart", Reactive Training Systems, 2016-01-06:
+ *   articles.reactivetrainingsystems.com/2016/01/06/customizing-your-rpe-chart/
  *
- * The RTS site itself was not reachable from the build sandbox (HTTP 403 via
- * the egress proxy), so the grid below was transcribed by cross-checking two
- * independent third-party implementations that both encode the same published
- * chart, plus spot checks against web-search results:
+ * PRIMARY SOURCE STATUS: NOT VERIFIED. That article, its store.reactive-
+ * trainingsystems.com mirror, web.archive.org, and every non-GitHub RPE chart
+ * page are all unreachable from this sandbox — the egress proxy answers 403 to
+ * CONNECT. Nothing in this grid has been checked against the publication
+ * itself. Everything below is corroboration of community *transcriptions* of
+ * that chart. That is a weaker claim than "verified published data" and is
+ * deliberately not dressed up as one.
  *
- *   A. npm `@sculpt-ai/progressive-overload@0.0.2` -> RPE_TABLE (reps 1-12,
- *      RPE 6-10 by 0.5).
- *   B. npm `fit-tools@1.2.0` -> COEFFICIENTS (reps 1-15, RPE 6.5-10 by 0.5).
- *      Its README/JSDoc names the chart "Tuchscherer".
- *   C. GitHub `tnapes96/RPECalc` README names the RTS article above as the
- *      source of the same table.
+ * WHAT WAS ACTUALLY RETRIEVED AS BYTES (2026-07-31), and what each said:
  *
- * Agreement: over the 96 cells both A and B cover (reps 1-12, RPE 6.5-10),
- * 89 are identical. The 7 disagreements collapse onto only THREE distinct
- * chart cells once the chart's reps-in-reserve structure is applied (see
- * "diagonal identity" below):
+ *   S1  raw.githubusercontent.com/karolczyz/metriclift/master/app/src/main/
+ *         java/com/example/metriclift/util/RpeTable.kt        Kotlin, 108 cells
+ *   S2  raw.githubusercontent.com/AlexArmstrong126/reactRPE/main/src/
+ *         rpe_chart.js                                        JS, 108 cells
+ *   S3  raw.githubusercontent.com/BlindLemonLipschitz/RPE/master/scripts/
+ *         rpeChart.js                                         JS, 108 cells
+ *   S4  npm @sculpt-ai/progressive-overload@0.0.2, dist/index.mjs RPE_TABLE
+ *                                                             JS, 108 cells
  *
- *   effort index 2.5  -> A: 93.9   B: 93.8
- *   effort index 7.5  -> A: 79.9   B: 79.8
- *   effort index 11.5 -> A: 69.4   B: 69.3
+ * Machine diff of those four against each other:
+ *   - S1 and S2 agree on all 108 cells.
+ *   - S3 differs from S1/S2 in exactly one cell: 92.9 at 1 rep @ RPE 8 where
+ *     the others hold 92.2. S3 contradicts itself there — it holds 92.2 at
+ *     2 reps @ RPE 9, which is the same cell under the reps-in-reserve
+ *     identity below — so that is a typo in S3, not a variant reading.
+ *   - S4 differs from S1/S2 in exactly one cell: 12 reps @ RPE 6. See below.
  *
- * THESE THREE CELLS ARE THE ONES I COULD NOT FULLY CORROBORATE. This file uses
- * A's values (93.9 / 79.9 / 69.4) because B contradicts *itself* on exactly
- * those three cells — B stores 93.9 at (1 rep, RPE 8.5) but 93.8 at
- * (2 reps, RPE 9.5), 79.9 at (4 reps, RPE 6.5) but 79.8 at (5 reps, RPE 7.5),
- * and 69.4 at (8 reps, RPE 6.5) but 69.3 at (9 reps, RPE 7.5). Those pairs are
- * the same cell of the published chart, so B has transcription drift there
- * while A is structurally consistent everywhere. If a physical copy of the RTS
- * chart says otherwise, fix these three values and nothing else.
+ * RPE_PERCENT_CHART below is S1/S2 exactly, all 108 cells.
  *
- * Additional coverage caveat: source B starts at RPE 6.5, so the RPE 6.0 row
- * is corroborated by source A plus the diagonal identity only, not by two
- * independent transcriptions. Source B also extends to 15 reps; those extra
- * columns are an expansion of the published chart (and are internally
- * inconsistent), so they are deliberately NOT reproduced here.
+ * ---------------------------------------------------------------------------
+ * THE ONE CONTESTED CELL: 12 reps @ RPE 6 = 57.4
+ * ---------------------------------------------------------------------------
+ * S1, S2 and S3 hold 57.4. S4 holds 57.2. This file uses 57.4 because:
  *
- * Diagonal identity: the chart encodes reps-in-reserve, so N reps at RPE X and
+ *   1. Three retrieved transcriptions to one, and the three are application
+ *      source files for three different apps in two languages, while S4 is a
+ *      version 0.0.2 package first published 2026-06-30 (date read from the
+ *      npm packument) by an AI-product vendor.
+ *   2. 57.2 is exactly what you get by DERIVING the cell rather than
+ *      transcribing it. Down the effort-index diagonal the chart's tail runs
+ *      68.0, 65.3, 62.6, 59.9 — a constant -2.7 per whole index — so a linear
+ *      continuation lands on 57.2. The transcribed 57.4 breaks that run
+ *      (-2.5), which is precisely why no formula generates it. GDD §12.3
+ *      forbids derived RPE values, and this repo previously shipped 57.2.
+ *
+ * THE STRONGEST ARGUMENT AGAINST 57.4, stated because leaving it out would be
+ * dishonest: the grid's half-RPE cells behave as round-half-up midpoints of
+ * their whole-RPE neighbours. Fifteen positions can be checked (effort index
+ * 1.5 through 15.5); the pattern holds at fourteen of them and fails at exactly
+ * one — 15.5, which is 12 reps @ RPE 6.5 = 58.6, the position that depends on
+ * the contested cell. For it to hold there, 12 reps @ RPE 6 would have to lie
+ * in [57.2, 57.3]. 57.4 does not. So the chosen value is the sole break in a
+ * pattern the rest of the grid obeys, and 57.2 would close it.
+ *
+ * That was weighed and rejected as grounds for changing the cell, because the
+ * midpoint pattern is an observation ABOUT this grid, not a published
+ * construction rule, and using it to overwrite three retrieved transcriptions
+ * would be reconstructing a published value from a fitted rule — which is the
+ * exact move GDD §12.3 calls homebrewing. Transcription beats extrapolation
+ * even when the extrapolation is prettier. Note also that the pattern fails at
+ * 13 of the 14 checkable WHOLE-index positions, so it is not a general law of
+ * the grid.
+ *
+ * HONEST STATUS OF THIS CELL: community-transcription-corroborated, NOT
+ * primary-source-verified, and in tension with the grid's own half-cell
+ * pattern. S1/S2/S3 may share a single ancestor — S2 and S3 both name the
+ * object `rpe_chart`, which points at a common web calculator — so "three
+ * sources" is not "three independent readings of the printed chart". This is
+ * the least certain number in the module. If someone obtains the RTS original
+ * and it disagrees, change this cell and the fixture in rpe.test.ts together,
+ * in one commit.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT THE STRUCTURAL INVARIANTS CAN AND CANNOT CATCH
+ * ---------------------------------------------------------------------------
+ * Diagonal identity: the chart encodes reps in reserve, so N reps at RPE X and
  * (N + 1) reps at RPE (X + 1) describe the same distance from failure and
  * therefore share a percentage — e.g. 1 @ RPE 9 == 2 @ RPE 10 == 95.5%. The
- * "effort index" used above is `reps + (10 - rpe)`. The grid below satisfies
- * this identity at every cell; `rpe.test.ts` asserts it.
+ * "effort index" is `reps + (10 - rpe)`. The grid satisfies this identity at
+ * every cell; `rpe.test.ts` asserts it.
+ *
+ * It has exactly FOUR blind spots. Four cells have no diagonal partner inside
+ * a 12 x 9 grid, so the diagonal cannot constrain them at all:
+ *
+ *     (1 rep, RPE 10)   (1 rep, RPE 9.5)   (12 reps, RPE 6.5)   (12 reps, RPE 6)
+ *
+ * `rpe.test.ts` asserts that the orphan set is exactly these four, so the blind
+ * spot is visible rather than implicit. Their individual status:
+ *
+ *   (1, 10)   = 100.0  true by definition; a true single at RPE 10 is the 1RM.
+ *   (1, 9.5)  =  97.8  pinned internally by the half-cell midpoint test, given
+ *                      the RPE-10 and RPE-9 cells around it.
+ *   (12, 6.5) =  58.6  NOT pinned by anything. Transcription only.
+ *   (12, 6)   =  57.4  NOT pinned by anything, and contested. See above.
+ *
+ * Those last two are the cells no test in this repo can defend. If this module
+ * is ever wrong about the published chart, that is where it will be wrong.
  *
  * NOT TUNABLE: the percentages in RPE_PERCENT_CHART are published domain data,
- * not game feel. Do not adjust them to balance the game. Tunable values in this
- * module are collected in RPE_LOADING_TUNING.
+ * not game feel. Do not adjust them to balance the game. RPE_MATCH_TOLERANCE
+ * is not tunable either — it is a correctness guard and lives outside the
+ * tuning block on purpose. The only tunable values in this module are in
+ * RPE_LOADING_TUNING.
  */
 
 // ---------------------------------------------------------------------------
@@ -126,15 +182,48 @@ export const RPE_LOADING_TUNING = {
    * rounding literal and belongs here rather than inline.
    */
   LOAD_PRECISION_DECIMALS: 6,
-
-  /**
-   * How close a caller-supplied RPE must be to a charted RPE to count as that
-   * RPE. Deliberately tiny: it absorbs float noise (7.5000000000000001) and
-   * nothing else. It must never be widened into silent interpolation — an
-   * uncharted RPE like 7.3 has to stay off-chart (GDD §12.3).
-   */
-  RPE_MATCH_TOLERANCE: 1e-9,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Correctness guard — deliberately NOT in the tunable block above
+// ---------------------------------------------------------------------------
+
+/**
+ * Float-noise slack for matching a caller-supplied RPE onto a charted RPE,
+ * counted in ULPs (units in the last place) of double precision.
+ *
+ * THIS IS NOT A GAME-FEEL KNOB, which is why it is not inside
+ * RPE_LOADING_TUNING. It is the only thing standing between the lookup and
+ * silent interpolation: an uncharted RPE such as 7.3 must stay uncharted
+ * (GDD §12.3), and widening a tolerance would quietly snap it to 7.5.
+ *
+ * Expressing it in ULPs and capping it makes that misuse structurally
+ * impossible rather than merely discouraged:
+ *
+ *   - The widest tolerance this module can ever produce is
+ *     RPE_MATCH_ULP_CEILING * Number.EPSILON, about 9.1e-13. Snapping 7.3 onto
+ *     7.5 needs 0.2 — eleven orders of magnitude away — so no value of
+ *     RPE_MATCH_ULPS, however large, can turn this into a balance knob.
+ *   - A tuner who types a plausible-looking "0.25" here makes matching
+ *     STRICTER, not looser: 0.25 ULP is a quarter of a machine epsilon.
+ *
+ * The failure mode of careless tuning is therefore "too strict", never
+ * "silently interpolating".
+ */
+const RPE_MATCH_ULPS = 64;
+
+/** Hard ceiling on RPE_MATCH_ULPS. Not configurable, not tunable. */
+const RPE_MATCH_ULP_CEILING = 4096;
+
+/**
+ * Resolved absolute RPE-matching tolerance. Exported read-only so tests can
+ * assert the ceiling actually binds; application code should never need it.
+ */
+export const RPE_MATCH_TOLERANCE: number =
+  Math.min(RPE_MATCH_ULPS, RPE_MATCH_ULP_CEILING) * Number.EPSILON;
+
+/** The ceiling itself, exported for the same reason. */
+export const RPE_MATCH_TOLERANCE_CEILING: number = RPE_MATCH_ULP_CEILING * Number.EPSILON;
 
 // ---------------------------------------------------------------------------
 // The chart
@@ -147,8 +236,12 @@ type RpeChart = Readonly<Record<ChartedReps, Readonly<Record<ChartedRpe, number>
  *
  * Laid out reps-major so a single rep count reads as one block; the published
  * chart is usually printed RPE-major (RPE down the side, reps across the top).
- * `rpe.test.ts` transcribes it in the published orientation and asserts every
- * one of the 108 cells, so the two layouts check each other.
+ *
+ * `rpe.test.ts` checks this grid two ways: against a verbatim copy of source S1
+ * (foreign syntax, foreign layout, its URL in the fixture so a reviewer can
+ * re-fetch and diff), and against a hand transposition into the printed
+ * RPE-major orientation, which catches in-repo transposition typos but is NOT
+ * independent evidence about the source values.
  */
 export const RPE_PERCENT_CHART = {
   1: { 10: 100.0, 9.5: 97.8, 9: 95.5, 8.5: 93.9, 8: 92.2, 7.5: 90.7, 7: 89.2, 6.5: 87.8, 6: 86.3 },
@@ -162,7 +255,11 @@ export const RPE_PERCENT_CHART = {
   9: { 10: 76.2, 9.5: 75.1, 9: 73.9, 8.5: 72.3, 8: 70.7, 7.5: 69.4, 7: 68.0, 6.5: 66.7, 6: 65.3 },
   10: { 10: 73.9, 9.5: 72.3, 9: 70.7, 8.5: 69.4, 8: 68.0, 7.5: 66.7, 7: 65.3, 6.5: 64.0, 6: 62.6 },
   11: { 10: 70.7, 9.5: 69.4, 9: 68.0, 8.5: 66.7, 8: 65.3, 7.5: 64.0, 7: 62.6, 6.5: 61.3, 6: 59.9 },
-  12: { 10: 68.0, 9.5: 66.7, 9: 65.3, 8.5: 64.0, 8: 62.6, 7.5: 61.3, 7: 59.9, 6.5: 58.6, 6: 57.2 },
+  // 6: 57.4 is the contested cell. It is transcription-corroborated only (S1,
+  // S2, S3 in the header), it has no diagonal partner, and 57.2 — the value
+  // this repo used to hold — is the linear-derivation answer. Do not "correct"
+  // it back without a primary source.
+  12: { 10: 68.0, 9.5: 66.7, 9: 65.3, 8.5: 64.0, 8: 62.6, 7.5: 61.3, 7: 59.9, 6.5: 58.6, 6: 57.4 },
 } as const satisfies RpeChart;
 
 // ---------------------------------------------------------------------------
@@ -192,7 +289,7 @@ function toChartedRpe(rpe: number): ChartedRpe | null {
     return null;
   }
   for (const candidate of CHARTED_RPES) {
-    if (Math.abs(candidate - rpe) <= RPE_LOADING_TUNING.RPE_MATCH_TOLERANCE) {
+    if (Math.abs(candidate - rpe) <= RPE_MATCH_TOLERANCE) {
       return candidate;
     }
   }
