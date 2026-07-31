@@ -72,6 +72,11 @@
       "name": "Critics running tests themselves",
       "ok": false,
       "detail": "critic tool allowlist has no Bash; harness captures raw test output to .gauntlet/evidence/ instead"
+    },
+    {
+      "name": "Git transport where the GitHub API is blocked",
+      "ok": true,
+      "detail": "api.github.com is 403, but bare-cloning works \u2014 a builder read first-commit dates directly from git log to prove a source copy chain"
     }
   ],
   "pieces": [
@@ -88,9 +93,9 @@
       "id": "M1",
       "name": "RPE \u2192 %1RM table",
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
-      "status": "failed",
+      "status": "building",
       "verifiable": true,
-      "note": "SENT BACK again, on provenance rather than arithmetic. The rework\u2019s tiebreaker \u2014 \"three retrieved transcriptions to one\" \u2014 is void: the second critic pulled repo creation dates (2020 \u2192 2023 \u2192 2026) and showed the three share one layout and ordering, i.e. a copy chain, not three witnesses. Meanwhile two tests were written to FORBID the alternative reading, so if the RTS original ever turns out to say 57.2, the correct value is a test failure here. And the grid\u2019s own midpoint rule constrains a triple, which makes the neighbouring unexamined cell (12 @ 6.5) exactly as likely to be the corrupted one. Verdict: this cell cannot be settled from this sandbox in either direction, so the fix is to represent that uncertainty in code rather than pick a winner."
+      "note": "Rework merged; 362 tests green. Both suspect cells are now unverified IN CODE \u2014 an exported frozen record whose percentInUse is read from the chart rather than restated, so provenance cannot drift from data. Verified here independently: flipping the cell to 57.2 leaves all 362 tests green with no test edited, and 57.3 \u2014 allowed by the grid rule but held by no source \u2014 fails with a precise message. The false \"three transcriptions\" tiebreaker is gone; the builder proved the copy chain by bare-cloning each repo and reading first-commit dates, and found the 2023 file silently repairs the 2020 file\u2019s typo while keeping its variable name. Third-pass critic grading."
     },
     {
       "id": "M2",
