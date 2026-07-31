@@ -278,6 +278,12 @@
  * read-model that cannot fail, and callers use it to render. Hand it tampered
  * rules and it will report the numbers those rules imply — but nothing it
  * returns can get past `declareAttempt`, which does check.
+ *
+ * `isCallableWeightNow` and `nearestCallableWeightsNow` are the exception among
+ * read-models, and check it. They exist to tell a player a weight is legal, and
+ * a rules object the engine has stopped trusting cannot be the basis of that
+ * promise — so on a tampered meet they answer false and { below: null, above:
+ * null } rather than an answer `declareAttempt` would then refuse.
  * ---------------------------------------------------------------------------
  *
  * DELIBERATE NON-GOALS (so their absence is not mistaken for an error):
@@ -303,8 +309,9 @@
  * meet are listed here so neither reads as an oversight:
  *
  *   OVER-PERMISSIVE (accepts what a real meet would not):
- *   - It will accept, and `suggestNextAttempt` will suggest, a weight the meet's
- *     actual plate kit cannot make. With no inventory there is no other option.
+ *   - It will accept, `suggestNextAttempt` will suggest, and a refusal message
+ *     may NAME, a weight the meet's actual plate kit cannot make. With no
+ *     inventory there is no other option.
  *     For the two retrieved kits this costs nothing until the bar runs out of
  *     plates: enumerating the subset sums of `defaultPlatesKg` gives every
  *     multiple of 2.5 kg from 25 up to its 537.5 kg capacity, and
@@ -326,8 +333,66 @@
  *   - `minIncrement` is likewise one number for the whole meet, so a federation
  *     with a smaller required jump on the third attempt loses that.
  *   - When the bar and collars do not themselves sit on the declaration grid,
- *     the lightest legal call is heavier than the empty bar (`minimumAttemptWeight`).
- *     That is the grid rule, not a claim that the bar cannot be put on the rack.
+ *     the lightest legal call is heavier than the empty bar
+ *     (`lightestCallableWeightIgnoringTheCard`). That is the grid rule, not a
+ *     claim that the bar cannot be put on the rack.
+ *
+ *   NOT ON EITHER LIST ANY MORE: the refusal messages. A weight a message offers
+ *   as a legal call is now state-accurate — declarable from the exact state that
+ *   produced the message, on every gate the engine has — because it is checked
+ *   against those gates before it is named. See the next section. The one thing
+ *   a named weight still cannot promise is that the plates can make it, which is
+ *   the first OVER-PERMISSIVE bullet above and is a property of every weight
+ *   this engine accepts, not something the hint adds.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT A REFUSAL MESSAGE CLAIMS — AND HOW THAT IS KEPT TRUE
+ * ---------------------------------------------------------------------------
+ * A refusal names weights for two different reasons and they must not be
+ * confused:
+ *
+ *   - As CONTEXT: the bar weight, the declaration step, the previous attempt.
+ *     Facts about the meet and the card. Not offers.
+ *   - As A LEGAL CALL: "the nearest legal calls right now are 200 and 202.5."
+ *     That IS an offer, and an offer the engine refuses on the very next call is
+ *     the same species of falsehood as the plate lie above.
+ *
+ * The third version of this module told exactly that lie. Its hint was computed
+ * from the two weight gates alone — it had rules but no `MeetState` — so after a
+ * good lift at 200 it answered a typed 201 with "the nearest legal calls are 200
+ * and 202.5" while refusing 200 as REPEAT_AFTER_GOOD_LIFT, and answered a typed
+ * 199 with "197.5 and 200" while refusing BOTH (WEIGHT_DECREASED and
+ * REPEAT_AFTER_GOOD_LIFT). Its docstring asserted the hint "is true". It was not.
+ *
+ * The fix is structural rather than a better formula:
+ *
+ *   1. `refuseWeightNow` is the ONE gate chain. `declareAttempt` decides with it;
+ *      `isCallableWeightNow` is it, as a boolean.
+ *   2. `nearestCallHint` is the only place a MESSAGE names a weight as a legal
+ *      call, and it names only what `nearestCallableWeightsNow` has re-verified
+ *      through `refuseWeightNow` for that exact state. A named call is therefore
+ *      accepted by construction; a candidate that does not verify is dropped
+ *      rather than named.
+ *   3. When nothing verifies, the message carries no hint at all. Saying less is
+ *      allowed; saying something false is not.
+ *
+ * Two other things hand a player a weight without wrapping it in a sentence, and
+ * they are held to the same standard by the suite rather than by construction:
+ * `AttemptContext.minimumWeight` / `.minimumIncreaseWeight` and the number
+ * `suggestNextAttempt` returns. Both are built progression-aware and are swept
+ * against `declareAttempt` across rule sets and card states.
+ *
+ * Naming enforces the same split. Anything `...IgnoringTheCard` answers "could
+ * this number EVER be called at this meet" from the rules alone and MUST NOT be
+ * shown to a player as a legal call; anything `...Now` takes a `MeetState` and
+ * answers "may it be called on this attempt". That is the distinction the old
+ * `isLegalAttemptWeight` / `roundToLegalAttemptWeight` names blurred.
+ *
+ * WHAT A HINT STILL CANNOT KNOW: whether the plates can MAKE the weight it
+ * names. That is the disclosed over-permissiveness above, and it applies to a
+ * hint exactly as it applies to an acceptance — which is why a hint says "legal
+ * call" and never says anything about loading.
+ * ---------------------------------------------------------------------------
  */
 
 // ---------------------------------------------------------------------------
@@ -431,6 +496,18 @@ export const POUND_MIN_ATTEMPT_INCREMENT_LB = 2.5;
 
 /** Float slop tolerated when comparing weights. */
 export const WEIGHT_EPSILON = 1e-6;
+
+/**
+ * How many extra declaration-grid steps `nearestCallableWeightsNow` will walk
+ * before giving up and naming no weight at all.
+ *
+ * NOT a game-feel value and not a tuning knob: it is the depth of a safety net.
+ * The closed form should land on a callable weight first try under any sane rule
+ * set, and every candidate is verified through `refuseWeightNow` regardless — so
+ * this only decides how hard the hint tries before falling silent. Raising it
+ * cannot make a hint less true; lowering it to 0 cannot make one false either.
+ */
+export const NEAREST_CALL_PROBE_STEPS = 4;
 
 /** Decimal places weights are normalised to, to keep float math tidy. */
 export const WEIGHT_DECIMAL_PLACES = 3;
@@ -591,7 +668,7 @@ export interface MeetLoadingRules {
    * The ONLY equipment fact this module holds. It is the physical floor, NOT
    * necessarily the minimum declarable weight: if it does not itself sit on the
    * declaration grid, the lightest legal call is heavier than the empty bar.
-   * `minimumAttemptWeight` returns that; this field is what
+   * `lightestCallableWeightIgnoringTheCard` returns that; this field is what
    * `barAndCollarsWeight()` returns.
    */
   readonly barAndCollarsWeight: Readonly<Record<LiftKind, number>>;
@@ -802,12 +879,19 @@ function isSameWeight(a: number, b: number): boolean {
   return Math.abs(a - b) < WEIGHT_EPSILON;
 }
 
-// --- The two gates, one function each. --------------------------------------
+// --- The two weight gates, one function each. --------------------------------
+//
+// EVERYTHING IN THIS SECTION ANSWERS "COULD THIS NUMBER EVER BE CALLED AT THIS
+// MEET", from the rules alone. None of it can see the lifter's card, so none of
+// it can answer "may it be called right now" — that is the `...Now` family
+// further down, and it is the only family whose answers may be shown to a player
+// as a legal call. See WHAT A REFUSAL MESSAGE CLAIMS at the top of this file for
+// the send-back that made the distinction load-bearing.
 
 /**
  * PHYSICS. The weight of the empty loaded bar for this lift. Nothing lighter
  * can be on the platform. Not necessarily a legal declaration — see
- * `minimumAttemptWeight`.
+ * `lightestCallableWeightIgnoringTheCard`.
  *
  * This is the whole of what the module knows about equipment. There is
  * deliberately no `isLoadableAttemptWeight`: above this floor the engine has no
@@ -827,11 +911,14 @@ export function isDeclarableWeight(weight: number, rules: MeetLoadingRules = DEF
 }
 
 /**
- * Both gates: at or above the bar, and on the declaration grid. This is exactly
- * the weight test `declareAttempt` applies; what it adds on top is the
- * progression rules, which need a meet in progress rather than just a number.
+ * Both weight gates: at or above the bar, and on the declaration grid.
+ *
+ * IGNORES THE CARD, and the name says so. This is "could 202.5 ever be called at
+ * this meet", not "may it be called on this attempt": after a good lift at 202.5
+ * the answer here is still true and `declareAttempt` will still refuse it as
+ * REPEAT_AFTER_GOOD_LIFT. Use `isCallableWeightNow` for anything a player sees.
  */
-export function isLegalAttemptWeight(
+export function isCallableWeightIgnoringTheCard(
   weight: number,
   lift: LiftKind,
   rules: MeetLoadingRules = DEFAULT_MEET_RULES,
@@ -841,42 +928,41 @@ export function isLegalAttemptWeight(
 }
 
 /**
- * The lightest legal call for this lift: the bar and collars rounded up onto the
- * declaration grid. Equals the bar itself whenever the bar sits on that grid,
- * which it does under the defaults (25 is a multiple of 2.5, and so is 45).
+ * The lightest number that could ever be called on this lift: the bar and
+ * collars rounded up onto the declaration grid. Equals the bar itself whenever
+ * the bar sits on that grid, which it does under the defaults (25 is a multiple
+ * of 2.5, and so is 45).
+ *
+ * IGNORES THE CARD. Once a lift is under way the lightest call is normally
+ * heavier than this — see `AttemptContext.minimumWeight`.
  */
-export function minimumAttemptWeight(lift: LiftKind, rules: MeetLoadingRules = DEFAULT_MEET_RULES): number {
+export function lightestCallableWeightIgnoringTheCard(
+  lift: LiftKind,
+  rules: MeetLoadingRules = DEFAULT_MEET_RULES,
+): number {
   return roundToIncrement(barAndCollarsWeight(lift, rules), rules.declarationIncrement, 'up');
 }
 
 /**
- * Snaps a weight to something a lifter may actually declare: on the declaration
- * grid, and never below `minimumAttemptWeight`. This is what every suggestion
- * in this module goes through.
+ * Snaps a weight onto the declaration grid, never below
+ * `lightestCallableWeightIgnoringTheCard`. Every suggestion in this module goes
+ * through it.
+ *
+ * IGNORES THE CARD: the number it returns satisfies the two weight gates and
+ * nothing else, so callers that need a weight the engine will actually accept
+ * must either be working from `AttemptContext` (which is progression-aware) or
+ * re-check with `isCallableWeightNow`. Handing this straight to a player as a
+ * legal call is the bug the fourth send-back was about.
  */
-export function roundToLegalAttemptWeight(
+export function roundToCallableWeightIgnoringTheCard(
   weight: number,
   lift: LiftKind,
   rules: MeetLoadingRules = DEFAULT_MEET_RULES,
   mode: RoundingMode = 'nearest',
 ): number {
-  const floor = minimumAttemptWeight(lift, rules);
+  const floor = lightestCallableWeightIgnoringTheCard(lift, rules);
   if (!Number.isFinite(weight) || weight <= floor + WEIGHT_EPSILON) return normalizeWeight(floor);
   return normalizeWeight(Math.max(roundToIncrement(weight, rules.declarationIncrement, mode), floor));
-}
-
-/**
- * The tail of a `WEIGHT_NOT_DECLARABLE` message: which numbers the lifter could
- * have called instead. This replaces the sentence the old message ended on ("the
- * bar loads to 201 without trouble"), which was the engine asserting something
- * about equipment it has no way to know. Steering the player to a legal call is
- * the useful half of that sentence, and it is true.
- */
-function nearestLegalCallsHint(weight: number, lift: LiftKind, rules: MeetLoadingRules): string {
-  const below = roundToLegalAttemptWeight(weight, lift, rules, 'down');
-  const above = roundToLegalAttemptWeight(weight, lift, rules, 'up');
-  if (isSameWeight(below, above)) return `The lightest legal call is ${above}.`;
-  return `The nearest legal calls are ${below} and ${above}.`;
 }
 
 /**
@@ -892,9 +978,11 @@ function nearestLegalCallsHint(weight: number, lift: LiftKind, rules: MeetLoadin
  * validator that rejects a real meet is worse than no validator.
  *
  * There is no relationship left to enforce between the three fields. The bar
- * need not sit on the declaration grid (`minimumAttemptWeight` handles that),
- * and `minIncrement` need not be a multiple of `declarationIncrement`
- * (`roundToLegalAttemptWeight` rounds the required jump up onto the grid).
+ * need not sit on the declaration grid
+ * (`lightestCallableWeightIgnoringTheCard` handles that), and `minIncrement`
+ * need not be a multiple of `declarationIncrement`
+ * (`roundToCallableWeightIgnoringTheCard` rounds the required jump up onto the
+ * grid).
  */
 export function validateMeetRules(rules: MeetLoadingRules): MeetError | null {
   if (!Number.isFinite(rules.declarationIncrement) || rules.declarationIncrement <= 0) {
@@ -1057,10 +1145,14 @@ export interface AttemptContext {
   /** Repeating the exact weight is legal only after a no-lift. */
   readonly mayRepeatWeight: boolean;
   /**
-   * Lowest legal declaration. On the opener that is `minimumAttemptWeight`
-   * (normally the bar and collars); after a no-lift it is the repeat weight;
-   * after a good lift it is the minimum increase. Never null — there is always
-   * a floor.
+   * Lowest legal declaration RIGHT NOW, and unlike the `...IgnoringTheCard`
+   * family this one is progression-aware. On the opener it is
+   * `lightestCallableWeightIgnoringTheCard` (normally the bar and collars);
+   * after a no-lift it is the repeat weight; after a good lift it is the minimum
+   * increase. Never null — there is always a floor.
+   *
+   * Always on the declaration grid, always at or above the bar, and always a
+   * weight `declareAttempt` accepts. Safe to show a player as a legal call.
    */
   readonly minimumWeight: number;
   /**
@@ -1083,7 +1175,7 @@ export function currentAttemptContext(state: MeetState): AttemptContext | null {
       previousWeight: null,
       previousOutcome: null,
       mayRepeatWeight: false,
-      minimumWeight: minimumAttemptWeight(lift, state.rules),
+      minimumWeight: lightestCallableWeightIgnoringTheCard(lift, state.rules),
       minimumIncreaseWeight: null,
     };
   }
@@ -1091,11 +1183,17 @@ export function currentAttemptContext(state: MeetState): AttemptContext | null {
   // Rounded UP onto the declaration grid: `minIncrement` says how far the bar
   // must move, which is not necessarily a number the lifter may call. The value
   // handed to the UI has to be one `declareAttempt` will actually accept.
-  const minimumIncreaseWeight = roundToLegalAttemptWeight(
-    previous.weight + state.rules.minIncrement,
-    lift,
-    state.rules,
-    'up',
+  //
+  // The `nextGridStepAbove` floor is what makes that true in the one case where
+  // rounding alone is not enough: a federation whose minimum increase is finer
+  // than `WEIGHT_EPSILON` rounds back onto the previous attempt itself, and the
+  // read-model would then report a weight the engine refuses as
+  // REPEAT_AFTER_GOOD_LIFT. It cannot change which weights are ACCEPTED — every
+  // on-grid weight strictly above the previous attempt is already at or above
+  // the next grid step — only which one is reported as the smallest.
+  const minimumIncreaseWeight = Math.max(
+    roundToCallableWeightIgnoringTheCard(previous.weight + state.rules.minIncrement, lift, state.rules, 'up'),
+    nextGridStepAbove(previous.weight, state.rules.declarationIncrement),
   );
   return {
     lift,
@@ -1106,6 +1204,246 @@ export function currentAttemptContext(state: MeetState): AttemptContext | null {
     minimumWeight: mayRepeatWeight ? previous.weight : minimumIncreaseWeight,
     minimumIncreaseWeight,
   };
+}
+
+// ---------------------------------------------------------------------------
+// May this number be called RIGHT NOW?
+//
+// The `...IgnoringTheCard` family above answers a question about a NUMBER. This
+// family answers a question about a MOMENT IN A MEET, and it is the only one
+// whose answers may be put in front of a player as a legal call.
+//
+// `refuseWeightNow` is the one gate chain: `declareAttempt` decides with it,
+// `isCallableWeightNow` is it as a boolean, and `nearestCallableWeightsNow`
+// re-verifies through it every weight it hands back. There is deliberately no
+// second copy of these rules anywhere in this file. The fourth send-back was a
+// hint that applied two of the five weight gates and then confidently named
+// weights the other three refused.
+// ---------------------------------------------------------------------------
+
+/**
+ * Every gate `declareAttempt` applies to the weight, in order — or null when the
+ * weight may be declared on the attempt on deck.
+ *
+ * Rule validity and the seal are NOT checked here; both callers check them
+ * first, because a tampered meet must be refused as tampering rather than as a
+ * weight problem.
+ *
+ * NO MESSAGE BUILT HERE NAMES A LEGAL CALL. Weights appear only as context — the
+ * bar, the declaration step, the previous attempt, the number the lifter typed.
+ * The steering sentence is appended by `withNearestCallHint`, from weights this
+ * same function has verified.
+ */
+function refuseWeightNow(state: MeetState, weight: number): MeetError | null {
+  if (state.phase.kind !== 'awaiting-declaration') {
+    return { code: 'NO_ATTEMPT_DECLARED', message: 'No attempt is on deck.' };
+  }
+  const lift = state.phase.lift;
+
+  if (!Number.isFinite(weight) || weight <= 0) {
+    return { code: 'INVALID_WEIGHT', message: 'An attempt weight must be a positive number.' };
+  }
+
+  const bar = barAndCollarsWeight(lift, state.rules);
+  if (!isAtLeast(weight, bar)) {
+    return {
+      code: 'WEIGHT_BELOW_BAR',
+      message: `The ${lift} bar and collars already weigh ${bar}; nothing lighter than that can go on the platform.`,
+    };
+  }
+  if (!isDeclarableWeight(weight, state.rules)) {
+    return {
+      code: 'WEIGHT_NOT_DECLARABLE',
+      message:
+        `Attempts are declared in steps of ${state.rules.declarationIncrement}, ` +
+        `and ${weight} is not one of them.`,
+    };
+  }
+
+  const context = currentAttemptContext(state);
+  if (context === null || context.previousWeight === null) return null;
+  const previousWeight = context.previousWeight;
+
+  if (weight < previousWeight - WEIGHT_EPSILON) {
+    return {
+      code: 'WEIGHT_DECREASED',
+      message: `Attempts may not go down within a lift: ${weight} is below the previous attempt of ${previousWeight}.`,
+    };
+  }
+  if (isSameWeight(weight, previousWeight)) {
+    if (context.mayRepeatWeight) return null;
+    return {
+      code: 'REPEAT_AFTER_GOOD_LIFT',
+      message: `A good lift at ${previousWeight} must be followed by a heavier attempt.`,
+    };
+  }
+  if (context.minimumIncreaseWeight !== null && !isAtLeast(weight, context.minimumIncreaseWeight)) {
+    return {
+      code: 'INSUFFICIENT_INCREASE',
+      message:
+        `The bar must move at least ${state.rules.minIncrement} between attempts on the same lift, ` +
+        `so ${weight} is not a legal jump from ${previousWeight}.`,
+    };
+  }
+  return null;
+}
+
+/**
+ * May this exact number be declared on the attempt on deck? The whole chain —
+ * phase, rules, seal, both weight gates and all three progression gates.
+ *
+ * This is the predicate a keypad or attempt-card UI should grey out with, and
+ * the predicate to check anything before showing it to a player as a legal call.
+ * `isCallableWeightIgnoringTheCard` is NOT that predicate.
+ */
+export function isCallableWeightNow(state: MeetState, weight: number): boolean {
+  if (state.phase.kind !== 'awaiting-declaration') return false;
+  if (validateMeetRules(state.rules) !== null) return false;
+  if (checkMeetRulesSeal(state.rules) !== null) return false;
+  return refuseWeightNow(state, weight) === null;
+}
+
+/** The weights a lifter could call instead of the one they typed. */
+export interface NearestCallableWeights {
+  /**
+   * Heaviest weight callable right now that is not above the typed weight, or
+   * null when there is none. Null is the normal answer after a good lift, where
+   * everything at or under the previous attempt is refused.
+   */
+  readonly below: number | null;
+  /**
+   * Lightest weight callable right now that is not below the typed weight.
+   * Practically always a number — the callable weights run up without limit —
+   * but null rather than a guess if the engine cannot verify one, which is what
+   * a weight so large that the grid arithmetic stops being finite produces.
+   */
+  readonly above: number | null;
+}
+
+/** The lightest declaration-grid point strictly heavier than `weight`. */
+function nextGridStepAbove(weight: number, increment: number): number {
+  const up = roundToIncrement(weight, increment, 'up');
+  return up > weight + WEIGHT_EPSILON ? up : normalizeWeight(up + increment);
+}
+
+/**
+ * Walks up the declaration grid from `start` until something is callable.
+ * Bounded by `NEAREST_CALL_PROBE_STEPS`, and returns null rather than a guess:
+ * the closed form below should hit on the first probe under any sane rule set,
+ * and this loop exists so that a rule set that defeats it produces silence
+ * instead of a lie.
+ */
+function firstCallableAtOrAbove(state: MeetState, start: number, increment: number): number | null {
+  let candidate = start;
+  for (let step = 0; step <= NEAREST_CALL_PROBE_STEPS; step += 1) {
+    if (!Number.isFinite(candidate)) return null;
+    if (refuseWeightNow(state, candidate) === null) return candidate;
+    candidate = normalizeWeight(candidate + increment);
+  }
+  return null;
+}
+
+/**
+ * The nearest weights on either side of `weight` that the engine will actually
+ * accept for the attempt on deck.
+ *
+ * EVERY NUMBER RETURNED HAS BEEN RUN BACK THROUGH `refuseWeightNow` for this
+ * exact state. A candidate that does not verify is dropped, so a null means "the
+ * engine will not name one" rather than "there is none it could think of".
+ *
+ * Why these candidates are the whole answer. The weights callable right now are
+ * the repeat weight, when a no-lift makes one legal, plus every grid point from
+ * `context.minimumIncreaseWeight` (or, on the opener, `context.minimumWeight`)
+ * upward. Both of those come from `currentAttemptContext`, already on the grid
+ * and already progression-aware — this function does not re-derive them, which
+ * is what stops a second answer drifting from the first. Below that floor every
+ * gate that can refuse a grid point refuses every lighter grid point too
+ * (under the bar, decreased, a repeat after a good lift, or short of the minimum
+ * increase), so the only weight that can be callable down there is the repeat.
+ */
+export function nearestCallableWeightsNow(state: MeetState, weight: number): NearestCallableWeights {
+  const none: NearestCallableWeights = { below: null, above: null };
+  if (state.phase.kind !== 'awaiting-declaration') return none;
+  if (validateMeetRules(state.rules) !== null) return none;
+  if (checkMeetRulesSeal(state.rules) !== null) return none;
+  if (!Number.isFinite(weight)) return none;
+
+  const context = currentAttemptContext(state);
+  if (context === null) return none;
+  const increment = state.rules.declarationIncrement;
+
+  // The repeat weight is the one weight that can be callable below the open
+  // range, so it is a candidate on both sides: below when the lifter typed
+  // something heavier, above when they typed something lighter.
+  const repeat = context.mayRepeatWeight ? context.previousWeight : null;
+
+  // Everything on the grid from here up is callable. `context` has already
+  // rounded it onto the grid and taken the previous attempt into account; the
+  // `nextGridStepAbove` guard only matters for a federation whose minimum
+  // increase is finer than float noise, where the floor could otherwise land on
+  // the previous attempt itself.
+  const openFrom =
+    context.previousWeight === null
+      ? context.minimumWeight
+      : Math.max(
+          context.minimumIncreaseWeight ?? context.minimumWeight,
+          nextGridStepAbove(context.previousWeight, increment),
+        );
+
+  const gridBelow = roundToIncrement(weight, increment, 'down');
+  let below: number | null = null;
+  if (gridBelow <= weight + WEIGHT_EPSILON && refuseWeightNow(state, gridBelow) === null) {
+    below = gridBelow;
+  }
+  if (repeat !== null && repeat <= weight + WEIGHT_EPSILON && refuseWeightNow(state, repeat) === null) {
+    if (below === null || repeat > below) below = repeat;
+  }
+
+  const gridAbove = roundToIncrement(weight, increment, 'up');
+  let above = firstCallableAtOrAbove(state, Math.max(gridAbove, openFrom), increment);
+  if (repeat !== null && isAtLeast(repeat, weight) && refuseWeightNow(state, repeat) === null) {
+    if (above === null || repeat < above) above = repeat;
+  }
+
+  return { below, above };
+}
+
+/**
+ * The steering sentence at the end of a refusal. THE ONLY PLACE IN THIS MODULE
+ * THAT NAMES A WEIGHT AS A LEGAL CALL.
+ *
+ * Each shape claims exactly what has been checked, and no more:
+ *   - "nearest ... are A and B" — both verified, and nothing callable lies
+ *     between either of them and the number the lifter typed, because the
+ *     candidates are grid-adjacent to it.
+ *   - "the lightest ... is B" — a claim about the whole state, and sound because
+ *     `below` is null exactly when nothing at or under the typed weight is
+ *     callable, which makes B the lightest callable weight there is.
+ *   - "B is a legal call right now" — callability only. Used where no minimality
+ *     or maximality claim has been established, rather than upgrading it to one
+ *     that would merely happen to hold.
+ *
+ * When neither side verifies it returns the empty string and the refusal simply
+ * says less — see WHAT A REFUSAL MESSAGE CLAIMS at the top of this file.
+ */
+function nearestCallHint(state: MeetState, weight: number): string {
+  const { below, above } = nearestCallableWeightsNow(state, weight);
+  if (below !== null && above !== null) {
+    if (isSameWeight(below, above)) return `${above} is a legal call right now.`;
+    return `The nearest legal calls right now are ${below} and ${above}.`;
+  }
+  if (above !== null) return `The lightest legal call right now is ${above}.`;
+  // No weight at or above what was typed could be verified, so nothing here may
+  // claim to be the heaviest: this says only that the weight is callable.
+  if (below !== null) return `${below} is a legal call right now.`;
+  return '';
+}
+
+/** Adds the steering sentence to a refusal, or leaves it alone if there is none. */
+function withNearestCallHint(error: MeetError, state: MeetState, weight: number): MeetError {
+  const hint = nearestCallHint(state, weight);
+  if (hint === '') return error;
+  return { code: error.code, message: `${error.message} ${hint}` };
 }
 
 // ---------------------------------------------------------------------------
@@ -1214,12 +1552,14 @@ export interface DeclareAttemptInput {
 
 /**
  * Declare the weight for the attempt on deck. Enforces the non-decreasing
- * invariant (see the DESIGN CONFLICT note at the top of this file) and both
- * weight gates. Nothing in `input` can switch either of them off, and nothing
- * done to `state.rules` after `createMeet` can either.
+ * invariant (see the DESIGN CONFLICT note at the top of this file), both weight
+ * gates and all three progression gates. Nothing in `input` can switch one of
+ * them off, and nothing done to `state.rules` after `createMeet` can either.
  *
+ * The gates live in `refuseWeightNow` rather than inline here, so that the hint
+ * on the end of a refusal is checked by the same code that decides the refusal.
  * The bar floor is checked first, so a refusal always names the most concrete
- * true reason. Every refusal below that floor is a rule about which numbers may
+ * true reason. Every refusal above that floor is a rule about which numbers may
  * be called; none of them is a claim about what the plates can make.
  */
 export function declareAttempt(state: MeetState, input: DeclareAttemptInput): Result<MeetState> {
@@ -1237,49 +1577,9 @@ export function declareAttempt(state: MeetState, input: DeclareAttemptInput): Re
   const { lift, attemptNumber } = state.phase;
   const weight = input.weight;
 
-  if (!Number.isFinite(weight) || weight <= 0) {
-    return fail('INVALID_WEIGHT', 'An attempt weight must be a positive number.');
-  }
-
-  const bar = barAndCollarsWeight(lift, state.rules);
-  if (!isAtLeast(weight, bar)) {
-    return fail(
-      'WEIGHT_BELOW_BAR',
-      `The ${lift} bar and collars already weigh ${bar}; nothing lighter than that can go on the platform.`,
-    );
-  }
-  if (!isDeclarableWeight(weight, state.rules)) {
-    return fail(
-      'WEIGHT_NOT_DECLARABLE',
-      `Attempts are declared in steps of ${state.rules.declarationIncrement}, and ${weight} is not one of them. ` +
-        nearestLegalCallsHint(weight, lift, state.rules),
-    );
-  }
-
-  const context = currentAttemptContext(state);
-  if (context !== null && context.previousWeight !== null) {
-    const previousWeight = context.previousWeight;
-    if (weight < previousWeight - WEIGHT_EPSILON) {
-      return fail(
-        'WEIGHT_DECREASED',
-        `Attempts may not go down within a lift: ${weight} is below the previous attempt of ${previousWeight}.`,
-      );
-    }
-    if (isSameWeight(weight, previousWeight)) {
-      if (!context.mayRepeatWeight) {
-        return fail(
-          'REPEAT_AFTER_GOOD_LIFT',
-          `A good lift at ${previousWeight} must be followed by a heavier attempt.`,
-        );
-      }
-    } else if (context.minimumIncreaseWeight !== null && !isAtLeast(weight, context.minimumIncreaseWeight)) {
-      return fail(
-        'INSUFFICIENT_INCREASE',
-        `The next attempt must be at least ${context.minimumIncreaseWeight}${
-          context.mayRepeatWeight ? ` (or a repeat of ${previousWeight})` : ''
-        }.`,
-      );
-    }
+  const refusal = refuseWeightNow(state, weight);
+  if (refusal !== null) {
+    return { ok: false, error: withNearestCallHint(refusal, state, weight) };
   }
 
   const attempt: DeclaredAttempt = {
@@ -1536,8 +1836,13 @@ export type ProgressiveAttemptStrategy = 'conservative' | 'standard' | 'aggressi
 export type AttemptStrategy = ProgressiveAttemptStrategy | 'repeat';
 
 /**
- * Suggest a legal weight for the attempt on deck. Never returns a weight the
- * engine would reject.
+ * Suggest a weight for the attempt on deck.
+ *
+ * The number it returns is shown to a player as a legal call, so it is held to
+ * the same standard as a hint: it is built from `AttemptContext`, which is
+ * progression-aware and already on the declaration grid, never from the
+ * `...IgnoringTheCard` floor alone. `isCallableWeightNow` is the check that this
+ * holds, and the suite sweeps it across rule sets and card states.
  */
 export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy): Result<number> {
   const rulesError = validateMeetRules(state.rules);
@@ -1562,9 +1867,14 @@ export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy):
 
   const minimum =
     context.minimumIncreaseWeight ??
-    roundToLegalAttemptWeight(previousWeight + state.rules.minIncrement, context.lift, state.rules, 'up');
+    roundToCallableWeightIgnoringTheCard(
+      previousWeight + state.rules.minIncrement,
+      context.lift,
+      state.rules,
+      'up',
+    );
   const jumped = previousWeight * (1 + ATTEMPT_JUMP_FRACTION[context.lift][strategy]);
-  const rounded = roundToLegalAttemptWeight(jumped, context.lift, state.rules, 'up');
+  const rounded = roundToCallableWeightIgnoringTheCard(jumped, context.lift, state.rules, 'up');
   if (isAtLeast(rounded, minimum)) return ok(rounded);
   return ok(minimum);
 }
@@ -1573,11 +1883,14 @@ export function suggestNextAttempt(state: MeetState, strategy: AttemptStrategy):
  * Suggested opening attempt from a one-rep-max estimate (GDD §6.1).
  * `oneRepMax` is supplied by the caller — this module does not compute e1RM.
  * Rounds down onto the declaration grid, because an opener you miss is how
- * meets go wrong, but never below `minimumAttemptWeight`: there is no such
- * thing as a lighter legal attempt.
+ * meets go wrong, but never below `lightestCallableWeightIgnoringTheCard`:
+ * there is no such thing as a lighter legal attempt.
  *
- * Takes bare rules rather than a `MeetState`, so there is no seal to check —
- * it does not read or alter a running meet.
+ * Takes bare rules rather than a `MeetState`, so there is no seal to check — it
+ * does not read or alter a running meet. Ignoring the card is sound HERE, and
+ * only here, because an opener has no card behind it: the progression gates need
+ * a previous attempt and there is none. Anything after the opener must go
+ * through `suggestNextAttempt`, which is state-aware.
  */
 export function suggestOpener(
   lift: LiftKind,
@@ -1590,5 +1903,5 @@ export function suggestOpener(
     return fail('INVALID_WEIGHT', 'A one-rep-max estimate must be a positive number.');
   }
   const target = oneRepMax * OPENER_FRACTION_OF_1RM[lift];
-  return ok(roundToLegalAttemptWeight(target, lift, rules, 'down'));
+  return ok(roundToCallableWeightIgnoringTheCard(target, lift, rules, 'down'));
 }
