@@ -157,9 +157,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work \u2014 NOW GRADEABLE, reference committed.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Rework merged; 529 tests green. Authored marks now live in a data table \u2014 25 named marks as ASCII bitmaps anchored to pose landmarks, so moving the buckle down a row is editing an integer, not a shading model. The builder measured against the RENDERED grid rather than the source and found something the critic could not see: of the six hand-placed marks it counted, only ONE reached the screen. despeckle was eating both eyes, the mouth and both chalked knuckles, and the survivor was painting SKIN_MID onto a pixel that was already SKIN_MID. The true starting count was effectively zero; it is now 202 rendered authored pixels at lockout. Two unrelated defects surfaced on the way: the neck drew after the torso and left a 4x3 block of pure outline on the bare chest, and a dead constant made the shoe sole and upper the same pixel. Second blind A/B grading now.",
+      "note": "Second blind A/B: the marks LAND \u2014 the critic read the sole line, sleeve bands, wrist wraps, belt lever, chest patch and hem trim unprompted, and said plainly it was not reporting \"not enough detail\" any more. The gap moved: the kit got drawn, the flesh did not. About 80% of authored pixels went to objects; the anatomy marks land at 31-68% while kit lands at 90-100%, so the marks meant to break the ramp at anatomy are exactly the ones that miss. Underneath, the cause is in the math \u2014 verified here at raster.ts:193-207: `along` is computed but used only to clamp the capsule ends, so shading reads the across-limb offset alone and every limb value is constant down its full length BY CONSTRUCTION. A guaranteed longitudinal stripe. It also empties the top of the skin ramp: total authored SKIN_HI in the table is 7px, four of them in a mark that does not land, so the brightest things in every frame are the chrome collars and red discs. As the critic put it \u2014 the lifter is the second-brightest thing in his own sprite.",
       "evidence": "A1-lockout-6x.png"
     },
     {
