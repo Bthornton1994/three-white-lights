@@ -14,7 +14,13 @@
  *   - Joint coordinates and pose depth anchors (`rig.ts`). Those are drawing,
  *     not timing: an anchor cannot be moved without redrawing the pose it
  *     names, so it is not a knob that turns in isolation. The *load response*
- *     applied to those poses (STRAIN below) is a feel value and lives here.
+ *     applied to those poses — STRAIN and PITCH below — is a feel value and
+ *     lives here, including the per-level pixel deltas: unlike a pose anchor,
+ *     a strain delta can be turned on its own and immediately looked at.
+ *
+ * `spriteTuning.test.ts` guards the rules a hand pass can silently break: one
+ * table entry per level, no rung going backwards, no constant duplicated
+ * somewhere else in the codebase.
  *
  * These numbers have never been played. GDD §12.1 budgets roughly 30 hand
  * tuning passes on exactly this kind of value. Treat every number below as a
@@ -63,6 +69,38 @@ export const PX_PER_METRE = RESOLUTION.LIFTER_HEIGHT_PX / RESOLUTION.LIFTER_HEIG
 
 /** Horizontal centre. Half-pixel, so symmetric shapes land symmetrically. */
 export const CENTER_X = (RESOLUTION.CELL_W - 1) / 2;
+
+/**
+ * QUANTISE — how finite the shipped sheet is.
+ *
+ * A 16-bit game shipped a fixed number of drawings and picked the nearest one;
+ * continuous per-frame deformation is a modern-engine tell. These say how
+ * coarse the picking is, and they are feel values: raising DEPTH_STEPS makes
+ * the animation smoother and less like a sheet, lowering it makes it chunkier.
+ *
+ * They live here rather than in `squatAnimation.ts` because they decide what
+ * counts as the same drawing, which is the animator's timing sheet, which is
+ * exactly the kind of thing a playtester turns.
+ */
+export const QUANTISE = {
+  /** Distinct authored depth steps per direction. */
+  DEPTH_STEPS: 12,
+  /** Bar tilt is drawn in whole degrees of this size. */
+  TILT_QUANTUM_DEG: 1,
+  /** Sleeve droop is drawn to this precision, px. */
+  BEND_QUANTUM_PX: 0.5,
+} as const;
+
+/**
+ * Depth the brace settles to before the eccentric proper starts.
+ *
+ * ONE value with TWO consumers, which is why it is here and not in either of
+ * them: `squatAnimation.ts` walks the brace down to this depth, and `rig.ts`
+ * anchors the BRACE drawing at it. If they ever disagree the lifter snaps
+ * between two drawings at the top of every rep, and the bug is invisible in
+ * both files individually.
+ */
+export const BRACE_SETTLE_DEPTH = 0.06;
 
 /**
  * Barbell geometry, in sprite pixels.
@@ -195,6 +233,22 @@ export const STICK = {
   OSCILLATION_PX: { LIGHT: 0, MAXIMAL: 1.2 },
   /** A tick counts as stalled below this rise, in normalised height units. */
   STALL_EPSILON: 0.004,
+  /**
+   * The wobble envelope is this much wider than the velocity notch, so the bar
+   * is already shaking as it enters the sticking point rather than starting to
+   * shake exactly when it stops.
+   */
+  WOBBLE_ENVELOPE_WIDEN: 1.5,
+  /**
+   * Floor on v(h), so the time integral cannot diverge.
+   *
+   * This is NOT only a numerical guard, which is why it is a tunable and not a
+   * private constant in the animation module: as DEPTH approaches 1 it is the
+   * value that decides how slowly the slowest tick of the grind creeps, and
+   * therefore how long the stall runs. Raising DEPTH toward 0.99 without
+   * lowering this just clips the notch flat.
+   */
+  MIN_VELOCITY: 0.02,
 } as const;
 
 /**
@@ -203,9 +257,16 @@ export const STICK = {
  * FORWARD is sagittal (toward the toes) and is the classic heavy-squat failure:
  * the hips shoot, the bar drifts over the toes, the lifter fights it back. The
  * sprite is a FRONT view, so forward drift is not drawn as a horizontal offset
- * — that would be a lie about the camera. It is drawn as torso pitch and head
- * crane (STRAIN.FORWARD_TO_PITCH below) and exposed as data for the sagittal
- * bar-path trace. See `squatAnimation.ts` for the full note.
+ * — that would be a lie about the camera. It is drawn as the PITCH channel
+ * below: its own quantised level with its own authored pose deltas, so it
+ * reaches pixels independently of how strained the lifter already is.
+ *
+ * That independence is the whole point of the separate channel. Folding
+ * forward drift into strain (which is what this file used to do, through a
+ * `FORWARD_TO_PITCH` gain) meant that on a maximal grind — the one rep where
+ * the drift is largest — base strain was already at the top of its range, the
+ * sum clamped, and the drift changed no pixels at all. It was a term that only
+ * ever moved the light rep.
  *
  * LATERAL and TILT are frontal-plane and *are* drawn directly: one side driving
  * harder than the other tips the bar, and that is visible head-on.
@@ -218,8 +279,16 @@ export const BAR_PATH = {
   /** Where the forward drift peaks, as a fraction of ascent height. */
   FORWARD_PEAK_FRAC: 0.34,
   FORWARD_PEAK_WIDTH: 0.3,
+  /**
+   * How late in the eccentric the drift accumulates. Exponent > 1 keeps the
+   * bar over midfoot at the top of the descent and lets it creep forward only
+   * as the hips travel back near the bottom, which is when it actually creeps.
+   */
+  FORWARD_DESCENT_EXPONENT: 1.5,
   /** Peak lateral offset of the bar centre, px. */
   LATERAL_PX: { LIGHT: 0.0, MAXIMAL: 1.0 },
+  /** Share of LATERAL_PX that is a steady lean; the rest is the shake. */
+  LATERAL_LEAN_SHARE: 0.5,
   /** Peak bar tilt, degrees. Positive = lifter's right side high. */
   TILT_DEG: { LIGHT: 0.0, MAXIMAL: 3.5 },
 } as const;
@@ -253,6 +322,32 @@ export const BEND = {
 } as const;
 
 /**
+ * A strain level's authored pose deformation, in sprite px.
+ *
+ * NONE of these fields may move the shoulder line. The bar rides the
+ * shoulders, so a strain deformation that moved the shoulders would let a
+ * strained frame misreport squat depth — the lifter could grimace his way to
+ * looking deeper. Everything else is fair game. `rig.ts` enforces this and
+ * `lifterSprite.test.ts` asserts it.
+ */
+export interface StrainPoseDelta {
+  /** Hips shoot: pelvis rises ahead of the shoulders, torso folds shut. */
+  readonly HIP_SHOOT: number;
+  /** Head cranes up and back, away from the bar; the neck lengthens. */
+  readonly HEAD_CRANE: number;
+  /** Traps bunch up under the bar; the shoulder line widens. */
+  readonly SHOULDER_SHRUG: number;
+  /** Knees track inward (valgus). Ugly on purpose. */
+  readonly KNEE_VALGUS: number;
+  /** Elbows drag down and in as the lifter fights to keep the bar racked. */
+  readonly ELBOW_TUCK: number;
+  /** Feet spread into the floor. */
+  readonly STANCE_SPREAD: number;
+  /** Chest caves: the singlet's neckline drops and the straps steepen. */
+  readonly CHEST_COLLAPSE: number;
+}
+
+/**
  * STRAIN — how load deforms the pose itself.
  *
  * Timing alone is "slower". Weight is "slower AND shaped differently": the back
@@ -261,36 +356,142 @@ export const BEND = {
  * what a critic should be able to see in a still frame with the timing stripped
  * out, and the contact sheet is built to make exactly that comparison.
  *
- * Strain is quantised to LEVELS steps before rendering. 16-bit games shipped a
- * fixed sheet; continuous deformation per frame is a modern-engine tell.
+ * ---------------------------------------------------------------------------
+ * WHY LEVEL_DELTAS IS A TABLE AND NOT ONE VECTOR TIMES A SCALAR
+ * ---------------------------------------------------------------------------
+ * Strain is quantised to LEVELS steps before rendering, because a 16-bit game
+ * shipped a fixed sheet and continuous deformation per frame is a
+ * modern-engine tell. Given that the renderer only ever draws four strain
+ * states, each of the four is AUTHORED. It is not one delta vector scaled by
+ * a strain scalar.
+ *
+ * That distinction is the whole fix. A single vector scaled linearly means the
+ * drawing a working set reaches and the drawing a limit single reaches are the
+ * same drawing at different gains, and — because the reps the animation
+ * actually produces sit at levels 0 and 3, not at the endpoints — the gap
+ * between them lands under two pixels on a 60 px figure and rounds away. An
+ * authored table lets level 3 be a QUALITATIVELY different drawing: the
+ * elbow tuck is more than eight times level 1's, not three times, so a grind
+ * is a pose the light rep never passes through rather than a faster version of
+ * the one it does.
+ *
+ * The load presets map one-to-one onto the levels, which is what makes the
+ * table worth authoring:
+ *   LIGHT 0.55 -> 0,  MODERATE 0.75 -> 1,  HEAVY 0.88 -> 2,  MAXIMAL 1.0 -> 3
+ * (at the sticking point, where the phase weight is highest).
+ *
+ * These are pixel offsets on a 60 px figure. Anything under ~1 px will not
+ * survive rounding into the 96x72 grid, so a level whose deltas are all below
+ * that is a level that does not exist. Level 1 is deliberately close to that
+ * floor — a working set should barely deform — and levels 2 and 3 are not.
  */
 export const STRAIN = {
   LEVELS: 4,
-  /** Strain from load alone, before phase weighting. */
-  FROM_LOAD: { LIGHT: 0.08, MAXIMAL: 1.0 },
-  /** Extra strain per px of forward bar drift. */
-  FORWARD_TO_PITCH: 0.09,
+  /**
+   * Strain from load alone, before phase weighting.
+   *
+   * LIGHT is not zero, and the exact value is load-bearing: it is what decides
+   * that a 0.55 working set reaches level 1 at its sticking point and level 0
+   * everywhere else. Drop it below ~0.15 and a light rep never deforms at all,
+   * which makes the whole strain response read as a switch rather than a
+   * ladder. `squatAnimation.test.ts` pins the preset-to-level map so a tuner
+   * finds out immediately if a nudge here collapses a rung.
+   */
+  FROM_LOAD: { LIGHT: 0.16, MAXIMAL: 1.0 },
 
   /**
-   * Pixel deltas at strain = 1.
-   *
-   * None of these move the shoulder line, because the bar rides the shoulders
-   * and a strain deformation that moved the bar would let a strained frame
-   * misreport squat depth. Everything else is fair game.
+   * One authored deformation per strain level. Length must equal LEVELS.
+   * Index 0 is the undeformed drawing and must stay all zeros: it is what
+   * "the lifter is not straining" means.
    */
-  DELTA_PX: {
-    /** Hips shoot: pelvis rises ahead of the shoulders, torso folds shut. */
-    HIP_SHOOT: 2.4,
-    /** Head cranes up and back, away from the bar. */
-    HEAD_CRANE: 1.6,
-    /** Traps bunch up under the bar; the shoulder line widens. */
-    SHOULDER_SHRUG: 0.9,
-    /** Knees track inward (valgus). Ugly on purpose. */
-    KNEE_VALGUS: 2.4,
-    /** Elbows drag down and in as the lifter fights to keep the bar racked. */
-    ELBOW_TUCK: 1.8,
-    /** Feet spread into the floor. */
-    STANCE_SPREAD: 1.0,
+  LEVEL_DELTAS: [
+    // 0 — composed. A warm-up. The authored pose, untouched.
+    {
+      HIP_SHOOT: 0,
+      HEAD_CRANE: 0,
+      SHOULDER_SHRUG: 0,
+      KNEE_VALGUS: 0,
+      ELBOW_TUCK: 0,
+      STANCE_SPREAD: 0,
+      CHEST_COLLAPSE: 0,
+    },
+    // 1 — working weight. Tight, braced, still clean. Barely a pixel anywhere.
+    {
+      HIP_SHOOT: 0.5,
+      HEAD_CRANE: 0.5,
+      SHOULDER_SHRUG: 0.5,
+      KNEE_VALGUS: 0.6,
+      ELBOW_TUCK: 0.4,
+      STANCE_SPREAD: 0.3,
+      CHEST_COLLAPSE: 0.1,
+    },
+    // 2 — heavy single. The fight is visible: knees drifting in, elbows down.
+    {
+      HIP_SHOOT: 1.3,
+      HEAD_CRANE: 1.3,
+      SHOULDER_SHRUG: 1.3,
+      KNEE_VALGUS: 2.1,
+      ELBOW_TUCK: 1.5,
+      STANCE_SPREAD: 1.1,
+      CHEST_COLLAPSE: 0.5,
+    },
+    // 3 — the grind at a limit. Knees caved, elbows dragged into the ribs,
+    //     neck stretched, feet spread into the platform.
+    //
+    // CHEST_COLLAPSE is small on purpose and was pulled back once already: the
+    // landmark it moves is the singlet's neckline, so a large value reads as
+    // the singlet having slipped rather than as the chest having caved, which
+    // is a worse cue than the one it replaced.
+    {
+      HIP_SHOOT: 2.2,
+      HEAD_CRANE: 2.2,
+      SHOULDER_SHRUG: 2.2,
+      KNEE_VALGUS: 3.8,
+      ELBOW_TUCK: 2.8,
+      STANCE_SPREAD: 2.0,
+      CHEST_COLLAPSE: 0.9,
+    },
+  ] as const satisfies readonly StrainPoseDelta[],
+
+  /**
+   * Knees may not cave inside this fraction of the hip half-width — the legs
+   * would cross. It also makes valgus a deep-squat phenomenon for free: a
+   * standing pose has narrow knees already, so the cap binds and the lifter
+   * does not stand around knock-kneed at high strain.
+   */
+  KNEE_MIN_VS_HIP: 0.95,
+
+  /**
+   * Depth honesty, second line of defence.
+   *
+   * The bar is glued to the shoulders and strain never moves the shoulders, so
+   * the bar's height cannot lie. But the hip-crease-below-top-of-knee cue is
+   * the criterion a judge actually calls, and HIP_SHOOT raises the hip. Where
+   * the authored drawing has the hip below the knee, strain may not raise it
+   * closer than this — a strained frame can look uglier than a clean one but
+   * never shallower.
+   */
+  HIP_DEPTH_MARGIN_PX: 0.8,
+
+  /**
+   * CORD — muscle cording, drawn only at a real grind.
+   *
+   * A few 2px runs of shadow down the neck and the outer quad. Small, but it
+   * is a mark that exists in the heavy drawing and does not exist in the light
+   * one at all, which is the thing a fixed sheet gets to do and a scaled
+   * deformation does not. Runs are 2px because `despeckle` eats lone pixels,
+   * and deliberately so.
+   */
+  CORD: {
+    /** Strain level at or above which cording is drawn. */
+    MIN_LEVEL: 3,
+    RUN_PX: 2,
+    /** Neck cords: |dx| from the neck axis, dy from the neck's midpoint. */
+    NECK_DX: 2,
+    NECK_DY: -1,
+    /** Quad cords: fractions from hip to knee, and |dx| off the thigh axis. */
+    THIGH_FRACS: [0.4, 0.62] as readonly number[],
+    THIGH_DX: 1.8,
   },
 
   /**
@@ -318,6 +519,76 @@ export const STRAIN = {
 
   /** Strain above this flushes the face and forearms with SKIN_FLUSH. */
   FLUSH_THRESHOLD: 0.55,
+} as const;
+
+/**
+ * A pitch level's authored pose deformation, in sprite px.
+ *
+ * Same rule as StrainPoseDelta: nothing here may move the shoulder line.
+ */
+export interface PitchPoseDelta {
+  /** Hips travel back and up — the fault the forward drift IS. */
+  readonly HIP_RISE: number;
+  /** Chest turns toward the floor: the singlet's neckline drops. */
+  readonly CHEST_DROP: number;
+  /** A torso pitched away from camera presents a narrower frontal outline. */
+  readonly TORSO_NARROW: number;
+  /** Eyes come up, fighting the fold. */
+  readonly HEAD_CRANE: number;
+}
+
+/**
+ * PITCH — the drawn consequence of sagittal forward bar drift.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT THIS IS FOR
+ * ---------------------------------------------------------------------------
+ * `BAR_PATH.FORWARD_PX` is toward the toes, and the camera is in front of the
+ * lifter, so it cannot be drawn as a horizontal offset without lying about the
+ * view. What CAN be drawn is its effect on the body: the hips travel back and
+ * up, the torso folds toward the floor and so presents less of itself to the
+ * camera, and the lifter's head comes up to fight it.
+ *
+ * It is a SEPARATE quantised channel from strain rather than a term added into
+ * strain, for one concrete reason: strain saturates. On the rep where the
+ * drift is largest, the base strain is already at the top of its range, so an
+ * added term is clamped away and changes nothing. As its own channel the drift
+ * reaches pixels on the heavy rep, which is the only rep where the claim
+ * "the bar drifted forward and the lifter fought it back" was ever made.
+ *
+ * FULL_PX reads BAR_PATH so the two cannot desync: raise the modelled drift
+ * and the level scale still spans it.
+ */
+export const PITCH = {
+  LEVELS: 4,
+  /** Drift, px, that reaches the top authored level. */
+  FULL_PX: BAR_PATH.FORWARD_PX.MAXIMAL,
+  /** One authored deformation per pitch level. Length must equal LEVELS. */
+  LEVEL_DELTAS: [
+    { HIP_RISE: 0, CHEST_DROP: 0, TORSO_NARROW: 0, HEAD_CRANE: 0 },
+    { HIP_RISE: 0.5, CHEST_DROP: 0.15, TORSO_NARROW: 0.35, HEAD_CRANE: 0.3 },
+    { HIP_RISE: 1.0, CHEST_DROP: 0.4, TORSO_NARROW: 0.8, HEAD_CRANE: 0.55 },
+    { HIP_RISE: 1.6, CHEST_DROP: 0.7, TORSO_NARROW: 1.2, HEAD_CRANE: 0.8 },
+  ] as const satisfies readonly PitchPoseDelta[],
+} as const;
+
+/**
+ * DEFORM_FOLLOW — how far a secondary landmark follows the primary one it is
+ * attached to, as a fraction of that primary's movement.
+ *
+ * These are not independent deltas and must not become them. The waist is
+ * attached to the pelvis, the neck to the head; if they were authored
+ * separately per level they could be tuned into disagreeing with each other and
+ * the figure would come apart at the joint. One ratio each, applied to whatever
+ * the primary landmark actually got AFTER its depth guard — so when the hip's
+ * rise is clamped in the hole, the belt stays on the hips instead of floating
+ * up to where the hip asked to go.
+ */
+export const DEFORM_FOLLOW = {
+  NECK_OF_HEAD_CRANE: 0.4,
+  WAIST_OF_HIP_TRAVEL: 0.7,
+  ELBOW_DROP_OF_TUCK: 0.5,
+  WAIST_WIDTH_OF_TORSO_NARROW: 0.6,
 } as const;
 
 /**
@@ -369,6 +640,20 @@ export const CHALK = {
   MIN_LOAD_RATIO: 0.7,
   PUFF_TICKS: 9,
   MAX_MOTES: 7,
+  /**
+   * Mote positions, as (dx, dy) from the hand, in draw order. Fixed offsets and
+   * not noise, because this module is pure and a random puff would make two
+   * renders of the same frame differ. MAX_MOTES may not exceed this length.
+   */
+  MOTE_OFFSETS: [
+    [0, -2],
+    [2, -4],
+    [-2, -3],
+    [4, -6],
+    [-4, -5],
+    [1, -7],
+    [-1, -9],
+  ] as readonly (readonly [number, number])[],
 } as const;
 
 /**
@@ -383,6 +668,8 @@ export const SPRITE_TUNING = {
   RESOLUTION,
   PX_PER_METRE,
   CENTER_X,
+  QUANTISE,
+  BRACE_SETTLE_DEPTH,
   BAR,
   LOAD_PRESETS,
   LOAD_RANGE,
@@ -392,6 +679,8 @@ export const SPRITE_TUNING = {
   BAR_PATH,
   BEND,
   STRAIN,
+  PITCH,
+  DEFORM_FOLLOW,
   SHADING,
   SHADOW,
   CHALK,

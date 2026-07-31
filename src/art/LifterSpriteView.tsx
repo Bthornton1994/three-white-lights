@@ -88,6 +88,7 @@ export function LifterSpriteView({
       frame.poseDepth,
       frame.direction,
       frame.strainLevel,
+      frame.pitchLevel,
       frame.barLateralPx,
       frame.barTiltDeg,
       frame.barBendPx,

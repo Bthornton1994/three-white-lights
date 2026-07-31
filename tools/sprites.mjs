@@ -8,6 +8,11 @@
  * Outputs under .gauntlet/shots/sprites/:
  *   palette.png                  the three 16-colour banks as swatches
  *   pose-sheet.png               every authored pose, relaxed vs. strained
+ *   body-load.png                THE BODY-ONLY EXPERIMENT: the drawing a light
+ *                                rep reaches vs. the one a maximal rep reaches,
+ *                                at matched depth with an IDENTICAL barbell,
+ *                                plus a per-pixel difference map of the body
+ *                                with the head masked out
  *   sheet-LIGHT.png              every animation frame of a light rep
  *   sheet-MAXIMAL.png            every animation frame of a maximal rep
  *   contact-sheet.png            light vs. maximal side by side, plus the
@@ -64,6 +69,7 @@ const {
   RESOLUTION,
   POSES,
   STRAIN,
+  PITCH,
   POSE_DEPTH_ANCHORS,
   buildSquatRep,
   ascentShapeVariation,
@@ -84,7 +90,14 @@ const {
   compositeOver,
   cloneGrid,
   visualPlateStack,
-  strainForLevel,
+  stickingPointFrame,
+  peakStrainLevel,
+  peakPitchLevel,
+  bodyPixelDiff,
+  isBodyIndex,
+  headBox,
+  unionRect,
+  getPx,
 } = art;
 
 // ---------------------------------------------------------------------------
@@ -366,15 +379,22 @@ function paletteSheet() {
 function poseSheet() {
   const SCALE = 3;
   const keys = Object.keys(POSES);
-  const rows = STRAIN.LEVELS;
+  // Every authored strain level at pitch 0, then every non-zero pitch level at
+  // strain 0. The second block is what proves the forward-drift channel reaches
+  // pixels on its own rather than only through a saturated strain term.
+  const rows = [];
+  for (let s = 0; s < STRAIN.LEVELS; s += 1) rows.push({ strain: s, pitch: 0 });
+  for (let p = 1; p < PITCH.LEVELS; p += 1) rows.push({ strain: 0, pitch: p });
+
   const cw = CELL_W * SCALE + 6;
   const ch = CELL_H * SCALE + 22;
-  const c = canvas(24 + keys.length * cw, 56 + rows * ch, BG);
+  const c = canvas(24 + keys.length * cw, 56 + rows.length * ch, BG);
 
-  text(c, 'AUTHORED POSES x STRAIN LEVELS  (SAME LOAD ON THE BAR: 180 KG)', 12, 12, INK, 2);
+  text(c, 'AUTHORED POSES x STRAIN LEVELS x PITCH LEVELS  (SAME 180 KG BAR THROUGHOUT)', 12, 12, INK, 2);
   text(
     c,
-    'TIMING REMOVED. IF ONLY THE CLOCK CHANGED WITH LOAD, THESE ROWS WOULD BE IDENTICAL.',
+    'TIMING REMOVED. IF ONLY THE CLOCK CHANGED WITH LOAD, THESE ROWS WOULD BE IDENTICAL. ' +
+      'ROWS 1-4 ARE STRAIN AT ZERO PITCH; THE REST ARE PITCH AT ZERO STRAIN.',
     12,
     30,
     INK_DIM,
@@ -388,7 +408,7 @@ function poseSheet() {
     }
   }
 
-  for (let r = 0; r < rows; r += 1) {
+  rows.forEach((row, r) => {
     const y = 48 + r * ch;
     for (let i = 0; i < keys.length; i += 1) {
       const key = keys[i];
@@ -397,7 +417,8 @@ function poseSheet() {
       const spec = {
         depth: anchor.depth,
         direction: anchor.dir,
-        strainLevel: r,
+        strainLevel: row.strain,
+        pitchLevel: row.pitch,
         barLateralPx: 0,
         barTiltDeg: 0,
         barBendPx: 0,
@@ -406,11 +427,145 @@ function poseSheet() {
       };
       const { rgba } = renderComposited(spec, anchor.depth);
       blit(c, rgba, CELL_W, CELL_H, x, y, SCALE);
-      const strainPct = Math.round(strainForLevel(r) * 100);
-      text(c, `${key} S${strainPct}`, x, y + CELL_H * SCALE + 4, INK_DIM, 1);
+      text(
+        c,
+        `${key} STRAIN${row.strain} PITCH${row.pitch}`,
+        x,
+        y + CELL_H * SCALE + 4,
+        row.pitch > 0 ? LIGHT_C : INK_DIM,
+        1,
+      );
     }
-  }
+  });
   return c;
+}
+
+/**
+ * THE BODY-ONLY EXPERIMENT.
+ *
+ * The obvious objection to "a maximal squat animates heavier" is that all the
+ * heaviness lives in the barbell and the clock: more discs, a drooping sleeve,
+ * a longer rep. This sheet takes all three away.
+ *
+ * Both columns are drawn at the SAME squat depth, with the SAME weight on the
+ * bar, with the SAME bend, tilt and shake — literally the same barbell pixels.
+ * The only thing that differs is the strain and pitch level the rep in question
+ * actually reaches. The third row is the difference: every pixel where the two
+ * bodies disagree, with the barbell excluded by palette bank and the head
+ * masked out, so a grimace and a redder skin ramp cannot account for it.
+ */
+function bodyLoadSheet(light, maximal, kg) {
+  const SCALE = 4;
+  const DEPTHS = [0.25, 0.5, 0.66, 0.83, 1.0];
+  const cw = CELL_W * SCALE + 10;
+  const ch = CELL_H * SCALE + 20;
+  const c = canvas(28 + DEPTHS.length * cw, 132 + ch * 3 + 40, BG);
+
+  const ls = stickingPointFrame(light);
+  const ms = stickingPointFrame(maximal);
+
+  text(c, 'IS THE HEAVINESS IN THE BODY, OR ONLY IN THE BAR AND THE CLOCK?', 14, 12, INK, 3);
+  text(
+    c,
+    `SAME DEPTH. SAME ${kg} KG BAR. SAME BEND, TILT AND SHAKE. THE ONLY DIFFERENCE IS THE LIFTER.`,
+    14,
+    38,
+    INK_DIM,
+    2,
+  );
+  text(
+    c,
+    `LIGHT REACHES STRAIN ${ls.strainLevel} PITCH ${ls.pitchLevel} AT ITS STICKING POINT.  ` +
+      `MAXIMAL REACHES STRAIN ${ms.strainLevel} PITCH ${ms.pitchLevel}.  ` +
+      'THESE ARE THE LEVELS THE ANIMATION PRODUCES, NOT THE ENDPOINTS OF THE RANGE.',
+    14,
+    56,
+    INK_DIM,
+    2,
+  );
+  text(
+    c,
+    'ROW 3 IS THE PER-PIXEL DIFFERENCE. BARBELL EXCLUDED BY PALETTE BANK; HEAD BOX MASKED OUT.',
+    14,
+    74,
+    INK_DIM,
+    2,
+  );
+
+  const spec = (frame, depth) => ({
+    depth,
+    direction: 'ASCENT',
+    strainLevel: frame.strainLevel,
+    pitchLevel: frame.pitchLevel,
+    barLateralPx: 0,
+    barTiltDeg: 0,
+    barBendPx: 0,
+    chalkMotes: 0,
+    totalKg: kg,
+  });
+
+  DEPTHS.forEach((depth, i) => {
+    const x = 14 + i * cw;
+    const A = renderLifterFrame(spec(ls, depth));
+    const B = renderLifterFrame(spec(ms, depth));
+    const box = unionRect(headBox(A.pose), headBox(B.pose));
+    const all = bodyPixelDiff(A.grid, B.grid);
+    const noHead = bodyPixelDiff(A.grid, B.grid, box);
+
+    const rowY = (r) => 96 + r * ch;
+    blit(c, gridToRgba(composeWithStage(A, depth)), CELL_W, CELL_H, x, rowY(0), SCALE);
+    blit(c, gridToRgba(composeWithStage(B, depth)), CELL_W, CELL_H, x, rowY(1), SCALE);
+
+    // Difference map, drawn by hand rather than blitted: unchanged body in a
+    // dim grey so the figure is still legible, changed body hot, and the
+    // masked-out head box drawn as a hollow rectangle so nothing is hidden.
+    const dy = rowY(2);
+    rect(c, x, dy, CELL_W * SCALE, CELL_H * SCALE, [10, 10, 14, 255]);
+    for (let py = 0; py < CELL_H; py += 1) {
+      for (let pxx = 0; pxx < CELL_W; pxx += 1) {
+        const va = getPx(A.grid, pxx, py);
+        const vb = getPx(B.grid, pxx, py);
+        const ba = isBodyIndex(va);
+        const bb = isBodyIndex(vb);
+        if (!ba && !bb) continue;
+        const masked = pxx >= box.x0 && pxx <= box.x1 && py >= box.y0 && py <= box.y1;
+        let colour = [38, 38, 50, 255];
+        if (!masked && ba !== bb) colour = [255, 232, 120, 255];
+        else if (!masked && va !== vb) colour = [188, 72, 64, 255];
+        else if (masked) colour = [26, 26, 34, 255];
+        rect(c, x + pxx * SCALE, dy + py * SCALE, SCALE, SCALE, colour);
+      }
+    }
+    for (let bx = box.x0; bx <= box.x1; bx += 2) {
+      rect(c, x + bx * SCALE, dy + box.y0 * SCALE, SCALE, 1, INK_DIM);
+      rect(c, x + bx * SCALE, dy + box.y1 * SCALE, SCALE, 1, INK_DIM);
+    }
+
+    text(c, `DEPTH ${Math.round(depth * 100)}  LIGHT`, x, rowY(0) + CELL_H * SCALE + 4, LIGHT_C, 1);
+    text(c, `DEPTH ${Math.round(depth * 100)}  MAXIMAL`, x, rowY(1) + CELL_H * SCALE + 4, MAX_C, 1);
+    text(
+      c,
+      `SILHOUETTE ${noHead.silhouette}PX  ANY ${noHead.changed}PX  OF ${all.bodyArea}`,
+      x,
+      dy + CELL_H * SCALE + 4,
+      INK,
+      1,
+    );
+  });
+
+  const legendY = 96 + ch * 3 + 6;
+  rect(c, 14, legendY, 10, 10, [255, 232, 120, 255]);
+  text(c, 'SILHOUETTE CHANGED - BODY IN ONE, NOT BODY IN THE OTHER', 30, legendY + 2, INK_DIM, 2);
+  rect(c, 14, legendY + 16, 10, 10, [188, 72, 64, 255]);
+  text(c, 'SHADING CHANGED ONLY - SAME SILHOUETTE, DIFFERENT RAMP STEP', 30, legendY + 18, INK_DIM, 2);
+  return c;
+}
+
+function composeWithStage(rendered, depth) {
+  const base = renderStage();
+  compositeOver(base, renderContactShadow(rendered.pose, depth));
+  compositeOver(base, rendered.grid);
+  return base;
 }
 
 function frameSheet(rep, label, totalKg) {
@@ -470,7 +625,9 @@ function contactSheet(light, maximal, lightKg, maxKg) {
   const bandH = CELL_H * SCALE + 56;
   const graphH = 210;
   const w = 32 + CELLS * cw;
-  const h = 110 + bandH * 2 + graphH + 200;
+  // Height is derived from the stat table's own length rather than a magic
+  // margin, so adding a row cannot silently push it off the bottom.
+  const h = 110 + bandH * 2 + graphH + 60 + statRows(light, maximal).length * 14;
   const c = canvas(w, h, BG);
 
   text(c, 'DOES A MAXIMAL ATTEMPT ANIMATE HEAVIER THAN A LIGHT ONE?', 16, 14, INK, 3);
@@ -587,10 +744,42 @@ function contactSheet(light, maximal, lightKg, maxKg) {
   return c;
 }
 
+/**
+ * Body-only difference between the drawings the two reps actually reach, at a
+ * matched depth with a matched barbell. Same measurement the unit tests floor.
+ */
+function bodyOnlyDiff(light, maximal, kg, depth = 0.66) {
+  const ls = stickingPointFrame(light);
+  const ms = stickingPointFrame(maximal);
+  const mk = (frame) => ({
+    depth,
+    direction: 'ASCENT',
+    strainLevel: frame.strainLevel,
+    pitchLevel: frame.pitchLevel,
+    barLateralPx: 0,
+    barTiltDeg: 0,
+    barBendPx: 0,
+    chalkMotes: 0,
+    totalKg: kg,
+  });
+  const A = renderLifterFrame(mk(ls));
+  const B = renderLifterFrame(mk(ms));
+  const box = unionRect(headBox(A.pose), headBox(B.pose));
+  return {
+    all: bodyPixelDiff(A.grid, B.grid),
+    noHead: bodyPixelDiff(A.grid, B.grid, box),
+    lightLevels: `S${ls.strainLevel}/P${ls.pitchLevel}`,
+    maxLevels: `S${ms.strainLevel}/P${ms.pitchLevel}`,
+  };
+}
+
 function statRows(light, maximal) {
   const f = (n, d = 2) => n.toFixed(d);
+  const diff = bodyOnlyDiff(light, maximal, MAX_KG);
   return [
     ['METRIC', 'LIGHT', 'MAXIMAL'],
+    ['PEAK STRAIN LEVEL DRAWN', String(peakStrainLevel(light)), String(peakStrainLevel(maximal))],
+    ['PEAK PITCH LEVEL DRAWN', String(peakPitchLevel(light)), String(peakPitchLevel(maximal))],
     ['TOTAL MS', String(Math.round(light.totalMs)), String(Math.round(maximal.totalMs))],
     ['ASCENT SHARE OF REP', f(ascentTickFraction(light)), f(ascentTickFraction(maximal))],
     [
@@ -618,7 +807,17 @@ function statRows(light, maximal) {
     ['PEAK FORWARD DRIFT PX', f(peakForwardDeviationPx(light)), f(peakForwardDeviationPx(maximal))],
     ['PEAK LATERAL DRIFT PX', f(peakLateralDeviationPx(light)), f(peakLateralDeviationPx(maximal))],
     ['PEAK SLEEVE BEND PX', f(peakBendPx(light)), f(peakBendPx(maximal))],
-    ['DISTINCT DRAWINGS USED', String(distinctDrawingCount(light)), String(distinctDrawingCount(maximal))],
+    ['DISTINCT BODY DRAWINGS USED', String(distinctDrawingCount(light)), String(distinctDrawingCount(maximal))],
+    [
+      `BODY PX CHANGED ${diff.lightLevels} VS ${diff.maxLevels}`,
+      `${diff.all.silhouette} SIL`,
+      `${diff.all.changed} ANY`,
+    ],
+    [
+      'SAME, WITH THE HEAD MASKED OUT',
+      `${diff.noHead.silhouette} SIL`,
+      `${diff.noHead.changed} ANY`,
+    ],
   ];
 }
 
@@ -657,6 +856,7 @@ const maximal = buildSquatRep(LOAD_PRESETS.MAXIMAL);
 const written = [];
 written.push(save('palette.png', paletteSheet()));
 written.push(save('pose-sheet.png', poseSheet()));
+written.push(save('body-load.png', bodyLoadSheet(light, maximal, MAX_KG)));
 written.push(save('sheet-LIGHT.png', frameSheet(light, `LIGHT ${LIGHT_KG}KG`, LIGHT_KG)));
 written.push(save('sheet-MAXIMAL.png', frameSheet(maximal, `MAXIMAL ${MAX_KG}KG`, MAX_KG)));
 written.push(save('contact-sheet.png', contactSheet(light, maximal, LIGHT_KG, MAX_KG)));
