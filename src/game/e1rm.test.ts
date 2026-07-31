@@ -22,6 +22,7 @@ import {
   CHARTED_RPES,
   RPE_CHART_COVERAGE,
   e1rmFromChartedSet,
+  fractionOf1RM,
   loadForRpeTarget,
   percentOf1RM,
   rawLoadForRpeTarget,
@@ -542,8 +543,11 @@ describe('the composite curve', () => {
   });
 
   it('joins Brzycki onto the chart without a step down — the reason Brzycki is the fallback', () => {
-    // Published numbers, spelled out: the chart's last cell is 57.2% of 1RM.
-    const chartTopEdge = 100 / 0.572; // 174.8252 - chart at a 16 rep max
+    // Derived from the chart rather than restated as a literal. A hardcoded
+    // copy of the top-edge cell silently went stale once when that cell was
+    // corrected, and a duplicated constant is the same circularity the chart's
+    // own tests were sent back for.
+    const chartTopEdge = 100 / fractionOf1RM(RPE_CHART_COVERAGE.MAX_REPS, RPE_CHART_COVERAGE.MIN_RPE);
     const brzyckiJustPast = 3600 / 20.5; // 175.6098 - Brzycki at a 16.5 rep max
     const epleyJustPast = 100 * (1 + 16.5 / 30); // 155.0000 - Epley at the same point
 
