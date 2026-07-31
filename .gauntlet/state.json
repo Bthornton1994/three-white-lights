@@ -93,9 +93,9 @@
       "id": "M1",
       "name": "RPE \u2192 %1RM table",
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Rework 4 merged; 379 tests green. Two verbatim external fixtures are now committed (Kotlin and a TypeScript Map-of-Maps), and a transcription reading carries a non-empty tuple of source ids, so an uncited one does not compile and every citation must be backed by a fixture holding that exact number at that exact cell. Crucially the fixture check now skips only cells where the two fixtures genuinely differ, recomputed from bytes each run \u2014 declaring a cell unverified no longer exempts it from anything. All three properties verified here rather than trusted: the old exploit now fails, adopting 57.2 is still a pure data edit, and citing a fixture-less source fails loudly. Fourth-pass critic grading."
+      "note": "SENT BACK a fifth time, on proportionality and one overstated claim. The critic verified every one of the 108 cells against bytes it fetched itself and found NO homebrewed value \u2014 but the module asserts \"two lineages, two syntaxes\" as fact in code while its own header declines to claim it, and the tests cite the header for a claim the header does not make. That matters because the only test stronger than the module agreeing with itself covers 107 cells and draws its entire force from the two fixtures NOT being copies of one text. If they are one lineage it degrades to \"the grid matches the text everybody copies\", and a pre-2020 slip would move every prescribed load in the game. Meanwhile ~250 lines of provenance apparatus sit around the one cell an RPE-target loop will essentially never request. The builder is authorised to shrink it."
     },
     {
       "id": "M2",
