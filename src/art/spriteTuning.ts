@@ -717,6 +717,68 @@ export const SHADING = {
   PLATE_RIM_LIT_FRAC: 0.42,
 
   /**
+   * FORESHORTENING — what to do when a limb is pointing at the camera.
+   *
+   * THE BUG THIS EXISTS FOR. `drawLimb` shades a capsule as a cylinder whose
+   * axis lies in the screen plane, so a limb's peak value is a function of its
+   * SCREEN ANGLE: measured under this lamp, a vertical limb peaks at 0.83 and a
+   * limb angled 45 degrees down-and-out peaks at 0.67, low enough that it cannot
+   * reach the top skin step at all and drops a whole step across its width.
+   * Worse, a limb drawn near-horizontal is shaded top-lit / bottom-shadowed, and
+   * at squat depth the only part of the thigh the shorts and the sleeve leave
+   * visible IS its underside. Measured across the pose space before this term
+   * existed, the knee sleeve out-valued the bare thigh it is worn on in 18% of
+   * leg-frames — GEAR_LIGHT (luma 149) sitting on SKIN_MID (117) — which is the
+   * exact inversion `palette.ts` forbids: kit must read as a dark object ON a
+   * lit leg, not as the leg.
+   *
+   * WHY IT IS NOT A CYLINDER. The rig is a front view and it draws the femur
+   * FORESHORTENED: hip-to-knee is 15.1 px standing and collapses to 2.5-7.8 px
+   * in the hole, because in a squat the knee travels forward, toward the camera.
+   * A near-horizontal thigh in this rig is therefore not a tube lying sideways;
+   * it is a tube pointing at the viewer, and what the camera sees is its broad
+   * anterior face — which points at the camera, and so at this lamp. That is
+   * what meet-photo-ref-1 shows: at the bottom of a real squat the front of the
+   * thigh is the brightest, most modelled mass in the lower body with the black
+   * sleeve a dark band laid across it.
+   *
+   * SO: the surface normal is blended from the cylinder normal toward the
+   * camera normal by how far out of the screen plane the limb has rotated. The
+   * tilt itself is not tuneable — it is `sqrt(1 - (drawn/natural)^2)`,
+   * trigonometry on a rigid bone, and it lives in `rig.ts`. These two are the
+   * feel values: how much of that tilt turns into shading, and how sharply it
+   * comes on.
+   *
+   * CAMERA_BLEND 0 restores the old pure-cylinder behaviour exactly, on every
+   * limb, and is the first thing to reach for if the legs read too flat.
+   */
+  FORESHORTEN: {
+    /** Weight of the camera-facing normal at full out-of-plane tilt, 0..1. */
+    CAMERA_BLEND: 1,
+    /**
+     * Shaping exponent on the tilt before it becomes blend weight. 2 makes the
+     * weight the squared tilt, which is linear in `1 - (drawn/natural)^2` and
+     * so ramps in smoothly over the first third of the descent; 1 uses the tilt
+     * itself, which jumps hard in the first frame off lockout.
+     */
+    TILT_EXPONENT: 2,
+    /**
+     * How far the axial profile fades as the mass turns to face the camera.
+     * 1 fades it out completely at full tilt; 0 leaves it at full strength.
+     *
+     * `axialTerm` is a function of position ALONG the bone, and a bone pointing
+     * at the viewer has almost no drawn length to spread it over. In the hole
+     * the femur is 3.7 px long against a 4.3 px radius, so the capsule is very
+     * nearly a disc and the whole of it lies inside AXIAL_LIMB's joint band:
+     * without this, JOINT_DROP took 0.16 off every pixel of the thigh at once
+     * and dropped the mass a whole ramp step — which is the same inversion this
+     * block exists to fix, arriving by the other door. A cap is not the joint
+     * seen from the side; at full tilt it is the front of the thigh.
+     */
+    AXIAL_FADE: 1,
+  },
+
+  /**
    * Arms, legs, neck: a proximal muscle belly with darker joints either side.
    *
    * BELLY_GAIN is the number that makes the top of the skin ramp reachable at

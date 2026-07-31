@@ -561,6 +561,57 @@ export function singletHemY(pose: Pose): number {
   return pose.hipY + (pose.kneeY - pose.hipY) * RIG_GEOMETRY.ATTACH.SINGLET_HEM_ALONG_THIGH;
 }
 
+/** Hip and knee ends of the femur as drawn, for one side of the body. */
+export function femurSpan(
+  pose: Pose,
+  sign: number,
+): { readonly hipX: number; readonly hipY: number; readonly kneeX: number; readonly kneeY: number } {
+  return {
+    hipX: CENTER_X + sign * pose.hipHalfW * RIG_GEOMETRY.ATTACH.THIGH_ROOT,
+    hipY: pose.hipY,
+    kneeX: CENTER_X + sign * pose.kneeHalfW,
+    kneeY: pose.kneeY,
+  };
+}
+
+/** Drawn hip-to-knee distance, in sprite px. */
+export function femurDrawnLenPx(pose: Pose, sign: number): number {
+  const f = femurSpan(pose, sign);
+  return Math.hypot(f.kneeX - f.hipX, f.kneeY - f.hipY);
+}
+
+/**
+ * The femur at zero out-of-plane rotation: its hip-to-knee distance in the
+ * STAND drawing, where a front-on lifter's thigh lies in the frontal plane.
+ *
+ * DERIVED, NOT DECLARED. A hand-typed 15.1 here would silently become a lie the
+ * first time somebody moved STAND's hip or knee, and the shading that reads it
+ * would start claiming a standing lifter's thigh is foreshortened.
+ */
+export const FEMUR_FRONTAL_LEN_PX: number = femurDrawnLenPx(POSES.STAND, -1);
+
+/**
+ * How far out of the screen plane the femur has rotated in this pose, 0..1.
+ *
+ * This rig is a front view and it has no z. What it has instead is honest
+ * foreshortening: hip-to-knee is drawn at FEMUR_FRONTAL_LEN_PX standing and
+ * collapses to a couple of pixels in the hole, because a squatting lifter's
+ * knee travels forward, at the camera. A bone is rigid, so the drawn length IS
+ * the cosine of the angle it has swung through and this is just
+ * `sqrt(1 - cos^2)` — trigonometry, with nothing tuneable in it.
+ *
+ * Clamped at 1: the strain deformation stretches the standing thigh past its
+ * STAND length, and a bone longer than itself is not tilted the other way.
+ *
+ * `drawLimb` uses this to stop shading a thigh that is pointing at the viewer as
+ * though it were lying sideways. See `SHADING.FORESHORTEN` for what went wrong
+ * without it and `PartOptions.outOfPlane` for how it is applied.
+ */
+export function femurTilt(pose: Pose, sign: number): number {
+  const cos = Math.min(1, Math.max(0, femurDrawnLenPx(pose, sign) / FEMUR_FRONTAL_LEN_PX));
+  return Math.sqrt(Math.max(0, 1 - cos * cos));
+}
+
 /** Top and bottom of the knee sleeve on the leg axis, as (x, y) pairs. */
 export function kneeSleeveSpan(
   pose: Pose,

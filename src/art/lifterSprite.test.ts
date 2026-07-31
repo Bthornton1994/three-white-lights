@@ -15,8 +15,17 @@ import { buildSquatRep, stickingPointFrame } from './squatAnimation';
 import { BANK_SIZE, PAL, colorAt, isTransparentIndex, rgb5ToRgb8 } from './palette';
 import { findUnallocatedIndices, gridToRgba, usedIndices } from './rgba';
 import { getPx, upscaleGrid, type IndexGrid } from './raster';
-import { BAR, BEND, LOAD_PRESETS, PITCH, RESOLUTION, STRAIN } from './spriteTuning';
-import { POSES, deformPose, poseAtDepth } from './rig';
+import { BAR, BEND, CENTER_X, LOAD_PRESETS, PITCH, RESOLUTION, STRAIN } from './spriteTuning';
+import {
+  FEMUR_FRONTAL_LEN_PX,
+  POSES,
+  RIG_GEOMETRY,
+  deformPose,
+  femurTilt,
+  kneeSleeveSpan,
+  poseAtDepth,
+  type Pose,
+} from './rig';
 
 const BASE: LifterFrameSpec = {
   depth: 0,
@@ -707,6 +716,227 @@ describe('scaling and colour conversion', () => {
     for (let i = 3; i < rgba.length; i += 4) {
       expect([0, 255]).toContain(rgba[i]);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// KIT IS A DARK OBJECT ON A LIT LEG, NOT THE LEG
+//
+// `palette.ts` states this rule about itself where it decides not to push
+// GEAR_LIGHT past SKIN_LIGHT: "Sleeves, belts and shoes are black kit in this
+// sport; they must read as dark objects ON a lit leg, not as the leg." The
+// renderer broke it, and nothing in the suite could tell:
+//
+//   MEASURED, over the whole pose space, before `SHADING.FORESHORTEN` existed:
+//   the knee sleeve out-valued the bare thigh it is worn on in 20 of 112
+//   leg-poses (18%) — 8 of 36 frames of the light rep and 15 of 91 of the
+//   maximal one. GEAR_LIGHT is luma 149 and SKIN_MID is 117, so wherever a bent
+//   thigh fell to SKIN_MID the sleeve on it was 32 luma brighter: the IPF squat
+//   photo with its values swapped.
+//
+// So the invariant is swept over the pose space rather than checked on one
+// frame, and it is asserted per LEG rather than per frame, because the two legs
+// are at different angles and it was always one of them that fell out first.
+// ---------------------------------------------------------------------------
+
+const SKIN_INDICES = new Set([
+  PAL.SKIN_SHADOW,
+  PAL.SKIN_MID,
+  PAL.SKIN_LIGHT,
+  PAL.SKIN_HI,
+  PAL.SKIN_FLUSH,
+]);
+const GEAR_INDICES = new Set([PAL.GEAR_DARK, PAL.GEAR_MID, PAL.GEAR_LIGHT]);
+
+/** Is (x,y) inside the capsule this rasteriser would have drawn? */
+function inCapsule(
+  x: number,
+  y: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  ra: number,
+  rb: number,
+): boolean {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return false;
+  const ux = dx / len;
+  const uy = dy / len;
+  const rx = x - ax;
+  const ry = y - ay;
+  const t = Math.min(1, Math.max(0, (rx * ux + ry * uy) / len));
+  const r = ra + (rb - ra) * t;
+  const perp = rx * -uy + ry * ux;
+  const along = rx * ux + ry * uy;
+  const overA = along < 0 ? -along : 0;
+  const overB = along > len ? along - len : 0;
+  return Math.hypot(perp, overA + overB) <= r;
+}
+
+interface LegValues {
+  readonly thigh: number[];
+  readonly sleeve: number[];
+}
+
+/** Bare-thigh and knee-sleeve luma for one leg of a rendered frame. */
+function legValues(grid: IndexGrid, pose: Pose, sign: number): LegValues {
+  const span = kneeSleeveSpan(pose, sign);
+  const KS = RIG_GEOMETRY.KNEE_SLEEVE;
+  const hipX = CENTER_X + sign * pose.hipHalfW * RIG_GEOMETRY.ATTACH.THIGH_ROOT;
+  const kneeX = CENTER_X + sign * pose.kneeHalfW;
+  const thigh: number[] = [];
+  const sleeve: number[] = [];
+  for (let y = 0; y < grid.h; y += 1) {
+    for (let x = 0; x < grid.w; x += 1) {
+      const v = getPx(grid, x, y);
+      if (isTransparentIndex(v)) continue;
+      if (inCapsule(x, y, span.topX, span.topY, span.botX, span.botY, KS.R[0], KS.R[1])) {
+        if (GEAR_INDICES.has(v)) sleeve.push(luma(v));
+        continue;
+      }
+      const R = RIG_GEOMETRY.THIGH_R;
+      if (inCapsule(x, y, hipX, pose.hipY, kneeX, pose.kneeY, R[0] ?? 0, R[1] ?? 0)) {
+        if (SKIN_INDICES.has(v)) thigh.push(luma(v));
+      }
+    }
+  }
+  return { thigh, sleeve };
+}
+
+/** Every leg pose the animation can reach, as (spec, label) pairs. */
+function poseSweep(): { spec: LifterFrameSpec; where: string }[] {
+  const out: { spec: LifterFrameSpec; where: string }[] = [];
+  for (const direction of ['DESCENT', 'ASCENT'] as const) {
+    for (const depth of [0, 0.15, 0.33, 0.5, 0.66, 0.75, 0.86, 0.93, 1]) {
+      for (let strainLevel = 0; strainLevel < STRAIN.LEVELS; strainLevel += 1) {
+        for (let pitchLevel = 0; pitchLevel < PITCH.LEVELS; pitchLevel += 1) {
+          out.push({
+            spec: spec({ depth, direction, strainLevel, pitchLevel, totalKg: 250 }),
+            where: `${direction} d${depth} s${strainLevel} p${pitchLevel}`,
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+describe('a knee sleeve reads as a dark object on a lit leg', () => {
+  it('never out-values the bare thigh it is worn on, anywhere in the pose space', () => {
+    const sweep = poseSweep();
+    expect(sweep.length).toBeGreaterThan(100);
+    const inverted: string[] = [];
+    for (const { spec: s, where } of sweep) {
+      const { grid, pose } = renderLifterFrame(s);
+      for (const sign of [-1, 1]) {
+        const { thigh, sleeve } = legValues(grid, pose, sign);
+        if (sleeve.length === 0) continue;
+        // The thigh has to be visible at all for the comparison to mean
+        // anything. If a pose ever buries it completely that is a different
+        // bug, and this catches it rather than passing vacuously. Measured
+        // minimum over this sweep: 3 px, at DESCENT depth 0.75 strain 3 pitch 2,
+        // where the shorts and the sleeve very nearly meet.
+        expect(thigh.length, `${where} ${sign > 0 ? 'far' : 'near'} leg: bare thigh`)
+          .toBeGreaterThanOrEqual(2);
+        if (Math.max(...thigh) <= Math.max(...sleeve)) {
+          inverted.push(`${where} ${sign > 0 ? 'far' : 'near'}`);
+        }
+      }
+    }
+    expect(inverted, `${inverted.length}/${sweep.length * 2} leg-poses inverted`).toEqual([]);
+  });
+
+  it('keeps a real gap, not a one-step photo finish, at the depths that broke', () => {
+    // The frames the blind A/B named were all at depth: "the deeper the squat,
+    // the worse it gets". A margin rather than an inequality, so a change that
+    // leaves the thigh one hair over the sleeve still fails here.
+    const MIN_GAP_LUMA = 12;
+    for (const depth of [0.66, 0.86, 1]) {
+      for (const direction of ['DESCENT', 'ASCENT'] as const) {
+        for (const strainLevel of [0, STRAIN.LEVELS - 1]) {
+          const { grid, pose } = renderLifterFrame(
+            spec({ depth, direction, strainLevel, totalKg: 250 }),
+          );
+          for (const sign of [-1, 1]) {
+            const { thigh, sleeve } = legValues(grid, pose, sign);
+            if (sleeve.length === 0) continue;
+            const where = `${direction} d${depth} s${strainLevel} ${sign > 0 ? 'far' : 'near'}`;
+            expect(Math.max(...thigh) - Math.max(...sleeve), where).toBeGreaterThanOrEqual(
+              MIN_GAP_LUMA,
+            );
+          }
+        }
+      }
+    }
+  });
+
+  it('holds the thigh in its band as the femur swings, rather than only at lockout', () => {
+    // The gap the A/B found was POSE-DEPENDENT and went the wrong way: standing,
+    // the lifter read five clean bands from short to shoe; in the hole the whole
+    // lower body was one dark mass. So this is a claim about the WORST depth,
+    // not the average one — the deep frames may not be dimmer than the standing
+    // frame by more than one ramp step's worth of the thigh's own values.
+    const brightestThigh = (depth: number, direction: 'DESCENT' | 'ASCENT'): number => {
+      const { grid, pose } = renderLifterFrame(spec({ depth, direction, totalKg: 250 }));
+      let best = 0;
+      for (const sign of [-1, 1]) {
+        const { thigh } = legValues(grid, pose, sign);
+        if (thigh.length > 0) best = Math.max(best, Math.max(...thigh));
+      }
+      return best;
+    };
+    const standing = brightestThigh(0, 'DESCENT');
+    for (const depth of [0.33, 0.5, 0.66, 0.86, 1]) {
+      for (const direction of ['DESCENT', 'ASCENT'] as const) {
+        // SKIN_LIGHT is the step a lit leg has to reach. Below it the thigh is
+        // in the same value class as the kit worn on it.
+        expect(brightestThigh(depth, direction), `${direction} depth ${depth}`)
+          .toBeGreaterThanOrEqual(luma(PAL.SKIN_LIGHT));
+      }
+    }
+    expect(standing).toBeGreaterThanOrEqual(luma(PAL.SKIN_LIGHT));
+  });
+});
+
+describe('femur foreshortening', () => {
+  it('is zero standing and high everywhere below a quarter depth', () => {
+    // NOT monotonic in depth, and the test says so rather than pretending: the
+    // drawn femur is shortest around three-quarter depth (6.0 px) and grows
+    // again in the hole (7.8 px), because down there the hip drops BELOW the
+    // knee and the two landmarks separate on screen once more. Measured over
+    // the ladder: 0 standing, 0.38-0.50 at a tenth, 0.73-0.87 at 0.4, peaking
+    // 0.92 at 0.75, 0.86 at the bottom.
+    expect(femurTilt(POSES.STAND, -1)).toBe(0);
+    expect(femurTilt(POSES.STAND, 1)).toBe(0);
+    for (const direction of ['DESCENT', 'ASCENT'] as const) {
+      expect(femurTilt(poseAtDepth(0.1, direction), -1), `${direction} 0.1`).toBeGreaterThan(0.35);
+      for (const depth of [0.4, 0.5, 0.62, 0.75, 0.86, 1]) {
+        const tilt = femurTilt(poseAtDepth(depth, direction), -1);
+        expect(tilt, `${direction} ${depth}`).toBeGreaterThan(0.7);
+        expect(tilt).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('clamps rather than inverting when the strain deform stretches the thigh', () => {
+    // STRAIN pushes the hips back and lengthens the drawn femur past its STAND
+    // length. A bone longer than itself is not tilted the other way.
+    const stretched = deformPose(POSES.STAND, 1, 0);
+    expect(femurTilt(stretched, -1)).toBe(0);
+    expect(femurTilt(stretched, 1)).toBe(0);
+  });
+
+  it('measures its reference length off the drawing rather than a typed number', () => {
+    const pose = POSES.STAND;
+    const hipX = CENTER_X + -1 * pose.hipHalfW * RIG_GEOMETRY.ATTACH.THIGH_ROOT;
+    const kneeX = CENTER_X + -1 * pose.kneeHalfW;
+    expect(FEMUR_FRONTAL_LEN_PX).toBeCloseTo(
+      Math.hypot(kneeX - hipX, pose.kneeY - pose.hipY),
+      12,
+    );
   });
 });
 

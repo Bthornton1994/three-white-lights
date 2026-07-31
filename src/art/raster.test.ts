@@ -18,7 +18,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   axialTerm,
+  cameraBlendForTilt,
   createGrid,
+  cylinderPeakLit,
   drawLimb,
   getPx,
   lambert,
@@ -156,5 +158,132 @@ describe('the key light', () => {
 
   it('lifts the unlit side off the outline with ambient', () => {
     expect(lambert(0, 0, -1)).toBe(SHADING.AMBIENT);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A LIMB'S VALUE BAND MUST NOT BE A FUNCTION OF THE ANGLE IT IS DRAWN AT
+//
+// The cylinder model's peak Lambert is the light's component perpendicular to
+// the axis, so it collapses for a limb pointing at the lamp. Measured under
+// this lamp: 0.83 for a vertical limb against 0.67 at 45 degrees — enough to
+// drop a limb a whole ramp step across its entire width purely because of the
+// angle it happens to be drawn at, and enough that a bent thigh could not reach
+// the top skin step at all. `SHADING.FORESHORTEN` is the correction; these are
+// the arithmetic that justifies it and the guards on the correction itself.
+// ---------------------------------------------------------------------------
+
+const DEG = Math.PI / 180;
+
+describe('the cylinder model is angle-dependent, which is why FORESHORTEN exists', () => {
+  it('drops a limb out of the top skin step purely for being drawn at an angle', () => {
+    const vertical = cylinderPeakLit(90 * DEG);
+    const towardLamp = cylinderPeakLit(45 * DEG);
+    const top = SHADING.THRESHOLDS_4[2] ?? 1;
+    const belly = SHADING.AXIAL_LIMB.BELLY_GAIN;
+    // Not "roughly dimmer": the gap is bigger than half the distance between
+    // two steps of the four-step skin ramp, which is why it was visible.
+    const stepGap = (SHADING.THRESHOLDS_4[1] ?? 0) - (SHADING.THRESHOLDS_4[0] ?? 0);
+    expect(vertical - towardLamp).toBeGreaterThan(0.5 * stepGap);
+    // And it lands across a threshold rather than inside a step: with the WHOLE
+    // muscle belly behind it, a limb at this angle still cannot reach the top
+    // skin step, and a vertical one can. That is a limb out of its band.
+    expect(vertical + belly).toBeGreaterThan(top);
+    expect(towardLamp + belly).toBeLessThan(top);
+  });
+
+  it('is symmetric about the lamp, so the deficit lands on one screen side', () => {
+    // The peak depends only on |L.u|, so 45 and 225 degrees are the same limb
+    // seen from either end. That is what makes the darker side a consistent
+    // screen side rather than noise, and it is the property the far-limb bias
+    // is stacked on top of.
+    for (const deg of [0, 30, 45, 60, 90]) {
+      expect(cylinderPeakLit(deg * DEG)).toBeCloseTo(cylinderPeakLit((deg + 180) * DEG), 12);
+    }
+  });
+});
+
+describe('camera blend', () => {
+  it('is zero for a limb lying in the screen plane and maximal pointing at us', () => {
+    expect(cameraBlendForTilt(0)).toBe(0);
+    expect(cameraBlendForTilt(1)).toBeCloseTo(SHADING.FORESHORTEN.CAMERA_BLEND, 12);
+  });
+
+  it('is monotonic and clamps rather than extrapolating', () => {
+    let prev = -1;
+    for (let t = 0; t <= 1.0001; t += 0.05) {
+      const v = cameraBlendForTilt(Math.min(1, t));
+      expect(v).toBeGreaterThanOrEqual(prev);
+      prev = v;
+    }
+    expect(cameraBlendForTilt(-3)).toBe(cameraBlendForTilt(0));
+    expect(cameraBlendForTilt(3)).toBe(cameraBlendForTilt(1));
+  });
+});
+
+/** A limb at `deg` on screen, optionally tilted out of the screen plane. */
+function angledLimb(deg: number, outOfPlane?: number): IndexGrid {
+  const g = createGrid(48, 48);
+  const r = 20;
+  const cx = 24;
+  const cy = 24;
+  const dx = Math.cos(deg * DEG) * r;
+  const dy = Math.sin(deg * DEG) * r;
+  drawLimb(g, cx - dx, cy - dy, cx + dx, cy + dy, 4, 4, RAMPS.SKIN, {
+    ...(outOfPlane === undefined ? {} : { outOfPlane }),
+  });
+  return g;
+}
+
+/** Share of a limb's pixels at or above ramp step `floor`. */
+function shareAtOrAbove(g: IndexGrid, floor: number): number {
+  let lit = 0;
+  let total = 0;
+  for (let y = 0; y < g.h; y += 1) {
+    for (let x = 0; x < g.w; x += 1) {
+      const s = stepAt(g, x, y);
+      if (s < 0) continue;
+      total += 1;
+      if (s >= floor) lit += 1;
+    }
+  }
+  return total === 0 ? 0 : lit / total;
+}
+
+describe('foreshortening keeps a limb in its band', () => {
+  it('leaves a limb with no tilt bit-for-bit identical to the old cylinder', () => {
+    // The guard that this change cannot have touched the arms, the neck or the
+    // shins: none of them pass `outOfPlane`, and omitting it must mean nothing
+    // happens at all rather than "something small happens".
+    for (const deg of [0, 37, 90, 143]) {
+      const plain = angledLimb(deg);
+      const zero = angledLimb(deg, 0);
+      expect([...zero.data], `${deg} deg`).toEqual([...plain.data]);
+    }
+  });
+
+  it('pulls the shadow flank of a bent limb up out of the ramp floor', () => {
+    // THE REGRESSION THIS CATCHES. At squat depth the shorts and the sleeve
+    // leave only ONE flank of the thigh visible, and on a near-horizontal limb
+    // that flank is the shadow side. Untilted it sits on the bottom two ramp
+    // steps; tilted by what the rig measures on a bent femur it comes up into
+    // the lit band, which is what makes the leg read as a lit leg.
+    const LIT = 2; // SKIN_LIGHT
+    const flat = angledLimb(45);
+    const tilted = angledLimb(45, 0.9);
+    expect(shareAtOrAbove(tilted, LIT)).toBeGreaterThan(shareAtOrAbove(flat, LIT) * 1.2);
+    // And the floor of the ramp — the mud — goes away rather than moving.
+    const floorShare = (g: IndexGrid): number => 1 - shareAtOrAbove(g, 1);
+    expect(floorShare(tilted)).toBeLessThan(0.5 * floorShare(flat));
+  });
+
+  it('does not turn the joint drop into a whole-limb drop on a stubby limb', () => {
+    // A femur in the hole is drawn ~3.7 px long against a 4.3 px radius, so the
+    // entire capsule sits inside AXIAL_LIMB's joint band and JOINT_DROP came off
+    // every pixel of it at once. AXIAL_FADE is what stops that; without it this
+    // limb loses its lit area again.
+    const g = createGrid(24, 24);
+    drawLimb(g, 10, 12, 14, 12, 4.3, 3.1, RAMPS.SKIN, { outOfPlane: 0.96 });
+    expect(shareAtOrAbove(g, 2)).toBeGreaterThan(0.5);
   });
 });

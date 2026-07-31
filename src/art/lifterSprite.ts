@@ -64,6 +64,8 @@ import {
   RIG_GEOMETRY,
   barYForPose,
   deformPose,
+  femurSpan,
+  femurTilt,
   kneeSleeveSpan,
   pitchForLevel,
   poseAtDepth,
@@ -277,9 +279,18 @@ function drawBarAndPlates(
  */
 function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
   const cx = CENTER_X;
-  const hipX = cx + sign * pose.hipHalfW * RIG_GEOMETRY.ATTACH.THIGH_ROOT;
-  const kneeX = cx + sign * pose.kneeHalfW;
+  // ONE source for the femur's endpoints, shared with `femurTilt` — the tilt is
+  // derived from the drawn bone length, so a second copy of these expressions
+  // here is a shading term computed off a different bone than the one drawn.
+  const femur = femurSpan(pose, sign);
+  const hipX = femur.hipX;
+  const kneeX = femur.kneeX;
   const ankleX = cx + sign * pose.ankleHalfW;
+  // The femur is the one bone this rig draws foreshortened, and everything worn
+  // on it is foreshortened with it. The shin is not: its drawn length GROWS
+  // through the descent, so there is nothing to correct and it is left as the
+  // plain cylinder it has always been. See `femurTilt` and SHADING.FORESHORTEN.
+  const tilt = femurTilt(pose, sign);
   const fleshOpts = {
     stepBias: bias,
     edge: true,
@@ -296,13 +307,13 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
   drawLimb(
     g,
     hipX,
-    pose.hipY,
+    femur.hipY,
     kneeX,
-    pose.kneeY,
+    femur.kneeY,
     RIG_GEOMETRY.THIGH_R[0],
     RIG_GEOMETRY.THIGH_R[1],
     RAMPS.SKIN,
-    fleshOpts,
+    { ...fleshOpts, outOfPlane: tilt },
   );
   // The shin's endpoint is lifted by its own end radius so the capsule's rounded
   // cap finishes AT the top of the shoe rather than a pixel past the floor. The
@@ -325,7 +336,16 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
   // vertical, so it stays on the knee when the knee is out at depth.
   const KS = RIG_GEOMETRY.KNEE_SLEEVE;
   const span = kneeSleeveSpan(pose, sign);
-  drawLimb(g, span.topX, span.topY, span.botX, span.botY, KS.R[0], KS.R[1], RAMPS.GEAR, gearOpts);
+  // The sleeve gets the femur's tilt too, not its own: it is worn ON the femur,
+  // and shading worn kit by a different lamp from the limb inside it is exactly
+  // the material-dependent cheat this file is not allowed to make. The visible
+  // consequence is that a sleeve loses its top step at depth and reads as a flat
+  // dark band — which is what a black knee sleeve does in meet-photo-ref-1, and
+  // it widens the gap to the lit thigh rather than narrowing it.
+  drawLimb(g, span.topX, span.topY, span.botX, span.botY, KS.R[0], KS.R[1], RAMPS.GEAR, {
+    ...gearOpts,
+    outOfPlane: tilt,
+  });
 
   // Shoe. Inset by the ring at both ends so the drawn object still occupies
   // exactly FOOT_H rows and its sole still lands on FLOOR_Y - 1.
