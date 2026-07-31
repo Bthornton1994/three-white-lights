@@ -345,19 +345,39 @@ describe('marks reach the pixels', () => {
 describe('marks are stamped after despeckle, and that matters', () => {
   it('would lose authored pixels if despeckle ran after them', () => {
     // Not a hypothetical. Run the pass the marks currently escape and count
-    // what it takes: if this number is ever 0, the ordering constraint has
-    // stopped being load-bearing and the comment explaining it is stale.
-    const frame = renderLifterFrame(spec({ depth: 0 }));
-    const after = cloneGrid(frame.grid);
-    despeckle(after);
-
+    // what it takes, over the whole pose space rather than one frame: a single
+    // frame can drift down to one or two casualties as maps get fatter, and at
+    // that point "the ordering is load-bearing" is being asserted by an
+    // accident rather than demonstrated.
+    //
+    // Measured at this authoring: 389 of 416 frames would lose at least one
+    // authored pixel and 1188 would go in total, the worst hit being the pec
+    // shelf's one-pixel sternum notch and both drawings of the face.
     let eaten = 0;
-    for (const mark of MARKS) {
-      for (const t of markTargets(mark, frame.pose, frame.strain > STRAIN.FLUSH_THRESHOLD)) {
-        if (getPx(frame.grid, t.x, t.y) === t.ink && getPx(after, t.x, t.y) !== t.ink) eaten += 1;
+    let framesHit = 0;
+    const byMark = new Map<string, number>();
+    for (const s of poseSpace()) {
+      const frame = renderLifterFrame(s);
+      const after = cloneGrid(frame.grid);
+      despeckle(after);
+      let here = 0;
+      for (const mark of MARKS) {
+        for (const t of markTargets(mark, frame.pose, frame.strain > STRAIN.FLUSH_THRESHOLD)) {
+          if (getPx(frame.grid, t.x, t.y) === t.ink && getPx(after, t.x, t.y) !== t.ink) {
+            here += 1;
+            byMark.set(mark.name, (byMark.get(mark.name) ?? 0) + 1);
+          }
+        }
       }
+      eaten += here;
+      if (here > 0) framesHit += 1;
     }
-    expect(eaten).toBeGreaterThan(0);
+    expect(eaten).toBeGreaterThan(400);
+    expect(framesHit / poseSpace().length).toBeGreaterThan(0.5);
+    // And the face specifically, because that is the failure this ordering was
+    // introduced for: eyes and a mouth that existed in the source and in no
+    // rendered PNG.
+    expect((byMark.get('FACE_CALM') ?? 0) + (byMark.get('FACE_STRAINED') ?? 0)).toBeGreaterThan(0);
   });
 
   it('reports placements that agree with the finished grid', () => {
