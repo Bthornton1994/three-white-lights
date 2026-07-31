@@ -106,9 +106,9 @@
       "id": "M4",
       "name": "Meet engine",
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Merged and green (76 tests). Its first critic was killed mid-report; a fresh one is grading now, asked specifically to judge whether the engine over-enforces rules beyond real federation practice."
+      "note": "SENT BACK. The engine exposed a caller-supplied recordAttempt flag that silently switched off BOTH loading invariants \u2014 granularity 2.5kg\u21920.5kg and the minimum increase \u2014 with no way to check the condition that makes the exception legal. The critic showed a clean exploit path through the public API and traced the rule the file cited to a fabricated anchor: real practice measures a record attempt against the standing record, not the lifter\u2019s previous attempt. A test was enshrining the invented behaviour. Rework in flight."
     },
     {
       "id": "M5",
@@ -194,7 +194,7 @@
       "bar": "The four modes must feel like one game \u2014 the smoothing-pass concern.",
       "status": "failed",
       "verifiable": true,
-      "note": "The DOTS critic caught it while grading something else: meet.ts models a bomb-out as total: null, while dots.ts assumes a bomb-out arrives as 0. Two modules disagree about the shape of the same event. Real bug, recorded, not yet fixed."
+      "note": "The DOTS critic caught it while grading something else: meet.ts models a bomb-out as total: null, dots.ts assumes 0. The meet-engine critic then adjudicated it independently \u2014 meet.ts is right, since a lifter with no total does not place, so dots.ts is the module that should change. Not yet fixed."
     }
   ]
 }
