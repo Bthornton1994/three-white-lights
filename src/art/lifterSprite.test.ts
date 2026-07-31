@@ -384,6 +384,96 @@ describe('the drawing responds to load, not only the clock', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// THE LIFTER CARRIES THE TOP OF THE VALUE RANGE
+//
+// In the 16-bit sports reference the figures hold the brightest, most contrasty
+// pixels in the frame and everything behind them is deliberately suppressed —
+// sampled off `docs/reference/sprite-ref-1-snes-wrestling.png`, the wrestler's
+// skin runs up to luma 234 while the crowd behind him sits between 16 and 80.
+//
+// Ours had it the other way round: the skin ramp topped out a hair under the
+// steel of the sprite's own collars, the top step was reachable only as a
+// one-pixel sliver, and the brightest and most saturated things in every frame
+// were the chrome collars and the red discs. The sprite read duller than its
+// own barbell.
+//
+// So this is floored as an AREA, not as a colour. "The palette contains a light
+// skin tone" is not the claim; "the lifter's bright pixels outnumber the
+// equipment's" is.
+// ---------------------------------------------------------------------------
+
+/** Luma of a palette index in display space, or -1 for unallocated. */
+function luma(index: number): number {
+  const c = colorAt(index);
+  if (c === undefined) return -1;
+  const [r, g, b] = rgb5ToRgb8(c);
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+/** Pixels at or above `floorLuma`, split into lifter and equipment. */
+function brightSplit(grid: IndexGrid, floorLuma: number): { lifter: number; equipment: number } {
+  let lifter = 0;
+  let equipment = 0;
+  for (const v of grid.data) {
+    if (isTransparentIndex(v) || luma(v) < floorLuma) continue;
+    if (Math.floor(v / BANK_SIZE) === 0) lifter += 1;
+    else equipment += 1;
+  }
+  return { lifter, equipment };
+}
+
+/** Where the lifter's own ramps stop. Everything above this is a highlight. */
+const HIGHLIGHT_LUMA = 170;
+
+describe('the lifter is the brightest thing in his own frame', () => {
+  it('holds more highlight pixels than the whole barbell does, at every load', () => {
+    // Swept over loads because the plate hues are not equally bright: a bar
+    // carrying 15 kg yellows is the brightest barbell the game can draw.
+    for (const totalKg of [27.5, 60, 100, 145, 250, 400]) {
+      for (const depth of [0, 0.5, 1]) {
+        for (const strainLevel of [0, STRAIN.LEVELS - 1]) {
+          const { grid } = renderLifterFrame(
+            spec({ depth, direction: 'ASCENT', strainLevel, totalKg }),
+          );
+          const split = brightSplit(grid, HIGHLIGHT_LUMA);
+          const where = `${totalKg}kg d${depth} s${strainLevel}`;
+          expect(split.lifter, where).toBeGreaterThan(60);
+          expect(split.lifter, where).toBeGreaterThan(split.equipment * 4);
+        }
+      }
+    }
+  });
+
+  it('reaches the top of the skin ramp over a real area, not a one-pixel sliver', () => {
+    // Measured at this authoring: 46-58 px of the brightest skin step per
+    // frame. Before the axial term and the mark table it was 28-42, and 7 of
+    // those came from the mark table's entire authored SKIN_HI budget.
+    for (const depth of [0, 0.5, 1]) {
+      const { grid } = renderLifterFrame(spec({ depth, direction: 'ASCENT', totalKg: 250 }));
+      let hi = 0;
+      for (const v of grid.data) if (v === PAL.SKIN_HI) hi += 1;
+      expect(hi, `depth ${depth}`).toBeGreaterThan(30);
+    }
+  });
+
+  it('keeps the collar a dim block with one specular pixel, not a bright block', () => {
+    // The collars used to paint ~20 px of the brightest steel at each end of
+    // the bar. CHROME_HI existed only in the palette and in a comment claiming
+    // it was "reserved for a single specular pixel"; nothing drew it.
+    const { grid } = renderLifterFrame(spec({ totalKg: 250 }));
+    let chrome = 0;
+    let steelLight = 0;
+    for (const v of grid.data) {
+      if (v === PAL.CHROME_HI) chrome += 1;
+      if (v === PAL.STEEL_LIGHT) steelLight += 1;
+    }
+    expect(chrome).toBeGreaterThan(0);
+    expect(chrome).toBeLessThan(8);
+    expect(steelLight).toBe(0);
+  });
+});
+
 describe('bar geometry', () => {
   it('bends nothing at the centre and exactly the bend amount at the tip', () => {
     expect(barOffsetAt(0, 0, 3)).toBe(0);

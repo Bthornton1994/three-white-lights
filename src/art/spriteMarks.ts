@@ -19,6 +19,28 @@
  * move a character in a string here — not to tune a model that generates it.
  *
  * ---------------------------------------------------------------------------
+ * KIT AND FLESH ARE COUNTED SEPARATELY, AND THAT IS THE POINT
+ * ---------------------------------------------------------------------------
+ * The first version of this table was 25 marks and 252 pixels, and a blind A/B
+ * still sent it back with a specific finding: THE KIT GOT DRAWN, THE FLESH DID
+ * NOT. Roughly four fifths of every authored pixel was a worn object — shoe
+ * sole, sleeve band, belt lever, wrist wrap, singlet trim, chest patch, hair —
+ * and the objects landed at 90-100% while the handful of marks meant to break
+ * the value ramp at anatomy landed 31-68%. On a bare-armed, bare-legged figure
+ * whose largest single surface is skin, that is a well-dressed mannequin.
+ *
+ * Every mark therefore carries a `depicts` field, and both the tests and the
+ * inspection sheet floor the FLESH share rather than the total. "How many
+ * pixels did a hand place" is not the question; "is the body drawn" is.
+ *
+ * The other half of that finding was not a mark-table problem at all and could
+ * not have been fixed here: `drawLimb` shaded from the across-limb offset only,
+ * so a limb's lit flank was a constant column from joint to joint by
+ * construction. See `axialTerm` in `raster.ts`. Marks sit ON TOP of the
+ * underpainting; if the underpainting guarantees a stripe, no number of marks
+ * removes it.
+ *
+ * ---------------------------------------------------------------------------
  * HOW A MARK IS AUTHORED
  * ---------------------------------------------------------------------------
  * Each mark is a small ASCII bitmap, an anchor naming a pose landmark, and an
@@ -70,6 +92,15 @@
  *     the limb. The referee, a front-on figure at almost exactly our scale, has
  *     a bow tie, a belt line, a crease down each trouser leg and shoes with a
  *     separate sole.
+ *     For the FLESH marks specifically: the blond wrestler's bare chest is a
+ *     lit clavicular shelf, two pec masses split by a dark sternum notch and a
+ *     hard dark line along the lower border of the pec — five rows of authored
+ *     value on a chest about as wide as ours. His arm carries a highlight
+ *     cluster on the deltoid, a dark insertion crease straight across the limb,
+ *     and a second cluster on the biceps below it. Sampled at native scale his
+ *     skin runs from luma 53 to luma 234 across six steps, with the top two
+ *     covering about a quarter of the body — the figure holds the brightest
+ *     pixels in the frame and the crowd behind him sits between 16 and 80.
  *   - sprite-ref-2-16bit-baseball.png — black belt band across the waist,
  *     contrast piping on the shoulder, a sock band breaking the leg above the
  *     shoe.
@@ -159,7 +190,9 @@ export type MarkAnchorKey =
   | 'BELT'
   | 'HEM'
   | 'DELTOID'
+  | 'BICEPS'
   | 'ELBOW'
+  | 'FOREARM'
   | 'WRIST'
   | 'QUAD'
   | 'KNEE'
@@ -193,22 +226,50 @@ export type MarkGate = 'ALWAYS' | 'CALM' | 'STRAINED';
  * change.
  */
 export const MARK_ANCHOR_GEOMETRY = {
-  /** Trap anchor, as a fraction of the shoulder half-width. */
-  TRAP_HALF_W: 0.3,
+  /**
+   * Trap anchor, as a fraction of the shoulder half-width.
+   *
+   * 0.75, not the 0.3 it was. At 0.3 the anchor sat between the singlet's two
+   * straps, so the bar's contact shadow was asking to be painted on the straps
+   * and the `over: SKIN` test — correctly — refused: the mark landed on 10 of
+   * 16 requested pixels and the sprite had no bar-contact cue on a third of the
+   * frames a critic looks at. The trap mass runs out to ATTACH.TRAP_HALF_W
+   * (0.95) and the straps sit at 0.42-0.5, so 0.75 is bare trap at every pose,
+   * with a pixel of clearance on each side for a three-wide run.
+   */
+  TRAP_HALF_W: 0.75,
   /** Trap anchor, rows below the shoulder line. */
   TRAP_DROP: 0,
   /** Strap anchor, as a fraction of the shoulder half-width. */
   STRAP_HALF_W: 0.46,
   /** Strap anchor, rows above the chest landmark. */
   STRAP_LIFT: 2,
+  /**
+   * Biceps anchor: this far from the shoulder toward the elbow.
+   *
+   * Proximal on purpose — the belly of the biceps sits in the upper third of
+   * the upper arm, and past halfway the near forearm crosses in front of it at
+   * squat depth and there is no upper arm left to paint on.
+   */
+  BICEPS_TOWARD_ELBOW: 0.42,
+  /** Forearm anchor: this far from the elbow toward the hand. */
+  FOREARM_TOWARD_HAND: 0.42,
   /** Wrist anchor: this far from the hand toward the elbow. */
   WRIST_TOWARD_ELBOW: 0.28,
   /** Quad anchor: this far from the hip toward the knee. */
   QUAD_TOWARD_KNEE: 0.34,
   /** Shin anchor: this far from the ankle toward the knee. */
   SHIN_ABOVE_ANKLE: 0.12,
-  /** Calf anchor: this far from the ankle toward the knee. */
-  CALF_ABOVE_ANKLE: 0.45,
+  /**
+   * Calf anchor: this far from the ankle toward the knee.
+   *
+   * 0.34, not 0.45. The knee sleeve covers the leg down to roughly a quarter of
+   * the way from knee to ankle, so at 0.45 the anchor sat behind the sleeve and
+   * anything authored above it was painted on gear and refused. What is bare is
+   * the band from the sleeve hem to the shoe, and 0.34 sits in the middle of it
+   * at every pose.
+   */
+  CALF_ABOVE_ANKLE: 0.34,
 } as const;
 
 /** A resolved anchor, in whole sprite pixels. */
@@ -249,8 +310,23 @@ export function anchorPoint(key: MarkAnchorKey, pose: Pose, sign: number): Ancho
         CENTER_X + sign * pose.shoulderHalfW * G.ATTACH.DELTOID,
         pose.shoulderY + G.NUDGE.DELTOID_DROP,
       );
+    // Biceps and forearm bellies. Anchored to the SAME two endpoints the arm
+    // capsules are drawn between (`drawArm`), not to a joint plus an offset, so
+    // they stay on the muscle when the elbow tucks in on a grind.
+    case 'BICEPS': {
+      const shX = CENTER_X + sign * pose.shoulderHalfW * G.ATTACH.ARM_ROOT;
+      const elX = CENTER_X + sign * pose.elbowHalfW;
+      const f = A.BICEPS_TOWARD_ELBOW;
+      return at(shX + (elX - shX) * f, pose.shoulderY + (pose.elbowY - pose.shoulderY) * f);
+    }
     case 'ELBOW':
       return at(CENTER_X + sign * pose.elbowHalfW, pose.elbowY);
+    case 'FOREARM': {
+      const elX = CENTER_X + sign * pose.elbowHalfW;
+      const handX = CENTER_X + sign * (pose.handHalfW + (sign > 0 ? G.GRIP_ASYMMETRY_PX : 0));
+      const f = A.FOREARM_TOWARD_HAND;
+      return at(elX + (handX - elX) * f, pose.elbowY + (pose.handY - pose.elbowY) * f);
+    }
     case 'WRIST': {
       const handX = CENTER_X + sign * (pose.handHalfW + (sign > 0 ? G.GRIP_ASYMMETRY_PX : 0));
       const elbowX = CENTER_X + sign * pose.elbowHalfW;
@@ -306,9 +382,28 @@ export function anchorPoint(key: MarkAnchorKey, pose: Pose, sign: number): Ancho
 // The table
 // ---------------------------------------------------------------------------
 
+/**
+ * What a mark DEPICTS, as opposed to what surface it is allowed to paint on.
+ *
+ * The two are not the same question and conflating them is what let the last
+ * authoring pass go wrong: the chest patch and the strap seam both paint over
+ * SINGLET and are worn kit, while the bar's contact shadow paints over SKIN and
+ * is a shadow cast BY kit; the pec shelf paints over SKIN and is flesh.
+ *
+ * This field exists because "how many pixels did a hand place" turned out to be
+ * the wrong number to watch. The table cleared that bar comfortably while
+ * roughly 80% of its pixels were objects — shoes, sleeves, belt, wraps, trim,
+ * patch, hair — on a figure whose largest surface by far is bare skin. Splitting
+ * the count is the only way the tests and the inspection sheet can tell the
+ * difference between a well-dressed mannequin and a drawn body.
+ */
+export type MarkSubject = 'KIT' | 'FLESH';
+
 export interface Mark {
   /** Names the object or landmark, not the shape. Used by the tests. */
   readonly name: string;
+  /** Worn object, or bare anatomy. See MarkSubject. */
+  readonly depicts: MarkSubject;
   readonly anchor: MarkAnchorKey;
   readonly side: MarkSide;
   readonly over: MarkSurface;
@@ -340,6 +435,7 @@ export const MARKS: readonly Mark[] = [
   // fringe on a symmetric skull is the tell this whole sprite is avoiding.
   {
     name: 'HAIR_FRINGE',
+    depicts: 'KIT',
     anchor: 'HEAD',
     side: 'CENTER',
     over: 'SKIN_OR_HAIR',
@@ -357,6 +453,7 @@ export const MARKS: readonly Mark[] = [
   // one of them was eaten before it reached a PNG.
   {
     name: 'FACE_CALM',
+    depicts: 'FLESH',
     anchor: 'HEAD',
     side: 'CENTER',
     over: 'SKIN',
@@ -370,13 +467,18 @@ export const MARKS: readonly Mark[] = [
   },
   // Braced and grimacing: the brow comes down as a bar over both eyes and the
   // mouth opens. A different drawing, not a darker one.
+  //
+  // Origin is [-1, 0], not [-1, -1]: a row higher put the brow bar on the hair
+  // mass, which is not in the SKIN surface class, and the strained face threw
+  // away four of its ten pixels on every strained frame.
   {
     name: 'FACE_STRAINED',
+    depicts: 'FLESH',
     anchor: 'HEAD',
     side: 'CENTER',
     over: 'SKIN',
     gate: 'STRAINED',
-    origin: [-1, -1],
+    origin: [-1, 0],
     map: [
       'KKKK',
       'K  K',
@@ -385,21 +487,62 @@ export const MARKS: readonly Mark[] = [
     ],
   },
   // --- torso --------------------------------------------------------------
+  // Trap ridge: the shelf of muscle the bar is actually sitting on. Authored
+  // twice, near brighter than far, because a single BOTH map at one ink would
+  // paint the far trap as light as the near one and undo FAR_LIMB_STEP_BIAS.
+  //
+  // This and the shadow below are the pair that makes a back squat read as a
+  // back squat from the front: a lit ridge with a hard dark line under it says
+  // "there is a bar across this man's shoulders" more directly than the bar,
+  // which is drawn behind him and mostly hidden.
+  {
+    name: 'TRAP_RIDGE_NEAR',
+    depicts: 'FLESH',
+    anchor: 'TRAP',
+    side: 'NEAR',
+    over: 'SKIN',
+    origin: [-1, -2],
+    map: [
+      'hhh',
+      'hhh',
+    ],
+  },
+  {
+    name: 'TRAP_RIDGE_FAR',
+    depicts: 'FLESH',
+    anchor: 'TRAP',
+    side: 'FAR',
+    over: 'SKIN',
+    origin: [-1, -2],
+    map: [
+      'lll',
+      'lll',
+    ],
+  },
   // The bar is drawn behind the lifter, so nothing else says it is resting on
-  // him. This is its contact shadow across the traps.
+  // him. This is its contact shadow across the traps, sitting on the shoulder
+  // line directly under the ridge above.
+  //
+  // A row lower and it collided with the deltoid marks, which are anchored a
+  // few hundredths of a shoulder half-width away and are applied later — the
+  // shadow was painted and then immediately overwritten on two thirds of the
+  // frames, which counts as landed to the stamper and as absent to anyone
+  // looking at the picture.
   {
     name: 'TRAP_BAR_SHADOW',
+    depicts: 'FLESH',
     anchor: 'TRAP',
     side: 'BOTH',
     over: 'SKIN',
-    origin: [-1, 1],
-    map: ['ss'],
+    origin: [-1, 0],
+    map: ['sss'],
   },
   // Singlet strap: a dark seam down its shadowed flank, and the shadow it
   // throws onto bare chest beside it. The light is upper-left, so both of those
   // are on the strap's right.
   {
     name: 'STRAP_SEAM',
+    depicts: 'KIT',
     anchor: 'STRAP',
     side: 'BOTH',
     over: 'SINGLET',
@@ -410,8 +553,44 @@ export const MARKS: readonly Mark[] = [
       '1',
     ],
   },
+  // THE PEC SHELF. The largest patch of bare skin on the figure that is not a
+  // limb, and until this mark existed it carried no authored pixel at all: the
+  // only marks on the torso were two cast shadows thrown by objects, so the
+  // chest was one flat field at one ramp step with a strap shadow beside it.
+  //
+  // Five rows and four columns of chest, read off the reference wrestlers at
+  // native scale: a lit clavicular shelf across the top, two pec masses, a dark
+  // sternum notch splitting them, and a hard dark line along the lower border
+  // of the pec. The near pec is authored a full ramp step brighter than the far
+  // one and the notch is one column off centre — the lamp is upper-left and the
+  // figure is drawn as if turned a couple of degrees, so a symmetric chest here
+  // would undo both.
+  //
+  // It sits between the straps, so at poses where the chest collapses and the
+  // straps steepen the outer columns simply do not paint. The 'over: SKIN' test
+  // is doing that, not a conditional.
+  {
+    name: 'PEC_SHELF',
+    depicts: 'FLESH',
+    anchor: 'CHEST',
+    side: 'CENTER',
+    over: 'SKIN',
+    origin: [-2, -5],
+    map: [
+      'hhll',
+      'hhsl',
+      'hhsl',
+      'lssl',
+      'ssss',
+    ],
+  },
+  // The shadow each singlet strap throws onto the chest beside it. AFTER the
+  // pec shelf, not before: the strap sits on the pec, so its shadow falls
+  // across the pec's outer column and has to be the thing that wins there.
+  // Applied first, the shelf simply repainted over it and the mark was dead.
   {
     name: 'STRAP_SHADOW',
+    depicts: 'FLESH',
     anchor: 'STRAP',
     side: 'BOTH',
     over: 'SKIN',
@@ -432,6 +611,7 @@ export const MARKS: readonly Mark[] = [
   // rows tall, and the patch vanished on exactly the frames a grind is made of.
   {
     name: 'CHEST_PATCH',
+    depicts: 'KIT',
     anchor: 'CHEST',
     side: 'CENTER',
     over: 'SINGLET',
@@ -445,6 +625,7 @@ export const MARKS: readonly Mark[] = [
   // without it the singlet is a flat field with one vertical gradient.
   {
     name: 'SINGLET_HEM_TRIM',
+    depicts: 'KIT',
     anchor: 'HEM',
     side: 'CENTER',
     over: 'SINGLET',
@@ -458,6 +639,7 @@ export const MARKS: readonly Mark[] = [
   // critique named — a 16-bit artist did not ship a belt with no buckle pixel.
   {
     name: 'BELT_LEVER',
+    depicts: 'KIT',
     anchor: 'BELT',
     side: 'CENTER',
     over: 'GEAR',
@@ -473,6 +655,7 @@ export const MARKS: readonly Mark[] = [
   // The other reason a plain band reads as a band and not as a belt.
   {
     name: 'BELT_TAIL',
+    depicts: 'KIT',
     anchor: 'BELT',
     side: 'CENTER',
     over: 'GEAR',
@@ -496,45 +679,118 @@ export const MARKS: readonly Mark[] = [
   // map would either miss the arm or paint the far deltoid as bright as the
   // near one. Near reads HI-HI / LIGHT / SHADOW / HI-HI down the rows; far
   // reads the same shape one step down, LIGHT / MID / SHADOW / LIGHT.
+  //
+  // The origin is [-2, 0], not the [-4, 0] it was. Four pixels outboard put the
+  // highlight cluster where the near forearm crosses in front of the upper arm
+  // at squat depth, and nineteen of its twenty-eight pixels landed. The crease
+  // row stays at anchor.y + 1: that relationship is what `spriteMarks.test.ts`
+  // reads when it checks the arm ramp is broken rather than continuous.
   {
     name: 'DELTOID_MASS_NEAR',
+    depicts: 'FLESH',
     anchor: 'DELTOID',
     side: 'NEAR',
     over: 'SKIN',
-    origin: [-4, 0],
+    origin: [-3, 0],
     map: [
-      ' ll ',
-      ' ss ',
-      'hh  ',
-      ' h  ',
+      'hhh ',
+      'ssss',
+      ' hh ',
     ],
   },
+  // The far deltoid starts on the deltoid line, not two rows above it: at
+  // [-1, -2] its top two rows sat on the same pixels as the far trap ridge and
+  // the far half of the bar's contact shadow, and — being later in the table —
+  // it repainted both. The bar shadow measured as landing on 56% of its
+  // requested pixels for that reason alone.
   {
     name: 'DELTOID_MASS_FAR',
+    depicts: 'FLESH',
     anchor: 'DELTOID',
     side: 'FAR',
     over: 'SKIN',
-    origin: [-1, -2],
+    origin: [-1, 0],
     map: [
-      'll  ',
-      'll  ',
-      'mm  ',
-      'ss  ',
-      'll  ',
-      ' l  ',
+      'lll ',
+      'ssss',
+      ' ll ',
+    ],
+  },
+  // Biceps and triceps, split. Below the deltoid the upper arm was one column
+  // of one ramp step from the shoulder to the elbow — the shader can only give
+  // a limb one value per cross-section, so the break has to be drawn.
+  //
+  // The near map is a two-wide highlight over the biceps belly with a shadow
+  // run down its outboard side, which is the triceps in shade; the far map is
+  // the same shape one ramp step down.
+  {
+    name: 'BICEPS_MASS_NEAR',
+    depicts: 'FLESH',
+    anchor: 'BICEPS',
+    side: 'NEAR',
+    over: 'SKIN',
+    origin: [0, -1],
+    map: [
+      'hh ',
+      'hhl',
+      'sss',
+    ],
+  },
+  {
+    name: 'BICEPS_MASS_FAR',
+    depicts: 'FLESH',
+    anchor: 'BICEPS',
+    side: 'FAR',
+    over: 'SKIN',
+    origin: [-1, -1],
+    map: [
+      ' ll',
+      'sll',
+      'sss',
     ],
   },
   // Elbow crease. Two pixels, and the whole job of them is that the forearm
   // does not read as a continuation of the upper arm.
   {
     name: 'ELBOW_CREASE',
+    depicts: 'FLESH',
     anchor: 'ELBOW',
     side: 'BOTH',
     over: 'SKIN',
-    origin: [-2, -1],
+    origin: [-1, -1],
     map: [
       'ss',
-      's ',
+      'ss',
+    ],
+  },
+  // Forearm belly. The reference wrestlers' forearms are not tapered tubes:
+  // there is a mass just below the elbow, a step down out of it, and then the
+  // wrist. Ours ran one unbroken light column from the elbow crease to the
+  // wrist wrap in every rendered frame.
+  {
+    name: 'FOREARM_BELLY_NEAR',
+    depicts: 'FLESH',
+    anchor: 'FOREARM',
+    side: 'NEAR',
+    over: 'SKIN',
+    origin: [-1, -1],
+    map: [
+      'hh ',
+      'hhl',
+      'lss',
+    ],
+  },
+  {
+    name: 'FOREARM_BELLY_FAR',
+    depicts: 'FLESH',
+    anchor: 'FOREARM',
+    side: 'FAR',
+    over: 'SKIN',
+    origin: [-1, -1],
+    map: [
+      'll ',
+      'lls',
+      'sss',
     ],
   },
   // Wrist wraps. An object, so the forearm cannot read as one tapered tube from
@@ -542,6 +798,7 @@ export const MARKS: readonly Mark[] = [
   // and they are the most visible piece of kit on a lifter after the belt.
   {
     name: 'WRIST_WRAP',
+    depicts: 'KIT',
     anchor: 'WRIST',
     side: 'BOTH',
     over: 'SKIN',
@@ -563,28 +820,28 @@ export const MARKS: readonly Mark[] = [
   // singlet, and it is the reason the surface test exists at all.
   {
     name: 'QUAD_SWEEP_NEAR',
+    depicts: 'FLESH',
     anchor: 'QUAD',
     side: 'NEAR',
     over: 'SKIN',
-    origin: [-3, -1],
+    origin: [-3, -2],
     map: [
-      ' hh  ',
-      ' hh  ',
-      'ss   ',
-      'ss   ',
+      'hhh',
+      'hhs',
+      'sss',
     ],
   },
   {
     name: 'QUAD_SWEEP_FAR',
+    depicts: 'FLESH',
     anchor: 'QUAD',
     side: 'FAR',
     over: 'SKIN',
-    origin: [-3, -1],
+    origin: [1, -2],
     map: [
-      ' ll  ',
-      ' ll  ',
-      'ss   ',
-      'ss   ',
+      'lll',
+      'sll',
+      'sss',
     ],
   },
   // Knee sleeve, top band. The reference knee pads all carry one; ours was a
@@ -593,6 +850,7 @@ export const MARKS: readonly Mark[] = [
   // at lockout, and the two knees weld into one bar.
   {
     name: 'KNEE_SLEEVE_TOP_BAND',
+    depicts: 'KIT',
     anchor: 'SLEEVE_TOP',
     side: 'BOTH',
     over: 'GEAR',
@@ -604,6 +862,7 @@ export const MARKS: readonly Mark[] = [
   },
   {
     name: 'KNEE_SLEEVE_HEM',
+    depicts: 'KIT',
     anchor: 'SLEEVE_BOTTOM',
     side: 'BOTH',
     over: 'GEAR',
@@ -614,6 +873,7 @@ export const MARKS: readonly Mark[] = [
   // four is a stripe.
   {
     name: 'KNEE_SLEEVE_LOGO',
+    depicts: 'KIT',
     anchor: 'SLEEVE_MID',
     side: 'BOTH',
     over: 'GEAR',
@@ -623,23 +883,59 @@ export const MARKS: readonly Mark[] = [
       'g',
     ],
   },
-  // Where the calf belly stops and the tendon starts. The shin is the last limb
-  // that was one tapered tube with a stripe down it; this is the break.
+  // THE LOWER LEG. What is actually bare here is not the calf belly — the knee
+  // sleeve covers that — it is the front of the shin from the sleeve hem to the
+  // shoe, and on a front-on figure that is a lit tibial crest with the muscle
+  // falling away in shade on one side of it.
+  //
+  // This is where the shader's guaranteed stripe was most visible: one unbroken
+  // light column from sleeve hem to ankle on both legs in every frame. The
+  // crest gives it a lit edge with a hard shaded flank, the taper ends it, and
+  // the ankle shadow stops it running into the shoe.
+  {
+    name: 'SHIN_CREST_NEAR',
+    depicts: 'FLESH',
+    anchor: 'CALF',
+    side: 'NEAR',
+    over: 'SKIN',
+    origin: [-2, -2],
+    map: [
+      'hhl ',
+      'hhls',
+      'hhls',
+    ],
+  },
+  {
+    name: 'SHIN_CREST_FAR',
+    depicts: 'FLESH',
+    anchor: 'CALF',
+    side: 'FAR',
+    over: 'SKIN',
+    origin: [-2, -2],
+    map: [
+      'lls ',
+      'llss',
+      'llss',
+    ],
+  },
+  // Where the calf belly stops and the tendon starts.
   {
     name: 'CALF_TAPER',
+    depicts: 'FLESH',
     anchor: 'CALF',
     side: 'BOTH',
     over: 'SKIN',
-    origin: [-2, 0],
-    map: ['ss'],
+    origin: [-2, 2],
+    map: ['sss'],
   },
   // The ankle bone, so the shin does not run straight into the shoe.
   {
     name: 'ANKLE_SHADOW',
+    depicts: 'FLESH',
     anchor: 'SHIN',
     side: 'BOTH',
     over: 'SKIN',
-    origin: [-2, 0],
+    origin: [-1, 0],
     map: ['sss'],
   },
   // Flat squat shoe: mid-grey collar, dark upper, pale sole. Three authored
@@ -648,6 +944,7 @@ export const MARKS: readonly Mark[] = [
   // mark that stops a shoe reading as a grey lump with a lighter top row.
   {
     name: 'SHOE_COLLAR',
+    depicts: 'KIT',
     anchor: 'SHOE',
     side: 'BOTH',
     over: 'GEAR',
@@ -656,6 +953,7 @@ export const MARKS: readonly Mark[] = [
   },
   {
     name: 'SHOE_UPPER',
+    depicts: 'KIT',
     anchor: 'SHOE',
     side: 'BOTH',
     over: 'GEAR',
@@ -664,6 +962,7 @@ export const MARKS: readonly Mark[] = [
   },
   {
     name: 'SHOE_SOLE',
+    depicts: 'KIT',
     anchor: 'SHOE',
     side: 'BOTH',
     over: 'GEAR',
@@ -673,6 +972,7 @@ export const MARKS: readonly Mark[] = [
   // Laces on the instep. Two pixels of chalk-white against the dark upper.
   {
     name: 'SHOE_LACES',
+    depicts: 'KIT',
     anchor: 'SHOE',
     side: 'BOTH',
     over: 'GEAR',

@@ -134,6 +134,21 @@ export const BAR = {
   PLATE_FACE_PX: 2,
   COLLAR_WIDTH_PX: 3,
   COLLAR_HEIGHT_PX: 7,
+  /**
+   * The specular glint on each collar, as an offset from the collar block's
+   * top-left corner, and how many rows it runs.
+   *
+   * The SAME offset on both collars, not mirrored: the lamp is upper-left, so
+   * the glint is on the upper-left of the left collar and on the upper-left of
+   * the right one too. Mirroring it would be the tell.
+   *
+   * RUN_PX is 2 and may not be 1. `despeckle` replaces any pixel with no
+   * 4-neighbour of its own index, and this is drawn before that pass — a
+   * one-pixel glint is exactly the shape it eats, which is how the sprite's
+   * eyes and knuckles used to vanish. Two stacked pixels are each other's
+   * neighbour and survive.
+   */
+  COLLAR_SPECULAR: { DX: 0, DY: 1, RUN_PX: 2 },
   /** Bar rests this far above the shoulder-line joint. */
   SHOULDER_OFFSET_PX: 1,
   /** Knurl ring marks, as |dx| from centre. IPF rings are 810 mm apart. */
@@ -602,6 +617,49 @@ export const DEFORM_FOLLOW = {
 } as const;
 
 /**
+ * How a mass's value varies ALONG its own length, as opposed to across it.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS EXISTS
+ * ---------------------------------------------------------------------------
+ * A cylinder lit by one lamp has exactly one value at every point of a given
+ * cross-section, so a limb shaded from the across-limb normal alone is a
+ * LONGITUDINAL STRIPE by construction: the same ramp step, from the shoulder to
+ * the wrist, on every limb, at every pose. That is not a tuning problem, it is
+ * what the maths guarantees, and the rendered frames showed it — one unbroken
+ * light column down each forearm and each shin.
+ *
+ * A hand-drawn 16-bit limb does not look like that. Look at the wrestlers in
+ * `docs/reference/sprite-ref-1-snes-wrestling.png` at native scale: the light on
+ * an arm is a CLUSTER over the deltoid, a second cluster over the biceps belly,
+ * and darker pixels at the joints between them. The value goes up and down as
+ * you travel down the limb.
+ *
+ * So this profile adds a term that is a function of position along the axis:
+ * one raised belly and two darkened ends. It is deliberately not a smooth
+ * gradient — a gradient down a limb is a different generated-looking artefact,
+ * not a fix for the first one — and it is deliberately cheap: two bumps, no
+ * per-limb tables, quantised into the same hard ramp steps as everything else.
+ *
+ * These are FEEL VALUES. Every one of them decides how a body reads and will be
+ * moved by hand; GAIN and DROP in particular are only meaningful relative to
+ * the gap between two THRESHOLDS entries (0.26 on the four-step skin ramp), so
+ * a gain under about 0.13 cannot move a single pixel.
+ */
+export interface AxialProfile {
+  /** Where the muscle belly sits. 0 is the start of the mass, 1 the end. */
+  readonly BELLY_FRAC: number;
+  /** Gaussian half-width of the belly's highlight cluster, in the same units. */
+  readonly BELLY_WIDTH: number;
+  /** How far the belly lifts the lit value. */
+  readonly BELLY_GAIN: number;
+  /** Fraction of the mass at each end that darkens toward the joint. */
+  readonly JOINT_WIDTH: number;
+  /** How far the joint ends drop the lit value. */
+  readonly JOINT_DROP: number;
+}
+
+/**
  * SHADING — one key light, upper-left, slightly toward camera.
  *
  * Direction is a unit-ish vector in screen space with +z out of the screen.
@@ -616,16 +674,74 @@ export const DEFORM_FOLLOW = {
 export const SHADING = {
   LIGHT_DIR: { x: -0.52, y: -0.62, z: 0.59 },
   AMBIENT: 0.2,
-  /** Fractions of the lit range at which the ramp steps up. */
-  THRESHOLDS_4: [0.3, 0.56, 0.82],
+  /**
+   * Fractions of the lit range at which the ramp steps up.
+   *
+   * The top entry decides where the brightest step of the skin ramp can appear
+   * at all, and it is set ABOVE a cylinder's peak lambert (0.83 under this
+   * lamp) on purpose. The consequence is worth stating plainly: a limb cannot
+   * reach the top skin step from its surface normal alone. It gets there only
+   * where AXIAL_LIMB's belly bump lifts it — a cluster over the muscle belly —
+   * or where a hand-placed mark puts it. Spheres (head, hands) can still reach
+   * it, because a sphere really does have a facet pointing at the lamp.
+   *
+   * At 0.82 with no axial term the top step was a one-pixel sliver down the
+   * whole length of every limb and the far limbs could not reach it at all, so
+   * the figure lived in the middle of its ramp while the chrome collars and the
+   * red discs carried the top of the frame — the reverse of the reference,
+   * where the wrestlers hold the brightest pixels and the crowd is suppressed
+   * to luma 16-80.
+   */
+  THRESHOLDS_4: [0.3, 0.54, 0.88],
   THRESHOLDS_3: [0.36, 0.72],
   THRESHOLDS_2: [0.52],
-  /** Extra top-down lighting term on body masses, so the chest out-values the gut. */
-  VERTICAL_GAIN: 0.12,
+  /**
+   * Extra top-down lighting term on body masses, so the chest out-values the
+   * gut. Spans 2*VERTICAL_GAIN top to bottom, so under half the 0.26 gap
+   * between two skin thresholds it cannot change a single pixel — which is
+   * where it was.
+   */
+  VERTICAL_GAIN: 0.17,
   /** Far-side limbs drop this many ramp steps for depth separation. */
   FAR_LIMB_STEP_BIAS: -1,
   /** Rim of a plate: fraction of the disc's height that catches the key light. */
   PLATE_RIM_LIT_FRAC: 0.42,
+
+  /**
+   * Arms, legs, neck: a proximal muscle belly with darker joints either side.
+   *
+   * BELLY_GAIN is the number that makes the top of the skin ramp reachable at
+   * all on a limb — see THRESHOLDS_4. Drop it below about 0.05 and limbs never
+   * reach the brightest step; raise it much above 0.2 and the belly bump alone
+   * clears the threshold everywhere and the stripe comes back.
+   */
+  AXIAL_LIMB: {
+    BELLY_FRAC: 0.36,
+    BELLY_WIDTH: 0.2,
+    BELLY_GAIN: 0.14,
+    JOINT_WIDTH: 0.3,
+    JOINT_DROP: 0.16,
+  } as AxialProfile,
+  /** Torso: the pec shelf sits high, and the value falls into the waist. */
+  AXIAL_TRUNK: {
+    BELLY_FRAC: 0.18,
+    BELLY_WIDTH: 0.2,
+    BELLY_GAIN: 0.12,
+    JOINT_WIDTH: 0.16,
+    JOINT_DROP: 0.14,
+  } as AxialProfile,
+  /**
+   * No axial variation at all. Worn kit is not a muscle: a belt, a shoe and a
+   * singlet are objects whose value structure comes from their own hand-placed
+   * marks, and a belly bump on a belt reads as a dent.
+   */
+  AXIAL_FLAT: {
+    BELLY_FRAC: 0.5,
+    BELLY_WIDTH: 1,
+    BELLY_GAIN: 0,
+    JOINT_WIDTH: 0.5,
+    JOINT_DROP: 0,
+  } as AxialProfile,
 } as const;
 
 /**

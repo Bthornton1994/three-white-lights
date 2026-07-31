@@ -431,7 +431,8 @@ function marksSheet(frames) {
   );
   text(
     c,
-    `AUTHORED BUDGET: ${authoredPixelBudget()} MAP CELLS ACROSS ${MARKS.length} MARKS.`,
+    `AUTHORED BUDGET: ${authoredPixelBudget()} MAP CELLS ACROSS ${MARKS.length} MARKS, ` +
+      `${MARKS.filter((m) => m.depicts === 'FLESH').length} OF THEM FLESH.`,
     14,
     76,
     LIGHT_C,
@@ -439,12 +440,15 @@ function marksSheet(frames) {
   );
 
   const totals = new Map();
+  const asked = new Map();
+  const subjectPx = { KIT: 0, FLESH: 0 };
   frames.forEach((entry, i) => {
     const rendered = renderLifterFrame(entry.spec);
     const strained = rendered.strain > STRAIN.FLUSH_THRESHOLD;
     const authored = new Map();
     for (const mark of MARKS) {
       for (const t of markTargets(mark, rendered.pose, strained)) {
+        asked.set(mark.name, (asked.get(mark.name) ?? 0) + 1);
         if (getPx(rendered.grid, t.x, t.y) === t.ink) authored.set(`${t.x},${t.y}`, mark.name);
       }
     }
@@ -473,14 +477,40 @@ function marksSheet(frames) {
     text(c, `${authored.size} AUTHORED PX IN FRAME`, rx, y + CELL_H * SCALE + 4, MAX_C, 1);
   });
 
+  for (const mark of MARKS) subjectPx[mark.depicts] += totals.get(mark.name) ?? 0;
+  const subjectTotal = subjectPx.KIT + subjectPx.FLESH;
+
   let ly = 108 + rows * ch;
-  text(c, 'PER MARK, SUMMED OVER THE FRAMES ABOVE:', 14, ly, INK, 2);
+  // The split, first, because it is the number that matters. "How many pixels
+  // did a hand place" was the wrong question: the table can clear a large
+  // budget while four fifths of it is shoes, sleeves, belt, wraps, trim, patch
+  // and hair on a bare-armed, bare-legged figure whose largest surface is skin.
+  const pct = (n) => (subjectTotal === 0 ? 0 : Math.round((100 * n) / subjectTotal));
+  text(
+    c,
+    `FLESH ${subjectPx.FLESH} PX (${pct(subjectPx.FLESH)}%)   ` +
+      `KIT ${subjectPx.KIT} PX (${pct(subjectPx.KIT)}%)   ` +
+      'OF EVERY AUTHORED PIXEL THAT REACHED THE GRID',
+    14,
+    ly,
+    LIGHT_C,
+    2,
+  );
+  ly += 20;
+  text(c, 'PER MARK, SUMMED OVER THE FRAMES ABOVE  -  LANDED / ASKED FOR:', 14, ly, INK, 2);
   ly += 16;
   for (const mark of MARKS) {
     const n = totals.get(mark.name) ?? 0;
-    text(c, mark.name.padEnd(26, ' '), 14, ly, n > 0 ? INK_DIM : MAX_C, 1);
-    text(c, `${mark.anchor} ${mark.side}`.padEnd(20, ' '), 130, ly, INK_DIM, 1);
-    text(c, String(n).padStart(4, ' '), 240, ly, n > 0 ? LIGHT_C : MAX_C, 1);
+    const want = asked.get(mark.name) ?? 0;
+    const rate = want === 0 ? 0 : Math.round((100 * n) / want);
+    // Red below two thirds: a mark that lands a third of the time is not doing
+    // its job, and the sheet should say so without anyone having to divide.
+    const colour = n === 0 ? MAX_C : rate >= 67 ? LIGHT_C : INK;
+    text(c, mark.name.padEnd(24, ' '), 14, ly, n > 0 ? INK_DIM : MAX_C, 1);
+    text(c, mark.depicts.padEnd(6, ' '), 116, ly, mark.depicts === 'FLESH' ? LIGHT_C : INK_DIM, 1);
+    text(c, `${mark.anchor} ${mark.side}`.padEnd(20, ' '), 148, ly, INK_DIM, 1);
+    text(c, `${n}/${want}`.padStart(9, ' '), 250, ly, colour, 1);
+    text(c, `${rate}%`.padStart(5, ' '), 292, ly, colour, 1);
     ly += 10;
   }
   return c;
@@ -1008,18 +1038,22 @@ const summary = {
   paletteBanks: PALETTE_BANKS.map((b) => ({ name: b.name, allocated: b.colors.length })),
   authoredMarks: {
     marks: MARKS.length,
+    fleshMarks: MARKS.filter((m) => m.depicts === 'FLESH').length,
     budgetPx: authoredPixelBudget(),
     inFrame: Object.fromEntries(
       markFrames.map((entry) => {
         const rendered = renderLifterFrame(entry.spec);
         const strained = rendered.strain > STRAIN.FLUSH_THRESHOLD;
         const seen = new Set();
+        const by = { KIT: 0, FLESH: 0 };
         for (const mark of MARKS) {
           for (const t of markTargets(mark, rendered.pose, strained)) {
-            if (getPx(rendered.grid, t.x, t.y) === t.ink) seen.add(`${t.x},${t.y}`);
+            if (getPx(rendered.grid, t.x, t.y) !== t.ink) continue;
+            if (!seen.has(`${t.x},${t.y}`)) by[mark.depicts] += 1;
+            seen.add(`${t.x},${t.y}`);
           }
         }
-        return [entry.label, seen.size];
+        return [entry.label, { total: seen.size, flesh: by.FLESH, kit: by.KIT }];
       }),
     ),
   },
