@@ -756,6 +756,31 @@ describe('RPE_PERCENT_CHART — published source values', () => {
   });
 
   /**
+   * The lists above are not a description of the chart, they are the gate:
+   * `toChartedRpe` hands an element of CHARTED_RPES to the chart as a key the
+   * compiler has already stopped checking (see `readByUntrustedKey` in rpe.ts).
+   * If either list ever drifts from the chart's own keys, that handover starts
+   * lying. This is the test rpe.ts names as the reason its two lookup guards
+   * are unreachable, so it is the reason those guards may stay untested.
+   */
+  it("enumerates exactly the chart's own keys, in both directions", () => {
+    expect(CHARTED_REPS.map(String)).toEqual(Object.keys(RPE_PERCENT_CHART));
+    const chartedRpeKeys = [...CHARTED_RPES].map(String).sort();
+    for (const reps of CHARTED_REPS) {
+      expect(Object.keys(RPE_PERCENT_CHART[reps]).sort(), `row ${reps}`).toEqual(chartedRpeKeys);
+    }
+    // And the bounds agree with the lists, since isChartedReps gates on the
+    // bounds rather than on the list.
+    expect(CHARTED_REPS[0]).toBe(RPE_CHART_COVERAGE.MIN_REPS);
+    expect(CHARTED_REPS[CHARTED_REPS.length - 1]).toBe(RPE_CHART_COVERAGE.MAX_REPS);
+    expect(CHARTED_REPS).toHaveLength(
+      RPE_CHART_COVERAGE.MAX_REPS - RPE_CHART_COVERAGE.MIN_REPS + 1,
+    );
+    expect(CHARTED_RPES[0]).toBe(RPE_CHART_COVERAGE.MIN_RPE);
+    expect(CHARTED_RPES[CHARTED_RPES.length - 1]).toBe(RPE_CHART_COVERAGE.MAX_RPE);
+  });
+
+  /**
    * Cells a competitive lifter can recite without looking anything up. These
    * are worth writing longhand precisely because a reviewer can check them from
    * their own knowledge rather than from this repo.
@@ -1203,6 +1228,23 @@ describe('load prescription', () => {
     expect(() => loadForRpeTarget(200, 5, 8, { increment: -2.5 })).toThrow(RangeError);
     expect(() => roundLoad(Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
+
+  /**
+   * The same untrusted-key defect the chart lookup had, in the other record
+   * this module indexes. `WeightUnit` is a compile-time claim about the caller;
+   * a JS caller, or a caller reaching through `any` at a module boundary, can
+   * pass anything. This needed no mutation of any kind: before the guard,
+   * roundLoad(100, { unit: 'stone' }) returned NaN, silently, and so did every
+   * load function above it.
+   */
+  it('rejects a unit it has no increment for instead of returning NaN', () => {
+    const bogus = { unit: 'stone' } as unknown as { unit: 'kg' };
+    expect(() => roundLoad(100, bogus)).toThrow(RangeError);
+    expect(() => loadForRpeTarget(200, 5, 8, bogus)).toThrow(RangeError);
+    expect(() => roundLoad(100, bogus)).toThrow(/stone/);
+    // An explicit increment still wins over the unit, as documented.
+    expect(roundLoad(100.4, { ...bogus, increment: 1 })).toBe(100);
+  });
 });
 
 describe('e1rmFromChartedSet', () => {
@@ -1262,6 +1304,61 @@ describe('purity', () => {
 
     expect(percentOf1RM(5, 8)).toBe(before);
     expect(RPE_PERCENT_CHART[5][8]).toBe(before);
+  });
+
+  /**
+   * The chart was frozen before this gate was, which left the weaker door
+   * open: rewriting what counts as on-chart is as good as rewriting the cells,
+   * and quieter. Every assertion below failed, or reported the wrong value,
+   * before `Object.freeze` was applied to these three objects.
+   */
+  it('does not let a caller mutate the lookup gate', () => {
+    expect(Object.isFrozen(RPE_CHART_COVERAGE)).toBe(true);
+    expect(Object.isFrozen(CHARTED_REPS)).toBe(true);
+    expect(Object.isFrozen(CHARTED_RPES)).toBe(true);
+
+    // Widening the set of RPEs the module believes exist. This push used to
+    // succeed, after which isChartedRpe(7.3) answered true and
+    // tryPercentOf1RM(5, 7.3) returned `undefined` — from a function whose
+    // declared return type is `number | null`.
+    expect(() => {
+      (CHARTED_RPES as unknown as number[]).push(7.3);
+    }).toThrow(TypeError);
+    expect(CHARTED_RPES).toHaveLength(9);
+    expect(isChartedRpe(7.3)).toBe(false);
+    expect(tryPercentOf1RM(5, 7.3)).toBeNull();
+
+    // MAX_RPE is the reps-in-reserve definition the chart encodes. Setting it
+    // to 9.5 shifts every RIR by half a rep — no NaN, no thrown error, every
+    // prescribed load and chart-derived e1RM systematically wrong.
+    expect(() => {
+      (RPE_CHART_COVERAGE as unknown as Record<string, number>).MAX_RPE = 9.5;
+    }).toThrow(TypeError);
+    expect(RPE_CHART_COVERAGE.MAX_RPE).toBe(10);
+    expect(repsInReserve(8)).toBe(2);
+
+    // MAX_REPS is what isChartedReps gates on.
+    expect(() => {
+      (RPE_CHART_COVERAGE as unknown as Record<string, number>).MAX_REPS = 20;
+    }).toThrow(TypeError);
+    expect(isChartedReps(15)).toBe(false);
+    expect(tryPercentOf1RM(15, 8)).toBeNull();
+  });
+
+  /**
+   * Tuning happens by editing the literals in rpe.ts and rebuilding, never by
+   * writing to the object at runtime. An unfrozen ROUNDING_INCREMENT is a
+   * one-property route to changing every load the game prescribes.
+   */
+  it('does not let a caller mutate the loading knobs at runtime', () => {
+    expect(Object.isFrozen(RPE_LOADING_TUNING)).toBe(true);
+    expect(Object.isFrozen(RPE_LOADING_TUNING.ROUNDING_INCREMENT)).toBe(true);
+
+    const before = loadForRpeTarget(200, 5, 8);
+    expect(() => {
+      (RPE_LOADING_TUNING.ROUNDING_INCREMENT as unknown as Record<string, number>).kg = 100;
+    }).toThrow(TypeError);
+    expect(loadForRpeTarget(200, 5, 8)).toBe(before);
   });
 
   it('does not let a caller mutate the provenance record either', () => {

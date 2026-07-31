@@ -170,18 +170,41 @@ export type ChartedRpe = 6 | 6.5 | 7 | 7.5 | 8 | 8.5 | 9 | 9.5 | 10;
 /**
  * Exact bounds of the published chart. Exported so callers (UI, prescription
  * logic, tests) can clamp or gate on real coverage instead of guessing.
+ *
+ * FROZEN, for the reason `deepFreezeChart` gives and with more at stake: this
+ * object and the two lists below are the gate that decides on-chart from
+ * off-chart, and `MAX_RPE - rpe` is the reps-in-reserve definition the chart
+ * encodes. A caller who could write `MAX_RPE = 9.5` would shift every RIR by
+ * half a rep — every prescribed load and chart-derived e1RM wrong, no NaN, no
+ * throw. `as const` is a compile-time claim and did not stop it.
  */
-export const RPE_CHART_COVERAGE = {
+export const RPE_CHART_COVERAGE = Object.freeze({
   MIN_REPS: 1,
   MAX_REPS: 12,
   MIN_RPE: 6,
   MAX_RPE: 10,
   RPE_STEP: 0.5,
-} as const;
+} as const);
 
-export const CHARTED_REPS: readonly ChartedReps[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+/**
+ * The chart's key sets, enumerable at runtime. Frozen for the reason above:
+ * `CHARTED_RPES.push(7.3)` used to succeed, after which `isChartedRpe(7.3)`
+ * answered true and the lookup returned `undefined` from a function declared
+ * `number | null`.
+ *
+ * They must stay exactly the keys of `RPE_PERCENT_CHART`, since `toChartedRpe`
+ * hands an element of `CHARTED_RPES` to the chart as if the compiler had proved
+ * it is a key. `rpe.test.ts` ("enumerates exactly the chart's own keys, in both
+ * directions") holds them to that; the UNTRUSTED KEY guards below catch a
+ * mismatch at runtime if it ever stops holding.
+ */
+export const CHARTED_REPS: readonly ChartedReps[] = Object.freeze([
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+]);
 
-export const CHARTED_RPES: readonly ChartedRpe[] = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+export const CHARTED_RPES: readonly ChartedRpe[] = Object.freeze([
+  6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10,
+]);
 
 // ---------------------------------------------------------------------------
 // Tunable values (the ONLY tunable values in this module)
@@ -198,14 +221,21 @@ export type WeightUnit = 'kg' | 'lb';
  * published domain data lives here (CLAUDE.md "Game Feel Values Must Be
  * Tunable"). If a central `src/tuning/` module lands later, move this object
  * there wholesale rather than scattering the values.
+ *
+ * Frozen, like everything else this module exports. Tuning happens by editing
+ * these literals and rebuilding, never by writing to the object at runtime: a
+ * caller that could set `ROUNDING_INCREMENT.kg = 100` would change every load
+ * the game prescribes.
  */
-export const RPE_LOADING_TUNING = {
+export const RPE_LOADING_TUNING = Object.freeze({
   /**
    * Smallest total bar change we will prescribe, per unit. 2.5 kg = 1.25 kg a
    * side; 5 lb = 2.5 lb a side. Both are the smallest increments a normal gym
    * can actually load without change plates.
    */
-  ROUNDING_INCREMENT: { kg: 2.5, lb: 5 } as const satisfies Record<WeightUnit, number>,
+  ROUNDING_INCREMENT: Object.freeze(
+    { kg: 2.5, lb: 5 } as const satisfies Record<WeightUnit, number>,
+  ),
 
   /** Default unit when the caller does not say. Provisional — see GDD §11. */
   DEFAULT_UNIT: 'kg' as WeightUnit,
@@ -219,7 +249,7 @@ export const RPE_LOADING_TUNING = {
    * rounding literal and belongs here rather than inline.
    */
   LOAD_PRECISION_DECIMALS: 6,
-} as const;
+} as const);
 
 // ---------------------------------------------------------------------------
 // Correctness guard — deliberately NOT in the tunable block above
@@ -578,13 +608,24 @@ export function isChartedRpe(rpe: number): rpe is ChartedRpe {
 /**
  * Snap a numeric RPE onto a charted RPE, or null if it is off-chart.
  * Only absorbs float noise — 7.3 is off-chart and stays off-chart.
+ *
+ * Indexed loop rather than `for...of` on purpose: V8 iterates a FROZEN array
+ * through a slower path, and this runs on every lookup. Measured over 400k
+ * `percentOf1RM` calls on one sandbox machine (so: a ratio worth trusting, an
+ * absolute worth nothing): ~44 ns/call unfrozen with `for...of`, ~95 ns frozen
+ * with `for...of`, ~63 ns frozen with the loop below. Freezing the list is not
+ * negotiable — it is the lookup gate — so the iterator protocol is what goes.
  */
 function toChartedRpe(rpe: number): ChartedRpe | null {
   if (!Number.isFinite(rpe)) {
     return null;
   }
-  for (const candidate of CHARTED_RPES) {
-    if (Math.abs(candidate - rpe) <= RPE_MATCH_TOLERANCE) {
+  for (let i = 0; i < CHARTED_RPES.length; i += 1) {
+    // UNTRUSTED KEY: an array index really is an index signature, so
+    // `noUncheckedIndexedAccess` does widen this one and the check is the
+    // compiler's idea rather than ours.
+    const candidate = CHARTED_RPES[i];
+    if (candidate !== undefined && Math.abs(candidate - rpe) <= RPE_MATCH_TOLERANCE) {
       return candidate;
     }
   }
@@ -594,6 +635,40 @@ function toChartedRpe(rpe: number): ChartedRpe | null {
 function toChartedReps(reps: number): ChartedReps | null {
   return isChartedReps(reps) ? reps : null;
 }
+
+/* ---------------------------------------------------------------------------
+ * UNTRUSTED KEYS — why some reads in this module look over-careful
+ * ---------------------------------------------------------------------------
+ * `Record<K, V>` over a finite union is a mapped type with concrete
+ * properties, not an index signature, so `noUncheckedIndexedAccess` does NOT
+ * widen `RPE_PERCENT_CHART[reps][rpe]` to `number | undefined`. The compiler
+ * proves the cell exists, from the key's type plus the `satisfies RpeChart` on
+ * the chart literal.
+ *
+ * That proof is sound for a key the compiler itself produced — the literals in
+ * `describeContestedCell`, which is why that read needs no guard.
+ *
+ * It is NOT sound for a key that came out of a type predicate. `isChartedReps`
+ * and `toChartedRpe` are ordinary runtime code wearing `reps is ChartedReps`;
+ * if either is ever wrong (a widened bound, a list that has drifted from the
+ * chart's keys) the compiler's proof is wrong with it, and a function declared
+ * `number | null` returns `undefined` — which sails through a `=== null` check
+ * in a caller (`chartPercentForRepMax` in e1rm.ts) and lands in arithmetic as
+ * NaN, wearing `method: 'rpe-chart'`.
+ *
+ * So every read in this module keyed by a predicate's output, by an array
+ * index, or by a caller's unverified string re-opens the case the compiler
+ * closed: annotate the read `| undefined` and handle it. Each one is marked
+ * UNTRUSTED KEY. Do not "simplify" those annotations away — they are what makes
+ * the declared return types true of the running code rather than of the
+ * signature.
+ *
+ * Written inline rather than behind a shared generic helper so the annotation
+ * sits on the read it protects, where deleting it looks like what it is. A
+ * helper version was benchmarked and came out indistinguishable, so this is a
+ * readability call and not a performance one.
+ * ---------------------------------------------------------------------------
+ */
 
 // ---------------------------------------------------------------------------
 // Percentage lookup
@@ -606,6 +681,13 @@ function toChartedReps(reps: number): ChartedReps | null {
  * Off-chart returns null rather than extrapolating. The chart stops at 12 reps
  * and RPE 6 for a reason; inventing cells past that is exactly the homebrewing
  * GDD §12.3 forbids.
+ *
+ * `null` here means null and only null. The two guards below are what makes
+ * that true of the running code rather than of the signature — see UNTRUSTED
+ * KEYS above. They are unreachable while `CHARTED_REPS` and `CHARTED_RPES` are
+ * exactly the chart's keys, which `rpe.test.ts` enforces; they exist so that if
+ * that ever stops holding, the caller gets the `null` it already handles
+ * instead of an `undefined` typed as `number`.
  */
 export function tryPercentOf1RM(reps: number, rpe: number): number | null {
   const chartedReps = toChartedReps(reps);
@@ -613,7 +695,15 @@ export function tryPercentOf1RM(reps: number, rpe: number): number | null {
   if (chartedReps === null || chartedRpe === null) {
     return null;
   }
-  return RPE_PERCENT_CHART[chartedReps][chartedRpe];
+  // UNTRUSTED KEY: chartedReps came from a predicate, not from the compiler.
+  const row: Readonly<Record<ChartedRpe, number>> | undefined =
+    RPE_PERCENT_CHART[chartedReps];
+  if (row === undefined) {
+    return null;
+  }
+  // UNTRUSTED KEY: likewise chartedRpe, which is an element of CHARTED_RPES.
+  const percent: number | undefined = row[chartedRpe];
+  return percent === undefined ? null : percent;
 }
 
 /**
@@ -688,7 +778,18 @@ function resolveIncrement(options: LoadRoundingOptions | undefined): number {
     return options.increment;
   }
   const unit = options?.unit ?? RPE_LOADING_TUNING.DEFAULT_UNIT;
-  return RPE_LOADING_TUNING.ROUNDING_INCREMENT[unit];
+  // UNTRUSTED KEY: `WeightUnit` is a compile-time claim about the caller, and a
+  // JS caller can pass 'stone'. Without this guard the increment read
+  // `undefined` and every load function returned NaN — silently, for
+  // `roundLoad`, which has no other guard on this path.
+  const increment: number | undefined = RPE_LOADING_TUNING.ROUNDING_INCREMENT[unit];
+  if (increment === undefined) {
+    throw new RangeError(
+      `No rounding increment for unit ${String(unit)}. Known units: ` +
+        `${Object.keys(RPE_LOADING_TUNING.ROUNDING_INCREMENT).join(', ')}.`,
+    );
+  }
+  return increment;
 }
 
 /** Strip IEEE-754 noise introduced by increment arithmetic. */
