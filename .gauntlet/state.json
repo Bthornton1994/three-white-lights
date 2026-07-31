@@ -156,11 +156,11 @@
     {
       "id": "A1",
       "name": "Lifter sprites & animation",
-      "bar": "Blind A/B against real 16-bit SNES/Genesis sprite work. Maximal attempt must animate heavier.",
-      "status": "majority",
-      "verifiable": false,
-      "note": "CHECKABLE HALF WINS ITS BAR; the blind-A/B half stays unverifiable and always will here. The critic formed its view from the pixels before reading a number, then verified the experiment was genuinely controlled rather than trusting it \u2014 head mask tight at ~12x16px, barbell excluded by palette bank with a test proving a 100kg and a 250kg bar read as ZERO body change, and floors that cannot be cleared by inflating one field because six landmark directions must hold at once. Its residual, which it said does not disqualify the pass: the evidence sheet holds one strain/pitch pair fixed while sweeping depth, so it overstates how uniform the separation is. At the brace \u2014 32 of 199 ticks, the first half-second the player sees \u2014 both loads draw the same body. Defensible as authored intent, but the sheet should not imply otherwise.",
-      "evidence": "A1-body-load.png"
+      "bar": "Blind A/B against real 16-bit sprite work \u2014 NOW GRADEABLE, reference committed.",
+      "status": "failed",
+      "verifiable": true,
+      "note": "CRAFT HALF GRADED FOR THE FIRST TIME, AND SENT BACK. The reference wrestlers are ~55px against our 60px, so the critic ruled that pixel budget and figure scale are NOT the gap \u2014 what the pixels are spent on is. It inventoried the hand-placed marks on our 60px figure and found about six: two eyes, a mouth, a sternum notch, a chalked knuckle per hand. Everything else is a Lambert-shaded capsule. The belt is a 3-row grey band with no buckle pixel; the shoes are 9x3 lumps with no sole line; the singlet is flat with no seam or strap shadow; and the ramp on every limb runs straight and full-length, breaking at no anatomy. The reference spends the same budget on objects and landmarks \u2014 waistband trim, knee-pad band, boot sole line, and an arm highlight broken into deltoid and biceps masses. It was equally specific about what IS era-correct and must not regress: non-mirrored values under a real key light, a hue-shifting skin ramp, selective warm/cool outline, and plate colour language good enough to read the attempt weight off the sprite. The heaviness half stays passed.",
+      "evidence": "A1-lockout-6x.png"
     },
     {
       "id": "A2",
