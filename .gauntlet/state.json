@@ -157,9 +157,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work \u2014 NOW GRADEABLE, reference committed.",
-      "status": "failed",
+      "status": "building",
       "verifiable": true,
-      "note": "Second blind A/B: the marks LAND \u2014 the critic read the sole line, sleeve bands, wrist wraps, belt lever, chest patch and hem trim unprompted, and said plainly it was not reporting \"not enough detail\" any more. The gap moved: the kit got drawn, the flesh did not. About 80% of authored pixels went to objects; the anatomy marks land at 31-68% while kit lands at 90-100%, so the marks meant to break the ramp at anatomy are exactly the ones that miss. Underneath, the cause is in the math \u2014 verified here at raster.ts:193-207: `along` is computed but used only to clamp the capsule ends, so shading reads the across-limb offset alone and every limb value is constant down its full length BY CONSTRUCTION. A guaranteed longitudinal stripe. It also empties the top of the skin ramp: total authored SKIN_HI in the table is 7px, four of them in a mark that does not land, so the brightest things in every frame are the chrome collars and red discs. As the critic put it \u2014 the lifter is the second-brightest thing in his own sprite.",
+      "note": "Third craft rework merged; 545 tests green. The guaranteed longitudinal stripe is gone \u2014 raster.ts was computing the along-limb position and discarding it, so an axial term now feeds the shade call in both the limb and trunk paths, with a test that reproduces the old constant column under a flat profile as a counterexample. Nine flesh marks added (pec shelf with sternum split, trap ridges, biceps, forearm bellies, shin crests); kit-vs-flesh authored pixels move 76/24 to 50/50, and the anatomy marks that landed 31-68% now land 78-100%. The lifter carries the top of the value range rather than the barbell: STEEL_LIGHT no longer renders at all, and the collars keep a 2px specular the palette comment had claimed for a colour nothing actually drew.",
       "evidence": "A1-lockout-6x.png"
     },
     {
