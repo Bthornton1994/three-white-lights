@@ -2,16 +2,16 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 1,
-    "waveName": "Wave 1 halted \u2014 subagent budget exhausted",
+    "wave": 2,
+    "waveName": "Resumed \u2014 closing send-backs, grading ungraded pieces",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
     {
-      "severity": "run halted",
-      "title": "Monthly spend limit reached \u2014 six agents killed mid-flight",
-      "body": "Six subagents terminated with \"You've hit your monthly spend limit\": the RPE critic, the meet-engine critic, the e1RM rework builder, the fatigue builder, the streak builder, and the sprite builder. Two had begun work; neither had committed anything usable and both worktrees were discarded.",
-      "consequence": "No further builders or critics can be dispatched until the limit is raised. Everything merged so far is intact and green \u2014 278 tests across four modules \u2014 but three merged modules were never graded, and the whole art/UI half of the run never started. Nothing here is lost; it is paused. Raising the limit resumes it from exactly this state."
+      "severity": "resolved",
+      "title": "Run halted once on the subagent spend limit, now resumed",
+      "body": "Six agents were killed mid-flight when the monthly limit was hit: two critics, the e1RM rework, and the fatigue, streak and sprite builders. No usable work was lost \u2014 neither partially-started builder had committed anything, and their worktrees were discarded.",
+      "consequence": "Dispatch is working again. The queue resumed in priority order: close the e1RM send-back first, then grade the two modules that were merged but never judged. The art and UI half of the run still has not started."
     },
     {
       "severity": "critical",
@@ -82,17 +82,17 @@
       "id": "M1",
       "name": "RPE \u2192 %1RM table",
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
-      "status": "ungraded",
+      "status": "building",
       "verifiable": true,
-      "note": "Merged and green (50 tests). 108-cell Tuchscherer chart cross-checked against two independent transcriptions. Its critic was killed by the spend limit before reporting \u2014 this module is built but never independently graded."
+      "note": "Merged and green (50 tests). Its first critic was killed mid-report; a fresh one is grading now, pointed at the chart\u2019s internal reps-in-reserve structure as the highest-value way to catch transcription errors."
     },
     {
       "id": "M2",
       "name": "e1RM formulas",
       "bar": "Published e1RM formulas. Binary and testable.",
-      "status": "failed",
+      "status": "building",
       "verifiable": true,
-      "note": "SENT BACK by its critic and NOT yet fixed: Epley/Brzycki are rep-max formulas, but GDD \u00a73.3 makes nearly every logged set deliberately submaximal, so RPE could not move e1RM at all for singles. The rework builder was killed by the spend limit before writing anything. This is the top of the queue on resume."
+      "note": "Under rework against its send-back: Epley/Brzycki are rep-max formulas but GDD \u00a73.3 makes nearly every logged set submaximal, so RPE could not move e1RM at all for singles. Being rerouted through the published RPE chart."
     },
     {
       "id": "M3",
@@ -106,9 +106,9 @@
       "id": "M4",
       "name": "Meet engine",
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
-      "status": "ungraded",
+      "status": "building",
       "verifiable": true,
-      "note": "Merged and green (76 tests). Typed invariants, no throws, deterministic replay; bomb-out modelled as a distinct outcome rather than a zero. Its critic was killed by the spend limit before reporting \u2014 built but never independently graded."
+      "note": "Merged and green (76 tests). Its first critic was killed mid-report; a fresh one is grading now, asked specifically to judge whether the engine over-enforces rules beyond real federation practice."
     },
     {
       "id": "M5",
