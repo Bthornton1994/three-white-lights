@@ -119,7 +119,7 @@
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
       "status": "majority",
       "verifiable": true,
-      "note": "THE MEET STRUCTURE WINS ITS BAR. A critic re-derived the whole state machine and found no rule a competitive powerlifter would fault, verified the citations against live OpenLifter bytes, and adjudicated four of the builder\u2019s self-doubts as non-defects. The remaining gap is not the sport model: the rules-seal subsystem is out of proportion \u2014 ~150 lines defending against one in-repo accident that a compile-time opaque type prevents for free, in a module CLAUDE.md already says should be server-authoritative. Its justification comment is also arithmetically false for the third time in this module, and the test written to catch exactly that re-derives the formula instead of parsing the printed digits. I had verified that arithmetic myself two rounds ago and missed it \u2014 I checked the formula and never compared it to the number the comment prints."
+      "note": "Structure WINS ITS BAR. Rework 5 merged: the rules-seal subsystem is gone \u2014 four constants, a unique-symbol brand, an error code, an exported check, four call sites, a 41-line essay and nine tests, including the BigInt re-derivation blind to the digits it was meant to check. Rules are now opaque behind a module-private symbol, so the tampering spread does not type-check, and the guard is proven by negative controls that revert it and confirm the directives go unused. meet.ts is 51 lines shorter and has no arithmetic left to get wrong."
     },
     {
       "id": "M5",
@@ -163,9 +163,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit SNES/Genesis sprite work. Maximal attempt must animate heavier.",
-      "status": "building",
+      "status": "failed",
       "verifiable": false,
-      "note": "Merged; 477 tests green suite-wide (art: 89). Load changes the animation through four channels, not just duration \u2014 tick count, the SHAPE of the ascent in normalised time (which a slowed copy cannot have), bar-path drift peaking at the sticking point, and pose strain that deliberately leaves the shoulder line alone so squat depth stays honest. Plate hues and denominations come from OpenLifter bytes fetched in-sandbox. The builder looked at its own PNGs and fixed two real defects it found there. Its own verdict on craft \u2014 \"competent programmatic pixel art rather than drawn 16-bit sprite work\", smooth tapered limbs and no hand-placed detail \u2014 matches mine on looking at the contact sheet. The blind-A/B half of this bar stays unverifiable while image hosts are blocked.",
+      "note": "Half the bar UNVERIFIABLE (no reference retrievable), half SENT BACK. The timing model genuinely clears \"not merely slower\" \u2014 ascent shape in normalised time, stall at the authored height, bar-path divergence, all quantified and load-monotone. But the heaviness is carried by the barbell and the clock, not the lifter. Both loads walk the same eleven authored poses; the critic did the arithmetic and found the light rep peaks at strain level 1 and the maximal at 3, giving body deltas of 0.6-1.6px on a 60px figure \u2014 several of which will not survive rounding. Confirmed by eye on the pose sheet: strain rows 1 and 2 are indistinguishable, and 3-4 separate mainly by an open-mouth grimace and a ruddier skin ramp. Strip the bar out and the two lifters are the same drawing. Also: the forward-drift term is clamped away on heavy reps so it only ever changes the LIGHT rep, and the strongest pixel test compares strain 0 vs 3 \u2014 levels the animation never produces \u2014 asserting only that something differs.",
       "evidence": "A1-contact-sheet.png"
     },
     {
