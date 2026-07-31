@@ -157,10 +157,10 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work \u2014 NOW GRADEABLE, reference committed.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Fourth craft rework merged; 552 tests green. The builder MEASURED rather than accepting the diagnosis \u2014 wrote a PNG decoder, masked the reference figure, and found the reference\u2019s own kit ramp is 53/91/140 against ours at 51/93/143. The gear ramp was never the problem. The real deficit was AREA: about half our lower body was near-black interior separation line. Fixed at the cause \u2014 the interior line now takes the material\u2019s own shadow step under the same lamp, matching a measured reference thigh row, plus a shorter sleeve, thicker calf and a hem that rides the thigh instead of sitting below the kneecap at depth. Measured, split at the figure\u2019s own midpoint so it cannot be tuned to flatter either half: upper/lower luma ratio 1.50 to 1.08 against the reference\u2019s 1.04, near-black share below the midpoint 52% to 23%. It also declined one instruction with evidence, measuring that the reference\u2019s kit tops out UNDER its own flesh. Fourth blind A/B grading, asked to test the builder\u2019s own prediction of the next gap rather than inherit it.",
-      "evidence": "A1-lockout-6x.png"
+      "note": "Fourth blind A/B: no regressions \u2014 250kg still readable off the sprite AT 1x, key light holds, palette era-legal, and the two-edge-treatments worry was examined and explicitly dropped. But it REFUTED the builder\u2019s own prediction of uniform dimness. The real gap is pose-dependent and inverts: in the hole the knee sleeves are the BRIGHTEST thing below the belt, with the thigh a flat dark mass behind them \u2014 the IPF squat photo with its values swapped. Confirmed here by eye and by arithmetic, GEAR_LIGHT at 149 out-values SKIN_MID at 117, violating the rule palette.ts states about itself: sleeves must read as dark objects ON a lit leg, not as the leg. Mechanism named: the limb shader takes its normal from the limb\u2019s own perpendicular, so peak lambert depends on SCREEN ANGLE \u2014 a vertical thigh clears the top threshold, a thigh rotated into a squat cannot reach it at all and drops a step or two across its whole width. Nothing in the pipeline notices a limb has fallen out of its band. Worst in the money pose, which is the frame the game is built around.",
+      "evidence": "A1-hole-6x.png"
     },
     {
       "id": "A2",
