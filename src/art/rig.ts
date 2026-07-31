@@ -393,9 +393,9 @@ export const RIG_GEOMETRY = {
   /** The face is the smallest thing that has to read; it gets lifted a step. */
   HEAD_STEP_BIAS: 1,
   HAIR_RY: 2.2,
-  EYE_DX: 1.7,
-  EYE_DY: 1,
-  MOUTH_DY: 3,
+  // Eye, mouth and fringe positions are NOT here. They are hand-placed pixels
+  // in `spriteMarks.ts`, because that is what they are — a value here would be
+  // an offset fed to a shape function, and the face is not a shape function.
   NECK_R: 2.3,
   NECK_OVERLAP: 1,
 
@@ -406,8 +406,16 @@ export const RIG_GEOMETRY = {
   SHIN_R: [2.9, 1.9] as const,
 
   FOOT_W: 9,
+  /**
+   * Drawn shoe height, in rows. The shoe runs from `ankleY + FOOT_DROP` down to
+   * the row above the floor, so with FOOT_DROP at 0 and the ankle landmark at
+   * 65 against FLOOR_Y 68 this is three rows — which is the minimum a shoe
+   * needs to carry a dark upper, a lace and a pale sole as separate marks. At
+   * the two rows it had before, a sole line and an upper were the same pixel.
+   * `lifterSprite.test.ts` asserts the drawn height matches this number.
+   */
   FOOT_H: 3,
-  FOOT_DROP: 1,
+  FOOT_DROP: 0,
   FOOT_FLARE: 0.5,
 
   /** Belt height, centred on waistY, and how far it stands off the waist. */
@@ -458,8 +466,6 @@ export const RIG_GEOMETRY = {
     HAND_TALL: 0.4,
     /** Neck widens into the traps. */
     NECK_FLARE: 0.6,
-    /** Sternum notch, above the singlet's top edge. */
-    STERNUM_LIFT: 1,
   },
 
   /** One hand grips this much wider than the other. */

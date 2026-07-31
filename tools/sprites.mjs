@@ -7,6 +7,10 @@
  *
  * Outputs under .gauntlet/shots/sprites/:
  *   palette.png                  the three 16-colour banks as swatches
+ *   marks.png                    WHICH PIXELS A HAND PLACED: every frame's
+ *                                authored marks highlighted over the frame, with
+ *                                a per-mark count of what actually survived into
+ *                                the rendered grid
  *   pose-sheet.png               every authored pose, relaxed vs. strained
  *   body-load.png                THE BODY-ONLY EXPERIMENT: the drawing a light
  *                                rep reaches vs. the one a maximal rep reaches,
@@ -98,6 +102,9 @@ const {
   headBox,
   unionRect,
   getPx,
+  MARKS,
+  markTargets,
+  authoredPixelBudget,
 } = art;
 
 // ---------------------------------------------------------------------------
@@ -372,6 +379,109 @@ function paletteSheet() {
       text(c, String(slot), x + 1, y + SW - 11, INK, 1);
     }
     y += SW + 8;
+  }
+  return c;
+}
+
+/**
+ * WHICH PIXELS A HAND PLACED.
+ *
+ * The critique this sheet answers was specific and countable: on a 60px figure,
+ * inventory the marks an artist actually placed rather than a lighting model
+ * resolving a capsule. The answer used to be about six in the source and, once
+ * `despeckle` had run, none at all in the rendered PNG.
+ *
+ * Left of each pair is the frame as shipped. Right is the same frame with every
+ * pixel that came from the authored mark table in `spriteMarks.ts` lit up, and
+ * everything the shading model produced dimmed to grey. The count under it is
+ * measured off the FINISHED grid — after despeckle and after the outline pass —
+ * not off the stamper's own report.
+ */
+function marksSheet(frames) {
+  const SCALE = 5;
+  const cw = CELL_W * SCALE;
+  const gap = 8;
+  const pairW = cw * 2 + gap;
+  const rows = 2;
+  const cols = Math.ceil(frames.length / rows);
+  const ch = CELL_H * SCALE + 26;
+  const listH = MARKS.length * 10 + 30;
+  const c = canvas(
+    Math.max(28 + cols * (pairW + 18), 640),
+    120 + rows * ch + listH,
+    BG,
+  );
+
+  text(c, 'WHICH PIXELS A HAND PLACED', 14, 12, INK, 3);
+  text(
+    c,
+    'RIGHT OF EACH PAIR: EVERY PIXEL FROM THE AUTHORED MARK TABLE, LIT. EVERYTHING THE',
+    14,
+    40,
+    INK_DIM,
+    2,
+  );
+  text(
+    c,
+    'SHADING MODEL RESOLVED FROM GEOMETRY, DIMMED. COUNTED OFF THE FINISHED GRID.',
+    14,
+    56,
+    INK_DIM,
+    2,
+  );
+  text(
+    c,
+    `AUTHORED BUDGET: ${authoredPixelBudget()} MAP CELLS ACROSS ${MARKS.length} MARKS.`,
+    14,
+    76,
+    LIGHT_C,
+    2,
+  );
+
+  const totals = new Map();
+  frames.forEach((entry, i) => {
+    const rendered = renderLifterFrame(entry.spec);
+    const strained = rendered.strain > STRAIN.FLUSH_THRESHOLD;
+    const authored = new Map();
+    for (const mark of MARKS) {
+      for (const t of markTargets(mark, rendered.pose, strained)) {
+        if (getPx(rendered.grid, t.x, t.y) === t.ink) authored.set(`${t.x},${t.y}`, mark.name);
+      }
+    }
+
+    const x = 14 + (i % cols) * (pairW + 18);
+    const y = 96 + Math.floor(i / cols) * ch;
+    const rgba = gridToRgba(composeWithStage(rendered, entry.spec.depth));
+    blit(c, rgba, CELL_W, CELL_H, x, y, SCALE);
+
+    // Right panel, painted by hand rather than blitted.
+    const rx = x + cw + gap;
+    rect(c, rx, y, cw, CELL_H * SCALE, [10, 10, 14, 255]);
+    for (let py = 0; py < CELL_H; py += 1) {
+      for (let pxx = 0; pxx < CELL_W; pxx += 1) {
+        const v = getPx(rendered.grid, pxx, py);
+        if (v === 0) continue;
+        const key = `${pxx},${py}`;
+        const marked = authored.has(key);
+        const colour = marked ? [255, 232, 120, 255] : [46, 46, 58, 255];
+        rect(c, rx + pxx * SCALE, y + py * SCALE, SCALE, SCALE, colour);
+      }
+    }
+
+    for (const [, name] of authored) totals.set(name, (totals.get(name) ?? 0) + 1);
+    text(c, entry.label, x, y + CELL_H * SCALE + 4, INK_DIM, 1);
+    text(c, `${authored.size} AUTHORED PX IN FRAME`, rx, y + CELL_H * SCALE + 4, MAX_C, 1);
+  });
+
+  let ly = 108 + rows * ch;
+  text(c, 'PER MARK, SUMMED OVER THE FRAMES ABOVE:', 14, ly, INK, 2);
+  ly += 16;
+  for (const mark of MARKS) {
+    const n = totals.get(mark.name) ?? 0;
+    text(c, mark.name.padEnd(26, ' '), 14, ly, n > 0 ? INK_DIM : MAX_C, 1);
+    text(c, `${mark.anchor} ${mark.side}`.padEnd(20, ' '), 130, ly, INK_DIM, 1);
+    text(c, String(n).padStart(4, ' '), 240, ly, n > 0 ? LIGHT_C : MAX_C, 1);
+    ly += 10;
   }
   return c;
 }
@@ -853,8 +963,16 @@ const MAX_KG = 250;
 const light = buildSquatRep(LOAD_PRESETS.LIGHT);
 const maximal = buildSquatRep(LOAD_PRESETS.MAXIMAL);
 
+const markFrames = [
+  { label: 'LOCKOUT, COMPOSED', spec: { depth: 0, direction: 'ASCENT', strainLevel: 0, pitchLevel: 0, barLateralPx: 0, barTiltDeg: 0, barBendPx: 0, chalkMotes: 0, totalKg: MAX_KG } },
+  { label: 'MID ASCENT, WORKING', spec: { depth: 0.5, direction: 'ASCENT', strainLevel: 1, pitchLevel: 1, barLateralPx: 0, barTiltDeg: 0, barBendPx: 0, chalkMotes: 0, totalKg: MAX_KG } },
+  { label: 'STICKING POINT, GRIND', spec: { depth: 0.66, direction: 'ASCENT', strainLevel: STRAIN.LEVELS - 1, pitchLevel: PITCH.LEVELS - 1, barLateralPx: 0, barTiltDeg: 0, barBendPx: 0, chalkMotes: 0, totalKg: MAX_KG } },
+  { label: 'IN THE HOLE, GRIND', spec: { depth: 1, direction: 'ASCENT', strainLevel: STRAIN.LEVELS - 1, pitchLevel: PITCH.LEVELS - 1, barLateralPx: 0, barTiltDeg: 0, barBendPx: 0, chalkMotes: 0, totalKg: MAX_KG } },
+];
+
 const written = [];
 written.push(save('palette.png', paletteSheet()));
+written.push(save('marks.png', marksSheet(markFrames)));
 written.push(save('pose-sheet.png', poseSheet()));
 written.push(save('body-load.png', bodyLoadSheet(light, maximal, MAX_KG)));
 written.push(save('sheet-LIGHT.png', frameSheet(light, `LIGHT ${LIGHT_KG}KG`, LIGHT_KG)));
@@ -888,6 +1006,23 @@ const summary = {
   frameFiles: (light.frames.length + maximal.frames.length) * 2,
   stats: Object.fromEntries(statRows(light, maximal).slice(1).map((r) => [r[0], { light: r[1], maximal: r[2] }])),
   paletteBanks: PALETTE_BANKS.map((b) => ({ name: b.name, allocated: b.colors.length })),
+  authoredMarks: {
+    marks: MARKS.length,
+    budgetPx: authoredPixelBudget(),
+    inFrame: Object.fromEntries(
+      markFrames.map((entry) => {
+        const rendered = renderLifterFrame(entry.spec);
+        const strained = rendered.strain > STRAIN.FLUSH_THRESHOLD;
+        const seen = new Set();
+        for (const mark of MARKS) {
+          for (const t of markTargets(mark, rendered.pose, strained)) {
+            if (getPx(rendered.grid, t.x, t.y) === t.ink) seen.add(`${t.x},${t.y}`);
+          }
+        }
+        return [entry.label, seen.size];
+      }),
+    ),
+  },
   plateStacks: {
     [`${LIGHT_KG}kg`]: visualPlateStack(LIGHT_KG).perSide.map((p) => `${p.spec.kg}${p.spec.hue[0]}`),
     [`${MAX_KG}kg`]: visualPlateStack(MAX_KG).perSide.map((p) => `${p.spec.kg}${p.spec.hue[0]}`),

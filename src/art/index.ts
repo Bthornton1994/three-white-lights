@@ -12,6 +12,7 @@ export * from './spriteTuning';
 export * from './plates';
 export * from './rig';
 export * from './raster';
+export * from './spriteMarks';
 export * from './rgba';
 export * from './squatAnimation';
 export * from './lifterSprite';
