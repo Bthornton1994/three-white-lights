@@ -7,16 +7,35 @@
  * palette index by a hard threshold.
  *
  * ---------------------------------------------------------------------------
- * WHY THE SHADING IS A LIGHTING MODEL AND NOT A GRADIENT
+ * WHAT THE SHADING MODEL IS FOR, AND WHAT IT IS NOT
  * ---------------------------------------------------------------------------
  * The single loudest tell of generated pixel art is pillow shading: brightness
  * falling off toward the edges of a shape in every direction, because the
  * author had no light source in mind. Every primitive below computes an actual
  * surface normal — cylindrical for limbs, ellipsoidal for heads and hands —
  * dots it with one key light fixed in `SHADING.LIGHT_DIR`, and quantises the
- * result into a ramp. That is what a competent 16-bit artist did by hand, and
- * it is why the lit edge of the left arm and the lit edge of the right arm are
+ * result into a ramp. That is what buys the one thing it can buy: a consistent
+ * lamp, so the lit edge of the left arm and the lit edge of the right arm are
  * on the same side of the body instead of mirroring each other.
+ *
+ * BE PRECISE ABOUT WHAT THAT IS AND IS NOT. This file's earlier header claimed
+ * per-pixel Lambert on a capsule was "what a competent 16-bit artist did by
+ * hand". It is not, and the pixels never supported it. An artist did not
+ * evaluate a normal per pixel; an artist placed a highlight cluster on the
+ * deltoid, put a core shadow under the biceps, drew a buckle and a sole line,
+ * and left large areas flat. A limb resolved entirely by `lambert()` comes out
+ * as an extruded tube with a stripe down it, identical on the thigh, the shin,
+ * the forearm and the neck apart from its angle, and no amount of correct light
+ * direction fixes that — the value structure ends up a function of geometry
+ * only, never of anatomy or of an object.
+ *
+ * So the model here is the UNDERPAINTING. It establishes the lamp and the
+ * masses. Everything that makes the figure read as a drawn object rather than a
+ * shaded solid — belt lever, shoe sole, singlet trim, strap shadow, hair
+ * fringe, knee-sleeve banding, and the breaks in the value ramp at the deltoid,
+ * elbow, wrist and knee — is hand-placed pixel data in `spriteMarks.ts` and is
+ * stamped on top of what this file produces. If you are looking for the pixels
+ * an artist chose, they are there, not here.
  *
  * There is no anti-aliasing and no dithering. AA is impossible in an index grid
  * without spending palette slots on blend colours, which is exactly the budget
@@ -344,6 +363,12 @@ export function outlinePass(g: IndexGrid): void {
  * Remove single orphan pixels: a lit pixel with no lit 4-neighbour of the same
  * index. Isolated pixels are noise, and noise is what makes a generated sprite
  * look like a JPEG of a sprite.
+ *
+ * IT CANNOT TELL NOISE FROM A DELIBERATE ONE-PIXEL MARK, and it has eaten them
+ * before: the face's two eye pixels, its mouth pixel and the chalked knuckle on
+ * each hand were all drawn before this pass ran, and none of them survived into
+ * a rendered PNG. Anything hand-placed is stamped AFTER this pass — see
+ * `spriteMarks.ts` and the order in `renderLifterFrame`.
  */
 export function despeckle(g: IndexGrid): void {
   const src = Uint8Array.from(g.data);

@@ -7,19 +7,31 @@
  *
  *     bar and plates            (behind the lifter; the bar sits on the traps)
  *     far-side leg / near leg
+ *     neck                      (before the torso, so the traps cover its cap)
  *     torso, singlet, belt
  *     arms
- *     head, hair, face
+ *     skull and hair mass
  *     hands on the bar          (in front of the bar, gripping it)
  *     chalk
- *     outline pass, despeckle
+ *     despeckle
+ *     HAND-PLACED MARKS         (`spriteMarks.ts`)
+ *     outline pass
+ *
+ * Everything above the marks line is an underpainting: masses resolved from
+ * geometry under one key light, which is all a shading model can give you. The
+ * marks line is where the objects and the anatomy go on — buckle, sole line,
+ * singlet trim, strap shadow, face, hair fringe, knee-sleeve banding, and the
+ * breaks in the value ramp at the deltoid, elbow, wrist and knee. It sits after
+ * `despeckle` on purpose: that pass cannot tell a deliberate one-pixel eye from
+ * noise, and it used to eat them.
  *
  * The frontal view has no true far and near side, so the sprite is shaded as if
  * the lifter were turned a couple of degrees: the screen-right limbs render one
  * ramp step darker (SHADING.FAR_LIMB_STEP_BIAS). Together with the upper-left
  * key light and the off-centre head this is what stops a mirror-symmetric pose
  * from rendering as a mirror-symmetric image, which is the giveaway of a sprite
- * that was generated rather than drawn.
+ * that was generated rather than drawn. The mark table respects it: marks are
+ * translated to each side, never mirrored, and the deltoid is authored twice.
  */
 
 import {
@@ -63,6 +75,7 @@ import {
   visualPlateStack,
   type SleeveLayout,
 } from './plates';
+import { applyMarks, type MarkPlacement } from './spriteMarks';
 import type { SquatFrame } from './squatAnimation';
 
 const DEG = Math.PI / 180;
@@ -92,6 +105,12 @@ export interface RenderedFrame {
   readonly sleeve: SleeveLayout;
   readonly strain: number;
   readonly pitch: number;
+  /**
+   * What each hand-placed mark actually landed on this frame. Reported rather
+   * than assumed: a mark whose `painted` is 0 is authored at a position the
+   * body does not reach, and the only way to know is to count.
+   */
+  readonly marks: readonly MarkPlacement[];
 }
 
 export function frameSpecFrom(frame: SquatFrame, totalKg: number, barKg?: number): LifterFrameSpec {
@@ -328,20 +347,31 @@ function drawHand(
       edge: true,
     },
   );
-  // Chalked knuckle: one bright pixel. At a 4px hand that is the whole read,
-  // and two would turn the hand into a highlight instead of a hand.
-  setPx(g, Math.round(x - 1), Math.round(y - 1), PAL.GEAR_LIGHT);
+  // Chalked knuckles: two pixels, side by side. Two rather than one because
+  // `despeckle` runs before the hand is finished and ate the single pixel this
+  // used to be — it never reached a rendered frame. Side by side, each is the
+  // other's like-indexed neighbour and the pass leaves them alone.
+  const kx = Math.round(x - 1);
+  const ky = Math.round(y - 1);
+  setPx(g, kx, ky, PAL.GEAR_LIGHT);
+  setPx(g, kx + 1, ky, PAL.GEAR_LIGHT);
 }
 
-function drawHead(g: IndexGrid, pose: Pose, strain: number, skin: Ramp): void {
-  const hx = CENTER_X + pose.headDx;
-  const hy = pose.headY;
+/**
+ * Neck. Drawn BEFORE the torso, not with the head.
+ *
+ * `drawLimb` with `edge` grows the capsule by a pixel and stamps the outline
+ * colour around it, and a capsule has rounded ends — so the neck's lower cap
+ * reached three rows below the shoulder line and, drawn after the torso, left a
+ * four-by-three block of pure outline sitting in the middle of the bare chest.
+ * Drawn first, the trap mass covers the cap and only the throat shows.
+ */
+function drawNeck(g: IndexGrid, pose: Pose, skin: Ramp): void {
   const G = RIG_GEOMETRY;
-
   drawLimb(
     g,
-    hx,
-    hy + G.HEAD_RY - G.NECK_OVERLAP,
+    CENTER_X + pose.headDx,
+    pose.headY + G.HEAD_RY - G.NECK_OVERLAP,
     CENTER_X,
     pose.shoulderY + G.NECK_OVERLAP,
     G.NECK_R,
@@ -349,34 +379,27 @@ function drawHead(g: IndexGrid, pose: Pose, strain: number, skin: Ramp): void {
     skin,
     { edge: true },
   );
+}
+
+/**
+ * Skull and hair mass. The FACE is not here — eyes, mouth, brow and the
+ * fringe's shape are hand-placed pixels in `spriteMarks.ts`, stamped after
+ * `despeckle`, because every one of them drawn at this point in the pipeline
+ * was being eaten before it reached a PNG.
+ */
+function drawHead(g: IndexGrid, pose: Pose, skin: Ramp): void {
+  const hx = CENTER_X + pose.headDx;
+  const hy = pose.headY;
+  const G = RIG_GEOMETRY;
+
   drawEllipsoid(g, hx, hy, G.HEAD_RX, G.HEAD_RY, skin, {
     edge: true,
     stepBias: G.HEAD_STEP_BIAS,
   });
   drawEllipsoid(g, hx, hy - G.HEAD_RY + G.HAIR_RY, G.HEAD_RX - 0.1, G.HAIR_RY, RAMPS.HAIR, {});
-
-  // Face. Two eye pixels and a mouth: at 7px of head width there is room for
-  // nothing else, and anything else would read as detail noise.
-  const grimacing = strain > STRAIN.FLUSH_THRESHOLD;
-  const eyeY = Math.round(hy + G.EYE_DY);
-  const mouthY = Math.round(hy + G.MOUTH_DY);
-  setPx(g, Math.round(hx - G.EYE_DX), eyeY, PAL.OUTLINE);
-  setPx(g, Math.round(hx + G.EYE_DX), eyeY, PAL.OUTLINE);
-  if (grimacing) {
-    // Braced and grimacing: brow bar down over the eyes, mouth open.
-    setPx(g, Math.round(hx - G.EYE_DX - 1), eyeY - 1, PAL.OUTLINE);
-    setPx(g, Math.round(hx - 1), eyeY - 1, PAL.OUTLINE);
-    setPx(g, Math.round(hx + 1), eyeY - 1, PAL.OUTLINE);
-    setPx(g, Math.round(hx + G.EYE_DX + 1), eyeY - 1, PAL.OUTLINE);
-    setPx(g, Math.round(hx - 1), mouthY, PAL.OUTLINE);
-    setPx(g, Math.round(hx), mouthY, PAL.OUTLINE);
-    setPx(g, Math.round(hx + 1), mouthY, PAL.OUTLINE);
-  } else {
-    setPx(g, Math.round(hx), mouthY, PAL.OUTLINE);
-  }
 }
 
-function drawTorso(g: IndexGrid, pose: Pose, skin: Ramp): void {
+function drawTorso(g: IndexGrid, pose: Pose): void {
   const cx = CENTER_X;
   const A = RIG_GEOMETRY.ATTACH;
   const trapTop = pose.shoulderY - A.TRAP_RISE;
@@ -444,14 +467,8 @@ function drawTorso(g: IndexGrid, pose: Pose, skin: Ramp): void {
     RAMPS.GEAR,
     { edge: true },
   );
-
-  // Sternum notch, the one skin detail the singlet leaves visible.
-  setPx(
-    g,
-    Math.round(cx),
-    Math.round(pose.chestY - RIG_GEOMETRY.NUDGE.STERNUM_LIFT),
-    skin[1] ?? PAL.SKIN_MID,
-  );
+  // Belt marks — lever plate and tail — are hand-placed in `spriteMarks.ts`.
+  // Nothing else about a belt is a function of the surface normal.
 }
 
 /**
@@ -552,24 +569,36 @@ export function renderLifterFrame(spec: LifterFrameSpec): RenderedFrame {
 
   drawLeg(g, pose, 1, SHADING.FAR_LIMB_STEP_BIAS);
   drawLeg(g, pose, -1, 0);
-  drawTorso(g, pose, skin);
+  drawNeck(g, pose, skin);
+  drawTorso(g, pose);
   drawInnerLegSeam(g, pose);
   drawArm(g, pose, 1, SHADING.FAR_LIMB_STEP_BIAS, skin);
   drawArm(g, pose, -1, 0, skin);
-  drawHead(g, pose, strain, skin);
+  drawHead(g, pose, skin);
   drawHand(g, pose, 1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, SHADING.FAR_LIMB_STEP_BIAS);
   drawHand(g, pose, -1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, 0);
   drawCording(g, pose, spec.strainLevel);
   drawChalk(g, pose, spec.chalkMotes, barCy, spec.barLateralPx);
 
-  // Order matters. Despeckle first, on the raw silhouette: it replaces isolated
-  // pixels with a neighbour, and run afterwards it would happily eat a lone
-  // outline pixel and leave a hole in the silhouette. Outline last, so the
-  // outline is the final word on the shape.
+  // Order matters, and all three steps are load-bearing.
+  //
+  // 1. `despeckle` on the raw underpainting. It replaces isolated pixels with a
+  //    neighbour, and run after the outline it would happily eat a lone outline
+  //    pixel and leave a hole in the silhouette.
+  // 2. Hand-placed marks, which is everything a shading model cannot produce:
+  //    buckle, sole line, singlet trim, strap shadow, hair fringe, face, sleeve
+  //    banding, and the breaks in the value ramp at deltoid, elbow and knee.
+  //    AFTER despeckle, not before. Drawn before it, an authored single pixel
+  //    is indistinguishable from noise and gets replaced — which is exactly
+  //    what happened to this sprite's eyes, mouth and chalked knuckles, none of
+  //    which ever reached a rendered PNG.
+  // 3. `outlinePass` last, so the outline is the final word on the shape. It
+  //    only writes transparent pixels, so it cannot touch a mark.
   despeckle(g);
+  const marks = applyMarks(g, pose, strain > STRAIN.FLUSH_THRESHOLD);
   outlinePass(g);
 
-  return { grid: g, pose, barCenterY: barCy, sleeve, strain, pitch };
+  return { grid: g, pose, barCenterY: barCy, sleeve, strain, pitch, marks };
 }
 
 // ---------------------------------------------------------------------------
