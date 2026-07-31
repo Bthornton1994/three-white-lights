@@ -33,7 +33,7 @@
  */
 
 import { registerHooks } from 'node:module';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -972,6 +972,17 @@ const OUT = path.resolve(
   outFlag === -1 ? '.gauntlet/shots/sprites' : (args[outFlag + 1] ?? '.gauntlet/shots/sprites'),
 );
 
+// Wipe the frame directories before writing. The reel's length and its frame
+// NAMES both change whenever timing does, so a shorter reel used to leave the
+// previous run's frames sitting beside the new ones — same directory, same
+// naming convention, hours-old pixels. That is not a tidiness issue: these PNGs
+// are the entire evidence base a critic grades the art on, and a stale frame
+// looks exactly like a current one. It has already cost a grading round, where
+// both a critic and the lead cited `maximal-16-hole.png` as proof of a defect
+// in a build whose hole frames were 17 and 18.
+for (const sub of ['frames/1x', `frames/${RESOLUTION.DEFAULT_UPSCALE}x`]) {
+  rmSync(path.join(OUT, sub), { recursive: true, force: true });
+}
 mkdirSync(OUT, { recursive: true });
 mkdirSync(path.join(OUT, 'frames/1x'), { recursive: true });
 mkdirSync(path.join(OUT, `frames/${RESOLUTION.DEFAULT_UPSCALE}x`), { recursive: true });
