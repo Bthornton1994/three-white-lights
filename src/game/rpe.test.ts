@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CHARTED_REPS,
   CHARTED_RPES,
+  CHART_SOURCES,
+  CHART_SOURCE_IDS,
   RPE_CHART_COVERAGE,
   RPE_LOADING_TUNING,
   RPE_MATCH_TOLERANCE,
@@ -23,6 +25,7 @@ import {
   rpeForRepsInReserve,
   tryChartCell,
   tryPercentOf1RM,
+  type ChartSourceId,
   type ChartedReps,
   type ChartedRpe,
 } from './rpe';
@@ -32,15 +35,21 @@ import {
  * ---------------------------------------------------------------------------
  * The RTS/Tuchscherer primary source is unreachable from this sandbox (403 at
  * the egress proxy), so no test here verifies the grid against the publication.
- * The strongest available check is EXTERNAL_FIXTURE_S1 below: a verbatim copy
- * of a third-party transcription, in that source's own syntax, with its URL
- * attached so a reviewer can re-fetch the bytes and diff. Everything else in
- * this file is structural (monotonicity, the reps-in-reserve diagonal, the
- * half-cell midpoint relation) or a spot check of cells that competitive
- * lifters quote from memory. Structural tests relate our cells to our own other
- * cells; none of them can catch an error the whole grid shares.
  *
- * TWO RULES THIS FILE FOLLOWS, both learned the hard way:
+ * The strongest available check is the two committed fixtures below,
+ * EXTERNAL_FIXTURE_S1 and EXTERNAL_FIXTURE_S4: verbatim copies of two
+ * third-party transcriptions, each in its own syntax and layout, each with its
+ * URL attached so a reviewer can re-fetch the bytes and diff. They come from
+ * different lineages (see the rpe.ts header) and they disagree at exactly one
+ * cell, which the suite recomputes from their bytes rather than asserting from
+ * memory.
+ *
+ * Everything else in this file is structural (monotonicity, the reps-in-reserve
+ * diagonal, the half-cell midpoint relation) or a spot check of cells that
+ * competitive lifters quote from memory. Structural tests relate our cells to
+ * our own other cells; none of them can catch an error the whole grid shares.
+ *
+ * THREE RULES THIS FILE FOLLOWS, all learned the hard way:
  *
  * 1. Nothing here may assert a chart value by restating the module's own
  *    literal. If a test would fail only because rpe.ts changed, and would pass
@@ -54,8 +63,18 @@ import {
  *    dates), and between them they made 57.2 — a value another retrieved
  *    source actually holds — a test failure. That turned an unsettled reading
  *    into an invariant, which is exactly backwards. Both are gone. A test may
- *    say "the module holds a value some source documents"; it may not say "the
- *    published chart does not say X".
+ *    say "the module holds a value some committed fixture holds"; it may not
+ *    say "the published chart does not say X".
+ *
+ * 3. NO CHECK MAY BE SATISFIED BY rpe.ts ALONE. An earlier revision's only
+ *    guard at the two unsettled cells read rpe.ts's own `readings` array and
+ *    asserted the chart value appeared in it — rpe.ts certifying rpe.ts. Adding
+ *    `{ percent: 58.7, evidence: 'transcription' }` to that array was enough to
+ *    legitimise a number no source holds, and the suite stayed green. Every
+ *    assertion about a cell value in this file now terminates in fixture bytes:
+ *    a 'transcription' reading names the fixtures it came from and is checked
+ *    against them, and `percentInUse` is checked against the fixtures directly,
+ *    without consulting `readings` at all.
  *
  * Four cells have no partner on the reps-in-reserve diagonal inside a 12 x 9
  * grid, so that invariant says nothing about them:
@@ -64,13 +83,16 @@ import {
  *
  *   - (1, 10) = 100.0 is true by definition.
  *   - (1, 9.5) = 97.8 is pinned by the half-cell midpoint test below.
- *   - (12, 6.5) and (12, 6) are pinned by nothing, and rpe.ts declares both
- *     'unverified' in code (UNVERIFIED_CHART_CELLS). The tests below treat them
- *     as unsettled throughout: the fixture checks skip them, the midpoint check
- *     skips them, and the only thing asserted about their values is that each
- *     is one of the readings a retrieved source actually holds. Either
- *     documented reading of (12, 6) passes this suite; an invented one does
- *     not.
+ *   - (12, 6.5) is pinned by no invariant, but BOTH committed fixtures hold it
+ *     and the suite enforces that like any other cell. rpe.ts still declares it
+ *     'unverified' because of the midpoint anomaly at that position; that is a
+ *     statement about invariants and the publication, not about whether the
+ *     cell is externally checked.
+ *   - (12, 6) is the one cell the fixtures disagree on. It is the only cell in
+ *     the grid where the suite cannot demand a specific value; what it demands
+ *     is that the value be one a committed fixture literally holds. Either
+ *     fixture's reading passes; an invented one does not, whatever rpe.ts
+ *     claims about it.
  * ------------------------------------------------------------------------- */
 
 /**
@@ -93,6 +115,195 @@ const EXTERNAL_FIXTURE_S1 = `
 10 to mapOf(10.0 to 73.9, 9.5 to 72.3, 9.0 to 70.7, 8.5 to 69.4, 8.0 to 68.0, 7.5 to 66.7, 7.0 to 65.3, 6.5 to 64.0, 6.0 to 62.6),
 11 to mapOf(10.0 to 70.7, 9.5 to 69.4, 9.0 to 68.0, 8.5 to 66.7, 8.0 to 65.3, 7.5 to 64.0, 7.0 to 62.6, 6.5 to 61.3, 6.0 to 59.9),
 12 to mapOf(10.0 to 68.0, 9.5 to 66.7, 9.0 to 65.3, 8.5 to 64.0, 8.0 to 62.6, 7.5 to 61.3, 7.0 to 59.9, 6.5 to 58.6, 6.0 to 57.4)
+`;
+
+/**
+ * Source S4, verbatim: the `RPE_TABLE` literal (lines 1-170) of
+ *   https://raw.githubusercontent.com/Sculpt-AI/progressive-overload/main/src/rpe_progression.ts
+ * retrieved 2026-07-31 (HTTP 200, 3933 bytes). Also published to npm as
+ * @sculpt-ai/progressive-overload; version 0.0.2's dist/index.mjs holds the
+ * same 108 numbers, and the packument names this repository.
+ *
+ * A DIFFERENT LINEAGE from S1 (rpe.ts header has the dates and the copy-chain
+ * argument) in a DIFFERENT SYNTAX: a Map of `[key, value]` tuple pairs, one per
+ * line, versus S1's one-line-per-rep-count Kotlin `mapOf(...)`. The two parsers
+ * below are mutually exclusive — a test asserts neither fixture parses under
+ * the other's parser — so this is not S1's text reformatted.
+ *
+ * Unedited, including the source's own `100` / `85.0` inconsistency in how it
+ * writes whole numbers. Re-fetch that URL and diff if in doubt.
+ */
+const EXTERNAL_FIXTURE_S4 = `
+export const RPE_TABLE = new Map<number, Map<number, number>>([
+  [
+    1,
+    new Map([
+      [10, 100],
+      [9.5, 97.8],
+      [9, 95.5],
+      [8.5, 93.9],
+      [8, 92.2],
+      [7.5, 90.7],
+      [7, 89.2],
+      [6.5, 87.8],
+      [6, 86.3],
+    ]),
+  ],
+  [
+    2,
+    new Map([
+      [10, 95.5],
+      [9.5, 93.9],
+      [9, 92.2],
+      [8.5, 90.7],
+      [8, 89.2],
+      [7.5, 87.8],
+      [7, 86.3],
+      [6.5, 85.0],
+      [6, 83.7],
+    ]),
+  ],
+  [
+    3,
+    new Map([
+      [10, 92.2],
+      [9.5, 90.7],
+      [9, 89.2],
+      [8.5, 87.8],
+      [8, 86.3],
+      [7.5, 85.0],
+      [7, 83.7],
+      [6.5, 82.4],
+      [6, 81.1],
+    ]),
+  ],
+  [
+    4,
+    new Map([
+      [10, 89.2],
+      [9.5, 87.8],
+      [9, 86.3],
+      [8.5, 85.0],
+      [8, 83.7],
+      [7.5, 82.4],
+      [7, 81.1],
+      [6.5, 79.9],
+      [6, 78.6],
+    ]),
+  ],
+  [
+    5,
+    new Map([
+      [10, 86.3],
+      [9.5, 85.0],
+      [9, 83.7],
+      [8.5, 82.4],
+      [8, 81.1],
+      [7.5, 79.9],
+      [7, 78.6],
+      [6.5, 77.4],
+      [6, 76.2],
+    ]),
+  ],
+  [
+    6,
+    new Map([
+      [10, 83.7],
+      [9.5, 82.4],
+      [9, 81.1],
+      [8.5, 79.9],
+      [8, 78.6],
+      [7.5, 77.4],
+      [7, 76.2],
+      [6.5, 75.1],
+      [6, 73.9],
+    ]),
+  ],
+  [
+    7,
+    new Map([
+      [10, 81.1],
+      [9.5, 79.9],
+      [9, 78.6],
+      [8.5, 77.4],
+      [8, 76.2],
+      [7.5, 75.1],
+      [7, 73.9],
+      [6.5, 72.3],
+      [6, 70.7],
+    ]),
+  ],
+  [
+    8,
+    new Map([
+      [10, 78.6],
+      [9.5, 77.4],
+      [9, 76.2],
+      [8.5, 75.1],
+      [8, 73.9],
+      [7.5, 72.3],
+      [7, 70.7],
+      [6.5, 69.4],
+      [6, 68.0],
+    ]),
+  ],
+  [
+    9,
+    new Map([
+      [10, 76.2],
+      [9.5, 75.1],
+      [9, 73.9],
+      [8.5, 72.3],
+      [8, 70.7],
+      [7.5, 69.4],
+      [7, 68.0],
+      [6.5, 66.7],
+      [6, 65.3],
+    ]),
+  ],
+  [
+    10,
+    new Map([
+      [10, 73.9],
+      [9.5, 72.3],
+      [9, 70.7],
+      [8.5, 69.4],
+      [8, 68.0],
+      [7.5, 66.7],
+      [7, 65.3],
+      [6.5, 64.0],
+      [6, 62.6],
+    ]),
+  ],
+  [
+    11,
+    new Map([
+      [10, 70.7],
+      [9.5, 69.4],
+      [9, 68.0],
+      [8.5, 66.7],
+      [8, 65.3],
+      [7.5, 64.0],
+      [7, 62.6],
+      [6.5, 61.3],
+      [6, 59.9],
+    ]),
+  ],
+  [
+    12,
+    new Map([
+      [10, 68.0],
+      [9.5, 66.7],
+      [9, 65.3],
+      [8.5, 64.0],
+      [8, 62.6],
+      [7.5, 61.3],
+      [7, 59.9],
+      [6.5, 58.6],
+      [6, 57.2],
+    ]),
+  ],
+]);
 `;
 
 interface FixtureCell {
@@ -132,11 +343,44 @@ function parseKotlinFixture(text: string): readonly FixtureCell[] {
 }
 
 /**
- * Sentinel for a cell rpe.ts declares unverified. The transposition below parks
- * no number at those positions: a second copy of a value that is not settled
- * would only go stale, and comparing against it would re-lock the choice the
- * module deliberately leaves open. A test asserts the blanks are exactly the
- * declared-unverified cells.
+ * Parse the TypeScript Map-of-Maps fixture into cells. Also deliberately dumb
+ * and total: a bare `<digits>,` line opens a rep count, a `[<num>, <num>],`
+ * line is an RPE/percent pair, anything else is ignored. Nothing in the S1
+ * fixture matches either shape, which is what makes the mutual-exclusion test
+ * below meaningful.
+ */
+function parseTsMapFixture(text: string): readonly FixtureCell[] {
+  const cells: FixtureCell[] = [];
+  let reps: number | null = null;
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    const outerKey = /^(\d+),$/.exec(trimmed);
+    if (outerKey !== null) {
+      const repsText = outerKey[1];
+      reps = repsText === undefined ? null : Number(repsText);
+      continue;
+    }
+    const pair = /^\[([\d.]+), ([\d.]+)\],$/.exec(trimmed);
+    if (pair === null || reps === null) {
+      continue;
+    }
+    const rpeText = pair[1];
+    const percentText = pair[2];
+    if (rpeText === undefined || percentText === undefined) {
+      continue;
+    }
+    cells.push({ reps, rpe: Number(rpeText), percent: Number(percentText) });
+  }
+  return cells;
+}
+
+/**
+ * Sentinel for a cell the committed fixtures DISAGREE on. The transposition
+ * below parks no number at such a position: a second copy of a value that is
+ * not settled would only go stale, and comparing against it would re-lock the
+ * choice the module deliberately leaves open. A test asserts the blanks are
+ * exactly the cells the fixtures disagree on — not the cells rpe.ts declares
+ * unverified, which is a broader and partly self-declared set.
  */
 const UNSETTLED = null;
 
@@ -145,9 +389,9 @@ const UNSETTLED = null;
  * PRINTED: one row per RPE (10 down to 6), reps 1-12 across.
  *
  * This is NOT independent evidence about what the published chart says — it was
- * transposed from the same fixture above by the same hand. It only catches
+ * transposed from the fixtures above by the same hand. It only catches
  * transposition typos between the two layouts inside this repo. Treat any
- * disagreement with EXTERNAL_FIXTURE_S1 as this array being wrong.
+ * disagreement with the committed fixtures as this array being wrong.
  */
 const PUBLISHED_CHART_BY_RPE: ReadonlyArray<readonly [ChartedRpe, readonly (number | null)[]]> = [
   //             reps: 1     2     3     4     5     6     7     8     9    10    11    12
@@ -158,7 +402,9 @@ const PUBLISHED_CHART_BY_RPE: ReadonlyArray<readonly [ChartedRpe, readonly (numb
   [8, [92.2, 89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 70.7, 68.0, 65.3, 62.6]],
   [7.5, [90.7, 87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.3, 69.4, 66.7, 64.0, 61.3]],
   [7, [89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 70.7, 68.0, 65.3, 62.6, 59.9]],
-  [6.5, [87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.3, 69.4, 66.7, 64.0, 61.3, UNSETTLED]],
+  // Both fixtures hold 58.6 at (12, 6.5), so it is transposed here like any
+  // other settled cell. Only (12, 6) is left blank.
+  [6.5, [87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.3, 69.4, 66.7, 64.0, 61.3, 58.6]],
   [6, [86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 70.7, 68.0, 65.3, 62.6, 59.9, UNSETTLED]],
 ];
 
@@ -171,6 +417,112 @@ function cellKey(reps: number, rpe: number): string {
 const UNVERIFIED_KEYS: ReadonlySet<string> = new Set(
   UNVERIFIED_CHART_CELLS.map((cell) => cellKey(cell.reps, cell.rpe)),
 );
+
+/** Total cells in a 12 x 9 grid. Written once so no test hardcodes it twice. */
+const TOTAL_CELLS = 108;
+
+/* ---------------------------------------------------------------------------
+ * THE COMMITTED FIXTURE REGISTRY
+ * ---------------------------------------------------------------------------
+ * This is the anchor the whole provenance story hangs from. rpe.ts may declare
+ * a reading is a 'transcription' and name its sources; what makes that a fact
+ * rather than a claim is that the named source resolves HERE, to bytes, and
+ * that those bytes hold that number at that cell.
+ *
+ * Deliberately keyed by plain `string`, not `ChartSourceId`: a source id added
+ * to rpe.ts's union without a fixture added here must fail at RUN time with a
+ * readable message, not be silently accepted because the types line up.
+ * ------------------------------------------------------------------------- */
+
+interface CommittedFixture {
+  readonly id: ChartSourceId;
+  /** Must equal CHART_SOURCES[id].url; a test asserts it. */
+  readonly url: string;
+  readonly text: string;
+  readonly parse: (text: string) => readonly FixtureCell[];
+}
+
+const COMMITTED_FIXTURES: readonly CommittedFixture[] = [
+  {
+    id: 'S1',
+    url: 'https://raw.githubusercontent.com/karolczyz/metriclift/master/app/src/main/java/com/example/metriclift/util/RpeTable.kt',
+    text: EXTERNAL_FIXTURE_S1,
+    parse: parseKotlinFixture,
+  },
+  {
+    id: 'S4',
+    url: 'https://raw.githubusercontent.com/Sculpt-AI/progressive-overload/main/src/rpe_progression.ts',
+    text: EXTERNAL_FIXTURE_S4,
+    parse: parseTsMapFixture,
+  },
+];
+
+/** Each fixture's parsed cells, keyed by source id then by cell key. */
+const FIXTURE_CELLS: ReadonlyMap<string, ReadonlyMap<string, number>> = new Map(
+  COMMITTED_FIXTURES.map((fixture) => [
+    fixture.id,
+    new Map(fixture.parse(fixture.text).map((cell) => [cellKey(cell.reps, cell.rpe), cell.percent])),
+  ]),
+);
+
+/**
+ * What the named source's committed bytes hold at this cell, or undefined if
+ * the source has no committed fixture or the fixture has no such cell.
+ */
+function fixtureValueAt(sourceId: string, reps: number, rpe: number): number | undefined {
+  return FIXTURE_CELLS.get(sourceId)?.get(cellKey(reps, rpe));
+}
+
+/** Every distinct value the committed fixtures hold at this cell, sorted. */
+function fixtureValuesAt(reps: number, rpe: number): readonly number[] {
+  const values = new Set<number>();
+  for (const fixture of COMMITTED_FIXTURES) {
+    const value = fixtureValueAt(fixture.id, reps, rpe);
+    if (value !== undefined) {
+      values.add(value);
+    }
+  }
+  return [...values].sort((a, b) => a - b);
+}
+
+/** Which committed sources hold exactly `percent` at this cell, sorted by id. */
+function sourcesHolding(percent: number, reps: number, rpe: number): readonly string[] {
+  return COMMITTED_FIXTURES.filter((fixture) => fixtureValueAt(fixture.id, reps, rpe) === percent)
+    .map((fixture) => fixture.id)
+    .sort();
+}
+
+/**
+ * Cells where every committed fixture holds the same number, keyed by cell.
+ * Computed from bytes on every run — nothing here is asserted from memory.
+ */
+const FIXTURE_AGREED: ReadonlyMap<string, number> = (() => {
+  const agreed = new Map<string, number>();
+  for (const reps of CHARTED_REPS) {
+    for (const rpe of CHARTED_RPES) {
+      const values = fixtureValuesAt(reps, rpe);
+      const only = values[0];
+      if (values.length === 1 && only !== undefined) {
+        agreed.set(cellKey(reps, rpe), only);
+      }
+    }
+  }
+  return agreed;
+})();
+
+/** Cells where the committed fixtures hold different numbers. */
+const FIXTURE_DISAGREED: ReadonlyMap<string, readonly number[]> = (() => {
+  const disagreed = new Map<string, readonly number[]>();
+  for (const reps of CHARTED_REPS) {
+    for (const rpe of CHARTED_RPES) {
+      const values = fixtureValuesAt(reps, rpe);
+      if (values.length > 1) {
+        disagreed.set(cellKey(reps, rpe), values);
+      }
+    }
+  }
+  return disagreed;
+})();
 
 /** Distance from failure. Cells sharing an effort index share a percentage. */
 function effortIndex(reps: number, rpe: number): number {
@@ -217,47 +569,156 @@ function orphanCells(): readonly string[] {
   return orphans;
 }
 
-describe('RPE_PERCENT_CHART — published source values', () => {
-  it('matches the verbatim third-party transcription (source S1) in every settled cell', () => {
-    const cells = parseKotlinFixture(EXTERNAL_FIXTURE_S1);
-    expect(cells).toHaveLength(108);
-    let compared = 0;
-    for (const cell of cells) {
-      if (UNVERIFIED_KEYS.has(cellKey(cell.reps, cell.rpe))) {
-        continue;
-      }
-      expect(
-        percentOf1RM(cell.reps, cell.rpe),
-        `S1 fixture cell: ${cell.reps} reps @ RPE ${cell.rpe}`,
-      ).toBeCloseTo(cell.percent, 10);
-      compared += 1;
+describe('committed source fixtures', () => {
+  it('holds a full 108-cell grid per fixture, over the same cells', () => {
+    expect(COMMITTED_FIXTURES.length).toBeGreaterThanOrEqual(2);
+    const allKeys = CHARTED_REPS.flatMap((reps) => CHARTED_RPES.map((rpe) => cellKey(reps, rpe)));
+    expect(allKeys).toHaveLength(TOTAL_CELLS);
+    for (const fixture of COMMITTED_FIXTURES) {
+      const cells = fixture.parse(fixture.text);
+      expect(cells, `${fixture.id} did not parse to a full grid`).toHaveLength(TOTAL_CELLS);
+      const keys = FIXTURE_CELLS.get(fixture.id);
+      expect(keys, `${fixture.id} has no parsed cell map`).toBeDefined();
+      expect([...(keys ?? new Map()).keys()].sort()).toEqual([...allKeys].sort());
     }
-    expect(compared).toBe(108 - UNVERIFIED_CHART_CELLS.length);
   });
 
   /**
-   * S1 is one link in the S3 -> S2 -> S1 copy chain, so at the two cells that
-   * chain is contested on it is evidence, not a verdict. Its reading has to be
-   * ON RECORD in rpe.ts's provenance data — otherwise the fixture and the note
-   * have drifted apart — but it is not required to be the value in use. That is
-   * the difference between recording a source and obeying one.
+   * The two fixtures are meant to be two lineages in two syntaxes, not one text
+   * reformatted. Mutual parser exclusion is a crude but real check on that: if
+   * someone replaced the S4 fixture with S1's text (or with a transposition of
+   * our own grid in S1's shape), its own parser would stop finding cells.
    */
-  it("keeps S1's reading of each unverified cell on record without enforcing it", () => {
-    const cells = parseKotlinFixture(EXTERNAL_FIXTURE_S1);
-    expect(UNVERIFIED_CHART_CELLS.length).toBeGreaterThan(0);
-    for (const unverified of UNVERIFIED_CHART_CELLS) {
-      const label = `${unverified.reps} reps @ RPE ${unverified.rpe}`;
-      const fixtureCell = cells.find(
-        (cell) => cell.reps === unverified.reps && cell.rpe === unverified.rpe,
+  it('keeps the fixtures in genuinely different syntaxes', () => {
+    expect(parseKotlinFixture(EXTERNAL_FIXTURE_S4)).toHaveLength(0);
+    expect(parseTsMapFixture(EXTERNAL_FIXTURE_S1)).toHaveLength(0);
+    expect(EXTERNAL_FIXTURE_S4).not.toContain('mapOf');
+    expect(EXTERNAL_FIXTURE_S1).not.toContain('new Map');
+  });
+
+  /**
+   * Every source id rpe.ts is willing to cite must resolve to bytes in this
+   * file, and the URL rpe.ts advertises must be the URL those bytes came from.
+   * Without this, adding an id to `ChartSourceId` would create a citation that
+   * points at nothing.
+   */
+  it('resolves every declared source id to a committed fixture at the advertised URL', () => {
+    const fixtureIds = COMMITTED_FIXTURES.map((fixture) => fixture.id).sort();
+    expect([...CHART_SOURCE_IDS].sort()).toEqual(fixtureIds);
+    expect(Object.keys(CHART_SOURCES).sort()).toEqual(fixtureIds);
+    expect(new Set(CHART_SOURCE_IDS).size).toBe(CHART_SOURCE_IDS.length);
+    for (const fixture of COMMITTED_FIXTURES) {
+      const declared = CHART_SOURCES[fixture.id];
+      expect(declared.id).toBe(fixture.id);
+      expect(declared.url).toBe(fixture.url);
+      expect(declared.retrieved).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(declared.syntax.length).toBeGreaterThan(0);
+    }
+  });
+
+  /**
+   * Fixture versus fixture — the chart is not consulted at all. This is the
+   * machine diff the rpe.ts header describes, recomputed from bytes so the
+   * header cannot quietly go stale. If a third fixture lands, or either
+   * fixture is edited, this fires.
+   */
+  it('disagrees at exactly one cell, (12, 6)', () => {
+    expect([...FIXTURE_DISAGREED.keys()].sort()).toEqual(['12@6']);
+    expect(FIXTURE_DISAGREED.get('12@6')).toEqual([57.2, 57.4]);
+    expect(sourcesHolding(57.4, 12, 6)).toEqual(['S1']);
+    expect(sourcesHolding(57.2, 12, 6)).toEqual(['S4']);
+    expect(FIXTURE_AGREED.size).toBe(TOTAL_CELLS - FIXTURE_DISAGREED.size);
+  });
+
+  /**
+   * Every cell the fixtures disagree on must be declared unverified in rpe.ts.
+   * The converse does NOT hold: rpe.ts may declare a cell unverified for other
+   * reasons — (12, 6.5) is declared unverified because of the midpoint anomaly
+   * even though both fixtures agree on it.
+   */
+  it('has every disagreement declared in rpe.ts', () => {
+    for (const key of FIXTURE_DISAGREED.keys()) {
+      expect(
+        UNVERIFIED_KEYS.has(key),
+        `the committed fixtures disagree at ${key} but rpe.ts does not declare it unverified`,
+      ).toBe(true);
+    }
+  });
+});
+
+describe('RPE_PERCENT_CHART — published source values', () => {
+  /**
+   * The primary external check, and the one the exploit had to defeat.
+   *
+   * It skips ONLY cells where the committed fixtures actually disagree — a fact
+   * recomputed from their bytes above — not the cells rpe.ts declares
+   * unverified. That distinction is the whole point: an earlier revision
+   * skipped by declaration, so writing a cell into `UNVERIFIED_CHART_CELLS`
+   * exempted it from every external check. Now the only way to be exempt is for
+   * two independently retrieved files to genuinely differ.
+   */
+  it('matches every cell the committed transcriptions agree on', () => {
+    let compared = 0;
+    for (const reps of CHARTED_REPS) {
+      for (const rpe of CHARTED_RPES) {
+        const expected = FIXTURE_AGREED.get(cellKey(reps, rpe));
+        if (expected === undefined) {
+          continue;
+        }
+        expect(
+          percentOf1RM(reps, rpe),
+          `all committed fixtures read ${expected} at ${reps} reps @ RPE ${rpe}`,
+        ).toBeCloseTo(expected, 10);
+        compared += 1;
+      }
+    }
+    expect(compared).toBe(FIXTURE_AGREED.size);
+    expect(compared).toBe(TOTAL_CELLS - FIXTURE_DISAGREED.size);
+  });
+
+  /**
+   * At the cell the fixtures disagree on, the suite cannot demand a value — but
+   * it can demand that the value be one a committed fixture literally holds.
+   * This consults the fixtures directly and never looks at rpe.ts's `readings`,
+   * so no edit inside rpe.ts can satisfy it.
+   */
+  it('holds a value some committed fixture contains at every disagreed cell', () => {
+    for (const [key, values] of FIXTURE_DISAGREED) {
+      const cell = UNVERIFIED_CHART_CELLS.find(
+        (candidate) => cellKey(candidate.reps, candidate.rpe) === key,
       );
-      expect(fixtureCell, `S1 fixture is missing ${label}`).toBeDefined();
-      if (fixtureCell === undefined) {
+      expect(cell, `${key} is disagreed but not declared`).toBeDefined();
+      if (cell === undefined) {
         continue;
       }
       expect(
-        unverified.readings.map((reading) => reading.percent),
-        `${label}: S1 reads ${fixtureCell.percent}, which rpe.ts does not document as a reading`,
-      ).toContain(fixtureCell.percent);
+        values,
+        `${key} holds ${percentOf1RM(cell.reps, cell.rpe)}, which no committed fixture contains`,
+      ).toContain(percentOf1RM(cell.reps, cell.rpe));
+    }
+  });
+
+  /**
+   * Every reading of every unverified cell that a committed fixture holds has
+   * to be ON RECORD in rpe.ts's provenance data — otherwise the fixtures and
+   * the notes have drifted apart. It is not required to be the value in use.
+   * That is the difference between recording a source and obeying one.
+   */
+  it('keeps every committed fixture reading of each unverified cell on record', () => {
+    expect(UNVERIFIED_CHART_CELLS.length).toBeGreaterThan(0);
+    for (const unverified of UNVERIFIED_CHART_CELLS) {
+      const label = `${unverified.reps} reps @ RPE ${unverified.rpe}`;
+      for (const fixture of COMMITTED_FIXTURES) {
+        const value = fixtureValueAt(fixture.id, unverified.reps, unverified.rpe);
+        expect(value, `${fixture.id} fixture is missing ${label}`).toBeDefined();
+        if (value === undefined) {
+          continue;
+        }
+        expect(
+          unverified.readings.map((reading) => reading.percent),
+          `${label}: ${fixture.id} reads ${value}, which rpe.ts does not document as a reading`,
+        ).toContain(value);
+      }
     }
   });
 
@@ -277,9 +738,10 @@ describe('RPE_PERCENT_CHART — published source values', () => {
         ).toBeCloseTo(expected, 10);
       });
     }
-    // The blanks are exactly the declared-unverified cells: no stale second
-    // copy of an unsettled number is parked in this array.
-    expect([...blanks].sort()).toEqual([...UNVERIFIED_KEYS].sort());
+    // The blanks are exactly the cells the committed fixtures disagree on: no
+    // stale second copy of an unsettled number is parked in this array, and no
+    // cell is excused from the transposition merely because rpe.ts says so.
+    expect([...blanks].sort()).toEqual([...FIXTURE_DISAGREED.keys()].sort());
   });
 
   it('covers exactly reps 1-12 and RPE 6-10 in 0.5 steps, and nothing else', () => {
@@ -318,7 +780,9 @@ describe('RPE_PERCENT_CHART — published source values', () => {
     [10, 8, 68.0],
     [12, 10, 68.0], // bottom of the RPE-10 column
     [1, 6, 86.3], // top-left of the RPE-6 row
-  ])('%d reps @ RPE %s is %s%% of 1RM', (reps, rpe, expected) => {
+    // Title avoids a literal `%` sign: vitest's printf formatter treats `%%`
+    // as another specifier and renders "is 100% undefined of 1RM".
+  ])('%d reps @ RPE %s is %s percent of 1RM', (reps, rpe, expected) => {
     expect(percentOf1RM(reps, rpe)).toBeCloseTo(expected, 10);
   });
 
@@ -405,20 +869,32 @@ describe('RPE_PERCENT_CHART — published source values', () => {
    * It is INTERNAL, not external: it relates our own cells to our own cells and
    * so cannot detect an error shared by the whole grid.
    *
-   * SKIPPED: any position whose own cell or whose neighbours rpe.ts declares
-   * unverified — in practice effort index 15.5, (12 reps, RPE 6.5). The suite
-   * asserts NOTHING about whether the relation holds or fails there. Whether it
-   * holds is precisely the open question: the relation constrains the triple
-   * (15, 15.5, 16) and admits two repairs, one changing (12, 6) and one
-   * changing (12, 6.5). An earlier revision asserted the relation must keep
-   * FAILING at this position, which made one of the two documented readings of
-   * (12, 6) permanently untestable. That assertion is gone.
+   * SKIPPED: any position whose own cell or whose neighbours the COMMITTED
+   * FIXTURES DISAGREE ON — in practice effort index 15.5, (12 reps, RPE 6.5),
+   * because its neighbour at index 16 is (12, 6). Note the criterion: skipping
+   * is earned by two retrieved files differing, not by rpe.ts declaring a cell
+   * unverified. (12, 6.5) is itself declared unverified and is NOT excused on
+   * that basis; if the fixtures agreed at (12, 6) too, this position would be
+   * checked like any other.
+   *
+   * The suite asserts NOTHING about whether the relation holds or fails at
+   * 15.5. Whether it holds is precisely the open question: the relation
+   * constrains the triple (15, 15.5, 16) and admits two repairs, one changing
+   * (12, 6) and one changing (12, 6.5). An earlier revision asserted the
+   * relation must keep FAILING at this position, which made one of the two
+   * fixture-backed readings of (12, 6) permanently untestable. That assertion
+   * is gone.
    */
   it('makes every half-RPE cell the midpoint of its whole-RPE neighbours, where settled', () => {
     const tenths = effortIndexTenths();
-    const unsettledIndices = new Set(
-      UNVERIFIED_CHART_CELLS.map((cell) => effortIndex(cell.reps, cell.rpe)),
-    );
+    const unsettledIndices = new Set<number>();
+    for (const reps of CHARTED_REPS) {
+      for (const rpe of CHARTED_RPES) {
+        if (FIXTURE_DISAGREED.has(cellKey(reps, rpe))) {
+          unsettledIndices.add(effortIndex(reps, rpe));
+        }
+      }
+    }
     const skipped: number[] = [];
     let checked = 0;
     for (const [index, value] of tenths) {
@@ -441,54 +917,108 @@ describe('RPE_PERCENT_CHART — published source values', () => {
       checked += 1;
     }
     expect(checked).toBe(14);
-    // Every skip is attributable to a cell rpe.ts declares unverified, not to a
-    // position quietly excused because the rule was inconvenient there.
+    // Every skip is attributable to a cell the committed fixtures disagree on,
+    // not to a position quietly excused because the rule was inconvenient.
     expect(skipped).toHaveLength(1);
     for (const index of skipped) {
       expect(
         unsettledIndices.has(index) ||
           unsettledIndices.has(index - 0.5) ||
           unsettledIndices.has(index + 0.5),
-        `effort index ${index} was skipped without a declared-unverified cell to justify it`,
+        `effort index ${index} was skipped without a fixture disagreement to justify it`,
       ).toBe(true);
     }
   });
 
   /**
-   * The replacement for a deleted anti-derivation guard.
+   * THE ANTI-HOMEBREW GUARD (GDD §12.3), rebuilt so it cannot certify itself.
    *
-   * The old test asserted that (12, 6) must NOT equal the linear continuation of
-   * the chart's tail, reasoning that a cell landing on the run must have been
-   * derived. The premise is a non-sequitur — a published number is free to fall
-   * on a run — and the effect was to make 57.2, a value source S4 actually
-   * holds, a test failure. This suite no longer forbids any documented reading
-   * of any cell.
+   * The version this replaces read rpe.ts's own `readings` array and asserted
+   * the chart value appeared in it. That was rpe.ts vouching for rpe.ts: adding
+   * one self-declared `{ percent: 58.7, evidence: 'transcription' }` entry made
+   * a fabricated cell legal and the suite stayed green. The value in use is now
+   * checked against FIXTURE BYTES, with `readings` not consulted at all — so no
+   * edit confined to rpe.ts can satisfy it.
    *
-   * What it does forbid is a value NO retrieved source holds. That is where
-   * GDD §12.3 actually bites: the module may transcribe, and may choose between
+   * What this forbids is a value NO committed fixture holds at that cell. That
+   * is where §12.3 bites: the module may transcribe, and may choose between
    * transcriptions, but may not invent — including from the grid's own fitted
    * patterns, which is why 'grid-rule' readings are recorded and are explicitly
-   * not adoptable. 58.7 at (12, 6.5) is on record for exactly that reason and
-   * this test rejects it.
+   * not adoptable. 58.7 at (12, 6.5) is on record for exactly that reason, and
+   * adopting it now fails here AND in the fixture-agreement test above.
+   *
+   * NOT PROVEN by this: that the fixtures themselves are honest. They are bytes
+   * committed to this repo, not bytes re-fetched at test time. A reviewer has to
+   * re-fetch the two URLs to close that gap; the suite is offline by design.
    */
-  it('holds a documented transcription at every unverified cell, and nothing else', () => {
+  it('holds a value the committed fixtures contain at every unverified cell', () => {
     expect(UNVERIFIED_CHART_CELLS.length).toBeGreaterThan(0);
     for (const cell of UNVERIFIED_CHART_CELLS) {
       const label = `${cell.reps} reps @ RPE ${cell.rpe}`;
-      const transcribed = cell.readings
-        .filter((reading) => reading.evidence === 'transcription')
-        .map((reading) => reading.percent);
-      expect(transcribed.length, `${label} has no transcribed reading on record`).toBeGreaterThan(0);
+      const held = fixtureValuesAt(cell.reps, cell.rpe);
+      expect(held.length, `${label} appears in no committed fixture`).toBeGreaterThan(0);
       expect(
-        transcribed,
-        `${label} holds ${cell.percentInUse}, which no retrieved source is recorded as holding`,
+        held,
+        `${label} holds ${cell.percentInUse}, which no committed fixture contains`,
       ).toContain(cell.percentInUse);
+    }
+  });
+
+  /**
+   * The other half of the same guard: `evidence: 'transcription'` has to be
+   * true, not merely typed. Every source a reading cites must resolve to a
+   * committed fixture, and that fixture's bytes must hold exactly that number
+   * at exactly that cell.
+   *
+   * The citation must also be COMPLETE — the cited set must be every source
+   * that holds the number — so a reading cannot quietly under-report which
+   * lineages back it, which is how "unanimous in the sources" claims go stale.
+   *
+   * And a 'grid-rule' reading must be held by no fixture at all. If some source
+   * did hold it, it would be a transcription and would have to say so.
+   */
+  it('backs every transcription reading with the bytes of the fixture it cites', () => {
+    expect(UNVERIFIED_CHART_CELLS.length).toBeGreaterThan(0);
+    let transcriptionReadings = 0;
+    for (const cell of UNVERIFIED_CHART_CELLS) {
+      const label = `${cell.reps} reps @ RPE ${cell.rpe}`;
+      const transcribed = cell.readings.filter((reading) => reading.evidence === 'transcription');
+      expect(transcribed.length, `${label} has no transcribed reading on record`).toBeGreaterThan(0);
+
       for (const reading of cell.readings) {
-        expect(reading.note.length, `${label} has a reading with no provenance note`).toBeGreaterThan(
-          0,
-        );
+        expect(
+          reading.note.length,
+          `${label} has a reading with no provenance note`,
+        ).toBeGreaterThan(0);
+
+        const backing = sourcesHolding(reading.percent, cell.reps, cell.rpe);
+
+        if (reading.evidence !== 'transcription') {
+          expect(
+            backing,
+            `${label}: ${reading.percent} is filed as '${reading.evidence}' but committed fixtures ${backing.join(', ')} hold it`,
+          ).toEqual([]);
+          continue;
+        }
+
+        transcriptionReadings += 1;
+        for (const sourceId of reading.sources) {
+          expect(
+            FIXTURE_CELLS.has(sourceId),
+            `${label}: reading cites ${sourceId}, which has no committed fixture`,
+          ).toBe(true);
+          expect(
+            fixtureValueAt(sourceId, cell.reps, cell.rpe),
+            `${label}: reading claims ${sourceId} reads ${reading.percent}`,
+          ).toBe(reading.percent);
+        }
+        expect(
+          [...reading.sources].sort(),
+          `${label}: ${reading.percent} cites ${[...reading.sources].sort().join(', ')} but is held by ${backing.join(', ')}`,
+        ).toEqual(backing);
       }
     }
+    expect(transcriptionReadings).toBeGreaterThan(0);
   });
 
   it('reads percentInUse straight off the chart, so the record cannot drift', () => {
@@ -571,6 +1101,17 @@ describe('chart cell status', () => {
     // Both readings stay on record whichever one the chart currently holds.
     expect([...disputed.readings.map((reading) => reading.percent)].sort()).toEqual([57.2, 57.4]);
 
+    // Each reading names the fixtures behind it; those citations are checked
+    // against the fixtures' bytes elsewhere in this file.
+    expect(
+      disputed.readings
+        .filter((reading) => reading.evidence === 'transcription')
+        .map((reading) => [reading.percent, [...(reading.sources ?? [])].sort().join('+')]),
+    ).toEqual([
+      [57.4, 'S1'],
+      [57.2, 'S4'],
+    ]);
+
     const coupled = tryChartCell(12, 6.5);
     expect(coupled).not.toBeNull();
     if (coupled === null) {
@@ -578,6 +1119,12 @@ describe('chart cell status', () => {
     }
     expect(coupled.status).toBe('unverified');
     expect(coupled.readings.map((reading) => reading.evidence)).toContain('grid-rule');
+    // The grid-rule reading names no source, by construction.
+    for (const reading of coupled.readings) {
+      if (reading.evidence === 'grid-rule') {
+        expect(reading.sources).toBeUndefined();
+      }
+    }
   });
 
   it('leaves settled cells with no competing readings', () => {
@@ -843,9 +1390,21 @@ describe('purity', () => {
 
   it('does not let a caller mutate the provenance record either', () => {
     expect(Object.isFrozen(UNVERIFIED_CHART_CELLS)).toBe(true);
+    expect(Object.isFrozen(CHART_SOURCE_IDS)).toBe(true);
+    expect(Object.isFrozen(CHART_SOURCES)).toBe(true);
+    for (const id of CHART_SOURCE_IDS) {
+      expect(Object.isFrozen(CHART_SOURCES[id])).toBe(true);
+    }
     for (const cell of UNVERIFIED_CHART_CELLS) {
       expect(Object.isFrozen(cell)).toBe(true);
       expect(Object.isFrozen(cell.readings)).toBe(true);
+      for (const reading of cell.readings) {
+        expect(Object.isFrozen(reading)).toBe(true);
+        // A citation a JS caller can rewrite at runtime is not a citation.
+        if (reading.evidence === 'transcription') {
+          expect(Object.isFrozen(reading.sources)).toBe(true);
+        }
+      }
     }
   });
 });
