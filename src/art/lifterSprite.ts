@@ -50,14 +50,24 @@ import {
   STRAIN,
   RESOLUTION,
 } from './spriteTuning';
-import { BANK_SIZE, PAL, RAMPS, isTransparentIndex, type Ramp } from './palette';
+import {
+  BANK_SIZE,
+  INTERIOR_EDGE,
+  PAL,
+  RAMPS,
+  interiorEdgeFor,
+  isTransparentIndex,
+  type Ramp,
+} from './palette';
 import {
   CELL,
   RIG_GEOMETRY,
   barYForPose,
   deformPose,
+  kneeSleeveSpan,
   pitchForLevel,
   poseAtDepth,
+  singletHemY,
   strainForLevel,
   type Pose,
   type RepDirection,
@@ -254,12 +264,34 @@ function drawBarAndPlates(
 // Body
 // ---------------------------------------------------------------------------
 
+/**
+ * A leg, from hip to sole.
+ *
+ * EVERY PART HERE SEPARATES WITH ITS OWN SHADOW, NOT WITH A BLACK LINE
+ * (`INTERIOR_EDGE`). Four masses overlap in this small a space — thigh, shin,
+ * sleeve, shoe — and with the default near-black ring each boundary cost two
+ * columns of luma-19 pixels once `outlinePass` had added its own. Measured over
+ * the lower half of the figure that was 52% of the body's pixels, against 4% on
+ * the same split of sprite-ref-1, whose limbs are edged in their own darkest
+ * step. The silhouette keyline is unaffected: `outlinePass` still runs.
+ */
 function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
   const cx = CENTER_X;
   const hipX = cx + sign * pose.hipHalfW * RIG_GEOMETRY.ATTACH.THIGH_ROOT;
   const kneeX = cx + sign * pose.kneeHalfW;
   const ankleX = cx + sign * pose.ankleHalfW;
-  const opts = { stepBias: bias, edge: true };
+  const fleshOpts = {
+    stepBias: bias,
+    edge: true,
+    edgeIndex: INTERIOR_EDGE.SKIN,
+    edgeFollowsLight: true,
+  };
+  const gearOpts = {
+    stepBias: bias,
+    edge: true,
+    edgeIndex: INTERIOR_EDGE.GEAR,
+    edgeFollowsLight: true,
+  };
 
   drawLimb(
     g,
@@ -270,39 +302,43 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
     RIG_GEOMETRY.THIGH_R[0],
     RIG_GEOMETRY.THIGH_R[1],
     RAMPS.SKIN,
-    opts,
+    fleshOpts,
   );
+  // The shin's endpoint is lifted by its own end radius so the capsule's rounded
+  // cap finishes AT the top of the shoe rather than a pixel past the floor. The
+  // cap still reaches the ankle, so no bare leg is lost; what goes away is the
+  // one stray pixel the cap used to leave under each sole, which was invisible
+  // while it was outline-coloured and is not now that edges are material shadow.
   drawLimb(
     g,
     kneeX,
     pose.kneeY,
     ankleX,
-    pose.ankleY,
+    pose.ankleY + RIG_GEOMETRY.FOOT_DROP - RIG_GEOMETRY.SHIN_R[1],
     RIG_GEOMETRY.SHIN_R[0],
     RIG_GEOMETRY.SHIN_R[1],
     RAMPS.SKIN,
-    opts,
+    fleshOpts,
   );
 
   // Knee sleeve, following the leg's own axis through the joint rather than a
   // vertical, so it stays on the knee when the knee is out at depth.
   const KS = RIG_GEOMETRY.KNEE_SLEEVE;
-  const upX = kneeX + (hipX - kneeX) * KS.TOWARD_HIP;
-  const upY = pose.kneeY + (pose.hipY - pose.kneeY) * KS.TOWARD_HIP;
-  const dnX = kneeX + (ankleX - kneeX) * KS.TOWARD_ANKLE;
-  const dnY = pose.kneeY + (pose.ankleY - pose.kneeY) * KS.TOWARD_ANKLE;
-  drawLimb(g, upX, upY, dnX, dnY, KS.R[0], KS.R[1], RAMPS.GEAR, opts);
+  const span = kneeSleeveSpan(pose, sign);
+  drawLimb(g, span.topX, span.topY, span.botX, span.botY, KS.R[0], KS.R[1], RAMPS.GEAR, gearOpts);
 
-  // Shoe.
+  // Shoe. Inset by the ring at both ends so the drawn object still occupies
+  // exactly FOOT_H rows and its sole still lands on FLOOR_Y - 1.
+  const inset = RIG_GEOMETRY.EDGE_INSET_PX;
   drawTrunk(
     g,
     ankleX + sign * RIG_GEOMETRY.FOOT_FLARE,
-    pose.ankleY + RIG_GEOMETRY.FOOT_DROP,
-    CELL.FLOOR_Y - 1,
-    RIG_GEOMETRY.FOOT_W / 2 - 1,
-    RIG_GEOMETRY.FOOT_W / 2,
+    pose.ankleY + RIG_GEOMETRY.FOOT_DROP + inset,
+    CELL.FLOOR_Y - 1 - inset,
+    RIG_GEOMETRY.FOOT_W / 2 - 1 - inset,
+    RIG_GEOMETRY.FOOT_W / 2 - inset,
     RAMPS.GEAR,
-    { stepBias: bias, edge: true },
+    gearOpts,
   );
 }
 
@@ -458,7 +494,7 @@ function drawTorso(g: IndexGrid, pose: Pose): void {
     g,
     cx,
     pose.chestY,
-    pose.hipY + A.SINGLET_HEM,
+    singletHemY(pose),
     chestHalf,
     pose.hipHalfW + RIG_GEOMETRY.NUDGE.SINGLET_FLARE,
     RAMPS.SINGLET,
@@ -488,7 +524,12 @@ function drawTorso(g: IndexGrid, pose: Pose): void {
     pose.waistHalfW + RIG_GEOMETRY.BELT_OVERHANG,
     pose.waistHalfW + RIG_GEOMETRY.BELT_OVERHANG,
     RAMPS.GEAR,
-    { edge: true },
+    {
+      stepBias: RIG_GEOMETRY.BELT_STEP_BIAS,
+      edge: true,
+      edgeIndex: INTERIOR_EDGE.GEAR,
+      edgeFollowsLight: true,
+    },
   );
   // Belt marks — lever plate and tail — are hand-placed in `spriteMarks.ts`.
   // Nothing else about a belt is a function of the surface normal.
@@ -502,6 +543,11 @@ function drawTorso(g: IndexGrid, pose: Pose): void {
  * single blob — which is what kills the depth cue that the squat is supposed to
  * deliver. Artists draw this line by hand. It is stamped only over pixels that
  * are already body, so when the legs are apart it does nothing at all.
+ *
+ * Drawn in the shadow step of whatever material it crosses rather than in flat
+ * black: sprite-ref-1's crotch line is one pixel of the trunks' own darkest red,
+ * not a keyline, and a black column here was the single longest run of luma-19
+ * in the lower body.
  */
 function drawInnerLegSeam(g: IndexGrid, pose: Pose): void {
   const x = Math.round(CENTER_X);
@@ -510,7 +556,7 @@ function drawInnerLegSeam(g: IndexGrid, pose: Pose): void {
   for (let y = top; y <= bottom; y += 1) {
     const here = g.data[y * g.w + x];
     if (here === undefined || here === 0) continue;
-    setPx(g, x, y, PAL.OUTLINE);
+    setPx(g, x, y, interiorEdgeFor(here));
   }
 }
 

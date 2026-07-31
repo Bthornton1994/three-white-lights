@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BANK_SIZE,
   EQUIPMENT_BANK,
+  INTERIOR_EDGE,
   LIFTER_BANK,
   PAL,
   PALETTE_BANKS,
@@ -12,6 +13,7 @@ import {
   chan5To8,
   chan8To5,
   colorAt,
+  interiorEdgeFor,
   isAllocatedIndex,
   isTransparentIndex,
   outlineIndexForBank,
@@ -155,6 +157,84 @@ describe('ramps', () => {
     const shadowRedBias = shadow[0] / Math.max(1, shadow[2]);
     const highRedBias = high[0] / Math.max(1, high[2]);
     expect(shadowRedBias).toBeGreaterThan(highRedBias);
+  });
+});
+
+describe('the kit below the belt sits in a usable band', () => {
+  // GEAR draws the belt, both knee sleeves and both shoes: most of the lower
+  // body by area. These three relations are what the ramp has to satisfy to
+  // stop that area collapsing into one dark band, and every one of them was
+  // broken or absent before. Values quoted are Rec.601 luma of the expanded
+  // 8-bit colour, which is what `luma` above computes.
+  const of = (index: number): number => {
+    const c = colorAt(index);
+    expect(c).toBeDefined();
+    return c === undefined ? -1 : luma(c);
+  };
+
+  it('keeps every gear step clear of the backdrop it is drawn in front of', () => {
+    // GEAR_DARK was 51 against BACKDROP_MID's 54, so a sleeve's shaded flank
+    // was darker than the wall behind it and simply disappeared.
+    expect(of(PAL.GEAR_DARK)).toBeGreaterThan(of(PAL.BACKDROP_MID) + 15);
+    expect(of(PAL.BACKDROP_MID)).toBeGreaterThan(of(PAL.BACKDROP_DARK));
+  });
+
+  it('spaces the three gear steps evenly enough to model a sleeve', () => {
+    const dark = of(PAL.GEAR_DARK);
+    const mid = of(PAL.GEAR_MID);
+    const light = of(PAL.GEAR_LIGHT);
+    const gaps = [mid - dark, light - mid];
+    for (const gap of gaps) expect(gap).toBeGreaterThan(30);
+    // No step may be more than half again the other, or the ramp reads as two
+    // colours and a stray.
+    expect(Math.max(...gaps) / Math.min(...gaps)).toBeLessThan(1.5);
+  });
+
+  it('keeps worn kit UNDER flesh: a sleeve is a dark object on a lit leg', () => {
+    // Deliberate, and the one place this ramp does NOT go where a lift would
+    // take it. Sampled off sprite-ref-1, the wrestler's kit ramp tops out at
+    // 140 against a skin third step of 152 — his kit stays under his flesh, and
+    // sleeves, belts and shoes are black kit in this sport. A GEAR_LIGHT that
+    // reached SKIN_LIGHT would make the sleeve read as the leg.
+    expect(of(PAL.GEAR_LIGHT)).toBeLessThan(of(PAL.SKIN_LIGHT));
+    expect(of(PAL.GEAR_MID)).toBeLessThan(of(PAL.SKIN_MID));
+  });
+
+  it('gives the shoe a pale platform to sit on', () => {
+    // meet-photo-ref-1: a black shoe against a pale platform. The contact only
+    // reads if the floor out-values the sole; sprite-ref-1's mat measures a
+    // median of 102 under figures whose boots run 53-91.
+    expect(of(PAL.PLATFORM_LIGHT)).toBeGreaterThan(of(PAL.GEAR_DARK));
+    expect(of(PAL.PLATFORM_MID)).toBeGreaterThan(of(PAL.GEAR_DARK));
+    // ...and the platform must not out-value the lifter either.
+    expect(of(PAL.PLATFORM_LIGHT)).toBeLessThan(of(PAL.SKIN_HI));
+  });
+
+  it('separates overlapping masses with material shadow, not with black', () => {
+    // INTERIOR_EDGE is the fix for half the lower body being luma-19 keyline.
+    // Each entry has to be the darkest step of its own ramp — dark enough to
+    // read as a boundary, light enough not to be the old keyline again.
+    expect(INTERIOR_EDGE.SKIN).toBe(RAMPS.SKIN[0]);
+    expect(INTERIOR_EDGE.GEAR).toBe(RAMPS.GEAR[0]);
+    expect(INTERIOR_EDGE.SINGLET).toBe(RAMPS.SINGLET[0]);
+    for (const index of Object.values(INTERIOR_EDGE)) {
+      expect(of(index)).toBeGreaterThan(of(PAL.OUTLINE) + 25);
+    }
+  });
+
+  it('maps every lifter surface to its own interior edge, and nothing else', () => {
+    for (const [ramp, edge] of [
+      [RAMPS.SKIN, INTERIOR_EDGE.SKIN],
+      [RAMPS.SKIN_FLUSHED, INTERIOR_EDGE.SKIN],
+      [RAMPS.GEAR, INTERIOR_EDGE.GEAR],
+      [RAMPS.SINGLET, INTERIOR_EDGE.SINGLET],
+    ] as const) {
+      for (const index of ramp) expect(interiorEdgeFor(index)).toBe(edge);
+    }
+    // Hair, chalk and every equipment colour keep the keyline.
+    for (const index of [PAL.HAIR_DARK, PAL.CHALK, PAL.STEEL_MID, PAL.PLATE_RED_LIGHT]) {
+      expect(interiorEdgeFor(index)).toBe(PAL.OUTLINE);
+    }
   });
 });
 

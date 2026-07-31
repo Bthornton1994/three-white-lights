@@ -246,11 +246,19 @@ describe('marks reach the pixels', () => {
   it('lands every anatomy mark on most of the pixels it asks for', () => {
     // "A mark that lands a third of the time is not doing its job." Measured
     // over the whole pose space at this authoring, every anatomy mark clears
-    // 75% except the two quad sweeps, which cannot: below about half depth the
-    // singlet hem and the knee sleeve meet over the thigh and there is no bare
-    // thigh anywhere in the frame to paint on. That is a coverage fact about
-    // the drawing, not a misplaced mark, so they get their own lower floor
-    // rather than a fudged shared one.
+    // 75% except the two quad sweeps, which cannot: past about two thirds depth
+    // the singlet hem and the knee sleeve meet over the thigh and there is no
+    // bare thigh anywhere in the frame to paint on. That is a coverage fact
+    // about the drawing, not a misplaced mark, so they get their own lower
+    // floor rather than a fudged shared one.
+    //
+    // THE FLOOR IS 0.5, RAISED FROM 0.35. The sleeve is shorter and narrower
+    // and the singlet hem now rides the thigh instead of the hip landmark, so
+    // the sweeps land 57-58% of the pixels they ask for against 35-50% before,
+    // and the frames with no bare thigh anywhere fell from 133 of 416 to 105
+    // and 107. The floor is what stops that being given back quietly; the
+    // remaining ~105 frames are the deep ones, and they are supposed to be
+    // there.
     const LOW_BY_COVERAGE = new Set(['QUAD_SWEEP_NEAR', 'QUAD_SWEEP_FAR']);
     const req = new Map<string, number>();
     const got = new Map<string, number>();
@@ -268,7 +276,7 @@ describe('marks reach the pixels', () => {
       expect(asked, name).toBeGreaterThan(0);
       const rate = (got.get(name) ?? 0) / asked;
       expect(rate, `${name} landed ${(rate * 100).toFixed(0)}%`).toBeGreaterThan(
-        LOW_BY_COVERAGE.has(name) ? 0.35 : 0.7,
+        LOW_BY_COVERAGE.has(name) ? 0.5 : 0.7,
       );
     }
   });

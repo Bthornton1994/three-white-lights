@@ -426,6 +426,36 @@ function brightSplit(grid: IndexGrid, floorLuma: number): { lifter: number; equi
 /** Where the lifter's own ramps stop. Everything above this is a highlight. */
 const HIGHLIGHT_LUMA = 170;
 
+/**
+ * Bounds for "the figure carries its range below the belt too". Both are
+ * measured facts about the reference plus headroom, not round numbers:
+ * sprite-ref-1's wrestler is at 1.04 and 4% respectively.
+ */
+const MAX_UPPER_OVER_LOWER_MEAN = 1.35;
+const NEAR_BLACK_LUMA = 40;
+const MAX_LOWER_NEAR_BLACK_SHARE = 0.32;
+
+/** Every LIFTER-bank pixel's luma, split at the figure's vertical midpoint. */
+function bodyHalves(grid: IndexGrid): { upper: number[]; lower: number[] } {
+  const px: { y: number; l: number }[] = [];
+  for (let y = 0; y < grid.h; y += 1) {
+    for (let x = 0; x < grid.w; x += 1) {
+      const v = getPx(grid, x, y);
+      if (isTransparentIndex(v) || Math.floor(v / BANK_SIZE) !== 0) continue;
+      px.push({ y, l: luma(v) });
+    }
+  }
+  const ys = px.map((p) => p.y);
+  const mid = (Math.min(...ys) + Math.max(...ys)) / 2;
+  return {
+    upper: px.filter((p) => p.y < mid).map((p) => p.l),
+    lower: px.filter((p) => p.y >= mid).map((p) => p.l),
+  };
+}
+
+const mean = (xs: readonly number[]): number =>
+  xs.length === 0 ? 0 : xs.reduce((s, v) => s + v, 0) / xs.length;
+
 describe('the lifter is the brightest thing in his own frame', () => {
   it('holds more highlight pixels than the whole barbell does, at every load', () => {
     // Swept over loads because the plate hues are not equally bright: a bar
@@ -454,6 +484,47 @@ describe('the lifter is the brightest thing in his own frame', () => {
       let hi = 0;
       for (const v of grid.data) if (v === PAL.SKIN_HI) hi += 1;
       expect(hi, `depth ${depth}`).toBeGreaterThan(30);
+    }
+  });
+
+  it('carries that range BELOW the belt as well as above it', () => {
+    // The finding this exists for, in the critic's words: "the value fix was
+    // applied to SKIN and never to GEAR, so the figure carries the top of the
+    // range only above the belt... at native the lifter reads as a bright chest
+    // floating over a smear."
+    //
+    // Split at the figure's own vertical midpoint, which is not tuneable to
+    // flatter either half. MEASURED on the same split of the blond wrestler in
+    // sprite-ref-1 (masked by colour, at native scale, in this repo's sandbox):
+    // upper mean luma 113.7 against lower 109.0, a ratio of 1.04. Ours was
+    // 81.4 / 54.3 — a ratio of 1.50 — and is now inside the bound below.
+    //
+    // A RATIO, not an absolute: this test's job is to catch the lower body
+    // being left behind by a change to the upper body, which is exactly how the
+    // gap appeared. Whether the figure as a whole is bright enough is a
+    // different claim and belongs to a human looking at pixels.
+    for (const depth of [0, 0.35, 0.65, 1]) {
+      for (const strainLevel of [0, STRAIN.LEVELS - 1]) {
+        const { grid } = renderLifterFrame(
+          spec({ depth, direction: 'ASCENT', strainLevel, totalKg: 250 }),
+        );
+        const { upper, lower } = bodyHalves(grid);
+        const where = `depth ${depth} strain ${strainLevel}`;
+        expect(lower.length, where).toBeGreaterThan(100);
+        const upperMean = mean(upper);
+        const lowerMean = mean(lower);
+        expect(upperMean / lowerMean, `${where}: mean luma ratio`).toBeLessThan(
+          MAX_UPPER_OVER_LOWER_MEAN,
+        );
+        // And the near-black that used to fill the lower body: half of it was
+        // separation line at luma 19, against 4% on the reference's own lower
+        // half. Floored well above the reference so the silhouette keyline,
+        // which we keep and it does not have, is not squeezed out.
+        const nearBlack = lower.filter((v) => v < NEAR_BLACK_LUMA).length / lower.length;
+        expect(nearBlack, `${where}: near-black share below the midpoint`).toBeLessThan(
+          MAX_LOWER_NEAR_BLACK_SHARE,
+        );
+      }
     }
   });
 
