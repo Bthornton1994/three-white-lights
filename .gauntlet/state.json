@@ -93,9 +93,9 @@
       "id": "M1",
       "name": "RPE \u2192 %1RM table",
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Rework 5 merged; 388 tests green. First pass that made the module SMALLER \u2014 936 to 757 lines, 73 to 66 tests, cutting an unused status API that labelled cells rather than catching wrong numbers. The lineage claim is demoted to what is established, which is nothing, and UNVERIFIED_CHART_CELLS became CONTESTED_CHART_CELLS because calling two cells unverified implied the other 106 were verified and none is. The builder checked its brief rather than trusting it and found a fact cutting against the framing it was given: S1 is equally uncited, so \"no citation\" does not single out S4. Both fixture URLs now pin immutable SHAs \u2014 verified here that the pinned S1 still serves bytes holding 57.4, and that adopting 57.2 is still a pure data edit."
+      "note": "THE GRID WINS ITS BAR ON VALUES \u2014 a critic re-fetched both pinned sources and checked all 108 cells, and verified byte-for-byte that the committed fixtures had not been reformatted by the refactor. The remaining gap is an inconsistency: the module argues at length that compile-time readonly is not enough and freezes the chart, the sources and the provenance record \u2014 but leaves the three objects that GATE the lookup unfrozen. Verified here: pushing 7.3 onto CHARTED_RPES makes isChartedRpe(7.3) true and tryPercentOf1RM returns undefined, which is neither number nor null. The quieter variant produces no error at all \u2014 shifting MAX_RPE by half a step moves every prescribed load and every e1RM while all 66 tests stay green. The provenance footnotes are protected from mutation; the definition of which RPEs exist is not."
     },
     {
       "id": "M2",
