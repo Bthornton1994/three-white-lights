@@ -11,11 +11,13 @@ import {
   JUDGES_REQUIRED_FOR_GOOD_LIFT,
   JUDGE_COUNT,
   LIFT_ORDER,
-  LOADABLE_WEIGHT_INCREMENT_KG,
   MIN_ATTEMPT_INCREMENT_KG,
   MIN_LOADABLE_WEIGHT_KG,
   OPENER_FRACTION_OF_1RM,
-  SMALLEST_CHANGE_PLATE_KG,
+  POUND_BAR_AND_COLLARS_LB,
+  POUND_DECLARATION_INCREMENT_LB,
+  POUND_MEET_RULES,
+  POUND_MIN_ATTEMPT_INCREMENT_LB,
   allCompletedAttempts,
   barAndCollarsWeight,
   bestSuccessfulAttempt,
@@ -29,7 +31,6 @@ import {
   isDeclarableWeight,
   isGoodLift,
   isLegalAttemptWeight,
-  isLoadableAttemptWeight,
   isMeetComplete,
   isOnIncrementGrid,
   isSplitDecision,
@@ -41,7 +42,6 @@ import {
   resolveAttempt,
   roundToIncrement,
   roundToLegalAttemptWeight,
-  roundToLoadableAttemptWeight,
   suggestNextAttempt,
   suggestOpener,
   totalOnTheBoard,
@@ -85,14 +85,95 @@ const HALF_KILO_DECLARATION_RULES: MeetLoadingRules = {
 };
 
 /**
- * A federation whose kit stops at 1.25 kg discs, so the bar itself cannot be
- * made lighter-grained than 2.5. Physically coarse, unlike the default meet,
- * which stocks 0.25 kg discs.
+ * A federation that calls attempts in 5s and requires 5 between attempts. Its
+ * declaration grid does not divide the default one, which is the point: it is
+ * here so the rule-set loops below are not all multiples of one another.
  */
-const COARSE_PLATE_RULES: MeetLoadingRules = {
+const COARSE_DECLARATION_RULES: MeetLoadingRules = {
   ...DEFAULT_MEET_RULES,
-  loadableIncrement: 2.5,
+  minIncrement: 5,
+  declarationIncrement: 5,
 };
+
+/** The four shapes of rule set the suite sweeps over. */
+const ALL_RULE_SETS: readonly MeetLoadingRules[] = [
+  DEFAULT_MEET_RULES,
+  HALF_KILO_DECLARATION_RULES,
+  COARSE_DECLARATION_RULES,
+  POUND_MEET_RULES,
+];
+
+// ---------------------------------------------------------------------------
+// A REAL plate ladder, as an oracle. The engine does not model plate inventory
+// (see WHY THERE IS NO PLATE GATE in meet.ts) — these tests do, so that they can
+// check the engine never contradicts one.
+//
+// Transcribed from `defaultPlatesLbs` in the file meet.ts cites,
+// gitlab.com/openpowerlifting/openlifter `src/reducers/meetReducer.ts`, fetched
+// HTTP 200 and read directly. Entries are [disc weight in lb, pairCount], in
+// source order. The array is introduced by the comment
+// `// Default lbs plates, allowing for increments of 1lb.`
+// ---------------------------------------------------------------------------
+
+const OPENLIFTER_LB_PLATES: readonly (readonly [number, number])[] = [
+  [100, 0],
+  [55, 0],
+  [45, 8],
+  [35, 0],
+  [25, 1],
+  [10, 2],
+  [5, 1],
+  [2.5, 1],
+  [1.25, 1],
+  [0.5, 2],
+];
+
+/** The same for kg, from `defaultPlatesKg` in that file. */
+const OPENLIFTER_KG_PLATES: readonly (readonly [number, number])[] = [
+  [50, 0],
+  [25, 8],
+  [20, 1],
+  [15, 1],
+  [10, 1],
+  [5, 1],
+  [2.5, 1],
+  [2, 0],
+  [1.5, 0],
+  [1.25, 1],
+  [1, 1],
+  [0.75, 1],
+  [0.5, 1],
+  [0.25, 1],
+];
+
+/** Scale to hundredths so the subset sums are exact integer arithmetic. */
+const PLATE_SCALE = 100;
+
+/**
+ * Every load the kit can actually put on the bar, above the bar, by brute-force
+ * subset sum over the available PAIRS. This is the truth the engine is measured
+ * against; it is deliberately dumb and deliberately not in the module.
+ */
+function loadsAboveBar(kit: readonly (readonly [number, number])[]): ReadonlySet<number> {
+  const pairSteps: number[] = [];
+  for (const [disc, pairCount] of kit) {
+    for (let i = 0; i < pairCount; i += 1) pairSteps.push(Math.round(disc * 2 * PLATE_SCALE));
+  }
+  let reachable = new Set<number>([0]);
+  for (const step of pairSteps) {
+    const next = new Set<number>(reachable);
+    for (const value of reachable) next.add(value + step);
+    reachable = next;
+  }
+  return reachable;
+}
+
+const LB_LOADS = loadsAboveBar(OPENLIFTER_LB_PLATES);
+const KG_LOADS = loadsAboveBar(OPENLIFTER_KG_PLATES);
+
+function isLoadableInReality(loads: ReadonlySet<number>, bar: number, weight: number): boolean {
+  return loads.has(Math.round((weight - bar) * PLATE_SCALE));
+}
 
 function unwrap<T>(result: Result<T>): T {
   if (!result.ok) {
@@ -183,15 +264,36 @@ describe('module purity', () => {
   });
 
   it('labels each loading number as cited or uncited rather than asserting it flatly', () => {
-    // The retrieved plate array is what fixes the loadable increment, and the
-    // module must quote it rather than paraphrase.
+    // The retrieved plate arrays are what killed the plate gate, and the module
+    // must quote them rather than paraphrase.
     expect(source).toMatch(/defaultPlatesKg/);
+    expect(source).toMatch(/defaultPlatesLbs/);
     expect(source).toMatch(/allowing for increments of 0\.5kg/);
+    expect(source).toMatch(/allowing for increments of 1lb/);
     expect(source).toMatch(/asNumber % 2\.5 !== 0/);
-    // ...and the two things it cannot source must be marked UNCITED, including
-    // the minimum increase, which was adjudicated rather than retrieved.
+    // ...and the things it cannot source must be marked UNCITED, including the
+    // minimum increase, which was adjudicated rather than retrieved.
     expect(source).toMatch(/UNCITED/);
     expect(source).toMatch(/adjudicat/i);
+  });
+
+  it('says out loud that it does not model plate inventory, rather than implying it does', () => {
+    expect(source).toMatch(/WHY THERE IS NO PLATE GATE/);
+    // The disclosure has to run in BOTH directions: a limit stated only one way
+    // reads as an oversight in the other.
+    expect(source).toMatch(/OVER-PERMISSIVE/);
+    expect(source).toMatch(/UNDER-PERMISSIVE/);
+  });
+
+  it('interpolates no message claiming a weight cannot be loaded', () => {
+    // The module has no plate inventory, so any sentence of this shape is a
+    // fabrication. Prose ABOUT the removed claim is fine and is why this looks
+    // for the interpolation rather than the words: a real message would have to
+    // name the weight. (`nearestLegalCallsHint` is checked behaviourally in
+    // "legal declaration, with no opinion on plates".)
+    expect(source).not.toMatch(/no way to load \$\{/);
+    expect(source).not.toMatch(/cannot be loaded[^\n]*\$\{/);
+    expect(source).not.toMatch(/\$\{[^}]*\} cannot be loaded/);
   });
 });
 
@@ -654,11 +756,12 @@ describe('the non-decreasing weight invariant', () => {
 
   it('under the default rules a sub-minimum jump is refused as a declaration, not as a jump', () => {
     // The distinction the engine must not blur. 201 kg after a good 200 is
-    // illegal under DEFAULT_MEET_RULES, but the reason is that 201 is not a
-    // legal call — the bar takes it fine.
+    // illegal under DEFAULT_MEET_RULES, and the reason is that 201 is not a
+    // legal call — not anything about the bar, which really does take it.
     const madeIt = takeAttempt(createMeet(), 200, THREE_WHITE);
-    expect(expectError(declareAttempt(madeIt, { weight: 201 })).code).toBe('WEIGHT_NOT_DECLARABLE');
-    expect(isLoadableAttemptWeight(201, 'squat')).toBe(true);
+    const error = expectError(declareAttempt(madeIt, { weight: 201 }));
+    expect(error.code).toBe('WEIGHT_NOT_DECLARABLE');
+    expect(isLoadableInReality(KG_LOADS, MIN_LOADABLE_WEIGHT_KG, 201)).toBe(true);
   });
 
   it('resets the constraint at the start of each lift', () => {
@@ -682,78 +785,170 @@ describe('the non-decreasing weight invariant', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Loadability: the bar has a floor as well as a granularity
+// Real plate ladders are not lattices, and the engine must not pretend they are
 // ---------------------------------------------------------------------------
 
-describe('physical loadability vs legal declaration', () => {
-  it('takes the loadable increment from the plate pair the retrieved source stocks', () => {
-    // OpenLifter's defaultPlatesKg carries `{ weightKg: 0.25, pairCount: 1 }`.
-    // One disc per side is 0.5 on the bar, which is what its own comment
-    // ("allowing for increments of 0.5kg") says. The default meet stocks change
-    // plates; 2.5 would be a claim about equipment that source contradicts.
-    expect(SMALLEST_CHANGE_PLATE_KG).toBe(0.25);
-    expect(LOADABLE_WEIGHT_INCREMENT_KG).toBe(SMALLEST_CHANGE_PLATE_KG * 2);
-    expect(LOADABLE_WEIGHT_INCREMENT_KG).toBe(0.5);
-    expect(DEFAULT_MEET_RULES.loadableIncrement).toBe(0.5);
+describe('the plate ladder the engine refuses to model', () => {
+  it('confirms the retrieved lb kit is not generated by its smallest pair', () => {
+    // This is the fact that removed the plate gate. The kit stocks 0.5, 1.25 and
+    // 2.5 lb discs at once, so:
+    //   - its smallest PAIR step is 1 lb (two 0.5s), and
+    //   - 2.5 lb is loadable anyway, with one 1.25 per side, though 2.5 is not a
+    //     multiple of 1; while
+    //   - 3 lb, which IS a multiple of 1, is not loadable at all, because the
+    //     kit holds only two 0.5 lb pairs.
+    // No single increment generates this set — not 1, not 2.5, not 0.5.
+    expect(isLoadableInReality(LB_LOADS, 0, 1)).toBe(true);
+    expect(isLoadableInReality(LB_LOADS, 0, 2.5)).toBe(true);
+    expect(isOnIncrementGrid(2.5, 1)).toBe(false);
+    expect(isLoadableInReality(LB_LOADS, 0, 3)).toBe(false);
+    expect(isOnIncrementGrid(3, 1)).toBe(true);
+    expect(isLoadableInReality(LB_LOADS, 0, 4)).toBe(false);
+    // The source comment "allowing for increments of 1lb" is therefore loose in
+    // its own terms; the kit is 1 lb granular only for the first 2 lb.
   });
 
-  it('keeps the declaration grid coarser than, and separate from, the plate grid', () => {
+  it('loads 47.5 lb on a 45 lb bar, and the engine does not contradict that', () => {
+    // The concrete regression. One 1.25 lb disc per side. The previous version
+    // computed 47.5 - 45 = 2.5, found it off the 1 lb grid, and answered
+    // WEIGHT_NOT_LOADABLE — "there is no way to load 47.5" — which is false.
+    expect(isLoadableInReality(LB_LOADS, POUND_BAR_AND_COLLARS_LB, 47.5)).toBe(true);
+    expect(isLegalAttemptWeight(47.5, 'squat', POUND_MEET_RULES)).toBe(true);
+    expect(unwrap(declareAttempt(createMeet(POUND_MEET_RULES), { weight: 47.5 })).phase.kind).toBe(
+      'attempt-declared',
+    );
+  });
+
+  it('runs the pound meet its own source describes, which the previous version rejected', () => {
+    // bar and collars 45, declarations on 2.5. The old validator refused this
+    // configuration outright because 2.5 is not a whole number of the kit's 1 lb
+    // smallest pair step, so a pound meet could not be run at all.
+    expect(POUND_BAR_AND_COLLARS_LB).toBe(45);
+    expect(POUND_DECLARATION_INCREMENT_LB).toBe(2.5);
+    expect(POUND_MIN_ATTEMPT_INCREMENT_LB).toBe(2.5);
+    expect(validateMeetRules(POUND_MEET_RULES)).toBeNull();
+
+    const state = takeLift(createMeet(POUND_MEET_RULES), [
+      [405, THREE_WHITE],
+      [425, THREE_WHITE],
+      [442.5, THREE_WHITE],
+    ]);
+    expect(state.lifts.squat.best).toBe(442.5);
+    expect(state.phase).toEqual({ kind: 'awaiting-declaration', lift: 'bench', attemptNumber: 1 });
+  });
+
+  it('never refuses a weight the retrieved lb kit really loads, for an equipment reason', () => {
+    // Sweep every load the kit can actually make. The engine may refuse a weight
+    // as a RULE (off the declaration grid), but no refusal may be, or read as, a
+    // claim that the plates cannot make it.
+    const state = createMeet(POUND_MEET_RULES);
+    let refusedAsRule = 0;
+    let accepted = 0;
+    for (const scaledLoad of LB_LOADS) {
+      const weight = POUND_BAR_AND_COLLARS_LB + scaledLoad / PLATE_SCALE;
+      const result = declareAttempt(state, { weight });
+      if (result.ok) {
+        accepted += 1;
+        continue;
+      }
+      expect(result.error.code).toBe('WEIGHT_NOT_DECLARABLE');
+      expect(result.error.message).not.toMatch(/load/i);
+      expect(result.error.message).not.toMatch(/plate/i);
+      refusedAsRule += 1;
+    }
+    // Both branches are genuinely exercised: the kit makes weights off the 2.5
+    // grid (e.g. 46, a pair of 0.5s) as well as on it.
+    expect(accepted).toBeGreaterThan(0);
+    expect(refusedAsRule).toBeGreaterThan(0);
+    expect(accepted + refusedAsRule).toBe(LB_LOADS.size);
+  });
+
+  it('never refuses a weight the retrieved kg kit really loads, for an equipment reason', () => {
+    const state = createMeet();
+    for (const scaledLoad of KG_LOADS) {
+      const weight = MIN_LOADABLE_WEIGHT_KG + scaledLoad / PLATE_SCALE;
+      const result = declareAttempt(state, { weight });
+      if (result.ok) continue;
+      expect(result.error.code).toBe('WEIGHT_NOT_DECLARABLE');
+      expect(result.error.message).not.toMatch(/load/i);
+    }
+  });
+
+  it('accepts every declaration-grid weight both retrieved kits can load', () => {
+    // The other half: within each kit's capacity the declaration grid is fully
+    // loadable, so declaration-only validation costs nothing real here. This is
+    // the measurement behind the density claim in the module header.
+    for (const [loads, bar, step, rules] of [
+      [KG_LOADS, MIN_LOADABLE_WEIGHT_KG, DECLARATION_INCREMENT_KG, DEFAULT_MEET_RULES],
+      [LB_LOADS, POUND_BAR_AND_COLLARS_LB, POUND_DECLARATION_INCREMENT_LB, POUND_MEET_RULES],
+    ] as const) {
+      const capacity = bar + Math.max(...loads) / PLATE_SCALE;
+      for (let weight = bar; weight <= capacity; weight += step) {
+        if (!isLoadableInReality(loads, bar, weight)) {
+          throw new Error(`${weight} is on the declaration grid but the kit cannot load it`);
+        }
+        expect(isLegalAttemptWeight(weight, 'squat', rules)).toBe(true);
+      }
+    }
+  });
+
+  it('is over-permissive past the kit, and that is the disclosed cost', () => {
+    // The honest other side of dropping the gate. With only 45 lb discs on hand
+    // there is no way to make 47.5, and the engine accepts it regardless: it has
+    // no inventory and does not pretend to. Documented under OVER-PERMISSIVE in
+    // the module header.
+    const fortyFivesOnly: readonly (readonly [number, number])[] = [[45, 8]];
+    expect(isLoadableInReality(loadsAboveBar(fortyFivesOnly), POUND_BAR_AND_COLLARS_LB, 47.5)).toBe(false);
+    expect(declareAttempt(createMeet(POUND_MEET_RULES), { weight: 47.5 }).ok).toBe(true);
+
+    // Same story past the real kit's capacity: 875 lb is on the grid and beyond
+    // what the eight pairs of 45s can reach.
+    expect(isLoadableInReality(LB_LOADS, POUND_BAR_AND_COLLARS_LB, 875)).toBe(false);
+    expect(declareAttempt(createMeet(POUND_MEET_RULES), { weight: 875 }).ok).toBe(true);
+  });
+});
+
+describe('legal declaration, with no opinion on plates', () => {
+  it('keeps a declaration grid that is a rule about numbers, not about discs', () => {
     expect(DECLARATION_INCREMENT_KG).toBe(2.5);
     expect(DEFAULT_MEET_RULES.declarationIncrement).toBe(2.5);
-    expect(DEFAULT_MEET_RULES.declarationIncrement).toBeGreaterThan(DEFAULT_MEET_RULES.loadableIncrement);
+    // The rules object carries no plate field at all. If one comes back, this
+    // file stops type-checking, which is the point.
+    const noPlateField: 'loadableIncrement' extends keyof MeetLoadingRules ? false : true = true;
+    expect(noPlateField).toBe(true);
   });
 
-  it('agrees that a competition bar loads to 201 and 200.5 — and still refuses to let them be called', () => {
-    // The whole point of the split. These weights are physically fine.
+  it('refuses 201 and 200.5 as calls, making no claim about the bar either way', () => {
     for (const weight of [200.5, 201, 201.5, 202]) {
-      expect(isLoadableAttemptWeight(weight, 'squat')).toBe(true);
       expect(isDeclarableWeight(weight)).toBe(false);
       expect(isLegalAttemptWeight(weight, 'squat')).toBe(false);
     }
-    // ...and these are legal on both counts.
     for (const weight of [200, 202.5, 205]) {
-      expect(isLoadableAttemptWeight(weight, 'squat')).toBe(true);
       expect(isDeclarableWeight(weight)).toBe(true);
       expect(isLegalAttemptWeight(weight, 'squat')).toBe(true);
     }
   });
 
-  it('refuses a genuinely unloadable weight for a different, true reason', () => {
-    // 200.25 is off the 0.5 plate grid: the plates really cannot make it.
-    expect(isLoadableAttemptWeight(200.25, 'squat')).toBe(false);
-    expect(expectError(declareAttempt(createMeet(), { weight: 200.25 })).code).toBe('WEIGHT_NOT_LOADABLE');
-    // 201 is on the plate grid and off the declaration grid.
-    expect(expectError(declareAttempt(createMeet(), { weight: 201 })).code).toBe('WEIGHT_NOT_DECLARABLE');
-  });
+  it('names the rule that refused, and points at legal calls instead of at the plates', () => {
+    // The failure this line of reworks exists to kill, in both its forms: the
+    // engine emitted "there is no way to load 201" (false — a competition kit
+    // loads it), and then "there is no way to load 47.5" (false for the same
+    // reason). It now says only what it knows.
+    const error = expectError(declareAttempt(createMeet(), { weight: 201 }));
+    expect(error.code).toBe('WEIGHT_NOT_DECLARABLE');
+    expect(error.message).toContain('declared in steps of 2.5');
+    expect(error.message).toContain('200 and 202.5');
+    expect(error.message).not.toMatch(/load/i);
+    expect(error.message).not.toMatch(/plate/i);
 
-  it('never tells a player that a loadable weight cannot be loaded', () => {
-    // The failure this rework exists to kill: the old engine emitted
-    // "the plates only load in 2.5 increments; 201 cannot be loaded", which is
-    // false at any meet with the retrieved default kit.
-    const declarable = expectError(declareAttempt(createMeet(), { weight: 201 }));
-    expect(declarable.code).toBe('WEIGHT_NOT_DECLARABLE');
-    expect(declarable.message).toContain('declared in steps of 2.5');
-    expect(declarable.message).toContain('loads to 201');
-    expect(declarable.message).not.toMatch(/cannot be loaded/);
-
-    const unloadable = expectError(declareAttempt(createMeet(), { weight: 200.25 }));
-    expect(unloadable.code).toBe('WEIGHT_NOT_LOADABLE');
-    expect(unloadable.message).toContain('steps of 0.5');
-    expect(unloadable.message).toContain('no way to load');
-  });
-
-  it('lets a coarse-plate meet say so, and then the message really is about plates', () => {
-    const state = createMeet(COARSE_PLATE_RULES);
-    expect(isLoadableAttemptWeight(201, 'squat', COARSE_PLATE_RULES)).toBe(false);
-    const error = expectError(declareAttempt(state, { weight: 201 }));
-    expect(error.code).toBe('WEIGHT_NOT_LOADABLE');
-    expect(error.message).toContain('steps of 2.5');
-    expect(unwrap(declareAttempt(state, { weight: 202.5 })).phase.kind).toBe('attempt-declared');
+    // Weights off every grid are refused the same way, because there is only one
+    // grid left to be off.
+    const finer = expectError(declareAttempt(createMeet(), { weight: 200.25 }));
+    expect(finer.code).toBe('WEIGHT_NOT_DECLARABLE');
+    expect(finer.message).not.toMatch(/load/i);
   });
 
   it('lets a federation that calls attempts on the half-kilo declare that once, for the whole meet', () => {
-    // Loading finer discs is NOT what legalises 200.5 — the default meet
-    // already stocks them. Declaring on a finer grid is.
     expect(expectError(declareAttempt(createMeet(), { weight: 200.5 })).code).toBe('WEIGHT_NOT_DECLARABLE');
 
     const state = createMeet(HALF_KILO_DECLARATION_RULES);
@@ -764,10 +959,9 @@ describe('physical loadability vs legal declaration', () => {
     expect(expectError(declareAttempt(made, { weight: 201 })).code).toBe('INSUFFICIENT_INCREASE');
   });
 
-  it('measures loading from the bar and declaration from zero', () => {
-    // A 26 kg bar sits on the 0.5 plate grid but not on the 2.5 declaration
-    // grid, which pulls the two anchorings apart: 26 is loadable and not
-    // callable, so the lightest legal attempt is heavier than the empty bar.
+  it('floors at the bar and grids from zero, so the lightest call can be heavier than the bar', () => {
+    // A 26 kg bar is off the 2.5 declaration grid, which pulls the two
+    // anchorings apart: the lightest legal call is 27.5, not the empty bar.
     const oddBar: MeetLoadingRules = {
       ...DEFAULT_MEET_RULES,
       barAndCollarsWeight: { squat: 26, bench: 26, deadlift: 26 },
@@ -775,18 +969,16 @@ describe('physical loadability vs legal declaration', () => {
     expect(validateMeetRules(oddBar)).toBeNull();
     expect(barAndCollarsWeight('squat', oddBar)).toBe(26);
     expect(minimumAttemptWeight('squat', oddBar)).toBe(27.5);
-
-    expect(isLoadableAttemptWeight(26, 'squat', oddBar)).toBe(true);
-    expect(isLoadableAttemptWeight(26.5, 'squat', oddBar)).toBe(true);
-    expect(isLoadableAttemptWeight(26.25, 'squat', oddBar)).toBe(false);
-    expect(isLoadableAttemptWeight(25.5, 'squat', oddBar)).toBe(false); // under the bar
     expect(isLegalAttemptWeight(26, 'squat', oddBar)).toBe(false);
+    expect(isLegalAttemptWeight(25.5, 'squat', oddBar)).toBe(false); // under the bar
     expect(isLegalAttemptWeight(27.5, 'squat', oddBar)).toBe(true);
 
     const state = createMeet(oddBar);
     expect(expectError(declareAttempt(state, { weight: 25 })).code).toBe('WEIGHT_BELOW_BAR');
-    expect(expectError(declareAttempt(state, { weight: 26.25 })).code).toBe('WEIGHT_NOT_LOADABLE');
-    expect(expectError(declareAttempt(state, { weight: 26 })).code).toBe('WEIGHT_NOT_DECLARABLE');
+    const uncallable = expectError(declareAttempt(state, { weight: 26 }));
+    expect(uncallable.code).toBe('WEIGHT_NOT_DECLARABLE');
+    // The hint collapses to one number when the weight sits under the floor.
+    expect(uncallable.message).toContain('lightest legal call is 27.5');
     expect(unwrap(declareAttempt(state, { weight: 27.5 })).phase.kind).toBe('attempt-declared');
   });
 });
@@ -822,14 +1014,8 @@ describe('loadable weights', () => {
     expect(unwrap(declareAttempt(state, { weight: 30 })).phase.kind).toBe('attempt-declared');
   });
 
-  it('rounds onto the plate grid or the declaration grid, on request, never below the bar', () => {
-    // Plate grid: 0.5 by default, so 201 and 26 are already on it.
-    expect(roundToLoadableAttemptWeight(0, 'squat')).toBe(MIN_LOADABLE_WEIGHT_KG);
-    expect(roundToLoadableAttemptWeight(10, 'squat')).toBe(MIN_LOADABLE_WEIGHT_KG);
-    expect(roundToLoadableAttemptWeight(201, 'squat')).toBe(201);
-    expect(roundToLoadableAttemptWeight(200.25, 'squat')).toBe(200.5);
-    expect(roundToLoadableAttemptWeight(200.24, 'squat', DEFAULT_MEET_RULES, 'down')).toBe(200);
-
+  it('rounds onto the declaration grid, never below the bar', () => {
+    // There is one grid to round onto, and it is a rule, not a plate rack.
     // Declaration grid: 2.5, so these land where an attempt card would.
     expect(roundToLegalAttemptWeight(0, 'squat')).toBe(MIN_LOADABLE_WEIGHT_KG);
     expect(roundToLegalAttemptWeight(10, 'squat')).toBe(MIN_LOADABLE_WEIGHT_KG);
@@ -840,8 +1026,8 @@ describe('loadable weights', () => {
   });
 
   it('always rounds to something the engine will actually accept', () => {
-    for (const rules of [DEFAULT_MEET_RULES, HALF_KILO_DECLARATION_RULES, COARSE_PLATE_RULES]) {
-      for (const target of [0, 24.9, 25, 26, 100.3, 200.25, 201, 337.6]) {
+    for (const rules of ALL_RULE_SETS) {
+      for (const target of [0, 24.9, 25, 26, 44, 47.5, 100.3, 200.25, 201, 337.6]) {
         for (const mode of ['nearest', 'up', 'down'] as const) {
           const rounded = roundToLegalAttemptWeight(target, 'squat', rules, mode);
           expect(isLegalAttemptWeight(rounded, 'squat', rules)).toBe(true);
@@ -852,46 +1038,56 @@ describe('loadable weights', () => {
   });
 
   it('rejects nonsense meet rules loudly instead of skipping the check', () => {
-    const broken: MeetLoadingRules = { ...DEFAULT_MEET_RULES, loadableIncrement: 0 };
+    const broken: MeetLoadingRules = { ...DEFAULT_MEET_RULES, declarationIncrement: 0 };
     expect(validateMeetRules(broken)?.code).toBe('INVALID_MEET_RULES');
-    expect(validateMeetRules(DEFAULT_MEET_RULES)).toBeNull();
-    expect(validateMeetRules(HALF_KILO_DECLARATION_RULES)).toBeNull();
-    expect(validateMeetRules(COARSE_PLATE_RULES)).toBeNull();
+    for (const rules of ALL_RULE_SETS) {
+      expect(validateMeetRules(rules)).toBeNull();
+    }
 
     const state = createMeet(broken);
     expect(expectError(declareAttempt(state, { weight: 200 })).code).toBe('INVALID_MEET_RULES');
     expect(expectError(suggestOpener('squat', 200, broken)).code).toBe('INVALID_MEET_RULES');
 
-    const noDeclarationGrid: MeetLoadingRules = { ...DEFAULT_MEET_RULES, declarationIncrement: 0 };
-    expect(validateMeetRules(noDeclarationGrid)?.code).toBe('INVALID_MEET_RULES');
+    const noMinIncrement: MeetLoadingRules = { ...DEFAULT_MEET_RULES, minIncrement: 0 };
+    expect(validateMeetRules(noMinIncrement)?.code).toBe('INVALID_MEET_RULES');
 
     const negativeBar: MeetLoadingRules = {
       ...DEFAULT_MEET_RULES,
       barAndCollarsWeight: { squat: 25, bench: -1, deadlift: 25 },
     };
     expect(validateMeetRules(negativeBar)?.code).toBe('INVALID_MEET_RULES');
+
+    const infiniteGrid: MeetLoadingRules = {
+      ...DEFAULT_MEET_RULES,
+      declarationIncrement: Number.POSITIVE_INFINITY,
+    };
+    expect(validateMeetRules(infiniteGrid)?.code).toBe('INVALID_MEET_RULES');
   });
 
-  it('refuses rules whose declaration grid the plates cannot reach', () => {
-    // Declare on the half-kilo, but stock nothing finer than 1.25 kg discs:
-    // every legal call would be unloadable. Fail loudly rather than suggest
-    // weights that would then be refused.
-    const unreachable: MeetLoadingRules = {
-      ...DEFAULT_MEET_RULES,
-      declarationIncrement: 0.5,
-      loadableIncrement: 2.5,
-    };
-    const error = validateMeetRules(unreachable);
-    expect(error?.code).toBe('INVALID_MEET_RULES');
-    expect(error?.message).toContain('would not be loadable');
-    expect(expectError(declareAttempt(createMeet(unreachable), { weight: 200 })).code).toBe('INVALID_MEET_RULES');
+  it('no longer rejects a configuration for disagreeing with a plate grid it does not have', () => {
+    // Every one of these was INVALID_MEET_RULES in the previous version, which
+    // cross-checked the declaration grid and the bar against a single plate
+    // step. All of them describe runnable meets.
 
-    // Same failure from the other side: a bar off the plate grid entirely.
+    // The pound meet from this module's own source: bar 45, calls on 2.5, while
+    // the pound kit's smallest pair is 1 lb. 2.5 is not a multiple of 1.
+    expect(validateMeetRules(POUND_MEET_RULES)).toBeNull();
+    expect(declareAttempt(createMeet(POUND_MEET_RULES), { weight: 402.5 }).ok).toBe(true);
+
+    // Calls on the half-kilo at a meet whose finest disc pair is 2.5.
+    const fineCallsCoarsePlates: MeetLoadingRules = { ...DEFAULT_MEET_RULES, declarationIncrement: 0.5 };
+    expect(validateMeetRules(fineCallsCoarsePlates)).toBeNull();
+
+    // A bar that is not a whole number of anything. A 25.1 kg bar is a strange
+    // bar, not an invalid meet: the lightest legal call is simply 27.5.
     const offGridBar: MeetLoadingRules = {
       ...DEFAULT_MEET_RULES,
       barAndCollarsWeight: { squat: 25.1, bench: 25, deadlift: 25 },
     };
-    expect(validateMeetRules(offGridBar)?.code).toBe('INVALID_MEET_RULES');
+    expect(validateMeetRules(offGridBar)).toBeNull();
+    expect(minimumAttemptWeight('squat', offGridBar)).toBe(27.5);
+    expect(expectError(declareAttempt(createMeet(offGridBar), { weight: 25 })).code).toBe('WEIGHT_BELOW_BAR');
+    expect(declareAttempt(createMeet(offGridBar), { weight: 27.5 }).ok).toBe(true);
   });
 });
 
@@ -901,7 +1097,7 @@ describe('loadable weights', () => {
 
 describe('meet rules are sealed at createMeet', () => {
   it('accepts the rules it sealed itself', () => {
-    for (const rules of [DEFAULT_MEET_RULES, HALF_KILO_DECLARATION_RULES, COARSE_PLATE_RULES]) {
+    for (const rules of ALL_RULE_SETS) {
       expect(checkMeetRulesSeal(createMeet(rules).rules)).toBeNull();
     }
   });
@@ -932,7 +1128,6 @@ describe('meet rules are sealed at createMeet', () => {
   it('notices every rule field, including a swapped bar weight', () => {
     const state = createMeet();
     const fields: readonly MeetState[] = [
-      { ...state, rules: { ...state.rules, loadableIncrement: 2.5 } },
       { ...state, rules: { ...state.rules, declarationIncrement: 1 } },
       { ...state, rules: { ...state.rules, minIncrement: 5 } },
       {
@@ -960,6 +1155,77 @@ describe('meet rules are sealed at createMeet', () => {
       rules: { ...state.rules, declarationIncrement: 0.5, seal: 0 as MeetRulesSeal },
     };
     expect(checkMeetRulesSeal(forged.rules)?.code).toBe('MEET_RULES_TAMPERED');
+  });
+
+  // The module's seal-parameter note makes an arithmetic CLAIM: that every
+  // intermediate of the fold stays exact in a double. A previous version made
+  // the same claim with a modulus of 2^31, where it was false by a factor of
+  // four, and the tests could not tell — the fold still discriminated every
+  // field while silently dropping its low bits. These check the claim itself.
+  describe('the seal fold is exactly the arithmetic it says it is', () => {
+    const source = readFileSync(new URL('./meet.ts', import.meta.url), 'utf8');
+    const read = (pattern: RegExp): number => {
+      const found = pattern.exec(source)?.[1];
+      if (found === undefined) throw new Error(`could not read ${String(pattern)} out of meet.ts`);
+      return Number(found);
+    };
+    const basis = read(/const RULES_SEAL_BASIS = (\d+);/);
+    const prime = read(/const RULES_SEAL_PRIME = (\d+);/);
+    const modulus = 2 ** read(/const RULES_SEAL_MODULUS = 2 \*\* (\d+);/);
+    const decimals = read(/WEIGHT_DECIMAL_PLACES = (\d+);/);
+
+    it('keeps its largest intermediate under 2^53', () => {
+      // Values are reduced into [0, modulus) before folding, so the largest
+      // value the fold ever computes is (modulus - 1) * prime + (modulus - 1).
+      const worst = BigInt(modulus - 1) * BigInt(prime) + BigInt(modulus - 1);
+      expect(worst < 2n ** 53n).toBe(true);
+      // ...and doubling the modulus would break it, which is why it is this
+      // size and not a rounder one.
+      const doubled = BigInt(2 * modulus - 1) * BigInt(prime) + BigInt(2 * modulus - 1);
+      expect(doubled > 2n ** 53n).toBe(true);
+    });
+
+    it('produces the same seal as the identical fold done in exact integers', () => {
+      // The real test of exactness: BigInt cannot round, so any bit the double
+      // fold loses shows up here as a mismatch.
+      for (const rules of ALL_RULE_SETS) {
+        const fields: readonly number[] = [
+          rules.barAndCollarsWeight.squat,
+          rules.barAndCollarsWeight.bench,
+          rules.barAndCollarsWeight.deadlift,
+          rules.minIncrement,
+          rules.declarationIncrement,
+        ];
+        const m = BigInt(modulus);
+        let exact = BigInt(basis) % m;
+        for (const field of fields) {
+          const scaled = BigInt(Math.round(field * 10 ** decimals));
+          exact = (exact * BigInt(prime) + (((scaled % m) + m) % m)) % m;
+        }
+        expect(BigInt(createMeet(rules).rules.seal)).toBe(exact);
+      }
+    });
+
+    it('yields a non-negative integer inside the modulus', () => {
+      for (const rules of ALL_RULE_SETS) {
+        const seal: number = createMeet(rules).rules.seal;
+        expect(Number.isInteger(seal)).toBe(true);
+        expect(seal).toBeGreaterThanOrEqual(0);
+        expect(seal).toBeLessThan(modulus);
+      }
+    });
+
+    it('still folds a non-finite rule value to a number rather than NaN', () => {
+      const nonsense: MeetLoadingRules = {
+        ...DEFAULT_MEET_RULES,
+        declarationIncrement: Number.POSITIVE_INFINITY,
+      };
+      const state = createMeet(nonsense);
+      expect(Number.isInteger(state.rules.seal)).toBe(true);
+      expect(checkMeetRulesSeal(state.rules)).toBeNull();
+      // ...and it is still refused at the point of use, by the validator.
+      expect(expectError(declareAttempt(state, { weight: 200 })).code).toBe('INVALID_MEET_RULES');
+    });
   });
 
   it('seals deterministically, so an identical meet replays identically', () => {
@@ -1048,11 +1314,11 @@ describe('rejected transitions', () => {
 
   it('rejects weights a lifter may not call, and says which rule refused them', () => {
     const state = createMeet();
-    expect(expectError(declareAttempt(state, { weight: 201 })).code).toBe('WEIGHT_NOT_DECLARABLE');
-    expect(expectError(declareAttempt(state, { weight: 200.5 })).code).toBe('WEIGHT_NOT_DECLARABLE');
-    // Off the plate grid as well as the declaration grid: physics wins, because
-    // it is the more concrete truth about the refusal.
-    expect(expectError(declareAttempt(state, { weight: 200.25 })).code).toBe('WEIGHT_NOT_LOADABLE');
+    for (const weight of [201, 200.5, 200.25]) {
+      expect(expectError(declareAttempt(state, { weight })).code).toBe('WEIGHT_NOT_DECLARABLE');
+    }
+    // Below the bar is the one refusal that is about equipment.
+    expect(expectError(declareAttempt(state, { weight: 24 })).code).toBe('WEIGHT_BELOW_BAR');
     expect(unwrap(declareAttempt(state, { weight: 202.5 })).phase.kind).toBe('attempt-declared');
   });
 });
@@ -1173,24 +1439,22 @@ describe('attempt context', () => {
     expect(context?.minimumIncreaseWeight).toBe(200 + MIN_ATTEMPT_INCREMENT_KG);
   });
 
-  it('only ever offers a minimum that is both loadable and declarable', () => {
-    // +2.5 off 200 is 202.5: on the plate grid and on the declaration grid.
-    for (const rules of [DEFAULT_MEET_RULES, HALF_KILO_DECLARATION_RULES, COARSE_PLATE_RULES]) {
+  it('only ever offers a minimum the engine will accept', () => {
+    for (const rules of ALL_RULE_SETS) {
       const state = takeAttempt(createMeet(rules), 200, THREE_WHITE);
       const minimum = currentAttemptContext(state)?.minimumIncreaseWeight ?? 0;
-      expect(isLoadableAttemptWeight(minimum, 'squat', rules)).toBe(true);
       expect(isDeclarableWeight(minimum, rules)).toBe(true);
+      expect(isLegalAttemptWeight(minimum, 'squat', rules)).toBe(true);
       expect(declareAttempt(state, { weight: minimum }).ok).toBe(true);
     }
   });
 
-  it('rounds the minimum onto the declaration grid, not merely onto the plate grid', () => {
-    // minIncrement 1 with a 2.5 declaration grid: 200 + 1 is 201, which the bar
-    // can take and a lifter still may not call. The floor must be 202.5.
+  it('rounds the minimum up onto the declaration grid when the jump lands off it', () => {
+    // minIncrement 1 with a 2.5 declaration grid: 200 + 1 is 201, which is not a
+    // legal call, so the floor must be 202.5 rather than 201.
     const fineJumps: MeetLoadingRules = { ...DEFAULT_MEET_RULES, minIncrement: 1 };
     const state = takeAttempt(createMeet(fineJumps), 200, THREE_WHITE);
     const context = currentAttemptContext(state);
-    expect(isLoadableAttemptWeight(201, 'squat', fineJumps)).toBe(true);
     expect(context?.minimumIncreaseWeight).toBe(202.5);
     expect(context?.minimumWeight).toBe(202.5);
     expect(declareAttempt(state, { weight: 202.5 }).ok).toBe(true);
@@ -1229,8 +1493,8 @@ describe('attempt selection', () => {
     }
   });
 
-  it('suggests weights that are loadable, declarable, and accepted by the engine', () => {
-    for (const rules of [DEFAULT_MEET_RULES, HALF_KILO_DECLARATION_RULES, COARSE_PLATE_RULES]) {
+  it('suggests weights that are declarable and accepted by the engine', () => {
+    for (const rules of ALL_RULE_SETS) {
       const afterGood = takeAttempt(createMeet(rules), 200, THREE_WHITE);
       const afterMiss = takeAttempt(createMeet(rules), 200, THREE_RED);
       for (const state of [afterGood, afterMiss]) {
@@ -1240,7 +1504,7 @@ describe('attempt selection', () => {
             expect(suggestion.error.code).toBe('REPEAT_AFTER_GOOD_LIFT');
             continue;
           }
-          expect(isLoadableAttemptWeight(suggestion.value, 'squat', rules)).toBe(true);
+          expect(isLegalAttemptWeight(suggestion.value, 'squat', rules)).toBe(true);
           expect(isDeclarableWeight(suggestion.value, rules)).toBe(true);
           expect(declareAttempt(state, { weight: suggestion.value }).ok).toBe(true);
         }
@@ -1300,7 +1564,7 @@ describe('opener suggestion', () => {
   it('produces a weight the engine accepts as an opener', () => {
     for (const lift of LIFT_ORDER) {
       const opener = unwrap(suggestOpener(lift, 180));
-      expect(isLoadableAttemptWeight(opener, lift)).toBe(true);
+      expect(isLegalAttemptWeight(opener, lift)).toBe(true);
       expect(opener).toBeGreaterThanOrEqual(MIN_LOADABLE_WEIGHT_KG);
     }
     const state = createMeet();
@@ -1329,13 +1593,14 @@ describe('opener suggestion', () => {
 
 describe('weight rounding', () => {
   it('snaps to whichever grid the caller names — it has no default of its own', () => {
-    // Deliberately has no default increment. The old single-default version is
-    // how one grid came to stand in for two.
+    // Deliberately has no default increment: it is pure grid arithmetic and the
+    // caller says which grid. The old single-default version is how one grid
+    // came to stand in for a rule it had no business describing.
     expect(roundToIncrement(201, DECLARATION_INCREMENT_KG)).toBe(200);
     expect(roundToIncrement(201.5, DECLARATION_INCREMENT_KG)).toBe(202.5);
     expect(roundToIncrement(202.5, DECLARATION_INCREMENT_KG)).toBe(202.5);
-    expect(roundToIncrement(201, LOADABLE_WEIGHT_INCREMENT_KG)).toBe(201);
-    expect(roundToIncrement(200.3, LOADABLE_WEIGHT_INCREMENT_KG)).toBe(200.5);
+    expect(roundToIncrement(201, 0.5)).toBe(201);
+    expect(roundToIncrement(200.3, 0.5)).toBe(200.5);
   });
 
   it('rounds up and down on request without float drift', () => {
@@ -1344,18 +1609,24 @@ describe('weight rounding', () => {
     expect(roundToIncrement(202.5, DECLARATION_INCREMENT_KG, 'up')).toBe(202.5);
     expect(roundToIncrement(202.5, DECLARATION_INCREMENT_KG, 'down')).toBe(202.5);
     expect(roundToIncrement(107.5, DECLARATION_INCREMENT_KG, 'up')).toBe(107.5);
-    expect(roundToIncrement(200.5, LOADABLE_WEIGHT_INCREMENT_KG, 'up')).toBe(200.5);
-    expect(roundToIncrement(200.4, LOADABLE_WEIGHT_INCREMENT_KG, 'down')).toBe(200);
+    expect(roundToIncrement(200.5, 0.5, 'up')).toBe(200.5);
+    expect(roundToIncrement(200.4, 0.5, 'down')).toBe(200);
+    // Pound grid, where the arithmetic is not a multiple of the kg one.
+    expect(roundToIncrement(403, POUND_DECLARATION_INCREMENT_LB, 'up')).toBe(405);
+    expect(roundToIncrement(403, POUND_DECLARATION_INCREMENT_LB, 'down')).toBe(402.5);
   });
 
   it('recognises which grid a weight sits on', () => {
     expect(isOnIncrementGrid(202.5, DECLARATION_INCREMENT_KG)).toBe(true);
     expect(isOnIncrementGrid(200.5, DECLARATION_INCREMENT_KG)).toBe(false);
-    expect(isOnIncrementGrid(200.5, LOADABLE_WEIGHT_INCREMENT_KG)).toBe(true);
-    expect(isOnIncrementGrid(200.25, LOADABLE_WEIGHT_INCREMENT_KG)).toBe(false);
-    expect(isOnIncrementGrid(200.25, SMALLEST_CHANGE_PLATE_KG)).toBe(true);
+    expect(isOnIncrementGrid(200.5, 0.5)).toBe(true);
+    expect(isOnIncrementGrid(200.25, 0.5)).toBe(false);
+    expect(isOnIncrementGrid(200.25, 0.25)).toBe(true);
     expect(isOnIncrementGrid(202.5, 0)).toBe(false);
     expect(isOnIncrementGrid(Number.NaN, DECLARATION_INCREMENT_KG)).toBe(false);
+    // The relationship the removed plate gate got wrong: 2.5 is not a whole
+    // number of 1s, which is why it rejected the pound configuration.
+    expect(isOnIncrementGrid(POUND_DECLARATION_INCREMENT_LB, 1)).toBe(false);
   });
 });
 
@@ -1381,21 +1652,20 @@ describe('immutability', () => {
     const callerRules = {
       barAndCollarsWeight: { squat: 25, bench: 25, deadlift: 25 },
       minIncrement: 2.5,
-      loadableIncrement: 2.5,
       declarationIncrement: 2.5,
     };
     const state = createMeet(callerRules);
 
-    callerRules.loadableIncrement = 0.5;
+    callerRules.minIncrement = 0.5;
     callerRules.declarationIncrement = 0.5;
     callerRules.barAndCollarsWeight.squat = 5;
 
-    expect(state.rules.loadableIncrement).toBe(2.5);
+    expect(state.rules.minIncrement).toBe(2.5);
     expect(state.rules.declarationIncrement).toBe(2.5);
     expect(state.rules.barAndCollarsWeight.squat).toBe(25);
-    // This meet stocks nothing finer than 1.25 kg discs, so 200.5 really is
-    // unloadable here — unlike at a default meet, where it is merely uncallable.
-    expect(expectError(declareAttempt(state, { weight: 200.5 })).code).toBe('WEIGHT_NOT_LOADABLE');
+    // The meet still runs on the rules it was started with, not the caller's
+    // edited ones: 200.5 is not a legal call here and 10 is under the bar.
+    expect(expectError(declareAttempt(state, { weight: 200.5 })).code).toBe('WEIGHT_NOT_DECLARABLE');
     expect(expectError(declareAttempt(state, { weight: 10 })).code).toBe('WEIGHT_BELOW_BAR');
     // Mutating the caller's object must not invalidate the seal either.
     expect(checkMeetRulesSeal(state.rules)).toBeNull();
