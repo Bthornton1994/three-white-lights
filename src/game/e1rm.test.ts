@@ -5,9 +5,8 @@ import {
   E1RM_DOMAIN,
   E1RM_FORMULA,
   E1RM_METHOD_LABEL,
-  E1RM_REP_MAX_FORMULA_NAME,
+  E1RM_TUNING,
   TO_FAILURE_RPE,
-  brzyckiE1rm,
   effectiveRepMax,
   epleyE1rm,
   estimateE1rm,
@@ -20,6 +19,7 @@ import {
 import {
   CHARTED_REPS,
   CHARTED_RPES,
+  CONTESTED_CHART_CELLS,
   RPE_CHART_COVERAGE,
   e1rmFromChartedSet,
   fractionOf1RM,
@@ -39,9 +39,12 @@ import {
  *      expectation, so the test still fails if the implementation drifts.
  *
  * Published sources in play:
- *   Epley:   e1RM = w * (1 + r / 30)
- *   Brzycki: e1RM = w * 36 / (37 - r)
+ *   Epley: e1RM = w * (1 + r / 30). The ONE rep-max formula CLAUDE.md permits.
  *   Tuchscherer / RTS RPE chart: transcribed and sourced in `rpe.ts`.
+ *
+ * Every figure quoted in `e1rm.ts`'s header is pinned by a test below, under
+ * "figures quoted in the module header". The module has shipped a stale number
+ * before; prose that no test holds is prose that goes stale.
  */
 
 /** Float comparison precision: |actual - expected| < 5e-10. */
@@ -51,26 +54,46 @@ const PRECISION = 9;
 const SCRUBBED_PRECISION = 5;
 
 /**
- * How far the exact rational forms may sit from the widely-published
- * 4-significant-figure decimal forms, as a fraction of the estimate. These are
- * tolerances on *the published rounding*, not on our math: 0.0333 is short of
- * 1/30 by 3.3e-5 and 0.0278 is short of 1/36 by 2.2e-6, and that shortfall is
- * multiplied by the rep count, so the two forms drift further apart the higher
- * the reps go.
+ * How far the exact rational form may sit from the widely-published
+ * 4-significant-figure decimal form, as a fraction of the estimate. This is a
+ * tolerance on *the published rounding*, not on our math: 0.0333 is short of
+ * 1/30 by 3.3e-5, and that shortfall is multiplied by the rep count, so the two
+ * forms drift further apart the higher the reps go.
  */
-const DECIMAL_ROUNDING_TOLERANCE = 0.002; // 0.2% across 1-24 reps
+const DECIMAL_ROUNDING_TOLERANCE = 0.002; // 0.2% across 1-16 reps
 
 /** Largest reps in reserve the published chart expresses (RPE 6 => 4 RIR). */
 const MAX_CHARTED_RIR = RPE_CHART_COVERAGE.MAX_RPE - RPE_CHART_COVERAGE.MIN_RPE;
 
-function relativeDifference(actual: number, expected: number): number {
-  return Math.abs(actual - expected) / expected;
+/** Round to `places` decimals the way a written figure is rounded. */
+function toFigure(value: number, places: number): number {
+  return Number(value.toFixed(places));
+}
+
+/**
+ * What the app reports per unit of weight at a given effective rep max: the
+ * inverse of the published chart cell. Written from the chart, not from the
+ * implementation.
+ */
+function chartFactor(repMax: number): number {
+  return 100 / chartPercentAt(repMax);
+}
+
+/** %1RM on the chart's reps-in-reserve diagonal at an effective rep max. */
+function chartPercentAt(repMax: number): number {
+  const reps = Math.min(RPE_CHART_COVERAGE.MAX_REPS, Math.floor(repMax));
+  return percentOf1RM(reps, RPE_CHART_COVERAGE.MAX_RPE - (repMax - reps));
+}
+
+/** Epley per unit of weight, written straight from the published formula. */
+function epleyFactor(repMax: number): number {
+  return 1 + repMax / E1RM_FORMULA.EPLEY_REP_DIVISOR;
 }
 
 /**
  * Smallest set that expresses a given effective rep max, used to walk the
- * canonical curve. Mirrors the reps-in-reserve identity, not the
- * implementation's internal cell picker.
+ * curve. Mirrors the reps-in-reserve identity, not the implementation's
+ * internal cell picker.
  */
 function setForRepMax(weight: number, repMax: number): CompletedSet {
   const reps = Math.min(E1RM_DOMAIN.MAX_REPS, Math.floor(repMax));
@@ -80,7 +103,7 @@ function setForRepMax(weight: number, repMax: number): CompletedSet {
 /** Every supported effective rep max, in the chart's half-rep steps. */
 function everyRepMax(): number[] {
   const out: number[] = [];
-  for (let doubled = E1RM_DOMAIN.MIN_REPS * 2; doubled <= E1RM_DOMAIN.MAX_REP_MAX * 2; doubled += 1) {
+  for (let doubled = E1RM_DOMAIN.MIN_REPS * 2; doubled <= CHART_MAX_REP_MAX * 2; doubled += 1) {
     out.push(doubled / 2);
   }
   return out;
@@ -95,14 +118,14 @@ describe('published formula constants', () => {
     expect(E1RM_FORMULA.EPLEY_REP_DIVISOR).toBe(30);
   });
 
-  it('holds the Brzycki 36 / (37 - r) pair', () => {
-    expect(E1RM_FORMULA.BRZYCKI_NUMERATOR).toBe(36);
-    expect(E1RM_FORMULA.BRZYCKI_REP_OFFSET).toBe(37);
+  it('carries exactly one rep-max formula constant, because there is one formula', () => {
+    // CLAUDE.md: "Epley, and only Epley". A second entry here would be a
+    // second formula sneaking back in.
+    expect(Object.keys(E1RM_FORMULA)).toEqual(['EPLEY_REP_DIVISOR']);
   });
 
-  it('names Brzycki as the one rep-max formula in player-facing use', () => {
-    expect(E1RM_REP_MAX_FORMULA_NAME).toBe('Brzycki');
-    expect(E1RM_METHOD_LABEL.brzycki).toBe('Brzycki');
+  it('has one attribution, because there is one curve', () => {
+    expect(Object.keys(E1RM_METHOD_LABEL)).toEqual(['rpe-chart']);
     expect(E1RM_METHOD_LABEL['rpe-chart']).toBe('RPE chart');
   });
 });
@@ -118,28 +141,37 @@ describe('domain constants', () => {
     expect(CHART_MAX_REP_MAX).toBe(RPE_CHART_COVERAGE.MAX_REPS + MAX_CHARTED_RIR);
   });
 
-  it('keeps every supported rep max well below the Brzycki pole at 37', () => {
-    expect(E1RM_DOMAIN.MAX_REP_MAX).toBeLessThan(E1RM_FORMULA.BRZYCKI_REP_OFFSET);
+  it('ends the supported domain exactly where the published chart ends', () => {
+    // The whole point of the rework: no curve past the data.
+    expect(E1RM_DOMAIN.MAX_REPS).toBe(CHART_MAX_REP_MAX);
+    expect(E1RM_DOMAIN.MIN_REPS).toBe(RPE_CHART_COVERAGE.MIN_REPS);
     expect(E1RM_DOMAIN.MIN_REPS).toBe(1);
   });
 
-  it('sets the rep-max ceiling high enough that the reps guard is the binding one', () => {
-    // While this holds, any set with reps <= MAX_REPS is accepted whatever its
-    // RPE, and the rep-max ceiling in describeSetProblem is a guard against a
-    // future retune rather than a live rejection path.
-    expect(E1RM_DOMAIN.MAX_REP_MAX).toBeGreaterThanOrEqual(
-      E1RM_DOMAIN.MAX_REPS + MAX_CHARTED_RIR,
-    );
+  it('accepts the longest rep count only when the set was taken to failure', () => {
+    // MAX_REPS is necessary, not sufficient: at any lower RPE the same rep
+    // count implies an effective rep max past the chart.
+    expect(() =>
+      estimateE1rm({ weight: 100, reps: E1RM_DOMAIN.MAX_REPS, rpe: TO_FAILURE_RPE }),
+    ).not.toThrow();
+    expect(() =>
+      estimateE1rm({ weight: 100, reps: E1RM_DOMAIN.MAX_REPS, rpe: TO_FAILURE_RPE - 0.5 }),
+    ).toThrow(RangeError);
   });
 
-  it('keeps the high-confidence bound inside the supported domain', () => {
-    expect(E1RM_DOMAIN.HIGH_CONFIDENCE_MAX_REP_MAX).toBeLessThanOrEqual(E1RM_DOMAIN.MAX_REP_MAX);
-    expect(E1RM_DOMAIN.HIGH_CONFIDENCE_MAX_REP_MAX).toBeGreaterThanOrEqual(E1RM_DOMAIN.MIN_REPS);
+  it('keeps the tunable confidence bound inside the supported domain', () => {
+    expect(E1RM_TUNING.HIGH_CONFIDENCE_MAX_REP_MAX).toBeLessThanOrEqual(CHART_MAX_REP_MAX);
+    expect(E1RM_TUNING.HIGH_CONFIDENCE_MAX_REP_MAX).toBeGreaterThanOrEqual(E1RM_DOMAIN.MIN_REPS);
+  });
+
+  it('keeps the one tunable value out of the derived and published blocks', () => {
+    // CLAUDE.md "Game Feel Values Must Be Tunable": one place, clearly marked.
+    expect(Object.keys(E1RM_TUNING)).toEqual(['HIGH_CONFIDENCE_MAX_REP_MAX']);
   });
 });
 
 // ===========================================================================
-// The raw published formulas
+// The one published formula
 // ===========================================================================
 
 describe('epleyE1rm', () => {
@@ -155,9 +187,9 @@ describe('epleyE1rm', () => {
     [8, 126.666666666666667],
     [9, 130],
     [10, 133.333333333333333],
+    [12, 140],
     [15, 150],
-    [20, 166.666666666666667],
-    [24, 180],
+    [16, 153.333333333333333],
   ];
 
   it.each(publishedAt100)('100 x %f rep max -> %f', (repMax, expected) => {
@@ -165,11 +197,10 @@ describe('epleyE1rm', () => {
   });
 
   it('is the raw published curve at 1 rep, with no clamp to the weight lifted', () => {
-    // Deliberate change from an earlier revision, which clamped this to `w`.
-    // Epley is a rep-max formula and is simply not exact at r = 1; pretending
-    // otherwise made a lower bound look like a point estimate. Singles are
-    // handled by the chart instead (see "singles" below), so nothing
-    // player-facing depends on this value.
+    // Deliberate: Epley is a rep-max formula and is simply not exact at r = 1;
+    // pretending otherwise made a lower bound look like a point estimate.
+    // Singles are handled by the chart instead (see "singles" below), so
+    // nothing player-facing depends on this value.
     expect(epleyE1rm(200, 1)).toBeCloseTo(200 * (1 + 1 / 30), PRECISION);
     expect(epleyE1rm(200, 1)).toBeCloseTo(206.666666666666667, PRECISION);
     expect(epleyE1rm(200, 1)).not.toBe(200);
@@ -184,114 +215,146 @@ describe('epleyE1rm', () => {
 
   it('accepts the half-rep maxima the chart’s half-RPE steps produce', () => {
     expect(epleyE1rm(100, 4.5)).toBeCloseTo(115, PRECISION); // 100 * (1 + 4.5/30)
-    expect(epleyE1rm(100, 16.5)).toBeCloseTo(155, PRECISION);
+    expect(epleyE1rm(100, 15.5)).toBeCloseTo(151.666666666666667, PRECISION);
   });
 
   it('matches the published decimal-rounded form w * (1 + 0.0333 * r)', () => {
     for (const repMax of everyRepMax()) {
       const publishedDecimal = 100 * (1 + 0.0333 * repMax);
-      expect(relativeDifference(epleyE1rm(100, repMax), publishedDecimal)).toBeLessThan(
-        DECIMAL_ROUNDING_TOLERANCE,
-      );
-    }
-  });
-});
-
-describe('brzyckiE1rm', () => {
-  // w = 100, so each expected value is literally 3600 / (37 - r).
-  const publishedAt100: ReadonlyArray<readonly [repMax: number, expected: number]> = [
-    [1, 100],
-    [2, 102.857142857142857],
-    [3, 105.882352941176471],
-    [4, 109.090909090909091],
-    [5, 112.5],
-    [6, 116.129032258064516],
-    [7, 120],
-    [8, 124.137931034482759],
-    [9, 128.571428571428571],
-    [10, 133.333333333333333],
-    [15, 163.636363636363636],
-    [20, 211.764705882352941],
-    [24, 276.923076923076923],
-  ];
-
-  it.each(publishedAt100)('100 x %f rep max -> %f', (repMax, expected) => {
-    expect(brzyckiE1rm(100, repMax)).toBeCloseTo(expected, PRECISION);
-  });
-
-  it('returns the weight itself at a 1 rep max as a natural property', () => {
-    // 36 / (37 - 1) = 1. No special case in the implementation.
-    for (const weight of [60, 100, 102.5, 227.5, 400.5]) {
-      expect(brzyckiE1rm(weight, 1)).toBeCloseTo(weight, PRECISION);
+      const drift = Math.abs(epleyE1rm(100, repMax) - publishedDecimal) / publishedDecimal;
+      expect(drift).toBeLessThan(DECIMAL_ROUNDING_TOLERANCE);
     }
   });
 
-  it('matches hand-computed values at realistic gym loads', () => {
-    expect(brzyckiE1rm(185, 5)).toBeCloseTo(208.125, PRECISION); // 185 * 36/32
-    expect(brzyckiE1rm(315, 3)).toBeCloseTo(333.529411764705882, PRECISION); // 11340/34
-    expect(brzyckiE1rm(140, 10)).toBeCloseTo(186.666666666666667, PRECISION); // 5040/27
-    expect(brzyckiE1rm(60, 7)).toBeCloseTo(72, PRECISION); // 2160/30
-  });
-
-  it('accepts half-rep maxima', () => {
-    expect(brzyckiE1rm(100, 16.5)).toBeCloseTo(175.609756097560976, PRECISION); // 3600/20.5
-  });
-
-  it('matches the published decimal-rounded form w / (1.0278 - 0.0278 * r)', () => {
-    for (const repMax of everyRepMax()) {
-      const publishedDecimal = 100 / (1.0278 - 0.0278 * repMax);
-      expect(relativeDifference(brzyckiE1rm(100, repMax), publishedDecimal)).toBeLessThan(
-        DECIMAL_ROUNDING_TOLERANCE,
-      );
-    }
-  });
-});
-
-describe('relationships between the two published curves', () => {
-  it('returns identical values at exactly a 10 rep max (both are 4/3 * w)', () => {
-    expect(epleyE1rm(100, 10)).toBeCloseTo(133.333333333333333, PRECISION);
-    expect(brzyckiE1rm(100, 10)).toBeCloseTo(133.333333333333333, PRECISION);
-    expect(epleyE1rm(180, 10)).toBeCloseTo(brzyckiE1rm(180, 10), PRECISION);
-  });
-
-  it('reads higher on Epley below a 10 rep max', () => {
-    for (let repMax = 1; repMax <= 9; repMax += 1) {
-      expect(epleyE1rm(100, repMax)).toBeGreaterThan(brzyckiE1rm(100, repMax));
-    }
-  });
-
-  it('reads higher on Brzycki above a 10 rep max', () => {
-    for (let repMax = 11; repMax <= E1RM_DOMAIN.MAX_REP_MAX; repMax += 1) {
-      expect(brzyckiE1rm(100, repMax)).toBeGreaterThan(epleyE1rm(100, repMax));
-    }
-  });
-});
-
-describe('shape of both raw curves', () => {
-  const formulas: ReadonlyArray<readonly [name: string, fn: (w: number, r: number) => number]> = [
-    ['epley', epleyE1rm],
-    ['brzycki', brzyckiE1rm],
-  ];
-
-  it.each(formulas)('%s never estimates below the weight actually lifted', (_name, fn) => {
-    for (const repMax of everyRepMax()) {
-      expect(fn(150, repMax)).toBeGreaterThanOrEqual(150);
-    }
-  });
-
-  it.each(formulas)('%s increases strictly with the rep max', (_name, fn) => {
+  it('is strictly increasing and never below the weight lifted', () => {
     const steps = everyRepMax();
     for (let i = 1; i < steps.length; i += 1) {
-      expect(fn(150, steps[i] as number)).toBeGreaterThan(fn(150, steps[i - 1] as number));
+      expect(epleyE1rm(150, steps[i] as number)).toBeGreaterThan(
+        epleyE1rm(150, steps[i - 1] as number),
+      );
+    }
+    for (const repMax of everyRepMax()) {
+      expect(epleyE1rm(150, repMax)).toBeGreaterThanOrEqual(150);
     }
   });
 
-  it.each(formulas)('%s is linear in weight, so it is unit-agnostic', (_name, fn) => {
+  it('is linear in weight, so it is unit-agnostic', () => {
     const KG_TO_LB = 2.2046226218;
     for (const repMax of everyRepMax()) {
-      expect(fn(100 * KG_TO_LB, repMax)).toBeCloseTo(fn(100, repMax) * KG_TO_LB, 7);
-      expect(fn(200, repMax)).toBeCloseTo(2 * fn(100, repMax), PRECISION);
+      expect(epleyE1rm(100 * KG_TO_LB, repMax)).toBeCloseTo(epleyE1rm(100, repMax) * KG_TO_LB, 7);
+      expect(epleyE1rm(200, repMax)).toBeCloseTo(2 * epleyE1rm(100, repMax), PRECISION);
     }
+  });
+
+  it('refuses the same rep maxes the set entry points refuse — one domain, every route', () => {
+    // You cannot reach past the chart by calling the formula instead.
+    expect(() => epleyE1rm(100, CHART_MAX_REP_MAX + 0.5)).toThrow(RangeError);
+    expect(() => epleyE1rm(100, 20)).toThrow(RangeError);
+    expect(() => epleyE1rm(100, 0.5)).toThrow(RangeError);
+    expect(() => epleyE1rm(100, NaN)).toThrow(/finite/);
+    expect(() => epleyE1rm(100, Infinity)).toThrow(/finite/);
+    expect(epleyE1rm(100, CHART_MAX_REP_MAX)).toBeGreaterThan(0);
+  });
+});
+
+// ===========================================================================
+// Why the formula is not the app's e1RM, and why nothing extends past the chart
+// ===========================================================================
+
+describe('Epley against the curve the app actually reports', () => {
+  it('disagrees with the chart everywhere except one crossover, so only one can be player-facing', () => {
+    // Epley reads high at low rep maxes and low at high ones. If both were in
+    // use, two parts of the app would report different numbers for one set —
+    // the exact thing CLAUDE.md's one-formula rule exists to prevent.
+    for (let repMax = 1; repMax <= 7; repMax += 0.5) {
+      expect(epleyFactor(repMax)).toBeGreaterThan(chartFactor(repMax));
+    }
+    for (let repMax = 7.5; repMax <= CHART_MAX_REP_MAX; repMax += 0.5) {
+      expect(epleyFactor(repMax)).toBeLessThan(chartFactor(repMax));
+    }
+  });
+
+  it('would step DOWN if it were continued past the chart — the reason there is no fallback', () => {
+    // Derived from the chart rather than restated as a literal. A hardcoded
+    // copy of the top-edge cell silently went stale once when that cell was
+    // corrected.
+    const chartTopEdge = 100 / fractionOf1RM(RPE_CHART_COVERAGE.MAX_REPS, RPE_CHART_COVERAGE.MIN_RPE);
+    const epleyJustPast = 100 * epleyFactor(CHART_MAX_REP_MAX + 0.5);
+
+    expect(estimateE1rm(setForRepMax(100, CHART_MAX_REP_MAX))).toBeCloseTo(chartTopEdge, PRECISION);
+    expect(epleyJustPast).toBeLessThan(chartTopEdge);
+    // i.e. one more half rep at the same weight would LOWER the estimate.
+  });
+
+  it('would step down under every reading rpe.ts has on record for the top-edge cell', () => {
+    // The conclusion must not depend on which reading of the contested cell
+    // (12 reps, RPE 6) rpe.ts adopts. For Epley to continue upward the cell
+    // would have to read above 100 / 1.55 = 64.52%; every reading on record is
+    // far below that.
+    const crossoverPercent = 100 / epleyFactor(CHART_MAX_REP_MAX + 0.5);
+    const topEdge = CONTESTED_CHART_CELLS.find(
+      (cell) =>
+        cell.reps === RPE_CHART_COVERAGE.MAX_REPS && cell.rpe === RPE_CHART_COVERAGE.MIN_RPE,
+    );
+    expect(topEdge).toBeDefined();
+    // The header names these two readings by value. If rpe.ts ever changes the
+    // cell or records a third reading, this fails on purpose: the paragraph
+    // saying "57.4% and the rival 57.2%" has to be re-read, not silently
+    // outlived.
+    expect([...(topEdge?.readings ?? [])].map((r) => r.percent).sort((a, b) => a - b)).toEqual([
+      57.2, 57.4,
+    ]);
+    for (const reading of topEdge?.readings ?? []) {
+      expect(reading.percent).toBeLessThan(crossoverPercent);
+    }
+    // ...and the cell actually in use is one of them.
+    expect(percentOf1RM(RPE_CHART_COVERAGE.MAX_REPS, RPE_CHART_COVERAGE.MIN_RPE)).toBeLessThan(
+      crossoverPercent,
+    );
+  });
+});
+
+describe('figures quoted in the module header', () => {
+  it('chart at a 16 rep max is 1.7422 x w', () => {
+    expect(toFigure(chartFactor(CHART_MAX_REP_MAX), 4)).toBe(1.7422);
+  });
+
+  it('Epley at a 16.5 rep max is 1.5500 x w', () => {
+    expect(toFigure(epleyFactor(CHART_MAX_REP_MAX + 0.5), 4)).toBe(1.55);
+  });
+
+  it('the cell value Epley would need to continue upward is 64.52%', () => {
+    expect(toFigure(100 / epleyFactor(CHART_MAX_REP_MAX + 0.5), 2)).toBe(64.52);
+  });
+
+  it('Epley reads 3.33% above the chart at a 1 rep max', () => {
+    expect(toFigure((epleyFactor(1) / chartFactor(1) - 1) * 100, 2)).toBe(3.33);
+  });
+
+  it('Epley reads 11.99% below the chart at a 16 rep max', () => {
+    const shortfall = (1 - epleyFactor(CHART_MAX_REP_MAX) / chartFactor(CHART_MAX_REP_MAX)) * 100;
+    expect(toFigure(shortfall, 2)).toBe(11.99);
+    // The header states the same gap as "about 12% under" what
+    // e1rmFromChartedSet reports for 12 reps @ RPE 6.
+    const chartValue = e1rmFromChartedSet(100, 12, 6);
+    expect((1 - epleyE1rm(100, CHART_MAX_REP_MAX) / chartValue) * 100).toBeCloseTo(shortfall, 4);
+  });
+
+  it('the crossover sits between a 7 and a 7.5 rep max', () => {
+    expect(epleyFactor(7)).toBeGreaterThan(chartFactor(7));
+    expect(epleyFactor(7.5)).toBeLessThan(chartFactor(7.5));
+  });
+
+  it('the widest accepted sets are 16 reps to failure and 12 reps @ RPE 6', () => {
+    expect(effectiveRepMax(16, TO_FAILURE_RPE)).toBe(CHART_MAX_REP_MAX);
+    expect(effectiveRepMax(12, RPE_CHART_COVERAGE.MIN_RPE)).toBe(CHART_MAX_REP_MAX);
+    expect(() => estimateE1rm({ weight: 100, reps: 16, rpe: TO_FAILURE_RPE })).not.toThrow();
+    expect(() => estimateE1rm({ weight: 100, reps: 12, rpe: 6 })).not.toThrow();
+    // Both are the same chart cell, so both score identically.
+    expect(estimateE1rm({ weight: 100, reps: 16, rpe: TO_FAILURE_RPE })).toBeCloseTo(
+      estimateE1rm({ weight: 100, reps: 12, rpe: 6 }),
+      PRECISION,
+    );
   });
 });
 
@@ -332,8 +395,8 @@ describe('the reps-in-reserve identity the estimate is built on', () => {
           continue; // an equivalent whole-rep set only exists at integer RIR
         }
         const equivalentReps = reps + rir;
-        if (equivalentReps > RPE_CHART_COVERAGE.MAX_REPS) {
-          continue; // no charted whole-rep set at RPE 10 for this rep max
+        if (equivalentReps > E1RM_DOMAIN.MAX_REPS) {
+          continue; // no accepted whole-rep set at RPE 10 for this rep max
         }
         expect(estimateE1rm({ weight, reps, rpe })).toBeCloseTo(
           estimateE1rm({ weight, reps: equivalentReps, rpe: TO_FAILURE_RPE }),
@@ -344,14 +407,25 @@ describe('the reps-in-reserve identity the estimate is built on', () => {
   });
 
   it('reads a 5 @ RPE 7 as an 8RM effort, not a 5RM effort', () => {
-    // This is the specific under-report the RPE input exists to remove: 5 reps
-    // with 3 in reserve is the chart's 78.6% cell, the same as an 8 rep max.
+    // This is the specific under-report the RPE input exists to remove, and the
+    // one CLAUDE.md names as a bug: 5 reps with 3 in reserve is the chart's
+    // 78.6% cell, the same as an 8 rep max.
     const asFive = estimateE1rm({ weight: 200, reps: 5, rpe: 7 });
     const asEightRepMax = estimateE1rm({ weight: 200, reps: 8, rpe: TO_FAILURE_RPE });
     expect(asFive).toBeCloseTo(asEightRepMax, PRECISION);
     expect(asFive).toBeCloseTo(254.452926208651399, PRECISION); // 200 / 0.786
     // ...and it is meaningfully above what a 5RM would have scored.
     expect(asFive).toBeGreaterThan(estimateE1rm({ weight: 200, reps: 5, rpe: TO_FAILURE_RPE }));
+  });
+
+  it('never applies the formula to the raw rep count', () => {
+    // The defect CLAUDE.md calls a bug: Epley on `reps` ignoring reps in
+    // reserve. A 5 @ RPE 7 must not score as Epley's 5RM.
+    expect(estimateE1rm({ weight: 200, reps: 5, rpe: 7 })).not.toBeCloseTo(
+      epleyE1rm(200, 5),
+      PRECISION,
+    );
+    expect(estimateE1rm({ weight: 200, reps: 5, rpe: 7 })).toBeGreaterThan(epleyE1rm(200, 5));
   });
 });
 
@@ -460,7 +534,8 @@ describe('agreement with rpe.ts', () => {
 
   it('round-trips an unrounded prescribed load back to the same e1RM', () => {
     // The property that keeps the daily loop stable: prescribe at an RPE, hit
-    // exactly that RPE, and e1RM does not move.
+    // exactly that RPE, and e1RM does not move. Only one curve can do this, and
+    // it is the chart's — which is why the formula is not player-facing.
     for (const startingE1rm of [200, 137.5, 322.5]) {
       for (const reps of CHARTED_REPS) {
         for (const rpe of CHARTED_RPES) {
@@ -504,37 +579,26 @@ describe('agreement with rpe.ts', () => {
 });
 
 // ===========================================================================
-// The join onto Brzycki past the chart
+// One curve, one attribution — and nothing past the chart
 // ===========================================================================
 
 describe('method selection', () => {
-  it('uses the published chart for every rep max it covers', () => {
+  it('uses the published chart for every rep max it covers, and nothing else', () => {
     for (const repMax of everyRepMax()) {
-      if (repMax > CHART_MAX_REP_MAX) {
-        continue;
-      }
-      expect(explainE1rm(setForRepMax(150, repMax)).method).toBe('rpe-chart');
-    }
-  });
-
-  it('falls back to Brzycki past the chart', () => {
-    for (const repMax of everyRepMax()) {
-      if (repMax <= CHART_MAX_REP_MAX) {
-        continue;
-      }
       const estimate = explainE1rm(setForRepMax(150, repMax));
-      expect(estimate.method).toBe('brzycki');
-      expect(estimate.e1rm).toBeCloseTo(brzyckiE1rm(150, repMax), PRECISION);
+      expect(estimate.method).toBe('rpe-chart');
+      expect(estimate.e1rm).toBeCloseTo(150 * chartFactor(repMax), PRECISION);
     }
   });
 
-  it('switches exactly at the chart boundary', () => {
-    expect(explainE1rm(setForRepMax(150, CHART_MAX_REP_MAX)).method).toBe('rpe-chart');
-    expect(explainE1rm(setForRepMax(150, CHART_MAX_REP_MAX + 0.5)).method).toBe('brzycki');
+  it('refuses at the first half step past the chart instead of switching curves', () => {
+    expect(() => explainE1rm(setForRepMax(150, CHART_MAX_REP_MAX))).not.toThrow();
+    expect(() => explainE1rm(setForRepMax(150, CHART_MAX_REP_MAX + 0.5))).toThrow(RangeError);
+    expect(tryExplainE1rm(setForRepMax(150, CHART_MAX_REP_MAX + 0.5))).toBeNull();
   });
 });
 
-describe('the composite curve', () => {
+describe('the curve', () => {
   it('is strictly increasing in effective rep max across the whole domain', () => {
     const steps = everyRepMax();
     for (let i = 1; i < steps.length; i += 1) {
@@ -544,24 +608,29 @@ describe('the composite curve', () => {
     }
   });
 
-  it('joins Brzycki onto the chart without a step down — the reason Brzycki is the fallback', () => {
-    // Derived from the chart rather than restated as a literal. A hardcoded
-    // copy of the top-edge cell silently went stale once when that cell was
-    // corrected, and a duplicated constant is the same circularity the chart's
-    // own tests were sent back for.
-    const chartTopEdge = 100 / fractionOf1RM(RPE_CHART_COVERAGE.MAX_REPS, RPE_CHART_COVERAGE.MIN_RPE);
-    const brzyckiJustPast = 3600 / 20.5; // 175.6098 - Brzycki at a 16.5 rep max
-    const epleyJustPast = 100 * (1 + 16.5 / 30); // 155.0000 - Epley at the same point
-
-    expect(estimateE1rm(setForRepMax(100, CHART_MAX_REP_MAX))).toBeCloseTo(chartTopEdge, PRECISION);
-    expect(brzyckiE1rm(100, CHART_MAX_REP_MAX + 0.5)).toBeCloseTo(brzyckiJustPast, PRECISION);
-    expect(epleyE1rm(100, CHART_MAX_REP_MAX + 0.5)).toBeCloseTo(epleyJustPast, PRECISION);
-
-    // Brzycki continues upward from the chart...
-    expect(brzyckiJustPast).toBeGreaterThan(chartTopEdge);
-    // ...Epley would step down, i.e. more reps at the same weight would lower
-    // e1RM. That, and not any accuracy claim, is why the fallback is Brzycki.
-    expect(epleyJustPast).toBeLessThan(chartTopEdge);
+  it('is strictly increasing over every set the module accepts, not just the walked ones', () => {
+    // Stronger form: any two accepted sets with the same weight order by
+    // effective rep max, whichever (reps, RPE) pair expressed them.
+    const weight = 150;
+    const accepted: Array<{ repMax: number; e1rm: number }> = [];
+    for (let reps = E1RM_DOMAIN.MIN_REPS; reps <= E1RM_DOMAIN.MAX_REPS; reps += 1) {
+      for (const rpe of CHARTED_RPES) {
+        const value = tryEstimateE1rm({ weight, reps, rpe });
+        if (value !== null) {
+          accepted.push({ repMax: reps + (TO_FAILURE_RPE - rpe), e1rm: value });
+        }
+      }
+    }
+    expect(accepted.length).toBeGreaterThan(100);
+    for (const a of accepted) {
+      for (const b of accepted) {
+        if (a.repMax < b.repMax) {
+          expect(a.e1rm).toBeLessThan(b.e1rm);
+        } else if (a.repMax === b.repMax) {
+          expect(a.e1rm).toBeCloseTo(b.e1rm, PRECISION);
+        }
+      }
+    }
   });
 
   it('never estimates below the weight actually lifted', () => {
@@ -639,6 +708,21 @@ describe('non-throwing variants', () => {
     expect(tryEstimateE1rm({ weight: 100, reps: 3, rpe: 7.3 })).toBeNull();
     expect(tryExplainE1rm({ weight: 100, reps: 3, rpe: 5 })).toBeNull();
     expect(tryExplainE1rm({ weight: 100, reps: 25, rpe: 10 })).toBeNull();
+    expect(tryExplainE1rm({ weight: 100, reps: 13, rpe: 6 })).toBeNull(); // past the chart
+  });
+
+  it('agree with the throwing ones about exactly which sets are usable', () => {
+    for (let reps = 0; reps <= E1RM_DOMAIN.MAX_REPS + 4; reps += 1) {
+      for (const rpe of CHARTED_RPES) {
+        const set = { weight: 120, reps, rpe };
+        const nonThrowing = tryEstimateE1rm(set);
+        if (nonThrowing === null) {
+          expect(() => estimateE1rm(set)).toThrow(RangeError);
+        } else {
+          expect(estimateE1rm(set)).toBe(nonThrowing);
+        }
+      }
+    }
   });
 });
 
@@ -647,7 +731,7 @@ describe('non-throwing variants', () => {
 // ===========================================================================
 
 describe('input validation', () => {
-  const invalidReps = [0, -1, -10, 0.5, 2.5, 21, 37, 100, NaN, Infinity, -Infinity];
+  const invalidReps = [0, -1, -10, 0.5, 2.5, 17, 21, 37, 100, NaN, Infinity, -Infinity];
 
   it.each(invalidReps)('rejects %f reps', (reps) => {
     expect(() => estimateE1rm({ weight: 100, reps, rpe: 8 })).toThrow(RangeError);
@@ -659,7 +743,6 @@ describe('input validation', () => {
   it.each(invalidWeights)('rejects a weight of %f', (weight) => {
     expect(() => estimateE1rm({ weight, reps: 5, rpe: 8 })).toThrow(RangeError);
     expect(() => epleyE1rm(weight, 5)).toThrow(RangeError);
-    expect(() => brzyckiE1rm(weight, 5)).toThrow(RangeError);
   });
 
   const offChartRpes = [5, 5.5, 5.9, 6.25, 7.3, 9.75, 10.5, 11, 0, -8, NaN, Infinity, -Infinity];
@@ -671,36 +754,92 @@ describe('input validation', () => {
   });
 
   it('explains what it accepts in the error message', () => {
-    expect(() => estimateE1rm({ weight: 100, reps: 25, rpe: 10 })).toThrow(/between 1 and 20/);
+    expect(() => estimateE1rm({ weight: 100, reps: 25, rpe: 10 })).toThrow(/between 1 and 16/);
     expect(() => estimateE1rm({ weight: 100, reps: 2.5, rpe: 10 })).toThrow(/whole number/);
     expect(() => estimateE1rm({ weight: -5, reps: 3, rpe: 10 })).toThrow(/greater than 0/);
     expect(() => estimateE1rm({ weight: 100, reps: 3, rpe: 7.3 })).toThrow(/published chart/);
     expect(() => estimateE1rm({ weight: 100, reps: 3, rpe: 7.3 })).toThrow(/0\.5 steps/);
   });
 
+  it('says what it refuses and why when a set runs past the chart', () => {
+    expect(() => estimateE1rm({ weight: 100, reps: 14, rpe: 7 })).toThrow(
+      /effective rep max of 17/,
+    );
+    expect(() => estimateE1rm({ weight: 100, reps: 14, rpe: 7 })).toThrow(/coverage is 1-16/);
+    expect(() => estimateE1rm({ weight: 100, reps: 14, rpe: 7 })).toThrow(/no fallback/);
+  });
+
   it('accepts the exact boundaries', () => {
     expect(() => estimateE1rm({ weight: 100, reps: E1RM_DOMAIN.MIN_REPS, rpe: 10 })).not.toThrow();
     expect(() => estimateE1rm({ weight: 100, reps: E1RM_DOMAIN.MAX_REPS, rpe: 10 })).not.toThrow();
-    expect(() => estimateE1rm({ weight: 100, reps: E1RM_DOMAIN.MAX_REPS, rpe: 6 })).not.toThrow();
+    expect(() => estimateE1rm({ weight: 100, reps: 12, rpe: 6 })).not.toThrow();
     expect(() => estimateE1rm({ weight: 0.5, reps: 1, rpe: 10 })).not.toThrow();
   });
+});
 
-  it('never lets Brzycki reach or cross its pole at 37 reps', () => {
-    expect(() => brzyckiE1rm(100, E1RM_FORMULA.BRZYCKI_REP_OFFSET)).toThrow(RangeError);
-    expect(() => brzyckiE1rm(100, 40)).toThrow(RangeError);
-    expect(() => brzyckiE1rm(100, E1RM_DOMAIN.MAX_REP_MAX + 0.5)).toThrow(RangeError);
-    expect(brzyckiE1rm(100, E1RM_DOMAIN.MAX_REP_MAX)).toBeGreaterThan(0);
-    // The highest rep max any valid set can imply stays inside that guard.
-    expect(effectiveRepMax(E1RM_DOMAIN.MAX_REPS, RPE_CHART_COVERAGE.MIN_RPE)).toBeLessThanOrEqual(
-      E1RM_DOMAIN.MAX_REP_MAX,
-    );
+describe('the domain the module gave up when the fallback formula was removed', () => {
+  /**
+   * The behaviour change stated at the top of `e1rm.ts`, enumerated. Every one
+   * of these used to return a number (via a second formula CLAUDE.md now
+   * forbids) and now refuses. Anything at or below a 16 effective rep max is
+   * untouched.
+   */
+  const nowRefused: ReadonlyArray<readonly [reps: number, lowestAcceptedRpe: number]> = [
+    [13, 7],
+    [14, 8],
+    [15, 9],
+    [16, 10],
+  ];
+
+  it.each(nowRefused)(
+    '%d reps: accepted from RPE %f up, refused below it',
+    (reps, lowestAcceptedRpe) => {
+      for (const rpe of CHARTED_RPES) {
+        const set = { weight: 150, reps, rpe };
+        if (rpe >= lowestAcceptedRpe) {
+          expect(effectiveRepMax(reps, rpe)).toBeLessThanOrEqual(CHART_MAX_REP_MAX);
+          expect(tryEstimateE1rm(set)).not.toBeNull();
+        } else {
+          expect(effectiveRepMax(reps, rpe)).toBeGreaterThan(CHART_MAX_REP_MAX);
+          expect(tryEstimateE1rm(set)).toBeNull();
+        }
+      }
+    },
+  );
+
+  it('refuses 17 to 20 reps at every RPE', () => {
+    for (let reps = 17; reps <= 20; reps += 1) {
+      for (const rpe of CHARTED_RPES) {
+        expect(tryEstimateE1rm({ weight: 150, reps, rpe })).toBeNull();
+      }
+    }
   });
 
-  it('rejects a rep max below 1 or above the ceiling on the raw formulas', () => {
-    expect(() => epleyE1rm(100, 0.5)).toThrow(RangeError);
-    expect(() => epleyE1rm(100, E1RM_DOMAIN.MAX_REP_MAX + 0.5)).toThrow(RangeError);
-    expect(() => epleyE1rm(100, NaN)).toThrow(/finite/);
-    expect(() => brzyckiE1rm(100, Infinity)).toThrow(/finite/);
+  it('refuses every effective rep max above the chart, in half steps up to 24', () => {
+    // 24 was the old ceiling: reps 20 at RPE 6. Nothing in this range answers.
+    for (let repMax = CHART_MAX_REP_MAX + 0.5; repMax <= 24; repMax += 0.5) {
+      const reps = Math.min(20, Math.floor(repMax));
+      const rpe = TO_FAILURE_RPE - (repMax - reps);
+      // Every point in the old domain really was expressible as a charted set,
+      // so this walk covers all of it rather than skipping the awkward end.
+      expect(rpe).toBeGreaterThanOrEqual(RPE_CHART_COVERAGE.MIN_RPE);
+      expect(tryEstimateE1rm({ weight: 150, reps, rpe })).toBeNull();
+    }
+  });
+
+  it('leaves every set at or below the chart ceiling answering as before', () => {
+    for (let reps = E1RM_DOMAIN.MIN_REPS; reps <= E1RM_DOMAIN.MAX_REPS; reps += 1) {
+      for (const rpe of CHARTED_RPES) {
+        if (effectiveRepMax(reps, rpe) > CHART_MAX_REP_MAX) {
+          continue;
+        }
+        // The chart inverse, unchanged: weight / (published % / 100).
+        expect(estimateE1rm({ weight: 150, reps, rpe })).toBeCloseTo(
+          150 * chartFactor(effectiveRepMax(reps, rpe)),
+          PRECISION,
+        );
+      }
+    }
   });
 });
 
@@ -711,7 +850,7 @@ describe('input validation', () => {
 describe('isHighConfidenceRepMax', () => {
   it('is true from a 1 rep max up to the tunable bound', () => {
     for (const repMax of everyRepMax()) {
-      if (repMax > E1RM_DOMAIN.HIGH_CONFIDENCE_MAX_REP_MAX) {
+      if (repMax > E1RM_TUNING.HIGH_CONFIDENCE_MAX_REP_MAX) {
         continue;
       }
       expect(isHighConfidenceRepMax(repMax)).toBe(true);
@@ -720,7 +859,7 @@ describe('isHighConfidenceRepMax', () => {
 
   it('is false past the bound, where endurance rather than strength limits the set', () => {
     for (const repMax of everyRepMax()) {
-      if (repMax <= E1RM_DOMAIN.HIGH_CONFIDENCE_MAX_REP_MAX) {
+      if (repMax <= E1RM_TUNING.HIGH_CONFIDENCE_MAX_REP_MAX) {
         continue;
       }
       expect(isHighConfidenceRepMax(repMax)).toBe(false);
@@ -735,8 +874,8 @@ describe('isHighConfidenceRepMax', () => {
   });
 
   it('agrees with the constant it is derived from', () => {
-    expect(isHighConfidenceRepMax(E1RM_DOMAIN.HIGH_CONFIDENCE_MAX_REP_MAX)).toBe(true);
-    expect(isHighConfidenceRepMax(E1RM_DOMAIN.HIGH_CONFIDENCE_MAX_REP_MAX + 0.5)).toBe(false);
+    expect(isHighConfidenceRepMax(E1RM_TUNING.HIGH_CONFIDENCE_MAX_REP_MAX)).toBe(true);
+    expect(isHighConfidenceRepMax(E1RM_TUNING.HIGH_CONFIDENCE_MAX_REP_MAX + 0.5)).toBe(false);
   });
 
   it('is what the estimate reports', () => {
