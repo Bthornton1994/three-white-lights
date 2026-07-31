@@ -157,9 +157,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work \u2014 NOW GRADEABLE, reference committed.",
-      "status": "failed",
+      "status": "building",
       "verifiable": true,
-      "note": "Third blind A/B: no regressions \u2014 the critic re-read 250kg off the plates, confirmed the non-mirrored key light survived, and said the arm now reads deltoid cluster to insertion break to biceps cluster to elbow crease to forearm belly, so round two\u2019s finding is genuinely closed. New gap, and it is one the earlier fix created: the value lift was applied to the SKIN ramp and never to GEAR, which draws the belt, both knee sleeves and both shoes. Verified here by computing the ramps \u2014 SKIN runs luma 62/114/172/217 while GEAR runs 51/93/143, so GEAR\u2019s darkest step is BELOW the backdrop and its lightest never reaches SKIN\u2019s third step. Since gear owns the lower body by area, and 133 of 416 frames have no bare thigh at all, everything below the belt collapses into one dark band. At native scale the lifter reads as a bright chest over a smear where the reference wrestler reads as a whole body.",
+      "note": "Fourth craft rework merged; 552 tests green. The builder MEASURED rather than accepting the diagnosis \u2014 wrote a PNG decoder, masked the reference figure, and found the reference\u2019s own kit ramp is 53/91/140 against ours at 51/93/143. The gear ramp was never the problem. The real deficit was AREA: about half our lower body was near-black interior separation line. Fixed at the cause \u2014 the interior line now takes the material\u2019s own shadow step under the same lamp, matching a measured reference thigh row, plus a shorter sleeve, thicker calf and a hem that rides the thigh instead of sitting below the kneecap at depth. Measured, split at the figure\u2019s own midpoint so it cannot be tuned to flatter either half: upper/lower luma ratio 1.50 to 1.08 against the reference\u2019s 1.04, near-black share below the midpoint 52% to 23%. It also declined one instruction with evidence, measuring that the reference\u2019s kit tops out UNDER its own flesh. Fourth blind A/B grading, asked to test the builder\u2019s own prediction of the next gap rather than inherit it.",
       "evidence": "A1-lockout-6x.png"
     },
     {
