@@ -82,9 +82,9 @@
       "id": "M1",
       "name": "RPE \u2192 %1RM table",
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Merged and green (50 tests). Its first critic was killed mid-report; a fresh one is grading now, pointed at the chart\u2019s internal reps-in-reserve structure as the highest-value way to catch transcription errors."
+      "note": "SENT BACK over a single cell. 12 reps @ RPE 6 reads 57.2; every full-grid transcription the critic fetched as bytes says 57.4, and 57.2 is exactly what the chart\u2019s own internal midpoint rule generates \u2014 a derived value standing in for a published one, which is the \u00a712.3 refusal condition. It survived 50 green tests because that cell is one of exactly four in the grid with no diagonal partner, so the structural invariant is blind there by construction (independently confirmed). The module\u2019s provenance block meanwhile defended three cells that turned out fine and said nothing about this one. Rework in flight."
     },
     {
       "id": "M2",
