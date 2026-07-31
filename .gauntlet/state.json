@@ -93,9 +93,9 @@
       "id": "M1",
       "name": "RPE \u2192 %1RM table",
       "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Rework merged; 362 tests green. Both suspect cells are now unverified IN CODE \u2014 an exported frozen record whose percentInUse is read from the chart rather than restated, so provenance cannot drift from data. Verified here independently: flipping the cell to 57.2 leaves all 362 tests green with no test edited, and 57.3 \u2014 allowed by the grid rule but held by no source \u2014 fails with a precise message. The false \"three transcriptions\" tiebreaker is gone; the builder proved the copy chain by bare-cloning each repo and reading first-commit dates, and found the 2023 file silently repairs the 2020 file\u2019s typo while keeping its variable name. Third-pass critic grading."
+      "note": "SENT BACK a fourth time \u2014 and this one caught a FALSE BUILDER CLAIM. The rework reported that tests forbid adopting 58.7 at (12, 6.5). They do not: I ran the critic\u2019s exploit myself and all 362 tests stayed green with a fabricated 58.7 backed only by a self-declared reading. The deeper problem is that evidence: \"transcription\" is just a string an author types, and the guard at the two unverified cells reads that string back \u2014 rpe.ts certifying rpe.ts, with the external fixture check skipping exactly those cells. Meanwhile the cell both lineages actually agree on (58.6) ended up the weakest-guarded in the grid. Fix is small and confirmed available: S4\u2019s bytes return HTTP 200 in one request, in genuinely different syntax, so 57.2 can be anchored externally."
     },
     {
       "id": "M2",
