@@ -106,9 +106,9 @@
       "id": "M2",
       "name": "e1RM formulas",
       "bar": "Published e1RM formulas. Binary and testable.",
-      "status": "building",
+      "status": "majority",
       "verifiable": true,
-      "note": "Rebuilt to the human\u2019s decision: Epley only, Brzycki gone from code, types, constants and prose. Past the chart\u2019s coverage the module now refuses rather than extrapolating, because Epley cannot join the top of the chart without the curve stepping down. Verified here: the two widest accepted sets (12 reps @ RPE 6 and 16 @ RPE 10, both effective rep max 16) agree exactly at 348.43, and anything past that refuses. The builder mutation-tested rather than trusting green \u2014 reinstating an Epley fallback fails 10 tests, applying Epley to raw reps fails 22. It also flagged a doc/code tension in the new rule\u2019s wording rather than quietly satisfying it."
+      "note": "THE MATH WINS ITS BAR. The critic verified the Epley divisor against published sources and a pinned third-party implementation, re-fetched both chart fixtures and confirmed every cell the boundary figures depend on, hand-checked all five worked examples and the crossover point, confirmed the curve is strictly increasing across the whole domain and that the refusal fires exactly where the chart\u2019s coverage ends, and found no invented value anywhere. All seven \u00a712.3 conditions clean. Its one finding was a false quotation of CLAUDE.md in the module header \u2014 correct that the quote was false, but wrong about how: git history shows the phrase WAS in CLAUDE.md when the builder quoted it, and I removed it two commits later without updating the quotation. My staleness, not a fabrication. Fixed by quoting the rule as it now stands, verified verbatim against the flattened file."
     },
     {
       "id": "M3",

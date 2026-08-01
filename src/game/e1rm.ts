@@ -122,21 +122,26 @@
  * THE ONE FORMULA: EPLEY, AND WHERE IT IS AND IS NOT APPLIED
  * ---------------------------------------------------------------------------
  *
- * CLAUDE.md: "**e1RM**: **Epley**, and only Epley: 1RM = weight x (1 + reps/30)
- * ... one formula, named here, used everywhere". `epleyE1rm` below is that
- * formula, verbatim, and it is the only rep-max formula in this codebase. A
- * previous revision carried a second one as a past-the-chart fallback;
- * CLAUDE.md now names that formula and forbids it by name, so it is gone — from
- * the code, the constants, the types and the prose, not just from the call
- * path. Do not reintroduce it under any name.
+ * CLAUDE.md requires exactly one rep-max formula, Epley, and forbids a second
+ * anywhere in the codebase under any name. `epleyE1rm` below is that formula,
+ * verbatim, and it is the only one here. A previous revision carried a second
+ * as a past-the-chart fallback; it is gone from the code, the constants, the
+ * types and the prose, not just from the call path. Do not reintroduce it.
  *
- * Be precise about what "used everywhere" can mean here, because the honest
- * answer is a limitation and not a boast: inside the chart's coverage the game
- * does not need a rep-max formula at all — it has the published data itself,
- * and using the formula there would break both properties above. Past the
- * chart's coverage the module refuses (next section). So `epleyE1rm` is exposed
- * as the single formula the codebase may ever reach for, with published values
- * pinned by tests, and it is NOT on the player-facing path.
+ * On where it is applied, CLAUDE.md is explicit, and this module agrees with it
+ * rather than departing from it: Epley is "the one rep-max formula the codebase
+ * may ever reach for, not a curve the player-facing path currently runs
+ * through". Inside the chart's coverage the game does not need a rep-max
+ * formula at all — it has the published data, and using the formula there would
+ * break both properties above. Past the coverage the module refuses (next
+ * section). So `epleyE1rm` is exposed with its published value pinned by tests,
+ * and it is deliberately NOT on the player-facing path.
+ *
+ * (An earlier revision of this passage quoted a phrase — "used everywhere" —
+ * that CLAUDE.md carried at the time and no longer does, and then argued
+ * against it. The quotation went stale when the rule was edited, so the module
+ * read as deviating from a demand the doc had stopped making. Quote the rule as
+ * it stands or describe it; do not paraphrase it inside quotation marks.)
  *
  * IF YOU ARE ABOUT TO CALL `epleyE1rm` DIRECTLY: don't, unless you are testing
  * the formula itself. It disagrees with what this module reports for the same
