@@ -130,9 +130,9 @@
       "id": "M5",
       "name": "Fatigue / readiness",
       "bar": "Plausible game-feel abstraction. No visible fatigue meter (\u00a712.3).",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
-      "note": "Merged; 632 tests green. Hidden by construction rather than by discipline \u2014 the strain and burden scalars are module-private, and SessionFeel\u2019s one number sits under a module-private unique symbol. Verified here: stripping readiness and injury from a serialised SessionFeel leaves ZERO digits, so there is nothing a UI could render as a meter, and the export list is pinned by a test so adding a fatigueLevel fails the suite. A property test caught a real \u00a712.3 violation mid-build: at the original injury threshold, training hard daily accrued ~0.5% injury risk per session once fatigue plateaued \u2014 risk arriving purely from consistency. The builder also disclosed rather than claimed away that a level is still INFERABLE, since the timing window is monotone in the hidden burden. Critic is being asked to decide whether that is a meter with extra steps."
+      "note": "The visible-meter half PASSES, and the critic argued it carefully rather than waving it through: readinessCheckIn taking no state and no day is what makes the modifier leak-free, every number-returning export is a mechanic parameter with no denominator to render against, and it ruled a monotone readout of hidden state is NOT a meter because \u00a73.4 forbids displaying a bar and demands the player see consequences. But the daily-engagement guarantee is FALSE one half-RPE step above the module\u2019s own reference session. Injury risk still reads accumulated residual, and residual is strictly higher for whoever trained yesterday \u2014 so raising the threshold from 1.2 to 1.5 only slid the break-even point, it did not remove the cause. I ran the case the critic named: 5x3 @ RPE 9.5 at the unluckiest roll gives 6 injuries in 40 sessions trained daily and ZERO trained every other day, identical content. The tests could not see it because both daily-engagement property tests put a FREE session on the decision day, so the band of sessions that are individually safe but unsafe when repeated is never generated."
     },
     {
       "id": "M6",
