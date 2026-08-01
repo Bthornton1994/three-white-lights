@@ -132,7 +132,7 @@
       "bar": "Plausible game-feel abstraction. No visible fatigue meter (\u00a712.3).",
       "status": "building",
       "verifiable": true,
-      "note": "Building. The hard part is the API shape: exporting a normalised fatigue number invites the visible meter \u00a712.3 forbids, so the builder is required to surface interpreted signals \u2014 bar-speed cues, timing-window width, miss likelihood \u2014 instead of a level."
+      "note": "Merged; 632 tests green. Hidden by construction rather than by discipline \u2014 the strain and burden scalars are module-private, and SessionFeel\u2019s one number sits under a module-private unique symbol. Verified here: stripping readiness and injury from a serialised SessionFeel leaves ZERO digits, so there is nothing a UI could render as a meter, and the export list is pinned by a test so adding a fatigueLevel fails the suite. A property test caught a real \u00a712.3 violation mid-build: at the original injury threshold, training hard daily accrued ~0.5% injury risk per session once fatigue plateaued \u2014 risk arriving purely from consistency. The builder also disclosed rather than claimed away that a level is still INFERABLE, since the timing window is monotone in the hidden burden. Critic is being asked to decide whether that is a meter with extra steps."
     },
     {
       "id": "M6",
