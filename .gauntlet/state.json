@@ -140,7 +140,7 @@
       "bar": "Never punishes daily engagement. Manual token use, hold cap, first-break tutorial.",
       "status": "building",
       "verifiable": true,
-      "note": "Building. Recovery Days are purchasable, which makes \u00a712.3\u2019s pay-to-win line a live tripwire: a token may protect a streak and nothing else, and the builder must express that boundary in the types rather than in a comment."
+      "note": "Merged; 724 tests green. The pay-to-win boundary is a compile-time allowlist rather than a comment \u2014 a type assertion pins the state\u2019s keys to a declared list, and the builder verified it bites by injecting an e1rmMultiplier and watching tsc fail. Accepting a Recovery Day takes no source parameter, so a bought day and an earned one are indistinguishable by construction. An exhaustive sweep over all 2^11 histories changed the design twice: milestones re-arming per run had made deliberately breaking a streak the best free income, and it found that under an accept-every-offer policy training an extra day can leave a SHORTER best streak \u2014 verified here, lazy ....T.T.... ends at 2 and diligent T...T.T.... ends at 1. That is pinned as a named KNOWN GAP test rather than smoothed away, and whether it counts as punishing daily engagement is now with a critic for a \u00a712.3 ruling."
     },
     {
       "id": "T1",
