@@ -119,6 +119,179 @@ function randomSession(rng: () => number, day: number): SessionRecord {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Sweeping the strain axis
+//
+// The module does not export strain, and must not — that scalar IS the fatigue
+// level GDD §3.4 forbids surfacing. So a suite that wants to check a guarantee
+// across the whole strain band rather than at one convenient point has to derive
+// strain itself, from `FATIGUE_TUNING` alone. `strainOf` does that, and
+// `the derived strain formula tracks the module` pins it against the two places
+// strain is observable through the public API, so it cannot drift silently.
+// ---------------------------------------------------------------------------
+
+/** A session minus its day, so the same content can be replayed on any schedule. */
+type SessionTemplate = Omit<SessionRecord, 'day'>;
+
+/** `rpeStrainWeight`, rebuilt from the tuning table. */
+function strainWeightOf(rpe: number): number {
+  const table = FATIGUE_TUNING.RPE_STRAIN_WEIGHTS;
+  const first = table[0];
+  const last = table[table.length - 1];
+  if (first === undefined || last === undefined) throw new Error('empty strain-weight table');
+  if (rpe <= first.rpe) return first.weight;
+  if (rpe >= last.rpe) return last.weight;
+  for (let i = 1; i < table.length; i += 1) {
+    const lo = table[i - 1];
+    const hi = table[i];
+    if (lo === undefined || hi === undefined) continue;
+    if (rpe <= hi.rpe) {
+      const t = (rpe - lo.rpe) / (hi.rpe - lo.rpe);
+      return lo.weight + t * (hi.weight - lo.weight);
+    }
+  }
+  return last.weight;
+}
+
+/** `sessionStrain`, rebuilt from the tuning constants. Test-only. */
+function strainOf(record: SessionRecord): number {
+  const raw = record.workSets * record.repsPerSet * strainWeightOf(record.topRpe);
+  return Math.min(
+    FATIGUE_TUNING.MAX_SESSION_STRAIN,
+    Math.max(0, raw - FATIGUE_TUNING.STRAIN_FREE_ALLOWANCE) / FATIGUE_TUNING.STRAIN_REFERENCE,
+  );
+}
+
+function templateOf(record: SessionRecord): SessionTemplate {
+  return {
+    lift: record.lift,
+    topRpe: record.topRpe,
+    workSets: record.workSets,
+    repsPerSet: record.repsPerSet,
+  };
+}
+
+function describeTemplate(template: SessionTemplate): string {
+  return (
+    `${template.workSets}x${template.repsPerSet} @ RPE ${template.topRpe} ` +
+    `(strain ${strainOf({ day: 1, ...template }).toFixed(4)})`
+  );
+}
+
+/** 5x3 @ RPE 9 — strain 1.0 by construction of `STRAIN_REFERENCE`. */
+const REFERENCE_HARD_TEMPLATE: SessionTemplate = {
+  lift: 'squat',
+  topRpe: 9,
+  workSets: 5,
+  repsPerSet: 3,
+};
+
+const REFERENCE_HARD_STRAIN = strainOf({ day: 1, ...REFERENCE_HARD_TEMPLATE });
+
+/**
+ * Real, plausible sessions spanning the whole reachable strain axis: free, easy,
+ * moderate, the reference hard day, the band that used to be safe-alone and
+ * unsafe-repeated, the threshold crossing, and the model's ceiling.
+ *
+ * Deliberately integer sets and reps at charted RPEs — these are sessions a
+ * player could actually pick from the GDD §3.3 RPE selector, not synthetic
+ * strain values, so a failure here names a session rather than a number.
+ */
+const STRAIN_SWEEP: readonly SessionTemplate[] = Object.freeze([
+  { lift: 'squat', topRpe: 6, workSets: 2, repsPerSet: 5 }, //   free
+  { lift: 'bench', topRpe: 7, workSets: 3, repsPerSet: 5 }, //   ~0.17
+  { lift: 'deadlift', topRpe: 8, workSets: 4, repsPerSet: 5 }, // ~0.78
+  REFERENCE_HARD_TEMPLATE, //                                    1.00
+  { lift: 'squat', topRpe: 9, workSets: 6, repsPerSet: 3 }, //   ~1.27
+  { lift: 'bench', topRpe: 9.5, workSets: 5, repsPerSet: 3 }, // ~1.33  the send-back case
+  { lift: 'squat', topRpe: 8, workSets: 6, repsPerSet: 5 }, //   ~1.33  same strain, different shape
+  { lift: 'deadlift', topRpe: 10, workSets: 4, repsPerSet: 3 }, // ~1.33
+  { lift: 'squat', topRpe: 9.5, workSets: 4, repsPerSet: 4 }, // ~1.44  just under the threshold
+  { lift: 'bench', topRpe: 9, workSets: 7, repsPerSet: 3 }, //   ~1.53  just over it
+  { lift: 'squat', topRpe: 10, workSets: 5, repsPerSet: 3 }, //  1.75
+  { lift: 'deadlift', topRpe: 9, workSets: 5, repsPerSet: 5 }, // ~1.89
+  { lift: 'squat', topRpe: 10, workSets: 10, repsPerSet: 5 }, //  2.50, at the ceiling
+]);
+
+/**
+ * Residual that a session of strain `s` settles at when repeated every single
+ * day forever, per unit of `s`. The fixed point of the module's own recurrence.
+ */
+const SETTLED_RESIDUAL_PER_STRAIN =
+  FATIGUE_TUNING.DAILY_DECAY /
+  (1 - FATIGUE_TUNING.ACTIVE_RECOVERY_FLUSH * FATIGUE_TUNING.DAILY_DECAY);
+
+/**
+ * THE BAND THE SEND-BACK WAS ABOUT: sessions that are individually safe, but
+ * that any model adding carried-in residual to today's strain — at any weight up
+ * to 1 — would turn unsafe once they were repeated daily.
+ *
+ * Derived, not listed, so it stays meaningful across a retune. Asserted
+ * non-empty wherever it is used, because a vacuous property test is exactly how
+ * the previous draft passed while broken.
+ */
+const DANGEROUS_BAND: readonly SessionTemplate[] = STRAIN_SWEEP.filter((template) => {
+  const strain = strainOf({ day: 1, ...template });
+  return (
+    strain < FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD &&
+    strain * (1 + SETTLED_RESIDUAL_PER_STRAIN) > FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD
+  );
+});
+
+interface ScheduleRun {
+  readonly injuries: number;
+  readonly firstInjuryDay: number | null;
+}
+
+/**
+ * Train the same session every `everyNDays` days, `count` times, against the
+ * UNLUCKIEST possible roll — so a setback appears the instant the probability
+ * leaves zero, and the counts are deterministic rather than sampled.
+ */
+function runSchedule(
+  template: SessionTemplate,
+  everyNDays: number,
+  count: number,
+): ScheduleRun {
+  let state = EMPTY_FATIGUE_STATE;
+  let injuries = 0;
+  let firstInjuryDay: number | null = null;
+  for (let i = 0; i < count; i += 1) {
+    const day = 1 + i * everyNDays;
+    const result = recordSession(state, { day, ...template }, UNLUCKIEST_ROLLS);
+    if (result.injuryOnset !== null) {
+      injuries += 1;
+      if (firstInjuryDay === null) firstInjuryDay = day;
+    }
+    state = result.state;
+  }
+  return { injuries, firstInjuryDay };
+}
+
+/**
+ * The probability `recordSession` resolves against, recovered exactly.
+ *
+ * The module deliberately does not export it, and must not — "injury risk: 4%"
+ * on a screen is the readout GDD §3.4 forbids wearing a different label. But
+ * `InjuryRolls` documents that a setback starts when `onset` is strictly below
+ * the probability, so a TEST can invert that by bisection and measure the model
+ * from outside instead of reaching into it. Test-only, and the reason the module
+ * needs no new export to be checkable here.
+ */
+function measuredInjuryChance(state: FatigueState, session: SessionRecord): number {
+  const injures = (onset: number): boolean =>
+    recordSession(state, session, { onset, duration: 0.5 }).injuryOnset !== null;
+  if (!injures(0)) return 0;
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 60; i += 1) {
+    const mid = (lo + hi) / 2;
+    if (injures(mid)) lo = mid;
+    else hi = mid;
+  }
+  return hi;
+}
+
 /**
  * The surfaced signals, as a comparable bundle. The daily-engagement property
  * is asserted on THESE — the things a player experiences — and never on an
@@ -503,9 +676,13 @@ describe('daily engagement is never punished', () => {
   });
 
   /**
-   * G5. Attendance is not an input. Two histories with the SAME sessions but a
-   * different number of intervening rest days that carry no session must produce
+   * G5, on the SURFACED SIGNALS. Two histories with the same sessions but a
+   * different number of intervening days that carry no session must produce
    * identical signals — the model reads work, never turnout.
+   *
+   * The injury half of G5 is a separate and much stronger property, because
+   * signals legitimately do respond to yesterday's work (GDD §3.4) and risk must
+   * not: see `consistency never accrues injury risk (G5, G5b)`.
    */
   it('reads work, never attendance: no streak or consecutive-day term exists', () => {
     // Same two sessions, same days. The only difference is that the second
@@ -644,12 +821,13 @@ describe('injury setbacks are rare, short and soft (GDD §3.5)', () => {
   });
 
   /**
-   * G5b. Consistency alone must never accrue risk. This is the test that caught
-   * the original threshold: at 1.2 the daily hard trainer began picking up a
-   * small per-session chance once fatigue plateaued around day 4, which is risk
-   * arriving from turning up rather than from overreaching.
+   * G5b at the reference session. This test caught the first draft's threshold
+   * and then, at 1.5, became the only point anyone checked — which is how the
+   * second draft shipped the same failure 15% up the strain axis. It stays,
+   * because the reference session is worth pinning by name, but the guarantee
+   * it stands for is now proved across the whole band by
+   * `consistency never accrues injury risk (G5, G5b)` above.
    *
-   * Sixty days is well past the point where residual has settled, and
    * `UNLUCKIEST_ROLLS.onset` is 0, so this fires the moment the probability
    * leaves zero at any point in the run.
    */
@@ -1078,40 +1256,71 @@ describe('tuning invariants: the guarantees survive a hand-tuning pass', () => {
   });
 
   /**
-   * G3: a free session must never be able to injure, even at the model's
-   * ceiling. The bound is derived here rather than restated from the module.
+   * G3, and the reason it needs no derivation any more. Injury reads today's
+   * strain against the threshold and nothing else, and a free session's strain
+   * is exactly zero — so a positive threshold is the entire proof, at any
+   * fatigue history, forever.
    */
-  it('the injury threshold sits above the residual term at the model’s ceiling', () => {
-    const ceiling = steadyStateResidualBound();
-    const residualTermAtCeiling = FATIGUE_TUNING.INJURY_RESIDUAL_WEIGHT * ceiling;
-    expect(residualTermAtCeiling).toBeLessThan(FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD);
+  it('the injury threshold is positive, so a free session can never injure', () => {
+    expect(FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD).toBeGreaterThan(0);
   });
 
   /**
-   * G5b, derived rather than simulated. `STRAIN_REFERENCE` is defined so that an
-   * ordinary hard session is strain 1.0, so this is the combined strain of
-   * repeating one forever. It must stay under the threshold, or consistency
-   * itself starts accruing injury chance.
+   * G5b, derived rather than simulated, and this time derived from the SESSION
+   * rather than from a hardcoded 1. An ordinary hard day must not carry a
+   * chance; if the threshold were ever tuned below the reference session, a
+   * normal hard day would become risky and GDD §3.5's "rare" would be gone.
+   *
+   * Note what this test can no longer be fooled by: there is no residual term to
+   * settle, so this is not "the plateau of daily training stays under the line",
+   * it is "an ordinary hard day is under the line", and repetition cannot move
+   * it because repetition is not an input.
    */
-  it('sustained ordinary-hard training settles below the injury threshold', () => {
-    const { DAILY_DECAY, ACTIVE_RECOVERY_FLUSH, INJURY_RESIDUAL_WEIGHT } = FATIGUE_TUNING;
-    const ORDINARY_HARD_STRAIN = 1;
-    const settledResidual =
-      (ORDINARY_HARD_STRAIN * DAILY_DECAY) / (1 - ACTIVE_RECOVERY_FLUSH * DAILY_DECAY);
-    const settledCombined = ORDINARY_HARD_STRAIN + INJURY_RESIDUAL_WEIGHT * settledResidual;
-    expect(settledCombined).toBeLessThan(FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD);
+  it('the reference hard session sits below the injury threshold', () => {
+    expect(REFERENCE_HARD_STRAIN).toBeCloseTo(1, 9);
+    expect(REFERENCE_HARD_STRAIN).toBeLessThan(FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD);
   });
 
   /**
    * The other side of it: a session materially harder than an ordinary hard day
-   * must still be able to injure, or GDD §3.5's setbacks become dead code.
+   * must still be able to injure, or GDD §3.5's setbacks become dead code. The
+   * ceiling is what makes this reachable at all, so it is checked against the
+   * threshold directly as well as through the model.
    */
   it('a genuinely overreaching session can still injure', () => {
+    expect(FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD).toBeLessThan(
+      FATIGUE_TUNING.MAX_SESSION_STRAIN,
+    );
     let state = EMPTY_FATIGUE_STATE;
     for (let day = 1; day <= 4; day += 1) {
       state = recordSession(state, hardSession(day), LUCKIEST_ROLLS).state;
     }
     expect(recordSession(state, maximalSession(5), UNLUCKIEST_ROLLS).injuryOnset).not.toBeNull();
+  });
+
+  /**
+   * `strainOf` is a reimplementation, so it is pinned against the two places the
+   * public API makes strain observable: `isFreeSession` is true exactly at
+   * strain zero, and — since injury now reads today's strain and nothing else —
+   * a session injures a fresh lifter under the unluckiest roll exactly when its
+   * strain is above the threshold. If the module's curve and this one ever
+   * diverge, the strain sweep above stops meaning what it says and this fails.
+   */
+  it('the derived strain formula tracks the module', () => {
+    const rng = makeRng(0x57241e);
+    for (let trial = 0; trial < 400; trial += 1) {
+      const candidate = randomSession(rng, 1);
+      const strain = strainOf(candidate);
+      expect(isFreeSession(candidate), describeTemplate(candidate)).toBe(strain === 0);
+      expect(
+        recordSession(EMPTY_FATIGUE_STATE, candidate, UNLUCKIEST_ROLLS).injuryOnset !== null,
+        describeTemplate(candidate),
+      ).toBe(strain > FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD);
+    }
+    for (const template of STRAIN_SWEEP) {
+      const candidate: SessionRecord = { day: 1, ...template };
+      expect(isFreeSession(candidate), describeTemplate(template)).toBe(strainOf(candidate) === 0);
+    }
   });
 
   /**
@@ -1296,5 +1505,254 @@ describe('purity, determinism and input handling', () => {
       state = recordSession(state, hardSession(day), LUCKIEST_ROLLS).state;
     }
     expect(state.sessions.length).toBeLessThanOrEqual(FATIGUE_TUNING.FATIGUE_MEMORY_DAYS + 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CONSISTENCY NEVER ACCRUES INJURY RISK (G5, G5b) — the regression suite
+//
+// The previous draft failed here and its tests did not look. They pinned
+// ORDINARY_HARD_STRAIN = 1, which was precisely and only the point the shipped
+// threshold cleared, and both daily-engagement property tests put a FREE session
+// on the decision day — so the band of sessions that were individually safe but
+// unsafe when repeated was never generated at all.
+//
+// Everything below puts a REAL session on the decision day and sweeps the band.
+// ---------------------------------------------------------------------------
+
+describe('consistency never accrues injury risk (G5, G5b)', () => {
+  /**
+   * THE CASE THAT SENT THE PREVIOUS DRAFT BACK, kept as a regression test with
+   * its numbers. 5x3 @ RPE 9.5 is the suite's own reference hard session with
+   * the RPE nudged by the smallest step the published chart allows — strain
+   * 1.3333, individually safe at the shipped threshold.
+   *
+   * Before the fix, with the unluckiest possible roll: 6 setbacks over 40 daily
+   * sessions, the first on day 2, against 0 over 40 every-other-day sessions.
+   * Identical content, identical per-session choice; the only variable was
+   * whether the player showed up the day before.
+   */
+  it('regression: 5x3 @ RPE 9.5 is injury-free on both schedules, not just the sparse one', () => {
+    const template: SessionTemplate = {
+      lift: 'squat',
+      topRpe: 9.5,
+      workSets: 5,
+      repsPerSet: 3,
+    };
+    // The session the critic's case is built on must actually sit below the
+    // threshold, or this test passes for the wrong reason after a retune.
+    expect(strainOf({ day: 1, ...template })).toBeLessThan(
+      FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD,
+    );
+    expect(strainOf({ day: 1, ...template })).toBeGreaterThan(REFERENCE_HARD_STRAIN);
+
+    const daily = runSchedule(template, 1, 40);
+    const everyOtherDay = runSchedule(template, 2, 40);
+
+    expect(daily.injuries, 'training every day').toBe(0);
+    expect(everyOtherDay.injuries, 'training every other day').toBe(0);
+    expect(daily.firstInjuryDay).toBeNull();
+  });
+
+  /**
+   * THE BAND THE OLD TESTS NEVER GENERATED, as a property.
+   *
+   * `DANGEROUS_BAND` is every real session whose strain is individually safe but
+   * large enough that a model reading carried-in residual would have made it
+   * unsafe once repeated. The bound is derived from the tuning constants, not
+   * restated: `k` is the residual a session of strain s settles at when repeated
+   * daily forever, so a residual-reading model with any weight up to 1 turns s
+   * dangerous once `s (1 + k) > threshold`.
+   *
+   * The band is asserted non-empty first. A vacuous property test is how the
+   * previous draft passed while broken.
+   */
+  it('property: every session in the dangerous band stays injury-free repeated daily forever', () => {
+    expect(DANGEROUS_BAND.length, 'the band must not be empty or this proves nothing').toBeGreaterThan(
+      0,
+    );
+    for (const template of DANGEROUS_BAND) {
+      const label = describeTemplate(template);
+      // 60 days is well past the point residual has settled, and onset 0 injures
+      // the instant the probability leaves zero.
+      const run = runSchedule(template, 1, 60);
+      expect(run.injuries, `${label}: repeated daily for 60 days`).toBe(0);
+    }
+  });
+
+  /**
+   * THE TWO-SCHEDULE COMPARISON, swept across the whole strain axis rather than
+   * at one point: below the threshold, inside the dangerous band, at the
+   * threshold, and well above it.
+   *
+   * Below the threshold both schedules must be exactly zero. Above it, both
+   * schedules injure — that is GDD §3.5 working — and the daily schedule must
+   * never come off worse than the sparse one, which is the guarantee GDD §3.5
+   * and §4 actually draw.
+   */
+  it('property: training daily never yields more setbacks than training every other day', () => {
+    // The sweep has to actually span the threshold, or the branches below are
+    // decoration. Both sides are asserted non-empty before anything is measured.
+    const strains = STRAIN_SWEEP.map((template) => strainOf({ day: 1, ...template }));
+    expect(strains.filter((s) => s === 0).length, 'free sessions in the sweep').toBeGreaterThan(0);
+    expect(
+      strains.filter((s) => s > 0 && s <= FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD).length,
+      'sessions below the threshold',
+    ).toBeGreaterThan(0);
+    expect(
+      strains.filter((s) => s > FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD).length,
+      'sessions above the threshold',
+    ).toBeGreaterThan(0);
+    expect(Math.max(...strains), 'the sweep reaches the model ceiling').toBe(
+      FATIGUE_TUNING.MAX_SESSION_STRAIN,
+    );
+
+    for (const template of STRAIN_SWEEP) {
+      const label = describeTemplate(template);
+      const strain = strainOf({ day: 1, ...template });
+      const daily = runSchedule(template, 1, 40);
+      const everyOtherDay = runSchedule(template, 2, 40);
+      const everyThirdDay = runSchedule(template, 3, 40);
+
+      if (strain <= FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD) {
+        expect(daily.injuries, `${label}: below threshold, daily`).toBe(0);
+        expect(everyOtherDay.injuries, `${label}: below threshold, every other day`).toBe(0);
+        expect(everyThirdDay.injuries, `${label}: below threshold, every third day`).toBe(0);
+      } else {
+        expect(daily.injuries, `${label}: above threshold, daily`).toBeGreaterThan(0);
+        expect(daily.injuries, `${label}: daily vs every other day`).toBeLessThanOrEqual(
+          everyOtherDay.injuries,
+        );
+        expect(daily.injuries, `${label}: daily vs every third day`).toBeLessThanOrEqual(
+          everyThirdDay.injuries,
+        );
+      }
+    }
+  });
+
+  /**
+   * G4/G5 AT THE CAUSE. The chance itself — recovered exactly by bisecting the
+   * onset roll, which `recordSession` resolves against — must not move with
+   * history. Randomised histories, dense and sparse, brutal and light, against
+   * the same decision-day session.
+   *
+   * This is the test that fails the moment anyone passes residual, a day index
+   * or an attendance count back into `injuryProbability`.
+   */
+  it('property: the chance a session carries is identical whatever the history before it', () => {
+    const rng = makeRng(0x7a11ed);
+    for (let trial = 0; trial < 300; trial += 1) {
+      const decisionDay = 30;
+      // Half from the curated sweep so the named strain landmarks are covered,
+      // half fully random so "ANY session" in G5b is not just "any of thirteen".
+      const today =
+        rng() < 0.5
+          ? pick(rng, STRAIN_SWEEP, REFERENCE_HARD_TEMPLATE)
+          : templateOf(randomSession(rng, 1));
+      const decision: SessionRecord = { day: decisionDay, ...today };
+
+      // Fresh: never trained at all.
+      const fresh = EMPTY_FATIGUE_STATE;
+      // Daily: trained every single day up to yesterday.
+      let daily = EMPTY_FATIGUE_STATE;
+      // Sparse: trained the same content, but only every third day.
+      let sparse = EMPTY_FATIGUE_STATE;
+      // Brutal: maximal sessions every day up to yesterday.
+      let brutal = EMPTY_FATIGUE_STATE;
+      const historyContent =
+        rng() < 0.5
+          ? pick(rng, STRAIN_SWEEP, REFERENCE_HARD_TEMPLATE)
+          : templateOf(randomSession(rng, 1));
+      for (let day = 1; day < decisionDay; day += 1) {
+        daily = recordSession(daily, { day, ...historyContent }, LUCKIEST_ROLLS).state;
+        if (day % 3 === 0) {
+          sparse = recordSession(sparse, { day, ...historyContent }, LUCKIEST_ROLLS).state;
+        }
+        brutal = recordSession(brutal, maximalSession(day), LUCKIEST_ROLLS).state;
+      }
+
+      // G5b's exact wording: "the chance that session carries on its own, on day
+      // one, to a completely fresh lifter". Both readings of "fresh" are pinned.
+      const reference = measuredInjuryChance(EMPTY_FATIGUE_STATE, { day: 1, ...today });
+      expect(measuredInjuryChance(fresh, decision), `trial ${trial}: fresh on day ${decisionDay}`).toBe(
+        reference,
+      );
+
+      for (const [name, state] of [
+        ['daily', daily],
+        ['sparse', sparse],
+        ['brutal', brutal],
+      ] as const) {
+        // Vacuity guard: if a history had picked up a setback, its chance would
+        // be zeroed by the immunity window and equality would mean nothing.
+        expect(state.injury, `trial ${trial}: ${name} history must be injury-free`).toBeNull();
+        expect(
+          measuredInjuryChance(state, decision),
+          `trial ${trial}: ${describeTemplate(today)} after a ${name} history`,
+        ).toBe(reference);
+      }
+    }
+  });
+
+  /**
+   * G4 WITH A REAL SESSION ON THE DECISION DAY. The old version of this property
+   * put a FREE session there, which is the easy half. Here the player who shows
+   * up does genuine work — drawn from the dangerous band and above — and must
+   * still never be injured on a later session that the player who skipped
+   * survives, with the same roll.
+   */
+  it('property: a real session today never causes an injury that resting today would have avoided', () => {
+    const rng = makeRng(0x5c1ed);
+    for (let trial = 0; trial < 400; trial += 1) {
+      let shared = EMPTY_FATIGUE_STATE;
+      const historyDays = 1 + Math.floor(rng() * 5);
+      for (let day = 1; day <= historyDays; day += 1) {
+        if (rng() < 0.8) {
+          shared = recordSession(shared, randomSession(rng, day), LUCKIEST_ROLLS).state;
+        }
+      }
+      const decisionDay = historyDays + 1;
+      const todaysWork = pick(rng, STRAIN_SWEEP, REFERENCE_HARD_TEMPLATE);
+      const trained = recordSession(
+        shared,
+        { day: decisionDay, ...todaysWork },
+        LUCKIEST_ROLLS,
+      ).state;
+
+      const laterDay = decisionDay + 1;
+      const later: SessionRecord = {
+        day: laterDay,
+        ...pick(rng, STRAIN_SWEEP, REFERENCE_HARD_TEMPLATE),
+      };
+      const roll: InjuryRolls = { onset: rng() * 0.1, duration: rng() };
+
+      const afterTraining = recordSession(trained, later, roll);
+      const afterResting = recordSession(shared, later, roll);
+      if (afterTraining.injuryOnset !== null) {
+        expect(afterResting.injuryOnset, `trial ${trial}`).not.toBeNull();
+      }
+    }
+  });
+
+  /**
+   * The counter-check, so the guarantee is not passing because injury is
+   * unreachable. A session materially harder than an ordinary hard day still
+   * carries a chance, on day one, to a completely fresh lifter — no fatigue
+   * history required to unlock it.
+   */
+  it('an overreaching session injures a completely fresh lifter on day one', () => {
+    const overreaching = STRAIN_SWEEP.filter(
+      (template) =>
+        strainOf({ day: 1, ...template }) > FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD,
+    );
+    expect(overreaching.length).toBeGreaterThan(0);
+    for (const template of overreaching) {
+      const result = recordSession(
+        EMPTY_FATIGUE_STATE,
+        { day: 1, ...template },
+        UNLUCKIEST_ROLLS,
+      );
+      expect(result.injuryOnset, describeTemplate(template)).not.toBeNull();
+    }
   });
 });

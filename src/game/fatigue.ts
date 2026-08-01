@@ -86,37 +86,63 @@
  *        nothing left to flush. Property-tested over randomised histories and
  *        long tails, on every surfaced signal, not on the hidden scalar.
  *
- *   (G3) A FREE SESSION CANNOT INJURE YOU, EVER. Injury chance is driven by
- *        today's strain plus a fraction of the residual, minus a threshold. A
- *        free session contributes zero strain, and the residual term is bounded
- *        by the model's own steady state, which is below the threshold.
- *        `fatigue.test.ts` derives that bound from the tuning constants and
- *        asserts the margin, so retuning into a state where a free session can
- *        injure fails the suite.
+ *   (G3) A FREE SESSION CANNOT INJURE YOU, EVER. Injury chance is a function of
+ *        TODAY'S SESSION ALONE (plus an Arcade technique rating that can only
+ *        reduce it). A free session's strain is exactly zero, and zero is below
+ *        `INJURY_STRAIN_THRESHOLD`, which the suite asserts is positive. No
+ *        history, however brutal, can change that — because no history is read.
  *
- *   (G4) SHOWING UP CANNOT CAUSE AN INJURY YOU WOULD OTHERWISE HAVE AVOIDED.
- *        Injury probability is monotone in residual, and (G2) says showing up
- *        leaves residual no higher. So with the same roll on the same later
- *        session, the player who showed up is injured only if the player who
- *        skipped would also have been. Property-tested.
+ *   (G4) TRAINING TODAY NEVER RAISES THE RISK OF ANY LATER SESSION. Two players
+ *        who perform the same session face exactly the same chance, whatever
+ *        either of them did on any previous day. Property-tested by measuring
+ *        that chance — bisecting the `onset` roll, which the module resolves
+ *        against — over randomised dense and sparse histories, and asserting
+ *        equality rather than an inequality.
  *
- *   (G5) CONSECUTIVE DAYS ARE NOT AN INPUT. Nothing in this module reads a
- *        streak, an attendance count, or "days since a rest day". The only
- *        things that raise risk are strain and residual, both of which a free
- *        session lowers.
+ *        History reaches the injury path in exactly ONE place: the immunity
+ *        window after a setback, which can only force the chance to zero. It is
+ *        named here because "risk reads no history" would otherwise be a claim
+ *        with an exception hiding behind it.
  *
- *   (G5b) CONSISTENCY ALONE NEVER ACCRUES RISK. Repeating an ordinary hard
- *        session every day forever settles at a combined strain below
- *        `INJURY_STRAIN_THRESHOLD`, so it carries a chance of exactly zero — not
- *        a small chance that eventually fires. Injury requires a session
- *        materially harder than a normal hard day. Checked two ways: derived
- *        from the tuning constants, and by running 60 consecutive hard days
- *        against the unluckiest possible roll.
+ *   (G5) NEITHER ATTENDANCE NOR ACCUMULATED FATIGUE IS AN INPUT TO RISK.
+ *        `injuryProbability` takes a session and a technique rating. It has no
+ *        parameter for the ledger, the day, a streak, or residual fatigue, so
+ *        there is no term for a later retune to put weight on.
  *
- *        This is the guarantee the first draft got wrong. At the original
- *        threshold the daily hard trainer picked up roughly half a percent per
- *        session once fatigue plateaued. Nothing about that was dramatic, and it
- *        was still risk accruing from turning up, which is the line GDD §4 draws.
+ *        THIS IS WHERE THE PREVIOUS DRAFT WAS WRONG, and the shape of the
+ *        mistake is worth recording because it recurs. Risk used to read
+ *        `strain + INJURY_RESIDUAL_WEIGHT x residual`. Nothing in that
+ *        expression names a streak — the header said so, and it was literally
+ *        true — but residual is a proxy for days since a rest day, so the player
+ *        who trained yesterday carried a strictly higher chance for an identical
+ *        session. Raising the threshold from 1.2 to 1.5 only slid the break-even
+ *        strain from 0.921 to 1.151 and left the failure intact one half-RPE
+ *        step above it: 5x3 @ RPE 9.5 (strain 1.333) was a chance of exactly
+ *        zero forever every other day, and about 1.2% per session from the
+ *        SECOND consecutive day. Measured with the unluckiest possible roll over
+ *        40 sessions: 6 setbacks training daily, 0 training every other day,
+ *        identical session content. That case is now a named regression test
+ *        (`regression: 5x3 @ RPE 9.5 is injury-free on both schedules`), and the
+ *        residual term is deleted rather than zeroed so no retune restores it.
+ *
+ *   (G5b) CONSISTENCY ALONE NEVER ACCRUES RISK. Unconditionally: at every
+ *        strain, at every frequency, forever. Repeating ANY session every day
+ *        carries exactly the chance that session carries on its own, on day one,
+ *        to a completely fresh lifter. There is no strain at which repetition
+ *        turns a safe session unsafe, because repetition is not an input. This
+ *        headline is unconditional because the guarantee now is; the one place
+ *        history still touches risk is named in (G4) and only ever removes it.
+ *
+ *        WHAT A HARD DAY STILL COSTS: tomorrow's session starts harder (GDD
+ *        §3.4, "Push too hard today -> tomorrow's session starts harder"). That
+ *        is the fatigue model working and it is deliberately kept. What changed
+ *        is that a tighter window and a slower bar are the WHOLE of the cost.
+ *
+ *        AND WHY GETTING STRONGER NEVER CATCHES UP WITH YOU: strain is computed
+ *        from RPE, sets and reps. `SessionRecord` has no weight field at all, so
+ *        a lifter whose e1RM has doubled and who still trains 5x3 @ RPE 9 sits
+ *        at exactly the strain, and exactly the risk, they did on day one. The
+ *        player's norm rises with them in load without ever meeting a threshold.
  *
  *   (G6) AN INJURY NEVER COSTS A DAY. `cappedSession` reduces work sets on the
  *        affected lift only and leaves other lifts untouched. It never cuts a
@@ -137,11 +163,34 @@
  *        can move `endDay`. Re-injury is blocked for the debuff plus
  *        `INJURY_IMMUNITY_DAYS_AFTER`, so setbacks cannot chain.
  *
- * NOT ENFORCED, and worth knowing: (G2) compares taking the FREE session against
- * skipping. Training genuinely hard every day does leave you more fatigued than
- * resting would — that is the model working (GDD §3.4: "Push too hard today ->
- * tomorrow's session starts harder"). The guarantee is that engagement always
- * has a costless form, not that every choice is costless.
+ * NOT ENFORCED, and worth knowing:
+ *
+ *   - (G2) compares taking the FREE session against skipping. Training genuinely
+ *     hard every day does leave you more fatigued than resting would — that is
+ *     the model working (GDD §3.4). The guarantee is that engagement always has
+ *     a costless form, not that every choice is costless.
+ *
+ *   - A session ABOVE `INJURY_STRAIN_THRESHOLD` carries its chance every time it
+ *     is performed. PER SESSION that chance is identical for everybody (G4). PER
+ *     CALENDAR WEEK, a player who picks such a session seven days running meets
+ *     it more often than one who picks it twice. Said plainly because it is the
+ *     one place frequency still shows up anywhere near injury.
+ *
+ *     That is repeatedly choosing to overreach, not showing up. Every session at
+ *     or below the threshold — an ordinary hard day and everything easier — is
+ *     provably free at any frequency, forever, and (G1)'s free session is always
+ *     on offer. Two things also bound it: `INJURY_IMMUNITY_DAYS_AFTER` is counted
+ *     in DAYS, so no amount of extra training compresses the gap between two
+ *     setbacks; and per session the daily trainer comes off BETTER, because more
+ *     of their sessions land inside that window. At the shipped placeholders,
+ *     40 sessions of identical overreaching content under the unluckiest
+ *     possible roll: 6 setbacks training daily, 10 every other day, 14 every
+ *     third day. The suite asserts that direction across a strain sweep; the
+ *     three counts are a measurement, not a pinned expectation.
+ *
+ *     Closing the per-week gap entirely would mean making the Nth repeat of an
+ *     overreaching session cheaper than the first — risk falling as volume rises
+ *     — which is a worse lie than admitting this one.
  *
  * ---------------------------------------------------------------------------
  * HORIZON — SAME-DAY / NEXT-DAY, NOT MULTI-WEEK (GDD §3.4)
@@ -539,35 +588,48 @@ export const FATIGUE_TUNING = Object.freeze({
   // --- Injury (GDD §3.5) ----------------------------------------------------
 
   /**
-   * Combined strain a session has to exceed before it carries ANY injury
-   * chance. Below it the probability is exactly zero, not merely small.
+   * Strain ONE SESSION has to exceed before it carries ANY injury chance. Below
+   * it the probability is exactly zero, not merely small.
    *
-   * TWO FLOORS CONSTRAIN THIS, and both are derived from the other constants and
-   * asserted in `fatigue.test.ts` rather than left to this comment:
+   * THIS IS THE WHOLE OF THE INJURY GATE. Nothing is added to today's strain
+   * before the comparison — no residual, no attendance, no streak — so the
+   * threshold means one plain thing: how much harder than an ordinary hard day
+   * (strain 1.0, by construction of `STRAIN_REFERENCE`) a session has to be
+   * before it can hurt you. There is deliberately no companion coefficient for
+   * carried-in fatigue; the previous draft had one, and it made risk accrue from
+   * training frequency (see G5 in the header).
    *
-   *   1. Above `INJURY_RESIDUAL_WEIGHT x (model ceiling)`, or a FREE session
-   *      could injure a heavily fatigued player, which breaks G3.
-   *   2. Above the steady state of repeating an ORDINARY HARD SESSION forever —
-   *      strain 1.0 by construction of `STRAIN_REFERENCE`, which settles at
-   *      combined 1.0 x (1 + INJURY_RESIDUAL_WEIGHT x DAILY_DECAY /
-   *      (1 - ACTIVE_RECOVERY_FLUSH x DAILY_DECAY)) = 1.303 as shipped.
+   * THREE BOUNDS, all derived from the other constants and asserted in
+   * `fatigue.test.ts` rather than left to this comment:
    *
-   * The second floor is the one that moved this number. At 1.2 a player who
-   * trained 5 x 3 @ RPE 9 every single day eventually carried a small per-session
-   * injury chance — never large, but accruing from consistency itself, which
-   * reads as the game punishing them for showing up (GDD §3.5, §4). Injury now
-   * requires a session materially harder than a normal hard day, not merely a
-   * long run of normal hard days.
+   *   1. Strictly above 0, or a free session could injure (G3).
+   *   2. Strictly above the ordinary-hard reference strain of 1.0, or a normal
+   *      hard day carries a chance and GDD §3.5's "rare" is gone.
+   *   3. Strictly below `MAX_SESSION_STRAIN`, or nothing can ever injure and
+   *      GDD §3.5's setbacks are dead code.
+   *
+   * AT THE SHIPPED PLACEHOLDER: 5x3 @ RPE 9 (strain 1.0) and 5x3 @ RPE 9.5
+   * (1.333) are free forever at any frequency; 5x3 @ RPE 10 (1.75) and 5x5 @
+   * RPE 9 (1.889) are not. Where exactly that line belongs is a feel question
+   * and has not been played. Note that dropping the residual term made the model
+   * strictly less injurious at a fixed threshold, so this number is a candidate
+   * to come DOWN in tuning, not up.
    */
   INJURY_STRAIN_THRESHOLD: 1.5,
-
-  /** How much of the carried-in residual counts toward that threshold. */
-  INJURY_RESIDUAL_WEIGHT: 0.5,
 
   /** Injury probability per 1.0 of strain above the threshold. */
   INJURY_CHANCE_PER_OVERREACH: 0.05,
 
-  /** Hard cap on one session's injury chance. GDD §3.5: "Rare". */
+  /**
+   * Hard cap on one session's injury chance. GDD §3.5: "Rare".
+   *
+   * CURRENTLY SLACK, said rather than left to be discovered. With no residual
+   * term the largest reachable chance is
+   * `(MAX_SESSION_STRAIN - INJURY_STRAIN_THRESHOLD) x
+   * INJURY_CHANCE_PER_OVERREACH` = 5% as shipped, so this never binds today. It
+   * stays as a guard: a tuner who lowers the threshold or raises the per-
+   * overreach slope should not be able to walk past "rare" by accident.
+   */
   INJURY_MAX_CHANCE_PER_SESSION: 0.06,
 
   /** GDD §3.5: "short (2-3 day debuffs)". */
@@ -930,7 +992,12 @@ function sessionOnDay(state: FatigueState, day: number): SessionRecord | null {
  * The flush on the trained branch is the whole of G2: a free session adds zero
  * and multiplies the carry by 0.85, where resting multiplies by 1.
  *
- * MODULE-PRIVATE. This is the hidden stat.
+ * MODULE-PRIVATE. This is the hidden stat, and `sessionFeel` is its ONLY caller.
+ * It moves the timing window, the miss odds, the perceived RPE and the bar-speed
+ * cue — how today feels — and it deliberately has no route to injury risk, which
+ * reads today's session and nothing else (G5). A future edit that passes this
+ * into `injuryProbability` is the exact regression the daily-vs-intermittent
+ * property tests exist to catch.
  */
 function residualAtStartOfDay(state: FatigueState, day: number): number {
   let residual = 0;
@@ -1239,19 +1306,22 @@ export function pruneFatigueState(state: FatigueState, day: number): FatigueStat
  * that way on purpose: an exported "injury risk" number is a fatigue meter
  * wearing a different label, and a screen showing "risk: 4%" would be exactly
  * the readout GDD §3.4 forbids. Tests reach it by passing `onset: 0`, which
- * injures if and only if this is above zero.
+ * injures if and only if this is above zero, or by bisecting `onset` to recover
+ * the value exactly.
  *
- * Zero unless today's strain plus a fraction of the carried-in residual exceeds
- * `INJURY_STRAIN_THRESHOLD`. Consecutive days shown up are not an input (G5).
+ * TAKES A SESSION AND A TECHNIQUE RATING, AND NOTHING ELSE. No state, no day, no
+ * residual — the same signature discipline `readinessCheckIn` uses, for the same
+ * reason. It is what makes G4, G5 and G5b structural rather than numeric: there
+ * is no history parameter for a later retune to put weight on, so "the player
+ * who trained yesterday is at higher risk" is not a value that can drift back,
+ * it is an expression that cannot be written here without changing the
+ * signature, deleting a property test, and arguing for both in a diff.
+ *
+ * Zero unless TODAY'S strain exceeds `INJURY_STRAIN_THRESHOLD`. Accumulated
+ * fatigue is not added to it, and neither is anything else (G5).
  */
-function injuryProbability(
-  session: SessionRecord,
-  residual: number,
-  techniqueRating: number,
-): number {
-  const combined =
-    sessionStrain(session) + FATIGUE_TUNING.INJURY_RESIDUAL_WEIGHT * residual;
-  const overreach = combined - FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD;
+function injuryProbability(session: SessionRecord, techniqueRating: number): number {
+  const overreach = sessionStrain(session) - FATIGUE_TUNING.INJURY_STRAIN_THRESHOLD;
   if (overreach <= 0) return 0;
   const raw = clamp(
     overreach * FATIGUE_TUNING.INJURY_CHANCE_PER_OVERREACH,
@@ -1281,6 +1351,9 @@ function injuryDurationDays(roll: number, physioDaysSaved: number): number {
  *
  * WHAT CANNOT HAPPEN HERE:
  *   - A free session cannot start a setback, for any roll (G3).
+ *   - The same session cannot carry a different chance for two players because
+ *     one of them trained yesterday. Only `session` and `techniqueRating` reach
+ *     `injuryProbability` (G4, G5, G5b).
  *   - A setback cannot start while one is running or inside its immunity
  *     window (G8).
  *   - An existing setback's `endDay` is never moved (G8).
@@ -1314,12 +1387,16 @@ export function recordSession(
     throw new RangeError(`techniqueRating must be a finite number, received ${techniqueRating}.`);
   }
 
-  const residual = residualAtStartOfDay(state, session.day);
   const existing = state.injury;
   const immune =
     existing !== null && session.day <= existing.endDay + FATIGUE_TUNING.INJURY_IMMUNITY_DAYS_AFTER;
 
-  const probability = immune ? 0 : injuryProbability(session, residual, techniqueRating);
+  // THE ONLY READ OF HISTORY ON THE INJURY PATH is `immune`, immediately above,
+  // and it can only ever force the chance DOWN to zero (G4). `residual` is not
+  // computed here at all: `residualAtStartOfDay` is reachable from `sessionFeel`
+  // and nowhere else, so the hidden scalar drives how today FEELS and has no
+  // route to whether today hurts you.
+  const probability = immune ? 0 : injuryProbability(session, techniqueRating);
   const injured = rolls.onset < probability;
 
   const withSession: FatigueState = {
