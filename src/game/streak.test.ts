@@ -721,8 +721,70 @@ describe('the Recovery Day offer', () => {
       balanceAfter: 2,
       streakProtected: 9,
       consecutiveRecoveryDaysUsedAfter: 1,
+      lastDayStreakCanBeSaved: addDays(DAY_ZERO, 1 + coverableGapDays(state)),
       isFirstBreakTutorial: true,
     });
+    // AN EXHAUSTIVE `toEqual`, so a field added to the offer without a decision
+    // about whether the prompt should show it fails here rather than shipping.
+  });
+
+  it('tells the player how long the yes lasts, in the same terms as every other screen', () => {
+    // THE EXPIRY, NOT JUST THE PRICE. This is the only branch of the read model
+    // where a finite resource is spent, so it is the one that most needs to say
+    // when the thing being bought runs out. Same number, same function, as the
+    // two openings either side of it.
+    const state = stateWithRun(9, DAY_ZERO, 3);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
+    const opening = openDay(state, day);
+    expect(opening.kind).toBe('recovery-day-offered');
+    if (opening.kind !== 'recovery-day-offered') throw new Error('expected an offer');
+
+    expect(opening.offer.lastDayStreakCanBeSaved).toBe(lastDayStreakCanBeSaved(state));
+    // Not vacuous: the runway is genuinely further out than today here, which is
+    // the case where the answer is "you have room" rather than "train now".
+    expect(opening.offer.lastDayStreakCanBeSaved).toBeGreaterThan(day);
+
+    // AND IT DOES NOT MOVE WHEN THE PLAYER SAYS YES. A spend consumes exactly the
+    // days it pays for, so the grace it uses up and the balance it draws down
+    // cancel against the days it covers. That is what makes it honest to show
+    // this number BEFORE the answer: it means the same thing on both sides.
+    const outcome = unwrap(acceptRecoveryDayOffer(state, opening.offer));
+    expect(lastDayStreakCanBeSaved(outcome.state)).toBe(opening.offer.lastDayStreakCanBeSaved);
+    const after = openDay(outcome.state, day);
+    if (after.kind !== 'streak-alive') throw new Error('expected the run to be alive after a save');
+    expect(after.lastDayStreakCanBeSaved).toBe(opening.offer.lastDayStreakCanBeSaved);
+  });
+
+  it('keeps the runway invariant across a spend at every balance and gap it can be offered at', () => {
+    // The invariance above is the load-bearing half of the disclosure, so it is
+    // swept rather than shown once: every balance up to the hold cap, every gap
+    // that can produce an offer, and every number of Recovery Days already used
+    // in this absence.
+    let sweptOffers = 0;
+    for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
+      for (let gap = 1; gap <= LONGEST_REPAIRABLE_ABSENCE_DAYS + 2; gap += 1) {
+        let state: StreakState = stateWithRun(9, DAY_ZERO, balance);
+        // Walk the absence day by day, so later offers start from a state where
+        // the grace is already spent and `consecutiveRecoveryDaysUsed` is not 0.
+        for (let offset = 1; offset <= gap + 1; offset += 1) {
+          const day = addDays(DAY_ZERO, offset);
+          const opening = openDay(state, day);
+          if (opening.kind === 'streak-broken') break;
+          // 'streak-alive' and 'gap-covered-by-grace' are the free opening days
+          // of the absence: nothing to answer, walk on to the day that costs.
+          if (opening.kind !== 'recovery-day-offered') continue;
+          const runwayBefore = opening.offer.lastDayStreakCanBeSaved;
+          expect(runwayBefore).toBe(lastDayStreakCanBeSaved(state));
+          expect(runwayBefore).toBeGreaterThanOrEqual(day);
+          const outcome = unwrap(acceptRecoveryDayOffer(state, opening.offer));
+          expect(lastDayStreakCanBeSaved(outcome.state)).toBe(runwayBefore);
+          state = outcome.state;
+          sweptOffers += 1;
+        }
+      }
+    }
+    // The sweep has to have produced offers, or the invariance is unexercised.
+    expect(sweptOffers).toBeGreaterThan(RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
   });
 
   it('is surfaced by openDay rather than applied', () => {
@@ -815,6 +877,16 @@ describe('the Recovery Day offer', () => {
 
     const inflatedStreak = { ...real, streakProtected: 99 };
     expect(errorCodeOf(acceptRecoveryDayOffer(state, inflatedStreak))).toBe('OFFER_DOES_NOT_MATCH_STATE');
+
+    // A disclosure is only worth having if it cannot be forged: an offer handed
+    // back promising a longer runway than the state supports is the same class
+    // of lie as one promising a lower price, and is refused the same way.
+    const inflatedRunway = {
+      ...real,
+      lastDayStreakCanBeSaved: addDays(real.lastDayStreakCanBeSaved, 30),
+    };
+    expect(errorCodeOf(acceptRecoveryDayOffer(state, inflatedRunway))).toBe('OFFER_DOES_NOT_MATCH_STATE');
+    expect(errorCodeOf(declineRecoveryDayOffer(state, inflatedRunway))).toBe('OFFER_DOES_NOT_MATCH_STATE');
 
     const alreadySpent = unwrap(acceptRecoveryDayOffer(state, real)).state;
     expect(errorCodeOf(acceptRecoveryDayOffer(alreadySpent, real))).toBe('NO_RECOVERY_DAY_OFFER');
@@ -1209,6 +1281,16 @@ describe('the consecutive-use limit', () => {
  */
 type AbsenceBehaviour = 'walk-back' | 'return-only';
 
+/** What one prompt during an absence actually said, in the terms the UI renders. */
+interface AbsencePrompt {
+  /** The day the prompt appeared. */
+  readonly askedOn: StreakDay;
+  /** Recovery Days it asked for. */
+  readonly cost: number;
+  /** The expiry it disclosed: the last day the run can still be alive. */
+  readonly lastDayStreakCanBeSaved: StreakDay;
+}
+
 interface AbsenceOutcome {
   /** Did the run survive the absence — i.e. is the returning session a continuation? */
   readonly survived: boolean;
@@ -1216,6 +1298,12 @@ interface AbsenceOutcome {
   readonly spent: number;
   /** Streak on the session after the absence. */
   readonly streakOnReturn: number;
+  /**
+   * Every prompt the player saw, in order. Recorded so a test can assert what
+   * they were TOLD and not only what they were charged — the wasted-spend case
+   * below turns on the difference.
+   */
+  readonly prompts: readonly AbsencePrompt[];
 }
 
 /**
@@ -1234,6 +1322,7 @@ function playAbsence(
 ): AbsenceOutcome {
   let state: StreakState = stateWithRun(streakLength, DAY_ZERO, balance);
   let spent = 0;
+  const prompts: AbsencePrompt[] = [];
   const returnDay = awayDays + 1;
   const firstOpen = behaviour === 'walk-back' ? 1 : returnDay;
 
@@ -1241,6 +1330,11 @@ function playAbsence(
     const day = addDays(DAY_ZERO, offset);
     const opening = openDay(state, day);
     if (opening.kind === 'recovery-day-offered') {
+      prompts.push({
+        askedOn: opening.offer.offeredOnDay,
+        cost: opening.offer.cost,
+        lastDayStreakCanBeSaved: opening.offer.lastDayStreakCanBeSaved,
+      });
       const outcome = unwrap(acceptRecoveryDayOffer(state, opening.offer));
       spent += outcome.recoveryDaysSpent;
       state = outcome.state;
@@ -1254,6 +1348,7 @@ function playAbsence(
     survived: trained.streakAfter === streakLength + 1,
     spent,
     streakOnReturn: trained.streakAfter,
+    prompts,
   };
 }
 
@@ -1411,6 +1506,28 @@ describe('a long absence', () => {
     expect(walked.spent).toBeGreaterThan(returned.spent);
     expect(returned.spent).toBe(0);
     expect(walked.spent).toBeLessThanOrEqual(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
+
+    // AND WHAT THE PLAYER WAS TOLD WHEN THEY WERE ASKED FOR IT. Pinning the
+    // spend and the streak without pinning the disclosure would leave the one
+    // thing that makes this "the price of an option" rather than a penalty
+    // (GDD §4.2) untested — the option was sold, so its expiry has to be on the
+    // prompt. Every prompt here reads TODAY: this yes buys today and nothing
+    // after it.
+    expect(walked.prompts.length).toBeGreaterThan(0);
+    for (const prompt of walked.prompts) {
+      expect(prompt.cost).toBeGreaterThan(0);
+      expect(prompt.lastDayStreakCanBeSaved).toBe(prompt.askedOn);
+    }
+    // The return-only player was never asked, which is why they spent nothing.
+    expect(returned.prompts).toEqual([]);
+
+    // NOT A PROPERTY OF EVERY PROMPT — the disclosure is only worth reading if it
+    // can also say "you have room". Same absence, a balance that can afford it:
+    // the runway now sits strictly past the day the player was asked on.
+    const affordable = playAbsence(away, RECOVERY_DAY_GUARDRAILS.HOLD_CAP, 'walk-back');
+    expect(affordable.survived).toBe(true);
+    const firstPrompt = affordable.prompts[0] as AbsencePrompt;
+    expect(firstPrompt.lastDayStreakCanBeSaved).toBeGreaterThan(firstPrompt.askedOn);
   });
 
   it('does not let a purchase repair it either', () => {
@@ -1795,6 +1912,16 @@ type OfferPolicy = 'accept' | 'decline';
 interface SimResult {
   readonly state: StreakState;
   readonly recoveryDaysSpent: number;
+  /**
+   * Offers the simulated player actually answered, either way.
+   *
+   * NOT COSMETIC. `recoveryDaysSpent` is always 0 under the `'decline'` policy,
+   * so it cannot tell "this calendar never produced a prompt" apart from "this
+   * calendar produced prompts and they were all refused". Any comparison of the
+   * two policies that does not check this passes just as happily with the offer
+   * mechanism deleted.
+   */
+  readonly offersAnswered: number;
 }
 
 /**
@@ -1831,9 +1958,11 @@ function simulate(
 ): SimResult {
   let state = initial;
   let spent = 0;
+  let offersAnswered = 0;
   const openAndResolve = (from: StreakState, day: StreakDay): StreakState => {
     const opening = openDay(from, day);
     if (opening.kind === 'recovery-day-offered') {
+      offersAnswered += 1;
       if (policy === 'accept') {
         const outcome = unwrap(acceptRecoveryDayOffer(from, opening.offer));
         spent += outcome.recoveryDaysSpent;
@@ -1879,7 +2008,7 @@ function simulate(
   if (settleAtEnd && attend.length > 0) {
     state = openAndResolve(state, addDays(DAY_ZERO, attend.length - 1));
   }
-  return { state, recoveryDaysSpent: spent };
+  return { state, recoveryDaysSpent: spent, offersAnswered };
 }
 
 /**
@@ -2530,10 +2659,26 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // What this does NOT say is that training an extra day is safe — that is
     // the KNOWN GAP above, and it is a comparison between two DIFFERENT
     // calendars, not between two answers to the same prompt.
+    //
+    // ANTI-VACUITY, because `accepting >= declining` on its own is a bound that
+    // an app WITH NO OFFER MECHANISM AT ALL satisfies perfectly: delete the
+    // prompt and both policies collapse onto the same simulation, every
+    // comparison reads `x >= x`, and the test stays green while asserting
+    // nothing. Every other sweep in this file carries a guard against exactly
+    // that (`offersSeen > 1`, `spendCountsExercised`, `assertPaidPath`); this
+    // one now does too, and it needs both halves:
+    //
+    //   - offers were ANSWERED, under each policy, so prompts existed at all;
+    //   - the two policies actually DIVERGED on some calendar, so the >= is
+    //     load-bearing rather than an equality in disguise.
     const initial = createStreakState();
     const LENGTH = MONOTONICITY_MEASUREMENT.CALENDAR_LENGTH;
     const noGrants = Array.from({ length: LENGTH }, () => false);
     let checked = 0;
+    let acceptedOffers = 0;
+    let declinedOffers = 0;
+    let strictlyBetterCurrent = 0;
+    let strictlyBetterLongest = 0;
 
     for (const opens of ['daily', 'on-training-days'] as const) {
       for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
@@ -2541,6 +2686,14 @@ describe('daily engagement is never worse than skipping — where that holds, an
         const accepting = simulate(attend, noGrants, 'accept', initial, opens, true);
         const declining = simulate(attend, noGrants, 'decline', initial, opens, true);
         checked += 1;
+        acceptedOffers += accepting.offersAnswered;
+        declinedOffers += declining.offersAnswered;
+        if (accepting.state.currentStreak > declining.state.currentStreak) {
+          strictlyBetterCurrent += 1;
+        }
+        if (accepting.state.longestStreak > declining.state.longestStreak) {
+          strictlyBetterLongest += 1;
+        }
         if (accepting.state.currentStreak < declining.state.currentStreak) {
           throw new Error(`accepting lost ground on ${renderCalendar(attend)} (opens=${opens})`);
         }
@@ -2551,7 +2704,20 @@ describe('daily engagement is never worse than skipping — where that holds, an
     }
     expect(checked).toBe(2 * (1 << LENGTH));
 
+    // The prompt has to have appeared, on both sides, or "saying yes is never
+    // worse than saying no" is a statement about two identical simulations.
+    expect(acceptedOffers).toBeGreaterThan(0);
+    expect(declinedOffers).toBeGreaterThan(0);
+    // ...and the answer has to have MATTERED on some calendar. Without this, a
+    // change that quietly stopped Recovery Days from protecting anything would
+    // leave every pair equal and this test still green.
+    expect(strictlyBetterCurrent).toBeGreaterThan(0);
+    expect(strictlyBetterLongest).toBeGreaterThan(0);
+
     const random = mulberry32(0xacce_9701);
+    let randomisedAccepted = 0;
+    let randomisedDeclined = 0;
+    let randomisedDiverged = 0;
     for (let trial = 0; trial < 500; trial += 1) {
       const length = 35 + Math.floor(random() * 26);
       const attendance = 0.2 + random() * 0.75;
@@ -2559,9 +2725,16 @@ describe('daily engagement is never worse than skipping — where that holds, an
       const grants = Array.from({ length }, () => false);
       const accepting = simulate(attend, grants, 'accept', initial, 'daily', true);
       const declining = simulate(attend, grants, 'decline', initial, 'daily', true);
+      randomisedAccepted += accepting.offersAnswered;
+      randomisedDeclined += declining.offersAnswered;
+      if (accepting.state.longestStreak > declining.state.longestStreak) randomisedDiverged += 1;
       expect(accepting.state.currentStreak).toBeGreaterThanOrEqual(declining.state.currentStreak);
       expect(accepting.state.longestStreak).toBeGreaterThanOrEqual(declining.state.longestStreak);
     }
+    // The randomised half gets the same treatment as the exhaustive half.
+    expect(randomisedAccepted).toBeGreaterThan(0);
+    expect(randomisedDeclined).toBeGreaterThan(0);
+    expect(randomisedDiverged).toBeGreaterThan(0);
   });
 
   it('KNOWN GAP, MEASURED: how many calendars an extra training day makes worse, under both app-opening models', () => {
