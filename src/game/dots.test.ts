@@ -1,26 +1,54 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
 import {
   DOTS_BODYWEIGHT_DOMAIN_KG,
   DOTS_COEFFICIENTS,
+  DOTS_COEFFICIENT_DISPLAY_DECIMALS,
+  DOTS_DELTA_NEGATIVE_PREFIX,
+  DOTS_DELTA_POSITIVE_PREFIX,
+  DOTS_DELTA_ZERO_PREFIX,
   DOTS_DISPLAY_DECIMALS,
   DOTS_NO_TOTAL_DISPLAY,
   DOTS_NUMERATOR,
+  DOTS_SMALLEST_PRINTABLE_SCORE,
+  applyDotsCoefficient,
   clampBodyweightToDotsDomain,
+  compareDotsCoefficients,
   dotsCoefficient,
   dotsDenominator,
   dotsDomainStatus,
   dotsScore,
   evaluateDots,
+  evaluateMeetDots,
+  formatDotsCoefficient,
+  formatDotsDelta,
   formatDotsOutcome,
   formatDotsScore,
   hasDotsScore,
   isBodyweightInDotsDomain,
+  officialTotalFromMeet,
+  officialTotalKg,
+  roundDotsDelta,
   roundDotsScore,
+  type DotsCoefficient,
   type DotsOutcome,
   type DotsSex,
+  type OfficialTotalKg,
   type ScoredDots,
 } from './dots';
+import {
+  createMeet,
+  declareAttempt,
+  finalMeetTotal,
+  readTotal,
+  resolveAttempt,
+  totalOnTheBoard,
+  type JudgePanel,
+  type MeetState,
+} from './meet';
 
 /**
  * Reference values in this file come from two places, both independent of the
@@ -43,6 +71,24 @@ import {
 const SCORE_PRECISION = 6;
 const COEFFICIENT_PRECISION = 8;
 
+/** A total the caller is asserting is official, as production code would mint one. */
+function total(kg: number): OfficialTotalKg {
+  return officialTotalKg(kg);
+}
+
+/**
+ * A one-kilogram official total, used only to read a coefficient back as a bare
+ * number. `dots.ts` deliberately exposes no numeric accessor (see THE
+ * COEFFICIENT IS NOT A NUMBER), so the reference tables below get their number
+ * the one honest way: a DOTS score at a 1 kg total IS the coefficient, exactly,
+ * because `x * 1 === x` in IEEE 754.
+ */
+const ONE_KG: OfficialTotalKg = officialTotalKg(1);
+
+function coefficientValue(sex: DotsSex, bodyweightKg: number): number {
+  return applyDotsCoefficient(dotsCoefficient(sex, bodyweightKg), ONE_KG);
+}
+
 /**
  * Shaped exactly like `meet.ts`'s `finalMeetTotal(state): number | null`, which
  * is the function that will feed this module. Written as a function rather than
@@ -57,12 +103,67 @@ function finishedMeetTotal(): number | null {
   return 700;
 }
 
+/** The same, already minted: what `officialTotalFromMeet` hands back. */
+function noOfficialTotal(): OfficialTotalKg | null {
+  return null;
+}
+
 /** Assert an outcome is the scored branch and narrow to it. Throws if it is not. */
 function expectScored(outcome: DotsOutcome): ScoredDots {
   if (!hasDotsScore(outcome)) {
     throw new Error(`expected a scored outcome, got kind="${outcome.kind}"`);
   }
   return outcome;
+}
+
+// ---------------------------------------------------------------------------
+// Real meets, built with the real engine. The boundary tests below are only
+// worth anything if the thing on the other side of the boundary is genuine, so
+// these drive `meet.ts` rather than hand-rolling a `TotalReading`.
+// ---------------------------------------------------------------------------
+
+const ALL_WHITE: JudgePanel = ['white', 'white', 'white'];
+const ALL_RED: JudgePanel = ['red', 'red', 'red'];
+
+function take(state: MeetState, weight: number, lights: JudgePanel): MeetState {
+  const declared = declareAttempt(state, { weight });
+  if (!declared.ok) throw new Error(`declare ${weight}: ${declared.error.message}`);
+  const resolved = resolveAttempt(declared.value, { lights });
+  if (!resolved.ok) throw new Error(`resolve ${weight}: ${resolved.error.message}`);
+  return resolved.value;
+}
+
+/**
+ * Squat 200 made, bench 150 made, then all three deadlifts missed: NO TOTAL,
+ * with 350 kg sitting on the board. This is the lifter the whole X1 boundary
+ * exists for — the fake score is plausible, mid-board, and unmarked.
+ */
+function bombedMeet(): MeetState {
+  let state = createMeet();
+  state = take(state, 200, ALL_WHITE);
+  state = take(state, 210, ALL_RED);
+  state = take(state, 210, ALL_RED);
+  state = take(state, 150, ALL_WHITE);
+  state = take(state, 160, ALL_RED);
+  state = take(state, 160, ALL_RED);
+  state = take(state, 200, ALL_RED);
+  state = take(state, 200, ALL_RED);
+  state = take(state, 200, ALL_RED);
+  return state;
+}
+
+/** Nine good lifts: 210 + 160 + 260 = 630 kg. */
+function completedMeet(): MeetState {
+  let state = createMeet();
+  for (const weight of [200, 205, 210, 150, 155, 160, 250, 255, 260]) {
+    state = take(state, weight, ALL_WHITE);
+  }
+  return state;
+}
+
+/** One good squat in, eight attempts to go. */
+function inProgressMeet(): MeetState {
+  return take(createMeet(), 200, ALL_WHITE);
 }
 
 describe('published DOTS coefficients', () => {
@@ -121,11 +222,8 @@ describe('dotsDenominator', () => {
   });
 
   it('is consistent with the coefficient: coefficient === 500 / denominator', () => {
-    expect(dotsCoefficient('male', 93)).toBeCloseTo(
-      DOTS_NUMERATOR / dotsDenominator('male', 93),
-      12,
-    );
-    expect(dotsCoefficient('female', 63)).toBeCloseTo(
+    expect(coefficientValue('male', 93)).toBeCloseTo(DOTS_NUMERATOR / dotsDenominator('male', 93), 12);
+    expect(coefficientValue('female', 63)).toBeCloseTo(
       DOTS_NUMERATOR / dotsDenominator('female', 63),
       12,
     );
@@ -156,11 +254,39 @@ describe('dotsCoefficient — reference values', () => {
   ];
 
   it.each(maleCases)('male at %d kg -> %f', (bodyweightKg, expected) => {
-    expect(dotsCoefficient('male', bodyweightKg)).toBeCloseTo(expected, COEFFICIENT_PRECISION);
+    expect(coefficientValue('male', bodyweightKg)).toBeCloseTo(expected, COEFFICIENT_PRECISION);
   });
 
   it.each(femaleCases)('female at %d kg -> %f', (bodyweightKg, expected) => {
-    expect(dotsCoefficient('female', bodyweightKg)).toBeCloseTo(expected, COEFFICIENT_PRECISION);
+    expect(coefficientValue('female', bodyweightKg)).toBeCloseTo(expected, COEFFICIENT_PRECISION);
+  });
+
+  it('reports which lifter and which domain it belongs to', () => {
+    const coefficient = dotsCoefficient('female', 165);
+    expect(coefficient.sex).toBe('female');
+    expect(coefficient.bodyweightKg).toBe(165);
+    expect(coefficient.effectiveBodyweightKg).toBe(150);
+    expect(coefficient.domainStatus).toBe('clamped-above-max');
+  });
+
+  it('formats for a result-sheet coefficient column', () => {
+    expect(DOTS_COEFFICIENT_DISPLAY_DECIMALS).toBe(4);
+    expect(formatDotsCoefficient(dotsCoefficient('male', 93))).toBe('0.6363');
+    expect(formatDotsCoefficient(dotsCoefficient('female', 63))).toBe('1.0755');
+  });
+
+  it('orders coefficients heaviest-lightest without handing out a number', () => {
+    const light = dotsCoefficient('male', 74);
+    const heavy = dotsCoefficient('male', 120);
+    expect(compareDotsCoefficients(heavy, light)).toBeLessThan(0);
+    expect(compareDotsCoefficients(light, heavy)).toBeGreaterThan(0);
+    expect(compareDotsCoefficients(light, dotsCoefficient('male', 74))).toBe(0);
+  });
+
+  it('rejects a non-finite or non-positive bodyweight', () => {
+    expect(() => dotsCoefficient('female', Number.NaN)).toThrow(RangeError);
+    expect(() => dotsCoefficient('male', 0)).toThrow(RangeError);
+    expect(() => dotsCoefficient('male', -93)).toThrow(RangeError);
   });
 });
 
@@ -186,7 +312,7 @@ describe('dotsScore — reference values', () => {
   ];
 
   it.each(cases)('%s, %d kg bw, %d kg total -> %f DOTS', (sex, bodyweightKg, totalKg, expected) => {
-    expect(dotsScore(sex, bodyweightKg, totalKg)).toBeCloseTo(expected, SCORE_PRECISION);
+    expect(dotsScore(sex, bodyweightKg, total(totalKg))).toBeCloseTo(expected, SCORE_PRECISION);
   });
 });
 
@@ -219,10 +345,16 @@ describe('bodyweight domain', () => {
     expect(clampBodyweightToDotsDomain('female', 20)).toBe(40);
     expect(clampBodyweightToDotsDomain('female', 260)).toBe(150);
 
-    expect(dotsScore('male', 250, 1000)).toBeCloseTo(dotsScore('male', 210, 1000), SCORE_PRECISION);
-    expect(dotsScore('male', 30, 400)).toBeCloseTo(dotsScore('male', 40, 400), SCORE_PRECISION);
-    expect(dotsScore('female', 200, 600)).toBeCloseTo(
-      dotsScore('female', 150, 600),
+    expect(dotsScore('male', 250, total(1000))).toBeCloseTo(
+      dotsScore('male', 210, total(1000)),
+      SCORE_PRECISION,
+    );
+    expect(dotsScore('male', 30, total(400))).toBeCloseTo(
+      dotsScore('male', 40, total(400)),
+      SCORE_PRECISION,
+    );
+    expect(dotsScore('female', 200, total(600))).toBeCloseTo(
+      dotsScore('female', 150, total(600)),
       SCORE_PRECISION,
     );
   });
@@ -234,24 +366,27 @@ describe('bodyweight domain', () => {
     // out-score everyone. dotsDenominator is deliberately unclamped so this is
     // visible; the public scoring functions clamp.
     expect(dotsDenominator('male', 300)).toBeLessThan(dotsDenominator('male', 210));
-    expect(dotsScore('male', 400, 1000)).toBeCloseTo(dotsScore('male', 210, 1000), SCORE_PRECISION);
+    expect(dotsScore('male', 400, total(1000))).toBeCloseTo(
+      dotsScore('male', 210, total(1000)),
+      SCORE_PRECISION,
+    );
   });
 });
 
 describe('evaluateDots', () => {
   it('returns the score together with the domain information', () => {
-    const result = expectScored(evaluateDots('male', 93, 700));
+    const result = expectScored(evaluateDots('male', 93, total(700)));
     expect(result.kind).toBe('scored');
     expect(result.score).toBeCloseTo(445.3758244217, SCORE_PRECISION);
-    expect(result.coefficient).toBeCloseTo(0.636251177745, COEFFICIENT_PRECISION);
     expect(result.bodyweightKg).toBe(93);
     expect(result.effectiveBodyweightKg).toBe(93);
-    expect(result.totalKg).toBe(700);
+    expect(result.totalKg as number).toBe(700);
     expect(result.domainStatus).toBe('in-domain');
+    expect(formatDotsCoefficient(result.coefficient)).toBe('0.6363');
   });
 
   it('preserves the supplied bodyweight while reporting the clamped one', () => {
-    const result = expectScored(evaluateDots('female', 165, 600));
+    const result = expectScored(evaluateDots('female', 165, total(600)));
     expect(result.bodyweightKg).toBe(165);
     expect(result.effectiveBodyweightKg).toBe(150);
     expect(result.domainStatus).toBe('clamped-above-max');
@@ -259,55 +394,74 @@ describe('evaluateDots', () => {
   });
 
   it('agrees with dotsScore', () => {
-    expect(expectScored(evaluateDots('female', 63, 400)).score).toBe(dotsScore('female', 63, 400));
-    expect(expectScored(evaluateDots('male', 130, 850)).score).toBe(dotsScore('male', 130, 850));
+    expect(expectScored(evaluateDots('female', 63, total(400))).score).toBe(
+      dotsScore('female', 63, total(400)),
+    );
+    expect(expectScored(evaluateDots('male', 130, total(850))).score).toBe(
+      dotsScore('male', 130, total(850)),
+    );
+  });
+
+  it('carries the coefficient the score was actually built from', () => {
+    const result = expectScored(evaluateDots('male', 93, total(700)));
+    expect(applyDotsCoefficient(result.coefficient, total(700))).toBe(result.score);
+    expect(compareDotsCoefficients(result.coefficient, dotsCoefficient('male', 93))).toBe(0);
   });
 });
 
 // ---------------------------------------------------------------------------
-// The X1 boundary: `meet.ts` records a bombed lifter as `total: null`, and this
-// module must not turn that into a number. Every test in this block exists
-// because the natural glue between the two modules —
-// `dotsScore(sex, bw, finalMeetTotal(state) ?? 0)` — would otherwise place a
-// lifter who did not total at the bottom of a leaderboard with 0.00 DOTS.
+// THE X1 BOUNDARY.
+//
+// `meet.ts` records a bombed lifter as `total: null` while still reporting a
+// large `totalOnTheBoard`, and this module must not turn either of those into a
+// score. There are two different fakes to stop:
+//
+//   A. `finalMeetTotal(state) ?? 0` — a bomb-out collapsed to zero.
+//   B. `totalOnTheBoard(state)`     — a provisional sum scored as a result. This
+//      one is worse: it lands mid-board at a plausible number.
+//
+// Every test in this block is one line a caller would plausibly write.
 // ---------------------------------------------------------------------------
 
 describe('no total is not a total of zero', () => {
   it('gives a null total a no-total outcome carrying no score at all', () => {
-    const outcome = evaluateDots('male', 93, bombedOutMeetTotal());
+    const outcome = evaluateDots('male', 93, noOfficialTotal());
     expect(outcome.kind).toBe('no-total');
     expect(hasDotsScore(outcome)).toBe(false);
     // Not `score: 0`, not `score: undefined` — the key is simply not there, so
-    // nothing downstream can read a score off it or default one into place.
+    // nothing downstream can read a score off it or default one into place. Same
+    // for the coefficient, which is a score one multiplication away.
     expect('score' in outcome).toBe(false);
+    expect('coefficient' in outcome).toBe(false);
     expect(Object.keys(outcome)).not.toContain('score');
+    expect(Object.keys(outcome)).not.toContain('coefficient');
     expect(Object.keys(outcome)).not.toContain('totalKg');
   });
 
   it('still reports the lifter facts that do not depend on having a total', () => {
-    const outcome = evaluateDots('female', 165, bombedOutMeetTotal());
+    const outcome = evaluateDots('female', 165, noOfficialTotal());
     expect(outcome.bodyweightKg).toBe(165);
     expect(outcome.effectiveBodyweightKg).toBe(150);
     expect(outcome.domainStatus).toBe('clamped-above-max');
-    expect(outcome.coefficient).toBeCloseTo(0.770756646539, COEFFICIENT_PRECISION);
   });
 
   it('scores a real total through the same entry point', () => {
-    const outcome = expectScored(evaluateDots('male', 93, finishedMeetTotal()));
+    const outcome = expectScored(evaluateDots('male', 93, total(700)));
     expect(outcome.score).toBeCloseTo(445.3758244217, SCORE_PRECISION);
   });
 
   it('rejects a total of exactly 0 instead of scoring it 0', () => {
-    expect(() => dotsScore('male', 93, 0)).toThrow(RangeError);
-    expect(() => evaluateDots('female', 63, 0)).toThrow(RangeError);
+    expect(() => officialTotalKg(0)).toThrow(RangeError);
+    expect(() => dotsScore('male', 93, total(0))).toThrow(RangeError);
+    expect(() => evaluateDots('female', 63, total(0))).toThrow(RangeError);
     // -0 === 0 in JavaScript, so it must take the same path.
-    expect(() => dotsScore('male', 93, -0)).toThrow(RangeError);
-    expect(() => evaluateDots('male', 93, -0)).toThrow(RangeError);
+    expect(() => officialTotalKg(-0)).toThrow(RangeError);
+    expect(() => dotsScore('male', 93, total(-0))).toThrow(RangeError);
   });
 
   it('names the `?? 0` collapse in the error it throws for a 0 total', () => {
-    expect(() => dotsScore('male', 93, 0)).toThrow(/\?\? 0/);
-    expect(() => evaluateDots('male', 93, 0)).toThrow(/does not place/);
+    expect(() => officialTotalKg(0)).toThrow(/\?\? 0/);
+    expect(() => officialTotalKg(0)).toThrow(/does not place/);
   });
 
   it('THE REGRESSION: `finalMeetTotal(state) ?? 0` throws instead of scoring 0.00', () => {
@@ -317,85 +471,280 @@ describe('no total is not a total of zero', () => {
 
     let produced: number | 'threw' = Number.NaN;
     try {
-      produced = dotsScore('male', 93, collapsed);
+      produced = dotsScore('male', 93, officialTotalKg(collapsed));
     } catch {
       produced = 'threw';
     }
     expect(produced).toBe('threw');
     expect(typeof produced).not.toBe('number');
-
-    // ...and the same collapse aimed at the null-aware entry point.
-    let evaluated: DotsOutcome | 'threw';
-    try {
-      evaluated = evaluateDots('male', 93, collapsed);
-    } catch {
-      evaluated = 'threw';
-    }
-    expect(evaluated).toBe('threw');
   });
 
-  it('COMPILE-TIME: a `number | null` total will not typecheck as a dotsScore total', () => {
-    // `@ts-expect-error` is a real assertion here, not a comment: `tsc --noEmit`
-    // fails with "Unused '@ts-expect-error' directive" if this line ever starts
-    // compiling, which is exactly what would happen if dotsScore's total were
-    // widened to `number | null`. Deleting the third enforcement layer in
-    // dots.ts therefore breaks the typecheck, not just the runtime suite.
-    // @ts-expect-error - a possibly-missing total must go through evaluateDots.
+  it('rejects an undefined total that sneaks past the type system', () => {
+    const sneaked = undefined as unknown as OfficialTotalKg;
+    expect(() => dotsScore('male', 93, sneaked)).toThrow(RangeError);
+    expect(() => evaluateDots('male', 93, sneaked)).toThrow(RangeError);
+    expect(() => applyDotsCoefficient(dotsCoefficient('male', 93), sneaked)).toThrow(RangeError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The four lines a critic found still open. Each one is pinned twice: by a
+// `@ts-expect-error` (enforced by `npm run typecheck`, which fails on an UNUSED
+// directive, so these tests bite the moment the line starts compiling again) and
+// by an assertion about what the line does at runtime.
+// ---------------------------------------------------------------------------
+
+describe('the four exploit lines', () => {
+  it('EXPLOIT 1a: `coefficient` cannot be read off an un-narrowed outcome', () => {
+    const outcome = evaluateDots('male', 93, noOfficialTotal());
+    // @ts-expect-error - `coefficient` is on ScoredDots only; NoTotalDots has none.
+    const leaked: unknown = outcome.coefficient;
+    expect(leaked).toBeUndefined();
+  });
+
+  it('EXPLOIT 1b: even a scored lifter`s coefficient cannot be multiplied by a number', () => {
+    const scored = expectScored(evaluateDots('male', 93, total(700)));
+    const collapsed: number = bombedOutMeetTotal() ?? 0;
+    // @ts-expect-error - a DotsCoefficient is an opaque object, not a number.
+    const fake: number = scored.coefficient * collapsed;
+    // It does not merely fail to compile: there is no number in it to multiply.
+    expect(Number.isNaN(fake)).toBe(true);
+  });
+
+  it('EXPLOIT 1c: the whole original line does not typecheck at its first term', () => {
+    const state = bombedMeet();
+    // The line as written by the critic:
+    //   evaluateDots('male', 93, finalMeetTotal(state)).coefficient * (finalMeetTotal(state) ?? 0)
+    // @ts-expect-error - `number | null` is not `OfficialTotalKg | null`.
+    const outcome = evaluateDots('male', 93, finalMeetTotal(state));
+    expect(outcome.kind).toBe('no-total');
+  });
+
+  it('EXPLOIT 2: `dotsCoefficient(...) * (finalMeetTotal(state) ?? 0)` does not compile', () => {
+    const state = bombedMeet();
+    expect(finalMeetTotal(state)).toBeNull();
+    // @ts-expect-error - a DotsCoefficient is an opaque object, not a number.
+    const fake: number = dotsCoefficient('male', 93) * (finalMeetTotal(state) ?? 0);
+    expect(Number.isNaN(fake)).toBe(true);
+    expect(fake).not.toBe(0);
+  });
+
+  it('EXPLOIT 3: `dotsCoefficient(...) * totalOnTheBoard(state)` does not compile', () => {
+    const state = bombedMeet();
+    // The hazard is live: this lifter really does have a big number on the board
+    // and no total at all.
+    expect(totalOnTheBoard(state)).toBe(350);
+    expect(finalMeetTotal(state)).toBeNull();
+
+    // @ts-expect-error - a DotsCoefficient is an opaque object, not a number.
+    const fake: number = dotsCoefficient('male', 93) * totalOnTheBoard(state);
+    // Before this fix the same line returned ~222.69 — a plausible mid-board
+    // DOTS score for a lifter who did not place.
+    expect(Number.isNaN(fake)).toBe(true);
+    expect(fake).not.toBeCloseTo(222.687912, SCORE_PRECISION);
+  });
+
+  it('EXPLOIT 3b: a provisional board sum is not an official total anywhere', () => {
+    const state = bombedMeet();
+    // @ts-expect-error - `number` is not `OfficialTotalKg`: the board sum is provisional.
+    const viaScore = dotsScore('male', 93, totalOnTheBoard(state));
+    // @ts-expect-error - `number` is not `OfficialTotalKg`.
+    const viaEvaluate = evaluateDots('male', 93, totalOnTheBoard(state));
+    // @ts-expect-error - the checked mint takes a reading, not a number.
+    const viaMint = officialTotalFromMeet(totalOnTheBoard(state));
+
+    // A brand is erased at runtime, so these still COMPUTE if you force them
+    // past the compiler. What changed is that nobody can write them by accident:
+    // the typecheck fails, which is why `npm run typecheck` is part of the gate.
+    expect(viaScore).toBeGreaterThan(0);
+    expect(viaEvaluate.kind).toBe('scored');
+    expect(viaMint).toBeNull();
+  });
+
+  it('EXPLOIT 4: a negative DOTS delta renders instead of throwing', () => {
+    // GDD §6.5 recap PR call-outs are deltas, and a delta may be negative.
+    // `roundDotsScore(-2.31)` still refuses — a SCORE is not a delta — but the
+    // refusal now names the pair of helpers that do the job.
+    expect(roundDotsDelta(-2.31)).toBe(-2.31);
+    expect(formatDotsDelta(-2.31)).toBe('−2.31');
+    expect(() => roundDotsScore(-2.31)).toThrow(/delta/);
+  });
+
+  it('EXPLOIT 4b: `formatDotsScore(0.004)` no longer launders a zero', () => {
+    // The old guard was about the SIGN, so 0.004 sailed through it and printed
+    // the one string a DOTS column must never show for a lifter who did not
+    // total. The check is now about what the number ROUNDS to.
+    expect(() => formatDotsScore(0.004)).toThrow(RangeError);
+    expect(() => formatDotsScore(0.004)).toThrow(/0\.00/);
+    expect(() => roundDotsScore(0.004)).toThrow(RangeError);
+  });
+});
+
+describe('COMPILE-TIME assertions on the module boundary', () => {
+  // `@ts-expect-error` is a real assertion here, not a comment: `tsc --noEmit`
+  // fails with "Unused '@ts-expect-error' directive" if any of these lines ever
+  // starts compiling.
+
+  it('a `number | null` total will not typecheck as a dotsScore total', () => {
+    // @ts-expect-error - a possibly-missing total must go through the mints.
     expect(() => dotsScore('male', 93, bombedOutMeetTotal())).toThrow(RangeError);
   });
 
-  it('COMPILE-TIME: `.score` cannot be read off an outcome that was not narrowed', () => {
-    const outcome = evaluateDots('male', 93, bombedOutMeetTotal());
+  it('a bare `number` will not typecheck as a dotsScore total either', () => {
+    // This is the escape the old signature left open: the `?? 0` that got past
+    // the null check used to compile and throw. Now it does not compile.
+    // @ts-expect-error - `number` is not `OfficialTotalKg`.
+    expect(() => dotsScore('male', 93, finishedMeetTotal() ?? 0)).not.toThrow();
+  });
+
+  it('a `number | null` total will not typecheck at the null-aware entry point', () => {
+    // @ts-expect-error - route a meet reading through evaluateMeetDots instead.
+    expect(evaluateDots('male', 93, finishedMeetTotal()).kind).toBe('scored');
+  });
+
+  it('`.score` cannot be read off an outcome that was not narrowed', () => {
+    const outcome = evaluateDots('male', 93, noOfficialTotal());
     // @ts-expect-error - `score` does not exist on the no-total branch.
     const leaked: unknown = outcome.score;
     expect(leaked).toBeUndefined();
   });
 
-  it('rejects an undefined total that sneaks past the type system', () => {
-    const sneaked = undefined as unknown as number;
-    expect(() => dotsScore('male', 93, sneaked)).toThrow(RangeError);
-    expect(() => evaluateDots('male', 93, sneaked)).toThrow(RangeError);
+  it('a coefficient cannot be multiplied by a plain number, in either direction', () => {
+    const coefficient = dotsCoefficient('male', 93);
+    // @ts-expect-error - opaque object on the left.
+    const left: number = coefficient * 700;
+    // @ts-expect-error - opaque object on the right.
+    const right: number = 700 * coefficient;
+    expect(Number.isNaN(left)).toBe(true);
+    expect(Number.isNaN(right)).toBe(true);
+  });
+
+  it('a coefficient has no numeric property to reach for instead', () => {
+    const coefficient = dotsCoefficient('male', 93);
+    // @ts-expect-error - the value lives under a module-private symbol.
+    const reached: unknown = coefficient.value;
+    // @ts-expect-error - and it is not called `coefficient` either.
+    const alsoReached: unknown = coefficient.coefficient;
+    expect(reached).toBeUndefined();
+    expect(alsoReached).toBeUndefined();
+    // The only enumerable-by-name numbers on it are bodyweights, which cannot
+    // be mistaken for a score.
+    expect(Object.keys(coefficient).sort()).toEqual([
+      'bodyweightKg',
+      'domainStatus',
+      'effectiveBodyweightKg',
+      'sex',
+    ]);
+  });
+
+  it('applyDotsCoefficient refuses a raw number as the total', () => {
+    // @ts-expect-error - the one multiplication demands a minted total.
+    expect(() => applyDotsCoefficient(dotsCoefficient('male', 93), 700)).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The other side of the boundary, driven for real.
+// ---------------------------------------------------------------------------
+
+describe('scoring an actual meet through meet.ts', () => {
+  it('scores a finished meet from its reading', () => {
+    const state = completedMeet();
+    const reading = readTotal(state);
+    expect(reading.kind).toBe('final');
+    expect(reading.total).toBe(630);
+
+    const outcome = expectScored(evaluateMeetDots('male', 93, reading));
+    expect(outcome.totalKg as number).toBe(630);
+    expect(outcome.score).toBeCloseTo(dotsScore('male', 93, total(630)), SCORE_PRECISION);
+    expect(formatDotsOutcome(outcome)).toBe('400.84');
+  });
+
+  it('gives a bombed-out meet no score, with the board sum still sitting there', () => {
+    const state = bombedMeet();
+    const reading = readTotal(state);
+    expect(reading.kind).toBe('no-total');
+    expect(reading.total).toBeNull();
+    expect(reading.totalOnTheBoard).toBe(350);
+
+    const outcome = evaluateMeetDots('male', 93, reading);
+    expect(outcome.kind).toBe('no-total');
+    expect(hasDotsScore(outcome)).toBe(false);
+    expect(formatDotsOutcome(outcome)).toBe(DOTS_NO_TOTAL_DISPLAY);
+    // ...and the row still renders: this is why DotsLifterContext exists.
+    expect(outcome.bodyweightKg).toBe(93);
+    expect(outcome.domainStatus).toBe('in-domain');
+  });
+
+  it('gives a meet still in progress no score either', () => {
+    const state = inProgressMeet();
+    const reading = readTotal(state);
+    expect(reading.kind).toBe('in-progress');
+    expect(reading.totalOnTheBoard).toBe(200);
+
+    expect(officialTotalFromMeet(reading)).toBeNull();
+    expect(evaluateMeetDots('male', 93, reading).kind).toBe('no-total');
+  });
+
+  it('pins the structural match with meet.ts`s TotalReading', () => {
+    // If `TotalReading` ever changes shape — a renamed discriminant, a fourth
+    // case, a widened `total` — this stops compiling, which is the point: dots.ts
+    // mirrors that type structurally rather than importing it.
+    for (const state of [completedMeet(), bombedMeet(), inProgressMeet()]) {
+      const minted = officialTotalFromMeet(readTotal(state));
+      expect(minted === null || minted > 0).toBe(true);
+    }
+  });
+
+  it('keeps a bombed lifter off the board a real meet produced', () => {
+    const field: readonly DotsOutcome[] = [
+      evaluateMeetDots('male', 93, readTotal(completedMeet())),
+      evaluateMeetDots('male', 74, readTotal(bombedMeet())),
+    ];
+    const board = field.filter(hasDotsScore);
+    expect(board).toHaveLength(1);
+    expect(board.map((entry) => entry.bodyweightKg)).toEqual([93]);
   });
 });
 
 describe('a lifter with no total is absent from the ranking, not last in it', () => {
   it('drops out of a DOTS board rather than sorting to the bottom of it', () => {
     const field: readonly DotsOutcome[] = [
-      evaluateDots('male', 93, 700),
-      evaluateDots('male', 83, 500),
-      evaluateDots('male', 74, bombedOutMeetTotal()),
+      evaluateDots('male', 93, total(700)),
+      evaluateDots('male', 83, total(500)),
+      evaluateDots('male', 74, noOfficialTotal()),
     ];
 
     const board = field.filter(hasDotsScore).sort((a, b) => b.score - a.score);
 
     expect(board).toHaveLength(2);
-    expect(board.map((entry) => entry.totalKg)).toEqual([700, 500]);
+    expect(board.map((entry) => entry.totalKg as number)).toEqual([700, 500]);
     // The bombed lifter is not on the board at all — not in last place on it.
     expect(board.map((entry) => entry.bodyweightKg)).not.toContain(74);
   });
 
   it('prints a no-total lifter as the placeholder, never as 0.00', () => {
-    const bombed = evaluateDots('male', 93, bombedOutMeetTotal());
+    const bombed = evaluateDots('male', 93, noOfficialTotal());
     expect(formatDotsOutcome(bombed)).toBe(DOTS_NO_TOTAL_DISPLAY);
     expect(formatDotsOutcome(bombed)).not.toBe('0.00');
     expect(formatDotsOutcome(bombed)).not.toMatch(/\d/);
-    expect(formatDotsOutcome(evaluateDots('male', 93, 700))).toBe('445.38');
+    expect(formatDotsOutcome(evaluateDots('male', 93, total(700)))).toBe('445.38');
   });
 });
 
 describe('structural properties', () => {
   it('scales linearly with the total', () => {
-    const single = dotsScore('male', 93, 100);
-    expect(dotsScore('male', 93, 700)).toBeCloseTo(single * 7, SCORE_PRECISION);
-    expect(dotsScore('female', 63, 800)).toBeCloseTo(
-      dotsScore('female', 63, 400) * 2,
+    const single = dotsScore('male', 93, total(100));
+    expect(dotsScore('male', 93, total(700))).toBeCloseTo(single * 7, SCORE_PRECISION);
+    expect(dotsScore('female', 63, total(800))).toBeCloseTo(
+      dotsScore('female', 63, total(400)) * 2,
       SCORE_PRECISION,
     );
   });
 
   it('equals coefficient x total', () => {
-    expect(dotsScore('male', 105, 812.5)).toBeCloseTo(
-      dotsCoefficient('male', 105) * 812.5,
+    expect(dotsScore('male', 105, total(812.5))).toBeCloseTo(
+      applyDotsCoefficient(dotsCoefficient('male', 105), total(812.5)),
       SCORE_PRECISION,
     );
   });
@@ -403,57 +752,70 @@ describe('structural properties', () => {
   it('gives a strictly decreasing coefficient across the whole male domain', () => {
     // Heavier lifters must always be handicapped more, never less. A sign error
     // or swapped term shows up here immediately.
-    let previous = Number.POSITIVE_INFINITY;
+    let previous: DotsCoefficient | null = null;
     for (let bw = 40; bw <= 210; bw += 0.5) {
       const coefficient = dotsCoefficient('male', bw);
-      expect(coefficient).toBeLessThan(previous);
-      expect(coefficient).toBeGreaterThan(0);
+      if (previous !== null) {
+        expect(compareDotsCoefficients(coefficient, previous)).toBeLessThan(0);
+      }
+      expect(coefficientValue('male', bw)).toBeGreaterThan(0);
       previous = coefficient;
     }
+    expect(previous).not.toBeNull();
   });
 
   it('gives a strictly decreasing coefficient across the whole female domain', () => {
-    let previous = Number.POSITIVE_INFINITY;
+    let previous: DotsCoefficient | null = null;
     for (let bw = 40; bw <= 150; bw += 0.5) {
       const coefficient = dotsCoefficient('female', bw);
-      expect(coefficient).toBeLessThan(previous);
-      expect(coefficient).toBeGreaterThan(0);
+      if (previous !== null) {
+        expect(compareDotsCoefficients(coefficient, previous)).toBeLessThan(0);
+      }
+      expect(coefficientValue('female', bw)).toBeGreaterThan(0);
       previous = coefficient;
     }
+    expect(previous).not.toBeNull();
   });
 
   it('gives female lifters a higher coefficient than male lifters at equal bodyweight', () => {
     for (const bw of [40, 52, 63, 72, 84, 100, 120, 150]) {
-      expect(dotsCoefficient('female', bw)).toBeGreaterThan(dotsCoefficient('male', bw));
+      expect(
+        compareDotsCoefficients(dotsCoefficient('female', bw), dotsCoefficient('male', bw)),
+      ).toBeGreaterThan(0);
     }
   });
 
   it('keeps two lifters with equal totals ordered by bodyweight', () => {
     // Same total, lighter lifter wins. This is the entire point of the formula.
-    expect(dotsScore('male', 83, 700)).toBeGreaterThan(dotsScore('male', 93, 700));
-    expect(dotsScore('female', 57, 400)).toBeGreaterThan(dotsScore('female', 76, 400));
+    expect(dotsScore('male', 83, total(700))).toBeGreaterThan(dotsScore('male', 93, total(700)));
+    expect(dotsScore('female', 57, total(400))).toBeGreaterThan(
+      dotsScore('female', 76, total(400)),
+    );
   });
 });
 
 describe('input handling', () => {
   it('rejects non-finite input', () => {
-    expect(() => dotsScore('male', Number.NaN, 700)).toThrow(RangeError);
-    expect(() => dotsScore('male', Number.POSITIVE_INFINITY, 700)).toThrow(RangeError);
-    expect(() => dotsScore('male', 93, Number.NaN)).toThrow(RangeError);
+    expect(() => dotsScore('male', Number.NaN, total(700))).toThrow(RangeError);
+    expect(() => dotsScore('male', Number.POSITIVE_INFINITY, total(700))).toThrow(RangeError);
+    expect(() => officialTotalKg(Number.NaN)).toThrow(RangeError);
+    expect(() => officialTotalKg(Number.POSITIVE_INFINITY)).toThrow(RangeError);
     expect(() => dotsCoefficient('female', Number.NaN)).toThrow(RangeError);
     expect(() => roundDotsScore(Number.NaN)).toThrow(RangeError);
+    expect(() => roundDotsDelta(Number.NaN)).toThrow(RangeError);
+    expect(() => formatDotsDelta(Number.NEGATIVE_INFINITY)).toThrow(RangeError);
     expect(() => formatDotsScore(Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
 
   it('rejects non-positive bodyweight and non-positive totals', () => {
-    expect(() => dotsScore('male', 0, 700)).toThrow(RangeError);
-    expect(() => dotsScore('male', -93, 700)).toThrow(RangeError);
+    expect(() => dotsScore('male', 0, total(700))).toThrow(RangeError);
+    expect(() => dotsScore('male', -93, total(700))).toThrow(RangeError);
     expect(() => dotsCoefficient('male', 0)).toThrow(RangeError);
-    expect(() => dotsScore('male', 93, -1)).toThrow(RangeError);
-    expect(() => evaluateDots('female', -1, 400)).toThrow(RangeError);
-    expect(() => evaluateDots('female', 63, -1)).toThrow(RangeError);
+    expect(() => officialTotalKg(-1)).toThrow(RangeError);
+    expect(() => evaluateDots('female', -1, total(400))).toThrow(RangeError);
     // A bad bodyweight is caught even when the lifter has no total to score.
-    expect(() => evaluateDots('female', 0, bombedOutMeetTotal())).toThrow(RangeError);
+    expect(() => evaluateDots('female', 0, noOfficialTotal())).toThrow(RangeError);
+    expect(() => evaluateMeetDots('female', 0, readTotal(bombedMeet()))).toThrow(RangeError);
   });
 });
 
@@ -465,19 +827,76 @@ describe('display helpers', () => {
   });
 
   it('formats with trailing zeros the way a result sheet does', () => {
-    expect(formatDotsScore(dotsScore('male', 93, 700))).toBe('445.38');
-    expect(formatDotsScore(dotsScore('female', 84, 645))).toBe('593.50');
+    expect(formatDotsScore(dotsScore('male', 93, total(700)))).toBe('445.38');
+    expect(formatDotsScore(dotsScore('female', 84, total(645)))).toBe('593.50');
   });
 
   it('refuses to render a score of 0, which no real result can produce', () => {
     // The last place a bomb-out could be laundered into a number is the display
     // layer: `formatDotsScore(outcome.kind === 'scored' ? outcome.score : 0)`.
-    // A DOTS score is strictly positive, so 0 is refused here too.
     expect(() => roundDotsScore(0)).toThrow(RangeError);
     expect(() => formatDotsScore(0)).toThrow(RangeError);
     expect(() => formatDotsScore(-0)).toThrow(RangeError);
     expect(() => roundDotsScore(-1)).toThrow(RangeError);
     expect(() => formatDotsScore(-1)).toThrow(RangeError);
+  });
+
+  it('refuses anything that would ROUND to 0.00, not just anything negative', () => {
+    expect(DOTS_SMALLEST_PRINTABLE_SCORE).toBe(0.005);
+    expect(() => formatDotsScore(DOTS_SMALLEST_PRINTABLE_SCORE / 2)).toThrow(RangeError);
+    expect(() => formatDotsScore(0.0049)).toThrow(RangeError);
+    expect(() => roundDotsScore(0.0001)).toThrow(RangeError);
+    // At the threshold it prints, and what it prints is not zero.
+    expect(formatDotsScore(DOTS_SMALLEST_PRINTABLE_SCORE)).toBe('0.01');
+    expect(formatDotsScore(0.006)).toBe('0.01');
+  });
+
+  it('never lets formatDotsScore return the string "0.00"', () => {
+    // Property-style sweep over the whole neighbourhood of zero: every value
+    // either throws or prints something that is not "0.00".
+    for (let i = -50; i <= 50; i += 1) {
+      const candidate = i / 1000;
+      let printed: string | 'threw';
+      try {
+        printed = formatDotsScore(candidate);
+      } catch {
+        printed = 'threw';
+      }
+      expect(printed).not.toBe('0.00');
+    }
+  });
+});
+
+describe('DOTS deltas (GDD §6.5 recap call-outs)', () => {
+  it('signs a delta explicitly, from the rounded value', () => {
+    expect(DOTS_DELTA_POSITIVE_PREFIX).toBe('+');
+    expect(DOTS_DELTA_NEGATIVE_PREFIX).toBe('−');
+    expect(DOTS_DELTA_ZERO_PREFIX).toBe('');
+    expect(formatDotsDelta(12.4)).toBe('+12.40');
+    expect(formatDotsDelta(12.437)).toBe('+12.44');
+    expect(formatDotsDelta(-2.31)).toBe('−2.31');
+    expect(formatDotsDelta(-2.3149)).toBe('−2.31');
+  });
+
+  it('prints a delta that rounds to zero unsigned, never as "−0.00"', () => {
+    expect(formatDotsDelta(0)).toBe('0.00');
+    expect(formatDotsDelta(-0)).toBe('0.00');
+    expect(formatDotsDelta(-0.001)).toBe('0.00');
+    expect(formatDotsDelta(0.001)).toBe('0.00');
+    expect(formatDotsDelta(-0.004)).not.toContain(DOTS_DELTA_NEGATIVE_PREFIX);
+  });
+
+  it('rounds a delta without judging its sign', () => {
+    expect(roundDotsDelta(12.4)).toBe(12.4);
+    expect(roundDotsDelta(-2.314)).toBe(-2.31);
+    expect(roundDotsDelta(0)).toBe(0);
+  });
+
+  it('is what a recap actually computes: the difference between two real scores', () => {
+    const before = dotsScore('male', 93, total(700));
+    const after = dotsScore('male', 93, total(720));
+    expect(formatDotsDelta(after - before)).toBe('+12.73');
+    expect(formatDotsDelta(before - after)).toBe('−12.73');
   });
 });
 
@@ -527,7 +946,7 @@ describe('plausibility sanity check', () => {
   ];
 
   it.each(cases)('$label lands in a plausible DOTS band', ({ sex, bodyweightKg, totalKg, min, max }) => {
-    const score = dotsScore(sex, bodyweightKg, totalKg);
+    const score = dotsScore(sex, bodyweightKg, total(totalKg));
     expect(score).toBeGreaterThan(min);
     expect(score).toBeLessThan(max);
   });
@@ -536,28 +955,28 @@ describe('plausibility sanity check', () => {
     // 500 DOTS should require a total that a strong national-level lifter hits,
     // not one that a hobbyist or a world-record holder hits.
     for (const bodyweightKg of [66, 74, 83, 93, 105, 120]) {
-      const totalForFiveHundred = 500 / dotsCoefficient('male', bodyweightKg);
+      const totalForFiveHundred = 500 / coefficientValue('male', bodyweightKg);
       expect(totalForFiveHundred).toBeGreaterThan(bodyweightKg * 6);
       expect(totalForFiveHundred).toBeLessThan(bodyweightKg * 11);
     }
-    expect(500 / dotsCoefficient('male', 93)).toBeCloseTo(785.8531622242, SCORE_PRECISION);
+    expect(500 / coefficientValue('male', 93)).toBeCloseTo(785.8531622242, SCORE_PRECISION);
   });
 
   it('scores real all-time-great totals in the 550-650 range, and nothing above 700', () => {
     // Jesus Olivares, 2023 SBD Sheffield: 1152.5 kg all-time raw total, bodyweight
     // approximately 166 kg (superheavyweight, bodyweight not exactly published
     // here, so this is an approximate anchor).
-    const olivares = dotsScore('male', 166, 1152.5);
+    const olivares = dotsScore('male', 166, total(1152.5));
     expect(olivares).toBeGreaterThan(550);
     expect(olivares).toBeLessThan(650);
 
     // Taylor-Atwood-class 74 kg lifter with an ~802.5 kg total.
-    const lightweightElite = dotsScore('male', 74, 802.5);
+    const lightweightElite = dotsScore('male', 74, total(802.5));
     expect(lightweightElite).toBeGreaterThan(550);
     expect(lightweightElite).toBeLessThan(650);
 
     // Amanda Lawrence, 2023 IPF world-record 84 kg total of 645 kg.
-    const lawrence = dotsScore('female', 84, 645);
+    const lawrence = dotsScore('female', 84, total(645));
     expect(lawrence).toBeGreaterThan(550);
     expect(lawrence).toBeLessThan(650);
 
@@ -565,5 +984,66 @@ describe('plausibility sanity check', () => {
     for (const score of [olivares, lightweightElite, lawrence]) {
       expect(score).toBeLessThan(700);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Purity — the module's own source is the artifact under test here, matching the
+// scans in meet.test.ts and streak.test.ts.
+// ---------------------------------------------------------------------------
+
+describe('module purity', () => {
+  const source = readFileSync(fileURLToPath(new URL('./dots.ts', import.meta.url)), 'utf8');
+  // Comments are stripped so the header's own prose does not satisfy the code
+  // scans. The sanity assertion below proves the strip left real code.
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  it('strips comments without destroying the code (sanity check for the scans below)', () => {
+    expect(code).toContain('export function dotsScore');
+    expect(code).toContain('export function evaluateMeetDots');
+    expect(code).not.toContain('Tim Konertz');
+  });
+
+  it('has no imports at all, so it cannot reach React, I/O or sibling modules', () => {
+    // It mirrors meet.ts's `TotalReading` structurally rather than importing it;
+    // `officialTotalFromMeet` is tested against the real thing above.
+    expect(code).not.toMatch(/^\s*import\s/m);
+    expect(code).not.toMatch(/\brequire\s*\(/);
+  });
+
+  it('reads no clock, rolls no dice, and touches no ambient global', () => {
+    expect(code).not.toMatch(/\bDate\b/);
+    expect(code).not.toMatch(/Math\s*\.\s*random/);
+    expect(code).not.toMatch(/performance\s*\./);
+    expect(code).not.toMatch(/\bprocess\s*\./);
+    expect(code).not.toMatch(/\bglobalThis\b/);
+    expect(code).not.toMatch(/console\s*\./);
+  });
+
+  it('hands out no numeric coefficient accessor', () => {
+    // The collapse this module exists to prevent is one multiplication wide, so
+    // there is deliberately no `dotsCoefficientValue`-shaped export.
+    expect(code).not.toMatch(/export\s+function\s+dotsCoefficientValue/);
+    expect(code).not.toMatch(/export\s+function\s+\w*[Cc]oefficientNumber/);
+  });
+
+  it('keeps the coefficient provenance block rather than asserting the numbers flatly', () => {
+    expect(source).toMatch(/PROVENANCE OF THE COEFFICIENTS/);
+    expect(source).toMatch(/crates\/coefficients\/src\/dots\.rs/);
+    expect(source).toMatch(/DO NOT TUNE/);
+    // The retrieval limit has to keep being disclosed, not quietly dropped.
+    expect(source).toMatch(/NOT independently verifiable from here/);
+  });
+
+  it('states what the boundary does NOT close, not only what it does', () => {
+    // The previous version of this comment claimed three layers made the
+    // collapse impossible while `outcome.coefficient` sat on both branches. A
+    // comment that overstates its guarantees is worse than no comment, so the
+    // "not closed" half is pinned here.
+    expect(source).toMatch(/WHAT DOES NOT COMPILE/);
+    expect(source).toMatch(/WHAT THROWS AT RUNTIME/);
+    expect(source).toMatch(/WHAT IS DELIBERATELY NOT CLOSED/);
+    expect(source).toMatch(/officialTotalKg\(totalOnTheBoard\(state\)\)`? compiles/);
+    expect(source).toMatch(/tamper-resistance/);
   });
 });

@@ -12,6 +12,12 @@
  *
  * with sex-specific coefficients. See DOTS_COEFFICIENTS below.
  *
+ * PURITY CONTRACT (CLAUDE.md "Pure logic is separate from UI"): this module
+ * imports nothing — not React, not I/O, not a sibling game module. The one thing
+ * evaluated at load is `Symbol('dots.coefficient')` (see THE COEFFICIENT IS NOT A
+ * NUMBER below); it allocates and touches nothing outside this file, and no
+ * function's output depends on which symbol it got.
+ *
  * ---------------------------------------------------------------------------
  * PROVENANCE OF THE COEFFICIENTS  (read this before touching any number here)
  * ---------------------------------------------------------------------------
@@ -127,12 +133,30 @@ export const DOTS_BODYWEIGHT_DOMAIN_KG: Readonly<
 } as const;
 
 // ---------------------------------------------------------------------------
-// Presentation policy — these two ARE ours, not published, and may be changed
-// without making the math wrong.
+// Presentation policy — everything in this block is OURS, not published, and may
+// be changed without making the math wrong. CLAUDE.md "Game Feel Values Must Be
+// Tunable": these live here as named constants and are never inlined at a call
+// site or in a component.
 // ---------------------------------------------------------------------------
 
 /** Decimal places used when displaying a DOTS score (federations show 2). */
 export const DOTS_DISPLAY_DECIMALS = 2;
+
+/**
+ * Decimal places used when displaying a bodyweight COEFFICIENT (not a score).
+ * Federations that print a coefficient column print more places than they do
+ * for points, because the coefficient is ~0.5–1.5 and two places would hide
+ * most of the spread.
+ */
+export const DOTS_COEFFICIENT_DISPLAY_DECIMALS = 4;
+
+/**
+ * The smallest score that still prints as something other than zero at
+ * `DOTS_DISPLAY_DECIMALS`. Derived, not independently tunable: it is half of the
+ * last displayed place. Anything below it is refused by the display helpers
+ * rather than printed as "0.00" — see NO TOTAL IS NOT A TOTAL OF ZERO.
+ */
+export const DOTS_SMALLEST_PRINTABLE_SCORE = 0.5 / 10 ** DOTS_DISPLAY_DECIMALS;
 
 /**
  * What goes in the DOTS column of a result sheet for a lifter who did not
@@ -140,6 +164,19 @@ export const DOTS_DISPLAY_DECIMALS = 2;
  * Presentation only: changing this glyph cannot make a score wrong.
  */
 export const DOTS_NO_TOTAL_DISPLAY = '—';
+
+/**
+ * Signs used when printing a DOTS *delta* — the "+12.40 DOTS" call-out on a
+ * recap screen (GDD §6.5). A delta is a difference between two scores, so unlike
+ * a score it may legitimately be negative or zero.
+ *
+ * The negative sign is U+2212 MINUS SIGN rather than a hyphen, to match the
+ * typographic dash used for `DOTS_NO_TOTAL_DISPLAY`. Presentation only.
+ */
+export const DOTS_DELTA_POSITIVE_PREFIX = '+';
+export const DOTS_DELTA_NEGATIVE_PREFIX = '−';
+/** A delta that rounds to zero prints unsigned: "0.00", not "+0.00". */
+export const DOTS_DELTA_ZERO_PREFIX = '';
 
 // ---------------------------------------------------------------------------
 // NO TOTAL IS NOT A TOTAL OF ZERO
@@ -158,31 +195,74 @@ export const DOTS_NO_TOTAL_DISPLAY = '—';
 // dash where the placing would be. So this module never hands them a number.
 // "Does not place" is the outcome — not 0.00 DOTS.
 //
-// Three things enforce that, in order of how early they catch a mistake:
+// There are two ways to fake a score, and they need different defences:
 //
-//   1. `dotsScore(sex, bw, totalKg: number)` takes a real total. The tempting
-//      glue `dotsScore(sex, bw, finalMeetTotal(state))` does not compile,
-//      because `number | null` is not `number`.
-//   2. `evaluateDots(sex, bw, totalKg: number | null)` is the null-aware entry
-//      point, and it returns a union whose `'no-total'` branch has NO `score`
-//      field — not even an optional one. Reading `outcome.score` without
-//      narrowing is a compile error, so a missing score cannot be `?? 0`-ed
-//      into existence one level up either.
-//   3. A total of exactly 0 is REJECTED at runtime, which is what catches the
-//      one collapse the type system cannot see: `finalMeetTotal(state) ?? 0`.
+//   A. COLLAPSE A MISSING TOTAL TO ZERO — `finalMeetTotal(state) ?? 0`. Visibly
+//      wrong at the bottom of a board, but still a lie.
+//   B. SCORE A PROVISIONAL NUMBER — `totalOnTheBoard(state)`. Worse: a bombed
+//      lifter with two lifts banked lands mid-board with a plausible score that
+//      nothing on the screen marks as fake.
 //
-// Why 0 is rejected rather than documented as "the bombed-out total":
+// WHAT DOES NOT COMPILE (each line below is pinned by a `@ts-expect-error` test
+// in dots.test.ts, which `npm run typecheck` enforces):
 //
-//   - `meet.ts` cannot produce it. Nothing below `MIN_LOADABLE_WEIGHT_KG`
-//     (25 kg — bar plus collars) can be declared, so a meet that finishes with
-//     a total finishes with at least ~75 kg, and a meet that does not finish
-//     with a total reports `null`. There is no path to 0.
-//   - No federation records a 0 kg total either. The result sheet says the
-//     lifter did not total; it does not say they totalled zero.
+//   1. `dotsScore(sex, bw, finalMeetTotal(state))` — the total parameter is
+//      `OfficialTotalKg`, a branded number, and `number | null` is not one.
+//   2. `dotsScore(sex, bw, finalMeetTotal(state) ?? 0)` — defence A. A bare
+//      `number` is not an `OfficialTotalKg` either, so the `?? 0` escape from
+//      (1) does not typecheck any more; it used to compile and throw.
+//   3. `dotsScore(sex, bw, totalOnTheBoard(state))` — defence B, same reason.
+//      This one used to compile, throw nothing, and print a real-looking score.
+//   4. `evaluateDots(sex, bw, finalMeetTotal(state))` and the same two escapes
+//      aimed at it. Route a meet through `evaluateMeetDots`, which takes the
+//      whole reading and cannot be handed a provisional number.
+//   5. `outcome.score` on an un-narrowed `DotsOutcome` — the `'no-total'` branch
+//      has no `score` field, not even an optional one, so `?? 0` has nothing to
+//      default and there is nothing to read.
+//   6. `outcome.coefficient` on an un-narrowed `DotsOutcome` — same: the
+//      coefficient lives on `ScoredDots` only. It used to sit on the shared
+//      context, where `outcome.coefficient * (finalMeetTotal(state) ?? 0)`
+//      rebuilt the whole collapse in one multiplication.
+//   7. `dotsCoefficient(sex, bw) * anythingAtAll`, and `scored.coefficient * x` —
+//      a `DotsCoefficient` is an opaque object, not a number, so arithmetic on
+//      one is a type error. The only multiplication is `applyDotsCoefficient`,
+//      which demands an `OfficialTotalKg`.
 //
-//   So every 0 arriving here is a bug — overwhelmingly likely a `?? 0` at a
-//   module boundary. Refusing it names the bug at the moment it happens instead
-//   of quietly printing a real-looking "0.00" onto a leaderboard.
+// WHAT THROWS AT RUNTIME (for the casts and the `as any`s a type cannot see):
+//
+//   - `officialTotalKg(0)`, and therefore `officialTotalKg(finalMeetTotal(state) ?? 0)`.
+//     A total of exactly 0 is refused with an error naming the collapse.
+//     `meet.ts` cannot produce a 0 either: nothing below `MIN_LOADABLE_WEIGHT_KG`
+//     (25 kg — bar plus collars) can be declared, so a meet that finishes with a
+//     total finishes with at least ~75 kg, and one that does not finish with a
+//     total reports `null`. No federation records a 0 kg total. Every 0 arriving
+//     here is a bug, and refusing it names the bug where it happens instead of
+//     quietly printing "0.00" onto a leaderboard.
+//   - `dotsScore` / `evaluateDots` re-check the total they were handed, so a
+//     forged brand still fails.
+//   - `roundDotsScore` / `formatDotsScore` refuse a score that is not positive,
+//     and refuse one that would ROUND to "0.00" (see
+//     `DOTS_SMALLEST_PRINTABLE_SCORE`). A *delta* is a different thing and has
+//     its own pair of helpers that accept negatives and zero.
+//
+// WHAT IS DELIBERATELY NOT CLOSED — stated plainly, because a comment that
+// overstates its guarantees is worse than no comment:
+//
+//   - `officialTotalKg(totalOnTheBoard(state))` compiles, and scores. The mint
+//     has to exist: totals also arrive from a server row, a seeded NPC table or
+//     a test fixture, and no type can check that a bare number came from a
+//     finished meet. What the mint buys is that the claim is now WRITTEN DOWN —
+//     one greppable call whose name is the assertion — instead of being an
+//     invisible `?? 0` at a module boundary.
+//   - The published constants and `dotsDenominator` are exported so a critic can
+//     verify them, which means anyone can evaluate the polynomial by hand and
+//     multiply the result by whatever they like. A module that publishes its own
+//     coefficients cannot prevent that and does not try to.
+//   - A cast (`x as OfficialTotalKg`) defeats the brand, exactly as a cast
+//     defeats the opaque rules in `meet.ts`. None of this is tamper-resistance;
+//     authority over results belongs on the server (CLAUDE.md
+//     "Server-authoritative progression"). It closes the accidents that used to
+//     typecheck and look innocent in a diff, and claims nothing beyond that.
 //
 // ---------------------------------------------------------------------------
 // Types
@@ -198,13 +278,102 @@ export type DotsDomainStatus =
   | 'clamped-above-max';
 
 /**
+ * Type-level brand for `OfficialTotalKg`. Declared, never defined: it exists
+ * only during typechecking and emits no code.
+ */
+declare const OFFICIAL_TOTAL_BRAND: unique symbol;
+
+/**
+ * A number that has been asserted to be a lifter's FINAL OFFICIAL competition
+ * total, in kilograms. Nominal: a plain `number` is not assignable to it, so the
+ * two numbers that must never be scored —
+ *
+ *     finalMeetTotal(state) ?? 0     // the bomb-out, collapsed
+ *     totalOnTheBoard(state)         // provisional, not a result
+ *
+ * — cannot reach a scoring function by accident. Mint one with
+ * `officialTotalFromMeet` (from a meet reading, checked) or `officialTotalKg`
+ * (from a bare number, asserted).
+ *
+ * It IS a number at runtime and stays assignable to `number`, so arithmetic on a
+ * total still works and the value can be printed, stored and compared normally.
+ */
+export type OfficialTotalKg = number & { readonly [OFFICIAL_TOTAL_BRAND]: 'kg' };
+
+/**
+ * The shape of `meet.ts`'s `readTotal(state)`, declared structurally here rather
+ * than imported, because this module imports nothing (see the purity contract).
+ * A real `TotalReading` is assignable to it; a bare `number` is not, which is
+ * what stops `totalOnTheBoard(state)` from being routed in as a result.
+ *
+ * `dots.test.ts` pins the match by feeding an actual `readTotal(state)` through
+ * `officialTotalFromMeet` for all three of its cases — if `TotalReading` ever
+ * changes shape, that test stops compiling.
+ */
+export type MeetTotalReading =
+  /** Still lifting: there is no total yet, only what is on the board. */
+  | { readonly kind: 'in-progress'; readonly total: null }
+  /** Meet over with a total. The only case that yields an official total. */
+  | { readonly kind: 'final'; readonly total: number }
+  /** Meet over with a bombed lift: NO total, which is not a total of zero. */
+  | { readonly kind: 'no-total'; readonly total: null };
+
+/**
+ * The key a coefficient's numeric value lives under. Module-private and a
+ * symbol, so `DotsCoefficient` has no property a caller can name.
+ */
+const COEFFICIENT_VALUE: unique symbol = Symbol('dots.coefficient');
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE COEFFICIENT IS NOT A NUMBER — why this is an object
+ * ---------------------------------------------------------------------------
+ * A bodyweight coefficient is one multiplication away from being a score, and
+ * that multiplication is exactly how a fake score gets made:
+ *
+ *     dotsCoefficient('male', 93) * totalOnTheBoard(state)   // 222.69, a lie
+ *
+ * So the coefficient does not come out of this module as a number. It comes out
+ * as an opaque object whose value sits under a private symbol, which makes the
+ * line above a compile error ("the right-hand side of an arithmetic operation
+ * must be of type 'any', 'number', 'bigint' or an enum type") rather than a
+ * plausible number on a leaderboard.
+ *
+ * Everything anyone legitimately wants from a coefficient is here, and none of it
+ * hands back a bare multiplicand:
+ *
+ *   - `applyDotsCoefficient(c, total)` — the score. Demands an `OfficialTotalKg`.
+ *   - `formatDotsCoefficient(c)` — the display string, for a "Coeff" column.
+ *   - `compareDotsCoefficients(a, b)` — ordering, for a board or a test.
+ *   - the readable fields below — which lifter and which domain it belongs to.
+ *
+ * There is deliberately no `dotsCoefficientValue(c): number`. It would be a
+ * one-call rebuild of the collapse and nothing in the game needs it.
+ * ---------------------------------------------------------------------------
+ */
+export interface DotsCoefficient {
+  /** The value itself, unreachable without the module-private symbol. */
+  readonly [COEFFICIENT_VALUE]: number;
+  /** Which published coefficient set produced it. */
+  readonly sex: DotsSex;
+  /** Bodyweight exactly as supplied, in kg. */
+  readonly bodyweightKg: number;
+  /** Bodyweight actually fed to the polynomial after domain clamping, in kg. */
+  readonly effectiveBodyweightKg: number;
+  /** Whether clamping occurred, and in which direction. */
+  readonly domainStatus: DotsDomainStatus;
+}
+
+/**
  * The facts that depend only on the lifter, not on whether they totalled.
  * Reported in both outcomes so a result card can render a bombed lifter's row
  * without inventing a score to put in it.
+ *
+ * The coefficient is NOT here. It is on `ScoredDots` only — see defect 6 in the
+ * NO TOTAL note: a coefficient readable off an un-narrowed outcome is a fake
+ * score one `*` away.
  */
 export interface DotsLifterContext {
-  /** The bodyweight coefficient for this lifter, i.e. `score / totalKg`. */
-  readonly coefficient: number;
   /** Bodyweight exactly as supplied, in kg. */
   readonly bodyweightKg: number;
   /** Bodyweight actually fed to the polynomial after domain clamping, in kg. */
@@ -219,7 +388,9 @@ export interface ScoredDots extends DotsLifterContext {
   /** Unrounded DOTS score. Always > 0. */
   readonly score: number;
   /** The official total this score was computed from, in kg. Always > 0. */
-  readonly totalKg: number;
+  readonly totalKg: OfficialTotalKg;
+  /** The bodyweight coefficient this score came from. Opaque; see above. */
+  readonly coefficient: DotsCoefficient;
 }
 
 /**
@@ -227,7 +398,8 @@ export interface ScoredDots extends DotsLifterContext {
  *
  * There is deliberately no `score` field here — not `score: 0`, and not
  * `score?: number`. An optional score would make `outcome.score ?? 0` compile,
- * which is precisely the collapse this shape exists to prevent.
+ * which is precisely the collapse this shape exists to prevent. There is no
+ * `coefficient` either, for the same reason one multiplication later.
  */
 export interface NoTotalDots extends DotsLifterContext {
   readonly kind: 'no-total';
@@ -254,8 +426,8 @@ function assertUsableBodyweight(bodyweightKg: number): void {
 
 /**
  * A total that reaches this module must be an official total: finite and
- * strictly positive. See the NO TOTAL note above for why 0 is refused rather
- * than treated as the bombed-out case.
+ * strictly positive. See NO TOTAL IS NOT A TOTAL OF ZERO for why 0 is refused
+ * rather than treated as the bombed-out case.
  */
 function assertOfficialTotal(totalKg: number): void {
   assertUsableNumber(totalKg, 'totalKg');
@@ -263,8 +435,8 @@ function assertOfficialTotal(totalKg: number): void {
     throw new RangeError(
       'dots: a total of 0 kg is not a result. A lifter who did not total has NO total ' +
         '(meet.ts records `total: null`) and does not place, so they get no DOTS score at ' +
-        'all. Pass the null through to evaluateDots and handle its `no-total` outcome — ' +
-        'do not collapse it with `?? 0`.',
+        'all. Pass the reading through to evaluateMeetDots and handle its `no-total` ' +
+        'outcome — do not collapse it with `?? 0`.',
     );
   }
   if (totalKg < 0) {
@@ -272,21 +444,80 @@ function assertOfficialTotal(totalKg: number): void {
   }
 }
 
+/** Round to the number of decimals a result sheet prints. */
+function roundToDisplayDecimals(value: number): number {
+  const factor = 10 ** DOTS_DISPLAY_DECIMALS;
+  return Math.round(value * factor) / factor;
+}
+
 /**
- * A DOTS score is strictly positive: the total is > 0 and the coefficient is
- * > 0 everywhere in the published domain, so 0 is not reachable from any real
- * result. Refusing it keeps "0.00" off a result card by construction.
+ * A SCORE — not a delta — must be printable: positive, and not so small that it
+ * would render as "0.00".
+ *
+ * The check is about ROUNDING TO ZERO, not about the sign. `0.004` is positive
+ * and still prints "0.00", which is the string this module exists to keep off a
+ * result card, so it is refused too.
  */
-function assertUsableScore(score: number): void {
+function assertPrintableScore(score: number): void {
   assertUsableNumber(score, 'score');
   if (score <= 0) {
     throw new RangeError(
       `dots: a DOTS score is strictly positive, received ${score}. A lifter with no total ` +
         'has no score to print — render DOTS_NO_TOTAL_DISPLAY (via formatDotsOutcome) ' +
-        'instead of formatting a 0.',
+        'instead of formatting a 0. If this is a DIFFERENCE between two scores, it is a ' +
+        'delta, not a score: use roundDotsDelta / formatDotsDelta, which accept negatives.',
+    );
+  }
+  if (roundToDisplayDecimals(score) === 0) {
+    throw new RangeError(
+      `dots: a score of ${score} rounds to "0.00" at ${DOTS_DISPLAY_DECIMALS} decimals, and ` +
+        '"0.00" is the one thing a DOTS column must never say about a lifter who did not ' +
+        'total. Nothing in the published domain produces a score this small from a real ' +
+        'total; treat it as a bug at the caller.',
     );
   }
 }
+
+// --- Minting an official total ----------------------------------------------
+
+/**
+ * Assert that a bare number is a lifter's final official total.
+ *
+ * THE CALLER IS MAKING A CLAIM THAT NO TYPE CAN CHECK, so make it only where the
+ * claim is true: a result row from the server, a seeded NPC's recorded total, a
+ * historical result, a test fixture. It is NOT true of
+ * `meet.totalOnTheBoard(state)` (provisional — the meet may still bomb) and not
+ * true of `finalMeetTotal(state) ?? 0` (that is a bomb-out wearing a zero, and
+ * it throws here).
+ *
+ * For a meet this module can see the reading of, use `officialTotalFromMeet`,
+ * which checks instead of asserting.
+ *
+ * @throws RangeError on a non-finite total, a negative total, or exactly 0.
+ */
+export function officialTotalKg(totalKg: number): OfficialTotalKg {
+  assertOfficialTotal(totalKg);
+  return totalKg as OfficialTotalKg;
+}
+
+/**
+ * The checked mint: an official total out of a meet's total reading, or `null`
+ * when there is not one.
+ *
+ * Pass `readTotal(state)` from `meet.ts` straight in. Only the `'final'` case
+ * yields a total; `'no-total'` (bombed out) and `'in-progress'` (still lifting)
+ * both give `null`, and a caller that needs to tell those two apart reads
+ * `reading.kind`, which it already has in hand.
+ *
+ * A bare `number` — including `totalOnTheBoard(state)` — is not a reading and
+ * will not compile here. That is the whole point of taking the reading.
+ */
+export function officialTotalFromMeet(reading: MeetTotalReading): OfficialTotalKg | null {
+  if (reading.kind !== 'final') return null;
+  return officialTotalKg(reading.total);
+}
+
+// --- The polynomial ---------------------------------------------------------
 
 /**
  * Classify a bodyweight against the published domain for that sex.
@@ -318,8 +549,9 @@ export function clampBodyweightToDotsDomain(sex: DotsSex, bodyweightKg: number):
 
 /**
  * The 4th-degree polynomial denominator, evaluated by Horner's method.
- * Exported for testability; callers generally want `dotsCoefficient`.
- * Does NOT clamp — pass an already-clamped bodyweight for official scoring.
+ * Exported so the published fit can be checked against a reference table;
+ * callers generally want `dotsCoefficient`. Does NOT clamp — pass an
+ * already-clamped bodyweight for official scoring.
  */
 export function dotsDenominator(sex: DotsSex, bodyweightKg: number): number {
   const k = DOTS_COEFFICIENTS[sex];
@@ -330,25 +562,66 @@ export function dotsDenominator(sex: DotsSex, bodyweightKg: number): number {
 }
 
 /**
- * The DOTS coefficient for a bodyweight: multiply a total in kg by this to get
- * a DOTS score. Bodyweight is clamped to the published domain first.
+ * The DOTS coefficient for a bodyweight. Bodyweight is clamped to the published
+ * domain first.
+ *
+ * Returns an OPAQUE value, not a number: multiplying a coefficient by anything
+ * other than an `OfficialTotalKg` is how a bombed lifter gets a plausible fake
+ * score, so it is a type error here. Use `applyDotsCoefficient` to score and
+ * `formatDotsCoefficient` to display. See THE COEFFICIENT IS NOT A NUMBER.
+ *
+ * @throws RangeError on a non-finite or non-positive bodyweight.
  */
-export function dotsCoefficient(sex: DotsSex, bodyweightKg: number): number {
-  assertUsableNumber(bodyweightKg, 'bodyweightKg');
-  if (bodyweightKg <= 0) {
-    throw new RangeError(`dots: bodyweightKg must be greater than 0, received ${bodyweightKg}`);
-  }
-  const clamped = clampBodyweightToDotsDomain(sex, bodyweightKg);
-  return DOTS_NUMERATOR / dotsDenominator(sex, clamped);
+export function dotsCoefficient(sex: DotsSex, bodyweightKg: number): DotsCoefficient {
+  assertUsableBodyweight(bodyweightKg);
+  const effectiveBodyweightKg = clampBodyweightToDotsDomain(sex, bodyweightKg);
+  return {
+    [COEFFICIENT_VALUE]: DOTS_NUMERATOR / dotsDenominator(sex, effectiveBodyweightKg),
+    sex,
+    bodyweightKg,
+    effectiveBodyweightKg,
+    domainStatus: dotsDomainStatus(sex, bodyweightKg),
+  };
+}
+
+/**
+ * The one multiplication in this module: coefficient x official total = score.
+ *
+ * It takes an `OfficialTotalKg` and nothing else, so neither
+ * `finalMeetTotal(state) ?? 0` nor `totalOnTheBoard(state)` can be scored
+ * through it without a caller first writing down the claim that the number is an
+ * official total.
+ */
+export function applyDotsCoefficient(
+  coefficient: DotsCoefficient,
+  totalKg: OfficialTotalKg,
+): number {
+  assertOfficialTotal(totalKg);
+  return coefficient[COEFFICIENT_VALUE] * totalKg;
+}
+
+/**
+ * The coefficient as a result sheet would print it, e.g. `"0.6363"`. A string,
+ * deliberately: the module hands out no coefficient a caller can multiply.
+ */
+export function formatDotsCoefficient(coefficient: DotsCoefficient): string {
+  return coefficient[COEFFICIENT_VALUE].toFixed(DOTS_COEFFICIENT_DISPLAY_DECIMALS);
+}
+
+/**
+ * Order two coefficients the way a board does: heavier lifter, smaller
+ * coefficient. Negative when `a` is the smaller (heavier) one, so it can be
+ * passed straight to `Array.prototype.sort`.
+ *
+ * Exists so callers (and the suite) can compare coefficients without a numeric
+ * accessor that would double as a fake-score builder.
+ */
+export function compareDotsCoefficients(a: DotsCoefficient, b: DotsCoefficient): number {
+  return a[COEFFICIENT_VALUE] - b[COEFFICIENT_VALUE];
 }
 
 /**
  * DOTS score for a lifter who has an official total, unrounded.
- *
- * This entry point is only for a lifter who totalled. It takes a plain
- * `number`, which is what makes `dotsScore(sex, bw, finalMeetTotal(state))` a
- * compile error: route a `number | null` through `evaluateDots` instead. Do
- * not reach for `?? 0` to get past that error — it throws.
  *
  * @param sex          Sex whose published coefficients apply. DOTS only defines
  *                     male and female sets; OpenPowerlifting scores lifters
@@ -356,45 +629,73 @@ export function dotsCoefficient(sex: DotsSex, bodyweightKg: number): number {
  *                     ever adds a third option, map it to `'male'` here rather
  *                     than inventing a coefficient set.
  * @param bodyweightKg Bodyweight in kg (> 0). Clamped to the published domain.
- * @param totalKg      Official competition total in kg, strictly > 0.
+ * @param totalKg      Official competition total (see `OfficialTotalKg`). A bare
+ *                     `number` does not typecheck here — that is what stops both
+ *                     `finalMeetTotal(state) ?? 0` and `totalOnTheBoard(state)`
+ *                     from being scored by accident.
  * @throws RangeError on non-finite input, bodyweight <= 0, or a total <= 0
  *         (including exactly 0 — see the NO TOTAL note above).
  */
-export function dotsScore(sex: DotsSex, bodyweightKg: number, totalKg: number): number {
+export function dotsScore(
+  sex: DotsSex,
+  bodyweightKg: number,
+  totalKg: OfficialTotalKg,
+): number {
   assertUsableBodyweight(bodyweightKg);
   assertOfficialTotal(totalKg);
-  return dotsCoefficient(sex, bodyweightKg) * totalKg;
+  return applyDotsCoefficient(dotsCoefficient(sex, bodyweightKg), totalKg);
 }
 
 /**
- * The null-aware entry point: everything needed to present a lifter's DOTS
- * honestly, including the case where there is nothing to present.
+ * Everything needed to present a lifter's DOTS honestly, including the case
+ * where there is nothing to present.
  *
- * Pass `finalMeetTotal(state)` straight in. `null` means the lifter did not
- * total, and produces a `'no-total'` outcome that carries no score, because a
- * lifter who did not total does not place. Anything else must be a real total
- * (> 0); a literal 0 is rejected rather than scored.
+ * `null` means the lifter has no official total, and produces a `'no-total'`
+ * outcome that carries neither a score nor a coefficient, because a lifter who
+ * did not total does not place. Coming from a meet, use `evaluateMeetDots`,
+ * which does the null-mapping from the reading for you.
  *
  * @throws RangeError on non-finite input, bodyweight <= 0, or a total <= 0.
  */
 export function evaluateDots(
   sex: DotsSex,
   bodyweightKg: number,
-  totalKg: number | null,
+  totalKg: OfficialTotalKg | null,
 ): DotsOutcome {
   assertUsableBodyweight(bodyweightKg);
-  const effectiveBodyweightKg = clampBodyweightToDotsDomain(sex, bodyweightKg);
+  const coefficient = dotsCoefficient(sex, bodyweightKg);
   const context: DotsLifterContext = {
-    coefficient: DOTS_NUMERATOR / dotsDenominator(sex, effectiveBodyweightKg),
     bodyweightKg,
-    effectiveBodyweightKg,
-    domainStatus: dotsDomainStatus(sex, bodyweightKg),
+    effectiveBodyweightKg: coefficient.effectiveBodyweightKg,
+    domainStatus: coefficient.domainStatus,
   };
   if (totalKg === null) {
     return { kind: 'no-total', ...context };
   }
   assertOfficialTotal(totalKg);
-  return { kind: 'scored', score: context.coefficient * totalKg, totalKg, ...context };
+  return {
+    kind: 'scored',
+    score: applyDotsCoefficient(coefficient, totalKg),
+    totalKg,
+    coefficient,
+    ...context,
+  };
+}
+
+/**
+ * The meet-day entry point: score a lifter straight from `readTotal(state)`.
+ *
+ * This is the glue between `meet.ts` and a result card, and it is the ONE line a
+ * caller should be writing. A meet that bombed and a meet still in progress both
+ * come back as `'no-total'` — no score, no coefficient, and
+ * `formatDotsOutcome` prints `DOTS_NO_TOTAL_DISPLAY` for them.
+ */
+export function evaluateMeetDots(
+  sex: DotsSex,
+  bodyweightKg: number,
+  reading: MeetTotalReading,
+): DotsOutcome {
+  return evaluateDots(sex, bodyweightKg, officialTotalFromMeet(reading));
 }
 
 /**
@@ -406,24 +707,70 @@ export function hasDotsScore(outcome: DotsOutcome): outcome is ScoredDots {
   return outcome.kind === 'scored';
 }
 
+// ---------------------------------------------------------------------------
+// Display
+//
+// Two pairs, because a SCORE and a DELTA are different things:
+//   - a score is a lifter's DOTS points. Always positive; "0.00" is a lie.
+//   - a delta is the difference between two scores — the "+12.40 DOTS" call-out
+//     on a recap (GDD §6.5). Legitimately negative, and legitimately zero.
+// ---------------------------------------------------------------------------
+
 /**
  * Round a DOTS score for display, to the number of decimals federations use.
- * @throws RangeError unless the score is finite and > 0.
+ * @throws RangeError unless the score is finite, positive, and large enough to
+ *         print as something other than "0.00". For a difference between two
+ *         scores use `roundDotsDelta`.
  */
 export function roundDotsScore(score: number): number {
-  assertUsableScore(score);
-  const factor = 10 ** DOTS_DISPLAY_DECIMALS;
-  return Math.round(score * factor) / factor;
+  assertPrintableScore(score);
+  return roundToDisplayDecimals(score);
 }
 
 /**
  * Format a DOTS score the way a result sheet prints it, e.g. `"445.38"`.
- * @throws RangeError unless the score is finite and > 0. A lifter without a
- *         score goes through `formatDotsOutcome`.
+ * @throws RangeError unless the score is finite, positive, and large enough to
+ *         print as something other than "0.00". A lifter without a score goes
+ *         through `formatDotsOutcome`; a difference between two scores goes
+ *         through `formatDotsDelta`.
  */
 export function formatDotsScore(score: number): string {
-  assertUsableScore(score);
-  return score.toFixed(DOTS_DISPLAY_DECIMALS);
+  return roundDotsScore(score).toFixed(DOTS_DISPLAY_DECIMALS);
+}
+
+/**
+ * Round a DOTS delta — a difference between two scores — for display.
+ *
+ * Unlike a score, a delta may be negative (the lifter went backwards) or zero
+ * (they scored the same), and neither is an error. It is only ever computed from
+ * two real scores, so it cannot launder a lifter who has none: there is no
+ * `.score` on a `'no-total'` outcome to subtract.
+ *
+ * @throws RangeError if the delta is not finite.
+ */
+export function roundDotsDelta(delta: number): number {
+  assertUsableNumber(delta, 'delta');
+  return roundToDisplayDecimals(delta);
+}
+
+/**
+ * Format a DOTS delta with an explicit sign, e.g. `"+12.40"`, `"−2.31"`,
+ * `"0.00"` — the PR call-out on a recap screen (GDD §6.5).
+ *
+ * The sign is chosen from the ROUNDED value, so a delta of -0.001 prints
+ * `"0.00"` rather than `"−0.00"`.
+ *
+ * @throws RangeError if the delta is not finite.
+ */
+export function formatDotsDelta(delta: number): string {
+  const rounded = roundDotsDelta(delta);
+  const prefix =
+    rounded > 0
+      ? DOTS_DELTA_POSITIVE_PREFIX
+      : rounded < 0
+        ? DOTS_DELTA_NEGATIVE_PREFIX
+        : DOTS_DELTA_ZERO_PREFIX;
+  return `${prefix}${Math.abs(rounded).toFixed(DOTS_DISPLAY_DECIMALS)}`;
 }
 
 /**
