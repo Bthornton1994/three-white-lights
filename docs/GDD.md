@@ -2,9 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-01 (§4.1/§4.2/§4.3/§4.4 — free grace for short gaps; the
-grace is charged per absence, not per gap, so the longest repairable absence no
-longer depends on how often the app is opened)
+**Last updated:** 2026-08-01 (§4.2/§4.4 — the Recovery Day prompt must disclose
+how long the save lasts, so the wasted-spend residual is an option with a stated
+expiry rather than one sold blind. Earlier the same day: §4.1/§4.2/§4.3/§4.4 —
+free grace for short gaps; the grace is charged per absence, not per gap, so the
+longest repairable absence no longer depends on how often the app is opened)
 
 ---
 
@@ -236,6 +238,14 @@ at an unfavorable rate (gives grinders a non-cash path).
   your streak?"* The agency and the small "phew" moment are the point. This is a
   rule about *spending*; the free grace of §4.4 spends nothing and so has no
   prompt to skip. The player is still told the gap was covered.
+- **The prompt states the expiry, not just the price.** Alongside what a yes
+  costs and what run it protects, it says **the last day the run can still be
+  alive** on the player's current balance. This is the only screen in the game
+  where a finite resource is spent, so it is the one that has to say when what
+  they are buying runs out. Where that date is *today*, the prompt is saying the
+  hard thing: this yes buys today and nothing after it — train now, or the run
+  ends whatever you spend. The number is unchanged by answering yes, so it means
+  the same thing either side of the decision.
 - **The free grace is separate from the consecutive-use limit** and stays a
   separate tunable, even where the two happen to hold the same value. One is how
   much absence is free; the other is how many Recovery Days may be spent in a
@@ -253,6 +263,17 @@ what their balance covers ends poorer than one who never opened it and never saw
 the prompt. Every yes was a genuine save at the moment it was taken — declining
 would have ended the run there and then — so this is the price of an option, not
 a penalty for showing up, and the *streak* outcome is identical either way.
+
+**That defence only works if the option's expiry is on the prompt**, which is
+why the disclosure above is a rule and not a nicety. In exactly this case the
+expiry reads *today*, so the player buying the option is told it is a one-day
+option. Removing the residual outright would mean either refusing saves the
+player could still use — which needs to know whether they will train tomorrow —
+or auto-applying Recovery Days on the missed day itself, the way a Duolingo
+streak freeze does (§4.3). The second genuinely closes it, and is refused
+because it deletes the manual prompt and the "phew" moment this section is
+built on. The residual is therefore the price of *manual use*, not a
+consequence of Recovery Days being finite.
 
 ### 4.3 First-Break Tutorial Moment
 
@@ -365,7 +386,10 @@ What still holds, and is what the design leans on:
   absence a player survives and cannot raise the price of surviving it. The one
   thing it changes is that a player who cannot afford the whole absence may
   spend part of their balance on a run that dies anyway — see §4.2's note on
-  all-or-nothing coverage.
+  all-or-nothing coverage. **That spend is disclosed, not silent:** the prompt
+  that asks for it states the last day the run can still be alive, and in this
+  case that day is the day they are being asked. Neutral does not mean costless;
+  it means the cost is on the screen before the player answers.
 
 ---
 

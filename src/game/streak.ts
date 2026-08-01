@@ -244,9 +244,20 @@
  *     one who never opened the app and never got the prompt. The run was
  *     genuinely alive at every yes — declining would have ended it there and
  *     then — so this is the price of an option, not a penalty for showing up,
- *     and it predates GDD §4.4 rather than arriving with it. It is not
- *     mitigated because the only mitigation is refusing to offer a save the
- *     player can still use, and this module cannot see the future.
+ *     and it predates GDD §4.4 rather than arriving with it.
+ *
+ *     IT IS NOT REMOVED, AND IT IS NO LONGER SOLD BLIND. Removing it would mean
+ *     refusing to offer a save the player can still use, which requires knowing
+ *     whether they will train tomorrow; this module cannot see the future, and
+ *     an earlier revision of this bullet stopped at that sentence as though it
+ *     were the only answer available. It is not, and the second one costs no
+ *     foresight at all: state the expiry along with the price.
+ *     `RecoveryDayOffer.lastDayStreakCanBeSaved` is on every prompt, and in
+ *     exactly this case it reads TODAY — "this yes buys you today; train now, or
+ *     the run ends whatever you spend." `streak.test.ts` pins that reading on
+ *     the balance-1, four-day-absence case this bullet is about. It does not
+ *     make the spend cheaper and it does not make it recoverable; it makes it
+ *     the informed choice GDD §4.2 already claims it is.
  *
  * ===========================================================================
  * 6. NEVER PUNISH DAILY ENGAGEMENT (CLAUDE.md, GDD §3.5, §12.3)
@@ -353,7 +364,9 @@
  * WHY THIS MODULE DOES NOT CLOSE THE REMAINDER, as an argument and not a shrug.
  * The property "one more trained day never lowers the final streak" requires
  * that the divergent spend never leaves the diligent player short at a later
- * gap. Two ways to arrange that, and each fails or costs more than it buys:
+ * gap. Two ways to arrange that WITHOUT TOUCHING THE MANUAL PROMPT, and each
+ * fails or costs more than it buys (a third that does work, by removing the
+ * prompt, is below):
  *
  *   - REFUND WHEN THE PROTECTED RUN DIES. The refund arrives after the death.
  *     It restores the balance, not the run, and the deficit above is measured
@@ -366,11 +379,28 @@
  *     is never consumed has no hold cap worth having (GDD §4.2), nothing to
  *     earn on the free-path table (§4.2) and nothing to sell (§8.2).
  *
- * So the residue is not compatible with Recovery Days being a finite consumable
- * that is spent to keep a live run alive. GDD §4.4 is the human ruling on that:
- * short gaps stop being a spend at all, Recovery Days stay a consumable for
- * long ones, and the residue above is accepted rather than designed away. What
- * is implemented here is that ruling, with the cost measured rather than hidden.
+ * SO THE RESIDUE FOLLOWS FROM THE MANUAL PROMPT, NOT FROM FINITENESS, and an
+ * earlier revision of this paragraph got that wrong in a way worth naming rather
+ * than quietly deleting. It said the residue "is not compatible with Recovery
+ * Days being a finite consumable that is spent to keep a live run alive", which
+ * is refuted by the precedent the design is built on: Duolingo's streak freeze
+ * (GDD §4.3) is a finite consumable spent to keep a live run alive, and it has
+ * no such residue, because it is armed ahead of time and consumed by the missed
+ * day itself. Nothing about its outcome depends on when the player looks, so
+ * there is no way to buy part of an absence by checking in during one.
+ *
+ * What rules that shape out here is GDD §4.2's MANUAL USE, NOT AUTO-APPLY. Tying
+ * the spend to the day the player opens the app is what makes the outcome depend
+ * on their looking; it is also the entire "phew" moment the feature exists for.
+ * Auto-applying would close the residue and delete the moment, so it is refused
+ * — as a design choice with a named cost, not as an impossibility.
+ *
+ * GDD §4.4 is the human ruling on that trade: short gaps stop being a spend at
+ * all, Recovery Days stay a consumable for long ones, the prompt stays manual,
+ * and the residue above is accepted rather than designed away — accepted with
+ * its expiry disclosed on the prompt (`lastDayStreakCanBeSaved`, §5 above), not
+ * merely tolerated. What is implemented here is that ruling, with the cost
+ * measured rather than hidden.
  *
  * (A third fix once listed here — CHARGE PER GAP INSTEAD OF PER MISSED DAY —
  * has been deleted rather than kept as a caveat. It was recorded as doing
@@ -384,8 +414,12 @@
  * run is the counterintuitive correct play, and GDD §4.3 puts the tutorial on
  * the first chargeable break precisely to teach the player to say yes. What GDD
  * §4.2 puts against it is agency: `RecoveryDayOffer` carries `streakProtected`
- * and `balanceAfter` so the prompt can state what a yes is worth today. Nothing
- * on it states what a yes costs later, because no state here can know that.
+ * and `balanceAfter` so the prompt can state what a yes is worth today, and
+ * `lastDayStreakCanBeSaved` so it can state how long that yes lasts — which is
+ * the whole of what the state can honestly disclose. Nothing on it states what a
+ * yes costs at some LATER gap, because that depends on a calendar that has not
+ * happened yet and no state here can know it. Expiry is knowable and is shown;
+ * opportunity cost is not, and is not guessed at.
  *
  * A TRAP FOR ANYONE MEASURING THIS. `currentStreak` is only true as of the last
  * day someone called `openDay` on the state. A run that has already died sits
@@ -1011,6 +1045,11 @@ export function recoveryDayCapacity(state: StreakState): number {
  * answer. Everything the prompt needs is here so the UI never recomputes a cost
  * and never shows a number the engine disagrees with.
  *
+ * THAT INCLUDES THE EXPIRY, NOT JUST THE PRICE. This is the one screen in the
+ * read model where a finite resource is spent, so it is the one screen that
+ * must carry `lastDayStreakCanBeSaved` — see the field's own comment, and the
+ * wasted-spend bullet in §5 of the header for the case it exists for.
+ *
  * IT IS NOT A GRANT OF ANYTHING. Holding one changes nothing;
  * `acceptRecoveryDayOffer` is the only thing that spends, and
  * `declineRecoveryDayOffer` really lets the run end.
@@ -1044,6 +1083,37 @@ export interface RecoveryDayOffer {
   readonly streakProtected: number;
   /** `consecutiveRecoveryDaysUsed` after accepting, against the guardrail. */
   readonly consecutiveRecoveryDaysUsedAfter: number;
+  /**
+   * HOW LONG THE YES LASTS: the last day this run can still be alive on, given
+   * what is held and what the guardrails allow. The same value `openDay` puts on
+   * `'streak-alive'` and `'gap-covered-by-grace'`, read off the same
+   * `lastDayStreakCanBeSaved` function, so the prompt cannot disagree with the
+   * screens either side of it.
+   *
+   * WHY IT IS ON THE OFFER RATHER THAN JUST THE OPENING. An option sold without
+   * its expiry is not the thing GDD §4.2 describes when it calls a wasted spend
+   * "the price of an option, not a penalty". This is the only branch of the read
+   * model where a finite resource is spent, and it was the only one not carrying
+   * this number. It travels on the offer so a caller reading
+   * `currentRecoveryDayOffer` directly gets it too, and so `sameOffer` rejects a
+   * fabricated offer that claims a longer runway than the state supports.
+   *
+   * IT IS UNCHANGED BY ACCEPTING, which is what makes it safe to show before the
+   * answer: a spend buys exactly the days it pays for and moves this no further
+   * out, because the grace it consumes and the balance it draws down cancel
+   * against the days it covers. `streak.test.ts` asserts that equality rather
+   * than arguing it. So the number means "train by here" both sides of the yes.
+   *
+   * WHEN IT EQUALS `offeredOnDay` IT IS SAYING THE HARD THING: this yes buys you
+   * today and nothing after it — train now, or the run ends whatever you spend.
+   * That is exactly the disclosed residual of §5 of the header, and it is the
+   * case the field exists for.
+   *
+   * WHAT IT IS NOT: a forecast. It moves if the balance moves, and it says
+   * nothing about what spending today costs at some later gap — see §6 of the
+   * header for why no state here can know that.
+   */
+  readonly lastDayStreakCanBeSaved: StreakDay;
   /**
    * GDD §4.3. True on the first offer the player ever resolves; the UI shows
    * the explanation. It is still a question, not an auto-save.
@@ -1100,6 +1170,11 @@ export function currentRecoveryDayOffer(state: StreakState, today: StreakDay): R
     balanceAfter: state.recoveryDayBalance - chargeable,
     streakProtected: state.currentStreak,
     consecutiveRecoveryDaysUsedAfter: state.consecutiveRecoveryDaysUsed + chargeable,
+    // The `??` is unreachable — `covered` is non-null above, so
+    // `lastDayStreakCanBeSaved` is too — and is written the same way as the two
+    // `openDay` branches that also carry this number, so all three read the one
+    // function rather than one of them growing its own arithmetic.
+    lastDayStreakCanBeSaved: lastDayStreakCanBeSaved(state) ?? today,
     isFirstBreakTutorial: !state.hasResolvedFirstBreakOffer,
   };
 }
@@ -1131,6 +1206,10 @@ function sameOffer(a: RecoveryDayOffer, b: RecoveryDayOffer): boolean {
     a.balanceAfter === b.balanceAfter &&
     a.streakProtected === b.streakProtected &&
     a.consecutiveRecoveryDaysUsedAfter === b.consecutiveRecoveryDaysUsedAfter &&
+    // Compared like every other field: an offer handed back claiming a longer
+    // runway than the state supports is a false disclosure, and is refused for
+    // the same reason as one claiming a lower price.
+    a.lastDayStreakCanBeSaved === b.lastDayStreakCanBeSaved &&
     a.isFirstBreakTutorial === b.isFirstBreakTutorial &&
     a.missedDays.length === b.missedDays.length &&
     a.missedDays.every((day, i) => day === b.missedDays[i])
@@ -1176,7 +1255,13 @@ export type DayOpening =
       readonly daysMissed: number;
       readonly lastDayStreakCanBeSaved: StreakDay;
     }
-  /** A gap past the free grace, and the chargeable part can be paid for. */
+  /**
+   * A gap past the free grace, and the chargeable part can be paid for.
+   *
+   * `offer.lastDayStreakCanBeSaved` is the same runway the two branches above
+   * carry, and it is on the offer rather than repeated here so there is one
+   * spelling of it per opening and no chance of two numbers drifting apart.
+   */
   | { readonly kind: 'recovery-day-offered'; readonly offer: RecoveryDayOffer }
   /** A day was missed and nothing can cover it. */
   | {
@@ -1366,7 +1451,19 @@ export const RECOVERY_DAY_OUTCOME_KEYS = [
 
 export type RecoveryDayOutcomeKey = (typeof RECOVERY_DAY_OUTCOME_KEYS)[number];
 
-/** Everything that happens when a Recovery Day is spent. Nothing else does. */
+/**
+ * Everything that happens when a Recovery Day is spent. Nothing else does.
+ *
+ * NO RUNWAY FIELD HERE, AND THAT IS A DECISION RATHER THAN AN OVERSIGHT.
+ * `RecoveryDayOffer.lastDayStreakCanBeSaved` discloses the expiry BEFORE the
+ * answer, which is where a disclosure has to be to matter. Afterwards, opening
+ * the same day on `outcome.state` always yields `'streak-alive'`, which already
+ * carries that number — and carries the SAME number, because accepting does not
+ * move it. So echoing it here would widen the §4 pay-to-win allowlist for a
+ * value that is one already-modelled call away and provably identical;
+ * `streak.test.ts` asserts that identity so this paragraph is checked rather
+ * than believed.
+ */
 export interface RecoveryDayOutcome {
   readonly state: StreakState;
   /** The missed days now covered, ascending. The whole gap. */
