@@ -586,12 +586,14 @@ export const LIFT_TUNING = Object.freeze({
     CUE_PULSE_MS: 520,
     /** How long a hit/miss flash is held, ms. */
     HIT_FLASH_MS: 260,
-    /** Screen shake amplitude at a full stall, px, and its decay. */
+    /** Screen shake amplitude at a full stall, px, and its period. */
     SHAKE_MAX_PX: 3,
     SHAKE_PERIOD_MS: 90,
-    /** Outcome banner: fade-in, hold, and the stagger between the three lights. */
+    /** Outcome lights: how long each takes to come up, and the gap between them. */
     OUTCOME_FADE_MS: 220,
     LIGHT_REVEAL_STAGGER_MS: 180,
+    /** How much larger than final a light starts, as a multiple. */
+    LIGHT_POP_SCALE: 1.35,
     /** Bar-path trace: how many recent bar positions are drawn. */
     TRACE_MAX_POINTS: 220,
     /** Trace line width and the alpha of its oldest point. */
@@ -654,16 +656,18 @@ export const LIFT_TUNING = Object.freeze({
     TRACE_BAR_HALF_W: 13,
     TRACE_GUIDE_DASH: 4,
 
-    /** Three white lights. */
+    /**
+     * Three white lights. Laid out by flex, so there is no Y here — an absolute
+     * one would be a second source of truth that could disagree with the first.
+     */
     LIGHT_R: 13,
     LIGHT_GAP: 42,
-    LIGHT_Y: 66,
     LIGHT_STROKE: 2,
 
     /** Typography and spacing for the chrome around the stage. */
     SCREEN_PAD: 16,
     PROMPT_FONT: 15,
-    HEADLINE_FONT: 30,
+    HEADLINE_FONT: 26,
     DETAIL_FONT: 13,
     LABEL_FONT: 11,
     GRADE_FONT: 12,

@@ -380,6 +380,30 @@ describe('no feel value lives outside this file', () => {
     }
   });
 
+  it('has no dead knob: every tuning value is read by something', () => {
+    // A constant nobody reads is worse than a magic number. A playtester turns
+    // it, nothing happens, and they lose trust in the whole file. This caught
+    // five: SHAKE_MAX_PX, SHAKE_PERIOD_MS, HIT_FLASH_MS, CUE_PULSE_MS and
+    // LIGHT_REVEAL_STAGGER_MS were all declared and none was wired up.
+    const sources = [
+      ...sourcesUnder(HERE, ['.ts']),
+      ...sourcesUnder(path.join(HERE, '..', 'lift'), ['.ts', '.tsx']),
+    ]
+      .filter((f) => !f.file.endsWith('liftTuning.ts'))
+      .map((f) => f.source)
+      .join('\n');
+    expect(sources.length).toBeGreaterThan(0);
+
+    const keys: string[] = [
+      ...Object.keys(LIFT_TUNING),
+      ...Object.keys(LIFT_TUNING.FEEDBACK),
+      ...Object.keys(LIFT_TUNING.LAYOUT),
+      ...Object.keys(LIFT_TUNING.DEMO),
+    ];
+    const dead = keys.filter((key) => !sources.includes(key));
+    expect(dead, `unused tuning values: ${dead.join(', ')}`).toEqual([]);
+  });
+
   it('actually detects a bare number, so the scan is not vacuous', () => {
     expect(magicNumbersIn('const windowMs = 240;')).toEqual(['240']);
     expect(magicNumbersIn('const scale = 0.85;')).toEqual(['0.85']);

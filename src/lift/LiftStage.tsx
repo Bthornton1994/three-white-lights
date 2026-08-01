@@ -42,9 +42,12 @@ import { cueProgress, type LiftState } from '../game/lift';
 import { LIFT_PALETTE } from './liftPalette';
 import {
   SPRITE_BOX,
+  cuePulse,
   cueRing,
   frameKey,
+  hitFlash,
   liftFrameSpec,
+  stageShake,
   traceAlpha,
   traceX,
   traceY,
@@ -98,6 +101,10 @@ function tracePath(history: readonly LiftState[], from: number, to: number): SkP
 export function LiftStage({ state, history, totalKg }: LiftStageProps): React.ReactElement {
   const image = useSpriteImage(state, totalKg);
   const ring = cueRing(cueProgress(state));
+  const shake = stageShake(state);
+  const flash = hitFlash(state);
+  const pulse = cuePulse(state.tick);
+  const lastTiming = state.timings[state.timings.length - 1];
 
   // The trace is drawn as a few segments of increasing alpha rather than one
   // path per point: a Skia path per tick would be two hundred draw calls a
@@ -182,16 +189,18 @@ export function LiftStage({ state, history, totalKg }: LiftStageProps): React.Re
         />
       </Group>
 
-      {/* --- the lifter ----------------------------------------------- */}
-      <SkiaImage
-        image={image}
-        x={SPRITE_BOX.x}
-        y={SPRITE_BOX.y}
-        width={SPRITE_BOX.w}
-        height={SPRITE_BOX.h}
-        fit="fill"
-        sampling={{ filter: FilterMode.Nearest, mipmap: MipmapMode.None }}
-      />
+      {/* --- the lifter, shaken by whatever the bar is doing to him ---- */}
+      <Group transform={[{ translateX: shake.dx }, { translateY: shake.dy }]}>
+        <SkiaImage
+          image={image}
+          x={SPRITE_BOX.x}
+          y={SPRITE_BOX.y}
+          width={SPRITE_BOX.w}
+          height={SPRITE_BOX.h}
+          fit="fill"
+          sampling={{ filter: FilterMode.Nearest, mipmap: MipmapMode.None }}
+        />
+      </Group>
 
       {/* --- cue ring -------------------------------------------------- */}
       {ring === null ? null : (
@@ -211,8 +220,24 @@ export function LiftStage({ state, history, totalKg }: LiftStageProps): React.Re
             color={ring.inPerfectBand ? LIFT_PALETTE.CUE_PERFECT : LIFT_PALETTE.CUE}
             style="stroke"
             strokeWidth={F.CUE_RING_STROKE}
+            opacity={ring.inPerfectBand ? 1 : pulse}
           />
         </Group>
+      )}
+
+      {/* --- the flash left behind by an input that just landed -------- */}
+      {flash <= 0 || lastTiming === undefined ? null : (
+        <Circle
+          cx={L.CUE_X}
+          cy={L.CUE_Y}
+          r={F.CUE_RING_OUTER_R - (F.CUE_RING_OUTER_R - F.CUE_RING_INNER_R) * flash}
+          color={
+            lastTiming.grade === 'missed' ? LIFT_PALETTE.MISS : LIFT_PALETTE.CUE_PERFECT
+          }
+          style="stroke"
+          strokeWidth={F.CUE_RING_STROKE}
+          opacity={flash}
+        />
       )}
     </Canvas>
   );

@@ -31,8 +31,14 @@
  * currency, no boost, and no input that can be bought (GDD §8.1).
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 
 import {
   LIFT_COPY,
@@ -54,12 +60,60 @@ const OUTCOME_COLOUR: Record<LiftOutcome, string> = {
 };
 
 /**
+ * One judging light.
+ *
+ * Reanimated (CLAUDE.md, "Reanimated 3 for animation") rather than the sim
+ * clock, because this is the only motion on the screen that is NOT part of the
+ * rep: the rep has already resolved by the time it plays. Everything that
+ * belongs to the lift itself is driven by `stepLift` so it cannot drift out of
+ * step with the bar; a light coming up afterwards has nothing to stay in step
+ * with.
+ */
+function Light({
+  index,
+  lit,
+  colour,
+}: {
+  readonly index: number;
+  readonly lit: boolean;
+  readonly colour: string;
+}): React.ReactElement {
+  const progress = useSharedValue(0);
+  const f = LIFT_TUNING.FEEDBACK;
+
+  useEffect(() => {
+    progress.value = lit
+      ? withDelay(
+          index * f.LIGHT_REVEAL_STAGGER_MS,
+          withTiming(1, { duration: f.OUTCOME_FADE_MS }),
+        )
+      : withTiming(0, { duration: f.OUTCOME_FADE_MS });
+  }, [lit, index, progress, f.LIGHT_REVEAL_STAGGER_MS, f.OUTCOME_FADE_MS]);
+
+  const animated = useAnimatedStyle(() => ({
+    // Pops in slightly oversized and settles, which is what makes a light read
+    // as switching on rather than fading up.
+    transform: [{ scale: f.LIGHT_POP_SCALE - (f.LIGHT_POP_SCALE - 1) * progress.value }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        styles.light,
+        animated,
+        { backgroundColor: colour, borderColor: LIFT_PALETTE.LIGHT_EDGE },
+      ]}
+    />
+  );
+}
+
+/**
  * The three lights.
  *
- * A make is three whites, a miss is three reds. Real judging — split decisions,
- * the deliberation beat, depth cameras — is meet day (GDD §6.2) and belongs to
- * that piece; this is the payoff beat the isolated mechanic needs so a rep ends
- * with something rather than trailing off.
+ * A make is three whites, a miss is three reds, revealed one after another.
+ * Real judging — split decisions, the deliberation beat, depth cameras — is
+ * meet day (GDD §6.2) and belongs to that piece; this is the payoff beat the
+ * isolated mechanic needs so a rep ends with something rather than trailing off.
  */
 function Lights({ outcome }: { readonly outcome: LiftOutcome | null }): React.ReactElement {
   const colour =
@@ -71,13 +125,7 @@ function Lights({ outcome }: { readonly outcome: LiftOutcome | null }): React.Re
   return (
     <View style={styles.lights} testID="lift-lights">
       {[0, 1, 2].map((i) => (
-        <View
-          key={i}
-          style={[
-            styles.light,
-            { backgroundColor: colour, borderColor: LIFT_PALETTE.LIGHT_EDGE },
-          ]}
-        />
+        <Light key={i} index={i} lit={outcome !== null} colour={colour} />
       ))}
     </View>
   );
@@ -145,7 +193,7 @@ export function LiftScreen(): React.ReactElement {
             styles.prompt,
             resolution === null
               ? null
-              : { color: OUTCOME_COLOUR[resolution.outcome] },
+              : [styles.headline, { color: OUTCOME_COLOUR[resolution.outcome] }],
           ]}
           testID="lift-prompt"
         >
@@ -222,6 +270,10 @@ const styles = StyleSheet.create({
     fontSize: L.PROMPT_FONT,
     fontWeight: '700',
     letterSpacing: L.LETTER_SPACING,
+  },
+  /** The resolved call. Bigger than the prompt it replaces — it is the payoff. */
+  headline: {
+    fontSize: L.HEADLINE_FONT,
   },
   detail: {
     color: LIFT_PALETTE.TEXT_DIM,

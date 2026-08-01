@@ -53,7 +53,7 @@ import {
 import { pitchLevelForDriftPx, strainLevel } from '../art/rig';
 import { BAR_AND_COLLARS_KG } from '../art/plates';
 import type { LifterFrameSpec } from '../art/lifterSprite';
-import { LIFT_TUNING } from '../game/liftTuning';
+import { LIFT_TUNING, TICK_MS } from '../game/liftTuning';
 import type { LiftPhase, LiftState } from '../game/lift';
 
 function clamp(value: number, min: number, max: number): number {
@@ -243,6 +243,56 @@ export interface CueRing {
   readonly inPerfectBand: boolean;
   /** True once the window has opened. */
   readonly open: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Motion that is a pure function of the rep
+//
+// These are the animation curves GDD §12.1 expects to be hand-tuned. They are
+// functions of `LiftState` rather than of wall-clock time on purpose: the sim
+// is the clock, so a shake or a flash cannot drift out of step with the rep it
+// belongs to, and a replayed rep shakes identically.
+// ---------------------------------------------------------------------------
+
+export interface Shake {
+  readonly dx: number;
+  readonly dy: number;
+}
+
+/**
+ * Screen shake while the bar is being beaten.
+ *
+ * Amplitude is the live force deficit, so the platform shakes hardest exactly
+ * when the lifter is losing hardest, and not at all on a rep that never
+ * struggles. `SHAKE_MAX_PX` to zero disables it.
+ */
+export function stageShake(state: LiftState): Shake {
+  if (state.phase !== 'ASCENT' || state.netForce >= 0) return { dx: 0, dy: 0 };
+  const f = LIFT_TUNING.FEEDBACK;
+  const amount = clamp01(-state.netForce / LIFT_TUNING.STRUGGLE_FULL_DEFICIT) * f.SHAKE_MAX_PX;
+  const periodTicks = f.SHAKE_PERIOD_MS / TICK_MS;
+  const angle = (Math.PI * 2 * state.tick) / periodTicks;
+  return { dx: amount * Math.sin(angle), dy: amount * Math.cos(angle) / 2 };
+}
+
+/**
+ * 1 on the tick an input landed, falling to 0 over `HIT_FLASH_MS`.
+ *
+ * Reads the last recorded timing rather than an event, because events live for
+ * one tick and a flash has to outlive the tick that caused it.
+ */
+export function hitFlash(state: LiftState): number {
+  const last = state.timings[state.timings.length - 1];
+  if (last === undefined) return 0;
+  const elapsedMs = (state.tick - last.tick) * TICK_MS;
+  if (elapsedMs < 0) return 0;
+  return clamp01(1 - elapsedMs / LIFT_TUNING.FEEDBACK.HIT_FLASH_MS);
+}
+
+/** A 0..1 breathing pulse for the cue ring, so an open window reads as live. */
+export function cuePulse(tick: number): number {
+  const periodTicks = LIFT_TUNING.FEEDBACK.CUE_PULSE_MS / TICK_MS;
+  return (Math.sin((Math.PI * 2 * tick) / periodTicks) + 1) / 2;
 }
 
 /**

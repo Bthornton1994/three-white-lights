@@ -27,12 +27,15 @@ import {
   type LiftState,
   type ScriptedInput,
 } from '../game/lift';
-import { LIFT_TUNING, LOAD_PRESETS } from '../game/liftTuning';
+import { LIFT_TUNING, LOAD_PRESETS, TICK_MS } from '../game/liftTuning';
 import { QUANTISE, RESOLUTION, STRAIN } from '../art/spriteTuning';
 import { BAR_AND_COLLARS_KG } from '../art/plates';
 import {
   SPRITE_BOX,
+  cuePulse,
   cueRing,
+  hitFlash,
+  stageShake,
   directionFor,
   frameKey,
   liftFrameSpec,
@@ -352,6 +355,72 @@ describe('stage layout', () => {
 // ---------------------------------------------------------------------------
 // The cue ring
 // ---------------------------------------------------------------------------
+
+describe('motion driven by the rep', () => {
+  it('shakes the platform only while the bar is losing, and never off screen', () => {
+    const winning = rep(LOAD_PRESETS.LIGHT, true);
+    for (const state of winning) {
+      const shake = stageShake(state);
+      expect(Math.abs(shake.dx), 'a light rep must not shake').toBe(0);
+      expect(Math.abs(shake.dy)).toBe(0);
+    }
+    const losing = rep(LOAD_PRESETS.MAXIMAL, false);
+    let peak = 0;
+    for (const state of losing) {
+      const shake = stageShake(state);
+      peak = Math.max(peak, Math.abs(shake.dx));
+      expect(Math.abs(shake.dx)).toBeLessThanOrEqual(LIFT_TUNING.FEEDBACK.SHAKE_MAX_PX);
+      expect(Math.abs(shake.dy)).toBeLessThanOrEqual(LIFT_TUNING.FEEDBACK.SHAKE_MAX_PX);
+      if (state.phase !== 'ASCENT' || state.netForce >= 0) {
+        expect(Math.abs(shake.dx)).toBe(0);
+      }
+    }
+    expect(peak, 'a beaten bar must actually shake').toBeGreaterThan(0);
+  });
+
+  it('reverses the shake direction within a cycle, so it is a shake not a lean', () => {
+    const losing = rep(LOAD_PRESETS.MAXIMAL, false).filter(
+      (s) => s.phase === 'ASCENT' && s.netForce < 0,
+    );
+    const xs = losing.map((s) => stageShake(s).dx);
+    expect(Math.max(...xs)).toBeGreaterThan(0);
+    expect(Math.min(...xs)).toBeLessThan(0);
+  });
+
+  it('flashes on the tick an input lands and fades over the tuned window', () => {
+    const history = rep(LOAD_PRESETS.MAXIMAL, true);
+    const atInput = history.findIndex((s) => s.timings.length > 0);
+    expect(atInput).toBeGreaterThanOrEqual(0);
+    const at = history[atInput];
+    expect(at).toBeDefined();
+    if (at === undefined) return;
+    expect(hitFlash(at)).toBeCloseTo(1, 6);
+    const flashTicks = LIFT_TUNING.FEEDBACK.HIT_FLASH_MS / TICK_MS;
+    const later = history[atInput + Math.ceil(flashTicks) + 1];
+    if (later !== undefined && later.timings.length === at.timings.length) {
+      expect(hitFlash(later)).toBe(0);
+    }
+    // Nothing has landed yet at the start of a rep.
+    const first = history[0];
+    expect(first).toBeDefined();
+    if (first !== undefined) expect(hitFlash(first)).toBe(0);
+  });
+
+  it('pulses the cue ring across the full 0..1 range, on its tuned period', () => {
+    const periodTicks = LIFT_TUNING.FEEDBACK.CUE_PULSE_MS / TICK_MS;
+    const values: number[] = [];
+    for (let tick = 0; tick < Math.ceil(periodTicks) * 2; tick += 1) {
+      const v = cuePulse(tick);
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(1);
+      values.push(v);
+    }
+    expect(Math.max(...values)).toBeGreaterThan(0.9);
+    expect(Math.min(...values)).toBeLessThan(0.1);
+    // Periodic, not a ramp.
+    expect(cuePulse(0)).toBeCloseTo(cuePulse(periodTicks), 6);
+  });
+});
 
 describe('cueRing', () => {
   it('is absent when no cue is up', () => {
