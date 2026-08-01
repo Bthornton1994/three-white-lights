@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { PAL } from '../art/palette';
-import type { IndexGrid } from '../art/raster';
-import { buildResultCard, type ResultCard, type ResultCardInput } from '../game/resultCard';
+import { createGrid, type IndexGrid } from '../art/raster';
+import { NO_VALUE_DISPLAY, buildResultCard, type ResultCard, type ResultCardInput } from '../game/resultCard';
 import { createMeet, declareAttempt, resolveAttempt, type JudgePanel, type MeetState } from '../game/meet';
 import {
   BARBELL,
@@ -28,7 +28,7 @@ import {
 } from './renderResultCard';
 import { SHEET, findUnallocatedSheetIndices } from './sheetPalette';
 import { BOMBED_MEET_CARD, STRESS_MEET_CARD, STRONG_MEET_CARD } from './sampleCards';
-import { measureText } from './pixelFont';
+import { drawText, measureText } from './pixelFont';
 
 // ---------------------------------------------------------------------------
 // Pixel probes. Everything below asserts against the grid the renderer actually
@@ -75,6 +75,82 @@ function longestRunIn(grid: IndexGrid, rect: Rect, index: number): number {
 function cellRect(rowIndex: number, cellIndex: number): Rect {
   return { x: gridCellX(cellIndex), y: gridRowY(rowIndex), w: GRID.CELL_W, h: GRID.ROW_H };
 }
+
+/**
+ * The inside of a cell, with its 1px rim excluded on all four sides.
+ *
+ * THIS EXISTS BECAUSE OF A MUTANT THAT SURVIVED. The strike-through test used
+ * to measure the longest run of the cell's dark colour across the WHOLE cell —
+ * and the cell's own rim is that colour and spans the full width, so deleting
+ * the strike entirely left every assertion passing. Inside the rim, a long
+ * horizontal run of the dark colour can only be a strike.
+ */
+function cellInteriorRect(rowIndex: number, cellIndex: number): Rect {
+  const outer = cellRect(rowIndex, cellIndex);
+  const inset = GRID.CELL_INSET_X + 1;
+  const insetY = GRID.CELL_INSET_Y + 1;
+  return { x: outer.x + inset, y: outer.y + insetY, w: outer.w - 2 * inset, h: outer.h - 2 * insetY };
+}
+
+/**
+ * Assert that the ink inside `rect` is exactly what `text` draws there.
+ *
+ * THIS EXISTS BECAUSE OF A SECOND MUTANT THAT SURVIVED. Every assertion in
+ * this file used to be about colour and area, so a renderer that printed the
+ * THIRD ATTEMPT in the best column — 275 where 265 belongs — passed
+ * everything: the fill was right, the pixel count was close, and nothing
+ * checked which number it was. A results sheet whose best column is wrong is
+ * the single worst thing this piece could ship, so the check is now on the
+ * glyphs.
+ *
+ * It works by drawing the expected string into a blank grid with the same
+ * arguments the renderer uses, and comparing the ink masks. That is not a
+ * tautology as long as the EXPECTED STRING is written out by hand in the test,
+ * which it is.
+ */
+function expectTextIn(
+  grid: IndexGrid,
+  rect: Rect,
+  text: string,
+  x: number,
+  y: number,
+  index: number,
+  options: Parameters<typeof drawText>[5],
+  label: string,
+  /**
+   * A colour that is allowed to sit on top of the type. Only the strike-through
+   * does this: it crosses the digits by design, so three pixels of "275"
+   * legitimately come out the strike's colour instead of the ink's.
+   */
+  overdrawnBy?: number,
+): void {
+  const reference = createGrid(CARD.W, CARD.H, 0);
+  drawText(reference, text, x, y, index, options);
+  let mismatches = 0;
+  let inkPixels = 0;
+  for (let py = rect.y; py < rect.y + rect.h; py += 1) {
+    for (let px = rect.x; px < rect.x + rect.w; px += 1) {
+      const i = py * CARD.W + px;
+      const value = grid.data[i];
+      const expected = reference.data[i] === index;
+      if (expected) inkPixels += 1;
+      const actual = value === index || (expected && overdrawnBy !== undefined && value === overdrawnBy);
+      if (actual !== expected) mismatches += 1;
+    }
+  }
+  expect(inkPixels, `${label}: expected "${text}" to draw something`).toBeGreaterThan(0);
+  expect(mismatches, `${label}: pixels do not spell "${text}"`).toBe(0);
+}
+
+/** Where a number is drawn inside a grid cell, matching the renderer exactly. */
+function cellTextAnchor(rowIndex: number, cellIndex: number): { x: number; y: number } {
+  return {
+    x: gridCellX(cellIndex) + GRID.CELL_W - GRID.CELL_TEXT_PAD,
+    y: gridRowY(rowIndex) + GRID.ROW_TEXT_DY,
+  };
+}
+
+const TABULAR_RIGHT = { align: 'right', mode: 'tabular' } as const;
 
 const TOTAL_RECT: Rect = { x: 0, y: TOTAL_BLOCK.Y, w: CARD.W, h: TOTAL_BLOCK.H };
 const DOTS_RECT: Rect = { x: CONTENT.X, y: SCORE_BLOCKS.Y, w: SCORE_BLOCK_W, h: SCORE_BLOCKS.H };
@@ -186,21 +262,13 @@ describe('attempt cells, in pixels', () => {
   });
 
   it('strikes the missed attempt through, and only the missed one', () => {
-    // The strike is a horizontal run of the cell's dark rim colour across the
-    // number. The rim itself is only ever 1px of run at the cell edge going
-    // down, so a run this long can only be the strike.
-    const struck = longestRunIn(STRONG, cellRect(0, 2), SHEET.NOLIFT_DARK);
+    // Measured INSIDE the rim, so the rim's own full-width run cannot stand in
+    // for a strike that is not there — see `cellInteriorRect`.
+    const struck = longestRunIn(STRONG, cellInteriorRect(0, 2), SHEET.NOLIFT_DARK);
     expect(struck).toBeGreaterThanOrEqual(measureText('275', 'tabular'));
-    // A made attempt has a rim but no strike: its longest dark run is the
-    // cell's own top or bottom edge, which spans the whole cell — so check the
-    // interior instead, where a strike would have to live.
-    const madeInterior: Rect = {
-      x: gridCellX(0) + 3,
-      y: gridRowY(0) + 3,
-      w: GRID.CELL_W - 6,
-      h: GRID.ROW_H - 6,
-    };
-    expect(countIn(STRONG, madeInterior, SHEET.GOOD_DARK)).toBe(0);
+    // A made attempt has a rim but no strike, so its interior is clean.
+    expect(countIn(STRONG, cellInteriorRect(0, 0), SHEET.GOOD_DARK)).toBe(0);
+    expect(countIn(STRONG, cellInteriorRect(0, 1), SHEET.GOOD_DARK)).toBe(0);
   });
 
   it('leaves an attempt that was never taken with no cell at all', () => {
@@ -218,10 +286,73 @@ describe('attempt cells, in pixels', () => {
     for (const cellIndex of [0, 1, 2]) {
       const rect = cellRect(1, cellIndex);
       expect(countIn(BOMBED, rect, SHEET.NOLIFT_LIGHT), `bench ${cellIndex + 1}`).toBeGreaterThan(100);
-      expect(longestRunIn(BOMBED, rect, SHEET.NOLIFT_DARK), `bench ${cellIndex + 1} strike`).toBeGreaterThanOrEqual(
-        measureText('75', 'tabular'),
-      );
+      expect(
+        longestRunIn(BOMBED, cellInteriorRect(1, cellIndex), SHEET.NOLIFT_DARK),
+        `bench ${cellIndex + 1} strike`,
+      ).toBeGreaterThanOrEqual(measureText('75', 'tabular'));
     }
+  });
+
+  it('prints the right number in every attempt cell', () => {
+    const expected = [
+      ['250', '265', '275'],
+      ['160', '170', '177.5'],
+      ['280', '300', '312.5'],
+    ];
+    expected.forEach((row, rowIndex) => {
+      row.forEach((text, cellIndex) => {
+        const anchor = cellTextAnchor(rowIndex, cellIndex);
+        expectTextIn(
+          STRONG,
+          cellRect(rowIndex, cellIndex),
+          text,
+          anchor.x,
+          anchor.y,
+          SHEET.INK,
+          TABULAR_RIGHT,
+          `attempt ${rowIndex}.${cellIndex}`,
+          SHEET.NOLIFT_DARK,
+        );
+      });
+    });
+  });
+
+  it('prints the BEST of the lift in the best column, not the last attempt', () => {
+    // Squat: made 250 and 265, MISSED 275. The best column says 265. A
+    // renderer reading the third attempt instead would say 275 here and look
+    // entirely plausible.
+    const BEST_COLUMN = GRID.CELL_COUNT - 1;
+    const expected = ['265', '177.5', '312.5'];
+    expected.forEach((text, rowIndex) => {
+      const anchor = cellTextAnchor(rowIndex, BEST_COLUMN);
+      expectTextIn(
+        STRONG,
+        cellRect(rowIndex, BEST_COLUMN),
+        text,
+        anchor.x,
+        anchor.y,
+        SHEET.INK,
+        TABULAR_RIGHT,
+        `best ${rowIndex}`,
+      );
+    });
+  });
+
+  it('prints a dash, not a zero, in the best column of a bombed lift', () => {
+    const BEST_COLUMN = GRID.CELL_COUNT - 1;
+    const anchor = cellTextAnchor(1, BEST_COLUMN);
+    expectTextIn(
+      BOMBED,
+      cellRect(1, BEST_COLUMN),
+      NO_VALUE_DISPLAY,
+      anchor.x,
+      anchor.y,
+      SHEET.INK_SOFT,
+      TABULAR_RIGHT,
+      'bombed best',
+    );
+    // ...and no full-strength ink at all, which is what a digit would be.
+    expect(countIn(BOMBED, cellRect(1, BEST_COLUMN), SHEET.INK)).toBe(0);
   });
 
   it('keeps every cell inside its own column', () => {
@@ -281,7 +412,11 @@ describe('the barbell', () => {
     expect(countIn(STRONG, BARBELL_RECT, PAL.PLATE_RED_LIGHT)).toBeGreaterThan(0);
   });
 
-  it('loads the SQUAT when that was the heaviest thing made, not the last lift', () => {
+  it('loads the HEAVIEST lift, not the last one', () => {
+    // The stress card squats 440 and deadlifts 400, so "heaviest" and "last"
+    // disagree — which is the only way to tell the two rules apart.
+    expect(STRESS_MEET_CARD.rows[2].bestKg).toBe(400);
+    expect(heaviestGoodLift(STRESS_MEET_CARD)).toEqual({ label: 'SQUAT', kg: 440, text: '440' });
     expect(heaviestGoodLift(BOMBED_MEET_CARD)).toEqual({ label: 'SQUAT', kg: 145, text: '145' });
     expect(plateCount(BOMBED)).toBeGreaterThan(20);
   });
