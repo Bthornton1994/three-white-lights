@@ -130,9 +130,9 @@
       "id": "M5",
       "name": "Fatigue / readiness",
       "bar": "Plausible game-feel abstraction. No visible fatigue meter (§12.3).",
-      "status": "grading",
+      "status": "failed",
       "verifiable": true,
-      "note": "Rework merged. The send-back was that consistency itself accrued injury risk — a player training daily carried strictly more risk than one training every other day at matched effort, which is GDD §12.3's refusal condition on punishing daily engagement. The fix was structural, not a retune: the residual-attendance term was deleted outright rather than zeroed, so injury probability now reads the strain of the session in front of it. Measured after: 0 injuries daily vs 0 every-other-day, was 6 vs 0. Full suite 731 green, tsc clean. A fresh critic is grading it now and has been asked to re-run that daily-vs-intermittent comparison itself rather than take the claim."
+      "note": "SENT BACK by a fresh critic — on the tests, not the model. The critic cleared the model itself: both live §12.3 refusal conditions are genuinely clear (no export returns a fatigue level, the one internal scalar sits behind a non-exported unique symbol, and injuryProbability takes no state/day/streak parameter at all), and it re-derived the daily-vs-intermittent comparison by hand rather than taking the claim — daily 6 setbacks per 40 sessions vs 10 every-other-day vs 14 every-third-day, so the day-counted immunity window makes the daily player strictly better off. What it caught is two tests that are blind by construction. I verified both by mutation rather than accepting the reading: delete the technique-relief term and all 731 tests still pass; delete the physio shortening and all 74 fatigue tests still pass. A test titled \"technique points reduce risk\" whose assertions survive technique doing nothing is the ninth blind suite this run. Builder fixing the tests only."
     },
     {
       "id": "M6",
@@ -160,9 +160,9 @@
       "id": "L1",
       "name": "Lift input mechanic",
       "bar": "The lift must feel good (GDD pillar 1).",
-      "status": "pending",
+      "status": "building",
       "verifiable": false,
-      "note": "Feel is not judgeable by any critic — GDD §12.1 says so outright. Deliverable is a tunable artifact, not a verdict."
+      "note": "Dispatched. GDD §10 Prototype 1 is the gate everything rests on — if grinding a squat out of the hole is not satisfying the project stops — and §2.3 notes meet day reuses the same mechanic. Scope: pure src/game/lift.ts with colocated tests, Skia bar-path rendering, and wired into App.tsx so the thing is finally openable. Every timing window, velocity curve and grind threshold in one named block marked UNTUNED, because feel cannot be judged from here."
     },
     {
       "id": "A1",
