@@ -1126,49 +1126,242 @@ interface SimResult {
 }
 
 /**
+ * WHEN THE STREAK GETS LOOKED AT. This is not a cosmetic detail of the harness:
+ * `currentStreak` is only correct as of the last day someone opened the day on
+ * it, because a run that has already died stays on the state until `openDay`
+ * plus `settleBrokenStreak` records the fact. Comparing two states settled to
+ * different days compares a live number against a stale one.
+ *
+ *   - `'daily'` — something opens every day, which is what a server-side
+ *     nightly job does. The state is always settled to the current day.
+ *   - `'on-training-days'` — the state is only ever looked at when the player
+ *     turns up to train, which is what a pure client with no job behind it
+ *     does. Between sessions the streak on the state is arbitrarily stale.
+ */
+type AppOpeningModel = 'daily' | 'on-training-days';
+
+/**
  * Replays a history of consecutive days. `attend[i]` is whether the player
  * trained on day i; `grantOn[i]` whether a one-Recovery-Day grant lands that
  * morning. Breaks with no possible save are settled, exactly as an app would.
+ *
+ * `opens` defaults to `'daily'`. `settleAtEnd` opens the final day one last
+ * time so the returned state is settled rather than stale — see
+ * `AppOpeningModel`, and the staleness test that shows what it is worth.
  */
 function simulate(
   attend: readonly boolean[],
   grantOn: readonly boolean[],
   policy: OfferPolicy,
   initial: StreakState,
+  opens: AppOpeningModel = 'daily',
+  settleAtEnd = false,
 ): SimResult {
   let state = initial;
   let spent = 0;
+  const openAndResolve = (from: StreakState, day: StreakDay): StreakState => {
+    const opening = openDay(from, day);
+    if (opening.kind === 'recovery-day-offered') {
+      if (policy === 'accept') {
+        const outcome = unwrap(acceptRecoveryDayOffer(from, opening.offer));
+        spent += outcome.recoveryDaysSpent;
+        return outcome.state;
+      }
+      return unwrap(declineRecoveryDayOffer(from, opening.offer)).state;
+    }
+    if (opening.kind === 'streak-broken') {
+      return unwrap(settleBrokenStreak(from, day)).state;
+    }
+    return from;
+  };
+
   for (let i = 0; i < attend.length; i += 1) {
     const day = addDays(DAY_ZERO, i);
     if (grantOn[i] === true) {
       state = unwrap(grantRecoveryDays(state, { source: 'purchase-chalk', amount: 1 })).state;
     }
-    const opening = openDay(state, day);
-    if (opening.kind === 'recovery-day-offered') {
-      if (policy === 'accept') {
-        const outcome = unwrap(acceptRecoveryDayOffer(state, opening.offer));
-        spent += outcome.recoveryDaysSpent;
-        state = outcome.state;
-      } else {
-        state = unwrap(declineRecoveryDayOffer(state, opening.offer)).state;
-      }
-    } else if (opening.kind === 'streak-broken') {
-      state = unwrap(settleBrokenStreak(state, day)).state;
+    if (opens === 'daily' || attend[i] === true) {
+      state = openAndResolve(state, day);
     }
     if (attend[i] === true) {
       const before = state.recoveryDayBalance;
       const outcome = unwrap(recordTrainingDay(state, day));
       // Local invariant, checked on every single recorded session in every
       // simulation below: showing up never costs a Recovery Day.
-      expect(outcome.state.recoveryDayBalance).toBeGreaterThanOrEqual(before);
-      expect(outcome.streakAfter).toBeGreaterThanOrEqual(1);
+      //
+      // A bare throw rather than `expect`, and the reason is not style: the
+      // exhaustive maximisation sweep runs this line a few million times, and
+      // `expect` is expensive enough to turn that test from half a second into
+      // half a minute. A thrown Error fails just as loudly.
+      if (outcome.state.recoveryDayBalance < before) {
+        throw new Error(
+          `training on day ${i} reduced the Recovery Day balance from ${before} to ${outcome.state.recoveryDayBalance}`,
+        );
+      }
+      if (outcome.streakAfter < 1) {
+        throw new Error(`training on day ${i} left a streak of ${outcome.streakAfter}`);
+      }
       state = outcome.state;
     }
+  }
+  if (settleAtEnd && attend.length > 0) {
+    state = openAndResolve(state, addDays(DAY_ZERO, attend.length - 1));
   }
   return { state, recoveryDaysSpent: spent };
 }
 
-describe('daily engagement is never worse than skipping', () => {
+/**
+ * Parameters of the search for the accept-policy inversion below, and the
+ * figures that search returned. They are not game feel — they describe how hard
+ * this file looks for the worst case, and what it found at the tunables
+ * `streak.ts` currently ships.
+ *
+ * EVERY NUMBER IN `WORST_DELTA_BY_LENGTH` MOVES IF `RECOVERY_DAY_GUARDRAILS` OR
+ * `STREAK_MILESTONE_DAYS` MOVE, and that is deliberate. Retuning the guardrails
+ * changes how badly an accepting player can be punished for training more, so
+ * it should break this test and force someone to re-read the new number rather
+ * than change it quietly.
+ */
+const INVERSION_SEARCH = {
+  /** Recovery Days both simulated players start on. */
+  STARTING_BALANCE: 2,
+
+  /** History lengths the exhaustive maximisation sweeps. All 2^L of each. */
+  EXHAUSTIVE_LENGTHS: [8, 9, 10, 11, 12, 13, 14],
+
+  /**
+   * Largest `currentStreak` deficit one extra training day can cause, over
+   * every history of each length above, counting only pairs where both players
+   * spent the SAME number of Recovery Days. Found by search, not derived.
+   */
+  WORST_DELTA_BY_LENGTH: [3, 4, 5, 5, 6, 7, 8],
+
+  /**
+   * Run lengths the constructive family below is instantiated at. None of them
+   * is a milestone or one day short of one — `inversionHistories` refuses those
+   * and says why.
+   */
+  FAMILY_RUN_LENGTHS: [8, 19, 31, 50, 101, 365, 1000],
+} as const;
+
+/**
+ * The measured size of the monotonicity defect, over every 13-day calendar,
+ * from a state built by `createStreakState()`.
+ *
+ * A "violation" is a pair of calendars identical except that one has one extra
+ * trained day, where the player who trained MORE ends on a strictly LOWER
+ * `currentStreak`, under a player who accepts every offer.
+ *
+ * BOTH APP-OPENING MODELS ARE MEASURED because the count depends on which one
+ * you use, and a measurement that does not say which is not reproducible. Both
+ * settle the final day before comparing; see the staleness test for what
+ * happens if you do not.
+ *
+ * THESE COUNTS MOVE IF THE TUNABLES MOVE. That is the point of pinning them.
+ */
+const MONOTONICITY_MEASUREMENT = {
+  /** Calendar length swept exhaustively — all 2^13 of them. */
+  CALENDAR_LENGTH: 13,
+
+  /** Violating pairs when something opens the day every day (a nightly job). */
+  VIOLATIONS_OPENING_DAILY: 1948,
+
+  /** Violating pairs when only the player's own sessions open the day. */
+  VIOLATIONS_OPENING_ON_TRAINING_DAYS: 4250,
+
+  /**
+   * Largest `currentStreak` deficit found at this calendar length. The same
+   * pair is worst under both opening models.
+   */
+  WORST_DEFICIT: 6,
+
+  /**
+   * Violations of the invariant the user asked for — a player who spent
+   * Recovery Days against one who trained fewer days and spent NONE. Zero, and
+   * not by luck; see the regression-guard test for why it is structural.
+   */
+  VIOLATIONS_AGAINST_A_ZERO_SPEND_COMPARATOR: 0,
+} as const;
+
+/**
+ * Builds the two histories of the inversion family. They are identical except
+ * that the diligent player ALSO trains on day 0 — one extra session, nothing
+ * else.
+ *
+ * `runLost` is the streak the lazy player is carrying when the diligent
+ * player's run dies (the diligent player's own run is one longer, since it
+ * includes day 0). `runRebuilt` is how many days both then train afterwards.
+ *
+ * THE SHAPE. The diligent player trains day 0 and is offered a Recovery Day for
+ * the gap that follows — an offer the lazy player, holding no live run, is
+ * never shown. Accepting it is the only decision the two players make
+ * differently, and from there the histories are identical, so every later offer
+ * goes to both: the diligent player is simply one Recovery Day poorer, forever.
+ * Single missed days are then placed to draw both banks down — one immediately,
+ * and one after each milestone payout that lands inside the run — until the
+ * lazy player holds exactly one Recovery Day and the diligent player holds
+ * none. The next single missed day is covered for the lazy player and fatal for
+ * the diligent one.
+ */
+function inversionHistories(
+  runLost: number,
+  runRebuilt: number,
+): { readonly lazy: boolean[]; readonly diligent: boolean[] } {
+  if (runLost < 2 || runRebuilt < 1) {
+    throw new Error('inversionHistories: runLost must be at least 2 and runRebuilt at least 1');
+  }
+  if (STREAK_MILESTONE_DAYS.includes(runLost + 1)) {
+    throw new Error(
+      `inversionHistories: a run of ${runLost} stops one day short of a milestone, so the ` +
+        'diligent player collects a payout the lazy player does not and the deficit cancels',
+    );
+  }
+  if (STREAK_MILESTONE_DAYS.includes(runLost)) {
+    throw new Error(
+      `inversionHistories: a run of exactly ${runLost} ends on a milestone, leaving no room for ` +
+        'the trained day that keeps the draw-down gap and the fatal gap from running together',
+    );
+  }
+
+  const lazy: boolean[] = [];
+  lazy.push(false); // day 0 — the one divergent day; the diligent player trains it
+  lazy.push(false); // day 1 — the gap only the diligent player is offered a save for
+  lazy.push(true); // both start (or restart) their run here
+  let lazyStreak = 1;
+  lazy.push(false); // first draw-down gap: lazy balance 2 -> 1, diligent 1 -> 0
+
+  for (const milestone of STREAK_MILESTONE_DAYS) {
+    if (milestone > runLost) break;
+    while (lazyStreak < milestone) {
+      lazy.push(true);
+      lazyStreak += 1;
+    }
+    lazy.push(false); // draw down the milestone payout that just landed for both
+    // Every gap in this family is exactly one day long, which is what lets the
+    // family rule out "charge per gap rather than per missed day" as a fix.
+    // That needs a trained day between consecutive gaps, including between the
+    // last draw-down and the fatal gap.
+    lazy.push(true);
+    lazyStreak += 1;
+  }
+
+  while (lazyStreak < runLost) {
+    lazy.push(true);
+    lazyStreak += 1;
+  }
+  lazy.push(false); // the fatal gap: covered for the lazy player, uncoverable for the other
+  for (let i = 0; i < runRebuilt; i += 1) lazy.push(true);
+
+  return { lazy, diligent: lazy.map((trained, i) => (i === 0 ? true : trained)) };
+}
+
+const trainedDayCount = (history: readonly boolean[]): number => history.filter(Boolean).length;
+
+/** `T` trained, `.` idle — so a failing case names itself in the error. */
+const renderCalendar = (history: readonly boolean[]): string =>
+  history.map((trained) => (trained ? 'T' : '.')).join('');
+
+describe('daily engagement is never worse than skipping — where that holds, and where it does not', () => {
   it('training today beats skipping today, step by step, from any live state', () => {
     // The local form of the rule: at a single decision point, training
     // dominates not-training on every field that matters.
@@ -1206,11 +1399,15 @@ describe('daily engagement is never worse than skipping', () => {
     );
   });
 
-  it('PROPERTY, EXHAUSTIVE: over every 10-day history, training an extra day never loses ground', () => {
+  it('PROPERTY, EXHAUSTIVE, DECLINE-ONLY: over every 10-day history in which no offer is ever accepted, training an extra day never loses ground', () => {
     // The strong form, checked over ALL 2^10 attendance patterns rather than a
     // sample, with the player never spending a Recovery Day. This is the
     // streak mechanic on its own: no spending, so nothing but showing up moves
     // the numbers, and showing up more must never move them down.
+    //
+    // THE NAME SAYS "DECLINE-ONLY" BECAUSE THAT IS THE WHOLE OF WHAT IS
+    // CHECKED. Under the accept policy this property is FALSE, by an unbounded
+    // margin — see the KNOWN GAP tests below.
     const LENGTH = 10;
     const initial: StreakState = { ...createStreakState(), recoveryDayBalance: 2 };
     const noGrants = Array.from({ length: LENGTH }, () => false);
@@ -1235,7 +1432,10 @@ describe('daily engagement is never worse than skipping', () => {
     expect(casesChecked).toBe(5120);
   });
 
-  it('PROPERTY: holds over long randomised histories with grants landing mid-run', () => {
+  it('PROPERTY, DECLINE-ONLY: holds over long randomised histories with grants landing mid-run', () => {
+    // Same policy restriction as the sweep above, and for the same reason: this
+    // simulates a player who declines every offer. Nothing here says anything
+    // about a player who accepts.
     const random = mulberry32(0x5eed_1eaf);
     const initial: StreakState = { ...createStreakState(), recoveryDayBalance: 2 };
     let casesChecked = 0;
@@ -1265,11 +1465,17 @@ describe('daily engagement is never worse than skipping', () => {
     expect(casesChecked).toBeGreaterThan(350);
   });
 
-  it('KNOWN GAP: a player who accepts every offer can be left worse off by training more', () => {
+  it('KNOWN GAP, MINIMAL CASE: a player who accepts every offer can be left worse off by training more', () => {
     // NOT a passing property dressed up as a caveat. This is a real hole in the
     // strong form of "daily engagement is never worse than skipping", pinned as
     // a test so it is visible and cannot change silently. A human has to decide
     // whether to accept it; nothing in this module fixes it.
+    //
+    // THIS IS THE SMALLEST CASE THAT EXISTS, NOT A REPRESENTATIVE ONE. Read it
+    // on its own and a best streak of 2 against 1 looks like a rounding
+    // artifact of an eleven-day toy history. It is not: the three tests that
+    // follow take the same mechanism to 37 against 18, then to 2001 against
+    // 1001, then search for a ceiling and fail to find one.
     //
     // MECHANISM. Recovery Days are finite and only a LIVE run generates offers.
     // Training an extra day early keeps a run alive that the lazier history had
@@ -1296,6 +1502,315 @@ describe('daily engagement is never worse than skipping', () => {
     // The diligent player trained on strictly more days and ended with a
     // strictly shorter best streak. Recorded, not excused.
     expect(diligent.state.longestStreak).toBeLessThan(lazy.state.longestStreak);
+  });
+
+  it('KNOWN GAP AT REALISTIC SCALE: 37 trained days end on a 37-day streak, 38 end on an 18-day one', () => {
+    // The same mechanism as the minimal case, at a scale a player would
+    // actually reach. Six weeks of training, one extra session, both players
+    // accepting every offer and spending exactly the same number of Recovery
+    // Days — and nineteen days' difference on the home-screen counter.
+    const initial: StreakState = {
+      ...createStreakState(),
+      recoveryDayBalance: INVERSION_SEARCH.STARTING_BALANCE,
+    };
+    const { lazy: lazyHistory, diligent: diligentHistory } = inversionHistories(19, 18);
+    const noGrants = Array.from({ length: lazyHistory.length }, () => false);
+
+    const lazy = simulate(lazyHistory, noGrants, 'accept', initial);
+    const diligent = simulate(diligentHistory, noGrants, 'accept', initial);
+
+    // One extra session, and nothing else different about the two histories.
+    expect(trainedDayCount(lazyHistory)).toBe(37);
+    expect(trainedDayCount(diligentHistory)).toBe(38);
+    expect(diligentHistory.filter((trained, i) => trained !== lazyHistory[i])).toEqual([true]);
+
+    expect(lazy.state.currentStreak).toBe(37);
+    expect(diligent.state.currentStreak).toBe(18);
+    expect(lazy.state.longestStreak).toBe(37);
+    expect(diligent.state.longestStreak).toBe(20);
+
+    // Not explained by the diligent player having used more of the bank: the
+    // two spend the same, and it is WHEN the diligent player was able to spend
+    // — on a one-day streak nobody would decline — that costs them.
+    expect(diligent.recoveryDaysSpent).toBe(lazy.recoveryDaysSpent);
+    expect(lazy.recoveryDaysSpent).toBe(3);
+  });
+
+  it('KNOWN GAP HAS NO CEILING: the deficit is exactly the run the diligent player loses, at any run length', () => {
+    // The answer to "how much shorter can it get" is: as short as you like.
+    // The deficit equals the length of the run that dies, so it scales with how
+    // long the player has been training, while the Recovery Days that buy it
+    // stay capped by what the module can ever grant.
+    const initial: StreakState = {
+      ...createStreakState(),
+      recoveryDayBalance: INVERSION_SEARCH.STARTING_BALANCE,
+    };
+    const lifetimeFreeIncome = INVERSION_SEARCH.STARTING_BALANCE + STREAK_MILESTONE_DAYS.length;
+
+    for (const runLost of INVERSION_SEARCH.FAMILY_RUN_LENGTHS) {
+      const runRebuilt = runLost + 1;
+      const { lazy: lazyHistory, diligent: diligentHistory } = inversionHistories(runLost, runRebuilt);
+      const noGrants = Array.from({ length: lazyHistory.length }, () => false);
+
+      const lazy = simulate(lazyHistory, noGrants, 'accept', initial);
+      const diligent = simulate(diligentHistory, noGrants, 'accept', initial);
+
+      expect(trainedDayCount(diligentHistory)).toBe(trainedDayCount(lazyHistory) + 1);
+      // The lazy player's run never breaks, so every session they logged is in
+      // the streak they finish on. This is what makes the table in the
+      // `streak.ts` header read "trains 101 days -> streak 101" and be exact.
+      expect(trainedDayCount(lazyHistory)).toBe(lazy.state.currentStreak);
+      expect(lazy.state.currentStreak).toBe(runLost + runRebuilt);
+      expect(diligent.state.currentStreak).toBe(runRebuilt);
+      expect(lazy.state.currentStreak - diligent.state.currentStreak).toBe(runLost);
+      expect(lazy.state.longestStreak - diligent.state.longestStreak).toBe(runLost);
+
+      // The cost is bounded even though the damage is not: both players spend
+      // the same, and neither spends more than the whole free-path income this
+      // module hands out in a lifetime.
+      expect(diligent.recoveryDaysSpent).toBe(lazy.recoveryDaysSpent);
+      expect(lazy.recoveryDaysSpent).toBeLessThanOrEqual(lifetimeFreeIncome);
+
+      // Backs a claim in the `streak.ts` header: charging one Recovery Day per
+      // GAP instead of per missed day would change nothing about this family,
+      // because every gap in it is already exactly one day long. Checked here
+      // rather than asserted in prose.
+      const firstTrainedDay = lazyHistory.indexOf(true);
+      let idleRun = 0;
+      for (let i = firstTrainedDay; i < lazyHistory.length; i += 1) {
+        idleRun = lazyHistory[i] === true ? 0 : idleRun + 1;
+        expect(idleRun).toBeLessThanOrEqual(1);
+      }
+    }
+
+    // Stated as a claim rather than left implicit in the loop: the largest
+    // deficit this file demonstrates is a thousand days, and nothing about the
+    // construction stops at a thousand.
+    expect(Math.max(...INVERSION_SEARCH.FAMILY_RUN_LENGTHS)).toBe(1000);
+  });
+
+  it('KNOWN GAP, EXHAUSTIVE MAXIMISATION: the worst deficit grows with the length of the history rather than settling', () => {
+    // The same machinery that found the minimal case, run the other way. Over
+    // ALL 2^L histories at each length, and every way of turning one skipped
+    // day into a trained one, this is the largest `currentStreak` deficit an
+    // accepting player can suffer for the extra session.
+    //
+    // Pairs where the two players spent different numbers of Recovery Days are
+    // skipped, so nothing counted here is explained away as "they used more of
+    // the bank". The figures are pinned in INVERSION_SEARCH.
+    const initial: StreakState = {
+      ...createStreakState(),
+      recoveryDayBalance: INVERSION_SEARCH.STARTING_BALANCE,
+    };
+    const worstByLength: number[] = [];
+
+    for (const length of INVERSION_SEARCH.EXHAUSTIVE_LENGTHS) {
+      const noGrants = Array.from({ length }, () => false);
+      let worst = 0;
+      for (let mask = 0; mask < 1 << length; mask += 1) {
+        const attend = Array.from({ length }, (_, i) => (mask & (1 << i)) !== 0);
+        const lazy = simulate(attend, noGrants, 'accept', initial);
+        for (let flip = 0; flip < length; flip += 1) {
+          if (attend[flip] === true) continue;
+          const attendMore = attend.map((trained, i) => (i === flip ? true : trained));
+          const diligent = simulate(attendMore, noGrants, 'accept', initial);
+          if (diligent.recoveryDaysSpent !== lazy.recoveryDaysSpent) continue;
+          worst = Math.max(worst, lazy.state.currentStreak - diligent.state.currentStreak);
+        }
+      }
+      worstByLength.push(worst);
+    }
+
+    expect(worstByLength).toEqual([...INVERSION_SEARCH.WORST_DELTA_BY_LENGTH]);
+    // Six more days of history, five more days of deficit. There is no ceiling
+    // in this range, which is what the constructive family above then confirms
+    // has no ceiling at all.
+    const first = worstByLength[0] as number;
+    const last = worstByLength[worstByLength.length - 1] as number;
+    expect(last - first).toBe(5);
+  });
+
+  it('REGRESSION GUARD (this already passes): N Recovery Days used never ends below a player who trained fewer days and used none', () => {
+    // THE INVARIANT AS ASKED FOR, AND IT HOLDS TODAY. This is a guard against a
+    // future change, not a reproduction of a bug — nothing here is currently
+    // broken and the test is not contrived to look otherwise.
+    //
+    // WHY IT HOLDS, so the guard is understood rather than merely green: the
+    // comparator spends nothing, so the comparator's run is exactly its own
+    // trailing block of consecutive trained days. The player being compared
+    // trained every one of those days too, and Recovery Days only ever EXTEND a
+    // run backwards across a gap — `acceptRecoveryDayOffer` never touches
+    // `currentStreak`, it only sets `recoveredThroughDay`. So their live run
+    // contains the comparator's, and cannot be shorter.
+    //
+    // Swept over every 13-day calendar A, every sub-calendar B of A (B trains a
+    // strict subset of A's days), keeping only the pairs where B spent nothing,
+    // at every starting balance from 0 to the hold cap so that every N from 0
+    // to HOLD_CAP is actually exercised rather than assumed.
+    const LENGTH = 11;
+    const noGrants = Array.from({ length: LENGTH }, () => false);
+    const spendCountsExercised = new Set<number>();
+    let pairsChecked = 0;
+    let violations = 0;
+
+    for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
+      const initial: StreakState = { ...createStreakState(), recoveryDayBalance: balance };
+      const results: SimResult[] = [];
+      for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
+        const attend = Array.from({ length: LENGTH }, (_, i) => (mask & (1 << i)) !== 0);
+        const result = simulate(attend, noGrants, 'accept', initial, 'daily', true);
+        results.push(result);
+        spendCountsExercised.add(result.recoveryDaysSpent);
+      }
+
+      for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
+        const usedRecoveryDays = results[mask] as SimResult;
+        // Every proper submask: a player who trained a strict subset of A's days.
+        for (let sub = (mask - 1) & mask; sub > 0; sub = (sub - 1) & mask) {
+          const usedNone = results[sub] as SimResult;
+          if (usedNone.recoveryDaysSpent !== 0) continue;
+          pairsChecked += 1;
+          if (usedRecoveryDays.state.currentStreak < usedNone.state.currentStreak) violations += 1;
+        }
+      }
+    }
+
+    expect(violations).toBe(0);
+    expect(pairsChecked).toBeGreaterThan(100_000);
+    // "For all N up to the hold cap" is only meaningful if the sweep reached
+    // every N. Asserted rather than hoped for.
+    for (let n = 0; n <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; n += 1) {
+      expect(spendCountsExercised.has(n)).toBe(true);
+    }
+  });
+
+  it('BOUND THAT DOES HOLD: on your own calendar, accepting every offer is never worse than declining every offer', () => {
+    // The practically meaningful guarantee, and the closest thing to the
+    // requested property that is actually true. A player cannot be punished for
+    // saying yes to the prompt GDD §4.2 shows them: for a FIXED calendar,
+    // always-accept never ends on a lower current or longest streak than
+    // always-decline. Exhaustive over every 13-day calendar, under both
+    // app-opening models, then over long randomised ones.
+    //
+    // What this does NOT say is that training an extra day is safe — that is
+    // the KNOWN GAP above, and it is a comparison between two DIFFERENT
+    // calendars, not between two answers to the same prompt.
+    const initial = createStreakState();
+    const LENGTH = MONOTONICITY_MEASUREMENT.CALENDAR_LENGTH;
+    const noGrants = Array.from({ length: LENGTH }, () => false);
+    let checked = 0;
+
+    for (const opens of ['daily', 'on-training-days'] as const) {
+      for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
+        const attend = Array.from({ length: LENGTH }, (_, i) => (mask & (1 << i)) !== 0);
+        const accepting = simulate(attend, noGrants, 'accept', initial, opens, true);
+        const declining = simulate(attend, noGrants, 'decline', initial, opens, true);
+        checked += 1;
+        if (accepting.state.currentStreak < declining.state.currentStreak) {
+          throw new Error(`accepting lost ground on ${renderCalendar(attend)} (opens=${opens})`);
+        }
+        if (accepting.state.longestStreak < declining.state.longestStreak) {
+          throw new Error(`accepting lost best streak on ${renderCalendar(attend)} (opens=${opens})`);
+        }
+      }
+    }
+    expect(checked).toBe(2 * (1 << LENGTH));
+
+    const random = mulberry32(0xacce_9701);
+    for (let trial = 0; trial < 500; trial += 1) {
+      const length = 35 + Math.floor(random() * 26);
+      const attendance = 0.2 + random() * 0.75;
+      const attend = Array.from({ length }, () => random() < attendance);
+      const grants = Array.from({ length }, () => false);
+      const accepting = simulate(attend, grants, 'accept', initial, 'daily', true);
+      const declining = simulate(attend, grants, 'decline', initial, 'daily', true);
+      expect(accepting.state.currentStreak).toBeGreaterThanOrEqual(declining.state.currentStreak);
+      expect(accepting.state.longestStreak).toBeGreaterThanOrEqual(declining.state.longestStreak);
+    }
+  });
+
+  it('KNOWN GAP, MEASURED: how many 13-day calendars an extra training day makes worse, under both app-opening models', () => {
+    // The general monotonicity property, driven over the whole calendar space
+    // rather than one pattern, with the count pinned so the size of the defect
+    // is on the record and cannot drift silently.
+    //
+    // ROOT CAUSE. Idle days BEFORE a run exists are free — `lastCoveredDay` is
+    // null, so `daysMissedBefore` returns 0 and no offer is made. Idle days
+    // INSIDE a live run cost Recovery Days. An extra training day converts the
+    // first kind into the second, drains a finite pool, and leaves a later gap
+    // uncoverable, so a run dies that would otherwise have survived.
+    const initial = createStreakState();
+    const LENGTH = MONOTONICITY_MEASUREMENT.CALENDAR_LENGTH;
+    const noGrants = Array.from({ length: LENGTH }, () => false);
+    const counts: number[] = [];
+    let worstDeficit = 0;
+    let violationsAgainstZeroSpend = 0;
+
+    for (const opens of ['daily', 'on-training-days'] as const) {
+      const results: SimResult[] = [];
+      for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
+        const attend = Array.from({ length: LENGTH }, (_, i) => (mask & (1 << i)) !== 0);
+        results.push(simulate(attend, noGrants, 'accept', initial, opens, true));
+      }
+
+      let violations = 0;
+      for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
+        const lazy = results[mask] as SimResult;
+        for (let flip = 0; flip < LENGTH; flip += 1) {
+          if ((mask & (1 << flip)) !== 0) continue;
+          const diligent = results[mask | (1 << flip)] as SimResult;
+          const deficit = lazy.state.currentStreak - diligent.state.currentStreak;
+          if (deficit <= 0) continue;
+          violations += 1;
+          worstDeficit = Math.max(worstDeficit, deficit);
+          if (lazy.recoveryDaysSpent === 0) violationsAgainstZeroSpend += 1;
+        }
+      }
+      counts.push(violations);
+    }
+
+    expect(counts).toEqual([
+      MONOTONICITY_MEASUREMENT.VIOLATIONS_OPENING_DAILY,
+      MONOTONICITY_MEASUREMENT.VIOLATIONS_OPENING_ON_TRAINING_DAYS,
+    ]);
+    expect(worstDeficit).toBe(MONOTONICITY_MEASUREMENT.WORST_DEFICIT);
+    // Every violation involves a comparator that ALSO spent. None of them
+    // reach the invariant the user asked for, which is why that one passes.
+    expect(violationsAgainstZeroSpend).toBe(
+      MONOTONICITY_MEASUREMENT.VIOLATIONS_AGAINST_A_ZERO_SPEND_COMPARATOR,
+    );
+  });
+
+  it('A STREAK READ OFF AN UNOPENED STATE IS STALE, so two states settled to different days must not be compared', () => {
+    // This test exists because the defect above is easy to over-count. A run
+    // that has already died stays on the state, at full length, until somebody
+    // opens the day and settles it. Read `currentStreak` off a state nobody has
+    // opened since the last session and it reports a streak the player does not
+    // have.
+    //
+    // The pair below looks like a monotonicity violation — the player who
+    // trained MORE reads 1 while the one who trained less reads 3 — and is not
+    // one. Both runs are equally dead; only one of them has been told.
+    const initial = createStreakState();
+    const parse = (pattern: string): boolean[] => [...pattern].map((c) => c === 'T');
+    const trainedMore = parse('T..T.T.T.....');
+    const trainedLess = parse('...T.T.T.....');
+    const noGrants = Array.from({ length: trainedMore.length }, () => false);
+
+    const staleMore = simulate(trainedMore, noGrants, 'accept', initial, 'on-training-days', false);
+    const staleLess = simulate(trainedLess, noGrants, 'accept', initial, 'on-training-days', false);
+    expect(staleMore.state.currentStreak).toBe(1);
+    expect(staleLess.state.currentStreak).toBe(3);
+
+    // Both last trained on day 7 of a 13-day calendar, so both have missed far
+    // more than the guardrails can cover. Open the day and the difference goes.
+    expect(staleMore.state.lastTrainedDay).toBe(staleLess.state.lastTrainedDay);
+    const settledMore = simulate(trainedMore, noGrants, 'accept', initial, 'on-training-days', true);
+    const settledLess = simulate(trainedLess, noGrants, 'accept', initial, 'on-training-days', true);
+    expect(settledMore.state.currentStreak).toBe(0);
+    expect(settledLess.state.currentStreak).toBe(0);
+    expect(settledMore.state.lastTrainedDay).toBeNull();
+    expect(settledLess.state.lastTrainedDay).toBeNull();
   });
 
   it('but training itself never costs a Recovery Day, in any history', () => {
