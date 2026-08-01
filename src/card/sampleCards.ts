@@ -111,7 +111,43 @@ export const BOMBED_MEET_CARD: ResultCard = build({
   ]),
 });
 
+/**
+ * The layout under pressure, in one card: a federation name and a lifter name
+ * too long to set at double height, an accented character, a four-digit total,
+ * a super-heavyweight class, and a nine-for-nine day. Nothing here is meant to
+ * look typical — it is the case where a card either holds together or does not.
+ */
+export const STRESS_MEET_CARD: ResultCard = build({
+  meet: {
+    federation: 'Continental Alliance',
+    name: 'Autumn Open and Qualifier',
+    dateIso: '2026-11-07',
+    town: 'Newcastle upon Tyne',
+    country: 'England',
+  },
+  lifter: {
+    name: 'Konstantín Papadopoulos',
+    sex: 'male',
+    bodyweightKg: 139.4,
+    division: 'Masters 1',
+    equipment: 'Single-ply',
+  },
+  state: runMeet([
+    [400, GOOD],
+    [420, GOOD],
+    [440, GOOD],
+    [280, GOOD],
+    [300, GOOD],
+    [312.5, GOOD],
+    [370, GOOD],
+    [390, GOOD],
+    [400, GOOD],
+  ]),
+  placing: 3,
+});
+
 export const SAMPLE_CARDS: readonly { readonly id: string; readonly card: ResultCard }[] = [
   { id: 'strong', card: STRONG_MEET_CARD },
   { id: 'bombed', card: BOMBED_MEET_CARD },
+  { id: 'stress', card: STRESS_MEET_CARD },
 ];

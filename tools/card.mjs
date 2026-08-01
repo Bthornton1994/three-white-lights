@@ -47,7 +47,7 @@ const load = (rel) => import(pathToFileURL(path.join(ROOT, rel)).href);
 const { renderResultCard } = await load('src/card/renderResultCard.ts');
 const { sheetGridToRgba, findUnallocatedSheetIndices } = await load('src/card/sheetPalette.ts');
 const { CARD } = await load('src/card/cardTuning.ts');
-const { STRONG_MEET_CARD, BOMBED_MEET_CARD } = await load('src/card/sampleCards.ts');
+const { SAMPLE_CARDS } = await load('src/card/sampleCards.ts');
 const { upscaleGrid } = await load('src/art/raster.ts');
 
 // --- PNG (node:zlib only) ---------------------------------------------------
@@ -109,10 +109,7 @@ function write(name, grid) {
   return `${name} ${grid.w}x${grid.h}`;
 }
 
-const cards = [
-  ['strong', STRONG_MEET_CARD],
-  ['bombed', BOMBED_MEET_CARD],
-];
+const cards = SAMPLE_CARDS.map((entry) => [entry.id, entry.card]);
 
 const written = [];
 for (const [name, card] of cards) {
@@ -123,8 +120,9 @@ for (const [name, card] of cards) {
   written.push(write(`${name}-4x.png`, upscaleGrid(grid, 4)));
 }
 
-// Both at 2x side by side, which is the size the phone shows one at.
-const pair = { w: CARD.W * 4 + 12, h: CARD.H * 2 + 8, data: new Uint8Array((CARD.W * 4 + 12) * (CARD.H * 2 + 8)) };
+// All of them at 2x side by side, which is the size the phone shows one at.
+const pairW = CARD.W * 2 * cards.length + 4 * (cards.length + 1);
+const pair = { w: pairW, h: CARD.H * 2 + 8, data: new Uint8Array(pairW * (CARD.H * 2 + 8)) };
 for (const [i, [, card]] of cards.entries()) {
   const scaled = upscaleGrid(renderResultCard(card), 2);
   const ox = 4 + i * (CARD.W * 2 + 4);

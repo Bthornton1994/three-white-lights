@@ -24,7 +24,7 @@
 import { NO_VALUE_DISPLAY, PLACE_NO_TOTAL_DISPLAY, type AttemptCell, type LiftRow, type ResultCard } from '../game/resultCard';
 import { PAL, RAMPS } from '../art/palette';
 import { createGrid, drawPlateEdge, fillRect, setPx, type IndexGrid } from '../art/raster';
-import { PLATE_HUE_RAMPS, plateDiameterPx, visualPlateStack } from '../art/plates';
+import { PLATE_HUE_RAMPS, plateDiameterPx, visualPlateStack, type LoadedPlate } from '../art/plates';
 import { SHEET } from './sheetPalette';
 import {
   BARBELL,
@@ -34,6 +34,7 @@ import {
   FOOTER,
   GRID,
   GRID_BOTTOM_Y,
+  LIFTER_META_LADDER,
   LIFTER_STRIP,
   MASTHEAD,
   SCORE_BLOCKS,
@@ -41,8 +42,9 @@ import {
   TOTAL_BLOCK,
   gridCellX,
   gridRowY,
+  type LifterMetaField,
 } from './cardTuning';
-import { drawText, measureText, strikeThrough, type TextMode } from './pixelFont';
+import { capHeight, drawText, measureText, strikeThrough, type TextMode } from './pixelFont';
 
 const CENTER_X = Math.floor(CARD.W / 2);
 
@@ -87,6 +89,23 @@ function inkFor(text: string): number {
   return text === NO_VALUE_DISPLAY ? SHEET.INK_SOFT : SHEET.INK;
 }
 
+/**
+ * The first candidate that fits `maxWidth`, or the last one if none do.
+ *
+ * EVERY CANDIDATE IS A TRUE, SHORTER STATEMENT — there is no truncation and no
+ * ellipsis anywhere on this card. A results sheet that ends mid-word has
+ * stopped being believable, which is the whole bar this piece is held to.
+ * Falling back to the last candidate rather than to nothing is deliberate: a
+ * line that overruns by a pixel is recoverable by tuning, a line that vanished
+ * is a fact the card silently dropped.
+ */
+export function firstThatFits(candidates: readonly string[], maxWidth: number): string {
+  for (const candidate of candidates) {
+    if (measureText(candidate) <= maxWidth) return candidate;
+  }
+  return candidates[candidates.length - 1] ?? '';
+}
+
 // ---------------------------------------------------------------------------
 // Sections
 // ---------------------------------------------------------------------------
@@ -95,10 +114,14 @@ function drawMasthead(grid: IndexGrid, card: ResultCard): void {
   fillRect(grid, 0, MASTHEAD.Y, CARD.W, MASTHEAD.H, SHEET.BAND_DARK);
 
   const federationScale = fitScale(card.meet.federation, CONTENT.W, MASTHEAD.FEDERATION_SCALE);
-  drawText(grid, card.meet.federation, CENTER_X, MASTHEAD.FEDERATION_Y, SHEET.BAND_INK, {
-    align: 'center',
-    scale: federationScale,
-  });
+  drawText(
+    grid,
+    card.meet.federation,
+    CENTER_X,
+    MASTHEAD.FEDERATION_BASELINE - capHeight(federationScale),
+    SHEET.BAND_INK,
+    { align: 'center', scale: federationScale },
+  );
 
   rule(
     grid,
@@ -110,8 +133,19 @@ function drawMasthead(grid: IndexGrid, card: ResultCard): void {
 
   drawText(grid, card.meet.name, CENTER_X, MASTHEAD.MEET_NAME_Y, SHEET.BAND_INK, { align: 'center' });
 
-  const placeAndDate = [card.meet.dateText, card.meet.locationText].filter((part) => part !== '').join('  ·  ');
-  drawText(grid, placeAndDate, CENTER_X, MASTHEAD.PLACE_DATE_Y, SHEET.RULE, { align: 'center' });
+  // Date to the left margin, place to the right, the way a letterheaded sheet
+  // sets them — which also buys the whole content width instead of spending
+  // some of it on a separator. Falls back to a shorter TRUE place and then to
+  // the date alone; nothing is ever truncated. See `firstThatFits`.
+  const date = card.meet.dateText;
+  const room = CONTENT.W - measureText(date) - MASTHEAD.DATE_PLACE_MIN_GAP;
+  const place = firstThatFits([card.meet.locationText, card.meet.locationShortText, ''], room);
+  if (place === '') {
+    drawText(grid, date, CENTER_X, MASTHEAD.PLACE_DATE_Y, SHEET.RULE, { align: 'center' });
+    return;
+  }
+  drawText(grid, date, CONTENT.X, MASTHEAD.PLACE_DATE_Y, SHEET.RULE);
+  drawText(grid, place, CONTENT.RIGHT, MASTHEAD.PLACE_DATE_Y, SHEET.RULE, { align: 'right' });
 }
 
 function drawLifterStrip(grid: IndexGrid, card: ResultCard): void {
@@ -121,15 +155,40 @@ function drawLifterStrip(grid: IndexGrid, card: ResultCard): void {
   const nameScale = fitScale(card.lifter.name, CONTENT.W, LIFTER_STRIP.NAME_SCALE);
   drawText(grid, card.lifter.name, CONTENT.X, LIFTER_STRIP.NAME_Y, SHEET.INK, { scale: nameScale });
 
-  const meta = [
-    `${CARD_LABELS.CLASS_PREFIX}${card.lifter.weightClassText}`,
-    `${card.lifter.bodyweightText}${CARD_LABELS.BODYWEIGHT_SUFFIX}`,
-    card.lifter.division.toUpperCase(),
-    card.lifter.equipment.toUpperCase(),
-  ]
-    .filter((part) => part.trim() !== '')
-    .join(LIFTER_STRIP.META_SEPARATOR);
-  drawText(grid, meta, CONTENT.X, LIFTER_STRIP.META_Y, SHEET.INK_SOFT);
+  drawText(grid, lifterMetaLine(card, CONTENT.W), CONTENT.X, LIFTER_STRIP.META_Y, SHEET.INK_SOFT);
+}
+
+/** One field of the meta line, rendered. */
+function metaField(card: ResultCard, field: LifterMetaField): string {
+  switch (field) {
+    case 'classLabelled':
+      return `${CARD_LABELS.CLASS_PREFIX}${card.lifter.weightClassText}`;
+    case 'class':
+      return card.lifter.weightClassText;
+    case 'bodyweightWithUnit':
+      return `${card.lifter.bodyweightText}${CARD_LABELS.BODYWEIGHT_SUFFIX}`;
+    case 'bodyweight':
+      return card.lifter.bodyweightText;
+    case 'division':
+      return card.lifter.division.toUpperCase();
+    case 'equipment':
+      return card.lifter.equipment.toUpperCase();
+  }
+}
+
+/**
+ * Class, bodyweight, division and equipment on one line — as much of it as
+ * fits, walking `LIFTER_META_LADDER`. Exported so a test can check the ladder
+ * rather than the pixels it produces.
+ */
+export function lifterMetaLine(card: ResultCard, maxWidth: number): string {
+  const candidates = LIFTER_META_LADDER.map((fields) =>
+    fields
+      .map((field) => metaField(card, field))
+      .filter((part) => part.trim() !== '')
+      .join(LIFTER_STRIP.META_SEPARATOR),
+  );
+  return firstThatFits(candidates, maxWidth);
 }
 
 function drawAttemptCell(grid: IndexGrid, cell: AttemptCell, x: number, y: number): void {
@@ -266,6 +325,37 @@ export function heaviestGoodLift(
   return best;
 }
 
+export interface SleeveFit {
+  readonly discs: readonly LoadedPlate[];
+  readonly pitch: number;
+  readonly face: number;
+}
+
+/**
+ * How many discs actually go on the card's sleeve, and how tightly.
+ *
+ * Same idea as `layoutSleeve` in `src/art/plates.ts` — compress the pitch before
+ * dropping a disc — but against this card's geometry rather than the lifter
+ * sprite's bar, which is a different size. Compression is also a free heaviness
+ * cue: a maximal bar looks densely packed and a light one has air around it.
+ *
+ * A bar past the compressed capacity still prints its true weight in the
+ * caption; only the picture is short. That limit is real on a platform too.
+ */
+export function fitSleeve(perSide: readonly LoadedPlate[]): SleeveFit {
+  const available = BARBELL.HALF_SPAN - BARBELL.SHAFT_HALF - BARBELL.COLLAR_W;
+  let pitch: number = BARBELL.PLATE_PITCH;
+  if (perSide.length > 0 && perSide.length * pitch > available) {
+    pitch = Math.max(BARBELL.MIN_PLATE_PITCH, Math.floor(available / perSide.length));
+  }
+  const capacity = pitch > 0 ? Math.floor(available / pitch) : 0;
+  const count = Math.min(perSide.length, capacity, BARBELL.MAX_PLATES_PER_SIDE);
+  // Always leave a pixel of gap: the gap is the only thing that makes a stack
+  // countable, and a lifter WILL count them.
+  const face = Math.max(1, Math.min(BARBELL.PLATE_FACE, pitch - 1));
+  return { discs: perSide.slice(0, count), pitch, face };
+}
+
 function drawBarbell(grid: IndexGrid, card: ResultCard): void {
   const heaviest = heaviestGoodLift(card);
   const cy = BARBELL.CENTER_Y;
@@ -296,18 +386,18 @@ function drawBarbell(grid: IndexGrid, card: ResultCard): void {
   }
 
   const stack = heaviest === null ? null : visualPlateStack(heaviest.kg);
-  const discs = (stack?.perSide ?? []).slice(0, BARBELL.MAX_PLATES_PER_SIDE);
+  const { discs, pitch, face } = fitSleeve(stack?.perSide ?? []);
 
   discs.forEach((disc, i) => {
     const ramp = PLATE_HUE_RAMPS[disc.spec.hue];
     const diameter = Math.max(4, Math.round(plateDiameterPx(disc.spec) * BARBELL.DIAMETER_SCALE));
-    const dxInner = BARBELL.SHAFT_HALF + i * BARBELL.PLATE_PITCH;
-    drawPlateEdge(grid, CENTER_X + dxInner, BARBELL.PLATE_FACE, cy, diameter, ramp);
-    drawPlateEdge(grid, CENTER_X - dxInner - BARBELL.PLATE_FACE, BARBELL.PLATE_FACE, cy, diameter, ramp);
+    const dxInner = BARBELL.SHAFT_HALF + i * pitch;
+    drawPlateEdge(grid, CENTER_X + dxInner, face, cy, diameter, ramp);
+    drawPlateEdge(grid, CENTER_X - dxInner - face, face, cy, diameter, ramp);
   });
 
   // Collar, outboard of the last disc, exactly where a real one clamps.
-  const collarInner = BARBELL.SHAFT_HALF + discs.length * BARBELL.PLATE_PITCH;
+  const collarInner = BARBELL.SHAFT_HALF + discs.length * pitch;
   const collarTop = cy - Math.floor(BARBELL.COLLAR_H / 2);
   fillRect(grid, CENTER_X + collarInner, collarTop, BARBELL.COLLAR_W, BARBELL.COLLAR_H, PAL.STEEL_MID);
   fillRect(grid, CENTER_X - collarInner - BARBELL.COLLAR_W, collarTop, BARBELL.COLLAR_W, BARBELL.COLLAR_H, PAL.STEEL_MID);

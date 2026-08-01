@@ -57,13 +57,24 @@ export const CONTENT = {
 export const MASTHEAD = {
   Y: 1,
   H: 44,
-  FEDERATION_Y: 6,
+  /**
+   * The federation sits on a fixed BASELINE rather than a fixed top, so that a
+   * name too long for double height drops to single height and stays put
+   * instead of floating in the middle of the band.
+   */
+  FEDERATION_BASELINE: 20,
   FEDERATION_SCALE: 2,
-  /** Dropped to 1 automatically when a long federation name will not fit. */
   RULE_Y: 23,
   RULE_INSET: 22,
   MEET_NAME_Y: 27,
   PLACE_DATE_Y: 36,
+  /**
+   * Minimum gap between the date and the place, which are set to opposite
+   * margins like the head of a real letterheaded results sheet. Under this,
+   * the place falls back to the town alone and then off the card entirely —
+   * see `firstThatFits` for why nothing is ever truncated instead.
+   */
+  DATE_PLACE_MIN_GAP: 8,
 } as const;
 
 /** The lifter identity strip under the masthead. */
@@ -76,6 +87,39 @@ export const LIFTER_STRIP = {
   /** Separator between the fields on the meta line. */
   META_SEPARATOR: ' · ',
 } as const;
+
+/**
+ * WHAT COMES OFF THE META LINE WHEN IT WILL NOT FIT, IN ORDER.
+ *
+ * The strip has one line for class, bodyweight, division and equipment, and a
+ * 120+ Masters lifter in single-ply needs about 30 px more of it than the card
+ * has. The renderer walks this ladder and prints the first variant that fits.
+ *
+ * Every variant is a TRUE, shorter statement — never a truncation. A results
+ * sheet that ends in "SINGLE-PL" has stopped being believable, and an ellipsis
+ * on a shareable card reads as a bug. The first three rungs drop only wording
+ * (the "CLASS" label, the "KG" unit); a field itself is dropped only on the
+ * last two, and the division goes before the equipment because the division is
+ * usually implied by the meet whereas raw-vs-equipped never is.
+ *
+ * UNTUNED, and this is a real design call rather than a spacing tweak — if
+ * playtesting says division matters more than equipment, swap the last two.
+ */
+export const LIFTER_META_LADDER = [
+  ['classLabelled', 'bodyweightWithUnit', 'division', 'equipment'],
+  ['classLabelled', 'bodyweight', 'division', 'equipment'],
+  ['class', 'bodyweight', 'division', 'equipment'],
+  ['class', 'bodyweight', 'equipment'],
+  ['class', 'bodyweight'],
+] as const satisfies readonly (readonly LifterMetaField[])[];
+
+export type LifterMetaField =
+  | 'classLabelled'
+  | 'class'
+  | 'bodyweightWithUnit'
+  | 'bodyweight'
+  | 'division'
+  | 'equipment';
 
 /**
  * The attempt grid. One row per lift, one column per attempt, plus a best
@@ -191,15 +235,21 @@ export const BARBELL = {
   /** Drawn thickness of one disc, and the pitch between two. */
   PLATE_FACE: 3,
   PLATE_PITCH: 4,
+  /**
+   * How tight the pitch may get before a disc is dropped instead. 2 px is one
+   * disc and one gap, and the gap is the only thing that makes a stack
+   * countable.
+   */
+  MIN_PLATE_PITCH: 2,
   COLLAR_W: 4,
   COLLAR_H: 9,
   /**
-   * Discs past this many per side are not drawn. `(HALF_SPAN - SHAFT_HALF -
-   * COLLAR_W) / PLATE_PITCH` is what the sleeve physically holds; a bar heavier
-   * than that still prints its weight in the caption, which is the number that
-   * matters.
+   * A hard ceiling on discs per side, on top of whatever the compressed sleeve
+   * can hold. A bar heavier than this still prints its true weight in the
+   * caption; only the picture is short, and a real platform runs out of sleeve
+   * too.
    */
-  MAX_PLATES_PER_SIDE: 8,
+  MAX_PLATES_PER_SIDE: 12,
 } as const;
 
 /** The wordmark strip along the bottom. */

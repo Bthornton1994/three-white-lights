@@ -456,7 +456,15 @@ export interface ResultCardMeetHeader {
   readonly federation: string;
   readonly name: string;
   readonly dateText: string;
+  /** Town, state and country. */
   readonly locationText: string;
+  /**
+   * Town only. A masthead has one line for the date and the place, and
+   * "NEWCASTLE UPON TYNE, ENGLAND" does not fit next to a date — so the
+   * renderer needs a shorter true statement to fall back to rather than a
+   * truncated one. Empty when the meet has no town.
+   */
+  readonly locationShortText: string;
 }
 
 export interface ResultCardLifterHeader {
@@ -701,6 +709,7 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
       name: meet.name,
       dateText: formatMeetDate(meet.dateIso),
       locationText: formatMeetLocation(meet),
+      locationShortText: formatMeetLocation({ town: meet.town }),
     },
     lifter: {
       name: lifter.name.trim(),
