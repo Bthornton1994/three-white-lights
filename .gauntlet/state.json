@@ -209,9 +209,9 @@
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
-      "status": "failed",
+      "status": "building",
       "verifiable": true,
-      "note": "The DOTS critic caught it while grading something else: meet.ts models a bomb-out as total: null, dots.ts assumes 0. The meet-engine critic then adjudicated it independently — meet.ts is right, since a lifter with no total does not place, so dots.ts is the module that should change. Not yet fixed."
+      "note": "Dispatched. Two critics independently adjudicated this and agreed meet.ts is right: it models a bomb-out as total: null, because a lifter with no total does not place. dots.ts assumes 0 and its comment misdescribes what meet.ts records. The concrete hazard is the caller that does not exist yet — the natural glue is dotsScore(sex, bw, meetTotal ?? 0), which silently converts \"did not total\" into \"scored 0.00 DOTS\" and puts a bombed lifter at the bottom of a leaderboard instead of off it. Builder is making that collapse impossible to write rather than discouraged by a comment. Published coefficients are off limits — this is a boundary fix, not a math fix."
     }
   ]
 }
