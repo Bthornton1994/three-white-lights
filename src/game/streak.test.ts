@@ -15,6 +15,7 @@ import {
   acceptRecoveryDayOffer,
   addDays,
   asStreakDay,
+  chargeableGapDays,
   civilDateFromStreakDay,
   coverableGapDays,
   createStreakState,
@@ -26,6 +27,7 @@ import {
   lastCoveredDay,
   lastDayStreakCanBeSaved,
   openDay,
+  payableGapDays,
   recordTrainingDay,
   recoveryDayCapacity,
   recoveryDayGrantAmount,
@@ -56,6 +58,24 @@ function errorCodeOf<T>(result: StreakResult<T>): string {
 }
 
 const DAY_ZERO: StreakDay = asStreakDay(20000);
+
+/** GDD §4.4: gaps of this many days or fewer cost nothing at all. */
+const GRACE = RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS;
+
+/**
+ * The shortest gap that costs a Recovery Day — one day past the free grace, and
+ * therefore the shortest gap that produces an offer at all.
+ *
+ * Derived rather than hard-coded, so retuning `FREE_GRACE_GAP_DAYS` moves every
+ * test in this file that means "a gap you have to pay for" instead of silently
+ * turning them into tests of the free path.
+ */
+const SHORTEST_PAID_GAP = GRACE + 1;
+
+/** The day the app is opened after `gapDays` missed days following `lastDay`. */
+function dayAfterGap(lastDay: StreakDay, gapDays: number): StreakDay {
+  return addDays(lastDay, gapDays + 1);
+}
 
 /** Trains on `count` consecutive days starting at `from`. Asserts each succeeds. */
 function trainConsecutively(state: StreakState, from: StreakDay, count: number): StreakState {
@@ -274,6 +294,39 @@ describe('tunable constants sit inside the ranges GDD §4.2 specifies', () => {
     expect(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES).toBeLessThan(RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
   });
 
+  it('has a free-grace length that is a separate constant from the consecutive-use limit', () => {
+    // GDD §4.4. These two are 2 and 2 today, which is exactly why the human who
+    // ruled on §4.4 asked for them to stay separate: one is how much absence is
+    // FREE, the other is how many Recovery Days may be SPENT in a row. This test
+    // pins the shape of each — a whole non-negative number, and a spend limit of
+    // at least one so Recovery Days are still spendable — without asserting they
+    // are equal, because their being equal is a coincidence of tuning.
+    expect(Number.isInteger(GRACE)).toBe(true);
+    expect(GRACE).toBeGreaterThanOrEqual(0);
+    expect(GRACE).toBeLessThan(RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+    // If the grace ever swallowed every gap the guardrail allows, Recovery Days
+    // would become unspendable — earned, purchasable (GDD §4.2, §8.2) and dead.
+    expect(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES).toBeGreaterThanOrEqual(1);
+  });
+
+  it('sets the longest repairable absence to the grace plus the consecutive-use limit', () => {
+    // The two constants compose rather than compete: a full-balance, freshly
+    // trained state can survive exactly this many missed days and no more.
+    const state = stateWithRun(50, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+    expect(coverableGapDays(state)).toBe(GRACE + RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
+    expect(currentRecoveryDayOffer(state, dayAfterGap(DAY_ZERO, coverableGapDays(state)))).not.toBeNull();
+    expect(currentRecoveryDayOffer(state, dayAfterGap(DAY_ZERO, coverableGapDays(state) + 1))).toBeNull();
+  });
+
+  it('charges only the days past the grace', () => {
+    for (let gap = 0; gap <= GRACE; gap += 1) {
+      expect(chargeableGapDays(gap)).toBe(0);
+    }
+    for (let extra = 1; extra <= 5; extra += 1) {
+      expect(chargeableGapDays(GRACE + extra)).toBe(extra);
+    }
+  });
+
   it('pays milestones at 7 / 30 / 100 days, 1 each', () => {
     expect(STREAK_MILESTONE_DAYS).toEqual([7, 30, 100]);
     expect(RECOVERY_DAY_ECONOMY.STREAK_MILESTONE_GRANT).toBe(1);
@@ -383,20 +436,24 @@ describe('streak increments', () => {
 });
 
 describe('streak breaks', () => {
-  it('breaks on a missed day when nothing can cover it', () => {
+  it('breaks on a chargeable gap when nothing can cover it', () => {
+    // The gap is one day past the free grace, so it costs exactly one Recovery
+    // Day — and the player holds none.
     const state = { ...trainConsecutively(createStreakState(), DAY_ZERO, 6), recoveryDayBalance: 0 };
-    const opening = openDay(state, addDays(DAY_ZERO, 7));
+    const opening = openDay(state, dayAfterGap(addDays(DAY_ZERO, 5), SHORTEST_PAID_GAP));
     expect(opening).toEqual({
       kind: 'streak-broken',
       brokenRunLength: 6,
-      daysMissed: 1,
+      daysMissed: SHORTEST_PAID_GAP,
       reason: 'not-enough-recovery-days',
     });
   });
 
   it('starts a new run at 1 when training after an uncoverable gap', () => {
     const state = { ...trainConsecutively(createStreakState(), DAY_ZERO, 6), recoveryDayBalance: 0 };
-    const outcome = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, 7)));
+    const outcome = unwrap(
+      recordTrainingDay(state, dayAfterGap(addDays(DAY_ZERO, 5), SHORTEST_PAID_GAP)),
+    );
     expect(outcome.previousRunEnded).toBe(true);
     expect(outcome.endedRunLength).toBe(6);
     expect(outcome.streakAfter).toBe(1);
@@ -414,9 +471,9 @@ describe('streak breaks', () => {
 
   it('settles an uncoverable break without waiting for the next session', () => {
     const state = stateWithRun(20, DAY_ZERO, 0);
-    const outcome = unwrap(settleBrokenStreak(state, addDays(DAY_ZERO, 2)));
+    const outcome = unwrap(settleBrokenStreak(state, dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP)));
     expect(outcome.endedRunLength).toBe(20);
-    expect(outcome.daysMissed).toBe(1);
+    expect(outcome.daysMissed).toBe(SHORTEST_PAID_GAP);
     expect(outcome.balanceAfter).toBe(0);
     expect(outcome.state.currentStreak).toBe(0);
     expect(outcome.state.lastTrainedDay).toBeNull();
@@ -429,10 +486,22 @@ describe('streak breaks', () => {
     expect(errorCodeOf(settleBrokenStreak(state, DAY_ZERO))).toBe('NOTHING_TO_SETTLE');
   });
 
+  it('refuses to settle a gap the free grace covers, even with an empty balance', () => {
+    // Settling a grace-covered gap would end a run the player still has. Balance
+    // 0 so nothing but the grace can possibly be keeping it alive.
+    const state = stateWithRun(4, DAY_ZERO, 0);
+    for (let gap = 1; gap <= GRACE; gap += 1) {
+      expect(errorCodeOf(settleBrokenStreak(state, dayAfterGap(DAY_ZERO, gap)))).toBe('NOTHING_TO_SETTLE');
+    }
+    expect(errorCodeOf(settleBrokenStreak(state, dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP)))).toBe('OK');
+  });
+
   it('refuses to settle a break the player could still be offered a Recovery Day for', () => {
     // Settling here would be a silent auto-decline, the mirror of auto-apply.
     const state = stateWithRun(4, DAY_ZERO, 2);
-    expect(errorCodeOf(settleBrokenStreak(state, addDays(DAY_ZERO, 2)))).toBe('RECOVERY_DECISION_PENDING');
+    expect(errorCodeOf(settleBrokenStreak(state, dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP)))).toBe(
+      'RECOVERY_DECISION_PENDING',
+    );
   });
 
   it('keeps the longest streak across a break', () => {
@@ -447,16 +516,138 @@ describe('streak breaks', () => {
 });
 
 // ---------------------------------------------------------------------------
+// GDD §4.4 — the free grace period
+// ---------------------------------------------------------------------------
+
+describe('the free grace period (GDD §4.4)', () => {
+  it('keeps a run alive across a short gap without touching the balance', () => {
+    // Balance 0, so nothing but the grace can be doing the work. If the grace
+    // were removed this run would be dead at every gap length below.
+    for (let gap = 1; gap <= GRACE; gap += 1) {
+      const state = stateWithRun(9, DAY_ZERO, 0);
+      const backOn = dayAfterGap(DAY_ZERO, gap);
+      expect(daysMissedBefore(state, backOn)).toBe(gap);
+      expect(openDay(state, backOn)).toEqual({
+        kind: 'gap-covered-by-grace',
+        currentStreak: 9,
+        streakIfTrainedToday: 10,
+        daysMissed: gap,
+        lastDayStreakCanBeSaved: dayAfterGap(DAY_ZERO, coverableGapDays(state)),
+      });
+
+      const outcome = unwrap(recordTrainingDay(state, backOn));
+      expect(outcome.previousRunEnded).toBe(false);
+      expect(outcome.endedRunLength).toBe(0);
+      expect(outcome.streakAfter).toBe(10);
+      expect(outcome.state.recoveryDayBalance).toBe(0);
+      expect(outcome.state.consecutiveRecoveryDaysUsed).toBe(0);
+    }
+  });
+
+  it('makes no offer for a gap it covers, at any balance', () => {
+    // The read-model half of "nothing is spent": there is no prompt, because
+    // there is no decision. Swept across every balance so this cannot be an
+    // accident of holding zero.
+    for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
+      for (let gap = 1; gap <= GRACE; gap += 1) {
+        const state = stateWithRun(9, DAY_ZERO, balance);
+        const backOn = dayAfterGap(DAY_ZERO, gap);
+        expect(currentRecoveryDayOffer(state, backOn)).toBeNull();
+        expect(openDay(state, backOn).kind).toBe('gap-covered-by-grace');
+        // ...and training straight through it is allowed, not blocked on a
+        // decision that does not exist.
+        expect(errorCodeOf(recordTrainingDay(state, backOn))).toBe('OK');
+      }
+    }
+  });
+
+  it('does not consume the first-break tutorial, because nothing was saved', () => {
+    // GDD §4.3 fires on the first break the player can be SAVED from. A gap that
+    // cost nothing is not that moment, so the flag must survive it.
+    const state = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+    const trained = unwrap(recordTrainingDay(state, dayAfterGap(DAY_ZERO, GRACE))).state;
+    expect(trained.hasResolvedFirstBreakOffer).toBe(false);
+    const laterOffer = currentRecoveryDayOffer(
+      trained,
+      dayAfterGap(trained.lastTrainedDay as StreakDay, SHORTEST_PAID_GAP),
+    );
+    expect(laterOffer?.isFirstBreakTutorial).toBe(true);
+  });
+
+  it('stops exactly one day past the grace, where the first Recovery Day is charged', () => {
+    // The boundary in one place. At GRACE the run is free; at GRACE + 1 it costs
+    // exactly one Recovery Day and the grace still covers the rest of the gap.
+    const state = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+    expect(currentRecoveryDayOffer(state, dayAfterGap(DAY_ZERO, GRACE))).toBeNull();
+
+    const offer = currentRecoveryDayOffer(state, dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP));
+    expect(offer?.cost).toBe(1);
+    expect(offer?.daysCoveredFreeByGrace).toBe(GRACE);
+    expect(offer?.missedDays).toHaveLength(SHORTEST_PAID_GAP);
+    expect(offer?.balanceAfter).toBe(RECOVERY_DAY_GUARDRAILS.HOLD_CAP - 1);
+  });
+
+  it('is recomputed from the gap rather than banked, so it never runs out', () => {
+    // The grace is not a consumable and has no counter. A player who trains one
+    // day in every GRACE + 1 holds a run open forever, spending nothing. This is
+    // the accepted cost of the §4.4 ruling, pinned so it is on the record rather
+    // than discovered in playtesting.
+    const CYCLES = 40;
+    let state: StreakState = { ...createStreakState(), recoveryDayBalance: 0 };
+    let day = DAY_ZERO;
+    let trainedDays = 0;
+
+    for (let cycle = 0; cycle < CYCLES; cycle += 1) {
+      const opening = openDay(state, day);
+      expect(opening.kind).not.toBe('streak-broken');
+      expect(opening.kind).not.toBe('recovery-day-offered');
+      state = unwrap(recordTrainingDay(state, day)).state;
+      trainedDays += 1;
+      day = addDays(day, SHORTEST_PAID_GAP);
+    }
+
+    expect(state.currentStreak).toBe(trainedDays);
+    expect(state.recoveryDayBalance).toBe(
+      STREAK_MILESTONE_DAYS.filter((m) => m <= trainedDays).length *
+        RECOVERY_DAY_ECONOMY.STREAK_MILESTONE_GRANT,
+    );
+    expect(state.consecutiveRecoveryDaysUsed).toBe(0);
+  });
+
+  it('extends the run without extending the count — a covered day is not a trained day', () => {
+    // Same rule the paid path obeys (§2 of the module header), checked on the
+    // free path: grace keeps the run alive and adds nothing to the streak, so it
+    // cannot shortcut a milestone either.
+    let state: StreakState = { ...createStreakState(), recoveryDayBalance: 0 };
+    let day = DAY_ZERO;
+    let sessions = 0;
+    let milestoneAtSessions = -1;
+    while (milestoneAtSessions < 0 && sessions < 40) {
+      const outcome = unwrap(recordTrainingDay(state, day));
+      state = outcome.state;
+      sessions += 1;
+      if (outcome.milestonesReached.includes(7)) milestoneAtSessions = sessions;
+      // A grace-length gap every time, so seven calendar days would arrive far
+      // sooner than seven sessions if covered days counted.
+      day = addDays(day, GRACE + 1);
+    }
+    expect(milestoneAtSessions).toBe(7);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Recovery Days — offer, accept, decline
 // ---------------------------------------------------------------------------
 
 describe('the Recovery Day offer', () => {
-  it('appears for a single missed day and describes the whole decision', () => {
+  it('appears for the shortest chargeable gap and describes the whole decision', () => {
     const state = stateWithRun(9, DAY_ZERO, 3);
-    const offer = currentRecoveryDayOffer(state, addDays(DAY_ZERO, 2));
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
+    const offer = currentRecoveryDayOffer(state, day);
     expect(offer).toEqual({
-      offeredOnDay: addDays(DAY_ZERO, 2),
-      missedDays: [addDays(DAY_ZERO, 1)],
+      offeredOnDay: day,
+      missedDays: Array.from({ length: SHORTEST_PAID_GAP }, (_, i) => addDays(DAY_ZERO, i + 1)),
+      daysCoveredFreeByGrace: GRACE,
       cost: 1,
       balanceBefore: 3,
       balanceAfter: 2,
@@ -469,7 +660,7 @@ describe('the Recovery Day offer', () => {
   it('is surfaced by openDay rather than applied', () => {
     const state = stateWithRun(9, DAY_ZERO, 3);
     const before = clone(state);
-    const opening = openDay(state, addDays(DAY_ZERO, 2));
+    const opening = openDay(state, dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP));
     expect(opening.kind).toBe('recovery-day-offered');
     // openDay is a read model: the state it was handed is untouched.
     expect(state).toEqual(before);
@@ -479,16 +670,17 @@ describe('the Recovery Day offer', () => {
 
   it('keeps the run alive when accepted, and spends exactly the offered cost', () => {
     const state = stateWithRun(9, DAY_ZERO, 3);
-    const day = addDays(DAY_ZERO, 2);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const offer = currentRecoveryDayOffer(state, day);
     expect(offer).not.toBeNull();
     const outcome = unwrap(acceptRecoveryDayOffer(state, offer as NonNullable<typeof offer>));
     expect(outcome.recoveryDaysSpent).toBe(1);
+    expect(outcome.daysCoveredFreeByGrace).toBe(GRACE);
     expect(outcome.balanceAfter).toBe(2);
     expect(outcome.state.recoveryDayBalance).toBe(2);
     expect(outcome.state.currentStreak).toBe(9);
-    expect(outcome.state.recoveredThroughDay).toBe(addDays(DAY_ZERO, 1));
-    expect(outcome.coveredDays).toEqual([addDays(DAY_ZERO, 1)]);
+    expect(outcome.state.recoveredThroughDay).toBe(addDays(DAY_ZERO, SHORTEST_PAID_GAP));
+    expect(outcome.coveredDays).toHaveLength(SHORTEST_PAID_GAP);
     // ...and the run continues from today.
     expect(openDay(outcome.state, day)).toEqual({
       kind: 'streak-alive',
@@ -499,22 +691,30 @@ describe('the Recovery Day offer', () => {
     expect(unwrap(recordTrainingDay(outcome.state, day)).streakAfter).toBe(10);
   });
 
-  it('covers a two-day gap in one offer, or none at all', () => {
+  it('covers a longer gap in one offer, charging only the days past the grace', () => {
     const state = stateWithRun(9, DAY_ZERO, 5);
-    const offer = currentRecoveryDayOffer(state, addDays(DAY_ZERO, 3));
-    expect(offer?.cost).toBe(2);
-    expect(offer?.missedDays).toEqual([addDays(DAY_ZERO, 1), addDays(DAY_ZERO, 2)]);
+    const gap = GRACE + 2;
+    const offer = currentRecoveryDayOffer(state, dayAfterGap(DAY_ZERO, gap)) as NonNullable<
+      ReturnType<typeof currentRecoveryDayOffer>
+    >;
+    expect(offer.cost).toBe(2);
+    expect(offer.daysCoveredFreeByGrace).toBe(GRACE);
+    expect(offer.missedDays).toEqual(Array.from({ length: gap }, (_, i) => addDays(DAY_ZERO, i + 1)));
+    // The offer still keeps the run alive across the WHOLE gap. Charging for
+    // part of it is not the same thing as covering part of it.
+    expect(offer.missedDays).toHaveLength(offer.cost + offer.daysCoveredFreeByGrace);
   });
 
   it('never offers partial coverage of a gap it cannot close', () => {
-    // Balance 1, gap 2: covering one day would take a Recovery Day and still
-    // leave the run broken, so there is no offer at all.
+    // Balance 1, chargeable 2: paying for one chargeable day would take a
+    // Recovery Day and still leave the run broken, so there is no offer at all.
     const state = stateWithRun(9, DAY_ZERO, 1);
-    expect(currentRecoveryDayOffer(state, addDays(DAY_ZERO, 3))).toBeNull();
-    expect(openDay(state, addDays(DAY_ZERO, 3))).toEqual({
+    const gap = GRACE + 2;
+    expect(currentRecoveryDayOffer(state, dayAfterGap(DAY_ZERO, gap))).toBeNull();
+    expect(openDay(state, dayAfterGap(DAY_ZERO, gap))).toEqual({
       kind: 'streak-broken',
       brokenRunLength: 9,
-      daysMissed: 2,
+      daysMissed: gap,
       reason: 'not-enough-recovery-days',
     });
   });
@@ -522,12 +722,14 @@ describe('the Recovery Day offer', () => {
   it('refuses to record a session while an offer is outstanding', () => {
     // GDD §4.2 "manual use, not auto-apply": the decision cannot be skipped.
     const state = stateWithRun(9, DAY_ZERO, 3);
-    expect(errorCodeOf(recordTrainingDay(state, addDays(DAY_ZERO, 2)))).toBe('RECOVERY_DECISION_PENDING');
+    expect(errorCodeOf(recordTrainingDay(state, dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP)))).toBe(
+      'RECOVERY_DECISION_PENDING',
+    );
   });
 
   it('rejects a stale or fabricated offer instead of trusting it', () => {
     const state = stateWithRun(9, DAY_ZERO, 3);
-    const day = addDays(DAY_ZERO, 2);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const real = currentRecoveryDayOffer(state, day) as NonNullable<
       ReturnType<typeof currentRecoveryDayOffer>
     >;
@@ -535,7 +737,12 @@ describe('the Recovery Day offer', () => {
     const cheaper = { ...real, cost: 0, balanceAfter: 3 };
     expect(errorCodeOf(acceptRecoveryDayOffer(state, cheaper))).toBe('OFFER_DOES_NOT_MATCH_STATE');
 
-    const widerCoverage = { ...real, missedDays: [...real.missedDays, addDays(DAY_ZERO, 5)] };
+    // Claiming the grace covered more of the gap than it did is the §4.4 version
+    // of claiming a lower price, so it has to be rejected the same way.
+    const inflatedGrace = { ...real, daysCoveredFreeByGrace: GRACE + 1 };
+    expect(errorCodeOf(acceptRecoveryDayOffer(state, inflatedGrace))).toBe('OFFER_DOES_NOT_MATCH_STATE');
+
+    const widerCoverage = { ...real, missedDays: [...real.missedDays, addDays(DAY_ZERO, 50)] };
     expect(errorCodeOf(acceptRecoveryDayOffer(state, widerCoverage))).toBe('OFFER_DOES_NOT_MATCH_STATE');
 
     const inflatedStreak = { ...real, streakProtected: 99 };
@@ -545,21 +752,156 @@ describe('the Recovery Day offer', () => {
     expect(errorCodeOf(acceptRecoveryDayOffer(alreadySpent, real))).toBe('NO_RECOVERY_DAY_OFFER');
   });
 
-  it('has nothing to accept when the run is intact', () => {
+  it('has nothing to accept when the gap is intact or merely grace-covered', () => {
     const state = stateWithRun(9, DAY_ZERO, 3);
-    const offer = currentRecoveryDayOffer(state, addDays(DAY_ZERO, 2)) as NonNullable<
+    const offer = currentRecoveryDayOffer(state, dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP)) as NonNullable<
       ReturnType<typeof currentRecoveryDayOffer>
     >;
     const intact = { ...offer, offeredOnDay: addDays(DAY_ZERO, 1) };
     expect(errorCodeOf(acceptRecoveryDayOffer(state, intact))).toBe('NO_RECOVERY_DAY_OFFER');
     expect(errorCodeOf(declineRecoveryDayOffer(state, intact))).toBe('NO_RECOVERY_DAY_OFFER');
+
+    // A grace-covered gap cannot be talked into a spend by handing in an offer.
+    const graceDay = dayAfterGap(DAY_ZERO, GRACE);
+    const fabricated = { ...offer, offeredOnDay: graceDay };
+    expect(errorCodeOf(acceptRecoveryDayOffer(state, fabricated))).toBe('NO_RECOVERY_DAY_OFFER');
+    expect(errorCodeOf(declineRecoveryDayOffer(state, fabricated))).toBe('NO_RECOVERY_DAY_OFFER');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The long-gap path preserves the streak exactly
+// ---------------------------------------------------------------------------
+
+describe('spending a Recovery Day on a long gap preserves the streak exactly', () => {
+  /**
+   * THE REQUIREMENT THIS BLOCK EXISTS FOR. Adding the free-grace branch put a
+   * second way through `openDay` and `recordTrainingDay`, and the risk it
+   * introduces is that the PAID branch quietly starts doing something different
+   * to the streak — resetting it, halving it, restarting it at 1 — while the
+   * free branch keeps every assertion elsewhere green.
+   *
+   * So every test here asserts two things at once:
+   *   (a) the streak is preserved EXACTLY, with `toBe`, not `toBeGreaterThan`;
+   *   (b) the path taken was the paid one — at least one Recovery Day left the
+   *       balance. Without (b) these would pass on a state that never spent
+   *       anything, which is precisely the blind test this is guarding against.
+   */
+  function assertPaidPath(before: StreakState, outcome: {
+    readonly state: StreakState;
+    readonly recoveryDaysSpent: number;
+    readonly balanceAfter: number;
+  }): void {
+    expect(outcome.recoveryDaysSpent).toBeGreaterThanOrEqual(1);
+    expect(outcome.balanceAfter).toBe(before.recoveryDayBalance - outcome.recoveryDaysSpent);
+    expect(outcome.balanceAfter).toBeLessThan(before.recoveryDayBalance);
+  }
+
+  it('leaves currentStreak and longestStreak untouched, at every chargeable gap length', () => {
+    for (let chargeable = 1; chargeable <= RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES; chargeable += 1) {
+      for (const streak of [1, 2, 6, 7, 29, 30, 99, 365]) {
+        const before = stateWithRun(streak, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+        const day = dayAfterGap(DAY_ZERO, GRACE + chargeable);
+        const offer = currentRecoveryDayOffer(before, day) as NonNullable<
+          ReturnType<typeof currentRecoveryDayOffer>
+        >;
+        expect(offer).not.toBeNull();
+        const outcome = unwrap(acceptRecoveryDayOffer(before, offer));
+
+        assertPaidPath(before, outcome);
+        expect(outcome.recoveryDaysSpent).toBe(chargeable);
+
+        // Exactly preserved. Not "at least" — a partial reset that left the
+        // streak higher than zero would slip past a >= assertion.
+        expect(outcome.state.currentStreak).toBe(streak);
+        expect(outcome.state.longestStreak).toBe(before.longestStreak);
+        expect(outcome.streakProtected).toBe(streak);
+        expect(outcome.state.lastTrainedDay).toBe(before.lastTrainedDay);
+        // ...and the run genuinely continues: the next session is streak + 1.
+        expect(unwrap(recordTrainingDay(outcome.state, day)).streakAfter).toBe(streak + 1);
+      }
+    }
+  });
+
+  it('changes only the four fields a spend is allowed to change', () => {
+    // A field-by-field diff rather than a list of assertions about the ones
+    // someone remembered. Anything else moving — the streak above all — fails
+    // here even if no other test happens to look at it.
+    const before = stateWithRun(42, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
+    const offer = currentRecoveryDayOffer(before, day) as NonNullable<
+      ReturnType<typeof currentRecoveryDayOffer>
+    >;
+    const outcome = unwrap(acceptRecoveryDayOffer(before, offer));
+    assertPaidPath(before, outcome);
+
+    const changed = STREAK_FACT_KEYS.filter((key) => outcome.state[key] !== before[key]);
+    expect([...changed].sort()).toEqual(
+      ['consecutiveRecoveryDaysUsed', 'hasResolvedFirstBreakOffer', 'recoveredThroughDay', 'recoveryDayBalance'].sort(),
+    );
+  });
+
+  it('is a DIFFERENT path from the free grace, and the free path is the one that spends nothing', () => {
+    // The distinguishing test. If the two branches were accidentally the same
+    // code — or if the paid branch were unreachable because the grace swallowed
+    // every gap — the block above would still be green and would mean nothing.
+    const state = stateWithRun(11, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+
+    const graceDay = dayAfterGap(DAY_ZERO, GRACE);
+    expect(openDay(state, graceDay).kind).toBe('gap-covered-by-grace');
+    expect(currentRecoveryDayOffer(state, graceDay)).toBeNull();
+    const throughGrace = unwrap(recordTrainingDay(state, graceDay));
+    expect(throughGrace.state.recoveryDayBalance).toBe(state.recoveryDayBalance);
+    expect(throughGrace.streakAfter).toBe(12);
+
+    const paidDay = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
+    expect(openDay(state, paidDay).kind).toBe('recovery-day-offered');
+    const offer = currentRecoveryDayOffer(state, paidDay) as NonNullable<
+      ReturnType<typeof currentRecoveryDayOffer>
+    >;
+    const throughSpend = unwrap(acceptRecoveryDayOffer(state, offer));
+    assertPaidPath(state, throughSpend);
+
+    // Both preserved the run. Only one of them cost anything — that is what
+    // makes this a real distinction and not two names for the same branch.
+    expect(throughSpend.state.currentStreak).toBe(11);
+    expect(throughSpend.state.recoveryDayBalance).toBeLessThan(state.recoveryDayBalance);
+    expect(throughGrace.state.recoveryDayBalance).toBe(state.recoveryDayBalance);
+    expect(unwrap(recordTrainingDay(throughSpend.state, paidDay)).streakAfter).toBe(12);
+  });
+
+  it('holds across a long history in which every gap is paid for', () => {
+    // The property under repetition rather than at one point: every accept in
+    // this history is on a chargeable gap, and after each one the streak is
+    // exactly what it was before the accept.
+    let state: StreakState = stateWithRun(5, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+    let day = DAY_ZERO;
+    let spends = 0;
+    for (let cycle = 0; cycle < 12; cycle += 1) {
+      day = dayAfterGap(day, SHORTEST_PAID_GAP);
+      const opening = openDay(state, day);
+      if (opening.kind === 'recovery-day-offered') {
+        const streakBefore = state.currentStreak;
+        const longestBefore = state.longestStreak;
+        const outcome = unwrap(acceptRecoveryDayOffer(state, opening.offer));
+        assertPaidPath(state, outcome);
+        expect(outcome.state.currentStreak).toBe(streakBefore);
+        expect(outcome.state.longestStreak).toBe(longestBefore);
+        spends += 1;
+        state = outcome.state;
+      } else if (opening.kind === 'streak-broken') {
+        state = unwrap(settleBrokenStreak(state, day)).state;
+      }
+      state = unwrap(recordTrainingDay(state, day)).state;
+    }
+    expect(spends).toBeGreaterThanOrEqual(3);
   });
 });
 
 describe('declining a Recovery Day offer', () => {
   it('really breaks the streak, and really leaves the balance alone', () => {
     const state = stateWithRun(23, DAY_ZERO, 4);
-    const day = addDays(DAY_ZERO, 2);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const offer = currentRecoveryDayOffer(state, day) as NonNullable<
       ReturnType<typeof currentRecoveryDayOffer>
     >;
@@ -577,7 +919,7 @@ describe('declining a Recovery Day offer', () => {
 
   it('does not re-offer the same break after a decline', () => {
     const state = stateWithRun(23, DAY_ZERO, 4);
-    const day = addDays(DAY_ZERO, 2);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const offer = currentRecoveryDayOffer(state, day) as NonNullable<
       ReturnType<typeof currentRecoveryDayOffer>
     >;
@@ -588,7 +930,7 @@ describe('declining a Recovery Day offer', () => {
 
   it('lets a new run start immediately', () => {
     const state = stateWithRun(23, DAY_ZERO, 4);
-    const day = addDays(DAY_ZERO, 2);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const offer = currentRecoveryDayOffer(state, day) as NonNullable<
       ReturnType<typeof currentRecoveryDayOffer>
     >;
@@ -650,9 +992,10 @@ describe('the hold cap', () => {
 
   it('caps how far back a run can be rescued, whatever the balance', () => {
     const state = stateWithRun(50, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
-    expect(coverableGapDays(state)).toBe(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
+    expect(payableGapDays(state)).toBe(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
+    expect(coverableGapDays(state)).toBe(GRACE + RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
     expect(lastDayStreakCanBeSaved(state)).toBe(
-      addDays(DAY_ZERO, 1 + RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES),
+      addDays(DAY_ZERO, 1 + GRACE + RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES),
     );
   });
 });
@@ -664,57 +1007,67 @@ describe('the hold cap', () => {
 describe('the consecutive-use limit', () => {
   const LIMIT = RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES;
 
-  it('covers a gap exactly at the limit', () => {
+  it('bounds the CHARGEABLE days of a gap, not the whole gap', () => {
+    // The distinction §4.4 introduced, in one assertion: the longest gap this
+    // limit permits is GRACE longer than the limit itself, because the grace
+    // days it covers were never charged to it.
     const state = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
-    const offer = currentRecoveryDayOffer(state, addDays(DAY_ZERO, LIMIT + 1));
+    const offer = currentRecoveryDayOffer(state, dayAfterGap(DAY_ZERO, GRACE + LIMIT));
     expect(offer?.cost).toBe(LIMIT);
+    expect(offer?.missedDays).toHaveLength(GRACE + LIMIT);
     expect(offer?.consecutiveRecoveryDaysUsedAfter).toBe(LIMIT);
   });
 
   it('refuses a gap one day past the limit, even at full balance', () => {
     const state = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
-    expect(currentRecoveryDayOffer(state, addDays(DAY_ZERO, LIMIT + 2))).toBeNull();
-    expect(openDay(state, addDays(DAY_ZERO, LIMIT + 2))).toEqual({
+    const tooLong = dayAfterGap(DAY_ZERO, GRACE + LIMIT + 1);
+    expect(currentRecoveryDayOffer(state, tooLong)).toBeNull();
+    expect(openDay(state, tooLong)).toEqual({
       kind: 'streak-broken',
       brokenRunLength: 9,
-      daysMissed: LIMIT + 1,
+      daysMissed: GRACE + LIMIT + 1,
       reason: 'gap-longer-than-consecutive-limit',
     });
   });
 
   it('counts uses across separate offers with no training in between', () => {
+    // Accepting moves `recoveredThroughDay` to the end of the gap, which starts
+    // a fresh grace window. So the next Recovery Day is not chargeable until
+    // another SHORTEST_PAID_GAP days have gone by with no session.
     let state: StreakState = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
     for (let used = 1; used <= LIMIT; used += 1) {
-      const day = addDays(DAY_ZERO, used + 1);
+      const day = dayAfterGap(lastCoveredDay(state) as StreakDay, SHORTEST_PAID_GAP);
       const offer = currentRecoveryDayOffer(state, day);
       expect(offer?.cost).toBe(1);
       state = unwrap(acceptRecoveryDayOffer(state, offer as NonNullable<typeof offer>)).state;
       expect(state.consecutiveRecoveryDaysUsed).toBe(used);
     }
-    // One more missed day with no session in between: the run ends, and it ends
-    // with Recovery Days still in the bank.
-    const pastLimit = addDays(DAY_ZERO, LIMIT + 2);
+    // One more chargeable gap with no session in between: the run ends, and it
+    // ends with Recovery Days still in the bank.
+    const pastLimit = dayAfterGap(lastCoveredDay(state) as StreakDay, SHORTEST_PAID_GAP);
     expect(currentRecoveryDayOffer(state, pastLimit)).toBeNull();
     expect(state.recoveryDayBalance).toBeGreaterThan(0);
     expect(openDay(state, pastLimit)).toEqual({
       kind: 'streak-broken',
       brokenRunLength: 9,
-      daysMissed: 1,
+      daysMissed: SHORTEST_PAID_GAP,
       reason: 'consecutive-use-limit-reached',
     });
   });
 
-  it('does NOT stop an alternating train / miss pattern — there is no cooldown', () => {
+  it('does NOT stop an alternating pattern of one trained day per chargeable gap', () => {
     // The module header claims this out loud rather than implying a guard it
     // does not have. Here it is, demonstrated: because every trained day resets
-    // the consecutive count, a player who trains every other day spends one
-    // Recovery Day per missed day until the bank is empty, and only then breaks.
+    // the consecutive count, a player who trains one day after each shortest
+    // chargeable gap spends one Recovery Day per gap until the bank is empty,
+    // and only then breaks.
     const STARTING_BALANCE = 3;
+    const CYCLE = SHORTEST_PAID_GAP + 1;
     let state: StreakState = stateWithRun(1, DAY_ZERO, STARTING_BALANCE);
     let spent = 0;
     let brokeOnDay: StreakDay | null = null;
 
-    for (let i = 1; i <= 10 && brokeOnDay === null; i += 1) {
+    for (let i = 1; i <= CYCLE * (STARTING_BALANCE + 2) && brokeOnDay === null; i += 1) {
       const day = addDays(DAY_ZERO, i);
       const opening = openDay(state, day);
       if (opening.kind === 'streak-broken') {
@@ -726,18 +1079,22 @@ describe('the consecutive-use limit', () => {
         spent += outcome.recoveryDaysSpent;
         state = outcome.state;
       }
-      if (i % 2 === 0) state = unwrap(recordTrainingDay(state, day)).state;
+      if (i % CYCLE === 0) state = unwrap(recordTrainingDay(state, day)).state;
     }
 
     expect(spent).toBe(STARTING_BALANCE);
     expect(state.recoveryDayBalance).toBe(0);
     expect(state.currentStreak).toBe(1 + STARTING_BALANCE);
-    expect(brokeOnDay).toBe(addDays(DAY_ZERO, 2 * STARTING_BALANCE + 2));
+    // Last session was on day CYCLE * STARTING_BALANCE; the run then survives
+    // the grace and dies on the first chargeable day after it, with nothing
+    // left to pay.
+    expect(state.lastTrainedDay).toBe(addDays(DAY_ZERO, CYCLE * STARTING_BALANCE));
+    expect(brokeOnDay).toBe(dayAfterGap(state.lastTrainedDay as StreakDay, SHORTEST_PAID_GAP));
   });
 
   it('resets the count on any training day', () => {
     const state = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
-    const day = addDays(DAY_ZERO, 2);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const offer = currentRecoveryDayOffer(state, day) as NonNullable<
       ReturnType<typeof currentRecoveryDayOffer>
     >;
@@ -746,7 +1103,7 @@ describe('the consecutive-use limit', () => {
     const trained = unwrap(recordTrainingDay(saved, day)).state;
     expect(trained.consecutiveRecoveryDaysUsed).toBe(0);
     expect(trained.recoveredThroughDay).toBeNull();
-    expect(coverableGapDays(trained)).toBe(Math.min(trained.recoveryDayBalance, LIMIT));
+    expect(payableGapDays(trained)).toBe(Math.min(trained.recoveryDayBalance, LIMIT));
   });
 });
 
@@ -757,10 +1114,23 @@ describe('the consecutive-use limit', () => {
 describe('a long absence', () => {
   const AWAY_DAYS = 7;
 
-  it('cannot be repaired, even holding a full bank', () => {
+  /**
+   * The longest absence a player can hold a run across by opening the app on
+   * every day of it and paying each time it asks.
+   *
+   * Each accept spends one Recovery Day AND consumes the free grace with it,
+   * because `recoveredThroughDay` jumps to the end of the covered gap and the
+   * next grace window starts from there. So each spend buys `GRACE + 1` days,
+   * `MAX_CONSECUTIVE_USES` spends are allowed with no session in between, and a
+   * final unspent grace window is free on top.
+   */
+  const WALKED_BACK_LIMIT = SHORTEST_PAID_GAP * RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES + GRACE;
+
+  it('cannot be repaired on the day the player comes back, even holding a full bank', () => {
     const state = stateWithRun(50, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
     const backOn = addDays(DAY_ZERO, AWAY_DAYS + 1);
     expect(daysMissedBefore(state, backOn)).toBe(AWAY_DAYS);
+    expect(AWAY_DAYS).toBeGreaterThan(coverableGapDays(state));
     expect(currentRecoveryDayOffer(state, backOn)).toBeNull();
     expect(openDay(state, backOn)).toEqual({
       kind: 'streak-broken',
@@ -778,21 +1148,64 @@ describe('a long absence', () => {
     expect(outcome.state.longestStreak).toBe(50);
   });
 
-  it('cannot be walked back day by day either', () => {
-    // The module has no clock, so a caller could try to replay the missed days
-    // one at a time and accept an offer on each. The consecutive-use guardrail
-    // is what stops that, and it stops it after MAX_CONSECUTIVE_USES days.
+  it('CAN be held together by opening the app through it and paying each time — and that bound is exact', () => {
+    // STATED RATHER THAN HIDDEN, because it is a real consequence of GDD §4.4
+    // and it weakens what §4.2's "prevents saving a 50-day streak after a week
+    // away" used to mean. Before §4.4 the walk-back bought nothing over opening
+    // once (both stopped at MAX_CONSECUTIVE_USES days). Now each spend also
+    // re-arms the grace, so a player who keeps checking in during their absence
+    // and keeps paying holds the run for WALKED_BACK_LIMIT days — longer than
+    // the `coverableGapDays` a single return can repair.
+    //
+    // It is not free and it is not automatic: every one of those days costs a
+    // Recovery Day the player chose to spend at a prompt.
+    const walkThrough = (away: number, balance: number): boolean => {
+      let state: StreakState = stateWithRun(50, DAY_ZERO, balance);
+      for (let offset = 1; offset <= away + 1; offset += 1) {
+        const opening = openDay(state, addDays(DAY_ZERO, offset));
+        if (opening.kind === 'streak-broken') return false;
+        if (opening.kind === 'recovery-day-offered') {
+          state = unwrap(acceptRecoveryDayOffer(state, opening.offer)).state;
+        }
+      }
+      return true;
+    };
+
+    expect(WALKED_BACK_LIMIT).toBeGreaterThan(coverableGapDays(stateWithRun(50, DAY_ZERO, 5)));
+    expect(walkThrough(WALKED_BACK_LIMIT, RECOVERY_DAY_GUARDRAILS.HOLD_CAP)).toBe(true);
+    expect(walkThrough(WALKED_BACK_LIMIT + 1, RECOVERY_DAY_GUARDRAILS.HOLD_CAP)).toBe(false);
+
+    // The bound is set by the consecutive-use guardrail, not by the balance:
+    // holding more than MAX_CONSECUTIVE_USES buys nothing more.
+    expect(walkThrough(WALKED_BACK_LIMIT, RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES)).toBe(true);
+    // ...and a player who cannot pay gets the grace and nothing else.
+    expect(walkThrough(GRACE, 0)).toBe(true);
+    expect(walkThrough(GRACE + 1, 0)).toBe(false);
+  });
+
+  it('is still beyond the walk-back once it is long enough', () => {
     let state: StreakState = stateWithRun(50, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
-    let accepted = 0;
-    for (let offset = 2; offset <= AWAY_DAYS + 1; offset += 1) {
-      const offer = currentRecoveryDayOffer(state, addDays(DAY_ZERO, offset));
-      if (offer === null) break;
-      state = unwrap(acceptRecoveryDayOffer(state, offer)).state;
-      accepted += 1;
+    const away = WALKED_BACK_LIMIT + 1;
+    let spent = 0;
+    let broke = false;
+    for (let offset = 1; offset <= away + 1; offset += 1) {
+      const opening = openDay(state, addDays(DAY_ZERO, offset));
+      if (opening.kind === 'streak-broken') {
+        broke = true;
+        break;
+      }
+      if (opening.kind === 'recovery-day-offered') {
+        const outcome = unwrap(acceptRecoveryDayOffer(state, opening.offer));
+        spent += outcome.recoveryDaysSpent;
+        state = outcome.state;
+      }
     }
-    expect(accepted).toBe(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
-    expect(openDay(state, addDays(DAY_ZERO, AWAY_DAYS + 1)).kind).toBe('streak-broken');
-    expect(unwrap(recordTrainingDay(state, addDays(DAY_ZERO, AWAY_DAYS + 1))).state.currentStreak).toBe(1);
+    expect(broke).toBe(true);
+    expect(spent).toBe(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
+    // The run ends with Recovery Days still in the bank: the guardrail bit, not
+    // the balance.
+    expect(state.recoveryDayBalance).toBeGreaterThan(0);
+    expect(unwrap(recordTrainingDay(state, addDays(DAY_ZERO, away + 1))).state.currentStreak).toBe(1);
   });
 
   it('does not let a purchase repair it either', () => {
@@ -816,9 +1229,26 @@ describe('the first-break tutorial moment', () => {
     return offer as NonNullable<typeof offer>;
   }
 
+  it('does NOT fire on any miss — only on a gap past the free grace', () => {
+    // GDD §4.3, as amended by §4.4. Before the ruling this moment fired the
+    // first time a player missed a single day. It now waits for a gap of
+    // SHORTEST_PAID_GAP days, because a shorter one costs nothing and there is
+    // no save to explain.
+    let state: StreakState = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+    for (let gap = 1; gap <= GRACE; gap += 1) {
+      const day = dayAfterGap(lastCoveredDay(state) as StreakDay, gap);
+      expect(openDay(state, day).kind).toBe('gap-covered-by-grace');
+      expect(currentRecoveryDayOffer(state, day)).toBeNull();
+      state = unwrap(recordTrainingDay(state, day)).state;
+      expect(state.hasResolvedFirstBreakOffer).toBe(false);
+    }
+    const paid = dayAfterGap(lastCoveredDay(state) as StreakDay, SHORTEST_PAID_GAP);
+    expect(firstOffer(state, paid).isFirstBreakTutorial).toBe(true);
+  });
+
   it('flags the first offer, and only the first — accepted', () => {
     const state = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
-    const dayOne = addDays(DAY_ZERO, 2);
+    const dayOne = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const first = firstOffer(state, dayOne);
     expect(first.isFirstBreakTutorial).toBe(true);
 
@@ -828,27 +1258,29 @@ describe('the first-break tutorial moment', () => {
 
     // A later break, after training resets the consecutive count.
     const trained = trainConsecutively(outcome.state, dayOne, 3);
-    const second = firstOffer(trained, addDays(dayOne, 4));
+    const second = firstOffer(trained, dayAfterGap(addDays(dayOne, 2), SHORTEST_PAID_GAP));
     expect(second.isFirstBreakTutorial).toBe(false);
     expect(unwrap(acceptRecoveryDayOffer(trained, second)).wasFirstBreakTutorial).toBe(false);
   });
 
   it('flags the first offer, and only the first — declined', () => {
     const state = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
-    const dayOne = addDays(DAY_ZERO, 2);
+    const dayOne = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const first = firstOffer(state, dayOne);
     const declined = unwrap(declineRecoveryDayOffer(state, first));
     expect(declined.wasFirstBreakTutorial).toBe(true);
     expect(declined.state.hasResolvedFirstBreakOffer).toBe(true);
 
     const trained = trainConsecutively(declined.state, dayOne, 3);
-    expect(firstOffer(trained, addDays(dayOne, 4)).isFirstBreakTutorial).toBe(false);
+    expect(
+      firstOffer(trained, dayAfterGap(addDays(dayOne, 2), SHORTEST_PAID_GAP)).isFirstBreakTutorial,
+    ).toBe(false);
   });
 
   it('is an offer, not an auto-save: the state is unchanged until it is answered', () => {
     const state = stateWithRun(9, DAY_ZERO, 3);
     const before = clone(state);
-    const day = addDays(DAY_ZERO, 2);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     for (let i = 0; i < 5; i += 1) {
       const opening = openDay(state, day);
       expect(opening.kind).toBe('recovery-day-offered');
@@ -862,17 +1294,21 @@ describe('the first-break tutorial moment', () => {
     // It must still fire at the first break the player can actually be saved
     // from, or the moment GDD §4.3 describes is silently skipped.
     const broke = stateWithRun(9, DAY_ZERO, 0);
-    expect(currentRecoveryDayOffer(broke, addDays(DAY_ZERO, 2))).toBeNull();
-    const settled = unwrap(settleBrokenStreak(broke, addDays(DAY_ZERO, 2)));
+    const brokeOn = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
+    expect(currentRecoveryDayOffer(broke, brokeOn)).toBeNull();
+    const settled = unwrap(settleBrokenStreak(broke, brokeOn));
     expect(settled.wasFirstBreakTutorial).toBe(false);
     expect(settled.state.hasResolvedFirstBreakOffer).toBe(false);
 
     const restarted = trainConsecutively(
       { ...settled.state, recoveryDayBalance: 3 },
-      addDays(DAY_ZERO, 5),
+      addDays(brokeOn, 1),
       4,
     );
-    const offer = currentRecoveryDayOffer(restarted, addDays(DAY_ZERO, 10));
+    const offer = currentRecoveryDayOffer(
+      restarted,
+      dayAfterGap(addDays(brokeOn, 4), SHORTEST_PAID_GAP),
+    );
     expect(offer?.isFirstBreakTutorial).toBe(true);
   });
 
@@ -884,11 +1320,14 @@ describe('the first-break tutorial moment', () => {
       recoveryDayBalance: RECOVERY_DAY_GUARDRAILS.HOLD_CAP,
     };
     let tutorials = 0;
+    let offersSeen = 0;
     let day = DAY_ZERO;
-    for (let i = 0; i < 60; i += 1) {
-      const skip = i % 5 === 3;
+    const CYCLE = SHORTEST_PAID_GAP + 1;
+    for (let i = 0; i < 120; i += 1) {
+      const skip = i % CYCLE !== 0;
       const opening = openDay(state, day);
       if (opening.kind === 'recovery-day-offered') {
+        offersSeen += 1;
         const outcome = unwrap(acceptRecoveryDayOffer(state, opening.offer));
         if (outcome.wasFirstBreakTutorial) tutorials += 1;
         state = outcome.state;
@@ -898,6 +1337,10 @@ describe('the first-break tutorial moment', () => {
       if (!skip) state = unwrap(recordTrainingDay(state, day)).state;
       day = addDays(day, 1);
     }
+    // The history has to contain several offers for "exactly one tutorial" to
+    // mean anything; if the grace swallowed them all this would read 0 and the
+    // assertion below would pass for the wrong reason.
+    expect(offersSeen).toBeGreaterThan(1);
     expect(tutorials).toBe(1);
   });
 });
@@ -950,6 +1393,10 @@ describe('streak milestones', () => {
     // A Recovery Day keeps the run alive but is not a training day, so the
     // seventh milestone still costs seven sessions. This is what stops bought
     // Recovery Days from earning more Recovery Days.
+    //
+    // The pattern is one trained day per SHORTEST_PAID_GAP idle days, so every
+    // gap costs a Recovery Day rather than falling inside the free grace — the
+    // test would say nothing about SPENDING otherwise.
     let state: StreakState = {
       ...createStreakState(),
       recoveryDayBalance: RECOVERY_DAY_GUARDRAILS.HOLD_CAP,
@@ -957,10 +1404,10 @@ describe('streak milestones', () => {
     let sessions = 0;
     let milestoneAtSessions = -1;
     let recoveryDaysUsed = 0;
-    // Train, train, skip — the skipped day is covered every time, so the run
-    // never breaks and 7 calendar days' worth of streak arrives after only 5
-    // sessions if a Recovery Day were to count. It must not.
-    for (let i = 0; i < 12 && milestoneAtSessions < 0; i += 1) {
+    const TRAIN_BLOCK = 3;
+    const CYCLE = TRAIN_BLOCK + SHORTEST_PAID_GAP;
+
+    for (let i = 0; i < CYCLE * 4 && milestoneAtSessions < 0; i += 1) {
       const day = addDays(DAY_ZERO, i);
       const opening = openDay(state, day);
       expect(opening.kind).not.toBe('streak-broken');
@@ -969,23 +1416,27 @@ describe('streak milestones', () => {
         recoveryDaysUsed += outcome.recoveryDaysSpent;
         state = outcome.state;
       }
-      if (i % 3 !== 2) {
+      if (i % CYCLE < TRAIN_BLOCK) {
         const outcome = unwrap(recordTrainingDay(state, day));
         state = outcome.state;
         sessions += 1;
         if (outcome.milestonesReached.includes(7)) milestoneAtSessions = sessions;
       }
     }
+    // The calendar reached the seventh milestone days before the seventh
+    // session did, and the covered days did not close the difference.
     expect(recoveryDaysUsed).toBeGreaterThan(0);
     expect(milestoneAtSessions).toBe(7);
   });
 
   it('never counts a Recovery Day as a training day', () => {
     const state = stateWithRun(9, DAY_ZERO, 4);
-    const offer = currentRecoveryDayOffer(state, addDays(DAY_ZERO, 3)) as NonNullable<
-      ReturnType<typeof currentRecoveryDayOffer>
-    >;
+    const offer = currentRecoveryDayOffer(
+      state,
+      dayAfterGap(DAY_ZERO, GRACE + 2),
+    ) as NonNullable<ReturnType<typeof currentRecoveryDayOffer>>;
     const outcome = unwrap(acceptRecoveryDayOffer(state, offer));
+    expect(outcome.recoveryDaysSpent).toBe(2);
     expect(outcome.state.currentStreak).toBe(9);
     expect(outcome.state.longestStreak).toBe(9);
     expect(outcome.streakProtected).toBe(9);
@@ -1007,7 +1458,10 @@ describe('what a purchased Recovery Day can reach', () => {
       stateWithRun(9, DAY_ZERO, 3),
       trainConsecutively(createStreakState(), DAY_ZERO, 8),
     ];
-    const offer = currentRecoveryDayOffer(states[1] as StreakState, addDays(DAY_ZERO, 2));
+    const offer = currentRecoveryDayOffer(
+      states[1] as StreakState,
+      dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP),
+    );
     states.push(unwrap(acceptRecoveryDayOffer(states[1] as StreakState, offer as NonNullable<typeof offer>)).state);
     states.push(unwrap(grantRecoveryDays(createStreakState(), { source: 'purchase-chalk', amount: 2 })).state);
 
@@ -1018,9 +1472,10 @@ describe('what a purchased Recovery Day can reach', () => {
 
   it('reports nothing outside the declared spend allowlist', () => {
     const state = stateWithRun(9, DAY_ZERO, 3);
-    const offer = currentRecoveryDayOffer(state, addDays(DAY_ZERO, 2)) as NonNullable<
-      ReturnType<typeof currentRecoveryDayOffer>
-    >;
+    const offer = currentRecoveryDayOffer(
+      state,
+      dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP),
+    ) as NonNullable<ReturnType<typeof currentRecoveryDayOffer>>;
     const outcome = unwrap(acceptRecoveryDayOffer(state, offer));
     expect(Object.keys(outcome).sort()).toEqual([...RECOVERY_DAY_OUTCOME_KEYS].sort());
   });
@@ -1031,9 +1486,10 @@ describe('what a purchased Recovery Day can reach', () => {
     // outcome objects.
     const forbidden = /total|e1rm|1rm|weight|load|pace|multiplier|bonus|boost|iq|fatigue|readiness|attempt/i;
     const state = stateWithRun(9, DAY_ZERO, 3);
-    const offer = currentRecoveryDayOffer(state, addDays(DAY_ZERO, 2)) as NonNullable<
-      ReturnType<typeof currentRecoveryDayOffer>
-    >;
+    const offer = currentRecoveryDayOffer(
+      state,
+      dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP),
+    ) as NonNullable<ReturnType<typeof currentRecoveryDayOffer>>;
     const outcome = unwrap(acceptRecoveryDayOffer(state, offer));
     for (const key of [...Object.keys(state), ...Object.keys(outcome), ...Object.keys(offer)]) {
       expect(key).not.toMatch(forbidden);
@@ -1068,13 +1524,14 @@ describe('what a purchased Recovery Day can reach', () => {
 
   it('spends a purchased Recovery Day to exactly the same effect as an earned one', () => {
     const run = stateWithRun(9, DAY_ZERO, 0);
-    const day = addDays(DAY_ZERO, 2);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const bought = unwrap(grantRecoveryDays(run, { source: 'purchase-chalk', amount: 1 })).state;
     const earned = unwrap(grantRecoveryDays(run, { source: 'achievement' })).state;
     expect(bought).toEqual(earned);
 
     const boughtOffer = currentRecoveryDayOffer(bought, day);
     const earnedOffer = currentRecoveryDayOffer(earned, day);
+    expect(boughtOffer).not.toBeNull();
     expect(boughtOffer).toEqual(earnedOffer);
     expect(unwrap(acceptRecoveryDayOffer(bought, boughtOffer as NonNullable<typeof boughtOffer>))).toEqual(
       unwrap(acceptRecoveryDayOffer(earned, earnedOffer as NonNullable<typeof earnedOffer>)),
@@ -1092,24 +1549,34 @@ describe('what a purchased Recovery Day can reach', () => {
   it('cannot buy a longer streak, only a surviving one', () => {
     // Buying the maximum and spending it all still leaves the streak count at
     // exactly the number of days actually trained.
+    //
+    // The idle blocks are SHORTEST_PAID_GAP long so the purchased Recovery Days
+    // are actually spent; with shorter ones the free grace would carry the run
+    // and the test would prove nothing about buying.
     let state: StreakState = { ...createStreakState(), recoveryDayBalance: 0 };
     state = unwrap(grantRecoveryDays(state, { source: 'purchase-chalk', amount: 99 })).state;
     let trainedDays = 0;
+    let spent = 0;
     let day = DAY_ZERO;
-    for (let i = 0; i < 40; i += 1) {
+    const TRAIN_BLOCK = 2;
+    const CYCLE = TRAIN_BLOCK + SHORTEST_PAID_GAP;
+    for (let i = 0; i < CYCLE * 8; i += 1) {
       const opening = openDay(state, day);
       if (opening.kind === 'recovery-day-offered') {
-        state = unwrap(acceptRecoveryDayOffer(state, opening.offer)).state;
+        const outcome = unwrap(acceptRecoveryDayOffer(state, opening.offer));
+        spent += outcome.recoveryDaysSpent;
+        state = outcome.state;
       } else if (opening.kind === 'streak-broken') {
         state = unwrap(settleBrokenStreak(state, day)).state;
       }
-      if (i % 3 !== 1) {
+      if (i % CYCLE < TRAIN_BLOCK) {
         state = unwrap(recordTrainingDay(state, day)).state;
         trainedDays += 1;
       }
       day = addDays(day, 1);
       expect(state.currentStreak).toBeLessThanOrEqual(trainedDays);
     }
+    expect(spent).toBeGreaterThan(0);
   });
 });
 
@@ -1226,15 +1693,25 @@ const INVERSION_SEARCH = {
   /** Recovery Days both simulated players start on. */
   STARTING_BALANCE: 2,
 
-  /** History lengths the exhaustive maximisation sweeps. All 2^L of each. */
-  EXHAUSTIVE_LENGTHS: [8, 9, 10, 11, 12, 13, 14],
+  /**
+   * History lengths the exhaustive maximisation sweeps. All 2^L of each.
+   *
+   * MOVED UP BY TWO SINCE GDD §4.4. The free grace means the shortest gap that
+   * costs anything is `FREE_GRACE_GAP_DAYS + 1` days, so an inversion needs a
+   * longer calendar to fit into: at the old range's low end there is now
+   * nothing to find, and stopping there would read as "fixed" when it is not.
+   */
+  EXHAUSTIVE_LENGTHS: [10, 11, 12, 13, 14, 15, 16],
 
   /**
    * Largest `currentStreak` deficit one extra training day can cause, over
    * every history of each length above, counting only pairs where both players
    * spent the SAME number of Recovery Days. Found by search, not derived.
+   *
+   * The leading zeros are the §4.4 improvement, and the tail is the part that
+   * did not go away.
    */
-  WORST_DELTA_BY_LENGTH: [3, 4, 5, 5, 6, 7, 8],
+  WORST_DELTA_BY_LENGTH: [0, 0, 1, 2, 3, 4, 5],
 
   /**
    * Run lengths the constructive family below is instantiated at. None of them
@@ -1242,7 +1719,16 @@ const INVERSION_SEARCH = {
    * and says why.
    */
   FAMILY_RUN_LENGTHS: [8, 19, 31, 50, 101, 365, 1000],
+
+  /**
+   * Recovery Days each player in the constructive family spends. Both spend
+   * exactly this many, whatever the run length, which is what stops the deficit
+   * being explained away as "the diligent player used more of the bank".
+   */
+  FAMILY_SPEND: 3,
 } as const;
+
+const FAMILY_SPEND = INVERSION_SEARCH.FAMILY_SPEND;
 
 /**
  * The measured size of the monotonicity defect, over every 13-day calendar,
@@ -1263,17 +1749,27 @@ const MONOTONICITY_MEASUREMENT = {
   /** Calendar length swept exhaustively — all 2^13 of them. */
   CALENDAR_LENGTH: 13,
 
-  /** Violating pairs when something opens the day every day (a nightly job). */
-  VIOLATIONS_OPENING_DAILY: 1948,
-
-  /** Violating pairs when only the player's own sessions open the day. */
-  VIOLATIONS_OPENING_ON_TRAINING_DAYS: 4250,
+  /**
+   * Violating pairs when something opens the day every day (a nightly job).
+   *
+   * WAS 1948 BEFORE GDD §4.4. Zero here is a real improvement and NOT a fix:
+   * see `LONGER_CALENDAR_LENGTH` below, where the same model violates again as
+   * soon as the calendar is long enough to hold two chargeable gaps.
+   */
+  VIOLATIONS_OPENING_DAILY: 0,
 
   /**
-   * Largest `currentStreak` deficit found at this calendar length. The same
-   * pair is worst under both opening models.
+   * Violating pairs when only the player's own sessions open the day.
+   * Was 4250 before GDD §4.4.
    */
-  WORST_DEFICIT: 6,
+  VIOLATIONS_OPENING_ON_TRAINING_DAYS: 36,
+
+  /**
+   * Largest `currentStreak` deficit found at this calendar length, across both
+   * models. Was 6 before GDD §4.4. Only the on-training-days model reaches it
+   * now, so this is no longer "the same pair under both models".
+   */
+  WORST_DEFICIT: 3,
 
   /**
    * Violations of the invariant the user asked for — a player who spent
@@ -1281,6 +1777,20 @@ const MONOTONICITY_MEASUREMENT = {
    * not by luck; see the regression-guard test for why it is structural.
    */
   VIOLATIONS_AGAINST_A_ZERO_SPEND_COMPARATOR: 0,
+
+  /**
+   * A SECOND LENGTH, MEASURED SO THE ZERO ABOVE CANNOT BE MISREAD.
+   *
+   * At 13 days the daily model shows no violations, which invites the
+   * conclusion that §4.4 closed the defect under a nightly job. It did not. Two
+   * more days of calendar are enough to fit two chargeable gaps, and the same
+   * mechanism reappears. Pinned here so the improvement and its limit are on
+   * the record together.
+   */
+  LONGER_CALENDAR_LENGTH: 15,
+  VIOLATIONS_OPENING_DAILY_AT_LONGER_LENGTH: 2,
+  VIOLATIONS_OPENING_ON_TRAINING_DAYS_AT_LONGER_LENGTH: 384,
+  WORST_DEFICIT_AT_LONGER_LENGTH: 5,
 } as const;
 
 /**
@@ -1297,11 +1807,17 @@ const MONOTONICITY_MEASUREMENT = {
  * never shown. Accepting it is the only decision the two players make
  * differently, and from there the histories are identical, so every later offer
  * goes to both: the diligent player is simply one Recovery Day poorer, forever.
- * Single missed days are then placed to draw both banks down — one immediately,
+ * Chargeable gaps are then placed to draw both banks down — one immediately,
  * and one after each milestone payout that lands inside the run — until the
  * lazy player holds exactly one Recovery Day and the diligent player holds
- * none. The next single missed day is covered for the lazy player and fatal for
+ * none. The next chargeable gap is covered for the lazy player and fatal for
  * the diligent one.
+ *
+ * EVERY GAP IS EXACTLY `SHORTEST_PAID_GAP` DAYS since GDD §4.4 — the shortest
+ * absence that costs anything. Shorter gaps are free now, so a family built out
+ * of single missed days (which is what this was before the ruling) produces no
+ * spending at all and no deficit. The construction survived the ruling; its gap
+ * length did not.
  */
 function inversionHistories(
   runLost: number,
@@ -1324,11 +1840,16 @@ function inversionHistories(
   }
 
   const lazy: boolean[] = [];
+  /** One chargeable gap: the shortest absence a Recovery Day is charged for. */
+  const pushGap = (): void => {
+    for (let i = 0; i < SHORTEST_PAID_GAP; i += 1) lazy.push(false);
+  };
+
   lazy.push(false); // day 0 — the one divergent day; the diligent player trains it
-  lazy.push(false); // day 1 — the gap only the diligent player is offered a save for
+  pushGap(); // the gap only the diligent player is offered a save for
   lazy.push(true); // both start (or restart) their run here
   let lazyStreak = 1;
-  lazy.push(false); // first draw-down gap: lazy balance 2 -> 1, diligent 1 -> 0
+  pushGap(); // first draw-down gap: lazy balance 2 -> 1, diligent 1 -> 0
 
   for (const milestone of STREAK_MILESTONE_DAYS) {
     if (milestone > runLost) break;
@@ -1336,11 +1857,9 @@ function inversionHistories(
       lazy.push(true);
       lazyStreak += 1;
     }
-    lazy.push(false); // draw down the milestone payout that just landed for both
-    // Every gap in this family is exactly one day long, which is what lets the
-    // family rule out "charge per gap rather than per missed day" as a fix.
-    // That needs a trained day between consecutive gaps, including between the
-    // last draw-down and the fatal gap.
+    pushGap(); // draw down the milestone payout that just landed for both
+    // A trained day between consecutive gaps, so two draw-downs never run
+    // together into one longer (and therefore more expensive) absence.
     lazy.push(true);
     lazyStreak += 1;
   }
@@ -1349,7 +1868,7 @@ function inversionHistories(
     lazy.push(true);
     lazyStreak += 1;
   }
-  lazy.push(false); // the fatal gap: covered for the lazy player, uncoverable for the other
+  pushGap(); // the fatal gap: covered for the lazy player, uncoverable for the other
   for (let i = 0; i < runRebuilt; i += 1) lazy.push(true);
 
   return { lazy, diligent: lazy.map((trained, i) => (i === 0 ? true : trained)) };
@@ -1465,30 +1984,18 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(casesChecked).toBeGreaterThan(350);
   });
 
-  it('KNOWN GAP, MINIMAL CASE: a player who accepts every offer can be left worse off by training more', () => {
-    // NOT a passing property dressed up as a caveat. This is a real hole in the
-    // strong form of "daily engagement is never worse than skipping", pinned as
-    // a test so it is visible and cannot change silently. A human has to decide
-    // whether to accept it; nothing in this module fixes it.
+  it('THE OLD MINIMAL CASE IS FIXED: single missed days no longer cost anything, so it cannot happen', () => {
+    // KEPT, NOT DELETED, because it is the before/after of the GDD §4.4 ruling.
+    // These two eleven-day histories used to end on best streaks of 2 and 1 —
+    // the player who trained MORE ending lower — and the claim attached to them
+    // was "no threshold fixes this, the same construction exists at any
+    // threshold". THAT CLAIM WAS WRONG AT THIS SCALE and is deleted rather than
+    // softened: with every gap here one day long, the free grace covers them
+    // all, neither player spends anything, and the inversion is gone.
     //
-    // THIS IS THE SMALLEST CASE THAT EXISTS, NOT A REPRESENTATIVE ONE. Read it
-    // on its own and a best streak of 2 against 1 looks like a rounding
-    // artifact of an eleven-day toy history. It is not: the three tests that
-    // follow take the same mechanism to 37 against 18, then to 2001 against
-    // 1001, then search for a ceiling and fail to find one.
-    //
-    // MECHANISM. Recovery Days are finite and only a LIVE run generates offers.
-    // Training an extra day early keeps a run alive that the lazier history had
-    // already lost, so the diligent player is *offered* Recovery Days sooner —
-    // and a player who accepts every offer spends them on a short run that dies
-    // anyway, leaving nothing for a longer run later. It is the accepting, not
-    // the training, that costs: no threshold fixes it, because the same
-    // construction exists at any threshold. What GDD §4.2 offers against it is
-    // agency — `RecoveryDayOffer.streakProtected` and `.balanceAfter` are on
-    // the offer precisely so the prompt can tell the player what a yes is worth.
-    //
-    // These exact numbers were found by exhaustive search over all 2^11
-    // histories at a starting balance of 2.
+    // WHAT WAS RIGHT ABOUT IT is that the construction reappears one gap-length
+    // up. See the tests below, which rebuild it out of SHORTEST_PAID_GAP gaps
+    // and find the same unbounded deficit.
     const initial: StreakState = { ...createStreakState(), recoveryDayBalance: 2 };
     const parse = (pattern: string): boolean[] => [...pattern].map((c) => c === 'T');
     const noGrants = Array.from({ length: 11 }, () => false);
@@ -1496,12 +2003,57 @@ describe('daily engagement is never worse than skipping — where that holds, an
     const lazy = simulate(parse('....T.T....'), noGrants, 'accept', initial);
     const diligent = simulate(parse('T...T.T....'), noGrants, 'accept', initial);
 
+    // Was 2 against 1, the wrong way round. Now the extra session buys exactly
+    // what it should: one more day of streak, both current and best.
+    expect(lazy.state.currentStreak).toBe(2);
+    expect(diligent.state.currentStreak).toBe(3);
     expect(lazy.state.longestStreak).toBe(2);
-    expect(diligent.state.longestStreak).toBe(1);
+    expect(diligent.state.longestStreak).toBe(3);
+    expect(diligent.state.currentStreak).toBeGreaterThan(lazy.state.currentStreak);
+
+    // Both still spend — the trailing idle block at the end of the calendar is
+    // long enough to be chargeable — so this is not "the grace made everything
+    // free", it is the single-day gaps in the middle no longer costing.
+    expect(lazy.recoveryDaysSpent).toBe(1);
+    expect(diligent.recoveryDaysSpent).toBe(2);
+  });
+
+  it('KNOWN GAP, MINIMAL CASE: a player who accepts every offer can still be left worse off by training more', () => {
+    // NOT a passing property dressed up as a caveat. This is a real hole in the
+    // strong form of "daily engagement is never worse than skipping", pinned as
+    // a test so it is visible and cannot change silently.
+    //
+    // GDD §4.4 SHRANK IT AND DID NOT CLOSE IT. The free grace removes every
+    // instance built out of short gaps, which is most of them — see the
+    // before/after counts in the MEASURED test below. What survives is the same
+    // mechanism at gap length SHORTEST_PAID_GAP.
+    //
+    // MECHANISM, unchanged. Recovery Days are finite and only a LIVE run
+    // generates offers. Training an extra day early keeps a run alive that the
+    // lazier history had already lost, so the diligent player is *offered*
+    // Recovery Days sooner — and a player who accepts every offer spends them on
+    // a short run that dies anyway, leaving nothing for a longer run later. It
+    // is the accepting, not the training, that costs. What GDD §4.2 offers
+    // against it is agency: `RecoveryDayOffer.streakProtected` and
+    // `.balanceAfter` are on the offer so the prompt can say what a yes is
+    // worth today. Nothing on it can say what a yes costs later.
+    //
+    // Found by exhaustive search over all 2^12 histories at a starting balance
+    // of 2 — the shortest length at which any inversion survives §4.4.
+    const initial: StreakState = { ...createStreakState(), recoveryDayBalance: 2 };
+    const parse = (pattern: string): boolean[] => [...pattern].map((c) => c === 'T');
+    const noGrants = Array.from({ length: 12 }, () => false);
+
+    const lazy = simulate(parse('....T.......'), noGrants, 'accept', initial);
+    const diligent = simulate(parse('T...T.......'), noGrants, 'accept', initial);
+
+    expect(lazy.state.currentStreak).toBe(1);
+    expect(diligent.state.currentStreak).toBe(0);
     expect(diligent.recoveryDaysSpent).toBe(lazy.recoveryDaysSpent);
+    expect(lazy.recoveryDaysSpent).toBeGreaterThan(0);
     // The diligent player trained on strictly more days and ended with a
-    // strictly shorter best streak. Recorded, not excused.
-    expect(diligent.state.longestStreak).toBeLessThan(lazy.state.longestStreak);
+    // strictly shorter live streak. Recorded, not excused.
+    expect(diligent.state.currentStreak).toBeLessThan(lazy.state.currentStreak);
   });
 
   it('KNOWN GAP AT REALISTIC SCALE: 37 trained days end on a 37-day streak, 38 end on an 18-day one', () => {
@@ -1533,7 +2085,8 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // two spend the same, and it is WHEN the diligent player was able to spend
     // — on a one-day streak nobody would decline — that costs them.
     expect(diligent.recoveryDaysSpent).toBe(lazy.recoveryDaysSpent);
-    expect(lazy.recoveryDaysSpent).toBe(3);
+    expect(lazy.recoveryDaysSpent).toBe(FAMILY_SPEND);
+    expect(FAMILY_SPEND).toBeGreaterThan(0);
   });
 
   it('KNOWN GAP HAS NO CEILING: the deficit is exactly the run the diligent player loses, at any run length', () => {
@@ -1571,16 +2124,18 @@ describe('daily engagement is never worse than skipping — where that holds, an
       expect(diligent.recoveryDaysSpent).toBe(lazy.recoveryDaysSpent);
       expect(lazy.recoveryDaysSpent).toBeLessThanOrEqual(lifetimeFreeIncome);
 
-      // Backs a claim in the `streak.ts` header: charging one Recovery Day per
-      // GAP instead of per missed day would change nothing about this family,
-      // because every gap in it is already exactly one day long. Checked here
-      // rather than asserted in prose.
+      // STRUCTURAL FACT THE FAMILY DEPENDS ON, checked rather than asserted in
+      // prose: inside the live run every gap is exactly SHORTEST_PAID_GAP days
+      // long. One day shorter and the free grace covers it for nothing, so no
+      // Recovery Day is spent and there is no deficit to find; one day longer
+      // and each gap costs two, which changes the draw-down arithmetic.
       const firstTrainedDay = lazyHistory.indexOf(true);
       let idleRun = 0;
       for (let i = firstTrainedDay; i < lazyHistory.length; i += 1) {
         idleRun = lazyHistory[i] === true ? 0 : idleRun + 1;
-        expect(idleRun).toBeLessThanOrEqual(1);
+        expect(idleRun).toBeLessThanOrEqual(SHORTEST_PAID_GAP);
       }
+      expect(SHORTEST_PAID_GAP).toBeGreaterThan(GRACE);
     }
 
     // Stated as a claim rather than left implicit in the loop: the largest
@@ -1643,10 +2198,9 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // `currentStreak`, it only sets `recoveredThroughDay`. So their live run
     // contains the comparator's, and cannot be shorter.
     //
-    // Swept over every 13-day calendar A, every sub-calendar B of A (B trains a
-    // strict subset of A's days), keeping only the pairs where B spent nothing,
-    // at every starting balance from 0 to the hold cap so that every N from 0
-    // to HOLD_CAP is actually exercised rather than assumed.
+    // PART ONE — BREADTH. Every 11-day calendar A, every sub-calendar B of A
+    // (B trains a strict subset of A's days), keeping only the pairs where B
+    // spent nothing, at every starting balance from 0 to the hold cap.
     const LENGTH = 11;
     const noGrants = Array.from({ length: LENGTH }, () => false);
     const spendCountsExercised = new Set<number>();
@@ -1677,10 +2231,47 @@ describe('daily engagement is never worse than skipping — where that holds, an
 
     expect(violations).toBe(0);
     expect(pairsChecked).toBeGreaterThan(100_000);
-    // "For all N up to the hold cap" is only meaningful if the sweep reached
-    // every N. Asserted rather than hoped for.
+
+    // PART TWO — DEPTH, and it exists because part one no longer reaches every
+    // N. Since GDD §4.4 the cheapest spend needs a SHORTEST_PAID_GAP-day
+    // absence, so eleven days cannot fit more than two of them and the sweep
+    // above only ever exercises N = 0, 1, 2. Asserting "for all N up to the
+    // hold cap" off that would be a claim the test does not check.
+    //
+    // So the deeper spend counts are constructed rather than searched for: N
+    // repetitions of [train, then a chargeable gap] spends exactly N.
+    expect([...spendCountsExercised].sort((a, b) => a - b)).toEqual([0, 1, 2]);
+
     for (let n = 0; n <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; n += 1) {
-      expect(spendCountsExercised.has(n)).toBe(true);
+      const history: boolean[] = [];
+      for (let cycle = 0; cycle < n; cycle += 1) {
+        history.push(true);
+        for (let idle = 0; idle < SHORTEST_PAID_GAP; idle += 1) history.push(false);
+      }
+      history.push(true);
+      const grants = Array.from({ length: history.length }, () => false);
+      const initial: StreakState = {
+        ...createStreakState(),
+        recoveryDayBalance: RECOVERY_DAY_GUARDRAILS.HOLD_CAP,
+      };
+      const spender = simulate(history, grants, 'accept', initial, 'daily', true);
+      // The construction has to actually spend N, or the loop proves nothing.
+      expect(spender.recoveryDaysSpent).toBe(n);
+
+      // Every comparator who trained a subset of those days and spent nothing.
+      const trainedIndices = history.flatMap((trained, i) => (trained ? [i] : []));
+      let comparatorsChecked = 0;
+      for (let sub = 0; sub < 1 << trainedIndices.length; sub += 1) {
+        const comparator = history.map(() => false);
+        trainedIndices.forEach((dayIndex, bit) => {
+          if ((sub & (1 << bit)) !== 0) comparator[dayIndex] = true;
+        });
+        const usedNone = simulate(comparator, grants, 'accept', initial, 'daily', true);
+        if (usedNone.recoveryDaysSpent !== 0) continue;
+        comparatorsChecked += 1;
+        expect(spender.state.currentStreak).toBeGreaterThanOrEqual(usedNone.state.currentStreak);
+      }
+      expect(comparatorsChecked).toBeGreaterThan(0);
     }
   });
 
@@ -1729,55 +2320,74 @@ describe('daily engagement is never worse than skipping — where that holds, an
     }
   });
 
-  it('KNOWN GAP, MEASURED: how many 13-day calendars an extra training day makes worse, under both app-opening models', () => {
+  it('KNOWN GAP, MEASURED: how many calendars an extra training day makes worse, under both app-opening models', () => {
     // The general monotonicity property, driven over the whole calendar space
     // rather than one pattern, with the count pinned so the size of the defect
     // is on the record and cannot drift silently.
     //
-    // ROOT CAUSE. Idle days BEFORE a run exists are free — `lastCoveredDay` is
-    // null, so `daysMissedBefore` returns 0 and no offer is made. Idle days
-    // INSIDE a live run cost Recovery Days. An extra training day converts the
-    // first kind into the second, drains a finite pool, and leaves a later gap
-    // uncoverable, so a run dies that would otherwise have survived.
+    // ROOT CAUSE, UNCHANGED BY GDD §4.4. Idle days BEFORE a run exists are free
+    // — `lastCoveredDay` is null, so `daysMissedBefore` returns 0 and no offer
+    // is made. Idle days INSIDE a live run past the free grace cost Recovery
+    // Days. An extra training day converts the first kind into the second,
+    // drains a finite pool, and leaves a later gap uncoverable, so a run dies
+    // that would otherwise have survived. What §4.4 changed is the SIZE of the
+    // absence that triggers it, not the asymmetry itself.
     const initial = createStreakState();
-    const LENGTH = MONOTONICITY_MEASUREMENT.CALENDAR_LENGTH;
-    const noGrants = Array.from({ length: LENGTH }, () => false);
-    const counts: number[] = [];
-    let worstDeficit = 0;
-    let violationsAgainstZeroSpend = 0;
+    const measureAt = (
+      LENGTH: number,
+    ): { counts: number[]; worstDeficit: number; zeroSpend: number } => {
+      const noGrants = Array.from({ length: LENGTH }, () => false);
+      const counts: number[] = [];
+      let worstDeficit = 0;
+      let zeroSpend = 0;
 
-    for (const opens of ['daily', 'on-training-days'] as const) {
-      const results: SimResult[] = [];
-      for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
-        const attend = Array.from({ length: LENGTH }, (_, i) => (mask & (1 << i)) !== 0);
-        results.push(simulate(attend, noGrants, 'accept', initial, opens, true));
-      }
-
-      let violations = 0;
-      for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
-        const lazy = results[mask] as SimResult;
-        for (let flip = 0; flip < LENGTH; flip += 1) {
-          if ((mask & (1 << flip)) !== 0) continue;
-          const diligent = results[mask | (1 << flip)] as SimResult;
-          const deficit = lazy.state.currentStreak - diligent.state.currentStreak;
-          if (deficit <= 0) continue;
-          violations += 1;
-          worstDeficit = Math.max(worstDeficit, deficit);
-          if (lazy.recoveryDaysSpent === 0) violationsAgainstZeroSpend += 1;
+      for (const opens of ['daily', 'on-training-days'] as const) {
+        const results: SimResult[] = [];
+        for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
+          const attend = Array.from({ length: LENGTH }, (_, i) => (mask & (1 << i)) !== 0);
+          results.push(simulate(attend, noGrants, 'accept', initial, opens, true));
         }
-      }
-      counts.push(violations);
-    }
 
-    expect(counts).toEqual([
+        let violations = 0;
+        for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
+          const lazy = results[mask] as SimResult;
+          for (let flip = 0; flip < LENGTH; flip += 1) {
+            if ((mask & (1 << flip)) !== 0) continue;
+            const diligent = results[mask | (1 << flip)] as SimResult;
+            const deficit = lazy.state.currentStreak - diligent.state.currentStreak;
+            if (deficit <= 0) continue;
+            violations += 1;
+            worstDeficit = Math.max(worstDeficit, deficit);
+            if (lazy.recoveryDaysSpent === 0) zeroSpend += 1;
+          }
+        }
+        counts.push(violations);
+      }
+      return { counts, worstDeficit, zeroSpend };
+    };
+
+    const short = measureAt(MONOTONICITY_MEASUREMENT.CALENDAR_LENGTH);
+    expect(short.counts).toEqual([
       MONOTONICITY_MEASUREMENT.VIOLATIONS_OPENING_DAILY,
       MONOTONICITY_MEASUREMENT.VIOLATIONS_OPENING_ON_TRAINING_DAYS,
     ]);
-    expect(worstDeficit).toBe(MONOTONICITY_MEASUREMENT.WORST_DEFICIT);
+    expect(short.worstDeficit).toBe(MONOTONICITY_MEASUREMENT.WORST_DEFICIT);
     // Every violation involves a comparator that ALSO spent. None of them
     // reach the invariant the user asked for, which is why that one passes.
-    expect(violationsAgainstZeroSpend).toBe(
-      MONOTONICITY_MEASUREMENT.VIOLATIONS_AGAINST_A_ZERO_SPEND_COMPARATOR,
+    expect(short.zeroSpend).toBe(MONOTONICITY_MEASUREMENT.VIOLATIONS_AGAINST_A_ZERO_SPEND_COMPARATOR);
+
+    // THE SECOND LENGTH IS THE POINT OF THIS TEST, not a bonus. Reading the
+    // zero above on its own says the nightly-job model is clean. It is not: two
+    // more days of calendar and it violates too.
+    const long = measureAt(MONOTONICITY_MEASUREMENT.LONGER_CALENDAR_LENGTH);
+    expect(long.counts).toEqual([
+      MONOTONICITY_MEASUREMENT.VIOLATIONS_OPENING_DAILY_AT_LONGER_LENGTH,
+      MONOTONICITY_MEASUREMENT.VIOLATIONS_OPENING_ON_TRAINING_DAYS_AT_LONGER_LENGTH,
+    ]);
+    expect(long.worstDeficit).toBe(MONOTONICITY_MEASUREMENT.WORST_DEFICIT_AT_LONGER_LENGTH);
+    expect(long.zeroSpend).toBe(MONOTONICITY_MEASUREMENT.VIOLATIONS_AGAINST_A_ZERO_SPEND_COMPARATOR);
+    expect(MONOTONICITY_MEASUREMENT.VIOLATIONS_OPENING_DAILY_AT_LONGER_LENGTH).toBeGreaterThan(
+      MONOTONICITY_MEASUREMENT.VIOLATIONS_OPENING_DAILY,
     );
   });
 
@@ -1788,29 +2398,35 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // opened since the last session and it reports a streak the player does not
     // have.
     //
-    // The pair below looks like a monotonicity violation — the player who
-    // trained MORE reads 1 while the one who trained less reads 3 — and is not
-    // one. Both runs are equally dead; only one of them has been told.
+    // IT GETS THE ANSWER WRONG IN BOTH DIRECTIONS, which is why this is two
+    // pairs and not one.
     const initial = createStreakState();
     const parse = (pattern: string): boolean[] => [...pattern].map((c) => c === 'T');
-    const trainedMore = parse('T..T.T.T.....');
-    const trainedLess = parse('...T.T.T.....');
-    const noGrants = Array.from({ length: trainedMore.length }, () => false);
+    const noGrants = Array.from({ length: 13 }, () => false);
+    const stale = (pattern: string): SimResult =>
+      simulate(parse(pattern), noGrants, 'accept', initial, 'on-training-days', false);
+    const settled = (pattern: string): SimResult =>
+      simulate(parse(pattern), noGrants, 'accept', initial, 'on-training-days', true);
 
-    const staleMore = simulate(trainedMore, noGrants, 'accept', initial, 'on-training-days', false);
-    const staleLess = simulate(trainedLess, noGrants, 'accept', initial, 'on-training-days', false);
-    expect(staleMore.state.currentStreak).toBe(1);
-    expect(staleLess.state.currentStreak).toBe(3);
+    // (a) A VIOLATION THAT IS NOT THERE. Read unsettled, the player who trained
+    // an extra day reads 1 against 2 — an apparent monotonicity failure. It is
+    // not one: the 2 belongs to a run that ended days ago and has not been told.
+    expect(stale('TT.....T.....').state.currentStreak).toBe(1);
+    expect(stale('TT...........').state.currentStreak).toBe(2);
+    expect(settled('TT.....T.....').state.currentStreak).toBe(1);
+    expect(settled('TT...........').state.currentStreak).toBe(0);
 
-    // Both last trained on day 7 of a 13-day calendar, so both have missed far
-    // more than the guardrails can cover. Open the day and the difference goes.
-    expect(staleMore.state.lastTrainedDay).toBe(staleLess.state.lastTrainedDay);
-    const settledMore = simulate(trainedMore, noGrants, 'accept', initial, 'on-training-days', true);
-    const settledLess = simulate(trainedLess, noGrants, 'accept', initial, 'on-training-days', true);
-    expect(settledMore.state.currentStreak).toBe(0);
-    expect(settledLess.state.currentStreak).toBe(0);
-    expect(settledMore.state.lastTrainedDay).toBeNull();
-    expect(settledLess.state.lastTrainedDay).toBeNull();
+    // (b) A VIOLATION THAT IS THERE AND HIDDEN. The same staleness conceals the
+    // real defect: unsettled, the extra training day reads 4 against 3 and looks
+    // fine; settled, it reads 0 against 3. This is the worst pair the measured
+    // sweep below finds, so the two tests are looking at the same case.
+    expect(stale('T....TTT.....').state.currentStreak).toBe(4);
+    expect(stale('.....TTT.....').state.currentStreak).toBe(3);
+    expect(settled('T....TTT.....').state.currentStreak).toBe(0);
+    expect(settled('.....TTT.....').state.currentStreak).toBe(3);
+    expect(
+      settled('.....TTT.....').state.currentStreak - settled('T....TTT.....').state.currentStreak,
+    ).toBe(MONOTONICITY_MEASUREMENT.WORST_DEFICIT);
   });
 
   it('but training itself never costs a Recovery Day, in any history', () => {
@@ -1857,6 +2473,7 @@ describe('read models', () => {
         daysMissedBefore(state, day);
       }
       coverableGapDays(state);
+      payableGapDays(state);
       recoveryDayCapacity(state);
       streakDeadlineDay(state);
       lastDayStreakCanBeSaved(state);
@@ -1868,7 +2485,7 @@ describe('read models', () => {
   it('never mutate the state a transition is handed', () => {
     const state = stateWithRun(9, DAY_ZERO, 3);
     const before = clone(state);
-    const day = addDays(DAY_ZERO, 2);
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const offer = currentRecoveryDayOffer(state, day) as NonNullable<
       ReturnType<typeof currentRecoveryDayOffer>
     >;
@@ -1880,23 +2497,39 @@ describe('read models', () => {
     expect(state).toEqual(before);
   });
 
-  it('agree with each other about whether an offer exists', () => {
+  it('agree with each other about whether an offer exists, and about the grace', () => {
+    const kindsSeen = new Set<string>();
     for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
-      for (let gap = 0; gap <= 6; gap += 1) {
+      for (let gap = 0; gap <= GRACE + RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES + 3; gap += 1) {
         const state = stateWithRun(9, DAY_ZERO, balance);
-        const day = addDays(DAY_ZERO, gap + 1);
+        const day = dayAfterGap(DAY_ZERO, gap);
         const offer = currentRecoveryDayOffer(state, day);
         const opening = openDay(state, day);
+        kindsSeen.add(opening.kind);
         expect(opening.kind === 'recovery-day-offered').toBe(offer !== null);
+
+        // A gap inside the grace is alive and free, at EVERY balance — that is
+        // the whole of the §4.4 change, read off the two models together.
+        if (gap >= 1 && gap <= GRACE) {
+          expect(opening.kind).toBe('gap-covered-by-grace');
+          expect(offer).toBeNull();
+        }
+
         if (offer !== null) {
-          expect(offer.cost).toBe(gap);
-          expect(offer.cost).toBeLessThanOrEqual(coverableGapDays(state));
+          expect(offer.cost).toBe(chargeableGapDays(gap));
+          expect(offer.cost).toBeGreaterThanOrEqual(1);
+          expect(offer.daysCoveredFreeByGrace).toBe(GRACE);
+          expect(offer.cost).toBeLessThanOrEqual(payableGapDays(state));
           expect(day).toBeLessThanOrEqual(lastDayStreakCanBeSaved(state) as StreakDay);
         }
-        if (gap > 0 && offer === null) {
+        if (gap > 0 && offer === null && opening.kind === 'streak-broken') {
           expect(day).toBeGreaterThan(lastDayStreakCanBeSaved(state) as StreakDay);
         }
       }
     }
+    // The sweep is only worth anything if it reached all three shapes.
+    expect(kindsSeen).toEqual(
+      new Set(['streak-alive', 'gap-covered-by-grace', 'recovery-day-offered', 'streak-broken']),
+    );
   });
 });

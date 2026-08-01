@@ -2,7 +2,7 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 3, Skia, Supabase
-**Last updated:** 2026-08-01
+**Last updated:** 2026-08-01 (§4.1/§4.2/§4.3/§4.4 — free grace for short gaps, ruled)
 
 ---
 
@@ -143,7 +143,10 @@ Career mode.
 
 ### 4.1 Streak
 
-Strict daily. Miss a day → streak breaks, unless a token is used.
+Daily, with a short free grace. A gap of up to the **free-grace threshold**
+keeps a run alive at no cost and with nothing to answer; a longer one breaks the
+streak unless Recovery Days are spent on the days past the grace. See §4.4 for
+the ruling that introduced this and what it costs.
 
 **The day boundary is 03:00 local, not midnight.** A lifter who finishes a late
 session at 00:40 gets credit for the day they believe they are in. "Local" is an
@@ -164,6 +167,14 @@ Flavored as **"Recovery Days"** rather than pure streak insurance. This reframes
 a missed day as legitimate training wisdom rather than failure — important for
 the hardcore audience, who often miss days *because* they train intelligently.
 
+**Spending (since §4.4): only on gaps beyond the free-grace threshold.** A gap
+inside the grace costs nothing, moves no balance, and produces no prompt — there
+is no decision to make when nothing is being spent. Recovery Days are what buys
+a *longer* absence: vacation, illness. They remain a finite consumable, earned
+and purchased exactly as below; there are simply far fewer occasions to spend
+one. Only the days past the grace are charged, so a gap one day longer than the
+grace costs one Recovery Day, not the whole absence.
+
 **Earning (free path):**
 
 | Source | Reward |
@@ -172,6 +183,11 @@ the hardcore audience, who often miss days *because* they train intelligently.
 | Milestone streaks (7 / 30 / 100 days) | 1 token each, **once per lifetime** |
 | Achievements (first meet, first PR, first block) | 1 token |
 | Gym Empire passive rewards | small chance |
+
+The rows above are unchanged by §4.4 — what changed is how often the balance is
+drawn down, not how it fills. If the free path now feels too generous because
+Recovery Days are rarely spent, the lever is the grace threshold, not this
+table.
 
 **Milestones pay once per lifetime, not once per run.** Eligibility is read off
 the player's *best ever* streak, so a milestone is paid exactly when they first
@@ -191,60 +207,105 @@ at an unfavorable rate (gives grinders a non-cash path).
 
 **Guardrails:**
 
-- Hold cap of 3–5 tokens. Prevents saving a 50-day streak after a week away.
-- Limit consecutive uses.
+- Hold cap of 3–5 tokens.
+- Limit consecutive uses. This, not the hold cap, is what stops a long absence
+  being bought back. It bounds the *chargeable* days of a gap, so the longest
+  repairable absence is the grace threshold plus the consecutive-use limit.
 - **Manual use, not auto-apply.** Prompt the player: *"Use a Recovery Day to save
-  your streak?"* The agency and the small "phew" moment are the point.
+  your streak?"* The agency and the small "phew" moment are the point. This is a
+  rule about *spending*; the free grace of §4.4 spends nothing and so has no
+  prompt to skip. The player is still told the gap was covered.
+- **The free grace is separate from the consecutive-use limit** and stays a
+  separate tunable, even where the two happen to hold the same value. One is how
+  much absence is free; the other is how many Recovery Days may be spent in a
+  row before a real session has to happen.
 
 **Coverage is all-or-nothing.** A token offer only appears when the tokens held
 can cover the *entire* gap. Covering four days of a seven-day absence would take
 the player's tokens and still break the run, so partial coverage does not exist.
+The grace paying for part of a gap is not partial coverage: the offer still
+keeps the run alive across all of it, or does not appear.
 
 ### 4.3 First-Break Tutorial Moment
 
 The first time a player would break their streak, auto-offer a token with
 explanation. Let them *feel* the save before they understand the system.
 
+**The trigger is a gap past the free-grace threshold, not any miss.** Since §4.4
+a short miss costs nothing, so there is no save to explain and no moment to
+teach — firing the tutorial there would explain a system the player has not
+touched. At today's tuning that means a **3+ day gap**.
+
 "Auto-offer" means the prompt appears unasked — it does not mean the token is
 spent for them. §4.2's manual use still applies, and the tutorial fires at the
 first break the player can actually be *saved* from. A first break that nothing
 could have covered does not burn the moment.
 
-### 4.4 Known Cost of Manual Use — Open
+The Duolingo streak-freeze precedent this section is built on still holds: the
+save has to be *felt* once before it is understood. What §4.4 changed is which
+break is worth spending that moment on.
 
-**Status: open. Needs a human ruling; do not "fix" it in code without one.**
+### 4.4 Free Grace for Short Gaps — Ruled
 
-Tokens are finite, and only a *live* streak can be offered one. Those two facts
-together mean a player who accepts every offer can end on a **shorter** streak
-than the same player who trained one day fewer. The extra session keeps alive a
-run the lazier history had already lost, so the diligent player is offered a
-token sooner, spends it on a run that dies later anyway, and has nothing left
-for a longer run afterwards.
+**Status: decided. Short gaps are covered for free; Recovery Days are spent only
+on longer ones.**
 
-Idle days *before* a run exists are free; idle days *inside* a live run cost
-tokens. An extra training day converts the first kind into the second.
+**The defect this settles.** Tokens are finite, and only a *live* streak can be
+offered one. Those two facts together meant a player who accepts every offer
+could end on a **shorter** streak than the same player who trained one day
+fewer. The extra session keeps alive a run the lazier history had already lost,
+so the diligent player is offered a token sooner, spends it on a run that dies
+later anyway, and has nothing left for a longer run afterwards. Idle days
+*before* a run exists were free; idle days *inside* a live run cost tokens, and
+an extra training day converted the first kind into the second. That breaks the
+"never punish daily engagement" line in §12.3.
 
-**The size of it is not small and does not settle.** The deficit is the length
-of the run that dies, so it scales with how long the player has been training:
-37 trained days ending on a 37-day streak against 38 ending on 18; 2001 against
-1001. In each case both players accept every offer and spend the same number of
-tokens.
+**The ruling.** A gap of up to the **free-grace threshold** is covered without
+touching the Recovery Day balance. Recovery Days remain a finite currency,
+earned and purchasable per §4.2 and §8.2, but they now buy coverage only for
+longer absences — vacation, illness — and only for the days past the grace.
 
-What *does* hold, and is what the design leans on:
+**The accepted cost, stated rather than discovered later:** a short miss
+basically never breaks a streak, and a player who trains one day in every
+(grace + 1) can hold a run open indefinitely without spending anything. That is
+intended. If it turns out to be too generous in playtesting, the lever is the
+grace threshold, not a new penalty.
+
+**What this bought, measured over every 13-day calendar** (pairs differing by one
+trained day, where the player who trained more ends strictly lower):
+
+| | before | after |
+|---|---|---|
+| opening the app every day | 1948 | 0 |
+| opening only on training days | 4250 | 36 |
+| worst deficit | 6 | 3 |
+
+**It is an improvement, not a fix, and the zero is the part most likely to be
+misread.** Two more days of calendar and the daily model violates again — 2
+pairs at 15 days, worst deficit 5. The asymmetry is inherent to a finite
+consumable spent to keep a live run alive: the grace removes every instance
+built out of gaps shorter than the threshold, which is most of them, and pushes
+the rest up one gap length. The deficit still has no ceiling — it is the length
+of the run that dies, so 37 trained days ending on 37 against 38 ending on 18
+still exists, now built from grace+1-day gaps instead of single missed days.
+`src/game/streak.test.ts` pins both calendar lengths so the improvement and its
+limit stay on the record together.
+
+**A second consequence, stated because it weakens a §4.2 guardrail.** Each spend
+re-arms the grace, so a player who keeps opening the app *during* an absence and
+keeps paying holds the run for `(grace + 1) × consecutive-use limit + grace`
+days — 8 at today's tuning, so a week away is survivable that way even though
+the same absence is unrepairable on the day of return. It is neither free nor
+automatic; every one of those days is a Recovery Day spent at a prompt.
+
+What still holds, and is what the design leans on:
 
 - On a player's own calendar, **saying yes is never worse than saying no.** The
   prompt in §4.2 can never be the wrong answer to itself.
 - A player who used tokens never ends below one who trained fewer days and used
   **none**. Tokens only ever extend a run; they never subtract from the count.
-
-The property that fails is the comparison between two *different* calendars
-where both players spend. Closing it fully would require tokens never to be
-permanently consumed — no hold cap worth having, nothing to earn on the table
-above, nothing to sell in §8.2. That is a design decision about whether Recovery
-Days remain a consumable at all, which is why it sits here as an open question
-rather than being settled in code. §4.2's manual-use prompt and hold cap stay as
-they are meanwhile, and the offer carries the streak it protects and the balance
-left afterwards so the player can answer it knowingly.
+- Spending on the long-gap path preserves the streak **exactly**. A Recovery Day
+  protects a run; it never partially resets one.
 
 ---
 
