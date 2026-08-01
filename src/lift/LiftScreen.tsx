@@ -62,7 +62,7 @@ const OUTCOME_COLOUR: Record<LiftOutcome, string> = {
 /**
  * One judging light.
  *
- * Reanimated (CLAUDE.md, "Reanimated 3 for animation") rather than the sim
+ * Reanimated (CLAUDE.md and GDD §9.1, "Reanimated 4 for animation") rather than the sim
  * clock, because this is the only motion on the screen that is NOT part of the
  * rep: the rep has already resolved by the time it plays. Everything that
  * belongs to the lift itself is driven by `stepLift` so it cannot drift out of

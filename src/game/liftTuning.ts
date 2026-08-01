@@ -326,9 +326,19 @@ export const LIFT_TUNING = Object.freeze({
    * 1, decaying linearly to zero over DRIVE_BOOST_TICKS. Releasing early cuts
    * it off immediately — the hold is the drive, not a button press.
    *
-   * At the maximal preset the peak deficit is about -0.27, so a full-quality
-   * boost of 0.55 clears it and a half-quality one does not. That is where the
-   * good-lift / grind / miss split comes from.
+   * THE STATIC ARITHMETIC IS NOT THE WHOLE STORY, and an earlier version of this
+   * comment claimed it was. Instantaneously, the peak deficit is 0.24 at
+   * LOAD_PRESETS.MAXIMAL and 0.34 at LOAD_RANGE.MAX, so on paper even a
+   * half-quality boost (0.31) clears the limit preset. Measured, it does not: at
+   * LOAD_PRESETS.MAXIMAL with an ideal-depth release the winning drive quality
+   * starts at about 0.65, because the boost decays over DRIVE_BOOST_TICKS while
+   * the bar is still travelling up to the stick and because STALL_CAPACITY_DECAY
+   * has already taken a bite out of capacity by the time it arrives.
+   *
+   * So this number and DRIVE_BOOST_TICKS decide the good-lift / grind / miss
+   * split TOGETHER, and neither can be read on its own. `lift.test.ts` measures
+   * the resulting winning band from played reps rather than deriving it here,
+   * because that derivation is exactly what was wrong before.
    */
   DRIVE_BOOST_FORCE_MAX: 0.62,
 
@@ -693,8 +703,48 @@ export const LIFT_TUNING = Object.freeze({
     BEST_SINGLE_KG: 220,
     /** Loads offered on the screen, as a fraction of that best single. */
     LOAD_CHOICES: Object.freeze([0.55, 0.75, 0.88, 1.0]),
-    /** Which of those the screen opens on. */
-    DEFAULT_LOAD_INDEX: 3,
+
+    /**
+     * Which of those the screen opens on.
+     *
+     * NOT A DIFFICULTY SETTING — A REACHABILITY ONE, and it is the one value in
+     * this block chosen against a measurement rather than a guess.
+     *
+     * GDD §10 Prototype 1 exists to answer one question: "does grinding a heavy
+     * squat out of the hole feel satisfying in complete isolation?" A default
+     * that never shows a playtester the grind cannot ask that question, and a
+     * default they cannot get out of the hole at cannot either.
+     *
+     * Index 2 (0.88) is the LIGHTEST choice on the list that has a sticking
+     * point at all. Peak demand at the stick, against a capacity of exactly 1:
+     *
+     *     0.55 -> 0.58    no stall, ever
+     *     0.75 -> 0.81    no stall, ever
+     *     0.88 -> 1.02    the bar wins unless it is driven
+     *     1.00 -> 1.24    the bar wins decisively unless it is driven
+     *
+     * Below index 2 an undriven rep locks out clean with zero stalled ticks and
+     * a net force that never goes negative — the drive input is decoration and
+     * the mechanic is a cutscene with a button on it. At index 2 an undriven
+     * ideal-depth rep still reaches lockout, but as a GRINDER, after an ascent
+     * roughly two and a half times as long as the light one, with the net force
+     * negative at the stick. So the first rep shows the grind whether or not the
+     * player presses well, and pressing well converts it into a GOOD LIFT.
+     *
+     * WHY NOT INDEX 3. It is not that 1.00 is too hard — it is meant to be hard,
+     * it stays on the screen one tap away, and nothing about it has changed.
+     * It is that opening there means a playtester's first rep is a NO LIFT more
+     * often than not, and a rep that dies before the ascent never shows them the
+     * beat the prototype exists to test. Measured over the space of reps that
+     * OBEY BOTH ON-SCREEN CUES — release inside the depth window, press inside
+     * the drive window — 1.00 makes 28% of the time and 0.88 makes 89%.
+     *
+     * NOTHING HERE SAYS 0.88 FEELS RIGHT. It says the question is reachable
+     * from it. `lift.test.ts` measures both of the properties above from played
+     * reps, so moving this index to a load with no sticking point, or to one a
+     * cue-obedient player rarely makes, fails a test instead of shipping.
+     */
+    DEFAULT_LOAD_INDEX: 2,
     /** Weight is rounded to this before the plates are drawn, kg. */
     ROUND_TO_KG: 2.5,
   }),
