@@ -1,5 +1,5 @@
 EVIDENCE BUNDLE — piece M2
-generated 2026-07-31T05:47:10.308Z
+generated 2026-08-01T03:39:02.831Z
 repo /home/user/three-white-lights
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -12,14 +12,15 @@ $ npx vitest run src/game/e1rm.test.ts --reporter=verbose
 
  RUN  v4.1.10 /home/user/three-white-lights
 
- ✓ src/game/e1rm.test.ts > published formula constants > holds the Epley divisor of 30 1ms
- ✓ src/game/e1rm.test.ts > published formula constants > holds the Brzycki 36 / (37 - r) pair 0ms
- ✓ src/game/e1rm.test.ts > published formula constants > names Brzycki as the one rep-max formula in player-facing use 0ms
+ ✓ src/game/e1rm.test.ts > published formula constants > holds the Epley divisor of 30 2ms
+ ✓ src/game/e1rm.test.ts > published formula constants > carries exactly one rep-max formula constant, because there is one formula 1ms
+ ✓ src/game/e1rm.test.ts > published formula constants > has one attribution, because there is one curve 0ms
  ✓ src/game/e1rm.test.ts > domain constants > takes "to failure" from the chart rather than restating it 0ms
  ✓ src/game/e1rm.test.ts > domain constants > derives the chart ceiling as 12 reps @ RPE 6 = a 16 rep max 0ms
- ✓ src/game/e1rm.test.ts > domain constants > keeps every supported rep max well below the Brzycki pole at 37 0ms
- ✓ src/game/e1rm.test.ts > domain constants > sets the rep-max ceiling high enough that the reps guard is the binding one 0ms
- ✓ src/game/e1rm.test.ts > domain constants > keeps the high-confidence bound inside the supported domain 0ms
+ ✓ src/game/e1rm.test.ts > domain constants > ends the supported domain exactly where the published chart ends 0ms
+ ✓ src/game/e1rm.test.ts > domain constants > accepts the longest rep count only when the set was taken to failure 1ms
+ ✓ src/game/e1rm.test.ts > domain constants > keeps the tunable confidence bound inside the supported domain 0ms
+ ✓ src/game/e1rm.test.ts > domain constants > keeps the one tunable value out of the derived and published blocks 1ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 1 rep max -> 103.33333333333333 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 2 rep max -> 106.66666666666667 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 3 rep max -> 110 0ms
@@ -30,74 +31,63 @@ $ npx vitest run src/game/e1rm.test.ts --reporter=verbose
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 8 rep max -> 126.66666666666667 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 9 rep max -> 130 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 10 rep max -> 133.33333333333334 0ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 12 rep max -> 140 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 15 rep max -> 150 0ms
- ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 20 rep max -> 166.66666666666666 0ms
- ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 24 rep max -> 180 0ms
- ✓ src/game/e1rm.test.ts > epleyE1rm > is the raw published curve at 1 rep, with no clamp to the weight lifted 1ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 16 rep max -> 153.33333333333334 0ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > is the raw published curve at 1 rep, with no clamp to the weight lifted 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > matches hand-computed values at realistic gym loads 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > accepts the half-rep maxima the chart’s half-RPE steps produce 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > matches the published decimal-rounded form w * (1 + 0.0333 * r) 1ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 1 rep max -> 100 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 2 rep max -> 102.85714285714286 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 3 rep max -> 105.88235294117646 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 4 rep max -> 109.0909090909091 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 5 rep max -> 112.5 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 6 rep max -> 116.12903225806451 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 7 rep max -> 120 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 8 rep max -> 124.13793103448276 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 9 rep max -> 128.57142857142858 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 10 rep max -> 133.33333333333334 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 15 rep max -> 163.63636363636363 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 20 rep max -> 211.76470588235293 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > 100 x 24 rep max -> 276.9230769230769 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > returns the weight itself at a 1 rep max as a natural property 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > matches hand-computed values at realistic gym loads 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > accepts half-rep maxima 0ms
- ✓ src/game/e1rm.test.ts > brzyckiE1rm > matches the published decimal-rounded form w / (1.0278 - 0.0278 * r) 1ms
- ✓ src/game/e1rm.test.ts > relationships between the two published curves > returns identical values at exactly a 10 rep max (both are 4/3 * w) 0ms
- ✓ src/game/e1rm.test.ts > relationships between the two published curves > reads higher on Epley below a 10 rep max 0ms
- ✓ src/game/e1rm.test.ts > relationships between the two published curves > reads higher on Brzycki above a 10 rep max 0ms
- ✓ src/game/e1rm.test.ts > shape of both raw curves > epley never estimates below the weight actually lifted 1ms
- ✓ src/game/e1rm.test.ts > shape of both raw curves > brzycki never estimates below the weight actually lifted 2ms
- ✓ src/game/e1rm.test.ts > shape of both raw curves > epley increases strictly with the rep max 1ms
- ✓ src/game/e1rm.test.ts > shape of both raw curves > brzycki increases strictly with the rep max 1ms
- ✓ src/game/e1rm.test.ts > shape of both raw curves > epley is linear in weight, so it is unit-agnostic 1ms
- ✓ src/game/e1rm.test.ts > shape of both raw curves > brzycki is linear in weight, so it is unit-agnostic 1ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > is strictly increasing and never below the weight lifted 1ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > is linear in weight, so it is unit-agnostic 2ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > refuses the same rep maxes the set entry points refuse — one domain, every route 1ms
+ ✓ src/game/e1rm.test.ts > Epley against the curve the app actually reports > disagrees with the chart everywhere except one crossover, so only one can be player-facing 1ms
+ ✓ src/game/e1rm.test.ts > Epley against the curve the app actually reports > would step DOWN if it were continued past the chart — the reason there is no fallback 0ms
+ ✓ src/game/e1rm.test.ts > Epley against the curve the app actually reports > would step down under every reading rpe.ts has on record for the top-edge cell 0ms
+ ✓ src/game/e1rm.test.ts > figures quoted in the module header > chart at a 16 rep max is 1.7422 x w 0ms
+ ✓ src/game/e1rm.test.ts > figures quoted in the module header > Epley at a 16.5 rep max is 1.5500 x w 0ms
+ ✓ src/game/e1rm.test.ts > figures quoted in the module header > the cell value Epley would need to continue upward is 64.52% 0ms
+ ✓ src/game/e1rm.test.ts > figures quoted in the module header > Epley reads 3.33% above the chart at a 1 rep max 0ms
+ ✓ src/game/e1rm.test.ts > figures quoted in the module header > Epley reads 11.99% below the chart at a 16 rep max 0ms
+ ✓ src/game/e1rm.test.ts > figures quoted in the module header > the crossover sits between a 7 and a 7.5 rep max 0ms
+ ✓ src/game/e1rm.test.ts > figures quoted in the module header > the widest accepted sets are 16 reps to failure and 12 reps @ RPE 6 0ms
  ✓ src/game/e1rm.test.ts > effectiveRepMax > is reps + reps in reserve 0ms
  ✓ src/game/e1rm.test.ts > effectiveRepMax > produces half-rep maxima at the chart’s half-RPE steps 0ms
  ✓ src/game/e1rm.test.ts > effectiveRepMax > rejects an RPE the published chart does not cover 0ms
  ✓ src/game/e1rm.test.ts > the reps-in-reserve identity the estimate is built on > scores N reps @ RPE X as an (N + RIR) rep max 2ms
  ✓ src/game/e1rm.test.ts > the reps-in-reserve identity the estimate is built on > reads a 5 @ RPE 7 as an 8RM effort, not a 5RM effort 0ms
+ ✓ src/game/e1rm.test.ts > the reps-in-reserve identity the estimate is built on > never applies the formula to the raw rep count 4ms
  ✓ src/game/e1rm.test.ts > singles — the game’s most common set > returns exactly the weight lifted for a single taken to failure 0ms
  ✓ src/game/e1rm.test.ts > singles — the game’s most common set > reads a submaximal single as more than the weight lifted 0ms
- ✓ src/game/e1rm.test.ts > singles — the game’s most common set > walks the whole RPE column at 1 rep, strictly 0ms
+ ✓ src/game/e1rm.test.ts > singles — the game’s most common set > walks the whole RPE column at 1 rep, strictly 1ms
  ✓ src/game/e1rm.test.ts > RPE moves the estimate at multi-rep sets too > is strictly decreasing in RPE at every charted rep count 2ms
  ✓ src/game/e1rm.test.ts > RPE moves the estimate at multi-rep sets too > spans more than 10% across RPE 6-10 at a fixed weight and reps 0ms
  ✓ src/game/e1rm.test.ts > RPE moves the estimate at multi-rep sets too > produces hand-computed values for representative training sets 0ms
- ✓ src/game/e1rm.test.ts > agreement with rpe.ts > matches e1rmFromChartedSet on every one of the 108 published cells 3ms
- ✓ src/game/e1rm.test.ts > agreement with rpe.ts > is the exact algebraic inverse of the published percentage 1ms
- ✓ src/game/e1rm.test.ts > agreement with rpe.ts > round-trips an unrounded prescribed load back to the same e1RM 4ms
- ✓ src/game/e1rm.test.ts > agreement with rpe.ts > round-trips a plate-rounded prescribed load to within one rounding step 2ms
+ ✓ src/game/e1rm.test.ts > agreement with rpe.ts > matches e1rmFromChartedSet on every one of the 108 published cells 2ms
+ ✓ src/game/e1rm.test.ts > agreement with rpe.ts > is the exact algebraic inverse of the published percentage 2ms
+ ✓ src/game/e1rm.test.ts > agreement with rpe.ts > round-trips an unrounded prescribed load back to the same e1RM 5ms
+ ✓ src/game/e1rm.test.ts > agreement with rpe.ts > round-trips a plate-rounded prescribed load to within one rounding step 3ms
  ✓ src/game/e1rm.test.ts > agreement with rpe.ts > moves e1RM up when the lifter beats the prescribed RPE and down when they miss it 0ms
- ✓ src/game/e1rm.test.ts > method selection > uses the published chart for every rep max it covers 1ms
- ✓ src/game/e1rm.test.ts > method selection > falls back to Brzycki past the chart 1ms
- ✓ src/game/e1rm.test.ts > method selection > switches exactly at the chart boundary 0ms
- ✓ src/game/e1rm.test.ts > the composite curve > is strictly increasing in effective rep max across the whole domain 1ms
- ✓ src/game/e1rm.test.ts > the composite curve > joins Brzycki onto the chart without a step down — the reason Brzycki is the fallback 0ms
- ✓ src/game/e1rm.test.ts > the composite curve > never estimates below the weight actually lifted 1ms
- ✓ src/game/e1rm.test.ts > the composite curve > equals the weight lifted only for a single taken to failure 1ms
- ✓ src/game/e1rm.test.ts > the composite curve > is linear in weight, so the module stays unit-agnostic 2ms
- ✓ src/game/e1rm.test.ts > explainE1rm > reports reps in reserve and effective rep max 0ms
+ ✓ src/game/e1rm.test.ts > method selection > uses the published chart for every rep max it covers, and nothing else 1ms
+ ✓ src/game/e1rm.test.ts > method selection > refuses at the first half step past the chart instead of switching curves 0ms
+ ✓ src/game/e1rm.test.ts > the curve > is strictly increasing in effective rep max across the whole domain 1ms
+ ✓ src/game/e1rm.test.ts > the curve > is strictly increasing over every set the module accepts, not just the walked ones 80ms
+ ✓ src/game/e1rm.test.ts > the curve > never estimates below the weight actually lifted 1ms
+ ✓ src/game/e1rm.test.ts > the curve > equals the weight lifted only for a single taken to failure 1ms
+ ✓ src/game/e1rm.test.ts > the curve > is linear in weight, so the module stays unit-agnostic 1ms
+ ✓ src/game/e1rm.test.ts > explainE1rm > reports reps in reserve and effective rep max 1ms
  ✓ src/game/e1rm.test.ts > explainE1rm > reports half a rep in reserve at half-RPE steps 0ms
  ✓ src/game/e1rm.test.ts > explainE1rm > flags a set that has drifted into endurance territory 0ms
  ✓ src/game/e1rm.test.ts > explainE1rm > agrees with estimateE1rm 2ms
  ✓ src/game/e1rm.test.ts > non-throwing variants > return the same numbers as the throwing ones for a usable set 0ms
  ✓ src/game/e1rm.test.ts > non-throwing variants > return null instead of throwing for an unusable set 0ms
+ ✓ src/game/e1rm.test.ts > non-throwing variants > agree with the throwing ones about exactly which sets are usable 3ms
  ✓ src/game/e1rm.test.ts > input validation > rejects 0 reps 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects -1 reps 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects -10 reps 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects 0.5 reps 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects 2.5 reps 0ms
+ ✓ src/game/e1rm.test.ts > input validation > rejects 17 reps 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects 21 reps 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects 37 reps 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects 100 reps 0ms
@@ -124,19 +114,25 @@ $ npx vitest run src/game/e1rm.test.ts --reporter=verbose
  ✓ src/game/e1rm.test.ts > input validation > rejects RPE Infinity rather than interpolating it 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects RPE -Infinity rather than interpolating it 0ms
  ✓ src/game/e1rm.test.ts > input validation > explains what it accepts in the error message 1ms
- ✓ src/game/e1rm.test.ts > input validation > accepts the exact boundaries 1ms
- ✓ src/game/e1rm.test.ts > input validation > never lets Brzycki reach or cross its pole at 37 reps 0ms
- ✓ src/game/e1rm.test.ts > input validation > rejects a rep max below 1 or above the ceiling on the raw formulas 0ms
+ ✓ src/game/e1rm.test.ts > input validation > says what it refuses and why when a set runs past the chart 0ms
+ ✓ src/game/e1rm.test.ts > input validation > accepts the exact boundaries 0ms
+ ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > 13 reps: accepted from RPE 7 up, refused below it 0ms
+ ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > 14 reps: accepted from RPE 8 up, refused below it 0ms
+ ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > 15 reps: accepted from RPE 9 up, refused below it 0ms
+ ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > 16 reps: accepted from RPE 10 up, refused below it 0ms
+ ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > refuses 17 to 20 reps at every RPE 0ms
+ ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > refuses every effective rep max above the chart, in half steps up to 24 0ms
+ ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > leaves every set at or below the chart ceiling answering as before 2ms
  ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is true from a 1 rep max up to the tunable bound 0ms
- ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is false past the bound, where endurance rather than strength limits the set 1ms
+ ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is false past the bound, where endurance rather than strength limits the set 0ms
  ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is false for non-sets and non-numbers 0ms
  ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > agrees with the constant it is derived from 0ms
- ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is what the estimate reports 1ms
+ ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is what the estimate reports 0ms
 
  Test Files  1 passed (1)
-      Tests  120 passed (120)
-   Start at  05:47:10
-   Duration  343ms (transform 93ms, setup 0ms, import 116ms, tests 51ms, environment 0ms)
+      Tests  116 passed (116)
+   Start at  03:39:03
+   Duration  427ms (transform 112ms, setup 0ms, import 136ms, tests 138ms, environment 0ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
