@@ -189,25 +189,99 @@
  *     checked over long randomised histories with grants landing mid-run.
  *   - EVERYWHERE. `recordTrainingDay` cannot reduce `recoveryDayBalance`.
  *     Showing up never costs a Recovery Day, in any state.
+ *   - AGAINST A COMPARATOR WHO SPENT NOTHING. A player who has used any number
+ *     of Recovery Days, up to the hold cap, never ends on a lower streak than a
+ *     player who trained a subset of the same days and used none. This is
+ *     structural rather than lucky: `acceptRecoveryDayOffer` never touches
+ *     `currentStreak` — it only sets `recoveredThroughDay` — so a Recovery Day
+ *     can only ever EXTEND a run backwards across a gap. The comparator's run
+ *     is its own trailing block of trained days, and the other player trained
+ *     all of those too, so their run contains it.
+ *   - ON YOUR OWN CALENDAR, SAYING YES IS NEVER WORSE THAN SAYING NO. For a
+ *     FIXED history, accepting every offer never ends on a lower current or
+ *     longest streak than declining every offer. Exhaustive over every 13-day
+ *     calendar under both app-opening models, plus long randomised ones. This
+ *     is the guarantee that matters at the prompt: the player cannot be
+ *     punished for taking the save GDD §4.2 offers them.
  *
- * WHAT DOES NOT HOLD, and is pinned by a test rather than glossed over:
+ * WHAT DOES NOT HOLD, and is pinned by tests rather than glossed over:
  *
- *     A player who accepts EVERY offer can end with a shorter best streak than
- *     the same player who trained one day fewer.
+ *     A player who accepts EVERY offer can end on a shorter streak — the live
+ *     one on the home screen, and their lifetime best — than the same player
+ *     who trained one day fewer.
  *
- * Found by exhaustive search; `streak.test.ts` pins the exact history. The
- * mechanism is that Recovery Days are finite and only a live run generates
- * offers, so the extra trained day keeps a short run alive, that run generates
- * offers, an auto-accepting player spends the bank on it, and there is nothing
- * left for a longer run later. It is the accepting that costs, not the
- * training, and no threshold removes it — the same construction exists at any
- * threshold. What GDD §4.2 puts against it is agency: `RecoveryDayOffer`
- * carries `streakProtected` and `balanceAfter` so the prompt can tell the
- * player what a yes is actually worth.
+ * HOW MUCH SHORTER: THERE IS NO CEILING, and this paragraph exists because the
+ * smallest instance of it (best streak 2 against 1, over an eleven-day history)
+ * reads like a rounding artifact and is not one. The deficit is exactly the
+ * length of the run the diligent player loses, so it scales with how long they
+ * have been training:
  *
- * THIS MODULE DOES NOT FIX IT. A conditional refund (return the Recovery Days
- * if the run they were spent on dies before the next session) would, and is not
- * in the GDD, so it is not invented here. This is flagged for a human decision.
+ *     lazy trains 37 days   -> streak 37     diligent trains 38   -> streak 18
+ *     lazy trains 101 days  -> streak 101    diligent trains 102  -> streak 51
+ *     lazy trains 2001 days -> streak 2001   diligent trains 2002 -> streak 1001
+ *
+ * In every row both players accept every offer and spend the SAME number of
+ * Recovery Days — never more than five, which is every Recovery Day those
+ * histories generate — and the diligent player trained on strictly more days.
+ * `streak.test.ts` builds that family at an arbitrary run length and pins the
+ * deficit at each one, and separately MAXIMISES the deficit by exhaustive
+ * search over every history up to fourteen days, where the worst case climbs
+ * from 3 to 8 as the history lengthens instead of settling on a constant.
+ *
+ * ROOT CAUSE, and it is one asymmetry rather than a pile of edge cases. Idle
+ * days BEFORE a run exists are free: `lastCoveredDay` is null, so
+ * `daysMissedBefore` returns 0, no offer is made and nothing is spent. Idle
+ * days INSIDE a live run cost Recovery Days. An extra training day converts the
+ * free kind into the paid kind, drains a finite pool, and leaves a later gap
+ * uncoverable — so a run dies that would otherwise have been saved. It is the
+ * accepting that spends, not the training, and no threshold removes it: raise
+ * the bar for making an offer and the same construction reappears with the
+ * divergent day moved to wherever the new bar sits. (That last sentence is
+ * argued, not measured — no threshold is implemented, so no test covers it.)
+ *
+ * WHY THIS MODULE DOES NOT FIX IT, as an argument and not a shrug. The property
+ * "one more trained day never lowers the final streak" requires that the
+ * divergent spend never leaves the diligent player short at a later gap. Three
+ * ways to arrange that, and each one fails or costs more than it buys:
+ *
+ *   - CHARGE PER GAP INSTEAD OF PER MISSED DAY. Does nothing here. Every gap in
+ *     the family above is a single day, so it already costs exactly one either
+ *     way. Checked, not assumed.
+ *   - REFUND WHEN THE PROTECTED RUN DIES. The refund arrives after the death.
+ *     It restores the balance, not the run, and the deficit above is measured
+ *     in streak days, not Recovery Days.
+ *   - REFUND WHEN THE PLAYER COMES BACK. Closes the family above, and opens
+ *     another: a run that dies mid-gap never triggers the return, so the
+ *     diligent player still ends poorer than a lazier player who had no run to
+ *     lose. Closing that one too means refunding on death AND on return, which
+ *     is to say never consuming a Recovery Day at all — and a Recovery Day that
+ *     is never consumed has no hold cap worth having (GDD §4.2), nothing to
+ *     earn on the free-path table (§4.2) and nothing to sell (§8.2).
+ *
+ * So the property is not compatible with Recovery Days being a finite
+ * consumable that is spent to keep a live run alive. That is a design question
+ * — whether they should remain one — and it is above this module's pay grade.
+ * GDD §4.4 records it as open. What is implemented here is the design the GDD
+ * currently specifies, with the cost measured rather than hidden.
+ *
+ * THE DECISION THAT COSTS IS NOT AN OBVIOUS MISTAKE, which is why this wants a
+ * human ruling rather than a shrug. In every row above, the spend that does the
+ * damage is a yes to an offer protecting a ONE-day streak — a streak that then
+ * runs for weeks or years before it dies. Declining a live run is the
+ * counterintuitive correct play, and GDD §4.3 puts the tutorial on the very
+ * first offer precisely to teach the player to say yes. What GDD §4.2 puts
+ * against it is agency: `RecoveryDayOffer` carries `streakProtected` and
+ * `balanceAfter` so the prompt can state what a yes is worth today. Nothing on
+ * it states what a yes costs later, because no state here can know that.
+ *
+ * A TRAP FOR ANYONE MEASURING THIS. `currentStreak` is only true as of the last
+ * day someone called `openDay` on the state. A run that has already died sits
+ * there at full length until `settleBrokenStreak` records the fact, so a state
+ * nobody has opened since the last session reports a streak the player does not
+ * have. Comparing two states settled to different days manufactures violations
+ * that are not there — `streak.test.ts` pins one such pair, which reads as a
+ * player losing two streak days for training an extra one and is really two
+ * equally dead runs, one of which has been told. Settle both, then compare.
  *
  * ===========================================================================
  * 7. DELIBERATE NON-GOALS

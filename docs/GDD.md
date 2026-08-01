@@ -2,7 +2,7 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 3, Skia, Supabase
-**Last updated:** 2026-07-26
+**Last updated:** 2026-08-01
 
 ---
 
@@ -145,6 +145,19 @@ Career mode.
 
 Strict daily. Miss a day → streak breaks, unless a token is used.
 
+**The day boundary is 03:00 local, not midnight.** A lifter who finishes a late
+session at 00:40 gets credit for the day they believe they are in. "Local" is an
+account property the server resolves, not the device's current timezone —
+otherwise a player flying east loses a day and a player who changes their phone
+clock manufactures one.
+
+**The streak counts trained days only.** A Recovery Day keeps a run alive across
+a gap; it does not add to the count. This is not a detail, it is what keeps the
+free-path economy honest: milestone streaks pay out Recovery Days, so if bought
+days counted toward the streak, Recovery Days would buy the currency that buys
+Recovery Days. Reaching a milestone always costs the full number of real
+sessions.
+
 ### 4.2 Streak Tokens
 
 Flavored as **"Recovery Days"** rather than pure streak insurance. This reframes
@@ -156,9 +169,22 @@ the hardcore audience, who often miss days *because* they train intelligently.
 | Source | Reward |
 |---|---|
 | Signup grant | 2–3 tokens |
-| Milestone streaks (7 / 30 / 100 days) | 1 token each |
+| Milestone streaks (7 / 30 / 100 days) | 1 token each, **once per lifetime** |
 | Achievements (first meet, first PR, first block) | 1 token |
 | Gym Empire passive rewards | small chance |
+
+**Milestones pay once per lifetime, not once per run.** Eligibility is read off
+the player's *best ever* streak, so a milestone is paid exactly when they first
+reach it. The alternative — re-arming milestones when a run ends — makes
+deliberately breaking your streak the best free income in the game: reach 7,
+break, repeat pays a token every seven sessions, while an unbroken run pays
+nothing between day 7 and day 30. That is the "punishes you for showing up"
+failure of §12.3 arriving through the economy instead of through the streak.
+
+What lifetime-once costs, stated rather than glossed: **a player past a 100-day
+best has no streak-based free income left.** Their free path is the other rows
+of this table. If those turn out too thin in playtesting, the fix belongs there,
+not in re-arming milestones.
 
 **Buying:** small bundles, impulse-tier pricing. Also purchasable with Gym Bucks
 at an unfavorable rate (gives grinders a non-cash path).
@@ -170,10 +196,55 @@ at an unfavorable rate (gives grinders a non-cash path).
 - **Manual use, not auto-apply.** Prompt the player: *"Use a Recovery Day to save
   your streak?"* The agency and the small "phew" moment are the point.
 
+**Coverage is all-or-nothing.** A token offer only appears when the tokens held
+can cover the *entire* gap. Covering four days of a seven-day absence would take
+the player's tokens and still break the run, so partial coverage does not exist.
+
 ### 4.3 First-Break Tutorial Moment
 
 The first time a player would break their streak, auto-offer a token with
 explanation. Let them *feel* the save before they understand the system.
+
+"Auto-offer" means the prompt appears unasked — it does not mean the token is
+spent for them. §4.2's manual use still applies, and the tutorial fires at the
+first break the player can actually be *saved* from. A first break that nothing
+could have covered does not burn the moment.
+
+### 4.4 Known Cost of Manual Use — Open
+
+**Status: open. Needs a human ruling; do not "fix" it in code without one.**
+
+Tokens are finite, and only a *live* streak can be offered one. Those two facts
+together mean a player who accepts every offer can end on a **shorter** streak
+than the same player who trained one day fewer. The extra session keeps alive a
+run the lazier history had already lost, so the diligent player is offered a
+token sooner, spends it on a run that dies later anyway, and has nothing left
+for a longer run afterwards.
+
+Idle days *before* a run exists are free; idle days *inside* a live run cost
+tokens. An extra training day converts the first kind into the second.
+
+**The size of it is not small and does not settle.** The deficit is the length
+of the run that dies, so it scales with how long the player has been training:
+37 trained days ending on a 37-day streak against 38 ending on 18; 2001 against
+1001. In each case both players accept every offer and spend the same number of
+tokens.
+
+What *does* hold, and is what the design leans on:
+
+- On a player's own calendar, **saying yes is never worse than saying no.** The
+  prompt in §4.2 can never be the wrong answer to itself.
+- A player who used tokens never ends below one who trained fewer days and used
+  **none**. Tokens only ever extend a run; they never subtract from the count.
+
+The property that fails is the comparison between two *different* calendars
+where both players spend. Closing it fully would require tokens never to be
+permanently consumed — no hold cap worth having, nothing to earn on the table
+above, nothing to sell in §8.2. That is a design decision about whether Recovery
+Days remain a consumable at all, which is why it sits here as an open question
+rather than being settled in code. §4.2's manual-use prompt and hold cap stay as
+they are meanwhile, and the offer carries the streak it protects and the balance
+left afterwards so the player can answer it knowingly.
 
 ---
 
