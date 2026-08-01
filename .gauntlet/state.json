@@ -2,11 +2,17 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 2,
-    "waveName": "Wave 2 \u2014 closing math send-backs; art started",
+    "wave": 3,
+    "waveName": "Wave 3 \u2014 remaining pure logic, then wiring an app",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
+    {
+      "severity": "state of the build",
+      "title": "There is no app yet \u2014 App.tsx is still the render spike",
+      "body": "Verified against the repo, not assumed: 565 tests pass across four pure game-math modules and the sprite system, tsc is clean, and nothing under src/ is imported by App.tsx. The entry point is still the Skia smoke test written on day one.",
+      "consequence": "Everything built so far is correct library code with no way to play it. Once the last two pure modules land, the queue turns to the lift input mechanic and the daily session loop, which is what turns this into something openable. GDD \u00a710 puts the lift mechanic first for exactly this reason."
+    },
     {
       "severity": "resolved",
       "title": "Both open design questions decided by the human",
@@ -124,17 +130,17 @@
       "id": "M5",
       "name": "Fatigue / readiness",
       "bar": "Plausible game-feel abstraction. No visible fatigue meter (\u00a712.3).",
-      "status": "pending",
+      "status": "building",
       "verifiable": true,
-      "note": "Builder killed by spend limit before writing anything."
+      "note": "Building. The hard part is the API shape: exporting a normalised fatigue number invites the visible meter \u00a712.3 forbids, so the builder is required to surface interpreted signals \u2014 bar-speed cues, timing-window width, miss likelihood \u2014 instead of a level."
     },
     {
       "id": "M6",
       "name": "Streak / Recovery Days",
       "bar": "Never punishes daily engagement. Manual token use, hold cap, first-break tutorial.",
-      "status": "pending",
+      "status": "building",
       "verifiable": true,
-      "note": "Builder killed by spend limit before writing anything."
+      "note": "Building. Recovery Days are purchasable, which makes \u00a712.3\u2019s pay-to-win line a live tripwire: a token may protect a streak and nothing else, and the builder must express that boundary in the types rather than in a comment."
     },
     {
       "id": "T1",
