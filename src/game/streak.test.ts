@@ -368,6 +368,33 @@ describe('tunable constants sit inside the ranges GDD §4.2 specifies', () => {
     expect(chargeableDaysBefore(afterTraining, dayAfterGap(day, GRACE))).toBe(0);
   });
 
+  it('counts the grace off the covered days one for one, at every offset', () => {
+    // THE DEFINITION, NOT ITS REACHABLE CONSEQUENCES. Every state the API can
+    // actually build has `recoveredThroughDay` at least GRACE + 1 days past
+    // `lastTrainedDay` — an offer never exists sooner — so an off-by-one in the
+    // subtraction is invisible from the outside AT TODAY'S TUNING and would only
+    // surface as a bug after someone moved FREE_GRACE_GAP_DAYS. `stateWithRun`
+    // plus a hand-set marker walks the whole curve instead, so the contract is
+    // pinned rather than a slice of it.
+    for (let covered = 0; covered <= GRACE + 3; covered += 1) {
+      const state: StreakState = {
+        ...stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP),
+        recoveredThroughDay: covered === 0 ? null : addDays(DAY_ZERO, covered),
+      };
+      expect(graceDaysRemaining(state)).toBe(Math.max(0, GRACE - covered));
+    }
+
+    // A marker at or before the last trained day is not a covered absence, and
+    // must not read as negative coverage and hand out extra grace.
+    for (const offset of [0, -1, -9]) {
+      const state: StreakState = {
+        ...stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP),
+        recoveredThroughDay: addDays(DAY_ZERO, offset),
+      };
+      expect(graceDaysRemaining(state)).toBe(GRACE);
+    }
+  });
+
   it('pays milestones at 7 / 30 / 100 days, 1 each', () => {
     expect(STREAK_MILESTONE_DAYS).toEqual([7, 30, 100]);
     expect(RECOVERY_DAY_ECONOMY.STREAK_MILESTONE_GRANT).toBe(1);
@@ -2714,6 +2741,47 @@ describe('read models', () => {
     recordTrainingDay(state, addDays(DAY_ZERO, 1));
     settleBrokenStreak(state, addDays(DAY_ZERO, 9));
     expect(state).toEqual(before);
+  });
+
+  it('project the last saveable day exactly, partway through an absence as well as at the start of one', () => {
+    // `lastDayStreakCanBeSaved` is reminder copy — "train by Friday or the run
+    // ends" — so it has to be the real last day, not a stale one computed off a
+    // grace the absence has already spent. Ground truth is `openDay` itself:
+    // the last day it does NOT report a break.
+    //
+    // THE MID-ABSENCE STATES ARE THE POINT. A sweep over freshly trained states
+    // alone cannot tell `coverableGapDays` reading the remaining grace from
+    // reading the constant, because on a fresh state the two are equal.
+    const states: StreakState[] = [];
+    for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
+      const fresh = stateWithRun(9, DAY_ZERO, balance);
+      states.push(fresh);
+      let walking = fresh;
+      for (let offset = 1; offset <= 12; offset += 1) {
+        const opening = openDay(walking, addDays(DAY_ZERO, offset));
+        if (opening.kind === 'streak-broken') break;
+        if (opening.kind === 'recovery-day-offered') {
+          walking = unwrap(acceptRecoveryDayOffer(walking, opening.offer)).state;
+          states.push(walking);
+        }
+      }
+    }
+
+    let midAbsenceStatesChecked = 0;
+    for (const state of states) {
+      if (state.recoveredThroughDay !== null) midAbsenceStatesChecked += 1;
+      const covered = lastCoveredDay(state) as StreakDay;
+      let lastAlive = covered;
+      for (let offset = 1; offset <= 20; offset += 1) {
+        const day = addDays(covered, offset);
+        if (openDay(state, day).kind === 'streak-broken') break;
+        lastAlive = day;
+      }
+      expect(lastDayStreakCanBeSaved(state)).toBe(lastAlive);
+      expect(coverableGapDays(state)).toBe(daysBetween(covered, lastAlive) - 1);
+    }
+    // The sweep is worthless if it never reached a state with a spend behind it.
+    expect(midAbsenceStatesChecked).toBeGreaterThan(0);
   });
 
   it('agree with each other about whether an offer exists, and about the grace', () => {
