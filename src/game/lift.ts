@@ -835,7 +835,13 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
   if (m.phase === 'BRACE') {
     const ready = m.phaseTick >= braceTicks(load);
     const timedOut = m.phaseTick >= LIFT_TUNING.BRACE_TIMEOUT_TICKS;
-    if ((ready && pressed) || timedOut) {
+    // A FINGER ALREADY DOWN COUNTS, not only a press edge on this exact tick.
+    // Players tap the instant the screen appears — before the brace is over —
+    // and when only the edge counted, that press was swallowed and the rep sat
+    // there until BRACE_TIMEOUT_TICKS, which is ten seconds of nothing
+    // happening. Holding through the brace now simply starts the descent the
+    // moment the lifter is set, which is also what a lifter does.
+    if ((ready && (pressed || m.held)) || timedOut) {
       enter('DESCENT');
       m.held = true;
       m.events.push({ kind: 'descent-start', tick });

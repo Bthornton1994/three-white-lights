@@ -597,8 +597,102 @@ export const LIFT_TUNING = Object.freeze({
     /** Trace line width and the alpha of its oldest point. */
     TRACE_WIDTH: 2,
     TRACE_MIN_ALPHA: 0.08,
+    /**
+     * How many alpha bands the trace is drawn in. One path per tick would be
+     * two hundred draw calls a frame for a fade that only has to read as one.
+     */
+    TRACE_FADE_BANDS: 8,
     /** Sprite upscale used by the lift screen. Integer; nearest-neighbour. */
     SPRITE_SCALE: 3,
+
+    /**
+     * Most sim ticks the render loop will run in one frame.
+     *
+     * A hitch — a backgrounded tab, a garbage-collection pause — leaves a large
+     * gap in the accumulator. Without a cap the loop empties it in one frame
+     * and resolves the player's rep while they are not looking. Capping means a
+     * hitch SLOWS the rep instead of skipping it, which is the right trade for
+     * a timing game: lag is survivable, fast-forward is not.
+     *
+     * 4 ticks is 67 ms of catch-up per frame.
+     */
+    MAX_CATCH_UP_TICKS: 4,
+  }),
+
+  /**
+   * LAYOUT — screen geometry, in logical points at phone scale.
+   *
+   * These are here rather than in a StyleSheet for the reason GDD §12.2 gives:
+   * the bar for this piece is "readability at phone scale, not just fidelity",
+   * which makes every one of these a value somebody will move by hand while
+   * looking at a phone. Authored against a 390 x 844 viewport (iPhone 14).
+   */
+  LAYOUT: Object.freeze({
+    /** The Skia stage. Everything the mechanic draws lives inside this. */
+    STAGE_W: 390,
+    STAGE_H: 520,
+
+    /** Top-left of the lifter sprite inside the stage. */
+    SPRITE_X: 6,
+    SPRITE_Y: 292,
+
+    /** Centre of the cue ring, over the lifter. */
+    CUE_X: 150,
+    CUE_Y: 374,
+
+    /** The bar-path trace panel, a side-on plot down the right edge. */
+    TRACE_X: 300,
+    TRACE_W: 78,
+    TRACE_TOP: 20,
+    TRACE_BOTTOM: 500,
+    /** Bar height at the top and bottom of that plot. Below 0 is a sunk bar. */
+    TRACE_H_MAX: 1.05,
+    TRACE_H_MIN: -0.2,
+    /** Screen points per sprite pixel of forward drift. Exaggerated to read. */
+    TRACE_PX_PER_DRIFT: 5,
+    /** Half-width of the bar glyph drawn on the plot. */
+    TRACE_BAR_HALF_W: 13,
+    TRACE_GUIDE_DASH: 4,
+
+    /** Three white lights. */
+    LIGHT_R: 13,
+    LIGHT_GAP: 42,
+    LIGHT_Y: 66,
+    LIGHT_STROKE: 2,
+
+    /** Typography and spacing for the chrome around the stage. */
+    SCREEN_PAD: 16,
+    PROMPT_FONT: 15,
+    HEADLINE_FONT: 30,
+    DETAIL_FONT: 13,
+    LABEL_FONT: 11,
+    GRADE_FONT: 12,
+    BUTTON_FONT: 13,
+    BUTTON_PAD_V: 8,
+    BUTTON_PAD_H: 12,
+    BUTTON_RADIUS: 6,
+    ROW_GAP: 8,
+    LETTER_SPACING: 2,
+  }),
+
+  /**
+   * DEMO LOAD — placeholder data so the mechanic can be played in isolation
+   * (GDD §10 Prototype 1: "no progression, no meta, no backend").
+   *
+   * NOT PROGRESSION. Nothing here is persisted, nothing derives an e1RM or a
+   * Total from it, and when there is a backend these come from the server
+   * (CLAUDE.md, "Server-authoritative progression"). They exist so the sprite
+   * has plates to draw and the player has something to pick.
+   */
+  DEMO: Object.freeze({
+    /** The lifter's best single, kg. Load ratio is multiplied by this. */
+    BEST_SINGLE_KG: 220,
+    /** Loads offered on the screen, as a fraction of that best single. */
+    LOAD_CHOICES: Object.freeze([0.55, 0.75, 0.88, 1.0]),
+    /** Which of those the screen opens on. */
+    DEFAULT_LOAD_INDEX: 3,
+    /** Weight is rounded to this before the plates are drawn, kg. */
+    ROUND_TO_KG: 2.5,
   }),
 
   // -------------------------------------------------------------------------
@@ -628,6 +722,13 @@ export const LIFT_COPY = Object.freeze({
     LOCKOUT: 'LOCK IT',
     RESOLVED: 'TAP TO LIFT AGAIN',
   }),
+  /**
+   * The whole control scheme, in one line. Prototype 1 is played by people who
+   * have never seen it (GDD §10: "10-20 people, roughly half real lifters"), so
+   * the rules have to be on the screen rather than in a tutorial nobody built.
+   */
+  SUBTITLE: 'Hold to descend  ·  release at depth  ·  drive out of the hole',
+
   OUTCOME: Object.freeze({
     'good-lift': 'GOOD LIFT',
     grind: 'GRINDER',
