@@ -3,7 +3,9 @@
 # Kills by listening port rather than by process-name match, because a
 # pattern like "expo start" also matches the restarting shell itself.
 set -u
-REPO=/home/user/three-white-lights
+# Derived from this script's own location, not hard-coded, so a builder working
+# in a git worktree serves ITS checkout rather than the main one.
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG="${1:-/tmp/expo-web.log}"
 PORT="${PORT:-8081}"
 

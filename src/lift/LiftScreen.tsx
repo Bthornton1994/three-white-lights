@@ -48,6 +48,12 @@ import { promptFor, type LiftOutcome, type LiftState } from '../game/lift';
 import { LIFT_PALETTE } from './liftPalette';
 import { LiftStage } from './LiftStage';
 import { totalKgFor } from './liftFrame';
+import {
+  captureFrameFor,
+  replayProbeJson,
+  type CaptureFrame,
+  type ReplayRequest,
+} from './liftReplay';
 import { useLiftLoop } from './useLiftLoop';
 
 const L = LIFT_TUNING.LAYOUT;
@@ -62,7 +68,7 @@ const OUTCOME_COLOUR: Record<LiftOutcome, string> = {
 /**
  * One judging light.
  *
- * Reanimated (CLAUDE.md, "Reanimated 3 for animation") rather than the sim
+ * Reanimated (CLAUDE.md and GDD §9.1, "Reanimated 4 for animation") rather than the sim
  * clock, because this is the only motion on the screen that is NOT part of the
  * rep: the rep has already resolved by the time it plays. Everything that
  * belongs to the lift itself is driven by `stepLift` so it cannot drift out of
@@ -144,14 +150,57 @@ function Timings({ state }: { readonly state: LiftState }): React.ReactElement |
   );
 }
 
-export function LiftScreen(): React.ReactElement {
-  const [loadIndex, setLoadIndex] = useState<number>(DEMO.DEFAULT_LOAD_INDEX);
+/**
+ * The off-screen record of what a captured frame ACTUALLY shows.
+ *
+ * Rendered only under `?replay=`. Zero-sized and fully transparent, so it
+ * cannot change a single captured pixel, but present in the DOM — which is what
+ * lets `tools/capture-lift.mjs` check that a sequence of shots is semantically
+ * distinct rather than merely byte-distinct. A hash comparison already passed on
+ * three copies of one resolved frame; this is the check that would not have.
+ */
+function ReplayProbe({ frame }: { readonly frame: CaptureFrame }): React.ReactElement {
+  return (
+    <View style={styles.probe} testID="lift-replay-probe">
+      <Text testID="lift-replay-probe-json">{replayProbeJson(frame)}</Text>
+    </View>
+  );
+}
+
+export interface LiftScreenProps {
+  /**
+   * DEBUG ONLY. Freezes the screen on one beat of a scripted rep instead of
+   * running the live clock (see `liftReplay.ts`). Nothing in the played app
+   * passes this; it arrives from the `?replay=` query string and exists so the
+   * renderer can be photographed at moments a wall clock cannot hit.
+   *
+   * While it is set the touch handlers and the load buttons are inert — the
+   * clock is stopped, so there is nothing for them to advance. That is
+   * intentional: a frozen frame that could be nudged by a stray click would not
+   * be reproducible evidence.
+   */
+  readonly replay?: ReplayRequest | undefined;
+}
+
+export function LiftScreen({ replay }: LiftScreenProps = {}): React.ReactElement {
+  const frame = useMemo(
+    () => (replay === undefined ? null : captureFrameFor(replay)),
+    [replay],
+  );
+  const replayLoadIndex = frame === null ? -1 : DEMO.LOAD_CHOICES.indexOf(frame.state.config.loadRatio);
+
+  const [loadIndex, setLoadIndex] = useState<number>(
+    replayLoadIndex < 0 ? DEMO.DEFAULT_LOAD_INDEX : replayLoadIndex,
+  );
   const loadRatio = DEMO.LOAD_CHOICES[loadIndex] ?? DEMO.LOAD_CHOICES[0] ?? 1;
 
   const loop = useLiftLoop(
     useMemo(() => ({ loadRatio, seed: DEMO.BEST_SINGLE_KG }), []),
+    frame !== null,
   );
-  const { state, history, onPressIn, onPressOut, restart } = loop;
+  const { onPressIn, onPressOut, restart } = loop;
+  const state = frame === null ? loop.state : frame.state;
+  const history = frame === null ? loop.history : frame.history;
 
   const totalKg = totalKgFor(state.config.loadRatio, DEMO.BEST_SINGLE_KG);
   const resolution = state.resolution;
@@ -182,6 +231,7 @@ export function LiftScreen(): React.ReactElement {
 
   return (
     <View style={styles.root} testID="lift-screen">
+      {frame === null ? null : <ReplayProbe frame={frame} />}
       <Lights outcome={resolution === null ? null : resolution.outcome} />
 
       <View style={styles.header}>
@@ -249,6 +299,18 @@ const styles = StyleSheet.create({
     backgroundColor: LIFT_PALETTE.BACKDROP,
     alignItems: 'center',
     paddingTop: L.SCREEN_PAD,
+  },
+  /**
+   * The capture probe. Absolute, zero-sized, fully transparent and clipped, so
+   * it occupies no layout and draws no pixel — the shot is of the shipped
+   * screen, not of a screen with a debug readout on it.
+   */
+  probe: {
+    position: 'absolute',
+    width: 0,
+    height: 0,
+    opacity: 0,
+    overflow: 'hidden',
   },
   lights: {
     flexDirection: 'row',

@@ -404,6 +404,34 @@ describe('no feel value lives outside this file', () => {
     expect(dead, `unused tuning values: ${dead.join(', ')}`).toEqual([]);
   });
 
+  it('keeps the base window widths out of the renderer (GDD §3.4, §12.3)', () => {
+    // A FATIGUE METER BY THE BACK DOOR, closed structurally.
+    //
+    // `CueWindow.widthMs` is the window AFTER fatigue has narrowed it. A
+    // component that divided it by `LIFT_TUNING.DRIVE_WINDOW_MS` would have a
+    // 0..1 fatigue ratio, and a 0..1 ratio one `<View style={{width}}>` away
+    // from being the meter §12.3 refuses. The adjusted width cannot be hidden —
+    // `(closeTick - idealTick) * TICK_MS * 2` reconstructs it, and the tick
+    // bounds are what the cue ring is drawn from — so the DENOMINATOR is what
+    // gets kept away instead.
+    //
+    // Nothing under `src/lift/` has any use for a base width: the ring is sized
+    // from `cueProgress`, which is already normalised. So mentioning one at all
+    // is the tell.
+    const files = sourcesUnder(path.join(HERE, '..', 'lift'), ['.ts', '.tsx']);
+    expect(files.length).toBeGreaterThan(0);
+    for (const { file, source } of files) {
+      const code = codeOnly(source);
+      for (const base of ['DEPTH_WINDOW_MS', 'DRIVE_WINDOW_MS']) {
+        expect(code, `${path.basename(file)} reads ${base}`).not.toContain(base);
+      }
+    }
+    // ...and the scan is not vacuous: it does find them where they belong.
+    expect(codeOnly(readFileSync(path.join(HERE, 'lift.ts'), 'utf8'))).toContain(
+      'DRIVE_WINDOW_MS',
+    );
+  });
+
   it('actually detects a bare number, so the scan is not vacuous', () => {
     expect(magicNumbersIn('const windowMs = 240;')).toEqual(['240']);
     expect(magicNumbersIn('const scale = 0.85;')).toEqual(['0.85']);

@@ -57,6 +57,7 @@ import {
   promptFor,
   runLift,
   stepLift,
+  type CueWindow,
   type LiftConfig,
   type LiftEventKind,
   type LiftOutcome,
@@ -552,6 +553,338 @@ describe('outcome space', () => {
     const dropped = play(load, { driveOffsetTicks: 0, releaseAfterDriveTicks: 3 });
     expect(outcomeOf(held)).not.toBe('miss');
     expect(dropped.resolution?.peakHeight ?? 1).toBeLessThan(held.resolution?.peakHeight ?? 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE WINNING BAND — the thing a hand pass may not silently destroy
+//
+// WHY THIS SECTION EXISTS. GDD §12.1 budgets roughly 30 hand passes over
+// `liftTuning.ts`. Before this section, the only things standing between those
+// passes and an unwinnable limit attempt were:
+//
+//   - a STATIC inequality (`DRIVE_BOOST_FORCE_MAX > demandPeak - capacity`),
+//     which says the boost is big enough at the instant it is applied and says
+//     NOTHING about whether it is still alive when the bar reaches the stick.
+//     Shorten DRIVE_BOOST_TICKS to a handful and that check still passes while
+//     every limit attempt in the game dies.
+//   - ONE winning script, which proves the band is non-empty and nothing about
+//     its width. A band one tick wide passes it.
+//   - a makes-ladder that only requires the heaviest load to be harder than the
+//     lightest, which a band of width zero satisfies.
+//
+// So everything below MEASURES the band from played reps.
+//
+// WHAT IT DOES NOT SAY. Not that the band is the right width — no test can say
+// that, GDD §12.1, and the numbers below are floors, not targets. What it says
+// is that the band is still wide enough to be a test of the player's timing
+// rather than of their hardware.
+// ---------------------------------------------------------------------------
+
+/**
+ * Floor on the width of the contiguous winning drive band at a limit attempt,
+ * in ticks.
+ *
+ * WHY FIVE. A press reaches the sim quantised to a tick (TICK_HZ = 60), and the
+ * path from a rendered cue to an applied input costs at least one more — the
+ * frame the player saw is already one frame old when their finger lands. Five
+ * ticks means the player has +/- 2 ticks of slop around a centre tick, about
+ * 83 ms, which is roughly two standard deviations of a practised tapper's
+ * asynchrony against a visual cue. Below that the outcome starts being decided
+ * by device latency instead of by the player, and GDD §8.1's "100% skill- and
+ * consistency-driven" stops being true of the mechanic.
+ *
+ * Measured at the time of writing: 8 ticks. The floor is deliberately well
+ * under that so a legitimate tuning pass is not fighting this test — it is here
+ * to catch a collapse, not to pin a value.
+ */
+const MIN_LIMIT_WIN_BAND_TICKS = 5;
+
+/**
+ * Floor on the share of CUE-OBEDIENT reps that make a limit attempt.
+ *
+ * "Cue-obedient" means the player did what the screen told them: released
+ * inside the depth window the sim armed, and pressed inside the drive window
+ * the sim armed. That is the only search space a win rate means anything over.
+ * A sweep that includes quarter squats and presses at arbitrary ticks measures
+ * the size of the sweep, not the difficulty of the rep.
+ *
+ * Measured at the time of writing: 0.28. A limit single SHOULD miss more often
+ * than it makes; what must not happen is that it becomes unwinnable in practice
+ * while every other test stays green.
+ */
+const MIN_LIMIT_CUE_OBEDIENT_WIN_RATE = 0.12;
+
+/**
+ * Floor on the same measure at the load the screen OPENS on.
+ *
+ * A first rep has to be makeable or GDD §10 Prototype 1 never gets asked its
+ * question. Measured at the time of writing: 0.89.
+ */
+const MIN_DEFAULT_CUE_OBEDIENT_WIN_RATE = 0.5;
+
+/**
+ * How much longer an undriven ascent at the default load must run than an
+ * undriven ascent at the lightest one, as a multiple.
+ *
+ * This is the "the player can SEE the grind" floor. Measured: 2.4x.
+ */
+const MIN_DEFAULT_ASCENT_STRETCH = 1.5;
+
+/**
+ * The cue the sim itself armed, read out of a played rep.
+ *
+ * Deliberately not reconstructed from the tuning constants. A test that derived
+ * the window from `DRIVE_IDEAL_LEAD_MS` would agree with a sim that armed the
+ * cue in the wrong place, which is the bug most worth catching.
+ */
+function armedCue(
+  config: LiftConfig,
+  script: readonly ScriptedInput[],
+  cue: 'depth' | 'drive',
+): CueWindow | null {
+  for (const state of runLift(config, script).history) {
+    const active = state.activeCue;
+    if (active !== null && active.cue === cue) return active;
+  }
+  return null;
+}
+
+interface CueObedientSweep {
+  /** Scripts that made the lift (good-lift or grind). */
+  readonly wins: number;
+  /** Scripts played. */
+  readonly total: number;
+  /** Release ticks inside the depth window that have at least one winning drive. */
+  readonly releasesWithAWin: number;
+  readonly releases: number;
+  /** Winning drive ticks at the release the depth cue actually asks for. */
+  readonly winsAtIdealDepth: number;
+  readonly driveWindowTicks: number;
+  /** Longest run of consecutive winning drive ticks at that same release. */
+  readonly longestBandTicks: number;
+  /** Did every release inside the depth window reach the ASCENT phase? */
+  readonly everyReleaseReachedAscent: boolean;
+}
+
+/**
+ * Play every rep a player who obeys BOTH on-screen cues could produce.
+ *
+ * Release tick runs across the depth window the sim armed; drive tick runs
+ * across the drive window the sim armed for that release. Both windows are read
+ * back out of the mechanic, so this sweep follows the cue wherever tuning moves
+ * it.
+ */
+function cueObedientSweep(load: number): CueObedientSweep {
+  const config: LiftConfig = { loadRatio: load, seed: 20260801 };
+  const press = pressTickFor(load);
+  const start: ScriptedInput[] = [{ tick: press, kind: 'press' }];
+  const depthCue = armedCue(config, start, 'depth');
+  if (depthCue === null) throw new Error(`no depth cue armed at load ${load}`);
+
+  let wins = 0;
+  let total = 0;
+  let releasesWithAWin = 0;
+  let releases = 0;
+  let winsAtIdealDepth = 0;
+  let driveWindowTicks = 0;
+  let longestBandTicks = 0;
+  let everyReleaseReachedAscent = true;
+
+  for (let release = depthCue.openTick; release <= depthCue.closeTick; release += 1) {
+    releases += 1;
+    const base: ScriptedInput[] = [...start, { tick: release, kind: 'release' }];
+    const undriven = runLift(config, base).final;
+    if (undriven.resolution?.ascentTicks === 0) everyReleaseReachedAscent = false;
+
+    const driveCue = armedCue(config, base, 'drive');
+    if (driveCue === null) {
+      everyReleaseReachedAscent = false;
+      continue;
+    }
+    let winsHere = 0;
+    let run = 0;
+    let bestRun = 0;
+    for (let drive = driveCue.openTick; drive <= driveCue.closeTick; drive += 1) {
+      total += 1;
+      const made =
+        runLift(config, [...base, { tick: drive, kind: 'press' }]).final.resolution?.outcome !==
+        'miss';
+      if (made) {
+        wins += 1;
+        winsHere += 1;
+        run += 1;
+        if (run > bestRun) bestRun = run;
+      } else {
+        run = 0;
+      }
+    }
+    if (winsHere > 0) releasesWithAWin += 1;
+    if (release === depthCue.idealTick) {
+      winsAtIdealDepth = winsHere;
+      driveWindowTicks = driveCue.closeTick - driveCue.openTick + 1;
+      longestBandTicks = bestRun;
+    }
+  }
+
+  return {
+    wins,
+    total,
+    releasesWithAWin,
+    releases,
+    winsAtIdealDepth,
+    driveWindowTicks,
+    longestBandTicks,
+    everyReleaseReachedAscent,
+  };
+}
+
+/** Every ASCENT state of one played rep. */
+function ascentOf(config: LiftConfig, script: readonly ScriptedInput[]): LiftState[] {
+  return runLift(config, script).history.filter((s) => s.phase === 'ASCENT');
+}
+
+describe('the winning band at a limit attempt', () => {
+  const limit = LOAD_PRESETS.MAXIMAL;
+
+  it('is wider than the input path is imprecise', () => {
+    const sweep = cueObedientSweep(limit);
+    expect(
+      sweep.longestBandTicks,
+      `winning drive band at ${limit} is ${sweep.longestBandTicks} ticks ` +
+        `(${(sweep.longestBandTicks * TICK_MS).toFixed(0)} ms) of a ` +
+        `${sweep.driveWindowTicks}-tick cue window`,
+    ).toBeGreaterThanOrEqual(MIN_LIMIT_WIN_BAND_TICKS);
+  });
+
+  it('is one contiguous band, not scattered ticks', () => {
+    // A split band is a dead spot inside a window the game is telling the player
+    // to press in, which reads as the input being ignored rather than as a
+    // difficulty. Every winning tick at the moment the depth cue asks for must
+    // belong to the same run.
+    const sweep = cueObedientSweep(limit);
+    expect(sweep.winsAtIdealDepth).toBeGreaterThan(0);
+    expect(sweep.longestBandTicks).toBe(sweep.winsAtIdealDepth);
+  });
+
+  it('is reachable from every release the depth cue asks for', () => {
+    // The depth cue must never lie: if it lights up and the player obeys it,
+    // SOME drive has to be able to finish the rep. Otherwise the rep was over
+    // before the drive beat began and the second cue is decoration.
+    const sweep = cueObedientSweep(limit);
+    expect(sweep.releases).toBeGreaterThan(0);
+    expect(sweep.everyReleaseReachedAscent).toBe(true);
+    expect(
+      sweep.releasesWithAWin,
+      `${sweep.releasesWithAWin} of ${sweep.releases} depth-window releases are winnable`,
+    ).toBe(sweep.releases);
+  });
+
+  it('is won often enough to be a skill test rather than a lottery', () => {
+    const sweep = cueObedientSweep(limit);
+    const rate = sweep.wins / sweep.total;
+    expect(
+      rate,
+      `cue-obedient win rate at ${limit} is ${(rate * 100).toFixed(1)}% over ${sweep.total} reps`,
+    ).toBeGreaterThanOrEqual(MIN_LIMIT_CUE_OBEDIENT_WIN_RATE);
+    // ...and a limit single still has to be a limit single.
+    expect(rate).toBeLessThan(1);
+  });
+
+  it('keeps the drive boost alive long enough to reach the sticking point', () => {
+    // THE HOLE IN THE STATIC CHECK, closed. `liftTuning.test.ts` proves the
+    // boost is larger than the deficit; it cannot prove the boost has not
+    // already decayed to nothing by the time the bar arrives. Measured here on
+    // the bar itself: with a perfectly timed drive, the net force must come back
+    // to positive WHILE THE BAR IS INSIDE the sticking band the sprite system
+    // draws — not before it, and not after it is already past.
+    const config: LiftConfig = { loadRatio: limit, seed: 20260801 };
+    const base: ScriptedInput[] = [
+      { tick: pressTickFor(limit), kind: 'press' },
+      { tick: releaseTickFor(limit, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+    ];
+    const cue = armedCue(config, base, 'drive');
+    expect(cue).not.toBeNull();
+    if (cue === null) return;
+
+    const driven = ascentOf(config, [...base, { tick: cue.idealTick, kind: 'press' }]);
+    const crossing = driven.find((s) => s.height >= STICK_HEIGHT_FRAC);
+    expect(crossing, 'the driven bar never reached the sticking point').toBeDefined();
+    expect(
+      crossing?.netForce ?? 0,
+      'the drive boost had already decayed by the time the bar reached the stick',
+    ).toBeGreaterThan(0);
+
+    // And the same rep, UNDRIVEN, must not get there at all — otherwise the
+    // assertion above is true of a bar that never needed driving, and the whole
+    // section is measuring nothing.
+    const undriven = ascentOf(config, base);
+    expect(Math.max(...undriven.map((s) => s.height))).toBeLessThan(STICK_HEIGHT_FRAC);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The load the screen opens on (GDD §10 Prototype 1)
+// ---------------------------------------------------------------------------
+
+describe('the load the screen opens on', () => {
+  const choices = LIFT_TUNING.DEMO.LOAD_CHOICES;
+  const defaultLoad = choices[LIFT_TUNING.DEMO.DEFAULT_LOAD_INDEX];
+
+  it('is one of the loads the screen offers', () => {
+    expect(defaultLoad, 'DEFAULT_LOAD_INDEX is out of range').toBeDefined();
+  });
+
+  it('has a sticking point at all', () => {
+    // Below this the drive input does nothing, an undriven rep locks out clean,
+    // and the screen opens on a rep that cannot answer GDD §10's question
+    // because there is no grind in it to judge.
+    expect(defaultLoad).toBeDefined();
+    if (defaultLoad === undefined) return;
+    expect(
+      ascentDemand(STICK_HEIGHT_FRAC, defaultLoad),
+      `load ${defaultLoad} never exceeds the lifter's capacity at the stick`,
+    ).toBeGreaterThan(LIFT_TUNING.LIFTER_CAPACITY);
+  });
+
+  it('shows the grind even to a player who never presses the drive', () => {
+    expect(defaultLoad).toBeDefined();
+    if (defaultLoad === undefined) return;
+    const undrivenAscent = (load: number): LiftState[] =>
+      ascentOf({ loadRatio: load, seed: 20260801 }, [
+        { tick: pressTickFor(load), kind: 'press' },
+        { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+      ]);
+
+    const here = undrivenAscent(defaultLoad);
+    const light = undrivenAscent(LOAD_PRESETS.LIGHT);
+    expect(here.length, 'the default rep never reached the ascent').toBeGreaterThan(0);
+    // The bar fights: net force goes negative somewhere on the way up.
+    expect(Math.min(...here.map((s) => s.netForce))).toBeLessThan(0);
+    expect(Math.min(...light.map((s) => s.netForce))).toBeGreaterThanOrEqual(0);
+    // And it takes materially longer than the light one, which is what the
+    // player actually sees.
+    expect(here.length).toBeGreaterThan(light.length * MIN_DEFAULT_ASCENT_STRETCH);
+  });
+
+  it('is made by a player who obeys both cues, most of the time', () => {
+    expect(defaultLoad).toBeDefined();
+    if (defaultLoad === undefined) return;
+    const sweep = cueObedientSweep(defaultLoad);
+    const rate = sweep.wins / sweep.total;
+    expect(
+      rate,
+      `cue-obedient win rate at the default load ${defaultLoad} is ${(rate * 100).toFixed(1)}%`,
+    ).toBeGreaterThanOrEqual(MIN_DEFAULT_CUE_OBEDIENT_WIN_RATE);
+  });
+
+  it('leaves the limit attempt on the screen, and harder than the default', () => {
+    expect(defaultLoad).toBeDefined();
+    if (defaultLoad === undefined) return;
+    expect([...choices]).toContain(LOAD_PRESETS.MAXIMAL);
+    const here = cueObedientSweep(defaultLoad);
+    const limit = cueObedientSweep(LOAD_PRESETS.MAXIMAL);
+    expect(limit.wins / limit.total).toBeLessThan(here.wins / here.total);
   });
 });
 

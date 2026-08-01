@@ -262,7 +262,27 @@ export interface CueWindow {
   readonly idealTick: number;
   /** Tick the window closes on, inclusive. */
   readonly closeTick: number;
-  /** Full width in ms, after fatigue. Carried so a renderer can size the cue. */
+  /**
+   * Full width in ms, after fatigue. Used by `stepLift` to grade an input.
+   *
+   * A KNOWN EDGE, DOCUMENTED RATHER THAN CLOSED, because it cannot be closed
+   * where it appears to be. A component that divided this by
+   * `LIFT_TUNING.DRIVE_WINDOW_MS` would reconstruct a 0..1 fatigue ratio and
+   * could render it as a bar — a §3.4 / §12.3 fatigue meter by the back door.
+   *
+   * Deleting this field does not help: `(closeTick - idealTick) * TICK_MS * 2`
+   * is the same number, and the tick bounds cannot go because the cue ring is
+   * drawn from them. GDD §3.4 also *permits* fatigue to surface as timing
+   * window width — that is one of the three channels it names. What §12.3
+   * forbids is rendering it as a meter, and rendering is where the rule has to
+   * be enforced.
+   *
+   * So it is enforced there: `liftTuning.test.ts` fails if any source under
+   * `src/lift/` so much as mentions `DEPTH_WINDOW_MS` or `DRIVE_WINDOW_MS`.
+   * Those are the only denominators that turn an adjusted window into a ratio,
+   * and the renderer has no legitimate use for either — the cue ring is sized
+   * from `cueProgress`, which is already normalised.
+   */
   readonly widthMs: number;
 }
 
