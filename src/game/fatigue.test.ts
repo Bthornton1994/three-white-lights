@@ -27,6 +27,7 @@ import {
   type FatigueState,
   type InjuryRolls,
   type ReadinessCheckIn,
+  type RecordSessionOptions,
   type SessionRecord,
   type SimLift,
 } from './fatigue';
@@ -277,10 +278,19 @@ function runSchedule(
  * the probability, so a TEST can invert that by bisection and measure the model
  * from outside instead of reaching into it. Test-only, and the reason the module
  * needs no new export to be checkable here.
+ *
+ * TAKES THE SAME OPTIONS `recordSession` DOES, so the effect of a technique
+ * rating can be measured as a NUMBER rather than as "did the unluckiest roll
+ * still injure" — which is the same answer for every rating below total
+ * invulnerability and therefore measures nothing.
  */
-function measuredInjuryChance(state: FatigueState, session: SessionRecord): number {
+function measuredInjuryChance(
+  state: FatigueState,
+  session: SessionRecord,
+  options?: RecordSessionOptions,
+): number {
   const injures = (onset: number): boolean =>
-    recordSession(state, session, { onset, duration: 0.5 }).injuryOnset !== null;
+    recordSession(state, session, { onset, duration: 0.5 }, options).injuryOnset !== null;
   if (!injures(0)) return 0;
   let lo = 0;
   let hi = 1;
@@ -676,22 +686,45 @@ describe('daily engagement is never punished', () => {
   });
 
   /**
-   * G5, on the SURFACED SIGNALS. Two histories with the same sessions but a
-   * different number of intervening days that carry no session must produce
-   * identical signals — the model reads work, never turnout.
+   * G5, on the SURFACED SIGNALS. Turnout that carries no work must be inert: a
+   * player thirty days into an unbroken run feels exactly what a player one day
+   * into one feels, given the same work. The model reads work, never turnout.
+   *
+   * WHY IT IS BUILT THIS WAY. The obvious phrasing — same sessions, different
+   * numbers of intervening days on which the player "opened the app" — cannot be
+   * written, because opening the app records nothing and the two ledgers are
+   * then the same object. The earlier draft of this test wrote it anyway and
+   * compared a state to itself, which can only fail on non-determinism. The
+   * version below separates the two players on the axis that actually exists:
+   * how many days of the ledger carry a session at all. Free sessions cost
+   * exactly zero strain (G1), so any streak counter, consecutive-day multiplier
+   * or days-since-signup term would show up here as a difference and there is
+   * nothing else left that could.
    *
    * The injury half of G5 is a separate and much stronger property, because
    * signals legitimately do respond to yesterday's work (GDD §3.4) and risk must
    * not: see `consistency never accrues injury risk (G5, G5b)`.
    */
   it('reads work, never attendance: no streak or consecutive-day term exists', () => {
-    // Same two sessions, same days. The only difference is that the second
-    // player also "opened the app" on the other days, which records nothing.
-    const trained = recordAll(EMPTY_FATIGUE_STATE, [hardSession(1), hardSession(3)]);
-    const alsoTrained = recordAll(EMPTY_FATIGUE_STATE, [hardSession(1), hardSession(3)]);
-    expect(signalsFor(trained, 4, NEUTRAL_CHECK_IN)).toEqual(
-      signalsFor(alsoTrained, 4, NEUTRAL_CHECK_IN),
-    );
+    const readDay = 31;
+    let longRun = EMPTY_FATIGUE_STATE;
+    for (let day = 1; day < readDay; day += 1) {
+      longRun = recordSession(longRun, recoverySessionFor(day, 'squat'), UNLUCKIEST_ROLLS).state;
+    }
+    const oneDay = recordSession(
+      EMPTY_FATIGUE_STATE,
+      recoverySessionFor(readDay - 1, 'squat'),
+      UNLUCKIEST_ROLLS,
+    ).state;
+    // Non-vacuity: the two ledgers really are different, so `toEqual` below is
+    // comparing two things and not one thing twice.
+    expect(longRun.sessions.length).toBeGreaterThan(oneDay.sessions.length);
+    for (const checkIn of [BEST_CHECK_IN, NEUTRAL_CHECK_IN, WORST_CHECK_IN]) {
+      expect(
+        signalsFor(longRun, readDay, checkIn),
+        `check-in ${JSON.stringify(checkIn)}`,
+      ).toEqual(signalsFor(oneDay, readDay, checkIn));
+    }
 
     // And a longer unbroken run of free sessions never degrades anything.
     let free = EMPTY_FATIGUE_STATE;
@@ -767,36 +800,121 @@ function injuredState(): FatigueState {
 // Injury shape (GDD §3.5)
 // ---------------------------------------------------------------------------
 
+/**
+ * How long the setback started by one maximal day runs, on a PINNED duration
+ * roll, with `physioDaysSaved` days of Gym Empire physio applied (GDD §5.4).
+ *
+ * PINNING THE ROLL IS THE WHOLE POINT. A physio'd setback is only meaningfully
+ * shorter than the same setback unaided; compared against the 2-3 day band as a
+ * whole, a physio'd 2-day setback and an unaided 2-day setback are
+ * indistinguishable, which is how the earlier draft of these tests passed with
+ * `physioDaysSaved` wired to nothing. Two calls that differ only in the physio
+ * argument differ in their answer only because of the physio.
+ */
+function setbackDurationFor(durationRoll: number, physioDaysSaved: number): number {
+  let state = EMPTY_FATIGUE_STATE;
+  for (let day = 1; day <= 3; day += 1) {
+    state = recordSession(state, maximalSession(day), LUCKIEST_ROLLS).state;
+  }
+  const result = recordSession(
+    state,
+    maximalSession(4),
+    { onset: 0, duration: durationRoll },
+    { physioDaysSaved },
+  );
+  const injury = result.state.injury;
+  if (injury === null) {
+    throw new Error('expected a setback: a maximal day on the unluckiest onset roll must injure');
+  }
+  return injury.endDay - injury.startDay + 1;
+}
+
+/** One roll per rollable setback length, so a sweep covers the whole band. */
+const DURATION_ROLL_COUNT = Math.max(
+  1,
+  FATIGUE_TUNING.INJURY_DURATION_DAYS_MAX - FATIGUE_TUNING.INJURY_DURATION_DAYS_MIN + 1,
+);
+const PINNED_DURATION_ROLLS: readonly number[] = Object.freeze(
+  Array.from({ length: DURATION_ROLL_COUNT }, (_unused, i) => (i + 0.5) / DURATION_ROLL_COUNT),
+);
+
 describe('injury setbacks are rare, short and soft (GDD §3.5)', () => {
   it('property: a setback is always inside the 2-3 day band, or shorter with physio', () => {
     const rng = makeRng(0xd0c);
+    const floor = FATIGUE_TUNING.INJURY_MIN_DURATION_DAYS_AFTER_PHYSIO;
     for (let trial = 0; trial < 300; trial += 1) {
       const physio = Math.floor(rng() * 4);
-      let state = EMPTY_FATIGUE_STATE;
-      for (let day = 1; day <= 3; day += 1) {
-        state = recordSession(state, maximalSession(day), LUCKIEST_ROLLS).state;
+      const durationRoll = rng();
+      const duration = setbackDurationFor(durationRoll, physio);
+      const where = `trial ${trial}, physio ${physio}, roll ${durationRoll}`;
+      expect(duration, where).toBeGreaterThanOrEqual(floor);
+      expect(duration, where).toBeLessThanOrEqual(FATIGUE_TUNING.INJURY_DURATION_DAYS_MAX);
+      // Physio only ever shortens — measured against the SAME roll unaided,
+      // which is the only comparison that can tell the difference. Asserting it
+      // against the band again, as this test once did, restates the two lines
+      // above and holds whether or not physio does anything at all.
+      const unaided = setbackDurationFor(durationRoll, 0);
+      expect(unaided, where).toBeGreaterThanOrEqual(FATIGUE_TUNING.INJURY_DURATION_DAYS_MIN);
+      expect(duration, where).toBe(Math.max(floor, unaided - physio));
+    }
+  });
+
+  /**
+   * GDD §5.4: "Physio reduces Sim injury duration". The cross-mode hook, as a
+   * numeric relationship on a fixed roll rather than a band check.
+   */
+  it('physio takes a whole day off the same setback, down to the floor and no further (GDD §5.4)', () => {
+    const floor = FATIGUE_TUNING.INJURY_MIN_DURATION_DAYS_AFTER_PHYSIO;
+    const expectedBand: number[] = [];
+    for (
+      let days = FATIGUE_TUNING.INJURY_DURATION_DAYS_MIN;
+      days <= FATIGUE_TUNING.INJURY_DURATION_DAYS_MAX;
+      days += 1
+    ) {
+      expectedBand.push(days);
+    }
+
+    // The sweep must actually reach every setback length the module can roll,
+    // or "physio shortens it" gets checked at one convenient length and misses
+    // the rest.
+    const unaidedLengths = PINNED_DURATION_ROLLS.map((roll) => setbackDurationFor(roll, 0));
+    expect([...new Set(unaidedLengths)].sort((a, b) => a - b)).toEqual(expectedBand);
+
+    let strictlyShortened = 0;
+    for (const roll of PINNED_DURATION_ROLLS) {
+      const unaided = setbackDurationFor(roll, 0);
+      const withPhysio = setbackDurationFor(roll, 1);
+      const where = `duration roll ${roll} (unaided ${unaided} days)`;
+
+      // STRICTLY SHORTER than the same setback unaided, wherever there is a day
+      // left above the floor to take off. Not "no longer than", which a model
+      // ignoring `physioDaysSaved` satisfies exactly.
+      if (unaided > floor) {
+        expect(withPhysio, where).toBeLessThan(unaided);
+        strictlyShortened += 1;
       }
-      const result = recordSession(
-        state,
-        maximalSession(4),
-        { onset: 0, duration: rng() },
-        { physioDaysSaved: physio },
-      );
-      const injury = result.state.injury;
-      expect(injury).not.toBeNull();
-      if (injury === null) continue;
-      const duration = injury.endDay - injury.startDay + 1;
-      expect(duration).toBeGreaterThanOrEqual(
-        FATIGUE_TUNING.INJURY_MIN_DURATION_DAYS_AFTER_PHYSIO,
-      );
-      expect(duration).toBeLessThanOrEqual(FATIGUE_TUNING.INJURY_DURATION_DAYS_MAX);
-      // Physio only ever shortens.
-      expect(duration).toBeLessThanOrEqual(
-        Math.max(
-          FATIGUE_TUNING.INJURY_MIN_DURATION_DAYS_AFTER_PHYSIO,
-          FATIGUE_TUNING.INJURY_DURATION_DAYS_MAX,
-        ),
-      );
+      // And shorter by exactly one day, floored — the relationship, not just
+      // its direction.
+      expect(withPhysio, where).toBe(Math.max(floor, unaided - 1));
+      expect(withPhysio, where).toBeGreaterThanOrEqual(floor);
+    }
+    // Non-vacuity: at least one rollable setback is long enough for a single
+    // physio day to shorten it. Without this the loop above would still pass if
+    // every setback already sat on the floor with nothing left to take off.
+    expect(strictlyShortened).toBeGreaterThan(0);
+
+    // More physio never lengthens a setback and never digs below the floor —
+    // GDD §3.5 keeps it a setback, so it cannot be bought away entirely.
+    for (const roll of PINNED_DURATION_ROLLS) {
+      let previous = setbackDurationFor(roll, 0);
+      for (let physio = 1; physio <= FATIGUE_TUNING.INJURY_DURATION_DAYS_MAX + 2; physio += 1) {
+        const duration = setbackDurationFor(roll, physio);
+        const where = `duration roll ${roll}, physio ${physio}`;
+        expect(duration, where).toBeLessThanOrEqual(previous);
+        expect(duration, where).toBeGreaterThanOrEqual(floor);
+        previous = duration;
+      }
+      expect(previous, `duration roll ${roll} at saturating physio`).toBe(floor);
     }
   });
 
@@ -841,18 +959,76 @@ describe('injury setbacks are rare, short and soft (GDD §3.5)', () => {
     }
   });
 
+  /**
+   * GDD §2.3: Arcade technique points buy bar-path efficiency, "which reduces
+   * injury risk in Sim".
+   *
+   * BOTH HALVES ARE MEASURED. The earlier draft of this test resolved both
+   * branches against `UNLUCKIEST_ROLLS` (`onset: 0`), which injures whenever the
+   * chance is above zero — so both assertions collapsed into "the chance is
+   * still positive" and the *reduction* went unobserved entirely. The chance is
+   * recovered as a number here instead, by bisecting `onset`, and compared to
+   * what `TECHNIQUE_MAX_RISK_REDUCTION` says it should be.
+   */
   it('technique points reduce risk but never remove it entirely (GDD §2.3)', () => {
+    const maxReduction = FATIGUE_TUNING.TECHNIQUE_MAX_RISK_REDUCTION;
+    // Non-vacuity: at zero, every assertion below is satisfied by a model that
+    // ignores `techniqueRating` completely, and GDD §2.3's cross-mode hook does
+    // not exist. Above 1 would make technique add risk; at 1 it would buy
+    // invulnerability.
+    expect(maxReduction).toBeGreaterThan(0);
+    expect(maxReduction).toBeLessThan(1);
+
     let state = EMPTY_FATIGUE_STATE;
     for (let day = 1; day <= 3; day += 1) {
       state = recordSession(state, maximalSession(day), LUCKIEST_ROLLS).state;
     }
-    const withoutTechnique = recordSession(state, maximalSession(4), UNLUCKIEST_ROLLS);
-    const withTechnique = recordSession(state, maximalSession(4), UNLUCKIEST_ROLLS, {
+    const risky = maximalSession(4);
+
+    const bare = measuredInjuryChance(state, risky);
+    expect(bare).toBeGreaterThan(0);
+
+    // THE NUMERIC RELATIONSHIP. A normalised rating `r` scales the chance by
+    // exactly `1 - r * TECHNIQUE_MAX_RISK_REDUCTION`. Stated as an equality
+    // because every inequality available here ("lower", "not zero") is also
+    // true of a model in which technique does nothing.
+    for (const rating of [0, 0.1, 0.25, 0.5, 0.75, 1]) {
+      const measured = measuredInjuryChance(state, risky, { techniqueRating: rating });
+      expect(measured, `technique rating ${rating}`).toBeCloseTo(
+        bare * (1 - rating * maxReduction),
+        12,
+      );
+    }
+
+    // Ratings arrive normalised to [0, 1] (GDD §2.3), and a caller that hands
+    // over a raw point total or a negative buys neither invulnerability nor
+    // extra risk.
+    expect(measuredInjuryChance(state, risky, { techniqueRating: 12 })).toBeCloseTo(
+      measuredInjuryChance(state, risky, { techniqueRating: 1 }),
+      12,
+    );
+    expect(measuredInjuryChance(state, risky, { techniqueRating: -3 })).toBeCloseTo(bare, 12);
+
+    // A rating never raises the chance, at any point on the ramp.
+    let previous = bare;
+    for (const rating of [0.2, 0.4, 0.6, 0.8, 1]) {
+      const measured = measuredInjuryChance(state, risky, { techniqueRating: rating });
+      expect(measured, `technique rating ${rating}`).toBeLessThan(previous);
+      previous = measured;
+    }
+
+    // ...and the half this test already had: at full technique the chance is
+    // smaller but still strictly above zero, so the unluckiest roll still
+    // injures. `TECHNIQUE_MAX_RISK_REDUCTION` below 1 is what guarantees it.
+    const fullTechnique = measuredInjuryChance(state, risky, { techniqueRating: 1 });
+    expect(fullTechnique).toBeGreaterThan(0);
+    expect(fullTechnique).toBeLessThan(bare);
+
+    const withoutTechnique = recordSession(state, risky, UNLUCKIEST_ROLLS);
+    const withTechnique = recordSession(state, risky, UNLUCKIEST_ROLLS, {
       techniqueRating: 1,
     });
     expect(withoutTechnique.injuryOnset).not.toBeNull();
-    // Max technique cuts the chance but leaves it above zero, so onset 0 still
-    // injures. `TECHNIQUE_MAX_RISK_REDUCTION` below 1 is what guarantees this.
     expect(withTechnique.injuryOnset).not.toBeNull();
   });
 
@@ -1343,8 +1519,12 @@ describe('tuning invariants: the guarantees survive a hand-tuning pass', () => {
     expect(FATIGUE_TUNING.DAILY_DECAY).toBeLessThanOrEqual(0.5);
   });
 
-  it('technique can never remove all injury risk (no invulnerability)', () => {
-    expect(FATIGUE_TUNING.TECHNIQUE_MAX_RISK_REDUCTION).toBeGreaterThanOrEqual(0);
+  it('technique reduces some injury risk, and can never remove all of it', () => {
+    // Strictly above zero, or GDD §2.3's "technique points ... reduce injury
+    // risk in Sim" is not a thing the model does — and every technique test
+    // becomes satisfiable by ignoring the rating.
+    expect(FATIGUE_TUNING.TECHNIQUE_MAX_RISK_REDUCTION).toBeGreaterThan(0);
+    // Strictly below one, or maximum technique is invulnerability.
     expect(FATIGUE_TUNING.TECHNIQUE_MAX_RISK_REDUCTION).toBeLessThan(1);
   });
 
