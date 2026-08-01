@@ -2,8 +2,8 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 3,
-    "waveName": "Wave 3 — remaining pure logic, then wiring an app",
+    "wave": 4,
+    "waveName": "Wave 4 — the app is playable; grading the lift and closing the streak guardrail",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
@@ -160,9 +160,10 @@
       "id": "L1",
       "name": "Lift input mechanic",
       "bar": "The lift must feel good (GDD pillar 1).",
-      "status": "building",
+      "status": "grading",
       "verifiable": false,
-      "note": "Dispatched. GDD §10 Prototype 1 is the gate everything rests on — if grinding a squat out of the hole is not satisfying the project stops — and §2.3 notes meet day reuses the same mechanic. Scope: pure src/game/lift.ts with colocated tests, Skia bar-path rendering, and wired into App.tsx so the thing is finally openable. Every timing window, velocity curve and grind threshold in one named block marked UNTUNED, because feel cannot be judged from here."
+      "note": "MERGED, AND APP.TSX IS NO LONGER THE RENDER SPIKE — it imports LiftScreen and the app is openable. 927 tests across 17 files, typecheck clean. One rep: BRACE, DESCENT, HOLE, ASCENT, LOCKOUT, RESOLVED; hold to descend, release at depth, press to drive through the sticking point. Randomness is a seeded generator in state, not Math.random. I took my own screenshots from the merged tree rather than trusting the builder's — which mattered: my first light-vs-maximal capture was invalid, because the light rep resolved before the first frame, so both its \"descent\" and \"result\" frames were byte-identical pictures of a finished NO LIFT. Recaptured at a shorter descent hold. Then I searched the input space exhaustively through the module's own runLift API: good-lift rate falls 11.95 to 11.66 to 2.35 to 0.34 percent across the four loads, with grinds appearing only from 0.75 and stalls only from 0.88. So the load ramp is real and the maximal preset is winnable but barely. I could not win a single maximal rep in the browser across 11 input timings, and that reproduced on the builder's own server too, so it is not a merge artifact. Whether a 0.34 percent window is a limit attempt or a broken mechanic is the question the critic has, framed so a tuning value is not reported as a defect nor a structural fault waved away as tuning.",
+      "evidence": "L1-idle-main.png"
     },
     {
       "id": "A1",

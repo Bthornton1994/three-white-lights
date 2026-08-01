@@ -133,7 +133,7 @@ physiology.
 
 - TypeScript strict mode, no `any`
 - Prefer pure functions and explicit return types in game-math modules
-- Reanimated 3 for animation; Skia for bar-path and rep rendering
+- Reanimated 4 for animation; Skia for bar-path and rep rendering
 - Keep components small; extract logic aggressively
 - Colocate tests as `*.test.ts` next to the module
 

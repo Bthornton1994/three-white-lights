@@ -1,7 +1,7 @@
 # Powerlifting Game — Game Design Document
 
 **Status:** Pre-prototype
-**Stack:** React Native + Expo, TypeScript, Reanimated 3, Skia, Supabase
+**Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
 **Last updated:** 2026-08-01 (§4.1/§4.2/§4.3/§4.4 — free grace for short gaps, ruled)
 
 ---
@@ -558,7 +558,7 @@ premium cosmetic pricing reads as normal to them.
 | Layer | Choice | Rationale |
 |---|---|---|
 | Frontend | React Native + Expo | All TypeScript, all text files — fully agent-workable |
-| Animation | Reanimated 3 | Gesture/timing-driven lift animation |
+| Animation | Reanimated 4 | Gesture/timing-driven lift animation |
 | Rendering | Skia | Bar-path visuals, rep animation |
 | Haptics | Expo Haptics | Critical to lift feel — budget real iteration time here |
 | Backend | Supabase (Postgres, Auth, Realtime, Edge Functions) | Realtime handles sync flights without custom netcode |
