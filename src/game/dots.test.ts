@@ -4,6 +4,7 @@ import {
   DOTS_BODYWEIGHT_DOMAIN_KG,
   DOTS_COEFFICIENTS,
   DOTS_DISPLAY_DECIMALS,
+  DOTS_NO_TOTAL_DISPLAY,
   DOTS_NUMERATOR,
   clampBodyweightToDotsDomain,
   dotsCoefficient,
@@ -11,10 +12,14 @@ import {
   dotsDomainStatus,
   dotsScore,
   evaluateDots,
+  formatDotsOutcome,
   formatDotsScore,
+  hasDotsScore,
   isBodyweightInDotsDomain,
   roundDotsScore,
+  type DotsOutcome,
   type DotsSex,
+  type ScoredDots,
 } from './dots';
 
 /**
@@ -37,6 +42,28 @@ import {
  */
 const SCORE_PRECISION = 6;
 const COEFFICIENT_PRECISION = 8;
+
+/**
+ * Shaped exactly like `meet.ts`'s `finalMeetTotal(state): number | null`, which
+ * is the function that will feed this module. Written as a function rather than
+ * a `const` so TypeScript does not narrow the union away and quietly make the
+ * boundary tests below weaker than they look.
+ */
+function bombedOutMeetTotal(): number | null {
+  return null;
+}
+
+function finishedMeetTotal(): number | null {
+  return 700;
+}
+
+/** Assert an outcome is the scored branch and narrow to it. Throws if it is not. */
+function expectScored(outcome: DotsOutcome): ScoredDots {
+  if (!hasDotsScore(outcome)) {
+    throw new Error(`expected a scored outcome, got kind="${outcome.kind}"`);
+  }
+  return outcome;
+}
 
 describe('published DOTS coefficients', () => {
   // The single most important test in this file: a critic can diff these six
@@ -213,16 +240,18 @@ describe('bodyweight domain', () => {
 
 describe('evaluateDots', () => {
   it('returns the score together with the domain information', () => {
-    const result = evaluateDots('male', 93, 700);
+    const result = expectScored(evaluateDots('male', 93, 700));
+    expect(result.kind).toBe('scored');
     expect(result.score).toBeCloseTo(445.3758244217, SCORE_PRECISION);
     expect(result.coefficient).toBeCloseTo(0.636251177745, COEFFICIENT_PRECISION);
     expect(result.bodyweightKg).toBe(93);
     expect(result.effectiveBodyweightKg).toBe(93);
+    expect(result.totalKg).toBe(700);
     expect(result.domainStatus).toBe('in-domain');
   });
 
   it('preserves the supplied bodyweight while reporting the clamped one', () => {
-    const result = evaluateDots('female', 165, 600);
+    const result = expectScored(evaluateDots('female', 165, 600));
     expect(result.bodyweightKg).toBe(165);
     expect(result.effectiveBodyweightKg).toBe(150);
     expect(result.domainStatus).toBe('clamped-above-max');
@@ -230,8 +259,127 @@ describe('evaluateDots', () => {
   });
 
   it('agrees with dotsScore', () => {
-    expect(evaluateDots('female', 63, 400).score).toBe(dotsScore('female', 63, 400));
-    expect(evaluateDots('male', 130, 850).score).toBe(dotsScore('male', 130, 850));
+    expect(expectScored(evaluateDots('female', 63, 400)).score).toBe(dotsScore('female', 63, 400));
+    expect(expectScored(evaluateDots('male', 130, 850)).score).toBe(dotsScore('male', 130, 850));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The X1 boundary: `meet.ts` records a bombed lifter as `total: null`, and this
+// module must not turn that into a number. Every test in this block exists
+// because the natural glue between the two modules —
+// `dotsScore(sex, bw, finalMeetTotal(state) ?? 0)` — would otherwise place a
+// lifter who did not total at the bottom of a leaderboard with 0.00 DOTS.
+// ---------------------------------------------------------------------------
+
+describe('no total is not a total of zero', () => {
+  it('gives a null total a no-total outcome carrying no score at all', () => {
+    const outcome = evaluateDots('male', 93, bombedOutMeetTotal());
+    expect(outcome.kind).toBe('no-total');
+    expect(hasDotsScore(outcome)).toBe(false);
+    // Not `score: 0`, not `score: undefined` — the key is simply not there, so
+    // nothing downstream can read a score off it or default one into place.
+    expect('score' in outcome).toBe(false);
+    expect(Object.keys(outcome)).not.toContain('score');
+    expect(Object.keys(outcome)).not.toContain('totalKg');
+  });
+
+  it('still reports the lifter facts that do not depend on having a total', () => {
+    const outcome = evaluateDots('female', 165, bombedOutMeetTotal());
+    expect(outcome.bodyweightKg).toBe(165);
+    expect(outcome.effectiveBodyweightKg).toBe(150);
+    expect(outcome.domainStatus).toBe('clamped-above-max');
+    expect(outcome.coefficient).toBeCloseTo(0.770756646539, COEFFICIENT_PRECISION);
+  });
+
+  it('scores a real total through the same entry point', () => {
+    const outcome = expectScored(evaluateDots('male', 93, finishedMeetTotal()));
+    expect(outcome.score).toBeCloseTo(445.3758244217, SCORE_PRECISION);
+  });
+
+  it('rejects a total of exactly 0 instead of scoring it 0', () => {
+    expect(() => dotsScore('male', 93, 0)).toThrow(RangeError);
+    expect(() => evaluateDots('female', 63, 0)).toThrow(RangeError);
+    // -0 === 0 in JavaScript, so it must take the same path.
+    expect(() => dotsScore('male', 93, -0)).toThrow(RangeError);
+    expect(() => evaluateDots('male', 93, -0)).toThrow(RangeError);
+  });
+
+  it('names the `?? 0` collapse in the error it throws for a 0 total', () => {
+    expect(() => dotsScore('male', 93, 0)).toThrow(/\?\? 0/);
+    expect(() => evaluateDots('male', 93, 0)).toThrow(/does not place/);
+  });
+
+  it('THE REGRESSION: `finalMeetTotal(state) ?? 0` throws instead of scoring 0.00', () => {
+    // This is the exact line a caller joining meet.ts to dots.ts would write.
+    const collapsed: number = bombedOutMeetTotal() ?? 0;
+    expect(collapsed).toBe(0);
+
+    let produced: number | 'threw' = Number.NaN;
+    try {
+      produced = dotsScore('male', 93, collapsed);
+    } catch {
+      produced = 'threw';
+    }
+    expect(produced).toBe('threw');
+    expect(typeof produced).not.toBe('number');
+
+    // ...and the same collapse aimed at the null-aware entry point.
+    let evaluated: DotsOutcome | 'threw';
+    try {
+      evaluated = evaluateDots('male', 93, collapsed);
+    } catch {
+      evaluated = 'threw';
+    }
+    expect(evaluated).toBe('threw');
+  });
+
+  it('COMPILE-TIME: a `number | null` total will not typecheck as a dotsScore total', () => {
+    // `@ts-expect-error` is a real assertion here, not a comment: `tsc --noEmit`
+    // fails with "Unused '@ts-expect-error' directive" if this line ever starts
+    // compiling, which is exactly what would happen if dotsScore's total were
+    // widened to `number | null`. Deleting the third enforcement layer in
+    // dots.ts therefore breaks the typecheck, not just the runtime suite.
+    // @ts-expect-error - a possibly-missing total must go through evaluateDots.
+    expect(() => dotsScore('male', 93, bombedOutMeetTotal())).toThrow(RangeError);
+  });
+
+  it('COMPILE-TIME: `.score` cannot be read off an outcome that was not narrowed', () => {
+    const outcome = evaluateDots('male', 93, bombedOutMeetTotal());
+    // @ts-expect-error - `score` does not exist on the no-total branch.
+    const leaked: unknown = outcome.score;
+    expect(leaked).toBeUndefined();
+  });
+
+  it('rejects an undefined total that sneaks past the type system', () => {
+    const sneaked = undefined as unknown as number;
+    expect(() => dotsScore('male', 93, sneaked)).toThrow(RangeError);
+    expect(() => evaluateDots('male', 93, sneaked)).toThrow(RangeError);
+  });
+});
+
+describe('a lifter with no total is absent from the ranking, not last in it', () => {
+  it('drops out of a DOTS board rather than sorting to the bottom of it', () => {
+    const field: readonly DotsOutcome[] = [
+      evaluateDots('male', 93, 700),
+      evaluateDots('male', 83, 500),
+      evaluateDots('male', 74, bombedOutMeetTotal()),
+    ];
+
+    const board = field.filter(hasDotsScore).sort((a, b) => b.score - a.score);
+
+    expect(board).toHaveLength(2);
+    expect(board.map((entry) => entry.totalKg)).toEqual([700, 500]);
+    // The bombed lifter is not on the board at all — not in last place on it.
+    expect(board.map((entry) => entry.bodyweightKg)).not.toContain(74);
+  });
+
+  it('prints a no-total lifter as the placeholder, never as 0.00', () => {
+    const bombed = evaluateDots('male', 93, bombedOutMeetTotal());
+    expect(formatDotsOutcome(bombed)).toBe(DOTS_NO_TOTAL_DISPLAY);
+    expect(formatDotsOutcome(bombed)).not.toBe('0.00');
+    expect(formatDotsOutcome(bombed)).not.toMatch(/\d/);
+    expect(formatDotsOutcome(evaluateDots('male', 93, 700))).toBe('445.38');
   });
 });
 
@@ -288,16 +436,6 @@ describe('structural properties', () => {
 });
 
 describe('input handling', () => {
-  it('scores a bombed-out meet (0 kg total) as 0 rather than throwing', () => {
-    expect(dotsScore('male', 93, 0)).toBe(0);
-    expect(evaluateDots('female', 63, 0).score).toBe(0);
-    // The coefficient is still reported so a result card can show it.
-    expect(evaluateDots('female', 63, 0).coefficient).toBeCloseTo(
-      1.075514957805,
-      COEFFICIENT_PRECISION,
-    );
-  });
-
   it('rejects non-finite input', () => {
     expect(() => dotsScore('male', Number.NaN, 700)).toThrow(RangeError);
     expect(() => dotsScore('male', Number.POSITIVE_INFINITY, 700)).toThrow(RangeError);
@@ -307,12 +445,15 @@ describe('input handling', () => {
     expect(() => formatDotsScore(Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
 
-  it('rejects non-positive bodyweight and negative totals', () => {
+  it('rejects non-positive bodyweight and non-positive totals', () => {
     expect(() => dotsScore('male', 0, 700)).toThrow(RangeError);
     expect(() => dotsScore('male', -93, 700)).toThrow(RangeError);
     expect(() => dotsCoefficient('male', 0)).toThrow(RangeError);
     expect(() => dotsScore('male', 93, -1)).toThrow(RangeError);
     expect(() => evaluateDots('female', -1, 400)).toThrow(RangeError);
+    expect(() => evaluateDots('female', 63, -1)).toThrow(RangeError);
+    // A bad bodyweight is caught even when the lifter has no total to score.
+    expect(() => evaluateDots('female', 0, bombedOutMeetTotal())).toThrow(RangeError);
   });
 });
 
@@ -321,13 +462,22 @@ describe('display helpers', () => {
     expect(DOTS_DISPLAY_DECIMALS).toBe(2);
     expect(roundDotsScore(445.3758244217)).toBe(445.38);
     expect(roundDotsScore(593.4990569957)).toBe(593.5);
-    expect(roundDotsScore(0)).toBe(0);
   });
 
   it('formats with trailing zeros the way a result sheet does', () => {
     expect(formatDotsScore(dotsScore('male', 93, 700))).toBe('445.38');
     expect(formatDotsScore(dotsScore('female', 84, 645))).toBe('593.50');
-    expect(formatDotsScore(0)).toBe('0.00');
+  });
+
+  it('refuses to render a score of 0, which no real result can produce', () => {
+    // The last place a bomb-out could be laundered into a number is the display
+    // layer: `formatDotsScore(outcome.kind === 'scored' ? outcome.score : 0)`.
+    // A DOTS score is strictly positive, so 0 is refused here too.
+    expect(() => roundDotsScore(0)).toThrow(RangeError);
+    expect(() => formatDotsScore(0)).toThrow(RangeError);
+    expect(() => formatDotsScore(-0)).toThrow(RangeError);
+    expect(() => roundDotsScore(-1)).toThrow(RangeError);
+    expect(() => formatDotsScore(-1)).toThrow(RangeError);
   });
 });
 

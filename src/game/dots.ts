@@ -135,11 +135,55 @@ export const DOTS_BODYWEIGHT_DOMAIN_KG: Readonly<
 export const DOTS_DISPLAY_DECIMALS = 2;
 
 /**
- * A total of exactly 0 kg is a legal, meaningful result: it is what a lifter who
- * bombs out records (GDD §6.3). It scores 0 DOTS rather than throwing.
+ * What goes in the DOTS column of a result sheet for a lifter who did not
+ * total. It is deliberately NOT `"0.00"` — see the NO TOTAL note below.
+ * Presentation only: changing this glyph cannot make a score wrong.
  */
-export const DOTS_BOMBED_OUT_SCORE = 0;
+export const DOTS_NO_TOTAL_DISPLAY = '—';
 
+// ---------------------------------------------------------------------------
+// NO TOTAL IS NOT A TOTAL OF ZERO
+// (read this before widening any signature in this file)
+// ---------------------------------------------------------------------------
+//
+// `meet.ts` is the module that decides what a bombed-out meet produced, and it
+// says: nothing. Its `TotalReading` has a `'no-total'` case carrying
+// `total: null`, and `finalMeetTotal(state)` returns `number | null` — null
+// forever once a lift is bombed. A bombed lifter can have a large
+// `totalOnTheBoard` (two good lifts already banked, say) and still have no
+// total at all.
+//
+// That is the sport, not a modelling flourish. A lifter who misses all three
+// attempts on a lift is not ranked last with 0 kg; they are unranked, with a
+// dash where the placing would be. So this module never hands them a number.
+// "Does not place" is the outcome — not 0.00 DOTS.
+//
+// Three things enforce that, in order of how early they catch a mistake:
+//
+//   1. `dotsScore(sex, bw, totalKg: number)` takes a real total. The tempting
+//      glue `dotsScore(sex, bw, finalMeetTotal(state))` does not compile,
+//      because `number | null` is not `number`.
+//   2. `evaluateDots(sex, bw, totalKg: number | null)` is the null-aware entry
+//      point, and it returns a union whose `'no-total'` branch has NO `score`
+//      field — not even an optional one. Reading `outcome.score` without
+//      narrowing is a compile error, so a missing score cannot be `?? 0`-ed
+//      into existence one level up either.
+//   3. A total of exactly 0 is REJECTED at runtime, which is what catches the
+//      one collapse the type system cannot see: `finalMeetTotal(state) ?? 0`.
+//
+// Why 0 is rejected rather than documented as "the bombed-out total":
+//
+//   - `meet.ts` cannot produce it. Nothing below `MIN_LOADABLE_WEIGHT_KG`
+//     (25 kg — bar plus collars) can be declared, so a meet that finishes with
+//     a total finishes with at least ~75 kg, and a meet that does not finish
+//     with a total reports `null`. There is no path to 0.
+//   - No federation records a 0 kg total either. The result sheet says the
+//     lifter did not total; it does not say they totalled zero.
+//
+//   So every 0 arriving here is a bug — overwhelmingly likely a `?? 0` at a
+//   module boundary. Refusing it names the bug at the moment it happens instead
+//   of quietly printing a real-looking "0.00" onto a leaderboard.
+//
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -153,10 +197,13 @@ export type DotsDomainStatus =
   /** Bodyweight was above the published maximum; it was clamped to the maximum. */
   | 'clamped-above-max';
 
-export interface DotsResult {
-  /** Unrounded DOTS score. */
-  readonly score: number;
-  /** The bodyweight coefficient used, i.e. `score / totalKg`. */
+/**
+ * The facts that depend only on the lifter, not on whether they totalled.
+ * Reported in both outcomes so a result card can render a bombed lifter's row
+ * without inventing a score to put in it.
+ */
+export interface DotsLifterContext {
+  /** The bodyweight coefficient for this lifter, i.e. `score / totalKg`. */
   readonly coefficient: number;
   /** Bodyweight exactly as supplied, in kg. */
   readonly bodyweightKg: number;
@@ -165,6 +212,28 @@ export interface DotsResult {
   /** Whether clamping occurred, and in which direction. */
   readonly domainStatus: DotsDomainStatus;
 }
+
+/** A lifter with an official total, and therefore a DOTS score. */
+export interface ScoredDots extends DotsLifterContext {
+  readonly kind: 'scored';
+  /** Unrounded DOTS score. Always > 0. */
+  readonly score: number;
+  /** The official total this score was computed from, in kg. Always > 0. */
+  readonly totalKg: number;
+}
+
+/**
+ * A lifter with no official total. They do not place, so they have no score.
+ *
+ * There is deliberately no `score` field here — not `score: 0`, and not
+ * `score?: number`. An optional score would make `outcome.score ?? 0` compile,
+ * which is precisely the collapse this shape exists to prevent.
+ */
+export interface NoTotalDots extends DotsLifterContext {
+  readonly kind: 'no-total';
+}
+
+export type DotsOutcome = ScoredDots | NoTotalDots;
 
 // ---------------------------------------------------------------------------
 // Implementation
@@ -176,14 +245,46 @@ function assertUsableNumber(value: number, label: string): void {
   }
 }
 
-function assertValidInputs(bodyweightKg: number, totalKg: number): void {
+function assertUsableBodyweight(bodyweightKg: number): void {
   assertUsableNumber(bodyweightKg, 'bodyweightKg');
-  assertUsableNumber(totalKg, 'totalKg');
   if (bodyweightKg <= 0) {
     throw new RangeError(`dots: bodyweightKg must be greater than 0, received ${bodyweightKg}`);
   }
+}
+
+/**
+ * A total that reaches this module must be an official total: finite and
+ * strictly positive. See the NO TOTAL note above for why 0 is refused rather
+ * than treated as the bombed-out case.
+ */
+function assertOfficialTotal(totalKg: number): void {
+  assertUsableNumber(totalKg, 'totalKg');
+  if (totalKg === 0) {
+    throw new RangeError(
+      'dots: a total of 0 kg is not a result. A lifter who did not total has NO total ' +
+        '(meet.ts records `total: null`) and does not place, so they get no DOTS score at ' +
+        'all. Pass the null through to evaluateDots and handle its `no-total` outcome — ' +
+        'do not collapse it with `?? 0`.',
+    );
+  }
   if (totalKg < 0) {
-    throw new RangeError(`dots: totalKg must not be negative, received ${totalKg}`);
+    throw new RangeError(`dots: totalKg must be greater than 0, received ${totalKg}`);
+  }
+}
+
+/**
+ * A DOTS score is strictly positive: the total is > 0 and the coefficient is
+ * > 0 everywhere in the published domain, so 0 is not reachable from any real
+ * result. Refusing it keeps "0.00" off a result card by construction.
+ */
+function assertUsableScore(score: number): void {
+  assertUsableNumber(score, 'score');
+  if (score <= 0) {
+    throw new RangeError(
+      `dots: a DOTS score is strictly positive, received ${score}. A lifter with no total ` +
+        'has no score to print — render DOTS_NO_TOTAL_DISPLAY (via formatDotsOutcome) ' +
+        'instead of formatting a 0.',
+    );
   }
 }
 
@@ -242,7 +343,12 @@ export function dotsCoefficient(sex: DotsSex, bodyweightKg: number): number {
 }
 
 /**
- * DOTS score for a total, unrounded.
+ * DOTS score for a lifter who has an official total, unrounded.
+ *
+ * This entry point is only for a lifter who totalled. It takes a plain
+ * `number`, which is what makes `dotsScore(sex, bw, finalMeetTotal(state))` a
+ * compile error: route a `number | null` through `evaluateDots` instead. Do
+ * not reach for `?? 0` to get past that error — it throws.
  *
  * @param sex          Sex whose published coefficients apply. DOTS only defines
  *                     male and female sets; OpenPowerlifting scores lifters
@@ -250,43 +356,81 @@ export function dotsCoefficient(sex: DotsSex, bodyweightKg: number): number {
  *                     ever adds a third option, map it to `'male'` here rather
  *                     than inventing a coefficient set.
  * @param bodyweightKg Bodyweight in kg (> 0). Clamped to the published domain.
- * @param totalKg      Competition total in kg (>= 0). 0 means bombed out.
- * @throws RangeError on non-finite input, bodyweight <= 0, or negative total.
+ * @param totalKg      Official competition total in kg, strictly > 0.
+ * @throws RangeError on non-finite input, bodyweight <= 0, or a total <= 0
+ *         (including exactly 0 — see the NO TOTAL note above).
  */
 export function dotsScore(sex: DotsSex, bodyweightKg: number, totalKg: number): number {
-  assertValidInputs(bodyweightKg, totalKg);
-  if (totalKg === 0) {
-    return DOTS_BOMBED_OUT_SCORE;
-  }
+  assertUsableBodyweight(bodyweightKg);
+  assertOfficialTotal(totalKg);
   return dotsCoefficient(sex, bodyweightKg) * totalKg;
 }
 
 /**
- * DOTS score plus the domain information needed to present it honestly
- * (e.g. flagging a score as out-of-range on a result card).
+ * The null-aware entry point: everything needed to present a lifter's DOTS
+ * honestly, including the case where there is nothing to present.
+ *
+ * Pass `finalMeetTotal(state)` straight in. `null` means the lifter did not
+ * total, and produces a `'no-total'` outcome that carries no score, because a
+ * lifter who did not total does not place. Anything else must be a real total
+ * (> 0); a literal 0 is rejected rather than scored.
+ *
+ * @throws RangeError on non-finite input, bodyweight <= 0, or a total <= 0.
  */
-export function evaluateDots(sex: DotsSex, bodyweightKg: number, totalKg: number): DotsResult {
-  assertValidInputs(bodyweightKg, totalKg);
+export function evaluateDots(
+  sex: DotsSex,
+  bodyweightKg: number,
+  totalKg: number | null,
+): DotsOutcome {
+  assertUsableBodyweight(bodyweightKg);
   const effectiveBodyweightKg = clampBodyweightToDotsDomain(sex, bodyweightKg);
-  const coefficient = DOTS_NUMERATOR / dotsDenominator(sex, effectiveBodyweightKg);
-  return {
-    score: totalKg === 0 ? DOTS_BOMBED_OUT_SCORE : coefficient * totalKg,
-    coefficient,
+  const context: DotsLifterContext = {
+    coefficient: DOTS_NUMERATOR / dotsDenominator(sex, effectiveBodyweightKg),
     bodyweightKg,
     effectiveBodyweightKg,
     domainStatus: dotsDomainStatus(sex, bodyweightKg),
   };
+  if (totalKg === null) {
+    return { kind: 'no-total', ...context };
+  }
+  assertOfficialTotal(totalKg);
+  return { kind: 'scored', score: context.coefficient * totalKg, totalKg, ...context };
 }
 
-/** Round a DOTS score for display, to the number of decimals federations use. */
+/**
+ * Narrow an outcome to the lifter who actually placed. Use it to build a
+ * ranking — `outcomes.filter(hasDotsScore)` leaves a bombed lifter OUT of the
+ * board rather than sorting them to the bottom of it.
+ */
+export function hasDotsScore(outcome: DotsOutcome): outcome is ScoredDots {
+  return outcome.kind === 'scored';
+}
+
+/**
+ * Round a DOTS score for display, to the number of decimals federations use.
+ * @throws RangeError unless the score is finite and > 0.
+ */
 export function roundDotsScore(score: number): number {
-  assertUsableNumber(score, 'score');
+  assertUsableScore(score);
   const factor = 10 ** DOTS_DISPLAY_DECIMALS;
   return Math.round(score * factor) / factor;
 }
 
-/** Format a DOTS score the way a result sheet prints it, e.g. `"445.38"`. */
+/**
+ * Format a DOTS score the way a result sheet prints it, e.g. `"445.38"`.
+ * @throws RangeError unless the score is finite and > 0. A lifter without a
+ *         score goes through `formatDotsOutcome`.
+ */
 export function formatDotsScore(score: number): string {
-  assertUsableNumber(score, 'score');
+  assertUsableScore(score);
   return score.toFixed(DOTS_DISPLAY_DECIMALS);
+}
+
+/**
+ * Format whatever an outcome has: the score for a lifter who totalled, and
+ * `DOTS_NO_TOTAL_DISPLAY` for one who did not. This is the only function that
+ * turns a bombed lifter into text, and it never produces a number.
+ */
+export function formatDotsOutcome(outcome: DotsOutcome): string {
+  return hasDotsScore(outcome) ? formatDotsScore(outcome.score) : DOTS_NO_TOTAL_DISPLAY;
 }
