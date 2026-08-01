@@ -204,6 +204,12 @@ export function LiftScreen(): React.ReactElement {
             ? LIFT_COPY.SUBTITLE
             : resolution.detail}
         </Text>
+        {/* The retry hint. Its own line so a miss can show BOTH why it failed
+            and what to do next; folding them into one line dropped one or the
+            other depending on the outcome. */}
+        <Text style={styles.retry} testID="lift-retry">
+          {resolution === null ? '' : promptFor(state)}
+        </Text>
       </View>
 
       <Pressable
@@ -278,6 +284,12 @@ const styles = StyleSheet.create({
   detail: {
     color: LIFT_PALETTE.TEXT_DIM,
     fontSize: L.DETAIL_FONT,
+  },
+  retry: {
+    color: LIFT_PALETTE.TEXT_DIM,
+    fontSize: L.LABEL_FONT,
+    letterSpacing: L.LETTER_SPACING,
+    height: L.LABEL_FONT * 2,
   },
   stage: {
     width: L.STAGE_W,

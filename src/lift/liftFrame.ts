@@ -44,9 +44,9 @@
  */
 
 import {
+  CHALK,
   QUANTISE,
   RESOLUTION,
-  STRAIN,
   byLoad,
   clampLoadRatio,
 } from '../art/spriteTuning';
@@ -143,7 +143,10 @@ export function liftFrameSpec(state: LiftState, totalKg: number): LifterFrameSpe
     barLateralPx: quantise(state.barLateralPx, QUANTISE.LATERAL_QUANTUM_PX),
     barTiltDeg: quantise(state.barTiltDeg, QUANTISE.TILT_QUANTUM_DEG),
     barBendPx: quantise(state.barBendPx, QUANTISE.BEND_QUANTUM_PX),
-    chalkMotes: Math.round(state.chalkPuff * STRAIN.LEVELS),
+    // Against CHALK.MAX_MOTES, which is what the renderer can actually draw.
+    // This read STRAIN.LEVELS at one point, which capped the puff at 4 of the
+    // 7 authored motes for no reason anyone would have found by looking.
+    chalkMotes: Math.round(state.chalkPuff * CHALK.MAX_MOTES),
     totalKg,
     barKg: BAR_AND_COLLARS_KG,
   };
