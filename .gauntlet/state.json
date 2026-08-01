@@ -3,33 +3,33 @@
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
     "wave": 3,
-    "waveName": "Wave 3 \u2014 remaining pure logic, then wiring an app",
+    "waveName": "Wave 3 — remaining pure logic, then wiring an app",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
     {
       "severity": "state of the build",
-      "title": "There is no app yet \u2014 App.tsx is still the render spike",
+      "title": "There is no app yet — App.tsx is still the render spike",
       "body": "Verified against the repo, not assumed: 565 tests pass across four pure game-math modules and the sprite system, tsc is clean, and nothing under src/ is imported by App.tsx. The entry point is still the Skia smoke test written on day one.",
-      "consequence": "Everything built so far is correct library code with no way to play it. Once the last two pure modules land, the queue turns to the lift input mechanic and the daily session loop, which is what turns this into something openable. GDD \u00a710 puts the lift mechanic first for exactly this reason."
+      "consequence": "Everything built so far is correct library code with no way to play it. Once the last two pure modules land, the queue turns to the lift input mechanic and the daily session loop, which is what turns this into something openable. GDD §10 puts the lift mechanic first for exactly this reason."
     },
     {
       "severity": "resolved",
       "title": "Both open design questions decided by the human",
-      "body": "Attempt weight: the GDD's \"drop down\" option is removed \u2014 within a lift, attempts repeat or increase, never decrease, and the tension is rewritten accordingly. e1RM: Epley named specifically, one formula, Brzycki banned from the codebase.",
-      "consequence": "The meet engine already enforced non-decreasing, so that decision cost no code. The Epley decision did: Brzycki was the fallback past the chart's coverage precisely because Epley steps DOWN there (chart 1.7422w at rep max 16 vs Epley 1.5500w at 16.5). Rather than ship a non-monotonic curve or keep a banned formula, the module now refuses past a 16 effective rep max \u2014 a real capability loss, spelled out in its header and enumerated in tests."
+      "body": "Attempt weight: the GDD's \"drop down\" option is removed — within a lift, attempts repeat or increase, never decrease, and the tension is rewritten accordingly. e1RM: Epley named specifically, one formula, Brzycki banned from the codebase.",
+      "consequence": "The meet engine already enforced non-decreasing, so that decision cost no code. The Epley decision did: Brzycki was the fallback past the chart's coverage precisely because Epley steps DOWN there (chart 1.7422w at rep max 16 vs Epley 1.5500w at 16.5). Rather than ship a non-monotonic curve or keep a banned formula, the module now refuses past a 16 effective rep max — a real capability loss, spelled out in its header and enumerated in tests."
     },
     {
       "severity": "resolved",
       "title": "Run halted once on the subagent spend limit, now resumed",
-      "body": "Six agents were killed mid-flight when the monthly limit was hit: two critics, the e1RM rework, and the fatigue, streak and sprite builders. No usable work was lost \u2014 neither partially-started builder had committed anything, and their worktrees were discarded.",
+      "body": "Six agents were killed mid-flight when the monthly limit was hit: two critics, the e1RM rework, and the fatigue, streak and sprite builders. No usable work was lost — neither partially-started builder had committed anything, and their worktrees were discarded.",
       "consequence": "Dispatch is working again. The queue resumed in priority order: close the e1RM send-back first, then grade the two modules that were merged but never judged. The art and UI half of the run still has not started."
     },
     {
       "severity": "partly resolved",
       "title": "Reference now exists for some bars; four of the five still have no artifact",
-      "body": "Five reference files are committed. That unblocks the sprite craft bar, which is being graded against a native-resolution SNES sprite for the first time \u2014 every earlier pass reported it unverifiable.",
-      "consequence": "The other four previously-unverifiable bars cannot be re-run: the result card, gym art, meet-day sequence and cut-ins are not built yet, so there is nothing to compare. Their references are staged. Two limits remain even then \u2014 the meet photos are stills, so meet-day tension's \"judge pacing and sound\" half stays unverifiable without video, and the scoresheet is a live in-meet attempt board rather than a published federation results sheet."
+      "body": "Five reference files are committed. That unblocks the sprite craft bar, which is being graded against a native-resolution SNES sprite for the first time — every earlier pass reported it unverifiable.",
+      "consequence": "The other four previously-unverifiable bars cannot be re-run: the result card, gym art, meet-day sequence and cut-ins are not built yet, so there is nothing to compare. Their references are staged. Two limits remain even then — the meet photos are stills, so meet-day tension's \"judge pacing and sound\" half stays unverifiable without video, and the scoresheet is a live in-meet attempt board rather than a published federation results sheet."
     }
   ],
   "capabilities": [
@@ -61,7 +61,7 @@
     {
       "name": "Reference source code from GitHub + GitLab",
       "ok": true,
-      "detail": "raw.githubusercontent.com and gitlab.com both reachable \u2014 DOTS verified against OpenPowerlifting source, meet loading rules against OpenLifter, the real meet software"
+      "detail": "raw.githubusercontent.com and gitlab.com both reachable — DOTS verified against OpenPowerlifting source, meet loading rules against OpenLifter, the real meet software"
     },
     {
       "name": "Critics running tests themselves",
@@ -71,12 +71,12 @@
     {
       "name": "Git transport where the GitHub API is blocked",
       "ok": true,
-      "detail": "api.github.com is 403, but bare-cloning works \u2014 a builder read first-commit dates directly from git log to prove a source copy chain"
+      "detail": "api.github.com is 403, but bare-cloning works — a builder read first-commit dates directly from git log to prove a source copy chain"
     },
     {
       "name": "Reference art (committed, not fetched)",
       "ok": true,
-      "detail": "5 files in docs/reference/ \u2014 one at native SNES 256x224, so pixel sizes compare directly. Image hosts are still blocked; these arrived via the repo"
+      "detail": "5 files in docs/reference/ — one at native SNES 256x224, so pixel sizes compare directly. Image hosts are still blocked; these arrived via the repo"
     },
     {
       "name": "Grading evidence is now self-cleaning",
@@ -88,7 +88,7 @@
     {
       "id": "F0",
       "name": "Foundation",
-      "bar": "Not a GDD bar \u2014 infrastructure. Must render, screenshot, and test.",
+      "bar": "Not a GDD bar — infrastructure. Must render, screenshot, and test.",
       "status": "passed",
       "verifiable": true,
       "note": "Expo + TS strict + vitest + Skia-on-web + Playwright screenshot harness all verified working end to end.",
@@ -96,11 +96,11 @@
     },
     {
       "id": "M1",
-      "name": "RPE \u2192 %1RM table",
-      "bar": "Published RPE charts. Binary and testable \u2014 critic verifies against source values.",
+      "name": "RPE → %1RM table",
+      "bar": "Published RPE charts. Binary and testable — critic verifies against source values.",
       "status": "passed",
       "verifiable": true,
-      "note": "WINS ITS BAR after six rounds. The final critic re-fetched both sources live at the pinned SHAs and confirmed every sampled cell matches the bytes, that the one documented disagreement is real and exactly where the module says it is, that no export remains mutable, that no indexed read can leak undefined past a null check, and that the hot path is unchanged. It named two stale-prose residuals and explicitly said not to spawn a round for them \u2014 folded into this touch instead. The chart still cannot be checked against the RTS publication from here, and the module claims no more than that."
+      "note": "WINS ITS BAR after six rounds. The final critic re-fetched both sources live at the pinned SHAs and confirmed every sampled cell matches the bytes, that the one documented disagreement is real and exactly where the module says it is, that no export remains mutable, that no indexed read can leak undefined past a null check, and that the hot path is unchanged. It named two stale-prose residuals and explicitly said not to spawn a round for them — folded into this touch instead. The chart still cannot be checked against the RTS publication from here, and the module claims no more than that."
     },
     {
       "id": "M2",
@@ -108,7 +108,7 @@
       "bar": "Published e1RM formulas. Binary and testable.",
       "status": "majority",
       "verifiable": true,
-      "note": "THE MATH WINS ITS BAR. The critic verified the Epley divisor against published sources and a pinned third-party implementation, re-fetched both chart fixtures and confirmed every cell the boundary figures depend on, hand-checked all five worked examples and the crossover point, confirmed the curve is strictly increasing across the whole domain and that the refusal fires exactly where the chart\u2019s coverage ends, and found no invented value anywhere. All seven \u00a712.3 conditions clean. Its one finding was a false quotation of CLAUDE.md in the module header \u2014 correct that the quote was false, but wrong about how: git history shows the phrase WAS in CLAUDE.md when the builder quoted it, and I removed it two commits later without updating the quotation. My staleness, not a fabrication. Fixed by quoting the rule as it now stands, verified verbatim against the flattened file."
+      "note": "THE MATH WINS ITS BAR. The critic verified the Epley divisor against published sources and a pinned third-party implementation, re-fetched both chart fixtures and confirmed every cell the boundary figures depend on, hand-checked all five worked examples and the crossover point, confirmed the curve is strictly increasing across the whole domain and that the refusal fires exactly where the chart’s coverage ends, and found no invented value anywhere. All seven §12.3 conditions clean. Its one finding was a false quotation of CLAUDE.md in the module header — correct that the quote was false, but wrong about how: git history shows the phrase WAS in CLAUDE.md when the builder quoted it, and I removed it two commits later without updating the quotation. My staleness, not a fabrication. Fixed by quoting the rule as it now stands, verified verbatim against the flattened file."
     },
     {
       "id": "M3",
@@ -116,7 +116,7 @@
       "bar": "Published DOTS coefficients. Binary and testable.",
       "status": "majority",
       "verifiable": true,
-      "note": "WINS ITS BAR \u2014 the only piece to be graded and pass. All ten coefficients verified by the critic against source bytes it fetched itself from OpenPowerlifting, term order checked by hand two ways. Noted gap: no test pins any DOTS value to anything outside the repo, so a wrong digit at authoring time could not fail the suite."
+      "note": "WINS ITS BAR — the only piece to be graded and pass. All ten coefficients verified by the critic against source bytes it fetched itself from OpenPowerlifting, term order checked by hand two ways. Noted gap: no test pins any DOTS value to anything outside the repo, so a wrong digit at authoring time could not fail the suite."
     },
     {
       "id": "M4",
@@ -124,15 +124,15 @@
       "bar": "Meet structure correctness: order, 3 attempts, non-decreasing weight, best-per-lift total, bomb-out.",
       "status": "majority",
       "verifiable": true,
-      "note": "Structure WINS ITS BAR. Rework 5 merged: the rules-seal subsystem is gone \u2014 four constants, a unique-symbol brand, an error code, an exported check, four call sites, a 41-line essay and nine tests, including the BigInt re-derivation blind to the digits it was meant to check. Rules are now opaque behind a module-private symbol, so the tampering spread does not type-check, and the guard is proven by negative controls that revert it and confirm the directives go unused. meet.ts is 51 lines shorter and has no arithmetic left to get wrong."
+      "note": "Structure WINS ITS BAR. Rework 5 merged: the rules-seal subsystem is gone — four constants, a unique-symbol brand, an error code, an exported check, four call sites, a 41-line essay and nine tests, including the BigInt re-derivation blind to the digits it was meant to check. Rules are now opaque behind a module-private symbol, so the tampering spread does not type-check, and the guard is proven by negative controls that revert it and confirm the directives go unused. meet.ts is 51 lines shorter and has no arithmetic left to get wrong."
     },
     {
       "id": "M5",
       "name": "Fatigue / readiness",
-      "bar": "Plausible game-feel abstraction. No visible fatigue meter (\u00a712.3).",
-      "status": "failed",
+      "bar": "Plausible game-feel abstraction. No visible fatigue meter (§12.3).",
+      "status": "grading",
       "verifiable": true,
-      "note": "The visible-meter half PASSES, and the critic argued it carefully rather than waving it through: readinessCheckIn taking no state and no day is what makes the modifier leak-free, every number-returning export is a mechanic parameter with no denominator to render against, and it ruled a monotone readout of hidden state is NOT a meter because \u00a73.4 forbids displaying a bar and demands the player see consequences. But the daily-engagement guarantee is FALSE one half-RPE step above the module\u2019s own reference session. Injury risk still reads accumulated residual, and residual is strictly higher for whoever trained yesterday \u2014 so raising the threshold from 1.2 to 1.5 only slid the break-even point, it did not remove the cause. I ran the case the critic named: 5x3 @ RPE 9.5 at the unluckiest roll gives 6 injuries in 40 sessions trained daily and ZERO trained every other day, identical content. The tests could not see it because both daily-engagement property tests put a FREE session on the decision day, so the band of sessions that are individually safe but unsafe when repeated is never generated."
+      "note": "Rework merged. The send-back was that consistency itself accrued injury risk — a player training daily carried strictly more risk than one training every other day at matched effort, which is GDD §12.3's refusal condition on punishing daily engagement. The fix was structural, not a retune: the residual-attendance term was deleted outright rather than zeroed, so injury probability now reads the strain of the session in front of it. Measured after: 0 injuries daily vs 0 every-other-day, was 6 vs 0. Full suite 731 green, tsc clean. A fresh critic is grading it now and has been asked to re-run that daily-vs-intermittent comparison itself rather than take the claim."
     },
     {
       "id": "M6",
@@ -140,7 +140,7 @@
       "bar": "Never punishes daily engagement. Manual token use, hold cap, first-break tutorial.",
       "status": "building",
       "verifiable": true,
-      "note": "Merged; 724 tests green. The pay-to-win boundary is a compile-time allowlist rather than a comment \u2014 a type assertion pins the state\u2019s keys to a declared list, and the builder verified it bites by injecting an e1rmMultiplier and watching tsc fail. Accepting a Recovery Day takes no source parameter, so a bought day and an earned one are indistinguishable by construction. An exhaustive sweep over all 2^11 histories changed the design twice: milestones re-arming per run had made deliberately breaking a streak the best free income, and it found that under an accept-every-offer policy training an extra day can leave a SHORTER best streak \u2014 verified here, lazy ....T.T.... ends at 2 and diligent T...T.T.... ends at 1. That is pinned as a named KNOWN GAP test rather than smoothed away, and whether it counts as punishing daily engagement is now with a critic for a \u00a712.3 ruling."
+      "note": "Merged and then reopened. I drove the real API over training calendars to check a reported inversion, and the measurement contradicted the premise: acceptRecoveryDayOffer never touches currentStreak, the invariant as worded already holds (0 violations over all 8192 13-day calendars and 37,708 randomized 35–60 day ones), and accepting is never worse than declining (0/8192). But a real defect sits next to it — 26,958 cases where training one MORE day leaves the final streak LOWER. Smallest pair: T..T.T.T ends at streak 1 having spent 3 Recovery Days; the same calendar minus its day-0 session ends at streak 3. Root cause: idle days before your first session are free, idle days after it cost Recovery Days, so training earlier converts free idle into paid gaps and drains a finite pool. That is \"never punish daily engagement\" violated structurally. A builder is fixing the monotonicity and adding both the requested invariant test and a general one."
     },
     {
       "id": "T1",
@@ -162,15 +162,15 @@
       "bar": "The lift must feel good (GDD pillar 1).",
       "status": "pending",
       "verifiable": false,
-      "note": "Feel is not judgeable by any critic \u2014 GDD \u00a712.1 says so outright. Deliverable is a tunable artifact, not a verdict."
+      "note": "Feel is not judgeable by any critic — GDD §12.1 says so outright. Deliverable is a tunable artifact, not a verdict."
     },
     {
       "id": "A1",
       "name": "Lifter sprites & animation",
-      "bar": "Blind A/B against real 16-bit sprite work \u2014 NOW GRADEABLE, reference committed.",
+      "bar": "Blind A/B against real 16-bit sprite work — NOW GRADEABLE, reference committed.",
       "status": "building",
       "verifiable": true,
-      "note": "Fifth craft rework merged; 565 tests green. The builder verified the critic\u2019s mechanism and found a deeper one: angle-dependence is real, but normalising for it alone would NOT have fixed the hole. The actual fault is that the femur is drawn FORESHORTENED \u2014 hip-to-knee collapses from 15.1px standing to 2.5px in the hole \u2014 and the shader read that as a limb lying sideways, so the only visible part of the thigh was its shadow flank. Fixed by tipping the normal toward the camera by a tilt derived from drawn-vs-natural bone length. Measured: leg-poses where the sleeve out-values its thigh, 20/112 to 0/112, and the reference\u2019s own flesh-to-kit ratio measured at 1.59 against ours at 1.46. Also fixed a defect in the GRADING EVIDENCE: the harness never cleaned its frame directory, so a shorter reel left old frames beside new ones under the same names \u2014 a critic and I both cited a frame that was hours stale.",
+      "note": "Fifth craft rework merged; 565 tests green. The builder verified the critic’s mechanism and found a deeper one: angle-dependence is real, but normalising for it alone would NOT have fixed the hole. The actual fault is that the femur is drawn FORESHORTENED — hip-to-knee collapses from 15.1px standing to 2.5px in the hole — and the shader read that as a limb lying sideways, so the only visible part of the thigh was its shadow flank. Fixed by tipping the normal toward the camera by a tilt derived from drawn-vs-natural bone length. Measured: leg-poses where the sleeve out-values its thigh, 20/112 to 0/112, and the reference’s own flesh-to-kit ratio measured at 1.59 against ours at 1.46. Also fixed a defect in the GRADING EVIDENCE: the harness never cleaned its frame directory, so a shorter reel left old frames beside new ones under the same names — a critic and I both cited a frame that was hours stale.",
       "evidence": "A1-hole-6x.png"
     },
     {
@@ -179,7 +179,7 @@
       "bar": "Blind A/B, same era. Readability at phone scale.",
       "status": "pending",
       "verifiable": false,
-      "note": "Reference unreachable \u2014 bar will report unverifiable."
+      "note": "Reference unreachable — bar will report unverifiable."
     },
     {
       "id": "S1",
@@ -195,7 +195,7 @@
       "bar": "Dread and anticipation comparable to a real third-attempt walkout.",
       "status": "pending",
       "verifiable": false,
-      "note": "Broadcast footage unreachable \u2014 bar will report unverifiable."
+      "note": "Broadcast footage unreachable — bar will report unverifiable."
     },
     {
       "id": "S3",
@@ -203,15 +203,15 @@
       "bar": "Would a competitive lifter believe ours is real? vs. real federation sheets.",
       "status": "pending",
       "verifiable": false,
-      "note": "Real sheets unreachable \u2014 bar will report unverifiable."
+      "note": "Real sheets unreachable — bar will report unverifiable."
     },
     {
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
-      "bar": "The four modes must feel like one game \u2014 the smoothing-pass concern.",
+      "bar": "The four modes must feel like one game — the smoothing-pass concern.",
       "status": "failed",
       "verifiable": true,
-      "note": "The DOTS critic caught it while grading something else: meet.ts models a bomb-out as total: null, dots.ts assumes 0. The meet-engine critic then adjudicated it independently \u2014 meet.ts is right, since a lifter with no total does not place, so dots.ts is the module that should change. Not yet fixed."
+      "note": "The DOTS critic caught it while grading something else: meet.ts models a bomb-out as total: null, dots.ts assumes 0. The meet-engine critic then adjudicated it independently — meet.ts is right, since a lifter with no total does not place, so dots.ts is the module that should change. Not yet fixed."
     }
   ]
 }
