@@ -155,6 +155,10 @@ export const DOTS_COEFFICIENT_DISPLAY_DECIMALS = 4;
  * `DOTS_DISPLAY_DECIMALS`. Derived, not independently tunable: it is half of the
  * last displayed place. Anything below it is refused by the display helpers
  * rather than printed as "0.00" — see NO TOTAL IS NOT A TOTAL OF ZERO.
+ *
+ * Documentation, not the check itself: the helpers ask "does this round to
+ * zero?" so there is exactly one rule, and the suite pins this constant against
+ * that behaviour at the boundary.
  */
 export const DOTS_SMALLEST_PRINTABLE_SCORE = 0.5 / 10 ** DOTS_DISPLAY_DECIMALS;
 
@@ -335,9 +339,9 @@ const COEFFICIENT_VALUE: unique symbol = Symbol('dots.coefficient');
  *
  * So the coefficient does not come out of this module as a number. It comes out
  * as an opaque object whose value sits under a private symbol, which makes the
- * line above a compile error ("the right-hand side of an arithmetic operation
- * must be of type 'any', 'number', 'bigint' or an enum type") rather than a
- * plausible number on a leaderboard.
+ * line above a compile error — TS2362, "The left-hand side of an arithmetic
+ * operation must be of type 'any', 'number', 'bigint' or an enum type" — rather
+ * than a plausible number on a leaderboard.
  *
  * Everything anyone legitimately wants from a coefficient is here, and none of it
  * hands back a bare multiplicand:
