@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
+  LONGEST_REPAIRABLE_ABSENCE_DAYS,
   RECOVERY_DAY_ECONOMY,
   RECOVERY_DAY_GRANT_AMOUNT,
   RECOVERY_DAY_GUARDRAILS,
@@ -15,6 +16,7 @@ import {
   acceptRecoveryDayOffer,
   addDays,
   asStreakDay,
+  chargeableDaysBefore,
   chargeableGapDays,
   civilDateFromStreakDay,
   coverableGapDays,
@@ -23,6 +25,7 @@ import {
   daysBetween,
   daysMissedBefore,
   declineRecoveryDayOffer,
+  graceDaysRemaining,
   grantRecoveryDays,
   lastCoveredDay,
   lastDayStreakCanBeSaved,
@@ -312,18 +315,83 @@ describe('tunable constants sit inside the ranges GDD §4.2 specifies', () => {
   it('sets the longest repairable absence to the grace plus the consecutive-use limit', () => {
     // The two constants compose rather than compete: a full-balance, freshly
     // trained state can survive exactly this many missed days and no more.
+    expect(LONGEST_REPAIRABLE_ABSENCE_DAYS).toBe(GRACE + RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
     const state = stateWithRun(50, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
-    expect(coverableGapDays(state)).toBe(GRACE + RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
+    expect(coverableGapDays(state)).toBe(LONGEST_REPAIRABLE_ABSENCE_DAYS);
     expect(currentRecoveryDayOffer(state, dayAfterGap(DAY_ZERO, coverableGapDays(state)))).not.toBeNull();
     expect(currentRecoveryDayOffer(state, dayAfterGap(DAY_ZERO, coverableGapDays(state) + 1))).toBeNull();
+    // A week away is the thing the consecutive-use guardrail exists to refuse.
+    expect(LONGEST_REPAIRABLE_ABSENCE_DAYS).toBeLessThan(7);
   });
 
-  it('charges only the days past the grace', () => {
+  it('charges only the days past the grace still left on this absence', () => {
+    // `chargeableGapDays` takes the REMAINING grace rather than reading the
+    // constant, which is the whole of the per-absence rule. Full grace first:
     for (let gap = 0; gap <= GRACE; gap += 1) {
-      expect(chargeableGapDays(gap)).toBe(0);
+      expect(chargeableGapDays(gap, GRACE)).toBe(0);
     }
     for (let extra = 1; extra <= 5; extra += 1) {
-      expect(chargeableGapDays(GRACE + extra)).toBe(extra);
+      expect(chargeableGapDays(GRACE + extra, GRACE)).toBe(extra);
+    }
+    // ...and with the grace already spent on the earlier days of the same
+    // absence, every remaining day is chargeable.
+    for (let gap = 0; gap <= 5; gap += 1) {
+      expect(chargeableGapDays(gap, 0)).toBe(gap);
+    }
+    // Partial remainders sit in between, and a negative remainder cannot make a
+    // gap cost more than its own length.
+    expect(chargeableGapDays(3, 1)).toBe(2);
+    expect(chargeableGapDays(3, -5)).toBe(3);
+  });
+
+  it('spends the grace once per absence: a trained day refills it, a Recovery Day does not', () => {
+    // `graceDaysRemaining` is the constant this fix turned into a function, so
+    // it gets checked directly rather than only through the paths that read it.
+    const fresh = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+    expect(graceDaysRemaining(fresh)).toBe(GRACE);
+    expect(graceDaysRemaining(createStreakState())).toBe(GRACE);
+
+    // Spend one on the shortest chargeable gap: the grace paid for the first
+    // GRACE days of THIS absence and has nothing left for the rest of it.
+    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
+    const offer = currentRecoveryDayOffer(fresh, day) as NonNullable<
+      ReturnType<typeof currentRecoveryDayOffer>
+    >;
+    const afterSpend = unwrap(acceptRecoveryDayOffer(fresh, offer)).state;
+    expect(graceDaysRemaining(afterSpend)).toBe(0);
+    expect(chargeableDaysBefore(afterSpend, addDays(day, 1))).toBe(1);
+
+    // Training is what brings it back — that is the difference between the
+    // grace and a consumable.
+    const afterTraining = unwrap(recordTrainingDay(afterSpend, day)).state;
+    expect(graceDaysRemaining(afterTraining)).toBe(GRACE);
+    expect(chargeableDaysBefore(afterTraining, dayAfterGap(day, GRACE))).toBe(0);
+  });
+
+  it('counts the grace off the covered days one for one, at every offset', () => {
+    // THE DEFINITION, NOT ITS REACHABLE CONSEQUENCES. Every state the API can
+    // actually build has `recoveredThroughDay` at least GRACE + 1 days past
+    // `lastTrainedDay` — an offer never exists sooner — so an off-by-one in the
+    // subtraction is invisible from the outside AT TODAY'S TUNING and would only
+    // surface as a bug after someone moved FREE_GRACE_GAP_DAYS. `stateWithRun`
+    // plus a hand-set marker walks the whole curve instead, so the contract is
+    // pinned rather than a slice of it.
+    for (let covered = 0; covered <= GRACE + 3; covered += 1) {
+      const state: StreakState = {
+        ...stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP),
+        recoveredThroughDay: covered === 0 ? null : addDays(DAY_ZERO, covered),
+      };
+      expect(graceDaysRemaining(state)).toBe(Math.max(0, GRACE - covered));
+    }
+
+    // A marker at or before the last trained day is not a covered absence, and
+    // must not read as negative coverage and hand out extra grace.
+    for (const offset of [0, -1, -9]) {
+      const state: StreakState = {
+        ...stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP),
+        recoveredThroughDay: addDays(DAY_ZERO, offset),
+      };
+      expect(graceDaysRemaining(state)).toBe(GRACE);
     }
   });
 
@@ -1031,28 +1099,46 @@ describe('the consecutive-use limit', () => {
   });
 
   it('counts uses across separate offers with no training in between', () => {
-    // Accepting moves `recoveredThroughDay` to the end of the gap, which starts
-    // a fresh grace window. So the next Recovery Day is not chargeable until
-    // another SHORTEST_PAID_GAP days have gone by with no session.
+    // THE GRACE DOES NOT COME BACK BETWEEN SPENDS. The first offer of an absence
+    // arrives SHORTEST_PAID_GAP days in and costs one; from then on the grace is
+    // spent, so every further missed day is chargeable on its own and the next
+    // offer arrives the very next day. Only a trained day refills the grace.
     let state: StreakState = stateWithRun(9, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
-    for (let used = 1; used <= LIMIT; used += 1) {
-      const day = dayAfterGap(lastCoveredDay(state) as StreakDay, SHORTEST_PAID_GAP);
+
+    const firstDay = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
+    const firstOffer = currentRecoveryDayOffer(state, firstDay);
+    expect(firstOffer?.cost).toBe(1);
+    expect(firstOffer?.daysCoveredFreeByGrace).toBe(GRACE);
+    state = unwrap(acceptRecoveryDayOffer(state, firstOffer as NonNullable<typeof firstOffer>)).state;
+    expect(state.consecutiveRecoveryDaysUsed).toBe(1);
+    expect(graceDaysRemaining(state)).toBe(0);
+
+    for (let used = 2; used <= LIMIT; used += 1) {
+      const day = addDays(lastCoveredDay(state) as StreakDay, 2);
       const offer = currentRecoveryDayOffer(state, day);
       expect(offer?.cost).toBe(1);
+      // Nothing free left on this absence — the grace was spent on its first
+      // GRACE days and a Recovery Day did not renew it.
+      expect(offer?.daysCoveredFreeByGrace).toBe(0);
       state = unwrap(acceptRecoveryDayOffer(state, offer as NonNullable<typeof offer>)).state;
       expect(state.consecutiveRecoveryDaysUsed).toBe(used);
     }
-    // One more chargeable gap with no session in between: the run ends, and it
+
+    // One more chargeable day with no session in between: the run ends, and it
     // ends with Recovery Days still in the bank.
-    const pastLimit = dayAfterGap(lastCoveredDay(state) as StreakDay, SHORTEST_PAID_GAP);
+    const pastLimit = addDays(lastCoveredDay(state) as StreakDay, 2);
     expect(currentRecoveryDayOffer(state, pastLimit)).toBeNull();
     expect(state.recoveryDayBalance).toBeGreaterThan(0);
     expect(openDay(state, pastLimit)).toEqual({
       kind: 'streak-broken',
       brokenRunLength: 9,
-      daysMissed: SHORTEST_PAID_GAP,
+      daysMissed: 1,
       reason: 'consecutive-use-limit-reached',
     });
+
+    // The whole absence that bought — grace plus every permitted spend — is
+    // exactly the ceiling the two guardrails compose to.
+    expect(daysBetween(DAY_ZERO, lastCoveredDay(state) as StreakDay)).toBe(LONGEST_REPAIRABLE_ABSENCE_DAYS);
   });
 
   it('does NOT stop an alternating pattern of one trained day per chargeable gap', () => {
@@ -1111,20 +1197,68 @@ describe('the consecutive-use limit', () => {
 // A long absence
 // ---------------------------------------------------------------------------
 
+/**
+ * How a simulated player behaves DURING an absence, which is the axis the
+ * absence-length table below sweeps.
+ *
+ *   - `'walk-back'`   — opens the app on every day of the absence and answers
+ *                       yes to every prompt. The holiday check-in.
+ *   - `'return-only'` — opens it once, on the day they come back to train.
+ *
+ * The whole point of the table is that these two must produce the SAME answer.
+ */
+type AbsenceBehaviour = 'walk-back' | 'return-only';
+
+interface AbsenceOutcome {
+  /** Did the run survive the absence — i.e. is the returning session a continuation? */
+  readonly survived: boolean;
+  /** Recovery Days spent across the absence. */
+  readonly spent: number;
+  /** Streak on the session after the absence. */
+  readonly streakOnReturn: number;
+}
+
+/**
+ * Plays out an absence of `awayDays` missed days from a live `streakLength`-day
+ * run, and trains on the day of return.
+ *
+ * ONE HELPER FOR BOTH BEHAVIOURS ON PURPOSE. Two near-identical harnesses is
+ * how the two paths drifted apart in the first place: only the set of days the
+ * app is opened on differs here, and nothing else can.
+ */
+function playAbsence(
+  awayDays: number,
+  balance: number,
+  behaviour: AbsenceBehaviour,
+  streakLength = 50,
+): AbsenceOutcome {
+  let state: StreakState = stateWithRun(streakLength, DAY_ZERO, balance);
+  let spent = 0;
+  const returnDay = awayDays + 1;
+  const firstOpen = behaviour === 'walk-back' ? 1 : returnDay;
+
+  for (let offset = firstOpen; offset <= returnDay; offset += 1) {
+    const day = addDays(DAY_ZERO, offset);
+    const opening = openDay(state, day);
+    if (opening.kind === 'recovery-day-offered') {
+      const outcome = unwrap(acceptRecoveryDayOffer(state, opening.offer));
+      spent += outcome.recoveryDaysSpent;
+      state = outcome.state;
+    } else if (opening.kind === 'streak-broken') {
+      state = unwrap(settleBrokenStreak(state, day)).state;
+    }
+  }
+
+  const trained = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, returnDay)));
+  return {
+    survived: trained.streakAfter === streakLength + 1,
+    spent,
+    streakOnReturn: trained.streakAfter,
+  };
+}
+
 describe('a long absence', () => {
   const AWAY_DAYS = 7;
-
-  /**
-   * The longest absence a player can hold a run across by opening the app on
-   * every day of it and paying each time it asks.
-   *
-   * Each accept spends one Recovery Day AND consumes the free grace with it,
-   * because `recoveredThroughDay` jumps to the end of the covered gap and the
-   * next grace window starts from there. So each spend buys `GRACE + 1` days,
-   * `MAX_CONSECUTIVE_USES` spends are allowed with no session in between, and a
-   * final unspent grace window is free on top.
-   */
-  const WALKED_BACK_LIMIT = SHORTEST_PAID_GAP * RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES + GRACE;
 
   it('cannot be repaired on the day the player comes back, even holding a full bank', () => {
     const state = stateWithRun(50, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
@@ -1148,50 +1282,99 @@ describe('a long absence', () => {
     expect(outcome.state.longestStreak).toBe(50);
   });
 
-  it('CAN be held together by opening the app through it and paying each time — and that bound is exact', () => {
-    // STATED RATHER THAN HIDDEN, because it is a real consequence of GDD §4.4
-    // and it weakens what §4.2's "prevents saving a 50-day streak after a week
-    // away" used to mean. Before §4.4 the walk-back bought nothing over opening
-    // once (both stopped at MAX_CONSECUTIVE_USES days). Now each spend also
-    // re-arms the grace, so a player who keeps checking in during their absence
-    // and keeps paying holds the run for WALKED_BACK_LIMIT days — longer than
-    // the `coverableGapDays` a single return can repair.
+  it('THE ABSENCE-LENGTH TABLE: survival does not depend on how often the app is opened', () => {
+    // THE TEST THIS BLOCK EXISTS FOR, and the one whose absence let a regression
+    // in. An earlier revision checked only the day-of-return path, so it stayed
+    // green while every accept quietly re-armed the free grace and a player who
+    // checked in daily could hold a run across EIGHT days — a week away included
+    // — against four for the same absence answered once on the way back.
     //
-    // It is not free and it is not automatic: every one of those days costs a
-    // Recovery Day the player chose to spend at a prompt.
-    const walkThrough = (away: number, balance: number): boolean => {
-      let state: StreakState = stateWithRun(50, DAY_ZERO, balance);
-      for (let offset = 1; offset <= away + 1; offset += 1) {
-        const opening = openDay(state, addDays(DAY_ZERO, offset));
-        if (opening.kind === 'streak-broken') return false;
-        if (opening.kind === 'recovery-day-offered') {
-          state = unwrap(acceptRecoveryDayOffer(state, opening.offer)).state;
+    // The whole table is built under BOTH behaviours and asserted identical,
+    // cell by cell, at every balance from empty to the hold cap. A one-sided
+    // version of this test proves nothing.
+    const LONGEST_SWEPT = 2 * LONGEST_REPAIRABLE_ABSENCE_DAYS + 4;
+    const rows: string[] = [];
+
+    for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
+      for (let away = 1; away <= LONGEST_SWEPT; away += 1) {
+        const walked = playAbsence(away, balance, 'walk-back');
+        const returned = playAbsence(away, balance, 'return-only');
+
+        if (walked.survived !== returned.survived) {
+          rows.push(
+            `away=${away} balance=${balance}: walk-back ${walked.survived ? 'survived' : 'died'}, ` +
+              `return-only ${returned.survived ? 'survived' : 'died'}`,
+          );
+          continue;
+        }
+        // ...and where the run survives, it survives at the same streak for the
+        // same price. "Same answer" has to mean the price too, or opening the
+        // app daily would still be the cheaper way to take a holiday.
+        if (walked.survived) {
+          if (walked.spent !== returned.spent) {
+            rows.push(
+              `away=${away} balance=${balance}: walk-back paid ${walked.spent}, return-only paid ${returned.spent}`,
+            );
+          }
+          if (walked.streakOnReturn !== returned.streakOnReturn) {
+            rows.push(
+              `away=${away} balance=${balance}: streaks ${walked.streakOnReturn} vs ${returned.streakOnReturn}`,
+            );
+          }
         }
       }
-      return true;
-    };
+    }
+    expect(rows).toEqual([]);
 
-    expect(WALKED_BACK_LIMIT).toBeGreaterThan(coverableGapDays(stateWithRun(50, DAY_ZERO, 5)));
-    expect(walkThrough(WALKED_BACK_LIMIT, RECOVERY_DAY_GUARDRAILS.HOLD_CAP)).toBe(true);
-    expect(walkThrough(WALKED_BACK_LIMIT + 1, RECOVERY_DAY_GUARDRAILS.HOLD_CAP)).toBe(false);
+    // THE TABLE ITSELF, spelled out rather than left implicit in the loop, at a
+    // balance that can afford everything the guardrail permits.
+    const survivalAtFullBank = Array.from({ length: LONGEST_SWEPT }, (_, i) =>
+      playAbsence(i + 1, RECOVERY_DAY_GUARDRAILS.HOLD_CAP, 'return-only').survived,
+    );
+    expect(survivalAtFullBank).toEqual(
+      Array.from({ length: LONGEST_SWEPT }, (_, i) => i + 1 <= LONGEST_REPAIRABLE_ABSENCE_DAYS),
+    );
 
-    // The bound is set by the consecutive-use guardrail, not by the balance:
-    // holding more than MAX_CONSECUTIVE_USES buys nothing more.
-    expect(walkThrough(WALKED_BACK_LIMIT, RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES)).toBe(true);
-    // ...and a player who cannot pay gets the grace and nothing else.
-    expect(walkThrough(GRACE, 0)).toBe(true);
-    expect(walkThrough(GRACE + 1, 0)).toBe(false);
+    // A WEEK AWAY FAILS UNDER BOTH, at every balance, which is the specific
+    // promise `MAX_CONSECUTIVE_USES` carries in its own comment.
+    expect(AWAY_DAYS).toBe(7);
+    expect(LONGEST_SWEPT).toBeGreaterThan(AWAY_DAYS);
+    for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
+      expect(playAbsence(AWAY_DAYS, balance, 'walk-back').survived).toBe(false);
+      expect(playAbsence(AWAY_DAYS, balance, 'return-only').survived).toBe(false);
+      expect(playAbsence(AWAY_DAYS, balance, 'walk-back').streakOnReturn).toBe(1);
+    }
   });
 
-  it('is still beyond the walk-back once it is long enough', () => {
+  it('costs the same whether it is paid off in one go or a day at a time', () => {
+    // The price half of the equality above, at the longest absence that can be
+    // saved at all: MAX_CONSECUTIVE_USES Recovery Days either way, so checking
+    // in during a holiday is neither a discount nor a surcharge.
+    const walked = playAbsence(LONGEST_REPAIRABLE_ABSENCE_DAYS, RECOVERY_DAY_GUARDRAILS.HOLD_CAP, 'walk-back');
+    const returned = playAbsence(
+      LONGEST_REPAIRABLE_ABSENCE_DAYS,
+      RECOVERY_DAY_GUARDRAILS.HOLD_CAP,
+      'return-only',
+    );
+    expect(walked.survived).toBe(true);
+    expect(returned.survived).toBe(true);
+    expect(walked.spent).toBe(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
+    expect(returned.spent).toBe(walked.spent);
+    // The number of PROMPTS differs — that is the one thing that legitimately
+    // does, and it is why the walk-back has to be simulated separately.
+    expect(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES).toBeGreaterThan(1);
+  });
+
+  it('ends the run with Recovery Days still in the bank: the guardrail bit, not the balance', () => {
+    const away = LONGEST_REPAIRABLE_ABSENCE_DAYS + 1;
     let state: StreakState = stateWithRun(50, DAY_ZERO, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
-    const away = WALKED_BACK_LIMIT + 1;
     let spent = 0;
     let broke = false;
     for (let offset = 1; offset <= away + 1; offset += 1) {
       const opening = openDay(state, addDays(DAY_ZERO, offset));
       if (opening.kind === 'streak-broken') {
         broke = true;
+        expect(opening.reason).toBe('consecutive-use-limit-reached');
         break;
       }
       if (opening.kind === 'recovery-day-offered') {
@@ -1202,10 +1385,32 @@ describe('a long absence', () => {
     }
     expect(broke).toBe(true);
     expect(spent).toBe(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
-    // The run ends with Recovery Days still in the bank: the guardrail bit, not
-    // the balance.
     expect(state.recoveryDayBalance).toBeGreaterThan(0);
     expect(unwrap(recordTrainingDay(state, addDays(DAY_ZERO, away + 1))).state.currentStreak).toBe(1);
+  });
+
+  it('WHAT OPENING THE APP DOES STILL CHANGE: a spend can be wasted on an absence that was never saveable', () => {
+    // STATED RATHER THAN HIDDEN. Survival and price are identical (above), but a
+    // player who cannot afford the whole absence can pay for part of it from
+    // inside and break anyway, ending poorer than one who never opened the app
+    // and never saw the prompt. Every yes was a real save at the moment it was
+    // taken — declining would have ended the run there and then — so this is the
+    // price of an option, not a penalty for showing up, and it predates §4.4.
+    //
+    // It is bounded: the wasted spend is never more than MAX_CONSECUTIVE_USES,
+    // and the STREAK outcome is identical either way, which is the thing the
+    // player actually loses.
+    const POOR_BALANCE = 1;
+    const away = LONGEST_REPAIRABLE_ABSENCE_DAYS;
+    const walked = playAbsence(away, POOR_BALANCE, 'walk-back');
+    const returned = playAbsence(away, POOR_BALANCE, 'return-only');
+
+    expect(walked.survived).toBe(false);
+    expect(returned.survived).toBe(false);
+    expect(walked.streakOnReturn).toBe(returned.streakOnReturn);
+    expect(walked.spent).toBeGreaterThan(returned.spent);
+    expect(returned.spent).toBe(0);
+    expect(walked.spent).toBeLessThanOrEqual(RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES);
   });
 
   it('does not let a purchase repair it either', () => {
@@ -1696,12 +1901,14 @@ const INVERSION_SEARCH = {
   /**
    * History lengths the exhaustive maximisation sweeps. All 2^L of each.
    *
-   * MOVED UP BY TWO SINCE GDD §4.4. The free grace means the shortest gap that
-   * costs anything is `FREE_GRACE_GAP_DAYS + 1` days, so an inversion needs a
-   * longer calendar to fit into: at the old range's low end there is now
-   * nothing to find, and stopping there would read as "fixed" when it is not.
+   * THE RANGE IS CHOSEN TO STRADDLE THE SHORTEST INVERSION, so the leading
+   * zeros are visible and the sweep cannot read as "fixed" by starting above
+   * the interesting length. GDD §4.4 pushed that shortest length up (the free
+   * grace makes the cheapest chargeable absence `FREE_GRACE_GAP_DAYS + 1`
+   * days); making the grace per-absence rather than per-gap pulled it back down
+   * by two, because a spend no longer buys a whole extra grace window.
    */
-  EXHAUSTIVE_LENGTHS: [10, 11, 12, 13, 14, 15, 16],
+  EXHAUSTIVE_LENGTHS: [8, 9, 10, 11, 12, 13, 14, 15, 16],
 
   /**
    * Largest `currentStreak` deficit one extra training day can cause, over
@@ -1710,8 +1917,15 @@ const INVERSION_SEARCH = {
    *
    * The leading zeros are the §4.4 improvement, and the tail is the part that
    * did not go away.
+   *
+   * WAS `[0, 0, 1, 2, 3, 4, 5]` OVER LENGTHS 10-16 while a Recovery Day
+   * re-armed the free grace. Removing that (the grace is per absence now) makes
+   * short absences cost what a returning player was always charged, so the
+   * first inversion appears two days of calendar earlier: lengths 10-16 now
+   * read `[1, 2, 3, 4, 5, 5, 5]`. Worse at the low end, unchanged at the top —
+   * pinned rather than argued.
    */
-  WORST_DELTA_BY_LENGTH: [0, 0, 1, 2, 3, 4, 5],
+  WORST_DELTA_BY_LENGTH: [0, 0, 1, 2, 3, 4, 5, 5, 5],
 
   /**
    * Run lengths the constructive family below is instantiated at. None of them
@@ -1752,22 +1966,32 @@ const MONOTONICITY_MEASUREMENT = {
   /**
    * Violating pairs when something opens the day every day (a nightly job).
    *
-   * WAS 1948 BEFORE GDD §4.4. Zero here is a real improvement and NOT a fix:
-   * see `LONGER_CALENDAR_LENGTH` below, where the same model violates again as
-   * soon as the calendar is long enough to hold two chargeable gaps.
+   * 1948 BEFORE GDD §4.4, then 0, now 24 — and the 0 is the number that needs
+   * explaining, not the 24. It was bought by a defect: while a Recovery Day
+   * re-armed the free grace, a player whose day was opened every day could hold
+   * a run across eight days of absence where one who reappeared at the end got
+   * four. That extra coverage papered over the inversions this counts. Making
+   * the grace per-absence took the bonus away, and 24 of them came back.
+   *
+   * STILL AN IMPROVEMENT ON 1948, and still not a fix — see
+   * `LONGER_CALENDAR_LENGTH` below.
    */
-  VIOLATIONS_OPENING_DAILY: 0,
+  VIOLATIONS_OPENING_DAILY: 24,
 
   /**
    * Violating pairs when only the player's own sessions open the day.
-   * Was 4250 before GDD §4.4.
+   * Was 4250 before GDD §4.4, and UNCHANGED at 36 by the per-absence grace —
+   * which is the point: a player who only ever opens the app when they train
+   * never had a mid-absence spend to re-arm anything, so nothing about their
+   * calendar moved. The fix brought the daily model into line with this one
+   * rather than the other way round.
    */
   VIOLATIONS_OPENING_ON_TRAINING_DAYS: 36,
 
   /**
    * Largest `currentStreak` deficit found at this calendar length, across both
-   * models. Was 6 before GDD §4.4. Only the on-training-days model reaches it
-   * now, so this is no longer "the same pair under both models".
+   * models. Was 6 before GDD §4.4, and unchanged at 3 by the per-absence grace
+   * — both models now reach it, on the same pair (see the staleness test).
    */
   WORST_DEFICIT: 3,
 
@@ -1779,16 +2003,17 @@ const MONOTONICITY_MEASUREMENT = {
   VIOLATIONS_AGAINST_A_ZERO_SPEND_COMPARATOR: 0,
 
   /**
-   * A SECOND LENGTH, MEASURED SO THE ZERO ABOVE CANNOT BE MISREAD.
+   * A SECOND LENGTH, KEPT SO THE COUNT ABOVE CANNOT BE READ AS THE WHOLE STORY.
    *
-   * At 13 days the daily model shows no violations, which invites the
-   * conclusion that §4.4 closed the defect under a nightly job. It did not. Two
-   * more days of calendar are enough to fit two chargeable gaps, and the same
-   * mechanism reappears. Pinned here so the improvement and its limit are on
-   * the record together.
+   * It was originally added because 13 days showed a zero under the daily model
+   * and that zero invited "§4.4 closed it". The zero is gone, but the length
+   * stays: the defect grows with the calendar rather than sitting at a fixed
+   * size, and two lengths on the record is what shows that. 2 -> 210 under the
+   * daily model, unchanged at 384 under the other, for the same reason as
+   * above.
    */
   LONGER_CALENDAR_LENGTH: 15,
-  VIOLATIONS_OPENING_DAILY_AT_LONGER_LENGTH: 2,
+  VIOLATIONS_OPENING_DAILY_AT_LONGER_LENGTH: 210,
   VIOLATIONS_OPENING_ON_TRAINING_DAYS_AT_LONGER_LENGTH: 384,
   WORST_DEFICIT_AT_LONGER_LENGTH: 5,
 } as const;
@@ -2038,14 +2263,17 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // `.balanceAfter` are on the offer so the prompt can say what a yes is
     // worth today. Nothing on it can say what a yes costs later.
     //
-    // Found by exhaustive search over all 2^12 histories at a starting balance
-    // of 2 — the shortest length at which any inversion survives §4.4.
+    // Found by exhaustive search over all 2^10 histories at a starting balance
+    // of 2 — the shortest length at which any inversion exists. It was 12 while
+    // a spend re-armed the free grace; with the grace per absence it is 10,
+    // because the diligent player's early run now costs both its Recovery Days
+    // inside a single absence instead of stretching them over two.
     const initial: StreakState = { ...createStreakState(), recoveryDayBalance: 2 };
     const parse = (pattern: string): boolean[] => [...pattern].map((c) => c === 'T');
-    const noGrants = Array.from({ length: 12 }, () => false);
+    const noGrants = Array.from({ length: 10 }, () => false);
 
-    const lazy = simulate(parse('....T.......'), noGrants, 'accept', initial);
-    const diligent = simulate(parse('T...T.......'), noGrants, 'accept', initial);
+    const lazy = simulate(parse('....T.....'), noGrants, 'accept', initial);
+    const diligent = simulate(parse('T...T.....'), noGrants, 'accept', initial);
 
     expect(lazy.state.currentStreak).toBe(1);
     expect(diligent.state.currentStreak).toBe(0);
@@ -2177,12 +2405,22 @@ describe('daily engagement is never worse than skipping — where that holds, an
     }
 
     expect(worstByLength).toEqual([...INVERSION_SEARCH.WORST_DELTA_BY_LENGTH]);
-    // Six more days of history, five more days of deficit. There is no ceiling
-    // in this range, which is what the constructive family above then confirms
-    // has no ceiling at all.
+
+    // SHAPE, ASSERTED SEPARATELY FROM THE PINNED VALUES, so a retune that moves
+    // every number still has to keep the story true: the deficit starts at zero
+    // on short calendars, never falls as the calendar lengthens, and grows.
     const first = worstByLength[0] as number;
     const last = worstByLength[worstByLength.length - 1] as number;
-    expect(last - first).toBe(5);
+    expect(first).toBe(0);
+    expect(last).toBeGreaterThan(first);
+    for (let i = 1; i < worstByLength.length; i += 1) {
+      expect(worstByLength[i] as number).toBeGreaterThanOrEqual(worstByLength[i - 1] as number);
+    }
+    // The tail of this range flattens at a starting balance of two. That is a
+    // limit of THIS SEARCH — a fixed bank and a sixteen-day horizon — not of the
+    // defect: the constructive family above runs the same mechanism out to a
+    // thousand days with no ceiling at all.
+    expect(new Set(worstByLength.slice(-3)).size).toBe(1);
   });
 
   it('REGRESSION GUARD (this already passes): N Recovery Days used never ends below a player who trained fewer days and used none', () => {
@@ -2232,15 +2470,21 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(violations).toBe(0);
     expect(pairsChecked).toBeGreaterThan(100_000);
 
-    // PART TWO — DEPTH, and it exists because part one no longer reaches every
-    // N. Since GDD §4.4 the cheapest spend needs a SHORTEST_PAID_GAP-day
-    // absence, so eleven days cannot fit more than two of them and the sweep
-    // above only ever exercises N = 0, 1, 2. Asserting "for all N up to the
-    // hold cap" off that would be a claim the test does not check.
+    // PART TWO — DEPTH, and it exists because part one still does not reach
+    // every N. Eleven days is not enough calendar to spend the whole hold cap,
+    // so the sweep above tops out below it and asserting "for all N up to the
+    // hold cap" off it would be a claim the test does not check.
     //
+    // WHAT PART ONE ACTUALLY REACHES IS PINNED rather than described, because
+    // it moved: it was N = 0, 1, 2 while a Recovery Day re-armed the free grace
+    // and every spend therefore had to be SHORTEST_PAID_GAP days apart. With
+    // the grace spent once per absence, consecutive days of one long absence are
+    // each chargeable, so eleven days now reaches N = 4.
+    expect([...spendCountsExercised].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+    expect(Math.max(...spendCountsExercised)).toBeLessThan(RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+
     // So the deeper spend counts are constructed rather than searched for: N
     // repetitions of [train, then a chargeable gap] spends exactly N.
-    expect([...spendCountsExercised].sort((a, b) => a - b)).toEqual([0, 1, 2]);
 
     for (let n = 0; n <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; n += 1) {
       const history: boolean[] = [];
@@ -2474,6 +2718,8 @@ describe('read models', () => {
       }
       coverableGapDays(state);
       payableGapDays(state);
+      graceDaysRemaining(state);
+      chargeableDaysBefore(state, addDays(DAY_ZERO, 9));
       recoveryDayCapacity(state);
       streakDeadlineDay(state);
       lastDayStreakCanBeSaved(state);
@@ -2497,6 +2743,47 @@ describe('read models', () => {
     expect(state).toEqual(before);
   });
 
+  it('project the last saveable day exactly, partway through an absence as well as at the start of one', () => {
+    // `lastDayStreakCanBeSaved` is reminder copy — "train by Friday or the run
+    // ends" — so it has to be the real last day, not a stale one computed off a
+    // grace the absence has already spent. Ground truth is `openDay` itself:
+    // the last day it does NOT report a break.
+    //
+    // THE MID-ABSENCE STATES ARE THE POINT. A sweep over freshly trained states
+    // alone cannot tell `coverableGapDays` reading the remaining grace from
+    // reading the constant, because on a fresh state the two are equal.
+    const states: StreakState[] = [];
+    for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
+      const fresh = stateWithRun(9, DAY_ZERO, balance);
+      states.push(fresh);
+      let walking = fresh;
+      for (let offset = 1; offset <= 12; offset += 1) {
+        const opening = openDay(walking, addDays(DAY_ZERO, offset));
+        if (opening.kind === 'streak-broken') break;
+        if (opening.kind === 'recovery-day-offered') {
+          walking = unwrap(acceptRecoveryDayOffer(walking, opening.offer)).state;
+          states.push(walking);
+        }
+      }
+    }
+
+    let midAbsenceStatesChecked = 0;
+    for (const state of states) {
+      if (state.recoveredThroughDay !== null) midAbsenceStatesChecked += 1;
+      const covered = lastCoveredDay(state) as StreakDay;
+      let lastAlive = covered;
+      for (let offset = 1; offset <= 20; offset += 1) {
+        const day = addDays(covered, offset);
+        if (openDay(state, day).kind === 'streak-broken') break;
+        lastAlive = day;
+      }
+      expect(lastDayStreakCanBeSaved(state)).toBe(lastAlive);
+      expect(coverableGapDays(state)).toBe(daysBetween(covered, lastAlive) - 1);
+    }
+    // The sweep is worthless if it never reached a state with a spend behind it.
+    expect(midAbsenceStatesChecked).toBeGreaterThan(0);
+  });
+
   it('agree with each other about whether an offer exists, and about the grace', () => {
     const kindsSeen = new Set<string>();
     for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
@@ -2516,9 +2803,14 @@ describe('read models', () => {
         }
 
         if (offer !== null) {
-          expect(offer.cost).toBe(chargeableGapDays(gap));
+          // A freshly trained state has its whole grace, so this is the
+          // full-grace column of `chargeableGapDays` — and it has to agree with
+          // the state-level `chargeableDaysBefore` that every decision reads.
+          expect(offer.cost).toBe(chargeableGapDays(gap, GRACE));
+          expect(offer.cost).toBe(chargeableDaysBefore(state, day));
           expect(offer.cost).toBeGreaterThanOrEqual(1);
           expect(offer.daysCoveredFreeByGrace).toBe(GRACE);
+          expect(graceDaysRemaining(state)).toBe(GRACE);
           expect(offer.cost).toBeLessThanOrEqual(payableGapDays(state));
           expect(day).toBeLessThanOrEqual(lastDayStreakCanBeSaved(state) as StreakDay);
         }

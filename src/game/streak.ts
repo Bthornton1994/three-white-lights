@@ -103,9 +103,10 @@
  *     long) does NOT burn the tutorial — it fires at the first break the player
  *     can actually be saved from, which is the only version of the moment worth
  *     having.
- *   - since §4.4, it fires at the first gap of `FREE_GRACE_GAP_DAYS + 1` days or
- *     more, not at any miss: a shorter gap costs nothing, so there is no save to
- *     explain and no moment to teach.
+ *   - since §4.4, it fires at the first ABSENCE of `FREE_GRACE_GAP_DAYS + 1`
+ *     days or more, not at any miss: a shorter one costs nothing, so there is no
+ *     save to explain and no moment to teach. The first offer of an absence
+ *     cannot arrive sooner than that, because the grace covers its opening days.
  *
  * ===========================================================================
  * 4. THE PAY-TO-WIN LINE, EXPRESSED IN THE TYPES (GDD §8.1, §12.3)
@@ -163,10 +164,10 @@
  *     above it are clipped, and the clipped amount is *reported*
  *     (`wastedToHoldCap`) so the UI can say "you are at your cap" rather than
  *     silently swallowing a milestone reward.
- *   - `RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS` — how long a gap is covered
- *     for nothing (GDD §4.4). Not a guardrail on Recovery Days so much as the
- *     reason most gaps never reach them; it lives in the same block so the two
- *     are read together and never merged.
+ *   - `RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS` — how much of an ABSENCE is
+ *     covered for nothing (GDD §4.4). Not a guardrail on Recovery Days so much
+ *     as the reason most gaps never reach them; it lives in the same block so
+ *     the two are read together and never merged.
  *   - `RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES` — how many Recovery Days
  *     may be spent in a row before a real training day has to happen.
  *     `consecutiveRecoveryDaysUsed` resets to 0 on any trained day.
@@ -175,19 +176,41 @@
  * free; `MAX_CONSECUTIVE_USES` is a stacking limit on a consumable. They are 2
  * and 2 today by coincidence of tuning and are deliberately not one constant.
  *
- * A LONG ABSENCE CANNOT BE REPAIRED, and the binding constraint is the
- * consecutive limit rather than the hold cap. Only the days past the grace are
- * chargeable, and an offer only appears when it can cover the **entire** gap:
+ * THE GRACE IS PER ABSENCE, NOT PER GAP, and that sentence is the whole of the
+ * fix this section used to describe a hole in. An "absence" is everything since
+ * the last TRAINED day; a "gap" is only the part of it nothing covers yet. The
+ * free grace is measured against the absence, so a Recovery Day spent partway
+ * through does not hand the player a fresh grace window for the days after it:
  *
- *     chargeable       =  max(0, daysMissed - FREE_GRACE_GAP_DAYS)
- *     covered for free <=>  1 <= daysMissed <= FREE_GRACE_GAP_DAYS
+ *     graceRemaining = max(0, FREE_GRACE_GAP_DAYS
+ *                             - (recoveredThroughDay - lastTrainedDay))
+ *     chargeable     = max(0, daysMissed - graceRemaining)
+ *
+ * `graceDaysRemaining` is that first line and `chargeableDaysBefore` the second.
+ * Every path that decides whether a gap is free, chargeable or fatal reads them,
+ * so there is no second definition of "free" to drift.
+ *
+ * A LONG ABSENCE CANNOT BE REPAIRED, and the binding constraint is the
+ * consecutive limit rather than the hold cap. An offer only appears when it can
+ * cover the **entire** gap:
+ *
+ *     covered for free <=>  1 <= daysMissed <= graceRemaining
  *     an offer exists  <=>  1 <= chargeable <= min(balance,
  *                                                  MAX_CONSECUTIVE_USES
  *                                                    - consecutiveRecoveryDaysUsed)
  *
- * so the longest repairable absence is
+ * so the longest repairable absence is `LONGEST_REPAIRABLE_ABSENCE_DAYS` =
  * `FREE_GRACE_GAP_DAYS + MAX_CONSECUTIVE_USES` days — four at today's values,
- * and a week away still ends the run.
+ * and a week away ends the run.
+ *
+ * AND THAT NUMBER DOES NOT DEPEND ON HOW OFTEN THE APP IS OPENED. Across an
+ * absence the grace is spent at most once and `consecutiveRecoveryDaysUsed`
+ * only ever climbs, so the total charged for an absence of N days is
+ * `max(0, N - FREE_GRACE_GAP_DAYS)` whether the player pays it in one go on the
+ * day they come back or a day at a time from inside the absence. Both survive
+ * exactly `LONGEST_REPAIRABLE_ABSENCE_DAYS` days and both pay the same number of
+ * Recovery Days to do it. `streak.test.ts` builds the whole table under both
+ * behaviours and asserts they are identical rather than checking one path.
  *
  * Covering four days out of seven leaves three uncovered days, which breaks the
  * run anyway — so a partial offer would take the player's Recovery Days and
@@ -198,11 +221,12 @@
  * WHAT IS *NOT* GUARDED, said plainly because the opposite would be a claim
  * this file cannot back:
  *
- *   - THE GRACE HAS NO CONSECUTIVE LIMIT AND NO COOLDOWN. A player who trains
- *     one day in every `FREE_GRACE_GAP_DAYS + 1` holds a streak alive forever
- *     on 33% attendance, spending nothing. That is the accepted price of the
- *     GDD §4.4 ruling — a short miss basically never breaks a streak — and it
- *     is deliberately not mitigated here. If playtesting says it needs
+ *   - THE GRACE HAS NO CONSECUTIVE LIMIT AND NO COOLDOWN ACROSS ABSENCES. It is
+ *     spent once per absence and refilled by a trained day, so a player who
+ *     trains one day in every `FREE_GRACE_GAP_DAYS + 1` holds a streak alive
+ *     forever on 33% attendance, spending nothing. That is the accepted price
+ *     of the GDD §4.4 ruling — a short miss basically never breaks a streak —
+ *     and it is deliberately not mitigated here. If playtesting says it needs
  *     stopping, the honest fixes are lowering `FREE_GRACE_GAP_DAYS` or adding a
  *     new named guardrail, not a tweak buried in a call site.
  *   - NOR IS THERE A COOLDOWN BETWEEN SPENDS. A player who alternates
@@ -212,22 +236,17 @@
  *     demonstrates that pattern draining a full bank rather than leaving it as
  *     prose. The only thing bounding it is the economy — the hold cap plus the
  *     earn rate.
- *   - AND A LONG ABSENCE CAN BE HELD TOGETHER FROM INSIDE IT, which weakens
- *     what §4.2's "prevents saving a 50-day streak after a week away" used to
- *     mean. Opening the app on the day of return, the longest repairable gap is
- *     `coverableGapDays` — 4 at today's values. But every accept moves
- *     `recoveredThroughDay` to the end of the gap, which re-arms the grace, so
- *     a player who keeps opening the app DURING their absence and keeps paying
- *     holds the run for
- *
- *         (FREE_GRACE_GAP_DAYS + 1) * MAX_CONSECUTIVE_USES + FREE_GRACE_GAP_DAYS
- *
- *     days — 8 at today's values, so a week away IS survivable that way. Before
- *     §4.4 the walk-back bought nothing over a single return. It is neither
- *     free nor automatic: every one of those days is a Recovery Day the player
- *     chose to spend at a prompt, and the consecutive-use guardrail still ends
- *     it with Recovery Days left in the bank. `streak.test.ts` pins the bound
- *     exactly rather than leaving it to be discovered.
+ *   - A SPEND CAN STILL BE WASTED ON A RUN THAT DIES ANYWAY, and that is the
+ *     one thing opening the app mid-absence changes. Length of absence saved
+ *     and Recovery Days paid to save it are identical either way (above), but a
+ *     player holding fewer than the absence will eventually cost can pay for
+ *     part of it from inside and then break at the next day, ending poorer than
+ *     one who never opened the app and never got the prompt. The run was
+ *     genuinely alive at every yes — declining would have ended it there and
+ *     then — so this is the price of an option, not a penalty for showing up,
+ *     and it predates GDD §4.4 rather than arriving with it. It is not
+ *     mitigated because the only mitigation is refusing to offer a save the
+ *     player can still use, and this module cannot see the future.
  *
  * ===========================================================================
  * 6. NEVER PUNISH DAILY ENGAGEMENT (CLAUDE.md, GDD §3.5, §12.3)
@@ -274,16 +293,25 @@
  * from a fresh `createStreakState()`, counting pairs that differ by exactly one
  * trained day where the player who trained MORE ends strictly lower:
  *
- *                                       before §4.4    after §4.4
- *     opening the app every day             1948            0
- *     opening only on training days         4250           36
- *     worst deficit at 13 days                 6            3
+ *                                    before §4.4   re-arming   per absence
+ *     opening the app every day          1948          0           24
+ *     opening only on training days      4250         36           36
+ *     worst deficit at 13 days              6          3            3
  *
- * THAT IS A LARGE IMPROVEMENT AND IT IS NOT A FIX, and the zero above is the
- * part most likely to be misread. Extend the sweep by two days and the daily
- * model violates again — 2 pairs at 15 days, worst deficit 5 — because 15 days
- * is the first length that holds two chargeable gaps. `streak.test.ts` pins
- * both lengths in `MONOTONICITY_MEASUREMENT` for exactly that reason.
+ * THE ZERO IN THE MIDDLE COLUMN WAS BOUGHT BY A DEFECT, and is the number worth
+ * explaining rather than the 24. While each spend re-armed the grace, a player
+ * whose day was opened daily could hold a run across eight days of absence
+ * against four for one who reappeared at the end — extra coverage that papered
+ * over the inversions this counts. Making the grace per absence (§5 above) took
+ * that away and 24 came back. The on-training-days column DID NOT MOVE, which
+ * is the check that matters: that player never had a mid-absence spend to
+ * re-arm anything, so the fix pulled the daily model into line with the
+ * returning one rather than the reverse.
+ *
+ * IT IS AN IMPROVEMENT ON 1948 AND IT IS NOT A FIX. Extend the sweep by two
+ * days and both models climb — 210 and 384 at 15 days, worst deficit 5.
+ * `streak.test.ts` pins both lengths in `MONOTONICITY_MEASUREMENT` so the
+ * improvement and its limit stay on the record together.
  *
  * HOW MUCH SHORTER: THERE IS STILL NO CEILING. The deficit is exactly the
  * length of the run the diligent player loses, so it scales with how long they
@@ -298,8 +326,11 @@
  * histories generate — and the diligent player trained on strictly more days.
  * `streak.test.ts` builds that family at an arbitrary run length and pins the
  * deficit at each one, and separately MAXIMISES the deficit by exhaustive
- * search over every history up to sixteen days, where the worst case climbs
- * from 0 to 5 as the history lengthens instead of settling on a constant.
+ * search over every history from eight to sixteen days, where the worst case
+ * climbs from 0 to 5 and then flattens. THE FLAT TAIL IS A LIMIT OF THAT SEARCH
+ * — a fixed starting bank of two and a sixteen-day horizon — NOT OF THE DEFECT;
+ * the constructive family above runs the same mechanism out to a thousand days
+ * with no ceiling at all.
  *
  * WHAT MOVED IS THE GAP LENGTH, NOT THE MECHANISM. Every gap in that family
  * used to be a single missed day. Since §4.4 those are free, so the family is
@@ -418,30 +449,33 @@ export const RECOVERY_DAY_GUARDRAILS = {
   HOLD_CAP: 5,
 
   /**
-   * FREE GRACE: the longest gap that is covered WITHOUT SPENDING ANYTHING.
+   * FREE GRACE: how much of an ABSENCE is covered WITHOUT SPENDING ANYTHING.
    *
-   * A gap of 1..FREE_GRACE_GAP_DAYS missed days keeps the run alive, costs no
-   * Recovery Day, and produces no offer — there is nothing to decide, because
-   * nothing is being spent. Only the days of a gap BEYOND this are chargeable
-   * (`chargeableGapDays`), and those are what Recovery Days buy.
+   * PER ABSENCE, NOT PER GAP. An absence is everything since the last TRAINED
+   * day. The first FREE_GRACE_GAP_DAYS days of one keep the run alive, cost no
+   * Recovery Day and produce no offer — there is nothing to decide, because
+   * nothing is being spent. Only the days BEYOND them are chargeable
+   * (`chargeableDaysBefore`), and those are what Recovery Days buy. A Recovery
+   * Day spent partway through an absence does NOT re-arm the grace for the days
+   * after it; only a training day does (`graceDaysRemaining`).
    *
    * THIS IS NOT `MAX_CONSECUTIVE_USES` AND MUST NOT BE COLLAPSED INTO IT. They
    * are both 2 today and that is a coincidence of tuning, not a shared meaning:
    *
    *   - FREE_GRACE_GAP_DAYS   — how much absence is FREE. Nothing is spent, no
-   *                             prompt appears, and no counter moves. It does
-   *                             not deplete and it does not need a trained day
-   *                             to "recharge"; it is recomputed from the gap
-   *                             every time.
+   *                             prompt appears, and no balance moves. It is
+   *                             recomputed from the absence rather than banked,
+   *                             so it never "runs out" across a career — but
+   *                             within one absence it is used up once and a
+   *                             trained day is what brings it back.
    *   - MAX_CONSECUTIVE_USES  — how many Recovery Days may be SPENT in a row
    *                             before a real training day has to happen. It is
    *                             a stacking limit on a consumable, tracked in
    *                             `consecutiveRecoveryDaysUsed`, and reset by
    *                             training.
    *
-   * Together they set the longest repairable absence:
-   * `FREE_GRACE_GAP_DAYS + MAX_CONSECUTIVE_USES` days (4 at today's values), so
-   * a week away still ends a run. Move either one and that ceiling moves.
+   * Together they set `LONGEST_REPAIRABLE_ABSENCE_DAYS` (4 at today's values),
+   * so a week away still ends a run. Move either one and that ceiling moves.
    *
    * UNTUNED. 2 means "miss a weekend and nothing happens to you". Raising it
    * makes streaks harder to lose and Recovery Days rarer to spend; lowering it
@@ -451,26 +485,56 @@ export const RECOVERY_DAY_GUARDRAILS = {
    * one day in every FREE_GRACE_GAP_DAYS + 1 can hold a streak alive forever
    * without ever spending anything. That is the accepted price of the GDD §4.4
    * ruling — a short miss basically never breaks a streak — not an oversight,
-   * and there is deliberately no consecutive-grace limit guarding it.
+   * and there is deliberately no limit on how many absences may be graced.
    */
   FREE_GRACE_GAP_DAYS: 2,
 
   /**
-   * Most consecutive missed days that may be covered BY SPENDING RECOVERY DAYS
-   * before a real training day has to happen. Resets to 0 on any trained day.
+   * Most Recovery Days that may be SPENT on one absence before a real training
+   * day has to happen. Resets to 0 on any trained day.
    *
-   * Since GDD §4.4, the first `FREE_GRACE_GAP_DAYS` days of any gap are free, so
-   * this bounds the CHARGEABLE part of a gap, not the whole gap: with both at 2,
-   * a four-day absence is repairable (two free, two paid) and a five-day one is
-   * not. It is still this, rather than the hold cap, that stops a 50-day streak
-   * surviving a week away — with a hold cap of 5 a seven-day gap would otherwise
-   * be affordable.
+   * Since GDD §4.4 the first `FREE_GRACE_GAP_DAYS` days of an absence are free,
+   * so this bounds the CHARGEABLE part of it, not the whole thing: with both at
+   * 2, a four-day absence is repairable (two free, two paid) and a five-day one
+   * is not.
+   *
+   * WHAT THIS GUARANTEES, stated precisely because a looser version of this
+   * sentence was false for a while. It, and not the hold cap, is what sets the
+   * ceiling: with a hold cap of 5 a player could otherwise afford the five
+   * chargeable days of a seven-day absence outright. What is guaranteed is
+   *
+   *     an absence of more than FREE_GRACE_GAP_DAYS + MAX_CONSECUTIVE_USES days
+   *     (`LONGEST_REPAIRABLE_ABSENCE_DAYS`, 4 today) ends the run,
+   *
+   * for EVERY balance up to the hold cap and REGARDLESS OF HOW OFTEN THE PLAYER
+   * OPENS THE APP DURING IT. Paying a day at a time from inside the absence
+   * buys no more than paying once on the day of return, because the grace is
+   * per absence and this counter only climbs until a session resets it. So a
+   * 50-day streak does not survive a week away by any route. `streak.test.ts`
+   * asserts the whole absence-length table under both behaviours.
    *
    * See `FREE_GRACE_GAP_DAYS` above for why these two are separate constants.
    * UNTUNED.
    */
   MAX_CONSECUTIVE_USES: 2,
 } as const;
+
+/**
+ * The longest absence a live run can survive: the free grace plus every
+ * Recovery Day the consecutive-use guardrail permits.
+ *
+ * DERIVED, NOT TUNED — there is nothing to hand-tune here, and it is a `const`
+ * rather than prose so the two things it is composed of cannot drift away from
+ * the sentence that describes them. Move either guardrail and this moves with
+ * it. Assumes a balance of at least `MAX_CONSECUTIVE_USES`; below that the
+ * balance binds first and the absence a player can actually repair is shorter.
+ *
+ * It is a property of the ABSENCE, not of any one gap inside it, so it holds
+ * whether the player pays once on the day they come back or a day at a time
+ * from inside their holiday.
+ */
+export const LONGEST_REPAIRABLE_ABSENCE_DAYS: number =
+  RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS + RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES;
 
 /**
  * Free-path earning (GDD §4.2 table) plus the two purchase sources.
@@ -833,15 +897,57 @@ export function daysMissedBefore(state: StreakState, today: StreakDay): number {
 }
 
 /**
- * How many days of a gap of `gapDays` a Recovery Day would have to be spent on.
+ * How much of the free grace THIS ABSENCE has left — the grace not already
+ * consumed by days a Recovery Day has covered since the last trained day.
  *
- * The first `RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS` days of any gap are
- * free (GDD §4.4), so this is 0 for a short miss and the excess for a long one.
- * A gap with nothing chargeable produces no offer, because there is nothing to
- * decide.
+ * THE GRACE IS PER ABSENCE, NOT PER GAP (GDD §4.4). `FREE_GRACE_GAP_DAYS` when
+ * no Recovery Day has been spent since the last session, and less — 0, at every
+ * tuning where a spend is possible at all — once one has. That is what stops a
+ * spend from re-arming the grace and makes the longest survivable absence the
+ * same number whether the player opens the app daily or only on the way back.
+ *
+ * READ OFF `recoveredThroughDay` RATHER THAN A COUNTER, so it cannot fall out of
+ * step with the days actually covered: the days of this absence already covered
+ * are exactly `recoveredThroughDay - lastTrainedDay`, and the grace pays for the
+ * first `FREE_GRACE_GAP_DAYS` of them. A training day clears
+ * `recoveredThroughDay`, which is what refills it.
+ *
+ * Full grace when there is no live run and when nothing has been recovered.
  */
-export function chargeableGapDays(gapDays: number): number {
-  return Math.max(0, gapDays - RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS);
+export function graceDaysRemaining(state: StreakState): number {
+  const { lastTrainedDay, recoveredThroughDay } = state;
+  if (lastTrainedDay === null || recoveredThroughDay === null) {
+    return RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS;
+  }
+  const daysOfThisAbsenceCovered = Math.max(0, daysBetween(lastTrainedDay, recoveredThroughDay));
+  return Math.max(0, RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS - daysOfThisAbsenceCovered);
+}
+
+/**
+ * How many days of a gap of `gapDays` a Recovery Day would have to be spent on,
+ * given `graceDaysRemaining` of free grace still unspent on this absence.
+ *
+ * TAKES THE REMAINING GRACE RATHER THAN READING THE CONSTANT, and that argument
+ * is the whole of the fix: a version of this function that always subtracted
+ * `FREE_GRACE_GAP_DAYS` handed a fresh grace window to every gap, which made a
+ * long absence repairable in instalments and not in one go. Callers with a state
+ * in hand should use `chargeableDaysBefore`.
+ */
+export function chargeableGapDays(gapDays: number, graceDaysRemaining: number): number {
+  return Math.max(0, gapDays - Math.max(0, graceDaysRemaining));
+}
+
+/**
+ * The Recovery Days a gap ending on `today` would cost this state. 0 for a gap
+ * the remaining grace covers outright, and 0 when there is no gap at all.
+ *
+ * THE ONE FUNCTION EVERY DECISION READS. `currentRecoveryDayOffer`, `openDay`,
+ * `recordTrainingDay`, `settleBrokenStreak` and `breakReason` all ask this
+ * rather than each subtracting a grace of their own, so "free" means the same
+ * thing on the prompt, in the read model and in the transition.
+ */
+export function chargeableDaysBefore(state: StreakState, today: StreakDay): number {
+  return chargeableGapDays(daysMissedBefore(state, today), graceDaysRemaining(state));
 }
 
 /**
@@ -859,12 +965,18 @@ export function payableGapDays(state: StreakState): number {
 
 /**
  * How many consecutive missed days this state could still cover, right now, by
- * any means: the free grace plus whatever Recovery Days can still pay for.
+ * any means: the grace THIS ABSENCE has left plus whatever Recovery Days can
+ * still pay for.
  *
  * A gap this long or shorter keeps the run alive. A longer one ends it.
+ *
+ * MEASURED FROM `lastCoveredDay`, so it shrinks as an absence is paid for
+ * rather than resetting. On a freshly trained state it is
+ * `LONGEST_REPAIRABLE_ABSENCE_DAYS` (at a balance that can afford it); partway
+ * through an absence it is what is left of that same allowance.
  */
 export function coverableGapDays(state: StreakState): number {
-  return RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS + payableGapDays(state);
+  return graceDaysRemaining(state) + payableGapDays(state);
 }
 
 /** Last day the player can train without missing anything. Null with no run. */
@@ -913,9 +1025,11 @@ export interface RecoveryDayOffer {
   readonly missedDays: readonly StreakDay[];
   /**
    * How many of `missedDays` the free grace covers at no cost (GDD §4.4).
-   * Always `RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS`, because an offer only
-   * exists for a gap longer than that. On the prompt so the player can see they
-   * are paying for the excess, not for the whole absence.
+   *
+   * `RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS` on the first offer of an
+   * absence and 0 on any later one, because the grace belongs to the absence
+   * rather than to the gap and a spend does not renew it. On the prompt so the
+   * player can see which part of the absence they are paying for.
    */
   readonly daysCoveredFreeByGrace: number;
   /**
@@ -954,11 +1068,11 @@ export type StreakBreakReason =
  * player who closes the app mid-decision sees the tutorial again.
  *
  * TWO WAYS TO GET NULL, and they mean opposite things (GDD §4.4):
- *   - the gap is within `FREE_GRACE_GAP_DAYS`, so nothing is chargeable and the
- *     run survives for free — there is no question to ask; or
+ *   - the gap is within the grace this absence has left, so nothing is
+ *     chargeable and the run survives for free — there is no question to ask; or
  *   - the chargeable part is more than this state can pay for, so the run ends.
  * `openDay` distinguishes them; a caller reading this function directly must
- * check `chargeableGapDays(daysMissedBefore(state, today))` to tell which.
+ * check `chargeableDaysBefore(state, today)` to tell which.
  *
  * An offer exists only when it covers the WHOLE gap. See §5 of the header.
  */
@@ -967,7 +1081,7 @@ export function currentRecoveryDayOffer(state: StreakState, today: StreakDay): R
   if (covered === null) return null;
   const missed = daysMissedBefore(state, today);
   if (missed < 1) return null;
-  const chargeable = chargeableGapDays(missed);
+  const chargeable = chargeableDaysBefore(state, today);
   // Free grace: covered outright, nothing to spend, so nothing to offer.
   if (chargeable < 1) return null;
   if (chargeable > payableGapDays(state)) return null;
@@ -993,11 +1107,12 @@ export function currentRecoveryDayOffer(state: StreakState, today: StreakDay): R
 /**
  * Why no offer can be made for a gap this state cannot cover.
  *
- * Reads the CHARGEABLE part of the gap, not the whole gap: the free grace is
- * never the thing that runs out.
+ * Reads the CHARGEABLE part of the gap, not the whole gap: what runs out is the
+ * consecutive-use allowance or the balance, never the grace, which is simply
+ * already spent on the earlier days of the same absence.
  */
-function breakReason(state: StreakState, missed: number): StreakBreakReason {
-  const chargeable = chargeableGapDays(missed);
+function breakReason(state: StreakState, today: StreakDay): StreakBreakReason {
+  const chargeable = chargeableDaysBefore(state, today);
   if (chargeable > RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES) {
     return 'gap-longer-than-consecutive-limit';
   }
@@ -1097,7 +1212,7 @@ export function openDay(state: StreakState, today: StreakDay): DayOpening {
       lastDayStreakCanBeSaved: lastDayStreakCanBeSaved(state) ?? today,
     };
   }
-  if (chargeableGapDays(missed) === 0) {
+  if (chargeableDaysBefore(state, today) === 0) {
     return {
       kind: 'gap-covered-by-grace',
       currentStreak: state.currentStreak,
@@ -1115,7 +1230,7 @@ export function openDay(state: StreakState, today: StreakDay): DayOpening {
     kind: 'streak-broken',
     brokenRunLength: state.currentStreak,
     daysMissed: missed,
-    reason: breakReason(state, missed),
+    reason: breakReason(state, today),
   };
 }
 
@@ -1195,10 +1310,10 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
     );
   }
 
-  // A gap inside the free grace does NOT end the run and costs nothing
-  // (GDD §4.4). Past the grace, an unanswerable gap ends it — an answerable one
-  // was refused above.
-  const previousRunEnded = chargeableGapDays(missed) > 0;
+  // A gap inside the grace this absence has left does NOT end the run and costs
+  // nothing (GDD §4.4). Past the grace, an unanswerable gap ends it — an
+  // answerable one was refused above.
+  const previousRunEnded = chargeableDaysBefore(state, day) > 0;
   const base = previousRunEnded ? endRun(state) : state;
   const streakAfter = base.currentStreak + 1;
 
@@ -1395,9 +1510,10 @@ export function settleBrokenStreak(state: StreakState, today: StreakDay): Streak
   if (missed === 0) {
     return fail('NOTHING_TO_SETTLE', 'Your streak is intact — there is nothing to settle.');
   }
-  // A gap the free grace covers is not a break, so there is nothing to settle
-  // and settling it anyway would end a run the player still has (GDD §4.4).
-  if (chargeableGapDays(missed) === 0) {
+  // A gap the remaining grace covers is not a break, so there is nothing to
+  // settle and settling it anyway would end a run the player still has
+  // (GDD §4.4).
+  if (chargeableDaysBefore(state, today) === 0) {
     return fail('NOTHING_TO_SETTLE', 'That gap is covered — your streak is intact.');
   }
   if (currentRecoveryDayOffer(state, today) !== null) {
