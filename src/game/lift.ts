@@ -140,6 +140,7 @@ import {
   type LiftMoment,
   type SessionFeel,
 } from './fatigue';
+import { nextRandom, seedState } from './prng';
 
 // ---------------------------------------------------------------------------
 // Vocabulary
@@ -403,31 +404,21 @@ function clamp01(value: number): number {
   return clamp(value, 0, 1);
 }
 
+/**
+ * Strip IEEE-754 noise from a returned number (0.30000000000000004 -> 0.3).
+ *
+ * Via `toFixed` rather than a power of ten, because the tuning file is the only
+ * place in this module a numeric literal is allowed to live and a base is not
+ * a feel value worth putting there. `liftTuning.test.ts` enforces that.
+ */
 function scrub(value: number): number {
   if (!Number.isFinite(value)) return value;
-  const factor = 10 ** LIFT_TUNING.PRECISION_DECIMALS;
-  return Math.round(value * factor) / factor;
+  return Number(value.toFixed(LIFT_TUNING.PRECISION_DECIMALS));
 }
 
 function gauss(x: number, center: number, width: number): number {
   const z = (x - center) / width;
   return Math.exp(-z * z);
-}
-
-/**
- * mulberry32. Small, fast, and — the only property that matters here —
- * a pure function of its state, so the whole rep replays exactly.
- *
- * Exported because `lift.test.ts` has to be able to show the generator actually
- * varies with the seed; a determinism test that only ever compares a rep to
- * itself would pass on a module with no randomness in it at all.
- */
-export function nextRandom(state: number): { readonly value: number; readonly state: number } {
-  const next = (state + 0x6d2b79f5) >>> 0;
-  let t = next;
-  t = Math.imul(t ^ (t >>> 15), t | 1);
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  return { value: ((t ^ (t >>> 14)) >>> 0) / 4294967296, state: next };
 }
 
 // ---------------------------------------------------------------------------
@@ -439,21 +430,21 @@ export function nextRandom(state: number): { readonly value: number; readonly st
  *
  * Derived from `BAR_SPEED_CUE_ORDER` (best to worst) rather than written out as
  * a literal map, so a band added to `fatigue.ts` cannot silently fall through to
- * a default here. The span is deliberately small — this is a cue, not a
- * difficulty setting, and the player's timing must stay the dominant term.
+ * a default here. The span is `BAR_SPEED_CAPACITY_SPAN` and is deliberately
+ * small — this is a cue, not a difficulty setting, and the player's timing must
+ * stay the dominant term.
  *
  * IT IS ALSO NOT A METER. The band is one of five words, it never leaves this
  * module as a number, and nothing exported here reports which band was used.
  */
-const BAR_SPEED_CAPACITY_SPAN = 0.12;
-
 export function capacityScaleForBarSpeed(cue: BarSpeedCue): number {
   const index = BAR_SPEED_CUE_ORDER.indexOf(cue);
   if (index < 0) return 1;
   const last = BAR_SPEED_CUE_ORDER.length - 1;
-  // 0 -> best band -> fastest bar; last -> worst band -> slowest.
-  const t = last <= 0 ? 0.5 : index / last;
-  return scrub(1 + BAR_SPEED_CAPACITY_SPAN * (0.5 - t) * 2);
+  // 0 -> best band -> fastest bar; last -> worst band -> slowest. `1 - 2t` runs
+  // from +1 at the best band to -1 at the worst.
+  const t = last <= 0 ? 1 / 2 : index / last;
+  return scrub(1 + LIFT_TUNING.BAR_SPEED_CAPACITY_SPAN * (1 - 2 * t));
 }
 
 /** The lifter's output for this rep, after the bar-speed cue. */
@@ -548,6 +539,40 @@ export function descentRate(loadRatio: number): number {
 /** Ticks of brace before input is accepted at this load. */
 export function braceTicks(loadRatio: number): number {
   return Math.max(1, Math.round(byLoad(LIFT_TUNING.BRACE_TICKS, clampLoadRatio(loadRatio))));
+}
+
+/**
+ * Half-width of the depth window in ticks, given the width fatigue asked for.
+ *
+ * THE CLAMP IS THE POINT, and it fixes a real bug rather than tidying one. The
+ * window is a fixed number of MILLISECONDS but the descent is a fixed number of
+ * DEPTH UNITS per tick, and that rate is load-dependent — a light bar comes
+ * down nearly twice as fast as a maximal one. At the light end a 300 ms window
+ * spans 0.25 of depth on each side of the ideal, so its early half sat ABOVE
+ * `DEPTH_LEGAL`: the cue lit up, the player released inside it as instructed,
+ * and got a red light for a high squat. A cue that is wrong about its own
+ * window is worse than no cue.
+ *
+ * So the half-width is never longer than the descent takes to travel from legal
+ * depth to the ideal depth. At heavy loads the ms width binds and the clamp does
+ * nothing; at light loads the clamp binds and the window is narrower in ticks —
+ * which is honest, because a fast-descending bar genuinely gives less room.
+ *
+ * `lift.test.ts` measures the depth at the window's opening tick from played
+ * reps across the load range and asserts it is legal, rather than trusting this.
+ */
+export function depthWindowHalfTicks(loadRatio: number, windowMs: number): number {
+  const rate = descentRate(loadRatio);
+  const fromMs = Math.round(windowMs / TICK_MS / 2);
+  // In TICKS, not in depth: the ideal tick is a rounded quantity, so the depth
+  // it actually lands on is a little under DEPTH_IDEAL. Measuring the gap in
+  // depth and dividing lost that rounding and let the window open three
+  // thousandths of a unit above legal at some loads — small, and still a red
+  // light. `firstLegalTick` is the first tick whose depth is at or above legal,
+  // so the arithmetic below is exact.
+  const idealTick = Math.round(LIFT_TUNING.DEPTH_IDEAL / rate);
+  const firstLegalTick = Math.ceil(LIFT_TUNING.DEPTH_LEGAL / rate);
+  return Math.max(1, Math.min(fromMs, idealTick - firstLegalTick));
 }
 
 // ---------------------------------------------------------------------------
@@ -672,7 +697,7 @@ export function createLift(config: LiftConfig): LiftState {
     lastStallPulseTick: Number.NEGATIVE_INFINITY,
     resolution: null,
     events: [],
-    rngState: Math.trunc(config.seed) >>> 0,
+    rngState: seedState(config.seed),
   };
 }
 
@@ -819,15 +844,16 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       // prediction. Fatigue narrows the window about that tick, never off it.
       const rate = descentRate(load);
       const idealTick = tick + Math.round(LIFT_TUNING.DEPTH_IDEAL / rate);
-      const widthMs = cueWindowMs('depth', state.config);
-      const halfTicks = Math.round(msToTicks(widthMs) / 2);
+      const halfTicks = depthWindowHalfTicks(load, cueWindowMs('depth', state.config));
       m.activeCue = {
         cue: 'depth',
         wants: 'release',
         openTick: idealTick - halfTicks,
         idealTick,
         closeTick: idealTick + halfTicks,
-        widthMs: scrub(widthMs),
+        // Reported from the ticks it actually spans, not from the ms it was
+        // asked for, so a UI sizing a cue off `widthMs` draws the real window.
+        widthMs: scrub(halfTicks * 2 * TICK_MS),
       };
     }
   }

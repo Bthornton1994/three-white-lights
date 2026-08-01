@@ -348,6 +348,17 @@ export const LIFT_TUNING = Object.freeze({
   MISTIMED_DRIVE_VELOCITY_PENALTY: 0.004,
 
   /**
+   * How far the bar-speed cue band moves the lifter's output, from the best
+   * band to the worst. GDD §3.4 lists bar-speed cues first among the ways
+   * fatigue may surface, and this is that surfacing on the mechanic's side.
+   *
+   * Deliberately small. The player's timing must stay the dominant term, or a
+   * tired session stops being a harder version of the same skill test and
+   * becomes a different, unwinnable one.
+   */
+  BAR_SPEED_CAPACITY_SPAN: 0.12,
+
+  /**
    * Fraction of the window half-width inside which timing grades 'perfect'.
    * 0.34 of the half-width means the perfect band is about a third of the
    * window; the rest is 'early' / 'late' but still counts.
@@ -365,8 +376,22 @@ export const LIFT_TUNING = Object.freeze({
    */
   ASCENT_COLLAPSE_DROP: 0.14,
 
-  /** Hard cap on the ascent. 360 ticks = 6 s. Reaching it is a miss. */
-  ASCENT_TIMEOUT_TICKS: 360,
+  /**
+   * Hard cap on the ascent, in ticks. Reaching it is a miss, reason 'timeout' —
+   * the lifter ran out of air.
+   *
+   * ALSO THE TERMINATION GUARANTEE. `lift.test.ts` plays 400 randomised input
+   * scripts and asserts every one resolves; this is what makes that true even
+   * for a force balance that happens to sit at a stable equilibrium.
+   *
+   * 170 ticks is 2.83 s of concentric. Chosen against a measured distribution
+   * rather than picked: across a sweep of every load, depth and drive offset,
+   * successful ascents ran to a maximum of 201 ticks with a 99th percentile of
+   * 121, so this clips only the longest creeps. Raise it far and 'timeout'
+   * becomes unreachable and its copy becomes dead; drop it far and it starts
+   * cutting off grinds that were going to make it, which is the worse failure.
+   */
+  ASCENT_TIMEOUT_TICKS: 170,
 
   /** Ticks standing at lockout before the rep resolves. */
   LOCKOUT_TICKS: { LIGHT: 8, MAXIMAL: 16 },
