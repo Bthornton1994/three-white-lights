@@ -114,7 +114,12 @@ export interface LiftLoop {
   readonly restart: (loadRatio: number) => void;
 }
 
-export function useLiftLoop(initial: LiftConfig): LiftLoop {
+/**
+ * @param paused stops the clock without unmounting anything. Used only by the
+ * scripted-replay capture path (`liftReplay.ts`), which supplies its own states
+ * and must not have a live rep ticking underneath the frame it is photographing.
+ */
+export function useLiftLoop(initial: LiftConfig, paused: boolean = false): LiftLoop {
   const [state, setState] = useState<LiftState>(() => createLift(initial));
   const [history, setHistory] = useState<readonly LiftState[]>([]);
 
@@ -145,6 +150,7 @@ export function useLiftLoop(initial: LiftConfig): LiftLoop {
   );
 
   useEffect(() => {
+    if (paused) return;
     runningRef.current = true;
     let last = -1;
     let accumulator = 0;
@@ -188,7 +194,7 @@ export function useLiftLoop(initial: LiftConfig): LiftLoop {
       runningRef.current = false;
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [paused]);
 
   const onPressIn = useCallback(() => {
     if (stateRef.current.phase === 'RESOLVED') return;
