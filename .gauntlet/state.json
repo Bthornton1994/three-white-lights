@@ -130,17 +130,17 @@
       "id": "M5",
       "name": "Fatigue / readiness",
       "bar": "Plausible game-feel abstraction. No visible fatigue meter (§12.3).",
-      "status": "failed",
+      "status": "passed",
       "verifiable": true,
-      "note": "SENT BACK by a fresh critic — on the tests, not the model. The critic cleared the model itself: both live §12.3 refusal conditions are genuinely clear (no export returns a fatigue level, the one internal scalar sits behind a non-exported unique symbol, and injuryProbability takes no state/day/streak parameter at all), and it re-derived the daily-vs-intermittent comparison by hand rather than taking the claim — daily 6 setbacks per 40 sessions vs 10 every-other-day vs 14 every-third-day, so the day-counted immunity window makes the daily player strictly better off. What it caught is two tests that are blind by construction. I verified both by mutation rather than accepting the reading: delete the technique-relief term and all 731 tests still pass; delete the physio shortening and all 74 fatigue tests still pass. A test titled \"technique points reduce risk\" whose assertions survive technique doing nothing is the ninth blind suite this run. Builder fixing the tests only."
+      "note": "PASSES ITS BAR. The critic had cleared the model and both live §12.3 refusal conditions, re-deriving the daily-vs-intermittent injury comparison by hand rather than taking the claim; what it sent back was two tests that could not fail if the behaviour they named were deleted. Both are now fixed and I re-ran the mutations myself rather than accepting the report: delete the technique-relief term and 1 test fails where 0 did before; delete physio shortening and 2 fail where 0 did. The technique test now pins the exact scaling across six ratings instead of asserting probability > 0, and physio is compared against the same duration roll unaided instead of restating a band the unaided value already satisfied. The third, weaker case was given real content rather than deleted, and the builder proved that by mutation too. Model untouched throughout."
     },
     {
       "id": "M6",
       "name": "Streak / Recovery Days",
       "bar": "Never punishes daily engagement. Manual token use, hold cap, first-break tutorial.",
-      "status": "majority",
+      "status": "building",
       "verifiable": true,
-      "note": "Measured and bounded, NOT fixed — and the builder was right to refuse. It first corrected me: my repro was reading unsettled state, since currentStreak is only true as of the last day anyone opened the app. Settle both calendars and my headline pair collapses to 0 and 0. I re-ran it myself and confirmed. But the defect underneath survives settlement and I reproduced the builder's count exactly: 1948 violations over every 13-day calendar opening daily, 4250 opening only on training days, worst deficit 6. The sharpest case is T..TTTTT.T... — seven training days ending on a streak of 0, against ...TTTTT.T... — the same calendar minus its first session, six training days ending on 6. The builder ruled out charge-per-gap, refund-on-death, refund-on-return, and both together, and argues the property is incompatible with Recovery Days being a finite consumable at all. That is a GDD §4.2 / §8.2 design question, not an implementation one, so it is now GDD §4.4 and a question for the human. What did land: the requested invariant test (passes today, labelled a regression guard, and it asserts its own sweep reached every N up to the hold cap rather than assuming it), a proven bound that accepting an offer is never worse than declining on a fixed calendar, and GDD §4 synced with the 03:00 rollover, trained-days-only counting, lifetime-once milestones and the post-day-100 income cliff. 738 tests green, tsc clean."
+      "note": "The human decided the design question. Short gaps are now covered free; Recovery Days are spent only on longer absences, staying a finite §4.2/§8.2 currency for vacation and illness. Two requirements they stated explicitly: the grace threshold gets its OWN named constant rather than reusing MAX_CONSECUTIVE_USES, which already means the token-stacking limit — two constants that happen to share a value today must not be collapsed into one; and on the long-gap path where a token IS spent, spending must preserve the streak exactly, re-verified with a test that actually distinguishes that path from the free-grace one. GDD §4.2 earning table and §4.3 tutorial trigger both move with it — the first-break moment now fires on a 3+ day gap rather than any miss. The accepted cost is that a short miss will rarely break a streak. Builder must report before/after violation counts against the pinned 1948 / 4250 / worst-deficit-6, and may not delete the measurement to go green."
     },
     {
       "id": "T1",
@@ -209,9 +209,9 @@
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
-      "status": "building",
+      "status": "grading",
       "verifiable": true,
-      "note": "Dispatched. Two critics independently adjudicated this and agreed meet.ts is right: it models a bomb-out as total: null, because a lifter with no total does not place. dots.ts assumes 0 and its comment misdescribes what meet.ts records. The concrete hazard is the caller that does not exist yet — the natural glue is dotsScore(sex, bw, meetTotal ?? 0), which silently converts \"did not total\" into \"scored 0.00 DOTS\" and puts a bombed lifter at the bottom of a leaderboard instead of off it. Builder is making that collapse impossible to write rather than discouraged by a comment. Published coefficients are off limits — this is a boundary fix, not a math fix."
+      "note": "Built and merged, critic grading now. A bomb-out can no longer be laundered into a 0.00 DOTS score: the null-total path returns an outcome carrying no score field at all — not 0, and deliberately not an optional score, since that would let ?? 0 compile one level up — and a total of exactly 0 is rejected outright, so the natural glue finalMeetTotal(state) ?? 0 throws instead of ranking a bombed lifter last. A type guard builds leaderboards that leave a bombed lifter OFF rather than sorting them to the bottom. Published coefficients byte-identical. The builder flagged its own scope drift honestly: tightening the rounding and formatting helpers to refuse a score of 0 touches two functions the task did not name, and the critic has been asked to rule on whether that is truthful or overreach."
     }
   ]
 }
