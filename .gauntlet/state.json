@@ -8,10 +8,16 @@
   },
   "blockers": [
     {
+      "severity": "method",
+      "title": "Twelve blind checks so far, and the pattern is always the same",
+      "body": "Every one measured a proxy rather than the claim: a property test whose generator never produced the failing case, a bound the unfixed behaviour already satisfied, a hash standing in for a picture, a BigInt re-derivation checking the formula instead of the digits it printed. None were sloppiness; each was structurally unable to observe what it was written to observe.",
+      "consequence": "Mutation testing is now the default ask on every dispatch — break the behaviour, watch the test fail, restore, report the output. It has caught four in the last few hours that reading could not. The harness itself is now in scope for the same treatment: evidence bundles stamp their commit, and the progress page says so when a named screenshot is missing rather than quietly showing nothing."
+    },
+    {
       "severity": "state of the build",
-      "title": "There is no app yet — App.tsx is still the render spike",
-      "body": "Verified against the repo, not assumed: 565 tests pass across four pure game-math modules and the sprite system, tsc is clean, and nothing under src/ is imported by App.tsx. The entry point is still the Skia smoke test written on day one.",
-      "consequence": "Everything built so far is correct library code with no way to play it. Once the last two pure modules land, the queue turns to the lift input mechanic and the daily session loop, which is what turns this into something openable. GDD §10 puts the lift mechanic first for exactly this reason."
+      "title": "The app is playable, and the harness that proved it was itself blind",
+      "body": "App.tsx imports LiftScreen and a rep can be played in the browser — the day-one Skia spike is gone. But the tool built to prove the lift animates heavier never decoded a pixel: it hashed file bytes and compared probe values produced by the code under test. Copying the light screenshots over the maximal ones, with both manifests untouched, still made it report that the maximal attempt animates heavier. A renderer that drew nothing would have passed it.",
+      "consequence": "That is the twelfth check this run that could not fail if the thing it named were deleted, and the worst, because everything downstream trusted it — including a status report I had already given. The heavier-at-maximal claim now rests on a critic's own inspection of the crops, which is a different and real basis: bar bend 3 against 1, strain climbing 0 to 3 against flat 0, ascent 69 ticks against 38. A builder is making the tool decode pixels and adding mutants that freeze the sprite while leaving the bar-path trace live."
     },
     {
       "severity": "resolved",
