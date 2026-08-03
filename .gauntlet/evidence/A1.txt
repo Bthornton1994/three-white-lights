@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece A1
-generated 2026-08-03T18:01:04.222Z
+generated 2026-08-03T18:47:39.444Z
 repo /home/user/three-white-lights
-commit 2a86028d76e0c92c6ed75ea7ad67faa6270b00bb
+commit d8869104a8102aa65948d570cc93d55ce693c7ba
 working tree clean (ignoring .gauntlet/ run artefacts)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -18,18 +18,18 @@ $ npx vitest run --reporter=verbose
 
  RUN  v4.1.10 /home/user/three-white-lights
 
- ✓ src/game/streak.test.ts > purity contract > strips comments without destroying the code (sanity check for the scans below) 3ms
+ ✓ src/game/streak.test.ts > purity contract > strips comments without destroying the code (sanity check for the scans below) 10ms
  ✓ src/game/streak.test.ts > purity contract > imports nothing at all, so it cannot import React 1ms
  ✓ src/game/streak.test.ts > purity contract > never reads a clock 1ms
  ✓ src/game/streak.test.ts > purity contract > never uses randomness 0ms
  ✓ src/game/streak.test.ts > purity contract > has no ambient side-effect surface (no process, no globalThis) 1ms
- ✓ src/game/streak.test.ts > purity contract > calls a Recovery Day a Recovery Day — no "token", "freeze", "shield" or "save" API 1ms
- ✓ src/game/streak.test.ts > purity contract > exposes no auto-apply path 1ms
+ ✓ src/game/streak.test.ts > purity contract > calls a Recovery Day a Recovery Day — no "token", "freeze", "shield" or "save" API 2ms
+ ✓ src/game/streak.test.ts > purity contract > exposes no auto-apply path 0ms
  ✓ src/game/streak.test.ts > civil day arithmetic > matches an independent reference implementation on known dates 1ms
- ✓ src/game/streak.test.ts > civil day arithmetic > agrees with Date.UTC across three centuries of month starts 121ms
- ✓ src/game/streak.test.ts > civil day arithmetic > round-trips every day across a decade 58ms
- ✓ src/game/streak.test.ts > civil day arithmetic > consecutive calendar dates are always exactly one day apart 5ms
- ✓ src/game/streak.test.ts > civil day arithmetic > accepts real leap days and rejects fake ones 2ms
+ ✓ src/game/streak.test.ts > civil day arithmetic > agrees with Date.UTC across three centuries of month starts 112ms
+ ✓ src/game/streak.test.ts > civil day arithmetic > round-trips every day across a decade 61ms
+ ✓ src/game/streak.test.ts > civil day arithmetic > consecutive calendar dates are always exactly one day apart 6ms
+ ✓ src/game/streak.test.ts > civil day arithmetic > accepts real leap days and rejects fake ones 1ms
  ✓ src/game/streak.test.ts > civil day arithmetic > rejects impossible dates 0ms
  ✓ src/game/streak.test.ts > civil day arithmetic > rejects non-integer day indices and offsets 0ms
  ✓ src/game/streak.test.ts > the day boundary > puts an hour before the rollover in the previous streak day 0ms
@@ -43,18 +43,18 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > sets the longest repairable absence to the grace plus the consecutive-use limit 1ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > charges only the days past the grace still left on this absence 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > spends the grace once per absence: a trained day refills it, a Recovery Day does not 1ms
- ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > counts the grace off the covered days one for one, at every offset 1ms
+ ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > counts the grace off the covered days one for one, at every offset 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > pays milestones at 7 / 30 / 100 days, 1 each 1ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > pays 1 per achievement 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > keeps the Gym Empire drop chance a probability, even though this module never rolls it 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > puts the day rollover on a whole hour of the clock 0ms
- ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > reads free-path grant amounts off the economy table, not off the caller 1ms
+ ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > reads free-path grant amounts off the economy table, not off the caller 0ms
  ✓ src/game/streak.test.ts > a new lifter > starts with no run and the signup grant already credited 0ms
  ✓ src/game/streak.test.ts > a new lifter > shows "no active streak" until the first session 0ms
  ✓ src/game/streak.test.ts > a new lifter > has no offer and no deadline before the first session 0ms
  ✓ src/game/streak.test.ts > streak increments > counts 1 on the first training day 0ms
- ✓ src/game/streak.test.ts > streak increments > increments by exactly one per consecutive day 1ms
- ✓ src/game/streak.test.ts > streak increments > reports the run as alive on the next day, with the deadline 1ms
+ ✓ src/game/streak.test.ts > streak increments > increments by exactly one per consecutive day 2ms
+ ✓ src/game/streak.test.ts > streak increments > reports the run as alive on the next day, with the deadline 0ms
  ✓ src/game/streak.test.ts > streak increments > refuses a second session on the same day 0ms
  ✓ src/game/streak.test.ts > streak increments > refuses a day already accounted for 0ms
  ✓ src/game/streak.test.ts > streak breaks > breaks on a chargeable gap when nothing can cover it 0ms
@@ -100,15 +100,15 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/streak.test.ts > the consecutive-use limit > resets the count on any training day 0ms
  ✓ src/game/streak.test.ts > a long absence > cannot be repaired on the day the player comes back, even holding a full bank 0ms
  ✓ src/game/streak.test.ts > a long absence > leaves the bank untouched rather than quietly draining it 0ms
- ✓ src/game/streak.test.ts > a long absence > THE ABSENCE-LENGTH TABLE: survival does not depend on how often the app is opened 3ms
- ✓ src/art/spriteMarks.test.ts > the mark table > uses only legend characters 16ms
- ✓ src/art/spriteMarks.test.ts > the mark table > keeps every map rectangular, so a row cannot silently shift 3ms
+ ✓ src/game/streak.test.ts > a long absence > THE ABSENCE-LENGTH TABLE: survival does not depend on how often the app is opened 6ms
+ ✓ src/art/spriteMarks.test.ts > the mark table > uses only legend characters 34ms
+ ✓ src/art/spriteMarks.test.ts > the mark table > keeps every map rectangular, so a row cannot silently shift 4ms
  ✓ src/art/spriteMarks.test.ts > the mark table > names every mark uniquely 0ms
- ✓ src/art/spriteMarks.test.ts > the mark table > paints only allocated LIFTER-bank colours 2ms
- ✓ src/art/spriteMarks.test.ts > the mark table > never lets a mark paint over an interior outline 3ms
- ✓ src/art/spriteMarks.test.ts > the mark table > resolves every anchor it names to a finite integer point 162ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > renders at the committed internal resolution 35ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > never references an unallocated palette index 361ms
+ ✓ src/art/spriteMarks.test.ts > the mark table > paints only allocated LIFTER-bank colours 1ms
+ ✓ src/art/spriteMarks.test.ts > the mark table > never lets a mark paint over an interior outline 2ms
+ ✓ src/art/spriteMarks.test.ts > the mark table > resolves every anchor it names to a finite integer point 185ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > renders at the committed internal resolution 70ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > never references an unallocated palette index 524ms
  ✓ src/game/streak.test.ts > a long absence > costs the same whether it is paid off in one go or a day at a time 0ms
  ✓ src/game/streak.test.ts > a long absence > ends the run with Recovery Days still in the bank: the guardrail bit, not the balance 0ms
  ✓ src/game/streak.test.ts > a long absence > WHAT OPENING THE APP DOES STILL CHANGE: a spend can be wasted on an absence that was never saveable 0ms
@@ -118,11 +118,11 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/streak.test.ts > the first-break tutorial moment > flags the first offer, and only the first — declined 0ms
  ✓ src/game/streak.test.ts > the first-break tutorial moment > is an offer, not an auto-save: the state is unchanged until it is answered 0ms
  ✓ src/game/streak.test.ts > the first-break tutorial moment > is not burned by a break that could never have been saved 0ms
- ✓ src/game/streak.test.ts > the first-break tutorial moment > fires exactly once across a long simulated history 0ms
+ ✓ src/game/streak.test.ts > the first-break tutorial moment > fires exactly once across a long simulated history 1ms
  ✓ src/game/streak.test.ts > streak milestones > pays out at 7, 30 and 100 trained days, once each 0ms
- ✓ src/game/streak.test.ts > streak milestones > pays each milestone once in a lifetime, so breaking and rebuilding cannot farm them 0ms
+ ✓ src/game/streak.test.ts > streak milestones > pays each milestone once in a lifetime, so breaking and rebuilding cannot farm them 1ms
  ✓ src/game/streak.test.ts > streak milestones > still pays a milestone the first time a rebuilt run passes the previous best 0ms
- ✓ src/game/streak.test.ts > streak milestones > cannot be reached faster by spending Recovery Days 0ms
+ ✓ src/game/streak.test.ts > streak milestones > cannot be reached faster by spending Recovery Days 1ms
  ✓ src/game/streak.test.ts > streak milestones > never counts a Recovery Day as a training day 0ms
  ✓ src/game/streak.test.ts > what a purchased Recovery Day can reach > persists nothing outside the declared streak-fact allowlist 0ms
  ✓ src/game/streak.test.ts > what a purchased Recovery Day can reach > reports nothing outside the declared spend allowlist 0ms
@@ -131,109 +131,123 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/streak.test.ts > what a purchased Recovery Day can reach > spends a purchased Recovery Day to exactly the same effect as an earned one 0ms
  ✓ src/game/streak.test.ts > what a purchased Recovery Day can reach > does not record where a Recovery Day came from 0ms
  ✓ src/game/streak.test.ts > what a purchased Recovery Day can reach > cannot buy a longer streak, only a surviving one 1ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > training today beats skipping today, step by step, from any live state 3ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > showing up 365 days running never breaks, never costs, and never errors 17ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > PROPERTY, EXHAUSTIVE, DECLINE-ONLY: over every 10-day history in which no offer is ever accepted, training an extra day never loses ground 455ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > keeps the character out of the STAGE bank entirely 5ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > draws something substantial but does not fill the cell 5ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > leaves a transparent margin, so nothing is clipped by the cell 70ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > outlines the whole silhouette: no fill pixel touches open space 65ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > is deterministic 6ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > training today beats skipping today, step by step, from any live state 4ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > showing up 365 days running never breaks, never costs, and never errors 18ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > PROPERTY, EXHAUSTIVE, DECLINE-ONLY: over every 10-day history in which no offer is ever accepted, training an extra day never loses ground 666ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > keeps the character out of the STAGE bank entirely 6ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > draws something substantial but does not fill the cell 4ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > leaves a transparent margin, so nothing is clipped by the cell 84ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > outlines the whole silhouette: no fill pixel touches open space 103ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > PROPERTY, DECLINE-ONLY: holds over long randomised histories with grants landing mid-run 35ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > THE OLD MINIMAL CASE IS FIXED: single missed days no longer cost anything, so it cannot happen 0ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > KNOWN GAP, MINIMAL CASE: a player who accepts every offer can still be left worse off by training more 0ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > KNOWN GAP AT REALISTIC SCALE: 37 trained days end on a 37-day streak, 38 end on an 18-day one 1ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > KNOWN GAP HAS NO CEILING: the deficit is exactly the run the diligent player loses, at any run length 65ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > is deterministic 9ms
  ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > compares the levels the animation actually produces, not the endpoints 0ms
- ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > changes a large, counted number of BODY pixels between a light rep and a maximal one 10ms
- ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > still clears the floor with the entire head masked out — it is not a face swap 28ms
- ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > holds that floor at every authored depth step, not just at the sticking point 166ms
- ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > gives every authored strain rung a body of its own 13ms
- ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > lets forward bar drift reach the pixels of a rep that is ALREADY at maximum strain 4ms
- ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > does the same on the maximal rep as it is actually built 4ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > changes a large, counted number of BODY pixels between a light rep and a maximal one 20ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > still clears the floor with the entire head masked out — it is not a face swap 33ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > holds that floor at every authored depth step, not just at the sticking point 219ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > gives every authored strain rung a body of its own 19ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > lets forward bar drift reach the pixels of a rep that is ALREADY at maximum strain 5ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > does the same on the maximal rep as it is actually built 5ms
  ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > measures the body and only the body 5ms
  ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > deforms in the direction the model claims: hips up, knees in, elbows in 5ms
- ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the bar gets heavier at the same pose 4ms
- ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the sleeves bend 4ms
+ ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the bar gets heavier at the same pose 6ms
+ ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the sleeves bend 5ms
  ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the bar tilts 4ms
- ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > does not render a mirror image of itself 4ms
- ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > holds more highlight pixels than the whole barbell does, at every load 91ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > puts a large, counted number of authored pixels into every frame 935ms
- ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > reaches the top of the skin ramp over a real area, not a one-pixel sliver 8ms
- ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > carries that range BELOW the belt as well as above it 37ms
- ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > keeps the collar a dim block with one specular pixel, not a bright block 4ms
+ ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > does not render a mirror image of itself 8ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > holds more highlight pixels than the whole barbell does, at every load 102ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > puts a large, counted number of authored pixels into every frame 1416ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > reaches the top of the skin ramp over a real area, not a one-pixel sliver 9ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > carries that range BELOW the belt as well as above it 56ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > keeps the collar a dim block with one specular pixel, not a bright block 3ms
  ✓ src/art/lifterSprite.test.ts > bar geometry > bends nothing at the centre and exactly the bend amount at the tip 0ms
  ✓ src/art/lifterSprite.test.ts > bar geometry > keeps the shaft between the sleeves nearly flat 0ms
  ✓ src/art/lifterSprite.test.ts > bar geometry > tilts linearly and antisymmetrically 0ms
  ✓ src/art/lifterSprite.test.ts > bar geometry > spans a real competition bar 0ms
- ✓ src/art/lifterSprite.test.ts > bar geometry > keeps the bar glued to the shoulders at every depth 9ms
- ✓ src/art/lifterSprite.test.ts > bar geometry > drops the bar the distance a real squat drops it 4ms
+ ✓ src/art/lifterSprite.test.ts > bar geometry > keeps the bar glued to the shoulders at every depth 10ms
+ ✓ src/art/lifterSprite.test.ts > bar geometry > drops the bar the distance a real squat drops it 6ms
  ✓ src/art/lifterSprite.test.ts > depth is honest > puts the hip below the knee at the bottom, and above it standing 0ms
- ✓ src/art/lifterSprite.test.ts > depth is honest > never moves the bar by one pixel at any strain or pitch level 314ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > puts most of those pixels on FLESH, not on worn kit 859ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > lands every anatomy mark on most of the pixels it asks for 771ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > has no dead mark: every one lands somewhere in the pose space 786ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > PROPERTY, DECLINE-ONLY: holds over long randomised histories with grants landing mid-run 32ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > THE OLD MINIMAL CASE IS FIXED: single missed days no longer cost anything, so it cannot happen 1ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > KNOWN GAP, MINIMAL CASE: a player who accepts every offer can still be left worse off by training more 0ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > KNOWN GAP AT REALISTIC SCALE: 37 trained days end on a 37-day streak, 38 end on an 18-day one 1ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > KNOWN GAP HAS NO CEILING: the deficit is exactly the run the diligent player loses, at any run length 65ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > KNOWN GAP, EXHAUSTIVE MAXIMISATION: the worst deficit grows with the length of the history rather than settling 3224ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > REGRESSION GUARD (this already passes): N Recovery Days used never ends below a player who trained fewer days and used none 68ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > BOUND THAT DOES HOLD: on your own calendar, accepting every offer is never worse than declining every offer 124ms
- ✓ src/art/lifterSprite.test.ts > depth is honest > never lets strain raise a hip that was below the knee back above it 2ms
+ ✓ src/art/lifterSprite.test.ts > depth is honest > never moves the bar by one pixel at any strain or pitch level 424ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > puts most of those pixels on FLESH, not on worn kit 948ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > lands every anatomy mark on most of the pixels it asks for 989ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > has no dead mark: every one lands somewhere in the pose space 900ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > KNOWN GAP, EXHAUSTIVE MAXIMISATION: the worst deficit grows with the length of the history rather than settling 4041ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > REGRESSION GUARD (this already passes): N Recovery Days used never ends below a player who trained fewer days and used none 103ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > BOUND THAT DOES HOLD: on your own calendar, accepting every offer is never worse than declining every offer 158ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > lands the always-on objects on EVERY frame, not just somewhere 1033ms
+ ✓ src/art/lifterSprite.test.ts > depth is honest > never lets strain raise a hip that was below the knee back above it 3ms
  ✓ src/art/lifterSprite.test.ts > depth is honest > never lets the knees cave inside the hips, at any strain 5ms
  ✓ src/art/lifterSprite.test.ts > depth is honest > descends monotonically along both pose ladders 1ms
  ✓ src/art/lifterSprite.test.ts > depth is honest > draws the way up differently from the way down at the same depth 4ms
- ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > upscales by exact pixel replication 3039ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > KNOWN GAP, MEASURED: how many calendars an extra training day makes worse, under both app-opening models 397ms
+ ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > upscales by exact pixel replication 3718ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > KNOWN GAP, MEASURED: how many calendars an extra training day makes worse, under both app-opening models 416ms
  ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > A STREAK READ OFF AN UNOPENED STATE IS STALE, so two states settled to different days must not be compared 1ms
  ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > but training itself never costs a Recovery Day, in any history 2ms
  ✓ src/game/streak.test.ts > read models > never mutate the state they are handed 0ms
  ✓ src/game/streak.test.ts > read models > never mutate the state a transition is handed 0ms
  ✓ src/game/streak.test.ts > read models > project the last saveable day exactly, partway through an absence as well as at the start of one 1ms
  ✓ src/game/streak.test.ts > read models > agree with each other about whether an offer exists, and about the grace 2ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > lands the always-on objects on EVERY frame, not just somewhere 949ms
- ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > introduces no colour that is not in the palette 119ms
- ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > produces no partial alpha anywhere — there is no anti-aliasing 217ms
+ ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > introduces no colour that is not in the palette 148ms
+ ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > produces no partial alpha anywhere — there is no anti-aliasing 244ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > gives the face a mouth and both eyes at every depth 849ms
  ✓ src/game/lift.test.ts > vocabulary > lists every member of each enum exactly once 3ms
  ✓ src/game/lift.test.ts > vocabulary > has copy for every outcome, miss reason, grade and phase 1ms
  ✓ src/game/lift.test.ts > purity > has no clock and no global randomness in its source 2ms
- ✓ src/game/lift.test.ts > purity > does not mutate the state it is given 11ms
- ✓ src/game/lift.test.ts > purity > replays a rep identically from the same seed and script 15ms
- ✓ src/game/lift.test.ts > purity > actually uses the seed, so the determinism test above is not vacuous 6ms
- ✓ src/game/lift.test.ts > purity > always terminates, over randomised input scripts 314ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > gives the face a mouth and both eyes at every depth 795ms
+ ✓ src/game/lift.test.ts > purity > does not mutate the state it is given 10ms
+ ✓ src/game/lift.test.ts > purity > replays a rep identically from the same seed and script 12ms
+ ✓ src/game/lift.test.ts > purity > actually uses the seed, so the determinism test above is not vacuous 4ms
+ ✓ src/game/lift.test.ts > purity > always terminates, over randomised input scripts 321ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > finds a sleeve, a thigh and a shin to compare at every pose 919ms
  ✓ src/game/lift.test.ts > gradeTiming > is 1 at the ideal moment and 0 at the edge 0ms
- ✓ src/game/lift.test.ts > gradeTiming > never rises as the input gets further from the ideal moment 7ms
+ ✓ src/game/lift.test.ts > gradeTiming > never rises as the input gets further from the ideal moment 2ms
  ✓ src/game/lift.test.ts > gradeTiming > grades everything outside the window as missed 0ms
  ✓ src/game/lift.test.ts > gradeTiming > reaches every grade, and each one only on its own side 1ms
  ✓ src/game/lift.test.ts > ascentDemand > peaks where the sprite system puts the sticking point 1ms
  ✓ src/game/lift.test.ts > ascentDemand > rises with load everywhere in the range 6ms
  ✓ src/game/lift.test.ts > ascentDemand > makes being buried strictly harder 0ms
  ✓ src/game/lift.test.ts > ascentDemand > exceeds what the lifter has at a limit and not at a warm-up 0ms
- ✓ src/game/lift.test.ts > load-derived timings > descends slower, braces longer and holds longer under load 0ms
- ✓ src/game/lift.test.ts > load-derived timings > never returns a zero-length phase, even at absurd loads 1ms
+ ✓ src/game/lift.test.ts > load-derived timings > descends slower, braces longer and holds longer under load 1ms
+ ✓ src/game/lift.test.ts > load-derived timings > never returns a zero-length phase, even at absurd loads 2ms
  ✓ src/game/lift.test.ts > isGrind > is true past either threshold and false below both 0ms
- ✓ src/game/lift.test.ts > outcome space > produces all three outcomes across the load and timing space 310ms
- ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > never out-values the bare thigh it is worn on, anywhere in the pose space 982ms
+ ✓ src/game/lift.test.ts > outcome space > produces all three outcomes across the load and timing space 360ms
  ✓ src/game/lift.test.ts > outcome space > reaches every miss reason 121ms
- ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > keeps a real gap, not a one-step photo finish, at the depths that broke 37ms
- ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > holds the thigh in its band as the femur swings, rather than only at lockout 35ms
+ ✓ src/game/lift.test.ts > outcome space > is decided by the drive input at a limit attempt 4ms
+ ✓ src/game/lift.test.ts > outcome space > lets a light rep through however it is driven 48ms
+ ✓ src/game/lift.test.ts > outcome space > gets harder as the bar gets heavier, measured as makes per sweep 210ms
+ ✓ src/art/spriteMarks.test.ts > marks are stamped after despeckle, and that matters > would lose authored pixels if despeckle ran after them 933ms
+ ✓ src/game/lift.test.ts > outcome space > rewards better drive timing with a faster ascent 4ms
+ ✓ src/game/lift.test.ts > outcome space > punishes a drive thrown before the bar is anywhere near the stick 1ms
+ ✓ src/game/lift.test.ts > outcome space > gives the drive boost only while the player keeps holding 2ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is wider than the input path is imprecise 316ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > carries its authored band and hem, not just a shaded tube 20ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > never out-values the bare leg it is worn on, by area, anywhere in the pose space 803ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is one contiguous band, not scattered ticks 286ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is reachable from every release the depth cue asks for 335ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > keeps the bent leg lit by area, not only at lockout 789ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is won often enough to be a skill test rather than a lottery 306ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > does not get darker when the leg bends 42ms
  ✓ src/art/lifterSprite.test.ts > femur foreshortening > is zero standing and high everywhere below a quarter depth 1ms
  ✓ src/art/lifterSprite.test.ts > femur foreshortening > clamps rather than inverting when the strain deform stretches the thigh 0ms
  ✓ src/art/lifterSprite.test.ts > femur foreshortening > measures its reference length off the drawing rather than a typed number 0ms
- ✓ src/art/lifterSprite.test.ts > inspection layers > fills the stage completely so a sprite always has a floor 1ms
+ ✓ src/art/lifterSprite.test.ts > inspection layers > fills the stage completely so a sprite always has a floor 3ms
  ✓ src/art/lifterSprite.test.ts > inspection layers > grounds the lifter with a shadow that narrows as he descends 1ms
- ✓ src/game/lift.test.ts > outcome space > is decided by the drive input at a limit attempt 3ms
- ✓ src/game/lift.test.ts > outcome space > lets a light rep through however it is driven 60ms
- ✓ src/game/lift.test.ts > outcome space > gets harder as the bar gets heavier, measured as makes per sweep 174ms
- ✓ src/art/spriteMarks.test.ts > marks are stamped after despeckle, and that matters > would lose authored pixels if despeckle ran after them 869ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > keeps the drive boost alive long enough to reach the sticking point 3ms
+ ✓ src/game/lift.test.ts > the load the screen opens on > is one of the loads the screen offers 0ms
+ ✓ src/game/lift.test.ts > the load the screen opens on > has a sticking point at all 0ms
+ ✓ src/game/lift.test.ts > the load the screen opens on > shows the grind even to a player who never presses the drive 1ms
+ ✓ src/game/lift.test.ts > the load the screen opens on > is made by a player who obeys both cues, most of the time 288ms
  ✓ src/game/meet.test.ts > module purity > has no imports at all, so it cannot reach React, I/O or sibling modules 3ms
  ✓ src/game/meet.test.ts > module purity > reads no clock and rolls no dice 1ms
- ✓ src/game/meet.test.ts > module purity > names the CLAUDE.md / GDD §6.3 conflict rather than silently resolving it 3ms
+ ✓ src/game/meet.test.ts > module purity > names the CLAUDE.md / GDD §6.3 conflict rather than silently resolving it 0ms
  ✓ src/game/meet.test.ts > module purity > says what it can and cannot cite for its loading numbers 0ms
- ✓ src/game/meet.test.ts > module purity > labels each loading number as cited or uncited rather than asserting it flatly 0ms
+ ✓ src/game/meet.test.ts > module purity > labels each loading number as cited or uncited rather than asserting it flatly 4ms
  ✓ src/game/meet.test.ts > module purity > says out loud that it does not model plate inventory, rather than implying it does 0ms
  ✓ src/game/meet.test.ts > module purity > builds every sentence that names a legal call in exactly one function 1ms
  ✓ src/game/meet.test.ts > module purity > interpolates no message claiming a weight cannot be loaded 1ms
  ✓ src/game/meet.test.ts > meet structure > runs squat then bench then deadlift 1ms
- ✓ src/game/meet.test.ts > meet structure > allows three attempts per lift, judged by three referees, majority carrying 0ms
+ ✓ src/game/meet.test.ts > meet structure > allows three attempts per lift, judged by three referees, majority carrying 1ms
  ✓ src/game/meet.test.ts > meet structure > opens on the first squat attempt 1ms
  ✓ src/game/meet.test.ts > three-light judging > counts white lights 0ms
  ✓ src/game/meet.test.ts > three-light judging > passes a lift on a majority of white lights 0ms
@@ -246,7 +260,7 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/meet.test.ts > a 9-for-9 meet > totals the best successful attempt on each lift 0ms
  ✓ src/game/meet.test.ts > a 9-for-9 meet > records all nine attempts in order 1ms
  ✓ src/game/meet.test.ts > a 9-for-9 meet > marks every lift complete 0ms
- ✓ src/game/meet.test.ts > a 9-for-9 meet > refuses any further action 1ms
+ ✓ src/game/meet.test.ts > a 9-for-9 meet > refuses any further action 0ms
  ✓ src/game/meet.test.ts > total calculation with mixed makes and misses > uses the best successful attempt per lift and ignores misses 1ms
  ✓ src/game/meet.test.ts > total calculation with mixed makes and misses > keeps the heaviest good lift, not the last one taken 0ms
  ✓ src/game/meet.test.ts > total calculation with mixed makes and misses > takes the heaviest good lift even if the attempts arrive out of order 0ms
@@ -255,7 +269,7 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/meet.test.ts > a running sum is never mistaken for a total > still has NO total once every lift has a good attempt but the meet is live 1ms
  ✓ src/game/meet.test.ts > a running sum is never mistaken for a total > reports no-total, not a number, for a bomb-out that had lifts on the board 0ms
  ✓ src/game/meet.test.ts > a running sum is never mistaken for a total > mid-lift, before the deadlift opener, there is no total either 0ms
- ✓ src/game/meet.test.ts > bombing out > ends the meet on three missed squats with no total 1ms
+ ✓ src/game/meet.test.ts > bombing out > ends the meet on three missed squats with no total 4ms
  ✓ src/game/meet.test.ts > bombing out > ends the meet on the bench and banks nothing toward a total 1ms
  ✓ src/game/meet.test.ts > bombing out > ends the meet on the deadlift with no total despite squat and bench 1ms
  ✓ src/game/meet.test.ts > bombing out > is distinct from a completed meet, not a total of zero 0ms
@@ -271,41 +285,70 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/meet.test.ts > the plate ladder the engine refuses to model > confirms the retrieved lb kit is not generated by its smallest pair 0ms
  ✓ src/game/meet.test.ts > the plate ladder the engine refuses to model > loads 47.5 lb on a 45 lb bar, and the engine does not contradict that 0ms
  ✓ src/game/meet.test.ts > the plate ladder the engine refuses to model > runs the pound meet its own source describes, which the previous version rejected 0ms
- ✓ src/game/meet.test.ts > the plate ladder the engine refuses to model > never refuses a weight the retrieved lb kit really loads, for an equipment reason 45ms
- ✓ src/game/meet.test.ts > the plate ladder the engine refuses to model > never refuses a weight the retrieved kg kit really loads, for an equipment reason 32ms
- ✓ src/game/lift.test.ts > outcome space > rewards better drive timing with a faster ascent 4ms
- ✓ src/game/lift.test.ts > outcome space > punishes a drive thrown before the bar is anywhere near the stick 1ms
- ✓ src/game/lift.test.ts > outcome space > gives the drive boost only while the player keeps holding 2ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is wider than the input path is imprecise 393ms
+ ✓ src/game/meet.test.ts > the plate ladder the engine refuses to model > never refuses a weight the retrieved lb kit really loads, for an equipment reason 64ms
+ ✓ src/game/meet.test.ts > the plate ladder the engine refuses to model > never refuses a weight the retrieved kg kit really loads, for an equipment reason 54ms
  ✓ src/game/meet.test.ts > the plate ladder the engine refuses to model > accepts every declaration-grid weight both retrieved kits can load 8ms
  ✓ src/game/meet.test.ts > the plate ladder the engine refuses to model > is over-permissive past the kit, and that is the disclosed cost 0ms
  ✓ src/game/meet.test.ts > legal declaration, with no opinion on plates > keeps a declaration grid that is a rule about numbers, not about discs 0ms
  ✓ src/game/meet.test.ts > legal declaration, with no opinion on plates > refuses 201 and 200.5 as calls, making no claim about the bar either way 0ms
- ✓ src/game/meet.test.ts > legal declaration, with no opinion on plates > names the rule that refused, and points at legal calls instead of at the plates 1ms
+ ✓ src/game/meet.test.ts > legal declaration, with no opinion on plates > names the rule that refused, and points at legal calls instead of at the plates 0ms
  ✓ src/game/meet.test.ts > legal declaration, with no opinion on plates > lets a federation that calls attempts on the half-kilo declare that once, for the whole meet 0ms
  ✓ src/game/meet.test.ts > legal declaration, with no opinion on plates > floors at the bar and grids from zero, so the lightest call can be heavier than the bar 1ms
- ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > after a good lift, offers only the minimum increase — not the repeat, not a decrease 3ms
- ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > after a miss, offers the repeat as the call below 4ms
- ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > steers a decrease to a weight that is still legal instead of just refusing it 0ms
+ ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > after a good lift, offers only the minimum increase — not the repeat, not a decrease 2ms
+ ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > after a miss, offers the repeat as the call below 2ms
+ ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > steers a decrease to a weight that is still legal instead of just refusing it 2ms
  ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > steers a repeat-after-a-good-lift to the next legal call 0ms
  ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > steers a sub-minimum jump, and names the repeat only when a repeat is legal 6ms
  ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > steers a below-the-bar weight to what is legal now, not to the bar 1ms
  ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > uses the bar of the lift on deck, not the one just finished 0ms
  ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > names nothing at all when it cannot verify a weight 0ms
- ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > sweeps every refusal a meet can produce and checks each named weight against the engine 185ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is one contiguous band, not scattered ticks 321ms
+ ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > sweeps every refusal a meet can produce and checks each named weight against the engine 191ms
+ ✓ src/game/lift.test.ts > the load the screen opens on > leaves the limit attempt on the screen, and harder than the default 590ms
+ ✓ src/game/lift.test.ts > depth > calls a high squat, however well the bar was driven 1ms
+ ✓ src/game/lift.test.ts > depth > passes a squat that reaches legal depth 1ms
+ ✓ src/game/lift.test.ts > depth > buries a player who never lets go 0ms
+ ✓ src/game/lift.test.ts > depth > never opens the depth cue above legal depth, at any load 7ms
+ ✓ src/game/lift.test.ts > depth > reports a depth window narrower than asked for only when it has to 0ms
+ ✓ src/game/lift.test.ts > depth > makes a deeper reversal a harder ascent 3ms
+ ✓ src/game/lift.test.ts > depth > does not make a high squat cheaper than a legal one 4ms
+ ✓ src/game/lift.test.ts > the sticking point > is where a real rep actually stalls 1ms
+ ✓ src/game/lift.test.ts > the sticking point > drifts the bar forward most where it stalls, and more under load 1ms
+ ✓ src/game/lift.test.ts > the sticking point > shakes and tilts the bar only when the lifter is losing 1ms
+ ✓ src/game/lift.test.ts > the sticking point > bows the bar harder under load 2ms
+ ✓ src/game/lift.test.ts > fatigue integration > tightens both windows when fatigued and widens them when primed 2ms
+ ✓ src/game/lift.test.ts > fatigue integration > tightens the window further deeper into a session 1ms
+ ✓ src/game/lift.test.ts > fatigue integration > maps every bar-speed cue band to a capacity, worst band slowest 0ms
+ ✓ src/game/lift.test.ts > fatigue integration > gives a primed lifter more output than a fatigued one 0ms
+ ✓ src/game/lift.test.ts > fatigue integration > leaves a fatigued lifter a strictly narrower band of makes 187ms
+ ✓ src/game/lift.test.ts > fatigue integration > never hands a fatigue number back to the caller 2ms
+ ✓ src/game/lift.test.ts > fatigue integration > exports nothing whose name suggests a fatigue readout 1ms
+ ✓ src/game/lift.test.ts > fatigue integration > does not resolve the rep against a random roll 1ms
+ ✓ src/game/lift.test.ts > read models > emits every event kind it declares 4ms
+ ✓ src/game/lift.test.ts > read models > has a haptic pattern for every event that should be felt 1ms
+ ✓ src/game/lift.test.ts > read models > feels a perfect drive differently from a scruffy one 0ms
+ ✓ src/game/lift.test.ts > read models > reaches every phase across the reps a player can produce 1ms
+ ✓ src/game/lift.test.ts > read models > shows a different prompt for every phase 0ms
+ ✓ src/game/lift.test.ts > read models > switches the ascent prompt when the cue opens 0ms
+ ✓ src/game/lift.test.ts > read models > reports cue progress as 0 at the open and 1 at the ideal moment 1ms
+ ✓ src/game/lift.test.ts > read models > reports a window whose width matches the ticks it spans 0ms
+ ✓ src/game/lift.test.ts > createLift and stepLift > starts standing, braced and untouched 0ms
+ ✓ src/game/lift.test.ts > createLift and stepLift > refuses a nonsense config 0ms
+ ✓ src/game/lift.test.ts > createLift and stepLift > stops advancing once resolved, and stops re-emitting events 1ms
+ ✓ src/game/lift.test.ts > createLift and stepLift > starts the descent on its own if the player never presses 3ms
+ ✓ src/game/lift.test.ts > createLift and stepLift > carries the resolution through to the final state 2ms
+ ✓ src/game/lift.test.ts > createLift and stepLift > records one timing per cue the player answered 3ms
+ ✓ src/game/lift.test.ts > createLift and stepLift > keeps every reported number finite and serialisable 21ms
  ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > offers the same weights `AttemptContext` does, so the UI and the message agree 1ms
  ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > reports no floor the engine refuses, even when the minimum increase is finer than float noise 1ms
- ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > agrees with a brute-force scan of the grid, on both sides, from every card state 468ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is reachable from every release the depth cue asks for 345ms
+ ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > agrees with a brute-force scan of the grid, on both sides, from every card state 662ms
  ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > answers "no" rather than "yes" for every state where there is nothing to declare 1ms
- ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > agrees with declareAttempt on every weight, from every card state 105ms
+ ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > agrees with declareAttempt on every weight, from every card state 171ms
  ✓ src/game/meet.test.ts > a hint never names a weight the engine then refuses > keeps the probe bound a named constant rather than a magic number 0ms
  ✓ src/game/meet.test.ts > loadable weights > builds the minimum from a named bar weight and a named collar weight 0ms
  ✓ src/game/meet.test.ts > loadable weights > rejects an attempt lighter than the bar and collars 0ms
  ✓ src/game/meet.test.ts > loadable weights > honours a per-lift bar weight 0ms
  ✓ src/game/meet.test.ts > loadable weights > rounds onto the declaration grid, never below the bar 0ms
- ✓ src/game/meet.test.ts > loadable weights > always rounds to something the engine will actually accept 3ms
+ ✓ src/game/meet.test.ts > loadable weights > always rounds to something the engine will actually accept 5ms
  ✓ src/game/meet.test.ts > loadable weights > rejects nonsense meet rules loudly instead of skipping the check 1ms
  ✓ src/game/meet.test.ts > loadable weights > no longer rejects a configuration for disagreeing with a plate grid it does not have 0ms
  ✓ src/game/meet.test.ts > meet rules are opaque > hands the values back through meetLoadingRules, as a copy 0ms
@@ -333,7 +376,7 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/meet.test.ts > passing an attempt > uses up the attempt and moves on 0ms
  ✓ src/game/meet.test.ts > passing an attempt > closes the lift when the last attempt is passed 0ms
  ✓ src/game/meet.test.ts > passing an attempt > leaves a lifter with no total if every attempt on a lift is passed 0ms
- ✓ src/game/meet.test.ts > passing an attempt > does not count a passed attempt toward the best lift 1ms
+ ✓ src/game/meet.test.ts > passing an attempt > does not count a passed attempt toward the best lift 0ms
  ✓ src/game/meet.test.ts > attempt context > floors the opener at the bar and collars and nothing else 0ms
  ✓ src/game/meet.test.ts > attempt context > after a good lift, requires a heavier attempt 0ms
  ✓ src/game/meet.test.ts > attempt context > after a miss, allows the same weight again 0ms
@@ -360,35 +403,29 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/meet.test.ts > immutability > never mutates the state it is given 0ms
  ✓ src/game/meet.test.ts > immutability > copies the rules it is given instead of aliasing them 0ms
  ✓ src/game/meet.test.ts > immutability > replays deterministically — same inputs, same meet 0ms
- ✓ src/game/meet.test.ts > meet card > exposes an attempt-by-attempt breakdown for the recap 1ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is won often enough to be a skill test rather than a lottery 320ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > keeps the drive boost alive long enough to reach the sticking point 3ms
- ✓ src/game/lift.test.ts > the load the screen opens on > is one of the loads the screen offers 0ms
- ✓ src/game/lift.test.ts > the load the screen opens on > has a sticking point at all 0ms
- ✓ src/game/lift.test.ts > the load the screen opens on > shows the grind even to a player who never presses the drive 2ms
- ✓ src/game/lift.test.ts > the load the screen opens on > is made by a player who obeys both cues, most of the time 290ms
- ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > exports exactly the agreed runtime surface, and nothing that names a level 2ms
+ ✓ src/game/meet.test.ts > meet card > exposes an attempt-by-attempt breakdown for the recap 0ms
+ ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > exports exactly the agreed runtime surface, and nothing that names a level 3ms
  ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > exports no identifier whose name suggests a readable fatigue level 1ms
  ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > every number-returning export is anchored to a caller-supplied quantity 2ms
  ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > SessionFeel exposes only qualitative fields; the numeric half is not nameable 1ms
- ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > a serialised SessionFeel carries no fatigue-derived number 20ms
+ ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > a serialised SessionFeel carries no fatigue-derived number 29ms
  ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > FatigueState is a raw-input ledger and round-trips through JSON 1ms
  ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > the readiness readout is identical across wildly different fatigue histories 3ms
  ✓ src/game/fatigue.test.ts > no fatigue meter: the public API offers no fatigue level > rejects a hand-built SessionFeel, so the hidden half cannot be forged in a literal 0ms
  ✓ src/game/fatigue.test.ts > daily engagement is never punished > offers a free session on every lift 1ms
- ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: taking the free session is never worse than skipping, over a long tail 223ms
- ✓ src/game/fatigue.test.ts > daily engagement is never punished > the free session is strictly better than skipping when there is fatigue to flush 0ms
- ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: a free session can never cause an injury, however fatigued the player is 6ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: taking the free session is never worse than skipping, over a long tail 266ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > the free session is strictly better than skipping when there is fatigue to flush 1ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: a free session can never cause an injury, however fatigued the player is 10ms
  ✓ src/game/fatigue.test.ts > daily engagement is never punished > a free session cannot injure even after a long run of maximal sessions 0ms
- ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: showing up never causes an injury that skipping would have avoided 8ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: showing up never causes an injury that skipping would have avoided 13ms
  ✓ src/game/fatigue.test.ts > daily engagement is never punished > reads work, never attendance: no streak or consecutive-day term exists 2ms
- ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: an injury can never make a session impossible, so it cannot break a streak 9ms
+ ✓ src/game/fatigue.test.ts > daily engagement is never punished > property: an injury can never make a session impossible, so it cannot break a streak 8ms
  ✓ src/game/fatigue.test.ts > daily engagement is never punished > an injury carries no stat-loss field 0ms
- ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > property: a setback is always inside the 2-3 day band, or shorter with physio 24ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > property: a setback is always inside the 2-3 day band, or shorter with physio 44ms
  ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > physio takes a whole day off the same setback, down to the floor and no further (GDD §5.4) 1ms
- ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > is at most INJURY_MAX_CHANCE_PER_SESSION even on the worst possible day 3ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > is at most INJURY_MAX_CHANCE_PER_SESSION even on the worst possible day 6ms
  ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > an ordinary hard session carries no injury chance, however many days in a row 2ms
- ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > technique points reduce risk but never remove it entirely (GDD §2.3) 3ms
+ ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > technique points reduce risk but never remove it entirely (GDD §2.3) 4ms
  ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > starts the day after the session, so the completed session is never retro-capped 0ms
  ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > counts down and then disappears 0ms
  ✓ src/game/fatigue.test.ts > injury setbacks are rare, short and soft (GDD §3.5) > caps volume on the affected lift only, and leaves other lifts alone 0ms
@@ -398,26 +435,36 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/fatigue.test.ts > fatigue washes out on the same-day / next-day horizon (GDD §3.4) > a hard session is felt tomorrow 0ms
  ✓ src/game/fatigue.test.ts > fatigue washes out on the same-day / next-day horizon (GDD §3.4) > decays monotonically and reaches baseline exactly, well inside the ledger horizon 1ms
  ✓ src/game/fatigue.test.ts > fatigue washes out on the same-day / next-day horizon (GDD §3.4) > carries no multi-week arc: a session outside the ledger horizon is invisible 0ms
- ✓ src/game/fatigue.test.ts > fatigue washes out on the same-day / next-day horizon (GDD §3.4) > accumulates within a session too, and resets between sessions 0ms
+ ✓ src/game/fatigue.test.ts > fatigue washes out on the same-day / next-day horizon (GDD §3.4) > accumulates within a session too, and resets between sessions 1ms
  ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > produces GDD §3.2’s worked examples 0ms
  ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > exposes no raw score, only a band, a headline and a signed percentage 0ms
  ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > is monotone: better answers never produce a worse band 0ms
  ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > shifts the timing window in the right direction 0ms
- ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > property: every signal is monotone in readiness at any fatigue history 26ms
+ ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > property: every signal is monotone in readiness at any fatigue history 47ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > accounts for every tick exactly once 4ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > lays frames end to end with no gap and no overlap 28ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > runs the phases once each, in order 2ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > agrees with its own declared phase tick counts 1ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > keeps depth in range, starts standing, reaches the hole, ends standing 41ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > quantises every drawn pose onto the authored depth grid 29ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > faces the right way in each phase 9ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > is deterministic 10ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > clamps loads outside the modelled range instead of extrapolating 12ms
+ ✓ src/art/squatAnimation.test.ts > load moves the timing > is monotone in load across the whole range 74ms
  ✓ src/game/fatigue.test.ts > readiness check-in (GDD §3.2) > rejects an answer outside the three options 0ms
  ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > keeps the window inside its configured bounds however extreme the state gets 0ms
- ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > keeps miss chance a probability whatever the burden 5ms
+ ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > keeps miss chance a probability whatever the burden 7ms
  ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > resolves a rep deterministically from a caller-supplied roll 0ms
  ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > snaps perceived RPE onto the published chart grid and stays inside its range 8ms
  ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > exposes only a handful of distinct perceived-RPE shifts 2ms
- ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > reports a grinding bar-speed cue when wrecked and a fast one when primed 1ms
+ ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > reports a grinding bar-speed cue when wrecked and a fast one when primed 0ms
  ✓ src/game/fatigue.test.ts > the channels fatigue is felt through (GDD §3.4) > gives every cue and band its copy 0ms
  ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the recovery template stays under the free allowance 0ms
  ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the active-recovery flush is strictly below 1 0ms
  ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the injury threshold is positive, so a free session can never injure 0ms
  ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the reference hard session sits below the injury threshold 0ms
  ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > a genuinely overreaching session can still injure 0ms
- ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the derived strain formula tracks the module 13ms
+ ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the derived strain formula tracks the module 26ms
  ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > the ledger horizon is long enough to hide its own edge 0ms
  ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > decay is steep enough to be a next-day horizon, not a multi-week one 0ms
  ✓ src/game/fatigue.test.ts > tuning invariants: the guarantees survive a hand-tuning pass > technique reduces some injury risk, and can never remove all of it 0ms
@@ -434,151 +481,57 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/fatigue.test.ts > purity, determinism and input handling > requires sessions in strictly increasing day order 1ms
  ✓ src/game/fatigue.test.ts > purity, determinism and input handling > rejects non-integer days, negative volumes and non-finite inputs 1ms
  ✓ src/game/fatigue.test.ts > purity, determinism and input handling > treats an off-grid RPE by interpolating rather than refusing (it is a feel curve) 0ms
- ✓ src/game/fatigue.test.ts > purity, determinism and input handling > pruning cannot change any signal 8ms
- ✓ src/game/fatigue.test.ts > purity, determinism and input handling > keeps persisted state bounded no matter how long the career runs 4ms
- ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > regression: 5x3 @ RPE 9.5 is injury-free on both schedules, not just the sparse one 1ms
- ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: every session in the dangerous band stays injury-free repeated daily forever 2ms
- ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: training daily never yields more setbacks than training every other day 9ms
- ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: the chance a session carries is identical whatever the history before it 108ms
- ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: a real session today never causes an injury that resting today would have avoided 4ms
+ ✓ src/game/fatigue.test.ts > purity, determinism and input handling > pruning cannot change any signal 5ms
+ ✓ src/game/fatigue.test.ts > purity, determinism and input handling > keeps persisted state bounded no matter how long the career runs 1ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > regression: 5x3 @ RPE 9.5 is injury-free on both schedules, not just the sparse one 2ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: every session in the dangerous band stays injury-free repeated daily forever 4ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: training daily never yields more setbacks than training every other day 8ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: the chance a session carries is identical whatever the history before it 201ms
+ ✓ src/art/spriteMarks.test.ts > marks are stamped after despeckle, and that matters > reports placements that agree with the finished grid 3522ms
+ ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > property: a real session today never causes an injury that resting today would have avoided 6ms
  ✓ src/game/fatigue.test.ts > consistency never accrues injury risk (G5, G5b) > an overreaching session injures a completely fresh lifter on day one 0ms
- ✓ src/game/lift.test.ts > the load the screen opens on > leaves the limit attempt on the screen, and harder than the default 567ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > accounts for every tick exactly once 5ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > lays frames end to end with no gap and no overlap 30ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > runs the phases once each, in order 2ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > agrees with its own declared phase tick counts 1ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > keeps depth in range, starts standing, reaches the hole, ends standing 40ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > quantises every drawn pose onto the authored depth grid 28ms
- ✓ src/game/lift.test.ts > depth > calls a high squat, however well the bar was driven 1ms
- ✓ src/game/lift.test.ts > depth > passes a squat that reaches legal depth 2ms
- ✓ src/game/lift.test.ts > depth > buries a player who never lets go 0ms
- ✓ src/game/lift.test.ts > depth > never opens the depth cue above legal depth, at any load 8ms
- ✓ src/game/lift.test.ts > depth > reports a depth window narrower than asked for only when it has to 0ms
- ✓ src/game/lift.test.ts > depth > makes a deeper reversal a harder ascent 2ms
- ✓ src/game/lift.test.ts > depth > does not make a high squat cheaper than a legal one 1ms
- ✓ src/game/lift.test.ts > the sticking point > is where a real rep actually stalls 1ms
- ✓ src/game/lift.test.ts > the sticking point > drifts the bar forward most where it stalls, and more under load 1ms
- ✓ src/game/lift.test.ts > the sticking point > shakes and tilts the bar only when the lifter is losing 3ms
- ✓ src/game/lift.test.ts > the sticking point > bows the bar harder under load 2ms
- ✓ src/game/lift.test.ts > fatigue integration > tightens both windows when fatigued and widens them when primed 2ms
- ✓ src/game/lift.test.ts > fatigue integration > tightens the window further deeper into a session 0ms
- ✓ src/game/lift.test.ts > fatigue integration > maps every bar-speed cue band to a capacity, worst band slowest 0ms
- ✓ src/game/lift.test.ts > fatigue integration > gives a primed lifter more output than a fatigued one 0ms
- ✓ src/game/lift.test.ts > fatigue integration > leaves a fatigued lifter a strictly narrower band of makes 132ms
- ✓ src/game/lift.test.ts > fatigue integration > never hands a fatigue number back to the caller 3ms
- ✓ src/game/lift.test.ts > fatigue integration > exports nothing whose name suggests a fatigue readout 1ms
- ✓ src/game/lift.test.ts > fatigue integration > does not resolve the rep against a random roll 1ms
- ✓ src/game/lift.test.ts > read models > emits every event kind it declares 4ms
- ✓ src/game/lift.test.ts > read models > has a haptic pattern for every event that should be felt 1ms
- ✓ src/game/lift.test.ts > read models > feels a perfect drive differently from a scruffy one 0ms
- ✓ src/game/lift.test.ts > read models > reaches every phase across the reps a player can produce 1ms
- ✓ src/game/lift.test.ts > read models > shows a different prompt for every phase 0ms
- ✓ src/game/lift.test.ts > read models > switches the ascent prompt when the cue opens 0ms
- ✓ src/game/lift.test.ts > read models > reports cue progress as 0 at the open and 1 at the ideal moment 0ms
- ✓ src/game/lift.test.ts > read models > reports a window whose width matches the ticks it spans 1ms
- ✓ src/game/lift.test.ts > createLift and stepLift > starts standing, braced and untouched 0ms
- ✓ src/game/lift.test.ts > createLift and stepLift > refuses a nonsense config 0ms
- ✓ src/game/lift.test.ts > createLift and stepLift > stops advancing once resolved, and stops re-emitting events 1ms
- ✓ src/game/lift.test.ts > createLift and stepLift > starts the descent on its own if the player never presses 4ms
- ✓ src/game/lift.test.ts > createLift and stepLift > carries the resolution through to the final state 2ms
- ✓ src/game/lift.test.ts > createLift and stepLift > records one timing per cue the player answered 2ms
- ✓ src/game/lift.test.ts > createLift and stepLift > keeps every reported number finite and serialisable 20ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > faces the right way in each phase 13ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > is deterministic 8ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > clamps loads outside the modelled range instead of extrapolating 10ms
- ✓ src/art/squatAnimation.test.ts > load moves the timing > is monotone in load across the whole range 58ms
+ ✓ src/art/spriteMarks.test.ts > the objects the critique named > draws a belt with a buckle on it, not a plain band 2ms
+ ✓ src/art/spriteMarks.test.ts > the objects the critique named > draws a shoe with a sole line under a dark upper 6ms
+ ✓ src/art/spriteMarks.test.ts > the objects the critique named > gives the shoe the three rows FOOT_H claims, so the sole is its own row 3ms
+ ✓ src/art/spriteMarks.test.ts > the objects the critique named > breaks the arm ramp between the deltoid and the biceps 15ms
+ ✓ src/art/spriteMarks.test.ts > the objects the critique named > bands the knee sleeve instead of leaving it a plain shaded tube 3ms
+ ✓ src/art/spriteMarks.test.ts > the objects the critique named > puts a strap shadow on the bare chest 13ms
+ ✓ src/art/spriteMarks.test.ts > marks respect the shading the underpainting establishes > never paints the far deltoid as light as the near one 0ms
+ ✓ src/art/spriteMarks.test.ts > marks respect the shading the underpainting establishes > leaves the sprite mirror-asymmetric 8ms
+ ✓ src/art/spriteMarks.test.ts > authored pixel budget > counts map cells times sides 1ms
+ ✓ src/art/spriteMarks.test.ts > authored pixel budget > is worth more than the six marks the sprite had before 0ms
+ ✓ src/art/spriteMarks.test.ts > authored pixel budget > does not move when the pose does — the table is data, not a generator 0ms
  ✓ src/art/squatAnimation.test.ts > load moves the timing > makes a maximal rep take much longer than a light one 0ms
  ✓ src/art/squatAnimation.test.ts > load moves the timing > shifts the balance of the rep toward the concentric 7ms
  ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > is not merely a slowed-down copy: the normalised profiles differ 1ms
- ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > rises at nearly constant speed when light and very unevenly when maximal 0ms
+ ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > rises at nearly constant speed when light and very unevenly when maximal 1ms
  ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > reports the same shape variation however finely it is sampled 0ms
- ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > never lets the bar travel backwards during the concentric 26ms
+ ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > never lets the bar travel backwards during the concentric 19ms
  ✓ src/art/squatAnimation.test.ts > the sticking point > notches the velocity model at the authored height and nowhere else 1ms
  ✓ src/art/squatAnimation.test.ts > the sticking point > stalls a maximal attempt and does not stall a light one 0ms
- ✓ src/art/squatAnimation.test.ts > the sticking point > puts the stall a third of the way up, where a squat actually stalls 1ms
+ ✓ src/art/squatAnimation.test.ts > the sticking point > puts the stall a third of the way up, where a squat actually stalls 0ms
  ✓ src/art/squatAnimation.test.ts > the sticking point > holds the bar at one drawn height for far longer under load 7ms
  ✓ src/art/squatAnimation.test.ts > the sticking point > grows the stall monotonically with load 7ms
- ✓ src/art/squatAnimation.test.ts > bar path > drifts forward much further under a maximal load 7ms
+ ✓ src/art/squatAnimation.test.ts > bar path > drifts forward much further under a maximal load 13ms
  ✓ src/art/squatAnimation.test.ts > bar path > peaks the forward drift during the concentric, near the sticking point 0ms
- ✓ src/art/squatAnimation.test.ts > bar path > shakes the bar sideways only when it is heavy 8ms
- ✓ src/art/squatAnimation.test.ts > bar path > confines the shake and the tilt to the concentric 3ms
- ✓ src/art/squatAnimation.test.ts > bar whip > bends the sleeves further under load, monotonically 9ms
- ✓ src/art/squatAnimation.test.ts > bar whip > keeps bend non-negative and inside the drawable ceiling 69ms
+ ✓ src/art/squatAnimation.test.ts > bar path > shakes the bar sideways only when it is heavy 15ms
+ ✓ src/art/squatAnimation.test.ts > bar path > confines the shake and the tilt to the concentric 7ms
+ ✓ src/art/squatAnimation.test.ts > bar whip > bends the sleeves further under load, monotonically 11ms
+ ✓ src/art/squatAnimation.test.ts > bar whip > keeps bend non-negative and inside the drawable ceiling 79ms
  ✓ src/art/squatAnimation.test.ts > bar whip > does not let a phase boundary fake a heavy bar 0ms
- ✓ src/art/squatAnimation.test.ts > strain > rises with load and peaks in the hole or on the grind 10ms
+ ✓ src/art/squatAnimation.test.ts > strain > rises with load and peaks in the hole or on the grind 20ms
  ✓ src/art/squatAnimation.test.ts > strain > drives the drawing, so a still frame differs by load with no clock involved 0ms
- ✓ src/art/squatAnimation.test.ts > strain > stays inside the quantised level range 72ms
- ✓ src/art/squatAnimation.test.ts > strain > spreads the named load presets across the authored strain levels 10ms
+ ✓ src/art/squatAnimation.test.ts > strain > stays inside the quantised level range 149ms
+ ✓ src/art/squatAnimation.test.ts > strain > spreads the named load presets across the authored strain levels 20ms
  ✓ src/art/squatAnimation.test.ts > strain > costs the maximal rep noticeably more of the sheet than the light one 0ms
- ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > quantises drift into its own channel, which the maximal rep tops out 7ms
- ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > is NOT clamped away by strain at the sticking point 0ms
+ ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > quantises drift into its own channel, which the maximal rep tops out 15ms
+ ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > is NOT clamped away by strain at the sticking point 1ms
  ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > draws more distinct bodies than strain alone could account for 0ms
  ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > keeps the drift itself monotone in load and peaked at the stick 0ms
  ✓ src/art/squatAnimation.test.ts > load curve > is monotone and clamped 1ms
  ✓ src/art/squatAnimation.test.ts > load curve > puts a named MAXIMAL attempt below the MAXIMAL endpoint, as documented 0ms
- ✓ src/lift/liftReplay.test.ts > captureScript > makes the lift at every load the screen offers 22ms
- ✓ src/lift/liftReplay.test.ts > captureScript > presses, releases and presses again — in that order, and never lets go 4ms
- ✓ src/lift/liftReplay.test.ts > captureScript > releases and drives on the ticks the mechanic itself calls ideal 5ms
- ✓ src/lift/liftReplay.test.ts > captureFrames > reaches every named moment at every load the screen offers 15ms
- ✓ src/lift/liftReplay.test.ts > captureFrames > puts every frame in the phase its moment claims 16ms
- ✓ src/lift/liftReplay.test.ts > captureFrames > never lands two moments on the same tick 16ms
- ✓ src/lift/liftReplay.test.ts > captureFrames > hands each frame exactly the history that had happened by then 18ms
- ✓ src/lift/liftReplay.test.ts > captureFrames > photographs the maximal attempt while it is losing, and the light one never losing 5ms
- ✓ src/lift/liftReplay.test.ts > captureFrames > photographs the maximal attempt at the height the sprite draws a stall at 3ms
- ✓ src/lift/liftReplay.test.ts > captureFrames > draws the maximal attempt more strained than the light one at the same beat 24ms
- ✓ src/lift/liftReplay.test.ts > captureFrames > reports a moment a rep never reached as missing rather than substituting one 7ms
- ✓ src/lift/liftReplay.test.ts > captureFrameFor > returns the frame a request names 7ms
- ✓ src/lift/liftReplay.test.ts > captureFrameFor > is deterministic 6ms
- ✓ src/lift/liftReplay.test.ts > replayProbe > gives every frame in a sequence a distinct readout 12ms
- ✓ src/lift/liftReplay.test.ts > replayProbe > carries the phase, the prompt and the load the shot was taken at 4ms
- ✓ src/lift/liftReplay.test.ts > replayProbe > carries the renderer cache key, so a stale frame is detectable 6ms
- ✓ src/lift/liftReplay.test.ts > replayProbe > never leaks a fatigue number (GDD §3.4, §12.3) 9ms
- ✓ src/lift/liftReplay.test.ts > replayRequestFrom > parses a well-formed request 1ms
- ✓ src/lift/liftReplay.test.ts > replayRequestFrom > refuses anything it does not recognise 0ms
- ✓ src/lift/liftReplay.test.ts > replayRequestFrom > refuses a load the mechanic would silently clamp 0ms
- ✓ src/lift/liftReplay.test.ts > replayRequestFrom > accepts every moment the capture list names 1ms
- ✓ src/lift/liftFrame.test.ts > liveStrain > stays in range for every state a rep can be in 63ms
- ✓ src/lift/liftFrame.test.ts > liveStrain > draws a losing bar as more strained than a winning one 2ms
- ✓ src/lift/liftFrame.test.ts > liveStrain > reaches a real deficit during an undriven limit attempt 4ms
- ✓ src/lift/liftFrame.test.ts > liveStrain > rises with load at the same point in the rep 5ms
- ✓ src/lift/liftFrame.test.ts > directionFor > answers for every phase, and turns around at the reversal 2ms
- ✓ src/lift/liftFrame.test.ts > totalKgFor > never draws less than an empty bar 0ms
- ✓ src/lift/liftFrame.test.ts > totalKgFor > rounds to a weight a platform could plausibly show 1ms
- ✓ src/lift/liftFrame.test.ts > totalKgFor > is monotone in load 1ms
- ✓ src/lift/liftFrame.test.ts > liftFrameSpec > lands on the authored depth steps, not on a continuum 15ms
- ✓ src/lift/liftFrame.test.ts > liftFrameSpec > keeps every drawn field finite and inside the ranges the sprite allows 76ms
- ✓ src/lift/liftFrame.test.ts > liftFrameSpec > draws a maximal grind uglier than a light rep 5ms
- ✓ src/lift/liftFrame.test.ts > frameKey > separates any two different drawings 4ms
- ✓ src/lift/liftFrame.test.ts > frameKey > collapses a rep to far fewer drawings than it has ticks 4ms
- ✓ src/lift/liftFrame.test.ts > the bar-path plot > maps height to the panel, top to bottom, monotonically 6ms
- ✓ src/lift/liftFrame.test.ts > the bar-path plot > puts a bar with no drift on the plumb line 0ms
- ✓ src/lift/liftFrame.test.ts > the bar-path plot > keeps every point of a real rep inside the panel 30ms
- ✓ src/lift/liftFrame.test.ts > the bar-path plot > caps the trace and keeps the most recent points 2ms
- ✓ src/lift/liftFrame.test.ts > the bar-path plot > fades from the tuned floor up to full 0ms
- ✓ src/lift/liftFrame.test.ts > the bar-path plot > drifts a maximal rep further off the plumb line than a light one 6ms
- ✓ src/lift/liftFrame.test.ts > stage layout > fits the sprite and the plot inside the stage without overlapping 0ms
- ✓ src/lift/liftFrame.test.ts > stage layout > keeps the cue ring on screen at its widest 0ms
- ✓ src/lift/liftFrame.test.ts > motion driven by the rep > shakes the platform only while the bar is losing, and never off screen 14ms
- ✓ src/lift/liftFrame.test.ts > motion driven by the rep > reverses the shake direction within a cycle, so it is a shake not a lean 2ms
- ✓ src/lift/liftFrame.test.ts > motion driven by the rep > flashes on the tick an input lands and fades over the tuned window 3ms
- ✓ src/lift/liftFrame.test.ts > motion driven by the rep > pulses the cue ring across the full 0..1 range, on its tuned period 3ms
- ✓ src/lift/liftFrame.test.ts > cueRing > is absent when no cue is up 0ms
- ✓ src/lift/liftFrame.test.ts > cueRing > meets its target ring at exactly the ideal moment 0ms
- ✓ src/lift/liftFrame.test.ts > cueRing > shrinks from the outer radius to the inner one across the window 1ms
- ✓ src/lift/liftFrame.test.ts > cueRing > marks the perfect band, and only the perfect band 0ms
- ✓ src/art/spriteMarks.test.ts > marks are stamped after despeckle, and that matters > reports placements that agree with the finished grid 3196ms
- ✓ src/art/spriteMarks.test.ts > the objects the critique named > draws a belt with a buckle on it, not a plain band 6ms
- ✓ src/art/spriteMarks.test.ts > the objects the critique named > draws a shoe with a sole line under a dark upper 2ms
- ✓ src/art/spriteMarks.test.ts > the objects the critique named > gives the shoe the three rows FOOT_H claims, so the sole is its own row 7ms
- ✓ src/art/spriteMarks.test.ts > the objects the critique named > breaks the arm ramp between the deltoid and the biceps 3ms
- ✓ src/art/spriteMarks.test.ts > the objects the critique named > bands the knee sleeve instead of leaving it a plain shaded tube 2ms
- ✓ src/art/spriteMarks.test.ts > the objects the critique named > puts a strap shadow on the bare chest 2ms
- ✓ src/art/spriteMarks.test.ts > marks respect the shading the underpainting establishes > never paints the far deltoid as light as the near one 0ms
- ✓ src/art/spriteMarks.test.ts > marks respect the shading the underpainting establishes > leaves the sprite mirror-asymmetric 3ms
- ✓ src/art/spriteMarks.test.ts > authored pixel budget > counts map cells times sides 0ms
- ✓ src/art/spriteMarks.test.ts > authored pixel budget > is worth more than the six marks the sprite had before 0ms
- ✓ src/art/spriteMarks.test.ts > authored pixel budget > does not move when the pose does — the table is data, not a generator 0ms
- ✓ src/game/e1rm.test.ts > published formula constants > holds the Epley divisor of 30 2ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > stays in range for every state a rep can be in 112ms
+ ✓ src/game/e1rm.test.ts > published formula constants > holds the Epley divisor of 30 6ms
  ✓ src/game/e1rm.test.ts > published formula constants > carries exactly one rep-max formula constant, because there is one formula 1ms
  ✓ src/game/e1rm.test.ts > published formula constants > has one attribution, because there is one curve 0ms
  ✓ src/game/e1rm.test.ts > domain constants > takes "to failure" from the chart rather than restating it 0ms
@@ -587,7 +540,7 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/e1rm.test.ts > domain constants > accepts the longest rep count only when the set was taken to failure 2ms
  ✓ src/game/e1rm.test.ts > domain constants > keeps the tunable confidence bound inside the supported domain 0ms
  ✓ src/game/e1rm.test.ts > domain constants > keeps the one tunable value out of the derived and published blocks 1ms
- ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 1 rep max -> 103.33333333333333 0ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 1 rep max -> 103.33333333333333 6ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 2 rep max -> 106.66666666666667 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 3 rep max -> 110 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 4 rep max -> 113.33333333333333 0ms
@@ -600,18 +553,18 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 12 rep max -> 140 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 15 rep max -> 150 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > 100 x 16 rep max -> 153.33333333333334 0ms
- ✓ src/game/e1rm.test.ts > epleyE1rm > is the raw published curve at 1 rep, with no clamp to the weight lifted 0ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > is the raw published curve at 1 rep, with no clamp to the weight lifted 1ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > matches hand-computed values at realistic gym loads 0ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > accepts the half-rep maxima the chart’s half-RPE steps produce 0ms
- ✓ src/game/e1rm.test.ts > epleyE1rm > matches the published decimal-rounded form w * (1 + 0.0333 * r) 1ms
- ✓ src/game/e1rm.test.ts > epleyE1rm > is strictly increasing and never below the weight lifted 3ms
- ✓ src/game/e1rm.test.ts > epleyE1rm > is linear in weight, so it is unit-agnostic 2ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > matches the published decimal-rounded form w * (1 + 0.0333 * r) 5ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > is strictly increasing and never below the weight lifted 5ms
+ ✓ src/game/e1rm.test.ts > epleyE1rm > is linear in weight, so it is unit-agnostic 4ms
  ✓ src/game/e1rm.test.ts > epleyE1rm > refuses the same rep maxes the set entry points refuse — one domain, every route 1ms
  ✓ src/game/e1rm.test.ts > Epley against the curve the app actually reports > disagrees with the chart everywhere except one crossover, so only one can be player-facing 1ms
  ✓ src/game/e1rm.test.ts > Epley against the curve the app actually reports > would step DOWN if it were continued past the chart — the reason there is no fallback 0ms
- ✓ src/game/e1rm.test.ts > Epley against the curve the app actually reports > would step down under every reading rpe.ts has on record for the top-edge cell 0ms
+ ✓ src/game/e1rm.test.ts > Epley against the curve the app actually reports > would step down under every reading rpe.ts has on record for the top-edge cell 1ms
  ✓ src/game/e1rm.test.ts > figures quoted in the module header > chart at a 16 rep max is 1.7422 x w 0ms
- ✓ src/game/e1rm.test.ts > figures quoted in the module header > Epley at a 16.5 rep max is 1.5500 x w 0ms
+ ✓ src/game/e1rm.test.ts > figures quoted in the module header > Epley at a 16.5 rep max is 1.5500 x w 6ms
  ✓ src/game/e1rm.test.ts > figures quoted in the module header > the cell value Epley would need to continue upward is 64.52% 0ms
  ✓ src/game/e1rm.test.ts > figures quoted in the module header > Epley reads 3.33% above the chart at a 1 rep max 0ms
  ✓ src/game/e1rm.test.ts > figures quoted in the module header > Epley reads 11.99% below the chart at a 16 rep max 0ms
@@ -625,29 +578,57 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/e1rm.test.ts > the reps-in-reserve identity the estimate is built on > never applies the formula to the raw rep count 0ms
  ✓ src/game/e1rm.test.ts > singles — the game’s most common set > returns exactly the weight lifted for a single taken to failure 0ms
  ✓ src/game/e1rm.test.ts > singles — the game’s most common set > reads a submaximal single as more than the weight lifted 0ms
- ✓ src/game/e1rm.test.ts > singles — the game’s most common set > walks the whole RPE column at 1 rep, strictly 2ms
- ✓ src/game/e1rm.test.ts > RPE moves the estimate at multi-rep sets too > is strictly decreasing in RPE at every charted rep count 3ms
- ✓ src/game/e1rm.test.ts > RPE moves the estimate at multi-rep sets too > spans more than 10% across RPE 6-10 at a fixed weight and reps 0ms
+ ✓ src/game/e1rm.test.ts > singles — the game’s most common set > walks the whole RPE column at 1 rep, strictly 9ms
+ ✓ src/game/e1rm.test.ts > RPE moves the estimate at multi-rep sets too > is strictly decreasing in RPE at every charted rep count 6ms
+ ✓ src/game/e1rm.test.ts > RPE moves the estimate at multi-rep sets too > spans more than 10% across RPE 6-10 at a fixed weight and reps 6ms
  ✓ src/game/e1rm.test.ts > RPE moves the estimate at multi-rep sets too > produces hand-computed values for representative training sets 0ms
  ✓ src/game/e1rm.test.ts > agreement with rpe.ts > matches e1rmFromChartedSet on every one of the 108 published cells 2ms
- ✓ src/game/e1rm.test.ts > agreement with rpe.ts > is the exact algebraic inverse of the published percentage 2ms
- ✓ src/game/e1rm.test.ts > agreement with rpe.ts > round-trips an unrounded prescribed load back to the same e1RM 7ms
- ✓ src/game/e1rm.test.ts > agreement with rpe.ts > round-trips a plate-rounded prescribed load to within one rounding step 4ms
+ ✓ src/game/e1rm.test.ts > agreement with rpe.ts > is the exact algebraic inverse of the published percentage 6ms
+ ✓ src/game/e1rm.test.ts > agreement with rpe.ts > round-trips an unrounded prescribed load back to the same e1RM 24ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > draws a losing bar as more strained than a winning one 3ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > reaches a real deficit during an undriven limit attempt 5ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > rises with load at the same point in the rep 22ms
+ ✓ src/lift/liftFrame.test.ts > directionFor > answers for every phase, and turns around at the reversal 2ms
+ ✓ src/lift/liftFrame.test.ts > totalKgFor > never draws less than an empty bar 3ms
+ ✓ src/lift/liftFrame.test.ts > totalKgFor > rounds to a weight a platform could plausibly show 0ms
+ ✓ src/lift/liftFrame.test.ts > totalKgFor > is monotone in load 1ms
+ ✓ src/lift/liftFrame.test.ts > liftFrameSpec > lands on the authored depth steps, not on a continuum 39ms
+ ✓ src/lift/liftFrame.test.ts > liftFrameSpec > keeps every drawn field finite and inside the ranges the sprite allows 195ms
+ ✓ src/lift/liftFrame.test.ts > liftFrameSpec > draws a maximal grind uglier than a light rep 8ms
+ ✓ src/lift/liftFrame.test.ts > frameKey > separates any two different drawings 16ms
+ ✓ src/lift/liftFrame.test.ts > frameKey > collapses a rep to far fewer drawings than it has ticks 7ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > maps height to the panel, top to bottom, monotonically 5ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > puts a bar with no drift on the plumb line 0ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > keeps every point of a real rep inside the panel 58ms
+ ✓ src/game/e1rm.test.ts > agreement with rpe.ts > round-trips a plate-rounded prescribed load to within one rounding step 7ms
  ✓ src/game/e1rm.test.ts > agreement with rpe.ts > moves e1RM up when the lifter beats the prescribed RPE and down when they miss it 0ms
- ✓ src/game/e1rm.test.ts > method selection > uses the published chart for every rep max it covers, and nothing else 3ms
- ✓ src/game/e1rm.test.ts > method selection > refuses at the first half step past the chart instead of switching curves 0ms
+ ✓ src/game/e1rm.test.ts > method selection > uses the published chart for every rep max it covers, and nothing else 2ms
+ ✓ src/game/e1rm.test.ts > method selection > refuses at the first half step past the chart instead of switching curves 12ms
  ✓ src/game/e1rm.test.ts > the curve > is strictly increasing in effective rep max across the whole domain 1ms
- ✓ src/game/e1rm.test.ts > the curve > is strictly increasing over every set the module accepts, not just the walked ones 143ms
+ ✓ src/game/e1rm.test.ts > the curve > is strictly increasing over every set the module accepts, not just the walked ones 330ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > caps the trace and keeps the most recent points 2ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > fades from the tuned floor up to full 0ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > drifts a maximal rep further off the plumb line than a light one 14ms
+ ✓ src/lift/liftFrame.test.ts > stage layout > fits the sprite and the plot inside the stage without overlapping 0ms
+ ✓ src/lift/liftFrame.test.ts > stage layout > keeps the cue ring on screen at its widest 0ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > shakes the platform only while the bar is losing, and never off screen 34ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > reverses the shake direction within a cycle, so it is a shake not a lean 1ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > flashes on the tick an input lands and fades over the tuned window 2ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > pulses the cue ring across the full 0..1 range, on its tuned period 2ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > is absent when no cue is up 0ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > meets its target ring at exactly the ideal moment 0ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > shrinks from the outer radius to the inner one across the window 1ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > marks the perfect band, and only the perfect band 0ms
  ✓ src/game/e1rm.test.ts > the curve > never estimates below the weight actually lifted 1ms
- ✓ src/game/e1rm.test.ts > the curve > equals the weight lifted only for a single taken to failure 1ms
+ ✓ src/game/e1rm.test.ts > the curve > equals the weight lifted only for a single taken to failure 6ms
  ✓ src/game/e1rm.test.ts > the curve > is linear in weight, so the module stays unit-agnostic 1ms
  ✓ src/game/e1rm.test.ts > explainE1rm > reports reps in reserve and effective rep max 0ms
  ✓ src/game/e1rm.test.ts > explainE1rm > reports half a rep in reserve at half-RPE steps 0ms
  ✓ src/game/e1rm.test.ts > explainE1rm > flags a set that has drifted into endurance territory 0ms
- ✓ src/game/e1rm.test.ts > explainE1rm > agrees with estimateE1rm 4ms
+ ✓ src/game/e1rm.test.ts > explainE1rm > agrees with estimateE1rm 2ms
  ✓ src/game/e1rm.test.ts > non-throwing variants > return the same numbers as the throwing ones for a usable set 0ms
  ✓ src/game/e1rm.test.ts > non-throwing variants > return null instead of throwing for an unusable set 0ms
- ✓ src/game/e1rm.test.ts > non-throwing variants > agree with the throwing ones about exactly which sets are usable 4ms
+ ✓ src/game/e1rm.test.ts > non-throwing variants > agree with the throwing ones about exactly which sets are usable 12ms
  ✓ src/game/e1rm.test.ts > input validation > rejects 0 reps 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects -1 reps 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects -10 reps 0ms
@@ -665,7 +646,7 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/e1rm.test.ts > input validation > rejects a weight of -100.5 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects a weight of NaN 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects a weight of Infinity 0ms
- ✓ src/game/e1rm.test.ts > input validation > rejects a weight of -Infinity 0ms
+ ✓ src/game/e1rm.test.ts > input validation > rejects a weight of -Infinity 1ms
  ✓ src/game/e1rm.test.ts > input validation > rejects RPE 5 rather than interpolating it 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects RPE 5.5 rather than interpolating it 0ms
  ✓ src/game/e1rm.test.ts > input validation > rejects RPE 5.9 rather than interpolating it 0ms
@@ -681,28 +662,28 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/e1rm.test.ts > input validation > rejects RPE -Infinity rather than interpolating it 0ms
  ✓ src/game/e1rm.test.ts > input validation > explains what it accepts in the error message 1ms
  ✓ src/game/e1rm.test.ts > input validation > says what it refuses and why when a set runs past the chart 0ms
- ✓ src/game/e1rm.test.ts > input validation > accepts the exact boundaries 0ms
+ ✓ src/game/e1rm.test.ts > input validation > accepts the exact boundaries 5ms
  ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > 13 reps: accepted from RPE 7 up, refused below it 0ms
- ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > 14 reps: accepted from RPE 8 up, refused below it 0ms
+ ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > 14 reps: accepted from RPE 8 up, refused below it 1ms
  ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > 15 reps: accepted from RPE 9 up, refused below it 0ms
  ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > 16 reps: accepted from RPE 10 up, refused below it 0ms
  ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > refuses 17 to 20 reps at every RPE 1ms
  ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > refuses every effective rep max above the chart, in half steps up to 24 1ms
- ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > leaves every set at or below the chart ceiling answering as before 2ms
- ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is true from a 1 rep max up to the tunable bound 0ms
- ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is false past the bound, where endurance rather than strength limits the set 0ms
+ ✓ src/game/e1rm.test.ts > the domain the module gave up when the fallback formula was removed > leaves every set at or below the chart ceiling answering as before 4ms
+ ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is true from a 1 rep max up to the tunable bound 1ms
+ ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is false past the bound, where endurance rather than strength limits the set 9ms
  ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is false for non-sets and non-numbers 0ms
  ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > agrees with the constant it is derived from 0ms
  ✓ src/game/e1rm.test.ts > isHighConfidenceRepMax > is what the estimate reports 1ms
- ✓ src/game/prng.test.ts > nextRandom > is a pure function of its state 3ms
+ ✓ src/game/prng.test.ts > nextRandom > is a pure function of its state 7ms
  ✓ src/game/prng.test.ts > nextRandom > stays in [0, 1) and does not collapse to a constant 185ms
- ✓ src/game/prng.test.ts > nextRandom > spreads roughly evenly across the unit interval 4ms
- ✓ src/game/prng.test.ts > seedState > normalises any finite seed to an unsigned 32-bit state 1ms
+ ✓ src/game/prng.test.ts > nextRandom > spreads roughly evenly across the unit interval 6ms
+ ✓ src/game/prng.test.ts > seedState > normalises any finite seed to an unsigned 32-bit state 2ms
  ✓ src/game/prng.test.ts > seedState > keeps different seeds different 0ms
  ✓ src/game/dots.test.ts > published DOTS coefficients > matches the published male coefficients exactly 3ms
  ✓ src/game/dots.test.ts > published DOTS coefficients > matches the published female coefficients exactly 0ms
  ✓ src/game/dots.test.ts > published DOTS coefficients > uses the published numerator of 500 0ms
- ✓ src/game/dots.test.ts > published DOTS coefficients > uses the published bodyweight domain: [40, 210] kg male, [40, 150] kg female 1ms
+ ✓ src/game/dots.test.ts > published DOTS coefficients > uses the published bodyweight domain: [40, 210] kg male, [40, 150] kg female 0ms
  ✓ src/game/dots.test.ts > published DOTS coefficients > orders the coefficients so that c0 is the constant term and c4 the bw^4 term 1ms
  ✓ src/game/dots.test.ts > dotsDenominator > reproduces the reference denominator for a 93 kg male 0ms
  ✓ src/game/dots.test.ts > dotsDenominator > reproduces the reference denominator for a 63 kg female 0ms
@@ -710,7 +691,7 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 40 kg -> 1.271110010858 1ms
  ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 74 kg -> 0.723651953014 0ms
  ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 83 kg -> 0.675087375654 0ms
- ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 93 kg -> 0.636251177745 3ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 93 kg -> 0.636251177745 0ms
  ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 100 kg -> 0.61551576456 0ms
  ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 105 kg -> 0.603096398494 0ms
  ✓ src/game/dots.test.ts > dotsCoefficient — reference values > male at 120 kg -> 0.574306019068 0ms
@@ -724,9 +705,9 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/dots.test.ts > dotsCoefficient — reference values > female at 84 kg -> 0.920153576737 0ms
  ✓ src/game/dots.test.ts > dotsCoefficient — reference values > female at 150 kg -> 0.770756646539 0ms
  ✓ src/game/dots.test.ts > dotsCoefficient — reference values > reports which lifter and which domain it belongs to 0ms
- ✓ src/game/dots.test.ts > dotsCoefficient — reference values > formats for a result-sheet coefficient column 1ms
- ✓ src/game/dots.test.ts > dotsCoefficient — reference values > orders coefficients heaviest-lightest without handing out a number 1ms
- ✓ src/game/dots.test.ts > dotsCoefficient — reference values > rejects a non-finite or non-positive bodyweight 1ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > formats for a result-sheet coefficient column 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > orders coefficients heaviest-lightest without handing out a number 0ms
+ ✓ src/game/dots.test.ts > dotsCoefficient — reference values > rejects a non-finite or non-positive bodyweight 0ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > male, 93 kg bw, 700 kg total -> 445.3758244217 DOTS 0ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > male, 74 kg bw, 800 kg total -> 578.9215624111 DOTS 0ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > male, 83 kg bw, 700 kg total -> 472.5611629581 DOTS 0ms
@@ -759,15 +740,17 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/dots.test.ts > no total is not a total of zero > rejects a total of exactly 0 instead of scoring it 0 0ms
  ✓ src/game/dots.test.ts > no total is not a total of zero > names the `?? 0` collapse in the error it throws for a 0 total 1ms
  ✓ src/game/dots.test.ts > no total is not a total of zero > THE REGRESSION: `finalMeetTotal(state) ?? 0` throws instead of scoring 0.00 0ms
- ✓ src/game/dots.test.ts > no total is not a total of zero > rejects an undefined total that sneaks past the type system 0ms
+ ✓ src/game/dots.test.ts > no total is not a total of zero > rejects an undefined total that sneaks past the type system 1ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 1a: `coefficient` cannot be read off an un-narrowed outcome 0ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 1b: even a scored lifter`s coefficient cannot be multiplied by a number 0ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 1c: the whole original line does not typecheck at its first term 2ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 2: `dotsCoefficient(...) * (finalMeetTotal(state) ?? 0)` does not compile 1ms
- ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 3: `dotsCoefficient(...) * totalOnTheBoard(state)` does not compile 5ms
+ ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 3: `dotsCoefficient(...) * totalOnTheBoard(state)` does not compile 1ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 3b: a provisional board sum is not an official total anywhere 0ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 4: a negative DOTS delta renders instead of throwing 1ms
- ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 4b: `formatDotsScore(0.004)` no longer launders a zero 1ms
+ ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 5: a lifter who did not total cannot be rendered as a negative delta 1ms
+ ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 5b: an un-narrowed outcome is not an end of a delta 0ms
+ ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 4b: `formatDotsScore(0.004)` no longer launders a zero 0ms
  ✓ src/game/dots.test.ts > COMPILE-TIME assertions on the module boundary > a `number | null` total will not typecheck as a dotsScore total 0ms
  ✓ src/game/dots.test.ts > COMPILE-TIME assertions on the module boundary > a bare `number` will not typecheck as a dotsScore total either 0ms
  ✓ src/game/dots.test.ts > COMPILE-TIME assertions on the module boundary > a `number | null` total will not typecheck at the null-aware entry point 0ms
@@ -775,8 +758,10 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/dots.test.ts > COMPILE-TIME assertions on the module boundary > a coefficient cannot be multiplied by a plain number, in either direction 0ms
  ✓ src/game/dots.test.ts > COMPILE-TIME assertions on the module boundary > a coefficient has no numeric property to reach for instead 0ms
  ✓ src/game/dots.test.ts > COMPILE-TIME assertions on the module boundary > applyDotsCoefficient refuses a raw number as the total 0ms
- ✓ src/game/dots.test.ts > scoring an actual meet through meet.ts > scores a finished meet from its reading 1ms
- ✓ src/game/dots.test.ts > scoring an actual meet through meet.ts > gives a bombed-out meet no score, with the board sum still sitting there 1ms
+ ✓ src/game/dots.test.ts > COMPILE-TIME assertions on the module boundary > a bare number is not a delta, at either delta helper 0ms
+ ✓ src/game/dots.test.ts > COMPILE-TIME assertions on the module boundary > a delta cannot be minted from one end that scored and one that did not 0ms
+ ✓ src/game/dots.test.ts > scoring an actual meet through meet.ts > scores a finished meet from its reading 0ms
+ ✓ src/game/dots.test.ts > scoring an actual meet through meet.ts > gives a bombed-out meet no score, with the board sum still sitting there 0ms
  ✓ src/game/dots.test.ts > scoring an actual meet through meet.ts > gives a meet still in progress no score either 0ms
  ✓ src/game/dots.test.ts > scoring an actual meet through meet.ts > pins the structural match with meet.ts`s TotalReading 0ms
  ✓ src/game/dots.test.ts > scoring an actual meet through meet.ts > keeps a bombed lifter off the board a real meet produced 1ms
@@ -784,21 +769,24 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/dots.test.ts > a lifter with no total is absent from the ranking, not last in it > prints a no-total lifter as the placeholder, never as 0.00 0ms
  ✓ src/game/dots.test.ts > structural properties > scales linearly with the total 0ms
  ✓ src/game/dots.test.ts > structural properties > equals coefficient x total 0ms
- ✓ src/game/dots.test.ts > structural properties > gives a strictly decreasing coefficient across the whole male domain 14ms
- ✓ src/game/dots.test.ts > structural properties > gives a strictly decreasing coefficient across the whole female domain 10ms
- ✓ src/game/dots.test.ts > structural properties > gives female lifters a higher coefficient than male lifters at equal bodyweight 0ms
+ ✓ src/game/dots.test.ts > structural properties > gives a strictly decreasing coefficient across the whole male domain 15ms
+ ✓ src/game/dots.test.ts > structural properties > gives a strictly decreasing coefficient across the whole female domain 17ms
+ ✓ src/game/dots.test.ts > structural properties > gives female lifters a higher coefficient than male lifters at equal bodyweight 5ms
  ✓ src/game/dots.test.ts > structural properties > keeps two lifters with equal totals ordered by bodyweight 0ms
  ✓ src/game/dots.test.ts > input handling > rejects non-finite input 1ms
- ✓ src/game/dots.test.ts > input handling > rejects non-positive bodyweight and non-positive totals 1ms
+ ✓ src/game/dots.test.ts > input handling > rejects non-positive bodyweight and non-positive totals 0ms
  ✓ src/game/dots.test.ts > display helpers > rounds to the number of decimals federations print 0ms
  ✓ src/game/dots.test.ts > display helpers > formats with trailing zeros the way a result sheet does 0ms
  ✓ src/game/dots.test.ts > display helpers > refuses to render a score of 0, which no real result can produce 0ms
  ✓ src/game/dots.test.ts > display helpers > refuses anything that would ROUND to 0.00, not just anything negative 0ms
- ✓ src/game/dots.test.ts > display helpers > never lets formatDotsScore return the string "0.00" 7ms
- ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > signs a delta explicitly, from the rounded value 0ms
- ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > prints a delta that rounds to zero unsigned, never as "−0.00" 0ms
+ ✓ src/game/dots.test.ts > display helpers > never lets formatDotsScore return the string "0.00" 8ms
+ ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > signs a delta explicitly, from the rounded value 1ms
+ ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > prints a delta that rounds to zero unsigned, never as "−0.00" 1ms
+ ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > never prints "−0.00" anywhere in the neighbourhood of zero 24ms
  ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > rounds a delta without judging its sign 0ms
- ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > is what a recap actually computes: the difference between two real scores 0ms
+ ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > is what a recap actually computes: two meets, both scored 0ms
+ ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > agrees with the raw-score mint, so neither route is the odd one out 0ms
+ ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > refuses an end that is not a real score, in either position 1ms
  ✓ src/game/dots.test.ts > plausibility sanity check > 'untrained male' lands in a plausible DOTS band 0ms
  ✓ src/game/dots.test.ts > plausibility sanity check > 'novice male' lands in a plausible DOTS band 0ms
  ✓ src/game/dots.test.ts > plausibility sanity check > 'intermediate male' lands in a plausible DOTS band 0ms
@@ -806,23 +794,24 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/dots.test.ts > plausibility sanity check > 'novice female' lands in a plausible DOTS band 0ms
  ✓ src/game/dots.test.ts > plausibility sanity check > 'advanced female' lands in a plausible DOTS band 0ms
  ✓ src/game/dots.test.ts > plausibility sanity check > puts the elite threshold where the community puts it (~500 for a male raw lifter) 0ms
- ✓ src/game/dots.test.ts > plausibility sanity check > scores real all-time-great totals in the 550-650 range, and nothing above 700 0ms
+ ✓ src/game/dots.test.ts > plausibility sanity check > scores real all-time-great totals in the 550-650 range, and nothing above 700 4ms
  ✓ src/game/dots.test.ts > module purity > strips comments without destroying the code (sanity check for the scans below) 0ms
  ✓ src/game/dots.test.ts > module purity > has no imports at all, so it cannot reach React, I/O or sibling modules 0ms
  ✓ src/game/dots.test.ts > module purity > reads no clock, rolls no dice, and touches no ambient global 0ms
  ✓ src/game/dots.test.ts > module purity > hands out no numeric coefficient accessor 0ms
  ✓ src/game/dots.test.ts > module purity > keeps the coefficient provenance block rather than asserting the numbers flatly 0ms
  ✓ src/game/dots.test.ts > module purity > states what the boundary does NOT close, not only what it does 0ms
- ✓ src/game/rpe.test.ts > committed source fixtures > holds a full 108-cell grid per fixture, over the same cells 5ms
- ✓ src/game/rpe.test.ts > committed source fixtures > keeps the fixtures in genuinely different syntaxes 1ms
- ✓ src/game/rpe.test.ts > committed source fixtures > resolves every declared source id to a committed fixture at a pinned URL 1ms
- ✓ src/game/rpe.test.ts > committed source fixtures > disagrees at exactly one cell, (12, 6) 0ms
- ✓ src/game/rpe.test.ts > committed source fixtures > has every disagreement declared in rpe.ts 0ms
- ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > matches every cell the committed transcriptions agree on 7ms
+ ✓ src/game/dots.test.ts > module purity > claims about the delta path only what the mint enforces 0ms
+ ✓ src/game/rpe.test.ts > committed source fixtures > holds a full 108-cell grid per fixture, over the same cells 9ms
+ ✓ src/game/rpe.test.ts > committed source fixtures > keeps the fixtures in genuinely different syntaxes 6ms
+ ✓ src/game/rpe.test.ts > committed source fixtures > resolves every declared source id to a committed fixture at a pinned URL 2ms
+ ✓ src/game/rpe.test.ts > committed source fixtures > disagrees at exactly one cell, (12, 6) 1ms
+ ✓ src/game/rpe.test.ts > committed source fixtures > has every disagreement declared in rpe.ts 4ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > matches every cell the committed transcriptions agree on 9ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > holds a value some committed fixture contains at every disagreed cell 1ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > keeps every committed fixture reading of each contested cell on record 1ms
- ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > agrees with its own printed-orientation transposition in every settled cell 7ms
- ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > covers exactly reps 1-12 and RPE 6-10 in 0.5 steps, and nothing else 3ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > agrees with its own printed-orientation transposition in every settled cell 12ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > covers exactly reps 1-12 and RPE 6-10 in 0.5 steps, and nothing else 9ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > enumerates exactly the chart's own keys, in both directions 1ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 1 reps @ RPE 10 is 100 percent of 1RM 0ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 1 reps @ RPE 9 is 95.5 percent of 1RM 0ms
@@ -838,21 +827,21 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 10 reps @ RPE 8 is 68 percent of 1RM 0ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 12 reps @ RPE 10 is 68 percent of 1RM 0ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > 1 reps @ RPE 6 is 86.3 percent of 1RM 0ms
- ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > preserves the reps-in-reserve diagonal: N @ RPE X equals N+1 @ RPE X+1 2ms
- ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > is strictly decreasing as reps rise at a fixed RPE 2ms
- ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > is strictly increasing as RPE rises at a fixed rep count 11ms
- ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > stays a percentage, with the minimum at the bottom-right corner 5ms
- ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > has exactly four cells with no partner on the diagonal 1ms
- ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > makes every half-RPE cell the midpoint of its whole-RPE neighbours, where settled 2ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > preserves the reps-in-reserve diagonal: N @ RPE X equals N+1 @ RPE X+1 6ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > is strictly decreasing as reps rise at a fixed RPE 5ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > is strictly increasing as RPE rises at a fixed rep count 15ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > stays a percentage, with the minimum at the bottom-right corner 4ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > has exactly four cells with no partner on the diagonal 0ms
+ ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > makes every half-RPE cell the midpoint of its whole-RPE neighbours, where settled 1ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > holds a value the committed fixtures contain at every contested cell 0ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > backs every transcription reading with the bytes of the fixture it cites 1ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > reads percentInUse straight off the chart, so the record cannot drift 0ms
  ✓ src/game/rpe.test.ts > RPE_PERCENT_CHART — published source values > does not complicate the ordinary lookup 0ms
- ✓ src/game/rpe.test.ts > coverage guards > accepts only charted rep counts 1ms
- ✓ src/game/rpe.test.ts > coverage guards > accepts only charted RPE values 0ms
+ ✓ src/game/rpe.test.ts > coverage guards > accepts only charted rep counts 0ms
+ ✓ src/game/rpe.test.ts > coverage guards > accepts only charted RPE values 1ms
  ✓ src/game/rpe.test.ts > coverage guards > does not silently interpolate uncharted RPE values 0ms
  ✓ src/game/rpe.test.ts > coverage guards > does not extrapolate past 12 reps or below RPE 6 1ms
- ✓ src/game/rpe.test.ts > coverage guards > absorbs float noise but nothing wider 0ms
+ ✓ src/game/rpe.test.ts > coverage guards > absorbs float noise but nothing wider 1ms
  ✓ src/game/rpe.test.ts > coverage guards > keeps the RPE-matching tolerance out of interpolation range, by construction 0ms
  ✓ src/game/rpe.test.ts > coverage guards > does not keep any correctness guard inside the tunable block 0ms
  ✓ src/game/rpe.test.ts > coverage guards > reports its own coverage honestly 0ms
@@ -875,22 +864,43 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/rpe.test.ts > load prescription > uses the tunable default mode and unit 0ms
  ✓ src/game/rpe.test.ts > load prescription > rejects unusable inputs 0ms
  ✓ src/game/rpe.test.ts > load prescription > rejects a unit it has no increment for instead of returning NaN 0ms
- ✓ src/game/rpe.test.ts > e1rmFromChartedSet > inverts the load calculation 4ms
- ✓ src/game/rpe.test.ts > e1rmFromChartedSet > matches hand-worked examples 2ms
+ ✓ src/game/rpe.test.ts > e1rmFromChartedSet > inverts the load calculation 6ms
+ ✓ src/game/rpe.test.ts > e1rmFromChartedSet > matches hand-worked examples 1ms
  ✓ src/game/rpe.test.ts > e1rmFromChartedSet > rejects unusable inputs 0ms
  ✓ src/game/rpe.test.ts > purity > is referentially transparent 0ms
  ✓ src/game/rpe.test.ts > purity > does not let a caller mutate the shared chart 0ms
- ✓ src/game/rpe.test.ts > purity > does not let a caller mutate the lookup gate 0ms
+ ✓ src/game/rpe.test.ts > purity > does not let a caller mutate the lookup gate 1ms
  ✓ src/game/rpe.test.ts > purity > does not let a caller mutate the loading knobs at runtime 2ms
- ✓ src/game/rpe.test.ts > purity > does not let a caller mutate the provenance record either 1ms
+ ✓ src/game/rpe.test.ts > purity > does not let a caller mutate the provenance record either 0ms
+ ✓ src/lift/liftReplay.test.ts > captureScript > makes the lift at every load the screen offers 57ms
+ ✓ src/lift/liftReplay.test.ts > captureScript > presses, releases and presses again — in that order, and never lets go 15ms
+ ✓ src/lift/liftReplay.test.ts > captureScript > releases and drives on the ticks the mechanic itself calls ideal 16ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > reaches every named moment at every load the screen offers 84ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > puts every frame in the phase its moment claims 37ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > never lands two moments on the same tick 29ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > hands each frame exactly the history that had happened by then 16ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > photographs the maximal attempt while it is losing, and the light one never losing 5ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > photographs the maximal attempt at the height the sprite draws a stall at 4ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > draws the maximal attempt more strained than the light one at the same beat 22ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > reports a moment a rep never reached as missing rather than substituting one 8ms
+ ✓ src/lift/liftReplay.test.ts > captureFrameFor > returns the frame a request names 15ms
+ ✓ src/lift/liftReplay.test.ts > captureFrameFor > is deterministic 5ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > gives every frame in a sequence a distinct readout 18ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > carries the phase, the prompt and the load the shot was taken at 4ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > carries the renderer cache key, so a stale frame is detectable 5ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > never leaks a fatigue number (GDD §3.4, §12.3) 9ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > parses a well-formed request 1ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > refuses anything it does not recognise 0ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > refuses a load the mechanic would silently clamp 0ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > accepts every moment the capture list names 0ms
  ✓ src/art/raster.test.ts > axialTerm > peaks at the muscle belly 2ms
  ✓ src/art/raster.test.ts > axialTerm > darkens both ends, where the joints are 0ms
  ✓ src/art/raster.test.ts > axialTerm > clamps outside 0..1 rather than extrapolating off the limb 0ms
  ✓ src/art/raster.test.ts > axialTerm > is exactly zero everywhere for the flat profile 1ms
- ✓ src/art/raster.test.ts > a limb is not a longitudinal stripe > changes ramp step DOWN a column, not only across one 4ms
- ✓ src/art/raster.test.ts > a limb is not a longitudinal stripe > would be a constant column without the axial term — the old behaviour 1ms
- ✓ src/art/raster.test.ts > a limb is not a longitudinal stripe > reaches the top of the skin ramp only near the muscle belly 1ms
- ✓ src/art/raster.test.ts > the quantiser > steps up at the documented thresholds and never off the end of a ramp 1ms
+ ✓ src/art/raster.test.ts > a limb is not a longitudinal stripe > changes ramp step DOWN a column, not only across one 3ms
+ ✓ src/art/raster.test.ts > a limb is not a longitudinal stripe > would be a constant column without the axial term — the old behaviour 4ms
+ ✓ src/art/raster.test.ts > a limb is not a longitudinal stripe > reaches the top of the skin ramp only near the muscle belly 2ms
+ ✓ src/art/raster.test.ts > the quantiser > steps up at the documented thresholds and never off the end of a ramp 0ms
  ✓ src/art/raster.test.ts > the quantiser > keeps the far-limb bias a real step down, not a rounding artefact 1ms
  ✓ src/art/raster.test.ts > the key light > never mirrors: the same lamp lights both flanks from the same side 0ms
  ✓ src/art/raster.test.ts > the key light > lifts the unlit side off the outline with ambient 0ms
@@ -898,21 +908,115 @@ $ npx vitest run --reporter=verbose
  ✓ src/art/raster.test.ts > the cylinder model is angle-dependent, which is why FORESHORTEN exists > is symmetric about the lamp, so the deficit lands on one screen side 0ms
  ✓ src/art/raster.test.ts > camera blend > is zero for a limb lying in the screen plane and maximal pointing at us 0ms
  ✓ src/art/raster.test.ts > camera blend > is monotonic and clamps rather than extrapolating 1ms
- ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > leaves a limb with no tilt bit-for-bit identical to the old cylinder 19ms
- ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > pulls the shadow flank of a bent limb up out of the ramp floor 4ms
- ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > does not turn the joint drop into a whole-limb drop on a stubby limb 0ms
+ ✓ src/art/raster.test.ts > limbNormal > is always a unit vector 4ms
+ ✓ src/art/raster.test.ts > limbNormal > is the plain cylinder at zero camera blend, whatever the axial offset 3ms
+ ✓ src/art/raster.test.ts > limbNormal > clamps its inputs rather than producing an imaginary z 1ms
+ ✓ src/art/raster.test.ts > limbNormal > collapses a fully foreshortened limb to one value at the shipped curvature 1ms
+ ✓ src/art/raster.test.ts > limbNormal > cannot reach the top skin step while it is a flat camera-facing face 0ms
+ ✓ src/art/raster.test.ts > limbNormal > curves in both screen axes once the dome is turned on 9ms
+ ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > leaves a limb with no tilt bit-for-bit identical to the old cylinder 57ms
+ ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > pulls the shadow flank of a bent limb up out of the ramp floor 11ms
+ ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > does not turn the joint drop into a whole-limb drop on a stubby limb 1ms
+ ✓ src/game/progression.test.ts > purity > reads no clock, no randomness and no network 4ms
+ ✓ src/game/progression.test.ts > purity > mints server truth in exactly one place 1ms
+ ✓ src/game/progression.test.ts > purity > does not cast its way past its own boundary 1ms
+ ✓ src/game/progression.test.ts > the fact allowlist > is exactly the keys a live snapshot carries 10ms
+ ✓ src/game/progression.test.ts > the fact allowlist > has no key that could hold a purchased performance bonus 1ms
+ ✓ src/game/progression.test.ts > the fact allowlist > names Total, e1RM, meet results and training pace as protected 0ms
+ ✓ src/game/progression.test.ts > the fact allowlist > leaves streak and wallet unprotected on purpose 1ms
+ ✓ src/game/progression.test.ts > the fact allowlist > keeps the Recovery Day ledger out of the wallet 5ms
+ ✓ src/game/progression.test.ts > the fact allowlist > tracks streak.ts own allowlist rather than duplicating it 1ms
+ ✓ src/game/progression.test.ts > the fact allowlist > pins every report type to its declared inputs 1ms
+ ✓ src/game/progression.test.ts > the fact allowlist > lets no report name an output 9ms
+ ✓ src/game/progression.test.ts > the fact allowlist > keeps a meet result to its declared fields 1ms
+ ✓ src/game/progression.test.ts > the fact allowlist > keeps a projection to a subset of the real facts 2ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > declares a non-empty reach for every proposal kind 0ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > keeps every purchase-originated proposal off the protected facts 7ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > lets no proposal at all move training pace 11ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > lets earned proposals move the facts a purchase may not 0ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > offers no entitlement effect that touches a lift 1ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > sells no convenience that speeds up training 0ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > keeps every cosmetic slot cosmetic 0ms
+ ✓ src/game/progression.test.ts > receiveProgressionSnapshot > turns a wire payload into server truth 0ms
+ ✓ src/game/progression.test.ts > receiveProgressionSnapshot > carries a bomb-out as null, not as a total of zero 1ms
+ ✓ src/game/progression.test.ts > receiveProgressionSnapshot > refuses a zero or negative total rather than storing it 10ms
+ ✓ src/game/progression.test.ts > receiveProgressionSnapshot > refuses a malformed revision 0ms
+ ✓ src/game/progression.test.ts > receiveProgressionSnapshot > refuses a malformed e1RM 0ms
+ ✓ src/game/progression.test.ts > receiveProgressionSnapshot > refuses a streak whose best is below its current run 0ms
+ ✓ src/game/progression.test.ts > receiveProgressionSnapshot > refuses a fractional currency balance 0ms
+ ✓ src/game/progression.test.ts > receiveProgressionSnapshot > refuses a blank meet id and a blank acknowledgement 0ms
+ ✓ src/game/progression.test.ts > receiveProgressionSnapshot > freezes what it hands back, symbol payload included 1ms
+ ✓ src/game/progression.test.ts > the snapshot is opaque, not branded > exposes no string-named property at all 0ms
+ ✓ src/game/progression.test.ts > the snapshot is opaque, not branded > makes a spread-and-override tamper inert 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > starts empty, with no truth to read 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > refuses a proposal before anything has been read 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > confirms on the first snapshot 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > refuses a snapshot older than the one it holds 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > accepts a repeat of the revision it holds, per policy 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > parks a projection beside truth instead of inside it 9ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > holds one proposal at a time 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > discards the projection whole when the server acknowledges 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > keeps waiting when a snapshot arrives that settles something else 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > drops the projection and goes stale on a rejection 1ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > refuses to reject a proposal that is not the one in flight 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > refuses a proposal against stale truth, per policy 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > still renders stale truth rather than blanking it 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > recovers from stale on the next snapshot 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > has nothing to make stale before the first read 0ms
+ ✓ src/game/progression.test.ts > the cache as a cache of server truth > refuses a malformed proposal and a malformed projection 0ms
+ ✓ src/game/progression.test.ts > readings > reports every fact through the same four-state shape 7ms
+ ✓ src/game/progression.test.ts > readings > projects per-lift and per-currency independently 0ms
+ ✓ src/game/progression.test.ts > readings > never projects a meet result 0ms
+ ✓ src/game/progression.test.ts > readings > lets a renderer tell truth from a guess 0ms
+ ✓ src/game/progression.test.ts > readings > returns null for a value nobody has yet 0ms
+ ✓ src/game/progression.test.ts > a client cannot mint server truth > will not accept a bare number as a confirmed total 0ms
+ ✓ src/game/progression.test.ts > a client cannot mint server truth > will not accept a locally estimated e1RM as a confirmed one 1ms
+ ✓ src/game/progression.test.ts > a client cannot mint server truth > will not accept an officially-minted total as a confirmed one either 0ms
+ ✓ src/game/progression.test.ts > a client cannot mint server truth > will not accept a hand-built object as a snapshot 0ms
+ ✓ src/game/progression.test.ts > a client cannot mint server truth > will not let a wire payload into the cache without the mint 0ms
+ ✓ src/game/progression.test.ts > a client cannot mint server truth > will not let a projection be fed in as a server response 0ms
+ ✓ src/game/progression.test.ts > a client cannot mint server truth > will not accept a raw string where a proposal id is required 0ms
+ ✓ src/game/progression.test.ts > an unconfirmed value cannot be used as a confirmed one > will not store a projection as truth 0ms
+ ✓ src/game/progression.test.ts > an unconfirmed value cannot be used as a confirmed one > will not gate meet entry on a projection 0ms
+ ✓ src/game/progression.test.ts > an unconfirmed value cannot be used as a confirmed one > will not gate meet entry on a bare number either 0ms
+ ✓ src/game/progression.test.ts > an unconfirmed value cannot be used as a confirmed one > will not let a projected total reach a DOTS score 0ms
+ ✓ src/game/progression.test.ts > an unconfirmed value cannot be used as a confirmed one > will not let a confirmed number be passed off as a projection 0ms
+ ✓ src/game/progression.test.ts > an unconfirmed value cannot be used as a confirmed one > will not let a locally advanced streak be written into the facts 1ms
+ ✓ src/game/progression.test.ts > an unconfirmed value cannot be used as a confirmed one > will not accept a plain number into a projection either 0ms
+ ✓ src/game/progression.test.ts > an unconfirmed value cannot be used as a confirmed one > will not let a projection invent a fact the server does not have 0ms
+ ✓ src/game/progression.test.ts > a purchase cannot reach performance > offers no entitlement effect that moves e1RM 0ms
+ ✓ src/game/progression.test.ts > a purchase cannot reach performance > offers no entitlement effect that moves a Total 0ms
+ ✓ src/game/progression.test.ts > a purchase cannot reach performance > offers no convenience that skips a training session 0ms
+ ✓ src/game/progression.test.ts > a purchase cannot reach performance > will not let a redemption tell the server what it bought 0ms
+ ✓ src/game/progression.test.ts > a purchase cannot reach performance > will not let a session report carry the e1RM it thinks it earned 0ms
+ ✓ src/game/progression.test.ts > a purchase cannot reach performance > will not let a meet report carry the total it thinks it made 0ms
+ ✓ src/game/progression.test.ts > a purchase cannot reach performance > has no Recovery Day balance in the wallet to buy against 0ms
+ ✓ src/game/progression.test.ts > the module exports no writer > has no way to commit a projection 12ms
+ ✓ src/game/progression.test.ts > the module exports no writer > has no way to set a confirmed total 0ms
+ ✓ src/game/progression.test.ts > the module exports no writer > has no exported mint for a confirmed number 0ms
+ ✓ src/game/progression.test.ts > the module exports no writer > exports exactly the surface it is meant to 0ms
+ ✓ src/game/progression.test.ts > the module exports no writer > accepts a ConfirmedFacts nowhere 1ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > scores a confirmed total with dots.ts, with no cast 0ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > gates meet entry on a confirmed total, with no cast 0ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > does arithmetic and formatting on confirmed numbers 0ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > projects an optimistic e1RM from the same pure math the server would use 9ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > mints ids and revisions the client is allowed to mint 0ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > refuses a nonsense projection at the mint 0ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > answers the acknowledgement question directly 0ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > builds every proposal kind the design calls for 1ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > builds every entitlement effect the catalogue allows 0ms
  ✓ src/game/liftTuning.test.ts > shared facts > runs on the same clock as the sprite animation 2ms
- ✓ src/game/liftTuning.test.ts > shared facts > puts the mechanical sticking point where the sprite draws one 1ms
- ✓ src/game/liftTuning.test.ts > shared facts > shares the load curve rather than restating it 3ms
+ ✓ src/game/liftTuning.test.ts > shared facts > puts the mechanical sticking point where the sprite draws one 5ms
+ ✓ src/game/liftTuning.test.ts > shared facts > shares the load curve rather than restating it 5ms
  ✓ src/game/liftTuning.test.ts > immutability > freezes the tuning block and its nested tables 1ms
  ✓ src/game/liftTuning.test.ts > depth thresholds > leaves room between illegal, ideal and buried 0ms
- ✓ src/game/liftTuning.test.ts > depth thresholds > never lets the late edge of the depth window be an instant bury 4ms
+ ✓ src/game/liftTuning.test.ts > depth thresholds > never lets the late edge of the depth window be an instant bury 10ms
  ✓ src/game/liftTuning.test.ts > depth thresholds > leaves at least a couple of ticks between legal depth and the ideal one 0ms
  ✓ src/game/liftTuning.test.ts > the force balance > gives a limit attempt a sticking point the lifter cannot hold 0ms
  ✓ src/game/liftTuning.test.ts > the force balance > leaves a warm-up with no sticking point at all 1ms
  ✓ src/game/liftTuning.test.ts > the force balance > makes a full-quality drive enough to clear the worst deficit 0ms
  ✓ src/game/liftTuning.test.ts > the force balance > arms the drive cue below the sticking point, not after it 0ms
- ✓ src/game/liftTuning.test.ts > the force balance > keeps the stall-decay trigger below the grind threshold 0ms
+ ✓ src/game/liftTuning.test.ts > the force balance > keeps the stall-decay trigger below the grind threshold 1ms
  ✓ src/game/liftTuning.test.ts > the force balance > cannot decay the lifter to a standstill 0ms
  ✓ src/game/liftTuning.test.ts > the force balance > keeps the velocity model inside sane bounds 0ms
  ✓ src/game/liftTuning.test.ts > the force balance > gives the collapse rule room to fire before the timeout does 0ms
@@ -920,25 +1024,25 @@ $ npx vitest run --reporter=verbose
  ✓ src/game/liftTuning.test.ts > windows > keep a perfect band that is neither the whole window nor nothing 0ms
  ✓ src/game/liftTuning.test.ts > windows > open the drive cue after arming, not before it 0ms
  ✓ src/game/liftTuning.test.ts > windows > keeps the drive a decision rather than a rate 0ms
- ✓ src/game/liftTuning.test.ts > haptics > has at least one beat per pattern, with a known style 2ms
- ✓ src/game/liftTuning.test.ts > haptics > orders the beats of each pattern forward in time 1ms
+ ✓ src/game/liftTuning.test.ts > haptics > has at least one beat per pattern, with a known style 8ms
+ ✓ src/game/liftTuning.test.ts > haptics > orders the beats of each pattern forward in time 0ms
  ✓ src/game/liftTuning.test.ts > haptics > gives a perfect drive a bigger pattern than a scruffy one 0ms
  ✓ src/game/liftTuning.test.ts > haptics > pulses the stall on a period the ear and hand can separate 0ms
- ✓ src/game/liftTuning.test.ts > presentation feel > has positive durations and a legible cue ring 0ms
+ ✓ src/game/liftTuning.test.ts > presentation feel > has positive durations and a legible cue ring 4ms
  ✓ src/game/liftTuning.test.ts > presentation feel > keeps the sprite on an integer nearest-neighbour scale (GDD §7.1) 0ms
  ✓ src/game/liftTuning.test.ts > copy > says something for every prompt 0ms
  ✓ src/game/liftTuning.test.ts > copy > never puts a number in the copy the player reads 0ms
  ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps the mechanic itself free of bare numbers 2ms
- ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps every lift component and adapter free of bare numbers 2ms
- ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > has no dead knob: every tuning value is read by something 15ms
- ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps the base window widths out of the renderer (GDD §3.4, §12.3) 5ms
+ ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps every lift component and adapter free of bare numbers 6ms
+ ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > has no dead knob: every tuning value is read by something 31ms
+ ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps the base window widths out of the renderer (GDD §3.4, §12.3) 11ms
  ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > actually detects a bare number, so the scan is not vacuous 1ms
  ✓ src/art/palette.test.ts > 5-bit colour space > expands 5-bit channels to the full 8-bit range 2ms
  ✓ src/art/palette.test.ts > 5-bit colour space > round-trips every allocated palette colour through 8-bit and back 3ms
- ✓ src/art/palette.test.ts > palette structure > has three banks of at most 16 slots each 1ms
+ ✓ src/art/palette.test.ts > palette structure > has three banks of at most 16 slots each 10ms
  ✓ src/art/palette.test.ts > palette structure > fills the two character banks exactly to the hardware limit 1ms
- ✓ src/art/palette.test.ts > palette structure > treats slot 0 of every bank as transparent 1ms
- ✓ src/art/palette.test.ts > palette structure > stores every channel as an integer inside the 5-bit range 9ms
+ ✓ src/art/palette.test.ts > palette structure > treats slot 0 of every bank as transparent 0ms
+ ✓ src/art/palette.test.ts > palette structure > stores every channel as an integer inside the 5-bit range 26ms
  ✓ src/art/palette.test.ts > palette structure > never spends two slots in a bank on the same colour 1ms
  ✓ src/art/palette.test.ts > palette structure > resolves every name in PAL to an allocated colour 2ms
  ✓ src/art/palette.test.ts > palette structure > leaves unallocated indices undefined rather than silently valid 1ms
@@ -951,15 +1055,15 @@ $ npx vitest run --reporter=verbose
  ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > gives the shoe a pale platform to sit on 0ms
  ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > separates overlapping masses with material shadow, not with black 0ms
  ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > maps every lifter surface to its own interior edge, and nothing else 1ms
- ✓ src/art/palette.test.ts > outline selection > outlines equipment cool and everything else warm 2ms
+ ✓ src/art/palette.test.ts > outline selection > outlines equipment cool and everything else warm 0ms
  ✓ src/art/palette.test.ts > outline selection > keeps the equipment outline darker than the backdrop it sits against 0ms
- ✓ src/art/palette.test.ts > plate colours against their documented source > keeps every plate hue on the same dominant channel as the source hex 1ms
- ✓ src/art/palette.test.ts > plate colours against their documented source > gives every plate hue a two-step ramp that actually steps 0ms
- ✓ src/art/palette.test.ts > plate colours against their documented source > has a ramp for every denomination it can draw 0ms
+ ✓ src/art/palette.test.ts > plate colours against their documented source > keeps every plate hue on the same dominant channel as the source hex 7ms
+ ✓ src/art/palette.test.ts > plate colours against their documented source > gives every plate hue a two-step ramp that actually steps 1ms
+ ✓ src/art/palette.test.ts > plate colours against their documented source > has a ramp for every denomination it can draw 1ms
  ✓ src/art/plates.test.ts > visual plate stack > loads a real meet weight the way a real loader would 3ms
  ✓ src/art/plates.test.ts > visual plate stack > returns an empty sleeve for a bare bar and below 1ms
- ✓ src/art/plates.test.ts > visual plate stack > loads heaviest inboard, which is both correct and how it is drawn 1ms
- ✓ src/art/plates.test.ts > visual plate stack > accounts for the whole bar with no remainder on meet-legal weights 10ms
+ ✓ src/art/plates.test.ts > visual plate stack > loads heaviest inboard, which is both correct and how it is drawn 5ms
+ ✓ src/art/plates.test.ts > visual plate stack > accounts for the whole bar with no remainder on meet-legal weights 21ms
  ✓ src/art/plates.test.ts > visual plate stack > handles half-kilo change weights without dropping a disc to float error 0ms
  ✓ src/art/plates.test.ts > disc diameters > keeps 25 and 20 the same size and everything below strictly smaller 1ms
  ✓ src/art/plates.test.ts > disc diameters > renders a 25 kg disc at true scale, not an exaggerated one 0ms
@@ -978,17 +1082,17 @@ $ npx vitest run --reporter=verbose
  ✓ src/art/spriteTuning.test.ts > level quantisers > spans 0..1 across the authored levels 0ms
  ✓ src/art/spriteTuning.test.ts > level quantisers > clamps rather than extrapolating 0ms
  ✓ src/art/spriteTuning.test.ts > constants with more than one consumer > anchors the BRACE drawing at the depth the brace phase settles to 1ms
- ✓ src/art/spriteTuning.test.ts > constants with more than one consumer > drives the animation quantisers from the tuning file, not from copies 1ms
+ ✓ src/art/spriteTuning.test.ts > constants with more than one consumer > drives the animation quantisers from the tuning file, not from copies 0ms
  ✓ src/art/spriteTuning.test.ts > constants with more than one consumer > never asks for more chalk motes than there are authored positions 0ms
  ✓ src/art/spriteTuning.test.ts > constants with more than one consumer > keeps the velocity floor low enough to leave the stall room to exist 0ms
  ✓ src/art/spriteTuning.test.ts > load curve helpers > clamps into the modelled range 0ms
  ✓ src/art/spriteTuning.test.ts > load curve helpers > interpolates an endpoint pair between its endpoints 0ms
  ✓ src/art/spriteTuning.test.ts > load curve helpers > rounds ticks to whole frames and never below one 0ms
 
- Test Files  18 passed (18)
-      Tests  966 passed (966)
-   Start at  18:01:05
-   Duration  11.03s (transform 1.84s, setup 0ms, import 2.63s, tests 26.31s, environment 2ms)
+ Test Files  19 passed (19)
+      Tests  1070 passed (1070)
+   Start at  18:47:40
+   Duration  14.86s (transform 2.52s, setup 0ms, import 4.09s, tests 33.49s, environment 3ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
