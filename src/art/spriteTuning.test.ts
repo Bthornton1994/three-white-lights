@@ -15,6 +15,7 @@ import {
   BAR_PATH,
   BRACE_SETTLE_DEPTH,
   CHALK,
+  LOAD_PRESETS,
   LOAD_RANGE,
   PITCH,
   QUANTISE,
@@ -31,6 +32,7 @@ import {
   POSE_DEPTH_ANCHORS,
   RIG_GEOMETRY,
   strainForLevel,
+  strainLevel,
   pitchForLevel,
   pitchLevelForDriftPx,
 } from './rig';
@@ -93,6 +95,70 @@ describe('authored deformation tables', () => {
     expect(PITCH.FULL_PX).toBe(BAR_PATH.FORWARD_PX.MAXIMAL);
     expect(pitchLevelForDriftPx(BAR_PATH.FORWARD_PX.MAXIMAL)).toBe(PITCH.LEVELS - 1);
     expect(pitchLevelForDriftPx(0)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE STRAIN LADDER ACROSS THE PHASES
+//
+// `PHASE_WEIGHT` decides which authored drawing a load reaches at each beat.
+// Three things a hand pass can break here are invisible in the file itself and
+// only show up as a wrong-looking rep:
+//
+//   1. The brace stops responding to load at all, so the frame the screen opens
+//      on and holds is the same body at every weight.
+//   2. The brace out-weighs the top of the descent, so the lifter is drawn
+//      strained standing still and then RELAXES on the first tick of the
+//      eccentric.
+//   3. The brace weight goes so high that every load braces strained, which
+//      trades one flat frame for another.
+//
+// The rung boundaries these are measured against are `strainLevel`'s, so the
+// assertions are about DRAWINGS, not about the raw weights.
+// ---------------------------------------------------------------------------
+
+describe('the strain phase ladder', () => {
+  const presets = Object.entries(LOAD_PRESETS);
+  const braceRung = (load: number): number =>
+    strainLevel(byLoad(STRAIN.FROM_LOAD, load) * STRAIN.PHASE_WEIGHT.BRACE);
+  const descentTopRung = (load: number): number =>
+    strainLevel(byLoad(STRAIN.FROM_LOAD, load) * STRAIN.PHASE_WEIGHT.DESCENT_TOP);
+
+  it('never draws the brace heavier than the top of the descent it leads into', () => {
+    // The brace IS the top of the descent, held still: the same body, the same
+    // bar, the same height. A brace weighted above DESCENT_TOP means the lifter
+    // loosens the instant the bar starts moving.
+    expect(STRAIN.PHASE_WEIGHT.BRACE).toBeLessThanOrEqual(STRAIN.PHASE_WEIGHT.DESCENT_TOP);
+    expect(STRAIN.PHASE_WEIGHT.DESCENT_TOP).toBeLessThan(STRAIN.PHASE_WEIGHT.DESCENT_BOTTOM);
+  });
+
+  it('never lets any load pop down a rung between the brace and the descent', () => {
+    // The weight ordering above is sufficient for this, but this is the version
+    // a viewer would actually notice, stated over the loads the game ships.
+    for (const [name, load] of presets) {
+      expect(braceRung(load), `${name} brace -> descent top`).toBeLessThanOrEqual(
+        descentTopRung(load),
+      );
+    }
+  });
+
+  it('makes the braced BODY answer to load, without making every brace heavy', () => {
+    // Both halves matter. A brace ladder that is flat at 0 is the gap this
+    // block exists for; a brace ladder that is flat at 1 has only moved it.
+    expect(braceRung(LOAD_PRESETS.WARMUP)).toBe(0);
+    expect(braceRung(LOAD_PRESETS.LIGHT)).toBe(0);
+    expect(braceRung(LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(braceRung(LOAD_PRESETS.LIGHT));
+    // The load the app opens on is not allowed to be the flat one either.
+    expect(braceRung(LOAD_PRESETS.HEAVY)).toBeGreaterThan(braceRung(LOAD_PRESETS.LIGHT));
+  });
+
+  it('keeps the brace rung monotone in load', () => {
+    let previous = -Infinity;
+    for (let load = LOAD_RANGE.MIN; load <= LOAD_RANGE.MAX; load += 0.01) {
+      const rung = braceRung(load);
+      expect(rung, `load ${load.toFixed(2)}`).toBeGreaterThanOrEqual(previous);
+      previous = rung;
+    }
   });
 });
 

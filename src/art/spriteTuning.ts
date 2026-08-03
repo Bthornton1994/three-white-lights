@@ -528,11 +528,95 @@ export const STRAIN = {
    *   w(h) = ASCENT_BASE - ASCENT_FALLOFF*h + ASCENT_STICK_BONUS*gauss(h)
    * so the ugliest frame of the rep is the one at the sticking point, and the
    * lockout is composed again.
+   *
+   * -------------------------------------------------------------------------
+   * THE BRACE IS THE ONE BEAT WITH NO MOTION TO HIDE BEHIND
+   * -------------------------------------------------------------------------
+   * Every other heaviness cue this system has — the stall plateau, the forward
+   * drift, the shake, the tilt, the whip, the tick counts — is a MOTION cue,
+   * and all of them are identically zero in a still frame. The brace is a still
+   * frame, it is the frame the screen opens on, and it is held for up to
+   * BRACE_TIMEOUT_TICKS. It is the one place the body has to carry the weight
+   * on its own.
+   *
+   * At BRACE 0.25 it carried none. Measured, at STRAIN.FROM_LOAD as shipped:
+   *
+   *   load  base    x0.25   rung        x0.42   rung
+   *   0.40  0.1695  0.0424  0           0.0712  0
+   *   0.55  0.2599  0.0650  0           0.1091  0
+   *   0.75  0.4844  0.1211  0           0.2035  0
+   *   0.88  0.6835  0.1709  0           0.2871  1
+   *   1.00  0.9006  0.2251  0           0.3782  1
+   *
+   * `strainLevel` floors at LEVELS rungs, so everything under 0.25 is rung 0 —
+   * LEVEL_DELTAS[0], "the authored pose, untouched". A 220 kg brace and a
+   * 120 kg brace were therefore the same drawing of the same body, differing
+   * only in the plates and about 2 px of sleeve droop, which is the "heaviness
+   * is in the bar, not the lifter" failure arriving in the one frame motion
+   * cannot cover for.
+   *
+   * -------------------------------------------------------------------------
+   * WHY DESCENT_TOP MOVED WITH IT, WHICH IS NOT SCOPE CREEP
+   * -------------------------------------------------------------------------
+   * Raising BRACE alone is not a safe one-number fix, and the measurement says
+   * so. The rung a load draws at the top of the eccentric is
+   * base * DESCENT_TOP; at DESCENT_TOP 0.3 the 0.88 default drew rung 0 there.
+   * Any BRACE at or above 0.366 — the threshold the 0.88 default needs to
+   * reach rung 1 at all — therefore made the default rep brace at rung 1 and
+   * then RELAX to rung 0 on the first tick of the descent. The lifter would
+   * visibly loosen the instant the bar started moving, which is worse than the
+   * flat brace it replaced.
+   *
+   * The invariant, guarded in `spriteTuning.test.ts`:
+   *
+   *     BRACE <= DESCENT_TOP < DESCENT_BOTTOM
+   *
+   * That is also the honest physics. The brace IS the top of the descent, held
+   * still; the same body, under the same bar, at the same height. There was no
+   * reason for the drawn load to be lower standing than one millimetre into the
+   * eccentric, and the 0.25/0.30 gap was the artefact rather than the design.
+   * They stay two knobs rather than one, because a tuner may well want the
+   * brace a little BELOW the moving descent — composed, set, not yet fighting —
+   * and the guard permits that. It only forbids the direction that pops.
+   *
+   * -------------------------------------------------------------------------
+   * WHERE 0.42 COMES FROM, AND WHAT IT IS NOT
+   * -------------------------------------------------------------------------
+   * It is a measured point inside the window the rung boundaries leave, not a
+   * played value. Lower bound 0.3658: below it the 0.88 default — the load the
+   * app opens on — is still drawn with the untouched pose. Upper bound 0.5161:
+   * above it a 0.75 working set starts bracing strained too, and a change that
+   * makes EVERY brace look heavy has traded one flat frame for another. 0.42
+   * sits 0.054 above the floor and 0.096 below the ceiling.
+   *
+   * IT IS NOT THE ARITHMETIC MIDPOINT (0.441), AND THE REASON IS WORTH READING
+   * BEFORE MOVING IT. Because the descent's weighting ramps linearly from
+   * DESCENT_TOP to DESCENT_BOTTOM and depth is drawn in QUANTISE.DEPTH_STEPS
+   * steps, a handful of weights land a rung crossing exactly on a step boundary
+   * and the eccentric loses one authored drawing to a merge. Swept at 0.01
+   * across the whole window, `distinctDrawingCount(maximal)` is 34 everywhere
+   * except 0.39, 0.44 and 0.48, where it is 33. Those are narrow quantiser
+   * artefacts rather than a property of the pose, and a tuner who lands on one
+   * has spent a drawing for nothing.
+   *
+   * The resulting brace ladder is 0 / 0 / 0 / 1 / 1 across the five presets:
+   * the warm-up, the light set and the working set stand there composed, and
+   * the two near-limit loads do not. Maximal and the 0.88 default share rung 1
+   * at the brace — reaching rung 2 there needs BRACE >= 0.5552, which drags the
+   * working set onto rung 1 as well. That trade is a tuner's call, and this
+   * file is where they make it.
+   *
+   * NOT PLAYED. GDD §12.1. The rung boundaries are measured; which side of them
+   * a 192.5 kg brace should sit on is a question for a person with the app in
+   * their hands.
    */
   PHASE_WEIGHT: {
-    BRACE: 0.25,
-    /** Descent ramps from this at the top to this at the bottom. */
-    DESCENT_TOP: 0.3,
+    BRACE: 0.42,
+    /**
+     * Descent ramps from this at the top to this at the bottom. DESCENT_TOP is
+     * the same standing body as BRACE and may not be drawn lighter than it.
+     */
+    DESCENT_TOP: 0.42,
     DESCENT_BOTTOM: 0.75,
     HOLE: 0.88,
     ASCENT_BASE: 0.95,

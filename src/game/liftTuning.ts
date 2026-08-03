@@ -523,10 +523,33 @@ export const LIFT_TUNING = Object.freeze({
   /** Strain from load alone, before phase weighting. */
   STRAIN_FROM_LOAD: { LIGHT: 0.16, MAXIMAL: 1.0 },
 
-  /** How much of that shows at each point in the rep. */
+  /**
+   * How much of that shows at each point in the rep.
+   *
+   * THESE ARE THE SAME NUMBERS AS `STRAIN.PHASE_WEIGHT` IN `spriteTuning.ts`,
+   * restated here for the same reason `BAR_FORWARD_AT_HOLE_PX` and the rest of
+   * the bar-path block are: the played rep and the canned animation are two
+   * different consumers of one strain model. They may not disagree — the canned
+   * rep is the inspection harness the sprite sheet is judged from, so a value
+   * that drifts here makes the contact sheet stop describing the app —  and
+   * `liftTuning.test.ts` asserts the shared keys are equal. The two keys the
+   * canned table has and this one does not (ASCENT_STICK_BONUS / _WIDTH) are
+   * the deliberate difference: a played rep gets its ugliest frame from
+   * STRAIN_STRUGGLE_BONUS reacting to the bar actually losing, not from a
+   * bump authored at a fixed height.
+   *
+   * BRACE AND DESCENT_TOP ARE THE SAME STANDING BODY and BRACE may not exceed
+   * DESCENT_TOP. `spriteTuning.ts` carries the full argument and the rung
+   * measurements; the short version is that the brace is the frame the screen
+   * opens on and holds, it is the only beat with no motion cue to carry the
+   * load, and at 0.25 every load from a 60 kg warm-up to a 220 kg single was
+   * drawn with the identical untouched pose. Raising BRACE without raising
+   * DESCENT_TOP with it makes the 0.88 default brace strained and then RELAX on
+   * the first tick of the descent, which is a worse frame than the flat one.
+   */
   STRAIN_PHASE_WEIGHT: Object.freeze({
-    BRACE: 0.25,
-    DESCENT_TOP: 0.3,
+    BRACE: 0.42,
+    DESCENT_TOP: 0.42,
     DESCENT_BOTTOM: 0.75,
     HOLE: 0.88,
     ASCENT_BASE: 0.95,
