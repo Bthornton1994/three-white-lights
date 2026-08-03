@@ -49,6 +49,18 @@
  * and spreading one and adding fields produces an object whose extra fields no
  * reader ever looks at.
  *
+ * THE SECOND HALF OF THAT SENTENCE IS THE LOAD-BEARING HALF, and reading it as
+ * the first half is how this file shipped a live forgery. A spread DOES produce
+ * a value of the type — symbols are copied. What it cannot do is change what a
+ * reader sees, because every read goes through the symbol. "Inert", not
+ * "unconstructible".
+ *
+ * ONE PROPERTY, NOT ONE PROPERTY PLUS SOME. `InFlightProposal` was written as
+ * `{ proposalId; proposal; projection; [BRAND]: true }` — the object-brand shape
+ * this paragraph rejects, wearing the opaque shape's symbol — and the spread
+ * above went straight through it. It now carries its contents under the symbol
+ * like the snapshot does. §6 has the reproduction and the residual.
+ *
  * Scalars are branded rather than opaque because a renderer has to be able to
  * print them and do arithmetic on them. `Confirmed<T>` is constrained to
  * `T extends number` on purpose — it must never be reached for as an object
@@ -365,28 +377,98 @@
  *    this module cannot see. What it closes is the shape that used to typecheck
  *    and look innocent: a Total in the projection object of a Tuesday session.
  *
- *  - IT SITS AT THE DOOR, NOT ON THE STATE — BUT THE DOOR IS NOW THE ONLY WAY
- *    IN. `InFlightProposal.projection` is a plain `ProgressionProjection`, so
- *    the pairing is checked when a change is proposed and not carried around
- *    afterwards. `ProgressionCache` is a transparent union, so a caller holding
- *    a snapshot could hand-assemble `{ status: 'pending', snapshot, inFlight }`
- *    and skip that check — and with it `validateProposal`,
- *    `validateProjection`, the in-flight limit and the stale-cache rule, which
- *    was the older and more general residual.
+ *  - THE PAIRING IS SEALED. THE CACHE STATE AROUND IT IS NOT, AND THAT IS THREE
+ *    OF FIVE CHECKS, NOT FIVE. `ProgressionCache` is a transparent union, so a
+ *    caller holding a snapshot can always write `{ status: 'pending', snapshot,
+ *    inFlight }` by hand. What it costs them is the `inFlight`, and the exact
+ *    strength of that fence has now been overstated here twice, so it is written
+ *    out in full.
  *
- *    IT IS CLOSED. `InFlightProposal` carries `[PAIRING_CHECKED]`, a
- *    module-private `unique symbol` minted only inside `proposeChange`. A caller
- *    cannot name the key, so it cannot build the `inFlight`, so it cannot build
- *    the `pending` state — all five checks included.
+ *    THE VERSION OF THIS PARAGRAPH THAT SAID "IT IS CLOSED — a caller cannot name
+ *    the key, so it cannot build the `inFlight`, so it cannot build the `pending`
+ *    state, all five checks included" WAS FALSE, and false by the exact mechanism
+ *    §2 above documents. `InFlightProposal` was `{ proposalId; proposal;
+ *    projection; [PAIRING_CHECKED]: true }` — a PARTLY TRANSPARENT object with a
+ *    symbol bolted on, which is the shape §2 says does not work, not the
+ *    `ProgressionSnapshot` shape it claimed to copy. And a caller did not have to
+ *    build one from nothing, because `inFlightProposal()` handed one out:
  *
- *    THE PARAGRAPH THAT USED TO BE HERE GAVE A FALSE REASON FOR LEAVING IT OPEN,
- *    which is worse than leaving it open: it said closing this "would mean making
- *    `ProgressionCache` generic in a proposal kind, and every reader
- *    (`readTotalKg` and friends) generic with it". It did not. The brand is the
- *    §2 opacity idiom one level down and needed no generics anywhere; the readers
- *    are untouched. What remains is narrower and is stated on the type itself:
- *    the brand records that SOME pairing was checked, not that THIS projection
- *    belongs to THIS proposal.
+ *        const real = inFlightProposal(pending)!;
+ *        const forged: ProgressionCache = {
+ *          status: 'pending',
+ *          snapshot,
+ *          inFlight: { ...real, projection: { ...emptyProjection(),
+ *                                             totalKg: projectedKg(645) } },
+ *        };
+ *        readTotalKg(forged);   // { kind: 'projected', value: 645 }
+ *
+ *    No cast, no `as`, no `any`; `tsc --noEmit` clean. A PROJECTED TOTAL OF 645 ON
+ *    A `record-training-session` — the one shape GDD §3.2 forbids and the whole
+ *    §4.1 apparatus exists to make a compile error. The brand had narrowed the
+ *    escape from "any caller" to "any caller who has ever called `proposeChange`",
+ *    which is every consumer of this module, and this paragraph called that
+ *    closed.
+ *
+ *    WHAT IT IS NOW, IN TWO PARTS.
+ *
+ *    (i) The checked triple lives UNDER the symbol: `InFlightProposal` has
+ *    exactly one property, `[PAIRING_CHECKED]: CheckedPairing`, pinned by
+ *    `AN_IN_FLIGHT_PROPOSAL_HAS_NO_STRING_KEY`. There is no string-keyed field
+ *    left for a spread to overwrite.
+ *
+ *    (ii) `inFlightProposal()` no longer hands out the branded object. It
+ *    returns an `InFlightProposalView` — a plain `{ proposalId, proposal,
+ *    projection }` read model, built fresh per call, carrying no symbol. A
+ *    screen reads out everything it needs; nothing can be handed back in.
+ *
+ *    So the exploit as written no longer even reaches the spread: `real` is a
+ *    view, and a view is not assignable to `inFlight`. Taking the other route —
+ *    narrowing the union to get a genuine `InFlightProposal` and spreading THAT
+ *    in a fresh literal — is `TS2353` on the `projection:` line, because there is
+ *    no such property to specify.
+ *
+ *    AND THE CLAIM STOPS THERE, because "cannot be built" would be the same
+ *    overclaim a third time. Spread copies symbols, so with `real` obtained by
+ *    narrowing:
+ *
+ *        const loose = { ...real, projection: aTotalItMayNotClaim };
+ *        const forged: ProgressionCache = { status: 'pending', snapshot, inFlight: loose };
+ *
+ *    still compiles — assigning through a variable defeats excess-property
+ *    checking, and always will. It is INERT: every reader goes through
+ *    `pairing()`, so the added field is never looked at, and `readTotalKg(forged)`
+ *    returns the CONFIRMED 630 rather than the planted 645. Run, not reasoned
+ *    about, and pinned by a RUNTIME test rather than a `@ts-expect-error`, so
+ *    reopening the hole fails `npm test` and not only `npm run typecheck`. That
+ *    inertness is what §2 actually promises about the snapshot idiom — not
+ *    "cannot be built", but "cannot be built into anything a reader sees" — and it
+ *    is the promise made here.
+ *
+ *    STILL OPEN: A CHECKED PAIRING CAN BE REUSED. The union is transparent, so
+ *    `if (cache.status === 'pending')` still yields a real `InFlightProposal`, and
+ *    it can be re-attached to a different snapshot or to a cache that was stale.
+ *    That gets past the two checks that are properties of the CACHE — the
+ *    in-flight limit and the stale-cache rule. Verified by execution:
+ *    `proposeChange` on a stale cache returns `CACHE_IS_STALE`, and the
+ *    hand-assembled reuse renders the projection anyway.
+ *
+ *    It does NOT get past the three that are properties of the PAIRING —
+ *    `validateProposal`, `validateProjection` and `projectionExceedsReach` —
+ *    because the triple is welded under one symbol and taking it apart needs a
+ *    cast. So a reused pairing always carries a proposal and a projection that
+ *    passed the reach check together: a training session still cannot show a
+ *    Total. Three of five is the true number, and the three that hold are the
+ *    three GDD §3.2 turns on.
+ *
+ *    Closing the other two means making `ProgressionCache` itself opaque, which
+ *    costs every reader its `switch (cache.status)` and every renderer its
+ *    ability to pattern-match the state it is drawing. That is a real trade and
+ *    it is not made here — stated, rather than rounded up to a guarantee.
+ *
+ *    (An earlier paragraph here also gave a FALSE REASON for leaving the whole
+ *    thing open: that closing it "would mean making `ProgressionCache` generic in
+ *    a proposal kind, and every reader generic with it". It did not; no generics
+ *    were needed anywhere and `readTotalKg` and friends are untouched.)
  *
  *  - A PURCHASE CAN STILL BE MISLABELLED, IN TWO SHAPES, AND THE SECOND ONE IS
  *    NOT THE ONE PEOPLE EXPECT. `PROPOSAL_ORIGIN_BY_KIND` forces every kind to
@@ -2314,39 +2396,84 @@ export type StaleReason =
   | 'signed-in-elsewhere';
 
 /**
- * The key that says this pairing went through `proposeChange`. Module-private
- * and a symbol, so an `InFlightProposal` has a property no caller can name and
- * therefore cannot be built outside this file — the `ProgressionSnapshot` idiom
- * from §2 of the header, one level down.
+ * The key the checked pairing's contents actually live under. Module-private and
+ * a symbol, so `InFlightProposal` has no property a caller can name, spread
+ * over, or overwrite — the `SNAPSHOT_CONTENTS` idiom from §2 of the header,
+ * applied at the same strength rather than half-applied.
  */
 const PAIRING_CHECKED: unique symbol = Symbol('progression.pairing-checked');
 
 /**
- * One proposal, in flight, with the optimistic view it justifies.
- *
- * UNCONSTRUCTIBLE OUTSIDE THIS MODULE, and that is what closes the residual §6
- * of the header used to describe and excuse. `ProgressionCache` is a transparent
- * union, so a caller holding a snapshot could write `{ status: 'pending',
- * snapshot, inFlight }` by hand and skip `validateProposal`,
- * `validateProjection`, `projectionExceedsReach`, the in-flight limit and the
- * stale-cache rule — five checks, in one innocent-looking object literal. It
- * cannot now build the `inFlight`.
- *
- * THE OLD JUSTIFICATION FOR LEAVING IT OPEN WAS FALSE. It said closing this
- * "would mean making `ProgressionCache` generic in a proposal kind, and every
- * reader generic with it". No generics were needed; `readTotalKg` and friends
- * are untouched.
- *
- * WHAT THE BRAND DOES NOT SAY: it records that SOME pairing was checked, not
- * that THIS projection belongs to THIS proposal, because the two are branded
- * together as one object. Taking a checked value apart and reassembling it needs
- * a cast, which §6's first bullet already concedes defeats everything here.
+ * The triple `proposeChange` checked, welded together. Not exported and not
+ * reachable without the symbol, so the three checks that are properties of this
+ * triple — `validateProposal`, `validateProjection`, `projectionExceedsReach` —
+ * cannot be undone by swapping one member out.
  */
-export interface InFlightProposal {
+interface CheckedPairing {
   readonly proposalId: ProposalId;
   readonly proposal: ProgressionProposal;
   readonly projection: ProgressionProjection;
-  readonly [PAIRING_CHECKED]: true;
+}
+
+/**
+ * One proposal, in flight, with the optimistic view it justifies.
+ *
+ * OPAQUE: exactly one property, under a key this module does not export. Read it
+ * with `inFlightProposal`, which hands back an `InFlightProposalView` rather
+ * than this.
+ *
+ * WHY OPAQUE RATHER THAN BRANDED — and this is the second time this file has had
+ * to learn it, so it is written down twice. The previous shape was
+ * `{ proposalId; proposal; projection; [PAIRING_CHECKED]: true }`: a partly
+ * transparent object with a symbol bolted on. §2 of the header says an object
+ * brand survives a spread, and it does. `{ ...anInFlightProposal, projection:
+ * somethingElse }` typechecked, cast-free, and put a projected Total on a
+ * training session — the exact shape GDD §3.2 forbids. See §6 of the header for
+ * the reproduction and for what is and is not closed now.
+ *
+ * WHAT THIS DOES NOT SAY: that a value of this type cannot be produced outside
+ * the module. `const loose = { ...real, junk }` still produces one, because
+ * spread copies the symbol. What it says is that the extra fields are INERT —
+ * every reader goes through `pairing()`, so nothing a spread adds is ever
+ * looked at. That is the guarantee §2 promises, and it is the one worth making.
+ */
+export interface InFlightProposal {
+  readonly [PAIRING_CHECKED]: CheckedPairing;
+}
+
+/**
+ * COMPILE-TIME ASSERTION: `InFlightProposal` HAS NO STRING-KEYED PROPERTY.
+ *
+ * This is the property that closes the forgery in §6, stated as the compiler can
+ * check it rather than left to whoever reads the interface next. A spread copies
+ * symbols, so `{ ...real, x }` will always produce something of this type; what
+ * makes the tamper inert is that there is no string key on it for `x` to BE. Put
+ * `projection` back as a plain field and this fails here, at the declaration,
+ * instead of silently reopening a projected Total on a Tuesday.
+ *
+ * `Extract<keyof T, string>` rather than `keyof T`, because the symbol is a legal
+ * and required key — it is the string side that must be empty.
+ */
+export const AN_IN_FLIGHT_PROPOSAL_HAS_NO_STRING_KEY: IsEmptyUnion<
+  Extract<keyof InFlightProposal, string>
+> = true;
+
+/**
+ * What a caller gets to see of an in-flight proposal: the contents, not the
+ * container.
+ *
+ * Deliberately NOT an `InFlightProposal` — it carries no symbol, so it cannot be
+ * put back into a `pending` cache. A one-way valve, the same shape as
+ * `snapshotFacts` handing out `ConfirmedFacts` that no exported function accepts.
+ */
+export interface InFlightProposalView {
+  readonly proposalId: ProposalId;
+  readonly proposal: ProgressionProposal;
+  readonly projection: ProgressionProjection;
+}
+
+function pairing(inFlight: InFlightProposal): CheckedPairing {
+  return inFlight[PAIRING_CHECKED];
 }
 
 /**
@@ -2376,9 +2503,25 @@ export function cachedSnapshot(cache: ProgressionCache): ProgressionSnapshot | n
   return cache.status === 'empty' ? null : cache.snapshot;
 }
 
-/** The proposal in flight, or `null`. */
-export function inFlightProposal(cache: ProgressionCache): InFlightProposal | null {
-  return cache.status === 'pending' ? cache.inFlight : null;
+/**
+ * What is in flight, as a read model, or `null`.
+ *
+ * Returns a freshly built `InFlightProposalView` rather than the
+ * `InFlightProposal` itself. A screen still gets the id to correlate a response,
+ * the proposal to describe what is being saved, and the projection to render —
+ * nothing legitimate is lost. What it cannot do is hand the value back in as a
+ * `pending` cache's `inFlight`, because a view has no symbol on it.
+ *
+ * THIS FUNCTION USED TO RETURN THE BRANDED OBJECT, which is how the forgery in
+ * §6 of the header got its raw material: a caller did not have to construct a
+ * checked pairing, only ask for one and spread it.
+ */
+export function inFlightProposal(cache: ProgressionCache): InFlightProposalView | null {
+  if (cache.status !== 'pending') {
+    return null;
+  }
+  const checked = pairing(cache.inFlight);
+  return { proposalId: checked.proposalId, proposal: checked.proposal, projection: checked.projection };
 }
 
 /**
@@ -2412,7 +2555,7 @@ export function applyServerSnapshot(
       return fail('SNAPSHOT_BEHIND', `progression: revision ${incoming} is already held`);
     }
   }
-  if (cache.status === 'pending' && !snapshotAcknowledges(snapshot, cache.inFlight.proposalId)) {
+  if (cache.status === 'pending' && !snapshotAcknowledges(snapshot, pairing(cache.inFlight).proposalId)) {
     return ok({ status: 'pending', snapshot, inFlight: cache.inFlight });
   }
   return ok({ status: 'confirmed', snapshot });
@@ -2478,7 +2621,7 @@ export function proposeChange<K extends ProgressionProposalKind>(
   return ok({
     status: 'pending',
     snapshot: cache.snapshot,
-    inFlight: { proposalId, proposal, projection, [PAIRING_CHECKED]: true },
+    inFlight: { [PAIRING_CHECKED]: { proposalId, proposal, projection } },
   });
 }
 
@@ -2491,7 +2634,7 @@ export function rejectProposal(
   cache: ProgressionCache,
   proposalId: ProposalId,
 ): ProgressionResult<ProgressionCache> {
-  if (cache.status !== 'pending' || cache.inFlight.proposalId !== proposalId) {
+  if (cache.status !== 'pending' || pairing(cache.inFlight).proposalId !== proposalId) {
     return fail('NO_MATCHING_PROPOSAL', `progression: no proposal ${proposalId} is in flight`);
   }
   return ok({ status: 'stale', snapshot: cache.snapshot, reason: 'proposal-rejected' });
@@ -2542,7 +2685,7 @@ function read<C, P>(
     return { kind: 'stale', value: confirmed, reason: cache.reason };
   }
   if (cache.status === 'pending') {
-    const projected = fromProjection(cache.inFlight.projection);
+    const projected = fromProjection(pairing(cache.inFlight).projection);
     if (projected !== null) {
       return { kind: 'projected', value: projected, lastConfirmed: confirmed };
     }

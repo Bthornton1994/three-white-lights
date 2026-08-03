@@ -63,6 +63,7 @@ import {
   type ConfirmedKg,
   type ConfirmedTotalKg,
   type EntitlementEffect,
+  type InFlightProposal,
   type MeetResultReport,
   type ProgressionCache,
   type ProgressionProjection,
@@ -353,11 +354,18 @@ describe('purity', () => {
     expect(writes).toHaveLength(2);
   });
 
-  it('mints the in-flight pairing brand in exactly one place', () => {
-    // `InFlightProposal` carries `[PAIRING_CHECKED]`, which is what stops a
-    // caller hand-assembling a `pending` cache and skipping `validateProposal`,
-    // `validateProjection`, `projectionExceedsReach`, the in-flight limit and
-    // the stale-cache rule. A second mint would be a second way past all five.
+  it('mints the in-flight pairing in exactly one place', () => {
+    // `InFlightProposal`'s only property is `[PAIRING_CHECKED]`, and the triple
+    // lives UNDER it. That is what stops a caller hand-assembling a `pending`
+    // cache and skipping `validateProposal`, `validateProjection` and
+    // `projectionExceedsReach` — the three checks that are properties of the
+    // pairing. A second mint would be a second way past those three.
+    //
+    // NOT all five: the in-flight limit and the stale-cache rule are properties
+    // of the CACHE, and §6 of the header carries that as an open residual. The
+    // sentence that used to be here said five, and saying five is how the last
+    // hole got called closed.
+    //
     // Expected: the interface declaration, and the one construction inside
     // `proposeChange`.
     const writes = codeOnly(MODULE_SOURCE).match(/\[PAIRING_CHECKED\]:/g) ?? [];
@@ -365,6 +373,27 @@ describe('purity', () => {
     // And it is a real `unique symbol`, not a string key a caller could guess.
     expect(codeOnly(MODULE_SOURCE)).toMatch(/const PAIRING_CHECKED: unique symbol = Symbol\(/);
     expect(codeOnly(MODULE_SOURCE)).not.toMatch(/export const PAIRING_CHECKED/);
+  });
+
+  it('keeps the in-flight pairing opaque, not branded', () => {
+    // The runtime half of `AN_IN_FLIGHT_PROPOSAL_HAS_NO_STRING_KEY`, which is a
+    // type-level `const ... = true` and therefore invisible to vitest once
+    // esbuild has stripped it. A branded `InFlightProposal` — contents beside the
+    // symbol rather than under it — is the shape the forgery in §6 of the header
+    // exploited, and it is the shape this refuses.
+    const pending = expectOk(
+      proposeChange(confirmedCache(), asProposalId('p-shape'), A_PROPOSAL, emptyProjection()),
+    );
+    if (pending.status !== 'pending') {
+      throw new Error('expected a pending cache');
+    }
+    // No string keys at all: nothing for a spread to overwrite.
+    expect(Object.keys(pending.inFlight)).toEqual([]);
+    // Exactly one symbol key, and the payload is under it.
+    const symbols = Object.getOwnPropertySymbols(pending.inFlight);
+    expect(symbols).toHaveLength(1);
+    const held = (pending.inFlight as unknown as Record<symbol, Record<string, unknown>>)[symbols[0]!];
+    expect(Object.keys(held ?? {}).sort()).toEqual(['projection', 'proposal', 'proposalId']);
   });
 
   it('does not cast its way past its own boundary', () => {
@@ -1679,37 +1708,211 @@ describe('a purchase cannot reach performance', () => {
     expect(balance.kind).toBe('confirmed');
   });
 
-  it('will not let a pending cache be assembled around the checks', () => {
-    // `ProgressionCache` is a transparent union, so this shape used to compile —
-    // and it skipped `validateProposal`, `validateProjection`,
-    // `projectionExceedsReach`, the in-flight limit AND the stale-cache rule in
-    // one innocent-looking object literal. `InFlightProposal` now carries a
-    // module-private `unique symbol` minted only inside `proposeChange`, so the
-    // `inFlight` cannot be built here at all.
+  it('will not let a pending cache be assembled from a literal', () => {
+    // The NAIVE shape: an `inFlight` written out by hand. `ProgressionCache` is a
+    // transparent union, so this used to compile and skipped `validateProposal`,
+    // `validateProjection`, `projectionExceedsReach`, the in-flight limit AND the
+    // stale-cache rule in one innocent-looking object literal.
     //
     // INVISIBLE TO VITEST — esbuild strips the directive — so this is checked by
     // `npm run typecheck`, where an UNUSED `@ts-expect-error` is itself an
     // error. That is what makes reopening the hole fail rather than pass.
+    // Built in a variable first ON PURPOSE. Writing it inline would test
+    // excess-property checking, which is freshness — the weaker of the two
+    // guarantees, and the one the loose-spread test below shows can be walked
+    // around. Through a variable, what is under test is structural
+    // assignability: this object does not have the symbol, so it is not an
+    // `InFlightProposal`, however it was written.
+    const naive = {
+      proposalId: asProposalId('p-forged'),
+      proposal: A_PROPOSAL,
+      projection: projectionClaiming('totalKg'),
+    };
+    // @ts-expect-error - InFlightProposal's only property is a private symbol.
+    const handBuilt: InFlightProposal = naive;
     const smuggled: ProgressionCache = {
       status: 'pending',
       snapshot: snapshot(),
-      // @ts-expect-error - InFlightProposal carries a brand no caller can name.
-      inFlight: {
-        proposalId: asProposalId('p-forged'),
-        proposal: A_PROPOSAL,
-        projection: projectionClaiming('totalKg'),
-      },
+      inFlight: handBuilt,
     };
     expect(smuggled.status).toBe('pending');
   });
 
+  it('will not let a REAL in-flight proposal be spread and overridden', () => {
+    // THE SHAPE THE TEST ABOVE MISSED, AND IT WAS LIVE. The test above pins the
+    // shape its author thought of; §2 of the module header warns about a
+    // different one. `InFlightProposal` used to be a partly transparent object
+    // with a symbol bolted on, so a caller did not have to BUILD one — it could
+    // ask for one and spread it:
+    //
+    //   const real = inFlightProposal(pending)!;
+    //   { ...real, projection: aTotal }        // compiled, cast-free
+    //
+    // and `readTotalKg` then reported a PROJECTED TOTAL on a training session,
+    // which is the GDD §3.2 line the whole §4.1 apparatus exists to enforce.
+    //
+    // The contents now live under the symbol, so there is no string-keyed
+    // `projection` to override and this is a compile error. Typecheck-only, same
+    // as above.
+    //
+    // WHAT THIS ONE RESTS ON is excess-property checking of a fresh literal —
+    // the reported exploit's exact shape. That is the weaker of the two
+    // guarantees and it can be walked around by assigning through a variable, so
+    // it is not left standing alone: the next test takes that route and pins
+    // what happens instead.
+    const pending = expectOk(
+      proposeChange(confirmedCache(), asProposalId('p-real'), A_PROPOSAL, emptyProjection()),
+    );
+    if (pending.status !== 'pending') {
+      throw new Error('expected a pending cache');
+    }
+    const real = pending.inFlight;
+    const forged: ProgressionCache = {
+      status: 'pending',
+      snapshot: snapshot(),
+      // @ts-expect-error - there is no string-keyed `projection` to overwrite.
+      inFlight: { ...real, projection: projectionClaiming('totalKg') },
+    };
+    expect(forged.status).toBe('pending');
+  });
+
+  it('makes the spread that DOES still compile inert, and this one runs', () => {
+    // KNOWN-OPEN, PINNED. Assigning through a variable defeats excess-property
+    // checking, so this shape compiles and always will — spread copies symbols.
+    // What stops it is that every reader goes through the private symbol, so the
+    // planted field is never looked at.
+    //
+    // This assertion is the one that bites if the hole is reopened: put
+    // `projection` back as a plain field and the reader sees 645 instead of the
+    // confirmed 630, and this fails at RUNTIME where `npm test` can see it.
+    const pending = expectOk(
+      proposeChange(confirmedCache(), asProposalId('p-real'), A_PROPOSAL, emptyProjection()),
+    );
+    if (pending.status !== 'pending') {
+      throw new Error('expected a pending cache');
+    }
+    const loose = { ...pending.inFlight, projection: projectionClaiming('totalKg') };
+    const forged: ProgressionCache = { status: 'pending', snapshot: snapshot(), inFlight: loose };
+
+    const reading = readTotalKg(forged);
+    expect(reading.kind).toBe('confirmed');
+    expect(readingValue(reading)).toBe(630);
+    // And the real pairing is what the module still reports.
+    expect(inFlightProposal(forged)?.projection.totalKg).toBeNull();
+  });
+
+  it('does not let the read model be handed back in', () => {
+    // `inFlightProposal` returns an `InFlightProposalView` — the contents, not
+    // the container — so reading out is free and writing back is not. This is
+    // what stops the exploit at its source rather than only at its destination.
+    // Typecheck-only.
+    const pending = expectOk(
+      proposeChange(confirmedCache(), asProposalId('p-real'), A_PROPOSAL, emptyProjection()),
+    );
+    const view = inFlightProposal(pending);
+    if (view === null) {
+      throw new Error('expected a view');
+    }
+    const forged: ProgressionCache = {
+      status: 'pending',
+      snapshot: snapshot(),
+      // @ts-expect-error - a view carries no symbol, so it is not an InFlightProposal.
+      inFlight: view,
+    };
+    expect(forged.status).toBe('pending');
+  });
+
+  it('carries the reuse residual explicitly, so it cannot be silently widened', () => {
+    // ALSO KNOWN-OPEN, AND §6 OF THE HEADER SAYS SO. The union is transparent, so
+    // a real `InFlightProposal` can be lifted out of a pending cache and
+    // re-attached by hand — past the stale-cache rule and the in-flight limit,
+    // which are properties of the CACHE.
+    //
+    // It cannot get past the three that are properties of the PAIRING. That is
+    // the claim this test pins, in both directions: the reuse renders (so the
+    // residual is real and stated at its true size), and what it renders is a
+    // projection that passed `projectionExceedsReach` (so a training session
+    // still cannot show a Total this way).
+    const meetPending = expectOk(
+      proposeChange(confirmedCache(), asProposalId('p-meet'), A_MEET_PROPOSAL, projectionWith({
+        totalKg: projectedKg(645),
+      })),
+    );
+    if (meetPending.status !== 'pending') {
+      throw new Error('expected a pending cache');
+    }
+    const checked = meetPending.inFlight;
+
+    // `proposeChange` refuses a stale cache...
+    const stale = markCacheStale(confirmedCache(), 'reconnected');
+    expect(expectErr(proposeChange(stale, asProposalId('p-x'), A_MEET_PROPOSAL, emptyProjection())).code).toBe(
+      'CACHE_IS_STALE',
+    );
+    // ...and re-attaching a checked pairing by hand gets past that rule.
+    const reused: ProgressionCache = { status: 'pending', snapshot: snapshot(), inFlight: checked };
+    expect(readTotalKg(reused).kind).toBe('projected');
+    expect(readingValue(readTotalKg(reused))).toBe(645);
+
+    // But the pairing it reused is intact: the proposal that justifies the Total
+    // is the meet result, not a training session. Welded, not merely branded.
+    expect(inFlightProposal(reused)?.proposal.kind).toBe('record-meet-result');
+    expect(inFlightProposal(reused)?.proposalId).toBe('p-meet');
+  });
+
   it('still lets proposeChange build one, which is the positive control', () => {
-    // A brand that nothing can mint refuses the forged shape above perfectly and
-    // also makes the feature unusable. The door has to still open.
+    // A type nothing can mint refuses every forged shape above perfectly and also
+    // makes the feature unusable. The door has to still open.
     const pending = expectOk(
       proposeChange(confirmedCache(), asProposalId('p-real'), A_PROPOSAL, emptyProjection()),
     );
     expect(inFlightProposal(pending)?.proposalId).toBe('p-real');
+  });
+
+  it('runs the whole legitimate flow end to end', () => {
+    // THE OTHER DIRECTION, AND THE ONE A GUARD THAT REFUSES EVERYTHING FAILS.
+    // Propose, read the projection back as PROJECTED, receive the acknowledging
+    // snapshot, and land on confirmed truth with the projection gone. If any step
+    // of this stops working, the fence above has been bought with the product.
+    const start = confirmedCache();
+    expect(readBestE1rmKg(start, 'squat').kind).toBe('confirmed');
+
+    // 1. Propose a training session that projects a new squat e1RM.
+    const pending = expectOk(
+      proposeChange(
+        start,
+        asProposalId('p-flow'),
+        A_PROPOSAL,
+        projectionWith({ bestE1rmKg: { squat: projectedKg(248), bench: null, deadlift: null } }),
+      ),
+    );
+    expect(pending.status).toBe('pending');
+
+    // 2. The projection is visible, AS a projection, with the truth behind it.
+    const projected = readBestE1rmKg(pending, 'squat');
+    expect(projected.kind).toBe('projected');
+    expect(readingValue(projected)).toBe(248);
+    if (projected.kind === 'projected') {
+      expect(projected.lastConfirmed).toBe(240);
+    }
+    // GDD §3.2: the session may not tick a Total, and does not.
+    expect(readTotalKg(pending).kind).toBe('confirmed');
+    // The read model reports what is in flight.
+    expect(inFlightProposal(pending)?.proposalId).toBe('p-flow');
+
+    // 3. The server acknowledges it.
+    const ackWire = wire({ revision: 8, bestE1rmKg: { squat: 250, bench: 150, deadlift: 280 } });
+    const acked = expectOk(
+      receiveProgressionSnapshot({ ...ackWire, acknowledgedProposalId: 'p-flow' }),
+    );
+    const settled = expectOk(applyServerSnapshot(pending, acked));
+
+    // 4. Confirmed truth, projection discarded, and it is the SERVER's number —
+    //    250, not the 248 the client guessed.
+    expect(settled.status).toBe('confirmed');
+    expect(inFlightProposal(settled)).toBeNull();
+    const final = readBestE1rmKg(settled, 'squat');
+    expect(final.kind).toBe('confirmed');
+    expect(readingValue(final)).toBe(250);
   });
 });
 
@@ -1740,6 +1943,7 @@ describe('the module exports no writer', () => {
     const expected = [
       'ACCEPT_RECOVERY_DAY_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'ACCEPT_RECOVERY_DAY_REPORT_KEYS',
+      'AN_IN_FLIGHT_PROPOSAL_HAS_NO_STRING_KEY',
       'AN_UNCLAIMED_PROJECTION_IS_A_PROJECTION',
       'A_MEET_RESULT_PROJECTION_CAN_CLAIM_A_TOTAL',
       'A_TRAINING_SESSION_PROJECTION_CANNOT_CLAIM_A_TOTAL',
