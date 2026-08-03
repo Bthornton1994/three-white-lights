@@ -500,7 +500,19 @@ describe('the fact allowlist', () => {
   });
 
   it('names Total, e1RM and meet results as protected', () => {
-    expect([...PROTECTED_CONCERNS].sort()).toEqual(['bestE1rmKg', 'meets', 'totalKg']);
+    // CONTAINMENT, NOT EQUALITY, and the asymmetry with the open set below is
+    // deliberate. Protecting a new fact is the SAFE direction — it can only stop
+    // a purchase reaching something — so a `toEqual` here would fail every
+    // addition of a protected fact and put friction on the answer §8.1 wants
+    // people to give. What must hold is that the three facts GDD §8.1 names are
+    // on the list; that the list is total over the facts is
+    // `FACT_PROTECTION_COVERS_EVERY_FACT`'s job, and that it is non-empty is
+    // `PROTECTED_CONCERNS_ARE_NOT_VACUOUS`'.
+    //
+    // The open set is pinned exactly, because THERE the exactness is the guard.
+    for (const concern of ['totalKg', 'bestE1rmKg', 'meets']) {
+      expect(PROTECTED_CONCERNS as readonly string[]).toContain(concern);
+    }
   });
 
   it('leaves streak and wallet open on purpose, and nothing else yet', () => {
