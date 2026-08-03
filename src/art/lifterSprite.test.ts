@@ -437,30 +437,92 @@ function brightSplit(grid: IndexGrid, floorLuma: number): { lifter: number; equi
 const HIGHLIGHT_LUMA = 170;
 
 /**
- * Bounds for "the figure carries its range below the belt too". Both are
- * measured facts about the reference plus headroom, not round numbers:
- * sprite-ref-1's wrestler is at 1.04 and 4% respectively.
+ * BOUNDS FOR "THE FIGURE CARRIES ITS RANGE ACROSS ITS WHOLE HEIGHT".
+ *
+ * All five are measured facts about the reference plus headroom, not round
+ * numbers, and all five were measured in this repo's sandbox on
+ * `docs/reference/sprite-ref-1-snes-wrestling.png` at its native 256x224 — the
+ * blond wrestler masked by his own palette (skin ramp, trunks, hair, boots) and
+ * split at his own vertical midpoint. That mask gives:
+ *
+ *     upper: 553 px, mean luma 133.2, near-black 1.3%
+ *     lower: 530 px, mean luma 118.8, near-black 5.7%
+ *     upper / lower mean ratio 1.122
+ *
+ * `sprite-ref-2-16bit-baseball.png` is NOT used for any of this. It is modern
+ * pixel art of a current player, i.e. the pastiche GDD §12.2's blind A/B exists
+ * to tell us apart from.
+ *
+ * THE MEAN RATIO IS BRACKETED, NOT CAPPED, and that is the point of the floor.
+ * The cap alone was directional: it caught a lower body left behind by a change
+ * to the upper body, and a DARKER upper body satisfies it more easily, not less
+ * — so it could not see the arms being the only part of the figure still drawn
+ * with a near-black keyline round every mass. Measured with that keyline in
+ * place the ratio ran 0.86-1.02 and passed the 1.35 cap at every pose. The
+ * reference is above 1 on both masks anyone here has taken of it (1.04 and
+ * 1.122): its brightest half is the one with the arms in it.
  */
 const MAX_UPPER_OVER_LOWER_MEAN = 1.35;
+const MIN_UPPER_OVER_LOWER_MEAN = 0.98;
 const NEAR_BLACK_LUMA = 40;
 const MAX_LOWER_NEAR_BLACK_SHARE = 0.32;
+/**
+ * Tighter than the lower half's, because the reference's upper half is the
+ * cleaner one (1.3% against 5.7%) and because there is less silhouette per pixel
+ * up here: the torso is one wide mass, the legs are two narrow ones.
+ */
+const MAX_UPPER_NEAR_BLACK_SHARE = 0.24;
+/**
+ * Near-black that is not the silhouette keyline — every 4-neighbour is body, so
+ * it is a line drawn INSIDE the figure. Applied to both halves, because the
+ * defect this catches has now appeared in each of them in turn.
+ *
+ * This is the sharp measure and the two shares above are the blunt ones. The
+ * keyline `outlinePass` puts round the outside is deliberate (GDD §12.2: it has
+ * to read at phone scale against an unknown background) and the reference does
+ * not have one, so a raw near-black share can never be compared to the
+ * reference's directly. Interior near-black can: the reference has none at all
+ * on a limb, its arms and thighs being contoured in their own darkest skin step.
+ * Ours is not zero and is not meant to be — the eyes, the brow bar, the mouth
+ * and the belt's lever plate are hand-placed near-black marks, which is what a
+ * 16-bit artist does with the darkest entry in a bank, and a one-pixel gap
+ * between two masses gets filled by the keyline pass from both sides.
+ */
+const MAX_INTERIOR_KEYLINE_SHARE = 0.14;
 
-/** Every LIFTER-bank pixel's luma, split at the figure's vertical midpoint. */
-function bodyHalves(grid: IndexGrid): { upper: number[]; lower: number[] } {
-  const px: { y: number; l: number }[] = [];
+interface HalfPixel {
+  readonly y: number;
+  readonly l: number;
+  /** True when this pixel is near-black AND every 4-neighbour is body. */
+  readonly interiorKeyline: boolean;
+}
+
+/** Every LIFTER-bank pixel, split at the figure's vertical midpoint. */
+function bodyHalfPixels(grid: IndexGrid): { upper: HalfPixel[]; lower: HalfPixel[] } {
+  const touchesOpenSpace = (x: number, y: number): boolean =>
+    isTransparentIndex(getPx(grid, x - 1, y)) ||
+    isTransparentIndex(getPx(grid, x + 1, y)) ||
+    isTransparentIndex(getPx(grid, x, y - 1)) ||
+    isTransparentIndex(getPx(grid, x, y + 1));
+
+  const px: HalfPixel[] = [];
   for (let y = 0; y < grid.h; y += 1) {
     for (let x = 0; x < grid.w; x += 1) {
       const v = getPx(grid, x, y);
       if (isTransparentIndex(v) || Math.floor(v / BANK_SIZE) !== 0) continue;
-      px.push({ y, l: luma(v) });
+      const l = luma(v);
+      px.push({ y, l, interiorKeyline: l < NEAR_BLACK_LUMA && !touchesOpenSpace(x, y) });
     }
   }
   const ys = px.map((p) => p.y);
   const mid = (Math.min(...ys) + Math.max(...ys)) / 2;
-  return {
-    upper: px.filter((p) => p.y < mid).map((p) => p.l),
-    lower: px.filter((p) => p.y >= mid).map((p) => p.l),
-  };
+  return { upper: px.filter((p) => p.y < mid), lower: px.filter((p) => p.y >= mid) };
+}
+
+/** The luma-only view the mean and near-black share are taken over. */
+function bodyHalves(grid: IndexGrid): { upper: number[]; lower: number[] } {
+  const { upper, lower } = bodyHalfPixels(grid);
+  return { upper: upper.map((p) => p.l), lower: lower.map((p) => p.l) };
 }
 
 const mean = (xs: readonly number[]): number =>
@@ -509,10 +571,15 @@ describe('the lifter is the brightest thing in his own frame', () => {
     // upper mean luma 113.7 against lower 109.0, a ratio of 1.04. Ours was
     // 81.4 / 54.3 — a ratio of 1.50 — and is now inside the bound below.
     //
-    // A RATIO, not an absolute: this test's job is to catch the lower body
-    // being left behind by a change to the upper body, which is exactly how the
-    // gap appeared. Whether the figure as a whole is bright enough is a
+    // A RATIO, not an absolute: this test's job is to catch either half being
+    // left behind by a change to the other, which is how the gap appeared in
+    // both directions. Whether the figure as a whole is bright enough is a
     // different claim and belongs to a human looking at pixels.
+    //
+    // BRACKETED, NOT CAPPED. The cap on its own pointed one way: a darker upper
+    // body satisfies it more easily, so it sat at 1.35 through every round in
+    // which the arms were the only masses on the figure still ringed in
+    // near-black, at a measured 0.86-1.02. See MIN_UPPER_OVER_LOWER_MEAN.
     for (const depth of [0, 0.35, 0.65, 1]) {
       for (const strainLevel of [0, STRAIN.LEVELS - 1]) {
         const { grid } = renderLifterFrame(
@@ -521,10 +588,14 @@ describe('the lifter is the brightest thing in his own frame', () => {
         const { upper, lower } = bodyHalves(grid);
         const where = `depth ${depth} strain ${strainLevel}`;
         expect(lower.length, where).toBeGreaterThan(100);
+        expect(upper.length, where).toBeGreaterThan(100);
         const upperMean = mean(upper);
         const lowerMean = mean(lower);
         expect(upperMean / lowerMean, `${where}: mean luma ratio`).toBeLessThan(
           MAX_UPPER_OVER_LOWER_MEAN,
+        );
+        expect(upperMean / lowerMean, `${where}: mean luma ratio`).toBeGreaterThan(
+          MIN_UPPER_OVER_LOWER_MEAN,
         );
         // And the near-black that used to fill the lower body: half of it was
         // separation line at luma 19, against 4% on the reference's own lower
@@ -534,6 +605,50 @@ describe('the lifter is the brightest thing in his own frame', () => {
         expect(nearBlack, `${where}: near-black share below the midpoint`).toBeLessThan(
           MAX_LOWER_NEAR_BLACK_SHARE,
         );
+      }
+    }
+  });
+
+  it('carries it ABOVE the belt too: the arms are not the darkest thing on him', () => {
+    // THE FIFTEENTH BLIND CHECK, IN THE CRITIC'S WORDS: "the near-black keyline
+    // fix was applied below the belt and deliberately withheld above it — and
+    // the reference puts its brightest pixels on the arms." Nothing in this
+    // suite could see it. The near-black share was measured on `lower` only,
+    // and the one upper/lower assertion was a CAP, which a darker upper body
+    // satisfies more easily rather than less.
+    //
+    // Measured with the arms, hands, neck and head still on the default
+    // near-black ring, at 250 kg over this sweep: near-black 38.0-43.2% of the
+    // upper half, of which 29.3-36.0 points were interior. The same interior
+    // figure below the belt, where the fix had already landed, was 0.3-7.2%.
+    // Against sprite-ref-1's own upper half at 1.3%.
+    for (const depth of [0, 0.35, 0.65, 1]) {
+      for (const strainLevel of [0, STRAIN.LEVELS - 1]) {
+        const { grid } = renderLifterFrame(
+          spec({ depth, direction: 'ASCENT', strainLevel, totalKg: 250 }),
+        );
+        const { upper, lower } = bodyHalfPixels(grid);
+        const where = `depth ${depth} strain ${strainLevel}`;
+        expect(upper.length, where).toBeGreaterThan(100);
+        expect(lower.length, where).toBeGreaterThan(100);
+
+        const nearBlack = upper.filter((p) => p.l < NEAR_BLACK_LUMA).length / upper.length;
+        expect(nearBlack, `${where}: near-black share above the midpoint`).toBeLessThan(
+          MAX_UPPER_NEAR_BLACK_SHARE,
+        );
+
+        // The sharp one. A near-black pixel every one of whose neighbours is
+        // body is a line drawn inside the figure, not the silhouette keyline,
+        // and it is the thing the reference has none of on a limb.
+        for (const [name, half] of [
+          ['above', upper],
+          ['below', lower],
+        ] as const) {
+          const interior = half.filter((p) => p.interiorKeyline).length / half.length;
+          expect(interior, `${where}: interior keyline share ${name} the midpoint`).toBeLessThan(
+            MAX_INTERIOR_KEYLINE_SHARE,
+          );
+        }
       }
     }
   });

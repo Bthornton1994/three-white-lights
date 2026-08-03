@@ -164,10 +164,19 @@ const HAIR_SET: readonly number[] = [PAL.HAIR_DARK, PAL.HAIR_LIGHT];
 /**
  * Which existing palette indices a surface class will paint over.
  *
- * PAL.OUTLINE is never in any of these. A mark may not overwrite the drawing's
- * own interior outlines, because those are what separate one mass from the next
- * — a strap trim that painted over the outline between the arm and the chest
- * would weld them together.
+ * PAL.OUTLINE is never in any of these, and the reason has narrowed. It used to
+ * be that a mark must not overwrite the drawing's own interior outlines, since
+ * those separated one mass from the next; there are now almost none of those to
+ * protect, because every mass is ringed in its OWN darkest step rather than in
+ * near-black (`INTERIOR_EDGE` in `palette.ts`). What is left is the silhouette
+ * keyline `outlinePass` puts round the outside, and a mark that painted over
+ * THAT would punch a hole in the figure's edge — which is the same rule with a
+ * smaller and more honest justification.
+ *
+ * A useful side effect of the narrowing: a mark aimed at the flank of a limb now
+ * lands, where before it hit the keyline and was dropped. The authored budget
+ * that reaches a frame went up 267-302 px to 276-303 px on the four inspection
+ * poses when the arms came off the keyline, with no mark table change.
  */
 export const MARK_SURFACES: Readonly<Record<MarkSurface, readonly number[]>> = {
   SKIN: SKIN_SET,

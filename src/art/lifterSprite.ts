@@ -78,6 +78,7 @@ import {
   createGrid,
   drawEllipsoid,
   drawLimb,
+  drawLimbChain,
   drawPlateEdge,
   drawTrunk,
   despeckle,
@@ -276,6 +277,11 @@ function drawBarAndPlates(
  * the lower half of the figure that was 52% of the body's pixels, against 4% on
  * the same split of sprite-ref-1, whose limbs are edged in their own darkest
  * step. The silhouette keyline is unaffected: `outlinePass` still runs.
+ *
+ * THE LEG WAS FIRST, NOT SPECIAL. The arm, hand, neck and head stayed on the
+ * near-black ring for two rounds after this landed, and the figure came out with
+ * bright legs and black arms — the reference's arrangement exactly backwards.
+ * See `drawArm`.
  */
 function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
   const cx = CENTER_X;
@@ -362,7 +368,7 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
   // it widens the gap to the lit thigh rather than narrowing it.
   drawLimb(g, span.topX, span.topY, span.botX, span.botY, KS.R[0], KS.R[1], RAMPS.GEAR, {
     ...gearOpts,
-    stepBias: bias + KS.STEP_BIAS,
+    stepBias: bias + SHADING.KNEE_SLEEVE_STEP_BIAS,
     outOfPlane: tilt,
   });
 
@@ -381,36 +387,63 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
   );
 }
 
+/**
+ * An arm, shoulder to wrist, drawn as ONE mass in two capsules.
+ *
+ * IT SEPARATES WITH ITS OWN SHADOW, NOT WITH A BLACK LINE, for the same reason
+ * the leg does (`INTERIOR_EDGE`) and against the same reference. The arm was
+ * left on the default near-black ring long after the leg came off it, and the
+ * comment justifying that said the dark breaks at the deltoid, elbow and wrist
+ * were "doing anatomical work". They were not: measured over the pose sweep at
+ * 250 kg, near-black was 38-43% of the upper half's own pixels, of which 29-36
+ * points were INTERIOR — buried inside the silhouette, not the keyline — while
+ * the same interior figure below the belt was 0.3-7%. On the blond wrestler in
+ * `sprite-ref-1`, masked by colour at native scale, near-black is 1.3% of the
+ * upper half against 5.7% of the lower, and his upper half is the BRIGHTER one
+ * (mean luma 133.2 against 118.8). Ours was the darker one at 0.86-1.02. The
+ * arms in that reference are the brightest masses on the figure and are
+ * contoured in their own skin shadow; ours were near-black chevrons with a tan
+ * streak inside, which is the blind A/B inverted.
+ *
+ * `drawLimbChain` rather than two `drawLimb` calls: see its comment. Two
+ * capsules that meet each stamp a ring, and the second one's ring lands on the
+ * first one's fill — a doubled dark band across the elbow of a five-pixel limb.
+ */
 function drawArm(g: IndexGrid, pose: Pose, sign: number, bias: number, skin: Ramp): void {
   const cx = CENTER_X;
   const shX = cx + sign * pose.shoulderHalfW * RIG_GEOMETRY.ATTACH.ARM_ROOT;
   const elX = cx + sign * pose.elbowHalfW;
   const grip = pose.handHalfW + (sign > 0 ? RIG_GEOMETRY.GRIP_ASYMMETRY_PX : 0);
   const haX = cx + sign * grip;
-  const opts = { stepBias: bias, edge: true };
+  const opts = {
+    stepBias: bias,
+    edge: true,
+    edgeIndex: INTERIOR_EDGE.SKIN,
+    edgeFollowsLight: true,
+  };
 
-  drawLimb(
-    g,
-    shX,
-    pose.shoulderY,
-    elX,
-    pose.elbowY,
-    RIG_GEOMETRY.UPPER_ARM_R[0],
-    RIG_GEOMETRY.UPPER_ARM_R[1],
-    RAMPS.SKIN,
-    opts,
-  );
-  drawLimb(
-    g,
-    elX,
-    pose.elbowY,
-    haX,
-    pose.handY,
-    RIG_GEOMETRY.FOREARM_R[0],
-    RIG_GEOMETRY.FOREARM_R[1],
-    skin,
-    opts,
-  );
+  drawLimbChain(g, [
+    {
+      ax: shX,
+      ay: pose.shoulderY,
+      bx: elX,
+      by: pose.elbowY,
+      ra: RIG_GEOMETRY.UPPER_ARM_R[0],
+      rb: RIG_GEOMETRY.UPPER_ARM_R[1],
+      ramp: RAMPS.SKIN,
+      opts,
+    },
+    {
+      ax: elX,
+      ay: pose.elbowY,
+      bx: haX,
+      by: pose.handY,
+      ra: RIG_GEOMETRY.FOREARM_R[0],
+      rb: RIG_GEOMETRY.FOREARM_R[1],
+      ramp: skin,
+      opts,
+    },
+  ]);
 }
 
 function drawHand(
@@ -427,6 +460,13 @@ function drawHand(
   const dx = sign * grip;
   const x = CENTER_X + lateralPx + dx;
   const y = barCy + barOffsetAt(dx, tiltDeg, bendPx);
+  // The interior ring is skin shadow, not the keyline. This is the mass the
+  // ring cost the most: at HAND_R 1.9 the drawn ellipse is 4 px across, and a
+  // flat near-black ring plus `outlinePass`'s own pixel outside it left a
+  // 2x3 core of fill. A fist cannot resolve in six pixels. Shaded from the same
+  // lamp the ring becomes the underside of the hand and the whole ellipse is
+  // available to draw a grip in — which is what the chalked knuckles below and
+  // the hand-placed knuckle marks in `spriteMarks.ts` then sit on.
   drawEllipsoid(
     g,
     x,
@@ -437,6 +477,8 @@ function drawHand(
     {
       stepBias: bias,
       edge: true,
+      edgeIndex: INTERIOR_EDGE.SKIN,
+      edgeFollowsLight: true,
     },
   );
   // Chalked knuckles: two pixels, side by side. Two rather than one because
@@ -452,11 +494,16 @@ function drawHand(
 /**
  * Neck. Drawn BEFORE the torso, not with the head.
  *
- * `drawLimb` with `edge` grows the capsule by a pixel and stamps the outline
- * colour around it, and a capsule has rounded ends — so the neck's lower cap
- * reached three rows below the shoulder line and, drawn after the torso, left a
- * four-by-three block of pure outline sitting in the middle of the bare chest.
- * Drawn first, the trap mass covers the cap and only the throat shows.
+ * `drawLimb` with `edge` grows the capsule by a pixel and stamps a ring around
+ * it, and a capsule has rounded ends — so the neck's lower cap reached three
+ * rows below the shoulder line and, drawn after the torso, left a four-by-three
+ * block sitting in the middle of the bare chest. Drawn first, the trap mass
+ * covers the cap and only the throat shows.
+ *
+ * The ring is skin shadow like the rest of the flesh (`INTERIOR_EDGE`). What
+ * separates the throat from the traps behind it is then a value step inside one
+ * material, which is what the reference does at a jaw and a neck; a keyline
+ * here was a black collar around a 5 px throat.
  */
 function drawNeck(g: IndexGrid, pose: Pose, skin: Ramp): void {
   const G = RIG_GEOMETRY;
@@ -469,7 +516,7 @@ function drawNeck(g: IndexGrid, pose: Pose, skin: Ramp): void {
     G.NECK_R,
     G.NECK_R + G.NUDGE.NECK_FLARE,
     skin,
-    { edge: true },
+    { edge: true, edgeIndex: INTERIOR_EDGE.SKIN, edgeFollowsLight: true },
   );
 }
 
@@ -484,9 +531,19 @@ function drawHead(g: IndexGrid, pose: Pose, skin: Ramp): void {
   const hy = pose.headY;
   const G = RIG_GEOMETRY;
 
+  // Skin shadow, like every other flesh mass. This was the largest single block
+  // of interior near-black left on the figure once the arms came off it — 34 px
+  // of luma 19 ringing a 7x9 skull, drawn AFTER the neck and the traps so it cut
+  // its own collar out of them. Sampled on `sprite-ref-1` at native scale, the
+  // wrestler's head is contoured entirely in his own darkest skin step (luma 46)
+  // and carries no keyline pixel at all; the jaw, the ear and the brow are value
+  // steps within one ramp. The eyes, brow bar and mouth stay near-black — those
+  // are hand-placed marks in `spriteMarks.ts` and they are features, not edges.
   drawEllipsoid(g, hx, hy, G.HEAD_RX, G.HEAD_RY, skin, {
     edge: true,
-    stepBias: G.HEAD_STEP_BIAS,
+    edgeIndex: INTERIOR_EDGE.SKIN,
+    edgeFollowsLight: true,
+    stepBias: SHADING.HEAD_STEP_BIAS,
   });
   drawEllipsoid(g, hx, hy - G.HEAD_RY + G.HAIR_RY, G.HEAD_RX - 0.1, G.HAIR_RY, RAMPS.HAIR, {});
 }
@@ -564,7 +621,7 @@ function drawTorso(g: IndexGrid, pose: Pose): void {
     pose.waistHalfW + RIG_GEOMETRY.BELT_OVERHANG,
     RAMPS.GEAR,
     {
-      stepBias: RIG_GEOMETRY.BELT_STEP_BIAS,
+      stepBias: SHADING.BELT_STEP_BIAS,
       edge: true,
       edgeIndex: INTERIOR_EDGE.GEAR,
       edgeFollowsLight: true,

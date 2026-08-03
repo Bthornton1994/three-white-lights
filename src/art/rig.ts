@@ -386,12 +386,18 @@ export const POSE_DEPTH_ANCHORS: Readonly<Record<RepDirection, readonly PoseAnch
  * hand-tuned values live in named constants (CLAUDE.md). These are drawing
  * values rather than feel values, so they sit with the drawings rather than in
  * `spriteTuning.ts` — but they are named, and they are all in one block.
+ *
+ * AND THAT EXCLUSION IS NARROWER THAN IT WAS BEING USED. It covers sizes and
+ * positions: a radius or an attachment fraction cannot be moved without
+ * redrawing the mass it names. It does NOT cover shading — three ramp-step
+ * biases (head, belt, knee sleeve) used to sit in this block, and a ramp-step
+ * bias moves no geometry, turns on its own, and is the same kind of number as
+ * `SHADING.FAR_LIMB_STEP_BIAS`. They now live with the rest of them, in
+ * `SHADING`.
  */
 export const RIG_GEOMETRY = {
   HEAD_RX: 3.6,
   HEAD_RY: 4.4,
-  /** The face is the smallest thing that has to read; it gets lifted a step. */
-  HEAD_STEP_BIAS: 1,
   HAIR_RY: 2.2,
   // Eye, mouth and fringe positions are NOT here. They are hand-placed pixels
   // in `spriteMarks.ts`, because that is what they are — a value here would be
@@ -445,23 +451,6 @@ export const RIG_GEOMETRY = {
   /** Belt height, centred on waistY, and how far it stands off the waist. */
   BELT_H: 3,
   BELT_OVERHANG: 1.1,
-  /**
-   * Ramp steps the belt sits below the rest of the GEAR kit.
-   *
-   * The belt is the widest single flat mass on the figure — three rows across
-   * the whole waist — so it takes the largest share of any change to the GEAR
-   * ramp. When GEAR was lifted so the knee sleeves would stop vanishing into
-   * the backdrop, the belt came with it and became the brightest large area on
-   * the body, which is a silver belt. Every belt in the references is black or
-   * black-with-a-patch (meet-photo-ref-1, meet-photo-ref-2, and the black waist
-   * band in sprite-ref-2). One step down puts its lit centre at GEAR_MID and
-   * its flanks at GEAR_DARK: leather catching a little light.
-   *
-   * The knee sleeves and shoes deliberately do NOT take this bias — they are
-   * small, they are the parts the ramp was lifted for, and their own marks
-   * (top band, hem, sole, laces) supply their internal contrast.
-   */
-  BELT_STEP_BIAS: -1,
 
   /**
    * Knee sleeve: fractions along thigh and shin, plus its radii.
@@ -479,23 +468,16 @@ export const RIG_GEOMETRY = {
    * moved by hand; they are the lower-body counterpart of the arm's break
    * positions.
    *
-   * STEP_BIAS is the same argument BELT_STEP_BIAS makes, arriving late because
-   * the sleeve used to be held down by something else. While the whole far leg
-   * carried SHADING.FAR_LIMB_STEP_BIAS the far sleeve was dragged down with it,
-   * and the near sleeve's GEAR_LIGHT flank was one object among many. With the
-   * blanket leg bias gone (SHADING.FAR_LEG_STEP_BIAS) both sleeves render their
-   * own lit flank at GEAR_LIGHT, luma 149 — above the bare leg's own median of
-   * SKIN_MID (117) — and the biggest kit mass on the leg becomes the brightest
-   * thing below the belt. Every sleeve in meet-photo-ref-1 is black with a
-   * contrast top band. One step down puts the sleeve's lit flank at GEAR_MID
-   * and its shaded flank at GEAR_DARK, which is a black sleeve catching a
-   * little light, and leaves the top gear step for the shoes' pale sole line.
+   * The sleeve's ramp-step bias is NOT here — it is
+   * `SHADING.KNEE_SLEEVE_STEP_BIAS`, with `HEAD_STEP_BIAS` and `BELT_STEP_BIAS`
+   * beside it. All three used to sit in this block; a shading bias is a knob
+   * that turns on its own and belongs in the tuning file, which is what the
+   * other five ramp-step biases already do.
    */
   KNEE_SLEEVE: {
     TOWARD_HIP: 0.19,
     TOWARD_ANKLE: 0.17,
     R: [3.0, 2.6] as const,
-    STEP_BIAS: -1,
   },
 
   /** Attachment fractions of the matching pose half-widths. */
