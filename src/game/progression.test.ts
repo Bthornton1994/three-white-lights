@@ -503,10 +503,25 @@ describe('the fact allowlist', () => {
     expect([...PROTECTED_CONCERNS].sort()).toEqual(['bestE1rmKg', 'meets', 'totalKg']);
   });
 
-  it('leaves streak and wallet open on purpose', () => {
+  it('leaves streak and wallet open on purpose, and nothing else yet', () => {
     // Recovery Days are purchasable and do move a streak (GDD §4.2, §8.2);
     // buying Chalk moves a balance by definition. Protecting them here would be
     // a lie the code could not keep.
+    //
+    // THE EQUALITY IS THE TRIPWIRE FOR THE RESIDUAL IN §6 OF THE MODULE HEADER,
+    // not decoration. The compile-time guards can be walked past by an author
+    // who makes three coordinated edits AND picks a fact name bland enough to
+    // dodge `PERFORMANCE_FACT_VOCABULARY` — `simRunsAllowed`, declared `'open'`,
+    // on a purchase's reach row and in `EntitlementReach.convenience`, was
+    // verified to compile clean. This line is what fails on it.
+    //
+    // It lives in the test rather than as a type-level assertion ON PURPOSE. A
+    // `UnionIsExactly<OpenFactKey, 'streak' | 'wallet'>` in the module would
+    // refuse a legitimately open fact too — GDD §8.3A's cosmetics business will
+    // plausibly want one — and a guard that refuses the product is satisfied
+    // best by a worse artifact. As a test expectation it is the same instrument
+    // as the export-surface `toEqual` below: adding one is allowed, doing it by
+    // accident is not.
     expect([...OPEN_FACTS].sort()).toEqual(['streak', 'wallet']);
     expect(PROTECTED_CONCERNS).not.toContain('streak');
     expect(PROTECTED_CONCERNS).not.toContain('wallet');

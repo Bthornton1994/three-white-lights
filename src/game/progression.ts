@@ -234,7 +234,9 @@
  *          AND ANSWERING `'open'` IS NOT FREE, or the map would only move the
  *          escape one line — the author of a purchasable pace fact would just
  *          declare it open. Two cross-checks price that answer, in the same
- *          shape as `MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE`:
+ *          shape as `MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE`. They PRICE it
+ *          rather than forbid it, and §6 states the route that still gets
+ *          through and what fails on it:
  *
  *            · `OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH` binds the open
  *              set to `EntitlementReach`, both directions. Declaring a fact open
@@ -416,6 +418,37 @@
  *    Both residuals are one deliberate shape in a diff whose surrounding comment
  *    says not to, rather than the previous residual, which was any addition at
  *    all, silently.
+ *
+ *  - A FACT CAN STILL BE DECLARED `'open'` IF IT IS ALSO RENAMED PAST THE
+ *    VOCABULARY, and this is the pay-to-win residual that survives §5(b).
+ *    `FACT_PROTECTION` removes the silent default and the two cross-checks price
+ *    the `'open'` answer, but they do not make it impossible. Four coordinated
+ *    edits get through: a fact named so as not to say what it is
+ *    (`simRunsAllowed`, not `simSessionsPerDay`), declared `'open'`, named on a
+ *    purchase's row in `ProposalReach`, and written into
+ *    `EntitlementReach.convenience` so the two purchase maps still agree.
+ *    `NO_OPEN_FACT_NAMES_PERFORMANCE` and `NO_FACT_MEANS_TRAINING_PACE` read
+ *    names and a bland name defeats both; `OPEN_FACTS_ARE_EXACTLY_WHAT_A_
+ *    PURCHASE_MAY_REACH` is satisfied by the fourth edit. THIS WAS RUN, not
+ *    reasoned about: it compiles clean.
+ *
+ *    What fails on it is `progression.test.ts`'s pinned open set, which asserts
+ *    `OPEN_FACTS` is exactly `['streak', 'wallet']`. That is a test expectation
+ *    rather than a type-level assertion on purpose: the same claim in the type
+ *    system would also refuse a legitimately open fact — GDD §8.3A's cosmetics
+ *    business will plausibly want one — and a guard that refuses the product is
+ *    satisfied best by a worse artifact.
+ *
+ *    So the honest statement of the line is: a purchase reaching a protected
+ *    fact is a compile error; a purchase reaching a NEW fact is a failing test
+ *    with a paragraph attached. Not the same strength, and worth saying so
+ *    rather than rounding the second up to the first.
+ *
+ *  - THE VOCABULARY IS A JUDGEMENT. `PERFORMANCE_FACT_VOCABULARY` is a list
+ *    someone wrote, and both scans built on it inherit that. It is a floor under
+ *    the honest mistake — a fact named for what it does — not a net under a
+ *    determined one, and `PERFORMANCE_NAMED_FACTS_ARE_NOT_VACUOUS` only proves
+ *    the scan still sees SOME fact, not that it sees the right ones.
  *
  *  - THIS MODULE CONSTRAINS ITSELF. It cannot stop a consumer reading a
  *    confirmed e1RM and multiplying it by a cosmetic's price. That would be the
