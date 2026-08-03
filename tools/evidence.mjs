@@ -12,7 +12,7 @@
  * Usage: node tools/evidence.mjs <piece-id> [testPathPattern]
  */
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -21,7 +21,8 @@ if (!piece) {
   console.error('usage: node tools/evidence.mjs <piece-id> [testPathPattern]');
   process.exit(2);
 }
-const pattern = process.argv[3] ?? null;
+const pattern = process.argv[3] === '--verify' ? null : (process.argv[3] ?? null);
+const verifyOnly = process.argv.includes('--verify');
 
 const run = (label, cmd, args) => {
   const r = spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8', timeout: 600_000 });
@@ -71,6 +72,44 @@ const dirty = git(['status', '--porcelain'])
   .filter((line) => line.trim() !== '')
   .map(dirtyPath)
   .filter((p) => !p.startsWith('.gauntlet/'));
+
+/**
+ * `--verify`: exit non-zero if this piece's bundle does not describe HEAD.
+ *
+ * Regenerating a bundle and then merging something else before dispatching a
+ * critic has now burned two grading cycles — both times the critic caught it by
+ * reading the stamp, which is the system working, but it is a whole agent spent
+ * on bookkeeping. This makes the check a command instead of a habit: run it
+ * immediately before dispatching and the stale case cannot get past.
+ */
+if (verifyOnly) {
+  const existing = (() => {
+    try {
+      return readFileSync(path.join(ROOT, '.gauntlet', 'evidence', `${piece}.txt`), 'utf8');
+    } catch {
+      return null;
+    }
+  })();
+  if (existing === null) {
+    console.error(`STALE: no evidence bundle for "${piece}" — generate one before grading.`);
+    process.exit(1);
+  }
+  const stamped = /^commit ([0-9a-f]{40})$/m.exec(existing)?.[1] ?? null;
+  if (stamped === null) {
+    console.error(`STALE: ${piece}.txt predates commit stamping — regenerate it.`);
+    process.exit(1);
+  }
+  if (stamped !== head) {
+    console.error(`STALE: ${piece}.txt describes ${stamped.slice(0, 8)}, HEAD is ${head.slice(0, 8)}. Regenerate before grading.`);
+    process.exit(1);
+  }
+  if (dirty.length > 0) {
+    console.error(`STALE: working tree has uncommitted code (${dirty.join(', ')}) — the bundle cannot describe it.`);
+    process.exit(1);
+  }
+  console.log(`ok: ${piece}.txt describes HEAD (${head.slice(0, 8)}), tree clean`);
+  process.exit(0);
+}
 
 const parts = [
   `EVIDENCE BUNDLE — piece ${piece}`,
