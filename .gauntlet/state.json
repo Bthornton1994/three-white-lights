@@ -159,8 +159,9 @@
       "id": "V1",
       "name": "Progression boundary",
       "bar": "No client-authoritative progression writes. Shaped for Edge Functions.",
-      "status": "pending",
-      "verifiable": true
+      "status": "building",
+      "verifiable": true,
+      "note": "Dispatched. GDD §9.2 wants server-authoritative progression from day one even in prototypes, and CLAUDE.md is blunt that the client never writes Total, e1RM, streak state, meet results or currency balances directly — but there is no backend and none is being built. The piece is the BOUNDARY: types that make a client-authoritative write fail to compile, so nothing has to be unwound the day a real Edge Function arrives. Local state has to model confirmed, pending and stale so an optimistic update is representable without being mistakable for truth. The builder was pointed at the three boundary idioms already in the codebase — the streak module compile-time allowlist, the dots branded types, the meet rules behind a private symbol — and told to reuse whichever fits rather than adding a fourth style. It may read every module and modify none of them; if integration seems to need a change elsewhere, that is a finding to report rather than a licence."
     },
     {
       "id": "L1",
@@ -216,7 +217,7 @@
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
-      "status": "ungraded",
+      "status": "grading",
       "verifiable": true,
       "note": "Rebuilt with nominal types and merged; wants a fresh critic. I re-ran my own four exploit lines against it rather than trusting the report: all three that used to return a number now fail to COMPILE — the unnarrowed coefficient read is gone (TS2339, coefficient moved onto ScoredDots only), and both multiplication paths are TS2362 because a coefficient is now an opaque object rather than a number, deliberately with no value accessor. The 229.05 fake mid-board score for a bombed lifter is closed the same way. An official total is a branded type with two mints, so neither ?? 0 nor totalOnTheBoard typechecks. GDD §6.5 recap deltas now work through a separate pair: +12.40, −2.31, and -0.001 prints 0.00 rather than −0.00. roundDotsScore(-2.31) still throws, which is the builder deviating from my brief on purpose and arguing a score is not a delta — I agree, since a negative in a DOTS column would be a wrong number on a result sheet. The builder also replaced the old comment that overclaimed with three honest headings, one of which is WHAT IS DELIBERATELY NOT CLOSED, and a test asserts all three still exist. Added the missing test and typecheck npm scripts. 802 tests, tsc clean."
     }
