@@ -9,9 +9,15 @@
   "blockers": [
     {
       "severity": "method",
-      "title": "Twelve blind checks so far, and the pattern is always the same",
-      "body": "Every one measured a proxy rather than the claim: a property test whose generator never produced the failing case, a bound the unfixed behaviour already satisfied, a hash standing in for a picture, a BigInt re-derivation checking the formula instead of the digits it printed. None were sloppiness; each was structurally unable to observe what it was written to observe.",
-      "consequence": "Mutation testing is now the default ask on every dispatch — break the behaviour, watch the test fail, restore, report the output. It has caught four in the last few hours that reading could not. The harness itself is now in scope for the same treatment: evidence bundles stamp their commit, and the progress page says so when a named screenshot is missing rather than quietly showing nothing."
+      "title": "Sixteen blind checks, and the pattern held to the end",
+      "body": "Every one measured a proxy rather than the claim: a generator that never produced the failing case, a bound the unfixed behaviour already satisfied, a hash standing in for a picture, a max over a region that included pixels the player cannot see, a ratio cap that a WORSE artifact satisfied more easily. Six were caught only by mutation testing.",
+      "consequence": "Mutation testing is now the default ask on every dispatch, and builders have started pre-empting it unprompted — one added a source scan because it worked out that unbranding a signature would be invisible to vitest. The harness itself is now in scope: evidence bundles stamp their commit and refuse to be graded stale, and the progress page says so when a named screenshot is missing."
+    },
+    {
+      "severity": "environment",
+      "title": "Two agents died silently, and node_modules was found wiped",
+      "body": "The result-card and shot-verifier agents both last committed three days ago and never notified — the same silent kill as the earlier spend-limit halt. Four commits of finished result-card work sat unmerged the whole time. Separately, node_modules/.bin was empty and the vitest package was gone, so the suite exited 216 with NO output at all, which reads like a code crash rather than a broken install.",
+      "consequence": "Both recovered by hand: npm install restored the toolchain, 21 merged worktrees were pruned to free 2.2G, and the card work is merged at 1244 tests across 23 files. The lesson is that a silent agent death looks identical to a slow one, so unmerged branches need checking by commit age rather than waiting for a notification."
     },
     {
       "severity": "state of the build",
@@ -169,7 +175,7 @@
       "bar": "The lift must feel good (GDD pillar 1).",
       "status": "failed",
       "verifiable": false,
-      "note": "SENT BACK, and the finding is the worst kind this run has produced: the verification tool is itself blind. tools/verify-lift-shots.mjs prints that the maximal attempt animates heavier without ever decoding a pixel — it sha256s file bytes and otherwise compares probe values that come from the app under test. I ran the critic's exploit: copy the light PNGs over the maximal ones, leave both manifests untouched, and it still reports OK, both sequences are semantically distinct and the maximal one animates heavier, over two byte-identical sets of pictures. A renderer that drew nothing would pass it. Its within-sequence check is vacuous too, because the hashed region is the whole canvas including the bar-path trace, which differs at every tick regardless of what the sprite does. So the 9 of 9 and 8 of 9 figures I reported are not backed by what I ran, and I have corrected that. What is genuinely established is the critic's OWN inspection of the crops: bar bend 3 against 1, strain climbing 0 to 3 against flat 0 for the whole light rep, forward drift 3.77px against 0.97px, ascent 69 ticks against 38, and a trace that stalls and reverses against a plumb line. Two more: the drive cue re-arms after its window closes, so the comment saying it arms the first time is false and the win rates justifying the default load describe a game the player is not playing; and the default of 0.88 still lets an undriven ideal-depth rep reach lockout, so the drive decides grind-vs-good-lift and never make-vs-miss — the same objection used to reject 0.75. My evidence bundle was also stale, which was my error; regenerated.",
+      "note": "The verifier is STILL blind and I confirmed it by running the exploit on the current tree: copying the light frames over the maximal ones with both manifests untouched still prints OK, both sequences are semantically distinct and the maximal one animates heavier. The agent dispatched to make it decode pixels died three days ago without landing the fix and without notifying. So the tool that exists specifically to prove the §12.2 heaviness claim still measures probe values written by the code under test rather than the rendered image. The mechanic itself and the deterministic capture are merged and fine; it is the verification that is unbacked.",
       "evidence": "L1-maximal/stage/05-losing.png"
     },
     {
@@ -209,9 +215,10 @@
       "id": "S3",
       "name": "Result card",
       "bar": "Would a competitive lifter believe ours is real? vs. real federation sheets.",
-      "status": "building",
+      "status": "grading",
       "verifiable": false,
-      "note": "Dispatched. GDD §6.5 calls the shareable card the strongest organic growth lever in the game, and its §12.2 bar is a blind A/B against real federation result sheets — would a competitive lifter believe ours is real. The builder is briefed hard on the reference limit: the committed scoresheet image is a LIVE in-meet attempt board, not a published results sheet, so it cannot supply placings, DOTS columns or total conventions. It must cite real sources or state plainly which conventions it invented, and a critic will check exactly that. It consumes meet.ts and dots.ts read-only, and a bombed lifter has to render honestly — attempts and marks shown, no total, no DOTS, never a zero."
+      "note": "Built and merged after its agent died mid-flight — four commits were sitting unmerged for three days. Renders a real federation-style sheet: meet name and venue, lifter, class and bodyweight, a three-attempt grid per lift with the failed 275 struck through in red, best-per-lift column, total, DOTS, place, top single, and a plate-accurate barbell. I checked the domain math against the modules rather than eyeballing it: best-per-lift 265 plus 177.5 plus 312.5 is exactly the 755 printed, and dotsScore at 92.40kg bodyweight gives 481.87374905476946, which rounds to the 481.87 on the card. Attempts are non-decreasing within every lift. A critic now has to judge the harder half — whether a competitive lifter would believe it — against the committed reference, which is a LIVE in-meet attempt board rather than a published results sheet, so the builder had to source or invent the results-sheet conventions and say which.",
+      "evidence": "card/strong-4x.png"
     },
     {
       "id": "X1",
