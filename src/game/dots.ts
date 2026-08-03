@@ -231,6 +231,12 @@ export const DOTS_DELTA_ZERO_PREFIX = '';
 //      a `DotsCoefficient` is an opaque object, not a number, so arithmetic on
 //      one is a type error. The only multiplication is `applyDotsCoefficient`,
 //      which demands an `OfficialTotalKg`.
+//   8. `formatDotsDelta(n - b)` where either end came from
+//      `hasDotsScore(o) ? o.score : 0` — the SUBTRACTION side of the same
+//      collapse, and the last one that was still open. A delta used to be a
+//      plain `number`, so one guarded end and one collapsed end compiled and
+//      printed a lifter who did not total as "−445.38". A delta is now a minted
+//      `DotsDelta` and a bare subtraction is not one.
 //
 // WHAT THROWS AT RUNTIME (for the casts and the `as any`s a type cannot see):
 //
@@ -248,6 +254,11 @@ export const DOTS_DELTA_ZERO_PREFIX = '';
 //     and refuse one that would ROUND to "0.00" (see
 //     `DOTS_SMALLEST_PRINTABLE_SCORE`). A *delta* is a different thing and has
 //     its own pair of helpers that accept negatives and zero.
+//   - `dotsDeltaBetweenScores({ previousScore, currentScore })` checks BOTH ends
+//     against that same rule, so the collapsed `0` from
+//     `hasDotsScore(o) ? o.score : 0` throws at the mint rather than becoming
+//     the far end of a delta. This is the runtime half of item 8: the type stops
+//     the bare subtraction, the mint stops the rewrite that routes it through.
 //
 // WHAT IS DELIBERATELY NOT CLOSED — stated plainly, because a comment that
 // overstates its guarantees is worse than no comment:
@@ -262,8 +273,12 @@ export const DOTS_DELTA_ZERO_PREFIX = '';
 //     verify them, which means anyone can evaluate the polynomial by hand and
 //     multiply the result by whatever they like. A module that publishes its own
 //     coefficients cannot prevent that and does not try to.
-//   - A cast (`x as OfficialTotalKg`) defeats the brand, exactly as a cast
-//     defeats the opaque rules in `meet.ts`. None of this is tamper-resistance;
+//   - A cast (`x as OfficialTotalKg`, `x as DotsDelta`) defeats either brand,
+//     exactly as a cast defeats the opaque rules in `meet.ts`. A delta is the
+//     softer of the two: `dotsDeltaBetweenScores` can be handed two scores that
+//     are real but belong to different lifters, and no type can see that. What
+//     it does catch is a zero on either end, which is the shape the collapse
+//     actually takes. None of this is tamper-resistance;
 //     authority over results belongs on the server (CLAUDE.md
 //     "Server-authoritative progression"). It closes the accidents that used to
 //     typecheck and look innocent in a diff, and claims nothing beyond that.
@@ -303,6 +318,32 @@ declare const OFFICIAL_TOTAL_BRAND: unique symbol;
  * total still works and the value can be printed, stored and compared normally.
  */
 export type OfficialTotalKg = number & { readonly [OFFICIAL_TOTAL_BRAND]: 'kg' };
+
+/**
+ * Type-level brand for `DotsDelta`. Declared, never defined, same as above.
+ */
+declare const DOTS_DELTA_BRAND: unique symbol;
+
+/**
+ * The difference between two DOTS scores, in DOTS points — the "+12.40 DOTS"
+ * call-out on a recap screen (GDD §6.5). Nominal, for the same reason
+ * `OfficialTotalKg` is: the arithmetic that produces a delta is a subtraction,
+ * and a subtraction is exactly where a lifter with no score gets one.
+ *
+ *     const b = hasDotsScore(before) ? before.score : 0;
+ *     const n = hasDotsScore(now)    ? now.score    : 0;   // bombed out
+ *     formatDotsDelta(n - b);                              // "−445.38", a lie
+ *
+ * `n - b` is a plain `number`, so that line does not typecheck any more. Mint a
+ * delta with `dotsDeltaBetween` (two `ScoredDots`, structural) or
+ * `dotsDeltaBetweenScores` (two bare scores, each checked at runtime). Both
+ * demand two ends that really scored, which is what makes the docstring on
+ * `roundDotsDelta` a property of the code rather than a promise about it.
+ *
+ * It IS a number at runtime and stays assignable to `number`, so a delta can be
+ * compared, stored and summed normally.
+ */
+export type DotsDelta = number & { readonly [DOTS_DELTA_BRAND]: 'dots' };
 
 /**
  * The shape of `meet.ts`'s `readTotal(state)`, declared structurally here rather
@@ -455,21 +496,38 @@ function roundToDisplayDecimals(value: number): number {
 }
 
 /**
- * A SCORE — not a delta — must be printable: positive, and not so small that it
- * would render as "0.00".
+ * THE definition of "a real DOTS score" in this module: finite, strictly
+ * positive, and not so small it would render as "0.00".
  *
  * The check is about ROUNDING TO ZERO, not about the sign. `0.004` is positive
  * and still prints "0.00", which is the string this module exists to keep off a
- * result card, so it is refused too.
+ * result card, so it fails here too.
+ *
+ * Written once because two guards ask it — the score display helpers, and the
+ * per-operand guard on the delta mint (`dotsDeltaBetweenScores`). They throw
+ * different messages, because the caller's mistake is a different mistake, but
+ * they must never disagree about what a score is.
+ */
+function isPrintableScore(score: number): boolean {
+  return Number.isFinite(score) && score > 0 && roundToDisplayDecimals(score) !== 0;
+}
+
+/**
+ * A SCORE — not a delta — must be printable. See `isPrintableScore`; this adds
+ * the two messages that name which half of the rule the caller broke.
  */
 function assertPrintableScore(score: number): void {
   assertUsableNumber(score, 'score');
+  if (isPrintableScore(score)) {
+    return;
+  }
   if (score <= 0) {
     throw new RangeError(
       `dots: a DOTS score is strictly positive, received ${score}. A lifter with no total ` +
         'has no score to print — render DOTS_NO_TOTAL_DISPLAY (via formatDotsOutcome) ' +
         'instead of formatting a 0. If this is a DIFFERENCE between two scores, it is a ' +
-        'delta, not a score: use roundDotsDelta / formatDotsDelta, which accept negatives.',
+        'delta, not a score: mint one with dotsDeltaBetween / dotsDeltaBetweenScores and ' +
+        'print it with formatDotsDelta, which accepts negatives.',
     );
   }
   if (roundToDisplayDecimals(score) === 0) {
@@ -716,15 +774,19 @@ export function hasDotsScore(outcome: DotsOutcome): outcome is ScoredDots {
 //
 // Two pairs, because a SCORE and a DELTA are different things:
 //   - a score is a lifter's DOTS points. Always positive; "0.00" is a lie.
+//     Takes a bare `number`: a score is what this module computes, so there is
+//     nothing to mint.
 //   - a delta is the difference between two scores — the "+12.40 DOTS" call-out
-//     on a recap (GDD §6.5). Legitimately negative, and legitimately zero.
+//     on a recap (GDD §6.5). Legitimately negative, and legitimately zero, which
+//     is why it cannot lean on the sign checks a score uses. It takes a minted
+//     `DotsDelta` instead, so the two ends have to have scored.
 // ---------------------------------------------------------------------------
 
 /**
  * Round a DOTS score for display, to the number of decimals federations use.
  * @throws RangeError unless the score is finite, positive, and large enough to
  *         print as something other than "0.00". For a difference between two
- *         scores use `roundDotsDelta`.
+ *         scores, mint a delta (`dotsDeltaBetween`) and use `roundDotsDelta`.
  */
 export function roundDotsScore(score: number): number {
   assertPrintableScore(score);
@@ -742,19 +804,120 @@ export function formatDotsScore(score: number): string {
   return roundDotsScore(score).toFixed(DOTS_DISPLAY_DECIMALS);
 }
 
+// --- Minting a delta --------------------------------------------------------
+//
+// A delta is a subtraction, and a subtraction is where a lifter with no score
+// gets one. So, exactly like a total, a delta cannot be written down as a bare
+// number: it is minted, and both mints demand two ends that really scored.
+// See `DotsDelta`.
+
+/** The two ends of a delta, named so the direction cannot be got backwards. */
+export interface DotsDeltaEndpoints {
+  /** Where the lifter was — the earlier meet. */
+  readonly previous: ScoredDots;
+  /** Where the lifter is now — the meet being recapped. */
+  readonly current: ScoredDots;
+}
+
+/** The same two ends as bare DOTS scores, for endpoints that arrive as numbers. */
+export interface DotsDeltaScoreEndpoints {
+  /** The earlier DOTS score. Must be a real score (see `isPrintableScore`). */
+  readonly previousScore: number;
+  /** The current DOTS score. Must be a real score. */
+  readonly currentScore: number;
+}
+
+/**
+ * The per-operand guard on the raw-score mint. Same rule as the score display
+ * helpers (`isPrintableScore`), different message: the caller here is not trying
+ * to print a score, they are trying to draw a line between two lifters who
+ * placed, and a 0 on either end means one of them did not.
+ */
+function assertDeltaEndpointScore(score: number, label: string): void {
+  assertUsableNumber(score, label);
+  if (isPrintableScore(score)) {
+    return;
+  }
+  throw new RangeError(
+    `dots: ${label} must be a real DOTS score, received ${score}. A delta is the gap between ` +
+      'two results that both placed. A lifter who did not total has no score to be the far ' +
+      'end of it — `hasDotsScore(o) ? o.score : 0` is that collapse wearing a zero, and it ' +
+      'renders as a large negative delta for someone who was never on the board. There is no ' +
+      'delta to show: show DOTS_NO_TOTAL_DISPLAY, or no call-out at all.',
+  );
+}
+
+/**
+ * The structural mint: a delta between two results that both placed. It cannot
+ * be handed an outcome with no score, because `ScoredDots` is the narrowed
+ * branch and `NoTotalDots` has no `score` field to supply one.
+ *
+ * On a call that typechecks it cannot throw — both ends are then real scores by
+ * construction. Forced past the compiler it delegates the same checks as the
+ * raw mint below and throws there, which is where the message is.
+ *
+ * Holding two `DotsOutcome`s rather than two `ScoredDots`? Narrow both first,
+ * and mean it — a missing end is not a delta of anything:
+ *
+ *     const delta =
+ *       hasDotsScore(previous) && hasDotsScore(current)
+ *         ? dotsDeltaBetween({ previous, current })
+ *         : null;              // no call-out, not "−445.38"
+ */
+export function dotsDeltaBetween(endpoints: DotsDeltaEndpoints): DotsDelta {
+  return dotsDeltaBetweenScores({
+    previousScore: endpoints.previous.score,
+    currentScore: endpoints.current.score,
+  });
+}
+
+/**
+ * The asserted mint: a delta between two DOTS scores that arrive as bare
+ * numbers — a stored score on a server row, a seeded NPC's recorded result, a
+ * test fixture.
+ *
+ * THE CALLER IS CLAIMING BOTH ENDS ARE REAL SCORES, and unlike `officialTotalKg`
+ * that claim is partly checkable: each end is run through the module's own
+ * definition of a score, so the `? outcome.score : 0` collapse throws here
+ * instead of printing. What no check can catch is a number that is a plausible
+ * score but the wrong lifter's; that is the caller's business.
+ *
+ * @throws RangeError if either end is not finite, is not positive, or is small
+ *         enough to round to "0.00" — i.e. is not a score a result sheet could
+ *         print.
+ */
+export function dotsDeltaBetweenScores(endpoints: DotsDeltaScoreEndpoints): DotsDelta {
+  assertDeltaEndpointScore(endpoints.previousScore, 'previousScore');
+  assertDeltaEndpointScore(endpoints.currentScore, 'currentScore');
+  return (endpoints.currentScore - endpoints.previousScore) as DotsDelta;
+}
+
 /**
  * Round a DOTS delta — a difference between two scores — for display.
  *
  * Unlike a score, a delta may be negative (the lifter went backwards) or zero
- * (they scored the same), and neither is an error. It is only ever computed from
- * two real scores, so it cannot launder a lifter who has none: there is no
- * `.score` on a `'no-total'` outcome to subtract.
+ * (they scored the same), and neither is an error.
  *
- * @throws RangeError if the delta is not finite.
+ * WHAT THIS DOES AND DOES NOT GUARANTEE. A `DotsDelta` can only be minted from
+ * two ends that scored: `dotsDeltaBetween` takes two `ScoredDots`, and
+ * `dotsDeltaBetweenScores` throws on an end that is not a printable score. So
+ * the collapse below no longer reaches this function — the subtraction yields a
+ * plain `number`, which is not a `DotsDelta`, and routing its `0` through the
+ * mint throws:
+ *
+ *     const b = hasDotsScore(before) ? before.score : 0;
+ *     const n = hasDotsScore(now)    ? now.score    : 0;
+ *     formatDotsDelta(n - b);        // was "−445.38"; now a type error
+ *
+ * A cast (`x as DotsDelta`) still defeats this, exactly as a cast defeats
+ * `OfficialTotalKg` — see WHAT IS DELIBERATELY NOT CLOSED. The claim is that the
+ * accident cannot be written, not that the module is tamper-proof.
+ *
+ * @throws RangeError if the delta is not finite (reachable only via a cast).
  */
-export function roundDotsDelta(delta: number): number {
+export function roundDotsDelta(delta: DotsDelta): DotsDelta {
   assertUsableNumber(delta, 'delta');
-  return roundToDisplayDecimals(delta);
+  return roundToDisplayDecimals(delta) as DotsDelta;
 }
 
 /**
@@ -764,9 +927,11 @@ export function roundDotsDelta(delta: number): number {
  * The sign is chosen from the ROUNDED value, so a delta of -0.001 prints
  * `"0.00"` rather than `"−0.00"`.
  *
- * @throws RangeError if the delta is not finite.
+ * Takes a minted `DotsDelta`; see `roundDotsDelta` for what that buys.
+ *
+ * @throws RangeError if the delta is not finite (reachable only via a cast).
  */
-export function formatDotsDelta(delta: number): string {
+export function formatDotsDelta(delta: DotsDelta): string {
   const rounded = roundDotsDelta(delta);
   const prefix =
     rounded > 0
