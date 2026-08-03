@@ -711,8 +711,14 @@ export function asServerRevision(value: number): ServerRevision {
  * THE COMPLETE SET OF FIELDS SERVER-OWNED PROGRESSION MAY HAVE.
  *
  * Same mechanism as `STREAK_FACT_KEYS` in `streak.ts`, one level up: adding a
- * field to `ConfirmedFacts` fails `tsc` until it is added here, under this
- * comment, where the §8.1 question ("can this be bought?") gets asked out loud.
+ * field to `ConfirmedFacts` fails `tsc` until it is added here.
+ *
+ * THE §8.1 QUESTION ("can this be bought?") IS ASKED IN `FACT_PROTECTION` BELOW,
+ * not here. This comment used to claim it was asked here, and it was not asked
+ * anywhere — being on this list said nothing about whether a purchase could move
+ * the fact, and the default was that one could. Widening this list is now only
+ * half an edit: the other half is answering the question, and the compiler will
+ * not let the two be separated.
  *
  * Exported as a runtime array so a critic can compare it against a live object's
  * keys without reading a line of logic. `progression.test.ts` does exactly that.
