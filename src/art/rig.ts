@@ -478,11 +478,24 @@ export const RIG_GEOMETRY = {
    * These four numbers decide how much bare leg the figure has and will be
    * moved by hand; they are the lower-body counterpart of the arm's break
    * positions.
+   *
+   * STEP_BIAS is the same argument BELT_STEP_BIAS makes, arriving late because
+   * the sleeve used to be held down by something else. While the whole far leg
+   * carried SHADING.FAR_LIMB_STEP_BIAS the far sleeve was dragged down with it,
+   * and the near sleeve's GEAR_LIGHT flank was one object among many. With the
+   * blanket leg bias gone (SHADING.FAR_LEG_STEP_BIAS) both sleeves render their
+   * own lit flank at GEAR_LIGHT, luma 149 — above the bare leg's own median of
+   * SKIN_MID (117) — and the biggest kit mass on the leg becomes the brightest
+   * thing below the belt. Every sleeve in meet-photo-ref-1 is black with a
+   * contrast top band. One step down puts the sleeve's lit flank at GEAR_MID
+   * and its shaded flank at GEAR_DARK, which is a black sleeve catching a
+   * little light, and leaves the top gear step for the shoes' pale sole line.
    */
   KNEE_SLEEVE: {
     TOWARD_HIP: 0.19,
     TOWARD_ANKLE: 0.17,
     R: [3.0, 2.6] as const,
+    STEP_BIAS: -1,
   },
 
   /** Attachment fractions of the matching pose half-widths. */

@@ -287,15 +287,33 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
   const kneeX = femur.kneeX;
   const ankleX = cx + sign * pose.ankleHalfW;
   // The femur is the one bone this rig draws foreshortened, and everything worn
-  // on it is foreshortened with it. The shin is not: its drawn length GROWS
-  // through the descent, so there is nothing to correct and it is left as the
-  // plain cylinder it has always been. See `femurTilt` and SHADING.FORESHORTEN.
+  // on it is foreshortened with it.
+  //
+  // THE SHIN IS STILL NOT, AND THAT WAS RE-CHECKED RATHER THAN INHERITED. The
+  // round-4 finding said the bare leg the player sees at depth is mostly SHIN
+  // and asked whether this exclusion was the bug. Measured on the drawn rig:
+  // knee-to-ankle is 14.14 px standing and 16.40 px in the hole, and the shin's
+  // screen angle stays between 75 and 105 degrees the whole way down, so
+  // `cylinderPeakLit` for it never leaves 0.75-0.91. It grows and it stays
+  // near-vertical, because the knee tracks out SIDEWAYS while the ankle stays
+  // put — the femur's `sqrt(1 - (drawn/natural)^2)` argument has nothing to
+  // bite on. Giving the shin an out-of-plane tilt would be inventing a rotation
+  // the drawing does not contain, so it is still the plain cylinder.
+  //
+  // What the shin needed instead was its own AXIAL profile — see
+  // `SHADING.AXIAL_LEG` and `fleshOpts` below. Its darkness was never a normal
+  // problem; it was a highlight sitting under the knee sleeve and a joint drop
+  // landing on the bare band above the shoe.
   const tilt = femurTilt(pose, sign);
+  // AXIAL_LEG, not the default AXIAL_LIMB: on a leg both ends of both bones are
+  // under kit, so the joint drop lands on bare skin instead of on a joint.
+  // See SHADING.AXIAL_LEG.
   const fleshOpts = {
     stepBias: bias,
     edge: true,
     edgeIndex: INTERIOR_EDGE.SKIN,
     edgeFollowsLight: true,
+    axial: SHADING.AXIAL_LEG,
   };
   const gearOpts = {
     stepBias: bias,
@@ -344,6 +362,7 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
   // it widens the gap to the lit thigh rather than narrowing it.
   drawLimb(g, span.topX, span.topY, span.botX, span.botY, KS.R[0], KS.R[1], RAMPS.GEAR, {
     ...gearOpts,
+    stepBias: bias + KS.STEP_BIAS,
     outOfPlane: tilt,
   });
 
@@ -656,7 +675,7 @@ export function renderLifterFrame(spec: LifterFrameSpec): RenderedFrame {
 
   drawBarAndPlates(g, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, sleeve);
 
-  drawLeg(g, pose, 1, SHADING.FAR_LIMB_STEP_BIAS);
+  drawLeg(g, pose, 1, SHADING.FAR_LEG_STEP_BIAS);
   drawLeg(g, pose, -1, 0);
   drawNeck(g, pose, skin);
   drawTorso(g, pose);

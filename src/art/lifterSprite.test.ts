@@ -24,6 +24,7 @@ import {
   femurTilt,
   kneeSleeveSpan,
   poseAtDepth,
+  singletHemY,
   type Pose,
 } from './rig';
 
@@ -725,19 +726,85 @@ describe('scaling and colour conversion', () => {
 // `palette.ts` states this rule about itself where it decides not to push
 // GEAR_LIGHT past SKIN_LIGHT: "Sleeves, belts and shoes are black kit in this
 // sport; they must read as dark objects ON a lit leg, not as the leg." The
-// renderer broke it, and nothing in the suite could tell:
+// renderer broke it, and nothing in the suite could tell.
 //
-//   MEASURED, over the whole pose space, before `SHADING.FORESHORTEN` existed:
-//   the knee sleeve out-valued the bare thigh it is worn on in 20 of 112
-//   leg-poses (18%) — 8 of 36 frames of the light rep and 15 of 91 of the
-//   maximal one. GEAR_LIGHT is luma 149 and SKIN_MID is 117, so wherever a bent
-//   thigh fell to SKIN_MID the sleeve on it was 32 luma brighter: the IPF squat
-//   photo with its values swapped.
-//
-// So the invariant is swept over the pose space rather than checked on one
-// frame, and it is asserted per LEG rather than per frame, because the two legs
-// are at different angles and it was always one of them that fell out first.
 // ---------------------------------------------------------------------------
+// WHY THIS BLOCK WAS REWRITTEN: THE MEASUREMENT WAS BLIND, NOT THE RENDERER
+// ---------------------------------------------------------------------------
+// The previous version of these tests decided inversion with
+// `Math.max(...thigh) <= Math.max(...sleeve)` over the WHOLE thigh capsule, and
+// reported 0 inverted over a 112-pose sweep while a rendered frame showed the
+// lower body as one dark mass with the two grey sleeves the brightest objects
+// below the belt. Three separate holes, all of the same shape:
+//
+//   1. A MAX IS NOT A READ. Two surviving pixels clear any max test. The thigh
+//      capsule runs up UNDER the singlet to the hip, where the glute flare
+//      beside the belt keeps a couple of SKIN_LIGHT pixels at every depth. The
+//      claim is about the band of bare leg between the singlet hem and the
+//      sleeve, so the measurement now takes only pixels at or below
+//      `singletHemY`, and it takes a MEDIAN and an AREA SHARE, not a max.
+//   2. THE THIGH IS NOT THE LEG. At squat depth the femur is drawn 6-8 px long
+//      and its visible bare band is 2-26 px, while the bare SHIN is 37-50 px —
+//      two to four times as much of what the player actually looks at. A test
+//      that only ever asked about the thigh could not see the mass that was
+//      dark. Thigh and shin are now counted and asserted SEPARATELY.
+//   3. `if (sleeve.length === 0) continue;` SKIPPED INSTEAD OF FAILING. Every
+//      quantity this block compares now has a floor asserted on its pixel
+//      count, so a pose that stops drawing a sleeve, a shin or a thigh fails
+//      here instead of quietly removing itself from the sweep. The knee-sleeve
+//      MARKS are asserted to land as well, so deleting them from the mark table
+//      fails this block rather than passing it.
+//
+// MEASURED ON THE BUILD THIS REWRITE FIXES, over 288 poses x 2 legs, using
+// exactly the helper below:
+//
+//                                              before      after
+//   min median of the visible bare thigh          73         117
+//   min median of the visible bare shin           73         117
+//   max median of the knee sleeve                101          59
+//   brightest single sleeve pixel                149         101
+//   min (leg median - sleeve median)              14          58
+//   min share of visible thigh >= SKIN_LIGHT    0.000       0.333
+//   min share of visible shin  >= SKIN_LIGHT    0.100       0.422
+//
+// 73 is SKIN_SHADOW, the floor of the skin ramp, and 149 is GEAR_LIGHT. So on
+// the old build there were poses where the median pixel of the bare leg was the
+// darkest colour the skin ramp has while the brightest pixel of the kit worn on
+// it was 76 luma above that, and no test in the suite failed.
+//
+// The invariant is swept over the pose space rather than checked on one frame,
+// and asserted per LEG rather than per frame, because the two legs are at
+// different angles and it was always one of them that fell out first.
+// ---------------------------------------------------------------------------
+
+/**
+ * Floors and margins for the block below. Named here rather than typed into the
+ * assertions because every one of them is a claim about how the lower body
+ * should read, and the numbers next to them are what the current build measures
+ * at its worst pose — so the headroom each floor leaves is visible.
+ */
+const LEG_READ = {
+  /** Bare thigh and bare shin must each clear the sleeve's median by this. */
+  MIN_LEG_OVER_KIT_LUMA: 44,
+  /** Share of the visible bare thigh at or above SKIN_LIGHT. Worst: 0.333. */
+  MIN_LIT_SHARE_THIGH: 0.25,
+  /** Share of the visible bare shin at or above SKIN_LIGHT. Worst: 0.422. */
+  MIN_LIT_SHARE_SHIN: 0.33,
+  /** Share of the whole visible bare leg at or above SKIN_LIGHT. Worst: 0.476. */
+  MIN_LIT_SHARE_LEG: 0.38,
+  // --- anti-vacuity floors. Every comparison above divides by one of these. ---
+  /**
+   * Visible bare thigh pixels. TWO, and it has to stay two: at full depth a
+   * front-on thigh really is about two rows tall once the hem and the sleeve
+   * have closed over it (see RIG_GEOMETRY.ATTACH.SINGLET_HEM_ALONG_THIGH).
+   * Worst over the sweep: 2, at DESCENT depth 0.66 strain 3 pitch 1.
+   */
+  MIN_THIGH_PX: 2,
+  /** Visible bare shin pixels. Worst: 37. */
+  MIN_SHIN_PX: 20,
+  /** Knee-sleeve pixels. Worst: 53. */
+  MIN_SLEEVE_PX: 30,
+} as const;
 
 const SKIN_INDICES = new Set([
   PAL.SKIN_SHADOW,
@@ -777,33 +844,77 @@ function inCapsule(
 }
 
 interface LegValues {
+  /** Bare thigh the player can see: skin, in the femur capsule, below the hem. */
   readonly thigh: number[];
+  /** Bare shin the player can see: skin, in the shin capsule. */
+  readonly shin: number[];
+  /** Knee sleeve: gear, in the sleeve capsule as drawn (radius plus its ring). */
   readonly sleeve: number[];
 }
 
-/** Bare-thigh and knee-sleeve luma for one leg of a rendered frame. */
+/**
+ * What ONE LEG of a rendered frame is actually showing, by luma.
+ *
+ * Classification is by DRAWN PIXEL, not by geometry alone: a pixel counts as
+ * bare thigh only if a skin index survived there, which means the singlet, the
+ * belt, the sleeve and the shoe have all already been drawn over it and did not
+ * cover it. Geometry only says WHICH mass a surviving pixel belongs to.
+ *
+ * The hem cut on the thigh is the part that matters. Without it the femur
+ * capsule reaches up past the singlet to the hip, where two or three pixels of
+ * lit glute flare sit beside the belt at every depth — and those two pixels
+ * were enough to satisfy every max-based assertion this block used to make
+ * while the drawn thigh was inverted everywhere the player looks.
+ */
 function legValues(grid: IndexGrid, pose: Pose, sign: number): LegValues {
   const span = kneeSleeveSpan(pose, sign);
   const KS = RIG_GEOMETRY.KNEE_SLEEVE;
   const hipX = CENTER_X + sign * pose.hipHalfW * RIG_GEOMETRY.ATTACH.THIGH_ROOT;
   const kneeX = CENTER_X + sign * pose.kneeHalfW;
+  const ankleX = CENTER_X + sign * pose.ankleHalfW;
+  const TR = RIG_GEOMETRY.THIGH_R;
+  const SR = RIG_GEOMETRY.SHIN_R;
+  const hem = singletHemY(pose);
   const thigh: number[] = [];
+  const shin: number[] = [];
   const sleeve: number[] = [];
   for (let y = 0; y < grid.h; y += 1) {
     for (let x = 0; x < grid.w; x += 1) {
       const v = getPx(grid, x, y);
       if (isTransparentIndex(v)) continue;
-      if (inCapsule(x, y, span.topX, span.topY, span.botX, span.botY, KS.R[0], KS.R[1])) {
-        if (GEAR_INDICES.has(v)) sleeve.push(luma(v));
+      if (GEAR_INDICES.has(v)) {
+        // Plus one radius: `PartOptions.edge` grows the drawn sleeve by its ring.
+        if (
+          inCapsule(x, y, span.topX, span.topY, span.botX, span.botY, KS.R[0] + 1, KS.R[1] + 1)
+        ) {
+          sleeve.push(luma(v));
+        }
         continue;
       }
-      const R = RIG_GEOMETRY.THIGH_R;
-      if (inCapsule(x, y, hipX, pose.hipY, kneeX, pose.kneeY, R[0] ?? 0, R[1] ?? 0)) {
-        if (SKIN_INDICES.has(v)) thigh.push(luma(v));
+      if (!SKIN_INDICES.has(v)) continue;
+      const shinEndY = pose.ankleY + RIG_GEOMETRY.FOOT_DROP - (SR[1] ?? 0);
+      if (inCapsule(x, y, kneeX, pose.kneeY, ankleX, shinEndY, SR[0] ?? 0, SR[1] ?? 0)) {
+        shin.push(luma(v));
+        continue;
+      }
+      if (y >= hem && inCapsule(x, y, hipX, pose.hipY, kneeX, pose.kneeY, TR[0] ?? 0, TR[1] ?? 0)) {
+        thigh.push(luma(v));
       }
     }
   }
-  return { thigh, sleeve };
+  return { thigh, shin, sleeve };
+}
+
+/** Middle value. An area statistic, which is the whole point — see the block. */
+function median(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)] ?? 0;
+}
+
+/** Share of `values` at or above `floor`. */
+function shareAtLeast(values: readonly number[], floor: number): number {
+  if (values.length === 0) return 0;
+  return values.filter((v) => v >= floor).length / values.length;
 }
 
 /** Every leg pose the animation can reach, as (spec, label) pairs. */
@@ -825,79 +936,149 @@ function poseSweep(): { spec: LifterFrameSpec; where: string }[] {
 }
 
 describe('a knee sleeve reads as a dark object on a lit leg', () => {
-  it('never out-values the bare thigh it is worn on, anywhere in the pose space', () => {
+  it('finds a sleeve, a thigh and a shin to compare at every pose', () => {
+    // THE ANTI-VACUITY TEST, and it exists because the version of this block it
+    // replaces did not have one on the sleeve side: `if (sleeve.length === 0)
+    // continue;` silently removed a pose from the sweep instead of failing, so
+    // every comparison below it was conditional on a quantity nothing checked.
+    // Run this first: if it fails, nothing else in this block means anything.
     const sweep = poseSweep();
     expect(sweep.length).toBeGreaterThan(100);
+    for (const { spec: s, where } of sweep) {
+      const { grid, pose } = renderLifterFrame(s);
+      for (const sign of [-1, 1]) {
+        const leg = `${where} ${sign > 0 ? 'far' : 'near'}`;
+        const { thigh, shin, sleeve } = legValues(grid, pose, sign);
+        expect(sleeve.length, `${leg}: knee-sleeve px`).toBeGreaterThanOrEqual(
+          LEG_READ.MIN_SLEEVE_PX,
+        );
+        expect(thigh.length, `${leg}: visible bare thigh px`).toBeGreaterThanOrEqual(
+          LEG_READ.MIN_THIGH_PX,
+        );
+        expect(shin.length, `${leg}: visible bare shin px`).toBeGreaterThanOrEqual(
+          LEG_READ.MIN_SHIN_PX,
+        );
+      }
+    }
+  });
+
+  it('carries its authored band and hem, not just a shaded tube', () => {
+    // The other half of anti-vacuity, and the one that answers "what if the
+    // sleeve stopped being an object at all". A sleeve resolved purely by the
+    // shading model is a grey capsule; what makes it read as a worn thing is
+    // the top band and the hem in `spriteMarks.ts`. Deleting those two marks
+    // from the table has to fail a test somewhere in this block, and it is this
+    // one — `renderLifterFrame` reports what each mark actually painted, so an
+    // absent mark is an absent entry rather than a zero.
+    const BANDED = ['KNEE_SLEEVE_TOP_BAND', 'KNEE_SLEEVE_HEM'];
+    for (const depth of [0, 0.33, 0.66, 0.86, 1]) {
+      for (const direction of ['DESCENT', 'ASCENT'] as const) {
+        const { marks } = renderLifterFrame(spec({ depth, direction, totalKg: 250 }));
+        for (const name of BANDED) {
+          const placement = marks.find((m) => m.name === name);
+          expect(placement, `${name} missing from the mark table at ${direction} ${depth}`)
+            .toBeDefined();
+          expect(placement?.painted ?? 0, `${name} painted at ${direction} ${depth}`)
+            .toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('never out-values the bare leg it is worn on, by area, anywhere in the pose space', () => {
+    // BY MEDIAN AND BY THE BRIGHTEST SLEEVE PIXEL, not by two maxima. The
+    // question a player answers by looking is "which of these is the lit thing"
+    // and that is decided by area, so the sleeve's median has to sit a real
+    // distance under the leg's median AND its single brightest pixel has to
+    // stay under the leg's median too. Thigh and shin are asked separately
+    // because at depth the shin is most of the bare leg and the thigh is a
+    // sliver, and an average over both would let the shin carry the thigh.
+    const sweep = poseSweep();
     const inverted: string[] = [];
     for (const { spec: s, where } of sweep) {
       const { grid, pose } = renderLifterFrame(s);
       for (const sign of [-1, 1]) {
-        const { thigh, sleeve } = legValues(grid, pose, sign);
-        if (sleeve.length === 0) continue;
-        // The thigh has to be visible at all for the comparison to mean
-        // anything. If a pose ever buries it completely that is a different
-        // bug, and this catches it rather than passing vacuously. Measured
-        // minimum over this sweep: 3 px, at DESCENT depth 0.75 strain 3 pitch 2,
-        // where the shorts and the sleeve very nearly meet.
-        expect(thigh.length, `${where} ${sign > 0 ? 'far' : 'near'} leg: bare thigh`)
-          .toBeGreaterThanOrEqual(2);
-        if (Math.max(...thigh) <= Math.max(...sleeve)) {
-          inverted.push(`${where} ${sign > 0 ? 'far' : 'near'}`);
-        }
-      }
-    }
-    expect(inverted, `${inverted.length}/${sweep.length * 2} leg-poses inverted`).toEqual([]);
-  });
-
-  it('keeps a real gap, not a one-step photo finish, at the depths that broke', () => {
-    // The frames the blind A/B named were all at depth: "the deeper the squat,
-    // the worse it gets". A margin rather than an inequality, so a change that
-    // leaves the thigh one hair over the sleeve still fails here.
-    const MIN_GAP_LUMA = 12;
-    for (const depth of [0.66, 0.86, 1]) {
-      for (const direction of ['DESCENT', 'ASCENT'] as const) {
-        for (const strainLevel of [0, STRAIN.LEVELS - 1]) {
-          const { grid, pose } = renderLifterFrame(
-            spec({ depth, direction, strainLevel, totalKg: 250 }),
-          );
-          for (const sign of [-1, 1]) {
-            const { thigh, sleeve } = legValues(grid, pose, sign);
-            if (sleeve.length === 0) continue;
-            const where = `${direction} d${depth} s${strainLevel} ${sign > 0 ? 'far' : 'near'}`;
-            expect(Math.max(...thigh) - Math.max(...sleeve), where).toBeGreaterThanOrEqual(
-              MIN_GAP_LUMA,
-            );
+        const leg = `${where} ${sign > 0 ? 'far' : 'near'}`;
+        const { thigh, shin, sleeve } = legValues(grid, pose, sign);
+        const kit = median(sleeve);
+        const kitTop = Math.max(...sleeve);
+        for (const [name, flesh] of [
+          ['thigh', thigh],
+          ['shin', shin],
+        ] as const) {
+          const skin = median(flesh);
+          if (skin - kit < LEG_READ.MIN_LEG_OVER_KIT_LUMA) {
+            inverted.push(`${leg} ${name}: median ${skin} vs sleeve ${kit}`);
+          }
+          if (kitTop >= skin) {
+            inverted.push(`${leg} ${name}: brightest sleeve px ${kitTop} vs median ${skin}`);
           }
         }
       }
     }
+    expect(inverted.slice(0, 8), `${inverted.length}/${sweep.length * 2} leg-poses inverted`)
+      .toEqual([]);
   });
 
-  it('holds the thigh in its band as the femur swings, rather than only at lockout', () => {
-    // The gap the A/B found was POSE-DEPENDENT and went the wrong way: standing,
-    // the lifter read five clean bands from short to shoe; in the hole the whole
-    // lower body was one dark mass. So this is a claim about the WORST depth,
-    // not the average one — the deep frames may not be dimmer than the standing
-    // frame by more than one ramp step's worth of the thigh's own values.
-    const brightestThigh = (depth: number, direction: 'DESCENT' | 'ASCENT'): number => {
-      const { grid, pose } = renderLifterFrame(spec({ depth, direction, totalKg: 250 }));
-      let best = 0;
+  it('keeps the bent leg lit by area, not only at lockout', () => {
+    // THE POSE-DRIVEN HALF. The blind A/B's finding was a contrast between two
+    // frames of the same rep at the same load: legs straight, five clean bands
+    // from hem to shoe; legs bent, one dark mass. Bent legs are most of the
+    // animation, so the claim is about the bent frames specifically and it is a
+    // claim about AREA — what share of the bare leg reaches the step a lit leg
+    // has to reach — rather than about whether any single pixel gets there.
+    const LIT = luma(PAL.SKIN_LIGHT);
+    const failures: string[] = [];
+    for (const { spec: s, where } of poseSweep()) {
+      const { grid, pose } = renderLifterFrame(s);
       for (const sign of [-1, 1]) {
-        const { thigh } = legValues(grid, pose, sign);
-        if (thigh.length > 0) best = Math.max(best, Math.max(...thigh));
-      }
-      return best;
-    };
-    const standing = brightestThigh(0, 'DESCENT');
-    for (const depth of [0.33, 0.5, 0.66, 0.86, 1]) {
-      for (const direction of ['DESCENT', 'ASCENT'] as const) {
-        // SKIN_LIGHT is the step a lit leg has to reach. Below it the thigh is
-        // in the same value class as the kit worn on it.
-        expect(brightestThigh(depth, direction), `${direction} depth ${depth}`)
-          .toBeGreaterThanOrEqual(luma(PAL.SKIN_LIGHT));
+        const leg = `${where} ${sign > 0 ? 'far' : 'near'}`;
+        const { thigh, shin } = legValues(grid, pose, sign);
+        const checks: readonly (readonly [string, readonly number[], number])[] = [
+          ['thigh', thigh, LEG_READ.MIN_LIT_SHARE_THIGH],
+          ['shin', shin, LEG_READ.MIN_LIT_SHARE_SHIN],
+          ['leg', [...thigh, ...shin], LEG_READ.MIN_LIT_SHARE_LEG],
+        ];
+        for (const [name, values, floor] of checks) {
+          const lit = shareAtLeast(values, LIT);
+          if (lit < floor) {
+            failures.push(`${leg} ${name}: ${lit.toFixed(3)} of ${values.length} px lit, want ${floor}`);
+          }
+        }
       }
     }
-    expect(standing).toBeGreaterThanOrEqual(luma(PAL.SKIN_LIGHT));
+    expect(failures.slice(0, 8), `${failures.length} leg-poses below the lit floor`).toEqual([]);
+  });
+
+  it('does not get darker when the leg bends', () => {
+    // The direction of the defect, stated as its own claim. Whatever the
+    // absolute numbers are, the deep frames may not read darker than the
+    // standing one — that inversion is what "collapses into one dark mass the
+    // moment the leg bends" means, and it is invisible to any test that only
+    // looks at one pose.
+    const litShare = (depth: number, direction: 'DESCENT' | 'ASCENT'): number => {
+      const { grid, pose } = renderLifterFrame(spec({ depth, direction, totalKg: 250 }));
+      const all: number[] = [];
+      for (const sign of [-1, 1]) {
+        const { thigh, shin } = legValues(grid, pose, sign);
+        all.push(...thigh, ...shin);
+      }
+      expect(all.length, `${direction} ${depth}: bare leg px`).toBeGreaterThan(
+        2 * (LEG_READ.MIN_THIGH_PX + LEG_READ.MIN_SHIN_PX),
+      );
+      return shareAtLeast(all, luma(PAL.SKIN_LIGHT));
+    };
+    const standing = litShare(0, 'DESCENT');
+    // A one-ramp-step allowance, expressed as area rather than as value: a bent
+    // frame may give up some lit share to the geometry — the thigh really does
+    // fold away — but not most of it.
+    const FLOOR = standing * 0.8;
+    for (const depth of [0.33, 0.5, 0.66, 0.75, 0.86, 1]) {
+      for (const direction of ['DESCENT', 'ASCENT'] as const) {
+        expect(litShare(depth, direction), `${direction} depth ${depth} vs standing ${standing.toFixed(3)}`)
+          .toBeGreaterThanOrEqual(FLOOR);
+      }
+    }
   });
 });
 
