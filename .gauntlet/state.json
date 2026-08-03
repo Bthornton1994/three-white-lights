@@ -175,7 +175,7 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work — NOW GRADEABLE, reference committed.",
-      "status": "building",
+      "status": "failed",
       "verifiable": true,
       "note": "Fifth craft rework merged; 565 tests green. The builder verified the critic’s mechanism and found a deeper one: angle-dependence is real, but normalising for it alone would NOT have fixed the hole. The actual fault is that the femur is drawn FORESHORTENED — hip-to-knee collapses from 15.1px standing to 2.5px in the hole — and the shader read that as a limb lying sideways, so the only visible part of the thigh was its shadow flank. Fixed by tipping the normal toward the camera by a tilt derived from drawn-vs-natural bone length. Measured: leg-poses where the sleeve out-values its thigh, 20/112 to 0/112, and the reference’s own flesh-to-kit ratio measured at 1.59 against ours at 1.46. Also fixed a defect in the GRADING EVIDENCE: the harness never cleaned its frame directory, so a shorter reel left old frames beside new ones under the same names — a critic and I both cited a frame that was hours stale.",
       "evidence": "A1-hole-6x.png"
@@ -208,15 +208,15 @@
       "id": "S3",
       "name": "Result card",
       "bar": "Would a competitive lifter believe ours is real? vs. real federation sheets.",
-      "status": "pending",
+      "status": "building",
       "verifiable": false,
-      "note": "Real sheets unreachable — bar will report unverifiable."
+      "note": "Dispatched. GDD §6.5 calls the shareable card the strongest organic growth lever in the game, and its §12.2 bar is a blind A/B against real federation result sheets — would a competitive lifter believe ours is real. The builder is briefed hard on the reference limit: the committed scoresheet image is a LIVE in-meet attempt board, not a published results sheet, so it cannot supply placings, DOTS columns or total conventions. It must cite real sources or state plainly which conventions it invented, and a critic will check exactly that. It consumes meet.ts and dots.ts read-only, and a bombed lifter has to render honestly — attempts and marks shown, no total, no DOTS, never a zero."
     },
     {
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
-      "status": "grading",
+      "status": "ungraded",
       "verifiable": true,
       "note": "Rebuilt with nominal types and merged; wants a fresh critic. I re-ran my own four exploit lines against it rather than trusting the report: all three that used to return a number now fail to COMPILE — the unnarrowed coefficient read is gone (TS2339, coefficient moved onto ScoredDots only), and both multiplication paths are TS2362 because a coefficient is now an opaque object rather than a number, deliberately with no value accessor. The 229.05 fake mid-board score for a bombed lifter is closed the same way. An official total is a branded type with two mints, so neither ?? 0 nor totalOnTheBoard typechecks. GDD §6.5 recap deltas now work through a separate pair: +12.40, −2.31, and -0.001 prints 0.00 rather than −0.00. roundDotsScore(-2.31) still throws, which is the builder deviating from my brief on purpose and arguing a score is not a delta — I agree, since a negative in a DOTS column would be a wrong number on a result sheet. The builder also replaced the old comment that overclaimed with three honest headings, one of which is WHAT IS DELIBERATELY NOT CLOSED, and a test asserts all three still exist. Added the missing test and typecheck npm scripts. 802 tests, tsc clean."
     }
