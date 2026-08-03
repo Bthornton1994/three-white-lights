@@ -13,10 +13,12 @@
  * with sex-specific coefficients. See DOTS_COEFFICIENTS below.
  *
  * PURITY CONTRACT (CLAUDE.md "Pure logic is separate from UI"): this module
- * imports nothing — not React, not I/O, not a sibling game module. The one thing
- * evaluated at load is `Symbol('dots.coefficient')` (see THE COEFFICIENT IS NOT A
- * NUMBER below); it allocates and touches nothing outside this file, and no
- * function's output depends on which symbol it got.
+ * imports nothing — not React, not I/O, not a sibling game module. Load-time
+ * evaluation is: the published-constant object literals, the arithmetic in
+ * `DOTS_SMALLEST_PRINTABLE_SCORE`, and one `Symbol('dots.coefficient')` (see THE
+ * COEFFICIENT IS NOT A NUMBER below). All of it allocates and reads inside this
+ * file only — no clock, no global, no I/O — and no function's output depends on
+ * which symbol instance it got.
  *
  * ---------------------------------------------------------------------------
  * PROVENANCE OF THE COEFFICIENTS  (read this before touching any number here)
@@ -282,6 +284,24 @@ export const DOTS_DELTA_ZERO_PREFIX = '';
 //     authority over results belongs on the server (CLAUDE.md
 //     "Server-authoritative progression"). It closes the accidents that used to
 //     typecheck and look innocent in a diff, and claims nothing beyond that.
+//   - `applyDotsCoefficient(c, officialTotalKg(1))` compiles, needs no cast, and
+//     hands back the coefficient as a bare, multipliable `number` — `x * 1 === x`
+//     exactly in IEEE 754, so that call IS the `dotsCoefficientValue` this module
+//     declines to export, spelled with two calls instead of one. `bare * 360`
+//     then formats as "229.05": defence B above, rebuilt from outside the module
+//     for a lifter who did not total. THE OPAQUE COEFFICIENT STOPS THE
+//     ARITHMETIC, NOT THE ACCESS: `dotsCoefficient(...) * totalOnTheBoard(state)`
+//     is TS2362, and that is the line glue code actually reaches for. Reading the
+//     number instead costs an explicit `officialTotalKg(...)` — the same
+//     written-down, greppable claim the total path already demands, and
+//     `officialTotalKg(1)` is no more innocent in a diff than the
+//     `officialTotalKg(totalOnTheBoard(state))` in the first bullet. `dots.test.ts`
+//     uses this route on purpose (its reference tables have to compare numbers)
+//     and executes it in 'the numeric accessor this module does not export', so
+//     the paragraph you are reading cannot go stale without a test failing.
+//     Reflection gets there too, with a cast rather than a mint:
+//     `Object.getOwnPropertySymbols(c)[0]` names the private key at runtime, so
+//     "module-private symbol" is a fact about typechecking, not about the object.
 //
 // ---------------------------------------------------------------------------
 // Types
@@ -384,16 +404,29 @@ const COEFFICIENT_VALUE: unique symbol = Symbol('dots.coefficient');
  * operation must be of type 'any', 'number', 'bigint' or an enum type" — rather
  * than a plausible number on a leaderboard.
  *
- * Everything anyone legitimately wants from a coefficient is here, and none of it
- * hands back a bare multiplicand:
+ * Everything anyone legitimately wants from a coefficient is here:
  *
  *   - `applyDotsCoefficient(c, total)` — the score. Demands an `OfficialTotalKg`.
  *   - `formatDotsCoefficient(c)` — the display string, for a "Coeff" column.
  *   - `compareDotsCoefficients(a, b)` — ordering, for a board or a test.
  *   - the readable fields below — which lifter and which domain it belongs to.
  *
- * There is deliberately no `dotsCoefficientValue(c): number`. It would be a
- * one-call rebuild of the collapse and nothing in the game needs it.
+ * WHAT THIS BUYS, STATED NARROWLY BECAUSE THE NARROW CLAIM IS THE TRUE ONE: the
+ * coefficient cannot be turned into a score by ARITHMETIC ON THE COEFFICIENT. The
+ * line above is a compile error; so is `scored.coefficient * anything`. That is
+ * the line glue code reaches for, and it is closed.
+ *
+ * It does NOT put the number out of reach, and this module does not get to claim
+ * it does. There is no export named `dotsCoefficientValue`, but
+ * `applyDotsCoefficient(c, officialTotalKg(1))` returns the coefficient itself —
+ * exactly, because `x * 1 === x` in IEEE 754 — with no cast and no `any`, and
+ * reflection over the private symbol reaches the same number with a cast. Both
+ * routes are written up under WHAT IS DELIBERATELY NOT CLOSED, and `dots.test.ts`
+ * executes them, so this paragraph cannot rot back into a guarantee. What the
+ * opacity costs a caller who wants the number is one explicit
+ * `officialTotalKg(...)`: the same greppable, written-down claim the total path
+ * already demands, in place of an invisible `*`. That is a defence against
+ * accidents, not against intent — see the tamper-resistance note in that block.
  * ---------------------------------------------------------------------------
  */
 export interface DotsCoefficient {
@@ -663,8 +696,12 @@ export function applyDotsCoefficient(
 }
 
 /**
- * The coefficient as a result sheet would print it, e.g. `"0.6363"`. A string,
- * deliberately: the module hands out no coefficient a caller can multiply.
+ * The coefficient as a result sheet would print it, e.g. `"0.6363"`.
+ *
+ * A string, deliberately: a display helper has no business being the numeric
+ * accessor, and a "Coeff" column wants the rounded text anyway. That is a fact
+ * about THIS function, not a guarantee about the module — see WHAT IS
+ * DELIBERATELY NOT CLOSED for the route that does hand the number back.
  */
 export function formatDotsCoefficient(coefficient: DotsCoefficient): string {
   return coefficient[COEFFICIENT_VALUE].toFixed(DOTS_COEFFICIENT_DISPLAY_DECIMALS);
@@ -852,9 +889,17 @@ function assertDeltaEndpointScore(score: number, label: string): void {
  * be handed an outcome with no score, because `ScoredDots` is the narrowed
  * branch and `NoTotalDots` has no `score` field to supply one.
  *
- * On a call that typechecks it cannot throw — both ends are then real scores by
- * construction. Forced past the compiler it delegates the same checks as the
- * raw mint below and throws there, which is where the message is.
+ * It delegates to the raw mint below, so it throws on exactly what that throws
+ * on — including on calls that typecheck. `ScoredDots` means "this lifter has a
+ * score", not "this score is printable": mint an absurd total with
+ * `officialTotalKg(0.004)` and `evaluateDots` hands back a properly-typed
+ * `ScoredDots` whose score is ~0.0025, which rounds to "0.00" and is refused at
+ * the endpoint guard. So the claim is NOT "a call that typechecks cannot throw",
+ * and it is not "only a forced call can". It is that nothing a real total
+ * produces gets near the guard — the smallest score reachable from a finished
+ * meet is ~37 DOTS, because `meet.ts` cannot record a total below ~75 kg — so a
+ * throw here means the mint upstream was handed something that was never a
+ * total, which is the thing it exists to say.
  *
  * Holding two `DotsOutcome`s rather than two `ScoredDots`? Narrow both first,
  * and mean it — a missing end is not a delta of anything:
