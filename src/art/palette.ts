@@ -211,7 +211,7 @@ const LIFTER_COLORS: readonly Rgb5[] = [
  *   - `SHADING.FORESHORTEN` stopped a bent FEMUR being shaded as though it lay
  *     in the screen plane.
  *   - `SHADING.FAR_LEG_STEP_BIAS`, `SHADING.AXIAL_LEG` and
- *     `RIG_GEOMETRY.KNEE_SLEEVE.STEP_BIAS` stopped the rest of the lower body
+ *     `SHADING.KNEE_SLEEVE_STEP_BIAS` stopped the rest of the lower body
  *     doing the same thing by three other routes: a blanket ramp-step bias that
  *     put the whole far leg's MEDIAN on SKIN_SHADOW, an axial profile borrowed
  *     from the arm that put the shin's only highlight underneath the sleeve,
@@ -437,15 +437,37 @@ export function outlineIndexForBank(index: number): number {
  * it is 4%, and that reference's arms and thighs are edged with the darkest step
  * of their OWN material (skin shadow, luma 80) with no keyline at all.
  *
- * So on the lower body the ring is now the material's own darkest step. The
- * silhouette keyline is untouched — `outlinePass` still puts one near-black
- * pixel outside everything, which is what keeps the figure readable at phone
- * scale against an unknown background (GDD §12.2).
+ * So the ring is now the material's own darkest step. The silhouette keyline is
+ * untouched — `outlinePass` still puts one near-black pixel outside everything,
+ * which is what keeps the figure readable at phone scale against an unknown
+ * background (GDD §12.2).
+ *
+ * THE UPPER BODY USED TO BE EXEMPT FROM THAT, AND THE EXEMPTION WAS WRONG.
+ * The comment here said the dark breaks at the deltoid, elbow and wrist were
+ * "doing anatomical work" and were not separation lines. They were separation
+ * lines, and they were the same ones: arm, hand, neck and head were simply left
+ * on the default `{ edge: true }`, which is `PAL.OUTLINE` via `edgeIndexFor`.
+ *
+ * MEASURED, on the pose sweep at 250 kg, before the arms came off the keyline:
+ *   - near-black was 38-43% of the upper half's own pixels against 18-24% of the
+ *     lower half's, and 29-36 of those points were INTERIOR — buried inside the
+ *     silhouette rather than the keyline around it. The same interior figure
+ *     below the belt was 0.3-7%.
+ *   - the blond wrestler in sprite-ref-1, masked by his own colours at native
+ *     scale and split at his midpoint: near-black 1.3% upper / 5.7% lower, mean
+ *     luma 133.2 upper / 118.8 lower. His upper half is the BRIGHTER one and his
+ *     arms are the brightest masses on the figure. Ours was the darker one, at a
+ *     ratio of 0.86-1.02, with each arm reading as a near-black chevron with a
+ *     tan streak inside it. That is the blind A/B inverted, not a style choice.
+ * After: upper near-black 15-17%, interior 6-8%, mean ratio 1.05-1.23.
+ *
+ * The anatomical breaks the old comment was defending are still drawn — they are
+ * hand-placed marks in `spriteMarks.ts` (deltoid, elbow, wrist) plus
+ * `axialTerm`'s joint drop, which is where an artist puts them. What went away
+ * is the ring that ran round the whole limb regardless.
  *
  * TUNING: setting any of these back to PAL.OUTLINE restores the old heavy
- * keyline for that material and nothing else changes. The upper body is
- * deliberately absent from this table — the dark breaks at the deltoid, elbow
- * and wrist are doing anatomical work there and are not separation lines.
+ * keyline for that material and nothing else changes.
  */
 export const INTERIOR_EDGE = {
   SKIN: PAL.SKIN_SHADOW,

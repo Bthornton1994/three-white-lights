@@ -319,6 +319,55 @@ export function drawLimb(
   ramp: Ramp,
   opts?: PartOptions,
 ): void {
+  drawLimbChain(g, [
+    { ax, ay, bx, by, ra, rb, ramp, ...(opts === undefined ? {} : { opts }) },
+  ]);
+}
+
+/** One capsule of a limb chain. Same arguments `drawLimb` takes, as a record. */
+export interface LimbSegment {
+  readonly ax: number;
+  readonly ay: number;
+  readonly bx: number;
+  readonly by: number;
+  readonly ra: number;
+  readonly rb: number;
+  readonly ramp: Ramp;
+  readonly opts?: PartOptions;
+}
+
+/**
+ * Several capsules drawn as ONE mass: every ring first, then every fill.
+ *
+ * WHY THIS EXISTS — THE DOUBLED RING AT THE ELBOW. `PartOptions.edge` stamps a
+ * ring one pixel outside the capsule and then fills the capsule over it, so a
+ * capsule drawn on its own carries exactly one ring. Two capsules that MEET —
+ * upper arm into forearm — do not: the second capsule's ring lands on top of
+ * the first capsule's fill, and the first capsule's ring survives wherever the
+ * second one does not reach. Measured on the drawn arm at lockout, that put a
+ * two-pixel dark band straight across the elbow, on a limb only five pixels
+ * wide.
+ *
+ * Stamping all the rings before any of the fills makes the ring the outline of
+ * the UNION: every ring pixel that falls inside any capsule is covered by that
+ * capsule's fill, so what is left is the outside boundary and nothing else. A
+ * chain of one segment is bit-for-bit what `drawLimb` always did.
+ *
+ * The joint is not left unarticulated by this — it is articulated by the value
+ * structure instead of by a keyline. Both capsules run `axialTerm`'s JOINT_DROP
+ * into their shared end (see `SHADING.AXIAL_LIMB`) and `spriteMarks.ts` places
+ * the elbow break by hand on top.
+ */
+export function drawLimbChain(g: IndexGrid, segments: readonly LimbSegment[]): void {
+  for (const s of segments) {
+    if (s.opts?.edge === true) limbPass(g, s, 0);
+  }
+  for (const s of segments) limbPass(g, s, 1);
+}
+
+/** One capsule, one pass: 0 stamps the grown ring, 1 fills the capsule. */
+function limbPass(g: IndexGrid, seg: LimbSegment, pass: 0 | 1): void {
+  const { ax, ay, bx, by, ra, rb, ramp, opts } = seg;
   const dx = bx - ax;
   const dy = by - ay;
   const len = Math.hypot(dx, dy);
@@ -336,7 +385,6 @@ export function drawLimb(
   const y1 = Math.ceil(Math.max(ay, by) + pad);
 
   const stepBias = opts?.stepBias ?? 0;
-  const wantEdge = opts?.edge === true;
   const edgeIdx = edgeIndexFor(ramp, opts);
   const litEdge = opts?.edgeFollowsLight === true;
   const axial = opts?.axial ?? SHADING.AXIAL_LIMB;
@@ -346,55 +394,61 @@ export function drawLimb(
   // Where the dome's pole sits along the capsule, in px from the start point.
   const domeCentre = len * SHADING.FORESHORTEN.DOME_CENTRE_FRAC;
 
-  // Two passes so the outline never overwrites fill drawn later in the same part.
-  for (let pass = wantEdge ? 0 : 1; pass < 2; pass += 1) {
-    const grow = pass === 0 ? 1 : 0;
-    for (let y = y0; y <= y1; y += 1) {
-      for (let x = x0; x <= x1; x += 1) {
-        const rx = x - ax;
-        const ry = y - ay;
-        let t = (rx * ux + ry * uy) / len;
-        t = Math.min(1, Math.max(0, t));
-        const r = ra + (rb - ra) * t + grow;
-        const perp = rx * px + ry * py;
-        const along = rx * ux + ry * uy;
-        // Capsule: rounded ends, so clamp the axial term at the endpoints.
-        const overA = along < 0 ? -along : 0;
-        const overB = along > len ? along - len : 0;
-        const dist = Math.hypot(perp, overA + overB);
-        if (dist > r) continue;
+  const grow = pass === 0 ? 1 : 0;
+  for (let y = y0; y <= y1; y += 1) {
+    for (let x = x0; x <= x1; x += 1) {
+      const rx = x - ax;
+      const ry = y - ay;
+      let t = (rx * ux + ry * uy) / len;
+      t = Math.min(1, Math.max(0, t));
+      const r = ra + (rb - ra) * t + grow;
+      const perp = rx * px + ry * py;
+      const along = rx * ux + ry * uy;
+      // Capsule: rounded ends, so clamp the axial term at the endpoints.
+      const overA = along < 0 ? -along : 0;
+      const overB = along > len ? along - len : 0;
+      const dist = Math.hypot(perp, overA + overB);
+      if (dist > r) continue;
 
-        const rCore = Math.max(0.5, r);
-        const n = Math.min(1, Math.max(-1, perp / rCore));
-        // Cylinder normal, blended toward a DOME of the limb's own radius by
-        // however far this mass has rotated out of the screen plane. At
-        // `camera` 0 this is the plain cylinder, bit for bit; at 1 it is the
-        // rounded end a tube pointing at the viewer actually shows, which is
-        // what the front of a thigh IS at the bottom of a squat.
-        // See SHADING.FORESHORTEN and `limbNormal`.
-        const N = limbNormal(px, py, ux, uy, n, (along - domeCentre) / rCore, camera);
-        // `t` is the position DOWN the limb. Reading it here is the whole
-        // difference between a modelled limb and an extruded stripe.
-        const lit = Math.min(
-          1,
-          Math.max(0, lambert(N.x, N.y, N.z) + axialScale * axialTerm(axial, t)),
+      const rCore = Math.max(0.5, r);
+      const n = Math.min(1, Math.max(-1, perp / rCore));
+      // Cylinder normal, blended toward a DOME of the limb's own radius by
+      // however far this mass has rotated out of the screen plane. At
+      // `camera` 0 this is the plain cylinder, bit for bit; at 1 it is the
+      // rounded end a tube pointing at the viewer actually shows, which is
+      // what the front of a thigh IS at the bottom of a squat.
+      // See SHADING.FORESHORTEN and `limbNormal`.
+      const N = limbNormal(px, py, ux, uy, n, (along - domeCentre) / rCore, camera);
+      // `t` is the position DOWN the limb. Reading it here is the whole
+      // difference between a modelled limb and an extruded stripe.
+      const lit = Math.min(
+        1,
+        Math.max(0, lambert(N.x, N.y, N.z) + axialScale * axialTerm(axial, t)),
+      );
+      if (pass === 0) {
+        setPx(
+          g,
+          x,
+          y,
+          litEdge ? shadeToIndex(ramp, lit, stepBias - SHADING.EDGE_STEP_DROP) : edgeIdx,
         );
-        if (pass === 0) {
-          setPx(
-            g,
-            x,
-            y,
-            litEdge ? shadeToIndex(ramp, lit, stepBias - SHADING.EDGE_STEP_DROP) : edgeIdx,
-          );
-          continue;
-        }
-        setPx(g, x, y, shadeToIndex(ramp, lit, stepBias));
+        continue;
       }
+      setPx(g, x, y, shadeToIndex(ramp, lit, stepBias));
     }
   }
 }
 
-/** Ellipse shaded as an ellipsoid — head, hands, chalk-free round masses. */
+/**
+ * Ellipse shaded as an ellipsoid — head, hands, chalk-free round masses.
+ *
+ * `edgeFollowsLight` works here exactly as it does on a capsule: the grown ring
+ * is shaded from the same lamp, `SHADING.EDGE_STEP_DROP` steps under the fill,
+ * rather than stamped flat. It matters most on the smallest masses this
+ * function draws. A hand is 3.8 px across; a flat near-black ring around it
+ * plus `outlinePass`'s own pixel outside that left a handful of fill pixels in
+ * the middle, and nothing resolves into a fist in a handful of pixels.
+ */
 export function drawEllipsoid(
   g: IndexGrid,
   cx: number,
@@ -407,6 +461,7 @@ export function drawEllipsoid(
   const stepBias = opts?.stepBias ?? 0;
   const wantEdge = opts?.edge === true;
   const edgeIdx = edgeIndexFor(ramp, opts);
+  const litEdge = opts?.edgeFollowsLight === true;
 
   for (let pass = wantEdge ? 0 : 1; pass < 2; pass += 1) {
     const grow = pass === 0 ? 1 : 0;
@@ -422,11 +477,18 @@ export function drawEllipsoid(
         const ny = (y - cy) / ery;
         const q = nx * nx + ny * ny;
         if (q > 1) continue;
+        const nz = Math.sqrt(Math.max(0, 1 - q));
         if (pass === 0) {
-          setPx(g, x, y, edgeIdx);
+          setPx(
+            g,
+            x,
+            y,
+            litEdge
+              ? shadeToIndex(ramp, lambert(nx, ny, nz), stepBias - SHADING.EDGE_STEP_DROP)
+              : edgeIdx,
+          );
           continue;
         }
-        const nz = Math.sqrt(Math.max(0, 1 - q));
         setPx(g, x, y, shadeToIndex(ramp, lambert(nx, ny, nz), stepBias));
       }
     }

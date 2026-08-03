@@ -18,6 +18,8 @@ import {
   LOAD_RANGE,
   PITCH,
   QUANTISE,
+  SHADING,
+  SPRITE_TUNING,
   STICK,
   STRAIN,
   byLoad,
@@ -25,7 +27,13 @@ import {
   loadT,
   ticksByLoad,
 } from './spriteTuning';
-import { POSE_DEPTH_ANCHORS, strainForLevel, pitchForLevel, pitchLevelForDriftPx } from './rig';
+import {
+  POSE_DEPTH_ANCHORS,
+  RIG_GEOMETRY,
+  strainForLevel,
+  pitchForLevel,
+  pitchLevelForDriftPx,
+} from './rig';
 import { BEND_QUANTUM_PX, DEPTH_STEPS, TILT_QUANTUM_DEG } from './squatAnimation';
 
 describe('authored deformation tables', () => {
@@ -122,6 +130,43 @@ describe('constants with more than one consumer', () => {
   it('never asks for more chalk motes than there are authored positions', () => {
     expect(CHALK.MAX_MOTES).toBeLessThanOrEqual(CHALK.MOTE_OFFSETS.length);
     expect(CHALK.MOTE_OFFSETS.length).toBeGreaterThan(0);
+  });
+
+  it('keeps every ramp-step bias in the tuning file, not among the joint coordinates', () => {
+    // Three of these — head, belt, knee sleeve — used to sit in RIG_GEOMETRY,
+    // which is exempted from this file on the grounds that a joint anchor
+    // "cannot be moved without redrawing the pose it names". A ramp-step bias
+    // moves no geometry and turns on its own, so the exemption never covered
+    // it, and a tuner looking for the sleeve's darkness had to know to go
+    // reading a rig file. CLAUDE.md: every such value in one named place.
+    for (const key of [
+      'FAR_LIMB_STEP_BIAS',
+      'FAR_LEG_STEP_BIAS',
+      'EDGE_STEP_DROP',
+      'HEAD_STEP_BIAS',
+      'BELT_STEP_BIAS',
+      'KNEE_SLEEVE_STEP_BIAS',
+    ]) {
+      expect(SHADING, key).toHaveProperty(key);
+      expect(typeof (SHADING as unknown as Record<string, unknown>)[key], key).toBe('number');
+    }
+    // And they are reachable from the aggregate a tuner opens, not just from a
+    // named import somewhere.
+    expect(SPRITE_TUNING.SHADING).toBe(SHADING);
+
+    // Nothing of the kind has come back the other way. Walked rather than
+    // spot-checked: the sleeve's bias was nested one level down, inside
+    // RIG_GEOMETRY.KNEE_SLEEVE, which is exactly where a spot check misses it.
+    const offenders: string[] = [];
+    const walk = (node: unknown, path: string): void => {
+      if (node === null || typeof node !== 'object') return;
+      for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+        if (/STEP_BIAS|STEP_DROP/.test(k)) offenders.push(`${path}.${k}`);
+        walk(v, `${path}.${k}`);
+      }
+    };
+    walk(RIG_GEOMETRY, 'RIG_GEOMETRY');
+    expect(offenders).toEqual([]);
   });
 
   it('keeps the velocity floor low enough to leave the stall room to exist', () => {

@@ -702,22 +702,39 @@ export const SHADING = {
    * where it was.
    */
   VERTICAL_GAIN: 0.17,
-  /** Far-side limbs drop this many ramp steps for depth separation. */
+  /**
+   * Far-side ARM, hand and deltoid: drop this many ramp steps for depth.
+   *
+   * SAY WHAT THIS COSTS, because the note that used to sit here said the
+   * opposite. It claimed a whole-step bias was "affordable on an arm, because an
+   * arm is drawn against the torso and keeps its peak at the top of the ramp".
+   * Measured over the far arm's own capsules at 250 kg, it does not: 54-56% of
+   * its skin sits on SKIN_SHADOW (73), the floor of the ramp, its median is that
+   * floor at every depth, and it reaches SKIN_HI on zero pixels because -1 caps
+   * it at SKIN_LIGHT. The near arm over the same capsules is 34-40% floor with
+   * 20-23% at SKIN_HI. In sprite-ref-1 BOTH of the blond wrestler's arms reach
+   * the top two steps of his skin ramp (200 and 234 of a 82-234 range).
+   *
+   * It stays at -1 anyway, and that is a deliberate hold rather than a finding:
+   * it is one of the two things separating the arms in depth on a front-on pose,
+   * it also drives the far deltoid and the far hand, and it is a feel value that
+   * GDD §12.1 hands to a human. Turning it to 0 is the first thing to try if the
+   * far arm reads flat, and `FAR_LEG_STEP_BIAS` below is the precedent for what
+   * happens when it goes.
+   */
   FAR_LIMB_STEP_BIAS: -1,
   /**
    * The same, for the far LEG — thigh, shin, knee sleeve and shoe.
    *
-   * WHY THE LEG NEEDED ITS OWN NUMBER. A ramp step is not a fixed amount of
-   * darkness; it is whatever the gap between two palette entries happens to be,
-   * and on the four-step skin ramp that gap is 44-58 luma. On an arm that is
-   * affordable, because an arm is drawn against the torso and keeps its peak at
-   * the top of the ramp. On a bent leg it is not: the femur is foreshortened,
+   * WHY THE LEG NEEDED ITS OWN NUMBER, AND GOT 0 WHERE THE ARM KEPT -1. On a
+   * bent leg the whole step is unaffordable: the femur is foreshortened,
    * so its peak is already down at SKIN_LIGHT before any bias, and one step off
    * that is SKIN_MID (117) — below GEAR_LIGHT (149), the top step of the very
-   * kit worn on it. Measured over the pose ladder with this at -1, the far
-   * leg's bare skin had a MEDIAN of SKIN_SHADOW (73), the floor of the ramp, at
-   * every depth including lockout: shadow flank at the floor, edge ring at the
-   * floor, and only the lit flank at SKIN_MID.
+   * kit worn on it. A leg wears kit and an arm does not, so the leg had an
+   * inversion to lose and the arm only has value to lose. Measured over the pose
+   * ladder with this at -1, the far leg's bare skin had a MEDIAN of SKIN_SHADOW
+   * (73), the floor of the ramp, at every depth including lockout: shadow flank
+   * at the floor, edge ring at the floor, and only the lit flank at SKIN_MID.
    *
    * At 0 the far leg is NOT the same drawing as the near one. The lamp is fixed
    * in `LIGHT_DIR`, so both legs are lit on their upper-left flank rather than
@@ -736,6 +753,56 @@ export const SHADING = {
    * value and will be moved by hand — it decides how hard-edged the figure is.
    */
   EDGE_STEP_DROP: 1,
+
+  // -------------------------------------------------------------------------
+  // PER-PART RAMP-STEP BIASES
+  //
+  // The three below arrived here from `RIG_GEOMETRY` in `rig.ts`, where they
+  // sat among the joint coordinates. That file's exclusion from this one is
+  // specific and it does not cover them: a joint anchor "cannot be moved
+  // without redrawing the pose it names", which is why anchors stay there. A
+  // ramp-step bias is the opposite — it is a knob that turns on its own, it
+  // changes no geometry, and its effect is visible in one render. It is the
+  // same KIND of number as FAR_LIMB_STEP_BIAS and EDGE_STEP_DROP directly
+  // above, and CLAUDE.md asks for every such value in one named place.
+  // -------------------------------------------------------------------------
+
+  /**
+   * The face is the smallest thing on the figure that has to read, so it gets
+   * lifted a step above the lamp's own answer.
+   */
+  HEAD_STEP_BIAS: 1,
+  /**
+   * Ramp steps the belt sits below the rest of the GEAR kit.
+   *
+   * The belt is the widest single flat mass on the figure — three rows across
+   * the whole waist — so it takes the largest share of any change to the GEAR
+   * ramp. When GEAR was lifted so the knee sleeves would stop vanishing into
+   * the backdrop, the belt came with it and became the brightest large area on
+   * the body, which is a silver belt. Every belt in the references is black or
+   * black-with-a-patch (meet-photo-ref-1, meet-photo-ref-2). One step down puts
+   * its lit centre at GEAR_MID and its flanks at GEAR_DARK: leather catching a
+   * little light.
+   *
+   * The shoes deliberately do NOT take a bias — they are small, they are part
+   * of what the ramp was lifted for, and their own marks (sole, laces) supply
+   * their internal contrast.
+   */
+  BELT_STEP_BIAS: -1,
+  /**
+   * The same argument, for the knee sleeve, arriving late because the sleeve
+   * used to be held down by something else. While the whole far leg carried
+   * FAR_LIMB_STEP_BIAS the far sleeve was dragged down with it, and the near
+   * sleeve's GEAR_LIGHT flank was one object among many. With the blanket leg
+   * bias gone (FAR_LEG_STEP_BIAS) both sleeves rendered their own lit flank at
+   * GEAR_LIGHT, luma 149 — above the bare leg's own median of SKIN_MID (117) —
+   * and the biggest kit mass on the leg became the brightest thing below the
+   * belt. Every sleeve in meet-photo-ref-1 is black with a contrast top band.
+   * One step down puts the sleeve's lit flank at GEAR_MID and its shaded flank
+   * at GEAR_DARK, and leaves the top gear step for the shoes' pale sole line.
+   */
+  KNEE_SLEEVE_STEP_BIAS: -1,
+
   /** Rim of a plate: fraction of the disc's height that catches the key light. */
   PLATE_RIM_LIT_FRAC: 0.42,
 

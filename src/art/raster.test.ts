@@ -22,6 +22,7 @@ import {
   createGrid,
   cylinderPeakLit,
   drawLimb,
+  drawLimbChain,
   getPx,
   lambert,
   limbNormal,
@@ -417,5 +418,66 @@ describe('foreshortening keeps a limb in its band', () => {
     const g = createGrid(24, 24);
     drawLimb(g, 10, 12, 14, 12, 4.3, 3.1, RAMPS.SKIN, { outOfPlane: 0.96 });
     expect(shareAtOrAbove(g, 2)).toBeGreaterThan(0.5);
+  });
+});
+
+describe('a chain of capsules carries ONE ring, at the union boundary', () => {
+  // THE DOUBLED RING AT THE ELBOW. `PartOptions.edge` stamps a ring a pixel
+  // outside the capsule and fills the capsule over it, so one capsule ends up
+  // with one ring. Two capsules that MEET did not: drawn one after the other,
+  // the second capsule's ring lands on the first capsule's fill and stays
+  // there. On a five-pixel arm that was a dark band straight across the joint.
+  //
+  // The counterexample below is the whole point of the first assertion. It
+  // reproduces the old call pattern exactly and shows the property failing, so
+  // "no ring inside the union" is a claim about the fix rather than a claim
+  // about a case that never arises.
+  const A = { ax: 6, ay: 6, bx: 6, by: 16, ra: 2.7, rb: 2.1 } as const;
+  const B = { ax: 6, ay: 16, bx: 14, by: 20, ra: 2.0, rb: 1.7 } as const;
+  const RING = PAL.CHALK; // any index the SKIN ramp cannot produce
+  const opts = { edge: true, edgeIndex: RING };
+
+  /** Ring pixels that fall strictly inside one of the capsules. */
+  function ringInsideUnion(g: IndexGrid): number {
+    const inside = (s: typeof A | typeof B, x: number, y: number): boolean => {
+      const dx = s.bx - s.ax;
+      const dy = s.by - s.ay;
+      const len2 = dx * dx + dy * dy;
+      const t = Math.max(0, Math.min(1, ((x - s.ax) * dx + (y - s.ay) * dy) / len2));
+      const r = s.ra + (s.rb - s.ra) * t;
+      return Math.hypot(x - (s.ax + t * dx), y - (s.ay + t * dy)) <= r;
+    };
+    let n = 0;
+    for (let y = 0; y < g.h; y += 1) {
+      for (let x = 0; x < g.w; x += 1) {
+        if (getPx(g, x, y) !== RING) continue;
+        if (inside(A, x, y) || inside(B, x, y)) n += 1;
+      }
+    }
+    return n;
+  }
+
+  it('leaves no ring pixel inside either capsule', () => {
+    const g = createGrid(28, 28);
+    drawLimbChain(g, [
+      { ...A, ramp: RAMPS.SKIN, opts },
+      { ...B, ramp: RAMPS.SKIN, opts },
+    ]);
+    expect(ringInsideUnion(g)).toBe(0);
+  });
+
+  it('and drawing the two capsules separately does leave some', () => {
+    const g = createGrid(28, 28);
+    drawLimb(g, A.ax, A.ay, A.bx, A.by, A.ra, A.rb, RAMPS.SKIN, opts);
+    drawLimb(g, B.ax, B.ay, B.bx, B.by, B.ra, B.rb, RAMPS.SKIN, opts);
+    expect(ringInsideUnion(g)).toBeGreaterThan(0);
+  });
+
+  it('is bit-for-bit `drawLimb` for a chain of one', () => {
+    const one = createGrid(28, 28);
+    const chained = createGrid(28, 28);
+    drawLimb(one, A.ax, A.ay, A.bx, A.by, A.ra, A.rb, RAMPS.SKIN, opts);
+    drawLimbChain(chained, [{ ...A, ramp: RAMPS.SKIN, opts }]);
+    expect(Array.from(chained.data)).toEqual(Array.from(one.data));
   });
 });
