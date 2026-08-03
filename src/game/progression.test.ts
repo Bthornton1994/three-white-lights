@@ -20,6 +20,8 @@ import {
   emptyProgressionCache,
   emptyProjection,
   ENTITLEMENT_EFFECT_KINDS,
+  FACT_PROTECTION,
+  FACT_PROTECTION_KINDS,
   factsMovedBy,
   inFlightProposal,
   isConfirmedReading,
@@ -27,6 +29,8 @@ import {
   MEET_ATTEMPT_REPORT_KEYS,
   MEET_RESULT_REPORT_KEYS,
   meetsQualifyingTotal,
+  OPEN_FACTS,
+  PERFORMANCE_FACT_VOCABULARY,
   PROGRESSION_CACHE_POLICY,
   PROGRESSION_FACT_KEYS,
   PROGRESSION_PROPOSAL_KINDS,
@@ -78,6 +82,16 @@ import {
 import { createStreakState, recordTrainingDay, streakDayFromCivilDate, STREAK_FACT_KEYS } from './streak';
 
 const MODULE_SOURCE = readFileSync(fileURLToPath(new URL('./progression.ts', import.meta.url)), 'utf8');
+
+/**
+ * The module's source with block and line comments taken out.
+ *
+ * Every source scan in this file wants this and several were writing it inline;
+ * one was not writing it at all and was counting comment mentions as code.
+ */
+function codeOnly(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+}
 
 // ---------------------------------------------------------------------------
 // Fixtures. Every one of them goes through `receiveProgressionSnapshot`,
@@ -273,6 +287,30 @@ function payloadKeysWithOrigin(origin: (typeof PROPOSAL_ORIGIN_KINDS)[number]): 
   );
 }
 
+/**
+ * Every word in `PERFORMANCE_FACT_VOCABULARY`, both groups. Pace words are a
+ * subset of what a fact may not be OPEN under, so the two groups are checked
+ * together where the question is "may this be bought?" and separately where the
+ * question is "may this exist at all?".
+ */
+const EVERY_PERFORMANCE_WORD: readonly string[] = [
+  ...PERFORMANCE_FACT_VOCABULARY.pace,
+  ...PERFORMANCE_FACT_VOCABULARY.performance,
+];
+
+/**
+ * The words of `vocabulary` that appear in `name`, case-insensitively.
+ *
+ * The runtime twin of the module's `WordsMatching`. Returns the hits rather than
+ * a boolean on purpose: a test that asserts `toEqual([])` fails with the word
+ * that caught it, and the positive controls can assert the scan found SOMETHING
+ * without hard-coding which word.
+ */
+function vocabularyHits(name: string, vocabulary: readonly string[]): readonly string[] {
+  const lower = name.toLowerCase();
+  return vocabulary.filter((word) => lower.includes(word));
+}
+
 /** One of the module's exported `*_REPORT_KEYS` allowlists, read back by name. */
 function reportKeyAllowlist(name: string): readonly string[] {
   const exported: Readonly<Record<string, unknown>> = progressionModule;
@@ -306,8 +344,27 @@ describe('purity', () => {
     // the number of places that write it is the number of doors there are.
     // Expected: the interface declaration, and the one construction inside
     // `receiveProgressionSnapshot`.
-    const writes = MODULE_SOURCE.match(/\[SNAPSHOT_CONTENTS\]:/g) ?? [];
+    //
+    // COMMENTS ARE STRIPPED FIRST. They were not, and the count was therefore a
+    // count of MENTIONS: a header paragraph that named the key inflated it and
+    // failed this test, and — the direction that matters — deleting a real write
+    // could have been masked by adding a sentence about it.
+    const writes = codeOnly(MODULE_SOURCE).match(/\[SNAPSHOT_CONTENTS\]:/g) ?? [];
     expect(writes).toHaveLength(2);
+  });
+
+  it('mints the in-flight pairing brand in exactly one place', () => {
+    // `InFlightProposal` carries `[PAIRING_CHECKED]`, which is what stops a
+    // caller hand-assembling a `pending` cache and skipping `validateProposal`,
+    // `validateProjection`, `projectionExceedsReach`, the in-flight limit and
+    // the stale-cache rule. A second mint would be a second way past all five.
+    // Expected: the interface declaration, and the one construction inside
+    // `proposeChange`.
+    const writes = codeOnly(MODULE_SOURCE).match(/\[PAIRING_CHECKED\]:/g) ?? [];
+    expect(writes).toHaveLength(2);
+    // And it is a real `unique symbol`, not a string key a caller could guess.
+    expect(codeOnly(MODULE_SOURCE)).toMatch(/const PAIRING_CHECKED: unique symbol = Symbol\(/);
+    expect(codeOnly(MODULE_SOURCE)).not.toMatch(/export const PAIRING_CHECKED/);
   });
 
   it('does not cast its way past its own boundary', () => {
@@ -342,6 +399,19 @@ describe('purity', () => {
     // widens its values and collapses the derivation to `never`.
     expect(code).toMatch(/as const satisfies Readonly<Record<ProgressionProposalKind, ProposalOrigin>>/);
 
+    // THE SAME MECHANISM ON THE OTHER OPERAND. `PROTECTED_CONCERNS` is derived
+    // from an exhaustive per-fact declaration, not written out as a list — a
+    // list has a default, and that default was `unprotected`.
+    expect(code).toMatch(/as const satisfies Readonly<Record<ProgressionFactKey, FactProtection>>/);
+    expect(code).toMatch(
+      /export const PROTECTED_CONCERNS: readonly ProtectedConcern\[\] = PROGRESSION_FACT_KEYS\.filter\(isProtectedFact\);/,
+    );
+    // ...and is not a hand-written list of fact names, which is what it was.
+    expect(code).not.toMatch(/export const PROTECTED_CONCERNS\s*=\s*\[/);
+    // The removed assertion stays removed: it could not fail, and keeping a name
+    // that reads like enforcement over a tautology is what this replaced.
+    expect(code).not.toMatch(/NOTHING_MOVES_TRAINING_PACE/);
+
     // The assertions the derivation feeds, each named so a deletion is visible.
     const requiredAssertions = [
       /export const PROPOSAL_ORIGIN_COVERS_EVERY_KIND: KeysAreExactly</,
@@ -350,7 +420,6 @@ describe('purity', () => {
       /export const PURCHASABLE_KINDS_ARE_NOT_VACUOUS: IsNonEmptyUnion</,
       /export const MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE: IsSubsetOf</,
       /export const MONEY_CARRYING_KINDS_ARE_NOT_VACUOUS: IsNonEmptyUnion</,
-      /export const NOTHING_MOVES_TRAINING_PACE: AreDisjoint</,
       // GDD §6.4: a Total is the sum of best successful competition attempts, so
       // exactly one proposal kind may move it. Deleting this leaves the reach
       // map free to hand `'totalKg'` back to a training session.
@@ -361,7 +430,20 @@ describe('purity', () => {
       // disjointness check keeps passing by spelling.
       /export const PROPOSAL_REACH_NAMES_REAL_FACTS: IsSubsetOf</,
       /export const ENTITLEMENT_REACH_NAMES_REAL_FACTS: IsSubsetOf</,
-      /export const PROTECTED_CONCERNS_NAME_REAL_FACTS: IsSubsetOf</,
+      // THE RIGHT-HAND OPERAND, which had none of this. It was a hand-written
+      // list whose default was `unprotected`, so a new fact was buyable unless
+      // someone remembered to protect it. These five are the exhaustive
+      // declaration, its exhaustiveness binding, the non-vacuity guard the
+      // operand never had, and the two checks that make answering `'open'` cost
+      // something.
+      /export const FACT_PROTECTION_COVERS_EVERY_FACT: KeysAreExactly</,
+      /export const PROTECTED_CONCERNS_ARE_NOT_VACUOUS: IsNonEmptyUnion</,
+      /export const OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH: UnionIsExactly</,
+      /export const NO_OPEN_FACT_NAMES_PERFORMANCE: AreDisjoint</,
+      // GDD §8.1's training-pace line, held over the FACT SET rather than over
+      // one hard-coded spelling that no reach could ever contain.
+      /export const NO_FACT_MEANS_TRAINING_PACE: IsEmptyUnion</,
+      /export const PERFORMANCE_NAMED_FACTS_ARE_NOT_VACUOUS: IsNonEmptyUnion</,
     ];
     for (const assertion of requiredAssertions) {
       expect(code).toMatch(assertion);
@@ -383,25 +465,110 @@ describe('the fact allowlist', () => {
     expect(Object.keys(facts).sort()).toEqual([...PROGRESSION_FACT_KEYS].sort());
   });
 
-  it('has no key that could hold a purchased performance bonus', () => {
-    // A blocklist is weaker than the allowlist above and is here as a second,
-    // dumber check: if the allowlist is ever widened carelessly, this names the
-    // shapes that would matter.
+  it('answers the buyable question for every fact, from one map', () => {
+    // The subject of everything below. `PROTECTED_CONCERNS` used to be a
+    // hand-written list, which meant a new fact defaulted to UNPROTECTED and no
+    // check in the module was looking at the fact set at all. This is the
+    // runtime half of `FACT_PROTECTION_COVERS_EVERY_FACT`: a fact with no answer
+    // fails `npm test` as well as `npm run typecheck`.
+    expect(Object.keys(FACT_PROTECTION).sort()).toEqual([...PROGRESSION_FACT_KEYS].sort());
     for (const key of PROGRESSION_FACT_KEYS) {
-      expect(key).not.toMatch(/bonus|multiplier|boost|pace/i);
+      expect(FACT_PROTECTION_KINDS as readonly string[]).toContain(FACT_PROTECTION[key]);
     }
   });
 
-  it('names Total, e1RM, meet results and training pace as protected', () => {
-    expect([...PROTECTED_CONCERNS].sort()).toEqual(['bestE1rmKg', 'meets', 'totalKg', 'trainingPace']);
+  it('derives the protected set from that map rather than restating it', () => {
+    // `PROTECTED_CONCERNS` and `OPEN_FACTS` are computed by the module through
+    // type predicates, which `tsc` cannot check against the conditional types
+    // they mirror. This recomputes both straight off the map, so the drift a
+    // compiler cannot see is the one a test does — the same treatment
+    // `PURCHASABLE_PROPOSAL_KINDS` gets.
+    const protectedFromMap = PROGRESSION_FACT_KEYS.filter((key) => FACT_PROTECTION[key] === 'protected');
+    const openFromMap = PROGRESSION_FACT_KEYS.filter((key) => FACT_PROTECTION[key] === 'open');
+    expect([...PROTECTED_CONCERNS].sort()).toEqual([...protectedFromMap].sort());
+    expect([...OPEN_FACTS].sort()).toEqual([...openFromMap].sort());
+    // And the two are a PARTITION of the facts: no fact in both, no fact in
+    // neither. A fact in neither is the old default coming back by another road.
+    expect([...PROTECTED_CONCERNS, ...OPEN_FACTS].sort()).toEqual([...PROGRESSION_FACT_KEYS].sort());
+    // Non-vacuity in BOTH directions, which is what the module's
+    // `PROTECTED_CONCERNS_ARE_NOT_VACUOUS` does at the type level. An empty
+    // protected set makes every pay-to-win check below pass over nothing; an
+    // empty open set means Recovery Days and Chalk cannot be sold at all, which
+    // satisfies the prohibition perfectly and breaks the product.
+    expect(PROTECTED_CONCERNS.length).toBeGreaterThan(0);
+    expect(OPEN_FACTS.length).toBeGreaterThan(0);
   });
 
-  it('leaves streak and wallet unprotected on purpose', () => {
+  it('names Total, e1RM and meet results as protected', () => {
+    // CONTAINMENT, NOT EQUALITY, and the asymmetry with the open set below is
+    // deliberate. Protecting a new fact is the SAFE direction — it can only stop
+    // a purchase reaching something — so a `toEqual` here would fail every
+    // addition of a protected fact and put friction on the answer §8.1 wants
+    // people to give. What must hold is that the three facts GDD §8.1 names are
+    // on the list; that the list is total over the facts is
+    // `FACT_PROTECTION_COVERS_EVERY_FACT`'s job, and that it is non-empty is
+    // `PROTECTED_CONCERNS_ARE_NOT_VACUOUS`'.
+    //
+    // The open set is pinned exactly, because THERE the exactness is the guard.
+    for (const concern of ['totalKg', 'bestE1rmKg', 'meets']) {
+      expect(PROTECTED_CONCERNS as readonly string[]).toContain(concern);
+    }
+  });
+
+  it('leaves streak and wallet open on purpose, and nothing else yet', () => {
     // Recovery Days are purchasable and do move a streak (GDD §4.2, §8.2);
     // buying Chalk moves a balance by definition. Protecting them here would be
     // a lie the code could not keep.
+    //
+    // THE EQUALITY IS THE TRIPWIRE FOR THE RESIDUAL IN §6 OF THE MODULE HEADER,
+    // not decoration. The compile-time guards can be walked past by an author
+    // who makes three coordinated edits AND picks a fact name bland enough to
+    // dodge `PERFORMANCE_FACT_VOCABULARY` — `simRunsAllowed`, declared `'open'`,
+    // on a purchase's reach row and in `EntitlementReach.convenience`, was
+    // verified to compile clean. This line is what fails on it.
+    //
+    // It lives in the test rather than as a type-level assertion ON PURPOSE. A
+    // `UnionIsExactly<OpenFactKey, 'streak' | 'wallet'>` in the module would
+    // refuse a legitimately open fact too — GDD §8.3A's cosmetics business will
+    // plausibly want one — and a guard that refuses the product is satisfied
+    // best by a worse artifact. As a test expectation it is the same instrument
+    // as the export-surface `toEqual` below: adding one is allowed, doing it by
+    // accident is not.
+    expect([...OPEN_FACTS].sort()).toEqual(['streak', 'wallet']);
     expect(PROTECTED_CONCERNS).not.toContain('streak');
     expect(PROTECTED_CONCERNS).not.toContain('wallet');
+  });
+
+  it('has no fact that names training pace, and can tell', () => {
+    // The runtime half of `NO_FACT_MEANS_TRAINING_PACE` (GDD §8.1, §12.3). The
+    // assertion it mirrors passes over an EMPTY set by design, so the control
+    // comes first: the scan must be able to catch the fact that motivated it.
+    // `simSessionsPerDay` is the name that shipped a purchasable training-pace
+    // fact past a clean `tsc` and all 1104 tests.
+    expect(vocabularyHits('simSessionsPerDay', PERFORMANCE_FACT_VOCABULARY.pace)).not.toEqual([]);
+    expect(PERFORMANCE_FACT_VOCABULARY.pace.length).toBeGreaterThan(0);
+    for (const key of PROGRESSION_FACT_KEYS) {
+      expect(vocabularyHits(key, PERFORMANCE_FACT_VOCABULARY.pace)).toEqual([]);
+    }
+  });
+
+  it('lets no fact that names performance be bought', () => {
+    // The runtime half of `NO_OPEN_FACT_NAMES_PERFORMANCE`. A fact MAY name
+    // performance — `totalKg` and `bestE1rmKg` do, and must — it just may not
+    // then be open. The control is that some real fact still trips the scan,
+    // which is `PERFORMANCE_NAMED_FACTS_ARE_NOT_VACUOUS` at runtime: a
+    // vocabulary that had drifted off the facts would make this pass over
+    // nothing.
+    const named = PROGRESSION_FACT_KEYS.filter((key) => vocabularyHits(key, EVERY_PERFORMANCE_WORD).length > 0);
+    expect(named.length).toBeGreaterThan(0);
+    for (const fact of OPEN_FACTS) {
+      expect(vocabularyHits(fact, EVERY_PERFORMANCE_WORD)).toEqual([]);
+    }
+    // And the blocklist is weaker than the map above; it is here as the second,
+    // dumber check, exactly as `PURCHASE_EVIDENCE_KEYS` is for the origin map.
+    for (const fact of OPEN_FACTS) {
+      expect(fact).not.toMatch(/bonus|multiplier|boost|pace/i);
+    }
   });
 
   it('keeps the Recovery Day ledger out of the wallet', () => {
@@ -580,10 +747,26 @@ describe('nothing purchasable reaches performance', () => {
     expect(unwired).toEqual([]);
   });
 
-  it('lets no proposal at all move training pace', () => {
+  it('lets no proposal at all move a fact that means training pace', () => {
+    // THIS TEST USED TO BE `not.toContain('trainingPace')` AND COULD NOT FAIL.
+    // Every reach value is bound to `ProgressionFactKey` by
+    // `PROPOSAL_REACH_NAMES_REAL_FACTS`, and `'trainingPace'` was deliberately
+    // not a fact key — so no reach could ever contain that string, whatever any
+    // row said. A purchasable `simSessionsPerDay` on the `'redeem-entitlement'`
+    // row passed it unchanged.
+    //
+    // It now asks the question the §8.1 line actually cares about: does any
+    // proposal reach a fact whose NAME means pace? The control comes first,
+    // because a reach that named nothing would satisfy the loop for free.
+    expect(vocabularyHits('simSessionsPerDay', PERFORMANCE_FACT_VOCABULARY.pace)).not.toEqual([]);
+    let factsSeen = 0;
     for (const kind of PROGRESSION_PROPOSAL_KINDS) {
-      expect(factsMovedBy(kind) as readonly string[]).not.toContain('trainingPace');
+      for (const fact of factsMovedBy(kind) as readonly string[]) {
+        factsSeen += 1;
+        expect(vocabularyHits(fact, PERFORMANCE_FACT_VOCABULARY.pace)).toEqual([]);
+      }
     }
+    expect(factsSeen).toBeGreaterThan(0);
   });
 
   it('lets earned proposals move the facts a purchase may not', () => {
@@ -606,13 +789,12 @@ describe('nothing purchasable reaches performance', () => {
       ]),
     );
     expect(earnedReach.size).toBeGreaterThan(0);
+    // NO CARVE-OUT ANY MORE. This loop used to skip `'trainingPace'`, the one
+    // protected concern that was not a stored fact and that every check in the
+    // module had to route around. `PROTECTED_CONCERNS` is now derived from
+    // `FACT_PROTECTION` and contains only real facts, so every member of it is a
+    // fact some earned proposal must be able to move.
     for (const concern of PROTECTED_CONCERNS) {
-      // `trainingPace` is the one protected concern that is not a stored fact:
-      // nothing moves it, priced or free. Same carve-out
-      // `PROTECTED_CONCERNS_NAME_REAL_FACTS` makes in the module.
-      if (concern === 'trainingPace') {
-        continue;
-      }
       expect([...earnedReach]).toContain(concern);
     }
   });
@@ -1496,6 +1678,39 @@ describe('a purchase cannot reach performance', () => {
     const balance = readBalance(cache, 'recoveryDays');
     expect(balance.kind).toBe('confirmed');
   });
+
+  it('will not let a pending cache be assembled around the checks', () => {
+    // `ProgressionCache` is a transparent union, so this shape used to compile —
+    // and it skipped `validateProposal`, `validateProjection`,
+    // `projectionExceedsReach`, the in-flight limit AND the stale-cache rule in
+    // one innocent-looking object literal. `InFlightProposal` now carries a
+    // module-private `unique symbol` minted only inside `proposeChange`, so the
+    // `inFlight` cannot be built here at all.
+    //
+    // INVISIBLE TO VITEST — esbuild strips the directive — so this is checked by
+    // `npm run typecheck`, where an UNUSED `@ts-expect-error` is itself an
+    // error. That is what makes reopening the hole fail rather than pass.
+    const smuggled: ProgressionCache = {
+      status: 'pending',
+      snapshot: snapshot(),
+      // @ts-expect-error - InFlightProposal carries a brand no caller can name.
+      inFlight: {
+        proposalId: asProposalId('p-forged'),
+        proposal: A_PROPOSAL,
+        projection: projectionClaiming('totalKg'),
+      },
+    };
+    expect(smuggled.status).toBe('pending');
+  });
+
+  it('still lets proposeChange build one, which is the positive control', () => {
+    // A brand that nothing can mint refuses the forged shape above perfectly and
+    // also makes the feature unusable. The door has to still open.
+    const pending = expectOk(
+      proposeChange(confirmedCache(), asProposalId('p-real'), A_PROPOSAL, emptyProjection()),
+    );
+    expect(inFlightProposal(pending)?.proposalId).toBe('p-real');
+  });
 });
 
 describe('the module exports no writer', () => {
@@ -1536,6 +1751,9 @@ describe('the module exports no writer', () => {
       'ENTITLEMENT_EFFECT_KINDS',
       'ENTITLEMENT_REACH_IS_NOT_VACUOUS',
       'ENTITLEMENT_REACH_NAMES_REAL_FACTS',
+      'FACT_PROTECTION',
+      'FACT_PROTECTION_COVERS_EVERY_FACT',
+      'FACT_PROTECTION_KINDS',
       'MEET_ATTEMPT_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'MEET_ATTEMPT_REPORT_KEYS',
       'MEET_RESULT_IS_EXACTLY_ITS_ALLOWLIST',
@@ -1543,8 +1761,13 @@ describe('the module exports no writer', () => {
       'MEET_RESULT_REPORT_KEYS',
       'MONEY_CARRYING_KINDS_ARE_NOT_VACUOUS',
       'MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE',
-      'NOTHING_MOVES_TRAINING_PACE',
+      'NO_FACT_MEANS_TRAINING_PACE',
+      'NO_OPEN_FACT_NAMES_PERFORMANCE',
       'ONLY_A_MEET_RESULT_MOVES_TOTAL',
+      'OPEN_FACTS',
+      'OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH',
+      'PERFORMANCE_FACT_VOCABULARY',
+      'PERFORMANCE_NAMED_FACTS_ARE_NOT_VACUOUS',
       'PROGRESSION_CACHE_POLICY',
       'PROGRESSION_FACTS_ARE_EXACTLY_THE_ALLOWLIST',
       'PROGRESSION_FACT_KEYS',
@@ -1559,7 +1782,7 @@ describe('the module exports no writer', () => {
       'PROPOSAL_REACH_COVERS_EVERY_KIND',
       'PROPOSAL_REACH_NAMES_REAL_FACTS',
       'PROTECTED_CONCERNS',
-      'PROTECTED_CONCERNS_NAME_REAL_FACTS',
+      'PROTECTED_CONCERNS_ARE_NOT_VACUOUS',
       'PURCHASABLE_KINDS_ARE_NOT_VACUOUS',
       'PURCHASABLE_PROPOSAL_KINDS',
       'PURCHASES_CANNOT_REACH_PROTECTED_CONCERNS',

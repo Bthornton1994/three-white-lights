@@ -60,9 +60,18 @@
  *
  * Two disjoint brands over `number`:
  *
- *   - `Confirmed<T>`  — came out of a server response. Minted in exactly one
- *     place in this file, inside `receiveProgressionSnapshot`. There is no
- *     exported mint. A plain `number` is not assignable to it.
+ *   - `Confirmed<T>`  — came out of a server response. There is exactly one
+ *     mint, the module-private `confirm()`, and it is not exported. A plain
+ *     `number` is not assignable to it.
+ *
+ *     THIS USED TO READ "minted in exactly one place in this file, inside
+ *     `receiveProgressionSnapshot`", AND THAT SENTENCE WAS FALSE. `confirm()` is
+ *     called four times across three functions — `decodeBestByLift`,
+ *     `decodeMeet` and `receiveProgressionSnapshot`. The guarantee the sentence
+ *     was reaching for does hold, and is worth stating accurately: all three are
+ *     module-private, and the two decoders are reachable only from
+ *     `receiveProgressionSnapshot`, so every confirmed number in the app still
+ *     comes through one door. One door, several hinges — not one call site.
  *   - `Projected<T>`  — computed locally, optimistically, for display.
  *     `projectedKg` and `projectedCount` are exported, because projecting is
  *     something the client is *supposed* to do.
@@ -91,10 +100,20 @@
  *                proposal, revision from elsewhere). The snapshot is still the
  *                best known truth and is still rendered, flagged.
  *
- * The projection is never promoted. There is no `commitProjection`, and there
- * cannot be one: promoting would require minting a `ProgressionSnapshot`, and
- * the only mint takes a wire envelope. A server snapshot *replaces* the
- * projection; it is never merged with it.
+ * The projection is never promoted. There is no `commitProjection`, and a
+ * server snapshot *replaces* the projection rather than merging with it.
+ *
+ * WHY THERE IS NONE IS A RULE ABOUT THIS FILE, NOT AN IMPOSSIBILITY, and the
+ * sentence that used to be here claimed the stronger thing: "there cannot be
+ * one: promoting would require minting a `ProgressionSnapshot`, and the only
+ * mint takes a wire envelope". In-module there certainly can be one —
+ * `SNAPSHOT_CONTENTS` and `confirm()` are both in scope, so a function written
+ * here could fold a projection into a fresh snapshot without a single cast. What
+ * actually stops it is `progression.test.ts`: the export surface is pinned with
+ * `toEqual`, so any new export fails a test, and the `[SNAPSHOT_CONTENTS]:`
+ * writes in this file are counted, so a second construction fails another.
+ * OUTSIDE this module it is impossible, because the symbol is private — which is
+ * the claim that was true all along and the one worth making.
  *
  * Reads for rendering go through `readTotalKg` and friends, which return a
  * discriminated `ProgressionReading`. A renderer therefore cannot show a
@@ -151,8 +170,10 @@
  * 5. THE PAY-TO-WIN LINE, EXPRESSED IN THE TYPES (GDD §8.1, §12.3)
  * ===========================================================================
  *
- * `PROTECTED_CONCERNS` is the §8.1 list: Total, e1RM, meet results, training
- * pace. Four mechanisms keep purchases off it, all of them compile-time:
+ * `PROTECTED_CONCERNS` is the §8.1 list: Total, e1RM, meet results. Training
+ * pace is the fourth §8.1 concern and is NOT on it, because it is not a stored
+ * fact — see (d) for why it used to be, and what holds that line now. Four
+ * mechanisms keep purchases off the list, all of them compile-time:
  *
  *  (a) THE CATALOGUE ALLOWLIST. `ENTITLEMENT_EFFECT_KINDS` is the complete list
  *      of things anything purchasable may do. `ENTITLEMENT_EFFECTS_ARE_EXACTLY_
@@ -186,13 +207,56 @@
  *          next `'purchase'`-tagged kind. NON-VACUITY CANNOT SEE THIS: a drifted
  *          union is still non-empty; it just refers to nothing.
  *          `PROPOSAL_REACH_NAMES_REAL_FACTS` and
- *          `ENTITLEMENT_REACH_NAMES_REAL_FACTS` are what fail instead — the same
- *          binding `PROTECTED_CONCERNS_NAME_REAL_FACTS` puts on the other
- *          operand, so both sides of every disjointness check name real facts.
+ *          `ENTITLEMENT_REACH_NAMES_REAL_FACTS` are what fail instead.
  *
- *      All four are mutation-tested, and `progression.test.ts` re-checks the
- *      proposal side at runtime against `PROGRESSION_FACT_KEYS`, because a
- *      type-level assertion that gets deleted is invisible to `npm test`.
+ *        - UNBOUND ON THE OTHER SIDE. Both guards above are about the LEFT
+ *          operand. THE RIGHT ONE WAS NEVER BOUND AT ALL, and its default was
+ *          `unprotected`. `PROTECTED_CONCERNS` was a hand-written list, so a
+ *          fact nobody added to it was fair game for a purchase, silently, and
+ *          no assertion in this file was looking at the fact set.
+ *
+ *          That was live, not theoretical, and it was proved by execution before
+ *          this was written: adding `simSessionsPerDay: ConfirmedCount` to
+ *          `ConfirmedFacts`, widening `PROGRESSION_FACT_KEYS` to match, and
+ *          naming it on the `'redeem-entitlement'` row of `ProposalReach`
+ *          compiled clean and passed all 1104 tests. A purchase that buys extra
+ *          Sim sessions per day — training pace — with every guard in this file
+ *          green. That is GDD §12.3's first refusal condition.
+ *
+ *          `FACT_PROTECTION` is the fix, and it is `PROPOSAL_ORIGIN_BY_KIND`'s
+ *          mechanism one operand over: an exhaustive `Readonly<Record<
+ *          ProgressionFactKey, 'protected' | 'open'>>`, so a new fact cannot be
+ *          added without answering the §8.1 question out loud, with
+ *          `PROTECTED_CONCERNS` DERIVED from it rather than listed beside it.
+ *          There is no default any more. `PROTECTED_CONCERNS_ARE_NOT_VACUOUS` is
+ *          the non-vacuity half, which this operand had never had.
+ *
+ *          AND ANSWERING `'open'` IS NOT FREE, or the map would only move the
+ *          escape one line — the author of a purchasable pace fact would just
+ *          declare it open. Two cross-checks price that answer, in the same
+ *          shape as `MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE`. They PRICE it
+ *          rather than forbid it, and §6 states the route that still gets
+ *          through and what fails on it:
+ *
+ *            · `OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH` binds the open
+ *              set to `EntitlementReach`, both directions. Declaring a fact open
+ *              without also writing it into the purchase catalogue fails; writing
+ *              it in means stating in the catalogue which purchased effect moves
+ *              it, which is a confession rather than a smuggle. This one has no
+ *              vocabulary in it and is the load-bearing half.
+ *            · `NO_OPEN_FACT_NAMES_PERFORMANCE` reads the fact's own NAME against
+ *              `PERFORMANCE_FACT_VOCABULARY`. `simSessionsPerDay` contains
+ *              `session` and `perday`, so it cannot be open under that name. IT
+ *              IS A FLOOR AND IT IS DIRECTIONAL — a fact named `x7` satisfies it
+ *              perfectly — which is why it is second, and why
+ *              `PERFORMANCE_NAMED_FACTS_ARE_NOT_VACUOUS` exists to prove the scan
+ *              can still see the facts that do name performance.
+ *
+ *      All of these are mutation-tested in both directions — a purchasable pace
+ *      fact is rejected, an ordinary cosmetic fact is accepted — and
+ *      `progression.test.ts` re-checks the proposal side and the protection map
+ *      at runtime, because a type-level assertion that gets deleted is invisible
+ *      to `npm test`.
  *
  *      WHICH KINDS COUNT AS PURCHASES IS DERIVED, NOT LISTED. The reach check is
  *      only worth what its subject is worth, and its subject used to be a
@@ -214,9 +278,36 @@
  *
  *  (d) NOTHING TO SELL. This module exports no multiplier, no bonus, no
  *      "training pace" figure and no function that takes an `Entitlement` and
- *      returns anything at all. `NOTHING_MOVES_TRAINING_PACE` asserts that no
- *      proposal kind — bought or earned — reaches training pace: one session per
- *      day is the loop, and there is no lever, priced or free.
+ *      returns anything at all. One session per day is the loop, and there is no
+ *      lever, priced or free.
+ *
+ *      `NOTHING_MOVES_TRAINING_PACE` USED TO BE ASSERTED HERE AND HAS BEEN
+ *      REMOVED, BECAUSE IT COULD NOT FAIL. It read `AreDisjoint<ProposalReach[
+ *      ProgressionProposalKind], 'trainingPace'>`. But
+ *      `PROPOSAL_REACH_NAMES_REAL_FACTS` already forces every reach value to be
+ *      a `ProgressionFactKey`, and `'trainingPace'` was deliberately not one —
+ *      so the intersection was `never` unconditionally, for every edit short of
+ *      adding a `ConfirmedFacts` field spelled exactly `trainingPace`. Its
+ *      runtime twin was tautological for the same reason. `'trainingPace'` sat
+ *      in `PROTECTED_CONCERNS` solely to give it an operand, and every other
+ *      check then had to route around that entry: `Exclude<ProtectedConcern,
+ *      'trainingPace'>` in the module, `if (concern === 'trainingPace')
+ *      continue` in the test. A protected concern every guard has to skip is
+ *      scaffolding, and this paragraph presented it as an enforcement.
+ *
+ *      WHAT REPLACES IT: `NO_FACT_MEANS_TRAINING_PACE`, up with the facts. The
+ *      §8.1 promise is that pace has no lever at all, which is a statement about
+ *      the FACT SET rather than about one spelling — so it is asserted over the
+ *      fact set: no `ProgressionFactKey` may name pace, under any name in
+ *      `PERFORMANCE_FACT_VOCABULARY.pace`. It is empty today and it fails the
+ *      moment a pace fact appears, which is exactly the `simSessionsPerDay`
+ *      mutant in (b) that the old assertion could not see.
+ *
+ *      A PACE FACT WAS NOT INVENTED TO GIVE IT SOMETHING TO GUARD. That is how
+ *      the old assertion got here, and GDD §8.1 does not describe stored pace
+ *      state to model — it says pace is skill- and consistency-driven. Adding a
+ *      `simSessionsPerDay` field so a guard had a target would have been
+ *      inventing design to satisfy a check, one level further down.
  *
  * Recovery Days are the one purchasable thing with a functional effect (GDD
  * §4.2, §8.2), and `'streak'` is deliberately NOT protected here for that
@@ -274,16 +365,28 @@
  *    this module cannot see. What it closes is the shape that used to typecheck
  *    and look innocent: a Total in the projection object of a Tuesday session.
  *
- *  - AND IT SITS AT THE DOOR, NOT ON THE STATE. `InFlightProposal.projection` is
- *    a plain `ProgressionProjection`, so the pairing is checked when a change is
- *    proposed and not carried around afterwards. `ProgressionCache` is a
- *    transparent union, so a caller holding a snapshot can hand-assemble
- *    `{ status: 'pending', snapshot, inFlight }` and skip the check — exactly as
- *    it would skip `validateProjection`, the in-flight limit and the stale-cache
- *    rule, which is the older and more general residual. Narrowing the stored
- *    projection would mean making `ProgressionCache` generic in a proposal kind,
- *    and every reader (`readTotalKg` and friends) generic with it, for a hole
- *    that a transparent cache type already leaves open in four other places.
+ *  - IT SITS AT THE DOOR, NOT ON THE STATE — BUT THE DOOR IS NOW THE ONLY WAY
+ *    IN. `InFlightProposal.projection` is a plain `ProgressionProjection`, so
+ *    the pairing is checked when a change is proposed and not carried around
+ *    afterwards. `ProgressionCache` is a transparent union, so a caller holding
+ *    a snapshot could hand-assemble `{ status: 'pending', snapshot, inFlight }`
+ *    and skip that check — and with it `validateProposal`,
+ *    `validateProjection`, the in-flight limit and the stale-cache rule, which
+ *    was the older and more general residual.
+ *
+ *    IT IS CLOSED. `InFlightProposal` carries `[PAIRING_CHECKED]`, a
+ *    module-private `unique symbol` minted only inside `proposeChange`. A caller
+ *    cannot name the key, so it cannot build the `inFlight`, so it cannot build
+ *    the `pending` state — all five checks included.
+ *
+ *    THE PARAGRAPH THAT USED TO BE HERE GAVE A FALSE REASON FOR LEAVING IT OPEN,
+ *    which is worse than leaving it open: it said closing this "would mean making
+ *    `ProgressionCache` generic in a proposal kind, and every reader
+ *    (`readTotalKg` and friends) generic with it". It did not. The brand is the
+ *    §2 opacity idiom one level down and needed no generics anywhere; the readers
+ *    are untouched. What remains is narrower and is stated on the type itself:
+ *    the brand records that SOME pairing was checked, not that THIS projection
+ *    belongs to THIS proposal.
  *
  *  - A PURCHASE CAN STILL BE MISLABELLED, IN TWO SHAPES, AND THE SECOND ONE IS
  *    NOT THE ONE PEOPLE EXPECT. `PROPOSAL_ORIGIN_BY_KIND` forces every kind to
@@ -315,6 +418,37 @@
  *    Both residuals are one deliberate shape in a diff whose surrounding comment
  *    says not to, rather than the previous residual, which was any addition at
  *    all, silently.
+ *
+ *  - A FACT CAN STILL BE DECLARED `'open'` IF IT IS ALSO RENAMED PAST THE
+ *    VOCABULARY, and this is the pay-to-win residual that survives §5(b).
+ *    `FACT_PROTECTION` removes the silent default and the two cross-checks price
+ *    the `'open'` answer, but they do not make it impossible. Four coordinated
+ *    edits get through: a fact named so as not to say what it is
+ *    (`simRunsAllowed`, not `simSessionsPerDay`), declared `'open'`, named on a
+ *    purchase's row in `ProposalReach`, and written into
+ *    `EntitlementReach.convenience` so the two purchase maps still agree.
+ *    `NO_OPEN_FACT_NAMES_PERFORMANCE` and `NO_FACT_MEANS_TRAINING_PACE` read
+ *    names and a bland name defeats both; `OPEN_FACTS_ARE_EXACTLY_WHAT_A_
+ *    PURCHASE_MAY_REACH` is satisfied by the fourth edit. THIS WAS RUN, not
+ *    reasoned about: it compiles clean.
+ *
+ *    What fails on it is `progression.test.ts`'s pinned open set, which asserts
+ *    `OPEN_FACTS` is exactly `['streak', 'wallet']`. That is a test expectation
+ *    rather than a type-level assertion on purpose: the same claim in the type
+ *    system would also refuse a legitimately open fact — GDD §8.3A's cosmetics
+ *    business will plausibly want one — and a guard that refuses the product is
+ *    satisfied best by a worse artifact.
+ *
+ *    So the honest statement of the line is: a purchase reaching a protected
+ *    fact is a compile error; a purchase reaching a NEW fact is a failing test
+ *    with a paragraph attached. Not the same strength, and worth saying so
+ *    rather than rounding the second up to the first.
+ *
+ *  - THE VOCABULARY IS A JUDGEMENT. `PERFORMANCE_FACT_VOCABULARY` is a list
+ *    someone wrote, and both scans built on it inherit that. It is a floor under
+ *    the honest mistake — a fact named for what it does — not a net under a
+ *    determined one, and `PERFORMANCE_NAMED_FACTS_ARE_NOT_VACUOUS` only proves
+ *    the scan still sees SOME fact, not that it sees the right ones.
  *
  *  - THIS MODULE CONSTRAINS ITSELF. It cannot stop a consumer reading a
  *    confirmed e1RM and multiplying it by a cosmetic's price. That would be the
@@ -397,6 +531,35 @@ type IsSubtypeOf<A, B> = [A] extends [B] ? true : never;
 type AreDisjoint<A, B> = [Extract<A, B>] extends [never] ? true : never;
 
 /**
+ * `true` when the union has NO member.
+ *
+ * The opposite polarity to `IsNonEmptyUnion`, and the two are not
+ * interchangeable dressing on the same idea. A non-vacuity guard exists because
+ * emptiness would make some OTHER check pass over nothing; this one is itself
+ * the claim, and emptiness is what it asserts. It therefore fails by gaining a
+ * member rather than by losing one, which is the shape a "there is no such thing
+ * in this codebase" promise actually has. `NO_FACT_MEANS_TRAINING_PACE` is the
+ * only user, and §5(d) of the header says why that promise is written this way
+ * round rather than as a disjointness check against one hard-coded spelling.
+ */
+type IsEmptyUnion<A> = [A] extends [never] ? true : never;
+
+/**
+ * The members of `Words` that appear as a substring of `S`.
+ *
+ * `Words extends string` is there to distribute over the union rather than to
+ * constrain it — without it the check would ask whether `S` contains the whole
+ * union at once, which is never true and would make every scan built on this
+ * silently empty. Pair any use with a non-vacuity assertion on the result for
+ * exactly that reason.
+ */
+type WordsMatching<S extends string, Words extends string> = Words extends string
+  ? S extends `${string}${Words}${string}`
+    ? Words
+    : never
+  : never;
+
+/**
  * `true` when the union has at least one member. Pairs with `AreDisjoint` so a
  * disjointness assertion cannot pass by having nothing left to compare.
  *
@@ -427,9 +590,11 @@ declare const CLIENT_PROJECTED: unique symbol;
  * see §2 of the header — and the constraint stops a future edit from reaching
  * for `Confirmed<SomeObject>` and getting a guarantee that is not there.
  *
- * Minted in exactly one place: `receiveProgressionSnapshot`. There is no
- * exported mint, which is the difference between this brand and `dots.ts`'s
- * `officialTotalKg`.
+ * There is exactly one mint, `confirm()`, and it is not exported — which is the
+ * difference between this brand and `dots.ts`'s `officialTotalKg`. It has
+ * several call sites, all private and all inside the decode path behind
+ * `receiveProgressionSnapshot`; see §3 of the header for why that distinction is
+ * spelled out rather than rounded to "one place".
  */
 export type Confirmed<T extends number> = T & { readonly [SERVER_CONFIRMED]: 'server-confirmed' };
 
@@ -481,8 +646,12 @@ export function projectedCount(value: number): ProjectedCount {
 
 /**
  * The single confirming mint. MODULE-PRIVATE and not exported: every confirmed
- * number in the app traces back through here, and the only caller is the
- * decoder below.
+ * number in the app traces back through here.
+ *
+ * It is called from `decodeBestByLift`, `decodeMeet` and
+ * `receiveProgressionSnapshot` — three private functions, of which only the last
+ * is exported and the other two are reachable only from it. So there are several
+ * call sites and still one door.
  */
 function confirm<T extends number>(value: T): Confirmed<T> {
   return value as Confirmed<T>;
@@ -542,8 +711,14 @@ export function asServerRevision(value: number): ServerRevision {
  * THE COMPLETE SET OF FIELDS SERVER-OWNED PROGRESSION MAY HAVE.
  *
  * Same mechanism as `STREAK_FACT_KEYS` in `streak.ts`, one level up: adding a
- * field to `ConfirmedFacts` fails `tsc` until it is added here, under this
- * comment, where the §8.1 question ("can this be bought?") gets asked out loud.
+ * field to `ConfirmedFacts` fails `tsc` until it is added here.
+ *
+ * THE §8.1 QUESTION ("can this be bought?") IS ASKED IN `FACT_PROTECTION` BELOW,
+ * not here. This comment used to claim it was asked here, and it was not asked
+ * anywhere — being on this list said nothing about whether a purchase could move
+ * the fact, and the default was that one could. Widening this list is now only
+ * half an edit: the other half is answering the question, and the compiler will
+ * not let the two be separated.
  *
  * Exported as a runtime array so a critic can compare it against a live object's
  * keys without reading a line of logic. `progression.test.ts` does exactly that.
@@ -553,31 +728,220 @@ export const PROGRESSION_FACT_KEYS = ['totalKg', 'bestE1rmKg', 'streak', 'meets'
 export type ProgressionFactKey = (typeof PROGRESSION_FACT_KEYS)[number];
 
 /**
- * The §8.1 / §12.3 line, as a set: nothing purchasable may affect Total, e1RM,
- * training pace, or meet performance.
+ * WHAT A FACT'S NAME HAS TO SAY BEFORE IT MAY BE BOUGHT, in one place.
  *
- * `'streak'` and `'wallet'` are deliberately absent. Recovery Days are
- * purchasable and do move a streak (GDD §4.2, §8.2), and buying Chalk moves a
- * balance by definition. Fencing those is `streak.ts`'s job and it does it; the
- * line this module holds is the one about *performance*.
+ * A blocklist, and blocklists are the weaker instrument — this file says so
+ * where it uses one. It is here because the stronger instrument below
+ * (`FACT_PROTECTION`) can be *answered wrongly*, and the only evidence about a
+ * fact that is independent of the answer is the fact's own name. Same shape as
+ * `PURCHASE_EVIDENCE_KEYS`, which reads report field names to cross-check a
+ * hand-declared origin, and the same standing: a floor, not a decision
+ * procedure.
  *
- * `'trainingPace'` is not a stored fact — it is the rate at which sessions
- * count, which nothing here stores because nothing may change it. It is in this
- * list so `NOTHING_MOVES_TRAINING_PACE` has something to assert against.
+ * Matched case-insensitively against `Lowercase<ProgressionFactKey>` as a
+ * SUBSTRING, so `simSessionsPerDay` is caught by `session` and by `perday`
+ * without anyone having to have predicted that exact name.
+ *
+ * `PERFORMANCE_NAMED_FACTS_ARE_NOT_VACUOUS` is what proves this list can still
+ * see the facts it is aimed at. Without it a typo here would empty every scan
+ * built on it and nothing would say so.
  */
-export const PROTECTED_CONCERNS = ['totalKg', 'bestE1rmKg', 'meets', 'trainingPace'] as const;
+export const PERFORMANCE_FACT_VOCABULARY = {
+  /**
+   * Words meaning HOW FAST OR HOW OFTEN the game may be played. GDD §8.1: "Sim
+   * training pace ... 100% skill- and consistency-driven". No fact may name any
+   * of these at all — protected or not — because the promise is that pace has no
+   * lever, not that its lever is expensive. `NO_FACT_MEANS_TRAINING_PACE`.
+   */
+  pace: ['pace', 'session', 'perday', 'daily', 'rate', 'cooldown', 'tempo', 'energy', 'stamina'],
+  /**
+   * Words meaning A NUMBER THE LIFTER IS JUDGED BY. A fact may name one of these
+   * — `totalKg` and `bestE1rmKg` do, and must — but it may not then be declared
+   * `'open'`. `NO_OPEN_FACT_NAMES_PERFORMANCE`.
+   *
+   * `'level'` is deliberately absent: GDD §5 makes Gym Empire levels an idle
+   * layer with purchasable timer skips, so a `gymLevel` fact would be a
+   * legitimate open one and banning the word would refuse real design.
+   */
+  performance: ['total', 'e1rm', '1rm', 'bonus', 'boost', 'multiplier', 'strength', 'score', 'dots', 'xp'],
+} as const;
 
-export type ProtectedConcern = (typeof PROTECTED_CONCERNS)[number];
+type PaceWord = (typeof PERFORMANCE_FACT_VOCABULARY.pace)[number];
+type PerformanceWord = PaceWord | (typeof PERFORMANCE_FACT_VOCABULARY.performance)[number];
+
+/** The fact keys whose own name contains one of `Words`. */
+type FactsNaming<Words extends string> = {
+  [F in ProgressionFactKey]: [WordsMatching<Lowercase<F>, Words>] extends [never] ? never : F;
+}[ProgressionFactKey];
+
+/** Facts whose name means training pace. Empty, and asserted to stay empty. */
+type PaceNamedFactKey = FactsNaming<PaceWord>;
+
+/** Facts whose name means performance. `'totalKg' | 'bestE1rmKg'` today. */
+type PerformanceNamedFactKey = FactsNaming<PerformanceWord>;
 
 /**
- * Every protected concern except training pace must be a real fact key. Renaming
- * `totalKg` to `total` without updating `PROTECTED_CONCERNS` would leave the
- * protection pointing at nothing; this fails `tsc` instead.
+ * COMPILE-TIME ASSERTION (GDD §8.1, §12.3): THERE IS NO TRAINING-PACE FACT.
+ *
+ * This replaces `NOTHING_MOVES_TRAINING_PACE`, which could not fail. That one
+ * read `AreDisjoint<ProposalReach[ProgressionProposalKind], 'trainingPace'>`,
+ * and `PROPOSAL_REACH_NAMES_REAL_FACTS` already forces every reach value to be a
+ * `ProgressionFactKey` while `'trainingPace'` was deliberately not one — so the
+ * intersection was `never` for every edit short of adding a `ConfirmedFacts`
+ * field spelled exactly `trainingPace`. See §5(d) of the header.
+ *
+ * The promise §8.1 makes is that pace has no lever, priced or free. That is a
+ * statement about the FACT SET, so it is asserted over the fact set: nothing the
+ * server owns may name pace, under any of the names in
+ * `PERFORMANCE_FACT_VOCABULARY.pace`. It is empty today and it FAILS the moment
+ * a pace fact appears — which is precisely the mutant §5(b) describes.
+ *
+ * NOTE THE POLARITY. This is `IsEmptyUnion`, not `IsNonEmptyUnion`: emptiness is
+ * the claim rather than a hazard to the claim. Its own hazard — a scan that
+ * matches nothing because the vocabulary drifted — is covered by
+ * `PERFORMANCE_NAMED_FACTS_ARE_NOT_VACUOUS` below, over the superset.
  */
-export const PROTECTED_CONCERNS_NAME_REAL_FACTS: IsSubsetOf<
-  Exclude<ProtectedConcern, 'trainingPace'>,
+export const NO_FACT_MEANS_TRAINING_PACE: IsEmptyUnion<PaceNamedFactKey> = true;
+
+/**
+ * THE CONTROL FOR THE SCAN ABOVE, and it is load-bearing. `NO_FACT_MEANS_
+ * TRAINING_PACE` passes over an empty set by design, so on its own it would also
+ * pass if `WordsMatching` stopped matching anything — a distribution bug, a
+ * gutted vocabulary, a renamed intrinsic. This fails in that world, because the
+ * facts that DO name performance are still there to be found.
+ */
+export const PERFORMANCE_NAMED_FACTS_ARE_NOT_VACUOUS: IsNonEmptyUnion<PerformanceNamedFactKey> = true;
+
+/**
+ * Whether a fact may be moved by something bought. Two answers, both spelled
+ * out, neither of them a default.
+ */
+export const FACT_PROTECTION_KINDS = ['protected', 'open'] as const;
+
+export type FactProtection = (typeof FACT_PROTECTION_KINDS)[number];
+
+/**
+ * THE §8.1 ANSWER FOR EVERY FACT. The one place "can this be bought?" is written
+ * down.
+ *
+ * THIS USED TO BE A HAND-WRITTEN LIST of protected names, and a list has a
+ * DEFAULT: a fact that nobody added to it was unprotected, silently. That was
+ * live, not theoretical — see §5(b) of the header for the mutant that shipped a
+ * purchasable `simSessionsPerDay` past a clean `tsc` and all 1104 tests.
+ *
+ * Exhaustive by construction, exactly as `PROPOSAL_ORIGIN_BY_KIND` is one
+ * operand over: `satisfies Readonly<Record<ProgressionFactKey, FactProtection>>`
+ * rejects a missing fact and an unknown one, and `FACT_PROTECTION_COVERS_EVERY_
+ * FACT` pins the same thing again in case a future edit drops the `satisfies`.
+ * `PROTECTED_CONCERNS` is DERIVED from this map, so there is nothing left to
+ * forget to edit.
+ *
+ * ANSWER FOR A NEW FACT HERE. `'open'` means a purchase may move it, and only
+ * two things in the design qualify: Recovery Days move a streak (GDD §4.2, §8.2)
+ * and buying Chalk moves a balance by definition. Fencing those is `streak.ts`'s
+ * job and it does it; the line this module holds is the one about
+ * *performance*. Everything else is `'protected'` — and `'open'` is not a free
+ * answer, because `OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH` makes it
+ * cost an entry in the purchase catalogue and `NO_OPEN_FACT_NAMES_PERFORMANCE`
+ * makes it cost a name that does not say performance.
+ */
+export const FACT_PROTECTION = {
+  totalKg: 'protected',
+  bestE1rmKg: 'protected',
+  streak: 'open',
+  meets: 'protected',
+  wallet: 'open',
+} as const satisfies Readonly<Record<ProgressionFactKey, FactProtection>>;
+
+/**
+ * COMPILE-TIME ASSERTION. Exhaustiveness in one direction and staleness in the
+ * other: a new fact with no row here fails, and a row here naming a fact that
+ * was renamed away fails too.
+ *
+ * IT REPLACES `PROTECTED_CONCERNS_NAME_REAL_FACTS`, which did the staleness half
+ * for a hand-written list. With `PROTECTED_CONCERNS` derived from these keys,
+ * that assertion had become a tautology — a protected concern could not fail to
+ * be a real fact — and a tautology kept for continuity is the defect this round
+ * is about. This one can still fail.
+ */
+export const FACT_PROTECTION_COVERS_EVERY_FACT: KeysAreExactly<
+  typeof FACT_PROTECTION,
   ProgressionFactKey
 > = true;
+
+/**
+ * The §8.1 / §12.3 line, as a set — DERIVED from `FACT_PROTECTION`, not listed
+ * beside it.
+ *
+ * `'trainingPace'` IS NO LONGER A MEMBER, and that is a deliberate removal
+ * rather than a consequence of the derivation. It was never a fact; it sat in
+ * the old list purely to give `NOTHING_MOVES_TRAINING_PACE` an operand, and
+ * every other check then had to route around it — `Exclude<ProtectedConcern,
+ * 'trainingPace'>` here, an `if (concern === 'trainingPace') continue` in the
+ * test. A protected concern that every guard has to skip is scaffolding.
+ * `NO_FACT_MEANS_TRAINING_PACE` above is what holds that line now, and unlike
+ * its predecessor it can fail. §5(d) of the header has the full argument.
+ */
+export type ProtectedConcern = {
+  [F in ProgressionFactKey]: (typeof FACT_PROTECTION)[F] extends 'protected' ? F : never;
+}[ProgressionFactKey];
+
+/** The complement: facts a purchase is allowed to move. */
+export type OpenFactKey = {
+  [F in ProgressionFactKey]: (typeof FACT_PROTECTION)[F] extends 'open' ? F : never;
+}[ProgressionFactKey];
+
+function isProtectedFact(fact: ProgressionFactKey): fact is ProtectedConcern {
+  return FACT_PROTECTION[fact] === 'protected';
+}
+
+function isOpenFact(fact: ProgressionFactKey): fact is OpenFactKey {
+  return FACT_PROTECTION[fact] === 'open';
+}
+
+/**
+ * The protected set at runtime, for the tests and for anything that wants to
+ * render the line. Derived by walking `PROGRESSION_FACT_KEYS` and reading the
+ * same map the type reads, so it is total over the facts by construction.
+ *
+ * The same caveat `PURCHASABLE_PROPOSAL_KINDS` carries applies: `tsc` cannot
+ * check a type predicate's body against the conditional type it mirrors, so
+ * `progression.test.ts` cross-checks both arrays against the map directly.
+ */
+export const PROTECTED_CONCERNS: readonly ProtectedConcern[] = PROGRESSION_FACT_KEYS.filter(isProtectedFact);
+
+/** The other half of the partition, exported so a test can check it is one. */
+export const OPEN_FACTS: readonly OpenFactKey[] = PROGRESSION_FACT_KEYS.filter(isOpenFact);
+
+/**
+ * THE NON-VACUITY GUARD THAT WAS MISSING ENTIRELY, on the operand that never had
+ * one.
+ *
+ * `PURCHASES_CANNOT_REACH_PROTECTED_CONCERNS` and `ENTITLEMENTS_CANNOT_REACH_
+ * PROTECTED_CONCERNS` are `AreDisjoint`, which is vacuously true over `never`.
+ * Four rounds of hardening put both a non-vacuity guard and a real-facts binding
+ * on the REACH side of those assertions and left the `ProtectedConcern` side
+ * with neither. Mark every fact `'open'` and both checks would have gone on
+ * passing over nothing; this fails instead.
+ */
+export const PROTECTED_CONCERNS_ARE_NOT_VACUOUS: IsNonEmptyUnion<ProtectedConcern> = true;
+
+/**
+ * COMPILE-TIME ASSERTION: NO FACT DECLARED `'open'` NAMES PERFORMANCE.
+ *
+ * The second of the two things that price an `'open'` answer, and the one that
+ * survives an author who is willing to edit two maps. `simSessionsPerDay`
+ * declared `'open'` fails here whatever else it is wired into, because its name
+ * contains `session` and `perday`.
+ *
+ * IT IS A FLOOR AND IT IS DIRECTIONAL — a fact named `x7` satisfies it
+ * perfectly, and a codebase that named everything opaquely would satisfy it
+ * best. That is why it is the second check and not the first: the load-bearing
+ * one is `OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH`, which has no
+ * vocabulary in it at all. Stated rather than glossed, because a directional
+ * bound presented as a guarantee is how the assertion this replaces got here.
+ */
+export const NO_OPEN_FACT_NAMES_PERFORMANCE: AreDisjoint<OpenFactKey, PerformanceNamedFactKey> = true;
 
 /** The currencies a wallet holds (GDD §8.2). */
 export const WALLET_CURRENCIES = ['gymBucks', 'chalk'] as const;
@@ -767,6 +1131,47 @@ export const ENTITLEMENT_REACH_IS_NOT_VACUOUS: IsNonEmptyUnion<AnyEntitlementRea
 export const ENTITLEMENT_REACH_NAMES_REAL_FACTS: IsSubsetOf<
   AnyEntitlementReach,
   ProgressionFactKey
+> = true;
+
+/**
+ * COMPILE-TIME ASSERTION, AND THE PRICE OF ANSWERING `'open'` (GDD §8.1, §12.3).
+ *
+ * `FACT_PROTECTION` forces every fact to declare whether it can be bought, which
+ * closes the silent default — but on its own it would only move the escape one
+ * line, because the author of a purchasable pace fact can simply write
+ * `'open'`. This is what that answer then costs: THE OPEN SET AND THE PURCHASE
+ * CATALOGUE'S REACH MUST BE THE SAME SET.
+ *
+ * `UnionIsExactly` because it has to fail in both directions:
+ *
+ *   - A FACT DECLARED OPEN THAT NO PURCHASE REACHES. The left side gains a
+ *     member. This is the mutant's remaining route: declaring `simSessionsPerDay`
+ *     `'open'` to duck `PURCHASES_CANNOT_REACH_PROTECTED_CONCERNS` fails here
+ *     unless it is also written into `EntitlementReach` — into the map that says
+ *     what money buys, under the entitlement effect that buys it, which is a
+ *     confession rather than a smuggle. There is no effect kind that could
+ *     plausibly own it either, and inventing one fails
+ *     `ENTITLEMENT_EFFECTS_ARE_EXACTLY_THE_ALLOWLIST` first.
+ *   - A PURCHASE REACHING A FACT NOT DECLARED OPEN. The right side gains a
+ *     member. Also caught by the disjointness checks, and deliberately caught
+ *     twice: these two maps are the only two statements in the file about what a
+ *     purchase does, and two statements that disagree are no statement at all.
+ *
+ * NOTHING HERE IS SATISFIED BY DOING LESS. Gutting `EntitlementReach` empties
+ * the right side and fails; marking every fact protected empties the left side
+ * and fails. There is no vocabulary in it, so unlike
+ * `NO_OPEN_FACT_NAMES_PERFORMANCE` it cannot be dodged by choosing a duller
+ * name.
+ *
+ * It also makes `AnyPurchaseReach ⊆ OpenFactKey` a theorem rather than a third
+ * assertion: the reach is bound to real facts, the facts partition into open and
+ * protected, and the purchase reach is disjoint from protected. A separate
+ * assertion for it would be one that cannot fail, which is the thing this round
+ * is removing rather than adding.
+ */
+export const OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH: UnionIsExactly<
+  OpenFactKey,
+  AnyEntitlementReach
 > = true;
 
 // ---------------------------------------------------------------------------
@@ -1214,16 +1619,13 @@ export const PURCHASE_REACH_IS_NOT_VACUOUS: IsNonEmptyUnion<AnyPurchaseReach> = 
  */
 export const PURCHASABLE_KINDS_ARE_NOT_VACUOUS: IsNonEmptyUnion<PurchasableProposalKind> = true;
 
-/**
- * COMPILE-TIME ASSERTION: nothing at all reaches training pace — not a purchase,
- * not a session, not a meet. GDD §8.1 protects "Sim training pace", and the way
- * this codebase protects it is by having no lever, priced or free. One session
- * per day is the loop.
- */
-export const NOTHING_MOVES_TRAINING_PACE: AreDisjoint<
-  ProposalReach[ProgressionProposalKind],
-  'trainingPace'
-> = true;
+// `NOTHING_MOVES_TRAINING_PACE` used to sit here, asserting `AreDisjoint<
+// ProposalReach[ProgressionProposalKind], 'trainingPace'>`. It could not fail:
+// `PROPOSAL_REACH_NAMES_REAL_FACTS` already forces every reach value to be a
+// `ProgressionFactKey` and `'trainingPace'` was deliberately not one, so the
+// intersection was `never` regardless of what any row said. The promise it named
+// is now held by `NO_FACT_MEANS_TRAINING_PACE`, up with the facts, where it can
+// fail. §5(d) of the header has the argument.
 
 /**
  * Which facts a proposal of this kind may move. Typed against `ProposalReach`,
@@ -1529,10 +1931,13 @@ function decodeMeet(wire: MeetResultWire, index: number): ProgressionResult<Conf
 /**
  * THE ONE DOOR. Turns a decoded Edge Function response into server truth.
  *
- * This is the only place in the codebase that mints a `Confirmed` number or a
- * `ProgressionSnapshot`. Nothing else can, and that is enforced by the private
- * symbol rather than by convention. Test fixtures go through it too — one door
- * means one door.
+ * This is the only ENTRY POINT in the codebase that yields a `Confirmed` number
+ * or a `ProgressionSnapshot`. `confirm()` is called from the two private
+ * decoders as well as from here, and they are reachable only through this
+ * function; the `ProgressionSnapshot` itself is constructed once, below.
+ * Nothing outside can do either, and that is enforced by the private symbols
+ * rather than by convention. Test fixtures go through it too — one door means
+ * one door.
  *
  * WHAT IT CANNOT CHECK, per §6 of the header: that the JSON came off a wire.
  * Nothing in a type system can. What it buys is that the claim is a single
@@ -1908,11 +2313,40 @@ export type StaleReason =
   /** The same account is live on another device. */
   | 'signed-in-elsewhere';
 
-/** One proposal, in flight, with the optimistic view it justifies. */
+/**
+ * The key that says this pairing went through `proposeChange`. Module-private
+ * and a symbol, so an `InFlightProposal` has a property no caller can name and
+ * therefore cannot be built outside this file — the `ProgressionSnapshot` idiom
+ * from §2 of the header, one level down.
+ */
+const PAIRING_CHECKED: unique symbol = Symbol('progression.pairing-checked');
+
+/**
+ * One proposal, in flight, with the optimistic view it justifies.
+ *
+ * UNCONSTRUCTIBLE OUTSIDE THIS MODULE, and that is what closes the residual §6
+ * of the header used to describe and excuse. `ProgressionCache` is a transparent
+ * union, so a caller holding a snapshot could write `{ status: 'pending',
+ * snapshot, inFlight }` by hand and skip `validateProposal`,
+ * `validateProjection`, `projectionExceedsReach`, the in-flight limit and the
+ * stale-cache rule — five checks, in one innocent-looking object literal. It
+ * cannot now build the `inFlight`.
+ *
+ * THE OLD JUSTIFICATION FOR LEAVING IT OPEN WAS FALSE. It said closing this
+ * "would mean making `ProgressionCache` generic in a proposal kind, and every
+ * reader generic with it". No generics were needed; `readTotalKg` and friends
+ * are untouched.
+ *
+ * WHAT THE BRAND DOES NOT SAY: it records that SOME pairing was checked, not
+ * that THIS projection belongs to THIS proposal, because the two are branded
+ * together as one object. Taking a checked value apart and reassembling it needs
+ * a cast, which §6's first bullet already concedes defeats everything here.
+ */
 export interface InFlightProposal {
   readonly proposalId: ProposalId;
   readonly proposal: ProgressionProposal;
   readonly projection: ProgressionProjection;
+  readonly [PAIRING_CHECKED]: true;
 }
 
 /**
@@ -2044,7 +2478,7 @@ export function proposeChange<K extends ProgressionProposalKind>(
   return ok({
     status: 'pending',
     snapshot: cache.snapshot,
-    inFlight: { proposalId, proposal, projection },
+    inFlight: { proposalId, proposal, projection, [PAIRING_CHECKED]: true },
   });
 }
 
