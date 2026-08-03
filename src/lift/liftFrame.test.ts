@@ -31,6 +31,13 @@ import { LIFT_TUNING, LOAD_PRESETS, TICK_MS } from '../game/liftTuning';
 import { QUANTISE, RESOLUTION, STRAIN } from '../art/spriteTuning';
 import { BAR_AND_COLLARS_KG } from '../art/plates';
 import {
+  bodyPixelDiff,
+  headBox,
+  renderLifterFrame,
+  unionRect,
+  type LifterFrameSpec,
+} from '../art/lifterSprite';
+import {
   SPRITE_BOX,
   cuePulse,
   cueRing,
@@ -219,6 +226,141 @@ describe('liftFrameSpec', () => {
     expect(maximal.strain).toBeGreaterThan(light.strain);
     expect(maximal.pitch).toBeGreaterThan(light.pitch);
     expect(maximal.strain).toBe(STRAIN.LEVELS - 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE BRACE — the frame the screen opens on, and the only beat with no motion
+//
+// Every other heaviness cue the lift has is a MOTION cue: the stall, the
+// forward drift, the shake, the tilt, the whip, the tick counts. All of them
+// are identically zero in a still frame. The brace is a still frame, it is the
+// first thing the player sees, and `lift.ts` holds it for up to
+// BRACE_TIMEOUT_TICKS. So it is the one beat where the BODY has to carry the
+// weight by itself, and the one place a "the two reps differ" test can pass on
+// the barbell alone while the lifter is the same drawing at every load.
+//
+// Hence the shape of the assertions below, which follows `body-load.png`:
+//
+//   - measured on the LIFTER palette bank only, so the plate stacks — the
+//     loudest difference between a 120 kg brace and a 220 kg one — cannot
+//     contribute a single pixel;
+//   - with the barbell held IDENTICAL on both sides, because the hands are
+//     drawn from the bar's bend, tilt and shake and the hands ARE body bank.
+//     Let the bend differ and the sleeve droop moves the hands, and the body
+//     diff is measuring the bar again by the back door;
+//   - with the head box masked out, so neither the grimace nor the flushed
+//     face can carry the number;
+//   - and as COUNTS with floors, because "something changed" is worth nothing.
+// ---------------------------------------------------------------------------
+
+/**
+ * Floors for the braced body, light against maximal.
+ *
+ * Measured at this tuning, head masked: 41 silhouette / 215 changed of 1255
+ * body px. Before the phase weighting was fixed: 0 and 0 — not "small", the
+ * literally identical drawing, since both loads floored onto strain rung 0 and
+ * rung 0 is the authored pose untouched.
+ *
+ * The floors sit well above zero so a single stray pixel cannot satisfy them,
+ * and well below the measured values so a hand pass has room.
+ */
+const FLOOR_BRACE_SILHOUETTE = 20;
+const FLOOR_BRACE_CHANGED = 120;
+
+/** Weight drawn on the bar for both sides of a brace comparison. */
+const BRACE_COMPARE_KG = 250;
+
+describe('the braced body answers to the load, not only the bar', () => {
+  /** The last braced tick: set, loaded, nothing asked for yet. */
+  const braceState = (load: number): LiftState => {
+    const braced = rep(load, false).filter((s) => s.phase === 'BRACE');
+    const last = braced[braced.length - 1];
+    if (last === undefined) throw new Error(`no braced tick at load ${load}`);
+    return last;
+  };
+
+  /**
+   * The braced drawing with the barbell normalised away: same weight, same
+   * bend, same tilt, same shake on both sides. What is left that can still
+   * differ is the lifter.
+   */
+  const braceSpec = (load: number): LifterFrameSpec => ({
+    ...liftFrameSpec(braceState(load), BRACE_COMPARE_KG),
+    barBendPx: 0,
+    barTiltDeg: 0,
+    barLateralPx: 0,
+  });
+
+  it('leaves the lifter as the ONLY thing that differs between the two braces', () => {
+    // If this fails, every count below is measuring something other than the
+    // body and the floors are worthless.
+    const { strainLevel: lightStrain, ...light } = braceSpec(LOAD_PRESETS.LIGHT);
+    const { strainLevel: maxStrain, ...maximal } = braceSpec(LOAD_PRESETS.MAXIMAL);
+    expect(maximal).toEqual(light);
+    expect(maxStrain).toBeGreaterThan(lightStrain);
+  });
+
+  it('draws a light brace unstrained — the untouched authored pose', () => {
+    // The other half of the claim. A change that makes every brace look heavy
+    // has traded one flat frame for another.
+    expect(braceSpec(LOAD_PRESETS.WARMUP).strainLevel).toBe(0);
+    expect(braceSpec(LOAD_PRESETS.LIGHT).strainLevel).toBe(0);
+  });
+
+  it('changes a counted number of BODY pixels between a light brace and a maximal one', () => {
+    const light = renderLifterFrame(braceSpec(LOAD_PRESETS.LIGHT));
+    const maximal = renderLifterFrame(braceSpec(LOAD_PRESETS.MAXIMAL));
+    const box = unionRect(headBox(light.pose), headBox(maximal.pose));
+    const noHead = bodyPixelDiff(light.grid, maximal.grid, box);
+
+    expect(noHead.bodyArea).toBeGreaterThan(500);
+    expect(noHead.silhouette).toBeGreaterThan(FLOOR_BRACE_SILHOUETTE);
+    expect(noHead.changed).toBeGreaterThan(FLOOR_BRACE_CHANGED);
+  });
+
+  it('does the same at the load the app actually opens on', () => {
+    // LOAD_PRESETS.HEAVY is `LiftScreen`'s default attempt. A fix that only
+    // reached a true limit single would leave the opening frame of the default
+    // rep drawn exactly like a warm-up, which is the gap, unclosed.
+    expect(LIFT_TUNING.DEMO.LOAD_CHOICES[LIFT_TUNING.DEMO.DEFAULT_LOAD_INDEX]).toBe(
+      LOAD_PRESETS.HEAVY,
+    );
+    const light = renderLifterFrame(braceSpec(LOAD_PRESETS.LIGHT));
+    const heavy = renderLifterFrame(braceSpec(LOAD_PRESETS.HEAVY));
+    const box = unionRect(headBox(light.pose), headBox(heavy.pose));
+    const noHead = bodyPixelDiff(light.grid, heavy.grid, box);
+
+    expect(noHead.silhouette).toBeGreaterThan(FLOOR_BRACE_SILHOUETTE);
+    expect(noHead.changed).toBeGreaterThan(FLOOR_BRACE_CHANGED);
+  });
+
+  it('never relaxes when the bar starts moving', () => {
+    // The regression a naive one-number fix introduces: raise the brace's
+    // weighting past the top of the descent's and the lifter is drawn straining
+    // while standing still, then loosening on the first tick of the eccentric.
+    for (const [name, load] of Object.entries(LOAD_PRESETS)) {
+      const history = rep(load, false);
+      const braced = liftFrameSpec(braceState(load), BRACE_COMPARE_KG).strainLevel;
+      const first = history.find((s) => s.phase === 'DESCENT');
+      expect(first, `no descent at ${name}`).toBeDefined();
+      if (first === undefined) continue;
+      const moving = liftFrameSpec(first, BRACE_COMPARE_KG).strainLevel;
+      expect(braced, `${name}: brace ${braced} -> descent ${moving}`).toBeLessThanOrEqual(moving);
+    }
+  });
+
+  it('measures the body and only the body, at the brace', () => {
+    // The blind-by-construction check on the check. Two braces that differ ONLY
+    // by 150 kg of plates must read as zero body change — otherwise every count
+    // above could be the plate stacks.
+    const spec = braceSpec(LOAD_PRESETS.MAXIMAL);
+    const lightBar = renderLifterFrame({ ...spec, totalKg: 100 });
+    const heavyBar = renderLifterFrame({ ...spec, totalKg: 250 });
+    const diff = bodyPixelDiff(lightBar.grid, heavyBar.grid);
+    expect(diff.bodyArea).toBeGreaterThan(500);
+    expect(diff.changed).toBe(0);
+    expect(diff.silhouette).toBe(0);
   });
 });
 

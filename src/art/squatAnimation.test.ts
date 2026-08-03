@@ -301,6 +301,20 @@ describe('strain', () => {
     expect(Math.max(...maxLevels)).toBeGreaterThan(Math.max(...lightLevels));
   });
 
+  it('reaches the BRACE, the one beat with no motion to carry the load', () => {
+    // Duration, the stall plateau, the drift, the shake and the tilt are all
+    // motion cues and all of them are zero while the lifter is stood still with
+    // the bar racked. If the brace does not deform, a maximal setup and a
+    // warm-up setup are the same drawing, and the sheet says nothing about
+    // weight until the bar starts moving.
+    const braceRung = (rep: SquatRep): number =>
+      rep.frames.filter((f) => f.phase === 'BRACE').reduce((m, f) => Math.max(m, f.strainLevel), 0);
+    expect(braceRung(maximal)).toBeGreaterThan(braceRung(light));
+    // ...and the light setup is still a composed one, not a strained one.
+    expect(braceRung(light)).toBe(0);
+    assertNonDecreasing('brace strain rung', braceRung);
+  });
+
   it('stays inside the quantised level range', () => {
     for (const ratio of SWEEP) {
       for (const f of buildSquatRep(ratio).frames) {

@@ -35,7 +35,12 @@ import {
   loadT,
   type HapticStyle,
 } from './liftTuning';
-import { STICK, TICK_MS as ART_TICK_MS, TICK_HZ as ART_TICK_HZ } from '../art/spriteTuning';
+import {
+  STICK,
+  STRAIN,
+  TICK_MS as ART_TICK_MS,
+  TICK_HZ as ART_TICK_HZ,
+} from '../art/spriteTuning';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -58,6 +63,32 @@ describe('shared facts', () => {
     expect(STICK_WIDTH).toBe(STICK.WIDTH);
     expect(STICK_HEIGHT_FRAC).toBeGreaterThan(0);
     expect(STICK_HEIGHT_FRAC).toBeLessThan(1);
+  });
+
+  it('draws a played rep from the same strain model as the canned one', () => {
+    // These numbers are written down twice — here and in `spriteTuning.ts` —
+    // following this file's convention for the art values it restates. The
+    // convention is only safe while they agree: the canned animation is the
+    // inspection harness the sprite sheet is JUDGED from (see
+    // `tools/sprites.mjs`), so a value that drifts on one side makes the
+    // contact sheet stop describing the app, and neither file looks wrong on
+    // its own. Exactly the failure `BRACE_SETTLE_DEPTH` was pulled out for.
+    expect(LIFT_TUNING.STRAIN_FROM_LOAD).toEqual(STRAIN.FROM_LOAD);
+    for (const [key, value] of Object.entries(LIFT_TUNING.STRAIN_PHASE_WEIGHT)) {
+      expect(STRAIN.PHASE_WEIGHT, `phase weight ${key}`).toHaveProperty(key, value);
+    }
+    // ...and the scan is not vacuous: the live table has to have entries.
+    expect(Object.keys(LIFT_TUNING.STRAIN_PHASE_WEIGHT).length).toBeGreaterThan(0);
+  });
+
+  it('never draws the brace heavier than the top of the descent it leads into', () => {
+    // The brace is the top of the descent, held still. Weighted above
+    // DESCENT_TOP it makes the lifter strain standing and then loosen on the
+    // first moving tick. `liftFrame.test.ts` measures the drawn consequence on
+    // played reps; this is the ordering that guarantees it at every load.
+    const w = LIFT_TUNING.STRAIN_PHASE_WEIGHT;
+    expect(w.BRACE).toBeLessThanOrEqual(w.DESCENT_TOP);
+    expect(w.DESCENT_TOP).toBeLessThan(w.DESCENT_BOTTOM);
   });
 
   it('shares the load curve rather than restating it', () => {
@@ -334,10 +365,28 @@ function codeOnly(source: string): string {
  */
 const STRUCTURAL = new Set(['0', '1', '2']);
 
+/**
+ * THE LEADING-DOT HOLE, and why the pattern is two alternatives.
+ *
+ * This used to be `(?<![\w.$])\d+(?:\.\d+)?`, which requires a literal to start
+ * with a DIGIT. JavaScript does not: `x * .5` and `{ gain: .35 }` are perfectly
+ * ordinary, and the lookbehind then rejected the `5` outright because the
+ * character before it is a `.`. So the single most natural way to write a
+ * fractional feel value walked straight through the scan.
+ *
+ * The `\.\d+` alternative closes it. Order matters and it is second: at a
+ * position inside `1.5` the first alternative matches the whole literal and
+ * consumes the fraction, so a normal decimal is still reported once, as
+ * `1.5`, rather than twice. Member access cannot be caught by the new branch —
+ * an identifier may not start with a digit, so `pose.hipY` has nothing for
+ * `\.\d+` to match, and `arr[0].x` is covered by the lookbehind.
+ */
+const NUMERIC_LITERAL = /(?<![\w.$])(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?/gi;
+
 function magicNumbersIn(source: string): string[] {
   const code = codeOnly(source);
   const found: string[] = [];
-  for (const match of code.matchAll(/(?<![\w.$])\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi)) {
+  for (const match of code.matchAll(NUMERIC_LITERAL)) {
     const literal = match[0];
     if (STRUCTURAL.has(literal)) continue;
     found.push(literal);
@@ -363,6 +412,21 @@ function sourcesUnder(dir: string, extensions: readonly string[]): { file: strin
   return out;
 }
 
+/**
+ * Tuning keys that nothing in `sources` READS.
+ *
+ * Through `codeOnly`, which is the whole point and which it did not used to do.
+ * The scan used to substring-match the raw file text, so a key MENTIONED IN A
+ * COMMENT counted as read — and a comment naming a tuning value is exactly
+ * where one ends up after the code that read it is deleted, which is the shape
+ * of dead knob this test exists to catch. These files are dense with comments
+ * naming their own constants, so the hole was not theoretical.
+ */
+function deadKeys(keys: readonly string[], sources: readonly string[]): string[] {
+  const code = sources.map(codeOnly).join('\n');
+  return keys.filter((key) => !code.includes(key));
+}
+
 describe('no feel value lives outside this file', () => {
   it('keeps the mechanic itself free of bare numbers', () => {
     const source = readFileSync(path.join(HERE, 'lift.ts'), 'utf8');
@@ -385,13 +449,14 @@ describe('no feel value lives outside this file', () => {
     // it, nothing happens, and they lose trust in the whole file. This caught
     // five: SHAKE_MAX_PX, SHAKE_PERIOD_MS, HIT_FLASH_MS, CUE_PULSE_MS and
     // LIGHT_REVEAL_STAGGER_MS were all declared and none was wired up.
+    //
+    // See `deadKeys` for why the scan goes through `codeOnly`.
     const sources = [
       ...sourcesUnder(HERE, ['.ts']),
       ...sourcesUnder(path.join(HERE, '..', 'lift'), ['.ts', '.tsx']),
     ]
       .filter((f) => !f.file.endsWith('liftTuning.ts'))
-      .map((f) => f.source)
-      .join('\n');
+      .map((f) => f.source);
     expect(sources.length).toBeGreaterThan(0);
 
     const keys: string[] = [
@@ -399,9 +464,28 @@ describe('no feel value lives outside this file', () => {
       ...Object.keys(LIFT_TUNING.FEEDBACK),
       ...Object.keys(LIFT_TUNING.LAYOUT),
       ...Object.keys(LIFT_TUNING.DEMO),
+      // Nested one level down, and previously unchecked entirely — which is how
+      // a phase weighting nothing reads could have been added without anything
+      // noticing. `codeOnly` strips the `'BRACE'`/`'HOLE'` phase-name strings,
+      // so what remains is the `w.BRACE` style access in `liveStrain`.
+      ...Object.keys(LIFT_TUNING.STRAIN_PHASE_WEIGHT),
     ];
-    const dead = keys.filter((key) => !sources.includes(key));
+    const dead = deadKeys(keys, sources);
     expect(dead, `unused tuning values: ${dead.join(', ')}`).toEqual([]);
+  });
+
+  it('would call a knob dead if its only mention were a comment', () => {
+    // The dead-knob scan, run against sources built to defeat it. Without
+    // `codeOnly` the first two cases come back clean and the guard is a
+    // rubber stamp on any constant whose reader has been deleted.
+    expect(deadKeys(['GHOST_KNOB'], ['// GHOST_KNOB used to scale the shake'])).toEqual([
+      'GHOST_KNOB',
+    ]);
+    expect(deadKeys(['GHOST_KNOB'], ['/* see GHOST_KNOB */ const x = 1;'])).toEqual(['GHOST_KNOB']);
+    expect(deadKeys(['GHOST_KNOB'], ["const label = 'GHOST_KNOB';"])).toEqual(['GHOST_KNOB']);
+    // ...and a real read still counts as read, or the guard would fail on
+    // everything and say nothing.
+    expect(deadKeys(['GHOST_KNOB'], ['const a = LIFT_TUNING.GHOST_KNOB;'])).toEqual([]);
   });
 
   it('keeps the base window widths out of the renderer (GDD §3.4, §12.3)', () => {
@@ -435,10 +519,22 @@ describe('no feel value lives outside this file', () => {
   it('actually detects a bare number, so the scan is not vacuous', () => {
     expect(magicNumbersIn('const windowMs = 240;')).toEqual(['240']);
     expect(magicNumbersIn('const scale = 0.85;')).toEqual(['0.85']);
+    // THE LEADING-DOT HOLE, pinned. Every one of these walked through the old
+    // pattern untouched, which made `x * .5` the safe way to smuggle a feel
+    // value into a component.
+    expect(magicNumbersIn('const scale = .85;')).toEqual(['.85']);
+    expect(magicNumbersIn('const half = x * .5;')).toEqual(['.5']);
+    expect(magicNumbersIn('const o = { gain: .35, drop: .1 };')).toEqual(['.35', '.1']);
+    // ...and a normal decimal is still reported once, whole, not split in two.
+    expect(magicNumbersIn('const a = 1.5;')).toEqual(['1.5']);
+    expect(magicNumbersIn('const a = 10.25e-3;')).toEqual(['10.25e-3']);
     // ...and does not trip over the things it is meant to allow.
     expect(magicNumbersIn('const half = x / 2; const first = list[0];')).toEqual([]);
     expect(magicNumbersIn('// tuned to 240ms by hand')).toEqual([]);
+    expect(magicNumbersIn('// half the window: .5 of it')).toEqual([]);
     expect(magicNumbersIn("const label = 'DRIVE 240';")).toEqual([]);
     expect(magicNumbersIn('const a = LIFT_TUNING.DEPTH_WINDOW_MS;')).toEqual([]);
+    expect(magicNumbersIn('const y = pose.hipY - state.barForwardPx;')).toEqual([]);
   });
+
 });
