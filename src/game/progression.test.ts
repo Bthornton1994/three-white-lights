@@ -249,6 +249,10 @@ describe('purity', () => {
       /export const MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE: IsSubsetOf</,
       /export const MONEY_CARRYING_KINDS_ARE_NOT_VACUOUS: IsNonEmptyUnion</,
       /export const NOTHING_MOVES_TRAINING_PACE: AreDisjoint</,
+      // GDD §6.4: a Total is the sum of best successful competition attempts, so
+      // exactly one proposal kind may move it. Deleting this leaves the reach
+      // map free to hand `'totalKg'` back to a training session.
+      /export const ONLY_A_MEET_RESULT_MOVES_TOTAL: UnionIsExactly</,
       // The bindings that make the two disjointness checks above mean something:
       // both of their operands name facts that exist, not strings that look
       // like facts. Deleting one leaves a reach map bound to nothing while the
@@ -487,6 +491,13 @@ describe('nothing purchasable reaches performance', () => {
     // hand, so a renamed or added concern is covered without editing this test —
     // the hardcoded `'totalKg'` that used to be here was satisfied just as well
     // by a reach map that had drifted off the facts.
+    //
+    // WHAT IT CANNOT SEE: it asks whether SOME earned kind reaches each concern,
+    // never which, so `record-meet-result` satisfies the whole loop on its own.
+    // A `record-training-session` that also claimed `'totalKg'` would pass here
+    // unchanged. That is not a defect in this test — it is a different question
+    // — but it is the reason "a Total is set at a meet and nowhere else" below
+    // exists rather than being folded into this block.
     const earnedReach = new Set(
       PROGRESSION_PROPOSAL_KINDS.filter((kind) => PROPOSAL_ORIGIN_BY_KIND[kind] === 'earned').flatMap((kind) => [
         ...factsMovedBy(kind),
@@ -525,6 +536,92 @@ describe('nothing purchasable reaches performance', () => {
     for (const slot of COSMETIC_SLOTS) {
       expect(slot).not.toMatch(/e1rm|total|strength|boost|pace/i);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A Total is set at a meet and nowhere else (GDD §2, §6.4)
+//
+// WHY THIS IS ITS OWN BLOCK AND NOT A LINE IN THE ONE ABOVE. The pay-to-win
+// tests ask "may a PURCHASE reach a protected fact?", and their positive control
+// — "lets earned proposals move the facts a purchase may not" — is satisfied by
+// `record-meet-result` alone. It therefore passes identically whether or not
+// `record-training-session` also claims `'totalKg'`: it cannot see the
+// difference between the two worlds, because it only ever asks whether SOME
+// earned kind reaches each concern. This block asks WHICH.
+//
+// The claim: `totalKg` is the sum of best successful competition attempts
+// (§6.4), `null` until the first meet (`ConfirmedFacts.totalKg`), and a
+// `dots.ts` `OfficialTotalKg` by construction. So training cannot move it. What
+// training moves is `bestE1rmKg`, which is what GDD §2 now says and §3.2 now
+// tells the daily loop to put on screen.
+// ---------------------------------------------------------------------------
+
+describe('a Total is set at a meet and nowhere else', () => {
+  /** The kinds whose declared reach names a fact, read off the runtime table. */
+  function kindsMoving(fact: string): readonly ProgressionProposalKind[] {
+    return PROGRESSION_PROPOSAL_KINDS.filter((kind) => (factsMovedBy(kind) as readonly string[]).includes(fact));
+  }
+
+  it('lets only a proposal that carries a meet move the Total', () => {
+    // BOTH SIDES ARE DERIVED. The right-hand side is not the literal
+    // `['record-meet-result']` but "every kind whose payload names a meet",
+    // computed from the report allowlists — so this survives a renamed kind and
+    // fails on a new kind that reaches `totalKg` without being a meet at all.
+    const carriesAMeet = PROGRESSION_PROPOSAL_KINDS.filter((kind) =>
+      PAYLOAD_KEYS_BY_PROPOSAL_KIND[kind].includes('meetId'),
+    );
+    // Non-vacuity first, on the side that is doing the constraining: if nothing
+    // carried a meet, the equality below would be `[] === []` and would pass
+    // over an empty world.
+    expect(carriesAMeet.length).toBeGreaterThan(0);
+    expect([...kindsMoving('totalKg')].sort()).toEqual([...carriesAMeet].sort());
+  });
+
+  it('does not let a training session move the Total', () => {
+    const reach = factsMovedBy('record-training-session') as readonly string[];
+    expect(reach).not.toContain('totalKg');
+    expect(reach).not.toContain('meets');
+    // THE POSITIVE CONTROL, in the same test as the prohibition on purpose. A
+    // prohibition alone is satisfied better by a worse artifact — an emptied
+    // reach passes every `not.toContain` there is. A training session must still
+    // move the number that training actually moves.
+    expect(reach).toContain('bestE1rmKg');
+    expect(reach.length).toBeGreaterThan(0);
+  });
+
+  it('still lets a meet result move the Total', () => {
+    // The other direction, because the reach TABLE can name fewer facts than the
+    // reach MAP allows and still compile. Without this, deleting `'totalKg'`
+    // from both rows would satisfy the test above and leave nothing in the game
+    // able to set a Total.
+    const reach = factsMovedBy('record-meet-result') as readonly string[];
+    expect(reach).toContain('totalKg');
+    expect(reach).toContain('meets');
+  });
+
+  it('moves e1RM from both, because a meet is also the heaviest single you did', () => {
+    // Not a redundancy: it pins that dropping `totalKg` from the training row
+    // did not take `bestE1rmKg` with it, and that the two kinds are
+    // distinguished by Total rather than by e1RM.
+    for (const kind of ['record-training-session', 'record-meet-result'] as const) {
+      expect(factsMovedBy(kind) as readonly string[]).toContain('bestE1rmKg');
+    }
+  });
+
+  it('keeps the compile-time half of the claim in the source', () => {
+    // Everything above reads the runtime table. The type-level assertion that
+    // makes putting `'totalKg'` back fail `tsc` is stripped by esbuild and there
+    // is no CI, so — same idiom as the pay-to-win scan above — the source is the
+    // thing under test.
+    const code = MODULE_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code).toMatch(/export const ONLY_A_MEET_RESULT_MOVES_TOTAL: UnionIsExactly</);
+    // `UnionIsExactly`, not `AreDisjoint` or `IsSubsetOf`: this one has to fail
+    // when the reach gets NARROWER too. See the comment on the assertion.
+    expect(code).not.toMatch(/export const ONLY_A_MEET_RESULT_MOVES_TOTAL: (AreDisjoint|IsSubsetOf)</);
+    // And the declaration it reads is column-wise over the map, so it cannot be
+    // satisfied by editing one row's spelling.
+    expect(code).toMatch(/\[K in ProgressionProposalKind\]: F extends ProposalReach\[K\] \? K : never;/);
   });
 });
 
@@ -1104,6 +1201,7 @@ describe('the module exports no writer', () => {
       'MONEY_CARRYING_KINDS_ARE_NOT_VACUOUS',
       'MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE',
       'NOTHING_MOVES_TRAINING_PACE',
+      'ONLY_A_MEET_RESULT_MOVES_TOTAL',
       'PROGRESSION_CACHE_POLICY',
       'PROGRESSION_FACTS_ARE_EXACTLY_THE_ALLOWLIST',
       'PROGRESSION_FACT_KEYS',
