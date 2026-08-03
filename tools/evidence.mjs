@@ -114,7 +114,12 @@ if (verifyOnly) {
       );
       process.exit(1);
     }
-    console.log(`ok: ${piece}.txt stamps ${stamped.slice(0, 8)} (HEAD ${head.slice(0, 8)}), but no code changed since`);
+    console.log(`ok: ${piece}.txt stamps ${stamped.slice(0, 8)} (HEAD ${head.slice(0, 8)}); no code changed since, so it still describes this tree`);
+    if (dirty.length > 0) {
+      console.error(`STALE: working tree has uncommitted code (${dirty.join(', ')}) — the bundle cannot describe it.`);
+      process.exit(1);
+    }
+    process.exit(0);
   }
   if (dirty.length > 0) {
     console.error(`STALE: working tree has uncommitted code (${dirty.join(', ')}) — the bundle cannot describe it.`);
