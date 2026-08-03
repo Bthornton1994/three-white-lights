@@ -64,11 +64,16 @@ import {
   type ProgressionProjection,
   type ProgressionProposal,
   type ProgressionProposalKind,
+  type ProgressionResult,
   type ProgressionSnapshot,
   type ProgressionSnapshotWire,
   type ProjectedKg,
+  type ProjectionKey,
+  type ProposalId,
+  type ProposalOfKind,
   type RedeemEntitlementReport,
   type TrainingSetReport,
+  type UnclaimedProjection,
 } from './progression';
 import { createStreakState, recordTrainingDay, streakDayFromCivilDate, STREAK_FACT_KEYS } from './streak';
 
@@ -133,7 +138,15 @@ function confirmedCache(overrides: Partial<ProgressionSnapshotWire> = {}): Progr
   return expectOk(applyServerSnapshot(emptyProgressionCache(), snapshot(overrides)));
 }
 
-const A_PROPOSAL: ProgressionProposal = {
+/**
+ * ANNOTATED WITH ITS KIND, not with the bare union. `proposeChange` infers its
+ * type parameter from `proposal.kind`, so the annotation is what decides which
+ * projection this fixture may be paired with. `ProgressionProposal` would work
+ * here today only because control-flow analysis narrows a `const` back to the
+ * member it was initialised with — relying on that would make the test depend on
+ * an inference detail rather than on the boundary.
+ */
+const A_PROPOSAL: ProposalOfKind<'record-training-session'> = {
   kind: 'record-training-session',
   report: {
     deviceWallClock: { year: 2026, month: 8, day: 3, hour: 19 },
@@ -141,8 +154,97 @@ const A_PROPOSAL: ProgressionProposal = {
   },
 };
 
-function projectionWith(overrides: Partial<ProgressionProjection>): ProgressionProjection {
+/**
+ * The other side of the ruling: the one proposal kind that DOES move a Total,
+ * because it is the only one that carries competition attempts (GDD §6.4).
+ * Every test below that wants an optimistic Total uses this one.
+ */
+const A_MEET_PROPOSAL: ProposalOfKind<'record-meet-result'> = {
+  kind: 'record-meet-result',
+  report: {
+    meetId: asMeetId('meet-2026-autumn'),
+    bodyweightKg: 93,
+    attempts: [
+      { lift: 'squat', attemptNumber: 1, weightKg: 220, good: true },
+      { lift: 'bench', attemptNumber: 1, weightKg: 150, good: true },
+      { lift: 'deadlift', attemptNumber: 1, weightKg: 275, good: true },
+    ],
+  },
+};
+
+/**
+ * A projection built from the empty one, KEEPING THE OVERRIDES' EXACT TYPES.
+ *
+ * The return type is not `ProgressionProjection`, and it is not
+ * `UnclaimedProjection & O` either. Both would defeat the boundary under test:
+ * the first says every field might carry a claim, so nothing would fit a
+ * narrowed kind; the second intersects `null` with `ProjectedKg` per field,
+ * which TypeScript reduces to `never` — and `never` is assignable to everything,
+ * so `projectionWith({ totalKg: ... })` would sail through a training session
+ * and the guard would be invisible exactly where the tests live. Checked, not
+ * assumed: the naive version compiles that pairing.
+ */
+function projectionWith<O extends Partial<ProgressionProjection>>(
+  overrides: O,
+): Omit<UnclaimedProjection, keyof O> & O {
   return { ...emptyProjection(), ...overrides };
+}
+
+/** One valid proposal of every kind, so a test can loop over the whole union. */
+const PROPOSAL_BY_KIND: Readonly<Record<ProgressionProposalKind, ProgressionProposal>> = {
+  'record-training-session': A_PROPOSAL,
+  'accept-recovery-day': {
+    kind: 'accept-recovery-day',
+    report: { deviceWallClock: { year: 2026, month: 8, day: 3, hour: 9 }, offeredDaysSeen: 1 },
+  },
+  'record-meet-result': A_MEET_PROPOSAL,
+  'redeem-entitlement': { kind: 'redeem-entitlement', report: { sku: 'chalk-pack-3', receipt: 'txn-1' } },
+  'spend-currency': { kind: 'spend-currency', report: { currency: 'gymBucks', amount: 500, sku: 'gym-decor-neon' } },
+};
+
+/** A projection that claims exactly one fact, and nothing else. */
+function projectionClaiming(fact: ProjectionKey): ProgressionProjection {
+  switch (fact) {
+    case 'totalKg':
+      return { ...emptyProjection(), totalKg: projectedKg(645) };
+    case 'bestE1rmKg':
+      return { ...emptyProjection(), bestE1rmKg: { squat: projectedKg(245), bench: null, deadlift: null } };
+    case 'streak':
+      return { ...emptyProjection(), streak: { currentStreak: projectedCount(13) } };
+    case 'wallet':
+      return { ...emptyProjection(), wallet: { gymBucks: projectedCount(1250), chalk: null } };
+    default: {
+      // Exhaustive over `ProjectionKey`: a new projectable fact fails `tsc` here
+      // rather than quietly getting no coverage in the reach tests below.
+      const unreachable: never = fact;
+      throw new Error(`no projection fixture for ${String(unreachable)}`);
+    }
+  }
+}
+
+/**
+ * `proposeChange` WITH THE COMPILE-TIME PAIRING RULE TAKEN OFF.
+ *
+ * `ProjectionWithinReach` makes a training-session-plus-Total-projection a type
+ * error, so the pairing cannot be written in typed code — which is the point,
+ * and which also means the RUNTIME refusal could not be tested at all without
+ * this. The cast models the caller the runtime check exists for: JavaScript, a
+ * projection rehydrated from storage, or someone's `as`. Nothing else in this
+ * file may use it, or the compile-time half stops being tested.
+ */
+function proposeUntyped(
+  cache: ProgressionCache,
+  proposalId: ProposalId,
+  proposal: ProgressionProposal,
+  projection: ProgressionProjection,
+): ProgressionResult<ProgressionCache> {
+  const erased = proposeChange as unknown as (
+    cache: ProgressionCache,
+    proposalId: ProposalId,
+    proposal: ProgressionProposal,
+    projection: ProgressionProjection,
+  ) => ProgressionResult<ProgressionCache>;
+  return erased(cache, proposalId, proposal, projection);
 }
 
 /**
@@ -609,6 +711,105 @@ describe('a Total is set at a meet and nowhere else', () => {
     }
   });
 
+  // -------------------------------------------------------------------------
+  // ...AND THE SAME RULE ON THE OPTIMISTIC LAYER (GDD §3.2).
+  //
+  // Everything above is about what the SERVER is asked to move. A screen renders
+  // the projection, not the reach map, and until `proposeChange` bound the two
+  // together a `record-training-session` paired with a projection carrying
+  // `totalKg` constructed fine — which is precisely the "number that moves"
+  // after a session that §3.2 says must be e1RM and never Total.
+  //
+  // These tests are the RUNTIME half. The compile-time half is in the
+  // `@ts-expect-error` block near the end of this file, because `npm test` sees
+  // types not at all.
+  // -------------------------------------------------------------------------
+
+  it('refuses a training session whose projection claims a Total', () => {
+    const result = proposeUntyped(
+      confirmedCache(),
+      asProposalId('p1'),
+      A_PROPOSAL,
+      projectionWith({ totalKg: projectedKg(645) }),
+    );
+    expect(expectErr(result).code).toBe('PROJECTION_EXCEEDS_REACH');
+    expect(expectErr(result).message).toMatch(/totalKg/);
+  });
+
+  it('accepts the same projected Total from a meet result', () => {
+    // THE POSITIVE CONTROL, and it is the one that matters: a guard that refused
+    // every projection would pass the test above and make meet day unrenderable.
+    // Meet day is the day the Total moves, so meet day is the day it may be
+    // shown moving.
+    const pending = expectOk(
+      proposeChange(
+        confirmedCache(),
+        asProposalId('p1'),
+        A_MEET_PROPOSAL,
+        projectionWith({ totalKg: projectedKg(645) }),
+      ),
+    );
+    expect(readTotalKg(pending)).toEqual({ kind: 'projected', value: 645, lastConfirmed: 630 });
+  });
+
+  it('lets a training session project the number a session actually moves', () => {
+    // The other positive control, and the shape GDD §3.2 asks the daily loop to
+    // put on screen at the close-out.
+    const pending = expectOk(
+      proposeChange(
+        confirmedCache(),
+        asProposalId('p1'),
+        A_PROPOSAL,
+        projectionWith({ bestE1rmKg: { squat: projectedKg(245), bench: null, deadlift: null } }),
+      ),
+    );
+    expect(readBestE1rmKg(pending, 'squat')).toEqual({ kind: 'projected', value: 245, lastConfirmed: 240 });
+    // And the Total on that screen is still the confirmed one, not a tick up.
+    expect(readTotalKg(pending)).toEqual({ kind: 'confirmed', value: 630 });
+  });
+
+  it('checks every kind against every projectable fact, in both directions', () => {
+    // DERIVED, not a list of cases: for each proposal kind, each projectable
+    // fact is claimed on its own and the answer is compared against that kind's
+    // declared reach. A guard that refused everything fails the `accepted` half;
+    // a guard that refused nothing fails the `refused` half; a guard that only
+    // knew about Totals fails on `streak` against a meet result.
+    let refused = 0;
+    let accepted = 0;
+    for (const kind of PROGRESSION_PROPOSAL_KINDS) {
+      const reach = factsMovedBy(kind) as readonly string[];
+      for (const fact of PROJECTION_KEYS) {
+        const result = proposeUntyped(
+          confirmedCache(),
+          asProposalId('p1'),
+          PROPOSAL_BY_KIND[kind],
+          projectionClaiming(fact),
+        );
+        if (reach.includes(fact)) {
+          expect(expectOk(result).status).toBe('pending');
+          accepted += 1;
+        } else {
+          expect(expectErr(result).code).toBe('PROJECTION_EXCEEDS_REACH');
+          refused += 1;
+        }
+      }
+    }
+    // Non-vacuity on both counters: a loop over an empty product would pass.
+    expect(accepted).toBeGreaterThan(0);
+    expect(refused).toBeGreaterThan(0);
+    expect(accepted + refused).toBe(PROGRESSION_PROPOSAL_KINDS.length * PROJECTION_KEYS.length);
+  });
+
+  it('lets every kind claim nothing', () => {
+    // The floor: an empty projection is not a claim, so no kind may be refused
+    // one. Without this, "claims nothing" could quietly start counting as a
+    // claim on `totalKg` and every proposal in the game would fail.
+    for (const kind of PROGRESSION_PROPOSAL_KINDS) {
+      const result = proposeChange(confirmedCache(), asProposalId('p1'), PROPOSAL_BY_KIND[kind], emptyProjection());
+      expect(result.ok).toBe(true);
+    }
+  });
+
   it('keeps the compile-time half of the claim in the source', () => {
     // Everything above reads the runtime table. The type-level assertion that
     // makes putting `'totalKg'` back fail `tsc` is stripped by esbuild and there
@@ -622,6 +823,21 @@ describe('a Total is set at a meet and nowhere else', () => {
     // And the declaration it reads is column-wise over the map, so it cannot be
     // satisfied by editing one row's spelling.
     expect(code).toMatch(/\[K in ProgressionProposalKind\]: F extends ProposalReach\[K\] \? K : never;/);
+  });
+
+  it('keeps the compile-time half of the PROJECTION claim in the source too', () => {
+    const code = MODULE_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    // The binding itself: `proposeChange` takes a projection narrowed to the
+    // proposal's kind, rather than any old `ProgressionProjection`.
+    expect(code).toMatch(/projection: ProjectionWithinReach<K> & ProgressionProjection/);
+    // Both directions, and `UnionIsExactly` for both, for the same reason as
+    // above: the prohibition alone is satisfied better by a guard that refuses
+    // every projection, which would leave meet day unable to show a Total.
+    expect(code).toMatch(/export const A_TRAINING_SESSION_PROJECTION_CANNOT_CLAIM_A_TOTAL: UnionIsExactly</);
+    expect(code).toMatch(/export const A_MEET_RESULT_PROJECTION_CAN_CLAIM_A_TOTAL: UnionIsExactly</);
+    expect(code).not.toMatch(
+      /export const (A_TRAINING_SESSION_PROJECTION_CANNOT_CLAIM_A_TOTAL|A_MEET_RESULT_PROJECTION_CAN_CLAIM_A_TOTAL): (AreDisjoint|IsSubsetOf)</,
+    );
   });
 });
 
@@ -773,12 +989,16 @@ describe('the cache as a cache of server truth', () => {
   });
 
   it('parks a projection beside truth instead of inside it', () => {
+    // A MEET, not a training session: an optimistic Total is only a legal thing
+    // to render on the one day a Total moves (GDD §3.2, §6.4). Pairing this with
+    // `A_PROPOSAL` used to compile and no longer does — see the block at the end
+    // of this file.
     const cache = confirmedCache();
     const pending = expectOk(
       proposeChange(
         cache,
         asProposalId('p1'),
-        A_PROPOSAL,
+        A_MEET_PROPOSAL,
         projectionWith({ totalKg: projectedKg(645) }),
       ),
     );
@@ -801,12 +1021,18 @@ describe('the cache as a cache of server truth', () => {
   });
 
   it('discards the projection whole when the server acknowledges', () => {
+    // Two claims, both inside a meet's reach — a competition Total and the
+    // heaviest single that produced it — so "whole" is checked on more than one
+    // field. It used to be Total plus streak, which a meet cannot move.
     const pending = expectOk(
       proposeChange(
         confirmedCache(),
         asProposalId('p1'),
-        A_PROPOSAL,
-        projectionWith({ totalKg: projectedKg(645), streak: { currentStreak: projectedCount(13) } }),
+        A_MEET_PROPOSAL,
+        projectionWith({
+          totalKg: projectedKg(645),
+          bestE1rmKg: { squat: projectedKg(245), bench: null, deadlift: null },
+        }),
       ),
     );
     const settled = expectOk(
@@ -815,12 +1041,18 @@ describe('the cache as a cache of server truth', () => {
     expect(settled.status).toBe('confirmed');
     // The server's number, not the client's guess, and not a merge of the two.
     expect(readTotalKg(settled)).toEqual({ kind: 'confirmed', value: 632 });
+    expect(readBestE1rmKg(settled, 'squat')).toEqual({ kind: 'confirmed', value: 240 });
     expect(inFlightProposal(settled)).toBeNull();
   });
 
   it('keeps waiting when a snapshot arrives that settles something else', () => {
     const pending = expectOk(
-      proposeChange(confirmedCache(), asProposalId('p1'), A_PROPOSAL, projectionWith({ totalKg: projectedKg(645) })),
+      proposeChange(
+        confirmedCache(),
+        asProposalId('p1'),
+        A_MEET_PROPOSAL,
+        projectionWith({ totalKg: projectedKg(645) }),
+      ),
     );
     const elsewhere = expectOk(
       applyServerSnapshot(pending, snapshot({ revision: 9, totalKg: 631, acknowledgedProposalId: 'other' })),
@@ -833,7 +1065,12 @@ describe('the cache as a cache of server truth', () => {
 
   it('drops the projection and goes stale on a rejection', () => {
     const pending = expectOk(
-      proposeChange(confirmedCache(), asProposalId('p1'), A_PROPOSAL, projectionWith({ totalKg: projectedKg(645) })),
+      proposeChange(
+        confirmedCache(),
+        asProposalId('p1'),
+        A_MEET_PROPOSAL,
+        projectionWith({ totalKg: projectedKg(645) }),
+      ),
     );
     const rejected = expectOk(rejectProposal(pending, asProposalId('p1')));
     expect(rejected.status).toBe('stale');
@@ -923,9 +1160,15 @@ describe('readings', () => {
 
   it('never projects a meet result', () => {
     const pending = expectOk(
-      proposeChange(confirmedCache(), asProposalId('p1'), A_PROPOSAL, projectionWith({ totalKg: projectedKg(645) })),
+      proposeChange(
+        confirmedCache(),
+        asProposalId('p1'),
+        A_MEET_PROPOSAL,
+        projectionWith({ totalKg: projectedKg(645) }),
+      ),
     );
-    // Total may be optimistic; the meet list never is.
+    // On meet day of all days: the Total may be optimistic while the meet is
+    // still being judged, and the meet list still never is.
     expect(readTotalKg(pending).kind).toBe('projected');
     expect(readMeets(pending).kind).toBe('confirmed');
   });
@@ -933,7 +1176,7 @@ describe('readings', () => {
   it('lets a renderer tell truth from a guess', () => {
     const cache = confirmedCache();
     const pending = expectOk(
-      proposeChange(cache, asProposalId('p1'), A_PROPOSAL, projectionWith({ totalKg: projectedKg(645) })),
+      proposeChange(cache, asProposalId('p1'), A_MEET_PROPOSAL, projectionWith({ totalKg: projectedKg(645) })),
     );
     expect(isConfirmedReading(readTotalKg(cache))).toBe(true);
     expect(isConfirmedReading(readTotalKg(pending))).toBe(false);
@@ -1099,6 +1342,103 @@ describe('an unconfirmed value cannot be used as a confirmed one', () => {
   });
 });
 
+describe('a projection cannot claim what its proposal cannot move', () => {
+  // GDD §3.2, in the type system. Each of these ALSO asserts the runtime
+  // refusal, because the `@ts-expect-error` suppresses the error rather than
+  // removing the call: one test, both halves. Deleting `ProjectionWithinReach`
+  // makes the directives unused (TS2578) and the `expect`s fail — checked by
+  // doing it, not by reasoning about it.
+
+  it('will not let a training session project a Total', () => {
+    const result = proposeChange(
+      confirmedCache(),
+      asProposalId('p1'),
+      A_PROPOSAL,
+      // @ts-expect-error - a training session's reach is bestE1rmKg | streak |
+      // wallet, so `totalKg` on its projection is narrowed to `null`.
+      projectionWith({ totalKg: projectedKg(645) }),
+    );
+    expect(expectErr(result).code).toBe('PROJECTION_EXCEEDS_REACH');
+  });
+
+  it('will not let a meet result project a streak', () => {
+    // NOT ONLY ABOUT TOTALS. The rule is the reach map, read per kind — a meet
+    // does not touch the streak, so a meet may not show one moving either. A
+    // guard hard-coded to `totalKg` passes the test above and fails this one.
+    const result = proposeChange(
+      confirmedCache(),
+      asProposalId('p1'),
+      A_MEET_PROPOSAL,
+      // @ts-expect-error - 'streak' is not in a meet result's reach.
+      projectionWith({ streak: { currentStreak: projectedCount(13) } }),
+    );
+    expect(expectErr(result).code).toBe('PROJECTION_EXCEEDS_REACH');
+  });
+
+  it('will not let a Recovery Day project an e1RM', () => {
+    const result = proposeChange(
+      confirmedCache(),
+      asProposalId('p1'),
+      PROPOSAL_BY_KIND['accept-recovery-day'],
+      // @ts-expect-error - accepting a Recovery Day moves the streak and nothing else.
+      projectionWith({ bestE1rmKg: { squat: projectedKg(245), bench: null, deadlift: null } }),
+    );
+    expect(expectErr(result).code).toBe('PROJECTION_EXCEEDS_REACH');
+  });
+
+  it('will not let an unnarrowed proposal claim anything at all', () => {
+    // A caller holding a bare `ProgressionProposal` does not know which kind it
+    // has, so it does not know what it may claim: the reach used is the
+    // INTERSECTION over the union, which is empty. Narrowing with a `switch`
+    // gives the projection back.
+    const anyProposal: ProgressionProposal = PROPOSAL_BY_KIND['record-meet-result'];
+    const result = proposeChange(
+      confirmedCache(),
+      asProposalId('p1'),
+      anyProposal,
+      // @ts-expect-error - nothing is within reach of every kind.
+      projectionWith({ totalKg: projectedKg(645) }),
+    );
+    // At runtime the kind IS known, so this particular one is allowed through —
+    // the compile-time rule is the strict half, and it is strict on purpose.
+    expect(result.ok).toBe(true);
+  });
+
+  it('will not take a projection that merely might claim a Total', () => {
+    const loose: ProgressionProjection = projectionWith({ totalKg: projectedKg(645) });
+    const result = proposeChange(
+      confirmedCache(),
+      asProposalId('p1'),
+      A_PROPOSAL,
+      // @ts-expect-error - `ProgressionProjection` says `totalKg` may be present.
+      loose,
+    );
+    expect(expectErr(result).code).toBe('PROJECTION_EXCEEDS_REACH');
+  });
+
+  it('takes the pairings the design calls for, with no directive', () => {
+    // THE LOCAL POSITIVE CONTROL. Without it this whole block would pass just as
+    // well if `proposeChange` had stopped accepting any projection at all.
+    const meetDay = proposeChange(
+      confirmedCache(),
+      asProposalId('p1'),
+      A_MEET_PROPOSAL,
+      projectionWith({ totalKg: projectedKg(645) }),
+    );
+    const sessionCloseOut = proposeChange(
+      confirmedCache(),
+      asProposalId('p1'),
+      A_PROPOSAL,
+      projectionWith({
+        bestE1rmKg: { squat: projectedKg(245), bench: null, deadlift: null },
+        streak: { currentStreak: projectedCount(13) },
+      }),
+    );
+    const nothingClaimed = proposeChange(confirmedCache(), asProposalId('p1'), A_PROPOSAL, emptyProjection());
+    expect([meetDay.ok, sessionCloseOut.ok, nothingClaimed.ok]).toEqual([true, true, true]);
+  });
+});
+
 describe('a purchase cannot reach performance', () => {
   it('offers no entitlement effect that moves e1RM', () => {
     // @ts-expect-error - ENTITLEMENT_EFFECT_KINDS has no 'e1rm-boost' and the
@@ -1185,6 +1525,9 @@ describe('the module exports no writer', () => {
     const expected = [
       'ACCEPT_RECOVERY_DAY_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'ACCEPT_RECOVERY_DAY_REPORT_KEYS',
+      'AN_UNCLAIMED_PROJECTION_IS_A_PROJECTION',
+      'A_MEET_RESULT_PROJECTION_CAN_CLAIM_A_TOTAL',
+      'A_TRAINING_SESSION_PROJECTION_CANNOT_CLAIM_A_TOTAL',
       'CONFIRMED_MEET_RESULT_KEYS',
       'CONVENIENCE_GRANTS',
       'COSMETIC_SLOTS',
@@ -1231,6 +1574,7 @@ describe('the module exports no writer', () => {
       'TRAINING_SESSION_REPORT_KEYS',
       'TRAINING_SET_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'TRAINING_SET_REPORT_KEYS',
+      'UNCLAIMED_PROJECTION_IS_EXACTLY_ITS_ALLOWLIST',
       'WALLET_CURRENCIES',
       'applyServerSnapshot',
       'asMeetId',

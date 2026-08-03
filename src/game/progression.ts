@@ -101,6 +101,52 @@
  * projected number without having handled the `'projected'` branch — the
  * provisionality is in the type, not in a convention about opacity or italics.
  *
+ * ---------------------------------------------------------------------------
+ * 4.1 A PROJECTION MAY ONLY CLAIM WHAT ITS PROPOSAL CAN MOVE (GDD §2, §3.2, §6.4)
+ * ---------------------------------------------------------------------------
+ *
+ * `ProposalReach` (§5(b)) says a training session moves `bestE1rmKg` and a meet
+ * moves `totalKg`. That is a statement about what the SERVER will do. For a
+ * while it said nothing at all about the optimistic layer, and the gap was
+ * exactly the one GDD §3.2 cares about: a `record-training-session` paired with
+ * a projection carrying `totalKg` constructed cleanly, so a session close-out
+ * screen could tick a Total up on a Tuesday and no type here objected.
+ *
+ * §3.2 is explicit that it must not — "the number that moves at the close-out is
+ * e1RM, never Total" — because a Total is the sum of best successful COMPETITION
+ * attempts and there were no attempts today. A projection is what a screen
+ * renders, so a rule about what the daily loop may show is a rule about what a
+ * projection may claim.
+ *
+ * So `proposeChange` is generic in the proposal's kind, and its projection
+ * parameter is `ProjectionWithinReach<K>`: every projection field whose fact is
+ * outside `ProposalReach[K]` is narrowed to `null` (or to an all-`null` record).
+ * `{ ...emptyProjection(), totalKg: projectedKg(645) }` fails `tsc` against a
+ * training session and compiles against a meet result. The two exported
+ * assertions `A_TRAINING_SESSION_PROJECTION_CANNOT_CLAIM_A_TOTAL` and
+ * `A_MEET_RESULT_PROJECTION_CAN_CLAIM_A_TOTAL` pin both directions, because a
+ * guard that refuses everything satisfies the prohibition perfectly and breaks
+ * the product.
+ *
+ * TWO CONSEQUENCES WORTH KNOWING BEFORE YOU HIT THEM:
+ *
+ *   - A VALUE TYPED `ProgressionProjection` IS NO LONGER PROPOSABLE. It might
+ *     claim a Total, so it only fits a kind that may move one. Build the
+ *     projection at the call site from `emptyProjection()`, which returns the
+ *     narrower `UnclaimedProjection` and therefore fits every kind.
+ *   - AN UNNARROWED PROPOSAL MAY CLAIM NOTHING. When `K` is the whole kind union
+ *     — a dispatcher holding a `ProgressionProposal` — the reach used is the
+ *     INTERSECTION of every kind's, which is currently empty, so only
+ *     `emptyProjection()` fits. That is the sound reading: a caller that does not
+ *     know which proposal it is holding does not know what it may claim, and
+ *     narrowing with a `switch` restores the full projection.
+ *
+ * The runtime half is `PROJECTION_EXCEEDS_REACH`, returned by `proposeChange`
+ * for the same pairing forced past the compiler. It reads `factsMovedBy`, i.e.
+ * `PROPOSAL_REACH_TABLE`, while the type reads `ProposalReach` — and the table is
+ * typed against the map, so it can name FEWER facts but never more. The runtime
+ * refusal is therefore never laxer than the compile-time one.
+ *
  * ===========================================================================
  * 5. THE PAY-TO-WIN LINE, EXPRESSED IN THE TYPES (GDD §8.1, §12.3)
  * ===========================================================================
@@ -220,6 +266,25 @@
  *    not. Their teeth are that widening one fails the compile, so the
  *    declaration a future function is written against cannot drift quietly.
  *
+ *  - THE PROJECTION GUARD (§4.1) CHECKS FIELDS, NOT NUMBERS. It stops a training
+ *    session from claiming a `totalKg` at all. It cannot stop a renderer from
+ *    projecting a nonsense e1RM, labelling an e1RM "Total" on screen, or adding
+ *    three projected e1RMs together and printing the sum. The first is a
+ *    plausibility question no type answers; the last two happen in a component
+ *    this module cannot see. What it closes is the shape that used to typecheck
+ *    and look innocent: a Total in the projection object of a Tuesday session.
+ *
+ *  - AND IT SITS AT THE DOOR, NOT ON THE STATE. `InFlightProposal.projection` is
+ *    a plain `ProgressionProjection`, so the pairing is checked when a change is
+ *    proposed and not carried around afterwards. `ProgressionCache` is a
+ *    transparent union, so a caller holding a snapshot can hand-assemble
+ *    `{ status: 'pending', snapshot, inFlight }` and skip the check — exactly as
+ *    it would skip `validateProjection`, the in-flight limit and the stale-cache
+ *    rule, which is the older and more general residual. Narrowing the stored
+ *    projection would mean making `ProgressionCache` generic in a proposal kind,
+ *    and every reader (`readTotalKg` and friends) generic with it, for a hole
+ *    that a transparent cache type already leaves open in four other places.
+ *
  *  - A PURCHASE CAN STILL BE MISLABELLED, IN TWO SHAPES, AND THE SECOND ONE IS
  *    NOT THE ONE PEOPLE EXPECT. `PROPOSAL_ORIGIN_BY_KIND` forces every kind to
  *    declare a provenance, and the payload cross-check catches the obvious lie —
@@ -320,6 +385,13 @@ type UnionIsExactly<A, B> = [Exclude<A, B>] extends [never]
 
 /** `true` when `A` is a subset of `B`. */
 type IsSubsetOf<A, B> = [Exclude<A, B>] extends [never] ? true : never;
+
+/**
+ * `true` when `A` is assignable to `B`. `IsSubsetOf` is the same question for
+ * unions of string literals; this one is for object shapes, where `Exclude`
+ * would answer something else entirely. Tuple-wrapped for the same reason.
+ */
+type IsSubtypeOf<A, B> = [A] extends [B] ? true : never;
 
 /** `true` when the two unions share no member. Vacuously true for `never`. */
 type AreDisjoint<A, B> = [Extract<A, B>] extends [never] ? true : never;
@@ -864,6 +936,20 @@ export const PROPOSAL_KINDS_ARE_EXACTLY_THE_ALLOWLIST: UnionIsExactly<
 > = true;
 
 /**
+ * One member of the union, by kind. For a caller that knows which proposal it is
+ * building — which is every caller that also wants to project something, since
+ * `proposeChange` binds the projection to the kind (§4.1 of the header).
+ *
+ * NOT usable as `proposeChange`'s parameter type: it is a conditional type and
+ * `tsc` will not infer `K` from one. It is here for annotating the values that
+ * get passed in.
+ */
+export type ProposalOfKind<K extends ProgressionProposalKind> = Extract<
+  ProgressionProposal,
+  { readonly kind: K }
+>;
+
+/**
  * WHICH FACTS THE SERVER MAY MOVE IN RESPONSE TO EACH PROPOSAL.
  *
  * A declaration, not an enforcement — see §6 of the header. Its teeth are the
@@ -1181,6 +1267,13 @@ export type ProgressionErrorCode =
   | 'CACHE_IS_STALE'
   /** The optimistic projection was malformed. */
   | 'INVALID_PROJECTION'
+  /**
+   * The projection claimed a fact this proposal kind cannot move — a training
+   * session projecting a Total, say. The runtime half of §4.1; the compile-time
+   * half is `ProjectionWithinReach`, and reaching this code means something got
+   * past it (a cast, a JS caller, JSON).
+   */
+  | 'PROJECTION_EXCEEDS_REACH'
   /** The proposal's own payload was malformed. */
   | 'INVALID_PROPOSAL';
 
@@ -1540,8 +1633,120 @@ export const PROJECTION_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
 
 export const PROJECTION_ONLY_MIRRORS_REAL_FACTS: IsSubsetOf<ProjectionKey, ProgressionFactKey> = true;
 
+// ---------------------------------------------------------------------------
+// A projection may only claim what its proposal can move (GDD §2, §3.2, §6.4).
+// See §4.1 of the header for why this is the ruling applied rather than a
+// separate design decision.
+// ---------------------------------------------------------------------------
+
+/**
+ * A `ProgressionProjection` with every claim taken out of it: each field is
+ * `null`, or a record whose every entry is `null`.
+ *
+ * This is the shape a projection field takes when the proposing kind may not
+ * move the fact behind it, and it is also `emptyProjection`'s return type — one
+ * type rather than two, so "claims nothing" means the same thing in both places.
+ */
+export interface UnclaimedProjection {
+  readonly totalKg: null;
+  readonly bestE1rmKg: Readonly<Record<LiftKind, null>>;
+  readonly streak: null;
+  readonly wallet: Readonly<Record<WalletCurrency, null>>;
+}
+
+/** A new projectable fact has to get an unclaimed shape too, or this fails. */
+export const UNCLAIMED_PROJECTION_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
+  UnclaimedProjection,
+  ProjectionKey
+> = true;
+
+/**
+ * And claiming nothing is a legal projection: `emptyProjection()` has to keep
+ * fitting everywhere a `ProgressionProjection` is wanted, including
+ * `InFlightProposal`.
+ */
+export const AN_UNCLAIMED_PROJECTION_IS_A_PROJECTION: IsSubtypeOf<
+  UnclaimedProjection,
+  ProgressionProjection
+> = true;
+
+/**
+ * `true` when EVERY kind in `K` may move `F`.
+ *
+ * `K` is a union when the caller has not narrowed its proposal, and the
+ * intersection is the sound reading of that case: a dispatcher holding a bare
+ * `ProgressionProposal` does not know which kind it has, so it does not know
+ * what it may claim. `Exclude` over the tuple-wrapped union is the whole
+ * mechanism — for a single kind it is plain membership.
+ */
+type EveryKindReaches<K extends ProgressionProposalKind, F extends ProgressionFactKey> = [
+  Exclude<K, KindsReaching<F>>,
+] extends [never]
+  ? true
+  : false;
+
+/**
+ * THE PROJECTION A PROPOSAL OF KIND `K` IS ALLOWED TO CARRY. Fields whose fact
+ * is inside `ProposalReach[K]` keep their full type; the rest are narrowed to
+ * their unclaimed shape, so a number cannot be put in them.
+ *
+ * This is the type that makes GDD §3.2's "the number that moves at the close-out
+ * is e1RM, never Total" a compile error rather than a note: a projection
+ * carrying `totalKg` does not fit a `record-training-session`.
+ */
+export type ProjectionWithinReach<K extends ProgressionProposalKind> = {
+  readonly [F in ProjectionKey]: EveryKindReaches<K, F> extends true
+    ? ProgressionProjection[F]
+    : UnclaimedProjection[F];
+};
+
+/**
+ * The facts a projection paired with `K` can actually put a number on — read
+ * off `ProjectionWithinReach` itself rather than off the reach map, so the two
+ * assertions below are about the MECHANISM and not a restatement of the map.
+ *
+ * A field counts as claimable when the within-reach version still admits
+ * everything `ProgressionProjection` admits. Written that way rather than as
+ * `... extends UnclaimedProjection[F]` on purpose: widening a field of
+ * `UnclaimedProjection` back to `ProjectedKg | null` would satisfy the
+ * `UnclaimedProjection`-relative form while quietly reopening the hole, and
+ * fails this one.
+ */
+type ClaimableBy<K extends ProgressionProposalKind> = {
+  [F in ProjectionKey]: [ProgressionProjection[F]] extends [ProjectionWithinReach<K>[F]] ? F : never;
+}[ProjectionKey];
+
+/**
+ * COMPILE-TIME ASSERTION (GDD §3.2): A TRAINING SESSION CANNOT PROJECT A TOTAL.
+ *
+ * The optimistic half of `ONLY_A_MEET_RESULT_MOVES_TOTAL`, and the reason this
+ * file has two assertions about Totals rather than one: that one governs what
+ * the server is asked to move, this one governs what the screen is allowed to
+ * show while it waits. A session's close-out beat can put an e1RM, a streak or a
+ * balance on screen optimistically. It cannot put a Total there.
+ */
+export const A_TRAINING_SESSION_PROJECTION_CANNOT_CLAIM_A_TOTAL: UnionIsExactly<
+  ClaimableBy<'record-training-session'>,
+  'bestE1rmKg' | 'streak' | 'wallet'
+> = true;
+
+/**
+ * COMPILE-TIME ASSERTION, AND THE POSITIVE CONTROL FOR THE ONE ABOVE. A guard
+ * that narrows every field of every kind refuses the forbidden pairing
+ * perfectly and also makes meet day unrenderable, so the prohibition alone is
+ * satisfied better by a worse artifact. A meet result must still be able to
+ * project the Total it just made.
+ *
+ * `'meets'` is absent because it is not a projection key at all — a meet result
+ * is server truth or it is not shown (see `readMeets`).
+ */
+export const A_MEET_RESULT_PROJECTION_CAN_CLAIM_A_TOTAL: UnionIsExactly<
+  ClaimableBy<'record-meet-result'>,
+  'totalKg' | 'bestE1rmKg' | 'wallet'
+> = true;
+
 /** A projection that claims nothing. The base every projection is built from. */
-export function emptyProjection(): ProgressionProjection {
+export function emptyProjection(): UnclaimedProjection {
   return {
     totalKg: null,
     bestE1rmKg: { squat: null, bench: null, deadlift: null },
@@ -1572,6 +1777,57 @@ function validateProjection(projection: ProgressionProjection): ProgressionError
       return {
         code: 'INVALID_PROJECTION',
         message: `progression: a projected balance must be a whole number (${currency})`,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * WHAT COUNTS AS CLAIMING A FACT, one row per projectable fact. `null`
+ * everywhere means "render the confirmed value", so a `null` field claims
+ * nothing; a record claims its fact if any single entry is non-`null`, because
+ * reach is declared per fact and not per lift or per currency.
+ *
+ * A map rather than a chain of `if`s so that it is exhaustive: a new field on
+ * `ProgressionProjection` widens `ProjectionKey` and fails `tsc` here, instead
+ * of quietly becoming a fact the reach check below cannot see.
+ */
+const PROJECTION_CLAIMS: Readonly<Record<ProjectionKey, (projection: ProgressionProjection) => boolean>> = {
+  totalKg: (projection) => projection.totalKg !== null,
+  bestE1rmKg: (projection) => LIFT_ORDER.some((lift) => projection.bestE1rmKg[lift] !== null),
+  streak: (projection) => projection.streak !== null,
+  wallet: (projection) => WALLET_CURRENCIES.some((currency) => projection.wallet[currency] !== null),
+};
+
+/** The facts this projection puts a number on. */
+function factsClaimedBy(projection: ProgressionProjection): readonly ProjectionKey[] {
+  return PROJECTION_KEYS.filter((fact) => PROJECTION_CLAIMS[fact](projection));
+}
+
+/**
+ * THE RUNTIME HALF OF §4.1. A projection cannot claim a fact the proposing kind
+ * is not declared to move.
+ *
+ * `ProjectionWithinReach` already makes this a compile error, so in typed code
+ * this never fires. It exists because types are erased: a cast, a JS caller or a
+ * projection rebuilt from stored JSON all reach this function, and because a
+ * type-level assertion is invisible to `npm test`.
+ *
+ * Reads `factsMovedBy` — i.e. `PROPOSAL_REACH_TABLE`, which is typed against
+ * `ProposalReach` and may name fewer facts than the map allows but never more.
+ * So this refusal is never laxer than the compile-time one.
+ */
+function projectionExceedsReach(
+  proposal: ProgressionProposal,
+  projection: ProgressionProjection,
+): ProgressionError | null {
+  const reach: readonly string[] = factsMovedBy(proposal.kind);
+  for (const fact of factsClaimedBy(projection)) {
+    if (!reach.includes(fact)) {
+      return {
+        code: 'PROJECTION_EXCEEDS_REACH',
+        message: `progression: a ${proposal.kind} proposal does not move ${fact}, so its projection may not claim one`,
       };
     }
   }
@@ -1735,12 +1991,28 @@ export function applyServerSnapshot(
  * This is NOT a write. It changes no fact: the snapshot is carried through
  * untouched and the projection is parked beside it. There is no transition in
  * this module that turns a projection into a snapshot.
+ *
+ * THE PROJECTION IS BOUND TO THE PROPOSAL'S KIND (§4.1 of the header). `K` is
+ * inferred from `proposal.kind`, and `ProjectionWithinReach<K>` narrows every
+ * field outside that kind's reach to `null`, so a training session cannot be
+ * paired with a projected Total — GDD §3.2, in the type system rather than in
+ * prose. Build the projection from `emptyProjection()` at the call site; a value
+ * already typed `ProgressionProjection` fits only a kind that may move
+ * everything it could be carrying.
+ *
+ * WHY THE PARAMETER IS `ProgressionProposal & { kind: K }` AND NOT
+ * `ProposalOfKind<K>`: the latter is a conditional type (`Extract`), and `tsc`
+ * cannot infer a type argument from one. The intersection puts `K` in a plain
+ * property position where inference works. `& ProgressionProjection` on the
+ * projection is what lets the body treat it as one while `K` is still generic —
+ * for a concrete `K` it adds nothing, since `ProjectionWithinReach<K>` is
+ * already a `ProgressionProjection`.
  */
-export function proposeChange(
+export function proposeChange<K extends ProgressionProposalKind>(
   cache: ProgressionCache,
   proposalId: ProposalId,
-  proposal: ProgressionProposal,
-  projection: ProgressionProjection,
+  proposal: ProgressionProposal & { readonly kind: K },
+  projection: ProjectionWithinReach<K> & ProgressionProjection,
 ): ProgressionResult<ProgressionCache> {
   if (cache.status === 'empty') {
     return fail(
@@ -1764,6 +2036,10 @@ export function proposeChange(
   const badProjection = validateProjection(projection);
   if (badProjection !== null) {
     return { ok: false, error: badProjection };
+  }
+  const overreach = projectionExceedsReach(proposal, projection);
+  if (overreach !== null) {
+    return { ok: false, error: overreach };
   }
   return ok({
     status: 'pending',
