@@ -439,6 +439,7 @@ describe('purity', () => {
       /export const FACT_PROTECTION_COVERS_EVERY_FACT: KeysAreExactly</,
       /export const PROTECTED_CONCERNS_ARE_NOT_VACUOUS: IsNonEmptyUnion</,
       /export const OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH: UnionIsExactly</,
+      /export const THE_OPEN_SET_IS_STREAK_AND_WALLET: UnionIsExactly</,
       /export const NO_OPEN_FACT_NAMES_PERFORMANCE: AreDisjoint</,
       // GDD §8.1's training-pace line, held over the FACT SET rather than over
       // one hard-coded spelling that no reach could ever contain.
@@ -503,10 +504,19 @@ describe('the fact allowlist', () => {
     expect([...PROTECTED_CONCERNS].sort()).toEqual(['bestE1rmKg', 'meets', 'totalKg']);
   });
 
-  it('leaves streak and wallet open on purpose', () => {
+  it('leaves streak and wallet open on purpose, and nothing else', () => {
     // Recovery Days are purchasable and do move a streak (GDD §4.2, §8.2);
     // buying Chalk moves a balance by definition. Protecting them here would be
     // a lie the code could not keep.
+    //
+    // THE EQUALITY IS LOAD-BEARING, not decorative. It is the runtime twin of
+    // `THE_OPEN_SET_IS_STREAK_AND_WALLET`, and it is the check that catches the
+    // hardest form of the pay-to-win mutant: a fact declared `'open'`, named on
+    // a purchase's reach row, written into `EntitlementReach` so the two maps
+    // agree, and given a name bland enough to dodge
+    // `PERFORMANCE_FACT_VOCABULARY`. Every other check in this file passes that
+    // one. Adding a genuinely open fact means editing this line, which is the
+    // intent — GDD §8.2 has three currencies and this module owns two of them.
     expect([...OPEN_FACTS].sort()).toEqual(['streak', 'wallet']);
     expect(PROTECTED_CONCERNS).not.toContain('streak');
     expect(PROTECTED_CONCERNS).not.toContain('wallet');
@@ -1733,6 +1743,7 @@ describe('the module exports no writer', () => {
       'SPEND_CURRENCY_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'SPEND_CURRENCY_REPORT_KEYS',
       'STREAK_WIRE_MATCHES_THE_STREAK_ALLOWLIST',
+      'THE_OPEN_SET_IS_STREAK_AND_WALLET',
       'TRAINING_SESSION_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'TRAINING_SESSION_REPORT_KEYS',
       'TRAINING_SET_REPORT_IS_EXACTLY_ITS_ALLOWLIST',

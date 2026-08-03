@@ -233,22 +233,32 @@
  *
  *          AND ANSWERING `'open'` IS NOT FREE, or the map would only move the
  *          escape one line — the author of a purchasable pace fact would just
- *          declare it open. Two cross-checks price that answer, in the same
+ *          declare it open. Three cross-checks price that answer, in the same
  *          shape as `MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE`:
  *
  *            · `OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH` binds the open
  *              set to `EntitlementReach`, both directions. Declaring a fact open
  *              without also writing it into the purchase catalogue fails; writing
  *              it in means stating in the catalogue which purchased effect moves
- *              it, which is a confession rather than a smuggle. This one has no
- *              vocabulary in it and is the load-bearing half.
+ *              it, which is a confession rather than a smuggle. No vocabulary in
+ *              it, so it cannot be dodged by choosing a duller name.
  *            · `NO_OPEN_FACT_NAMES_PERFORMANCE` reads the fact's own NAME against
  *              `PERFORMANCE_FACT_VOCABULARY`. `simSessionsPerDay` contains
  *              `session` and `perday`, so it cannot be open under that name. IT
  *              IS A FLOOR AND IT IS DIRECTIONAL — a fact named `x7` satisfies it
- *              perfectly — which is why it is second, and why
+ *              perfectly — which is why it is not on its own, and why
  *              `PERFORMANCE_NAMED_FACTS_ARE_NOT_VACUOUS` exists to prove the scan
  *              can still see the facts that do name performance.
+ *            · `THE_OPEN_SET_IS_STREAK_AND_WALLET` pins the open set to a
+ *              literal. The first two together are still walkable by an author
+ *              who makes three coordinated edits AND picks a name that does not
+ *              say what the fact is — `simRunsAllowed`, declared open, on a
+ *              purchase's reach row and in `EntitlementReach.convenience`,
+ *              compiles past both. It was verified to, before this third check
+ *              was written. A literal is the right instrument HERE and was the
+ *              wrong one for `PROTECTED_CONCERNS` because the defaults run
+ *              opposite ways: forgetting could not add an open fact, only a
+ *              protected one. See the assertion's own comment.
  *
  *      All of these are mutation-tested in both directions — a purchasable pace
  *      fact is rejected, an ordinary cosmetic fact is accepted — and
@@ -1133,6 +1143,43 @@ export const ENTITLEMENT_REACH_NAMES_REAL_FACTS: IsSubsetOf<
 export const OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH: UnionIsExactly<
   OpenFactKey,
   AnyEntitlementReach
+> = true;
+
+/**
+ * COMPILE-TIME ASSERTION, AND THE ONE FREE LITERAL IN THIS PART OF THE FILE
+ * (GDD §8.2): THE OPEN SET IS STREAK AND WALLET, AND NOTHING ELSE.
+ *
+ * A HAND-WRITTEN LIST IS EXACTLY WHAT THE PROTECTED SIDE STOPPED BEING, so this
+ * needs its asymmetry stated rather than assumed. The defect there was the
+ * DEFAULT: a fact nobody added to `PROTECTED_CONCERNS` was unprotected, and
+ * "someone forgot" produced the unsafe answer. Here the default runs the other
+ * way. A new fact cannot be absent from `FACT_PROTECTION` at all, and if it is
+ * answered `'protected'` this line never sees it; the only thing that reaches
+ * here is a fact somebody has *deliberately* declared buyable. Forgetting cannot
+ * add a member. So the failure mode a derived set exists to prevent does not
+ * exist on this side, and what a literal buys instead is that widening the set
+ * §8.1 carves out is a visible edit to a named line with this paragraph attached
+ * — the same trade `ONLY_A_MEET_RESULT_MOVES_TOTAL` makes for its right-hand
+ * side.
+ *
+ * WHAT IT CATCHES THAT NOTHING ELSE DOES. The other checks can be walked past by
+ * an author willing to make three coordinated edits AND choose a fact name that
+ * does not say what the fact is: a `simRunsAllowed` declared `'open'`, named on
+ * a purchase's reach row and written into `EntitlementReach.convenience` passes
+ * `OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH` (the two maps agree),
+ * `NO_OPEN_FACT_NAMES_PERFORMANCE` and `NO_FACT_MEANS_TRAINING_PACE` (the name
+ * dodges the vocabulary). That was verified to compile before this line was
+ * added, not assumed. It fails here.
+ *
+ * WHY GDD §8.2 SUPPORTS THE LITERAL: the currency table has three rows, and the
+ * only two that are progression facts this module owns are the streak (Recovery
+ * Days, §4.2) and the wallet (Gym Bucks and Chalk). A third open fact is a
+ * design change, not a refactor, and CLAUDE.md says the doc and the code never
+ * diverge — so the edit that adds one should be the edit that updates §8.2.
+ */
+export const THE_OPEN_SET_IS_STREAK_AND_WALLET: UnionIsExactly<
+  OpenFactKey,
+  'streak' | 'wallet'
 > = true;
 
 // ---------------------------------------------------------------------------
