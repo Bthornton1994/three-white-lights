@@ -50,6 +50,9 @@ export const CONTENT = {
   RIGHT: CARD.W - CARD.MARGIN,
 } as const;
 
+/** The card's vertical centre line, where every centred run is anchored. */
+export const CARD_CENTER_X = Math.floor(CARD.W / 2);
+
 /**
  * The masthead. Federation set large because that is the one line a lifter
  * scans first on a real sheet; meet name and date beneath it at body size.
@@ -200,6 +203,11 @@ export function gridCellX(index: number): number {
   return GRID.X + GRID.LABEL_W + index * GRID.CELL_W;
 }
 
+/** X of the centre of attempt column `i` — where its heading is anchored. */
+export function gridCellCenterX(index: number): number {
+  return gridCellX(index) + Math.floor(GRID.CELL_W / 2);
+}
+
 /** One past the right edge of the last column. */
 export const GRID_RIGHT_X = GRID.X + GRID.LABEL_W + GRID.CELL_COUNT * GRID.CELL_W;
 
@@ -225,6 +233,15 @@ export const TOTAL_BLOCK = {
   VALUE_SCALE: 3,
   /** Dropped a step at a time until the value fits the block. */
   VALUE_MIN_SCALE: 1,
+  /**
+   * Clearance the total's value must keep from the word "TOTAL" and its unit.
+   * The value is set at `VALUE_SCALE` and steps down whole scales until it fits
+   * what is left, so this is the number that decides when a four-digit total
+   * loses a step of size — the most visible single tuning lever on the card.
+   */
+  LABEL_VALUE_MIN_GAP: 6,
+  /** Gap between the word "TOTAL" and the "KG" that follows it. */
+  UNIT_GAP: 4,
 } as const;
 
 /** DOTS and PLACE, side by side under the total. */
@@ -257,11 +274,35 @@ export const BARBELL = {
   CAPTION_Y: 187,
   CENTER_Y: 209,
   /**
+   * Minimum clearance between the caption ("TOP SINGLE") on the left of the
+   * line and the lift-and-weight detail on the right.
+   *
+   * THIS ONE DELETES A LABEL WHEN IT IS WRONG. The two runs share one line; if
+   * they would come closer than this, the CAPTION is dropped and only the
+   * detail prints, because overlapping type on a card meant to be screenshotted
+   * is the most obvious kind of broken there is. Raise it too far and a
+   * perfectly legible card silently loses its caption.
+   *
+   * AT TODAY'S GEOMETRY THE DROP NEVER FIRES: the widest detail the card can
+   * produce is "DEADLIFT  9999.5 KG" at 99 px, which with the 54 px caption and
+   * this gap comes to 161 px against `CONTENT.W` of 180. It is a guard, not a
+   * behaviour anyone will see — and `renderResultCard.test.ts` pins both facts
+   * so a tuning pass that narrows the card finds out here rather than in a
+   * screenshot.
+   */
+  CAPTION_MIN_GAP: 8,
+  /**
    * Multiplier on the true-scale disc diameter from `plateDiameterPx`. At 1.0 a
    * 450 mm disc is ~15 px, which is too small to read a colour off; this lifts
    * the motif to a legible size without changing the sprite system's own scale.
    */
   DIAMETER_SCALE: 1.75,
+  /**
+   * Floor on a disc's drawn diameter. The smallest competition denomination is
+   * a 0.25 kg change plate, which at true scale is a couple of pixels and would
+   * disappear into the shaft; below this it stops reading as a disc at all.
+   */
+  MIN_DISC_DIAMETER: 4,
   /** Half the shaft's drawn length, from the card's centre line. */
   HALF_SPAN: 46,
   /** Half-length of the bare knurled shaft before the first disc. */
@@ -270,6 +311,12 @@ export const BARBELL = {
   /** Drawn thickness of one disc, and the pitch between two. */
   PLATE_FACE: 3,
   PLATE_PITCH: 4,
+  /**
+   * Floor on a disc's drawn thickness once the sleeve compresses. Always at
+   * least one less than the pitch, so there is always a gap — the gap is the
+   * only thing that makes a stack countable, and a lifter WILL count them.
+   */
+  MIN_PLATE_FACE: 1,
   /**
    * How tight the pitch may get before a disc is dropped instead. 2 px is one
    * disc and one gap, and the gap is the only thing that makes a stack
@@ -313,4 +360,11 @@ export const CARD_LABELS = {
   BARBELL_CAPTION: 'TOP SINGLE',
   BARBELL_CAPTION_NONE: 'NO LIFTS MADE',
   UNIT: 'KG',
+  /**
+   * Between the lift's name and its weight in the barbell caption's detail run
+   * — "DEADLIFT  312.5 KG". Two spaces rather than one because at this font's
+   * 3px space advance a single one reads as a kerning accident rather than as
+   * two fields on one line.
+   */
+  BARBELL_DETAIL_SEPARATOR: '  ',
 } as const;

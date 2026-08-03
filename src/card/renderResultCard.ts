@@ -8,11 +8,22 @@
  * is what proves it does.
  *
  * WHAT THIS FILE IS ALLOWED TO DECIDE: where a thing goes. It reads every
- * coordinate from `cardTuning.ts` and every colour from `sheetPalette.ts`, and
- * it holds no number of its own. It decides NOTHING about what the card says —
- * every string, every mark and every rounding is already fixed by
- * `resultCard.ts`, so a critic checking a convention checks that module and not
- * this one.
+ * coordinate from `cardTuning.ts` and every colour from `sheetPalette.ts`. It
+ * decides NOTHING about what the card says — every string, every mark and every
+ * rounding is already fixed by `resultCard.ts`, so a critic checking a
+ * convention checks that module and not this one.
+ *
+ * WHAT "READS EVERY NUMBER FROM `cardTuning.ts`" DOES AND DOES NOT CLAIM. This
+ * header used to say the file "holds no number of its own", and that was false:
+ * a `+ 6` decided when the total lost a step of size, a `+ 8` decided whether
+ * the barbell caption was printed at all, a `Math.max(4, ...)` floored a disc,
+ * and a two-space separator was typed inline. Every one of those is now a named
+ * constant, because CLAUDE.md is explicit that tunable values do not get buried
+ * in components. What is left here is arithmetic ON those constants — halving a
+ * named thickness to centre it, insetting by one pixel from a named width,
+ * flooring a scale at 1 because there is nothing below it — and that is
+ * structure, not tuning. If you find yourself wanting to try a different value
+ * for something, it belongs in `cardTuning.ts` and not here.
  *
  * It draws the barbell from `src/art/plates.ts` and `src/art/raster.ts`'s
  * `drawPlateEdge`, in the EQUIPMENT bank — the same denominations, the same
@@ -37,6 +48,7 @@ import { SHEET } from './sheetPalette';
 import {
   BARBELL,
   CARD,
+  CARD_CENTER_X,
   CARD_LABELS,
   CONTENT,
   FOOTER,
@@ -48,13 +60,14 @@ import {
   SCORE_BLOCKS,
   SCORE_BLOCK_W,
   TOTAL_BLOCK,
+  gridCellCenterX,
   gridCellX,
   gridRowY,
   type LifterMetaRung,
 } from './cardTuning';
 import { capHeight, drawText, measureText, strikeThrough, type TextMode } from './pixelFont';
 
-const CENTER_X = Math.floor(CARD.W / 2);
+const CENTER_X = CARD_CENTER_X;
 
 // ---------------------------------------------------------------------------
 // Small drawing helpers. Each one is a rectangle or a run of type; nothing here
@@ -267,9 +280,7 @@ function drawGrid(grid: IndexGrid, card: ResultCard, headings: readonly string[]
     drawText(grid, liftHeading, GRID.LABEL_X, GRID.HEADER_TEXT_Y, SHEET.INK_SOFT);
   }
   cellHeadings.forEach((heading, i) => {
-    drawText(grid, heading, gridCellX(i) + Math.floor(GRID.CELL_W / 2), GRID.HEADER_TEXT_Y, SHEET.INK_SOFT, {
-      align: 'center',
-    });
+    drawText(grid, heading, gridCellCenterX(i), GRID.HEADER_TEXT_Y, SHEET.INK_SOFT, { align: 'center' });
   });
   rule(grid, 0, GRID.RULE_Y, CARD.W, SHEET.INK);
 
@@ -285,7 +296,8 @@ function drawTotalBlock(grid: IndexGrid, card: ResultCard): void {
   drawText(grid, total.label, TOTAL_BLOCK.LABEL_X, TOTAL_BLOCK.LABEL_Y, SHEET.BAND_INK);
 
   const labelWidth = measureText(total.label);
-  const available = TOTAL_BLOCK.VALUE_RIGHT - (TOTAL_BLOCK.LABEL_X + labelWidth + 6);
+  const available =
+    TOTAL_BLOCK.VALUE_RIGHT - (TOTAL_BLOCK.LABEL_X + labelWidth + TOTAL_BLOCK.LABEL_VALUE_MIN_GAP);
   const scale = Math.max(
     TOTAL_BLOCK.VALUE_MIN_SCALE,
     fitScale(total.value, available, TOTAL_BLOCK.VALUE_SCALE, 'tabular'),
@@ -295,7 +307,13 @@ function drawTotalBlock(grid: IndexGrid, card: ResultCard): void {
     mode: 'tabular',
     scale,
   });
-  drawText(grid, CARD_LABELS.UNIT, TOTAL_BLOCK.LABEL_X + labelWidth + 4, TOTAL_BLOCK.LABEL_Y, SHEET.RULE);
+  drawText(
+    grid,
+    CARD_LABELS.UNIT,
+    TOTAL_BLOCK.LABEL_X + labelWidth + TOTAL_BLOCK.UNIT_GAP,
+    TOTAL_BLOCK.LABEL_Y,
+    SHEET.RULE,
+  );
 }
 
 function drawScoreBlocks(grid: IndexGrid, card: ResultCard): void {
@@ -360,21 +378,56 @@ export function fitSleeve(perSide: readonly LoadedPlate[]): SleeveFit {
   const count = Math.min(perSide.length, capacity, BARBELL.MAX_PLATES_PER_SIDE);
   // Always leave a pixel of gap: the gap is the only thing that makes a stack
   // countable, and a lifter WILL count them.
-  const face = Math.max(1, Math.min(BARBELL.PLATE_FACE, pitch - 1));
+  const face = Math.max(BARBELL.MIN_PLATE_FACE, Math.min(BARBELL.PLATE_FACE, pitch - 1));
   return { discs: perSide.slice(0, count), pitch, face };
+}
+
+export interface BarbellCaption {
+  /** Left-hand run: "TOP SINGLE", or "NO LIFTS MADE" when nothing was made. */
+  readonly caption: string;
+  /** Right-hand run: the lift and its weight. Empty when nothing was made. */
+  readonly detail: string;
+  /**
+   * False when the two runs would come closer than `BARBELL.CAPTION_MIN_GAP`,
+   * in which case the CAPTION is dropped and only the detail prints.
+   */
+  readonly captionFits: boolean;
+}
+
+/**
+ * The barbell's caption line: two runs sharing one line, and the rule for what
+ * happens when they will not both fit.
+ *
+ * EXPORTED SO IT CAN BE TESTED AT A WIDTH THE CARD CANNOT ACTUALLY PRODUCE.
+ * The drop branch is unreachable at today's geometry — see
+ * `BARBELL.CAPTION_MIN_GAP` — so the only way to check that the rule is the one
+ * intended, rather than a `+ 8` nobody has looked at since it was typed, is to
+ * call it directly with a narrow width.
+ *
+ * A caption with no detail beside it ALWAYS prints: "NO LIFTS MADE" is the
+ * whole message on a bombed card, and dropping it would leave a bare bar with
+ * no words at all.
+ */
+export function barbellCaption(card: ResultCard, maxWidth: number): BarbellCaption {
+  const heaviest = heaviestGoodLift(card);
+  const caption = heaviest === null ? CARD_LABELS.BARBELL_CAPTION_NONE : CARD_LABELS.BARBELL_CAPTION;
+  const detail =
+    heaviest === null
+      ? ''
+      : `${heaviest.label}${CARD_LABELS.BARBELL_DETAIL_SEPARATOR}${heaviest.text} ${CARD_LABELS.UNIT}`;
+  const together = measureText(caption) + measureText(detail) + BARBELL.CAPTION_MIN_GAP;
+  // Overlapping type is the most obvious kind of broken there is on a card
+  // meant to be screenshotted, so when the line is short the caption is the run
+  // that goes: the detail carries the number, the caption only labels it.
+  return { caption, detail, captionFits: detail === '' || together <= maxWidth };
 }
 
 function drawBarbell(grid: IndexGrid, card: ResultCard): void {
   const heaviest = heaviestGoodLift(card);
   const cy = BARBELL.CENTER_Y;
 
-  const caption = heaviest === null ? CARD_LABELS.BARBELL_CAPTION_NONE : CARD_LABELS.BARBELL_CAPTION;
-  const detail = heaviest === null ? '' : `${heaviest.label}  ${heaviest.text} ${CARD_LABELS.UNIT}`;
-  // Two runs on one line: if a long lift name and a four-digit weight would run
-  // into the caption, the caption is the one that goes. Overlapping type is the
-  // most obvious kind of broken there is on a card meant to be screenshotted.
-  const fits = measureText(caption) + measureText(detail) + 8 <= CONTENT.W;
-  if (fits || detail === '') drawText(grid, caption, CONTENT.X, BARBELL.CAPTION_Y, SHEET.INK_SOFT);
+  const { caption, detail, captionFits } = barbellCaption(card, CONTENT.W);
+  if (captionFits) drawText(grid, caption, CONTENT.X, BARBELL.CAPTION_Y, SHEET.INK_SOFT);
   if (detail !== '') {
     drawText(grid, detail, CONTENT.RIGHT, BARBELL.CAPTION_Y, SHEET.INK, { align: 'right' });
   }
@@ -398,7 +451,10 @@ function drawBarbell(grid: IndexGrid, card: ResultCard): void {
 
   discs.forEach((disc, i) => {
     const ramp = PLATE_HUE_RAMPS[disc.spec.hue];
-    const diameter = Math.max(4, Math.round(plateDiameterPx(disc.spec) * BARBELL.DIAMETER_SCALE));
+    const diameter = Math.max(
+      BARBELL.MIN_DISC_DIAMETER,
+      Math.round(plateDiameterPx(disc.spec) * BARBELL.DIAMETER_SCALE),
+    );
     const dxInner = BARBELL.SHAFT_HALF + i * pitch;
     drawPlateEdge(grid, CENTER_X + dxInner, face, cy, diameter, ramp);
     drawPlateEdge(grid, CENTER_X - dxInner - face, face, cy, diameter, ramp);
