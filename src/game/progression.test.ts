@@ -63,6 +63,7 @@ import {
   type ProgressionCache,
   type ProgressionProjection,
   type ProgressionProposal,
+  type ProgressionProposalKind,
   type ProgressionSnapshot,
   type ProgressionSnapshotWire,
   type ProjectedKg,
@@ -144,6 +145,42 @@ function projectionWith(overrides: Partial<ProgressionProjection>): ProgressionP
   return { ...emptyProjection(), ...overrides };
 }
 
+/**
+ * EVERY FIELD NAME A PROPOSAL OF THIS KIND CAN PUT ON THE WIRE, nested report
+ * types included. `MoneyCarryingProposalKind` reads `keyof` the top-level report
+ * only, so the nested allowlists are checked here or nowhere.
+ *
+ * Two bindings, because one is not enough in a test file. The `Record<
+ * ProgressionProposalKind, ...>` annotation makes a new proposal kind fail
+ * `npm run typecheck`; the key cross-check against `PROGRESSION_PROPOSAL_KINDS`
+ * in the test below makes it fail `npm test`, which matters because vitest
+ * strips types rather than checking them and there is no CI.
+ */
+const PAYLOAD_KEYS_BY_PROPOSAL_KIND: Record<ProgressionProposalKind, readonly string[]> = {
+  'record-training-session': [...TRAINING_SESSION_REPORT_KEYS, ...TRAINING_SET_REPORT_KEYS],
+  'accept-recovery-day': [...ACCEPT_RECOVERY_DAY_REPORT_KEYS],
+  'record-meet-result': [...MEET_RESULT_REPORT_KEYS, ...MEET_ATTEMPT_REPORT_KEYS],
+  'redeem-entitlement': [...REDEEM_ENTITLEMENT_REPORT_KEYS],
+  'spend-currency': [...SPEND_CURRENCY_REPORT_KEYS],
+};
+
+/** Every payload field name belonging to a kind with this declared origin. */
+function payloadKeysWithOrigin(origin: (typeof PROPOSAL_ORIGIN_KINDS)[number]): readonly string[] {
+  return PROGRESSION_PROPOSAL_KINDS.filter((kind) => PROPOSAL_ORIGIN_BY_KIND[kind] === origin).flatMap(
+    (kind) => [...PAYLOAD_KEYS_BY_PROPOSAL_KIND[kind]],
+  );
+}
+
+/** One of the module's exported `*_REPORT_KEYS` allowlists, read back by name. */
+function reportKeyAllowlist(name: string): readonly string[] {
+  const exported: Readonly<Record<string, unknown>> = progressionModule;
+  const value = exported[name];
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+    throw new Error(`expected ${name} to be an array of field names`);
+  }
+  return value as readonly string[];
+}
+
 // ---------------------------------------------------------------------------
 // Purity
 // ---------------------------------------------------------------------------
@@ -212,6 +249,13 @@ describe('purity', () => {
       /export const MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE: IsSubsetOf</,
       /export const MONEY_CARRYING_KINDS_ARE_NOT_VACUOUS: IsNonEmptyUnion</,
       /export const NOTHING_MOVES_TRAINING_PACE: AreDisjoint</,
+      // The bindings that make the two disjointness checks above mean something:
+      // both of their operands name facts that exist, not strings that look
+      // like facts. Deleting one leaves a reach map bound to nothing while the
+      // disjointness check keeps passing by spelling.
+      /export const PROPOSAL_REACH_NAMES_REAL_FACTS: IsSubsetOf</,
+      /export const ENTITLEMENT_REACH_NAMES_REAL_FACTS: IsSubsetOf</,
+      /export const PROTECTED_CONCERNS_NAME_REAL_FACTS: IsSubsetOf</,
     ];
     for (const assertion of requiredAssertions) {
       expect(code).toMatch(assertion);
@@ -324,6 +368,25 @@ describe('nothing purchasable reaches performance', () => {
     }
   });
 
+  it('names only real facts in every reach', () => {
+    // The runtime half of `PROPOSAL_REACH_NAMES_REAL_FACTS`, and the other way a
+    // reach map can stop being worth anything. The map is a hand-written set of
+    // strings AND it is the operand of the disjointness check below: rename a
+    // fact without updating it and it names a field that no longer exists, while
+    // the check goes on passing because two dead spellings cannot collide. The
+    // non-vacuity check above cannot see that — a drifted union is still
+    // non-empty, it just refers to nothing.
+    const realFacts: readonly string[] = PROGRESSION_FACT_KEYS;
+    expect(realFacts.length).toBeGreaterThan(0);
+    for (const kind of PROGRESSION_PROPOSAL_KINDS) {
+      for (const fact of factsMovedBy(kind) as readonly string[]) {
+        expect(realFacts).toContain(fact);
+      }
+    }
+    // `EntitlementReach` has no runtime table to walk — it is type-only, so
+    // `ENTITLEMENT_REACH_NAMES_REAL_FACTS` is the whole of that half.
+  });
+
   it('gives every proposal kind an origin, from one map', () => {
     // The subject of the check below. If a kind could exist without an origin,
     // the check below would be back to iterating a list someone maintains.
@@ -366,22 +429,45 @@ describe('nothing purchasable reaches performance', () => {
     // The runtime half of `MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE`. That
     // assertion is a subset check over the kinds whose report names money, so it
     // passes for free if `PURCHASE_EVIDENCE_KEYS` points at fields nothing has.
-    const purchaseReportKeys: readonly string[] = [
-      ...REDEEM_ENTITLEMENT_REPORT_KEYS,
-      ...SPEND_CURRENCY_REPORT_KEYS,
-    ];
-    const earnedReportKeys: readonly string[] = [
-      ...TRAINING_SET_REPORT_KEYS,
-      ...TRAINING_SESSION_REPORT_KEYS,
-      ...ACCEPT_RECOVERY_DAY_REPORT_KEYS,
-      ...MEET_ATTEMPT_REPORT_KEYS,
-      ...MEET_RESULT_REPORT_KEYS,
-    ];
+    //
+    // THE PARTITION IS DERIVED FROM `PROPOSAL_ORIGIN_BY_KIND`. It used to be two
+    // hand-sorted lists of report-key arrays — the same defect the assertion
+    // itself was rewritten to stop having, one level down: a new kind's report
+    // would land in neither list and be cross-checked by nothing.
+    expect(Object.keys(PAYLOAD_KEYS_BY_PROPOSAL_KIND).sort()).toEqual([...PROGRESSION_PROPOSAL_KINDS].sort());
+    const purchaseReportKeys = payloadKeysWithOrigin('purchase');
+    const earnedReportKeys = payloadKeysWithOrigin('earned');
+    // Non-vacuity on both halves of the partition before anything reads them: an
+    // empty side would make one of the two directions below pass over nothing.
+    expect(purchaseReportKeys.length).toBeGreaterThan(0);
+    expect(earnedReportKeys.length).toBeGreaterThan(0);
     expect(PURCHASE_EVIDENCE_KEYS.length).toBeGreaterThan(0);
     for (const evidence of PURCHASE_EVIDENCE_KEYS) {
       expect(purchaseReportKeys).toContain(evidence);
       expect(earnedReportKeys).not.toContain(evidence);
     }
+  });
+
+  it('walks every exported report allowlist, nested ones included', () => {
+    // The partition above is worth what it covers, and what it must cover is
+    // more than `keyof` can see: `MoneyCarryingProposalKind` reads the top level
+    // of each report only (§6 of the module header), so a `sku` on a nested
+    // `TrainingSetReport` is invisible to the type-level check and this runtime
+    // walk is the only thing looking at it.
+    //
+    // Found by scanning the module's own exports rather than by being
+    // remembered: a new report type gets a `*_REPORT_KEYS` allowlist, and until
+    // it appears in `PAYLOAD_KEYS_BY_PROPOSAL_KIND` it is checked by nothing.
+    const allowlists = Object.keys(progressionModule)
+      .filter((name) => name.endsWith('_REPORT_KEYS'))
+      .map((name) => [name, reportKeyAllowlist(name)] as const);
+    // Non-vacuity: a scan that matched nothing would pass forever.
+    expect(allowlists.length).toBeGreaterThan(0);
+    const covered = new Set(Object.values(PAYLOAD_KEYS_BY_PROPOSAL_KIND).flat());
+    const uncovered = allowlists.flatMap(([name, keys]) =>
+      keys.filter((key) => !covered.has(key)).map((key) => `${name}.${key}`),
+    );
+    expect(uncovered).toEqual([]);
   });
 
   it('lets no proposal at all move training pace', () => {
@@ -391,12 +477,27 @@ describe('nothing purchasable reaches performance', () => {
   });
 
   it('lets earned proposals move the facts a purchase may not', () => {
-    // The positive control for the check above. If e1RM were unreachable by
-    // *everything*, the purchase check would pass for the wrong reason.
-    const training = factsMovedBy('record-training-session') as readonly string[];
-    expect(training).toContain('bestE1rmKg');
-    expect(training).toContain('totalKg');
-    expect(factsMovedBy('record-meet-result') as readonly string[]).toContain('meets');
+    // The positive control for the check above. If the protected facts were
+    // unreachable by *everything*, the purchase check would pass for the wrong
+    // reason. Derived from `PROTECTED_CONCERNS` rather than naming facts by
+    // hand, so a renamed or added concern is covered without editing this test —
+    // the hardcoded `'totalKg'` that used to be here was satisfied just as well
+    // by a reach map that had drifted off the facts.
+    const earnedReach = new Set(
+      PROGRESSION_PROPOSAL_KINDS.filter((kind) => PROPOSAL_ORIGIN_BY_KIND[kind] === 'earned').flatMap((kind) => [
+        ...factsMovedBy(kind),
+      ]),
+    );
+    expect(earnedReach.size).toBeGreaterThan(0);
+    for (const concern of PROTECTED_CONCERNS) {
+      // `trainingPace` is the one protected concern that is not a stored fact:
+      // nothing moves it, priced or free. Same carve-out
+      // `PROTECTED_CONCERNS_NAME_REAL_FACTS` makes in the module.
+      if (concern === 'trainingPace') {
+        continue;
+      }
+      expect([...earnedReach]).toContain(concern);
+    }
   });
 
   it('offers no entitlement effect that touches a lift', () => {
@@ -990,6 +1091,7 @@ describe('the module exports no writer', () => {
       'ENTITLEMENT_EFFECTS_ARE_EXACTLY_THE_ALLOWLIST',
       'ENTITLEMENT_EFFECT_KINDS',
       'ENTITLEMENT_REACH_IS_NOT_VACUOUS',
+      'ENTITLEMENT_REACH_NAMES_REAL_FACTS',
       'MEET_ATTEMPT_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'MEET_ATTEMPT_REPORT_KEYS',
       'MEET_RESULT_IS_EXACTLY_ITS_ALLOWLIST',
@@ -1010,6 +1112,7 @@ describe('the module exports no writer', () => {
       'PROPOSAL_ORIGIN_COVERS_EVERY_KIND',
       'PROPOSAL_ORIGIN_KINDS',
       'PROPOSAL_REACH_COVERS_EVERY_KIND',
+      'PROPOSAL_REACH_NAMES_REAL_FACTS',
       'PROTECTED_CONCERNS',
       'PROTECTED_CONCERNS_NAME_REAL_FACTS',
       'PURCHASABLE_KINDS_ARE_NOT_VACUOUS',

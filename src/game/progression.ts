@@ -121,11 +121,32 @@
  *      disjoint from `PROTECTED_CONCERNS`. Widening either map to include
  *      `'bestE1rmKg'` fails at the assertion.
  *
- *      A disjointness assertion over an *empty* reach is vacuously true, which
- *      is exactly the kind of guard that cannot fail if the thing it names is
- *      deleted. So each is paired with a non-vacuity assertion
- *      (`..._REACH_IS_NOT_VACUOUS`) that fails if the reach collapses to
- *      `never`. Both halves are mutation-tested.
+ *      A DISJOINTNESS ASSERTION IS WORTH WHAT ITS OPERANDS ARE WORTH, and a
+ *      reach map can stop being worth anything in two different ways. Each has
+ *      its own guard, and they are easy to mistake for each other:
+ *
+ *        - EMPTY. Disjointness over `never` is vacuously true, so each reach is
+ *          paired with `..._REACH_IS_NOT_VACUOUS`, which fails if the reach
+ *          collapses to nothing.
+ *
+ *        - STALE. A reach is a hand-written union of string literals, so it can
+ *          also drift off the facts entirely. Rename `ConfirmedFacts.totalKg`:
+ *          the allowlist forces `PROGRESSION_FACT_KEYS` to follow and
+ *          `PROTECTED_CONCERNS_NAME_REAL_FACTS` forces `PROTECTED_CONCERNS` to
+ *          follow, but `ProposalReach` would still say `'totalKg'` and would
+ *          still compile — now naming a field that does not exist, and now
+ *          disjoint from `PROTECTED_CONCERNS` BY SPELLING. The guard passes for
+ *          the wrong reason, and the stale row sits there to be copied into the
+ *          next `'purchase'`-tagged kind. NON-VACUITY CANNOT SEE THIS: a drifted
+ *          union is still non-empty; it just refers to nothing.
+ *          `PROPOSAL_REACH_NAMES_REAL_FACTS` and
+ *          `ENTITLEMENT_REACH_NAMES_REAL_FACTS` are what fail instead — the same
+ *          binding `PROTECTED_CONCERNS_NAME_REAL_FACTS` puts on the other
+ *          operand, so both sides of every disjointness check name real facts.
+ *
+ *      All four are mutation-tested, and `progression.test.ts` re-checks the
+ *      proposal side at runtime against `PROGRESSION_FACT_KEYS`, because a
+ *      type-level assertion that gets deleted is invisible to `npm test`.
  *
  *      WHICH KINDS COUNT AS PURCHASES IS DERIVED, NOT LISTED. The reach check is
  *      only worth what its subject is worth, and its subject used to be a
@@ -199,17 +220,36 @@
  *    not. Their teeth are that widening one fails the compile, so the
  *    declaration a future function is written against cannot drift quietly.
  *
- *  - A PURCHASE THAT NAMES NO MONEY IS STILL A TAG. `PROPOSAL_ORIGIN_BY_KIND`
- *    forces every kind to declare a provenance, and the payload cross-check
- *    catches the obvious lie — a report with a `sku`, a `receipt` or a
- *    `currency` on it cannot be called `'earned'`. What it does not catch is a
- *    purchase-originated kind whose report names none of those: a
- *    `{ kind: 'redeem-promo-code'; report: { code: string } }` tagged `'earned'`
- *    would escape, because "money caused this" is a fact about the world and the
- *    only evidence in scope is the payload's field names. The residual is one
- *    deliberate mislabel in a diff whose surrounding comment says not to, rather
- *    than the previous residual, which was any addition at all, silently.
- *    Widening `PURCHASE_EVIDENCE_KEYS` is how that net gets tighter.
+ *  - A PURCHASE CAN STILL BE MISLABELLED, IN TWO SHAPES, AND THE SECOND ONE IS
+ *    NOT THE ONE PEOPLE EXPECT. `PROPOSAL_ORIGIN_BY_KIND` forces every kind to
+ *    declare a provenance, and the payload cross-check catches the obvious lie —
+ *    a report with a `sku`, a `receipt` or a `currency` on it cannot be called
+ *    `'earned'`. Two shapes get past it:
+ *
+ *      1. NO MONEY UNDER ANY NAME. A purchase-originated kind whose report names
+ *         none of the evidence keys —
+ *         `{ kind: 'redeem-promo-code'; report: { code: string } }` tagged
+ *         `'earned'` — escapes, because "money caused this" is a fact about the
+ *         world and the only evidence in scope is the payload's field names.
+ *         Widening `PURCHASE_EVIDENCE_KEYS` is how that net gets tighter.
+ *
+ *      2. MONEY ONE LEVEL DOWN. `MoneyCarryingProposalKind` reads
+ *         `keyof ReportFor<K>`, and `keyof` IS TOP LEVEL ONLY. A store envelope
+ *         shaped `{ transaction: { productId: string; receipt: string } }`
+ *         carries a receipt the check cannot see, and so would a `sku` added to
+ *         an element of `sets` on an existing earned report. The check reads the
+ *         outermost object and stops. It is not made recursive here because a
+ *         recursive `keyof` over report types that contain arrays and branded
+ *         strings costs more legibility than the case has so far been worth —
+ *         but that is a judgement, not a guarantee, and the residual is real.
+ *         `progression.test.ts` covers the reports that exist TODAY at runtime:
+ *         it walks every exported `*_REPORT_KEYS` allowlist, nested ones
+ *         included, and fails if an earned report names an evidence key. A new
+ *         nesting still has to be wired into that walk.
+ *
+ *    Both residuals are one deliberate shape in a diff whose surrounding comment
+ *    says not to, rather than the previous residual, which was any addition at
+ *    all, silently.
  *
  *  - THIS MODULE CONSTRAINS ITSELF. It cannot stop a consumer reading a
  *    confirmed e1RM and multiplying it by a cosmetic's price. That would be the
@@ -286,8 +326,14 @@ type AreDisjoint<A, B> = [Extract<A, B>] extends [never] ? true : never;
 
 /**
  * `true` when the union has at least one member. Pairs with `AreDisjoint` so a
- * disjointness assertion cannot pass by having nothing left to compare — the
- * failure mode where a guard survives the deletion of the thing it guards.
+ * disjointness assertion cannot pass by having nothing left to compare.
+ *
+ * IT COVERS ONE DELETION, NOT EVERY DELETION, and the difference matters: a
+ * reach emptied to `never` fails here, but a reach whose names have drifted off
+ * the facts — the case a rename produces — does not. That union is still
+ * non-empty; it just refers to nothing. Binding the names to `ProgressionFactKey`
+ * is a separate assertion (`..._NAMES_REAL_FACTS`), and neither implies the
+ * other. See §5(b) of the header.
  */
 type IsNonEmptyUnion<A> = [A] extends [never] ? never : true;
 
@@ -603,6 +649,11 @@ export interface Entitlement {
 /**
  * Which progression facts each entitlement effect may move. `never` means "no
  * progression fact at all" — a singlet changes nothing the server owns here.
+ *
+ * THESE STRINGS ARE FACT NAMES AND `ENTITLEMENT_REACH_NAMES_REAL_FACTS` BINDS
+ * THEM TO THE REAL ONES. Written as free literals they would be bound to
+ * nothing, and a renamed fact would leave this map naming a field that no longer
+ * exists — see §5(b) of the header for why that is worse than it sounds.
  */
 export interface EntitlementReach {
   readonly cosmetic: never;
@@ -624,11 +675,27 @@ export const ENTITLEMENTS_CANNOT_REACH_PROTECTED_CONCERNS: AreDisjoint<
 > = true;
 
 /**
- * The other half of the guard above. A disjointness assertion over an empty
+ * The second half of the guard above. A disjointness assertion over an empty
  * union passes for free, so this fails if `EntitlementReach` is ever emptied —
  * which is how a check stops being able to fail without anyone noticing.
  */
 export const ENTITLEMENT_REACH_IS_NOT_VACUOUS: IsNonEmptyUnion<AnyEntitlementReach> = true;
+
+/**
+ * The THIRD half, and the one that was missing: the reach must name facts that
+ * exist. Non-vacuity above catches a reach emptied to `never`; it cannot catch a
+ * reach that still has members which no longer mean anything. Rename
+ * `ConfirmedFacts.streak` and this map would go on saying `'streak'`, go on
+ * compiling, and go on being disjoint from `PROTECTED_CONCERNS` — by spelling,
+ * which is not a guarantee about anything.
+ *
+ * Exactly what `PROTECTED_CONCERNS_NAME_REAL_FACTS` does for the other operand
+ * of the same assertion, applied here so both sides are bound.
+ */
+export const ENTITLEMENT_REACH_NAMES_REAL_FACTS: IsSubsetOf<
+  AnyEntitlementReach,
+  ProgressionFactKey
+> = true;
 
 // ---------------------------------------------------------------------------
 // Proposals: what the client may ask for. Inputs only.
@@ -803,6 +870,12 @@ export const PROPOSAL_KINDS_ARE_EXACTLY_THE_ALLOWLIST: UnionIsExactly<
  * assertions below it and the runtime table `factsMovedBy`, which is typed
  * against it: the table cannot list a fact the map does not allow, and widening
  * the map to allow one fails the disjointness assertion.
+ *
+ * THESE STRINGS ARE FACT NAMES AND `PROPOSAL_REACH_NAMES_REAL_FACTS` BINDS THEM
+ * TO THE REAL ONES. This map is the operand of the §12.3 disjointness check
+ * below; written as free literals it would be bound to nothing, and a renamed
+ * fact would leave a row here naming a field that no longer exists while the
+ * check went on passing. See §5(b) of the header.
  */
 export interface ProposalReach {
   readonly 'record-training-session': 'bestE1rmKg' | 'streak' | 'wallet' | 'totalKg';
@@ -815,6 +888,28 @@ export interface ProposalReach {
 export const PROPOSAL_REACH_COVERS_EVERY_KIND: KeysAreExactly<
   ProposalReach,
   ProgressionProposalKind
+> = true;
+
+/**
+ * AND THE VALUES ARE REAL FACTS, not just strings that look like them. Indexing
+ * by the whole kind union covers every row at once, so a stale name anywhere in
+ * the map fails here.
+ *
+ * This is the binding that makes `PURCHASES_CANNOT_REACH_PROTECTED_CONCERNS`
+ * mean what it says. Without it, renaming a fact leaves this map naming the old
+ * one, and the disjointness check keeps passing because two dead spellings
+ * cannot collide — the failure mode `PROTECTED_CONCERNS_NAME_REAL_FACTS` already
+ * closes on the other operand, and the one non-vacuity cannot see, because a
+ * drifted union is still non-empty.
+ *
+ * It also subsumes `NOTHING_MOVES_TRAINING_PACE` at the type level, since
+ * `'trainingPace'` is deliberately not a fact key: a reach that named it now
+ * fails twice. That assertion stays, because it is the one that says out loud
+ * WHICH promise is being kept, and a §12.3 line should fail by name.
+ */
+export const PROPOSAL_REACH_NAMES_REAL_FACTS: IsSubsetOf<
+  ProposalReach[ProgressionProposalKind],
+  ProgressionFactKey
 > = true;
 
 // ---------------------------------------------------------------------------
@@ -912,7 +1007,9 @@ export const PURCHASABLE_PROPOSAL_KINDS: readonly PurchasableProposalKind[] =
  * them is money on the wire — you cannot buy a thing without naming the thing
  * (`sku`), and you cannot pay for it without a store receipt or a currency. No
  * earned report carries any of them, and `progression.test.ts` checks both
- * directions of that against the real report allowlists.
+ * directions of that against the real report allowlists — every exported one,
+ * including the nested `TRAINING_SET_REPORT_KEYS` and `MEET_ATTEMPT_REPORT_KEYS`
+ * that the type-level check below cannot reach.
  */
 export const PURCHASE_EVIDENCE_KEYS = ['sku', 'receipt', 'currency'] as const;
 
@@ -938,8 +1035,9 @@ export type MoneyCarryingProposalKind = {
  * away. The line number is the whole message. That is the cost of doing this
  * with conditional types instead of a lint rule.
  *
- * It is a floor, not a decision procedure — see §6 of the header for the case it
- * does not see.
+ * It is a floor, not a decision procedure — see §6 of the header for the two
+ * cases it does not see, one of which is that `keyof` stops at the top level of
+ * the report and money can be nested one object deeper.
  */
 export const MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE: IsSubsetOf<
   MoneyCarryingProposalKind,
