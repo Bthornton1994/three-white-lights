@@ -1678,6 +1678,39 @@ describe('a purchase cannot reach performance', () => {
     const balance = readBalance(cache, 'recoveryDays');
     expect(balance.kind).toBe('confirmed');
   });
+
+  it('will not let a pending cache be assembled around the checks', () => {
+    // `ProgressionCache` is a transparent union, so this shape used to compile —
+    // and it skipped `validateProposal`, `validateProjection`,
+    // `projectionExceedsReach`, the in-flight limit AND the stale-cache rule in
+    // one innocent-looking object literal. `InFlightProposal` now carries a
+    // module-private `unique symbol` minted only inside `proposeChange`, so the
+    // `inFlight` cannot be built here at all.
+    //
+    // INVISIBLE TO VITEST — esbuild strips the directive — so this is checked by
+    // `npm run typecheck`, where an UNUSED `@ts-expect-error` is itself an
+    // error. That is what makes reopening the hole fail rather than pass.
+    const smuggled: ProgressionCache = {
+      status: 'pending',
+      snapshot: snapshot(),
+      // @ts-expect-error - InFlightProposal carries a brand no caller can name.
+      inFlight: {
+        proposalId: asProposalId('p-forged'),
+        proposal: A_PROPOSAL,
+        projection: projectionClaiming('totalKg'),
+      },
+    };
+    expect(smuggled.status).toBe('pending');
+  });
+
+  it('still lets proposeChange build one, which is the positive control', () => {
+    // A brand that nothing can mint refuses the forged shape above perfectly and
+    // also makes the feature unusable. The door has to still open.
+    const pending = expectOk(
+      proposeChange(confirmedCache(), asProposalId('p-real'), A_PROPOSAL, emptyProjection()),
+    );
+    expect(inFlightProposal(pending)?.proposalId).toBe('p-real');
+  });
 });
 
 describe('the module exports no writer', () => {
