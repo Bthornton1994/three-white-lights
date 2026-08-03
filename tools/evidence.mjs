@@ -36,13 +36,40 @@ const run = (label, cmd, args) => {
   ].join('\n');
 };
 
+/**
+ * Provenance, so a critic can tell a stale bundle from a current one.
+ *
+ * This exists because a stale bundle already reached a critic once: it was
+ * generated before a rebuild landed and still listed the pre-rebuild tests, so
+ * the new bounds it was asked to judge were absent from the evidence entirely.
+ * The critic only caught it by noticing the bundle's clock was older than the
+ * screenshots' — sharp of it, but luck, not design. A timestamp alone cannot be
+ * checked against anything; a commit can.
+ *
+ * `dirty` matters as much as the SHA: a bundle produced from an uncommitted
+ * tree describes code that is not in any commit, so the SHA alone would be a
+ * lie of omission.
+ */
+const git = (args) => {
+  const r = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
+  return r.status === 0 ? (r.stdout ?? '').trim() : '(unavailable)';
+};
+const head = git(['rev-parse', 'HEAD']);
+const dirty = git(['status', '--porcelain']);
+
 const parts = [
   `EVIDENCE BUNDLE — piece ${piece}`,
   `generated ${new Date().toISOString()}`,
   `repo ${ROOT}`,
+  `commit ${head}`,
+  `working tree ${dirty === '' ? 'clean' : `DIRTY (${dirty.split('\n').length} file(s) uncommitted)`}`,
   '',
   'This file is raw, unedited output of the commands shown. It is produced by',
   'the run harness, not by the agent that wrote the code under test.',
+  '',
+  'CHECK THE COMMIT ABOVE against the code you were asked to grade. If it does',
+  'not match, this bundle describes different code and its results do not apply',
+  '— report the evidence as stale rather than grading against it.',
   '',
 ];
 

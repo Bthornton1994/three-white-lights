@@ -7,7 +7,7 @@
  *
  * Usage: node tools/progress.mjs [out.html]
  */
-import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { readFile, writeFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -18,17 +18,39 @@ const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Inline screenshots so the page stays self-contained under the artifact CSP.
+//
+// RECURSIVE, because capture sequences nest (`L1-maximal/stage/05-losing.png`).
+// A flat readdir here silently rendered no image for any piece whose evidence
+// pointed into a subdirectory, while the page still claimed the piece had
+// evidence — the picture just quietly vanished. Walking the tree fixes that,
+// and the missing-evidence warning below makes the next such mismatch loud
+// instead of invisible.
 const shotsDir = path.join(ROOT, '.gauntlet', 'shots');
 const shots = new Map();
-try {
-  for (const f of await readdir(shotsDir)) {
-    if (!f.endsWith('.png')) continue;
-    const buf = await readFile(path.join(shotsDir, f));
-    if (buf.length < 900_000) shots.set(f, `data:image/png;base64,${buf.toString('base64')}`);
+const shotAges = new Map();
+async function collectShots(dir, prefix = '') {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    return; // no shots yet
   }
-} catch {
-  /* no shots yet */
+  for (const e of entries) {
+    const rel = prefix ? `${prefix}/${e.name}` : e.name;
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      await collectShots(full, rel);
+      continue;
+    }
+    if (!e.name.endsWith('.png')) continue;
+    const buf = await readFile(full);
+    if (buf.length < 900_000) {
+      shots.set(rel, `data:image/png;base64,${buf.toString('base64')}`);
+      shotAges.set(rel, (await stat(full)).mtime);
+    }
+  }
 }
+await collectShots(shotsDir);
 
 // A piece's standing is shown as a judges' decision, because that is what it
 // is: three lights, majority carries. Grey = not yet called. Hollow = the
@@ -50,9 +72,19 @@ const unjudgeable = state.pieces.filter((p) => p.verifiable === false).length;
 const lightsHtml = (status) =>
   (DECISION[status] ?? DECISION.pending).lights.map((l) => `<i class="lt lt-${l}"></i>`).join('');
 
+/**
+ * Pieces whose `evidence` names a screenshot that was not found. Collected so
+ * the page can SAY so: a card that silently drops its picture looks identical
+ * to a card that never claimed one, which is how a piece went several rounds
+ * showing no rendered output while its note described some.
+ */
+const missingEvidence = [];
+
 const pieceRow = (p) => {
   const d = DECISION[p.status] ?? DECISION.pending;
   const shot = p.evidence && shots.get(p.evidence);
+  if (p.evidence && !shot) missingEvidence.push(`${p.id} → ${p.evidence}`);
+  const shotAge = p.evidence && shotAges.get(p.evidence);
   return `<article class="piece" data-tone="${d.tone}">
   <header class="piece-h">
     <span class="pid">${esc(p.id)}</span>
@@ -62,7 +94,9 @@ const pieceRow = (p) => {
   <p class="bar"><span class="eyebrow">Bar</span>${esc(p.bar)}</p>
   ${p.note ? `<p class="note">${esc(p.note)}</p>` : ''}
   <p class="verdict">${esc(d.label)}${p.verifiable === false ? ' · reference unreachable' : ''}</p>
-  ${shot ? `<img class="shot" src="${shot}" alt="Rendered output for ${esc(p.name)}" loading="lazy">` : ''}
+  ${shot ? `<img class="shot" src="${shot}" alt="Rendered output for ${esc(p.name)}" loading="lazy">
+  <p class="shot-cap">${esc(p.evidence)} · captured ${esc(shotAge ? shotAge.toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : 'unknown')}</p>` : ''}
+  ${p.evidence && !shot ? `<p class="shot-cap warn">evidence named but not found on disk: ${esc(p.evidence)}</p>` : ''}
 </article>`;
 };
 
@@ -136,6 +170,13 @@ const html = `<title>${esc(state.run.title)} — build status</title>
     font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1;
   }
   .sb span { font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+
+  .shot-cap {
+    margin: .35rem 0 0; font-size: .6875rem; color: var(--ink-3);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    overflow-wrap: anywhere;
+  }
+  .shot-cap.warn { color: var(--no-lift); }
 
   .lights { display: inline-flex; gap: .28rem; margin-left: auto; flex: 0 0 auto; }
   .lt { width: .68rem; height: .68rem; border-radius: 50%; display: block; border: 1.5px solid transparent; }
