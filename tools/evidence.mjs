@@ -55,14 +55,20 @@ const git = (args) => {
   return r.status === 0 ? (r.stdout ?? '').trim() : '(unavailable)';
 };
 const head = git(['rev-parse', 'HEAD']);
-const dirty = git(['status', '--porcelain']);
+// `.gauntlet/` holds evidence bundles and the progress page — run artefacts, not
+// code under test. Regenerating one bundle dirties the tree for the next, so
+// counting them made every bundle after the first report inherited dirt it had
+// caused itself. Only code the tests actually exercise belongs in this signal.
+const dirty = git(['status', '--porcelain'])
+  .split('\n')
+  .filter((line) => line.trim() !== '' && !/^..\s+\.gauntlet\//.test(line));
 
 const parts = [
   `EVIDENCE BUNDLE — piece ${piece}`,
   `generated ${new Date().toISOString()}`,
   `repo ${ROOT}`,
   `commit ${head}`,
-  `working tree ${dirty === '' ? 'clean' : `DIRTY (${dirty.split('\n').length} file(s) uncommitted)`}`,
+  `working tree ${dirty.length === 0 ? 'clean (ignoring .gauntlet/ run artefacts)' : `DIRTY — ${dirty.length} uncommitted code file(s): ${dirty.map((l) => l.slice(3)).join(', ')}`}`,
   '',
   'This file is raw, unedited output of the commands shown. It is produced by',
   'the run harness, not by the agent that wrote the code under test.',
