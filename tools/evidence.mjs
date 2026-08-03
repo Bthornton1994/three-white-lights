@@ -59,16 +59,25 @@ const head = git(['rev-parse', 'HEAD']);
 // code under test. Regenerating one bundle dirties the tree for the next, so
 // counting them made every bundle after the first report inherited dirt it had
 // caused itself. Only code the tests actually exercise belongs in this signal.
+//
+// Parse the PATH rather than slicing a fixed column: `git()` trims its output,
+// which eats the leading status space of the first porcelain line only, so a
+// column-based filter silently let exactly one entry through — the first. That
+// is the same shape of bug as everything else this header exists to catch, so
+// it is worth the two extra lines to read the field instead of its offset.
+const dirtyPath = (line) => line.replace(/^\s*\S+\s+/, '').replace(/^.*? -> /, '');
 const dirty = git(['status', '--porcelain'])
   .split('\n')
-  .filter((line) => line.trim() !== '' && !/^..\s+\.gauntlet\//.test(line));
+  .filter((line) => line.trim() !== '')
+  .map(dirtyPath)
+  .filter((p) => !p.startsWith('.gauntlet/'));
 
 const parts = [
   `EVIDENCE BUNDLE — piece ${piece}`,
   `generated ${new Date().toISOString()}`,
   `repo ${ROOT}`,
   `commit ${head}`,
-  `working tree ${dirty.length === 0 ? 'clean (ignoring .gauntlet/ run artefacts)' : `DIRTY — ${dirty.length} uncommitted code file(s): ${dirty.map((l) => l.slice(3)).join(', ')}`}`,
+  `working tree ${dirty.length === 0 ? 'clean (ignoring .gauntlet/ run artefacts)' : `DIRTY — ${dirty.length} uncommitted code file(s): ${dirty.join(', ')}`}`,
   '',
   'This file is raw, unedited output of the commands shown. It is produced by',
   'the run harness, not by the agent that wrote the code under test.',
