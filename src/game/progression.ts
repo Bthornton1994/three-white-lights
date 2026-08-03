@@ -846,9 +846,17 @@ export type ProposalOrigin = (typeof PROPOSAL_ORIGIN_KINDS)[number];
  * Exhaustive by construction: `satisfies Readonly<Record<ProgressionProposalKind,
  * ProposalOrigin>>` rejects a missing kind and an unknown one, and
  * `PROPOSAL_ORIGIN_COVERS_EVERY_KIND` pins the same thing again in case a future
- * edit drops the `satisfies`. `as const` is load-bearing: without it the values
- * widen to `ProposalOrigin` and the derivation below collapses to `never`, which
- * `PURCHASABLE_KINDS_ARE_NOT_VACUOUS` catches.
+ * edit drops the `satisfies`. Adding a proposal kind and forgetting this map was
+ * mutation-tested: it fails here (TS1360, naming the missing kind), at
+ * `PROPOSAL_ORIGIN_COVERS_EVERY_KIND`, and again at the derivation below.
+ *
+ * `as const` and the `satisfies` clause each keep the values at their literal
+ * types on their own — checked, rather than assumed: dropping either one alone
+ * still compiles and still derives correctly. Dropping BOTH widens the values to
+ * `string`, which collapses `PurchasableProposalKind` to `never` and is caught by
+ * `PURCHASABLE_KINDS_ARE_NOT_VACUOUS` and `MONEY_ON_THE_WIRE_IS_DECLARED_A_
+ * PURCHASE`. So they are belt and braces for each other, not one load-bearing
+ * incantation.
  *
  * ANSWER THE §8.1 QUESTION HERE. A new kind is `'earned'` only if no money — not
  * a store purchase, not a currency spend — can be what causes the client to send
@@ -921,7 +929,14 @@ export type MoneyCarryingProposalKind = {
  * COMPILE-TIME ASSERTION: anything that carries money on the wire is declared a
  * purchase. This is what stops the origin map from being a formality. Tagging a
  * `{ kind: 'buy-total-boost'; report: { sku; receipt } }` as `'earned'` to duck
- * the reach check fails here instead, and the failure names the kind.
+ * the reach check fails here instead — mutation-tested, and it is the only error
+ * that mutant produces.
+ *
+ * THE DIAGNOSTIC IS UNHELPFUL AND THAT IS WORTH KNOWING BEFORE YOU HIT IT: like
+ * every assertion in this file it reads `Type 'true' is not assignable to type
+ * 'never'`, at this line, naming neither the kind nor the field that gave it
+ * away. The line number is the whole message. That is the cost of doing this
+ * with conditional types instead of a lint rule.
  *
  * It is a floor, not a decision procedure — see §6 of the header for the case it
  * does not see.
