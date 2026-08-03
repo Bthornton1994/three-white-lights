@@ -43,6 +43,7 @@ import {
   type ScoredDots,
 } from './dots';
 import {
+  MIN_LOADABLE_WEIGHT_KG,
   createMeet,
   declareAttempt,
   finalMeetTotal,
@@ -80,11 +81,19 @@ function total(kg: number): OfficialTotalKg {
 }
 
 /**
- * A one-kilogram official total, used only to read a coefficient back as a bare
- * number. `dots.ts` deliberately exposes no numeric accessor (see THE
- * COEFFICIENT IS NOT A NUMBER), so the reference tables below get their number
- * the one honest way: a DOTS score at a 1 kg total IS the coefficient, exactly,
- * because `x * 1 === x` in IEEE 754.
+ * A one-kilogram official total, used to read a coefficient back as a bare
+ * number: a DOTS score at a 1 kg total IS the coefficient, exactly, because
+ * `x * 1 === x` in IEEE 754.
+ *
+ * NAME IT FOR WHAT IT IS. This is not a clever way around the opaque
+ * coefficient and it is not "the one honest way" — it is the documented leak.
+ * `dots.ts` exports no function NAMED like a numeric accessor, but this
+ * three-call route reaches the same number with no cast, which is why it is
+ * listed under WHAT IS DELIBERATELY NOT CLOSED there rather than described as
+ * impossible. The suite uses it because a reference table has to compare
+ * numbers; 'the numeric accessor this module does not export' below executes it
+ * deliberately, so this file cannot both depend on the route and let the module
+ * claim it does not exist.
  */
 const ONE_KG: OfficialTotalKg = officialTotalKg(1);
 
@@ -720,6 +729,83 @@ describe('COMPILE-TIME assertions on the module boundary', () => {
 });
 
 // ---------------------------------------------------------------------------
+// THE DISCLOSED LEAK, EXECUTED.
+//
+// `dots.ts` lists under WHAT IS DELIBERATELY NOT CLOSED that a coefficient's
+// number IS reachable, and names the route. These tests run that route, so the
+// disclosure is a pinned behaviour rather than a claim about one. Two ways it
+// can now break, both loud:
+//
+//   - someone closes the route: these fail, and the header has to be rewritten
+//     to say so (as does `ONE_KG` at the top of this file, which uses it).
+//   - someone re-adds a "hands out no bare multiplicand" sentence: the source
+//     scan in 'module purity' fails.
+//
+// What replaced a name-grep. The old check grepped the source for two function
+// names and called that "hands out no numeric coefficient accessor" — a claim it
+// had no way to test, and one this file's own `ONE_KG` helper contradicted at
+// the top of the same file.
+// ---------------------------------------------------------------------------
+
+describe('the numeric accessor this module does not export', () => {
+  it('DISCLOSED, NOT CLOSED: a 1 kg official total hands the coefficient back as a bare number', () => {
+    const coefficient = dotsCoefficient('male', 93);
+
+    // Two lines. No cast, no `any`, no `?? 0` — and it typechecks.
+    const bare: number = applyDotsCoefficient(coefficient, officialTotalKg(1));
+
+    // Exactly the coefficient, not approximately: `x * 1 === x` in IEEE 754.
+    // The right-hand side is rebuilt from the exported published constants, so
+    // this is not the module agreeing with itself through a single function.
+    expect(bare).toBe(DOTS_NUMERATOR / dotsDenominator('male', 93));
+    // ...and it is the same number the display helper merely rounds.
+    expect(bare.toFixed(DOTS_COEFFICIENT_DISPLAY_DECIMALS)).toBe(
+      formatDotsCoefficient(coefficient),
+    );
+
+    // Once it is a `number` it multiplies, which is the entire hazard. This is
+    // the fake mid-board score for a bombed lifter with 360 kg on the board,
+    // rebuilt from outside the module in one more line.
+    const boardSumOfABombedLifter = 360;
+    expect(formatDotsScore(bare * boardSumOfABombedLifter)).toBe('229.05');
+  });
+
+  it('costs an explicit officialTotalKg(...), which is the whole of what the opaque object buys', () => {
+    const coefficient = dotsCoefficient('male', 93);
+    // @ts-expect-error - the leak is not free: a bare 1 is not an OfficialTotalKg.
+    const withoutTheMint: number = applyDotsCoefficient(coefficient, 1);
+    // A brand is erased at runtime, so forced past the compiler it computes the
+    // same number. What cannot be WRITTEN is the version with no claim in it —
+    // the mint call is the assertion, and it is greppable.
+    expect(withoutTheMint).toBe(applyDotsCoefficient(coefficient, ONE_KG));
+
+    // The arithmetic route — the one glue code actually reaches for — stays shut
+    // at RUNTIME as well as in the type checker: the object defines no `valueOf`,
+    // so a coefficient coerces to NaN rather than to its own value. Adding one
+    // would make `coefficient * total` compute the collapse behind the compile
+    // error. (The compile error itself is pinned in 'a coefficient cannot be
+    // multiplied by a plain number, in either direction'.)
+    expect(Number(coefficient)).toBeNaN();
+  });
+
+  it('DISCLOSED: the private symbol is private to typechecking, not to reflection', () => {
+    const coefficient = dotsCoefficient('male', 93);
+    const symbols = Object.getOwnPropertySymbols(coefficient);
+    expect(symbols.map((s) => s.description)).toEqual(['dots.coefficient']);
+
+    const key = symbols[0];
+    if (key === undefined) {
+      throw new Error('the coefficient carries no symbol-keyed value');
+    }
+    // This route needs a cast, so it belongs with the cast bullet in the header
+    // — but the cast is to a plain index signature rather than to a brand, and
+    // it does not require knowing the symbol's identity in advance.
+    const reflected = (coefficient as unknown as Record<symbol, number>)[key];
+    expect(reflected).toBe(applyDotsCoefficient(coefficient, ONE_KG));
+  });
+});
+
+// ---------------------------------------------------------------------------
 // The other side of the boundary, driven for real.
 // ---------------------------------------------------------------------------
 
@@ -1022,6 +1108,34 @@ describe('DOTS deltas (GDD §6.5 recap call-outs)', () => {
     expect(() => delta(445.38, 0)).toThrow(/currentScore/);
     expect(() => delta(0, 445.38)).toThrow(/previousScore/);
   });
+
+  it('THE STRUCTURAL MINT CAN THROW ON A CALL THAT TYPECHECKS, so its docstring may not say otherwise', () => {
+    // `dotsDeltaBetween` used to claim "on a call that typechecks it cannot
+    // throw". `ScoredDots` means "this lifter has a score", not "this score is
+    // printable", and the two come apart the moment a caller mints an absurd
+    // total. Nothing in this test is a cast and nothing is `@ts-expect-error`-ed:
+    // it compiles clean, and it still throws.
+    const absurd = expectScored(evaluateDots('male', 93, total(0.004)));
+    const other = expectScored(evaluateDots('male', 93, total(0.005)));
+    expect(absurd.score).toBeLessThan(DOTS_SMALLEST_PRINTABLE_SCORE);
+
+    expect(() => dotsDeltaBetween({ previous: absurd, current: other })).toThrow(RangeError);
+    expect(() => dotsDeltaBetween({ previous: absurd, current: other })).toThrow(/previousScore/);
+
+    // Refusing it is correct — a score that rounds to "0.00" is the shape the
+    // collapse takes — so this is a docstring defect, not a behaviour defect.
+    // The reason it never fires in practice is a fact about `meet.ts`, not about
+    // the type: the smallest total a finished meet can record is three attempts
+    // at MIN_LOADABLE_WEIGHT_KG (25 kg), and even the smallest coefficient in
+    // the published domain turns 75 kg into a score far above the guard.
+    const smallestMeetScore = dotsScore(
+      'male',
+      DOTS_BODYWEIGHT_DOMAIN_KG.male.max,
+      total(3 * MIN_LOADABLE_WEIGHT_KG),
+    );
+    expect(smallestMeetScore).toBeGreaterThan(37);
+    expect(smallestMeetScore).toBeLessThan(38);
+  });
 });
 
 describe('plausibility sanity check', () => {
@@ -1144,11 +1258,31 @@ describe('module purity', () => {
     expect(code).not.toMatch(/console\s*\./);
   });
 
-  it('hands out no numeric coefficient accessor', () => {
-    // The collapse this module exists to prevent is one multiplication wide, so
-    // there is deliberately no `dotsCoefficientValue`-shaped export.
+  it('exports no function NAMED like a numeric coefficient accessor — a name scan, nothing more', () => {
+    // WHAT THIS CHECK IS WORTH, SAID OUT LOUD: it greps for two identifiers. It
+    // cannot see behaviour, and it does NOT establish that a coefficient's value
+    // is unreachable — it is reachable, via
+    // `applyDotsCoefficient(c, officialTotalKg(1))`, which needs no cast. Under
+    // its old name ('hands out no numeric coefficient accessor') this test read
+    // as a guarantee it had no way to make, while the counterexample sat at the
+    // top of this very file (see `ONE_KG`).
+    //
+    // The route is asserted for real, by executing it, in 'the numeric accessor
+    // this module does not export'. All this one defends is the published API
+    // surface: nobody gets to add a one-call accessor with a name that advertises
+    // itself.
     expect(code).not.toMatch(/export\s+function\s+dotsCoefficientValue/);
     expect(code).not.toMatch(/export\s+function\s+\w*[Cc]oefficientNumber/);
+  });
+
+  it('describes its own load-time evaluation without understating it', () => {
+    // The header used to say the ONE thing evaluated at load was a `Symbol(...)`,
+    // which overlooked two object literals and the arithmetic in
+    // `DOTS_SMALLEST_PRINTABLE_SCORE`. A purity contract that miscounts its own
+    // load-time work is the same defect class as an overstated guarantee.
+    expect(source).not.toMatch(/The one thing\s+\*?\s*evaluated at load/);
+    expect(source).toMatch(/Load-time\n?\s*\*?\s*evaluation is/);
+    expect(code).toMatch(/DOTS_SMALLEST_PRINTABLE_SCORE = 0\.5 \/ 10 \*\* DOTS_DISPLAY_DECIMALS/);
   });
 
   it('keeps the coefficient provenance block rather than asserting the numbers flatly', () => {
@@ -1169,6 +1303,23 @@ describe('module purity', () => {
     expect(source).toMatch(/WHAT IS DELIBERATELY NOT CLOSED/);
     expect(source).toMatch(/officialTotalKg\(totalOnTheBoard\(state\)\)`? compiles/);
     expect(source).toMatch(/tamper-resistance/);
+    // The coefficient leak is disclosed in the same list, by name, rather than
+    // being denied two blocks further down.
+    expect(source).toMatch(/applyDotsCoefficient\(c, officialTotalKg\(1\)\)`? compiles/);
+    expect(source).toMatch(/Object\.getOwnPropertySymbols/);
+  });
+
+  it('never re-asserts that the coefficient cannot be got out as a number', () => {
+    // Three rounds running, this module shipped a comment that promised more
+    // than the code delivered ("three layers enforce that"; the delta
+    // docstring's "cannot"; and these two). The behaviour they were wrong about
+    // is executed in 'the numeric accessor this module does not export'; the
+    // sentences are pinned dead here so a future edit cannot quietly restore
+    // one.
+    expect(source).not.toMatch(/none of it\s+\*?\s*hands back a bare multiplicand/);
+    expect(source).not.toMatch(/hands out no coefficient a caller can multiply/);
+    expect(source).not.toMatch(/There is deliberately no `dotsCoefficientValue\(c\): number`/);
+    expect(source).not.toMatch(/On a call that typechecks it cannot throw/);
   });
 
   it('claims about the delta path only what the mint enforces', () => {
