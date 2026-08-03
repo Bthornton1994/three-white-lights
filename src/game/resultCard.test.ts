@@ -162,6 +162,198 @@ describe('purity contract', () => {
 });
 
 // ---------------------------------------------------------------------------
+// The sourcing ledger
+//
+// THIS BLOCK EXISTS BECAUSE THE LEDGER LIED. `resultCard.ts`'s header is the
+// entire basis on which anyone believes this card's conventions were retrieved
+// rather than invented — and it was the one thing in the file with no
+// mechanised check behind it. Every other claim it makes is scanned above:
+// `Intl`, `Date`, `Math.random`, `totalOnTheBoard`, `?? 0`, `epley`, `brzycki`.
+// The sourcing block was prose, and the prose was wrong: it said
+// `RESULT_SHEET_COLUMNS` ran "...then total, then place" and cited [R2]'s CSV
+// for it, while the constant twenty lines of code later starts with `place` and
+// the CSV puts Place 21st. The code was right and the citation was wrong, which
+// is the failure mode a comment cannot be trusted to catch by itself.
+//
+// So the ledger's load-bearing claims are now READ OUT OF THE COMMENT and
+// checked against the constants they describe. A drift in either direction —
+// edit the array, or edit the sentence — fails here.
+// ---------------------------------------------------------------------------
+
+describe('the sourcing ledger describes the constants it cites', () => {
+  const source = readFileSync(fileURLToPath(new URL('./resultCard.ts', import.meta.url)), 'utf8');
+
+  /**
+   * The `[R8] ...` entry of the header comment, up to the next one.
+   *
+   * Anchored on an entry HEAD — ` *   [R8] ` at three spaces of indent — not on
+   * the first `[R8]` anywhere in the file, because the block's own preamble
+   * names the references in prose and would otherwise be returned instead.
+   */
+  function ledgerEntry(tag: string): string {
+    const head = new RegExp(`^ \\* {3}\\[${tag}\\] `, 'm').exec(source);
+    if (head?.index === undefined) throw new Error(`ledger: no [${tag}] entry in resultCard.ts`);
+    const rest = source.slice(head.index + head[0].length);
+    const end = rest.search(/\n \* {3}\[R\d+\] |\n \* OURS, NOT CITED/);
+    return end === -1 ? rest : rest.slice(0, end);
+  }
+
+  /**
+   * A `LABEL: a | b | c` list written into the comment, continued across as
+   * many lines as it needs. Throws when the label is absent, so a check built
+   * on one cannot quietly pass against an empty list.
+   */
+  function ledgerPipeList(text: string, label: string): readonly string[] {
+    const at = text.indexOf(label);
+    if (at === -1) throw new Error(`ledger: no "${label}" list`);
+    const lines = text.slice(at + label.length).split('\n');
+    const collected: string[] = [];
+    for (const line of lines) {
+      const stripped = line.replace(/^\s*\*?\s*/, '');
+      if (!stripped.includes('|')) break;
+      collected.push(stripped);
+    }
+    return collected
+      .join(' ')
+      .split('|')
+      .map((cell) => cell.trim())
+      .filter((cell) => cell !== '');
+  }
+
+  /**
+   * A `... at index N` claim, read out of the comment rather than retyped.
+   * The comment's line breaks and ` * ` gutters are flattened first, so a claim
+   * that happens to wrap is still found.
+   */
+  function ledgerIndex(text: string, phrase: string): number {
+    const flat = text.replace(/\n\s*\*\s*/g, ' ');
+    const match = new RegExp(`${phrase} at index (\\d+)`).exec(flat);
+    if (match?.[1] === undefined) throw new Error(`ledger: no "${phrase} at index N" claim`);
+    return Number(match[1]);
+  }
+
+  it('parses the ledger at all (sanity check for every assertion below)', () => {
+    // Without this, a parser that silently returned nothing would make the
+    // whole block vacuous — which is exactly the failure it was written to fix.
+    expect(ledgerEntry('R8')).toContain('meet.html.tera');
+    expect(ledgerEntry('R9')).toContain('lifter.html.tera');
+    expect(ledgerEntry('R2')).toContain('entries.csv');
+    expect(ledgerPipeList(ledgerEntry('R8'), 'MEET PAGE COLUMNS:')).toHaveLength(12);
+    expect(() => ledgerPipeList(ledgerEntry('R8'), 'NO SUCH LIST:')).toThrow();
+    expect(() => ledgerIndex(ledgerEntry('R8'), 'nothing')).toThrow();
+    // The entries really are separate: R8's text must not swallow R9's.
+    expect(ledgerEntry('R8')).not.toContain('lifter.html.tera');
+  });
+
+  it('hangs the RESULT_SHEET_COLUMNS citation on the rendered page, not the CSV', () => {
+    // The defect in one assertion. [R2] is entries.csv, a transcription format;
+    // [R8] is the page it is rendered on. The constant follows the page.
+    expect(ledgerEntry('R8')).toContain('the source for the order of');
+    expect(ledgerEntry('R8')).toContain('`RESULT_SHEET_COLUMNS`');
+    // [R2] may point AT the constant, but must not claim to be its order. The
+    // exact sentence that used to be there is pinned so it cannot come back.
+    expect(ledgerEntry('R2')).toContain(
+      'THAT IS THE ORDER OF `RESULT_CARD_CSV_HEADER`, AND OF NOTHING ELSE IN',
+    );
+    expect(ledgerEntry('R2')).not.toContain('COLUMN ORDER in `RESULT_SHEET_COLUMNS`');
+    expect(ledgerEntry('R2')).not.toContain('then total, then place');
+    // ...and the CSV citation stays where it does apply.
+    expect(ledgerEntry('R2')).toContain('`RESULT_CARD_CSV_HEADER`');
+  });
+
+  it('states the indices the constant actually uses', () => {
+    // Read out of the comment, checked against the array. Change either one on
+    // its own and this fails; the old ledger's "then total, then place" would
+    // have failed it on the first line.
+    const r8 = ledgerEntry('R8');
+    expect(RESULT_SHEET_COLUMNS[ledgerIndex(r8, 'place is')]?.id).toBe('place');
+    expect(RESULT_SHEET_COLUMNS[ledgerIndex(r8, 'division')]?.id).toBe('division');
+    expect(RESULT_SHEET_COLUMNS[ledgerIndex(r8, 'equipment')]?.id).toBe('equipment');
+    // The specific thing the old text got backwards.
+    expect(ledgerIndex(r8, 'place is')).toBe(0);
+    expect(RESULT_SHEET_COLUMNS[RESULT_SHEET_COLUMNS.length - 1]?.id).not.toBe('place');
+  });
+
+  it('collapses back into the meet page’s row, with exactly the departures it lists', () => {
+    // The strong form. Undo the two expansions the ledger discloses — the
+    // per-lift attempt columns from [R9], and the added Division — rename the
+    // points column back, and what is left must be [R8]'s header verbatim,
+    // minus the Age it also discloses as dropped.
+    const meetPage = ledgerPipeList(ledgerEntry('R8'), 'MEET PAGE COLUMNS:');
+    expect(meetPage[0], 'the template puts Place first').toBe('Place');
+
+    const collapsed = RESULT_SHEET_COLUMNS.filter(
+      (column) => !/^(squat|bench|deadlift)[123]$/.test(column.id),
+    ).map((column) => column.heading);
+
+    // Guard every filter below, so none of them can be quietly doing nothing.
+    expect(collapsed, 'Division is ours to drop here').toContain('Division');
+    expect(meetPage, 'Age is the template’s to drop here').toContain('Age');
+    expect(meetPage, 'Points is the heading we rename').toContain('Points');
+    expect(collapsed).toContain('Dots');
+
+    expect(collapsed.filter((heading) => heading !== 'Division')).toEqual(
+      meetPage.filter((heading) => heading !== 'Age').map((heading) => (heading === 'Points' ? 'Dots' : heading)),
+    );
+    // The collapse threw away nine attempt columns and nothing else.
+    expect(RESULT_SHEET_COLUMNS).toHaveLength(collapsed.length + 9);
+  });
+
+  it('carries no age column, as it says', () => {
+    expect(ledgerEntry('R8')).toContain('`Age` is DROPPED');
+    const ids = RESULT_SHEET_COLUMNS.map((column) => column.id.toLowerCase());
+    const headings = RESULT_SHEET_COLUMNS.map((column) => column.heading.toLowerCase());
+    expect([...ids, ...headings].filter((name) => name.includes('age'))).toEqual([]);
+  });
+
+  it('reproduces the CSV header as the subsequence of [R2] it claims to be', () => {
+    // Transcribed by hand from the first line of
+    // https://gitlab.com/openpowerlifting/opl-data/-/raw/main/meet-data/ipf/2503/entries.csv
+    // so this is a check against the source and not against the module.
+    const IPF_2503_HEADER = [
+      'Name', 'Country', 'Sex', 'BirthYear', 'Division', 'WeightClassKg', 'BodyweightKg',
+      'Squat1Kg', 'Squat2Kg', 'Squat3Kg', 'Best3SquatKg',
+      'Bench1Kg', 'Bench2Kg', 'Bench3Kg', 'Best3BenchKg',
+      'Deadlift1Kg', 'Deadlift2Kg', 'Deadlift3Kg', 'Best3DeadliftKg',
+      'TotalKg', 'Place', 'Event', 'Equipment', 'BirthDate',
+    ];
+    // The ledger quotes it; the quote and the transcription must agree.
+    expect(ledgerEntry('R2')).toContain('Name,Country,Sex,BirthYear,Division,WeightClassKg,BodyweightKg');
+    expect(ledgerEntry('R2')).toContain('TotalKg,Place,Event,Equipment,BirthDate');
+
+    const dropped = IPF_2503_HEADER.filter((field) => !RESULT_CARD_CSV_HEADER.includes(field));
+    expect(dropped).toEqual(['Country', 'BirthYear', 'Event', 'BirthDate']);
+    expect(RESULT_CARD_CSV_HEADER).toEqual(IPF_2503_HEADER.filter((field) => !dropped.includes(field)));
+    expect(ledgerEntry('R2')).toContain('Country, BirthYear, Event, BirthDate');
+
+    // And the two orderings really are different, which is the whole reason
+    // they are cited to two different sources.
+    expect(IPF_2503_HEADER.indexOf('Place')).toBe(20);
+    expect(IPF_2503_HEADER.indexOf('Equipment')).toBe(22);
+    expect(RESULT_SHEET_COLUMNS.map((column) => column.id).indexOf('place')).toBe(0);
+  });
+
+  it('cites the lifter page for the attempt columns, and admits what differs', () => {
+    // [R9]'s colspan-4 group is attempts 1-3 plus a FOURTH ATTEMPT, not a best.
+    // The grouping is cited; the best column is not, and the ledger says so.
+    const r9 = ledgerEntry('R9');
+    expect(r9).toContain('colspan="4"');
+    expect(r9).toContain('FOURTH ATTEMPT');
+    expect(ATTEMPT_GRID_HEADINGS.attempts).toHaveLength(3);
+    expect(ATTEMPT_GRID_HEADINGS.best).toBe('BEST');
+    // Four cells under one lift name, exactly as the template groups them.
+    expect(ATTEMPT_GRID_HEADINGS.attempts.length + 1).toBe(4);
+    for (const lift of ['squat', 'bench', 'deadlift'] as const) {
+      const columns = RESULT_SHEET_COLUMNS.filter((column) => column.id.toLowerCase().startsWith(lift));
+      const best = RESULT_SHEET_COLUMNS.filter(
+        (column) => column.id.toLowerCase() === `best${lift}`,
+      );
+      expect(columns.length + best.length, lift).toBe(4);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Real published results, reproduced.
 //
 // These two rows are lifted verbatim from
@@ -708,11 +900,17 @@ describe('formatMeetLocation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Column order is data
+// Column order is data. TWO orders live in this module and they come from two
+// different sources: `RESULT_SHEET_COLUMNS` from the RENDERED meet page [R8],
+// `RESULT_CARD_CSV_HEADER` from the entries.csv TRANSCRIPTION [R2]. The ledger
+// block near the top of this file is what keeps each citation on the right one.
 // ---------------------------------------------------------------------------
 
-describe('the published column order', () => {
-  it('runs identity, bodyweight, then each lift in competition order', () => {
+describe('the rendered column order', () => {
+  it('runs place, identity, bodyweight, then each lift in competition order', () => {
+    // Hand-written, and PLACE IS FIRST — that is [R8]'s order, the one a meet
+    // page renders. It is not entries.csv's, which puts Place 21st of 24; the
+    // block above is what holds the ledger to citing the right one of the two.
     expect(RESULT_SHEET_COLUMNS.map((column) => column.id)).toEqual([
       'place',
       'lifter',
@@ -784,8 +982,8 @@ describe('the lifter’s category', () => {
   it('names the sex, the kit, the division and the class, in that order', () => {
     // The word order is the committed reference board's — its Division column
     // reads "Women's Raw Open 52". Note this is NOT `RESULT_SHEET_COLUMNS`'
-    // order, which puts Division before Equipment because [R2]'s CSV header
-    // does; a machine-readable row and a spoken category name differ.
+    // order, which puts Division before Equipment as both [R2] and [R9] do; a
+    // tabulated row and a spoken category name differ.
     expect(lifterCategoryText(cardOf(CHAPON_INPUT).lifter)).toBe("WOMEN'S RAW OPEN 47");
     expect(lifterCategoryText(cardOf(CLEMENT_INPUT).lifter)).toBe("MEN'S RAW OPEN 105");
   });

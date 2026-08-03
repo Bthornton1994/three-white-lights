@@ -12,6 +12,23 @@
  * This is NOT a substitute for `tools/shoot.mjs`. It proves the grid; the
  * screenshot harness proves the Skia path that puts the grid on a screen.
  *
+ * DISCHARGING THAT SECOND HALF. The sentence above names an obligation, so here
+ * is how it is met — `src/card/cardEntry.tsx` serves each sample card at its own
+ * URL, and `tools/shoot.mjs` drives the real Expo web build through Skia:
+ *
+ *   bash tools/dev-web.sh                                   # Expo web on :8081
+ *   for id in strong bombed stress; do
+ *     node tools/shoot.mjs ".gauntlet/shots/card/app-$id.png" \
+ *       --url "http://localhost:8081/card.html?card=$id" --wait 9000 --sel result-card
+ *   done
+ *
+ * `shoot.mjs` prints the page's own text and canvas dimensions alongside the
+ * file it wrote, so a blank render cannot masquerade as a successful capture:
+ * the canvas must come back 768x960 (192x240 at the 2x upscale and the harness's
+ * 2x device pixel ratio) and the text must read "MEET COMPLETE" or "MEET OVER".
+ * `.gauntlet/shots/` is gitignored, so the PNGs are evidence for whoever runs
+ * this and do not travel with the commit — the commands do.
+ *
  * Outputs under .gauntlet/shots/card/:
  *   strong-1x.png / strong-4x.png     a lifter who totalled and placed
  *   bombed-1x.png / bombed-4x.png     a lifter who bombed a lift

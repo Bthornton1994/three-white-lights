@@ -15,6 +15,7 @@ import { createMeet, declareAttempt, resolveAttempt, type JudgePanel, type MeetS
 import {
   BARBELL,
   CARD,
+  CARD_LABELS,
   FOOTER,
   GRID,
   GRID_RIGHT_X,
@@ -31,6 +32,7 @@ import { LIFTER_META_LADDER } from './cardTuning';
 import { visualPlateStack } from '../art/plates';
 import {
   DEFAULT_GRID_HEADINGS,
+  barbellCaption,
   firstThatFits,
   fitScale,
   fitSleeve,
@@ -264,6 +266,12 @@ const DOTS_VALUE_RIGHT = CONTENT.X + SCORE_BLOCK_W - SCORE_BLOCKS.VALUE_PAD_RIGH
 const PLACE_VALUE_RIGHT = PLACE_RECT.x + SCORE_BLOCK_W - SCORE_BLOCKS.VALUE_PAD_RIGHT;
 const SCORE_VALUE_Y = SCORE_BLOCKS.Y + SCORE_BLOCKS.VALUE_DY;
 const BARBELL_RECT: Rect = { x: 0, y: BARBELL.CENTER_Y - 16, w: CARD.W, h: 32 };
+/**
+ * The caption line above the bar. One line of type and nothing else — the score
+ * blocks end above it and the shaft starts below it — so anything found in here
+ * is the caption or the detail.
+ */
+const CAPTION_RECT: Rect = { ...INSIDE_FRAME, y: BARBELL.CAPTION_Y, h: FONT.GLYPH_H };
 
 const PLATE_FILLS = [
   PAL.PLATE_RED_LIGHT,
@@ -315,6 +323,40 @@ const NOTHING_MADE_CARD = cardOf({
   ].reduce<MeetState>((state, entry) => take(state, entry[0] as number, entry[1] as JudgePanel), createMeet()),
 });
 const NOTHING_MADE = renderResultCard(NOTHING_MADE_CARD);
+
+/**
+ * A fourth case: the longest of everything. A four-digit total is the only load
+ * that can push the total block's value down a whole scale, so it is the only
+ * card that can see `TOTAL_BLOCK.LABEL_VALUE_MIN_GAP` at all.
+ */
+const LONG_TOTAL_CARD = cardOf({
+  meet: {
+    federation: 'Continental Powerlifting Alliance',
+    name: 'Autumn Open Championships and Qualifier',
+    dateIso: '2026-11-07',
+    town: 'Newcastle upon Tyne',
+    country: 'England',
+  },
+  lifter: {
+    name: 'Konstantinos Papadopoulos-Wright',
+    sex: 'male',
+    bodyweightKg: 139.4,
+    division: 'Masters 1',
+    equipment: 'Single-ply',
+  },
+  state: [
+    [400, GOOD],
+    [420, GOOD],
+    [440, GOOD],
+    [280, GOOD],
+    [300, GOOD],
+    [312.5, GOOD],
+    [370, GOOD],
+    [390, GOOD],
+    [400, GOOD],
+  ].reduce<MeetState>((state, entry) => take(state, entry[0] as number, entry[1] as JudgePanel), createMeet()),
+  placing: 1,
+});
 
 // ---------------------------------------------------------------------------
 
@@ -748,10 +790,53 @@ describe('the total block', () => {
     // Pinning the trap the assertion above was rewritten around: if these two
     // rects ever overlap, "the block is not blank" stops proving anything again.
     const dash = valueRect(TOTAL_BLOCK.VALUE_RIGHT, TOTAL_BLOCK.VALUE_Y, TOTAL_VALUE_BOTTOM, NO_VALUE_DISPLAY, 3);
-    const unitLeft = TOTAL_BLOCK.LABEL_X + measureText('TOTAL') + 4;
+    const unitLeft = TOTAL_BLOCK.LABEL_X + measureText('TOTAL') + TOTAL_BLOCK.UNIT_GAP;
     const unitRight = unitLeft + measureText('KG');
     expect(unitRight).toBeLessThan(dash.x);
     expect(countIn(BOMBED, dash, SHEET.RULE)).toBeGreaterThan(0);
+  });
+
+  it('sets the KG unit where TOTAL_BLOCK.UNIT_GAP puts it, in pixels', () => {
+    // `UNIT_GAP` used to be a bare `+ 4` in the renderer. The x below is
+    // HAND-WRITTEN — 10 of LABEL_X plus 29 of "TOTAL" plus the 4 px gap —
+    // rather than recomputed from the constant, because a probe anchored on the
+    // value it is checking moves with it and proves nothing. The rect is the
+    // whole label band, so a unit that wandered anywhere else in the block
+    // still fails. STRONG only: its total is set in brass, so the one thing in
+    // this band drawn in SHEET.RULE is the unit.
+    expect(TOTAL_BLOCK.LABEL_X).toBe(10);
+    expect(measureText('TOTAL')).toBe(29);
+    expectTextIn(
+      STRONG,
+      { ...INSIDE_FRAME, y: TOTAL_BLOCK.LABEL_Y, h: FONT.GLYPH_H },
+      'KG',
+      43,
+      TOTAL_BLOCK.LABEL_Y,
+      SHEET.RULE,
+      {},
+      'total unit',
+    );
+  });
+
+  it('keeps a four-digit total at full size, which is what LABEL_VALUE_MIN_GAP buys', () => {
+    // `LABEL_VALUE_MIN_GAP` used to be a bare `+ 6`. It decides how much room
+    // the value has and therefore when it steps DOWN a whole scale — and a
+    // three-digit total is small enough that the step never shows, so the old
+    // suite could not see the value change at all. 1152.5 at scale 3 is 102 px
+    // against the 137 px the gap leaves it; widen the gap and it drops to
+    // scale 2, which this spells out in glyphs.
+    const grid = renderResultCard(LONG_TOTAL_CARD);
+    expect(LONG_TOTAL_CARD.totalKg).toBe(1152.5);
+    expectTextIn(
+      grid,
+      valueRect(TOTAL_BLOCK.VALUE_RIGHT, TOTAL_BLOCK.VALUE_Y, TOTAL_VALUE_BOTTOM, '1152.5', 3),
+      '1152.5',
+      TOTAL_BLOCK.VALUE_RIGHT,
+      TOTAL_BLOCK.VALUE_Y,
+      SHEET.ACCENT_HI,
+      { ...TABULAR_RIGHT, scale: 3 },
+      'four-digit total at scale 3',
+    );
   });
 });
 
@@ -857,6 +942,166 @@ describe('the barbell', () => {
     for (const index of PLATE_FILLS) {
       expect(countIn(STRONG, left, index), `plate ${index}`).toBe(countIn(STRONG, right, index));
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The barbell caption.
+//
+// THIS BLOCK EXISTS BECAUSE THERE WAS NOTHING HERE EITHER. "TOP SINGLE",
+// "NO LIFTS MADE" and "DEADLIFT 312.5 KG" appeared in `cardTuning.ts`, in
+// `renderResultCard.ts` and in a font glyph-coverage test, and in no assertion
+// about the card — deleting `drawText(grid, caption, ...)` outright left the
+// whole suite green. On a shareable card, the words next to the bar are the
+// only thing that says what the bar IS.
+// ---------------------------------------------------------------------------
+
+describe('the barbell caption, in pixels', () => {
+  it('prints the caption and the lift-and-weight detail on one line', () => {
+    // Hand-written, both runs. The caption is set soft to the left margin, the
+    // detail in full ink to the right, and the two inks let one probe check
+    // each without the other's pixels leaking into the mask.
+    expectTextIn(STRONG, CAPTION_RECT, 'TOP SINGLE', CONTENT.X, BARBELL.CAPTION_Y, SHEET.INK_SOFT, {}, 'strong caption');
+    expectTextIn(
+      STRONG,
+      CAPTION_RECT,
+      'DEADLIFT  312.5 KG',
+      CONTENT.RIGHT,
+      BARBELL.CAPTION_Y,
+      SHEET.INK,
+      { align: 'right' },
+      'strong caption detail',
+    );
+  });
+
+  it('names the HEAVIEST lift in the detail, not the last one', () => {
+    // The stress card squats 440 and deadlifts 400, so a detail that read the
+    // last row instead of the best would say "DEADLIFT  400 KG" and look fine.
+    expectTextIn(STRESS, CAPTION_RECT, 'TOP SINGLE', CONTENT.X, BARBELL.CAPTION_Y, SHEET.INK_SOFT, {}, 'stress caption');
+    expectTextIn(
+      STRESS,
+      CAPTION_RECT,
+      'SQUAT  440 KG',
+      CONTENT.RIGHT,
+      BARBELL.CAPTION_Y,
+      SHEET.INK,
+      { align: 'right' },
+      'stress caption detail',
+    );
+  });
+
+  it('says NO LIFTS MADE, and nothing else, on a card with no good lift', () => {
+    expectTextIn(
+      NOTHING_MADE,
+      CAPTION_RECT,
+      'NO LIFTS MADE',
+      CONTENT.X,
+      BARBELL.CAPTION_Y,
+      SHEET.INK_SOFT,
+      {},
+      'nothing-made caption',
+    );
+    // There is no weight to print beside it, so the ink run is absent entirely.
+    expect(countIn(NOTHING_MADE, CAPTION_RECT, SHEET.INK)).toBe(0);
+  });
+
+  it('keeps the caption line clear of the score blocks above and the discs below', () => {
+    // `BARBELL.CAPTION_Y` is a free tuning value WITHIN this band and pinning
+    // the number itself would just make the tuning pass edit a test. What is
+    // not free is the type landing on a plate: the clearance below is one pixel
+    // at today's numbers, so this is where a nudge in the wrong direction
+    // surfaces. Measured in pixels off the rendered card, not off the constants.
+    expect(BARBELL.CAPTION_Y).toBeGreaterThanOrEqual(SCORE_BLOCKS.Y + SCORE_BLOCKS.H);
+    let topmostPlateRow: number = CARD.H;
+    for (let y = 0; y < CARD.H; y += 1) {
+      for (let x = 0; x < CARD.W; x += 1) {
+        if (PLATE_FILLS.includes(STRONG.data[y * CARD.W + x] ?? -1)) {
+          topmostPlateRow = Math.min(topmostPlateRow, y);
+        }
+      }
+    }
+    expect(topmostPlateRow).toBeLessThan(CARD.H);
+    expect(BARBELL.CAPTION_Y + FONT.GLYPH_H, 'the caption sits on a plate').toBeLessThanOrEqual(topmostPlateRow);
+  });
+
+  it('still captions a bombed card, which is the one that most needs words', () => {
+    // The bombed lifter squatted 145 and bombed the bench: there IS a top
+    // single, and the card says so rather than going quiet.
+    expectTextIn(BOMBED, CAPTION_RECT, 'TOP SINGLE', CONTENT.X, BARBELL.CAPTION_Y, SHEET.INK_SOFT, {}, 'bombed caption');
+    expectTextIn(
+      BOMBED,
+      CAPTION_RECT,
+      'SQUAT  145 KG',
+      CONTENT.RIGHT,
+      BARBELL.CAPTION_Y,
+      SHEET.INK,
+      { align: 'right' },
+      'bombed caption detail',
+    );
+  });
+});
+
+describe('barbellCaption — the fits / does-not-fit rule', () => {
+  // The rule the pixel probes above cannot reach: `BARBELL.CAPTION_MIN_GAP`
+  // decides whether the caption is printed at all, and at the card's real width
+  // it never fires. Called directly, at widths the card cannot produce, it can
+  // be pinned — so a tuning pass that changes the gap changes a test.
+
+  it('builds both runs from the card', () => {
+    expect(barbellCaption(STRONG_MEET_CARD, CONTENT.W)).toEqual({
+      caption: 'TOP SINGLE',
+      detail: 'DEADLIFT  312.5 KG',
+      captionFits: true,
+    });
+    expect(barbellCaption(NOTHING_MADE_CARD, CONTENT.W)).toEqual({
+      caption: 'NO LIFTS MADE',
+      detail: '',
+      captionFits: true,
+    });
+  });
+
+  it('separates the lift from the weight with the tuned separator', () => {
+    // A one-space separator reads as a kerning accident at this font's 3px
+    // space advance, so the two spaces are a decision and live in cardTuning.
+    expect(CARD_LABELS.BARBELL_DETAIL_SEPARATOR).toBe('  ');
+    expect(barbellCaption(STRONG_MEET_CARD, CONTENT.W).detail).toBe(
+      `DEADLIFT${CARD_LABELS.BARBELL_DETAIL_SEPARATOR}312.5 ${CARD_LABELS.UNIT}`,
+    );
+  });
+
+  it('drops the caption — and only the caption — exactly at the tuned gap', () => {
+    const { caption, detail } = barbellCaption(STRONG_MEET_CARD, CONTENT.W);
+    // HAND-WRITTEN BOUNDARY, not one derived from the constant under test.
+    // Deriving it — `together + BARBELL.CAPTION_MIN_GAP` — reads correct and is
+    // blind: the boundary moves with the constant and the assertion follows it,
+    // so doubling the gap survived. 54 px of "TOP SINGLE" plus 91 px of
+    // "DEADLIFT  312.5 KG" plus the 8 px gap is 153.
+    expect(measureText(caption)).toBe(54);
+    expect(measureText(detail)).toBe(91);
+    expect(barbellCaption(STRONG_MEET_CARD, 153).captionFits).toBe(true);
+    expect(barbellCaption(STRONG_MEET_CARD, 152).captionFits).toBe(false);
+    // The detail never goes: it carries the number, the caption only labels it.
+    expect(barbellCaption(STRONG_MEET_CARD, 0).detail).toBe(detail);
+    expect(barbellCaption(STRONG_MEET_CARD, 0).caption).toBe(caption);
+  });
+
+  it('never drops a caption that has no detail beside it to collide with', () => {
+    // "NO LIFTS MADE" is the whole message on a card with nothing made; a bare
+    // bar with no words at all would read as a rendering failure.
+    for (const width of [CONTENT.W, 40, 1, 0]) {
+      expect(barbellCaption(NOTHING_MADE_CARD, width).captionFits, `at ${width}px`).toBe(true);
+    }
+  });
+
+  it('is not reachable at the card’s own width, on any card the engine can build', () => {
+    // Pinning `BARBELL.CAPTION_MIN_GAP`'s docstring claim. The widest detail the
+    // card can produce is a four-digit deadlift; if a tuning pass narrows the
+    // card or lengthens the caption, this is where it surfaces.
+    for (const card of [STRONG_MEET_CARD, BOMBED_MEET_CARD, STRESS_MEET_CARD, NOTHING_MADE_CARD]) {
+      expect(barbellCaption(card, CONTENT.W).captionFits, card.lifter.name).toBe(true);
+    }
+    const widest = measureText('TOP SINGLE') + measureText('DEADLIFT  9999.5 KG') + BARBELL.CAPTION_MIN_GAP;
+    expect(widest).toBeLessThanOrEqual(CONTENT.W);
   });
 });
 
@@ -1012,34 +1257,7 @@ describe('fitSleeve', () => {
 
 describe('a long name and a long total still fit the card', () => {
   it('does not overflow the grid or the total block', () => {
-    const long = cardOf({
-      meet: {
-        federation: 'Continental Powerlifting Alliance',
-        name: 'Autumn Open Championships and Qualifier',
-        dateIso: '2026-11-07',
-        town: 'Newcastle upon Tyne',
-        country: 'England',
-      },
-      lifter: {
-        name: 'Konstantinos Papadopoulos-Wright',
-        sex: 'male',
-        bodyweightKg: 139.4,
-        division: 'Masters 1',
-        equipment: 'Single-ply',
-      },
-      state: [
-        [400, GOOD],
-        [420, GOOD],
-        [440, GOOD],
-        [280, GOOD],
-        [300, GOOD],
-        [312.5, GOOD],
-        [370, GOOD],
-        [390, GOOD],
-        [400, GOOD],
-      ].reduce<MeetState>((state, entry) => take(state, entry[0] as number, entry[1] as JudgePanel), createMeet()),
-      placing: 1,
-    });
+    const long = LONG_TOTAL_CARD;
     expect(long.totalKg).toBe(1152.5);
     expect(long.lifter.weightClassText).toBe('120+');
 

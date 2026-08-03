@@ -26,7 +26,8 @@
  * (`scoresheet-ref-1-live-attempt-board.png`) is a LIVE IN-MEET ATTEMPT BOARD,
  * not a published results sheet, and must not be stretched into one. So the
  * results-sheet conventions below were retrieved from real sources in this
- * sandbox. Every fetch listed here returned HTTP 200 on 2026-08-01.
+ * sandbox. [R1]-[R7] returned HTTP 200 on 2026-08-01; [R8] and [R9], which
+ * corrected the citation on `RESULT_SHEET_COLUMNS`, on 2026-08-03.
  *
  * CITED — the shape of a published results sheet:
  *
@@ -50,9 +51,14 @@
  *          Bench1Kg,Bench2Kg,Bench3Kg,Best3BenchKg,
  *          Deadlift1Kg,Deadlift2Kg,Deadlift3Kg,Best3DeadliftKg,
  *          TotalKg,Place,Event,Equipment,BirthDate
- *        That is the COLUMN ORDER in `RESULT_SHEET_COLUMNS`: identity, then
- *        bodyweight, then three attempts and a best for each lift in
- *        squat -> bench -> deadlift order, then total, then place.
+ *        THAT IS THE ORDER OF `RESULT_CARD_CSV_HEADER`, AND OF NOTHING ELSE IN
+ *        THIS FILE. entries.csv is a TRANSCRIPTION format, not a rendering:
+ *        Place is the 21st of its 24 fields and Equipment the 23rd, which is
+ *        not where either of them lands on a page a lifter reads. For the
+ *        RENDERED order — `RESULT_SHEET_COLUMNS` — see [R8].
+ *        `RESULT_CARD_CSV_HEADER` is this header with the four fields the card
+ *        does not carry struck out (Country, BirthYear, Event, BirthDate) and
+ *        the remaining twenty left in this order, under these names.
  *        Sample rows (verbatim):
  *          Tiffany Chapon,France,F,2001,Open,47,46.7,155,162.5,-166,162.5,...
  *          Matheus dos Santos,Brazil,M,2001,Open,83,82.12,-262.5,-262.5,-262.5,,
@@ -103,6 +109,64 @@
  *   [R7] Weight classes. The class lists in `WEIGHT_CLASSES_KG` are the
  *        distinct `WeightClassKg` values actually present in [R2]: women
  *        47/52/57/63/69/76/84/84+, men 59/66/74/83/93/105/120/120+.
+ *
+ *   [R8] THE SAME RESULTS, RENDERED — and the source for the order of
+ *        `RESULT_SHEET_COLUMNS`. OpenPowerlifting's own meet-page template,
+ *        https://gitlab.com/openpowerlifting/opl-data/-/raw/main/server/templates/openpowerlifting/desktop/meet.html.tera
+ *        Its `<thead>`, in order, with each `strings.columns.*` resolved
+ *        through [R6]'s language pack:
+ *          MEET PAGE COLUMNS: Place | Lifter | Sex | Age | Equip | Class |
+ *            Weight | Squat | Bench | Deadlift | Total | Points
+ *        Place is the FIRST cell, and it prints "DQ" literally — the template
+ *        branches on `this.place == "DQ"` before it will print a rank. Equip
+ *        sits mid-row, between the lifter's sex and their class, nowhere near
+ *        the tail [R2] transcribes it at. The division is not a column at all
+ *        on this page: it is a section heading over a group of rows,
+ *        `<td colspan="12" class="divheader">{{table.title}}</td>`.
+ *
+ *        WHERE `RESULT_SHEET_COLUMNS` DEPARTS FROM THAT LINE, in full — these
+ *        four and nothing else:
+ *          - `Division` is a COLUMN for us. One card is one lifter's row, so
+ *            there is no group of rows for a section heading to sit over. It
+ *            goes ahead of the equipment, which is where [R2] and [R9] both
+ *            put it.
+ *          - `Age` is DROPPED. `ResultCardLifterInput` carries no birth year to
+ *            compute one from, and a column we would have to invent a datum for
+ *            is worse than no column. [R8] itself only prints it
+ *            `{% if has_age_data %}`.
+ *          - Each lift is FOUR columns — three attempts and a best — where a
+ *            meet page prints the best alone. That expansion is cited to [R9].
+ *          - `Points` becomes `Dots`. The template's heading is whichever
+ *            formula the federation ranks on (`points_column_title`); GDD §6.4
+ *            picks DOTS, and [R6] names that column `Dots`.
+ *        AND SO, IN `RESULT_SHEET_COLUMNS`: place is at index 0, division at
+ *        index 3, equipment at index 4, and there is no age column at all.
+ *        This block used to say the opposite — that the order was [R2]'s,
+ *        "then total, then place" — which was false of the constant printed
+ *        200 lines below it, and was the one claim in this file with no
+ *        mechanised check behind it. `resultCard.test.ts` now collapses the
+ *        constant back into a meet-page row and diffs it against the line
+ *        above, and reads these indices out of this comment to check them.
+ *
+ *   [R9] PER-LIFT ATTEMPT COLUMNS, RENDERED. OpenPowerlifting's lifter page,
+ *        https://gitlab.com/openpowerlifting/opl-data/-/raw/main/server/templates/openpowerlifting/desktop/lifter.html.tera
+ *          {% if show_attempts %}
+ *            <th colspan="4">{{strings.columns.squat}}</th>
+ *            <th colspan="4">{{strings.columns.bench}}</th>
+ *            <th colspan="4">{{strings.columns.deadlift}}</th>
+ *        Four cells grouped under the lift's own name, three lifts in
+ *        squat -> bench -> deadlift order, sitting between the bodyweight and
+ *        the total. That is the structure `ATTEMPT_GRID_HEADINGS` transposes
+ *        into `LIFT | 1 | 2 | 3 | BEST` rows.
+ *        ONE DIFFERENCE, and it is not cosmetic: the fourth cell there is the
+ *        FOURTH ATTEMPT (`{{this.squat4}}` — a record attempt, outside the
+ *        total), not the best. Ours is the best. Nothing in this codebase
+ *        models a fourth attempt (GDD §6.2: three per lift), and a card that
+ *        dropped the best column would be missing the number the total is made
+ *        of. So the GROUPING is cited; the BEST column is [R2]'s
+ *        `Best3SquatKg` given a column of its own; the headings `1`/`2`/`3`
+ *        and `BEST` are ours ([R6]/OpenLifter call them "S1".."D3").
+ *        This page also sets Division ahead of Equipment, as [R2] does.
  *
  * OURS, NOT CITED — say so rather than dressing it up:
  *
@@ -298,9 +362,12 @@ export const WEIGHT_CLASSES_KG: Readonly<Record<DotsSex, readonly number[]>> = {
 // ---------------------------------------------------------------------------
 // Column order — DATA, not layout.
 //
-// The order is [R2]'s, which is the order every federation's published results
-// are transcribed into. A renderer walks this list; it does not hard-code a
-// sequence of its own.
+// The order is [R8]'s: the order a results table is RENDERED in, headings and
+// all, on the page a lifter actually reads. It is NOT [R2]'s — entries.csv is a
+// transcription format that puts Place 21st and Equipment 23rd, and the one
+// thing in this file that follows it is `RESULT_CARD_CSV_HEADER`. Two orderings
+// live in this module and they are cited to two different sources on purpose.
+// A renderer walks this list; it does not hard-code a sequence of its own.
 // ---------------------------------------------------------------------------
 
 export type ResultSheetColumnId =
@@ -335,8 +402,17 @@ export interface ResultSheetColumn {
 }
 
 /**
- * The full row of a published results sheet, in [R2]'s order. `Dots` is
- * appended because GDD §6.4 scores by DOTS; [R6] names that column "Dots".
+ * The full row of a RENDERED results table, in [R8]'s order:
+ * `Place | Lifter | Sex | Equip | Class | Weight | ...lifts... | Total`,
+ * with each lift expanded to three attempts and a best per [R9], `Division`
+ * added at index 3 (a one-lifter card has no section headings to carry it),
+ * `Age` dropped (no birth year reaches this module), and `Points` printed as
+ * `Dots` because GDD §6.4 scores by DOTS and [R6] names that column "Dots".
+ *
+ * Those four are the complete list of departures and [R8] states them; if this
+ * array and that comment ever stop agreeing, `resultCard.test.ts` fails rather
+ * than a reader having to notice. `RESULT_CARD_CSV_HEADER` is the OTHER
+ * ordering — [R2]'s transcription order — and is cited separately.
  */
 export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
   { id: 'place', heading: 'Place', numeric: false },
@@ -364,9 +440,11 @@ export const RESULT_SHEET_COLUMNS: readonly ResultSheetColumn[] = [
 
 /**
  * The attempt grid's own headings, for a card that stacks the three lifts as
- * rows instead of running [R2]'s one long line. Same information, transposed —
- * the per-attempt columns are [R6]/OpenLifter's "1/2/3" and the best column is
- * the lift's name.
+ * rows instead of running [R8]'s one long line. Same information, transposed:
+ * [R9] groups four cells under each lift's name and we turn that group into a
+ * row. The headings themselves are ours — [R6]/OpenLifter call the per-attempt
+ * columns "S1".."D3" — and so is `BEST`, since [R9]'s fourth cell is a fourth
+ * attempt rather than a best. See [R9] for why we keep a best there anyway.
  */
 export const ATTEMPT_GRID_HEADINGS = {
   lift: 'LIFT',
@@ -549,9 +627,9 @@ export const FULL_LIFTER_CATEGORY: LifterCategoryParts = { equipment: true, divi
  *
  * Word order is the committed reference board's ("Women's Raw Open 52"): sex,
  * equipment, division, class. Note this is NOT `RESULT_SHEET_COLUMNS`' order,
- * which puts Division before Equipment because that is the order [R2]'s CSV
- * header uses. A machine-readable row and a spoken category name are two
- * different renderings and neither is wrong.
+ * which puts Division before Equipment as both [R2] and [R9] do. A tabulated
+ * row and a spoken category name are two different renderings and neither is
+ * wrong.
  *
  * `include` may drop the equipment or the division. It cannot drop the sex or
  * the class, because there is no argument for doing so — see the header comment
@@ -848,9 +926,10 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
 // ---------------------------------------------------------------------------
 
 /**
- * The card's cells in [R2]'s column order, as `(column, text)` pairs. This is
- * the one-line form a results sheet actually prints, and the check that our
- * transposed grid holds the same information as the published format.
+ * The card's cells in `RESULT_SHEET_COLUMNS`' order — [R8]'s, the rendered one
+ * — as `(column, text)` pairs. This is the one-line form a results table
+ * actually prints, and the check that our transposed grid holds the same
+ * information as the published format.
  */
 export function resultSheetLine(card: ResultCard): readonly { readonly column: ResultSheetColumn; readonly text: string }[] {
   const byLift: Readonly<Record<LiftKind, LiftRow>> = {
@@ -935,7 +1014,13 @@ export function resultCardEntriesCsvRow(card: ResultCard): readonly string[] {
   ];
 }
 
-/** Header for `resultCardEntriesCsvRow`, in [R2]'s names and order. */
+/**
+ * Header for `resultCardEntriesCsvRow`, in [R2]'s names and order — the file
+ * format, not the page. It is [R2]'s 24-field header with the four fields this
+ * card does not carry removed (Country, BirthYear, Event, BirthDate); the
+ * remaining twenty keep [R2]'s spelling and [R2]'s relative order, which is why
+ * Place sits near the end here and first in `RESULT_SHEET_COLUMNS`.
+ */
 export const RESULT_CARD_CSV_HEADER: readonly string[] = [
   'Name',
   'Sex',
