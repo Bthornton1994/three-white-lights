@@ -2,7 +2,10 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-01 (§4.2/§4.4 — the Recovery Day prompt must disclose
+**Last updated:** 2026-08-03 (§2/§2.3/§3.2 — Total is set by meet results only
+and does not move between meets; the stat Sim mode grows daily is e1RM. §6.4 was
+correct as written and is unchanged; §2's currency table was the mislabel.
+Previously 2026-08-01: §4.2/§4.4 — the Recovery Day prompt must disclose
 how long the save lasts, so the wasted-spend residual is an option with a stated
 expiry rather than one sold blind. Earlier the same day: §4.1/§4.2/§4.3/§4.4 —
 free grace for short gaps; the grace is charged per absence, not per gap, so the
@@ -48,16 +51,28 @@ with a competitive meet as the payoff.
 
 ## 2. The Four Modes
 
-All four feed one persistent lifter and two shared stats.
+All four feed one persistent lifter and the shared numbers below.
 
 ### Shared Progression Currencies
 
 | Stat | What it is | How it grows |
 |---|---|---|
-| **Total** | Raw strength (kg/lbs). The vanity/status number. | Sim mode primarily, Arcade secondarily |
+| **e1RM** | Estimated 1RM, per lift (kg/lbs). The number training moves. | Sim mode training, session by session |
+| **Total** | Competition total (kg/lbs). The vanity/status number. | **Meet results only** — the sum of best successful attempt per lift (§6.4). It does not move between meets. |
 | **Training IQ** | How *well* you train. Skill/knowledge stat. | Good Sim decisions, Gym Empire passive trickle |
 
-The split creates the core tension: strong-but-dumb (high Total, low IQ →
+**Total is not a training stat, and this row used to say it was.** An earlier
+version of this table read "Sim mode primarily, Arcade secondarily" for Total,
+which contradicted §6.4 — a number that is `null` until the first meet and is by
+construction an official competition result cannot be moved by a training
+session. §6.4 is correct as written and is unchanged; the mislabel was here. The
+stat that grows daily is **e1RM**, which is what Sim mode was always actually
+moving. DOTS stays computed from the competition Total and from nothing else.
+
+That is also the point rather than an inconvenience: Total only updating on meet
+day is what makes meet day carry weight.
+
+The split creates the core tension: strong-but-dumb (high e1RM, low IQ →
 plateaus, more injury setbacks) vs. smart-but-weaker (slower growth, higher
 long-term ceiling).
 
@@ -74,9 +89,15 @@ long-arc narrative lives.
 ### 2.3 Arcade — The Hook
 
 Timing-based lift mini-games. Fast, dopamine-driven, accessible to non-lifters.
-Feeds Total and *technique points* (spent on bar-path efficiency, which reduces
-injury risk in Sim). The Arcade input mechanic is the same mechanic used in meet
-day — building it well pays off twice.
+Feeds *technique points* (spent on bar-path efficiency, which reduces injury risk
+in Sim). The Arcade input mechanic is the same mechanic used in meet day —
+building it well pays off twice.
+
+**Arcade does not move Total either.** This line also read "Feeds Total" and is
+corrected for the same reason as the table above: Total is set at meets (§6.4).
+What Arcade contributes *besides* technique points is deliberately left open here
+— the ruling that corrected the table settled Sim mode, not Arcade — so treat it
+as an open question rather than reading e1RM into this row by analogy.
 
 ### 2.4 Gym Empire — The Idle Layer
 
@@ -109,6 +130,18 @@ Open app
 ```
 
 One lift per day (squat day, bench day, deadlift day, accessory day on rotation).
+
+**The number that moves at the close-out is e1RM — never Total.** This is a
+constraint on whoever builds this loop, not a note. The session's payoff beat
+shows the lifter's e1RM for the lift they just trained, or a session e1RM PR
+where they set one. It must not show a Total that ticked up, an "estimated
+Total", or a projected competition total, because Total is the sum of best
+successful *competition* attempts (§6.4) and there were no attempts today.
+
+Total updates on meet day and on no other day. Resist the pull to surface it
+daily because it is the bigger, more satisfying number: the whole reason meet day
+lands is that it is the only thing that moves that number. A daily Total tick
+spends the payoff §6 is built to deliver.
 
 ### 3.3 RPE-Driven Loading
 

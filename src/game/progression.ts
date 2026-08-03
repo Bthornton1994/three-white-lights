@@ -876,9 +876,22 @@ export const PROPOSAL_KINDS_ARE_EXACTLY_THE_ALLOWLIST: UnionIsExactly<
  * below; written as free literals it would be bound to nothing, and a renamed
  * fact would leave a row here naming a field that no longer exists while the
  * check went on passing. See §5(b) of the header.
+ *
+ * `'totalKg'` APPEARS ON EXACTLY ONE ROW, AND IT IS NOT THE TRAINING ONE. A
+ * training session moves `bestE1rmKg`; a meet moves `totalKg`. The row below
+ * used to claim both, which contradicted the two places that define what a Total
+ * is — `ConfirmedFacts.totalKg` ("best competition total on record, or `null`
+ * before the first meet") and `dots.ts`'s `OfficialTotalKg` — and GDD §6.4,
+ * "Total = sum of best successful attempt per lift". A number that does not
+ * exist until the first meet and is by construction a competition result cannot
+ * be moved by a Tuesday. GDD §2 has been corrected to match §6.4 rather than the
+ * other way round, and §3.2 now records the consequence for the daily loop: the
+ * number that moves after a session is e1RM, never Total.
+ * `ONLY_A_MEET_RESULT_MOVES_TOTAL` below is what makes putting it back fail
+ * `tsc` instead of just reading oddly.
  */
 export interface ProposalReach {
-  readonly 'record-training-session': 'bestE1rmKg' | 'streak' | 'wallet' | 'totalKg';
+  readonly 'record-training-session': 'bestE1rmKg' | 'streak' | 'wallet';
   readonly 'accept-recovery-day': 'streak';
   readonly 'record-meet-result': 'totalKg' | 'meets' | 'bestE1rmKg' | 'wallet';
   readonly 'redeem-entitlement': 'wallet' | 'streak';
@@ -910,6 +923,45 @@ export const PROPOSAL_REACH_COVERS_EVERY_KIND: KeysAreExactly<
 export const PROPOSAL_REACH_NAMES_REAL_FACTS: IsSubsetOf<
   ProposalReach[ProgressionProposalKind],
   ProgressionFactKey
+> = true;
+
+/**
+ * The proposal kinds whose reach includes a given fact — the reach map read
+ * column-wise instead of row-wise, so a question like "what can move Total?" is
+ * asked of the map rather than answered by reading it.
+ */
+type KindsReaching<F extends ProgressionFactKey> = {
+  [K in ProgressionProposalKind]: F extends ProposalReach[K] ? K : never;
+}[ProgressionProposalKind];
+
+/**
+ * COMPILE-TIME ASSERTION (GDD §6.4, §2): A TOTAL IS SET AT A MEET AND NOWHERE
+ * ELSE.
+ *
+ * `UnionIsExactly` rather than a subset check, deliberately — this has to fail
+ * in BOTH directions, and a subset check only fails in one:
+ *
+ *   - WIDER. Add `'totalKg'` back to `'record-training-session'` (or to any
+ *     future kind) and the left side gains a member. That is the regression this
+ *     exists to stop: a training session cannot move a competition total.
+ *   - NARROWER. Drop `'totalKg'` from `'record-meet-result'` and the left side
+ *     empties. That is the failure a `not.toContain`-shaped guard passes for
+ *     free, because a reach map that moves NOTHING satisfies every prohibition
+ *     perfectly. A meet must still move the Total or the design has no way to
+ *     set one at all.
+ *
+ * The right-hand side is a free literal, which is on purpose and is safe here:
+ * renaming the kind fails this line loudly instead of leaving it stale, because
+ * the left side is derived from `ProgressionProposalKind` and would no longer
+ * match. Contrast the reach VALUES, which are bound to `ProgressionFactKey` by
+ * `PROPOSAL_REACH_NAMES_REAL_FACTS` for exactly that reason.
+ *
+ * `progression.test.ts` re-checks the same claim at runtime against the reach
+ * table, because this line is a type and `npm test` cannot see types.
+ */
+export const ONLY_A_MEET_RESULT_MOVES_TOTAL: UnionIsExactly<
+  KindsReaching<'totalKg'>,
+  'record-meet-result'
 > = true;
 
 // ---------------------------------------------------------------------------
@@ -1090,9 +1142,15 @@ export const NOTHING_MOVES_TRAINING_PACE: AreDisjoint<
 /**
  * Which facts a proposal of this kind may move. Typed against `ProposalReach`,
  * so this table cannot name a fact the map does not permit.
+ *
+ * IT CAN STILL NAME FEWER. The element type is a union, not a tuple, so a row
+ * that drops a fact the map allows compiles cleanly — which is why the runtime
+ * half of `ONLY_A_MEET_RESULT_MOVES_TOTAL` in `progression.test.ts` checks that
+ * `'record-meet-result'` still moves `'totalKg'` here, and not only that
+ * `'record-training-session'` does not.
  */
 const PROPOSAL_REACH_TABLE: { readonly [K in ProgressionProposalKind]: readonly ProposalReach[K][] } = {
-  'record-training-session': ['bestE1rmKg', 'streak', 'wallet', 'totalKg'],
+  'record-training-session': ['bestE1rmKg', 'streak', 'wallet'],
   'accept-recovery-day': ['streak'],
   'record-meet-result': ['totalKg', 'meets', 'bestE1rmKg', 'wallet'],
   'redeem-entitlement': ['wallet', 'streak'],
