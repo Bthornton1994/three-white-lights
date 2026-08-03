@@ -18,6 +18,8 @@ import {
   clampBodyweightToDotsDomain,
   compareDotsCoefficients,
   dotsCoefficient,
+  dotsDeltaBetween,
+  dotsDeltaBetweenScores,
   dotsDenominator,
   dotsDomainStatus,
   dotsScore,
@@ -34,6 +36,7 @@ import {
   roundDotsDelta,
   roundDotsScore,
   type DotsCoefficient,
+  type DotsDelta,
   type DotsOutcome,
   type DotsSex,
   type OfficialTotalKg,
@@ -106,6 +109,15 @@ function finishedMeetTotal(): number | null {
 /** The same, already minted: what `officialTotalFromMeet` hands back. */
 function noOfficialTotal(): OfficialTotalKg | null {
   return null;
+}
+
+/**
+ * A delta, minted the way a recap mints one from two stored scores. Exists so
+ * the tests below read as values rather than as ceremony; the mint's own guards
+ * are exercised directly in the exploit block.
+ */
+function delta(previousScore: number, currentScore: number): DotsDelta {
+  return dotsDeltaBetweenScores({ previousScore, currentScore });
 }
 
 /** Assert an outcome is the scored branch and narrow to it. Throws if it is not. */
@@ -564,10 +576,55 @@ describe('the four exploit lines', () => {
   it('EXPLOIT 4: a negative DOTS delta renders instead of throwing', () => {
     // GDD §6.5 recap PR call-outs are deltas, and a delta may be negative.
     // `roundDotsScore(-2.31)` still refuses — a SCORE is not a delta — but the
-    // refusal now names the pair of helpers that do the job.
-    expect(roundDotsDelta(-2.31)).toBe(-2.31);
-    expect(formatDotsDelta(-2.31)).toBe('−2.31');
+    // refusal now names the helpers that do the job.
+    expect(roundDotsDelta(delta(400, 397.69)) as number).toBe(-2.31);
+    expect(formatDotsDelta(delta(400, 397.69))).toBe('−2.31');
     expect(() => roundDotsScore(-2.31)).toThrow(/delta/);
+  });
+
+  it('EXPLOIT 5: a lifter who did not total cannot be rendered as a negative delta', () => {
+    // The delta path was the last place the collapse still compiled. The guard
+    // covered ONE operand: `hasDotsScore(o) ? o.score : 0` is honest on the end
+    // that scored and quietly zero on the end that did not, and the subtraction
+    // used to hand `formatDotsDelta` a plain number.
+    const before = evaluateDots('male', 93, total(700));
+    const now = evaluateDots('male', 93, noOfficialTotal()); // bombed out
+    expect(now.kind).toBe('no-total');
+
+    const b: number = hasDotsScore(before) ? before.score : 0;
+    const n: number = hasDotsScore(now) ? now.score : 0;
+    expect(b).toBeCloseTo(445.3758244217, SCORE_PRECISION);
+    expect(n).toBe(0);
+
+    // @ts-expect-error - a bare subtraction is a `number`, not a minted DotsDelta.
+    const laundered: string = formatDotsDelta(n - b);
+    // A brand is erased at runtime, so forcing it past the compiler still
+    // prints — and what it prints is this, which is why the compile error IS
+    // the fix. Before the brand, this line compiled clean.
+    expect(laundered).toBe('−445.38');
+
+    // The obvious rewrite — route the same two numbers through the mint —
+    // throws instead of printing, because 0 is not a DOTS score.
+    expect(() => dotsDeltaBetweenScores({ previousScore: b, currentScore: n })).toThrow(RangeError);
+    expect(() => dotsDeltaBetweenScores({ previousScore: b, currentScore: n })).toThrow(
+      /did not total/,
+    );
+  });
+
+  it('EXPLOIT 5b: an un-narrowed outcome is not an end of a delta', () => {
+    const previous = evaluateDots('male', 93, total(700));
+    const current = evaluateDots('male', 93, noOfficialTotal());
+
+    // @ts-expect-error - a DotsOutcome is not a ScoredDots; NoTotalDots has no score.
+    expect(() => dotsDeltaBetween({ previous, current })).toThrow(RangeError);
+
+    // The honest rewrite: no delta at all for a lifter who was never on the
+    // board — not a zero one, and not a −445.38 one.
+    const recapCallOut =
+      hasDotsScore(previous) && hasDotsScore(current)
+        ? formatDotsDelta(dotsDeltaBetween({ previous, current }))
+        : null;
+    expect(recapCallOut).toBeNull();
   });
 
   it('EXPLOIT 4b: `formatDotsScore(0.004)` no longer launders a zero', () => {
@@ -640,6 +697,25 @@ describe('COMPILE-TIME assertions on the module boundary', () => {
   it('applyDotsCoefficient refuses a raw number as the total', () => {
     // @ts-expect-error - the one multiplication demands a minted total.
     expect(() => applyDotsCoefficient(dotsCoefficient('male', 93), 700)).not.toThrow();
+  });
+
+  it('a bare number is not a delta, at either delta helper', () => {
+    // These two lines also pin the GDD §6.5 call-outs on the exact literals the
+    // spec names: a brand is erased at runtime, so the values still format the
+    // documented way — they just cannot be written without minting first.
+    // @ts-expect-error - a delta must be minted from two ends that scored.
+    expect(formatDotsDelta(12.4)).toBe('+12.40');
+    // @ts-expect-error - same at the rounder.
+    expect(roundDotsDelta(-0.001)).toBe(-0);
+  });
+
+  it('a delta cannot be minted from one end that scored and one that did not', () => {
+    const scored = expectScored(evaluateDots('male', 93, total(700)));
+    const bombed = evaluateDots('male', 93, noOfficialTotal());
+    // @ts-expect-error - NoTotalDots is not a ScoredDots, in the `current` slot.
+    expect(() => dotsDeltaBetween({ previous: scored, current: bombed })).toThrow(RangeError);
+    // @ts-expect-error - nor in the `previous` slot.
+    expect(() => dotsDeltaBetween({ previous: bombed, current: scored })).toThrow(RangeError);
   });
 });
 
@@ -802,8 +878,10 @@ describe('input handling', () => {
     expect(() => officialTotalKg(Number.POSITIVE_INFINITY)).toThrow(RangeError);
     expect(() => dotsCoefficient('female', Number.NaN)).toThrow(RangeError);
     expect(() => roundDotsScore(Number.NaN)).toThrow(RangeError);
-    expect(() => roundDotsDelta(Number.NaN)).toThrow(RangeError);
-    expect(() => formatDotsDelta(Number.NEGATIVE_INFINITY)).toThrow(RangeError);
+    // A non-finite delta is only reachable through a cast now, which is exactly
+    // what the docstring says. The guard is kept, and pinned, for that case.
+    expect(() => roundDotsDelta(Number.NaN as DotsDelta)).toThrow(RangeError);
+    expect(() => formatDotsDelta(Number.NEGATIVE_INFINITY as DotsDelta)).toThrow(RangeError);
     expect(() => formatDotsScore(Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
 
@@ -872,31 +950,77 @@ describe('DOTS deltas (GDD §6.5 recap call-outs)', () => {
     expect(DOTS_DELTA_POSITIVE_PREFIX).toBe('+');
     expect(DOTS_DELTA_NEGATIVE_PREFIX).toBe('−');
     expect(DOTS_DELTA_ZERO_PREFIX).toBe('');
-    expect(formatDotsDelta(12.4)).toBe('+12.40');
-    expect(formatDotsDelta(12.437)).toBe('+12.44');
-    expect(formatDotsDelta(-2.31)).toBe('−2.31');
-    expect(formatDotsDelta(-2.3149)).toBe('−2.31');
+    expect(formatDotsDelta(delta(400, 412.4))).toBe('+12.40');
+    expect(formatDotsDelta(delta(400, 412.437))).toBe('+12.44');
+    expect(formatDotsDelta(delta(400, 397.69))).toBe('−2.31');
+    expect(formatDotsDelta(delta(400, 397.6851))).toBe('−2.31');
   });
 
   it('prints a delta that rounds to zero unsigned, never as "−0.00"', () => {
-    expect(formatDotsDelta(0)).toBe('0.00');
-    expect(formatDotsDelta(-0)).toBe('0.00');
-    expect(formatDotsDelta(-0.001)).toBe('0.00');
-    expect(formatDotsDelta(0.001)).toBe('0.00');
-    expect(formatDotsDelta(-0.004)).not.toContain(DOTS_DELTA_NEGATIVE_PREFIX);
+    expect(formatDotsDelta(delta(400, 400))).toBe('0.00');
+
+    // The GDD call-out names the literal -0.001, and a minted delta can be
+    // exactly that: 0.006 - 0.007 is exactly -0.001 in IEEE 754, where
+    // 399.999 - 400 is only approximately it. Both ends are legal operands —
+    // tiny, but they round to "0.01", not "0.00", which is the module's own
+    // definition of a printable score.
+    const exactlyMinusOneThousandth = delta(0.007, 0.006);
+    expect(exactlyMinusOneThousandth as number).toBe(-0.001);
+    expect(formatDotsDelta(exactlyMinusOneThousandth)).toBe('0.00');
+    expect(formatDotsDelta(delta(0.006, 0.007))).toBe('0.00');
+
+    expect(formatDotsDelta(delta(400, 399.999))).toBe('0.00');
+    expect(formatDotsDelta(delta(400, 399.996))).not.toContain(DOTS_DELTA_NEGATIVE_PREFIX);
+  });
+
+  it('never prints "−0.00" anywhere in the neighbourhood of zero', () => {
+    // Property-style sweep, mirroring the one over formatDotsScore: every
+    // minted delta within ±0.05 of zero prints with the right sign, and the
+    // ones that round away print unsigned rather than as a negative zero.
+    for (let i = -50; i <= 50; i += 1) {
+      const printed = formatDotsDelta(delta(400, 400 + i / 1000));
+      expect(printed).not.toBe('−0.00');
+      expect(printed).not.toBe('-0.00');
+      if (Math.abs(i) < 5) {
+        expect(printed).toBe('0.00');
+      }
+    }
   });
 
   it('rounds a delta without judging its sign', () => {
-    expect(roundDotsDelta(12.4)).toBe(12.4);
-    expect(roundDotsDelta(-2.314)).toBe(-2.31);
-    expect(roundDotsDelta(0)).toBe(0);
+    expect(roundDotsDelta(delta(400, 412.4)) as number).toBe(12.4);
+    expect(roundDotsDelta(delta(400, 397.686)) as number).toBe(-2.31);
+    expect(roundDotsDelta(delta(400, 400)) as number).toBe(0);
   });
 
-  it('is what a recap actually computes: the difference between two real scores', () => {
-    const before = dotsScore('male', 93, total(700));
-    const after = dotsScore('male', 93, total(720));
-    expect(formatDotsDelta(after - before)).toBe('+12.73');
-    expect(formatDotsDelta(before - after)).toBe('−12.73');
+  it('is what a recap actually computes: two meets, both scored', () => {
+    const previous = expectScored(evaluateDots('male', 93, total(700)));
+    const current = expectScored(evaluateDots('male', 93, total(720)));
+    expect(formatDotsDelta(dotsDeltaBetween({ previous, current }))).toBe('+12.73');
+    expect(formatDotsDelta(dotsDeltaBetween({ previous: current, current: previous }))).toBe(
+      '−12.73',
+    );
+  });
+
+  it('agrees with the raw-score mint, so neither route is the odd one out', () => {
+    const previous = expectScored(evaluateDots('male', 93, total(700)));
+    const current = expectScored(evaluateDots('male', 93, total(720)));
+    expect(dotsDeltaBetween({ previous, current }) as number).toBe(
+      delta(previous.score, current.score) as number,
+    );
+  });
+
+  it('refuses an end that is not a real score, in either position', () => {
+    expect(() => delta(445.38, 0)).toThrow(RangeError);
+    expect(() => delta(0, 445.38)).toThrow(RangeError);
+    expect(() => delta(445.38, -12)).toThrow(RangeError);
+    expect(() => delta(Number.NaN, 445.38)).toThrow(RangeError);
+    expect(() => delta(445.38, Number.POSITIVE_INFINITY)).toThrow(RangeError);
+    // Same rule as a printable score: 0.004 rounds to "0.00", so it is not one.
+    expect(() => delta(445.38, 0.004)).toThrow(RangeError);
+    // ...and the message names the position, so the caller knows which end.
+    expect(() => delta(445.38, 0)).toThrow(/currentScore/);
+    expect(() => delta(0, 445.38)).toThrow(/previousScore/);
   });
 });
 
@@ -1045,5 +1169,26 @@ describe('module purity', () => {
     expect(source).toMatch(/WHAT IS DELIBERATELY NOT CLOSED/);
     expect(source).toMatch(/officialTotalKg\(totalOnTheBoard\(state\)\)`? compiles/);
     expect(source).toMatch(/tamper-resistance/);
+  });
+
+  it('claims about the delta path only what the mint enforces', () => {
+    // The old docstring said a delta "is only ever computed from two real
+    // scores, so it cannot launder a lifter who has none: there is no `.score`
+    // on a `'no-total'` outcome to subtract." That was false while the helper
+    // took a plain `number`: one end narrowed, the other `?? 0`, and a bombed
+    // lifter printed as "−445.38". The sentence is gone; the guarantee it
+    // described is now the signature.
+    //
+    // Scanned against the compiled-away half of the file on purpose: a
+    // `@ts-expect-error` is invisible to `npm test` (esbuild strips it), so
+    // without this scan a revert of the signature would only show up under
+    // `npm run typecheck`.
+    expect(code).toMatch(/export function roundDotsDelta\(delta: DotsDelta\)/);
+    expect(code).toMatch(/export function formatDotsDelta\(delta: DotsDelta\)/);
+    expect(code).toMatch(/export function dotsDeltaBetween\(/);
+    expect(code).toMatch(/export function dotsDeltaBetweenScores\(/);
+    expect(source).toMatch(/WHAT THIS DOES AND DOES NOT GUARANTEE/);
+    expect(source).toMatch(/A cast \(`x as DotsDelta`\) still defeats this/);
+    expect(source).not.toMatch(/no `\.score` on a `'no-total'` outcome to subtract/);
   });
 });
