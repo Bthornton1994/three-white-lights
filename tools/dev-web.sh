@@ -28,7 +28,15 @@ if [ ! -f public/canvaskit.wasm ]; then
 fi
 
 export EXPO_NO_TELEMETRY=1
-nohup npx expo start --web --port "$PORT" --offline > "$LOG" 2>&1 &
+# --clear wipes the Metro bundler cache on every start.
+#
+# Without it, restarting the server is NOT enough to pick up a source change:
+# Metro keeps its transform cache across restarts, so a capture taken right
+# after a merge can silently photograph the PREVIOUS build. That happened --
+# a brace-strain fix was verified green in vitest while the browser capture
+# still showed the old frame keys, and the screenshots looked like the fix had
+# failed. Slower start, but a capture that cannot lie about which code it ran.
+nohup npx expo start --web --port "$PORT" --offline --clear > "$LOG" 2>&1 &
 disown
 
 for _ in $(seq 1 90); do
