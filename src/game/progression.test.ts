@@ -463,11 +463,15 @@ describe('nothing purchasable reaches performance', () => {
       .map((name) => [name, reportKeyAllowlist(name)] as const);
     // Non-vacuity: a scan that matched nothing would pass forever.
     expect(allowlists.length).toBeGreaterThan(0);
-    const covered = new Set(Object.values(PAYLOAD_KEYS_BY_PROPOSAL_KIND).flat());
-    const uncovered = allowlists.flatMap(([name, keys]) =>
-      keys.filter((key) => !covered.has(key)).map((key) => `${name}.${key}`),
-    );
-    expect(uncovered).toEqual([]);
+    // Each allowlist must sit inside ONE kind's payload, rather than merely
+    // having its field names turn up somewhere across the map. A report whose
+    // keys are individually shared with other reports — `lift` and `weightKg`
+    // are on two — would otherwise look covered while belonging to no kind.
+    const payloads = Object.values(PAYLOAD_KEYS_BY_PROPOSAL_KIND);
+    const unwired = allowlists
+      .filter(([, keys]) => !payloads.some((payload) => keys.every((key) => payload.includes(key))))
+      .map(([name]) => name);
+    expect(unwired).toEqual([]);
   });
 
   it('lets no proposal at all move training pace', () => {
