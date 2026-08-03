@@ -33,8 +33,12 @@ import {
   PROJECTION_KEYS,
   projectedCount,
   projectedKg,
+  PROPOSAL_ORIGIN_BY_KIND,
+  PROPOSAL_ORIGIN_KINDS,
   proposeChange,
   PROTECTED_CONCERNS,
+  PURCHASABLE_PROPOSAL_KINDS,
+  PURCHASE_EVIDENCE_KEYS,
   readBalance,
   readBestE1rmKg,
   readingValue,
@@ -173,6 +177,50 @@ describe('purity', () => {
     expect(withoutComments).not.toMatch(/as ProgressionSnapshot/);
     expect(withoutComments).not.toMatch(/\bany\b/);
   });
+
+  it('keeps the pay-to-win guard derived, in source, where vitest cannot see it', () => {
+    // Every assertion in this module is a type-level `const ... = true`. esbuild
+    // strips the types, so `npm test` runs a file in which they are all just
+    // `true` — deleting one, or replacing the derived union with the literal
+    // union it used to be, would not fail a single test. There is no CI
+    // workflow, so the only other thing that would notice is a human running
+    // `npm run typecheck`. This scan is what makes the source itself the thing
+    // under test, the way dots.test.ts pins its branded signatures.
+    const code = MODULE_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+    // Sanity: the comment strip left real code behind, so the scans below are
+    // looking at something.
+    expect(code).toContain('export function receiveProgressionSnapshot');
+
+    // The purchasable set is COMPUTED from the origin map...
+    expect(code).toMatch(
+      /export type PurchasableProposalKind = \{\s*\[K in ProgressionProposalKind\]: \(typeof PROPOSAL_ORIGIN_BY_KIND\)\[K\] extends 'purchase' \? K : never;\s*\}\[ProgressionProposalKind\];/,
+    );
+    // ...and is not a hand-written union of kind names, which is what it was.
+    expect(code).not.toMatch(/export type PurchasableProposalKind\s*=\s*'/);
+
+    // The origin map stays exhaustive and stays literal. Losing `as const`
+    // widens its values and collapses the derivation to `never`.
+    expect(code).toMatch(/as const satisfies Readonly<Record<ProgressionProposalKind, ProposalOrigin>>/);
+
+    // The assertions the derivation feeds, each named so a deletion is visible.
+    const requiredAssertions = [
+      /export const PROPOSAL_ORIGIN_COVERS_EVERY_KIND: KeysAreExactly</,
+      /export const PURCHASES_CANNOT_REACH_PROTECTED_CONCERNS: AreDisjoint</,
+      /export const PURCHASE_REACH_IS_NOT_VACUOUS: IsNonEmptyUnion</,
+      /export const PURCHASABLE_KINDS_ARE_NOT_VACUOUS: IsNonEmptyUnion</,
+      /export const MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE: IsSubsetOf</,
+      /export const MONEY_CARRYING_KINDS_ARE_NOT_VACUOUS: IsNonEmptyUnion</,
+      /export const NOTHING_MOVES_TRAINING_PACE: AreDisjoint</,
+    ];
+    for (const assertion of requiredAssertions) {
+      expect(code).toMatch(assertion);
+    }
+
+    // And the payload cross-check reads the report types rather than a list of
+    // kinds, so it cannot be satisfied by editing the same list twice.
+    expect(code).toMatch(/Extract<keyof ReportFor<K>, PurchaseEvidenceKey>/);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -276,14 +324,63 @@ describe('nothing purchasable reaches performance', () => {
     }
   });
 
+  it('gives every proposal kind an origin, from one map', () => {
+    // The subject of the check below. If a kind could exist without an origin,
+    // the check below would be back to iterating a list someone maintains.
+    expect(Object.keys(PROPOSAL_ORIGIN_BY_KIND).sort()).toEqual([...PROGRESSION_PROPOSAL_KINDS].sort());
+    for (const kind of PROGRESSION_PROPOSAL_KINDS) {
+      expect(PROPOSAL_ORIGIN_KINDS as readonly string[]).toContain(PROPOSAL_ORIGIN_BY_KIND[kind]);
+    }
+  });
+
+  it('derives the purchasable set from that map rather than restating it', () => {
+    // `PURCHASABLE_PROPOSAL_KINDS` is computed by the module; this recomputes it
+    // straight off the origin map. The two agreeing is what makes the module's
+    // type predicate — which `tsc` cannot check against its conditional type —
+    // safe to build the pay-to-win guard on.
+    const fromTheMap = PROGRESSION_PROPOSAL_KINDS.filter((kind) => PROPOSAL_ORIGIN_BY_KIND[kind] === 'purchase');
+    expect([...PURCHASABLE_PROPOSAL_KINDS].sort()).toEqual([...fromTheMap].sort());
+    // Non-vacuity in BOTH directions: some kinds are purchases and some are not.
+    // An empty derived set would make every check below pass over nothing; a
+    // total one would mean the tag stopped discriminating.
+    expect(PURCHASABLE_PROPOSAL_KINDS.length).toBeGreaterThan(0);
+    expect(PURCHASABLE_PROPOSAL_KINDS.length).toBeLessThan(PROGRESSION_PROPOSAL_KINDS.length);
+  });
+
   it('keeps every purchase-originated proposal off the protected facts', () => {
-    const purchaseKinds = ['redeem-entitlement', 'spend-currency'] as const;
-    for (const kind of purchaseKinds) {
+    // The iteration set is DERIVED, not listed here. A new proposal kind tagged
+    // `'purchase'` joins it without this test being edited — which is the whole
+    // point: the previous version hardcoded the two kinds it knew about and was
+    // blind to a third.
+    expect(PURCHASABLE_PROPOSAL_KINDS.length).toBeGreaterThan(0);
+    for (const kind of PURCHASABLE_PROPOSAL_KINDS) {
       const reach = factsMovedBy(kind) as readonly string[];
       expect(reach.length).toBeGreaterThan(0);
       for (const concern of PROTECTED_CONCERNS) {
         expect(reach).not.toContain(concern);
       }
+    }
+  });
+
+  it('names purchase evidence that real reports carry and earned reports do not', () => {
+    // The runtime half of `MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE`. That
+    // assertion is a subset check over the kinds whose report names money, so it
+    // passes for free if `PURCHASE_EVIDENCE_KEYS` points at fields nothing has.
+    const purchaseReportKeys: readonly string[] = [
+      ...REDEEM_ENTITLEMENT_REPORT_KEYS,
+      ...SPEND_CURRENCY_REPORT_KEYS,
+    ];
+    const earnedReportKeys: readonly string[] = [
+      ...TRAINING_SET_REPORT_KEYS,
+      ...TRAINING_SESSION_REPORT_KEYS,
+      ...ACCEPT_RECOVERY_DAY_REPORT_KEYS,
+      ...MEET_ATTEMPT_REPORT_KEYS,
+      ...MEET_RESULT_REPORT_KEYS,
+    ];
+    expect(PURCHASE_EVIDENCE_KEYS.length).toBeGreaterThan(0);
+    for (const evidence of PURCHASE_EVIDENCE_KEYS) {
+      expect(purchaseReportKeys).toContain(evidence);
+      expect(earnedReportKeys).not.toContain(evidence);
     }
   });
 
@@ -898,6 +995,8 @@ describe('the module exports no writer', () => {
       'MEET_RESULT_IS_EXACTLY_ITS_ALLOWLIST',
       'MEET_RESULT_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'MEET_RESULT_REPORT_KEYS',
+      'MONEY_CARRYING_KINDS_ARE_NOT_VACUOUS',
+      'MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE',
       'NOTHING_MOVES_TRAINING_PACE',
       'PROGRESSION_CACHE_POLICY',
       'PROGRESSION_FACTS_ARE_EXACTLY_THE_ALLOWLIST',
@@ -907,10 +1006,16 @@ describe('the module exports no writer', () => {
       'PROJECTION_KEYS',
       'PROJECTION_ONLY_MIRRORS_REAL_FACTS',
       'PROPOSAL_KINDS_ARE_EXACTLY_THE_ALLOWLIST',
+      'PROPOSAL_ORIGIN_BY_KIND',
+      'PROPOSAL_ORIGIN_COVERS_EVERY_KIND',
+      'PROPOSAL_ORIGIN_KINDS',
       'PROPOSAL_REACH_COVERS_EVERY_KIND',
       'PROTECTED_CONCERNS',
       'PROTECTED_CONCERNS_NAME_REAL_FACTS',
+      'PURCHASABLE_KINDS_ARE_NOT_VACUOUS',
+      'PURCHASABLE_PROPOSAL_KINDS',
       'PURCHASES_CANNOT_REACH_PROTECTED_CONCERNS',
+      'PURCHASE_EVIDENCE_KEYS',
       'PURCHASE_REACH_IS_NOT_VACUOUS',
       'REDEEM_ENTITLEMENT_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'REDEEM_ENTITLEMENT_REPORT_KEYS',

@@ -114,7 +114,7 @@
  *      list, so adding an `'e1rm-boost'` variant fails `tsc` until it is written
  *      into the allowlist directly under this paragraph.
  *
- *  (b) THE REACH MAPS. `ProposalReach` and `ENTITLEMENT_REACH` declare which
+ *  (b) THE REACH MAPS. `ProposalReach` and `EntitlementReach` declare which
  *      facts each proposal kind and each entitlement effect may move.
  *      `PURCHASES_CANNOT_REACH_PROTECTED_CONCERNS` and
  *      `ENTITLEMENTS_CANNOT_REACH_PROTECTED_CONCERNS` assert those reaches are
@@ -126,6 +126,18 @@
  *      deleted. So each is paired with a non-vacuity assertion
  *      (`..._REACH_IS_NOT_VACUOUS`) that fails if the reach collapses to
  *      `never`. Both halves are mutation-tested.
+ *
+ *      WHICH KINDS COUNT AS PURCHASES IS DERIVED, NOT LISTED. The reach check is
+ *      only worth what its subject is worth, and its subject used to be a
+ *      hand-written union of two kind names — correct for the kinds on it, blind
+ *      to every kind added later. `PROPOSAL_ORIGIN_BY_KIND` now tags every
+ *      proposal kind `'earned'` or `'purchase'` (exhaustively — a new kind
+ *      cannot skip it), `PurchasableProposalKind` is computed from that map, and
+ *      `MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE` cross-checks the tag against
+ *      the report's own field names via `PURCHASE_EVIDENCE_KEYS`, so a kind
+ *      whose payload carries a SKU, a receipt or a currency cannot be tagged
+ *      `'earned'` to slip past. A new purchase-originated kind is checked
+ *      against `PROTECTED_CONCERNS` whether or not its author read this file.
  *
  *  (c) NO EFFECT TO CLAIM. `RedeemEntitlementReport` carries a SKU and a
  *      receipt. It has no `effect` field and its key allowlist forbids one, so
@@ -186,6 +198,18 @@
  *    stop an Edge Function that does not exist from touching a fact it should
  *    not. Their teeth are that widening one fails the compile, so the
  *    declaration a future function is written against cannot drift quietly.
+ *
+ *  - A PURCHASE THAT NAMES NO MONEY IS STILL A TAG. `PROPOSAL_ORIGIN_BY_KIND`
+ *    forces every kind to declare a provenance, and the payload cross-check
+ *    catches the obvious lie — a report with a `sku`, a `receipt` or a
+ *    `currency` on it cannot be called `'earned'`. What it does not catch is a
+ *    purchase-originated kind whose report names none of those: a
+ *    `{ kind: 'redeem-promo-code'; report: { code: string } }` tagged `'earned'`
+ *    would escape, because "money caused this" is a fact about the world and the
+ *    only evidence in scope is the payload's field names. The residual is one
+ *    deliberate mislabel in a diff whose surrounding comment says not to, rather
+ *    than the previous residual, which was any addition at all, silently.
+ *    Widening `PURCHASE_EVIDENCE_KEYS` is how that net gets tighter.
  *
  *  - THIS MODULE CONSTRAINS ITSELF. It cannot stop a consumer reading a
  *    confirmed e1RM and multiplying it by a cosmetic's price. That would be the
@@ -793,15 +817,150 @@ export const PROPOSAL_REACH_COVERS_EVERY_KIND: KeysAreExactly<
   ProgressionProposalKind
 > = true;
 
-/** The proposal kinds a purchase can originate. */
-export type PurchasableProposalKind = 'redeem-entitlement' | 'spend-currency';
+// ---------------------------------------------------------------------------
+// Provenance: which proposals money can originate (GDD §8.1, §12.3)
+//
+// THIS USED TO BE A HAND-WRITTEN LIST — `type PurchasableProposalKind =
+// 'redeem-entitlement' | 'spend-currency'` — and that is the bug this block
+// exists to close. A list is correct for the kinds someone remembered to write
+// on it and blind to every kind added afterwards: a `'buy-total-boost'` proposal
+// reaching `'totalKg'` compiled cleanly and passed the whole suite, because
+// neither the assertion nor the test derived its subject from anything. It was
+// verified to escape before this was written, not assumed to.
+//
+// So provenance is now DECLARED PER KIND and the purchasable set is DERIVED.
+// Adding a proposal kind forces an origin for it (the map is exhaustive over
+// `ProgressionProposalKind`); declaring that origin `'purchase'` puts the kind
+// into `PurchasableProposalKind` automatically, and its reach is checked from
+// then on whether or not anyone remembered this file existed.
+// ---------------------------------------------------------------------------
+
+/** Where a proposal comes from. `'purchase'` means money — real or in-app. */
+export const PROPOSAL_ORIGIN_KINDS = ['earned', 'purchase'] as const;
+
+export type ProposalOrigin = (typeof PROPOSAL_ORIGIN_KINDS)[number];
+
+/**
+ * THE ORIGIN OF EVERY PROPOSAL KIND. The one place provenance is written down.
+ *
+ * Exhaustive by construction: `satisfies Readonly<Record<ProgressionProposalKind,
+ * ProposalOrigin>>` rejects a missing kind and an unknown one, and
+ * `PROPOSAL_ORIGIN_COVERS_EVERY_KIND` pins the same thing again in case a future
+ * edit drops the `satisfies`. Adding a proposal kind and forgetting this map was
+ * mutation-tested: it fails here (TS1360, naming the missing kind), at
+ * `PROPOSAL_ORIGIN_COVERS_EVERY_KIND`, and again at the derivation below.
+ *
+ * `as const` and the `satisfies` clause each keep the values at their literal
+ * types on their own — checked, rather than assumed: dropping either one alone
+ * still compiles and still derives correctly. Dropping BOTH widens the values to
+ * `string`, which collapses `PurchasableProposalKind` to `never` and is caught by
+ * `PURCHASABLE_KINDS_ARE_NOT_VACUOUS` and `MONEY_ON_THE_WIRE_IS_DECLARED_A_
+ * PURCHASE`. So they are belt and braces for each other, not one load-bearing
+ * incantation.
+ *
+ * ANSWER THE §8.1 QUESTION HERE. A new kind is `'earned'` only if no money — not
+ * a store purchase, not a currency spend — can be what causes the client to send
+ * it. If money can, it is `'purchase'`, and its row in `ProposalReach` above must
+ * then stay clear of `PROTECTED_CONCERNS` or the compile fails.
+ */
+export const PROPOSAL_ORIGIN_BY_KIND = {
+  'record-training-session': 'earned',
+  'accept-recovery-day': 'earned',
+  'record-meet-result': 'earned',
+  'redeem-entitlement': 'purchase',
+  'spend-currency': 'purchase',
+} as const satisfies Readonly<Record<ProgressionProposalKind, ProposalOrigin>>;
+
+export const PROPOSAL_ORIGIN_COVERS_EVERY_KIND: KeysAreExactly<
+  typeof PROPOSAL_ORIGIN_BY_KIND,
+  ProgressionProposalKind
+> = true;
+
+/**
+ * The proposal kinds a purchase can originate — DERIVED from the map above, not
+ * listed. There is no edit that adds a purchase-originated kind and leaves this
+ * union behind, because this union is not a thing anyone can forget to edit.
+ */
+export type PurchasableProposalKind = {
+  [K in ProgressionProposalKind]: (typeof PROPOSAL_ORIGIN_BY_KIND)[K] extends 'purchase' ? K : never;
+}[ProgressionProposalKind];
+
+/**
+ * The same set, at runtime, for the tests and for any renderer that wants to
+ * badge a purchase. Derived by walking `PROGRESSION_PROPOSAL_KINDS` and reading
+ * the same map the type reads, so it is total over the kinds by construction.
+ *
+ * WHAT THE PREDICATE DOES AND DOES NOT PROVE: `tsc` cannot check a type
+ * predicate's body against the conditional type it mirrors, so a *deliberately
+ * wrong* predicate here would drift from `PurchasableProposalKind`. What it
+ * cannot do is miss a new kind — it iterates the allowlist — and
+ * `progression.test.ts` cross-checks the array against the map directly, so the
+ * drift a compiler cannot see is the one a test does.
+ */
+function isPurchaseOriginated(kind: ProgressionProposalKind): kind is PurchasableProposalKind {
+  return PROPOSAL_ORIGIN_BY_KIND[kind] === 'purchase';
+}
+
+export const PURCHASABLE_PROPOSAL_KINDS: readonly PurchasableProposalKind[] =
+  PROGRESSION_PROPOSAL_KINDS.filter(isPurchaseOriginated);
+
+/**
+ * The other half of the derivation: a tag can be got wrong on purpose, so the
+ * shape of the payload gets a vote too.
+ *
+ * These are the field names that mean a transaction. A report carrying one of
+ * them is money on the wire — you cannot buy a thing without naming the thing
+ * (`sku`), and you cannot pay for it without a store receipt or a currency. No
+ * earned report carries any of them, and `progression.test.ts` checks both
+ * directions of that against the real report allowlists.
+ */
+export const PURCHASE_EVIDENCE_KEYS = ['sku', 'receipt', 'currency'] as const;
+
+type PurchaseEvidenceKey = (typeof PURCHASE_EVIDENCE_KEYS)[number];
+
+type ReportFor<K extends ProgressionProposalKind> = Extract<ProgressionProposal, { readonly kind: K }>['report'];
+
+/** The kinds whose report names money, read off the report types themselves. */
+export type MoneyCarryingProposalKind = {
+  [K in ProgressionProposalKind]: [Extract<keyof ReportFor<K>, PurchaseEvidenceKey>] extends [never] ? never : K;
+}[ProgressionProposalKind];
+
+/**
+ * COMPILE-TIME ASSERTION: anything that carries money on the wire is declared a
+ * purchase. This is what stops the origin map from being a formality. Tagging a
+ * `{ kind: 'buy-total-boost'; report: { sku; receipt } }` as `'earned'` to duck
+ * the reach check fails here instead — mutation-tested, and it is the only error
+ * that mutant produces.
+ *
+ * THE DIAGNOSTIC IS UNHELPFUL AND THAT IS WORTH KNOWING BEFORE YOU HIT IT: like
+ * every assertion in this file it reads `Type 'true' is not assignable to type
+ * 'never'`, at this line, naming neither the kind nor the field that gave it
+ * away. The line number is the whole message. That is the cost of doing this
+ * with conditional types instead of a lint rule.
+ *
+ * It is a floor, not a decision procedure — see §6 of the header for the case it
+ * does not see.
+ */
+export const MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE: IsSubsetOf<
+  MoneyCarryingProposalKind,
+  PurchasableProposalKind
+> = true;
+
+/**
+ * The non-vacuity half of the assertion above: a subset assertion over an empty
+ * set passes for free, so this fails if `PURCHASE_EVIDENCE_KEYS` is ever emptied,
+ * renamed past the reports, or the report types stop naming money.
+ */
+export const MONEY_CARRYING_KINDS_ARE_NOT_VACUOUS: IsNonEmptyUnion<MoneyCarryingProposalKind> = true;
 
 /** Everything any purchase-originated proposal may move. */
 export type AnyPurchaseReach = ProposalReach[PurchasableProposalKind];
 
 /**
  * COMPILE-TIME ASSERTION (GDD §8.1, §12.3). Add `'bestE1rmKg'` to
- * `'redeem-entitlement'` above and this line stops compiling.
+ * `'redeem-entitlement'` above and this line stops compiling — and so does
+ * adding a NEW `'purchase'`-origin kind whose reach names a protected concern,
+ * which is the part a hand-written union of kinds could not do.
  */
 export const PURCHASES_CANNOT_REACH_PROTECTED_CONCERNS: AreDisjoint<
   AnyPurchaseReach,
@@ -810,6 +969,14 @@ export const PURCHASES_CANNOT_REACH_PROTECTED_CONCERNS: AreDisjoint<
 
 /** The non-vacuity half. See `ENTITLEMENT_REACH_IS_NOT_VACUOUS`. */
 export const PURCHASE_REACH_IS_NOT_VACUOUS: IsNonEmptyUnion<AnyPurchaseReach> = true;
+
+/**
+ * And the non-vacuity half one level up, because the reach is now derived from a
+ * derived set. If the origin map's values widen, or the conditional above is
+ * mistyped, `PurchasableProposalKind` silently becomes `never` and every check
+ * built on it passes over nothing. This fails instead.
+ */
+export const PURCHASABLE_KINDS_ARE_NOT_VACUOUS: IsNonEmptyUnion<PurchasableProposalKind> = true;
 
 /**
  * COMPILE-TIME ASSERTION: nothing at all reaches training pace — not a purchase,
