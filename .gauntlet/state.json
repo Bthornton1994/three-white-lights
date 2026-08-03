@@ -176,9 +176,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work — NOW GRADEABLE, reference committed.",
-      "status": "failed",
+      "status": "grading",
       "verifiable": true,
-      "note": "Fifth craft rework merged; 565 tests green. The builder verified the critic’s mechanism and found a deeper one: angle-dependence is real, but normalising for it alone would NOT have fixed the hole. The actual fault is that the femur is drawn FORESHORTENED — hip-to-knee collapses from 15.1px standing to 2.5px in the hole — and the shader read that as a limb lying sideways, so the only visible part of the thigh was its shadow flank. Fixed by tipping the normal toward the camera by a tilt derived from drawn-vs-natural bone length. Measured: leg-poses where the sleeve out-values its thigh, 20/112 to 0/112, and the reference’s own flesh-to-kit ratio measured at 1.59 against ours at 1.46. Also fixed a defect in the GRADING EVIDENCE: the harness never cleaned its frame directory, so a shorter reel left old frames beside new ones under the same names — a critic and I both cited a frame that was hours stale.",
+      "note": "Five reworks in, and being graded fresh against the native-resolution SNES reference for the first time since the last fix landed. The previous builder found the real fault was not the angle-dependence the critic had named: the femur was drawn FORESHORTENED, hip-to-knee collapsing from 15.1px standing to 2.5px in the hole, and the shader read that as a limb lying sideways so the only visible part of the thigh was its shadow flank. It fixed that by tipping the normal toward the camera by a tilt derived from drawn-versus-natural bone length, and measured leg poses where the sleeve out-values its thigh from 20 of 112 down to 0. The critic has been told to judge the pixels independently of that account, and now also has the matched limb-load sequences from the playable lift screen for the animates-heavier half of the bar — which no earlier A1 pass had. It was also warned to check frame capture times before citing anything, since both a critic and I once graded an hours-stale PNG here.",
       "evidence": "A1-hole-6x.png"
     },
     {
