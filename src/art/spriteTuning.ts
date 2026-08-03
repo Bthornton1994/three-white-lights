@@ -705,6 +705,29 @@ export const SHADING = {
   /** Far-side limbs drop this many ramp steps for depth separation. */
   FAR_LIMB_STEP_BIAS: -1,
   /**
+   * The same, for the far LEG — thigh, shin, knee sleeve and shoe.
+   *
+   * WHY THE LEG NEEDED ITS OWN NUMBER. A ramp step is not a fixed amount of
+   * darkness; it is whatever the gap between two palette entries happens to be,
+   * and on the four-step skin ramp that gap is 44-58 luma. On an arm that is
+   * affordable, because an arm is drawn against the torso and keeps its peak at
+   * the top of the ramp. On a bent leg it is not: the femur is foreshortened,
+   * so its peak is already down at SKIN_LIGHT before any bias, and one step off
+   * that is SKIN_MID (117) — below GEAR_LIGHT (149), the top step of the very
+   * kit worn on it. Measured over the pose ladder with this at -1, the far
+   * leg's bare skin had a MEDIAN of SKIN_SHADOW (73), the floor of the ramp, at
+   * every depth including lockout: shadow flank at the floor, edge ring at the
+   * floor, and only the lit flank at SKIN_MID.
+   *
+   * At 0 the far leg is NOT the same drawing as the near one. The lamp is fixed
+   * in `LIGHT_DIR`, so both legs are lit on their upper-left flank rather than
+   * mirrored; the interior edge ring, the inner-leg seam and the separately
+   * authored NEAR/FAR quad and shin-crest marks all still separate them. What
+   * goes away is only the blanket step, which was buying depth by spending the
+   * lower body's whole value range.
+   */
+  FAR_LEG_STEP_BIAS: 0,
+  /**
    * How many ramp steps the 1px edge ring sits under the fill beside it, for
    * parts drawn with `PartOptions.edgeFollowsLight`.
    *
@@ -739,21 +762,45 @@ export const SHADING = {
    * it is a tube pointing at the viewer, and what the camera sees is its broad
    * anterior face — which points at the camera, and so at this lamp. That is
    * what meet-photo-ref-1 shows: at the bottom of a real squat the front of the
-   * thigh is the brightest, most modelled mass in the lower body with the black
-   * sleeve a dark band laid across it.
+   * thigh is the brightest mass in the lower body with the black sleeve a dark
+   * band laid across it. Note what the photo does NOT show — that band is not a
+   * modelled cylinder, it is a broad evenly-lit sheet, which is the evidence
+   * DOME_CURVATURE is read against below.
    *
    * SO: the surface normal is blended from the cylinder normal toward the
-   * camera normal by how far out of the screen plane the limb has rotated. The
-   * tilt itself is not tuneable — it is `sqrt(1 - (drawn/natural)^2)`,
-   * trigonometry on a rigid bone, and it lives in `rig.ts`. These two are the
-   * feel values: how much of that tilt turns into shading, and how sharply it
-   * comes on.
+   * camera as the limb rotates out of the screen plane. The tilt itself is not
+   * tuneable — it is `sqrt(1 - (drawn/natural)^2)`, trigonometry on a rigid
+   * bone, and it lives in `rig.ts`. These are the feel values: how much of that
+   * tilt turns into shading, how sharply it comes on, how curved the
+   * foreshortened mass is, and where its pole sits.
+   *
+   * WHAT THIS BLOCK DID NOT FIX, said plainly. Turning the thigh's normal
+   * toward the camera stopped it being dark BECAUSE it was angled, and the
+   * shipped DOME_CURVATURE of 0 makes the result a flat face — one lambert
+   * value over the whole mass. On the near leg that lands on SKIN_LIGHT, which
+   * is why the frames looked fixed. It was not enough on its own, for a reason
+   * that has nothing to do with foreshortening: with a blanket
+   * FAR_LIMB_STEP_BIAS the far leg then sat one step under that, on SKIN_MID
+   * (117), which is BELOW GEAR_LIGHT (149) — the same inversion, one leg over.
+   * And the thigh is only 12-26 px of visible bare skin at depth against the
+   * shin's 37-50, so fixing the femur alone could not fix the lower body.
+   * See FAR_LEG_STEP_BIAS, AXIAL_LEG and RIG_GEOMETRY.KNEE_SLEEVE.STEP_BIAS
+   * for the three terms that finished the job.
+   *
+   * The arithmetic behind DOME_CURVATURE is short enough to check, and
+   * `raster.test.ts` checks it. Under this lamp a camera-facing plane reaches
+   * `AMBIENT + (1-AMBIENT)*L.z` = 0.2 + 0.8*0.589 = 0.67, and THRESHOLDS_4's
+   * top entry is 0.88 — so a flat-blended limb cannot reach the top skin step
+   * from its normal at ANY brightness, and with AXIAL_FADE at 1 the belly bump
+   * that would otherwise lift it has been faded out. A dome would: it has a
+   * facet whose normal IS the lamp direction, 0.81 of a radius up and to the
+   * left of its pole. It is not turned on, and DOME_CURVATURE says why.
    *
    * CAMERA_BLEND 0 restores the old pure-cylinder behaviour exactly, on every
    * limb, and is the first thing to reach for if the legs read too flat.
    */
   FORESHORTEN: {
-    /** Weight of the camera-facing normal at full out-of-plane tilt, 0..1. */
+    /** Weight of the dome normal at full out-of-plane tilt, 0..1. */
     CAMERA_BLEND: 1,
     /**
      * Shaping exponent on the tilt before it becomes blend weight. 2 makes the
@@ -776,6 +823,67 @@ export const SHADING = {
      * seen from the side; at full tilt it is the front of the thigh.
      */
     AXIAL_FADE: 1,
+    /**
+     * Where the dome's pole sits along the capsule: 0 the start point, 1 the
+     * end point, 0.5 the middle.
+     *
+     * A rigid bone swinging toward the camera brings ONE of its ends forward —
+     * for the femur, drawn hip-to-knee, that is the knee — so the strictly
+     * correct pole is the end at 1. It sits at the middle instead because the
+     * middle is the only place the highlight lands ON DRAWN PIXELS at every
+     * depth: the femur's drawn length falls to 6 px against a 4.3 px radius, so
+     * a pole at the knee end puts the cluster half a radius outside the mass
+     * and under the knee sleeve, and a highlight nobody can see is not a
+     * highlight. This is a feel value; it decides where the light lands on a
+     * bent thigh.
+     *
+     * IT DOES NOTHING WHILE DOME_CURVATURE IS 0, because at 0 there is no dome
+     * to have a pole. It is here so that the two halves of the dome model sit
+     * together and a tuner turning DOME_CURVATURE up does not then have to go
+     * find a hard-coded 0.5 in the rasteriser.
+     */
+    DOME_CENTRE_FRAC: 0.5,
+    /**
+     * How curved the foreshortened mass is: 1 a full hemisphere of the limb's
+     * own radius, 0 a flat camera-facing face.
+     *
+     * MEASURED, BOTH ENDS, ON THE PIXELS THE SHORTS AND THE SLEEVE LEAVE
+     * VISIBLE — which is the only part of a thigh anyone grades.
+     *
+     * IT SHIPS AT 0 — a flat face — AND THAT IS A RESULT, NOT AN OVERSIGHT.
+     * State it plainly: at 0 this blend is the same model it was before the
+     * constant existed. What changed is that the choice now has a name, a dial
+     * and a measurement beside it instead of being an unnamed expression, and
+     * the other end of the dial has been tried on real pixels rather than
+     * argued about.
+     *
+     * WHAT THE OTHER END DID. At 1 the mass is a full hemisphere and gets a
+     * proper highlight cluster — but the cluster lands up and to the LEFT,
+     * because that is where LIGHT_DIR is, and the knee sleeve is not centred on
+     * the thigh. At depth the knee tracks OUTBOARD of the hip, so the sleeve
+     * sits outboard too and covers the OUTER flank of each thigh. On the
+     * screen-left leg the outer flank is the lit one, so the dome's highlight
+     * goes under the sleeve and what the player sees is the shaded flank.
+     * Measured over the pose ladder, the visible bare thigh's median went
+     * SKIN_LIGHT (175) -> SKIN_SHADOW (73) on the near leg at every depth past
+     * two thirds, and the far leg — whose outer flank is the shaded one — came
+     * out BRIGHTER than the near one, which inverts the depth cue as well.
+     *
+     * The reference photo agrees with the flat reading rather than the domed
+     * one: in meet-photo-ref-1 the band of bare quad between hem and sleeve is
+     * an evenly lit sheet on both legs, not a modelled cylinder. At the bottom
+     * of a front-on squat that band IS the anterior quad turned to face the
+     * camera, and a broad plane facing the camera under a lamp 59% toward the
+     * camera is close to evenly lit.
+     *
+     * Intermediate values were measured too: 0.15 and 0.25 already take the
+     * near thigh's median to SKIN_MID past three-quarter depth. There is no
+     * setting above 0 that keeps both thighs in the lit band, because the
+     * sleeve's position, not the shading, is what decides which flank shows.
+     * Move the sleeve inboard (RIG_GEOMETRY.KNEE_SLEEVE) and this becomes
+     * worth turning up.
+     */
+    DOME_CURVATURE: 0,
   },
 
   /**
@@ -792,6 +900,42 @@ export const SHADING = {
     BELLY_GAIN: 0.14,
     JOINT_WIDTH: 0.3,
     JOINT_DROP: 0.16,
+  } as AxialProfile,
+  /**
+   * THE LEG, WHICH IS NOT AN ARM, BECAUSE BOTH ITS JOINTS ARE UNDER KIT.
+   *
+   * `AXIAL_LIMB` puts a highlight over the muscle belly and drops the value at
+   * both ends, which is right for an arm: the elbow and the wrist are bare, the
+   * drop lands on a joint, and the hand-placed elbow and wrist marks sit on top
+   * of it. On a leg every one of those ends is covered. The thigh capsule runs
+   * from a hip under the singlet to a knee under the sleeve; the shin capsule
+   * runs from that same sleeve to an ankle inside the shoe. So the joint drop
+   * does not darken a joint — the joint is not drawn — it darkens the first
+   * bare rows past the hem of whatever is covering the end, which is the top
+   * and bottom of the only bare skin the lower body has.
+   *
+   * Measured on the drawn shin: the sleeve's hem clears it at about t 0.35 and
+   * the shoe starts at about t 0.95, so the bare band is the back two thirds of
+   * the capsule. AXIAL_LIMB's belly sits at 0.36 — under the sleeve — and its
+   * joint band starts at 0.7, so the visible shin was the falling side of a
+   * highlight nobody can see followed by a drop into the shoe. Hence a belly
+   * moved down into the bare band and a shallower, narrower drop.
+   *
+   * THE SHIN IS NOT FORESHORTENED and this is not a foreshortening term. Its
+   * drawn knee-to-ankle length GROWS through the descent, 14.1 px standing to
+   * 16.4 in the hole, because the knee tracks out sideways rather than toward
+   * the camera. `femurTilt`'s argument does not transfer to it and the shin is
+   * still drawn as the plain cylinder it has always been.
+   *
+   * These are feel values in the same class as AXIAL_LIMB: they decide how much
+   * of a bent leg reads as lit.
+   */
+  AXIAL_LEG: {
+    BELLY_FRAC: 0.62,
+    BELLY_WIDTH: 0.3,
+    BELLY_GAIN: 0.16,
+    JOINT_WIDTH: 0.14,
+    JOINT_DROP: 0.1,
   } as AxialProfile,
   /** Torso: the pec shelf sits high, and the value falls into the waist. */
   AXIAL_TRUNK: {

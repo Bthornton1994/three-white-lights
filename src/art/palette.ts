@@ -201,12 +201,29 @@ const LIFTER_COLORS: readonly Rgb5[] = [
  *
  * AND THAT RULE IS NOW ENFORCED RATHER THAN STATED. A ramp ordering is only a
  * promise about what CAN be drawn; the renderer broke the promise anyway, by
- * shading a bent thigh out of its band. GEAR_LIGHT (149) out-valued SKIN_MID
- * (117), so wherever a thigh fell to SKIN_MID the sleeve on it was the brighter
- * object — measured at 20 of 112 leg-poses over the pose space, worst in the
- * hole. `SHADING.FORESHORTEN` is the fix and it is on the SKIN side, not this
- * one: no colour in this file moved. `lifterSprite.test.ts` sweeps the pose
- * space and fails if a sleeve ever out-values the thigh it is worn on.
+ * shading a bent leg out of its band. GEAR_LIGHT (149) out-valued SKIN_MID
+ * (117), so wherever a leg fell to SKIN_MID the sleeve on it was the brighter
+ * object.
+ *
+ * NO COLOUR IN THIS FILE MOVED FOR EITHER FIX, and both fixes are on the
+ * renderer's side:
+ *
+ *   - `SHADING.FORESHORTEN` stopped a bent FEMUR being shaded as though it lay
+ *     in the screen plane.
+ *   - `SHADING.FAR_LEG_STEP_BIAS`, `SHADING.AXIAL_LEG` and
+ *     `RIG_GEOMETRY.KNEE_SLEEVE.STEP_BIAS` stopped the rest of the lower body
+ *     doing the same thing by three other routes: a blanket ramp-step bias that
+ *     put the whole far leg's MEDIAN on SKIN_SHADOW, an axial profile borrowed
+ *     from the arm that put the shin's only highlight underneath the sleeve,
+ *     and a sleeve free to reach the top of the GEAR ramp.
+ *
+ * The enforcement is in `lifterSprite.test.ts`, and what it measures matters as
+ * much as that it exists: the first version swept the pose space comparing two
+ * MAXIMA over the whole thigh capsule, reported zero inversions, and was
+ * satisfied by two pixels of lit hip surviving under the singlet while the
+ * drawn leg was inverted everywhere the player looks. It now takes a MEDIAN and
+ * an AREA SHARE over the bare leg BELOW the singlet hem, counts thigh and shin
+ * separately, and asserts a floor on every pixel count it divides by.
  */
 
 // ---------------------------------------------------------------------------

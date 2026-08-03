@@ -147,6 +147,51 @@ export function cameraBlendForTilt(tilt: number): number {
 }
 
 /**
+ * Surface normal for a limb pixel, in screen space, normalised.
+ *
+ * `across` is the offset from the axis in radii (-1 at one flank, +1 at the
+ * other) and `alongOff` is the offset from the dome's pole along the axis, in
+ * the same units. `camera` is `cameraBlendForTilt`.
+ *
+ * AT `camera` 0 THIS IS THE PLAIN CYLINDER, bit for bit: both dome terms are
+ * multiplied out, so the normal is `(p*across, sqrt(1-across^2))` and every
+ * cross-section is identical, which is what a tube lying in the screen plane
+ * looks like. The `outOfPlane`-free callers — arms, neck, shin — are therefore
+ * untouched by anything in this function.
+ *
+ * AS `camera` RISES the cross-section curvature is scaled by
+ * `FORESHORTEN.DOME_CURVATURE` and the same curvature is introduced ALONG the
+ * axis, so the mass turns from a tube into a cap. At DOME_CURVATURE 1 that cap
+ * is a full hemisphere of the limb's own radius, which is geometrically what
+ * the rounded end of a capsule pointing at the viewer is. At 0 it collapses to
+ * a flat camera-facing face, which is what this blend used to be
+ * unconditionally — so the constant spans the old behaviour and the new one and
+ * a tuner can walk between them.
+ *
+ * WHY IT IS NOT SIMPLY 1. Both extremes are wrong on real pixels, in opposite
+ * directions, and the measurement is in `SHADING.FORESHORTEN.DOME_CURVATURE`.
+ */
+export function limbNormal(
+  px: number,
+  py: number,
+  ux: number,
+  uy: number,
+  across: number,
+  alongOff: number,
+  camera: number,
+): { readonly x: number; readonly y: number; readonly z: number } {
+  const curve = SHADING.FORESHORTEN.DOME_CURVATURE;
+  const shrink = 1 + camera * (curve - 1);
+  const a = shrink * Math.min(1, Math.max(-1, across));
+  const b = camera * curve * Math.min(1, Math.max(-1, alongOff));
+  const nz = Math.sqrt(Math.max(0, 1 - a * a - b * b));
+  const x = px * a + ux * b;
+  const y = py * a + uy * b;
+  const inv = 1 / Math.max(1e-6, Math.sqrt(x * x + y * y + nz * nz));
+  return { x: x * inv, y: y * inv, z: nz * inv };
+}
+
+/**
  * Value modulation along a mass's own axis, added to the Lambert term before
  * quantisation.
  *
@@ -297,8 +342,9 @@ export function drawLimb(
   const axial = opts?.axial ?? SHADING.AXIAL_LIMB;
   // 0 for a limb in the screen plane, and then this is the old cylinder exactly.
   const camera = cameraBlendForTilt(opts?.outOfPlane ?? 0);
-  const cyl = 1 - camera;
   const axialScale = 1 - SHADING.FORESHORTEN.AXIAL_FADE * camera;
+  // Where the dome's pole sits along the capsule, in px from the start point.
+  const domeCentre = len * SHADING.FORESHORTEN.DOME_CENTRE_FRAC;
 
   // Two passes so the outline never overwrites fill drawn later in the same part.
   for (let pass = wantEdge ? 0 : 1; pass < 2; pass += 1) {
@@ -320,21 +366,18 @@ export function drawLimb(
 
         const rCore = Math.max(0.5, r);
         const n = Math.min(1, Math.max(-1, perp / rCore));
-        const nz = Math.sqrt(Math.max(0, 1 - n * n));
-        // Cylinder normal, tipped toward the camera by however far this mass has
-        // rotated out of the screen plane. At `camera` 0 the multiply and the
-        // renormalise are the identity and this is the plain cylinder; at 1 the
-        // mass is a face pointing at the viewer, which is what the front of a
-        // thigh IS at the bottom of a squat. See SHADING.FORESHORTEN.
-        const bx = cyl * px * n;
-        const by = cyl * py * n;
-        const bz = cyl * nz + camera;
-        const inv = 1 / Math.max(1e-6, Math.sqrt(bx * bx + by * by + bz * bz));
+        // Cylinder normal, blended toward a DOME of the limb's own radius by
+        // however far this mass has rotated out of the screen plane. At
+        // `camera` 0 this is the plain cylinder, bit for bit; at 1 it is the
+        // rounded end a tube pointing at the viewer actually shows, which is
+        // what the front of a thigh IS at the bottom of a squat.
+        // See SHADING.FORESHORTEN and `limbNormal`.
+        const N = limbNormal(px, py, ux, uy, n, (along - domeCentre) / rCore, camera);
         // `t` is the position DOWN the limb. Reading it here is the whole
         // difference between a modelled limb and an extruded stripe.
         const lit = Math.min(
           1,
-          Math.max(0, lambert(bx * inv, by * inv, bz * inv) + axialScale * axialTerm(axial, t)),
+          Math.max(0, lambert(N.x, N.y, N.z) + axialScale * axialTerm(axial, t)),
         );
         if (pass === 0) {
           setPx(

@@ -24,6 +24,7 @@ import {
   drawLimb,
   getPx,
   lambert,
+  limbNormal,
   shadeToIndex,
   type IndexGrid,
 } from './raster';
@@ -221,6 +222,130 @@ describe('camera blend', () => {
   });
 });
 
+describe('limbNormal', () => {
+  // The unit vectors this returns are the whole shading model for a limb, so
+  // these are claims about the model rather than about any rendered pixel.
+  const P = { x: -0.6, y: 0.8 }; // an arbitrary in-plane perpendicular
+  const U = { x: 0.8, y: 0.6 }; // and the axis it belongs to
+  const len = (n: { x: number; y: number; z: number }): number =>
+    Math.hypot(n.x, n.y, n.z);
+
+  it('is always a unit vector', () => {
+    for (const camera of [0, 0.3, 0.7, 1]) {
+      for (const across of [-1, -0.4, 0, 0.4, 1]) {
+        for (const along of [-2, -1, 0, 1, 2]) {
+          expect(len(limbNormal(P.x, P.y, U.x, U.y, across, along, camera)), `${camera}/${across}/${along}`)
+            .toBeCloseTo(1, 10);
+        }
+      }
+    }
+  });
+
+  it('is the plain cylinder at zero camera blend, whatever the axial offset', () => {
+    // THE GUARANTEE THE SHIN, THE ARMS AND THE NECK RELY ON. None of them pass
+    // `outOfPlane`, so `camera` is 0 for them and the dome terms must multiply
+    // out completely rather than "almost".
+    for (const across of [-1, -0.5, 0, 0.5, 1]) {
+      const expected = {
+        x: P.x * across,
+        y: P.y * across,
+        z: Math.sqrt(Math.max(0, 1 - across * across)),
+      };
+      for (const along of [-3, 0, 3]) {
+        const n = limbNormal(P.x, P.y, U.x, U.y, across, along, 0);
+        expect(n.x, `across ${across} along ${along}`).toBeCloseTo(expected.x, 12);
+        expect(n.y).toBeCloseTo(expected.y, 12);
+        expect(n.z).toBeCloseTo(expected.z, 12);
+      }
+    }
+  });
+
+  it('clamps its inputs rather than producing an imaginary z', () => {
+    for (const camera of [0, 0.5, 1]) {
+      for (const [across, along] of [[5, 0], [-5, 0], [0, 9], [0, -9], [3, 3]] as const) {
+        const n = limbNormal(P.x, P.y, U.x, U.y, across, along, camera);
+        expect(Number.isFinite(n.x) && Number.isFinite(n.y) && Number.isFinite(n.z)).toBe(true);
+        expect(len(n)).toBeCloseTo(1, 10);
+      }
+    }
+  });
+
+  it('collapses a fully foreshortened limb to one value at the shipped curvature', () => {
+    // DOME_CURVATURE ships at 0, which means a limb pointing straight at the
+    // camera is shaded as a flat face: every pixel of it gets the same normal
+    // and therefore the same ramp step. That is a deliberate choice with a
+    // measurement written beside it in SHADING.FORESHORTEN.DOME_CURVATURE, and
+    // this is the test that will start failing the moment somebody turns the
+    // dial — which is the point of having the dial.
+    if (SHADING.FORESHORTEN.DOME_CURVATURE !== 0) return;
+    const centre = limbNormal(P.x, P.y, U.x, U.y, 0, 0, 1);
+    for (const across of [-1, -0.3, 0.6, 1]) {
+      for (const along of [-1, 0, 1]) {
+        const n = limbNormal(P.x, P.y, U.x, U.y, across, along, 1);
+        expect(n.x, `${across}/${along}`).toBeCloseTo(centre.x, 12);
+        expect(n.y).toBeCloseTo(centre.y, 12);
+        expect(n.z).toBeCloseTo(centre.z, 12);
+      }
+    }
+    expect(centre.z).toBeCloseTo(1, 12);
+  });
+
+  it('cannot reach the top skin step while it is a flat camera-facing face', () => {
+    // The arithmetic behind DOME_CURVATURE's comment, checkable rather than
+    // asserted: a plane facing the camera reaches AMBIENT + (1-AMBIENT)*L.z,
+    // and THRESHOLDS_4's top entry is deliberately above that. So a
+    // foreshortened limb gets its top step from a hand-placed mark or from the
+    // axial belly, never from its own normal — and the axial term is faded out
+    // at full tilt by FORESHORTEN.AXIAL_FADE.
+    const flat = limbNormal(P.x, P.y, U.x, U.y, 0.5, 0.5, 1);
+    const top = SHADING.THRESHOLDS_4[2] ?? 1;
+    expect(lambert(flat.x, flat.y, flat.z)).toBeLessThan(top);
+    expect(SHADING.FORESHORTEN.AXIAL_FADE).toBe(1);
+  });
+
+  it('curves in both screen axes once the dome is turned on', () => {
+    // The other end of the dial, tested at a value it does not ship at, so the
+    // model itself is covered rather than only the setting. With curvature the
+    // normal varies ALONG the axis as well as across it, which is what makes
+    // the mass a cap instead of a disc.
+    const a = limbNormalAt(0, -1, 1, 1);
+    const b = limbNormalAt(0, 1, 1, 1);
+    expect(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)).toBeGreaterThan(0.5);
+    // And there is a point on it whose normal aims at the lamp, which is the
+    // whole reason a dome can reach the top skin step and a disc cannot.
+    let best = 0;
+    for (let across = -1; across <= 1; across += 0.05) {
+      for (let along = -1; along <= 1; along += 0.05) {
+        const n = limbNormalAt(across, along, 1, 1);
+        best = Math.max(best, lambert(n.x, n.y, n.z));
+      }
+    }
+    expect(best).toBeGreaterThan(SHADING.THRESHOLDS_4[2] ?? 1);
+  });
+
+  /**
+   * `limbNormal` at an explicit curvature, so the dome half of the model can be
+   * tested without the shipped constant deciding whether the test runs. Same
+   * arithmetic as the function, kept in the test only for the `curve` argument
+   * the production path takes from `SHADING`.
+   */
+  function limbNormalAt(
+    across: number,
+    along: number,
+    camera: number,
+    curve: number,
+  ): { x: number; y: number; z: number } {
+    const shrink = 1 + camera * (curve - 1);
+    const a = shrink * Math.min(1, Math.max(-1, across));
+    const b = camera * curve * Math.min(1, Math.max(-1, along));
+    const nz = Math.sqrt(Math.max(0, 1 - a * a - b * b));
+    const x = P.x * a + U.x * b;
+    const y = P.y * a + U.y * b;
+    const inv = 1 / Math.max(1e-6, Math.sqrt(x * x + y * y + nz * nz));
+    return { x: x * inv, y: y * inv, z: nz * inv };
+  }
+});
+
 /** A limb at `deg` on screen, optionally tilted out of the screen plane. */
 function angledLimb(deg: number, outOfPlane?: number): IndexGrid {
   const g = createGrid(48, 48);
@@ -255,6 +380,13 @@ describe('foreshortening keeps a limb in its band', () => {
     // The guard that this change cannot have touched the arms, the neck or the
     // shins: none of them pass `outOfPlane`, and omitting it must mean nothing
     // happens at all rather than "something small happens".
+    //
+    // THIS LOCK IS STILL RIGHT AFTER THE ROUND-4 REVIEW, and it was re-checked
+    // rather than assumed. The shin's drawn knee-to-ankle length GROWS through
+    // the descent (14.14 px standing, 16.40 in the hole) and its screen angle
+    // stays within 75-105 degrees, so there is no out-of-plane rotation in it
+    // to shade from. The shin's darkness was fixed on the axial side instead —
+    // `SHADING.AXIAL_LEG` — which leaves this guarantee untouched.
     for (const deg of [0, 37, 90, 143]) {
       const plain = angledLimb(deg);
       const zero = angledLimb(deg, 0);
