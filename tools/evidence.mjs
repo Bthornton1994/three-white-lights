@@ -99,9 +99,22 @@ if (verifyOnly) {
     console.error(`STALE: ${piece}.txt predates commit stamping — regenerate it.`);
     process.exit(1);
   }
+  // An exact SHA match is the WRONG test, and a critic caught me writing it: a
+  // bundle produced at commit X is itself committed by commit Y, so it can never
+  // stamp the commit it lives in. What matters is not whether the SHA moved but
+  // whether any CODE moved under it — a bundle still describes the tree if every
+  // commit since only touched run artefacts or docs.
   if (stamped !== head) {
-    console.error(`STALE: ${piece}.txt describes ${stamped.slice(0, 8)}, HEAD is ${head.slice(0, 8)}. Regenerate before grading.`);
-    process.exit(1);
+    const changed = git(['diff', '--name-only', `${stamped}..${head}`, '--', 'src', 'package.json', 'tsconfig.json', 'vitest.config.ts'])
+      .split('\n')
+      .filter((line) => line.trim() !== '');
+    if (changed.length > 0) {
+      console.error(
+        `STALE: ${piece}.txt describes ${stamped.slice(0, 8)}, and code changed since: ${changed.join(', ')}. Regenerate before grading.`,
+      );
+      process.exit(1);
+    }
+    console.log(`ok: ${piece}.txt stamps ${stamped.slice(0, 8)} (HEAD ${head.slice(0, 8)}), but no code changed since`);
   }
   if (dirty.length > 0) {
     console.error(`STALE: working tree has uncommitted code (${dirty.join(', ')}) — the bundle cannot describe it.`);
