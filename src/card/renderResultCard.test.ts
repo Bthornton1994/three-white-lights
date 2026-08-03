@@ -2,13 +2,24 @@ import { describe, expect, it } from 'vitest';
 
 import { PAL } from '../art/palette';
 import { createGrid, type IndexGrid } from '../art/raster';
-import { NO_VALUE_DISPLAY, buildResultCard, type ResultCard, type ResultCardInput } from '../game/resultCard';
+import {
+  ATTEMPT_GRID_HEADINGS,
+  NO_VALUE_DISPLAY,
+  PLACE_NO_TOTAL_DISPLAY,
+  SEX_CATEGORY_WORD,
+  buildResultCard,
+  type ResultCard,
+  type ResultCardInput,
+} from '../game/resultCard';
 import { createMeet, declareAttempt, resolveAttempt, type JudgePanel, type MeetState } from '../game/meet';
 import {
   BARBELL,
   CARD,
+  FOOTER,
   GRID,
   GRID_RIGHT_X,
+  LIFTER_STRIP,
+  MASTHEAD,
   SCORE_BLOCKS,
   SCORE_BLOCK_W,
   TOTAL_BLOCK,
@@ -19,16 +30,18 @@ import {
 import { LIFTER_META_LADDER } from './cardTuning';
 import { visualPlateStack } from '../art/plates';
 import {
+  DEFAULT_GRID_HEADINGS,
   firstThatFits,
   fitScale,
   fitSleeve,
   heaviestGoodLift,
   lifterMetaLine,
+  lifterMetaLineAtRung,
   renderResultCard,
 } from './renderResultCard';
 import { SHEET, findUnallocatedSheetIndices } from './sheetPalette';
 import { BOMBED_MEET_CARD, STRESS_MEET_CARD, STRONG_MEET_CARD } from './sampleCards';
-import { drawText, measureText } from './pixelFont';
+import { FONT, capHeight, drawText, measureText } from './pixelFont';
 
 // ---------------------------------------------------------------------------
 // Pixel probes. Everything below asserts against the grid the renderer actually
@@ -108,14 +121,24 @@ function cellInteriorRect(rowIndex: number, cellIndex: number): Rect {
  * tautology as long as the EXPECTED STRING is written out by hand in the test,
  * which it is.
  */
-function expectTextIn(
+interface TextRun {
+  readonly text: string;
+  readonly x: number;
+  readonly y: number;
+  readonly options?: Parameters<typeof drawText>[5];
+}
+
+/**
+ * The same check for a rect that holds MORE THAN ONE run of the same ink — the
+ * masthead sets the date to the left margin and the place to the right, and a
+ * probe that could only describe one of them would have to leave the other
+ * unasserted.
+ */
+function expectRunsIn(
   grid: IndexGrid,
   rect: Rect,
-  text: string,
-  x: number,
-  y: number,
+  runs: readonly TextRun[],
   index: number,
-  options: Parameters<typeof drawText>[5],
   label: string,
   /**
    * A colour that is allowed to sit on top of the type. Only the strike-through
@@ -125,7 +148,8 @@ function expectTextIn(
   overdrawnBy?: number,
 ): void {
   const reference = createGrid(CARD.W, CARD.H, 0);
-  drawText(reference, text, x, y, index, options);
+  for (const run of runs) drawText(reference, run.text, run.x, run.y, index, run.options);
+  const spelled = runs.map((run) => run.text).join(' | ');
   let mismatches = 0;
   let inkPixels = 0;
   for (let py = rect.y; py < rect.y + rect.h; py += 1) {
@@ -138,8 +162,22 @@ function expectTextIn(
       if (actual !== expected) mismatches += 1;
     }
   }
-  expect(inkPixels, `${label}: expected "${text}" to draw something`).toBeGreaterThan(0);
-  expect(mismatches, `${label}: pixels do not spell "${text}"`).toBe(0);
+  expect(inkPixels, `${label}: expected "${spelled}" to draw something`).toBeGreaterThan(0);
+  expect(mismatches, `${label}: pixels do not spell "${spelled}"`).toBe(0);
+}
+
+function expectTextIn(
+  grid: IndexGrid,
+  rect: Rect,
+  text: string,
+  x: number,
+  y: number,
+  index: number,
+  options: Parameters<typeof drawText>[5],
+  label: string,
+  overdrawnBy?: number,
+): void {
+  expectRunsIn(grid, rect, [{ text, x, y, options }], index, label, overdrawnBy);
 }
 
 /** Where a number is drawn inside a grid cell, matching the renderer exactly. */
@@ -160,6 +198,71 @@ const PLACE_RECT: Rect = {
   w: SCORE_BLOCK_W,
   h: SCORE_BLOCKS.H,
 };
+
+// The top third of the card. Every rect below stops one pixel inside the frame
+// on each side, because the frame's own columns are SHEET.INK and would show up
+// as stray ink in a mask that is supposed to hold nothing but type.
+const INSIDE_FRAME = { x: 1, w: CARD.W - 2 } as const;
+
+const FEDERATION_RECT: Rect = {
+  ...INSIDE_FRAME,
+  y: MASTHEAD.Y,
+  h: MASTHEAD.MEET_NAME_Y - MASTHEAD.Y,
+};
+const MEET_NAME_RECT: Rect = {
+  ...INSIDE_FRAME,
+  y: MASTHEAD.MEET_NAME_Y,
+  h: MASTHEAD.PLACE_DATE_Y - MASTHEAD.MEET_NAME_Y,
+};
+const DATE_PLACE_RECT: Rect = {
+  ...INSIDE_FRAME,
+  y: MASTHEAD.PLACE_DATE_Y,
+  h: MASTHEAD.Y + MASTHEAD.H - MASTHEAD.PLACE_DATE_Y,
+};
+const LIFTER_NAME_RECT: Rect = {
+  ...INSIDE_FRAME,
+  y: LIFTER_STRIP.NAME_Y,
+  h: FONT.GLYPH_H * LIFTER_STRIP.NAME_SCALE,
+};
+/**
+ * The line that carries the lifter's sex, equipment, division, class and
+ * bodyweight. Stops one row short of the strip's closing rule.
+ */
+const LIFTER_META_RECT: Rect = {
+  ...INSIDE_FRAME,
+  y: LIFTER_STRIP.META_Y,
+  h: LIFTER_STRIP.Y + LIFTER_STRIP.H - 1 - LIFTER_STRIP.META_Y,
+};
+/** The header row of the attempt grid, above its closing rule. */
+const GRID_HEADER_RECT: Rect = { ...INSIDE_FRAME, y: GRID.HEADER_Y, h: GRID.RULE_Y - GRID.HEADER_Y };
+const FOOTER_RECT: Rect = { ...INSIDE_FRAME, y: FOOTER.Y, h: FOOTER.H };
+
+/**
+ * A tight box around a right-aligned value, big enough for the type and nothing
+ * else.
+ *
+ * THIS EXISTS BECAUSE OF THREE MUTANTS THAT SURVIVED. The bombed card's total
+ * block, DOTS block and place block were each checked by counting pixels of one
+ * colour across the WHOLE block — and each block draws a label or a unit in
+ * that same colour, so: deleting the em dash from the total left the "KG" unit
+ * satisfying `countIn(BOMBED, TOTAL_RECT, SHEET.RULE) > 0`; deleting the DOTS
+ * placeholder left the word "DOTS" satisfying
+ * `countIn(BOMBED, DOTS_RECT, SHEET.INK_SOFT) > 0`; and printing "12" in place
+ * of "DQ" satisfied `countIn(BOMBED, PLACE_RECT, SHEET.NOLIFT_DARK) > 20` —
+ * i.e. the suite passed a card that ranked a bombed lifter twelfth, which is
+ * the one thing `resultCard.ts` exists to refuse. Boxing the value away from
+ * its label is what lets the check be on the glyphs instead.
+ */
+function valueRect(right: number, top: number, bottom: number, text: string, scale: number): Rect {
+  const width = measureText(text, 'tabular') * scale;
+  return { x: right - width - 2, y: top, w: width + 3, h: bottom - top };
+}
+
+const TOTAL_VALUE_BOTTOM = TOTAL_BLOCK.Y + TOTAL_BLOCK.H;
+const SCORE_VALUE_BOTTOM = SCORE_BLOCKS.Y + SCORE_BLOCKS.H - 1;
+const DOTS_VALUE_RIGHT = CONTENT.X + SCORE_BLOCK_W - SCORE_BLOCKS.VALUE_PAD_RIGHT;
+const PLACE_VALUE_RIGHT = PLACE_RECT.x + SCORE_BLOCK_W - SCORE_BLOCKS.VALUE_PAD_RIGHT;
+const SCORE_VALUE_Y = SCORE_BLOCKS.Y + SCORE_BLOCKS.VALUE_DY;
 const BARBELL_RECT: Rect = { x: 0, y: BARBELL.CENTER_Y - 16, w: CARD.W, h: 32 };
 
 const PLATE_FILLS = [
@@ -181,6 +284,7 @@ function plateCount(grid: IndexGrid): number {
 
 const STRONG = renderResultCard(STRONG_MEET_CARD);
 const BOMBED = renderResultCard(BOMBED_MEET_CARD);
+const STRESS = renderResultCard(STRESS_MEET_CARD);
 
 // A third case the samples do not cover: nothing made at all, so there is no
 // heaviest lift for the barbell to load.
@@ -244,11 +348,246 @@ describe('the grid the renderer produces', () => {
     expect(differing).toBeGreaterThan(CARD.W * CARD.H * 0.05);
   });
 
+  it('takes its column headings from resultCard.ts rather than retyping them', () => {
+    // The renderer's own docstring says it "decides NOTHING about what the card
+    // says". It used to default to the literal ['LIFT','1','2','3','BEST'], so
+    // renaming a heading in `ATTEMPT_GRID_HEADINGS` would have left the drawn
+    // card unchanged — a string decision living in the layout file.
+    expect(DEFAULT_GRID_HEADINGS).toEqual([
+      ATTEMPT_GRID_HEADINGS.lift,
+      ...ATTEMPT_GRID_HEADINGS.attempts,
+      ATTEMPT_GRID_HEADINGS.best,
+    ]);
+    expect(DEFAULT_GRID_HEADINGS).toHaveLength(GRID.CELL_COUNT + 1);
+    // ...and the default really is what an un-parameterised call draws.
+    const explicit = renderResultCard(STRONG_MEET_CARD, DEFAULT_GRID_HEADINGS);
+    expect(Array.from(explicit.data)).toEqual(Array.from(STRONG.data));
+  });
+
+  it('spells those headings on the card', () => {
+    // The assertion above compares two constants that move together, so on its
+    // own it is a tautology: renaming `ATTEMPT_GRID_HEADINGS.best` to "TOP"
+    // passed it. These literals are hand-written, so a rename has to come with
+    // a deliberate edit here.
+    expectRunsIn(
+      STRONG,
+      GRID_HEADER_RECT,
+      [
+        { text: 'LIFT', x: GRID.LABEL_X, y: GRID.HEADER_TEXT_Y },
+        ...['1', '2', '3', 'BEST'].map((text, i) => ({
+          text,
+          x: gridCellX(i) + Math.floor(GRID.CELL_W / 2),
+          y: GRID.HEADER_TEXT_Y,
+          options: { align: 'center' } as const,
+        })),
+      ],
+      SHEET.INK_SOFT,
+      'grid headings',
+    );
+  });
+
+  it('carries the app’s wordmark, and no federation’s', () => {
+    // GDD §11 leaves real-federation licensing open, so the footer is the one
+    // place the card is branded and it is branded as ours.
+    expectTextIn(
+      STRONG,
+      FOOTER_RECT,
+      'THREE WHITE LIGHTS',
+      Math.floor(CARD.W / 2),
+      FOOTER.TEXT_Y,
+      SHEET.BAND_INK,
+      { align: 'center' },
+      'footer wordmark',
+    );
+  });
+
   it('stays inside its own frame', () => {
     for (let x = 0; x < CARD.W; x += 1) {
       expect(STRONG.data[x]).toBe(SHEET.INK);
       expect(STRONG.data[(CARD.H - 1) * CARD.W + x]).toBe(SHEET.INK);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The top third of the card.
+//
+// THIS BLOCK EXISTS BECAUSE THERE WAS NOTHING HERE. Every content assertion in
+// this file used to sit inside the attempt grid, so the masthead, the lifter's
+// name and the identity strip had no pixel-level check of any kind — which is
+// how the card came to omit the lifter's SEX entirely while `resultCard.ts`
+// computed it, exported it, put it third in `RESULT_SHEET_COLUMNS` and wrote it
+// into the CSV row. Nothing could have failed. Now something can.
+//
+// Every expected string below is written out BY HAND. That is what stops the
+// glyph-mask probe from being a tautology: it compares the rendered card
+// against these literals, not against the model the renderer was handed.
+// ---------------------------------------------------------------------------
+
+describe('the masthead, in pixels', () => {
+  it('sets the federation, the meet and the date and place', () => {
+    expectTextIn(
+      STRONG,
+      FEDERATION_RECT,
+      'IRONGATE',
+      Math.floor(CARD.W / 2),
+      MASTHEAD.FEDERATION_BASELINE - capHeight(2),
+      SHEET.BAND_INK,
+      { align: 'center', scale: 2 },
+      'strong federation',
+    );
+    expectTextIn(
+      STRONG,
+      MEET_NAME_RECT,
+      'National Championships',
+      Math.floor(CARD.W / 2),
+      MASTHEAD.MEET_NAME_Y,
+      SHEET.BAND_INK,
+      { align: 'center' },
+      'strong meet name',
+    );
+    expectRunsIn(
+      STRONG,
+      DATE_PLACE_RECT,
+      [
+        { text: '14 FEB 2026', x: CONTENT.X, y: MASTHEAD.PLACE_DATE_Y },
+        { text: 'SHEFFIELD, ENGLAND', x: CONTENT.RIGHT, y: MASTHEAD.PLACE_DATE_Y, options: { align: 'right' } },
+      ],
+      SHEET.RULE,
+      'strong date and place',
+    );
+  });
+
+  it('drops the federation a whole step and shortens the place rather than truncating either', () => {
+    // The stress card's federation will not set at double height and its town
+    // and country will not fit beside the date. Both must come out as shorter
+    // TRUE statements, never as "CONTINENTAL ALLIANC" or "NEWCASTLE UPON TY…".
+    expectTextIn(
+      STRESS,
+      FEDERATION_RECT,
+      'CONTINENTAL ALLIANCE',
+      Math.floor(CARD.W / 2),
+      MASTHEAD.FEDERATION_BASELINE - capHeight(1),
+      SHEET.BAND_INK,
+      { align: 'center', scale: 1 },
+      'stress federation',
+    );
+    expectRunsIn(
+      STRESS,
+      DATE_PLACE_RECT,
+      [
+        { text: '07 NOV 2026', x: CONTENT.X, y: MASTHEAD.PLACE_DATE_Y },
+        { text: 'NEWCASTLE UPON TYNE', x: CONTENT.RIGHT, y: MASTHEAD.PLACE_DATE_Y, options: { align: 'right' } },
+      ],
+      SHEET.RULE,
+      'stress date and short place',
+    );
+  });
+});
+
+describe('the lifter identity strip, in pixels', () => {
+  it('sets the lifter’s name', () => {
+    expectTextIn(STRONG, LIFTER_NAME_RECT, 'Marcus Vale', CONTENT.X, LIFTER_STRIP.NAME_Y, SHEET.INK, { scale: 2 }, 'strong name');
+    expectTextIn(BOMBED, LIFTER_NAME_RECT, 'Dana Whitmore', CONTENT.X, LIFTER_STRIP.NAME_Y, SHEET.INK, { scale: 2 }, 'bombed name');
+    expectTextIn(
+      STRESS,
+      LIFTER_NAME_RECT,
+      'Konstantín Papadopoulos',
+      CONTENT.X,
+      LIFTER_STRIP.NAME_Y,
+      SHEET.INK,
+      { scale: 1 },
+      'stress name',
+    );
+  });
+
+  it('SAYS WHOSE CATEGORY IT IS — the card prints DOTS, and DOTS takes sex', () => {
+    // The gap this block was written for. A card that publishes a coefficient
+    // while withholding one of its inputs cannot be checked by the people
+    // GDD §6.5 says have to believe it, and the weight class does not stand in:
+    // 84 is a women's class, 83 a men's, and "120+" is just "the top one".
+    expectTextIn(
+      STRONG,
+      LIFTER_META_RECT,
+      "MEN'S RAW OPEN 93 · 92.40 KG",
+      CONTENT.X,
+      LIFTER_STRIP.META_Y,
+      SHEET.INK_SOFT,
+      {},
+      'strong meta line',
+    );
+    expectTextIn(
+      BOMBED,
+      LIFTER_META_RECT,
+      "WOMEN'S RAW OPEN 69 · 68.20 KG",
+      CONTENT.X,
+      LIFTER_STRIP.META_Y,
+      SHEET.INK_SOFT,
+      {},
+      'bombed meta line',
+    );
+    // Under pressure the division comes off — see `LIFTER_META_LADDER` for why
+    // that and not the equipment — but the sex does not, and cannot.
+    expectTextIn(
+      STRESS,
+      LIFTER_META_RECT,
+      "MEN'S SINGLE-PLY 120+ · 139.40",
+      CONTENT.X,
+      LIFTER_STRIP.META_Y,
+      SHEET.INK_SOFT,
+      {},
+      'stress meta line',
+    );
+  });
+
+  it('draws a different strip for a man and a woman with identical numbers', () => {
+    // The differential check. Both cards run the same meet, weigh the same,
+    // sit in the same declared class and take the same division and kit, so
+    // the ONLY thing that can move a pixel in this strip is the sex. A card
+    // that computed the sex and dropped it on the floor — which is exactly
+    // what shipped — renders these two identically.
+    const base: ResultCardInput = {
+      meet: { federation: 'Irongate', name: 'National Championships', dateIso: '2026-02-14', town: 'Sheffield' },
+      lifter: {
+        name: 'Sam Reyes',
+        sex: 'male',
+        bodyweightKg: 74,
+        division: 'Open',
+        equipment: 'Raw',
+        // Pinned, so flipping the sex cannot change the class string and give
+        // the test a difference that has nothing to do with the sex.
+        weightClassKg: '74',
+      },
+      state: [
+        [200, GOOD],
+        [210, GOOD],
+        [220, GOOD],
+        [120, GOOD],
+        [130, GOOD],
+        [140, GOOD],
+        [230, GOOD],
+        [240, GOOD],
+        [250, GOOD],
+      ].reduce<MeetState>((state, entry) => take(state, entry[0] as number, entry[1] as JudgePanel), createMeet()),
+    };
+    const asMan = cardOf(base);
+    const asWoman = cardOf({ ...base, lifter: { ...base.lifter, sex: 'female' } });
+    expect(asMan.lifter.weightClassText).toBe(asWoman.lifter.weightClassText);
+    expect(asMan.lifter.bodyweightText).toBe(asWoman.lifter.bodyweightText);
+    expect(asMan.totalKg).toBe(asWoman.totalKg);
+
+    const manGrid = renderResultCard(asMan);
+    const womanGrid = renderResultCard(asWoman);
+    let differing = 0;
+    for (let y = LIFTER_META_RECT.y; y < LIFTER_META_RECT.y + LIFTER_META_RECT.h; y += 1) {
+      for (let x = LIFTER_META_RECT.x; x < LIFTER_META_RECT.x + LIFTER_META_RECT.w; x += 1) {
+        const i = y * CARD.W + x;
+        if (manGrid.data[i] !== womanGrid.data[i]) differing += 1;
+      }
+    }
+    expect(differing, 'the identity strip must not be the same for both sexes').toBeGreaterThan(0);
+    expectTextIn(manGrid, LIFTER_META_RECT, "MEN'S RAW OPEN 74 · 74.00 KG", CONTENT.X, LIFTER_STRIP.META_Y, SHEET.INK_SOFT, {}, 'man');
+    expectTextIn(womanGrid, LIFTER_META_RECT, "WOMEN'S RAW OPEN 74 · 74.00 KG", CONTENT.X, LIFTER_STRIP.META_Y, SHEET.INK_SOFT, {}, 'woman');
   });
 });
 
@@ -379,28 +718,111 @@ describe('the total block', () => {
     expect(countIn(NOTHING_MADE, TOTAL_RECT, SHEET.ACCENT_HI)).toBe(0);
   });
 
-  it('still draws something where the total would be, so the block is not blank', () => {
-    expect(countIn(BOMBED, TOTAL_RECT, SHEET.RULE)).toBeGreaterThan(0);
+  it('prints the total itself, and a dash where there is none', () => {
+    // WAS `countIn(BOMBED, TOTAL_RECT, SHEET.RULE) > 0`, which the "KG" unit
+    // satisfied on its own: deleting the em dash left the test green. Boxed
+    // away from the unit and checked on the glyphs, it bites.
+    expectTextIn(
+      STRONG,
+      valueRect(TOTAL_BLOCK.VALUE_RIGHT, TOTAL_BLOCK.VALUE_Y, TOTAL_VALUE_BOTTOM, '755', 3),
+      '755',
+      TOTAL_BLOCK.VALUE_RIGHT,
+      TOTAL_BLOCK.VALUE_Y,
+      SHEET.ACCENT_HI,
+      { ...TABULAR_RIGHT, scale: 3 },
+      'strong total',
+    );
+    expectTextIn(
+      BOMBED,
+      valueRect(TOTAL_BLOCK.VALUE_RIGHT, TOTAL_BLOCK.VALUE_Y, TOTAL_VALUE_BOTTOM, NO_VALUE_DISPLAY, 3),
+      NO_VALUE_DISPLAY,
+      TOTAL_BLOCK.VALUE_RIGHT,
+      TOTAL_BLOCK.VALUE_Y,
+      SHEET.RULE,
+      { ...TABULAR_RIGHT, scale: 3 },
+      'bombed total',
+    );
+  });
+
+  it('draws the dash somewhere the KG unit is not, so one cannot stand in for the other', () => {
+    // Pinning the trap the assertion above was rewritten around: if these two
+    // rects ever overlap, "the block is not blank" stops proving anything again.
+    const dash = valueRect(TOTAL_BLOCK.VALUE_RIGHT, TOTAL_BLOCK.VALUE_Y, TOTAL_VALUE_BOTTOM, NO_VALUE_DISPLAY, 3);
+    const unitLeft = TOTAL_BLOCK.LABEL_X + measureText('TOTAL') + 4;
+    const unitRight = unitLeft + measureText('KG');
+    expect(unitRight).toBeLessThan(dash.x);
+    expect(countIn(BOMBED, dash, SHEET.RULE)).toBeGreaterThan(0);
   });
 });
 
 describe('the place block', () => {
-  it('sets a placing in ink', () => {
-    expect(countIn(STRONG, PLACE_RECT, SHEET.INK)).toBeGreaterThan(10);
+  it('sets the placing it was given, in ink', () => {
+    expectTextIn(
+      STRONG,
+      valueRect(PLACE_VALUE_RIGHT, SCORE_VALUE_Y, SCORE_VALUE_BOTTOM, '1', 2),
+      '1',
+      PLACE_VALUE_RIGHT,
+      SCORE_VALUE_Y,
+      SHEET.INK,
+      { ...TABULAR_RIGHT, scale: 2 },
+      'strong place',
+    );
     expect(countIn(STRONG, PLACE_RECT, SHEET.NOLIFT_DARK)).toBe(0);
   });
 
-  it('sets DQ in red, so it cannot be mistaken for a placing', () => {
-    expect(countIn(BOMBED, PLACE_RECT, SHEET.NOLIFT_DARK)).toBeGreaterThan(20);
-    expect(countIn(NOTHING_MADE, PLACE_RECT, SHEET.NOLIFT_DARK)).toBeGreaterThan(20);
+  it('spells DQ, in red, and never a number', () => {
+    // WAS a red-pixel count over the whole block. Printing "12" instead of "DQ"
+    // in the same red passed it — i.e. the suite accepted a card that ranked a
+    // bombed lifter twelfth, which is the exact thing `resultCard.ts` refuses
+    // to build. Now the glyphs are checked.
+    for (const [label, grid] of [
+      ['bombed', BOMBED],
+      ['nothing made', NOTHING_MADE],
+    ] as const) {
+      expectTextIn(
+        grid,
+        valueRect(PLACE_VALUE_RIGHT, SCORE_VALUE_Y, SCORE_VALUE_BOTTOM, PLACE_NO_TOTAL_DISPLAY, 2),
+        PLACE_NO_TOTAL_DISPLAY,
+        PLACE_VALUE_RIGHT,
+        SCORE_VALUE_Y,
+        SHEET.NOLIFT_DARK,
+        { ...TABULAR_RIGHT, scale: 2 },
+        `${label} place`,
+      );
+      // ...and no full-strength ink anywhere in the block, which is what a
+      // placing would be set in.
+      expect(countIn(grid, PLACE_RECT, SHEET.INK), `${label} place has no ink digits`).toBe(0);
+    }
   });
 
-  it('prints a DOTS score for one card and a placeholder for the other', () => {
-    expect(countIn(STRONG, DOTS_RECT, SHEET.INK)).toBeGreaterThan(40);
-    // A dash is a handful of soft-ink pixels; a score is dozens of full-ink
-    // ones. The bombed card must have no full-ink digits in this block.
-    expect(countIn(BOMBED, DOTS_RECT, SHEET.INK)).toBeLessThan(countIn(STRONG, DOTS_RECT, SHEET.INK) / 3);
-    expect(countIn(BOMBED, DOTS_RECT, SHEET.INK_SOFT)).toBeGreaterThan(0);
+  it('prints the DOTS score itself, and a dash where there is none', () => {
+    // WAS `countIn(BOMBED, DOTS_RECT, SHEET.INK_SOFT) > 0`, which the word
+    // "DOTS" satisfied on its own: deleting the placeholder left it green.
+    expectTextIn(
+      STRONG,
+      valueRect(DOTS_VALUE_RIGHT, SCORE_VALUE_Y, SCORE_VALUE_BOTTOM, '481.87', 2),
+      // Hand-written, not read off the card: DOTS for 755 kg at 92.40 kg on
+      // the men's coefficients. A renderer reading the total, the placing or
+      // the other sex's score into this block would not spell this.
+      '481.87',
+      DOTS_VALUE_RIGHT,
+      SCORE_VALUE_Y,
+      SHEET.INK,
+      { ...TABULAR_RIGHT, scale: 2 },
+      'strong dots',
+    );
+    expectTextIn(
+      BOMBED,
+      valueRect(DOTS_VALUE_RIGHT, SCORE_VALUE_Y, SCORE_VALUE_BOTTOM, NO_VALUE_DISPLAY, 2),
+      NO_VALUE_DISPLAY,
+      DOTS_VALUE_RIGHT,
+      SCORE_VALUE_Y,
+      SHEET.INK_SOFT,
+      { ...TABULAR_RIGHT, scale: 2 },
+      'bombed dots',
+    );
+    // No full-strength ink at all in the bombed block: a digit would be.
+    expect(countIn(BOMBED, DOTS_RECT, SHEET.INK)).toBe(0);
   });
 });
 
@@ -486,20 +908,44 @@ describe('shortening rather than truncating', () => {
 
   it('keeps a short lifter’s full meta line and shortens a long one', () => {
     const full = lifterMetaLine(STRONG_MEET_CARD, CONTENT.W);
-    expect(full).toContain('CLASS 93');
-    expect(full).toContain('92.40 KG');
-    expect(full).toContain('OPEN');
-    expect(full).toContain('RAW');
+    expect(full).toBe("MEN'S RAW OPEN 93 · 92.40 KG");
     expect(measureText(full)).toBeLessThanOrEqual(CONTENT.W);
+    // The stress lifter's card cannot hold all of it, and shortens rather than
+    // truncating — but see below for what it is not allowed to shorten away.
+    const tight = lifterMetaLine(STRESS_MEET_CARD, CONTENT.W);
+    expect(tight).toBe("MEN'S SINGLE-PLY 120+ · 139.40");
+    expect(measureText(tight)).toBeLessThanOrEqual(CONTENT.W);
   });
 
-  it('always keeps the class and the bodyweight, however tight it gets', () => {
-    // These two are the row a lifter is placed in. Everything else on the meta
-    // line is context; the ladder may drop context and may never drop these.
+  it('always keeps the sex, the class and the bodyweight, however tight it gets', () => {
+    // Sex, class and bodyweight are the three facts a reader needs to check the
+    // DOTS score the card publishes two blocks further down. Everything else on
+    // the meta line is context; the ladder may drop context and may never drop
+    // these. At width 0 the ladder has run out and falls back to its last rung,
+    // which still has to carry all three.
     for (const width of [CONTENT.W, 120, 80, 40, 0]) {
       const line = lifterMetaLine(STRESS_MEET_CARD, width);
+      expect(line, `at ${width}px`).toContain(SEX_CATEGORY_WORD.male);
       expect(line, `at ${width}px`).toContain('120+');
       expect(line, `at ${width}px`).toContain('139.40');
+    }
+    for (const width of [CONTENT.W, 120, 80, 40, 0]) {
+      const line = lifterMetaLine(BOMBED_MEET_CARD, width);
+      expect(line, `at ${width}px`).toContain(SEX_CATEGORY_WORD.female);
+      expect(line, `at ${width}px`).toContain('69');
+      expect(line, `at ${width}px`).toContain('68.20');
+    }
+  });
+
+  it('has no rung, at any width, on any card, that omits the sex', () => {
+    // The ladder is data, so walk all of it rather than sampling widths: every
+    // rung of every card must name the lifter's sex. `LifterCategoryPart` has
+    // no 'sex' member, so this is checking that the type kept its promise.
+    for (const card of [STRONG_MEET_CARD, BOMBED_MEET_CARD, STRESS_MEET_CARD]) {
+      const word = SEX_CATEGORY_WORD[card.lifter.sex];
+      LIFTER_META_LADDER.forEach((rung, i) => {
+        expect(lifterMetaLineAtRung(card, rung), `${card.lifter.name} rung ${i}`).toContain(word);
+      });
     }
   });
 
@@ -513,6 +959,15 @@ describe('shortening rather than truncating', () => {
     }
     expect(new Set(lines).size).toBeGreaterThan(1);
     expect(LIFTER_META_LADDER.length).toBeGreaterThan(1);
+  });
+
+  it('drops the division before the equipment, and says so out loud', () => {
+    // The one fact the ladder IS allowed to spend, and the order it spends it
+    // in, is a tuning call rather than a spacing tweak — so pin it, so that
+    // changing it is a deliberate edit to `cardTuning.ts` and not a drift.
+    const rungs = LIFTER_META_LADDER.map((rung) => [...rung.category]);
+    expect(rungs).toEqual([['equipment', 'division'], ['equipment', 'division'], ['equipment'], []]);
+    expect(LIFTER_META_LADDER.map((rung) => rung.bodyweightUnit)).toEqual([true, false, false, false]);
   });
 });
 
