@@ -848,9 +848,13 @@ function assertDeltaEndpointScore(score: number, label: string): void {
 }
 
 /**
- * The structural mint: a delta between two lifters-who-placed. Cannot fail, and
- * cannot be handed an outcome that has no score, because `ScoredDots` is the
- * narrowed branch and `NoTotalDots` has no `score` field to supply one.
+ * The structural mint: a delta between two results that both placed. It cannot
+ * be handed an outcome with no score, because `ScoredDots` is the narrowed
+ * branch and `NoTotalDots` has no `score` field to supply one.
+ *
+ * On a call that typechecks it cannot throw — both ends are then real scores by
+ * construction. Forced past the compiler it delegates the same checks as the
+ * raw mint below and throws there, which is where the message is.
  *
  * Holding two `DotsOutcome`s rather than two `ScoredDots`? Narrow both first,
  * and mean it — a missing end is not a delta of anything:
