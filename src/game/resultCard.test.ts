@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,12 +10,14 @@ import {
   PLACE_NO_TOTAL_DISPLAY,
   RESULT_CARD_CSV_HEADER,
   RESULT_SHEET_COLUMNS,
+  SEX_CATEGORY_WORD,
   WEIGHT_CLASSES_KG,
   buildResultCard,
   formatBodyweight,
   formatMeetDate,
   formatMeetLocation,
   formatWeight,
+  lifterCategoryText,
   resultCardEntriesCsvRow,
   resultCardStrings,
   resultSheetLine,
@@ -82,6 +87,79 @@ function cardOf(input: ResultCardInput): ResultCard {
   if (!result.ok) throw new Error(`buildResultCard failed: ${result.error.code} ${result.error.message}`);
   return result.card;
 }
+
+// ---------------------------------------------------------------------------
+// Purity contract
+//
+// `meet.test.ts` and `streak.test.ts` both scan their module's source for the
+// things CLAUDE.md forbids a game-math module to reach for; this file had no
+// such block, so nothing stopped `resultCard.ts` growing a React import, a
+// clock read or a locale-sensitive number format.
+// ---------------------------------------------------------------------------
+
+describe('purity contract', () => {
+  const source = readFileSync(fileURLToPath(new URL('./resultCard.ts', import.meta.url)), 'utf8');
+  // Comments are stripped so the header's own prose — which quotes CSV rows,
+  // names `Date`, and discusses `Intl` at length — does not trip the scans.
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  it('strips comments without destroying the code (sanity check for the scans below)', () => {
+    expect(code).toContain('export function buildResultCard');
+    expect(code).toContain('export function lifterCategoryText');
+    // A line that only exists in a comment.
+    expect(code).not.toContain('Skeeter Valentine');
+  });
+
+  it('imports only its two pure siblings, and nothing else', () => {
+    const specifiers = [...code.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1]);
+    expect([...new Set(specifiers)].sort()).toEqual(['./dots', './meet']);
+    expect(code).not.toMatch(/\brequire\s*\(/);
+    expect(code).not.toMatch(/\breact\b/i);
+  });
+
+  it('never reads a clock', () => {
+    // `formatMeetDate` parses ISO-8601 with a regex precisely so a `Date` can
+    // never drag the host timezone in and shift the day on the card.
+    expect(code).not.toMatch(/\bDate\b/);
+    expect(code).not.toMatch(/\bperformance\s*\./);
+  });
+
+  it('never uses randomness', () => {
+    expect(code).not.toMatch(/Math\s*\.\s*random/);
+    expect(code).not.toMatch(/\bcrypto\b/);
+  });
+
+  it('has no ambient side-effect surface', () => {
+    expect(code).not.toMatch(/\bprocess\s*\./);
+    expect(code).not.toMatch(/\bglobalThis\b/);
+    expect(code).not.toMatch(/console\s*\./);
+    expect(code).not.toMatch(/\bfetch\s*\(/);
+  });
+
+  it('formats no number through a locale', () => {
+    // A card built on a device and a card built on a server have to be
+    // byte-identical, and locale-sensitive formatting is how that stops being
+    // true — a German locale would print "434,5".
+    expect(code).not.toMatch(/\bIntl\b/);
+    expect(code).not.toMatch(/toLocale/);
+  });
+
+  it('never launders a missing total into a number', () => {
+    // The refusal the module exists around. `?? 0` on a total, or a reach for
+    // the provisional running sum, is the bug that would put a plausible
+    // number on a bombed lifter's card.
+    expect(code).not.toMatch(/totalOnTheBoard/);
+    expect(code).not.toMatch(/\?\?\s*0\b/);
+  });
+
+  it('reaches for no rep-max formula at all — that is e1rm.ts’s business', () => {
+    // CLAUDE.md: Epley is the one rep-max formula the codebase may reach for,
+    // and Brzycki must not appear under any name. A result card computes
+    // neither; it sums three bests.
+    expect(code).not.toMatch(/brzycki/i);
+    expect(code).not.toMatch(/epley/i);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Real published results, reproduced.
@@ -695,6 +773,82 @@ describe('the published column order', () => {
     expect(numeric).toContain('squat1');
     expect(numeric).not.toContain('lifter');
     expect(numeric).not.toContain('place');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The card always says whose category this is
+// ---------------------------------------------------------------------------
+
+describe('the lifter’s category', () => {
+  it('names the sex, the kit, the division and the class, in that order', () => {
+    // The word order is the committed reference board's — its Division column
+    // reads "Women's Raw Open 52". Note this is NOT `RESULT_SHEET_COLUMNS`'
+    // order, which puts Division before Equipment because [R2]'s CSV header
+    // does; a machine-readable row and a spoken category name differ.
+    expect(lifterCategoryText(cardOf(CHAPON_INPUT).lifter)).toBe("WOMEN'S RAW OPEN 47");
+    expect(lifterCategoryText(cardOf(CLEMENT_INPUT).lifter)).toBe("MEN'S RAW OPEN 105");
+  });
+
+  it('can be asked to drop the kit or the division, and never the sex or the class', () => {
+    const lifter = cardOf({
+      ...CHAPON_INPUT,
+      lifter: { ...CHAPON_INPUT.lifter, division: 'Masters 1', equipment: 'Single-ply' },
+    }).lifter;
+    expect(lifterCategoryText(lifter)).toBe("WOMEN'S SINGLE-PLY MASTERS 1 47");
+    expect(lifterCategoryText(lifter, { equipment: true, division: false })).toBe("WOMEN'S SINGLE-PLY 47");
+    expect(lifterCategoryText(lifter, { equipment: false, division: true })).toBe("WOMEN'S MASTERS 1 47");
+    // Nothing a caller can pass removes either of these two.
+    for (const equipment of [true, false]) {
+      for (const division of [true, false]) {
+        const text = lifterCategoryText(lifter, { equipment, division });
+        expect(text, `${String(equipment)}/${String(division)}`).toContain(SEX_CATEGORY_WORD.female);
+        expect(text).toContain('47');
+      }
+    }
+  });
+
+  it('puts the category on every card it builds', () => {
+    for (const input of [CHAPON_INPUT, CLEMENT_INPUT]) {
+      const card = cardOf(input);
+      expect(card.lifter.categoryText).toBe(lifterCategoryText(card.lifter));
+      expect(card.lifter.categoryText).toContain(SEX_CATEGORY_WORD[card.lifter.sex]);
+      expect(resultCardStrings(card)).toContain(card.lifter.categoryText);
+    }
+  });
+
+  it('distinguishes a man and a woman in the same declared class', () => {
+    // The point of the whole field: DOTS takes sex as an input, and the weight
+    // class does not stand in for it — 84 is a women's class, 83 a men's, and
+    // a declared class string can be identical either way.
+    const shared = { ...CHAPON_INPUT.lifter, weightClassKg: '84' };
+    const woman = cardOf({ ...CHAPON_INPUT, lifter: { ...shared, sex: 'female' } });
+    const man = cardOf({ ...CHAPON_INPUT, lifter: { ...shared, sex: 'male' } });
+    expect(woman.lifter.weightClassText).toBe(man.lifter.weightClassText);
+    expect(woman.lifter.categoryText).not.toBe(man.lifter.categoryText);
+    expect(woman.lifter.categoryText).toBe("WOMEN'S RAW OPEN 84");
+    expect(man.lifter.categoryText).toBe("MEN'S RAW OPEN 84");
+    // ...and the DOTS score really does differ, which is why it matters.
+    expect(woman.summary[1].value).not.toBe(man.summary[1].value);
+  });
+
+  it('leaves the CSV row and the sheet line on the published M/F', () => {
+    // Two renderings of one fact. The phrase is for a card with no heading row;
+    // the letter is for a table that has a "Sex" column over it, which is what
+    // [R2] and [R6] actually publish. Adding the phrase must not disturb them.
+    const card = cardOf(CHAPON_INPUT);
+    expect(card.lifter.sexText).toBe('F');
+    expect(resultCardEntriesCsvRow(card)[1]).toBe('F');
+    expect(resultSheetLine(card).find((cell) => cell.column.id === 'sex')?.text).toBe('F');
+    expect(RESULT_CARD_CSV_HEADER[1]).toBe('Sex');
+  });
+
+  it('drops a blank division or kit rather than printing a double space', () => {
+    const bare = cardOf({
+      ...CHAPON_INPUT,
+      lifter: { ...CHAPON_INPUT.lifter, division: '', equipment: '   ' },
+    });
+    expect(bare.lifter.categoryText).toBe("WOMEN'S 47");
   });
 });
 

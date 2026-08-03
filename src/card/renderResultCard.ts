@@ -21,7 +21,15 @@
  * plate colours off this card is reading the same language the gameplay speaks.
  */
 
-import { NO_VALUE_DISPLAY, PLACE_NO_TOTAL_DISPLAY, type AttemptCell, type LiftRow, type ResultCard } from '../game/resultCard';
+import {
+  ATTEMPT_GRID_HEADINGS,
+  NO_VALUE_DISPLAY,
+  PLACE_NO_TOTAL_DISPLAY,
+  lifterCategoryText,
+  type AttemptCell,
+  type LiftRow,
+  type ResultCard,
+} from '../game/resultCard';
 import { PAL, RAMPS } from '../art/palette';
 import { createGrid, drawPlateEdge, fillRect, setPx, type IndexGrid } from '../art/raster';
 import { PLATE_HUE_RAMPS, plateDiameterPx, visualPlateStack, type LoadedPlate } from '../art/plates';
@@ -42,7 +50,7 @@ import {
   TOTAL_BLOCK,
   gridCellX,
   gridRowY,
-  type LifterMetaField,
+  type LifterMetaRung,
 } from './cardTuning';
 import { capHeight, drawText, measureText, strikeThrough, type TextMode } from './pixelFont';
 
@@ -158,37 +166,37 @@ function drawLifterStrip(grid: IndexGrid, card: ResultCard): void {
   drawText(grid, lifterMetaLine(card, CONTENT.W), CONTENT.X, LIFTER_STRIP.META_Y, SHEET.INK_SOFT);
 }
 
-/** One field of the meta line, rendered. */
-function metaField(card: ResultCard, field: LifterMetaField): string {
-  switch (field) {
-    case 'classLabelled':
-      return `${CARD_LABELS.CLASS_PREFIX}${card.lifter.weightClassText}`;
-    case 'class':
-      return card.lifter.weightClassText;
-    case 'bodyweightWithUnit':
-      return `${card.lifter.bodyweightText}${CARD_LABELS.BODYWEIGHT_SUFFIX}`;
-    case 'bodyweight':
-      return card.lifter.bodyweightText;
-    case 'division':
-      return card.lifter.division.toUpperCase();
-    case 'equipment':
-      return card.lifter.equipment.toUpperCase();
-  }
+/**
+ * The meta line at one rung of the ladder.
+ *
+ * Two parts, and only two: the category phrase and the bodyweight. The words
+ * inside the phrase come from `lifterCategoryText`, which is where the SEX is
+ * welded on — this function has no way to build a line without it, because the
+ * rung can only ask about `equipment` and `division`.
+ */
+export function lifterMetaLineAtRung(card: ResultCard, rung: LifterMetaRung): string {
+  const category = lifterCategoryText(card.lifter, {
+    equipment: rung.category.includes('equipment'),
+    division: rung.category.includes('division'),
+  });
+  const bodyweight = rung.bodyweightUnit
+    ? `${card.lifter.bodyweightText}${CARD_LABELS.BODYWEIGHT_SUFFIX}`
+    : card.lifter.bodyweightText;
+  return [category, bodyweight]
+    .filter((part) => part.trim() !== '')
+    .join(LIFTER_STRIP.META_SEPARATOR);
 }
 
 /**
- * Class, bodyweight, division and equipment on one line — as much of it as
+ * Sex, equipment, division, class and bodyweight on one line — as much of it as
  * fits, walking `LIFTER_META_LADDER`. Exported so a test can check the ladder
  * rather than the pixels it produces.
  */
 export function lifterMetaLine(card: ResultCard, maxWidth: number): string {
-  const candidates = LIFTER_META_LADDER.map((fields) =>
-    fields
-      .map((field) => metaField(card, field))
-      .filter((part) => part.trim() !== '')
-      .join(LIFTER_STRIP.META_SEPARATOR),
+  return firstThatFits(
+    LIFTER_META_LADDER.map((rung) => lifterMetaLineAtRung(card, rung)),
+    maxWidth,
   );
-  return firstThatFits(candidates, maxWidth);
 }
 
 function drawAttemptCell(grid: IndexGrid, cell: AttemptCell, x: number, y: number): void {
@@ -415,6 +423,19 @@ function drawFooter(grid: IndexGrid): void {
 // ---------------------------------------------------------------------------
 
 /**
+ * The attempt grid's headings, read from `resultCard.ts` rather than retyped.
+ *
+ * This used to be the literal `['LIFT','1','2','3','BEST']`, which contradicted
+ * this file's own claim to decide nothing about what the card says: renaming a
+ * heading in `ATTEMPT_GRID_HEADINGS` would have left the drawn card unchanged.
+ */
+export const DEFAULT_GRID_HEADINGS: readonly string[] = [
+  ATTEMPT_GRID_HEADINGS.lift,
+  ...ATTEMPT_GRID_HEADINGS.attempts,
+  ATTEMPT_GRID_HEADINGS.best,
+];
+
+/**
  * Draw a result card. The grid it returns is `CARD.W x CARD.H` indices in the
  * shared palette space — sheet colours in bank 3, the barbell's steel and discs
  * in the EQUIPMENT bank — and is turned into pixels by `sheetGridToRgba`.
@@ -425,7 +446,7 @@ function drawFooter(grid: IndexGrid): void {
  */
 export function renderResultCard(
   card: ResultCard,
-  headings: readonly string[] = ['LIFT', '1', '2', '3', 'BEST'],
+  headings: readonly string[] = DEFAULT_GRID_HEADINGS,
 ): IndexGrid {
   const grid = createGrid(CARD.W, CARD.H, SHEET.PAPER);
 

@@ -119,6 +119,16 @@
  *     same em dash `dots.ts` already uses for a scoreless lifter
  *     (`DOTS_NO_TOTAL_DISPLAY`). The underlying fact — there is no value — is
  *     the cited one; the glyph is ours.
+ *   - THE POSSESSIVE CATEGORY PHRASE, e.g. "MEN'S RAW OPEN 93". The FACTS in it
+ *     are [R2]'s columns (Sex, Equipment, Division, WeightClassKg) and the WORD
+ *     ORDER is the one real board we can actually look at — the committed
+ *     `docs/reference/scoresheet-ref-1-live-attempt-board.png`, whose Division
+ *     column reads "Women's Raw Open 52": sex, equipment, division, then the
+ *     class number. The specific English words "MEN'S"/"WOMEN'S" and the caps
+ *     are ours. [R6]'s language pack renders sex as the bare letters M/F, and
+ *     that is what `sexText` and the CSV row use — but a bare letter only works
+ *     UNDER A "Sex" COLUMN HEADING, and a one-lifter shareable card has no
+ *     heading row for it to sit under. See `lifterCategoryText`.
  *   - The DATE and LOCATION formats ("08 JUN 2025", "CHEMNITZ, GERMANY").
  *     [R1] fixes the meet.csv FIELDS (Federation, Date ISO-8601, MeetCountry,
  *     MeetState, MeetTown, MeetName); how they are laid out on a card is ours.
@@ -147,6 +157,27 @@
  * `totalOnTheBoard` (which is a provisional running sum and NOT a result), and
  * REFUSES to build a card that pairs a numeric placing with a missing total —
  * see `PLACING_WITHOUT_TOTAL`. A lifter who did not total does not place.
+ *
+ * ---------------------------------------------------------------------------
+ * THE CARD ALWAYS SAYS WHOSE CATEGORY THIS IS
+ * ---------------------------------------------------------------------------
+ * The card prints a DOTS score, and DOTS takes the lifter's SEX as an input
+ * (`dots.ts` keeps a separate coefficient set per sex, and scoring a woman's
+ * total on the men's polynomial silently changes the answer). A card that
+ * publishes the coefficient while withholding one of its inputs cannot be
+ * checked by the people GDD §6.5 says have to believe it. The weight class does
+ * not stand in for it either: 84 is a women's class and 83 a men's, and `120+`
+ * and `84+` are both just "the top one".
+ *
+ * So sex is not an optional field on this card. `lifterCategoryText` welds it
+ * to the front of the category phrase — "MEN'S RAW OPEN 93" — where the layout
+ * can shorten the phrase but has no way to reach in and remove it. The layout's
+ * degradation ladder (`src/card/cardTuning.ts`) can name only `equipment` and
+ * `division`; sex, weight class and bodyweight are not in its vocabulary.
+ *
+ * `sexText` (M/F) is untouched and still what `resultSheetLine` and
+ * `resultCardEntriesCsvRow` carry, because those reproduce [R2]'s columns under
+ * [R2]'s headings. Two renderings of one fact, each correct in its own context.
  */
 
 import {
@@ -224,6 +255,28 @@ export const MONTH_ABBREVIATIONS = [
   'NOV',
   'DEC',
 ] as const;
+
+/**
+ * How the card names a lifter's sex in prose, as opposed to in a CSV cell.
+ *
+ * OURS in its wording; the CONSTRUCTION is cited to the committed reference
+ * board (`docs/reference/scoresheet-ref-1-live-attempt-board.png`), whose
+ * Division column reads "Women's Raw Open 52" — the possessive qualifying the
+ * whole category, class number last.
+ *
+ * NOT a replacement for `sexText`. [R6]'s language pack renders sex as "M"/"F"
+ * and that is right for a table with a "Sex" column heading, which is what
+ * `resultSheetLine` and `resultCardEntriesCsvRow` reproduce. A single-lifter
+ * shareable card has no heading row, so a bare "M" on it has nothing to be read
+ * against — it could as easily be read as Masters or Multi-ply.
+ */
+export const SEX_CATEGORY_WORD: Readonly<Record<DotsSex, string>> = {
+  male: "MEN'S",
+  female: "WOMEN'S",
+};
+
+/** The word that joins the parts of the category phrase. */
+export const CATEGORY_WORD_SEPARATOR = ' ';
 
 /** Row labels down the left of the attempt grid. Ours. */
 export const LIFT_ROW_LABELS: Readonly<Record<LiftKind, string>> = {
@@ -467,13 +520,63 @@ export interface ResultCardMeetHeader {
   readonly locationShortText: string;
 }
 
-export interface ResultCardLifterHeader {
-  readonly name: string;
+/**
+ * The four facts `lifterCategoryText` needs. `ResultCardLifterHeader` satisfies
+ * it structurally, so a caller holding a built card just passes `card.lifter`.
+ */
+export interface LifterCategory {
   readonly sex: DotsSex;
-  readonly sexText: string;
   readonly division: string;
   readonly equipment: string;
   readonly weightClassText: string;
+}
+
+/**
+ * Which of the phrase's OPTIONAL words to keep. Sex and weight class are absent
+ * from this type on purpose: there is no way to ask for a phrase without them.
+ */
+export interface LifterCategoryParts {
+  readonly equipment: boolean;
+  readonly division: boolean;
+}
+
+/** Everything in the phrase, which is what a card prints when it has the room. */
+export const FULL_LIFTER_CATEGORY: LifterCategoryParts = { equipment: true, division: true };
+
+/**
+ * The lifter's category as a board prints it: "MEN'S RAW OPEN 93",
+ * "WOMEN'S SINGLE-PLY MASTERS 1 84+".
+ *
+ * Word order is the committed reference board's ("Women's Raw Open 52"): sex,
+ * equipment, division, class. Note this is NOT `RESULT_SHEET_COLUMNS`' order,
+ * which puts Division before Equipment because that is the order [R2]'s CSV
+ * header uses. A machine-readable row and a spoken category name are two
+ * different renderings and neither is wrong.
+ *
+ * `include` may drop the equipment or the division. It cannot drop the sex or
+ * the class, because there is no argument for doing so — see the header comment
+ * on why the sex in particular is load-bearing next to a DOTS score.
+ */
+export function lifterCategoryText(
+  lifter: LifterCategory,
+  include: LifterCategoryParts = FULL_LIFTER_CATEGORY,
+): string {
+  const words: string[] = [SEX_CATEGORY_WORD[lifter.sex]];
+  if (include.equipment) words.push(lifter.equipment.trim().toUpperCase());
+  if (include.division) words.push(lifter.division.trim().toUpperCase());
+  words.push(lifter.weightClassText.trim());
+  return words.filter((word) => word !== '').join(CATEGORY_WORD_SEPARATOR);
+}
+
+export interface ResultCardLifterHeader extends LifterCategory {
+  readonly name: string;
+  /** "M" / "F", as [R6]'s language pack and [R2]'s `Sex` column render it. */
+  readonly sexText: string;
+  /**
+   * The same fact in the form the CARD prints, welded to the category so no
+   * layout can drop it: `lifterCategoryText(this)`.
+   */
+  readonly categoryText: string;
   readonly bodyweightText: string;
 }
 
@@ -703,6 +806,13 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
 
   const classes = lifter.weightClassesKg ?? WEIGHT_CLASSES_KG[lifter.sex];
 
+  const category: LifterCategory = {
+    sex: lifter.sex,
+    division: lifter.division,
+    equipment: lifter.equipment,
+    weightClassText: lifter.weightClassKg ?? weightClassString(lifter.bodyweightKg, classes),
+  };
+
   const card: ResultCard = {
     meet: {
       federation: meet.federation.toUpperCase(),
@@ -712,12 +822,10 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
       locationShortText: formatMeetLocation({ town: meet.town }),
     },
     lifter: {
+      ...category,
       name: lifter.name.trim(),
-      sex: lifter.sex,
       sexText: sexText(lifter.sex),
-      division: lifter.division,
-      equipment: lifter.equipment,
-      weightClassText: lifter.weightClassKg ?? weightClassString(lifter.bodyweightKg, classes),
+      categoryText: lifterCategoryText(category),
       bodyweightText: formatBodyweight(lifter.bodyweightKg),
     },
     rows: [squatRow, benchRow, deadliftRow],
@@ -860,6 +968,7 @@ export function resultCardStrings(card: ResultCard): readonly string[] {
     card.meet.locationText,
     card.lifter.name,
     card.lifter.sexText,
+    card.lifter.categoryText,
     card.lifter.division,
     card.lifter.equipment,
     card.lifter.weightClassText,

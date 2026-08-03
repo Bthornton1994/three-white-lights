@@ -89,37 +89,72 @@ export const LIFTER_STRIP = {
 } as const;
 
 /**
+ * The optional words inside the category phrase, in the order they are printed.
+ *
+ * The phrase itself is `lifterCategoryText` in `src/game/resultCard.ts` and
+ * reads "MEN'S RAW OPEN 93" — sex, equipment, division, class, which is the
+ * order the committed reference board prints ("Women's Raw Open 52").
+ *
+ * NOTE WHAT IS NOT IN THIS UNION. There is no `'sex'`, no `'class'` and no
+ * `'bodyweight'` member, so no rung of the ladder below is able to name them
+ * and no future rung can be written that drops them. That is deliberate and it
+ * is the whole point: the card prints a DOTS score, DOTS takes sex and
+ * bodyweight as inputs, and a card that publishes a coefficient while
+ * withholding an input cannot be checked by the people it is meant to convince.
+ * Making the omission unrepresentable is stronger than a comment asking for it
+ * not to happen — which is what was here before, and it happened.
+ */
+export type LifterCategoryPart = 'equipment' | 'division';
+
+export interface LifterMetaRung {
+  /** Which optional words of the category phrase survive at this rung. */
+  readonly category: readonly LifterCategoryPart[];
+  /** Whether the bodyweight keeps its " KG". */
+  readonly bodyweightUnit: boolean;
+}
+
+/**
  * WHAT COMES OFF THE META LINE WHEN IT WILL NOT FIT, IN ORDER.
  *
- * The strip has one line for class, bodyweight, division and equipment, and a
- * 120+ Masters lifter in single-ply needs about 30 px more of it than the card
- * has. The renderer walks this ladder and prints the first variant that fits.
+ * The strip has one line for the category phrase and the bodyweight, and a 120+
+ * Masters lifter in single-ply needs about 35 px more of it than the card has.
+ * The renderer walks this ladder and prints the first variant that fits.
  *
  * Every variant is a TRUE, shorter statement — never a truncation. A results
  * sheet that ends in "SINGLE-PL" has stopped being believable, and an ellipsis
- * on a shareable card reads as a bug. The first three rungs drop only wording
- * (the "CLASS" label, the "KG" unit); a field itself is dropped only on the
- * last two, and the division goes before the equipment because the division is
- * usually implied by the meet whereas raw-vs-equipped never is.
+ * on a shareable card reads as a bug. The first rung drops only wording (the
+ * "KG" unit); a fact is dropped only on the last two, and the division goes
+ * before the equipment because the division is usually implied by the meet
+ * whereas raw-vs-equipped never is.
  *
- * UNTUNED, and this is a real design call rather than a spacing tweak — if
- * playtesting says division matters more than equipment, swap the last two.
+ * SO A MASTERS LIFTER'S CARD CAN STILL COME OUT SAYING ONLY "MEN'S SINGLE-PLY
+ * 120+". That is a real loss and it is not hidden: at 180 px there is one line
+ * and five facts, four of which are load-bearing, so the fifth goes. Measured,
+ * for the `stress` sample (a 120+ Masters 1 single-ply lifter, `CONTENT.W` is
+ * 180 px):
+ *
+ *     rung 0  215 px  MEN'S SINGLE-PLY MASTERS 1 120+ · 139.40 KG
+ *     rung 1  200 px  MEN'S SINGLE-PLY MASTERS 1 120+ · 139.40
+ *     rung 2  148 px  MEN'S SINGLE-PLY 120+ · 139.40           <- what prints
+ *     rung 3   89 px  MEN'S 120+ · 139.40
+ *
+ * Rung 1 misses by 20 px and rung 2 leaves 32 px on the table, so there is no
+ * intermediate variant to reach for — nothing between them is a true statement.
+ * The two honest alternatives are (a) drop the equipment instead, which fits at
+ * about 146 px but makes a single-ply total read as raw, and (b) give the strip
+ * a second line, which moves the whole grid down and is a layout change rather
+ * than a tuning one. Both are live for the tuning pass; this file is where that
+ * call gets made.
+ *
+ * UNTUNED, and the last-two order is a real design call rather than a spacing
+ * tweak — if playtesting says division matters more than equipment, swap them.
  */
-export const LIFTER_META_LADDER = [
-  ['classLabelled', 'bodyweightWithUnit', 'division', 'equipment'],
-  ['classLabelled', 'bodyweight', 'division', 'equipment'],
-  ['class', 'bodyweight', 'division', 'equipment'],
-  ['class', 'bodyweight', 'equipment'],
-  ['class', 'bodyweight'],
-] as const satisfies readonly (readonly LifterMetaField[])[];
-
-export type LifterMetaField =
-  | 'classLabelled'
-  | 'class'
-  | 'bodyweightWithUnit'
-  | 'bodyweight'
-  | 'division'
-  | 'equipment';
+export const LIFTER_META_LADDER: readonly LifterMetaRung[] = [
+  { category: ['equipment', 'division'], bodyweightUnit: true },
+  { category: ['equipment', 'division'], bodyweightUnit: false },
+  { category: ['equipment'], bodyweightUnit: false },
+  { category: [], bodyweightUnit: false },
+];
 
 /**
  * The attempt grid. One row per lift, one column per attempt, plus a best
@@ -268,7 +303,12 @@ export const FOOTER = {
 /** Fixed strings the card prints that are not lifter or meet data. */
 export const CARD_LABELS = {
   BODYWEIGHT_SUFFIX: ' KG',
-  CLASS_PREFIX: 'CLASS ',
+  /**
+   * There is no CLASS_PREFIX any more. The class number now ends the category
+   * phrase ("MEN'S RAW OPEN 93") the way the reference board sets it, which
+   * both says whose class it is and costs four pixels LESS than the bare word
+   * "CLASS" did.
+   */
   /** Lifters' own word for a one-rep best; short enough to share the line. */
   BARBELL_CAPTION: 'TOP SINGLE',
   BARBELL_CAPTION_NONE: 'NO LIFTS MADE',
