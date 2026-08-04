@@ -1,14 +1,15 @@
-# Captured 2026-08-04T18:03:34Z at a7b8a67 on claude/agent-config-setup-m2r6ny
-# working tree: 1 modified path(s)
+# Captured 2026-08-04T18:08:10Z at 50b3c53 on claude/agent-config-setup-m2r6ny
+# NOTE: this file is committed AFTER capture, so the commit that adds it is one later than the stamp. The stamp names the tree the suite actually ran against.
+# working tree at capture: 1 modified path(s)
 
 ## npm test
  RUN  v4.1.10 /home/user/three-white-lights
 
 
  Test Files  55 passed (55)
-      Tests  2329 passed (2329)
-   Start at  18:03:36
-   Duration  30.66s (transform 5.81s, setup 0ms, import 22.70s, tests 55.23s, environment 7ms)
+      Tests  2330 passed (2330)
+   Start at  18:08:10
+   Duration  26.52s (transform 4.57s, setup 0ms, import 17.80s, tests 47.89s, environment 8ms)
 
 
 ## npm run typecheck
@@ -17,3 +18,10 @@
 > tsc --noEmit
 
 (exit 0)
+
+## mutation run by the LEAD AGENT on the merged tree, not by the builder
+src/art/gymScene.ts:400  Math.max(top, y - rowRise) -> y - rowRise   (deletes the clamp keeping crowd heads inside the seating band)
+   x agrees with the wave where the band has room, and reads the clamp where it does not
+   x keeps every spectator inside the seating band, at every rise
+   Tests  2 failed | 2328 passed (2330)
+   The SAME mutation on the parent commit left all 2234 tests green. Reverted; git diff clean.

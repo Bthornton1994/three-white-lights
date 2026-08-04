@@ -227,9 +227,9 @@
       "id": "S2",
       "name": "Meet day",
       "bar": "Dread and anticipation comparable to a real third-attempt walkout.",
-      "status": "rework",
+      "status": "grading",
       "verifiable": false,
-      "note": "THE RULER IS REBUILT AND SURVIVED A HARD ATTACK; ONE TIER OF FOUR IS STILL A CONSTANT DRESSED AS A READING. What is genuinely won: the grid.w/2 threshold that could never see a 55-57px head row is gone, the reading is a difference against the seated render so zero-at-rest is STRUCTURAL, and the critic attacked the column-exclusivity argument against the real HEAD_COLS 7 / ROW_STAGGER 3 / HEAD_W 3 values and could not break it - adjacent tiers are offset by 3, the tier behind covers 5 of 7 columns per pitch, and the tier in front keeps exactly 2. [0,3,3,3] is now [0,0,0,0]. No numeric threshold was introduced at all, which is why the audit needed nothing registered. THE GAP: for the back tier, ceilingRow equals seatRow (both BAND_TOP), so topRowOf’s scan body never executes and tierRises[0] is the literal 0 for ANY grid - including a hall with the crowd painted on the ceiling. Its ownCols is the whole head row, so the ownCols.length > 0 guard that is load-bearing for tiers 1-3 guards nothing there. The docstring claims \"the reading is 0 for the same reason the drawing is\"; they are two different reasons that coincide. AND I CONFIRMED THE CONSEQUENCE BY RUNNING IT rather than inferring: deleting the clamp at gymScene.ts:400 that keeps crowd heads inside the seating band leaves ALL 2234 TESTS GREEN. walkout.test.ts is the only file in the tree that rasterises a risen hall, so what it cannot see, nothing can. Dispatched, with that mutation as the non-negotiable acceptance test.",
+      "note": "THE HOLE IS CLOSED AND I RE-RAN THE ACCEPTANCE MUTATION MYSELF ON THE MERGED TREE. The back tier now gets the same window DEPTH every other tier has, and the window it opens (rows 70-74) lies entirely off the band - rows 63-74 are uniformly WALL_DARK - so a spectator pixel up there is one drawn outside the seating whichever tier drew it, and the back tier needs no column-exclusivity argument at all. That is a stronger position than the other three tiers have. ownCols came out byte-identical for all four (57/36/38/36), so widening pulled in nothing. tierRises are unchanged - seated [0,0,0,0], walk-out [0,1,3,4], cheer [0,3,4,4] - because the point was to change WHY index 0 reads 0, not what it reads. THE MUTATION: deleting the head clamp at gymScene.ts:400 left ALL 2234 TESTS GREEN on the parent commit and now reddens two named tests, \"agrees with the wave where the band has room, and reads the clamp where it does not\" and \"keeps every spectator inside the seating band, at every rise\". I ran it on the parent and on the merged tree; the builder independently ran it on the parent too and got the same green. The second finding was handled by fixing the false sentence rather than pinning literals, on the measured grounds that the byte-identity plant already catches both keyline values (280 and 126 differing pixels). One self-disclosed residual now with the critic: backTierCeiling falls back to BAND_TOP for a single-tier venue, which would silently restore the blind window; unreachable at the shipped four tiers and untested. The overall S2 bar stays unverifiable - nothing here says the rise READS as a hall getting to its feet.",
       "evidence": "meet/verdict-good.png"
     },
     {
@@ -376,9 +376,9 @@
       {
         "id": "S2",
         "name": "Meet day",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "The threshold that could never see a head row is gone and the new reading survived a hard attack. But the back tier reads a structural 0 for any input, and I confirmed by running it that deleting the clamp keeping crowd heads inside the band leaves all 2234 tests green. Dispatched."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "The back tier's probe window was zero rows deep, so its reading was a constant. Now it looks at rows entirely off the band, which is a stronger claim than the other tiers have. The mutation that left all 2234 green now reddens two named tests — I re-ran it myself on the merged tree."
       },
       {
         "id": "S3",
