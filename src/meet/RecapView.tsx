@@ -29,9 +29,23 @@
  * so what a player sees before they share and what they share are the same
  * facts.
  *
- * NO CUT-IN FIRES HERE. GDD §7.2 lists PR moments and puts cut-in art outside
- * the early prototypes; §12.3 caps them at one per session. Firing none is
- * inside both rules and the gate belongs to the cut-in piece.
+ * ---------------------------------------------------------------------------
+ * THE PR MOMENTS ARE OFFERED TO THE CUT-IN GATE, AND IT DECIDES
+ * ---------------------------------------------------------------------------
+ * GDD §7.2's second firing moment is "PR moments (new e1RM, new total,
+ * qualifying for a higher tier)", and two of the three land on this screen: the
+ * total, and each lift's own best. This file reports them as beats to
+ * `useOfferCutIn` and decides nothing — `src/cutin/cutInGate.ts` applies §7.2's
+ * one-per-session cap (§12.3's refusal condition) and this meet's scarcity
+ * rates. A recap with no PR on it reports `achieved: false` and is refused, so
+ * the qualification is the gate's rather than a condition here.
+ *
+ * WHAT IT REPORTS IS THE SERVER'S ANSWER. `recap.isTotalPr` comes off the same
+ * confirmed recap every number on this screen does, so the cut-in cannot
+ * celebrate a record the card does not print.
+ *
+ * A BOMB-OUT DOES NOT REACH THIS SCREEN — `MeetScreen` routes it to
+ * `BombOutView`, which offers §7.2's third moment itself.
  */
 
 import React from 'react';
@@ -41,6 +55,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 import { LIFT_ORDER } from '../game/meet';
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import { countedTotalText, type MeetDayAttempt, type MeetRecap } from '../game/meetDay';
+import { useOfferCutIn } from '../cutin/CutInHost';
 import { AttemptBoard } from './AttemptBoard';
 import { MEET_PALETTE } from './meetPalette';
 
@@ -104,6 +119,14 @@ export function RecapView({ recap, attempts, onSeeCard }: RecapViewProps): React
     recap.isTotalPr && recap.totalKg !== null ? MEET_TUNING.RECAP_TOTAL_COUNT_MS : 0,
     MEET_TUNING.RECAP_ROW_STAGGER_MS,
   );
+
+  // GDD §7.2's PR moments, offered. Two beats rather than one, because a meet
+  // can set a new total and a new best in a single lift at once and the gate is
+  // the thing that ranks them.
+  useOfferCutIn([
+    { kind: 'record', record: 'total', achieved: recap.isTotalPr },
+    { kind: 'record', record: 'e1rm', achieved: recap.rows.some((row) => row.isPr) },
+  ]);
 
   return (
     <ScrollView contentContainerStyle={styles.root} testID="meet-recap">
