@@ -276,6 +276,18 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     why: 'DEG, the hair-cap inset and the inspection stage backdrop. Poses are in rig.ts.',
   }),
 
+  // --- build configuration -------------------------------------------------
+  // Not game code and not a knob, but audited anyway rather than exempted,
+  // because the walk starting at the repository root is the property that makes
+  // this audit hard to escape — carving a hole for "config" invites the next
+  // one. `local` is the honest classification: a named constant belongs here,
+  // the tuning index does not want it, and a playtester never turns it.
+  'vitest.config.ts': Object.freeze({
+    role: 'constants',
+    kind: 'local',
+    why: 'TEST_TIMEOUT_MS. A harness budget, not a game-feel value — see the comment there for why it is 30s.',
+  }),
+
   // --- authored drawings ---------------------------------------------------
   // `rig.ts` and `spriteMarks.ts` are data files of joint coordinates. Both
   // they and `spriteTuning.ts` argue the split at length: an anchor cannot be

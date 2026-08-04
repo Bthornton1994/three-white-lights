@@ -519,6 +519,10 @@ describe('the registered allowlist', () => {
         'src/game/streak.ts',
         'src/lift/liftPalette.ts',
         'src/session/sessionPalette.ts',
+        // Build config, classified `local`. Registered rather than exempted:
+        // the walk starting at the repository root is what makes this audit
+        // hard to escape, and a carve-out for "config" invites the next one.
+        'vitest.config.ts',
       ].sort(),
     );
   });
