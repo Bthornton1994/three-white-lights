@@ -1,0 +1,17 @@
+[build]
+  command = "npx expo export --platform web --output-dir dist"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Static export, but the app resolves its own routing from query strings
+# (?meet=, ?session=, ?replay=) rather than URL paths — there is no
+# expo-router app/ directory in use, so no path-based SPA fallback is
+# needed. This redirect exists only for the case a browser or crawler
+# requests a path that was never exported (e.g. a stray /favicon variant);
+# without it Netlify serves its own 404 page instead of the app shell.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
