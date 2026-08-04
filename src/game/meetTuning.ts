@@ -701,10 +701,22 @@ export const MEET_PREVIEW = Object.freeze({
   E1RM_KG: Object.freeze({ squat: 232.5, bench: 152.5, deadlift: 272.5 } as const satisfies Record<LiftKind, number>),
   /** The lifter's best competition total before this meet, kg, or null. */
   PREVIOUS_BEST_TOTAL_KG: 605,
-  /** Their best competition lift on record, per lift, kg. */
+  /** How long ago that meet was, in days. Only orders the stored history. */
+  PREVIOUS_MEET_DAYS_AGO: 90,
+  /**
+   * Their best competition lift on record, per lift, kg.
+   *
+   * CHOSEN SO THE PREVIEW EXERCISES BOTH BRANCHES. A meet played perfectly on
+   * `E1RM_KG` totals 612.5 with 217.5 / 140 / 255, so against these the squat
+   * and the deadlift are competition PRs and the bench is not — which is the
+   * screen worth photographing, rather than one where every row says PR or none
+   * does. These also SUM to `PREVIOUS_BEST_TOTAL_KG`, so the stored prior meet
+   * is internally consistent; `meetServer.test.ts` checks that rather than
+   * trusting this note.
+   */
   PREVIOUS_BEST_BY_LIFT_KG: Object.freeze({
-    squat: 225,
+    squat: 215,
     bench: 145,
-    deadlift: 262.5,
+    deadlift: 245,
   } as const satisfies Record<LiftKind, number>),
 });

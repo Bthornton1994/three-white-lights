@@ -13,7 +13,7 @@ import {
 } from './meetServer';
 import { meetAttemptReports, meetResultProposal } from './meetDay';
 import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW } from './meetTuning';
-import { playMeet, previewStateFor, type RepStyle } from './meetPreview';
+import { playMeet, previewServerRecord, previewStateFor, type RepStyle } from './meetPreview';
 import { SESSION_TUNING } from './sessionTuning';
 
 const DAY = MEET_PREVIEW.DAY;
@@ -521,6 +521,58 @@ describe('meetDayFacts', () => {
     const facts = meetDayFacts(applied.value.record, DAY + 1, SESSION_TUNING.STARTING_E1RM_KG);
     expect(facts.previousBestTotalKg).toBe(applied.value.totalKg);
     expect(facts.previousBestByLiftKg).toEqual(applied.value.bestByLiftKg);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The preview lifter is the lifter the preview says they are
+// ---------------------------------------------------------------------------
+
+describe('previewServerRecord (DEBUG)', () => {
+  it('holds the history previewContext() describes', () => {
+    // Without this the preview's stand-in server starts empty, every captured
+    // recap reads FIRST TOTAL, and the PR branch — a real screen a player
+    // reaches — is unphotographable. The screenshots would be of a lifter the
+    // preview data says does not exist.
+    const record = previewServerRecord();
+    expect(record.totalKg).toBe(MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG);
+    expect(previousBestByLift(record)).toEqual(MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG);
+  });
+
+  it('does not collide with the meet about to be recorded', () => {
+    // `applyMeetResult` refuses a second result for the same meet, so a prior
+    // meet stored under MEET_LOCAL's own id would make every preview recap a
+    // null recap — a blank screen, captured as though it were the design.
+    const record = previewServerRecord();
+    expect(record.meets.every((meet) => meet.meetId !== MEET_LOCAL.id)).toBe(true);
+    const played = previewStateFor({ moment: 'recap' });
+    const proposal = meetResultProposal(played);
+    if (proposal === null) throw new Error('unreachable');
+    const applied = applyMeetResult(record, DAY, MEET_LOCAL, proposal, PROPOSAL_ID);
+    expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+    // ...and the meet really is measured against that history rather than
+    // against nothing.
+    expect(applied.value.previousBestTotalKg).toBe(MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG);
+    expect(applied.value.isTotalPr).toBe(true);
+    // Some lifts PR and some do not, which is the point of the numbers being
+    // where they are: a preview where every row said PR would photograph a
+    // branch that never varies.
+    const prs = Object.values(applied.value.liftPrs);
+    expect(prs.filter(Boolean).length).toBeGreaterThan(0);
+    expect(prs.filter((pr) => !pr).length).toBeGreaterThan(0);
+  });
+
+  it('stores a prior meet whose total is the sum of its own bests', () => {
+    // A stored meet whose total does not equal its bests is not a meet result,
+    // it is two unrelated numbers — and it would make every PR comparison on
+    // the preview's recap incoherent.
+    const record = previewServerRecord();
+    for (const meet of record.meets) {
+      const sum = LIFT_ORDER.reduce((total, lift) => total + (meet.bestByLift[lift] ?? 0), 0);
+      expect(meet.totalKg, meet.meetId).toBe(sum);
+    }
+    expect(record.meets.length).toBeGreaterThan(0);
   });
 });
 

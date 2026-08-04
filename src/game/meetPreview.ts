@@ -43,6 +43,7 @@ import {
   type MeetDayState,
 } from './meetDay';
 import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW } from './meetTuning';
+import { newServerRecord, type ServerRecord } from './sessionServer';
 
 /** The beats a preview can be frozen on. In loop order. */
 export type MeetMomentId =
@@ -121,6 +122,36 @@ export function meetPreviewFrom(search: string): MeetPreviewRequest | null {
   const moment = params.get('meet');
   if (moment === null || !isMeetMoment(moment)) return null;
   return { moment };
+}
+
+/**
+ * The stored row the preview's stand-in server starts from.
+ *
+ * DEBUG ONLY, and it exists because `previewContext()` describes a lifter with
+ * a competition history — a 605 kg best total and per-lift bests — while the
+ * stand-in server record starts empty. Without this the preview's recap always
+ * reads FIRST TOTAL, the PR branch is unphotographable, and the walkout's PR
+ * beat never fires: the screenshots would show a lifter the preview data says
+ * does not exist.
+ *
+ * The prior meet carries a DIFFERENT id from `MEET_LOCAL`, because
+ * `applyMeetResult` refuses a second result for the same meet and a preview
+ * that refused its own submission would produce a null recap.
+ */
+export function previewServerRecord(): ServerRecord {
+  return {
+    ...newServerRecord(),
+    totalKg: MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG,
+    meets: [
+      {
+        meetId: `${MEET_LOCAL.id}-previous`,
+        meetDayIndex: MEET_PREVIEW.DAY - MEET_PREVIEW.PREVIOUS_MEET_DAYS_AGO,
+        totalKg: MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG,
+        bestByLift: MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG,
+        bodyweightKg: MEET_ENTRY.bodyweightKg,
+      },
+    ],
+  };
 }
 
 export function previewContext(): MeetDayContext {
@@ -353,4 +384,19 @@ export function previewStateFor(request: MeetPreviewRequest): MeetDayState {
 /** True when this beat should show the shareable card rather than the recap. */
 export function showsCard(moment: MeetMomentId): boolean {
   return moment === 'recap-card';
+}
+
+/**
+ * The query string that opens a REAL, unfrozen meet: `?meet=live`.
+ *
+ * Deliberately not a `MeetMomentId` — there is no state to build for it, which
+ * is the whole point. `?meet=<moment>` freezes a scripted beat so it can be
+ * photographed; this asks for the played loop with its clock running, which is
+ * the only way to show that the walkout, deliberation and verdict beats
+ * actually elapse rather than merely having durations.
+ */
+export const LIVE_MEET_PARAM = 'live';
+
+export function isLiveMeetRequest(search: string): boolean {
+  return new URLSearchParams(search).get('meet') === LIVE_MEET_PARAM;
 }

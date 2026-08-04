@@ -1165,6 +1165,24 @@ function recapRowsFor(
 }
 
 /**
+ * What the recap's TOTAL reads at one point in its count-up.
+ *
+ * Here rather than in the component because it is a formatting rule about a
+ * competition total, and getting it wrong is a domain error rather than a
+ * layout one: a total is a half-kilo number (`612.5`), and a count-up that
+ * rounded its final frame would print `613` on the one screen in the game whose
+ * whole job is that number. So the counter shows whole kilos while it is
+ * MOVING — a ticking `612.5` is unreadable — and lands on the card's own text,
+ * which is `resultCard.ts`'s `formatWeight` and therefore exactly what the
+ * shareable card prints.
+ */
+export function countedTotalText(recap: MeetRecap, counted: number): string {
+  if (recap.totalKg === null) return recap.totalText;
+  if (!Number.isFinite(counted) || counted >= recap.totalKg) return recap.totalText;
+  return String(Math.round(counted));
+}
+
+/**
  * Build the recap for a finished meet.
  *
  * WORKS FOR A BOMB-OUT TOO, and does not hide one: `resultCard.ts` prints no

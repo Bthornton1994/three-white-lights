@@ -40,7 +40,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 
 import { LIFT_ORDER } from '../game/meet';
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
-import type { MeetDayAttempt, MeetRecap } from '../game/meetDay';
+import { countedTotalText, type MeetDayAttempt, type MeetRecap } from '../game/meetDay';
 import { AttemptBoard } from './AttemptBoard';
 import { MEET_PALETTE } from './meetPalette';
 
@@ -115,7 +115,7 @@ export function RecapView({ recap, attempts, onSeeCard }: RecapViewProps): React
           style={[styles.total, recap.isTotalPr ? styles.totalPr : null]}
           testID="recap-total"
         >
-          {recap.totalKg === null ? recap.totalText : Math.round(counted)}
+          {countedTotalText(recap, counted)}
         </Text>
         {recap.prText === null ? null : (
           <Text

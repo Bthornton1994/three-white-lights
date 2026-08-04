@@ -6,6 +6,7 @@ import { LIFT_PALETTE } from './src/lift/liftPalette';
 import { replayRequestFrom } from './src/lift/replayRoute';
 import { MeetScreen } from './src/meet/MeetScreen';
 import {
+  isLiveMeetRequest,
   meetPreviewFrom,
   previewStateFor as meetPreviewStateFor,
   showsCard,
@@ -32,7 +33,8 @@ import { previewStateFor, sessionPreviewFrom } from './src/session/sessionPrevie
 //                                lift screen, unchanged, and still the thing
 //                                `tools/verify-lift-shots.mjs` photographs.
 //   ?session=<moment>            one beat of a scripted SESSION.
-//   ?meet=<moment>               one beat of a scripted MEET (GDD §6).
+//   ?meet=<moment>               one beat of a scripted MEET (GDD §6), frozen.
+//   ?meet=live                   the same meet PLAYED, with its clock running.
 //
 // WHY MEET DAY IS BEHIND A QUERY STRING AND NOT THE DEFAULT SCREEN. GDD §6.1
 // enters a meet from the Career calendar, which is out of scope for this piece,
@@ -54,6 +56,11 @@ function sessionPreviewFromLocation() {
 
 function meetPreviewFromLocation() {
   if (typeof window === 'undefined') return undefined;
+  if (isLiveMeetRequest(window.location.search)) {
+    // A played meet: no preview state, so the loop builds its own and the beat
+    // timers run.
+    return { state: undefined, card: false };
+  }
   const request = meetPreviewFrom(window.location.search);
   if (request === null) return undefined;
   return { state: meetPreviewStateFor(request), card: showsCard(request.moment) };

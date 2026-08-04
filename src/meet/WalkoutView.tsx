@@ -112,15 +112,23 @@ export function WalkoutView({ attempt, liftLabel, barAndCollarsKg }: WalkoutView
       </Text>
 
       <View style={styles.bar} testID="walkout-bar">
+        {/* HEAVIEST INBOARD, both sides — the order a real loading crew works
+            in, and the reason the left sleeve is drawn in reverse. The stagger
+            index runs the same way, so the 25s land first and the change discs
+            last. */}
         <View style={styles.sleeve}>
-          {stack.map((plate, index) => (
-            <Plate key={`${plate.weightKg}-${index}`} plate={plate} index={stack.length - index} />
+          {[...stack].reverse().map((plate, index) => (
+            <Plate
+              key={`l-${plate.weightKg}-${index}`}
+              plate={plate}
+              index={stack.length - index - 1}
+            />
           ))}
         </View>
         <View style={styles.shaft} />
         <View style={styles.sleeve}>
           {stack.map((plate, index) => (
-            <Plate key={`${plate.weightKg}-${index}`} plate={plate} index={index} />
+            <Plate key={`r-${plate.weightKg}-${index}`} plate={plate} index={index} />
           ))}
         </View>
       </View>

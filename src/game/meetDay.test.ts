@@ -21,11 +21,12 @@ import {
   type FatigueState,
 } from './fatigue';
 import { LIFT_TUNING } from './liftTuning';
-import { WEIGHT_CLASSES_KG } from './resultCard';
+import { WEIGHT_CLASSES_KG, formatWeight } from './resultCard';
 import {
   attemptConfigFor,
   attemptDecisionFor,
   buildMeetRecap,
+  countedTotalText,
   createMeetDay,
   deliberates,
   dissentChance,
@@ -948,6 +949,48 @@ describe('the recap (GDD §6.5)', () => {
     );
     if (!built.ok) throw new Error('unreachable');
     expect(built.recap.rows.map((row) => row.isPr)).toEqual([true, false, true]);
+  });
+
+  it('lands the Total on the card’s own text, not a rounded count-up', () => {
+    // A competition total is a half-kilo number. The count-up shows whole kilos
+    // while it is MOVING, and must land on `formatWeight`'s output — the exact
+    // string the shareable card prints. A recap that finished on `613` for a
+    // 612.5 kg meet would be wrong on the one screen whose whole job is that
+    // number, and wrong in a way a screenshot shows and a bound does not.
+    const state = playMeet(ALL_GOOD);
+    const built = buildMeetRecap(state, confirmedFor(state.meet, { isTotalPr: true }));
+    if (!built.ok) throw new Error(built.error.message);
+    const recap = built.recap;
+    const total = recap.totalKg ?? 0;
+    // Non-vacuity: this meet really does total a half kilo, so a rounding bug
+    // has something to round.
+    expect(total).not.toBe(Math.round(total));
+
+    expect(countedTotalText(recap, total)).toBe(recap.totalText);
+    expect(recap.totalText).toBe(formatWeight(total));
+    expect(countedTotalText(recap, total)).not.toBe(String(Math.round(total)));
+
+    // Mid-count it reads whole kilos, and they climb.
+    const start = recap.previousBestTotalKg ?? 0;
+    const midway = start + (total - start) / 2;
+    expect(countedTotalText(recap, midway)).toBe(String(Math.round(midway)));
+    expect(Number(countedTotalText(recap, midway))).toBeLessThan(total);
+  });
+
+  it('prints no total at all for a bombed lifter, whatever the counter says', () => {
+    const state = playMeet((lift) => (lift === 'squat' ? 'dumped' : 'perfect'), () => 'repeat');
+    const built = buildMeetRecap(state, {
+      totalKg: null,
+      previousBestTotalKg: MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG,
+      isTotalPr: false,
+      liftPrs: { squat: false, bench: false, deadlift: false },
+      placing: { place: null, fieldSize: MEET_LOCAL.ghostTotalsKg.length + 1 },
+    });
+    if (!built.ok) throw new Error(built.error.message);
+    for (const counted of [0, 100, 600, Number.NaN]) {
+      expect(countedTotalText(built.recap, counted)).toBe(built.recap.totalText);
+      expect(countedTotalText(built.recap, counted)).not.toMatch(/\d/);
+    }
   });
 
   it('gives a bombed lifter a card with no total, no DOTS and DQ in the place cell', () => {
