@@ -115,7 +115,7 @@
 
 import { PAL } from './palette';
 import { CENTER_X } from './spriteTuning';
-import { RIG_GEOMETRY, kneeSleeveSpan, singletHemY, type Pose } from './rig';
+import { RIG_GEOMETRY, forearmSpan, kneeSleeveSpan, singletHemY, type Pose } from './rig';
 import { getPx, setPx, type IndexGrid } from './raster';
 
 // ---------------------------------------------------------------------------
@@ -264,8 +264,14 @@ export const MARK_ANCHOR_GEOMETRY = {
    * squat depth and there is no upper arm left to paint on.
    */
   BICEPS_TOWARD_ELBOW: 0.42,
-  /** Forearm anchor: this far from the elbow toward the hand. */
-  FOREARM_TOWARD_HAND: 0.42,
+  // THE FOREARM ANCHOR IS NOT HERE ANY MORE. It was `FOREARM_TOWARD_HAND: 0.42`,
+  // beside `BICEPS_TOWARD_ELBOW`, and that was right while the forearm was a
+  // cone: a fraction along a featureless taper is a mark position and nothing
+  // else. The forearm now has a drawn belly at
+  // `RIG_GEOMETRY.FOREARM_BELLY_ALONG`, so the fraction names a place on the
+  // MASS, and a belly mark that can slide off the belly it is naming is the
+  // same defect `singletHemY` was extracted to prevent. `anchorPoint` reads
+  // `forearmSpan` below.
   /** Wrist anchor: this far from the hand toward the elbow. */
   WRIST_TOWARD_ELBOW: 0.28,
   /** Quad anchor: this far from the hip toward the knee. */
@@ -334,10 +340,9 @@ export function anchorPoint(key: MarkAnchorKey, pose: Pose, sign: number): Ancho
     case 'ELBOW':
       return at(CENTER_X + sign * pose.elbowHalfW, pose.elbowY);
     case 'FOREARM': {
-      const elX = CENTER_X + sign * pose.elbowHalfW;
-      const handX = CENTER_X + sign * (pose.handHalfW + (sign > 0 ? G.GRIP_ASYMMETRY_PX : 0));
-      const f = A.FOREARM_TOWARD_HAND;
-      return at(elX + (handX - elX) * f, pose.elbowY + (pose.handY - pose.elbowY) * f);
+      // The drawn belly, not a fraction of its own. See `forearmSpan`.
+      const f = forearmSpan(pose, sign);
+      return at(f.bellyX, f.bellyY);
     }
     case 'WRIST': {
       const handX = CENTER_X + sign * (pose.handHalfW + (sign > 0 ? G.GRIP_ASYMMETRY_PX : 0));

@@ -406,7 +406,64 @@ export const RIG_GEOMETRY = {
   NECK_OVERLAP: 1,
 
   UPPER_ARM_R: [2.7, 2.1] as const,
-  FOREARM_R: [2.0, 1.7] as const,
+  /**
+   * Forearm: elbow -> belly -> wrist. THREE radii, not two, and the middle one
+   * is the whole point.
+   *
+   * WAS [2.0, 1.7], a cone. That is not what a forearm is and the mark table
+   * already said so — `spriteMarks.ts` carries a hand-placed FOREARM_BELLY mark
+   * whose comment reads "the reference wrestlers' forearms are not tapered
+   * tubes: there is a mass just below the elbow, a step down out of it, and then
+   * the wrist". The mass under that mark was a cone; the mark was drawing a
+   * shape the geometry did not have.
+   *
+   * IT IS ALSO WHAT THE FAR ARM'S RAMP OCCUPANCY TURNS ON, measured. The
+   * contour is one pixel down each flank and is the ramp's darkest entry by
+   * construction (`SHADING.EDGE_STEP_DROP`), so a limb's floor share is
+   * essentially its perimeter over its area and the thinnest mass on the figure
+   * pays the most. At [2.0, 1.7] the drawn forearm was six pixels across with
+   * two of them contour, and over the 448-frame sweep the far arm's window ran
+   * 37.1% floor with a mean clearance of 0.7 points under the bound
+   * `lifterSprite.test.ts` measures off the reference. At [2.1, 2.8, 1.9] it
+   * runs 31.1% with 4.6 points of clearance. Both figures are OURS, measured on
+   * our own frames; what the bound is, is the reference's business and is
+   * computed there.
+   *
+   * 2.8 IS A MEASURED PEAK, NOT A ROUND NUMBER, and it is not the widest that
+   * scores well. Widening the belly raises the window's pixel count, and
+   * `neighbourhoodProfile` makes the bound STRICTER as the window grows — the
+   * reference's worst patch of a given size shrinks with the size. Swept at 0.1
+   * px steps with the elbow and wrist fixed, the far arm's mean clearance rises
+   * 3.1 -> 4.3 -> 4.6 points from 2.1 to 2.6 to 2.8 and then FALLS to 3.9 at
+   * 3.0, 2.9 at 3.2 and 3.3 at 3.4. Past 2.8 the extra pixels cost more bound
+   * than they buy margin. The violation COUNT keeps drifting either way at that
+   * scale — 128, 128, 80, 48, 72, 64 over those same six widths — because it is
+   * a threshold crossing on a quantised drawing and a tenth of a pixel flips
+   * whole poses across it. The clearance is the quantity, and it turns here.
+   *
+   * AND 2.8 IS ALSO WHERE THE PROPORTION RUNS OUT. Drawn (radius plus the one
+   * pixel of contour, doubled) the belly is 7.6 px against the upper arm's 7.4
+   * at the shoulder. One notch past parity is a forearm; several notches is a
+   * forearm thicker than the arm it hangs off, and rendered frames at 3.4 close
+   * the negative space between the forearm and the ribs that is most of what
+   * reads as "a man holding a bar".
+   *
+   * THE WRIST IS THE NARROWEST POINT AND MUST STAY THAT WAY. 1.9 is the hand's
+   * own radius (`HAND_R`), so the capsule disappears into the fist instead of
+   * standing proud of it. Raising it to 2.2 measurably flatters the floor-share
+   * number and draws a forearm thicker than the hand on the end of it, which is
+   * not a trade this file makes.
+   */
+  FOREARM_R: [2.1, 2.8, 1.9] as const,
+  /**
+   * Where the forearm's belly sits, elbow (0) to hand (1).
+   *
+   * ONE NUMBER FOR THE MASS AND THE MARK. `spriteMarks.ts` used to carry its own
+   * `FOREARM_TOWARD_HAND` at the same value; a belly mark and a belly that
+   * disagree about where the belly is is trim floating off the muscle, which is
+   * the defect `singletHemY` exists to prevent one mass further down.
+   */
+  FOREARM_BELLY_ALONG: 0.42,
   HAND_R: 1.9,
   THIGH_R: [4.3, 3.1] as const,
   /**
@@ -605,6 +662,57 @@ export const FEMUR_FRONTAL_LEN_PX: number = femurDrawnLenPx(POSES.STAND, -1);
 export function femurTilt(pose: Pose, sign: number): number {
   const cos = Math.min(1, Math.max(0, femurDrawnLenPx(pose, sign) / FEMUR_FRONTAL_LEN_PX));
   return Math.sqrt(Math.max(0, 1 - cos * cos));
+}
+
+/** Elbow, hand and grip x for one arm — the endpoints the arm is drawn between. */
+export function armSpan(
+  pose: Pose,
+  sign: number,
+): {
+  readonly shoulderX: number;
+  readonly elbowX: number;
+  readonly handX: number;
+} {
+  return {
+    shoulderX: CENTER_X + sign * pose.shoulderHalfW * RIG_GEOMETRY.ATTACH.ARM_ROOT,
+    elbowX: CENTER_X + sign * pose.elbowHalfW,
+    handX:
+      CENTER_X + sign * (pose.handHalfW + (sign > 0 ? RIG_GEOMETRY.GRIP_ASYMMETRY_PX : 0)),
+  };
+}
+
+/**
+ * The forearm's three points: elbow, belly, wrist.
+ *
+ * ONE FUNCTION, for the same reason `singletHemY` is one function. The composer
+ * draws the mass between these points, `craftMetrics.limbWindows` measures the
+ * mass between these points, and `spriteMarks.ts` anchors the forearm belly mark
+ * to the middle one. Three copies of the arithmetic is three chances for the
+ * measured window, the drawn mass and the authored mark to drift apart, and a
+ * limb check aimed at empty space is the shape of defect this area keeps
+ * producing.
+ */
+export function forearmSpan(
+  pose: Pose,
+  sign: number,
+): {
+  readonly elbowX: number;
+  readonly elbowY: number;
+  readonly bellyX: number;
+  readonly bellyY: number;
+  readonly handX: number;
+  readonly handY: number;
+} {
+  const { elbowX, handX } = armSpan(pose, sign);
+  const f = RIG_GEOMETRY.FOREARM_BELLY_ALONG;
+  return {
+    elbowX,
+    elbowY: pose.elbowY,
+    bellyX: elbowX + (handX - elbowX) * f,
+    bellyY: pose.elbowY + (pose.handY - pose.elbowY) * f,
+    handX,
+    handY: pose.handY,
+  };
 }
 
 /** Top and bottom of the knee sleeve on the leg axis, as (x, y) pairs. */

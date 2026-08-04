@@ -23,7 +23,7 @@
  *      the middle of a man.
  *
  * (3) is the load-bearing one, and it is NOT perfectly true — see the test. The
- * measured residue is eleven pixels at the shaft/sleeve junction where the
+ * measured residue is twelve pixels at the shaft/sleeve junction where the
  * outline pass resolves differently once a disc is there, and it is pinned by
  * count and by position rather than claimed away.
  */
@@ -156,11 +156,18 @@ describe('the bare bar and the loaded bar are one body', () => {
    * through a window, so any pixel the two disagree about OUTSIDE the sleeves is
    * a discontinuity at the window's edge while the bar loads.
    *
-   * There are eleven, and they are all the same thing: `outlinePass` runs last
+   * There are twelve, and they are all the same thing: `outlinePass` runs last
    * and only writes transparent pixels, so where a disc now sits, a pixel that
    * was the FIGURE's keyline in the bare frame is the disc's keyline in the
    * loaded one. Every one of them is within three columns of the shaft/sleeve
    * junction and inside the bar's own rows — which is where his hands are.
+   *
+   * ELEVEN UNTIL THE FOREARM GREW A BELLY. `RIG_GEOMETRY.FOREARM_R` went from a
+   * cone to a three-radius chain, so the forearm meets the sleeve one column
+   * further out and one more junction pixel resolves differently between the two
+   * loads. The position assertion below is what says it is still the same
+   * defect and not a new one: the twelfth pixel is at the junction, in the bar's
+   * rows, exactly like the other eleven.
    *
    * WHAT IT LOOKS LIKE: at most a one-pixel edge beside each hand, for the half
    * second the bar is loading, gone the moment the window opens past them. Not
@@ -168,9 +175,9 @@ describe('the bare bar and the loaded bar are one body', () => {
    *
    * Pinned by exact count so it cannot grow quietly.
    */
-  const BODY_PIXELS_THE_TWO_BARS_DISAGREE_ABOUT = 11;
+  const BODY_PIXELS_THE_TWO_BARS_DISAGREE_ABOUT = 12;
 
-  it('differs from the loaded bar in eleven pixels, all beside the hands', () => {
+  it('differs from the loaded bar in twelve pixels, all beside the hands', () => {
     const bare = frameFor(BAR_AND_COLLARS_KG);
     const loaded = frameFor(HEAVY_KG);
     expect(bare.w).toBe(loaded.w);

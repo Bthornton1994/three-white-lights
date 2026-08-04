@@ -891,7 +891,11 @@ describe('readability at phone scale', () => {
     expect(r.rimContrast.p25).toBeGreaterThanOrEqual(BOUNDS.RIM_P25_MIN);
     // And it fails exactly the one bound, by name, the way the shipped frame
     // used to. Equality rather than `.some(...)`, so it cannot grow an entry.
-    expect(violations(seatingLoweredToTheFloor())).toEqual(['RIM_DEAD_SHARE_HIGH(0.0307>0)']);
+    //
+    // The share is measured over a composite that INCLUDES the lifter, so it
+    // moves when his silhouette does: 0.0307 -> 0.0309 when `RIG_GEOMETRY`'s
+    // forearm went from a cone to a bellied chain. Re-measured, not relaxed.
+    expect(violations(seatingLoweredToTheFloor())).toEqual(['RIM_DEAD_SHARE_HIGH(0.0309>0)']);
   });
 
   it('measures a real figure and a real room, not two empty sets', () => {

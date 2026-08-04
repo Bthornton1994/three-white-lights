@@ -721,6 +721,21 @@ export function outlinePass(g: IndexGrid): void {
     if (isTransparentIndex(a) || isTransparentIndex(b)) return 0;
     return Math.floor(a / BANK_SIZE) === Math.floor(b / BANK_SIZE) ? a : 0;
   };
+  const STEPS: readonly (readonly [number, number])[] = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ];
+  /**
+   * A transparent pixel THIS PASS WILL LEAVE TRANSPARENT: nothing drawn touches
+   * it, so it is still open space when the pass finishes.
+   *
+   * Off the grid counts as open, because the cell edge is where the world is.
+   */
+  const staysOpen = (x: number, y: number): boolean =>
+    isTransparentIndex(at(x, y)) &&
+    STEPS.every(([dx, dy]) => isTransparentIndex(at(x + dx, y + dy)));
 
   for (let y = 0; y < g.h; y += 1) {
     for (let x = 0; x < g.w; x += 1) {
@@ -736,7 +751,25 @@ export function outlinePass(g: IndexGrid): void {
       if (pick === 0) continue;
       const seam =
         sameBankAcross(x - 1, y, x + 1, y) || sameBankAcross(x, y - 1, x, y + 1) || 0;
-      const isSeam = seam !== 0 && hasInteriorEdge(seam);
+      // A SEAM PIXEL THAT STILL FACES OPEN SPACE IS NOT A SEAM, IT IS THE
+      // SILHOUETTE, and the rule above could not tell the difference: it asks
+      // only whether ONE axis has the same bank on both sides. A one-pixel notch
+      // bitten out of the outside of a limb has exactly that — material above
+      // and below, nothing to the left, nothing to the right — so it was filled
+      // with the material's own shadow step, and the still-transparent pixel
+      // beyond it was then left bare, because `outlinePass` reads a snapshot and
+      // that pixel had no drawn neighbour when the snapshot was taken. The
+      // result is fill touching open space with no keyline between: a hole in
+      // the silhouette one pixel wide, which is precisely what this pass exists
+      // to prevent and what `lifterSprite.test.ts`'s "outlines the whole
+      // silhouette" catches.
+      //
+      // The interior channels the seam rule was written for — neck against
+      // trap, forearm against ribs — are enclosed by the figure on the axis they
+      // run along, so none of them touches a pixel that survives the pass, and
+      // none of them changes.
+      const facesOpenSpace = STEPS.some(([dx, dy]) => staysOpen(x + dx, y + dy));
+      const isSeam = seam !== 0 && hasInteriorEdge(seam) && !facesOpenSpace;
       setPx(g, x, y, isSeam ? interiorEdgeFor(seam) : outlineIndexForBank(pick));
     }
   }
