@@ -93,11 +93,12 @@ export const LIFTER_STRIP = {
    * Cap on the name's scale when the strip has to print TWO meta lines.
    *
    * THE SECOND LINE IS BOUGHT OUT OF THE NAME'S OWN HEIGHT, NOT OUT OF THE
-   * CARD. At scale 1 the name ends above `META_Y_TWO_LINE[0]`, so the strip is
-   * the same 28 px either way and the grid, the total and the barbell do not
-   * move. A long name already sets at this scale today; what is new is that a
-   * SHORT name in a long category steps down too — which is the trade this
-   * whole mechanism makes. The name gets smaller. No fact leaves the card.
+   * CARD. At scale 1 the name set at `NAME_Y_COMPACT` ends above
+   * `META_Y_TWO_LINE[0]`, so the strip is the same 28 px either way and the
+   * grid, the total and the barbell do not move. A long name already sets at
+   * this scale today; what is new is that a SHORT name in a long category steps
+   * down too — which is the trade this whole mechanism makes. The name gets
+   * smaller. No fact leaves the card.
    */
   NAME_SCALE_COMPACT: 1,
   /**
@@ -215,21 +216,23 @@ export interface LifterMetaRung {
  *     rung 4  109 /  45 px    MEN'S SINGLE-PLY 120+          (division SPENT)
  *     rung 5   50 /  45 px    MEN'S 120+                     (equipment too)
  *
- * WHAT CHANGED AND WHY. This ladder used to end at what is now rung 4, so the
- * stress card printed "MEN'S SINGLE-PLY 120+ · 139.40" and dropped `Masters 1`
- * — while the same card printed `PLACE 3`. A placing is a placing IN A
- * DIVISION; third in what is the first question a lifter asks of that card, and
- * a real sheet never has a rank without a division near it (on a meet page the
- * division is the section heading over the rows the ranks are in, [R8] in
- * `src/game/resultCard.ts`). The two alternatives measured last round were to
- * spend the EQUIPMENT instead — which makes a single-ply total read as raw, and
- * is worse on a results card — or to give the strip a second line. The second
- * line is what rungs 2 and 3 are.
+ * WHAT CHANGED AND WHY. This ladder had four rungs and no second line anywhere
+ * in it: its third rung was one line with the division spent, so the stress
+ * card printed "MEN'S SINGLE-PLY 120+ · 139.40" — while the same card printed
+ * `PLACE 3`. A placing is a placing IN A DIVISION; third in what is the first
+ * question a lifter asks of that card, and a real sheet never has a rank
+ * without a division near it (on a meet page the division is the section
+ * heading over the rows the ranks are in, [R8] in `src/game/resultCard.ts`).
+ * The two alternatives measured last round were to spend the EQUIPMENT instead
+ * — which makes a single-ply total read as raw, and is worse on a results card
+ * — or to give the strip a second line. The second line is what rungs 2 and 3
+ * are, and the fact that it costs no height is what makes it the cheap answer.
  *
- * RUNGS 4 AND 5 ARE STILL HERE, AND ARE STILL REACHABLE — but only by a card
- * with no placing on it, and only when even a line shared with the bodyweight
- * cannot hold the division (about 25 characters of division). See
- * `lifterMetaRungs`: a card that prints a placing is not offered them.
+ * RUNGS 4 AND 5 ARE STILL HERE AND ARE STILL REACHABLE — but only by a card
+ * with no placing on it, and, at the card's own width, only when even a line
+ * shared with the bodyweight cannot hold the division (about 25 characters of
+ * it). See `lifterMetaRungs`: a card that prints a placing is not offered them
+ * at any width.
  *
  * The widest realistic phrase measured is 182 px — "WOMEN'S SINGLE-PLY
  * SUB-JUNIORS 84+", two pixels past `CONTENT.W`, which is exactly what rung 3
