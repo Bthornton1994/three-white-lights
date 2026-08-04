@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece X1
-generated 2026-08-04T21:44:28.398Z
+generated 2026-08-04T22:32:39.552Z
 repo /home/user/three-white-lights
-commit 1296140c5acca1142e06cb9704d2d048633c11cc
+commit d9d9665fd6f35cd54b6c980f4088833fbc783420
 working tree clean (ignoring .gauntlet/ run artefacts)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -20,30 +20,33 @@ $ npx vitest run src/game/progression.test.ts --reporter=verbose
 
  ✓ src/game/progression.test.ts > purity > reads no clock, no randomness and no network 3ms
  ✓ src/game/progression.test.ts > purity > names every permanent fact in the unit sweep, so the sweep cannot be scoped 1ms
- ✓ src/game/progression.test.ts > purity > names every route into permanent progression in §7.5, derived from the type checker 5988ms
- ✓ src/game/progression.test.ts > purity > names no route in §7.5 that no longer exists 2ms
+ ✓ src/game/progression.test.ts > purity > scans the whole project, not just src/ 6334ms
+ ✓ src/game/progression.test.ts > purity > leaves no TypeScript file in the repository out of the scanned set 5ms
+ ✓ src/game/progression.test.ts > purity > names every route into permanent progression in §7.5, derived from the type checker 1ms
+ ✓ src/game/progression.test.ts > purity > names no route in §7.5 that no longer exists 1ms
  ✓ src/game/progression.test.ts > purity > rules test fixtures out of §7.5 rather than matching none of them 1ms
- ✓ src/game/progression.test.ts > purity > counts routes from parsed code, so a sentence about one is not one 5ms
- ✓ src/game/progression.test.ts > purity > lets no module that can reach a ServerRecord forge one without an object literal 5ms
+ ✓ src/game/progression.test.ts > purity > counts routes from parsed code, so a sentence about one is not one 1ms
+ ✓ src/game/progression.test.ts > purity > lets no module that can reach a ServerRecord forge one without an object literal 4ms
+ ✓ src/game/progression.test.ts > purity > picks candidates by what they import, not by what words they contain 4ms
  ✓ src/game/progression.test.ts > purity > mints server truth in exactly one place 1ms
- ✓ src/game/progression.test.ts > purity > mints the in-flight pairing in exactly one place 2ms
+ ✓ src/game/progression.test.ts > purity > mints the in-flight pairing in exactly one place 1ms
  ✓ src/game/progression.test.ts > purity > keeps the in-flight pairing opaque, not branded 2ms
  ✓ src/game/progression.test.ts > purity > does not cast its way past its own boundary 1ms
- ✓ src/game/progression.test.ts > purity > keeps the pay-to-win guard derived, in source, where vitest cannot see it 2ms
+ ✓ src/game/progression.test.ts > purity > keeps the pay-to-win guard derived, in source, where vitest cannot see it 1ms
  ✓ src/game/progression.test.ts > the fact allowlist > is exactly the keys a live snapshot carries 0ms
- ✓ src/game/progression.test.ts > the fact allowlist > answers the buyable question for every fact, from one map 1ms
+ ✓ src/game/progression.test.ts > the fact allowlist > answers the buyable question for every fact, from one map 0ms
  ✓ src/game/progression.test.ts > the fact allowlist > derives the protected set from that map rather than restating it 0ms
  ✓ src/game/progression.test.ts > the fact allowlist > names Total, e1RM and meet results as protected 0ms
  ✓ src/game/progression.test.ts > the fact allowlist > leaves streak and wallet open on purpose, and nothing else yet 0ms
  ✓ src/game/progression.test.ts > the fact allowlist > has no fact that names training pace, and can tell 0ms
- ✓ src/game/progression.test.ts > the fact allowlist > lets no fact that names performance be bought 1ms
+ ✓ src/game/progression.test.ts > the fact allowlist > lets no fact that names performance be bought 0ms
  ✓ src/game/progression.test.ts > the fact allowlist > keeps the Recovery Day ledger out of the wallet 0ms
  ✓ src/game/progression.test.ts > the fact allowlist > tracks streak.ts own allowlist rather than duplicating it 0ms
  ✓ src/game/progression.test.ts > the fact allowlist > pins every report type to its declared inputs 0ms
  ✓ src/game/progression.test.ts > the fact allowlist > lets no report field name a unit unless its allowlist carries the tag 1ms
  ✓ src/game/progression.test.ts > the fact allowlist > lets no report name an output 2ms
  ✓ src/game/progression.test.ts > the fact allowlist > keeps a meet result to its declared fields 0ms
- ✓ src/game/progression.test.ts > the fact allowlist > keeps a projection to a subset of the real facts 1ms
+ ✓ src/game/progression.test.ts > the fact allowlist > keeps a projection to a subset of the real facts 0ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > declares a non-empty reach for every proposal kind 0ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > names only real facts in every reach 1ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > gives every proposal kind an origin, from one map 0ms
@@ -51,21 +54,21 @@ $ npx vitest run src/game/progression.test.ts --reporter=verbose
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > keeps every purchase-originated proposal off the protected facts 0ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > names purchase evidence that real reports carry and earned reports do not 1ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > walks every exported report allowlist, nested ones included 0ms
- ✓ src/game/progression.test.ts > nothing purchasable reaches performance > lets no proposal at all move a fact that means training pace 0ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > lets no proposal at all move a fact that means training pace 1ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > lets earned proposals move the facts a purchase may not 0ms
- ✓ src/game/progression.test.ts > nothing purchasable reaches performance > offers no entitlement effect that touches a lift 1ms
- ✓ src/game/progression.test.ts > nothing purchasable reaches performance > sells no convenience that speeds up training 1ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > offers no entitlement effect that touches a lift 0ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > sells no convenience that speeds up training 0ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > keeps every cosmetic slot cosmetic 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > lets only a proposal that carries a meet move the Total 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > does not let a training session move the Total 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > still lets a meet result move the Total 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > moves e1RM from both, because a meet is also the heaviest single you did 0ms
- ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > refuses a training session whose projection claims a Total 1ms
+ ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > refuses a training session whose projection claims a Total 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > accepts the same projected Total from a meet result 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > lets a training session project the number a session actually moves 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > checks every kind against every projectable fact, in both directions 2ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > lets every kind claim nothing 0ms
- ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > keeps the compile-time half of the claim in the source 1ms
+ ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > keeps the compile-time half of the claim in the source 5ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > keeps the compile-time half of the PROJECTION claim in the source too 1ms
  ✓ src/game/progression.test.ts > receiveProgressionSnapshot > turns a wire payload into server truth 0ms
  ✓ src/game/progression.test.ts > receiveProgressionSnapshot > carries a bomb-out as null, not as a total of zero 0ms
@@ -134,7 +137,7 @@ $ npx vitest run src/game/progression.test.ts --reporter=verbose
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > will not let a REAL in-flight proposal be spread and overridden 0ms
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > makes the spread that DOES still compile inert, and this one runs 0ms
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > does not let the read model be handed back in 0ms
- ✓ src/game/progression.test.ts > a purchase cannot reach performance > carries the reuse residual explicitly, so it cannot be silently widened 1ms
+ ✓ src/game/progression.test.ts > a purchase cannot reach performance > carries the reuse residual explicitly, so it cannot be silently widened 0ms
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > still lets proposeChange build one, which is the positive control 0ms
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > runs the whole legitimate flow end to end 0ms
  ✓ src/game/progression.test.ts > the module exports no writer > has no way to commit a projection 0ms
@@ -149,13 +152,13 @@ $ npx vitest run src/game/progression.test.ts --reporter=verbose
  ✓ src/game/progression.test.ts > the boundary lets legitimate work through > mints ids and revisions the client is allowed to mint 0ms
  ✓ src/game/progression.test.ts > the boundary lets legitimate work through > refuses a nonsense projection at the mint 0ms
  ✓ src/game/progression.test.ts > the boundary lets legitimate work through > answers the acknowledgement question directly 0ms
- ✓ src/game/progression.test.ts > the boundary lets legitimate work through > builds every proposal kind the design calls for 0ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > builds every proposal kind the design calls for 1ms
  ✓ src/game/progression.test.ts > the boundary lets legitimate work through > builds every entitlement effect the catalogue allows 0ms
 
  Test Files  1 passed (1)
-      Tests  133 passed (133)
-   Start at  21:44:29
-   Duration  7.25s (transform 437ms, setup 0ms, import 999ms, tests 6.06s, environment 0ms)
+      Tests  136 passed (136)
+   Start at  22:32:40
+   Duration  7.66s (transform 455ms, setup 0ms, import 1.04s, tests 6.41s, environment 0ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -170,9 +173,9 @@ $ npx vitest run
 
 
  Test Files  57 passed (57)
-      Tests  2431 passed (2431)
-   Start at  21:44:37
-   Duration  37.52s (transform 4.33s, setup 0ms, import 18.63s, tests 71.46s, environment 8ms)
+      Tests  2437 passed (2437)
+   Start at  22:32:48
+   Duration  37.98s (transform 4.53s, setup 0ms, import 18.72s, tests 73.92s, environment 8ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
