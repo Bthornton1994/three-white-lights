@@ -208,7 +208,7 @@ import {
   type SorenessAnswer,
 } from './fatigue';
 import { TO_FAILURE_RPE, tryEstimateE1rm } from './e1rm';
-import { percentOf1RM, rawLoadForRpeTarget, roundLoad } from './rpe';
+import { percentOf1RM, rawLoadForRpeTarget, roundLoad, type WeightUnit } from './rpe';
 import type { LiftConfig, LiftOutcome } from './lift';
 import type { LiftKind } from './meet';
 import {
@@ -218,6 +218,7 @@ import {
   type ProgressionProjection,
   type ProjectionWithinReach,
   type ProposalOfKind,
+  type TrainingCardReport,
   type TrainingSetReport,
 } from './progression';
 import type { LocalWallClock } from './streak';
@@ -659,7 +660,11 @@ export function playedSetFrom(
       ? null
       : {
           lift: plan.lift,
-          weightKg: plan.weightKg,
+          // `weight`, not `weightKg`: the row makes no unit claim. The claim is
+          // one level up, on `TrainingCardReport`, at the grain the loop
+          // actually has a unit — `SESSION_TUNING.LOAD_UNIT`, which is also the
+          // unit `prescribeSession` snapped this number onto.
+          weight: plan.weightKg,
           reps: goodReps,
           rpe: wentToFailure ? TO_FAILURE_RPE : plan.targetRpe,
         };
@@ -677,7 +682,7 @@ export function playedSetFrom(
 export function sessionE1rmFrom(sets: readonly TrainingSetReport[]): number | null {
   let best: number | null = null;
   for (const set of sets) {
-    const estimate = tryEstimateE1rm({ weight: set.weightKg, reps: set.reps, rpe: set.rpe });
+    const estimate = tryEstimateE1rm({ weight: set.weight, reps: set.reps, rpe: set.rpe });
     if (estimate === null) continue;
     if (best === null || estimate > best) best = estimate;
   }
@@ -915,6 +920,25 @@ function closeOutFrom(state: SessionState): SessionCloseOut {
 // ---------------------------------------------------------------------------
 
 /**
+ * COMPILE-TIME ASSERTION: THE UNITS THE LOOP CAN LOAD IN ARE EXACTLY THE UNITS A
+ * CARD CAN DECLARE.
+ *
+ * `SESSION_TUNING.LOAD_UNIT` is an `rpe.ts` `WeightUnit`; `TrainingCardReport`
+ * is two string literals in `progression.ts`, which imports nothing from the
+ * session loop and should not. Two unions written in two files that must agree
+ * are one boundary only while something says so — add a third unit to the loader
+ * (`ROUNDING_INCREMENT` gains a row) and `sessionProposal` below would have a
+ * value it cannot declare, silently, because a `switch` with no arm for it just
+ * falls through. This fails instead, in both directions.
+ */
+type LoadUnitsAreExactlyCardUnits = [WeightUnit] extends [TrainingCardReport['unit']]
+  ? [TrainingCardReport['unit']] extends [WeightUnit]
+    ? true
+    : never
+  : never;
+export const THE_LOOPS_LOAD_UNITS_ARE_EXACTLY_A_CARDS: LoadUnitsAreExactlyCardUnits = true;
+
+/**
  * What the client asks the server to record. INPUTS ONLY: the sets as they were
  * performed. There is no e1RM in it and no Total in it — `progression.ts`'s
  * allowlists forbid both, and the server derives e1RM from these four numbers
@@ -922,15 +946,46 @@ function closeOutFrom(state: SessionState): SessionCloseOut {
  *
  * `null` when the session banked nothing. See the header on why that is a
  * retry rather than a lost day.
+ *
+ * ---------------------------------------------------------------------------
+ * THE UNIT IS DECLARED FROM THE CONSTANT THAT DECIDED IT, NOT TYPED AS A LITERAL
+ * ---------------------------------------------------------------------------
+ * `SESSION_TUNING.LOAD_UNIT` is the unit `prescribeSession` snapped every one of
+ * these weights onto — `roundLoad(nudged, { unit: SESSION_TUNING.LOAD_UNIT })`,
+ * one function above. Writing `unit: 'kg'` here instead would be a label typed
+ * by a module that did not decide the number: true today, and still saying `kg`
+ * on the day the loop learns to prescribe in pounds. That is the defect this
+ * whole boundary exists to stop, one field over.
+ *
+ * BUILDING THE CARD REQUIRES NAMING THE UNIT, and the `?:` below is that
+ * requirement showing up as code rather than as a convention: the arms carry
+ * different field names, so there is no object literal that satisfies
+ * `TrainingCardReport` without having branched.
+ *
+ * WHAT THIS DOES NOT CLAIM, because the honest statement is smaller than it
+ * looks: flipping `LOAD_UNIT` to `'lb'` does NOT produce a pound session.
+ * `prescribeSession` computes the load from a KILOGRAM e1RM (`context.e1rmKg`,
+ * off `record.bestE1rmKg`) and `LOAD_UNIT` only chooses the snapping grid, so a
+ * flipped constant yields a kilogram magnitude on a 5-unit grid. The card would
+ * then declare `'lb'` over kilogram numbers and `sessionServer.ts` would refuse
+ * the whole session. THAT IS THE INTENDED FAILURE: loud and unrecorded beats
+ * quiet and banked, and `bestE1rmKg` is monotone so a banked mistake is
+ * permanent. Making the magnitude follow the unit is a real change to the
+ * loading path and GDD §11's display-unit question, and it is not taken here.
  */
 export function sessionProposal(
   closeOut: SessionCloseOut,
   deviceWallClock: LocalWallClock,
 ): ProposalOfKind<'record-training-session'> | null {
   if (!closeOut.canPropose) return null;
+  const unit = SESSION_TUNING.LOAD_UNIT;
+  const card: TrainingCardReport =
+    unit === 'kg'
+      ? { unit, kilogramSets: closeOut.sets }
+      : { unit, poundSets: closeOut.sets };
   return {
     kind: 'record-training-session',
-    report: { deviceWallClock, sets: closeOut.sets },
+    report: { deviceWallClock, card },
   };
 }
 

@@ -36,6 +36,7 @@ import {
   judgePanelFor,
   judgeSeedFor,
   judgingMargin,
+  liveAttemptWeightText,
   meetAttemptReports,
   meetResultCard,
   meetResultProposal,
@@ -986,6 +987,42 @@ describe('the recap (GDD §6.5)', () => {
     const midway = start + (total - start) / 2;
     expect(countedTotalText(recap, midway)).toBe(String(Math.round(midway)));
     expect(Number(countedTotalText(recap, midway))).toBeLessThan(total);
+  });
+
+  it('prints the bar with the unit the MEET is run in, not one the screen typed', () => {
+    // `AttemptView.tsx` printed `${formatWeight(live.weightKg)} kg` — a suffix
+    // typed in a component, over a number that component cannot know the unit
+    // of. `POUND_MEET_RULES` is exported, validates, and runs a full meet, so
+    // that screen was lying to a player on a pound platform: 442.5 lb rendered
+    // as "442.5 kg", 2.2x wrong, on the one line of the one screen showing what
+    // is on the bar.
+    //
+    // A DISPLAY DEFECT, NOT A PROGRESSION ONE, and fixing it takes none of GDD
+    // §11's three ways out: the engine still runs the pound meet and
+    // `applyMeetResult` still refuses to record it.
+    const kg = openedMeet();
+    expect(kg.phase).toBe('walkout');
+    expect(meetLoadingRules(kg.meet).unit).toBe('kg');
+    expect(liveAttemptWeightText(kg)).toBe(`${formatWeight(kg.live?.weightKg ?? 0)} kg`);
+
+    const poundMeet: MeetDefinition = { ...MEET_LOCAL, id: 'pound-open-2026', rules: POUND_MEET_RULES };
+    const lb = openedMeet({ ...previewContext(), meet: poundMeet });
+    expect(meetLoadingRules(lb.meet).unit).toBe('lb');
+    expect(liveAttemptWeightText(lb)).toBe(`${formatWeight(lb.live?.weightKg ?? 0)} lb`);
+    // THE DISCRIMINATOR: the two screens differ ONLY in the suffix, so a fix that
+    // reached for the magnitude instead of the unit would fail here. (The openers
+    // are suggested off the same kilogram e1RMs in both meets, which is a
+    // separate open question and not this line's to answer.)
+    expect(liveAttemptWeightText(lb)).not.toBe(liveAttemptWeightText(kg));
+    expect(liveAttemptWeightText(lb).replace(' lb', '')).toBe(
+      liveAttemptWeightText(kg).replace(' kg', ''),
+    );
+
+    // Nothing to print before there is an attempt on the bar.
+    expect(liveAttemptWeightText(createMeetDay(previewContext()))).toBe('');
+    // And the labels are exhaustive over the units a meet can be run in, so a
+    // third one cannot be added to `meet.ts` without a label being chosen.
+    expect(Object.keys(MEET_COPY.UNIT_LABEL).sort()).toEqual(['kg', 'lb']);
   });
 
   it('prints no total at all for a bombed lifter, whatever the counter says', () => {

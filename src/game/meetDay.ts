@@ -167,6 +167,7 @@ import { asMeetId } from './progression';
 import {
   NO_VALUE_DISPLAY,
   buildResultCard,
+  formatWeight,
   type ResultCard,
   type ResultCardError,
 } from './resultCard';
@@ -1371,6 +1372,43 @@ function recapRowsFor(
  * which is `resultCard.ts`'s `formatWeight` and therefore exactly what the
  * shareable card prints.
  */
+/**
+ * What is on the bar for the attempt in progress, with the unit it is measured
+ * in — `"442.5 kg"`, or `"442.5 lb"` if this meet is run under pound rules.
+ *
+ * HERE RATHER THAN IN THE COMPONENT BECAUSE THE SUFFIX IS A FACT ABOUT THE MEET.
+ * `AttemptView.tsx` composed this string itself with a hardcoded `" kg"`, so on
+ * a meet created from `POUND_MEET_RULES` — an exported, validated configuration
+ * the engine runs end to end — the one screen showing the weight was printing a
+ * unit nobody had checked. A screen cannot know that; the meet does, and
+ * `meetLoadingRules` is the only way out of the opaque `MeetRules`, so the
+ * lookup belongs on this side of the boundary.
+ *
+ * THE NUMBER IS `resultCard.ts`'S `formatWeight`, so the bar on the platform and
+ * the bar on the shareable card are formatted by one function rather than two
+ * that could disagree about `442.50`.
+ *
+ * `''` WHEN THERE IS NO LIVE ATTEMPT, which is the state `AttemptView` already
+ * draws an empty frame for. A caller that renders it anyway shows nothing rather
+ * than `"NaN kg"`.
+ *
+ * IT DOES NOT CONVERT AND IT DOES NOT RULE. GDD §11's pound-meet question is
+ * open and this does not touch it: progression still refuses to record a pound
+ * meet, and this only stops the screen claiming kilograms while one is running.
+ *
+ * NOT THE WHOLE OF THE DEFECT IT CAME FROM. `MeetDayAttempt.weightKg` and
+ * `LiveAttempt.weightKg` are still bare numbers named `Kg` — the loop's own row
+ * types, not the wire — and other meet screens print them without a unit at all.
+ * Renaming those reaches screens outside this piece's scope; named rather than
+ * half-done.
+ */
+export function liveAttemptWeightText(state: MeetDayState): string {
+  const live = state.live;
+  if (live === null) return '';
+  const unit = meetLoadingRules(state.meet).unit;
+  return `${formatWeight(live.weightKg)} ${MEET_COPY.UNIT_LABEL[unit]}`;
+}
+
 export function countedTotalText(recap: MeetRecap, counted: number): string {
   if (recap.totalKg === null) return recap.totalText;
   if (!Number.isFinite(counted) || counted >= recap.totalKg) return recap.totalText;

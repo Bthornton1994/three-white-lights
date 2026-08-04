@@ -101,7 +101,13 @@
  *     and weight-class lists are domain data, not knobs.
  */
 
-import { DEFAULT_MEET_RULES, type LiftKind, type MeetLoadingRules, type ProgressiveAttemptStrategy } from './meet';
+import {
+  DEFAULT_MEET_RULES,
+  type LiftKind,
+  type MeetLoadingRules,
+  type MeetWeightUnit,
+  type ProgressiveAttemptStrategy,
+} from './meet';
 import type { BodyweightReading, DotsSex, KilogramBodyweight } from './dots';
 import type { GymVenue } from '../art/gymTuning';
 import { hapticPattern } from './liftTuning';
@@ -1291,6 +1297,24 @@ export const MEET_COPY = Object.freeze({
     bench: 'BENCH',
     deadlift: 'DEADLIFT',
   } as const satisfies Record<LiftKind, string>),
+
+  /**
+   * What a weight is printed WITH, per unit the meet can be run in.
+   *
+   * EXHAUSTIVE OVER `MeetWeightUnit` ON PURPOSE. `AttemptView.tsx` printed a
+   * hardcoded `" kg"` after `formatWeight(live.weightKg)`, so on a pound meet —
+   * which `POUND_MEET_RULES` makes a configuration the engine supports and runs
+   * end to end — the one screen showing the bar was telling the player the wrong
+   * number. `satisfies Record<MeetWeightUnit, string>` means a third unit cannot
+   * be added to `meet.ts` without a label being decided here, rather than a
+   * screen quietly keeping the old suffix.
+   *
+   * THIS IS A DISPLAY FIX AND NOT A RULING. GDD §11's pound-meet question stays
+   * open: the engine still runs a pound meet and progression still refuses to
+   * record one. What changes is only that the screen no longer lies about which
+   * unit is on the bar while that is true.
+   */
+  UNIT_LABEL: Object.freeze({ kg: 'kg', lb: 'lb' } as const satisfies Record<MeetWeightUnit, string>),
 
   // --- Pre-meet (GDD §6.1) -------------------------------------------------
   WEIGH_IN_EYEBROW: 'WEIGH-IN',

@@ -63,6 +63,68 @@
  *     has no parameter for a purchase, an entitlement, a boost or a balance, so
  *     nothing purchasable can change what a session is worth (GDD §8.1).
  *   - AN ACCESSORY SESSION CLAIMING AN e1RM. See below.
+ *   - A SET WHOSE UNIT IT CANNOT PROVE. See THE UNIT below.
+ *
+ * ---------------------------------------------------------------------------
+ * THE UNIT — why the write path checks it, and why it refuses rather than
+ * converts
+ * ---------------------------------------------------------------------------
+ * FOR FOUR ROUNDS THIS MODULE CONTAINED NO OCCURRENCE OF THE WORD "unit", while
+ * writing a `Confirmed`, protected, MONOTONE field named `bestE1rmKg`.
+ *
+ * The chain, and what proved the `Kg` at each step:
+ *
+ *   client sends `TrainingSetReport.weightKg`   nothing. A bare number with the
+ *                                               unit in its name.
+ *   `progression.ts` decoder                    `isFiniteWeight` — finiteness.
+ *   `tryEstimateE1rm`                           nothing, BY DESIGN. `e1rm.ts`
+ *                                               is documented "unit-agnostic:
+ *                                               kg in → kg out, lb in → lb out.
+ *                                               Do not convert inside this
+ *                                               module", and `CompletedSet.
+ *                                               weight` is documented "any
+ *                                               unit". It is correct there.
+ *   write to `record.bestE1rmKg`                nothing.
+ *   `nextBestE1rm`                              monotone — never returns below
+ *                                               what is held.
+ *   `ConfirmedFacts.bestE1rmKg`                 a brand literally named `Kg`,
+ *                                               asserting nothing.
+ *
+ * So a pound session recorded as kilograms is 2.2046x too large and PERMANENT:
+ * no later honest session lowers it, every future prescription is computed from
+ * it (`todayForLifter`), every future PR is tested against it, and it crosses
+ * into the other mode through `meetServer.ts`'s `meetDayFacts` — `suggestOpener`
+ * turns it into a declared attempt and `stageLoadRatio` divides a proven
+ * kilogram meet weight by it.
+ *
+ * `readKilogramSets` is the check, and it runs before `bestE1rmFromSets` and
+ * before the streak. See that function for what kind of check each half is —
+ * the shape is a compile error, the accepted answer is a runtime comparison, and
+ * the comparison is against a CONSTANT rather than server-owned data, which is
+ * weaker than `replayMeetCard`'s. Said plainly rather than rounded up.
+ *
+ * HOW REACHABLE IS A POUND SESSION, honestly. NOT a one-token flip.
+ * `SESSION_TUNING.LOAD_UNIT` chooses the SNAPPING GRID only
+ * (`RPE_LOADING_TUNING.ROUNDING_INCREMENT`); `session.ts`'s `prescribeSession`
+ * computes the load from a KILOGRAM e1RM either way, so flipping the constant
+ * produces a kilogram magnitude on a 5-unit grid rather than a pound session.
+ * The training path has no `POUND_MEET_RULES` — no exported, validated, in-tree
+ * producer of pound numbers — which is the difference from the meet path and it
+ * is stated rather than glossed.
+ *
+ * WHAT IS REACHABLE IS THE SAME THING THE MEET PATH HAD: a client running the
+ * daily loop in pounds, which is GDD §11's unsettled display-unit question one
+ * mode over, plus untyped JSON and casts — the traffic this module exists for.
+ * `meetServer.ts` records that "no game module produces it" was found FALSE
+ * TWICE on the other path, and that argument is not re-made here.
+ *
+ * AND THE COST OF THE REFUSAL IS REAL. A player who genuinely trained in pounds
+ * is refused and loses the streak day, which is the shape CLAUDE.md's "never
+ * punish daily engagement" warns about. It is the safe branch and it is the same
+ * branch `applyMeetResult` takes for a pound meet; GDD §11 records both, and the
+ * screen that would tell such a player what happened is part of that open
+ * ruling rather than something to bolt on ahead of it. Nothing in the shipped
+ * loop can produce the case today.
  *
  * ---------------------------------------------------------------------------
  * ACCESSORY WORK NEVER TOUCHES e1RM — RULED, AND ENFORCED HERE
@@ -99,6 +161,7 @@
  * outstanding.
  */
 
+import { DOTS_TOTAL_UNIT } from './dots';
 import { estimateE1rm, tryEstimateE1rm } from './e1rm';
 import {
   EMPTY_FATIGUE_STATE,
@@ -111,7 +174,9 @@ import {
   type SimLift,
 } from './fatigue';
 import { LIFT_ORDER, type LiftKind } from './meet';
+import { declaredRows } from './progression';
 import type {
+  KilogramTrainingCard,
   MeetResultWire,
   ProgressionSnapshotWire,
   ProposalOfKind,
@@ -278,6 +343,139 @@ export function snapshotWireFor(
 }
 
 // ---------------------------------------------------------------------------
+// Reading the card — the one place a set's unit is proven
+// ---------------------------------------------------------------------------
+
+/**
+ * The one unit permanent progression stores an e1RM in.
+ *
+ * `DOTS_TOTAL_UNIT` rather than a fresh `'kg'` literal, for the reason
+ * `meetServer.ts` gives for `PROGRESSION_TOTAL_UNIT`: exactly ONE string in the
+ * tree that a unit check compares against, spelled the way `meet.ts` spells it
+ * and pinned to that spelling by `dots.test.ts`. The name says DOTS and the
+ * reason here is not DOTS — `ServerRecord.bestE1rmKg`,
+ * `ProgressionSnapshotWire.bestE1rmKg` and `ConfirmedFacts.bestE1rmKg` are
+ * kilogram fields by their names, by `SESSION_TUNING.STARTING_E1RM_KG`, and by
+ * `meetDayFacts` handing them to `suggestOpener` beside a proven-kilogram meet.
+ *
+ * A SEPARATE NAME FROM THE TOTAL'S AND THE BODYWEIGHT'S, aliased to the same
+ * string. Three independent facts, and a ruling that converted one would not
+ * automatically convert the others; one constant would hide that.
+ */
+const PROGRESSION_E1RM_UNIT = DOTS_TOTAL_UNIT;
+
+/**
+ * The sets on a reported card, PROVEN to be in the unit this record stores.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THE CHECK IS HERE AND NOT FURTHER DOWN
+ * ---------------------------------------------------------------------------
+ * Nothing below this function looks at a unit, and nothing below it can:
+ *
+ *   - `bestE1rmFromSets` calls `tryEstimateE1rm`, and `e1rm.ts` is documented
+ *     UNIT-AGNOSTIC — "kg in → kg out, lb in → lb out. Do not convert inside
+ *     this module". `CompletedSet.weight` is documented "any unit". It is not
+ *     an oversight there; it is the design, and it means a pound set produces a
+ *     pound e1RM with no complaint.
+ *   - `nextBestE1rm` is MONOTONE, so the answer can only ever go up. A pound
+ *     number banked as kilograms is 2.2x too large and no later honest session
+ *     lowers it. It poisons every future PR test, every prescription computed
+ *     from it, and — through `meetServer.ts`'s `meetDayFacts` — meet day's
+ *     opener suggestion and `stageLoadRatio`'s load ratio.
+ *   - `ProgressionSnapshotWire.bestE1rmKg` has no unit field, so once the
+ *     number is on the wire the unit is unrecoverable, exactly as
+ *     `MeetResultWire.totalKg`'s is.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY IT REFUSES RATHER THAN CONVERTS
+ * ---------------------------------------------------------------------------
+ * Same posture as `dots.ts` past its domain, `e1rm.ts` past the chart, and
+ * `meetServer.ts` on a pound meet: refuse, and name the remedy.
+ * `kilogramsFromPounds` is exact, so converting is arithmetically available —
+ * and that is not the question. The question is whether a module that writes a
+ * monotone permanent fact should act on a unit tag it cannot verify. Converting
+ * turns a mislabelled card into a permanently wrong e1RM instead of a refusal
+ * somebody can see. See `UNSUPPORTED_SESSION_UNIT`.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT KIND OF CHECK EACH HALF IS — said plainly, because rounding these up is
+ * how the meet path's version of this defect survived two rounds
+ * ---------------------------------------------------------------------------
+ *   - REACHING THE SETS WITHOUT NAMING A UNIT IS A COMPILE ERROR, everywhere.
+ *     There is no field on `TrainingCardReport` that yields sets from both arms
+ *     — no `sets`, exactly as there is no `attempts` on `MeetCardReport` and no
+ *     `value` on `BodyweightReading`. The shape forces the question to be asked.
+ *   - WHICH ANSWER IS ACCEPTED IS A RUNTIME STRING COMPARISON, and deleting the
+ *     `if` below is a TEST failure, not a compile error. It has to be a runtime
+ *     check: `card.unit` is whatever the sender wrote once it has been through
+ *     JSON, and an unrecognised unit must fail safe rather than be assumed.
+ *   - THE COMPARISON IS AGAINST A CONSTANT, NOT AGAINST SERVER-OWNED DATA. This
+ *     is WEAKER than `replayMeetCard`'s `card.unit === meet.rules.unit`, which
+ *     asks "does what you say match what this meet is". There is no session
+ *     definition to compare against — a session is authored by the client, not
+ *     drawn from a catalogue — so the strongest question available is "did you
+ *     say kg?". Stated rather than glossed.
+ */
+function readKilogramSets(
+  // Widened by `| undefined` on purpose: a request body can simply not have this
+  // field, and a server whose first act on a malformed body is to throw is a
+  // server that has told the caller nothing. Typed code cannot pass one.
+  card: ProposalOfKind<'record-training-session'>['report']['card'] | undefined,
+): SessionServerResult<readonly TrainingSetReport[]> {
+  if (card === undefined) {
+    return {
+      ok: false,
+      error: {
+        code: 'MALFORMED_SESSION_CARD',
+        message: 'sessionServer: this report carries no card, so there are no sets to record.',
+      },
+    };
+  }
+  if (card.unit !== PROGRESSION_E1RM_UNIT) {
+    return {
+      ok: false,
+      error: {
+        code: 'UNSUPPORTED_SESSION_UNIT',
+        message:
+          `sessionServer: this session says its set weights are in ${JSON.stringify(card.unit)} and ` +
+          `permanent progression stores an e1RM in ${JSON.stringify(PROGRESSION_E1RM_UNIT)}. ` +
+          'Recording it would read every weight on it as kilograms — which SUCCEEDS silently, ' +
+          'because e1rm.ts is unit-agnostic by design and record.bestE1rmKg has no unit field to ' +
+          'disagree with — and bestE1rmKg is monotone, so the error would be permanent. This does ' +
+          'NOT convert for you: run the loop in kilograms, or convert the whole card at the call ' +
+          'site with kilogramsFromPounds and propose the converted session.',
+      },
+    };
+  }
+  // THROUGH THE NARROW, NOT THROUGH A SHARED FIELD. `card` is the kilogram arm
+  // by now, so `kilogramSets` is the only list of sets in scope.
+  //
+  // THE NARROW IS BOUND TO A NAME rather than left as a fact about control flow.
+  // `KilogramTrainingCard` is what "these sets have been proven to be kilograms"
+  // is called, in one spelling — and the binding earns its keep: WIDENING the
+  // condition above to let the pound arm through stops compiling on THIS line,
+  // where the name says what the value is meant to be, instead of type-checking
+  // and failing a test. Mutation-tested in both shapes.
+  const proven: KilogramTrainingCard = card;
+  // `declaredRows` is the runtime half: a tag with nothing under it, or with
+  // something that is not a list, is refused rather than iterated.
+  const sets = declaredRows(proven.kilogramSets);
+  if (sets === null) {
+    return {
+      ok: false,
+      error: {
+        code: 'MALFORMED_SESSION_CARD',
+        message:
+          `sessionServer: this card declares ${JSON.stringify(card.unit)} and carries no list of ` +
+          'sets under that unit. A declared unit with nothing under it is not a session, and ' +
+          'guessing which field was meant is how a pound list gets read as a kilogram one.',
+      },
+    };
+  }
+  return { ok: true, value: sets };
+}
+
+// ---------------------------------------------------------------------------
 // Deriving e1RM from what was reported
 // ---------------------------------------------------------------------------
 
@@ -308,7 +506,7 @@ export function bestE1rmFromSets(
           `Accessory work contributes Training IQ only (GDD §2, §3.2).`,
       );
     }
-    const estimate = tryEstimateE1rm({ weight: set.weightKg, reps: set.reps, rpe: set.rpe });
+    const estimate = tryEstimateE1rm({ weight: set.weight, reps: set.reps, rpe: set.rpe });
     if (estimate === null) continue;
     const held = out[set.lift];
     if (held === null || estimate > held) out[set.lift] = estimate;
@@ -361,6 +559,50 @@ export function fatigueRecordFor(
 export type SessionServerErrorCode =
   /** The reported sets name more than one lift. One lift a day (GDD §3.2). */
   | 'MIXED_LIFTS'
+  /**
+   * A CARD WHOSE WEIGHTS THIS RECORD CANNOT STORE, because it was not lifted in
+   * kilograms.
+   *
+   * `UNSUPPORTED_MEET_UNIT`'S SIBLING, AND A SEPARATE CODE RATHER THAN THE SAME
+   * SPELLING. `meetServer.ts` and `resultCard.ts` share one spelling because
+   * they are two points in ONE pipeline refusing ONE submission — a meet result
+   * whose total or bodyweight is in the wrong unit, with one remedy ("convert
+   * the whole entry at the call site"). This is a different pipeline: a
+   * different proposal kind, a different Edge Function, a different fact
+   * (`bestE1rmKg`, not `totalKg`), and a different remedy — there is no meet to
+   * convert and no bodyweight beside it, only the loop's own
+   * `SESSION_TUNING.LOAD_UNIT`. Spelling it `UNSUPPORTED_MEET_UNIT` here would
+   * put the word "meet" on a refusal with no meet in it, and a caller matching
+   * on the code would be handed the meet path's advice.
+   *
+   * WHAT IT REFUSES AND WHY IT DOES NOT CONVERT: the same posture `dots.ts` and
+   * `meetServer.ts` take. lb→kg is exact, so this module *could* convert — but
+   * converting would make this the place that handles units, and the number it
+   * would produce goes into `record.bestE1rmKg`, which `nextBestE1rm` keeps
+   * MONOTONE. A conversion applied to a card that was mislabelled rather than
+   * genuinely pounds is a permanent 2.2x error that no later honest session can
+   * walk back. Refuse, and name the remedy: run the loop in the unit the record
+   * stores, or convert the whole card at the call site with
+   * `kilogramsFromPounds` before proposing.
+   */
+  | 'UNSUPPORTED_SESSION_UNIT'
+  /**
+   * A UNIT-TAGGED CARD WITH NO SETS UNDER ITS TAG.
+   *
+   * `{ "unit": "kg" }`, or `{ "unit": "kg", "poundSets": [...] }`. Each narrows
+   * perfectly — the tag is one of the two `tsc` knows — and then the field the
+   * narrow entitles you to read is `undefined`. NOT `UNSUPPORTED_SESSION_UNIT`:
+   * the unit is supported and correctly declared, there is simply nothing in the
+   * envelope, and the remedy is to fix the sender rather than to convert
+   * anything. `meetServer.ts` splits `MALFORMED_READING` off from
+   * `UNSUPPORTED_MEET_UNIT` for exactly this reason, after shipping a round in
+   * which a checked tag over an unchecked payload wrote `undefined` into a
+   * stored result with `ok: true`.
+   *
+   * REACHABLE ONLY FROM UNTYPED JSON OR A CAST, which is the traffic this module
+   * exists for.
+   */
+  | 'MALFORMED_SESSION_CARD'
   /**
    * A reported set names something that is not a competition lift — accessory
    * work, or a lift that does not exist. Accessory work contributes Training IQ
@@ -421,7 +663,13 @@ export function applyTrainingSession(
   if (!Number.isSafeInteger(day)) {
     return { ok: false, error: { code: 'BAD_DAY', message: `sessionServer: day ${day} is not a day index.` } };
   }
-  const sets = proposal.report.sets;
+  // THE UNIT, FIRST, BEFORE `bestE1rmFromSets` AND BEFORE THE STREAK MOVES.
+  // Everything below this line treats these numbers as kilograms — `e1rm.ts` is
+  // unit-agnostic and will happily answer in pounds, `nextBestE1rm` is monotone,
+  // and `record.bestE1rmKg` has no unit field for the answer to carry.
+  const read = readKilogramSets(proposal.report.card);
+  if (!read.ok) return read;
+  const sets = read.value;
   // BEFORE ANYTHING ELSE, AND BEFORE THE STREAK MOVES. A session naming a lift
   // this boundary cannot answer for is refused whole rather than half-recorded:
   // an accessory set used to advance the streak and land in the fatigue ledger
@@ -573,5 +821,10 @@ export function todayForLifter(record: ServerRecord, day: number, lift: LiftKind
  * into `e1rm.ts` rather than two curves that happen to agree.
  */
 export function serverE1rmForSet(set: TrainingSetReport): number {
-  return estimateE1rm({ weight: set.weightKg, reps: set.reps, rpe: set.rpe });
+  // `e1rm.ts` IS UNIT-AGNOSTIC BY DESIGN — "kg in → kg out, lb in → lb out. Do
+  // not convert inside this module" — so nothing here or below it proves what
+  // this number is. Whatever proves it has to have happened before the row was
+  // taken off its card. `readKilogramSets` is that place; this function is
+  // exported for one test and takes a row that has already come off one.
+  return estimateE1rm({ weight: set.weight, reps: set.reps, rpe: set.rpe });
 }

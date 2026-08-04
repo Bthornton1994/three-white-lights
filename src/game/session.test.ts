@@ -653,7 +653,7 @@ describe('playing a set', () => {
     const played = playedSetFrom(plan, 1, ['good-lift', 'grind', 'good-lift']);
     expect(played.goodReps).toBe(3);
     expect(played.wentToFailure).toBe(false);
-    expect(played.report).toEqual({ lift: 'squat', weightKg: 172.5, reps: 3, rpe: 8 });
+    expect(played.report).toEqual({ lift: 'squat', weight: 172.5, reps: 3, rpe: 8 });
   });
 
   it('reports a set that met failure at RPE 10 for the reps that were made', () => {
@@ -662,7 +662,7 @@ describe('playing a set', () => {
     expect(played.wentToFailure).toBe(true);
     // RPE 10 is not an estimate of how hard it was — on a reps-in-reserve chart
     // it is what "the next rep failed" MEANS.
-    expect(played.report).toEqual({ lift: 'squat', weightKg: 172.5, reps: 1, rpe: 10 });
+    expect(played.report).toEqual({ lift: 'squat', weight: 172.5, reps: 1, rpe: 10 });
   });
 
   it('reports nothing at all for a set with no completed rep', () => {
@@ -1069,15 +1069,46 @@ describe('the proposal and the projection — the client proposes, the server pu
     const proposal = sessionProposal(closeOut, wallClock);
     expect(proposal).not.toBeNull();
     expect(proposal?.kind).toBe('record-training-session');
-    expect(proposal?.report.sets).toHaveLength(SESSION_TUNING.WORK_SETS);
-    expect(proposal?.report.sets[0]).toEqual({
+    // THE CARD DECLARES THE UNIT, AND IT DECLARES THE ONE THE LOOP LOADED IN
+    // rather than a literal somebody typed. There is no `report.sets` to read:
+    // the arm has to be named first, which is the property the shape exists for.
+    const card = proposal?.report.card;
+    expect(card?.unit).toBe(SESSION_TUNING.LOAD_UNIT);
+    if (card === undefined || card.unit !== 'kg') throw new Error('the shipped loop loads in kg');
+    expect(card.kilogramSets).toHaveLength(SESSION_TUNING.WORK_SETS);
+    expect(card.kilogramSets[0]).toEqual({
       lift: 'squat',
-      weightKg: 172.5,
+      weight: 172.5,
       reps: 3,
       rpe: 8,
     });
     // No derived answer on the wire, in any set.
     expect(JSON.stringify(proposal)).not.toMatch(/e1rm|total/i);
+  });
+
+  it('reads the unit off the constant that chose it, with no literal to drift', () => {
+    // THIS IS A SOURCE SCAN AND IT IS ONE ON PURPOSE, because the executable
+    // assertion above CANNOT discriminate. `expect(card.unit).toBe(
+    // SESSION_TUNING.LOAD_UNIT)` passes just as happily against a hard-coded
+    // `{ unit: 'kg' }`, since the constant IS `'kg'` — mutation-tested, and it
+    // survives. The two differ only on the day the constant moves, which is
+    // exactly the day a typed literal becomes a lie about permanent progression.
+    //
+    // A stronger version of this check would put the unit on `SessionPlan` and
+    // forward it, the way `MeetEntry.bodyweight` is forwarded rather than
+    // stamped. That is not done here because `SessionPlan.weightKg` and
+    // `SessionCloseOut.weightKg` are read by screens outside this piece's scope,
+    // and a plan carrying `unit: 'lb'` beside a field named `weightKg` would be a
+    // worse contradiction than the one being fixed. Named rather than glossed.
+    const source = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'session.ts'), 'utf8');
+    const start = source.indexOf('export function sessionProposal(');
+    expect(start).toBeGreaterThan(0);
+    const body = source.slice(start, source.indexOf('\n}', start));
+    // The control: the slice really is the function, not an empty string.
+    expect(body).toContain("kind: 'record-training-session'");
+    expect(body).toContain('SESSION_TUNING.LOAD_UNIT');
+    // And no unit literal anywhere in it, in either arm.
+    expect(body).not.toMatch(/unit:\s*['"](kg|lb)['"]/);
   });
 
   it('proposes nothing when nothing was banked', () => {
