@@ -6,9 +6,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EMPTY_CHECK_IN,
+  SESSION_PAYOFFS,
+  asAccessoryCloseOut,
   checkInOrNeutral,
   checkInProgress,
   completeCheckIn,
+  closeOutCopyFor,
   createSession,
   currentSetNumber,
   defaultRpeChoice,
@@ -27,6 +30,8 @@ import {
   sessionProposal,
   stepSession,
   workSetsForToday,
+  type CloseOutCopy,
+  type CloseOutCopyInput,
   type SessionContext,
   type SessionEvent,
   type SessionState,
@@ -867,6 +872,130 @@ describe('the close-out — GDD §3.2', () => {
     // The only numbers on it are the player's own tap readout, which the suite
     // above shows is identical across wildly different hidden ledgers.
     expect(feelJson).toMatch(/loadAdjustmentPercent/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The words on the payoff beat — GDD §3.2's accessory ruling, in the copy
+// ---------------------------------------------------------------------------
+
+describe('what the close-out is HEADED, not only what it counts', () => {
+  const copy = (over: Partial<CloseOutCopyInput> = {}): CloseOutCopy =>
+    closeOutCopyFor({
+      payoff: 'e1rm',
+      canPropose: true,
+      isPr: false,
+      goodReps: SESSION_TUNING.WORK_SETS * SESSION_TUNING.REPS_PER_SET,
+      prescribedReps: SESSION_TUNING.WORK_SETS * SESSION_TUNING.REPS_PER_SET,
+      ...over,
+    });
+
+  it('names exactly the two payoffs GDD §3.2 has', () => {
+    expect([...SESSION_PAYOFFS]).toEqual(['e1rm', 'training-iq']);
+  });
+
+  it('AN ACCESSORY DAY IS NOT HEADED "NEW e1RM", however primed the lifter was', () => {
+    // THE DEFECT, AS A TEST. There were three headlines — none of them accessory
+    // — and the choice between them was the client's PR prediction and nothing
+    // else. So an accessory day on a readiness that produced a PR rendered a
+    // screen headed "NEW e1RM", subheaded "You beat your best estimate on this
+    // lift", over a Training IQ row with no number in it. §3.2 says an accessory
+    // session does not get an e1RM close-out, and that screen is one whatever
+    // the digits do.
+    //
+    // `isPr: true` is the operative argument. It is the state the old selector
+    // read, and the only state in which it produced the forbidden screen.
+    const primed = copy({ payoff: 'training-iq', isPr: true });
+    expect(primed.headline).toBe(SESSION_COPY.CLOSE_OUT_ACCESSORY_HEADLINE);
+    expect(primed.headline).not.toBe(SESSION_COPY.CLOSE_OUT_PR_HEADLINE);
+    expect(primed.subhead).not.toBe(SESSION_COPY.CLOSE_OUT_PR_SUBHEAD);
+    expect(primed.headline).not.toMatch(/e1RM/i);
+    expect(primed.subhead).not.toMatch(/e1RM|estimate/i);
+    // ...and it is the same words whether or not the PR flag is set, because on
+    // this payoff the flag is a statement about a number that does not exist.
+    expect(copy({ payoff: 'training-iq', isPr: false })).toEqual(primed);
+  });
+
+  it('still says so when the accessory work came up short, without scolding', () => {
+    const short = copy({ payoff: 'training-iq', isPr: true, goodReps: 1 });
+    expect(short.headline).toBe(SESSION_COPY.CLOSE_OUT_ACCESSORY_HEADLINE);
+    expect(short.subhead).toBe(SESSION_COPY.CLOSE_OUT_ACCESSORY_SHORT_SUBHEAD);
+    expect(short.subhead).not.toBe(SESSION_COPY.CLOSE_OUT_SHORT_SUBHEAD);
+  });
+
+  it('lets NOTHING BANKED outrank the payoff kind, on both payoffs', () => {
+    // A day with no completed rep has nothing to say about either currency, and
+    // the empty copy is already lift-agnostic — it offers the retry.
+    for (const payoff of SESSION_PAYOFFS) {
+      const empty = copy({ payoff, canPropose: false, isPr: true });
+      expect(empty.headline, payoff).toBe(SESSION_COPY.CLOSE_OUT_EMPTY_HEADLINE);
+      expect(empty.subhead, payoff).toBe(SESSION_COPY.CLOSE_OUT_EMPTY_SUBHEAD);
+    }
+  });
+
+  it('leaves the three e1RM outcomes exactly as they were', () => {
+    // NON-REGRESSION. The accessory branch is added in front of these, so the
+    // cheapest way to break the loop would be to change what a competition lift
+    // says on the way past.
+    expect(copy({ isPr: true }).headline).toBe(SESSION_COPY.CLOSE_OUT_PR_HEADLINE);
+    expect(copy({ isPr: true }).subhead).toBe(SESSION_COPY.CLOSE_OUT_PR_SUBHEAD);
+    expect(copy({ isPr: false }).headline).toBe(SESSION_COPY.CLOSE_OUT_HELD_HEADLINE);
+    expect(copy({ isPr: false }).subhead).toBe(SESSION_COPY.CLOSE_OUT_HELD_SUBHEAD);
+    expect(copy({ isPr: false, goodReps: 1 }).subhead).toBe(SESSION_COPY.CLOSE_OUT_SHORT_SUBHEAD);
+  });
+
+  it('gives the accessory day its own words, shared with nothing', () => {
+    // A fourth headline that turned out to be one of the other three would pass
+    // every check above by accident.
+    const heads = [
+      SESSION_COPY.CLOSE_OUT_PR_HEADLINE,
+      SESSION_COPY.CLOSE_OUT_HELD_HEADLINE,
+      SESSION_COPY.CLOSE_OUT_EMPTY_HEADLINE,
+      SESSION_COPY.CLOSE_OUT_ACCESSORY_HEADLINE,
+    ];
+    expect(new Set(heads).size).toBe(heads.length);
+    const subs = [
+      SESSION_COPY.CLOSE_OUT_PR_SUBHEAD,
+      SESSION_COPY.CLOSE_OUT_HELD_SUBHEAD,
+      SESSION_COPY.CLOSE_OUT_SHORT_SUBHEAD,
+      SESSION_COPY.CLOSE_OUT_EMPTY_SUBHEAD,
+      SESSION_COPY.CLOSE_OUT_ACCESSORY_SUBHEAD,
+      SESSION_COPY.CLOSE_OUT_ACCESSORY_SHORT_SUBHEAD,
+    ];
+    expect(new Set(subs).size).toBe(subs.length);
+  });
+
+  it('tags a played session as an e1RM day, because the rotation has no other', () => {
+    const state = runSession(context(), PRIMED, 8, ALL_GOOD);
+    expect(state.closeOut?.payoff).toBe('e1rm');
+    expect([...SESSION_TUNING.LIFT_ROTATION]).not.toContain('accessory');
+  });
+
+  it('re-tags a close-out as an accessory day, words and numbers together', () => {
+    // The one door. It exists because accessory day is RULED and the rotation
+    // that would produce one is not built — `liftForDay` hands back a
+    // `LiftKind`, which is the meet's three lifts for ever.
+    const played = runSession(context(), PRIMED, 8, ALL_GOOD).closeOut;
+    expect(played).not.toBeNull();
+    if (played === null) return;
+    expect(played.isPr).toBe(true);
+    expect(played.headline).toBe(SESSION_COPY.CLOSE_OUT_PR_HEADLINE);
+
+    const accessory = asAccessoryCloseOut(played);
+    expect(accessory.payoff).toBe('training-iq');
+    expect(accessory.headline).toBe(SESSION_COPY.CLOSE_OUT_ACCESSORY_HEADLINE);
+    // Every e1RM claim is cleared, not merely unrendered.
+    expect(accessory.isPr).toBe(false);
+    expect(accessory.sessionE1rmKg).toBeNull();
+    expect(accessory.newBestE1rmKg).toBeNull();
+    expect(accessory.prGainKg).toBeNull();
+    // The session still happened: reps, streak and bar-speed cue are untouched.
+    expect(accessory.goodReps).toBe(played.goodReps);
+    expect(accessory.streakAfter).toBe(played.streakAfter);
+    expect(accessory.barSpeedText).toBe(played.barSpeedText);
+    expect(accessory.canPropose).toBe(played.canPropose);
+    // And still no Total, on the branch that did not exist when that was checked.
+    expect(JSON.stringify(accessory)).not.toMatch(/total/i);
   });
 });
 

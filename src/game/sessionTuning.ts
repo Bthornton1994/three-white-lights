@@ -453,6 +453,35 @@ export const SESSION_COPY = Object.freeze({
   CLOSE_OUT_HELD_SUBHEAD: 'Target hit. Your estimate holds.',
   CLOSE_OUT_SHORT_SUBHEAD: 'Short of the target. Nothing lost — the estimate stands.',
   CLOSE_OUT_EMPTY_SUBHEAD: 'No reps to log. Take it again, lighter.',
+
+  /**
+   * ACCESSORY DAY'S CALL (GDD §3.2, ruled). THE FOURTH HEADLINE, AND IT HAD TO
+   * EXIST.
+   *
+   * There were three, none of them accessory, and the NUMBERS on an accessory
+   * close-out already honoured the ruling — no `bestE1rmKg` write and no e1RM
+   * node on the screen. The WORDS did not. `closeOutFrom` picked the headline
+   * from the client's PR prediction and nothing else, so on a primed readiness
+   * an accessory day rendered a screen headed "NEW e1RM", subheaded "You beat
+   * your best estimate on this lift", over a Training IQ row with no number in
+   * it. §3.2 says accessory day does not get an e1RM close-out, and a screen
+   * headed "NEW e1RM" is one whatever the digits do.
+   *
+   * SAYS WHAT WAS PAID, NOT WHAT WAS NOT. "No e1RM today" would make the beat
+   * about the thing that did not happen; the payoff is Training IQ, §2's
+   * currency for how WELL you train, so the call is about the work.
+   *
+   * NEITHER LINE HAS BEEN PLAYED. Every string in this block is a starting point
+   * for the hand-tuning pass GDD §12.1 budgets, and this pair more than most: it
+   * is the one close-out nobody has watched land, and whether "ACCESSORY BANKED"
+   * reads as a payoff or as a consolation prize is exactly the question a
+   * playtest answers and a builder cannot.
+   */
+  CLOSE_OUT_ACCESSORY_HEADLINE: 'ACCESSORY BANKED',
+  CLOSE_OUT_ACCESSORY_SUBHEAD: 'This is the work that makes the lifts move later.',
+  /** Same beat, reps short of the prescription. Never a scold (GDD §3.5). */
+  CLOSE_OUT_ACCESSORY_SHORT_SUBHEAD: 'Short of the target. The work still counts.',
+
   CLOSE_OUT_E1RM_LABEL: 'e1RM',
   CLOSE_OUT_STREAK_LABEL: 'DAY STREAK',
   CLOSE_OUT_REPS_LABEL: 'REPS BANKED',

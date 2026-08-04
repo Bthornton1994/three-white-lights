@@ -30,6 +30,7 @@ import {
   type ProposalOfKind,
 } from './progression';
 import {
+  asAccessoryCloseOut,
   createSession,
   liftForDay,
   stepSession,
@@ -43,7 +44,7 @@ import {
 } from './sessionServer';
 import { EMPTY_FATIGUE_STATE, type FatigueState, type SessionRecord } from './fatigue';
 import { FATIGUE_TUNING } from './fatigue';
-import { SESSION_BOUNDARY, SESSION_BOUNDARY_COPY, SESSION_TUNING } from './sessionTuning';
+import { SESSION_BOUNDARY, SESSION_BOUNDARY_COPY, SESSION_COPY, SESSION_TUNING } from './sessionTuning';
 import { asStreakDay, type LocalWallClock } from './streak';
 import type { LiftKind } from './meet';
 
@@ -433,13 +434,16 @@ describe('the payoff a close-out has', () => {
     expect(payoffKindFor(closeOutOf(playSession(STARTING_BEST_KG)))).toBe('e1rm');
   });
 
-  it('a tagged accessory close-out pays Training IQ and NO e1RM', () => {
+  it('an accessory close-out pays Training IQ and NO e1RM', () => {
     const played = closeOutOf(playSession(STARTING_BEST_KG));
-    // The discriminant `session.ts` does not carry yet. Written through a
-    // variable, which is how excess-property checking is satisfied without a cast.
-    const written = { ...played, payoff: 'training-iq' };
-    const tagged: SessionCloseOut = written;
+    // `session.ts` carries the discriminant now and owns the one door to it.
+    // This used to staple `payoff: 'training-iq'` on through a variable, which
+    // set the tag the NUMBERS branch on and left the WORDS above them saying
+    // "NEW e1RM" — the shape GDD §3.2 rules out.
+    const tagged: SessionCloseOut = asAccessoryCloseOut(played);
     expect(payoffKindFor(tagged)).toBe('training-iq');
+    expect(tagged.headline).toBe(SESSION_COPY.CLOSE_OUT_ACCESSORY_HEADLINE);
+    expect(tagged.headline).not.toBe(SESSION_COPY.CLOSE_OUT_PR_HEADLINE);
 
     const cache = openingCache(scriptedServer().port);
     const readings = closeOutReadings(cache, tagged);
@@ -454,11 +458,17 @@ describe('the payoff a close-out has', () => {
     expect(asLift.payoff.valueKg).toBe(STARTING_BEST_KG);
   });
 
-  it('an unknown tag is not silently treated as an accessory day', () => {
+  it('cannot be given a tag that is not one of the two', () => {
+    // This used to check that an unknown STRING fell back to the e1RM payoff,
+    // because the tag was optional and read structurally. It is a typed field
+    // now, so the same mistake is a compile error — and the `@ts-expect-error`
+    // is what keeps that claim non-vacuous: if `payoff` ever widens back to
+    // `string`, the directive stops being satisfied and this test fails.
     const played = closeOutOf(playSession(STARTING_BEST_KG));
-    const written = { ...played, payoff: 'something-else' };
-    const odd: SessionCloseOut = written;
-    expect(payoffKindFor(odd)).toBe('e1rm');
+    // @ts-expect-error — 'something-else' is not a SessionPayoff.
+    const odd: SessionCloseOut = { ...played, payoff: 'something-else' };
+    expect(odd.payoff).toBe('something-else');
+    expect(payoffKindFor(closeOutOf(playSession(STARTING_BEST_KG)))).toBe('e1rm');
   });
 });
 

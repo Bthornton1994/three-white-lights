@@ -9,6 +9,7 @@ import {
 } from './sessionPreview';
 import {
   SESSION_BOUNDARY_PREVIEW,
+  SESSION_COPY,
   SESSION_PREVIEW,
   SESSION_TUNING,
 } from '../game/sessionTuning';
@@ -207,5 +208,57 @@ describe('a preview frame carries the cache its numbers are read out of', () => 
     expect(readings.payoff.pointsGained).toBeNull();
     // The streak still moves: an accessory day is a trained day.
     expect(readings.streakValue).toBe(SESSION_PREVIEW.STREAK_BEFORE + 1);
+  });
+
+  it('AND IS NOT HEADED "NEW e1RM" — the words, not only the numbers', () => {
+    // WHAT THIS CAUGHT. The numbers on this beat always honoured §3.2 and the
+    // WORDS never did: `closeOutFrom` picked the headline from the client's PR
+    // prediction alone, so an accessory day rendered a screen headed "NEW e1RM",
+    // subheaded "You beat your best estimate on this lift", over a Training IQ
+    // row with no number in it. A screen headed "NEW e1RM" is an e1RM close-out
+    // whatever the digits do.
+    const closeOut = previewFrameFor({ moment: 'close-out-accessory' }).state.closeOut!;
+    expect(closeOut.payoff).toBe('training-iq');
+    expect(closeOut.headline).toBe(SESSION_COPY.CLOSE_OUT_ACCESSORY_HEADLINE);
+    expect(closeOut.subhead).toBe(SESSION_COPY.CLOSE_OUT_ACCESSORY_SUBHEAD);
+    // Named individually rather than "is not one of the other three", so a
+    // fourth e1RM headline appearing later does not slip past this.
+    expect(closeOut.headline).not.toBe(SESSION_COPY.CLOSE_OUT_PR_HEADLINE);
+    expect(closeOut.headline).not.toBe(SESSION_COPY.CLOSE_OUT_HELD_HEADLINE);
+    expect(closeOut.subhead).not.toBe(SESSION_COPY.CLOSE_OUT_PR_SUBHEAD);
+    expect(closeOut.subhead).not.toBe(SESSION_COPY.CLOSE_OUT_HELD_SUBHEAD);
+    expect(closeOut.headline).not.toMatch(/e1RM/i);
+    expect(closeOut.subhead).not.toMatch(/e1RM|estimate/i);
+  });
+
+  it('IS BUILT ON A READINESS THAT WOULD HAVE PRODUCED A PR', () => {
+    // THE NON-VACUITY GUARD, AND THE REASON THE DEFECT SURVIVED.
+    //
+    // This beat used to be scripted on `STEADY` — the one readiness band that
+    // arithmetically cannot produce a PR — while `close-out-pr`,
+    // `close-out-saving`, `close-out-server-wins` and `close-out-unsynced` all
+    // used `PRIMED`. So the single demonstration of accessory day was pointed
+    // away from the case where it fails: on `STEADY` the headline came out
+    // "SESSION LOGGED", which is merely wrong, and the "NEW e1RM" screen the
+    // ruling forbids was never rendered by anything anybody looked at.
+    //
+    // Checked by construction rather than by reading the source: the SAME
+    // readiness, played on a competition lift, has to reach a PR. If somebody
+    // quietly puts the accessory fixture back on a calm day, this fails.
+    const accessory = previewFrameFor({ moment: 'close-out-accessory' }).state.closeOut!;
+    const pr = previewFrameFor({ moment: 'close-out-pr' }).state.closeOut!;
+    expect(pr.isPr).toBe(true);
+    expect(pr.headline).toBe(SESSION_COPY.CLOSE_OUT_PR_HEADLINE);
+    // Same day, same RPE, same scripted reps, same prescription. The only
+    // difference between the two close-outs is the payoff.
+    expect(accessory.weightKg).toBe(pr.weightKg);
+    expect(accessory.goodReps).toBe(pr.goodReps);
+    expect(accessory.prescribedReps).toBe(pr.prescribedReps);
+    expect(accessory.barSpeedText).toBe(pr.barSpeedText);
+    // ...and the accessory one reports no PR and no e1RM, because it has none.
+    expect(accessory.isPr).toBe(false);
+    expect(accessory.newBestE1rmKg).toBeNull();
+    expect(accessory.sessionE1rmKg).toBeNull();
+    expect(accessory.prGainKg).toBeNull();
   });
 });

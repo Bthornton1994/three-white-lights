@@ -115,7 +115,14 @@ import {
   type ProposalId,
   type ProposalOfKind,
 } from './progression';
-import { sessionProjection, sessionProposal, type SessionCloseOut, type SessionContext } from './session';
+import {
+  SESSION_PAYOFFS,
+  sessionProjection,
+  sessionProposal,
+  type SessionCloseOut,
+  type SessionContext,
+  type SessionPayoff,
+} from './session';
 import { asStreakDay, openDay, type LocalWallClock } from './streak';
 import { SESSION_TUNING } from './sessionTuning';
 
@@ -364,38 +371,39 @@ export function submitCloseOut(
 // ---------------------------------------------------------------------------
 
 /**
- * What today's session pays. THREE OUTCOMES, NOT TWO (GDD §3.2, ruled).
+ * What today's session pays. TWO KINDS (GDD §3.2, ruled).
  *
  * `'e1rm'` — a competition lift was trained and the record's best for it moves.
  * `'training-iq'` — accessory day. There is no fourth `LiftKind` and there never
  * will be, because `LiftKind` is the meet (§6.2), so an accessory session has no
  * e1RM to show and the close-out must not invent one.
+ *
+ * RE-EXPORTED FROM `session.ts` RATHER THAN DECLARED TWICE. It used to be a
+ * second copy of the same two strings, which was survivable while the tag was
+ * optional and read structurally, and is not now that `SessionCloseOut.payoff`
+ * is a real field: two spellings of one union is two places for a third payoff
+ * to be added to only one of.
  */
-export const SESSION_PAYOFF_KINDS = ['e1rm', 'training-iq'] as const;
+export const SESSION_PAYOFF_KINDS = SESSION_PAYOFFS;
 
-export type SessionPayoffKind = (typeof SESSION_PAYOFF_KINDS)[number];
+export type SessionPayoffKind = SessionPayoff;
 
 /**
  * Which payoff a close-out has.
  *
- * READ STRUCTURALLY, BECAUSE `session.ts` DOES NOT CARRY THE TAG YET. Accessory
- * day is ruled but unbuilt, and the builder who adds it to the rotation owns the
- * discriminant. `SessionCloseOut.lift` cannot be it: that field is `meet.ts`'s
- * three-member `LiftKind` and stays three members for ever.
+ * A FIELD READ, NOW THAT THERE IS A FIELD. This used to reach through a
+ * structural `{ payoff?: unknown }` view because `session.ts` carried no
+ * discriminant — accessory day was ruled but unbuilt, and this side branched on
+ * a tag the preview stapled on. The cost showed up one field over: the client
+ * branched on the tag for the NUMBERS while `headline` and `subhead` were chosen
+ * in `session.ts` before anything knew what kind of day it was, so an accessory
+ * close-out rendered a Training IQ row under an "NEW e1RM" call.
  *
- * So this reads an OPTIONAL `payoff` tag off the close-out and falls back to the
- * e1RM payoff. It is not a guess dressed as an API: the accessory branch is live
- * code with its own tests and its own rendering, so the day the tag lands the
- * screen already tells the truth about it. Widening `SessionCloseOut` with
- * `payoff: SessionPayoffKind` is the whole of the client-side change.
- *
- * The parameter is `SessionCloseOut` and the read goes through a structural
- * `{ payoff?: unknown }` view, so this keeps compiling whatever type the tag
- * eventually has.
+ * `session.ts`'s `closeOutCopyFor` now picks the words from the same field this
+ * reads.
  */
 export function payoffKindFor(closeOut: SessionCloseOut): SessionPayoffKind {
-  const tagged: SessionCloseOut & { readonly payoff?: unknown } = closeOut;
-  return tagged.payoff === 'training-iq' ? 'training-iq' : 'e1rm';
+  return closeOut.payoff;
 }
 
 /**
