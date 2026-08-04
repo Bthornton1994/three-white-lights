@@ -25,6 +25,15 @@
  *      and this fails.
  *   4. A STALE number is captioned NOT SYNCED and shows the last confirmed truth.
  *   5. ACCESSORY DAY has no e1RM node at all — not a zero, not the previous best.
+ *   6. ACCESSORY DAY IS NOT HEADED WITH AN e1RM CLAIM. Added after checks 1-5
+ *      all passed on a screen headed "NEW e1RM" over a Training IQ row with no
+ *      number in it: every one of them was about a NODE, and the defect was in
+ *      the WORDS. GDD §3.2 says accessory day does not get an e1RM close-out,
+ *      and a screen headed "NEW e1RM" is one whatever the nodes do. It comes
+ *      with its own non-vacuity guard, because the reason nobody saw it is that
+ *      the accessory fixture was scripted on the one readiness band that
+ *      arithmetically cannot produce a PR — so "not headed NEW e1RM" was
+ *      satisfied by a beat that could never have been.
  *
  * The expected captions are written out here rather than imported, on the same
  * principle as `capture-session.mjs`'s moment list: a check that reads its
@@ -106,6 +115,9 @@ async function readMoment(moment) {
       streakTag: text('close-out-streak-tag'),
       streakOpacity: opacityOf('close-out-streak'),
       trainingIq: text('close-out-training-iq'),
+      // Read so the accessory beat's non-vacuity guard has something to compare:
+      // the same scripted session re-tagged banks the same reps.
+      reps: text('close-out-reps'),
       accessoryNote: text('close-out-accessory-note'),
       hasE1rmNode: node('close-out-e1rm') !== null,
       body: (document.body.textContent ?? '').slice(0, 2000),
@@ -135,6 +147,7 @@ for (const [name, seen] of [
     streak: seen.streak,
     streakTag: seen.streakTag,
     trainingIq: seen.trainingIq,
+    reps: seen.reps,
   })}`);
 }
 console.log('');
@@ -230,6 +243,32 @@ check(
   accessory.streak !== null && accessory.streak !== UNKNOWN_VALUE,
   'accessory day still moves the streak — a trained day is a trained day',
   JSON.stringify(accessory.streak),
+);
+// THE WORDS, NOT ONLY THE NODES. Every accessory check above this line was
+// about what is DRAWN, and all four passed while the screen was headed "NEW
+// e1RM" over a Training IQ row with no number in it. GDD §3.2 says accessory
+// day does not get an e1RM close-out; a screen headed "NEW e1RM" is one
+// whatever the nodes underneath it do. This reads the headline off the running
+// app rather than trusting the copy table.
+check(
+  !/e1RM/i.test(accessory.headline),
+  'accessory day is not HEADED with an e1RM claim (GDD §3.2, ruled)',
+  JSON.stringify(accessory.headline),
+);
+check(
+  accessory.headline !== pr.headline,
+  'accessory day and a PR day do not share a headline',
+  `${JSON.stringify(accessory.headline)} !== ${JSON.stringify(pr.headline)}`,
+);
+// NON-VACUITY on the two above: the fixture has to be built on a readiness that
+// WOULD have produced a PR, or "not headed NEW e1RM" is satisfied by a beat
+// that could never have been. The scripted reps and prescription are identical
+// between the two beats, so a matching rep count is the evidence that the only
+// difference is the payoff.
+check(
+  accessory.reps === pr.reps,
+  'the accessory beat is the PR beat’s session, re-tagged — not a calmer one',
+  `${JSON.stringify(accessory.reps)} === ${JSON.stringify(pr.reps)}`,
 );
 
 // GDD §3.2: no Total, on any of them.
