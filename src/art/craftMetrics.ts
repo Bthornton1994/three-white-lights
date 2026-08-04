@@ -105,64 +105,40 @@ export const CRAFT = {
   ASSUMED_LIT_BACKGROUND: 255,
 
   // -------------------------------------------------------------------------
-  // HOW MUCH SLACK OUR SPRITE GETS AGAINST THE MEASURED REFERENCE.
+  // WHAT IS *NOT* IN THIS BLOCK, AND WHY THAT IS THE POINT.
   //
-  // Each of these multiplies a number READ OFF THE REFERENCE PNG, so the anchor
-  // and the allowance stay separately visible and neither can be quietly moved
-  // to fit. The margin each leaves over our sprite's own worst case across the
-  // full pose/load/strain/pitch sweep is stated, because a factor with no
-  // stated margin is indistinguishable from one fitted to today's output.
+  // There used to be five entries here of the form "the reference's measured
+  // value x a factor": INTERIOR_KEYLINE_FACTOR 2.0, LIMB_INTERIOR_KEYLINE_FACTOR
+  // 3.6, LIMB_NEAR_BLACK_FACTOR 5.5, FACE_INTERIOR_KEYLINE_FACTOR 5.5, and the
+  // bracket UPPER_LOWER_RATIO_SLACK 0.22. Every one of them was a real
+  // measurement of the reference multiplied by a number chosen after looking at
+  // our own output — the doc comments said so, in the form "ours peaks at X,
+  // against a cap of Y". A bound whose slack was picked by looking at the
+  // artifact cannot grade the artifact; it is a ratchet on drift wearing a
+  // comparison's name, and the direction of the ratchet was wrong in at least
+  // one case. LIMB_MEAN_LUMA_FLOOR_FACTOR put the floor at 0.55 x 130.16 =
+  // 71.6, which is BELOW SKIN_SHADOW's own luma of 73.0 — a limb rendered
+  // entirely in the darkest colour its ramp has passed a test called "keeps no
+  // limb darker than the reference figure".
+  //
+  // THE REPLACEMENT IS A RULE, NOT BETTER NUMBERS. Every bound in this suite is
+  // now exactly one of two things and there is no third kind:
+  //
+  //   1. REFERENCE-DERIVED, WITH NO FREE TERM. Both the anchor and the slack
+  //      are read off `sprite-ref-1`'s pixels: the bound is the reference's own
+  //      worst comparable neighbourhood, measured with the same code, at the
+  //      same pixel count as the window it is bounding (`neighbourhoodProfile`
+  //      below). Nothing about our sprite appears in it, so it cannot be
+  //      fitted to our sprite. If our drawing cannot meet it, the honest
+  //      outcome is a red test, not a bigger multiplier.
+  //   2. AN OURS-ONLY RATCHET, named so that it makes no reference claim, and
+  //      declared in `lifterSprite.test.ts` beside a comment saying what it
+  //      pins. These exist for quantities the two figures do not share — our
+  //      silhouette keyline, which the reference measurably does not have.
+  //
+  // `craftMetrics.test.ts` asserts that no key in CRAFT ends in _FACTOR or
+  // _SLACK, so category 1 cannot quietly grow a multiplier again.
   // -------------------------------------------------------------------------
-  /**
-   * Whole-figure interior keyline, as a multiple of the reference's 2.79%.
-   * Ours peaks at 3.64%, so this leaves 1.5x. Above 1 because the eyes, the
-   * brow bar, the mouth and the belt's lever plate are hand-placed near-black
-   * marks — what a 16-bit artist does with the darkest entry in a bank.
-   */
-  INTERIOR_KEYLINE_FACTOR: 2.0,
-  /**
-   * How far our upper/lower mean-luma ratio may sit either side of the
-   * reference's 1.1138. Bracketed, not capped: a cap alone is directional and
-   * a darker upper body satisfies it more easily, which is how the arms stayed
-   * ringed in near-black through several rounds. Ours runs 0.937-1.211 on the
-   * material field and 1.011-1.315 with the keyline, so the tight side of the
-   * bracket is 0.043 away and the loose side 0.019.
-   */
-  UPPER_LOWER_RATIO_SLACK: 0.22,
-  /**
-   * A limb's mean luma, as a fraction of the reference figure's 130.16. This is
-   * the direct form of "the arms are not the darkest thing on him". Ours
-   * bottoms out at 80.6 on the shaded far arm, against a floor of 71.6.
-   */
-  LIMB_MEAN_LUMA_FLOOR_FACTOR: 0.55,
-  /**
-   * An arm's or hand's interior keyline, as a multiple of the reference
-   * figure's 2.79%. Ours peaks at 8.1%, against a cap of 10.1%.
-   */
-  LIMB_INTERIOR_KEYLINE_FACTOR: 3.6,
-  /**
-   * RAW near-black on a limb of bare flesh, as a multiple of the reference
-   * figure's 3.83%. Like-for-like: both sides are material only, with the
-   * silhouette keyline off.
-   *
-   * This exists because the interior measure alone did not catch a near-black
-   * ring put back on the NECK — most of the neck is covered by the traps, so
-   * the ring lands on its silhouette rather than inside it, and 3 px of a 23 px
-   * window is 13% either way. Raw near-black sees it: 16.7% becomes 29.7%.
-   * It is NOT applied to the head, whose hair is legitimately near-black
-   * (HAIR_DARK, luma 37.2) and runs to 41% of the head window on its own.
-   * Ours peaks at 16.7% on the neck and 10.0% on an arm, against a cap of 21.1%.
-   */
-  LIMB_NEAR_BLACK_FACTOR: 5.5,
-  /**
-   * A head's or neck's interior keyline, as a multiple of the REFERENCE HEAD's
-   * own 3.67% — a separate anchor, because a face carries marks a forearm does
-   * not and one bound over both would either be too loose for the arm or would
-   * fail a face for having eyes. Ours peaks at 16.9% on the head and 13.3% on
-   * the neck, against a cap of 20.2%. This is the loosest factor here and it is
-   * the one to tighten first if the face is ever redrawn.
-   */
-  FACE_INTERIOR_KEYLINE_FACTOR: 5.5,
   /** Below this many pixels a limb window is not measuring the limb. */
   MIN_LIMB_PIXELS: 12,
   /** Clearance past the deltoid before a pixel counts as arm, not torso. */
@@ -577,11 +553,23 @@ export interface SpriteFieldOptions {
    * gets, so the two can be compared.
    *
    * The rule is exactly `outlinePass`'s: a pixel is keyline when it is
-   * near-black AND touches open space. That is a definition, not a guess, and
-   * `lifterSprite.test.ts` asserts on real frames that every pixel this drops
-   * is `PAL.OUTLINE` — so it removes the outline and nothing else, and in
-   * particular does not eat the lifter's near-black hair, which the outline
-   * wraps rather than borders.
+   * near-black AND touches something that is not this figure's own material.
+   * That is a definition, not a guess, and `lifterSprite.test.ts` asserts on
+   * real frames that every pixel this drops is `PAL.OUTLINE` — so it removes
+   * the outline and nothing else, and in particular does not eat the lifter's
+   * near-black hair, which the outline wraps rather than borders.
+   *
+   * "NOT THIS FIGURE'S MATERIAL" USED TO READ "OPEN SPACE", AND THE DIFFERENCE
+   * WAS LOAD-BEARING. `outlinePass` outlines the lifter against the BARBELL as
+   * well as against the backdrop — the equipment is a different palette bank,
+   * so the boundary gets a keyline pixel there too. Under the old rule those
+   * pixels stayed in the "material" field, where the interior-keyline and raw
+   * near-black measures then counted them as marks drawn INSIDE the figure.
+   * Measured over the full sweep, every single near-black pixel inside the arm,
+   * hand and neck windows was one of them: `PAL.OUTLINE` where a forearm passes
+   * a plate, reported as up to 16.7% of a limb "ringed in near-black". The
+   * reference wrestler carries no keyline at all and holds no barbell, so the
+   * quantity being compared did not exist on his side of the comparison.
    */
   readonly excludeSilhouetteKeyline?: boolean;
 }
@@ -621,20 +609,366 @@ export function fieldFromIndexGrid(grid: IndexGrid, options: SpriteFieldOptions 
   }
   if (options.excludeSilhouetteKeyline !== true) return { w, h, luma, member: raw };
 
-  const openAt = (x: number, y: number): boolean =>
-    x < 0 || y < 0 || x >= w || y >= h || isTransparentIndex(getPx(grid, x, y));
+  const foreignAt = (x: number, y: number): boolean =>
+    x < 0 || y < 0 || x >= w || y >= h || (raw[y * w + x] ?? 0) === 0;
   const member = new Uint8Array(w * h);
   for (let y = 0; y < h; y += 1) {
     for (let x = 0; x < w; x += 1) {
       const p = y * w + x;
       if ((raw[p] ?? 0) === 0) continue;
       const dark = (luma[p] ?? 0) < CRAFT.NEAR_BLACK_LUMA;
-      const onSilhouette = NEIGHBOURS.some(([dx, dy]) => openAt(x + dx, y + dy));
+      const onSilhouette = NEIGHBOURS.some(([dx, dy]) => foreignAt(x + dx, y + dy));
       if (dark && onSilhouette) continue;
       member[p] = 1;
     }
   }
   return { w, h, luma, member };
+}
+
+// ---------------------------------------------------------------------------
+// WHERE THE RAMP STEPS FALL
+//
+// Everything above this line is a SCALAR AGGREGATE over a set of pixels — mean
+// luma, near-black share, interior-keyline share, lattice conformance. Shuffle
+// every pixel inside a limb window and three of those five do not move at all.
+// So they cannot see the thing that separates drawn 16-bit shading from a
+// lambert field quantised into four steps: not how much of each value is
+// present, but WHERE the steps fall — whether the bands are contiguous, whether
+// the boundaries between them are smooth, whether there are two-pixel islands
+// stranded in the middle of a mass.
+//
+// Two of the five numbers below are deliberately NOT permutation-invariant, and
+// `craftMetrics.test.ts` proves it by shuffling a window and showing them move
+// while the aggregates do not.
+//
+// The other three are ordinal facts about ramp POSITION rather than luma, which
+// is what lets our four-step skin ramp be compared with the reference's
+// six-step one at all: "the median sits on the darkest step" means the same
+// thing on both sides, and "mean luma 80.6" does not.
+// ---------------------------------------------------------------------------
+
+/**
+ * A field of ramp steps: for each pixel, which entry of a known ordered ramp it
+ * was drawn with, or -1 for "not on this ramp".
+ *
+ * Built from palette indices on our side and from RGB on the reference's, so
+ * the same measurement code runs over both.
+ */
+export interface StepField {
+  readonly w: number;
+  readonly h: number;
+  /** -1 where the pixel is not on the ramp. */
+  readonly step: Int16Array;
+  readonly rampLength: number;
+}
+
+export interface RampStats {
+  readonly count: number;
+  /** Median ramp entry, or -1 for an empty window. 0 is the ramp's floor. */
+  readonly medianStep: number;
+  /** Share of pixels on the ramp's darkest entry. */
+  readonly floorShare: number;
+  /** Share on the top two entries — "does this mass reach the light". */
+  readonly topTwoShare: number;
+  /** Mean position in the ramp, 0 at the floor and 1 at the top. */
+  readonly meanPosition: number;
+  /**
+   * Share of adjacent same-window pixel PAIRS whose ramp step differs.
+   *
+   * NOT PERMUTATION-INVARIANT. A mass drawn in contiguous bands has few
+   * boundaries and scores low; the same pixels shuffled score near the value a
+   * random arrangement gives, which is much higher. This is the measure of
+   * "are the step boundaries smooth, or do they wander".
+   */
+  readonly bandBreakRate: number;
+  /**
+   * Share of pixels that are an ISLAND: no 4-neighbour inside the window shares
+   * their ramp step.
+   *
+   * NOT PERMUTATION-INVARIANT either, and it is the direct form of the defect —
+   * single stranded pixels of the wrong value speckled through a mass. Zero
+   * parameters: an island is a component of one, which is a definition rather
+   * than a threshold.
+   */
+  readonly isletShare: number;
+}
+
+const EMPTY_RAMP_STATS: RampStats = Object.freeze({
+  count: 0,
+  medianStep: -1,
+  floorShare: 0,
+  topTwoShare: 0,
+  meanPosition: 0,
+  bandBreakRate: 0,
+  isletShare: 0,
+});
+
+/** Ramp step at (x, y), or -1 outside the field. */
+export function stepAt(field: StepField, x: number, y: number): number {
+  if (x < 0 || y < 0 || x >= field.w || y >= field.h) return -1;
+  return field.step[y * field.w + x] ?? -1;
+}
+
+/** How many entries of a ramp count as "the top two", for short ramps. */
+const TOP_BAND_ENTRIES = 2;
+
+/**
+ * Ramp statistics over the pixels of `field` that `keep` accepts.
+ *
+ * `keep` is by coordinate, so the same function serves a limb window on our
+ * sprite and an arbitrary neighbourhood on the reference.
+ */
+export function measureRamp(
+  field: StepField,
+  keep: (x: number, y: number) => boolean = EVERYWHERE,
+): RampStats {
+  const inside = (x: number, y: number): boolean => stepAt(field, x, y) >= 0 && keep(x, y);
+  const histogram = new Array<number>(field.rampLength).fill(0);
+  let count = 0;
+  let stepSum = 0;
+  let pairs = 0;
+  let breaks = 0;
+  let islets = 0;
+
+  for (let y = 0; y < field.h; y += 1) {
+    for (let x = 0; x < field.w; x += 1) {
+      if (!inside(x, y)) continue;
+      const s = stepAt(field, x, y);
+      count += 1;
+      stepSum += s;
+      histogram[s] = (histogram[s] ?? 0) + 1;
+      // Each unordered pair counted once: only look right and down.
+      for (const [dx, dy] of [
+        [1, 0],
+        [0, 1],
+      ] as const) {
+        if (!inside(x + dx, y + dy)) continue;
+        pairs += 1;
+        if (stepAt(field, x + dx, y + dy) !== s) breaks += 1;
+      }
+      const joined = NEIGHBOURS.some(
+        ([dx, dy]) => inside(x + dx, y + dy) && stepAt(field, x + dx, y + dy) === s,
+      );
+      if (!joined) islets += 1;
+    }
+  }
+  if (count === 0) return EMPTY_RAMP_STATS;
+
+  let seen = 0;
+  let medianStep = 0;
+  for (let s = 0; s < field.rampLength; s += 1) {
+    seen += histogram[s] ?? 0;
+    if (seen * 2 > count) {
+      medianStep = s;
+      break;
+    }
+  }
+  let top = 0;
+  for (let s = Math.max(0, field.rampLength - TOP_BAND_ENTRIES); s < field.rampLength; s += 1) {
+    top += histogram[s] ?? 0;
+  }
+  const span = Math.max(1, field.rampLength - 1);
+  return {
+    count,
+    medianStep,
+    floorShare: (histogram[0] ?? 0) / count,
+    topTwoShare: top / count,
+    meanPosition: stepSum / count / span,
+    bandBreakRate: pairs === 0 ? 0 : breaks / pairs,
+    isletShare: islets / count,
+  };
+}
+
+/**
+ * A step field from one of our rendered frames: the pixels of `member` that
+ * were drawn with one of `ramp`'s entries, indexed by their position in it.
+ */
+export function stepFieldFromIndexGrid(
+  grid: IndexGrid,
+  member: Uint8Array,
+  ramps: readonly (readonly number[])[],
+): StepField {
+  const length = Math.max(...ramps.map((r) => r.length));
+  const step = new Int16Array(grid.w * grid.h).fill(-1);
+  for (let y = 0; y < grid.h; y += 1) {
+    for (let x = 0; x < grid.w; x += 1) {
+      const p = y * grid.w + x;
+      if ((member[p] ?? 0) === 0) continue;
+      const index = getPx(grid, x, y);
+      for (const ramp of ramps) {
+        const s = ramp.indexOf(index);
+        if (s >= 0) {
+          step[p] = s;
+          break;
+        }
+      }
+    }
+  }
+  return { w: grid.w, h: grid.h, step, rampLength: length };
+}
+
+/** A step field from a decoded reference image and an ordered list of colours. */
+export function stepFieldFromColours(
+  image: RgbaImage,
+  box: PixelBox,
+  rampDarkToLight: readonly number[],
+): StepField {
+  const step = new Int16Array(box.w * box.h).fill(-1);
+  for (let j = 0; j < box.h; j += 1) {
+    for (let i = 0; i < box.w; i += 1) {
+      const s = rampDarkToLight.indexOf(rgbAt(image, box.x + i, box.y + j));
+      if (s >= 0) step[j * box.w + i] = s;
+    }
+  }
+  return { w: box.w, h: box.h, step, rampLength: rampDarkToLight.length };
+}
+
+/**
+ * The worst that any limb-sized patch of a reference drawing does.
+ *
+ * THIS IS THE WHOLE BOUND MECHANISM, so it is worth being exact about what it
+ * does and does not choose. For EVERY pixel on the ramp it takes the `n`
+ * nearest ramp pixels — a compact patch of the drawing, of exactly the size of
+ * the window being bounded — measures it with `measureRamp`, and reports the
+ * extremes over all such patches.
+ *
+ * There is nothing to fit. `n` comes from the window on OUR side, which comes
+ * from the rig; the centres are every pixel of the reference; the statistic is
+ * the same code both sides run. No box is drawn by hand, no percentile is
+ * chosen, no multiplier exists. Moving the bound requires a different reference
+ * image.
+ *
+ * WHAT IT IS LOOSE ABOUT, said plainly: the reference's ramp pixels are its
+ * whole figure's skin — face, chest, abs, thighs, arms — so "the worst patch"
+ * includes shadow pockets under a pec that no limb of ours corresponds to.
+ * That makes the bound EASIER than comparing arm to arm would be. It is the
+ * price of not hand-drawing a box around the reference's arms, and the numbers
+ * it produces are printed in full by `lifterSprite.test.ts` so the margin is
+ * visible rather than asserted.
+ */
+export interface NeighbourhoodProfile {
+  readonly n: number;
+  readonly samples: number;
+  readonly minMeanPosition: number;
+  readonly maxFloorShare: number;
+  readonly minMedianStep: number;
+  readonly maxBandBreakRate: number;
+  readonly maxIsletShare: number;
+  /**
+   * The AVERAGE patch, not the worst one.
+   *
+   * `maxBandBreakRate` and `maxIsletShare` are nearly vacuous as caps: the
+   * reference's worst twelve-pixel patch is a scatter of single pixels across a
+   * ramp boundary and scores 1.0, so no drawing could fail a bound set there.
+   * The average over every patch of a given size is the other parameter-free
+   * summary of the same distribution and it is not vacuous, so the structural
+   * bounds compare average to average. Both are reported, so which one a check
+   * uses is visible rather than buried.
+   */
+  readonly meanBandBreakRate: number;
+  readonly meanIsletShare: number;
+  readonly meanFloorShare: number;
+  /** Share of patches whose median sits on the ramp's darkest entry. */
+  readonly medianAtFloorRate: number;
+  /** Share of patches that put nothing in the ramp's top two entries. */
+  readonly zeroTopTwoRate: number;
+}
+
+/**
+ * Profiles for several patch sizes at once.
+ *
+ * Several rather than one because the expensive half — sorting every ramp pixel
+ * by distance from every other — depends only on the drawing, not on `n`. Doing
+ * it once and taking prefixes turns a per-size O(P^2 log P) into one, which is
+ * the difference between a bound the suite can afford to evaluate at each
+ * window's own exact size and a bound that has to bucket sizes (and a bucketing
+ * is a free parameter, which is the thing this whole mechanism exists to
+ * remove).
+ */
+export function neighbourhoodProfiles(
+  field: StepField,
+  sizes: readonly number[],
+): readonly NeighbourhoodProfile[] {
+  const px: number[] = [];
+  const py: number[] = [];
+  for (let y = 0; y < field.h; y += 1) {
+    for (let x = 0; x < field.w; x += 1) {
+      if (stepAt(field, x, y) >= 0) {
+        px.push(x);
+        py.push(y);
+      }
+    }
+  }
+  const total = px.length;
+  const orders: Int32Array[] = [];
+  const index = Int32Array.from({ length: total }, (_, i) => i);
+  for (let c = 0; c < total; c += 1) {
+    const cx = px[c] ?? 0;
+    const cy = py[c] ?? 0;
+    const sorted = Array.from(index).sort(
+      (a, b) =>
+        ((px[a] ?? 0) - cx) ** 2 +
+        ((py[a] ?? 0) - cy) ** 2 -
+        (((px[b] ?? 0) - cx) ** 2 + ((py[b] ?? 0) - cy) ** 2),
+    );
+    orders.push(Int32Array.from(sorted));
+  }
+
+  return sizes.map((n) => {
+    let samples = 0;
+    let minMeanPosition = Infinity;
+    let maxFloorShare = 0;
+    let minMedianStep = Infinity;
+    let maxBandBreakRate = 0;
+    let maxIsletShare = 0;
+    let sumBandBreakRate = 0;
+    let sumIsletShare = 0;
+    let sumFloorShare = 0;
+    let medianAtFloor = 0;
+    let zeroTopTwo = 0;
+    for (const order of orders) {
+      if (order.length < n) continue;
+      const chosen = new Set<number>();
+      for (let k = 0; k < n; k += 1) {
+        const i = order[k] ?? 0;
+        chosen.add((py[i] ?? 0) * field.w + (px[i] ?? 0));
+      }
+      const stats = measureRamp(field, (x, y) => chosen.has(y * field.w + x));
+      samples += 1;
+      minMeanPosition = Math.min(minMeanPosition, stats.meanPosition);
+      maxFloorShare = Math.max(maxFloorShare, stats.floorShare);
+      minMedianStep = Math.min(minMedianStep, stats.medianStep);
+      maxBandBreakRate = Math.max(maxBandBreakRate, stats.bandBreakRate);
+      maxIsletShare = Math.max(maxIsletShare, stats.isletShare);
+      sumBandBreakRate += stats.bandBreakRate;
+      sumIsletShare += stats.isletShare;
+      sumFloorShare += stats.floorShare;
+      if (stats.medianStep === 0) medianAtFloor += 1;
+      if (stats.topTwoShare === 0) zeroTopTwo += 1;
+    }
+    const per = samples === 0 ? 0 : 1 / samples;
+    return {
+      n,
+      samples,
+      minMeanPosition: samples === 0 ? 0 : minMeanPosition,
+      maxFloorShare,
+      minMedianStep: samples === 0 ? -1 : minMedianStep,
+      maxBandBreakRate,
+      maxIsletShare,
+      meanBandBreakRate: sumBandBreakRate * per,
+      meanIsletShare: sumIsletShare * per,
+      meanFloorShare: sumFloorShare * per,
+      medianAtFloorRate: medianAtFloor * per,
+      zeroTopTwoRate: zeroTopTwo * per,
+    };
+  });
+}
+
+/** One patch size. See `neighbourhoodProfiles` for why the plural is the API. */
+export function neighbourhoodProfile(field: StepField, n: number): NeighbourhoodProfile {
+  const [only] = neighbourhoodProfiles(field, [n]);
+  if (only === undefined) throw new Error('no profile');
+  return only;
 }
 
 // ---------------------------------------------------------------------------
@@ -709,18 +1043,37 @@ export function limbWindows(geometry: LimbGeometry): readonly FieldWindow[] {
   const inAnyHand = (x: number, y: number): boolean =>
     handCentres.some((c) => Math.hypot(x - c.x, y - c.y) <= handR);
 
+  const headEllipse =
+    (padding: number) =>
+    (x: number, y: number): boolean => {
+      const dx = (x - (centerX + pose.headDx)) / (G.HEAD_RX + padding);
+      const dy = (y - pose.headY) / (G.HEAD_RY + padding);
+      return dx * dx + dy * dy <= 1;
+    };
+  /** The head as MEASURED — padded, so its own edge ring is inside it. */
+  const inHeadWindow = headEllipse(pad);
+  /** The head as DRAWN. Everything the face's marks can land on is in here. */
+  const inHeadDrawn = headEllipse(0);
+
   const windows: FieldWindow[] = [
-    {
-      name: 'head',
-      contains: (x, y) => {
-        const dx = (x - (centerX + pose.headDx)) / (G.HEAD_RX + pad);
-        const dy = (y - pose.headY) / (G.HEAD_RY + pad);
-        return dx * dx + dy * dy <= 1;
-      },
-    },
+    { name: 'head', contains: inHeadWindow },
     {
       name: 'neck',
+      // THE DRAWN HEAD IS PUNCHED OUT, for the same reason the hands are
+      // punched out of the arms below: two windows must never be the same
+      // pixels. The neck capsule overlaps the skull by `NECK_OVERLAP` on
+      // purpose, so the window's top row sat inside the drawn head — on the row
+      // where `FACE_STRAINED` stamps its open mouth. Measured over the whole
+      // sweep, every near-black pixel this window ever saw was that mouth or
+      // the brow bar above it: 16.7% of a window named for the throat,
+      // reported as "the neck is ringed in near-black". A face's hand-placed
+      // marks belong to the face's own window and are judged there.
+      //
+      // The DRAWN ellipse rather than the padded one, so the throat keeps the
+      // rows between the jaw and the traps that are the only neck this sprite
+      // has.
       contains: (x, y) =>
+        !inHeadDrawn(x, y) &&
         Math.abs(x - (centerX + pose.headDx * CRAFT.NECK_WINDOW_HEAD_LEAN)) <= G.NECK_R + G.NUDGE.NECK_FLARE + pad &&
         y >= pose.headY + G.HEAD_RY - G.NECK_OVERLAP - pad &&
         y <= pose.shoulderY - G.ATTACH.TRAP_RISE + pad,

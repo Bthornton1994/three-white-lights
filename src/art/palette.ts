@@ -168,7 +168,19 @@ const LIFTER_COLORS: readonly Rgb5[] = [
   [5, 6, 14], //  7 SINGLET_DARK
   [8, 11, 21], //  8 SINGLET_MID
   [14, 18, 28], //  9 SINGLET_LIGHT
-  [5, 4, 6], // 10 HAIR_DARK
+  [6, 5, 7], // 10 HAIR_DARK      Lifted off (5,4,6). At that value its Rec.601
+  //                                 luma was 37.2 — UNDER `CRAFT.NEAR_BLACK_LUMA`
+  //                                 (40), so the lifter's perfectly legitimate
+  //                                 hair mass was counted as black ink by every
+  //                                 measure that separates a drawn line from
+  //                                 material, and the head window read 31-41%
+  //                                 "near-black" and 9.9% "interior keyline"
+  //                                 with nothing wrong in the drawing. The
+  //                                 reference figure's darkest hair step is luma
+  //                                 78 and is never in that class. 45.2 puts
+  //                                 ours on the material side of the line while
+  //                                 staying 26 luma clear of PAL.OUTLINE (19),
+  //                                 so the outline still reads around the hair.
   [11, 8, 10], // 11 HAIR_LIGHT
   // GEAR — belt, both knee sleeves, both shoes. WHY THESE THREE MOVED, AND WHY
   // THEY DID NOT MOVE FURTHER: see the block comment directly below the bank.
@@ -523,4 +535,19 @@ export function interiorEdgeFor(index: number): number {
     default:
       return PAL.OUTLINE;
   }
+}
+
+/**
+ * Does this material have an interior separation step of its own?
+ *
+ * The companion to `interiorEdgeFor`, and it exists because that function's
+ * fallback is ambiguous at the call site: `PAL.OUTLINE` is both "the answer for
+ * hair" and "there is no answer". `outlinePass` needs to tell those apart —
+ * a seam between two PLATES must stay `EQ_OUTLINE`, the cool keyline, because
+ * the one-pixel gap between two discs is the only thing that makes a stack
+ * countable, and routing it through `interiorEdgeFor` painted it in the
+ * LIFTER's warm outline instead.
+ */
+export function hasInteriorEdge(index: number): boolean {
+  return interiorEdgeFor(index) !== PAL.OUTLINE;
 }

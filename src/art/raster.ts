@@ -51,7 +51,14 @@
  */
 
 import { SHADING, type AxialProfile } from './spriteTuning';
-import { isTransparentIndex, outlineIndexForBank, type Ramp } from './palette';
+import {
+  BANK_SIZE,
+  hasInteriorEdge,
+  interiorEdgeFor,
+  isTransparentIndex,
+  outlineIndexForBank,
+  type Ramp,
+} from './palette';
 
 /**
  * Divide-by-zero guard for the normal and profile maths.
@@ -672,12 +679,45 @@ export function drawPlateEdge(
  * widths. Colour is chosen per-pixel from the bank of the neighbour it is
  * outlining, giving the warm-on-flesh / cool-on-steel selective outline the era
  * used. Reads from a snapshot so the outline cannot outline itself.
+ *
+ * A GAP BETWEEN TWO OF THE FIGURE'S OWN MASSES IS NOT A SILHOUETTE, and this
+ * pass used to treat it as one. Where the drawing leaves a one-pixel channel
+ * between the neck and the trap, or the forearm and the ribs, the transparent
+ * pixels in it are reachable from BOTH sides, so the pass filled them with the
+ * near-black keyline — a black seam buried inside the figure with the world
+ * nowhere near it. Measured over the full pose sweep, every near-black pixel
+ * inside the arm, hand and neck windows was one of these: up to 16.7% of the
+ * neck, 8.3% of an arm. `sprite-ref-1`'s masses meet in their own darkest ramp
+ * step and there is no keyline anywhere on him, so that share had nothing to be
+ * compared against.
+ *
+ * So a gap pixel — one with the SAME BANK's material on both ends of an axis —
+ * takes `interiorEdgeFor` instead, which is the same answer `PartOptions.edge`
+ * gives everywhere else: skin shadow inside skin, gear dark inside gear. The
+ * seam stays; it stops being black. The silhouette proper is untouched, so the
+ * figure still reads at phone scale against unknown scenery (GDD §12.2).
+ *
+ * SAME BANK, and that qualifier is load-bearing rather than tidy. A gap with
+ * skin on one side and a PLATE on the other is the boundary between the lifter
+ * and the barbell — a real silhouette, and one whose position moves every time
+ * the load changes. Treating it as an interior seam made the drawn body a
+ * function of how many discs are on the bar, which is exactly what
+ * `bodyPixelDiff`'s "measures the body and only the body" forbids: 66 body
+ * pixels changed between two frames that differ by 150 kg of plates and nothing
+ * else.
  */
 export function outlinePass(g: IndexGrid): void {
   const src = Uint8Array.from(g.data);
   const at = (x: number, y: number): number => {
     if (x < 0 || y < 0 || x >= g.w || y >= g.h) return 0;
     return src[y * g.w + x] ?? 0;
+  };
+  /** The drawn index shared by two opposite neighbours, or 0. */
+  const sameBankAcross = (ax: number, ay: number, bx: number, by: number): number => {
+    const a = at(ax, ay);
+    const b = at(bx, by);
+    if (isTransparentIndex(a) || isTransparentIndex(b)) return 0;
+    return Math.floor(a / BANK_SIZE) === Math.floor(b / BANK_SIZE) ? a : 0;
   };
 
   for (let y = 0; y < g.h; y += 1) {
@@ -691,7 +731,11 @@ export function outlinePass(g: IndexGrid): void {
           break;
         }
       }
-      if (pick !== 0) setPx(g, x, y, outlineIndexForBank(pick));
+      if (pick === 0) continue;
+      const seam =
+        sameBankAcross(x - 1, y, x + 1, y) || sameBankAcross(x, y - 1, x, y + 1) || 0;
+      const isSeam = seam !== 0 && hasInteriorEdge(seam);
+      setPx(g, x, y, isSeam ? interiorEdgeFor(seam) : outlineIndexForBank(pick));
     }
   }
 }

@@ -18,7 +18,7 @@ import {
   type PixelBox,
   type RgbaImage,
 } from './craftMetrics';
-import { PAL } from './palette';
+import { PAL, colorAt, rgb5ToRgb8 } from './palette';
 import { createGrid, setPx, type IndexGrid } from './raster';
 import { POSES } from './rig';
 
@@ -377,21 +377,61 @@ describe('fieldFromIndexGrid', () => {
     expect(core.member[4 * 9 + 4]).toBe(1);
   });
 
-  it('keeps the inside of a dark mass, and drops only the band on open space', () => {
-    // A 4x4 block of the hair step, near-black, with no outline round it. The
-    // rule is `outlinePass`'s exactly — near-black AND touching open space — so
-    // the block's outer ring goes and its 2x2 core stays. In a real frame this
-    // case does not arise, because `outlinePass` wraps the hair rather than
-    // bordering it; the sweep in lifterSprite.test.ts asserts that every pixel
-    // this option actually drops is PAL.OUTLINE.
+  it('keeps the inside of a dark mass, and drops only the band on its boundary', () => {
+    // A 4x4 block of near-black with no outline round it. The rule is
+    // `outlinePass`'s exactly — near-black AND touching something that is not
+    // this figure's own material — so the block's outer ring goes and its 2x2
+    // core stays. That is what stops the option eating a legitimate dark MASS.
+    const g = build((grid) => {
+      for (let y = 2; y <= 5; y += 1) {
+        for (let x = 2; x <= 5; x += 1) setPx(grid, x, y, PAL.OUTLINE);
+      }
+    });
+    const core = fieldFromIndexGrid(g, { excludeSilhouetteKeyline: true });
+    expect(core.member.reduce((a, b) => a + b, 0)).toBe(4);
+    expect(core.member[3 * 9 + 3]).toBe(1);
+  });
+
+  it('never drops the hair, because the hair is no longer near-black', () => {
+    // THIS BLOCK USED TO BE THE CASE ABOVE, and it stopped being one when
+    // HAIR_DARK was lifted off luma 37.2 to 45.2 (see palette.ts). Below
+    // NEAR_BLACK_LUMA the lifter's hair was black ink to every measure that
+    // separates a drawn line from material, and the head window read 31-41%
+    // "near-black" and 9.9% "interior keyline" with nothing wrong in the
+    // drawing. Above it, hair is material, and the same 4x4 block survives.
+    const hair = luma8(...rgb5ToRgb8(colorAt(PAL.HAIR_DARK) ?? [0, 0, 0]));
+    const outline = luma8(...rgb5ToRgb8(colorAt(PAL.OUTLINE) ?? [0, 0, 0]));
+    expect(hair).toBeGreaterThan(CRAFT.NEAR_BLACK_LUMA);
+    expect(outline).toBeLessThan(CRAFT.NEAR_BLACK_LUMA);
     const g = build((grid) => {
       for (let y = 2; y <= 5; y += 1) {
         for (let x = 2; x <= 5; x += 1) setPx(grid, x, y, PAL.HAIR_DARK);
       }
     });
     const core = fieldFromIndexGrid(g, { excludeSilhouetteKeyline: true });
-    expect(core.member.reduce((a, b) => a + b, 0)).toBe(4);
-    expect(core.member[3 * 9 + 3]).toBe(1);
+    expect(core.member.reduce((a, b) => a + b, 0)).toBe(16);
+  });
+
+  it('drops the keyline where the figure borders the BARBELL, not only open space', () => {
+    // The bug this closes. `outlinePass` outlines the lifter against equipment
+    // as well as against the backdrop, and the old rule — "near-black AND
+    // touching open space" — left every one of those pixels inside the
+    // "material" field, where the interior-keyline and raw near-black measures
+    // then counted them as marks drawn INSIDE the figure.
+    //
+    // Here: skin, a keyline pixel, and a plate. Open space is nowhere near the
+    // keyline pixel, and it must still go.
+    const g = build((grid) => {
+      setPx(grid, 3, 4, PAL.SKIN_MID);
+      setPx(grid, 4, 3, PAL.SKIN_MID);
+      setPx(grid, 4, 5, PAL.SKIN_MID);
+      setPx(grid, 4, 4, PAL.OUTLINE);
+      setPx(grid, 5, 4, PAL.PLATE_RED_LIGHT);
+    });
+    expect(fieldFromIndexGrid(g).member[4 * 9 + 4]).toBe(1);
+    const core = fieldFromIndexGrid(g, { excludeSilhouetteKeyline: true });
+    expect(core.member[4 * 9 + 4]).toBe(0);
+    expect(core.member[4 * 9 + 3]).toBe(1);
   });
 });
 

@@ -454,6 +454,17 @@ export const MARKS: readonly Mark[] = [
   // Eyes and mouth. One pixel per eye: at seven pixels of head width there is
   // room for nothing else. These used to be drawn before `despeckle` and every
   // one of them was eaten before it reached a PNG.
+  //
+  // THE INK IS `s` — SKIN_SHADOW, the darkest step of the face's OWN ramp — and
+  // not `K`. Sampled off sprite-ref-1 at native scale, the blond wrestler's eye
+  // sockets, brow and mouth are drawn in HIS darkest skin step (luma 53 of a
+  // 53-234 ramp) and there is no near-black anywhere on his face; the only
+  // near-black inside his head box at all is the darkest step of his red
+  // headband. Ours were `PAL.OUTLINE` at luma 19, which is why our head window
+  // measured 16.9% interior keyline against the reference head's 3.7% — four
+  // times the rate, on a face a third the size. A face at this scale is value
+  // steps inside one ramp, which is the rule `INTERIOR_EDGE` already applies to
+  // every other boundary on this figure.
   {
     name: 'FACE_CALM',
     depicts: 'FLESH',
@@ -463,9 +474,9 @@ export const MARKS: readonly Mark[] = [
     gate: 'CALM',
     origin: [-1, 0],
     map: [
-      'K  K',
+      's  s',
       '    ',
-      ' KK ',
+      ' ss ',
     ],
   },
   // Braced and grimacing: the brow comes down as a bar over both eyes and the
@@ -483,10 +494,10 @@ export const MARKS: readonly Mark[] = [
     gate: 'STRAINED',
     origin: [-1, 0],
     map: [
-      'KKKK',
-      'K  K',
+      'ssss',
+      's  s',
       '    ',
-      'KKKK',
+      'ssss',
     ],
   },
   // --- torso --------------------------------------------------------------
