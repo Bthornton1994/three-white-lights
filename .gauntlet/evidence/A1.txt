@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece A1
-generated 2026-08-04T20:20:11.853Z
+generated 2026-08-04T21:02:53.369Z
 repo /home/user/three-white-lights
-commit 9602da16ebd03a97f75772288ea7aae0a4731106
+commit 0fd0775fba71fe0b142e0e01eef2ca98b7d108de
 working tree clean (ignoring .gauntlet/ run artefacts)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -18,177 +18,177 @@ $ npx vitest run src/art --reporter=verbose
 
  RUN  v4.1.10 /home/user/three-white-lights
 
- ✓ src/art/spriteMarks.test.ts > the mark table > uses only legend characters 14ms
- ✓ src/art/spriteMarks.test.ts > the mark table > keeps every map rectangular, so a row cannot silently shift 4ms
+ ✓ src/art/spriteMarks.test.ts > the mark table > uses only legend characters 13ms
+ ✓ src/art/spriteMarks.test.ts > the mark table > keeps every map rectangular, so a row cannot silently shift 2ms
  ✓ src/art/spriteMarks.test.ts > the mark table > names every mark uniquely 0ms
  ✓ src/art/spriteMarks.test.ts > the mark table > paints only allocated LIFTER-bank colours 1ms
  ✓ src/art/spriteMarks.test.ts > the mark table > never lets a mark paint over an interior outline 2ms
- ✓ src/art/spriteMarks.test.ts > the mark table > resolves every anchor it names to a finite integer point 147ms
- ✓ src/art/gymScene.test.ts > the room is a room > covers every pixel of its grid — no holes for a screen colour to show 359ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > puts a large, counted number of authored pixels into every frame 1333ms
- ✓ src/art/gymScene.test.ts > the room is a room > draws a wall, a floor, a platform, lamps and props 9ms
- ✓ src/art/gymScene.test.ts > the room is a room > renders the same bytes twice — nothing in here is random 30ms
- ✓ src/art/gymScene.test.ts > the room is a room > resolves every index it draws to a real colour 8ms
+ ✓ src/art/spriteMarks.test.ts > the mark table > resolves every anchor it names to a finite integer point 134ms
+ ✓ src/art/gymScene.test.ts > the room is a room > covers every pixel of its grid — no holes for a screen colour to show 315ms
+ ✓ src/art/gymScene.test.ts > the room is a room > draws a wall, a floor, a platform, lamps and props 8ms
+ ✓ src/art/gymScene.test.ts > the room is a room > renders the same bytes twice — nothing in here is random 35ms
+ ✓ src/art/gymScene.test.ts > the room is a room > resolves every index it draws to a real colour 9ms
  ✓ src/art/gymScene.test.ts > the room is a room > draws only background banks — the room never borrows a figure colour 7ms
- ✓ src/art/gymScene.test.ts > the room is a room > gives the two venues different rooms, from one renderer 15ms
- ✓ src/art/gymScene.test.ts > the room is a room > composes at a size that is not the lift stage 279ms
+ ✓ src/art/gymScene.test.ts > the room is a room > gives the two venues different rooms, from one renderer 25ms
+ ✓ src/art/gymScene.test.ts > the room is a room > composes at a size that is not the lift stage 277ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > puts a large, counted number of authored pixels into every frame 1279ms
  ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > uses the sprite own integer upscale 0ms
  ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > puts the two pixel grids on ONE lattice 1ms
  ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > lands the drawn floor on the drawn soles 0ms
- ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > covers the stage and does not overshoot it by a whole scene pixel 0ms
+ ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > covers the stage and does not overshoot it by a whole scene pixel 2ms
  ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > composes the room around the lifter centre line, not the grid centre 0ms
  ✓ src/art/gymScene.test.ts > the scene box is derived, not guessed > keeps the junction above the floor and the platform below it 0ms
  ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > reserves a band that really does contain the drawn figure 0ms
- ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > places no training prop inside it 0ms
+ ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > places no training prop inside it 1ms
  ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > places no meet prop inside it 0ms
- ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > keeps the bright wall colours out of it, on the rendered pixels 595ms
+ ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > keeps the bright wall colours out of it, on the rendered pixels 614ms
  ✓ src/art/gymScene.test.ts > nothing stands where the figure stands > is a rule a bad placement breaks — checked by planting one 0ms
- ✓ src/art/gymScene.test.ts > the room goes behind the figure and stays there > does not overwrite one pixel of the lifter or the bar 147ms
- ✓ src/art/gymScene.test.ts > the room goes behind the figure and stays there > leaves the sprite grid itself untouched 10ms
- ✓ src/art/gymScene.test.ts > readability at phone scale > passes every bound at every moment of the rep 306ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > puts most of those pixels on FLESH, not on worn kit 1154ms
- ✓ src/art/gymScene.test.ts > readability at phone scale > FAILS NOTHING IN THE MEET VENUE EITHER — the known fail is closed 195ms
- ✓ src/art/gymScene.test.ts > readability at phone scale > keeps the seating clear of the figure by GEOMETRY, checked on the silhouette 15ms
- ✓ src/art/gymScene.test.ts > readability at phone scale > and the training gym — the shipped daily screen — fails none 74ms
+ ✓ src/art/gymScene.test.ts > the room goes behind the figure and stays there > does not overwrite one pixel of the lifter or the bar 170ms
+ ✓ src/art/gymScene.test.ts > the room goes behind the figure and stays there > leaves the sprite grid itself untouched 8ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > passes every bound at every moment of the rep 272ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > FAILS NOTHING IN THE MEET VENUE EITHER — the known fail is closed 164ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > puts most of those pixels on FLESH, not on worn kit 1183ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > keeps the seating clear of the figure by GEOMETRY, checked on the silhouette 8ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > and the training gym — the shipped daily screen — fails none 75ms
  ✓ src/art/gymScene.test.ts > readability at phone scale > shows the percentile really is blind to the contact the share catches 37ms
- ✓ src/art/gymScene.test.ts > readability at phone scale > measures a real figure and a real room, not two empty sets 26ms
- ✓ src/art/gymScene.test.ts > readability at phone scale > keeps the figure at the top of the range, by a distance 22ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > measures a real figure and a real room, not two empty sets 19ms
+ ✓ src/art/gymScene.test.ts > readability at phone scale > keeps the figure at the top of the range, by a distance 19ms
  ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > draws three block courses, at 0.00 / 15.09 / 8.89 luma 1ms
- ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > and the RENDERED wall agrees with the palette, band for band 12ms
+ ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > and the RENDERED wall agrees with the palette, band for band 19ms
  ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > THE TOP OF THE WALL IS FLAT, and that is the decision, not an accident 0ms
  ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > MUTATION: the pins move when the renderer dim map moves 0ms
  ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > brackets EDGE_LUMA_DELTA between two marks the room really makes 0ms
  ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > keeps the two derived thresholds derived, not re-typed 0ms
- ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > SAYS WHAT THE ANCHOR WOULD HAVE TO BE FOR A SHIPPED FRAME TO FAIL 153ms
+ ✓ src/art/gymScene.test.ts > the room own softest mark is what the ruler says it is > SAYS WHAT THE ANCHOR WOULD HAVE TO BE FOR A SHIPPED FRAME TO FAIL 172ms
  ✓ src/art/gymScene.test.ts > the panel is part of the composite > takes the occluder from the screen that draws it, not from a guess 0ms
- ✓ src/art/gymScene.test.ts > the panel is part of the composite > converts it to the scene pixels the panel really covers 1ms
- ✓ src/art/gymScene.test.ts > the panel is part of the composite > hides about a fifth of the room, and the busy fifth 25ms
- ✓ src/art/gymScene.test.ts > the panel is part of the composite > MOVES THE NUMBERS — widening the panel changes what the room measures 36ms
- ✓ src/art/gymScene.test.ts > the panel is part of the composite > and removing it changes them the other way 33ms
- ✓ src/art/gymScene.test.ts > the figure is grounded > darkens the platform under his feet, in the room own ramp 32ms
+ ✓ src/art/gymScene.test.ts > the panel is part of the composite > converts it to the scene pixels the panel really covers 0ms
+ ✓ src/art/gymScene.test.ts > the panel is part of the composite > hides about a fifth of the room, and the busy fifth 17ms
+ ✓ src/art/gymScene.test.ts > the panel is part of the composite > MOVES THE NUMBERS — widening the panel changes what the room measures 33ms
+ ✓ src/art/gymScene.test.ts > the panel is part of the composite > and removing it changes them the other way 28ms
+ ✓ src/art/gymScene.test.ts > the figure is grounded > darkens the platform under his feet, in the room own ramp 26ms
  ✓ src/art/gymScene.test.ts > the figure is grounded > narrows as he descends, because the key light is high 2ms
- ✓ src/art/gymScene.test.ts > the figure is grounded > is what the composite draws, not only what a tool draws 66ms
+ ✓ src/art/gymScene.test.ts > the figure is grounded > is what the composite draws, not only what a tool draws 70ms
  ✓ src/art/gymScene.test.ts > the furniture is grounded too > reads the footprint off the drawing, so nothing has to declare one 1ms
- ✓ src/art/gymScene.test.ts > the furniture is grounded too > DARKENS THE PLATFORM UNDER THE PROPS STANDING ON IT 3ms
+ ✓ src/art/gymScene.test.ts > the furniture is grounded too > DARKENS THE PLATFORM UNDER THE PROPS STANDING ON IT 2ms
  ✓ src/art/gymScene.test.ts > the furniture is grounded too > never draws a shadow it has itself called invisible, or one the subject hides in 4ms
- ✓ src/art/gymScene.test.ts > the furniture is grounded too > REFUSES to shade the rubber, and the refusal is what keeps a bound passing 10ms
- ✓ src/art/gymScene.test.ts > the furniture is grounded too > MUTATION: turning the cap off changes the room, and the numbers say where 153ms
+ ✓ src/art/gymScene.test.ts > the furniture is grounded too > REFUSES to shade the rubber, and the refusal is what keeps a bound passing 5ms
+ ✓ src/art/gymScene.test.ts > the furniture is grounded too > MUTATION: turning the cap off changes the room, and the numbers say where 137ms
  ✓ src/art/gymScene.test.ts > the furniture is grounded too > keeps the shadow inside the reserved hole rule it is drawn under 1ms
- ✓ src/art/gymScene.test.ts > the bounds bite > DELETING THE ROOM fails the floors — and passes every rim bound 35ms
- ✓ src/art/gymScene.test.ts > the bounds bite > A BUSY ROOM fails the edge-share ceiling 29ms
- ✓ src/art/gymScene.test.ts > the bounds bite > A BUSY ROOM ONLY BEHIND THE FIGURE fails the behind-the-figure ceiling 32ms
- ✓ src/art/gymScene.test.ts > the bounds bite > A BRIGHT ROOM fails the brightness ceilings 28ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > DELETING THE ROOM fails the floors — and passes every rim bound 33ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A BUSY ROOM fails the edge-share ceiling 28ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A BUSY ROOM ONLY BEHIND THE FIGURE fails the behind-the-figure ceiling 29ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A BRIGHT ROOM fails the brightness ceilings 30ms
  ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM PAINTED IN THE FIGURE OWN VALUES fails ONLY the rim floors 37ms
- ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM WITH NO FURNITURE IN IT fails the furniture floor 65ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > lands EVERY mark, kit and flesh, on most of the pixels it asks for — per side 1113ms
- ✓ src/art/gymScene.test.ts > the bounds bite > THE SAME FURNITURE, MOVED, fails the balance ceiling 27ms
- ✓ src/art/gymScene.test.ts > the bounds bite > and a legal reshuffle moves the composition numbers without failing 33ms
- ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM WHOSE CONTENT IS ALL IN ONE CELL fails the peak ceiling 60ms
- ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM REACHING FOR COLOURS IT DOES NOT NEED fails the index ceiling 46ms
- ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM LIT BY A WALL OF FILAMENTS fails the bright-share ceiling 57ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > has no dead mark: every one lands somewhere in the pose space 1067ms
- ✓ src/art/gymScene.test.ts > the bounds bite > reports nothing at all for the shipped room, so a finding is the plant 18ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM WITH NO FURNITURE IN IT fails the furniture floor 53ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > THE SAME FURNITURE, MOVED, fails the balance ceiling 25ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > and a legal reshuffle moves the composition numbers without failing 36ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM WHOSE CONTENT IS ALL IN ONE CELL fails the peak ceiling 74ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM REACHING FOR COLOURS IT DOES NOT NEED fails the index ceiling 48ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > A ROOM LIT BY A WALL OF FILAMENTS fails the bright-share ceiling 55ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > lands EVERY mark, kit and flesh, on most of the pixels it asks for — per side 1138ms
+ ✓ src/art/gymScene.test.ts > the bounds bite > reports nothing at all for the shipped room, so a finding is the plant 16ms
  ✓ src/art/gymScene.test.ts > the layers are separate layers > slides each at its own rate, and the wall slowest 0ms
  ✓ src/art/gymScene.test.ts > the layers are separate layers > moves a near prop further than a far one for the same camera 0ms
- ✓ src/art/gymScene.test.ts > the layers are separate layers > still covers the grid when the camera has moved a long way 1065ms
+ ✓ src/art/gymScene.test.ts > the layers are separate layers > still covers the grid when the camera has moved a long way 1024ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > has no dead mark: every one lands somewhere in the pose space 1035ms
  ✓ src/art/gymScene.test.ts > the layers are separate layers > is unexercised by the shipped stage, and says so 0ms
  ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > has a closed prop catalogue with no meter, gauge, dial or scoreboard 1ms
  ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > names no real athlete, brand, federation or company, anywhere in the layer 17ms
- ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > cannot draw a wordmark at all — there is no text path in the room 24ms
- ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > carries no drawable string in the prop catalogue at all 17ms
+ ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > cannot draw a wordmark at all — there is no text path in the room 23ms
+ ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > carries no drawable string in the prop catalogue at all 18ms
  ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > takes no input from which a fatigue level could be drawn 0ms
- ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > is a pure renderer — no React, no randomness, no clock, no currency 24ms
+ ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > is a pure renderer — no React, no randomness, no clock, no currency 21ms
  ✓ src/art/gymScene.test.ts > what the room is not allowed to contain > never lets the room out-value the lifter, at any moment of any rep 2ms
- ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > keeps every rect inside the art box it declares 11ms
- ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > draws every prop in an allocated background colour 6ms
- ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > lights every prop from the same side as the figure 2ms
- ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > places every venue prop somewhere the scene can actually draw it 2ms
- ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > hangs the lamps evenly and inside the frame 3ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > keeps every rect inside the art box it declares 10ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > draws every prop in an allocated background colour 5ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > lights every prop from the same side as the figure 0ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > places every venue prop somewhere the scene can actually draw it 1ms
+ ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > hangs the lamps evenly and inside the frame 4ms
  ✓ src/art/gymScene.test.ts > the props are drawings that fit their own boxes > puts the windows above the figure, where their glass cannot hurt 0ms
  ✓ src/art/gymScene.test.ts > what this file can and cannot make fail > accounts for every bound in BOUNDS, as planted or as declared unplanted 1ms
  ✓ src/art/gymScene.test.ts > what this file can and cannot make fail > has actually run the plants — a filtered run is not a coverage run 0ms
  ✓ src/art/gymScene.test.ts > what this file can and cannot make fail > has NOT quietly acquired a plant for the three it says it lacks 0ms
  ✓ src/art/squatAnimation.test.ts > frame data well-formedness > accounts for every tick exactly once 4ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > lays frames end to end with no gap and no overlap 26ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > lays frames end to end with no gap and no overlap 20ms
  ✓ src/art/squatAnimation.test.ts > frame data well-formedness > runs the phases once each, in order 2ms
  ✓ src/art/squatAnimation.test.ts > frame data well-formedness > agrees with its own declared phase tick counts 1ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > keeps depth in range, starts standing, reaches the hole, ends standing 44ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > quantises every drawn pose onto the authored depth grid 14ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > faces the right way in each phase 10ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > keeps depth in range, starts standing, reaches the hole, ends standing 35ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > quantises every drawn pose onto the authored depth grid 16ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > faces the right way in each phase 9ms
  ✓ src/art/squatAnimation.test.ts > frame data well-formedness > is deterministic 7ms
- ✓ src/art/squatAnimation.test.ts > frame data well-formedness > clamps loads outside the modelled range instead of extrapolating 7ms
- ✓ src/art/squatAnimation.test.ts > load moves the timing > is monotone in load across the whole range 53ms
- ✓ src/art/squatAnimation.test.ts > load moves the timing > makes a maximal rep take much longer than a light one 1ms
- ✓ src/art/squatAnimation.test.ts > load moves the timing > shifts the balance of the rep toward the concentric 11ms
+ ✓ src/art/squatAnimation.test.ts > frame data well-formedness > clamps loads outside the modelled range instead of extrapolating 6ms
+ ✓ src/art/squatAnimation.test.ts > load moves the timing > is monotone in load across the whole range 44ms
+ ✓ src/art/squatAnimation.test.ts > load moves the timing > makes a maximal rep take much longer than a light one 0ms
+ ✓ src/art/squatAnimation.test.ts > load moves the timing > shifts the balance of the rep toward the concentric 7ms
  ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > is not merely a slowed-down copy: the normalised profiles differ 1ms
- ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > rises at nearly constant speed when light and very unevenly when maximal 0ms
- ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > reports the same shape variation however finely it is sampled 0ms
- ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > never lets the bar travel backwards during the concentric 19ms
+ ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > rises at nearly constant speed when light and very unevenly when maximal 1ms
+ ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > reports the same shape variation however finely it is sampled 1ms
+ ✓ src/art/squatAnimation.test.ts > load changes the SHAPE of the ascent, not just its length > never lets the bar travel backwards during the concentric 17ms
  ✓ src/art/squatAnimation.test.ts > the sticking point > notches the velocity model at the authored height and nowhere else 1ms
  ✓ src/art/squatAnimation.test.ts > the sticking point > stalls a maximal attempt and does not stall a light one 0ms
- ✓ src/art/squatAnimation.test.ts > the sticking point > puts the stall a third of the way up, where a squat actually stalls 1ms
- ✓ src/art/squatAnimation.test.ts > the sticking point > holds the bar at one drawn height for far longer under load 8ms
- ✓ src/art/squatAnimation.test.ts > the sticking point > grows the stall monotonically with load 10ms
- ✓ src/art/squatAnimation.test.ts > bar path > drifts forward much further under a maximal load 15ms
- ✓ src/art/squatAnimation.test.ts > bar path > peaks the forward drift during the concentric, near the sticking point 1ms
- ✓ src/art/squatAnimation.test.ts > bar path > shakes the bar sideways only when it is heavy 9ms
- ✓ src/art/squatAnimation.test.ts > bar path > confines the shake and the tilt to the concentric 4ms
- ✓ src/art/squatAnimation.test.ts > bar whip > bends the sleeves further under load, monotonically 10ms
- ✓ src/art/squatAnimation.test.ts > bar whip > keeps bend non-negative and inside the drawable ceiling 65ms
+ ✓ src/art/squatAnimation.test.ts > the sticking point > puts the stall a third of the way up, where a squat actually stalls 0ms
+ ✓ src/art/squatAnimation.test.ts > the sticking point > holds the bar at one drawn height for far longer under load 7ms
+ ✓ src/art/squatAnimation.test.ts > the sticking point > grows the stall monotonically with load 8ms
+ ✓ src/art/squatAnimation.test.ts > bar path > drifts forward much further under a maximal load 8ms
+ ✓ src/art/squatAnimation.test.ts > bar path > peaks the forward drift during the concentric, near the sticking point 0ms
+ ✓ src/art/squatAnimation.test.ts > bar path > shakes the bar sideways only when it is heavy 8ms
+ ✓ src/art/squatAnimation.test.ts > bar path > confines the shake and the tilt to the concentric 3ms
+ ✓ src/art/squatAnimation.test.ts > bar whip > bends the sleeves further under load, monotonically 8ms
+ ✓ src/art/squatAnimation.test.ts > bar whip > keeps bend non-negative and inside the drawable ceiling 64ms
  ✓ src/art/squatAnimation.test.ts > bar whip > does not let a phase boundary fake a heavy bar 0ms
- ✓ src/art/squatAnimation.test.ts > strain > rises with load and peaks in the hole or on the grind 8ms
+ ✓ src/art/squatAnimation.test.ts > strain > rises with load and peaks in the hole or on the grind 10ms
  ✓ src/art/squatAnimation.test.ts > strain > drives the drawing, so a still frame differs by load with no clock involved 0ms
- ✓ src/art/squatAnimation.test.ts > strain > reaches the BRACE, the one beat with no motion to carry the load 7ms
+ ✓ src/art/squatAnimation.test.ts > strain > reaches the BRACE, the one beat with no motion to carry the load 8ms
  ✓ src/art/squatAnimation.test.ts > strain > stays inside the quantised level range 69ms
- ✓ src/art/squatAnimation.test.ts > strain > spreads the named load presets across the authored strain levels 10ms
+ ✓ src/art/squatAnimation.test.ts > strain > spreads the named load presets across the authored strain levels 11ms
  ✓ src/art/squatAnimation.test.ts > strain > costs the maximal rep noticeably more of the sheet than the light one 0ms
  ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > quantises drift into its own channel, which the maximal rep tops out 8ms
- ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > is NOT clamped away by strain at the sticking point 1ms
+ ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > is NOT clamped away by strain at the sticking point 0ms
  ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > draws more distinct bodies than strain alone could account for 0ms
  ✓ src/art/squatAnimation.test.ts > forward bar drift reaches the drawing > keeps the drift itself monotone in load and peaked at the stick 0ms
  ✓ src/art/squatAnimation.test.ts > load curve > is monotone and clamped 1ms
  ✓ src/art/squatAnimation.test.ts > load curve > puts a named MAXIMAL attempt below the MAXIMAL endpoint, as documented 0ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > lands the always-on objects on EVERY frame, not just somewhere 1207ms
  ✓ src/art/raster.test.ts > axialTerm > peaks at the muscle belly 3ms
  ✓ src/art/raster.test.ts > axialTerm > darkens both ends, where the joints are 0ms
  ✓ src/art/raster.test.ts > axialTerm > clamps outside 0..1 rather than extrapolating off the limb 0ms
  ✓ src/art/raster.test.ts > axialTerm > is exactly zero everywhere for the flat profile 1ms
  ✓ src/art/raster.test.ts > a limb is not a longitudinal stripe > changes ramp step DOWN a column, not only across one 2ms
- ✓ src/art/raster.test.ts > a limb is not a longitudinal stripe > would be a constant column without the axial term — the old behaviour 1ms
+ ✓ src/art/raster.test.ts > a limb is not a longitudinal stripe > would be a constant column without the axial term — the old behaviour 6ms
  ✓ src/art/raster.test.ts > a limb is not a longitudinal stripe > reaches the top of the skin ramp only near the muscle belly 1ms
  ✓ src/art/raster.test.ts > the quantiser > steps up at the documented thresholds and never off the end of a ramp 0ms
- ✓ src/art/raster.test.ts > the quantiser > dims the far limb without renumbering its ramp 2ms
- ✓ src/art/raster.test.ts > the key light > never mirrors: the same lamp lights both flanks from the same side 0ms
+ ✓ src/art/raster.test.ts > the quantiser > dims the far limb without renumbering its ramp 1ms
+ ✓ src/art/raster.test.ts > the key light > never mirrors: the same lamp lights both flanks from the same side 1ms
  ✓ src/art/raster.test.ts > the key light > lifts the unlit side off the outline with ambient 0ms
  ✓ src/art/raster.test.ts > the cylinder model is angle-dependent, which is why FORESHORTEN exists > drops a limb out of the top skin step purely for being drawn at an angle 0ms
  ✓ src/art/raster.test.ts > the cylinder model is angle-dependent, which is why FORESHORTEN exists > is symmetric about the lamp, so the deficit lands on one screen side 0ms
  ✓ src/art/raster.test.ts > camera blend > is zero for a limb lying in the screen plane and maximal pointing at us 0ms
  ✓ src/art/raster.test.ts > camera blend > is monotonic and clamps rather than extrapolating 1ms
- ✓ src/art/raster.test.ts > limbNormal > is always a unit vector 3ms
+ ✓ src/art/raster.test.ts > limbNormal > is always a unit vector 4ms
  ✓ src/art/raster.test.ts > limbNormal > is the plain cylinder at zero camera blend, whatever the axial offset 1ms
  ✓ src/art/raster.test.ts > limbNormal > clamps its inputs rather than producing an imaginary z 1ms
  ✓ src/art/raster.test.ts > limbNormal > collapses a fully foreshortened limb to one value at the shipped curvature 1ms
  ✓ src/art/raster.test.ts > limbNormal > cannot reach the top skin step while it is a flat camera-facing face 0ms
- ✓ src/art/raster.test.ts > limbNormal > curves in both screen axes once the dome is turned on 5ms
- ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > leaves a limb with no tilt bit-for-bit identical to the old cylinder 22ms
+ ✓ src/art/raster.test.ts > limbNormal > curves in both screen axes once the dome is turned on 4ms
+ ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > leaves a limb with no tilt bit-for-bit identical to the old cylinder 37ms
  ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > pulls the shadow flank of a bent limb up out of the ramp floor 8ms
- ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > does not turn the joint drop into a whole-limb drop on a stubby limb 1ms
- ✓ src/art/raster.test.ts > a chain of capsules carries ONE ring, at the union boundary > leaves no ring pixel inside either capsule 1ms
+ ✓ src/art/raster.test.ts > foreshortening keeps a limb in its band > does not turn the joint drop into a whole-limb drop on a stubby limb 0ms
+ ✓ src/art/raster.test.ts > a chain of capsules carries ONE ring, at the union boundary > leaves no ring pixel inside either capsule 2ms
  ✓ src/art/raster.test.ts > a chain of capsules carries ONE ring, at the union boundary > and drawing the two capsules separately does leave some 1ms
- ✓ src/art/raster.test.ts > a chain of capsules carries ONE ring, at the union boundary > is bit-for-bit `drawLimb` for a chain of one 3ms
- ✓ src/art/gymPalette.test.ts > the gym banks are hardware-shaped > adds exactly two banks of sixteen, after the sprite banks 4ms
- ✓ src/art/gymPalette.test.ts > the gym banks are hardware-shaped > keeps slot 0 of each bank as the transparent sentinel 1ms
- ✓ src/art/gymPalette.test.ts > the gym banks are hardware-shaped > stores every colour on the 5-bit hardware grid 14ms
+ ✓ src/art/raster.test.ts > a chain of capsules carries ONE ring, at the union boundary > is bit-for-bit `drawLimb` for a chain of one 1ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > lands the always-on objects on EVERY frame, not just somewhere 1234ms
+ ✓ src/art/gymPalette.test.ts > the gym banks are hardware-shaped > adds exactly two banks of sixteen, after the sprite banks 3ms
+ ✓ src/art/gymPalette.test.ts > the gym banks are hardware-shaped > keeps slot 0 of each bank as the transparent sentinel 0ms
+ ✓ src/art/gymPalette.test.ts > the gym banks are hardware-shaped > stores every colour on the 5-bit hardware grid 11ms
  ✓ src/art/gymPalette.test.ts > the gym banks are hardware-shaped > leaves the sprite banks untouched, and resolves both from one function 2ms
- ✓ src/art/gymPalette.test.ts > the gym banks are hardware-shaped > allocates every named index 2ms
+ ✓ src/art/gymPalette.test.ts > the gym banks are hardware-shaped > allocates every named index 1ms
  ✓ src/art/gymPalette.test.ts > the gym banks are hardware-shaped > gives every gym index a distinct name 0ms
  ✓ src/art/gymPalette.test.ts > the room stays under the figure > holds the wall in the bottom of the range, where the reference crowd is 1ms
  ✓ src/art/gymPalette.test.ts > the room stays under the figure > lands the platform on the reference mat, not above the figure 0ms
  ✓ src/art/gymPalette.test.ts > the room stays under the figure > keeps the rubber floor out of the band the figure lives in 1ms
  ✓ src/art/gymPalette.test.ts > the room stays under the figure > lets nothing but the lamp filament into the figure own top band 3ms
  ✓ src/art/gymPalette.test.ts > the room stays under the figure > gives the figure the top of the range outright 1ms
- ✓ src/art/gymPalette.test.ts > the ramps are ramps > orders every ramp dark to light, with no repeated step 1ms
- ✓ src/art/gymPalette.test.ts > the ramps are ramps > steps every ramp entry down monotonically under dimIndex 5ms
+ ✓ src/art/gymPalette.test.ts > the ramps are ramps > orders every ramp dark to light, with no repeated step 3ms
+ ✓ src/art/gymPalette.test.ts > the ramps are ramps > steps every ramp entry down monotonically under dimIndex 2ms
  ✓ src/art/gymPalette.test.ts > the ramps are ramps > leaves an unlisted index alone rather than guessing 0ms
  ✓ src/art/gymPalette.test.ts > the ramps are ramps > does not change a plate denomination when it is lit 0ms
  ✓ src/art/gymPalette.test.ts > the ramps are ramps > walks several steps, in either direction, and stops at the end 0ms
@@ -198,43 +198,42 @@ $ npx vitest run src/art --reporter=verbose
  ✓ src/art/gymPalette.test.ts > the surfaces the figure is actually drawn against > fails for every palette this file actually shipped and measured wrong 9ms
  ✓ src/art/palette.test.ts > 5-bit colour space > expands 5-bit channels to the full 8-bit range 2ms
  ✓ src/art/palette.test.ts > 5-bit colour space > round-trips every allocated palette colour through 8-bit and back 3ms
- ✓ src/art/palette.test.ts > palette structure > has three banks of at most 16 slots each 2ms
- ✓ src/art/palette.test.ts > palette structure > fills the two character banks exactly to the hardware limit 1ms
- ✓ src/art/palette.test.ts > palette structure > treats slot 0 of every bank as transparent 1ms
- ✓ src/art/palette.test.ts > palette structure > stores every channel as an integer inside the 5-bit range 12ms
+ ✓ src/art/palette.test.ts > palette structure > has three banks of at most 16 slots each 1ms
+ ✓ src/art/palette.test.ts > palette structure > fills the two character banks exactly to the hardware limit 0ms
+ ✓ src/art/palette.test.ts > palette structure > treats slot 0 of every bank as transparent 0ms
+ ✓ src/art/palette.test.ts > palette structure > stores every channel as an integer inside the 5-bit range 11ms
  ✓ src/art/palette.test.ts > palette structure > never spends two slots in a bank on the same colour 1ms
  ✓ src/art/palette.test.ts > palette structure > resolves every name in PAL to an allocated colour 2ms
  ✓ src/art/palette.test.ts > palette structure > leaves unallocated indices undefined rather than silently valid 1ms
  ✓ src/art/palette.test.ts > ramps > orders every ramp dark to light 2ms
  ✓ src/art/palette.test.ts > ramps > keeps each ramp inside a single palette bank 1ms
  ✓ src/art/palette.test.ts > ramps > shifts hue across the skin ramp instead of scaling one colour 0ms
- ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > keeps every gear step clear of the backdrop it is drawn in front of 0ms
+ ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > keeps every gear step clear of the backdrop it is drawn in front of 1ms
  ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > spaces the three gear steps evenly enough to model a sleeve 0ms
  ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > keeps worn kit UNDER flesh: a sleeve is a dark object on a lit leg 0ms
  ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > gives the shoe a pale platform to sit on 0ms
- ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > separates overlapping masses with material shadow, not with black 0ms
+ ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > separates overlapping masses with material shadow, not with black 1ms
  ✓ src/art/palette.test.ts > the kit below the belt sits in a usable band > maps every lifter surface to its own interior edge, and nothing else 1ms
  ✓ src/art/palette.test.ts > outline selection > outlines equipment cool and everything else warm 0ms
  ✓ src/art/palette.test.ts > outline selection > keeps the equipment outline darker than the backdrop it sits against 0ms
  ✓ src/art/palette.test.ts > plate colours against their documented source > keeps every plate hue on the same dominant channel as the source hex 1ms
- ✓ src/art/palette.test.ts > plate colours against their documented source > gives every plate hue a two-step ramp that actually steps 0ms
- ✓ src/art/palette.test.ts > plate colours against their documented source > has a ramp for every denomination it can draw 1ms
- ✓ src/art/spriteMarks.test.ts > marks reach the pixels > gives the face a mouth and both eyes at every depth 1053ms
+ ✓ src/art/palette.test.ts > plate colours against their documented source > gives every plate hue a two-step ramp that actually steps 1ms
+ ✓ src/art/palette.test.ts > plate colours against their documented source > has a ramp for every denomination it can draw 2ms
  ✓ src/art/craftMetrics.test.ts > luma and pixel access > uses Rec.601 weights 2ms
- ✓ src/art/craftMetrics.test.ts > luma and pixel access > reads the pixel it is asked for, not its neighbour 0ms
+ ✓ src/art/craftMetrics.test.ts > luma and pixel access > reads the pixel it is asked for, not its neighbour 1ms
  ✓ src/art/craftMetrics.test.ts > SNES 5-bit lattice conformance > lists the 32 values a 5-bit channel expands to 1ms
  ✓ src/art/craftMetrics.test.ts > SNES 5-bit lattice conformance > scores an on-lattice image at 1 and an off-lattice one near 0 1ms
  ✓ src/art/craftMetrics.test.ts > SNES 5-bit lattice conformance > measures only the box it is given 0ms
- ✓ src/art/craftMetrics.test.ts > largestBlob > keeps the biggest 8-connected component and drops the rest 0ms
+ ✓ src/art/craftMetrics.test.ts > largestBlob > keeps the biggest 8-connected component and drops the rest 1ms
  ✓ src/art/craftMetrics.test.ts > largestBlob > returns an empty mask for an empty input 0ms
  ✓ src/art/craftMetrics.test.ts > largestBlob > joins diagonals, because a sprite limb can pass through a corner 0ms
  ✓ src/art/craftMetrics.test.ts > colourKeyedField > masks the material colours and keeps only the largest blob 1ms
  ✓ src/art/craftMetrics.test.ts > colourKeyedField > keeps the luma of NON-material pixels too, because the keyline test needs it 0ms
  ✓ src/art/craftMetrics.test.ts > colourKeyedField > is empty when the colour key names nothing in the image 1ms
  ✓ src/art/craftMetrics.test.ts > the keyline verdict can come back either way > reads a black ring as a keyline 1ms
- ✓ src/art/craftMetrics.test.ts > the keyline verdict can come back either way > reads a figure contoured in its own ramp as NOT keylined 0ms
+ ✓ src/art/craftMetrics.test.ts > the keyline verdict can come back either way > reads a figure contoured in its own ramp as NOT keylined 1ms
  ✓ src/art/craftMetrics.test.ts > the keyline verdict can come back either way > refuses to credit a dark BACKGROUND as an outline 3ms
- ✓ src/art/craftMetrics.test.ts > the keyline verdict can come back either way > will not return a verdict on too few crossings 1ms
+ ✓ src/art/craftMetrics.test.ts > the keyline verdict can come back either way > will not return a verdict on too few crossings 0ms
  ✓ src/art/craftMetrics.test.ts > interior keyline is a LINE, not a dark mass > counts a one-pixel dark line drawn inside the figure 1ms
  ✓ src/art/craftMetrics.test.ts > interior keyline is a LINE, not a dark mass > does NOT count a solid dark mass, which is how hair survives 1ms
  ✓ src/art/craftMetrics.test.ts > interior keyline is a LINE, not a dark mass > does NOT count the silhouette keyline, which is outside the material 0ms
@@ -244,13 +243,13 @@ $ npx vitest run src/art --reporter=verbose
  ✓ src/art/craftMetrics.test.ts > measureFigure halves > splits at the figure own vertical midpoint, not the field midpoint 0ms
  ✓ src/art/craftMetrics.test.ts > measureFigure halves > reports a ratio of zero rather than dividing by an empty half 0ms
  ✓ src/art/craftMetrics.test.ts > fieldFromIndexGrid > takes the bank it is asked for and treats open space as lit 1ms
- ✓ src/art/craftMetrics.test.ts > fieldFromIndexGrid > drops a one-pixel outline from the material when asked, and only then 1ms
+ ✓ src/art/craftMetrics.test.ts > fieldFromIndexGrid > drops a one-pixel outline from the material when asked, and only then 0ms
  ✓ src/art/craftMetrics.test.ts > fieldFromIndexGrid > keeps the inside of a dark mass, and drops only the band on its boundary 0ms
  ✓ src/art/craftMetrics.test.ts > fieldFromIndexGrid > never drops the hair, because the hair is no longer near-black 0ms
  ✓ src/art/craftMetrics.test.ts > fieldFromIndexGrid > drops the keyline where the figure borders the BARBELL, not only open space 0ms
  ✓ src/art/craftMetrics.test.ts > limbWindows > names one window per part the aggregate could not see 0ms
  ✓ src/art/craftMetrics.test.ts > limbWindows > puts the head window on the head and not on the chest 0ms
- ✓ src/art/craftMetrics.test.ts > limbWindows > keeps the arm windows off the torso and off each other 0ms
+ ✓ src/art/craftMetrics.test.ts > limbWindows > keeps the arm windows off the torso and off each other 1ms
  ✓ src/art/craftMetrics.test.ts > limbWindows > punches the hands out of the arms, so nothing is counted twice 0ms
  ✓ src/art/craftMetrics.test.ts > limbWindows > follows the hand when the grip moves 0ms
  ✓ src/art/craftMetrics.test.ts > CRAFT holds thresholds, not multipliers > has no key that is a slack factor 0ms
@@ -258,29 +257,30 @@ $ npx vitest run src/art --reporter=verbose
  ✓ src/art/craftMetrics.test.ts > the step-structure measures are not permutation-invariant > MOVES when the same pixels are rearranged, and the aggregates do not 2ms
  ✓ src/art/craftMetrics.test.ts > the step-structure measures are not permutation-invariant > counts a stranded pixel as an island and a two-pixel pair as not one 1ms
  ✓ src/art/plates.test.ts > visual plate stack > loads a real meet weight the way a real loader would 3ms
- ✓ src/art/plates.test.ts > visual plate stack > returns an empty sleeve for a bare bar and below 0ms
+ ✓ src/art/plates.test.ts > visual plate stack > returns an empty sleeve for a bare bar and below 1ms
  ✓ src/art/plates.test.ts > visual plate stack > loads heaviest inboard, which is both correct and how it is drawn 1ms
- ✓ src/art/plates.test.ts > visual plate stack > accounts for the whole bar with no remainder on meet-legal weights 11ms
- ✓ src/art/plates.test.ts > visual plate stack > handles half-kilo change weights without dropping a disc to float error 1ms
+ ✓ src/art/plates.test.ts > visual plate stack > accounts for the whole bar with no remainder on meet-legal weights 12ms
+ ✓ src/art/plates.test.ts > visual plate stack > handles half-kilo change weights without dropping a disc to float error 0ms
  ✓ src/art/plates.test.ts > disc diameters > keeps 25 and 20 the same size and everything below strictly smaller 1ms
- ✓ src/art/plates.test.ts > disc diameters > renders a 25 kg disc at true scale, not an exaggerated one 1ms
- ✓ src/art/plates.test.ts > disc diameters > claims no diameter is sourced, because none of them is 1ms
+ ✓ src/art/plates.test.ts > disc diameters > renders a 25 kg disc at true scale, not an exaggerated one 0ms
+ ✓ src/art/plates.test.ts > disc diameters > claims no diameter is sourced, because none of them is 0ms
  ✓ src/art/plates.test.ts > sleeve layout > fits a 250 kg bar at the authored pitch with nothing dropped 2ms
- ✓ src/art/plates.test.ts > sleeve layout > compresses the pitch rather than dropping discs when the sleeve crowds 1ms
+ ✓ src/art/plates.test.ts > sleeve layout > compresses the pitch rather than dropping discs when the sleeve crowds 0ms
  ✓ src/art/plates.test.ts > sleeve layout > always leaves a gap between discs, at every pitch it uses 2ms
- ✓ src/art/plates.test.ts > sleeve layout > keeps every disc and the collar inside the bar 2ms
- ✓ src/art/plates.test.ts > sleeve layout > draws a visibly denser sleeve as the bar gets heavier 1ms
+ ✓ src/art/plates.test.ts > sleeve layout > keeps every disc and the collar inside the bar 1ms
+ ✓ src/art/plates.test.ts > sleeve layout > draws a visibly denser sleeve as the bar gets heavier 0ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > is eaten on the far side by the ARM, because the seam is authored unmirrored 1021ms
  ✓ src/art/spriteTuning.test.ts > authored deformation tables > has exactly one entry per level, in both channels 3ms
  ✓ src/art/spriteTuning.test.ts > authored deformation tables > keeps level 0 undeformed, because that is what level 0 means 1ms
- ✓ src/art/spriteTuning.test.ts > authored deformation tables > never lets a field go backwards as the level rises 1ms
- ✓ src/art/spriteTuning.test.ts > authored deformation tables > makes the top strain rung a different DRAWING, not a louder one 0ms
- ✓ src/art/spriteTuning.test.ts > authored deformation tables > gives the top rung deltas that survive rounding into a 96x72 grid 0ms
- ✓ src/art/spriteTuning.test.ts > authored deformation tables > scales the pitch channel to the drift the bar path actually produces 1ms
+ ✓ src/art/spriteTuning.test.ts > authored deformation tables > never lets a field go backwards as the level rises 2ms
+ ✓ src/art/spriteTuning.test.ts > authored deformation tables > makes the top strain rung a different DRAWING, not a louder one 1ms
+ ✓ src/art/spriteTuning.test.ts > authored deformation tables > gives the top rung deltas that survive rounding into a 96x72 grid 1ms
+ ✓ src/art/spriteTuning.test.ts > authored deformation tables > scales the pitch channel to the drift the bar path actually produces 0ms
  ✓ src/art/spriteTuning.test.ts > the strain phase ladder > never draws the brace heavier than the top of the descent it leads into 1ms
  ✓ src/art/spriteTuning.test.ts > the strain phase ladder > never lets any load pop down a rung between the brace and the descent 1ms
  ✓ src/art/spriteTuning.test.ts > the strain phase ladder > makes the braced BODY answer to load, without making every brace heavy 1ms
  ✓ src/art/spriteTuning.test.ts > the strain phase ladder > keeps the brace rung monotone in load 6ms
- ✓ src/art/spriteTuning.test.ts > level quantisers > spans 0..1 across the authored levels 0ms
+ ✓ src/art/spriteTuning.test.ts > level quantisers > spans 0..1 across the authored levels 1ms
  ✓ src/art/spriteTuning.test.ts > level quantisers > clamps rather than extrapolating 0ms
  ✓ src/art/spriteTuning.test.ts > constants with more than one consumer > anchors the BRACE drawing at the depth the brace phase settles to 0ms
  ✓ src/art/spriteTuning.test.ts > constants with more than one consumer > drives the animation quantisers from the tuning file, not from copies 0ms
@@ -288,35 +288,36 @@ $ npx vitest run src/art --reporter=verbose
  ✓ src/art/spriteTuning.test.ts > constants with more than one consumer > keeps every ramp-step bias in the tuning file, not among the joint coordinates 1ms
  ✓ src/art/spriteTuning.test.ts > constants with more than one consumer > keeps the velocity floor low enough to leave the stall room to exist 0ms
  ✓ src/art/spriteTuning.test.ts > load curve helpers > clamps into the modelled range 0ms
- ✓ src/art/spriteTuning.test.ts > load curve helpers > interpolates an endpoint pair between its endpoints 0ms
+ ✓ src/art/spriteTuning.test.ts > load curve helpers > interpolates an endpoint pair between its endpoints 2ms
  ✓ src/art/spriteTuning.test.ts > load curve helpers > rounds ticks to whole frames and never below one 0ms
- ✓ src/art/spriteMarks.test.ts > marks are stamped after despeckle, and that matters > would lose authored pixels if despeckle ran after them 1137ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > renders at the committed internal resolution 8ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > never references an unallocated palette index 356ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > renders at the committed internal resolution 5ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > never references an unallocated palette index 340ms
+ ✓ src/art/spriteMarks.test.ts > marks reach the pixels > gives the face a mouth and both eyes at every depth 1035ms
  ✓ src/art/lifterSprite.test.ts > rendered frame integrity > keeps the character out of the STAGE bank entirely 4ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > draws something substantial but does not fill the cell 5ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > leaves a transparent margin, so nothing is clipped by the cell 68ms
- ✓ src/art/lifterSprite.test.ts > rendered frame integrity > is deterministic 7ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > draws something substantial but does not fill the cell 4ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > leaves a transparent margin, so nothing is clipped by the cell 66ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > is deterministic 6ms
  ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > compares the levels the animation actually produces, not the endpoints 0ms
  ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > changes a large, counted number of BODY pixels between a light rep and a maximal one 10ms
  ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > still clears the floor with the entire head masked out — it is not a face swap 10ms
- ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > holds that floor at every authored depth step, not just at the sticking point 183ms
- ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > gives every authored strain rung a body of its own 17ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > holds that floor at every authored depth step, not just at the sticking point 176ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > gives every authored strain rung a body of its own 16ms
  ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > lets forward bar drift reach the pixels of a rep that is ALREADY at maximum strain 6ms
  ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > does the same on the maximal rep as it is actually built 6ms
- ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > measures the body and only the body 6ms
- ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > deforms in the direction the model claims: hips up, knees in, elbows in 6ms
- ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the bar gets heavier at the same pose 5ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > measures the body and only the body 5ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > deforms in the direction the model claims: hips up, knees in, elbows in 5ms
+ ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the bar gets heavier at the same pose 6ms
  ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the sleeves bend 5ms
- ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the bar tilts 6ms
+ ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the bar tilts 5ms
  ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > does not render a mirror image of itself 4ms
- ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > holds more highlight pixels than the whole barbell does, at every load 108ms
- ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > reaches the top of the skin ramp over a real area, not a one-pixel sliver 10ms
- ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > carries that range BELOW the belt as well as above it 562ms
- ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > outlines the whole silhouette: no fill pixel touches open space 197ms
- ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > separates material from keyline by taking off the outline and nothing else 1176ms
- ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > carries no more black ink than the reference figure does, and no factor is involved 156ms
- ✓ src/art/spriteMarks.test.ts > marks are stamped after despeckle, and that matters > reports placements that agree with the finished grid 3286ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > holds more highlight pixels than the whole barbell does, at every load 107ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > reaches the top of the skin ramp over a real area, not a one-pixel sliver 9ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > carries that range BELOW the belt as well as above it 523ms
+ ✓ src/art/spriteMarks.test.ts > marks are stamped after despeckle, and that matters > would lose authored pixels if despeckle ran after them 1070ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > outlines the whole silhouette: no fill pixel touches open space 198ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > separates material from keyline by taking off the outline and nothing else 1151ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > carries no more black ink than the reference figure does, and no factor is involved 148ms
+ ✓ src/art/spriteMarks.test.ts > marks are stamped after despeckle, and that matters > reports placements that agree with the finished grid 3161ms
  ✓ src/art/spriteMarks.test.ts > the objects the critique named > draws a belt with a buckle on it, not a plain band 3ms
  ✓ src/art/spriteMarks.test.ts > the objects the critique named > draws a shoe with a sole line under a dark upper 3ms
  ✓ src/art/spriteMarks.test.ts > the objects the critique named > gives the shoe the three rows FOOT_H claims, so the sole is its own row 3ms
@@ -329,23 +330,24 @@ $ npx vitest run src/art --reporter=verbose
  ✓ src/art/spriteMarks.test.ts > authored pixel budget > is worth more than the six marks the sprite had before 0ms
  ✓ src/art/spriteMarks.test.ts > authored pixel budget > does not move when the pose does — the table is data, not a generator 0ms
  ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > holds the grip wider than the elbow in all eleven drawings 1ms
- ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > leaves the arm outline identical from the cone to a 3.8 biceps, row for row 3820ms
- ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > moves the outline by one px in 16 rows of 14,260 at a cartoon 4.0 biceps 1434ms
- ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > never lets the upper arm out past the fist, even at the cartoon radius 7353ms
- ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > SEES a real limb window shuffled, where every aggregate is blind to it 4ms
- ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > puts a real number of pixels in every window, at every pose 281ms
- ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > keeps no limb on the floor of its own ramp, at the rate the reference holds 189ms
- ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > reaches the top of its ramp on every limb, as both of the wrestler’s arms do 58ms
- ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > draws its ramp in bands rather than in speckle, at the reference’s own rate 4ms
- ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > KNOWN GAP: an arm spends more of itself on the ramp floor than the reference ever does 862ms
- ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > holds its own line on black ink per limb — an OURS-ONLY ratchet, not a comparison 313ms
+ ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > draws the same pixels the silhouette probe predicts, capsule for capsule 2632ms
+ ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > leaves the arm outline identical from the cone to a 3.8 biceps, row for row 3828ms
+ ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > moves the outline by one px in 16 rows of 14,260 at a cartoon 4.0 biceps 1417ms
+ ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > never lets the upper arm out past the fist, even at the cartoon radius 7707ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > SEES a real limb window shuffled, where every aggregate is blind to it 3ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > puts a real number of pixels in every window, at every pose 285ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > keeps no limb on the floor of its own ramp, at the rate the reference holds 138ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > reaches the top of its ramp on every limb, as both of the wrestler’s arms do 37ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > draws its ramp in bands rather than in speckle, at the reference’s own rate 3ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > KNOWN GAP: an arm spends more of itself on the ramp floor than the reference ever does 857ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > holds its own line on black ink per limb — an OURS-ONLY ratchet, not a comparison 307ms
  ✓ src/art/lifterSprite.test.ts > barbell values > keeps the collar a dim block with one specular pixel, not a bright block 4ms
  ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > opens the committed file and finds a native SNES frame 0ms
- ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > finds every material colour it claims to mask by, at an exact count 6ms
- ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > masks a figure, and the figure is where the box says it is 10ms
- ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > THE REFERENCE IS NOT KEYLINED AND WE ARE — measured, not assumed 173ms
- ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > shows WHY the colour-keyed mask could not have answered that question 5ms
- ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > tells sprite-ref-1 from the negative control on era craft alone 241ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > finds every material colour it claims to mask by, at an exact count 5ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > masks a figure, and the figure is where the box says it is 8ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > THE REFERENCE IS NOT KEYLINED AND WE ARE — measured, not assumed 170ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > shows WHY the colour-keyed mask could not have answered that question 4ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > tells sprite-ref-1 from the negative control on era craft alone 244ms
 stdout | src/art/lifterSprite.test.ts > the reference is measured, not remembered > states the reference figures it is comparing against, in one place
 sprite-ref-1 256x224, 94 colours, 100.00% on the SNES 5-bit lattice
 wrestler box 66,113 46x45 -> 967 px
@@ -384,30 +386,30 @@ OURS-ONLY RATCHETS, not reference comparisons — we keep a keyline and it does 
   lower near-black           < 32.00%
   upper/lower mean ratio     < 1.45
 
- ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > agrees with every reference figure any comment in the tree states 34ms
- ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > has no retired reference figure still in the tree 19ms
- ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > states the reference figures it is comparing against, in one place 12ms
- ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > reads the reference skin ramp in order, so every ramp-position bound points the right way 1ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > agrees with every reference figure any comment in the tree states 29ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > has no retired reference figure still in the tree 18ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > states the reference figures it is comparing against, in one place 9ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > reads the reference skin ramp in order, so every ramp-position bound points the right way 2ms
  ✓ src/art/lifterSprite.test.ts > bar geometry > bends nothing at the centre and exactly the bend amount at the tip 0ms
  ✓ src/art/lifterSprite.test.ts > bar geometry > keeps the shaft between the sleeves nearly flat 0ms
  ✓ src/art/lifterSprite.test.ts > bar geometry > tilts linearly and antisymmetrically 0ms
  ✓ src/art/lifterSprite.test.ts > bar geometry > spans a real competition bar 0ms
- ✓ src/art/lifterSprite.test.ts > bar geometry > keeps the bar glued to the shoulders at every depth 13ms
+ ✓ src/art/lifterSprite.test.ts > bar geometry > keeps the bar glued to the shoulders at every depth 15ms
  ✓ src/art/lifterSprite.test.ts > bar geometry > drops the bar the distance a real squat drops it 5ms
  ✓ src/art/lifterSprite.test.ts > depth is honest > puts the hip below the knee at the bottom, and above it standing 0ms
- ✓ src/art/lifterSprite.test.ts > depth is honest > never moves the bar by one pixel at any strain or pitch level 421ms
+ ✓ src/art/lifterSprite.test.ts > depth is honest > never moves the bar by one pixel at any strain or pitch level 418ms
  ✓ src/art/lifterSprite.test.ts > depth is honest > never lets strain raise a hip that was below the knee back above it 2ms
  ✓ src/art/lifterSprite.test.ts > depth is honest > never lets the knees cave inside the hips, at any strain 4ms
  ✓ src/art/lifterSprite.test.ts > depth is honest > descends monotonically along both pose ladders 1ms
- ✓ src/art/lifterSprite.test.ts > depth is honest > draws the way up differently from the way down at the same depth 6ms
- ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > upscales by exact pixel replication 3028ms
- ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > introduces no colour that is not in the palette 116ms
- ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > produces no partial alpha anywhere — there is no anti-aliasing 186ms
- ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > finds a sleeve, a thigh and a shin to compare at every pose 1003ms
+ ✓ src/art/lifterSprite.test.ts > depth is honest > draws the way up differently from the way down at the same depth 5ms
+ ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > upscales by exact pixel replication 2923ms
+ ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > introduces no colour that is not in the palette 111ms
+ ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > produces no partial alpha anywhere — there is no anti-aliasing 182ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > finds a sleeve, a thigh and a shin to compare at every pose 1001ms
  ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > carries its authored band and hem, not just a shaded tube 26ms
- ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > never out-values the bare leg it is worn on, by area, anywhere in the pose space 946ms
- ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > keeps the bent leg lit by area, not only at lockout 997ms
- ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > does not get darker when the leg bends 46ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > never out-values the bare leg it is worn on, by area, anywhere in the pose space 932ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > keeps the bent leg lit by area, not only at lockout 957ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > does not get darker when the leg bends 45ms
  ✓ src/art/lifterSprite.test.ts > femur foreshortening > is zero standing and high everywhere below a quarter depth 1ms
  ✓ src/art/lifterSprite.test.ts > femur foreshortening > clamps rather than inverting when the strain deform stretches the thigh 0ms
  ✓ src/art/lifterSprite.test.ts > femur foreshortening > measures its reference length off the drawing rather than a typed number 0ms
@@ -415,9 +417,9 @@ OURS-ONLY RATCHETS, not reference comparisons — we keep a keyline and it does 
  ✓ src/art/lifterSprite.test.ts > inspection layers > grounds the lifter with a shadow that narrows as he descends 1ms
 
  Test Files  10 passed (10)
-      Tests  357 passed (357)
-   Start at  20:20:12
-   Duration  33.40s (transform 1.77s, setup 0ms, import 10.96s, tests 41.11s, environment 2ms)
+      Tests  359 passed (359)
+   Start at  21:02:54
+   Duration  35.63s (transform 1.70s, setup 0ms, import 10.47s, tests 44.33s, environment 1ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
