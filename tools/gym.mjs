@@ -13,11 +13,17 @@
  *   room-training-1x.png    the training gym, native scene resolution
  *   room-training-3x.png    the same, at the upscale the app draws it at
  *   room-meet-1x/3x.png     the meet platform
- *   composite-<depth>.png   THE THING THAT MATTERS: the lifter composited into
- *                           the room at several squat depths, at 1x and 3x
- *   empty-vs-full.png       the room with every prop and light removed, beside
- *                           the room as shipped
- *   readability.json        every number `measureSceneReadability` reports
+ *   composite-<depth>.png   the lifter composited into the room at several
+ *                           squat depths, at 1x and 3x, with NOTHING over it
+ *   screen-<depth>-3x.png   THE THING THAT MATTERS: the same frame with the
+ *                           bar-path panel painted where `LiftStage.tsx` paints
+ *                           it, so the picture is the one the player sees and
+ *                           the fifth of the room it covers is visibly gone
+ *   shell-3x.png            the same room with the prop table emptied — what
+ *                           the furniture floor has to be able to fail
+ *   readability.json        every number `measureSceneReadability` reports, for
+ *                           each frame, BOTH with the panel counted as opaque
+ *                           and without, so the difference is on the record
  *
  * No npm dependencies. PNG is encoded here with node:zlib, and TypeScript is
  * loaded through Node's built-in type stripping, so the pixels a critic sees
@@ -50,21 +56,28 @@ registerHooks({
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const art = await import(pathToFileURL(path.join(ROOT, 'src/art/index.ts')).href);
 
+const lift = await import(pathToFileURL(path.join(ROOT, 'src/lift/liftPalette.ts')).href);
+
 const {
   BANK_SIZE,
   GYM,
   GYM_BANKS,
+  GYM_CONTACT_SHADOW,
   GYM_LIFT_STAGE,
   GYM_PROPS_TRAINING,
+  GYM_STAGE_CHROME,
   PALETTE_BANKS,
   RESOLUTION,
   blitOver,
   buildSquatRep,
   clearBand,
+  contactShadowPatch,
   createGrid,
   frameSpecFrom,
   formatReadability,
   gridToRgba,
+  liftContactShadow,
+  liftStageOccluders,
   liftStageScene,
   measureSceneReadability,
   propBox,
@@ -75,6 +88,8 @@ const {
   setPx,
   upscaleGrid,
 } = art;
+
+const OCCLUDERS = liftStageOccluders();
 
 const args = process.argv.slice(2);
 const flagOf = (name, dflt) => {
@@ -134,11 +149,38 @@ function encodePng(width, height, rgba) {
   ]);
 }
 
-function writeGrid(file, grid) {
+function writeGrid(file, grid, chrome) {
   const rgba = gridToRgba(grid, sceneColorAt);
+  // Paint the screen's own chrome over the pixels, in its own colour, at the
+  // scale this image is at. This is what makes the picture the one a player
+  // sees rather than the one the renderer produced: the bar-path panel is
+  // opaque and it is sitting on a fifth of the room.
+  if (chrome !== undefined) {
+    const hex = chrome.color.replace('#', '');
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    for (const rect of chrome.rects) {
+      for (let y = Math.max(0, rect.y0); y <= Math.min(grid.h - 1, rect.y1); y += 1) {
+        for (let x = Math.max(0, rect.x0); x <= Math.min(grid.w - 1, rect.x1); x += 1) {
+          const i = (y * grid.w + x) * 4;
+          rgba[i] = r;
+          rgba[i + 1] = g;
+          rgba[i + 2] = b;
+          rgba[i + 3] = 255;
+        }
+      }
+    }
+  }
   writeFileSync(path.join(OUT, file), encodePng(grid.w, grid.h, rgba));
   return file;
 }
+
+/** An occluder rect scaled up, for painting into an upscaled image. */
+const scaleRect = (rect, k) => ({
+  x0: rect.x0 * k,
+  y0: rect.y0 * k,
+  x1: (rect.x1 + 1) * k - 1,
+  y1: (rect.y1 + 1) * k - 1,
+});
 
 // ---------------------------------------------------------------------------
 // Scenes
@@ -168,44 +210,73 @@ const MOMENTS = [
   ['drive', 0.7],
 ];
 
-const report = {};
+const TOTAL_KG = 250;
+const CHROME = { color: lift.LIFT_PALETTE.PANEL, rects: OCCLUDERS.map((r) => scaleRect(r, UP)) };
+
+/** Room, then the shadow he throws on it, then the figure. Stage order. */
+function stack(scene, frac) {
+  const spec = frameSpecFrom(pick(frac), TOTAL_KG);
+  const patch = contactShadowPatch(
+    scene,
+    liftContactShadow(spec),
+    GYM_LIFT_STAGE.SPRITE_X,
+    GYM_LIFT_STAGE.SPRITE_Y,
+    GYM_CONTACT_SHADOW.STEPS,
+  );
+  if (patch !== null) blitOver(scene, patch.grid, patch.x, patch.y);
+  const { grid: sprite } = renderLifterFrame(spec);
+  return blitOver(scene, sprite, GYM_LIFT_STAGE.SPRITE_X, GYM_LIFT_STAGE.SPRITE_Y);
+}
+
+const report = {
+  occluders: OCCLUDERS,
+  chrome: GYM_STAGE_CHROME,
+  frames: {},
+};
+
+function record(name, composite) {
+  const occluded = measureSceneReadability(composite, { occluders: OCCLUDERS });
+  const raw = measureSceneReadability(composite, { occluders: [] });
+  report.frames[name] = { occluded, unoccluded: raw };
+  console.log(`\n--- ${name} (panel counted as opaque) ---\n${formatReadability(occluded)}`);
+  return occluded;
+}
+
 for (const [name, frac] of MOMENTS) {
-  const frame = pick(frac);
-  const spec = liftStageScene(0);
-  const scene = renderGymScene(spec);
-  const totalKg = 250;
-  const { grid: sprite } = renderLifterFrame(frameSpecFrom(frame, totalKg));
-  const composite = blitOver(scene, sprite, GYM_LIFT_STAGE.SPRITE_X, GYM_LIFT_STAGE.SPRITE_Y);
+  const composite = stack(renderGymScene(liftStageScene(0)), frac);
   written.push(writeGrid(`composite-${name}-1x.png`, composite));
   written.push(writeGrid(`composite-${name}-${UP}x.png`, upscaleGrid(composite, UP)));
-  const r = measureSceneReadability(composite);
-  report[name] = r;
-  console.log(`\n--- ${name} ---\n${formatReadability(r)}`);
+  // ...and the same frame as the screen draws it, panel and all.
+  written.push(writeGrid(`screen-${name}-${UP}x.png`, upscaleGrid(composite, UP), CHROME));
+  record(name, composite);
 }
 
 // --- the same figure, in the meet venue -------------------------------------
 {
-  const spec = { ...liftStageScene(0), venue: 'meet-platform' };
-  const scene = renderGymScene(spec);
-  const { grid: sprite } = renderLifterFrame(frameSpecFrom(pick(0), 250));
-  const composite = blitOver(scene, sprite, GYM_LIFT_STAGE.SPRITE_X, GYM_LIFT_STAGE.SPRITE_Y);
+  const composite = stack(
+    renderGymScene({ ...liftStageScene(0), venue: 'meet-platform' }),
+    0,
+  );
   written.push(writeGrid(`composite-meet-${UP}x.png`, upscaleGrid(composite, UP)));
-  const r = measureSceneReadability(composite);
-  report['meet'] = r;
-  console.log(`\n--- meet platform ---\n${formatReadability(r)}`);
+  written.push(writeGrid(`screen-meet-${UP}x.png`, upscaleGrid(composite, UP), CHROME));
+  record('meet', composite);
+}
+
+// --- the shell, with the prop table emptied ---------------------------------
+{
+  const composite = stack(renderGymScene({ ...liftStageScene(0), props: [] }), 0);
+  written.push(writeGrid(`shell-${UP}x.png`, upscaleGrid(composite, UP), CHROME));
+  record('shell-no-props', composite);
 }
 
 // --- with the environment deleted, for comparison ---------------------------
 {
   const spec = liftStageScene(0);
   const flat = createGrid(spec.w, spec.h, GYM.WALL_DEEP);
-  const frame = pick(0.5);
-  const { grid: sprite } = renderLifterFrame(frameSpecFrom(frame, 250));
+  const { grid: sprite } = renderLifterFrame(frameSpecFrom(pick(0.5), TOTAL_KG));
   const composite = blitOver(flat, sprite, GYM_LIFT_STAGE.SPRITE_X, GYM_LIFT_STAGE.SPRITE_Y);
-  written.push(writeGrid(`no-environment-${UP}x.png`, upscaleGrid(composite, UP)));
-  const r = measureSceneReadability(composite);
-  report['no-environment'] = r;
-  console.log(`\n--- no environment (flat fill) ---\n${formatReadability(r)}`);
+  written.push(writeGrid(`no-environment-${UP}x.png`, upscaleGrid(composite, UP), CHROME));
+  record('no-environment', composite);
 }
 
 // --- the reserved band, drawn, so the composition rule is visible -----------

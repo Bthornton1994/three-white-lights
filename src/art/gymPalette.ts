@@ -188,13 +188,20 @@ const GYM_FLOOR_COLORS: readonly Rgb5[] = [
   [11, 3, 3], // 12 ACCENT_RED    luma 44  — a 25 kg disc, seen across the room
   [4, 7, 12], // 13 ACCENT_BLUE   luma 55  — a 20 kg disc
   [11, 9, 3], // 14 ACCENT_YELLOW luma 73  — a 15 kg disc
-  //                                 The IPF coding `palette.ts` sources from
-  //                                 OpenLifter, carried into the background at
-  //                                 a fraction of its value. GDD §7.1 calls
-  //                                 plate colour "free visual language"; a gym
-  //                                 with no coloured discs in it throws that
-  //                                 away, and one with FULL-VALUE discs in the
-  //                                 background steals the foreground's own cue.
+  //                                 The sport's own weight-to-colour coding,
+  //                                 whose provenance `palette.ts` records,
+  //                                 carried into the background at a fraction
+  //                                 of its value. GDD §7.1 calls plate colour
+  //                                 "free visual language"; a gym with no
+  //                                 coloured discs in it throws that away, and
+  //                                 one with FULL-VALUE discs in the background
+  //                                 steals the foreground's own cue.
+  //                                 A WEIGHT, NOT A MAKER. These three say a
+  //                                 denomination and nothing else. GDD §12.3
+  //                                 forbids a real brand anywhere in the app
+  //                                 and a disc face is the first place one
+  //                                 would arrive; the room has no way to draw
+  //                                 one, and `gymScene.test.ts` pins that.
   [14, 14, 15], // 15 CHALK_DUST  luma 116 — the bowl, and what spills off it
 ];
 

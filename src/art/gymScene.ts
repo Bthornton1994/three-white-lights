@@ -285,12 +285,18 @@ function paintCrowd(g: IndexGrid, spec: GymSceneSpec): void {
 }
 
 /**
- * The sponsor backdrop, above the crowd.
+ * The printed backdrop, above the crowd.
  *
- * `meet-photo-ref-1` is a lifter under a full-width printed banner, and it is
- * the one element that reads "competition" instead of "gym" at any size. Kept
- * entirely above the seating, so the brightest large surface in the venue is
- * nowhere near the figure.
+ * A full-width printed board is the one element that reads "competition"
+ * instead of "gym" at any size. Kept entirely above the seating, so the
+ * brightest large surface in the venue is nowhere near the figure.
+ *
+ * NO IDENTITY ON IT, AND NO WAY TO PUT ONE THERE. The patches below are flat
+ * nine-by-six colour blocks and the stripe is the room's own warm paint; there
+ * is no font, no glyph table and no string anywhere in this file's drawing
+ * path. GDD §12.3 forbids a real brand or federation mark in any asset, and
+ * §7.3 keeps real wordmarks on Tier 3 surfaces, which the environment is not.
+ * See `GYM_BANNER`.
  */
 function paintBanner(g: IndexGrid, spec: GymSceneSpec, junction: number, crowdTop: number): void {
   const top = Math.min(

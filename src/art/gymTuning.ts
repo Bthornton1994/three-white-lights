@@ -355,20 +355,39 @@ export const GYM_CROWD = Object.freeze({
 /**
  * The printed backdrop a meet is lifted in front of.
  *
- * `meet-photo-ref-1` is a lifter under a full-width sponsor banner, and the
- * banner is the single thing that says "competition" rather than "gym". It is
- * placed ABOVE the crowd and well above the lifter's crown on purpose: it is
- * the brightest large surface in either venue, and it has no business being
- * behind the figure.
+ * A full-width printed board is the single thing that says "competition" rather
+ * than "gym". It is placed ABOVE the crowd and well above the lifter's crown on
+ * purpose: it is the brightest large surface in either venue, and it has no
+ * business being behind the figure.
+ *
+ * ---------------------------------------------------------------------------
+ * IT CARRIES NO IDENTITY, AND CANNOT (GDD §12.3, §7.3)
+ * ---------------------------------------------------------------------------
+ * This is the single most likely place in the whole app for a real federation
+ * or sponsor mark to arrive, because a real one is what a backdrop looks like.
+ * So it is stated rather than left to discipline:
+ *
+ *   - `PATCH_*` are BLANK COLOUR BLOCKS. Nine pixels by six, one flat index, no
+ *     glyphs. They are the rhythm of a printed board seen from twenty metres,
+ *     and they are not placeholders waiting for a logo.
+ *   - `STRIPE_*` is a band of the room's own warm paint. It is not any body's
+ *     colours and is not named after one.
+ *   - The renderer has NO TEXT PATH AT ALL — no font, no glyph table, no string
+ *     in any drawing call. A wordmark here is not forbidden by convention, it is
+ *     unreachable, and `gymScene.test.ts` asserts that rather than trusting it.
+ *
+ * GDD §7.3 puts real wordmarks on Tier 3 surfaces — cut-ins, character select,
+ * the shop, the result card. THE ENVIRONMENT IS NOT ONE. If a licensed backdrop
+ * is ever wanted it arrives through that system as data, not as an edit here.
  */
 export const GYM_BANNER = Object.freeze({
   /** Top of the banner, as a fraction of wall height. */
   TOP_FRAC: 0.3,
   ROWS: 24,
-  /** The federation stripe inside it, and where it sits within the banner. */
+  /** The painted band inside it, and where it sits within the banner. */
   STRIPE_ROWS: 4,
   STRIPE_FRAC: 0.55,
-  /** Sponsor patches: how many, how wide, how tall. */
+  /** Blank colour blocks along it: how many, how wide, how tall. */
   PATCH_COUNT: 5,
   PATCH_W: 9,
   PATCH_H: 6,

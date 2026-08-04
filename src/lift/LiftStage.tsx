@@ -44,7 +44,7 @@ import {
 } from '@shopify/react-native-skia';
 
 import { makeSpriteImage } from '../art/LifterSpriteView';
-import { GymSceneLayer } from '../art/GymSceneView';
+import { ContactShadowLayer, GymSceneLayer } from '../art/GymSceneView';
 import { liftStageScene } from '../art/gymScene';
 import { LIFT_TUNING, STICK_HEIGHT_FRAC, STICK_WIDTH } from '../game/liftTuning';
 import { cueProgress, type LiftState } from '../game/lift';
@@ -160,6 +160,9 @@ export function LiftStage({ state, history, totalKg }: LiftStageProps): React.Re
 
       {/* --- the room the lift happens in ------------------------------ */}
       <GymSceneLayer spec={SCENE} />
+
+      {/* --- and what he throws on the floor of it ---------------------- */}
+      <ContactShadowLayer scene={SCENE} frame={liftFrameSpec(state, totalKg)} />
 
       {/* --- bar-path plot -------------------------------------------- */}
       <Group>

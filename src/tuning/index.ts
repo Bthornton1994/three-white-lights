@@ -91,6 +91,7 @@ import {
 } from '../game/streak';
 import {
   GYM_CLEAR_BAND,
+  GYM_CONTACT_SHADOW,
   GYM_CROWD,
   GYM_FLOOR_PLAN,
   GYM_LIFT_STAGE,
@@ -100,6 +101,7 @@ import {
   GYM_PROPS_TRAINING,
   GYM_READABILITY,
   GYM_ROOM,
+  GYM_STAGE_CHROME,
   GYM_VENUE,
   GYM_WALL_PAINT,
 } from '../art/gymTuning';
@@ -172,7 +174,9 @@ export const TUNING = Object.freeze({
     GYM_PROPS_MEET,
     GYM_VENUE,
     GYM_CLEAR_BAND,
+    GYM_CONTACT_SHADOW,
     GYM_LIFT_STAGE,
+    GYM_STAGE_CHROME,
     GYM_READABILITY,
   }),
 

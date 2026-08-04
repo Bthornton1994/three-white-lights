@@ -10,6 +10,7 @@ import { BANK_SIZE, PAL, isTransparentIndex } from './palette';
 import { GYM, lumaOfIndex, sceneColorAt } from './gymPalette';
 import { GYM_PROP_KINDS, PROP_ART } from './gymProps';
 import {
+  GYM_BANNER,
   GYM_CLEAR_BAND,
   GYM_CONTACT_SHADOW,
   GYM_LIFT_FOCUS_X,
@@ -1183,6 +1184,171 @@ describe('what the room is not allowed to contain', () => {
     for (const kind of GYM_PROP_KINDS) {
       expect(/METER|GAUGE|DIAL|BAR_GRAPH|SCOREBOARD|READINESS|FATIGUE/.test(kind)).toBe(false);
     }
+  });
+
+  /**
+   * GDD §12.3: no real, named athlete, brand or company identity — name, logo,
+   * likeness or wordmark — in any asset, string, config or code path. §7.3 puts
+   * real wordmarks on Tier 3 surfaces (cut-ins, character select, shop, result
+   * card); THE ENVIRONMENT IS NOT ONE, so none belongs here at any point.
+   *
+   * A gym is the highest-risk surface in the app for this, because every real
+   * rack, bench, bar, plate, shoe and backdrop carries a mark and a "realistic"
+   * detail is exactly how one arrives. §12.3 asks for a name-by-name statement
+   * of what was searched rather than "looks fine", so the list is in the test.
+   */
+  const REAL_IDENTITIES: readonly string[] = [
+    // Federations and meet organisations
+    'IPF',
+    'USAPL',
+    'USPA',
+    'IPL',
+    'WRPF',
+    'GPC',
+    'SPF',
+    'RPS',
+    'NPL',
+    'BVDK',
+    'Powerlifting America',
+    'OpenLifter',
+    'OpenPowerlifting',
+    // Bar, plate and rack makers
+    'Rogue',
+    'Eleiko',
+    'Ivanko',
+    'Texas Power',
+    'Ohio Bar',
+    'Kabuki',
+    'Sorinex',
+    'Hammer Strength',
+    'Life Fitness',
+    'Cybex',
+    'Nautilus',
+    'Precor',
+    'Concept2',
+    'Rep Fitness',
+    'Force USA',
+    'Titan',
+    'York Barbell',
+    'Uesaka',
+    // Apparel, belts, sleeves, shoes
+    'SBD',
+    'Inzer',
+    'Nike',
+    'Adidas',
+    'Reebok',
+    'Romaleos',
+    'Adipower',
+    'Under Armour',
+    'Virus',
+    'A7',
+    // Gym chains
+    "Gold's Gym",
+    'Planet Fitness',
+    'Anytime Fitness',
+    'CrossFit',
+    'Westside Barbell',
+    'Juggernaut',
+    // Lifters
+    'Coan',
+    'Hafthor',
+    'Eddie Hall',
+    'Larry Wheels',
+    'Julius Maddox',
+    'Ray Williams',
+    'Taylor Atwood',
+    'Amanda Lawrence',
+    'Jessica Buettner',
+    'Jesus Olivares',
+    'Sheiko',
+    'Smolov',
+  ];
+
+  const GYM_LAYER_FILES = [
+    'gymScene.ts',
+    'gymTuning.ts',
+    'gymProps.ts',
+    'gymPalette.ts',
+    'gymReadability.ts',
+    'GymSceneView.tsx',
+  ];
+
+  /**
+   * Whole words only. `IPL` sits inside `multiple` and every short acronym here
+   * has a common substring somewhere; a mark arrives as a word, not a syllable.
+   */
+  const namePattern = (name: string): RegExp =>
+    new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+
+  it('names no real athlete, brand, federation or company, anywhere in the layer', () => {
+    // Raw source, comments included — a mark in a comment is a mark somebody
+    // will promote into a drawing later. Every file in the environment layer.
+    expect(GYM_LAYER_FILES.length).toBeGreaterThan(5);
+    expect(REAL_IDENTITIES.length).toBeGreaterThan(50);
+    for (const file of GYM_LAYER_FILES) {
+      const source = readFileSync(path.join(HERE, file), 'utf8');
+      expect(source.length, `${file} is empty`).toBeGreaterThan(500);
+      for (const name of REAL_IDENTITIES) {
+        expect(namePattern(name).test(source), `${file} names ${name}`).toBe(false);
+      }
+    }
+    // ...and the scan is not vacuous: it finds a planted mark in each category.
+    for (const planted of [
+      'a Rogue rack against the wall',
+      'the IPF plate ladder',
+      'Ed Coan on the platform',
+      "a poster outside Gold's Gym",
+    ]) {
+      expect(
+        REAL_IDENTITIES.some((n) => namePattern(n).test(planted)),
+        `the scan missed: ${planted}`,
+      ).toBe(true);
+    }
+  });
+
+  it('cannot draw a wordmark at all — there is no text path in the room', () => {
+    // Structural, like the fatigue meter. A logo needs either a glyph renderer
+    // or a bitmap of one, and this layer has neither: every mark it makes is a
+    // rectangle of a palette index, and the only strings in the whole prop
+    // catalogue are the kind keys and an anchor.
+    for (const file of GYM_LAYER_FILES) {
+      const code = codeOnly(readFileSync(path.join(HERE, file), 'utf8'));
+      for (const banned of [
+        'drawText',
+        'fillText',
+        'measureText',
+        'TextBlob',
+        'Typeface',
+        'matchFamilyStyle',
+        'Paragraph',
+        'Glyph',
+        'FontMgr',
+        'useFont',
+        'fromText',
+      ]) {
+        expect(code.includes(banned), `${file} reaches for ${banned}`).toBe(false);
+      }
+    }
+  });
+
+  it('carries no drawable string in the prop catalogue at all', () => {
+    for (const kind of GYM_PROP_KINDS) {
+      const art = PROP_ART[kind];
+      // The only string a prop owns is where it is pinned, and it is one of two
+      // words. Everything else in a drawing is five numbers.
+      expect(['floor', 'ceiling']).toContain(art.ANCHOR);
+      for (const rect of art.RECTS) {
+        expect(rect.length).toBe(5);
+        for (const v of rect) expect(typeof v).toBe('number');
+      }
+      // ...and the kind key itself is a generic equipment noun, screaming case,
+      // never rendered — pinned exactly by the catalogue test above.
+      expect(/^[A-Z][A-Z_]*$/.test(kind)).toBe(true);
+    }
+    // The meet backdrop is the place a mark would feel most natural. It is
+    // blank colour blocks and a painted band, and it has no string field.
+    for (const value of Object.values(GYM_BANNER)) expect(typeof value).toBe('number');
+    expect(GYM_BANNER.PATCH_COUNT).toBeGreaterThan(0);
   });
 
   it('takes no input from which a fatigue level could be drawn', () => {

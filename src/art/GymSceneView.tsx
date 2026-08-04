@@ -35,12 +35,17 @@ import {
 import { RGBA } from './palette';
 import { sceneColorAt } from './gymPalette';
 import { gridToRgba } from './rgba';
-import { renderGymScene, type GymSceneSpec } from './gymScene';
-import { GYM_LIFT_STAGE } from './gymTuning';
+import {
+  contactShadowPatch,
+  liftContactShadow,
+  renderGymScene,
+  type GymSceneSpec,
+} from './gymScene';
+import { GYM_CONTACT_SHADOW, GYM_LIFT_STAGE } from './gymTuning';
+import type { IndexGrid } from './raster';
+import type { LifterFrameSpec } from './lifterSprite';
 
-/** Build an SkImage for one room. Static per spec — memoise at the call site. */
-export function makeGymSceneImage(spec: GymSceneSpec): SkImage | null {
-  const grid = renderGymScene(spec);
+function imageFromGrid(grid: IndexGrid): SkImage | null {
   // The scene resolves through `sceneColorAt`, which sees the two BACKGROUND
   // banks as well as the three sprite banks. `colorAt` alone would render every
   // gym pixel transparent, which is exactly the hole a wrong resolver leaves.
@@ -56,6 +61,11 @@ export function makeGymSceneImage(spec: GymSceneSpec): SkImage | null {
     data,
     grid.w * RGBA.BYTES_PER_PIXEL,
   );
+}
+
+/** Build an SkImage for one room. Static per spec — memoise at the call site. */
+export function makeGymSceneImage(spec: GymSceneSpec): SkImage | null {
+  return imageFromGrid(renderGymScene(spec));
 }
 
 export interface GymSceneLayerProps {
@@ -82,6 +92,63 @@ export function GymSceneLayer({ spec }: GymSceneLayerProps): React.ReactElement 
       y={GYM_LIFT_STAGE.ORIGIN_Y}
       width={GYM_LIFT_STAGE.W * GYM_LIFT_STAGE.SCALE}
       height={GYM_LIFT_STAGE.H * GYM_LIFT_STAGE.SCALE}
+      fit="fill"
+      sampling={{ filter: FilterMode.Nearest, mipmap: MipmapMode.None }}
+    />
+  );
+}
+
+export interface ContactShadowLayerProps {
+  readonly scene: GymSceneSpec;
+  readonly frame: LifterFrameSpec;
+}
+
+/**
+ * What the lifter throws on the floor he is standing on.
+ *
+ * A SEPARATE, TINY IMAGE rather than a re-render of the room. The room is a
+ * constant built once — 22,490 pixels — and the shadow changes shape every time
+ * he changes depth. `contactShadowPatch` returns only the box the shadow covers,
+ * already painted in the room's own colours stepped down, so what goes to the
+ * GPU per frame is a few hundred pixels on the same lattice as everything else.
+ *
+ * Draw it AFTER the room and BEFORE the figure.
+ */
+export function ContactShadowLayer({
+  scene,
+  frame,
+}: ContactShadowLayerProps): React.ReactElement | null {
+  // The room it lands on is a constant per spec, so it is rastered once and not
+  // once per pose. Rebuilding it here would put 22,490 pixels through a shading
+  // pass to darken three hundred of them.
+  const room = useMemo(
+    () => renderGymScene(scene),
+    [scene.venue, scene.w, scene.h, scene.floorRow, scene.focusX, scene.cameraX],
+  );
+  const patch = useMemo(
+    () =>
+      contactShadowPatch(
+        room,
+        liftContactShadow(frame),
+        GYM_LIFT_STAGE.SPRITE_X,
+        GYM_LIFT_STAGE.SPRITE_Y,
+        GYM_CONTACT_SHADOW.STEPS,
+      ),
+    // The shadow's identity is the surface it lands on and the pose numbers that
+    // shape it. Everything else about the frame — tilt, bend, chalk, load — does
+    // not reach it, so depending on the spec object would rebuild it on every
+    // tick of a held pose.
+    [room, frame.depth, frame.direction, frame.strainLevel, frame.pitchLevel],
+  );
+  const image = useMemo(() => (patch === null ? null : imageFromGrid(patch.grid)), [patch]);
+  if (patch === null) return null;
+  return (
+    <SkiaImage
+      image={image}
+      x={GYM_LIFT_STAGE.ORIGIN_X + patch.x * GYM_LIFT_STAGE.SCALE}
+      y={GYM_LIFT_STAGE.ORIGIN_Y + patch.y * GYM_LIFT_STAGE.SCALE}
+      width={patch.grid.w * GYM_LIFT_STAGE.SCALE}
+      height={patch.grid.h * GYM_LIFT_STAGE.SCALE}
       fit="fill"
       sampling={{ filter: FilterMode.Nearest, mipmap: MipmapMode.None }}
     />
