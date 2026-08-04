@@ -2,7 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-04 (§11 — a Tier 1 colorway has to be a bank-0 ramp
+**Last updated:** 2026-08-04 (§11 — the pound-meet refusal now guards the WRITE
+path: `applyMeetResult` was recording a pound total into permanent progression
+before either read-side refusal could fire, and `MeetResultWire` has no unit
+field to recover the unit from once it is there. Also §11 — a Tier 1 colorway
+has to be a bank-0 ramp
 and three of four partner colorways were not, so §7.3's "the base sprite needs
 no change at all" holds only for a partner whose colours bank 0 already has;
 logged as a decision for a human rather than answered. Also §11 — an accessory
@@ -1153,15 +1157,38 @@ The code has taken the safe branch and needs a ruling to take any other.**
       `buildResultCard` refuses a pound meet outright (`UNSUPPORTED_MEET_UNIT`)
       because every column on that sheet — weight class, bodyweight, DOTS — is a
       kilogram column.
+      **The refusal now reaches the WRITE path too, and that is a change of
+      substance rather than of coverage.** Both refusals above are reads, and
+      both run *after* the total has been recorded: `applyMeetResult` is the one
+      function in the codebase that moves Total, and it used to take
+      `finalMeetTotal(state)` — the reading with its unit discarded — straight
+      into `record.totalKg`, into `MeetResultWire.totalKg` (which has no unit
+      field, so the unit is unrecoverable once it is there), and into
+      `placingFor` against a kilogram ghost field. A card that refuses to print
+      is not a defence of a number already banked. `applyMeetResult` now checks
+      the reading's unit before anything is written and returns
+      `UNSUPPORTED_MEET_UNIT`, spelled the same as `resultCard.ts`'s because it
+      is one refusal reached at two points in one pipeline. It does not convert,
+      for the reason above: a meet result is the total *and* the bodyweight, and
+      `MeetResultReport.bodyweightKg` is a bare number the server cannot verify.
       **Three ways out, none taken:** (a) rule that the game only ever runs kg
       meets and lbs is a display skin, in which case `POUND_MEET_RULES` should go
       and §11's display question answers this by itself; (b) rule that pound
       meets ship, and give the lifter profile a unit so both axes can be
       converted at one boundary — the conversion constant is already there
-      (`KILOGRAMS_PER_POUND`); (c) rule that pound meets ship without DOTS, which
-      is what the code does today, and decide what the result card prints in the
-      DOTS column for one. Until this is ruled, a pound meet is a runnable
-      configuration with no leaderboard presence.
+      (`KILOGRAMS_PER_POUND`); (c) rule that pound meets ship without DOTS, and
+      decide what the result card prints in the DOTS column for one.
+      **What the code does today is none of the three — it is stricter than (c).**
+      A pound meet runs end to end on the platform and then cannot be recorded at
+      all: no Total, no stored result, no placing, no card, no score. That is the
+      safe branch and it is deliberate, but it is not a shippable answer, because
+      a player who took nine attempts is currently told nothing —
+      `useMeetDay.ts` drops a refused `applyMeetResult` silently and renders no
+      recap, which is correct for a case that cannot happen and wrong for one a
+      player can reach. Ruling (a) makes the refusal unreachable and is the
+      cheapest exit; (b) and (c) each need a conversion boundary *and* a screen
+      for the failure. Until it is ruled, `POUND_MEET_RULES` is a configuration
+      the engine supports and progression will not accept.
 - [ ] **Who owns the close-out's WORDS when the server disagrees with the
       client?** The daily loop's payoff beat now reads its numbers back through
       the progression boundary, so a server answer the client did not predict is

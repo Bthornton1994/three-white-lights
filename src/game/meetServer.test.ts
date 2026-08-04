@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { LIFT_ORDER, finalMeetTotal, type LiftKind } from './meet';
+import {
+  DEFAULT_MEET_RULES,
+  LIFT_ORDER,
+  POUND_MEET_RULES,
+  createMeet,
+  currentAttemptContext,
+  declareAttempt,
+  finalMeetTotal,
+  readTotal,
+  resolveAttempt,
+  type JudgePanel,
+  type LiftKind,
+  type MeetLoadingRules,
+  type MeetState,
+} from './meet';
 import type { MeetAttemptReport, ProposalOfKind } from './progression';
 import { asMeetId, asProposalId, receiveProgressionSnapshot } from './progression';
 import { newServerRecord, type ServerRecord } from './sessionServer';
@@ -12,7 +26,7 @@ import {
   replayMeetCard,
 } from './meetServer';
 import { meetAttemptReports, meetResultProposal } from './meetDay';
-import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW } from './meetTuning';
+import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW, type MeetDefinition } from './meetTuning';
 import { playMeet, previewServerRecord, previewStateFor, type RepStyle } from './meetPreview';
 import { SESSION_TUNING } from './sessionTuning';
 
@@ -598,5 +612,247 @@ describe('the client never sends a total', () => {
         ]);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE UNIT BOUNDARY ON THE WRITE PATH
+//
+// `dots.ts` and `resultCard.ts` both refuse a total they cannot prove is
+// kilograms. Both of those run AFTER `applyMeetResult`, so until this section
+// existed a pound meet was RECORDED first and refused second: the number was
+// already in `record.totalKg`, already in `MeetResultWire.totalKg` (which has no
+// unit field to recover it from), and already ranked against a kilogram ghost
+// list. A refusal downstream of the write is not a defence of the write.
+//
+// Nothing below hand-rolls a reading or a card. `POUND_MEET_RULES` is `meet.ts`'s
+// own export, it validates, and the attempts are played through `createMeet` ->
+// `declareAttempt` -> `resolveAttempt` before they are reported — the same
+// real-meet pattern `dots.test.ts` uses, because a boundary test is only worth
+// something if the thing on the other side of the boundary is genuine.
+// ---------------------------------------------------------------------------
+
+const ALL_WHITE: JudgePanel = ['white', 'white', 'white'];
+const ALL_RED: JudgePanel = ['red', 'red', 'red'];
+
+/**
+ * The same nine numbers, run under two different sets of rules.
+ *
+ * DELIBERATELY THE SAME NUMBERS. 442.5 + 280 + 545 = 1267.5 is a legal pound
+ * meet on a 45 lb bar AND a legal (enormous) kilogram meet on the 2.5 kg
+ * declaration grid, so the pair below differs in exactly one respect: what
+ * `rules.unit` says. Nothing about the numbers gives the unit away — that is the
+ * whole reason the unit has to travel — and a check that passed one and refused
+ * the other on magnitude would be caught by this.
+ */
+const NINE_ATTEMPTS = [405, 425, 442.5, 265, 275, 280, 500, 525, 545] as const;
+const NINE_ATTEMPTS_TOTAL = 442.5 + 280 + 545;
+
+/**
+ * Play a real meet and return both the engine's state and the card to report.
+ *
+ * The reports are built from `currentAttemptContext`, so the lift and attempt
+ * number on each row are the ones the engine actually had on deck rather than
+ * numbers the test assumed.
+ *
+ * `MeetAttemptReport.weightKg` holds whatever unit the meet is run in — the
+ * field name is the client's claim, not a checked fact, and that mislabelling is
+ * exactly what the write path has to refuse rather than believe.
+ */
+function playCard(
+  rules: MeetLoadingRules,
+  weights: readonly number[] = NINE_ATTEMPTS,
+  good: (index: number) => boolean = () => true,
+): { readonly state: MeetState; readonly reports: MeetAttemptReport[] } {
+  let state = createMeet(rules);
+  const reports: MeetAttemptReport[] = [];
+  weights.forEach((weight, index) => {
+    const context = currentAttemptContext(state);
+    if (context === null) throw new Error(`nothing on deck for ${weight}`);
+    const { lift, attemptNumber } = context;
+    const declared = declareAttempt(state, { lift, attemptNumber, weight });
+    if (!declared.ok) throw new Error(`declare ${weight}: ${declared.error.message}`);
+    const made = good(index);
+    const resolved = resolveAttempt(declared.value, {
+      lift,
+      attemptNumber,
+      lights: made ? ALL_WHITE : ALL_RED,
+    });
+    if (!resolved.ok) throw new Error(`resolve ${weight}: ${resolved.error.message}`);
+    state = resolved.value;
+    reports.push({ lift, attemptNumber, weightKg: weight, good: made });
+  });
+  return { state, reports };
+}
+
+/**
+ * The meet a federation running in pounds would ship: `MEET_LOCAL` with
+ * `meet.ts`'s own pound rules dropped into `MeetDefinition.rules`.
+ *
+ * NO CAST, NO PRIVATE SYMBOL, NO HAND-BUILT STATE. `MeetDefinition.rules` is
+ * `MeetLoadingRules` and `POUND_MEET_RULES` is an exported, validated one, so
+ * this is the second meet definition anyone adds, not an abuse of the type.
+ *
+ * `ghostTotalsKg` is left exactly as it is, in kilograms, because that is the
+ * shape of the real hazard: the definition's own field names stay kg while its
+ * rules quietly do not.
+ */
+const MEET_POUND: MeetDefinition = {
+  ...MEET_LOCAL,
+  id: 'pound-open-2026',
+  rules: POUND_MEET_RULES,
+};
+
+function poundProposal(attempts: readonly MeetAttemptReport[]): ProposalOfKind<'record-meet-result'> {
+  return {
+    kind: 'record-meet-result',
+    report: {
+      meetId: asMeetId(MEET_POUND.id),
+      bodyweightKg: MEET_ENTRY.bodyweightKg,
+      attempts,
+    },
+  };
+}
+
+describe('a total that is not in kilograms is refused, not recorded', () => {
+  it('is a legal, complete, replayable meet — the refusal is about the UNIT and nothing else', () => {
+    // THE NON-VACUITY CONTROL, and it is the one that matters here. Without it,
+    // every assertion below could be produced by a card the replay rejected as
+    // illegal, and the unit check could be absent.
+    const { state, reports } = playCard(POUND_MEET_RULES);
+    const replayed = replayMeetCard(MEET_POUND, reports);
+    expect(replayed.ok, replayed.ok ? '' : replayed.error.message).toBe(true);
+    if (!replayed.ok) throw new Error('unreachable');
+    expect(readTotal(replayed.value).kind).toBe('final');
+    expect(readTotal(replayed.value).unit).toBe('lb');
+    expect(finalMeetTotal(replayed.value)).toBe(NINE_ATTEMPTS_TOTAL);
+    expect(finalMeetTotal(state)).toBe(NINE_ATTEMPTS_TOTAL);
+  });
+
+  it('refuses to write it', () => {
+    const { reports } = playCard(POUND_MEET_RULES);
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+    expect(applied.ok).toBe(false);
+    if (applied.ok) throw new Error('unreachable');
+    expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
+    // Not any of the refusals that would mean the card was the problem.
+    expect(applied.error.code).not.toBe('MEET_REPLAY_REFUSED');
+    expect(applied.error.code).not.toBe('MEET_INCOMPLETE');
+  });
+
+  it('produces no record at all, and does not touch the one it was handed', () => {
+    // TWO SEPARATE CLAIMS, and only the first of them dies if the unit check is
+    // removed. Stated as two because the second one on its own would be a check
+    // that cannot fail: `applyMeetResult` is pure and returns a new record, so
+    // "the input is unchanged" is true whether it refused or wrote a 1267.5 lb
+    // total. The claim that actually bites is that there is no NEW record.
+    const before = newServerRecord();
+    const snapshot = structuredClone(before);
+    const { reports } = playCard(POUND_MEET_RULES);
+    const applied = applyMeetResult(before, DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+
+    // (1) Nothing was produced to write. This is the one the mutation kills.
+    expect(applied.ok).toBe(false);
+    if (applied.ok) throw new Error('unreachable');
+
+    // (2) ...and the purity contract held on the way to the refusal.
+    expect(before).toEqual(snapshot);
+    expect(before.totalKg).toBeNull();
+    expect(before.meets).toEqual([]);
+  });
+
+  it('does not convert — the refusal is the whole answer', () => {
+    // Converting the total while trusting `bodyweightKg` would be a different
+    // wrong number written permanently. If a future version ever starts
+    // converting, this fails: a converted 1267.5 lb is 574.9 kg, and there is no
+    // result object for it to arrive in.
+    const { reports } = playCard(POUND_MEET_RULES);
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+    expect(applied).not.toHaveProperty('value');
+    expect(applied.ok).toBe(false);
+  });
+
+  it('refuses a bombed pound meet too, where there is no total at all', () => {
+    // `dots.ts`'s posture, applied to the write: the check runs on every reading
+    // kind, so a caller wired to a pound meet finds out on the first meet it
+    // records rather than on the first one that finishes with a total. A defect
+    // that only fires on success is the worst kind to ship.
+    const { reports } = playCard(POUND_MEET_RULES, [405, 425, 425], () => false);
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+    expect(applied.ok).toBe(false);
+    if (applied.ok) throw new Error('unreachable');
+    expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
+  });
+
+  it('would have placed the lb total first in a kg field, which is the harm', () => {
+    // Stated as a number so the refusal is not abstract: 1267.5 beats every
+    // ghost in `MEET_LOCAL.ghostTotalsKg` (top ghost 632.5) and would have
+    // written a world-record-shaped total onto a lifter who squatted 442.5 lb.
+    expect(NINE_ATTEMPTS_TOTAL).toBeGreaterThan(Math.max(...MEET_LOCAL.ghostTotalsKg));
+    expect(placingFor(NINE_ATTEMPTS_TOTAL, MEET_LOCAL.ghostTotalsKg).place).toBe(1);
+  });
+
+  it('names the unit, and names the remedy rather than just saying no', () => {
+    const { reports } = playCard(POUND_MEET_RULES);
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+    if (applied.ok) throw new Error('unreachable');
+    expect(applied.error.message).toContain('lb');
+    expect(applied.error.message).toContain('kilogramsFromPounds');
+  });
+});
+
+describe('the kilogram write path is untouched by the unit check', () => {
+  it('records the SAME NINE NUMBERS when the meet is run in kg', () => {
+    // THE POSITIVE CONTROL FOR THE REFUSAL ABOVE. Identical weights, identical
+    // reported card, identical everything except `rules.unit` — so a check that
+    // refused on the magnitude, on the decimal, or on anything other than the
+    // unit would fail here.
+    const kgMeet: MeetDefinition = { ...MEET_LOCAL, id: 'kg-twin-2026', rules: DEFAULT_MEET_RULES };
+    const { reports } = playCard(DEFAULT_MEET_RULES);
+    const applied = applyMeetResult(
+      newServerRecord(),
+      DAY,
+      kgMeet,
+      {
+        kind: 'record-meet-result',
+        report: {
+          meetId: asMeetId(kgMeet.id),
+          bodyweightKg: MEET_ENTRY.bodyweightKg,
+          attempts: reports,
+        },
+      },
+      PROPOSAL_ID,
+    );
+    expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+    expect(applied.value.totalKg).toBe(NINE_ATTEMPTS_TOTAL);
+    expect(applied.value.record.totalKg).toBe(NINE_ATTEMPTS_TOTAL);
+    const stored = applied.value.record.meets[applied.value.record.meets.length - 1];
+    expect(stored?.totalKg).toBe(NINE_ATTEMPTS_TOTAL);
+    expect(receiveProgressionSnapshot(applied.value.wire).ok).toBe(true);
+  });
+
+  it('still records the shipped meet, which is the one the game actually plays', () => {
+    expect(MEET_LOCAL.rules.unit).toBe('kg');
+    const applied = applyClean();
+    expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+    expect(applied.value.record.totalKg).toBe(applied.value.totalKg);
+    expect(applied.value.totalKg).toBeGreaterThan(0);
+  });
+
+  it('still records a kilogram bomb-out, which has no total to check the unit of', () => {
+    // The 'no-total' reading carries a unit too, so the check runs on it. A
+    // kilogram bomb-out must still pass it and still be recorded — GDD §12.3:
+    // a bomb-out is not punitive, and a unit check that swallowed it would be.
+    const bombed = cleanCard(
+      { squat: [200, 200, 200], bench: [130, 135, 140], deadlift: [240, 250, 260] },
+      () => false,
+    ).slice(0, 3);
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, proposalFrom(bombed), PROPOSAL_ID);
+    expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+    expect(applied.value.totalKg).toBeNull();
+    expect(applied.value.record.meets.length).toBe(1);
   });
 });
