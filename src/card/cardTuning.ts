@@ -23,7 +23,10 @@
  *
  *     0                     frame
  *     1  .. 44   MASTHEAD   federation, meet name, date and place
- *    45  .. 72   LIFTER     name, then class / bodyweight / division / kit
+ *    45  .. 72   LIFTER     name, then sex / kit / division / class / weight,
+ *                           on one line or two — see `LIFTER_META_LADDER`. The
+ *                           band is 28 px either way: a second line is paid for
+ *                           out of the name's type size, not out of the card.
  *    74  ..124   GRID       header row, then squat / bench / deadlift
  *   128  ..157   TOTAL      the hero number
  *   159  ..184   SCORE      DOTS and PLACE, side by side
@@ -86,10 +89,58 @@ export const LIFTER_STRIP = {
   H: 28,
   NAME_Y: 48,
   NAME_SCALE: 2,
+  /**
+   * Cap on the name's scale when the strip has to print TWO meta lines.
+   *
+   * THE SECOND LINE IS BOUGHT OUT OF THE NAME'S OWN HEIGHT, NOT OUT OF THE
+   * CARD. At scale 1 the name set at `NAME_Y_COMPACT` ends above
+   * `META_Y_TWO_LINE[0]`, so the strip is the same 28 px either way and the
+   * grid, the total and the barbell do not move. A long name already sets at
+   * this scale today; what is new is that a SHORT name in a long category steps
+   * down too — which is the trade this whole mechanism makes. The name gets
+   * smaller. No fact leaves the card.
+   */
+  NAME_SCALE_COMPACT: 1,
+  /**
+   * Y of the name when the strip prints two meta lines.
+   *
+   * Two pixels above `NAME_Y`, which is what makes the leading even: three
+   * lines of type at `FONT.GLYPH_H` need 25 of the 27 rows between here and the
+   * strip's closing rule, and starting two rows higher is what turns the one
+   * spare row into three — one blank row between the name and the first line,
+   * one between the two lines, and one above the rule.
+   */
+  NAME_Y_COMPACT: 46,
+  /** Y of the meta line when the strip prints ONE. */
   META_Y: 63,
-  /** Separator between the fields on the meta line. */
+  /**
+   * Y of each meta line when the strip prints TWO.
+   *
+   * `FONT.GLYPH_H` is 9 — seven rows of capital and two of descender — so a
+   * scale-1 name set at `NAME_Y_COMPACT` ends on row 54 and the first meta line
+   * clears it at 56. The meta lines are set in caps and digits, which have no
+   * descenders, so the second line's capitals end on row 70 and the strip's
+   * closing rule at 72 has a row of air above it.
+   *
+   * UNTUNED, and the whole band is tight: 28 px is a comfortable two lines and
+   * a dense three. If a tuning pass wants air here it comes out of the
+   * masthead, which is the one block on the card with slack in it.
+   */
+  META_Y_TWO_LINE: [56, 64] as const,
+  /** Separator between the fields on a meta line. */
   META_SEPARATOR: ' · ',
 } as const;
+
+/** Y of meta line `index` when the strip is printing `lineCount` of them. */
+export function lifterMetaLineY(lineCount: number, index: number): number {
+  if (lineCount < 2) return LIFTER_STRIP.META_Y;
+  return LIFTER_STRIP.META_Y_TWO_LINE[index] ?? LIFTER_STRIP.META_Y;
+}
+
+/** Y of the lifter's name when the strip is printing `lineCount` meta lines. */
+export function lifterNameY(lineCount: number): number {
+  return lineCount < 2 ? LIFTER_STRIP.NAME_Y : LIFTER_STRIP.NAME_Y_COMPACT;
+}
 
 /**
  * The optional words inside the category phrase, in the order they are printed.
@@ -106,58 +157,125 @@ export const LIFTER_STRIP = {
  * withholding an input cannot be checked by the people it is meant to convince.
  * Making the omission unrepresentable is stronger than a comment asking for it
  * not to happen — which is what was here before, and it happened.
+ *
+ * `LifterMetaRung` does have a `bodyweightOnOwnLine` flag, and it is not a hole
+ * in the above: it chooses which LINE the bodyweight sits on, and both of its
+ * values print one. The union here is the drop-list, and the bodyweight is not
+ * in it.
  */
 export type LifterCategoryPart = 'equipment' | 'division';
 
 export interface LifterMetaRung {
-  /** Which optional words of the category phrase survive at this rung. */
+  /**
+   * Which optional words of the category phrase survive on the FIRST line.
+   * A part missing here has either moved to the second line or been SPENT; the
+   * two flags below are what say which.
+   */
   readonly category: readonly LifterCategoryPart[];
+  /**
+   * True when the bodyweight goes on a second line instead of sharing the
+   * first. NOT a switch for printing it: there is no combination of these
+   * fields that produces a strip without a bodyweight on it — it is on one
+   * line or the other, and `lifterMetaLinesAtRung` emits it either way.
+   */
+  readonly bodyweightOnOwnLine: boolean;
+  /**
+   * True when the division that `category` left off the first line goes onto
+   * the SECOND line rather than being dropped. This is the difference between
+   * moving a fact and spending one, and it is the whole of the fix: a division
+   * shares a line with the bodyweight instead of leaving the card.
+   */
+  readonly divisionOnSecondLine: boolean;
   /** Whether the bodyweight keeps its " KG". */
   readonly bodyweightUnit: boolean;
 }
 
 /**
- * WHAT COMES OFF THE META LINE WHEN IT WILL NOT FIT, IN ORDER.
+ * WHAT THE STRIP DOES WHEN ITS ONE LINE WILL NOT HOLD EVERYTHING, IN ORDER.
  *
- * The strip has one line for the category phrase and the bodyweight, and a 120+
- * Masters lifter in single-ply needs about 35 px more of it than the card has.
- * The renderer walks this ladder and prints the first variant that fits.
+ * The renderer walks this ladder and prints the first rung whose every line
+ * fits. Every rung is a TRUE statement — never a truncation. A results sheet
+ * that ends in "SINGLE-PL" has stopped being believable, and an ellipsis on a
+ * shareable card reads as a bug.
  *
- * Every variant is a TRUE, shorter statement — never a truncation. A results
- * sheet that ends in "SINGLE-PL" has stopped being believable, and an ellipsis
- * on a shareable card reads as a bug. The first rung drops only wording (the
- * "KG" unit); a fact is dropped only on the last two, and the division goes
- * before the equipment because the division is usually implied by the meet
- * whereas raw-vs-equipped never is.
+ * THE ORDER OF PREFERENCE IS: shorten the wording, then take a second line,
+ * then move a fact down to it, and only then spend one. A second line is
+ * cheaper than a fact because it costs nothing but the NAME's type size — see
+ * `LIFTER_STRIP.NAME_SCALE_COMPACT`; the strip's height does not change and
+ * nothing below it moves.
  *
- * SO A MASTERS LIFTER'S CARD CAN STILL COME OUT SAYING ONLY "MEN'S SINGLE-PLY
- * 120+". That is a real loss and it is not hidden: at 180 px there is one line
- * and five facts, four of which are load-bearing, so the fifth goes. Measured,
- * for the `stress` sample (a 120+ Masters 1 single-ply lifter, `CONTENT.W` is
- * 180 px):
+ * Measured, for the `stress` sample (a 120+ Masters 1 single-ply lifter,
+ * `CONTENT.W` is 180 px):
  *
- *     rung 0  215 px  MEN'S SINGLE-PLY MASTERS 1 120+ · 139.40 KG
- *     rung 1  200 px  MEN'S SINGLE-PLY MASTERS 1 120+ · 139.40
- *     rung 2  148 px  MEN'S SINGLE-PLY 120+ · 139.40           <- what prints
- *     rung 3   89 px  MEN'S 120+ · 139.40
+ *     rung 0  215 px          MEN'S SINGLE-PLY MASTERS 1 120+ · 139.40 KG
+ *     rung 1  200 px          MEN'S SINGLE-PLY MASTERS 1 120+ · 139.40
+ *     rung 2  161 / 45 px     MEN'S SINGLE-PLY MASTERS 1 120+   <- what prints
+ *                             139.40 KG
+ *     rung 3  109 / 102 px    MEN'S SINGLE-PLY 120+
+ *                             MASTERS 1 · 139.40 KG
+ *     rung 4  109 /  45 px    MEN'S SINGLE-PLY 120+          (division SPENT)
+ *     rung 5   50 /  45 px    MEN'S 120+                     (equipment too)
  *
- * Rung 1 misses by 20 px and rung 2 leaves 32 px on the table, so there is no
- * intermediate variant to reach for — nothing between them is a true statement.
- * The two honest alternatives are (a) drop the equipment instead, which fits at
- * about 146 px but makes a single-ply total read as raw, and (b) give the strip
- * a second line, which moves the whole grid down and is a layout change rather
- * than a tuning one. Both are live for the tuning pass; this file is where that
- * call gets made.
+ * WHAT CHANGED AND WHY. This ladder had four rungs and no second line anywhere
+ * in it: its third rung was one line with the division spent, so the stress
+ * card printed "MEN'S SINGLE-PLY 120+ · 139.40" — while the same card printed
+ * `PLACE 3`. A placing is a placing IN A DIVISION; third in what is the first
+ * question a lifter asks of that card, and a real sheet never has a rank
+ * without a division near it (on a meet page the division is the section
+ * heading over the rows the ranks are in, [R8] in `src/game/resultCard.ts`).
+ * The two alternatives measured last round were to spend the EQUIPMENT instead
+ * — which makes a single-ply total read as raw, and is worse on a results card
+ * — or to give the strip a second line. The second line is what rungs 2 and 3
+ * are, and the fact that it costs no height is what makes it the cheap answer.
  *
- * UNTUNED, and the last-two order is a real design call rather than a spacing
- * tweak — if playtesting says division matters more than equipment, swap them.
+ * RUNGS 4 AND 5 ARE STILL HERE AND ARE STILL REACHABLE — but only by a card
+ * with no placing on it, and, at the card's own width, only when even a line
+ * shared with the bodyweight cannot hold the division (about 25 characters of
+ * it). See `lifterMetaRungs`: a card that prints a placing is not offered them
+ * at any width.
+ *
+ * The widest realistic phrase measured is 182 px — "WOMEN'S SINGLE-PLY
+ * SUB-JUNIORS 84+", two pixels past `CONTENT.W`, which is exactly what rung 3
+ * is for (it sets 117 px over 111 px).
+ *
+ * UNTUNED. The rung ORDER is a real design call rather than a spacing tweak: if
+ * playtesting says a second line reads worse than a lost word, rungs 2 and 3
+ * come out, and this file is where that is done.
  */
 export const LIFTER_META_LADDER: readonly LifterMetaRung[] = [
-  { category: ['equipment', 'division'], bodyweightUnit: true },
-  { category: ['equipment', 'division'], bodyweightUnit: false },
-  { category: ['equipment'], bodyweightUnit: false },
-  { category: [], bodyweightUnit: false },
+  { category: ['equipment', 'division'], bodyweightOnOwnLine: false, divisionOnSecondLine: false, bodyweightUnit: true },
+  { category: ['equipment', 'division'], bodyweightOnOwnLine: false, divisionOnSecondLine: false, bodyweightUnit: false },
+  { category: ['equipment', 'division'], bodyweightOnOwnLine: true, divisionOnSecondLine: false, bodyweightUnit: true },
+  { category: ['equipment'], bodyweightOnOwnLine: true, divisionOnSecondLine: true, bodyweightUnit: true },
+  { category: ['equipment'], bodyweightOnOwnLine: true, divisionOnSecondLine: false, bodyweightUnit: true },
+  { category: [], bodyweightOnOwnLine: true, divisionOnSecondLine: false, bodyweightUnit: true },
 ];
+
+/** True when a rung's strip still names the division, wherever it puts it. */
+export function rungNamesDivision(rung: LifterMetaRung): boolean {
+  return rung.category.includes('division') || rung.divisionOnSecondLine;
+}
+
+/**
+ * The rungs a card is allowed to use.
+ *
+ * A CARD THAT PRINTS A PLACING KEEPS ITS DIVISION. Not "usually", not "at the
+ * widths we measured" — the rungs that spend it are filtered out of the ladder
+ * before the width is even looked at, so there is no input, however long its
+ * division string, that produces a ranked card with no division on it. If the
+ * remaining rungs all overrun, `lifterStrip` falls back to the last of them and
+ * the line runs long, which is `firstThatFits`' documented rule and the right
+ * one: a line that overruns is recoverable by tuning, a fact that vanished is
+ * a card telling a lifter they came third in nothing.
+ *
+ * A card with NO placing still walks the whole ladder, and can still end up
+ * without its division. That is the residual this piece has carried and
+ * documented all along; what makes it a defect rather than a trade-off is the
+ * rank printed next to it.
+ */
+export function lifterMetaRungs(placed: boolean): readonly LifterMetaRung[] {
+  return placed ? LIFTER_META_LADDER.filter(rungNamesDivision) : LIFTER_META_LADDER;
+}
 
 /**
  * The attempt grid. One row per lift, one column per attempt, plus a best

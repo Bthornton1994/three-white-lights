@@ -1,5 +1,5 @@
 /**
- * sampleCards.ts — two finished meets, for the screenshot harness and the
+ * sampleCards.ts — four finished meets, for the screenshot harness and the
  * inspection screen.
  *
  * PURE, and deliberately built by RUNNING THE MEET ENGINE rather than by
@@ -146,8 +146,45 @@ export const STRESS_MEET_CARD: ResultCard = build({
   placing: 3,
 });
 
+/**
+ * A SHORT NAME IN A LONG CATEGORY — the case the other three do not cover.
+ *
+ * Same meet as `strong`, so the only thing that differs is the lifter. "Nils
+ * Berg" would set at double height and the identity strip steps it down to
+ * single anyway, because the category needs a second line and the second line
+ * is paid for out of the name (`LIFTER_STRIP.NAME_SCALE_COMPACT`). Without this
+ * card that trade is only visible in a test: `stress`'s name is already too
+ * long for double height, so it shows the second line but not what buys it.
+ *
+ * He also placed, which is the reason the division may not be spent at all —
+ * see `lifterMetaRungs` in `src/card/cardTuning.ts`.
+ */
+export const MASTERS_MEET_CARD: ResultCard = build({
+  meet: MEET,
+  lifter: {
+    name: 'Nils Berg',
+    sex: 'male',
+    bodyweightKg: 138.6,
+    division: 'Masters 2',
+    equipment: 'Single-ply',
+  },
+  state: runMeet([
+    [300, GOOD],
+    [320, GOOD],
+    [330, NO_LIFT],
+    [200, GOOD],
+    [210, GOOD],
+    [215, SPLIT],
+    [310, GOOD],
+    [330, GOOD],
+    [340, GOOD],
+  ]),
+  placing: 2,
+});
+
 export const SAMPLE_CARDS: readonly { readonly id: string; readonly card: ResultCard }[] = [
   { id: 'strong', card: STRONG_MEET_CARD },
   { id: 'bombed', card: BOMBED_MEET_CARD },
   { id: 'stress', card: STRESS_MEET_CARD },
+  { id: 'masters', card: MASTERS_MEET_CARD },
 ];
