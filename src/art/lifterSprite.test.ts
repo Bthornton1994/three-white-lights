@@ -142,26 +142,6 @@ describe('rendered frame integrity', () => {
     }
   });
 
-  it('outlines the whole silhouette: no fill pixel touches open space', () => {
-    const { grid } = renderLifterFrame(spec({ depth: 1, strainLevel: 2, totalKg: 250 }));
-    const outlines = new Set<number>([PAL.OUTLINE, PAL.EQ_OUTLINE]);
-    for (let y = 1; y < grid.h - 1; y += 1) {
-      for (let x = 1; x < grid.w - 1; x += 1) {
-        const v = getPx(grid, x, y);
-        if (isTransparentIndex(v) || outlines.has(v)) continue;
-        const neighbours = [
-          getPx(grid, x - 1, y),
-          getPx(grid, x + 1, y),
-          getPx(grid, x, y - 1),
-          getPx(grid, x, y + 1),
-        ];
-        for (const n of neighbours) {
-          expect(isTransparentIndex(n), `bare fill pixel at ${x},${y}`).toBe(false);
-        }
-      }
-    }
-  });
-
   it('is deterministic', () => {
     const a = renderLifterFrame(spec({ depth: 0.5, strainLevel: 2 })).grid;
     const b = renderLifterFrame(spec({ depth: 0.5, strainLevel: 2 })).grid;
@@ -918,6 +898,47 @@ describe('the lifter is the brightest thing in his own frame', () => {
     }
   });
 
+  it('outlines the whole silhouette: no fill pixel touches open space', () => {
+    // ON THE WHOLE SWEEP, not on one frame. This used to render exactly
+    // `depth 1, strain 2, 250 kg` and check that. It is the check that caught
+    // the `outlinePass` seam defect — a notch bitten out of the outside of a
+    // limb has material on one axis and open space on the other, so the seam
+    // rule filled it with material and left the pixel beyond it bare. That
+    // depends on which masses OVERLAP, which is exactly what depth, direction,
+    // strain, pitch and plate width all move.
+    //
+    // AND THE MARGIN IT HAD WAS ONE PIXEL, measured rather than assumed: with
+    // the seam fix reverted, the old single frame shows exactly ONE bare fill
+    // pixel, while the sweep shows 228 across 130 of its 448 frames. The check
+    // was not blind, but it was one pixel of a one-pose sample away from being
+    // blind, and the sweep was already built two hundred lines further down.
+    // The offenders are COLLECTED and asserted once per frame rather than
+    // `expect`-ed per neighbour. 448 frames x ~1500 fill pixels x 4 neighbours
+    // is 2.7 million matcher calls, which took 39 s and tripped the suite
+    // timeout under parallel load. The check is identical; only the reporting
+    // moved.
+    const outlines = new Set<number>([PAL.OUTLINE, PAL.EQ_OUTLINE]);
+    for (const frame of CRAFT_SWEEP) {
+      const grid = frame.grid;
+      const bare: string[] = [];
+      for (let y = 1; y < grid.h - 1; y += 1) {
+        for (let x = 1; x < grid.w - 1; x += 1) {
+          const v = getPx(grid, x, y);
+          if (isTransparentIndex(v) || outlines.has(v)) continue;
+          if (
+            isTransparentIndex(getPx(grid, x - 1, y)) ||
+            isTransparentIndex(getPx(grid, x + 1, y)) ||
+            isTransparentIndex(getPx(grid, x, y - 1)) ||
+            isTransparentIndex(getPx(grid, x, y + 1))
+          ) {
+            bare.push(`${x},${y}`);
+          }
+        }
+      }
+      expect(bare, `${frame.where}: bare fill pixels against open space`).toEqual([]);
+    }
+  });
+
   it('separates material from keyline by taking off the outline and nothing else', () => {
     // The like-for-like comparison rests on `excludeSilhouetteKeyline` removing
     // the outline rather than trimming the outside of every dark mass, which
@@ -1189,52 +1210,143 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     // six windows clear it at every pose; both ARMS do not, at the poses
     // counted below.
     //
-    // WHAT CHANGED, AND WHAT IT BOUGHT. The forearm was a cone, `FOREARM_R`
-    // [2.0, 1.7], six drawn pixels across with a one-pixel contour down each
-    // flank; the contour is the ramp's darkest entry by construction
-    // (`SHADING.EDGE_STEP_DROP`), so a third of it was on the floor before any
-    // shading happened. It is now a bellied three-radius chain, [2.1, 2.8,
-    // 1.9]. Measured over this same 448-frame sweep:
+    // WHAT CHANGED IN THE ROUND BEFORE LAST, AND WHAT IT BOUGHT. The forearm was
+    // a cone, `FOREARM_R` [2.0, 1.7], six drawn pixels across with a one-pixel
+    // contour down each flank; the contour is the ramp's darkest entry by
+    // construction (`SHADING.EDGE_STEP_DROP`), so a third of it was on the floor
+    // before any shading happened. It is now a bellied three-radius chain,
+    // [2.1, 2.8, 1.9], and that took the frames over the bound from 200 to 80
+    // and the worst excess from 0.0882 to 0.0400.
     //
-    //                            before     after
-    //   far arm floor share      37.1%      31.1%   (mean over the sweep)
-    //   ...worst frame           50.0%      40.5%
-    //   clearance under bound     0.7 pt     4.6 pt (mean)
-    //   window on ramp step 1    34.1%      38.4%   (pixels, whole sweep)
-    //   frames over the bound      200         80
+    // WHAT CHANGED THIS ROUND, AND WHAT IT DID NOT BUY. `UPPER_ARM_R` was still
+    // a cone, [2.7, 2.1], with a BICEPS mark stamped on a bone that had no
+    // belly — the same defect one segment up, and it left the forearm as the
+    // widest modelled mass on the arm (7.6 drawn against 6.9 at the mark). It is
+    // now [2.7, 3.0, 2.1]. Measured over this same 448-frame sweep, with
+    // `FOREARM_R` held at [2.1, 2.8, 1.9] on both sides:
     //
-    // The frame count is 8 x the number of distinct arm DRAWINGS that fail,
-    // because pitch and plate colour do not move an arm: 25 far-arm drawings
-    // before, 8 far-arm and 2 near-arm now, out of 56 poses.
+    //                            biceps 2.448   biceps 3.0
+    //                            (the old cone) (now)
+    //   far arm floor share         31.1%         31.1%   (mean over the sweep)
+    //   far arm worst frame         40.5%         40.5%
+    //   far arm mean clearance       4.58 pt       4.42 pt
+    //   far arm window size         52.6 px       53.1 px (mean)
+    //   far arm ramp steps 0..3   31.0/38.7/    31.0/40.1/
+    //                             26.5/3.8      25.3/3.7  (% of window pixels)
+    //   near arm mean clearance     13.00 pt      12.91 pt
+    //   frames over the bound      64 far        72 far
+    //                              16 near        8 near
+    //                              80 total      80 total
+    //   worst excess               0.0400        0.0400
+    //
+    // So it is a WASH on this clause, and slightly negative on mean clearance.
+    // That is the honest result and it is not dressed up: the proportion defect
+    // the change was made for is real and is fixed, and the floor-share number
+    // did not move.
+    //
+    // WHY IT DID NOT MOVE, MEASURED. At `BICEPS_BELLY_ALONG` the belly sits
+    // ~8.2 px from centre and `CRAFT.LIMB_TORSO_CLEARANCE_PX` puts this window's
+    // inner edge at 9.5-10.0, so the belly is clipped out of the window at every
+    // pose. And it is not on the silhouette either: the outermost skin pixel of
+    // every row between shoulder and elbow is identical, row for row, at every
+    // biceps radius from 2.448 to 4.0, because the hands are wider than the
+    // elbows and the FOREARM is the outboard mass in that band. Wider biceps
+    // radii DO improve this number — mean clearance climbs to 5.71 at 3.8 — but
+    // only by painting over the singlet, whose own drawn pixel count goes
+    // 141 -> 125 at BRACE and 98 -> 76 in the HOLE over that range, losing the
+    // far shoulder's strap entirely past about 3.6. Improving a floor share by
+    // burying the singlet is not an improvement, and it was declined. All of
+    // those are OURS, off our own frames. See `RIG_GEOMETRY.UPPER_ARM_R`.
+    //
+    // THE 2-D GRID. Rows are `UPPER_ARM_R[1]`, columns `FOREARM_R[1]`, all
+    // ours, 448 rendered frames per cell, 36 cells. Far arm mean clearance in
+    // points under the reference bound:
+    //
+    //          fa 2.2  2.4   2.6   2.8   3.0   3.2
+    //   ua 2.45  3.02  3.39  4.32  4.58  3.86  2.84
+    //      2.60  3.01  3.34  4.30  4.46  3.67  2.80
+    //      2.80  3.36  3.60  4.33  4.52  3.81  3.05
+    //      3.00  3.45  3.57  4.29  4.42  3.66  2.93   <- shipped
+    //      3.20  3.57  3.66  4.45  4.51  3.75  2.88
+    //      3.40  4.15  4.22  5.00  5.05  4.22  3.36
+    //
+    // frames over the bound at the same cells, far + near:
+    //
+    //          fa 2.2   2.4    2.6    2.8    3.0    3.2
+    //   ua 2.45 104+0  152+0  128+0  64+16  32+16  64+8
+    //      2.60 128+0  144+0  120+0  64+ 8  40+16  80+8
+    //      2.80  96+0  152+0  112+0  72+ 8  40+16  56+8
+    //      3.00  80+0  120+0   96+0  72+ 8  40+16  64+8   <- shipped
+    //      3.20  80+0   88+0   96+0  64+ 8  48+ 8  56+8
+    //      3.40  56+0   64+0   80+0  72+ 0  40+ 8  40+8
+    //
+    // and the worst single-frame excess over either arm, which is the number the
+    // pin below is set from:
+    //
+    //          fa 2.2   2.4    2.6    2.8    3.0    3.2
+    //   ua 2.45 .0882  .0625  .0612  .0400  .0746  .0488
+    //      2.60 .0781  .0625  .0612  .0400  .0746  .0417
+    //      2.80 .0645  .0625  .0612  .0400  .0769  .0417
+    //      3.00 .0769  .0469  .0455  .0400  .0870  .0435  <- shipped
+    //      3.20 .0769  .0435  .0517  .0462  .0615  .0417
+    //      3.40 .0588  .0435  .0408  .0400  .0580  .0417
+    //
+    // Read the columns, not the diagonal: `FOREARM_R[1]` = 2.8 is the best cell
+    // of its row on worst excess in five rows of six and is never beaten, and
+    // the mean-clearance turn at 2.8 holds in every biceps row tried — including
+    // three more, 3.6/3.8/4.0, swept at fa 2.6/2.8/3.0 and not tabulated here.
+    // THAT is what makes the forearm peak a 2-D result rather than the 1-D slice
+    // it was claimed from. The biceps axis does not turn inside the range where
+    // the drawing survives, which is why the value shipped there is chosen on
+    // proportion instead.
+    //
+    // Frame counts move around inside a column with no pattern — 104, 128, 96,
+    // 80, 80, 56 down the fa 2.2 column — because a count is a threshold
+    // crossing on a quantised drawing and a fifth of a pixel flips whole poses
+    // across it. Mean clearance is the quantity; the counts are pinned because
+    // they are exact, not because they are smooth.
     //
     // WHY IT IS NOT ZERO, stated rather than glossed. A limb's floor share is
-    // its perimeter over its area, so closing the gap entirely means a wider
-    // arm; and `neighbourhoodProfile`'s bound gets STRICTER as the window
-    // grows, so past a certain width the extra pixels cost more bound than they
-    // buy. `RIG_GEOMETRY.FOREARM_R` carries the swept numbers: the far arm's
-    // mean clearance peaks at a belly of 2.8 and falls either side of it. Widths
-    // that beat 80 frames exist — a 3.2/2.4 cone reaches 8 — and they draw a
-    // forearm thicker than the upper arm above it and close the negative space
-    // between the arm and the ribs. That is the trade, and it was declined.
+    // its perimeter over its area — exactly, because `RAMPS.SKIN`'s entry 0 is
+    // the contour by construction and `litWithAxial` floors the lamp at AMBIENT
+    // so no fill pixel can land there. Closing the gap by geometry therefore
+    // means a wider arm, and `neighbourhoodProfile`'s bound gets STRICTER as the
+    // window grows. The reference's own answer is a DEEPER SKIN RAMP — count the
+    // entries of `REF_WRESTLER_SKIN_DARK_TO_LIGHT` above against `RAMPS.SKIN` —
+    // and that costs palette slots the LIFTER bank does not have. Which lifter
+    // colour to give up is a human's call, not a builder's, so it is recorded
+    // here rather than taken.
     //
-    // THE NEAR ARM IS NEW HERE AND IS NOT SWEPT UNDER THE RUG. Before, only the
-    // far arm ever exceeded. The near arm's own mean clearance is 13.2 points,
-    // four times the far arm's, but its window grew with the same forearm and
-    // two of its 56 drawings now cross. Both limbs are counted separately below
-    // so neither can hide inside the other's total.
+    // WHICH WINDOW IS WHICH. `limbWindows` names its arm windows by SCREEN side,
+    // and screen-right is sign +1, which `renderLifterFrame` draws FIRST and
+    // dims with `SHADING.FAR_LIMB_LIGHT_SCALE` — so 'right arm' is the FAR arm
+    // and 'left arm' is the near one. The two constants below say so at the
+    // numbers rather than leaving it to a comment three paragraphs up, because
+    // the near/far asymmetry is the whole reason the counts differ.
     //
     // The pins go BOTH WAYS on purpose. If the sprite improves, these counts
     // drop and this test goes RED, and whoever fixed it has to come here and say
     // so. It cannot decay into a pass.
-    const FLOOR_EXCESS_FRAMES = { 'right arm': 64, 'left arm': 16 } as const;
+    const FAR_ARM_WINDOW = 'right arm';
+    const NEAR_ARM_WINDOW = 'left arm';
+    const FLOOR_EXCESS_FRAMES = {
+      [FAR_ARM_WINDOW]: 72,
+      [NEAR_ARM_WINDOW]: 8,
+    } as const;
     // The worst single frame is ASCENT d0.65 s2, whose far-arm window is 0.380
-    // floor, and it clears its bound by exactly 0.04. Exactly, because both
-    // sides are ratios of small integer pixel counts; no reference figure is
-    // restated here, because the bound is computed above from the decoded PNG
-    // and a number printed in a comment is the thing `@ref` exists to stop.
-    // 0.041 rather than 0.05 because this is a ratchet and the only slack it
-    // needs is enough not to fail on the value it was measured at.
-    const MAX_FLOOR_EXCESS = 0.041;
+    // floor over 50 px, and it clears its bound by exactly 0.04 — exactly,
+    // because both sides are ratios of small integer pixel counts. No reference
+    // figure is restated here; the bound is computed above from the decoded PNG.
+    //
+    // `toBeCloseTo`, NOT `toBeLessThan`, and that is the fix to a real defect.
+    // This was `expect(worstExcess).toBeLessThan(0.041)` against a measured
+    // 0.0400, which only ever catches WORSENING: the excess could fall to 0.01
+    // with the counts unchanged, the test would stay green, and the sentence
+    // above claiming it clears its bound by 0.04 would silently become false
+    // prose. That is the exact defect class the `@ref` convention exists to
+    // kill, applied to an ours-only number. Three decimal places is +/- 0.0005,
+    // which is tighter than one pixel of any window on the figure can move it.
+    const MEASURED_WORST_FLOOR_EXCESS = 0.04;
     const counted = new Map<string, number>();
     let worstExcess = 0;
     for (const { name, stats } of eachLimb()) {
@@ -1250,7 +1362,7 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     // Exact, per limb, both directions at once: a count that moves either way
     // fails and has to be re-measured by hand.
     expect(Object.fromEntries(counted)).toEqual(FLOOR_EXCESS_FRAMES);
-    expect(worstExcess).toBeLessThan(MAX_FLOOR_EXCESS);
+    expect(worstExcess).toBeCloseTo(MEASURED_WORST_FLOOR_EXCESS, 3);
   });
 
   it('holds its own line on black ink per limb — an OURS-ONLY ratchet, not a comparison', () => {

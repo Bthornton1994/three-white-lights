@@ -115,7 +115,14 @@
 
 import { PAL } from './palette';
 import { CENTER_X } from './spriteTuning';
-import { RIG_GEOMETRY, forearmSpan, kneeSleeveSpan, singletHemY, type Pose } from './rig';
+import {
+  RIG_GEOMETRY,
+  forearmSpan,
+  kneeSleeveSpan,
+  singletHemY,
+  upperArmSpan,
+  type Pose,
+} from './rig';
 import { getPx, setPx, type IndexGrid } from './raster';
 
 // ---------------------------------------------------------------------------
@@ -256,22 +263,14 @@ export const MARK_ANCHOR_GEOMETRY = {
   STRAP_HALF_W: 0.46,
   /** Strap anchor, rows above the chest landmark. */
   STRAP_LIFT: 2,
-  /**
-   * Biceps anchor: this far from the shoulder toward the elbow.
-   *
-   * Proximal on purpose — the belly of the biceps sits in the upper third of
-   * the upper arm, and past halfway the near forearm crosses in front of it at
-   * squat depth and there is no upper arm left to paint on.
-   */
-  BICEPS_TOWARD_ELBOW: 0.42,
-  // THE FOREARM ANCHOR IS NOT HERE ANY MORE. It was `FOREARM_TOWARD_HAND: 0.42`,
-  // beside `BICEPS_TOWARD_ELBOW`, and that was right while the forearm was a
-  // cone: a fraction along a featureless taper is a mark position and nothing
-  // else. The forearm now has a drawn belly at
-  // `RIG_GEOMETRY.FOREARM_BELLY_ALONG`, so the fraction names a place on the
-  // MASS, and a belly mark that can slide off the belly it is naming is the
-  // same defect `singletHemY` was extracted to prevent. `anchorPoint` reads
-  // `forearmSpan` below.
+  // NEITHER BELLY ANCHOR IS HERE ANY MORE. They were `BICEPS_TOWARD_ELBOW: 0.42`
+  // and `FOREARM_TOWARD_HAND: 0.42`, side by side, and that was right only while
+  // both bones were cones: a fraction along a featureless taper is a mark
+  // position and nothing else. Both bones now have a DRAWN belly, at
+  // `RIG_GEOMETRY.BICEPS_BELLY_ALONG` and `RIG_GEOMETRY.FOREARM_BELLY_ALONG`, so
+  // each fraction names a place on the MASS — and a belly mark that can slide
+  // off the belly it is naming is the same defect `singletHemY` was extracted to
+  // prevent. `anchorPoint` reads `upperArmSpan` and `forearmSpan` below.
   /** Wrist anchor: this far from the hand toward the elbow. */
   WRIST_TOWARD_ELBOW: 0.28,
   /** Quad anchor: this far from the hip toward the knee. */
@@ -332,10 +331,9 @@ export function anchorPoint(key: MarkAnchorKey, pose: Pose, sign: number): Ancho
     // capsules are drawn between (`drawArm`), not to a joint plus an offset, so
     // they stay on the muscle when the elbow tucks in on a grind.
     case 'BICEPS': {
-      const shX = CENTER_X + sign * pose.shoulderHalfW * G.ATTACH.ARM_ROOT;
-      const elX = CENTER_X + sign * pose.elbowHalfW;
-      const f = A.BICEPS_TOWARD_ELBOW;
-      return at(shX + (elX - shX) * f, pose.shoulderY + (pose.elbowY - pose.shoulderY) * f);
+      // The drawn belly, not a fraction of its own. See `upperArmSpan`.
+      const u = upperArmSpan(pose, sign);
+      return at(u.bellyX, u.bellyY);
     }
     case 'ELBOW':
       return at(CENTER_X + sign * pose.elbowHalfW, pose.elbowY);
