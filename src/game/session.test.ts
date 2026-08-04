@@ -15,6 +15,7 @@ import {
   isMadeRep,
   liftForDay,
   liftMomentFor,
+  nextBestE1rm,
   nextCheckInQuestion,
   playedSessionMs,
   playedSetFrom,
@@ -30,9 +31,10 @@ import {
   type SessionEvent,
   type SessionState,
 } from './session';
-import { SESSION_COPY, SESSION_TUNING } from './sessionTuning';
+import { SESSION_COPY, SESSION_PROGRESSION_GUARD, SESSION_TUNING } from './sessionTuning';
 import {
   EMPTY_FATIGUE_STATE,
+  FATIGUE_TUNING,
   UNLUCKIEST_ROLLS,
   readinessCheckIn,
   recordSession,
@@ -431,26 +433,170 @@ describe('prescription — GDD §3.3, RPE target in, weight out', () => {
     expect(() => prescribeSession(200, 'squat', 8, steady, 0)).toThrow(RangeError);
   });
 
-  it('rounding DOWN means a target hit exactly can never ratchet e1RM upward', () => {
-    // The property the rounding mode exists for. Over a wide sweep of e1RMs and
-    // every offered RPE, a full set completed on target reports an e1RM at or
-    // below the one it was prescribed from — so no PR is ever bought with
-    // rounding, and the next day's prescription cannot climb off it.
-    let checked = 0;
-    for (let e1rm = 60; e1rm <= 400; e1rm += 2.5) {
-      for (const rpe of SESSION_TUNING.RPE_CHOICES) {
-        const plan = prescribeSession(e1rm, 'squat', rpe, steady, 1);
-        const played = playedSetFrom(plan, 1, Array<LiftOutcome>(plan.repsPerSet).fill('good-lift'));
-        const report = played.report;
-        expect(report).not.toBeNull();
-        if (report === null) continue;
-        const implied = sessionE1rmFrom([report]);
-        expect(implied).not.toBeNull();
-        expect(implied ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(e1rm);
-        checked += 1;
+  /**
+   * One cell of the sweep below: a full set hit exactly on target, at one e1RM
+   * and one rung, on one check-in.
+   */
+  function impliedFromTargetHit(
+    e1rm: number,
+    rpe: number,
+    readiness: ReturnType<typeof readinessCheckIn>,
+  ): number {
+    const plan = prescribeSession(e1rm, 'squat', rpe, readiness, 1);
+    const played = playedSetFrom(plan, 1, Array<LiftOutcome>(plan.repsPerSet).fill('good-lift'));
+    const report = played.report;
+    expect(report, `${e1rm} kg @ RPE ${rpe}`).not.toBeNull();
+    if (report === null) return Number.NaN;
+    const implied = sessionE1rmFrom([report]);
+    expect(implied, `${e1rm} kg @ RPE ${rpe}`).not.toBeNull();
+    return implied ?? Number.NaN;
+  }
+
+  it('a target hit exactly reports below the base on a flat or negative check-in, and ABOVE it on a positive one', () => {
+    // ---------------------------------------------------------------------
+    // THIS PINS WHAT THE LOOP DOES, NOT WHAT IT SHOULD DO. READ BEFORE EDITING.
+    // ---------------------------------------------------------------------
+    // The previous version of this sweep ran 685 real iterations — and ran
+    // every one of them on `steady`, the ONE check-in where the nudge is 0 and
+    // a ratchet is arithmetically impossible. Its name claimed a property of
+    // the loop; its fixture only ever exercised the case that was never at
+    // risk. This runs the same ladder on every band the check-in can produce.
+    //
+    // WHAT IT FINDS, and it is a KNOWN GAP being recorded rather than endorsed:
+    // on a positive check-in the prescribed bar is `chart% x (1 + nudge)`, the
+    // estimate comes back through the same chart cell, and so a set hit exactly
+    // on target reports an e1RM ABOVE the one it was prescribed from.
+    // `nextBestE1rm` is monotone, so that becomes the best on record, and
+    // tomorrow's bar is computed from it — see the compounding test below for
+    // what that does over 30 sessions.
+    //
+    // That is not a defect in `e1rm.ts`, whose chart cancellation is correct
+    // and deliberate. It is that the readiness nudge is a FLAT CONSTANT
+    // (`FATIGUE_TUNING.READINESS_LOAD_ADJUSTMENT_PERCENT`) that is not yet
+    // coupled to training stimulus. That coupling is a recorded dependency on
+    // the fatigue/progression work (GDD §3.4): the nudge should scale with
+    // RPE/effort history rather than being paid flat for three taps. When it
+    // lands, THESE COUNTS ARE WHAT CHANGES, and they are written down here so
+    // the change is loud instead of silent.
+    const sweep = [
+      { name: 'grinding', answers: WRECKED, band: 'grinding', nudge: -5, above: 0, below: 685 },
+      { name: 'steady', answers: NEUTRAL, band: 'steady', nudge: 0, above: 0, below: 685 },
+      { name: 'ready', answers: READY, band: 'ready', nudge: 2, above: 634, below: 51 },
+      { name: 'primed', answers: PRIMED, band: 'primed', nudge: 5, above: 685, below: 0 },
+    ] as const;
+
+    let cells = 0;
+    for (const row of sweep) {
+      const readiness = readinessCheckIn(row.answers);
+      // The fixture really is the band it claims to be. Without this the counts
+      // below could all be measuring the same check-in four times.
+      expect(readiness.band, row.name).toBe(row.band);
+      expect(readiness.loadAdjustmentPercent, row.name).toBe(row.nudge);
+
+      let above = 0;
+      let below = 0;
+      let equal = 0;
+      for (let e1rm = 60; e1rm <= 400; e1rm += 2.5) {
+        for (const rpe of SESSION_TUNING.RPE_CHOICES) {
+          const implied = impliedFromTargetHit(e1rm, rpe, readiness);
+          if (implied > e1rm) above += 1;
+          else if (implied < e1rm) below += 1;
+          else equal += 1;
+          cells += 1;
+        }
       }
+      expect(above + below + equal, `${row.name} covered every cell`).toBe(685);
+      // Rounding DOWN never lands exactly on the base: the bar is snapped to a
+      // loadable increment, so something is always lost or gained.
+      expect(equal, `${row.name} exact`).toBe(0);
+      expect(above, `${row.name} ratcheted`).toBe(row.above);
+      expect(below, `${row.name} held or lost`).toBe(row.below);
     }
-    expect(checked).toBe(685);
+    expect(cells).toBe(685 * sweep.length);
+
+    // Named cells, hand-computed against the table above, so the counts cannot
+    // all drift together without one of these moving too.
+    //   grinding, 200 kg @ RPE 8: 200 x 86.3% x 0.95 = 163.97 -> 162.5 -> /0.863
+    expect(impliedFromTargetHit(200, 8, readinessCheckIn(WRECKED))).toBeCloseTo(188.2966, 4);
+    //   steady,   200 kg @ RPE 8: 172.6 -> 172.5 -> /0.863
+    expect(impliedFromTargetHit(200, 8, readinessCheckIn(NEUTRAL))).toBeCloseTo(199.8841, 4);
+    //   primed,   200 kg @ RPE 8: 181.23 -> 180 -> /0.863. ABOVE the 200 it came from.
+    expect(impliedFromTargetHit(200, 8, readinessCheckIn(PRIMED))).toBeCloseTo(208.5747, 4);
+    //   ready is the one band where rounding can still swallow the nudge: at
+    //   145 kg @ RPE 6 the bar is 117.595, +2% takes it to 119.947, and
+    //   snapping DOWN to 117.5 gives back less than it added. All 51 of the
+    //   `below` cells counted above are this shape.
+    expect(impliedFromTargetHit(145, 6, readinessCheckIn(READY))).toBeCloseTo(144.8829, 4);
+  });
+
+  it('and that ratchet COMPOUNDS: 30 on-target primed sessions take a 200 kg squat past 770 kg', () => {
+    // The measured cost of the gap the sweep above pins, driven only through
+    // this module's public API — the same four calls the app makes, with the
+    // next day's prescription computed from the number the last one minted.
+    //
+    // KNOWN AND RECORDED (GDD §3.4), NOT ENDORSED. The numbers are here so that
+    // coupling the nudge to training stimulus fails this test rather than
+    // passing it quietly.
+    function thirtySessions(
+      answers: ReadinessCheckIn,
+      rpe: number,
+    ): { readonly best: number; readonly prs: number } {
+      let best: number | null = 200;
+      let prs = 0;
+      for (let session = 0; session < 30; session += 1) {
+        const plan = prescribeSession(
+          best ?? 200,
+          'squat',
+          rpe,
+          readinessCheckIn(answers),
+          SESSION_TUNING.WORK_SETS,
+        );
+        const reports = [];
+        for (let s = 0; s < plan.workSets; s += 1) {
+          const played = playedSetFrom(
+            plan,
+            s + 1,
+            Array<LiftOutcome>(plan.repsPerSet).fill('good-lift'),
+          );
+          if (played.report !== null) reports.push(played.report);
+        }
+        const before = best;
+        best = nextBestE1rm(best, sessionE1rmFrom(reports));
+        if (best !== null && (before === null || best > before)) prs += 1;
+      }
+      return { best: best ?? Number.NaN, prs };
+    }
+
+    // The one case the old sweep covered, and the only one that holds still.
+    for (const rpe of SESSION_TUNING.RPE_CHOICES) {
+      const flat = thirtySessions(NEUTRAL, rpe);
+      expect(flat.best, `steady RPE ${rpe}`).toBe(200);
+      expect(flat.prs, `steady RPE ${rpe}`).toBe(0);
+    }
+
+    // And what the nudged path really does. Every rung, every session a PR.
+    const measured: readonly (readonly [number, number])[] = [
+      [6, 770.65],
+      [7, 767.62],
+      [8, 770.57],
+      [9, 770.74],
+      [10, 780.91],
+    ];
+    for (const [rpe, expected] of measured) {
+      const run = thirtySessions(PRIMED, rpe);
+      expect(run.best, `primed RPE ${rpe}`).toBeCloseTo(expected, 2);
+      // A PR every single session. GDD §7.2 hangs the cut-in beat off PR
+      // moments and says scarcity "is the entire mechanic"; at today's tuning
+      // there is none, and this is the number that says so.
+      expect(run.prs, `primed RPE ${rpe}`).toBe(30);
+    }
+
+    // `MAX_E1RM_GAIN_FRACTION_PER_SESSION` is 6% against a 5% nudge, so the
+    // one guard in the path never binds. Stated as an assertion rather than as
+    // a comment, because it is why the climb above is unchecked.
+    expect(SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION).toBeGreaterThan(
+      FATIGUE_TUNING.READINESS_LOAD_ADJUSTMENT_PERCENT.primed / 100,
+    );
   });
 
   it('offers RPE 8 by default', () => {
@@ -857,28 +1003,93 @@ describe('the proposal and the projection — the client proposes, the server pu
 });
 
 describe('session length — GDD §3.2’s 60-90 seconds', () => {
-  it('a played session lands inside the window', () => {
+  // ---------------------------------------------------------------------------
+  // THERE IS NO LOWER-BOUND ASSERTION HERE, AND ITS ABSENCE IS DELIBERATE.
+  // ---------------------------------------------------------------------------
+  // GDD §3.2 budgets 60-90 s and §12.2 judges this piece against a best-in-class
+  // daily-habit app on "time-to-first-input, session length, and whether the
+  // close-out moment lands", with the bar being that ours "must not be slower or
+  // flabbier". A session that finishes UNDER the budget wins that bar; it does
+  // not fail it.
+  //
+  // The measured machine time is 54.3 s at RPE 6 and 60.3 s at RPE 10 — below
+  // §3.2's floor at four of the five rungs. A `>= 60_000` assertion here only
+  // ever passed because `HUMAN_INPUT_BUDGET_MS`, which is a guess and which no
+  // shipping code reads, was added to the measurement first. Asserting a floor
+  // that a guessed constant is holding up is not a check, so the floor is gone
+  // and the divergence from §3.2 is recorded in GDD §11 instead.
+  //
+  // The CEILING is the direction that matters and it is kept, padded with the
+  // human budget, which makes it the stricter of the two readings.
+
+  /**
+   * The whole session on the clock: the reps as they were actually played, plus
+   * the beats `SESSION_TUNING` holds, plus the guessed allowance for the player
+   * reading and deciding.
+   *
+   * The set count is THE SETS ACTUALLY PLAYED, not the template and not the
+   * sets that banked a report. A session cut short by an injury cap or by a
+   * miss on the first rep of a set plays fewer sets than `WORK_SETS`, and rests
+   * between sets that did not happen are not time anybody spent.
+   */
+  function wholeSessionMs(played: ReturnType<typeof playWholeSession>): number {
+    return (
+      playedSessionMs(played.repMs, played.reps, played.state.completedSets.length) +
+      SESSION_TUNING.HUMAN_INPUT_BUDGET_MS
+    );
+  }
+
+  it('a played session fits inside the budget', () => {
     const played = playWholeSession(context(), NEUTRAL, 8);
     expect(played.state.closeOut?.canPropose).toBe(true);
-    const machineMs = playedSessionMs(
-      played.repMs,
-      played.reps,
-      played.state.closeOut?.sets.length ?? 0,
-    );
-    const total = machineMs + SESSION_TUNING.HUMAN_INPUT_BUDGET_MS;
-    expect(total).toBeGreaterThanOrEqual(60_000);
-    expect(total).toBeLessThanOrEqual(90_000);
+    expect(wholeSessionMs(played)).toBeLessThanOrEqual(90_000);
   });
 
-  it('stays inside it at both ends of the RPE ladder', () => {
-    for (const rpe of [6, 10]) {
+  it('fits at every rung of the RPE ladder', () => {
+    for (const rpe of SESSION_TUNING.RPE_CHOICES) {
       const played = playWholeSession(context(), NEUTRAL, rpe);
-      const total =
-        playedSessionMs(played.repMs, played.reps, SESSION_TUNING.WORK_SETS) +
-        SESSION_TUNING.HUMAN_INPUT_BUDGET_MS;
-      expect(total).toBeGreaterThanOrEqual(60_000);
-      expect(total).toBeLessThanOrEqual(90_000);
+      expect(wholeSessionMs(played), `RPE ${rpe}`).toBeLessThanOrEqual(90_000);
     }
+  });
+
+  it('counts the sets that were played, not the sets that were planned', () => {
+    // The bug this closes: passing `SESSION_TUNING.WORK_SETS` charges a rest
+    // beat for every set in the template, including ones a shortened session
+    // never reached. `cappedSession` (GDD §3.5) produces exactly that session.
+    const injured = recordSession(
+      EMPTY_FATIGUE_STATE,
+      { day: 0, lift: 'squat', topRpe: 10, workSets: 8, repsPerSet: 5 },
+      UNLUCKIEST_ROLLS,
+    ).state;
+    const played = playWholeSession(
+      context({ day: 1, lift: 'squat', fatigue: injured }),
+      NEUTRAL,
+      8,
+    );
+    const setsPlayed = played.state.completedSets.length;
+    expect(setsPlayed).toBeGreaterThanOrEqual(1);
+    expect(setsPlayed).toBeLessThan(SESSION_TUNING.WORK_SETS);
+    // The positive control: reading the template instead would have added rest
+    // beats for sets that were never taken, so the two readings must differ.
+    expect(playedSessionMs(played.repMs, played.reps, SESSION_TUNING.WORK_SETS)).toBeGreaterThan(
+      playedSessionMs(played.repMs, played.reps, setsPlayed),
+    );
+    expect(wholeSessionMs(played)).toBeLessThanOrEqual(90_000);
+  });
+
+  it('is measured well under the floor GDD §3.2 names, and that is recorded as a divergence', () => {
+    // GDD §11 carries this. Pinned here so the recorded numbers stay true: if a
+    // template or beat change pushes the machine time back over 60 s, this
+    // fails and the §11 entry gets revisited rather than quietly going stale.
+    const ladder = SESSION_TUNING.RPE_CHOICES.map((rpe) => {
+      const played = playWholeSession(context(), NEUTRAL, rpe);
+      return playedSessionMs(played.repMs, played.reps, played.state.completedSets.length);
+    });
+    expect(ladder).toHaveLength(5);
+    expect(Math.min(...ladder)).toBeCloseTo(54_300, -2);
+    expect(Math.max(...ladder)).toBeCloseTo(60_300, -2);
+    // Four of the five rungs are under §3.2's floor on machine time alone.
+    expect(ladder.filter((ms) => ms < 60_000)).toHaveLength(4);
   });
 
   it('adds the beats it says it adds', () => {

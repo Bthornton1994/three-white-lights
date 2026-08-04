@@ -146,9 +146,18 @@ export const SESSION_TUNING = Object.freeze({
    * ends up above the exact target, the set reports an e1RM a kilo or two above
    * the current one, and because the server keeps the BEST e1RM that becomes a
    * permanent PR bought with rounding. The next day's prescription is computed
-   * from the new number and rounds up again. Rounding down cannot ratchet: the
-   * bar is never heavier than the target, so a PR has to be earned by the
-   * readiness nudge or by out-performing the prescription.
+   * from the new number and rounds up again. Rounding down closes THAT route:
+   * the bar is never heavier than the target, so rounding alone can never mint
+   * a PR.
+   *
+   * IT DOES NOT CLOSE THE OTHER ROUTE, and this note used to read as if it did.
+   * The readiness nudge multiplies the bar BEFORE this rounding, so a positive
+   * check-in still puts up a bar above the target and still ratchets — measured
+   * in `session.test.ts` at 685 of 685 swept cells on `primed` and 634 of 685
+   * on `ready`. Rounding down only bounds how much: on `ready` it swallows the
+   * nudge entirely in the other 51. See the header of `session.ts` for the
+   * 30-session curve that produces, and for why the fix is a recorded
+   * dependency (GDD §3.4) rather than a knob in this file.
    */
   LOAD_ROUNDING_MODE: 'down' as RoundingMode,
 
@@ -174,16 +183,25 @@ export const SESSION_TUNING = Object.freeze({
   // These are the numbers the 60-90 s budget is spent on. Every one is a
   // stopwatch value a playtester will move.
   //
-  // MEASURED AT THESE VALUES, in a browser, playing the real loop end to end
-  // (first check-in tap to the close-out on screen, 5 x 3, every rep completed,
-  // no time spent deciding because the player was a script):
+  // MEASURED AT THESE VALUES by `session.test.ts`, which plays every rep of a
+  // 5 x 3 through the real lift mechanic with a cue-obedient player and adds
+  // the beats below (`playedSessionMs`). Machine time only — no time spent
+  // tapping or reading, because the player is a script:
   //
-  //     RPE 6    58.7 s        RPE 8    64.7 s
+  //     RPE 6   54.3 s     RPE 7   55.6 s     RPE 8   57.8 s
+  //     RPE 9   58.3 s     RPE 10  60.3 s
   //
-  // A human spends a few seconds on the check-in and a few reading the payoff,
-  // which is what `HUMAN_INPUT_BUDGET_MS` below stands in for. At the top of
-  // the ladder an undriven session banks nothing and ends in 28 s — that is the
-  // retry path, not a session length.
+  // FOUR OF THE FIVE RUNGS ARE UNDER GDD §3.2's 60 s FLOOR. That is recorded as
+  // a divergence in GDD §11 and is treated as a virtue rather than a defect:
+  // §12.2 judges this piece against a best-in-class daily-habit app and the bar
+  // is that ours "must not be slower or flabbier". The suite therefore asserts
+  // the CEILING only. An earlier version asserted a 60 s floor as well, and it
+  // passed solely because the guess below was added to the measurement first.
+  //
+  // A human also spends a few seconds on the check-in and a few reading the
+  // payoff, which is what `HUMAN_INPUT_BUDGET_MS` below stands in for. At the
+  // top of the ladder an undriven session banks nothing and ends in 28 s — that
+  // is the retry path, not a session length.
   // -------------------------------------------------------------------------
 
   /**
@@ -225,10 +243,15 @@ export const SESSION_TUNING = Object.freeze({
    *
    * A GUESS, AND THE ONLY NUMBER IN THIS FILE THAT NO CODE CONSUMES. GDD §3.2
    * budgets "5 sec" for the check-in itself; this is that plus a beat to pick an
-   * RPE and a beat to read the payoff. `session.test.ts` adds it to the measured
-   * machine time so the 60-90 s check is against a whole session rather than
-   * against the parts a stopwatch can see. Nothing but a playtest can supply the
+   * RPE and a beat to read the payoff. Nothing but a playtest can supply the
    * real figure.
+   *
+   * WHAT IT MAY AND MAY NOT HOLD UP. `session.test.ts` adds it to the measured
+   * machine time before checking the 90 s CEILING, which makes that check
+   * stricter and is the safe direction for a guess to point. It must not be
+   * used to hold up a FLOOR: it previously was, and the effect was that a
+   * 54.3 s session read as 63.3 s and satisfied a `>= 60_000` assertion the
+   * loop itself did not satisfy. That assertion is gone.
    */
   HUMAN_INPUT_BUDGET_MS: 9000,
 
@@ -359,13 +382,19 @@ export const SESSION_LAYOUT = Object.freeze({
  * because it is not a feel value a playtester turns with a stopwatch — it is a
  * bound on what the server will accept from a client.
  *
- * WHAT IT IS NOT: a solution to long-run progression pacing. At the shipped
- * value it does not bind on any session this loop can produce (the largest
- * honest jump is the readiness nudge, `+5%` at `primed`). It is a guard against
- * a client reporting nonsense, in the same spirit as `INJURY_MAX_CHANCE_PER
- * _SESSION` being currently slack. Where e1RM growth should flatten out over
- * weeks is a Career-mode question (GDD §3.4 gives multi-week arcs to Career)
- * and this loop does not answer it.
+ * WHAT IT IS NOT: a solution to long-run progression pacing, and at the shipped
+ * value it is not even a brake. 6% per session sits ABOVE the largest jump this
+ * loop can produce (the readiness nudge, `+5%` at `primed`), so it never binds
+ * on an honest session and the compounding described in `session.ts`'s header
+ * runs straight past it. It is a guard against a client reporting nonsense, in
+ * the same spirit as `INJURY_MAX_CHANCE_PER_SESSION` being currently slack.
+ *
+ * DO NOT REPURPOSE IT AS THE PACING LEVER. Session-over-session growth needs to
+ * be coupled to RPE/effort history rather than paid flat for three self-reported
+ * taps, and that coupling is a recorded dependency on the fatigue/progression
+ * module (GDD §3.4). Tightening this number instead would put a pacing constant
+ * in the wrong file, ahead of the thing it is meant to pace, for somebody else
+ * to unpick later.
  */
 export const SESSION_PROGRESSION_GUARD = Object.freeze({
   /** Most one session may raise the best e1RM on record, as a fraction. */
