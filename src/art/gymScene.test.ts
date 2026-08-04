@@ -1241,7 +1241,7 @@ describe('the furniture is grounded too', () => {
   it('REFUSES to shade the rubber, and the refusal is what keeps a bound passing', () => {
     // THE MEASURED REASON, kept as a test rather than only as a comment. The
     // floor ramp has two rungs under FLOOR_MID. FLOOR_DARK is 8.9 below it —
-    // under the perceptible step. FLOOR_DEEP is 17.0 below it and 8.0 ABOVE the
+    // under the perceptible step. FLOOR_DEEP is 17.00 below it and 8.00 ABOVE the
     // barbell's keyline — inside the band the discs' own outline occupies, and
     // the sleeves cross those rows at every depth of the rep.
     const keyline = lumaOfIndex(PAL.EQ_OUTLINE) ?? 0;
@@ -1678,7 +1678,8 @@ describe('the bounds bite', () => {
     // 355 px — 2.2% of the visible background, and a fixed number rather than a
     // multiple of the ceiling, so raising the ceiling makes this plant FAIL
     // instead of growing to meet it. For scale: the shipped room's three lamps
-    // carry 21 filament pixels between them, 0.13% of this.
+    // carry 21 filament pixels between them — 0.13% of the visible background,
+    // against this plant's 2.2%.
     const FILAMENT_PX = 355;
     const grid = planted((g) => {
       g.data.set(room.data);

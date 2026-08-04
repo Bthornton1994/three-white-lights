@@ -126,8 +126,8 @@ export const GYM_WALL_PAINT = Object.freeze({
    * of the wall ramp and the GYM_WALL bank is full — sixteen of sixteen slots
    * spent — so there is no darker colour to draw a course in and no free slot to
    * make one. The alternatives were to draw the top course one rung UP instead
-   * (a 15.09-luma LIGHT line at the very top of the frame, brighter than the
-   * course in the band below it, which is a lit ceiling and not a mortar joint)
+   * (a 15.09-luma LIGHT line at the very top of the frame, which is a lit
+   * ceiling rather than a mortar joint)
    * or to spend a bank slot the crowd and the lamp need. A gym's roofline being
    * out of the lamps and going to flat black is what the reference does with its
    * own upper corners, so the band stays flat and stays stated.

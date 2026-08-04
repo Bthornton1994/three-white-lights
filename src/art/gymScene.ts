@@ -556,14 +556,14 @@ export function propFootprint(art: PropArt): readonly (readonly [number, number]
  * ---------------------------------------------------------------------------
  * The room's ramps are not evenly spaced, so a fixed number of rungs is a
  * different shadow on every surface: one rung is 50.5 luma on the lit platform
- * and 8.9 on mid rubber. So the depth is chosen by rule instead — step down
+ * and 8.89 on mid rubber. So the depth is chosen by rule instead — step down
  * until the drop is worth drawing, and stop as soon as it is:
  *
  *   1. VISIBLE. The drop must reach `PERCEPTIBLE_LUMA_STEP`, or the mark is one
  *      this piece has itself declared invisible.
  *   2. CLEAR OF THE SUBJECT. The result must stay `PERCEPTIBLE_LUMA_STEP` above
  *      the darkest step the FIGURE AND BARBELL are drawn in — the equipment
- *      keyline at luma 8.9. A shadow darker than that is a piece of room in the
+ *      keyline at luma 8.91. A shadow darker than that is a piece of room in the
  *      band the subject's own outline occupies.
  *
  * ...and never more than `PROP_MAX_STEPS` rungs either way.
@@ -572,11 +572,11 @@ export function propFootprint(art: PropArt): readonly (readonly [number, number]
  * WHICH MEANS THE RUBBER GETS NO SHADOW, AND THAT IS A MEASURED REFUSAL
  * ---------------------------------------------------------------------------
  * `FLOOR_MID` (33.91) has exactly two rungs under it. `FLOOR_DARK` (25.03) is
- * 8.9 below it, which fails rule 1. `FLOOR_DEEP` (16.91) is 17.0 below it, which
- * passes rule 1 and fails rule 2 by 1.0 luma — it is 8.0 from the barbell's
- * keyline, and the sleeves cross those rows at every depth of the rep. There is
- * no index in the GYM_FLOOR bank in the 18.9-23.9 window that would satisfy
- * both, and the bank is full.
+ * 8.89 below it, which fails rule 1. `FLOOR_DEEP` (16.91) is 17.00 below it,
+ * which passes rule 1 and fails rule 2 by 1.00 luma — it is 8.00 from the
+ * barbell's keyline, and the sleeves cross those rows at every depth of the
+ * rep. There is no index in the GYM_FLOOR bank in the 18.91-23.91 window that
+ * would satisfy both, and the bank is full.
  *
  * That is not theory. Shipping the `FLOOR_DEEP` version was measured, twice:
  * `rimContrast.p25` on the descent frame fell from 22.15 to 20.19 with one row
