@@ -2,8 +2,8 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 6,
-    "waveName": "Wave 6 - every piece is built; the run is now grading and closing gaps",
+    "wave": 7,
+    "waveName": "Wave 7 - recovered an orphaned merge, logged the build-order gate, grading the last three",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
@@ -227,7 +227,7 @@
       "id": "S2",
       "name": "Meet day",
       "bar": "Dread and anticipation comparable to a real third-attempt walkout.",
-      "status": "rework",
+      "status": "grading",
       "verifiable": false,
       "note": "THE FIGURE MOTION WORKS; THE CROWD RISE INVERTS THE PICTURE. The critic made the judgement the builder correctly said it could not make, and I confirmed it by eye and by arithmetic. What passed: the unrack reads as weight - at 650ms he is compressed under the bar with shoulders hunched and sleeves drooping, at 1402ms tall and settled, which two stills apart reads as taking weight off the hooks rather than as a jitter. The byte-identical return is real so the cut is seamless. All ten refusal conditions clear, with all 66 watchlist entries searched by name against every string meet day renders and zero hits. Every disclosure checked and accurate. THE GAP: at rise 4 the crowd rows merge into striated bands, and at rise 5 FIGURE-GROUND HAS INVERTED - the band becomes a near-continuous LIT field with dark squares punched through it, reading as pegboard rather than people, and it is the largest bright mass in the lower frame at exactly the moment the three white lamps should be the subject. That inverts the band's OWN stated rule, that the crowd is held to the bottom of the value range so the busiest area of the screen is also the quietest. The geometry explains it and I verified the numbers: a spectator is 5 rows tall in a 6-row pitch, so EVERY rise of 1 or more overlaps the row above, and where both stagger parities reach, the union covers all 7 columns and no horizontal gap survives. At rise 4, four of every six rows are solid. Two guards should have caught it and neither can. The slab bound counts CROWD_DARK across the WHOLE band including the top rows no figure grows into, where nearly all the surviving dark lives, so it passes at rise 5 while the middle of the band has zero air in it - a check that cannot fail for the reason it names, the twenty-second of this run. And the entire gym readability suite is blind to any rise above zero: crowdRisePx appears ZERO times in gymScene.test.ts, so every bound renders the unrisen scene. The risen room, which is the only room the two highest-value beats actually draw, has never been through the readability bounds at all. That is why it is THE gap rather than one of several - the crowd rise is the only channel by which urgency reaches the picture, so the celebrated 34,524-pixel difference between an opener and a third attempt is 34,524 pixels of the crowd getting LESS legible.",
       "evidence": "meet/verdict-good.png"
@@ -245,7 +245,7 @@
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
-      "status": "ungraded",
+      "status": "grading",
       "verifiable": true,
       "note": "FIXED, and the fix chose refusal over conversion for a reason I checked and agree with. The unit now travels with the reading and dots.ts refuses a total it cannot prove is kilograms. I re-ran my own probe — the exact call that printed 806.45 — and it now refuses with a RangeError, while the same meet honestly declared in kg still scores 365.76. Better than the brief asked: a reading with NO unit is ALSO refused rather than defaulting to kg. POUND_MEET_RULES still validates, so pound meets remain runnable; they just cannot be DOTS-scored without an explicit two-call conversion. Why refuse rather than convert, which is the good part: a DOTS score needs TWO numbers in kilograms, and while the total now arrives with a unit, the bodyweight arrives from the caller as a bare number that no module produces. Converting the total while trusting the bodyweight turns a 2.2x overstatement into a 2.2x understatement from a module now claiming to handle units — and the builder cited OpenPowerlifting own checker carrying exactly that warning, that international meets often weigh in in pounds but lift in kilos. Coefficients, numerator, domain bounds and Horner order untouched. It also confirmed the twentieth blind check by driving the old form under the same mutation: deleting meet.ts weight gate left the old assertion green at 37.17 while the new one goes red. Three of four lesser findings closed, one disclosed. The required unit field on MeetLoadingRules is a breaking change, but a compile error rather than a silent one, and the builder trial-merged T1 before reporting."
     },
@@ -261,7 +261,7 @@
       "id": "N1",
       "name": "App shell / navigation",
       "verifiable": true,
-      "status": "ungraded",
+      "status": "grading",
       "bar": "A player can reach every mode without a debug URL, and no surface is a dead end.",
       "evidence": "shell/02-meet-from-session.png",
       "note": "THE LOOP CLOSES. 47 of 47 checks against the running app, including PRESSING IT REACHES MEET DAY with no URL typed and FINISH A SESSION to REACH A MEET in one press. Every debug route survives, which matters because they drive the evidence harness, and a nonsense meet param boots the session rather than a broken meet. Gating is careful where it counts: no control is drawn over a live set, rest, attempt, verdict or 6.3 attempt choice, and the bomb-out keeps its own way out with the shell explicitly declining to add a second. Mutation 8 is the one to read - deleting the phase effect left the node suite FULLY GREEN at 2183 tests and tsc clean while the browser failed 11 checks, and the builder added a source scan then said plainly it does not close the class because a control at zero opacity would pass it. It found a real defect on the way: 6.5 recap and the result card had NO way out at all while App.tsx claimed both did. Career gating deliberately not built, with the three things that change when it lands written down - including that the gate must be a SERVER decision because a Total is a server fact."
@@ -368,9 +368,9 @@
       {
         "id": "S2",
         "name": "Meet day",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "Five rounds. Venue, sound, haptics, staging and choreography all landed and were verified by pixel diff. Open: the crowd rise inverts figure-ground — it reads as pegboard, not people — and the gym readability suite has never once measured a risen crowd."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "The crowd-rise fix that was found orphaned on an unmerged branch (builder finished and died without reporting) is now merged. I looked at verdict-good.png myself: separated silhouettes in tiers, not the lit slab from before. Fresh critic dispatched."
       },
       {
         "id": "S3",
@@ -382,9 +382,9 @@
       {
         "id": "X1",
         "name": "Cross-mode coherence",
-        "state": "ungraded",
-        "stateLabel": "Built, not graded",
-        "note": "The pound-meet unit fix merged and I verified it (806.45 became a refusal). Never re-graded after that fix."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "Never graded after the pound-meet unit fix, found during the recount. Fresh critic dispatched."
       },
       {
         "id": "B1",
@@ -424,9 +424,9 @@
       {
         "id": "N1",
         "name": "App shell / navigation",
-        "state": "ungraded",
-        "stateLabel": "Built, not graded",
-        "note": "BUILT AND MERGED. 47 of 47 checks on the running app: a player reaches meet day in one press with no URL typed, and nothing is a dead end. Not yet graded by a critic."
+        "state": "grading",
+        "stateLabel": "Grading now",
+        "note": "First critic pass. 47/47 checks were self-reported by the builder against the running app; a fresh critic is verifying independently."
       }
     ],
     "groups": [
