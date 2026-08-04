@@ -919,7 +919,6 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/game/resultCard.ts', name: 'Tiffany Chapon', where: 'comment', count: 1 },
   { file: 'src/game/resultCard.ts', name: 'USAPL', where: 'comment', count: 3 },
   { file: 'src/game/resultCard.ts', name: 'USPA', where: 'comment', count: 1 },
-  { file: 'src/meet/meetPalette.ts', name: 'IPF', where: 'comment', count: 1 },
   { file: 'src/tuning/audit.ts', name: 'IPF', where: 'code', count: 2 },
   { file: 'src/tuning/index.ts', name: 'IPF', where: 'comment', count: 1 },
 ]);

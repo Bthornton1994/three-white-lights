@@ -123,6 +123,13 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
+    // THE HALL IS PINNED TO THE BOTTOM OF THE FRAME, on this screen and on every
+    // other staged beat. Before this the stage sat directly under the header and
+    // the bottom 29% of the screen was flat black under the room's own floor —
+    // measured off `live-attempt.png`, 244 of 844 points. `space-between` puts
+    // the header at the top, the platform on the floor of the phone, and the
+    // dark between them where the room's ceiling already is.
+    justifyContent: 'space-between',
   },
   header: {
     alignItems: 'center',

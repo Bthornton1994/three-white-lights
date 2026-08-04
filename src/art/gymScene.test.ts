@@ -24,6 +24,7 @@ import {
   GYM_BANNER,
   GYM_CLEAR_BAND,
   GYM_CONTACT_SHADOW,
+  GYM_CROWD,
   GYM_LIFT_FOCUS_X,
   GYM_LIFT_STAGE,
   GYM_LIGHTING,
@@ -34,6 +35,7 @@ import {
   GYM_ROOM,
   GYM_STAGE_CHROME,
   GYM_VENUE_PROPS,
+  GYM_VENUE,
   GYM_WALL_PAINT,
   GYM_WINDOWS,
   type GymPropPlacement,
@@ -43,6 +45,7 @@ import {
   blitOver,
   clearBand,
   contactShadowPatch,
+  crowdFrontRow,
   floorDepth,
   junctionRow,
   layerOffset,
@@ -462,6 +465,38 @@ const MOMENTS: readonly (readonly [string, number])[] = [
   ['drive', 0.7],
 ];
 
+/**
+ * THE MEET ROOM WITH ITS SEATING PUT BACK DOWN ON THE FLOOR — the mutation of
+ * `GYM_CROWD.RISER_ROWS`, and the non-vacuity control for `rimDeadShare`.
+ *
+ * The band of rows the crowd is drawn in is moved down by exactly `RISER_ROWS`,
+ * so its front rail lands on the wall/floor junction the way it did before this
+ * pass, and the vacated rows go back to the wall paint immediately above them.
+ * Nothing else about the room changes.
+ *
+ * It is built by moving pixels rather than by re-rendering with a different
+ * constant because `RISER_ROWS` is frozen and `GymSceneSpec` deliberately has no
+ * field for it. What matters is that the resulting grid puts seating behind the
+ * standing figure's crown, which is the defect, and that the shipped grid does
+ * not.
+ */
+function seatingLoweredToTheFloor(): IndexGrid {
+  return compositeOverPainted((g) => {
+    const room = renderGymScene(MEET_SPEC);
+    g.data.set(room.data);
+    const drop = GYM_CROWD.RISER_ROWS;
+    const bottom = crowdFrontRow(MEET_SPEC);
+    const top = Math.max(0, bottom - GYM_VENUE[MEET_SPEC.venue].CROWD_ROWS);
+    for (let y = bottom - 1; y >= top; y -= 1) {
+      for (let x = 0; x < g.w; x += 1) setPx(g, x, y + drop, getPx(room, x, y));
+    }
+    const above = Math.max(0, top - 1);
+    for (let y = top; y < Math.min(top + drop, bottom); y += 1) {
+      for (let x = 0; x < g.w; x += 1) setPx(g, x, y, getPx(room, x, above));
+    }
+  }, 0);
+}
+
 // ---------------------------------------------------------------------------
 // The layer exists at all
 // ---------------------------------------------------------------------------
@@ -754,32 +789,78 @@ describe('readability at phone scale', () => {
     }
   });
 
-  it('FAILS EXACTLY ONE BOUND IN THE MEET VENUE, and it is named here', () => {
-    // NOT A PASS, and written as an equality rather than as a "the ones we care
-    // about" filter so it cannot quietly grow a second entry.
+  it('FAILS NOTHING IN THE MEET VENUE EITHER — the known fail is closed', () => {
+    // WHAT THIS LINE USED TO SAY, kept because the history is the argument:
+    //
+    //   expect(bad, report(grid)).toEqual(['RIM_DEAD_SHARE_HIGH(0.0196>0)']);
     //
     // The meet venue's crowd is drawn in CROWD_DARK (20.33) and CROWD_MID
     // (45.22). After A1's shading rework the lifter's OUTLINE is 19.31 and his
-    // HAIR_DARK is 45.22 — the same number to two decimal places. His crown is
-    // in front of the seating, so his hair meets the heads, and the room and the
-    // figure are literally the same colour at that crossing.
+    // HAIR_DARK is 45.22 — the same number to two decimal places. The seating
+    // was painted from the wall/floor junction UPWARD, and the junction (row
+    // 119) sits inside the standing figure's span (103-165), so his crown was
+    // in front of the heads and the room and the figure were literally the same
+    // colour at that crossing: one crossing at 0.00 luma, seven at 1.03, 1.96%
+    // of 358. Every percentile passed it, because p05 reads the 18th-worst.
     //
-    // Every percentile bound passes this frame. `rimContrast.p05` is 11.42
-    // against a floor of 10, and it passes because the collision is 1.96% of 358
-    // crossings and p05 reads the 18th-worst. That is the measure being blind,
-    // not the frame being clean, and `RIM_DEAD_SHARE_MAX` is the bound that says
-    // so.
+    // `gymPalette.ts` recorded that no colour pair in the rgb5 grid fixes it
+    // and that "the actual fix is geometric — the crowd's seating sitting below
+    // his crown rather than behind it". That is `GYM_CROWD.RISER_ROWS`, and it
+    // is now 20: the band stops twenty rows above the floor, on a barrier, and
+    // what is behind his head is WALL_MID — the same value the training gym has
+    // always put there.
     //
-    // WHY IT IS NOT FIXED HERE. `gymPalette.ts` records the attempt: the only
-    // pair the rgb5 grid offers inside the one safe window in the figure's ramp
-    // is CROWD_DARK 28 / CROWD_MID 36, which lifts the worst contact to 8.0 —
-    // still under PERCEPTIBLE_LUMA_STEP — and drops the meet room's furniture
-    // share from 5.99% to 2.75%, failing FURNITURE_SHARE_MIN outright. The fix
-    // is the crowd's seating sitting below his crown rather than behind it,
-    // which is meet-venue geometry and belongs to whoever owns meet-day art.
-    const grid = composite(0, MEET_SPEC);
-    const bad = violations(grid);
-    expect(bad, report(grid)).toEqual(['RIM_DEAD_SHARE_HIGH(0.0196>0)']);
+    // Measured after the change: rim worst 5.7-8.0 luma across the rep, dead
+    // share 0.00%. `describe('the bounds bite')` plants the OLD geometry and
+    // asserts it still fails, so this pass is a fix rather than a deleted check.
+    for (const [name, frac] of MOMENTS) {
+      const grid = composite(frac, MEET_SPEC);
+      expect(violations(grid), `meet ${name}:\n${report(grid)}`).toEqual([]);
+      const r = measureSceneReadability(grid, { occluders: OCCLUDERS });
+      expect(r.rimDeadShare, `meet ${name} has a dead contact`).toBe(0);
+      expect(r.rimWorst, `meet ${name}`).toBeGreaterThan(GYM_READABILITY.DEAD_CONTACT_LUMA);
+    }
+  });
+
+  it('keeps the seating clear of the figure by GEOMETRY, checked on the silhouette', () => {
+    // The bound above is a statistic. This is the thing the statistic is about,
+    // and it is checked against the figure's REAL rendered crown rather than
+    // against `RISER_ROWS` — so shrinking the riser back toward the junction
+    // fails here by name even if the luma numbers happened to survive.
+    const { grid: sprite } = renderLifterFrame(frameSpecFrom(frameAt(0), DEMO_TOTAL_KG));
+    let crown = Number.POSITIVE_INFINITY;
+    for (let y = 0; y < sprite.h; y += 1) {
+      for (let x = 0; x < sprite.w; x += 1) {
+        if (isTransparentIndex(getPx(sprite, x, y))) continue;
+        crown = Math.min(crown, y + GYM_LIFT_STAGE.SPRITE_Y);
+      }
+    }
+    const room = renderGymScene(MEET_SPEC);
+    // Rows the seating BAND is drawn in, told apart from the judges' table by
+    // width: the table seats its officials in the same two colours and stands on
+    // the floor in front of the lifter, 28 columns of 130, while the band runs
+    // the whole width of the hall. Both counts are asserted below, so the
+    // discriminator cannot quietly start matching nothing.
+    const bandRows: number[] = [];
+    let tableRows = 0;
+    for (let y = 0; y < room.h; y += 1) {
+      let n = 0;
+      for (let x = 0; x < room.w; x += 1) {
+        const v = getPx(room, x, y);
+        if (v === GYM.CROWD_DARK || v === GYM.CROWD_MID) n += 1;
+      }
+      if (n > room.w / 2) bandRows.push(y);
+      else if (n > 0) tableRows += 1;
+    }
+    // Non-vacuity: there IS a figure, there IS a band, and there IS a table the
+    // discriminator is separating from it.
+    expect(crown).toBeLessThan(room.h);
+    expect(bandRows.length).toBeGreaterThan(GYM_VENUE[MEET_SPEC.venue].CROWD_ROWS / 2);
+    expect(tableRows).toBeGreaterThan(0);
+    // The band's front rail is where `crowdFrontRow` says it is...
+    expect(crowdFrontRow(MEET_SPEC)).toBe(junctionRow(MEET_SPEC) - GYM_CROWD.RISER_ROWS);
+    // ...and every row of it is above his crown.
+    expect(Math.max(...bandRows), 'the seating reaches the lifter crown').toBeLessThan(crown);
   });
 
   it('and the training gym — the shipped daily screen — fails none', () => {
@@ -792,10 +873,15 @@ describe('readability at phone scale', () => {
   });
 
   it('shows the percentile really is blind to the contact the share catches', () => {
-    // THE MUTATION FOR THE NEW MEASURE. Assert the dead contact exists, then
-    // assert that every percentile bound is satisfied anyway. If `rimDeadShare`
-    // were a re-statement of `rimContrast.p05` this could not go green.
-    const r = measureSceneReadability(composite(0, MEET_SPEC), { occluders: OCCLUDERS });
+    // THE MUTATION FOR THE NEW MEASURE, AND THE MUTATION FOR THE GEOMETRY FIX,
+    // in one grid: the meet room with the seating put back down on the floor,
+    // which is exactly what `GYM_CROWD.RISER_ROWS: 0` drew until this pass.
+    //
+    // Assert the dead contact exists, then assert that every percentile bound is
+    // satisfied anyway. If `rimDeadShare` were a re-statement of
+    // `rimContrast.p05` this could not go green — and if the riser were not what
+    // fixed the shipped frame, this plant would not fail.
+    const r = measureSceneReadability(seatingLoweredToTheFloor(), { occluders: OCCLUDERS });
     expect(r.rimWorst).toBe(0);
     expect(r.rimDeadShare).toBeGreaterThan(0);
     expect(r.rimDeadShare).toBeLessThan(0.05);
@@ -803,6 +889,9 @@ describe('readability at phone scale', () => {
     expect(r.rimContrast.p05).toBeGreaterThan(BOUNDS.RIM_P05_MIN);
     expect(r.rimFill.p05).toBeGreaterThan(BOUNDS.RIM_FILL_P05_MIN);
     expect(r.rimContrast.p25).toBeGreaterThanOrEqual(BOUNDS.RIM_P25_MIN);
+    // And it fails exactly the one bound, by name, the way the shipped frame
+    // used to. Equality rather than `.some(...)`, so it cannot grow an entry.
+    expect(violations(seatingLoweredToTheFloor())).toEqual(['RIM_DEAD_SHARE_HIGH(0.0307>0)']);
   });
 
   it('measures a real figure and a real room, not two empty sets', () => {

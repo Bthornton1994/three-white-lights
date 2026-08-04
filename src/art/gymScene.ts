@@ -250,40 +250,57 @@ function paintWindows(g: IndexGrid, spec: GymSceneSpec, junction: number): void 
 // Layer: the crowd (meet venue only)
 // ---------------------------------------------------------------------------
 
+/**
+ * The row the front barrier of the seating stands on — the bottom of the crowd
+ * band, raised clear of the platform floor by `GYM_CROWD.RISER_ROWS`.
+ *
+ * Exported because it is the number that decides whether the lifter's head is
+ * drawn against seating or against wall, and `gymScene.test.ts` and
+ * `src/meet/meetStage.test.ts` both check it against the figure's own rendered
+ * silhouette rather than against the constant.
+ */
+export function crowdFrontRow(spec: GymSceneSpec): number {
+  return Math.max(0, junctionRow(spec) - GYM_CROWD.RISER_ROWS);
+}
+
 function paintCrowd(g: IndexGrid, spec: GymSceneSpec): void {
   const venue = GYM_VENUE[spec.venue];
   if (!venue.CROWD) return;
   const junction = junctionRow(spec);
-  const top = Math.max(0, junction - venue.CROWD_ROWS);
+  // The seating stops here, not at the floor. See `GYM_CROWD.RISER_ROWS`: the
+  // junction sits inside the standing figure's span, so a band drawn down to it
+  // is a band drawn behind his head.
+  const bottom = crowdFrontRow(spec);
+  const top = Math.max(0, bottom - venue.CROWD_ROWS);
   const shift = layerOffset(spec.cameraX, GYM_PARALLAX.WALL);
 
   paintBanner(g, spec, junction, top);
 
-  fillRect(g, 0, top, spec.w, junction - top, GYM.CROWD_DARK);
+  fillRect(g, 0, top, spec.w, bottom - top, GYM.CROWD_DARK);
   let row = 0;
-  for (let y = top; y < junction; y += GYM_CROWD.ROW_PITCH) {
+  for (let y = top; y < bottom; y += GYM_CROWD.ROW_PITCH) {
     const stagger = row % 2 === 0 ? 0 : GYM_CROWD.ROW_STAGGER;
     const first = wrapStart(stagger + shift, GYM_CROWD.HEAD_COLS);
     for (let x = first; x < spec.w; x += GYM_CROWD.HEAD_COLS) {
       // Head, then shoulders under it. The shoulders are what stop a crowd
       // reading as polka dots: a spectator is a silhouette that touches the one
       // beside it, not an isolated blob.
-      fillRect(g, x, y, GYM_CROWD.HEAD_W, GYM_CROWD.HEAD_H, GYM.CROWD_MID);
-      fillRect(
-        g,
-        x - 1,
-        y + GYM_CROWD.HEAD_H,
-        GYM_CROWD.HEAD_W + 2,
-        GYM_CROWD.SHOULDER_ROWS,
-        GYM.CROWD_MID,
-      );
+      //
+      // CLIPPED TO THE BAND. A head three rows from the bottom would otherwise
+      // put its shoulders below the barrier, which is where the figure is.
+      const headH = Math.min(GYM_CROWD.HEAD_H, Math.max(0, bottom - y));
+      fillRect(g, x, y, GYM_CROWD.HEAD_W, headH, GYM.CROWD_MID);
+      const shoulderTop = y + GYM_CROWD.HEAD_H;
+      const shoulderH = Math.min(GYM_CROWD.SHOULDER_ROWS, Math.max(0, bottom - shoulderTop));
+      fillRect(g, x - 1, shoulderTop, GYM_CROWD.HEAD_W + 2, shoulderH, GYM.CROWD_MID);
     }
     row += 1;
   }
   // The barrier across the front of the seating. Same job the kickplate does in
   // the gym: it stops the crowd being a texture and makes it a thing with a
-  // front edge, which is what puts it BEHIND the platform.
-  fillRect(g, 0, junction - GYM_CROWD.RAIL_ROWS, spec.w, GYM_CROWD.RAIL_ROWS, GYM.FRAME_DARK);
+  // front edge, which is what puts it BEHIND the platform. It sits on the front
+  // edge of the raised deck, so the rows under it read as the deck's face.
+  fillRect(g, 0, bottom - GYM_CROWD.RAIL_ROWS, spec.w, GYM_CROWD.RAIL_ROWS, GYM.FRAME_DARK);
 }
 
 /**

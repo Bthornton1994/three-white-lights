@@ -25,7 +25,7 @@
  * hand-off GDD §6.5 asks for is a state flag here and no new rendering at all.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ResultCardScreen } from '../card/ResultCardScreen';
@@ -35,6 +35,7 @@ import { WEIGHT_CLASSES_KG, lifterCategoryText, weightClassString } from '../gam
 import {
   attemptDecisionFor,
   lastAttempt,
+  stageLoadRatio,
   weighInFor,
   type MeetDayState,
 } from '../game/meetDay';
@@ -43,6 +44,7 @@ import { AttemptSelectView } from './AttemptSelectView';
 import { AttemptView } from './AttemptView';
 import { BombOutView } from './BombOutView';
 import { MEET_PALETTE } from './meetPalette';
+import { preloadMeetSound } from './meetSound';
 import { OpenersView } from './OpenersView';
 import { RecapView } from './RecapView';
 import { useMeetDay } from './useMeetDay';
@@ -84,6 +86,17 @@ export function MeetScreen({
   const { dispatch, restart } = loop;
   const state = preview ?? loop.state;
   const [cardOpen, setCardOpen] = useState(showCard);
+
+  // WARM THE CUES WHEN MEET DAY OPENS, and nowhere else.
+  //
+  // `preloadMeetSound` says it exists "so the first plate of the meet is not the
+  // slow one", and until now nothing outside a test called it, which made that
+  // sentence false. The weigh-in is the right place: it is the first screen of
+  // the meet and it is several seconds and one press away from the first plate
+  // landing, so every player decodes the files during a beat that is waiting for
+  // them anyway. It is fire-and-forget — `playerFor` swallows a platform that
+  // refuses, because sound must never take a screen down.
+  useEffect(() => preloadMeetSound(), []);
 
   const onResolved = useCallback(
     (resolution: LiftResolution) => dispatch({ kind: 'lift-resolved', resolution }),
@@ -147,6 +160,7 @@ export function MeetScreen({
           attempt={state.live}
           liftLabel={MEET_COPY.LIFT_LABEL[state.live.lift]}
           barAndCollarsKg={meetLoadingRules(state.meet).barAndCollarsWeight[state.live.lift]}
+          loadRatio={state.live.loadRatio}
         />
       ) : null}
 
@@ -157,6 +171,8 @@ export function MeetScreen({
           attempt={judged}
           liftLabel={MEET_COPY.LIFT_LABEL[judged.lift]}
           revealed={state.phase === 'verdict'}
+          barAndCollarsKg={meetLoadingRules(state.meet).barAndCollarsWeight[judged.lift]}
+          loadRatio={stageLoadRatio(state.context, judged.lift, judged.weightKg)}
         />
       ) : null}
 

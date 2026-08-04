@@ -347,14 +347,24 @@ export const GYM_VENUE = Object.freeze({
     BLOCK_WALL: true,
     /** Draw the seated crowd band and the sponsor banner above it. */
     CROWD: false,
-    /** Rows of crowd, measured up from the junction. */
+    /** Rows of crowd, measured up from the seating's front rail. */
     CROWD_ROWS: 0,
   }),
   'meet-platform': Object.freeze({
     WALL_STEP_BIAS: 0,
     BLOCK_WALL: false,
     CROWD: true,
-    CROWD_ROWS: 30,
+    /**
+     * 24, down from 30 — and it moved because the band moved, not by taste.
+     * Raising the seating clear of the figure (`GYM_CROWD.RISER_ROWS`) also
+     * un-hid the third of it that used to be behind him, and the room's
+     * `backgroundEdgeShare` went from 12.7% to 14.5% against a ceiling of 14%
+     * purely from crowd that had always been drawn and never been visible.
+     * At 24 the visible room measures 12.9-13.1%, which is the band the
+     * training gym has always reported, and the furniture share lands back on
+     * its pre-change 6.0%.
+     */
+    CROWD_ROWS: 24,
   }),
 });
 
@@ -381,6 +391,39 @@ export const GYM_CROWD = Object.freeze({
   SHOULDER_ROWS: 2,
   /** The barrier rail across the front of the seating. */
   RAIL_ROWS: 2,
+  /**
+   * HOW FAR THE SEATING IS RAISED ABOVE THE PLATFORM FLOOR, in scene rows,
+   * measured from the wall/floor junction up to the front rail.
+   *
+   * ---------------------------------------------------------------------------
+   * THIS NUMBER IS A READABILITY FIX, NOT A DECORATION
+   * ---------------------------------------------------------------------------
+   * At 0 — which is what shipped until now — the crowd was painted from the
+   * junction upward, and the junction (row 119 on the lift stage) sits INSIDE
+   * the standing figure's vertical span (103-165). His head, neck and shoulders
+   * were therefore drawn against seating rather than against wall, and
+   * `gymPalette.ts` records what that costs: `CROWD_MID` is his `HAIR_DARK` to
+   * one decimal and `CROWD_DARK` is 1.03 luma from his `OUTLINE`. That is the
+   * `RIM_DEAD_SHARE` failure `gymScene.test.ts` carried as a named known-fail,
+   * and `gymPalette.ts` says in as many words that it "is not a colour: it is
+   * the crowd's seating sitting below his crown rather than behind it, which is
+   * a change to the meet venue's geometry".
+   *
+   * This is that change. The band is drawn ENTIRELY ABOVE the figure's crown, so
+   * what is behind his head is `WALL_MID` — the one value in the wall bank
+   * chosen to sit inside the safe window in his own ramp, and the same value the
+   * training gym already puts behind him and passes on.
+   *
+   * WHAT THE ROWS BETWEEN THE RAIL AND THE FLOOR ARE. They are the front face of
+   * the seating deck: flat, dark, with the barrier along its top edge. Real
+   * halls raise the seating behind a barrier for exactly this reason, so the
+   * geometry that fixes the silhouette is also the geometry the reference has.
+   *
+   * MUST CLEAR THE FIGURE'S CROWN. `gymScene.test.ts` checks that against the
+   * REAL rendered silhouette rather than against this comment, so lowering it
+   * back toward 0 fails by name.
+   */
+  RISER_ROWS: 20,
 });
 
 /**

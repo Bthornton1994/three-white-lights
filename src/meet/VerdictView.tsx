@@ -44,6 +44,17 @@
  *
  * NOBODY HAS HEARD OR FELT ANY OF IT. See `MEET_SOUND` in `meetTuning.ts`.
  *
+ * ---------------------------------------------------------------------------
+ * AND THE LIFTER IS STILL STANDING THERE
+ * ---------------------------------------------------------------------------
+ * Both beats used to be a black field with three circles on it. The wait for the
+ * lights is the single tensest moment in the sport and ours had nowhere to
+ * happen: the player left the hall the instant the rep ended and came back to it
+ * for the next attempt. `MeetHallView` draws the same platform the rep was taken
+ * on, held back under the lamps by `MEET_TUNING.HALL.JUDGING_SCRIM` so the
+ * lights are the brightest thing on the screen, with the lifter on it and the
+ * bar still loaded. Nothing about the room is derived from the call.
+ *
  * NO LOGIC HERE. Which lights, whether it was close, what the feedback line
  * says, and which cue and pattern a lamp gets, are all decided in `meetDay.ts`
  * and arrive as data.
@@ -54,10 +65,12 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
+import { LIFT_TUNING } from '../game/liftTuning';
 import { lightRevealDelayMs, type MeetDayAttempt } from '../game/meetDay';
 import { playBeat } from './meetFeedback';
 import { JUDGE_COUNT, type JudgeLight } from '../game/meet';
 import { formatWeight } from '../game/resultCard';
+import { MeetHallView } from './MeetHallView';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
@@ -106,9 +119,19 @@ export interface VerdictViewProps {
   readonly liftLabel: string;
   /** False during the deliberation beat, true once the lights may come up. */
   readonly revealed: boolean;
+  /** What the bar and collars weigh on their own, kg. Drawn, never judged. */
+  readonly barAndCollarsKg: number;
+  /** Attempt weight over the lifter's best single. Drawn strain, nothing else. */
+  readonly loadRatio: number;
 }
 
-export function VerdictView({ attempt, liftLabel, revealed }: VerdictViewProps): React.ReactElement {
+export function VerdictView({
+  attempt,
+  liftLabel,
+  revealed,
+  barAndCollarsKg,
+  loadRatio,
+}: VerdictViewProps): React.ReactElement {
   const good = attempt.good;
   const feedback = useSharedValue(0);
   React.useEffect(() => {
@@ -137,39 +160,48 @@ export function VerdictView({ attempt, liftLabel, revealed }: VerdictViewProps):
 
   return (
     <View style={styles.root} testID={revealed ? 'meet-verdict' : 'meet-deliberation'}>
-      <Text style={styles.eyebrow} testID="verdict-attempt">
-        {`${liftLabel} · ${formatWeight(attempt.weightKg)}`}
-      </Text>
+      <View style={styles.panel}>
+        <Text style={styles.eyebrow} testID="verdict-attempt">
+          {`${liftLabel} · ${formatWeight(attempt.weightKg)}`}
+        </Text>
 
-      <View style={styles.lamps} testID="verdict-lamps">
-        {attempt.lights.map((light, seat) => (
-          <Lamp key={seat} light={light} seat={seat} revealed={revealed} />
-        ))}
+        <View style={styles.lamps} testID="verdict-lamps">
+          {attempt.lights.map((light, seat) => (
+            <Lamp key={seat} light={light} seat={seat} revealed={revealed} />
+          ))}
+        </View>
+
+        {revealed ? (
+          <Text
+            style={[styles.call, attempt.good ? styles.callGood : styles.callNoLift]}
+            testID="verdict-call"
+          >
+            {attempt.good ? MEET_COPY.GOOD_LIFT : MEET_COPY.NO_LIFT}
+          </Text>
+        ) : (
+          <Text style={styles.deliberating} testID="verdict-deliberating">
+            {MEET_COPY.DELIBERATING}
+          </Text>
+        )}
+
+        {revealed ? (
+          <Animated.View style={feedbackStyle}>
+            <Text style={styles.lightsText} testID="verdict-lights-text">
+              {attempt.lightsText}
+            </Text>
+            <Text style={styles.feedback} testID="verdict-feedback">
+              {attempt.feedbackText}
+            </Text>
+          </Animated.View>
+        ) : null}
       </View>
 
-      {revealed ? (
-        <Text
-          style={[styles.call, attempt.good ? styles.callGood : styles.callNoLift]}
-          testID="verdict-call"
-        >
-          {attempt.good ? MEET_COPY.GOOD_LIFT : MEET_COPY.NO_LIFT}
-        </Text>
-      ) : (
-        <Text style={styles.deliberating} testID="verdict-deliberating">
-          {MEET_COPY.DELIBERATING}
-        </Text>
-      )}
-
-      {revealed ? (
-        <Animated.View style={feedbackStyle}>
-          <Text style={styles.lightsText} testID="verdict-lights-text">
-            {attempt.lightsText}
-          </Text>
-          <Text style={styles.feedback} testID="verdict-feedback">
-            {attempt.feedbackText}
-          </Text>
-        </Animated.View>
-      ) : null}
+      {/* He has not left the platform. The bar is still loaded and the room is
+          still full; that is what the wait is. */}
+      <MeetHallView
+        lifter={{ totalKg: attempt.weightKg, barAndCollarsKg, loadRatio }}
+        scrim={MEET_TUNING.HALL.JUDGING_SCRIM}
+      />
     </View>
   );
 }
@@ -178,9 +210,16 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  panel: {
+    flex: 1,
+    alignSelf: 'stretch',
+    alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: L.SCREEN_PAD,
     gap: L.SECTION_GAP,
+    maxHeight: LIFT_TUNING.LAYOUT.STAGE_H,
   },
   eyebrow: {
     color: MEET_PALETTE.TEXT_DIM,

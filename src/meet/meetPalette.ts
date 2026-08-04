@@ -19,9 +19,21 @@
  * Strings rather than numbers on purpose, so they are outside the numeric scan
  * `meetTuning.test.ts` runs. A colour is not a timing window and does not
  * belong in a block a playtester turns with a stopwatch.
+ *
+ * ---------------------------------------------------------------------------
+ * `MEET_PLATE_COLOURS` IS GONE, AND WHERE THE PLATE LADDER LIVES NOW
+ * ---------------------------------------------------------------------------
+ * This file used to carry the competition plate ladder as CSS, for a barbell the
+ * walk-out beat drew out of `<View>`s. That bar is gone: GDD §7.1 commits to a
+ * fixed internal resolution and nearest-neighbour scaling throughout, and the
+ * walkout now draws `renderLifterFrame`'s bar (see `src/meet/meetHall.ts`). The
+ * discs are therefore the SPRITE palette's — `RAMPS.PLATE_*` in
+ * `src/art/palette.ts`, whose hues are transcribed from real meet software, with
+ * the denominations in `src/art/plates.ts`. GDD §7.1's "colour coding is free
+ * visual language" is still taken; it is taken once, in the one palette that
+ * draws a plate, rather than twice in two colour spaces that could drift.
  */
 import { LIFT_PALETTE } from '../lift/liftPalette';
-import type { PlateHue } from '../art/plates';
 
 export const MEET_PALETTE = Object.freeze({
   ...LIFT_PALETTE,
@@ -71,29 +83,4 @@ export const MEET_PALETTE = Object.freeze({
   BOARD_NO_LIFT_EDGE: '#8a4040',
   BOARD_EMPTY: '#14181f',
   BOARD_EMPTY_EDGE: '#222833',
-});
-
-/**
- * Competition plate colours, as CSS, keyed by `src/art/plates.ts`'s own hue
- * names.
- *
- * THE DENOMINATIONS AND WHICH HUE EACH ONE IS ARE NOT DECIDED HERE — that is
- * `PLATE_SPECS`, transcribed from OpenLifter's defaults. This map only says
- * what "RED" looks like in a React Native style, because the art module's
- * palette is an indexed 5-bit sprite palette and a `<View>` needs a string.
- *
- * GDD §7.1: "Competition plates are also color-coded by weight in the real
- * sport — that is free visual language and should not be thrown away." These
- * are the standard IPF-ladder colours (25 red, 20 blue, 15 yellow, 10 green,
- * 5 and the change discs black/white), which is why a lifter can read the bar
- * on the walkout beat without reading the number.
- */
-export const MEET_PLATE_COLOURS: Readonly<
-  Record<PlateHue, { readonly face: string; readonly edge: string }>
-> = Object.freeze({
-  RED: { face: '#c8322f', edge: '#f0605c' },
-  BLUE: { face: '#2f63c8', edge: '#5f93f0' },
-  YELLOW: { face: '#d9c22c', edge: '#ffe86a' },
-  GREEN: { face: '#2f9c48', edge: '#5fd07a' },
-  BLACK: { face: '#20242c', edge: '#4a515f' },
 });

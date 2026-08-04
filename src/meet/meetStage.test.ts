@@ -35,9 +35,22 @@
  * refactor that moves the prop somewhere this cannot see fails loudly instead
  * of quietly passing.
  *
+ * ===========================================================================
+ * AND IT NOW COVERS EVERY BEAT, WHICH IS THE SECOND BUG THIS FILE MISSED
+ * ===========================================================================
+ * Every assertion above was scoped to `AttemptView`. So the room reached exactly
+ * one of meet day's screens and this file said so approvingly: the walk-out, the
+ * wait for the lights, the lights themselves and the one-way choice after a miss
+ * were flat text on near-black, and a suite whose statement of "which building
+ * meet day happens in" covers one screen cannot see a roomless reference beat.
+ *
+ * `STAGED_BEATS` and `UNSTAGED_BEATS` below are the whole router, one test each,
+ * and a third test checks the two lists against `MeetScreen`'s own JSX so a view
+ * cannot be added to the router and left out of both.
+ *
  * The same claim is checked a second way, on real pixels rather than source, by
- * `tools/capture-meet.mjs`: it photographs the meet attempt and the session set
- * and reports the crowd's presence in each frame.
+ * `tools/capture-meet.mjs`: it photographs every beat and reports the crowd's
+ * presence in each frame.
  */
 
 import { readFileSync } from 'node:fs';
@@ -48,12 +61,15 @@ import { GYM, lumaOfIndex } from '../art/gymPalette';
 import { LOAD_PRESETS } from '../art/spriteTuning';
 import { buildSquatRep } from '../art/squatAnimation';
 import { frameSpecFrom, isBodyIndex, renderLifterFrame } from '../art/lifterSprite';
-import { GYM_LIFT_STAGE } from '../art/gymTuning';
-import { blitOver } from '../art/gymScene';
+import { GYM_CROWD, GYM_LIFT_STAGE } from '../art/gymTuning';
+import { blitOver, crowdFrontRow } from '../art/gymScene';
 import { GYM_VENUE, GYM_VENUE_PROPS, type GymVenue } from '../art/gymTuning';
 import { liftStageScene, renderGymScene } from '../art/gymScene';
 import type { IndexGrid } from '../art/raster';
+import { codeOnly } from '../tuning/audit';
+import { LIFT_TUNING } from '../game/liftTuning';
 import { MEET_TUNING } from '../game/meetTuning';
+import { MEET_HALL_SCENE } from './meetHall';
 
 const SRC = path.join(__dirname, '..');
 
@@ -264,23 +280,206 @@ describe('a meet attempt is not lifted in the training gym (GDD §6, §12.2)', (
 });
 
 // ---------------------------------------------------------------------------
-// THE FIGURE AGAINST THE CROWD — a known, measured, UNCLOSED gap
+// EVERY BEAT, NOT ONE
+//
+// The scope of this file used to be `AttemptView` alone. That is exactly why a
+// roomless walk-out, a roomless deliberation and a roomless verdict were
+// invisible to it: the suite's own statement of "which building meet day happens
+// in" covered the one screen where the player is pressing the screen and
+// watching a cue ring, and every beat that is ABOUT dread was text on a void.
+// ---------------------------------------------------------------------------
+
+/** Every beat of meet day that is staged, and the file that stages it. */
+const STAGED_BEATS: readonly { readonly beat: string; readonly file: string }[] = [
+  { beat: 'walkout', file: 'meet/WalkoutView.tsx' },
+  { beat: 'the rep', file: MEET_ATTEMPT },
+  { beat: 'deliberation and verdict', file: 'meet/VerdictView.tsx' },
+  { beat: 'attempt-select', file: 'meet/AttemptSelectView.tsx' },
+];
+
+/**
+ * Beats that are deliberately NOT staged, with the reason, so the list above
+ * cannot quietly shrink and call itself complete.
+ *
+ * These are asserted to draw no room at all. If one of them acquires a hall,
+ * this test goes red and somebody has to move it into `STAGED_BEATS` and say
+ * why — which is the same discipline the staged list is under.
+ */
+const UNSTAGED_BEATS: readonly { readonly beat: string; readonly file: string; readonly why: string }[] = [
+  {
+    beat: 'weigh-in',
+    file: 'meet/WeighInView.tsx',
+    why: 'GDD §6.1 pre-meet paperwork, in a back room hours before the platform.',
+  },
+  {
+    beat: 'openers',
+    file: 'meet/OpenersView.tsx',
+    why: 'Also §6.1, and also not on the platform: this is a form handed to the table.',
+  },
+  {
+    beat: 'bomb-out',
+    file: 'meet/BombOutView.tsx',
+    why: 'GDD §6.3 asks for somber and non-punitive. The hall has emptied; the empty field IS the beat.',
+  },
+  {
+    beat: 'recap',
+    file: 'meet/RecapView.tsx',
+    why: 'GDD §6.5 is a results sheet, read after the meet, not a moment in it.',
+  },
+];
+
+/**
+ * Which room a screen draws, whether it draws it through `LiftStage` (the rep)
+ * or through `MeetHallView` (every other staged beat).
+ *
+ * @throws when a screen draws a hall this parser cannot resolve, for the same
+ * reason `resolveStageVenue` throws: a silently-unreadable room is the failure
+ * mode that let a meet be lifted in a training gym.
+ */
+export function resolveBeatVenue(source: string, liftStageSource: string): GymVenue | null {
+  const staged = resolveStageVenue(source, liftStageSource);
+  if (staged !== null) return staged;
+  if (!source.includes('<MeetHallView')) return null;
+  // `MeetHallView` takes no venue: it IS the meet hall, and the room it draws is
+  // `MEET_HALL_SCENE`, built from `MEET_TUNING.VENUE`. A screen cannot ask it
+  // for the training gym, which is the point.
+  return MEET_HALL_SCENE.venue;
+}
+
+describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
+  const liftStage = read(LIFT_STAGE);
+
+  it('the beat parser reads a MeetHallView, and still reads a LiftStage', () => {
+    // The positive control for the resolver below. Without it, a resolver that
+    // returned the meet venue for everything would pass every beat.
+    expect(resolveBeatVenue('  <MeetHallView lifter={null} scrim={x} />', liftStage)).toBe(
+      MEET_HALL_SCENE.venue,
+    );
+    expect(resolveBeatVenue('<LiftStage state={s} history={h} totalKg={k} />', liftStage)).toBe(
+      defaultVenueIn(liftStage),
+    );
+    expect(resolveBeatVenue('export function Nothing() { return null; }', liftStage)).toBeNull();
+  });
+
+  it('the hall MeetHallView draws is the meet platform, not the gym', () => {
+    expect(MEET_HALL_SCENE.venue).toBe(MEET_TUNING.VENUE);
+    expect(MEET_HALL_SCENE.venue).not.toBe(defaultVenueIn(liftStage));
+    // ...and it is the SAME BOX as the rep's, so the player does not walk into a
+    // differently-proportioned building between the walkout and the attempt.
+    const rep = liftStageScene();
+    expect(MEET_HALL_SCENE.w).toBe(rep.w);
+    expect(MEET_HALL_SCENE.h).toBe(rep.h);
+    expect(MEET_HALL_SCENE.floorRow).toBe(rep.floorRow);
+    expect(MEET_HALL_SCENE.focusX).toBe(rep.focusX);
+    expect(MEET_HALL_SCENE.cameraX).toBe(rep.cameraX);
+  });
+
+  // ONE TEST PER BEAT, deliberately. A single loop inside one `it` would report
+  // "meetStage.test.ts failed" for any of them; this way, deleting the hall from
+  // `WalkoutView.tsx` reddens a test with the word "walkout" in its name and
+  // nothing else.
+  for (const { beat, file } of STAGED_BEATS) {
+    it(`stages the ${beat} beat in the meet hall`, () => {
+      const source = read(file);
+      const venue = resolveBeatVenue(source, liftStage);
+      expect(venue, `${file} draws no room at all`).not.toBeNull();
+      expect(venue, `${file} draws the wrong room`).toBe(MEET_TUNING.VENUE);
+      // ...and the room that resolves to really is a hall with people in it,
+      // measured on pixels rather than taken from the name.
+      if (venue === null) throw new Error('unreachable');
+      expect(crowdPixels(roomFor(venue))).toBeGreaterThan(0);
+    });
+  }
+
+  for (const { beat, file, why } of UNSTAGED_BEATS) {
+    it(`deliberately leaves the ${beat} beat unstaged`, () => {
+      expect(resolveBeatVenue(read(file), liftStage), why).toBeNull();
+    });
+  }
+
+  it('covers every screen the router can reach, staged or not', () => {
+    // THE HOLE THIS CLOSES, and it is the hole that let the last pass through: a
+    // per-beat list is only as good as its coverage. `MeetScreen` routes to a
+    // fixed set of views; every one of them is in exactly one list above, and a
+    // ninth view added to the router with no entry fails here.
+    const router = read('meet/MeetScreen.tsx');
+    const rendered = [...router.matchAll(/<([A-Z][A-Za-z]*View)\b/g)].map((m) => m[1]);
+    const listed = new Set(
+      [...STAGED_BEATS, ...UNSTAGED_BEATS].map((entry) => {
+        const name = entry.file.split('/').pop() ?? '';
+        return name.replace('.tsx', '');
+      }),
+    );
+    expect(rendered.length, 'MeetScreen renders no views this scan can see').toBeGreaterThan(0);
+    for (const name of new Set(rendered)) {
+      expect(listed.has(name ?? ''), `${name ?? '?'} is in neither the staged nor the unstaged list`).toBe(true);
+    }
+    expect(listed.size).toBe(STAGED_BEATS.length + UNSTAGED_BEATS.length);
+  });
+
+  it('draws the hall nearest-neighbour at an integer scale (GDD §7.1)', () => {
+    // The rule that the old walkout broke: it drew its barbell as anti-aliased
+    // vector rectangles two seconds before the player squatted a pixel bar.
+    const hall = read('meet/MeetHallView.tsx');
+    // Both images — the room and the figure — pin the filter and the mipmap.
+    const nearest = hall.split('filter: FilterMode.Nearest, mipmap: MipmapMode.None').length - 1;
+    expect(nearest, 'a MeetHallView image samples with something other than Nearest').toBe(2);
+    // ...and neither of them is sized by a number of its own: they take the
+    // sprite's box, whose scale `gymScene.test.ts` proves is an integer shared
+    // with the room's.
+    expect(hall).toContain('width={SPRITE_BOX.w}');
+    expect(hall).toContain('height={SPRITE_BOX.h}');
+    expect(Number.isInteger(LIFT_TUNING.FEEDBACK.SPRITE_SCALE)).toBe(true);
+  });
+
+  it('draws the walkout bar through the SPRITE, not out of Views', () => {
+    // THE OTHER HALF OF §7.1, and the mutation for it. The old walkout built its
+    // barbell from `Animated.View`s with `backgroundColor`, `borderColor` and
+    // `borderRadius`. Those are the three properties that make a vector
+    // rectangle, and none of them may appear in this file again.
+    //
+    // COMMENTS ARE STRIPPED FIRST. This file's own header names all three
+    // properties while explaining why they are gone, and a scan that matched
+    // them there would be unpassable — which is a check nobody could ever
+    // satisfy, the mirror image of one nobody could ever fail.
+    const walkout = codeOnly(read('meet/WalkoutView.tsx'));
+    for (const banned of ['borderRadius', 'borderColor', 'borderWidth']) {
+      expect(walkout, `WalkoutView draws a bar with ${banned}`).not.toContain(banned);
+    }
+    expect(walkout, 'WalkoutView still builds its own plate rectangles').not.toContain('plateStackFor');
+    // Non-vacuity for the stripper: it does still see the code around them.
+    expect(walkout).toContain('MeetHallView');
+    expect(codeOnly('// borderRadius: 3,\nconst a = 1;')).not.toContain('borderRadius');
+    // ...and it hands the hall a plate count, so the bar LOADS rather than
+    // appearing. Deleting the prop leaves a bar that is loaded from the first
+    // frame, and this line goes red.
+    expect(walkout).toContain('platesLoaded');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE FIGURE AGAINST THE CROWD — measured before, measured after, CLOSED
 // ---------------------------------------------------------------------------
 
 /**
  * The lifter composited into a room, at three points in a maximal squat.
  *
  * This is the thing no shipped screen had ever drawn before this piece: the
- * readability suite passes on the meet venue because nothing was standing in
+ * readability suite passed on the meet venue because nothing was standing in
  * front of it.
  */
-function crossingsAgainst(venue: GymVenue): {
+interface Crossings {
   readonly total: number;
   readonly subPerceptual: number;
   readonly againstCrowd: number;
-} {
+}
+
+function crossingsAgainst(venue: GymVenue): Crossings {
+  return crossingsOnto(renderGymScene({ ...liftStageScene(), venue }));
+}
+
+function crossingsOnto(scene: IndexGrid): Crossings {
   const rep = buildSquatRep(LOAD_PRESETS.MAXIMAL);
-  const scene = renderGymScene({ ...liftStageScene(), venue });
   let total = 0;
   let subPerceptual = 0;
   let againstCrowd = 0;
@@ -326,36 +525,37 @@ const NEIGHBOURS: readonly { readonly dx: number; readonly dy: number }[] = [
 const PERCEPTUAL_LUMA = 12;
 const DEMO_TOTAL_KG = 250;
 
-describe('the lifter against the crowd — MEASURED, AND NOT FIXED IN THIS PIECE', () => {
+describe('the lifter against the crowd — MEASURED BEFORE AND AFTER', () => {
   /**
-   * WHAT THIS RECORDS, PLAINLY.
+   * WHAT THIS RECORDS, PLAINLY, INCLUDING WHAT IT USED TO SAY.
    *
    * The environment builder measured and wrote into `gymPalette.ts` that
    * `CROWD_MID` is the lifter's `HAIR_DARK` to one decimal place and
-   * `CROWD_DARK` is 1.0 luma from his `OUTLINE`, that no other pair in the
-   * safe rgb5 window improves it, and that "the actual fix is geometric".
-   * Nothing had ever composited the two, because no shipped screen drew the
-   * meet venue. This piece is what made it shipped, so this is the first
-   * measurement of the pair, and it agrees with the warning:
+   * `CROWD_DARK` is 1.0 luma from his `OUTLINE`, that no other pair in the safe
+   * rgb5 window improves it, and that "the actual fix is geometric — the crowd's
+   * seating sitting below his crown rather than behind it". This test's previous
+   * revision measured exactly that and then declined to fix it, on the grounds
+   * that `gymScene.ts` belonged to another piece:
    *
-   *   training gym    62 / 874 silhouette crossings sub-perceptual (7.1%)
-   *   meet platform  176 / 874 (20.1%), of which 114 are against the crowd,
-   *                  worst separation 1.0 luma
+   *   training gym    80 / 874 silhouette crossings sub-perceptual
+   *   meet platform  176 / 874, of which 114 were against the crowd,
+   *                  worst separation 1.03 luma
    *
-   * WHY IT IS NOT FIXED HERE. The crowd is anchored to the wall/floor junction
-   * and painted upward, and the junction row (119) sits INSIDE the figure's
-   * vertical span (103-165) — so his head and neck are always in front of the
-   * band's top rows. Shrinking `CROWD_ROWS` was swept from 30 down to 0: it
-   * moves the count (30 -> 176, 24 -> 113, 12 -> 92, 4 -> 62) but not the worst
-   * case, it is non-monotonic because it depends on where a head row lands, and
-   * at 0 there is no crowd, which is the whole reason the venue exists. The
-   * real fix needs `paintCrowd` to take a bottom offset so the seating clears
-   * the figure's span — and `gymScene.ts` belongs to another piece of this run.
+   * The fix has now been made, in `GYM_CROWD.RISER_ROWS`: the seating band stops
+   * twenty rows above the wall/floor junction, on a barrier, so what is behind
+   * the lifter's head is `WALL_MID` — the one value in the wall bank chosen to
+   * sit inside the safe window in his own ramp, and the value the training gym
+   * has always put there. Re-measured on the same instrument:
    *
-   * So this test does not assert the gap away. It PINS THE CEILING, so the
-   * composite cannot quietly get worse while somebody else fixes it.
+   *   training gym    80 / 874   (unchanged; nothing about the gym moved)
+   *   meet platform   62 / 874, of which 0 are against the crowd
+   *
+   * The meet room is now BETTER for the silhouette than the training gym, which
+   * is what a room with no texture behind the figure should be. `gymScene.test.ts`
+   * carries the same result on its own instrument — `rimDeadShare` 0.00% against
+   * a known-fail of 1.96% — and plants the old geometry to show the bound bites.
    */
-  it('records how much worse the meet room is for the silhouette', () => {
+  it('leaves no sub-perceptual crossing against the crowd at all', () => {
     const gym = crossingsAgainst('training-gym');
     const meet = crossingsAgainst('meet-platform');
 
@@ -364,17 +564,37 @@ describe('the lifter against the crowd — MEASURED, AND NOT FIXED IN THIS PIECE
     expect(meet.total).toBe(gym.total);
 
     // The training gym has no crowd, so none of its bad crossings are against
-    // one. That is the control for the count below.
+    // one. That is the control for the count below — if `againstCrowd` were
+    // broken, both numbers would be 0 and the meet assertion would pass
+    // vacuously, so the meet room's own crowd is counted separately.
     expect(gym.againstCrowd).toBe(0);
+    expect(crowdPixels(roomFor('meet-platform'))).toBeGreaterThan(0);
 
-    // THE GAP, stated as a fact rather than asserted away.
-    expect(meet.subPerceptual).toBeGreaterThan(gym.subPerceptual);
-    expect(meet.againstCrowd).toBeGreaterThan(0);
+    // THE CLAIM. Not "fewer than before" — none.
+    expect(meet.againstCrowd, 'the seating is back behind the lifter').toBe(0);
 
-    // THE CEILING. A regression that made the crowd worse — a wider band, a
-    // lighter figure, a new pose — fails here. Set just above the measured
-    // value rather than at a round number, so it has to be re-read to be moved.
-    const share = meet.subPerceptual / meet.total;
-    expect(share, `meet room sub-perceptual share ${(share * 100).toFixed(1)}%`).toBeLessThan(0.22);
+    // ...and the room as a whole is no worse for the figure than the gym is.
+    expect(meet.subPerceptual).toBeLessThanOrEqual(gym.subPerceptual);
+  });
+
+  it('is a property of the SEATING, shown by putting it back on the floor', () => {
+    // THE MUTATION. `RISER_ROWS` is frozen and `GymSceneSpec` has no field for
+    // it, so the plant moves the band's pixels back down by exactly that many
+    // rows — which is the room `paintCrowd` drew before this pass — and shows
+    // the crossings come back. Without this, "0 against the crowd" could be a
+    // broken counter rather than a fixed room.
+    const scene = renderGymScene({ ...liftStageScene(), venue: 'meet-platform' });
+    const bottom = crowdFrontRow({ ...liftStageScene(), venue: 'meet-platform' });
+    const top = Math.max(0, bottom - GYM_VENUE['meet-platform'].CROWD_ROWS);
+    const lowered = renderGymScene({ ...liftStageScene(), venue: 'meet-platform' });
+    for (let y = bottom - 1; y >= top; y -= 1) {
+      for (let x = 0; x < lowered.w; x += 1) {
+        const from = scene.data[y * scene.w + x] ?? 0;
+        lowered.data[(y + GYM_CROWD.RISER_ROWS) * lowered.w + x] = from;
+      }
+    }
+    const before = crossingsOnto(lowered);
+    expect(before.againstCrowd, 'lowering the seating changed nothing').toBeGreaterThan(0);
+    expect(before.subPerceptual).toBeGreaterThan(crossingsAgainst('meet-platform').subPerceptual);
   });
 });

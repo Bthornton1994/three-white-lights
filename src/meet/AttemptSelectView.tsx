@@ -27,6 +27,20 @@
  * `MEET_TUNING.SMALL_INCREASE_STRATEGY` / `BIG_INCREASE_STRATEGY` name which
  * two, and moving them is a tuning edit rather than a code one.
  *
+ * ---------------------------------------------------------------------------
+ * THE PLATFORM IS BEHIND IT, AND IT IS EMPTY
+ * ---------------------------------------------------------------------------
+ * This screen used to be two cards on a void. It is the one-way choice §6.3 is
+ * built around, and it is made in the same building as the attempt that
+ * produced it — so the hall is behind it, held back hard by
+ * `MEET_TUNING.HALL.CHOICE_SCRIM` because a decision with a paragraph on each
+ * card has to READ.
+ *
+ * NOBODY IS ON THE PLATFORM. `lifter={null}`, and that is a statement rather
+ * than a saving: between attempts the lifter is off the platform and the loading
+ * crew is on it. Drawing a figure standing under a bar he has not declared yet
+ * would be the screen telling a lie about where he is.
+ *
  * NO ARITHMETIC HERE. Every weight, every delta and every label comes off
  * `attemptDecisionFor`, and every one of them has already been checked against
  * `isCallableWeightNow` — the same predicate `declareAttempt` will apply.
@@ -40,6 +54,7 @@ import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import type { AttemptDecision, AttemptOption } from '../game/meetDay';
 import { playBeat } from './meetFeedback';
 import { formatWeight } from '../game/resultCard';
+import { MeetHallView } from './MeetHallView';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
@@ -119,6 +134,12 @@ export function AttemptSelectView({ decision, onChoose }: AttemptSelectViewProps
 
   return (
     <View style={styles.root} testID="meet-attempt-select">
+      {/* Behind everything, and untouchable: the cards are the only thing on
+          this screen that takes a press. */}
+      <View style={styles.hall}>
+        <MeetHallView lifter={null} scrim={MEET_TUNING.HALL.CHOICE_SCRIM} />
+      </View>
+
       <Text style={styles.eyebrow}>{MEET_COPY.SELECT_EYEBROW}</Text>
       <Text style={styles.title} testID="attempt-select-title">
         {`${MEET_COPY.LIFT_LABEL[decision.lift]} · ${MEET_COPY.ATTEMPT_LABEL} ${decision.attemptNumber}`}
@@ -181,6 +202,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: L.SCREEN_PAD,
     gap: L.ROW_GAP,
+  },
+  hall: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    pointerEvents: 'none',
   },
   eyebrow: {
     color: MEET_PALETTE.TEXT_DIM,

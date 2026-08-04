@@ -120,7 +120,7 @@ import { GYM, GYM_BANKS, GYM_RAMPS } from '../art/gymPalette';
 import { SHEET, SHEET_BANK } from '../card/sheetPalette';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { SESSION_PALETTE } from '../session/sessionPalette';
-import { MEET_PALETTE, MEET_PLATE_COLOURS } from '../meet/meetPalette';
+import { MEET_PALETTE } from '../meet/meetPalette';
 
 /**
  * Every hand-tuned block in the game, grouped by the thing it tunes.
@@ -305,7 +305,7 @@ export const PALETTES = Object.freeze({
   sheet: Object.freeze({ SHEET, SHEET_BANK }),
   liftScreen: LIFT_PALETTE,
   sessionScreen: SESSION_PALETTE,
-  meetScreen: Object.freeze({ MEET_PALETTE, MEET_PLATE_COLOURS }),
+  meetScreen: MEET_PALETTE,
 });
 
 /**

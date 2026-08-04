@@ -183,11 +183,48 @@ export const MEET_TUNING = Object.freeze({
    * banner — all built and all tested — went unused.
    *
    * What changes with it (see `GYM_VENUE` and `GYM_VENUE_PROPS`): the block wall
-   * becomes 30 rows of seated crowd under a sponsor banner, the dumbbells,
+   * becomes rows of seated crowd under a sponsor banner, the dumbbells,
    * kettlebells and chalk stand are replaced by a judges' table, a plate tree
    * and an equipment case, and the room goes darker.
+   *
+   * IT IS READ BY EVERY STAGED BEAT NOW, not just the rep. `src/meet/meetHall.ts`
+   * builds `MEET_HALL_SCENE` from it and `MeetHallView` draws that behind the
+   * walk-out, the deliberation, the verdict and the attempt choice, in the same
+   * box and at the same integer scale `AttemptView` hands `LiftStage`. Until
+   * this pass it was read at exactly one site in the tree, so the player saw the
+   * crowd during precisely the beat they were pressing the screen.
    */
   VENUE: 'meet-platform' as GymVenue,
+
+  /**
+   * HOW FAR THE HALL IS HELD BACK, per beat — 0 is the room at full strength, 1
+   * is the room gone.
+   *
+   * ---------------------------------------------------------------------------
+   * THESE ARE COMPOSITION KNOBS AND NOBODY HAS LOOKED AT THEM ON A PHONE
+   * ---------------------------------------------------------------------------
+   * Each beat draws its own copy over the room, and a room at full strength
+   * under a paragraph of body text is a room competing with the thing the player
+   * has to read. The ordering below is the design claim; the values are a
+   * starting point in exactly the sense the header of this file describes.
+   *
+   * The ordering, which is what to preserve if these are turned:
+   *
+   *   WALKOUT   lightest. The hall IS the beat. There are three short lines over
+   *             it and nothing to read carefully.
+   *   JUDGING   middle. The three lamps have to be the brightest thing on the
+   *             screen, and the room is what they are hanging in.
+   *   CHOICE    heaviest. GDD §6.3's screen is a decision with two cards and a
+   *             paragraph on each; the hall is there to say the lifter has not
+   *             left the building, not to be read.
+   *
+   * `meetTuning.test.ts` pins the ordering rather than the numbers.
+   */
+  HALL: Object.freeze({
+    WALKOUT_SCRIM: 0.12,
+    JUDGING_SCRIM: 0.46,
+    CHOICE_SCRIM: 0.8,
+  }),
 
   // -------------------------------------------------------------------------
   // Pre-meet (GDD §6.1)
@@ -988,13 +1025,15 @@ export const MEET_LAYOUT = Object.freeze({
 
   DIVIDER_HEIGHT: 1,
 
-  /** The bar graphic on the walkout beat. */
-  BAR_W: 300,
-  BAR_H: 8,
-  PLATE_W: 13,
-  PLATE_GAP: 2,
-  PLATE_MAX_H: 84,
-  PLATE_MIN_H: 30,
+  // THE WALKOUT'S BAR GRAPHIC USED TO BE HERE, and it is gone rather than
+  // unused. `BAR_W / BAR_H / PLATE_W / PLATE_GAP / PLATE_MAX_H / PLATE_MIN_H`
+  // sized a barbell drawn out of `Animated.View`s with `backgroundColor`,
+  // `borderColor` and `borderRadius` — anti-aliased vector rectangles, two
+  // seconds before the player squatted a nearest-neighbour pixel bar. GDD §7.1
+  // commits to a fixed internal resolution and nearest-neighbour scaling
+  // throughout, so the walkout's bar is now `renderLifterFrame`'s bar and the
+  // geometry that draws it is the sprite's (`src/art/spriteTuning.ts`'s `BAR`),
+  // not a second set of numbers here that could disagree with it.
 });
 
 /**
