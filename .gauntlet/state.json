@@ -270,9 +270,9 @@
       "id": "A4",
       "name": "Cut-in firing gate (mechanism, not art)",
       "bar": "One per session enforced by the gate itself; always skippable; fires only at 7.2 moments; Tier 3 surface path reused, not duplicated.",
-      "status": "building",
+      "status": "grading",
       "verifiable": true,
-      "note": "DISPATCHED. Not the art - 7.2 says to cut cut-in art from the early prototypes and 11 records that working assumption, so this is the scarcity mechanism 7.2 calls \"the entire mechanic\". It exists nowhere today: three view files (WalkoutView, RecapView, CloseOutView) carry comments admitting the gate is unbuilt and deferring it. 12.3 lists \"cut-ins firing more than once per session\" as a hard refusal condition with NOTHING enforcing it - that unenforced condition is why this is next. Four mutations required: break the cap, break dismiss, empty the firing-moment list, fire on a non-qualifying beat - each must turn a named test red. The list-emptying mutation is there because it is exactly the defect found in the app shell. Known tension the builder must address rather than dodge: session.test.ts pins a PR every single session at today’s tuning, so moment 2 alone would fire constantly."
+      "note": "BUILT AND MERGED, FRESH CRITIC DISPATCHED. The 12.3 refusal condition that had nothing enforcing it now has a gate, and the load-bearing decision is that SCREENS REPORT BEATS, NOT MOMENTS - a caller says \"this is attempt 3 of 3\" or \"the meet ended with no total\", and the gate decides whether that is one of 7.2s four. A caller that could name a moment could fire whatever it liked, and the no-firing-on-a-non-qualifying-beat property would become a claim about five .tsx files that a node-environment suite cannot see. A wiring test proves no leaf view imports the gate at all. I RAN TWO MUTATIONS MYSELF: forcing the cap check false reddens 4 named tests including THE GATE REFUSES THE SECOND CUT-IN OF A SESSION; emptying CUT_IN_MOMENTS to [] reddens 31 across 2 of 3 files - and that second one is the exact defect shape found in the app shell, where a list that decided whether anything rendered could be emptied with the suite green. Suite 2310 across 54 files. THE ART STAYS UNBUILT per 7.2 and 11, and 12.2s cut-in bar is reported UNMET rather than claimed - it is an art bar. Two disclosures worth a human eye: the builder ruled that a whole meet counts as ONE session (so one cut-in across nine attempts), and across time the earlier beat takes the slot regardless of priority, so a lifter can bomb out and see no bomb-out cut-in."
     }
   ],
   "report": {
@@ -405,8 +405,8 @@
         "id": "A4",
         "name": "Cut-in firing gate (§7.2 scarcity, not the art)",
         "state": "grading",
-        "stateLabel": "Building",
-        "note": "Started this wave. The art stays unbuilt per §7.2 (\"cut art entirely from the early prototypes\") and §11 records that as this run's working assumption. What is being built is the mechanism §7.2 calls \"the entire mechanic\": the one-per-session cap, the dismiss, and the four firing moments. §12.3 makes firing more than once per session a refusal condition and nothing in the codebase enforces it today — three view files carry comments deferring the gate to whoever built this piece."
+        "stateLabel": "Grading",
+        "note": "Built. Screens report beats, not moments, so a caller cannot name what fires. I ran the mutations myself: killing the cap reddens 4 tests, emptying the moment list reddens 31. The art stays unbuilt and §12.2's cut-in bar is reported unmet rather than claimed."
       },
       {
         "id": "C1",
