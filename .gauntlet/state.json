@@ -201,9 +201,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work — NOW GRADEABLE, reference committed.",
-      "status": "grading",
+      "status": "rework",
       "verifiable": true,
-      "note": "THE DOC IS FIXED BY MEASUREMENT, AND THE BUILDER CORRECTED THE CRITIC. It rendered rather than reasoned: every critic figure reproduced to 3 decimal places except one. \"One row of three lost at BRACE\" is WRONG - all three land, because (52,23) is inside the arm’s CONTOUR RING but not its fill, and despeckle runs between the draw and the mark stamp and replaces that isolated ring pixel. BRACE is also not a member of the 416-frame pose space at all, so it was a poor worked example twice over; the builder wrote the aggregate facts instead. Its own refinement is the useful one: of 905 far misses only 55 are inside the arm’s FILL and 849 are in the one-pixel contour ring, so the far seam is eaten mostly by the arm’s OUTLINE, which is why UPPER_ARM_R moves the number so hard. The mechanism is now ASSERTED, not narrated - anchors mirror-symmetric in 416/416 frames, far seam outboard of its axis in 1248/1248, near seam inside the near arm in 0 of 1248, far seam inside the far arm in 906. And it found a FOURTH copy of the capsule rule hiding in lifterSprite.test.ts: eight arguments where the shared one takes nine, so its import silently lost to a hoisted local declaration, the pad argument was dropped, and the test reported 80,908 FALSE FAILURES with no TypeScript error at all. For inProbeCapsule it took neither option I offered and picked a better one - it made the agreement MEASURED, drawing each capsule with the real drawLimb and requiring the painted set and the predicate set to be the same set over 2562 capsules, on the grounds that sharing code would only make the predicate agree with itself while the claim was that it agrees with DRAWN PIXELS.",
+      "note": "THE SAME DEFECT A THIRD TIME, ONE LAYER DOWN - AND THE CRITIC REDUCED IT TO A SINGLE UNMEASURED INTEGER. The test named \"is eaten on the far side by the ARM\" NEVER JOINS its two counts: inside and landed go into separate buckets on adjacent lines and are never intersected. I read the loop and confirmed it. So farInsideArm 906 and farMisses 905 are two aggregates CONSISTENT WITH the claim that do not ENTAIL it - and farMissesOnSkin does not close it either, because the seam is over SINGLET, so the skin sitting there could be the deltoid cap, the trap, or plain torso. The critic then did the algebra: because drawArm runs after drawTorso and no later SKIN mark can repaint a landed pixel, missesOutsideArm = rescuedByDespeckle - 1. The whole causal claim reduces to ONE INTEGER - and that integer is exactly the one the file guesses at in prose, unhedged: \"despeckle runs before the marks and rescues a lone contour pixel NOW AND THEN\". If it is 1 the story holds; if it is 60, then 59 far misses have nothing to do with the arm and the stated lever is partly wrong. Nothing in the suite can tell those apart. Second prong: mirroredAnchors pins the STRAP ANCHOR’s symmetry only, while the paragraph it is offered as proof of claims the strap, the deltoid AND THE ARM are all symmetric and \"this one asymmetry is the whole of it\" - in a rig whose header advertises THREE deliberate asymmetries, one of them on the arm, and whose armSpan already applies GRIP_ASYMMETRY_PX to handX. Third: the 849/55 ring-versus-fill split, which is the fact that explains why UPPER_ARM_R moves the number so hard, APPEARS NOWHERE IN THE TREE - the critic grepped for it and found zero hits. It exists only in a builder report. The fix is four expectations in a loop that already holds every operand.",
       "evidence": "gym/screen-hole-3x.png"
     },
     {
@@ -245,9 +245,9 @@
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
-      "status": "grading",
+      "status": "rework",
       "verifiable": true,
-      "note": "ROUND 6 CLOSED THE SEED, AND THE BEST PART OF THE REPORT IS WHAT IT REFUSED TO CLAIM. The seed now carries its unit as a FIELD, and I verified the mutation myself: flipping unit to lb without converting magnitudes is a COMPILE ERROR, TS2345 at the read sites. It also ran the escape route - widening the annotation back to the union - and that is a compile error too, four TS2339s. THEN IT STATED PLAINLY THAT THE CASE THAT MATTERS IS STILL NOT CAUGHT: pound magnitudes under a kg tag compile clean. And it went further, qualifying something that could have been read as a pass - that edit DOES turn 11 tests red, but they are change-detectors pinning the arithmetic 180/120/220 produce, they would go red identically for a legitimate retune from 180 to 185, and NOT ONE MENTIONS A UNIT. A human retuning the seed updates those expectations and the pound magnitudes go through. It deliberately did NOT add a plausibility band, because that is a guessed constant standing in for a check, which 11 already records going wrong once. Mutation G is the other honest one: dropping the annotation entirely compiles clean, so THE ANNOTATION IS NOT THE CHECK - what is load-bearing is that the arms carry different field names, and it wrote that ranking into the binding rather than letting the annotation take credit. It also found a THIRD false comment at the write site itself, newServerRecord’s own docstring, saying the same \"not progression\" thing. 7 is reorganised from fields to ROUTES-AND-FIELDS, because organising by field is exactly what let a second route into an already-proven field survive, and a new 7.4 states the claim in falsifiable form and names three things that would break it - including that the guarantee against a sixth route is a manual grep, not a test."
+      "note": "THE BAR IS MET ON EVERY ROUTE A PLAYER CAN REACH - the critic verified all four independently - AND THE ENUMERATION IS STILL A GREP. It called round 6’s refusal to count 11 red change-detectors as unit coverage \"the single best piece of judgement in the round\", upheld the compile-error-over-runtime decision, upheld the preview exemption for the two sites it covers, and went looking for a non-guessed magnitude bound itself: the RPE chart is a percentage curve and unit-invariant, the plate grid gives a rounding increment not a validity range, DOTS carries coefficients not a domain, and inter-lift ordering survives a 2.2x seed intact. Every candidate reduces to a guessed constant, so the refusal to invent a plausibility band is upheld too. TWO GAPS. First, StartingE1rmSeed is the ONLY ONE OF FOUR tagged pairs with no ArmsAreTellableApart assertion - and sessionServer.ts itself states that the different field names ARE the guarantee, so the property named as load-bearing is the one enforced by convention rather than by tsc. The reason it is missing is the type placement the builder flagged as reversible: the helper is module-private in progression.ts, so the assertion cannot be written beside its three siblings without moving the type. Second, 7.4’s OWN FIRST FALSIFIER FIRES: there is a SIXTH ServerRecord construction site, sessionPreview.ts:173, and 7.3(c) says \"THE TWO PLACES\" while 7.4 says five routes. It carries the same \"NOT PROGRESSION\" sentence this round deleted from the seed. THE STRUCTURAL POINT IS THE ONE THAT MATTERS: five of six rounds ended with a human grep, and progression.test.ts ALREADY has the idiom to stop it - it strips comments and pins a count of writes. Dispatched round 7 to mechanise the enumeration, which is the only thing that stops round seven finding route seven."
     },
     {
       "id": "B1",
@@ -355,9 +355,9 @@
       {
         "id": "A1",
         "name": "Lifter sprites & animation",
-        "state": "grading",
-        "stateLabel": "Re-grading",
-        "note": "Doc fixed by measurement, and the builder corrected the critic on one figure. It also found a fourth copy of the capsule rule whose import silently lost to a hoisted local, dropping an argument and producing 80,908 false failures with no type error."
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "Third causal story in this file reconciling two numbers. The test named for the arm never joins its two counts — 906 and 905 are consistent with the claim, not entailed by it, and the gap between them is a prose guess (\"now and then\") nothing can check."
       },
       {
         "id": "A2",
@@ -390,9 +390,9 @@
       {
         "id": "X1",
         "name": "Cross-mode coherence",
-        "state": "grading",
-        "stateLabel": "Re-grading",
-        "note": "The seed carries its unit as a field; flipping it is a compile error, verified. The report's best feature is refusing to claim the wrong-magnitudes case is caught, and naming the 11 red tests as change-detectors that would fire on a legitimate retune too."
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "Bar met on every player-reachable route, verified independently. But the property named as the guarantee is the one of four not asserted, and §7.4's own first falsifier fires — there is a sixth construction site. Round 7 mechanises the enumeration so a grep is no longer the guarantee."
       },
       {
         "id": "B1",
