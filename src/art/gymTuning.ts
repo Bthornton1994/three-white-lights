@@ -458,8 +458,21 @@ export const GYM_CROWD = Object.freeze({
    *     mesh rather than as people.
    *
    * At rest both draw on pixels that are already `CROWD_DARK`, so a seated hall
-   * is bit-for-bit what it was before this existed. `gymScene.test.ts` pins the
-   * seated band row by row.
+   * is bit-for-bit what it was before this existed.
+   *
+   * WHERE THAT IS PINNED, and it is not where this comment used to say it was:
+   * `gymScene.test.ts` holds nothing row-by-row about the band. The two
+   * measurements are in `src/meet/walkout.test.ts`:
+   *
+   *   - `is calibrated on the seated band the renderer actually drew` reads the
+   *     air out of the rendered room — exactly `KEYLINE_ROWS` empty rows above
+   *     every tier that has one behind it, with that tier's shoulders in the
+   *     next row up, and exactly `KEYLINE_COLS` columns of air between
+   *     neighbouring spectators in the widest row of every tier. Raise either
+   *     number and the rim starts drawing on somebody, and that test says so.
+   *   - the plant in that file redraws the whole band with NO rim at all and is
+   *     asserted byte-identical to the shipped room at rest, which is the
+   *     "bit-for-bit" claim itself.
    */
   KEYLINE_ROWS: 1,
   KEYLINE_COLS: 2,
