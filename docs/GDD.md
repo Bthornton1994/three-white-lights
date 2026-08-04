@@ -1275,8 +1275,53 @@ The code has taken the safe branch and needs a ruling to take any other.**
       at all. What remains unclosed and is named as such: a caller can still
       write `{ unit: 'kg', … }` over a pound number, which is a lie somebody has
       to type, not a field that means nothing.
+      **AND THE NINE ATTEMPT WEIGHTS ARE NOW CHECKED TOO, which is the third and
+      last field on this path.** For two rounds the total's unit came off
+      `readTotal(state)`, `state` came off `createMeet(meet.rules)`, and `meet`
+      was an argument the caller passed *beside* the report — so the unit was a
+      **label taken off one argument and used to vouch for the nine numbers in
+      another**, and nothing tied the two together. The suite's own positive
+      control shows the cost: `405 / 425 / 442.5 / 265 / 275 / 280 / 500 / 525 /
+      545` is a legal **pound** card and a legal **kilogram** card, because 2.5 lb
+      and 2.5 kg are the same grid spacing. Essentially every legal pound card is
+      a legal kilogram card. A client playing in lb whose submission reached a
+      server that resolved the definition by `meetId` and found a kilogram meet
+      passed the bodyweight's check and the total's check and banked a 2.2x
+      total — with no cast and no typed lie — and `nextTotalKg` is monotone, so
+      it could never be walked back.
+      Three things close it. `MeetResultReport.card` is a `MeetCardReport`, the
+      same tagged-pair shape as the bodyweight (`kilogramAttempts` /
+      `poundAttempts`, different field names on the two arms), so the weights
+      cannot be reached without narrowing on a unit; the unit sits at **card**
+      grain rather than per attempt, because a meet is run under one
+      `MeetLoadingRules` and a card whose squats were kg and whose bench was lb
+      would make the non-decreasing-attempts rule a comparison between two
+      scales. `applyMeetResult` refuses unless `meet.id === report.meetId`, so
+      the definition supplying the unit is the meet being reported.
+      `replayMeetCard` refuses unless `card.unit === meet.rules.unit` — a check
+      **strictly stronger** than the other two, because it compares the client's
+      claim against server-owned data rather than against a constant.
+      `MeetAttemptReport.weightKg` is now `weight`: the row makes no unit claim
+      at all, which is the honest shape when the claim belongs one level up.
+      A fourth check closes a hole *inside* the third round's own work: the
+      bodyweight's tag was validated and its payload was not, so `{"unit":"kg"}`
+      wrote `bodyweightKg: undefined` into a stored result with `ok: true`. Both
+      readings now refuse a tag with nothing under it (`MALFORMED_READING`, a
+      separate code because the remedy is to fix the sender, not to convert an
+      entry).
+      **What is still taken on trust, named rather than left to be found:** the
+      `meet` argument is supplied by the caller, so the id check makes it *claim*
+      to be the reported meet and nothing makes it *be* one — `applyMeetResult`
+      has no catalogue to look one up in. That closes when the Edge Function
+      resolves `meetId` against its own table instead of taking a definition as
+      an argument, and it is the highest-value thing left on this path. Also
+      named in the module: `MeetDefinition.ghostTotalsKg` is still a bare
+      `number[]` (placeholder data a backend replaces, and it reaches no stored
+      field), and `MeetDayAttempt.weightKg` — the meet-day loop's own row, not
+      the wire — is a bare number that `AttemptView.tsx` prints with a hardcoded
+      "kg", which on a pound meet is a lying screen and is ruling (a)'s to delete.
       **None of that takes the ruling below.** The code still refuses; it now
-      refuses both numbers instead of one.
+      refuses every number instead of one.
       **Three ways out, none taken:** (a) rule that the game only ever runs kg
       meets and lbs is a display skin, in which case `POUND_MEET_RULES` should go
       and §11's display question answers this by itself; (b) rule that pound

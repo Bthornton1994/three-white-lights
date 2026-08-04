@@ -44,6 +44,31 @@ import { describe, expect, it } from 'vitest';
 const HOOK_PATH = fileURLToPath(new URL('./useMeetDay.ts', import.meta.url));
 const SOURCE = readFileSync(HOOK_PATH, 'utf8');
 
+const SERVER_PATH = fileURLToPath(new URL('../game/meetServer.ts', import.meta.url));
+
+/**
+ * Every member of `MeetServerErrorCode`, read out of the module that declares
+ * it.
+ *
+ * A TYPE UNION HAS NO RUNTIME VALUE, so this is a source scan of the union's own
+ * declaration rather than an import.
+ *
+ * COMMENTS ARE STRIPPED BEFORE THE TERMINATOR IS LOOKED FOR, not after: every
+ * arm of that union carries a doc comment and several contain a semicolon, so
+ * searching the raw text for `;` ends the declaration inside prose and finds
+ * half the codes. The control assertion at the call site is what caught that.
+ */
+function meetServerErrorCodes(): readonly string[] {
+  const source = readFileSync(SERVER_PATH, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  const start = source.indexOf('export type MeetServerErrorCode =');
+  if (start < 0) throw new Error('useMeetDay.test: MeetServerErrorCode is not declared where expected');
+  const end = source.indexOf(';', start);
+  if (end < 0) throw new Error('useMeetDay.test: MeetServerErrorCode has no terminator');
+  return [...source.slice(start, end).matchAll(/'([A-Z_]+)'/g)].map((match) => match[1] ?? '');
+}
+
 describe('a refused meet submission is disclosed rather than dropped', () => {
   it('keeps the error instead of returning the cache unchanged and forgetting it', () => {
     expect(SOURCE).toContain('setSubmissionError(result.error)');
@@ -73,14 +98,16 @@ describe('a refused meet submission is disclosed rather than dropped', () => {
   it('says at the site what the refusals are, so an editor of this file finds them', () => {
     // The disclosure existed in `meetServer.ts` and in the GDD and NOT here,
     // which is the one place somebody changing this effect is looking.
-    for (const code of [
-      'MEET_REPLAY_REFUSED',
-      'MEET_INCOMPLETE',
-      'MEET_OVERRUN',
-      'MEET_ALREADY_RECORDED',
-      'BAD_DAY',
-      'UNSUPPORTED_MEET_UNIT',
-    ]) {
+    //
+    // READ OFF `MeetServerErrorCode` RATHER THAN LISTED. This used to be a
+    // hand-written array of six, which was complete on the day it was written
+    // and silently incomplete the moment a seventh code was added — and two were
+    // added. The union is the source; the disclosure has to cover all of it.
+    const codes = meetServerErrorCodes();
+    expect(codes.length).toBeGreaterThan(0);
+    // The control: the scan must be finding the real union, not an empty match.
+    expect(codes).toContain('UNSUPPORTED_MEET_UNIT');
+    for (const code of codes) {
       expect(SOURCE, code).toContain(code);
     }
   });

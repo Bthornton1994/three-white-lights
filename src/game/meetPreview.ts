@@ -292,8 +292,8 @@ export function playRep(config: LiftConfig, style: RepStyle): LiftResolution {
 // ---------------------------------------------------------------------------
 
 /** Weigh-in confirmed, openers confirmed, first squat on the bar. */
-function openedMeet(): MeetDayState {
-  const weighed = stepMeetDay(createMeetDay(previewContext()), { kind: 'confirm-weigh-in' });
+function openedMeet(context: MeetDayContext = previewContext()): MeetDayState {
+  const weighed = stepMeetDay(createMeetDay(context), { kind: 'confirm-weigh-in' });
   return stepMeetDay(weighed, { kind: 'confirm-openers' });
 }
 
@@ -337,8 +337,18 @@ function chooseOption(state: MeetDayState, id: 'repeat' | 'small' | 'big'): Meet
 export function playMeet(
   styleFor: (lift: LiftKind, attemptNumber: number) => RepStyle,
   choose: (lift: LiftKind, attemptNumber: number) => 'repeat' | 'small' | 'big' = () => 'small',
+  /**
+   * The meet to play. Defaults to the shipped one.
+   *
+   * The parameter exists so a test can play a POUND meet on the real loop
+   * instead of hand-building a card in the unit it wants to check. `meet.ts`
+   * exports `POUND_MEET_RULES` and `MeetDefinition.rules` takes them, so this is
+   * a configuration the engine already supports rather than an abuse of it —
+   * see GDD §11's open pound-meet ruling.
+   */
+  context: MeetDayContext = previewContext(),
 ): MeetDayState {
-  let state = openedMeet();
+  let state = openedMeet(context);
   const limit = LIFT_ORDER.length * LIFT_ORDER.length * LIFT_ORDER.length;
   let guard = 0;
   while (state.phase !== 'recap' && state.phase !== 'bombed' && guard < limit) {
