@@ -50,7 +50,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import {
   Canvas,
   FilterMode,
@@ -141,7 +141,15 @@ export function MeetHallView({ lifter, scrim }: MeetHallViewProps): React.ReactE
   );
 
   return (
-    <Canvas style={styles.canvas} testID="meet-hall">
+    // THE `testID` IS ON THE VIEW, NOT ON THE CANVAS, and that is not a style
+    // choice: Skia's web `Canvas` does not forward `testID` to the DOM, so a
+    // marker on it is invisible to `tools/capture-meet.mjs` — which is the one
+    // instrument that can say "there is a building in this shot" by looking at
+    // the running app rather than at the source. It was on the Canvas first, and
+    // the capture reported every staged beat as roomless while the pixels showed
+    // a hall.
+    <View style={styles.canvas} testID="meet-hall">
+    <Canvas style={styles.canvas}>
       {/* The last fractional row of the stage lands on this rather than on
           nothing — the same job the base fill does in `LiftStage`. */}
       <Rect x={0} y={0} width={L.STAGE_W} height={L.STAGE_H} color={MEET_PALETTE.STAGE} />
@@ -185,6 +193,7 @@ export function MeetHallView({ lifter, scrim }: MeetHallViewProps): React.ReactE
         opacity={scrim}
       />
     </Canvas>
+    </View>
   );
 }
 

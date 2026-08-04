@@ -87,6 +87,7 @@ export function AttemptView({ state, onResolved }: AttemptViewProps): React.Reac
 
   return (
     <View style={styles.root} testID="meet-attempt">
+      <View style={styles.copy}>
       <View style={styles.header}>
         <Text style={styles.eyebrow} testID="attempt-label">
           {`${MEET_COPY.LIFT_LABEL[live.lift]} · ${MEET_COPY.ATTEMPT_LABEL} ${live.attemptNumber} ${MEET_COPY.ATTEMPT_OF} ${ATTEMPTS_PER_LIFT}`}
@@ -100,6 +101,7 @@ export function AttemptView({ state, onResolved }: AttemptViewProps): React.Reac
         <Text style={styles.detail} testID="attempt-detail">
           {resolution === null || resolution.detail === '' ? LIFT_COPY.SUBTITLE : resolution.detail}
         </Text>
+      </View>
       </View>
 
       <Pressable
@@ -126,10 +128,18 @@ const styles = StyleSheet.create({
     // THE HALL IS PINNED TO THE BOTTOM OF THE FRAME, on this screen and on every
     // other staged beat. Before this the stage sat directly under the header and
     // the bottom 29% of the screen was flat black under the room's own floor —
-    // measured off `live-attempt.png`, 244 of 844 points. `space-between` puts
-    // the header at the top, the platform on the floor of the phone, and the
-    // dark between them where the room's ceiling already is.
-    justifyContent: 'space-between',
+    // measured off `live-attempt.png`, 244 of 844 points. Now the platform is on
+    // the floor of the phone and the copy is centred in what is left, which is
+    // the same shape `WalkoutView` and `VerdictView` use, so the player's eye
+    // lands in the same place across all three beats.
+    justifyContent: 'flex-end',
+  },
+  copy: {
+    flex: 1,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+    maxHeight: LIFT_TUNING.LAYOUT.STAGE_H,
   },
   header: {
     alignItems: 'center',
