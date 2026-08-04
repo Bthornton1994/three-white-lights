@@ -47,4 +47,19 @@ export const SESSION_PALETTE = Object.freeze({
   ACTION_TEXT: '#e8ecf4',
 
   DIVIDER: '#242b39',
+
+  /**
+   * How sure a progression number is (`progression.ts`'s `ProgressionReading`).
+   *
+   * PROVISIONAL is the caption under a number the server has not answered for
+   * yet. Deliberately quiet — cool and dim, so an in-flight number reads as
+   * unfinished rather than as an error. The stronger half of the signal is
+   * `SESSION_BOUNDARY.PROJECTED_OPACITY` on the number itself; this only names
+   * it.
+   *
+   * UNSYNCED is the same caption when the cache has gone stale. Warm, because
+   * that one IS something being told to the player rather than a beat passing.
+   */
+  PROVISIONAL: '#6f7a92',
+  UNSYNCED: '#c9954a',
 });

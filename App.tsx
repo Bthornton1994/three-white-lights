@@ -5,7 +5,7 @@ import { LiftScreen } from './src/lift/LiftScreen';
 import { LIFT_PALETTE } from './src/lift/liftPalette';
 import { replayRequestFrom } from './src/lift/replayRoute';
 import { SessionScreen } from './src/session/SessionScreen';
-import { previewStateFor, sessionPreviewFrom } from './src/session/sessionPreview';
+import { previewFrameFor, sessionPreviewFrom } from './src/session/sessionPreview';
 
 // THE APP OPENS INTO THE DAILY SESSION LOOP (GDD §3.2): readiness check-in ->
 // modifier -> the work sets, on the lift mechanic -> close-out. There is no
@@ -34,7 +34,10 @@ function replayFromLocation() {
 function sessionPreviewFromLocation() {
   if (typeof window === 'undefined') return undefined;
   const request = sessionPreviewFrom(window.location.search);
-  return request === null ? undefined : previewStateFor(request);
+  // A frame is a scripted `SessionState` AND the `ProgressionCache` its numbers
+  // are read out of — the close-out prints what the boundary says, so a preview
+  // without a cache would photograph the wrong figures.
+  return request === null ? undefined : previewFrameFor(request);
 }
 
 export default function App() {

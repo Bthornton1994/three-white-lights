@@ -5,11 +5,12 @@
  * ---------------------------------------------------------------------------
  * WHAT IT DOES AND DELIBERATELY DOES NOT DO
  * ---------------------------------------------------------------------------
- * It resolves what day it is, holds the local stand-in for the Edge Function,
- * dispatches events into `stepSession`, and runs the two timers the loop needs
- * (the briefing reveal and the rest beat). It contains no session logic of its
- * own — no prescription, no scoring, no streak arithmetic. If a rule about the
- * session appears in this file it is in the wrong file (CLAUDE.md: "Never
+ * It resolves what day it is, talks to the one `SessionServerPort`, dispatches
+ * events into `stepSession`, and runs the timers the loop needs (the briefing
+ * reveal and the rest beat). It contains no session logic of its own — no
+ * prescription, no scoring, no streak arithmetic, and no reading of a
+ * progression fact that is not a call into `sessionClient.ts`. If a rule about
+ * the session appears in this file it is in the wrong file (CLAUDE.md: "Never
  * inline game math into a component").
  *
  * ---------------------------------------------------------------------------
@@ -22,25 +23,55 @@
  * believes they are in.
  *
  * GDD §4.1 also says "'Local' is an account property the server resolves, not
- * the device's current timezone". There is no account and no server here, so
- * the device's clock is all there is — and the proposal carries
- * `deviceWallClock` as a HINT precisely so a real server can disagree with it.
- * This is the one place that shortcut lives.
+ * the device's current timezone". There is no account here, so the device's
+ * clock is all there is — and the proposal carries `deviceWallClock` as a HINT
+ * precisely so a real server can disagree with it. This is the one place that
+ * shortcut lives.
  *
  * ---------------------------------------------------------------------------
- * PROGRESSION STILL GOES THROUGH THE DOOR
+ * THERE IS NO `ServerRecord` IN THIS FILE ANY MORE, AND THAT IS THE FIX
  * ---------------------------------------------------------------------------
- * Even with both halves in one process, a finished session takes the full
- * route: `sessionProposal` -> `proposeChange` (the cache goes `pending`, with
- * the optimistic projection parked beside truth) -> `applyTrainingSession` (the
- * server body, which recomputes e1RM from the reported sets and the streak from
- * `streak.ts`, ignoring anything the client believed) -> `receiveProgression
- * Snapshot` -> `applyServerSnapshot`. Nothing here writes a fact.
+ * This hook used to hold two sources of truth: a `ProgressionCache`, and the
+ * stored server row in a ref. It wrote the first and read the second —
+ * `todayForLifter(recordRef.current, ...)` fed every number the session started
+ * from — so `progression.ts`'s read half had zero callers anywhere in the app
+ * and the close-out rendered figures that had never been through the door. The
+ * boundary's write side was sealed and provably so; its read side protected
+ * nothing that existed.
  *
- * NOTHING IS PERSISTED. The stand-in record lives in a ref and dies with the
- * tab, because persistence is the server's job and inventing a client-side
- * store now is exactly the code CLAUDE.md says would have to be unwound. The
- * cost is stated rather than hidden: a reload starts a fresh lifter.
+ * The row now lives behind `SessionServerPort` (see `localSessionServer.ts`),
+ * which returns a `ProgressionSnapshotWire` and a `SessionBrief` and has no
+ * accessor for anything else. So:
+ *
+ *   - EVERY progression number the session starts from comes out of the cache,
+ *     through `sessionClient.ts`'s `todayFromCache` and therefore through
+ *     `readBestE1rmKg`, `readStreakDays` and `readStreakState`.
+ *   - EVERY number the close-out prints comes out of the cache too, through
+ *     `closeOutReadings`, and is RE-READ when the server answers. A server value
+ *     the client did not predict wins on screen.
+ *   - The one thing that is not a progression fact — the fatigue ledger, which
+ *     `ProgressionSnapshotWire` excludes on purpose (GDD §3.4, §12.3) — crosses
+ *     as a `SessionBrief` with exactly one field, narrowed to the horizon that
+ *     can affect today. `sessionClient.ts`'s header has the full argument and
+ *     the residual.
+ *
+ * A finished session still takes the full route: `sessionProposal` ->
+ * `proposeChange` (the cache goes `pending`, with the optimistic projection
+ * parked beside truth) -> the port -> `receiveProgressionSnapshot` ->
+ * `applyServerSnapshot`. Nothing here writes a fact.
+ *
+ * ---------------------------------------------------------------------------
+ * THE ROUND TRIP IS ASYNCHRONOUS, WHICH IS WHAT MAKES `pending` A REAL STATE
+ * ---------------------------------------------------------------------------
+ * The previous version proposed and settled inside ONE `setCache` updater, so
+ * the `pending` cache existed as a local variable and never as a rendered state.
+ * Everything downstream of it — the `'projected'` reading, and any affordance
+ * that distinguishes a provisional number from a settled one — was unreachable
+ * code. The port returns a promise, so `pending` is a state the app passes
+ * through and a screen can draw.
+ *
+ * NOTHING IS PERSISTED. See `localSessionServer.ts`: a reload starts a fresh
+ * lifter, because persistence is the server's job.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -48,33 +79,28 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createSession,
   liftForDay,
-  sessionProjection,
-  sessionProposal,
   stepSession,
   type SessionEvent,
   type SessionState,
 } from '../game/session';
 import {
-  applyTrainingSession,
-  newServerRecord,
-  snapshotWireFor,
-  todayForLifter,
-  type ServerRecord,
-} from '../game/sessionServer';
-import {
-  applyServerSnapshot,
-  asProposalId,
-  emptyProgressionCache,
-  proposeChange,
-  receiveProgressionSnapshot,
-  type ProgressionCache,
-} from '../game/progression';
+  closeOutReadings,
+  openingCache,
+  receiveSnapshot,
+  sessionContextFrom,
+  submitCloseOut,
+  todayFromCache,
+  type CloseOutReadings,
+  type SessionServerPort,
+} from '../game/sessionClient';
+import { asProposalId, rejectProposal, type ProgressionCache } from '../game/progression';
 import {
   civilDateFromStreakDay,
   streakDayFromLocalWallClock,
   type LocalWallClock,
 } from '../game/streak';
 import { SESSION_TUNING } from '../game/sessionTuning';
+import { localSessionServer } from './localSessionServer';
 
 /** Reads the one real clock in the app. */
 function nowWallClock(): LocalWallClock {
@@ -87,9 +113,25 @@ function nowWallClock(): LocalWallClock {
   };
 }
 
+/**
+ * DEBUG ONLY. A scripted beat of the loop, frozen for a photograph.
+ *
+ * IT CARRIES THE CACHE AS WELL AS THE STATE, and that is not bookkeeping. The
+ * close-out's numbers are read out of the cache, so a preview whose cache was a
+ * fresh lifter's would photograph a screen showing figures that belong to a
+ * different session — which is the exact class of divergence this wiring exists
+ * to make impossible. See `sessionPreview.ts`.
+ */
+export interface SessionPreviewFrame {
+  readonly state: SessionState;
+  readonly cache: ProgressionCache;
+}
+
 export interface SessionLoop {
   readonly state: SessionState;
   readonly cache: ProgressionCache;
+  /** What the payoff beat prints, and how sure each number is. `null` off it. */
+  readonly closeOutReadings: CloseOutReadings | null;
   /** True once the briefing's reveal beat has elapsed and the ladder is live. */
   readonly ladderReady: boolean;
   /** True when the server would refuse another session today (GDD §3.2). */
@@ -99,111 +141,139 @@ export interface SessionLoop {
   readonly restartDay: () => void;
 }
 
-export function useSession(initial?: SessionState): SessionLoop {
-  const recordRef = useRef<ServerRecord>(newServerRecord());
-  const [cache, setCache] = useState<ProgressionCache>(() => {
-    const received = receiveProgressionSnapshot(snapshotWireFor(recordRef.current, null));
-    if (!received.ok) return emptyProgressionCache();
-    const applied = applyServerSnapshot(emptyProgressionCache(), received.value);
-    return applied.ok ? applied.value : emptyProgressionCache();
-  });
+export function useSession(
+  preview?: SessionPreviewFrame,
+  /** The server. Injected so a test can run one that DISAGREES with the client. */
+  serverPort?: SessionServerPort,
+): SessionLoop {
+  const portRef = useRef<SessionServerPort | null>(null);
+  if (portRef.current === null) {
+    portRef.current = serverPort ?? localSessionServer();
+  }
+  const port = portRef.current;
 
-  const buildSession = useCallback((): SessionState => {
-    const wallClock = nowWallClock();
-    const day = streakDayFromLocalWallClock(wallClock);
-    const lift = liftForDay(day);
-    const today = todayForLifter(recordRef.current, day, lift);
-    return createSession({
-      day,
-      lift,
-      e1rmKg: today.e1rmKg,
-      bestE1rmKg: today.bestE1rmKg,
-      streakBefore: today.streakBefore,
-      streakIfTrainedToday: today.streakIfTrainedToday,
-      fatigue: today.fatigue,
-    });
-  }, []);
+  const [liveCache, setLiveCache] = useState<ProgressionCache>(() => openingCache(port));
 
-  const [state, setState] = useState<SessionState>(() => initial ?? buildSession());
-  const [ladderReady, setLadderReady] = useState(false);
+  const buildSession = useCallback(
+    (cache: ProgressionCache): SessionState => {
+      const day = streakDayFromLocalWallClock(nowWallClock());
+      const lift = liftForDay(day);
+      return createSession(sessionContextFrom(cache, port.sessionBrief(day, lift), day, lift));
+    },
+    [port],
+  );
+
+  const [liveState, setLiveState] = useState<SessionState>(() => buildSession(liveCache));
+  const [liveLadderReady, setLiveLadderReady] = useState(false);
   const submittedRef = useRef<string>('');
   const proposalSeq = useRef<number>(0);
 
+  const frozen = preview !== undefined;
+  const state = preview?.state ?? liveState;
+  const cache = preview?.cache ?? liveCache;
+
   const dispatch = useCallback((event: SessionEvent) => {
-    setState((current) => stepSession(current, event));
+    setLiveState((current) => stepSession(current, event));
   }, []);
 
   const restartDay = useCallback(() => {
-    setState(buildSession());
-    setLadderReady(false);
-  }, [buildSession]);
+    setLiveState(buildSession(liveCache));
+    setLiveLadderReady(false);
+  }, [buildSession, liveCache]);
 
   // --- the briefing reveal beat ---------------------------------------------
   useEffect(() => {
-    if (state.phase !== 'briefing') {
-      setLadderReady(false);
+    if (liveState.phase !== 'briefing') {
+      setLiveLadderReady(false);
       return undefined;
     }
-    setLadderReady(false);
-    const timer = setTimeout(() => setLadderReady(true), SESSION_TUNING.BRIEFING_REVEAL_MS);
+    setLiveLadderReady(false);
+    const timer = setTimeout(() => setLiveLadderReady(true), SESSION_TUNING.BRIEFING_REVEAL_MS);
     return () => clearTimeout(timer);
-  }, [state.phase]);
+  }, [liveState.phase]);
 
   // --- the rest beat --------------------------------------------------------
   useEffect(() => {
-    if (state.phase !== 'rest') return undefined;
-    const timer = setTimeout(
-      () => dispatch({ kind: 'begin-set' }),
-      SESSION_TUNING.SET_REST_MS,
-    );
+    if (liveState.phase !== 'rest') return undefined;
+    const timer = setTimeout(() => dispatch({ kind: 'begin-set' }), SESSION_TUNING.SET_REST_MS);
     return () => clearTimeout(timer);
-  }, [state.phase, state.setIndex, dispatch]);
+  }, [liveState.phase, liveState.setIndex, dispatch]);
 
   // --- the close-out goes to the server -------------------------------------
-  const closeOut = state.closeOut;
+  //
+  // TWO STATE CHANGES, NOT ONE. The proposal lands first and the cache renders
+  // `pending` — the frame in which the close-out's numbers are provisional and
+  // say so. The response lands second and REPLACES them. If the server disagrees
+  // with the client's projection, this is where the client loses, which is the
+  // only arrangement in which server authority is worth anything on screen.
+  const closeOut = liveState.closeOut;
   useEffect(() => {
-    if (state.phase !== 'close-out' || closeOut === null || !closeOut.canPropose) return;
+    if (frozen) return undefined;
+    if (liveState.phase !== 'close-out' || closeOut === null || !closeOut.canPropose) {
+      return undefined;
+    }
     const key = `${closeOut.day}:${closeOut.lift}:${closeOut.goodReps}:${closeOut.weightKg}`;
-    if (submittedRef.current === key) return;
-    submittedRef.current = key;
+    if (submittedRef.current === key) return undefined;
 
     const wallClock: LocalWallClock = {
-      ...civilDateFromStreakDay(
-        streakDayFromLocalWallClock(nowWallClock()),
-      ),
+      ...civilDateFromStreakDay(streakDayFromLocalWallClock(nowWallClock())),
       hour: nowWallClock().hour,
     };
-    const proposal = sessionProposal(closeOut, wallClock);
-    if (proposal === null) return;
-
     proposalSeq.current += 1;
     const proposalId = asProposalId(`session-${closeOut.day}-${proposalSeq.current}`);
+    const submission = submitCloseOut(liveCache, closeOut, wallClock, proposalId);
+    if (submission === null) return undefined;
 
-    setCache((current) => {
-      const pending = proposeChange(current, proposalId, proposal, sessionProjection(closeOut));
-      if (!pending.ok) return current;
-      const applied = applyTrainingSession(
-        recordRef.current,
-        closeOut.day,
-        proposal,
-        proposalId,
-      );
-      if (!applied.ok) return pending.value;
-      recordRef.current = applied.value.record;
-      const received = receiveProgressionSnapshot(applied.value.wire);
-      if (!received.ok) return pending.value;
-      const settled = applyServerSnapshot(pending.value, received.value);
-      return settled.ok ? settled.value : pending.value;
-    });
-  }, [state.phase, closeOut]);
+    submittedRef.current = key;
+    setLiveCache(submission.cache);
 
-  const alreadyTrainedToday = useMemo(
-    () => todayForLifter(recordRef.current, state.context.day, state.context.lift).alreadyTrainedToday,
-    // `cache` is the signal that the server answered, which is when this can
-    // change. `recordRef` is a ref and cannot be a dependency.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cache, state.context.day, state.context.lift],
+    let cancelled = false;
+    void port
+      .recordTrainingSession(closeOut.day, submission.proposal, proposalId)
+      .then((response) => {
+        if (cancelled) return;
+        setLiveCache((current) =>
+          response.kind === 'snapshot'
+            ? receiveSnapshot(current, response.wire)
+            : refuseProposal(current, proposalId),
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [frozen, liveState.phase, closeOut, liveCache, port]);
+
+  const alreadyTrainedToday = useMemo(() => {
+    if (frozen) return false;
+    return todayFromCache(liveCache, liveState.context.day, liveState.context.lift)
+      .alreadyTrainedToday;
+  }, [frozen, liveCache, liveState.context.day, liveState.context.lift]);
+
+  const readings = useMemo(
+    () => (state.closeOut === null ? null : closeOutReadings(cache, state.closeOut)),
+    [cache, state.closeOut],
   );
 
-  return { state, cache, ladderReady, alreadyTrainedToday, dispatch, restartDay };
+  return {
+    state,
+    cache,
+    closeOutReadings: readings,
+    ladderReady: frozen || liveLadderReady,
+    alreadyTrainedToday,
+    dispatch,
+    restartDay,
+  };
+}
+
+/**
+ * The server refused. `progression.ts` discards the projection whole and marks
+ * the cache stale, so the close-out keeps showing the last CONFIRMED numbers and
+ * flags them — rather than keeping a projection nothing is going to acknowledge.
+ */
+function refuseProposal(
+  cache: ProgressionCache,
+  proposalId: ReturnType<typeof asProposalId>,
+): ProgressionCache {
+  const rejected = rejectProposal(cache, proposalId);
+  return rejected.ok ? rejected.value : cache;
 }

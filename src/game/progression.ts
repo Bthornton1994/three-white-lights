@@ -132,6 +132,17 @@
  * projected number without having handled the `'projected'` branch — the
  * provisionality is in the type, not in a convention about opacity or italics.
  *
+ * THAT SENTENCE IS ONLY WORTH SOMETHING IF A RENDERER ACTUALLY GOES THROUGH IT,
+ * and for several rounds none did: every `read*` above had zero non-test callers
+ * while the daily loop's close-out rendered numbers it had computed itself. A
+ * boundary with a write half and no read half is a write-only cache, and the
+ * screen it feeds is client-authoritative however well the writes are fenced.
+ * The consumers now exist and are named here so the claim can be checked rather
+ * than believed: `sessionClient.ts` turns a cache into what the daily session
+ * loop knows, `CloseOutView.tsx` renders the three branches differently, and
+ * `sessionClient.test.ts` drives a server that DISAGREES with the client's
+ * projection and asserts the server's number is what comes out.
+ *
  * ---------------------------------------------------------------------------
  * 4.1 A PROJECTION MAY ONLY CLAIM WHAT ITS PROPOSAL CAN MOVE (GDD §2, §3.2, §6.4)
  * ---------------------------------------------------------------------------
@@ -2720,6 +2731,33 @@ export function readStreakDays(cache: ProgressionCache): ProgressionReading<numb
     cache,
     (facts) => facts.streak.currentStreak,
     (projection) => (projection.streak === null ? null : projection.streak.currentStreak),
+  );
+}
+
+/**
+ * The whole streak state, as `streak.ts` owns it.
+ *
+ * WHY A WHOLE-OBJECT READ EXISTS AT ALL, when `readStreakDays` gives the number
+ * a screen prints: `streak.ts`'s `openDay` answers "what does today do" — the
+ * free grace, the Recovery Day offer, whether today is already trained — and it
+ * takes the whole state. Without this, the one caller that needs that answer has
+ * to reach around the cache for a stored row, which is exactly the bypass this
+ * module exists to make unnecessary. `readStreakDays` stays: printing a number
+ * should not require holding the ledger it came out of.
+ *
+ * THE PROJECTED BRANCH IS `never`, like `readMeets`'s and for the same reason
+ * one level down. `ProgressionProjection.streak` carries `currentStreak` and
+ * nothing else, so there is no projected WHOLE state to hand back — an
+ * optimistic `openDay` would be running the streak rules against a state three
+ * quarters of which was invented here. While a proposal is in flight this
+ * therefore reads `confirmed` at the last snapshot, which is the honest answer:
+ * the streak's own rules have not moved until the server says they have.
+ */
+export function readStreakState(cache: ProgressionCache): ProgressionReading<StreakState, never> {
+  return read<StreakState, never>(
+    cache,
+    (facts) => facts.streak,
+    () => null,
   );
 }
 

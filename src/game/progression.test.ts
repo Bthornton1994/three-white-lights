@@ -2022,6 +2022,7 @@ describe('the module exports no writer', () => {
       'readBestE1rmKg',
       'readMeets',
       'readStreakDays',
+      'readStreakState',
       'readTotalKg',
       'readingValue',
       'receiveProgressionSnapshot',

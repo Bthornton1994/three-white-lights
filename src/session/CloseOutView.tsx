@@ -2,38 +2,77 @@
  * CloseOutView — GDD §3.2's "e1RM updated, streak incremented, feedback shown".
  *
  * ---------------------------------------------------------------------------
+ * EVERY NUMBER ON THIS SCREEN COMES OUT OF THE PROGRESSION CACHE
+ * ---------------------------------------------------------------------------
+ * This screen used to render `closeOut.newBestE1rmKg` and `closeOut.streakAfter`
+ * — figures the client computed at close-out time and never looked at again.
+ * They agreed with the server only because the server stand-in imported the
+ * client's own `nextBestE1rm`; the first real Edge Function that returned
+ * anything else would have been ignored here, on screen, for ever.
+ *
+ * It now renders a `CloseOutReadings` (`sessionClient.ts`), which is what
+ * `progression.ts`'s `readBestE1rmKg` and `readStreakDays` say. `closeOut` is
+ * still here, because what the SESSION did — the reps, the bar-speed line, the
+ * lift — is the session's to report. What the RECORD now is, is the cache's.
+ * Where the two disagree the cache wins.
+ *
+ * ---------------------------------------------------------------------------
+ * FOUR CERTAINTIES, AND THE SCREEN SAYS WHICH ONE IT HAS
+ * ---------------------------------------------------------------------------
+ * A `ProgressionReading` is `confirmed`, `projected`, `stale` or `unknown`, and
+ * a renderer cannot get at the number without narrowing. That is only worth
+ * something if the four look different, so:
+ *
+ *   confirmed  full weight, no caption. The server said so.
+ *   projected  dimmed to `SESSION_BOUNDARY.PROJECTED_OPACITY`, captioned SAVING.
+ *              It is the client's guess and the screen does not pretend
+ *              otherwise. When the response lands the number comes up to full
+ *              over `CONFIRM_SETTLE_MS` — and if the server's figure is not the
+ *              client's, the one that settles is the server's.
+ *   stale      full weight, captioned NOT SYNCED. Still the best known truth
+ *              (`progression.ts` keeps rendering it), flagged as possibly behind.
+ *   unknown    an em dash. NEVER a zero: nothing has been read yet, and a zero
+ *              is a claim.
+ *
+ * ---------------------------------------------------------------------------
+ * THREE PAYOFFS, NOT TWO (GDD §3.2, ruled)
+ * ---------------------------------------------------------------------------
+ * A confirmed e1RM, an e1RM still in flight, and NO e1RM AT ALL — accessory day,
+ * which pays Training IQ and moves no lift's estimate, because `LiftKind` is the
+ * meet and stays three members. The third is a first-class branch: it renders a
+ * Training IQ row and no e1RM row. It does not fall back to the previous best,
+ * which would show a lifter a number they did not earn today — the same class of
+ * lie as showing a projection as confirmed.
+ *
+ * ---------------------------------------------------------------------------
  * THE NUMBER THAT MOVES HERE IS e1RM. THERE IS NO TOTAL ON THIS SCREEN.
  * ---------------------------------------------------------------------------
- * GDD §3.2 states this as a constraint on whoever builds this loop: "It must
- * not show a Total that ticked up, an 'estimated Total', or a projected
- * competition total, because Total is the sum of best successful *competition*
- * attempts (§6.4) and there were no attempts today."
+ * GDD §3.2: "It must not show a Total that ticked up, an 'estimated Total', or a
+ * projected competition total, because Total is the sum of best successful
+ * *competition* attempts (§6.4) and there were no attempts today."
  *
- * The prohibition is enforced three deep and none of the three is this comment:
- * `SessionCloseOut` has no total field, `session.test.ts` serialises it and
- * fails on the word, and `ProjectionWithinReach<'record-training-session'>`
- * makes a projected Total a COMPILE error in `progression.ts`.
+ * Enforced four deep and none of the four is this comment: `SessionCloseOut` has
+ * no total field, `session.test.ts` serialises it and fails on the word,
+ * `ProjectionWithinReach<'record-training-session'>` makes a projected Total a
+ * COMPILE error in `progression.ts`, and the only reads reaching this file are
+ * `readBestE1rmKg` and `readStreakDays` by way of `CloseOutReadings` — the
+ * session loop never calls `readTotalKg` at all.
  *
  * ---------------------------------------------------------------------------
- * WHAT LANDS, AND WHY IN THIS ORDER
+ * ONE RESIDUAL, STATED RATHER THAN GLOSSED
  * ---------------------------------------------------------------------------
- * Three rows, staggered so they arrive rather than appear:
+ * `headline` and `subhead` are still the CLIENT's call, taken at close-out time
+ * from the client's own PR prediction. The NUMBER and its gold are re-derived
+ * against the reading, so if the server disagrees the figure and the colour
+ * follow the server — but the words above them can still read "NEW e1RM" over a
+ * number that did not turn out to be one. Fixing that means moving close-out
+ * copy selection out of `session.ts`, which is a design question rather than a
+ * wiring bug; it is logged in GDD §11.
  *
- *   1. THE CALL. "NEW e1RM" or "SESSION LOGGED", in the colour of the outcome.
- *   2. THE NUMBER. The lifter's e1RM for the lift they just trained. On a PR it
- *      counts UP from the old value, so the movement is the event; on an
- *      ordinary day it is simply there, because most days it does not move and
- *      pretending otherwise is what makes a PR mean nothing.
- *   3. THE STREAK, which pops. The one thing that moves every single day, and
- *      the reason a daily-habit loop has a close-out at all.
- *
- * Then the reps banked and the bar-speed line — GDD §3.4's feedback channel,
- * which is a phrase and never a meter.
- *
- * NO CUT-IN FIRES HERE. GDD §7.2 puts PR moments on the cut-in list and caps
- * them at one per session (§12.3 makes more than one a refusal condition), and
- * §7.2 also says to "cut art entirely from the early prototypes". Firing none
- * is inside both rules; whoever builds the cut-in piece owns the gate.
+ * NO CUT-IN FIRES HERE. GDD §7.2 puts PR moments on the cut-in list and caps them
+ * at one per session (§12.3 makes more than one a refusal condition), and §7.2
+ * also says to "cut art entirely from the early prototypes". Firing none is
+ * inside both rules; whoever builds the cut-in piece owns the gate.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -46,42 +85,65 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING } from '../game/sessionTuning';
+import {
+  SESSION_BOUNDARY,
+  SESSION_BOUNDARY_COPY,
+  SESSION_COPY,
+  SESSION_LAYOUT,
+  SESSION_TUNING,
+} from '../game/sessionTuning';
+import type { CloseOutReadings } from '../game/sessionClient';
+import type { ProgressionReading } from '../game/progression';
 import type { SessionCloseOut } from '../game/session';
 import { SESSION_PALETTE } from './sessionPalette';
 
 const L = SESSION_LAYOUT;
 
+/** How sure a rendered number is. `ProgressionReading`'s discriminant. */
+type Certainty = ProgressionReading<never, never>['kind'];
+
 /**
- * Counts a number from `from` to `to` over `durationMs`.
+ * Counts a number from wherever it currently is to `to` over `durationMs`.
  *
  * React state rather than Reanimated, because the thing being animated is TEXT
  * CONTENT: Reanimated animates style properties on the UI thread and cannot
  * rewrite a `<Text>`'s children without a helper this project does not depend
- * on. A once-per-session count over `CLOSE_OUT_E1RM_COUNT_MS` is not a
- * per-frame cost worth a dependency.
+ * on. A once-per-session count over `CLOSE_OUT_E1RM_COUNT_MS` is not a per-frame
+ * cost worth a dependency.
+ *
+ * `from` SEEDS THE FIRST FRAME AND IS THEN NOT READ AGAIN. Every later run
+ * starts at whatever is on screen, so when a projected number is corrected by
+ * the server the display travels from the figure the player was looking at to
+ * the one that is true — instead of snapping back to the old best and counting
+ * up a second time.
  *
  * A zero duration lands on `to` immediately, which is what an ordinary day
- * wants — the number did not move, so nothing should appear to move.
+ * wants: the number did not move, so nothing should appear to move.
  */
 function useCountUp(from: number, to: number, durationMs: number, delayMs: number): number {
   const [value, setValue] = useState(durationMs <= 0 ? to : from);
+  const shown = useRef<number>(durationMs <= 0 ? to : from);
   const frame = useRef<number>(0);
   useEffect(() => {
     if (durationMs <= 0) {
+      shown.current = to;
       setValue(to);
       return undefined;
     }
+    const begin = shown.current;
+    if (begin === to) return undefined;
     const start = Date.now() + delayMs;
     const tick = (): void => {
       const elapsed = Date.now() - start;
       const t = elapsed <= 0 ? 0 : Math.min(1, elapsed / durationMs);
-      setValue(from + (to - from) * t);
+      const next = begin + (to - begin) * t;
+      shown.current = next;
+      setValue(next);
       if (t < 1) frame.current = requestAnimationFrame(tick);
     };
     frame.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame.current);
-  }, [from, to, durationMs, delayMs]);
+  }, [to, durationMs, delayMs]);
   return value;
 }
 
@@ -104,35 +166,93 @@ function Row({
   return <Animated.View style={[styles.row, style]}>{children}</Animated.View>;
 }
 
+/** The caption under a number, or a blank line where there is nothing to say. */
+function tagTextFor(certainty: Certainty): string {
+  switch (certainty) {
+    case 'projected':
+      return SESSION_BOUNDARY_COPY.PROJECTED_TAG;
+    case 'stale':
+      return SESSION_BOUNDARY_COPY.STALE_TAG;
+    default:
+      return ' ';
+  }
+}
+
+/**
+ * Wraps a number in how sure it is.
+ *
+ * The caption is always mounted — a single space where there is nothing to say —
+ * so the row does not jump when a number settles. The dimming is the
+ * load-bearing half; the caption names what the dimming already showed.
+ */
+function Provisional({
+  certainty,
+  tagTestID,
+  children,
+}: {
+  readonly certainty: Certainty;
+  readonly tagTestID: string;
+  readonly children: React.ReactNode;
+}): React.ReactElement {
+  const tag = tagTextFor(certainty);
+  const target = certainty === 'projected' ? SESSION_BOUNDARY.PROJECTED_OPACITY : 1;
+  const tagTarget = tag.trim().length === 0 ? 0 : 1;
+  const weight = useSharedValue(target);
+  const tagShown = useSharedValue(tagTarget);
+  useEffect(() => {
+    weight.value = withTiming(target, { duration: SESSION_BOUNDARY.CONFIRM_SETTLE_MS });
+  }, [target, weight]);
+  useEffect(() => {
+    tagShown.value = withTiming(tagTarget, { duration: SESSION_BOUNDARY.TAG_FADE_MS });
+  }, [tagTarget, tagShown]);
+  const numberStyle = useAnimatedStyle(() => ({ opacity: weight.value }));
+  const tagStyle = useAnimatedStyle(() => ({ opacity: tagShown.value }));
+  const tagColour = certainty === 'stale' ? SESSION_PALETTE.UNSYNCED : SESSION_PALETTE.PROVISIONAL;
+  return (
+    <View style={styles.provisional}>
+      <Animated.View style={numberStyle}>{children}</Animated.View>
+      <Animated.View style={tagStyle}>
+        <Text style={[styles.tag, { color: tagColour }]} testID={tagTestID}>
+          {tag}
+        </Text>
+      </Animated.View>
+    </View>
+  );
+}
+
 export interface CloseOutViewProps {
   readonly closeOut: SessionCloseOut;
+  /** What the record now says, read back through the progression boundary. */
+  readonly readings: CloseOutReadings;
   readonly onDone: () => void;
   readonly onRetry: () => void;
 }
 
 export function CloseOutView({
   closeOut,
+  readings,
   onDone,
   onRetry,
 }: CloseOutViewProps): React.ReactElement {
-  const from = closeOut.previousBestE1rmKg ?? closeOut.newBestE1rmKg ?? 0;
-  const to = closeOut.newBestE1rmKg ?? from;
+  const payoff = readings.payoff;
+  const e1rm = payoff.kind === 'e1rm' ? payoff : null;
+  // PR-NESS IS THE READING'S, NOT THE CLOSE-OUT'S. `closeOut.isPr` is what the
+  // client predicted; this is what the record actually did.
+  const isPr = e1rm !== null && e1rm.isPr;
 
-  // The count-up. Zero duration when nothing moved, so an ordinary day does not
-  // animate a number that is standing still.
   const shownE1rm = useCountUp(
-    from,
-    to,
-    closeOut.isPr ? SESSION_TUNING.CLOSE_OUT_E1RM_COUNT_MS : 0,
+    e1rm?.countFromKg ?? 0,
+    e1rm?.valueKg ?? e1rm?.countFromKg ?? 0,
+    isPr ? SESSION_TUNING.CLOSE_OUT_E1RM_COUNT_MS : 0,
     SESSION_TUNING.CLOSE_OUT_ROW_STAGGER_MS,
   );
 
+  const streakValue = readings.streakValue;
   const pop = useSharedValue(1);
   useEffect(() => {
-    if (closeOut.streakAfter === closeOut.streakBefore) return;
+    if (streakValue === null || streakValue === closeOut.streakBefore) return;
     pop.value = withDelay(
-      SESSION_TUNING.CLOSE_OUT_ROW_STAGGER_MS *
-        SESSION_TUNING.CLOSE_OUT_ROW_ORDER.STREAK,
+      SESSION_TUNING.CLOSE_OUT_ROW_STAGGER_MS * SESSION_TUNING.CLOSE_OUT_ROW_ORDER.STREAK,
       withSequence(
         withTiming(SESSION_TUNING.CLOSE_OUT_STREAK_POP_SCALE, {
           duration: SESSION_TUNING.CLOSE_OUT_STREAK_POP_MS / 2,
@@ -140,10 +260,10 @@ export function CloseOutView({
         withTiming(1, { duration: SESSION_TUNING.CLOSE_OUT_STREAK_POP_MS / 2 }),
       ),
     );
-  }, [pop, closeOut.streakAfter, closeOut.streakBefore]);
+  }, [pop, streakValue, closeOut.streakBefore]);
   const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
 
-  const headlineColour = closeOut.isPr
+  const headlineColour = isPr
     ? SESSION_PALETTE.PR
     : closeOut.canPropose
       ? SESSION_PALETTE.TEXT
@@ -160,31 +280,49 @@ export function CloseOutView({
         </Text>
       </Row>
 
-      {closeOut.newBestE1rmKg === null ? null : (
+      {e1rm !== null && e1rm.valueKg !== null ? (
         <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.E1RM}>
           <Text style={styles.statLabel}>
-            {`${SESSION_COPY.LIFT_LABEL[closeOut.lift]} ${SESSION_COPY.CLOSE_OUT_E1RM_LABEL}`}
+            {`${SESSION_COPY.LIFT_LABEL[e1rm.lift]} ${SESSION_COPY.CLOSE_OUT_E1RM_LABEL}`}
           </Text>
-          <View style={styles.numberRow}>
-            <Text
-              style={[styles.bigNumber, closeOut.isPr ? styles.bigNumberPr : null]}
-              testID="close-out-e1rm"
-            >
-              {shownE1rm.toFixed(SESSION_TUNING.E1RM_DISPLAY_DECIMALS)}
-            </Text>
-            <Text style={styles.unit}>kg</Text>
-          </View>
+          <Provisional certainty={e1rm.reading.kind} tagTestID="close-out-e1rm-tag">
+            <View style={styles.numberRow}>
+              <Text
+                style={[styles.bigNumber, isPr ? styles.bigNumberPr : null]}
+                testID="close-out-e1rm"
+              >
+                {shownE1rm.toFixed(SESSION_TUNING.E1RM_DISPLAY_DECIMALS)}
+              </Text>
+              <Text style={styles.unit}>kg</Text>
+            </View>
+          </Provisional>
         </Row>
-      )}
+      ) : null}
+
+      {payoff.kind === 'training-iq' ? (
+        <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.E1RM}>
+          <Text style={styles.statLabel}>{SESSION_BOUNDARY_COPY.ACCESSORY_LABEL}</Text>
+          <Text style={styles.stat} testID="close-out-training-iq">
+            {payoff.pointsGained === null
+              ? SESSION_BOUNDARY_COPY.UNKNOWN_VALUE
+              : `${payoff.pointsGained}`}
+          </Text>
+          <Text style={styles.feedback} testID="close-out-accessory-note">
+            {SESSION_BOUNDARY_COPY.ACCESSORY_NOTE}
+          </Text>
+        </Row>
+      ) : null}
 
       <View style={styles.divider} />
 
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.STREAK}>
-        <Animated.View style={popStyle}>
-          <Text style={styles.stat} testID="close-out-streak">
-            {closeOut.streakAfter}
-          </Text>
-        </Animated.View>
+        <Provisional certainty={readings.streakDays.kind} tagTestID="close-out-streak-tag">
+          <Animated.View style={popStyle}>
+            <Text style={styles.stat} testID="close-out-streak">
+              {streakValue === null ? SESSION_BOUNDARY_COPY.UNKNOWN_VALUE : `${streakValue}`}
+            </Text>
+          </Animated.View>
+        </Provisional>
         <Text style={styles.statLabel}>{SESSION_COPY.CLOSE_OUT_STREAK_LABEL}</Text>
       </Row>
 
@@ -223,6 +361,14 @@ const styles = StyleSheet.create({
   row: {
     alignItems: 'center',
     gap: L.ROW_GAP / 2,
+  },
+  provisional: {
+    alignItems: 'center',
+    gap: L.ROW_GAP / 2,
+  },
+  tag: {
+    fontSize: L.LABEL_FONT,
+    letterSpacing: L.LETTER_SPACING,
   },
   headline: {
     fontSize: L.HEADLINE_FONT,

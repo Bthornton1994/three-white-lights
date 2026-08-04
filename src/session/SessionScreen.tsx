@@ -22,16 +22,21 @@
  * THIS FILE IS A ROUTER, NOT A SCREEN
  * ---------------------------------------------------------------------------
  * It reads `state.phase` and renders one of five views. It computes nothing:
- * no load, no window, no outcome, no streak. CLAUDE.md forbids deriving game
- * state inside a `.tsx` file, and the whole of the loop's logic is in
- * `src/game/session.ts`.
+ * no load, no window, no outcome, no streak, and no progression number. CLAUDE.md
+ * forbids deriving game state inside a `.tsx` file, and the whole of the loop's
+ * logic is in `src/game/session.ts`.
+ *
+ * The close-out's figures come from `loop.closeOutReadings`, which is what
+ * `progression.ts` says the record now is (via `sessionClient.ts`). This file
+ * does not pick between a projection and a confirmation, or compute either — it
+ * hands the reading down and `CloseOutView` renders how sure it is.
  */
 
 import React, { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SESSION_COPY, SESSION_LAYOUT } from '../game/sessionTuning';
-import { plannedTemplateFor, type SessionState } from '../game/session';
+import { plannedTemplateFor } from '../game/session';
 import type { LiftOutcome } from '../game/lift';
 import { BriefingView } from './BriefingView';
 import { CheckInView } from './CheckInView';
@@ -39,7 +44,7 @@ import { CloseOutView } from './CloseOutView';
 import { RestView } from './RestView';
 import { SESSION_PALETTE } from './sessionPalette';
 import { SetView } from './SetView';
-import { useSession } from './useSession';
+import { useSession, type SessionPreviewFrame } from './useSession';
 
 const L = SESSION_LAYOUT;
 
@@ -62,14 +67,18 @@ export interface SessionScreenProps {
    * played session (see `sessionPreview.ts`). Nothing in the played app passes
    * this; it arrives from the `?session=` query string and exists so the
    * renderer can be photographed at moments a headless browser cannot reach.
+   *
+   * It carries a `ProgressionCache` as well as a `SessionState`, because the
+   * close-out's numbers are read out of the cache — a frame without one would
+   * photograph a screen showing a different lifter's figures.
    */
-  readonly preview?: SessionState | undefined;
+  readonly preview?: SessionPreviewFrame | undefined;
 }
 
 export function SessionScreen({ preview }: SessionScreenProps = {}): React.ReactElement {
   const loop = useSession(preview);
   const { dispatch, restartDay } = loop;
-  const state = preview ?? loop.state;
+  const state = loop.state;
 
   const onRepResolved = useCallback(
     (outcome: LiftOutcome) => dispatch({ kind: 'rep-resolved', outcome }),
@@ -102,7 +111,7 @@ export function SessionScreen({ preview }: SessionScreenProps = {}): React.React
           injury={state.injury}
           workSets={plannedTemplateFor(state).workSets}
           repsPerSet={plannedTemplateFor(state).repsPerSet}
-          ladderReady={loop.ladderReady || preview !== undefined}
+          ladderReady={loop.ladderReady}
           onChooseRpe={(rpe) => dispatch({ kind: 'choose-rpe', rpe })}
         />
       ) : null}
@@ -118,8 +127,15 @@ export function SessionScreen({ preview }: SessionScreenProps = {}): React.React
         />
       ) : null}
 
-      {state.phase === 'close-out' && state.closeOut !== null ? (
-        <CloseOutView closeOut={state.closeOut} onDone={restartDay} onRetry={onRetry} />
+      {state.phase === 'close-out' &&
+      state.closeOut !== null &&
+      loop.closeOutReadings !== null ? (
+        <CloseOutView
+          closeOut={state.closeOut}
+          readings={loop.closeOutReadings}
+          onDone={restartDay}
+          onRetry={onRetry}
+        />
       ) : null}
     </View>
   );

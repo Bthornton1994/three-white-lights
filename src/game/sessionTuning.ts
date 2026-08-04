@@ -467,3 +467,119 @@ export const SESSION_COPY = Object.freeze({
   ALREADY_TRAINED_HEADLINE: 'TRAINED TODAY',
   ALREADY_TRAINED_SUBHEAD: 'Come back tomorrow. The bar keeps.',
 });
+
+/**
+ * SESSION_BOUNDARY — the knobs and the copy for HOW SURE a number on the
+ * close-out is.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THERE IS A BLOCK FOR THIS AT ALL
+ * ---------------------------------------------------------------------------
+ * `progression.ts` hands a screen a discriminated `ProgressionReading`: a number
+ * is `confirmed` (the server sent it), `projected` (the client's optimistic
+ * guess while a proposal is in flight), `stale` (best known, possibly behind) or
+ * `unknown` (nothing read yet). GDD §3.2's payoff beat is the one screen in the
+ * daily loop that prints a progression number, so it is the one screen that has
+ * to say which of those it is showing. A provisional number rendered identically
+ * to a settled one is the screen lying about certainty.
+ *
+ * These are UNTUNED PLACEHOLDERS like everything else in this file. What a
+ * "still saving" number should look like is a feel question and nobody has
+ * played it.
+ *
+ * A SEPARATE EXPORT RATHER THAN KEYS ON `SESSION_TUNING`/`SESSION_COPY` because
+ * this block was added while another builder held those two objects; keeping it
+ * whole and at the end of the file is what made the two edits merge without
+ * either being rewritten. If that reason has expired, folding it in is a
+ * mechanical move.
+ */
+export const SESSION_BOUNDARY = Object.freeze({
+  /**
+   * How long the local stand-in server takes to answer `record-training-session`.
+   *
+   * NOT A REAL LATENCY AND NOT A DELAY IMPOSED ON THE PLAYER. `sessionServer.ts`
+   * runs in the same process and answers instantly, which would make the
+   * in-flight state a state that exists for zero frames — so the one branch the
+   * close-out most needs to render honestly could never be seen, and a renderer
+   * that handled it would be untestable decoration. This is the stand-in for a
+   * network round trip, and the day there is a real Edge Function it is deleted
+   * rather than tuned.
+   *
+   * NOTHING IS BLOCKED WHILE IT RUNS: the close-out is fully on screen, the DONE
+   * button works, and GDD §12.2's session-length budget is untouched. What
+   * changes during the window is only how the two numbers are drawn.
+   */
+  LOCAL_SERVER_LATENCY_MS: 550,
+
+  /**
+   * Opacity of a number that is still in flight, against 1 for a settled one.
+   *
+   * The whole distinction, as one number. Low enough to read as unfinished at
+   * arm's length, high enough that the count-up is still legible — which is the
+   * trade a playtester will actually be making here.
+   */
+  PROJECTED_OPACITY: 0.45,
+
+  /** How long a number takes to come up to full once the server confirms it. */
+  CONFIRM_SETTLE_MS: 260,
+
+  /**
+   * How long the caption under a settling number takes to fade out. Slower than
+   * the number comes up, so the number arrives first and the tag leaves after —
+   * the reverse reads as the label being yanked away.
+   */
+  TAG_FADE_MS: 320,
+});
+
+/**
+ * Copy for the same three states. Out of the numeric block above for the reason
+ * `SESSION_COPY` is out of `SESSION_TUNING`.
+ *
+ * NO NUMBER MAY APPEAR IN ANY OF THESE STRINGS, for the reason `sessionTuning
+ * .test.ts` enforces it on `SESSION_COPY`: a percentage or a level in a caption
+ * is how a fatigue meter ships by accident (GDD §3.4, §12.3).
+ * `sessionClient.test.ts` runs the same scan over this object.
+ */
+export const SESSION_BOUNDARY_COPY = Object.freeze({
+  /** Under a number the server has not answered for yet. */
+  PROJECTED_TAG: 'SAVING',
+  /** Under a number the app knows may be behind — a failed or refused sync. */
+  STALE_TAG: 'NOT SYNCED',
+  /** Stands in for a number that has no value at all. Never a zero. */
+  UNKNOWN_VALUE: '—',
+
+  /**
+   * The accessory-day payoff (GDD §3.2, ruled). An accessory session moves no
+   * e1RM because there is no fourth lift to have one, so its close-out shows
+   * Training IQ instead — and shows NO e1RM row rather than repeating yesterday's
+   * number, which would be a figure the lifter did not earn today.
+   */
+  ACCESSORY_LABEL: 'TRAINING IQ',
+  ACCESSORY_NOTE: 'Accessory work. No lift estimate moves today.',
+});
+
+/**
+ * DEBUG ONLY, and the same standing as `SESSION_PREVIEW` above: numbers the
+ * `?session=` route builds a scripted boundary state from, so the close-out can
+ * be photographed while a number is in flight and after a server has CORRECTED
+ * one. Nothing in a played session reaches these.
+ */
+export const SESSION_BOUNDARY_PREVIEW = Object.freeze({
+  /**
+   * Kilos by which the scripted server's answer differs from what the client
+   * projected, for the beat that proves the server wins on screen.
+   *
+   * NEGATIVE ON PURPOSE. A server coming back HIGHER is indistinguishable from a
+   * generous rounding bug; one coming back lower can only be the screen having
+   * believed the client.
+   *
+   * AND LARGER THAN ANY REAL DISAGREEMENT WOULD BE, deliberately. It is big
+   * enough to take the answer back UNDER the previous best on record, so the beat
+   * shows the PR call flipping — the gold going away — and not only the digits
+   * changing. A shipped Edge Function running `nextBestE1rm` could not send this,
+   * because that rule is monotone; a real disagreement would be a few hundred
+   * grams of a stricter pacing guard. The beat is about what the CLIENT does with
+   * an answer it did not predict, and the answer is deliberately unmistakable.
+   */
+  SERVER_DRIFT_KG: -12.5,
+});
