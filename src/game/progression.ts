@@ -1262,7 +1262,7 @@ export const OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH: UnionIsExactly<
 
 export const PROGRESSION_PROPOSAL_KINDS = [
   'record-training-session',
-  'accept-recovery-day',
+  'set-recovery-day-protection',
   'record-meet-result',
   'redeem-entitlement',
   'spend-currency',
@@ -1336,23 +1336,27 @@ export const TRAINING_SESSION_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
 > = true;
 
 /**
- * The player answered "yes" to a Recovery Day offer (GDD §4.2, manual use).
+ * The player changed the Recovery Day protection setting (GDD §4.2).
  *
- * `offeredDaysSeen` is the offer the CLIENT rendered, sent so the server can
- * re-derive the offer from its own state and refuse a mismatch — the
- * `OFFER_DOES_NOT_MATCH_STATE` idiom `streak.ts` already uses locally. It is not
- * an instruction to spend that many.
+ * THE ONLY RECOVERY-DAY PROPOSAL THERE IS, since auto-protection replaced the
+ * accept/decline prompt. There is nothing for a client to ask the server to
+ * spend: a save is decided by the calendar and applied by the session that ends
+ * the absence, so the only thing left for the player to say is whether they want
+ * protection at all.
+ *
+ * `deviceWallClock` is a hint, exactly as on a training session — the server
+ * resolves the day (GDD §4.1).
  */
-export interface AcceptRecoveryDayReport {
+export interface SetRecoveryDayProtectionReport {
   readonly deviceWallClock: LocalWallClock;
-  readonly offeredDaysSeen: number;
+  readonly protectionEnabled: boolean;
 }
 
-export const ACCEPT_RECOVERY_DAY_REPORT_KEYS = ['deviceWallClock', 'offeredDaysSeen'] as const;
+export const SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS = ['deviceWallClock', 'protectionEnabled'] as const;
 
-export const ACCEPT_RECOVERY_DAY_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
-  AcceptRecoveryDayReport,
-  (typeof ACCEPT_RECOVERY_DAY_REPORT_KEYS)[number]
+export const SET_RECOVERY_DAY_PROTECTION_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
+  SetRecoveryDayProtectionReport,
+  (typeof SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS)[number]
 > = true;
 
 /**
@@ -1412,7 +1416,7 @@ export const SPEND_CURRENCY_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
 /** Everything the client may ask the server to change. */
 export type ProgressionProposal =
   | { readonly kind: 'record-training-session'; readonly report: TrainingSessionReport }
-  | { readonly kind: 'accept-recovery-day'; readonly report: AcceptRecoveryDayReport }
+  | { readonly kind: 'set-recovery-day-protection'; readonly report: SetRecoveryDayProtectionReport }
   | { readonly kind: 'record-meet-result'; readonly report: MeetResultReport }
   | { readonly kind: 'redeem-entitlement'; readonly report: RedeemEntitlementReport }
   | { readonly kind: 'spend-currency'; readonly report: SpendCurrencyReport };
@@ -1465,7 +1469,7 @@ export type ProposalOfKind<K extends ProgressionProposalKind> = Extract<
  */
 export interface ProposalReach {
   readonly 'record-training-session': 'bestE1rmKg' | 'streak' | 'wallet';
-  readonly 'accept-recovery-day': 'streak';
+  readonly 'set-recovery-day-protection': 'streak';
   readonly 'record-meet-result': 'totalKg' | 'meets' | 'bestE1rmKg' | 'wallet';
   readonly 'redeem-entitlement': 'wallet' | 'streak';
   readonly 'spend-currency': 'wallet' | 'streak';
@@ -1585,7 +1589,7 @@ export type ProposalOrigin = (typeof PROPOSAL_ORIGIN_KINDS)[number];
  */
 export const PROPOSAL_ORIGIN_BY_KIND = {
   'record-training-session': 'earned',
-  'accept-recovery-day': 'earned',
+  'set-recovery-day-protection': 'earned',
   'record-meet-result': 'earned',
   'redeem-entitlement': 'purchase',
   'spend-currency': 'purchase',
@@ -1721,7 +1725,7 @@ export const PURCHASABLE_KINDS_ARE_NOT_VACUOUS: IsNonEmptyUnion<PurchasablePropo
  */
 const PROPOSAL_REACH_TABLE: { readonly [K in ProgressionProposalKind]: readonly ProposalReach[K][] } = {
   'record-training-session': ['bestE1rmKg', 'streak', 'wallet'],
-  'accept-recovery-day': ['streak'],
+  'set-recovery-day-protection': ['streak'],
   'record-meet-result': ['totalKg', 'meets', 'bestE1rmKg', 'wallet'],
   'redeem-entitlement': ['wallet', 'streak'],
   'spend-currency': ['wallet', 'streak'],
@@ -1796,10 +1800,10 @@ export interface StreakStateWire {
   readonly currentStreak: number;
   readonly longestStreak: number;
   readonly lastTrainedDay: number | null;
-  readonly recoveredThroughDay: number | null;
-  readonly consecutiveRecoveryDaysUsed: number;
+  readonly armedRecoveryDays: number | null;
   readonly recoveryDayBalance: number;
-  readonly hasResolvedFirstBreakOffer: boolean;
+  readonly recoveryDayProtectionEnabled: boolean;
+  readonly hasBankedFirstRecoveryDaySave: boolean;
 }
 
 export const STREAK_WIRE_MATCHES_THE_STREAK_ALLOWLIST: KeysAreExactly<
@@ -1925,7 +1929,6 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
   const counts: readonly [string, number][] = [
     ['currentStreak', wire.currentStreak],
     ['longestStreak', wire.longestStreak],
-    ['consecutiveRecoveryDaysUsed', wire.consecutiveRecoveryDaysUsed],
     ['recoveryDayBalance', wire.recoveryDayBalance],
   ];
   for (const [name, value] of counts) {
@@ -1936,29 +1939,42 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
   if (wire.longestStreak < wire.currentStreak) {
     return fail('INVALID_SNAPSHOT', 'progression: streak.longestStreak cannot be below streak.currentStreak');
   }
-  if (typeof wire.hasResolvedFirstBreakOffer !== 'boolean') {
-    return fail('INVALID_SNAPSHOT', 'progression: streak.hasResolvedFirstBreakOffer must be a boolean');
-  }
-  const days: readonly [string, number | null][] = [
-    ['lastTrainedDay', wire.lastTrainedDay],
-    ['recoveredThroughDay', wire.recoveredThroughDay],
+  const flags: readonly [string, boolean][] = [
+    ['recoveryDayProtectionEnabled', wire.recoveryDayProtectionEnabled],
+    ['hasBankedFirstRecoveryDaySave', wire.hasBankedFirstRecoveryDaySave],
   ];
-  for (const [name, value] of days) {
-    if (value !== null && !Number.isSafeInteger(value)) {
-      return fail('INVALID_SNAPSHOT', `progression: streak.${name} must be a whole day index or null`);
+  for (const [name, value] of flags) {
+    if (typeof value !== 'boolean') {
+      return fail('INVALID_SNAPSHOT', `progression: streak.${name} must be a boolean`);
     }
   }
+  if (wire.lastTrainedDay !== null && !Number.isSafeInteger(wire.lastTrainedDay)) {
+    return fail('INVALID_SNAPSHOT', 'progression: streak.lastTrainedDay must be a whole day index or null');
+  }
+  // The armed count is a COUNT that may be absent, not a day index: `null` means
+  // "no Recovery Day protection armed for the absence in progress" (GDD §4.2's
+  // settings toggle), which is not the same as zero armed.
+  if (wire.armedRecoveryDays !== null && !isCount(wire.armedRecoveryDays)) {
+    return fail(
+      'INVALID_SNAPSHOT',
+      'progression: streak.armedRecoveryDays must be a non-negative whole number or null',
+    );
+  }
+  if (wire.armedRecoveryDays !== null && wire.armedRecoveryDays > wire.recoveryDayBalance) {
+    return fail(
+      'INVALID_SNAPSHOT',
+      'progression: streak.armedRecoveryDays cannot exceed streak.recoveryDayBalance',
+    );
+  }
   const lastTrainedDay: StreakDay | null = wire.lastTrainedDay === null ? null : asStreakDay(wire.lastTrainedDay);
-  const recoveredThroughDay: StreakDay | null =
-    wire.recoveredThroughDay === null ? null : asStreakDay(wire.recoveredThroughDay);
   return ok({
     currentStreak: wire.currentStreak,
     longestStreak: wire.longestStreak,
     lastTrainedDay,
-    recoveredThroughDay,
-    consecutiveRecoveryDaysUsed: wire.consecutiveRecoveryDaysUsed,
+    armedRecoveryDays: wire.armedRecoveryDays,
     recoveryDayBalance: wire.recoveryDayBalance,
-    hasResolvedFirstBreakOffer: wire.hasResolvedFirstBreakOffer,
+    recoveryDayProtectionEnabled: wire.recoveryDayProtectionEnabled,
+    hasBankedFirstRecoveryDaySave: wire.hasBankedFirstRecoveryDaySave,
   });
 }
 
@@ -2340,9 +2356,12 @@ function validateProposal(proposal: ProgressionProposal): ProgressionError | nul
       }
       return null;
     }
-    case 'accept-recovery-day': {
-      if (!Number.isSafeInteger(proposal.report.offeredDaysSeen) || proposal.report.offeredDaysSeen < 1) {
-        return { code: 'INVALID_PROPOSAL', message: 'progression: an accepted offer must cover at least one day' };
+    case 'set-recovery-day-protection': {
+      if (typeof proposal.report.protectionEnabled !== 'boolean') {
+        return {
+          code: 'INVALID_PROPOSAL',
+          message: 'progression: Recovery Day protection must be set to true or false',
+        };
       }
       return null;
     }

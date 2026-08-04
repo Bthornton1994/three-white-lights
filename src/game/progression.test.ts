@@ -8,7 +8,7 @@ import { estimateE1rm } from './e1rm';
 import { LIFT_ORDER, type LiftKind } from './meet';
 import * as progressionModule from './progression';
 import {
-  ACCEPT_RECOVERY_DAY_REPORT_KEYS,
+  SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS,
   applyServerSnapshot,
   asMeetId,
   asProposalId,
@@ -109,10 +109,10 @@ function wire(overrides: Partial<ProgressionSnapshotWire> = {}): ProgressionSnap
       currentStreak: 12,
       longestStreak: 31,
       lastTrainedDay: 20_000,
-      recoveredThroughDay: null,
-      consecutiveRecoveryDaysUsed: 0,
+      armedRecoveryDays: 2,
       recoveryDayBalance: 2,
-      hasResolvedFirstBreakOffer: true,
+      recoveryDayProtectionEnabled: true,
+      hasBankedFirstRecoveryDaySave: true,
     },
     meets: [
       {
@@ -208,9 +208,9 @@ function projectionWith<O extends Partial<ProgressionProjection>>(
 /** One valid proposal of every kind, so a test can loop over the whole union. */
 const PROPOSAL_BY_KIND: Readonly<Record<ProgressionProposalKind, ProgressionProposal>> = {
   'record-training-session': A_PROPOSAL,
-  'accept-recovery-day': {
-    kind: 'accept-recovery-day',
-    report: { deviceWallClock: { year: 2026, month: 8, day: 3, hour: 9 }, offeredDaysSeen: 1 },
+  'set-recovery-day-protection': {
+    kind: 'set-recovery-day-protection',
+    report: { deviceWallClock: { year: 2026, month: 8, day: 3, hour: 9 }, protectionEnabled: false },
   },
   'record-meet-result': A_MEET_PROPOSAL,
   'redeem-entitlement': { kind: 'redeem-entitlement', report: { sku: 'chalk-pack-3', receipt: 'txn-1' } },
@@ -275,7 +275,7 @@ function proposeUntyped(
  */
 const PAYLOAD_KEYS_BY_PROPOSAL_KIND: Record<ProgressionProposalKind, readonly string[]> = {
   'record-training-session': [...TRAINING_SESSION_REPORT_KEYS, ...TRAINING_SET_REPORT_KEYS],
-  'accept-recovery-day': [...ACCEPT_RECOVERY_DAY_REPORT_KEYS],
+  'set-recovery-day-protection': [...SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS],
   'record-meet-result': [...MEET_RESULT_REPORT_KEYS, ...MEET_ATTEMPT_REPORT_KEYS],
   'redeem-entitlement': [...REDEEM_ENTITLEMENT_REPORT_KEYS],
   'spend-currency': [...SPEND_CURRENCY_REPORT_KEYS],
@@ -617,7 +617,10 @@ describe('the fact allowlist', () => {
   it('pins every report type to its declared inputs', () => {
     expect([...TRAINING_SET_REPORT_KEYS].sort()).toEqual(['lift', 'reps', 'rpe', 'weightKg']);
     expect([...TRAINING_SESSION_REPORT_KEYS].sort()).toEqual(['deviceWallClock', 'sets']);
-    expect([...ACCEPT_RECOVERY_DAY_REPORT_KEYS].sort()).toEqual(['deviceWallClock', 'offeredDaysSeen']);
+    expect([...SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS].sort()).toEqual([
+      'deviceWallClock',
+      'protectionEnabled',
+    ]);
     expect([...MEET_ATTEMPT_REPORT_KEYS].sort()).toEqual(['attemptNumber', 'good', 'lift', 'weightKg']);
     expect([...MEET_RESULT_REPORT_KEYS].sort()).toEqual(['attempts', 'bodyweightKg', 'meetId']);
     expect([...REDEEM_ENTITLEMENT_REPORT_KEYS].sort()).toEqual(['receipt', 'sku']);
@@ -628,7 +631,7 @@ describe('the fact allowlist', () => {
     const everyReportKey = [
       ...TRAINING_SET_REPORT_KEYS,
       ...TRAINING_SESSION_REPORT_KEYS,
-      ...ACCEPT_RECOVERY_DAY_REPORT_KEYS,
+      ...SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS,
       ...MEET_ATTEMPT_REPORT_KEYS,
       ...MEET_RESULT_REPORT_KEYS,
       ...REDEEM_ENTITLEMENT_REPORT_KEYS,
@@ -1590,8 +1593,8 @@ describe('a projection cannot claim what its proposal cannot move', () => {
     const result = proposeChange(
       confirmedCache(),
       asProposalId('p1'),
-      PROPOSAL_BY_KIND['accept-recovery-day'],
-      // @ts-expect-error - accepting a Recovery Day moves the streak and nothing else.
+      PROPOSAL_BY_KIND['set-recovery-day-protection'],
+      // @ts-expect-error - the Recovery Day setting moves the streak and nothing else.
       projectionWith({ bestE1rmKg: { squat: projectedKg(245), bench: null, deadlift: null } }),
     );
     expect(expectErr(result).code).toBe('PROJECTION_EXCEEDS_REACH');
@@ -1941,8 +1944,6 @@ describe('the module exports no writer', () => {
     // one that looks innocent. Adding a writer means editing this list, which
     // means someone reads the file header first.
     const expected = [
-      'ACCEPT_RECOVERY_DAY_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
-      'ACCEPT_RECOVERY_DAY_REPORT_KEYS',
       'AN_IN_FLIGHT_PROPOSAL_HAS_NO_STRING_KEY',
       'AN_UNCLAIMED_PROJECTION_IS_A_PROJECTION',
       'A_MEET_RESULT_PROJECTION_CAN_CLAIM_A_TOTAL',
@@ -1994,6 +1995,8 @@ describe('the module exports no writer', () => {
       'PURCHASE_REACH_IS_NOT_VACUOUS',
       'REDEEM_ENTITLEMENT_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'REDEEM_ENTITLEMENT_REPORT_KEYS',
+      'SET_RECOVERY_DAY_PROTECTION_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
+      'SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS',
       'SPEND_CURRENCY_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'SPEND_CURRENCY_REPORT_KEYS',
       'STREAK_WIRE_MATCHES_THE_STREAK_ALLOWLIST',
@@ -2142,8 +2145,8 @@ describe('the boundary lets legitimate work through', () => {
     const proposals: readonly ProgressionProposal[] = [
       A_PROPOSAL,
       {
-        kind: 'accept-recovery-day',
-        report: { deviceWallClock: { year: 2026, month: 8, day: 3, hour: 9 }, offeredDaysSeen: 1 },
+        kind: 'set-recovery-day-protection',
+        report: { deviceWallClock: { year: 2026, month: 8, day: 3, hour: 9 }, protectionEnabled: false },
       },
       {
         kind: 'record-meet-result',
