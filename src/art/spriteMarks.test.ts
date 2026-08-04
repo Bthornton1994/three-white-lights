@@ -539,7 +539,7 @@ describe('the objects the critique named', () => {
 
 describe('marks respect the shading the underpainting establishes', () => {
   it('never paints the far deltoid as light as the near one', () => {
-    // FAR_LIMB_STEP_BIAS is what separates the two arms in depth. A single
+    // The far-side lamp falloff is what separates the two arms in depth. A single
     // mirrored highlight map applied to both sides would erase it, which is why
     // the deltoid is authored twice.
     const near = MARKS.find((m) => m.name === 'DELTOID_MASS_NEAR');

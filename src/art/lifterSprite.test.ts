@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { decodePng } from '../../tools/png.mjs';
@@ -21,11 +21,19 @@ import {
   fieldFromIndexGrid,
   isKeylined,
   limbWindows,
+  luma8,
+  lumaAt,
   measureEraConformance,
   measureFigure,
+  measureRamp,
   measureRegion,
+  neighbourhoodProfiles,
   rgbAt,
+  stepFieldFromColours,
+  stepFieldFromIndexGrid,
+  type NeighbourhoodProfile,
   type PixelBox,
+  type RampStats,
   type RgbaImage,
 } from './craftMetrics';
 import { buildSquatRep, stickingPointFrame } from './squatAnimation';
@@ -33,6 +41,7 @@ import {
   BANK_SIZE,
   PAL,
   PALETTE_BANKS,
+  RAMPS,
   colorAt,
   isTransparentIndex,
   rgb5ToRgb8,
@@ -424,7 +433,8 @@ describe('the drawing responds to load, not only the clock', () => {
 // In the 16-bit sports reference the figures hold the brightest, most contrasty
 // pixels in the frame and everything behind them is deliberately suppressed —
 // sampled off `docs/reference/sprite-ref-1-snes-wrestling.png`, the wrestler's
-// skin runs up to luma 234 while the crowd behind him sits between 16 and 80.
+// skin runs up to `@ref skin.luma5 = 233.8` while the crowd behind him has a
+// median of `@ref crowd.medianLuma = 37.3`.
 //
 // Ours had it the other way round: the skin ramp topped out a hair under the
 // steel of the sprite's own collars, the top step was reachable only as a
@@ -481,6 +491,25 @@ const HIGHLIGHT_LUMA = 170;
 
 const REFERENCE_DIR = path.resolve(__dirname, '../../docs/reference');
 
+/**
+ * Every non-test TypeScript file under `dir`, recursively.
+ *
+ * Used by the `@ref` tag check below, which has to walk the whole tree rather
+ * than a list: the contradictory figures were in two different files and a
+ * hand-maintained list is the same kind of artefact as a hand-maintained
+ * figure.
+ */
+function listSourceFiles(dir: string, includeTests: boolean): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...listSourceFiles(full, includeTests));
+    else if (!/\.tsx?$/.test(entry.name)) continue;
+    else if (includeTests || !/\.test\.tsx?$/.test(entry.name)) out.push(full);
+  }
+  return out;
+}
+
 function readReference(file: string): RgbaImage {
   return decodePng(readFileSync(path.join(REFERENCE_DIR, file)));
 }
@@ -516,6 +545,20 @@ const REF_WRESTLER_COLOURS: readonly number[] = [
   0xf7ad29, 0xb58400, 0x844200, // hair
 ];
 
+/**
+ * His SKIN RAMP ALONE, darkest first — the six entries above, reversed.
+ *
+ * Ordered, because the comparison the bounds rest on is about POSITION IN A
+ * RAMP rather than luma. Our skin ramp has four entries and his has six, so
+ * "mean luma 80.6" compares nothing; "the median sits on the darkest entry"
+ * compares exactly the same fact on both sides. Their luma is asserted
+ * monotonic below, so a reordering here fails rather than silently inverting
+ * every bound.
+ */
+const REF_WRESTLER_SKIN_DARK_TO_LIGHT: readonly number[] = [
+  0x5a2910, 0x734a21, 0xa56b42, 0xd68c52, 0xe7c684, 0xf7e7d6,
+];
+
 /** His head and hair, for the one window where a face is legitimately marked. */
 const REF_WRESTLER_HEAD_BOX: PixelBox = { x: 84, y: 115, w: 14, h: 12 };
 
@@ -538,44 +581,151 @@ const REF = {
 } as const;
 
 /**
- * BOUNDS, DERIVED FROM THE MEASUREMENT ABOVE.
+ * The crowd behind the ring, and the mat the figures stand on.
  *
- * Each is `measured reference value x named factor`, with the factors in
- * `CRAFT` (craftMetrics.ts) so the anchor and the slack are separately visible.
- * Nothing here is a typed-in number pretending to be a measurement; if the
- * reference moves, these move with it.
+ * Committed boxes, like the wrestler's, because a 256x224 game frame cannot be
+ * segmented into "crowd" and "floor" without being told where to look. They
+ * exist so that the STAGE bank's justification — the busiest area of the screen
+ * is held to the bottom of the range, the floor is pale so dark boots read
+ * against it — is a figure something computes rather than a sentence.
  */
-const MIN_UPPER_OVER_LOWER_MEAN =
-  REF.figure.upperOverLowerMean - CRAFT.UPPER_LOWER_RATIO_SLACK;
-const MAX_UPPER_OVER_LOWER_MEAN =
-  REF.figure.upperOverLowerMean + CRAFT.UPPER_LOWER_RATIO_SLACK;
-const MAX_INTERIOR_KEYLINE_SHARE =
-  REF.figure.interiorKeylineShare * CRAFT.INTERIOR_KEYLINE_FACTOR;
-const MIN_LIMB_MEAN_LUMA = REF.figure.meanLuma * CRAFT.LIMB_MEAN_LUMA_FLOOR_FACTOR;
-const MAX_LIMB_INTERIOR_KEYLINE_SHARE =
-  REF.figure.interiorKeylineShare * CRAFT.LIMB_INTERIOR_KEYLINE_FACTOR;
-const MAX_FACE_INTERIOR_KEYLINE_SHARE =
-  REF.head.interiorKeylineShare * CRAFT.FACE_INTERIOR_KEYLINE_FACTOR;
-const MAX_LIMB_NEAR_BLACK_SHARE = REF.figure.nearBlackShare * CRAFT.LIMB_NEAR_BLACK_FACTOR;
+const REF_CROWD_BOX: PixelBox = { x: 0, y: 60, w: 256, h: 40 };
+const REF_MAT_BOX: PixelBox = { x: 20, y: 175, w: 216, h: 30 };
+
+function boxLumaStats(box: PixelBox): { mean: number; median: number; p90: number } {
+  const v: number[] = [];
+  for (let y = box.y; y < box.y + box.h; y += 1) {
+    for (let x = box.x; x < box.x + box.w; x += 1) v.push(lumaAt(refImage, x, y));
+  }
+  v.sort((a, b) => a - b);
+  const at = (f: number): number => v[Math.min(v.length - 1, Math.floor(v.length * f))] ?? 0;
+  return { mean: v.reduce((a, b) => a + b, 0) / v.length, median: at(0.5), p90: at(0.9) };
+}
+
+const refCrowd = boxLumaStats(REF_CROWD_BOX);
+const refMat = boxLumaStats(REF_MAT_BOX);
+/** His skin, as ramp positions rather than colours. See `stepFieldFromColours`. */
+const refSkinSteps = stepFieldFromColours(
+  refImage,
+  REF_WRESTLER_BOX,
+  REF_WRESTLER_SKIN_DARK_TO_LIGHT,
+);
+const refSkin = measureRamp(refSkinSteps);
+const refSkinRampLuma = REF_WRESTLER_SKIN_DARK_TO_LIGHT.map((c) =>
+  luma8((c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff),
+);
+/** His trunks, knee pads and boots: one saturated pink ramp, darkest first. */
+const REF_WRESTLER_KIT_DARK_TO_LIGHT: readonly number[] = [
+  0x840000, 0xb51031, 0xe73163, 0xe77373,
+];
+const refKitRampLuma = REF_WRESTLER_KIT_DARK_TO_LIGHT.map((c) =>
+  luma8((c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff),
+);
+
+/**
+ * EVERY FIGURE ANY COMMENT IN THIS CODEBASE IS ALLOWED TO STATE ABOUT
+ * `sprite-ref-1`, COMPUTED FROM THE FILE.
+ *
+ * The defect this closes has recurred in every round of this piece. A comment
+ * saying "mean luma 133.2 against 118.8" cannot fail, so two of them
+ * contradicted each other by 17% in the same file and both survived; a round
+ * claimed to have resolved them and they shipped again, now also contradicted
+ * by this suite's own decoder, which computes 137.99 and 123.89.
+ *
+ * The fix is a convention with a test behind it. A comment that states a
+ * reference number writes it as `@ref NAME = VALUE`, where NAME is a key of
+ * this table. The test below walks every non-test source file, finds every tag,
+ * and fails if the decoder disagrees to the precision the comment printed — or
+ * if the name is not a key here at all, so a tag cannot be invented to describe
+ * something nothing measures. A percentage may be written with a trailing `%`.
+ */
+const REF_FIGURES: Readonly<Record<string, number>> = {
+  'figure.count': REF.figure.count,
+  'figure.meanLuma': REF.figure.meanLuma,
+  'figure.nearBlackShare': REF.figure.nearBlackShare,
+  'figure.interiorKeylineShare': REF.figure.interiorKeylineShare,
+  'figure.upperMeanLuma': REF.figure.upper.meanLuma,
+  'figure.lowerMeanLuma': REF.figure.lower.meanLuma,
+  'figure.upperNearBlackShare': REF.figure.upper.nearBlackShare,
+  'figure.lowerNearBlackShare': REF.figure.lower.nearBlackShare,
+  'figure.upperOverLowerMean': REF.figure.upperOverLowerMean,
+  'figure.litBoundaryDarkShare': REF.figure.litBoundaryDarkShare,
+  'head.count': REF.head.count,
+  'head.meanLuma': REF.head.meanLuma,
+  'head.interiorKeylineShare': REF.head.interiorKeylineShare,
+  'skin.count': refSkin.count,
+  'skin.floorShare': refSkin.floorShare,
+  'skin.topTwoShare': refSkin.topTwoShare,
+  'skin.meanPosition': refSkin.meanPosition,
+  'skin.luma0': refSkinRampLuma[0] ?? 0,
+  'skin.luma1': refSkinRampLuma[1] ?? 0,
+  'skin.luma2': refSkinRampLuma[2] ?? 0,
+  'skin.luma3': refSkinRampLuma[3] ?? 0,
+  'skin.luma4': refSkinRampLuma[4] ?? 0,
+  'skin.luma5': refSkinRampLuma[5] ?? 0,
+  'kit.luma0': refKitRampLuma[0] ?? 0,
+  'kit.luma1': refKitRampLuma[1] ?? 0,
+  'kit.luma2': refKitRampLuma[2] ?? 0,
+  'kit.luma3': refKitRampLuma[3] ?? 0,
+  'crowd.meanLuma': refCrowd.mean,
+  'crowd.medianLuma': refCrowd.median,
+  'mat.meanLuma': refMat.mean,
+  'mat.medianLuma': refMat.median,
+  'mat.p90Luma': refMat.p90,
+};
+
+/**
+ * BOUNDS, AND THE ONE RULE THEY ALL OBEY.
+ *
+ * There used to be five bounds here of the form `REF.something * FACTOR`, with
+ * the factors named in `CRAFT` and their doc comments stating, in each case,
+ * "ours peaks at X, against a cap of Y". That is a bound fitted to the artifact
+ * it grades. It could only ever ratchet drift; it could not compare anything,
+ * and one of them was fitted so loosely that it was directionally wrong —
+ * `MIN_LIMB_MEAN_LUMA` came out at 71.6, BELOW `SKIN_SHADOW`'s own luma of
+ * 73.0, so a limb rendered entirely in the darkest colour its ramp contains
+ * passed a test named "keeps no limb darker than the reference figure".
+ *
+ * The rule now, with no exceptions:
+ *
+ *   A bound is EITHER computed entirely from `sprite-ref-1`'s pixels with no
+ *   free term — no multiplier, no percentile, no hand-drawn region, no number
+ *   chosen after looking at our output — OR it is an ours-only ratchet, named
+ *   so that it makes no reference claim, and declared in the clearly separated
+ *   block below.
+ *
+ * `craftMetrics.test.ts` asserts that `CRAFT` holds no key ending `_FACTOR` or
+ * `_SLACK`, so the first kind cannot quietly grow a multiplier again.
+ *
+ * THE REFERENCE-DERIVED BOUNDS ARE `REF_PROFILE_AT` BELOW. They are the extreme
+ * that any patch of the reference's own skin, of exactly the size of the window
+ * being bounded, actually reaches. Both the anchor and the slack are the
+ * reference's pixels; nothing about our sprite enters. If our drawing cannot
+ * meet one, the honest outcome is a red test.
+ */
 
 /**
  * OURS-ONLY RATCHETS, and labelled as such.
  *
- * These two are NOT reference comparisons and must never be described as one.
- * The reference figure's raw near-black share is 3.8%; ours is five times that,
- * and the reason is the silhouette keyline `outlinePass` draws, which GDD §12.2
- * wants (it has to read at phone scale over unknown scenery) and which the
- * reference does not have. That difference is not assumed — it is measured, by
- * `litBoundaryDarkShare`, in 'the reference is not keylined and we are' below.
+ * These are NOT reference comparisons and must never be described as one. Two
+ * quantities the two figures genuinely do not share:
  *
- * So what these two bound is OUR OWN drift: the keyline must not thicken and
- * neither half may fill up with black. The values pin measured behaviour across
- * the full pose/load/strain/pitch sweep (upper 19.9%, lower 21.5%) with room,
- * and they are the numbers a human should retune when the sprite changes, not
+ *   - RAW NEAR-BLACK. We draw a silhouette keyline and the reference measurably
+ *     does not (`litBoundaryDarkShare`, asserted in 'the reference is not
+ *     keylined and we are' below). GDD §12.2 wants ours: it has to read at
+ *     phone scale over unknown scenery.
+ *   - THE UPPER/LOWER BRIGHTNESS RATIO'S UPPER END. The reference's upper half
+ *     being the brighter one is a reference fact and is asserted as one, with
+ *     no slack, further down. How MUCH brighter ours may be is not a claim
+ *     about him — his lower half is bare thigh and ours is a knee sleeve, a
+ *     shoe and a shin — so the cap is ours, and is named as ours.
+ *
+ * These are the numbers a human retunes when the sprite changes. They are not
  * a claim about SNES craft.
  */
 const MAX_UPPER_NEAR_BLACK_SHARE = 0.24;
 const MAX_LOWER_NEAR_BLACK_SHARE = 0.32;
+const OURS_MAX_UPPER_OVER_LOWER_MEAN = 1.45;
 
 /**
  * Frames the reference-anchored checks sweep, rendered and measured ONCE.
@@ -593,6 +743,10 @@ interface CraftFrame {
   /** Everything the lifter bank draws, keyline included. */
   readonly withKeyline: ReturnType<typeof fieldFromIndexGrid>;
   readonly windows: ReturnType<typeof limbWindows>;
+  /** Which entry of the SKIN ramp each material pixel was drawn with. */
+  readonly skinSteps: ReturnType<typeof stepFieldFromIndexGrid>;
+  /** Ramp statistics per limb window, in `windows` order. */
+  readonly limbRamp: readonly RampStats[];
 }
 
 const CRAFT_SWEEP: readonly CraftFrame[] = (() => {
@@ -604,25 +758,36 @@ const CRAFT_SWEEP: readonly CraftFrame[] = (() => {
           for (const totalKg of [27.5, 250]) {
             const s = spec({ depth, direction, strainLevel, pitchLevel, totalKg });
             const rendered = renderLifterFrame(s);
+            const core = fieldFromIndexGrid(rendered.grid, { excludeSilhouetteKeyline: true });
+            const windows = limbWindows({
+              pose: rendered.pose,
+              centerX: CENTER_X,
+              handCentres: [-1, 1].map((sign) =>
+                handCentre(
+                  rendered.pose,
+                  sign,
+                  rendered.barCenterY,
+                  s.barLateralPx,
+                  s.barTiltDeg,
+                  s.barBendPx,
+                ),
+              ),
+            });
+            // SKIN and SKIN_FLUSHED are the same four ramp POSITIONS with a
+            // ruddier middle entry, so a strained frame is measured on the same
+            // scale as a calm one rather than dropping out of the ramp.
+            const skinSteps = stepFieldFromIndexGrid(rendered.grid, core.member, [
+              RAMPS.SKIN,
+              RAMPS.SKIN_FLUSHED,
+            ]);
             out.push({
               where: `${direction} d${depth} s${strainLevel} p${pitchLevel} ${totalKg}kg`,
               grid: rendered.grid,
-              core: fieldFromIndexGrid(rendered.grid, { excludeSilhouetteKeyline: true }),
+              core,
               withKeyline: fieldFromIndexGrid(rendered.grid),
-              windows: limbWindows({
-                pose: rendered.pose,
-                centerX: CENTER_X,
-                handCentres: [-1, 1].map((sign) =>
-                  handCentre(
-                    rendered.pose,
-                    sign,
-                    rendered.barCenterY,
-                    s.barLateralPx,
-                    s.barTiltDeg,
-                    s.barBendPx,
-                  ),
-                ),
-              }),
+              windows,
+              skinSteps,
+              limbRamp: windows.map((w) => measureRamp(skinSteps, w.contains)),
             });
           }
         }
@@ -631,6 +796,45 @@ const CRAFT_SWEEP: readonly CraftFrame[] = (() => {
   }
   return out;
 })();
+
+/**
+ * THE REFERENCE'S OWN SKIN, AS A RAMP FIELD, AND THE BOUNDS IT PRODUCES.
+ *
+ * For every patch of the wrestler's skin of exactly the size of one of our limb
+ * windows, `neighbourhoodProfiles` measures the same five statistics our
+ * windows are measured with and reports the extremes. That extreme IS the
+ * bound. There is no multiplier and no percentile; the only input from our side
+ * is the pixel count of the window being judged, which comes from the rig.
+ *
+ * Sizes are collected from the sweep rather than listed, so a window that
+ * changes size is compared against the reference at its NEW size automatically
+ * — the one way a matched-size comparison could have gone stale.
+ */
+const REF_PROFILES: ReadonlyMap<number, NeighbourhoodProfile> = new Map(
+  neighbourhoodProfiles(
+    refSkinSteps,
+    [...new Set(CRAFT_SWEEP.flatMap((f) => f.limbRamp.map((s) => s.count)))].sort((a, b) => a - b),
+  ).map((p) => [p.n, p]),
+);
+
+/** The reference's bound for a window of `n` pixels. */
+function refProfileAt(n: number): NeighbourhoodProfile {
+  const p = REF_PROFILES.get(n);
+  if (p === undefined) throw new Error(`no reference profile at n=${n}`);
+  return p;
+}
+
+/** Every (frame, window, ramp stats) triple, for the per-limb checks. */
+function eachLimb(): { where: string; name: string; stats: RampStats }[] {
+  const out: { where: string; name: string; stats: RampStats }[] = [];
+  for (const frame of CRAFT_SWEEP) {
+    frame.windows.forEach((w, i) => {
+      const stats = frame.limbRamp[i];
+      if (stats !== undefined) out.push({ where: frame.where, name: w.name, stats });
+    });
+  }
+  return out;
+}
 
 describe('the lifter is the brightest thing in his own frame', () => {
   it('holds more highlight pixels than the whole barbell does, at every load', () => {
@@ -670,16 +874,22 @@ describe('the lifter is the brightest thing in his own frame', () => {
     // floating over a smear."
     //
     // Split at the figure's own vertical midpoint, which is not tuneable to
-    // flatter either half, and BRACKETED, not capped: a cap alone points one
-    // way, and a darker upper body satisfies it more easily rather than less,
-    // which is how the arms stayed ringed in near-black for several rounds
-    // underneath a 1.35 cap they passed at every pose.
+    // flatter either half.
     //
-    // The bracket is centred on the reference's OWN measured ratio (see REF
-    // above) rather than on a remembered one. Both fields are checked: the
-    // material-only field is the like-for-like comparison, since the reference
-    // has no keyline to include; the full field, keyline and all, is an
-    // ours-only ratchet on drift.
+    // THE LOWER END OF THIS IS A REFERENCE FACT WITH NO SLACK AT ALL, and that
+    // replaces a bracket of `REF.upperOverLowerMean +/- 0.22` whose width was
+    // chosen by looking at our own range. His ratio is
+    // `@ref figure.upperOverLowerMean = 1.1138`: HIS
+    // UPPER HALF IS THE BRIGHTER ONE, and that is asserted below as a property
+    // of the reference rather than assumed. So must ours be. A darker upper body
+    // — the failure this test exists for, the one that had the arms ringed in
+    // near-black for several rounds — fails at 1.0 with nothing to argue about.
+    //
+    // The UPPER end is an ours-only ratchet and is named as one
+    // (OURS_MAX_UPPER_OVER_LOWER_MEAN): how much brighter than his legs OUR
+    // legs may be is not a claim about him, because his lower half is bare
+    // thigh and ours is a knee sleeve, a shoe and a shin.
+    expect(REF.figure.upperOverLowerMean).toBeGreaterThan(1);
     for (const frame of CRAFT_SWEEP) {
       const where = frame.where;
       for (const [name, field] of [
@@ -689,11 +899,9 @@ describe('the lifter is the brightest thing in his own frame', () => {
         const m = measureFigure(field);
         expect(m.upper.count, `${where}: ${name} upper`).toBeGreaterThan(100);
         expect(m.lower.count, `${where}: ${name} lower`).toBeGreaterThan(100);
+        expect(m.upperOverLowerMean, `${where}: ${name} mean luma ratio`).toBeGreaterThan(1);
         expect(m.upperOverLowerMean, `${where}: ${name} mean luma ratio`).toBeLessThan(
-          MAX_UPPER_OVER_LOWER_MEAN,
-        );
-        expect(m.upperOverLowerMean, `${where}: ${name} mean luma ratio`).toBeGreaterThan(
-          MIN_UPPER_OVER_LOWER_MEAN,
+          OURS_MAX_UPPER_OVER_LOWER_MEAN,
         );
       }
 
@@ -740,22 +948,27 @@ describe('the lifter is the brightest thing in his own frame', () => {
     }
   });
 
-  it('keeps interior keylines off the whole figure, at the reference rate', () => {
-    // The sharp measure and the one that survives the difference between us and
-    // the reference. A near-black pixel enclosed by material on all four sides
-    // AND thin along at least one axis is a LINE drawn inside the figure — not
-    // the silhouette keyline, which we keep on purpose, and not a dark mass,
-    // which is why the lifter's own near-black hair does not register here.
+  it('carries no more black ink than the reference figure does, and no factor is involved', () => {
+    // THE WHOLE-FIGURE COMPARISON, WITH THE MULTIPLIER DELETED RATHER THAN
+    // RETUNED. This used to be `REF.figure.interiorKeylineShare * 2.0`, and the
+    // comment beside the 2.0 said "ours peaks at 3.64%, so this leaves 1.5x" —
+    // a bound fitted to the artifact. It is now the reference's measured rate
+    // and nothing else, on both of the black-ink measures, in the direction
+    // that matters: ours must be CLEANER than his, not "within a multiple".
     //
-    // Anchored to the reference's measured rate. Ours is allowed a multiple of
-    // it because the eyes, the brow bar, the mouth and the belt's lever plate
-    // are hand-placed near-black marks — which is what a 16-bit artist does with
-    // the darkest entry in a bank — and because a one-pixel gap between two
-    // masses gets filled by the keyline pass from both sides.
+    // This is the one scale at which raw near-black is genuinely like-for-like.
+    // Both sides are a whole figure of comparable size with the silhouette
+    // keyline off — and `excludeSilhouetteKeyline` now takes off the keyline
+    // where we border the BARBELL too, which is where nearly all of ours used
+    // to hide. At limb scale the comparison does not exist, and the block below
+    // says so rather than dressing a ratchet up as one.
     for (const frame of CRAFT_SWEEP) {
       const m = measureFigure(frame.core);
       expect(m.interiorKeylineShare, `${frame.where}: interior keyline share`).toBeLessThan(
-        MAX_INTERIOR_KEYLINE_SHARE,
+        REF.figure.interiorKeylineShare,
+      );
+      expect(m.nearBlackShare, `${frame.where}: raw near-black share`).toBeLessThan(
+        REF.figure.nearBlackShare,
       );
     }
   });
@@ -780,6 +993,64 @@ describe('the lifter is the brightest thing in his own frame', () => {
 // ---------------------------------------------------------------------------
 
 describe('every limb is measured as a limb, not inside an aggregate', () => {
+  it('SEES a real limb window shuffled, where every aggregate is blind to it', () => {
+    // The proof on OUR OWN PIXELS rather than on a synthetic fixture — the
+    // synthetic one is in `craftMetrics.test.ts`. Take a rendered frame's arm
+    // window, keep exactly the same multiset of ramp steps, rearrange them, and
+    // ask each measure whether anything happened.
+    //
+    // Every scalar aggregate this suite was built on says no, because it cannot
+    // say anything else: mean luma, near-black share, floor share and ramp
+    // position are functions of the multiset alone. That is why a green harness
+    // could sit beside ragged step boundaries and stranded pixels for several
+    // rounds. The two structural measures say yes.
+    const frame = CRAFT_SWEEP.find((f) => f.where.startsWith('ASCENT d0 s0 p0 250'));
+    if (frame === undefined) throw new Error('no lockout frame');
+    const window = frame.windows.find((w) => w.name === 'right arm');
+    if (window === undefined) throw new Error('no right arm window');
+
+    const inside: number[] = [];
+    for (let y = 0; y < frame.skinSteps.h; y += 1) {
+      for (let x = 0; x < frame.skinSteps.w; x += 1) {
+        const p = y * frame.skinSteps.w + x;
+        if ((frame.skinSteps.step[p] ?? -1) >= 0 && window.contains(x, y)) inside.push(p);
+      }
+    }
+    expect(inside.length).toBeGreaterThan(CRAFT.MIN_LIMB_PIXELS);
+
+    // A fixed permutation of the window's own pixels, and nothing else.
+    const shuffledStep = Int16Array.from(frame.skinSteps.step);
+    let state = 12345;
+    for (let i = inside.length - 1; i > 0; i -= 1) {
+      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      const j = state % (i + 1);
+      const a = inside[i] ?? 0;
+      const b = inside[j] ?? 0;
+      const t = shuffledStep[a] ?? 0;
+      shuffledStep[a] = shuffledStep[b] ?? 0;
+      shuffledStep[b] = t;
+    }
+    const before = measureRamp(frame.skinSteps, window.contains);
+    const after = measureRamp(
+      { ...frame.skinSteps, step: shuffledStep },
+      window.contains,
+    );
+
+    // Blind, to the last bit.
+    expect(after.count).toBe(before.count);
+    expect(after.floorShare).toBe(before.floorShare);
+    expect(after.topTwoShare).toBe(before.topTwoShare);
+    expect(after.meanPosition).toBe(before.meanPosition);
+    expect(after.medianStep).toBe(before.medianStep);
+
+    // Not blind.
+    expect(after.bandBreakRate).toBeGreaterThan(before.bandBreakRate);
+    expect(after.isletShare).toBeGreaterThan(before.isletShare);
+    // And by a margin, not by a rounding wobble: the drawn arm's bands are
+    // contiguous enough that scattering them roughly doubles its break rate.
+    expect(after.bandBreakRate / before.bandBreakRate).toBeGreaterThan(1.5);
+  });
+
   it('puts a real number of pixels in every window, at every pose', () => {
     // The failure this forbids is a window aimed at empty space, which reports
     // a perfect score for a limb it never found.
@@ -801,77 +1072,183 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     }
   });
 
-  it('keeps no limb darker than the reference figure, one limb at a time', () => {
-    // "The arms are not the darkest thing on him", stated so that it is about
-    // the arms. A limb ringed in near-black loses most of its mean; the floor is
-    // a fraction of the reference figure's own measured mean luma.
-    for (const frame of CRAFT_SWEEP) {
-      for (const w of frame.windows) {
-        const stats = measureRegion(frame.core, w.contains);
-        expect(stats.meanLuma, `${frame.where}: ${w.name} mean luma`).toBeGreaterThan(
-          MIN_LIMB_MEAN_LUMA,
-        );
-      }
+  it('keeps no limb on the floor of its own ramp, at the rate the reference holds', () => {
+    // THE BOUND THAT REPLACES `MIN_LIMB_MEAN_LUMA`, WHICH COULD NOT FIRE.
+    //
+    // The old one was `REF.figure.meanLuma * 0.55` = 71.6. SKIN_SHADOW — the
+    // darkest colour our skin ramp contains — is luma 73.0. A limb rendered
+    // entirely in it passed a test called "keeps no limb darker than the
+    // reference figure", with 2% to spare, and the direction was the wrong way
+    // round: a DARKER arm satisfied it right down to the ramp floor.
+    //
+    // What is asserted instead is a fact about RAMP POSITION, which is the only
+    // thing comparable across a four-step ramp and a six-step one. The bound is
+    // the reference's own measured behaviour with no slack added: a limb's
+    // median entry, and its mean position in the ramp, must be at least the
+    // worst that ANY patch of the wrestler's skin of the same pixel count
+    // reaches.
+    //
+    // A SECOND, STRICTER CLAIM IS MADE AND IS LABELLED AS OURS. "No limb has
+    // its median on the darkest entry of its own ramp" is the direct form of
+    // the defect this piece recorded and held for a round — the far arm's
+    // median was SKIN_SHADOW in 448 frames out of 448. The reference all but
+    // supports it outright: at every patch size from 21 px up, not one of his
+    // 824 patches has its median on his floor, and below that it is 0.1-0.4% of
+    // them. Because it is not exactly zero at the smallest sizes, the strict
+    // form is stated separately as ours rather than folded into the reference
+    // bound and rounded off. The reference's overall rate is asserted, so the
+    // "all but" is a measured number and not a turn of phrase.
+    let refFloorMedians = 0;
+    for (const p of REF_PROFILES.values()) refFloorMedians += p.medianAtFloorRate;
+    expect(
+      refFloorMedians / REF_PROFILES.size,
+      'reference patches whose median sits on its own ramp floor',
+    ).toBeLessThan(0.005);
+    for (const { where, name, stats } of eachLimb()) {
+      const ref = refProfileAt(stats.count);
+      expect(ref.samples, `${where}: ${name} reference samples`).toBeGreaterThan(0);
+      expect(stats.medianStep, `${where}: ${name} median ramp step`).toBeGreaterThanOrEqual(
+        ref.minMedianStep,
+      );
+      expect(stats.meanPosition, `${where}: ${name} mean ramp position`).toBeGreaterThan(
+        ref.minMeanPosition,
+      );
+      // Ours-only, strict, and the direct form of the held defect.
+      expect(stats.medianStep, `${where}: ${name} median ramp step`).toBeGreaterThan(0);
     }
   });
 
-  it('rings no arm or hand in an interior keyline', () => {
-    // Each of the four is asserted separately. Both arms and both hands were
-    // inside the aggregate that could not see them.
-    for (const frame of CRAFT_SWEEP) {
-      for (const w of frame.windows) {
-        if (w.name === 'head' || w.name === 'neck') continue;
-        const stats = measureRegion(frame.core, w.contains);
-        expect(
-          stats.interiorKeylineShare,
-          `${frame.where}: ${w.name} interior keyline`,
-        ).toBeLessThan(MAX_LIMB_INTERIOR_KEYLINE_SHARE);
-      }
+  it('reaches the top of its ramp on every limb, as both of the wrestler’s arms do', () => {
+    // `spriteTuning.ts` recorded, and kept, that the far arm "reaches SKIN_HI on
+    // zero pixels ... in sprite-ref-1 BOTH of the blond wrestler's arms reach
+    // the top two steps of his skin ramp". Here that is a check.
+    //
+    // Zero parameters on our side: "puts at least one pixel in the top two
+    // entries of its own ramp" is ordinal and has nothing to tune. The
+    // reference's own rate at the same patch size is asserted alongside it, so
+    // the claim being made about him is visible rather than remembered.
+    for (const { where, name, stats } of eachLimb()) {
+      expect(stats.topTwoShare, `${where}: ${name} top-two share`).toBeGreaterThan(0);
     }
   });
 
-  it('keeps raw near-black off every limb of bare flesh, at the reference rate', () => {
-    // Like-for-like with the reference: both sides are material only, with the
-    // silhouette keyline taken off, so this compares the drawing rather than
-    // the outline round it.
+  it('draws its ramp in bands rather than in speckle, at the reference’s own rate', () => {
+    // THE CHECK THAT IS NOT PERMUTATION-INVARIANT. Every other number in this
+    // suite is a scalar aggregate: shuffle the pixels inside a limb window and
+    // mean luma, near-black share and lattice conformance do not move at all,
+    // which is why a green harness could sit beside ragged, wandering step
+    // boundaries and two-pixel islands across the thighs and torso.
     //
-    // It is here because the interior measure alone could not see a near-black
-    // ring put back on the NECK. The traps cover most of the neck, so the ring
-    // lands on its silhouette instead of inside it — measured, 8.9% interior
-    // before and 13.3% after, inside normal pose variation. Raw near-black
-    // separates them: 16.7% before, 29.7% after.
+    // `bandBreakRate` is the share of adjacent pairs inside the window whose
+    // ramp step differs, and `isletShare` the share of pixels with no
+    // 4-neighbour of their own step. Both rise sharply under a shuffle —
+    // `craftMetrics.test.ts` proves that rather than claiming it.
     //
-    // The HEAD is excluded, and that exclusion is not a convenience: HAIR_DARK
-    // is luma 37.2, under the near-black threshold, and the lifter's hair is
-    // 30-41% of his head window in every frame drawn correctly. The head is
-    // covered instead by the interior-keyline check below, which does not count
-    // a solid mass.
+    // Compared AVERAGE TO AVERAGE, and that is a considered choice with its
+    // reason stated: the reference's WORST twelve-pixel patch is a scatter
+    // across a ramp boundary and scores 1.0, so a cap set at its maximum could
+    // not be failed by any drawing. The mean over every patch of a size is the
+    // other parameter-free summary of the same distribution, and it is not
+    // vacuous. Both are printed below.
+    const byName = new Map<string, { sumBreak: number; sumIslet: number; n: number }>();
+    const refByName = new Map<string, { sumBreak: number; sumIslet: number; n: number }>();
+    for (const { name, stats } of eachLimb()) {
+      const ours = byName.get(name) ?? { sumBreak: 0, sumIslet: 0, n: 0 };
+      ours.sumBreak += stats.bandBreakRate;
+      ours.sumIslet += stats.isletShare;
+      ours.n += 1;
+      byName.set(name, ours);
+      const ref = refProfileAt(stats.count);
+      const theirs = refByName.get(name) ?? { sumBreak: 0, sumIslet: 0, n: 0 };
+      theirs.sumBreak += ref.meanBandBreakRate;
+      theirs.sumIslet += ref.meanIsletShare;
+      theirs.n += 1;
+      refByName.set(name, theirs);
+    }
+    for (const [name, ours] of byName) {
+      const theirs = refByName.get(name);
+      if (theirs === undefined) throw new Error(name);
+      expect(ours.sumBreak / ours.n, `${name}: mean band-break rate`).toBeLessThan(
+        theirs.sumBreak / theirs.n,
+      );
+      expect(ours.sumIslet / ours.n, `${name}: mean islet share`).toBeLessThan(
+        theirs.sumIslet / theirs.n,
+      );
+    }
+  });
+
+  it('KNOWN GAP: the far arm spends more of itself on the ramp floor than the reference ever does', () => {
+    // THIS CLAUSE IS NOT MET, AND IT IS PINNED IN BOTH DIRECTIONS RATHER THAN
+    // LOOSENED UNTIL IT PASSES.
+    //
+    // The bound is the same factor-free one as everywhere else in this block:
+    // a window's share of pixels on the darkest entry of its ramp, against the
+    // worst any same-sized patch of the reference's skin reaches. Five of the
+    // six windows clear it at every pose. The screen-right ARM does not: it
+    // exceeds the reference's worst comparable patch in the frames counted
+    // below, by the margin counted below.
+    //
+    // WHY, measured rather than guessed: at 96x72 our forearm is four pixels
+    // wide, and `INTERIOR_EDGE.SKIN` puts a one-pixel contour down both sides
+    // of it. The contour is the ramp's darkest entry by construction
+    // (`EDGE_STEP_DROP`), so a third of a four-pixel limb is on the floor
+    // before any shading happens. The reference wrestler's arms are eight to
+    // ten pixels wide and pay a much smaller perimeter tax. Closing this needs
+    // either a wider limb in `rig.ts` or a contour that is not a whole ramp
+    // step down — neither is a shading change, and neither is this round's.
+    //
+    // The pins go BOTH WAYS on purpose. If the sprite improves, `violations`
+    // drops and this test goes RED, and whoever fixed it has to come here and
+    // say so. It cannot decay into a pass.
+    const MAX_FLOOR_EXCESS_FRAMES = 210;
+    const MIN_FLOOR_EXCESS_FRAMES = 1;
+    const MAX_FLOOR_EXCESS = 0.1;
+    let violations = 0;
+    let worstExcess = 0;
+    for (const { name, stats } of eachLimb()) {
+      const excess = stats.floorShare - refProfileAt(stats.count).maxFloorShare;
+      if (excess <= 0) continue;
+      expect(name, 'only the far arm is known to exceed the reference floor share').toBe(
+        'right arm',
+      );
+      violations += 1;
+      worstExcess = Math.max(worstExcess, excess);
+    }
+    expect(violations).toBeGreaterThanOrEqual(MIN_FLOOR_EXCESS_FRAMES);
+    expect(violations).toBeLessThanOrEqual(MAX_FLOOR_EXCESS_FRAMES);
+    expect(worstExcess).toBeLessThan(MAX_FLOOR_EXCESS);
+  });
+
+  it('holds its own line on black ink per limb — an OURS-ONLY ratchet, not a comparison', () => {
+    // NAMED AS OURS, because at limb scale there is no like-for-like reference
+    // quantity and the previous rounds' `LIMB_NEAR_BLACK_FACTOR 5.5` and
+    // `LIMB_INTERIOR_KEYLINE_FACTOR 3.6` pretended otherwise.
+    //
+    // Measured over the whole sweep: EVERY near-black pixel inside an arm, hand,
+    // neck or head window is `PAL.OUTLINE` — our silhouette keyline, where the
+    // limb passes the barbell or another mass. The reference wrestler has no
+    // keyline anywhere (`litBoundaryDarkShare`, asserted below) and his skin
+    // contains no near-black at all, so the reference's own answer at limb scale
+    // is exactly zero and a "reference-rate" bound would either be unmeetable or
+    // be a multiplier chosen to avoid that. The like-for-like comparison exists
+    // at WHOLE-FIGURE scale and is made there, factor-free.
+    //
+    // So these two numbers are a drift ratchet on our own drawing and are the
+    // ones a human retunes. Measured today: 3.28% near-black and 3.23% interior
+    // keyline on an arm, 7.14% and 6.25% on the neck, 1.28% on the head, 0% on
+    // both hands.
+    const OURS_MAX_LIMB_NEAR_BLACK = 0.09;
+    const OURS_MAX_LIMB_INTERIOR_KEYLINE = 0.08;
     for (const frame of CRAFT_SWEEP) {
       for (const w of frame.windows) {
-        if (w.name === 'head') continue;
         const stats = measureRegion(frame.core, w.contains);
         expect(stats.nearBlackShare, `${frame.where}: ${w.name} near-black`).toBeLessThan(
-          MAX_LIMB_NEAR_BLACK_SHARE,
+          OURS_MAX_LIMB_NEAR_BLACK,
         );
-      }
-    }
-  });
-
-  it('rings neither the head nor the neck, at the rate the reference head is marked', () => {
-    // Split from the arms deliberately, and anchored to a different measured
-    // number: the reference's OWN head window. A face carries hand-placed marks
-    // a forearm does not — eyes, brow, mouth — so the same bound on both would
-    // either be too loose for the arms or would fail a face for having a face.
-    // What it still catches is the collar the head used to wear: 34 px of luma
-    // 19 ringing a 7x9 skull.
-    for (const frame of CRAFT_SWEEP) {
-      for (const w of frame.windows) {
-        if (w.name !== 'head' && w.name !== 'neck') continue;
-        const stats = measureRegion(frame.core, w.contains);
         expect(
           stats.interiorKeylineShare,
           `${frame.where}: ${w.name} interior keyline`,
-        ).toBeLessThan(MAX_FACE_INTERIOR_KEYLINE_SHARE);
+        ).toBeLessThan(OURS_MAX_LIMB_INTERIOR_KEYLINE);
       }
     }
   });
@@ -969,8 +1346,9 @@ describe('the reference is measured, not remembered', () => {
       expect(m.litBoundaryDarkShare, `${frame.where}: keyline coverage`).toBeGreaterThan(0.85);
     }
     // Which is why nothing above compares a RAW near-black share between the
-    // two. The reference's is 3.8%; ours is five times that and the difference
-    // is the keyline, not the drawing underneath it.
+    // two. The reference's is `@ref figure.nearBlackShare = 3.83%`; ours with
+    // the keyline on is several times that and the difference IS the keyline,
+    // not the drawing underneath it.
     expect(REF.figure.nearBlackShare).toBeLessThan(0.05);
   });
 
@@ -1012,7 +1390,8 @@ describe('the reference is measured, not remembered', () => {
 
     // Same procedure, opposite truth, and the verdict comes out BACKWARDS: our
     // keylined figure scores 1.8% near-black under this mask against the
-    // unkeylined reference's 3.8%. Read that way the outlined sprite looks
+    // unkeylined reference's `@ref figure.nearBlackShare = 3.83%`. Read that
+    // way the outlined sprite looks
     // CLEANER than the drawing it is supposed to be measured against, which is
     // as clear a demonstration as there is that the mask was never measuring
     // outlines.
@@ -1054,6 +1433,63 @@ describe('the reference is measured, not remembered', () => {
     }
   });
 
+  it('agrees with every reference figure any comment in the tree states', () => {
+    // THE DEFECT CLASS THIS WHOLE PIECE HAS BEEN FIGHTING, closed by making the
+    // prose checkable rather than by proofreading it again.
+    //
+    // Two comments in one file once carried "mean upper luma 133.2" and
+    // "113.7" — 17% apart, both labelled MEASURED — and neither could fail, so
+    // both survived. A round reported them resolved; they shipped again, and by
+    // then the decoder in this very suite computed 137.99. A prose figure
+    // nobody can check is not a weaker measurement, it is a different thing.
+    //
+    // So: a comment stating a reference number writes `@ref NAME = VALUE`, and
+    // this walks every non-test source file and compares. Tolerance is half a
+    // unit in the last decimal place the comment printed, so "3.8%" and "3.83%"
+    // are both legal and each is checked at the precision it claims. A name
+    // that is not a key of REF_FIGURES fails, so a tag cannot be invented for
+    // something nothing measures.
+    const TAG = /@ref\s+([A-Za-z][\w.]*)\s*=\s*(-?\d+(?:\.\d+)?)(%?)/g;
+    let checked = 0;
+    for (const file of listSourceFiles(path.resolve(__dirname, '..'), true)) {
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(TAG)) {
+        const name = m[1] ?? '';
+        const digits = m[2] ?? '';
+        const percent = m[3] === '%';
+        const where = `${path.relative(process.cwd(), file)}: @ref ${name} = ${digits}${m[3] ?? ''}`;
+        const actual = REF_FIGURES[name];
+        expect(actual, `${where} names nothing the decoder computes`).toBeTypeOf('number');
+        const scale = percent ? 100 : 1;
+        const decimals = digits.includes('.') ? (digits.split('.')[1] ?? '').length : 0;
+        expect(Math.abs((actual ?? 0) * scale - Number(digits)), where).toBeLessThanOrEqual(
+          0.5 * 10 ** -decimals,
+        );
+        checked += 1;
+      }
+    }
+    // A convention nobody used would pass vacuously.
+    expect(checked, 'tagged reference figures found in the tree').toBeGreaterThan(15);
+  });
+
+  it('has no retired reference figure still in the tree', () => {
+    // The four numbers the contradiction was made of. They are not "values that
+    // were corrected" — nothing in the repository ever computed them and the
+    // decoder disagrees with all four. A tag would catch them now; this catches
+    // them if one is pasted back in untagged, which is how they survived the
+    // round that reported them resolved.
+    const RETIRED = ['133.2', '118.8', '113.7', '109.0'];
+    for (const file of listSourceFiles(path.resolve(__dirname, '..'), false)) {
+      const text = readFileSync(file, 'utf8');
+      for (const stale of RETIRED) {
+        expect(
+          text.includes(stale),
+          `${path.relative(process.cwd(), file)} still states the retired figure ${stale}`,
+        ).toBe(false);
+      }
+    }
+  });
+
   it('states the reference figures it is comparing against, in one place', () => {
     // Not an assertion about craft — a printout, so a human or a critic can read
     // the numbers this suite is actually using without running a script that
@@ -1078,19 +1514,63 @@ describe('the reference is measured, not remembered', () => {
           `${REF.figure.litBoundarySamples} lit crossings -> keylined=${isKeylined(REF.figure)}`,
         `head box ${REF_WRESTLER_HEAD_BOX.x},${REF_WRESTLER_HEAD_BOX.y} -> ${REF.head.count} px, ` +
           `mean ${REF.head.meanLuma.toFixed(2)}, interior keyline ${pct(REF.head.interiorKeylineShare)}`,
-        'bounds derived from the above:',
-        `  upper/lower mean ratio       [${MIN_UPPER_OVER_LOWER_MEAN.toFixed(4)}, ${MAX_UPPER_OVER_LOWER_MEAN.toFixed(4)}]`,
-        `  figure interior keyline    < ${pct(MAX_INTERIOR_KEYLINE_SHARE)}`,
-        `  limb mean luma             > ${MIN_LIMB_MEAN_LUMA.toFixed(2)}`,
-        `  limb near-black            < ${pct(MAX_LIMB_NEAR_BLACK_SHARE)}  (not the head: its hair is near-black)`,
-        `  arm/hand interior keyline  < ${pct(MAX_LIMB_INTERIOR_KEYLINE_SHARE)}`,
-        `  head/neck interior keyline < ${pct(MAX_FACE_INTERIOR_KEYLINE_SHARE)}`,
-        'ours-only ratchets, NOT reference comparisons — we keep a keyline and it does not:',
+        'REFERENCE-DERIVED BOUNDS — no multiplier, no percentile, no chosen box.',
+        '  Whole figure, straight comparison against the numbers above:',
+        `    interior keyline           < ${pct(REF.figure.interiorKeylineShare)}`,
+        `    raw near-black             < ${pct(REF.figure.nearBlackShare)}`,
+        `    upper/lower mean ratio     > 1 (his is ${REF.figure.upperOverLowerMean.toFixed(4)})`,
+        '  Per limb, against the worst patch of HIS SKIN of the same pixel count:',
+        '    n   patches  minMeanPos  maxFloor  minMedian  meanBreak  meanIslet  medAtFloor',
+        ...[...REF_PROFILES.values()]
+          .filter((_, i) => i % 8 === 0)
+          .map(
+            (p) =>
+              `   ${String(p.n).padStart(3)} ${String(p.samples).padStart(7)}   ` +
+              `${p.minMeanPosition.toFixed(3)}      ${p.maxFloorShare.toFixed(3)}       ` +
+              `${String(p.minMedianStep)}       ${p.meanBandBreakRate.toFixed(3)}      ` +
+              `${p.meanIsletShare.toFixed(3)}      ${p.medianAtFloorRate.toFixed(3)}`,
+          ),
+        '  OURS, over the whole sweep, per window:',
+        ...['head', 'neck', 'left arm', 'right arm', 'left hand', 'right hand'].map((name) => {
+          const rows = eachLimb().filter((r) => r.name === name);
+          const span = (pick: (s: RampStats) => number): string =>
+            `${Math.min(...rows.map((r) => pick(r.stats))).toFixed(3)}-${Math.max(...rows.map((r) => pick(r.stats))).toFixed(3)}`;
+          const excess = Math.max(
+            ...rows.map((r) => r.stats.floorShare - refProfileAt(r.stats.count).maxFloorShare),
+          );
+          return (
+            `    ${name.padEnd(11)} n ${Math.min(...rows.map((r) => r.stats.count))}-${Math.max(...rows.map((r) => r.stats.count))}` +
+            `  meanPos ${span((s) => s.meanPosition)}  floor ${span((s) => s.floorShare)}` +
+            `  break ${span((s) => s.bandBreakRate)}  islet ${span((s) => s.isletShare)}` +
+            `  median ${Math.min(...rows.map((r) => r.stats.medianStep))}-${Math.max(...rows.map((r) => r.stats.medianStep))}` +
+            `  floor vs ref ${excess > 0 ? `+${excess.toFixed(3)} OVER` : `${excess.toFixed(3)} under`}`
+          );
+        }),
+        'OURS-ONLY RATCHETS, not reference comparisons — we keep a keyline and it does not:',
         `  upper near-black           < ${pct(MAX_UPPER_NEAR_BLACK_SHARE)}`,
         `  lower near-black           < ${pct(MAX_LOWER_NEAR_BLACK_SHARE)}`,
+        `  upper/lower mean ratio     < ${OURS_MAX_UPPER_OVER_LOWER_MEAN}`,
       ].join('\n'),
     );
     expect(REF.figure.count).toBeGreaterThan(0);
+  });
+
+  it('reads the reference skin ramp in order, so every ramp-position bound points the right way', () => {
+    // Every bound in the limb block is "position in the ramp", and position is
+    // meaningless if the list is not ordered. Asserted on the decoded pixels:
+    // the six entries rise monotonically in luma, and the count of each is
+    // pinned so a different file in this path fails here.
+    const lumaOf = (rgb: number): number =>
+      luma8((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
+    const lumas = REF_WRESTLER_SKIN_DARK_TO_LIGHT.map(lumaOf);
+    for (let i = 1; i < lumas.length; i += 1) {
+      expect(lumas[i] ?? 0, `entry ${i}`).toBeGreaterThan(lumas[i - 1] ?? 0);
+    }
+    expect(lumas.map((l) => Math.round(l * 10) / 10)).toEqual([52.8, 81.6, 119.7, 155.5, 200.3, 233.8]);
+    // And the mask it produces is the man, not a patch of crowd.
+    const skin = measureRamp(refSkinSteps);
+    expect(skin.count).toBe(824);
+    expect(skin.medianStep).toBeGreaterThan(0);
   });
 });
 

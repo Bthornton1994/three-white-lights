@@ -392,7 +392,7 @@ export const POSE_DEPTH_ANCHORS: Readonly<Record<RepDirection, readonly PoseAnch
  * redrawing the mass it names. It does NOT cover shading — three ramp-step
  * biases (head, belt, knee sleeve) used to sit in this block, and a ramp-step
  * bias moves no geometry, turns on its own, and is the same kind of number as
- * `SHADING.FAR_LIMB_STEP_BIAS`. They now live with the rest of them, in
+ * `SHADING.FAR_LIMB_LIGHT_SCALE`. They now live with the rest of them, in
  * `SHADING`.
  */
 export const RIG_GEOMETRY = {

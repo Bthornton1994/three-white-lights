@@ -205,8 +205,14 @@ describe('constants with more than one consumer', () => {
     // moves no geometry and turns on its own, so the exemption never covered
     // it, and a tuner looking for the sleeve's darkness had to know to go
     // reading a rig file. CLAUDE.md: every such value in one named place.
+    //
+    // FAR_LIMB_LIGHT_SCALE is on this list without being a step bias: it is the
+    // constant that REPLACED one (see SHADING), it turns the same knob for a
+    // tuner — how far the screen-right side sits from the lamp — and dropping
+    // it from the list when the mechanism changed would have quietly taken the
+    // far arm's only dial out of the audited set.
     for (const key of [
-      'FAR_LIMB_STEP_BIAS',
+      'FAR_LIMB_LIGHT_SCALE',
       'FAR_LEG_STEP_BIAS',
       'EDGE_STEP_DROP',
       'HEAD_STEP_BIAS',

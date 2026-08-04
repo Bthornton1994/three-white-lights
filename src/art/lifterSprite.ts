@@ -32,12 +32,13 @@
  * worn objects and the body itself almost untouched.
  *
  * The frontal view has no true far and near side, so the sprite is shaded as if
- * the lifter were turned a couple of degrees: the screen-right limbs render one
- * ramp step darker (SHADING.FAR_LIMB_STEP_BIAS). Together with the upper-left
- * key light and the off-centre head this is what stops a mirror-symmetric pose
- * from rendering as a mirror-symmetric image, which is the giveaway of a sprite
- * that was generated rather than drawn. The mark table respects it: marks are
- * translated to each side, never mirrored, and the deltoid is authored twice.
+ * the lifter were turned a couple of degrees: the screen-right limbs stand a
+ * little further from the lamp (SHADING.FAR_LIMB_LIGHT_SCALE). Together with
+ * the upper-left key light and the off-centre head this is what stops a
+ * mirror-symmetric pose from rendering as a mirror-symmetric image, which is
+ * the giveaway of a sprite that was generated rather than drawn. The mark table
+ * respects it: marks are translated to each side, never mirrored, and the
+ * deltoid is authored twice.
  */
 
 import {
@@ -293,9 +294,10 @@ function drawBarAndPlates(
  * (`INTERIOR_EDGE`). Four masses overlap in this small a space — thigh, shin,
  * sleeve, shoe — and with the default near-black ring each boundary cost two
  * columns of luma-19 pixels once `outlinePass` had added its own. Measured over
- * the lower half of the figure that was 52% of the body's pixels, against 4% on
- * the same split of sprite-ref-1, whose limbs are edged in their own darkest
- * step. The silhouette keyline is unaffected: `outlinePass` still runs.
+ * the lower half of the figure that was 52% of the body's pixels, against
+ * `@ref figure.lowerNearBlackShare = 5.77%` on the same split of sprite-ref-1,
+ * whose limbs are edged in their own darkest step. The silhouette keyline is
+ * unaffected: `outlinePass` still runs.
  *
  * THE LEG WAS FIRST, NOT SPECIAL. The arm, hand, neck and head stayed on the
  * near-black ring for two rounds after this landed, and the figure came out with
@@ -417,25 +419,32 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
  * 250 kg, near-black was 38-43% of the upper half's own pixels, of which 29-36
  * points were INTERIOR — buried inside the silhouette, not the keyline — while
  * the same interior figure below the belt was 0.3-7%. On the blond wrestler in
- * `sprite-ref-1`, masked by colour at native scale, near-black is 1.3% of the
- * upper half against 5.7% of the lower, and his upper half is the BRIGHTER one
- * (mean luma 133.2 against 118.8). Ours was the darker one at 0.86-1.02. The
- * arms in that reference are the brightest masses on the figure and are
+ * `sprite-ref-1`, masked by colour at native scale, near-black is
+ * `@ref figure.upperNearBlackShare = 1.40%` of the upper half against
+ * `@ref figure.lowerNearBlackShare = 5.77%` of the lower, and his upper half is
+ * the BRIGHTER one: `@ref figure.upperMeanLuma = 137.99` against
+ * `@ref figure.lowerMeanLuma = 123.89`. Ours was the darker one at 0.86-1.02.
+ * The arms in that reference are the brightest masses on the figure and are
  * contoured in their own skin shadow; ours were near-black chevrons with a tan
  * streak inside, which is the blind A/B inverted.
+ *
+ * THOSE TWO MEAN LUMAS WERE PROSE UNTIL NOW, and they were wrong: this comment
+ * and one in `palette.ts` both carried a different pair, neither reproducible,
+ * and a round that reported the contradiction resolved shipped them again. They
+ * are `@ref` tags now, checked against the decoder by `lifterSprite.test.ts`.
  *
  * `drawLimbChain` rather than two `drawLimb` calls: see its comment. Two
  * capsules that meet each stamp a ring, and the second one's ring lands on the
  * first one's fill — a doubled dark band across the elbow of a five-pixel limb.
  */
-function drawArm(g: IndexGrid, pose: Pose, sign: number, bias: number, skin: Ramp): void {
+function drawArm(g: IndexGrid, pose: Pose, sign: number, lightScale: number, skin: Ramp): void {
   const cx = CENTER_X;
   const shX = cx + sign * pose.shoulderHalfW * RIG_GEOMETRY.ATTACH.ARM_ROOT;
   const elX = cx + sign * pose.elbowHalfW;
   const grip = pose.handHalfW + (sign > 0 ? RIG_GEOMETRY.GRIP_ASYMMETRY_PX : 0);
   const haX = cx + sign * grip;
   const opts = {
-    stepBias: bias,
+    lightScale,
     edge: true,
     edgeIndex: INTERIOR_EDGE.SKIN,
     edgeFollowsLight: true,
@@ -495,7 +504,7 @@ function drawHand(
   lateralPx: number,
   tiltDeg: number,
   bendPx: number,
-  bias: number,
+  lightScale: number,
 ): void {
   const { x, y } = handCentre(pose, sign, barCy, lateralPx, tiltDeg, bendPx);
   // The interior ring is skin shadow, not the keyline. This is the mass the
@@ -513,7 +522,7 @@ function drawHand(
     RIG_GEOMETRY.HAND_R + RIG_GEOMETRY.NUDGE.HAND_TALL,
     RAMPS.SKIN,
     {
-      stepBias: bias,
+      lightScale,
       edge: true,
       edgeIndex: INTERIOR_EDGE.SKIN,
       edgeFollowsLight: true,
@@ -573,10 +582,11 @@ function drawHead(g: IndexGrid, pose: Pose, skin: Ramp): void {
   // of interior near-black left on the figure once the arms came off it — 34 px
   // of luma 19 ringing a 7x9 skull, drawn AFTER the neck and the traps so it cut
   // its own collar out of them. Sampled on `sprite-ref-1` at native scale, the
-  // wrestler's head is contoured entirely in his own darkest skin step (luma 46)
-  // and carries no keyline pixel at all; the jaw, the ear and the brow are value
-  // steps within one ramp. The eyes, brow bar and mouth stay near-black — those
-  // are hand-placed marks in `spriteMarks.ts` and they are features, not edges.
+  // wrestler's head is contoured entirely in his own darkest skin step
+  // (`@ref skin.luma0 = 52.8`) and carries no keyline pixel at all; the jaw, the
+  // ear and the brow are value steps within one ramp — and so are his eyes and
+  // his mouth, which is why ours are drawn in SKIN_SHADOW rather than in the
+  // outline colour. See FACE_CALM in `spriteMarks.ts`.
   drawEllipsoid(g, hx, hy, G.HEAD_RX, G.HEAD_RY, skin, {
     edge: true,
     edgeIndex: INTERIOR_EDGE.SKIN,
@@ -612,7 +622,7 @@ function drawTorso(g: IndexGrid, pose: Pose): void {
       A.DELTOID_R,
       A.DELTOID_R,
       RAMPS.SKIN,
-      { stepBias: sign > 0 ? SHADING.FAR_LIMB_STEP_BIAS : 0 },
+      { lightScale: sign > 0 ? SHADING.FAR_LIMB_LIGHT_SCALE : 1 },
     );
   }
 
@@ -775,11 +785,11 @@ export function renderLifterFrame(spec: LifterFrameSpec): RenderedFrame {
   drawNeck(g, pose, skin);
   drawTorso(g, pose);
   drawInnerLegSeam(g, pose);
-  drawArm(g, pose, 1, SHADING.FAR_LIMB_STEP_BIAS, skin);
-  drawArm(g, pose, -1, 0, skin);
+  drawArm(g, pose, 1, SHADING.FAR_LIMB_LIGHT_SCALE, skin);
+  drawArm(g, pose, -1, 1, skin);
   drawHead(g, pose, skin);
-  drawHand(g, pose, 1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, SHADING.FAR_LIMB_STEP_BIAS);
-  drawHand(g, pose, -1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, 0);
+  drawHand(g, pose, 1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, SHADING.FAR_LIMB_LIGHT_SCALE);
+  drawHand(g, pose, -1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, 1);
   drawCording(g, pose, spec.strainLevel);
   drawChalk(g, pose, spec.chalkMotes, barCy, spec.barLateralPx);
 

@@ -12,13 +12,15 @@ import {
   lumaAt,
   measureEraConformance,
   measureFigure,
+  measureRamp,
   measureRegion,
   rgbAt,
   type FigureField,
   type PixelBox,
+  type StepField,
   type RgbaImage,
 } from './craftMetrics';
-import { PAL } from './palette';
+import { PAL, colorAt, rgb5ToRgb8 } from './palette';
 import { createGrid, setPx, type IndexGrid } from './raster';
 import { POSES } from './rig';
 
@@ -377,21 +379,61 @@ describe('fieldFromIndexGrid', () => {
     expect(core.member[4 * 9 + 4]).toBe(1);
   });
 
-  it('keeps the inside of a dark mass, and drops only the band on open space', () => {
-    // A 4x4 block of the hair step, near-black, with no outline round it. The
-    // rule is `outlinePass`'s exactly — near-black AND touching open space — so
-    // the block's outer ring goes and its 2x2 core stays. In a real frame this
-    // case does not arise, because `outlinePass` wraps the hair rather than
-    // bordering it; the sweep in lifterSprite.test.ts asserts that every pixel
-    // this option actually drops is PAL.OUTLINE.
+  it('keeps the inside of a dark mass, and drops only the band on its boundary', () => {
+    // A 4x4 block of near-black with no outline round it. The rule is
+    // `outlinePass`'s exactly — near-black AND touching something that is not
+    // this figure's own material — so the block's outer ring goes and its 2x2
+    // core stays. That is what stops the option eating a legitimate dark MASS.
+    const g = build((grid) => {
+      for (let y = 2; y <= 5; y += 1) {
+        for (let x = 2; x <= 5; x += 1) setPx(grid, x, y, PAL.OUTLINE);
+      }
+    });
+    const core = fieldFromIndexGrid(g, { excludeSilhouetteKeyline: true });
+    expect(core.member.reduce((a, b) => a + b, 0)).toBe(4);
+    expect(core.member[3 * 9 + 3]).toBe(1);
+  });
+
+  it('never drops the hair, because the hair is no longer near-black', () => {
+    // THIS BLOCK USED TO BE THE CASE ABOVE, and it stopped being one when
+    // HAIR_DARK was lifted off luma 37.2 to 45.2 (see palette.ts). Below
+    // NEAR_BLACK_LUMA the lifter's hair was black ink to every measure that
+    // separates a drawn line from material, and the head window read 31-41%
+    // "near-black" and 9.9% "interior keyline" with nothing wrong in the
+    // drawing. Above it, hair is material, and the same 4x4 block survives.
+    const hair = luma8(...rgb5ToRgb8(colorAt(PAL.HAIR_DARK) ?? [0, 0, 0]));
+    const outline = luma8(...rgb5ToRgb8(colorAt(PAL.OUTLINE) ?? [0, 0, 0]));
+    expect(hair).toBeGreaterThan(CRAFT.NEAR_BLACK_LUMA);
+    expect(outline).toBeLessThan(CRAFT.NEAR_BLACK_LUMA);
     const g = build((grid) => {
       for (let y = 2; y <= 5; y += 1) {
         for (let x = 2; x <= 5; x += 1) setPx(grid, x, y, PAL.HAIR_DARK);
       }
     });
     const core = fieldFromIndexGrid(g, { excludeSilhouetteKeyline: true });
-    expect(core.member.reduce((a, b) => a + b, 0)).toBe(4);
-    expect(core.member[3 * 9 + 3]).toBe(1);
+    expect(core.member.reduce((a, b) => a + b, 0)).toBe(16);
+  });
+
+  it('drops the keyline where the figure borders the BARBELL, not only open space', () => {
+    // The bug this closes. `outlinePass` outlines the lifter against equipment
+    // as well as against the backdrop, and the old rule — "near-black AND
+    // touching open space" — left every one of those pixels inside the
+    // "material" field, where the interior-keyline and raw near-black measures
+    // then counted them as marks drawn INSIDE the figure.
+    //
+    // Here: skin, a keyline pixel, and a plate. Open space is nowhere near the
+    // keyline pixel, and it must still go.
+    const g = build((grid) => {
+      setPx(grid, 3, 4, PAL.SKIN_MID);
+      setPx(grid, 4, 3, PAL.SKIN_MID);
+      setPx(grid, 4, 5, PAL.SKIN_MID);
+      setPx(grid, 4, 4, PAL.OUTLINE);
+      setPx(grid, 5, 4, PAL.PLATE_RED_LIGHT);
+    });
+    expect(fieldFromIndexGrid(g).member[4 * 9 + 4]).toBe(1);
+    const core = fieldFromIndexGrid(g, { excludeSilhouetteKeyline: true });
+    expect(core.member[4 * 9 + 4]).toBe(0);
+    expect(core.member[4 * 9 + 3]).toBe(1);
   });
 });
 
@@ -450,5 +492,112 @@ describe('limbWindows', () => {
     });
     expect(moved[4]?.contains(centerX - pose.handHalfW, 40)).toBe(true);
     expect(moved[4]?.contains(centerX - pose.handHalfW, 15)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE BOUND MECHANISM ITSELF
+//
+// The defect these exist for was not a wrong number, it was a wrong KIND of
+// number: a bound of the form "the reference's measured value x a factor",
+// where the factor was chosen after looking at our own output. That cannot
+// grade the artifact it was fitted to, and one of them was fitted so loosely
+// that it pointed the wrong way — a limb rendered entirely in the darkest
+// colour its ramp contains satisfied it.
+// ---------------------------------------------------------------------------
+
+describe('CRAFT holds thresholds, not multipliers', () => {
+  it('has no key that is a slack factor', () => {
+    // Structural, so the shape of the defect cannot come back without deleting
+    // this test. `CRAFT` is allowed absolute thresholds — a luma, a pixel count,
+    // a padding — and is not allowed anything that multiplies or brackets a
+    // measurement of the reference. Those are the two spellings the five
+    // deleted entries used: INTERIOR_KEYLINE_FACTOR, LIMB_MEAN_LUMA_FLOOR_FACTOR,
+    // LIMB_INTERIOR_KEYLINE_FACTOR, FACE_INTERIOR_KEYLINE_FACTOR,
+    // LIMB_NEAR_BLACK_FACTOR, and UPPER_LOWER_RATIO_SLACK.
+    const offenders = Object.keys(CRAFT).filter((k) => /_FACTOR$|_SLACK$/.test(k));
+    expect(offenders).toEqual([]);
+  });
+
+  it('cannot express the old limb floor, because that floor was under the ramp', () => {
+    // The arithmetic that made the old bound unfireable, kept as a check rather
+    // than as a sentence. SKIN_SHADOW is the darkest colour our skin ramp has;
+    // the old floor sat BELOW it, so a limb painted entirely in it passed.
+    const skinShadowLuma = luma8(...rgb5ToRgb8(colorAt(PAL.SKIN_SHADOW) ?? [0, 0, 0]));
+    const OLD_REFERENCE_FIGURE_MEAN_LUMA = 130.16;
+    const OLD_FLOOR_FACTOR = 0.55;
+    expect(OLD_REFERENCE_FIGURE_MEAN_LUMA * OLD_FLOOR_FACTOR).toBeLessThan(skinShadowLuma);
+  });
+});
+
+describe('the step-structure measures are not permutation-invariant', () => {
+  /** A field with a clean two-band drawing: five columns dark, five light. */
+  const banded = (): StepField => {
+    const w = 10;
+    const h = 10;
+    const step = new Int16Array(w * h);
+    for (let y = 0; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) step[y * w + x] = x < w / 2 ? 0 : 3;
+    }
+    return { w, h, step, rampLength: 4 };
+  };
+
+  /** The same multiset of pixels, in a fixed shuffled order. */
+  const shuffled = (field: StepField, seed: number): StepField => {
+    const values = Array.from(field.step);
+    let state = seed;
+    for (let i = values.length - 1; i > 0; i -= 1) {
+      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      const j = state % (i + 1);
+      const a = values[i] ?? 0;
+      values[i] = values[j] ?? 0;
+      values[j] = a;
+    }
+    return { ...field, step: Int16Array.from(values) };
+  };
+
+  it('MOVES when the same pixels are rearranged, and the aggregates do not', () => {
+    // THE PROOF, run rather than claimed. Same multiset of pixels, different
+    // arrangement. The scalar aggregates the rest of this suite is built on are
+    // blind to the difference by construction; these two are not, which is why
+    // they can see ragged step boundaries and stranded pixels.
+    const clean = measureRamp(banded());
+    const mess = measureRamp(shuffled(banded(), 7));
+
+    // Identical multiset: every aggregate is unchanged, to the last bit.
+    expect(mess.count).toBe(clean.count);
+    expect(mess.floorShare).toBe(clean.floorShare);
+    expect(mess.topTwoShare).toBe(clean.topTwoShare);
+    expect(mess.meanPosition).toBe(clean.meanPosition);
+    expect(mess.medianStep).toBe(clean.medianStep);
+
+    // And the two structural measures move a long way.
+    expect(clean.bandBreakRate).toBeLessThan(0.1);
+    expect(mess.bandBreakRate).toBeGreaterThan(0.4);
+    expect(mess.bandBreakRate / Math.max(clean.bandBreakRate, 1e-9)).toBeGreaterThan(4);
+    // Islands: none in the banded drawing, and a real crop of them once the
+    // same pixels are scattered. A two-value shuffle strands an interior pixel
+    // when all four of its neighbours differ, which is 1 in 16 of them, so ~6%
+    // is the arrangement's own arithmetic rather than a threshold anyone chose.
+    expect(clean.isletShare).toBe(0);
+    expect(mess.isletShare).toBeGreaterThan(0);
+    expect(Math.round(mess.isletShare * mess.count)).toBeGreaterThan(3);
+  });
+
+  it('counts a stranded pixel as an island and a two-pixel pair as not one', () => {
+    // Zero parameters: an island is a component of one. A pair is not an
+    // island, which is what stops the measure calling a deliberate two-pixel
+    // mark noise — the same distinction `despeckle` draws.
+    const w = 7;
+    const h = 7;
+    const step = new Int16Array(w * h);
+    step[3 * w + 3] = 3; // one stranded bright pixel
+    const one = measureRamp({ w, h, step, rampLength: 4 });
+    expect(one.isletShare).toBeCloseTo(1 / (w * h), 9);
+
+    const pair = new Int16Array(w * h);
+    pair[3 * w + 3] = 3;
+    pair[3 * w + 4] = 3;
+    expect(measureRamp({ w, h, step: pair, rampLength: 4 }).isletShare).toBe(0);
   });
 });

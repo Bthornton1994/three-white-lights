@@ -151,24 +151,46 @@ const LIFTER_COLORS: readonly Rgb5[] = [
   //                                 at the old (206,140,107) the jump from here
   //                                 to the highlight was 61 luma against 29 for
   //                                 the step below it, and the flesh came out
-  //                                 spotty. Reference steps (sprite-ref-1) are
-  //                                 evenly spaced at 34-44 luma apart.
+  //                                 spotty. The reference's six skin steps
+  //                                 (sprite-ref-1) run
+  //                                 `@ref skin.luma0 = 52.8`,
+  //                                 `@ref skin.luma1 = 81.6`,
+  //                                 `@ref skin.luma2 = 119.7`,
+  //                                 `@ref skin.luma3 = 155.5`,
+  //                                 `@ref skin.luma4 = 200.3`,
+  //                                 `@ref skin.luma5 = 233.8` — gaps of 29 to 45
+  //                                 luma, none of them a jump.
   [30, 26, 19], //  5 SKIN_HI         yellow lean. THE TOP OF THE FIGURE'S RANGE.
   //                                 Sampled off sprite-ref-1 at native scale,
-  //                                 the wrestlers' skin runs (115,74,33) up
-  //                                 through (231,198,132) to (247,231,214), and
-  //                                 the top two steps cover ~15% of the body —
-  //                                 the figures carry the brightest pixels in
-  //                                 the frame and the crowd behind them sits at
-  //                                 luma 16-80. Ours topped out at (239,190,148),
-  //                                 a hair under the steel of its own collars,
-  //                                 so the barbell out-valued the lifter.
+  //                                 the top two steps of the wrestler's skin
+  //                                 cover `@ref skin.topTwoShare = 25.6%` of it,
+  //                                 with a mean position of
+  //                                 `@ref skin.meanPosition = 0.483` in his own
+  //                                 ramp — the figures carry the brightest
+  //                                 pixels in the frame and the crowd behind
+  //                                 them has a median of
+  //                                 `@ref crowd.medianLuma = 37.3`. Ours topped
+  //                                 out at (239,190,148), a hair under the steel
+  //                                 of its own collars, so the barbell
+  //                                 out-valued the lifter.
   [26, 11, 9], //  6 SKIN_FLUSH     strain redness: SKIN_MID pushed ruddy, not
   //                                 pure red — it has to still read as a face
   [5, 6, 14], //  7 SINGLET_DARK
   [8, 11, 21], //  8 SINGLET_MID
   [14, 18, 28], //  9 SINGLET_LIGHT
-  [5, 4, 6], // 10 HAIR_DARK
+  [6, 5, 7], // 10 HAIR_DARK      Lifted off (5,4,6). At that value its Rec.601
+  //                                 luma was 37.2 — UNDER `CRAFT.NEAR_BLACK_LUMA`
+  //                                 (40), so the lifter's perfectly legitimate
+  //                                 hair mass was counted as black ink by every
+  //                                 measure that separates a drawn line from
+  //                                 material, and the head window read 31-41%
+  //                                 "near-black" and 9.9% "interior keyline"
+  //                                 with nothing wrong in the drawing. The
+  //                                 reference figure's darkest hair step is luma
+  //                                 78 and is never in that class. 45.2 puts
+  //                                 ours on the material side of the line while
+  //                                 staying 26 luma clear of PAL.OUTLINE (19),
+  //                                 so the outline still reads around the hair.
   [11, 8, 10], // 11 HAIR_LIGHT
   // GEAR — belt, both knee sleeves, both shoes. WHY THESE THREE MOVED, AND WHY
   // THEY DID NOT MOVE FURTHER: see the block comment directly below the bank.
@@ -189,20 +211,24 @@ const LIFTER_COLORS: readonly Rgb5[] = [
  * so a sleeve's shaded flank was invisible against the backdrop it stood in
  * front of.
  *
- * MEASURED, in this sandbox, off sprite-ref-1 at native scale — the blond
- * wrestler, masked by colour and split at his own vertical midpoint:
+ * MEASURED off sprite-ref-1 at native scale — the blond wrestler, masked by
+ * colour and split at his own vertical midpoint. These four numbers were prose
+ * for several rounds and were WRONG; the pair for his two halves disagreed with
+ * a second pair in `lifterSprite.ts` by 17%, and both survived because a comment
+ * cannot fail. They are `@ref` tags now, checked against the decoder:
  *
- *                       mean luma   px at luma >= 150   composition below mid
- *   reference, upper       113.7          32.6%
- *   reference, lower       109.0          21.7%        skin 54% kit 37% line 4%
- *   ours (was), upper       81.4          22.5%
- *   ours (was), lower       54.3           4.8%        line 52% kit 29% skin 13%
+ *                       mean luma
+ *   reference, upper    `@ref figure.upperMeanLuma = 137.99`
+ *   reference, lower    `@ref figure.lowerMeanLuma = 123.89`
+ *   ours (was), upper      81.4
+ *   ours (was), lower      54.3
  *
  * The reference's own kit ramp — the wrestler's trunks, knee pad and boots,
- * which are one saturated pink ramp — measures 53 / 91 / 140. That is within a
- * few luma of what ours already was. So the gap was NOT mostly the ramp's
- * values; it was area. Half the lower body was near-black separation line, and
- * bare flesh was 13% where the reference's is 54%.
+ * which are one saturated pink ramp — measures `@ref kit.luma0 = 39.5`,
+ * `@ref kit.luma1 = 69.1`, `@ref kit.luma2 = 109.1`, `@ref kit.luma3 = 149.7`.
+ * That is within a few luma of what ours already was at the top. So the gap was
+ * NOT mostly the ramp's values; it was area. Half the lower body was near-black
+ * separation line.
  *
  * Hence three coordinated changes rather than one big lift:
  *   1. GEAR moves 51/93/143 -> 59/101/149 and the steps even out (42, 48).
@@ -214,8 +240,8 @@ const LIFTER_COLORS: readonly Rgb5[] = [
  *      `rig.ts` put bare thigh and calf back into the frame.
  *
  * DELIBERATELY NOT DONE: pushing GEAR_LIGHT up to or past SKIN_LIGHT (175).
- * The reference's kit tops out at 140 against a skin third step of 152 — its
- * kit stays UNDER flesh. Sleeves, belts and shoes are black kit in this sport
+ * The reference's kit tops out at `@ref kit.luma3 = 149.7` against a skin fourth
+ * step of `@ref skin.luma3 = 155.5` — its kit stays UNDER flesh. Sleeves, belts and shoes are black kit in this sport
  * (see meet-photo-ref-1); they must read as dark objects ON a lit leg, not as
  * the leg. GEAR_LIGHT at 149 is 26 luma under SKIN_LIGHT, which is the same
  * side of flesh the reference's kit is on.
@@ -298,11 +324,13 @@ const EQUIPMENT_COLORS: readonly Rgb5[] = [
  *
  * A stage is not neutral: whatever the lifter stands in front of decides how
  * much of the value range he has left. sprite-ref-1 is emphatic about this and
- * it is measurable — sampled here, its crowd (the whole band behind the ring)
- * runs mean 38.8 / median 36, i.e. the busiest, most detailed area of the
- * screen is held to the bottom sixth of the range so the wrestlers can own
- * everything above it. Its mat, which the figures stand ON rather than in front
- * of, is the opposite: mean 93.4 / median 102 / p90 120, a pale floor for dark
+ * it is measurable — its crowd (the band behind the ring) runs
+ * `@ref crowd.meanLuma = 36.8` mean / `@ref crowd.medianLuma = 37.3` median,
+ * i.e. the busiest, most detailed area of the screen is held to the bottom
+ * sixth of the range so the wrestlers can own everything above it. Its mat,
+ * which the figures stand ON rather than in front of, is the opposite:
+ * `@ref mat.meanLuma = 88.9` mean / `@ref mat.medianLuma = 93.4` median /
+ * `@ref mat.p90Luma = 119.7` at the ninetieth percentile — a pale floor for dark
  * boots to sit against.
  *
  * Ours had that backwards at the top: BACKDROP_MID was 54, ABOVE GEAR_DARK's
@@ -455,8 +483,9 @@ export function outlineIndexForBank(index: number): number {
  * and `outlinePass` then adds a second near-black pixel outside it, so a 5px-wide
  * leg carried four columns of black. Measured on the lower half of the figure,
  * near-black was 52% of the body's own pixels; on the same split of sprite-ref-1
- * it is 4%, and that reference's arms and thighs are edged with the darkest step
- * of their OWN material (skin shadow, luma 80) with no keyline at all.
+ * it is `@ref figure.lowerNearBlackShare = 5.77%`, and that reference's arms and
+ * thighs are edged with the darkest step of their OWN material
+ * (`@ref skin.luma0 = 52.8`) with no keyline at all.
  *
  * So the ring is now the material's own darkest step. The silhouette keyline is
  * untouched — `outlinePass` still puts one near-black pixel outside everything,
@@ -475,11 +504,15 @@ export function outlineIndexForBank(index: number): number {
  *     silhouette rather than the keyline around it. The same interior figure
  *     below the belt was 0.3-7%.
  *   - the blond wrestler in sprite-ref-1, masked by his own colours at native
- *     scale and split at his midpoint: near-black 1.3% upper / 5.7% lower, mean
- *     luma 133.2 upper / 118.8 lower. His upper half is the BRIGHTER one and his
- *     arms are the brightest masses on the figure. Ours was the darker one, at a
- *     ratio of 0.86-1.02, with each arm reading as a near-black chevron with a
- *     tan streak inside it. That is the blind A/B inverted, not a style choice.
+ *     scale and split at his midpoint: near-black
+ *     `@ref figure.upperNearBlackShare = 1.40%` upper /
+ *     `@ref figure.lowerNearBlackShare = 5.77%` lower, mean luma
+ *     `@ref figure.upperMeanLuma = 137.99` upper /
+ *     `@ref figure.lowerMeanLuma = 123.89` lower. His upper half is the BRIGHTER
+ *     one and his arms are the brightest masses on the figure. Ours was the
+ *     darker one, at a ratio of 0.86-1.02, with each arm reading as a near-black
+ *     chevron with a tan streak inside it. That is the blind A/B inverted, not a
+ *     style choice.
  * After: upper near-black 15-17%, interior 6-8%, mean ratio 1.05-1.23.
  *
  * The anatomical breaks the old comment was defending are still drawn — they are
@@ -523,4 +556,19 @@ export function interiorEdgeFor(index: number): number {
     default:
       return PAL.OUTLINE;
   }
+}
+
+/**
+ * Does this material have an interior separation step of its own?
+ *
+ * The companion to `interiorEdgeFor`, and it exists because that function's
+ * fallback is ambiguous at the call site: `PAL.OUTLINE` is both "the answer for
+ * hair" and "there is no answer". `outlinePass` needs to tell those apart —
+ * a seam between two PLATES must stay `EQ_OUTLINE`, the cool keyline, because
+ * the one-pixel gap between two discs is the only thing that makes a stack
+ * countable, and routing it through `interiorEdgeFor` painted it in the
+ * LIFTER's warm outline instead.
+ */
+export function hasInteriorEdge(index: number): boolean {
+  return interiorEdgeFor(index) !== PAL.OUTLINE;
 }

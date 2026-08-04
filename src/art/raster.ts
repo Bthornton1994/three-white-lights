@@ -51,7 +51,14 @@
  */
 
 import { SHADING, type AxialProfile } from './spriteTuning';
-import { isTransparentIndex, outlineIndexForBank, type Ramp } from './palette';
+import {
+  BANK_SIZE,
+  hasInteriorEdge,
+  interiorEdgeFor,
+  isTransparentIndex,
+  outlineIndexForBank,
+  type Ramp,
+} from './palette';
 
 /**
  * Divide-by-zero guard for the normal and profile maths.
@@ -129,6 +136,55 @@ export function lambert(nx: number, ny: number, nz: number): number {
   const d = nx * LX + ny * LY + nz * LZ;
   const lit = Math.max(0, d);
   return Math.min(1, SHADING.AMBIENT + (1 - SHADING.AMBIENT) * lit);
+}
+
+/**
+ * The lamp, plus whatever a mass does to itself along its own axis.
+ *
+ * AMBIENT IS A FLOOR HERE, NOT A BASE, and that is the whole content of this
+ * function. `lambert` already bottoms out at AMBIENT, but `axialTerm`'s
+ * `JOINT_DROP` was subtracted afterwards and could take a pixel BELOW it: on
+ * the shadow flank of a limb, where the lamp contributes nothing, the joint
+ * bands at each end of every capsule went from AMBIENT to AMBIENT - JOINT_DROP.
+ * With four capsule ends down each arm that put whole wedges of every limb on
+ * the darkest entry of the ramp — measured, 48-64% of the far arm's own window,
+ * against a reference figure whose worst limb-sized patch of skin anywhere is
+ * 37-50% and whose median never lands there at all.
+ *
+ * Ambient is light that arrives from everywhere; a muscle belly does not
+ * occlude it. So the axial profile modulates the KEY light and stops at the
+ * ambient floor, which leaves the ramp's darkest step to the thing that is
+ * actually drawn in it — the contour (`INTERIOR_EDGE.SKIN`), one step under the
+ * fill beside it. The joint articulation is unchanged where anyone can see it:
+ * on the lit flank the drop still has the full range to work in.
+ */
+export function litWithAxial(lambertValue: number, axial: number): number {
+  return Math.min(1, Math.max(SHADING.AMBIENT, lambertValue + axial));
+}
+
+/**
+ * Push a lit value toward ambient — a mass standing further from the lamp.
+ *
+ * THIS REPLACES A RAMP-STEP BIAS, and the difference is the whole point. A
+ * step bias renumbers the ramp: every pixel of the mass drops one entry, so a
+ * limb whose lit flank was the top step is capped one below it and everything
+ * that was one step off the floor lands ON the floor. Measured on the far arm
+ * that was 54-93% of its skin at `SKIN_SHADOW` with a median AT the floor in
+ * every frame the animation can produce, and zero pixels at `SKIN_HI` — a flat
+ * dark mass beside a near arm running the whole ramp.
+ *
+ * Scaling toward ambient is what a dimmer lamp actually does. The shadow flank
+ * is already sitting at ambient and does not move, so nothing extra is pushed
+ * onto the floor; the lit flank comes down, so the mass reads further away; and
+ * where the surface really does face the lamp it can still cross the top
+ * threshold, which is how both of `sprite-ref-1`'s arms reach the top two steps
+ * of one skin ramp under one light.
+ *
+ * `scale` 1 is a no-op, bit for bit.
+ */
+export function dimToward(lit: number, scale: number): number {
+  if (scale === 1) return lit;
+  return SHADING.AMBIENT + scale * (lit - SHADING.AMBIENT);
 }
 
 /**
@@ -266,8 +322,15 @@ export function shadeToIndex(ramp: Ramp, lit: number, stepBias: number = 0): num
 // ---------------------------------------------------------------------------
 
 export interface PartOptions {
-  /** Shift the whole part's ramp step. Depth separation for far limbs. */
+  /** Shift the whole part's ramp step. */
   readonly stepBias?: number;
+  /**
+   * Dim this part's lamp toward ambient — depth separation for far masses.
+   *
+   * Omitted means 1, which is bit-for-bit no change. See `dimToward` for why
+   * this and not `stepBias`, and `SHADING.FAR_LIMB_LIGHT_SCALE` for the value.
+   */
+  readonly lightScale?: number;
   /** Stamp a 1px outline around the part before filling it. */
   readonly edge?: boolean;
   /** Outline colour for `edge`. Defaults to the part's own bank outline. */
@@ -279,10 +342,12 @@ export interface PartOptions {
    * A flat ring is a rim of the ramp's floor on every side of the mass at once —
    * the lit flank gets the same near-black as the shadow flank, which is the one
    * thing a lamp cannot do. Sampled off sprite-ref-1 at native scale, a bare
-   * thigh row reads 80 / 152 / 200 / 233 / 233 / 233 / 233 / 116 / 152 / 116:
-   * one dark pixel where the light leaves the form, and a MID step, not a dark
-   * one, on the other side. That asymmetry is most of what makes the reference's
-   * limbs read as lit cylinders rather than as outlined tubes.
+   * thigh row runs his six-step skin ramp as 1/3/4/5/5/5/5/2/3/2: one step-1
+   * pixel where the light leaves the form, a run of the top step across the face
+   * of the mass, and a MID step, not a dark one, on the other side — and NOT ONE
+   * pixel of that row on step 0 (`@ref skin.luma0 = 52.8`). That asymmetry is
+   * most of what makes the reference's limbs read as lit cylinders rather than
+   * as outlined tubes.
    */
   readonly edgeFollowsLight?: boolean;
   /**
@@ -407,6 +472,7 @@ function limbPass(g: IndexGrid, seg: LimbSegment, pass: 0 | 1): void {
   const y1 = Math.ceil(Math.max(ay, by) + pad);
 
   const stepBias = opts?.stepBias ?? 0;
+  const lightScale = opts?.lightScale ?? 1;
   const edgeIdx = edgeIndexFor(ramp, opts);
   const litEdge = opts?.edgeFollowsLight === true;
   const axial = opts?.axial ?? SHADING.AXIAL_LIMB;
@@ -443,9 +509,9 @@ function limbPass(g: IndexGrid, seg: LimbSegment, pass: 0 | 1): void {
       const N = limbNormal(px, py, ux, uy, n, (along - domeCentre) / rCore, camera);
       // `t` is the position DOWN the limb. Reading it here is the whole
       // difference between a modelled limb and an extruded stripe.
-      const lit = Math.min(
-        1,
-        Math.max(0, lambert(N.x, N.y, N.z) + axialScale * axialTerm(axial, t)),
+      const lit = dimToward(
+        litWithAxial(lambert(N.x, N.y, N.z), axialScale * axialTerm(axial, t)),
+        lightScale,
       );
       if (pass === 0) {
         setPx(
@@ -481,6 +547,7 @@ export function drawEllipsoid(
   opts?: PartOptions,
 ): void {
   const stepBias = opts?.stepBias ?? 0;
+  const lightScale = opts?.lightScale ?? 1;
   const wantEdge = opts?.edge === true;
   const edgeIdx = edgeIndexFor(ramp, opts);
   const litEdge = opts?.edgeFollowsLight === true;
@@ -500,18 +567,17 @@ export function drawEllipsoid(
         const q = nx * nx + ny * ny;
         if (q > 1) continue;
         const nz = Math.sqrt(Math.max(0, 1 - q));
+        const lit = dimToward(lambert(nx, ny, nz), lightScale);
         if (pass === 0) {
           setPx(
             g,
             x,
             y,
-            litEdge
-              ? shadeToIndex(ramp, lambert(nx, ny, nz), stepBias - SHADING.EDGE_STEP_DROP)
-              : edgeIdx,
+            litEdge ? shadeToIndex(ramp, lit, stepBias - SHADING.EDGE_STEP_DROP) : edgeIdx,
           );
           continue;
         }
-        setPx(g, x, y, shadeToIndex(ramp, lambert(nx, ny, nz), stepBias));
+        setPx(g, x, y, shadeToIndex(ramp, lit, stepBias));
       }
     }
   }
@@ -533,6 +599,7 @@ export function drawTrunk(
   opts?: PartOptions,
 ): void {
   const stepBias = opts?.stepBias ?? 0;
+  const lightScale = opts?.lightScale ?? 1;
   const wantEdge = opts?.edge === true;
   const edgeIdx = edgeIndexFor(ramp, opts);
   const litEdge = opts?.edgeFollowsLight === true;
@@ -554,9 +621,9 @@ export function drawTrunk(
         if (Math.abs(nx) > 1) continue;
         const nz = Math.sqrt(Math.max(0, 1 - nx * nx));
         const vertical = SHADING.VERTICAL_GAIN * (1 - 2 * f);
-        const lit = Math.min(
-          1,
-          Math.max(0, lambert(nx, 0, nz) + vertical + axialTerm(axial, f)),
+        const lit = dimToward(
+          litWithAxial(lambert(nx, 0, nz), vertical + axialTerm(axial, f)),
+          lightScale,
         );
         if (pass === 0) {
           setPx(
@@ -614,12 +681,45 @@ export function drawPlateEdge(
  * widths. Colour is chosen per-pixel from the bank of the neighbour it is
  * outlining, giving the warm-on-flesh / cool-on-steel selective outline the era
  * used. Reads from a snapshot so the outline cannot outline itself.
+ *
+ * A GAP BETWEEN TWO OF THE FIGURE'S OWN MASSES IS NOT A SILHOUETTE, and this
+ * pass used to treat it as one. Where the drawing leaves a one-pixel channel
+ * between the neck and the trap, or the forearm and the ribs, the transparent
+ * pixels in it are reachable from BOTH sides, so the pass filled them with the
+ * near-black keyline — a black seam buried inside the figure with the world
+ * nowhere near it. Measured over the full pose sweep, every near-black pixel
+ * inside the arm, hand and neck windows was one of these: up to 16.7% of the
+ * neck, 8.3% of an arm. `sprite-ref-1`'s masses meet in their own darkest ramp
+ * step and there is no keyline anywhere on him, so that share had nothing to be
+ * compared against.
+ *
+ * So a gap pixel — one with the SAME BANK's material on both ends of an axis —
+ * takes `interiorEdgeFor` instead, which is the same answer `PartOptions.edge`
+ * gives everywhere else: skin shadow inside skin, gear dark inside gear. The
+ * seam stays; it stops being black. The silhouette proper is untouched, so the
+ * figure still reads at phone scale against unknown scenery (GDD §12.2).
+ *
+ * SAME BANK, and that qualifier is load-bearing rather than tidy. A gap with
+ * skin on one side and a PLATE on the other is the boundary between the lifter
+ * and the barbell — a real silhouette, and one whose position moves every time
+ * the load changes. Treating it as an interior seam made the drawn body a
+ * function of how many discs are on the bar, which is exactly what
+ * `bodyPixelDiff`'s "measures the body and only the body" forbids: 66 body
+ * pixels changed between two frames that differ by 150 kg of plates and nothing
+ * else.
  */
 export function outlinePass(g: IndexGrid): void {
   const src = Uint8Array.from(g.data);
   const at = (x: number, y: number): number => {
     if (x < 0 || y < 0 || x >= g.w || y >= g.h) return 0;
     return src[y * g.w + x] ?? 0;
+  };
+  /** The drawn index shared by two opposite neighbours, or 0. */
+  const sameBankAcross = (ax: number, ay: number, bx: number, by: number): number => {
+    const a = at(ax, ay);
+    const b = at(bx, by);
+    if (isTransparentIndex(a) || isTransparentIndex(b)) return 0;
+    return Math.floor(a / BANK_SIZE) === Math.floor(b / BANK_SIZE) ? a : 0;
   };
 
   for (let y = 0; y < g.h; y += 1) {
@@ -633,7 +733,11 @@ export function outlinePass(g: IndexGrid): void {
           break;
         }
       }
-      if (pick !== 0) setPx(g, x, y, outlineIndexForBank(pick));
+      if (pick === 0) continue;
+      const seam =
+        sameBankAcross(x - 1, y, x + 1, y) || sameBankAcross(x, y - 1, x, y + 1) || 0;
+      const isSeam = seam !== 0 && hasInteriorEdge(seam);
+      setPx(g, x, y, isSeam ? interiorEdgeFor(seam) : outlineIndexForBank(pick));
     }
   }
 }
