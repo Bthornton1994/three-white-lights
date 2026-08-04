@@ -1639,7 +1639,15 @@ describe('the bounds bite', () => {
     const room = renderGymScene(SPEC);
     const used = new Set<number>(room.data);
     const spare = every.filter((i) => !used.has(i));
-    expect(spare.length).toBeGreaterThan(BOUNDS.INDEX_COUNT_MAX - used.size);
+    // The plant's SIZE is the artifact's, not the bound's: it is every colour
+    // the shipped room leaves on the shelf, nine of them, and it would be the
+    // same nine whatever the ceiling said. What the bound is allowed to decide
+    // is only whether it is reachable at all — if it were ever raised above the
+    // index space, this is the line that says the cap has stopped meaning
+    // anything rather than the plant quietly growing to meet it.
+    expect(spare.length).toBe(9);
+    expect(used.size + spare.length).toBe(every.length);
+    expect(every.length).toBeGreaterThan(BOUNDS.INDEX_COUNT_MAX);
     const grid = planted((g) => {
       g.data.set(room.data);
       spare.forEach((index, n) => {
@@ -1667,10 +1675,14 @@ describe('the bounds bite', () => {
     // that it trips none of the busyness, furniture, composition or rim bounds,
     // so the bright share is the one doing the work here.
     const room = renderGymScene(SPEC);
-    const need = Math.ceil(SPEC.w * SPEC.h * BOUNDS.BRIGHT_SHARE_MAX) + SPEC.w;
+    // 355 px — 2.2% of the visible background, and a fixed number rather than a
+    // multiple of the ceiling, so raising the ceiling makes this plant FAIL
+    // instead of growing to meet it. For scale: the shipped room's three lamps
+    // carry 21 filament pixels between them, 0.13% of this.
+    const FILAMENT_PX = 355;
     const grid = planted((g) => {
       g.data.set(room.data);
-      for (let i = 0; i < need; i += 1) {
+      for (let i = 0; i < FILAMENT_PX; i += 1) {
         setPx(g, i % g.w, GYM_LIGHTING.LAMP_ROW + Math.floor(i / g.w), GYM.LAMP_CORE);
       }
     });
