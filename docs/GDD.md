@@ -964,6 +964,30 @@ work.
 
 ## 11. Open Questions
 
+- [ ] **Gym Empire, Career and Arcade are gated on human playtesting that has
+      not happened, and this run cannot lift the gate itself.** §10's "Then, and
+      only then" sentence puts all three after the loop is proven; CLAUDE.md
+      names one of the three explicitly and calls it non-negotiable — "Do not
+      build Gym Empire before the lift mechanic is proven fun." "Proven fun"
+      is a human-playtesting claim, not a critic-bar one: CLAUDE.md's own "What
+      You Cannot Do" section says a critic cannot judge whether the lift feels
+      good, only whether it is built correctly. L1 passed its craft bar; every
+      critic on it was explicit that feel itself stayed unverified. So the gate
+      is still shut, by the letter of the document that states it, regardless
+      of how much else has been built.
+      This sits next to a real tension the run does not resolve for itself:
+      §12.1 says a Gauntlet Loop run collapses phase gates into critic bars,
+      and this run has already built Prototype-3-tier content — meet day,
+      result cards, the licensing system — under exactly that reading, without
+      waiting for retention data. Cut-in art (§7.2, "cut art entirely from the
+      early prototypes... until meet day is proven to land") is the same shape
+      of question one level down: §12.2 defines a critic bar for cut-ins, which
+      argues for attempting them; §7.2 argues against building the art at all
+      yet. Recorded rather than silently resolved either way. Until ruled,
+      the working assumption this run is applying: Gym Empire, Career, Arcade
+      and cut-in *art* stay unbuilt; grading and closing what already exists
+      continues without waiting on this answer.
+
 - [ ] Weight units: default to lbs or kg? Per-user toggle presumably, but which
       is the default and does it vary by locale? **This question is about
       *display*.** What unit a meet is *run* in is a separate one, and the build
