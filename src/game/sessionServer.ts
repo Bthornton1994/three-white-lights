@@ -176,6 +176,7 @@ import {
 import { LIFT_ORDER, type LiftKind } from './meet';
 import { declaredRows } from './progression';
 import type {
+  KilogramTrainingCard,
   MeetResultWire,
   ProgressionSnapshotWire,
   ProposalOfKind,
@@ -447,10 +448,18 @@ function readKilogramSets(
     };
   }
   // THROUGH THE NARROW, NOT THROUGH A SHARED FIELD. `card` is the kilogram arm
-  // by now, so `kilogramSets` is the only list of sets in scope. `declaredRows`
-  // is the runtime half: a tag with nothing under it, or with something that is
-  // not a list, is refused rather than iterated.
-  const sets = declaredRows(card.kilogramSets);
+  // by now, so `kilogramSets` is the only list of sets in scope.
+  //
+  // THE NARROW IS BOUND TO A NAME rather than left as a fact about control flow.
+  // `KilogramTrainingCard` is what "these sets have been proven to be kilograms"
+  // is called, in one spelling — and the binding earns its keep: WIDENING the
+  // condition above to let the pound arm through stops compiling on THIS line,
+  // where the name says what the value is meant to be, instead of type-checking
+  // and failing a test. Mutation-tested in both shapes.
+  const proven: KilogramTrainingCard = card;
+  // `declaredRows` is the runtime half: a tag with nothing under it, or with
+  // something that is not a list, is refused rather than iterated.
+  const sets = declaredRows(proven.kilogramSets);
   if (sets === null) {
     return {
       ok: false,
