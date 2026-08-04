@@ -23,9 +23,13 @@
  * drawings are collapsed into one held frame — exactly what
  * `squatAnimation.ts`'s `coalesceFrames` does to the rep, and for the same
  * reason: a 16-bit game shipped a finite sheet, and continuous per-frame
- * deformation is a modern-engine tell (GDD §7.1). A walk-out at these values
- * comes out as roughly a dozen drawings, so the renderer rasterises a dozen
- * sprites over two seconds rather than one per display frame.
+ * deformation is a modern-engine tell (GDD §7.1).
+ *
+ * Measured, at a maximal opener on a six-disc bar: 31 held frames over 2,120 ms,
+ * resolving to EIGHTEEN distinct sprite drawings. A third attempt is 33 frames
+ * and the same 18 drawings — what its two extra frames carry is the room coming
+ * up, not the man. So the renderer rasterises 18 sprites and at most 5 rooms for
+ * a whole beat, rather than one of each per display frame.
  *
  * ===========================================================================
  * THE ORDER IS LOAD -> UNRACK -> STEP -> SETTLE -> SET

@@ -70,11 +70,11 @@
  * RASTER COST, SINCE THIS FILE NOW REDRAWS
  * ---------------------------------------------------------------------------
  * `useSpriteImage` caches on `frameKey`, the same idiom `LiftStage` uses for the
- * rep. The walk-out's sheet is roughly a dozen drawings over two seconds, not
- * one per display frame, so the sprite is rasterised about a dozen times for the
- * whole beat. The ROOM is cached by `GymSceneLayer` on its fields, and
+ * rep. The walk-out's sheet resolves to eighteen distinct sprite drawings over
+ * 2,120 ms rather than one per display frame, so that is eighteen rasters for
+ * the whole beat. The ROOM is cached by `GymSceneLayer` on its fields, and
  * `crowdRisePx` is whole rows, so a hall that comes up costs one extra room
- * raster per row it rises and nothing after that.
+ * raster per row it rises — at most five — and nothing after that.
  *
  * ---------------------------------------------------------------------------
  * NOT VERIFIED ON A DEVICE
