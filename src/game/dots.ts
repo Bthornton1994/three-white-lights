@@ -17,8 +17,19 @@
  * evaluation is: the published-constant object literals, the arithmetic in
  * `DOTS_SMALLEST_PRINTABLE_SCORE`, and one `Symbol('dots.coefficient')` (see THE
  * COEFFICIENT IS NOT A NUMBER below). All of it allocates and reads inside this
- * file only — no clock, no global, no I/O — and no function's output depends on
- * which symbol instance it got.
+ * file only — no clock, no global, no I/O.
+ *
+ * DISCLOSED, because the previous wording claimed more than it could: it used to
+ * say "no function's output depends on which symbol instance it got". Within one
+ * module instance that is true and uninteresting — there is only one instance.
+ * Across TWO instances it is false, and `Symbol()` is unregistered precisely so
+ * that two instances get two different keys. Load this file twice (two copies in
+ * a bundle, a mixed ESM/CJS graph, a test that re-imports with a fresh registry)
+ * and a `DotsCoefficient` minted by copy A has no readable value under copy B's
+ * key: `applyDotsCoefficient` would multiply `undefined` and yield NaN. That is
+ * exotic, it is untested here, and engineering around it — `Symbol.for`, a global
+ * registry — would trade a scenario nobody has hit for ambient global state the
+ * purity contract forbids. So it is written down rather than defended against.
  *
  * ---------------------------------------------------------------------------
  * PROVENANCE OF THE COEFFICIENTS  (read this before touching any number here)
@@ -71,6 +82,32 @@
 
 /** Sexes for which DOTS coefficients are published. */
 export type DotsSex = 'male' | 'female';
+
+/**
+ * The ONLY unit this module scores. Not a preference and not tunable: the
+ * published polynomial is a fit over kilogram bodyweights and returns points per
+ * kilogram of total. There is no lb coefficient set to switch to.
+ *
+ * Matched by string equality against `TotalReading.unit`, so it is spelled the
+ * way `meet.ts` spells it. `dots.test.ts` pins the two spellings together against
+ * the real module.
+ */
+export const DOTS_TOTAL_UNIT = 'kg';
+
+/**
+ * Kilograms in one pound. EXACT BY DEFINITION, not measured and not rounded:
+ * the 1959 International Yard and Pound Agreement defines the international
+ * avoirdupois pound as exactly 0.45359237 kg. It is a published constant in the
+ * same sense the coefficients above are, and for the same reason it is not to be
+ * "simplified" to 0.4536 or replaced by a reciprocal of 2.2046.
+ *
+ * (OpenPowerlifting divides by an f32 `2.2046225` in
+ * `crates/opltypes/src/weightkg.rs` and says so in a comment on the type —
+ * "Conversion between kilograms and pounds is lossy due to rounding" — because
+ * it is round-tripping fixed-point hundredths. We are not round-tripping, so we
+ * use the definition rather than its f32 reciprocal.)
+ */
+export const KILOGRAMS_PER_POUND = 0.45359237;
 
 /**
  * Numerator of the DOTS coefficient. Scales the formula so that the coefficient
@@ -244,12 +281,22 @@ export const DOTS_DELTA_ZERO_PREFIX = '';
 //
 //   - `officialTotalKg(0)`, and therefore `officialTotalKg(finalMeetTotal(state) ?? 0)`.
 //     A total of exactly 0 is refused with an error naming the collapse.
-//     `meet.ts` cannot produce a 0 either: nothing below `MIN_LOADABLE_WEIGHT_KG`
-//     (25 kg — bar plus collars) can be declared, so a meet that finishes with a
-//     total finishes with at least ~75 kg, and one that does not finish with a
-//     total reports `null`. No federation records a 0 kg total. Every 0 arriving
-//     here is a bug, and refusing it names the bug where it happens instead of
-//     quietly printing "0.00" onto a leaderboard.
+//     `meet.ts` cannot produce a 0 either — UNDER ITS DEFAULT RULES, which is the
+//     only form of that sentence this module gets to say. `DEFAULT_MEET_RULES`
+//     puts `barAndCollarsWeight` at `MIN_LOADABLE_WEIGHT_KG` (25 kg — bar plus
+//     collars) on all three lifts, nothing below the bar can be declared, and so a
+//     meet run on those rules finishes with at least ~75 kg or reports `null`.
+//     `barAndCollarsWeight` is per-lift caller-configurable and `validateMeetRules`
+//     asks only that it be finite and positive, so a federation config with a 1 kg
+//     bar can record a 3 kg total, and one with a 0.001 kg bar can record a total
+//     whose DOTS score rounds to "0.00" and is refused downstream. That is a
+//     nonsense federation, not a reachable game state — but it is the true
+//     statement, and dots.test.ts drives a REAL minimum-weight meet through
+//     `meet.ts` to pin the ~37 DOTS floor rather than asserting it from a
+//     constant, so deleting `meet.ts`'s floor fails a test here.
+//     No federation records a 0 kg total. Every 0 arriving here is a bug, and
+//     refusing it names the bug where it happens instead of quietly printing
+//     "0.00" onto a leaderboard.
 //   - `dotsScore` / `evaluateDots` re-check the total they were handed, so a
 //     forged brand still fails.
 //   - `roundDotsScore` / `formatDotsScore` refuse a score that is not positive,
@@ -302,6 +349,78 @@ export const DOTS_DELTA_ZERO_PREFIX = '';
 //     Reflection gets there too, with a cast rather than a mint:
 //     `Object.getOwnPropertySymbols(c)[0]` names the private key at runtime, so
 //     "module-private symbol" is a fact about typechecking, not about the object.
+//
+// ---------------------------------------------------------------------------
+// UNITS — A POUND TOTAL IS NOT A SMALL KILOGRAM TOTAL
+// (the same defect as NO TOTAL above, one field over)
+// ---------------------------------------------------------------------------
+//
+// DOTS is defined in kilograms. The published polynomial is a curve fit over
+// kilogram bodyweights and returns points per kilogram of total; there is no
+// pound coefficient set, and `DOTS_BODYWEIGHT_DOMAIN_KG`'s 40–210 band is a kg
+// band. `DOTS_TOTAL_UNIT` names the one unit this module scores.
+//
+// `meet.ts` runs a meet in EITHER unit. `POUND_MEET_RULES` is exported, passes
+// `validateMeetRules`, and `meet.test.ts` drives a full pound meet through it —
+// this is a supported configuration, not a hypothetical. And a pound total is not
+// self-evidently a pound total: 1267.5 is a perfectly ordinary kg total for a
+// superheavyweight, so nothing about the NUMBER gives the unit away.
+//
+// WHAT USED TO HAPPEN, through the front door this module advertises:
+//
+//     evaluateMeetDots('male', 93, readTotal(poundMeet))   // 806.45
+//     evaluateMeetDots('male', 93, readTotal(sameMeetInKg)) // 365.76
+//
+// 2.2x wrong, formatted to two decimals, nothing marking it — and past 700 DOTS,
+// which this module's own plausibility test says no human result reaches.
+// `officialTotalFromMeet` was documented as "the checked mint", and this was the
+// check it did not have.
+//
+// WHAT CLOSES IT:
+//
+//   - The unit TRAVELS. `MeetLoadingRules.unit` is required (it is not derivable
+//     from the numbers), `readTotal` stamps it onto every `TotalReading`, and
+//     `MeetTotalReading` here requires it, so a reading without one does not
+//     compile at `officialTotalFromMeet` or `evaluateMeetDots`.
+//   - A reading that is not in kilograms is REFUSED, on every case including the
+//     two that carry no total, so the bug fires on the first poll rather than on
+//     the first meet that finishes.
+//
+// WHY REFUSE RATHER THAN CONVERT, given that lb->kg is exact by definition
+// (`KILOGRAMS_PER_POUND`) and this module could obviously do the multiply:
+//
+//   - A DOTS score needs TWO numbers in kilograms. The total arrives from
+//     `meet.ts` with its unit attached; the bodyweight arrives from the CALLER as
+//     a bare `number` named `bodyweightKg`, and this module cannot see whether
+//     that name is true. Converting the total while trusting the bodyweight turns
+//     a 2.2x overstatement into a roughly 2.2x understatement — a different wrong
+//     number, produced by a module that now claims to handle units.
+//   - The two units are genuinely independent facts, not one fact spelled twice.
+//     OpenPowerlifting's checker carries exactly this warning
+//     (`checker/src/checklib/entries.rs`): "Either the meet is in pounds, or in
+//     kilos. However, note that international meets often do weigh-in in pounds,
+//     but lifting in kilos, so keep those separate."
+//   - CLAUDE.md's precedent: `e1rm.ts` refuses past the RPE chart's coverage
+//     rather than extrapolating. A wrong DOTS score is worse than no DOTS score,
+//     and a refusal that names the remedy costs the caller one explicit line.
+//
+// WHAT IS DELIBERATELY NOT CLOSED HERE:
+//
+//   - The BODYWEIGHT is still a bare `number` on `dotsScore` / `evaluateDots` /
+//     `evaluateMeetDots`. It does not cross a module boundary — no game module
+//     produces it — so there is no reading to attach a unit to, and branding it
+//     would change every call site in the codebase to close a hazard nobody has
+//     hit. A caller who converts a pound meet must convert BOTH numbers; the
+//     refusal message says so in as many words, and that is the whole of the
+//     defence on that axis. Stated rather than defended, on purpose.
+//   - `officialTotalKg(kilogramsFromPounds(reading.total))` compiles and scores
+//     correctly. That IS the intended escape: two named calls, both greppable,
+//     one of which is the module's existing written-down assertion. What it is not
+//     is silent.
+//   - A caller can still write `unit: 'kg'` on a hand-built reading that is not in
+//     kilograms. Same class as `officialTotalKg(totalOnTheBoard(state))` in the
+//     block above: a lie the caller has to type out. Nothing here is
+//     tamper-resistance.
 //
 // ---------------------------------------------------------------------------
 // Types
@@ -374,14 +493,30 @@ export type DotsDelta = number & { readonly [DOTS_DELTA_BRAND]: 'dots' };
  * `dots.test.ts` pins the match by feeding an actual `readTotal(state)` through
  * `officialTotalFromMeet` for all three of its cases — if `TotalReading` ever
  * changes shape, that test stops compiling.
+ *
+ * `unit` is REQUIRED on every case, including the two that carry no total. Two
+ * reasons, and both are about failing early rather than plausibly:
+ *
+ *   - Required, so an object literal without one does not compile here. That is
+ *     what makes "the unit travels with the number" a property of the code
+ *     rather than a convention; see UNITS below.
+ *   - On every case, so a caller wired to a pound meet finds out on the first
+ *     reading it polls rather than on the first meet that finishes with a total.
+ *
+ * Typed `string`, not `'kg' | 'lb'`, on purpose. This module cannot import
+ * `meet.ts`'s `MeetWeightUnit`, and if it hard-coded today's union then a unit
+ * added over there later would be a COMPILE error here — which a builder in a
+ * hurry fixes by widening the union, and the new unit is silently scored as
+ * kilograms. `string` means anything this module has not been taught is REFUSED
+ * at runtime instead. The permissive type is the fail-safe direction.
  */
 export type MeetTotalReading =
   /** Still lifting: there is no total yet, only what is on the board. */
-  | { readonly kind: 'in-progress'; readonly total: null }
+  | { readonly kind: 'in-progress'; readonly total: null; readonly unit: string }
   /** Meet over with a total. The only case that yields an official total. */
-  | { readonly kind: 'final'; readonly total: number }
+  | { readonly kind: 'final'; readonly total: number; readonly unit: string }
   /** Meet over with a bombed lift: NO total, which is not a total of zero. */
-  | { readonly kind: 'no-total'; readonly total: null };
+  | { readonly kind: 'no-total'; readonly total: null; readonly unit: string };
 
 /**
  * The key a coefficient's numeric value lives under. Module-private and a
@@ -596,6 +731,53 @@ export function officialTotalKg(totalKg: number): OfficialTotalKg {
 }
 
 /**
+ * Convert pounds to kilograms.
+ *
+ * Here rather than in a units module because this module imports nothing (see
+ * the purity contract) and the refusal in `officialTotalFromMeet` names this
+ * function by name — a refusal that cannot say what to do instead just relocates
+ * the problem.
+ *
+ * IT IS NOT, ON ITS OWN, A BRIDGE FROM A POUND MEET TO A DOTS SCORE. A DOTS
+ * score needs BOTH the total and the bodyweight in kilograms, and `meet.ts` hands
+ * this module only the first. Converting one and trusting the other swaps a 2.2x
+ * overstatement for a different wrong number. See UNITS.
+ *
+ * @throws RangeError on a non-finite input.
+ */
+export function kilogramsFromPounds(pounds: number): number {
+  assertUsableNumber(pounds, 'pounds');
+  return pounds * KILOGRAMS_PER_POUND;
+}
+
+/**
+ * Refuse a reading whose weights are not in kilograms.
+ *
+ * Runs on EVERY case, not just `'final'`, so a caller wired to a pound meet
+ * finds out on the first reading it polls rather than on the first meet that
+ * finishes with a total. A bug that only fires on success is the worst kind to
+ * ship: it looks like it works right up until it produces a leaderboard.
+ */
+function assertKilogramReading(reading: MeetTotalReading): void {
+  if (reading.unit === DOTS_TOTAL_UNIT) {
+    return;
+  }
+  const shown = reading.total === null ? reading.kind : String(reading.total);
+  throw new RangeError(
+    `dots: this meet's weights are in ${JSON.stringify(reading.unit)}, and DOTS is defined only ` +
+      `in ${DOTS_TOTAL_UNIT} — its published polynomial is fitted on kilogram bodyweights. ` +
+      `Scoring ${shown} as kilograms would print a plausible number that is wrong by the ` +
+      'conversion factor (a 1267.5 lb total scored 806.45 where the truth was 365.76), and this ' +
+      'module refuses rather than guessing. It does NOT convert for you: a DOTS score needs the ' +
+      'BODYWEIGHT in kg as well, and that number is the caller’s, not the meet’s — ' +
+      'international meets weigh in in pounds and lift in kilos, so the two units are separate ' +
+      'facts and this module can only see one of them. Convert the whole entry at the call site ' +
+      '(kilogramsFromPounds for both the total and the bodyweight) and mint the result with ' +
+      'officialTotalKg, so the claim is written down where someone can check it.',
+  );
+}
+
+/**
  * The checked mint: an official total out of a meet's total reading, or `null`
  * when there is not one.
  *
@@ -606,8 +788,18 @@ export function officialTotalKg(totalKg: number): OfficialTotalKg {
  *
  * A bare `number` — including `totalOnTheBoard(state)` — is not a reading and
  * will not compile here. That is the whole point of taking the reading.
+ *
+ * WHAT "CHECKED" MEANS, now that it means something: it checks the KIND, so a
+ * provisional or missing total cannot be minted, AND it checks the UNIT, so a
+ * total that is not in kilograms is refused instead of scored. It used to check
+ * only the first, and a `POUND_MEET_RULES` meet — an exported, tested, first-class
+ * configuration — minted straight through it. See UNITS.
+ *
+ * @throws RangeError if the reading is not in kilograms, or if a `'final'`
+ *         reading carries a total that is not a positive finite number.
  */
 export function officialTotalFromMeet(reading: MeetTotalReading): OfficialTotalKg | null {
+  assertKilogramReading(reading);
   if (reading.kind !== 'final') return null;
   return officialTotalKg(reading.total);
 }
@@ -788,6 +980,17 @@ export function evaluateDots(
  * caller should be writing. A meet that bombed and a meet still in progress both
  * come back as `'no-total'` — no score, no coefficient, and
  * `formatDotsOutcome` prints `DOTS_NO_TOTAL_DISPLAY` for them.
+ *
+ * A meet that is not in kilograms THROWS rather than coming back as
+ * `'no-total'`, because that lifter may well have totalled — saying they did not
+ * would be the same lie in the other direction. It is the caller's integration
+ * that is wrong, and the error says how to fix it. See UNITS.
+ *
+ * @param bodyweightKg Bodyweight in kg. This module cannot check that claim —
+ *        the parameter name is the whole of the guarantee. If the meet was run
+ *        in pounds, the lifter was probably weighed in pounds too; convert both.
+ * @throws RangeError if the reading is not in kilograms, or on a bodyweight that
+ *         is not a positive finite number.
  */
 export function evaluateMeetDots(
   sex: DotsSex,
@@ -895,11 +1098,20 @@ function assertDeltaEndpointScore(score: number, label: string): void {
  * `officialTotalKg(0.004)` and `evaluateDots` hands back a properly-typed
  * `ScoredDots` whose score is ~0.0025, which rounds to "0.00" and is refused at
  * the endpoint guard. So the claim is NOT "a call that typechecks cannot throw",
- * and it is not "only a forced call can". It is that nothing a real total
- * produces gets near the guard — the smallest score reachable from a finished
- * meet is ~37 DOTS, because `meet.ts` cannot record a total below ~75 kg — so a
- * throw here means the mint upstream was handed something that was never a
- * total, which is the thing it exists to say.
+ * and it is not "only a forced call can". It is that nothing a meet run on
+ * `DEFAULT_MEET_RULES` produces gets near the guard — the smallest score
+ * reachable from such a meet is ~37 DOTS, because those rules put the bar at
+ * `MIN_LOADABLE_WEIGHT_KG` on all three lifts and nothing below the bar can be
+ * declared — so a throw here means the mint upstream was handed something that
+ * was never a total, which is the thing it exists to say.
+ *
+ * "DEFAULT" is doing real work in that sentence and is not a hedge:
+ * `MeetLoadingRules.barAndCollarsWeight` is per-lift caller-configurable and
+ * `validateMeetRules` requires only that it be finite and positive, so a
+ * federation config with an absurdly light bar CAN record a total whose score
+ * rounds to "0.00". `dots.test.ts` drives the floor through a real `meet.ts` meet
+ * rather than multiplying a constant by three, so the sentence is checked rather
+ * than asserted.
  *
  * Holding two `DotsOutcome`s rather than two `ScoredDots`? Narrow both first,
  * and mean it — a missing end is not a delta of anything:
@@ -958,11 +1170,30 @@ export function dotsDeltaBetweenScores(endpoints: DotsDeltaScoreEndpoints): Dots
  * `OfficialTotalKg` — see WHAT IS DELIBERATELY NOT CLOSED. The claim is that the
  * accident cannot be written, not that the module is tamper-proof.
  *
- * @throws RangeError if the delta is not finite (reachable only via a cast).
+ * THE INPUT GUARD IS NOT THE WHOLE GUARD, which the previous wording ("reachable
+ * only via a cast") got wrong. Rounding multiplies by `10 ** DOTS_DISPLAY_DECIMALS`
+ * first, and that multiply can overflow a finite input to `Infinity`:
+ * `dotsDeltaBetweenScores({ previousScore: 1, currentScore: 1.7e308 })` mints a
+ * finite delta with no cast at all, and `1.7e308 * 100` is not finite. So the
+ * ROUNDED value is checked too, and the message names the overflow rather than
+ * blaming a cast that was never made. No real pair of scores comes within 300
+ * orders of magnitude of this; it is here so the docstring is true.
+ *
+ * @throws RangeError if the delta is not finite, or if rounding it overflows.
  */
 export function roundDotsDelta(delta: DotsDelta): DotsDelta {
   assertUsableNumber(delta, 'delta');
-  return roundToDisplayDecimals(delta) as DotsDelta;
+  const rounded = roundToDisplayDecimals(delta);
+  if (!Number.isFinite(rounded)) {
+    throw new RangeError(
+      `dots: a delta of ${delta} overflows to ${String(rounded)} when rounded to ` +
+        `${DOTS_DISPLAY_DECIMALS} decimals, so there is nothing to print. Both ends were real ` +
+        'scores by this module\'s own rule, which is why no cast was needed to get here — but a ' +
+        'DOTS score that large is not a result, it is a bug upstream in whatever minted the ' +
+        'total.',
+    );
+  }
+  return rounded as DotsDelta;
 }
 
 /**
@@ -974,7 +1205,8 @@ export function roundDotsDelta(delta: DotsDelta): DotsDelta {
  *
  * Takes a minted `DotsDelta`; see `roundDotsDelta` for what that buys.
  *
- * @throws RangeError if the delta is not finite (reachable only via a cast).
+ * @throws RangeError if the delta is not finite, or if rounding it overflows —
+ *         see `roundDotsDelta`, which is where both checks live.
  */
 export function formatDotsDelta(delta: DotsDelta): string {
   const rounded = roundDotsDelta(delta);

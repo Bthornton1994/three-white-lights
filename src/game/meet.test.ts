@@ -556,7 +556,12 @@ describe('total calculation with mixed makes and misses', () => {
 
 describe('a running sum is never mistaken for a total', () => {
   it('reports in-progress with no total before the meet starts', () => {
-    expect(readTotal(createMeet())).toEqual({ kind: 'in-progress', total: null, totalOnTheBoard: 0 });
+    expect(readTotal(createMeet())).toEqual({
+      kind: 'in-progress',
+      total: null,
+      totalOnTheBoard: 0,
+      unit: 'kg',
+    });
   });
 
   it('still has NO total once every lift has a good attempt but the meet is live', () => {
@@ -589,7 +594,12 @@ describe('a running sum is never mistaken for a total', () => {
     // ...and the number only becomes a total when the meet is actually over.
     let finished = takeAttempt(state, 260, THREE_WHITE);
     finished = takeAttempt(finished, 270, THREE_RED);
-    expect(readTotal(finished)).toEqual({ kind: 'final', total: 610, totalOnTheBoard: 610 });
+    expect(readTotal(finished)).toEqual({
+      kind: 'final',
+      total: 610,
+      totalOnTheBoard: 610,
+      unit: 'kg',
+    });
     expect(finalMeetTotal(finished)).toBe(610);
   });
 
@@ -2144,6 +2154,7 @@ describe('immutability', () => {
 
   it('copies the rules it is given instead of aliasing them', () => {
     const callerRules = {
+      unit: 'kg' as const,
       barAndCollarsWeight: { squat: 25, bench: 25, deadlift: 25 },
       minIncrement: 2.5,
       declarationIncrement: 2.5,

@@ -571,15 +571,23 @@ describe('the four exploit lines', () => {
     const viaScore = dotsScore('male', 93, totalOnTheBoard(state));
     // @ts-expect-error - `number` is not `OfficialTotalKg`.
     const viaEvaluate = evaluateDots('male', 93, totalOnTheBoard(state));
-    // @ts-expect-error - the checked mint takes a reading, not a number.
-    const viaMint = officialTotalFromMeet(totalOnTheBoard(state));
 
     // A brand is erased at runtime, so these still COMPUTE if you force them
     // past the compiler. What changed is that nobody can write them by accident:
     // the typecheck fails, which is why `npm run typecheck` is part of the gate.
     expect(viaScore).toBeGreaterThan(0);
     expect(viaEvaluate.kind).toBe('scored');
-    expect(viaMint).toBeNull();
+
+    // The checked mint is the one that got STRICTER when the unit check landed.
+    // Forced past the compiler with a bare number, it used to return `null`
+    // quietly — a number has no `kind`, so it fell out of the 'final' branch and
+    // looked like a well-handled case. It now THROWS, because a bare number has
+    // no `unit` either and an unstated unit is refused rather than assumed.
+    const mintABareNumber = (): unknown =>
+      // @ts-expect-error - the checked mint takes a reading, not a number.
+      officialTotalFromMeet(totalOnTheBoard(state));
+    expect(mintABareNumber).toThrow(RangeError);
+    expect(mintABareNumber).toThrow(/undefined/);
   });
 
   it('EXPLOIT 4: a negative DOTS delta renders instead of throwing', () => {
