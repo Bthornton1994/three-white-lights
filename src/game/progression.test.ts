@@ -1,6 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { dotsScore, officialTotalKg, type BodyweightReading, type OfficialTotalKg } from './dots';
@@ -96,6 +98,229 @@ const MODULE_SOURCE = readFileSync(fileURLToPath(new URL('./progression.ts', imp
  */
 function codeOnly(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+}
+
+// ---------------------------------------------------------------------------
+// §7.5 — THE ROUTE PIN
+//
+// The tests over §7 above are over the FACT SET, so they fail when a fact goes
+// unlisted and are blind to a new CONSTRUCTION SITE. That blindness is what six
+// rounds of this section have been closed by hand and reopened by a grep. This
+// block closes it mechanically.
+//
+// WHY THE TYPE CHECKER AND NOT A REGULAR EXPRESSION. The `[SNAPSHOT_CONTENTS]:`
+// count below is a text scan and it works because the thing it counts is a
+// symbol key that can be spelled exactly one way. A `ServerRecord` cannot: the
+// six sites that exist are written as a return annotation, a `const x:
+// ServerRecord =`, and a branch of a conditional — and the forms that DON'T
+// exist yet are worse, because a literal in a function with an INFERRED return
+// type names the type nowhere at all. So the question is asked of the syntax
+// tree, with types: "is this object literal a `ServerRecord`?", by contextual
+// type or by structural assignability.
+//
+// COMMENTS CANNOT INFLATE OR MASK IT, which is the property the mint-count test
+// spells out. Its failure mode was that a sentence naming the key counted as a
+// write, and — the direction that matters — deleting a real write could have
+// been hidden by adding prose. Here the two sides are made of DIFFERENT
+// MATERIAL: the found set comes from a parsed program, in which comments do not
+// exist as nodes at all, and the declared set is §7.5, which is nothing but
+// comment. No amount of writing about a route can produce one, and no amount of
+// writing about a route can stand in for one that has been deleted.
+// ---------------------------------------------------------------------------
+
+const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
+
+/** One row of §7.5: a place a record, a wire, or a snapshot read comes from. */
+interface RouteSite {
+  readonly kind: 'record' | 'wire' | 'receive';
+  /** Repo-relative, posix. */
+  readonly file: string;
+  /** The enclosing function. `<module>` when there is none. */
+  readonly site: string;
+  /** How many, because a row names a FUNCTION and a function can hold two. */
+  readonly n: number;
+}
+
+function routeKey(row: RouteSite): string {
+  return `${row.kind} ${row.file} ${row.site} x${row.n}`;
+}
+
+function sortedKeys(rows: readonly RouteSite[]): readonly string[] {
+  return rows.map(routeKey).sort();
+}
+
+const IS_TEST_FILE = /\.test\.tsx?$/;
+
+/**
+ * Everything the scan found, split into what ships and what is a fixture.
+ *
+ * `candidateFiles` is the set the reflection guard runs over: every non-test
+ * file that could obtain a `ServerRecord` at all.
+ */
+interface RouteScan {
+  readonly shipped: readonly RouteSite[];
+  readonly fixtures: readonly RouteSite[];
+  readonly candidateFiles: readonly string[];
+}
+
+function scanRoutes(): RouteScan {
+  const files: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry.name)) files.push(full);
+    }
+  };
+  walk(path.join(REPO_ROOT, 'src'));
+
+  const configPath = path.join(REPO_ROOT, 'tsconfig.json');
+  const config = ts.readConfigFile(configPath, ts.sys.readFile).config as unknown;
+  const parsed = ts.parseJsonConfigFileContent(config, ts.sys, REPO_ROOT);
+  const program = ts.createProgram(files, { ...parsed.options, noEmit: true, skipLibCheck: true });
+  const checker = program.getTypeChecker();
+
+  // The two interfaces the pin is about, resolved from their declarations so a
+  // same-named type in another module cannot be mistaken for one of them.
+  const targets: { readonly kind: 'record' | 'wire'; readonly name: string; readonly from: string; type?: ts.Type; symbol?: ts.Symbol }[] = [
+    { kind: 'record', name: 'ServerRecord', from: 'src/game/sessionServer.ts' },
+    { kind: 'wire', name: 'ProgressionSnapshotWire', from: 'src/game/progression.ts' },
+  ];
+  for (const target of targets) {
+    const declaring = program.getSourceFile(path.join(REPO_ROOT, target.from));
+    if (declaring === undefined) throw new Error(`${target.from} is not in the program`);
+    declaring.forEachChild((node) => {
+      if (ts.isInterfaceDeclaration(node) && node.name.text === target.name) {
+        target.type = checker.getTypeAtLocation(node.name);
+        target.symbol = checker.getSymbolAtLocation(node.name);
+      }
+    });
+    if (target.type === undefined) throw new Error(`no interface ${target.name} in ${target.from}`);
+  }
+
+  const receiverName = 'receiveProgressionSnapshot';
+  const receiverFile = path.join(REPO_ROOT, 'src/game/progression.ts');
+
+  /** The nearest named function around a node — the row's `site`. */
+  const enclosingSite = (node: ts.Node): string => {
+    let current: ts.Node | undefined = node.parent;
+    while (current !== undefined) {
+      if (
+        (ts.isFunctionDeclaration(current) ||
+          ts.isMethodDeclaration(current) ||
+          ts.isFunctionExpression(current)) &&
+        current.name !== undefined
+      ) {
+        return current.name.getText();
+      }
+      if (
+        (ts.isVariableDeclaration(current) || ts.isPropertyAssignment(current)) &&
+        current.initializer !== undefined &&
+        (ts.isArrowFunction(current.initializer) || ts.isFunctionExpression(current.initializer))
+      ) {
+        return current.name.getText();
+      }
+      current = current.parent;
+    }
+    return '<module>';
+  };
+
+  const counted = new Map<string, RouteSite>();
+  const tally = (kind: RouteSite['kind'], file: string, site: string): void => {
+    const key = `${kind} ${file} ${site}`;
+    const existing = counted.get(key);
+    counted.set(key, { kind, file, site, n: (existing?.n ?? 0) + 1 });
+  };
+
+  const srcRoot = path.join(REPO_ROOT, 'src');
+  const candidateFiles: string[] = [];
+  const candidateTriggers =
+    /\b(ServerRecord|ProgressionSnapshotWire|sessionServer|localSessionServer)\b/;
+
+  for (const source of program.getSourceFiles()) {
+    if (source.isDeclarationFile || !source.fileName.startsWith(srcRoot)) continue;
+    const rel = path.relative(REPO_ROOT, source.fileName).split(path.sep).join('/');
+    if (!IS_TEST_FILE.test(rel) && candidateTriggers.test(codeOnly(source.getFullText()))) {
+      candidateFiles.push(rel);
+    }
+    const visit = (node: ts.Node): void => {
+      if (ts.isObjectLiteralExpression(node)) {
+        const own = checker.getTypeAtLocation(node);
+        const contextual = checker.getContextualType(node);
+        const contextualParts =
+          contextual === undefined ? [] : contextual.isUnion() ? contextual.types : [contextual];
+        for (const target of targets) {
+          const byContext = contextualParts.some((part) => part.getSymbol() === target.symbol);
+          // AND BY SHAPE, which is the half a scan for annotations cannot have.
+          // A literal returned from a function whose return type is INFERRED has
+          // no contextual type at all and is still a record.
+          const byShape = target.type !== undefined && checker.isTypeAssignableTo(own, target.type);
+          if (byContext || byShape) tally(target.kind, rel, enclosingSite(node));
+        }
+      }
+      if (ts.isCallExpression(node)) {
+        const callee = node.expression;
+        const identifier = ts.isIdentifier(callee)
+          ? callee
+          : ts.isPropertyAccessExpression(callee)
+            ? callee.name
+            : undefined;
+        if (identifier !== undefined && identifier.text === receiverName) {
+          const symbol = checker.getSymbolAtLocation(identifier);
+          const resolved =
+            symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+              ? checker.getAliasedSymbol(symbol)
+              : symbol;
+          const declaredIn = resolved?.declarations?.[0]?.getSourceFile().fileName;
+          if (declaredIn === receiverFile) tally('receive', rel, enclosingSite(node));
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+  }
+
+  const all = [...counted.values()];
+  return {
+    shipped: all.filter((row) => !IS_TEST_FILE.test(row.file)),
+    fixtures: all.filter((row) => IS_TEST_FILE.test(row.file)),
+    candidateFiles: candidateFiles.sort(),
+  };
+}
+
+/**
+ * The rows §7.5 declares.
+ *
+ * Parsed out of the header COMMENT on purpose — that is the whole point of the
+ * two-way pin. The separator row is excluded by requiring the count column to be
+ * digits, so it cannot be mistaken for a route.
+ */
+function declaredRoutes(): readonly RouteSite[] {
+  const start = MODULE_SOURCE.indexOf('7.5 THE ROUTE TABLE');
+  if (start < 0) throw new Error('§7.5 is gone from the header');
+  const section = MODULE_SOURCE.slice(start, MODULE_SOURCE.indexOf('*/\n\nimport type'));
+  const rows = [...section.matchAll(/^\s*\*\s*\|\s*(\w+)\s*\|\s*(\S+)\s*\|\s*(\S+)\s*\|\s*(\d+)\s*\|/gm)];
+  return rows.map((match) => {
+    const kind = match[1];
+    if (kind !== 'record' && kind !== 'wire' && kind !== 'receive') {
+      throw new Error(`§7.5 has a row of unknown kind "${kind}"`);
+    }
+    return { kind, file: match[2] ?? '', site: match[3] ?? '', n: Number(match[4]) };
+  });
+}
+
+/**
+ * The scan, run once and shared.
+ *
+ * MEMOISED RATHER THAN RUN AT IMPORT. Building a `ts.Program` over `src/` is a
+ * few seconds of real work — it is the same work `tsc` does — and an import that
+ * takes seconds has no timeout and no useful failure message if it ever stops
+ * finishing. Inside a test it has both.
+ */
+let routeScanMemo: RouteScan | null = null;
+function routeScan(): RouteScan {
+  routeScanMemo ??= scanRoutes();
+  return routeScanMemo;
 }
 
 // ---------------------------------------------------------------------------
@@ -388,6 +613,100 @@ describe('purity', () => {
     // is not in the section either, so `toContain` is discriminating rather than
     // matching everything.
     expect(sweep).not.toContain('simSessionsPerDay');
+  });
+
+  it('names every route into permanent progression in §7.5, derived from the type checker', () => {
+    // THE ROUTE HALF OF THE SWEEP, MECHANISED. The test above is over the FACT
+    // SET and cannot see a new `ServerRecord` construction site; that is what
+    // its own §7.4 admitted, and a grep found the missing route in five of the
+    // six rounds this section has existed. This is the direction that matters:
+    // a hand-built record ANYWHERE under `src/` that §7.5 does not name.
+    //
+    // Non-vacuity first, so a scan that resolved nothing cannot pass by finding
+    // nothing: the shipped set has to contain the two server functions the whole
+    // boundary is built around.
+    expect(routeScan().shipped.length).toBeGreaterThan(4);
+    expect(sortedKeys(routeScan().shipped)).toContain('record src/game/sessionServer.ts newServerRecord x1');
+    expect(sortedKeys(routeScan().shipped)).toContain('record src/game/meetServer.ts applyMeetResult x1');
+
+    const declared = new Set(sortedKeys(declaredRoutes()));
+    for (const row of routeScan().shipped) {
+      expect(
+        declared.has(routeKey(row)),
+        `${row.file} builds a ${row.kind} in ${row.site} (x${row.n}) and progression.ts §7.5 does not name it`,
+      ).toBe(true);
+    }
+  });
+
+  it('names no route in §7.5 that no longer exists', () => {
+    // The other half of the two-way pin, in the shape `REVIEWABLE_CITATIONS`
+    // uses: a table that may only grow is a table that fills up with rulings
+    // about code somebody deleted, and every stale row makes the real ones
+    // cheaper to skim past. Deleting a builder means deleting its row.
+    expect(declaredRoutes().length).toBeGreaterThan(4);
+    const found = new Set(sortedKeys(routeScan().shipped));
+    for (const row of declaredRoutes()) {
+      expect(
+        found.has(routeKey(row)),
+        `progression.ts §7.5 names ${row.kind} ${row.file} ${row.site} x${row.n}, and the scan does not find it — delete the row or fix the count`,
+      ).toBe(true);
+    }
+  });
+
+  it('rules test fixtures out of §7.5 rather than matching none of them', () => {
+    // THE EXCLUSION IS A RULING, NOT A FILTER THAT QUIETLY FINDS NOTHING — the
+    // guard `realIp.test.ts` puts on its own omission list. Fixtures are out
+    // because `meetServer.test.ts` and `sessionClient.test.ts` build a dozen
+    // records between them and every new one would make §7.5 red, which trains
+    // exactly the "edit the number" reflex the table exists to prevent. A
+    // fixture also reaches no player and persists nothing.
+    //
+    // What this asserts is that the scan SEES them, so the exclusion is a
+    // decision about a set that exists.
+    expect(routeScan().fixtures.length).toBeGreaterThan(5);
+    expect(routeScan().fixtures.map((row) => row.file)).toContain('src/game/meetServer.test.ts');
+    // ...and no fixture leaked into the pinned table.
+    expect(declaredRoutes().filter((row) => IS_TEST_FILE.test(row.file))).toEqual([]);
+  });
+
+  it('counts routes from parsed code, so a sentence about one is not one', () => {
+    // The control that makes the two-way pin worth running. `sessionClient.ts`
+    // names `ServerRecord` three times — all of them in prose, saying it holds
+    // none — and builds zero. A scan that could be fooled by a comment would
+    // report a route there.
+    const client = readFileSync(
+      fileURLToPath(new URL('./sessionClient.ts', import.meta.url)),
+      'utf8',
+    );
+    expect(client).toMatch(/ServerRecord/);
+    expect(codeOnly(client)).not.toMatch(/ServerRecord/);
+    expect(routeScan().shipped.filter((row) => row.file === 'src/game/sessionClient.ts' && row.kind === 'record')).toEqual(
+      [],
+    );
+    // And the same file DOES appear for what it really does — call the door —
+    // so the absence above is discrimination, not a blind spot.
+    expect(sortedKeys(routeScan().shipped)).toContain('receive src/game/sessionClient.ts receiveSnapshot x1');
+  });
+
+  it('lets no module that can reach a ServerRecord forge one without an object literal', () => {
+    // THE RESIDUAL THE SCAN CANNOT SEE, closed by a cruder check rather than
+    // argued away. `Object.assign({}, record, { totalKg: 900 })` produces a
+    // record with no object literal for the checker to type: the `{}` is not a
+    // `ServerRecord` and neither is the patch. Same for `structuredClone` and
+    // for anything laundered through `as unknown as`.
+    //
+    // Scoped to files that can actually obtain one — a module that imports
+    // nothing from this boundary has nothing to clone. That last step is an
+    // ARGUMENT rather than a check, and §7.5 says so.
+    expect(routeScan().candidateFiles).toContain('src/game/sessionServer.ts');
+    expect(routeScan().candidateFiles).toContain('src/session/sessionPreview.ts');
+    expect(routeScan().candidateFiles.length).toBeGreaterThan(5);
+    for (const file of routeScan().candidateFiles) {
+      const code = codeOnly(readFileSync(path.join(REPO_ROOT, file), 'utf8'));
+      expect(code, `${file} uses Object.assign`).not.toMatch(/Object\.assign\s*\(/);
+      expect(code, `${file} uses structuredClone`).not.toMatch(/structuredClone\s*\(/);
+      expect(code, `${file} casts through unknown`).not.toMatch(/as unknown as/);
+    }
   });
 
   it('mints server truth in exactly one place', () => {
@@ -2143,6 +2462,7 @@ describe('the module exports no writer', () => {
       'A_DECLARED_ROW_IS_NEVER_ANY',
       'A_MEET_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT',
       'A_MEET_RESULT_PROJECTION_CAN_CLAIM_A_TOTAL',
+      'A_STARTING_E1RM_SEED_CANNOT_BE_READ_WITHOUT_ITS_UNIT',
       'A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT',
       'A_TRAINING_SESSION_PROJECTION_CANNOT_CLAIM_A_TOTAL',
       'CONFIRMED_MEET_RESULT_KEYS',

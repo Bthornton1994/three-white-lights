@@ -195,6 +195,7 @@ import type {
   MeetResultWire,
   ProgressionSnapshotWire,
   ProposalOfKind,
+  StartingE1rmSeed,
   StreakStateWire,
   TrainingSetReport,
   WalletCurrency,
@@ -208,7 +209,7 @@ import {
   type StreakState,
 } from './streak';
 import { nextBestE1rm } from './session';
-import { SESSION_TUNING, type StartingE1rmSeed } from './sessionTuning';
+import { SESSION_TUNING } from './sessionTuning';
 
 // ---------------------------------------------------------------------------
 // The accessory-day boundary, at compile time

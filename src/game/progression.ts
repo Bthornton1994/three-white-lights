@@ -578,6 +578,12 @@
  * and what proves the unit on each. 7.4 states the resulting claim in a form
  * that can be falsified, and names what would falsify it.
  *
+ * AND THE ROUTE HALF IS NOW DERIVED RATHER THAN COUNTED, which is 7.5. The fact
+ * half has been mechanical for several rounds; the route half was a hand-written
+ * list, and a hand-written list of routes is the thing this section has got
+ * wrong in every round it has existed. 7.5 is a table the suite reconstructs
+ * from the type checker and compares both ways.
+ *
  * ---------------------------------------------------------------------------
  * 7.1 MASSES — the only fields where "unit" means kilograms or pounds
  * ---------------------------------------------------------------------------
@@ -705,41 +711,81 @@
  *       what a guessed constant standing in for a check bought last time
  *       (`HUMAN_INPUT_BUDGET_MS` propping up a session-length floor).
  *
- *   (c) `ServerRecord` IS A PLAIN INTERFACE AND CAN BE BUILT BY HAND, AND THE
- *       TWO PLACES THAT DO IT BYPASS MORE THAN "A `…Kg` FIELD" — which is how
- *       this entry used to describe them, and it understated both.
+ *   (c) `ServerRecord` IS A PLAIN INTERFACE AND CAN BE BUILT BY HAND, AND
+ *       **THREE** PLACES DO IT OUTSIDE THE TWO SERVER FUNCTIONS.
  *
- *       `meetPreview.ts`'s `previewServerRecord()` spreads `newServerRecord()`
- *       and writes `totalKg` plus a COMPLETE, HAND-BUILT `MeetResultWire` into
- *       `meets[]`. That is not one field slipping past one check: it is all four
- *       of the meet path's checks at once — `MEET_ID_MISMATCH`,
- *       `replayMeetCard`'s `card.unit === meet.rules.unit`, the bodyweight's tag
- *       and the bodyweight's payload — because it never calls `applyMeetResult`
- *       at all. Every number in it comes from `MEET_PREVIEW` and `MEET_ENTRY`.
+ *       THIS ENTRY SAID "THE TWO PLACES THAT DO IT" FOR A ROUND, AND THERE WERE
+ *       THREE. The missing one — `sessionPreview.ts`'s `recordBeforeSession()` —
+ *       sat in the same file as one that WAS named, twelve lines from the import
+ *       that gave it `ServerRecord`. A hand-maintained count is what produced
+ *       that, so the count is no longer hand-maintained: 7.5 is the table, and
+ *       `progression.test.ts` derives the real set from the SYNTAX TREE and fails
+ *       if the two disagree in either direction.
  *
- *       `sessionPreview.ts` (in `src/session/`) writes a SECOND unchecked number
- *       into `bestE1rmKg`: `best + SESSION_BOUNDARY_PREVIEW.SERVER_DRIFT_KG`,
- *       added to the e1RM `applyTrainingSession` actually computed, so the
- *       `close-out-server-wins` beat has a server answer the client did not
- *       predict. The previous version of this entry did not mention it.
+ *       THE EXEMPTION IS STATED PER SITE, because it is not the same reason for
+ *       all three and the single sentence that used to cover them — "both exist
+ *       BECAUSE the server functions cannot produce what they photograph" — is
+ *       FALSE of the third. That sentence reading as though it covered a site it
+ *       did not is exactly how the site stayed unnamed, so the weakest of the
+ *       three is spelled out rather than folded in.
  *
- *       WHY NEITHER IS FENCED, decided rather than defaulted. Both are DEBUG
- *       ONLY, and that is checkable rather than asserted: `App.tsx` returns
- *       `null` for `search` when there is no `window`, so on a device the branch
- *       is dead; `shellRoute.ts` says `entryRoute` is the only reader, it runs
- *       once at launch, and no `ShellIntent` produces a `debug` route, so on web
- *       it needs a hand-typed query string; and nothing persists —
- *       `useMeetDay.ts` holds the stand-in record in a ref that dies with the
- *       tab. And both exist BECAUSE the server functions cannot produce what
- *       they photograph: a prior meet under a different id (which
- *       `applyMeetResult` would need a whole scripted meet to mint), and an
- *       answer that DISAGREES with the client (which a correct server, running
- *       the same monotone `nextBestE1rm`, cannot send). Fencing them would
- *       delete the two fixtures that demonstrate this boundary working, to guard
- *       a path no player reaches. So: named accurately, not fenced.
+ *       (i) `meetPreview.ts` `previewServerRecord()` — spreads
+ *           `newServerRecord()` and writes `totalKg` plus a COMPLETE,
+ *           HAND-BUILT `MeetResultWire` into `meets[]`. That is not one field
+ *           slipping past one check: it is all four of the meet path's checks at
+ *           once — `MEET_ID_MISMATCH`, `replayMeetCard`'s `card.unit ===
+ *           meet.rules.unit`, the bodyweight's tag and the bodyweight's payload
+ *           — because it never calls `applyMeetResult` at all. Every number in
+ *           it comes from `MEET_PREVIEW` and `MEET_ENTRY`.
+ *           EXEMPT BECAUSE THE SERVER FUNCTION CANNOT PRODUCE IT: the fixture
+ *           needs a prior meet under a DIFFERENT id, which `applyMeetResult`
+ *           would need a whole second scripted meet to mint.
  *
- *       What would change that: either becoming reachable from a `ShellIntent`,
- *       or anything persisting a record built this way.
+ *       (ii) `sessionPreview.ts` `cacheAfterServer()` — writes `best +
+ *            SESSION_BOUNDARY_PREVIEW.SERVER_DRIFT_KG` into `bestE1rmKg`, added
+ *            to the e1RM `applyTrainingSession` actually computed, so the
+ *            `close-out-server-wins` beat has a server answer the client did not
+ *            predict.
+ *            EXEMPT BECAUSE THE SERVER FUNCTION CANNOT PRODUCE IT: the beat IS
+ *            an answer that disagrees with the client, and a correct server
+ *            running the same monotone `nextBestE1rm` cannot send one.
+ *
+ *       (iii) `sessionPreview.ts` `recordBeforeSession()` — the one this entry
+ *             missed. It writes `SESSION_PREVIEW.BEST_E1RM_KG` (a bare `200`
+ *             with its unit in the identifier) into `bestE1rmKg`, and
+ *             `SESSION_PREVIEW.STREAK_BEFORE` into the streak. The e1RM goes
+ *             `snapshotWireFor` → `receiveSnapshot` → `ConfirmedFacts.bestE1rmKg`
+ *             — a `ConfirmedKg` on the `'protected'` row, the same field, brand
+ *             and protection as the seed and the card.
+ *             ITS EXEMPTION IS WEAKER AND IS NOT THE SENTENCE ABOVE, which is
+ *             the point of writing it out. `applyTrainingSession` CAN produce a
+ *             record with `bestE1rmKg` at 200 and an eleven-day streak; that is
+ *             its job. What it cannot do is produce one CHEAPLY or STABLY: it
+ *             would take eleven scripted days to build, it would not land on a
+ *             round number, and the figure the screenshot then shows would move
+ *             with every retune of the loading ladder or the per-session gain
+ *             cap. A photographed beat exists to be COMPARED ACROSS BUILDS, so
+ *             a pinned number is the feature. That is a fixture argument, not a
+ *             "the server cannot do this" argument, and it is deliberately not
+ *             dressed up as one.
+ *
+ *       WHY NONE OF THE THREE IS FENCED, decided rather than defaulted. All are
+ *       DEBUG ONLY, and that is checkable rather than asserted: `App.tsx`
+ *       returns `null` for `search` when there is no `window`, so on a device
+ *       the branch is dead; `shellRoute.ts` says `entryRoute` is the only
+ *       reader, it runs once at launch, and no `ShellIntent` produces a `debug`
+ *       route, so on web it needs a hand-typed query string; and nothing
+ *       persists — `useMeetDay.ts` holds the stand-in record in a ref that dies
+ *       with the tab, and a session preview's cache is rebuilt from scratch on
+ *       every call. Fencing them would delete the three fixtures that
+ *       demonstrate this boundary working, to guard a path no player reaches.
+ *       So: named accurately, not fenced.
+ *
+ *       What would change that, for any of the three: becoming reachable from a
+ *       `ShellIntent`, or anything persisting a record built this way. For (iii)
+ *       specifically there is a fourth trigger — if `SESSION_PREVIEW`'s
+ *       magnitudes ever stop being debug-only and seed a real account, it is the
+ *       seed's problem and takes the seed's answer (a `StartingE1rmSeed`).
  *
  *   (d) `MeetDefinition.ghostTotalsKg` IS A BARE `number[]`. It reaches no
  *       stored field (`MeetResultWire` has no placing) but it is what a proven
@@ -777,18 +823,23 @@
  * THE CLAIM: every number that reaches a `ConfirmedFacts` mass field — the
  * total, the three per-lift e1RMs, each stored meet's total, per-lift bests and
  * bodyweight — arrives past a check on a UNIT FIELD it carries, by every route
- * that exists in non-test code. Five routes, all named above: a meet card, a
- * bodyweight reading, a training card, the account seed, and the two preview
- * builders in (c) which reach no stored field.
+ * that exists in non-test code. SIX routes, all named above and all enumerated
+ * mechanically in 7.5: a meet card, a bodyweight reading, a training card, the
+ * account seed, and the THREE preview builders in (c) which reach no stored
+ * field. This said "Five routes ... the two preview builders" for a round, and
+ * the count was wrong because it was written by hand.
  *
  * WHAT WOULD FALSIFY IT, concretely, so this is not a claim that survives by
  * being unfalsifiable:
  *
- *   - A SIXTH ROUTE. Another construction site of `ServerRecord`, or a new
+ *   - A SEVENTH ROUTE. Another construction site of `ServerRecord`, or a new
  *     writer of `bestE1rmKg` / `totalKg` that is neither a server function nor a
- *     preview. `progression.test.ts` cannot see this one; a grep for
- *     `: ServerRecord` and for `newServerRecord` can, and that is what has found
- *     it both times so far.
+ *     preview. THIS ENTRY USED TO END "`progression.test.ts` cannot see this
+ *     one; a grep can, and that is what has found it both times so far" — and
+ *     by the time it was read again a grep had found it five times out of six.
+ *     It can see it now: 7.5 is a table, the suite derives the same set from the
+ *     TYPE CHECKER, and a construction site added anywhere under `src/` without
+ *     a row here fails. The residual is named in 7.5 rather than here.
  *   - A NEW MASS FACT. `progression.test.ts` fails if a `ProgressionFactKey`,
  *     `ConfirmedMeetResultKey`, `StreakFactKey` or `WalletCurrency` is not named
  *     in 7.1 or 7.2, so a fact added beside these cannot go unlisted — but the
@@ -800,6 +851,77 @@
  *
  * "Nothing is left" is NOT the claim. The claim is that every route now asks the
  * question; (a) and (b) are what asking it does not buy.
+ *
+ * ---------------------------------------------------------------------------
+ * 7.5 THE ROUTE TABLE — DERIVED, NOT COUNTED
+ * ---------------------------------------------------------------------------
+ *
+ * WHY THIS EXISTS. Six rounds of this section ended with a human finding one
+ * more route, and five of the six were found by a GREP. The tests above are over
+ * the FACT SET, so they fail when a fact goes unlisted and are blind to a new
+ * construction site. That blindness is what the sweep note in `7.4` used to
+ * admit and then leave standing.
+ *
+ * `progression.test.ts` now builds a `ts.Program` over every `.ts`/`.tsx` file
+ * under `src/` and asks the TYPE CHECKER, not a regular expression, for every
+ * object literal that is a `ServerRecord` or a `ProgressionSnapshotWire` — by
+ * contextual type (an annotation, a `satisfies`, a cast, an argument position,
+ * an array element) OR by being structurally assignable to one (a literal in a
+ * function whose return type is inferred, which no annotation-scan can see). It
+ * compares that set, two ways, against the rows below. A construction site
+ * added without a row fails; a row whose site is deleted fails.
+ *
+ * COMMENTS CANNOT INFLATE IT, which is the property the `[SNAPSHOT_CONTENTS]:`
+ * count in that file spells out and got wrong once: the found side comes from a
+ * parsed syntax tree, in which comments do not exist at all, and the declared
+ * side is THIS COMMENT. The two sides are made of different material, so a
+ * sentence about a route cannot stand in for one and — the direction that
+ * matters — deleting a route cannot be masked by adding prose about it.
+ *
+ * `n` IS AN OCCURRENCE COUNT, not a flag, for the reason `REVIEWABLE_CITATIONS`
+ * carries one: a row names a FUNCTION, and a second literal added inside a
+ * function that already has a row would otherwise be invisible.
+ *
+ *   | kind    | file                          | site                 | n |
+ *   |---------|-------------------------------|----------------------|---|
+ *   | record  | src/game/sessionServer.ts     | newServerRecord      | 1 |
+ *   | record  | src/game/sessionServer.ts     | applyTrainingSession | 1 |
+ *   | record  | src/game/meetServer.ts        | applyMeetResult      | 1 |
+ *   | record  | src/game/meetPreview.ts       | previewServerRecord  | 1 |
+ *   | record  | src/session/sessionPreview.ts | recordBeforeSession  | 1 |
+ *   | record  | src/session/sessionPreview.ts | cacheAfterServer     | 1 |
+ *   | wire    | src/game/sessionServer.ts     | snapshotWireFor      | 1 |
+ *   | receive | src/game/sessionClient.ts     | receiveSnapshot      | 1 |
+ *   | receive | src/meet/useMeetDay.ts        | useMeetDay           | 2 |
+ *
+ * WHAT EACH KIND IS. `record` is a hand-built `ServerRecord` — the first three
+ * are the server functions of 7.1, the last three are the debug previews of
+ * 7.3(c). `wire` is the response body: ONE producer, so `bestE1rmKg` and
+ * `totalKg` leave the server through a single function. `receive` is the client
+ * door, `receiveProgressionSnapshot`, whose callers are pinned because it is the
+ * only mint of a `ProgressionSnapshot` and a fourth caller would be a fourth
+ * place local state can be replaced by something claiming to be truth.
+ *
+ * TEST FILES ARE OUT, DELIBERATELY, and the exclusion is worth the sentence.
+ * `meetServer.test.ts` and `sessionClient.test.ts` build a dozen records between
+ * them and every new fixture adds another; pinning those would make this table
+ * churn on work that has nothing to do with it, and a table that goes red every
+ * week is a table people fix by editing the number. The scan still FINDS them —
+ * `progression.test.ts` asserts it finds several, so the exclusion is a ruling
+ * on a set that exists rather than a filter that quietly matches nothing — and
+ * a test fixture reaches no player, persists nothing, and is read by the same
+ * reviewer as the assertion beside it.
+ *
+ * WHAT STILL SLIPS, stated rather than left to be found for a seventh time. A
+ * record assembled WITHOUT AN OBJECT LITERAL — `Object.assign({}, rec, { … })`,
+ * `structuredClone`, a reflective helper returning `unknown` — has no node for
+ * the checker to type, so the scan cannot see it. That is closed by a second,
+ * cruder test rather than argued away: no shipped module that can reach
+ * `ServerRecord` may contain `Object.assign(`, `structuredClone(` or
+ * `as unknown as`, and today none does. A file that imports nothing from this
+ * boundary cannot obtain a record to clone, so the two together are the whole
+ * surface — but that last step is an ARGUMENT, not a check, and it is the one
+ * place a seventh route could still enter without a test noticing.
  */
 
 import type { BodyweightReading, OfficialTotalKg } from './dots';
@@ -1854,6 +1976,100 @@ export const A_MEET_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT: ArmsAreTellableApart<M
 export const A_BODYWEIGHT_CANNOT_BE_READ_WITHOUT_ITS_UNIT: ArmsAreTellableApart<BodyweightReading> = true;
 
 export const A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT: ArmsAreTellableApart<TrainingCardReport> =
+  true;
+
+/**
+ * THE STARTING e1RMs, WITH THE UNIT THEY ARE EXPRESSED IN — the fourth tagged
+ * pair on this boundary, and the only one that is not a report.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THE TYPE IS HERE AND THE VALUE IS IN `sessionTuning.ts`
+ * ---------------------------------------------------------------------------
+ * The type lived beside the constant for a round, on the argument that a unit is
+ * declared at the authoring site. That argument is about the VALUE and it still
+ * holds: `SESSION_TUNING.STARTING_E1RM` is still authored in `sessionTuning.ts`,
+ * still under `satisfies StartingE1rmSeed`, still with the paragraph explaining
+ * what it reaches. Only the type moved.
+ *
+ * WHAT THE OLD PLACEMENT COST is the line directly below this comment.
+ * `ArmsAreTellableApart` is module-private, so the seed was the ONE tagged pair
+ * on this wire with no assertion that its arms can be told apart — the property
+ * `sessionServer.ts` correctly calls "the guarantee", stated in prose and
+ * enforced by nothing. The concrete edit that exposed it: add a convenience
+ * field reachable from both arms (`perLift`, say, so `STARTING_E1RM.perLift[lift]`
+ * works without a switch — the natural edit for anyone answering GDD §11), and
+ * `tsc` passes, all four read sites pass, and the only thing standing is a
+ * runtime `Object.keys` pin on the shipped VALUE, which cannot see a field added
+ * to the TYPE and populated only on the pound arm.
+ *
+ * The cost the old placement named — an `import type` in `meetServer.ts` — is
+ * erased at build and is now one import FEWER, because `meetServer.ts` already
+ * imports from this module and no longer needs a second line for the seed.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY IT IS A TAGGED PAIR AND NOT THREE BARE NUMBERS UNDER A `_KG` NAME
+ * ---------------------------------------------------------------------------
+ * It used to be `STARTING_E1RM_KG: { squat: 180, bench: 120, deadlift: 220 }` —
+ * three numbers whose unit lived in the identifier — under a comment calling it
+ * "PLACEHOLDER DATA, NOT PROGRESSION. Nothing here is persisted and nothing
+ * derives from it once the server has a real number." BOTH CLAUSES WERE FALSE:
+ * `newServerRecord()` assigns them straight into `ConfirmedFacts.bestE1rmKg`
+ * (§7.1, route 2), and `nextBestE1rm` is MONOTONE, so the seed is a permanent
+ * FLOOR rather than a starting guess.
+ *
+ * THE EDIT THIS SHAPE EXISTS TO CATCH: GDD §11's display-unit question is open.
+ * If the answer is "the loop loads in pounds", the first edit is `LOAD_UNIT:
+ * 'lb'`, which `sessionProposal` forwards onto the card, so the server refuses
+ * the session loudly, as designed. THE SECOND, NATURAL EDIT is the three
+ * magnitudes — and with the unit in the identifier that seeded a kilogram field
+ * with pound numbers silently, with every guard in the tree green.
+ *
+ * WHAT IT PROVES AND WHAT IT DOES NOT: a tag proves what was DECLARED, not what
+ * was TYPED. `{ unit: 'kg', kilograms: { squat: 397, … } }` compiles and is 2.2x
+ * wrong; that is §7.3(b) and it is open here exactly as it is for the other
+ * three readings. What this shape buys is that the unit and the magnitudes can
+ * no longer drift apart WITHOUT SOMEBODY SAYING SO in the diff.
+ *
+ * The `'lb'` arm exists so a pound seed can be REFUSED BY NAME rather than
+ * converted, matching `dots.ts` past its domain, `e1rm.ts` past the chart and
+ * both servers on a pound card. It is not the answer to §11 and does not take
+ * one: `KILOGRAMS_PER_POUND` is right there and nothing calls it.
+ */
+export type StartingE1rmSeed =
+  /** Expressed in kilograms. The only unit permanent progression can store. */
+  | { readonly unit: 'kg'; readonly kilograms: Readonly<Record<LiftKind, number>> }
+  /** Expressed in pounds. Carried so it can be REFUSED by name, not converted. */
+  | { readonly unit: 'lb'; readonly pounds: Readonly<Record<LiftKind, number>> };
+
+/**
+ * The arm of `StartingE1rmSeed` a kilogram consumer may read.
+ *
+ * `Extract` rather than a second literal so it cannot drift from the union,
+ * exactly as `KilogramTrainingCard`, `KilogramMeetCard` and `KilogramBodyweight`
+ * are built. `sessionServer.ts` binds the seed to this type at module scope, so
+ * a seed declared in any other unit is a BUILD error rather than a runtime
+ * refusal — see that module for why a compile-time check is available for a
+ * literal in the build and is not available for a card that arrives as JSON.
+ */
+export type KilogramStartingE1rm = Extract<StartingE1rmSeed, { readonly unit: 'kg' }>;
+
+/**
+ * THE FOURTH LINE, AND THE ONE THAT WAS MISSING.
+ *
+ * `sessionServer.ts` says of the seed, correctly, that "THE ANNOTATION IS NOT
+ * THE CHECK ... what is load-bearing is that THE ARMS CARRY DIFFERENT FIELD
+ * NAMES ... the SHAPE is the guarantee". Until this line existed, the property
+ * named as the guarantee was the one enforced by convention: three of the four
+ * tagged pairs on this boundary had an `ArmsAreTellableApart` assertion and the
+ * seed had a paragraph. It typechecked and was non-vacuous the whole time; the
+ * only reason it was not written is that the type was declared in another
+ * module and this helper is module-private. So the type moved.
+ *
+ * `sessionServer.test.ts` reads this at runtime, the way it already reads
+ * `A_STARTING_E1RM_CAN_DECLARE_A_UNIT_THIS_RECORD_REFUSES`, so it cannot be
+ * deleted as an unused export without a test going red.
+ */
+export const A_STARTING_E1RM_SEED_CANNOT_BE_READ_WITHOUT_ITS_UNIT: ArmsAreTellableApart<StartingE1rmSeed> =
   true;
 
 /**

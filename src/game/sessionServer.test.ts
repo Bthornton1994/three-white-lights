@@ -14,12 +14,9 @@ import {
   todayForLifter,
   type ServerRecord,
 } from './sessionServer';
+import { SESSION_PROGRESSION_GUARD, SESSION_TUNING } from './sessionTuning';
 import {
-  SESSION_PROGRESSION_GUARD,
-  SESSION_TUNING,
-  type StartingE1rmSeed,
-} from './sessionTuning';
-import {
+  A_STARTING_E1RM_SEED_CANNOT_BE_READ_WITHOUT_ITS_UNIT,
   A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT,
   FACT_PROTECTION,
   PROGRESSION_FACT_KEYS,
@@ -35,6 +32,7 @@ import {
   readingValue,
   receiveProgressionSnapshot,
   type ProposalOfKind,
+  type StartingE1rmSeed,
   type TrainingSetReport,
 } from './progression';
 import { KILOGRAMS_PER_POUND } from './dots';
@@ -643,6 +641,14 @@ describe('the seed that starts a record is progression, and its unit is a field'
     // constant is `true` only because it type-checked; reading it here is what
     // keeps it from being deleted as unused.
     expect(A_STARTING_E1RM_CAN_DECLARE_A_UNIT_THIS_RECORD_REFUSES).toBe(true);
+    // THE SHAPE CLAIM ITSELF IS NOW ASSERTED RATHER THAN DESCRIBED, and this is
+    // the runtime shadow of the fourth `ArmsAreTellableApart` line. The
+    // `Object.keys` pins above look at the shipped VALUE, so they cannot see a
+    // convenience field added to the TYPE on both arms and populated only on the
+    // pound one — which is exactly the "give me `perLift[lift]` without a
+    // switch" edit. `progression.ts` fails to compile in that world; read here
+    // so the export cannot be deleted as unused.
+    expect(A_STARTING_E1RM_SEED_CANNOT_BE_READ_WITHOUT_ITS_UNIT).toBe(true);
     // The write really does come off the tagged field, per lift.
     expect(newServerRecord().bestE1rmKg).toEqual({ ...SESSION_TUNING.STARTING_E1RM.kilograms });
   });

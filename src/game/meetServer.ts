@@ -324,16 +324,18 @@ import {
 import { DOTS_TOTAL_UNIT } from './dots';
 import { declaredRows } from './progression';
 import type {
+  // `meetDayFacts` takes the training seed's KILOGRAM arm, so the one number
+  // that crosses training -> meet arrives with its unit attached instead of
+  // with a `Kg` in a parameter name. It comes from `progression.ts` with the
+  // rest of the boundary's unit-tagged pairs rather than from `sessionTuning.ts`
+  // — one import line for the whole wire, not two.
+  KilogramStartingE1rm,
   MeetResultWire,
   ProgressionSnapshotWire,
   ProposalOfKind,
 } from './progression';
 import { snapshotWireFor, type ServerRecord } from './sessionServer';
 import type { MeetDefinition } from './meetTuning';
-// Type-only. `meetDayFacts` takes the training seed's KILOGRAM arm, so the one
-// number that crosses training -> meet arrives with its unit attached instead
-// of with a `Kg` in a parameter name.
-import type { KilogramStartingE1rm } from './sessionTuning';
 
 // ---------------------------------------------------------------------------
 // Replaying a reported card
