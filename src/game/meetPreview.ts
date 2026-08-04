@@ -67,6 +67,11 @@ export type MeetMomentId =
   | 'verdict-split'
   /** Three reds. */
   | 'verdict-no-lift'
+  /**
+   * Two to one AGAINST — a high squat the lifter thought they had. The proof
+   * that the deliberation beat is not a tell: it precedes this too.
+   */
+  | 'verdict-split-red'
   /** GDD §6.3's choice after a make: a small increase vs a big one. */
   | 'select-after-make'
   /** GDD §6.3's choice after a miss: repeat vs go past it. THE BITE. */
@@ -88,6 +93,7 @@ export const MEET_MOMENTS = Object.freeze([
   'verdict-good',
   'verdict-split',
   'verdict-no-lift',
+  'verdict-split-red',
   'select-after-make',
   'select-after-miss',
   'bombed',
@@ -141,8 +147,22 @@ export type RepStyle =
   | 'marginal'
   /** Released before the window opened. A high squat — a miss, and arguable. */
   | 'high'
-  /** Depth hit, then never driven. The bar stalls. Nobody argues with that. */
-  | 'stalled';
+  /**
+   * Depth hit, then never driven. The bar stalls — at a limit load. NOT a
+   * reliable miss at a light one: below roughly 0.89 of the lifter's capacity
+   * the mechanic's demand curve never exceeds it and an undriven bar still goes
+   * up, which is `lift.ts`'s design and not a bug. Use `dumped` where a miss
+   * has to be certain.
+   */
+  | 'stalled'
+  /**
+   * Stood up almost immediately, nowhere near depth. A miss AT ANY LOAD, and an
+   * unanimous one — the referees do not argue about a squat that never bent.
+   * This is what the bomb-out paths are built from, so they bomb because the
+   * lifter missed three attempts rather than because a load ratio happened to
+   * be over a threshold.
+   */
+  | 'dumped';
 
 /** The cue the mechanic itself armed, read out of a played rep. */
 function armedCue(config: LiftConfig, script: readonly ScriptedInput[], cue: 'depth' | 'drive'): CueWindow | null {
@@ -163,7 +183,11 @@ export function repScript(config: LiftConfig, style: RepStyle): ScriptedInput[] 
   const depth = armedCue(config, script, 'depth');
   if (depth === null) return script;
 
-  if (style === 'high') {
+  if (style === 'dumped') {
+    // Straight back up. The depth cue may not even be armed yet, which is the
+    // point: there is nothing here for a referee to weigh.
+    script.push({ tick: braceTicks(config.loadRatio) + 2, kind: 'release' });
+  } else if (style === 'high') {
     // Stand up before the window opens. The mechanic records the signed offset
     // even though the input landed outside, which is what makes a high squat
     // measurable rather than merely wrong.
@@ -176,6 +200,14 @@ export function repScript(config: LiftConfig, style: RepStyle): ScriptedInput[] 
   }
 
   if (style === 'stalled') return script;
+  if (style === 'dumped') {
+    // Drive it anyway. The bar locks out and is then called high, which is the
+    // "you thought you got it" shape rather than a bar that fell over.
+    const dumpedDrive = armedCue(config, script, 'drive');
+    if (dumpedDrive === null) return script;
+    script.push({ tick: dumpedDrive.idealTick, kind: 'press' });
+    return script;
+  }
 
   const drive = armedCue(config, script, 'drive');
   if (drive === null) return script;
@@ -267,7 +299,7 @@ const ALL_GOOD = (): RepStyle => 'perfect';
 
 /** Every squat missed. The meet that bombs (GDD §6.3). */
 function bombTheSquat(lift: LiftKind): RepStyle {
-  return lift === 'squat' ? 'stalled' : 'perfect';
+  return lift === 'squat' ? 'dumped' : 'perfect';
 }
 
 /**
@@ -288,8 +320,8 @@ export function previewStateFor(request: MeetPreviewRequest): MeetDayState {
     case 'walkout-third': {
       // Two missed squats, so the third is the one that decides whether the
       // lifter bombs. The longest walkout the piece can produce.
-      const first = takeAttempt(openedMeet(), 'stalled');
-      const second = takeAttempt(chooseOption(first, 'repeat'), 'stalled');
+      const first = takeAttempt(openedMeet(), 'dumped');
+      const second = takeAttempt(chooseOption(first, 'repeat'), 'dumped');
       return chooseOption(second, 'repeat');
     }
     case 'lift':
@@ -301,11 +333,13 @@ export function previewStateFor(request: MeetPreviewRequest): MeetDayState {
     case 'verdict-split':
       return takeAttempt(openedMeet(), 'marginal', 'verdict');
     case 'verdict-no-lift':
-      return takeAttempt(openedMeet(), 'stalled', 'verdict');
+      return takeAttempt(openedMeet(), 'dumped', 'verdict');
+    case 'verdict-split-red':
+      return takeAttempt(openedMeet(), 'high', 'verdict');
     case 'select-after-make':
       return takeAttempt(openedMeet(), 'perfect');
     case 'select-after-miss':
-      return takeAttempt(openedMeet(), 'stalled');
+      return takeAttempt(openedMeet(), 'dumped');
     case 'bombed':
       return playMeet(bombTheSquat, () => 'repeat');
     case 'recap':
