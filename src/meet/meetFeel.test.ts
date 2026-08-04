@@ -86,8 +86,14 @@ const ROUTES: readonly { readonly key: keyof typeof MEET_TUNING.HAPTICS; readonl
   { key: 'ATTEMPT_DECLARED', beat: { kind: 'attempt-declared' } },
 ];
 
-function isPlayable(pattern: HapticPattern | null): pattern is HapticPattern {
-  if (pattern === null) return false;
+/**
+ * Undefined is handled explicitly, not by accident: deleting an entry from
+ * `MEET_TUNING.HAPTICS` makes `hapticForBeat` return `undefined`, and
+ * `expect(undefined).not.toBeNull()` PASSES. A check that only tested for null
+ * would have let exactly the mutation it exists to catch through.
+ */
+function isPlayable(pattern: HapticPattern | null | undefined): pattern is HapticPattern {
+  if (pattern === null || pattern === undefined) return false;
   if (pattern.beats.length === 0) return false;
   return pattern.beats.every(
     (b) => STYLES.includes(b.style) && Number.isFinite(b.delayMs) && b.delayMs >= 0,
@@ -102,7 +108,15 @@ describe('every meet-day beat is felt', () => {
   for (const { key, beat } of ROUTES) {
     it(`fires MEET_TUNING.HAPTICS.${key} on the ${JSON.stringify(beat)} beat`, () => {
       const played = hapticForBeat(beat);
-      expect(played, `nothing routes to ${key}`).not.toBeNull();
+      // The table still HAS the entry. Checked separately from the routing,
+      // because a deleted key makes both the lookup and the route `undefined`
+      // and the identity assertion below would then compare undefined to
+      // undefined and pass.
+      expect(
+        Object.hasOwn(MEET_TUNING.HAPTICS, key),
+        `MEET_TUNING.HAPTICS.${key} is gone`,
+      ).toBe(true);
+      expect(played ?? null, `nothing routes to ${key}`).not.toBeNull();
       expect(isPlayable(played), `${key} is not a playable pattern`).toBe(true);
       // IDENTITY, not deep equality: a hand-copied pattern in `meetDay.ts`
       // would satisfy a value check and then drift the first time the table was

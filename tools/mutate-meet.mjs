@@ -298,8 +298,198 @@ const MUTATIONS = [
     to: '    const suggested = suggestOpener(lift, bestE1rmKg[lift] * 0.99, meet.rules);',
     note: 'stands in for any coupling from the weigh-in to the meet',
   },
+  // -------------------------------------------------------------------------
+  // S2 rework: the venue, the haptics and the sound
+  // -------------------------------------------------------------------------
+  {
+    id: 'venue-prop-deleted',
+    claim:
+      'GDD §6: a competition attempt is lifted on the MEET PLATFORM, not in ' +
+      'the training gym. Mutation: stop passing the venue, so AttemptView ' +
+      'takes LiftStage\u2019s default and the meet happens in the gym again — ' +
+      'which is exactly the state the piece shipped in last round.',
+    file: 'src/meet/AttemptView.tsx',
+    from: '\n          venue={MEET_TUNING.VENUE}',
+    to: '',
+  },
+  {
+    id: 'venue-set-to-the-training-gym',
+    claim:
+      'The venue constant names the meet hall. Mutation: point it at the ' +
+      'training gym, so the prop is still passed and still wrong.',
+    file: 'src/game/meetTuning.ts',
+    from: "  VENUE: 'meet-platform' as GymVenue,",
+    to: "  VENUE: 'training-gym' as GymVenue,",
+  },
+  {
+    id: 'liftstage-ignores-the-venue-it-is-handed',
+    claim:
+      'LiftStage DRAWS the room it is given. Mutation: accept the prop and ' +
+      'draw the default anyway — the failure a source scan of the CALLER ' +
+      'cannot see, and a one-word edit from the code as written.',
+    file: 'src/lift/LiftStage.tsx',
+    from: '  const scene = SCENES[venue];',
+    to: '  const scene = SCENES[DEFAULT_VENUE];',
+  },
+  {
+    id: 'verdict-screen-fires-no-light-beat',
+    claim:
+      'The three-white-lights reveal is felt and heard, one lamp at a time. ' +
+      'Mutation: keep the whole table and the whole routing, and simply stop ' +
+      'the screen calling it — the shape the piece was in when every pattern ' +
+      'existed and nothing played one.',
+    file: 'src/meet/VerdictView.tsx',
+    from: "    const timer = setTimeout(() => playBeat({ kind: 'light', light }), at);",
+    to: '    const timer = setTimeout(() => undefined, at);',
+  },
+  {
+    id: 'walkout-screen-fires-no-plate-beat',
+    claim:
+      'The bar LOADS: one thud and one rattle per plate. Mutation: stop the ' +
+      'walkout screen firing them.',
+    file: 'src/meet/WalkoutView.tsx',
+    from: "    const timer = setTimeout(() => playBeat({ kind: 'bar-plate' }), at);",
+    to: '    const timer = setTimeout(() => undefined, at);',
+  },
+  {
+    id: 'sound-muted',
+    claim:
+      'GDD §12.2 judges this beat on \u201cpacing AND sound\u201d. Mutation: mute the ' +
+      'mix. Every cue renders silent and every committed .wav stops matching ' +
+      'its recipe.',
+    file: 'src/game/meetTuning.ts',
+    from: '  MASTER_GAIN: 0.8,',
+    to: '  MASTER_GAIN: 0,',
+  },
+  {
+    id: 'a-cue-recipe-changed-without-regenerating-the-asset',
+    claim:
+      'The shipped .wav files ARE the output of MEET_SOUND. Mutation: retune ' +
+      'one cue and leave the asset alone, which is what a playtest pass that ' +
+      'forgot to run tools/sound.mjs would do.',
+    file: 'src/game/meetTuning.ts',
+    from: '    BAR_RATTLE: Object.freeze({\n      durationMs: 180,',
+    to: '    BAR_RATTLE: Object.freeze({\n      durationMs: 240,',
+  },
+  {
+    id: 'the-hall-cheers-a-no-lift',
+    claim:
+      'GDD §6.3: a no-lift gets SILENCE, not a fail buzzer, and a real hall ' +
+      'goes quiet. Mutation: play the crowd on a miss as well as a make.',
+    file: 'src/game/meetDay.ts',
+    from: "      return beat.good ? 'CROWD_CHEER' : null;",
+    to: "      return 'CROWD_CHEER';",
+  },
+  {
+    id: 'the-join-drops-the-sound',
+    claim:
+      'One call per moment fires the haptic AND the cue. Mutation: keep the ' +
+      'haptic and drop the sound — a silent app whose whole audio system is ' +
+      'still present, tested and unreachable.',
+    file: 'src/meet/meetFeedback.ts',
+    from: '  playCue(soundForBeat(beat));',
+    to: '',
+  },
+  {
+    id: 'haptic-bar-plate-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.BAR_PLATE is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    BAR_PLATE: hapticPattern({ style: 'rigid', delayMs: 0 }),",
+    to: '',
+  },
+  {
+    id: 'haptic-walkout-call-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.WALKOUT_CALL is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    WALKOUT_CALL: hapticPattern({ style: 'soft', delayMs: 0 }),",
+    to: '',
+  },
+  {
+    id: 'haptic-walkout-call-urgent-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.WALKOUT_CALL_URGENT is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    WALKOUT_CALL_URGENT: hapticPattern(\n      { style: 'heavy', delayMs: 0 },\n      { style: 'medium', delayMs: 90 },\n    ),",
+    to: '',
+  },
+  {
+    id: 'haptic-deliberation-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.DELIBERATION is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    DELIBERATION: hapticPattern({ style: 'soft', delayMs: 0 }),",
+    to: '',
+  },
+  {
+    id: 'haptic-light-white-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.LIGHT_WHITE is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    LIGHT_WHITE: hapticPattern({ style: 'rigid', delayMs: 0 }),",
+    to: '',
+  },
+  {
+    id: 'haptic-light-red-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.LIGHT_RED is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    LIGHT_RED: hapticPattern({ style: 'heavy', delayMs: 0 }, { style: 'soft', delayMs: 70 }),",
+    to: '',
+  },
+  {
+    id: 'haptic-verdict-good-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.VERDICT_GOOD is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    VERDICT_GOOD: hapticPattern({ style: 'success', delayMs: 0 }),",
+    to: '',
+  },
+  {
+    id: 'haptic-verdict-no-lift-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.VERDICT_NO_LIFT is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    VERDICT_NO_LIFT: hapticPattern({ style: 'warning', delayMs: 0 }),",
+    to: '',
+  },
+  {
+    id: 'haptic-bomb-out-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.BOMB_OUT is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    BOMB_OUT: hapticPattern({ style: 'soft', delayMs: 0 }),",
+    to: '',
+  },
+  {
+    id: 'haptic-floor-raised-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.FLOOR_RAISED is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    FLOOR_RAISED: hapticPattern({ style: 'warning', delayMs: 0 }),",
+    to: '',
+  },
+  {
+    id: 'haptic-attempt-declared-deleted',
+    claim:
+      'MEET_TUNING.HAPTICS.ATTEMPT_DECLARED is played on a real meet-day beat. ' +
+      'Mutation: delete the entry, so that beat is silent in the hand.',
+    file: 'src/game/meetTuning.ts',
+    from: "    ATTEMPT_DECLARED: hapticPattern({ style: 'rigid', delayMs: 0 }, { style: 'light', delayMs: 80 }),",
+    to: '',
+  },
 ];
-
 function run(cmd, cmdArgs) {
   try {
     return {

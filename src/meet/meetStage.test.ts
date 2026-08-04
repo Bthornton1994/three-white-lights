@@ -177,6 +177,20 @@ describe('the source parser this file depends on', () => {
       expect(liftStageElementIn(read(relPath)), relPath).not.toBeNull();
     }
   });
+
+  it('checks that LiftStage DRAWS the venue it is handed, not just takes it', () => {
+    // THE HOLE THIS CLOSES. Everything else in this file reads the venue a
+    // screen PASSES. A `LiftStage` that accepted the prop and then drew
+    // `SCENES[DEFAULT_VENUE]` anyway would satisfy every one of those
+    // assertions and put the meet back in the training gym — which is a
+    // one-word edit away from the code as written.
+    const source = liftStage;
+    expect(source, 'LiftStage no longer looks the room up by venue').toContain('SCENES[venue]');
+    expect(source, 'LiftStage draws a fixed room again').not.toContain('SCENES[DEFAULT_VENUE]');
+    // ...and the room it looks up is the one it draws.
+    expect(source).toMatch(/const scene = SCENES\[venue\];/);
+    expect(source).toContain('<GymSceneLayer spec={scene} />');
+  });
 });
 
 // ---------------------------------------------------------------------------
