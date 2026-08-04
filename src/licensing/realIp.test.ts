@@ -89,8 +89,21 @@ const ALL_FILES: readonly string[] = walk(ROOT)
 
 const TEXT_FILES: readonly string[] = ALL_FILES.filter(isTextFile);
 
+/**
+ * Read one repository file, memoised.
+ *
+ * Memoised because this suite now reads the whole tree more than once — the
+ * citation inventory walks it, and so does the check that every name on
+ * `DELIBERATELY_NOT_WATCHED` is really in here. Strings are immutable, so the
+ * mutation helpers below cannot poison the cache by editing what they are given.
+ */
+const FILE_CACHE = new Map<string, string>();
 function read(relPath: string): string {
-  return readFileSync(path.join(ROOT, relPath), 'utf8');
+  const cached = FILE_CACHE.get(relPath);
+  if (cached !== undefined) return cached;
+  const text = readFileSync(path.join(ROOT, relPath), 'utf8');
+  FILE_CACHE.set(relPath, text);
+  return text;
 }
 
 /** Replace exactly once, and fail loudly if the pattern did not match. */
@@ -126,6 +139,24 @@ const SHORTEST_WATCHED = [...REAL_IP_WATCHLIST].sort((a, b) => a.name.length - b
 /** A watched name with a space in it, for the "does not fire on prose" pair. */
 const A_TWO_WORD_BRAND = REAL_IP_WATCHLIST.find(
   (e) => e.kind === 'brand' && e.name.includes(' '),
+);
+
+/**
+ * A real open-source project or software platform. The category the first draft
+ * of the watchlist had no slot for, which is why it is drawn out separately: the
+ * URL tests below are about how THESE names arrive, and a plant drawn from
+ * `kind: 'brand'` would have proved nothing about them.
+ */
+const A_REAL_PROJECT = watched('project');
+
+/**
+ * The one watched name that is a DOMAIN rather than a word, and the reason it is
+ * one. Its bare form is also this codebase's own term for a passed attempt, so
+ * the entry carries the dotted suffix deliberately. Found by shape rather than
+ * spelled, like every other plant here.
+ */
+const A_WATCHED_DOMAIN = REAL_IP_WATCHLIST.find(
+  (e) => e.kind === 'project' && e.name.includes('.'),
 );
 
 // ---------------------------------------------------------------------------
@@ -247,13 +278,94 @@ describe('the real-IP audit has something to audit', () => {
 // ---------------------------------------------------------------------------
 
 describe('the watchlist', () => {
-  it('is non-empty and covers all four categories', () => {
+  it('is non-empty and covers all six categories', () => {
     expect(REAL_IP_WATCHLIST.length).toBeGreaterThan(30);
-    for (const kind of ['brand', 'athlete', 'federation', 'meet-series'] as const) {
+    // `project` and `game-industry` were added last, after the list was found to
+    // be blind twice over: to the open-results project and meet software this
+    // repository cites more than anything else, and to the console, franchise
+    // and character marks a 16-bit art project reaches for whenever it argues
+    // about era. Named in this loop rather than left to a general "every kind is
+    // used" check so that deleting a category fails HERE, with its name in the
+    // message.
+    for (const kind of [
+      'brand',
+      'athlete',
+      'federation',
+      'meet-series',
+      'project',
+      'game-industry',
+    ] as const) {
       expect(
         REAL_IP_WATCHLIST.some((e) => e.kind === kind),
         `no ${kind} on the watchlist`,
       ).toBe(true);
+    }
+  });
+
+  it('finds a project name inside a URL — host, path segment and slug', () => {
+    // A URL IS HOW A NAME MOST OFTEN SURVIVES A TEXT SCAN, and every mention of
+    // this category in the tree arrived as one. Nothing here parses URLs; what
+    // makes it work is that `patternFor`'s word edges are alphanumeric-only, so
+    // `/`, `.` and `-` are all boundaries. That is a property worth pinning
+    // rather than assuming, because tightening the edges to `\b`-like rules or
+    // to whitespace would silently un-catch all three of these.
+    const forms = [
+      `https://www.${A_REAL_PROJECT.toLowerCase()}.org/`,
+      `https://gitlab.com/${A_REAL_PROJECT.toLowerCase()}/data/-/raw/main/x.csv`,
+      `see ${A_REAL_PROJECT}-derived formats`,
+      `(${A_REAL_PROJECT}),`,
+    ];
+    for (const form of forms) {
+      expect(findWatchedNames(form).map((h) => h.name), form).toContain(A_REAL_PROJECT);
+    }
+    // ...and the paired direction: glued to a letter it is a different token and
+    // is NOT a mention, which is what keeps the lockfile quiet.
+    expect(findWatchedNames(`x${A_REAL_PROJECT}`)).toEqual([]);
+    expect(findWatchedNames(`${A_REAL_PROJECT}x`)).toEqual([]);
+  });
+
+  it('watches a platform by its DOMAIN, and that entry cannot fire on our verdict term', () => {
+    // THE ONE ENTRY THAT IS DELIBERATELY NARROWER THAN THE NAME IT WATCHES, and
+    // the reason is worth pinning because it is easy to "fix" by widening.
+    //
+    // The bare word is a real federation results platform. It is also, as two
+    // words and as a camel-cased identifier, this codebase's own term for a
+    // passed attempt — `isGoodLift`, `heaviestGoodLift`, their call sites in
+    // meet.ts, meetDay.ts and renderResultCard.ts. Word boundaries mean the bare
+    // form would not fire on THOSE (a letter precedes it in each), so the real
+    // arithmetic is: the bare form matches nothing in the tree today, and the
+    // first `const goodLift = ...` anybody writes would put a false positive on
+    // the game's own vocabulary. Dead now, noisy later. The domain form is what
+    // is actually cited and it can be neither.
+    const domain = A_WATCHED_DOMAIN;
+    if (domain === undefined) throw new Error('no dotted project entry on the watchlist');
+    expect(findWatchedNames(domain.name).length).toBeGreaterThan(0);
+
+    const bare = domain.name.slice(0, domain.name.indexOf('.'));
+    expect(bare.length).toBeGreaterThan(3);
+    // The narrowing, stated as an assertion rather than as a comment: the bare
+    // word is NOT watched, so nobody has to wonder whether it was meant to be.
+    expect(findWatchedNames(bare)).toEqual([]);
+    // ...and neither identifier form is a mention, whichever way the entry is
+    // later rewritten.
+    expect(findWatchedNames(`export function is${bare}(lights: JudgePanel): boolean {`)).toEqual([]);
+    expect(findWatchedNames(`expect(heaviest${bare}(CARD)).toBeNull();`)).toEqual([]);
+  });
+
+  it('has no dead entry in the two derived categories', () => {
+    // The rest of the list is PREVENTIVE — a famous brand nobody has typed yet is
+    // exactly what it is for, and an entry that never fires is correct there. The
+    // `project` and `game-industry` blocks are different by construction: both
+    // were built by asking what this repository ACTUALLY CITES, so an entry that
+    // fires on nothing is an entry somebody padded the list with, and a watchlist
+    // row that can never fire is its own kind of dead check.
+    const pinned = new Set(REVIEWABLE_CITATIONS.map((r) => r.name));
+    const derived = REAL_IP_WATCHLIST.filter(
+      (e) => e.kind === 'project' || e.kind === 'game-industry',
+    );
+    expect(derived.length).toBeGreaterThan(8);
+    for (const entry of derived) {
+      expect(pinned.has(entry.name), `${entry.name} is watched but cites nothing`).toBe(true);
     }
   });
 
@@ -275,6 +387,37 @@ describe('the watchlist', () => {
       expect(entry.note.length).toBeGreaterThan(0);
     }
     expect(DELIBERATELY_NOT_WATCHED.length).toBeGreaterThan(0);
+  });
+
+  it('lists as deliberately-unwatched only names that are really in this tree', () => {
+    // THE OMISSION LIST HAS TO BE A LIST OF RULINGS, NOT OF GUESSES.
+    //
+    // Its whole value is that a reader can see which real names were found and
+    // waved through. A name nobody ever typed into this repository looks exactly
+    // like a name that was considered and cleared, and padding it that way makes
+    // the list read as more thorough than the sweep behind it actually was. So
+    // each entry has to point at something: this fails if one stops appearing,
+    // and the fix is to delete the row, not to widen the search.
+    //
+    // It is also the guard on the other side of the `project` additions. Those
+    // were chosen by asking what the tree cites; this asks the same question of
+    // everything the same sweep decided NOT to watch.
+    //
+    // THE WATCHLIST FILE IS EXCLUDED FROM THE SEARCH, and that exclusion is the
+    // only thing that makes this test worth running: every one of these names is
+    // spelled in `DELIBERATELY_NOT_WATCHED` itself, so searching the whole tree
+    // would find each entry in its own declaration and pass on anything.
+    const elsewhere = TEXT_FILES.filter((f) => f !== WATCHLIST_FILE);
+    expect(elsewhere.length).toBe(TEXT_FILES.length - 1);
+    for (const entry of DELIBERATELY_NOT_WATCHED) {
+      const found = elsewhere.some(
+        (relPath) => findWatchedNames(read(relPath), [entry]).length > 0,
+      );
+      expect(
+        found,
+        `${entry.name} is listed as deliberately not watched but appears nowhere in the tree — delete the row`,
+      ).toBe(true);
+    }
   });
 
   it('matches on word boundaries, so a checksum is not a brand', () => {
@@ -448,6 +591,67 @@ describe('the audit bites', () => {
     );
     const found = scanSourceText(WATCHLIST_FILE, mutated);
     expect(found.map((m) => m.name), formatMentions(found)).toContain(A_REAL_BRAND);
+  });
+
+  it('does not exempt the watchlist file for the NEWLY watched names either', () => {
+    // Adding names to `REAL_IP_WATCHLIST` puts new real names into the one file
+    // that is allowed to hold them, which is exactly the move that could widen
+    // the self-exemption without anybody noticing — the block grew, so more of
+    // the file is exempt. The exemption is by DECLARATION REGION rather than by
+    // file, so growing the list cannot spill: this plants a project name in the
+    // header, where the argument for the whole exemption is written, and it is
+    // still reported.
+    const source = read(WATCHLIST_FILE);
+    const mutated = mutate(
+      source,
+      ' * PURE MODULE: zero React imports, zero I/O, zero side effects.',
+      ` * Provenance: ${A_REAL_PROJECT}. PURE MODULE: zero React imports, zero I/O, zero side effects.`,
+    );
+    const found = scanSourceText(WATCHLIST_FILE, mutated);
+    expect(found.map((m) => m.name), formatMentions(found)).toContain(A_REAL_PROJECT);
+    expect(found.map((m) => m.where)).toContain('comment');
+  });
+
+  it('exempts each region only as far as its own closing bracket', () => {
+    // THE HOLE THIS CLOSED, pinned so it cannot reopen.
+    //
+    // `declarationRegions` runs a declaration up to the NEXT declaration, so the
+    // region named after the watchlist used to include the doc comment
+    // introducing the block below it — twenty-odd lines of ordinary prose,
+    // inside an exempt window, growing every time somebody wrote a longer
+    // paragraph. Nothing was hiding in there. The point is that nothing COULD
+    // have been found if it were.
+    //
+    // The plant goes in the sentence that introduces the second block, which is
+    // after the first block's closing bracket and before the second block's
+    // `export const`: exempt under the old rule, reported under the new one.
+    const source = read(WATCHLIST_FILE);
+    const mutated = mutate(
+      source,
+      ' * An omission from a denylist is invisible; this makes these ones visible.',
+      ` * An omission from a denylist is invisible; unlike ${A_REAL_BRAND}. `,
+    );
+    const found = scanSourceText(WATCHLIST_FILE, mutated);
+    expect(found.map((m) => m.name), formatMentions(found)).toContain(A_REAL_BRAND);
+
+    // ...and the paired direction, without which the assertion above would also
+    // pass if the exemption had stopped working altogether: the real file, with
+    // dozens of watched names inside the three literals, still reports nothing.
+    expect(scanSourceText(WATCHLIST_FILE, source)).toEqual([]);
+  });
+
+  it('leaves the watchlist file with no pinned citations of its own', () => {
+    // THE SHARPEST STATEMENT OF THE SELF-SCAN, and the reason this module's prose
+    // describes real names instead of spelling them ("a three-letter brand
+    // acronym", "the open-results project"). If one leaked out of the three
+    // exempt blocks — into the header, a helper, a group description — it would
+    // become a mention, the mention would become a row, and the pin above would
+    // go red. So this file having ZERO rows is not a coincidence to be preserved
+    // by care; it is the invariant the pin enforces, and stating it here means a
+    // reader does not have to infer it from an absence.
+    expect(REVIEWABLE_CITATIONS.filter((r) => r.file === WATCHLIST_FILE)).toEqual([]);
+    const live = scanSourceText(WATCHLIST_FILE, read(WATCHLIST_FILE));
+    expect(live, formatMentions(live)).toEqual([]);
   });
 
   it('exempts exactly one file and exactly three of its regions', () => {
@@ -627,6 +831,88 @@ describe('the reviewable citation list', () => {
     expect(INVENTORY_ROWS.some((r) => r.where === 'code')).toBe(true);
     expect(INVENTORY_ROWS.some((r) => r.where === 'prose')).toBe(true);
     expect(INVENTORY_ROWS.some((r) => r.file === 'src/game/dots.test.ts')).toBe(true);
+  });
+
+  it('counts the open-source project citations, which is what it used to miss', () => {
+    // THE REGRESSION GUARD FOR THE HOLE THIS BLOCK EXISTS BECAUSE OF.
+    //
+    // Before the `project` category, this inventory ran green while more than a
+    // hundred mentions of a real organisation sat in the tree unseen, across the
+    // result-card modules, the DOTS module, the meet module and a view. The pin
+    // above now covers them exactly. This is the FLOOR underneath the pin: it
+    // fails if somebody regenerates the block after deleting the category, which
+    // is the one edit that would make the pin agree with a blind scan again.
+    //
+    // A floor rather than an exact number on purpose — the exact number is the
+    // pin's job, and duplicating it here would mean two places to update on
+    // every unrelated comment edit.
+    const projectNames = new Set(
+      REAL_IP_WATCHLIST.filter((e) => e.kind === 'project').map((e) => e.name),
+    );
+    const rows = INVENTORY_ROWS.filter((r) => projectNames.has(r.name));
+    const mentions = rows.reduce((sum, r) => sum + r.count, 0);
+    const files = new Set(rows.map((r) => r.file));
+    expect(rows.length, 'project citations vanished from the inventory').toBeGreaterThan(20);
+    expect(mentions).toBeGreaterThan(80);
+    expect(files.size).toBeGreaterThan(10);
+    // ...and almost all of them are provenance rather than content: comments and
+    // one line of the design document. The exceptions are pinned BY FILE — the
+    // names stay out of this file, per the header — because a real
+    // organisation's name at `code` position is one edit from a screen, and a
+    // new file appearing in this list is the event worth a human's eye.
+    const codeFiles = [...new Set(rows.filter((r) => r.where === 'code').map((r) => r.file))].sort();
+    expect(codeFiles, 'a project name moved into code position in a new file').toEqual([
+      // The last bespoke real-IP ban in the tree; its names are its own operands.
+      'src/art/gymScene.test.ts',
+      // Identifiers naming the export format a meet fixture is checked against.
+      'src/game/meet.test.ts',
+      // `CHART_SOURCES` — retrieval URLs in `url:` fields rather than comments,
+      // which is `code` position by this module's rule and the reason the RPE
+      // transcription sources are worth a human's eye rather than a shrug: a
+      // string is one edit from a screen, even a string nothing renders today.
+      'src/game/rpe.test.ts',
+      'src/game/rpe.ts',
+    ]);
+    expect(rows.filter((r) => r.where === 'prose').map((r) => r.file)).toEqual(['docs/GDD.md']);
+  });
+
+  it('counts the game-industry citations, the second blind spot of the same shape', () => {
+    // FOUND INDEPENDENTLY, BY A CRITIC GRADING THE FIGURE RIG RATHER THAN BY
+    // THIS MODULE, and that is the part worth keeping: one miss is an oversight,
+    // two of the same shape is a property of how the list was built. Both
+    // categories are things this repository CITES — a results database, a
+    // console's colour depth, how tall a fighting-game lead stood — rather than
+    // things a builder might invent a fake version of, and the original four
+    // kinds were chosen entirely from the second question.
+    //
+    // A floor, for the same reason as the project group above: the exact numbers
+    // are the pin's job.
+    const eraNames = new Set(
+      REAL_IP_WATCHLIST.filter((e) => e.kind === 'game-industry').map((e) => e.name),
+    );
+    const rows = INVENTORY_ROWS.filter((r) => eraNames.has(r.name));
+    const mentions = rows.reduce((sum, r) => sum + r.count, 0);
+    expect(rows.length, 'game-industry citations vanished from the inventory').toBeGreaterThan(15);
+    expect(mentions).toBeGreaterThan(45);
+    expect(new Set(rows.map((r) => r.file)).size).toBeGreaterThan(10);
+
+    // The `code` positions are pinned by file, names kept out of this file. All
+    // three are art modules whose named constants encode an era measurement, so
+    // the mark is in an identifier rather than in a comment.
+    const codeFiles = [...new Set(rows.filter((r) => r.where === 'code').map((r) => r.file))].sort();
+    expect(codeFiles, 'an era mark moved into code position in a new file').toEqual([
+      'src/art/craftMetrics.test.ts',
+      'src/art/craftMetrics.ts',
+      'src/art/lifterSprite.test.ts',
+    ]);
+
+    // AND THE ONE THIS AUDIT CANNOT READ. A committed reference image is named
+    // after the console whose craft it is there to demonstrate, so the filename
+    // scan catches it; the PIXELS of the other reference image carry a real
+    // league's logo and a currently-competing player's likeness, and no text
+    // scan will ever see those. Pinned here so the residual has a test next to
+    // it rather than only a paragraph in the header.
+    expect(rows.some((r) => r.where === 'filename')).toBe(true);
   });
 
   it('keeps the published-record provenance the tests depend on', () => {

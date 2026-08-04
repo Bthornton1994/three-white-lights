@@ -45,18 +45,27 @@
  *     catalogue rather than a convention.
  *   - It is not an asset. There is no image, no font, no manifest.
  *
- * The house precedent is already there: `meetTuning.test.ts` bans five real
- * federation names from the invented federation by spelling all five out, and
- * `progression.ts`'s `PERFORMANCE_FACT_VOCABULARY` is a blocklist of words a
- * fact may not be named. This is the same instrument one category over.
+ * The house precedent is already there: `gymScene.test.ts` bans a list of real
+ * federation, brand and athlete names from the environment art by spelling them
+ * out, and `progression.ts`'s `PERFORMANCE_FACT_VOCABULARY` is a blocklist of
+ * words a fact may not be named. This is the same instrument one category over.
+ * (`meetTuning.test.ts` was the other example and is no longer one: its owner
+ * retired the five-name ban after this module generalised it, and that file now
+ * carries a test named for leaving the ban to the watchlist that owns it. Named
+ * in the past tense here rather than left standing, because a header that cites
+ * a check which no longer exists is the drift the citation list warns about.)
  *
  * AND IT IS HELD TO ONE REGION OF ONE FILE. Nothing else here spells a watched
  * name — not this header, not the tests, not the pinned list's prose — and the
  * scan enforces that on itself: `WATCHLIST_FILE` plus `WATCHLIST_REGIONS` is the
- * only exemption, and `realIp.test.ts` plants a real brand in this very comment
- * and asserts it is reported. Everything below that would naturally have quoted
- * a real acronym describes it instead ("a three-letter brand acronym"), which
- * reads slightly worse and keeps the count at one place.
+ * only exemption, each cut at its declaration's own closing bracket, and
+ * `realIp.test.ts` plants a real brand in this very comment and asserts it is
+ * reported. Everything below that would naturally have quoted a real acronym or
+ * a real project describes it instead ("a three-letter brand acronym", "the
+ * open-results project"), which reads slightly worse and keeps the count at one
+ * place. `realIp.test.ts` asserts the consequence directly: this file has ZERO
+ * rows on the citation list, and a leak out of the three literals would put one
+ * there.
  *
  * THE ALTERNATIVE WAS CONSIDERED AND IS WORSE. Hashing or encoding the list
  * would remove the names from the file and remove a human's ability to review
@@ -131,32 +140,51 @@
  * were assigned to `MEET_LOCAL.federation` in the same file. What decides is
  * whether a screen can draw it.
  *
- * `meetTuning.test.ts` already bans five real federation names from
- * `MEET_LOCAL.federation`, unprompted, citing §11. This module GENERALISES that
+ * `meetTuning.test.ts` USED TO ban five real federation names from
+ * `MEET_LOCAL.federation`, unprompted, citing §11. This module GENERALISED that
  * check rather than duplicating it: `MEET_LOCAL` is pulled into the renderable
  * inventory in `realIp.test.ts` through the whole `TUNING` registry, and scanned
  * against the entire watchlist rather than five hand-typed names — as is every
- * other tuned string in the game. The bespoke check there is now a special case
- * of this one and could be deleted by whoever owns that file; it is not deleted
- * here because `src/game/meetTuning.ts` and its test belong to another builder
- * in this run.
+ * other tuned string in the game. Its owner has since retired the bespoke ban;
+ * the file now carries a test named for leaving the ban to the watchlist that
+ * owns it, and the five rows it used to contribute are gone from the citation
+ * list. `gymScene.test.ts` is the last hand-written one still standing.
  *
  * ===========================================================================
  * 4. WHAT IS DELIBERATELY NOT WATCHED
  * ===========================================================================
  *
- * `DELIBERATELY_NOT_WATCHED` is the list of real people's names this audit does
- * NOT look for, with the reason. It exists because an omission from a denylist
+ * `DELIBERATELY_NOT_WATCHED` is the list of real names this audit does NOT look
+ * for, with the reason for each. It exists because an omission from a denylist
  * is invisible, and an invisible omission is how a denylist quietly stops
  * covering the thing everyone assumed it covered.
  *
- * All of them are FORMULA EPONYMS that CLAUDE.md's domain-correctness section
- * requires by name. `Epley` is mandated — "Epley, and only Epley" — and
- * `Brzycki` is mandated by its PROHIBITION, which cannot be written without
- * writing the name. A person whose surname is attached to a published formula
- * is not a licensable identity in the sense §12.3 means; there is no agreement
- * to sign and no mark to infringe, and watching them would bury the reviewable
- * list under dozens of entries that can never be actioned.
+ * EVERY NAME ON IT IS ACTUALLY IN THIS TREE. It is a list of rulings, not of
+ * hypotheticals: the repository was swept for real-world proper nouns and each
+ * of these was found and then ruled out, so a reader sees the ruling instead of
+ * inferring it from a silence. Three groups, and they are not equally safe:
+ *
+ *   - FORMULA AND ALGORITHM EPONYMS. `Epley` is mandated — "Epley, and only
+ *     Epley" — and `Brzycki` is mandated by its PROHIBITION, which cannot be
+ *     written without writing the name. A person whose surname is attached to a
+ *     published formula is not a licensable identity in the sense §12.3 means;
+ *     there is no agreement to sign and no mark to infringe.
+ *   - CODE HOSTS AND THE DEPENDENCY GRAPH. `package.json` and its lockfile are
+ *     lists of vendor names by construction. Watching the category would make
+ *     the pinned inventory churn on `npm install` and go red for reasons that
+ *     have nothing to do with §12.3. A category exclusion, said out loud,
+ *     rather than an enumeration — it is the one part of the omission list that
+ *     is not exhaustive.
+ *   - NAMES THAT ARE ALSO ORDINARY ENGLISH IN THE USE THE TREE MAKES OF THEM.
+ *     One studio's name is a plumbing noun, and both mentions in this repository
+ *     are the noun.
+ *
+ * WHAT IS NO LONGER ON IT MATTERS MORE THAN WHAT IS. The console marks, the two
+ * named vendors and the cited repository accounts were all parked here on an
+ * "unactionable" argument, and that was a RULING wearing a category's clothes.
+ * They are watched and pinned now. Declining to count a mention is not a neutral
+ * act: it hands a human a number that is quietly wrong on the one question
+ * §12.3 says cannot be walked back after release.
  *
  * ===========================================================================
  * 5. WHAT THIS DOES NOT CLOSE — stated plainly, because an audit that
@@ -169,9 +197,44 @@
  *    thing about `PERFORMANCE_FACT_VOCABULARY` and it is just as true here.
  *    What the list buys is the §12.3 ACCIDENT — the first real name that comes
  *    to mind is, by construction, a famous one.
+ *    THIS IS NOT A HYPOTHETICAL AND IT HAS ALREADY HAPPENED TWICE, A WEEK
+ *    APART, FOUND BY DIFFERENT READERS. The first version of the list had no
+ *    category for open-source projects and data sources, so the single
+ *    most-cited real organisation in this repository and its software — 103
+ *    mentions across 15 files — was invisible while the suite ran green, and a
+ *    fresh mention added mid-run did not move the verdict. The second had no
+ *    category for the game industry, so a console mark in 15 files and a
+ *    character mark used as a sprite-height comparator were invisible too; that
+ *    one was found by a critic grading a different piece, not by anyone looking
+ *    at this file. 85 rows were added between them, against 60 that were already
+ *    there.
+ *    THE PATTERN IN BOTH MISSES IS THE USEFUL PART: the original categories were
+ *    chosen by asking what a builder might INVENT a fake version of, and both
+ *    holes were things this codebase CITES. Anyone extending this list should
+ *    re-derive what the tree points at rather than trusting either list to be
+ *    current, and should expect a third category nobody has thought of.
+ *  - URL FORMS ARE COVERED ONLY BECAUSE OF THE BOUNDARY RULE, not because
+ *    anything parses URLs. `patternFor`'s edges are alphanumeric-only, so `/`,
+ *    `.` and `-` are all boundaries and a name inside a host or a path matches
+ *    the same literal as the bare name. That is load-bearing — a URL is how a
+ *    real name most often survives a text scan — and `realIp.test.ts` pins it
+ *    against the actual host, path and dotted-domain forms in this tree. The
+ *    residual: a name that only ever appears SPLIT by a URL-encoded or hyphen-
+ *    joined form of itself is still missed, and one such abbreviation had to be
+ *    added as its own entry for exactly that reason.
  *  - IT READS TEXT. A real logo drawn pixel by pixel into `partners.ts`, or
  *    pasted into a PNG under `assets/`, is invisible to it. Filenames are
  *    scanned; image contents are not.
+ *    THERE IS A LIVE INSTANCE OF THIS, and it is worth naming rather than
+ *    leaving as a general caveat: one of the committed reference images under
+ *    `docs/reference/` carries a real league's logo and a currently-competing
+ *    player's likeness in its PIXELS. This audit knows about it only because a
+ *    doc TRANSCRIBED THE CAPTION, which is what put the league, the club and the
+ *    player on the citation list. Had nobody written the caption down, the
+ *    image would be exactly as unlicensed and this file would report nothing.
+ *    Reference material outside a shipped asset root is category (B) by design,
+ *    but the human ruling on that row should know it is ruling on a picture and
+ *    not only on a sentence.
  *  - CASE AND SPELLING. Matching is case-insensitive with word boundaries, so a
  *    lower-cased brand is caught and a digit-substituted one is not. Deliberate
  *    obfuscation defeats it.
@@ -192,7 +255,41 @@ import { TIER_3_SLOTS, tier3Of } from './tiers';
 // The watchlist
 // ---------------------------------------------------------------------------
 
-export type WatchKind = 'brand' | 'athlete' | 'federation' | 'meet-series';
+/**
+ * WHY THERE ARE SIX KINDS AND NOT THE ORIGINAL FOUR.
+ *
+ * The first four were the categories a powerlifting game would plausibly touch
+ * as CONTENT: a governing body, an equipment brand, a meet, a lifter. Both
+ * additions were found the same way — a name already in the tree that nothing
+ * was looking for — and the pattern in HOW they were missed is worth more than
+ * either category:
+ *
+ *   `project` — the OPEN-SOURCE PROJECTS AND SOFTWARE PLATFORMS the sport runs
+ *   its results on. A results database, the meet-management software a
+ *   federation scores on, the repository a coefficient implementation was read
+ *   out of. Real organisations with real marks, and forcing them into `brand` or
+ *   `federation` would have made the list say something false about what they
+ *   are.
+ *
+ *   `game-industry` — CONSOLES, STUDIOS, FRANCHISES AND CHARACTERS. This is a
+ *   16-bit pixel-art project whose art bar is defined by era comparison, so it
+ *   reasons about console colour depth, vblank-authored animation and how big a
+ *   fighting-game lead stood on a 224-line field. Every one of those sentences
+ *   reaches for a real trademark, and none of them is about powerlifting.
+ *
+ * THE COMMON FAILURE was that the original four were chosen by asking WHAT A
+ * BUILDER MIGHT INVENT A FAKE VERSION OF — a sponsor, a federation, a lifter.
+ * Both missed categories are things the codebase CITES rather than invents, and
+ * both were sitting in the tree while the audit ran green. Ask what a file
+ * points at, not only what it might make up.
+ */
+export type WatchKind =
+  | 'brand'
+  | 'athlete'
+  | 'federation'
+  | 'meet-series'
+  | 'project'
+  | 'game-industry';
 
 export interface WatchEntry {
   /** The literal to look for. Matched case-insensitively, on word boundaries. */
@@ -211,11 +308,46 @@ export interface WatchEntry {
  *
  * Chosen for the §12.3 accident rather than for completeness: the first real
  * name a builder reaches for is a famous one, so the list is the famous ones in
- * the four categories a powerlifting game would plausibly touch. Multi-word
+ * the five categories a powerlifting game would plausibly touch. Multi-word
  * entries are used wherever the brand's single distinctive word is also ordinary
  * English — several entries below are two words for exactly that reason —
  * because a check that fires on prose gets suppressed and a suppressed check is
  * worse than none.
+ *
+ * ---------------------------------------------------------------------------
+ * TWO BLOCKS WERE ADDED AFTER THE LIST WAS FOUND BLIND TWICE, AND THE TWO
+ * MISSES HAVE THE SAME SHAPE
+ * ---------------------------------------------------------------------------
+ * Worth recording, because it is the clearest evidence for what §5 of the header
+ * says about a floor and a net. The first four categories were the ones a
+ * powerlifting game would touch as CONTENT — a federation, an equipment brand, a
+ * meet, a lifter — and they were chosen by asking what a builder would INVENT a
+ * fake version of.
+ *
+ * They therefore missed, twice:
+ *
+ *   1. The software and data projects the sport's results actually live on,
+ *      which this codebase reads its result-card format, its DOTS
+ *      implementation, its plate ladder and its meet flow out of — 103 mentions
+ *      across 15 files. The audit ran green over all of it for the whole of this
+ *      run; a builder added a fresh mention to `src/game/meetServer.ts` in the
+ *      wave this block was written and the suite did not move.
+ *   2. The console, franchise and character marks a 16-bit project reaches for
+ *      every time it argues about era — 57 mentions across 15 files, including a
+ *      character used as a sprite-height comparator inside the figure rig's own
+ *      tuning file. Found by a critic grading that rig, not by anyone reading
+ *      this module.
+ *
+ * NEITHER WAS SHIPPING; almost every mention is provenance in a comment, and the
+ * default-deny half stayed green for the right reason. What was broken was the
+ * INSTRUMENT: the run was asking a human to rule on a citation count that was
+ * missing more than it contained.
+ *
+ * THE LESSON IS ABOUT HOW THE LIST IS EXTENDED, not about these fourteen names.
+ * Ask what the repository CITES, not what it might invent. A name arrives here
+ * far more often as a source URL or an era comparison than as a fake sponsor —
+ * and a third category nobody has thought of is the expected case, not the
+ * surprising one.
  */
 export const REAL_IP_WATCHLIST: readonly WatchEntry[] = Object.freeze([
   // --- federations and governing bodies ------------------------------------
@@ -229,6 +361,66 @@ export const REAL_IP_WATCHLIST: readonly WatchEntry[] = Object.freeze([
   { name: 'BVDK', kind: 'federation', note: 'Bundesverband Deutscher Kraftdreikampf' },
   { name: 'Powerlifting America', kind: 'federation', note: 'IPF North American affiliate' },
   { name: 'British Powerlifting', kind: 'federation', note: 'IPF British affiliate' },
+
+  // --- open-source projects, results databases and meet software -----------
+  // The category the first draft of this list missed entirely, and the one this
+  // repository cites more than any other: it transcribes its result-card
+  // format, its DOTS implementation, its plate ladder and its meet flow out of
+  // these. See the `project` note on `WatchKind`.
+  { name: 'OpenPowerlifting', kind: 'project', note: 'Open results database and archive; also its .org site and its GitLab/GitHub orgs' },
+  { name: 'OPL', kind: 'project', note: 'That project abbreviated — used bare, and as the slug of its data repository' },
+  { name: 'OpenLifter', kind: 'project', note: 'Meet-management software from the same organisation' },
+  { name: 'LiftingCast', kind: 'project', note: 'Third-party meet-management and live-scoring platform; matches liftingcast.com' },
+  // DOMAIN FORM ONLY, and the arithmetic behind that is in `realIp.test.ts`
+  // rather than left to be guessed. The bare word is a real results platform and
+  // also this codebase's own term for a passed attempt. Word boundaries mean the
+  // bare form would not fire on `isGoodLift` or `heaviestGoodLift` — a letter
+  // precedes it in both — so watching it would add an entry that matches nothing
+  // in the tree today and would fire on the first `const goodLift` anybody
+  // writes. Dead now, noisy later. The dotted form is the one actually cited.
+  { name: 'goodlift.info', kind: 'project', note: 'A federation official results platform. Domain form: the bare word is this repository verdict term' },
+  // Cited SOURCES rather than dependencies: the accounts and apps whose files
+  // `rpe.ts` and `dots.ts` transcribe, named in pinned-commit retrieval URLs. A
+  // handle is a thin kind of identity and these are the entries a human is most
+  // likely to strike; they are here so that striking them is a decision rather
+  // than an omission. See the code-host exclusion in `DELIBERATELY_NOT_WATCHED`
+  // for where the line was drawn and why.
+  { name: 'metriclift', kind: 'project', note: 'Third-party app whose RPE table rpe.ts transcribes' },
+  { name: 'karolczyz', kind: 'project', note: 'Account owning that app, in its pinned-commit URL' },
+  { name: 'Sculpt-AI', kind: 'project', note: 'Account owning the second RPE transcription source' },
+  { name: 'sstangl', kind: 'project', note: 'Account owning a cited DOTS implementation' },
+  { name: 'Marantesss', kind: 'project', note: 'Account owning a comparison DOTS implementation' },
+
+  // --- consoles, studios, franchises and characters -------------------------
+  // The second category the list was blind to, found by a critic grading the
+  // figure rig rather than by this module. A 16-bit project argues about era
+  // constantly — colour depth, vblank timing, how tall a lead sprite stood — and
+  // every one of those arguments names somebody's trademark.
+  { name: 'SNES', kind: 'game-industry', note: 'Console hardware mark. GDD §7.1 and §12.2 make it the art bar' },
+  // BARE WORD, AND IT IS ALSO ORDINARY ENGLISH. Every mention in the tree today
+  // is the console, but "the genesis of" would fire. Watched anyway rather than
+  // ruled out, because the alternative — a two-word entry with the maker's name
+  // in front — matches nothing this codebase actually writes and would be a dead
+  // row. If it starts crying wolf, that is a human's call to make, not a reason
+  // to have hidden the mentions in the meantime.
+  { name: 'Genesis', kind: 'game-industry', note: 'Console hardware mark, and an ordinary English word. GDD §7.1 names it' },
+  { name: 'Game Boy', kind: 'game-industry', note: 'Handheld hardware mark, named in GDD §7.1 as a style to avoid' },
+  { name: 'Ryu', kind: 'game-industry', note: 'Fighting-game character, cited as a sprite-height comparator' },
+
+  // --- other sports leagues, clubs and their athletes ------------------------
+  // Not powerlifting, and that is exactly how they got in: they arrived through
+  // a committed REFERENCE IMAGE whose caption a doc transcribes. §12.3's own
+  // words for how a real mark actually arrives.
+  { name: 'MLB', kind: 'federation', note: 'US baseball league. Reached the tree via a reference image caption' },
+  { name: 'Orioles', kind: 'brand', note: 'Baseball club mark, from the same caption' },
+  { name: 'Mullins', kind: 'athlete', note: 'Currently-competing baseball player, captioned in that reference image' },
+
+  // --- named comparators and vendors ----------------------------------------
+  // Real companies this project measures itself against or plans to build on.
+  // Both are prose only — neither is a dependency, so neither is excluded by the
+  // dependency-graph rule in `DELIBERATELY_NOT_WATCHED`.
+  { name: 'Duolingo', kind: 'brand', note: 'GDD §12.2 makes it the daily-loop bar by name' },
+  { name: 'Supabase', kind: 'brand', note: 'CLAUDE.md names it as the server-authoritative backend' },
 
   // --- equipment and apparel brands ----------------------------------------
   { name: 'SBD', kind: 'brand', note: 'SBD Apparel — belts, sleeves, wraps' },
@@ -297,26 +489,85 @@ export const REAL_IP_WATCHLIST: readonly WatchEntry[] = Object.freeze([
 ]);
 
 /**
- * REAL PEOPLE THIS AUDIT DOES NOT LOOK FOR, AND WHY.
+ * REAL NAMES THIS AUDIT DOES NOT LOOK FOR, AND WHY — EVERY ONE OF WHICH IS
+ * ACTUALLY IN THIS TREE.
  *
- * An omission from a denylist is invisible; this makes these ones visible. Every
- * entry is a FORMULA EPONYM that CLAUDE.md's domain-correctness section requires
- * by name — `Brzycki` is required by its prohibition, which cannot be written
- * without writing the name. A surname attached to a published formula is not a
- * licensable identity in §12.3's sense: there is no agreement to sign and no
- * mark to infringe, and watching them would bury `REVIEWABLE_CITATIONS` under
- * entries no human can ever action.
+ * An omission from a denylist is invisible; this makes these ones visible. It is
+ * not a list of names somebody might have watched — every entry below was found
+ * by scanning the repository for real-world proper nouns and then RULED OUT, so
+ * the reader can see the ruling instead of inferring it from a silence. The
+ * counts in the notes were taken at the time of writing and will drift; they are
+ * there to say "this is not hypothetical", not to be pinned.
+ *
+ * A DECISION TO WATCH ANY OF THESE IS A HUMAN ONE, and moving a name from here
+ * to `REAL_IP_WATCHLIST` is a one-line edit followed by pasting a regenerated
+ * `REVIEWABLE_CITATIONS`. The rulings below are the ones this module's stated
+ * selection rule produces; they are not a claim that no other reading exists.
+ *
+ * THE LIST IS DELIBERATELY SHORT, AND IT USED TO BE LONGER. An earlier pass put
+ * the console marks, the two named vendors and the cited repository accounts
+ * here, on the argument that they are unactionable. That was a RULING dressed as
+ * a category, and ruling is not this module's job: whether a citation may stay
+ * is the open question GDD §11 carries, and answering it by declining to count
+ * the mentions hands a human a number that is quietly wrong. They are all on the
+ * watchlist now and every mention is pinned. What is left here is only the
+ * narrow set where WATCHING WOULD BREAK THE CHECK ITSELF:
+ *
+ *   - a name the governing documents require and that has no mark to infringe
+ *     (a formula eponym),
+ *   - a name that is generated dependency metadata rather than a citation, so
+ *     watching it makes the inventory churn on `npm install`,
+ *   - a name that is also ordinary English in the sense the tree actually uses
+ *     it, so watching it produces false positives and nothing else.
+ *
+ * If an entry here cannot be defended on one of those three, it belongs on the
+ * watchlist and the count belongs in front of a human.
  *
  * `realIp.test.ts` asserts this list and the watchlist are disjoint, so a name
- * cannot be quietly on both.
+ * cannot be quietly on both, and asserts none of these matches the watchlist.
  */
 export const DELIBERATELY_NOT_WATCHED: readonly WatchEntry[] = Object.freeze([
+  // --- formula and algorithm eponyms ---------------------------------------
+  // Required BY NAME by CLAUDE.md's domain-correctness section — `Brzycki` by
+  // its prohibition, which cannot be written without writing the name. A surname
+  // attached to a published formula is not a licensable identity in §12.3's
+  // sense: there is no agreement to sign and no mark to infringe.
   { name: 'Epley', kind: 'athlete', note: 'e1RM formula. CLAUDE.md mandates it by name.' },
   { name: 'Brzycki', kind: 'athlete', note: 'e1RM formula. CLAUDE.md bans it by name.' },
   { name: 'Wilks', kind: 'athlete', note: 'Scoring coefficient. CLAUDE.md names it.' },
   { name: 'Tuchscherer', kind: 'athlete', note: 'RPE chart. CLAUDE.md names it.' },
   { name: 'Konertz', kind: 'athlete', note: 'DOTS author, credited in dots.ts.' },
   { name: 'Hinnant', kind: 'athlete', note: 'Civil-date algorithm, transcribed in streak.ts.' },
+
+  // --- code hosts and the dependency graph ----------------------------------
+  // A CATEGORY EXCLUSION, NOT AN ENUMERATION. This is the plumbing a citation
+  // travels over rather than the thing cited, and it is the one group where
+  // watching would break the audit rather than extend it: `package.json` and
+  // `package-lock.json` are lists of vendor names by construction, so the pinned
+  // inventory would churn on every `npm install` and go red for reasons that
+  // have nothing to do with §12.3 — the cry-wolf failure `patternFor` was given
+  // word boundaries to avoid, one level up.
+  //
+  // The two named below are the ones that appear in PROSE as well as in
+  // metadata, so a reader would otherwise wonder about them. Every other vendor
+  // in `package.json` is excluded by the same reason and is not listed; that is
+  // the one place this list is deliberately not exhaustive, and it is said out
+  // loud rather than left to be discovered.
+  //
+  // The line: a company whose SOFTWARE this project runs on is excluded; a
+  // company this project CITES, COMPARES ITSELF TO, or transcribes a file from
+  // is watched. That is why the two vendors named in prose as architecture and
+  // as the daily-loop bar are on the watchlist and these two are not.
+  { name: 'GitHub', kind: 'project', note: 'Code host. package-lock.json alone carries it on ~75 lines.' },
+  { name: 'GitLab', kind: 'project', note: 'Code host. Excluded with the other for coherence, not for volume.' },
+
+  // --- real names that are also ordinary English ----------------------------
+  // Watching this would produce false positives and nothing else: every
+  // occurrence in the tree is the common noun, in two comments about one-way and
+  // safety valves. A check that fires on English gets suppressed, and a
+  // suppressed check is worse than none. Recorded because a reader sweeping for
+  // game-industry names will hit it and deserves to know it was considered.
+  { name: 'Valve', kind: 'game-industry', note: 'Game studio, and a plumbing noun. Both tree mentions are the noun.' },
 ]);
 
 // ---------------------------------------------------------------------------
@@ -609,6 +860,14 @@ export function isShippedPath(relPath: string): boolean {
  * `src/tuning/audit.ts`: narrow, named, and pinned by a test so it cannot widen
  * quietly. A mention anywhere else in this file — a new helper, a comment, a
  * doc block — is reported like any other.
+ *
+ * "NARROW" MEANS THE LITERAL, NOT THE REGION. `declarationRegions` runs each
+ * declaration up to the next one, so a region includes the doc comment of
+ * whatever follows it; taken literally that put a long paragraph of prose inside
+ * an exempt window, and the window grew every time somebody wrote a longer
+ * comment. `declarationLiteralEnd` cuts each range at the declaration's own
+ * closing bracket instead. `realIp.test.ts` plants a name in the paragraph that
+ * used to be covered and asserts it is reported.
  */
 export const WATCHLIST_FILE = 'src/licensing/realIp.ts';
 
@@ -645,6 +904,54 @@ function isInComment(source: string, stripped: string, index: number): boolean {
   return stripped[index] !== source[index];
 }
 
+const BRACKET_OPEN = '([{';
+const BRACKET_CLOSE = ')]}';
+
+/**
+ * The last line of a declaration's own LITERAL, given its region.
+ *
+ * WHY THIS EXISTS AND WHAT IT CLOSES. `declarationRegions` splits a file at
+ * top-level declarations, so a region runs from its `export const` line all the
+ * way to the line before the NEXT declaration — which means it swallows the doc
+ * comment belonging to whatever comes next. Applied to the self-exemption that
+ * put the twenty-odd lines of prose introducing `DELIBERATELY_NOT_WATCHED`
+ * inside `REAL_IP_WATCHLIST`'s exempt window, where a real brand could have been
+ * written into a paragraph and this audit would have said nothing. Nothing had;
+ * the widening was found by measuring the ranges rather than by a finding. It
+ * grew as the file's prose grew, which is the property that made it worth
+ * closing rather than noting: an exemption that widens whenever somebody writes
+ * a longer comment is not a narrow exemption.
+ *
+ * The end is found by balancing brackets over `codeOnly` output, where comments
+ * and string CONTENTS are already blanked — so a `(` inside a note, a URL or a
+ * prose paragraph cannot move it.
+ *
+ * FAILS CLOSED. If the brackets never balance inside the region, this returns
+ * `null` and the caller exempts NOTHING for that region, so the names in it are
+ * reported and the suite goes red. A reformatting that defeats the balance
+ * therefore announces itself instead of silently opening the file up.
+ */
+export function declarationLiteralEnd(
+  codeLines: readonly string[],
+  fromLine: number,
+  toLine: number,
+): number | null {
+  let depth = 0;
+  let opened = false;
+  for (let i = fromLine; i < Math.min(toLine, codeLines.length); i += 1) {
+    for (const ch of codeLines[i] ?? '') {
+      if (BRACKET_OPEN.includes(ch)) {
+        depth += 1;
+        opened = true;
+      } else if (BRACKET_CLOSE.includes(ch)) {
+        depth -= 1;
+      }
+    }
+    if (opened && depth <= 0) return i;
+  }
+  return null;
+}
+
 /** Scan one file's text. `relPath` is repository-relative POSIX. */
 export function scanSourceText(
   relPath: string,
@@ -655,12 +962,18 @@ export function scanSourceText(
   const prose = PROSE_LIKE.test(relPath);
   const stripped = tsLike ? withoutComments(source) : source;
 
+  // The self-exemption, held to the DECLARATION'S OWN LITERAL rather than to the
+  // whole region `declarationRegions` returns — see `declarationLiteralEnd` for
+  // the difference and why it matters. Both bounds are 1-based, inclusive.
   const exemptRanges: { from: number; to: number }[] = [];
   if (relPath === WATCHLIST_FILE) {
-    for (const region of declarationRegions(codeOnly(source))) {
-      if (WATCHLIST_REGIONS.includes(region.name)) {
-        exemptRanges.push({ from: region.fromLine + 1, to: region.toLine });
-      }
+    const code = codeOnly(source);
+    const codeLines = code.split('\n');
+    for (const region of declarationRegions(code)) {
+      if (!WATCHLIST_REGIONS.includes(region.name)) continue;
+      const end = declarationLiteralEnd(codeLines, region.fromLine, region.toLine);
+      if (end === null) continue;
+      exemptRanges.push({ from: region.fromLine + 1, to: end + 1 });
     }
   }
 
@@ -776,6 +1089,53 @@ export function formatCitations(rows: readonly CitationRow[]): string {
  *     the codebase.
  *
  * ===========================================================================
+ * THIS LIST WAS 60 ROWS AND WAS WRONG. IT IS 145, AND THE 85 THAT WERE MISSING
+ * OUTWEIGH EVERYTHING THAT WAS ON IT
+ * ===========================================================================
+ *
+ * Read this before quoting a number off this list, because the number was quoted
+ * before and it was quoted wrong. The count a human is asked to rule on is only
+ * as good as the watchlist that produced it, and the watchlist had TWO holes of
+ * the same shape, found a week apart by different readers:
+ *
+ *   was:  60 rows,  84 mentions, 18 files
+ *   now: 145 rows, 295 mentions, 42 files
+ *
+ * WHAT THE 85 NEW ROWS ARE, so the groups can be ruled on separately — they are
+ * not obviously the same question:
+ *
+ *   - 29 rows / 103 mentions / 15 files — THE OPEN-RESULTS PROJECT AND MEET
+ *     SOFTWARE this repository transcribes its result-card format, its DOTS
+ *     implementation, its plate ladder and its meet flow out of. More than every
+ *     federation acronym on the list put together.
+ *   - 23 rows /  57 mentions / 15 files — CONSOLE, FRANCHISE AND CHARACTER
+ *     MARKS. The art bar is defined by era comparison, so the art modules argue
+ *     about colour depth, vblank-authored animation and how tall a fighting-game
+ *     lead stood. Found by a critic grading the figure rig, not by this module.
+ *   - 15 rows /  23 mentions /  4 files — THE ACCOUNTS AND APPS whose files the
+ *     RPE and DOTS transcriptions were read from, in pinned-commit URLs.
+ *   - 12 rows /  21 mentions / 11 files — TWO NAMED COMPANIES the governing
+ *     documents use as the daily-loop bar and as the backend architecture.
+ *   -  6 rows /   7 mentions /  3 files — A BASEBALL LEAGUE, A CLUB AND A
+ *     CURRENTLY-COMPETING PLAYER, transcribed from the caption of a committed
+ *     reference image. §12.3's own example of how a real mark arrives.
+ *
+ * NOTHING WAS SHIPPING. Category (A) — the default-deny half over every string a
+ * screen can draw — was green throughout and is green now, for the correct
+ * reason rather than by luck. Almost every new mention is provenance in a
+ * comment; the `code` ones are retrieval URLs in `url:` fields and named
+ * constants encoding an era measurement, and none of them renders. What was
+ * broken was the INSTRUMENT, and the failure mode is worth naming precisely: a
+ * default-deny audit that cannot see a name reports the same green as one that
+ * can. A builder added a fresh mention of one of these names in the wave this
+ * paragraph was written and the suite did not move.
+ *
+ * SO THE RULING BELOW IS UNCHANGED AND THE ARITHMETIC IS NOT. Whether these
+ * citations may stay is the same open "citation versus content" question GDD §11
+ * carries for the federation names, and it is not answered here. What changed is
+ * that the question can now be asked about a real number.
+ *
+ * ===========================================================================
  * ONE ROW OF THIS LIST WAS RULED ON A DESCRIPTION THAT DID NOT MATCH THE CODE
  * ===========================================================================
  *
@@ -811,11 +1171,73 @@ export function formatCitations(rows: readonly CitationRow[]): string {
  *     verbatim in every cell that is a CONVENTION — signs, roundings, blanks,
  *     "DQ" — and INVENTED in the one cell that is an IDENTITY. See the header
  *     above those fixtures for the split and why it falls there. KEEP.
- *   - `meet.ts`, `plates.ts`, `palette.ts`, `resultCard.ts`, `meetPalette.ts`,
- *     `spriteTuning.ts`, `gymPalette.ts` — STRUCTURAL RULE REFERENCES. Naming
- *     the body that publishes a rule being implemented (bar weights, plate
- *     ladder, plate colours, knurl spacing). §3 of this header is the ruling.
- *     KEEP.
+ *   - `meet.ts`, `plates.ts`, `palette.ts`, `resultCard.ts`, `spriteTuning.ts`,
+ *     `spriteMarks.ts` — STRUCTURAL RULE REFERENCES. Naming the body that
+ *     publishes a rule being implemented (bar weights, plate ladder, plate
+ *     colours, knurl spacing). §3 of this header is the ruling. KEEP.
+ *     (`meetPalette.ts`, `gymPalette.ts` and `CLAUDE.md` used to be named in
+ *     this bullet and have no rows on the list; the first two lost their
+ *     citations to rewrites and the third never had one. Corrected rather than
+ *     left, because a group description that names files it does not contain is
+ *     the exact drift the paragraph above this one is about.)
+ *   - `dots.ts`, `dots.test.ts`, `meet.ts`, `meet.test.ts`, `meetServer.ts`,
+ *     `meetTuning.ts`, `resultCard.ts`, `resultCard.test.ts`, `plates.ts`,
+ *     `plates.test.ts`, `palette.ts`, `palette.test.ts`, `gymScene.test.ts`,
+ *     `AttemptBoard.tsx`, `docs/GDD.md` — THE OPEN-RESULTS PROJECT, ITS MEET
+ *     SOFTWARE, AND TWO OTHER MEET PLATFORMS. 29 rows, 103 mentions, 15 files:
+ *     the largest group on this list and the one that was missing from it
+ *     entirely until the `project` block was added to the watchlist. Every one
+ *     is a RETRIEVAL CITATION — the URL a format was transcribed from, the
+ *     repository a coefficient implementation was read out of, the two platforms
+ *     `meetTuning.ts` records as having refused the request when it went looking
+ *     for broadcast timings. All in comments; none renders. The judgement is the
+ *     same one §3 makes for a federation acronym and it is the same OPEN
+ *     question: a citation with its source struck out is not a citation, and a
+ *     real organisation's name in a comment is still a real organisation's name.
+ *     NOT RULED HERE. Counted, which is what was missing.
+ *   - `rpe.ts`, `rpe.test.ts`, `dots.ts`, `resultCard.ts` — THE ACCOUNTS AND
+ *     APPS THE TRANSCRIPTIONS CAME FROM. 15 rows, 23 mentions. Half of them are
+ *     `code` rather than `comment`, because `CHART_SOURCES` holds its retrieval
+ *     URLs in `url:` fields; that is a structural choice `rpe.ts` argues for at
+ *     length and not a name leaking toward a screen. Thinner identities than the
+ *     rest of this list — an account handle is not a mark this game could be
+ *     accused of trading on — and correspondingly the easiest group for a human
+ *     to strike in one edit. Listed rather than pre-struck, so striking them is
+ *     a decision. NOT RULED HERE.
+ *   - `craftMetrics.ts`, `craftMetrics.test.ts`, `lifterSprite.test.ts`,
+ *     `palette.ts`, `palette.test.ts`, `gymPalette.ts`, `gymPalette.test.ts`,
+ *     `gymTuning.ts`, `spriteTuning.ts`, `spriteMarks.ts`, `cardTuning.ts`,
+ *     `docs/GDD.md`, `docs/reference/README.md`, `BUILD_PROMPT_CLAUDE.md`, and
+ *     one reference FILENAME — CONSOLE, FRANCHISE AND CHARACTER MARKS. 23 rows,
+ *     57 mentions, 15 files. These are ERA MEASUREMENTS: the colour depth a
+ *     palette is quantised to, the vblank a frame is held for, the sprite height
+ *     a figure is scaled against. GDD §7.1 titles a section with one of them and
+ *     §12.2 makes them the art bar, so unlike the citations above these are
+ *     named by the design document itself — which is an argument for keeping
+ *     them and also the reason there are so many. Six of the rows are `code`:
+ *     era numbers live in named constants, so the mark is in an identifier.
+ *     A SEPARATE QUESTION FROM THE ONE ABOVE and likely to be ruled differently
+ *     — a rulebook citation and "our lifter is shorter than theirs" are not the
+ *     same kind of reference. NOT RULED HERE.
+ *   - `docs/reference/README.md`, `lifterSprite.test.ts`, `craftMetrics.ts` — A
+ *     BASEBALL LEAGUE, A CLUB, AND A CURRENTLY-COMPETING PLAYER. 6 rows, 7
+ *     mentions. They arrive through the CAPTION OF A COMMITTED REFERENCE IMAGE,
+ *     transcribed into a doc and two art modules to explain why that image is a
+ *     NEGATIVE control. §12.3 names this exact route. Worth a human's eye ahead
+ *     of the rest of this list, because it is the only group here naming a
+ *     living athlete who is not a powerlifter and has no reason to expect to be
+ *     in this repository at all — and because the IMAGE ITSELF carries that
+ *     league's logo and that player's likeness in pixels, where no text scan
+ *     will ever find them. NOT RULED HERE.
+ *   - `streak.ts`, `streak.test.ts`, `tuning/index.ts`, `progression.ts`,
+ *     `progression.test.ts`, `sessionServer.ts`, `meetServer.ts`,
+ *     `appServer.ts`, `localSessionServer.ts`, `CLAUDE.md`, `docs/GDD.md` — TWO
+ *     NAMED COMPANIES. 12 rows, 21 mentions. One is the daily-loop bar GDD §12.2
+ *     names; the other is the backend CLAUDE.md's architecture section names.
+ *     Both are prose and comments about design decisions, and neither is a
+ *     dependency — if either becomes one, the code-host reasoning in
+ *     `DELIBERATELY_NOT_WATCHED` starts to apply and this group should be
+ *     revisited. NOT RULED HERE.
  *   - `audit.ts` — the same, inside a `why:` rationale string rather than a
  *     comment. `where: 'code'` for that reason, and worth a human's eye
  *     precisely because a string is one edit from a screen: it is a REASON given
@@ -878,19 +1300,51 @@ export function formatCitations(rows: readonly CitationRow[]): string {
  * cites one real name" is exactly the place a second one would be added without
  * anyone looking.
  *
- * KNOWN DIVERGENCE AT THE TIME OF WRITING, so whoever merges does not have to
- * work it out: this branch was cut before `src/art/gymPalette.ts` lost its
- * federation reference on the integration branch. On merge, the
- * `src/art/gymPalette.ts` row below will be one row too many and the suite will
- * say so. Delete that line. Every other file with a row here is byte-identical
- * on both branches — checked, not assumed.
+ * THAT COST HAS ROUGHLY DOUBLED AND SHOULD BE EXPECTED ON MERGE — say it plainly
+ * so nobody debugs it twice. The rows below were regenerated against a branch
+ * cut from the integration branch mid-wave, and the list went from 18 files to
+ * 42. The new files include most of `src/art/` — the figure rig, the craft
+ * metrics, the palettes, the sprite tuning — because the era marks are cited in
+ * exactly the modules being reworked hardest, by builders in parallel worktrees,
+ * right now. Expect this test to be the first thing that reds on a merge.
+ *
+ * A count that is off by one on merge is this list WORKING, not this list
+ * broken: regenerate from the block the test prints, read the diff, and only
+ * worry if a row DISAPPEARED that nobody meant to remove.
+ *
+ * (The previous note here described a `src/art/gymPalette.ts` row that would be
+ * "one row too many" after a merge. There is no such row and there was none when
+ * that note was written; the removal it anticipated had already happened. It is
+ * replaced rather than kept, on the same principle as the drift paragraph above:
+ * an instruction to delete a line that does not exist sends the next reader
+ * looking for a bug in the scan.)
  */
 export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
+  { file: 'BUILD_PROMPT_CLAUDE.md', name: 'Genesis', where: 'prose', count: 1 },
+  { file: 'BUILD_PROMPT_CLAUDE.md', name: 'SNES', where: 'prose', count: 1 },
+  { file: 'CLAUDE.md', name: 'Supabase', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'Duolingo', where: 'prose', count: 5 },
+  { file: 'docs/GDD.md', name: 'Game Boy', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'Genesis', where: 'prose', count: 2 },
   { file: 'docs/GDD.md', name: 'NPL', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'OpenPowerlifting', where: 'prose', count: 1 },
+  { file: 'docs/GDD.md', name: 'SNES', where: 'prose', count: 2 },
+  { file: 'docs/GDD.md', name: 'Supabase', where: 'prose', count: 3 },
   { file: 'docs/GDD.md', name: 'USAPL', where: 'prose', count: 1 },
   { file: 'docs/GDD.md', name: 'USPA', where: 'prose', count: 1 },
   { file: 'docs/reference/meet-photo-ref-1-ipf-squat-bottom.webp', name: 'IPF', where: 'filename', count: 1 },
   { file: 'docs/reference/README.md', name: 'IPF', where: 'prose', count: 2 },
+  { file: 'docs/reference/README.md', name: 'MLB', where: 'prose', count: 1 },
+  { file: 'docs/reference/README.md', name: 'Mullins', where: 'prose', count: 1 },
+  { file: 'docs/reference/README.md', name: 'Orioles', where: 'prose', count: 1 },
+  { file: 'docs/reference/README.md', name: 'SNES', where: 'prose', count: 4 },
+  { file: 'docs/reference/sprite-ref-1-snes-wrestling.png', name: 'SNES', where: 'filename', count: 1 },
+  { file: 'src/art/craftMetrics.test.ts', name: 'SNES', where: 'code', count: 6 },
+  { file: 'src/art/craftMetrics.ts', name: 'MLB', where: 'comment', count: 1 },
+  { file: 'src/art/craftMetrics.ts', name: 'SNES', where: 'code', count: 6 },
+  { file: 'src/art/craftMetrics.ts', name: 'SNES', where: 'comment', count: 3 },
+  { file: 'src/art/gymPalette.test.ts', name: 'SNES', where: 'comment', count: 2 },
+  { file: 'src/art/gymPalette.ts', name: 'SNES', where: 'comment', count: 2 },
   // `gymScene.test.ts` is now the LAST bespoke real-IP ban in the tree; its
   // names are here because they are the check's own operands. The environment
   // builder wrote it independently and before this module existed, which is
@@ -915,6 +1369,8 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/art/gymScene.test.ts', name: 'Larry Wheels', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'Nike', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'NPL', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'OpenLifter', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'OpenPowerlifting', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'Powerlifting America', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'Ray Williams', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'Reebok', where: 'code', count: 1 },
@@ -924,14 +1380,33 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/art/gymScene.test.ts', name: 'USAPL', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'USPA', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'WRPF', where: 'code', count: 1 },
+  { file: 'src/art/gymTuning.ts', name: 'SNES', where: 'comment', count: 1 },
+  { file: 'src/art/lifterSprite.test.ts', name: 'MLB', where: 'comment', count: 2 },
+  { file: 'src/art/lifterSprite.test.ts', name: 'Mullins', where: 'comment', count: 1 },
+  { file: 'src/art/lifterSprite.test.ts', name: 'SNES', where: 'code', count: 3 },
+  { file: 'src/art/lifterSprite.test.ts', name: 'SNES', where: 'comment', count: 5 },
+  { file: 'src/art/palette.test.ts', name: 'OpenLifter', where: 'comment', count: 1 },
+  { file: 'src/art/palette.test.ts', name: 'SNES', where: 'comment', count: 1 },
+  { file: 'src/art/palette.ts', name: 'Genesis', where: 'comment', count: 3 },
   // `gymPalette.ts` HAD a federation citation for the plate-colour standard and
   // no longer does: its builder rewrote the comment to state the standard without
   // naming the body. That is a removal this list is supposed to notice, and it
   // was noticed — on merge, by this test, exactly as designed.
   { file: 'src/art/palette.ts', name: 'IPF', where: 'comment', count: 2 },
+  { file: 'src/art/palette.ts', name: 'OpenLifter', where: 'comment', count: 6 },
+  { file: 'src/art/palette.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
+  { file: 'src/art/palette.ts', name: 'SNES', where: 'comment', count: 6 },
+  { file: 'src/art/plates.test.ts', name: 'OpenLifter', where: 'comment', count: 1 },
   { file: 'src/art/plates.ts', name: 'IPF', where: 'comment', count: 2 },
+  { file: 'src/art/plates.ts', name: 'OpenLifter', where: 'comment', count: 7 },
+  { file: 'src/art/plates.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
   { file: 'src/art/spriteMarks.ts', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'src/art/spriteMarks.ts', name: 'SNES', where: 'comment', count: 1 },
+  { file: 'src/art/spriteTuning.ts', name: 'Genesis', where: 'comment', count: 1 },
   { file: 'src/art/spriteTuning.ts', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'src/art/spriteTuning.ts', name: 'Ryu', where: 'comment', count: 1 },
+  { file: 'src/art/spriteTuning.ts', name: 'SNES', where: 'comment', count: 3 },
+  { file: 'src/card/cardTuning.ts', name: 'SNES', where: 'comment', count: 1 },
   { file: 'src/card/renderResultCard.test.ts', name: 'IPF', where: 'comment', count: 1 },
   { file: 'src/card/sampleCards.ts', name: 'NPL', where: 'comment', count: 1 },
   { file: 'src/card/sampleCards.ts', name: 'USAPL', where: 'comment', count: 1 },
@@ -939,24 +1414,68 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/game/dots.test.ts', name: 'Amanda Lawrence', where: 'comment', count: 1 },
   { file: 'src/game/dots.test.ts', name: 'IPF', where: 'comment', count: 1 },
   { file: 'src/game/dots.test.ts', name: 'Jesus Olivares', where: 'comment', count: 1 },
+  { file: 'src/game/dots.test.ts', name: 'OpenPowerlifting', where: 'comment', count: 2 },
   { file: 'src/game/dots.test.ts', name: 'SBD', where: 'comment', count: 1 },
   { file: 'src/game/dots.test.ts', name: 'SBD Sheffield', where: 'comment', count: 1 },
   { file: 'src/game/dots.ts', name: 'BVDK', where: 'comment', count: 2 },
   { file: 'src/game/dots.ts', name: 'IPF', where: 'comment', count: 2 },
+  { file: 'src/game/dots.ts', name: 'Marantesss', where: 'comment', count: 1 },
+  { file: 'src/game/dots.ts', name: 'OpenPowerlifting', where: 'comment', count: 15 },
+  { file: 'src/game/dots.ts', name: 'OPL', where: 'comment', count: 2 },
+  { file: 'src/game/dots.ts', name: 'sstangl', where: 'comment', count: 1 },
+  { file: 'src/game/meet.test.ts', name: 'OpenLifter', where: 'code', count: 5 },
+  { file: 'src/game/meet.test.ts', name: 'OpenLifter', where: 'comment', count: 1 },
+  { file: 'src/game/meet.test.ts', name: 'OpenPowerlifting', where: 'code', count: 1 },
+  { file: 'src/game/meet.test.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
   { file: 'src/game/meet.ts', name: 'IPF', where: 'comment', count: 4 },
+  { file: 'src/game/meet.ts', name: 'OpenLifter', where: 'comment', count: 10 },
+  { file: 'src/game/meet.ts', name: 'OpenPowerlifting', where: 'comment', count: 4 },
   { file: 'src/game/meet.ts', name: 'USAPL', where: 'comment', count: 1 },
   { file: 'src/game/meet.ts', name: 'USPA', where: 'comment', count: 1 },
+  { file: 'src/game/meetServer.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
+  { file: 'src/game/meetServer.ts', name: 'Supabase', where: 'comment', count: 1 },
+  { file: 'src/game/meetTuning.ts', name: 'goodlift.info', where: 'comment', count: 1 },
+  { file: 'src/game/meetTuning.ts', name: 'LiftingCast', where: 'comment', count: 1 },
   { file: 'src/game/meetTuning.ts', name: 'NPL', where: 'comment', count: 1 },
+  { file: 'src/game/meetTuning.ts', name: 'OpenPowerlifting', where: 'comment', count: 1 },
   { file: 'src/game/meetTuning.ts', name: 'USAPL', where: 'comment', count: 1 },
   { file: 'src/game/meetTuning.ts', name: 'USPA', where: 'comment', count: 1 },
+  { file: 'src/game/progression.test.ts', name: 'Supabase', where: 'code', count: 1 },
+  { file: 'src/game/progression.ts', name: 'Supabase', where: 'comment', count: 1 },
   { file: 'src/game/resultCard.test.ts', name: 'IPF', where: 'code', count: 7 },
   { file: 'src/game/resultCard.test.ts', name: 'IPF', where: 'comment', count: 4 },
+  { file: 'src/game/resultCard.test.ts', name: 'OpenPowerlifting', where: 'comment', count: 2 },
+  { file: 'src/game/resultCard.test.ts', name: 'OPL', where: 'comment', count: 2 },
   { file: 'src/game/resultCard.ts', name: 'IPF', where: 'comment', count: 3 },
   { file: 'src/game/resultCard.ts', name: 'NPL', where: 'comment', count: 1 },
+  { file: 'src/game/resultCard.ts', name: 'OpenLifter', where: 'comment', count: 12 },
+  { file: 'src/game/resultCard.ts', name: 'OpenPowerlifting', where: 'comment', count: 16 },
+  { file: 'src/game/resultCard.ts', name: 'OPL', where: 'comment', count: 4 },
   { file: 'src/game/resultCard.ts', name: 'SBD', where: 'comment', count: 2 },
+  { file: 'src/game/resultCard.ts', name: 'sstangl', where: 'comment', count: 2 },
   { file: 'src/game/resultCard.ts', name: 'Tiffany Chapon', where: 'comment', count: 1 },
   { file: 'src/game/resultCard.ts', name: 'USAPL', where: 'comment', count: 3 },
   { file: 'src/game/resultCard.ts', name: 'USPA', where: 'comment', count: 1 },
+  { file: 'src/game/rpe.test.ts', name: 'karolczyz', where: 'code', count: 1 },
+  { file: 'src/game/rpe.test.ts', name: 'karolczyz', where: 'comment', count: 1 },
+  { file: 'src/game/rpe.test.ts', name: 'metriclift', where: 'code', count: 2 },
+  { file: 'src/game/rpe.test.ts', name: 'metriclift', where: 'comment', count: 2 },
+  { file: 'src/game/rpe.test.ts', name: 'Sculpt-AI', where: 'code', count: 1 },
+  { file: 'src/game/rpe.test.ts', name: 'Sculpt-AI', where: 'comment', count: 2 },
+  { file: 'src/game/rpe.ts', name: 'karolczyz', where: 'code', count: 1 },
+  { file: 'src/game/rpe.ts', name: 'karolczyz', where: 'comment', count: 1 },
+  { file: 'src/game/rpe.ts', name: 'metriclift', where: 'code', count: 2 },
+  { file: 'src/game/rpe.ts', name: 'metriclift', where: 'comment', count: 1 },
+  { file: 'src/game/rpe.ts', name: 'Sculpt-AI', where: 'code', count: 3 },
+  { file: 'src/game/rpe.ts', name: 'Sculpt-AI', where: 'comment', count: 2 },
+  { file: 'src/game/sessionServer.ts', name: 'Supabase', where: 'comment', count: 2 },
+  { file: 'src/game/streak.test.ts', name: 'Duolingo', where: 'comment', count: 1 },
+  { file: 'src/game/streak.ts', name: 'Duolingo', where: 'comment', count: 3 },
+  { file: 'src/meet/AttemptBoard.tsx', name: 'OpenLifter', where: 'comment', count: 1 },
+  { file: 'src/meet/AttemptBoard.tsx', name: 'OpenPowerlifting', where: 'comment', count: 1 },
+  { file: 'src/session/localSessionServer.ts', name: 'Supabase', where: 'comment', count: 1 },
+  { file: 'src/shell/appServer.ts', name: 'Supabase', where: 'comment', count: 1 },
   { file: 'src/tuning/audit.ts', name: 'IPF', where: 'code', count: 2 },
+  { file: 'src/tuning/index.ts', name: 'Duolingo', where: 'comment', count: 1 },
   { file: 'src/tuning/index.ts', name: 'IPF', where: 'comment', count: 1 },
 ]);
