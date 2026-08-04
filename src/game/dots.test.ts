@@ -1384,7 +1384,10 @@ describe('DOTS deltas (GDD §6.5 recap call-outs)', () => {
       const bar = DEFAULT_MEET_RULES.barAndCollarsWeight[lift];
       expect(bar).toBe(MIN_LOADABLE_WEIGHT_KG);
     }
-    for (const tooLight of [0.5, 2.5, MIN_LOADABLE_WEIGHT_KG - DEFAULT_MEET_RULES.declarationIncrement]) {
+    // On the declaration grid but under the bar, so only the bar gate can refuse
+    // them — an off-grid weight would be caught by WEIGHT_NOT_DECLARABLE even
+    // with the floor deleted, and would make this a weaker check than it looks.
+    for (const tooLight of [2.5, MIN_LOADABLE_WEIGHT_KG - DEFAULT_MEET_RULES.declarationIncrement, 0.5]) {
       const refused = declareAttempt(createMeet(), { weight: tooLight });
       expect(refused.ok).toBe(false);
       if (refused.ok) throw new Error(`meet.ts accepted ${tooLight}, which is under the bar`);
