@@ -330,6 +330,10 @@ import type {
 } from './progression';
 import { snapshotWireFor, type ServerRecord } from './sessionServer';
 import type { MeetDefinition } from './meetTuning';
+// Type-only. `meetDayFacts` takes the training seed's KILOGRAM arm, so the one
+// number that crosses training -> meet arrives with its unit attached instead
+// of with a `Kg` in a parameter name.
+import type { KilogramStartingE1rm } from './sessionTuning';
 
 // ---------------------------------------------------------------------------
 // Replaying a reported card
@@ -1003,19 +1007,44 @@ export interface MeetDayFacts {
 }
 
 /**
- * @param fallbackE1rmKg what to prescribe from for a lift with no e1RM on
- * record yet. The caller supplies it (`SESSION_TUNING.STARTING_E1RM_KG` is the
- * onboarding placeholder `sessionServer.ts` already uses) rather than this
- * module inventing a number.
+ * THE ONE PLACE A TRAINING NUMBER CROSSES INTO MEET DAY, and the parameter
+ * carries its unit rather than asserting it in a name.
+ *
+ * It used to be `fallbackE1rmKg: Readonly<Record<LiftKind, number>>` — a bare
+ * record with the unit in the identifier — and `useMeetDay.ts` passed
+ * `SESSION_TUNING.STARTING_E1RM_KG`, which was three bare numbers with the unit
+ * in ITS identifier. So on the piece whose whole subject is cross-mode
+ * coherence, the single number that crosses training → meet was the one number
+ * on the boundary with no unit field anywhere along it. From here it becomes
+ * `MeetDayContext.bestE1rmKg`, `suggestOpener` turns it into a declared attempt
+ * and `stageLoadRatio` divides a proven-kilogram meet weight by it.
+ *
+ * `KilogramStartingE1rm` is the NARROWED arm, not the union, so this function
+ * needs no runtime branch and no refusal path: the caller has to have narrowed
+ * before it can call. That keeps meet day's own read total — GDD §12.3's "never
+ * punish daily engagement" would be badly served by a `meetDayFacts` that could
+ * fail and leave a lifter unable to open a meet.
+ *
+ * WHAT IS NOT DONE HERE, said so it is not mistaken for done: `MeetDayFacts.
+ * bestE1rmKg` below is still a bare `Readonly<Record<LiftKind, number>>`, and so
+ * is `MeetDayContext.bestE1rmKg`. Those are meet day's own in-memory rows rather
+ * than anything written to permanent progression, they are the same class as
+ * `MeetDayAttempt.weightKg` which GDD §11 already names, and widening them is a
+ * change to the meet-day loop rather than to this boundary.
+ *
+ * @param fallbackE1rm what to prescribe from for a lift with no e1RM on record
+ * yet. The caller supplies it (`SESSION_TUNING.STARTING_E1RM` is the seed
+ * `sessionServer.ts` already writes on a new account) rather than this module
+ * inventing a number.
  */
 export function meetDayFacts(
   record: ServerRecord,
   day: number,
-  fallbackE1rmKg: Readonly<Record<LiftKind, number>>,
+  fallbackE1rm: KilogramStartingE1rm,
 ): MeetDayFacts {
   const bestE1rmKg: Record<LiftKind, number> = { squat: 0, bench: 0, deadlift: 0 };
   for (const lift of LIFT_ORDER) {
-    bestE1rmKg[lift] = record.bestE1rmKg[lift] ?? fallbackE1rmKg[lift];
+    bestE1rmKg[lift] = record.bestE1rmKg[lift] ?? fallbackE1rm.kilograms[lift];
   }
   return {
     day,

@@ -135,7 +135,7 @@ export function useMeetDay(initial?: MeetDayState, frozen: boolean = false): Mee
 
   const buildMeet = useCallback((): MeetDayState => {
     const day = streakDayFromLocalWallClock(nowWallClock());
-    const facts = meetDayFacts(recordRef.current, day, SESSION_TUNING.STARTING_E1RM_KG);
+    const facts = meetDayFacts(recordRef.current, day, SESSION_TUNING.STARTING_E1RM);
     const context: MeetDayContext = {
       day: facts.day,
       meet: MEET_LOCAL,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ACCESSORY_IS_NOT_A_COMPETITION_LIFT,
+  A_STARTING_E1RM_CAN_DECLARE_A_UNIT_THIS_RECORD_REFUSES,
   REPORTED_LIFT_IS_A_COMPETITION_LIFT,
   SIM_LIFTS_ARE_COMPETITION_LIFTS_PLUS_ACCESSORY,
   applyTrainingSession,
@@ -13,9 +14,15 @@ import {
   todayForLifter,
   type ServerRecord,
 } from './sessionServer';
-import { SESSION_PROGRESSION_GUARD, SESSION_TUNING } from './sessionTuning';
+import {
+  SESSION_PROGRESSION_GUARD,
+  SESSION_TUNING,
+  type StartingE1rmSeed,
+} from './sessionTuning';
 import {
   A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT,
+  FACT_PROTECTION,
+  PROGRESSION_FACT_KEYS,
   TRAINING_CARD_REPORT_KEYS,
   applyServerSnapshot,
   asProposalId,
@@ -270,7 +277,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
     // client and is NOT a defence against this one — see the harm test below for
     // what it does and does not buy.
     expect(asKg.value.bestE1rmKg).toBeCloseTo(
-      SESSION_TUNING.STARTING_E1RM_KG.squat *
+      SESSION_TUNING.STARTING_E1RM.kilograms.squat *
         (1 + SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION),
       9,
     );
@@ -314,7 +321,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
     expect(recorded.ok, recorded.ok ? '' : recorded.error.message).toBe(true);
     if (!recorded.ok) throw new Error('unreachable');
     expect(recorded.value.record.bestE1rmKg.squat).toBeCloseTo(
-      SESSION_TUNING.STARTING_E1RM_KG.squat *
+      SESSION_TUNING.STARTING_E1RM.kilograms.squat *
         (1 + SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION),
       9,
     );
@@ -467,7 +474,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
     );
     expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
     if (!applied.ok) throw new Error('unreachable');
-    expect(applied.value.record.bestE1rmKg.squat).toBe(SESSION_TUNING.STARTING_E1RM_KG.squat);
+    expect(applied.value.record.bestE1rmKg.squat).toBe(SESSION_TUNING.STARTING_E1RM.kilograms.squat);
     expect(applied.value.isPr).toBe(false);
     expect(applied.value.streakAfter).toBe(1);
   });
@@ -521,6 +528,169 @@ describe('a session whose unit this record cannot store is refused, not recorded
     // open display-unit question, and it is not taken here.
     expect(RPE_LOADING_TUNING.ROUNDING_INCREMENT.kg).toBe(2.5);
     expect(RPE_LOADING_TUNING.ROUNDING_INCREMENT.lb).toBe(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The OTHER route into `bestE1rmKg`: the seed
+// ---------------------------------------------------------------------------
+
+describe('the seed that starts a record is progression, and its unit is a field', () => {
+  // A card is not the only way a number gets into `bestE1rmKg`. `newServerRecord`
+  // seeds it on every account, and for four rounds it seeded from three bare
+  // numbers whose unit lived in an identifier (`STARTING_E1RM_KG`) under a
+  // comment saying "NOT PROGRESSION. Nothing here is persisted and nothing
+  // derives from it once the server has a real number." These tests are what
+  // makes that comment's replacement checkable rather than a second promise.
+
+  it('THE SEED REACHES A CONFIRMED, PROTECTED FACT — the whole route, run', () => {
+    // The claim the old comment denied, demonstrated end to end rather than
+    // argued: nothing here is a stub, every step is the shipped function, and
+    // the number that comes out the far side is the one the constant declares.
+    const record = newServerRecord();
+    const received = receiveProgressionSnapshot(snapshotWireFor(record, null));
+    expect(received.ok, received.ok ? '' : received.error.message).toBe(true);
+    if (!received.ok) throw new Error('unreachable');
+    const applied = applyServerSnapshot(emptyProgressionCache(), received.value);
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+
+    for (const lift of LIFT_ORDER) {
+      const reading = readBestE1rmKg(applied.value, lift);
+      // CONFIRMED, not projected: it arrived through the snapshot door.
+      expect(isConfirmedReading(reading), lift).toBe(true);
+      expect(readingValue(reading), lift).toBe(SESSION_TUNING.STARTING_E1RM.kilograms[lift]);
+    }
+    // And it is the field this boundary protects, named off the module's own
+    // lists rather than restated here.
+    expect([...PROGRESSION_FACT_KEYS]).toContain('bestE1rmKg');
+    expect(FACT_PROTECTION.bestE1rmKg).toBe('protected');
+  });
+
+  it('THE SEED IS A PERMANENT FLOOR, so it never stops deriving', () => {
+    // The second false clause: "nothing derives from it once the server has a
+    // real number". `nextBestE1rm` is monotone, so a lifter whose true squat
+    // e1RM is well under the seed carries the seed forever — the real number
+    // never replaces it, it only ever fails to beat it.
+    const seeded = SESSION_TUNING.STARTING_E1RM.kilograms.squat;
+    // 138 kg for 3 @ RPE 8 is ~160 kg on the chart read backwards: an honest,
+    // legal, fully-recorded session from a genuinely weaker lifter.
+    const honest = applyTrainingSession(newServerRecord(), 0, kgProposalOf([set('squat', 138, 3, 8)]), 'p-1');
+    expect(honest.ok, honest.ok ? '' : honest.error.message).toBe(true);
+    if (!honest.ok) throw new Error('unreachable');
+    expect(honest.value.record.bestE1rmKg.squat).toBe(seeded);
+    expect(honest.value.isPr).toBe(false);
+    // The day still counts — the floor costs the lifter nothing on GDD §12.3's
+    // "never punish daily engagement", it just does not move.
+    expect(honest.value.streakAfter).toBe(1);
+
+    // Ten more of them. Still the seed, and still what tomorrow's bar is
+    // prescribed from and what meet day would open off.
+    let record = honest.value.record;
+    for (let day = 1; day <= 10; day += 1) {
+      const step = applyTrainingSession(record, day, kgProposalOf([set(liftForDay(day), 100, 3, 8)]), `p-${day}`);
+      if (!step.ok) throw new Error(step.error.message);
+      record = step.value.record;
+    }
+    expect(record.bestE1rmKg.squat).toBe(seeded);
+    expect(todayForLifter(record, 11, 'squat').e1rmKg).toBe(seeded);
+  });
+
+  it('A NEW ACCOUNT STILL GETS A WORKING FIRST SESSION, computed FROM the seed', () => {
+    // GDD §12.3, "never punish daily engagement": whatever the unit check does,
+    // a lifter who has just signed up must be able to train today. The first
+    // session's ceiling is the seed times the per-session cap, which is only
+    // true while the seed is what the record was started with.
+    const record = newServerRecord();
+    const today = todayForLifter(record, 0, 'squat');
+    expect(today.e1rmKg).toBe(SESSION_TUNING.STARTING_E1RM.kilograms.squat);
+    expect(today.bestE1rmKg).toBe(SESSION_TUNING.STARTING_E1RM.kilograms.squat);
+    expect(today.alreadyTrainedToday).toBe(false);
+
+    // Played end to end on the real mechanic, not hand-fed.
+    const played = playAgainst(record, 0, PRIMED, 8);
+    const closeOut = played.state.closeOut;
+    expect(closeOut).not.toBeNull();
+    if (closeOut === null) throw new Error('unreachable');
+    const proposal = sessionProposal(closeOut, WALL_CLOCK);
+    expect(proposal).not.toBeNull();
+    if (proposal === null) throw new Error('unreachable');
+    const applied = applyTrainingSession(record, 0, proposal, 'p-first');
+    expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+    expect(applied.value.streakAfter).toBe(1);
+    expect(applied.value.record.bestE1rmKg[played.lift]).not.toBeNull();
+    expect(applied.value.record.bestE1rmKg[played.lift]!).toBeLessThanOrEqual(
+      SESSION_TUNING.STARTING_E1RM.kilograms[played.lift] *
+        (1 + SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION) +
+        1e-9,
+    );
+  });
+
+  it('the unit is a FIELD, and the magnitudes are unreachable without it', () => {
+    // The shape claim, in the same form as the training card's. There is no
+    // `value`, no `perLift` and no `e1rm` field reachable from both arms, so no
+    // expression anywhere yields the three numbers without naming a unit first
+    // — which is what makes flipping the unit a build error rather than a
+    // silent 2.2x. `tsc` is the assertion; this is the runtime shadow of it.
+    expect(Object.keys(SESSION_TUNING.STARTING_E1RM).sort()).toEqual(['kilograms', 'unit']);
+    expect(SESSION_TUNING.STARTING_E1RM.unit).toBe('kg');
+    expect(Object.keys(SESSION_TUNING.STARTING_E1RM.kilograms).sort()).toEqual(
+      [...LIFT_ORDER].sort(),
+    );
+    // And the seed's type can still EXPRESS a unit this record refuses, so the
+    // narrow in `sessionServer.ts` is discriminating rather than vacuous. This
+    // constant is `true` only because it type-checked; reading it here is what
+    // keeps it from being deleted as unused.
+    expect(A_STARTING_E1RM_CAN_DECLARE_A_UNIT_THIS_RECORD_REFUSES).toBe(true);
+    // The write really does come off the tagged field, per lift.
+    expect(newServerRecord().bestE1rmKg).toEqual({ ...SESSION_TUNING.STARTING_E1RM.kilograms });
+  });
+
+  it('THE RESIDUAL, PINNED: the tag proves what was DECLARED, not what was TYPED', () => {
+    // Said out loud in the suite rather than only in a comment, because
+    // rounding a guarantee up is how this defect class survived earlier rounds.
+    //
+    // WHAT IS A COMPILE ERROR: declaring the seed in any other unit. Flipping
+    // `unit` to `'lb'` without converting fails `satisfies StartingE1rmSeed` at
+    // the constant; flipping it AND converting fails the
+    // `PROVEN_STARTING_E1RM: ProvenStartingE1rm` binding in `sessionServer.ts`;
+    // widening that annotation to the union fails `newServerRecord`, because
+    // `.kilograms` does not exist on the pound arm. None of those reach a test.
+    //
+    // WHAT IS NOT CHECKED ANYWHERE: the magnitudes. A seed carrying pound
+    // numbers under a `'kg'` tag is a well-formed `StartingE1rmSeed` and every
+    // guard in the tree stays green. Constructed here so the hole is a value on
+    // the page rather than a sentence.
+    const lying: StartingE1rmSeed = {
+      // A 180 kg squat, a 120 kg bench and a 220 kg deadlift, TYPED IN POUNDS by
+      // somebody answering GDD §11's display-unit question one edit at a time.
+      unit: 'kg',
+      kilograms: { squat: 397, bench: 265, deadlift: 485 },
+    };
+    if (lying.unit !== 'kg') throw new Error('unreachable');
+    // It narrows cleanly, reads cleanly, and is 2.2x wrong. Measured against
+    // `KILOGRAMS_PER_POUND` rather than against the shipped seed, so this stays
+    // true when a human retunes the magnitudes.
+    expect(lying.kilograms.squat * KILOGRAMS_PER_POUND).toBeCloseTo(180.07, 1);
+    expect(lying.kilograms.deadlift * KILOGRAMS_PER_POUND).toBeCloseTo(219.99, 1);
+    // Nothing refuses it, and no plausibility band is invented here to pretend
+    // otherwise: a bound on "how strong may a beginner be" is a game-feel guess,
+    // and a guessed constant standing in for a check is exactly what GDD §11
+    // records going wrong once already with `HUMAN_INPUT_BUDGET_MS`.
+    //
+    // AND DO NOT MISREAD WHAT THE SUITE DOES ON THAT EDIT. Making the same edit
+    // to the shipped constant DOES turn several tests in this file red — but
+    // only because they pin the arithmetic that 180/120/220 produce. They go red
+    // for ANY change to these magnitudes, including a legitimate retune from 180
+    // to 185, and not one of them mentions a unit. That is a change detector,
+    // not a unit check, and it must not be counted as one: a human retuning the
+    // seed updates those expectations and the pound magnitudes go through.
+    //
+    // What the shape DOES buy, stated as the narrower thing it is: the unit and
+    // the magnitudes can no longer be moved apart without the diff saying so.
+    // Both live in one object literal, in one file, on adjacent lines.
+    expect(SESSION_TUNING.STARTING_E1RM.unit).toBe('kg');
   });
 });
 
@@ -1037,8 +1207,9 @@ describe('the whole round trip — client proposes, server publishes, client rea
     }
     expect(primedHalf.filter((step) => step.isPr)).toHaveLength(5);
 
-    // Hand-written per lift, from the onboarding placeholders in
-    // `SESSION_TUNING.STARTING_E1RM_KG` (squat 180, bench 120, deadlift 220).
+    // Hand-written per lift, from the seed magnitudes in
+    // `SESSION_TUNING.STARTING_E1RM.kilograms` (squat 180, bench 120,
+    // deadlift 220).
     expect(primedHalf.map((step) => step.lift)).toEqual([
       'deadlift',
       'squat',
@@ -1061,14 +1232,14 @@ describe('the whole round trip — client proposes, server publishes, client rea
     expect(record.bestE1rmKg.squat).toBeCloseTo(195.2278, 4);
     expect(record.bestE1rmKg.bench).toBeCloseTo(124.5655, 4);
     expect(record.bestE1rmKg.deadlift).toBeCloseTo(238.2287, 4);
-    expect(record.bestE1rmKg.squat! / SESSION_TUNING.STARTING_E1RM_KG.squat).toBeCloseTo(1.0846, 4);
+    expect(record.bestE1rmKg.squat! / SESSION_TUNING.STARTING_E1RM.kilograms.squat).toBeCloseTo(1.0846, 4);
     expect(
-      record.bestE1rmKg.deadlift! / SESSION_TUNING.STARTING_E1RM_KG.deadlift,
+      record.bestE1rmKg.deadlift! / SESSION_TUNING.STARTING_E1RM.kilograms.deadlift,
     ).toBeCloseTo(1.0829, 4);
     // Two sessions on one lift, eight percent. Written as an explicit bound so
     // that a change which makes it worse fails here rather than passing.
     for (const lift of LIFT_ORDER) {
-      const grown = record.bestE1rmKg[lift]! / SESSION_TUNING.STARTING_E1RM_KG[lift];
+      const grown = record.bestE1rmKg[lift]! / SESSION_TUNING.STARTING_E1RM.kilograms[lift];
       expect(grown, `${lift} grew`).toBeGreaterThan(1);
       expect(grown, `${lift} grew`).toBeLessThan(1.09);
     }

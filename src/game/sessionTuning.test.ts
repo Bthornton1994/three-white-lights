@@ -85,7 +85,7 @@ describe('the prescription is inside the published chart', () => {
 
   it('has a starting e1RM for every lift it rotates through', () => {
     for (const lift of SESSION_TUNING.LIFT_ROTATION) {
-      const start = SESSION_TUNING.STARTING_E1RM_KG[lift];
+      const start = SESSION_TUNING.STARTING_E1RM.kilograms[lift];
       expect(start, `${lift}`).toBeGreaterThan(0);
       expect(Number.isFinite(start)).toBe(true);
     }

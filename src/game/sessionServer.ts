@@ -103,6 +103,21 @@
  * the comparison is against a CONSTANT rather than server-owned data, which is
  * weaker than `replayMeetCard`'s. Said plainly rather than rounded up.
  *
+ * AND A CARD IS NOT THE ONLY ROUTE INTO THAT FIELD. `newServerRecord()` SEEDS
+ * it, on every account, and for four rounds the seed was
+ * `SESSION_TUNING.STARTING_E1RM_KG` — three bare numbers with the unit in the
+ * identifier, under a comment saying they were "NOT PROGRESSION" and were not
+ * persisted. They were: the same field, the same `ConfirmedKg` brand, the same
+ * `'protected'` row in `FACT_PROTECTION`, and `nextBestE1rm` is monotone, so
+ * the seed is a permanent FLOOR rather than a value the first real session
+ * replaces. `readKilogramSets` never saw it because it never rode a card.
+ * The seed is now a `StartingE1rmSeed` — the same tagged-pair shape as the card,
+ * the bodyweight and the meet card — and `PROVEN_STARTING_E1RM` below is the
+ * narrow. Because that input is a literal in this build rather than JSON from a
+ * client, the check is a COMPILE error rather than a runtime refusal; see that
+ * binding for why the two routes get different strengths on purpose, and for
+ * what neither of them proves.
+ *
  * HOW REACHABLE IS A POUND SESSION, honestly. NOT a one-token flip.
  * `SESSION_TUNING.LOAD_UNIT` chooses the SNAPPING GRID only
  * (`RPE_LOADING_TUNING.ROUNDING_INCREMENT`); `session.ts`'s `prescribeSession`
@@ -193,7 +208,7 @@ import {
   type StreakState,
 } from './streak';
 import { nextBestE1rm } from './session';
-import { SESSION_TUNING } from './sessionTuning';
+import { SESSION_TUNING, type StartingE1rmSeed } from './sessionTuning';
 
 // ---------------------------------------------------------------------------
 // The accessory-day boundary, at compile time
@@ -274,22 +289,138 @@ export interface ServerRecord {
   readonly fatigue: FatigueState;
 }
 
+// ---------------------------------------------------------------------------
+// The unit this record stores an e1RM in — and the seed that is written in it
+// ---------------------------------------------------------------------------
+
+/**
+ * The one unit permanent progression stores an e1RM in.
+ *
+ * `DOTS_TOTAL_UNIT` rather than a fresh `'kg'` literal, for the reason
+ * `meetServer.ts` gives for `PROGRESSION_TOTAL_UNIT`: exactly ONE string in the
+ * tree that a unit check compares against, spelled the way `meet.ts` spells it
+ * and pinned to that spelling by `dots.test.ts`. The name says DOTS and the
+ * reason here is not DOTS — `ServerRecord.bestE1rmKg`,
+ * `ProgressionSnapshotWire.bestE1rmKg` and `ConfirmedFacts.bestE1rmKg` are
+ * kilogram fields because `SESSION_TUNING.STARTING_E1RM` declares kilograms,
+ * because `readKilogramSets` refuses anything else, and because `meetDayFacts`
+ * hands them to `suggestOpener` beside a proven-kilogram meet.
+ *
+ * A SEPARATE NAME FROM THE TOTAL'S AND THE BODYWEIGHT'S, aliased to the same
+ * string. Three independent facts, and a ruling that converted one would not
+ * automatically convert the others; one constant would hide that.
+ */
+const PROGRESSION_E1RM_UNIT = DOTS_TOTAL_UNIT;
+
+/**
+ * The starting e1RMs, narrowed to the arm this record can store.
+ *
+ * `Extract` off `PROGRESSION_E1RM_UNIT` rather than off a `'kg'` literal, so
+ * the compile-time narrow and `readKilogramSets`'s runtime comparison are the
+ * same question asked of the same constant.
+ */
+type ProvenStartingE1rm = Extract<StartingE1rmSeed, { readonly unit: typeof PROGRESSION_E1RM_UNIT }>;
+
+/**
+ * THE SEED, PROVEN TO BE IN THE UNIT THIS RECORD STORES.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS A COMPILE ERROR AND `readKilogramSets` IS A RUNTIME REFUSAL
+ * ---------------------------------------------------------------------------
+ * They guard the same field by two different routes, and the routes carry
+ * different amounts of trust, so the checks are not the same strength — which
+ * is worth stating rather than levelling.
+ *
+ *   - A CARD ARRIVES AS JSON from a client this module does not trust. Both
+ *     arms of `TrainingCardReport` MUST be representable, because that is what
+ *     a client can send; so `card.unit` is whatever the sender wrote and the
+ *     only place to compare it is at runtime. `readKilogramSets` does that.
+ *   - THE SEED IS A LITERAL IN THIS BUILD. There is no sender, no JSON and no
+ *     moment at which it could be anything other than what the repository says.
+ *     So the strongest available question — "is this the kilogram arm?" — can
+ *     be asked by `tsc`, and is. Declaring the seed in any other unit does not
+ *     reach a runtime refusal; it fails to compile, here, on the line whose
+ *     name says what the value is meant to be.
+ *
+ * That is the `const proven: KilogramTrainingCard = card;` idiom from
+ * `readKilogramSets`, with the narrow done by the compiler because the input is
+ * static.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IS LOAD-BEARING HERE AND WHAT IS ONLY LEGIBILITY — measured, not assumed
+ * ---------------------------------------------------------------------------
+ * THE ANNOTATION IS NOT THE CHECK, and claiming it was would be the kind of
+ * rounding-up this boundary has been graded on twice. Deleting `:
+ * ProvenStartingE1rm` from this line and letting the type be inferred compiles
+ * CLEAN and changes nothing — verified by running it. What is load-bearing is
+ * that THE ARMS CARRY DIFFERENT FIELD NAMES: `.kilograms` does not exist on the
+ * pound arm, so with the annotation gone a flipped unit still fails, three lines
+ * down in `newServerRecord` and again in `todayForLifter` and again in
+ * `sessionClient.ts` and again at `useMeetDay.ts`'s `meetDayFacts` call. The
+ * annotation's job is to make that failure land on a line whose NAME says what
+ * the value is meant to be, and to close the "widen it to the union" escape —
+ * which also fails, at the four `.kilograms` reads.
+ *
+ * So the honest ranking: the SHAPE is the guarantee, the name is a courtesy to
+ * whoever reads the error.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IT STILL DOES NOT PROVE
+ * ---------------------------------------------------------------------------
+ * That the MAGNITUDES are kilograms. `{ unit: 'kg', kilograms: { squat: 397,
+ * … } }` compiles and seeds a pound squat as 397 kg. A tag proves what was
+ * declared, not what was typed — `progression.ts` §7.3(b) names that residual
+ * for every declared unit on this boundary and it is not smaller here. What it
+ * is, and the reason it is worth having anyway, is that the unit and the
+ * magnitudes can no longer be moved apart WITHOUT SOMEBODY SAYING SO in the
+ * diff.
+ */
+const PROVEN_STARTING_E1RM: ProvenStartingE1rm = SESSION_TUNING.STARTING_E1RM;
+
+/**
+ * COMPILE-TIME ASSERTION: the seed's type can still express a unit this record
+ * refuses.
+ *
+ * The control for the binding above, in the same shape as
+ * `SIM_LIFTS_ARE_COMPETITION_LIFTS_PLUS_ACCESSORY`. Delete the `'lb'` arm from
+ * `StartingE1rmSeed` and the binding becomes "this one-armed union is that arm"
+ * — trivially true, guarding nothing, and passing. This fails in that world, so
+ * the check above cannot be satisfied by deleting the thing it discriminates
+ * against.
+ */
+type SeedCanDeclareARefusedUnit = [Exclude<StartingE1rmSeed, ProvenStartingE1rm>] extends [never]
+  ? never
+  : true;
+export const A_STARTING_E1RM_CAN_DECLARE_A_UNIT_THIS_RECORD_REFUSES: SeedCanDeclareARefusedUnit =
+  true;
+
 /**
  * A lifter who has never trained.
  *
- * The starting e1RMs are placeholder onboarding data (`SESSION_TUNING`), not
- * progression: with a real backend they arrive from the sign-up flow. The
- * Recovery Day balance is GDD §4.2's signup grant, read from `streak.ts`'s own
- * economy table rather than restated.
+ * THE STARTING e1RMs ARE PROGRESSION, and this comment used to say they were
+ * not. They are written into `bestE1rmKg` here — protected, on the wire as
+ * `ProgressionSnapshotWire.bestE1rmKg`, and arriving at the client as a
+ * `ConfirmedKg` — and `nextBestE1rm` is MONOTONE, so what is written on this
+ * line is the permanent FLOOR under that lifter's e1RM: no later honest session
+ * lowers it, and it goes on deriving tomorrow's bar (`todayForLifter`) and meet
+ * day's opener (`meetServer.ts`'s `meetDayFacts`) for the life of the account.
+ * The MAGNITUDES are placeholders a sign-up flow replaces; their being written
+ * into a permanent fact is not.
+ *
+ * They are read through `PROVEN_STARTING_E1RM` — see above for what that
+ * proves — rather than off a constant whose unit was in its name.
+ *
+ * The Recovery Day balance is GDD §4.2's signup grant, read from `streak.ts`'s
+ * own economy table rather than restated.
  */
 export function newServerRecord(): ServerRecord {
   return {
     revision: 0,
     totalKg: null,
     bestE1rmKg: {
-      squat: SESSION_TUNING.STARTING_E1RM_KG.squat,
-      bench: SESSION_TUNING.STARTING_E1RM_KG.bench,
-      deadlift: SESSION_TUNING.STARTING_E1RM_KG.deadlift,
+      squat: PROVEN_STARTING_E1RM.kilograms.squat,
+      bench: PROVEN_STARTING_E1RM.kilograms.bench,
+      deadlift: PROVEN_STARTING_E1RM.kilograms.deadlift,
     },
     streak: {
       ...createStreakState(),
@@ -345,24 +476,6 @@ export function snapshotWireFor(
 // ---------------------------------------------------------------------------
 // Reading the card — the one place a set's unit is proven
 // ---------------------------------------------------------------------------
-
-/**
- * The one unit permanent progression stores an e1RM in.
- *
- * `DOTS_TOTAL_UNIT` rather than a fresh `'kg'` literal, for the reason
- * `meetServer.ts` gives for `PROGRESSION_TOTAL_UNIT`: exactly ONE string in the
- * tree that a unit check compares against, spelled the way `meet.ts` spells it
- * and pinned to that spelling by `dots.test.ts`. The name says DOTS and the
- * reason here is not DOTS — `ServerRecord.bestE1rmKg`,
- * `ProgressionSnapshotWire.bestE1rmKg` and `ConfirmedFacts.bestE1rmKg` are
- * kilogram fields by their names, by `SESSION_TUNING.STARTING_E1RM_KG`, and by
- * `meetDayFacts` handing them to `suggestOpener` beside a proven-kilogram meet.
- *
- * A SEPARATE NAME FROM THE TOTAL'S AND THE BODYWEIGHT'S, aliased to the same
- * string. Three independent facts, and a ruling that converted one would not
- * automatically convert the others; one constant would hide that.
- */
-const PROGRESSION_E1RM_UNIT = DOTS_TOTAL_UNIT;
 
 /**
  * The sets on a reported card, PROVEN to be in the unit this record stores.
@@ -803,8 +916,12 @@ export function todayForLifter(record: ServerRecord, day: number, lift: LiftKind
     day,
     lift,
     // Loads are prescribed from the best e1RM on record. Before there is one,
-    // the placeholder onboarding number stands in — see `newServerRecord`.
-    e1rmKg: best ?? SESSION_TUNING.STARTING_E1RM_KG[lift],
+    // the seed stands in — which on a new account is the same number
+    // `newServerRecord` already wrote into `bestE1rmKg`, so this branch is the
+    // fallback for a record whose lift is null rather than a second source of
+    // truth. Read through the proven narrow, so a seed declared in another unit
+    // cannot reach a field named `e1rmKg` here either.
+    e1rmKg: best ?? PROVEN_STARTING_E1RM.kilograms[lift],
     bestE1rmKg: best,
     streakBefore: record.streak.currentStreak,
     streakIfTrainedToday,

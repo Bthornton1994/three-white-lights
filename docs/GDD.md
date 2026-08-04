@@ -2,7 +2,17 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-04 (§11 — the write-path unit refusal now covers the
+**Last updated:** 2026-08-04 (§11 — the unit refusal now covers the ACCOUNT
+SEED, which is a second route into a field the sweep had already marked proven
+rather than a fifth field. `SESSION_TUNING.STARTING_E1RM_KG` went straight into
+protected, monotone `bestE1rmKg` on every account, with its unit in the
+identifier and a comment claiming it was "NOT PROGRESSION" and not persisted —
+both false. It is now a tagged `StartingE1rmSeed` whose declared unit is checked
+at COMPILE time, which is stronger than the card's runtime check because the
+seed is a literal in the build rather than JSON from a client. The magnitudes
+are still unproven and that is said out loud. No §11 ruling is taken: the point
+is to make the pound edit safe to make, not to make it. Earlier the same day:
+§11 — the write-path unit refusal now covers the
 BODYWEIGHT as well as the total. The total's half shipped first and left the
 sharper hole open: a caller who took its own named remedy, converted the
 attempts, and ran a legal kilogram meet passed the check cleanly while
@@ -1439,7 +1449,7 @@ The code has taken the safe branch and needs a ruling to take any other.**
       for the failure. Until it is ruled, `POUND_MEET_RULES` is a configuration
       the engine supports and progression will not accept.
       **AND THE SAME REFUSAL NOW EXISTS IN SIM MODE, which is where this
-      question actually lives.** The fourth and last bare-unit number on the
+      question actually lives.** The fourth bare-unit *field* on the
       progression boundary was `TrainingSetReport.weightKg` — the daily loop's
       set row, thirty lines above the meet attempt row in the same file, on the
       path to `ConfirmedFacts.bestE1rmKg`, which is protected and **monotone**.
@@ -1472,6 +1482,58 @@ The code has taken the safe branch and needs a ruling to take any other.**
       per-user display unit that reaches the *loading* path would make the
       training refusal live, so answering the display question above without
       answering this one is not possible.
+      **AND THERE WAS A FIFTH NUMBER, WHICH IS NOT A FIFTH FIELD — IT IS A
+      SECOND ROUTE INTO THE FOURTH.** `progression.ts` §7 had closed the training
+      *card*, and a sweep of every `ServerRecord` construction site found the
+      same defect arriving into the same field by a different door.
+      `SESSION_TUNING.STARTING_E1RM_KG` was `{ squat: 180, bench: 120, deadlift:
+      220 }` — three bare numbers with the unit in the identifier — and
+      `newServerRecord()` assigned them straight into `record.bestE1rmKg`, on
+      every account. From there: `snapshotWireFor` → `receiveProgressionSnapshot`
+      → `ConfirmedFacts.bestE1rmKg`, a `ConfirmedKg`, protected. The same field,
+      brand and protection as the number the card check was built to fence;
+      `readKilogramSets` never saw it because it never rode a card.
+      **Its own comment was false in the direction that invited the edit.** It
+      read "PLACEHOLDER DATA, NOT PROGRESSION. Nothing here is persisted and
+      nothing derives from it once the server has a real number." Both clauses
+      were wrong. It *is* written into the progression field and it *does* go on
+      the wire; and `nextBestE1rm` is **monotone**, so the seed is a permanent
+      **floor** rather than a starting guess — a lifter whose true squat e1RM is
+      150 kg carries 180 forever, and no honest session lowers it. The identical
+      claim sat client-side in `sessionClient.ts`. Both are corrected.
+      **Why this mattered for the ruling below rather than only for tidiness.**
+      If the display question is answered "the loop loads in pounds", the first
+      edit is `LOAD_UNIT: 'lb'`, which `sessionProposal` forwards onto the card,
+      so the session is refused loudly, as designed. The **second, natural** edit
+      was these three magnitudes — and that seeded a kilogram field with pound
+      numbers **silently**, with every guard green and monotonicity making it
+      unwalkable back. The point of fixing it is to make the pound edit *safe to
+      make*; it does not make it.
+      **The fix is the precedent this document already set.** The seed is now a
+      `StartingE1rmSeed` — `{ unit: 'kg', kilograms }` / `{ unit: 'lb', pounds }`,
+      the fourth tagged pair, arms with different field names — exactly the
+      argument recorded below for `MeetEntry.bodyweight`: in-tree placeholder data
+      got a unit tag anyway, "so the refusal has a fact to check rather than a
+      literal". **And its check is *stronger* than the card's, for a reason that
+      is about the input and not about effort:** a card arrives as JSON from a
+      client, so both arms must be representable and the check must be at
+      runtime; the seed is a literal in the build, so `tsc` can ask the question,
+      and does. Flipping the unit without converting the magnitudes fails
+      `satisfies StartingE1rmSeed` at the constant; flipping it *and* converting
+      fails the narrow in `sessionServer.ts`; widening the narrow fails at the
+      reads, because `.kilograms` does not exist on the pound arm. None of those
+      is a test failure.
+      The cross-mode signature carries it too: `meetDayFacts`, the one function
+      that takes a training number into meet day, took
+      `fallbackE1rmKg: Readonly<Record<LiftKind, number>>` and now takes the
+      narrowed `KilogramStartingE1rm`.
+      **What is NOT closed, stated plainly:** the magnitudes. `{ unit: 'kg',
+      kilograms: { squat: 397, … } }` compiles and is 2.2x wrong. A tag proves
+      what was *declared*, not what was *typed* — the same residual this document
+      already names for the bodyweight and the two cards. No plausibility band was
+      invented to pretend otherwise, because a guessed constant standing in for a
+      check is what the `HUMAN_INPUT_BUDGET_MS` entry above records going wrong
+      once already.
       **One display defect was fixed and it takes none of the three.**
       `AttemptView.tsx` printed `` `${formatWeight(live.weightKg)} kg` `` — a
       hardcoded suffix over a number the screen cannot know the unit of — so on
