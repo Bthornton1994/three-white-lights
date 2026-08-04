@@ -226,6 +226,76 @@ export const MEET_TUNING = Object.freeze({
     CHOICE_SCRIM: 0.8,
   }),
 
+  /**
+   * WHEN THE HALL COMES UP, AND HOW FAR.
+   *
+   * ---------------------------------------------------------------------------
+   * WHY THIS EXISTS AT ALL
+   * ---------------------------------------------------------------------------
+   * The crowd band was twenty-four rows of identical stamped silhouettes that
+   * never moved — not on a third attempt, not on three white lights. Measured:
+   * an opener's walk-out and a third attempt's with nothing banked were
+   * BYTE-IDENTICAL below the copy. Every channel by which a third attempt
+   * escalated lived in `CROWD_SWELL_BIG` and `WALKOUT_CALL_URGENT` — sound and
+   * haptics, the two channels nobody in this environment can check — while the
+   * channel that CAN be checked carried a text colour and a different sentence.
+   *
+   * This is the channel that reaches the picture. `crowdRisePx` on
+   * `GymSceneSpec` moves each spectator's silhouette UP by this many scene rows
+   * — heads lift, shoulders stretch, the base of the band stays where it is —
+   * which in silhouette is a seated hall standing.
+   *
+   * ---------------------------------------------------------------------------
+   * IT IS SCARCE ON PURPOSE (GDD §7.2)
+   * ---------------------------------------------------------------------------
+   * The hall does NOT come up on an ordinary walk-out and does NOT come up on a
+   * no-lift. It comes up on exactly two moments: an attempt the meet turns on (a
+   * third, a PR, or one with a bomb on it) and a good lift. A room where every
+   * silhouette twitches all the time is worse than a still one, and the whole
+   * value of this channel is that it is off most of the time.
+   *
+   * NOBODY HAS WATCHED THIS ON A PHONE. Same status as everything else in this
+   * file (GDD §12.1): the rows and the ramps below are structurally sane
+   * starting points, not measured values.
+   */
+  CROWD: Object.freeze({
+    /**
+     * Rows the seating rises by on an urgent walk-out.
+     *
+     * MEASURED, not guessed at, and this is the only number in the block that
+     * has a real bound under it. Each spectator's silhouette grows upward, so
+     * enough rise turns the band into a solid slab and the crowd stops reading
+     * as people. On the shipped band (`GYM_CROWD`, 24 rows, pitch 6):
+     *
+     *   rise 0   1,331 lit / 1,747 dark    the seated hall
+     *   rise 3   2,050 / 1,028             719 scene pixels changed
+     *   rise 4   2,290 /   788             959 changed  <- here
+     *   rise 6   2,548 /   530           1,217 changed
+     *   rise 8   2,622 /   456           1,291 changed, and saturating
+     *
+     * Past about 6 the dark gaps between spectators are gone and further rise
+     * buys almost nothing — the last two rows add 74 pixels between them.
+     * `walkout.test.ts` holds a floor under the change and a floor under the
+     * remaining gaps, so both failure modes are bounded rather than described.
+     *
+     * NOBODY HAS LOOKED AT IT ON A PHONE. The measurement says the picture
+     * changes; it does not say four rows reads as a hall standing up.
+     */
+    WALKOUT_RISE_PX: 4,
+    /** How long after the last disc lands the hall starts getting up. */
+    WALKOUT_RISE_DELAY_MS: 180,
+    /** And how long it takes to finish. A hall rises in a wave, not on a switch. */
+    WALKOUT_RISE_MS: 900,
+
+    /**
+     * Rows the seating rises by on a GOOD LIFT, after the last lamp. Higher than
+     * the walk-out's: they are on their feet rather than getting to them.
+     */
+    CHEER_RISE_PX: 5,
+    /** Faster, too — a reaction rather than an anticipation. */
+    CHEER_RISE_MS: 380,
+  }),
+
   // -------------------------------------------------------------------------
   // Pre-meet (GDD §6.1)
   // -------------------------------------------------------------------------
@@ -346,6 +416,92 @@ export const MEET_TUNING = Object.freeze({
 
   /** How long the bar weight is held on screen before the walkout copy fades in. */
   WALKOUT_WEIGHT_HOLD_MS: 420,
+
+  /**
+   * WALKOUT_MOTION — the walk-out itself, as a timing sheet.
+   *
+   * ---------------------------------------------------------------------------
+   * WHAT WAS WRONG, IN NUMBERS
+   * ---------------------------------------------------------------------------
+   * GDD §6.2 step 1 is "bar loads, brief walk-out beat", and the beat contained
+   * no walk-out: `MeetHallView` drew ONE memoised still of
+   * `buildSquatRep(loadRatio).frames[0]` and held it for the whole beat. The
+   * lifter never unracked, never stepped back, never settled. The only thing in
+   * the picture that changed was a clip window widening for about 450 ms.
+   *
+   * These numbers are that missing motion. `src/meet/walkout.ts` samples them
+   * into a small sheet of held drawings, exactly the way `squatAnimation.ts`
+   * coalesces the rep — so the walk-out is a finite set of poses on a timing
+   * sheet, not a per-frame deformation, which is what a 16-bit game shipped
+   * (GDD §7.1).
+   *
+   * ---------------------------------------------------------------------------
+   * THE ORDER IS LOAD -> UNRACK -> STEP -> SETTLE -> SET, AND THE ORDER MATTERS
+   * ---------------------------------------------------------------------------
+   * The discs land BEFORE he takes the bar off the hooks. That is the fix for a
+   * real complaint about the previous pass — the plates were landing on a bar
+   * that was already on his back. It is a partial fix and the header of
+   * `src/meet/walkout.ts` says exactly how far it goes.
+   *
+   * ---------------------------------------------------------------------------
+   * A FRONT VIEW CAN ONLY SHOW SOME OF A WALK-OUT, AND THESE ARE THAT PART
+   * ---------------------------------------------------------------------------
+   * The sprite is drawn head-on (`rig.ts`), so stepping BACKWARD is the one
+   * component of a walk-out the camera cannot see, and nothing here fakes it
+   * with a scale change — a fractional upscale would break §7.1's
+   * nearest-neighbour rule for one frame of motion. What the camera can see is
+   * the weight transfer: the body plants left, then right, then centre; the bar
+   * rocks the other way and tilts; the whip damps out. That is what these are.
+   *
+   * NOBODY HAS WATCHED IT. GDD §12.1. These are a starting shape, not tuned
+   * values, and the pacing half of §12.2's bar remains unverifiable here.
+   */
+  WALKOUT_MOTION: Object.freeze({
+    /**
+     * NOT A FEEL VALUE. How finely the choreography is sampled before it is
+     * quantised and coalesced into held frames. Halving it does not change how
+     * the walk-out looks, only how exactly a stage boundary lands on a frame
+     * edge — the same relationship `VELOCITY_GRID` has to the rep.
+     */
+    TICK_MS: 20,
+
+    /**
+     * How far under the bar he is sitting while it is loaded, in AUTHORED DEPTH
+     * STEPS (`QUANTISE.DEPTH_STEPS`), not in a raw depth. Steps rather than a
+     * fraction because the sheet is finite: a dip of half a step is the same
+     * drawing as no dip at all.
+     */
+    RACK_DIP_STEPS: 2,
+
+    /** The drive that takes the bar off the hooks. */
+    UNRACK_MS: 260,
+    /** How much harder the bar bends on that drive, as a multiple of its rest bend. */
+    UNRACK_WHIP: 0.85,
+    /** Strain rungs added while he is driving it out. Clamped to the sheet. */
+    UNRACK_STRAIN_BUMP: 1,
+
+    /** Steps back, and how long each takes. */
+    STEP_COUNT: 3,
+    STEP_MS: 220,
+    /**
+     * Share of a step spent transferring weight. The rest is the plant — the
+     * held frame. A walk-out that eased continuously would be a modern tween;
+     * a plant that holds is what an animator drew.
+     */
+    STEP_TRANSFER_FRAC: 0.45,
+
+    /** Whole SPRITE pixels the body shifts on the first step. */
+    STEP_BODY_DX_PX: 2,
+    /** ...and how far the bar swings the other way, in sprite pixels. */
+    STEP_BAR_LATERAL_PX: 2,
+    /** ...and how far it tilts, in degrees. */
+    STEP_BAR_TILT_DEG: 2,
+    /** Each step is smaller than the last by this factor. He is settling. */
+    STEP_DECAY: 0.55,
+
+    /** The last of the shake dying out, after the final step. */
+    SETTLE_MS: 300,
+  }),
 
   // -------------------------------------------------------------------------
   // Judging (GDD §6.2 step 4)
@@ -1183,4 +1339,29 @@ export const MEET_PREVIEW = Object.freeze({
     bench: 145,
     deadlift: 245,
   } as const satisfies Record<LiftKind, number>),
+
+  /**
+   * WHICH INSTANTS OF THE WALK-OUT GET PHOTOGRAPHED.
+   *
+   * DEBUG ONLY, and not a feel value: turning these changes which moment the
+   * capture holds, not how the beat plays. They exist because the two settled
+   * walk-out frames cannot, on their own, show that anything moves — a critic
+   * comparing `walkout.png` and `walkout-third.png` is comparing two still
+   * lifters. `walkout-unrack` and `walkout-step` hold the SAME third attempt at
+   * two instants inside the motion, so motion is visible in stills.
+   *
+   * MILLISECONDS FROM THE TOP OF THE BEAT, so they are read the same way every
+   * other duration in this file is. That makes them dependent on how long the
+   * bar takes to load, which depends on how many discs are on it, so
+   * `walkout.test.ts` checks each one still lands in the stage it is named for
+   * — on the sequence the preview's own third attempt builds — rather than
+   * trusting the arithmetic. A tuning pass that lengthens the unrack cannot
+   * silently move a photograph into the wrong stage.
+   */
+  WALKOUT_HOLD_MS: Object.freeze({
+    /** Mid-drive, off the hooks. Deep enough into the stage to be past the dip. */
+    UNRACK: 1050,
+    /** Mid-step-back, on the first plant, where the body is furthest across. */
+    STEP: 1350,
+  }),
 });

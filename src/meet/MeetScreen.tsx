@@ -66,6 +66,14 @@ export interface MeetScreenProps {
   /** DEBUG ONLY. Opens straight onto the shareable card. */
   readonly showCard?: boolean | undefined;
   /**
+   * DEBUG ONLY. Holds the walk-out's choreography at one instant instead of
+   * running its clock, so the capture can photograph the beat mid-unrack and
+   * mid-step-back rather than only after it has settled. Nothing in the played
+   * app passes this; it arrives from `?meet=` beside `preview`, and
+   * `meetPreview.ts`'s `holdWalkoutAtMs` decides it.
+   */
+  readonly holdWalkoutAtMs?: number | null | undefined;
+  /**
    * Where the lifter goes when the meet is over.
    *
    * SUPPLIED BY THE ROUTER, because this file is a renderer and all routing in
@@ -80,6 +88,7 @@ export interface MeetScreenProps {
 export function MeetScreen({
   preview,
   showCard = false,
+  holdWalkoutAtMs = null,
   onLeave,
 }: MeetScreenProps = {}): React.ReactElement {
   const loop = useMeetDay(preview, preview !== undefined);
@@ -161,6 +170,7 @@ export function MeetScreen({
           liftLabel={MEET_COPY.LIFT_LABEL[state.live.lift]}
           barAndCollarsKg={meetLoadingRules(state.meet).barAndCollarsWeight[state.live.lift]}
           loadRatio={state.live.loadRatio}
+          holdAtMs={holdWalkoutAtMs}
         />
       ) : null}
 

@@ -56,7 +56,7 @@ import { liftStageScene, type GymSceneSpec } from '../art/gymScene';
 import { frameSpecFrom, type LifterFrameSpec } from '../art/lifterSprite';
 import { layoutSleeve, visualPlateStack } from '../art/plates';
 import { BAR, RESOLUTION } from '../art/spriteTuning';
-import { buildSquatRep } from '../art/squatAnimation';
+import { buildSquatRep, type SquatFrame } from '../art/squatAnimation';
 import { MEET_TUNING } from '../game/meetTuning';
 
 /**
@@ -74,23 +74,50 @@ export const MEET_HALL_SCENE: GymSceneSpec = Object.freeze({
 });
 
 /**
+ * The same hall with the seating `risePx` rows up.
+ *
+ * THE ONE THING ABOUT THE ROOM THAT MOVES, and it moves on exactly two moments:
+ * an attempt the meet turns on, and a good lift (see `MEET_TUNING.CROWD`).
+ * `risePx` of 0 returns `MEET_HALL_SCENE` itself — the identical object, not a
+ * copy — so a beat that never brings the hall up cannot accidentally rasterise a
+ * second room, and `renderGymScene(hallScene(0))` is byte-for-byte the room
+ * every previous pass measured.
+ */
+export function hallScene(risePx: number): GymSceneSpec {
+  if (risePx <= 0) return MEET_HALL_SCENE;
+  return { ...MEET_HALL_SCENE, crowdRisePx: risePx };
+}
+
+/**
+ * The brace — the drawing the walk-out settles onto and the rep begins from.
+ *
+ * `buildSquatRep`'s FIRST frame, taken from the canned rep rather than authored
+ * here so the strain, tilt, bend and chalk of a man standing under a maximal bar
+ * are the animation system's numbers and not a second set that could disagree
+ * with them. `src/meet/walkout.ts` deforms AROUND this frame and returns to it
+ * exactly, which is what makes the cut from the walk-out to the attempt a cut
+ * inside one shot.
+ */
+export function hallBraceFrame(loadRatio: number): SquatFrame {
+  const frame = buildSquatRep(loadRatio).frames[0];
+  if (frame === undefined) {
+    throw new RangeError('meetHall: the squat rep produced no frames to stand on.');
+  }
+  return frame;
+}
+
+/**
  * The lifter standing under a bar of `totalKg`, at `loadRatio` of his best.
  *
- * The pose is `buildSquatRep`'s FIRST frame — the brace, before he has started
- * down. Taken from the canned rep rather than authored here so the strain,
- * tilt, bend and chalk of a man standing under a maximal bar are the animation
- * system's numbers and not a second set that could disagree with them.
+ * The settled pose, with no walk-out applied — what every beat AFTER the
+ * walk-out draws.
  */
 export function hallLifterFrame(
   loadRatio: number,
   totalKg: number,
   barAndCollarsKg: number,
 ): LifterFrameSpec {
-  const frame = buildSquatRep(loadRatio).frames[0];
-  if (frame === undefined) {
-    throw new RangeError('meetHall: the squat rep produced no frames to stand on.');
-  }
-  return frameSpecFrom(frame, totalKg, barAndCollarsKg);
+  return frameSpecFrom(hallBraceFrame(loadRatio), totalKg, barAndCollarsKg);
 }
 
 /** How many discs go on ONE side of a bar of `totalKg`. */

@@ -1064,6 +1064,11 @@ describe('the ?meet= preview beats', () => {
       openers: 'openers',
       walkout: 'walkout',
       'walkout-third': 'walkout',
+      // The two mid-motion photographs of the third attempt. Same state as
+      // `walkout-third`; what differs is only which instant of the walk-out's
+      // choreography is held (`holdWalkoutAtMs`).
+      'walkout-unrack': 'walkout',
+      'walkout-step': 'walkout',
       lift: 'lift',
       deliberation: 'deliberation',
       'verdict-good': 'verdict',

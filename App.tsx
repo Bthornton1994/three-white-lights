@@ -6,6 +6,7 @@ import { LIFT_PALETTE } from './src/lift/liftPalette';
 import { replayRequestFrom } from './src/lift/replayRoute';
 import { MeetScreen } from './src/meet/MeetScreen';
 import {
+  holdWalkoutAtMs,
   isLiveMeetRequest,
   meetPreviewFrom,
   previewStateFor as meetPreviewStateFor,
@@ -61,12 +62,19 @@ function meetPreviewFromLocation() {
   if (typeof window === 'undefined') return undefined;
   if (isLiveMeetRequest(window.location.search)) {
     // A played meet: no preview state, so the loop builds its own and the beat
-    // timers run.
-    return { state: undefined, card: false };
+    // timers run — including the walk-out's own clock, which is why the live
+    // shot is the one that shows the choreography moving on its own.
+    return { state: undefined, card: false, holdWalkoutAtMs: null };
   }
   const request = meetPreviewFrom(window.location.search);
   if (request === null) return undefined;
-  return { state: meetPreviewStateFor(request), card: showsCard(request.moment) };
+  return {
+    state: meetPreviewStateFor(request),
+    card: showsCard(request.moment),
+    // Null for every beat but the two mid-motion walk-out ones. See
+    // `holdWalkoutAtMs` in `meetPreview.ts`.
+    holdWalkoutAtMs: holdWalkoutAtMs(request.moment),
+  };
 }
 
 /**
@@ -90,7 +98,12 @@ export default function App() {
   return (
     <View style={styles.container}>
       {meet !== undefined ? (
-        <MeetScreen preview={meet.state} showCard={meet.card} onLeave={leaveMeet} />
+        <MeetScreen
+          preview={meet.state}
+          showCard={meet.card}
+          holdWalkoutAtMs={meet.holdWalkoutAtMs}
+          onLeave={leaveMeet}
+        />
       ) : replay === undefined ? (
         <SessionScreen preview={sessionPreviewFromLocation()} />
       ) : (

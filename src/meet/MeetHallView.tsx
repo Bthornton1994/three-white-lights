@@ -17,6 +17,29 @@
  * decides anything about the meet.
  *
  * ---------------------------------------------------------------------------
+ * AND NOW IT MOVES — BUT ONLY WHERE IT IS ASKED TO
+ * ---------------------------------------------------------------------------
+ * It used to draw ONE memoised still of the brace over a static room, for every
+ * beat, for the whole beat. So the walk-out contained no walk-out, and the room
+ * behind an opener was byte-identical to the room behind a third attempt with
+ * nothing banked.
+ *
+ * Two optional channels fix that, and this file owns neither of them:
+ *
+ *   `lifter.pose`   one frame of `src/meet/walkout.ts`'s timing sheet — the
+ *                   unrack, the steps back, the settle. Omitted, the lifter is
+ *                   drawn at the settled brace, which is what every beat AFTER
+ *                   the walk-out wants and is exactly what this file drew
+ *                   before.
+ *   `crowdRisePx`   scene rows the seating has come up by. Omitted or 0, the
+ *                   room is `MEET_HALL_SCENE` itself and the raster is
+ *                   byte-for-byte the room every previous pass measured.
+ *
+ * SCARCITY IS THE POINT (GDD §7.2). Nothing here animates on its own. A beat
+ * that hands over neither channel gets the still it always got, and most of the
+ * staged beats do exactly that.
+ *
+ * ---------------------------------------------------------------------------
  * THE SAME ROOM, THE SAME BOX, THE SAME LATTICE AS THE REP
  * ---------------------------------------------------------------------------
  * `MEET_HALL_SCENE` is `liftStageScene()` with `MEET_TUNING.VENUE` — the exact
@@ -28,7 +51,10 @@
  * NEAREST NEIGHBOUR, INTEGER SCALE (GDD §7.1). Both images below pin
  * `FilterMode.Nearest` with mipmaps off and take their size from
  * `GYM_LIFT_STAGE.SCALE` / `LIFT_TUNING.FEEDBACK.SPRITE_SCALE`, which are
- * integers checked against each other by `gymScene.test.ts`.
+ * integers checked against each other by `gymScene.test.ts`. The walk-out's
+ * sideways travel is a whole number of SPRITE pixels multiplied by that same
+ * integer scale, so a moving figure lands on the lattice on every frame — which
+ * is why the sheet quantises `bodyDxPx` rather than easing a float.
  *
  * ---------------------------------------------------------------------------
  * THE BAR LOADS BY CLIPPING, NOT BY A SECOND DRAWING
@@ -36,7 +62,19 @@
  * See `meetHall.ts`. Two sprite frames of the same pose — one with a bare bar,
  * one fully loaded — and a window that widens from the shaft outward. The
  * plates that appear are `renderLifterFrame`'s own discs at their real relative
- * diameters, in the sprite palette, on the sprite's pixel grid.
+ * diameters, in the sprite palette, on the sprite's pixel grid. The bare frame
+ * is now the loaded frame's own spec with the plates taken off, so the two are
+ * the same drawing of the same man whatever the walk-out is doing to him.
+ *
+ * ---------------------------------------------------------------------------
+ * RASTER COST, SINCE THIS FILE NOW REDRAWS
+ * ---------------------------------------------------------------------------
+ * `useSpriteImage` caches on `frameKey`, the same idiom `LiftStage` uses for the
+ * rep. The walk-out's sheet resolves to eighteen distinct sprite drawings over
+ * 2,120 ms rather than one per display frame, so that is eighteen rasters for
+ * the whole beat. The ROOM is cached by `GymSceneLayer` on its fields, and
+ * `crowdRisePx` is whole rows, so a hall that comes up costs one extra room
+ * raster per row it rises — at most five — and nothing after that.
  *
  * ---------------------------------------------------------------------------
  * NOT VERIFIED ON A DEVICE
@@ -45,11 +83,12 @@
  * against the installed Skia types and follows the same documented paths those
  * files do. `tools/capture-meet.mjs` is what actually proves the pixels.
  *
- * NO ARITHMETIC AND NO GAME MATH HERE. The scene, the frame specs and the
- * reveal geometry are all `meetHall.ts`'s, which is pure and tested.
+ * NO ARITHMETIC AND NO GAME MATH HERE. The scene, the frame specs, the
+ * choreography and the reveal geometry are all `meetHall.ts`'s and
+ * `walkout.ts`'s, which are pure and tested.
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   Canvas,
@@ -59,14 +98,17 @@ import {
   MipmapMode,
   Rect,
   rect,
+  type SkImage,
 } from '@shopify/react-native-skia';
 
 import { GymSceneLayer } from '../art/GymSceneView';
 import { makeSpriteImage } from '../art/LifterSpriteView';
+import type { LifterFrameSpec } from '../art/lifterSprite';
 import { CENTER_X } from '../art/spriteTuning';
 import { LIFT_TUNING } from '../game/liftTuning';
-import { SPRITE_BOX } from '../lift/liftFrame';
-import { hallLifterFrame, hallPlateCount, plateRevealPx, MEET_HALL_SCENE } from './meetHall';
+import { SPRITE_BOX, frameKey } from '../lift/liftFrame';
+import { hallLifterFrame, hallPlateCount, hallScene, plateRevealPx } from './meetHall';
+import { walkoutLifterFrame, type WalkoutFrame } from './walkout';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = LIFT_TUNING.LAYOUT;
@@ -85,6 +127,13 @@ export interface MeetHallLifter {
    * which is what every beat after the walk-out wants.
    */
   readonly platesLoaded?: number | undefined;
+  /**
+   * One frame of the walk-out's timing sheet (`src/meet/walkout.ts`) — the
+   * unrack, a step, the settle. Omitted, he is drawn at the settled brace and
+   * does not move, which is right for the deliberation, the verdict and the
+   * attempt choice and was wrong for exactly one beat.
+   */
+  readonly pose?: WalkoutFrame | undefined;
 }
 
 export interface MeetHallViewProps {
@@ -99,30 +148,63 @@ export interface MeetHallViewProps {
    * `MEET_TUNING.HALL` owns the values; a screen names one, never a number.
    */
   readonly scrim: number;
+  /**
+   * Scene rows the seating has come up by. Omitted or 0, the hall is seated and
+   * the room is the same object every other beat draws. `MEET_TUNING.CROWD` owns
+   * when this is non-zero; a screen reads a ramp, never a number.
+   */
+  readonly crowdRisePx?: number | undefined;
 }
 
-export function MeetHallView({ lifter, scrim }: MeetHallViewProps): React.ReactElement {
+/**
+ * The sprite, rasterised at most once per drawing.
+ *
+ * The same cache `LiftStage`'s `useSpriteImage` keeps, for the same reason: a
+ * 96x72 per-pixel shading pass is far too much to redo on a display frame that
+ * is showing a drawing it already has.
+ */
+function useSpriteImage(spec: LifterFrameSpec | null): SkImage | null {
+  const cache = useRef<{ key: string; image: SkImage | null }>({ key: '', image: null });
+  return useMemo(() => {
+    if (spec === null) return null;
+    const key = frameKey(spec);
+    if (cache.current.key === key) return cache.current.image;
+    const image = makeSpriteImage(spec);
+    cache.current = { key, image };
+    return image;
+  }, [spec]);
+}
+
+export function MeetHallView({
+  lifter,
+  scrim,
+  crowdRisePx = 0,
+}: MeetHallViewProps): React.ReactElement {
   const totalKg = lifter === null ? null : lifter.totalKg;
   const barKg = lifter === null ? null : lifter.barAndCollarsKg;
   const loadRatio = lifter === null ? null : lifter.loadRatio;
+  const pose = lifter?.pose ?? null;
 
-  // The two frames of the same pose. Memoised on the three numbers that shape
-  // them rather than on the object, so a re-render for a plate landing does not
-  // rasterise 6,912 pixels twice more.
-  const loadedImage = useMemo(
-    () =>
-      totalKg === null || barKg === null || loadRatio === null
-        ? null
-        : makeSpriteImage(hallLifterFrame(loadRatio, totalKg, barKg)),
-    [totalKg, barKg, loadRatio],
+  // THE DRAWING. With a walk-out frame it is that frame; without one it is the
+  // settled brace, which is the frame the rep itself begins from. Memoised on
+  // the values that shape it rather than on the lifter object, so a re-render
+  // for a plate landing does not build a new spec and miss the raster cache.
+  const loadedSpec = useMemo<LifterFrameSpec | null>(() => {
+    if (totalKg === null || barKg === null || loadRatio === null) return null;
+    if (pose === null) return hallLifterFrame(loadRatio, totalKg, barKg);
+    return walkoutLifterFrame(pose, totalKg, barKg);
+  }, [totalKg, barKg, loadRatio, pose]);
+
+  // The SAME drawing with the plates taken off. Built from the loaded spec
+  // rather than rebuilt from the pose, so the two can never be two poses — which
+  // is what would put a seam down the middle of a man while the bar loads.
+  const bareSpec = useMemo<LifterFrameSpec | null>(
+    () => (loadedSpec === null || barKg === null ? null : { ...loadedSpec, totalKg: barKg }),
+    [loadedSpec, barKg],
   );
-  const bareImage = useMemo(
-    () =>
-      barKg === null || loadRatio === null
-        ? null
-        : makeSpriteImage(hallLifterFrame(loadRatio, barKg, barKg)),
-    [barKg, loadRatio],
-  );
+
+  const loadedImage = useSpriteImage(loadedSpec);
+  const bareImage = useSpriteImage(bareSpec);
 
   // How much of the loaded bar is showing. `undefined` means "already loaded",
   // which resolves to the whole stack and therefore to the whole cell.
@@ -132,7 +214,10 @@ export function MeetHallView({ lifter, scrim }: MeetHallViewProps): React.ReactE
     return plateRevealPx(shown, totalKg, barKg);
   }, [totalKg, barKg, lifter?.platesLoaded]);
 
-  const centreX = SPRITE_BOX.x + CENTER_X * SPRITE_SCALE;
+  // Where he is standing. Whole SPRITE pixels times the integer scale, so a
+  // stepping lifter stays on the same lattice as the room behind him.
+  const spriteX = SPRITE_BOX.x + (pose?.bodyDxPx ?? 0) * SPRITE_SCALE;
+  const centreX = spriteX + CENTER_X * SPRITE_SCALE;
   const window = rect(
     centreX - reveal * SPRITE_SCALE,
     SPRITE_BOX.y,
@@ -154,13 +239,13 @@ export function MeetHallView({ lifter, scrim }: MeetHallViewProps): React.ReactE
           nothing — the same job the base fill does in `LiftStage`. */}
       <Rect x={0} y={0} width={L.STAGE_W} height={L.STAGE_H} color={MEET_PALETTE.STAGE} />
 
-      <GymSceneLayer spec={MEET_HALL_SCENE} />
+      <GymSceneLayer spec={hallScene(crowdRisePx)} />
 
       {/* The bare bar, then the loaded bar through a widening window. */}
       {bareImage === null ? null : (
         <SkiaImage
           image={bareImage}
-          x={SPRITE_BOX.x}
+          x={spriteX}
           y={SPRITE_BOX.y}
           width={SPRITE_BOX.w}
           height={SPRITE_BOX.h}
@@ -172,7 +257,7 @@ export function MeetHallView({ lifter, scrim }: MeetHallViewProps): React.ReactE
         <Group clip={window}>
           <SkiaImage
             image={loadedImage}
-            x={SPRITE_BOX.x}
+            x={spriteX}
             y={SPRITE_BOX.y}
             width={SPRITE_BOX.w}
             height={SPRITE_BOX.h}

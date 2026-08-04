@@ -35,6 +35,34 @@
  * See `meetHall.ts`.
  *
  * ---------------------------------------------------------------------------
+ * AND IT CONTAINS A WALK-OUT NOW, WHICH IT DID NOT
+ * ---------------------------------------------------------------------------
+ * Measured on the shipped screenshots before this pass: an opener's walk-out and
+ * a third attempt's with nothing banked differed in 22,467 pixels out of
+ * 1,316,640 — every one of them inside the copy block, and ZERO below it. The
+ * hall was byte-identical, and it stayed byte-identical for the whole beat: the
+ * lifter never unracked, never stepped back, never settled.
+ *
+ * `src/meet/walkout.ts` is the choreography — bar loads, unrack, three steps
+ * back, settle, set — as a sheet of held drawings, and `useHallStep` is the
+ * clock that walks it. This file starts that clock and hands the current frame
+ * to the hall; it decides nothing about what the frame contains.
+ *
+ * ---------------------------------------------------------------------------
+ * AND `urgent` REACHES THE PICTURE, NOT ONLY THE COPY
+ * ---------------------------------------------------------------------------
+ * It used to reach a text colour, a haptic pattern and a sound cue — and two of
+ * those three live in channels nobody in this environment can check. It now also
+ * brings the HALL UP: on a third attempt, a PR, or one with a bomb on it, the
+ * seating comes off its seats behind him (`MEET_TUNING.CROWD`) and stays up. On
+ * an opener it does not, and that scarcity is the whole value of the channel.
+ *
+ * It is deliberately the ONLY thing urgency changes about the picture. The
+ * lifter's own motion is a function of the bar, not of the scoreboard: a third
+ * attempt that made a man move differently at the same weight would be a lie
+ * about the sport.
+ *
+ * ---------------------------------------------------------------------------
  * WHAT IS STILL DELIBERATELY ABSENT
  * ---------------------------------------------------------------------------
  * There is no button, nothing to tap, and no way to skip: the lifter is under
@@ -81,6 +109,8 @@ import { formatWeight } from '../game/resultCard';
 import { hallPlateCount } from './meetHall';
 import { MeetHallView } from './MeetHallView';
 import { MEET_PALETTE } from './meetPalette';
+import { useHallStep } from './useHallStep';
+import { buildWalkout, walkoutFrameAt, walkoutFrameIndexAt, type WalkoutFrame } from './walkout';
 
 const L = MEET_LAYOUT;
 
@@ -90,6 +120,14 @@ export interface WalkoutViewProps {
   readonly barAndCollarsKg: number;
   /** Attempt weight over the lifter's best single. Drawn strain, nothing else. */
   readonly loadRatio: number;
+  /**
+   * DEBUG ONLY. Holds the walk-out at one instant instead of running its clock,
+   * so `tools/capture-meet.mjs` can photograph the beat mid-unrack and mid-step
+   * rather than only wherever the shutter lands. Nothing in the played app
+   * passes this; it arrives from `?meet=` (see `meetPreview.ts`), and it is the
+   * same idiom as `useMeetDay`'s `frozen` and `useLiftLoop`'s `paused`.
+   */
+  readonly holdAtMs?: number | null | undefined;
 }
 
 export function WalkoutView({
@@ -97,6 +135,7 @@ export function WalkoutView({
   liftLabel,
   barAndCollarsKg,
   loadRatio,
+  holdAtMs = null,
 }: WalkoutViewProps): React.ReactElement {
   const plateCount = hallPlateCount(attempt.weightKg, barAndCollarsKg);
   const line = attempt.bombRisk
@@ -149,6 +188,21 @@ export function WalkoutView({
   }, [revealed, urgent, attempt.lift, attempt.attemptNumber]);
   const lineStyle = useAnimatedStyle(() => ({ opacity: revealed.value }));
 
+  // THE WALK-OUT ITSELF. A sheet of held drawings from `walkout.ts` — the same
+  // shape `squatAnimation.ts` produces for the rep — and a clock that walks it.
+  // Neither the choreography nor the timing is decided here.
+  const sequence = React.useMemo(
+    () => buildWalkout({ loadRatio, plateCount, urgent }),
+    [loadRatio, plateCount, urgent],
+  );
+  const sampleFrame = React.useCallback(
+    (elapsedMs: number) => walkoutFrameIndexAt(sequence, elapsedMs),
+    [sequence],
+  );
+  const frameIndex = useHallStep(sampleFrame, sequence.motionMs, holdAtMs ?? null);
+  const pose: WalkoutFrame =
+    sequence.frames[frameIndex] ?? walkoutFrameAt(sequence, sequence.motionMs);
+
   return (
     <View style={styles.root} testID="meet-walkout">
       <View style={styles.copy}>
@@ -173,8 +227,10 @@ export function WalkoutView({
           barAndCollarsKg,
           loadRatio,
           platesLoaded,
+          pose,
         }}
         scrim={MEET_TUNING.HALL.WALKOUT_SCRIM}
+        crowdRisePx={pose.crowdRisePx}
       />
     </View>
   );

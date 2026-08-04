@@ -495,6 +495,74 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     );
   });
 
+  it('hands the hall a WALK-OUT, and brings the hall up on the beats that ask', () => {
+    // THE HOLE THIS CLOSES, and it is the same hole the plate count sat in. The
+    // whole of `walkout.test.ts` measures the SHEET on real pixels, and every
+    // one of its assertions stays green if `WalkoutView` stops handing the sheet
+    // over and `MeetHallView` goes back to drawing one still. That regression is
+    // three deleted words away, and it is the exact shape of the bug this file
+    // exists for.
+    //
+    // READ OFF THE ELEMENTS, not off the files, for the reason the plate-count
+    // check records: `expect(source).toContain('pose')` is satisfied by the
+    // `const pose =` line on its own.
+    const walkout = meetHallElementIn(read('meet/WalkoutView.tsx'));
+    expect(walkout, 'WalkoutView draws no MeetHallView').not.toBeNull();
+    expect(walkout ?? '', 'the walkout hands the hall no pose').toMatch(/\bpose\s*[,}]/);
+    expect(walkout ?? '', 'the walkout never brings the hall up').toContain(
+      'crowdRisePx={pose.crowdRisePx}',
+    );
+
+    // ...and the verdict brings it up too, which is the crowd's other moment —
+    // GATED ON A GOOD LIFT AND ON THE LIGHTS BEING OUT. A hall that reacted
+    // either way would be reacting to nothing, and one that reacted during the
+    // deliberation would announce the verdict before the referees did, which is
+    // the property the top of `VerdictView.tsx` is entirely about.
+    const verdictSource = codeOnly(read('meet/VerdictView.tsx'));
+    const verdict = meetHallElementIn(read('meet/VerdictView.tsx'));
+    expect(verdict ?? '', 'the verdict never brings the hall up').toContain('crowdRisePx=');
+    expect(verdictSource, 'the hall reacts whether or not the lift stood').toMatch(
+      /const cheering = revealed && good;/,
+    );
+    expect(verdictSource, 'the reaction is not gated on the call at all').toMatch(
+      /cheering\s*\?[\s\S]{0,120}:\s*0/,
+    );
+
+    // AND THE HALL ACTUALLY USES BOTH. A `MeetHallView` that accepted `pose` and
+    // `crowdRisePx` and then drew `hallLifterFrame` over `MEET_HALL_SCENE`
+    // anyway would satisfy everything above — the same failure the
+    // `SCENES[venue]` check above exists for.
+    const hall = codeOnly(read('meet/MeetHallView.tsx'));
+    expect(hall, 'MeetHallView ignores the pose it is handed').toContain('walkoutLifterFrame(pose');
+    expect(hall, 'MeetHallView draws a fixed room again').toContain('hallScene(crowdRisePx)');
+    expect(hall, 'MeetHallView ignores where the walk-out puts him').toContain('pose?.bodyDxPx');
+    expect(hall, 'MeetHallView pins itself to one room').not.toContain(
+      'spec={MEET_HALL_SCENE}',
+    );
+
+    // AND THE CLOCK IS REAL. `useHallStep` is what turns elapsed time into a
+    // frame index; a `WalkoutView` that sampled a constant instead would hold
+    // the beat on its first drawing with every test in `walkout.test.ts` still
+    // green.
+    //
+    // A SOURCE CHECK, AND WEAKER THAN THE PIXEL WORK ABOVE. This suite runs in a
+    // node environment with no renderer, so it cannot mount the component and
+    // watch the clock advance. The instrument that can is
+    // `tools/capture-meet.mjs`, which photographs the LIVE walk-out at two
+    // instants and fails when the hall is the same picture in both.
+    const view = codeOnly(read('meet/WalkoutView.tsx'));
+    expect(view, 'WalkoutView runs no clock').toContain('useHallStep(sampleFrame');
+    expect(view, 'the walkout sampler ignores elapsed time').toMatch(
+      /walkoutFrameIndexAt\(sequence,\s*elapsedMs\)/,
+    );
+    const clock = codeOnly(read('meet/useHallStep.ts'));
+    expect(clock, 'the hall clock never asks for a frame').toContain('requestAnimationFrame');
+    expect(clock, 'the hall clock does not measure elapsed time').toContain('now - start');
+    expect(clock, 'the hall clock never samples the elapsed time it measured').toContain(
+      'sampleAt(elapsed)',
+    );
+  });
+
   it('the element parser can tell a prop from a mention of its name', () => {
     // The positive control for the correction above.
     const withProp = 'const [platesLoaded] = x();\n  <MeetHallView lifter={{ platesLoaded }} />';

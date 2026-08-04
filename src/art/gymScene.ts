@@ -104,6 +104,24 @@ export interface GymSceneSpec {
   readonly focusX: number;
   /** Camera position in scene pixels. Layers slide at `GYM_PARALLAX` rates. */
   readonly cameraX: number;
+  /**
+   * Scene rows the seated crowd has come UP by — a hall on its feet.
+   *
+   * Absent or 0 on every room this file builds and on every screen outside meet
+   * day, which is both the default and the point: a training gym has no crowd
+   * at all (`GYM_VENUE['training-gym'].CROWD`), and a meet hall is seated unless
+   * something is happening to it. `src/game/meetTuning.ts`'s `CROWD` block owns
+   * WHEN it is non-zero and by how much; this file only draws it.
+   *
+   * IT ONLY EVER MOVES CROWD PIXELS UPWARD. `paintCrowd` lifts each silhouette's
+   * head and stretches its shoulders down to the base it already had, so the
+   * bottom edge of the band does not move. That is load-bearing rather than
+   * tidy: the seating sits above the lifter's crown on purpose
+   * (`GYM_CROWD.RISER_ROWS`), and a rise that grew downward would put texture
+   * back behind his head and undo the readability fix `meetStage.test.ts`
+   * measures.
+   */
+  readonly crowdRisePx?: number | undefined;
 }
 
 /**
@@ -273,6 +291,9 @@ function paintCrowd(g: IndexGrid, spec: GymSceneSpec): void {
   const bottom = crowdFrontRow(spec);
   const top = Math.max(0, bottom - venue.CROWD_ROWS);
   const shift = layerOffset(spec.cameraX, GYM_PARALLAX.WALL);
+  // How far this hall is on its feet. Whole rows, never negative, and clipped
+  // into the band below. See `GymSceneSpec.crowdRisePx`.
+  const rise = Math.max(0, Math.round(spec.crowdRisePx ?? 0));
 
   paintBanner(g, spec, junction, top);
 
@@ -288,10 +309,18 @@ function paintCrowd(g: IndexGrid, spec: GymSceneSpec): void {
       //
       // CLIPPED TO THE BAND. A head three rows from the bottom would otherwise
       // put its shoulders below the barrier, which is where the figure is.
-      const headH = Math.min(GYM_CROWD.HEAD_H, Math.max(0, bottom - y));
-      fillRect(g, x, y, GYM_CROWD.HEAD_W, headH, GYM.CROWD_MID);
-      const shoulderTop = y + GYM_CROWD.HEAD_H;
-      const shoulderH = Math.min(GYM_CROWD.SHOULDER_ROWS, Math.max(0, bottom - shoulderTop));
+      //
+      // STANDING UP IS THE HEAD LIFTING AND THE SHOULDERS STRETCHING TO MEET
+      // THE SEAT, not the whole silhouette sliding: the rows repeat every
+      // `ROW_PITCH`, so a pure translation by a whole pitch would redraw the
+      // same crowd. Growing each figure keeps the base where it was, which is
+      // what stops a rise reaching down toward the lifter.
+      const headTop = Math.max(top, y - rise);
+      const headH = Math.min(GYM_CROWD.HEAD_H, Math.max(0, bottom - headTop));
+      fillRect(g, x, headTop, GYM_CROWD.HEAD_W, headH, GYM.CROWD_MID);
+      const shoulderTop = headTop + GYM_CROWD.HEAD_H;
+      const seatRow = Math.min(bottom, y + GYM_CROWD.HEAD_H + GYM_CROWD.SHOULDER_ROWS);
+      const shoulderH = Math.max(0, seatRow - shoulderTop);
       fillRect(g, x - 1, shoulderTop, GYM_CROWD.HEAD_W + 2, shoulderH, GYM.CROWD_MID);
     }
     row += 1;

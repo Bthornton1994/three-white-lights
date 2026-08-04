@@ -53,7 +53,24 @@
  * for the next attempt. `MeetHallView` draws the same platform the rep was taken
  * on, held back under the lamps by `MEET_TUNING.HALL.JUDGING_SCRIM` so the
  * lights are the brightest thing on the screen, with the lifter on it and the
- * bar still loaded. Nothing about the room is derived from the call.
+ * bar still loaded.
+ *
+ * ---------------------------------------------------------------------------
+ * ...AND ON A GOOD LIFT, THE HALL GETS UP
+ * ---------------------------------------------------------------------------
+ * Three white lights is the thing this game is named after, and it was the
+ * FLATTEST frame in the sequence: twenty-four rows of identical stamped
+ * silhouettes that did not move when the panel came up all white. The seating
+ * now stands (`MEET_TUNING.CROWD.CHEER_RISE_PX`), on the same delay the cheer
+ * cue and the verdict haptic already fire on — AFTER THE LAST LAMP, so it
+ * cannot leak the call, and ONLY on a good one, because a real hall goes quiet
+ * on three reds and a crowd that reacted either way would be reacting to
+ * nothing.
+ *
+ * That is the only thing about the room derived from the call, and it happens
+ * strictly after the player has been told. During the deliberation beat the
+ * hall is seated, identical whichever way the call went — which is the property
+ * the top of this file is about.
  *
  * NO LOGIC HERE. Which lights, whether it was close, what the feedback line
  * says, and which cue and pattern a lamp gets, are all decided in `meetDay.ts`
@@ -72,8 +89,20 @@ import { JUDGE_COUNT, type JudgeLight } from '../game/meet';
 import { formatWeight } from '../game/resultCard';
 import { MeetHallView } from './MeetHallView';
 import { MEET_PALETTE } from './meetPalette';
+import { useHallStep } from './useHallStep';
+import { crowdRisePxAt, CHEER_CROWD_RISE } from './walkout';
 
 const L = MEET_LAYOUT;
+
+/**
+ * When the hall reacts: after the LAST referee's lamp, on the same delay the
+ * cheer cue and the verdict haptic already use. Read from `meetDay.ts`'s own
+ * schedule rather than restated, so a tuning pass on the light stagger moves
+ * the crowd with it.
+ */
+function cheerDelayMs(): number {
+  return lightRevealDelayMs(JUDGE_COUNT - 1) + MEET_TUNING.FEEDBACK_REVEAL_DELAY_MS;
+}
 
 /** One referee's lamp. Dark until its beat, then its colour. */
 function Lamp({
@@ -158,6 +187,21 @@ export function VerdictView({
     return playBeat({ kind: 'deliberation' });
   }, [revealed]);
 
+  // THE HALL REACTS. Only on a good lift, only after the last lamp, and it is
+  // the one thing about the room that the call reaches. `crowdRisePxAt` is pure
+  // and shared with the walk-out's own rise, so the two cannot be two ramps.
+  const cheering = revealed && good;
+  const sampleRise = React.useCallback(
+    (elapsedMs: number) =>
+      cheering ? crowdRisePxAt(elapsedMs - cheerDelayMs(), CHEER_CROWD_RISE) : 0,
+    [cheering],
+  );
+  const crowdRisePx = useHallStep(
+    sampleRise,
+    cheerDelayMs() + MEET_TUNING.CROWD.CHEER_RISE_MS,
+    null,
+  );
+
   return (
     <View style={styles.root} testID={revealed ? 'meet-verdict' : 'meet-deliberation'}>
       <View style={styles.panel}>
@@ -201,6 +245,7 @@ export function VerdictView({
       <MeetHallView
         lifter={{ totalKg: attempt.weightKg, barAndCollarsKg, loadRatio }}
         scrim={MEET_TUNING.HALL.JUDGING_SCRIM}
+        crowdRisePx={crowdRisePx}
       />
     </View>
   );
