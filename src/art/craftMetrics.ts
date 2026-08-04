@@ -998,8 +998,29 @@ function distanceToSegment(
   return { d: Math.hypot(x - px, y - py), t };
 }
 
-/** Inside the capsule from a to b whose radius runs `ra` -> `rb`. */
-function inCapsule(
+/**
+ * Inside the capsule from a to b whose radius runs `ra` -> `rb`.
+ *
+ * THIS IS ONE OF THREE COPIES OF `raster.limbPass`'s membership rule, and it is
+ * EXPORTED so the other two can stop being unchecked ones. There were FOUR until
+ * `lifterSprite.test.ts` folded its own local copy into this. The rule appears
+ * at:
+ *
+ *   1. `raster.limbPass`, where it decides which pixels the renderer paints,
+ *      with `grow` 1 on the contour pass and 0 on the fill pass;
+ *   2. here, where it decides which pixels a MEASUREMENT WINDOW covers, with
+ *      `pad` = `CRAFT.LIMB_WINDOW_PAD_PX`;
+ *   3. `lifterSprite.test.ts`'s `inProbeCapsule`, which probes the silhouette
+ *      without rendering, with the contour pass's `grow` of 1.
+ *
+ * The arithmetic is the same in all three — `t` clamped to [0, 1], radius
+ * interpolated at `t`, distance taken as `hypot(perp, past-the-end)` so the ends
+ * are round — and only the slack differs. `pad` is 1.2 rather than 1 on purpose:
+ * the window must contain the contour ring the renderer stamps, not sit exactly
+ * on it. `lifterSprite.test.ts` asserts BOTH relationships against real drawn
+ * pixels rather than asserting them in prose; see `inProbeCapsule`.
+ */
+export function inCapsule(
   x: number,
   y: number,
   ax: number,

@@ -19,6 +19,7 @@ import {
   CRAFT,
   colourKeyedField,
   fieldFromIndexGrid,
+  inCapsule,
   isKeylined,
   limbWindows,
   luma8,
@@ -39,6 +40,7 @@ import {
 import { buildSquatRep, stickingPointFrame } from './squatAnimation';
 import {
   BANK_SIZE,
+  INTERIOR_EDGE,
   PAL,
   PALETTE_BANKS,
   RAMPS,
@@ -47,7 +49,7 @@ import {
   rgb5ToRgb8,
 } from './palette';
 import { findUnallocatedIndices, gridToRgba, usedIndices } from './rgba';
-import { getPx, upscaleGrid, type IndexGrid } from './raster';
+import { createGrid, drawLimb, getPx, upscaleGrid, type IndexGrid } from './raster';
 import { BAR, BEND, CENTER_X, LOAD_PRESETS, PITCH, RESOLUTION, STRAIN } from './spriteTuning';
 import {
   FEMUR_FRONTAL_LEN_PX,
@@ -1040,12 +1042,48 @@ const SILHOUETTE_PROBE_RADII: readonly number[] = [2.448, 2.6, 2.8, 3.0, 3.2, 3.
  * strained poses where `STRAIN.ELBOW_TUCK` has pulled `elbowHalfW` in to 7.6.
  * Nothing moves on any of the eleven authored drawings even there.
  *
- * It is asserted rather than described so the sentence above cannot rot, and it
- * is a ceiling rather than an equality because 16 rows in 14,260 is 0.1% and an
- * unrelated pose tweak may legitimately move it. If it grows, re-measure.
+ * ---------------------------------------------------------------------------
+ * ONE DOCTRINE FOR OURS-ONLY BOUNDS, AND THIS IS IT: BOTH DIRECTIONS.
+ * ---------------------------------------------------------------------------
+ *
+ * This file used to make opposite calls on that question forty lines apart, in
+ * one round, with nothing reconciling them. `MEASURED_WORST_FLOOR_EXCESS` was
+ * converted from `toBeLessThan(0.041)` to `toBeCloseTo(0.04, 3)` on the stated
+ * grounds that a one-sided bound "only ever catches WORSENING" and lets the
+ * prose beside it silently become false — while these two numbers stayed a
+ * ceiling, justified by the argument that 16 rows in 14,260 is 0.1% and an
+ * unrelated pose tweak may legitimately move it.
+ *
+ * Both arguments are true and the second one loses, because "an unrelated tweak
+ * may legitimately move it" is a reason to be TOLD when it moves, not a reason
+ * to be told only when it moves one way. The other direction is not a smaller
+ * failure here: 16 -> 0 would mean the cartoon radius no longer reaches the
+ * silhouette at all, which is a bigger fact about the rig than 16 -> 20 and is
+ * exactly the sentence in this constant's own doc. So an OURS-ONLY figure that a
+ * comment states is pinned in both directions everywhere in this file —
+ * `toBe`/`toEqual` where the quantity is an exact count, `toBeCloseTo` where it
+ * is a ratio of counts — and a move in either direction is re-measured by hand.
+ * `FLOOR_EXCESS_FRAMES` below was already the exact-count form of this. What
+ * changed to match it: the moved-row count, the one-pixel delta beside it, and
+ * `SILHOUETTE_PROBE_ROWS`, the denominator both are quoted against, which was
+ * `toBeGreaterThan(14000)` in the two places it appears.
+ *
+ * Reference figures are the separate case and are not affected: those carry
+ * `@ref` and are checked against the decoder.
  */
 const SILHOUETTE_CARTOON_BICEPS_R = 4.0;
 const SILHOUETTE_CARTOON_MOVED_ROWS = 16;
+/** By how far, in px. One. Pinned both ways for the reason above. */
+const SILHOUETTE_CARTOON_MAX_DELTA_PX = 1;
+/**
+ * (pose, sign, row) triples the silhouette probes compare: eleven authored
+ * drawings plus 416 deformed ones, both signs, every row an arm occupies.
+ *
+ * OURS. It is the denominator of "16 of 14,260" and of "zero of 14,260", and it
+ * was `toBeGreaterThan(14000)` in both places — which is a bound that a probe
+ * aimed at half the poses would still clear.
+ */
+const SILHOUETTE_PROBE_ROWS = 14260;
 
 /**
  * The upper arm's furthest outboard pixel, in px from centre, over every pose
@@ -1070,8 +1108,25 @@ interface ProbeCapsule {
 /**
  * `raster.limbPass`'s own membership rule, plus the one px `PartOptions.edge`
  * grows the ring by. Replicated rather than imported because `limbPass` writes
- * into a grid and this needs the predicate; the two are asserted to agree by
- * every window check in this file, which measures the drawn pixels.
+ * into a grid and this needs the predicate.
+ *
+ * THE AGREEMENT IS MEASURED, PIXEL FOR PIXEL, and it used to be asserted in
+ * prose. This comment said "the two are asserted to agree by every window check
+ * in this file, which measures the drawn pixels", and that was false three ways
+ * over: the window checks run a THIRD copy of the rule (`craftMetrics.inCapsule`,
+ * whose slack is `CRAFT.LIMB_WINDOW_PAD_PX` = 1.2 rather than this one's 1), what
+ * they assert about it is `count > CRAFT.MIN_LIMB_PIXELS` — a floor any
+ * overlapping window clears — and nothing anywhere compared this predicate to a
+ * drawn pixel. A justification that cannot fail is the defect class this file
+ * spends its length fighting; see `agrees with every reference figure any
+ * comment in the tree states` at the bottom.
+ *
+ * What checks it now is 'the silhouette probe draws the same pixels the renderer
+ * does' below: it draws one capsule with the real `drawLimb` into an empty grid
+ * and requires the painted set and this predicate's set to be the same set, over
+ * every arm capsule of every pose the renderer can draw. That also pins the third
+ * copy, as a containment rather than an equality, which is what a 1.2 pad against
+ * a 1.0 ring actually is.
  */
 function inProbeCapsule(c: ProbeCapsule, x: number, y: number): boolean {
   const dx = c.bx - c.ax;
@@ -1207,6 +1262,93 @@ describe('a biceps belly is not a lever: it cannot reach the silhouette', () => 
     }
   });
 
+  it('draws the same pixels the silhouette probe predicts, capsule for capsule', () => {
+    // THE PROBE IS CHECKED AGAINST THE RENDERER, NOT AGAINST A SENTENCE.
+    //
+    // Everything in this describe block is computed by `inProbeCapsule`, which is
+    // a hand-copy of `raster.limbPass`'s membership rule. Its comment used to
+    // claim the copy was "asserted to agree by every window check in this file",
+    // and nothing in this file had ever compared it to a drawn pixel. So: draw
+    // ONE capsule with the real `drawLimb` into an empty grid and require the set
+    // of pixels it paints and the set this predicate returns to be the SAME SET.
+    //
+    // The comparison is exact, and it is exact for a reason rather than by luck.
+    // `drawLimb` with `edge: true` runs `limbPass` twice — the ring at `grow` 1
+    // and the fill at `grow` 0 — so the painted set is precisely the `grow` 1 set,
+    // which is what this predicate computes. Nothing else is on the grid, and no
+    // ramp entry is the transparent index, so "painted" and "not transparent" are
+    // the same question.
+    //
+    // Every arm capsule of every pose the renderer can draw, both signs: the
+    // upper arm and the two forearm segments, at the radii `drawArm` ships.
+    const poses = everyDrawnPose();
+    let compared = 0;
+    let capsules = 0;
+    let disagreed = 0;
+    let outsideWindowPad = 0;
+    let thinnest = Number.POSITIVE_INFINITY;
+    let firstDisagreement = '';
+    let firstCropped = '';
+    for (const { where, pose } of poses) {
+      for (const sign of [-1, 1]) {
+        for (const c of armCapsules(pose, sign, null)) {
+          capsules += 1;
+          const g = createGrid(RESOLUTION.CELL_W, RESOLUTION.CELL_H);
+          drawLimb(g, c.ax, c.ay, c.bx, c.by, c.ra, c.rb, RAMPS.SKIN, {
+            edge: true,
+            edgeIndex: INTERIOR_EDGE.SKIN,
+            edgeFollowsLight: true,
+          });
+          let painted = 0;
+          let predicted = 0;
+          for (let y = 0; y < g.h; y += 1) {
+            for (let x = 0; x < g.w; x += 1) {
+              const drawn = !isTransparentIndex(getPx(g, x, y));
+              const says = inProbeCapsule(c, x, y);
+              if (drawn) painted += 1;
+              if (says) predicted += 1;
+              if (drawn !== says) {
+                disagreed += 1;
+                if (firstDisagreement === '') {
+                  firstDisagreement = `${where} sign${sign} (${x},${y}) drawn=${drawn} probe=${says}`;
+                }
+              }
+              // And the THIRD copy, as the containment it actually is: the
+              // measurement window's 1.2 pad must cover the 1.0 contour ring, or
+              // every window in `limbWindows` is measuring a limb with its own
+              // outline cropped off.
+              if (
+                drawn &&
+                !inCapsule(x, y, c.ax, c.ay, c.bx, c.by, c.ra, c.rb, CRAFT.LIMB_WINDOW_PAD_PX)
+              ) {
+                outsideWindowPad += 1;
+                if (firstCropped === '') firstCropped = `${where} sign${sign} (${x},${y})`;
+              }
+              compared += 1;
+            }
+          }
+          // A predicate that said "no" everywhere would agree with an empty grid.
+          thinnest = Math.min(thinnest, painted);
+          if (predicted !== painted) {
+            disagreed += 1;
+            if (firstDisagreement === '') firstDisagreement = `${where} sign${sign} count`;
+          }
+        }
+      }
+    }
+    expect(disagreed, `probe disagrees with the drawing at ${firstDisagreement}`).toBe(0);
+    expect(outsideWindowPad, `window pad crops a drawn pixel at ${firstCropped}`).toBe(0);
+    expect(thinnest, 'the thinnest capsule still drew a limb').toBeGreaterThan(
+      CRAFT.MIN_LIMB_PIXELS,
+    );
+    expect(capsules, 'three capsules per arm, two arms, every pose').toBe(poses.length * 2 * 3);
+    expect(compared).toBe(capsules * RESOLUTION.CELL_W * RESOLUTION.CELL_H);
+    // The pad is slack, not a second rule: it has to be wider than the ring or
+    // the containment above is vacuous, and it is stated here rather than left
+    // to be read off `craftMetrics.ts`.
+    expect(CRAFT.LIMB_WINDOW_PAD_PX).toBeGreaterThan(1);
+  });
+
   it('leaves the arm outline identical from the cone to a 3.8 biceps, row for row', () => {
     // THE WHOLE ARGUMENT, in one assertion. Take the arm as `drawArm` draws it,
     // splice in a biceps belly at every radius from the shipped cone's own
@@ -1250,7 +1392,7 @@ describe('a biceps belly is not a lever: it cannot reach the silhouette', () => 
         }
       }
     }
-    expect(rows, 'the probe found rows to compare').toBeGreaterThan(14000);
+    expect(rows, 'the probe found rows to compare').toBe(SILHOUETTE_PROBE_ROWS);
     expect(differing, `arm outline moved at ${firstDiff}`).toBe(0);
   });
 
@@ -1263,6 +1405,9 @@ describe('a biceps belly is not a lever: it cannot reach the silhouette', () => 
     //
     // That is what "cannot reach the silhouette" cashes out to. It is not a
     // theorem; it is 0.1% of the rows at a radius nobody would ship.
+    //
+    // All four numbers are pinned in BOTH directions. See the doctrine note on
+    // `SILHOUETTE_CARTOON_BICEPS_R` for why this stopped being a ceiling.
     let rows = 0;
     let differing = 0;
     let maxDelta = 0;
@@ -1283,11 +1428,11 @@ describe('a biceps belly is not a lever: it cannot reach the silhouette', () => 
         }
       }
     }
-    expect(rows).toBeGreaterThan(14000);
-    expect(differing, 'rows whose outline moves at a 4.0 biceps').toBeLessThanOrEqual(
+    expect(rows).toBe(SILHOUETTE_PROBE_ROWS);
+    expect(differing, 'rows whose outline moves at a 4.0 biceps').toBe(
       SILHOUETTE_CARTOON_MOVED_ROWS,
     );
-    expect(maxDelta, 'and by how far').toBeLessThanOrEqual(1);
+    expect(maxDelta, 'and by how far').toBe(SILHOUETTE_CARTOON_MAX_DELTA_PX);
     expect(onAuthored, 'none of them on an authored drawing').toBe(0);
   });
 
@@ -2356,8 +2501,24 @@ const SKIN_INDICES = new Set([
 ]);
 const GEAR_INDICES = new Set([PAL.GEAR_DARK, PAL.GEAR_MID, PAL.GEAR_LIGHT]);
 
-/** Is (x,y) inside the capsule this rasteriser would have drawn? */
-function inCapsule(
+/**
+ * Is (x,y) inside the capsule this rasteriser would have drawn?
+ *
+ * A FOURTH COPY OF THE RULE USED TO LIVE HERE, and it is gone: this now calls
+ * `craftMetrics.inCapsule` with no pad, which is the same arithmetic. It is
+ * worth saying how it was found, because it is the point of the round it was
+ * found in. `inProbeCapsule` above carried a comment claiming its own copy was
+ * checked against the drawn pixels; writing the check that would make that true
+ * meant importing `craftMetrics.inCapsule`, and the import silently lost to the
+ * hoisted local declaration of the same name — which took nine arguments where
+ * the local took eight, dropped the ninth on the floor, and produced a wrong
+ * answer with no error anywhere. Four copies of one rule in one tree is how that
+ * happens. Three is what is left: the renderer's (`raster.limbPass`), the
+ * measurement window's (`craftMetrics.inCapsule`), and the probe's
+ * (`inProbeCapsule`), and the probe is now compared to the renderer pixel for
+ * pixel.
+ */
+function inDrawnCapsule(
   x: number,
   y: number,
   ax: number,
@@ -2367,21 +2528,13 @@ function inCapsule(
   ra: number,
   rb: number,
 ): boolean {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const len = Math.hypot(dx, dy);
-  if (len < 1e-6) return false;
-  const ux = dx / len;
-  const uy = dy / len;
-  const rx = x - ax;
-  const ry = y - ay;
-  const t = Math.min(1, Math.max(0, (rx * ux + ry * uy) / len));
-  const r = ra + (rb - ra) * t;
-  const perp = rx * -uy + ry * ux;
-  const along = rx * ux + ry * uy;
-  const overA = along < 0 ? -along : 0;
-  const overB = along > len ? along - len : 0;
-  return Math.hypot(perp, overA + overB) <= r;
+  // The degenerate guard is kept rather than delegated, because it is the one
+  // place the deleted copy and `craftMetrics.inCapsule` behaved differently: a
+  // zero-length capsule is nothing here and a disc of radius `ra` there. Keeping
+  // it means this deduplication cannot have moved a leg number, without anyone
+  // having to establish that no leg capsule ever collapses.
+  if (Math.hypot(bx - ax, by - ay) < 1e-6) return false;
+  return inCapsule(x, y, ax, ay, bx, by, ra, rb, 0);
 }
 
 interface LegValues {
@@ -2426,7 +2579,7 @@ function legValues(grid: IndexGrid, pose: Pose, sign: number): LegValues {
       if (GEAR_INDICES.has(v)) {
         // Plus one radius: `PartOptions.edge` grows the drawn sleeve by its ring.
         if (
-          inCapsule(x, y, span.topX, span.topY, span.botX, span.botY, KS.R[0] + 1, KS.R[1] + 1)
+          inDrawnCapsule(x, y, span.topX, span.topY, span.botX, span.botY, KS.R[0] + 1, KS.R[1] + 1)
         ) {
           sleeve.push(luma(v));
         }
@@ -2434,11 +2587,11 @@ function legValues(grid: IndexGrid, pose: Pose, sign: number): LegValues {
       }
       if (!SKIN_INDICES.has(v)) continue;
       const shinEndY = pose.ankleY + RIG_GEOMETRY.FOOT_DROP - (SR[1] ?? 0);
-      if (inCapsule(x, y, kneeX, pose.kneeY, ankleX, shinEndY, SR[0] ?? 0, SR[1] ?? 0)) {
+      if (inDrawnCapsule(x, y, kneeX, pose.kneeY, ankleX, shinEndY, SR[0] ?? 0, SR[1] ?? 0)) {
         shin.push(luma(v));
         continue;
       }
-      if (y >= hem && inCapsule(x, y, hipX, pose.hipY, kneeX, pose.kneeY, TR[0] ?? 0, TR[1] ?? 0)) {
+      if (y >= hem && inDrawnCapsule(x, y, hipX, pose.hipY, kneeX, pose.kneeY, TR[0] ?? 0, TR[1] ?? 0)) {
         thigh.push(luma(v));
       }
     }
