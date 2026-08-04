@@ -115,6 +115,7 @@ import {
   SHELF,
   TIER_1_STRIP,
 } from '../licensing/licensingTuning';
+import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV } from '../shell/shellTuning';
 import { PALETTE_BANKS, PAL, RAMPS } from '../art/palette';
 import { GYM, GYM_BANKS, GYM_RAMPS } from '../art/gymPalette';
 import { SHEET, SHEET_BANK } from '../card/sheetPalette';
@@ -272,6 +273,20 @@ export const TUNING = Object.freeze({
   }),
 
   /**
+   * THE APP SHELL. The one control that carries a player between the daily loop
+   * (GDD §3.2) and meet day (GDD §6), and the rules about when it may be on
+   * screen at all.
+   *
+   * `SHELL_NAV.SESSION_PHASES` and `MEET_PHASES` are the ones to turn first and
+   * the ones most likely to be wrong: they are a guess at when a navigation
+   * control is welcome and when it is in the way, and nobody has held the phone
+   * yet. `set` and `rest` are excluded on the argument that a mis-tap during a
+   * live rep costs the rep — if that turns out to be over-cautious, this is the
+   * line to move.
+   */
+  shell: Object.freeze({ SHELL_NAV, SHELL_LAYOUT, SHELL_COPY }),
+
+  /**
    * THE RESULT CARD. Sheet layout in card pixels, plus `CARD_SCREEN`, the
    * React Native chrome around it in logical points. The two are different
    * units and the block comments say which is which.
@@ -326,6 +341,7 @@ export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Obj
   card: 'src/card/cardTuning.ts',
   meet: 'src/game/meetTuning.ts',
   licensing: 'src/licensing/licensingTuning.ts',
+  shell: 'src/shell/shellTuning.ts',
 });
 
 /** Where each palette physically lives. Same cross-check as above. */

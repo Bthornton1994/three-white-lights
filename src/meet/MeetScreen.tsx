@@ -77,12 +77,25 @@ export interface MeetScreenProps {
    * Where the lifter goes when the meet is over.
    *
    * SUPPLIED BY THE ROUTER, because this file is a renderer and all routing in
-   * the app lives in `App.tsx`. Omitted, the buttons restart the meet — which
+   * the app lives in `src/shell/`. Omitted, the buttons restart the meet — which
    * is honest for a harness but is NOT what "BACK TO TRAINING" means, so the
    * played build passes one. The real destination is the Career calendar's, and
    * that piece is out of this one's scope (GDD §6.1).
    */
   readonly onLeave?: (() => void) | undefined;
+  /**
+   * Reports which beat of GDD §6 the meet is on, for the shell's chrome gate.
+   *
+   * ROUTING INFORMATION, not state. §6.5's recap and the result card behind it
+   * have no way out of their own — `onSeeCard` is the recap's only action — so
+   * the shell draws the way back, and it must not draw one over a live attempt.
+   * It may not derive the beat either: meet-day state belongs to `meetDay.ts`.
+   * This screen tells it, and tells it nothing else.
+   *
+   * §6.3's bomb-out is deliberately excluded by the shell (`SHELL_NAV`): that
+   * beat draws its own way out, through `onLeave` above.
+   */
+  readonly onPhase?: ((phase: MeetDayState['phase']) => void) | undefined;
 }
 
 export function MeetScreen({
@@ -90,6 +103,7 @@ export function MeetScreen({
   showCard = false,
   holdWalkoutAtMs = null,
   onLeave,
+  onPhase,
 }: MeetScreenProps = {}): React.ReactElement {
   const loop = useMeetDay(preview, preview !== undefined);
   const { dispatch, restart } = loop;
@@ -106,6 +120,10 @@ export function MeetScreen({
   // them anyway. It is fire-and-forget — `playerFor` swallows a platform that
   // refuses, because sound must never take a screen down.
   useEffect(() => preloadMeetSound(), []);
+
+  useEffect(() => {
+    onPhase?.(state.phase);
+  }, [onPhase, state.phase]);
 
   const onResolved = useCallback(
     (resolution: LiftResolution) => dispatch({ kind: 'lift-resolved', resolution }),

@@ -223,6 +223,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'feel',
     why: 'GYM_* — the environment layer: room proportions, lighting, parallax, prop placement.',
   }),
+  'src/shell/shellTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'SHELL_NAV / SHELL_LAYOUT / SHELL_COPY — the app shell: which beats of GDD §3.2 and §6 a navigation control may be drawn over, how long it takes to arrive, and where it sits. When a control is welcome and when it is in the way is a judgement that needs a thumb on a phone, so it is a knob rather than a constant nobody may turn.',
+  }),
   'src/licensing/licensingTuning.ts': Object.freeze({
     role: 'constants',
     kind: 'feel',

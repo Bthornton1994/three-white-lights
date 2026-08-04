@@ -32,11 +32,13 @@
  * hands the reading down and `CloseOutView` renders how sure it is.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SESSION_COPY, SESSION_LAYOUT } from '../game/sessionTuning';
 import { plannedTemplateFor } from '../game/session';
+import type { SessionPhase } from '../game/session';
+import type { SessionServerPort } from '../game/sessionClient';
 import type { LiftOutcome } from '../game/lift';
 import { BriefingView } from './BriefingView';
 import { CheckInView } from './CheckInView';
@@ -73,12 +75,42 @@ export interface SessionScreenProps {
    * photograph a screen showing a different lifter's figures.
    */
   readonly preview?: SessionPreviewFrame | undefined;
+  /**
+   * The APP's session-server connection, supplied by the shell.
+   *
+   * Not a detail. `alreadyTrainedToday` is read out of what the server said,
+   * and the shell unmounts this screen when meet day opens — so a port built
+   * per mount would forget today's session the moment the player navigated away
+   * and came back, and offer them a second session of the same day (GDD §3.2
+   * allows one). One connection per app run, in `src/shell/appServer.ts`.
+   *
+   * Omitted, `useSession` builds its own, which is what a test or a standalone
+   * render wants.
+   */
+  readonly serverPort?: SessionServerPort | undefined;
+  /**
+   * Reports which beat of GDD §3.2 the loop is on, for the shell's chrome gate.
+   *
+   * ROUTING INFORMATION, not state. The shell draws no navigation control over
+   * a live set — a mis-tap there costs a rep — so it has to know, and it may
+   * not derive it: session state belongs to `session.ts`. This screen tells it,
+   * and tells it nothing else.
+   */
+  readonly onPhase?: ((phase: SessionPhase) => void) | undefined;
 }
 
-export function SessionScreen({ preview }: SessionScreenProps = {}): React.ReactElement {
-  const loop = useSession(preview);
+export function SessionScreen({
+  preview,
+  serverPort,
+  onPhase,
+}: SessionScreenProps = {}): React.ReactElement {
+  const loop = useSession(preview, serverPort);
   const { dispatch, restartDay } = loop;
   const state = loop.state;
+
+  useEffect(() => {
+    onPhase?.(state.phase);
+  }, [onPhase, state.phase]);
 
   const onRepResolved = useCallback(
     (outcome: LiftOutcome) => dispatch({ kind: 'rep-resolved', outcome }),
