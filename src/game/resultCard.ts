@@ -236,8 +236,13 @@
  * So sex is not an optional field on this card. `lifterCategoryText` welds it
  * to the front of the category phrase — "MEN'S RAW OPEN 93" — where the layout
  * can shorten the phrase but has no way to reach in and remove it. The layout's
- * degradation ladder (`src/card/cardTuning.ts`) can name only `equipment` and
- * `division`; sex, weight class and bodyweight are not in its vocabulary.
+ * degradation ladder (`src/card/cardTuning.ts`) can SPEND only `equipment` and
+ * `division`; sex and weight class are not in its vocabulary at all. It can
+ * also move the division or the bodyweight onto a second line of the strip —
+ * `divisionCategoryWord` exists for that — but moving is not dropping: no
+ * combination of a rung's flags produces a strip without the bodyweight, and a
+ * card that prints a PLACING is not offered the rungs that spend the division,
+ * because a placing is a placing in a division.
  *
  * `sexText` (M/F) is untouched and still what `resultSheetLine` and
  * `resultCardEntriesCsvRow` carry, because those reproduce [R2]'s columns under
@@ -622,6 +627,22 @@ export interface LifterCategoryParts {
 export const FULL_LIFTER_CATEGORY: LifterCategoryParts = { equipment: true, division: true };
 
 /**
+ * The division as the category phrase sets it: trimmed, in caps.
+ *
+ * Exported because the division does not always sit inside the phrase. On a
+ * real meet page it is not a column at all — it is the section heading over a
+ * group of rows ([R8]) — and on a one-lifter card, when the phrase will not fit
+ * beside the bodyweight, the layout puts it on a line of its own rather than
+ * spending it (`src/card/cardTuning.ts`). A renderer that upper-cased it a
+ * second time on its own is how two parts of one card start disagreeing about
+ * what a lifter's division is called, so there is one transformation here and
+ * `lifterCategoryText` uses it too.
+ */
+export function divisionCategoryWord(lifter: LifterCategory): string {
+  return lifter.division.trim().toUpperCase();
+}
+
+/**
  * The lifter's category as a board prints it: "MEN'S RAW OPEN 93",
  * "WOMEN'S SINGLE-PLY MASTERS 1 84+".
  *
@@ -641,7 +662,7 @@ export function lifterCategoryText(
 ): string {
   const words: string[] = [SEX_CATEGORY_WORD[lifter.sex]];
   if (include.equipment) words.push(lifter.equipment.trim().toUpperCase());
-  if (include.division) words.push(lifter.division.trim().toUpperCase());
+  if (include.division) words.push(divisionCategoryWord(lifter));
   words.push(lifter.weightClassText.trim());
   return words.filter((word) => word !== '').join(CATEGORY_WORD_SEPARATOR);
 }

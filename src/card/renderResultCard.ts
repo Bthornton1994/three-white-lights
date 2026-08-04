@@ -36,6 +36,7 @@ import {
   ATTEMPT_GRID_HEADINGS,
   NO_VALUE_DISPLAY,
   PLACE_NO_TOTAL_DISPLAY,
+  divisionCategoryWord,
   lifterCategoryText,
   type AttemptCell,
   type LiftRow,
@@ -54,7 +55,6 @@ import {
   FOOTER,
   GRID,
   GRID_BOTTOM_Y,
-  LIFTER_META_LADDER,
   LIFTER_STRIP,
   MASTHEAD,
   SCORE_BLOCKS,
@@ -63,6 +63,8 @@ import {
   gridCellCenterX,
   gridCellX,
   gridRowY,
+  lifterMetaLineY,
+  lifterMetaRungs,
   type LifterMetaRung,
 } from './cardTuning';
 import { capHeight, drawText, measureText, strikeThrough, type TextMode } from './pixelFont';
@@ -173,43 +175,92 @@ function drawLifterStrip(grid: IndexGrid, card: ResultCard): void {
   fillRect(grid, 0, LIFTER_STRIP.Y, CARD.W, LIFTER_STRIP.H, SHEET.PAPER_ALT);
   rule(grid, 0, LIFTER_STRIP.Y + LIFTER_STRIP.H - 1, CARD.W, SHEET.RULE);
 
-  const nameScale = fitScale(card.lifter.name, CONTENT.W, LIFTER_STRIP.NAME_SCALE);
-  drawText(grid, card.lifter.name, CONTENT.X, LIFTER_STRIP.NAME_Y, SHEET.INK, { scale: nameScale });
+  const strip = lifterStrip(card, CONTENT.W);
+  drawText(grid, card.lifter.name, CONTENT.X, LIFTER_STRIP.NAME_Y, SHEET.INK, { scale: strip.nameScale });
 
-  drawText(grid, lifterMetaLine(card, CONTENT.W), CONTENT.X, LIFTER_STRIP.META_Y, SHEET.INK_SOFT);
+  strip.metaLines.forEach((line, index) => {
+    drawText(grid, line, CONTENT.X, lifterMetaLineY(strip.metaLines.length, index), SHEET.INK_SOFT);
+  });
 }
 
 /**
- * The meta line at one rung of the ladder.
+ * The meta line — or lines — at one rung of the ladder.
  *
- * Two parts, and only two: the category phrase and the bodyweight. The words
+ * Three facts and only three go into them: the category phrase, the division
+ * when the rung has moved it out of that phrase, and the bodyweight. The words
  * inside the phrase come from `lifterCategoryText`, which is where the SEX is
- * welded on — this function has no way to build a line without it, because the
- * rung can only ask about `equipment` and `division`.
+ * welded on; this function has no way to build a strip without it, because the
+ * rung can only ask about `equipment` and `division`. It has no way to build
+ * one without the BODYWEIGHT either: `bodyweightOnOwnLine` picks the line, not
+ * whether there is one.
+ *
+ * A rung that moved the division down is the difference between MOVING a fact
+ * and SPENDING one — see `LIFTER_META_LADDER`. The division is upper-cased by
+ * `divisionCategoryWord` in `src/game/resultCard.ts` and not here, so the word
+ * on the second line is the same word the phrase would have used.
  */
-export function lifterMetaLineAtRung(card: ResultCard, rung: LifterMetaRung): string {
+export function lifterMetaLinesAtRung(card: ResultCard, rung: LifterMetaRung): readonly string[] {
+  const keepsDivision = rung.category.includes('division');
   const category = lifterCategoryText(card.lifter, {
     equipment: rung.category.includes('equipment'),
-    division: rung.category.includes('division'),
+    division: keepsDivision,
   });
   const bodyweight = rung.bodyweightUnit
     ? `${card.lifter.bodyweightText}${CARD_LABELS.BODYWEIGHT_SUFFIX}`
     : card.lifter.bodyweightText;
-  return [category, bodyweight]
-    .filter((part) => part.trim() !== '')
-    .join(LIFTER_STRIP.META_SEPARATOR);
+  // Guarded so a rung that both keeps the division and moves it cannot print
+  // it twice.
+  const movedDivision =
+    rung.divisionOnSecondLine && !keepsDivision ? divisionCategoryWord(card.lifter) : '';
+
+  const first = [category, rung.bodyweightOnOwnLine ? '' : bodyweight];
+  const second = [movedDivision, rung.bodyweightOnOwnLine ? bodyweight : ''];
+  return [first, second]
+    .map((parts) => parts.filter((part) => part.trim() !== '').join(LIFTER_STRIP.META_SEPARATOR))
+    .filter((line) => line !== '');
+}
+
+/** How the identity strip is set on one card: the name's size and its lines. */
+export interface LifterStrip {
+  /** Which rung of `LIFTER_META_LADDER` produced it. */
+  readonly rung: LifterMetaRung;
+  /** The whole scale the lifter's name is set at. */
+  readonly nameScale: number;
+  /** One or two lines, in the order they are printed. */
+  readonly metaLines: readonly string[];
 }
 
 /**
- * Sex, equipment, division, class and bodyweight on one line — as much of it as
- * fits, walking `LIFTER_META_LADDER`. Exported so a test can check the ladder
- * rather than the pixels it produces.
+ * The identity strip: as much of the lifter's category as fits, and the size
+ * the name has to be set at to make room for it.
+ *
+ * Walks `lifterMetaRungs(card.placed)` and takes the first rung whose EVERY
+ * line fits `maxWidth` — the same "first that fits, never a truncation" rule as
+ * `firstThatFits`, over a rung rather than a string. A rung that needs two
+ * lines caps the name at `LIFTER_STRIP.NAME_SCALE_COMPACT`, which is where the
+ * second line comes from: the strip's height is unchanged, so the grid below it
+ * does not move.
+ *
+ * Exported so a test can check the ladder rather than the pixels it produces.
  */
-export function lifterMetaLine(card: ResultCard, maxWidth: number): string {
-  return firstThatFits(
-    LIFTER_META_LADDER.map((rung) => lifterMetaLineAtRung(card, rung)),
-    maxWidth,
-  );
+export function lifterStrip(card: ResultCard, maxWidth: number): LifterStrip {
+  const rungs = lifterMetaRungs(card.placed);
+  const candidates = rungs.map((rung) => ({ rung, metaLines: lifterMetaLinesAtRung(card, rung) }));
+  const chosen =
+    candidates.find(({ metaLines }) => metaLines.every((line) => measureText(line) <= maxWidth)) ??
+    candidates[candidates.length - 1];
+  if (chosen === undefined) {
+    // Unreachable: `LIFTER_META_LADDER` is non-empty and its first rung names
+    // the division, so neither the ladder nor the placed filter can empty it.
+    throw new Error('renderResultCard: the lifter meta ladder has no rungs');
+  }
+  const maxScale =
+    chosen.metaLines.length > 1 ? LIFTER_STRIP.NAME_SCALE_COMPACT : LIFTER_STRIP.NAME_SCALE;
+  return {
+    rung: chosen.rung,
+    metaLines: chosen.metaLines,
+    nameScale: fitScale(card.lifter.name, maxWidth, maxScale),
+  };
 }
 
 function drawAttemptCell(grid: IndexGrid, cell: AttemptCell, x: number, y: number): void {

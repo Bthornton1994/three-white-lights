@@ -28,7 +28,7 @@ import {
   gridCellX,
   gridRowY,
 } from './cardTuning';
-import { LIFTER_META_LADDER } from './cardTuning';
+import { LIFTER_META_LADDER, lifterMetaLineY, lifterMetaRungs, rungNamesDivision } from './cardTuning';
 import { visualPlateStack } from '../art/plates';
 import {
   DEFAULT_GRID_HEADINGS,
@@ -37,8 +37,8 @@ import {
   fitScale,
   fitSleeve,
   heaviestGoodLift,
-  lifterMetaLine,
-  lifterMetaLineAtRung,
+  lifterMetaLinesAtRung,
+  lifterStrip,
   renderResultCard,
 } from './renderResultCard';
 import { SHEET, findUnallocatedSheetIndices } from './sheetPalette';
@@ -227,13 +227,20 @@ const LIFTER_NAME_RECT: Rect = {
   h: FONT.GLYPH_H * LIFTER_STRIP.NAME_SCALE,
 };
 /**
- * The line that carries the lifter's sex, equipment, division, class and
- * bodyweight. Stops one row short of the strip's closing rule.
+ * THE WHOLE STRIP, minus its closing rule — not just the line the meta happens
+ * to be set on today.
+ *
+ * The strip prints its category on one line or two (`LIFTER_META_LADDER`), and
+ * a rect drawn tightly around the one-line position would have nothing to say
+ * about a card that reflowed to two. Nothing else in the band is drawn in
+ * `SHEET.INK_SOFT` — the paper, the name and the rule are three other indices —
+ * so a soft-ink mask over the whole strip asserts that the meta lines are what
+ * they are AND that there is no other soft ink anywhere in the band.
  */
 const LIFTER_META_RECT: Rect = {
   ...INSIDE_FRAME,
-  y: LIFTER_STRIP.META_Y,
-  h: LIFTER_STRIP.Y + LIFTER_STRIP.H - 1 - LIFTER_STRIP.META_Y,
+  y: LIFTER_STRIP.Y,
+  h: LIFTER_STRIP.H - 1,
 };
 /** The header row of the attempt grid, above its closing rule. */
 const GRID_HEADER_RECT: Rect = { ...INSIDE_FRAME, y: GRID.HEADER_Y, h: GRID.RULE_Y - GRID.HEADER_Y };
@@ -568,17 +575,19 @@ describe('the lifter identity strip, in pixels', () => {
       {},
       'bombed meta line',
     );
-    // Under pressure the division comes off — see `LIFTER_META_LADDER` for why
-    // that and not the equipment — but the sex does not, and cannot.
-    expectTextIn(
+    // Under pressure the strip takes a SECOND line rather than spending a fact.
+    // Both runs hand-written; the card that used to print
+    // "MEN'S SINGLE-PLY 120+ · 139.40" — no division, next to PLACE 3 — fails
+    // this on the first line's mask.
+    expectRunsIn(
       STRESS,
       LIFTER_META_RECT,
-      "MEN'S SINGLE-PLY 120+ · 139.40",
-      CONTENT.X,
-      LIFTER_STRIP.META_Y,
+      [
+        { text: "MEN'S SINGLE-PLY MASTERS 1 120+", x: CONTENT.X, y: LIFTER_STRIP.META_Y_TWO_LINE[0] },
+        { text: '139.40 KG', x: CONTENT.X, y: LIFTER_STRIP.META_Y_TWO_LINE[1] },
+      ],
       SHEET.INK_SOFT,
-      {},
-      'stress meta line',
+      'stress meta lines',
     );
   });
 
@@ -630,6 +639,282 @@ describe('the lifter identity strip, in pixels', () => {
     expect(differing, 'the identity strip must not be the same for both sexes').toBeGreaterThan(0);
     expectTextIn(manGrid, LIFTER_META_RECT, "MEN'S RAW OPEN 74 · 74.00 KG", CONTENT.X, LIFTER_STRIP.META_Y, SHEET.INK_SOFT, {}, 'man');
     expectTextIn(womanGrid, LIFTER_META_RECT, "WOMEN'S RAW OPEN 74 · 74.00 KG", CONTENT.X, LIFTER_STRIP.META_Y, SHEET.INK_SOFT, {}, 'woman');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A PLACING IS A PLACING IN A DIVISION.
+//
+// THIS BLOCK EXISTS BECAUSE THE STRESS CARD PRINTED "PLACE 3" OVER AN IDENTITY
+// LINE THAT READ "MEN'S SINGLE-PLY 120+". Third in what? On a real sheet the
+// division is never missing next to a rank — a meet page makes it the section
+// heading over the rows the ranks are in — and a one-lifter card has no section
+// heading, so it has to be on the line. Nothing here could have failed before:
+// the suite pinned the truncated line as CORRECT.
+//
+// Every expected string below is written out BY HAND.
+// ---------------------------------------------------------------------------
+
+/** Nine for nine: a state that totals, so a card built on it may be placed. */
+function nineForNine(): MeetState {
+  return (
+    [
+      [200, GOOD],
+      [210, GOOD],
+      [220, GOOD],
+      [120, GOOD],
+      [130, GOOD],
+      [140, GOOD],
+      [230, GOOD],
+      [240, GOOD],
+      [250, GOOD],
+    ] as const
+  ).reduce<MeetState>((state, entry) => take(state, entry[0], entry[1] as JudgePanel), createMeet());
+}
+
+/**
+ * A placed lifter whose category will not fit one line — and whose name WOULD
+ * fit at double height, which is what the strip spends to buy the second one.
+ */
+const SHORT_NAME_MASTERS_CARD = cardOf({
+  meet: { federation: 'Irongate', name: 'National Championships', dateIso: '2026-02-14', town: 'Sheffield' },
+  lifter: {
+    name: 'Sam Reyes',
+    sex: 'male',
+    bodyweightKg: 139.4,
+    division: 'Masters 1',
+    equipment: 'Single-ply',
+  },
+  state: nineForNine(),
+  placing: 2,
+});
+
+/** The same lifter, same everything, with no placing supplied. */
+const SHORT_NAME_MASTERS_UNPLACED_CARD = cardOf({
+  meet: { federation: 'Irongate', name: 'National Championships', dateIso: '2026-02-14', town: 'Sheffield' },
+  lifter: {
+    name: 'Sam Reyes',
+    sex: 'male',
+    bodyweightKg: 139.4,
+    division: 'Masters 1',
+    equipment: 'Single-ply',
+  },
+  state: nineForNine(),
+});
+
+/**
+ * The widest phrase a real entry list can produce: the longer sex word, the
+ * longer kit word, the longest IPF age division and a super-heavyweight class.
+ * At 182 px it is two past `CONTENT.W`, so it is the one case that exercises
+ * the rung where the division moves to the second line instead of sharing the
+ * first.
+ */
+const WIDEST_PHRASE_CARD = cardOf({
+  meet: { federation: 'Irongate', name: 'National Championships', dateIso: '2026-02-14', town: 'Sheffield' },
+  lifter: {
+    name: 'Ada Ng',
+    sex: 'female',
+    bodyweightKg: 84.9,
+    division: 'Sub-Juniors',
+    equipment: 'Single-ply',
+  },
+  state: nineForNine(),
+  placing: 1,
+});
+
+/** Everything the strip prints, joined — what a reader of the card sees. */
+function stripText(card: ResultCard, maxWidth: number = CONTENT.W): string {
+  return lifterStrip(card, maxWidth).metaLines.join(' ');
+}
+
+describe('a card that prints a PLACING prints its DIVISION', () => {
+  it('spells both, on the card, in pixels', () => {
+    // The pairing itself, on the artifact: the place block says 3 and the
+    // identity strip says which division it was third in. Hand-written, both.
+    expectTextIn(
+      STRESS,
+      valueRect(PLACE_VALUE_RIGHT, SCORE_VALUE_Y, SCORE_VALUE_BOTTOM, '3', 2),
+      '3',
+      PLACE_VALUE_RIGHT,
+      SCORE_VALUE_Y,
+      SHEET.INK,
+      { ...TABULAR_RIGHT, scale: 2 },
+      'stress place',
+    );
+    expectRunsIn(
+      STRESS,
+      LIFTER_META_RECT,
+      [
+        { text: "MEN'S SINGLE-PLY MASTERS 1 120+", x: CONTENT.X, y: LIFTER_STRIP.META_Y_TWO_LINE[0] },
+        { text: '139.40 KG', x: CONTENT.X, y: LIFTER_STRIP.META_Y_TWO_LINE[1] },
+      ],
+      SHEET.INK_SOFT,
+      'stress division beside its placing',
+    );
+  });
+
+  it('names the division on all three sample cards', () => {
+    // Hand-written table, card by card: what each one is placed as, and the
+    // word its strip has to carry. The bombed card is DQ'd rather than placed —
+    // it is here to say that the sweep is not vacuous for it either.
+    const expected = [
+      { card: STRONG_MEET_CARD, place: '1', division: 'OPEN' },
+      { card: BOMBED_MEET_CARD, place: 'DQ', division: 'OPEN' },
+      { card: STRESS_MEET_CARD, place: '3', division: 'MASTERS 1' },
+    ] as const;
+    for (const { card, place, division } of expected) {
+      expect(card.summary[2].value, card.lifter.name).toBe(place);
+      expect(stripText(card), card.lifter.name).toContain(division);
+    }
+  });
+
+  it('has no rung, at all, that a placed card could fall back to and lose it', () => {
+    // Structural, not measured: the rungs that spend the division are filtered
+    // out of a placed card's ladder BEFORE any width is looked at, so there is
+    // no division string, however long, that produces a ranked card with no
+    // division on it. The literals are hand-written.
+    expect(LIFTER_META_LADDER.map(rungNamesDivision)).toEqual([true, true, true, true, false, false]);
+    expect(lifterMetaRungs(true)).toHaveLength(4);
+    for (const [i, rung] of lifterMetaRungs(true).entries()) {
+      expect(rungNamesDivision(rung), `placed rung ${i}`).toBe(true);
+    }
+    // ...and an unplaced card is still offered the whole ladder, which is the
+    // residual this piece has carried and documented all along.
+    expect(lifterMetaRungs(false)).toEqual(LIFTER_META_LADDER);
+    expect(lifterMetaRungs(false).length).toBeGreaterThan(lifterMetaRungs(true).length);
+  });
+
+  it('keeps it at every width, on every placed card', () => {
+    const cards = [
+      { card: STRONG_MEET_CARD, division: 'OPEN' },
+      { card: STRESS_MEET_CARD, division: 'MASTERS 1' },
+      { card: SHORT_NAME_MASTERS_CARD, division: 'MASTERS 1' },
+      { card: WIDEST_PHRASE_CARD, division: 'SUB-JUNIORS' },
+    ] as const;
+    for (const { card, division } of cards) {
+      expect(card.placed, card.lifter.name).toBe(true);
+      for (const width of [CONTENT.W, 140, 110, 90, 40, 0]) {
+        expect(stripText(card, width), `${card.lifter.name} at ${width}px`).toContain(division);
+      }
+    }
+  });
+
+  it('is the placing that does it, and nothing else about the lifter', () => {
+    // The differential. Same name, same kit, same division, same bodyweight,
+    // same meet — one card was given a placing and one was not. If the placed
+    // filter did nothing, these two would be identical.
+    expect(SHORT_NAME_MASTERS_CARD.placed).toBe(true);
+    expect(SHORT_NAME_MASTERS_UNPLACED_CARD.placed).toBe(false);
+    expect(stripText(SHORT_NAME_MASTERS_CARD, 90)).toContain('MASTERS 1');
+    expect(stripText(SHORT_NAME_MASTERS_UNPLACED_CARD, 90)).not.toContain('MASTERS 1');
+  });
+
+  it('moves the division to the second line rather than spending it', () => {
+    // The widest phrase a real entry list produces overruns a line of its own by
+    // two pixels, so the division comes out of the phrase and shares the second
+    // line with the bodyweight. Hand-written, both lines.
+    expect(lifterStrip(WIDEST_PHRASE_CARD, CONTENT.W).metaLines).toEqual([
+      "WOMEN'S SINGLE-PLY 84+",
+      'SUB-JUNIORS · 84.90 KG',
+    ]);
+    // ...and that really is because the whole phrase does not fit: 182 against
+    // the 180 the content column has. Hand-written; a card that got wider would
+    // fail here rather than silently changing which rung prints.
+    expect(measureText("WOMEN'S SINGLE-PLY SUB-JUNIORS 84+")).toBe(182);
+    expect(CONTENT.W).toBe(180);
+  });
+
+  it('buys the second line out of the name’s type size, not out of the card', () => {
+    // "Sam Reyes" fits at double height — the strip steps it down anyway,
+    // because a smaller name is a smaller name and a dropped division is a
+    // missing fact.
+    expect(fitScale('Sam Reyes', CONTENT.W, LIFTER_STRIP.NAME_SCALE)).toBe(2);
+    const strip = lifterStrip(SHORT_NAME_MASTERS_CARD, CONTENT.W);
+    expect(strip.nameScale).toBe(1);
+    expect(strip.metaLines).toEqual(["MEN'S SINGLE-PLY MASTERS 1 120+", '139.40 KG']);
+    // A one-line card keeps the big name.
+    expect(lifterStrip(STRONG_MEET_CARD, CONTENT.W).nameScale).toBe(2);
+
+    const grid = renderResultCard(SHORT_NAME_MASTERS_CARD);
+    expectTextIn(
+      grid,
+      { ...INSIDE_FRAME, y: LIFTER_STRIP.NAME_Y, h: FONT.GLYPH_H },
+      'Sam Reyes',
+      CONTENT.X,
+      LIFTER_STRIP.NAME_Y,
+      SHEET.INK,
+      { scale: 1 },
+      'short name stepped down',
+    );
+    expectRunsIn(
+      grid,
+      LIFTER_META_RECT,
+      [
+        { text: "MEN'S SINGLE-PLY MASTERS 1 120+", x: CONTENT.X, y: LIFTER_STRIP.META_Y_TWO_LINE[0] },
+        { text: '139.40 KG', x: CONTENT.X, y: LIFTER_STRIP.META_Y_TWO_LINE[1] },
+      ],
+      SHEET.INK_SOFT,
+      'short-name masters strip',
+    );
+  });
+
+  it('leaves the grid, the total and the barbell exactly where they were', () => {
+    // The second line is free only if it costs no height. Everything below the
+    // strip is compared pixel for pixel against a card that prints ONE line.
+    const twoLine = renderResultCard(SHORT_NAME_MASTERS_CARD);
+    const oneLine = STRONG;
+    const stripBottom = LIFTER_STRIP.Y + LIFTER_STRIP.H;
+    let differing = 0;
+    for (let y = stripBottom; y < GRID.HEADER_Y; y += 1) {
+      for (let x = 0; x < CARD.W; x += 1) {
+        if (twoLine.data[y * CARD.W + x] !== oneLine.data[y * CARD.W + x]) differing += 1;
+      }
+    }
+    expect(differing, 'the band between the strip and the grid moved').toBe(0);
+    // The grid's own header row is drawn at the same place on both.
+    expectRunsIn(
+      twoLine,
+      GRID_HEADER_RECT,
+      [
+        { text: 'LIFT', x: GRID.LABEL_X, y: GRID.HEADER_TEXT_Y },
+        ...['1', '2', '3', 'BEST'].map((text, i) => ({
+          text,
+          x: gridCellX(i) + Math.floor(GRID.CELL_W / 2),
+          y: GRID.HEADER_TEXT_Y,
+          options: { align: 'center' } as const,
+        })),
+      ],
+      SHEET.INK_SOFT,
+      'grid headings under a two-line strip',
+    );
+  });
+
+  it('keeps the two lines clear of the name, of each other and of the rule', () => {
+    // Measured off the rendered card rather than off the constants, because the
+    // Y of each line is a free tuning value and what is NOT free is type
+    // landing on type. `FONT.GLYPH_H` is 9 — seven rows of capital and two of
+    // descender — and "Papadopoulos" has two descenders to collide with.
+    const rowsWith = (index: number): readonly number[] => {
+      const rows: number[] = [];
+      for (let y = LIFTER_STRIP.Y; y < LIFTER_STRIP.Y + LIFTER_STRIP.H; y += 1) {
+        if (countIn(STRESS, { x: 1, y, w: CARD.W - 2, h: 1 }, index) > 0) rows.push(y);
+      }
+      return rows;
+    };
+    const nameRows = rowsWith(SHEET.INK);
+    const metaRows = rowsWith(SHEET.INK_SOFT);
+    expect(nameRows.length).toBeGreaterThan(0);
+    expect(metaRows.length).toBeGreaterThan(0);
+    // No row carries both, so nothing is set on top of anything else.
+    expect(metaRows.filter((row) => nameRows.includes(row))).toEqual([]);
+    // The name is above both meta lines, and the meta lines stop above the
+    // strip's closing rule.
+    expect(Math.max(...nameRows)).toBeLessThan(Math.min(...metaRows));
+    expect(Math.max(...metaRows)).toBeLessThan(LIFTER_STRIP.Y + LIFTER_STRIP.H - 1);
+    // There really are TWO separate lines down there, not one tall smear: the
+    // inked rows fall into exactly two contiguous runs.
+    const runs = metaRows.filter((row) => !metaRows.includes(row - 1)).length;
+    expect(runs, 'the strip should be printing two meta lines').toBe(2);
   });
 });
 
@@ -1151,68 +1436,139 @@ describe('shortening rather than truncating', () => {
     }
   });
 
-  it('keeps a short lifter’s full meta line and shortens a long one', () => {
-    const full = lifterMetaLine(STRONG_MEET_CARD, CONTENT.W);
-    expect(full).toBe("MEN'S RAW OPEN 93 · 92.40 KG");
-    expect(measureText(full)).toBeLessThanOrEqual(CONTENT.W);
-    // The stress lifter's card cannot hold all of it, and shortens rather than
-    // truncating — but see below for what it is not allowed to shorten away.
-    const tight = lifterMetaLine(STRESS_MEET_CARD, CONTENT.W);
-    expect(tight).toBe("MEN'S SINGLE-PLY 120+ · 139.40");
-    expect(measureText(tight)).toBeLessThanOrEqual(CONTENT.W);
+  it('keeps a short lifter’s full meta line on ONE line and reflows a long one', () => {
+    const full = lifterStrip(STRONG_MEET_CARD, CONTENT.W);
+    expect(full.metaLines).toEqual(["MEN'S RAW OPEN 93 · 92.40 KG"]);
+    expect(measureText(full.metaLines[0] ?? '')).toBeLessThanOrEqual(CONTENT.W);
+    // The stress lifter's card cannot hold all of it on one line, so it takes
+    // two — it does not shorten, and it certainly does not truncate.
+    const tight = lifterStrip(STRESS_MEET_CARD, CONTENT.W);
+    expect(tight.metaLines).toEqual(["MEN'S SINGLE-PLY MASTERS 1 120+", '139.40 KG']);
+    for (const line of tight.metaLines) expect(measureText(line)).toBeLessThanOrEqual(CONTENT.W);
   });
 
   it('always keeps the sex, the class and the bodyweight, however tight it gets', () => {
     // Sex, class and bodyweight are the three facts a reader needs to check the
     // DOTS score the card publishes two blocks further down. Everything else on
-    // the meta line is context; the ladder may drop context and may never drop
+    // the strip is context; the ladder may spend context and may never spend
     // these. At width 0 the ladder has run out and falls back to its last rung,
     // which still has to carry all three.
     for (const width of [CONTENT.W, 120, 80, 40, 0]) {
-      const line = lifterMetaLine(STRESS_MEET_CARD, width);
-      expect(line, `at ${width}px`).toContain(SEX_CATEGORY_WORD.male);
-      expect(line, `at ${width}px`).toContain('120+');
-      expect(line, `at ${width}px`).toContain('139.40');
+      const text = stripText(STRESS_MEET_CARD, width);
+      expect(text, `at ${width}px`).toContain(SEX_CATEGORY_WORD.male);
+      expect(text, `at ${width}px`).toContain('120+');
+      expect(text, `at ${width}px`).toContain('139.40');
     }
     for (const width of [CONTENT.W, 120, 80, 40, 0]) {
-      const line = lifterMetaLine(BOMBED_MEET_CARD, width);
-      expect(line, `at ${width}px`).toContain(SEX_CATEGORY_WORD.female);
-      expect(line, `at ${width}px`).toContain('69');
-      expect(line, `at ${width}px`).toContain('68.20');
+      const text = stripText(BOMBED_MEET_CARD, width);
+      expect(text, `at ${width}px`).toContain(SEX_CATEGORY_WORD.female);
+      expect(text, `at ${width}px`).toContain('69');
+      expect(text, `at ${width}px`).toContain('68.20');
     }
   });
 
-  it('has no rung, at any width, on any card, that omits the sex', () => {
+  it('has no rung, at any width, on any card, that omits the sex or the bodyweight', () => {
     // The ladder is data, so walk all of it rather than sampling widths: every
-    // rung of every card must name the lifter's sex. `LifterCategoryPart` has
-    // no 'sex' member, so this is checking that the type kept its promise.
-    for (const card of [STRONG_MEET_CARD, BOMBED_MEET_CARD, STRESS_MEET_CARD]) {
+    // rung of every card must name the lifter's sex and print their bodyweight
+    // somewhere. `LifterCategoryPart` has no 'sex' member and no rung flag
+    // removes a bodyweight — this is checking the types kept those promises.
+    const bodyweights = [
+      { card: STRONG_MEET_CARD, text: '92.40' },
+      { card: BOMBED_MEET_CARD, text: '68.20' },
+      { card: STRESS_MEET_CARD, text: '139.40' },
+    ] as const;
+    for (const { card, text } of bodyweights) {
       const word = SEX_CATEGORY_WORD[card.lifter.sex];
       LIFTER_META_LADDER.forEach((rung, i) => {
-        expect(lifterMetaLineAtRung(card, rung), `${card.lifter.name} rung ${i}`).toContain(word);
+        const joined = lifterMetaLinesAtRung(card, rung).join(' ');
+        expect(joined, `${card.lifter.name} rung ${i} sex`).toContain(word);
+        expect(joined, `${card.lifter.name} rung ${i} bodyweight`).toContain(text);
       });
     }
   });
 
   it('walks the whole ladder as the width shrinks, and never past its end', () => {
     const widths = [CONTENT.W, 140, 110, 90, 0];
-    const lines = widths.map((width) => lifterMetaLine(STRESS_MEET_CARD, width));
-    for (let i = 1; i < lines.length; i += 1) {
-      expect(measureText(lines[i] ?? ''), `${widths[i]}px`).toBeLessThanOrEqual(
-        measureText(lines[i - 1] ?? ''),
-      );
+    const strips = widths.map((width) => lifterStrip(STRESS_MEET_CARD, width));
+    const widest = (strip: { readonly metaLines: readonly string[] }): number =>
+      Math.max(...strip.metaLines.map((line) => measureText(line)));
+    for (let i = 1; i < strips.length; i += 1) {
+      const strip = strips[i];
+      const previous = strips[i - 1];
+      if (strip === undefined || previous === undefined) throw new Error('missing strip');
+      expect(widest(strip), `${widths[i]}px`).toBeLessThanOrEqual(widest(previous));
     }
-    expect(new Set(lines).size).toBeGreaterThan(1);
+    expect(new Set(strips.map((strip) => strip.metaLines.join('|'))).size).toBeGreaterThan(1);
     expect(LIFTER_META_LADDER.length).toBeGreaterThan(1);
   });
 
-  it('drops the division before the equipment, and says so out loud', () => {
-    // The one fact the ladder IS allowed to spend, and the order it spends it
-    // in, is a tuning call rather than a spacing tweak — so pin it, so that
-    // changing it is a deliberate edit to `cardTuning.ts` and not a drift.
-    const rungs = LIFTER_META_LADDER.map((rung) => [...rung.category]);
-    expect(rungs).toEqual([['equipment', 'division'], ['equipment', 'division'], ['equipment'], []]);
-    expect(LIFTER_META_LADDER.map((rung) => rung.bodyweightUnit)).toEqual([true, false, false, false]);
+  it('takes a second line before it spends a fact, and says so out loud', () => {
+    // The order of preference IS the design call this whole piece turns on, so
+    // pin the whole ladder shape with hand-written literals: changing it has to
+    // be a deliberate edit to `cardTuning.ts` and not a drift. Read down the
+    // columns — the first two rungs shorten wording, the next two reflow onto a
+    // second line, and only the last two spend a fact.
+    expect(LIFTER_META_LADDER.map((rung) => [...rung.category])).toEqual([
+      ['equipment', 'division'],
+      ['equipment', 'division'],
+      ['equipment', 'division'],
+      ['equipment'],
+      ['equipment'],
+      [],
+    ]);
+    expect(LIFTER_META_LADDER.map((rung) => rung.bodyweightOnOwnLine)).toEqual([
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(LIFTER_META_LADDER.map((rung) => rung.divisionOnSecondLine)).toEqual([
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+    ]);
+    expect(LIFTER_META_LADDER.map((rung) => rung.bodyweightUnit)).toEqual([
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+    ]);
+    // ...and when it does spend one, the division still goes before the
+    // equipment, because raw-vs-equipped is never implied by the meet. That
+    // order only applies to a card with no placing on it — see the placing
+    // block above for why, and for the filter that enforces it.
+    expect(LIFTER_META_LADDER.map(rungNamesDivision)).toEqual([true, true, true, true, false, false]);
+    expect(LIFTER_META_LADDER.map((rung) => rung.category.includes('equipment'))).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
+  });
+
+  it('sets the second line where cardTuning says, and one line where it says that', () => {
+    // `lifterMetaLineY` is the indirection the renderer draws through; the
+    // pixel probes anchor on `LIFTER_STRIP.META_Y*` directly, so this is what
+    // stops the two drifting apart. Hand-written line counts and indices.
+    expect(lifterMetaLineY(1, 0)).toBe(LIFTER_STRIP.META_Y);
+    expect(lifterMetaLineY(2, 0)).toBe(LIFTER_STRIP.META_Y_TWO_LINE[0]);
+    expect(lifterMetaLineY(2, 1)).toBe(LIFTER_STRIP.META_Y_TWO_LINE[1]);
+    // The two-line positions are inside the strip and in order.
+    expect(LIFTER_STRIP.META_Y_TWO_LINE[0]).toBeLessThan(LIFTER_STRIP.META_Y_TWO_LINE[1]);
+    expect(LIFTER_STRIP.META_Y_TWO_LINE[1] + FONT.CAP_H).toBeLessThanOrEqual(
+      LIFTER_STRIP.Y + LIFTER_STRIP.H - 1,
+    );
+    // The first line clears a scale-1 name's descenders.
+    expect(LIFTER_STRIP.META_Y_TWO_LINE[0]).toBeGreaterThanOrEqual(LIFTER_STRIP.NAME_Y + FONT.GLYPH_H);
   });
 });
 

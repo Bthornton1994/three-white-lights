@@ -17,6 +17,7 @@ import {
   formatMeetDate,
   formatMeetLocation,
   formatWeight,
+  divisionCategoryWord,
   lifterCategoryText,
   resultCardEntriesCsvRow,
   resultCardStrings,
@@ -1003,6 +1004,25 @@ describe('the lifter’s category', () => {
         expect(text, `${String(equipment)}/${String(division)}`).toContain(SEX_CATEGORY_WORD.female);
         expect(text).toContain('47');
       }
+    }
+  });
+
+  it('hands the layout the same division word the phrase uses', () => {
+    // The card can print the division on a second line rather than spending it
+    // when the phrase will not fit (`src/card/cardTuning.ts`), and the word it
+    // prints there has to be the word the phrase would have used. One
+    // transformation, exported, not two.
+    const lifter = cardOf({
+      ...CHAPON_INPUT,
+      lifter: { ...CHAPON_INPUT.lifter, division: '  masters 1  ', equipment: 'Single-ply' },
+    }).lifter;
+    expect(divisionCategoryWord(lifter)).toBe('MASTERS 1');
+    expect(lifterCategoryText(lifter)).toBe("WOMEN'S SINGLE-PLY MASTERS 1 47");
+    // The phrase is built OUT of it: whatever the division is, the phrase
+    // contains exactly the string this returns.
+    for (const division of ['Open', 'Masters 4', 'sub-juniors', 'Police & Fire']) {
+      const entrant = cardOf({ ...CHAPON_INPUT, lifter: { ...CHAPON_INPUT.lifter, division } }).lifter;
+      expect(lifterCategoryText(entrant), division).toContain(divisionCategoryWord(entrant));
     }
   });
 
