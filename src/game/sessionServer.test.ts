@@ -46,17 +46,37 @@ const WALL_CLOCK = { year: 2026, month: 8, day: 3, hour: 19 };
 const NEUTRAL: ReadinessCheckIn = { sleep: 'ok', soreness: 'normal', motivation: 'steady' };
 const PRIMED: ReadinessCheckIn = { sleep: 'good', soreness: 'fresh', motivation: 'fired-up' };
 
+/** A session honestly declared in the unit permanent progression stores. */
 function proposalOf(sets: readonly TrainingSetReport[]): ProposalOfKind<'record-training-session'> {
-  return { kind: 'record-training-session', report: { deviceWallClock: WALL_CLOCK, sets } };
+  return kgProposalOf(sets);
+}
+
+/** The same sets, declared kilograms. */
+function kgProposalOf(sets: readonly TrainingSetReport[]): ProposalOfKind<'record-training-session'> {
+  return {
+    kind: 'record-training-session',
+    report: { deviceWallClock: WALL_CLOCK, card: { unit: 'kg', kilogramSets: sets } },
+  };
+}
+
+/**
+ * The same sets, declared POUNDS. Honest, not forged: this is the submission a
+ * client running the daily loop in lb would send.
+ */
+function lbProposalOf(sets: readonly TrainingSetReport[]): ProposalOfKind<'record-training-session'> {
+  return {
+    kind: 'record-training-session',
+    report: { deviceWallClock: WALL_CLOCK, card: { unit: 'lb', poundSets: sets } },
+  };
 }
 
 function set(
   lift: LiftKind,
-  weightKg: number,
+  weight: number,
   reps: number,
   rpe: number,
 ): TrainingSetReport {
-  return { lift, weightKg, reps, rpe };
+  return { lift, weight, reps, rpe };
 }
 
 /** A session played end to end against a stored record, all reps made. */

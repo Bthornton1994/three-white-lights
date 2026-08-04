@@ -644,6 +644,18 @@ type ArmsAreTellableApart<T> = [Extract<ArmPayloadKeys<T, 'kg'>, ArmPayloadKeys<
       : true
   : never;
 
+/**
+ * `true` unless `T` is `any`.
+ *
+ * The `0 extends 1 & T` idiom, which is the only way to ask the question: `1 &
+ * any` collapses to `any`, and `0 extends any` is true, while `1 & X` for every
+ * other `X` is either `1` or `never` and `0` extends neither. Every other check
+ * in this file is defeated by an `any` rather than failing on one, so the one
+ * place `any` can enter — a `TypeScript` predicate that narrows to `any[]` —
+ * gets its own assertion. See `declaredRows`.
+ */
+type IsNotAny<T> = [0] extends [1 & T] ? never : true;
+
 /** `true` when `A` is a subset of `B`. */
 type IsSubsetOf<A, B> = [Exclude<A, B>] extends [never] ? true : never;
 
@@ -1331,19 +1343,113 @@ export type ProgressionProposalKind = (typeof PROGRESSION_PROPOSAL_KINDS)[number
  *
  * The client may of course *estimate* the same set locally and show it — that is
  * what `ProgressionProjection` is for. What it may not do is send the answer.
+ *
+ * THE WEIGHT IS `weight`, NOT `weightKg`, AND THAT RENAME IS THE POINT — the
+ * same rename `MeetAttemptReport` got one round earlier, for the same reason and
+ * on the same evidence. It was a bare `number` with a unit in its NAME and
+ * nothing behind the name, sitting thirty lines above the meet row that had just
+ * been fixed, in the same list of untrusted wire reports, under the same
+ * allowlist idiom.
+ *
+ * WHERE IT WENT. `sessionServer.ts` fed it to `tryEstimateE1rm`, which is
+ * documented UNIT-AGNOSTIC ("kg in → kg out, lb in → lb out. Do not convert
+ * inside this module") and therefore proves nothing; the answer became
+ * `record.bestE1rmKg`, which `nextBestE1rm` keeps MONOTONE, and then
+ * `ConfirmedFacts.bestE1rmKg` — a `ConfirmedKg`, a `PROGRESSION_FACT_KEYS`
+ * member, `'protected'` in `FACT_PROTECTION`. Nothing on that path looked at a
+ * unit: `sessionServer.ts` contained no occurrence of the word.
+ *
+ * A row does not carry a unit because a row is not the grain a unit has. One
+ * session is one prescription under one `SESSION_TUNING.LOAD_UNIT`, which is
+ * where the loop already keeps the answer, so the unit rides on the CARD
+ * (`TrainingCardReport` below), once. Five per-row units would be five facts
+ * where there is one, four of them redundant and every one of them free to
+ * disagree with the others.
  */
 export interface TrainingSetReport {
   readonly lift: LiftKind;
-  readonly weightKg: number;
+  readonly weight: number;
   readonly reps: number;
   readonly rpe: number;
 }
 
-export const TRAINING_SET_REPORT_KEYS = ['lift', 'weightKg', 'reps', 'rpe'] as const;
+export const TRAINING_SET_REPORT_KEYS = ['lift', 'weight', 'reps', 'rpe'] as const;
 
 export const TRAINING_SET_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
   TrainingSetReport,
   (typeof TRAINING_SET_REPORT_KEYS)[number]
+> = true;
+
+/**
+ * THE SESSION'S SETS, WITH THE UNIT THEY WERE LIFTED IN. One tag for the whole
+ * session, because a session is one prescription and a prescription is one unit.
+ *
+ * WHY THIS EXISTS. `TrainingSessionReport` used to carry `sets: readonly
+ * TrainingSetReport[]` and each row a `weightKg`. Nothing anywhere proved that
+ * `Kg` — not the decoder (`isFiniteWeight` is finiteness, not unit), not the
+ * estimator (`e1rm.ts` is unit-agnostic BY DESIGN and says so), not the write
+ * (`sessionServer.ts` had no occurrence of "unit" in it at all). The number
+ * reached `ConfirmedFacts.bestE1rmKg` — protected, branded `ConfirmedKg`, and
+ * monotone, so a session banked in the wrong unit could never be walked back by
+ * a later honest one. It is also what `meetServer.ts`'s `meetDayFacts` hands to
+ * meet day, where `suggestOpener` turns it into a declared attempt and
+ * `stageLoadRatio` divides a proven-kilogram meet weight by it.
+ *
+ * THE SHAPE IS `MeetCardReport`'S AND `BodyweightReading`'S, DELIBERATELY:
+ *
+ *   - A TAGGED PAIR RATHER THAN A BRAND, because the consumer that has to be
+ *     convinced is a SERVER and the value reaches it as JSON. A brand is erased
+ *     by `JSON.stringify`; a `unit` field is not.
+ *   - THE ARMS CARRY DIFFERENT FIELD NAMES, so the rows cannot be reached
+ *     without narrowing on the unit first. There is no `sets` field on this
+ *     type — a field reachable from both arms would put the hole straight back,
+ *     which is exactly what `sets` was.
+ *
+ * WHAT THAT BUYS AND WHAT IT DOES NOT. Reaching the weights WITHOUT NAMING A
+ * UNIT is a compile error, everywhere, because no such expression exists.
+ * Whether the unit named is the TRUE one is a runtime refusal in
+ * `sessionServer.ts` (`UNSUPPORTED_SESSION_UNIT`) and not a compile-time
+ * property, because both arms are representable — as they must be, since this
+ * is what an untrusted client sends.
+ *
+ * `'lb'` IS REPRESENTABLE FOR THAT REASON. Narrowing this to the kilogram arm
+ * would move the refusal to `tsc` on the client, which is the half of the system
+ * this file exists because it does not trust.
+ */
+export type TrainingCardReport =
+  /** Lifted in kilograms. The only unit permanent progression can store. */
+  | { readonly unit: 'kg'; readonly kilogramSets: readonly TrainingSetReport[] }
+  /** Lifted in pounds. Carried so it can be REFUSED by name, not converted. */
+  | { readonly unit: 'lb'; readonly poundSets: readonly TrainingSetReport[] };
+
+/**
+ * The arm of `TrainingCardReport` whose numbers a kilogram consumer may use.
+ *
+ * Named rather than written out at each use so "these weights have been proven
+ * to be kilograms" is one type with one spelling, and `Extract` rather than a
+ * second literal so it cannot drift from the union. `KilogramMeetCard` and
+ * `dots.ts`'s `KilogramBodyweight` are the same construction for the other two
+ * numbers on this boundary.
+ */
+export type KilogramTrainingCard = Extract<TrainingCardReport, { readonly unit: 'kg' }>;
+
+/**
+ * Every field name either arm of a training card can put on the wire.
+ *
+ * ONE ALLOWLIST FOR BOTH ARMS, via `EveryArmKey`, for the reason
+ * `MEET_CARD_REPORT_KEYS` gives: `keyof` a union is the INTERSECTION of its
+ * members' keys, so a per-type `KeysAreExactly` would silently check almost
+ * nothing.
+ *
+ * IT ENDS IN `_REPORT_KEYS` ON PURPOSE. `progression.test.ts` finds the nested
+ * allowlists by scanning this module's exports for that suffix; a name outside
+ * the convention would be checked by nothing.
+ */
+export const TRAINING_CARD_REPORT_KEYS = ['unit', 'kilogramSets', 'poundSets'] as const;
+
+export const TRAINING_CARD_REPORT_IS_EXACTLY_ITS_ALLOWLIST: UnionIsExactly<
+  EveryArmKey<TrainingCardReport>,
+  (typeof TRAINING_CARD_REPORT_KEYS)[number]
 > = true;
 
 /**
@@ -1472,10 +1578,17 @@ export const MEET_CARD_REPORT_IS_EXACTLY_ITS_ALLOWLIST: UnionIsExactly<
  * every test stays green, because `bodyweight.kilograms` now type-checks against
  * an unnarrowed union.
  *
- * So it is asserted, over both readings on this path rather than over the one
+ * So it is asserted, over every reading on this wire rather than over the one
  * that happened to be built last. That is what makes this a statement about the
  * SHAPE instead of about a field: a third unit-tagged reading gets one line here
  * and inherits the guarantee.
+ *
+ * THE THIRD LINE IS NOW WRITTEN, AND IT IS THE OTHER MODE'S. For a round this
+ * paragraph described a slot nobody had filled while `TrainingSetReport.weightKg`
+ * sat thirty lines above `MeetAttemptReport` — a bare number with a unit in its
+ * name, on the path to `ConfirmedFacts.bestE1rmKg`, which is protected and
+ * monotone. The sentence was right about the mechanism and the mechanism was
+ * unused.
  *
  * BOTH HALVES ARE CHECKED. Disjoint arms is the claim; two arms that both have
  * payload fields is what stops it passing vacuously, since an arm emptied to
@@ -1486,6 +1599,9 @@ export const A_MEET_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT: ArmsAreTellableApart<M
 
 export const A_BODYWEIGHT_CANNOT_BE_READ_WITHOUT_ITS_UNIT: ArmsAreTellableApart<BodyweightReading> = true;
 
+export const A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT: ArmsAreTellableApart<TrainingCardReport> =
+  true;
+
 /**
  * A finished daily session.
  *
@@ -1494,13 +1610,26 @@ export const A_BODYWEIGHT_CANNOT_BE_READ_WITHOUT_ITS_UNIT: ArmsAreTellableApart<
  * otherwise a player flying east loses a day and a player who changes their
  * phone clock manufactures one." The server resolves which streak day this is;
  * this field exists so it can notice drift, not so it can be trusted.
+ *
+ * THE ONE NUMBER ON THIS REPORT TRAVELS WITH ITS UNIT. `sets` was a bare
+ * `readonly TrainingSetReport[]` and each row a `weightKg`; it is now a
+ * `TrainingCardReport`, the same tagged-pair shape the meet card and the
+ * bodyweight use, and `A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT` asserts
+ * the property that makes the tag load-bearing. A second number added here has
+ * one line to copy and a failing assertion if it does not.
  */
 export interface TrainingSessionReport {
   readonly deviceWallClock: LocalWallClock;
-  readonly sets: readonly TrainingSetReport[];
+  /**
+   * THE SETS, WITH THE UNIT THEY WERE LIFTED IN. See `TrainingCardReport`.
+   *
+   * `sessionServer.ts` refuses the pound arm (`UNSUPPORTED_SESSION_UNIT`)
+   * before `bestE1rmFromSets` runs and before the streak moves.
+   */
+  readonly card: TrainingCardReport;
 }
 
-export const TRAINING_SESSION_REPORT_KEYS = ['deviceWallClock', 'sets'] as const;
+export const TRAINING_SESSION_REPORT_KEYS = ['deviceWallClock', 'card'] as const;
 
 export const TRAINING_SESSION_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
   TrainingSessionReport,
@@ -2552,14 +2681,96 @@ function projectionExceedsReach(
   return null;
 }
 
+/**
+ * The rows under a card's declared arm, or `null` when the tag has nothing —
+ * or something that is not a list — under it.
+ *
+ * A FUNCTION RATHER THAN AN INLINE `Array.isArray`, AND THE RETURN TYPE IS THE
+ * WHOLE POINT. `Array.isArray` is declared `(arg: unknown) => arg is any[]`, so
+ * it narrows a `readonly T[] | undefined` to `any[]` — the narrow LOSES the
+ * element type. Written inline, the only thing putting the type back was an
+ * annotation on the `const`, and deleting an annotation is the exact shape of a
+ * tidy-up: it compiles, every test stays green, and an `any` is loose in the two
+ * modules whose whole job is not trusting their input. CLAUDE.md bans `any`
+ * outright and nothing was enforcing it here.
+ *
+ * With the check behind a signature, the repair is the RETURN TYPE, which cannot
+ * be deleted — removing it makes `tsc` infer from the body and every call site
+ * that iterates typed rows fails. `A_DECLARED_ROW_IS_NEVER_ANY` below pins the
+ * remaining edit (widening the signature itself) as a compile error too.
+ *
+ * `readonly T[] | undefined` rather than `unknown` on purpose: typed callers get
+ * an ordinary narrow and only untyped JSON reaches the runtime branch.
+ *
+ * EXPORTED SO THERE IS ONE OF IT. The same three lines were written inline in
+ * this file and again in `meetServer.ts`, each with its own annotation holding
+ * the type on; three copies of a mitigation is three chances to tidy one away.
+ * The two servers import this instead.
+ */
+export function declaredRows<T>(declared: readonly T[] | undefined): readonly T[] | null {
+  return Array.isArray(declared) ? declared : null;
+}
+
+/** The rows a `MeetCardReport` arm yields, as `declaredRows` hands them back. */
+type DeclaredAttemptRows = NonNullable<ReturnType<typeof declaredRows<MeetAttemptReport>>>[number];
+
+/** The rows a `TrainingCardReport` arm yields, likewise. */
+type DeclaredSetRows = NonNullable<ReturnType<typeof declaredRows<TrainingSetReport>>>[number];
+
+/**
+ * COMPILE-TIME ASSERTION: `declaredRows` HANDS BACK TYPED ROWS, NOT `any`.
+ *
+ * The mitigation above is only worth something while its signature says what it
+ * says. Widen the return to `any[] | null` — or drop it and let the body's
+ * `Array.isArray` narrow decide — and this line stops compiling, because
+ * `IsNotAny` is `never` for `any` and `true` for everything else. Both readings
+ * are asserted rather than one, so a helper that was fixed for the meet card and
+ * loosened for the training card fails here.
+ */
+export const A_DECLARED_ROW_IS_NEVER_ANY: IsNotAny<DeclaredAttemptRows> &
+  IsNotAny<DeclaredSetRows> = true;
+
 function validateProposal(proposal: ProgressionProposal): ProgressionError | null {
   switch (proposal.kind) {
     case 'record-training-session': {
-      if (proposal.report.sets.length === 0) {
+      // THE CARD'S UNIT, CHECKED BY VALUE, exactly as the meet card's is below:
+      // `TrainingCardReport` is two literals to `tsc` and whatever the sender
+      // wrote once it has been through JSON. An unrecognised unit has no arm, so
+      // there is no list to read and nothing to validate — refused rather than
+      // assumed to be kilograms.
+      //
+      // THE ARM IS READ THROUGH THE NARROW, never through a shared field, which
+      // is why there is no `sets` on `TrainingCardReport` to reach for.
+      // `| undefined` because a request body can simply omit the field, and
+      // reading `.unit` off nothing throws where it should refuse.
+      const card: TrainingCardReport | undefined = proposal.report.card;
+      const declared =
+        card === undefined
+          ? null
+          : card.unit === 'kg'
+            ? card.kilogramSets
+            : card.unit === 'lb'
+              ? card.poundSets
+              : null;
+      if (declared === null) {
+        return {
+          code: 'INVALID_PROPOSAL',
+          message:
+            'progression: a reported session must say which unit it was lifted in, not ' +
+            JSON.stringify(card?.unit),
+        };
+      }
+      // SHAPE, NOT POLICY. Whether the declared unit is one permanent
+      // progression can store is `sessionServer.ts`'s refusal
+      // (`UNSUPPORTED_SESSION_UNIT`), because that is where the write happens
+      // and a refusal upstream of the write would have to be repeated there
+      // anyway. The same division the meet card gets.
+      const sets = declaredRows(declared);
+      if (sets === null || sets.length === 0) {
         return { code: 'INVALID_PROPOSAL', message: 'progression: a training session must report at least one set' };
       }
-      for (const set of proposal.report.sets) {
-        if (!isFiniteWeight(set.weightKg)) {
+      for (const set of sets) {
+        if (!isFiniteWeight(set.weight)) {
           return { code: 'INVALID_PROPOSAL', message: 'progression: a reported set weight must be finite and positive' };
         }
         if (!Number.isSafeInteger(set.reps) || set.reps < 1) {
@@ -2613,10 +2824,10 @@ function validateProposal(proposal: ProgressionProposal): ProgressionError | nul
       // wrong arm and yields the same. Both are a declared unit attached to no
       // numbers, which is not a card.
       //
-      // Bound straight back to the declared type: `Array.isArray` narrows a
-      // READONLY array to `any[]`, so the annotation is what keeps the rows typed
-      // for the loop below.
-      const attempts: readonly MeetAttemptReport[] | null = Array.isArray(declared) ? declared : null;
+      // `declaredRows` rather than an inline `Array.isArray` bound to an
+      // annotation: the annotation was what kept the rows typed, and deleting an
+      // annotation is a silent tidy-up. See the helper.
+      const attempts = declaredRows(declared);
       if (attempts === null || attempts.length === 0) {
         return { code: 'INVALID_PROPOSAL', message: 'progression: a meet result must report at least one attempt' };
       }

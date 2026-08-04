@@ -57,6 +57,7 @@ import {
   snapshotFacts,
   snapshotRevision,
   SPEND_CURRENCY_REPORT_KEYS,
+  TRAINING_CARD_REPORT_KEYS,
   TRAINING_SESSION_REPORT_KEYS,
   TRAINING_SET_REPORT_KEYS,
   WALLET_CURRENCIES,
@@ -168,7 +169,9 @@ const A_PROPOSAL: ProposalOfKind<'record-training-session'> = {
   kind: 'record-training-session',
   report: {
     deviceWallClock: { year: 2026, month: 8, day: 3, hour: 19 },
-    sets: [{ lift: 'squat', weightKg: 200, reps: 3, rpe: 8 }],
+    // THE SETS RIDE ON A CARD AND THE CARD CARRIES THE UNIT. There is no `sets`
+    // field to write here any more, and no arm reachable without naming a unit.
+    card: { unit: 'kg', kilogramSets: [{ lift: 'squat', weight: 200, reps: 3, rpe: 8 }] },
   },
 };
 
@@ -280,7 +283,11 @@ function proposeUntyped(
  * strips types rather than checking them and there is no CI.
  */
 const PAYLOAD_KEYS_BY_PROPOSAL_KIND: Record<ProgressionProposalKind, readonly string[]> = {
-  'record-training-session': [...TRAINING_SESSION_REPORT_KEYS, ...TRAINING_SET_REPORT_KEYS],
+  'record-training-session': [
+    ...TRAINING_SESSION_REPORT_KEYS,
+    ...TRAINING_CARD_REPORT_KEYS,
+    ...TRAINING_SET_REPORT_KEYS,
+  ],
   'set-recovery-day-protection': [...SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS],
   'record-meet-result': [...MEET_RESULT_REPORT_KEYS, ...MEET_CARD_REPORT_KEYS, ...MEET_ATTEMPT_REPORT_KEYS],
   'redeem-entitlement': [...REDEEM_ENTITLEMENT_REPORT_KEYS],
@@ -621,14 +628,22 @@ describe('the fact allowlist', () => {
   });
 
   it('pins every report type to its declared inputs', () => {
-    expect([...TRAINING_SET_REPORT_KEYS].sort()).toEqual(['lift', 'reps', 'rpe', 'weightKg']);
-    expect([...TRAINING_SESSION_REPORT_KEYS].sort()).toEqual(['deviceWallClock', 'sets']);
+    // `weight`, NOT `weightKg`, ON EVERY ROW ON THIS WIRE. The unit is not on a
+    // row — it is on the card, once, at the grain the mode actually has one: a
+    // meet runs under one `MeetLoadingRules`, a session is prescribed under one
+    // `SESSION_TUNING.LOAD_UNIT`.
+    //
+    // THIS ASSERTION USED TO PIN `weightKg` FOR THE TRAINING ROW, four lines
+    // above the comment explaining why `weightKg` is wrong. Two doctrines in one
+    // test, and the one being pinned was the discarded one — which is how the
+    // fourth unproven field survived a round that closed the other three.
+    expect([...TRAINING_SET_REPORT_KEYS].sort()).toEqual(['lift', 'reps', 'rpe', 'weight']);
+    expect([...TRAINING_CARD_REPORT_KEYS].sort()).toEqual(['kilogramSets', 'poundSets', 'unit']);
+    expect([...TRAINING_SESSION_REPORT_KEYS].sort()).toEqual(['card', 'deviceWallClock']);
     expect([...SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS].sort()).toEqual([
       'deviceWallClock',
       'protectionEnabled',
     ]);
-    // `weight`, NOT `weightKg`. The unit is not on the row — it is on the card,
-    // once, at the grain a meet actually has one.
     expect([...MEET_ATTEMPT_REPORT_KEYS].sort()).toEqual(['attemptNumber', 'good', 'lift', 'weight']);
     expect([...MEET_CARD_REPORT_KEYS].sort()).toEqual(['kilogramAttempts', 'poundAttempts', 'unit']);
     expect([...MEET_RESULT_REPORT_KEYS].sort()).toEqual(['bodyweight', 'card', 'meetId']);
@@ -636,9 +651,47 @@ describe('the fact allowlist', () => {
     expect([...SPEND_CURRENCY_REPORT_KEYS].sort()).toEqual(['amount', 'currency', 'sku']);
   });
 
+  it('lets no report field name a unit unless its allowlist carries the tag', () => {
+    // THE SWEEP, RUN RATHER THAN REMEMBERED, AND DERIVED RATHER THAN LISTED.
+    //
+    // THE RULE: a field may say `kg` or `pound` in its NAME only in an allowlist
+    // that also carries `unit` — i.e. only as an ARM of a tagged pair, where the
+    // name is unreachable without a narrow and is therefore backed by something.
+    // `kilogramSets` and `poundAttempts` qualify. `weightKg` on a bare row does
+    // not: that is a unit in a name with nothing behind it, which is the whole
+    // defect this boundary has now been through four rounds of.
+    //
+    // Scanned off the module's exports rather than off a list, because the round
+    // that wrote this existed for exactly one reason: the previous sweep was
+    // scoped to "the meet path" and a bare `weightKg` sat thirty lines outside it.
+    const NAMES_A_UNIT = /kg|kilogram|lb|pound/i;
+    const allowlists = Object.keys(progressionModule)
+      .filter((name) => name.endsWith('_REPORT_KEYS'))
+      .map((name) => [name, reportKeyAllowlist(name)] as const);
+    const untagged = allowlists.filter(([, keys]) => !keys.includes('unit'));
+    const tagged = allowlists.filter(([, keys]) => keys.includes('unit'));
+    // Non-vacuity on both halves before either is read: a wire with no tagged
+    // allowlists has lost its units entirely, and a wire with no untagged ones
+    // would make the loop below scan nothing.
+    expect(tagged.length).toBeGreaterThan(0);
+    expect(untagged.length).toBeGreaterThan(0);
+    for (const [name, keys] of untagged) {
+      expect(keys.length).toBeGreaterThan(0);
+      for (const key of keys) {
+        expect(`${name}.${key}`).not.toMatch(NAMES_A_UNIT);
+      }
+    }
+    // The control for the regex itself: it CAN see the name it is looking for,
+    // so an empty result means the rows are bare rather than that nothing matches.
+    expect('weightKg').toMatch(NAMES_A_UNIT);
+    expect('bodyweightKg').toMatch(NAMES_A_UNIT);
+    expect('weight').not.toMatch(NAMES_A_UNIT);
+  });
+
   it('lets no report name an output', () => {
     const everyReportKey = [
       ...TRAINING_SET_REPORT_KEYS,
+      ...TRAINING_CARD_REPORT_KEYS,
       ...TRAINING_SESSION_REPORT_KEYS,
       ...SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS,
       ...MEET_ATTEMPT_REPORT_KEYS,
@@ -1370,7 +1423,10 @@ describe('the cache as a cache of server truth', () => {
     const cache = confirmedCache();
     const noSets: ProgressionProposal = {
       kind: 'record-training-session',
-      report: { deviceWallClock: { year: 2026, month: 8, day: 3, hour: 19 }, sets: [] },
+      report: {
+        deviceWallClock: { year: 2026, month: 8, day: 3, hour: 19 },
+        card: { unit: 'kg', kilogramSets: [] },
+      },
     };
     expect(expectErr(proposeChange(cache, asProposalId('p1'), noSets, emptyProjection())).code).toBe(
       'INVALID_PROPOSAL',
@@ -1728,8 +1784,8 @@ describe('a purchase cannot reach performance', () => {
 
   it('will not let a session report carry the e1RM it thinks it earned', () => {
     // @ts-expect-error - TrainingSetReport is inputs only; there is no e1rmKg.
-    const report: TrainingSetReport = { lift: 'squat', weightKg: 200, reps: 3, rpe: 8, e1rmKg: 220 };
-    expect(report.weightKg).toBe(200);
+    const report: TrainingSetReport = { lift: 'squat', weight: 200, reps: 3, rpe: 8, e1rmKg: 220 };
+    expect(report.weight).toBe(200);
   });
 
   it('will not let a meet report carry the total it thinks it made', () => {
@@ -2047,8 +2103,10 @@ describe('the module exports no writer', () => {
       'AN_IN_FLIGHT_PROPOSAL_HAS_NO_STRING_KEY',
       'AN_UNCLAIMED_PROJECTION_IS_A_PROJECTION',
       'A_BODYWEIGHT_CANNOT_BE_READ_WITHOUT_ITS_UNIT',
+      'A_DECLARED_ROW_IS_NEVER_ANY',
       'A_MEET_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT',
       'A_MEET_RESULT_PROJECTION_CAN_CLAIM_A_TOTAL',
+      'A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT',
       'A_TRAINING_SESSION_PROJECTION_CANNOT_CLAIM_A_TOTAL',
       'CONFIRMED_MEET_RESULT_KEYS',
       'CONVENIENCE_GRANTS',
@@ -2104,6 +2162,8 @@ describe('the module exports no writer', () => {
       'SPEND_CURRENCY_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'SPEND_CURRENCY_REPORT_KEYS',
       'STREAK_WIRE_MATCHES_THE_STREAK_ALLOWLIST',
+      'TRAINING_CARD_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
+      'TRAINING_CARD_REPORT_KEYS',
       'TRAINING_SESSION_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'TRAINING_SESSION_REPORT_KEYS',
       'TRAINING_SET_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
@@ -2115,6 +2175,7 @@ describe('the module exports no writer', () => {
       'asProposalId',
       'asServerRevision',
       'cachedSnapshot',
+      'declaredRows',
       'emptyProgressionCache',
       'emptyProjection',
       'factsMovedBy',
@@ -2212,7 +2273,12 @@ describe('the boundary lets legitimate work through', () => {
           kind: 'record-training-session',
           report: {
             deviceWallClock: { year: 2026, month: 8, day: 3, hour: 19 },
-            sets: [{ lift: set.weight > 0 ? 'squat' : 'bench', weightKg: set.weight, reps: set.reps, rpe: set.rpe }],
+            card: {
+              unit: 'kg',
+              kilogramSets: [
+                { lift: set.weight > 0 ? 'squat' : 'bench', weight: set.weight, reps: set.reps, rpe: set.rpe },
+              ],
+            },
           },
         },
         projectionWith({ bestE1rmKg: { squat: projected, bench: null, deadlift: null } }),

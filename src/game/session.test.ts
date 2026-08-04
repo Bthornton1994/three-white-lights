@@ -653,7 +653,7 @@ describe('playing a set', () => {
     const played = playedSetFrom(plan, 1, ['good-lift', 'grind', 'good-lift']);
     expect(played.goodReps).toBe(3);
     expect(played.wentToFailure).toBe(false);
-    expect(played.report).toEqual({ lift: 'squat', weightKg: 172.5, reps: 3, rpe: 8 });
+    expect(played.report).toEqual({ lift: 'squat', weight: 172.5, reps: 3, rpe: 8 });
   });
 
   it('reports a set that met failure at RPE 10 for the reps that were made', () => {
@@ -662,7 +662,7 @@ describe('playing a set', () => {
     expect(played.wentToFailure).toBe(true);
     // RPE 10 is not an estimate of how hard it was — on a reps-in-reserve chart
     // it is what "the next rep failed" MEANS.
-    expect(played.report).toEqual({ lift: 'squat', weightKg: 172.5, reps: 1, rpe: 10 });
+    expect(played.report).toEqual({ lift: 'squat', weight: 172.5, reps: 1, rpe: 10 });
   });
 
   it('reports nothing at all for a set with no completed rep', () => {
@@ -1069,10 +1069,16 @@ describe('the proposal and the projection — the client proposes, the server pu
     const proposal = sessionProposal(closeOut, wallClock);
     expect(proposal).not.toBeNull();
     expect(proposal?.kind).toBe('record-training-session');
-    expect(proposal?.report.sets).toHaveLength(SESSION_TUNING.WORK_SETS);
-    expect(proposal?.report.sets[0]).toEqual({
+    // THE CARD DECLARES THE UNIT, AND IT DECLARES THE ONE THE LOOP LOADED IN
+    // rather than a literal somebody typed. There is no `report.sets` to read:
+    // the arm has to be named first, which is the property the shape exists for.
+    const card = proposal?.report.card;
+    expect(card?.unit).toBe(SESSION_TUNING.LOAD_UNIT);
+    if (card === undefined || card.unit !== 'kg') throw new Error('the shipped loop loads in kg');
+    expect(card.kilogramSets).toHaveLength(SESSION_TUNING.WORK_SETS);
+    expect(card.kilogramSets[0]).toEqual({
       lift: 'squat',
-      weightKg: 172.5,
+      weight: 172.5,
       reps: 3,
       rpe: 8,
     });

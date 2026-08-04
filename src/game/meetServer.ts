@@ -303,8 +303,8 @@ import {
 // with the unit discarded, and this module must not hold a total that has
 // forgotten what it is measured in — see THE UNIT in the header.
 import { DOTS_TOTAL_UNIT } from './dots';
+import { declaredRows } from './progression';
 import type {
-  MeetAttemptReport,
   MeetResultWire,
   ProgressionSnapshotWire,
   ProposalOfKind,
@@ -521,22 +521,25 @@ export function replayMeetCard(
       },
     };
   }
-  // THROUGH THE NARROW, NOT THROUGH A SHARED FIELD. The `null` arm is
-  // unreachable in typed code and is where a unit off untyped JSON lands; the
-  // `Array.isArray` is for a tag with nothing under it. Both are refused rather
+  // THROUGH THE NARROW, NOT THROUGH A SHARED FIELD. The `undefined` arm is
+  // unreachable in typed code and is where a unit off untyped JSON lands;
+  // `declaredRows` is for a tag with nothing under it. Both are refused rather
   // than iterated, because `for (const x of undefined)` throws and a server that
   // throws on a malformed body has told the caller nothing.
   //
-  // The result is bound straight back to the declared type because
-  // `Array.isArray` narrows a READONLY array to `any[]` — so the annotation is
-  // what stops an untyped value escaping this line.
+  // `declaredRows` RATHER THAN AN INLINE `Array.isArray` BOUND TO AN ANNOTATION.
+  // `Array.isArray` narrows a READONLY array to `any[]`, and until this line was
+  // a call the only thing putting the element type back was an annotation on the
+  // `const` — deletable in a tidy-up, silently, past CLAUDE.md's `any` ban. The
+  // repair now lives in the helper's RETURN TYPE, which `progression.ts` asserts
+  // is not `any` (`A_DECLARED_ROW_IS_NEVER_ANY`).
   const declared =
     card.unit === PROGRESSION_TOTAL_UNIT
       ? card.kilogramAttempts
       : card.unit === POUND_UNIT
         ? card.poundAttempts
-        : null;
-  const attempts: readonly MeetAttemptReport[] | null = Array.isArray(declared) ? declared : null;
+        : undefined;
+  const attempts = declaredRows(declared);
   if (attempts === null) {
     return {
       ok: false,
