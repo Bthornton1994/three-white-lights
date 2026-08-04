@@ -102,7 +102,7 @@
  */
 
 import { DEFAULT_MEET_RULES, type LiftKind, type MeetLoadingRules, type ProgressiveAttemptStrategy } from './meet';
-import type { DotsSex } from './dots';
+import type { BodyweightReading, DotsSex, KilogramBodyweight } from './dots';
 import type { GymVenue } from '../art/gymTuning';
 import { hapticPattern } from './liftTuning';
 import type { SoundCue } from '../audio/synth';
@@ -161,9 +161,42 @@ export interface MeetDefinition {
 export interface MeetEntry {
   readonly name: string;
   readonly sex: DotsSex;
-  readonly bodyweightKg: number;
+  /**
+   * WITH THE UNIT IT WAS WEIGHED IN, not a bare number named `Kg`.
+   *
+   * This is the SOURCE of the number that ends up in permanent progression:
+   * `meetDay.ts`'s `meetResultProposal` forwards it onto `MeetResultReport` and
+   * `meetServer.ts` writes it into `MeetResultWire`. If the unit were invented
+   * at any hop along that chain instead of declared here, the check at the far
+   * end would be checking a literal somebody typed rather than a fact — which
+   * is what "a bare `number` whose name this module cannot verify" meant.
+   *
+   * `'lb'` IS REPRESENTABLE ON THIS TYPE, deliberately: a lifter who weighed in
+   * on a pound scale is a real thing and GDD §11 has not ruled on whether the
+   * game supports one. What the game supports today is `KilogramMeetEntry`
+   * below, and that is a narrowing rather than a denial.
+   */
+  readonly bodyweight: BodyweightReading;
   readonly division: string;
   readonly equipment: string;
+}
+
+/**
+ * A `MeetEntry` the meet-day loop can actually run.
+ *
+ * `MeetDayContext.entry` is this, not `MeetEntry`, so a pound-weighed lifter
+ * does not COMPILE into a meet rather than being caught by a check somewhere
+ * downstream. Every consumer past that point (`weighInFor`, the result card's
+ * weight class, `MeetScreen`) reads `entry.bodyweight.kilograms` with no narrow
+ * and no fallback, because the narrow already happened in the type.
+ *
+ * IT DOES NOT RULE ON GDD §11. The code already refused to record a pound meet;
+ * this makes the same refusal earlier and typed. Whichever way §11's pound-meet
+ * question is answered, this alias is the one line that has to widen, and the
+ * conversion boundary option (b) asks for has an obvious place to live.
+ */
+export interface KilogramMeetEntry extends MeetEntry {
+  readonly bodyweight: KilogramBodyweight;
 }
 
 export const MEET_TUNING = Object.freeze({
@@ -1163,11 +1196,15 @@ export const MEET_LOCAL: MeetDefinition = Object.freeze({
 /**
  * The lifter's entry. PLACEHOLDER DATA, not progression — with onboarding and a
  * backend, every field arrives from the profile and none of it lives here.
+ *
+ * Typed `KilogramMeetEntry` rather than `MeetEntry`: this lifter weighed in on a
+ * kilogram scale, that is stated rather than assumed by the field's name, and
+ * the shipped meet loop takes the number from here.
  */
-export const MEET_ENTRY: MeetEntry = Object.freeze({
+export const MEET_ENTRY: KilogramMeetEntry = Object.freeze({
   name: 'A. LIFTER',
   sex: 'male',
-  bodyweightKg: 92.4,
+  bodyweight: Object.freeze({ unit: 'kg', kilograms: 92.4 }),
   division: 'Open',
   equipment: 'Raw',
 });

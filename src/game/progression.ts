@@ -548,7 +548,7 @@
  *    consumer's violation and no type here can see it.
  */
 
-import type { OfficialTotalKg } from './dots';
+import type { BodyweightReading, OfficialTotalKg } from './dots';
 import type { LiftKind } from './meet';
 import { LIFT_ORDER } from './meet';
 import type { LocalWallClock, StreakDay, StreakFactKey, StreakState } from './streak';
@@ -1065,8 +1065,16 @@ export interface ConfirmedMeetResult {
   readonly totalKg: ConfirmedTotalKg | null;
   /** Best good lift per lift; `null` where a lift was bombed. */
   readonly bestByLift: Readonly<Record<LiftKind, ConfirmedKg | null>>;
-  /** Bodyweight at weigh-in, in kg. Needed to score DOTS off a stored result. */
-  readonly bodyweightKg: number;
+  /**
+   * Bodyweight at weigh-in, in kg. Needed to score DOTS off a stored result.
+   *
+   * `ConfirmedKg`, like every other number on this type. It was a bare `number`
+   * sitting beside a `ConfirmedTotalKg`, which made it the one scalar on server
+   * truth that a locally computed number was assignable to — the asymmetry was
+   * the defect, in one line. The kilogram unit is proven upstream, by
+   * `meetServer.ts`'s refusal, before the wire this decodes is ever built.
+   */
+  readonly bodyweightKg: ConfirmedKg;
 }
 
 export const CONFIRMED_MEET_RESULT_KEYS = [
@@ -1375,14 +1383,37 @@ export const SET_RECOVERY_DAY_PROTECTION_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAr
  * `totalKg` and the allowlist forbids one — GDD §6.4's "total = sum of best
  * successful attempt per lift" is a server computation, and a client that could
  * send a total could send any total.
+ *
+ * THE BODYWEIGHT CARRIES ITS UNIT, and the field is `bodyweight` rather than
+ * `bodyweightKg` because the old name was the whole defect: it was a bare
+ * `number` with `Kg` in it and nothing behind the name, and 203.7 lb is a
+ * perfectly ordinary kilogram bodyweight as far as every check downstream was
+ * concerned (`DOTS_BODYWEIGHT_DOMAIN_KG` runs to 210). It was written straight
+ * into `MeetResultWire` by `meetServer.ts`, three lines under a hard refusal of
+ * a total whose unit could not be proven. A caller who took that refusal's own
+ * named remedy — "convert the whole entry at the call site" — and converted only
+ * the attempts passed the total's check cleanly and banked a 2.2x wrong
+ * bodyweight.
+ *
+ * `BodyweightReading` is `dots.ts`'s and is a tagged pair rather than a brand
+ * BECAUSE THIS IS A WIRE TYPE. A brand is erased by `JSON.stringify`, so a real
+ * Edge Function would receive a bare number and would have proven nothing; a
+ * `unit` field is the half of the check that survives the transport. See the
+ * type's own comment for the rest of the argument.
+ *
+ * The union is deliberately WIDE here — `'lb'` is representable — because this
+ * is what an untrusted client sends. `meetServer.ts` refuses the pound arm
+ * (`UNSUPPORTED_MEET_UNIT`) before anything is written. Narrowing it to the
+ * kilogram arm HERE would move the refusal to `tsc` on the client, which is the
+ * half of the system this file exists because it does not trust.
  */
 export interface MeetResultReport {
   readonly meetId: MeetId;
-  readonly bodyweightKg: number;
+  readonly bodyweight: BodyweightReading;
   readonly attempts: readonly MeetAttemptReport[];
 }
 
-export const MEET_RESULT_REPORT_KEYS = ['meetId', 'bodyweightKg', 'attempts'] as const;
+export const MEET_RESULT_REPORT_KEYS = ['meetId', 'bodyweight', 'attempts'] as const;
 
 export const MEET_RESULT_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
   MeetResultReport,
@@ -2033,7 +2064,7 @@ function decodeMeet(wire: MeetResultWire, index: number): ProgressionResult<Conf
     meetDayIndex: wire.meetDayIndex,
     totalKg: wire.totalKg === null ? null : (confirm(wire.totalKg) as ConfirmedTotalKg),
     bestByLift: bests.value,
-    bodyweightKg: wire.bodyweightKg,
+    bodyweightKg: confirm(wire.bodyweightKg),
   });
 }
 
@@ -2380,7 +2411,33 @@ function validateProposal(proposal: ProgressionProposal): ProgressionError | nul
       if (proposal.report.attempts.length === 0) {
         return { code: 'INVALID_PROPOSAL', message: 'progression: a meet result must report at least one attempt' };
       }
-      if (!isFiniteWeight(proposal.report.bodyweightKg)) {
+      // SHAPE, NOT POLICY. This validates that the bodyweight is a usable
+      // number in a unit this codebase has a name for; whether that unit is one
+      // permanent progression can store is `meetServer.ts`'s refusal
+      // (`UNSUPPORTED_MEET_UNIT`), because that is where the write happens and a
+      // refusal upstream of the write would have to be repeated there anyway.
+      //
+      // THE UNIT IS CHECKED BY VALUE, not by type. `BodyweightReading` is a
+      // union of two literals to `tsc`, but a proposal can arrive from JSON, or
+      // through a cast, and then `unit` is whatever the sender wrote. An unknown
+      // unit is refused rather than assumed: the fail-safe direction, the same
+      // one `dots.ts` gives for typing `MeetTotalReading.unit` as `string`.
+      const bodyweight = proposal.report.bodyweight;
+      const reported =
+        bodyweight.unit === 'kg'
+          ? bodyweight.kilograms
+          : bodyweight.unit === 'lb'
+            ? bodyweight.pounds
+            : null;
+      if (reported === null) {
+        return {
+          code: 'INVALID_PROPOSAL',
+          message:
+            'progression: a reported bodyweight must say which unit it was weighed in, not ' +
+            JSON.stringify(bodyweight.unit),
+        };
+      }
+      if (!isFiniteWeight(reported)) {
         return { code: 'INVALID_PROPOSAL', message: 'progression: a reported bodyweight must be finite and positive' };
       }
       for (const attempt of proposal.report.attempts) {

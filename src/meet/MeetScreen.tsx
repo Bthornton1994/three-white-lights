@@ -158,7 +158,7 @@ export function MeetScreen({
     sex: entry.sex,
     division: entry.division,
     equipment: entry.equipment,
-    weightClassText: weightClassString(entry.bodyweightKg, classes),
+    weightClassText: weightClassString(entry.bodyweight.kilograms, classes),
   });
   const decision = attemptDecisionFor(state.meet, state.context.previousBestByLiftKg);
   const judged = lastAttempt(state);

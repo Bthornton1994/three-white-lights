@@ -225,7 +225,8 @@ describe('MEET_ENTRY', () => {
     // `resultCard.ts` refuses to publish a DOTS score while withholding one of
     // its inputs, so an entry without a sex cannot produce a card at all.
     expect(['male', 'female']).toContain(MEET_ENTRY.sex);
-    expect(MEET_ENTRY.bodyweightKg).toBeGreaterThan(0);
+    expect(MEET_ENTRY.bodyweight.unit).toBe('kg');
+    expect(MEET_ENTRY.bodyweight.kilograms).toBeGreaterThan(0);
   });
 });
 

@@ -60,6 +60,7 @@ import {
   TRAINING_SET_REPORT_KEYS,
   WALLET_CURRENCIES,
   type ConfirmedFacts,
+  type ConfirmedMeetResult,
   type ConfirmedKg,
   type ConfirmedTotalKg,
   type EntitlementEffect,
@@ -178,7 +179,7 @@ const A_MEET_PROPOSAL: ProposalOfKind<'record-meet-result'> = {
   kind: 'record-meet-result',
   report: {
     meetId: asMeetId('meet-2026-autumn'),
-    bodyweightKg: 93,
+    bodyweight: { unit: 'kg', kilograms: 93 },
     attempts: [
       { lift: 'squat', attemptNumber: 1, weightKg: 220, good: true },
       { lift: 'bench', attemptNumber: 1, weightKg: 150, good: true },
@@ -622,7 +623,7 @@ describe('the fact allowlist', () => {
       'protectionEnabled',
     ]);
     expect([...MEET_ATTEMPT_REPORT_KEYS].sort()).toEqual(['attemptNumber', 'good', 'lift', 'weightKg']);
-    expect([...MEET_RESULT_REPORT_KEYS].sort()).toEqual(['attempts', 'bodyweightKg', 'meetId']);
+    expect([...MEET_RESULT_REPORT_KEYS].sort()).toEqual(['attempts', 'bodyweight', 'meetId']);
     expect([...REDEEM_ENTITLEMENT_REPORT_KEYS].sort()).toEqual(['receipt', 'sku']);
     expect([...SPEND_CURRENCY_REPORT_KEYS].sort()).toEqual(['amount', 'currency', 'sku']);
   });
@@ -1089,6 +1090,37 @@ describe('receiveProgressionSnapshot', () => {
     expect(facts.totalKg).toBeNull();
     expect(facts.meets[0]?.totalKg).toBeNull();
     expect(facts.meets[0]?.totalKg).not.toBe(0);
+  });
+
+  it('brands a stored bodyweight like every other number on server truth', () => {
+    // IT WAS THE ONE THAT WAS NOT. `ConfirmedMeetResult.bodyweightKg` was a bare
+    // `number` sitting beside a `ConfirmedTotalKg` and a `Record<LiftKind,
+    // ConfirmedKg | null>`, which made it the single scalar on server truth a
+    // locally computed number could be written into. The asymmetry was the
+    // defect, in one line.
+    //
+    // THIS PIN FAILS BY COMPILING. Widen the field back to `number` and the
+    // directive below stops being an error, which `tsc` reports as an unused
+    // `@ts-expect-error` — so the pin cannot go quiet the way a runtime
+    // assertion on a brand would (brands are erased; there is nothing to assert
+    // at runtime, which is exactly why this is written as a type check).
+    const stored: ConfirmedMeetResult = snapshotFacts(
+      snapshot({
+        meets: [
+          {
+            meetId: 'meet-branded',
+            meetDayIndex: 19_950,
+            totalKg: 600,
+            bestByLift: { squat: 230, bench: 150, deadlift: 220 },
+            bodyweightKg: 93,
+          },
+        ],
+      }),
+    ).meets[0]!;
+    expect(stored.bodyweightKg).toBe(93);
+    // @ts-expect-error - a plain number is not a ConfirmedKg; only the decoder mints one.
+    const forged: typeof stored.bodyweightKg = 93;
+    expect(forged).toBe(93);
   });
 
   it('refuses a zero or negative total rather than storing it', () => {
@@ -1696,12 +1728,12 @@ describe('a purchase cannot reach performance', () => {
     // the attempts are judged, not where they are displayed.
     const report: MeetResultReport = {
       meetId: asMeetId('meet-1'),
-      bodyweightKg: 93,
+      bodyweight: { unit: 'kg', kilograms: 93 },
       attempts: [{ lift: 'squat', attemptNumber: 1, weightKg: 220, good: true }],
       // @ts-expect-error - MeetResultReport is inputs only; there is no totalKg.
       totalKg: 900,
     };
-    expect(report.bodyweightKg).toBe(93);
+    expect(report.bodyweight.unit).toBe('kg');
   });
 
   it('has no Recovery Day balance in the wallet to buy against', () => {
@@ -2153,7 +2185,7 @@ describe('the boundary lets legitimate work through', () => {
         kind: 'record-meet-result',
         report: {
           meetId: asMeetId('meet-1'),
-          bodyweightKg: 93,
+          bodyweight: { unit: 'kg', kilograms: 93 },
           attempts: [{ lift: 'squat', attemptNumber: 1, weightKg: 220, good: true }],
         },
       },
