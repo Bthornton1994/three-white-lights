@@ -13,6 +13,8 @@
  * outline pass — and never the stamper's own report of what it did.
  */
 
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   MARKS,
@@ -38,7 +40,7 @@ import {
   strainForLevel,
   upperArmSpan,
 } from './rig';
-import { CENTER_X, PITCH, RESOLUTION, STRAIN } from './spriteTuning';
+import { BRACE_SETTLE_DEPTH, CENTER_X, PITCH, RESOLUTION, STRAIN } from './spriteTuning';
 
 const BASE: LifterFrameSpec = {
   depth: 0,
@@ -202,8 +204,8 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  * whole sheet at 46% while three separate guards looked straight past it. (That
  * 46% is HISTORICAL — it describes the rig of the round that found it and is not
  * reproducible against the drawing this file renders today, which lands the
- * aggregate at 63.7%. Every rate that IS current is pinned in
- * `MARK_LANDING_MEASURED`; this one is left as a note on why the floor changed
+ * aggregate at `@ours STRAP_SEAM|ALL = 63.7%`. Every rate that IS current is
+ * pinned in `MARK_LANDING_MEASURED`; this one is left as a note on why the floor changed
  * shape, and should not be read as a measurement of anything shipping.) The
  * `alwaysOn` list two tests down carries `SINGLET_HEM_TRIM` (the waist) and not
  * `STRAP_SEAM` (the shoulder); "no dead mark" only needs a mark to land SOMEWHERE
@@ -212,12 +214,21 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  * entirely gone.
  *
  * AND IT IS MEASURED PER SIDE, not just in aggregate. The straps are the case
- * that forces it: at the shipped rig the NEAR strap seam lands 99.8% of its
- * pixels and the FAR one 27.5%. The aggregate of those two is 63.7%, which is a
- * number that looks like a coverage fact and is actually one side at full
+ * that forces it: at the shipped rig the NEAR strap seam lands
+ * `@ours STRAP_SEAM|NEAR = 99.8%` of its pixels and the FAR one
+ * `@ours STRAP_SEAM|FAR = 27.5%`. The aggregate of those two is
+ * `@ours STRAP_SEAM|ALL = 63.7%`, which is a number that looks like a coverage
+ * fact and is actually one side at full
  * strength and one side nearly gone. Every `side: 'BOTH'` mark is now floored on
  * each side separately AND on the aggregate, so nothing gets weaker and
  * asymmetric loss stops hiding.
+ *
+ * (The `@ours` tags are not decoration. Every rate in this file's prose used to
+ * be a THIRD copy of a number — the pair in `MARK_LANDING_MEASURED`, the string
+ * it prints, and then the sentence quoting it — and only the first two were
+ * compared. A tag is scanned and compared to the pinned pair by 'agrees with
+ * every landing rate any comment states', the same way `@ref` handles reference
+ * figures in `lifterSprite.test.ts`.)
  *
  * ---------------------------------------------------------------------------
  * WHY ONE SIDE AND NOT THE OTHER, ON A RIG WHERE EVERYTHING IS MIRRORED
@@ -245,12 +256,36 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  * anchors are exact mirror images. `markTargets` then adds the origin as plain
  * screen x — `x: anchor.x + ox + col` — and `STRAP_SEAM`'s origin is `[1, 1]`.
  * So the seam column lands one px screen-RIGHT of the strap axis on both sides,
- * which is INBOARD on the near side and OUTBOARD on the far side. Every piece of
- * GEOMETRY in the neighbourhood is mirror-symmetric — the strap capsule, the
- * deltoid disc and `drawArm`'s upper-arm capsule are all `CENTER_X + sign * ...`
- * with identical radii, and the two sides differ only in lighting
- * (`SHADING.FAR_LIMB_LIGHT_SCALE`), which moves no pixel. So none of them can
- * produce a 99.8/27.5 split by itself, and this one asymmetry is the whole of it.
+ * which is INBOARD on the near side and OUTBOARD on the far side.
+ *
+ * WHAT IS ASSERTED ABOUT THE SYMMETRY, AND WHAT IS ONLY READ OFF THE SOURCE.
+ * This paragraph used to say "the strap capsule, the deltoid disc and `drawArm`'s
+ * upper-arm capsule are all `CENTER_X + sign * ...` ... this one asymmetry is the
+ * whole of it", and offered `mirroredAnchors === 416` below as the proof of it.
+ * That pin covers the strap ANCHOR alone. Three of the four things the sentence
+ * named were not asserted anywhere — on a rig whose own header advertises three
+ * deliberate asymmetries, one of them on the arm. So, exactly:
+ *
+ *   - the strap ANCHOR is asserted mirror-symmetric at every pose
+ *     (`mirroredAnchors`);
+ *   - the UPPER ARM is asserted mirror-symmetric at every pose, all three points
+ *     `drawArm` draws between (`mirroredArms`, added because
+ *     `RIG_GEOMETRY.GRIP_ASYMMETRY_PX` already breaks the arm's symmetry at
+ *     `handX` and extending it to `elbowX` would have moved this whole split
+ *     while the suite stayed green);
+ *   - the strap CAPSULE and the DELTOID DISC are NOT asserted symmetric. They are
+ *     `CENTER_X + sign * ...` with sign-independent radii in `drawTorso`, which is
+ *     read off the source and is not a measurement. Neither can produce the split
+ *     anyway: the strap capsule is what the seam is drawn ON, and the deltoid is
+ *     bounded at THREE seam pixels in the whole pose space, asserted below;
+ *   - the two sides otherwise differ only in lighting
+ *     (`SHADING.FAR_LIMB_LIGHT_SCALE`), which moves no pixel.
+ *
+ * So the seam origin is the only asymmetry in the neighbourhood that is BOTH
+ * asserted and able to move a pixel, and it accounts for 904 of the 905 far
+ * misses. One does not fall inside the arm at all and is not diagnosed; see
+ * `FAR_SEAM_ARM_JOIN`. "This one asymmetry is the whole of it" was the old
+ * sentence and it was one pixel too strong.
  *
  * What that costs: the far seam sits on the arm's side of the strap and the near
  * seam on the chest's. `renderLifterFrame` draws the torso before both arms, so
@@ -258,14 +293,19 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  * Measured over the pose space and asserted below: the far seam is inside the far
  * upper arm's drawn outline in 906 of 1248 (frame, row) pairs and the near seam
  * is inside the near one in ZERO of 1248; every far-side miss is a SKIN pixel in
- * the finished grid; the deltoid disc touches three seam pixels in the whole pose
- * space and the strap capsule, which `drawTorso` draws after it, covers all
- * three.
+ * the finished grid; AND THOSE ARE THE SAME PIXELS — 904 of the 905 misses are
+ * inside the arm, 55 in its fill and 849 in its one-px contour ring, with 2
+ * covered pixels landing anyway and 1 miss outside the arm entirely
+ * (`FAR_SEAM_ARM_JOIN`, which is the join those two counts never made). The
+ * deltoid disc touches three seam pixels in the whole pose space and the strap
+ * capsule, which `drawTorso` draws after it, covers all three.
  *
  * SO THE LEVER IS THE PAIR (`STRAP_SEAM.origin`, `ATTACH.ARM_ROOT` /
  * `UPPER_ARM_R[0]`) — which side of the axis the seam is authored on, and where
- * the arm's inboard flank runs. It is NOT the deltoid. Whoever moves either half
- * of that pair owns this number and has to come back and re-measure it.
+ * the arm's inboard flank runs. It is NOT the deltoid. And the half of the pair
+ * that does the work is the RADIUS, because 849 of the 904 seam pixels the arm
+ * eats are eaten by its one-px CONTOUR RING and only 55 by its body. Whoever
+ * moves either half owns this number and has to come back and re-measure it.
  */
 const MARK_LANDING_FLOOR = 0.7;
 
@@ -289,19 +329,22 @@ const MARK_LANDING_FLOOR = 0.7;
  * `MARK_LANDING_MEASURED`, and the floors below are left as floors.
  */
 const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
-  // 58.8% and 59.1%. Past about two thirds depth the singlet hem and the knee
-  // sleeve meet over the thigh and there is no bare thigh anywhere in the frame
-  // to paint on. That is a coverage fact about a squat seen from the front, not
+  // `@ours QUAD_SWEEP_NEAR|ALL = 58.8%` and `@ours QUAD_SWEEP_FAR|ALL = 59.1%`.
+  // Past about two thirds depth the singlet hem and the knee sleeve meet over the
+  // thigh and there is no bare thigh anywhere in the frame to paint on. That is a coverage fact about a squat seen from the front, not
   // a misplaced mark. Was 0.35 before the sleeve was shortened and the hem put
   // on the thigh; 0.5 is what stops that being given back quietly.
   'QUAD_SWEEP_NEAR|ALL': 0.5,
   'QUAD_SWEEP_FAR|ALL': 0.5,
-  // 56.0%, both sides equally, and NOT a defect: the laces are stamped on top of
-  // it. All three shoe bands are nine-px maps at the same anchor, and the shoe is
-  // drawn about seven px wide (`FOOT_W` 9 less `EDGE_INSET_PX` at each end), so
-  // SHOE_COLLAR and SHOE_SOLE both land 78.2% — the outer columns fall off the
-  // shoe. SHOE_UPPER shares its row with SHOE_LACES, two px of chalk applied
-  // AFTER it, and 78.2% - 2/9 = 56.0% exactly. `markPixelsInGrid` counts a pixel
+  // `@ours SHOE_UPPER|ALL = 56.0%`, both sides equally
+  // (`@ours SHOE_UPPER|NEAR = 56.0%`, `@ours SHOE_UPPER|FAR = 56.0%`), and NOT a
+  // defect: the laces are stamped on top of it. All three shoe bands are nine-px
+  // maps at the same anchor, and the shoe is drawn about seven px wide (`FOOT_W` 9
+  // less `EDGE_INSET_PX` at each end), so SHOE_COLLAR and SHOE_SOLE both land
+  // `@ours SHOE_COLLAR|ALL = 78.2%` and `@ours SHOE_SOLE|ALL = 78.2%` — the outer
+  // columns fall off the shoe. SHOE_UPPER shares its row with SHOE_LACES, two px of chalk applied
+  // AFTER it, and `@ours SHOE_COLLAR|ALL = 78.2%` less 2/9 is
+  // `@ours SHOE_UPPER|ALL = 56.0%` exactly. `markPixelsInGrid` counts a pixel
   // a later mark legitimately won as not landed; the 'reports placements that
   // agree with the finished grid' test below is the one that handles contested
   // pixels properly. Pinned here so the band cannot quietly lose more than the
@@ -309,7 +352,8 @@ const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
   'SHOE_UPPER|ALL': 0.5,
   'SHOE_UPPER|NEAR': 0.5,
   'SHOE_UPPER|FAR': 0.5,
-  // 63.7% aggregate, 99.8% near, 27.5% far. THE FAR STRAP IS THE ONE THAT
+  // `@ours STRAP_SEAM|ALL = 63.7%` aggregate, `@ours STRAP_SEAM|NEAR = 99.8%`
+  // near, `@ours STRAP_SEAM|FAR = 27.5%` far. THE FAR STRAP IS THE ONE THAT
   // MATTERS, and what eats it is the far ARM — not the deltoid, which
   // `drawTorso` draws BEFORE the straps and therefore cannot cover them.
   // `renderLifterFrame` draws the whole torso, then `drawArm(sign +1)`, and the
@@ -317,7 +361,11 @@ const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
   // inboard of the near axis, so the far arm's inboard flank runs across it and
   // the near arm never reaches its own. That asymmetry is `STRAP_SEAM.origin`
   // being applied unmirrored against a mirrored anchor; the full derivation is on
-  // `MARK_LANDING_FLOOR` and every step of it is asserted, not argued. So the
+  // `MARK_LANDING_FLOOR`, which now also says which steps are asserted and which
+  // are read off the source rather than measured. The join between "the arm
+  // covers it" and "it fails to land" — the step that makes this a cause and not
+  // two coincidences — is `FAR_SEAM_ARM_JOIN`: 904 of the 905 far misses, with
+  // one left over that the arm does not cover and nothing here explains. So the
   // seam survives in 210 of 416 frames, partially. That much is anatomy — from
   // the front an arm does cross a singlet strap — and it is why this gets a
   // floor rather than a place in `alwaysOn`, which it could not meet.
@@ -332,14 +380,15 @@ const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
   // beside them are pinned in `MARK_LANDING_MEASURED` and cannot go stale.
   'STRAP_SEAM|ALL': 0.6,
   'STRAP_SEAM|FAR': 0.25,
-  // 64.1% far against 92.3% near, and THE CAUSE IS NOT DIAGNOSED — said plainly
-  // rather than guessed at, because the exception beside it (SHOE_UPPER) had a
+  // `@ours TRAP_BAR_SHADOW|FAR = 64.1%` far against
+  // `@ours TRAP_BAR_SHADOW|NEAR = 92.3%` near, and THE CAUSE IS NOT DIAGNOSED —
+  // said plainly rather than guessed at, because the exception beside it (SHOE_UPPER) had a
   // plausible-sounding mechanism written for it that the arithmetic then refuted.
   // What is measured is the asymmetry and nothing else.
   //
   // It was found by turning the per-side floor on, and it is the second thing
-  // that found: the aggregate is 78.2% and cleared the general floor
-  // comfortably, which is exactly the blindness that hid the strap. Recorded and
+  // that found: the aggregate is `@ours TRAP_BAR_SHADOW|ALL = 78.2%` and cleared
+  // the general floor comfortably, which is exactly the blindness that hid the strap. Recorded and
   // pinned rather than fixed — a bar-contact cue that lands on two thirds of the
   // far trap is a mark-placement question for whoever owns the trap, and this
   // round is a revert.
@@ -347,18 +396,31 @@ const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
 };
 
 /**
- * EVERY LANDING RATE ANY COMMENT IN THIS FILE STATES, as exact pixel counts.
+ * EVERY LANDING RATE ANY COMMENT IN THE TREE STATES, as exact pixel counts.
  *
  * `[landed, requested]` over the whole pose space, and the string is what
- * `(landed / requested * 100).toFixed(1)` prints — which is the form the comments
- * above quote, so the quoted number is the asserted number rather than a
- * transcription of it. All OURS.
+ * `(landed / requested * 100).toFixed(1)` prints. All OURS.
  *
  * This exists because the exceptions block described itself as a ratchet and was
  * not one. A floor fires downward only; these fire in BOTH directions, which is
  * the doctrine `lifterSprite.test.ts` settles on for ours-only figures. If the
  * drawing gets better these go red too, and whoever improved it comes here and
  * says so. That is the cost of the sentences above being true.
+ *
+ * THE COMMENTS WERE STILL A THIRD COPY. This doc used to say the printed string
+ * is "the form the comments above quote, so the quoted number is the asserted
+ * number rather than a transcription of it", and that was half true: the pair and
+ * the string it prints were compared to each other, and the SENTENCE quoting the
+ * string was compared to nothing. Three copies, two checked — which is the same
+ * shape as the contradiction `lifterSprite.test.ts` built the `@ref` convention
+ * for, one category over, on ours-figures instead of reference figures.
+ *
+ * So prose states a rate as `@ours STRAP_SEAM|ALL = 63.7%`, and 'agrees with
+ * every landing rate any comment in the tree states' scans the tree for those
+ * tags and compares
+ * each to the pair here. Same idea as `@ref`, different table, and the two are
+ * deliberately different words: `@ref` means "measured off the reference image",
+ * `@ours` means "measured off our own frames".
  */
 const MARK_LANDING_MEASURED: Readonly<Record<string, readonly [number, number, string]>> = {
   'QUAD_SWEEP_NEAR|ALL': [2202, 3744, '58.8%'],
@@ -397,12 +459,77 @@ const SEAM_ROWS_MEASURED = 1248;
 /**
  * Far seam pixels that fall inside the far upper arm's drawn outline.
  *
- * OURS, 906 of `SEAM_ROWS_MEASURED`, against ZERO on the near side. That pair is
- * the whole of the 99.8/27.5 split and is asserted below. It is larger than the
- * 905 that actually fail to land, because `despeckle` runs before the marks and
- * rescues a lone contour pixel now and then.
+ * OURS, 906 of `SEAM_ROWS_MEASURED`, against ZERO on the near side.
+ *
+ * THIS NUMBER AND THE 905 BESIDE IT WERE TWO BUCKETS, NOT A JOIN, for three
+ * rounds. "906 pixels are inside the arm" and "905 pixels fail to land" are
+ * consistent with the arm having eaten its own seam and do not entail it: no
+ * assertion in this file ever asked whether a LOST pixel was an INSIDE pixel,
+ * and the one integer that decides it — how many misses fall outside the arm
+ * entirely — was stated in prose here as "`despeckle` rescues a lone contour
+ * pixel now and then", which nothing could check. If that had been sixty rather
+ * than one, fifty-nine far misses would have had nothing to do with the arm and
+ * the lever named on `MARK_LANDING_FLOOR` would have been partly wrong.
+ *
+ * `FAR_SEAM_ARM_JOIN` below is that join, measured. The phrase is now the
+ * integer 2 and the gap between 906 and 905 is arithmetic on two pinned counts.
  */
 const FAR_SEAM_PIXELS_INSIDE_ARM = 906;
+
+/**
+ * THE JOIN: is a far seam pixel that fails to land a pixel the far arm covers?
+ *
+ * All OURS, all measured this round over the whole pose space, all asserted in
+ * both directions below. `inCapsule` pad 1 is the arm's whole painted footprint
+ * (`raster.limbPass` stamps the contour ring at `grow` 1 and fills at `grow` 0),
+ * and pad 0 is the FILL alone, so pad1-minus-pad0 is the one-px contour RING.
+ *
+ *   inside the arm, pad 1 ....................... 906  (`FAR_SEAM_PIXELS_INSIDE_ARM`)
+ *     of which in the FILL ...................... 55   `insideFill`
+ *     of which in the one-px contour RING ....... 851  (906 - 55)
+ *   fail to land ................................ 905  (`MARK_LANDING_MEASURED`)
+ *     inside, in the fill ....................... 55   `missInFill`
+ *     inside, in the ring ....................... 849  `missInRing`
+ *     OUTSIDE THE ARM ALTOGETHER ................ 1    `missOutside`
+ *   land anyway despite being inside ............ 2    `landedInRing` + `landedInFill`
+ *     in the fill ............................... 0    `landedInFill`
+ *     in the ring ............................... 2    `landedInRing`
+ *
+ * So the arm accounts for 904 of the 905, and 906 - 905 = 2 - 1.
+ *
+ * THE RING IS THE MECHANISM, and it is why `UPPER_ARM_R` moves this number so
+ * hard: 849 of the 904 seam pixels the arm eats are eaten by its one-pixel
+ * CONTOUR, and only 55 by its body. A radius change moves the ring, and the ring
+ * is where the seam is. That split existed only in a builder's report until now
+ * — 849 and 55 appeared nowhere in the tree, and a critic grepping for them found
+ * nothing — and re-measuring this round reproduced both exactly.
+ *
+ * `missOutside` IS ONE, NOT ZERO, AND ITS CAUSE IS NOT DIAGNOSED — said plainly,
+ * in the shape `TRAP_BAR_SHADOW|FAR` above already uses, rather than guessed at.
+ * It is a single (frame, row) pair of 1248: depth 0.750 ASCENT, strain 2, pitch
+ * 3, seam row 2, at (53, 36). What IS measured about it: the finished pixel is
+ * skin, it is not inside the far upper arm at pad 1, it is not inside either far
+ * FOREARM capsule at pad 1, and it is not inside the far deltoid disc. It is
+ * inside the strap capsule, so the strap did reach it. Nothing here explains it
+ * and nothing here pretends to; it is 1 of 905 and it is pinned so it cannot
+ * grow quietly.
+ *
+ * `landedInRing` IS THE COUNT THE OLD PROSE CALLED "rescued by despeckle". Two,
+ * both in the contour ring, none in the fill — which is the signature that
+ * sentence described, and is as far as this file goes. WHY those two survive is
+ * NOT ASSERTED: nothing in the tree exposes the grid between `drawArm` and
+ * `applyMarks`, so despeckle eating an isolated contour pixel is a deduction
+ * from the pipeline order in `renderLifterFrame`, not an observation. Named as a
+ * deduction on purpose.
+ */
+const FAR_SEAM_ARM_JOIN = {
+  insideFill: 55,
+  missInFill: 55,
+  missInRing: 849,
+  missOutside: 1,
+  landedInFill: 0,
+  landedInRing: 2,
+} as const;
 
 /**
  * Seam pixels inside a deltoid cap's painted disc, both sides, whole pose space.
@@ -427,6 +554,32 @@ const SEAM_PIXELS_UNDER_DELTOID = 3;
  * the near side has no arm loss at all to compare against the far side's 905.
  */
 const NEAR_SEAM_MISSES = 2;
+
+/**
+ * Singlet pixels DRAWN in a finished frame, at the two poses `rig.ts` quotes.
+ *
+ * OURS, measured this round, and it lives here because the surface a seam lands
+ * ON is this file's business — `MARK_SURFACES.SINGLET` is the gate every strap
+ * figure above is measured through.
+ *
+ * `RIG_GEOMETRY.UPPER_ARM_R` states "153 -> 147 -> 142 at BRACE and 112 -> 105 ->
+ * 103 in the HOLE" as the singlet area a wider upper arm eats. The two middle and
+ * two right-hand figures are a record of a shape `drawArm` no longer builds, like
+ * the belly landing rates beside them. The two SHIPPED ones are reproducible, and
+ * were the only current ours-figure in that block with no pin — in a paragraph
+ * headed "WHICH OF THOSE ROWS IS CHECKABLE, said plainly". Disclosure is not the
+ * same as a check: prose that says "this is unguarded" still goes stale silently,
+ * it just apologises first.
+ *
+ * THE SPEC IS PART OF THE FIGURE. `rig.ts` quoted these at "strain 0, pitch 0,
+ * 250 kg" and left the direction out; BRACE is an anchor on the DESCENT ladder
+ * only, and the ASCENT ladder at the same depth draws a different pose and counts
+ * 135. So the spec is written out in full here and rendered rather than quoted.
+ */
+const SINGLET_PX_DRAWN: Readonly<Record<string, readonly [LifterFrameSpec, number]>> = {
+  BRACE: [spec({ depth: BRACE_SETTLE_DEPTH, direction: 'DESCENT' }), 153],
+  HOLE: [spec({ depth: 1, direction: 'DESCENT' }), 112],
+};
 
 const EXPECTED_FLESH_MARKS: readonly string[] = [
   'FACE_CALM',
@@ -578,8 +731,9 @@ describe('marks reach the pixels', () => {
     // down because "the waist trim is here and the shoulder strap is not" looks
     // like an oversight and was reported as one. It is not a list this mark can
     // join. The check is per MARK, over both sides at once, and the NEAR seam
-    // lands 99.8% of its pixels at every pose — so a strap already gone from the
-    // far shoulder in 206 of 416 frames passes this test today, passes it with
+    // lands `@ours STRAP_SEAM|NEAR = 99.8%` of its pixels at every pose — so a
+    // strap already gone from the far shoulder in 206 of 416 frames passes this
+    // test today, passes it with
     // `UPPER_ARM_R` re-bellied at 3.0, and only fails at 3.4, where the near
     // side finally drops out in 13 frames. A guard that green with the thing it
     // names half-eaten is worse than no guard, because it reads as coverage.
@@ -593,11 +747,13 @@ describe('marks reach the pixels', () => {
     // saying exactly because it is easy to overstate. An aggregate-only floor
     // would ALSO have fired at a 3.0 belly — 55.1% against 0.6 — so per-side is
     // not what makes that mutation visible. What it is, is roughly three times
-    // sharper: the FAR key trips on 2.5 points of far-side loss (27.5% against
-    // 0.25) where the ALL key needs 7.4, since the aggregate is the mean of two
-    // sides and only one of them is moving. The proof that per-side sees things
-    // aggregate cannot is `TRAP_BAR_SHADOW`, found at 64.1% on the far side
-    // behind a 78.2% aggregate that cleared the general 0.7 floor.
+    // sharper: the FAR key trips on 2.5 points of far-side loss
+    // (`@ours STRAP_SEAM|FAR = 27.5%` against 0.25) where the ALL key needs 7.4,
+    // since the aggregate is the mean of two sides and only one of them is moving.
+    // The proof that per-side sees things aggregate cannot is `TRAP_BAR_SHADOW`,
+    // found at `@ours TRAP_BAR_SHADOW|FAR = 64.1%` on the far side behind a
+    // `@ours TRAP_BAR_SHADOW|ALL = 78.2%` aggregate that cleared the general 0.7
+    // floor.
     let seamFullyGone = 0;
     const alwaysOn = [
       'BELT_LEVER',
@@ -638,7 +794,8 @@ describe('marks reach the pixels', () => {
   });
 
   it('is eaten on the far side by the ARM, because the seam is authored unmirrored', () => {
-    // THE CAUSE OF 99.8% AGAINST 27.5%, ASSERTED RATHER THAN NARRATED. See
+    // THE CAUSE OF `@ours STRAP_SEAM|NEAR = 99.8%` AGAINST
+    // `@ours STRAP_SEAM|FAR = 27.5%`, ASSERTED RATHER THAN NARRATED. See
     // `MARK_LANDING_FLOOR` for the prose; this is the same claim as numbers, and
     // the two live together so neither can rot without the other going red.
     //
@@ -651,12 +808,26 @@ describe('marks reach the pixels', () => {
     //   3. so the far seam falls inside the far upper arm's DRAWN outline in most
     //      (frame, row) pairs and the near seam falls inside the near one in NONE;
     //   4. and every far-side pixel that fails to land is SKIN in the finished
-    //      grid, while the near side's two failures are GEAR.
+    //      grid, while the near side's two failures are GEAR;
+    //   5. AND THE TWO ARE THE SAME PIXELS. Steps 3 and 4 used to be counted into
+    //      separate buckets and never joined, which made them consistent with the
+    //      arm eating the seam without entailing it. `FAR_SEAM_ARM_JOIN` is the
+    //      intersection: of the 905 that fail, 904 are inside the arm and ONE is
+    //      not, split 55 in the arm's fill and 849 in its one-px contour ring.
     //
     // Step 3 uses `craftMetrics.inCapsule` with a pad of 1, which is the contour
     // pass's own `grow` — the same rule the renderer rasterises with, and
     // `lifterSprite.test.ts` compares it to the drawn pixels capsule for capsule.
-    // Nothing here is a fourth copy of it.
+    // Nothing here is a fourth copy of it. Pad 0 is the same rule with `grow` 0,
+    // which is the fill pass, so pad1-minus-pad0 is exactly the contour ring.
+    //
+    // The arm's own mirror symmetry is asserted here too. `mirroredAnchors`
+    // covers the strap ANCHOR only, and the paragraph on `MARK_LANDING_FLOOR`
+    // that cites it claims the arm capsule is symmetric as well — on a rig whose
+    // header advertises three deliberate asymmetries, one of them on the arm
+    // (`GRIP_ASYMMETRY_PX`, applied to `handX` on the far side). Extending that
+    // constant to `elbowX` would move this whole split and, until now, leave
+    // every test in the file green.
     const seam = MARKS.find((m) => m.name === 'STRAP_SEAM');
     expect(seam, 'STRAP_SEAM').toBeDefined();
     if (seam === undefined) return;
@@ -667,9 +838,16 @@ describe('marks reach the pixels', () => {
     let farOutboard = 0;
     let nearInboard = 0;
     let farInsideArm = 0;
+    let farInsideArmFill = 0;
     let nearInsideArm = 0;
     let farMisses = 0;
     let farMissesOnSkin = 0;
+    let farMissesOutsideArm = 0;
+    let farMissesInArmFill = 0;
+    let farMissesInArmRing = 0;
+    let farLandedInsideArmFill = 0;
+    let farLandedInsideArmRing = 0;
+    let mirroredArms = 0;
     let nearMisses = 0;
     let nearMissesOnGear = 0;
     let seamPixelsUnderDeltoid = 0;
@@ -684,12 +862,26 @@ describe('marks reach the pixels', () => {
       if (farAnchor.x - CENTER_X === -(nearAnchor.x - CENTER_X) && farAnchor.y === nearAnchor.y) {
         mirroredAnchors += 1;
       }
+      // 1b. And so is the ARM the seam lands on — every point `drawArm` draws the
+      //     upper-arm capsule between, not just the anchor beside it.
+      const nearArm = upperArmSpan(pose, -1);
+      const farArm = upperArmSpan(pose, 1);
+      if (
+        farArm.shoulderX - CENTER_X === -(nearArm.shoulderX - CENTER_X) &&
+        farArm.bellyX - CENTER_X === -(nearArm.bellyX - CENTER_X) &&
+        farArm.elbowX - CENTER_X === -(nearArm.elbowX - CENTER_X) &&
+        farArm.shoulderY === nearArm.shoulderY &&
+        farArm.bellyY === nearArm.bellyY &&
+        farArm.elbowY === nearArm.elbowY
+      ) {
+        mirroredArms += 1;
+      }
       const near = markTargets({ ...seam, side: 'NEAR' }, pose, strained);
       const far = markTargets({ ...seam, side: 'FAR' }, pose, strained);
       expect(near.length, 'the two sides ask for the same pixels').toBe(far.length);
       for (const [sign, anchor, targets, arm] of [
-        [-1, nearAnchor, near, upperArmSpan(pose, -1)],
-        [1, farAnchor, far, upperArmSpan(pose, 1)],
+        [-1, nearAnchor, near, nearArm],
+        [1, farAnchor, far, farArm],
       ] as const) {
         // The deltoid cap's painted extent, exactly. `drawTorso` calls
         // `drawEllipsoid` for it with `lightScale` and nothing else — no `edge` —
@@ -710,15 +902,37 @@ describe('marks reach the pixels', () => {
             G.UPPER_ARM_R[1],
             1,
           );
+          // The FILL alone, same rule at the fill pass's `grow` of 0. Inside at
+          // pad 1 and not at pad 0 is the one-px contour ring.
+          const insideFill = inCapsule(
+            t.x,
+            t.y,
+            arm.shoulderX,
+            arm.shoulderY,
+            arm.elbowX,
+            arm.elbowY,
+            G.UPPER_ARM_R[0],
+            G.UPPER_ARM_R[1],
+            0,
+          );
           const px = getPx(frame.grid, t.x, t.y);
           const landed = px === t.ink;
           if (sign > 0) {
             pairs += 1;
             if (t.x - anchor.x > 0) farOutboard += 1;
             if (inside) farInsideArm += 1;
+            if (insideFill) farInsideArmFill += 1;
             if (!landed) {
               farMisses += 1;
               if (skin.has(px)) farMissesOnSkin += 1;
+              // 5. THE JOIN. Both operands were already on this line for three
+              //    rounds and went into separate buckets.
+              if (!inside) farMissesOutsideArm += 1;
+              else if (insideFill) farMissesInArmFill += 1;
+              else farMissesInArmRing += 1;
+            } else if (inside) {
+              if (insideFill) farLandedInsideArmFill += 1;
+              else farLandedInsideArmRing += 1;
             }
           } else {
             // Screen-right of the near axis is toward the centre line.
@@ -753,6 +967,12 @@ describe('marks reach the pixels', () => {
     expect(mirroredAnchors, 'strap anchors are mirror images at every pose').toBe(
       poseSpace().length,
     );
+    // 1b. Including the arm. `GRIP_ASYMMETRY_PX` reaches `handX` and stops there;
+    //     the day it reaches `elbowX` this goes red and the split below is a
+    //     different number for a different reason.
+    expect(mirroredArms, 'upper-arm spans are mirror images at every pose').toBe(
+      poseSpace().length,
+    );
     // 2. The seam column is not.
     expect(pairs, '(frame, row) pairs').toBe(SEAM_ROWS_MEASURED);
     expect(farOutboard, 'far seam is OUTBOARD of its strap axis').toBe(pairs);
@@ -769,6 +989,36 @@ describe('marks reach the pixels', () => {
     expect(farMissesOnSkin, 'every far miss is SKIN').toBe(farMisses);
     expect(nearMisses, 'near seam pixels that did not land').toBe(NEAR_SEAM_MISSES);
     expect(nearMissesOnGear, 'and both near misses are GEAR, not skin').toBe(nearMisses);
+    // 5. THE JOIN, which is the step 3 and 4 above never made: a lost pixel and a
+    //    covered pixel are THE SAME PIXEL, 904 times out of 905. See
+    //    `FAR_SEAM_ARM_JOIN` for every count here and for the one that is not
+    //    explained.
+    expect(farMissesOutsideArm, 'far misses the arm does NOT cover — undiagnosed').toBe(
+      FAR_SEAM_ARM_JOIN.missOutside,
+    );
+    expect(farMissesInArmFill, "far misses inside the arm's FILL").toBe(
+      FAR_SEAM_ARM_JOIN.missInFill,
+    );
+    expect(farMissesInArmRing, "far misses inside the arm's one-px contour RING").toBe(
+      FAR_SEAM_ARM_JOIN.missInRing,
+    );
+    expect(farLandedInsideArmFill, 'far pixels that land inside the FILL').toBe(
+      FAR_SEAM_ARM_JOIN.landedInFill,
+    );
+    expect(farLandedInsideArmRing, 'far pixels that land inside the RING anyway').toBe(
+      FAR_SEAM_ARM_JOIN.landedInRing,
+    );
+    expect(farInsideArmFill, "far seam pixels inside the arm's FILL").toBe(
+      FAR_SEAM_ARM_JOIN.insideFill,
+    );
+    //    And the arithmetic that ties 906 to 905, so neither can drift alone.
+    expect(farMissesInArmFill + farMissesInArmRing + farMissesOutsideArm, 'the misses add up').toBe(
+      farMisses,
+    );
+    expect(
+      farMissesInArmFill + farMissesInArmRing + farLandedInsideArmFill + farLandedInsideArmRing,
+      'and the covered pixels add up',
+    ).toBe(farInsideArm);
     // NOT THE DELTOID. A cap's painted disc contains three seam pixels in the
     // whole pose space, and the strap capsule — which `drawTorso` lays down AFTER
     // the deltoid caps — covers all three. Three cannot explain 905.
@@ -778,6 +1028,24 @@ describe('marks reach the pixels', () => {
     expect(thoseCoveredByTheStrap, 'and the strap, drawn later, covers them').toBe(
       seamPixelsUnderDeltoid,
     );
+  });
+
+  it('draws the singlet area RIG_GEOMETRY quotes, at the spec it quotes it for', () => {
+    // See `SINGLET_PX_DRAWN`. The only current ours-figure in `UPPER_ARM_R`'s
+    // block that nothing checked, in the paragraph headed "WHICH OF THOSE ROWS IS
+    // CHECKABLE, said plainly" — disclosed as unguarded, which is honest, and
+    // still a number that could go stale in silence. Both directions.
+    const singlet = new Set<number>(MARK_SURFACES.SINGLET);
+    for (const [where, [at, expected]] of Object.entries(SINGLET_PX_DRAWN)) {
+      const frame = renderLifterFrame(at);
+      let drawn = 0;
+      for (let y = 0; y < frame.grid.h; y += 1) {
+        for (let x = 0; x < frame.grid.w; x += 1) {
+          if (singlet.has(getPx(frame.grid, x, y))) drawn += 1;
+        }
+      }
+      expect(drawn, `singlet px at ${where}, ${at.direction} depth ${at.depth}`).toBe(expected);
+    }
   });
 
   it('gives the face a mouth and both eyes at every depth', () => {
@@ -1065,6 +1333,106 @@ describe('authored pixel budget', () => {
     for (const depth of [0, 0.5, 1]) {
       poseAtDepth(depth, 'ASCENT');
       expect(authoredPixelBudget()).toBe(342);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The prose quoting these rates is checked too
+// ---------------------------------------------------------------------------
+
+/** `@ours STRAP_SEAM|FAR = 27.5%` — key, then the printed rate. */
+const OURS_TAG = /@ours\s+([A-Z_]+\|[A-Z]+)\s*=\s*(\d+(?:\.\d+)?%)/g;
+
+/**
+ * The files whose prose is allowed to state a landing rate at all.
+ *
+ * NOT the whole tree, and the reason is a real collision rather than caution:
+ * `gymTuning.ts` prints two crowd-row percentages that happen to be character for
+ * character the same strings as two of the rates pinned above, and mean nothing
+ * to do with a mark. A tree-wide ban on the bare strings would be a false
+ * positive generator. The tag SCAN below runs over everything under `src`; the
+ * ban on untagged quotes runs over these three, which are the only files that
+ * discuss where a mark lands. (Which is also why this comment describes those two
+ * strings instead of quoting them — the rule catches its own doc otherwise, and
+ * it did.)
+ */
+const RATE_PROSE_FILES: readonly string[] = [
+  'src/art/spriteMarks.test.ts',
+  'src/art/rig.ts',
+  'src/art/lifterSprite.test.ts',
+];
+
+function sourceFilesUnder(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+      out.push(...sourceFilesUnder(full));
+    } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+describe('the prose that quotes a landing rate', () => {
+  it('agrees with every landing rate any comment in the tree states', () => {
+    // THE DEFECT CLASS THIS WHOLE PIECE HAS BEEN FIGHTING, one category over from
+    // where `lifterSprite.test.ts` closed it. Its `@ref` check exists because two
+    // comments in one file carried reference figures 17% apart, both labelled
+    // MEASURED, and neither could fail. The same thing was true here of OUR
+    // figures: the pair and the string it prints were compared to each other, and
+    // the sentences quoting that string — in this file, in `rig.ts`, in
+    // `lifterSprite.test.ts` — were compared to nothing.
+    //
+    // Same mechanism, different table: a comment stating one of our landing rates
+    // writes `@ours KEY = VALUE`, and this compares it to `MARK_LANDING_MEASURED`
+    // exactly. A key nothing pins fails, so a tag cannot be invented.
+    const root = path.resolve(__dirname, '..');
+    let checked = 0;
+    const tagged = new Set<string>();
+    for (const file of sourceFilesUnder(root)) {
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(OURS_TAG)) {
+        const key = m[1] ?? '';
+        const quoted = m[2] ?? '';
+        const where = `${path.relative(process.cwd(), file)}: @ours ${key} = ${quoted}`;
+        const pinned = MARK_LANDING_MEASURED[key];
+        expect(pinned, `${where} names nothing MARK_LANDING_MEASURED pins`).toBeDefined();
+        expect(quoted, where).toBe(pinned?.[2]);
+        checked += 1;
+        tagged.add(key);
+      }
+    }
+    // A convention nobody used would pass vacuously.
+    expect(checked, 'tagged landing rates found in the tree').toBeGreaterThan(15);
+    // And every pinned rate is quoted somewhere, or it is a pin with no prose
+    // behind it and the block above is claiming to serve a sentence that is gone.
+    expect([...tagged].sort()).toEqual(Object.keys(MARK_LANDING_MEASURED).sort());
+  });
+
+  it('never states one of them untagged, so a fourth copy cannot start', () => {
+    // The tag only helps if prose CANNOT quote a rate without it. Strip the tags
+    // and no printed rate string may survive anywhere in the files that discuss
+    // mark landing. See `RATE_PROSE_FILES` for why that is three files and not
+    // the tree.
+    const printed = new Set(Object.values(MARK_LANDING_MEASURED).map(([, , s]) => s));
+    for (const rel of RATE_PROSE_FILES) {
+      const text = readFileSync(path.resolve(__dirname, '../..', rel), 'utf8');
+      // The table itself states each rate once, as data. That is the pin.
+      const prose = text
+        .replace(OURS_TAG, '')
+        .replace(/\[\s*\d+,\s*\d+,\s*'\d+(?:\.\d+)?%'\s*\]/g, '');
+      for (const rate of printed) {
+        expect(prose.includes(rate), `${rel} states ${rate} without an @ours tag`).toBe(false);
+      }
+    }
+    // And the list names files that exist and includes the one holding the table.
+    expect(RATE_PROSE_FILES).toContain('src/art/spriteMarks.test.ts');
+    for (const rel of RATE_PROSE_FILES) {
+      expect(existsSync(path.resolve(__dirname, '../..', rel)), rel).toBe(true);
     }
   });
 });

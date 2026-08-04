@@ -480,11 +480,16 @@ export const RIG_GEOMETRY = {
    *    space, the FAR strap seam (screen-right, the dimmed arm) lands:
    *
    *      biceps r        far STRAP_SEAM px      frames with the far seam gone
-   *      cone (ships)    343 of 1248 (27.5%)      206 of 416
+   *      cone (ships)    343 of 1248              206 of 416
    *      belly 3.0       130 of 1248 (10.4%)      322 of 416
    *      belly 3.4        34 of 1248 ( 2.7%)      383 of 416
    *
-   *    The NEAR seam is 99.8% at the cone and at 3.0, and 96.4% at 3.4.
+   *    As a rate the cone row is `@ours STRAP_SEAM|FAR = 27.5%`, and the NEAR seam
+   *    is `@ours STRAP_SEAM|NEAR = 99.8%` at the cone and at 3.0, and 96.4% at 3.4.
+   *    (Both tags are scanned and compared to the pinned pixel counts in
+   *    `spriteMarks.test.ts`; the two belly rates beside them are a record and are
+   *    deliberately not tagged, because nothing can reproduce them. See
+   *    `MARK_LANDING_MEASURED`.)
    *
    *    WHICH OF THOSE ROWS IS CHECKABLE, said plainly. The CONE row is the shipped
    *    drawing and is asserted in `spriteMarks.test.ts` rather than quoted: 343 of
@@ -503,16 +508,27 @@ export const RIG_GEOMETRY = {
    *    against an `STRAP_SEAM|ALL` floor of 0.6. What per-side is, is about three
    *    times sharper. The aggregate is the mean of two sides and only one of them
    *    moves, so `|ALL` needs 7.4 points of far-side loss to trip where `|FAR`
-   *    needs 2.5 — arithmetic on the shipped 63.7% and 27.5%, both pinned. The
-   *    case per-side sees and aggregate cannot is `TRAP_BAR_SHADOW`, which sits at
-   *    64.1% far behind a 78.2% aggregate that clears the general floor
+   *    needs 2.5 — arithmetic on the shipped `@ours STRAP_SEAM|ALL = 63.7%` and
+   *    `@ours STRAP_SEAM|FAR = 27.5%`, both pinned. The case per-side sees and
+   *    aggregate cannot is `TRAP_BAR_SHADOW`, which sits at
+   *    `@ours TRAP_BAR_SHADOW|FAR = 64.1%` far behind a
+   *    `@ours TRAP_BAR_SHADOW|ALL = 78.2%` aggregate that clears the general floor
    *    comfortably; all three of those are pinned too. Drawn singlet
    *    pixels fall with it: 153 -> 147 -> 142 at BRACE and 112 -> 105 -> 103 in
-   *    the HOLE. (The reverted round quoted 141 and 98 for the same two poses; it
-   *    did not say at what strain, pitch or load it rendered them, and this file
-   *    measures 153/112 at strain 0, pitch 0, 250 kg. A bare pixel count is easy
-   *    to quote at the wrong spec, which is a reason to guard the STRAP MARK
-   *    rather than the count.)
+   *    the HOLE.
+   *
+   *    THE TWO SHIPPED COUNTS IN THAT LINE ARE PINNED NOW, and the spec they were
+   *    quoted at was still short by one field. The reverted round quoted 141 and 98
+   *    for the same two poses and did not say at what strain, pitch or load it
+   *    rendered them; the correction said "153/112 at strain 0, pitch 0, 250 kg"
+   *    and did not say at what DIRECTION, which is not a free variable — BRACE is a
+   *    DESCENT anchor (depth `BRACE_SETTLE_DEPTH`), and asking the ASCENT ladder
+   *    for the same depth draws a different pose and counts 135. So the full spec
+   *    plus both counts are pinned in `spriteMarks.test.ts` as `SINGLET_PX_DRAWN`,
+   *    in both directions, rather than restated here as a number a reader cannot
+   *    reproduce. A bare pixel count is easy to quote at the wrong spec, which is
+   *    still a reason to guard the STRAP MARK as well as the count, not instead of
+   *    it.
    *
    * 6. AND THE CLAUSE IT WAS AIMED AT DID NOT MOVE. 80 frames over the reference
    *    floor-share bound before and after, worst excess 0.0400 both times, far
