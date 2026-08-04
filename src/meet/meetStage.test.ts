@@ -513,9 +513,20 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
       'crowdRisePx={pose.crowdRisePx}',
     );
 
-    // ...and the verdict brings it up too, which is the crowd's other moment.
+    // ...and the verdict brings it up too, which is the crowd's other moment —
+    // GATED ON A GOOD LIFT AND ON THE LIGHTS BEING OUT. A hall that reacted
+    // either way would be reacting to nothing, and one that reacted during the
+    // deliberation would announce the verdict before the referees did, which is
+    // the property the top of `VerdictView.tsx` is entirely about.
+    const verdictSource = codeOnly(read('meet/VerdictView.tsx'));
     const verdict = meetHallElementIn(read('meet/VerdictView.tsx'));
     expect(verdict ?? '', 'the verdict never brings the hall up').toContain('crowdRisePx=');
+    expect(verdictSource, 'the hall reacts whether or not the lift stood').toMatch(
+      /const cheering = revealed && good;/,
+    );
+    expect(verdictSource, 'the reaction is not gated on the call at all').toMatch(
+      /cheering\s*\?[\s\S]{0,120}:\s*0/,
+    );
 
     // AND THE HALL ACTUALLY USES BOTH. A `MeetHallView` that accepted `pose` and
     // `crowdRisePx` and then drew `hallLifterFrame` over `MEET_HALL_SCENE`
