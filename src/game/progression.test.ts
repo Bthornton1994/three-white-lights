@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -907,6 +907,52 @@ describe('purity', () => {
     for (const file of routeScan().scannedFiles) {
       expect(IS_VENDORED.test(file), `${file} is vendored`).toBe(false);
       expect(IS_DOT_DIRECTORY.test(file), `${file} is inside a dot-directory`).toBe(false);
+    }
+  });
+
+  it('leaves no TypeScript file in the repository out of the scanned set', () => {
+    // THE HALF THE ANCHORS ABOVE DO NOT COVER. Rooting the scan in
+    // `tsconfig.json` bought the entry points, and it moved the way this can be
+    // narrowed rather than removing it: an `exclude` entry, or an `include` that
+    // stops saying `**/*`, shrinks the sweep silently, and every anchor above
+    // would still pass because they all name files that would still be in.
+    //
+    // So the project's list is checked against the DISK, by the only walk in
+    // this file — and this walk is not the root set, it is the cross-check on
+    // the root set. That distinction is the whole point: a directory walk as the
+    // root is what produced round seven's defect, because someone has to choose
+    // the directory. Here nothing is chosen; it starts at the repository and
+    // skips only vendored code and dot-directories, both of which are the same
+    // two exclusions asserted above, so what this compares is two independent
+    // answers to "which TypeScript files are in this repository".
+    const found: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        // `.d.ts` is out and the scan agrees: the program skips declaration
+        // files (`source.isDeclarationFile`) because they declare types and
+        // hold no expressions, so there is no object literal in one to find.
+        // `src/audio/assets.d.ts` is the live example — it types `*.mp3`
+        // imports. Including it here would only ever fail for that reason.
+        else if (/\.tsx?$/.test(entry.name) && !/\.d\.tsx?$/.test(entry.name)) {
+          found.push(path.relative(REPO_ROOT, full).split(path.sep).join('/'));
+        }
+      }
+    };
+    walk(REPO_ROOT);
+
+    // Non-vacuity: the walk found a tree, not an empty directory.
+    expect(found.length).toBeGreaterThan(100);
+    expect(found).toContain('App.tsx');
+
+    const scanned = new Set(routeScan().scannedFiles);
+    for (const file of found) {
+      expect(
+        scanned.has(file),
+        `${file} is TypeScript in this repository and tsconfig.json's file list does not claim it — the route pin cannot see anything in it`,
+      ).toBe(true);
     }
   });
 

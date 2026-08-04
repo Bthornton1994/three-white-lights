@@ -989,17 +989,25 @@
  *      The narrowing is a cost control — 53 seconds against 0.4 — and it
  *      shrinks the guard's coverage, so it is named rather than folded in.
  *
- *   3. A FILE THAT IS NOT IN THE PROJECT'S FILE LIST. The scan sees exactly
- *      what `tsc --noEmit` compiles. Anything shipped that is NOT in
- *      `tsconfig.json`'s `include` is invisible to both — a `.js` or `.mjs`
- *      file, a `.ts` under a directory `exclude` names, or a file only the
- *      bundler resolves. `tools/` is `.mjs` and is the live example: offline
- *      capture scripts, no player path, and `audit.test.ts` records the same
- *      limit for the same reason. TypeScript's wildcard includes also skip
- *      DOT-DIRECTORIES, which is what keeps `.claude/worktrees/` — complete
- *      second checkouts of this repository — out of the program; that is
- *      load-bearing (`audit.test.ts` was once red with 24 findings from another
- *      agent's tree) and is pinned by an assertion rather than trusted.
+ *   3. A FILE THAT IS NOT TYPESCRIPT. The scan sees exactly what
+ *      `tsc --noEmit` compiles, and the "which files" half of that is now
+ *      checked from both ends: `progression.test.ts` walks the repository and
+ *      fails if any `.ts`/`.tsx` outside `node_modules` and outside a
+ *      dot-directory is missing from the project's list, so narrowing
+ *      `tsconfig.json`'s `include` or adding an `exclude` goes red rather than
+ *      quietly shrinking the sweep. THE WALK IS THE CROSS-CHECK, NOT THE ROOT —
+ *      a walk as the root is what produced the defect above, because someone
+ *      has to choose the directory.
+ *      WHAT IS LEFT IS THE EXTENSION. A `.js`, `.jsx` or `.mjs` file is
+ *      invisible to `tsc` and therefore to this. `tools/` is the live example:
+ *      twenty-odd `.mjs` capture and verify scripts, offline, never bundled,
+ *      no player path — and `audit.test.ts` records exactly this limit for
+ *      exactly this reason. Nothing under `src/` or at the root is `.js` today.
+ *      DOT-DIRECTORIES are the other edge: TypeScript's wildcard includes skip
+ *      them, which is what keeps `.claude/worktrees/` — complete second
+ *      checkouts of this repository — out of the program. That is load-bearing
+ *      (`audit.test.ts` was once red with 24 findings from another agent's
+ *      tree) and is pinned by an assertion rather than trusted.
  *
  *   4. TWO LITERALS IN ONE FRAME, one deleted and one added. `n` catches a
  *      second literal appearing (the count moves) and catches one disappearing,
