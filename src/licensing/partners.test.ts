@@ -39,6 +39,8 @@ import {
   type IconMark,
 } from './tiers';
 import { validateCatalogue } from './catalogue';
+import { colorwayProblems } from './spriteKit';
+import { RAMP_STEPS } from './licensingTuning';
 import { sheetColorAt } from '../card/sheetPalette';
 import { FONT } from '../card/pixelFont';
 
@@ -111,24 +113,27 @@ describe('the licensing catalogue', () => {
 // ---------------------------------------------------------------------------
 
 describe('Tier 1', () => {
-  it('points every colorway at a colour the palette actually has', () => {
-    // A colorway is three palette INDICES; a hue that is not allocated renders
-    // as nothing, which on a shop screen is an empty swatch nobody notices.
+  it('points every colorway at a ramp the BASE SPRITE can wear', () => {
+    // THE CHECK THAT USED TO BE IN THE WRONG PALETTE. It asked
+    // `sheetColorAt(index) !== undefined`, which resolves any index across all
+    // four banks — a colorway naming `SHEET.PAPER` passed it, and three of the
+    // four real ones were built out of the barbell's plate ramps. The Tier 1
+    // payload was being validated in the palette of a Tier 3 surface.
+    //
+    // `colorwayProblems` asks the sprite's own question instead: bank 0, via
+    // `lifterSprite.ts`'s `isBodyIndex`, allocated, wearable, and a ramp that
+    // rises. `spriteKit.test.ts` carries the non-vacuity twin — the three
+    // colorways as they shipped, put back verbatim and refused — and puts a
+    // colorway on a real rendered frame.
     for (const colorway of COLORWAYS) {
-      for (const [name, index] of [
-        ['dark', colorway.dark],
-        ['mid', colorway.mid],
-        ['light', colorway.light],
-      ] as const) {
-        expect(sheetColorAt(index), `${colorway.id}.${name}`).toBeDefined();
-      }
+      expect(colorwayProblems(colorway), colorway.id).toEqual([]);
     }
   });
 
   it('gives every colorway three distinct steps', () => {
     for (const colorway of COLORWAYS) {
       const steps = new Set([colorway.dark, colorway.mid, colorway.light]);
-      expect(steps.size, `${colorway.id} is not a three-step ramp`).toBe(3);
+      expect(steps.size, `${colorway.id} is not a three-step ramp`).toBe(RAMP_STEPS);
     }
   });
 

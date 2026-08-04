@@ -775,14 +775,42 @@ export function formatCitations(rows: readonly CitationRow[]): string {
  *     is the cheapest way to pass this test and the most expensive way to fail
  *     the codebase.
  *
+ * ===========================================================================
+ * ONE ROW OF THIS LIST WAS RULED ON A DESCRIPTION THAT DID NOT MATCH THE CODE
+ * ===========================================================================
+ *
+ * Read this before trusting any sentence below. The bullet on `pixelFont.test.ts`
+ * used to say it was "the one row on this list that is a real name being used as
+ * ordinary test DATA rather than cited as provenance". That was FALSE when it was
+ * written. `resultCard.test.ts` held a real, currently-competing athlete's name
+ * at `code` position four times, as that file's GENERAL-PURPOSE LIFTER FIXTURE —
+ * driving the blank-division test, the sex-formatting test, and an assertion that
+ * the name renders onto a result card — plus a second real name twice more. Both
+ * were grouped under "published records cited to anchor tests" and ruled into the
+ * pinned-not-refused half on the strength of that grouping.
+ *
+ * They are gone now (see the two `resultCard.test.ts` entries below), and so is
+ * the `pixelFont.test.ts` one. The lesson is worth more than the fix: THE
+ * MACHINE PINS THE ROWS, THE PROSE CLASSIFIES THEM, AND ONLY THE ROWS ARE
+ * CHECKED. A group description that drifts from what is in the group is
+ * invisible to every test in this file, and it is the one part of this module a
+ * reader has to verify by opening the files rather than by running the suite.
+ *
  * WHAT IS ON IT TODAY, and the judgement for each group:
  *
- *   - `dots.test.ts` / `resultCard.test.ts` — PUBLISHED RECORDS AND REAL
- *     FEDERATION CSV ROWS, cited to anchor tests. `dots.test.ts` checks the DOTS
- *     polynomial against a real all-time total; `resultCard.test.ts` transcribes
- *     real result rows to prove the export format matches a real sheet. Deleting
- *     either makes those tests unverifiable. KEEP unless a human decides
- *     otherwise.
+ *   - `dots.test.ts` — A PUBLISHED RECORD, cited to anchor a plausibility band.
+ *     Two real athletes' names in COMMENTS, next to the totals and bodyweights
+ *     the DOTS polynomial is checked against. This is the practice CLAUDE.md's
+ *     domain-correctness section requires — "use the published coefficients; do
+ *     not homebrew" — and deleting the names would leave two magic numbers with
+ *     no way to check them. KEEP unless a human decides otherwise.
+ *   - `resultCard.test.ts` — A REAL FEDERATION EXPORT'S SHAPE. What is left is
+ *     the federation acronym: `code` in the name of the constant holding the
+ *     published CSV header and in two test titles, `comment` in the block citing
+ *     the source URL and meet. The two rows this file reproduces are still
+ *     verbatim in every cell that is a CONVENTION — signs, roundings, blanks,
+ *     "DQ" — and INVENTED in the one cell that is an IDENTITY. See the header
+ *     above those fixtures for the split and why it falls there. KEEP.
  *   - `meet.ts`, `plates.ts`, `palette.ts`, `resultCard.ts`, `meetPalette.ts`,
  *     `spriteTuning.ts`, `gymPalette.ts` — STRUCTURAL RULE REFERENCES. Naming
  *     the body that publishes a rule being implemented (bar weights, plate
@@ -809,13 +837,29 @@ export function formatCitations(rows: readonly CitationRow[]): string {
  *     module's own `scanRenderable` over every string meet day can draw
  *     instead, and takes the one name it plants as a positive control OUT OF
  *     `REAL_IP_WATCHLIST` at runtime rather than spelling it. Five rows fewer.
- *   - `pixelFont.test.ts` — a real lifter's ACCENTED name, used as the
- *     diacritic-folding fixture for the card font. `code` position, and the one
- *     row on this list that is a real name being used as ordinary test DATA
- *     rather than cited as provenance. It is the clearest candidate for a human
- *     to replace with an invented accented name; it is not replaced here because
- *     `src/card/` belongs to another piece of this run and the substitution
- *     would need the glyph coverage re-checked.
+ *   - `pixelFont.test.ts` — REMOVED. A real lifter's ACCENTED name, used as the
+ *     diacritic-folding fixture for the card font, at `code` position. It was
+ *     listed rather than refused, with "the clearest candidate for a human to
+ *     replace with an invented accented name" and a note that `src/card/`
+ *     belonged to another piece. It is replaced now: `Aurélien Mourcade`, with
+ *     the acute-e kept in both its precomposed and decomposed forms, because
+ *     those are the two shapes the fold path branches on and the substitution is
+ *     only safe if the glyph coverage is re-checked rather than assumed. One row
+ *     fewer.
+ *   - `resultCard.test.ts` — SIX ROWS REMOVED, and they were the reason the
+ *     paragraph at the top of this header exists. Two real athletes' names, at
+ *     `code` position six times between them, were this file's general-purpose
+ *     lifter fixtures rather than provenance for anything. GDD §12.3 names
+ *     exactly this — "a placeholder lifter name in a test fixture" — as one of
+ *     the two ways a real mark actually arrives. The invented replacements carry
+ *     the identical load and the citation is untouched. (Two rows for an apparel
+ *     brand's three-letter acronym went with them — described rather than spelled,
+ *     per §1: it appeared only inside the quoted CSV rows, whose name and
+ *     federation cells are now redacted to `<lifter>` and `<fed>`. The source URL
+ *     and the meet are still named in the block above them, which is what makes
+ *     the citation checkable. Watching this paragraph try to spell the acronym
+ *     and being refused by this module's own self-scan is, incidentally, the
+ *     check working: it fired on the sentence that removed the rows.)
  *   - `docs/reference/…webp` — a downloaded reference PHOTOGRAPH whose FILENAME
  *     names its subject. The only `filename` row, and it is outside every
  *     shipped asset root (`SHIPPED_ASSET_ROOTS`), so it is listed rather than
@@ -888,7 +932,6 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/art/plates.ts', name: 'IPF', where: 'comment', count: 2 },
   { file: 'src/art/spriteMarks.ts', name: 'IPF', where: 'comment', count: 1 },
   { file: 'src/art/spriteTuning.ts', name: 'IPF', where: 'comment', count: 1 },
-  { file: 'src/card/pixelFont.test.ts', name: 'Corentin Clément', where: 'code', count: 1 },
   { file: 'src/card/renderResultCard.test.ts', name: 'IPF', where: 'comment', count: 1 },
   { file: 'src/card/sampleCards.ts', name: 'NPL', where: 'comment', count: 1 },
   { file: 'src/card/sampleCards.ts', name: 'USAPL', where: 'comment', count: 1 },
@@ -906,13 +949,8 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/game/meetTuning.ts', name: 'NPL', where: 'comment', count: 1 },
   { file: 'src/game/meetTuning.ts', name: 'USAPL', where: 'comment', count: 1 },
   { file: 'src/game/meetTuning.ts', name: 'USPA', where: 'comment', count: 1 },
-  { file: 'src/game/resultCard.test.ts', name: 'Corentin Clément', where: 'code', count: 2 },
-  { file: 'src/game/resultCard.test.ts', name: 'Corentin Clément', where: 'comment', count: 1 },
   { file: 'src/game/resultCard.test.ts', name: 'IPF', where: 'code', count: 7 },
   { file: 'src/game/resultCard.test.ts', name: 'IPF', where: 'comment', count: 4 },
-  { file: 'src/game/resultCard.test.ts', name: 'SBD', where: 'comment', count: 2 },
-  { file: 'src/game/resultCard.test.ts', name: 'Tiffany Chapon', where: 'code', count: 4 },
-  { file: 'src/game/resultCard.test.ts', name: 'Tiffany Chapon', where: 'comment', count: 1 },
   { file: 'src/game/resultCard.ts', name: 'IPF', where: 'comment', count: 3 },
   { file: 'src/game/resultCard.ts', name: 'NPL', where: 'comment', count: 1 },
   { file: 'src/game/resultCard.ts', name: 'SBD', where: 'comment', count: 2 },

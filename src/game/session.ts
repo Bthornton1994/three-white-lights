@@ -332,6 +332,19 @@ export interface PlayedSet {
 }
 
 /**
+ * WHAT A DAY PAYS. TWO KINDS, AND GDD §3.2 RULED THE SECOND ONE.
+ *
+ * `'e1rm'` — a competition lift was trained and its best estimate can move.
+ * `'training-iq'` — accessory day. `LiftKind` is the meet (§6.2) and stays three
+ * members for ever, so an accessory session has no e1RM to show and the
+ * close-out must not invent one — including in its WORDS. `closeOutCopyFor`
+ * below is what makes that true of the headline as well as the number.
+ */
+export const SESSION_PAYOFFS = ['e1rm', 'training-iq'] as const;
+
+export type SessionPayoff = (typeof SESSION_PAYOFFS)[number];
+
+/**
  * The payoff beat.
  *
  * NO TOTAL FIELD, AND NONE MAY BE ADDED (GDD §3.2). No fatigue field either
@@ -368,6 +381,18 @@ export interface SessionCloseOut {
   readonly streakAfter: number;
   /** GDD §3.4's bar-speed cue, as copy. Qualitative; contains no number. */
   readonly barSpeedText: string;
+  /**
+   * WHAT THE DAY PAID, AND THEREFORE WHAT THE SCREEN IS ALLOWED TO SAY.
+   *
+   * A REAL FIELD, not an optional tag read structurally. It used to be the
+   * latter — `sessionClient.ts` looked for `{ payoff?: unknown }` because
+   * `session.ts` carried no discriminant — and the cost was exactly what §12.3
+   * warns about in a different context: the client branched on the tag for the
+   * NUMBERS while `headline` and `subhead` were chosen before anything knew what
+   * kind of day it was. The words and the numbers now come out of the same
+   * decision, in one function.
+   */
+  readonly payoff: SessionPayoff;
   readonly headline: string;
   readonly subhead: string;
   /**
@@ -701,6 +726,133 @@ export function nextBestE1rm(held: number | null, sessionEstimate: number | null
 // The close-out
 // ---------------------------------------------------------------------------
 
+/** The two strings at the top of the payoff beat. */
+export interface CloseOutCopy {
+  readonly headline: string;
+  readonly subhead: string;
+}
+
+/** What `closeOutCopyFor` needs to know. Nothing about the lift, on purpose. */
+export interface CloseOutCopyInput {
+  readonly payoff: SessionPayoff;
+  /** False when nothing was banked. Outranks everything else. */
+  readonly canPropose: boolean;
+  /** The client's PR prediction. Only ever consulted on an `'e1rm'` day. */
+  readonly isPr: boolean;
+  readonly goodReps: number;
+  readonly prescribedReps: number;
+}
+
+/**
+ * THE WORDS ON THE PAYOFF BEAT, CHOSEN BY WHAT THE DAY ACTUALLY PAID.
+ *
+ * ===========================================================================
+ * WHY THIS IS A FUNCTION AND NOT FOUR TERNARIES INSIDE `closeOutFrom`
+ * ===========================================================================
+ *
+ * Because the ternaries did not have the payoff in scope, and got it wrong in
+ * the one direction nobody looked. There were three headlines — NEW e1RM,
+ * SESSION LOGGED, NOTHING BANKED — and the choice between them was the client's
+ * PR prediction and nothing else. GDD §3.2 rules that accessory day does not get
+ * an e1RM close-out; the numbers honoured it (no `bestE1rmKg` write, no e1RM
+ * node) and the words did not, so an accessory day on a primed readiness
+ * rendered a screen headed "NEW e1RM" over a Training IQ row with no number in
+ * it. A screen headed "NEW e1RM" is an e1RM close-out whatever the digits do.
+ *
+ * IT WAS INVISIBLE BECAUSE THE ONE FIXTURE THAT COULD HAVE SHOWN IT WAS BUILT ON
+ * THE ONE READINESS THAT ARITHMETICALLY CANNOT PR. Worth recording next to the
+ * fix, because that is a demonstration pointed away from the case where it
+ * fails, which is a shape this run has now found more than once.
+ *
+ * THE ORDER OF THE BRANCHES IS THE RULING:
+ *
+ *   1. NOTHING BANKED outranks the payoff kind. A day with no completed rep has
+ *      nothing to say about e1RM or Training IQ, and the copy is lift-agnostic
+ *      already — it offers the retry.
+ *   2. ACCESSORY DAY next, BEFORE the PR check. `isPr` is a statement about an
+ *      e1RM, and an accessory day has none for it to be about.
+ *   3. Only then the e1RM branches, unchanged.
+ *
+ * `payoff` is a `SessionPayoff` rather than a boolean so a third payoff — if the
+ * design ever grows one — is a compile error here rather than a silent fall
+ * through to the e1RM copy.
+ */
+export function closeOutCopyFor(input: CloseOutCopyInput): CloseOutCopy {
+  if (!input.canPropose) {
+    return {
+      headline: SESSION_COPY.CLOSE_OUT_EMPTY_HEADLINE,
+      subhead: SESSION_COPY.CLOSE_OUT_EMPTY_SUBHEAD,
+    };
+  }
+  const short = input.goodReps < input.prescribedReps;
+  switch (input.payoff) {
+    case 'training-iq':
+      return {
+        headline: SESSION_COPY.CLOSE_OUT_ACCESSORY_HEADLINE,
+        subhead: short
+          ? SESSION_COPY.CLOSE_OUT_ACCESSORY_SHORT_SUBHEAD
+          : SESSION_COPY.CLOSE_OUT_ACCESSORY_SUBHEAD,
+      };
+    case 'e1rm':
+      if (input.isPr) {
+        return {
+          headline: SESSION_COPY.CLOSE_OUT_PR_HEADLINE,
+          subhead: SESSION_COPY.CLOSE_OUT_PR_SUBHEAD,
+        };
+      }
+      return {
+        headline: SESSION_COPY.CLOSE_OUT_HELD_HEADLINE,
+        subhead: short ? SESSION_COPY.CLOSE_OUT_SHORT_SUBHEAD : SESSION_COPY.CLOSE_OUT_HELD_SUBHEAD,
+      };
+  }
+}
+
+/**
+ * RE-TAG A CLOSE-OUT AS AN ACCESSORY DAY'S — copy, PR flag and e1RM fields.
+ *
+ * ===========================================================================
+ * WHY THIS EXISTS AT ALL, STATED PLAINLY
+ * ===========================================================================
+ *
+ * Accessory day is RULED (GDD §3.2) and PARTLY BUILT. `sessionServer.ts`
+ * enforces the boundary — an accessory set cannot write `bestE1rmKg` — and
+ * `CloseOutView` has a first-class Training IQ branch. What does not exist yet
+ * is an accessory day in `SESSION_TUNING.LIFT_ROTATION`, because `liftForDay`
+ * hands back a `LiftKind` and `LiftKind` is the meet's three lifts for ever.
+ * Widening the rotation is the piece that owns the server side.
+ *
+ * So this is the one door from an e1RM close-out to an accessory one, and it is
+ * HERE rather than in the preview that currently calls it, because what an
+ * accessory close-out says and what it carries is this module's business. When
+ * the rotation lands, `closeOutFrom` calls `closeOutCopyFor` with
+ * `'training-iq'` directly and this becomes unnecessary rather than wrong.
+ *
+ * WHAT IT CLEARS AND WHY. The e1RM fields go to `null` and `isPr` to false —
+ * not because anything currently reads them on this branch (the screen does
+ * not), but because they are a claim about a lift's estimate and an accessory
+ * day has none to make. Leaving a live PR flag on a close-out headed "ACCESSORY
+ * BANKED" would be the same half-truth one field over.
+ */
+export function asAccessoryCloseOut(closeOut: SessionCloseOut): SessionCloseOut {
+  const copy = closeOutCopyFor({
+    payoff: 'training-iq',
+    canPropose: closeOut.canPropose,
+    isPr: false,
+    goodReps: closeOut.goodReps,
+    prescribedReps: closeOut.prescribedReps,
+  });
+  return {
+    ...closeOut,
+    payoff: 'training-iq',
+    sessionE1rmKg: null,
+    newBestE1rmKg: null,
+    isPr: false,
+    prGainKg: null,
+    headline: copy.headline,
+    subhead: copy.subhead,
+  };
+}
+
 function closeOutFrom(state: SessionState): SessionCloseOut {
   const plan = state.plan;
   if (plan === null) {
@@ -719,20 +871,18 @@ function closeOutFrom(state: SessionState): SessionCloseOut {
     newBestE1rmKg !== null &&
     (previousBestE1rmKg === null || newBestE1rmKg > previousBestE1rmKg);
   const canPropose = reports.length > 0;
-
-  const headline = !canPropose
-    ? SESSION_COPY.CLOSE_OUT_EMPTY_HEADLINE
-    : isPr
-      ? SESSION_COPY.CLOSE_OUT_PR_HEADLINE
-      : SESSION_COPY.CLOSE_OUT_HELD_HEADLINE;
   const prescribedReps = plan.workSets * plan.repsPerSet;
-  const subhead = !canPropose
-    ? SESSION_COPY.CLOSE_OUT_EMPTY_SUBHEAD
-    : isPr
-      ? SESSION_COPY.CLOSE_OUT_PR_SUBHEAD
-      : goodReps < prescribedReps
-        ? SESSION_COPY.CLOSE_OUT_SHORT_SUBHEAD
-        : SESSION_COPY.CLOSE_OUT_HELD_SUBHEAD;
+
+  // A competition lift was trained, because `liftForDay` only hands back one.
+  // `asAccessoryCloseOut` is the other door and it re-runs this same function.
+  const payoff: SessionPayoff = 'e1rm';
+  const { headline, subhead } = closeOutCopyFor({
+    payoff,
+    canPropose,
+    isPr,
+    goodReps,
+    prescribedReps,
+  });
 
   return {
     day: state.context.day,
@@ -753,6 +903,7 @@ function closeOutFrom(state: SessionState): SessionCloseOut {
     streakBefore: state.context.streakBefore,
     streakAfter: canPropose ? state.context.streakIfTrainedToday : state.context.streakBefore,
     barSpeedText: state.feel === null ? '' : state.feel.barSpeedText,
+    payoff,
     headline,
     subhead,
     canPropose,

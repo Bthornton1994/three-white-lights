@@ -38,6 +38,7 @@
  */
 
 import {
+  asAccessoryCloseOut,
   createSession,
   liftForDay,
   stepSession,
@@ -292,24 +293,6 @@ function cacheAfterRefusal(closeOut: SessionCloseOut): ProgressionCache {
   return rejected.ok ? rejected.value : pending;
 }
 
-/**
- * DEBUG ONLY. Tags a close-out as an accessory day's.
- *
- * `session.ts` cannot do this yet: GDD §3.2's accessory ruling is being built on
- * the server side by another piece, and `SessionCloseOut` carries no
- * discriminant. `sessionClient.ts`'s `payoffKindFor` reads the tag structurally
- * for exactly this reason, so the branch selected here is the branch a real
- * accessory close-out will select.
- *
- * WRITTEN THROUGH A VARIABLE rather than as an object literal in the return
- * position, because excess-property checking rejects the literal. No cast, no
- * `any` — the same idiom `progression.ts`'s header documents.
- */
-function asAccessoryCloseOut(closeOut: SessionCloseOut): SessionCloseOut {
-  const tagged = { ...closeOut, payoff: 'training-iq' };
-  return tagged;
-}
-
 function frame(state: SessionState, cache: ProgressionCache): SessionPreviewFrame {
   return { state, cache };
 }
@@ -382,7 +365,17 @@ export function previewFrameFor(request: SessionPreviewRequest): SessionPreviewF
       );
     }
     case 'close-out-accessory': {
-      const played = playScripted(STEADY, () => 'good-lift', false);
+      // PRIMED, NOT STEADY, AND THE READINESS IS THE POINT OF THIS BEAT.
+      //
+      // This fixture used to be built on `STEADY` — the one readiness band that
+      // arithmetically cannot produce a PR — while every other close-out beat
+      // used `PRIMED`. So the one demonstration of accessory day was pointed
+      // away from the case where it fails: on `STEADY` the screen read "SESSION
+      // LOGGED", which is merely wrong, and on `PRIMED` it read "NEW e1RM" over
+      // a Training IQ row with no number in it, which is the thing GDD §3.2
+      // rules out. The beat is now built on the readiness that would have shown
+      // it, and `sessionPreview.test.ts` asserts the headline.
+      const played = playScripted(PRIMED, () => 'good-lift', false);
       const settled = settledFrame(played, 0);
       return played.closeOut === null
         ? settled

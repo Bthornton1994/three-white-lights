@@ -357,18 +357,36 @@ describe('the sourcing ledger describes the constants it cites', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Real published results, reproduced.
+// Real published results, reproduced. THE NUMBERS ARE REAL; THE NAMES ARE NOT.
 //
-// These two rows are lifted verbatim from
+// The two rows below are lifted verbatim from
 //   https://gitlab.com/openpowerlifting/opl-data/-/raw/main/meet-data/ipf/2503/entries.csv
 // (IPF World Classic Powerlifting Championships, Chemnitz, 2025-06-08). They are
 // the strongest check available on this module: if our card's conventions differ
 // from a published federation sheet's in ANY cell — a sign, a rounding, a blank,
 // a "DQ" — the diff shows it.
+//
+// EVERY CELL IS THE PUBLISHED ROW'S EXCEPT THE NAME, WHICH IS INVENTED, and the
+// split is deliberate rather than squeamish. GDD §12.3 forbids "any real, named
+// athlete... hardcoded into any asset, string, config, or code path", and names
+// a placeholder lifter name in a test fixture as one of the two ways a real mark
+// actually arrives. These two names were not provenance for anything — they were
+// the file's general-purpose fixtures, driving the blank-division test, the
+// sex-formatting test and an assertion that a real, currently-competing lifter's
+// name renders onto a result card. `Ivy Redmarsh` and `Ruben Halström` carry
+// exactly the same load: a name of the right length, one of them accented so the
+// export path still has a non-ASCII cell to round-trip. Both were searched
+// before they were typed.
+//
+// WHAT IS NOT DELETED: the citation. The URL, the meet and the numbers stay,
+// because a citation with its source struck out is not a citation and
+// CLAUDE.md's domain-correctness rule is the reason these rows are here at all.
+// The name is the one cell that carries an identity rather than a convention,
+// and it is the one cell that is ours.
 // ---------------------------------------------------------------------------
 
-/** `Tiffany Chapon,France,F,2001,Open,47,46.7,155,162.5,-166,162.5,97.5,102,-105,102,162.5,170,-172.5,170,434.5,2,SBD,Raw,` */
-const CHAPON_STATE = runMeet([
+/** `<lifter>,France,F,2001,Open,47,46.7,155,162.5,-166,162.5,97.5,102,-105,102,162.5,170,-172.5,170,434.5,2,<fed>,Raw,` */
+const REDMARSH_STATE = runMeet([
   [155, GOOD],
   [162.5, GOOD],
   [166, NO_LIFT],
@@ -380,43 +398,43 @@ const CHAPON_STATE = runMeet([
   [172.5, NO_LIFT],
 ]);
 
-const CHAPON_INPUT: ResultCardInput = {
+const REDMARSH_INPUT: ResultCardInput = {
   meet: MEET,
   lifter: {
-    name: 'Tiffany Chapon',
+    name: 'Ivy Redmarsh',
     sex: 'female',
     bodyweightKg: 46.7,
     division: 'Open',
     equipment: 'Raw',
   },
-  state: CHAPON_STATE,
+  state: REDMARSH_STATE,
   placing: 2,
 };
 
-/** `Corentin Clément,France,M,2000,Open,105,104.69,-300,-320,-335,,,,,,,,,,,DQ,SBD,Raw,` */
-const CLEMENT_STATE = runMeet([
+/** `<lifter>,France,M,2000,Open,105,104.69,-300,-320,-335,,,,,,,,,,,DQ,<fed>,Raw,` */
+const HALSTROM_STATE = runMeet([
   [300, NO_LIFT],
   [320, NO_LIFT],
   [335, NO_LIFT],
 ]);
 
-const CLEMENT_INPUT: ResultCardInput = {
+const HALSTROM_INPUT: ResultCardInput = {
   meet: MEET,
   lifter: {
-    name: 'Corentin Clément',
+    name: 'Ruben Halström',
     sex: 'male',
     bodyweightKg: 104.69,
     division: 'Open',
     equipment: 'Raw',
   },
-  state: CLEMENT_STATE,
+  state: HALSTROM_STATE,
 };
 
 describe('a real published results row, reproduced cell for cell', () => {
   it('matches the IPF Worlds row for a lifter who totalled', () => {
-    const card = cardOf(CHAPON_INPUT);
+    const card = cardOf(REDMARSH_INPUT);
     expect(resultCardEntriesCsvRow(card)).toEqual([
-      'Tiffany Chapon',
+      'Ivy Redmarsh',
       'F',
       'Open',
       '47',
@@ -440,9 +458,9 @@ describe('a real published results row, reproduced cell for cell', () => {
   });
 
   it('matches the IPF Worlds row for a lifter who bombed out', () => {
-    const card = cardOf(CLEMENT_INPUT);
+    const card = cardOf(HALSTROM_INPUT);
     expect(resultCardEntriesCsvRow(card)).toEqual([
-      'Corentin Clément',
+      'Ruben Halström',
       'M',
       'Open',
       '105',
@@ -468,8 +486,8 @@ describe('a real published results row, reproduced cell for cell', () => {
   });
 
   it('lines the csv row up with the header it claims to follow', () => {
-    expect(resultCardEntriesCsvRow(cardOf(CHAPON_INPUT))).toHaveLength(RESULT_CARD_CSV_HEADER.length);
-    expect(resultCardEntriesCsvRow(cardOf(CLEMENT_INPUT))).toHaveLength(RESULT_CARD_CSV_HEADER.length);
+    expect(resultCardEntriesCsvRow(cardOf(REDMARSH_INPUT))).toHaveLength(RESULT_CARD_CSV_HEADER.length);
+    expect(resultCardEntriesCsvRow(cardOf(HALSTROM_INPUT))).toHaveLength(RESULT_CARD_CSV_HEADER.length);
   });
 });
 
@@ -478,7 +496,7 @@ describe('a real published results row, reproduced cell for cell', () => {
 // ---------------------------------------------------------------------------
 
 describe('attempt cells', () => {
-  const card = cardOf(CHAPON_INPUT);
+  const card = cardOf(REDMARSH_INPUT);
 
   it('keeps the lifts in competition order', () => {
     expect(card.rows.map((row) => row.lift)).toEqual(['squat', 'bench', 'deadlift']);
@@ -515,7 +533,7 @@ describe('attempt cells', () => {
 
   it('carries the judges’ count so a split decision can be drawn', () => {
     const split = cardOf({
-      ...CHAPON_INPUT,
+      ...REDMARSH_INPUT,
       state: runMeet([
         [100, SPLIT_GOOD],
         [102.5, GOOD],
@@ -535,7 +553,7 @@ describe('attempt cells', () => {
   });
 
   it('leaves an attempt that was never taken blank rather than zero', () => {
-    const card2 = cardOf(CLEMENT_INPUT);
+    const card2 = cardOf(HALSTROM_INPUT);
     for (const cell of card2.rows[1].attempts) {
       expect(cell.mark).toBe('not-taken');
       expect(cell.text).toBe('');
@@ -697,7 +715,7 @@ describe('a lifter who forfeited every attempt on a lift', () => {
 // ---------------------------------------------------------------------------
 
 describe('a lifter who totalled', () => {
-  const card = cardOf(CHAPON_INPUT);
+  const card = cardOf(REDMARSH_INPUT);
 
   it('totals the best good attempt in each lift', () => {
     expect(card.totalKg).toBe(162.5 + 102 + 170);
@@ -722,7 +740,7 @@ describe('a lifter who totalled', () => {
   });
 
   it('prints a dash rather than a guess when the field is unknown', () => {
-    const unplaced = cardOf({ ...CHAPON_INPUT, placing: undefined });
+    const unplaced = cardOf({ ...REDMARSH_INPUT, placing: undefined });
     expect(unplaced.summary[2].value).toBe(NO_VALUE_DISPLAY);
     expect(unplaced.summary[2].value).not.toBe('DQ');
     expect(unplaced.placed).toBe(false);
@@ -744,7 +762,7 @@ describe('refusals', () => {
       [150, GOOD],
       [160, GOOD],
     ]);
-    const result = buildResultCard({ ...CHAPON_INPUT, state: midMeet, placing: undefined });
+    const result = buildResultCard({ ...REDMARSH_INPUT, state: midMeet, placing: undefined });
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe('MEET_IN_PROGRESS');
@@ -772,7 +790,7 @@ describe('refusals', () => {
     );
     expect(readTotal(poundState).total).toBe(1267.5);
 
-    const result = buildResultCard({ ...CHAPON_INPUT, state: poundState, placing: undefined });
+    const result = buildResultCard({ ...REDMARSH_INPUT, state: poundState, placing: undefined });
     expect(result.ok).toBe(false);
     if (result.ok) return;
     // A `Result`-returning builder must not throw, and `evaluateMeetDots` throws
@@ -786,14 +804,14 @@ describe('refusals', () => {
     // pound meet is reported as the unit problem it is rather than as a phase
     // problem that would go away on its own.
     const midPoundMeet = runMeet([[405, GOOD]], POUND_MEET_RULES);
-    const mid = buildResultCard({ ...CHAPON_INPUT, state: midPoundMeet, placing: undefined });
+    const mid = buildResultCard({ ...REDMARSH_INPUT, state: midPoundMeet, placing: undefined });
     expect(mid.ok).toBe(false);
     if (!mid.ok) expect(mid.error.code).toBe('UNSUPPORTED_MEET_UNIT');
   });
 
   it('will not accept a placing of zero or a fraction', () => {
     for (const placing of [0, -1, 1.5]) {
-      const result = buildResultCard({ ...CHAPON_INPUT, placing });
+      const result = buildResultCard({ ...REDMARSH_INPUT, placing });
       expect(result.ok, `placing ${placing}`).toBe(false);
       if (result.ok) continue;
       expect(result.error.code).toBe('INVALID_PLACING');
@@ -802,15 +820,15 @@ describe('refusals', () => {
 
   it('will not card a lifter with no name or no bodyweight', () => {
     const noName = buildResultCard({
-      ...CHAPON_INPUT,
-      lifter: { ...CHAPON_INPUT.lifter, name: '   ' },
+      ...REDMARSH_INPUT,
+      lifter: { ...REDMARSH_INPUT.lifter, name: '   ' },
     });
     expect(noName.ok).toBe(false);
     if (!noName.ok) expect(noName.error.code).toBe('INVALID_LIFTER');
 
     const noWeight = buildResultCard({
-      ...CHAPON_INPUT,
-      lifter: { ...CHAPON_INPUT.lifter, bodyweightKg: 0 },
+      ...REDMARSH_INPUT,
+      lifter: { ...REDMARSH_INPUT.lifter, bodyweightKg: 0 },
     });
     expect(noWeight.ok).toBe(false);
     if (!noWeight.ok) expect(noWeight.error.code).toBe('INVALID_LIFTER');
@@ -823,7 +841,7 @@ describe('refusals', () => {
 
 describe('competition rules the card can never break', () => {
   it('never shows an attempt lighter than the one before it, on any lift', () => {
-    for (const input of [CHAPON_INPUT, CLEMENT_INPUT]) {
+    for (const input of [REDMARSH_INPUT, HALSTROM_INPUT]) {
       const card = cardOf(input);
       for (const row of card.rows) {
         const weights = row.attempts.map((cell) => cell.weightKg).filter((w): w is number => w !== null);
@@ -850,7 +868,7 @@ describe('competition rules the card can never break', () => {
   });
 
   it('sums the three bests and nothing else', () => {
-    const card = cardOf(CHAPON_INPUT);
+    const card = cardOf(REDMARSH_INPUT);
     const bests = card.rows.map((row) => row.bestKg ?? 0);
     expect(card.totalKg).toBe(bests[0]! + bests[1]! + bests[2]!);
   });
@@ -981,11 +999,11 @@ describe('the rendered column order', () => {
   });
 
   it('renders a card into that order, cell for cell', () => {
-    const line = resultSheetLine(cardOf(CHAPON_INPUT));
+    const line = resultSheetLine(cardOf(REDMARSH_INPUT));
     expect(line.map((cell) => cell.column.id)).toEqual(RESULT_SHEET_COLUMNS.map((column) => column.id));
     expect(line.map((cell) => cell.text)).toEqual([
       '2',
-      'Tiffany Chapon',
+      'Ivy Redmarsh',
       'F',
       'Open',
       'Raw',
@@ -1028,14 +1046,14 @@ describe('the lifter’s category', () => {
     // reads "Women's Raw Open 52". Note this is NOT `RESULT_SHEET_COLUMNS`'
     // order, which puts Division before Equipment as both [R2] and [R9] do; a
     // tabulated row and a spoken category name differ.
-    expect(lifterCategoryText(cardOf(CHAPON_INPUT).lifter)).toBe("WOMEN'S RAW OPEN 47");
-    expect(lifterCategoryText(cardOf(CLEMENT_INPUT).lifter)).toBe("MEN'S RAW OPEN 105");
+    expect(lifterCategoryText(cardOf(REDMARSH_INPUT).lifter)).toBe("WOMEN'S RAW OPEN 47");
+    expect(lifterCategoryText(cardOf(HALSTROM_INPUT).lifter)).toBe("MEN'S RAW OPEN 105");
   });
 
   it('can be asked to drop the kit or the division, and never the sex or the class', () => {
     const lifter = cardOf({
-      ...CHAPON_INPUT,
-      lifter: { ...CHAPON_INPUT.lifter, division: 'Masters 1', equipment: 'Single-ply' },
+      ...REDMARSH_INPUT,
+      lifter: { ...REDMARSH_INPUT.lifter, division: 'Masters 1', equipment: 'Single-ply' },
     }).lifter;
     expect(lifterCategoryText(lifter)).toBe("WOMEN'S SINGLE-PLY MASTERS 1 47");
     expect(lifterCategoryText(lifter, { equipment: true, division: false })).toBe("WOMEN'S SINGLE-PLY 47");
@@ -1056,21 +1074,21 @@ describe('the lifter’s category', () => {
     // prints there has to be the word the phrase would have used. One
     // transformation, exported, not two.
     const lifter = cardOf({
-      ...CHAPON_INPUT,
-      lifter: { ...CHAPON_INPUT.lifter, division: '  masters 1  ', equipment: 'Single-ply' },
+      ...REDMARSH_INPUT,
+      lifter: { ...REDMARSH_INPUT.lifter, division: '  masters 1  ', equipment: 'Single-ply' },
     }).lifter;
     expect(divisionCategoryWord(lifter)).toBe('MASTERS 1');
     expect(lifterCategoryText(lifter)).toBe("WOMEN'S SINGLE-PLY MASTERS 1 47");
     // The phrase is built OUT of it: whatever the division is, the phrase
     // contains exactly the string this returns.
     for (const division of ['Open', 'Masters 4', 'sub-juniors', 'Police & Fire']) {
-      const entrant = cardOf({ ...CHAPON_INPUT, lifter: { ...CHAPON_INPUT.lifter, division } }).lifter;
+      const entrant = cardOf({ ...REDMARSH_INPUT, lifter: { ...REDMARSH_INPUT.lifter, division } }).lifter;
       expect(lifterCategoryText(entrant), division).toContain(divisionCategoryWord(entrant));
     }
   });
 
   it('puts the category on every card it builds', () => {
-    for (const input of [CHAPON_INPUT, CLEMENT_INPUT]) {
+    for (const input of [REDMARSH_INPUT, HALSTROM_INPUT]) {
       const card = cardOf(input);
       expect(card.lifter.categoryText).toBe(lifterCategoryText(card.lifter));
       expect(card.lifter.categoryText).toContain(SEX_CATEGORY_WORD[card.lifter.sex]);
@@ -1082,9 +1100,9 @@ describe('the lifter’s category', () => {
     // The point of the whole field: DOTS takes sex as an input, and the weight
     // class does not stand in for it — 84 is a women's class, 83 a men's, and
     // a declared class string can be identical either way.
-    const shared = { ...CHAPON_INPUT.lifter, weightClassKg: '84' };
-    const woman = cardOf({ ...CHAPON_INPUT, lifter: { ...shared, sex: 'female' } });
-    const man = cardOf({ ...CHAPON_INPUT, lifter: { ...shared, sex: 'male' } });
+    const shared = { ...REDMARSH_INPUT.lifter, weightClassKg: '84' };
+    const woman = cardOf({ ...REDMARSH_INPUT, lifter: { ...shared, sex: 'female' } });
+    const man = cardOf({ ...REDMARSH_INPUT, lifter: { ...shared, sex: 'male' } });
     expect(woman.lifter.weightClassText).toBe(man.lifter.weightClassText);
     expect(woman.lifter.categoryText).not.toBe(man.lifter.categoryText);
     expect(woman.lifter.categoryText).toBe("WOMEN'S RAW OPEN 84");
@@ -1097,7 +1115,7 @@ describe('the lifter’s category', () => {
     // Two renderings of one fact. The phrase is for a card with no heading row;
     // the letter is for a table that has a "Sex" column over it, which is what
     // [R2] and [R6] actually publish. Adding the phrase must not disturb them.
-    const card = cardOf(CHAPON_INPUT);
+    const card = cardOf(REDMARSH_INPUT);
     expect(card.lifter.sexText).toBe('F');
     expect(resultCardEntriesCsvRow(card)[1]).toBe('F');
     expect(resultSheetLine(card).find((cell) => cell.column.id === 'sex')?.text).toBe('F');
@@ -1106,8 +1124,8 @@ describe('the lifter’s category', () => {
 
   it('drops a blank division or kit rather than printing a double space', () => {
     const bare = cardOf({
-      ...CHAPON_INPUT,
-      lifter: { ...CHAPON_INPUT.lifter, division: '', equipment: '   ' },
+      ...REDMARSH_INPUT,
+      lifter: { ...REDMARSH_INPUT.lifter, division: '', equipment: '   ' },
     });
     expect(bare.lifter.categoryText).toBe("WOMEN'S 47");
   });
@@ -1115,12 +1133,12 @@ describe('the lifter’s category', () => {
 
 describe('resultCardStrings', () => {
   it('lists everything the renderer has to draw, and nothing empty', () => {
-    const strings = resultCardStrings(cardOf(CHAPON_INPUT));
+    const strings = resultCardStrings(cardOf(REDMARSH_INPUT));
     expect(strings).toContain('IRON UNION');
     expect(strings).toContain('Winter Open');
     expect(strings).toContain('14 FEB 2026');
     expect(strings).toContain('SHEFFIELD, ENGLAND');
-    expect(strings).toContain('Tiffany Chapon');
+    expect(strings).toContain('Ivy Redmarsh');
     expect(strings).toContain('DEADLIFT');
     expect(strings).toContain(ATTEMPT_GRID_HEADINGS.best);
     expect(strings).toContain('434.5');
@@ -1128,7 +1146,7 @@ describe('resultCardStrings', () => {
   });
 
   it('includes the dash and the DQ a bombed card prints', () => {
-    const strings = resultCardStrings(cardOf(CLEMENT_INPUT));
+    const strings = resultCardStrings(cardOf(HALSTROM_INPUT));
     expect(strings).toContain(NO_VALUE_DISPLAY);
     expect(strings).toContain('DQ');
   });

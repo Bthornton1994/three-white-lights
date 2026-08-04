@@ -126,17 +126,39 @@ describe('glyph data', () => {
   });
 });
 
+// EVERY NAME IN THIS BLOCK IS INVENTED (GDD §12.3; CLAUDE.md 'No real identity').
+//
+// It used to be a real, currently-competing lifter's, used as ordinary test DATA
+// rather than cited as provenance -- which is §12.3's own named example of how a
+// real mark arrives ("a placeholder lifter name in a test fixture"). What this
+// test needs is an accented string the font must not draw as tofu, and an
+// invented name does that exactly as well. `Aurélien Mourcade` was searched
+// before it was typed, the same step `src/licensing/partners.ts` records for
+// every name in the licensing table.
+//
+// THE GLYPH COVERAGE WAS RE-CHECKED RATHER THAN ASSUMED. The acute-e is kept in
+// both the shapes the fold path has separate branches for -- precomposed
+// U+00E9 below, and "e" + U+0301 COMBINING ACUTE in the test under it -- and
+// every other letter of the substitute is unaccented ASCII the font sets
+// directly, which `missingGlyphs` is what proves.
 describe('accented letters', () => {
   it('folds to the base letter rather than to a box', () => {
-    expect(foldText('Clément').join('')).toBe('Clement');
+    expect(foldText('Aurélien').join('')).toBe('Aurelien');
     expect(foldText('Miková').join('')).toBe('Mikova');
     expect(foldText('Njergeš Orčik').join('')).toBe('Njerges Orcik');
-    expect(missingGlyphs('Corentin Clément')).toEqual([]);
+    expect(missingGlyphs('Aurélien Mourcade')).toEqual([]);
   });
 
   it('folds a decomposed string too', () => {
     // "e" + U+0301 COMBINING ACUTE, which is what some data sources emit.
-    expect(foldText('Clément').join('')).toBe('Clement');
+    //
+    // WRITTEN AS AN ESCAPE, not as invisible bytes. The line this replaces was
+    // distinguishable from the precomposed one above only by a hex dump, so an
+    // editor or a merge tool normalising the file would have turned it into a
+    // duplicate of that test with nothing failing.
+    const decomposed = 'Aure\u0301lien';
+    expect(decomposed).not.toBe('Aurélien');
+    expect(foldText(decomposed).join('')).toBe('Aurelien');
   });
 
   it('leaves unaccented text alone', () => {

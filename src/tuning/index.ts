@@ -107,6 +107,7 @@ import {
   GYM_WALL_PAINT,
 } from '../art/gymTuning';
 import {
+  COLORWAY_RAMP,
   LICENSING_COPY,
   LICENSING_SCREEN,
   PANEL,
@@ -267,6 +268,7 @@ export const TUNING = Object.freeze({
     PANEL_TEXT,
     SHELF,
     RAMP_STEPS,
+    COLORWAY_RAMP,
     LICENSING_SCREEN,
     LICENSING_COPY,
   }),

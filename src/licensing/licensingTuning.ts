@@ -79,6 +79,34 @@ export const PANEL = {
 export const RAMP_STEPS = 3;
 
 /**
+ * WHAT MAKES THREE PALETTE INDICES A WEARABLE SINGLET RAMP.
+ *
+ * Read by `colorwayProblems` in `spriteKit.ts`, which is the Tier 1 check that
+ * validates a colorway against the SPRITE palette rather than against the result
+ * sheet's. See that file's header for the whole list of conditions; only the
+ * numeric one is a knob and it is this.
+ */
+export const COLORWAY_RAMP = {
+  /** Dark, mid, light. The same three as `RAMP_STEPS`, and asserted equal. */
+  STEPS: RAMP_STEPS,
+  /**
+   * Smallest Rec.601 luma rise allowed between adjacent steps of a colorway.
+   *
+   * A CANDIDATE FOR A HUMAN'S EYE, and one of the two values in this file that
+   * most obviously needs one. It is a floor against a "three-step" kit that
+   * reads flat on a phone, and 24 is set from what the sprite's own ramps
+   * already do rather than from taste: the house singlet ramp rises 38 then 55,
+   * and the gear ramp 41 then 48. Nothing in the tree needs a step this small;
+   * the number is deliberately permissive so it refuses only ramps that are
+   * plainly not ramps. Raising it is a legitimate tuning move once somebody has
+   * looked at a partner kit at 1x on a real screen — but raising it far enough
+   * to bite will also start refusing colorways bank 0 can currently express,
+   * which is the trade to make with eyes open.
+   */
+  MIN_STEP_LUMA: 24,
+} as const;
+
+/**
  * THE TIER 1 STRIP, in card pixels.
  *
  * The other half of a shelf row: the colorway swatch and the icon-mark, i.e.

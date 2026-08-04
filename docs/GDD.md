@@ -2,7 +2,14 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-04 (§11 — a pound meet's total used to reach DOTS as
+**Last updated:** 2026-08-04 (§11 — a Tier 1 colorway has to be a bank-0 ramp
+and three of four partner colorways were not, so §7.3's "the base sprite needs
+no change at all" holds only for a partner whose colours bank 0 already has;
+logged as a decision for a human rather than answered. Also §11 — an accessory
+day's close-out honoured the "no e1RM" ruling in its numbers and not in its
+words, and the sentence claiming the beat was "photographed" named an artifact
+that is gitignored and therefore never in the repository. Earlier the same day:
+a pound meet's total used to reach DOTS as
 if it were kilograms and print 806.45 against a truth of ~365.8; the unit now
 travels with the total and DOTS refuses rather than converting. Whether pound
 meets ship at all is logged as an open question, not answered. Earlier the same
@@ -1037,10 +1044,34 @@ Two are ruled, two are open.**
       `CloseOutPayoff` is a three-way discrimination — a confirmed e1RM, one
       still in flight, and `'training-iq'` — and `CloseOutView` renders the third
       as a Training IQ row with NO e1RM row and an em dash where the points will
-      go, because there is no `trainingIq` fact for it to read yet. It selects
-      that branch off an optional `payoff` tag `SessionCloseOut` does not carry
-      yet, read structurally, so the day the tag lands the screen already tells
-      the truth about it. Photographed at `?session=close-out-accessory`.
+      go, because there is no `trainingIq` fact for it to read yet.
+      `SessionCloseOut.payoff` is a real `SessionPayoff` field, so the branch is
+      selected off the close-out's own discriminant rather than off a tag stapled
+      on by the preview; `asAccessoryCloseOut` is the one door to it until the
+      rotation can produce an accessory day.
+      **The WORDS were the last thing to honour this ruling, and for several
+      rounds they did not.** The numbers were right — no `bestE1rmKg` write, no
+      e1RM node — while `SESSION_COPY` held three close-out headlines, none of
+      them accessory, chosen by the client's PR prediction alone. On a primed
+      readiness that renders a screen headed **"NEW e1RM"**, subheaded "You beat
+      your best estimate on this lift", over a Training IQ row with no number in
+      it. A screen headed "NEW e1RM" is an e1RM close-out whatever the digits do.
+      `closeOutCopyFor` now picks the words from the same field the numbers
+      branch on, and `CLOSE_OUT_ACCESSORY_HEADLINE` is the fourth headline.
+      Recorded here rather than only in a commit because of **why it survived**:
+      the single fixture demonstrating accessory day was scripted on the one
+      readiness band that arithmetically cannot produce a PR, while every other
+      close-out beat used the primed one — a demonstration pointed away from the
+      case where it fails.
+      **How to see it:** open `?session=close-out-accessory` in the running app,
+      or capture the whole loop with `node tools/capture-session.mjs`, which
+      writes one PNG per beat. `.gauntlet/shots/` is **gitignored**, so no
+      screenshot is in the repository and a bare "photographed" claim in a
+      committed document could never be self-supporting — which is what this
+      sentence used to be. What *is* committed, and does not depend on anybody
+      having run a browser: `sessionPreview.test.ts` asserts the headline on that
+      exact beat, and asserts by construction that the readiness the beat is
+      built on would have produced a PR on a competition lift.
       **One live question inside that work:** §8.1 forbids selling training
       pace, and `progression.ts` answers "can this be bought?" per fact. Training
       IQ is "how *well* you train" and shapes long-run growth, so the answer
@@ -1112,12 +1143,17 @@ The code has taken the safe branch and needs a ruling to take any other.**
       the progression boundary, so a server answer the client did not predict is
       what appears: the figure, and the PR gold with it, follow the confirmed
       reading rather than `SessionCloseOut.isPr`.
-      The **headline and subhead do not.** They are chosen inside
-      `session.ts`'s `closeOutFrom` at close-out time, from the client's own PR
-      prediction, and never revisited. So a server that comes back below the
-      previous best leaves "NEW e1RM" sitting over a number that turned out not
-      to be one — the screen's words and its digits disagreeing about the same
-      event.
+      The **headline and subhead do not.** They are chosen inside `session.ts`'s
+      `closeOutCopyFor` at close-out time — from the payoff kind and, on an e1RM
+      day, the client's own PR prediction — and never revisited. So a server that
+      comes back below the previous best leaves "NEW e1RM" sitting over a number
+      that turned out not to be one — the screen's words and its digits
+      disagreeing about the same event.
+      (The *accessory* half of this is no longer part of the question: the payoff
+      kind is a field on the close-out and the copy is selected from it, so an
+      accessory day cannot be headed "NEW e1RM" whatever the PR flag says. What
+      remains open is only the server-disagreement case, which is about the first
+      real Edge Function.)
       This is a **design question, not a wiring bug**, which is why it is here
       rather than fixed. Three ways out, none obviously right: re-derive the copy
       in the boundary read model (a second place choosing close-out copy — the
@@ -1153,6 +1189,39 @@ The code has taken the safe branch and needs a ruling to take any other.**
       means the readiness check-in becomes part of a session-start request and
       the loop gains a round trip before its first work set — a cost GDD §12.2's
       time-to-first-input bar would have to be measured against.
+
+- [ ] **§7.3's "the base sprite needs no change at all" holds only for a partner
+      whose colours bank 0 already has, and today that is four hues.** A Tier 1
+      colorway is three indices into the LIFTER bank, because that is the bank
+      `lifterSprite.ts`'s `isBodyIndex` counts as the athlete: a colorway built
+      out of any other bank makes the singlet **barbell** as far as
+      `bodyPixelDiff`, the silhouette measure and the phone-scale readability
+      bounds are concerned. Three of the four fictional partner colorways were
+      built that way — out of the plate ramps and `CHROME_HI` — and the only
+      Tier 1 colour check resolved indices through the RESULT SHEET's palette,
+      which accepts every index in every bank, so nothing could fail.
+      Fixed, and `spriteKit.ts`'s `colorwayProblems` now asks the sprite's own
+      question. **What the fix exposed is the open part.** Bank 0 has sixteen
+      slots and most are spoken for — five skin, two hair, one outline, one
+      transparent — leaving the SINGLET ramp (navy), the GEAR ramp (slate), HAIR
+      (a warm plum, borrowed) and CHALK. That is the whole Tier 1 palette, so
+      `halberd-chalk` cannot be the brand's green and `vondrak-plum` cannot be
+      her crimson, while both hues exist happily at Tier 3 where the sheet
+      palette carries the full plate ramps.
+      So the decision, for a human: **spend bank-0 slots on kit hues, or accept
+      that a licensed athlete's sprite wears an approximation of their colours.**
+      The first costs slots in a 16-colour bank that was budgeted like hardware
+      and is an edit to `palette.ts`; the second is cheap and means Tier 1 and
+      Tier 3 can disagree about what a partner wears. Neither is obviously right
+      and neither should be decided by whichever builder next touches a colorway.
+      §7.3's sentence should be amended to whichever is chosen; it currently
+      reads as unconditional and is not.
+      A second, smaller residual with it: `wearColorway` recolours the INDEX GRID
+      a rendered frame comes back as, because the index-to-RGBA step lives in
+      `src/art/`. The hardware-accurate shape is a colorway parameter on that
+      step — the grid keeps saying `SINGLET_MID` and the palette decides what
+      `SINGLET_MID` looks like — which is what a 16-bit palette swap actually
+      was, and which keeps "is this pixel the singlet?" answerable downstream.
 
 ---
 
