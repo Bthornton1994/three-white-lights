@@ -993,6 +993,64 @@ describe('the lifter is the brightest thing in his own frame', () => {
 // ---------------------------------------------------------------------------
 
 describe('every limb is measured as a limb, not inside an aggregate', () => {
+  it('SEES a real limb window shuffled, where every aggregate is blind to it', () => {
+    // The proof on OUR OWN PIXELS rather than on a synthetic fixture — the
+    // synthetic one is in `craftMetrics.test.ts`. Take a rendered frame's arm
+    // window, keep exactly the same multiset of ramp steps, rearrange them, and
+    // ask each measure whether anything happened.
+    //
+    // Every scalar aggregate this suite was built on says no, because it cannot
+    // say anything else: mean luma, near-black share, floor share and ramp
+    // position are functions of the multiset alone. That is why a green harness
+    // could sit beside ragged step boundaries and stranded pixels for several
+    // rounds. The two structural measures say yes.
+    const frame = CRAFT_SWEEP.find((f) => f.where.startsWith('ASCENT d0 s0 p0 250'));
+    if (frame === undefined) throw new Error('no lockout frame');
+    const window = frame.windows.find((w) => w.name === 'right arm');
+    if (window === undefined) throw new Error('no right arm window');
+
+    const inside: number[] = [];
+    for (let y = 0; y < frame.skinSteps.h; y += 1) {
+      for (let x = 0; x < frame.skinSteps.w; x += 1) {
+        const p = y * frame.skinSteps.w + x;
+        if ((frame.skinSteps.step[p] ?? -1) >= 0 && window.contains(x, y)) inside.push(p);
+      }
+    }
+    expect(inside.length).toBeGreaterThan(CRAFT.MIN_LIMB_PIXELS);
+
+    // A fixed permutation of the window's own pixels, and nothing else.
+    const shuffledStep = Int16Array.from(frame.skinSteps.step);
+    let state = 12345;
+    for (let i = inside.length - 1; i > 0; i -= 1) {
+      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      const j = state % (i + 1);
+      const a = inside[i] ?? 0;
+      const b = inside[j] ?? 0;
+      const t = shuffledStep[a] ?? 0;
+      shuffledStep[a] = shuffledStep[b] ?? 0;
+      shuffledStep[b] = t;
+    }
+    const before = measureRamp(frame.skinSteps, window.contains);
+    const after = measureRamp(
+      { ...frame.skinSteps, step: shuffledStep },
+      window.contains,
+    );
+
+    // Blind, to the last bit.
+    expect(after.count).toBe(before.count);
+    expect(after.floorShare).toBe(before.floorShare);
+    expect(after.topTwoShare).toBe(before.topTwoShare);
+    expect(after.meanPosition).toBe(before.meanPosition);
+    expect(after.medianStep).toBe(before.medianStep);
+
+    // Not blind.
+    expect(after.bandBreakRate).toBeGreaterThan(before.bandBreakRate);
+    expect(after.isletShare).toBeGreaterThan(before.isletShare);
+    // And by a margin, not by a rounding wobble: the drawn arm's bands are
+    // contiguous enough that scattering them roughly doubles its break rate.
+    expect(after.bandBreakRate / before.bandBreakRate).toBeGreaterThan(1.5);
+  });
+
   it('puts a real number of pixels in every window, at every pose', () => {
     // The failure this forbids is a window aimed at empty space, which reports
     // a perfect score for a limb it never found.
