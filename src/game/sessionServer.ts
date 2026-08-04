@@ -63,6 +63,68 @@
  *     has no parameter for a purchase, an entitlement, a boost or a balance, so
  *     nothing purchasable can change what a session is worth (GDD §8.1).
  *   - AN ACCESSORY SESSION CLAIMING AN e1RM. See below.
+ *   - A SET WHOSE UNIT IT CANNOT PROVE. See THE UNIT below.
+ *
+ * ---------------------------------------------------------------------------
+ * THE UNIT — why the write path checks it, and why it refuses rather than
+ * converts
+ * ---------------------------------------------------------------------------
+ * FOR FOUR ROUNDS THIS MODULE CONTAINED NO OCCURRENCE OF THE WORD "unit", while
+ * writing a `Confirmed`, protected, MONOTONE field named `bestE1rmKg`.
+ *
+ * The chain, and what proved the `Kg` at each step:
+ *
+ *   client sends `TrainingSetReport.weightKg`   nothing. A bare number with the
+ *                                               unit in its name.
+ *   `progression.ts` decoder                    `isFiniteWeight` — finiteness.
+ *   `tryEstimateE1rm`                           nothing, BY DESIGN. `e1rm.ts`
+ *                                               is documented "unit-agnostic:
+ *                                               kg in → kg out, lb in → lb out.
+ *                                               Do not convert inside this
+ *                                               module", and `CompletedSet.
+ *                                               weight` is documented "any
+ *                                               unit". It is correct there.
+ *   write to `record.bestE1rmKg`                nothing.
+ *   `nextBestE1rm`                              monotone — never returns below
+ *                                               what is held.
+ *   `ConfirmedFacts.bestE1rmKg`                 a brand literally named `Kg`,
+ *                                               asserting nothing.
+ *
+ * So a pound session recorded as kilograms is 2.2046x too large and PERMANENT:
+ * no later honest session lowers it, every future prescription is computed from
+ * it (`todayForLifter`), every future PR is tested against it, and it crosses
+ * into the other mode through `meetServer.ts`'s `meetDayFacts` — `suggestOpener`
+ * turns it into a declared attempt and `stageLoadRatio` divides a proven
+ * kilogram meet weight by it.
+ *
+ * `readKilogramSets` is the check, and it runs before `bestE1rmFromSets` and
+ * before the streak. See that function for what kind of check each half is —
+ * the shape is a compile error, the accepted answer is a runtime comparison, and
+ * the comparison is against a CONSTANT rather than server-owned data, which is
+ * weaker than `replayMeetCard`'s. Said plainly rather than rounded up.
+ *
+ * HOW REACHABLE IS A POUND SESSION, honestly. NOT a one-token flip.
+ * `SESSION_TUNING.LOAD_UNIT` chooses the SNAPPING GRID only
+ * (`RPE_LOADING_TUNING.ROUNDING_INCREMENT`); `session.ts`'s `prescribeSession`
+ * computes the load from a KILOGRAM e1RM either way, so flipping the constant
+ * produces a kilogram magnitude on a 5-unit grid rather than a pound session.
+ * The training path has no `POUND_MEET_RULES` — no exported, validated, in-tree
+ * producer of pound numbers — which is the difference from the meet path and it
+ * is stated rather than glossed.
+ *
+ * WHAT IS REACHABLE IS THE SAME THING THE MEET PATH HAD: a client running the
+ * daily loop in pounds, which is GDD §11's unsettled display-unit question one
+ * mode over, plus untyped JSON and casts — the traffic this module exists for.
+ * `meetServer.ts` records that "no game module produces it" was found FALSE
+ * TWICE on the other path, and that argument is not re-made here.
+ *
+ * AND THE COST OF THE REFUSAL IS REAL. A player who genuinely trained in pounds
+ * is refused and loses the streak day, which is the shape CLAUDE.md's "never
+ * punish daily engagement" warns about. It is the safe branch and it is the same
+ * branch `applyMeetResult` takes for a pound meet; GDD §11 records both, and the
+ * screen that would tell such a player what happened is part of that open
+ * ruling rather than something to bolt on ahead of it. Nothing in the shipped
+ * loop can produce the case today.
  *
  * ---------------------------------------------------------------------------
  * ACCESSORY WORK NEVER TOUCHES e1RM — RULED, AND ENFORCED HERE

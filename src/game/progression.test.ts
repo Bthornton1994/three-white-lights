@@ -353,6 +353,43 @@ describe('purity', () => {
     expect(withoutComments).not.toMatch(/supabase/i);
   });
 
+  it('names every permanent fact in the unit sweep, so the sweep cannot be scoped', () => {
+    // §7 OF THE HEADER IS A TABLE, AND A TABLE GOES STALE. This is what stops it.
+    //
+    // The failure this exists for is not hypothetical and is not a typo: for
+    // three rounds `meetServer.ts` carried a sweep scoped to "this path", every
+    // field on that path was genuinely proven, and a bare `weightKg` sat thirty
+    // lines away in THIS file on the other mode's path. Honest scoping, complete
+    // within its scope, and the defect lived outside it.
+    //
+    // So the subject of the sweep is the FACT SET, derived, and every member of
+    // it has to be named in §7 — including a fact added tomorrow by someone who
+    // never read the section.
+    const sweep = MODULE_SOURCE.slice(
+      MODULE_SOURCE.indexOf('7. THE UNIT SWEEP'),
+      MODULE_SOURCE.indexOf('*/\n\nimport type'),
+    );
+    // Non-vacuity: the slice really is the section, not an empty string that
+    // `toContain` would report nothing about.
+    expect(sweep.length).toBeGreaterThan(2000);
+    expect(sweep).toContain('WHAT IS STILL UNPROVEN');
+
+    const everyPermanentField: readonly string[] = [
+      ...PROGRESSION_FACT_KEYS,
+      ...CONFIRMED_MEET_RESULT_KEYS,
+      ...STREAK_FACT_KEYS,
+      ...WALLET_CURRENCIES,
+    ];
+    expect(everyPermanentField.length).toBeGreaterThan(15);
+    for (const field of everyPermanentField) {
+      expect(sweep, `§7 does not mention ${field}`).toContain(field);
+    }
+    // And the control for the scan itself: a name that is NOT a permanent fact
+    // is not in the section either, so `toContain` is discriminating rather than
+    // matching everything.
+    expect(sweep).not.toContain('simSessionsPerDay');
+  });
+
   it('mints server truth in exactly one place', () => {
     // The private symbol is what makes `ProgressionSnapshot` unforgeable, so
     // the number of places that write it is the number of doors there are.

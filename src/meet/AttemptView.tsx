@@ -43,8 +43,7 @@ import { promptFor, type LiftResolution } from '../game/lift';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
-import { attemptConfigFor, type MeetDayState } from '../game/meetDay';
-import { formatWeight } from '../game/resultCard';
+import { attemptConfigFor, liveAttemptWeightText, type MeetDayState } from '../game/meetDay';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
@@ -93,7 +92,15 @@ export function AttemptView({ state, onResolved }: AttemptViewProps): React.Reac
           {`${MEET_COPY.LIFT_LABEL[live.lift]} · ${MEET_COPY.ATTEMPT_LABEL} ${live.attemptNumber} ${MEET_COPY.ATTEMPT_OF} ${ATTEMPTS_PER_LIFT}`}
         </Text>
         <Text style={styles.weight} testID="attempt-weight">
-          {`${formatWeight(live.weightKg)} kg`}
+          {/*
+            THE UNIT COMES OFF THE MEET, NOT OFF THIS FILE. This line used to be
+            `${formatWeight(live.weightKg)} kg` — a suffix typed here, over a
+            number this screen cannot know the unit of, on a platform `meet.ts`
+            will happily run under `POUND_MEET_RULES`. `liveAttemptWeightText`
+            reads `meetLoadingRules(state.meet).unit`, which is the meet's own
+            answer.
+          */}
+          {liveAttemptWeightText(state)}
         </Text>
         <Text style={styles.prompt} testID="attempt-prompt">
           {resolution === null ? promptFor(loop.state) : resolution.headline}

@@ -257,8 +257,18 @@
  *   - `meetDayIndex` — not a weight. Server-resolved (GDD §4.1).
  *
  * SO NO NUMBER REACHES PERMANENT PROGRESSION ON THIS PATH WITH AN UNPROVEN UNIT.
- * That is the claim. What is still taken on trust, named so the next reader does
- * not have to find it:
+ *
+ * AND "ON THIS PATH" IS THE PART THAT WAS WRONG TO REST ON. Every field named
+ * above is genuinely proven and this table was genuinely complete — within its
+ * scope. The scope was the defect: `TrainingSetReport.weightKg` sat in
+ * `progression.ts` thirty lines above `MeetAttemptReport`, on the OTHER mode's
+ * path, and three rounds of sweeping this pipeline could not see it. THE
+ * UNSCOPED SWEEP IS NOW §7 OF `progression.ts`'s HEADER, over the fact set
+ * rather than over a pipeline, and `progression.test.ts` fails if a permanent
+ * fact is not named in it. Read that one; this table is the meet half of it.
+ *
+ * What is still taken on trust here, named so the next reader does not have to
+ * find it:
  *
  *   (a) THE `meet` ARGUMENT IS STILL SUPPLIED BY THE CALLER. The id check makes
  *       it claim to be the reported meet; nothing makes it BE the reported meet,
@@ -279,11 +289,20 @@
  *       (GDD §6.6), and giving placeholder data a reading would be building the
  *       fence around the thing being thrown away.
  *   (c) `MeetDayAttempt.weightKg` — the meet-day LOOP's own row type, not this
- *       wire — is a bare number named `Kg`, and `AttemptView.tsx` prints it with
- *       a hardcoded "kg" suffix. On a pound meet that screen lies. It is a
- *       display defect rather than a progression one (nothing on that path is
- *       recorded except through the card, which is checked), and it is GDD §11's
- *       open pound-meet ruling: option (a) there deletes the case entirely.
+ *       wire — is STILL a bare number named `Kg`. Nothing on that path is
+ *       recorded except through the card, which is checked, so it is a display
+ *       concern rather than a progression one.
+ *       THE HALF THAT WAS A LIVE DEFECT IS FIXED: `AttemptView.tsx` printed it
+ *       with a hardcoded `" kg"` suffix, so on a pound meet the one screen
+ *       showing what is on the bar was wrong by 2.2x. It now renders
+ *       `meetDay.ts`'s `liveAttemptWeightText`, which reads
+ *       `meetLoadingRules(state.meet).unit` — the meet's own answer — through
+ *       `MEET_COPY.UNIT_LABEL`, which is exhaustive over `MeetWeightUnit`.
+ *       THE FIX TAKES NONE OF GDD §11's THREE WAYS OUT: the engine still runs a
+ *       pound meet and `applyMeetResult` still refuses to record one. What is
+ *       left is the field NAME and the other meet screens, which print these
+ *       weights with no unit at all; renaming the row reaches screens outside
+ *       this module's scope.
  *   (d) THE LIGHTS. See (1). Unchanged and unrelated to units.
  */
 

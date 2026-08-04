@@ -546,6 +546,133 @@
  *  - THIS MODULE CONSTRAINS ITSELF. It cannot stop a consumer reading a
  *    confirmed e1RM and multiplying it by a cosmetic's price. That would be the
  *    consumer's violation and no type here can see it.
+ *
+ * ===========================================================================
+ * 7. THE UNIT SWEEP — EVERY NUMBER THAT REACHES A PERMANENT FACT, FROM ANY
+ *    MODE, AND WHAT PROVES ITS UNIT
+ * ===========================================================================
+ *
+ * WHY THIS IS HERE AND NOT IN A SERVER MODULE. `meetServer.ts` has carried a
+ * table like this for two rounds and it was honestly scoped: "no number reaches
+ * permanent progression ON THIS PATH with an unproven unit". THE SCOPING IS WHAT
+ * LET THE FOURTH FIELD SURVIVE. `TrainingSetReport.weightKg` was thirty lines
+ * above `MeetAttemptReport` in THIS file, on the other mode's path, and every
+ * sweep for three rounds ran down the meet pipeline and stopped.
+ *
+ * So the sweep lives with `ConfirmedFacts`, which is the thing being protected,
+ * and it is over the FACT SET rather than over a path. `progression.test.ts`
+ * fails if a `ProgressionFactKey`, a `ConfirmedMeetResultKey`, a `StreakFactKey`
+ * or a `WalletCurrency` is not named below, so the table cannot go stale by
+ * something new being added beside it.
+ *
+ * ---------------------------------------------------------------------------
+ * 7.1 MASSES — the only fields where "unit" means kilograms or pounds
+ * ---------------------------------------------------------------------------
+ *
+ *   `totalKg` (protected, monotone, meet only)
+ *       PROVEN. `readTotal(replayed).unit === 'kg'`, where `replayed` is a card
+ *       whose DECLARED unit was checked against `meet.rules.unit`
+ *       (`replayMeetCard`) for a `meet` whose id was checked against the
+ *       report's (`MEET_ID_MISMATCH`). Strongest chain in the tree: the
+ *       comparison is against server-owned data, not a constant.
+ *
+ *   `bestE1rmKg[squat|bench|deadlift]` (protected, monotone, training only)
+ *       PROVEN AS OF THIS ROUND, and weaker than the total's. `sessionServer.ts`
+ *       `readKilogramSets` refuses a `TrainingCardReport` whose declared unit is
+ *       not `'kg'`, before `bestE1rmFromSets` and before the streak. The
+ *       comparison is against a CONSTANT (`PROGRESSION_E1RM_UNIT`), because a
+ *       session has no server-owned definition to check against — it is authored
+ *       by the client, not drawn from a catalogue. So the question asked is "did
+ *       you say kg?", not "does what you say match what this is".
+ *       SEEDED, NOT ONLY WRITTEN: `newServerRecord()` starts these at
+ *       `SESSION_TUNING.STARTING_E1RM_KG`, an in-tree constant named `_KG` with
+ *       nothing behind the name. It is server-side placeholder data that a
+ *       sign-up flow replaces (its own comment says so), not client input, so it
+ *       is a different class from the four fields this boundary has fixed —
+ *       named here rather than fenced.
+ *
+ *   `meets[n].totalKg`, `meets[n].bestByLift[lift]` (protected)
+ *       PROVEN, same chain as `totalKg`: both are read off the replayed
+ *       `MeetState` built from the checked card.
+ *
+ *   `meets[n].bodyweightKg` (protected)
+ *       PROVEN. A `BodyweightReading` declared at the source
+ *       (`MeetEntry.bodyweight`) and forwarded rather than stamped; tag AND
+ *       payload checked in `meetServer.ts` (`UNSUPPORTED_MEET_UNIT`,
+ *       `MALFORMED_READING`). `MeetDayContext.entry` is a `KilogramMeetEntry`,
+ *       so a pound-weighed lifter does not compile into a meet at all.
+ *
+ * ---------------------------------------------------------------------------
+ * 7.2 NOT MASSES — and stated rather than skipped, because "it is not a weight"
+ *     is exactly the reasoning that left `weightKg` alone for three rounds
+ * ---------------------------------------------------------------------------
+ *
+ *   `meets[n].meetDayIndex`, `streak.lastTrainedDay`
+ *       DAY INDICES. The unit is "civil days since an epoch the server owns"
+ *       (GDD §4.1), and it is proven by construction: `asStreakDay` is the one
+ *       mint, `decodeStreak` refuses a non-integer, and the day is resolved by
+ *       the server rather than taken off the device — `deviceWallClock` is
+ *       documented a HINT and is not read by `applyTrainingSession`.
+ *
+ *   `streak.currentStreak`, `streak.longestStreak`,
+ *   `streak.recoveryDayBalance`, `streak.armedRecoveryDays`
+ *       COUNTS. Unit is "one day" / "one Recovery Day"; `isCount` proves
+ *       whole-and-non-negative and `streak.ts` owns the invariants between them.
+ *       Nothing here is a mass.
+ *
+ *   `streak.recoveryDayProtectionEnabled`,
+ *   `streak.hasBankedFirstRecoveryDaySave`
+ *       BOOLEANS. No unit to prove; `decodeStreak` checks the type.
+ *
+ *   `wallet.gymBucks`, `wallet.chalk`
+ *       COUNTS, and the unit is THE KEY: `WALLET_CURRENCIES` is the closed list,
+ *       `ConfirmedWallet` is `Record<WalletCurrency, ConfirmedCount>`, so a
+ *       balance cannot exist without naming which currency it is in. This is the
+ *       tagged-pair property already, arrived at from the other direction.
+ *
+ *   `meets[n].meetId`, `revision`, `acknowledgedProposalId`
+ *       IDENTIFIERS AND A COUNTER. Not quantities.
+ *
+ * ---------------------------------------------------------------------------
+ * 7.3 WHAT IS STILL UNPROVEN, AND HOW REACHABLE IT IS
+ * ---------------------------------------------------------------------------
+ *
+ *   (a) THE `meet` ARGUMENT TO `applyMeetResult` IS SUPPLIED BY THE CALLER. The
+ *       id check makes it CLAIM to be the reported meet; nothing makes it BE
+ *       one, because that function has no catalogue to look one up in. Closes
+ *       when the Edge Function resolves `meetId` against its own table. The
+ *       single highest-value thing left on the meet path.
+ *
+ *   (b) A DECLARED UNIT CAN BE A LIE SOMEBODY TYPED. `{ unit: 'kg', kilograms:
+ *       203.7 }` over a pound scale, `{ unit: 'kg', kilogramSets: [...] }` over a
+ *       pound bar. Every check on this boundary is about a field that MEANS
+ *       something rather than one that means nothing; none of it is tamper
+ *       resistance, and there is no server to re-derive against.
+ *
+ *   (c) `ServerRecord` IS A PLAIN INTERFACE AND CAN BE BUILT BY HAND.
+ *       `meetPreview.ts` and `sessionPreview.ts` both do, from `MEET_PREVIEW`
+ *       and `SESSION_PREVIEW` constants, bypassing both server functions. That
+ *       is screenshot data in preview modules rather than a route a player
+ *       reaches, and it is the `ConfirmedFacts`-by-hand residual (§6) one layer
+ *       out — but it is a way a `…Kg` field gets a number no check saw, and it
+ *       is named rather than left to be found.
+ *
+ *   (d) `MeetDefinition.ghostTotalsKg` IS A BARE `number[]`. It reaches no
+ *       stored field (`MeetResultWire` has no placing) but it is what a proven
+ *       kilogram total is RANKED against, so pound ghosts print a wrong placing.
+ *       Placeholder data a backend replaces wholesale (GDD §6.6).
+ *
+ *   (e) THE HIDDEN FATIGUE LEDGER carries no mass at all, by design rather than
+ *       by luck: `fatigueRecordFor` builds a `SessionRecord` from RPE, set count
+ *       and rep count and has NO weight field, and `fatigue.ts`'s comment says
+ *       why (strain is a function of RPE, sets and reps). It is also not a
+ *       `ConfirmedFacts` member and has no `ProgressionSnapshotWire` field. So
+ *       there is nothing here to prove — which is worth writing down, because
+ *       "nothing to prove" and "nobody looked" read the same in a diff.
+ *
+ *   (f) `SESSION_TUNING.STARTING_E1RM_KG`, per 7.1. In-tree server-side
+ *       placeholder; reachable on every brand-new account, which is why it is
+ *       named rather than dismissed.
  */
 
 import type { BodyweightReading, OfficialTotalKg } from './dots';

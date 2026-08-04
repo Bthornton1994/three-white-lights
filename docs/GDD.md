@@ -1438,6 +1438,48 @@ The code has taken the safe branch and needs a ruling to take any other.**
       cheapest exit; (b) and (c) each need a conversion boundary *and* a screen
       for the failure. Until it is ruled, `POUND_MEET_RULES` is a configuration
       the engine supports and progression will not accept.
+      **AND THE SAME REFUSAL NOW EXISTS IN SIM MODE, which is where this
+      question actually lives.** The fourth and last bare-unit number on the
+      progression boundary was `TrainingSetReport.weightKg` — the daily loop's
+      set row, thirty lines above the meet attempt row in the same file, on the
+      path to `ConfirmedFacts.bestE1rmKg`, which is protected and **monotone**.
+      Nothing proved the `Kg`: the decoder checks finiteness, `e1rm.ts` is
+      documented **unit-agnostic by design** ("kg in → kg out, lb in → lb out"),
+      and `sessionServer.ts` contained no occurrence of the word *unit* at all.
+      A pound session recorded as kilograms is 2.2046x too large, permanent, and
+      crosses into meet day through `meetDayFacts` → `suggestOpener`.
+      The sets now ride on a `TrainingCardReport` — the third unit-tagged
+      reading, arms `kilogramSets` / `poundSets`, so the rows are unreachable
+      without narrowing on a unit — the row is `weight` rather than `weightKg`,
+      and `applyTrainingSession` refuses a non-kg card (`UNSUPPORTED_SESSION_
+      UNIT`) before the e1RM is derived and before the streak moves.
+      **Reachability is NOT the same as the meet's, and the difference is
+      stated rather than glossed.** There is no `POUND_MEET_RULES` for training:
+      `SESSION_TUNING.LOAD_UNIT` chooses the snapping grid only, because
+      `prescribeSession` computes the load from a kilogram e1RM either way, so
+      flipping it yields a kilogram magnitude on a 5 lb grid rather than a pound
+      session. What is reachable is the same live hazard the meet path had — a
+      client running the daily loop in pounds, i.e. the display-unit question
+      above, one mode over — plus untyped JSON and casts. The argument that "no
+      game module produces it" was found false twice on the meet path and is
+      not re-made.
+      **The cost lands on the same open ruling.** A lifter who genuinely
+      trained in pounds is refused and loses the streak day, which is the shape
+      §12.3's "never punish daily engagement" warns about, and there is no
+      screen for it — exactly as there is none for the refused pound meet. The
+      three ways out above cover both modes: (a) makes both refusals
+      unreachable, (b) and (c) each need a conversion boundary and a screen. A
+      per-user display unit that reaches the *loading* path would make the
+      training refusal live, so answering the display question above without
+      answering this one is not possible.
+      **One display defect was fixed and it takes none of the three.**
+      `AttemptView.tsx` printed `` `${formatWeight(live.weightKg)} kg` `` — a
+      hardcoded suffix over a number the screen cannot know the unit of — so on
+      a pound meet the one line showing what is on the bar was wrong by 2.2x. It
+      now renders `meetDay.ts`'s `liveAttemptWeightText`, which reads
+      `meetLoadingRules(state.meet).unit`. The engine still runs the pound meet
+      and progression still refuses to record it; only the screen stopped lying
+      while that is true.
 - [ ] **Who owns the close-out's WORDS when the server disagrees with the
       client?** The daily loop's payoff beat now reads its numbers back through
       the progression boundary, so a server answer the client did not predict is
