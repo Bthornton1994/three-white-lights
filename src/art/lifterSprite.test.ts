@@ -1317,12 +1317,15 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     // colour to give up is a human's call, not a builder's, so it is recorded
     // here rather than taken.
     //
-    // WHICH WINDOW IS WHICH. `limbWindows` names its arm windows by SCREEN side,
-    // and screen-right is sign +1, which `renderLifterFrame` draws FIRST and
-    // dims with `SHADING.FAR_LIMB_LIGHT_SCALE` — so 'right arm' is the FAR arm
-    // and 'left arm' is the near one. The two constants below say so at the
-    // numbers rather than leaving it to a comment three paragraphs up, because
-    // the near/far asymmetry is the whole reason the counts differ.
+    // WHICH WINDOW IS WHICH, NAMED AT THE NUMBERS AND THEN CHECKED. `limbWindows`
+    // names its arm windows by SCREEN side, and screen-right is sign +1, which
+    // `renderLifterFrame` draws FIRST and dims with
+    // `SHADING.FAR_LIMB_LIGHT_SCALE` — so 'right arm' is the FAR arm and
+    // 'left arm' is the near one. That was true and invisible: the pin was two
+    // screen-side strings, the paragraph above it talked only in near and far,
+    // and nothing connected them. Two constants carry the mapping now, and the
+    // assertion below proves it from the drawing rather than asserting it in
+    // prose, so renaming a window or flipping the draw order fails here.
     //
     // The pins go BOTH WAYS on purpose. If the sprite improves, these counts
     // drop and this test goes RED, and whoever fixed it has to come here and say
@@ -1347,6 +1350,52 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     // kill, applied to an ours-only number. Three decimal places is +/- 0.0005,
     // which is tighter than one pixel of any window on the figure can move it.
     const MEASURED_WORST_FLOOR_EXCESS = 0.04;
+
+    // The mapping, proved. Screen side comes straight off the window predicate;
+    // "far" comes off the drawing, because the far limb is the dimmed one and so
+    // sits lower in its own skin ramp at every pose.
+    const sides = new Map<string, { left: boolean; right: boolean }>();
+    const meanPos = new Map<string, { sum: number; n: number }>();
+    for (const frame of CRAFT_SWEEP) {
+      for (const w of frame.windows) {
+        if (w.name !== FAR_ARM_WINDOW && w.name !== NEAR_ARM_WINDOW) continue;
+        const seen = sides.get(w.name) ?? { left: false, right: false };
+        for (let y = 0; y < frame.grid.h; y += 1) {
+          for (let x = 0; x < frame.grid.w; x += 1) {
+            if (!w.contains(x, y)) continue;
+            if (x < CENTER_X) seen.left = true;
+            else if (x > CENTER_X) seen.right = true;
+          }
+        }
+        sides.set(w.name, seen);
+      }
+      frame.windows.forEach((w, i) => {
+        const stats = frame.limbRamp[i];
+        if (stats === undefined) return;
+        const acc = meanPos.get(w.name) ?? { sum: 0, n: 0 };
+        acc.sum += stats.meanPosition;
+        acc.n += 1;
+        meanPos.set(w.name, acc);
+      });
+    }
+    expect(sides.get(FAR_ARM_WINDOW), `${FAR_ARM_WINDOW} is the screen-right window`).toEqual({
+      left: false,
+      right: true,
+    });
+    expect(sides.get(NEAR_ARM_WINDOW), `${NEAR_ARM_WINDOW} is the screen-left window`).toEqual({
+      left: true,
+      right: false,
+    });
+    const posOf = (name: string): number => {
+      const acc = meanPos.get(name);
+      if (acc === undefined) throw new Error(name);
+      return acc.sum / acc.n;
+    };
+    expect(
+      posOf(FAR_ARM_WINDOW),
+      `${FAR_ARM_WINDOW} is the FAR arm: it is drawn dimmer, so it sits lower in the ramp`,
+    ).toBeLessThan(posOf(NEAR_ARM_WINDOW));
+
     const counted = new Map<string, number>();
     let worstExcess = 0;
     for (const { name, stats } of eachLimb()) {
