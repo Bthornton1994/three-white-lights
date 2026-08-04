@@ -14,6 +14,12 @@
  *      bar is the weight the lifter declared and the timing window is whatever
  *      `fatigue.ts` made it for this point in the meet (GDD §6.2 step 3).
  *   2. WHERE THEY ARE. Which lift, which attempt, and what is on the bar.
+ *   3. WHICH BUILDING THEY ARE IN. `LiftStage` takes a venue and this screen
+ *      passes `MEET_TUNING.VENUE`, so the room behind the lifter is the meet
+ *      platform — crowd, sponsor banner, judges' table — and not the training
+ *      gym a Sim set is drawn in. Every other screen omits the prop and gets
+ *      the gym. This is one prop and it is the difference between a competition
+ *      attempt and a heavy single in your own gym.
  *
  * ---------------------------------------------------------------------------
  * ONE REP, AND NO SECOND CHANCE
@@ -36,7 +42,7 @@ import { useLiftLoop } from '../lift/useLiftLoop';
 import { promptFor, type LiftResolution } from '../game/lift';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
-import { MEET_COPY, MEET_LAYOUT } from '../game/meetTuning';
+import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import { attemptConfigFor, type MeetDayState } from '../game/meetDay';
 import { formatWeight } from '../game/resultCard';
 import { MEET_PALETTE } from './meetPalette';
@@ -102,7 +108,12 @@ export function AttemptView({ state, onResolved }: AttemptViewProps): React.Reac
         onPressOut={onPressOut}
         testID="attempt-touch"
       >
-        <LiftStage state={loop.state} history={loop.history} totalKg={live.weightKg} />
+        <LiftStage
+          state={loop.state}
+          history={loop.history}
+          totalKg={live.weightKg}
+          venue={MEET_TUNING.VENUE}
+        />
       </Pressable>
     </View>
   );

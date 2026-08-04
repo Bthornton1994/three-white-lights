@@ -12,6 +12,12 @@
  *      integer scale, and an origin chosen so the two lattices are in phase —
  *      because two nearest-neighbour images at different phases shimmer along
  *      every edge where they meet. See `GYM_LIFT_STAGE`.
+ *
+ *      WHICH room is the caller's, through the `venue` prop. A Sim set is in
+ *      the training gym; a competition attempt is on the meet platform, with
+ *      the crowd and the sponsor banner (GDD §6). This file names neither
+ *      choice for anybody else — it holds both rooms and draws the one it is
+ *      handed.
  *   1. THE LIFTER, as the 16-bit sprite the art system already renders. Drawn
  *      through `makeSpriteImage` with nearest-neighbour sampling and an integer
  *      upscale (GDD §7.1 — a fractional scale produces uneven pixel sizes and
@@ -45,7 +51,8 @@ import {
 
 import { makeSpriteImage } from '../art/LifterSpriteView';
 import { ContactShadowLayer, GymSceneLayer } from '../art/GymSceneView';
-import { liftStageScene } from '../art/gymScene';
+import { liftStageScene, type GymSceneSpec } from '../art/gymScene';
+import type { GymVenue } from '../art/gymTuning';
 import { LIFT_TUNING, STICK_HEIGHT_FRAC, STICK_WIDTH } from '../game/liftTuning';
 import { cueProgress, type LiftState } from '../game/lift';
 import { LIFT_PALETTE } from './liftPalette';
@@ -66,19 +73,48 @@ const L = LIFT_TUNING.LAYOUT;
 const F = LIFT_TUNING.FEEDBACK;
 
 /**
- * The room, built once at module load.
+ * The rooms, built once at module load — one per venue.
  *
- * It is a constant because it is one: `renderGymScene` is pure and this spec
- * never changes on this screen — no camera pan, no venue switch, nothing about
- * the player. Rebuilding it per render would raster 22,490 pixels a frame to
- * produce the same bytes.
+ * They are constants because they are: `renderGymScene` is pure and neither
+ * spec changes while a rep is running — no camera pan, nothing about the
+ * player. Rebuilding one per render would raster 22,490 pixels a frame to
+ * produce the same bytes. Building BOTH up front costs one extra grid and means
+ * switching rooms between screens is a lookup rather than a re-raster.
+ *
+ * Typed as a total `Record<GymVenue, …>`, so a third venue added to
+ * `gymTuning.ts` is a compile error here rather than a silently missing room.
+ *
+ * BUILT BY OVERRIDING `liftStageScene`'s VENUE, and `gymScene.ts` is not
+ * touched. The box — width, height, floor row, focus column — is fixed by
+ * `LIFT_TUNING.LAYOUT` and by the sprite's resolution, because it is the hole
+ * the figure is drawn into and the figure is the same size wherever he stands.
+ * Only the room changes. This is the same idiom `gymScene.test.ts` and
+ * `tools/gym.mjs` already use to render the meet platform.
  */
-const SCENE = liftStageScene();
+const SCENES: Readonly<Record<GymVenue, GymSceneSpec>> = Object.freeze({
+  'training-gym': liftStageScene(),
+  'meet-platform': { ...liftStageScene(), venue: 'meet-platform' },
+});
+
+/**
+ * Which room a screen with no opinion gets.
+ *
+ * The Sim session is the default because it is the daily one. Meet day states
+ * its venue explicitly (`MEET_TUNING.VENUE`) rather than relying on a default,
+ * which is the whole point: the emotional centrepiece must not inherit the
+ * training gym by omission, which is exactly what it used to do.
+ */
+const DEFAULT_VENUE: GymVenue = 'training-gym';
 
 export interface LiftStageProps {
   readonly state: LiftState;
   readonly history: readonly LiftState[];
   readonly totalKg: number;
+  /**
+   * The room this rep happens in (GDD §6 vs §3.2). Omitted, it is the training
+   * gym. `AttemptView` passes `MEET_TUNING.VENUE`.
+   */
+  readonly venue?: GymVenue | undefined;
 }
 
 /**
@@ -117,8 +153,14 @@ function tracePath(history: readonly LiftState[], from: number, to: number): SkP
   return builder.build();
 }
 
-export function LiftStage({ state, history, totalKg }: LiftStageProps): React.ReactElement {
+export function LiftStage({
+  state,
+  history,
+  totalKg,
+  venue = DEFAULT_VENUE,
+}: LiftStageProps): React.ReactElement {
   const image = useSpriteImage(state, totalKg);
+  const scene = SCENES[venue];
   const ring = cueRing(cueProgress(state));
   const shake = stageShake(state);
   const flash = hitFlash(state);
@@ -159,10 +201,14 @@ export function LiftStage({ state, history, totalKg }: LiftStageProps): React.Re
       <Rect x={0} y={0} width={L.STAGE_W} height={L.STAGE_H} color={LIFT_PALETTE.STAGE} />
 
       {/* --- the room the lift happens in ------------------------------ */}
-      <GymSceneLayer spec={SCENE} />
+      <GymSceneLayer spec={scene} />
 
-      {/* --- and what he throws on the floor of it ---------------------- */}
-      <ContactShadowLayer scene={SCENE} frame={liftFrameSpec(state, totalKg)} />
+      {/* --- and what he throws on the floor of it ----------------------
+          THE SAME `scene`, not a second one. `contactShadowPatch` samples the
+          floor it lands on and steps those pixels down, so a shadow built from
+          the training gym's boards under a lifter standing on the meet
+          platform is a patch of the wrong colour in the right place. */}
+      <ContactShadowLayer scene={scene} frame={liftFrameSpec(state, totalKg)} />
 
       {/* --- bar-path plot -------------------------------------------- */}
       <Group>

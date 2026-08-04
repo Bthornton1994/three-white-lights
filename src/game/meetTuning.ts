@@ -94,6 +94,7 @@
 
 import { DEFAULT_MEET_RULES, type LiftKind, type MeetLoadingRules, type ProgressiveAttemptStrategy } from './meet';
 import type { DotsSex } from './dots';
+import type { GymVenue } from '../art/gymTuning';
 
 // ---------------------------------------------------------------------------
 // What a meet IS, as configuration
@@ -155,6 +156,28 @@ export interface MeetEntry {
 }
 
 export const MEET_TUNING = Object.freeze({
+  // -------------------------------------------------------------------------
+  // Where the meet happens
+  // -------------------------------------------------------------------------
+
+  /**
+   * THE ROOM. `gymTuning.ts` ships two venues and this is the one meet day is
+   * lifted in.
+   *
+   * It is here rather than typed into `AttemptView.tsx` because "which building
+   * is the emotional centrepiece set in" is an art-direction decision, and
+   * because it was previously nowhere at all: `LiftStage` named
+   * `'training-gym'` itself, so every competition attempt in the game was drawn
+   * in the training gym while `GYM_PROPS_MEET`, the crowd band and the sponsor
+   * banner — all built and all tested — went unused.
+   *
+   * What changes with it (see `GYM_VENUE` and `GYM_VENUE_PROPS`): the block wall
+   * becomes 30 rows of seated crowd under a sponsor banner, the dumbbells,
+   * kettlebells and chalk stand are replaced by a judges' table, a plate tree
+   * and an equipment case, and the room goes darker.
+   */
+  VENUE: 'meet-platform' as GymVenue,
+
   // -------------------------------------------------------------------------
   // Pre-meet (GDD §6.1)
   // -------------------------------------------------------------------------
