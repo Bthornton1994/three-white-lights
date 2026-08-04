@@ -29,7 +29,14 @@ import {
   type RgbaImage,
 } from './craftMetrics';
 import { buildSquatRep, stickingPointFrame } from './squatAnimation';
-import { BANK_SIZE, PAL, colorAt, isTransparentIndex, rgb5ToRgb8 } from './palette';
+import {
+  BANK_SIZE,
+  PAL,
+  PALETTE_BANKS,
+  colorAt,
+  isTransparentIndex,
+  rgb5ToRgb8,
+} from './palette';
 import { findUnallocatedIndices, gridToRgba, usedIndices } from './rgba';
 import { getPx, upscaleGrid, type IndexGrid } from './raster';
 import { BAR, BEND, CENTER_X, LOAD_PRESETS, PITCH, RESOLUTION, STRAIN } from './spriteTuning';
@@ -965,6 +972,58 @@ describe('the reference is measured, not remembered', () => {
     // two. The reference's is 3.8%; ours is five times that and the difference
     // is the keyline, not the drawing underneath it.
     expect(REF.figure.nearBlackShare).toBeLessThan(0.05);
+  });
+
+  it('shows WHY the colour-keyed mask could not have answered that question', () => {
+    // The old prose derived "the reference has no keyline" from a mask built
+    // out of the wrestler's own palette. Here is that exact procedure run on a
+    // figure that is unarguably keylined — ours, whose outline `outlinePass`
+    // draws round every silhouette.
+    //
+    // The result is the same clean number, because an outline is not one of the
+    // body's colours and is excluded before anything is counted. That is what
+    // "circular" means, and it is measured here rather than argued: the colour
+    // key says the same thing about a keylined figure and an unkeylined one, so
+    // it was never evidence for either.
+    const materialColours = (PALETTE_BANKS[0]?.colors ?? [])
+      .map((c, slot) => ({ slot, rgb: rgb5ToRgb8(c) }))
+      .filter(({ slot }) => slot !== 0 && slot !== PAL.OUTLINE % BANK_SIZE)
+      .map(({ rgb }) => (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]);
+
+    const frame = CRAFT_SWEEP[0];
+    if (frame === undefined) throw new Error('empty sweep');
+    // Composited over lit scenery, which is the condition our outline is drawn
+    // for and the condition the reference wrestler is photographed in.
+    const rgba = gridToRgba(frame.grid);
+    for (let i = 0; i < frame.grid.w * frame.grid.h; i += 1) {
+      if (rgba[i * 4 + 3] === 255) continue;
+      rgba[i * 4] = 200;
+      rgba[i * 4 + 1] = 200;
+      rgba[i * 4 + 2] = 200;
+      rgba[i * 4 + 3] = 255;
+    }
+    const ours = measureFigure(
+      colourKeyedField(
+        { width: frame.grid.w, height: frame.grid.h, rgba },
+        { x: 0, y: 0, w: frame.grid.w, h: frame.grid.h },
+        materialColours,
+      ),
+    );
+
+    // Same procedure, opposite truth, and the verdict comes out BACKWARDS: our
+    // keylined figure scores 1.8% near-black under this mask against the
+    // unkeylined reference's 3.8%. Read that way the outlined sprite looks
+    // CLEANER than the drawing it is supposed to be measured against, which is
+    // as clear a demonstration as there is that the mask was never measuring
+    // outlines.
+    expect(ours.count).toBeGreaterThan(500);
+    expect(ours.nearBlackShare).toBeLessThan(REF.figure.nearBlackShare);
+    expect(ours.interiorKeylineShare).toBeLessThan(REF.figure.interiorKeylineShare);
+
+    // And the measure that CAN tell them apart, on the very same two masks.
+    expect(ours.litBoundaryDarkShare).toBeGreaterThan(CRAFT.KEYLINE_VERDICT_SHARE);
+    expect(REF.figure.litBoundaryDarkShare).toBeLessThan(CRAFT.KEYLINE_VERDICT_SHARE);
+    expect(ours.litBoundaryDarkShare - REF.figure.litBoundaryDarkShare).toBeGreaterThan(0.5);
   });
 
   it('tells sprite-ref-1 from the negative control on era craft alone', () => {
