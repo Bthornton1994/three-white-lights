@@ -1086,6 +1086,31 @@ describe('the proposal and the projection — the client proposes, the server pu
     expect(JSON.stringify(proposal)).not.toMatch(/e1rm|total/i);
   });
 
+  it('reads the unit off the constant that chose it, with no literal to drift', () => {
+    // THIS IS A SOURCE SCAN AND IT IS ONE ON PURPOSE, because the executable
+    // assertion above CANNOT discriminate. `expect(card.unit).toBe(
+    // SESSION_TUNING.LOAD_UNIT)` passes just as happily against a hard-coded
+    // `{ unit: 'kg' }`, since the constant IS `'kg'` — mutation-tested, and it
+    // survives. The two differ only on the day the constant moves, which is
+    // exactly the day a typed literal becomes a lie about permanent progression.
+    //
+    // A stronger version of this check would put the unit on `SessionPlan` and
+    // forward it, the way `MeetEntry.bodyweight` is forwarded rather than
+    // stamped. That is not done here because `SessionPlan.weightKg` and
+    // `SessionCloseOut.weightKg` are read by screens outside this piece's scope,
+    // and a plan carrying `unit: 'lb'` beside a field named `weightKg` would be a
+    // worse contradiction than the one being fixed. Named rather than glossed.
+    const source = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'session.ts'), 'utf8');
+    const start = source.indexOf('export function sessionProposal(');
+    expect(start).toBeGreaterThan(0);
+    const body = source.slice(start, source.indexOf('\n}', start));
+    // The control: the slice really is the function, not an empty string.
+    expect(body).toContain("kind: 'record-training-session'");
+    expect(body).toContain('SESSION_TUNING.LOAD_UNIT');
+    // And no unit literal anywhere in it, in either arm.
+    expect(body).not.toMatch(/unit:\s*['"](kg|lb)['"]/);
+  });
+
   it('proposes nothing when nothing was banked', () => {
     const dead = runSession(context(), NEUTRAL, 8, () => 'miss');
     expect(dead.closeOut).not.toBeNull();
