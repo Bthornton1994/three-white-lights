@@ -184,6 +184,92 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
   (m) => m.name,
 );
 
+/**
+ * How much of what a mark asks for has to actually reach the finished grid.
+ *
+ * ONE FLOOR FOR EVERY MARK, KIT AND FLESH ALIKE. It used to be flesh only: the
+ * landing test below opened with `if (!ANATOMY_MARKS.includes(mark.name))
+ * continue`, so no KIT mark was measured by it at all — and the one kit mark an
+ * arm can eat, the singlet's shoulder strap, was the lowest-landing mark on the
+ * whole sheet at 46% while three separate guards looked straight past it. The
+ * `alwaysOn` list two tests down carries `SINGLET_HEM_TRIM` (the waist) and not
+ * `STRAP_SEAM` (the shoulder); "no dead mark" only needs a mark to land SOMEWHERE
+ * in the pose space; and the one test with "strap" in its name reads chest
+ * shading two px inboard of the strap and stays green with the strap's own pixels
+ * entirely gone.
+ *
+ * AND IT IS MEASURED PER SIDE, not just in aggregate. The straps are the case
+ * that forces it: at the shipped rig the NEAR strap seam lands 99.8% of its
+ * pixels and the FAR one 27.5%, because `renderLifterFrame` draws the torso
+ * before both arms and the far deltoid sits over the far strap's outer flank.
+ * The aggregate of those two is 63.7%, which is a number that looks like a
+ * coverage fact and is actually one side at full strength and one side nearly
+ * gone. Every `side: 'BOTH'` mark is now floored on each side separately AND on
+ * the aggregate, so nothing gets weaker and asymmetric loss stops hiding.
+ */
+const MARK_LANDING_FLOOR = 0.7;
+
+/**
+ * Marks that cannot meet `MARK_LANDING_FLOOR`, each with the floor it gets and
+ * the reason, keyed `NAME|ALL`, `NAME|NEAR` or `NAME|FAR`.
+ *
+ * Every number here is OURS, measured over the whole pose space at this
+ * authoring, and every one is a RATCHET: it sits just under what the drawing
+ * currently does, so the next change that eats one of these goes red and whoever
+ * made it has to come here and re-measure by hand. None of them is a target.
+ */
+const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
+  // 58.8% and 59.1%. Past about two thirds depth the singlet hem and the knee
+  // sleeve meet over the thigh and there is no bare thigh anywhere in the frame
+  // to paint on. That is a coverage fact about a squat seen from the front, not
+  // a misplaced mark. Was 0.35 before the sleeve was shortened and the hem put
+  // on the thigh; 0.5 is what stops that being given back quietly.
+  'QUAD_SWEEP_NEAR|ALL': 0.5,
+  'QUAD_SWEEP_FAR|ALL': 0.5,
+  // 56.0%, both sides equally, and NOT a defect: the laces are stamped on top of
+  // it. All three shoe bands are nine-px maps at the same anchor, and the shoe is
+  // drawn about seven px wide (`FOOT_W` 9 less `EDGE_INSET_PX` at each end), so
+  // SHOE_COLLAR and SHOE_SOLE both land 78.2% — the outer columns fall off the
+  // shoe. SHOE_UPPER shares its row with SHOE_LACES, two px of chalk applied
+  // AFTER it, and 78.2% - 2/9 = 56.0% exactly. `markPixelsInGrid` counts a pixel
+  // a later mark legitimately won as not landed; the 'reports placements that
+  // agree with the finished grid' test below is the one that handles contested
+  // pixels properly. Pinned here so the band cannot quietly lose more than the
+  // laces take.
+  'SHOE_UPPER|ALL': 0.5,
+  'SHOE_UPPER|NEAR': 0.5,
+  'SHOE_UPPER|FAR': 0.5,
+  // 63.7% aggregate, 99.8% near, 27.5% far. THE FAR STRAP IS THE ONE THAT
+  // MATTERS, and what eats it is the far ARM — not the deltoid, which
+  // `drawTorso` draws BEFORE the straps and therefore cannot cover them.
+  // `renderLifterFrame` draws the whole torso, then `drawArm(sign +1)`, and at
+  // BRACE the upper arm's shoulder end sits on axis x = CENTER_X + 6.806 with a
+  // 2.7 radius and a px of contour, which spans the seam's column at the top of
+  // its three-row run and has moved outboard of it by the bottom row. So the
+  // seam survives in 210 of 416 frames, partially. That much is anatomy — from
+  // the front an arm does cross a singlet strap — and it is why this gets a
+  // floor rather than a place in `alwaysOn`, which it could not meet.
+  //
+  // What the floor is FOR is the other direction: every px of upper arm added
+  // inboard comes straight off this number, and nothing else in the suite can
+  // see it. Re-bellying `UPPER_ARM_R` at 3.0 takes the far seam to 10.4% and the
+  // aggregate to 55.1%; at 3.4, 2.7% and 49.6%. Both fire here, on both keys.
+  'STRAP_SEAM|ALL': 0.6,
+  'STRAP_SEAM|FAR': 0.25,
+  // 64.1% far against 92.3% near, and THE CAUSE IS NOT DIAGNOSED — said plainly
+  // rather than guessed at, because the exception beside it (SHOE_UPPER) had a
+  // plausible-sounding mechanism written for it that the arithmetic then refuted.
+  // What is measured is the asymmetry and nothing else.
+  //
+  // It was found by turning the per-side floor on, and it is the second thing
+  // that found: the aggregate is 78.2% and cleared the general floor
+  // comfortably, which is exactly the blindness that hid the strap. Recorded and
+  // pinned rather than fixed — a bar-contact cue that lands on two thirds of the
+  // far trap is a mark-placement question for whoever owns the trap, and this
+  // round is a revert.
+  'TRAP_BAR_SHADOW|FAR': 0.6,
+};
+
 const EXPECTED_FLESH_MARKS: readonly string[] = [
   'FACE_CALM',
   'FACE_STRAINED',
@@ -243,41 +329,55 @@ describe('marks reach the pixels', () => {
     }
   });
 
-  it('lands every anatomy mark on most of the pixels it asks for', () => {
-    // "A mark that lands a third of the time is not doing its job." Measured
-    // over the whole pose space at this authoring, every anatomy mark clears
-    // 75% except the two quad sweeps, which cannot: past about two thirds depth
-    // the singlet hem and the knee sleeve meet over the thigh and there is no
-    // bare thigh anywhere in the frame to paint on. That is a coverage fact
-    // about the drawing, not a misplaced mark, so they get their own lower
-    // floor rather than a fudged shared one.
+  it('lands EVERY mark, kit and flesh, on most of the pixels it asks for — per side', () => {
+    // "A mark that lands a third of the time is not doing its job." See
+    // `MARK_LANDING_FLOOR` for why this now covers KIT as well as FLESH and why
+    // it counts the two sides of a BOTH mark separately: the strap seam was the
+    // lowest-landing mark on the sheet and this test used to skip it outright.
     //
-    // THE FLOOR IS 0.5, RAISED FROM 0.35. The sleeve is shorter and narrower
-    // and the singlet hem now rides the thigh instead of the hip landmark, so
-    // the sweeps land 57-58% of the pixels they ask for against 35-50% before,
-    // and the frames with no bare thigh anywhere fell from 133 of 416 to 105
-    // and 107. The floor is what stops that being given back quietly; the
-    // remaining ~105 frames are the deep ones, and they are supposed to be
-    // there.
-    const LOW_BY_COVERAGE = new Set(['QUAD_SWEEP_NEAR', 'QUAD_SWEEP_FAR']);
+    // A BOTH mark is measured three ways — aggregate, near, far — and each one
+    // has to clear the floor or its own documented exception. The near and far
+    // maps are identical, so the aggregate is the mean of the two sides and
+    // adding the per-side keys cannot weaken anything.
     const req = new Map<string, number>();
     const got = new Map<string, number>();
+    const buckets = (mark: Mark): readonly ('ALL' | 'NEAR' | 'FAR')[] =>
+      mark.side === 'BOTH' ? ['ALL', 'NEAR', 'FAR'] : ['ALL'];
     for (const s of poseSpace()) {
       const frame = renderLifterFrame(s);
-      const strained = frame.strain > STRAIN.FLUSH_THRESHOLD;
       for (const mark of MARKS) {
-        if (!ANATOMY_MARKS.includes(mark.name)) continue;
-        req.set(mark.name, (req.get(mark.name) ?? 0) + markTargets(mark, frame.pose, strained).length);
-        got.set(mark.name, (got.get(mark.name) ?? 0) + markPixelsInGrid(frame.grid, mark, frame));
+        for (const bucket of buckets(mark)) {
+          // `sidesFor` maps NEAR to sign -1 and FAR to +1, so asking the table
+          // for a one-sided copy of the mark is the module's own vocabulary
+          // rather than a screen-x comparison invented here.
+          const oneSide: Mark = bucket === 'ALL' ? mark : { ...mark, side: bucket };
+          const key = `${mark.name}|${bucket}`;
+          req.set(
+            key,
+            (req.get(key) ?? 0) +
+              markTargets(oneSide, frame.pose, frame.strain > STRAIN.FLUSH_THRESHOLD).length,
+          );
+          got.set(key, (got.get(key) ?? 0) + markPixelsInGrid(frame.grid, oneSide, frame));
+        }
       }
     }
-    for (const name of ANATOMY_MARKS) {
-      const asked = req.get(name) ?? 0;
-      expect(asked, name).toBeGreaterThan(0);
-      const rate = (got.get(name) ?? 0) / asked;
-      expect(rate, `${name} landed ${(rate * 100).toFixed(0)}%`).toBeGreaterThan(
-        LOW_BY_COVERAGE.has(name) ? 0.5 : 0.7,
-      );
+
+    // Every exception must name a mark that exists and a bucket it is measured
+    // in, so a rename cannot quietly leave a mark unfloored.
+    for (const key of Object.keys(MARK_LANDING_EXCEPTIONS)) {
+      expect(req.has(key), `${key} is an exception for a bucket nothing measures`).toBe(true);
+    }
+
+    for (const mark of MARKS) {
+      for (const bucket of buckets(mark)) {
+        const key = `${mark.name}|${bucket}`;
+        const asked = req.get(key) ?? 0;
+        expect(asked, key).toBeGreaterThan(0);
+        const rate = (got.get(key) ?? 0) / asked;
+        expect(rate, `${key} landed ${(rate * 100).toFixed(1)}%`).toBeGreaterThan(
+          MARK_LANDING_EXCEPTIONS[key] ?? MARK_LANDING_FLOOR,
+        );
+      }
     }
   });
 
@@ -299,6 +399,19 @@ describe('marks reach the pixels', () => {
     // These are worn kit and anatomy that never leaves the silhouette. A pose
     // where the buckle or the sole vanishes is a bug, not a coverage effect —
     // unlike the quad marks, which are supposed to disappear under the singlet.
+    //
+    // STRAP_SEAM IS DELIBERATELY NOT IN THIS LIST, and that is worth writing
+    // down because "the waist trim is here and the shoulder strap is not" looks
+    // like an oversight and was reported as one. It is not a list this mark can
+    // join. The check is per MARK, over both sides at once, and the NEAR seam
+    // lands 99.8% of its pixels at every pose — so a strap already gone from the
+    // far shoulder in 206 of 416 frames passes this test today, passes it with
+    // `UPPER_ARM_R` re-bellied at 3.0, and only fails at 3.4, where the near
+    // side finally drops out in 13 frames. A guard that green with the thing it
+    // names half-eaten is worse than no guard, because it reads as coverage.
+    //
+    // The strap is floored by landing RATE instead, per side, at
+    // `MARK_LANDING_EXCEPTIONS`. That fires at 3.0 and at 3.4.
     const alwaysOn = [
       'BELT_LEVER',
       'SHOE_SOLE',
@@ -521,6 +634,12 @@ describe('the objects the critique named', () => {
   });
 
   it('puts a strap shadow on the bare chest', () => {
+    // THIS TEST IS ABOUT THE CHEST, NOT ABOUT THE STRAP, and the name has misled
+    // at least one reader. It reads `strap.x + 2` — two px INBOARD of the seam,
+    // on skin — at depth 0 only, and it would stay green with every pixel of the
+    // strap itself painted over by an arm. The strap's own survival is measured
+    // by landing rate, per side, over the whole pose space: see
+    // `MARK_LANDING_EXCEPTIONS`.
     const frame = renderLifterFrame(spec({ depth: 0 }));
     for (const sign of [-1, 1]) {
       const strap = anchorPoint('STRAP', frame.pose, sign);

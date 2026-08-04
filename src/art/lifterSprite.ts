@@ -411,8 +411,8 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
 }
 
 /**
- * An arm, shoulder to fist, drawn as ONE mass in FOUR capsules: the upper arm in
- * two and the forearm in two, so each swells at its own belly instead of coning
+ * An arm, shoulder to fist, drawn as ONE mass in THREE capsules: the upper arm
+ * in one, and the forearm in two so it swells at its belly instead of coning
  * (`RIG_GEOMETRY.UPPER_ARM_R`, `RIG_GEOMETRY.FOREARM_R`).
  *
  * IT SEPARATES WITH ITS OWN SHADOW, NOT WITH A BLACK LINE, for the same reason
@@ -437,11 +437,13 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
  * and a round that reported the contradiction resolved shipped them again. They
  * are `@ref` tags now, checked against the decoder by `lifterSprite.test.ts`.
  *
- * `drawLimbChain` rather than four `drawLimb` calls: see its comment. Capsules
+ * `drawLimbChain` rather than three `drawLimb` calls: see its comment. Capsules
  * that meet each stamp a ring, and a later one's ring lands on an earlier one's
- * fill — a doubled dark band across the elbow of a five-pixel limb, and now
- * across both belly joins as well, which is why every capsule goes into the one
- * chain rather than beside it.
+ * fill — a doubled dark band across the elbow of a five-pixel limb, and across
+ * the forearm's belly join as well, which is why every capsule goes into the one
+ * chain rather than beside it. The chain is NOT dead weight now the upper arm is
+ * a cone again: it is what keeps the elbow join and the forearm belly join from
+ * each growing a doubled contour.
  */
 function drawArm(g: IndexGrid, pose: Pose, sign: number, lightScale: number, skin: Ramp): void {
   const u = upperArmSpan(pose, sign);
@@ -454,35 +456,26 @@ function drawArm(g: IndexGrid, pose: Pose, sign: number, lightScale: number, ski
   };
 
   drawLimbChain(g, [
-    // TWO upper-arm capsules, so the mass swells at the biceps and pinches into
-    // the elbow instead of coning from the deltoid to the joint. The old single
-    // cone made the forearm's belly the widest bare mass on the arm; see
-    // RIG_GEOMETRY.UPPER_ARM_R for the drawn widths before and after.
+    // ONE upper-arm capsule, shoulder attach to elbow. It was two for a round,
+    // with a belly at `u.bellyX/bellyY`; `RIG_GEOMETRY.UPPER_ARM_R` carries the
+    // arithmetic showing that belly could not reach the silhouette at any radius
+    // and could only paint over the singlet. `u.bellyX/bellyY` is still computed
+    // — the BICEPS mark anchors to it — and is deliberately not drawn through.
     {
       ax: u.shoulderX,
       ay: u.shoulderY,
-      bx: u.bellyX,
-      by: u.bellyY,
-      ra: RIG_GEOMETRY.UPPER_ARM_R[0],
-      rb: RIG_GEOMETRY.UPPER_ARM_R[1],
-      ramp: RAMPS.SKIN,
-      opts,
-    },
-    {
-      ax: u.bellyX,
-      ay: u.bellyY,
       bx: u.elbowX,
       by: u.elbowY,
-      ra: RIG_GEOMETRY.UPPER_ARM_R[1],
-      rb: RIG_GEOMETRY.UPPER_ARM_R[2],
+      ra: RIG_GEOMETRY.UPPER_ARM_R[0],
+      rb: RIG_GEOMETRY.UPPER_ARM_R[1],
       ramp: RAMPS.SKIN,
       opts,
     },
     // TWO forearm capsules, not one, so the mass swells at the brachioradialis
     // and pinches at the wrist instead of coning from elbow to fist. See
     // RIG_GEOMETRY.FOREARM_R. `drawLimbChain` stamps every ring before any fill,
-    // so all FOUR capsules still carry exactly one contour round their union —
-    // the doubled band a second `drawLimb` call would leave across each belly is
+    // so all THREE capsules still carry exactly one contour round their union —
+    // the doubled band a second `drawLimb` call would leave across the belly is
     // the same defect that used to sit across the elbow.
     {
       ax: f.elbowX,

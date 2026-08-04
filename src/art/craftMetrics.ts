@@ -1091,10 +1091,16 @@ export function limbWindows(geometry: LimbGeometry): readonly FieldWindow[] {
   ] as const) {
     // THE WINDOW IS THE DRAWN MASS, taken from the same
     // `upperArmSpan`/`forearmSpan` the composer draws between rather than from a
-    // second copy of the arithmetic. BOTH bones are three radii over two
-    // capsules (`RIG_GEOMETRY.UPPER_ARM_R`, `RIG_GEOMETRY.FOREARM_R`), so the
-    // window is four capsules too: measuring a bellied limb through a straight
-    // cone's outline would credit or blame it for pixels it does not own.
+    // second copy of the arithmetic. It has exactly as many capsules as `drawArm`
+    // does: the upper arm is two radii and one capsule
+    // (`RIG_GEOMETRY.UPPER_ARM_R`), the forearm is three radii over two
+    // (`RIG_GEOMETRY.FOREARM_R`). Measuring a bellied limb through a straight
+    // cone's outline — or a cone through a bellied one — would credit or blame it
+    // for pixels it does not own.
+    //
+    // `u.bellyX/bellyY` is NOT read here, and that is not an omission: it is the
+    // BICEPS mark's anchor and the upper arm does not swell at it. See
+    // `upperArmSpan`.
     const u = upperArmSpan(pose, sign);
     const f = forearmSpan(pose, sign);
     windows.push({
@@ -1103,8 +1109,7 @@ export function limbWindows(geometry: LimbGeometry): readonly FieldWindow[] {
         Math.abs(x - centerX) >= torsoOut &&
         Math.sign(x - centerX) === sign &&
         !inAnyHand(x, y) &&
-        (inCapsule(x, y, u.shoulderX, u.shoulderY, u.bellyX, u.bellyY, G.UPPER_ARM_R[0], G.UPPER_ARM_R[1], pad) ||
-          inCapsule(x, y, u.bellyX, u.bellyY, u.elbowX, u.elbowY, G.UPPER_ARM_R[1], G.UPPER_ARM_R[2], pad) ||
+        (inCapsule(x, y, u.shoulderX, u.shoulderY, u.elbowX, u.elbowY, G.UPPER_ARM_R[0], G.UPPER_ARM_R[1], pad) ||
           inCapsule(x, y, f.elbowX, f.elbowY, f.bellyX, f.bellyY, G.FOREARM_R[0], G.FOREARM_R[1], pad) ||
           inCapsule(x, y, f.bellyX, f.bellyY, f.handX, f.handY, G.FOREARM_R[1], G.FOREARM_R[2], pad)),
     });

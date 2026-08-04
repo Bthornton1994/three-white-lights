@@ -55,9 +55,13 @@ import {
   RIG_GEOMETRY,
   deformPose,
   femurTilt,
+  forearmSpan,
   kneeSleeveSpan,
+  pitchForLevel,
   poseAtDepth,
   singletHemY,
+  strainForLevel,
+  upperArmSpan,
   type Pose,
 } from './rig';
 
@@ -1013,6 +1017,306 @@ describe('the lifter is the brightest thing in his own frame', () => {
 // measures.
 // ---------------------------------------------------------------------------
 
+/**
+ * Biceps radii the silhouette probe below sweeps, and the one it stops at.
+ *
+ * All OURS. 2.448 is what `UPPER_ARM_R`'s shipped cone interpolates to at
+ * `BICEPS_BELLY_ALONG`; 3.0 is what the reverted round shipped; 3.8 is the top
+ * of the range the sweep in the KNOWN GAP comment covers, and it is already a
+ * biceps drawn 9.6 px across on a 96x72 cell.
+ *
+ * The point of probing that far past anything the drawing survives is that the
+ * result closes the direction rather than bounding it: nothing changes ANYWHERE
+ * in the outline across the whole range.
+ */
+const SILHOUETTE_PROBE_RADII: readonly number[] = [2.448, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8];
+
+/**
+ * One radius past the sweep, where the outline finally does move — and by how
+ * little.
+ *
+ * OURS, measured: at 4.0 the arm's outermost column shifts by ONE px in 16 of
+ * the 14,260 (pose, sign, row) triples the probe compares, all of them on
+ * strained poses where `STRAIN.ELBOW_TUCK` has pulled `elbowHalfW` in to 7.6.
+ * Nothing moves on any of the eleven authored drawings even there.
+ *
+ * It is asserted rather than described so the sentence above cannot rot, and it
+ * is a ceiling rather than an equality because 16 rows in 14,260 is 0.1% and an
+ * unrelated pose tweak may legitimately move it. If it grows, re-measure.
+ */
+const SILHOUETTE_CARTOON_BICEPS_R = 4.0;
+const SILHOUETTE_CARTOON_MOVED_ROWS = 16;
+
+/**
+ * The upper arm's furthest outboard pixel, in px from centre, over every pose
+ * the renderer can draw.
+ *
+ * OURS. It is at the ELBOW's rounded cap, not at the belly, which is why it does
+ * not move when the belly does. The grip is `POSES.*.handHalfW` = 15 everywhere,
+ * so the fist is outboard of it in every drawing.
+ */
+const OURS_UPPER_ARM_MAX_REACH_PX = 14;
+
+/** One capsule of the arm, in the form `raster.limbPass` rasterises. */
+interface ProbeCapsule {
+  readonly ax: number;
+  readonly ay: number;
+  readonly bx: number;
+  readonly by: number;
+  readonly ra: number;
+  readonly rb: number;
+}
+
+/**
+ * `raster.limbPass`'s own membership rule, plus the one px `PartOptions.edge`
+ * grows the ring by. Replicated rather than imported because `limbPass` writes
+ * into a grid and this needs the predicate; the two are asserted to agree by
+ * every window check in this file, which measures the drawn pixels.
+ */
+function inProbeCapsule(c: ProbeCapsule, x: number, y: number): boolean {
+  const dx = c.bx - c.ax;
+  const dy = c.by - c.ay;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return false;
+  const ux = dx / len;
+  const uy = dy / len;
+  const rx = x - c.ax;
+  const ry = y - c.ay;
+  const t = Math.min(1, Math.max(0, (rx * ux + ry * uy) / len));
+  const r = c.ra + (c.rb - c.ra) * t + 1;
+  const along = rx * ux + ry * uy;
+  const overA = along < 0 ? -along : 0;
+  const overB = along > len ? along - len : 0;
+  return Math.hypot(rx * -uy + ry * ux, overA + overB) <= r;
+}
+
+/** Outermost column of the arm at row `y`, in px from centre. Null if absent. */
+function armOuterAtRow(caps: readonly ProbeCapsule[], y: number, sign: number): number | null {
+  let best: number | null = null;
+  for (let k = 0; k <= RESOLUTION.CELL_W / 2; k += 1) {
+    if (caps.some((c) => inProbeCapsule(c, CENTER_X + sign * k, y))) best = k;
+  }
+  return best;
+}
+
+/**
+ * The arm as drawn, optionally with a hypothetical biceps belly spliced in.
+ *
+ * `bellyR === null` is what `drawArm` actually draws: one upper-arm capsule on
+ * `RIG_GEOMETRY.UPPER_ARM_R`'s two radii, then the forearm's two. A number
+ * splits the upper arm at `upperArmSpan`'s belly point, which is exactly the
+ * shape the reverted round shipped.
+ */
+function armCapsules(pose: Pose, sign: number, bellyR: number | null): ProbeCapsule[] {
+  const G = RIG_GEOMETRY;
+  const u = upperArmSpan(pose, sign);
+  const f = forearmSpan(pose, sign);
+  const upper: ProbeCapsule[] =
+    bellyR === null
+      ? [
+          {
+            ax: u.shoulderX,
+            ay: u.shoulderY,
+            bx: u.elbowX,
+            by: u.elbowY,
+            ra: G.UPPER_ARM_R[0],
+            rb: G.UPPER_ARM_R[1],
+          },
+        ]
+      : [
+          {
+            ax: u.shoulderX,
+            ay: u.shoulderY,
+            bx: u.bellyX,
+            by: u.bellyY,
+            ra: G.UPPER_ARM_R[0],
+            rb: bellyR,
+          },
+          {
+            ax: u.bellyX,
+            ay: u.bellyY,
+            bx: u.elbowX,
+            by: u.elbowY,
+            ra: bellyR,
+            rb: G.UPPER_ARM_R[1],
+          },
+        ];
+  return [
+    ...upper,
+    {
+      ax: f.elbowX,
+      ay: f.elbowY,
+      bx: f.bellyX,
+      by: f.bellyY,
+      ra: G.FOREARM_R[0],
+      rb: G.FOREARM_R[1],
+    },
+    {
+      ax: f.bellyX,
+      ay: f.bellyY,
+      bx: f.handX,
+      by: f.handY,
+      ra: G.FOREARM_R[1],
+      rb: G.FOREARM_R[2],
+    },
+  ];
+}
+
+/** Every pose the renderer can be asked to draw, authored and deformed. */
+function everyDrawnPose(): { where: string; pose: Pose }[] {
+  const out: { where: string; pose: Pose }[] = [];
+  for (const [key, pose] of Object.entries(POSES)) out.push({ where: `authored ${key}`, pose });
+  for (let step = 0; step <= 12; step += 1) {
+    for (const direction of ['DESCENT', 'ASCENT'] as const) {
+      for (let s = 0; s < STRAIN.LEVELS; s += 1) {
+        for (let p = 0; p < PITCH.LEVELS; p += 1) {
+          out.push({
+            where: `d${(step / 12).toFixed(2)} ${direction} s${s} p${p}`,
+            pose: deformPose(
+              poseAtDepth(step / 12, direction),
+              strainForLevel(s),
+              pitchForLevel(p),
+            ),
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+describe('a biceps belly is not a lever: it cannot reach the silhouette', () => {
+  // WHY THIS TEST EXISTS, so the next builder does not spend a round on it.
+  //
+  // `UPPER_ARM_R` has been a cone, then a three-radius belly, then a cone again.
+  // The case for the belly is genuine — `spriteMarks.ts` stamps a BICEPS mark at
+  // `BICEPS_BELLY_ALONG` on a bone that tapers straight through it, and the
+  // forearm is the widest MODELLED mass on the arm, which is the wrong way round
+  // against `sprite-ref-1`. What is not genuine is the idea that widening this
+  // radius does anything a viewer can see. It cannot, and the reason is the grip.
+  //
+  // Everything here is OURS, off `POSES` and `RIG_GEOMETRY`.
+  it('holds the grip wider than the elbow in all eleven drawings', () => {
+    const grips = new Set(Object.values(POSES).map((p) => p.handHalfW));
+    expect([...grips], 'handHalfW is one number in every pose').toEqual([15]);
+    for (const [key, pose] of Object.entries(POSES)) {
+      // The lifter is holding a bar. His hands cannot move, his elbows are
+      // inside them by four to five px, and his shoulders by six to seven.
+      expect(pose.elbowHalfW, `${key} elbow inside the grip`).toBeLessThan(pose.handHalfW - 3);
+      expect(pose.shoulderHalfW, `${key} shoulder inside the elbow`).toBeLessThan(pose.elbowHalfW);
+    }
+  });
+
+  it('leaves the arm outline identical from the cone to a 3.8 biceps, row for row', () => {
+    // THE WHOLE ARGUMENT, in one assertion. Take the arm as `drawArm` draws it,
+    // splice in a biceps belly at every radius from the shipped cone's own
+    // interpolated 2.448 up to 3.8, and ask whether the OUTERMOST column of the
+    // arm changes at any row of any pose. It does not, anywhere.
+    //
+    // Measured at this authoring: 14,260 (pose, sign, row) triples — the eleven
+    // authored drawings plus all 416 deformed ones, both signs — and ZERO differ
+    // at any of the eight probe radii. The arm is a V: the elbow hangs BELOW the
+    // hand (BRACE: elbowY 29, handY 22), so the forearm crosses back outboard of
+    // the upper arm through every row the upper arm occupies, and the fist is
+    // 15 px out where the biceps axis is 8.2-8.9.
+    //
+    // Past the sweep it does eventually move, and the size of that is the point:
+    // see the 4.0 case below.
+    //
+    // What a wider biceps CAN do is paint inboard, over the singlet and the
+    // shoulder straps, because `renderLifterFrame` draws `drawTorso` before both
+    // `drawArm` calls. `spriteMarks.test.ts` guards that; see its KIT landing
+    // floor and the far strap's own pin.
+    const poses = everyDrawnPose();
+    let rows = 0;
+    let differing = 0;
+    let firstDiff = '';
+    for (const { where, pose } of poses) {
+      for (const sign of [-1, 1]) {
+        const cone = armCapsules(pose, sign, null);
+        const bellied = SILHOUETTE_PROBE_RADII.map((r) => armCapsules(pose, sign, r));
+        for (let y = 0; y < RESOLUTION.CELL_H; y += 1) {
+          const base = armOuterAtRow(cone, y, sign);
+          if (base === null) continue;
+          rows += 1;
+          bellied.forEach((caps, i) => {
+            if (armOuterAtRow(caps, y, sign) !== base) {
+              differing += 1;
+              if (firstDiff === '') {
+                firstDiff = `${where} sign${sign} y${y} r${SILHOUETTE_PROBE_RADII[i] ?? 0}`;
+              }
+            }
+          });
+        }
+      }
+    }
+    expect(rows, 'the probe found rows to compare').toBeGreaterThan(14000);
+    expect(differing, `arm outline moved at ${firstDiff}`).toBe(0);
+  });
+
+  it('moves the outline by one px in 16 rows of 14,260 at a cartoon 4.0 biceps', () => {
+    // WHERE IT FINALLY BREAKS, stated rather than left as "never". At 4.0 —
+    // wider than the sweep, wider than the drawing survives — the outline does
+    // move: by ONE pixel, in 16 of 14,260 rows, none of them on an authored
+    // drawing. All 16 are strained poses, where `STRAIN.ELBOW_TUCK` has pulled
+    // `elbowHalfW` down to 7.6 and the belly briefly outruns the elbow cap.
+    //
+    // That is what "cannot reach the silhouette" cashes out to. It is not a
+    // theorem; it is 0.1% of the rows at a radius nobody would ship.
+    let rows = 0;
+    let differing = 0;
+    let maxDelta = 0;
+    let onAuthored = 0;
+    for (const { where, pose } of everyDrawnPose()) {
+      for (const sign of [-1, 1]) {
+        const cone = armCapsules(pose, sign, null);
+        const cartoon = armCapsules(pose, sign, SILHOUETTE_CARTOON_BICEPS_R);
+        for (let y = 0; y < RESOLUTION.CELL_H; y += 1) {
+          const base = armOuterAtRow(cone, y, sign);
+          if (base === null) continue;
+          rows += 1;
+          const wide = armOuterAtRow(cartoon, y, sign);
+          if (wide === base) continue;
+          differing += 1;
+          maxDelta = Math.max(maxDelta, (wide ?? 0) - base);
+          if (where.startsWith('authored')) onAuthored += 1;
+        }
+      }
+    }
+    expect(rows).toBeGreaterThan(14000);
+    expect(differing, 'rows whose outline moves at a 4.0 biceps').toBeLessThanOrEqual(
+      SILHOUETTE_CARTOON_MOVED_ROWS,
+    );
+    expect(maxDelta, 'and by how far').toBeLessThanOrEqual(1);
+    expect(onAuthored, 'none of them on an authored drawing').toBe(0);
+  });
+
+  it('never lets the upper arm out past the fist, even at the cartoon radius', () => {
+    // The same fact as a single number, because the row-for-row check above is
+    // easy to read as an accident of one drawing. The upper arm's furthest
+    // outboard pixel over the WHOLE limb is 14 px from centre, at the elbow's
+    // rounded cap and not at the belly — and it is 14 at the shipped cone and at
+    // every probe radius alike, because the belly never overtakes the elbow cap.
+    // The grip is 15.
+    for (const bellyR of [null, ...SILHOUETTE_PROBE_RADII, SILHOUETTE_CARTOON_BICEPS_R]) {
+      let reach = 0;
+      for (const { pose } of everyDrawnPose()) {
+        for (const sign of [-1, 1]) {
+          // The UPPER ARM's capsules only: one for the cone, two for a belly.
+          const caps = armCapsules(pose, sign, bellyR).slice(0, bellyR === null ? 1 : 2);
+          for (let y = 0; y < RESOLUTION.CELL_H; y += 1) {
+            reach = Math.max(reach, armOuterAtRow(caps, y, sign) ?? 0);
+          }
+        }
+      }
+      expect(reach, `upper-arm reach at biceps ${bellyR ?? 'cone'}`).toBe(
+        OURS_UPPER_ARM_MAX_REACH_PX,
+      );
+      expect(reach, 'the grip is still wider').toBeLessThan(POSES.STAND.handHalfW);
+    }
+  });
+});
+
 describe('every limb is measured as a limb, not inside an aggregate', () => {
   it('SEES a real limb window shuffled, where every aggregate is blind to it', () => {
     // The proof on OUR OWN PIXELS rather than on a synthetic fixture — the
@@ -1218,65 +1522,70 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     // [2.1, 2.8, 1.9], and that took the frames over the bound from 200 to 80
     // and the worst excess from 0.0882 to 0.0400.
     //
-    // WHAT CHANGED THIS ROUND, AND WHAT IT DID NOT BUY. `UPPER_ARM_R` was still
-    // a cone, [2.7, 2.1], with a BICEPS mark stamped on a bone that had no
-    // belly — the same defect one segment up, and it left the forearm as the
-    // widest modelled mass on the arm (7.6 drawn against 6.9 at the mark). It is
-    // now [2.7, 3.0, 2.1]. Measured over this same 448-frame sweep, with
-    // `FOREARM_R` held at [2.1, 2.8, 1.9] on both sides:
+    // WHAT CHANGED THIS ROUND: A REVERT. `UPPER_ARM_R` spent one round as
+    // [2.7, 3.0, 2.1] — a three-radius belly, put there because `spriteMarks.ts`
+    // stamps a BICEPS mark on a bone that tapers straight through the fraction,
+    // and because the forearm was the widest MODELLED mass on the arm (7.6 drawn
+    // against 6.9 at the mark). It is [2.7, 2.1] again, and the reason is that
+    // the belly could not do the job it was put there for. See the whole
+    // arithmetic under `RIG_GEOMETRY.UPPER_ARM_R` and the three assertions in
+    // 'a biceps belly is not a lever' above: the hands are 15 px out, the elbows
+    // 10.4-11.5, the belly axis 8.2-8.9, and the arm's outermost column is
+    // IDENTICAL row for row over 14,260 (pose, sign, row) triples at every biceps
+    // radius from 2.448 to 3.8. The belly is never in the outline. What it does
+    // instead is paint inboard over the singlet and the shoulder straps.
     //
-    //                            biceps 2.448   biceps 3.0
-    //                            (the old cone) (now)
+    // Measured over this same 448-frame sweep, `FOREARM_R` held at
+    // [2.1, 2.8, 1.9] throughout:
+    //
+    //                            cone [2.7,2.1]  belly 3.0
+    //                            (ships)         (reverted)
     //   far arm floor share         31.1%         31.1%   (mean over the sweep)
     //   far arm worst frame         40.5%         40.5%
     //   far arm mean clearance       4.58 pt       4.42 pt
     //   far arm window size         52.6 px       53.1 px (mean)
-    //   far arm ramp steps 0..3   31.0/38.7/    31.0/40.1/
-    //                             26.5/3.8      25.3/3.7  (% of window pixels)
-    //   near arm mean clearance     13.00 pt      12.91 pt
+    //   near arm mean clearance     13.22 pt      12.91 pt
     //   frames over the bound      64 far        72 far
     //                              16 near        8 near
     //                              80 total      80 total
     //   worst excess               0.0400        0.0400
+    //   far STRAP_SEAM landing      27.5%         10.4%   <- the actual effect
     //
-    // So it is a WASH on this clause, and slightly negative on mean clearance.
-    // That is the honest result and it is not dressed up: the proportion defect
-    // the change was made for is real and is fixed, and the floor-share number
-    // did not move.
+    // 80 FRAMES AND 0.0400 EITHER WAY. The belly was a wash on the clause it was
+    // aimed at, 0.16 pt worse on mean clearance, and it cost the far shoulder
+    // strap two thirds of what was left of it. That is why it is gone.
     //
-    // WHY IT DID NOT MOVE, MEASURED. At `BICEPS_BELLY_ALONG` the belly sits
-    // ~8.2 px from centre and `CRAFT.LIMB_TORSO_CLEARANCE_PX` puts this window's
-    // inner edge at 9.5-10.0, so the belly is clipped out of the window at every
-    // pose. And it is not on the silhouette either: the outermost skin pixel of
-    // every row between shoulder and elbow is identical, row for row, at every
-    // biceps radius from 2.448 to 4.0, because the hands are wider than the
-    // elbows and the FOREARM is the outboard mass in that band. Wider biceps
-    // radii DO improve this number — mean clearance climbs to 5.71 at 3.8 — but
-    // only by painting over the singlet, whose own drawn pixel count goes
-    // 141 -> 125 at BRACE and 98 -> 76 in the HOLE over that range, losing the
-    // far shoulder's strap entirely past about 3.6. Improving a floor share by
-    // burying the singlet is not an improvement, and it was declined. All of
-    // those are OURS, off our own frames. See `RIG_GEOMETRY.UPPER_ARM_R`.
+    // A CORRECTION TO WHAT THIS TABLE USED TO SAY. Its "biceps 2.448" column was
+    // headed "the old cone" and was not one: it was the four-capsule CHAIN with
+    // its middle radius set to what the cone interpolates to. Those are different
+    // drawings — splitting a capsule in two restarts `axialTerm` at the join —
+    // and the difference shows up exactly where nobody looked. The true cone and
+    // the chain-at-2.448 agree on far arm mean clearance (4.58), window size
+    // (52.6), the frame counts (64/16) and the worst excess (0.0400), and
+    // disagree on the NEAR arm's mean clearance: 13.22 against 13.00, at an
+    // identical 45.7 px window. They also disagree on the far strap seam, 27.5%
+    // against 29.5%. So "the refactor is behaviour-neutral by measurement" was
+    // four true numbers and one untested one, and the untested one moved.
     //
     // THE 2-D GRID. Rows are `UPPER_ARM_R[1]`, columns `FOREARM_R[1]`, all
     // ours, 448 rendered frames per cell, 36 cells. Far arm mean clearance in
     // points under the reference bound:
     //
     //          fa 2.2  2.4   2.6   2.8   3.0   3.2
-    //   ua 2.45  3.02  3.39  4.32  4.58  3.86  2.84
+    //   ua 2.45  3.02  3.39  4.32  4.58  3.86  2.84   <- nearest the shipped cone
     //      2.60  3.01  3.34  4.30  4.46  3.67  2.80
     //      2.80  3.36  3.60  4.33  4.52  3.81  3.05
-    //      3.00  3.45  3.57  4.29  4.42  3.66  2.93   <- shipped
+    //      3.00  3.45  3.57  4.29  4.42  3.66  2.93
     //      3.20  3.57  3.66  4.45  4.51  3.75  2.88
     //      3.40  4.15  4.22  5.00  5.05  4.22  3.36
     //
     // frames over the bound at the same cells, far + near:
     //
     //          fa 2.2   2.4    2.6    2.8    3.0    3.2
-    //   ua 2.45 104+0  152+0  128+0  64+16  32+16  64+8
+    //   ua 2.45 104+0  152+0  128+0  64+16  32+16  64+8  <- nearest the cone
     //      2.60 128+0  144+0  120+0  64+ 8  40+16  80+8
     //      2.80  96+0  152+0  112+0  72+ 8  40+16  56+8
-    //      3.00  80+0  120+0   96+0  72+ 8  40+16  64+8   <- shipped
+    //      3.00  80+0  120+0   96+0  72+ 8  40+16  64+8
     //      3.20  80+0   88+0   96+0  64+ 8  48+ 8  56+8
     //      3.40  56+0   64+0   80+0  72+ 0  40+ 8  40+8
     //
@@ -1284,21 +1593,37 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     // pin below is set from:
     //
     //          fa 2.2   2.4    2.6    2.8    3.0    3.2
-    //   ua 2.45 .0882  .0625  .0612  .0400  .0746  .0488
+    //   ua 2.45 .0882  .0625  .0612  .0400  .0746  .0488  <- nearest the cone
     //      2.60 .0781  .0625  .0612  .0400  .0746  .0417
     //      2.80 .0645  .0625  .0612  .0400  .0769  .0417
-    //      3.00 .0769  .0469  .0455  .0400  .0870  .0435  <- shipped
+    //      3.00 .0769  .0469  .0455  .0400  .0870  .0435
     //      3.20 .0769  .0435  .0517  .0462  .0615  .0417
     //      3.40 .0588  .0435  .0408  .0400  .0580  .0417
     //
+    // Every ua row here is a CHAIN with that middle radius, including 2.45 — see
+    // the correction above. The shipped drawing is the single-capsule cone, whose
+    // own numbers are in the two-column table further up; it agrees with the
+    // ua 2.45 row on the far arm and differs by 0.22 pt on the near one.
+    //
     // Read the columns, not the diagonal: `FOREARM_R[1]` = 2.8 is the best cell
-    // of its row on worst excess in five rows of six and is never beaten, and
-    // the mean-clearance turn at 2.8 holds in every biceps row tried — including
-    // three more, 3.6/3.8/4.0, swept at fa 2.6/2.8/3.0 and not tabulated here.
-    // THAT is what makes the forearm peak a 2-D result rather than the 1-D slice
-    // it was claimed from. The biceps axis does not turn inside the range where
-    // the drawing survives, which is why the value shipped there is chosen on
-    // proportion instead.
+    // of its row on worst excess in five rows of six and is never beaten.
+    //
+    // ON MEAN CLEARANCE, 2.8 PEAKS IN FOUR ROWS OF SIX AND TIES IN TWO. That is
+    // a correction. This comment used to say the turn "holds in every biceps row
+    // tried", which is two rows too strong: the margin of fa 2.8 over the
+    // next-best cell in its row (always fa 2.6) is 0.26, 0.16, 0.19 and 0.13 pt
+    // in the ua 2.45/2.60/2.80/3.00 rows — a peak — and 0.06 pt at ua 3.20 and
+    // 0.05 pt at ua 3.40, which is a tie at this grid's resolution. Two
+    // paragraphs down this same comment says a fifth of a pixel flips whole poses
+    // across the threshold; a 0.05 pt margin cannot be read as a turn on a metric
+    // that noisy. The row that ships is ua 2.45, where the margin is the largest
+    // of the six.
+    //
+    // The biceps axis does not turn at all inside the range the drawing survives
+    // — 4.58, 4.46, 4.52, 4.42, 4.51, 5.05 and then 5.29, 5.71, 5.68 at 3.6, 3.8,
+    // 4.0 — which is why the value there is not chosen on this metric. It is
+    // chosen on what the width does to the picture, and the answer is: nothing
+    // outboard, and the shoulder strap inboard.
     //
     // Frame counts move around inside a column with no pattern — 104, 128, 96,
     // 80, 80, 56 down the fa 2.2 column — because a count is a threshold
@@ -1332,9 +1657,11 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     // so. It cannot decay into a pass.
     const FAR_ARM_WINDOW = 'right arm';
     const NEAR_ARM_WINDOW = 'left arm';
+    // RE-MEASURED AFTER THE REVERT, not assumed: 64 far and 16 near, which is
+    // what the cone measured before the belly round and 80 either way.
     const FLOOR_EXCESS_FRAMES = {
-      [FAR_ARM_WINDOW]: 72,
-      [NEAR_ARM_WINDOW]: 8,
+      [FAR_ARM_WINDOW]: 64,
+      [NEAR_ARM_WINDOW]: 16,
     } as const;
     // The worst single frame is ASCENT d0.65 s2, whose far-arm window is 0.380
     // floor over 50 px, and it clears its bound by exactly 0.04 — exactly,
