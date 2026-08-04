@@ -1694,7 +1694,8 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     //                              16 near        8 near
     //                              80 total      80 total
     //   worst excess               0.0400        0.0400
-    //   far STRAP_SEAM landing      27.5%         10.4%   <- the actual effect
+    //   far STRAP_SEAM landing  (see below)       10.4%   <- the actual effect
+    //     shipped: `@ours STRAP_SEAM|FAR = 27.5%`
     //
     // 80 FRAMES AND 0.0400 EITHER WAY. The belly was a wash on the clause it was
     // aimed at, 0.16 pt worse on mean clearance, and it cost the far shoulder
@@ -1708,9 +1709,10 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     // the chain-at-2.448 agree on far arm mean clearance (4.58), window size
     // (52.6), the frame counts (64/16) and the worst excess (0.0400), and
     // disagree on the NEAR arm's mean clearance: 13.22 against 13.00, at an
-    // identical 45.7 px window. They also disagree on the far strap seam, 27.5%
-    // against 29.5%. So "the refactor is behaviour-neutral by measurement" was
-    // four true numbers and one untested one, and the untested one moved.
+    // identical 45.7 px window. They also disagree on the far strap seam,
+    // `@ours STRAP_SEAM|FAR = 27.5%` against 29.5%. So "the refactor is
+    // behaviour-neutral by measurement" was four true numbers and one untested
+    // one, and the untested one moved.
     //
     // THE 2-D GRID. Rows are `UPPER_ARM_R[1]`, columns `FOREARM_R[1]`, all
     // ours, 448 rendered frames per cell, 36 cells. Far arm mean clearance in
