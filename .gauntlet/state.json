@@ -245,9 +245,9 @@
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
-      "status": "grading",
+      "status": "rework",
       "verifiable": true,
-      "note": "FIXED, and the fix chose refusal over conversion for a reason I checked and agree with. The unit now travels with the reading and dots.ts refuses a total it cannot prove is kilograms. I re-ran my own probe — the exact call that printed 806.45 — and it now refuses with a RangeError, while the same meet honestly declared in kg still scores 365.76. Better than the brief asked: a reading with NO unit is ALSO refused rather than defaulting to kg. POUND_MEET_RULES still validates, so pound meets remain runnable; they just cannot be DOTS-scored without an explicit two-call conversion. Why refuse rather than convert, which is the good part: a DOTS score needs TWO numbers in kilograms, and while the total now arrives with a unit, the bodyweight arrives from the caller as a bare number that no module produces. Converting the total while trusting the bodyweight turns a 2.2x overstatement into a 2.2x understatement from a module now claiming to handle units — and the builder cited OpenPowerlifting own checker carrying exactly that warning, that international meets often weigh in in pounds but lift in kilos. Coefficients, numerator, domain bounds and Horner order untouched. It also confirmed the twentieth blind check by driving the old form under the same mutation: deleting meet.ts weight gate left the old assertion green at 37.17 while the new one goes red. Three of four lesser findings closed, one disclosed. The required unit field on MeetLoadingRules is a breaking change, but a compile error rather than a silent one, and the builder trial-merged T1 before reporting."
+      "note": "MAJORITY-PASS with a verified gap. The named regression is genuinely closed: officialTotalFromMeet refuses a non-kg reading before the kind check, the pound fixtures drive REAL meets through createMeet/declareAttempt/resolveAttempt rather than hand-rolled readings, and coefficients were re-verified against source fetched live from OpenPowerlifting - digit for digit, term order confirmed. All 12.3 conditions clear, real-IP searched by name against the full watchlist. THE GAP: I confirmed it myself, line by line. finalMeetTotal is readTotal(state).total - it STRIPS the unit and returns a bare number. applyMeetResult destructures reading (which carries .unit) on the very next line and uses it only for bombedLift - the unit itself is never checked before the total is written into permanent progression. MeetResultWire has NO unit field at all, so once the number crosses that boundary the unit is unrecoverable - this is the last point it could be checked. Reachable through the exact same exported POUND_MEET_RULES the read-side bug came through, no cast required, and the write happens BEFORE the result-card unit refusal ever runs. A pound meet's total would be written into the player's permanent record as if it were kilograms - the write-side twin of the bug already fixed on the read side. Nothing shipped is in pounds today, which is the only reason this is majority rather than fail. Dispatched."
     },
     {
       "id": "B1",
@@ -261,10 +261,10 @@
       "id": "N1",
       "name": "App shell / navigation",
       "verifiable": true,
-      "status": "grading",
+      "status": "rework",
       "bar": "A player can reach every mode without a debug URL, and no surface is a dead end.",
       "evidence": "shell/02-meet-from-session.png",
-      "note": "THE LOOP CLOSES. 47 of 47 checks against the running app, including PRESSING IT REACHES MEET DAY with no URL typed and FINISH A SESSION to REACH A MEET in one press. Every debug route survives, which matters because they drive the evidence harness, and a nonsense meet param boots the session rather than a broken meet. Gating is careful where it counts: no control is drawn over a live set, rest, attempt, verdict or 6.3 attempt choice, and the bomb-out keeps its own way out with the shell explicitly declining to add a second. Mutation 8 is the one to read - deleting the phase effect left the node suite FULLY GREEN at 2183 tests and tsc clean while the browser failed 11 checks, and the builder added a source scan then said plainly it does not close the class because a control at zero opacity would pass it. It found a real defect on the way: 6.5 recap and the result card had NO way out at all while App.tsx claimed both did. Career gating deliberately not built, with the three things that change when it lands written down - including that the gate must be a SERVER decision because a Total is a server fact."
+      "note": "MAJORITY-PASS with a verified gap, and the 26th blind check of the run. The feature genuinely works - the critic confirmed the round trip on real rendered pixels, not on claims: the MEET DAY pill, weigh-in reached by press, recap and result card both carrying BACK TO TRAINING where neither had an exit before, and no control drawn over a live set. All refusal conditions clear, real-IP searched by name with zero hits. THE GAP: I confirmed it myself. Both SESSION_PHASES and MEET_PHASES can be emptied to [] and the entire piece silently regresses - meet day unreachable again, recap and card dead ends again - while every one of 2212 tests and tsc stay green. The test derives its own expectation from the exact constant it exists to check: listed.includes(phase) ? 'open-meet' : null, where listed = SHELL_NAV.SESSION_PHASES. Empty the list and both sides move together. Not one literal assertion exists anywhere in the tree. This sits inside the exact two constants src/tuning/index.ts itself names as the ones most likely to be hand-edited across the ~30-iteration playtest pass - so the failure mode is not hypothetical, it is what happens if a playtester adjusts the wrong list. A second finding in the same round: the browser verification tool's own comment claims a zero-opacity control would fail its check, which is FALSE - Playwright visibility does not consider opacity - and its own screenshot proves it: 09-bombed-keeps-its-own-exit.png photographs a screen with no visible exit, timestamped 1000ms before the real fade-in completes, sitting directly above a check that reported it present. Dispatched."
     }
   ],
   "report": {
@@ -382,9 +382,9 @@
       {
         "id": "X1",
         "name": "Cross-mode coherence",
-        "state": "grading",
-        "stateLabel": "Re-grading",
-        "note": "Never graded after the pound-meet unit fix, found during the recount. Fresh critic dispatched."
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "Write-path unit gap: applyMeetResult writes a total into permanent progression without checking its unit. Verified line by line. Dispatched."
       },
       {
         "id": "B1",
@@ -424,9 +424,9 @@
       {
         "id": "N1",
         "name": "App shell / navigation",
-        "state": "grading",
-        "stateLabel": "Grading now",
-        "note": "First critic pass. 47/47 checks were self-reported by the builder against the running app; a fresh critic is verifying independently."
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "The phase-gate lists that decide whether ANY nav control renders can be emptied to [] with the full suite staying green. 26th blind check. Dispatched."
       }
     ],
     "groups": [
