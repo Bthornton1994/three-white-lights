@@ -1,0 +1,27 @@
+# Captured 2026-08-04T17:35:47Z at d33259b on claude/agent-config-setup-m2r6ny
+
+## npm test
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /home/user/three-white-lights
+
+
+ Test Files  51 passed (51)
+      Tests  2234 passed (2234)
+   Start at  17:35:47
+   Duration  30.65s (transform 4.56s, setup 0ms, import 18.69s, tests 58.38s, environment 11ms)
+
+
+## npm run typecheck
+
+> app@1.0.0 typecheck
+> tsc --noEmit
+
+(exit 0)
+
+## mutation: src/meet/walkout.ts:389 crowdRisePx forced to 0, run by the lead agent, not the builder
+     x reads the shipped walk-out strictly higher than the hall at rest
+     x stands the crowd up without turning it into a slab
+     Tests  5 failed | 28 passed (33)   -- reverted immediately, git diff clean

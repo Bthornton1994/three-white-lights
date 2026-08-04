@@ -3,7 +3,7 @@
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
     "wave": 8,
-    "waveName": "Wave 8 - four builders in flight: two blind checks, one dead-instrument probe, and the cut-in gate",
+    "waveName": "Wave 8 - three fixes merged and mutation-verified, two new gaps found in the graded work",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
@@ -227,9 +227,9 @@
       "id": "S2",
       "name": "Meet day",
       "bar": "Dread and anticipation comparable to a real third-attempt walkout.",
-      "status": "rework",
+      "status": "grading",
       "verifiable": false,
-      "note": "THE CROWD FIX IS REAL; THE INSTRUMENT THAT GRADES IT IS DEAD. The critic confirmed on pixels that the inversion is genuinely gone - verdict-good.png at rise 7 keeps dark-seating/lit-heads polarity and the worst occupied row keeps 28.6% air - and that \"bit-for-bit at rest\" is measured rather than argued. All 12.3 conditions clean. THE GAP, verified by arithmetic before dispatch: tierRisesOf, the only instrument asserting the hall RISES, thresholds at lit > width/2 = 65px on a 130-wide scene. A head row lights 55-57px (7 head columns x 3px) and a shoulder row lights 93px, so the probe can never see a head - it locks onto the topmost shoulder row, which at rest already sits 3 rows above its tier line. Seated hall scores [0,3,3,3] = 9; the shipped walk-out scores [0,3,0,6] = 9. IDENTICAL. So the non-vacuity guard for \"the rise is not bought by doing nothing\" passes on a hall that never stood up, and is directional: more shoulder overhang scores higher without moving. 27th blind check. Dispatched with a mutation requirement - force rise to 0 and the test must go red.",
+      "note": "THE RULER IS REBUILT AND I VERIFIED THE MUTATION MYSELF. The old probe thresholded at lit > width/2 = 65px on a 130-wide scene; head rows light 55-57px and shoulder rows 93px, so it could never see a head and locked onto the topmost shoulder row, which at rest already sits 3 rows above its tier line. Seated and shipped walk-out both scored 9. The replacement is a per-tier topmost-lit-row delta against the hall at rest, over columns each tier provably owns - so zero-at-rest is STRUCTURAL rather than lucky, and no numeric threshold was introduced at all, which is why the magic-number audit stayed green with nothing registered. New readings: seated [0,0,0,0], walk-out [0,1,3,4], cheer [0,3,4,4]. I forced crowdRisePx to 0 in walkout.ts myself and watched 5 tests go red including \"reads the shipped walk-out strictly higher than the hall at rest\", then reverted. The builder also re-ran that mutation against the OLD file and reported the old guard STAYING GREEN, which is the vacuity reproduced rather than argued. The overall S2 bar - dread comparable to a real third-attempt walkout - stays unverifiable here; nothing about this says the rise values are RIGHT.",
       "evidence": "meet/verdict-good.png"
     },
     {
@@ -245,9 +245,9 @@
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
-      "status": "grading",
+      "status": "rework",
       "verifiable": true,
-      "note": "FIX MERGED, FRESH CRITIC DISPATCHED. applyMeetResult now refuses before anything is computed: it reads the unit off the reading itself and returns ok:false with UNSUPPORTED_MEET_UNIT rather than writing. finalMeetTotal - the function that stripped the unit - is no longer imported, so no expression in the file produces a total that skipped the check. Checked on EVERY reading kind including no-total, so a bombed pound meet is refused too rather than hiding the defect until the first meet that finishes. No conversion: bodyweightKg is a bare number the server cannot verify, and converting the total while trusting the bodyweight writes a different wrong number permanently. The mutation is reported: deleting the check turns five named tests red and leaves every other test in the repo - all of dots.test.ts, resultCard.test.ts, meetTuning.test.ts - green, which is exactly the critic point measured. The failure dump printed a 1267.5 lb total written into record.totalKg and placed FIRST OF 16 against kilogram ghosts. Suite 2222 green, tsc clean."
+      "note": "THE TOTAL IS CLOSED; THE BODYWEIGHT BESIDE IT IS NOT. The critic passed the gradeable part - the refusal genuinely bites (deleting it kills five named assertions and nothing else in the repo), the positive control discriminates unit from magnitude AND decimals, kg bomb-outs still record, and the GDD edit is a stale-fact correction that correctly leaves the human ruling open. THE GAP, and I verified every link myself before dispatching: meetServer.ts:512 writes bodyweightKg straight into the wire with no check, three lines under the check that was just added. MeetResultReport.bodyweightKg is a bare number that nothing produces, so nothing can attach a unit to it; ConfirmedMeetResult types it as plain number while totalKg beside it is ConfirmedTotalKg. It is the DOTS DENOMINATOR and the weight-class input. Shipped numbers: 92.4 kg is 203.7 lb, which is INSIDE DOTS_BODYWEIGHT_DOMAIN_KG.male of 40-210, so nothing clamps, nothing refuses, and the lifter is scored on a 2.2x-too-heavy denominator permanently. Worst of all, the existing refusal TELLS the caller to convert the entry at the call site - and a caller who converts the attempts and forgets the bodyweight passes the new check cleanly. Dispatched."
     },
     {
       "id": "B1",
@@ -261,10 +261,10 @@
       "id": "N1",
       "name": "App shell / navigation",
       "verifiable": true,
-      "status": "rework",
+      "status": "grading",
       "bar": "A player can reach every mode without a debug URL, and no surface is a dead end.",
       "evidence": "shell/02-meet-from-session.png",
-      "note": "MAJORITY-PASS with a verified gap, and the 26th blind check of the run. The feature genuinely works - the critic confirmed the round trip on real rendered pixels, not on claims: the MEET DAY pill, weigh-in reached by press, recap and result card both carrying BACK TO TRAINING where neither had an exit before, and no control drawn over a live set. All refusal conditions clear, real-IP searched by name with zero hits. THE GAP: I confirmed it myself. Both SESSION_PHASES and MEET_PHASES can be emptied to [] and the entire piece silently regresses - meet day unreachable again, recap and card dead ends again - while every one of 2212 tests and tsc stay green. The test derives its own expectation from the exact constant it exists to check: listed.includes(phase) ? 'open-meet' : null, where listed = SHELL_NAV.SESSION_PHASES. Empty the list and both sides move together. Not one literal assertion exists anywhere in the tree. This sits inside the exact two constants src/tuning/index.ts itself names as the ones most likely to be hand-edited across the ~30-iteration playtest pass - so the failure mode is not hypothetical, it is what happens if a playtester adjusts the wrong list. A second finding in the same round: the browser verification tool's own comment claims a zero-opacity control would fail its check, which is FALSE - Playwright visibility does not consider opacity - and its own screenshot proves it: 09-bombed-keeps-its-own-exit.png photographs a screen with no visible exit, timestamped 1000ms before the real fade-in completes, sitting directly above a check that reported it present. Dispatched."
+      "note": "MERGED, FRESH CRITIC DISPATCHED. Two defects closed, and the second one was not in the brief. (1) The phase gates are pinned to two hand-written literal tables that read nothing from SHELL_NAV, typed so a new beat is a compile error; emptying both lists now turns 8 tests red where the whole suite used to stay green, and drift on EITHER side fails. (2) THE BROWSER CHECK WAS PASSING ON A FALSE PREMISE - Playwright isVisible() returns true at opacity 0 and click() presses straight through a transparent element, so the bomb-out exit check could not tell a drawn control from an invisible one and was passing at opacity 0.000. It now waits for the real fade and measures effective opacity up the parent chain. I re-ran it myself on the merged tree: the same check now reports opacity 0.925 after 3918ms. So the 47 was a true count with one member measuring nothing, and it is 47 again with all of them biting. Suite 2230 green."
     },
     {
       "id": "A4",
@@ -376,9 +376,9 @@
       {
         "id": "S2",
         "name": "Meet day",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "Crowd inversion genuinely fixed, confirmed on pixels. But the one probe that asserts the hall RISES cannot see a head row - its threshold is 65px on rows that light 55. Seated hall and shipped walk-out score identically. 27th blind check. Dispatched."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "The crowd-rise ruler could not see a head row, so a seated hall and the shipped walk-out scored identically. Rebuilt as a delta against the hall at rest. I ran the mutation myself: 5 tests red. The feel bar stays unverifiable."
       },
       {
         "id": "S3",
@@ -390,9 +390,9 @@
       {
         "id": "X1",
         "name": "Cross-mode coherence",
-        "state": "grading",
-        "stateLabel": "Re-grading",
-        "note": "Merged. The write path refuses a total whose unit it cannot prove, on every reading kind including a bomb-out. Deleting the check turns five tests red and nothing else in the repo. Fresh critic dispatched."
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "The total is proven now; the bodyweight written three lines below it is not, and it is the DOTS denominator. 92.4 kg reads as 203.7 lb, which is inside the DOTS domain, so nothing refuses. Verified line by line and dispatched."
       },
       {
         "id": "B1",
@@ -432,9 +432,9 @@
       {
         "id": "N1",
         "name": "App shell / navigation",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "The phase-gate lists that decide whether ANY nav control renders can be emptied to [] with the full suite staying green. 26th blind check. Dispatched."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "Phase gates pinned to literal tables independent of the constant they grade. Separately: the bomb-out browser check was passing at opacity 0.000, because isVisible() is true on a transparent element. It measures opacity now — I re-ran it and saw 0.925."
       }
     ],
     "groups": [
