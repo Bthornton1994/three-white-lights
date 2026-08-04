@@ -766,6 +766,27 @@ against. Consequences of the ruling, stated rather than discovered later:
 - Inside one meet, the first qualifying beat takes the slot. A meet that fires
   the squat's third-attempt walkout will refuse the total-PR and bomb-out
   cut-ins that follow. See the open question in §11.
+- **The cap is per sitting, not per screen mount.** The count lives in
+  `src/cutin/cutInLedger.ts` for the life of the process, because the app
+  un-mounts the host in ordinary play — leaving a meet and opening one again on
+  the same day, or flipping to the result card. A count that lived in the
+  component would come back at zero under the same session id and the sitting
+  would get a second cut-in, which this section forbids and §12.3 refuses. It
+  still does not survive a reload; a server-side counter is the real fix (§9.2).
+
+**A third-attempt walkout while that lift can still bomb is not a firing
+moment — RULED.** A lift bombs by missing all three, so every bomb-out is
+preceded by that lift's own third attempt with nothing banked. Under a
+first-come cap that walkout spent the slot the bomb-out was about to need, and
+at the starting rates that cost roughly **half of all bomb-outs** the beat this
+section calls "the somber counterpart" — the player was instead interrupted with
+"LAST ONE" over the attempt that ended the meet. The gate therefore refuses a
+walkout beat that carries `bombRisk`. This is a *disqualifier* on a present fact
+(`meetDay.ts` already computes it from banked attempts), not lookahead: it can
+only ever produce a refusal, and it holds nothing back — the next qualifying
+beat may take the slot immediately. **The cost is that the loudest walkout in
+the game never carries a cut-in**, and whether that is the right trade is a
+playtest question, logged in §11.
 
 **The gate is a module, not a convention.** `src/cutin/cutInGate.ts` owns the cap
 and refuses the second request itself, so a caller written later cannot spend a
@@ -780,6 +801,15 @@ unrepeatable), third-attempt walkout (§12.2 grades the piece on it), PR, coach
 reaction (the most frequent and the least load-bearing). This settles beats that
 are true *at the same instant*. Across time the cap is a count, so an earlier
 beat wins regardless of rank.
+
+**That ranking currently decides nothing, and the code says so.** Every screen
+offers beats of a single kind and each kind maps to one moment, so no request the
+app can make produces two candidates. It is kept as a declared invariant — it is
+what makes `momentsFor` return a defined order rather than the caller's, and it
+is what a future deferral window would be measured against — and a test reads the
+real call sites and fails the day one of them starts offering two kinds at once.
+Ruled in §11. **It is not what protects the bomb-out**: the bomb-out loses across
+time, not at an instant, and the walkout disqualifier above is what fixed that.
 
 **Cut-ins also resolve the tone problem.** Retro sprites read playful, which is
 right for the casual funnel but risks undercutting meet-day tension. A hand-drawn
@@ -1085,25 +1115,83 @@ Two are ruled, two are open.**
       tuned as one. The tests that cover it pin **actual** behaviour with a
       pointer to §3.4, so the gap is visible in the suite rather than implied.
 
-- [ ] **The cut-in cap is first-come across time, so an earlier beat can lock
-      out a better one. Recorded, not resolved.** §7.2 caps cut-ins at one per
-      session and the gate enforces it as a count, which means the first
-      qualifying beat to arrive takes the slot regardless of the priority order
-      §7.2 now declares. Two live consequences, both real at today's tuning:
-      **a lifter can bomb out and see no bomb-out cut-in**, because the squat's
-      third-attempt walkout came first and spent the meet's one slot; and in a
-      training session a coach reaction fires during the sets and would take the
-      slot from the close-out's PR. The only levers today are the per-moment
-      rates (`SESSION_ALLOWANCE`), and `coach-heavy-set` is set lowest for
-      exactly this reason. The obvious alternative — hold the slot back if a
-      higher-ranked moment might still arrive — needs lookahead the gate cannot
-      have, and a gate that guesses wrong holds the slot for a moment that never
-      comes. **This wants a human ruling, and it is a feel question**: whichever
-      way it goes, only playing a meet can say whether the walkout or the
-      bomb-out is the beat that should have interrupted. Until then the
-      behaviour is pinned by a named test ("ACROSS TIME THE EARLIER BEAT TAKES
-      THE SLOT, WHATEVER ITS PRIORITY") so it is visible in the suite rather
-      than implied.
+- [ ] **The cut-in cap is first-come across time. The same-lift bomb-out case is
+      now closed by a disqualifier; the cross-lift case is not.** §7.2 caps
+      cut-ins at one per session and the gate enforces it as a count, so the
+      first qualifying beat to arrive takes the slot regardless of the priority
+      order §7.2 declares.
+
+      **What was fixed, and why the previous entry here was wrong.** This entry
+      used to say that a lifter could bomb out and see no bomb-out cut-in, and
+      that the only alternative — "hold the slot back if a higher-ranked moment
+      might still arrive" — needed lookahead the gate cannot have. **The second
+      half was false, and it foreclosed the fix.** `meetDay.ts` sets
+      `bombRisk = attemptNumber === ATTEMPTS_PER_LIFT && banked === null`, so a
+      lift can only bomb by missing all three and **every bomb-out is preceded
+      by that lift's own third-attempt walkout carrying `bombRisk`**. That is a
+      *present fact about attempts already taken*, not a forecast, and
+      `WalkoutView` was already holding it to pick its copy. Passing it to the
+      gate adds no firing moment either — as a **disqualifier** it can only ever
+      produce a refusal. So: a third-attempt walkout **while its own lift can
+      still bomb is not a firing moment**, and the bomb-out beat is no longer
+      starved by the walkout that caused it. At the old tuning
+      (`third-attempt-walkout` at 0.5) that was **half of all bomb-outs** losing
+      §7.2's "somber counterpart" and instead being interrupted by `'LAST ONE'`
+      over the attempt that ended the meet. Pinned by a named test, "A MEET THAT
+      BOMBS SHOWS THE BOMB-OUT CUT-IN", and photographed on the played path by
+      `tools/capture-cutin.mjs` (`?meet=walkout-third` shows none;
+      `?meet=bombed` shows one).
+
+      **What is still open, stated so it is not mistaken for closed.** Two
+      things:
+
+      1. **A *different* lift's third attempt can still spend the slot.** Bank a
+         squat opener, fire the cut-in on the squat's third, bomb the bench, and
+         the bomb-out meets a spent slot. Closing this would mean disqualifying
+         a walkout whenever **any** lift could still bomb — which at the squat's
+         third attempt is always true, because the bench and the deadlift have
+         not started — so it would delete §7.2's first firing moment everywhere
+         except a deadlift third with something banked. That is a redesign of
+         which beats fire, not a fix, and it is **refused rather than done
+         quietly**. Pinned by "THE RESIDUAL, PINNED: ANOTHER LIFT'S THIRD
+         ATTEMPT CAN STILL TAKE THE SLOT".
+      2. **In a training session a coach reaction fires during the sets and
+         takes the slot from the close-out's PR.** Unchanged. The only lever is
+         `SESSION_ALLOWANCE['coach-heavy-set']`, which is set lowest for exactly
+         this reason.
+
+      **The cost of the fix is real and a human should rule on it.** A third
+      attempt with nothing banked is the most loaded walkout in the piece — the
+      one that reads "NOTHING BANKED. THIS IS THE LIFT." — and it is now the one
+      walkout that can never carry a cut-in. The copy, the crowd and the longer
+      beat are unchanged; only the interrupt is gone. Whether the dread beat or
+      the somber one should have won **is a feel question only playing a meet can
+      answer** (§12.1). If the answer is the walkout, the fix is to delete the
+      disqualifier, not to move a rate — a rate cannot buy back a slot that has
+      already been spent.
+
+- [x] **`CUT_IN_MOMENT_PRIORITY` selects nothing in production, and is kept
+      anyway — RULED.** §7.2 declares a ranking for moments that are true at the
+      same instant. It has never broken a tie in the shipped app and does not
+      now: each of the four beat *kinds* maps to exactly one moment, and all
+      five call sites offer beats of a single kind, so `momentsFor` returns a
+      one-element array on every request the app can make. **The ruling: keep
+      the constant, and make the inertness explicit rather than implied.** Three
+      reasons. `momentsFor` has to return *some* order, and without the ranking
+      it would return the caller's — so "the order the caller lists its beats in
+      does not decide" would quietly become false the day a screen offered two
+      kinds. The ranking is declared in this document, and deleting the code
+      would leave the prose with no implementation. And it is what a future
+      deferral window would be measured against. What was **not** acceptable was
+      the previous state, where a suite full of priority tests implied the
+      ranking was doing work: that block is now named "DECLARED, AND
+      UNREACHABLE IN PRODUCTION", and `cutInWiring.test.ts`'s "THE PRIORITY
+      ORDER DECIDES NOTHING TODAY, AND HERE IS THE READING THAT SAYS SO" reads
+      the real call sites and goes red the day one of them offers two kinds at
+      once — which is the day somebody should look at the ranking on purpose.
+      **Note that the ranking is not what protects the bomb-out**: priority
+      settles one instant, the bomb-out lost across time, and the disqualifier
+      above is what fixed it.
 
 - [ ] **The RPE choice is degenerate on reward.** §3.3 says picking an RPE target
       is "what makes the mode feel real rather than arbitrary." It is not, as

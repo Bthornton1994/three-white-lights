@@ -33,8 +33,20 @@
  * `ResultCardView` do it: `FilterMode.Nearest` with mipmaps off, and a whole
  * number for `scale` chosen by `cutInScaleFor`.
  *
- * NOT VERIFIED ON A DEVICE, and not verified as FEELING like an interrupt.
- * GDD §12.1: no critic can judge a beat it cannot feel.
+ * ---------------------------------------------------------------------------
+ * THE SCRIM IS A SEPARATE LAYER FROM THE ARRIVAL
+ * ---------------------------------------------------------------------------
+ * `CUT_IN_LAYOUT.SCRIM_OPACITY` says how much of the screen behind is left
+ * visible. It used to sit on the same node the arrival animation drives, which
+ * applies `opacity` last and therefore won — so the constant was registered,
+ * documented and read by no pixel. It is its own absolutely-positioned layer
+ * now. `tools/capture-cutin.mjs` measures it on real frames: an overlay that
+ * had gone opaque again would leave zero blended pixels behind it.
+ *
+ * NOT VERIFIED AS FEELING LIKE AN INTERRUPT. It has now been photographed —
+ * `.gauntlet/shots/cutin/` — so the tap target, the arrival and the scrim are
+ * pixels somebody can look at. Whether it READS as an interrupt is still a
+ * playtest judgement (GDD §12.1): no critic can judge a beat it cannot feel.
  */
 
 import React from 'react';
@@ -121,6 +133,22 @@ export function CutInView({
       testID="cut-in"
     >
       <Animated.View style={[styles.root, arrivalStyle]}>
+        {/*
+          THE SCRIM IS ITS OWN LAYER, and it has to be. It used to be
+          `opacity: L.SCRIM_OPACITY` on this same node, under the arrival
+          animation's `{ opacity: arrived.value }` — which is applied last and
+          therefore won, so once the enter timing completed the overlay sat at
+          opacity 1 over an opaque backdrop and the registered tunable reached
+          no pixel at all. Split out, the arrival animates the WHOLE overlay in
+          and `SCRIM_OPACITY` decides how much of the interrupted screen shows
+          through it, which is what its name has always claimed.
+
+          Absolutely positioned, so it is out of the flex flow and takes no part
+          in the `gap` or the centring, and drawn first so the panel and the
+          copy sit on top of it at full weight.
+        */}
+        <View style={[StyleSheet.absoluteFill, styles.scrim]} testID="cut-in-scrim" />
+
         <View style={{ width: w * scale, height: h * scale }} testID="cut-in-art">
           <Canvas style={{ width: w * scale, height: h * scale }}>
             {image === null ? null : (
@@ -156,6 +184,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: L.ROW_GAP,
     paddingHorizontal: L.SCREEN_PAD,
+  },
+  /**
+   * How much of the interrupted screen is left visible. NOT on `root`: the
+   * arrival animation sets `opacity` on that node and would override it.
+   */
+  scrim: {
     backgroundColor: LIFT_PALETTE.BACKDROP,
     opacity: L.SCRIM_OPACITY,
   },

@@ -15,15 +15,27 @@
  * caller could route around is a convention, not a gate.
  *
  * ---------------------------------------------------------------------------
- * ONE GATE SESSION PER SITTING, KEYED ON ITS ID
+ * ONE GATE SESSION PER SITTING, AND IT OUTLIVES THIS COMPONENT
  * ---------------------------------------------------------------------------
  * `cutInGate.ts` §5 states the one thing it cannot defend against: a caller
- * that opens a second session mid-sitting hands itself a second slot. This is
- * where that is defended. The session is opened in an effect keyed ON THE
- * SESSION ID ALONE, so re-rendering, navigating away and back, or a parent
- * re-mounting a child does not reset the count — only a genuinely new sitting
- * does, and `cutInWiring.test.ts` reads this file to check the dependency list
- * still says that.
+ * that opens a second session mid-sitting hands itself a second slot.
+ *
+ * THE COUNT USED TO LIVE IN THIS COMPONENT'S REF, WHICH IS THE WRONG LIFETIME.
+ * §12.3's refusal condition is about a SESSION; a `useRef` is about a MOUNT.
+ * `AppShell.tsx` swaps `MeetScreen` and `SessionScreen` with a ternary, and both
+ * screens early-return above their `<CutInHost>` — the result card and the
+ * already-trained screen — so the app un-mounts this component in ordinary play
+ * and the count came back at zero under the same `sessionId`.
+ *
+ * `cutInLedger.ts` is where the count lives now: one gate session per
+ * `sessionId` for the life of the process. The ref is a cache of it. What is
+ * still NOT survived is a reload, and that is stated rather than hidden — a
+ * server-side counter is the real fix and it belongs with the Edge Function
+ * (CLAUDE.md, GDD §9.2), not here.
+ *
+ * The mount effect is still keyed ON THE SESSION ID ALONE and still guards on
+ * the ref's own id, and that guard is still load-bearing for a different reason
+ * — see the comment on it, and the bug a browser found.
  *
  * ---------------------------------------------------------------------------
  * IT IS A REF, NOT STATE, AND THAT IS DELIBERATE
@@ -38,11 +50,22 @@
  *     exactly the shape of accident this piece exists to make impossible.
  *   - Nothing renders the count. What renders is the cut-in.
  *
- * NOTHING HERE IS PERSISTED, for the reason `useMeetDay` gives about its own
- * stand-in record: persistence is the server's job (CLAUDE.md, GDD §9.2). The
- * cost is stated rather than hidden — a reload mid-session hands the sitting a
- * fresh slot. A server-side counter is the fix and it belongs with the Edge
- * Function, not here.
+ * ---------------------------------------------------------------------------
+ * THE DEBUG ROUTE, AND THE ONE PLATFORM READ OUTSIDE `App.tsx`
+ * ---------------------------------------------------------------------------
+ * `?cutin=<moment>` stages one cut-in so the overlay can be photographed
+ * (`cutInPreview.ts`, `tools/capture-cutin.mjs`). Nothing about the played path
+ * changes: with no such query string the preview is `null` and every line below
+ * that mentions it is dead.
+ *
+ * READING `window` HERE IS A DEVIATION AND IT IS DISCLOSED RATHER THAN QUIET.
+ * `App.tsx` is this project's platform edge and `src/shell/shellRoute.ts` turns
+ * the string into a surface; the other three debug routes are resolved there and
+ * handed down as props. This one is not, because the shell was another
+ * builder's file in the wave that added it and a cut-in is an OVERLAY rather
+ * than a surface, so it has no `ShellSurface` to be. `search` is a prop with the
+ * platform read only as its default, so lifting it is a one-line change here
+ * and one more prop in the shell when that file is editable again.
  */
 
 import React from 'react';
@@ -54,12 +77,13 @@ import { CutInView } from './CutInView';
 import {
   cutInAutoDismissMs,
   dismissCutIn,
-  openCutInSession,
   requestCutIn,
   type CutInBeat,
   type CutInSessionState,
   type LiveCutIn,
 } from './cutInGate';
+import { rememberCutInSession, resumeCutInSession } from './cutInLedger';
+import { cutInPreviewFrom, cutInPreviewSessionFor, type CutInPreviewSession } from './cutInPreview';
 
 /** What a leaf view can do: describe a beat. It cannot fire anything. */
 export interface CutInApi {
@@ -88,17 +112,54 @@ export interface CutInHostProps {
   readonly seed: number;
   /** Defaults to the fictional-placeholder table (GDD §7.3, §12.3). */
   readonly catalogue?: LicensingCatalogue | undefined;
+  /**
+   * DEBUG ONLY. A `location.search`-shaped string, or `null` for none.
+   *
+   * Defaults to the platform read — see the header for why that read is here
+   * rather than in `App.tsx`, and what it would take to move it. Passing `null`
+   * explicitly is how a caller opts a host out of the debug route entirely.
+   */
+  readonly search?: string | null | undefined;
   readonly children: React.ReactNode;
+}
+
+/**
+ * `window.location.search`, or `null` where there is no URL.
+ *
+ * The same shape `App.tsx` uses. On native `window.location` does not exist and
+ * every debug branch downstream is correctly dead.
+ */
+function platformSearch(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.location.search;
 }
 
 export function CutInHost({
   sessionId,
   seed,
   catalogue = LICENSING_CATALOGUE,
+  search,
   children,
 }: CutInHostProps): React.ReactElement {
   const { width } = useWindowDimensions();
-  const session = React.useRef<CutInSessionState>(openCutInSession({ sessionId, seed }));
+
+  // DEBUG ONLY, AND `null` IN PLAY. Resolved once: the seed search inside it
+  // walks real sessions, so it must not run per render.
+  const preview = React.useMemo<CutInPreviewSession | null>(() => {
+    const request = cutInPreviewFrom(search === undefined ? platformSearch() : search);
+    return request === null ? null : cutInPreviewSessionFor(request);
+  }, [search]);
+
+  const activeSessionId = preview?.sessionId ?? sessionId;
+  const activeSeed = preview?.seed ?? seed;
+
+  // THE COUNT COMES FROM THE LEDGER, NOT FROM THIS MOUNT. A host that has been
+  // un-mounted and re-mounted inside one sitting resumes the state that already
+  // spent the slot. `resumeCutInSession` is idempotent, which is what makes it
+  // safe in a `useRef` argument — that expression is evaluated on every render.
+  const session = React.useRef<CutInSessionState>(
+    resumeCutInSession({ sessionId: activeSessionId, seed: activeSeed }),
+  );
   const [live, setLive] = React.useState<LiveCutIn | null>(null);
 
   // A NEW SITTING, AND ONLY A NEW SITTING, GETS A NEW SLOT.
@@ -115,29 +176,48 @@ export function CutInHost({
   // Comparing the ref's own `sessionId` makes the effect idempotent: on mount it
   // does nothing, because the ref was built with this id already.
   React.useEffect(() => {
-    if (session.current.sessionId === sessionId) return;
-    session.current = openCutInSession({ sessionId, seed });
+    if (session.current.sessionId === activeSessionId) return;
+    session.current = resumeCutInSession({ sessionId: activeSessionId, seed: activeSeed });
     setLive(null);
-  }, [sessionId, seed]);
+  }, [activeSessionId, activeSeed]);
 
   const offer = React.useCallback((beats: readonly CutInBeat[]) => {
     const decision = requestCutIn(session.current, beats);
     session.current = decision.state;
+    // Written back on EVERY decision, not only on a fire, so a sitting that has
+    // spent its slot is remembered as having spent it even if the host goes
+    // away between the fire and the next beat.
+    rememberCutInSession(decision.state);
     if (decision.outcome.kind === 'fire') setLive(decision.outcome.live);
   }, []);
 
   const dismiss = React.useCallback(() => {
     session.current = dismissCutIn(session.current);
+    rememberCutInSession(session.current);
     setLive(null);
   }, []);
 
+  // THE DEBUG ROUTE'S BEAT, OFFERED THROUGH THE SAME GATE AS EVERY OTHER ONE.
+  // Not a bypass: the cap, the rate and the qualification all apply, and if the
+  // gate refuses, the capture photographs an empty screen and says so.
+  React.useEffect(() => {
+    if (preview === null) return;
+    offer(preview.beats);
+  }, [preview, offer]);
+
   // It leaves on its own as well as on a tap. An interrupt that waits for
   // permission is a modal dialog.
+  //
+  // A FROZEN PREVIEW IS THE ONE EXCEPTION, and it is unreachable in play: the
+  // whole beat is under two seconds, so a shutter cannot be relied on to land
+  // inside it. `?cutin=<moment>&live=1` is the same preview with this clock
+  // running, which is how the capture proves the timer really fires.
   React.useEffect(() => {
     if (live === null) return undefined;
+    if (preview !== null && preview.frozen) return undefined;
     const timer = setTimeout(dismiss, cutInAutoDismissMs());
     return () => clearTimeout(timer);
-  }, [live, dismiss]);
+  }, [live, dismiss, preview]);
 
   const api = React.useMemo<CutInApi>(() => ({ offer }), [offer]);
 

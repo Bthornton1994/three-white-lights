@@ -76,10 +76,17 @@ export function BombOutView({ bombedLift, attempts, onDone }: BombOutViewProps):
   // offered to the gate. This screen only reports that the meet ended this way;
   // `src/cutin/cutInGate.ts` applies the one-per-session cap and the rate.
   //
-  // ITS RATE IS 1 AND ITS PRIORITY IS THE HIGHEST, and it can still be refused:
-  // a meet that already spent its cut-in on a third-attempt walk-out has none
-  // left, because §7.2's cap is a count and this beat arrives later. That is
-  // recorded as a live open question in GDD §11 rather than papered over.
+  // THE BEAT THAT USED TO EAT THIS ONE IS GONE. A lift bombs only by missing
+  // all three, so every bomb-out is preceded by that lift's own third-attempt
+  // walk-out — and while the cap was purely first-come, a meet whose walk-out
+  // rate let it through showed "LAST ONE" over the attempt that ended the meet
+  // and nothing at all here. `cutInGate.ts` §4 now disqualifies a walk-out
+  // while its own lift can still bomb, so that trade is not made.
+  //
+  // IT CAN STILL BE REFUSED, and the honest residual is a DIFFERENT lift's
+  // third attempt: bank a squat, fire the cut-in on the squat's third, bomb the
+  // bench, and this beat meets a spent slot. GDD §11 records why closing that
+  // one would delete §7.2's first firing moment rather than fix anything.
   //
   // The cut-in is not a consolation and takes nothing away either — it is a
   // picture, and the four things above that make this screen not a game-over

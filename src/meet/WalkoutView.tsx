@@ -80,12 +80,20 @@
  *
  * THE CUT-IN IS OFFERED HERE NOW, AND THIS SCREEN DOES NOT DECIDE IT. GDD §7.2
  * puts "third-attempt walkout at a meet" first on its cut-in list. What this
- * file does is REPORT THE BEAT — which attempt of how many — to
- * `useOfferCutIn`; `src/cutin/cutInGate.ts` decides whether that is one of
- * §7.2's four moments, whether the meet has already spent its one cut-in
- * (§12.3's refusal condition), and whether this meet's rates let it through.
- * An opener reports the same beat and is refused, which is the point: the rule
- * lives in the gate, not in a condition on this screen.
+ * file does is REPORT THE BEAT — which attempt of how many, and whether this
+ * lift can still bomb — to `useOfferCutIn`; `src/cutin/cutInGate.ts` decides
+ * whether that is one of §7.2's four moments, whether the meet has already
+ * spent its one cut-in (§12.3's refusal condition), and whether this meet's
+ * rates let it through. An opener reports the same beat and is refused, which
+ * is the point: the rule lives in the gate, not in a condition on this screen.
+ *
+ * ONE OF THOSE FACTS COSTS THIS SCREEN ITS LOUDEST CUT-IN, AND THAT IS THE
+ * INTENDED TRADE. A third attempt with NOTHING BANKED — the beat that reads
+ * "NOTHING BANKED. THIS IS THE LIFT." — never carries a cut-in, because it is
+ * the one walk-out that is always immediately followed by a bomb-out or by
+ * nothing, and §7.2 ranks the bomb-out above the walk-out. The copy, the crowd
+ * and the longer beat are all still there; only the interrupt is not. See
+ * `cutInGate.ts` §4 and the GDD §11 entry.
  *
  * There is still no cut-in ART. §7.2 says to "cut art entirely from the early
  * prototypes" and GDD §11 records the working assumption this run applies; what
@@ -157,15 +165,26 @@ export function WalkoutView({
   const urgent = attempt.bombRisk || attempt.isPrAttempt || attempt.attemptNumber === ATTEMPTS_PER_LIFT;
 
   // GDD §7.2's first firing moment, OFFERED not fired. The beat is facts —
-  // which attempt, of how many — and `cutInGate.ts` qualifies it. `urgent` is
-  // deliberately not passed: it is this screen's own escalation for the copy
-  // and the crowd, and letting it reach the gate would give the cut-in a
-  // second, softer trigger that §7.2 does not list.
+  // which attempt, of how many, and whether this lift can still bomb — and
+  // `cutInGate.ts` qualifies it.
+  //
+  // `bombRisk` IS PASSED AND `urgent` IS NOT, and the difference is not a
+  // preference. `urgent` is a VERDICT this screen reaches (a third, or a PR, or
+  // a bomb risk) to pick copy and raise the crowd; handing the gate a verdict
+  // would give the cut-in a second, softer trigger that §7.2 does not list.
+  // `bombRisk` is a FACT about attempts already taken, and in the gate it can
+  // only ever produce a REFUSAL — see `cutInGate.ts` §4. A third attempt with
+  // nothing banked is always immediately followed by a bomb-out or by nothing,
+  // so a walk-out cut-in there is a walk-out cut-in spending the slot §7.2's
+  // "somber counterpart" is about to need. This screen still reports rather
+  // than decides: it does not check `bombRisk` and withhold the beat, it states
+  // it.
   useOfferCutIn([
     {
       kind: 'meet-walkout',
       attemptNumber: attempt.attemptNumber,
       attemptsPerLift: ATTEMPTS_PER_LIFT,
+      bombRisk: attempt.bombRisk,
     },
   ]);
 

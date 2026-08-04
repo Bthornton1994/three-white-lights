@@ -77,7 +77,7 @@
  * guarantees is that whatever the caller calls a session gets one cut-in.
  *
  * ===========================================================================
- * 4. PRIORITY, AND THE THING IT DOES *NOT* SOLVE
+ * 4. THE TWO CONTESTS, AND WHICH RULE ACTUALLY DECIDES EACH
  * ===========================================================================
  *
  * Two different contests exist here and they are resolved by two different
@@ -85,34 +85,76 @@
  *
  *   SAME INSTANT — resolved by `CUT_IN_MOMENT_PRIORITY`. A caller hands
  *   `requestCutIn` EVERY beat that is true right now, and the highest-priority
- *   qualifying one that its rate allows is the one that fires. A meet recap
- *   that is both a total PR and a tier qualification is one request with two
- *   beats; so is a third-attempt walkout above the lifter's best.
+ *   qualifying one that its rate allows is the one that fires.
+ *
+ *   THIS CONTEST DOES NOT HAPPEN IN THE APP AS BUILT, and the file says so
+ *   rather than implying otherwise. Each of the four beat KINDS maps to exactly
+ *   one moment, and every one of the five call sites offers beats of a single
+ *   kind, so `momentsFor` returns at most one moment on every request the app
+ *   can make and the ranking never breaks a tie. It is kept as a DECLARED
+ *   INVARIANT — see `CUT_IN_MOMENT_PRIORITY` for the argument — and
+ *   `cutInWiring.test.ts`'s "THE PRIORITY ORDER DECIDES NOTHING TODAY, AND
+ *   HERE IS THE READING THAT SAYS SO" goes red the day a call site starts
+ *   offering two kinds at once, which is the day the ranking starts mattering.
  *
  *   ACROSS TIME — resolved by ARRIVAL. The cap is a count, so under it the
  *   first beat to ask and be allowed takes the session's only slot, whatever
- *   its priority. There is no lookahead and there must not be: knowing whether
- *   a better moment is still coming means predicting the session, and a gate
- *   that guesses wrong holds the slot back for a moment that never arrives.
+ *   its priority. THIS is the contest that happens, on every meet.
  *
- * THE COST OF THAT, STATED RATHER THAN GLOSSED, because it is real and a human
- * has to rule on it (logged in GDD §11):
+ * ---------------------------------------------------------------------------
+ * THE ONE DISQUALIFIER, AND WHY IT IS NOT LOOKAHEAD
+ * ---------------------------------------------------------------------------
  *
- *   - In a TRAINING session a coach beat fires during the sets and a PR fires
- *     at close-out, so whenever both are allowed the coach line wins and the PR
- *     is refused — even though the PR outranks it. The only lever is
- *     `SESSION_ALLOWANCE['coach-heavy-set']`, which is set low for exactly this
- *     reason.
- *   - At a MEET the squat's third attempt arrives long before the recap, so a
- *     meet whose walkout rate lets it through will show the walkout and refuse
- *     the total PR and the bomb-out. A lifter can therefore bomb out and see no
- *     bomb-out cut-in. That is inside §7.2's rule and it is not obviously the
- *     right feel; `SESSION_ALLOWANCE['third-attempt-walkout']` is the lever.
+ * Arrival order used to cost §7.2's "somber counterpart" half the meets it
+ * exists for, by construction rather than by tuning:
  *
- * Priority is still worth declaring rather than leaving to arrival order alone:
- * it settles the simultaneous case, and it states the intended ranking so that
- * a future change (a deferral window, say) has something to be measured
- * against.
+ *   `meetDay.ts`: `bombRisk = attemptNumber === ATTEMPTS_PER_LIFT && banked === null`
+ *
+ * A lift bombs when all three of its attempts miss, so EVERY bomb-out is
+ * preceded by that lift's own third-attempt walk-out, and that walk-out always
+ * carries `bombRisk`. First-come therefore meant that whenever a meet's rates
+ * allowed the walk-out, the bomb-out that followed was refused for the cap —
+ * and the player saw `'LAST ONE'` over the attempt that ended the meet and
+ * nothing over the end of the meet.
+ *
+ * So a walk-out WHILE ITS OWN LIFT CAN STILL BOMB is not a firing moment. The
+ * beat carries `bombRisk` and `claimedMomentFor` returns `null` for it.
+ *
+ * THAT IS NOT THE LOOKAHEAD THIS FILE REFUSES. Lookahead is holding the slot
+ * open for a moment that MIGHT arrive, and a gate that guesses wrong holds it
+ * for one that never comes. This is neither a hold nor a guess:
+ *
+ *   - "Can this lift still bomb?" is a PRESENT FACT about attempts already
+ *     taken. The walk-out screen has held it all along and picks its copy and
+ *     its beat length from it.
+ *   - It is a DISQUALIFIER, not a trigger. A `bombRisk` beat can only ever
+ *     produce a refusal, so no firing moment §7.2 does not list can come of it.
+ *   - Nothing is held. The slot is not reserved; it is simply not spent on this
+ *     beat, and the very next qualifying beat — the bomb-out, or a later lift's
+ *     third attempt, or the recap's PR — may take it.
+ *
+ * WHAT IT COSTS, STATED RATHER THAN GLOSSED. A third attempt with nothing
+ * banked is the most loaded walk-out in the piece, and it is now the one
+ * walk-out that can never carry a cut-in. That is the trade §7.2's ranking
+ * already implies — the bomb-out outranks the walk-out — paid across time
+ * instead of at one instant. If a playtest says the dread beat should have won,
+ * the fix is to delete these three lines, not to move a rate.
+ *
+ * WHAT IT DOES NOT CLOSE, AND THIS IS A REAL RESIDUAL. A bomb-out can still be
+ * starved by a DIFFERENT lift's third-attempt walk-out: bank a squat opener,
+ * fire the cut-in on the squat's third, then bomb the bench, and the bomb-out
+ * is refused for the cap. Closing that would mean disqualifying a walk-out
+ * whenever ANY lift could still bomb, which at the squat's third attempt is
+ * always — the bench and the deadlift have not started — so it would delete
+ * §7.2's first firing moment everywhere except a deadlift third with something
+ * banked. That is a redesign of which beats fire, not a fix, and it is refused
+ * here rather than done quietly. GDD §11 records both halves.
+ *
+ * THE OTHER ARRIVAL COST IS UNCHANGED AND STILL LIVE. In a TRAINING session a
+ * coach beat fires during the sets and a PR fires at close-out, so whenever
+ * both are allowed the coach line wins and the PR is refused — even though the
+ * PR outranks it. The only lever is `SESSION_ALLOWANCE['coach-heavy-set']`,
+ * which is set low for exactly this reason.
  *
  * ===========================================================================
  * 5. WHAT THIS FILE CANNOT DO
@@ -120,10 +162,13 @@
  *
  *  - IT CANNOT STOP A CALLER OPENING A SECOND SESSION. `openCutInSession` is a
  *    constructor; calling it twice for one sitting produces two sessions with
- *    one slot each. The gate cannot see a clock and so cannot tell. What guards
- *    it is that `CutInHost.tsx` keys its session on `sessionId` and opens a new
- *    one only when that id changes, which `cutInWiring.test.ts` reads out of
- *    the real file.
+ *    one slot each. The gate is pure and holds nothing between calls, so it
+ *    cannot tell. What guards it is `cutInLedger.ts`, which keys one session on
+ *    `sessionId` for the life of the process and hands the SAME state back to a
+ *    second caller — including a `CutInHost` that has been un-mounted and
+ *    re-mounted, which `AppShell`'s surface ternary does on every trip out of a
+ *    meet and back. `cutInLedger.test.ts` is the check; it is a real unit test
+ *    and not a source scan.
  *  - IT CANNOT SAY THE RATES ARE RIGHT. Nothing in this repository can. GDD
  *    §12.1 is explicit that this is the part of the job that was never
  *    automatable.
@@ -169,8 +214,35 @@ export function isCutInMoment(value: string): value is CutInMoment {
 }
 
 /**
- * WHICH MOMENT WINS WHEN TWO ARE TRUE AT THE SAME INSTANT. See §4 of the
- * header for what this does and does not settle.
+ * WHICH MOMENT WINS WHEN TWO ARE TRUE AT THE SAME INSTANT.
+ *
+ * ===========================================================================
+ * IT SELECTS NOTHING IN THE APP AS BUILT, AND IT IS KEPT ANYWAY. READ THIS
+ * BEFORE TRUSTING THE RANKING TO BE DOING WORK.
+ * ===========================================================================
+ *
+ * Each of the four beat KINDS maps to exactly one moment, and all five call
+ * sites offer beats of a single kind, so `momentsFor` returns a one-element
+ * array on every request the app can make and the `find` below never has a
+ * second candidate to skip. Every priority test in `cutInGate.test.ts` builds a
+ * beat array no caller can produce, and that block says so in its own name.
+ *
+ * KEPT RATHER THAN DELETED, for three reasons and not for sentiment:
+ *
+ *   1. `momentsFor` has to return SOME order. Without this it would return the
+ *      caller's, and "the order the caller lists its beats in does not decide"
+ *      — a property this suite asserts — would quietly become false. The day a
+ *      screen offers two kinds at once, that would be a silent behaviour
+ *      change instead of a decision somebody made.
+ *   2. GDD §7.2 declares the ranking in prose. Deleting the code would leave
+ *      the document with no implementation and the next reader re-deriving it.
+ *   3. It is what a future deferral window would be measured against.
+ *
+ * WHAT IT IS NOT: it is not what protects the bomb-out. Priority settles one
+ * INSTANT; the bomb-out loses ACROSS TIME, and §4's disqualifier is what fixed
+ * that. A reader who assumes "bomb-out is ranked first, so a bomb-out wins" has
+ * misread this constant — that was true of the ranking and false of the app for
+ * as long as both existed.
  *
  * The ranking, highest first, and the argument for each step:
  *
@@ -234,6 +306,22 @@ export type CutInBeat =
       readonly attemptNumber: number;
       /** Three, in this sport. Passed in so the rule reads off the engine. */
       readonly attemptsPerLift: number;
+      /**
+       * CAN THIS LIFT STILL BOMB? `LiveAttempt.bombRisk` — this is the last
+       * attempt on this lift and nothing is banked on it yet (`meetDay.ts`).
+       *
+       * A PRESENT FACT, NOT A FORECAST. It is read off the attempts already
+       * taken, exactly like the copy and the beat length that the walk-out
+       * screen already picks from it, and it is a DISQUALIFIER rather than a
+       * trigger: it can only ever make `momentFor` return `null`, never make it
+       * return a moment §7.2 does not list. See §4 of the header for why the
+       * gate needs it and what it costs.
+       *
+       * REQUIRED, not optional. A default of `false` would let a caller omit
+       * the fact and quietly get the old behaviour back, and the whole point is
+       * that a walk-out cannot spend the slot the bomb-out is going to need.
+       */
+      readonly bombRisk: boolean;
     }
   /** A record was, or was not, set. §7.2's three kinds. */
   | {
@@ -279,7 +367,14 @@ function claimedMomentFor(beat: CutInBeat): string | null {
       // A THIRD attempt, and only a third. §7.2 says "third-attempt walkout";
       // an opener or a second attempt is the same screen without the stakes,
       // and firing there is the failure mode §7.2 names by name.
-      return beat.attemptNumber === beat.attemptsPerLift ? 'third-attempt-walkout' : null;
+      if (beat.attemptNumber !== beat.attemptsPerLift) return null;
+      // ...AND NOT WHILE THIS LIFT CAN STILL BOMB. The disqualifier, argued in
+      // full in §4 of the header. A third attempt with nothing banked is the
+      // one walk-out that is ALWAYS immediately followed by either a bomb-out
+      // or nothing, so letting it take the slot is the same as deciding that
+      // half of all bomb-outs get no bomb-out cut-in.
+      if (beat.bombRisk) return null;
+      return 'third-attempt-walkout';
     case 'record':
       // A record that was ATTEMPTED is not a record. §7.2 says "PR moments",
       // and the moment is the one where the number actually moved.
