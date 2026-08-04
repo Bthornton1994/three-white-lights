@@ -63,10 +63,12 @@ import {
 import {
   CELL,
   RIG_GEOMETRY,
+  armSpan,
   barYForPose,
   deformPose,
   femurSpan,
   femurTilt,
+  forearmSpan,
   kneeSleeveSpan,
   pitchForLevel,
   poseAtDepth,
@@ -409,7 +411,9 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
 }
 
 /**
- * An arm, shoulder to wrist, drawn as ONE mass in two capsules.
+ * An arm, shoulder to fist, drawn as ONE mass in three capsules: upper arm,
+ * then the forearm in two, so it swells at the belly instead of coning
+ * (`RIG_GEOMETRY.FOREARM_R`).
  *
  * IT SEPARATES WITH ITS OWN SHADOW, NOT WITH A BLACK LINE, for the same reason
  * the leg does (`INTERIOR_EDGE`) and against the same reference. The arm was
@@ -433,16 +437,15 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
  * and a round that reported the contradiction resolved shipped them again. They
  * are `@ref` tags now, checked against the decoder by `lifterSprite.test.ts`.
  *
- * `drawLimbChain` rather than two `drawLimb` calls: see its comment. Two
- * capsules that meet each stamp a ring, and the second one's ring lands on the
- * first one's fill — a doubled dark band across the elbow of a five-pixel limb.
+ * `drawLimbChain` rather than three `drawLimb` calls: see its comment. Capsules
+ * that meet each stamp a ring, and a later one's ring lands on an earlier one's
+ * fill — a doubled dark band across the elbow of a five-pixel limb, and now
+ * across the forearm's belly join as well, which is why the third capsule went
+ * into the chain rather than beside it.
  */
 function drawArm(g: IndexGrid, pose: Pose, sign: number, lightScale: number, skin: Ramp): void {
-  const cx = CENTER_X;
-  const shX = cx + sign * pose.shoulderHalfW * RIG_GEOMETRY.ATTACH.ARM_ROOT;
-  const elX = cx + sign * pose.elbowHalfW;
-  const grip = pose.handHalfW + (sign > 0 ? RIG_GEOMETRY.GRIP_ASYMMETRY_PX : 0);
-  const haX = cx + sign * grip;
+  const shX = armSpan(pose, sign).shoulderX;
+  const f = forearmSpan(pose, sign);
   const opts = {
     lightScale,
     edge: true,
@@ -454,20 +457,36 @@ function drawArm(g: IndexGrid, pose: Pose, sign: number, lightScale: number, ski
     {
       ax: shX,
       ay: pose.shoulderY,
-      bx: elX,
-      by: pose.elbowY,
+      bx: f.elbowX,
+      by: f.elbowY,
       ra: RIG_GEOMETRY.UPPER_ARM_R[0],
       rb: RIG_GEOMETRY.UPPER_ARM_R[1],
       ramp: RAMPS.SKIN,
       opts,
     },
+    // TWO forearm capsules, not one, so the mass swells at the brachioradialis
+    // and pinches at the wrist instead of coning from elbow to fist. See
+    // RIG_GEOMETRY.FOREARM_R. `drawLimbChain` stamps every ring before any fill,
+    // so three capsules still carry exactly one contour round their union — the
+    // doubled band a second `drawLimb` call would leave across the belly is the
+    // same defect that used to sit across the elbow.
     {
-      ax: elX,
-      ay: pose.elbowY,
-      bx: haX,
-      by: pose.handY,
+      ax: f.elbowX,
+      ay: f.elbowY,
+      bx: f.bellyX,
+      by: f.bellyY,
       ra: RIG_GEOMETRY.FOREARM_R[0],
       rb: RIG_GEOMETRY.FOREARM_R[1],
+      ramp: skin,
+      opts,
+    },
+    {
+      ax: f.bellyX,
+      ay: f.bellyY,
+      bx: f.handX,
+      by: f.handY,
+      ra: RIG_GEOMETRY.FOREARM_R[1],
+      rb: RIG_GEOMETRY.FOREARM_R[2],
       ramp: skin,
       opts,
     },
