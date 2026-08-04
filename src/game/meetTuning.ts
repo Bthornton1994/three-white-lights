@@ -105,6 +105,7 @@ import { DEFAULT_MEET_RULES, type LiftKind, type MeetLoadingRules, type Progress
 import type { DotsSex } from './dots';
 import type { GymVenue } from '../art/gymTuning';
 import { hapticPattern } from './liftTuning';
+import type { SoundCue } from '../audio/synth';
 
 // ---------------------------------------------------------------------------
 // What a meet IS, as configuration
@@ -567,6 +568,325 @@ export const MEET_TUNING = Object.freeze({
    */
   PRECISION_DECIMALS: 6,
 });
+
+// ---------------------------------------------------------------------------
+// What meet day SOUNDS like
+// ---------------------------------------------------------------------------
+
+/**
+ * MEET_SOUND — the cue recipes, and the loudest untested thing in this file.
+ *
+ * ===========================================================================
+ * READ THIS BEFORE TRUSTING A NUMBER BELOW
+ * ===========================================================================
+ * GDD §12.2 grades this piece against "real powerlifting broadcast footage — a
+ * third-attempt walkout… judge pacing AND SOUND". Until these existed the sound
+ * half of that bar was a NULL ARTIFACT rather than an untuned one: there was no
+ * audio of any kind in the project.
+ *
+ * It is no longer null. It is untuned, and untuned by a wider margin than the
+ * timings above, because:
+ *
+ *   1. NOBODY HAS HEARD THEM. Not a person, not a critic, not a capture. The
+ *      screenshot harness photographs pixels; there is no equivalent for
+ *      sound in this environment.
+ *   2. THEY WERE NOT MEASURED AGAINST THE REFERENCE. Broadcast footage was
+ *      unreachable from here as a matter of egress policy — the same refusal
+ *      recorded at the top of this file for the timings. So "a plate landing
+ *      sounds like this" is a synthesis guess, not a transcription.
+ *
+ * What CAN be said, and `meetSound.test.ts` says it in numbers rather than
+ * adjectives: each cue is audible, each is the length it claims, the crowd
+ * swells and decays rather than switching on, the clack is short enough to be
+ * a click and not a beep, a white light and a red light are different sounds,
+ * and every shipped `.wav` is byte-identical to a fresh render of the recipe.
+ *
+ * ===========================================================================
+ * THE FOUR FAMILIES, AND WHAT EACH IS DOING
+ * ===========================================================================
+ *   BAR_RATTLE   Steel on steel, damped. Band-limited noise with a very fast
+ *                attack and a short curved release, plus a low body tone so it
+ *                lands rather than hisses. Fires once per plate as the sleeve
+ *                loads, on the same stagger the plates are drawn on.
+ *   CROWD_SWELL  Low-passed noise with a slow attack and a slower release —
+ *                a room full of people, not a hiss. Under the walk-out call.
+ *                The big variant is longer and louder and is what a third
+ *                attempt, a PR or a bomb-risk attempt gets.
+ *   LIGHT_CLACK  A relay. Two layers: a short high tick and a click body,
+ *                both under 120 ms. White and red are DIFFERENT PITCHES —
+ *                a lifter should be able to hear a 2-1 assemble.
+ *   CROWD_CHEER  The reaction to a good lift. A brighter, faster swell.
+ *   BOMB_TONE    GDD §6.3's somber moment. A single low sine that fades in and
+ *                dies. NOT a sting and not a buzzer: the hall goes quiet on a
+ *                bomb-out, and the silence after this is the beat.
+ *
+ * ===========================================================================
+ * WHAT IS DELIBERATELY SILENT, AND WHY THAT IS A DESIGN AND NOT AN OMISSION
+ * ===========================================================================
+ *   - THE DELIBERATION BEAT. The judges taking their time is silence; a sound
+ *     under it would be a metronome telling the lifter to wait.
+ *   - A NO-LIFT. A real hall goes quiet when the lights come up red. Giving it
+ *     a sound would be giving the player a fail buzzer, which is the opposite
+ *     of what §6.3 asks for. `soundForBeat` returns null and the tests pin it.
+ *   - THE ATTEMPT-SELECT SCREEN. It is a menu between platform moments, and
+ *     the haptics carry it.
+ */
+export const MEET_SOUND = Object.freeze({
+  /**
+   * THE ONE VOLUME KNOB. Applied to every cue after its own gain.
+   *
+   * Set to 0 and the game is silent; `meetSound.test.ts` uses exactly that as
+   * its mute mutation, so a build that stops making sound fails the suite
+   * rather than shipping quietly.
+   */
+  MASTER_GAIN: 0.8,
+
+  CUES: Object.freeze({
+    /** One plate landing on the sleeve. */
+    BAR_RATTLE: Object.freeze({
+      durationMs: 180,
+      gain: 1,
+      layers: Object.freeze([
+        // The impact: a wide-band noise burst, rolled off so it is metal in a
+        // room rather than static.
+        Object.freeze({
+          wave: 'noise' as const,
+          freqHz: 0,
+          gain: 0.9,
+          startMs: 0,
+          attackMs: 1,
+          holdMs: 4,
+          releaseMs: 130,
+          curve: 4,
+          lowPassHz: 2600,
+          highPassHz: 240,
+          seed: 20260815,
+        }),
+        // The body: what makes it a loaded plate and not a dropped coin.
+        Object.freeze({
+          wave: 'sine' as const,
+          freqHz: 148,
+          freqEndHz: 92,
+          gain: 0.55,
+          startMs: 0,
+          attackMs: 2,
+          holdMs: 8,
+          releaseMs: 150,
+          curve: 3,
+          lowPassHz: 0,
+          highPassHz: 0,
+          seed: 1,
+        }),
+      ]),
+    }),
+
+    /** The hall, under an ordinary walk-out. */
+    CROWD_SWELL: Object.freeze({
+      durationMs: 1400,
+      gain: 0.5,
+      layers: Object.freeze([
+        Object.freeze({
+          wave: 'noise' as const,
+          freqHz: 0,
+          gain: 1,
+          startMs: 0,
+          attackMs: 420,
+          holdMs: 240,
+          releaseMs: 720,
+          curve: 2,
+          lowPassHz: 900,
+          highPassHz: 110,
+          seed: 991,
+        }),
+      ]),
+    }),
+
+    /** The hall on a third attempt, a PR, or one with a bomb on it. */
+    CROWD_SWELL_BIG: Object.freeze({
+      durationMs: 2100,
+      gain: 0.78,
+      layers: Object.freeze([
+        Object.freeze({
+          wave: 'noise' as const,
+          freqHz: 0,
+          gain: 1,
+          startMs: 0,
+          attackMs: 620,
+          holdMs: 420,
+          releaseMs: 1050,
+          curve: 2,
+          lowPassHz: 1300,
+          highPassHz: 110,
+          seed: 4021,
+        }),
+        // A low swell under it — the floor of a big room.
+        Object.freeze({
+          wave: 'noise' as const,
+          freqHz: 0,
+          gain: 0.5,
+          startMs: 0,
+          attackMs: 700,
+          holdMs: 400,
+          releaseMs: 980,
+          curve: 2,
+          lowPassHz: 260,
+          highPassHz: 0,
+          seed: 7717,
+        }),
+      ]),
+    }),
+
+    /** One referee's lamp coming up white. */
+    LIGHT_CLACK_WHITE: Object.freeze({
+      durationMs: 120,
+      gain: 0.85,
+      layers: Object.freeze([
+        Object.freeze({
+          wave: 'noise' as const,
+          freqHz: 0,
+          gain: 0.7,
+          startMs: 0,
+          attackMs: 0,
+          holdMs: 2,
+          releaseMs: 40,
+          curve: 6,
+          lowPassHz: 6000,
+          highPassHz: 1400,
+          seed: 314159,
+        }),
+        Object.freeze({
+          wave: 'triangle' as const,
+          freqHz: 1180,
+          freqEndHz: 880,
+          gain: 0.45,
+          startMs: 0,
+          attackMs: 1,
+          holdMs: 6,
+          releaseMs: 80,
+          curve: 4,
+          lowPassHz: 0,
+          highPassHz: 0,
+          seed: 2,
+        }),
+      ]),
+    }),
+
+    /** ...and red. Lower and duller, so a 2-1 can be heard assembling. */
+    LIGHT_CLACK_RED: Object.freeze({
+      durationMs: 150,
+      gain: 0.85,
+      layers: Object.freeze([
+        Object.freeze({
+          wave: 'noise' as const,
+          freqHz: 0,
+          gain: 0.7,
+          startMs: 0,
+          attackMs: 0,
+          holdMs: 2,
+          releaseMs: 52,
+          curve: 5,
+          lowPassHz: 3400,
+          highPassHz: 700,
+          seed: 271828,
+        }),
+        Object.freeze({
+          wave: 'triangle' as const,
+          freqHz: 620,
+          freqEndHz: 430,
+          gain: 0.45,
+          startMs: 0,
+          attackMs: 1,
+          holdMs: 8,
+          releaseMs: 110,
+          curve: 3,
+          lowPassHz: 0,
+          highPassHz: 0,
+          seed: 3,
+        }),
+      ]),
+    }),
+
+    /** Three whites. The hall reacts. */
+    CROWD_CHEER: Object.freeze({
+      durationMs: 1700,
+      gain: 0.9,
+      layers: Object.freeze([
+        Object.freeze({
+          wave: 'noise' as const,
+          freqHz: 0,
+          gain: 1,
+          startMs: 0,
+          attackMs: 130,
+          holdMs: 320,
+          releaseMs: 1150,
+          curve: 2,
+          lowPassHz: 2400,
+          highPassHz: 200,
+          seed: 65537,
+        }),
+        Object.freeze({
+          wave: 'noise' as const,
+          freqHz: 0,
+          gain: 0.45,
+          startMs: 60,
+          attackMs: 200,
+          holdMs: 300,
+          releaseMs: 1000,
+          curve: 2,
+          lowPassHz: 380,
+          highPassHz: 0,
+          seed: 8191,
+        }),
+      ]),
+    }),
+
+    /** GDD §6.3. One low tone, and then the room is empty. */
+    BOMB_TONE: Object.freeze({
+      durationMs: 2400,
+      gain: 0.6,
+      layers: Object.freeze([
+        Object.freeze({
+          wave: 'sine' as const,
+          freqHz: 74,
+          freqEndHz: 58,
+          gain: 1,
+          startMs: 0,
+          attackMs: 380,
+          holdMs: 260,
+          releaseMs: 1700,
+          curve: 2,
+          lowPassHz: 0,
+          highPassHz: 0,
+          seed: 4,
+        }),
+        // A fifth above it, quieter, so it reads as a chord dying rather than
+        // as a test tone.
+        Object.freeze({
+          wave: 'sine' as const,
+          freqHz: 111,
+          freqEndHz: 87,
+          gain: 0.32,
+          startMs: 90,
+          attackMs: 420,
+          holdMs: 200,
+          releaseMs: 1600,
+          curve: 2,
+          lowPassHz: 0,
+          highPassHz: 0,
+          seed: 5,
+        }),
+      ]),
+    }),
+  }) satisfies Readonly<Record<string, SoundCue>>,
+});
+
+/** Which cue a moment plays. `null` is silence, and sometimes deliberate. */
+export type MeetSoundId = keyof typeof MEET_SOUND.CUES;
+
+/** Every cue id, for the exhaustiveness checks. */
+export const MEET_SOUND_IDS = Object.freeze(
+  Object.keys(MEET_SOUND.CUES) as MeetSoundId[],
+);
 
 // NOTE ON HOW A WEIGHT IS PRINTED, since there is deliberately no constant for
 // it here: every meet screen formats a weight with `resultCard.ts`'s

@@ -32,17 +32,21 @@
  * ---------------------------------------------------------------------------
  * Three white lights is the thing this game is named after, and until now it
  * was a fade with no physical event behind it in an app that vibrates during an
- * ordinary training rep. Each lamp fires a haptic on the same delay it comes up
- * on, white and red are different patterns, and the verdict lands after the
- * last one. The deliberation beat gets a single soft tick and then silence.
+ * ordinary training rep. Each lamp now fires a clack and a haptic on the same
+ * delay it comes up on, white and red differ in both, and the crowd reacts
+ * after the last lamp — ON A GOOD LIFT ONLY. A no-lift gets silence, because a
+ * real hall goes quiet and a fail buzzer is the opposite of what GDD §6.3 asks
+ * this piece to feel like.
  *
- * NOTHING FIRED HERE LEAKS THE VERDICT EARLY: the deliberation tick is the same
- * whichever way the call went, and a lamp's pattern arrives exactly when that
- * lamp's colour becomes visible — not before.
+ * NOTHING FIRED HERE LEAKS THE VERDICT EARLY: the deliberation beat is one soft
+ * tick and no sound at all, identical whichever way the call went, and a lamp's
+ * clack arrives exactly when that lamp's colour becomes visible — not before.
+ *
+ * NOBODY HAS HEARD OR FELT ANY OF IT. See `MEET_SOUND` in `meetTuning.ts`.
  *
  * NO LOGIC HERE. Which lights, whether it was close, what the feedback line
- * says and which haptic a lamp gets are all decided in `meetDay.ts` and arrive
- * as data.
+ * says, and which cue and pattern a lamp gets, are all decided in `meetDay.ts`
+ * and arrive as data.
  */
 
 import React from 'react';
@@ -50,8 +54,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
-import { hapticForBeat, lightRevealDelayMs, type MeetDayAttempt } from '../game/meetDay';
-import { playHaptic } from '../lift/haptics';
+import { lightRevealDelayMs, type MeetDayAttempt } from '../game/meetDay';
+import { playBeat } from './meetFeedback';
 import { JUDGE_COUNT, type JudgeLight } from '../game/meet';
 import { formatWeight } from '../game/resultCard';
 import { MEET_PALETTE } from './meetPalette';
@@ -79,7 +83,7 @@ function Lamp({
     // THE CLACK. One per referee, on the same delay the lamp comes up on, and
     // a different pattern for white and red — a lifter watching a 2-1 assemble
     // should be able to feel the third one land the wrong way without looking.
-    const timer = setTimeout(() => playHaptic(hapticForBeat({ kind: 'light', light })), at);
+    const timer = setTimeout(() => playBeat({ kind: 'light', light }), at);
     return () => clearTimeout(timer);
   }, [lit, light, revealed, seat]);
   const style = useAnimatedStyle(() => ({ opacity: lit.value }));
@@ -117,7 +121,7 @@ export function VerdictView({ attempt, liftLabel, revealed }: VerdictViewProps):
     // player has not been told yet.
     const at = lightRevealDelayMs(JUDGE_COUNT - 1) + MEET_TUNING.FEEDBACK_REVEAL_DELAY_MS;
     feedback.value = withDelay(at, withTiming(1, { duration: MEET_TUNING.FEEDBACK_FADE_MS }));
-    const timer = setTimeout(() => playHaptic(hapticForBeat({ kind: 'verdict', good })), at);
+    const timer = setTimeout(() => playBeat({ kind: 'verdict', good }), at);
     return () => clearTimeout(timer);
   }, [feedback, good, revealed]);
   const feedbackStyle = useAnimatedStyle(() => ({ opacity: feedback.value }));
@@ -128,7 +132,7 @@ export function VerdictView({ attempt, liftLabel, revealed }: VerdictViewProps):
   // leak which way the call went.
   React.useEffect(() => {
     if (revealed) return undefined;
-    return playHaptic(hapticForBeat({ kind: 'deliberation' }));
+    return playBeat({ kind: 'deliberation' });
   }, [revealed]);
 
   return (

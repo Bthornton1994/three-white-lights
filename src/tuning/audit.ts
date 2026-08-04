@@ -314,6 +314,23 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     why: 'CRAFT — bar thresholds for grading sprite craft, mostly derived from the decoded reference. Feel values are in SPRITE_TUNING.',
   }),
 
+  // --- the audio format, which is not a knob either -------------------------
+  // Deliberately `local` and deliberately NOT in the tuning index. What meet
+  // day sounds like is `MEET_SOUND` in `meetTuning.ts` — a registered `feel`
+  // home a playtester turns. These two are the container and the arithmetic:
+  // a sample rate, RIFF's byte offsets, the definition of a triangle wave.
+  // Putting them in the index would invite somebody to "tune" a chunk header.
+  'src/audio/wav.ts': Object.freeze({
+    role: 'constants',
+    kind: 'local',
+    why: 'SOUND_FORMAT / WAV_LAYOUT — mono 16-bit PCM and the RIFF container. The cue recipes are MEET_SOUND.',
+  }),
+  'src/audio/synth.ts': Object.freeze({
+    role: 'constants',
+    kind: 'local',
+    why: 'SYNTH_MATH — TAU, ms-per-second and the triangle waveform’s own coefficients. What a cue sounds like is MEET_SOUND.',
+  }),
+
   // --- build configuration -------------------------------------------------
   // Not game code and not a knob, but audited anyway rather than exempted,
   // because the walk starting at the repository root is the property that makes

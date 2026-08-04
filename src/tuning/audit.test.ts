@@ -510,6 +510,13 @@ describe('the registered allowlist', () => {
         'src/art/spriteTuning.ts',
         'src/art/squatAnimation.ts',
         'src/art/craftMetrics.ts',
+        // The synthesised meet-day audio (GDD §12.2 judges the walkout on
+        // "pacing AND sound"). Both are `local`: the FORMAT and the arithmetic
+        // live with the encoder — nobody playtests a RIFF byte offset — and
+        // what the cues actually sound like is `MEET_SOUND` in meetTuning.ts,
+        // which is already registered as `feel` and reachable from the index.
+        'src/audio/wav.ts',
+        'src/audio/synth.ts',
         'src/card/cardTuning.ts',
         'src/card/pixelFont.ts',
         'src/card/sampleCards.ts',

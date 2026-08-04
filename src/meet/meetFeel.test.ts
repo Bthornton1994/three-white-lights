@@ -180,33 +180,37 @@ describe('the beats that carry a verdict are distinguishable by feel alone', () 
 // The screens actually fire them
 // ---------------------------------------------------------------------------
 
-/** Every `hapticForBeat({ kind: '…' })` in a source, by beat kind. */
+/** Every `playBeat({ kind: '…' })` in a source, by beat kind. */
 export function beatsFiredIn(source: string): readonly string[] {
   const found: string[] = [];
-  for (const match of source.matchAll(/hapticForBeat\(\{\s*kind:\s*'([a-z-]+)'/g)) {
+  for (const match of source.matchAll(/playBeat\(\{\s*kind:\s*'([a-z-]+)'/g)) {
     const kind = match[1];
     if (kind !== undefined) found.push(kind);
   }
   return found;
 }
 
-/** True when every pattern the file builds is handed straight to the player. */
-export function everyBeatIsPlayed(source: string): boolean {
-  const built = source.split('hapticForBeat(').length - 1;
-  const played = source.split('playHaptic(hapticForBeat(').length - 1;
-  return built > 0 && built === played;
+/**
+ * True when every `playBeat` in the file is one this scan could read.
+ *
+ * A call built from a variable — `playBeat(beat)` — would be invisible to the
+ * scan above and would make every assertion below weaker without saying so.
+ */
+export function everyBeatIsReadable(source: string): boolean {
+  const calls = source.split('playBeat(').length - 1;
+  return calls > 0 && calls === beatsFiredIn(source).length;
 }
 
 describe('the source scan this file depends on', () => {
   it('finds a beat, and finds none where there is none', () => {
-    expect(beatsFiredIn("playHaptic(hapticForBeat({ kind: 'bomb-out' }))")).toEqual(['bomb-out']);
+    expect(beatsFiredIn("playBeat({ kind: 'bomb-out' })")).toEqual(['bomb-out']);
     expect(beatsFiredIn('const x = 1;')).toEqual([]);
   });
 
-  it('notices a pattern that is built and then dropped', () => {
-    expect(everyBeatIsPlayed("playHaptic(hapticForBeat({ kind: 'bomb-out' }))")).toBe(true);
-    expect(everyBeatIsPlayed("const dropped = hapticForBeat({ kind: 'bomb-out' });")).toBe(false);
-    expect(everyBeatIsPlayed('nothing at all')).toBe(false);
+  it('notices a call it cannot read', () => {
+    expect(everyBeatIsReadable("playBeat({ kind: 'bomb-out' })")).toBe(true);
+    expect(everyBeatIsReadable('playBeat(whicheverBeatItIs)')).toBe(false);
+    expect(everyBeatIsReadable('nothing at all')).toBe(false);
   });
 });
 
@@ -230,11 +234,11 @@ describe('the four meet screens fire the beats they own', () => {
         expect(fired.has(kind), `${path.basename(file)} never fires the "${kind}" beat`).toBe(true);
       }
       expect(source, `${path.basename(file)} does not import the player`).toContain(
-        "import { playHaptic } from '../lift/haptics'",
+        "import { playBeat } from './meetFeedback'",
       );
       expect(
-        everyBeatIsPlayed(source),
-        `${path.basename(file)} builds a pattern it never plays`,
+        everyBeatIsReadable(source),
+        `${path.basename(file)} fires a beat this scan cannot read`,
       ).toBe(true);
     });
   }

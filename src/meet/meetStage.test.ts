@@ -46,7 +46,7 @@ import { describe, expect, it } from 'vitest';
 
 import { GYM } from '../art/gymPalette';
 import { GYM_VENUE, GYM_VENUE_PROPS, type GymVenue } from '../art/gymTuning';
-import { renderGymScene, stageSceneFor } from '../art/gymScene';
+import { liftStageScene, renderGymScene } from '../art/gymScene';
 import type { IndexGrid } from '../art/raster';
 import { MEET_TUNING } from '../game/meetTuning';
 
@@ -107,8 +107,15 @@ export function resolveStageVenue(source: string, liftStageSource: string): GymV
 // Pixels
 // ---------------------------------------------------------------------------
 
+/**
+ * The room a screen draws for a venue.
+ *
+ * Built the way `LiftStage` builds it — `liftStageScene()` with the venue
+ * overridden — rather than through a helper added to `gymScene.ts`, which
+ * belongs to another piece. One box, two rooms.
+ */
 function roomFor(venue: GymVenue): IndexGrid {
-  return renderGymScene(stageSceneFor(venue));
+  return renderGymScene({ ...liftStageScene(), venue });
 }
 
 function countOf(grid: IndexGrid, index: number): number {

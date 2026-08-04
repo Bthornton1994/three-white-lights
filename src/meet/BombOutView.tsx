@@ -39,8 +39,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import type { LiftKind } from '../game/meet';
-import { hapticForBeat, type MeetDayAttempt } from '../game/meetDay';
-import { playHaptic } from '../lift/haptics';
+import type { MeetDayAttempt } from '../game/meetDay';
+import { playBeat } from './meetFeedback';
 import { AttemptBoard } from './AttemptBoard';
 import { MEET_PALETTE } from './meetPalette';
 
@@ -80,7 +80,7 @@ export function BombOutView({ bombedLift, attempts, onDone }: BombOutViewProps):
   // is `soft`, once, after `BOMB_OUT_SILENCE_MS` of nothing.
   React.useEffect(() => {
     const timer = setTimeout(
-      () => playHaptic(hapticForBeat({ kind: 'bomb-out' })),
+      () => playBeat({ kind: 'bomb-out' }),
       MEET_TUNING.BOMB_OUT_SILENCE_MS,
     );
     return () => clearTimeout(timer);

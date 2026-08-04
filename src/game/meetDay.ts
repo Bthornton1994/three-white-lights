@@ -169,7 +169,13 @@ import {
   type ResultCard,
   type ResultCardError,
 } from './resultCard';
-import { MEET_COPY, MEET_TUNING, type MeetDefinition, type MeetEntry } from './meetTuning';
+import {
+  MEET_COPY,
+  MEET_TUNING,
+  type MeetDefinition,
+  type MeetEntry,
+  type MeetSoundId,
+} from './meetTuning';
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -761,6 +767,47 @@ export function hapticForBeat(beat: MeetBeat): HapticPattern | null {
       return beat.raisedByMiss ? h.FLOOR_RAISED : null;
     case 'attempt-declared':
       return h.ATTEMPT_DECLARED;
+    default:
+      return null;
+  }
+}
+
+/**
+ * The sound cue for a meet-day beat, or null if that beat is silent.
+ *
+ * SILENCE IS A DESIGN DECISION HERE AND IS NOT THE SAME AS "unbuilt". Three
+ * beats return null on purpose and `meetSound.test.ts` pins each:
+ *
+ *   - THE DELIBERATION BEAT. The judges taking their time is quiet. A sound
+ *     under it would be a metronome telling the lifter to wait.
+ *   - A NO-LIFT. A real hall goes silent when the lights come up red, and a
+ *     fail buzzer is the opposite of what GDD §6.3 asks the piece to feel like.
+ *     The three whites get the crowd; the reds get nothing, which is what makes
+ *     the whites worth something.
+ *   - THE ATTEMPT-SELECT SCREEN. It is a menu between platform moments. The
+ *     haptics carry it (`hapticForBeat`), and a UI blip on the tensest decision
+ *     in the mode would make it feel like a settings panel.
+ *
+ * The cue RECIPES are `MEET_SOUND` in `meetTuning.ts`. Which cue a moment gets
+ * is here, for the same reason `hapticForBeat` is: it is a decision about the
+ * game, and CLAUDE.md forbids it living in a component.
+ */
+export function soundForBeat(beat: MeetBeat): MeetSoundId | null {
+  switch (beat.kind) {
+    case 'bar-plate':
+      return 'BAR_RATTLE';
+    case 'walkout-call':
+      return beat.urgent ? 'CROWD_SWELL_BIG' : 'CROWD_SWELL';
+    case 'light':
+      return beat.light === 'white' ? 'LIGHT_CLACK_WHITE' : 'LIGHT_CLACK_RED';
+    case 'verdict':
+      return beat.good ? 'CROWD_CHEER' : null;
+    case 'bomb-out':
+      return 'BOMB_TONE';
+    case 'deliberation':
+    case 'floor':
+    case 'attempt-declared':
+      return null;
     default:
       return null;
   }
