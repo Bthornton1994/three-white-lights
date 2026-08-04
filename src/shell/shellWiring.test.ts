@@ -258,14 +258,23 @@ describe('navigating away and back cannot buy a second session of the day', () =
     // changed to a bespoke phase here and the literal in `shellRoute.test.ts`
     // would stay green while the second visit went back to being a dead end.
     //
-    // WHAT THIS DOES NOT SETTLE: whether the pill visually collides with the
-    // already-trained copy. The surface is `styles.centred` (`flex: 1`,
-    // `justifyContent: 'center'`), so it occupies the middle band and the pill
-    // is anchored `SHELL_LAYOUT.NAV_BOTTOM_INSET` from the bottom — but that is
-    // an argument, not a photograph, and this path has no `?session=` moment
-    // that reaches it (the already-trained branch requires `preview ===
-    // undefined`), so `verify-shell-route.mjs` cannot drive it. Recorded as
-    // open rather than asserted.
+    // WHAT THIS DOES NOT SETTLE, AND WHO DOES. Nothing here says whether the
+    // pill visually collides with the already-trained copy. The surface is
+    // `styles.centred` (`flex: 1`, `justifyContent: 'center'`), so it occupies
+    // the middle band and the pill is anchored `SHELL_LAYOUT.NAV_BOTTOM_INSET`
+    // from the bottom — but that is an argument, not a photograph.
+    //
+    // THIS COMMENT USED TO SAY THE PHOTOGRAPH WAS IMPOSSIBLE: "this path has no
+    // `?session=` moment that reaches it, so `verify-shell-route.mjs` cannot
+    // drive it". The premise was right and the conclusion was wrong. The
+    // already-trained branch does require `preview === undefined`, so no debug
+    // URL opens it — but it does not need one. It needs A SESSION.
+    // `verify-shell-route.mjs` now PLAYS one with a mouse (see
+    // `tools/sessionDrive.mjs`), presses DONE, and measures the gap between the
+    // copy's lowest drawn line and the pill's top edge on the screen that comes
+    // up. Playing that path is also what caught the close-out's server round
+    // trip being cancelled by its own effect — a defect this whole file, and
+    // the other 2233 tests, were structurally unable to see.
     expect(SESSION_SCREEN).toMatch(
       /loop\.alreadyTrainedToday && state\.phase === '' && preview === undefined/,
     );

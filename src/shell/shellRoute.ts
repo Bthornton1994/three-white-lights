@@ -105,8 +105,19 @@ export const DEFAULT_ROUTE: ShellRoute = Object.freeze({ surface: 'session', sou
 /**
  * Everything a player can ask the shell to do.
  *
- * Two, and that is the honest size of the shell right now. A third would mean a
- * surface that does not exist yet.
+ * Two, and that is the honest size of the shell's ROUTE GRAPH right now: the
+ * daily session and meet day are the surfaces this module moves between.
+ *
+ * THIS IS NOT THE CLAIM THAT NOTHING ELSE RENDERS. `LicensingScreen`
+ * (`src/licensing/LicensedPanelView.tsx`) is a GDD §7.3 identity-tier shop that
+ * renders, has tests, and is reachable at `licensing.html?panel=shop` through
+ * its own entry point (`src/licensing/licensingEntry.tsx`) — it is simply not
+ * wired to this shell, so no `ShellIntent` reaches it and `ShellSurface` does
+ * not name it. Whether that screen counts as one of GDD §2's four modes for the
+ * purpose of "a player can reach every mode" is a scoping call, and this file
+ * is not the place it gets made. What this comment states is only what is true
+ * here: two intents, two player-reachable surfaces, and a third surface that
+ * exists behind a separate entry point rather than behind nothing.
  */
 export type ShellIntent = 'open-meet' | 'leave-meet';
 
