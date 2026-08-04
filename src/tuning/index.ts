@@ -103,6 +103,15 @@ import {
   GYM_VENUE,
   GYM_WALL_PAINT,
 } from '../art/gymTuning';
+import {
+  LICENSING_COPY,
+  LICENSING_SCREEN,
+  PANEL,
+  PANEL_TEXT,
+  RAMP_STEPS,
+  SHELF,
+  TIER_1_STRIP,
+} from '../licensing/licensingTuning';
 import { PALETTE_BANKS, PAL, RAMPS } from '../art/palette';
 import { GYM, GYM_BANKS, GYM_RAMPS } from '../art/gymPalette';
 import { SHEET, SHEET_BANK } from '../card/sheetPalette';
@@ -230,6 +239,27 @@ export const TUNING = Object.freeze({
   }),
 
   /**
+   * THE IDENTITY TIER SURFACES (GDD §7.3). The shop shelf and character
+   * select: panel proportions in card pixels, the screen chrome around them in
+   * points, and the copy that states §8.1's no-stat promise where a player can
+   * read it rather than only where a test can.
+   *
+   * `PANEL.W` and `SHELF.COLUMNS` are joined at the hip to the phone: the sheet
+   * can only be drawn at whole multiples (§7.1), and the current pair is the
+   * widest that still doubles inside a 390pt viewport. Move either and re-shoot
+   * before believing the result.
+   */
+  licensing: Object.freeze({
+    PANEL,
+    TIER_1_STRIP,
+    PANEL_TEXT,
+    SHELF,
+    RAMP_STEPS,
+    LICENSING_SCREEN,
+    LICENSING_COPY,
+  }),
+
+  /**
    * THE RESULT CARD. Sheet layout in card pixels, plus `CARD_SCREEN`, the
    * React Native chrome around it in logical points. The two are different
    * units and the block comments say which is which.
@@ -283,6 +313,7 @@ export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Obj
   streak: 'src/game/streak.ts',
   card: 'src/card/cardTuning.ts',
   meet: 'src/game/meetTuning.ts',
+  licensing: 'src/licensing/licensingTuning.ts',
 });
 
 /** Where each palette physically lives. Same cross-check as above. */

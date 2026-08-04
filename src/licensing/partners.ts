@@ -432,7 +432,7 @@ const KESSLING_PRODUCT = art([
  * colorway and an icon-mark worn on somebody else's sprite, which
  * `spriteIdentityWithKit` composes and `partners.test.ts` exercises.
  */
-export const NINEBAR_ATHLETIC: IdentityEntry = Object.freeze({
+export const NINEBAR_ATHLETIC: IdentityEntry = Object.freeze<IdentityEntry>({
   id: 'ninebar-athletic',
   kind: 'brand',
   licence: 'fictional-placeholder',
@@ -468,7 +468,7 @@ export const NINEBAR_ATHLETIC: IdentityEntry = Object.freeze({
 });
 
 /** A chalk and grip brand. INVENTED. */
-export const HALBERD_GRIP: IdentityEntry = Object.freeze({
+export const HALBERD_GRIP: IdentityEntry = Object.freeze<IdentityEntry>({
   id: 'halberd-grip',
   kind: 'brand',
   licence: 'fictional-placeholder',
@@ -504,7 +504,7 @@ export const HALBERD_GRIP: IdentityEntry = Object.freeze({
 });
 
 /** A licensed-athlete placeholder. INVENTED. */
-export const ILSE_VONDRAK: IdentityEntry = Object.freeze({
+export const ILSE_VONDRAK: IdentityEntry = Object.freeze<IdentityEntry>({
   id: 'ilse-vondrak',
   kind: 'athlete',
   licence: 'fictional-placeholder',
@@ -540,7 +540,7 @@ export const ILSE_VONDRAK: IdentityEntry = Object.freeze({
 });
 
 /** A second licensed-athlete placeholder, a different build. INVENTED. */
-export const TEODOR_KESSLING: IdentityEntry = Object.freeze({
+export const TEODOR_KESSLING: IdentityEntry = Object.freeze<IdentityEntry>({
   id: 'teodor-kessling',
   kind: 'athlete',
   licence: 'fictional-placeholder',

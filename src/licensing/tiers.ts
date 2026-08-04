@@ -113,6 +113,11 @@
  *    of them as renderable content.
  */
 
+// The ONLY runtime import this module has, and it is here so the "an icon-mark
+// is too short to set type in" bound is the card font's own cap height rather
+// than a number somebody picked. See `iconMarkProblems`.
+import { FONT } from '../card/pixelFont';
+
 // ---------------------------------------------------------------------------
 // Type-level helpers. These carry the boundary; they emit no code.
 //
@@ -261,6 +266,77 @@ export interface IconMark {
   readonly id: string;
   /** Rows of the mark, one character per pixel. `.` paints nothing. */
   readonly rows: readonly string[];
+}
+
+/** The character that paints nothing in an authored drawing. */
+const BLANK = '.';
+
+/**
+ * WHAT IS WRONG WITH AN ICON-MARK, IF ANYTHING. Empty array for a good one.
+ *
+ * §7.3 says Tier 1 carries an icon-mark and NEVER a wordmark, and a field named
+ * `iconMark` does not make its contents one. This is the check that does, and
+ * it has two parts:
+ *
+ *   - TOO SHORT TO SET TYPE IN. The bound is `FONT.CAP_H`, the card font's own
+ *     cap height, rather than a number somebody picked: a mark shorter than a
+ *     capital letter cannot contain one, whatever is drawn in it. Read against
+ *     the real font so it moves if the font does.
+ *   - ONE INK COLOUR. A mark is a silhouette. Two colours is the beginning of
+ *     artwork, and artwork at sprite scale is the smear §7.3 is about.
+ *
+ * NEITHER IS A PROOF. A four-row mark could still be a crude two-letter
+ * monogram, and nothing here can read a shape. It is a floor under the honest
+ * mistake — somebody putting a logotype in the sprite slot because it was the
+ * asset they had — in the same spirit as `progression.ts`'s
+ * `PERFORMANCE_FACT_VOCABULARY`, and it is stated as a floor rather than
+ * glossed as a guarantee.
+ */
+export function iconMarkProblems(mark: IconMark): readonly string[] {
+  const problems: string[] = [];
+  if (mark.rows.length === 0) problems.push(`${mark.id}: an icon-mark must have rows`);
+  if (mark.rows.length >= FONT.CAP_H) {
+    problems.push(
+      `${mark.id}: ${mark.rows.length} rows is tall enough to set a capital letter in (cap height ${FONT.CAP_H}) — Tier 1 carries no wordmark`,
+    );
+  }
+  const width = mark.rows[0]?.length ?? 0;
+  const ink = new Set<string>();
+  for (const row of mark.rows) {
+    if (row.length !== width) problems.push(`${mark.id}: ragged row "${row}"`);
+    for (const ch of row) if (ch !== BLANK) ink.add(ch);
+  }
+  if (ink.size === 0) problems.push(`${mark.id}: an icon-mark with no ink is an empty slot`);
+  if (ink.size > 1) {
+    problems.push(`${mark.id}: ${ink.size} ink colours — an icon-mark is a silhouette, not artwork`);
+  }
+  return problems;
+}
+
+/**
+ * WHAT IS WRONG WITH A TIER 3 DRAWING, IF ANYTHING.
+ *
+ * Shape only: rectangular, non-empty, and every inked character has a legend
+ * entry. Whether the legend's indices name allocated palette slots is checked in
+ * `partners.test.ts`, where the palette is in scope — this module deliberately
+ * does not depend on `src/art/palette.ts`, so that the licensing types stay
+ * importable without pulling the renderer in.
+ */
+export function tier3ArtProblems(art: Tier3Art): readonly string[] {
+  const problems: string[] = [];
+  if (art.rows.length === 0) return ['a drawing must have rows'];
+  const width = art.rows[0]?.length ?? 0;
+  if (width === 0) problems.push('a drawing must have columns');
+  art.rows.forEach((row, y) => {
+    if (row.length !== width) {
+      problems.push(`row ${y} is ${row.length} wide, expected ${width}`);
+    }
+    for (const ch of row) {
+      if (ch === BLANK) continue;
+      if (art.legend[ch] === undefined) problems.push(`row ${y} uses "${ch}", which has no legend`);
+    }
+  });
+  return problems;
 }
 
 /**
