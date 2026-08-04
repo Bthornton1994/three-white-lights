@@ -148,6 +148,13 @@ function renderableInventory(entries: readonly IdentityEntry[]): readonly Render
     ...entries.flatMap(identityStrings),
     ...walkStrings('catalogue', { BASE_ITEMS, SPONSORED_RESKINS }),
     ...SAMPLE_CARDS.flatMap((sample) => walkStrings('sample-card', sample.card, sample.id)),
+    // `app.json` is CONTENT, not just config. `expo.name` is the string under
+    // the icon on a phone's home screen and `expo.slug` goes into a store URL —
+    // both are as renderable as anything in a copy block, and neither is
+    // reachable from `TUNING`. Added after a mutation run showed a real brand
+    // planted there was only caught by the LISTED half; a name on a home screen
+    // belongs in the half that refuses outright.
+    ...walkStrings('app-config', JSON.parse(read('app.json')) as unknown),
   ];
 }
 
@@ -390,14 +397,24 @@ describe('the audit bites', () => {
 
   // --- (3) A CONFIG ---------------------------------------------------------
 
-  it('catches a real brand planted into app.json', () => {
+  it('catches a real brand planted into app.json, in BOTH halves', () => {
     const source = read('app.json');
     const mutated = mutate(source, '"name": "app"', `"name": "${A_REAL_BRAND}"`);
-    const found = scanSourceText('app.json', mutated);
-    expect(found.map((m) => m.name)).toContain(A_REAL_BRAND);
-    // A JSON file has no comments, so a hit in one is `code` — the higher
-    // severity half of the split.
-    expect(found[0]?.where).toBe('code');
+
+    // (B) the listed half: a JSON file has no comments, so a hit in one is
+    // `code` — the higher-severity position, and unpinned, so the suite reds.
+    const mentions = scanSourceText('app.json', mutated);
+    expect(mentions.map((m) => m.name)).toContain(A_REAL_BRAND);
+    expect(mentions[0]?.where).toBe('code');
+
+    // (A) the default-deny half. `expo.name` is the string under the icon on a
+    // phone's home screen, so it is content and gets refused rather than
+    // listed. This assertion is why `app.json` is in `renderableInventory`.
+    const config = scanRenderable(
+      walkStrings('app-config', JSON.parse(mutated) as unknown),
+    );
+    expect(config.map((f) => f.name)).toContain(A_REAL_BRAND);
+    expect(config.map((f) => f.path)).toContain('expo.name');
   });
 
   it('catches a real federation planted into the Expo web config', () => {
