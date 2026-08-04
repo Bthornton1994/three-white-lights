@@ -58,6 +58,19 @@ export type MeetMomentId =
    * the piece, and the one GDD §12.2 judges.
    */
   | 'walkout-third'
+  /**
+   * The third attempt held MID-UNRACK, and MID-STEP-BACK.
+   *
+   * Two more photographs of the SAME beat, and they exist because a still of a
+   * moving thing proves nothing on its own: `walkout` and `walkout-third` are
+   * both shot after the choreography has settled, so without these a critic
+   * could open every frame in the run and never see the walk-out move. Each
+   * pins `holdWalkoutAtMs` at an instant inside a named stage of
+   * `src/meet/walkout.ts`'s sheet, which stops the hall's clock outright rather
+   * than racing the shutter — the same reason the whole preview exists.
+   */
+  | 'walkout-unrack'
+  | 'walkout-step'
   /** The attempt live on the platform (GDD §6.2 steps 2-3). */
   | 'lift'
   /** GDD §6.2 step 4: the judges taking a beat, no lights showing. */
@@ -89,6 +102,8 @@ export const MEET_MOMENTS = Object.freeze([
   'openers',
   'walkout',
   'walkout-third',
+  'walkout-unrack',
+  'walkout-step',
   'lift',
   'deliberation',
   'verdict-good',
@@ -104,6 +119,22 @@ export const MEET_MOMENTS = Object.freeze([
 
 export interface MeetPreviewRequest {
   readonly moment: MeetMomentId;
+}
+
+/**
+ * The instant of the walk-out this beat is held at, or `null` to let the beat
+ * play.
+ *
+ * `null` for every moment except the two mid-motion ones. That is deliberate:
+ * `walkout` and `walkout-third` let the choreography RUN and come to rest, so
+ * those two frames photograph a settled lifter — which is what makes the crowd
+ * the only thing separating them and makes the opener/third-attempt pixel
+ * difference a clean measurement of `urgent` reaching the picture.
+ */
+export function holdWalkoutAtMs(moment: MeetMomentId): number | null {
+  if (moment === 'walkout-unrack') return MEET_PREVIEW.WALKOUT_HOLD_MS.UNRACK;
+  if (moment === 'walkout-step') return MEET_PREVIEW.WALKOUT_HOLD_MS.STEP;
+  return null;
 }
 
 /** True when `value` names a beat this module can build. */
@@ -348,9 +379,14 @@ export function previewStateFor(request: MeetPreviewRequest): MeetDayState {
       return stepMeetDay(createMeetDay(previewContext()), { kind: 'confirm-weigh-in' });
     case 'walkout':
       return openedMeet();
-    case 'walkout-third': {
+    case 'walkout-third':
+    case 'walkout-unrack':
+    case 'walkout-step': {
       // Two missed squats, so the third is the one that decides whether the
-      // lifter bombs. The longest walkout the piece can produce.
+      // lifter bombs. The longest walkout the piece can produce, and the same
+      // state for all three: what differs between them is only which instant of
+      // the beat is held (`holdWalkoutAtMs`), so a critic comparing the frames
+      // is comparing the choreography and nothing else.
       const first = takeAttempt(openedMeet(), 'dumped');
       const second = takeAttempt(chooseOption(first, 'repeat'), 'dumped');
       return chooseOption(second, 'repeat');

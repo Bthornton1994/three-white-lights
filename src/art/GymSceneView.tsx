@@ -83,7 +83,12 @@ export interface GymSceneLayerProps {
 export function GymSceneLayer({ spec }: GymSceneLayerProps): React.ReactElement {
   const image = useMemo(
     () => makeGymSceneImage(spec),
-    [spec.venue, spec.w, spec.h, spec.floorRow, spec.focusX, spec.cameraX],
+    // Field by field rather than on the object, so a caller that rebuilds an
+    // equal spec every render does not re-raster 22,490 pixels. `crowdRisePx`
+    // is on the list because meet day brings the hall up (GDD §6.2, and
+    // `MEET_TUNING.CROWD`); a room memoised without it would stay seated for
+    // the whole beat while every other layer said it had stood.
+    [spec.venue, spec.w, spec.h, spec.floorRow, spec.focusX, spec.cameraX, spec.crowdRisePx],
   );
   return (
     <SkiaImage
