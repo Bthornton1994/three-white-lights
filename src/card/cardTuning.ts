@@ -100,18 +100,32 @@ export const LIFTER_STRIP = {
    * whole mechanism makes. The name gets smaller. No fact leaves the card.
    */
   NAME_SCALE_COMPACT: 1,
+  /**
+   * Y of the name when the strip prints two meta lines.
+   *
+   * Two pixels above `NAME_Y`, which is what makes the leading even: three
+   * lines of type at `FONT.GLYPH_H` need 25 of the 27 rows between here and the
+   * strip's closing rule, and starting two rows higher is what turns the one
+   * spare row into three — one blank row between the name and the first line,
+   * one between the two lines, and one above the rule.
+   */
+  NAME_Y_COMPACT: 46,
   /** Y of the meta line when the strip prints ONE. */
   META_Y: 63,
   /**
    * Y of each meta line when the strip prints TWO.
    *
    * `FONT.GLYPH_H` is 9 — seven rows of capital and two of descender — so a
-   * scale-1 name set at `NAME_Y` ends on row 56 and the first meta line clears
-   * it at 57. UNTUNED and tight at the bottom: the second line's capitals end
-   * on row 71 and the strip's closing rule is row 72. The meta lines are set in
-   * caps and digits, which have no descenders, so those two rows are free.
+   * scale-1 name set at `NAME_Y_COMPACT` ends on row 54 and the first meta line
+   * clears it at 56. The meta lines are set in caps and digits, which have no
+   * descenders, so the second line's capitals end on row 70 and the strip's
+   * closing rule at 72 has a row of air above it.
+   *
+   * UNTUNED, and the whole band is tight: 28 px is a comfortable two lines and
+   * a dense three. If a tuning pass wants air here it comes out of the
+   * masthead, which is the one block on the card with slack in it.
    */
-  META_Y_TWO_LINE: [57, 65] as const,
+  META_Y_TWO_LINE: [56, 64] as const,
   /** Separator between the fields on a meta line. */
   META_SEPARATOR: ' · ',
 } as const;
@@ -120,6 +134,11 @@ export const LIFTER_STRIP = {
 export function lifterMetaLineY(lineCount: number, index: number): number {
   if (lineCount < 2) return LIFTER_STRIP.META_Y;
   return LIFTER_STRIP.META_Y_TWO_LINE[index] ?? LIFTER_STRIP.META_Y;
+}
+
+/** Y of the lifter's name when the strip is printing `lineCount` meta lines. */
+export function lifterNameY(lineCount: number): number {
+  return lineCount < 2 ? LIFTER_STRIP.NAME_Y : LIFTER_STRIP.NAME_Y_COMPACT;
 }
 
 /**

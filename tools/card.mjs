@@ -17,7 +17,7 @@
  * URL, and `tools/shoot.mjs` drives the real Expo web build through Skia:
  *
  *   bash tools/dev-web.sh                                   # Expo web on :8081
- *   for id in strong bombed stress; do
+ *   for id in strong bombed stress masters; do
  *     node tools/shoot.mjs ".gauntlet/shots/card/app-$id.png" \
  *       --url "http://localhost:8081/card.html?card=$id" --wait 9000 --sel result-card
  *   done
@@ -32,7 +32,9 @@
  * Outputs under .gauntlet/shots/card/:
  *   strong-1x.png / strong-4x.png     a lifter who totalled and placed
  *   bombed-1x.png / bombed-4x.png     a lifter who bombed a lift
- *   sheet.png                         both cards side by side at 2x
+ *   stress-1x.png / stress-4x.png     long everything: the layout under load
+ *   masters-1x.png / masters-4x.png   a short name in a long category
+ *   sheet.png                         all four side by side at 2x
  *
  * Usage: node tools/card.mjs [--out DIR]
  */

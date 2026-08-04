@@ -65,6 +65,7 @@ import {
   gridRowY,
   lifterMetaLineY,
   lifterMetaRungs,
+  lifterNameY,
   type LifterMetaRung,
 } from './cardTuning';
 import { capHeight, drawText, measureText, strikeThrough, type TextMode } from './pixelFont';
@@ -176,7 +177,9 @@ function drawLifterStrip(grid: IndexGrid, card: ResultCard): void {
   rule(grid, 0, LIFTER_STRIP.Y + LIFTER_STRIP.H - 1, CARD.W, SHEET.RULE);
 
   const strip = lifterStrip(card, CONTENT.W);
-  drawText(grid, card.lifter.name, CONTENT.X, LIFTER_STRIP.NAME_Y, SHEET.INK, { scale: strip.nameScale });
+  drawText(grid, card.lifter.name, CONTENT.X, lifterNameY(strip.metaLines.length), SHEET.INK, {
+    scale: strip.nameScale,
+  });
 
   strip.metaLines.forEach((line, index) => {
     drawText(grid, line, CONTENT.X, lifterMetaLineY(strip.metaLines.length, index), SHEET.INK_SOFT);

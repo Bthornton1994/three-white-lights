@@ -28,7 +28,13 @@ import {
   gridCellX,
   gridRowY,
 } from './cardTuning';
-import { LIFTER_META_LADDER, lifterMetaLineY, lifterMetaRungs, rungNamesDivision } from './cardTuning';
+import {
+  LIFTER_META_LADDER,
+  lifterMetaLineY,
+  lifterMetaRungs,
+  lifterNameY,
+  rungNamesDivision,
+} from './cardTuning';
 import { visualPlateStack } from '../art/plates';
 import {
   DEFAULT_GRID_HEADINGS,
@@ -42,7 +48,7 @@ import {
   renderResultCard,
 } from './renderResultCard';
 import { SHEET, findUnallocatedSheetIndices } from './sheetPalette';
-import { BOMBED_MEET_CARD, STRESS_MEET_CARD, STRONG_MEET_CARD } from './sampleCards';
+import { BOMBED_MEET_CARD, MASTERS_MEET_CARD, STRESS_MEET_CARD, STRONG_MEET_CARD } from './sampleCards';
 import { FONT, capHeight, drawText, measureText } from './pixelFont';
 
 // ---------------------------------------------------------------------------
@@ -221,27 +227,26 @@ const DATE_PLACE_RECT: Rect = {
   y: MASTHEAD.PLACE_DATE_Y,
   h: MASTHEAD.Y + MASTHEAD.H - MASTHEAD.PLACE_DATE_Y,
 };
-const LIFTER_NAME_RECT: Rect = {
-  ...INSIDE_FRAME,
-  y: LIFTER_STRIP.NAME_Y,
-  h: FONT.GLYPH_H * LIFTER_STRIP.NAME_SCALE,
-};
 /**
- * THE WHOLE STRIP, minus its closing rule — not just the line the meta happens
- * to be set on today.
+ * THE WHOLE STRIP, minus its closing rule — not just the rows a line happens to
+ * be set on today.
  *
- * The strip prints its category on one line or two (`LIFTER_META_LADDER`), and
- * a rect drawn tightly around the one-line position would have nothing to say
- * about a card that reflowed to two. Nothing else in the band is drawn in
- * `SHEET.INK_SOFT` — the paper, the name and the rule are three other indices —
- * so a soft-ink mask over the whole strip asserts that the meta lines are what
- * they are AND that there is no other soft ink anywhere in the band.
+ * The strip prints its category on one line or two, and the name steps up two
+ * rows when it prints two (`LIFTER_META_LADDER`), so a rect drawn tightly
+ * around either position would have nothing to say about a card in the other
+ * mode. The band works for both probes because the name is drawn in
+ * `SHEET.INK` and the meta lines in `SHEET.INK_SOFT`: each mask sees only its
+ * own ink, and nothing else in the band is drawn in either — the paper and the
+ * rule are two more indices. So each probe asserts BOTH that its runs are what
+ * they are and that there is no other ink of that colour anywhere in the strip.
  */
-const LIFTER_META_RECT: Rect = {
+const LIFTER_STRIP_RECT: Rect = {
   ...INSIDE_FRAME,
   y: LIFTER_STRIP.Y,
   h: LIFTER_STRIP.H - 1,
 };
+const LIFTER_NAME_RECT: Rect = LIFTER_STRIP_RECT;
+const LIFTER_META_RECT: Rect = LIFTER_STRIP_RECT;
 /** The header row of the attempt grid, above its closing rule. */
 const GRID_HEADER_RECT: Rect = { ...INSIDE_FRAME, y: GRID.HEADER_Y, h: GRID.RULE_Y - GRID.HEADER_Y };
 const FOOTER_RECT: Rect = { ...INSIDE_FRAME, y: FOOTER.Y, h: FOOTER.H };
@@ -538,12 +543,14 @@ describe('the lifter identity strip, in pixels', () => {
   it('sets the lifter’s name', () => {
     expectTextIn(STRONG, LIFTER_NAME_RECT, 'Marcus Vale', CONTENT.X, LIFTER_STRIP.NAME_Y, SHEET.INK, { scale: 2 }, 'strong name');
     expectTextIn(BOMBED, LIFTER_NAME_RECT, 'Dana Whitmore', CONTENT.X, LIFTER_STRIP.NAME_Y, SHEET.INK, { scale: 2 }, 'bombed name');
+    // The stress card reflows to two meta lines, which steps the name up as
+    // well as down: `NAME_Y_COMPACT`, not `NAME_Y`.
     expectTextIn(
       STRESS,
       LIFTER_NAME_RECT,
       'Konstantín Papadopoulos',
       CONTENT.X,
-      LIFTER_STRIP.NAME_Y,
+      LIFTER_STRIP.NAME_Y_COMPACT,
       SHEET.INK,
       { scale: 1 },
       'stress name',
@@ -675,28 +682,22 @@ function nineForNine(): MeetState {
 /**
  * A placed lifter whose category will not fit one line — and whose name WOULD
  * fit at double height, which is what the strip spends to buy the second one.
+ * This is `sampleCards.ts`'s `masters` card, so what is asserted here is what
+ * the harness renders.
  */
-const SHORT_NAME_MASTERS_CARD = cardOf({
-  meet: { federation: 'Irongate', name: 'National Championships', dateIso: '2026-02-14', town: 'Sheffield' },
-  lifter: {
-    name: 'Sam Reyes',
-    sex: 'male',
-    bodyweightKg: 139.4,
-    division: 'Masters 1',
-    equipment: 'Single-ply',
-  },
-  state: nineForNine(),
-  placing: 2,
-});
+const SHORT_NAME_MASTERS_CARD = MASTERS_MEET_CARD;
 
-/** The same lifter, same everything, with no placing supplied. */
+/**
+ * The same lifter, same numbers, same everything — with no placing supplied.
+ * Not a sample: it exists to isolate the placing as the only difference.
+ */
 const SHORT_NAME_MASTERS_UNPLACED_CARD = cardOf({
   meet: { federation: 'Irongate', name: 'National Championships', dateIso: '2026-02-14', town: 'Sheffield' },
   lifter: {
-    name: 'Sam Reyes',
+    name: 'Nils Berg',
     sex: 'male',
-    bodyweightKg: 139.4,
-    division: 'Masters 1',
+    bodyweightKg: 138.6,
+    division: 'Masters 2',
     equipment: 'Single-ply',
   },
   state: nineForNine(),
@@ -788,7 +789,7 @@ describe('a card that prints a PLACING prints its DIVISION', () => {
     const cards = [
       { card: STRONG_MEET_CARD, division: 'OPEN' },
       { card: STRESS_MEET_CARD, division: 'MASTERS 1' },
-      { card: SHORT_NAME_MASTERS_CARD, division: 'MASTERS 1' },
+      { card: SHORT_NAME_MASTERS_CARD, division: 'MASTERS 2' },
       { card: WIDEST_PHRASE_CARD, division: 'SUB-JUNIORS' },
     ] as const;
     for (const { card, division } of cards) {
@@ -805,8 +806,8 @@ describe('a card that prints a PLACING prints its DIVISION', () => {
     // filter did nothing, these two would be identical.
     expect(SHORT_NAME_MASTERS_CARD.placed).toBe(true);
     expect(SHORT_NAME_MASTERS_UNPLACED_CARD.placed).toBe(false);
-    expect(stripText(SHORT_NAME_MASTERS_CARD, 90)).toContain('MASTERS 1');
-    expect(stripText(SHORT_NAME_MASTERS_UNPLACED_CARD, 90)).not.toContain('MASTERS 1');
+    expect(stripText(SHORT_NAME_MASTERS_CARD, 90)).toContain('MASTERS 2');
+    expect(stripText(SHORT_NAME_MASTERS_UNPLACED_CARD, 90)).not.toContain('MASTERS 2');
   });
 
   it('moves the division to the second line rather than spending it', () => {
@@ -825,23 +826,23 @@ describe('a card that prints a PLACING prints its DIVISION', () => {
   });
 
   it('buys the second line out of the name’s type size, not out of the card', () => {
-    // "Sam Reyes" fits at double height — the strip steps it down anyway,
+    // "Nils Berg" fits at double height — the strip steps it down anyway,
     // because a smaller name is a smaller name and a dropped division is a
     // missing fact.
-    expect(fitScale('Sam Reyes', CONTENT.W, LIFTER_STRIP.NAME_SCALE)).toBe(2);
+    expect(fitScale('Nils Berg', CONTENT.W, LIFTER_STRIP.NAME_SCALE)).toBe(2);
     const strip = lifterStrip(SHORT_NAME_MASTERS_CARD, CONTENT.W);
     expect(strip.nameScale).toBe(1);
-    expect(strip.metaLines).toEqual(["MEN'S SINGLE-PLY MASTERS 1 120+", '139.40 KG']);
+    expect(strip.metaLines).toEqual(["MEN'S SINGLE-PLY MASTERS 2 120+", '138.60 KG']);
     // A one-line card keeps the big name.
     expect(lifterStrip(STRONG_MEET_CARD, CONTENT.W).nameScale).toBe(2);
 
     const grid = renderResultCard(SHORT_NAME_MASTERS_CARD);
     expectTextIn(
       grid,
-      { ...INSIDE_FRAME, y: LIFTER_STRIP.NAME_Y, h: FONT.GLYPH_H },
-      'Sam Reyes',
+      LIFTER_NAME_RECT,
+      'Nils Berg',
       CONTENT.X,
-      LIFTER_STRIP.NAME_Y,
+      LIFTER_STRIP.NAME_Y_COMPACT,
       SHEET.INK,
       { scale: 1 },
       'short name stepped down',
@@ -850,8 +851,8 @@ describe('a card that prints a PLACING prints its DIVISION', () => {
       grid,
       LIFTER_META_RECT,
       [
-        { text: "MEN'S SINGLE-PLY MASTERS 1 120+", x: CONTENT.X, y: LIFTER_STRIP.META_Y_TWO_LINE[0] },
-        { text: '139.40 KG', x: CONTENT.X, y: LIFTER_STRIP.META_Y_TWO_LINE[1] },
+        { text: "MEN'S SINGLE-PLY MASTERS 2 120+", x: CONTENT.X, y: LIFTER_STRIP.META_Y_TWO_LINE[0] },
+        { text: '138.60 KG', x: CONTENT.X, y: LIFTER_STRIP.META_Y_TWO_LINE[1] },
       ],
       SHEET.INK_SOFT,
       'short-name masters strip',
@@ -1556,19 +1557,29 @@ describe('shortening rather than truncating', () => {
   });
 
   it('sets the second line where cardTuning says, and one line where it says that', () => {
-    // `lifterMetaLineY` is the indirection the renderer draws through; the
-    // pixel probes anchor on `LIFTER_STRIP.META_Y*` directly, so this is what
-    // stops the two drifting apart. Hand-written line counts and indices.
+    // `lifterMetaLineY` and `lifterNameY` are the indirections the renderer
+    // draws through; the pixel probes anchor on `LIFTER_STRIP.*` directly, so
+    // this is what stops the two drifting apart. Hand-written line counts.
     expect(lifterMetaLineY(1, 0)).toBe(LIFTER_STRIP.META_Y);
     expect(lifterMetaLineY(2, 0)).toBe(LIFTER_STRIP.META_Y_TWO_LINE[0]);
     expect(lifterMetaLineY(2, 1)).toBe(LIFTER_STRIP.META_Y_TWO_LINE[1]);
+    expect(lifterNameY(1)).toBe(LIFTER_STRIP.NAME_Y);
+    expect(lifterNameY(2)).toBe(LIFTER_STRIP.NAME_Y_COMPACT);
     // The two-line positions are inside the strip and in order.
     expect(LIFTER_STRIP.META_Y_TWO_LINE[0]).toBeLessThan(LIFTER_STRIP.META_Y_TWO_LINE[1]);
     expect(LIFTER_STRIP.META_Y_TWO_LINE[1] + FONT.CAP_H).toBeLessThanOrEqual(
       LIFTER_STRIP.Y + LIFTER_STRIP.H - 1,
     );
-    // The first line clears a scale-1 name's descenders.
-    expect(LIFTER_STRIP.META_Y_TWO_LINE[0]).toBeGreaterThanOrEqual(LIFTER_STRIP.NAME_Y + FONT.GLYPH_H);
+    // Each line clears the descenders of the one above it: the name's, then
+    // the first meta line's. `FONT.GLYPH_H` is the cell, descenders included.
+    expect(LIFTER_STRIP.META_Y_TWO_LINE[0]).toBeGreaterThanOrEqual(
+      LIFTER_STRIP.NAME_Y_COMPACT + FONT.GLYPH_H,
+    );
+    expect(LIFTER_STRIP.META_Y_TWO_LINE[1]).toBeGreaterThanOrEqual(
+      LIFTER_STRIP.META_Y_TWO_LINE[0] + FONT.CAP_H,
+    );
+    // The compact name starts inside the strip, not on the masthead's band.
+    expect(LIFTER_STRIP.NAME_Y_COMPACT).toBeGreaterThan(LIFTER_STRIP.Y);
   });
 });
 
