@@ -52,6 +52,89 @@
 import type { RoundingMode, WeightUnit } from './rpe';
 import type { LiftKind } from './meet';
 
+/**
+ * THE STARTING e1RMs, WITH THE UNIT THEY ARE EXPRESSED IN.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS A TAGGED PAIR AND NOT THREE BARE NUMBERS UNDER A `_KG` NAME
+ * ---------------------------------------------------------------------------
+ * This constant used to be `STARTING_E1RM_KG: { squat: 180, bench: 120,
+ * deadlift: 220 }` — three numbers whose unit lived in the identifier and
+ * nowhere else — under a comment that called it "PLACEHOLDER DATA, NOT
+ * PROGRESSION. Nothing here is persisted and nothing derives from it once the
+ * server has a real number." BOTH CLAUSES WERE FALSE, and the comment pointed
+ * away from exactly the edit that breaks it:
+ *
+ *   - `sessionServer.ts`'s `newServerRecord()` assigns these straight into
+ *     `record.bestE1rmKg`, which goes out on `ProgressionSnapshotWire` and
+ *     arrives as `ConfirmedFacts.bestE1rmKg` — a `ConfirmedKg`, a
+ *     `PROGRESSION_FACT_KEYS` member, `'protected'` in `FACT_PROTECTION`. The
+ *     same field, the same brand and the same protection as the number
+ *     `readKilogramSets` was built to fence. It is progression, on every
+ *     account.
+ *   - `session.ts`'s `nextBestE1rm` is MONOTONE, so the seed is a permanent
+ *     FLOOR rather than a value the first real session replaces. A lifter whose
+ *     true squat e1RM is 150 kg carries 180 forever;
+ *     `sessionServer.test.ts` pins exactly that. It never stops deriving,
+ *     because the floor never falls.
+ *
+ * And it crosses the mode boundary: `meetServer.ts`'s `meetDayFacts` hands it
+ * to meet day, where `suggestOpener` turns it into a declared attempt and
+ * `stageLoadRatio` divides a proven-kilogram meet weight by it.
+ *
+ * ---------------------------------------------------------------------------
+ * THE EDIT THIS SHAPE EXISTS TO CATCH
+ * ---------------------------------------------------------------------------
+ * GDD §11's display-unit question is open and a human is being asked to answer
+ * it. If the answer is "the loop loads in pounds", the first edit is
+ * `LOAD_UNIT: 'lb'` — which `sessionProposal` forwards onto the card, so the
+ * server refuses the session loudly, as designed. THE SECOND, NATURAL EDIT is
+ * these three magnitudes. With the unit in the identifier that edit seeded a
+ * kilogram field with pound numbers silently, with every guard in the tree
+ * green, and monotonicity made it unwalkable back.
+ *
+ * THE SHAPE IS `BodyweightReading`'S, `MeetCardReport`'S AND
+ * `TrainingCardReport`'S — the tree's three existing tagged pairs. The arms
+ * carry DIFFERENT FIELD NAMES, so the magnitudes cannot be reached without
+ * narrowing on the unit first, and there is deliberately no `value` or
+ * `perLift` field reachable from both arms. GDD §11 records the precedent
+ * directly: `MeetEntry.bodyweight` is in-tree placeholder data too and was
+ * given a unit tag anyway, "so the refusal has a fact to check rather than a
+ * literal".
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IT PROVES AND WHAT IT DOES NOT — said plainly
+ * ---------------------------------------------------------------------------
+ * A tag proves what was DECLARED, not what was TYPED. Editing these three
+ * magnitudes to pound numbers while leaving `unit: 'kg'` is NOT caught here and
+ * is not caught anywhere: 397/265/485 under a `'kg'` tag is a lie somebody
+ * committed, the same residual `progression.ts` §7.3(b) names for every other
+ * declared unit on this boundary. What this shape buys is that the unit and the
+ * magnitudes can no longer drift apart WITHOUT SOMEBODY SAYING SO.
+ *
+ * The `'lb'` arm exists so a pound seed can be REFUSED BY NAME rather than
+ * converted, matching `dots.ts` past its domain, `e1rm.ts` past the chart and
+ * both servers on a pound card. It is not the answer to §11 and does not take
+ * one: `KILOGRAMS_PER_POUND` is right there and nothing calls it.
+ */
+export type StartingE1rmSeed =
+  /** Expressed in kilograms. The only unit permanent progression can store. */
+  | { readonly unit: 'kg'; readonly kilograms: Readonly<Record<LiftKind, number>> }
+  /** Expressed in pounds. Carried so it can be REFUSED by name, not converted. */
+  | { readonly unit: 'lb'; readonly pounds: Readonly<Record<LiftKind, number>> };
+
+/**
+ * The arm of `StartingE1rmSeed` a kilogram consumer may read.
+ *
+ * `Extract` rather than a second literal so it cannot drift from the union,
+ * exactly as `KilogramTrainingCard`, `KilogramMeetCard` and `KilogramBodyweight`
+ * are built. `sessionServer.ts` binds the seed to this type at module scope, so
+ * a seed declared in any other unit is a BUILD error rather than a runtime
+ * refusal — see that module for why a compile-time check is available here and
+ * is not available for a card that arrives as JSON.
+ */
+export type KilogramStartingE1rm = Extract<StartingE1rmSeed, { readonly unit: 'kg' }>;
+
 /** The three check-in questions, in the order GDD §3.2 lists them. */
 export type CheckInQuestion = 'sleep' | 'soreness' | 'motivation';
 
@@ -178,13 +261,33 @@ export const SESSION_TUNING = Object.freeze({
   LOAD_UNIT: 'kg' as WeightUnit,
 
   /**
-   * Starting e1RM per lift, kg, for a lifter with no history.
+   * Starting e1RM per lift for a lifter with no history, with the unit it is
+   * expressed in as a FIELD rather than as part of a name. See
+   * `StartingE1rmSeed` above for why the shape is this and not three bare
+   * numbers, and for the edit it exists to catch.
    *
-   * PLACEHOLDER DATA, NOT PROGRESSION. Nothing here is persisted and nothing
-   * derives from it once the server has a real number; it exists so the first
-   * session has a bar to load. With a backend these arrive from onboarding.
+   * PLACEHOLDER MAGNITUDES — AND PROGRESSION. Say both halves, because the
+   * comment this replaced said only the first and got the second backwards.
+   * The three numbers are stand-ins a real sign-up flow replaces, and nobody
+   * has playtested them. What they are NOT is inert: `newServerRecord()` writes
+   * them into `bestE1rmKg` — protected, on the wire, and monotone via
+   * `nextBestE1rm` — so on every brand-new account this is the permanent FLOOR
+   * under a lifter's e1RM, and it goes on deriving for as long as the account
+   * exists. Changing a magnitude here changes what every future account can
+   * never drop below; changing the unit without converting them is a build
+   * error.
+   *
+   * WHY THE SEED IS A FLOOR RATHER THAN A GUESS THAT WASHES OUT, since that is
+   * the surprising half: `nextBestE1rm` never returns below what is held, by
+   * design (GDD §3.4 — a bad day must not cost a lifter their number), so no
+   * honest session can lower it. That is a deliberate property of the
+   * progression rule, not a defect of this constant, and it is why this
+   * constant is progression.
    */
-  STARTING_E1RM_KG: Object.freeze({ squat: 180, bench: 120, deadlift: 220 } as const satisfies Record<LiftKind, number>),
+  STARTING_E1RM: Object.freeze({
+    unit: 'kg',
+    kilograms: Object.freeze({ squat: 180, bench: 120, deadlift: 220 }),
+  } as const satisfies StartingE1rmSeed),
 
   // -------------------------------------------------------------------------
   // Beats — how long each part of the loop is held

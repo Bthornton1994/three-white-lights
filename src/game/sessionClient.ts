@@ -299,10 +299,20 @@ export function todayFromCache(cache: ProgressionCache, day: number, lift: LiftK
   return {
     day,
     lift,
-    // Loads are prescribed from the best e1RM on record. Before the server has
-    // one, the placeholder onboarding number stands in — the same fallback
-    // `sessionServer.ts` uses, and it is onboarding data rather than progression.
-    e1rmKg: best ?? SESSION_TUNING.STARTING_E1RM_KG[lift],
+    // Loads are prescribed from the best e1RM on record. Before a snapshot has
+    // landed the client has no server number to read, so the seed stands in —
+    // the same fallback `sessionServer.ts` uses.
+    //
+    // AND IT IS PROGRESSION, which this comment used to deny in as many words
+    // ("onboarding data rather than progression"). `newServerRecord()` writes
+    // the same seed into `bestE1rmKg`, which is protected, on the wire, and
+    // monotone through `nextBestE1rm` — so it is the permanent floor under the
+    // lifter's e1RM, not a placeholder that stops mattering once a real number
+    // arrives. What this line does is show the client the number the server
+    // already holds, one revision early; the unit is proven where the WRITE is
+    // (`sessionServer.ts`'s `PROVEN_STARTING_E1RM`), because a client is a
+    // renderer and nothing it computes here is banked.
+    e1rmKg: best ?? SESSION_TUNING.STARTING_E1RM.kilograms[lift],
     bestE1rmKg: best,
     // Kept as a separate read from `readStreakState` so the number a screen
     // prints and the state the rules run on cannot silently be two different

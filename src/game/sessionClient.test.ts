@@ -273,7 +273,7 @@ describe('what today is, read out of the cache', () => {
     expect(today.bestE1rmKg).toBeNull();
     // Loads still have to come from somewhere, and it is the declared onboarding
     // placeholder rather than an invented number.
-    expect(today.e1rmKg).toBe(SESSION_TUNING.STARTING_E1RM_KG[LIFT]);
+    expect(today.e1rmKg).toBe(SESSION_TUNING.STARTING_E1RM.kilograms[LIFT]);
     expect(today.streakBefore).toBe(0);
   });
 
@@ -519,7 +519,7 @@ describe('the PR call', () => {
       bestE1rmKg: { squat: null, bench: null, deadlift: null },
     };
     const cache = receiveSnapshot(emptyProgressionCache(), snapshotWireFor(blank, null));
-    const played = closeOutOf(playSession(SESSION_TUNING.STARTING_E1RM_KG[LIFT]));
+    const played = closeOutOf(playSession(SESSION_TUNING.STARTING_E1RM.kilograms[LIFT]));
     const withNoHistory: SessionCloseOut = { ...played, previousBestE1rmKg: null };
     const readings = closeOutReadings(cache, withNoHistory);
     if (readings.payoff.kind !== 'e1rm') throw new Error('unreachable');

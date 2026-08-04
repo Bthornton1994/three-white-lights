@@ -565,6 +565,19 @@
  * or a `WalletCurrency` is not named below, so the table cannot go stale by
  * something new being added beside it.
  *
+ * AND THAT WAS STILL NOT ENOUGH, WHICH IS THE POINT OF THIS PARAGRAPH. Sweeping
+ * the fact set closed the fourth FIELD and left a fifth ROUTE into a field the
+ * table already listed as proven: `newServerRecord()` seeds `bestE1rmKg` from an
+ * in-tree constant, on every account, and no report is involved, so
+ * `readKilogramSets` never saw it. The old 7.1 entry named the seed and then
+ * ranked it as "a different class ... named here rather than fenced", which is
+ * what a sweep organised by field rather than by ROUTE produces: the field was
+ * checked, so the field looked done.
+ *
+ * The sweep is therefore over both. For every mass fact: which routes write it,
+ * and what proves the unit on each. 7.4 states the resulting claim in a form
+ * that can be falsified, and names what would falsify it.
+ *
  * ---------------------------------------------------------------------------
  * 7.1 MASSES — the only fields where "unit" means kilograms or pounds
  * ---------------------------------------------------------------------------
@@ -577,19 +590,42 @@
  *       comparison is against server-owned data, not a constant.
  *
  *   `bestE1rmKg[squat|bench|deadlift]` (protected, monotone, training only)
- *       PROVEN AS OF THIS ROUND, and weaker than the total's. `sessionServer.ts`
- *       `readKilogramSets` refuses a `TrainingCardReport` whose declared unit is
- *       not `'kg'`, before `bestE1rmFromSets` and before the streak. The
- *       comparison is against a CONSTANT (`PROGRESSION_E1RM_UNIT`), because a
- *       session has no server-owned definition to check against — it is authored
- *       by the client, not drawn from a catalogue. So the question asked is "did
- *       you say kg?", not "does what you say match what this is".
- *       SEEDED, NOT ONLY WRITTEN: `newServerRecord()` starts these at
- *       `SESSION_TUNING.STARTING_E1RM_KG`, an in-tree constant named `_KG` with
- *       nothing behind the name. It is server-side placeholder data that a
- *       sign-up flow replaces (its own comment says so), not client input, so it
- *       is a different class from the four fields this boundary has fixed —
- *       named here rather than fenced.
+ *       TWO ROUTES IN, AND BOTH ARE NOW PROVEN. This field is the only one in
+ *       the table a number can reach without riding a report, which is how the
+ *       second route survived a round after the first was closed.
+ *
+ *       ROUTE 1 — A SESSION IS RECORDED. Proven, and weaker than the total's.
+ *       `sessionServer.ts` `readKilogramSets` refuses a `TrainingCardReport`
+ *       whose declared unit is not `'kg'`, before `bestE1rmFromSets` and before
+ *       the streak. The comparison is against a CONSTANT
+ *       (`PROGRESSION_E1RM_UNIT`), because a session has no server-owned
+ *       definition to check against — it is authored by the client, not drawn
+ *       from a catalogue. So the question asked is "did you say kg?", not "does
+ *       what you say match what this is".
+ *
+ *       ROUTE 2 — THE ACCOUNT IS CREATED. `newServerRecord()` seeds all three,
+ *       on every account, and the seed is a permanent FLOOR rather than a
+ *       starting guess, because `nextBestE1rm` is monotone: no honest session
+ *       lowers it, so it never stops deriving. Proven as of this round, and by a
+ *       STRONGER check than route 1's, for a reason worth stating rather than
+ *       glossing. The seed is `SESSION_TUNING.STARTING_E1RM`, a
+ *       `StartingE1rmSeed` — the fourth tagged pair on this boundary, arms
+ *       `kilograms` / `pounds` — and because it is a LITERAL IN THIS BUILD
+ *       rather than JSON from a client, "is this the kilogram arm?" can be asked
+ *       by `tsc` and is: `PROVEN_STARTING_E1RM` in `sessionServer.ts`. A seed
+ *       declared in any other unit does not reach a runtime refusal; it fails to
+ *       build, at every read site. `A_STARTING_E1RM_CAN_DECLARE_A_UNIT_THIS_
+ *       RECORD_REFUSES` is the non-vacuity control, so deleting the `'lb'` arm
+ *       does not quietly make the narrow trivial.
+ *
+ *       WHAT NEITHER ROUTE PROVES is the magnitudes — see 7.3(b), which now
+ *       covers both.
+ *
+ *       AND IT CROSSES INTO THE OTHER MODE. `meetServer.ts`'s `meetDayFacts` is
+ *       the one function that carries a training number into meet day, and its
+ *       fallback parameter is now `KilogramStartingE1rm` — the narrowed arm — so
+ *       the caller has to have narrowed before it can call, and no runtime
+ *       refusal path is needed on a function a lifter's meet depends on.
  *
  *   `meets[n].totalKg`, `meets[n].bestByLift[lift]` (protected)
  *       PROVEN, same chain as `totalKg`: both are read off the replayed
@@ -643,19 +679,67 @@
  *       when the Edge Function resolves `meetId` against its own table. The
  *       single highest-value thing left on the meet path.
  *
- *   (b) A DECLARED UNIT CAN BE A LIE SOMEBODY TYPED. `{ unit: 'kg', kilograms:
- *       203.7 }` over a pound scale, `{ unit: 'kg', kilogramSets: [...] }` over a
- *       pound bar. Every check on this boundary is about a field that MEANS
- *       something rather than one that means nothing; none of it is tamper
- *       resistance, and there is no server to re-derive against.
+ *   (b) A DECLARED UNIT CAN BE A LIE SOMEBODY TYPED, AND THAT IS NOW THE WHOLE
+ *       OF WHAT IS LEFT ON THE UNIT QUESTION. `{ unit: 'kg', kilograms: 203.7 }`
+ *       over a pound scale, `{ unit: 'kg', kilogramSets: [...] }` over a pound
+ *       bar, `{ unit: 'kg', kilograms: { squat: 397, … } }` over a pound seed.
+ *       Every check on this boundary is about a field that MEANS something
+ *       rather than one that means nothing; none of it is tamper resistance, and
+ *       there is no server to re-derive against.
  *
- *   (c) `ServerRecord` IS A PLAIN INTERFACE AND CAN BE BUILT BY HAND.
- *       `meetPreview.ts` and `sessionPreview.ts` both do, from `MEET_PREVIEW`
- *       and `SESSION_PREVIEW` constants, bypassing both server functions. That
- *       is screenshot data in preview modules rather than a route a player
- *       reaches, and it is the `ConfirmedFacts`-by-hand residual (§6) one layer
- *       out — but it is a way a `…Kg` field gets a number no check saw, and it
- *       is named rather than left to be found.
+ *       THE SEED'S VERSION OF THIS IS DIFFERENT IN REACH AND THE SAME IN KIND,
+ *       and the difference is worth having on the page. The three sent readings
+ *       can be lied to by any client that can post JSON. The seed can only be
+ *       lied to by an edit to this repository, which means it arrives through a
+ *       diff and a review rather than over a network. That makes it far less
+ *       REACHABLE and no better PROVEN — and the reachable half is exactly the
+ *       edit GDD §11 is currently asking a human to make, so "it needs a commit"
+ *       is not much comfort.
+ *       WHAT IT IS NOT is caught by the test suite. Retuning the seed magnitudes
+ *       does turn several `sessionServer.test.ts` assertions red — but they pin
+ *       the arithmetic 180/120/220 produce and go red for a legitimate retune
+ *       too, and not one of them mentions a unit. A change detector is not a
+ *       unit check and is not counted as one here.
+ *       No plausibility band was invented to close it. A bound on "how strong
+ *       may a new lifter be" is a game-feel guess, and GDD §11 already records
+ *       what a guessed constant standing in for a check bought last time
+ *       (`HUMAN_INPUT_BUDGET_MS` propping up a session-length floor).
+ *
+ *   (c) `ServerRecord` IS A PLAIN INTERFACE AND CAN BE BUILT BY HAND, AND THE
+ *       TWO PLACES THAT DO IT BYPASS MORE THAN "A `…Kg` FIELD" — which is how
+ *       this entry used to describe them, and it understated both.
+ *
+ *       `meetPreview.ts`'s `previewServerRecord()` spreads `newServerRecord()`
+ *       and writes `totalKg` plus a COMPLETE, HAND-BUILT `MeetResultWire` into
+ *       `meets[]`. That is not one field slipping past one check: it is all four
+ *       of the meet path's checks at once — `MEET_ID_MISMATCH`,
+ *       `replayMeetCard`'s `card.unit === meet.rules.unit`, the bodyweight's tag
+ *       and the bodyweight's payload — because it never calls `applyMeetResult`
+ *       at all. Every number in it comes from `MEET_PREVIEW` and `MEET_ENTRY`.
+ *
+ *       `sessionPreview.ts` (in `src/session/`) writes a SECOND unchecked number
+ *       into `bestE1rmKg`: `best + SESSION_BOUNDARY_PREVIEW.SERVER_DRIFT_KG`,
+ *       added to the e1RM `applyTrainingSession` actually computed, so the
+ *       `close-out-server-wins` beat has a server answer the client did not
+ *       predict. The previous version of this entry did not mention it.
+ *
+ *       WHY NEITHER IS FENCED, decided rather than defaulted. Both are DEBUG
+ *       ONLY, and that is checkable rather than asserted: `App.tsx` returns
+ *       `null` for `search` when there is no `window`, so on a device the branch
+ *       is dead; `shellRoute.ts` says `entryRoute` is the only reader, it runs
+ *       once at launch, and no `ShellIntent` produces a `debug` route, so on web
+ *       it needs a hand-typed query string; and nothing persists —
+ *       `useMeetDay.ts` holds the stand-in record in a ref that dies with the
+ *       tab. And both exist BECAUSE the server functions cannot produce what
+ *       they photograph: a prior meet under a different id (which
+ *       `applyMeetResult` would need a whole scripted meet to mint), and an
+ *       answer that DISAGREES with the client (which a correct server, running
+ *       the same monotone `nextBestE1rm`, cannot send). Fencing them would
+ *       delete the two fixtures that demonstrate this boundary working, to guard
+ *       a path no player reaches. So: named accurately, not fenced.
+ *
+ *       What would change that: either becoming reachable from a `ShellIntent`,
+ *       or anything persisting a record built this way.
  *
  *   (d) `MeetDefinition.ghostTotalsKg` IS A BARE `number[]`. It reaches no
  *       stored field (`MeetResultWire` has no placing) but it is what a proven
@@ -670,9 +754,52 @@
  *       there is nothing here to prove — which is worth writing down, because
  *       "nothing to prove" and "nobody looked" read the same in a diff.
  *
- *   (f) `SESSION_TUNING.STARTING_E1RM_KG`, per 7.1. In-tree server-side
- *       placeholder; reachable on every brand-new account, which is why it is
- *       named rather than dismissed.
+ *   (f) THE SEED'S UNIT IS NO LONGER ON THIS LIST, and what replaced it is
+ *       smaller. This entry used to read "`SESSION_TUNING.STARTING_E1RM_KG`, per
+ *       7.1 — in-tree server-side placeholder", ranked as a lesser class than
+ *       the four fields the boundary had fixed. That ranking was wrong twice
+ *       over: the number reaches the SAME field with the SAME brand and the SAME
+ *       protection as the one `readKilogramSets` was built to fence, and being
+ *       server-authored placeholder data is not a distinguishing property —
+ *       `MeetEntry.bodyweight` is in-tree placeholder data too and was given a
+ *       unit tag anyway, "so the refusal has a fact to check rather than a
+ *       literal" (GDD §11). The same argument had already been made and rejected
+ *       here once.
+ *       The seed is now `StartingE1rmSeed` and its declared unit is proven at
+ *       COMPILE time (7.1, route 2). What remains is its magnitudes, which is
+ *       (b) and is filed there.
+ *
+ * ---------------------------------------------------------------------------
+ * 7.4 SO WHAT IS LEFT ON THE UNIT QUESTION, STATED AS A CLAIM THAT CAN BE
+ *     FALSIFIED
+ * ---------------------------------------------------------------------------
+ *
+ * THE CLAIM: every number that reaches a `ConfirmedFacts` mass field — the
+ * total, the three per-lift e1RMs, each stored meet's total, per-lift bests and
+ * bodyweight — arrives past a check on a UNIT FIELD it carries, by every route
+ * that exists in non-test code. Five routes, all named above: a meet card, a
+ * bodyweight reading, a training card, the account seed, and the two preview
+ * builders in (c) which reach no stored field.
+ *
+ * WHAT WOULD FALSIFY IT, concretely, so this is not a claim that survives by
+ * being unfalsifiable:
+ *
+ *   - A SIXTH ROUTE. Another construction site of `ServerRecord`, or a new
+ *     writer of `bestE1rmKg` / `totalKg` that is neither a server function nor a
+ *     preview. `progression.test.ts` cannot see this one; a grep for
+ *     `: ServerRecord` and for `newServerRecord` can, and that is what has found
+ *     it both times so far.
+ *   - A NEW MASS FACT. `progression.test.ts` fails if a `ProgressionFactKey`,
+ *     `ConfirmedMeetResultKey`, `StreakFactKey` or `WalletCurrency` is not named
+ *     in 7.1 or 7.2, so a fact added beside these cannot go unlisted — but the
+ *     test cannot tell whether the paragraph written for it is TRUE.
+ *   - A MAGNITUDE THAT DOES NOT MATCH ITS TAG. Not falsification of the claim —
+ *     the claim is about units being CHECKED, not about numbers being HONEST —
+ *     but it is the failure a reader is most likely to think this covers, and it
+ *     is (b), open, on all four readings.
+ *
+ * "Nothing is left" is NOT the claim. The claim is that every route now asks the
+ * question; (a) and (b) are what asking it does not buy.
  */
 
 import type { BodyweightReading, OfficialTotalKg } from './dots';

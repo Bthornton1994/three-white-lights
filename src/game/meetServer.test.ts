@@ -26,6 +26,7 @@ import {
   receiveProgressionSnapshot,
 } from './progression';
 import {
+  DOTS_TOTAL_UNIT,
   KILOGRAMS_PER_POUND,
   dotsDomainStatus,
   dotsScore,
@@ -44,7 +45,7 @@ import { meetAttemptReports, meetResultCard, meetResultProposal, type MeetDayCon
 import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW, type MeetDefinition, type MeetEntry } from './meetTuning';
 import { playMeet, previewContext, previewServerRecord, previewStateFor, type RepStyle } from './meetPreview';
 import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
-import { SESSION_TUNING } from './sessionTuning';
+import { SESSION_TUNING, type KilogramStartingE1rm } from './sessionTuning';
 
 const DAY = MEET_PREVIEW.DAY;
 const PROPOSAL_ID = 'meet-test-1';
@@ -561,26 +562,57 @@ describe('meetDayFacts', () => {
       ...newServerRecord(),
       bestE1rmKg: { squat: 240, bench: 150, deadlift: 280 },
     };
-    const facts = meetDayFacts(record, DAY, SESSION_TUNING.STARTING_E1RM_KG);
+    const facts = meetDayFacts(record, DAY, SESSION_TUNING.STARTING_E1RM);
     expect(facts.bestE1rmKg).toEqual({ squat: 240, bench: 150, deadlift: 280 });
     expect(facts.day).toBe(DAY);
   });
 
-  it('falls back to the onboarding placeholder for a lift with no e1RM yet', () => {
+  it('falls back to the seed for a lift with no e1RM yet', () => {
     const record: ServerRecord = {
       ...newServerRecord(),
       bestE1rmKg: { squat: null, bench: 150, deadlift: null },
     };
-    const facts = meetDayFacts(record, DAY, SESSION_TUNING.STARTING_E1RM_KG);
-    expect(facts.bestE1rmKg.squat).toBe(SESSION_TUNING.STARTING_E1RM_KG.squat);
+    const facts = meetDayFacts(record, DAY, SESSION_TUNING.STARTING_E1RM);
+    expect(facts.bestE1rmKg.squat).toBe(SESSION_TUNING.STARTING_E1RM.kilograms.squat);
     expect(facts.bestE1rmKg.bench).toBe(150);
-    expect(facts.bestE1rmKg.deadlift).toBe(SESSION_TUNING.STARTING_E1RM_KG.deadlift);
+    expect(facts.bestE1rmKg.deadlift).toBe(SESSION_TUNING.STARTING_E1RM.kilograms.deadlift);
+  });
+
+  it('takes the fallback WITH ITS UNIT — the one number that crosses training → meet', () => {
+    // On a cross-mode-coherence piece this is the single number that travels
+    // from the training half into the meet half, and until this round it
+    // travelled as a bare `Readonly<Record<LiftKind, number>>` under a parameter
+    // named `fallbackE1rmKg`, fed from a constant named `STARTING_E1RM_KG`: the
+    // unit asserted twice by identifiers and nowhere by a field. From here it
+    // becomes `MeetDayContext.bestE1rmKg`, `suggestOpener` turns it into a
+    // declared attempt, and `stageLoadRatio` divides a proven-kilogram meet
+    // weight by it.
+    //
+    // COMPILE-TIME: the parameter is `KilogramStartingE1rm`, the narrowed arm.
+    // Passing a pound seed does not reach a runtime refusal — it does not
+    // build. `tsc` is the assertion; these are its runtime shadow.
+    expect(SESSION_TUNING.STARTING_E1RM.unit).toBe(DOTS_TOTAL_UNIT);
+    const record: ServerRecord = {
+      ...newServerRecord(),
+      bestE1rmKg: { squat: null, bench: null, deadlift: null },
+    };
+    const facts = meetDayFacts(record, DAY, SESSION_TUNING.STARTING_E1RM);
+    expect(facts.bestE1rmKg).toEqual({ ...SESSION_TUNING.STARTING_E1RM.kilograms });
+    // AND THE RESIDUAL IS THE SAME ONE, said here too: the tag proves what was
+    // declared. A seed carrying pound magnitudes under a `'kg'` tag crosses this
+    // boundary unchallenged, and `suggestOpener` would build a 2.2x opener off
+    // it. `sessionServer.test.ts` pins that hole with a constructed value.
+    const lying: KilogramStartingE1rm = {
+      unit: 'kg',
+      kilograms: { squat: 397, bench: 265, deadlift: 485 },
+    };
+    expect(meetDayFacts(record, DAY, lying).bestE1rmKg.squat).toBe(397);
   });
 
   it('carries the previous best total and the previous per-lift bests', () => {
     const applied = applyClean();
     if (!applied.ok) throw new Error(applied.error.message);
-    const facts = meetDayFacts(applied.value.record, DAY + 1, SESSION_TUNING.STARTING_E1RM_KG);
+    const facts = meetDayFacts(applied.value.record, DAY + 1, SESSION_TUNING.STARTING_E1RM);
     expect(facts.previousBestTotalKg).toBe(applied.value.totalKg);
     expect(facts.previousBestByLiftKg).toEqual(applied.value.bestByLiftKg);
   });
