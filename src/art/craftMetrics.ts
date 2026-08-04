@@ -48,7 +48,7 @@
 
 import { BANK_SIZE, colorAt, isTransparentIndex, rgb5ToRgb8 } from './palette';
 import { getPx, type IndexGrid } from './raster';
-import { RIG_GEOMETRY, armSpan, forearmSpan, type Pose } from './rig';
+import { RIG_GEOMETRY, forearmSpan, upperArmSpan, type Pose } from './rig';
 
 // ---------------------------------------------------------------------------
 // TUNING — every threshold this file compares against lives in this one block.
@@ -1089,13 +1089,13 @@ export function limbWindows(geometry: LimbGeometry): readonly FieldWindow[] {
     ['left', -1],
     ['right', 1],
   ] as const) {
-    // THE WINDOW IS THE DRAWN MASS, taken from the same `armSpan`/`forearmSpan`
-    // the composer draws between rather than from a second copy of the
-    // arithmetic. The forearm is three radii over two capsules (see
-    // `RIG_GEOMETRY.FOREARM_R`), so the window is too: measuring a bellied limb
-    // through a straight cone's outline would credit or blame it for pixels it
-    // does not own.
-    const shX = armSpan(pose, sign).shoulderX;
+    // THE WINDOW IS THE DRAWN MASS, taken from the same
+    // `upperArmSpan`/`forearmSpan` the composer draws between rather than from a
+    // second copy of the arithmetic. BOTH bones are three radii over two
+    // capsules (`RIG_GEOMETRY.UPPER_ARM_R`, `RIG_GEOMETRY.FOREARM_R`), so the
+    // window is four capsules too: measuring a bellied limb through a straight
+    // cone's outline would credit or blame it for pixels it does not own.
+    const u = upperArmSpan(pose, sign);
     const f = forearmSpan(pose, sign);
     windows.push({
       name: `${side} arm`,
@@ -1103,7 +1103,8 @@ export function limbWindows(geometry: LimbGeometry): readonly FieldWindow[] {
         Math.abs(x - centerX) >= torsoOut &&
         Math.sign(x - centerX) === sign &&
         !inAnyHand(x, y) &&
-        (inCapsule(x, y, shX, pose.shoulderY, f.elbowX, f.elbowY, G.UPPER_ARM_R[0], G.UPPER_ARM_R[1], pad) ||
+        (inCapsule(x, y, u.shoulderX, u.shoulderY, u.bellyX, u.bellyY, G.UPPER_ARM_R[0], G.UPPER_ARM_R[1], pad) ||
+          inCapsule(x, y, u.bellyX, u.bellyY, u.elbowX, u.elbowY, G.UPPER_ARM_R[1], G.UPPER_ARM_R[2], pad) ||
           inCapsule(x, y, f.elbowX, f.elbowY, f.bellyX, f.bellyY, G.FOREARM_R[0], G.FOREARM_R[1], pad) ||
           inCapsule(x, y, f.bellyX, f.bellyY, f.handX, f.handY, G.FOREARM_R[1], G.FOREARM_R[2], pad)),
     });
