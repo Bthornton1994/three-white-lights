@@ -740,14 +740,22 @@ describe('a total that is not in kilograms is refused, not recorded', () => {
     expect(applied.error.code).not.toBe('MEET_INCOMPLETE');
   });
 
-  it('leaves the lifter’s record exactly as it found it', () => {
-    // A refusal carries no `value`, so there is structurally nothing to write
-    // through — but the input must not have been mutated on the way to the
-    // refusal either.
+  it('produces no record at all, and does not touch the one it was handed', () => {
+    // TWO SEPARATE CLAIMS, and only the first of them dies if the unit check is
+    // removed. Stated as two because the second one on its own would be a check
+    // that cannot fail: `applyMeetResult` is pure and returns a new record, so
+    // "the input is unchanged" is true whether it refused or wrote a 1267.5 lb
+    // total. The claim that actually bites is that there is no NEW record.
     const before = newServerRecord();
     const snapshot = structuredClone(before);
     const { reports } = playCard(POUND_MEET_RULES);
-    applyMeetResult(before, DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+    const applied = applyMeetResult(before, DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+
+    // (1) Nothing was produced to write. This is the one the mutation kills.
+    expect(applied.ok).toBe(false);
+    if (applied.ok) throw new Error('unreachable');
+
+    // (2) ...and the purity contract held on the way to the refusal.
     expect(before).toEqual(snapshot);
     expect(before.totalKg).toBeNull();
     expect(before.meets).toEqual([]);
