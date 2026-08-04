@@ -231,15 +231,16 @@ progression model and must not be tuned as though it were.
 
 Daily, with a short free grace. A gap of up to the **free-grace threshold**
 keeps a run alive at no cost and with nothing to answer; a longer one breaks the
-streak unless Recovery Days are spent on the days past the grace. See §4.4 for
-the ruling that introduced this and what it costs.
+streak unless Recovery Days armed at the last session cover the days past the
+grace. See §4.4 for the ruling that introduced the grace and what it costs, and
+§4.2 for the ruling that made protection automatic.
 
 **The grace is per absence, not per gap.** An absence is everything since the
-last *trained* day. The grace covers the first few days of one, and a Recovery
-Day spent partway through does not hand the player a fresh grace window for the
-days after it — only a real session does. So the longest absence a run can
-survive is the same number whether the player checks in every day of their
-holiday and pays each time or answers one prompt on the day they get back.
+last *trained* day, and it is resolved as one thing: the grace covers its first
+few days and Recovery Days cover the rest. Only a real session starts a new one.
+So the longest absence a run can survive is the same number whether the player
+checks in every day of their holiday or is not seen until they get back — and so
+is the price.
 
 **The day boundary is 03:00 local, not midnight.** A lifter who finishes a late
 session at 00:40 gets credit for the day they believe they are in. "Local" is an
@@ -261,8 +262,7 @@ a missed day as legitimate training wisdom rather than failure — important for
 the hardcore audience, who often miss days *because* they train intelligently.
 
 **Spending (since §4.4): only on the days of an absence beyond the free-grace
-threshold.** An absence inside the grace costs nothing, moves no balance, and
-produces no prompt — there is no decision to make when nothing is being spent.
+threshold.** An absence inside the grace costs nothing and moves no balance.
 Recovery Days are what buys a *longer* absence: vacation, illness. They remain a
 finite consumable, earned and purchased exactly as below; there are simply far
 fewer occasions to spend one. Only the days past the grace are charged, so an
@@ -270,9 +270,43 @@ absence one day longer than the grace costs one Recovery Day, not the whole
 absence.
 
 The grace is charged against the **absence**, not against each uncovered gap
-inside it (§4.1). A player who pays a day at a time from inside a holiday is
-charged for exactly the same days as one who pays once on the way back, and pays
-the same total.
+inside it (§4.1). Since the whole absence is resolved in one subtraction there
+is no smaller unit for it to be charged against.
+
+#### Auto-protect, armed ahead — RULED
+
+**Status: decided. Holding at least one Recovery Day means protected.**
+
+Protection is a **state, not a per-miss action.** There is no arming step before
+each individual miss, no prompt during an absence, and nothing to answer on the
+way back. Recovery Days are armed by **training**: whatever the player holds at
+the end of a session covers the absence that follows it, and the missed days
+themselves consume it.
+
+**A settings toggle is where the real choice now lives.** A player who would
+rather decline protection and take a broken streak deliberately turns it off,
+and then no Recovery Day of theirs is ever spent. Turning it *off* applies
+immediately, including to an absence already in progress — that direction can
+only end a run early, never rescue one. Turning it *on* applies from the next
+session, because arming mid-absence would let a toggle resurrect a run the
+calendar had already ended.
+
+**A Recovery Day that arrives during an absence does not cover it.** Buying or
+earning one mid-absence tops up the balance and arms the *next* absence. This is
+the visible cost of the ruling, and it is the price of the invariant below: the
+Gym Empire drop of the earning table lands on a check-in, so a grant that armed
+would make coverage depend on whether the player opened the app while away.
+
+**The invariant this buys, which is the point of the whole rule:** for a fixed
+training history and a fixed armed state, the final streak, the final balance
+and the number of Recovery Days consumed are **identical** whether the player
+opens the app the next day, three days later, ten days later, every day, or
+never until they come back. `src/game/streak.test.ts` asserts that directly, by
+full state equality, over a sweep of opening schedules and exhaustively over
+every calendar of a fixed length. Nothing about the outcome depends on when they
+look.
+
+**What replaced the prompt is the return-visit reveal** (§4.3).
 
 **Earning (free path):**
 
@@ -311,87 +345,77 @@ at an unfavorable rate (gives grinders a non-cash path).
   being bought back. It bounds the *chargeable* days of an absence, so the
   longest repairable absence is the grace threshold plus the consecutive-use
   limit — **four days at today's tuning, and a week away ends the run.**
-  That ceiling holds at every balance up to the hold cap **and however often
-  the player opens the app during the absence**, because the grace is spent
-  once per absence (§4.1) and the consecutive-use counter only climbs until a
-  real session resets it. Paying in instalments from inside a holiday buys
-  nothing that paying once on the way back does not.
-- **Manual use, not auto-apply.** Prompt the player: *"Use a Recovery Day to save
-  your streak?"* The agency and the small "phew" moment are the point. This is a
-  rule about *spending*; the free grace of §4.4 spends nothing and so has no
-  prompt to skip. The player is still told the gap was covered.
-- **The prompt states the expiry, not just the price.** Alongside what a yes
-  costs and what run it protects, it says **the last day the run can still be
-  alive** on the player's current balance. This is the only screen in the game
-  where a finite resource is spent, so it is the one that has to say when what
-  they are buying runs out. Where that date is *today*, the prompt is saying the
-  hard thing: this yes buys today and nothing after it — train now, or the run
-  ends whatever you spend. The number is unchanged by answering yes, so it means
-  the same thing either side of the decision.
+  That ceiling holds at every balance up to the hold cap, and it no longer needs
+  the qualifier "however often the player opens the app": since auto-protect,
+  app-opening is not an input to the arithmetic at all. An absence of N days
+  costs `max(0, N − grace)` and survives iff that is at most what was armed.
+- **Auto-apply, not manual use.** Ruled above. The player holds Recovery Days;
+  the missed days spend them. There is no prompt, no accept and no decline —
+  the settings toggle is the whole of the choice.
 - **The free grace is separate from the consecutive-use limit** and stays a
   separate tunable, even where the two happen to hold the same value. One is how
-  much absence is free; the other is how many Recovery Days may be spent in a
-  row before a real session has to happen.
+  much absence is free; the other is how many Recovery Days may be spent on one
+  absence before a real session has to happen. The two are both 2 today, so no
+  behavioural test can tell a build where one is *written as* the other; the
+  test that guards this reads the source.
 
-**Coverage is all-or-nothing.** A token offer only appears when the tokens held
-can cover the *entire* gap. Covering four days of a seven-day absence would take
-the player's tokens and still break the run, so partial coverage does not exist.
-The grace paying for part of a gap is not partial coverage: the offer still
-keeps the run alive across all of it, or does not appear.
+**Coverage is all-or-nothing, and since auto-protect it is literally true.** A
+Recovery Day is debited only by the session that ends the absence it covered. An
+absence longer than what was armed ends the run **with the balance untouched** —
+the player keeps every Recovery Day, because none of them bought anything.
+Covering four days of a seven-day absence would take the player's Recovery Days
+and still break the run, so partial coverage does not exist anywhere.
 
-What all-or-nothing does *not* promise is that a token can never be wasted. A
-player who opens the app mid-absence, accepts a save, and then stays away past
-what their balance covers ends poorer than one who never opened it and never saw
-the prompt. Every yes was a genuine save at the moment it was taken — declining
-would have ended the run there and then — so this is the price of an option, not
-a penalty for showing up, and the *streak* outcome is identical either way.
+**The residual this used to carry is gone.** Under the manual prompt, a player
+who opened the app mid-absence, accepted a save, and then stayed away past what
+their balance covered ended poorer than one who never looked. That was the price
+of tying the spend to the day the player opens the app, and removing the prompt
+removed it: there is now nothing for app-opening to change. What §4.4 records is
+the *other* residue, the one about streaks rather than balances, which the
+rework measured and did **not** remove.
 
-**That defence only works if the option's expiry is on the prompt**, which is
-why the disclosure above is a rule and not a nicety. In exactly this case the
-expiry reads *today*, so the player buying the option is told it is a one-day
-option. Removing the residual outright would mean either refusing saves the
-player could still use — which needs to know whether they will train tomorrow —
-or auto-applying Recovery Days on the missed day itself, the way a Duolingo
-streak freeze does (§4.3). The second genuinely closes it, and is refused
-because it deletes the manual prompt and the "phew" moment this section is
-built on. The residual is therefore the price of *manual use*, not a
-consequence of Recovery Days being finite.
+### 4.3 The First-Save Reveal
 
-### 4.3 First-Break Tutorial Moment
+The first time a Recovery Day actually saves a player's streak, tell them — with
+the explanation. Let them *feel* the save before they understand the system.
 
-The first time a player would break their streak, auto-offer a token with
-explanation. Let them *feel* the save before they understand the system.
+**It is news, not a decision.** Since §4.2's auto-protect ruling the save has
+already happened, on the days it was needed. The player comes back, opens the
+app, and the screen says what held their run: how many days they missed, how
+many the grace covered for free, how many Recovery Days are holding the rest,
+and what they will have left. That is the "phew" beat, moved from the moment of
+choosing to the moment of finding out. No timer, nothing to answer, and training
+is never blocked behind it.
 
-**The trigger is an absence past the free-grace threshold, not any miss.** Since
-§4.4 a short miss costs nothing, so there is no save to explain and no moment to
-teach — firing the tutorial there would explain a system the player has not
-touched. At today's tuning that means a **3+ day absence**, since the grace
-covers the first two days of one and the first prompt of an absence therefore
-cannot arrive sooner.
+**The trigger is an absence past the free-grace threshold, not any miss.** A
+short miss costs nothing, so there is no save to explain and no moment to teach
+— firing the reveal there would explain a system the player has not touched. At
+today's tuning that means a **3+ day absence**, since the grace covers the first
+two days of one.
 
-"Auto-offer" means the prompt appears unasked — it does not mean the token is
-spent for them. §4.2's manual use still applies, and the tutorial fires at the
-first break the player can actually be *saved* from. A first break that nothing
-could have covered does not burn the moment.
+**The explanation is consumed by the session that banks the save, not by the
+screen that shows it.** So closing the app without training re-shows it, a
+break nothing could have covered does not burn it, and a grace-covered absence
+does not either.
 
-The Duolingo streak-freeze precedent this section is built on still holds: the
-save has to be *felt* once before it is understood. What §4.4 changed is which
-break is worth spending that moment on.
+The Duolingo streak-freeze precedent this section is built on now holds
+straightforwardly rather than by analogy: the freeze is armed ahead, consumed by
+the missed day, and reported afterwards, which is exactly the shape §4.2 now
+specifies.
 
 ### 4.4 Free Grace for Short Gaps — Ruled
 
 **Status: decided. Short gaps are covered for free; Recovery Days are spent only
 on longer ones.**
 
-**The defect this settles.** Tokens are finite, and only a *live* streak can be
-offered one. Those two facts together meant a player who accepts every offer
-could end on a **shorter** streak than the same player who trained one day
-fewer. The extra session keeps alive a run the lazier history had already lost,
-so the diligent player is offered a token sooner, spends it on a run that dies
-later anyway, and has nothing left for a longer run afterwards. Idle days
-*before* a run exists were free; idle days *inside* a live run cost tokens, and
-an extra training day converted the first kind into the second. That breaks the
-"never punish daily engagement" line in §12.3.
+**The defect this settles.** Tokens are finite, and only a *live* streak
+consumes one. Those two facts together mean a player can end on a **shorter**
+streak than the same player who trained one day fewer. The extra session keeps
+alive a run the lazier history had already lost, so the diligent player's
+Recovery Days go on protecting that run, and there is nothing left for a longer
+one later. Idle days *before* a run exists are free; idle days *inside* a live
+run cost tokens, and an extra training day converts the first kind into the
+second. That breaks the "never punish daily engagement" line in §12.3.
 
 **The ruling.** The first **free-grace threshold** days of an absence are covered
 without touching the Recovery Day balance. Recovery Days remain a finite
@@ -399,12 +423,14 @@ currency, earned and purchasable per §4.2 and §8.2, but they now buy coverage
 only for longer absences — vacation, illness — and only for the days past the
 grace.
 
-**The grace belongs to the absence, not to each gap inside it.** A Recovery Day
-spent partway through an absence covers the days it pays for and nothing more;
-it does not restart the grace for the days that follow. Only a training day
-does that. This is what makes the §4.2 ceiling — grace plus consecutive-use
-limit, four days today — the answer regardless of how often the player opens the
-app. See "the walk-back correction" below for what this replaced.
+**The grace belongs to the absence, not to each gap inside it.** Since §4.2's
+auto-protect ruling this is structural rather than maintained: an absence is
+resolved in one subtraction, from the last *trained* day, so there is no
+part-way marker for a grace to be recomputed from and no way for a spend to
+re-arm one. Only a training day starts a new absence. This is what makes the
+§4.2 ceiling — grace plus consecutive-use limit, four days today — the answer
+regardless of how often the player opens the app. See "the walk-back correction"
+below for what this replaced.
 
 **The accepted cost, stated rather than discovered later:** a short miss
 basically never breaks a streak, and a player who trains one day in every
@@ -424,82 +450,102 @@ route, which contradicts the guardrail in §4.2.
 That is fixed, and fixed **downward to 4**, because 4 is the number §4.2 already
 promises and the point of the consecutive-use limit is that a week away is not
 buyable. The two routes now produce the identical table: the same absences
-survive, at the same streak, for the same number of Recovery Days.
-`src/game/streak.test.ts` builds that table under both behaviours and asserts
-every cell matches, at every balance from empty to the hold cap. Levelling
-*upward* instead was rejected outright — it would have made seven days saveable.
+survive, at the same streak, for the same number of Recovery Days, ending on the
+same balance. `src/game/streak.test.ts` builds that table under both behaviours
+and asserts every cell matches, at every balance from empty to the hold cap.
+Levelling *upward* instead was rejected outright — it would have made seven days
+saveable. Since §4.2's auto-protect ruling this class of bug is no longer
+expressible: there is no per-gap marker to recompute a grace from.
 
 **What the grace bought, measured over every 13-day calendar** (pairs differing
 by one trained day, where the player who trained more ends strictly lower):
 
-| | before §4.4 | first implementation | with the grace per absence |
-|---|---|---|---|
-| opening the app every day | 1948 | 0 | 24 |
-| opening only on training days | 4250 | 36 | 36 |
-| worst deficit | 6 | 3 | 3 |
+| | before §4.4 | first implementation | grace per absence | auto-protect (today) |
+|---|---|---|---|---|
+| opening the app every day | 1948 | 0 | 24 | 36 |
+| opening only on training days | 4250 | 36 | 36 | 36 |
+| worst deficit | 6 | 3 | 3 | 3 |
 
-**The middle column's zero was bought by the defect above, and it is the number
-that needs explaining, not the 24.** While a spend re-armed the grace, a player
-whose day was opened every day could hold a run across eight days where one who
-reappeared at the end got four; that extra coverage papered over the inversions
-this counts. Removing the bonus brought 24 of them back. The right-hand column
-under "opening only on training days" is unchanged at 36 — that player never had
-a mid-absence spend to re-arm anything — which is the check that the fix brought
-the daily model into line with the returning one rather than the reverse.
+**The two lower numbers in the middle columns were both bought by spending
+Recovery Days that did not buy anything.** The 0 came from a spend re-arming the
+grace; the 24 came from the manual prompt letting a daily player pay for an
+absence a day at a time and then break anyway. Both are cases of the daily model
+and the returning model disagreeing, which is the defect, not the fix. Under
+auto-protect they cannot disagree: the right-hand column is one number, and it is
+the number that was always true for a player who did not open the app while they
+were away.
 
-**It is an improvement on 1948, not a fix.** Two more days of calendar and the
-counts climb again — 210 and 384 at 15 days, worst deficit 5. The grace removes
-every instance built out of absences shorter than the threshold, which is most
-of them. The deficit still has no ceiling — it is the length of the run that
-dies, so 37 trained days ending on 37 against 38 ending on 18 still exists.
-`src/game/streak.test.ts` pins both calendar lengths so the improvement and its
-limit stay on the record together.
+**The count is not a target.** A build in which Recovery Days protected nothing
+at all would score 0 here. That is why the right-hand column going 24 → 36 under
+the daily model is not a regression: the same change deleted every wasted spend
+in the game (§4.2, all-or-nothing) and made the outcome independent of
+app-opening.
 
-**The residue follows from manual use, not from finiteness — corrected.** An
-earlier version of this paragraph called the asymmetry "inherent to a finite
-consumable spent to keep a live run alive." That is false, and `streak.ts`'s
-header already retracted it while this section still carried it; §4.2 has said
-the correct thing all along. The precedent the design is built on refutes it
-directly: Duolingo's streak freeze *is* a finite consumable spent to keep a live
-run alive, and it has **no** such residue — because it is armed ahead of time and
-consumed by the missed day itself, so nothing about its outcome depends on when
-the player looks.
+**It is an improvement on 1948, and it is still not a fix.** Two more days of
+calendar and the count climbs to 384, worst deficit 5. The grace removes every
+instance built out of absences shorter than the threshold, which is most of them.
+The deficit has no ceiling — it is the length of the run that dies, so 37 trained
+days ending on 37 against 38 ending on 18 **still exists, unchanged, on the
+auto-protected engine.** `src/game/streak.test.ts` pins both calendar lengths and
+that family so the improvement and its limit stay on the record together.
 
-What produces the residue here is §4.2's **manual use, not auto-apply**. Tying
-the spend to the day the player opens the app is what makes the outcome depend on
-their looking — and it is also the entire "phew" moment the feature exists for.
+**The residue does NOT follow from manual use — corrected a second time, by
+measurement.** This section has now been wrong about the cause twice, in opposite
+directions, and the sequence is worth keeping rather than tidying away:
 
-**This distinction is the whole decision, which is why the wording mattered.**
-"Inherent" would mean there is nothing to escalate. "Price of manual use" means
-there is a specific, named, working alternative the design has declined, and the
-trade is:
+1. It first called the asymmetry "inherent to a finite consumable spent to keep a
+   live run alive."
+2. That was retracted as false, on the grounds that Duolingo's streak freeze is
+   such a consumable and has no such residue *because* it is armed ahead and
+   consumed by the missed day. The cause was reassigned to §4.2's manual prompt.
+3. The prompt has now been deleted and replaced by exactly that armed-ahead
+   model. **The family did not move.** 37 against 18, the same spend on both
+   sides, on an engine with no prompt in it.
 
-- **Manual prompt (today):** the "phew" moment survives; a player who trains one
-  extra day can end with a materially lower streak, without bound.
-- **Armed ahead of time (Duolingo model):** the residue disappears entirely; the
-  save becomes automatic and the "phew" beat is lost.
+So (1) was right about the cause and (2) was wrong. What Duolingo's model
+actually removes — and what this rework did remove, completely — is every
+dependence on *when the player looks*. What it does not remove is the asymmetry
+between idle days inside a live run and idle days outside one, because a streak
+freeze is also only consumed when there is a streak to freeze.
 
-Until this is ruled on, the piece does not win the first four words of its bar
-("Never punishes daily engagement"), and CLAUDE.md's rule that a player who shows
-up every day must never feel penalized for it is violated in a real, measured,
-unbounded way — not a theoretical one.
+**What would close the remainder, none of it free:**
 
-What still holds, and is what the design leans on:
+- **Charge absences before a run too.** Restores monotonicity by making a new
+  player pay Recovery Days for days on which they had no streak to protect. A
+  charge that buys nothing is worse than the defect.
+- **Refund when the protected run dies.** The refund arrives after the death. It
+  restores the balance, not the run, and the deficit is measured in streak days.
+- **Only protect runs above a threshold.** Moves the asymmetry to the threshold
+  rather than removing it, and adds a cliff where a young streak is worth less
+  than an old one.
+- **Stop consuming Recovery Days at all.** This is the one that works, and it is
+  a monetisation decision rather than a streak decision: a Recovery Day that is
+  never consumed has no hold cap worth having (§4.2), nothing to earn on the
+  free-path table (§4.2) and nothing to sell (§8.2). **It has not been ruled on.**
 
-- On a player's own calendar, **saying yes is never worse than saying no.** The
-  prompt in §4.2 can never be the wrong answer to itself.
-- A player who used tokens never ends below one who trained fewer days and used
-  **none**. Tokens only ever extend a run; they never subtract from the count.
-- Spending on the long-gap path preserves the streak **exactly**. A Recovery Day
-  protects a run; it never partially resets one.
-- **Opening the app during an absence is neutral.** It cannot shorten the
-  absence a player survives and cannot raise the price of surviving it. The one
-  thing it changes is that a player who cannot afford the whole absence may
-  spend part of their balance on a run that dies anyway — see §4.2's note on
-  all-or-nothing coverage. **That spend is disclosed, not silent:** the prompt
-  that asks for it states the last day the run can still be alive, and in this
-  case that day is the day they are being asked. Neutral does not mean costless;
-  it means the cost is on the screen before the player answers.
+**Where that leaves the bar.** The first four words of the piece's bar ("Never
+punishes daily engagement") are **partly** met, and the part that is not met
+should be named rather than rounded up: a player who trains one extra day can
+still end on a materially lower streak, without bound, and CLAUDE.md's rule is
+still violated in that specific, measured way. The rework closed the half that
+was about *behaviour* — nothing a player does or does not do between sessions
+changes their outcome — and left the half that is about a finite consumable.
+
+What holds, and is what the design leans on:
+
+- **Opening the app during an absence is exactly neutral.** Not "neutral except
+  for a disclosed spend" — neutral. Same streak, same balance, same consumption,
+  whenever they look and however often. This is the invariant §4.2 records and
+  `src/game/streak.test.ts` asserts by full state equality.
+- **Nothing is ever spent on an absence that ends a run.**
+- A player who used Recovery Days never ends below one who trained fewer days and
+  committed **none**. They only ever extend a run; they never subtract from the
+  count.
+- A save preserves the streak **exactly**. A Recovery Day protects a run; it
+  never partially resets one.
+- With protection declined in settings, one more trained day never lowers the
+  streak, the best streak or the balance — exhaustively, over every ten-day
+  calendar. The defect above is a property of *spending*, not of showing up.
 
 ---
 

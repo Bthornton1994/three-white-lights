@@ -241,10 +241,10 @@ function streakWire(state: StreakState): StreakStateWire {
     currentStreak: state.currentStreak,
     longestStreak: state.longestStreak,
     lastTrainedDay: state.lastTrainedDay,
-    recoveredThroughDay: state.recoveredThroughDay,
-    consecutiveRecoveryDaysUsed: state.consecutiveRecoveryDaysUsed,
+    armedRecoveryDays: state.armedRecoveryDays,
     recoveryDayBalance: state.recoveryDayBalance,
-    hasResolvedFirstBreakOffer: state.hasResolvedFirstBreakOffer,
+    recoveryDayProtectionEnabled: state.recoveryDayProtectionEnabled,
+    hasBankedFirstRecoveryDaySave: state.hasBankedFirstRecoveryDaySave,
   };
 }
 
@@ -367,7 +367,13 @@ export type SessionServerErrorCode =
    * and never an e1RM, so it has no business on this proposal (see the header).
    */
   | 'NOT_A_COMPETITION_LIFT'
-  /** `streak.ts` refused: already trained, a day in the past, an offer pending. */
+  /**
+   * `streak.ts` refused: already trained today, or a day in the past.
+   *
+   * "An offer pending" used to be a third reason here. It is gone because
+   * Recovery Days are no longer offered — protection is armed ahead and the
+   * missed day consumes it, so there is no decision left open to block on.
+   */
   | 'STREAK_REFUSED'
   /** The reported day is not one this record can move to. */
   | 'BAD_DAY';
@@ -516,8 +522,9 @@ export function applyTrainingSession(
  *
  * `streakIfTrainedToday` comes from `streak.ts`'s `openDay`, which is a pure
  * read model that mutates nothing — the streak's own answer to "what does today
- * do", including the free grace and the Recovery Day offer. This maps the parts
- * a training session needs and leaves the offer flow to whoever renders it.
+ * do", including the free grace and any Recovery Day save already holding the
+ * run open (GDD §4.2). This maps the parts a training session needs and leaves
+ * the return-visit reveal to whoever renders it.
  */
 export interface TodayForLifter {
   readonly day: number;
@@ -536,7 +543,9 @@ export function todayForLifter(record: ServerRecord, day: number, lift: LiftKind
   const opening = openDay(record.streak, asStreakDay(day));
   const alreadyTrainedToday = opening.kind === 'already-trained-today';
   const streakIfTrainedToday =
-    opening.kind === 'streak-alive' || opening.kind === 'gap-covered-by-grace'
+    opening.kind === 'streak-alive' ||
+    opening.kind === 'gap-covered-by-grace' ||
+    opening.kind === 'gap-covered-by-recovery-days'
       ? opening.streakIfTrainedToday
       : opening.kind === 'already-trained-today'
         ? opening.currentStreak
