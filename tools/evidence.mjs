@@ -146,6 +146,20 @@ const parts = [
 ];
 
 parts.push(run('tests', 'npx', ['vitest', 'run', ...(pattern ? [pattern] : []), '--reporter=verbose']));
+
+// THE WHOLE SUITE, ALWAYS, EVEN WHEN A PATTERN NARROWED THE RUN ABOVE.
+//
+// A critic caught the gap this closes. Asked to grade a change that had
+// reorganised a module header, it had the narrowed run (one test file, verbose)
+// and a typecheck — but the test that stops that header going stale lives in a
+// DIFFERENT file, and so did the tests for a signature the same commit changed.
+// It could not say those were green, so it correctly reported them unproven at
+// the commit it was grading.
+//
+// The narrowed run is what makes a bundle readable; it is not what makes it
+// sufficient. Both belong, at one stamp, so "the piece's tests pass" and
+// "nothing else broke" are answerable from the same file.
+parts.push(run('whole suite', 'npx', ['vitest', 'run']));
 parts.push(run('typecheck', 'npx', ['tsc', '--noEmit']));
 
 const outDir = path.join(ROOT, '.gauntlet', 'evidence');
