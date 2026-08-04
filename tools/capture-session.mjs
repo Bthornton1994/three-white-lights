@@ -55,6 +55,10 @@ const MOMENTS = [
   'close-out-pr',
   'close-out-held',
   'close-out-empty',
+  'close-out-saving',
+  'close-out-server-wins',
+  'close-out-unsynced',
+  'close-out-accessory',
 ];
 
 const browser = await chromium.launch({
@@ -110,6 +114,10 @@ for (const moment of MOMENTS) {
       nextSet: text('session-next-set'),
       headline: text('close-out-headline'),
       e1rm: text('close-out-e1rm'),
+      // How sure the screen says each number is. Empty when confirmed.
+      e1rmTag: (text('close-out-e1rm-tag') ?? '').trim(),
+      streakTag: (text('close-out-streak-tag') ?? '').trim(),
+      trainingIq: text('close-out-training-iq'),
       streak: text('close-out-streak'),
       reps: text('close-out-reps'),
       feedback: text('close-out-feedback'),

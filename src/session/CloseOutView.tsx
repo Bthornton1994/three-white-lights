@@ -188,10 +188,17 @@ function tagTextFor(certainty: Certainty): string {
 function Provisional({
   certainty,
   tagTestID,
+  label,
   children,
 }: {
   readonly certainty: Certainty;
   readonly tagTestID: string;
+  /**
+   * The stat's own label, drawn between the number and the caption and NOT
+   * dimmed with it — "DAY STREAK" is not provisional, the count is. Omitted
+   * where the row already puts its label above the number.
+   */
+  readonly label?: string;
   readonly children: React.ReactNode;
 }): React.ReactElement {
   const tag = tagTextFor(certainty);
@@ -211,6 +218,7 @@ function Provisional({
   return (
     <View style={styles.provisional}>
       <Animated.View style={numberStyle}>{children}</Animated.View>
+      {label === undefined ? null : <Text style={styles.statLabel}>{label}</Text>}
       <Animated.View style={tagStyle}>
         <Text style={[styles.tag, { color: tagColour }]} testID={tagTestID}>
           {tag}
@@ -316,14 +324,17 @@ export function CloseOutView({
       <View style={styles.divider} />
 
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.STREAK}>
-        <Provisional certainty={readings.streakDays.kind} tagTestID="close-out-streak-tag">
+        <Provisional
+          certainty={readings.streakDays.kind}
+          tagTestID="close-out-streak-tag"
+          label={SESSION_COPY.CLOSE_OUT_STREAK_LABEL}
+        >
           <Animated.View style={popStyle}>
             <Text style={styles.stat} testID="close-out-streak">
               {streakValue === null ? SESSION_BOUNDARY_COPY.UNKNOWN_VALUE : `${streakValue}`}
             </Text>
           </Animated.View>
         </Provisional>
-        <Text style={styles.statLabel}>{SESSION_COPY.CLOSE_OUT_STREAK_LABEL}</Text>
       </Row>
 
       <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.REPS}>

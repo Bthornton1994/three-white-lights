@@ -914,9 +914,16 @@ Two are ruled, two are open.**
       **Still outstanding, and why `SESSION_TUNING.LIFT_ROTATION` is still three
       lifts:** an accessory day cannot yet be *recorded*. `progression.ts` needs
       a `trainingIq` fact and a proposal kind for a session that reports no
-      `LiftKind`, and the close-out needs an accessory variant that shows IQ
-      instead of an e1RM. Adding a fourth rotation entry before those exist
-      would put a session on screen that the server refuses.
+      `LiftKind`. Adding a fourth rotation entry before those exist would put a
+      session on screen that the server refuses.
+      **The close-out's half of it is built.** `sessionClient.ts`'s
+      `CloseOutPayoff` is a three-way discrimination — a confirmed e1RM, one
+      still in flight, and `'training-iq'` — and `CloseOutView` renders the third
+      as a Training IQ row with NO e1RM row and an em dash where the points will
+      go, because there is no `trainingIq` fact for it to read yet. It selects
+      that branch off an optional `payoff` tag `SessionCloseOut` does not carry
+      yet, read structurally, so the day the tag lands the screen already tells
+      the truth about it. Photographed at `?session=close-out-accessory`.
       **One live question inside that work:** §8.1 forbids selling training
       pace, and `progression.ts` answers "can this be bought?" per fact. Training
       IQ is "how *well* you train" and shapes long-run growth, so the answer
@@ -983,6 +990,52 @@ The code has taken the safe branch and needs a ruling to take any other.**
       is what the code does today, and decide what the result card prints in the
       DOTS column for one. Until this is ruled, a pound meet is a runnable
       configuration with no leaderboard presence.
+- [ ] **Who owns the close-out's WORDS when the server disagrees with the
+      client?** The daily loop's payoff beat now reads its numbers back through
+      the progression boundary, so a server answer the client did not predict is
+      what appears: the figure, and the PR gold with it, follow the confirmed
+      reading rather than `SessionCloseOut.isPr`.
+      The **headline and subhead do not.** They are chosen inside
+      `session.ts`'s `closeOutFrom` at close-out time, from the client's own PR
+      prediction, and never revisited. So a server that comes back below the
+      previous best leaves "NEW e1RM" sitting over a number that turned out not
+      to be one — the screen's words and its digits disagreeing about the same
+      event.
+      This is a **design question, not a wiring bug**, which is why it is here
+      rather than fixed. Three ways out, none obviously right: re-derive the copy
+      in the boundary read model (a second place choosing close-out copy — the
+      "two parts of the app disagree" shape this codebase spends most of its
+      guards preventing); make the session machine take the reading (the pure
+      loop then depends on the cache, and `closeOutFrom` stops being a function
+      of the session); or hold the headline until the response lands (honest, but
+      it costs the payoff beat its immediacy, and GDD §12.2 judges this piece on
+      exactly that).
+      Today's behaviour is the first-listed *residual*, stated in
+      `CloseOutView.tsx`'s header: numbers server-authoritative, words client-
+      authoritative. It is only visible when a real Edge Function disagrees, which
+      no shipped one does yet — `sessionServer.ts` and the client run the same
+      `nextBestE1rm` — so it is a question about the first real backend, not about
+      the prototype.
+
+- [ ] **Does the hidden fatigue ledger belong on the client at all?** GDD §3.4
+      and §12.3 forbid a visible fatigue meter, and `ProgressionSnapshotWire`
+      excludes fatigue on the stated grounds that "a ledger on the wire is a
+      meter that has not been rendered yet". But `sessionFeel` — which produces
+      every one of §3.4's four channels — runs on the client and takes the
+      ledger, so something has to cross.
+      What crosses today is a `SessionBrief`: **one field**, pruned to the
+      same-day/next-day horizon §3.4 describes, with the one scalar downstream of
+      it (`burden`) already behind a module-private symbol. Nothing renders a
+      number off it and `sessionWiring.test.ts` fails if any screen names the
+      ledger.
+      **The residual is real and is a scan rather than a type.**
+      `SessionContext.fatigue` is a readable `FatigueState`, so a future `.tsx`
+      could count `context.fatigue.sessions` and draw a bar off it; only a test
+      stops that. Closing it properly is one of: make the field opaque the way
+      `SessionFeel`'s internals are; or move `sessionFeel` server-side, which
+      means the readiness check-in becomes part of a session-start request and
+      the loop gains a round trip before its first work set — a cost GDD §12.2's
+      time-to-first-input bar would have to be measured against.
 
 ---
 
