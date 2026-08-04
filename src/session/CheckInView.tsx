@@ -1,0 +1,180 @@
+/**
+ * CheckInView — GDD §3.2's "Readiness check-in (5 sec, 3 taps)".
+ *
+ * ---------------------------------------------------------------------------
+ * WHY ALL THREE QUESTIONS ARE ON ONE SCREEN
+ * ---------------------------------------------------------------------------
+ * The bar this piece is measured against (GDD §12.2) names TIME-TO-FIRST-INPUT
+ * first. One question per screen would be three paints and two transitions
+ * before the third tap; three rows on one screen means the first tap is live on
+ * the first paint and the other two need no navigation at all. There is no
+ * splash, no home screen and no "start session" button in front of it, because
+ * every one of those is a tap that answers nothing.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT THIS FILE IS AND IS NOT ALLOWED TO KNOW
+ * ---------------------------------------------------------------------------
+ * It renders three rows of three chips and forwards taps. It scores nothing:
+ * the readiness score, the band and the load percentage are `fatigue.ts`'s, and
+ * they are computed in `session.ts` when the third tap lands (CLAUDE.md: "If
+ * you find yourself computing a load or a fatigue modifier inside a .tsx file,
+ * stop"). This screen does not even know which answer is the good one.
+ *
+ * NO FATIGUE READOUT (GDD §3.4, §12.3). Nothing here shows how tired the lifter
+ * is, and it cannot: the only thing on screen is what the player just tapped.
+ */
+
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { SESSION_COPY, SESSION_LAYOUT, type CheckInQuestion } from '../game/sessionTuning';
+import type { CheckInTap, PartialCheckIn } from '../game/session';
+import { SESSION_PALETTE } from './sessionPalette';
+
+const L = SESSION_LAYOUT;
+
+interface Option {
+  readonly value: string;
+  readonly label: string;
+  readonly tap: CheckInTap;
+}
+
+interface RowSpec {
+  readonly question: CheckInQuestion;
+  readonly options: readonly Option[];
+  readonly chosen: (answers: PartialCheckIn) => string | null;
+}
+
+/**
+ * The three rows, in the order GDD §3.2 lists them, each with its answers in
+ * worst-to-best order.
+ *
+ * The ORDER and the LABELS are presentation and live here; the SCORES are
+ * `fatigue.ts`'s and do not appear in this file at all — a `CheckInTap` names
+ * an answer and nothing else. `sessionTuning.test.ts` asserts the copy table
+ * covers exactly the answers the model scores, so a row cannot drift out of
+ * sync with the model behind it.
+ *
+ * Written out per question rather than derived from a generic, because each
+ * question's answers are a different union and `CheckInTap` is discriminated on
+ * the question — spelling them out is what makes the tap builders typecheck
+ * without a cast that could pair the wrong answer with the wrong question.
+ */
+const ROWS: readonly RowSpec[] = [
+  {
+    question: 'sleep',
+    chosen: (answers) => answers.sleep,
+    options: (['poor', 'ok', 'good'] as const).map((answer) => ({
+      value: answer,
+      label: SESSION_COPY.CHECK_IN_ANSWER.sleep[answer],
+      tap: { question: 'sleep', answer },
+    })),
+  },
+  {
+    question: 'soreness',
+    chosen: (answers) => answers.soreness,
+    options: (['sore', 'normal', 'fresh'] as const).map((answer) => ({
+      value: answer,
+      label: SESSION_COPY.CHECK_IN_ANSWER.soreness[answer],
+      tap: { question: 'soreness', answer },
+    })),
+  },
+  {
+    question: 'motivation',
+    chosen: (answers) => answers.motivation,
+    options: (['flat', 'steady', 'fired-up'] as const).map((answer) => ({
+      value: answer,
+      label: SESSION_COPY.CHECK_IN_ANSWER.motivation[answer],
+      tap: { question: 'motivation', answer },
+    })),
+  },
+];
+
+export interface CheckInViewProps {
+  readonly answers: PartialCheckIn;
+  readonly onTap: (tap: CheckInTap) => void;
+}
+
+export function CheckInView({ answers, onTap }: CheckInViewProps): React.ReactElement {
+  return (
+    <View style={styles.root} testID="session-check-in">
+      <Text style={styles.title}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
+      {ROWS.map((row) => {
+        const chosen = row.chosen(answers);
+        return (
+          <View key={row.question} style={styles.row} testID={`check-in-${row.question}`}>
+            <Text style={styles.question}>{SESSION_COPY.CHECK_IN_QUESTION[row.question]}</Text>
+            <View style={styles.chips}>
+              {row.options.map((option) => {
+                const isChosen = chosen === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    testID={`check-in-${row.question}-${option.value}`}
+                    accessibilityRole="button"
+                    onPress={() => onTap(option.tap)}
+                    style={[styles.chip, isChosen ? styles.chipChosen : null]}
+                  >
+                    <Text style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: L.SCREEN_PAD,
+    gap: L.SECTION_GAP,
+  },
+  title: {
+    color: SESSION_PALETTE.TEXT,
+    fontSize: L.TITLE_FONT,
+    fontWeight: '700',
+    letterSpacing: L.LETTER_SPACING,
+    textAlign: 'center',
+  },
+  row: {
+    gap: L.ROW_GAP,
+  },
+  question: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.QUESTION_FONT,
+    letterSpacing: L.LETTER_SPACING,
+  },
+  chips: {
+    flexDirection: 'row',
+    gap: L.CHIP_GAP,
+  },
+  chip: {
+    flex: 1,
+    height: L.CHIP_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: L.CHIP_RADIUS,
+    borderWidth: L.CHIP_BORDER,
+    borderColor: SESSION_PALETTE.CHIP_EDGE,
+    backgroundColor: SESSION_PALETTE.CHIP,
+  },
+  chipChosen: {
+    backgroundColor: SESSION_PALETTE.CHIP_CHOSEN,
+    borderColor: SESSION_PALETTE.CHIP_CHOSEN_EDGE,
+  },
+  chipLabel: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.ANSWER_FONT,
+  },
+  chipLabelChosen: {
+    color: SESSION_PALETTE.TEXT,
+    fontWeight: '700',
+  },
+});
