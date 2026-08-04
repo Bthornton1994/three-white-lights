@@ -78,7 +78,8 @@ export const CRAFT = {
   /** A verdict taken on fewer crossings than this is not a verdict. */
   MIN_LIT_BOUNDARY_SAMPLES: 24,
   /**
-   * Thickest near-black run that still counts as a LINE rather than a MASS.
+   * Thickest near-black run that still counts as an INTERIOR LINE rather than a
+   * MASS.
    *
    * Without this the measure cannot tell a keyline from dark material, and the
    * distinction is the whole point: our lifter's hair is `HAIR_DARK` at luma
@@ -90,6 +91,9 @@ export const CRAFT = {
    * along both, and every pixel of a one- or two-pixel band has a short one
    * across the band. 2 rather than 1 so the doubled band where two masses meet
    * still reads as a line.
+   *
+   * This governs `interiorKeylineShare` only. The SILHOUETTE keyline is
+   * separated by position, not thickness — see `excludeSilhouetteKeyline`.
    */
   MAX_KEYLINE_THICKNESS_PX: 2,
   /**
@@ -100,29 +104,51 @@ export const CRAFT = {
    */
   ASSUMED_LIT_BACKGROUND: 255,
 
-  // --- how much slack our sprite gets against the MEASURED reference ---
+  // -------------------------------------------------------------------------
+  // HOW MUCH SLACK OUR SPRITE GETS AGAINST THE MEASURED REFERENCE.
+  //
+  // Each of these multiplies a number READ OFF THE REFERENCE PNG, so the anchor
+  // and the allowance stay separately visible and neither can be quietly moved
+  // to fit. The margin each leaves over our sprite's own worst case across the
+  // full pose/load/strain/pitch sweep is stated, because a factor with no
+  // stated margin is indistinguishable from one fitted to today's output.
+  // -------------------------------------------------------------------------
   /**
-   * Our interior near-black may be this multiple of the reference's. Above 1
-   * because we hand-place near-black marks a 16-bit artist places (eyes, brow
-   * bar, mouth, the belt's lever plate) and because a one-pixel gap between two
-   * masses is filled from both sides by the keyline pass. Under 1 would mean
-   * demanding cleaner interiors than the reference has.
+   * Whole-figure interior keyline, as a multiple of the reference's 2.79%.
+   * Ours peaks at 3.64%, so this leaves 1.5x. Above 1 because the eyes, the
+   * brow bar, the mouth and the belt's lever plate are hand-placed near-black
+   * marks — what a 16-bit artist does with the darkest entry in a bank.
    */
-  INTERIOR_KEYLINE_FACTOR: 2.6,
+  INTERIOR_KEYLINE_FACTOR: 2.0,
   /**
    * How far our upper/lower mean-luma ratio may sit either side of the
-   * reference's. Bracketed, not capped: a cap alone is directional and a
-   * darker upper body satisfies it more easily, which is how the arms stayed
-   * ringed in near-black through several rounds.
+   * reference's 1.1138. Bracketed, not capped: a cap alone is directional and
+   * a darker upper body satisfies it more easily, which is how the arms stayed
+   * ringed in near-black through several rounds. Ours runs 0.937-1.211 on the
+   * material field and 1.011-1.315 with the keyline, so the tight side of the
+   * bracket is 0.043 away and the loose side 0.019.
    */
   UPPER_LOWER_RATIO_SLACK: 0.22,
   /**
-   * A limb's mean luma, as a fraction of the reference figure's mean luma.
-   * This is the direct form of "the arms are not the darkest thing on him".
+   * A limb's mean luma, as a fraction of the reference figure's 130.16. This is
+   * the direct form of "the arms are not the darkest thing on him". Ours
+   * bottoms out at 80.6 on the shaded far arm, against a floor of 71.6.
    */
-  LIMB_MEAN_LUMA_FLOOR_FACTOR: 0.62,
-  /** A limb's interior near-black may be this multiple of the reference's. */
-  LIMB_INTERIOR_KEYLINE_FACTOR: 3.4,
+  LIMB_MEAN_LUMA_FLOOR_FACTOR: 0.55,
+  /**
+   * An arm's or hand's interior keyline, as a multiple of the reference
+   * figure's 2.79%. Ours peaks at 8.1%, against a cap of 10.1%.
+   */
+  LIMB_INTERIOR_KEYLINE_FACTOR: 3.6,
+  /**
+   * A head's or neck's interior keyline, as a multiple of the REFERENCE HEAD's
+   * own 3.67% — a separate anchor, because a face carries marks a forearm does
+   * not and one bound over both would either be too loose for the arm or would
+   * fail a face for having eyes. Ours peaks at 16.9% on the head and 13.3% on
+   * the neck, against a cap of 20.2%. This is the loosest factor here and it is
+   * the one to tighten first if the face is ever redrawn.
+   */
+  FACE_INTERIOR_KEYLINE_FACTOR: 5.5,
   /** Below this many pixels a limb window is not measuring the limb. */
   MIN_LIMB_PIXELS: 12,
   /** Clearance past the deltoid before a pixel counts as arm, not torso. */
@@ -517,11 +543,12 @@ export interface SpriteFieldOptions {
    * keyline becomes the band outside it — the same shape of mask the reference
    * gets, so the two can be compared.
    *
-   * A pixel is keyline when it is near-black, touches open space, and is THIN:
-   * the thinness test is why our lifter's near-black hair survives as material
-   * where the one-pixel outline round it does not. Without it this option ate
-   * the outside of every dark mass and quietly brightened the figure it was
-   * about to measure.
+   * The rule is exactly `outlinePass`'s: a pixel is keyline when it is
+   * near-black AND touches open space. That is a definition, not a guess, and
+   * `lifterSprite.test.ts` asserts on real frames that every pixel this drops
+   * is `PAL.OUTLINE` — so it removes the outline and nothing else, and in
+   * particular does not eat the lifter's near-black hair, which the outline
+   * wraps rather than borders.
    */
   readonly excludeSilhouetteKeyline?: boolean;
 }
@@ -561,7 +588,6 @@ export function fieldFromIndexGrid(grid: IndexGrid, options: SpriteFieldOptions 
   }
   if (options.excludeSilhouetteKeyline !== true) return { w, h, luma, member: raw };
 
-  const provisional: FigureField = { w, h, luma, member: raw };
   const openAt = (x: number, y: number): boolean =>
     x < 0 || y < 0 || x >= w || y >= h || isTransparentIndex(getPx(grid, x, y));
   const member = new Uint8Array(w * h);
@@ -571,10 +597,7 @@ export function fieldFromIndexGrid(grid: IndexGrid, options: SpriteFieldOptions 
       if ((raw[p] ?? 0) === 0) continue;
       const dark = (luma[p] ?? 0) < CRAFT.NEAR_BLACK_LUMA;
       const onSilhouette = NEIGHBOURS.some(([dx, dy]) => openAt(x + dx, y + dy));
-      const thin =
-        Math.min(darkRun(provisional, x, y, 1, 0), darkRun(provisional, x, y, 0, 1)) <=
-        CRAFT.MAX_KEYLINE_THICKNESS_PX;
-      if (dark && onSilhouette && thin) continue;
+      if (dark && onSilhouette) continue;
       member[p] = 1;
     }
   }

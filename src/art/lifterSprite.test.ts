@@ -1,9 +1,13 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { decodePng } from '../../tools/png.mjs';
 import {
   SPRITE_CELL,
   barOffsetAt,
   bodyPixelDiff,
   frameSpecFrom,
+  handCentre,
   headBox,
   renderContactShadow,
   renderLifterFrame,
@@ -11,6 +15,19 @@ import {
   unionRect,
   type LifterFrameSpec,
 } from './lifterSprite';
+import {
+  CRAFT,
+  colourKeyedField,
+  fieldFromIndexGrid,
+  isKeylined,
+  limbWindows,
+  measureEraConformance,
+  measureFigure,
+  measureRegion,
+  rgbAt,
+  type PixelBox,
+  type RgbaImage,
+} from './craftMetrics';
 import { buildSquatRep, stickingPointFrame } from './squatAnimation';
 import { BANK_SIZE, PAL, colorAt, isTransparentIndex, rgb5ToRgb8 } from './palette';
 import { findUnallocatedIndices, gridToRgba, usedIndices } from './rgba';
@@ -436,97 +453,176 @@ function brightSplit(grid: IndexGrid, floorLuma: number): { lifter: number; equi
 /** Where the lifter's own ramps stop. Everything above this is a highlight. */
 const HIGHLIGHT_LUMA = 170;
 
+// ---------------------------------------------------------------------------
+// THE REFERENCE, MEASURED — not described
+//
+// Every figure below is COMPUTED from
+// `docs/reference/sprite-ref-1-snes-wrestling.png` when this file loads. It
+// used to be prose, and prose is why the same file could carry two
+// measurements of the same quantity (mean upper luma 133.2 in one comment,
+// 113.7 in another, 17% apart, both labelled MEASURED) and shrug at the
+// contradiction: a sentence has no way to fail. Neither figure is reproducible
+// and neither is used any more. What the decoder actually reads is asserted
+// below, so a disagreement is now a red test.
+//
+// `sprite-ref-2-16bit-baseball.png` is used ONLY as a negative control. Per
+// `docs/reference/README.md` it is not a 16-bit game — the batter is captioned
+// C. MULLINS, POS: CF, #31, beside the current MLB logo — so it is an example
+// of the modern pastiche GDD §12.2 exists to tell us apart FROM. Grading
+// toward it would bias toward the failure mode.
+// ---------------------------------------------------------------------------
+
+const REFERENCE_DIR = path.resolve(__dirname, '../../docs/reference');
+
+function readReference(file: string): RgbaImage {
+  return decodePng(readFileSync(path.join(REFERENCE_DIR, file)));
+}
+
 /**
- * BOUNDS FOR "THE FIGURE CARRIES ITS RANGE ACROSS ITS WHOLE HEIGHT".
+ * The blond wrestler, front left of the ring.
  *
- * All five are measured facts about the reference plus headroom, not round
- * numbers, and all five were measured in this repo's sandbox on
- * `docs/reference/sprite-ref-1-snes-wrestling.png` at its native 256x224 — the
- * blond wrestler masked by his own palette (skin ramp, trunks, hair, boots) and
- * split at his own vertical midpoint. That mask gives:
+ * A BOX, chosen by hand and committed, because a 256x224 game frame holds two
+ * wrestlers, a referee and a crowd and nothing can separate them without being
+ * told where to look. What the box does NOT do is decide the answer: the mask
+ * inside it is a colour key, and the one question a colour key cannot answer —
+ * is this figure outlined? — is answered instead by `litBoundaryDarkShare`,
+ * which reads the band OUTSIDE the key.
  *
- *     upper: 553 px, mean luma 133.2, near-black 1.3%
- *     lower: 530 px, mean luma 118.8, near-black 5.7%
- *     upper / lower mean ratio 1.122
- *
- * `sprite-ref-2-16bit-baseball.png` is NOT used for any of this. It is modern
- * pixel art of a current player, i.e. the pastiche GDD §12.2's blind A/B exists
- * to tell us apart from.
- *
- * THE MEAN RATIO IS BRACKETED, NOT CAPPED, and that is the point of the floor.
- * The cap alone was directional: it caught a lower body left behind by a change
- * to the upper body, and a DARKER upper body satisfies it more easily, not less
- * — so it could not see the arms being the only part of the figure still drawn
- * with a near-black keyline round every mass. Measured with that keyline in
- * place the ratio ran 0.86-1.02 and passed the 1.35 cap at every pose. The
- * reference is above 1 on both masks anyone here has taken of it (1.04 and
- * 1.122): its brightest half is the one with the arms in it.
+ * The box stops at y=158 because the ring's bottom rope crosses in front of the
+ * wrestler's shins there. The figure measured is therefore head-to-shin, and
+ * his boots are not in it. That is stated rather than glossed: our own figure
+ * includes its shoes, so the two lower halves are not the same anatomy.
  */
-const MAX_UPPER_OVER_LOWER_MEAN = 1.35;
-const MIN_UPPER_OVER_LOWER_MEAN = 0.98;
-const NEAR_BLACK_LUMA = 40;
-const MAX_LOWER_NEAR_BLACK_SHARE = 0.32;
+const REF_WRESTLER_BOX: PixelBox = { x: 66, y: 113, w: 46, h: 45 };
+
 /**
- * Tighter than the lower half's, because the reference's upper half is the
- * cleaner one (1.3% against 5.7%) and because there is less silhouette per pixel
- * up here: the torso is one wide mass, the legs are two narrow ones.
+ * His material: the skin ramp, the trunks and the hair, read off the frame.
+ * Every one of these is asserted present, with its exact pixel count, so a
+ * different file in this path fails rather than quietly measuring something
+ * else. The crowd behind him is drawn from a separate, duller brown ramp
+ * (#422910, #291810, #633921, #946b29) which is why a colour key isolates him
+ * at all.
+ */
+const REF_WRESTLER_COLOURS: readonly number[] = [
+  0xf7e7d6, 0xe7c684, 0xd68c52, 0xa56b42, 0x734a21, 0x5a2910, // skin, light to dark
+  0xe77373, 0xe73163, 0xb51031, 0x840000, // trunks
+  0xf7ad29, 0xb58400, 0x844200, // hair
+];
+
+/** His head and hair, for the one window where a face is legitimately marked. */
+const REF_WRESTLER_HEAD_BOX: PixelBox = { x: 84, y: 115, w: 14, h: 12 };
+
+const refImage = readReference('sprite-ref-1-snes-wrestling.png');
+const refField = colourKeyedField(refImage, REF_WRESTLER_BOX, REF_WRESTLER_COLOURS);
+
+const inRefBox =
+  (box: PixelBox) =>
+  (x: number, y: number): boolean => {
+    const ix = x + REF_WRESTLER_BOX.x;
+    const iy = y + REF_WRESTLER_BOX.y;
+    return ix >= box.x && ix < box.x + box.w && iy >= box.y && iy < box.y + box.h;
+  };
+
+/** Everything this suite knows about the reference, computed on load. */
+const REF = {
+  figure: measureFigure(refField),
+  head: measureRegion(refField, inRefBox(REF_WRESTLER_HEAD_BOX)),
+  era: measureEraConformance(refImage),
+} as const;
+
+/**
+ * BOUNDS, DERIVED FROM THE MEASUREMENT ABOVE.
+ *
+ * Each is `measured reference value x named factor`, with the factors in
+ * `CRAFT` (craftMetrics.ts) so the anchor and the slack are separately visible.
+ * Nothing here is a typed-in number pretending to be a measurement; if the
+ * reference moves, these move with it.
+ */
+const MIN_UPPER_OVER_LOWER_MEAN =
+  REF.figure.upperOverLowerMean - CRAFT.UPPER_LOWER_RATIO_SLACK;
+const MAX_UPPER_OVER_LOWER_MEAN =
+  REF.figure.upperOverLowerMean + CRAFT.UPPER_LOWER_RATIO_SLACK;
+const MAX_INTERIOR_KEYLINE_SHARE =
+  REF.figure.interiorKeylineShare * CRAFT.INTERIOR_KEYLINE_FACTOR;
+const MIN_LIMB_MEAN_LUMA = REF.figure.meanLuma * CRAFT.LIMB_MEAN_LUMA_FLOOR_FACTOR;
+const MAX_LIMB_INTERIOR_KEYLINE_SHARE =
+  REF.figure.interiorKeylineShare * CRAFT.LIMB_INTERIOR_KEYLINE_FACTOR;
+const MAX_FACE_INTERIOR_KEYLINE_SHARE =
+  REF.head.interiorKeylineShare * CRAFT.FACE_INTERIOR_KEYLINE_FACTOR;
+
+/**
+ * OURS-ONLY RATCHETS, and labelled as such.
+ *
+ * These two are NOT reference comparisons and must never be described as one.
+ * The reference figure's raw near-black share is 3.8%; ours is five times that,
+ * and the reason is the silhouette keyline `outlinePass` draws, which GDD §12.2
+ * wants (it has to read at phone scale over unknown scenery) and which the
+ * reference does not have. That difference is not assumed — it is measured, by
+ * `litBoundaryDarkShare`, in 'the reference is not keylined and we are' below.
+ *
+ * So what these two bound is OUR OWN drift: the keyline must not thicken and
+ * neither half may fill up with black. The values pin measured behaviour across
+ * the full pose/load/strain/pitch sweep (upper 19.9%, lower 21.5%) with room,
+ * and they are the numbers a human should retune when the sprite changes, not
+ * a claim about SNES craft.
  */
 const MAX_UPPER_NEAR_BLACK_SHARE = 0.24;
-/**
- * Near-black that is not the silhouette keyline — every 4-neighbour is body, so
- * it is a line drawn INSIDE the figure. Applied to both halves, because the
- * defect this catches has now appeared in each of them in turn.
- *
- * This is the sharp measure and the two shares above are the blunt ones. The
- * keyline `outlinePass` puts round the outside is deliberate (GDD §12.2: it has
- * to read at phone scale against an unknown background) and the reference does
- * not have one, so a raw near-black share can never be compared to the
- * reference's directly. Interior near-black can: the reference has none at all
- * on a limb, its arms and thighs being contoured in their own darkest skin step.
- * Ours is not zero and is not meant to be — the eyes, the brow bar, the mouth
- * and the belt's lever plate are hand-placed near-black marks, which is what a
- * 16-bit artist does with the darkest entry in a bank, and a one-pixel gap
- * between two masses gets filled by the keyline pass from both sides.
- */
-const MAX_INTERIOR_KEYLINE_SHARE = 0.14;
+const MAX_LOWER_NEAR_BLACK_SHARE = 0.32;
 
-interface HalfPixel {
-  readonly y: number;
-  readonly l: number;
-  /** True when this pixel is near-black AND every 4-neighbour is body. */
-  readonly interiorKeyline: boolean;
+/**
+ * Frames the reference-anchored checks sweep, rendered and measured ONCE.
+ *
+ * Every depth the animation reaches, both directions, every strain and pitch
+ * rung, and both ends of the plate-colour range — 448 frames. Built at module
+ * load and shared, because five separate tests each re-rendering the sweep is
+ * the difference between a two-second file and a thirty-second one.
+ */
+interface CraftFrame {
+  readonly where: string;
+  readonly grid: IndexGrid;
+  /** The figure's own material, with the silhouette keyline taken off it. */
+  readonly core: ReturnType<typeof fieldFromIndexGrid>;
+  /** Everything the lifter bank draws, keyline included. */
+  readonly withKeyline: ReturnType<typeof fieldFromIndexGrid>;
+  readonly windows: ReturnType<typeof limbWindows>;
 }
 
-/** Every LIFTER-bank pixel, split at the figure's vertical midpoint. */
-function bodyHalfPixels(grid: IndexGrid): { upper: HalfPixel[]; lower: HalfPixel[] } {
-  const touchesOpenSpace = (x: number, y: number): boolean =>
-    isTransparentIndex(getPx(grid, x - 1, y)) ||
-    isTransparentIndex(getPx(grid, x + 1, y)) ||
-    isTransparentIndex(getPx(grid, x, y - 1)) ||
-    isTransparentIndex(getPx(grid, x, y + 1));
-
-  const px: HalfPixel[] = [];
-  for (let y = 0; y < grid.h; y += 1) {
-    for (let x = 0; x < grid.w; x += 1) {
-      const v = getPx(grid, x, y);
-      if (isTransparentIndex(v) || Math.floor(v / BANK_SIZE) !== 0) continue;
-      const l = luma(v);
-      px.push({ y, l, interiorKeyline: l < NEAR_BLACK_LUMA && !touchesOpenSpace(x, y) });
+const CRAFT_SWEEP: readonly CraftFrame[] = (() => {
+  const out: CraftFrame[] = [];
+  for (const direction of ['ASCENT', 'DESCENT'] as const) {
+    for (const depth of [0, 0.2, 0.35, 0.5, 0.65, 0.8, 1]) {
+      for (let strainLevel = 0; strainLevel < STRAIN.LEVELS; strainLevel += 1) {
+        for (let pitchLevel = 0; pitchLevel < PITCH.LEVELS; pitchLevel += 1) {
+          for (const totalKg of [27.5, 250]) {
+            const s = spec({ depth, direction, strainLevel, pitchLevel, totalKg });
+            const rendered = renderLifterFrame(s);
+            out.push({
+              where: `${direction} d${depth} s${strainLevel} p${pitchLevel} ${totalKg}kg`,
+              grid: rendered.grid,
+              core: fieldFromIndexGrid(rendered.grid, { excludeSilhouetteKeyline: true }),
+              withKeyline: fieldFromIndexGrid(rendered.grid),
+              windows: limbWindows({
+                pose: rendered.pose,
+                centerX: CENTER_X,
+                handCentres: [-1, 1].map((sign) =>
+                  handCentre(
+                    rendered.pose,
+                    sign,
+                    rendered.barCenterY,
+                    s.barLateralPx,
+                    s.barTiltDeg,
+                    s.barBendPx,
+                  ),
+                ),
+              }),
+            });
+          }
+        }
+      }
     }
   }
-  const ys = px.map((p) => p.y);
-  const mid = (Math.min(...ys) + Math.max(...ys)) / 2;
-  return { upper: px.filter((p) => p.y < mid), lower: px.filter((p) => p.y >= mid) };
-}
-
-/** The luma-only view the mean and near-black share are taken over. */
-function bodyHalves(grid: IndexGrid): { upper: number[]; lower: number[] } {
-  const { upper, lower } = bodyHalfPixels(grid);
-  return { upper: upper.map((p) => p.l), lower: lower.map((p) => p.l) };
-}
-
-const mean = (xs: readonly number[]): number =>
-  xs.length === 0 ? 0 : xs.reduce((s, v) => s + v, 0) / xs.length;
+  return out;
+})();
 
 describe('the lifter is the brightest thing in his own frame', () => {
   it('holds more highlight pixels than the whole barbell does, at every load', () => {
@@ -566,93 +662,187 @@ describe('the lifter is the brightest thing in his own frame', () => {
     // floating over a smear."
     //
     // Split at the figure's own vertical midpoint, which is not tuneable to
-    // flatter either half. MEASURED on the same split of the blond wrestler in
-    // sprite-ref-1 (masked by colour, at native scale, in this repo's sandbox):
-    // upper mean luma 113.7 against lower 109.0, a ratio of 1.04. Ours was
-    // 81.4 / 54.3 — a ratio of 1.50 — and is now inside the bound below.
+    // flatter either half, and BRACKETED, not capped: a cap alone points one
+    // way, and a darker upper body satisfies it more easily rather than less,
+    // which is how the arms stayed ringed in near-black for several rounds
+    // underneath a 1.35 cap they passed at every pose.
     //
-    // A RATIO, not an absolute: this test's job is to catch either half being
-    // left behind by a change to the other, which is how the gap appeared in
-    // both directions. Whether the figure as a whole is bright enough is a
-    // different claim and belongs to a human looking at pixels.
-    //
-    // BRACKETED, NOT CAPPED. The cap on its own pointed one way: a darker upper
-    // body satisfies it more easily, so it sat at 1.35 through every round in
-    // which the arms were the only masses on the figure still ringed in
-    // near-black, at a measured 0.86-1.02. See MIN_UPPER_OVER_LOWER_MEAN.
-    for (const depth of [0, 0.35, 0.65, 1]) {
-      for (const strainLevel of [0, STRAIN.LEVELS - 1]) {
-        const { grid } = renderLifterFrame(
-          spec({ depth, direction: 'ASCENT', strainLevel, totalKg: 250 }),
-        );
-        const { upper, lower } = bodyHalves(grid);
-        const where = `depth ${depth} strain ${strainLevel}`;
-        expect(lower.length, where).toBeGreaterThan(100);
-        expect(upper.length, where).toBeGreaterThan(100);
-        const upperMean = mean(upper);
-        const lowerMean = mean(lower);
-        expect(upperMean / lowerMean, `${where}: mean luma ratio`).toBeLessThan(
+    // The bracket is centred on the reference's OWN measured ratio (see REF
+    // above) rather than on a remembered one. Both fields are checked: the
+    // material-only field is the like-for-like comparison, since the reference
+    // has no keyline to include; the full field, keyline and all, is an
+    // ours-only ratchet on drift.
+    for (const frame of CRAFT_SWEEP) {
+      const where = frame.where;
+      for (const [name, field] of [
+        ['material', frame.core],
+        ['with keyline', frame.withKeyline],
+      ] as const) {
+        const m = measureFigure(field);
+        expect(m.upper.count, `${where}: ${name} upper`).toBeGreaterThan(100);
+        expect(m.lower.count, `${where}: ${name} lower`).toBeGreaterThan(100);
+        expect(m.upperOverLowerMean, `${where}: ${name} mean luma ratio`).toBeLessThan(
           MAX_UPPER_OVER_LOWER_MEAN,
         );
-        expect(upperMean / lowerMean, `${where}: mean luma ratio`).toBeGreaterThan(
+        expect(m.upperOverLowerMean, `${where}: ${name} mean luma ratio`).toBeGreaterThan(
           MIN_UPPER_OVER_LOWER_MEAN,
         );
-        // And the near-black that used to fill the lower body: half of it was
-        // separation line at luma 19, against 4% on the reference's own lower
-        // half. Floored well above the reference so the silhouette keyline,
-        // which we keep and it does not have, is not squeezed out.
-        const nearBlack = lower.filter((v) => v < NEAR_BLACK_LUMA).length / lower.length;
-        expect(nearBlack, `${where}: near-black share below the midpoint`).toBeLessThan(
-          MAX_LOWER_NEAR_BLACK_SHARE,
-        );
       }
+
+      // The near-black that used to fill the lower body: half of it was
+      // separation line at luma 19. Ours-only ratchet, not a reference claim —
+      // see MAX_LOWER_NEAR_BLACK_SHARE.
+      const m = measureFigure(frame.withKeyline);
+      expect(m.lower.nearBlackShare, `${where}: near-black below the midpoint`).toBeLessThan(
+        MAX_LOWER_NEAR_BLACK_SHARE,
+      );
+      expect(m.upper.nearBlackShare, `${where}: near-black above the midpoint`).toBeLessThan(
+        MAX_UPPER_NEAR_BLACK_SHARE,
+      );
     }
   });
 
-  it('carries it ABOVE the belt too: the arms are not the darkest thing on him', () => {
-    // THE FIFTEENTH BLIND CHECK, IN THE CRITIC'S WORDS: "the near-black keyline
-    // fix was applied below the belt and deliberately withheld above it — and
-    // the reference puts its brightest pixels on the arms." Nothing in this
-    // suite could see it. The near-black share was measured on `lower` only,
-    // and the one upper/lower assertion was a CAP, which a darker upper body
-    // satisfies more easily rather than less.
-    //
-    // Measured with the arms, hands, neck and head still on the default
-    // near-black ring, at 250 kg over this sweep: near-black 38.0-43.2% of the
-    // upper half, of which 29.3-36.0 points were interior. The same interior
-    // figure below the belt, where the fix had already landed, was 0.3-7.2%.
-    // Against sprite-ref-1's own upper half at 1.3%.
-    for (const depth of [0, 0.35, 0.65, 1]) {
-      for (const strainLevel of [0, STRAIN.LEVELS - 1]) {
-        const { grid } = renderLifterFrame(
-          spec({ depth, direction: 'ASCENT', strainLevel, totalKg: 250 }),
-        );
-        const { upper, lower } = bodyHalfPixels(grid);
-        const where = `depth ${depth} strain ${strainLevel}`;
-        expect(upper.length, where).toBeGreaterThan(100);
-        expect(lower.length, where).toBeGreaterThan(100);
-
-        const nearBlack = upper.filter((p) => p.l < NEAR_BLACK_LUMA).length / upper.length;
-        expect(nearBlack, `${where}: near-black share above the midpoint`).toBeLessThan(
-          MAX_UPPER_NEAR_BLACK_SHARE,
-        );
-
-        // The sharp one. A near-black pixel every one of whose neighbours is
-        // body is a line drawn inside the figure, not the silhouette keyline,
-        // and it is the thing the reference has none of on a limb.
-        for (const [name, half] of [
-          ['above', upper],
-          ['below', lower],
-        ] as const) {
-          const interior = half.filter((p) => p.interiorKeyline).length / half.length;
-          expect(interior, `${where}: interior keyline share ${name} the midpoint`).toBeLessThan(
-            MAX_INTERIOR_KEYLINE_SHARE,
-          );
+  it('separates material from keyline by taking off the outline and nothing else', () => {
+    // The like-for-like comparison rests on `excludeSilhouetteKeyline` removing
+    // the outline rather than trimming the outside of every dark mass, which
+    // would quietly brighten the figure before measuring it. The rule is
+    // `outlinePass`'s own — near-black and touching open space — and on real
+    // frames the two definitions coincide exactly: every dropped pixel is
+    // PAL.OUTLINE, and the near-black hair, which the outline wraps rather than
+    // borders, is untouched.
+    for (const frame of CRAFT_SWEEP) {
+      let dropped = 0;
+      let hair = 0;
+      for (let y = 0; y < frame.grid.h; y += 1) {
+        for (let x = 0; x < frame.grid.w; x += 1) {
+          const p = y * frame.grid.w + x;
+          const index = getPx(frame.grid, x, y);
+          if (index === PAL.HAIR_DARK) {
+            hair += 1;
+            expect(frame.core.member[p], `${frame.where}: hair at ${x},${y}`).toBe(1);
+          }
+          if (frame.withKeyline.member[p] === 1 && frame.core.member[p] === 0) {
+            dropped += 1;
+            expect(index, `${frame.where}: dropped pixel at ${x},${y}`).toBe(PAL.OUTLINE);
+          }
         }
       }
+      expect(dropped, `${frame.where}: keyline pixels`).toBeGreaterThan(80);
+      expect(hair, `${frame.where}: hair pixels`).toBeGreaterThan(10);
     }
   });
 
+  it('keeps interior keylines off the whole figure, at the reference rate', () => {
+    // The sharp measure and the one that survives the difference between us and
+    // the reference. A near-black pixel enclosed by material on all four sides
+    // AND thin along at least one axis is a LINE drawn inside the figure — not
+    // the silhouette keyline, which we keep on purpose, and not a dark mass,
+    // which is why the lifter's own near-black hair does not register here.
+    //
+    // Anchored to the reference's measured rate. Ours is allowed a multiple of
+    // it because the eyes, the brow bar, the mouth and the belt's lever plate
+    // are hand-placed near-black marks — which is what a 16-bit artist does with
+    // the darkest entry in a bank — and because a one-pixel gap between two
+    // masses gets filled by the keyline pass from both sides.
+    for (const frame of CRAFT_SWEEP) {
+      const m = measureFigure(frame.core);
+      expect(m.interiorKeylineShare, `${frame.where}: interior keyline share`).toBeLessThan(
+        MAX_INTERIOR_KEYLINE_SHARE,
+      );
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE LIMBS ARE MEASURED AS LIMBS
+//
+// The test this replaces was called "the arms are not the darkest thing on him"
+// and computed one number over the ENTIRE upper half — head, neck, traps, pecs,
+// singlet, belt, both arms, both hands. Three of the four parts it was named
+// for could have gone to a full near-black ring without moving the aggregate
+// past its cap: they are around 15% of upper-half pixels, so a 40% ring on them
+// adds about six points to a number that had eight points of headroom.
+//
+// That is the same shape of error one level down that the previous round was
+// sent back for. The fix is not a tighter aggregate; it is windows small enough
+// that a regression inside one dominates its own number. `limbWindows` builds
+// them from the pose and, for the hands, from `handCentre` — the function the
+// renderer itself draws with, so a window cannot drift off the thing it
+// measures.
+// ---------------------------------------------------------------------------
+
+describe('every limb is measured as a limb, not inside an aggregate', () => {
+  it('puts a real number of pixels in every window, at every pose', () => {
+    // The failure this forbids is a window aimed at empty space, which reports
+    // a perfect score for a limb it never found.
+    for (const frame of CRAFT_SWEEP) {
+      expect(frame.windows.map((w) => w.name)).toEqual([
+        'head',
+        'neck',
+        'left arm',
+        'right arm',
+        'left hand',
+        'right hand',
+      ]);
+      for (const w of frame.windows) {
+        expect(
+          measureRegion(frame.core, w.contains).count,
+          `${frame.where}: ${w.name}`,
+        ).toBeGreaterThan(CRAFT.MIN_LIMB_PIXELS);
+      }
+    }
+  });
+
+  it('keeps no limb darker than the reference figure, one limb at a time', () => {
+    // "The arms are not the darkest thing on him", stated so that it is about
+    // the arms. A limb ringed in near-black loses most of its mean; the floor is
+    // a fraction of the reference figure's own measured mean luma.
+    for (const frame of CRAFT_SWEEP) {
+      for (const w of frame.windows) {
+        const stats = measureRegion(frame.core, w.contains);
+        expect(stats.meanLuma, `${frame.where}: ${w.name} mean luma`).toBeGreaterThan(
+          MIN_LIMB_MEAN_LUMA,
+        );
+      }
+    }
+  });
+
+  it('rings no arm or hand in an interior keyline', () => {
+    // Each of the four is asserted separately. Both arms and both hands were
+    // inside the aggregate that could not see them.
+    for (const frame of CRAFT_SWEEP) {
+      for (const w of frame.windows) {
+        if (w.name === 'head' || w.name === 'neck') continue;
+        const stats = measureRegion(frame.core, w.contains);
+        expect(
+          stats.interiorKeylineShare,
+          `${frame.where}: ${w.name} interior keyline`,
+        ).toBeLessThan(MAX_LIMB_INTERIOR_KEYLINE_SHARE);
+      }
+    }
+  });
+
+  it('rings neither the head nor the neck, at the rate the reference head is marked', () => {
+    // Split from the arms deliberately, and anchored to a different measured
+    // number: the reference's OWN head window. A face carries hand-placed marks
+    // a forearm does not — eyes, brow, mouth — so the same bound on both would
+    // either be too loose for the arms or would fail a face for having a face.
+    // What it still catches is the collar the head used to wear: 34 px of luma
+    // 19 ringing a 7x9 skull.
+    for (const frame of CRAFT_SWEEP) {
+      for (const w of frame.windows) {
+        if (w.name !== 'head' && w.name !== 'neck') continue;
+        const stats = measureRegion(frame.core, w.contains);
+        expect(
+          stats.interiorKeylineShare,
+          `${frame.where}: ${w.name} interior keyline`,
+        ).toBeLessThan(MAX_FACE_INTERIOR_KEYLINE_SHARE);
+      }
+    }
+  });
+});
+
+describe('barbell values', () => {
   it('keeps the collar a dim block with one specular pixel, not a bright block', () => {
     // The collars used to paint ~20 px of the brightest steel at each end of
     // the bar. CHROME_HI existed only in the palette and in a comment claiming
@@ -667,6 +857,146 @@ describe('the lifter is the brightest thing in his own frame', () => {
     expect(chrome).toBeGreaterThan(0);
     expect(chrome).toBeLessThan(8);
     expect(steelLight).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE REFERENCE ITSELF
+//
+// Everything above rests on REF, and REF is only worth resting on if the file
+// it came from is the file this suite thinks it is and the mask over it is the
+// wrestler rather than a patch of crowd. This block pins both, and answers the
+// question the old prose asserted without being able to test: is the reference
+// keylined?
+// ---------------------------------------------------------------------------
+
+describe('the reference is measured, not remembered', () => {
+  it('opens the committed file and finds a native SNES frame', () => {
+    expect([refImage.width, refImage.height]).toEqual([256, 224]);
+    // 94 distinct colours in a whole 256x224 frame is palette discipline, not
+    // a screenshot of an emulator running at 4x with a filter on.
+    expect(REF.era.distinctColours).toBe(94);
+  });
+
+  it('finds every material colour it claims to mask by, at an exact count', () => {
+    // A colour key made of colours that are not in the file measures nothing.
+    // Exact counts, so swapping the file in this path fails here rather than
+    // silently producing new "reference" figures.
+    const counts = new Map<number, number>();
+    for (let y = 0; y < refImage.height; y += 1) {
+      for (let x = 0; x < refImage.width; x += 1) {
+        const key = rgbAt(refImage, x, y);
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+    const found = REF_WRESTLER_COLOURS.map((c) => counts.get(c) ?? 0);
+    expect(found).toEqual([79, 152, 198, 218, 183, 100, 59, 115, 112, 114, 33, 66, 50]);
+  });
+
+  it('masks a figure, and the figure is where the box says it is', () => {
+    // 967 px in a 46x45 box is a 47% fill: a standing man, not a stray blob and
+    // not the whole box. Pinned, so a change to the mask has to be looked at.
+    expect(REF.figure.count).toBe(967);
+    expect(REF.head.count).toBe(109);
+    // The same box and the same colour key run over the NEGATIVE CONTROL finds
+    // essentially nothing, which is what shows these numbers come from ref-1's
+    // pixels rather than from the code that reads them.
+    const control = readReference('sprite-ref-2-16bit-baseball.png');
+    const controlField = colourKeyedField(control, REF_WRESTLER_BOX, REF_WRESTLER_COLOURS);
+    expect(measureFigure(controlField).count).toBeLessThan(CRAFT.MIN_LIMB_PIXELS);
+  });
+
+  it('THE REFERENCE IS NOT KEYLINED AND WE ARE — measured, not assumed', () => {
+    // This is the claim the whole comparison rests on, and it used to be a
+    // sentence justified by a colour-keyed mask that could not have found a
+    // keyline if there had been one: an outline is not one of the body's
+    // colours, so it is excluded by construction.
+    //
+    // `litBoundaryDarkShare` reads the band OUTSIDE the material — exactly where
+    // a keyline lives — and only where the pixel beyond that band is lit, so
+    // black crowd behind a figure cannot be mistaken for a drawn outline. It can
+    // come back either way. On the wrestler it comes back low: his contour is
+    // his own darkest skin and trunk steps, and along his thighs against the
+    // bright ring apron there is no dark band at all.
+    expect(REF.figure.litBoundarySamples).toBeGreaterThanOrEqual(
+      CRAFT.MIN_LIT_BOUNDARY_SAMPLES,
+    );
+    expect(isKeylined(REF.figure)).toBe(false);
+    expect(REF.figure.litBoundaryDarkShare).toBeLessThan(0.35);
+
+    // Ours is keylined, everywhere, on purpose.
+    for (const frame of CRAFT_SWEEP) {
+      const m = measureFigure(frame.core);
+      expect(m.litBoundarySamples, `${frame.where}: crossings`).toBeGreaterThanOrEqual(
+        CRAFT.MIN_LIT_BOUNDARY_SAMPLES,
+      );
+      expect(isKeylined(m), `${frame.where}: keylined`).toBe(true);
+      expect(m.litBoundaryDarkShare, `${frame.where}: keyline coverage`).toBeGreaterThan(0.85);
+    }
+    // Which is why nothing above compares a RAW near-black share between the
+    // two. The reference's is 3.8%; ours is five times that and the difference
+    // is the keyline, not the drawing underneath it.
+    expect(REF.figure.nearBlackShare).toBeLessThan(0.05);
+  });
+
+  it('tells sprite-ref-1 from the negative control on era craft alone', () => {
+    // A check that scores a native SNES frame and modern pixel art of a current
+    // MLB player the same is not measuring era craft. This one is decisive and
+    // needs no judgement: SNES colour is 5 bits per channel, expanded by
+    // (c << 3) | (c >> 2), so hardware art can only land on 32 values per
+    // channel. Resampling invents values between them.
+    const control = readReference('sprite-ref-2-16bit-baseball.png');
+    const controlEra = measureEraConformance(control);
+
+    expect(REF.era.latticeColours).toBe(REF.era.distinctColours);
+    expect(REF.era.latticePixelShare).toBe(1);
+
+    expect(controlEra.distinctColours).toBeGreaterThan(150);
+    expect(controlEra.latticePixelShare).toBeLessThan(0.05);
+    expect(REF.era.latticePixelShare - controlEra.latticePixelShare).toBeGreaterThan(0.9);
+
+    // And ours sits with the reference, because `palette.ts` builds every colour
+    // through the same expansion. This is the one place the era claim is free.
+    for (const frame of CRAFT_SWEEP) {
+      const image: RgbaImage = {
+        width: frame.grid.w,
+        height: frame.grid.h,
+        rgba: gridToRgba(frame.grid),
+      };
+      expect(measureEraConformance(image).latticePixelShare, frame.where).toBe(1);
+    }
+  });
+
+  it('states the reference figures it is comparing against, in one place', () => {
+    // Not an assertion about craft — a printout, so a human or a critic can read
+    // the numbers this suite is actually using without running a script that
+    // might measure something else. `npx vitest run src/art/lifterSprite.test.ts
+    // --reporter=verbose --silent=false` shows it.
+    const pct = (v: number): string => `${(100 * v).toFixed(2)}%`;
+    console.log(
+      [
+        `sprite-ref-1 ${refImage.width}x${refImage.height}, ${REF.era.distinctColours} colours, ` +
+          `${pct(REF.era.latticePixelShare)} on the SNES 5-bit lattice`,
+        `wrestler box ${REF_WRESTLER_BOX.x},${REF_WRESTLER_BOX.y} ` +
+          `${REF_WRESTLER_BOX.w}x${REF_WRESTLER_BOX.h} -> ${REF.figure.count} px`,
+        `  mean luma            ${REF.figure.meanLuma.toFixed(2)}`,
+        `  near-black           ${pct(REF.figure.nearBlackShare)}`,
+        `  interior keyline     ${pct(REF.figure.interiorKeylineShare)}`,
+        `  upper ${REF.figure.upper.count} px mean ${REF.figure.upper.meanLuma.toFixed(2)} ` +
+          `near-black ${pct(REF.figure.upper.nearBlackShare)}`,
+        `  lower ${REF.figure.lower.count} px mean ${REF.figure.lower.meanLuma.toFixed(2)} ` +
+          `near-black ${pct(REF.figure.lower.nearBlackShare)}`,
+        `  upper/lower mean     ${REF.figure.upperOverLowerMean.toFixed(4)}`,
+        `  keyline verdict      ${pct(REF.figure.litBoundaryDarkShare)} of ` +
+          `${REF.figure.litBoundarySamples} lit crossings -> keylined=${isKeylined(REF.figure)}`,
+        `head box ${REF_WRESTLER_HEAD_BOX.x},${REF_WRESTLER_HEAD_BOX.y} -> ${REF.head.count} px, ` +
+          `mean ${REF.head.meanLuma.toFixed(2)}, interior keyline ${pct(REF.head.interiorKeylineShare)}`,
+        `bounds: upper/lower in [${MIN_UPPER_OVER_LOWER_MEAN.toFixed(4)}, ${MAX_UPPER_OVER_LOWER_MEAN.toFixed(4)}], ` +
+          `interior keyline < ${pct(MAX_INTERIOR_KEYLINE_SHARE)}, limb mean luma > ${MIN_LIMB_MEAN_LUMA.toFixed(2)}, ` +
+          `limb interior keyline < ${pct(MAX_LIMB_INTERIOR_KEYLINE_SHARE)}, face < ${pct(MAX_FACE_INTERIOR_KEYLINE_SHARE)}`,
+      ].join('\n'),
+    );
+    expect(REF.figure.count).toBeGreaterThan(0);
   });
 });
 
