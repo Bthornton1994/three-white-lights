@@ -142,6 +142,7 @@ const STAGED = new Set([
 const notes = [];
 let wrong = 0;
 let roomless = 0;
+let blocked = 0;
 
 for (const moment of MOMENTS) {
   await page.goto(`${url}?meet=${moment}`, { waitUntil: 'load' });
@@ -174,8 +175,22 @@ for (const moment of MOMENTS) {
     const halls =
       document.querySelectorAll('[data-testid="meet-hall"]').length +
       document.querySelectorAll('[data-testid="attempt-touch"] canvas').length;
+    // AND THE ROOM DOES NOT EAT THE DECISION. The attempt-choice screen draws
+    // its hall as an absolutely-positioned layer that OVERLAPS both cards, so
+    // "is the card still the thing under the player's thumb" is a real question
+    // with a real way to be wrong. Answered by hit-testing the card's own centre
+    // rather than by trusting `pointerEvents`.
+    const hitTest = ['repeat', 'small', 'big']
+      .map((id) => document.querySelector(`[data-testid="attempt-option-${id}"]`))
+      .filter((card) => card !== null)
+      .map((card) => {
+        const box = card.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return card.contains(hit) || card === hit;
+      });
     return {
       halls,
+      cardsHittable: hitTest.length === 0 ? null : hitTest.every(Boolean),
       screens: [
         'meet-weigh-in',
         'meet-openers',
@@ -218,10 +233,12 @@ for (const moment of MOMENTS) {
   const wantsHall = STAGED.has(moment);
   const staged = seen.halls > 0;
   if (wantsHall !== staged) roomless += 1;
+  if (seen.cardsHittable === false) blocked += 1;
   notes.push({ moment, file: path.basename(file), expected, rightScreen, staged, seen });
   console.log(
     `${moment.padEnd(20)} -> ${path.basename(file)}  ${rightScreen ? 'ok' : `!! EXPECTED ${expected}, SAW ${seen.screens.join(',') || 'nothing'}`}` +
-      `  hall:${staged ? 'yes' : 'no '}${wantsHall === staged ? '' : ' !! EXPECTED ' + (wantsHall ? 'A HALL' : 'NO HALL')}`,
+      `  hall:${staged ? 'yes' : 'no '}${wantsHall === staged ? '' : ' !! EXPECTED ' + (wantsHall ? 'A HALL' : 'NO HALL')}` +
+      `${seen.cardsHittable === null ? '' : seen.cardsHittable ? '  cards:hittable' : '  !! THE ROOM IS EATING THE CARDS'}`,
   );
 }
 
@@ -281,6 +298,7 @@ await browser.close();
 console.log(`\nwrote ${notes.length} frames to ${outDir}`);
 console.log(
   `${wrong} frame(s) showed the wrong screen; ${duplicates} duplicate frame(s); ` +
-    `${roomless} frame(s) had the wrong answer to "is there a building in this shot"`,
+    `${roomless} frame(s) had the wrong answer to "is there a building in this shot"; ` +
+    `${blocked} frame(s) had the room sitting on top of the attempt cards`,
 );
-process.exit(wrong === 0 && duplicates === 0 && roomless === 0 ? 0 : 1);
+process.exit(wrong === 0 && duplicates === 0 && roomless === 0 && blocked === 0 ? 0 : 1);
