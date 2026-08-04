@@ -1638,11 +1638,14 @@ The code has taken the safe branch and needs a ruling to take any other.**
       **So the enumeration is now derived.** §7.5 is a table of every place a
       `ServerRecord` or a `ProgressionSnapshotWire` is built and every caller of
       the client's snapshot door, and `progression.test.ts` reconstructs the same
-      set by building a `ts.Program` over `src/` and asking the **type checker**
-      — not a regular expression — for every object literal that is one of those
-      types, by contextual type *or* by structural assignability. It compares the
-      two sets **both ways**: a construction site added anywhere under `src/`
-      without a row goes red, and a row whose site is deleted goes red. Counts
+      set by building a `ts.Program` over **every file the project compiles** —
+      `parsed.fileNames` from `tsconfig.json`, cross-checked against a walk of
+      the repository so a narrowed `include` cannot shrink it — and asking the
+      **type checker**, not a regular expression, for every object literal that
+      is one of those types, by contextual type *or* by structural
+      assignability. It compares the two sets **both ways**: a construction site
+      added **anywhere the project compiles** without a row goes red, and a row
+      whose site is deleted goes red. Counts
       are per row, so a second literal inside a function that already has a row
       is caught too. The declared side is a comment and the found side is a
       parsed syntax tree, so prose about a route can neither create one nor
