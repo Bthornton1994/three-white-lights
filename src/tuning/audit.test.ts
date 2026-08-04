@@ -513,12 +513,14 @@ describe('the registered allowlist', () => {
         'src/game/fatigue.ts',
         'src/game/liftTuning.ts',
         'src/game/meet.ts',
+        'src/game/meetTuning.ts',
         'src/game/prng.ts',
         'src/game/resultCard.ts',
         'src/game/rpe.ts',
         'src/game/sessionTuning.ts',
         'src/game/streak.ts',
         'src/lift/liftPalette.ts',
+        'src/meet/meetPalette.ts',
         'src/session/sessionPalette.ts',
         // Build config, classified `local`. Registered rather than exempted:
         // the walk starting at the repository root is what makes this audit

@@ -213,6 +213,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'feel',
     why: 'Result-card sheet layout and the screen chrome around it.',
   }),
+  'src/game/meetTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'MEET_TUNING / MEET_LAYOUT / MEET_COPY — meet-day pacing: the walk-out beat, the deliberation delay, the judging-light reveal, the judging thresholds. GDD §12.2 judges this piece on pacing, so these are the values a playtest pass moves.',
+  }),
 
   // --- palettes ------------------------------------------------------------
   'src/art/palette.ts': Object.freeze({
@@ -234,6 +239,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     role: 'palette',
     kind: 'colour',
     why: 'Screen chrome for the daily loop, built on LIFT_PALETTE.',
+  }),
+  'src/meet/meetPalette.ts': Object.freeze({
+    role: 'palette',
+    kind: 'colour',
+    why: 'Screen chrome for meet day, built on LIFT_PALETTE, plus MEET_PLATE_COLOURS — the competition plate ladder as CSS (GDD §7.1: the colour coding is free visual language). The denominations themselves are src/art/plates.ts\u2019s.',
   }),
 
   // --- feel blocks that live with their mechanic ---------------------------

@@ -73,6 +73,14 @@ import {
   SESSION_PROGRESSION_GUARD,
   SESSION_TUNING,
 } from '../game/sessionTuning';
+import {
+  MEET_COPY,
+  MEET_ENTRY,
+  MEET_LAYOUT,
+  MEET_LOCAL,
+  MEET_PREVIEW,
+  MEET_TUNING,
+} from '../game/meetTuning';
 import { FATIGUE_COPY, FATIGUE_TUNING } from '../game/fatigue';
 import {
   RECOVERY_DAY_ECONOMY,
@@ -85,6 +93,7 @@ import { PALETTE_BANKS, PAL, RAMPS } from '../art/palette';
 import { SHEET, SHEET_BANK } from '../card/sheetPalette';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { SESSION_PALETTE } from '../session/sessionPalette';
+import { MEET_PALETTE, MEET_PLATE_COLOURS } from '../meet/meetPalette';
 
 /**
  * Every hand-tuned block in the game, grouped by the thing it tunes.
@@ -139,6 +148,22 @@ export const TUNING = Object.freeze({
     SESSION_PREVIEW,
     SESSION_PROGRESSION_GUARD,
     CHECK_IN_QUESTIONS,
+  }),
+
+  /**
+   * MEET DAY. The walk-out beat, the "judges deliberating" delay, the
+   * light-reveal stagger, the bomb-out silence, and the four thresholds that
+   * decide when a call is close. GDD §12.2 judges this piece against broadcast
+   * footage of a third-attempt walkout and says to judge PACING — which is
+   * exactly what this block is, and none of it has been played.
+   */
+  meet: Object.freeze({
+    MEET_TUNING,
+    MEET_LAYOUT,
+    MEET_COPY,
+    MEET_LOCAL,
+    MEET_ENTRY,
+    MEET_PREVIEW,
   }),
 
   /**
@@ -197,6 +222,7 @@ export const PALETTES = Object.freeze({
   sheet: Object.freeze({ SHEET, SHEET_BANK }),
   liftScreen: LIFT_PALETTE,
   sessionScreen: SESSION_PALETTE,
+  meetScreen: Object.freeze({ MEET_PALETTE, MEET_PLATE_COLOURS }),
 });
 
 /**
@@ -214,6 +240,7 @@ export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Obj
   fatigue: 'src/game/fatigue.ts',
   streak: 'src/game/streak.ts',
   card: 'src/card/cardTuning.ts',
+  meet: 'src/game/meetTuning.ts',
 });
 
 /** Where each palette physically lives. Same cross-check as above. */
@@ -222,4 +249,5 @@ export const PALETTE_MODULES: Readonly<Record<keyof typeof PALETTES, string>> = 
   sheet: 'src/card/sheetPalette.ts',
   liftScreen: 'src/lift/liftPalette.ts',
   sessionScreen: 'src/session/sessionPalette.ts',
+  meetScreen: 'src/meet/meetPalette.ts',
 });
