@@ -199,9 +199,10 @@
       "id": "S1",
       "name": "Daily session loop",
       "bar": "Duolingo-class session. Time-to-first-input, session length, close-out moment.",
-      "status": "building",
+      "status": "ungraded",
       "verifiable": false,
-      "note": "Dispatched — the last big §12.2 bar row, unblocked now that the lift mechanic passes. Judged against a best-in-class daily-habit session on three measures: time-to-first-input, session length against the GDD 60 to 90 second target, and whether the close-out lands. The builder must MEASURE the first two rather than estimate them, and per CLAUDE.md build the tunable version of the third rather than assert it feels right. It consumes six existing modules and may modify none of them: the rep mechanic, the published RPE chart for load, Epley for e1RM including its refusal past chart coverage, the hidden fatigue model whose input is the check-in, the streak module, and the progression boundary through which it proposes rather than writes. The human ruling governs the close-out directly — the number that moves after a session is e1RM or a session PR, never Total, and progression.ts will not let a training session propose one."
+      "note": "Built and merged; 1432 tests across 27 files, typecheck clean. The app now opens straight onto the readiness check-in — no splash, no home screen, three questions and nine chips live at first paint. It MEASURED the bar rather than estimating: 929ms median to first tappable input, and a full played session of 58.7s at RPE 6 and 64.7s at RPE 8 against the GDD 60-to-90 target. Twelve mutations all bite. Two decisions in its resolution rules are worth recording: a missed set reports as reps-minus-one at RPE 10, because on a reps-in-reserve chart RPE 10 IS failure rather than an estimate of it; and prescribed load rounds DOWN, because rounding to nearest lets a target-hit session report an e1RM a kilo or two above the one it was prescribed from, which becomes a permanent PR bought with rounding and then compounds daily. It wrote the Edge Function body now rather than later so the client never learns to write progression directly. It raised two things it refused to decide alone and both are genuine design questions, now with the human.",
+      "evidence": "session-open.png"
     },
     {
       "id": "S2",
