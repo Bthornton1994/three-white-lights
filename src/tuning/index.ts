@@ -1,0 +1,225 @@
+/**
+ * THE ONE PLACE.
+ *
+ * CLAUDE.md: "Keep every such value as a named constant in one place." GDD
+ * §12.1: "a playable, tunable artifact with every game-feel value exposed as a
+ * named constant in one place. Feel tuning happens afterward, by hand, with
+ * real people playing. Plan for roughly 30 iterations."
+ *
+ * This is that place. Open this file and you can see, and reach, every tuned
+ * value in the game.
+ *
+ * ---------------------------------------------------------------------------
+ * IT IS A REGISTRY, NOT A CONCATENATION, AND THAT WAS A DECISION
+ * ---------------------------------------------------------------------------
+ * The tuned values physically live beside the mechanics they belong to —
+ * `spriteTuning.ts`, `liftTuning.ts`, `sessionTuning.ts`, `cardTuning.ts`, and
+ * blocks like `FATIGUE_TUNING` and `RECOVERY_DAY_GUARDRAILS` that sit at the
+ * top of their own module. Merging them into one physical file was considered
+ * and rejected for three reasons:
+ *
+ *   1. `spriteTuning.ts` is imported by the offline sprite tool in `tools/`,
+ *      which would then be pulling in the session loop's copy strings and the
+ *      meet engine's rules to render a contact sheet.
+ *   2. Each block's comments are half its value — several run longer than the
+ *      values they explain — and they are about the mechanic they belong to. A
+ *      merged file is 4000 lines of unrelated prose with numbers in it, which
+ *      is harder to tune from, not easier.
+ *   3. It is a merge magnet. This run has several builders working in parallel
+ *      worktrees; a single tuning file collides on every one of them.
+ *
+ * So "one place" is delivered as one REGISTRY, and it is only worth anything
+ * because it is enforced rather than asserted:
+ *
+ *   - `TUNING` below re-exports every block. One import reaches all of them.
+ *   - `src/tuning/audit.ts` holds the closed list of files allowed to contain
+ *     a bare number at all, and `audit.test.ts` runs it over the whole tree on
+ *     every `vitest run`. A fifth scattering cannot appear quietly: a number
+ *     put anywhere else fails the suite, naming the file, the line and the
+ *     literal.
+ *   - `audit.test.ts` also cross-checks the two: every module registered as a
+ *     `feel` constants home must appear in `TUNING_MODULES` here, and every
+ *     module here must be registered there. Neither list can drift.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IS AND IS NOT IN HERE
+ * ---------------------------------------------------------------------------
+ * `TUNING` is the `feel` half: timing windows, animation curves, haptic
+ * patterns, difficulty thresholds, layout. These are what the 30 passes move.
+ *
+ * `PALETTES` is colour. Separate because a colour is not turned with a
+ * stopwatch, and because the sprite banks are sourced from real meet software
+ * and are not ours to "balance".
+ *
+ * DELIBERATELY ABSENT: the published domain data. The RPE chart, the DOTS
+ * coefficients, Epley's divisor, the IPF plate ladder and the meet's attempt
+ * rules are NOT knobs. GDD §12.3 sends the work back for homebrewed RPE, e1RM
+ * or DOTS values, so exposing them through the tuning index — where the whole
+ * invitation is "turn these" — would be building the trap. They are registered
+ * in `audit.ts` as `data`, which is where you look to find out that a number
+ * exists and must not be moved.
+ *
+ * NONE OF THESE VALUES HAVE BEEN PLAYED. Every one is a starting point.
+ */
+
+import * as CARD_TUNING from '../card/cardTuning';
+import * as SPRITE_TUNING_MODULE from '../art/spriteTuning';
+import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
+import {
+  CHECK_IN_QUESTIONS,
+  SESSION_COPY,
+  SESSION_LAYOUT,
+  SESSION_PREVIEW,
+  SESSION_PROGRESSION_GUARD,
+  SESSION_TUNING,
+} from '../game/sessionTuning';
+import { FATIGUE_COPY, FATIGUE_TUNING } from '../game/fatigue';
+import {
+  RECOVERY_DAY_ECONOMY,
+  RECOVERY_DAY_GRANT_AMOUNT,
+  RECOVERY_DAY_GUARDRAILS,
+  STREAK_DAY_BOUNDARY,
+  STREAK_MILESTONE_DAYS,
+} from '../game/streak';
+import { PALETTE_BANKS, PAL, RAMPS } from '../art/palette';
+import { SHEET, SHEET_BANK } from '../card/sheetPalette';
+import { LIFT_PALETTE } from '../lift/liftPalette';
+import { SESSION_PALETTE } from '../session/sessionPalette';
+
+/**
+ * Every hand-tuned block in the game, grouped by the thing it tunes.
+ *
+ * The grouping is by MECHANIC, not by file, because that is how a tuning pass
+ * is actually run: someone plays a rep and wants the rep's numbers, or plays a
+ * session and wants the session's.
+ */
+export const TUNING = Object.freeze({
+  /**
+   * THE REP. Depth window, drive window, force balance, haptics, the cue ring.
+   * The first thing to tune and the thing GDD §12.1 says cannot be judged
+   * without a hand on a phone.
+   */
+  rep: Object.freeze({ LIFT_TUNING, LIFT_COPY }),
+
+  /**
+   * THE SPRITE. Frame timing, load response, strain and pitch ladders, bar
+   * bend, chalk, shading. Runs on the same 60 Hz clock as the rep.
+   */
+  sprite: Object.freeze({
+    TICK_HZ: SPRITE_TUNING_MODULE.TICK_HZ,
+    TICK_MS: SPRITE_TUNING_MODULE.TICK_MS,
+    RESOLUTION: SPRITE_TUNING_MODULE.RESOLUTION,
+    QUANTISE: SPRITE_TUNING_MODULE.QUANTISE,
+    BAR: SPRITE_TUNING_MODULE.BAR,
+    LOAD_PRESETS: SPRITE_TUNING_MODULE.LOAD_PRESETS,
+    LOAD_RANGE: SPRITE_TUNING_MODULE.LOAD_RANGE,
+    TIMING: SPRITE_TUNING_MODULE.TIMING,
+    DESCENT: SPRITE_TUNING_MODULE.DESCENT,
+    STICK: SPRITE_TUNING_MODULE.STICK,
+    BAR_PATH: SPRITE_TUNING_MODULE.BAR_PATH,
+    BEND: SPRITE_TUNING_MODULE.BEND,
+    STRAIN: SPRITE_TUNING_MODULE.STRAIN,
+    PITCH: SPRITE_TUNING_MODULE.PITCH,
+    DEFORM_FOLLOW: SPRITE_TUNING_MODULE.DEFORM_FOLLOW,
+    SHADING: SPRITE_TUNING_MODULE.SHADING,
+    SHADOW: SPRITE_TUNING_MODULE.SHADOW,
+    CHALK: SPRITE_TUNING_MODULE.CHALK,
+    BRACE_SETTLE_DEPTH: SPRITE_TUNING_MODULE.BRACE_SETTLE_DEPTH,
+  }),
+
+  /**
+   * THE DAILY SESSION. Beat durations, the check-in, the RPE ladder, screen
+   * layout, close-out copy. Judged against Duolingo (GDD §12.2), so the
+   * durations here are the ones that decide whether it feels flabby.
+   */
+  session: Object.freeze({
+    SESSION_TUNING,
+    SESSION_LAYOUT,
+    SESSION_COPY,
+    SESSION_PREVIEW,
+    SESSION_PROGRESSION_GUARD,
+    CHECK_IN_QUESTIONS,
+  }),
+
+  /**
+   * FATIGUE AND INJURY. Difficulty thresholds — deliberately game-feel rather
+   * than physiology (CLAUDE.md), so these are meant to be moved until the day
+   * after a hard session feels right, not until they match a study.
+   *
+   * GDD §3.4/§12.3: this surfaces as bar speed, window width and readiness
+   * copy. There is no meter and nothing here may become one.
+   */
+  fatigue: Object.freeze({ FATIGUE_TUNING, FATIGUE_COPY }),
+
+  /**
+   * THE STREAK AND RECOVERY DAYS. GDD §4.2's guardrails and free-earning path.
+   * §12.3: a player who shows up every day must never feel penalised, so these
+   * are tuned for forgiveness first.
+   */
+  streak: Object.freeze({
+    STREAK_DAY_BOUNDARY,
+    RECOVERY_DAY_GUARDRAILS,
+    RECOVERY_DAY_ECONOMY,
+    RECOVERY_DAY_GRANT_AMOUNT,
+    STREAK_MILESTONE_DAYS,
+  }),
+
+  /**
+   * THE RESULT CARD. Sheet layout in card pixels, plus `CARD_SCREEN`, the
+   * React Native chrome around it in logical points. The two are different
+   * units and the block comments say which is which.
+   */
+  card: Object.freeze({
+    CARD: CARD_TUNING.CARD,
+    CONTENT: CARD_TUNING.CONTENT,
+    MASTHEAD: CARD_TUNING.MASTHEAD,
+    LIFTER_STRIP: CARD_TUNING.LIFTER_STRIP,
+    LIFTER_META_LADDER: CARD_TUNING.LIFTER_META_LADDER,
+    GRID: CARD_TUNING.GRID,
+    TOTAL_BLOCK: CARD_TUNING.TOTAL_BLOCK,
+    SCORE_BLOCKS: CARD_TUNING.SCORE_BLOCKS,
+    BARBELL: CARD_TUNING.BARBELL,
+    FOOTER: CARD_TUNING.FOOTER,
+    CARD_LABELS: CARD_TUNING.CARD_LABELS,
+    CARD_SCREEN: CARD_TUNING.CARD_SCREEN,
+  }),
+});
+
+/**
+ * Colour, separately.
+ *
+ * `PAL` and `RAMPS` are the 5-bit sprite banks; `SHEET` is the printed-paper
+ * bank the result card adds; `LIFT_PALETTE` and `SESSION_PALETTE` are screen
+ * chrome, as strings, deliberately outside the numeric scans.
+ */
+export const PALETTES = Object.freeze({
+  sprite: Object.freeze({ PAL, RAMPS, PALETTE_BANKS }),
+  sheet: Object.freeze({ SHEET, SHEET_BANK }),
+  liftScreen: LIFT_PALETTE,
+  sessionScreen: SESSION_PALETTE,
+});
+
+/**
+ * Where each group physically lives.
+ *
+ * Machine-readable on purpose: `audit.test.ts` checks this against
+ * `SOURCE_RULES` in `audit.ts` in both directions, so a module cannot be
+ * registered as a tuning home without appearing here, and a path cannot be
+ * listed here without being a registered home. Repository-relative POSIX.
+ */
+export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Object.freeze({
+  rep: 'src/game/liftTuning.ts',
+  sprite: 'src/art/spriteTuning.ts',
+  session: 'src/game/sessionTuning.ts',
+  fatigue: 'src/game/fatigue.ts',
+  streak: 'src/game/streak.ts',
+  card: 'src/card/cardTuning.ts',
+});
+
+/** Where each palette physically lives. Same cross-check as above. */
+export const PALETTE_MODULES: Readonly<Record<keyof typeof PALETTES, string>> = Object.freeze({
+  sprite: 'src/art/palette.ts',
+  sheet: 'src/card/sheetPalette.ts',
+  liftScreen: 'src/lift/liftPalette.ts',
+  sessionScreen: 'src/session/sessionPalette.ts',
+});

@@ -142,13 +142,22 @@ export type SourceRole = 'renderer' | 'constants' | 'palette';
  * label that tells a playtester which files are theirs to turn.
  *
  * - `feel`   — timing windows, curves, haptics, difficulty thresholds. Turn
- *              these. GDD §12.1 budgets roughly 30 passes over them.
+ *              these. GDD §12.1 budgets roughly 30 passes over them. Every
+ *              `feel` file is re-exported from `src/tuning/index.ts`, and
+ *              `audit.test.ts` checks that in both directions, so `feel` and
+ *              "reachable from the one place" are the same set by construction.
  * - `data`   — published charts, coefficients, equipment specs, authored
  *              drawings, fixtures. DO NOT turn these; homebrewing several of
  *              them is a GDD §12.3 refusal condition.
+ * - `local`  — a module's own arithmetic: float epsilons, unit conversions,
+ *              byte layouts, polynomial identities, integration resolutions.
+ *              Named so they are not bare, but not knobs, so not in the index.
+ *              This is the kind to be suspicious of when reviewing a new
+ *              registration: it is where a feel value would hide if one were
+ *              going to.
  * - `colour` — palette entries.
  */
-export type ConstantsKind = 'feel' | 'data' | 'colour';
+export type ConstantsKind = 'feel' | 'data' | 'local' | 'colour';
 
 export interface SourceRule {
   readonly role: SourceRole;
@@ -246,20 +255,25 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     // unverifiable against its published source.
     allowLiteralsIn: Object.freeze(['daysFromCivil', 'civilFromDays']),
   }),
+  // --- module-local arithmetic --------------------------------------------
+  // Deliberately NOT `feel`, and therefore deliberately not in the tuning
+  // index: none of these is a knob. VELOCITY_GRID is the resolution an
+  // integral is evaluated at, SMOOTHSTEP is the polynomial's own coefficients,
+  // EPSILON is a divide-by-zero guard. Each file's block comments say which.
   'src/art/squatAnimation.ts': Object.freeze({
     role: 'constants',
-    kind: 'feel',
-    why: 'Integration grid and curve identities for the canned rep. Its feel values are in SPRITE_TUNING.',
+    kind: 'local',
+    why: 'VELOCITY_GRID, SMOOTHSTEP, SHAPE_VARIATION_STEPS. Its feel values are in SPRITE_TUNING.',
   }),
   'src/art/raster.ts': Object.freeze({
     role: 'constants',
-    kind: 'feel',
-    why: 'Sub-pixel geometry and float epsilons. Its shading curves are in SPRITE_TUNING.',
+    kind: 'local',
+    why: 'EPSILON and HALF_PIXEL. Its shading curves are in SPRITE_TUNING.',
   }),
   'src/art/lifterSprite.ts': Object.freeze({
     role: 'constants',
-    kind: 'feel',
-    why: 'Degree conversion and stage backdrop geometry for the sprite compositor.',
+    kind: 'local',
+    why: 'DEG, the hair-cap inset and the inspection stage backdrop. Poses are in rig.ts.',
   }),
 
   // --- authored drawings ---------------------------------------------------
@@ -412,8 +426,14 @@ export function codeOnly(source: string): string {
   let i = 0;
   /** Last significant code character emitted, for the regex/divide decision. */
   let lastCode = '';
-  /** Trailing identifier before the current position, e.g. `return`. */
+  /**
+   * The most recent complete identifier, e.g. `return`. Survives the
+   * whitespace between it and a following `/`, which is the whole point:
+   * `return /\d{5}/` has a space in it.
+   */
   let lastWord = '';
+  /** Was the immediately preceding character part of `lastWord`? */
+  let inWord = false;
 
   const push = (ch: string): void => {
     out.push(ch);
@@ -499,6 +519,7 @@ export function codeOnly(source: string): string {
       }
       lastCode = ch;
       lastWord = '';
+      inWord = false;
       continue;
     }
 
@@ -510,6 +531,7 @@ export function codeOnly(source: string): string {
       if (closed) {
         lastCode = '`';
         lastWord = '';
+        inWord = false;
       }
       continue;
     }
@@ -521,6 +543,7 @@ export function codeOnly(source: string): string {
       i += 1;
       lastCode = ch;
       lastWord = '';
+      inWord = false;
       continue;
     }
     if (ch === '}') {
@@ -529,6 +552,7 @@ export function codeOnly(source: string): string {
       i += 1;
       lastCode = ch;
       lastWord = '';
+      inWord = false;
       if (templateStack[templateStack.length - 1] === braceDepth) {
         templateStack.pop();
         scanTemplateText();
@@ -571,19 +595,24 @@ export function codeOnly(source: string): string {
         i = j;
         lastCode = '/';
         lastWord = '';
+        inWord = false;
         continue;
       }
     }
 
     push(ch);
-    if (ch === '\n') {
-      lastCode = '\n';
-      lastWord = '';
-    } else if (WHITESPACE.test(ch)) {
-      lastWord = '';
+    if (WHITESPACE.test(ch)) {
+      if (ch === '\n') lastCode = '\n';
+      inWord = false;
     } else {
       lastCode = ch;
-      lastWord = WORD_CHAR.test(ch) ? lastWord + ch : '';
+      if (WORD_CHAR.test(ch)) {
+        lastWord = inWord ? lastWord + ch : ch;
+        inWord = true;
+      } else {
+        lastWord = '';
+        inWord = false;
+      }
     }
     i += 1;
   }
