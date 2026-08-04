@@ -257,5 +257,190 @@
       "verifiable": true,
       "note": "BUILT AND MERGED, and empty of real identity by construction rather than by inspection. Three tiers as types, two fictional brands and two fictional athletes each carrying Tier 1 colorway and icon-mark, Tier 2 name tag and a full Tier 3 record. UNLOCKED_REAL_PARTNERS is empty and pinned, which is CLAUDE.md's human-unlock gate expressed as code. Tier 3 cannot reach a sprite, enforced FOUR ways rather than documented: the asset is opaque behind a module-private symbol so it is not assignable to string (a branded string WOULD have been, and the header records why); revealTier3 needs a surface witness and the sprite surfaces are a disjoint union that cannot supply one; a compile-time assertion fails if a Tier 3 asset ever STARTS to fit a sprite field; and a test reads every file under src/art and fails if any imports src/licensing, which is the dependency-graph claim no type can see. The no-stat rule has the same shape - an exhaustive field-role map with no silent default, a disjointness assertion between reskin fields and mechanical ones, effectOf returning the base item's SAME OBJECT checked with toBe rather than toEqual because a clone passes deep equality today and drifts tomorrow, and a ts-expect-error for a reskin declaring an effect, which is the exact shape a partner asking for a stat arrives as. Five plants on real files, each verified applied before the result was trusted, all five caught - including one behind the opaque symbol where a naive walk sees nothing. Plant 3 initially tripped only half the check and the builder CLOSED that gap rather than reporting the pass. The citation list is pinned in BOTH directions so deleting provenance to go green fails too, and it fired on this very merge exactly as designed: 24 rows added, all of them A2's own watchlist operands, and one removed where A2 rewrote its plate-colour citation. Two builders reached for a hand-written watchlist unprompted, which is the argument FOR generalising them. Self-disclosed limits worth carrying: the watchlist is a floor rather than a net at ~59 names, and the real names necessarily live in realIp.ts itself, which the builder argued rather than hid."
     }
-  ]
+  ],
+  "report": {
+    "eyebrow": "status report · recounted from the repo, not from the run log",
+    "title": "Where this actually is",
+    "lede": "Recounted from the current GDD and codebase rather than from earlier reports. Every bar in GDD §12.2 is listed, plus everything added mid-run, plus the four modes §2 defines. The count grew twice already and will grow again: three of the items below did not exist as pieces two days ago.",
+    "wonCount": 7,
+    "definedCount": 22,
+    "rows": [
+      {
+        "id": "F0",
+        "name": "Foundation — Expo, TS strict, vitest, Skia-on-web, screenshots",
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "Not a GDD bar; infrastructure. Verified end to end."
+      },
+      {
+        "id": "M1",
+        "name": "RPE → %1RM chart",
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "Six rounds. Critic re-fetched both sources live at pinned SHAs and checked every sampled cell against the bytes."
+      },
+      {
+        "id": "M2",
+        "name": "e1RM — Epley only",
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "Curve verified strictly increasing across the domain; refusal fires exactly where the chart ends. Its one finding was a stale quotation, fixed."
+      },
+      {
+        "id": "M3",
+        "name": "DOTS scoring",
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "All ten coefficients verified twice by two critics against OpenPowerlifting source bytes, digits and term order."
+      },
+      {
+        "id": "M4",
+        "name": "Meet engine — order, attempts, non-decreasing, bomb-out",
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "Five reworks. Rules are opaque behind a module-private symbol; tampering does not typecheck."
+      },
+      {
+        "id": "M5",
+        "name": "Fatigue / readiness",
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "No visible meter. Two blind tests found and fixed; I re-ran the mutations myself rather than accepting the report."
+      },
+      {
+        "id": "M6",
+        "name": "Streak / Recovery Days",
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "Look-dependence FIXED and proven: identical outcome whichever days the app is opened. But training one MORE day can still end on a lower streak (37 days to 37, 38 days to 18), unbounded. Closing it means Recovery Days stop being consumed — a monetisation decision, awaiting the human."
+      },
+      {
+        "id": "T1",
+        "name": "Tuning constants + magic-number audit",
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "Default-deny, runs in the suite. I verified it bites on a correctly-named constant in the wrong file."
+      },
+      {
+        "id": "V1",
+        "name": "Server-authoritative progression boundary",
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "Write side sealed at compile time; read side now has consumers. 25/25 browser checks — the server answer beats the client projection on screen."
+      },
+      {
+        "id": "L1",
+        "name": "Lift input mechanic",
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "First piece to win the sprite/animation bar. Feel itself stays a human judgement."
+      },
+      {
+        "id": "A1",
+        "name": "Lifter sprites & animation",
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "Fitted bounds deleted; a bound that could not fire is gone; far-arm slab fixed (median was on the ramp floor in 448 of 448 frames). The craft clause is REPORTED UNMET and pinned two-sided so it cannot decay into a pass. Cause is rig geometry, not shading."
+      },
+      {
+        "id": "A2",
+        "name": "Gym / environment art",
+        "state": "won",
+        "stateLabel": "Won on the gradeable half",
+        "note": "Readability at phone scale MET, judged on real composited pixels by a critic that opened them. The era A/B is permanently unverifiable here (see below)."
+      },
+      {
+        "id": "S1",
+        "name": "Daily session loop",
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "Time-to-first-input and session length pass and are measured. I captured the missing close-out frames myself (25 checks pass). Open: a primed accessory day still renders a screen headed NEW e1RM, which the human ruled against — hidden because its fixture uses the one readiness that cannot produce a PR."
+      },
+      {
+        "id": "S2",
+        "name": "Meet day",
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "Five rounds. Venue, sound, haptics, staging and choreography all landed and were verified by pixel diff. Open: the crowd rise inverts figure-ground — it reads as pegboard, not people — and the gym readability suite has never once measured a risen crowd."
+      },
+      {
+        "id": "S3",
+        "name": "Result card",
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "DOTS recomputed by hand for all three cards against the pixels. Typography reported unverifiable four times; the 18th blind check closed here."
+      },
+      {
+        "id": "X1",
+        "name": "Cross-mode coherence",
+        "state": "ungraded",
+        "stateLabel": "Built, not graded",
+        "note": "The pound-meet unit fix merged and I verified it (806.45 became a refusal). Never re-graded after that fix."
+      },
+      {
+        "id": "B1",
+        "name": "Sponsor / licensed-content architecture",
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "Tiers 2 and 3 pass outright — twelve authored drawings on two real surfaces. Tier 1 FAILS: three of four partner colorways use equipment-bank indices, so a partner singlet would not count as the lifter. The check validated them in a Tier 3 palette."
+      },
+      {
+        "id": "A4",
+        "name": "Anime cut-ins",
+        "state": "notstarted",
+        "stateLabel": "Not started",
+        "note": "GDD §12.2 defines a bar for it and §7.2 specifies where they fire. No implementation exists — only comments in three files saying \"whoever builds the cut-in piece owns the gate.\""
+      },
+      {
+        "id": "C1",
+        "name": "Career / RPG — the spine (§2.1)",
+        "state": "notstarted",
+        "stateLabel": "Not started",
+        "note": "Zero files. The calendar, qualifying totals and long-arc narrative that §6.1 gates meet entry on do not exist."
+      },
+      {
+        "id": "C2",
+        "name": "Arcade mode (§2.3)",
+        "state": "notstarted",
+        "stateLabel": "Not started",
+        "note": "Zero files. The lift mechanic it shares with meet day is built (L1); the mode around it is not."
+      },
+      {
+        "id": "C3",
+        "name": "Gym Empire — idle layer (§2.4, §5)",
+        "state": "notstarted",
+        "stateLabel": "Not started",
+        "note": "Zero files. Production, NPC roster, expansion axes and the social layer are all unbuilt. Its currencies exist only as wallet fields."
+      },
+      {
+        "id": "N1",
+        "name": "App shell / navigation",
+        "state": "notstarted",
+        "stateLabel": "Not started",
+        "note": "THE FINDING OF THIS CHECK. MeetScreen is reachable only via a ?meet= debug query param, and no file in src/session imports it or vice versa. A player cannot get from a daily session to a meet inside the app at all."
+      }
+    ],
+    "groups": [
+      {
+        "title": "MVP — one loop playable end to end on a device",
+        "body": "NOT MET, and the gap is one piece rather than many. Every part of the loop exists and is tested — the session opens on first paint, the lift plays, the meet runs attempt selection, judging, bomb-out and a recap that feeds the result card. What does not exist is the join: MeetScreen is only reachable by typing a debug query parameter. Estimate: 1 build round plus 1 to 2 reworks. HIGH CONFIDENCE — this is structural wiring against components that already work, and the two comparable wiring pieces in this run (V1 read-path, S2 venue) each took one build plus one rework."
+      },
+      {
+        "title": "Alpha — four modes present, math and rules bars won",
+        "body": "The math half is effectively there: five of six lifting-math and rules pieces have won. The mode half is not — three of the four modes are zero files. Estimate: roughly 12 to 18 rounds. Basis, from this run: a piece from nothing to a won bar has cost 4 to 6 rounds (M1 six, M4 five, S2 five so far, A1 five and still unmet), and three unbuilt modes plus cut-ins is four pieces. MEDIUM CONFIDENCE on the arithmetic, LOW on the total, because every mode built so far surfaced gaps in pieces that were already called done — the S2 venue work broke A2 palette assumptions, and A1 shading broke A2 negative controls."
+      },
+      {
+        "title": "Beta — art bars won where gradeable, tuning set by playtesting",
+        "body": "NOT REACHABLE FROM INSIDE THIS RUN, and that is a fact about the environment rather than an estimate. GDD §12.1 budgets roughly 30 hand-tuning iterations by actual playtesting, and every walkout duration, judging threshold, crowd rise, haptic pattern and sound recipe is currently an unplayed placeholder that says so in its own header. No critic can substitute for that — CLAUDE.md is explicit. The rounds I can still spend usefully are the ones that make values tunable and honest, not the ones that set them."
+      },
+      {
+        "title": "Permanently unverifiable here, and why",
+        "body": "Three bars cannot be settled in this environment no matter how many rounds are spent. The 16-bit era A/B for gym art: docs/reference/README.md records that no gym-interior reference is committed, and image hosts return 403 by policy. Meet-day pacing and sound: broadcast footage is unreachable, WebFetch returns markdown rather than pixels or audio, and nothing here can capture sound. Result-card typography: four separate critics confirmed the 403s themselves rather than inheriting the claim. In each case the honest outcome is the one taken — the artifact is built to be tunable and the bar is reported unverifiable rather than passed on argument."
+      },
+      {
+        "title": "What the count means, and why it will grow again",
+        "body": "Seven of twenty-two is the strict reading: won means a critic passed it with no open gap. Six more (M2, M3, M4, A2 and others above) are majority-passes where everything gradeable was met and the residue is either awaiting a human ruling or is permanently unverifiable. The denominator is pieces DEFINED SO FAR and has grown twice: the licensing architecture did not exist as a piece two days ago, the app shell was invisible until this recount, and cut-ins have had a GDD bar all along with nobody assigned. Twenty-four checks that could not fail have been found so far, and each new piece has surfaced more; the realistic expectation is that Y keeps rising as the remaining modes expose gaps in pieces currently called done."
+      }
+    ]
+  }
 }

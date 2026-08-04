@@ -113,6 +113,47 @@ const capHtml = (c) => `<li class="cap ${c.ok ? 'ok' : 'no'}">
   <span class="cap-d">${esc(c.detail)}</span>
 </li>`;
 
+/**
+ * The status report. Optional: a run that has not had one rendered simply has
+ * no `report` key, and this returns nothing rather than an empty shell.
+ *
+ * It sits above the blockers because it is the thing a human opening this page
+ * on a phone wants first — where the run actually is — and the blockers are the
+ * detail behind it.
+ */
+const reportHtml = (r) => {
+  if (r === undefined || r === null) return '';
+  const rows = (r.rows ?? [])
+    .map(
+      (row) => `<tr class="r-${esc(row.state)}">
+        <td class="r-id">${esc(row.id)}</td>
+        <td class="r-name">${esc(row.name)}</td>
+        <td class="r-state">${esc(row.stateLabel)}</td>
+        <td class="r-note">${esc(row.note)}</td>
+      </tr>`,
+    )
+    .join('\n');
+  const groups = (r.groups ?? [])
+    .map(
+      (g) => `<section class="r-group">
+        <h3>${esc(g.title)}</h3>
+        <p>${esc(g.body)}</p>
+      </section>`,
+    )
+    .join('\n');
+  return `<section class="report">
+    <span class="eyebrow">${esc(r.eyebrow ?? 'status report')}</span>
+    <h2 class="sec">${esc(r.title)}</h2>
+    <p class="r-lede">${esc(r.lede)}</p>
+    <div class="r-score"><b>${esc(r.wonCount)}</b><span>of ${esc(r.definedCount)} pieces defined so far have won their bar</span></div>
+    <div class="r-tablewrap"><table class="r-table">
+      <thead><tr><th>Piece</th><th>What</th><th>State</th><th>Where it stands</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    ${groups}
+  </section>`;
+};
+
 const html = `<title>${esc(state.run.title)} — build status</title>
 <style>
   :root {
@@ -200,6 +241,42 @@ const html = `<title>${esc(state.run.title)} — build status</title>
   .consequence { color: var(--ink-2); }
   .consequence strong { color: var(--ink); }
 
+  .report {
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--good-lift);
+    border-radius: var(--radius); padding: 1rem;
+  }
+  .report .sec { margin: .1rem 0 .5rem; }
+  .r-lede { margin: 0 0 .9rem; color: var(--ink-2); font-size: .92rem; }
+  .r-score {
+    display: flex; align-items: baseline; gap: .55rem; flex-wrap: wrap;
+    padding: .7rem .85rem; margin-bottom: 1rem;
+    background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+  }
+  .r-score b { font-size: 1.75rem; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .r-score span { color: var(--ink-2); font-size: .85rem; }
+  /* Wide tables must scroll inside their own box, never the page body. */
+  .r-tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1rem; }
+  .r-table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: .84rem; }
+  .r-table th {
+    text-align: left; padding: .4rem .55rem; border-bottom: 1px solid var(--line);
+    color: var(--ink-2); font-weight: 600; font-size: .74rem;
+    letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+  }
+  .r-table td { padding: .45rem .55rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .r-table tr:last-child td { border-bottom: 0; }
+  .r-id { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  .r-name { color: var(--ink); }
+  .r-state { white-space: nowrap; font-weight: 600; }
+  .r-note { color: var(--ink-2); }
+  .r-won .r-state { color: var(--good-lift); }
+  .r-failing .r-state { color: var(--no-lift); }
+  .r-ungraded .r-state, .r-notstarted .r-state { color: var(--ink-2); }
+  .r-unverifiable .r-state { color: var(--ink-2); font-style: italic; }
+  .r-group { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--line); }
+  .r-group h3 { margin: 0 0 .4rem; font-size: .97rem; letter-spacing: -.01em; text-wrap: balance; }
+  .r-group p { margin: 0; color: var(--ink-2); font-size: .88rem; }
+
   .caps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .1rem; }
   .cap { display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: .5rem; padding: .4rem 0; border-bottom: 1px solid var(--line); font-size: .875rem; }
   .cap:last-child { border-bottom: 0; }
@@ -252,6 +329,8 @@ const html = `<title>${esc(state.run.title)} — build status</title>
     <div class="sb"><b>${counts.building ?? 0}</b><span>On platform</span></div>
     <div class="sb"><b>${unjudgeable}</b><span>Unjudgeable here</span></div>
   </div>
+
+  ${reportHtml(state.report)}
 
   ${state.blockers.map(blockerHtml).join('\n')}
 
