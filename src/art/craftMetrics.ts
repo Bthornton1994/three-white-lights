@@ -167,6 +167,12 @@ export const CRAFT = {
   MIN_LIMB_PIXELS: 12,
   /** Clearance past the deltoid before a pixel counts as arm, not torso. */
   LIMB_TORSO_CLEARANCE_PX: 0.5,
+  /**
+   * How much of the head's own lateral offset the neck window follows. The
+   * throat runs from an off-centre skull to a centred shoulder line, so half is
+   * the midpoint of the mass rather than either end of it.
+   */
+  NECK_WINDOW_HEAD_LEAN: 0.5,
   /** Padding on a limb window's radius, covering the interior edge ring. */
   LIMB_WINDOW_PAD_PX: 1.2,
 } as const;
@@ -190,20 +196,31 @@ export interface PixelBox {
   readonly h: number;
 }
 
+/**
+ * Rec.601 luma weights. Published coefficients, not a knob — the whole point of
+ * measuring against a reference is that both sides use the same definition of
+ * brightness, and this one is the definition the sprite tests have used since
+ * the first of them.
+ */
+const REC601 = Object.freeze({ R: 0.299, G: 0.587, B: 0.114 });
+
+/** Bytes per pixel in the straight RGBA8888 buffers this module reads. */
+const RGBA_STRIDE = 4;
+
 /** Rec.601 luma, the same weights the sprite tests have always used. */
 export function luma8(r: number, g: number, b: number): number {
-  return 0.299 * r + 0.587 * g + 0.114 * b;
+  return REC601.R * r + REC601.G * g + REC601.B * b;
 }
 
 /** Packed 0xRRGGBB of one image pixel. */
 export function rgbAt(image: RgbaImage, x: number, y: number): number {
-  const i = (y * image.width + x) * 4;
+  const i = (y * image.width + x) * RGBA_STRIDE;
   return ((image.rgba[i] ?? 0) << 16) | ((image.rgba[i + 1] ?? 0) << 8) | (image.rgba[i + 2] ?? 0);
 }
 
 /** Luma of one image pixel. */
 export function lumaAt(image: RgbaImage, x: number, y: number): number {
-  const i = (y * image.width + x) * 4;
+  const i = (y * image.width + x) * RGBA_STRIDE;
   return luma8(image.rgba[i] ?? 0, image.rgba[i + 1] ?? 0, image.rgba[i + 2] ?? 0);
 }
 
@@ -217,8 +234,10 @@ export function lumaAt(image: RgbaImage, x: number, y: number): number {
  * we draw through exactly this expansion, so our art lands on this lattice by
  * construction — and so does anything actually captured from the hardware.
  */
+const SNES_CHANNEL_LEVELS = 32;
+
 export const SNES_5BIT_CHANNEL_VALUES: readonly number[] = Array.from(
-  { length: 32 },
+  { length: SNES_CHANNEL_LEVELS },
   (_, c) => (c << 3) | (c >> 2),
 );
 
@@ -702,7 +721,7 @@ export function limbWindows(geometry: LimbGeometry): readonly FieldWindow[] {
     {
       name: 'neck',
       contains: (x, y) =>
-        Math.abs(x - (centerX + pose.headDx * 0.5)) <= G.NECK_R + G.NUDGE.NECK_FLARE + pad &&
+        Math.abs(x - (centerX + pose.headDx * CRAFT.NECK_WINDOW_HEAD_LEAN)) <= G.NECK_R + G.NUDGE.NECK_FLARE + pad &&
         y >= pose.headY + G.HEAD_RY - G.NECK_OVERLAP - pad &&
         y <= pose.shoulderY - G.ATTACH.TRAP_RISE + pad,
     },
