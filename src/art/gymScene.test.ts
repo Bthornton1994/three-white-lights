@@ -94,11 +94,21 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
  * Measured values on the shipped training gym across four squat depths, for
  * the record and so the headroom is visible rather than implied:
  *
- *   indices            26-27          mean luma        38-40
- *   luma p90           52-58          edge share       9.3-9.9%
- *   behind edge share  16-21%         bright share     0.10%
- *   over figure median 7.5-7.8%       rim p05/p10      8-9 / 11-16
- *   rim p25/p50        19-30 / 40-48
+ *   indices            26-27          mean luma        33.9-34.4
+ *   luma p90           58-71.8        edge share       10.1-10.5%
+ *   behind edge share  16.6-20.7%     bright share     0.10%
+ *   over figure median 7.6-7.8%       rim p05/p10      8.0 / 8.0-16.1
+ *   rim p25/p50        19.4-29.1 / 40.1-48.2
+ *
+ * And the three planted rooms, for the same quantities, so the headroom is on
+ * the record in both directions:
+ *
+ *   deleted layer      1 index, mean 10.9, edge 0%,    rim p25/p50 26.4 / 62.1
+ *   busy-but-dark      27,      mean 32.2, edge 17.5%, rim p25/p50 26.8 / 49.1
+ *   figure-band room   14,      mean ~55,  edge ~8%,   rim p05/p10 ~1 / ~4
+ *
+ * Read the middle row twice. A busier wall made the room DARKER on average and
+ * IMPROVED every rim percentile. Nothing but the edge-share ceiling catches it.
  */
 const BOUNDS = {
   /** A flat fill has one. A room has furniture. */
