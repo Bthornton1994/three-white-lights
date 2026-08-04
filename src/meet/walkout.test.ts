@@ -304,6 +304,14 @@ function airOf(grid: IndexGrid): BandAir {
  *     behind's widest row — its shoulders — never reaches. Standing up moves
  *     rows and never columns, so a column the tier behind cannot paint at rest
  *     is a column it cannot paint risen either.
+ *   - THE BACK TIER'S WINDOW IS OFF THE BAND. It has no tier behind it, so it
+ *     is looked for in the rows of wall ABOVE the seating — the same depth of
+ *     window the others get. Nothing else can paint there because nothing at
+ *     all is supposed to: `keeps every spectator inside the seating band`
+ *     measures zero crowd pixels above the band's top row at every rise. So the
+ *     back tier needs no exclusivity argument; a spectator up there is a defect
+ *     whichever tier drew it. Before this, its window had NO ROWS IN IT and its
+ *     reading was the constant 0 — see `tierRisesOf`.
  *
  * That gives a number no threshold has to be chosen for, and it is reported as
  * a DIFFERENCE against the same reading on `REST_BAND`, so a hall that did not
@@ -328,10 +336,41 @@ interface SeatedTier {
   /**
    * The highest row this tier could be seen in — one below the tier behind's
    * own seat row, so a reading can never be somebody else's spectator.
+   *
+   * THE BACK TIER HAS NO TIER BEHIND IT, and this used to be `BAND_TOP` for it
+   * — which is its own seat row. That gave `topRowOf` a scan window with zero
+   * rows in it, so the back tier's reading was the literal `0` for every
+   * possible picture rather than a measurement of one. It now gets the same
+   * DEPTH of window every other tier gets, carried UP OUT OF THE BAND onto the
+   * wall, where `paintCrowd` draws no seating at all (`keeps every spectator
+   * inside the seating band` pins that on pixels). A head that escapes the
+   * band's top row therefore reads as a rise, and a reading of 0 means nobody
+   * escaped rather than that there was nowhere to look.
    */
   readonly ceilingRow: number;
-  /** Columns this tier paints above `seatRow` and no other tier can. */
+  /**
+   * Columns this tier paints above `seatRow` and no other tier can.
+   *
+   * The back tier has no tier behind to exclude, so this is its whole head row
+   * — and it does not need to exclude one. Its window is entirely off the band,
+   * and a spectator pixel up there is a spectator drawn outside the seating
+   * whichever tier drew it.
+   */
   readonly ownCols: readonly number[];
+}
+
+/**
+ * The top of the BACK tier's scan window: the same depth of window every other
+ * tier gets, measured off the rendered pitch rather than off `GYM_CROWD`.
+ *
+ * A tier with one behind it can be seen in `ROW_PITCH - 1` rows — everything
+ * between its seat row and the tier behind's. The back tier's are the
+ * `ROW_PITCH - 1` rows above the band, which are wall.
+ */
+function backTierCeiling(seatRows: readonly number[], seatRow: number): number {
+  const inFront = seatRows[1];
+  if (inFront === undefined) return BAND_TOP;
+  return Math.max(0, seatRow - (inFront - seatRow) + 1);
 }
 
 /** The spectator columns in one row of a rendered room. */
@@ -353,7 +392,7 @@ function seatedTiersOf(rest: IndexGrid): readonly SeatedTier[] {
   }
   return seatRows.map((seatRow, index) => {
     const behind = seatRows[index - 1];
-    const ceilingRow = behind === undefined ? BAND_TOP : behind + 1;
+    const ceilingRow = behind === undefined ? backTierCeiling(seatRows, seatRow) : behind + 1;
     const taken = new Set<number>();
     for (let y = ceilingRow; y < seatRow; y += 1) {
       for (const x of litColumnsAt(rest, y)) taken.add(x);
@@ -385,10 +424,27 @@ function topRowOf(grid: IndexGrid, tier: SeatedTier): number {
  * stays a statement about pixels rather than a restatement of the arithmetic
  * that drew them.
  *
- * THE BACK TIER CANNOT BE SEEN TO MOVE, and that is the picture and not the
- * probe: its heads are drawn on the band's own top row, `paintCrowd` clamps
- * them there, and there is no row above for them to rise into. The reading is
- * 0 for the same reason the drawing is.
+ * THE BACK TIER READS 0 AT EVERY RISE THE BEAT ASKS FOR, and that is a
+ * measurement rather than a property of the probe — which is what this used to
+ * get wrong. Its heads are drawn on the band's own top row and `paintCrowd`
+ * clamps them there (`headTop = Math.max(top, y - rowRise)` in `gymScene.ts`),
+ * so the one instant where the wave asks it for a row — the cheer, where the
+ * arithmetic asks for 1 — moves nothing. That clamp is the ONE place in the
+ * risen picture where the arithmetic and the pixels disagree, so it is the one
+ * place the probe most needs to be able to look: the back tier's window is the
+ * rows of WALL above the band, and if the clamp ever went, the head that
+ * escaped would read as a rise of 1 and `agrees with the wave where the band
+ * has room` would fail by name. (The docstring here used to say the back tier
+ * "cannot be seen to move, and that is the picture and not the probe". Both
+ * halves were true and they were true for two different reasons that happened
+ * to coincide: the drawing was 0 because of the clamp, and the reading was 0
+ * because its scan window had no rows in it and `topRowOf` returned its seat
+ * row unconditionally.)
+ *
+ * WHAT NO TIER'S READING CAN SEE, said plainly: `topRowOf` falls back to the
+ * seat row, so a tier drawn LOWER than it sits, or not drawn at all, reads 0
+ * rather than negative. The downward direction is bounded separately, by
+ * `never lets a risen hall reach down toward the lifter`.
  */
 function tierRisesOf(grid: IndexGrid): readonly number[] {
   return SEATED_TIERS.map((tier) => topRowOf(REST_BAND, tier) - topRowOf(grid, tier));
@@ -609,11 +665,19 @@ describe('the ruler this file reads the hall’s rise off', () => {
     // pixels, one doing the sums — so agreement means the ruler is reading in
     // the right units, and disagreement means one of them is wrong.
     //
-    // WHERE THEY DISAGREE ON PURPOSE: the back tier's heads are drawn on the
-    // band's top row, so `paintCrowd` clamps them and they never move however
-    // far through the wave the hall is. At the cheer's 7 the arithmetic asks it
-    // for 1 row and the PICTURE gives 0. The pixels are the ones telling the
+    // WHERE THEY DISAGREE ON PURPOSE, and it is the whole reason this test has
+    // a name about a clamp: `paintCrowd` pins every head inside the band with
+    // `headTop = Math.max(top, y - rowRise)`, and the BACK tier's heads are
+    // already drawn on the band's top row. At the cheer's 7 the arithmetic asks
+    // it for 1 row and the PICTURE gives 0. The pixels are the ones telling the
     // truth, which is the whole reason this file measures them.
+    //
+    // So the expected reading is the wave's answer CLIPPED TO THE BAND —
+    // `bandRoom` below — rather than the wave's answer, and that clip is
+    // computed from the rendered seat rows rather than assumed. DELETE THE
+    // CLAMP (drop the `Math.max(top, ...)` in `gymScene.ts`) and the back tier's
+    // head is drawn one row above the band at the cheer, its window sees it, and
+    // this is the assertion that goes red.
     const tiers = crowdTierCount(MEET_HALL_SCENE);
     for (const rise of [WALKOUT_HALL_RISE, CHEER_HALL_RISE]) {
       const measured = tierRisesOf(renderGymScene(hallScene(rise)));
@@ -621,19 +685,60 @@ describe('the ruler this file reads the hall’s rise off', () => {
         const tier = SEATED_TIERS[index];
         if (tier === undefined) throw new Error('unreachable');
         const asked = crowdRowRise(rise, tiers - 1 - index);
-        const room = tier.seatRow - tier.ceilingRow;
+        // How far this tier can come up and still be inside the band...
+        const bandRoom = tier.seatRow - BAND_TOP;
+        // ...and how far the PROBE can see above its seat row before it runs
+        // into the tier behind — or, for the back tier, off the top of the band.
+        const probeWindow = tier.seatRow - tier.ceilingRow;
+        const drawn = Math.min(asked, bandRoom);
         expect(seen, `rise ${rise}, tier ${index}: drawn higher than the wave asked for`)
           .toBeLessThanOrEqual(asked);
-        if (asked <= room) {
-          expect(seen, `rise ${rise}, tier ${index}: had room to come up and did not`).toBe(asked);
+        if (drawn <= probeWindow) {
+          expect(
+            seen,
+            `rise ${rise}, tier ${index}: the band had room for ${drawn} rows and drew ${seen}`,
+          ).toBe(drawn);
         }
         // The instrument saturates at the tier behind. If a tuning pass ever
         // pushes a tier that far, this says so rather than quietly reading low.
         expect(seen, `rise ${rise}, tier ${index}: the ruler ran out of band`).toBeLessThan(
-          Math.max(1, room),
+          Math.max(1, probeWindow),
         );
       }
     }
+  });
+
+  it('keeps every spectator inside the seating band, at every rise', () => {
+    // THE UPWARD MIRROR of `never lets a risen hall reach down toward the
+    // lifter`, and the thing that makes the back tier's window readable: the
+    // rows above the band are WALL, and a hall standing up must not paint
+    // seating onto them. `paintCrowd` guarantees it two ways — `fillInBand`
+    // clips the keyline, and `Math.max(top, y - rowRise)` clips the head — and
+    // neither was measured anywhere before this.
+    //
+    // Zero rather than a bound, because there is no rise at which a spectator
+    // belongs on the wall between the banner and the top tier. Non-vacuous
+    // because the same rows are the back tier's scan window, and because the
+    // band below them is asserted full of people by the tests above.
+    for (const rise of [0, WALKOUT_HALL_RISE, CHEER_HALL_RISE]) {
+      const grid = renderGymScene(hallScene(rise));
+      let escaped = 0;
+      for (let y = 0; y < BAND_TOP; y += 1) {
+        for (let x = 0; x < grid.w; x += 1) {
+          const v = grid.data[y * grid.w + x];
+          if (v === GYM.CROWD_MID || v === GYM.CROWD_DARK) escaped += 1;
+        }
+      }
+      expect(escaped, `rise ${rise}: the crowd is drawn above the seating band`).toBe(0);
+    }
+    // ...and the rows that must stay empty are the ones the back tier is
+    // measured in, so this is the guarantee that reading rests on and not a
+    // separate fact about a different part of the picture.
+    const back = SEATED_TIERS[0];
+    if (back === undefined) throw new Error('the band has no tiers in it');
+    expect(back.ceilingRow, 'the back tier has no window to be measured in')
+      .toBeLessThan(back.seatRow);
+    expect(back.seatRow, 'the back tier does not sit on the top row of the band').toBe(BAND_TOP);
   });
 });
 
