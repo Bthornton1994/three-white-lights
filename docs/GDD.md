@@ -2,7 +2,7 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-03 (§2/§2.3/§3.2 — Total is set by meet results only
+**Last updated:** 2026-08-04 (§2/§2.3/§3.2 — Total is set by meet results only
 and does not move between meets; the stat Sim mode grows daily is e1RM. §6.4 was
 correct as written and is unchanged; §2's currency table was the mislabel.
 Previously 2026-08-01: §4.2/§4.4 — the Recovery Day prompt must disclose
@@ -773,6 +773,42 @@ work.
 - [ ] Federation flavor — invented feds, or is there licensing value in real ones
       (USAPL, USPA, NPL)?
 - [ ] Equipped lifting: a mode, a cosmetic layer, or out of scope for v1?
+
+**Raised by the build, and both are §3 conflicts rather than unknowns — the code
+diverges from this document today and is doing so knowingly rather than quietly.**
+
+- [ ] **The RPE choice is degenerate on reward.** §3.3 says picking an RPE target
+      is "what makes the mode feel real rather than arbitrary." It is not, as
+      built: load goes out as `e1RM × chart(reps, rpe) × (1 + nudge)` and the
+      estimate comes back as `weight / chart(reps, rpe)`, so the chart cancels
+      and **every rung reports the same e1RM**. Measured on a primed day, RPE 6
+      gives 209.6 kg and RPE 10 gives 208.8 kg — the *heavier* rung pays
+      fractionally less, from rounding. A player optimising for e1RM should
+      always take the lowest rung.
+      That cancellation is `e1rm.ts`'s central property and **must not be fixed
+      by paying higher rungs more** — that is exactly the two-parts-disagree
+      failure CLAUDE.md's one-formula rule exists to prevent.
+      The identified fix, not built: an **AMRAP top set**. An extra rep is worth
+      +4.7% at 100% of e1RM and +3.1% at 76% using only the published chart, so a
+      harder rung genuinely pays more without breaking anything. It was left out
+      because it adds a decision beat and makes session length unbounded at the
+      bottom of the ladder — and session length is one of the three things §12.2
+      judges this piece on.
+      Until this is ruled on, the rungs differ in **fatigue, injury exposure and
+      timing-window width** but not in reward, and §3.3's claim is stronger than
+      the code earns.
+
+- [ ] **Accessory day has no lift it can name.** §3.2 puts an accessory day in
+      the rotation. `meet.ts`'s `LiftKind` is squat/bench/deadlift, and
+      `ConfirmedFacts.bestE1rmKg` is keyed the same, so an accessory session has
+      nothing to report on the progression wire and no e1RM for its close-out to
+      move. The session loop **rotates three lifts** and says so in
+      `SESSION_TUNING.LIFT_ROTATION` rather than silently widening a boundary
+      that took several rounds to fence.
+      Three ways out: widen the lift vocabulary for training only, keeping the
+      meet engine's three; let accessory day feed Training IQ or technique points
+      instead, both of which already exist as §2 currencies; or drop accessory day
+      and correct §3.2.
 
 ---
 
