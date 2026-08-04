@@ -465,6 +465,28 @@ function drawArm(g: IndexGrid, pose: Pose, sign: number, bias: number, skin: Ram
   ]);
 }
 
+/**
+ * Where a hand is drawn, in sprite px.
+ *
+ * Exported because a MEASUREMENT WINDOW that restates this arithmetic can drift
+ * away from the thing it is measuring without either side failing — and a limb
+ * check aimed at empty space is the shape of defect this whole area keeps
+ * producing. `craftMetrics.limbWindows` takes these centres rather than
+ * recomputing them.
+ */
+export function handCentre(
+  pose: Pose,
+  sign: number,
+  barCy: number,
+  lateralPx: number,
+  tiltDeg: number,
+  bendPx: number,
+): { readonly x: number; readonly y: number } {
+  const grip = pose.handHalfW + (sign > 0 ? RIG_GEOMETRY.GRIP_ASYMMETRY_PX : 0);
+  const dx = sign * grip;
+  return { x: CENTER_X + lateralPx + dx, y: barCy + barOffsetAt(dx, tiltDeg, bendPx) };
+}
+
 function drawHand(
   g: IndexGrid,
   pose: Pose,
@@ -475,10 +497,7 @@ function drawHand(
   bendPx: number,
   bias: number,
 ): void {
-  const grip = pose.handHalfW + (sign > 0 ? RIG_GEOMETRY.GRIP_ASYMMETRY_PX : 0);
-  const dx = sign * grip;
-  const x = CENTER_X + lateralPx + dx;
-  const y = barCy + barOffsetAt(dx, tiltDeg, bendPx);
+  const { x, y } = handCentre(pose, sign, barCy, lateralPx, tiltDeg, bendPx);
   // The interior ring is skin shadow, not the keyline. This is the mass the
   // ring cost the most: at HAND_R 1.9 the drawn ellipse is 4 px across, and a
   // flat near-black ring plus `outlinePass`'s own pixel outside it left a
