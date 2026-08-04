@@ -843,7 +843,41 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/GDD.md', name: 'USPA', where: 'prose', count: 1 },
   { file: 'docs/reference/meet-photo-ref-1-ipf-squat-bottom.webp', name: 'IPF', where: 'filename', count: 1 },
   { file: 'docs/reference/README.md', name: 'IPF', where: 'prose', count: 2 },
-  { file: 'src/art/gymPalette.ts', name: 'IPF', where: 'comment', count: 1 },
+  // `gymScene.test.ts` is the SECOND bespoke real-IP ban in the tree, alongside
+  // `meetTuning.test.ts` below, and its names are here for the same reason: they
+  // are the check's own operands. The environment builder wrote it independently
+  // and before this module existed, which is worth recording rather than tidying
+  // away — two builders reached for a hand-written watchlist unprompted, which is
+  // the argument for this module generalising them rather than the argument
+  // against it. KEEP until whoever owns that file removes the now-redundant test.
+  { file: 'src/art/gymScene.test.ts', name: 'Adidas', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Amanda Lawrence', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'BVDK', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Ed Coan', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Eddie Hall', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Eleiko', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'GPC', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Inzer', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'IPF', where: 'code', count: 2 },
+  { file: 'src/art/gymScene.test.ts', name: 'Ivanko', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Jesus Olivares', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Julius Maddox', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Larry Wheels', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Nike', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'NPL', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Powerlifting America', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Ray Williams', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Reebok', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'SBD', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Taylor Atwood', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'Under Armour', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'USAPL', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'USPA', where: 'code', count: 1 },
+  { file: 'src/art/gymScene.test.ts', name: 'WRPF', where: 'code', count: 1 },
+  // `gymPalette.ts` HAD a federation citation for the plate-colour standard and
+  // no longer does: its builder rewrote the comment to state the standard without
+  // naming the body. That is a removal this list is supposed to notice, and it
+  // was noticed — on merge, by this test, exactly as designed.
   { file: 'src/art/palette.ts', name: 'IPF', where: 'comment', count: 2 },
   { file: 'src/art/plates.ts', name: 'IPF', where: 'comment', count: 2 },
   { file: 'src/art/spriteMarks.ts', name: 'IPF', where: 'comment', count: 1 },
