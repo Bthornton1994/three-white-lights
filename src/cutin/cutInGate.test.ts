@@ -63,22 +63,43 @@ function source(file: string): string {
 /** GDD §6.2: three attempts per lift. Passed in so a beat reads off the sport. */
 const ATTEMPTS_PER_LIFT = 3;
 
+/**
+ * A third attempt WITH SOMETHING ALREADY BANKED on this lift. The lift cannot
+ * bomb from here, so no bomb-out beat is coming and the walk-out may take the
+ * slot. `bombRisk` is `meetDay.ts`'s own field, spelled out rather than derived.
+ */
 const THIRD_ATTEMPT_WALKOUT: CutInBeat = {
   kind: 'meet-walkout',
   attemptNumber: 3,
   attemptsPerLift: ATTEMPTS_PER_LIFT,
+  bombRisk: false,
+};
+
+/**
+ * The same attempt with NOTHING banked — `meetDay.ts`:
+ * `bombRisk = attemptNumber === ATTEMPTS_PER_LIFT && banked === null`.
+ * A miss here ends the meet, so this walk-out is the one that must not spend
+ * the slot.
+ */
+const THIRD_ATTEMPT_WALKOUT_NOTHING_BANKED: CutInBeat = {
+  kind: 'meet-walkout',
+  attemptNumber: 3,
+  attemptsPerLift: ATTEMPTS_PER_LIFT,
+  bombRisk: true,
 };
 
 const OPENER_WALKOUT: CutInBeat = {
   kind: 'meet-walkout',
   attemptNumber: 1,
   attemptsPerLift: ATTEMPTS_PER_LIFT,
+  bombRisk: false,
 };
 
 const SECOND_ATTEMPT_WALKOUT: CutInBeat = {
   kind: 'meet-walkout',
   attemptNumber: 2,
   attemptsPerLift: ATTEMPTS_PER_LIFT,
+  bombRisk: false,
 };
 
 const NEW_E1RM: CutInBeat = { kind: 'record', record: 'e1rm', achieved: true };
@@ -202,6 +223,26 @@ describe('THE GATE DOES NOT FIRE ON A NON-QUALIFYING BEAT', () => {
     expect(momentFor(SECOND_ATTEMPT_WALKOUT)).toBeNull();
     const state = sessionAllowing(['third-attempt-walkout']);
     expect(firedMoment(state, [SECOND_ATTEMPT_WALKOUT])).toBeNull();
+  });
+
+  it('A THIRD ATTEMPT WITH NOTHING BANKED IS NOT A FIRING MOMENT — a bomb-out is still live', () => {
+    // The disqualifier. `cutInGate.ts` §4: this is the one walk-out that is
+    // always immediately followed by a bomb-out or by nothing, so it may not
+    // spend the slot §7.2's "somber counterpart" is about to need.
+    expect(momentFor(THIRD_ATTEMPT_WALKOUT_NOTHING_BANKED)).toBeNull();
+    const state = sessionAllowing(['third-attempt-walkout']);
+    expect(firedMoment(state, [THIRD_ATTEMPT_WALKOUT_NOTHING_BANKED])).toBeNull();
+  });
+
+  it('...and the same attempt WITH something banked still is one', () => {
+    // Non-vacuity for the test above, and the half that says the disqualifier
+    // did not simply delete §7.2's first firing moment. The two beats differ in
+    // exactly one field, so if this pair ever both returned null the walk-out
+    // moment would be unreachable and the assertion above would mean nothing.
+    expect(THIRD_ATTEMPT_WALKOUT.kind).toBe('meet-walkout');
+    expect(momentFor(THIRD_ATTEMPT_WALKOUT)).toBe('third-attempt-walkout');
+    const state = sessionAllowing(['third-attempt-walkout']);
+    expect(firedMoment(state, [THIRD_ATTEMPT_WALKOUT])).toBe('third-attempt-walkout');
   });
 
   it('a record that was NOT achieved is not a PR moment', () => {
@@ -438,7 +479,23 @@ describe('scarcity: "ideally not every session" (GDD §7.2)', () => {
 // Priority
 // ---------------------------------------------------------------------------
 
-describe('priority among simultaneous moments', () => {
+/**
+ * PRIORITY — AND EVERY TEST IN THIS BLOCK EXERCISES A PATH NO CALL SITE CAN
+ * REACH.
+ *
+ * Said in the block's own name rather than left for a reader to work out. Each
+ * of the four beat KINDS maps to exactly one moment, and all five call sites
+ * offer beats of a single kind, so `momentsFor` returns a one-element array on
+ * every request the app can make and the ranking never breaks a tie. The
+ * multi-beat arrays below are constructed here and nowhere else.
+ *
+ * The ranking is kept anyway — `CUT_IN_MOMENT_PRIORITY`'s own comment argues
+ * why — and the claim that it is unreachable is not left as prose either:
+ * `cutInWiring.test.ts`'s "THE PRIORITY ORDER DECIDES NOTHING TODAY" reads the
+ * real call sites and goes red the day one of them offers two kinds at once.
+ * That is the day the tests below stop being hypothetical.
+ */
+describe('priority among simultaneous moments — DECLARED, AND UNREACHABLE IN PRODUCTION', () => {
   it('the priority list is a permutation of the four moments', () => {
     // Not a subset: a moment missing here could never be selected, which is the
     // empty-list failure one level down.
@@ -499,9 +556,14 @@ describe('priority among simultaneous moments', () => {
 
   it('ACROSS TIME THE EARLIER BEAT TAKES THE SLOT, WHATEVER ITS PRIORITY', () => {
     // Stated as a test because it is the piece's biggest live consequence and a
-    // reader should not have to take the header's word for it. A meet whose
-    // squat third attempt fires the walk-out will refuse the bomb-out that
-    // follows, even though the bomb-out outranks it.
+    // reader should not have to take the header's word for it.
+    //
+    // THIS IS NOW THE RESIDUAL CASE AND NOT THE COMMON ONE. The walk-out here
+    // has something banked on its own lift, so it is a DIFFERENT lift that
+    // bombs later — the squat's third fires, the bench bombs, and the bomb-out
+    // meets a spent slot. The same-lift case, which is the one that used to
+    // cost half of all bomb-outs their beat, is closed by the disqualifier and
+    // is pinned below by "A MEET THAT BOMBS SHOWS THE BOMB-OUT CUT-IN".
     const state = sessionAllowing(['third-attempt-walkout', 'bomb-out'], 'one-meet');
     const walkout = requestCutIn(state, [THIRD_ATTEMPT_WALKOUT]);
     expect(walkout.outcome.kind).toBe('fire');
@@ -509,6 +571,108 @@ describe('priority among simultaneous moments', () => {
     const bomb = requestCutIn(dismissCutIn(walkout.state), [BOMBED_OUT]);
     expect(bomb.outcome.kind).toBe('refused');
     if (bomb.outcome.kind === 'refused') expect(bomb.outcome.reason).toBe('session-cap-reached');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE BEAT THAT USED TO LOSE — GDD §7.2's "somber counterpart"
+// ---------------------------------------------------------------------------
+
+describe('a bomb-out is not starved by its own lift’s walk-out', () => {
+  /**
+   * THE BEATS ONE BOMBED LIFT REPORTS, IN THE ORDER THE LOOP REPORTS THEM.
+   *
+   * `MeetScreen` mounts `WalkoutView` before each attempt and `BombOutView`
+   * after the third miss, and each mount offers once. Transcribed here by hand
+   * rather than driven through `meetDay.ts`: this file tests the GATE, and a
+   * test that imported the engine would go red for reasons that are not the
+   * gate's. The one fact it borrows is spelled out in the fixtures above —
+   * `bombRisk` is true on the third attempt when nothing is banked, which is
+   * `meetDay.ts`'s own definition and the reason a bomb-out always has one of
+   * these in front of it.
+   */
+  const A_LIFT_THAT_BOMBS: readonly (readonly CutInBeat[])[] = [
+    [OPENER_WALKOUT],
+    [SECOND_ATTEMPT_WALKOUT],
+    [THIRD_ATTEMPT_WALKOUT_NOTHING_BANKED],
+    [BOMBED_OUT],
+  ];
+
+  it('A MEET THAT BOMBS SHOWS THE BOMB-OUT CUT-IN', () => {
+    // THE TEST THE WHOLE DISQUALIFIER EXISTS FOR. The session's rates allow
+    // BOTH the walk-out and the bomb-out — which is the world in which this
+    // used to fail — and the meet plays its three misses in order.
+    //
+    // Before the disqualifier the third walk-out fired first, the meet showed
+    // 'LAST ONE' over the attempt that ended it, and this bomb-out was refused
+    // for the cap. Deleting the `bombRisk` branch in `claimedMomentFor` puts
+    // that back and turns this red.
+    let state = sessionAllowing(['third-attempt-walkout', 'bomb-out'], 'a-meet-that-bombs');
+    const fired: string[] = [];
+    for (const beats of A_LIFT_THAT_BOMBS) {
+      const decision = requestCutIn(state, beats);
+      if (decision.outcome.kind === 'fire') fired.push(decision.outcome.live.moment);
+      state = dismissCutIn(decision.state);
+    }
+
+    // One cut-in, and it is the one §7.2 calls the somber counterpart. Spelled
+    // out rather than read off `CUT_IN_MOMENT_PRIORITY` or `firedMoment`.
+    expect(fired).toEqual(['bomb-out']);
+    expect(state.firedMoment).toBe('bomb-out');
+    expect(state.firedCount).toBe(1);
+  });
+
+  it('the walk-out that ended the meet did not print its line over it', () => {
+    // The other half of the same fact, stated as the player would experience
+    // it: the third attempt that ends a meet carries no cut-in at all, so
+    // 'LAST ONE' is never the last thing a bombed meet interrupts with.
+    const state = sessionAllowing(['third-attempt-walkout', 'bomb-out'], 'a-meet-that-bombs');
+    expect(state.allowed['third-attempt-walkout']).toBe(true);
+    expect(firedMoment(state, [THIRD_ATTEMPT_WALKOUT_NOTHING_BANKED])).toBeNull();
+  });
+
+  it('EVERY SEEDED MEET THAT BOMBS EITHER SHOWS THE BOMB-OUT OR SHOWS NOTHING', () => {
+    // Both bounds, over real rolled sessions rather than one hand-picked seed.
+    // The upper bound is the property: no meet that bombs its first lift can
+    // spend its slot on anything else. The lower bound stops a gate that never
+    // fires at all from passing.
+    const MEETS = 200;
+    let bombOuts = 0;
+    for (let seed = 0; seed < MEETS; seed += 1) {
+      let state = openCutInSession({ sessionId: `meet-${seed}`, seed });
+      for (const beats of A_LIFT_THAT_BOMBS) {
+        const decision = requestCutIn(state, beats);
+        if (decision.outcome.kind === 'fire') {
+          expect(decision.outcome.live.moment, `seed ${seed}`).toBe('bomb-out');
+          bombOuts += 1;
+        }
+        state = dismissCutIn(decision.state);
+      }
+    }
+    expect(bombOuts).toBeGreaterThan(0);
+    expect(bombOuts).toBeLessThanOrEqual(MEETS);
+  });
+
+  it('THE RESIDUAL, PINNED: ANOTHER LIFT’S THIRD ATTEMPT CAN STILL TAKE THE SLOT', () => {
+    // Recorded as behaviour rather than left in a comment, because it is the
+    // half of the starvation that is NOT closed and a reader should be able to
+    // see it. Squat: three attempts, an opener banked, so its third qualifies
+    // and fires. Bench: nothing banked, three misses, bomb-out — refused.
+    //
+    // Closing this would mean disqualifying a walk-out whenever ANY lift could
+    // still bomb, which at the squat's third is always, so it would delete
+    // §7.2's first firing moment everywhere but a deadlift third. GDD §11.
+    let state = sessionAllowing(['third-attempt-walkout', 'bomb-out'], 'squat-then-bench');
+    const squatThird = requestCutIn(state, [THIRD_ATTEMPT_WALKOUT]);
+    expect(squatThird.outcome.kind).toBe('fire');
+    state = dismissCutIn(squatThird.state);
+
+    const bomb = requestCutIn(state, [BOMBED_OUT]);
+    expect(bomb.outcome.kind).toBe('refused');
+    if (bomb.outcome.kind === 'refused') {
+      expect(bomb.outcome.reason).toBe('session-cap-reached');
+      expect(bomb.outcome.moment).toBe('bomb-out');
+    }
   });
 });
 
@@ -548,9 +712,21 @@ describe('SKIPPABILITY: always, and from the first frame', () => {
   });
 
   it('leaves on its own too, so it is never a modal dialog', () => {
+    // TWO HARD-CODED PROBES THAT STRADDLE THE HOLD, not a reading of it. This
+    // line used to be `expect(cutInExpiredAt(CUT_IN_TUNING.HOLD_MS)).toBe(true)`
+    // — which reduces to `HOLD_MS >= HOLD_MS` and is true for every value the
+    // constant could ever take, including a hold of zero. The straddle below is
+    // the same idiom this file already uses for the heavy-set threshold, and it
+    // goes red for a `cutInExpiredAt` that fires too early OR too late.
+    const WHILE_IT_IS_STILL_HOLDING_MS = 1500;
+    const PAST_ANY_HOLD_THIS_PIECE_CLAIMS_MS = 2400;
     expect(cutInExpiredAt(0)).toBe(false);
-    expect(cutInExpiredAt(CUT_IN_TUNING.HOLD_MS)).toBe(true);
-    expect(CUT_IN_TUNING.HOLD_MS).toBeGreaterThan(0);
+    expect(cutInExpiredAt(WHILE_IT_IS_STILL_HOLDING_MS)).toBe(false);
+    expect(cutInExpiredAt(PAST_ANY_HOLD_THIS_PIECE_CLAIMS_MS)).toBe(true);
+    // Non-vacuity for the pair: if a playtest moves the hold outside the band,
+    // this says so directly instead of letting one of the probes assert nothing.
+    expect(CUT_IN_TUNING.HOLD_MS).toBeGreaterThan(WHILE_IT_IS_STILL_HOLDING_MS);
+    expect(CUT_IN_TUNING.HOLD_MS).toBeLessThanOrEqual(PAST_ANY_HOLD_THIS_PIECE_CLAIMS_MS);
     // The interrupt is short. §7.2 calls a bad one "a 2-second tax", so this
     // pins the whole beat under three seconds until a playtest says otherwise.
     expect(cutInTotalMs()).toBeLessThan(3000);

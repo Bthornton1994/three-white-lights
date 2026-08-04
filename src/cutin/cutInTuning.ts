@@ -67,13 +67,22 @@ export const CUT_IN_TUNING = Object.freeze({
    *                             bad day at a meet they trained months for;
    *                             suppressing the one beat that acknowledges it
    *                             to save a budget nothing else is spending is
-   *                             the wrong trade.
+   *                             the wrong trade. THIS RATE IS NOT WHAT PROTECTS
+   *                             THE BEAT — the disqualifier in `cutInGate.ts`
+   *                             §4 is, because a rate cannot stop a walk-out
+   *                             that arrives EARLIER from spending the slot.
+   *                             Turning this down is a real tuning position;
+   *                             turning it up cannot buy back a slot already
+   *                             spent.
    *   third-attempt-walkout 0.5 — a meet has up to three of these and the gate
    *                             is first-come (see `cutInGate.ts` §4), so this
-   *                             number is very close to "the fraction of meets
-   *                             whose one cut-in is the SQUAT's third attempt".
-   *                             Half is a guess at where that stops feeling
-   *                             like the meet always opens the same way.
+   *                             number is close to "the fraction of meets whose
+   *                             one cut-in is the SQUAT's third attempt". Half
+   *                             is a guess at where that stops feeling like the
+   *                             meet always opens the same way. It is only
+   *                             close and not equal because a third attempt
+   *                             with NOTHING BANKED does not qualify at all —
+   *                             see the disqualifier in `cutInGate.ts` §4.
    *   personal-record       0.35 — the frequent one. `session.test.ts` measures
    *                             a PR on 30 of 30 sessions at today's tuning, so
    *                             without a rate here a daily player sees this
@@ -166,6 +175,38 @@ export const CUT_IN_TUNING = Object.freeze({
    * stride above: the gate may hold no literal at all.
    */
   SEED_DAY_STRIDE: 65537,
+
+  /**
+   * HOW MANY SITTINGS THE CAP REMEMBERS ACROSS A REMOUNT. NOT A KNOB EITHER.
+   *
+   * `cutInLedger.ts` keeps one gate session per `sessionId` for the life of the
+   * process, because §12.3's refusal condition is about a SESSION and React's
+   * mount lifetime is not one: `AppShell` swaps `MeetScreen` and `SessionScreen`
+   * with a ternary, so leaving a meet and opening one again on the same day
+   * un-mounts and re-mounts `CutInHost`. A count that lived only in that
+   * component's ref would come back at zero and the sitting would get a second
+   * cut-in.
+   *
+   * The number is a bound on the map, not a feel value. Two sittings exist per
+   * day (a training day and a meet), so this is four days of foregrounded app
+   * without a reload before the oldest is forgotten — and forgetting an old
+   * sitting cannot hand out a second cut-in for a CURRENT one, which is the only
+   * thing the cap is about. Lowering it to 1 would still be correct for the
+   * played loop and is not worth the sharp edge.
+   */
+  REMEMBERED_SITTINGS: 8,
+
+  /**
+   * How far `cutInPreview.ts` searches for a seed whose rates allow the moment
+   * it was asked to photograph. Arithmetic, not feel.
+   *
+   * The debug route does NOT bypass the rate roll — it looks for a session that
+   * would have let the moment through anyway, so the shot is of the real gate
+   * firing rather than of a special case built to be photographed. A moment
+   * whose `SESSION_ALLOWANCE` is 0 has no such seed and the preview refuses,
+   * which is correct: a moment that can never fire has no picture to take.
+   */
+  PREVIEW_SEED_LIMIT: 5000,
 });
 
 /**
