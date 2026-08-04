@@ -2,8 +2,8 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 8,
-    "waveName": "Wave 8 - five merges, four sent back on gaps their own critics found, one defect class on its third round",
+    "wave": 9,
+    "waveName": "Wave 9 - the audits themselves came under audit, and one was wrong by 3.5x",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
@@ -227,9 +227,9 @@
       "id": "S2",
       "name": "Meet day",
       "bar": "Dread and anticipation comparable to a real third-attempt walkout.",
-      "status": "rework",
+      "status": "grading",
       "verifiable": false,
-      "note": "ROUND 3 IS VERIFIED GOOD; ROUND 4 IS A CITATION THAT CANNOT DELIVER. The critic hand-executed the whole geometry against the renderer rather than reading it: junction 119, BAND_BOTTOM 99, BAND_TOP 75, tiers at 75/81/87/93, backTierCeiling returning 70 - so the back tier gets the same 5-row depth every other tier gets, in rows that are provably wall, and ownCols came out 57/36/38/36 unchanged. It re-derived the whole tierRises table by hand and confirmed the clamp mutation lands exactly where the evidence says. It also confirmed route (b) was NOT redundant: topRowOf reads only CROWD_MID, so an escaping keyline pixel is invisible to route (a) alone. THE GAP: the docstring cites \"never lets a risen hall reach down toward the lifter\" as the downward bound, but paintCrowd FILLS THE ENTIRE BAND with CROWD_DARK at every rise (gymScene.ts:377), so that test’s isCrowd(now) && !isCrowd(was) predicate is UNSATISFIABLE anywhere inside the band. It can only ever see crowd escaping the band’s bottom edge. Same species as round 2 - two true facts joined by a reason that is not the operative one. I RAN THE CONSEQUENCE rather than reasoning it: making paintCrowd skip the back tier whenever rise > 0, so an entire tier VANISHES from every risen frame, leaves ALL 2330 TESTS GREEN. airOf even IMPROVES, because it skips rows with no lit pixels, so a vanished tier raises worstRowAir. Dispatched with a derived constant-free floor - each tier keeps at least as many CROWD_MID pixels in its own columns as at rest - and the vanishing-tier mutation as the non-negotiable acceptance test.",
+      "note": "THE FLOOR I ASKED FOR WAS WRONG AND THE BUILDER PROVED IT RATHER THAN OBEYING IT. I specified \"each tier keeps at least as many pixels as at rest\". Measured on the shipped band that is FALSE ON CORRECT ART - the tier in front’s keyline legitimately eats the tier behind, so tier 1 holds 180 own-column pixels at rest and 108 at the walk-out’s rise. A rest-floor there would be red on a hall that is drawn right. The builder bounded the window at the seat row instead - the tier in front’s rim tops out one row below it - and then found the exact relation is not a floor at all but a PRODUCT: standing up is the head lifting and the shoulders stretching to a pinned seat, so a tier risen by R is solid for R+1 rows. Verified by rendering every rise 0-24 for all four tiers: equality in 100 of 100 cells. Equality also fails UPWARD, which makes the window-exclusivity claim self-checking rather than argued. I RE-RAN MY OWN ACCEPTANCE MUTATION on the merged tree: making the back tier vanish when risen reddens \"reads its rise off a WHOLE tier, at every rise\", where it previously left all 2330 green. A tier drawn one row LOWER is caught too, so displacement and absence both fail. The head-clamp mutation still reddens exactly the two tests it did, so round 3 is not regressed. It also mutation-tested what is STILL unmeasured and reported it green: silhouettes growing DOWNWARD inside the band are bounded by nothing, for two stated reasons, and it corrected its own first draft of that comment after the mutation proved the draft was itself an over-claim of the species this round exists to remove. And it caught a stale docstring that was load-bearing for its own work: the useful rise range was documented as 7, computed at a lag that had since changed; the real range is 10, so a sweep to 7 would have stopped three short of the cap.",
       "evidence": "meet/verdict-good.png"
     },
     {
@@ -270,9 +270,9 @@
       "id": "A4",
       "name": "Cut-in firing gate (mechanism, not art)",
       "bar": "One per session enforced by the gate itself; always skippable; fires only at 7.2 moments; Tier 3 surface path reused, not duplicated.",
-      "status": "rework",
+      "status": "grading",
       "verifiable": true,
-      "note": "WINS THE GRADEABLE PART, AND THE GAP IS A GOOD ONE. All four bar items hold at the mechanism level: the cap is the gate’s and a hostile caller cannot spend a second slot within a host lifetime, dismissal is the whole screen from the first frame, qualification lives in momentFor so screens report facts and cannot name what fires, and the Tier 3 path is consumed rather than duplicated - typed so removing cut-in from TIER_3_SURFACES is a compile error. Every refusal condition passes, including a serialisation test that refuses total/e1rm/kg/streak/currency in the fired state. The \"a meet is one session\" ruling is flagged as RULED rather than smuggled in. THE GAP, and I verified every link myself: CUT_IN_MOMENT_PRIORITY SELECTS NOTHING IN PRODUCTION - all five call sites offer beats mapping to at most one moment, so the ranking never breaks a tie and every priority test builds arrays no caller can produce. The contest that does happen is across time and runs BACKWARDS: meetDay.ts:929 defines bombRisk as attemptNumber === ATTEMPTS_PER_LIFT && banked === null, so EVERY BOMB-OUT IS PRECEDED BY THAT LIFT’S OWN THIRD-ATTEMPT WALKOUT, by definition. At walkout 0.5 against bomb-out 1, half of all bomb-outs show no bomb-out cut-in and instead already showed LAST ONE over the attempt that ended the meet. The rate-1 argument is defeated by architecture, not tuning. And the GDD entry excusing it says the alternative \"needs lookahead the gate cannot have\" - which is false: WalkoutView ALREADY HOLDS attempt.bombRisk, uses it for copy and beat length, and explicitly refuses to pass it, conflating a trigger with a disqualifier. Leaving the behaviour is defensible; recording a false reason for it is not. Also dispatched: the whole view and host layer has never rendered a pixel - there is no capture route for the cut-in and vitest is node-environment, so the tap target, the auto-dismiss and the mount ordering are verified by source grep alone."
+      "note": "THE STARVATION IS CLOSED, PHOTOGRAPHED, AND ITS RESIDUAL IS PINNED RATHER THAN BURIED. The walkout beat now carries bombRisk and the gate refuses a third attempt that has nothing banked - a DISQUALIFIER on a present fact, which can only ever produce a refusal, not the lookahead the module rightly refuses. I reverted it myself: four named tests go red, led by A MEET THAT BOMBS SHOWS THE BOMB-OUT CUT-IN. The builder also ran that same revert IN THE BROWSER and photographed the defect - the walkout printed LAST ONE over the attempt that ended the meet. WHAT IT REFUSED TO DO IS THE INTERESTING PART: a bomb-out can still be starved by a DIFFERENT lift’s third attempt, and closing that would mean disqualifying a walkout whenever any lift could still bomb - always true at the squat’s third - which deletes 7.2’s first firing moment everywhere but a deadlift. It refused rather than doing it quietly, and pinned it with a named test. CUT_IN_MOMENT_PRIORITY is kept and its inertness made explicit: the lie was the tests, not the constant, so the block is renamed DECLARED, AND UNREACHABLE IN PRODUCTION and a new reading PARSES EVERY REAL useOfferCutIn CALL and fails if one ever offers two beat kinds. The view layer now has pixels: a ?cutin= debug route hands the REAL gate a REAL beat, and the frames show the scrim at 12% with the check-in legible through it, two different identities reaching pixels (48,456 px apart), corners tappable, and the check-in’s own chip not hit-testable through the overlay - with a positive control, because the first version of that probe used a testID that does not exist and was vacuous. The remount hole is closed by a ledger that is PLAIN TYPESCRIPT, so a remount is two function calls and a real unit test rather than a grep. A reload still resets it and that is stated, not implied."
     }
   ],
   "report": {
@@ -376,9 +376,9 @@
       {
         "id": "S2",
         "name": "Meet day",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "Round 3 verified good by hand-executed geometry. But the test cited as the downward bound is blind by construction — the band is filled with crowd at every rise, so its predicate cannot fire inside it. I ran it: an entire tier can vanish from every risen frame with all 2330 green."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "The floor I specified was wrong and the builder proved it on rendered pixels — the keyline legitimately eats the tier behind. The real relation is a product, verified in 100 of 100 cells. My acceptance mutation now reddens where it left 2330 green."
       },
       {
         "id": "S3",
@@ -404,9 +404,9 @@
       {
         "id": "A4",
         "name": "Cut-in firing gate (§7.2 scarcity, not the art)",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "The gate wins its mechanism bar outright. But its priority order selects nothing in production, and because every bomb-out is by definition preceded by that lift’s third attempt, half of all bomb-outs lose the somber beat to the walkout — logged in §11 behind a reason that is not true. The view layer has also never rendered a pixel. Dispatched."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "Bomb-out starvation closed and photographed in the browser. The residual — another lift's third attempt — is refused deliberately and pinned by name rather than fixed quietly at the cost of §7.2's first moment. The view layer finally has pixels."
       },
       {
         "id": "C1",
