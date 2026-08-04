@@ -63,8 +63,22 @@ const ROOT = path.resolve(HERE, '..', '..');
  * top-level directory — an `app/` for expo-router, say — is audited the day it
  * appears rather than the day someone remembers to add it here. Nothing on
  * this list contains TypeScript that ships.
+ *
+ * `.claude` is on the list for a different and sharper reason than the rest.
+ * It holds `worktrees/`, and a git worktree is a COMPLETE SECOND CHECKOUT of
+ * this same repository — so walking into it audits another agent's in-progress
+ * copy of the very files being audited here. That made this test fail on merge
+ * with 24 findings, every one of them a path under an agent worktree's own
+ * `src/art` directory: real violations, in code that had already been fixed on
+ * this branch, reported against a stale parallel tree.
+ *
+ * The failure mode is worse than a false positive. It makes the audit's result
+ * depend on WHO ELSE IS BUILDING RIGHT NOW — green when no worktree exists,
+ * red when one does, and red with different findings depending on what that
+ * other agent has half-finished. A check whose verdict moves with unrelated
+ * state is not a check. Anyone with a worktree, agent or human, hits this.
  */
-const NOT_WALKED: readonly string[] = ['node_modules', '.git', '.expo', 'dist', 'coverage'];
+const NOT_WALKED: readonly string[] = ['node_modules', '.git', '.expo', 'dist', 'coverage', '.claude'];
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -148,6 +162,23 @@ describe('the audit has something to audit', () => {
     expect(FILES.filter((f) => f.startsWith('tools/'))).toEqual([]);
     // ...but a TypeScript file added there WOULD be audited.
     expect(isAudited('tools/shoot.ts')).toBe(true);
+  });
+
+  it('never walks into a sibling git worktree, whoever is building in one', () => {
+    // A worktree under `.claude/` is a COMPLETE SECOND CHECKOUT of this repo,
+    // so descending into it audits another agent's in-progress copy of these
+    // same files. On merge that produced 24 findings, all under
+    // `.claude/worktrees/agent-*/src/art/` — real violations in code already
+    // fixed here, reported against a stale parallel tree.
+    //
+    // The point is not the false positives. It is that the audit's verdict
+    // would depend on who else happens to be building right now: green with no
+    // worktree, red with one, and red DIFFERENTLY depending on what that agent
+    // has half-written. Pinned as an exact-prefix check rather than a substring
+    // one so a legitimate `src/claude*.ts` could never be silently skipped.
+    expect(NOT_WALKED).toContain('.claude');
+    expect(FILES.every((f) => !f.startsWith('.claude/'))).toBe(true);
+    expect(isAudited('.claude/worktrees/agent-x/src/art/palette.ts')).toBe(true);
   });
 
   it('audits the auditor, with no self-exemption', () => {
