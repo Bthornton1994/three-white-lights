@@ -126,6 +126,19 @@ function codeOnly(source: string): string {
 // exist as nodes at all, and the declared set is §7.5, which is nothing but
 // comment. No amount of writing about a route can produce one, and no amount of
 // writing about a route can stand in for one that has been deleted.
+//
+// AND THE ROOT SET IS THE PROJECT'S FILE LIST, NOT A DIRECTORY. This scan spent
+// a round rooted at `src/`, which is the same defect one level out from the one
+// §7 exists to prevent: honestly scoped, complete within its scope, and the
+// repository's own entry points sit OUTSIDE it. `App.tsx` and `index.ts` are at
+// the repo root, imports point INTO `src/` and never out, so neither was reached
+// directly or transitively — and a fully annotated `const seeded: ServerRecord =
+// { ...newServerRecord(), totalKg: 900 }` appended to `App.tsx` compiled clean,
+// passed every test here, and added no row. `tsconfig.json` already knew better:
+// `parsed.fileNames` was being computed two lines above the hand-walk and thrown
+// away. The scan is now rooted in it, which is exactly the set `npm run
+// typecheck` checks, so "it compiles into this app" and "this scan sees it" are
+// the same statement rather than two overlapping ones.
 // ---------------------------------------------------------------------------
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -135,9 +148,19 @@ interface RouteSite {
   readonly kind: 'record' | 'wire' | 'receive';
   /** Repo-relative, posix. */
   readonly file: string;
-  /** The enclosing function. `<module>` when there is none. */
+  /**
+   * The chain of function frames around it, outermost first, `/`-joined.
+   * `<module>` when there is none.
+   *
+   * A CHAIN RATHER THAN THE NEAREST NAMED FUNCTION, because the nearest named
+   * function collapsed `useMeetDay`'s two `receive` sites — the boot seed and
+   * the post-meet settle, structurally different things — into one row with a
+   * count of 2, in which deleting one and adding another anywhere in a
+   * 150-line hook was invisible. They are now `useMeetDay/useState` and
+   * `useMeetDay/useEffect/setCache`.
+   */
   readonly site: string;
-  /** How many, because a row names a FUNCTION and a function can hold two. */
+  /** How many, because a row names a FRAME and a frame can hold two. */
   readonly n: number;
 }
 
@@ -151,78 +174,178 @@ function sortedKeys(rows: readonly RouteSite[]): readonly string[] {
 
 const IS_TEST_FILE = /\.test\.tsx?$/;
 
+/** Vendored code. Never in the repo's own file list; checked anyway, cheaply. */
+const IS_VENDORED = /(?:^|\/)node_modules\//;
+
+/**
+ * A path segment starting with `.` — `.claude/`, `.expo/`, `.gauntlet/`.
+ *
+ * NOT A FILTER. Nothing here removes these; the test named "scans the whole
+ * project, not just src/" ASSERTS the file list contains none, because TypeScript's wildcard
+ * includes already skip dot-directories and that behaviour is load-bearing:
+ * `.claude/worktrees/` holds COMPLETE SECOND CHECKOUTS of this repository, and
+ * a scan that walked into one would report routes in another agent's
+ * half-finished copy of these very files. `audit.test.ts` hit exactly that —
+ * 24 findings from a parallel tree — and its `NOT_WALKED` carries the reason at
+ * length. Here the same hazard is closed by `tsconfig.json` rather than by a
+ * list, so what this pins is that the closure is real and not luck.
+ */
+const IS_DOT_DIRECTORY = /(?:^|\/)\.[^/]+\//;
+
+/**
+ * How far into a type the import scan will chase a `ServerRecord`.
+ *
+ * `applyMeetResult` returns `ProgressionResult<{ record: ServerRecord; … }>`,
+ * which is three hops (union arm → object → property), so the bound has to
+ * clear that with room. It is a cost control, not a judgement: raising it
+ * widens the candidate set, which makes the reflection guard STRICTER, so an
+ * over-generous value is the safe direction to be wrong in.
+ */
+const IMPORT_TYPE_REACH_DEPTH = 8;
+
 /**
  * Everything the scan found, split into what ships and what is a fixture.
  *
  * `candidateFiles` is the set the reflection guard runs over: every non-test
  * file that could obtain a `ServerRecord` at all.
+ *
+ * `scannedFiles` is every repository file the program actually parsed. It
+ * exists so the non-vacuity tests can name `App.tsx` and `index.ts` and fail
+ * loudly the day someone narrows the root set again.
  */
 interface RouteScan {
   readonly shipped: readonly RouteSite[];
   readonly fixtures: readonly RouteSite[];
   readonly candidateFiles: readonly string[];
+  readonly scannedFiles: readonly string[];
 }
 
 function scanRoutes(): RouteScan {
-  const files: string[] = [];
-  const walk = (dir: string): void => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (/\.tsx?$/.test(entry.name)) files.push(full);
-    }
-  };
-  walk(path.join(REPO_ROOT, 'src'));
-
+  // THE ROOT SET. `parsed.fileNames` is what `tsconfig.json`'s own
+  // `include`/`exclude` resolve to — `App.tsx`, `index.ts`, `vitest.config.ts`
+  // and all of `src/` — and it is the same list `tsc --noEmit` compiles. The
+  // previous version of this function computed `parsed` for its `options`,
+  // discarded `fileNames`, and hand-walked `src/` instead; see the header note
+  // above for the route that survived in the gap.
   const configPath = path.join(REPO_ROOT, 'tsconfig.json');
   const config = ts.readConfigFile(configPath, ts.sys.readFile).config as unknown;
   const parsed = ts.parseJsonConfigFileContent(config, ts.sys, REPO_ROOT);
-  const program = ts.createProgram(files, { ...parsed.options, noEmit: true, skipLibCheck: true });
+  if (parsed.fileNames.length === 0) {
+    throw new Error('tsconfig.json resolved to no files — the route pin would pass vacuously');
+  }
+  const program = ts.createProgram([...parsed.fileNames], {
+    ...parsed.options,
+    noEmit: true,
+    skipLibCheck: true,
+  });
   const checker = program.getTypeChecker();
+
+  /** Repo-relative posix path, or `null` for anything outside the repo. */
+  const repoPathOf = (fileName: string): string | null => {
+    const rel = path.relative(REPO_ROOT, fileName).split(path.sep).join('/');
+    if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return null;
+    if (IS_VENDORED.test(rel)) return null;
+    return rel;
+  };
 
   // The two interfaces the pin is about, resolved from their declarations so a
   // same-named type in another module cannot be mistaken for one of them.
-  const targets: { readonly kind: 'record' | 'wire'; readonly name: string; readonly from: string; type?: ts.Type; symbol?: ts.Symbol }[] = [
+  const targets: {
+    readonly kind: 'record' | 'wire';
+    readonly name: string;
+    readonly from: string;
+    type?: ts.Type;
+    symbol?: ts.Symbol;
+    declaredIn?: ts.SourceFile;
+  }[] = [
     { kind: 'record', name: 'ServerRecord', from: 'src/game/sessionServer.ts' },
     { kind: 'wire', name: 'ProgressionSnapshotWire', from: 'src/game/progression.ts' },
   ];
   for (const target of targets) {
     const declaring = program.getSourceFile(path.join(REPO_ROOT, target.from));
     if (declaring === undefined) throw new Error(`${target.from} is not in the program`);
+    target.declaredIn = declaring;
     declaring.forEachChild((node) => {
       if (ts.isInterfaceDeclaration(node) && node.name.text === target.name) {
         target.type = checker.getTypeAtLocation(node.name);
         target.symbol = checker.getSymbolAtLocation(node.name);
       }
     });
-    if (target.type === undefined) throw new Error(`no interface ${target.name} in ${target.from}`);
+    if (target.type === undefined || target.symbol === undefined) {
+      throw new Error(`no interface ${target.name} in ${target.from}`);
+    }
   }
 
   const receiverName = 'receiveProgressionSnapshot';
   const receiverFile = path.join(REPO_ROOT, 'src/game/progression.ts');
 
-  /** The nearest named function around a node — the row's `site`. */
+  /**
+   * One frame, named, or `null` for a node that is not one.
+   *
+   * `ts.isPropertyDeclaration` is here because it was missing: a class property
+   * arrow — `private readonly build = (): ServerRecord => …` — matched none of
+   * the other forms, so the walk ran past it to the module and reported
+   * `<module>`. Nothing in the repo is written that way today, which is exactly
+   * why it was worth adding rather than waiting for one.
+   *
+   * A BINDING COUNTS WHEN IT HOLDS A FUNCTION, not whenever it holds anything.
+   * The wider rule was tried and is worse: it names the binding a call's RESULT
+   * lands in, so every `receive` row grew a `/received` tail that distinguishes
+   * nothing, and four unrelated rows churned to say `applyMeetResult/next`.
+   * The cost of the narrow rule is that two record literals at MODULE scope in
+   * one file both report `<module>` and collapse to one row with a count of 2 —
+   * a smaller version of the `useMeetDay` defect, left standing and named in
+   * §7.5's residual rather than paid for with noise on nine rows.
+   * Destructuring patterns are skipped either way: `const [cache, setCache] =
+   * useState(…)` has no single name and `[cache, setCache]` would break the
+   * table's columns.
+   */
+  const frameName = (node: ts.Node): string | null => {
+    if (
+      (ts.isFunctionDeclaration(node) ||
+        ts.isMethodDeclaration(node) ||
+        ts.isFunctionExpression(node)) &&
+      node.name !== undefined
+    ) {
+      return node.name.getText();
+    }
+    if (
+      (ts.isVariableDeclaration(node) ||
+        ts.isPropertyAssignment(node) ||
+        ts.isPropertyDeclaration(node)) &&
+      node.initializer !== undefined &&
+      (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer)) &&
+      ts.isIdentifier(node.name)
+    ) {
+      return node.name.getText();
+    }
+    // AN ANONYMOUS FUNCTION HANDED STRAIGHT TO A CALL, named for the callee.
+    // `useState(() => …)` and `setCache((c) => …)` are both "an arrow inside
+    // `useMeetDay`" and nothing else distinguishes them, which is how one row
+    // came to cover two structurally different sites.
+    if (
+      (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) &&
+      node.parent !== undefined &&
+      ts.isCallExpression(node.parent) &&
+      node.parent.arguments.includes(node as ts.Expression)
+    ) {
+      const callee = node.parent.expression;
+      if (ts.isIdentifier(callee)) return callee.text;
+      if (ts.isPropertyAccessExpression(callee)) return callee.name.text;
+    }
+    return null;
+  };
+
+  /** Every frame around a node, outermost first — the row's `site`. */
   const enclosingSite = (node: ts.Node): string => {
+    const frames: string[] = [];
     let current: ts.Node | undefined = node.parent;
     while (current !== undefined) {
-      if (
-        (ts.isFunctionDeclaration(current) ||
-          ts.isMethodDeclaration(current) ||
-          ts.isFunctionExpression(current)) &&
-        current.name !== undefined
-      ) {
-        return current.name.getText();
-      }
-      if (
-        (ts.isVariableDeclaration(current) || ts.isPropertyAssignment(current)) &&
-        current.initializer !== undefined &&
-        (ts.isArrowFunction(current.initializer) || ts.isFunctionExpression(current.initializer))
-      ) {
-        return current.name.getText();
-      }
+      const frame = frameName(current);
+      if (frame !== null) frames.push(frame);
       current = current.parent;
     }
-    return '<module>';
+    return frames.length === 0 ? '<module>' : frames.reverse().join('/');
   };
 
   const counted = new Map<string, RouteSite>();
@@ -232,15 +355,148 @@ function scanRoutes(): RouteScan {
     counted.set(key, { kind, file, site, n: (existing?.n ?? 0) + 1 });
   };
 
-  const srcRoot = path.join(REPO_ROOT, 'src');
+  // -------------------------------------------------------------------------
+  // THE REFLECTION GUARD'S CANDIDATE SET — AN IMPORT CHECK, NOT A TOKEN MATCH.
+  //
+  // The argument for scoping the guard has always been about IMPORTS: "a module
+  // that imports nothing from this boundary has nothing to clone". The check was
+  // a regex over identifiers — `\b(ServerRecord|ProgressionSnapshotWire|
+  // sessionServer|localSessionServer)\b` — and the two do not line up.
+  // `meetPreview.ts` exports `previewServerRecord(): ServerRecord`, and
+  // `\bServerRecord\b` does not match inside `previewServerRecord`. A file
+  // importing THAT obtained a real record, matched no trigger, was not a
+  // candidate, and could `Object.assign` freely; forge there, call
+  // `snapshotWireFor` from a clean candidate file, hand the wire to the pinned
+  // `receiveSnapshot`, and no row moves. Latent rather than live — that
+  // function's only shipped consumer also imports `sessionServer` — but the fix
+  // is to make the set match the argument rather than to add more tokens, since
+  // the next export named around the type would reopen it.
+  //
+  // So: a file is a candidate if it DECLARES a target type, or if any symbol it
+  // imports from a repository module has a type that REACHES one. That is
+  // transitive for free — a wrapper whose inferred return type is `ServerRecord`
+  // makes its importer a candidate without this needing to know the wrapper
+  // exists — and it is bounded to repo modules because a target type cannot be
+  // obtained from `react-native`.
+  // -------------------------------------------------------------------------
+  const targetSymbols = new Set(
+    targets.map((target) => target.symbol).filter((symbol): symbol is ts.Symbol => symbol !== undefined),
+  );
+
+  /**
+   * Is this type's own declaration inside the repository?
+   *
+   * THE ONE PLACE THIS WALK NARROWS, AND IT IS STATED RATHER THAN BURIED. The
+   * walk does not descend into the MEMBERS of a type declared in
+   * `node_modules` — a `ViewStyle` has hundreds of properties, each of which
+   * has hundreds, and chasing them cost 53 seconds against the 0.4 this does.
+   * It still descends into TYPE ARGUMENTS and UNION ARMS unconditionally, so
+   * `Promise<ServerRecord>`, `Array<ServerRecord>` and
+   * `ServerRecord | null` are all caught through a foreign wrapper. A type with
+   * no declaration at all — an anonymous object type — is treated as ours and
+   * walked.
+   *
+   * What it can miss: a foreign type that exposes a record through a MEMBER
+   * rather than a parameter, e.g. a third-party container whose `.value` is
+   * typed `ServerRecord` by declaration merging. Nothing in this repo does
+   * that. This narrows the CANDIDATE SET, which makes the reflection guard
+   * cover fewer files, so it is a real (small) hole and is listed in §7.5's
+   * residual rather than argued away.
+   */
+  const isOurs = (type: ts.Type): boolean => {
+    const declarations = (type.aliasSymbol ?? type.getSymbol())?.declarations;
+    if (declarations === undefined || declarations.length === 0) return true;
+    return declarations.some((node) => repoPathOf(node.getSourceFile().fileName) !== null);
+  };
+
+  const typeReaches = (type: ts.Type, at: ts.Node, seen: Set<ts.Type>, depth: number): boolean => {
+    if (depth < 0 || seen.has(type)) return false;
+    seen.add(type);
+    const symbol = type.aliasSymbol ?? type.getSymbol();
+    if (symbol !== undefined && targetSymbols.has(symbol)) return true;
+    if (type.isUnionOrIntersection()) {
+      return type.types.some((part) => typeReaches(part, at, seen, depth - 1));
+    }
+    const isReference =
+      (type.flags & ts.TypeFlags.Object) !== 0 &&
+      ((type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference) !== 0;
+    if (isReference) {
+      for (const argument of checker.getTypeArguments(type as ts.TypeReference)) {
+        if (typeReaches(argument, at, seen, depth - 1)) return true;
+      }
+    }
+    if (!isOurs(type)) return false;
+    for (const signature of [...type.getCallSignatures(), ...type.getConstructSignatures()]) {
+      if (typeReaches(checker.getReturnTypeOfSignature(signature), at, seen, depth - 1)) return true;
+      for (const parameter of signature.getParameters()) {
+        const parameterType = checker.getTypeOfSymbolAtLocation(parameter, at);
+        if (typeReaches(parameterType, at, seen, depth - 1)) return true;
+      }
+    }
+    for (const property of type.getProperties()) {
+      const propertyType = checker.getTypeOfSymbolAtLocation(property, at);
+      if (typeReaches(propertyType, at, seen, depth - 1)) return true;
+    }
+    return false;
+  };
+
+  /** Does this file import a value or type from which a target can be had? */
+  const importsTheBoundary = (source: ts.SourceFile): boolean => {
+    let found = false;
+    const consider = (name: ts.Node): void => {
+      if (found) return;
+      const symbol = checker.getSymbolAtLocation(name);
+      if (symbol === undefined) return;
+      const resolved =
+        (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(symbol) : symbol;
+      if (targetSymbols.has(resolved)) {
+        found = true;
+        return;
+      }
+      if (typeReaches(checker.getTypeOfSymbolAtLocation(resolved, name), name, new Set(), IMPORT_TYPE_REACH_DEPTH)) {
+        found = true;
+      }
+    };
+    source.forEachChild((node) => {
+      if (found) return;
+      if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) return;
+      // Only repository modules. A target type cannot come out of `expo`, and
+      // walking `react-native`'s types would cost more than the whole scan.
+      const specifier = node.moduleSpecifier;
+      if (specifier === undefined || !ts.isStringLiteral(specifier)) return;
+      const resolvedModule = checker.getSymbolAtLocation(specifier)?.declarations?.[0]?.getSourceFile();
+      if (resolvedModule === undefined || repoPathOf(resolvedModule.fileName) === null) return;
+      const clause = ts.isImportDeclaration(node) ? node.importClause : node.exportClause;
+      if (clause === undefined) return;
+      if (ts.isImportClause(clause)) {
+        if (clause.name !== undefined) consider(clause.name);
+        const bindings = clause.namedBindings;
+        if (bindings !== undefined) {
+          if (ts.isNamespaceImport(bindings)) consider(bindings.name);
+          else for (const element of bindings.elements) consider(element.name);
+        }
+      } else if (ts.isNamedExports(clause)) {
+        for (const element of clause.elements) consider(element.name);
+      } else {
+        // `export * as ns from './m'` — the namespace carries every export.
+        consider(clause.name);
+      }
+    });
+    return found;
+  };
+
   const candidateFiles: string[] = [];
-  const candidateTriggers =
-    /\b(ServerRecord|ProgressionSnapshotWire|sessionServer|localSessionServer)\b/;
+  const scannedFiles: string[] = [];
 
   for (const source of program.getSourceFiles()) {
-    if (source.isDeclarationFile || !source.fileName.startsWith(srcRoot)) continue;
-    const rel = path.relative(REPO_ROOT, source.fileName).split(path.sep).join('/');
-    if (!IS_TEST_FILE.test(rel) && candidateTriggers.test(codeOnly(source.getFullText()))) {
+    if (source.isDeclarationFile) continue;
+    const rel = repoPathOf(source.fileName);
+    if (rel === null) continue;
+    scannedFiles.push(rel);
+    if (
+      !IS_TEST_FILE.test(rel) &&
+      (targets.some((target) => target.declaredIn === source) || importsTheBoundary(source))
+    ) {
       candidateFiles.push(rel);
     }
     const visit = (node: ts.Node): void => {
@@ -285,6 +541,7 @@ function scanRoutes(): RouteScan {
     shipped: all.filter((row) => !IS_TEST_FILE.test(row.file)),
     fixtures: all.filter((row) => IS_TEST_FILE.test(row.file)),
     candidateFiles: candidateFiles.sort(),
+    scannedFiles: scannedFiles.sort(),
   };
 }
 
@@ -312,10 +569,10 @@ function declaredRoutes(): readonly RouteSite[] {
 /**
  * The scan, run once and shared.
  *
- * MEMOISED RATHER THAN RUN AT IMPORT. Building a `ts.Program` over `src/` is a
- * few seconds of real work — it is the same work `tsc` does — and an import that
- * takes seconds has no timeout and no useful failure message if it ever stops
- * finishing. Inside a test it has both.
+ * MEMOISED RATHER THAN RUN AT IMPORT. Building a `ts.Program` over the whole
+ * project is a few seconds of real work — it is the same work `tsc` does — and
+ * an import that takes seconds has no timeout and no useful failure message if
+ * it ever stops finishing. Inside a test it has both.
  */
 let routeScanMemo: RouteScan | null = null;
 function routeScan(): RouteScan {
@@ -615,19 +872,108 @@ describe('purity', () => {
     expect(sweep).not.toContain('simSessionsPerDay');
   });
 
+  it('scans the whole project, not just src/', () => {
+    // THE ROUND-SEVEN DEFECT, PINNED BY NAME. The scan was rooted at
+    // `walk(REPO_ROOT + '/src')`. `App.tsx` and `index.ts` are at the repo root
+    // and every import points INTO `src/` and never out, so neither was reached
+    // directly or transitively — and a fully annotated
+    // `const seeded: ServerRecord = { ...newServerRecord(), totalKg: 900 }`
+    // appended to `App.tsx` compiled clean, passed all 133 tests here, and added
+    // no §7.5 row. Same species as the `meetServer.ts` sweep §7 replaced, one
+    // level out: honestly scoped, complete within scope, defect outside it.
+    //
+    // Anchored BY NAME, which is `audit.test.ts`'s shape for the same problem
+    // ("walks the whole repository, not just src/"). A future narrowing of the
+    // root set fails here with the file it dropped, rather than passing quietly
+    // with a smaller world.
+    expect(routeScan().scannedFiles, 'App.tsx is not in the scanned set').toContain('App.tsx');
+    expect(routeScan().scannedFiles, 'index.ts is not in the scanned set').toContain('index.ts');
+    expect(routeScan().scannedFiles).toContain('vitest.config.ts');
+    expect(routeScan().scannedFiles).toContain('src/game/sessionServer.ts');
+    expect(routeScan().scannedFiles.length).toBeGreaterThan(100);
+
+    // ...and the two directions the root set must NOT grow in.
+    //
+    // `node_modules` is obvious. The dot-directory rule is not, and it is
+    // load-bearing: `.claude/worktrees/` holds COMPLETE SECOND CHECKOUTS of this
+    // repository, so a root set that reached into one would report routes from
+    // another agent's half-finished copy of these very files, and this pin's
+    // verdict would depend on who else is building right now. `audit.test.ts`
+    // hit exactly that — 24 findings from a parallel tree — and closes it with
+    // an explicit `NOT_WALKED`. Here `tsconfig.json` closes it for free, because
+    // TypeScript's wildcard `include`s skip dot-directories. Asserted, not
+    // trusted: if that ever stops being true this goes red instead of going
+    // slow-and-wrong.
+    for (const file of routeScan().scannedFiles) {
+      expect(IS_VENDORED.test(file), `${file} is vendored`).toBe(false);
+      expect(IS_DOT_DIRECTORY.test(file), `${file} is inside a dot-directory`).toBe(false);
+    }
+  });
+
+  it('leaves no TypeScript file in the repository out of the scanned set', () => {
+    // THE HALF THE ANCHORS ABOVE DO NOT COVER. Rooting the scan in
+    // `tsconfig.json` bought the entry points, and it moved the way this can be
+    // narrowed rather than removing it: an `exclude` entry, or an `include` that
+    // stops saying `**/*`, shrinks the sweep silently, and every anchor above
+    // would still pass because they all name files that would still be in.
+    //
+    // So the project's list is checked against the DISK, by the only walk in
+    // this file — and this walk is not the root set, it is the cross-check on
+    // the root set. That distinction is the whole point: a directory walk as the
+    // root is what produced round seven's defect, because someone has to choose
+    // the directory. Here nothing is chosen; it starts at the repository and
+    // skips only vendored code and dot-directories, both of which are the same
+    // two exclusions asserted above, so what this compares is two independent
+    // answers to "which TypeScript files are in this repository".
+    const found: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        // `.d.ts` is out and the scan agrees: the program skips declaration
+        // files (`source.isDeclarationFile`) because they declare types and
+        // hold no expressions, so there is no object literal in one to find.
+        // `src/audio/assets.d.ts` is the live example — it types `*.mp3`
+        // imports. Including it here would only ever fail for that reason.
+        else if (/\.tsx?$/.test(entry.name) && !/\.d\.tsx?$/.test(entry.name)) {
+          found.push(path.relative(REPO_ROOT, full).split(path.sep).join('/'));
+        }
+      }
+    };
+    walk(REPO_ROOT);
+
+    // Non-vacuity: the walk found a tree, not an empty directory.
+    expect(found.length).toBeGreaterThan(100);
+    expect(found).toContain('App.tsx');
+
+    const scanned = new Set(routeScan().scannedFiles);
+    for (const file of found) {
+      expect(
+        scanned.has(file),
+        `${file} is TypeScript in this repository and tsconfig.json's file list does not claim it — the route pin cannot see anything in it`,
+      ).toBe(true);
+    }
+  });
+
   it('names every route into permanent progression in §7.5, derived from the type checker', () => {
     // THE ROUTE HALF OF THE SWEEP, MECHANISED. The test above is over the FACT
     // SET and cannot see a new `ServerRecord` construction site; that is what
     // its own §7.4 admitted, and a grep found the missing route in five of the
     // six rounds this section has existed. This is the direction that matters:
-    // a hand-built record ANYWHERE under `src/` that §7.5 does not name.
+    // a hand-built record ANYWHERE THE PROJECT COMPILES that §7.5 does not name.
     //
     // Non-vacuity first, so a scan that resolved nothing cannot pass by finding
     // nothing: the shipped set has to contain the two server functions the whole
-    // boundary is built around.
+    // boundary is built around, and the scanned set has to reach past `src/`.
     expect(routeScan().shipped.length).toBeGreaterThan(4);
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/sessionServer.ts newServerRecord x1');
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/meetServer.ts applyMeetResult x1');
+    // The anchor that would have caught round seven's defect. A route pin whose
+    // world stops at `src/` passes every assertion above it.
+    expect(routeScan().scannedFiles).toContain('App.tsx');
+    expect(routeScan().scannedFiles).toContain('index.ts');
+    expect(routeScan().scannedFiles.some((file) => !file.startsWith('src/'))).toBe(true);
 
     const declared = new Set(sortedKeys(declaredRoutes()));
     for (const row of routeScan().shipped) {
@@ -696,10 +1042,15 @@ describe('purity', () => {
     // for anything laundered through `as unknown as`.
     //
     // Scoped to files that can actually obtain one — a module that imports
-    // nothing from this boundary has nothing to clone. That last step is an
-    // ARGUMENT rather than a check, and §7.5 says so.
+    // nothing from this boundary has nothing to clone. THE SCOPE IS NOW THE
+    // ARGUMENT ITSELF rather than a token match standing in for it: a file is a
+    // candidate if it declares a target type or if any symbol it imports from a
+    // repository module has a type that REACHES one. See `importsTheBoundary`
+    // for what that still misses, and §7.5 item 2 for why the token match was
+    // not the same question.
     expect(routeScan().candidateFiles).toContain('src/game/sessionServer.ts');
     expect(routeScan().candidateFiles).toContain('src/session/sessionPreview.ts');
+    expect(routeScan().candidateFiles).toContain('src/game/meetPreview.ts');
     expect(routeScan().candidateFiles.length).toBeGreaterThan(5);
     for (const file of routeScan().candidateFiles) {
       const code = codeOnly(readFileSync(path.join(REPO_ROOT, file), 'utf8'));
@@ -707,6 +1058,40 @@ describe('purity', () => {
       expect(code, `${file} uses structuredClone`).not.toMatch(/structuredClone\s*\(/);
       expect(code, `${file} casts through unknown`).not.toMatch(/as unknown as/);
     }
+  });
+
+  it('picks candidates by what they import, not by what words they contain', () => {
+    // THE CONTROL FOR THE PARAGRAPH ABOVE, in both directions, because "scoped
+    // to files that can obtain one" is worth nothing if the scoping is really
+    // the old regex wearing a type checker's coat.
+    //
+    // The old trigger was `\b(ServerRecord|ProgressionSnapshotWire|sessionServer|
+    // localSessionServer)\b` over comment-stripped source. Two disagreements
+    // prove the sets are not the same instrument:
+    const OLD_TRIGGER =
+      /\b(ServerRecord|ProgressionSnapshotWire|sessionServer|localSessionServer)\b/;
+    const candidates = routeScan().candidateFiles;
+    const codeOf = (file: string): string => codeOnly(readFileSync(path.join(REPO_ROOT, file), 'utf8'));
+
+    // (1) IN THE NEW SET, INVISIBLE TO THE OLD ONE. These reach a record only
+    //     through a hook or a re-export, and spell none of the four tokens.
+    //     `\bServerRecord\b` does not match inside `previewServerRecord`, which
+    //     is the shape of the hole: import that, get a real record, trip no
+    //     trigger, forge freely.
+    const reachedByTypeOnly = candidates.filter((file) => !OLD_TRIGGER.test(codeOf(file)));
+    expect(reachedByTypeOnly.length, 'the import check found nothing the token match missed').toBeGreaterThan(0);
+    // Anchored by name as well as by count, so this cannot go vacuous through
+    // some unrelated file drifting in. `MeetScreen.tsx` reaches a record only
+    // through `useMeetDay`'s return type (`applied.record`) and spells none of
+    // the four tokens. If it genuinely stops reaching one, edit this line —
+    // that is a real change, and it should be visible in a diff.
+    expect(reachedByTypeOnly).toContain('src/meet/MeetScreen.tsx');
+
+    // (2) OUT OF THE NEW SET, IN THE OLD ONE. A file may spell `ServerRecord`
+    //     in a string — a citation, a watchlist row — without importing
+    //     anything that can produce one, and guarding it was noise.
+    expect(candidates).not.toContain('src/licensing/realIp.ts');
+    expect(OLD_TRIGGER.test(codeOf('src/licensing/realIp.ts'))).toBe(true);
   });
 
   it('mints server truth in exactly one place', () => {

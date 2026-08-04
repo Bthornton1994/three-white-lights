@@ -823,11 +823,18 @@
  * THE CLAIM: every number that reaches a `ConfirmedFacts` mass field — the
  * total, the three per-lift e1RMs, each stored meet's total, per-lift bests and
  * bodyweight — arrives past a check on a UNIT FIELD it carries, by every route
- * that exists in non-test code. SIX routes, all named above and all enumerated
- * mechanically in 7.5: a meet card, a bodyweight reading, a training card, the
- * account seed, and the THREE preview builders in (c) which reach no stored
- * field. This said "Five routes ... the two preview builders" for a round, and
- * the count was wrong because it was written by hand.
+ * IN THE PROJECT'S NON-TEST FILE LIST. SIX routes, all named above and all
+ * enumerated mechanically in 7.5: a meet card, a bodyweight reading, a training
+ * card, the account seed, and the THREE preview builders in (c) which reach no
+ * stored field. This said "Five routes ... the two preview builders" for a
+ * round, and the count was wrong because it was written by hand.
+ *
+ * THE SCOPE PHRASE IS DELIBERATE AND IS NARROWER THAN IT READS. It said "every
+ * route that exists in non-test code", which was broader than what 7.5 checked:
+ * the check was rooted at `src/`, so a route in `App.tsx` was outside it. The
+ * two now line up — the scan's root set is `tsconfig.json`'s file list — but the
+ * claim is stated against THE FILE LIST rather than against "the codebase",
+ * because those are not the same set and 7.5's item 3 says where they part.
  *
  * WHAT WOULD FALSIFY IT, concretely, so this is not a claim that survives by
  * being unfalsifiable:
@@ -838,8 +845,10 @@
  *     one; a grep can, and that is what has found it both times so far" — and
  *     by the time it was read again a grep had found it five times out of six.
  *     It can see it now: 7.5 is a table, the suite derives the same set from the
- *     TYPE CHECKER, and a construction site added anywhere under `src/` without
- *     a row here fails. The residual is named in 7.5 rather than here.
+ *     TYPE CHECKER, and a construction site added in ANY FILE THE PROJECT
+ *     COMPILES — not just under `src/`, which is what it said and what let an
+ *     `App.tsx` route through for a round — fails without a row here. The
+ *     residuals are named in 7.5, as a list with no closure claim on the end.
  *   - A NEW MASS FACT. `progression.test.ts` fails if a `ProgressionFactKey`,
  *     `ConfirmedMeetResultKey`, `StreakFactKey` or `WalletCurrency` is not named
  *     in 7.1 or 7.2, so a fact added beside these cannot go unlisted — but the
@@ -862,14 +871,32 @@
  * construction site. That blindness is what the sweep note in `7.4` used to
  * admit and then leave standing.
  *
- * `progression.test.ts` now builds a `ts.Program` over every `.ts`/`.tsx` file
- * under `src/` and asks the TYPE CHECKER, not a regular expression, for every
- * object literal that is a `ServerRecord` or a `ProgressionSnapshotWire` — by
- * contextual type (an annotation, a `satisfies`, a cast, an argument position,
- * an array element) OR by being structurally assignable to one (a literal in a
- * function whose return type is inferred, which no annotation-scan can see). It
- * compares that set, two ways, against the rows below. A construction site
- * added without a row fails; a row whose site is deleted fails.
+ * `progression.test.ts` now builds a `ts.Program` and asks the TYPE CHECKER, not
+ * a regular expression, for every object literal that is a `ServerRecord` or a
+ * `ProgressionSnapshotWire` — by contextual type (an annotation, a `satisfies`,
+ * a cast, an argument position, an array element) OR by being structurally
+ * assignable to one (a literal in a function whose return type is inferred,
+ * which no annotation-scan can see). It compares that set, two ways, against the
+ * rows below. A construction site added without a row fails; a row whose site is
+ * deleted fails.
+ *
+ * OVER THE PROJECT'S FILE LIST, NOT A DIRECTORY, AND THAT SENTENCE IS THE WHOLE
+ * OF ROUND SEVEN'S DEFECT. The scan was rooted at `src/` — an honest scope,
+ * complete within itself, with the repository's own entry points OUTSIDE it.
+ * `App.tsx` and `index.ts` sit at the repo root and imports point INTO `src/`
+ * and never out, so neither was reached directly or transitively. A fully
+ * annotated `const seeded: ServerRecord = { ...newServerRecord(), totalKg: 900 }`
+ * appended to `App.tsx` compiled clean, passed all 133 tests, and added no row —
+ * a seventh route in the most reachable file in the repository. It is the same
+ * species as the `meetServer.ts` sweep this section was built to replace, one
+ * level out: scoped to a path, and the defect lived outside the path.
+ * The root set is now `tsconfig.json`'s own `parsed.fileNames` — which the scan
+ * was already computing and throwing away — so it is exactly what `tsc --noEmit`
+ * compiles: `App.tsx`, `index.ts`, `vitest.config.ts` and all of `src/`.
+ * "It builds into this app" and "this scan sees it" are now one statement.
+ * `progression.test.ts` anchors `App.tsx` and `index.ts` BY NAME so a future
+ * narrowing fails loudly, which is the shape `audit.test.ts` uses for the same
+ * problem ("walks the whole repository, not just src/").
  *
  * COMMENTS CANNOT INFLATE IT, which is the property the `[SNAPSHOT_CONTENTS]:`
  * count in that file spells out and got wrong once: the found side comes from a
@@ -878,21 +905,38 @@
  * sentence about a route cannot stand in for one and — the direction that
  * matters — deleting a route cannot be masked by adding prose about it.
  *
- * `n` IS AN OCCURRENCE COUNT, not a flag, for the reason `REVIEWABLE_CITATIONS`
- * carries one: a row names a FUNCTION, and a second literal added inside a
- * function that already has a row would otherwise be invisible.
+ * `site` IS A CHAIN OF FUNCTION FRAMES, outermost first. It used to be the
+ * nearest named function, and that collapsed `useMeetDay`'s two `receive` sites
+ * — the boot seed and the post-meet settle, which are structurally different
+ * things — into one row reading `useMeetDay 2`, inside which deleting one and
+ * adding another anywhere in a 150-line hook was invisible. An anonymous
+ * function handed straight to a call takes the callee's name, which is what
+ * separates them.
  *
- *   | kind    | file                          | site                 | n |
- *   |---------|-------------------------------|----------------------|---|
- *   | record  | src/game/sessionServer.ts     | newServerRecord      | 1 |
- *   | record  | src/game/sessionServer.ts     | applyTrainingSession | 1 |
- *   | record  | src/game/meetServer.ts        | applyMeetResult      | 1 |
- *   | record  | src/game/meetPreview.ts       | previewServerRecord  | 1 |
- *   | record  | src/session/sessionPreview.ts | recordBeforeSession  | 1 |
- *   | record  | src/session/sessionPreview.ts | cacheAfterServer     | 1 |
- *   | wire    | src/game/sessionServer.ts     | snapshotWireFor      | 1 |
- *   | receive | src/game/sessionClient.ts     | receiveSnapshot      | 1 |
- *   | receive | src/meet/useMeetDay.ts        | useMeetDay           | 2 |
+ * `n` IS AN OCCURRENCE COUNT, not a flag, for the reason `REVIEWABLE_CITATIONS`
+ * carries one: a row names a FRAME, and a second literal added inside a frame
+ * that already has a row would otherwise be invisible.
+ *
+ *   | kind    | file                          | site                          | n |
+ *   |---------|-------------------------------|-------------------------------|---|
+ *   | record  | src/game/sessionServer.ts     | newServerRecord               | 1 |
+ *   | record  | src/game/sessionServer.ts     | applyTrainingSession          | 1 |
+ *   | record  | src/game/meetServer.ts        | applyMeetResult               | 1 |
+ *   | record  | src/game/meetPreview.ts       | previewServerRecord           | 1 |
+ *   | record  | src/session/sessionPreview.ts | recordBeforeSession           | 1 |
+ *   | record  | src/session/sessionPreview.ts | cacheAfterServer              | 1 |
+ *   | wire    | src/game/sessionServer.ts     | snapshotWireFor               | 1 |
+ *   | receive | src/game/sessionClient.ts     | receiveSnapshot               | 1 |
+ *   | receive | src/meet/useMeetDay.ts        | useMeetDay/useState           | 1 |
+ *   | receive | src/meet/useMeetDay.ts        | useMeetDay/useEffect/setCache | 1 |
+ *
+ * NEITHER ENTRY POINT HOLDS A ROUTE TODAY, and that is a finding rather than a
+ * relief: widening the sweep added no row. `App.tsx` reads `window.location
+ * .search` and renders `AppShell`; `index.ts` loads Skia's WASM and registers
+ * the root component. Neither imports anything from this boundary. So round
+ * seven's TABLE was right and its CHECK was not — the gap was in what could be
+ * seen, not in what was there, which is precisely the gap that only shows up
+ * when somebody writes the route.
  *
  * WHAT EACH KIND IS. `record` is a hand-built `ServerRecord` — the first three
  * are the server functions of 7.1, the last three are the debug previews of
@@ -912,16 +956,69 @@
  * a test fixture reaches no player, persists nothing, and is read by the same
  * reviewer as the assertion beside it.
  *
- * WHAT STILL SLIPS, stated rather than left to be found for a seventh time. A
- * record assembled WITHOUT AN OBJECT LITERAL — `Object.assign({}, rec, { … })`,
- * `structuredClone`, a reflective helper returning `unknown` — has no node for
- * the checker to type, so the scan cannot see it. That is closed by a second,
- * cruder test rather than argued away: no shipped module that can reach
- * `ServerRecord` may contain `Object.assign(`, `structuredClone(` or
- * `as unknown as`, and today none does. A file that imports nothing from this
- * boundary cannot obtain a record to clone, so the two together are the whole
- * surface — but that last step is an ARGUMENT, not a check, and it is the one
- * place a seventh route could still enter without a test noticing.
+ * WHAT STILL SLIPS, stated rather than left to be found for a seventh time —
+ * and stated as a LIST, because the previous version of this paragraph named
+ * one item and then claimed closure ("the two together are the whole surface"),
+ * which is how the scoping defect above survived a round. There is no closure
+ * claim here. These are the links, ranked by how much they defeat:
+ *
+ *   1. A RECORD ASSEMBLED WITHOUT AN OBJECT LITERAL. `Object.assign({}, rec,
+ *      { … })`, `structuredClone`, a reflective helper returning `unknown` —
+ *      no node for the checker to type, so the literal sweep cannot see it.
+ *      Closed by a second, cruder test rather than argued away: no shipped
+ *      module that can reach `ServerRecord` may contain `Object.assign(`,
+ *      `structuredClone(` or `as unknown as`, and today none does. This one
+ *      defeats the literal sweep only.
+ *
+ *   2. THE CANDIDATE SET THAT GUARD RUNS OVER. It is now an IMPORT check
+ *      matching its own argument — a file is a candidate if it declares a
+ *      target type or if any symbol it imports from a repository module has a
+ *      type that REACHES one — which is transitive for free and catches
+ *      `meetPreview.ts`'s `previewServerRecord(): ServerRecord`. It used to be
+ *      a token match on `\b(ServerRecord|ProgressionSnapshotWire|sessionServer|
+ *      localSessionServer)\b`, and `\bServerRecord\b` does not match inside
+ *      `previewServerRecord`: a file importing that obtained a real record,
+ *      matched no trigger, and could have forged one freely. Latent rather than
+ *      live at the time — that function's only shipped consumer also imports
+ *      `sessionServer` — but the token match was an approximation of the
+ *      argument rather than the argument.
+ *      WHAT IS LEFT OF IT: the type walk does not descend into the MEMBERS of a
+ *      type declared in `node_modules` (it does descend into type arguments and
+ *      union arms), so a foreign container exposing a record through a merged
+ *      member would not make its importer a candidate. Nothing does that here.
+ *      The narrowing is a cost control — 53 seconds against 0.4 — and it
+ *      shrinks the guard's coverage, so it is named rather than folded in.
+ *
+ *   3. A FILE THAT IS NOT TYPESCRIPT. The scan sees exactly what
+ *      `tsc --noEmit` compiles, and the "which files" half of that is now
+ *      checked from both ends: `progression.test.ts` walks the repository and
+ *      fails if any `.ts`/`.tsx` outside `node_modules` and outside a
+ *      dot-directory is missing from the project's list, so narrowing
+ *      `tsconfig.json`'s `include` or adding an `exclude` goes red rather than
+ *      quietly shrinking the sweep. THE WALK IS THE CROSS-CHECK, NOT THE ROOT —
+ *      a walk as the root is what produced the defect above, because someone
+ *      has to choose the directory.
+ *      WHAT IS LEFT IS THE EXTENSION. A `.js`, `.jsx` or `.mjs` file is
+ *      invisible to `tsc` and therefore to this. `tools/` is the live example:
+ *      twenty-odd `.mjs` capture and verify scripts, offline, never bundled,
+ *      no player path — and `audit.test.ts` records exactly this limit for
+ *      exactly this reason. Nothing under `src/` or at the root is `.js` today.
+ *      DOT-DIRECTORIES are the other edge: TypeScript's wildcard includes skip
+ *      them, which is what keeps `.claude/worktrees/` — complete second
+ *      checkouts of this repository — out of the program. That is load-bearing
+ *      (`audit.test.ts` was once red with 24 findings from another agent's
+ *      tree) and is pinned by an assertion rather than trusted.
+ *
+ *   4. TWO LITERALS IN ONE FRAME, one deleted and one added. `n` catches a
+ *      second literal appearing (the count moves) and catches one disappearing,
+ *      but a swap inside the same frame leaves the row identical. The frame is
+ *      now as fine as the syntax allows without noise — a call's callee names
+ *      its arrow, which is what split `useMeetDay` — but two records at MODULE
+ *      scope in one file still share `<module>`. Smallest of the four; a review
+ *      catches it and a test does not.
+ *
+ * There is no "and therefore nothing else" sentence here. Three rounds of this
+ * section ended with one, and two of the three were wrong.
  */
 
 import type { BodyweightReading, OfficialTotalKg } from './dots';
