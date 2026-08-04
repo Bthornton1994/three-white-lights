@@ -592,9 +592,29 @@ describe('the reviewable citation list', () => {
     // codebase.
     expect(
       INVENTORY_ROWS,
-      `\nPaste this into REVIEWABLE_CITATIONS, then read every changed line:\n\n${formatCitations(
-        INVENTORY_ROWS,
-      )}\n\nWith locations:\n${formatMentions(MENTIONS)}\n`,
+      [
+        '',
+        'THE REAL-NAME INVENTORY CHANGED.',
+        '',
+        'If a row was ADDED: read it. A real athlete, brand or federation name is',
+        'now somewhere it was not. If it is a published-record citation, keep it and',
+        'paste the block below. If it is anything else, delete the name instead.',
+        '',
+        'If a row was REMOVED: a citation went away. That is fine after a deliberate',
+        'edit and is a problem if nobody meant it — deleting provenance is the',
+        'cheapest way to make this test green and the most expensive way to fail the',
+        'codebase.',
+        '',
+        'IF THIS FIRED ON A MERGE and you did not touch the file named, it is the',
+        'other branch: this list is computed from the whole tree, so another',
+        "builder's edit to a comment moves it. Paste the block and read the diff.",
+        '',
+        formatCitations(INVENTORY_ROWS),
+        '',
+        'With locations:',
+        formatMentions(MENTIONS),
+        '',
+      ].join('\n'),
     ).toEqual([...REVIEWABLE_CITATIONS]);
   });
 

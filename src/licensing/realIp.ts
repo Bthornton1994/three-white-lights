@@ -819,6 +819,23 @@ export function formatCitations(rows: readonly CitationRow[]): string {
  *
  * REGENERATE, DO NOT HAND-EDIT: `realIp.test.ts` prints the exact block on
  * failure. Paste it, then read every changed line.
+ *
+ * ---------------------------------------------------------------------------
+ * THE COST OF PINNING COUNTS, AND WHY IT IS PAID
+ * ---------------------------------------------------------------------------
+ * This list is computed from THE WHOLE TREE, so an unrelated builder editing a
+ * comment in `palette.ts` moves it. That is a real cost on a run with several
+ * parallel worktrees, and it is paid on purpose: dropping the counts would make
+ * a SECOND mention in an already-listed file invisible, and "this file already
+ * cites one real name" is exactly the place a second one would be added without
+ * anyone looking.
+ *
+ * KNOWN DIVERGENCE AT THE TIME OF WRITING, so whoever merges does not have to
+ * work it out: this branch was cut before `src/art/gymPalette.ts` lost its
+ * federation reference on the integration branch. On merge, the
+ * `src/art/gymPalette.ts` row below will be one row too many and the suite will
+ * say so. Delete that line. Every other file with a row here is byte-identical
+ * on both branches — checked, not assumed.
  */
 export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/GDD.md', name: 'NPL', where: 'prose', count: 1 },
