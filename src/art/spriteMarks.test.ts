@@ -226,20 +226,29 @@ const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
   // on the thigh; 0.5 is what stops that being given back quietly.
   'QUAD_SWEEP_NEAR|ALL': 0.5,
   'QUAD_SWEEP_FAR|ALL': 0.5,
-  // 56.0%, both sides equally. The shoe's dark upper is a four-row map on a
-  // three-row shoe (`RIG_GEOMETRY.FOOT_H`), so its bottom row is always on the
-  // sole or the platform. That is a mark-table defect rather than an occlusion
-  // one and it is NOT this round's to fix; pinned here so it cannot get worse
-  // while nobody is looking.
+  // 56.0%, both sides equally, and NOT a defect: the laces are stamped on top of
+  // it. All three shoe bands are nine-px maps at the same anchor, and the shoe is
+  // drawn about seven px wide (`FOOT_W` 9 less `EDGE_INSET_PX` at each end), so
+  // SHOE_COLLAR and SHOE_SOLE both land 78.2% — the outer columns fall off the
+  // shoe. SHOE_UPPER shares its row with SHOE_LACES, two px of chalk applied
+  // AFTER it, and 78.2% - 2/9 = 56.0% exactly. `markPixelsInGrid` counts a pixel
+  // a later mark legitimately won as not landed; the 'reports placements that
+  // agree with the finished grid' test below is the one that handles contested
+  // pixels properly. Pinned here so the band cannot quietly lose more than the
+  // laces take.
   'SHOE_UPPER|ALL': 0.5,
   'SHOE_UPPER|NEAR': 0.5,
   'SHOE_UPPER|FAR': 0.5,
   // 63.7% aggregate, 99.8% near, 27.5% far. THE FAR STRAP IS THE ONE THAT
-  // MATTERS. The far arm is drawn after the torso and its deltoid covers the
-  // strap's outer flank, so the seam survives in 210 of 416 frames rather than
-  // all of them. That much is anatomy — from the front a deltoid does overlap a
-  // singlet strap — and it is why this gets a floor instead of a place in
-  // `alwaysOn`, which it could not meet.
+  // MATTERS, and what eats it is the far ARM — not the deltoid, which
+  // `drawTorso` draws BEFORE the straps and therefore cannot cover them.
+  // `renderLifterFrame` draws the whole torso, then `drawArm(sign +1)`, and at
+  // BRACE the upper arm's shoulder end sits on axis x = CENTER_X + 6.806 with a
+  // 2.7 radius and a px of contour, which spans the seam's column at the top of
+  // its three-row run and has moved outboard of it by the bottom row. So the
+  // seam survives in 210 of 416 frames, partially. That much is anatomy — from
+  // the front an arm does cross a singlet strap — and it is why this gets a
+  // floor rather than a place in `alwaysOn`, which it could not meet.
   //
   // What the floor is FOR is the other direction: every px of upper arm added
   // inboard comes straight off this number, and nothing else in the suite can
@@ -247,12 +256,17 @@ const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
   // aggregate to 55.1%; at 3.4, 2.7% and 49.6%. Both fire here, on both keys.
   'STRAP_SEAM|ALL': 0.6,
   'STRAP_SEAM|FAR': 0.25,
-  // 64.1% far against 92.3% near. The bar's contact shadow is a three-px run on
-  // the trap, and on the far side the trap is dimmer and narrower. Found by
-  // turning the per-side floor on — the aggregate is 78.2% and cleared the
-  // general floor comfortably, which is exactly the blindness the strap had.
-  // Recorded and pinned rather than fixed: it is a mark-placement question for
-  // whoever owns the trap, not part of the revert this round is.
+  // 64.1% far against 92.3% near, and THE CAUSE IS NOT DIAGNOSED — said plainly
+  // rather than guessed at, because the exception beside it (SHOE_UPPER) had a
+  // plausible-sounding mechanism written for it that the arithmetic then refuted.
+  // What is measured is the asymmetry and nothing else.
+  //
+  // It was found by turning the per-side floor on, and it is the second thing
+  // that found: the aggregate is 78.2% and cleared the general floor
+  // comfortably, which is exactly the blindness that hid the strap. Recorded and
+  // pinned rather than fixed — a bar-contact cue that lands on two thirds of the
+  // far trap is a mark-placement question for whoever owns the trap, and this
+  // round is a revert.
   'TRAP_BAR_SHADOW|FAR': 0.6,
 };
 
