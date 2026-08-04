@@ -890,6 +890,26 @@ export function meetSeedFor(context: MeetDayContext): number {
   return context.day;
 }
 
+/**
+ * How hard the lifter is DRAWN while a bar of `weightKg` is on his back.
+ *
+ * The same quantity `LiveAttempt.loadRatio` carries, exposed for the staged
+ * beats that only have a finished attempt to work from — the deliberation and
+ * the verdict, where `MeetHallView` still has to put a figure under a loaded
+ * bar.
+ *
+ * IT IS A DRAWING INPUT AND NOTHING ELSE. It does not reach the mechanic, the
+ * judging model or the engine; `attemptConfigFor` is the only thing that decides
+ * what an attempt is played at, and it reads `LiveAttempt.loadRatio`.
+ */
+export function stageLoadRatio(
+  context: MeetDayContext,
+  lift: LiftKind,
+  weightKg: number,
+): number {
+  return scrub(weightKg / context.bestE1rmKg[lift]);
+}
+
 function liveAttemptFor(
   context: MeetDayContext,
   state: MeetState,

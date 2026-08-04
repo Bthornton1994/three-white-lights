@@ -374,10 +374,38 @@ describe('MEET_LAYOUT', () => {
   });
 
   it('is authored for a phone rather than a desktop', () => {
+    // `BAR_W` used to be checked here. It sized the walkout's own vector
+    // barbell, which is gone — the walkout draws the sprite's bar now — so the
+    // widest authored row left is the recap's attempt board.
     const PHONE_WIDTH_PT = 390;
-    expect(MEET_LAYOUT.BAR_W).toBeLessThan(PHONE_WIDTH_PT);
     expect(MEET_LAYOUT.BOARD_LABEL_W + MEET_LAYOUT.BOARD_CELL_W * 3).toBeLessThan(
       PHONE_WIDTH_PT - MEET_LAYOUT.SCREEN_PAD * 2,
     );
+    // ...and the staged beats hand the room the whole width of that phone, at
+    // the integer scale GDD §7.1 requires, so there is no fractional column.
+    expect(LIFT_TUNING.LAYOUT.STAGE_W).toBe(PHONE_WIDTH_PT);
+  });
+});
+
+describe('MEET_TUNING.HALL (GDD §12.2 — the beats happen somewhere)', () => {
+  it('holds the room back hardest where there is most to read', () => {
+    // The ORDERING is the design claim; the values are a starting point that
+    // nobody has looked at on a phone (see the header of `meetTuning.ts`). The
+    // walkout is three short lines over the hall and the hall is the beat; the
+    // judging screen has to let three lamps be the brightest thing on it; the
+    // attempt choice is a decision with a paragraph on each card.
+    expect(MEET_TUNING.HALL.WALKOUT_SCRIM).toBeLessThan(MEET_TUNING.HALL.JUDGING_SCRIM);
+    expect(MEET_TUNING.HALL.JUDGING_SCRIM).toBeLessThan(MEET_TUNING.HALL.CHOICE_SCRIM);
+  });
+
+  it('never removes the room outright, and never leaves it at full strength', () => {
+    // A scrim of 1 is the black field this piece was sent back for; a scrim of 0
+    // under a paragraph is a room competing with the thing the player must read.
+    for (const [name, value] of Object.entries(MEET_TUNING.HALL)) {
+      expect(value, name).toBeGreaterThan(0);
+      expect(value, name).toBeLessThan(1);
+    }
+    // ...and the loop is not vacuous.
+    expect(Object.keys(MEET_TUNING.HALL).length).toBe(3);
   });
 });

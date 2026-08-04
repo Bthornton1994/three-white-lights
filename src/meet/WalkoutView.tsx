@@ -8,11 +8,38 @@
  * sequence produce comparable dread and anticipation? Judge pacing and sound,
  * not sprite count."
  *
- * The screen is deliberately almost empty. There is no button, nothing to tap,
- * and no way to skip: the lifter is under the bar and the only thing that ends
- * this beat is time. Everything on it is the bar, its weight, and one line —
- * and which line depends on what the attempt is worth, which is where the
- * escalation lives:
+ * ---------------------------------------------------------------------------
+ * IT HAPPENS IN A BUILDING NOW, AND THAT IS THE CHANGE
+ * ---------------------------------------------------------------------------
+ * This screen used to be a black field with an abstract barbell on it and two
+ * lines of text. Its own header called itself "deliberately almost empty" — but
+ * minimalism is not the same thing as absence of place, and a broadcast walkout
+ * is the moment the hall is MOST visible. The crowd is on its feet, the spotters
+ * are stepping back, the panel is seated. Ours removed the building.
+ *
+ * So `MeetHallView` draws the same meet platform the attempt is lifted on —
+ * same box, same integer scale, same lattice — with the lifter standing under
+ * the bar, and the copy sits above it. The cut from this beat to the rep is a
+ * cut inside one continuous shot.
+ *
+ * ---------------------------------------------------------------------------
+ * AND THE BAR IS THE SPRITE'S BAR
+ * ---------------------------------------------------------------------------
+ * The old bar was `Animated.View`s with `backgroundColor`, `borderColor` and
+ * `borderRadius`: anti-aliased vector rectangles, two seconds before the player
+ * squatted a chunky nearest-neighbour bar with knurl rings and collars. Two art
+ * styles for one object on the highest-value screen in the game, and GDD §7.1
+ * commits to a fixed internal resolution and nearest-neighbour scaling
+ * throughout. `plateStackFor` and its rectangles are gone; the plates that land
+ * here are `renderLifterFrame`'s own discs, revealed inboard-first by a clip.
+ * See `meetHall.ts`.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IS STILL DELIBERATELY ABSENT
+ * ---------------------------------------------------------------------------
+ * There is no button, nothing to tap, and no way to skip: the lifter is under
+ * the bar and the only thing that ends this beat is time. The line depends on
+ * what the attempt is worth, which is where the escalation lives:
  *
  *   opener / second attempt   "WALK IT OUT"
  *   third attempt             "LAST ONE"
@@ -23,29 +50,22 @@
  * third-attempt PR with a bomb on the line is both the loudest line and the
  * longest silence in the piece.
  *
- * WHAT IS NOT HERE, AND WHY. GDD §7.2 puts "third-attempt walkout at a meet"
- * first on its cut-in list and then says to "cut art entirely from the early
- * prototypes. Placeholder rectangles until meet day is proven to land." So this
- * beat fires no cut-in. §12.3 makes more than one cut-in per session a refusal
- * condition; firing none is inside that rule, and the gate belongs to whoever
- * builds the cut-in piece.
+ * NO CUT-IN. GDD §7.2 puts "third-attempt walkout at a meet" first on its
+ * cut-in list and then says to "cut art entirely from the early prototypes".
+ * §12.3 makes more than one cut-in per session a refusal condition; firing none
+ * is inside that rule, and the gate belongs to whoever builds the cut-in piece.
  *
- * WHAT IT IS FELT AND HEARD AS. §12.2 judges this beat on "pacing AND SOUND",
- * so it now has both. Each plate lands with its own thud and its own rattle on
- * `BAR_LOAD_PLATE_STAGGER_MS`; the call arrives with a crowd swell under it,
- * bigger when the attempt is a third, a PR or a bomb risk. One `playBeat` call
- * per moment fires both from one schedule — which cue and which pattern a
- * moment gets are `soundForBeat` / `hapticForBeat` in `meetDay.ts`, and this
- * file only says when.
+ * WHAT IT IS FELT AND HEARD AS. Each plate lands with its own thud and its own
+ * rattle on `BAR_LOAD_PLATE_STAGGER_MS` — the same constant the clip steps on,
+ * so what is seen and what is heard are one schedule. The call arrives with a
+ * crowd swell under it, bigger when the attempt is a third, a PR or a bomb risk.
  *
  * NONE OF IT HAS BEEN HEARD OR FELT BY ANYBODY. Web has no haptic engine, and
  * no capture in this repository records audio, so no critic in this environment
- * can check either half (GDD §12.1). The cues are synthesised from
- * `MEET_SOUND` — read that block before trusting a value.
+ * can check either half (GDD §12.1).
  *
- * NO ARITHMETIC HERE. The plate stack is drawn from the weight and the bar, and
- * `plateStackFor` lives in `meetPlates.ts` because CLAUDE.md forbids computing
- * a load inside a `.tsx` file.
+ * NO ARITHMETIC HERE. The stack, the pose and the reveal geometry are all
+ * `meetHall.ts`'s, which is pure and tested.
  */
 
 import React from 'react';
@@ -53,61 +73,32 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
+import { LIFT_TUNING } from '../game/liftTuning';
 import type { LiveAttempt } from '../game/meetDay';
 import { playBeat } from './meetFeedback';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
 import { formatWeight } from '../game/resultCard';
-import { plateStackFor, type PlateMark } from './meetPlates';
+import { hallPlateCount } from './meetHall';
+import { MeetHallView } from './MeetHallView';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
-
-/**
- * One plate, landing on its own beat so the bar loads rather than appears.
- *
- * `felt` is false on the mirrored sleeve: both sleeves are drawn and both are
- * staggered identically, so firing a haptic from each would double every thud
- * and make a six-plate bar feel like a twelve-plate one.
- */
-function Plate({
-  plate,
-  index,
-  felt,
-}: {
-  readonly plate: PlateMark;
-  readonly index: number;
-  readonly felt: boolean;
-}): React.ReactElement {
-  const shown = useSharedValue(0);
-  React.useEffect(() => {
-    const at = index * MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS;
-    shown.value = withDelay(at, withTiming(1, { duration: MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS }));
-    if (!felt) return undefined;
-    // Same constant as the fade, so what is seen and what is felt are the same
-    // event rather than two schedules that can drift.
-    const timer = setTimeout(() => playBeat({ kind: 'bar-plate' }), at);
-    return () => clearTimeout(timer);
-  }, [felt, index, shown]);
-  const style = useAnimatedStyle(() => ({ opacity: shown.value }));
-  return (
-    <Animated.View
-      style={[
-        styles.plate,
-        { height: plate.heightPt, backgroundColor: plate.colour, borderColor: plate.edgeColour },
-        style,
-      ]}
-    />
-  );
-}
 
 export interface WalkoutViewProps {
   readonly attempt: LiveAttempt;
   readonly liftLabel: string;
   readonly barAndCollarsKg: number;
+  /** Attempt weight over the lifter's best single. Drawn strain, nothing else. */
+  readonly loadRatio: number;
 }
 
-export function WalkoutView({ attempt, liftLabel, barAndCollarsKg }: WalkoutViewProps): React.ReactElement {
-  const stack = plateStackFor(attempt.weightKg, barAndCollarsKg);
+export function WalkoutView({
+  attempt,
+  liftLabel,
+  barAndCollarsKg,
+  loadRatio,
+}: WalkoutViewProps): React.ReactElement {
+  const plateCount = hallPlateCount(attempt.weightKg, barAndCollarsKg);
   const line = attempt.bombRisk
     ? MEET_COPY.WALKOUT_BOMB_RISK
     : attempt.isPrAttempt
@@ -116,6 +107,29 @@ export function WalkoutView({ attempt, liftLabel, barAndCollarsKg }: WalkoutView
         ? MEET_COPY.WALKOUT_THIRD
         : MEET_COPY.WALKOUT_PROMPT;
   const urgent = attempt.bombRisk || attempt.isPrAttempt || attempt.attemptNumber === ATTEMPTS_PER_LIFT;
+
+  // THE BAR LOADS. One disc per side per `BAR_LOAD_PLATE_STAGGER_MS`, and the
+  // same tick fires the thud and the rattle — one schedule, so what is seen and
+  // what is felt cannot drift apart. The mirrored sleeve is drawn by the same
+  // sprite and deliberately fires nothing of its own: a six-plate bar that
+  // buzzed twelve times would feel like a twelve-plate one.
+  const [platesLoaded, setPlatesLoaded] = React.useState(0);
+  React.useEffect(() => {
+    setPlatesLoaded(0);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 0; i < plateCount; i += 1) {
+      const at = i * MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS;
+      timers.push(
+        setTimeout(() => {
+          setPlatesLoaded(i + 1);
+          playBeat({ kind: 'bar-plate' });
+        }, at),
+      );
+    }
+    return () => {
+      for (const timer of timers) clearTimeout(timer);
+    };
+  }, [plateCount, attempt.lift, attempt.attemptNumber]);
 
   const revealed = useSharedValue(0);
   React.useEffect(() => {
@@ -137,42 +151,31 @@ export function WalkoutView({ attempt, liftLabel, barAndCollarsKg }: WalkoutView
 
   return (
     <View style={styles.root} testID="meet-walkout">
-      <Text style={styles.eyebrow} testID="walkout-attempt">
-        {`${liftLabel} · ${MEET_COPY.ATTEMPT_LABEL} ${attempt.attemptNumber} ${MEET_COPY.ATTEMPT_OF} ${ATTEMPTS_PER_LIFT}`}
-      </Text>
+      <View style={styles.copy}>
+        <Text style={styles.eyebrow} testID="walkout-attempt">
+          {`${liftLabel} · ${MEET_COPY.ATTEMPT_LABEL} ${attempt.attemptNumber} ${MEET_COPY.ATTEMPT_OF} ${ATTEMPTS_PER_LIFT}`}
+        </Text>
 
-      <Text style={styles.weight} testID="walkout-weight">
-        {formatWeight(attempt.weightKg)}
-      </Text>
+        <Text style={styles.weight} testID="walkout-weight">
+          {formatWeight(attempt.weightKg)}
+        </Text>
 
-      <View style={styles.bar} testID="walkout-bar">
-        {/* HEAVIEST INBOARD, both sides — the order a real loading crew works
-            in, and the reason the left sleeve is drawn in reverse. The stagger
-            index runs the same way, so the 25s land first and the change discs
-            last. */}
-        <View style={styles.sleeve}>
-          {[...stack].reverse().map((plate, index) => (
-            <Plate
-              key={`l-${plate.weightKg}-${index}`}
-              plate={plate}
-              index={stack.length - index - 1}
-              felt={false}
-            />
-          ))}
-        </View>
-        <View style={styles.shaft} />
-        <View style={styles.sleeve}>
-          {stack.map((plate, index) => (
-            <Plate key={`r-${plate.weightKg}-${index}`} plate={plate} index={index} felt />
-          ))}
-        </View>
+        <Animated.View style={lineStyle}>
+          <Text style={[styles.line, urgent ? styles.lineUrgent : null]} testID="walkout-line">
+            {line}
+          </Text>
+        </Animated.View>
       </View>
 
-      <Animated.View style={lineStyle}>
-        <Text style={[styles.line, urgent ? styles.lineUrgent : null]} testID="walkout-line">
-          {line}
-        </Text>
-      </Animated.View>
+      <MeetHallView
+        lifter={{
+          totalKg: attempt.weightKg,
+          barAndCollarsKg,
+          loadRatio,
+          platesLoaded,
+        }}
+        scrim={MEET_TUNING.HALL.WALKOUT_SCRIM}
+      />
     </View>
   );
 }
@@ -181,10 +184,21 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    // The hall is pinned to the bottom of the frame on every staged beat, so its
+    // floor is the floor of the screen and the copy sits in the dark above it.
+    justifyContent: 'flex-end',
     backgroundColor: MEET_PALETTE.WALKOUT_BACKDROP,
+  },
+  copy: {
+    // Whatever is left above the hall, with the copy centred in it. Reading the
+    // stage's own height rather than restating it keeps the two from drifting.
+    flex: 1,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: L.SCREEN_PAD,
-    gap: L.SECTION_GAP,
+    gap: L.ROW_GAP,
+    maxHeight: LIFT_TUNING.LAYOUT.STAGE_H,
   },
   eyebrow: {
     color: MEET_PALETTE.WALKOUT_TEXT,
@@ -195,30 +209,6 @@ const styles = StyleSheet.create({
     color: MEET_PALETTE.TEXT,
     fontSize: L.BIG_NUMBER_FONT,
     fontWeight: '700',
-  },
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: L.BAR_W,
-    height: L.PLATE_MAX_H,
-  },
-  sleeve: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: L.PLATE_GAP,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  shaft: {
-    width: L.BAR_W / 2,
-    height: L.BAR_H,
-    backgroundColor: MEET_PALETTE.WALKOUT_TEXT,
-  },
-  plate: {
-    width: L.PLATE_W,
-    borderWidth: L.DIVIDER_HEIGHT,
-    borderRadius: L.PLATE_GAP,
   },
   line: {
     color: MEET_PALETTE.WALKOUT_TEXT,

@@ -38,11 +38,16 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { BAR_AND_COLLARS_KG, visualPlateStack } from '../art/plates';
 import { LIFT_TUNING, type HapticPattern, type HapticStyle } from '../game/liftTuning';
 import { MEET_BEAT_KINDS, hapticForBeat, type MeetBeat } from '../game/meetDay';
 import { MEET_TUNING } from '../game/meetTuning';
+import { hallPlateCount } from './meetHall';
 
 const SRC = path.join(__dirname, '..');
+
+/** A bar with enough discs a side that six and twelve are distinguishable. */
+const LOADED_BAR_KG = 220;
 
 const WALKOUT = 'meet/WalkoutView.tsx';
 const VERDICT = 'meet/VerdictView.tsx';
@@ -270,11 +275,23 @@ describe('the four meet screens fire the beats they own', () => {
   });
 
   it('fires one thud per plate rather than two', () => {
-    // Both sleeves are drawn and both are staggered identically. A haptic from
-    // each would make a six-plate bar feel like a twelve-plate one, so the
-    // mirrored sleeve is drawn `felt={false}`.
+    // A six-plate bar must feel like a six-plate bar, not a twelve-plate one.
+    //
+    // THIS USED TO BE ENFORCED BY A `felt={false}` FLAG on the mirrored sleeve,
+    // because the walkout drew each sleeve as its own stack of `<View>`s. It no
+    // longer draws a bar at all — the sprite does, both sleeves in one image
+    // (GDD §7.1) — so the property is now structural: one loop, over the discs
+    // on ONE side, with one `playBeat` in it.
     const source = read(WALKOUT);
-    expect(source).toContain('felt={false}');
-    expect(source).toContain('if (!felt) return undefined;');
+    expect(source).toContain('const plateCount = hallPlateCount(');
+    expect(source).toMatch(/for \(let i = 0; i < plateCount; i \+= 1\)/);
+    const thuds = source.split("playBeat({ kind: 'bar-plate' })").length - 1;
+    expect(thuds, 'more than one place fires the plate thud').toBe(1);
+
+    // ...and `hallPlateCount` really is per side rather than per disc on the
+    // bar, which is the thing the old flag was protecting.
+    const perSide = visualPlateStack(LOADED_BAR_KG, BAR_AND_COLLARS_KG).perSide.length;
+    expect(hallPlateCount(LOADED_BAR_KG, BAR_AND_COLLARS_KG)).toBe(perSide);
+    expect(perSide, 'the fixture bar has too few plates to tell 6 from 12').toBeGreaterThan(1);
   });
 });

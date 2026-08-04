@@ -210,7 +210,18 @@ export function LiftStage({
           platform is a patch of the wrong colour in the right place. */}
       <ContactShadowLayer scene={scene} frame={liftFrameSpec(state, totalKg)} />
 
-      {/* --- bar-path plot -------------------------------------------- */}
+      {/* --- bar-path plot --------------------------------------------
+          THE BEZEL IS NOT DECORATION. Composited over a room rather than over a
+          flat backdrop, an unedged opaque rectangle reads as a HOLE CUT IN THE
+          WALL: the crowd rows run up to it, stop, and continue in the sliver on
+          the other side. One keyline turns it into a board mounted on the wall,
+          which is a thing a hall can contain.
+
+          IT IS A PARTIAL FIX AND SAYS SO. The sliver is still there, because
+          removing it means moving the panel flush to the frame's right edge —
+          `LIFT_TUNING.LAYOUT.TRACE_X` from 300 to 312 — and that is the rep's
+          own geometry, shared with the daily session, rather than this screen's.
+          `GYM_STAGE_CHROME` would move with it. */}
       <Group>
         <Rect
           x={L.TRACE_X}
@@ -218,6 +229,15 @@ export function LiftStage({
           width={L.TRACE_W}
           height={L.TRACE_BOTTOM - L.TRACE_TOP}
           color={LIFT_PALETTE.PANEL}
+        />
+        <Rect
+          x={L.TRACE_X}
+          y={L.TRACE_TOP}
+          width={L.TRACE_W}
+          height={L.TRACE_BOTTOM - L.TRACE_TOP}
+          color={LIFT_PALETTE.PANEL_EDGE}
+          style="stroke"
+          strokeWidth={1}
         />
         {/* The sticking point, as a band rather than a line: it has width. */}
         <Rect

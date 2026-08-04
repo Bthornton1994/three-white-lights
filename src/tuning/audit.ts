@@ -258,7 +258,7 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
   'src/meet/meetPalette.ts': Object.freeze({
     role: 'palette',
     kind: 'colour',
-    why: 'Screen chrome for meet day, built on LIFT_PALETTE, plus MEET_PLATE_COLOURS — the competition plate ladder as CSS (GDD §7.1: the colour coding is free visual language). The denominations themselves are src/art/plates.ts\u2019s.',
+    why: 'Screen chrome for meet day, built on LIFT_PALETTE. It carries no plate colours any more: the walkout draws the SPRITE\u2019s bar (src/meet/meetHall.ts), so a competition disc is coloured once, in src/art/palette.ts, rather than in two colour spaces that could drift.',
   }),
 
   // --- feel blocks that live with their mechanic ---------------------------

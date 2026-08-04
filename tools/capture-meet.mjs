@@ -114,8 +114,35 @@ page.on('console', (m) => {
   if (m.type() === 'error') errors.push(m.text());
 });
 
+/**
+ * Which beats must happen in the meet hall, and which deliberately must not.
+ *
+ * Restated here rather than imported for the same reason `MOMENTS` is: this
+ * tool is a second, independent statement, and a capture that agreed with a
+ * broken module by construction would be worth nothing. `meetStage.test.ts`
+ * holds the same split as `STAGED_BEATS` / `UNSTAGED_BEATS`.
+ *
+ * The unstaged ones are the pre-meet paperwork (weigh-in, openers), the recap,
+ * and the bomb-out — where GDD §6.3 wants a somber, emptied room and the empty
+ * field IS the beat.
+ */
+const STAGED = new Set([
+  'walkout',
+  'walkout-third',
+  'lift',
+  'deliberation',
+  'verdict-good',
+  'verdict-split',
+  'verdict-no-lift',
+  'verdict-split-red',
+  'select-after-make',
+  'select-after-miss',
+]);
+
 const notes = [];
 let wrong = 0;
+let roomless = 0;
+let blocked = 0;
 
 for (const moment of MOMENTS) {
   await page.goto(`${url}?meet=${moment}`, { waitUntil: 'load' });
@@ -139,7 +166,31 @@ for (const moment of MOMENTS) {
       return node === null ? null : node.textContent;
     };
     const present = (id) => document.querySelector(`[data-testid="${id}"]`) !== null;
+    // WHICH BEATS HAVE A BUILDING IN THEM. Counted off the DOM rather than
+    // asserted from the source, because the whole failure this run sent the
+    // piece back for was a suite that named the room on one screen and a
+    // sequence of frames that showed it on one screen. `meet-hall` is the
+    // `MeetHallView` canvas; `attempt-touch` wraps the rep's own `LiftStage`,
+    // which draws the same room a different way.
+    const halls =
+      document.querySelectorAll('[data-testid="meet-hall"]').length +
+      document.querySelectorAll('[data-testid="attempt-touch"] canvas').length;
+    // AND THE ROOM DOES NOT EAT THE DECISION. The attempt-choice screen draws
+    // its hall as an absolutely-positioned layer that OVERLAPS both cards, so
+    // "is the card still the thing under the player's thumb" is a real question
+    // with a real way to be wrong. Answered by hit-testing the card's own centre
+    // rather than by trusting `pointerEvents`.
+    const hitTest = ['repeat', 'small', 'big']
+      .map((id) => document.querySelector(`[data-testid="attempt-option-${id}"]`))
+      .filter((card) => card !== null)
+      .map((card) => {
+        const box = card.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return card.contains(hit) || card === hit;
+      });
     return {
+      halls,
+      cardsHittable: hitTest.length === 0 ? null : hitTest.every(Boolean),
       screens: [
         'meet-weigh-in',
         'meet-openers',
@@ -179,8 +230,16 @@ for (const moment of MOMENTS) {
 
   const rightScreen = showed && seen.screens.includes(expected);
   if (!rightScreen) wrong += 1;
-  notes.push({ moment, file: path.basename(file), expected, rightScreen, seen });
-  console.log(`${moment.padEnd(20)} -> ${path.basename(file)}  ${rightScreen ? 'ok' : `!! EXPECTED ${expected}, SAW ${seen.screens.join(',') || 'nothing'}`}`);
+  const wantsHall = STAGED.has(moment);
+  const staged = seen.halls > 0;
+  if (wantsHall !== staged) roomless += 1;
+  if (seen.cardsHittable === false) blocked += 1;
+  notes.push({ moment, file: path.basename(file), expected, rightScreen, staged, seen });
+  console.log(
+    `${moment.padEnd(20)} -> ${path.basename(file)}  ${rightScreen ? 'ok' : `!! EXPECTED ${expected}, SAW ${seen.screens.join(',') || 'nothing'}`}` +
+      `  hall:${staged ? 'yes' : 'no '}${wantsHall === staged ? '' : ' !! EXPECTED ' + (wantsHall ? 'A HALL' : 'NO HALL')}` +
+      `${seen.cardsHittable === null ? '' : seen.cardsHittable ? '  cards:hittable' : '  !! THE ROOM IS EATING THE CARDS'}`,
+  );
 }
 
 // Every scripted beat must be a DIFFERENT screen's worth of text. Three copies
@@ -237,5 +296,9 @@ if (errors.length > 0) {
 }
 await browser.close();
 console.log(`\nwrote ${notes.length} frames to ${outDir}`);
-console.log(`${wrong} frame(s) showed the wrong screen; ${duplicates} duplicate frame(s)`);
-process.exit(wrong === 0 && duplicates === 0 ? 0 : 1);
+console.log(
+  `${wrong} frame(s) showed the wrong screen; ${duplicates} duplicate frame(s); ` +
+    `${roomless} frame(s) had the wrong answer to "is there a building in this shot"; ` +
+    `${blocked} frame(s) had the room sitting on top of the attempt cards`,
+);
+process.exit(wrong === 0 && duplicates === 0 && roomless === 0 && blocked === 0 ? 0 : 1);
