@@ -113,8 +113,22 @@ describe('the shell is the join, and it is the only one', () => {
     // The screen being routed to reports its beat in an effect, a commit later.
     // Without these, a meet opened after a previous one ended shows the recap's
     // "way back" over its weigh-in for a frame.
-    expect(SHELL).toMatch(/setMeetPhase\(null\);\s*\n\s*setRoute\(\(current\) => navigate\(current, ''\)\)/);
-    expect(SHELL).toMatch(/setSessionPhase\(null\);\s*\n\s*setRoute\(\(current\) => navigate\(current, ''\)\)/);
+    //
+    // The cut-in flag is cleared in the same two places and for the same
+    // reason — the host on the surface being left un-mounts — so the pattern
+    // now allows anything BETWEEN the phase reset and the navigate, and the
+    // test above pins that what is in there is `setCutInLive(false)`.
+    expect(SHELL).toMatch(
+      /setMeetPhase\(null\);[\s\S]{0,80}?setRoute\(\(current\) => navigate\(current, ''\)\)/,
+    );
+    expect(SHELL).toMatch(
+      /setSessionPhase\(null\);[\s\S]{0,80}?setRoute\(\(current\) => navigate\(current, ''\)\)/,
+    );
+    // ...and the reset still has to be there: a `setRoute` with no phase reset
+    // before it does not match, which is the failure this exists for.
+    expect(codeOnly('setRoute((current) => navigate(current, "open-meet"));')).not.toMatch(
+      /setMeetPhase\(null\);[\s\S]{0,80}?setRoute\(\(current\) => navigate\(current, ''\)\)/,
+    );
   });
 
   it('the screens actually REPORT their beat, rather than only accepting the prop', () => {
@@ -157,6 +171,50 @@ describe('the shell is the join, and it is the only one', () => {
     // The gate must be the thing that decides, so the pill cannot be rendered
     // unconditionally next to it.
     expect(SHELL).toMatch(/affordance === null \? null :/);
+  });
+
+  it('tells the gate whether a GDD §7.2 cut-in is up, and is told by the hosts', () => {
+    // THE HALF NO PURE TEST CAN SEE. `shellRoute.test.ts` pins that a live
+    // cut-in takes the chrome off every beat; that is worth nothing if the
+    // shell never passes the argument, which is exactly the shape of the
+    // `onPhase` defect this file already carries a scan for.
+    //
+    // The chain, in three links, all pinned here:
+    //   the shell holds the flag and feeds it to the gate...
+    expect(SHELL).toMatch(/cutInLive \? '' : ''/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/cutInLive \? 'live' : 'none'/);
+    //   ...it hands `setCutInLive` to BOTH surfaces...
+    expect(source('src/shell/AppShell.tsx').match(/onCutIn=\{setCutInLive\}/g)?.length).toBe(2);
+    //   ...and each surface forwards it to the host that owns the answer.
+    expect(SESSION_SCREEN).toMatch(/onLive=\{onCutIn\}/);
+    expect(MEET_SCREEN).toMatch(/onLive=\{onCutIn\}/);
+    // The host really reports it, rather than accepting the prop and dropping
+    // it — the same failure `onPhase` had, and invisible to a type.
+    const HOST = codeOnly(source('src/cutin/CutInHost.tsx'));
+    expect(HOST).toMatch(/onLive\?\.\(live !== null\)/);
+    expect(HOST).toMatch(/onLive\?\.\(false\)/);
+    // And the flag is cleared on the way between surfaces, like the phases, so
+    // a host that un-mounted mid-cut-in cannot leave the next screen bare.
+    expect(source('src/shell/AppShell.tsx').match(/setCutInLive\(false\)/g)?.length).toBe(2);
+    // The scans can see what they are looking for, and can see it change.
+    expect(codeOnly("const a = x ? 'live' : 'none';")).toMatch(/x \? '' : ''/);
+    expect(codeOnly('onLive?.(true);')).not.toMatch(/onLive\?\.\(live !== null\)/);
+  });
+
+  it('the `?cutin=` debug route is resolved from the shell, not from `window`', () => {
+    // `CutInHost` used to read `window.location.search` itself — disclosed at
+    // the time, because `src/shell/**` belonged to another builder in the wave
+    // that added the route. `App.tsx` is the platform edge; the string now
+    // comes down as a prop and the host's own read survives only as the default
+    // for a standalone render.
+    expect(source('src/shell/AppShell.tsx').match(/cutInSearch=\{search\}/g)?.length).toBe(2);
+    expect(SESSION_SCREEN).toMatch(/search=\{cutInSearch\}/);
+    expect(MEET_SCREEN).toMatch(/search=\{cutInSearch\}/);
+    // And no screen between the edge and the host reads `window` for itself.
+    for (const relPath of ['src/session/SessionScreen.tsx', 'src/meet/MeetScreen.tsx']) {
+      expect(codeOnly(source(relPath)), relPath).not.toMatch(/window\.location/);
+    }
+    expect(codeOnly('const s = window.location.search;')).toMatch(/window\.location/);
   });
 
   it('gives the meet its way out — GDD §6.5 ends somewhere', () => {

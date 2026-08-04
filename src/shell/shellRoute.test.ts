@@ -348,6 +348,48 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
     expect(Object.keys(ON_A_SESSION_BEAT).sort()).toEqual([...SESSION_PHASES].sort());
     expect(Object.keys(ON_A_MEET_BEAT).sort()).toEqual([...MEET_DAY_PHASES].sort());
   });
+
+  it('A LIVE CUT-IN TAKES THE CHROME OFF EVERY BEAT — GDD §7.2, tap to dismiss', () => {
+    // THE SWEEP IS THE POINT. Not "the gate returns null for a cut-in on the
+    // check-in" — for EVERY beat that would otherwise carry a control, because
+    // the defect is about the pill's paint order and not about any one screen.
+    //
+    // `AppShell` draws the pill as a sibling AFTER the surface, and `CutInHost`
+    // mounts §7.2's overlay INSIDE the surface, so the pill paints on top of
+    // the interrupt and takes the tap meant to dismiss it — measured on
+    // rendered pixels by `tools/capture-cutin.mjs`, which hit-tested the pill's
+    // own centre through a live cut-in and got the pill back. §7.2 makes the
+    // whole screen the dismiss target, so a control that navigates instead is
+    // a hole in it.
+    let covered = 0;
+    for (const [phase, drawn] of Object.entries(ON_A_SESSION_BEAT)) {
+      if (drawn === null) continue;
+      covered += 1;
+      expect(shellAffordanceFor(DEFAULT_ROUTE, phase as SessionPhase, 'live'), phase).toBe(null);
+      // ...and the same call with no cut-in still draws it, so this is not
+      // passing because the gate stopped working altogether.
+      expect(shellAffordanceFor(DEFAULT_ROUTE, phase as SessionPhase, 'none'), phase).toBe(drawn);
+    }
+    for (const [phase, drawn] of Object.entries(ON_A_MEET_BEAT)) {
+      if (drawn === null) continue;
+      covered += 1;
+      expect(shellAffordanceFor(MEET, phase as MeetDayPhaseId, 'live'), phase).toBe(null);
+      expect(shellAffordanceFor(MEET, phase as MeetDayPhaseId, 'none'), phase).toBe(drawn);
+    }
+    // The sweep found beats to sweep. Without this it would pass on a table
+    // that gave the pill to nothing at all.
+    expect(covered).toBeGreaterThan(0);
+  });
+
+  it('and `none` is what the two-argument call means, so old call sites are safe', () => {
+    // The third argument is optional, which is the only reason the dozens of
+    // two-argument assertions above still compile. Pinned so that default can
+    // never quietly become `'live'` — which would hide the chrome everywhere.
+    expect(shellAffordanceFor(DEFAULT_ROUTE, 'check-in')).toBe(
+      shellAffordanceFor(DEFAULT_ROUTE, 'check-in', 'none'),
+    );
+    expect(shellAffordanceFor(DEFAULT_ROUTE, 'check-in')).toBe('open-meet');
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -58,14 +58,16 @@
  * changes: with no such query string the preview is `null` and every line below
  * that mentions it is dead.
  *
- * READING `window` HERE IS A DEVIATION AND IT IS DISCLOSED RATHER THAN QUIET.
- * `App.tsx` is this project's platform edge and `src/shell/shellRoute.ts` turns
- * the string into a surface; the other three debug routes are resolved there and
- * handed down as props. This one is not, because the shell was another
- * builder's file in the wave that added it and a cut-in is an OVERLAY rather
- * than a surface, so it has no `ShellSurface` to be. `search` is a prop with the
- * platform read only as its default, so lifting it is a one-line change here
- * and one more prop in the shell when that file is editable again.
+ * THE PLATFORM READ HAS BEEN LIFTED. It used to happen in this file, disclosed
+ * as a deviation taken because `src/shell/**` belonged to another builder in the
+ * wave that added the route. It no longer does: `App.tsx` reads `window` once,
+ * `AppShell` hands the string to whichever surface is up, and that surface hands
+ * it here. `platformSearch` below survives only as the DEFAULT for a host
+ * rendered outside the shell — a standalone render or a test — so the deviation
+ * is now the exception rather than the path.
+ *
+ * A cut-in still has no `ShellSurface`, and should not: it is an OVERLAY over
+ * whichever surface is up, not a fourth thing the shell can route to.
  */
 
 import React from 'react';
@@ -120,6 +122,23 @@ export interface CutInHostProps {
    * explicitly is how a caller opts a host out of the debug route entirely.
    */
   readonly search?: string | null | undefined;
+  /**
+   * Reports whether a cut-in is on screen, for the shell's chrome gate.
+   *
+   * ROUTING INFORMATION, not state — the same shape and the same reason as
+   * `SessionScreen`'s `onPhase`. `AppShell` draws its navigation pill as a
+   * sibling of the whole surface, AFTER it, so this overlay paints underneath
+   * the pill and a tap meant to dismiss the interrupt navigates instead. GDD
+   * §7.2 makes the whole screen the dismiss target, so the shell draws no
+   * chrome while one is up (`shellAffordanceFor`), and it cannot know without
+   * being told: the gate state lives here and the shell may not derive it.
+   *
+   * It reports `false` on unmount as well. `SessionScreen` early-returns above
+   * this host on the already-trained surface, and a shell left believing a
+   * cut-in was still up would hide the only control on the last screen of the
+   * daily loop.
+   */
+  readonly onLive?: ((live: boolean) => void) | undefined;
   readonly children: React.ReactNode;
 }
 
@@ -139,6 +158,7 @@ export function CutInHost({
   seed,
   catalogue = LICENSING_CATALOGUE,
   search,
+  onLive,
   children,
 }: CutInHostProps): React.ReactElement {
   const { width } = useWindowDimensions();
@@ -218,6 +238,21 @@ export function CutInHost({
     const timer = setTimeout(dismiss, cutInAutoDismissMs());
     return () => clearTimeout(timer);
   }, [live, dismiss, preview]);
+
+  // TELL THE SHELL. Two effects, not one, and that is not tidying: a single
+  // effect with a cleanup would report `false` on every change of `live` before
+  // reporting the new value, which would unmount and re-fade the shell's pill
+  // on each transition. This one reports the value; the next one covers unmount
+  // only.
+  React.useEffect(() => {
+    onLive?.(live !== null);
+  }, [live, onLive]);
+  React.useEffect(
+    () => () => {
+      onLive?.(false);
+    },
+    [onLive],
+  );
 
   const api = React.useMemo<CutInApi>(() => ({ offer }), [offer]);
 

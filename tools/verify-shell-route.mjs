@@ -42,8 +42,10 @@
  *      it, every day — and it draws two lines of text and NO CONTROL OF ITS
  *      OWN, so the shell's pill is the only thing on it a thumb can press. If
  *      the pill fails there the core loop of the game ends on a dead end.
- *   7. NO CONTROL IS DRAWN OVER A LIVE SET, or over a walk-out, an attempt or a
- *      verdict. A pill over the mechanic is a mis-tap that costs a rep.
+ *   7. NO CONTROL IS DRAWN OVER A LIVE SET, or over a walk-out, an attempt, a
+ *      verdict, or a GDD §7.2 CUT-IN. A pill over the mechanic is a mis-tap
+ *      that costs a rep; a pill over a cut-in eats the tap that was meant to
+ *      dismiss it, and §7.2 makes the whole screen the dismiss target.
  *   8. All four debug query strings still resolve to the surface their capture
  *      tool expects. Breaking one breaks the run's evidence harness.
  *   9. The shell's chrome shows no Total (GDD §3.2: Total moves on meet day and
@@ -637,7 +639,17 @@ await press(
   'meet-openers',
   'the weigh-in confirms and the openers come up — the loop is live, not frozen',
 );
-await page.getByTestId('openers-action').click();
+// Reported rather than thrown, for the reason `press` gives at length: a
+// Playwright stack trace tells a reader the harness is unhappy and nothing
+// about WHICH property of the app broke — and it takes the whole run down with
+// it, so every check after this line goes unreported too. (Found by mutating an
+// occluding layer over the shell's chrome: the tool died here instead of naming
+// the eleven things that had stopped working.)
+try {
+  await page.getByTestId('openers-action').click({ timeout: 20000 });
+} catch {
+  check(false, 'the openers screen has an action to confirm with');
+}
 // The walk-out is a TIMED beat and runs itself out, so it is asserted the
 // instant it arrives — settling first would photograph the attempt after it.
 // That the beat elapses on its own is itself the proof the meet is played:
@@ -883,9 +895,11 @@ const playedOut = { attempted: true };
     check(
       copy !== null && navBox !== null && navBox.y - copy.bottom >= ALREADY_TRAINED_NAV_CLEARANCE_PX,
       `the already-trained copy leaves >= ${ALREADY_TRAINED_NAV_CLEARANCE_PX}px clear above the pill`,
-      copy === null || navBox === null
-        ? `no copy (${JSON.stringify(copy)}) or no pill box`
-        : `${copy.lines} line(s), longest ${copy.longest} chars, bottom y=${copy.bottom.toFixed(1)}; pill top y=${navBox.y.toFixed(1)}; gap ${(navBox.y - copy.bottom).toFixed(1)}px`,
+      copy === null
+        ? 'no drawn copy to measure on the already-trained surface'
+        : navBox === null
+          ? `copy measured (${copy.lines} line(s), bottom y=${copy.bottom.toFixed(1)}) but there is no pill to measure it against`
+          : `${copy.lines} line(s), longest ${copy.longest} chars, bottom y=${copy.bottom.toFixed(1)}; pill top y=${navBox.y.toFixed(1)}; gap ${(navBox.y - copy.bottom).toFixed(1)}px`,
     );
     if (playedOut.doneBox != null && navBox !== null) {
       check(
@@ -915,8 +929,19 @@ const playedOut = { attempted: true };
     }
   }
   playedOut.wallClockMs = Date.now() - startedAt;
-  playedOut.reps = played.reps.length;
   playedOut.landedOn = landed.landedOn;
+  playedOut.finalDepthHoldMs = played.holdMs;
+  // Every rep, with the hold it was played on and what the mechanic called it.
+  // The evidence for "the played path is reliable" is this list, not an
+  // assertion about it: a reader can see whether the driver converged or got
+  // lucky.
+  playedOut.reps = played.reps.map((rep) => ({
+    set: rep.setLabel ?? null,
+    holdMs: rep.holdMs ?? null,
+    outcome: rep.outcome ?? null,
+    detail: rep.detail ?? null,
+    ...(rep.played === false ? { notPlayed: rep.why } : {}),
+  }));
   notes.push(`  note  the played-session section cost ${playedOut.wallClockMs}ms of wall clock`);
 }
 
@@ -985,6 +1010,60 @@ await press(
   'and pressing it returns to the daily session',
   BOMB_OUT_SETTLE_MS,
 );
+
+// ---------------------------------------------------------------------------
+// 7b. NO CHROME OVER A CUT-IN — GDD §7.2's whole screen is the dismiss target
+// ---------------------------------------------------------------------------
+//
+// The same rule as "no control over a live set", and it was broken the same
+// way. `CutInHost` mounts the overlay INSIDE whichever surface is up and the
+// shell draws its pill as a SIBLING after that surface, so the pill painted on
+// top of the interrupt and `elementFromPoint` at its own centre came back with
+// the pill. §7.2 says a cut-in is "always skippable — tap to dismiss"; a tap
+// that navigates to meet day instead is a hole in that, and it is the same
+// class of mis-tap this piece already refuses over the mechanic.
+//
+// The overlay cannot fix it from its side, so the fix is the shell's gate and
+// this is where it gets photographed.
+{
+  // THE POSITIVE CONTROL FIRST, and on the SAME screen. `?cutin=nonsense` boots
+  // the daily session with no overlay — which is the check-in beat, where the
+  // pill belongs. If it is not there and hit-testable here, the probe below is
+  // blind and its "the pill is gone" reading would mean nothing.
+  await open('/?cutin=nonsense', 'session-screen');
+  const control = await checkOnScreen(
+    NAV_OPEN_MEET,
+    'CONTROL: with no cut-in up, the pill is on the same screen the probe looks at',
+  );
+  const controlHit = await hitTest(NAV_OPEN_MEET);
+  check(
+    control && controlHit.hit,
+    'CONTROL: and it is hit-testable there, so the probe below can see a pill',
+    `elementFromPoint -> ${controlHit.why}`,
+  );
+  check(
+    !(await visible('cut-in')),
+    '?cutin=nonsense puts no cut-in on screen — an unrecognised debug route is inert',
+  );
+
+  // ...and now with one up. `?cutin=<moment>` is FROZEN — the host does not
+  // start the auto-dismiss timer — so there is no race with the shutter.
+  await open('/?cutin=personal-record', 'cut-in');
+  await page.screenshot({ path: path.join(outDir, '12-cutin-has-no-shell-chrome.png') });
+  const { on: pillDrawn, why: pillWhy } = await onScreen(NAV_OPEN_MEET);
+  check(
+    !pillDrawn,
+    'NO SHELL CHROME IS DRAWN OVER A CUT-IN (GDD §7.2: the whole screen dismisses it)',
+    pillWhy,
+  );
+  const pillHit = await hitTest(NAV_OPEN_MEET);
+  check(
+    !pillHit.hit,
+    'and nothing of the shell’s takes the tap that was meant to skip it',
+    `elementFromPoint at the pill’s own centre -> ${pillHit.why}`,
+  );
+  await checkOnScreen('cut-in', 'the cut-in itself is up, so this was not measured on an empty screen');
+}
 
 // ---------------------------------------------------------------------------
 // 8. The evidence harness's four query strings still resolve

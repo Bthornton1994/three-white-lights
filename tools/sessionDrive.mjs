@@ -74,6 +74,14 @@ export const SESSION_PROMPTS = Object.freeze({
   DRIVE: 'DRIVE',
   /** The three things a resolved rep can say. */
   OUTCOMES: Object.freeze(['GOOD LIFT', 'GRINDER', 'NO LIFT']),
+  /**
+   * The two miss reasons that say the RELEASE was mistimed, and in which
+   * direction. Restated from `LIFT_COPY.MISS_REASON`. The other two —
+   * 'The bar beat you at the sticking point.' and 'Ran out of air.' — say the
+   * depth was fine and the ascent lost, so they are not adapted on.
+   */
+  MISS_TOO_HIGH: 'short of depth',
+  MISS_BURIED: 'Buried it',
 });
 
 /**
@@ -100,8 +108,39 @@ export const SESSION_DRIVE = Object.freeze({
   /** Let the first set draw before touching it. */
   SET_SETTLE_MS: 400,
 
-  /** How long the finger stays down after the descent starts. See the header. */
-  DEPTH_HOLD_MS: 900,
+  /**
+   * How long the finger stays down after the descent starts. See the header for
+   * the band this sits in. A STARTING POINT, not a fixed value — see
+   * `DEPTH_HOLD_STEP_MS`.
+   */
+  DEPTH_HOLD_MS: 1000,
+  /**
+   * ===========================================================================
+   * HOW MUCH THE DRIVER MOVES THE HOLD AFTER A MISTIMED RELEASE, AND WHY IT HAS
+   * TO MOVE IT AT ALL
+   * ===========================================================================
+   * The band the hold has to land in is measured in SIM TICKS, and the sim does
+   * not run at wall-clock speed on a loaded machine. `useLiftLoop` takes at most
+   * `LIFT_TUNING.FEEDBACK.MAX_CATCH_UP_TICKS` (4) ticks per animation frame — a
+   * deliberate choice, so a hitch slows a rep down instead of fast-forwarding
+   * through the player's input. Below 15 fps the sim therefore falls behind the
+   * clock, and a fixed 900 ms hold buys less depth than it should.
+   *
+   * That is not hypothetical either: a software-rendered browser under load
+   * missed all five reps of a session on "came up short of depth", which is
+   * precisely that failure, and left the close-out with nothing banked.
+   *
+   * So the driver reads WHY a rep missed and moves the hold in the direction the
+   * miss names, HALVING THE STEP EACH TIME THE DIRECTION REVERSES — an ordinary
+   * bisection, because a fixed step overshoots: 900 -> 1080 -> 1260 -> 1440
+   * found a legal rep and then buried the next two at the same hold. It does not
+   * need the machine to be fast, only consistent for a few seconds at a time.
+   */
+  DEPTH_HOLD_STEP_MS: 180,
+  /** The step stops halving here, so the search cannot stall on a rounding. */
+  DEPTH_HOLD_STEP_MIN_MS: 40,
+  DEPTH_HOLD_MIN_MS: 480,
+  DEPTH_HOLD_MAX_MS: 1900,
   /** How long the finger stays down after the drive press, through lockout. */
   DRIVE_HOLD_EXTRA_MS: 150,
   /** Between one rep resolving and pressing for the next. */
@@ -221,7 +260,16 @@ export async function openSessionToFirstSet(page, url) {
     .waitFor({ state: 'visible', timeout: SESSION_DRIVE.FIRST_SET_TIMEOUT_MS });
 
   const startedAt = Date.now();
-  for (const id of SESSION_DRIVE.CHECK_IN_TAPS) await page.getByTestId(id).click();
+  // Reported, not thrown. A check-in answer that cannot be pressed — covered by
+  // something, or gone — is a fact about the app, and the caller has to be able
+  // to say which one it was rather than die inside the harness.
+  for (const id of SESSION_DRIVE.CHECK_IN_TAPS) {
+    try {
+      await page.getByTestId(id).click({ timeout: 20000 });
+    } catch {
+      return { reached: false, why: `the check-in answer ${id} could not be pressed` };
+    }
+  }
 
   try {
     await page
@@ -269,7 +317,7 @@ export async function openSessionToFirstSet(page, url) {
  * `BRACE_TIMEOUT_TICKS` — ten seconds of nothing, once per rep. Pressing only
  * once the brace prompt is up costs a poll and saves that.
  */
-export async function playOneRep(page) {
+export async function playOneRep(page, holdMs = SESSION_DRIVE.DEPTH_HOLD_MS) {
   const braced = await until(page, (s) => saying(s, SESSION_PROMPTS.BRACE), SESSION_DRIVE.BRACE_TIMEOUT_MS);
   if (!braced.ok) {
     return { played: false, why: `no brace to press — prompt was ${JSON.stringify(braced.state.prompt)}` };
@@ -295,8 +343,9 @@ export async function playOneRep(page) {
     };
   }
 
-  // The one guessed number. See the header for the band it sits in.
-  await page.waitForTimeout(SESSION_DRIVE.DEPTH_HOLD_MS);
+  // The one guessed number. See the header for the band it sits in, and
+  // `DEPTH_HOLD_STEP_MS` for why the caller is allowed to move it.
+  await page.waitForTimeout(holdMs);
   await page.mouse.up();
 
   const drive = await until(
@@ -311,7 +360,9 @@ export async function playOneRep(page) {
     await page.mouse.up();
     return {
       played: true,
+      holdMs,
       outcome: ended.state.prompt,
+      detail: ended.state.detail,
       setLabel: ended.state.setLabel,
       drove: true,
     };
@@ -320,10 +371,48 @@ export async function playOneRep(page) {
   // release) or the ascent ran out. Both are outcomes, not harness failures.
   return {
     played: true,
+    holdMs,
     outcome: drive.state.prompt,
+    detail: drive.state.detail,
     setLabel: drive.state.setLabel,
     drove: false,
   };
+}
+
+/** The search's whole state: where the hold is, how big a step, which way last. */
+export function freshDepthSearch() {
+  return {
+    holdMs: SESSION_DRIVE.DEPTH_HOLD_MS,
+    stepMs: SESSION_DRIVE.DEPTH_HOLD_STEP_MS,
+    lastDirection: 0,
+  };
+}
+
+/**
+ * The search state to use for the NEXT rep, given how this one ended.
+ *
+ * Pure, so the adaptation is one readable rule rather than something buried in
+ * the loop. Only the two miss reasons that name the RELEASE move it: a rep the
+ * ascent lost, or a rep that was made, says nothing about the depth and must
+ * not nudge it.
+ */
+export function adaptDepthSearch(search, rep) {
+  const detail = rep.detail ?? '';
+  const direction = detail.includes(SESSION_PROMPTS.MISS_TOO_HIGH)
+    ? 1
+    : detail.includes(SESSION_PROMPTS.MISS_BURIED)
+      ? -1
+      : 0;
+  if (direction === 0) return search;
+  const reversed = search.lastDirection !== 0 && direction !== search.lastDirection;
+  const stepMs = reversed
+    ? Math.max(SESSION_DRIVE.DEPTH_HOLD_STEP_MIN_MS, Math.round(search.stepMs / 2))
+    : search.stepMs;
+  const holdMs = Math.min(
+    SESSION_DRIVE.DEPTH_HOLD_MAX_MS,
+    Math.max(SESSION_DRIVE.DEPTH_HOLD_MIN_MS, search.holdMs + direction * stepMs),
+  );
+  return { holdMs, stepMs, lastDirection: direction };
 }
 
 /**
@@ -337,6 +426,7 @@ export async function playOneRep(page) {
 export async function playSessionToCloseOut(page) {
   const reps = [];
   const startedAt = Date.now();
+  let search = freshDepthSearch();
 
   for (;;) {
     const state = await readLoop(page);
@@ -344,6 +434,7 @@ export async function playSessionToCloseOut(page) {
       return {
         reachedCloseOut: true,
         reps,
+        holdMs: search.holdMs,
         action: state.action,
         ms: Date.now() - startedAt,
       };
@@ -353,7 +444,7 @@ export async function playSessionToCloseOut(page) {
       // hands the next set back. Nothing to press.
       const next = await until(page, (s) => !s.rest, SESSION_DRIVE.REST_TIMEOUT_MS);
       if (!next.ok) {
-        return { reachedCloseOut: false, reps, why: 'the rest beat never handed back a set' };
+        return { reachedCloseOut: false, reps, holdMs: search.holdMs, why: 'the rest beat never handed back a set' };
       }
       continue;
     }
@@ -361,6 +452,7 @@ export async function playSessionToCloseOut(page) {
       return {
         reachedCloseOut: false,
         reps,
+        holdMs: search.holdMs,
         why: `the loop left the sets without closing out (check-in=${state.checkIn} briefing=${state.briefing})`,
       };
     }
@@ -368,18 +460,20 @@ export async function playSessionToCloseOut(page) {
       return {
         reachedCloseOut: false,
         reps,
+        holdMs: search.holdMs,
         why: `played ${reps.length} reps without reaching a close-out — the loop is not advancing`,
       };
     }
     if (Date.now() - startedAt >= SESSION_DRIVE.CLOSE_OUT_TIMEOUT_MS) {
-      return { reachedCloseOut: false, reps, why: 'the session ran past its deadline' };
+      return { reachedCloseOut: false, reps, holdMs: search.holdMs, why: 'the session ran past its deadline' };
     }
 
-    const rep = await playOneRep(page);
+    const rep = await playOneRep(page, search.holdMs);
     reps.push(rep);
     if (!rep.played) {
-      return { reachedCloseOut: false, reps, why: rep.why };
+      return { reachedCloseOut: false, reps, holdMs: search.holdMs, why: rep.why };
     }
+    search = adaptDepthSearch(search, rep);
     await page.waitForTimeout(SESSION_DRIVE.BETWEEN_REPS_MS);
     // The result beat holds the outcome on screen before the session advances.
     // Wait it out here rather than in `playOneRep`, so the next thing the loop
