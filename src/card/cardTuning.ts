@@ -99,6 +99,13 @@ export const LIFTER_STRIP = {
    * this scale today; what is new is that a SHORT name in a long category steps
    * down too — which is the trade this whole mechanism makes. The name gets
    * smaller. No fact leaves the card.
+   *
+   * "THE GRID, THE TOTAL AND THE BARBELL DO NOT MOVE" IS CHECKED, NOT REASONED.
+   * `renderResultCard.test.ts` renders this card against a one-line twin
+   * carrying the same nine attempts, the same total, the same DOTS and the same
+   * placing, and compares every pixel from row 73 to the bottom frame — and
+   * then pins the rows those three blocks are actually inked on, by hand,
+   * because a diff of two cards is blind to anything that moves both of them.
    */
   NAME_SCALE_COMPACT: 1,
   /**

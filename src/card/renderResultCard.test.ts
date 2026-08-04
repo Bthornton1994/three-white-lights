@@ -93,6 +93,48 @@ function longestRunIn(grid: IndexGrid, rect: Rect, index: number): number {
   return best;
 }
 
+/**
+ * Every row at or below `fromY` that carries one of `indices` anywhere across
+ * the card, collapsed into contiguous bands.
+ *
+ * A LANDMARK PROBE: it is told a colour and answers with the rows that colour
+ * is on. It is never told where to look, so the rows it returns can be compared
+ * against hand-written literals — which is the only way a test can say a block
+ * is where it was rather than where its own constant currently points.
+ */
+function inkRowBands(
+  grid: IndexGrid,
+  indices: readonly number[],
+  fromY: number,
+): readonly (readonly [number, number])[] {
+  const wanted = new Set(indices);
+  const bands: [number, number][] = [];
+  for (let y = fromY; y < grid.h; y += 1) {
+    let hit = false;
+    for (let x = 0; x < grid.w && !hit; x += 1) {
+      if (wanted.has(grid.data[y * grid.w + x] ?? -1)) hit = true;
+    }
+    if (!hit) continue;
+    const last = bands[bands.length - 1];
+    if (last !== undefined && last[1] === y - 1) last[1] = y;
+    else bands.push([y, y]);
+  }
+  return bands;
+}
+
+/** Rows at or below `fromY` that are `index` from one edge of the card to the other. */
+function fullWidthRows(grid: IndexGrid, index: number, fromY: number): readonly number[] {
+  const rows: number[] = [];
+  for (let y = fromY; y < grid.h; y += 1) {
+    let all = true;
+    for (let x = 0; x < grid.w && all; x += 1) {
+      if (grid.data[y * grid.w + x] !== index) all = false;
+    }
+    if (all) rows.push(y);
+  }
+  return rows;
+}
+
 function cellRect(rowIndex: number, cellIndex: number): Rect {
   return { x: gridCellX(cellIndex), y: gridRowY(rowIndex), w: GRID.CELL_W, h: GRID.ROW_H };
 }
@@ -309,6 +351,7 @@ const STRESS = renderResultCard(STRESS_MEET_CARD);
 // A third case the samples do not cover: nothing made at all, so there is no
 // heaviest lift for the barbell to load.
 const GOOD: JudgePanel = ['white', 'white', 'white'];
+const SPLIT: JudgePanel = ['white', 'red', 'white'];
 const NO_LIFT: JudgePanel = ['red', 'red', 'red'];
 
 function take(state: MeetState, weight: number, lights: JudgePanel): MeetState {
@@ -688,6 +731,68 @@ function nineForNine(): MeetState {
 const SHORT_NAME_MASTERS_CARD = MASTERS_MEET_CARD;
 
 /**
+ * The nine attempts of `sampleCards.ts`'s `masters` card, retyped by hand.
+ *
+ * Retyped rather than imported because the card built from them is one half of
+ * a PAIR, and the pair is only worth anything if both halves carry the same
+ * numbers — see `ONE_LINE_TWIN_CARD`. Written out here, a change to the sample
+ * makes the pair disagree and the test says so; shared, the two would drift
+ * together and the comparison would quietly stop meaning anything.
+ */
+function mastersNineAttempts(): MeetState {
+  return (
+    [
+      [300, GOOD],
+      [320, GOOD],
+      [330, NO_LIFT],
+      [200, GOOD],
+      [210, GOOD],
+      [215, SPLIT],
+      [310, GOOD],
+      [330, GOOD],
+      [340, GOOD],
+    ] as const
+  ).reduce<MeetState>((state, entry) => take(state, entry[0], entry[1] as JudgePanel), createMeet());
+}
+
+/**
+ * THE ONE-LINE TWIN of `SHORT_NAME_MASTERS_CARD`, and the reason it had to be
+ * built rather than borrowed.
+ *
+ * Same name, same sex, same bodyweight, same meet, same nine attempts, same
+ * placing — so everything the card prints BELOW the identity strip is the same
+ * number on both: the same grid, the same 875 kg total, the same DOTS off the
+ * same sex and bodyweight, the same place, the same heaviest single on the bar.
+ * The one thing that differs is the category phrase, which is short enough here
+ * to set on one line and too long there to set on fewer than two.
+ *
+ * None of the existing samples could stand in. The claim under test is that a
+ * second line costs no height, and the only honest way to check it is to diff
+ * two cards that would be identical below the strip if it is true. Every other
+ * pair — `masters` against `strong`, say — differs by 120 kg of total and a
+ * different best in every row, so every region below the strip differs by
+ * construction and no diff of them could ever have been run.
+ */
+const ONE_LINE_TWIN_CARD = cardOf({
+  meet: {
+    federation: 'Irongate',
+    name: 'National Championships',
+    dateIso: '2026-02-14',
+    town: 'Sheffield',
+    country: 'England',
+  },
+  lifter: {
+    name: 'Nils Berg',
+    sex: 'male',
+    bodyweightKg: 138.6,
+    division: 'Open',
+    equipment: 'Raw',
+  },
+  state: mastersNineAttempts(),
+  placing: 2,
+});
+
+/**
  * The same lifter, same numbers, same everything — with no placing supplied.
  * Not a sample: it exists to isolate the placing as the only difference.
  */
@@ -860,19 +965,146 @@ describe('a card that prints a PLACING prints its DIVISION', () => {
   });
 
   it('leaves the grid, the total and the barbell exactly where they were', () => {
-    // The second line is free only if it costs no height. Everything below the
-    // strip is compared pixel for pixel against a card that prints ONE line.
+    // ---------------------------------------------------------------------
+    // THIS TEST USED TO READ ONE ROW. Its loop ran `stripBottom` to
+    // `GRID.HEADER_Y` — 73 to 74 — which is the single blank gutter between the
+    // strip's closing rule and the grid band, so the total block, the score
+    // blocks and the barbell it is named after were never looked at. It could
+    // not simply have been widened: it diffed the masters card against `STRONG`,
+    // which is a different lifter with a different total, so every region below
+    // differed by construction and a wider loop would have failed for the wrong
+    // reason. Hence `ONE_LINE_TWIN_CARD`.
+    //
+    // It takes BOTH halves below, because either alone is blind:
+    //
+    //   (1) the A/B diff sees anything the second line pushes out of place, and
+    //       is blind to anything that moves BOTH cards — sliding
+    //       `TOTAL_BLOCK.Y` ten rows down moves the two identically and the
+    //       diff stays at zero;
+    //   (2) the landmark pins are hand-written absolute rows, read off the
+    //       WRAPPED card, so they see a block that moved — and are blind to a
+    //       block that moved on the ONE-LINE card only, which is precisely the
+    //       "the second line cost height" bug (1) is there for.
+    // ---------------------------------------------------------------------
     const twoLine = renderResultCard(SHORT_NAME_MASTERS_CARD);
-    const oneLine = STRONG;
-    const stripBottom = LIFTER_STRIP.Y + LIFTER_STRIP.H;
+    const oneLine = renderResultCard(ONE_LINE_TWIN_CARD);
+
+    // (0) THE PAIR IS A PAIR. One strip wraps and one does not — and the name
+    // is the same name, set two sizes apart, which is the trade the whole
+    // mechanism makes. Everything below the strip is the same number on both,
+    // written out by hand: without this the diff at (1) could read zero because
+    // the two cards agree about nothing in particular.
+    const wrapped = lifterStrip(SHORT_NAME_MASTERS_CARD, CONTENT.W);
+    const unwrapped = lifterStrip(ONE_LINE_TWIN_CARD, CONTENT.W);
+    expect(wrapped.metaLines).toEqual(["MEN'S SINGLE-PLY MASTERS 2 120+", '138.60 KG']);
+    expect(unwrapped.metaLines).toEqual(["MEN'S RAW OPEN 120+ · 138.60 KG"]);
+    expect([wrapped.nameScale, unwrapped.nameScale], 'the second line is bought here').toEqual([1, 2]);
+    expect(SHORT_NAME_MASTERS_CARD.lifter.name).toBe(ONE_LINE_TWIN_CARD.lifter.name);
+    for (const card of [SHORT_NAME_MASTERS_CARD, ONE_LINE_TWIN_CARD]) {
+      const where = card.lifter.categoryText;
+      expect(card.summary.map((block) => `${block.label} ${block.value}`), where).toEqual([
+        'TOTAL 875',
+        'DOTS 480.88',
+        'PLACE 2',
+      ]);
+      expect(
+        card.rows.map((row) => `${row.label} ${row.attempts.map((a) => a.text).join(' ')} best ${row.bestText}`),
+        where,
+      ).toEqual([
+        'SQUAT 300 320 330 best 320',
+        'BENCH 200 210 215 best 215',
+        'DEADLIFT 310 330 340 best 340',
+      ]);
+    }
+
+    // (1) THE DIFF, from the strip's closing rule to the bottom frame.
+    const STRIP_BOTTOM = 73;
+    expect(LIFTER_STRIP.Y + LIFTER_STRIP.H, 'the strip is 28 rows and ends at 73').toBe(STRIP_BOTTOM);
     let differing = 0;
-    for (let y = stripBottom; y < GRID.HEADER_Y; y += 1) {
+    let compared = 0;
+    const movedRows: number[] = [];
+    for (let y = STRIP_BOTTOM; y < CARD.H; y += 1) {
+      let rowDiff = 0;
       for (let x = 0; x < CARD.W; x += 1) {
-        if (twoLine.data[y * CARD.W + x] !== oneLine.data[y * CARD.W + x]) differing += 1;
+        compared += 1;
+        if (twoLine.data[y * CARD.W + x] !== oneLine.data[y * CARD.W + x]) rowDiff += 1;
+      }
+      if (rowDiff > 0) movedRows.push(y);
+      differing += rowDiff;
+    }
+    // What was compared, counted and written out by hand — rows 73 to 239
+    // inclusive, full width. This is the assertion the old one-row loop would
+    // have failed, and it is here so that shape cannot come back unnoticed.
+    expect({ rows: CARD.H - STRIP_BOTTOM, pixels: compared }).toEqual({ rows: 167, pixels: 32064 });
+    expect(movedRows, 'rows below the strip that the second line moved').toEqual([]);
+    expect(differing).toBe(0);
+    // ...and the comparison is not vacuous: the same two cards differ inside the
+    // STRIP, which is where the second line went.
+    let inStrip = 0;
+    for (let y = LIFTER_STRIP.Y; y < STRIP_BOTTOM; y += 1) {
+      for (let x = 0; x < CARD.W; x += 1) {
+        if (twoLine.data[y * CARD.W + x] !== oneLine.data[y * CARD.W + x]) inStrip += 1;
       }
     }
-    expect(differing, 'the band between the strip and the grid moved').toBe(0);
-    // The grid's own header row is drawn at the same place on both.
+    expect(inStrip, 'these must be two different strips, or the diff below means nothing').toBeGreaterThan(100);
+
+    // (2) THE PINS. Where "where they were" actually is: the rows each block is
+    // inked on, written out by hand and agreeing with the layout table at the
+    // top of `cardTuning.ts`, rather than read back out of the constants being
+    // checked. Every probe is told a COLOUR and answers with the rows it found
+    // it on; none of them is told where to look, so none can be satisfied by
+    // the number it is supposed to be checking. Move a block and these fail —
+    // which is the point: a deliberate move comes with a deliberate edit here.
+    expect(
+      fullWidthRows(twoLine, SHEET.INK, STRIP_BOTTOM),
+      'the grid opens at 84 and closes at 124, and the card is framed at 239',
+    ).toEqual([84, 124, 239]);
+    const landmarks: readonly {
+      readonly what: string;
+      readonly indices: readonly number[];
+      readonly rows: readonly (readonly [number, number])[];
+    }[] = [
+      {
+        what: 'the grid header band, the three best-column cells, then the two score blocks',
+        indices: [SHEET.PAPER_SHADE],
+        rows: [
+          [74, 83],
+          [86, 96],
+          [99, 109],
+          [112, 122],
+          [160, 183],
+        ],
+      },
+      {
+        what: 'the grid headings, the DOTS and PLACE labels, and the barbell caption',
+        indices: [SHEET.INK_SOFT],
+        rows: [
+          [76, 82],
+          [162, 168],
+          [187, 193],
+        ],
+      },
+      {
+        what: 'the total block, and the footer',
+        indices: [SHEET.BAND_DARK],
+        rows: [
+          [128, 157],
+          [226, 238],
+        ],
+      },
+      { what: 'the total in brass', indices: [SHEET.ACCENT_HI], rows: [[133, 153]] },
+      { what: 'the loaded discs', indices: PLATE_FILLS, rows: [[196, 222]] },
+      { what: 'the lit top row of the shaft', indices: [PAL.STEEL_LIGHT], rows: [[208, 208]] },
+      { what: 'the shaft in shadow', indices: [PAL.STEEL_DARK], rows: [[210, 210]] },
+      { what: 'the collars', indices: [PAL.STEEL_MID], rows: [[205, 213]] },
+    ];
+    for (const { what, indices, rows } of landmarks) {
+      // Asserted on the WRAPPED card. The diff above makes it true of the
+      // one-line card too, and saying it twice would only make (1) fail twice.
+      expect(inkRowBands(twoLine, indices, STRIP_BOTTOM), what).toEqual(rows);
+    }
+
+    // The grid's own headings, spelled, under a two-line strip.
     expectRunsIn(
       twoLine,
       GRID_HEADER_RECT,
