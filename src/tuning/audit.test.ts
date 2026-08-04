@@ -525,6 +525,8 @@ describe('the registered allowlist', () => {
         'src/game/rpe.ts',
         'src/game/sessionTuning.ts',
         'src/game/streak.ts',
+        'src/licensing/licensingTuning.ts',
+        'src/licensing/realIp.ts',
         'src/lift/liftPalette.ts',
         'src/meet/meetPalette.ts',
         'src/session/sessionPalette.ts',

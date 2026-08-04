@@ -223,6 +223,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'feel',
     why: 'GYM_* — the environment layer: room proportions, lighting, parallax, prop placement.',
   }),
+  'src/licensing/licensingTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'PANEL / TIER_1_STRIP / SHELF / LICENSING_SCREEN / LICENSING_COPY — the GDD \u00a77.3 Tier 3 surfaces: panel proportions, the whole-number upscale a phone can show them at, and the copy that states the \u00a78.1 no-stat promise on screen.',
+  }),
 
   // --- palettes ------------------------------------------------------------
   'src/art/palette.ts': Object.freeze({
@@ -390,6 +395,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     role: 'constants',
     kind: 'data',
     why: 'Fixture meets for the card renderer. Not shipped state.',
+  }),
+  'src/licensing/realIp.ts': Object.freeze({
+    role: 'constants',
+    kind: 'data',
+    why: 'REVIEWABLE_CITATIONS \u2014 the pinned inventory of real names present in the source text, with an occurrence count per row. Data about the repository, not a knob: turning a count down does not change anything except whether the suite notices.',
   }),
 });
 
