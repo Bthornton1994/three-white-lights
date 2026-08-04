@@ -15,6 +15,16 @@ import {
   sceneColorAt,
   stepIndex,
 } from './gymPalette';
+import { GYM_READABILITY } from './gymTuning';
+
+/**
+ * `sprite-ref-1-snes-wrestling.png`, measured at native scale and recorded in
+ * `palette.ts`: the crowd — the busiest, most detailed band on that screen — has
+ * mean 38.8 and median 36. These are the reference's own pixels, not ours, and
+ * they are the only numbers in this file with a reference behind them.
+ */
+const REF_CROWD_MEAN = 38.8;
+const REF_CROWD_MEDIAN = 36;
 
 /**
  * THE VALUE STRUCTURE, CHECKED RATHER THAN PROMISED.
@@ -115,11 +125,30 @@ describe('the room stays under the figure', () => {
       expect(luma(index)).toBeGreaterThan(8);
       expect(luma(index)).toBeLessThan(75);
     }
-    // The two bands the wall is mostly painted in straddle the reference crowd
-    // median of 36.
-    expect(luma(GYM.WALL_DARK)).toBeLessThan(36);
-    expect(luma(GYM.WALL_MID)).toBeGreaterThan(36);
-    expect(luma(GYM.WALL_MID)).toBeLessThan(50);
+    // The three bands the wall is actually PAINTED in — the fourth is the lamp
+    // wash and never lands behind the figure — all sit at or under the
+    // reference crowd's own mean of 38.8. That is the reference-anchored half:
+    // a background in this era is not brighter than the busiest dark mass on
+    // the screen.
+    for (const index of [GYM.WALL_DEEP, GYM.WALL_DARK, GYM.WALL_MID]) {
+      expect(luma(index)).toBeLessThanOrEqual(REF_CROWD_MEAN);
+    }
+    // ...and at least one of them is within a visible step of the reference
+    // crowd's MEDIAN, so "at or under" cannot be satisfied by a black wall.
+    expect(
+      Math.min(
+        ...[GYM.WALL_DEEP, GYM.WALL_DARK, GYM.WALL_MID].map((i) =>
+          Math.abs(luma(i) - REF_CROWD_MEDIAN),
+        ),
+      ),
+    ).toBeLessThan(GYM_READABILITY.PERCEPTIBLE_LUMA_STEP);
+    // WHAT THIS NO LONGER CLAIMS. It used to require WALL_DARK below the
+    // reference median and WALL_MID above it — the wall bracketing 36 rather
+    // than sitting on it. That was an ours-only nicety with no reference behind
+    // it, and the A1 shading rework made it unsatisfiable: HAIR_DARK moved to
+    // 45.2 and the only window left for the band behind the lifter's head is
+    // 19.3-45.2, whose usable middle is under 36. The bracket was dropped
+    // rather than the collision tolerated, and this comment is the record.
   });
 
   it('lands the platform on the reference mat, not above the figure', () => {
@@ -227,10 +256,14 @@ describe('the surfaces the figure is actually drawn against', () => {
    *
    * It was, and it was unsatisfiable, which is worth recording rather than
    * quietly narrowing. The lifter's own ramp puts ten steps into the 19-217
-   * range and six of them below 80 — outline 19, hair 37, singlet 54, gear 59,
-   * skin-shadow 73, hair-light 75. A background needing eleven surfaces of its
-   * own cannot keep all of them 8 luma from all of those, and the version of
-   * this test that demanded it was a bound no palette could pass.
+   * range and six of them below 80 — outline 19.3, hair 45.2, red-disc shade
+   * 49.3, singlet 54.1, gear 58.9, skin-shadow 73.0, hair-light 75.0. A
+   * background needing eleven surfaces of its own cannot keep all of them 8
+   * luma from all of those, and the version of this test that demanded it was a
+   * bound no palette could pass. It got TIGHTER, not looser, when the A1
+   * shading rework moved HAIR_DARK from 37.2 to 45.2: the ladder now leaves
+   * exactly one window under 80 — 19.3 to 45.2 — with room for a background
+   * value inside it.
    *
    * So the rule is targeted at what actually touches what. The lifter's TORSO
    * is drawn against the wall paint; his SHINS AND SHOES stand on the platform.
@@ -246,6 +279,13 @@ describe('the surfaces the figure is actually drawn against', () => {
     PAL.SINGLET_DARK,
     PAL.SINGLET_MID,
     PAL.SINGLET_LIGHT,
+    // His HAIR is drawn against the wall too, and it was left out of this list
+    // until the shading rework walked HAIR_DARK from 37.2 to 45.2 and parked it
+    // 1.4 luma from WALL_MID. Nothing here caught that; the rim percentiles in
+    // `gymReadability.ts` did, at four to five samples a frame. It is in the
+    // list now, which is what makes this test able to catch it next time.
+    PAL.HAIR_DARK,
+    PAL.HAIR_LIGHT,
   ];
   const LOWER_BODY: readonly number[] = [
     PAL.GEAR_DARK,
@@ -282,18 +322,50 @@ describe('the surfaces the figure is actually drawn against', () => {
     }
   });
 
-  it('fails for the two palettes this file actually shipped and measured wrong', () => {
-    // A bound nothing can fail is not a bound. These are the real previous
-    // values, planted back: the platform at the reference mat's p90 of 120 sat
-    // 3 luma from SKIN_MID, and the wall's even 17-luma ladder put WALL_MID at
-    // 52, two luma from SINGLET_DARK.
+  it('fails for every palette this file actually shipped and measured wrong', () => {
+    // A bound nothing can fail is not a bound. These are real previous values,
+    // planted back, with the round each was caught in.
+    //
+    //   120   the platform at the reference mat's p90, 3 luma from SKIN_MID
+    //   51.9  the wall's even 17-luma ladder, 2 luma from SINGLET_DARK
+    //   18    the same ladder's bottom rung, 1.3 from OUTLINE
+    //   43.9  WALL_MID as it shipped until this round — 1.4 luma from HAIR_DARK
+    //         once A1's shading rework moved his hair from 37.2 to 45.2. This
+    //         one is here because the version of THIS TEST that shipped with it
+    //         did not catch it: HAIR_DARK was not in the contact list. The rim
+    //         percentiles in `gymReadability.ts` caught it instead.
     expect(worstGapAgainst(120, LOWER_BODY)).toBeLessThan(MIN_GAP);
-    expect(worstGapAgainst(51.9, UPPER_BODY)).toBeLessThan(MIN_GAP);
-    // ...and the ladder that produced it collided at every rung, not one.
-    for (const planted of [18, 36, 51.9]) {
-      expect(worstGapAgainst(planted, [...UPPER_BODY, PAL.OUTLINE, PAL.HAIR_DARK])).toBeLessThan(
-        MIN_GAP,
-      );
+    for (const planted of [18, 43.9, 51.9]) {
+      expect(worstGapAgainst(planted, [...UPPER_BODY, PAL.OUTLINE])).toBeLessThan(MIN_GAP);
     }
+
+    // ONE RUNG OF THAT OLD LADDER NO LONGER COLLIDES, and saying so is the
+    // point of this comment. 36 was chosen to sit on the old HAIR_DARK of 37.2;
+    // his hair is now 45.2, so a wall at 36 clears every contact step by 9.2 and
+    // this test would be lying if it still claimed otherwise. That is what a
+    // plant calibrated against a moving figure does, and it is why the control
+    // below is generated from the figure instead of written down.
+    expect(worstGapAgainst(36, [...UPPER_BODY, PAL.OUTLINE])).toBeGreaterThan(MIN_GAP);
+
+    // THE CONTROL THAT CANNOT GO STALE. A background value placed ON any step
+    // the figure is actually drawn against fails by construction, whatever the
+    // figure's ramp does next — and so does one placed within half the minimum
+    // gap of it, on either side, which is what stops this being a test about
+    // exact equality.
+    for (const contacts of [UPPER_BODY, LOWER_BODY]) {
+      expect(contacts.length).toBeGreaterThan(4);
+      for (const step of contacts) {
+        for (const offset of [0, MIN_GAP / 2, -MIN_GAP / 2]) {
+          expect(
+            worstGapAgainst(luma(step) + offset, contacts),
+            `a background at ${(luma(step) + offset).toFixed(1)} should collide`,
+          ).toBeLessThan(MIN_GAP);
+        }
+      }
+    }
+    // ...and the same generator run one gap away from every step does NOT fail,
+    // so it is measuring distance rather than always saying yes.
+    const clear = luma(PAL.OUTLINE) - MIN_GAP * 2;
+    expect(worstGapAgainst(clear, [PAL.OUTLINE])).toBeGreaterThan(MIN_GAP);
   });
 });

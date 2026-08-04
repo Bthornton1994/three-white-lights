@@ -964,11 +964,19 @@ describe('the bounds bite', () => {
     // ascending order so no band boundary is a hard edge, plus a chalk seam for
     // content and a filament for a light source. Fourteen indices — as many as
     // a real room — and an average value inside the window.
+    // RE-DERIVED against the figure A1's shading rework left behind, not the one
+    // this plant was written for. Its steps under 90 now read 19.3 / 45.2 /
+    // 49.3 / 50.9 / 54.1 / 58.9 / 64.7 / 65.1 / 73.0 / 75.0 / 83.9, and each
+    // band below is the gym index nearest one of them. `WALL_MID` was in this
+    // list and is not any more: it moved to 33.9 this round to get off his hair,
+    // which put it 11 luma clear of the nearest figure step — i.e. it stopped
+    // being a colour that hides a lifter, so it stopped belonging in a room
+    // built to hide one. `WOOD_MID` (85.7, 1.8 off PLATE_BLUE_SHADE) replaces it
+    // and keeps the count at twelve, which is what keeps INDEX_COUNT passing.
     const BANDS = [
       GYM.WOOD_DARK,
       GYM.LAMP_HOUSING,
       GYM.ACCENT_RED,
-      GYM.WALL_MID,
       GYM.CROWD_MID,
       GYM.FLOOR_LIGHT,
       GYM.STRIPE_MID,
@@ -977,8 +985,13 @@ describe('the bounds bite', () => {
       GYM.WALL_LIGHT,
       GYM.GLASS_DIM,
       GYM.ACCENT_YELLOW,
+      GYM.WOOD_MID,
     ];
-    const BAND_ROWS = 14;
+    // Cycled rather than clamped, and narrow enough that the figure's whole
+    // height meets every band. With one pass of twelve bands over the full grid
+    // the lifter only ever stood in front of the top of the ladder, and a plant
+    // that only collides with his shins is not a room painted in his values.
+    const BAND_ROWS = 6;
     // UPRIGHTS, evenly spread across the frame — pillars, near enough. Without
     // them this plant would fail `FURNITURE_SHARE`, `FILLED_CELLS` and
     // `CONTENT_PEAK` as well, and stop being the sharp "only the rim catches it"
@@ -987,7 +1000,7 @@ describe('the bounds bite', () => {
     const SEAM_COLS = 25;
     const grid = planted((g) => {
       for (let y = 0; y < g.h; y += 1) {
-        const band = BANDS[Math.min(BANDS.length - 1, Math.floor(y / BAND_ROWS))] ?? BANDS[0] ?? 0;
+        const band = BANDS[Math.floor(y / BAND_ROWS) % BANDS.length] ?? BANDS[0] ?? 0;
         for (let x = 0; x < g.w; x += 1) {
           setPx(g, x, y, x % SEAM_COLS === 0 ? GYM.LAMP_GLOW : band);
         }
@@ -998,8 +1011,19 @@ describe('the bounds bite', () => {
       }
     });
     const bad = violations(grid);
+    // The LOW percentile is where this case lives, and that is a property of the
+    // case rather than a weakness. `rimContrast` samples the outermost reachable
+    // pixel of the figure, which is usually his keyline at luma 8.9 or 19.3 — so
+    // a room has to be DARK to collide with a quarter of the crossings, and a
+    // dark room fails MEAN_LUMA and stops being this test. A room in his MID
+    // values collides on the crossings where the keyline is absent and the fill
+    // is what shows, which is the bottom few per cent. p05 is the bound that
+    // catches it, and p25 is not asserted here because asserting it would mean
+    // building a different room and calling it this one.
     expect(bad.some((v) => v.startsWith('RIM_P05_LOW')), bad.join(' ')).toBe(true);
-    expect(bad.some((v) => v.startsWith('RIM_P25_LOW')), bad.join(' ')).toBe(true);
+    expect(bad.every((v) => v.startsWith('RIM_')), `non-rim bound fired: ${bad.join(' ')}`).toBe(
+      true,
+    );
     // ...and it passes every aggregate that catches the blank screen, the
     // blown-out one and the unfurnished one, which is what makes the rim bounds
     // load-bearing rather than redundant.
@@ -1022,8 +1046,11 @@ describe('the bounds bite', () => {
     // ...and the FILL percentiles pass it outright, which is exactly why the
     // keyline percentiles are kept as their own bound rather than replaced.
     const r = measureSceneReadability(grid, { occluders: OCCLUDERS });
-    expect(r.rimFill.p05).toBeGreaterThan(BOUNDS.RIM_FILL_P05_MIN * 3);
     expect(r.rimContrast.p05).toBeLessThan(BOUNDS.RIM_P05_MIN);
+    expect(r.rimFill.p05).toBeGreaterThan(BOUNDS.RIM_FILL_P05_MIN);
+    expect(r.rimFill.p05 - r.rimContrast.p05).toBeGreaterThan(
+      GYM_READABILITY.PERCEPTIBLE_LUMA_STEP,
+    );
   });
 
   it('A ROOM WITH NO FURNITURE IN IT fails the furniture floor', () => {

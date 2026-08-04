@@ -79,19 +79,38 @@ import {
 const GYM_WALL_COLORS: readonly Rgb5[] = [
   [31, 0, 31], //  0 transparent sentinel (magenta; never rendered)
   // THE WALL RAMP IS DELIBERATELY OUT OF PHASE WITH THE FIGURE'S.
-  // It used to be 18 / 36 / 52 / 69, an even ~17-luma ladder — and the lifter's
-  // own low steps are OUTLINE 19, HAIR_DARK 37, SINGLET_DARK 54, GEAR_DARK 59,
-  // SKIN_SHADOW 73, also about 17 apart. Every wall step landed within 4 luma
-  // of a figure step, which is the worst possible arrangement and arrived by
-  // coincidence rather than by choice. Shifted down by half a step, the wall
-  // now interleaves with the figure instead of aligning with it: 11 / 26 / 44
-  // sit in the GAPS at 19-37, 37-54 and 54-73.
+  // It used to be 18 / 36 / 52 / 69, an even ~17-luma ladder, against a figure
+  // whose own low steps were about 17 apart too. Every wall step landed within
+  // 4 luma of a figure step, which is the worst possible arrangement and
+  // arrived by coincidence rather than by choice.
+  //
+  // THE FIGURE THEN MOVED, and this is what re-deriving against it looks like.
+  // The A1 shading rework took HAIR_DARK from 37.2 to 45.2 and widened the
+  // figure's distribution; WALL_MID at 43.9 — chosen to interleave with the OLD
+  // ramp — ended up 1.4 luma from the lifter's own hair, and the rim
+  // percentiles in `gymReadability.ts` found it at four to five samples a
+  // frame. His head was dissolving into the wall behind it.
+  //
+  // The figure's steps under 80 now read 19.3 / 45.2 / 49.3 / 50.9 / 54.1 /
+  // 58.9 / 64.7 / 65.1 / 73.0 / 75.0. There is exactly ONE window in that
+  // ladder wide enough to hold a background value more than
+  // GYM_READABILITY.PERCEPTIBLE_LUMA_STEP from both of its ends — 19.3 to 45.2,
+  // and only its middle six luma. So the wall gets ONE safe band, not four, and
+  // it is spent on the band the lifter's head and torso are actually drawn
+  // against. WALL_DARK and WALL_DEEP sit above his crown and are exempt for the
+  // same reason `gymPalette.test.ts` exempts the lamp wash and the glass — an
+  // exemption `gymScene.test.ts` checks on the rendered pixels rather than
+  // taking on trust.
   [1, 1, 4], //  1 WALL_DEEP      luma 11  — top of the wall, out of the lamps
   [3, 3, 5], //  2 WALL_DARK      luma 26  — ref crowd median is 36; ours is the
-  //                                 band either side of it
-  [5, 5, 8], //  3 WALL_MID       luma 44  — the band the lifter's torso is drawn
-  //                                 against, and the one the interleaving is
-  //                                 really for: 10 luma clear of SINGLET_DARK
+  //                                 band either side of it. ABOVE HIS CROWN.
+  [4, 4, 6], //  3 WALL_MID       luma 34  — the band the lifter's head and
+  //                                 torso are drawn against, and the only
+  //                                 value in this bank inside the one safe
+  //                                 window: 14.5 clear of his OUTLINE, 11.4
+  //                                 clear of his HAIR_DARK, 15.5 clear of the
+  //                                 shade half of a red disc and 20.3 clear of
+  //                                 SINGLET_DARK.
   [8, 8, 11], //  4 WALL_LIGHT    luma 69  — ONLY where a lamp washes, and only
   //                                 high on the wall. It is 4 luma from
   //                                 SKIN_SHADOW, which would be a bad colour to
@@ -126,6 +145,23 @@ const GYM_WALL_COLORS: readonly Rgb5[] = [
   [7, 9, 12], // 11 GLASS_DIM     luma 72  — high window, cool against the paint
   [3, 3, 4], // 12 FRAME_DARK     luma 25  — window frame, conduit, bracket
   [3, 4, 5], // 13 TRUSS          luma 31  — roof steel and hanging stems
+  // THE ONE COLLISION THIS FILE CANNOT SOLVE, STATED RATHER THAN HIDDEN.
+  // After A1's shading rework CROWD_MID (45.2) is the lifter's HAIR_DARK (45.2)
+  // to one decimal place, and CROWD_DARK (20.3) is within 1.0 of his OUTLINE.
+  // Both were measured, and both were tried: at CROWD_DARK 28 / CROWD_MID 36 —
+  // the only pair the rgb5 grid offers inside the single safe window described
+  // above the wall ramp — the worst contact improves from 0.0 to 8.0, still
+  // under PERCEPTIBLE_LUMA_STEP, and the heads stop clearing EDGE_LUMA_DELTA
+  // over the mass they sit on. Measured: the meet room's furniture share falls
+  // from 5.99% to 2.75% and it fails FURNITURE_SHARE_MIN outright. A crowd 8
+  // luma from his hair that no longer reads as a crowd is not a trade worth
+  // taking, so these are left where they are and the collision is reported.
+  //
+  // What would actually solve it is not a colour: it is the crowd's seating
+  // sitting below his crown rather than behind it, which is a change to the
+  // meet venue's geometry and belongs to whoever owns meet-day art.
+  // The bounds still pass — it is about 2% of rim samples, under the p05 floor
+  // — and that is exactly why the number is written down here.
   [3, 2, 4], // 14 CROWD_DARK     luma 20  — meet venue: the seated dark mass
   [6, 5, 7], // 15 CROWD_MID      luma 45  — meet venue: a lit row of heads
 ];
