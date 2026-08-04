@@ -14,6 +14,8 @@ import {
   DOTS_NO_TOTAL_DISPLAY,
   DOTS_NUMERATOR,
   DOTS_SMALLEST_PRINTABLE_SCORE,
+  DOTS_TOTAL_UNIT,
+  KILOGRAMS_PER_POUND,
   applyDotsCoefficient,
   clampBodyweightToDotsDomain,
   compareDotsCoefficients,
@@ -31,6 +33,7 @@ import {
   formatDotsScore,
   hasDotsScore,
   isBodyweightInDotsDomain,
+  kilogramsFromPounds,
   officialTotalFromMeet,
   officialTotalKg,
   roundDotsDelta,
@@ -43,13 +46,19 @@ import {
   type ScoredDots,
 } from './dots';
 import {
+  DEFAULT_MEET_RULES,
   MIN_LOADABLE_WEIGHT_KG,
+  POUND_MEET_RULES,
   createMeet,
   declareAttempt,
   finalMeetTotal,
+  lightestCallableWeightIgnoringTheCard,
+  meetLoadingRules,
+  passAttempt,
   readTotal,
   resolveAttempt,
   totalOnTheBoard,
+  validateMeetRules,
   type JudgePanel,
   type MeetState,
 } from './meet';
@@ -185,6 +194,41 @@ function completedMeet(): MeetState {
 /** One good squat in, eight attempts to go. */
 function inProgressMeet(): MeetState {
   return take(createMeet(), 200, ALL_WHITE);
+}
+
+// --- The same meet, run in pounds -------------------------------------------
+//
+// `POUND_MEET_RULES` is `meet.ts`'s own export, validated by its own validator
+// and driven end-to-end by its own suite. Nothing below hand-rolls a reading:
+// this is the supported configuration, taken through the front door.
+
+/** 442.5 + 280 + 545 = 1267.5 lb, nine good lifts, on a 45 lb bar. */
+function completedPoundMeet(): MeetState {
+  let state = createMeet(POUND_MEET_RULES);
+  for (const weight of [405, 425, 442.5, 265, 275, 280, 500, 525, 545]) {
+    state = take(state, weight, ALL_WHITE);
+  }
+  return state;
+}
+
+/** Squat and bench banked in pounds, all three deadlifts missed. */
+function bombedPoundMeet(): MeetState {
+  let state = createMeet(POUND_MEET_RULES);
+  state = take(state, 405, ALL_WHITE);
+  state = take(state, 425, ALL_RED);
+  state = take(state, 425, ALL_RED);
+  state = take(state, 265, ALL_WHITE);
+  state = take(state, 275, ALL_RED);
+  state = take(state, 275, ALL_RED);
+  state = take(state, 500, ALL_RED);
+  state = take(state, 500, ALL_RED);
+  state = take(state, 500, ALL_RED);
+  return state;
+}
+
+/** One good pound squat in, eight attempts to go. */
+function inProgressPoundMeet(): MeetState {
+  return take(createMeet(POUND_MEET_RULES), 405, ALL_WHITE);
 }
 
 describe('published DOTS coefficients', () => {
@@ -877,6 +921,163 @@ describe('scoring an actual meet through meet.ts', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// UNITS — a pound total is not a small kilogram total.
+//
+// Everything here drives `POUND_MEET_RULES`, which is `meet.ts`'s own export,
+// through `meet.ts`'s own state machine. Nothing hand-rolls a reading: the point
+// of the defect was that it arrived through the front door this module
+// advertises, so the tests have to use that door.
+// ---------------------------------------------------------------------------
+
+describe('a meet not run in kilograms', () => {
+  it('IS a first-class configuration, not a hypothetical — so the hazard is real', () => {
+    // If any of these stop holding, this whole block is testing nothing. That is
+    // exactly how the defect survived: `dots.test.ts` had never imported
+    // POUND_MEET_RULES, and the words "pound", "lb" and "unit" appeared zero
+    // times in it.
+    expect(validateMeetRules(POUND_MEET_RULES)).toBeNull();
+    expect(meetLoadingRules(createMeet(POUND_MEET_RULES)).unit).toBe('lb');
+    const reading = readTotal(completedPoundMeet());
+    expect(reading.kind).toBe('final');
+    expect(reading.total).toBe(1267.5);
+  });
+
+  it('CANNOT produce the wrong score through the module’s advertised entry point', () => {
+    const reading = readTotal(completedPoundMeet());
+    // The number that used to come out, verbatim, from
+    // `evaluateMeetDots('male', 93, <this exact reading>)`. It is not merely
+    // wrong: it is above the 700 this file's own plausibility test says no human
+    // result reaches, and it formatted to "806.45" with nothing marking it.
+    const WHAT_IT_USED_TO_PRINT = 806.4483677921429;
+
+    expect(() => evaluateMeetDots('male', 93, reading)).toThrow(RangeError);
+    expect(() => officialTotalFromMeet(reading)).toThrow(RangeError);
+
+    // ...and the number is nowhere to be found, by any route through this module
+    // that takes the reading.
+    let escaped: number | null = null;
+    try {
+      escaped = expectScored(evaluateMeetDots('male', 93, reading)).score;
+    } catch {
+      escaped = null;
+    }
+    expect(escaped).toBeNull();
+    expect(escaped).not.toBeCloseTo(WHAT_IT_USED_TO_PRINT, SCORE_PRECISION);
+  });
+
+  it('says which unit it got, what DOTS needs, and what to do instead', () => {
+    const call = (): unknown => evaluateMeetDots('male', 93, readTotal(completedPoundMeet()));
+    expect(call).toThrow(/"lb"/);
+    expect(call).toThrow(new RegExp(DOTS_TOTAL_UNIT));
+    // A refusal that cannot name its remedy just relocates the problem.
+    expect(call).toThrow(/kilogramsFromPounds/);
+    expect(call).toThrow(/officialTotalKg/);
+    // ...and it says why it will not just convert for the caller.
+    expect(call).toThrow(/BODYWEIGHT/);
+  });
+
+  it('refuses on every reading kind, so the bug fires on the first poll not the first total', () => {
+    // A defect that only fires on SUCCESS is the worst kind to ship: a pound
+    // meet that bombs, or one still running, would look like a correctly handled
+    // 'no-total' right up until someone finally totalled.
+    for (const state of [completedPoundMeet(), bombedPoundMeet(), inProgressPoundMeet()]) {
+      const reading = readTotal(state);
+      expect(reading.unit).toBe('lb');
+      expect(() => evaluateMeetDots('male', 93, reading)).toThrow(RangeError);
+      expect(() => officialTotalFromMeet(reading)).toThrow(RangeError);
+    }
+    // For contrast: the same three shapes in kg do NOT throw.
+    for (const state of [completedMeet(), bombedMeet(), inProgressMeet()]) {
+      expect(() => evaluateMeetDots('male', 93, readTotal(state))).not.toThrow();
+    }
+  });
+
+  it('refuses a unit it has never heard of, rather than defaulting it to kg', () => {
+    // The permissive `unit: string` on MeetTotalReading is deliberate: if a
+    // future `meet.ts` adds a unit, dots.ts refuses it instead of the union here
+    // being widened in a hurry and the new unit scoring as kilograms.
+    const stones = { kind: 'final', total: 90.5, unit: 'st' } as const;
+    expect(() => evaluateMeetDots('male', 93, stones)).toThrow(/"st"/);
+    expect(() => officialTotalFromMeet(stones)).toThrow(RangeError);
+  });
+
+  it('scores correctly once the WHOLE entry is converted, which is the intended escape', () => {
+    // The refusal is not a dead end. Convert both numbers — total and bodyweight
+    // — and mint the total explicitly, which is the same written-down claim the
+    // kg path already makes.
+    const reading = readTotal(completedPoundMeet());
+    if (reading.kind !== 'final') throw new Error('fixture did not finish with a total');
+
+    const bodyweightLb = 205;
+    const converted = dotsScore(
+      'male',
+      kilogramsFromPounds(bodyweightLb),
+      officialTotalKg(kilogramsFromPounds(reading.total)),
+    );
+
+    // Independent check: the same lifter entered in kg from the start scores the
+    // same, to floating-point noise. This is the "numbers crossing a module
+    // boundary must agree" half of the bar.
+    const sameLifterInKg = dotsScore(
+      'male',
+      205 * 0.45359237,
+      total(1267.5 * 0.45359237),
+    );
+    expect(converted).toBeCloseTo(sameLifterInKg, SCORE_PRECISION);
+
+    // And it lands where a 1267.5 lb / 205 lb lifter belongs: a strong but
+    // human ~575 kg total at ~93 kg, well inside the plausibility band and
+    // nowhere near the 806 the broken path printed.
+    expect(converted).toBeGreaterThan(300);
+    expect(converted).toBeLessThan(420);
+    expect(converted).toBeLessThan(700);
+  });
+
+  it('pins the exact conversion constant, which is a definition rather than a measurement', () => {
+    // 1959 International Yard and Pound Agreement. Not tunable, not roundable.
+    expect(KILOGRAMS_PER_POUND).toBe(0.45359237);
+    expect(kilogramsFromPounds(1267.5)).toBeCloseTo(574.928328975, 9);
+    expect(kilogramsFromPounds(0)).toBe(0);
+    expect(() => kilogramsFromPounds(Number.NaN)).toThrow(RangeError);
+    expect(() => kilogramsFromPounds(Number.POSITIVE_INFINITY)).toThrow(RangeError);
+  });
+
+  it('spells the kg unit the same way meet.ts does, checked against meet.ts', () => {
+    // The refusal is a string comparison across a boundary this module cannot
+    // import across. If the two spellings drift, EVERY kg meet starts throwing —
+    // loudly, not silently — but this pins it at the source anyway.
+    expect(DEFAULT_MEET_RULES.unit).toBe(DOTS_TOTAL_UNIT);
+    expect(readTotal(createMeet()).unit).toBe(DOTS_TOTAL_UNIT);
+  });
+
+  it('DISCLOSED: a caller can still label a pound reading "kg", and nothing catches that', () => {
+    // Same class as `officialTotalKg(totalOnTheBoard(state))`: a lie the caller
+    // has to type out. Written down rather than claimed closed.
+    const reading = readTotal(completedPoundMeet());
+    if (reading.kind !== 'final') throw new Error('fixture did not finish with a total');
+    const relabelled = { kind: 'final', total: reading.total, unit: DOTS_TOTAL_UNIT } as const;
+    expect(expectScored(evaluateMeetDots('male', 93, relabelled)).score).toBeCloseTo(
+      806.4483677921429,
+      SCORE_PRECISION,
+    );
+  });
+
+  it('DISCLOSED: the bodyweight axis is unguarded, and the refusal is the only defence on it', () => {
+    // `bodyweightKg` is a bare number whose name is the whole guarantee. A pound
+    // bodyweight against a kg total scores, and nothing here can see it. This is
+    // exactly why the total path REFUSES instead of converting: converting one
+    // axis while trusting the other trades one wrong number for another.
+    const kgTotal = total(574.928328975);
+    const honest = dotsScore('male', 92.98643585, kgTotal);
+    const lbBodyweight = dotsScore('male', 205, kgTotal);
+    expect(lbBodyweight).not.toBeCloseTo(honest, 2);
+    // Wrong in the OTHER direction — which is what auto-converting the total
+    // would have produced for a caller who passed a pound bodyweight.
+    expect(lbBodyweight).toBeLessThan(honest);
+  });
+});
+
 describe('a lifter with no total is absent from the ranking, not last in it', () => {
   it('drops out of a DOTS board rather than sorting to the bottom of it', () => {
     const field: readonly DotsOutcome[] = [
@@ -972,11 +1173,39 @@ describe('input handling', () => {
     expect(() => officialTotalKg(Number.POSITIVE_INFINITY)).toThrow(RangeError);
     expect(() => dotsCoefficient('female', Number.NaN)).toThrow(RangeError);
     expect(() => roundDotsScore(Number.NaN)).toThrow(RangeError);
-    // A non-finite delta is only reachable through a cast now, which is exactly
-    // what the docstring says. The guard is kept, and pinned, for that case.
+    // A non-finite delta ARRIVING is only reachable through a cast. The guard is
+    // kept, and pinned, for that case — but see the next test for why "reachable
+    // only via a cast" was not the whole story.
     expect(() => roundDotsDelta(Number.NaN as DotsDelta)).toThrow(RangeError);
     expect(() => formatDotsDelta(Number.NEGATIVE_INFINITY as DotsDelta)).toThrow(RangeError);
     expect(() => formatDotsScore(Number.POSITIVE_INFINITY)).toThrow(RangeError);
+  });
+
+  it('A LEGALLY MINTED DELTA CAN OVERFLOW WHEN ROUNDED, so the docstring may not blame a cast', () => {
+    // `roundDotsDelta` said "@throws RangeError if the delta is not finite
+    // (reachable only via a cast)". Not quite: rounding multiplies by
+    // 10 ** DOTS_DISPLAY_DECIMALS first, and that multiply overflows a finite
+    // input. Both ends below are real scores by this module's own rule
+    // (`isPrintableScore`), so the mint accepts them and no cast is involved.
+    const enormous = delta(1, 1.7e308);
+    expect(Number.isFinite(enormous as number)).toBe(true);
+    expect(enormous as number).toBeCloseTo(1.7e308, -300);
+
+    // The multiply that does it, spelled out, so the mechanism is not folded
+    // into the assertion.
+    expect(Number.isFinite((enormous as number) * 10 ** DOTS_DISPLAY_DECIMALS)).toBe(false);
+
+    // It used to hand back `Infinity` typed as a `DotsDelta`, which
+    // `formatDotsDelta` printed as "+Infinity". It now throws, and names the
+    // overflow rather than a cast that was never made.
+    expect(() => roundDotsDelta(enormous)).toThrow(RangeError);
+    expect(() => roundDotsDelta(enormous)).toThrow(/overflow/);
+    expect(() => roundDotsDelta(enormous)).toThrow(/no cast was needed/);
+    expect(() => formatDotsDelta(enormous)).toThrow(RangeError);
+
+    // A delta one order of magnitude smaller rounds fine, so the guard is a
+    // guard and not a ceiling on ordinary use.
+    expect(Number.isFinite(roundDotsDelta(delta(1, 1e300)) as number)).toBe(true);
   });
 
   it('rejects non-positive bodyweight and non-positive totals', () => {
@@ -1132,17 +1361,96 @@ describe('DOTS deltas (GDD §6.5 recap call-outs)', () => {
 
     // Refusing it is correct — a score that rounds to "0.00" is the shape the
     // collapse takes — so this is a docstring defect, not a behaviour defect.
-    // The reason it never fires in practice is a fact about `meet.ts`, not about
-    // the type: the smallest total a finished meet can record is three attempts
-    // at MIN_LOADABLE_WEIGHT_KG (25 kg), and even the smallest coefficient in
-    // the published domain turns 75 kg into a score far above the guard.
-    const smallestMeetScore = dotsScore(
-      'male',
-      DOTS_BODYWEIGHT_DOMAIN_KG.male.max,
-      total(3 * MIN_LOADABLE_WEIGHT_KG),
-    );
+    // Why it never fires in practice is pinned by the next test, which drives
+    // the floor through `meet.ts` instead of asserting it from a constant.
+  });
+
+  it('THE ~37 DOTS FLOOR IS A FACT ABOUT meet.ts, so it is driven through meet.ts', () => {
+    // WHAT THIS TEST USED TO BE, and why it was worth nothing:
+    //
+    //     dotsScore('male', 210, total(3 * MIN_LOADABLE_WEIGHT_KG))
+    //
+    // — a constant, multiplied by three, inside this module. It named `meet.ts`'s
+    // floor and never executed `meet.ts` at all. Delete the WEIGHT_BELOW_BAR gate
+    // from `meet.ts` entirely and that line stayed green.
+    //
+    // So: build the lightest meet the engine will actually let you finish, and
+    // ask the engine to refuse anything lighter.
+    const lightestCall = lightestCallableWeightIgnoringTheCard('squat', DEFAULT_MEET_RULES);
+    expect(lightestCall).toBe(MIN_LOADABLE_WEIGHT_KG);
+
+    // THE FLOOR ITSELF. If `meet.ts` stops refusing sub-bar weights, this fails.
+    for (const lift of ['squat', 'bench', 'deadlift'] as const) {
+      const bar = DEFAULT_MEET_RULES.barAndCollarsWeight[lift];
+      expect(bar).toBe(MIN_LOADABLE_WEIGHT_KG);
+    }
+    for (const tooLight of [0.5, 2.5, MIN_LOADABLE_WEIGHT_KG - DEFAULT_MEET_RULES.declarationIncrement]) {
+      const refused = declareAttempt(createMeet(), { weight: tooLight });
+      expect(refused.ok).toBe(false);
+      if (refused.ok) throw new Error(`meet.ts accepted ${tooLight}, which is under the bar`);
+      expect(refused.error.code).toBe('WEIGHT_BELOW_BAR');
+    }
+
+    // The lightest FINISHABLE meet: open at the bar on each lift, then pass the
+    // remaining two attempts (the bar has to move 2.5 between attempts, so the
+    // opener is the only way to stay at the floor).
+    let floorMeet = createMeet();
+    for (let lift = 0; lift < 3; lift += 1) {
+      floorMeet = take(floorMeet, lightestCall, ALL_WHITE);
+      for (let remaining = 0; remaining < 2; remaining += 1) {
+        const passed = passAttempt(floorMeet);
+        if (!passed.ok) throw new Error(`pass failed: ${passed.error.message}`);
+        floorMeet = passed.value;
+      }
+    }
+
+    const reading = readTotal(floorMeet);
+    expect(reading.kind).toBe('final');
+    expect(reading.total).toBe(3 * MIN_LOADABLE_WEIGHT_KG);
+
+    // Now score the real thing, at the heaviest bodyweight the published domain
+    // allows — the smallest coefficient there is.
+    const minted = officialTotalFromMeet(reading);
+    if (minted === null) throw new Error('the floor meet produced no official total');
+    const smallestMeetScore = dotsScore('male', DOTS_BODYWEIGHT_DOMAIN_KG.male.max, minted);
     expect(smallestMeetScore).toBeGreaterThan(37);
     expect(smallestMeetScore).toBeLessThan(38);
+    // ...which is three orders of magnitude clear of the guard that refuses a
+    // score rounding to "0.00". That gap is the whole claim.
+    expect(smallestMeetScore).toBeGreaterThan(DOTS_SMALLEST_PRINTABLE_SCORE * 1000);
+  });
+
+  it('DISCLOSED: the floor is a fact about the DEFAULT rules, not about meet.ts as such', () => {
+    // The prose in dots.ts used to say "meet.ts cannot record a total below
+    // ~75 kg" flatly. `barAndCollarsWeight` is per-lift caller-configurable and
+    // `validateMeetRules` asks only that it be finite and positive, so a nonsense
+    // federation config can record a total whose DOTS score rounds to "0.00".
+    // Nonsense, but true — and the corrected prose says "under its default rules"
+    // because of exactly this.
+    const featherweightBar = {
+      ...DEFAULT_MEET_RULES,
+      barAndCollarsWeight: { squat: 0.001, bench: 0.001, deadlift: 0.001 },
+      minIncrement: 0.001,
+      declarationIncrement: 0.001,
+    };
+    expect(validateMeetRules(featherweightBar)).toBeNull();
+
+    let silly = createMeet(featherweightBar);
+    for (let lift = 0; lift < 3; lift += 1) {
+      silly = take(silly, 0.001, ALL_WHITE);
+      for (let remaining = 0; remaining < 2; remaining += 1) {
+        const passed = passAttempt(silly);
+        if (!passed.ok) throw new Error(`pass failed: ${passed.error.message}`);
+        silly = passed.value;
+      }
+    }
+    const minted = officialTotalFromMeet(readTotal(silly));
+    if (minted === null) throw new Error('expected a total');
+    expect(minted as number).toBeLessThan(MIN_LOADABLE_WEIGHT_KG);
+
+    const score = dotsScore('male', DOTS_BODYWEIGHT_DOMAIN_KG.male.max, minted);
+    expect(score).toBeLessThan(DOTS_SMALLEST_PRINTABLE_SCORE);
+    expect(() => formatDotsScore(score)).toThrow(RangeError);
   });
 });
 
@@ -1231,6 +1539,15 @@ describe('plausibility sanity check', () => {
       expect(score).toBeLessThan(700);
     }
   });
+
+  it('and the pound meet that used to breach that band cannot produce a number at all', () => {
+    // This is the band the unit defect walked straight through: 806.45, printed
+    // to two decimals, above the ceiling the three assertions above establish.
+    // The check is here rather than only in the units block so the plausibility
+    // envelope and the boundary that enforces it sit in the same file section.
+    const reading = readTotal(completedPoundMeet());
+    expect(() => evaluateMeetDots('male', 93, reading)).toThrow(RangeError);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1279,8 +1596,36 @@ describe('module purity', () => {
     // this module does not export'. All this one defends is the published API
     // surface: nobody gets to add a one-call accessor with a name that advertises
     // itself.
-    expect(code).not.toMatch(/export\s+function\s+dotsCoefficientValue/);
-    expect(code).not.toMatch(/export\s+function\s+\w*[Cc]oefficientNumber/);
+    //
+    // AND IT HAS TO MEAN EVERY FORM OF EXPORT, which it did not. Both regexes
+    // used to require `export function`, so
+    //
+    //     export const dotsCoefficientValue = (c: DotsCoefficient): number => ...
+    //
+    // sailed through the check whose stated claim is "nobody gets to add a
+    // one-call accessor with a name that advertises itself". An arrow is the more
+    // likely way someone writes that accessor, not the less. The scan below
+    // matches `function`, `const`, `let` and `var`, and the shape is asserted
+    // against a synthetic line first so the regex cannot silently stop matching.
+    const BANNED_NAMES = /export\s+(?:function|const|let|var)\s+(?:dotsCoefficientValue|\w*[Cc]oefficientNumber)\b/;
+
+    // Self-check: these are the four declarations the ban is supposed to catch.
+    // Without them the two assertions below pass on an empty regex.
+    for (const wouldBeBanned of [
+      'export function dotsCoefficientValue(c: DotsCoefficient): number {',
+      'export const dotsCoefficientValue = (c: DotsCoefficient): number =>',
+      'export let coefficientNumber = 0;',
+      'export var dotsCoefficientNumber = 0;',
+    ]) {
+      expect(wouldBeBanned).toMatch(BANNED_NAMES);
+    }
+    // ...and a near miss that is NOT an export of one of those names must not
+    // match, or the check would be a ban on the word "coefficient".
+    expect('export function dotsCoefficient(sex: DotsSex, bodyweightKg: number)').not.toMatch(
+      BANNED_NAMES,
+    );
+
+    expect(code).not.toMatch(BANNED_NAMES);
   });
 
   it('describes its own load-time evaluation without understating it', () => {
@@ -1349,5 +1694,44 @@ describe('module purity', () => {
     expect(source).toMatch(/WHAT THIS DOES AND DOES NOT GUARANTEE/);
     expect(source).toMatch(/A cast \(`x as DotsDelta`\) still defeats this/);
     expect(source).not.toMatch(/no `\.score` on a `'no-total'` outcome to subtract/);
+    // The overflow correction, pinned dead: the old sentence blamed a cast for a
+    // case no cast could produce.
+    expect(source).not.toMatch(/if the delta is not finite \(reachable only via a cast\)/);
+    expect(source).toMatch(/THE INPUT GUARD IS NOT THE WHOLE GUARD/);
+  });
+
+  it('states the unit boundary, including the axis it does NOT cover', () => {
+    // The UNITS block is the disclosure half of this fix. The behaviour is
+    // executed in 'a meet not run in kilograms'; these pin the sentences so a
+    // future edit cannot quietly restore the overstatement.
+    expect(source).toMatch(/UNITS — A POUND TOTAL IS NOT A SMALL KILOGRAM TOTAL/);
+    expect(source).toMatch(/WHY REFUSE RATHER THAN CONVERT/);
+    // The bodyweight axis is disclosed as unguarded rather than claimed closed.
+    expect(source).toMatch(/The BODYWEIGHT is still a bare `number`/);
+    // And the check itself is in the code, not only in the comment.
+    expect(code).toMatch(/function assertKilogramReading/);
+    expect(code).toMatch(/assertKilogramReading\(reading\)/);
+    expect(code).toMatch(/export const DOTS_TOTAL_UNIT = 'kg'/);
+  });
+
+  it('scopes the ~75 kg floor to the DEFAULT rules, which is the only true form of it', () => {
+    // "meet.ts cannot record a total below ~75 kg" was stated flatly and is
+    // false for a caller-supplied `barAndCollarsWeight`. Executed in 'DISCLOSED:
+    // the floor is a fact about the DEFAULT rules'; pinned here as prose.
+    expect(source).not.toMatch(/because `meet\.ts` cannot record a total below ~75 kg/);
+    expect(source).toMatch(/UNDER ITS DEFAULT RULES/);
+    expect(source).toMatch(/per-lift caller-configurable/);
+  });
+
+  it('DISCLOSED: the symbol-identity claim is scoped to a single module instance', () => {
+    // "no function's output depends on which symbol instance it got" is false
+    // under duplicate module instantiation, which an unregistered `Symbol()`
+    // admits. Exotic and untested, so it is written down rather than engineered
+    // around — but the overstatement is pinned dead.
+    expect(source).not.toMatch(/and no function's output depends on\s*\n?\s*\*?\s*which symbol instance it got/);
+    expect(source).toMatch(/Across TWO instances it is false/);
+    // Engineering around it would mean a cross-realm registry, which is exactly
+    // the ambient global state the purity contract forbids.
+    expect(code).not.toMatch(/Symbol\s*\.\s*for/);
   });
 });

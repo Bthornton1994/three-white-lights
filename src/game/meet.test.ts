@@ -11,6 +11,7 @@ import {
   JUDGES_REQUIRED_FOR_GOOD_LIFT,
   JUDGE_COUNT,
   LIFT_ORDER,
+  MEET_WEIGHT_UNITS,
   MIN_ATTEMPT_INCREMENT_KG,
   MIN_LOADABLE_WEIGHT_KG,
   NEAREST_CALL_PROBE_STEPS,
@@ -869,6 +870,48 @@ describe('the plate ladder the engine refuses to model', () => {
     expect(state.phase).toEqual({ kind: 'awaiting-declaration', lift: 'bench', attemptNumber: 1 });
   });
 
+  it('says out loud that it is a pound meet, on every reading it produces', () => {
+    // WHY THIS EXISTS: this module's arithmetic is unit-agnostic and used to say
+    // so about its NUMBERS too. `readTotal(state).total` leaves the module, and
+    // the module that scores it is kilogram-only. A 1267.5 lb total handed to
+    // DOTS printed "806.45" against a truth of 365.76, and nothing marked it —
+    // 1267.5 is a perfectly ordinary kg total for a superheavy, so the magnitude
+    // gives nothing away. The unit is a RULE OF THE MEET and now rides out with
+    // the number.
+    expect(POUND_MEET_RULES.unit).toBe('lb');
+    expect(DEFAULT_MEET_RULES.unit).toBe('kg');
+    expect(meetLoadingRules(createMeet(POUND_MEET_RULES)).unit).toBe('lb');
+
+    // Every reading kind carries it, not only the one that carries a total: a
+    // caller wired to the wrong unit must find out on the first poll rather than
+    // on the first meet that finishes.
+    expect(readTotal(createMeet(POUND_MEET_RULES)).unit).toBe('lb');
+
+    let bombing = createMeet(POUND_MEET_RULES);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      bombing = takeAttempt(bombing, 405, THREE_RED);
+    }
+    const bombed = readTotal(bombing);
+    expect(bombed.kind).toBe('no-total');
+    expect(bombed.unit).toBe('lb');
+
+    let finishing = createMeet(POUND_MEET_RULES);
+    for (const weight of [405, 425, 442.5, 265, 275, 280, 500, 525, 545]) {
+      finishing = takeAttempt(finishing, weight, THREE_WHITE);
+    }
+    const final = readTotal(finishing);
+    expect(final).toEqual({
+      kind: 'final',
+      total: 1267.5,
+      totalOnTheBoard: 1267.5,
+      unit: 'lb',
+    });
+
+    // ...and the same meet in kg is a different reading, distinguishable by
+    // something other than the size of the number.
+    expect(readTotal(createMeet()).unit).toBe('kg');
+  });
+
   it('never refuses a weight the retrieved lb kit really loads, for an equipment reason', () => {
     // Sweep every load the kit can actually make. The engine may refuse a weight
     // as a RULE (off the declaration grid), but no refusal may be, or read as, a
@@ -1523,6 +1566,26 @@ describe('loadable weights', () => {
     // quietly running with a check disabled.
     expect(expectError(declareAttempt(createMeet(infiniteGrid), { weight: 200 })).code).toBe('INVALID_MEET_RULES');
     expect(expectError(suggestNextAttempt(createMeet(infiniteGrid), 'standard')).code).toBe('INVALID_MEET_RULES');
+  });
+
+  it('rejects a unit it does not recognise instead of falling through to kilograms', () => {
+    // A `unit` is the one field that can arrive as an arbitrary string from a
+    // persisted meet or a hand-built config (see the JSON note under THE RULES
+    // ARE OPAQUE). Defaulting an unrecognised one to kg is precisely how a pound
+    // meet reached DOTS as kilograms.
+    for (const bogus of ['', 'kilograms', 'KG', 'lbs', 'st', 'pounds']) {
+      const rules = { ...DEFAULT_MEET_RULES, unit: bogus } as unknown as MeetLoadingRules;
+      expect(validateMeetRules(rules)?.code).toBe('INVALID_MEET_RULES');
+      expect(validateMeetRules(rules)?.message).toMatch(/unit/);
+      // ...and a meet started on them is refused at the point of use, not run
+      // with the check quietly disabled.
+      expect(expectError(declareAttempt(createMeet(rules), { weight: 200 })).code).toBe(
+        'INVALID_MEET_RULES',
+      );
+    }
+    for (const unit of MEET_WEIGHT_UNITS) {
+      expect(validateMeetRules({ ...DEFAULT_MEET_RULES, unit })).toBeNull();
+    }
   });
 
   it('no longer rejects a configuration for disagreeing with a plate grid it does not have', () => {
