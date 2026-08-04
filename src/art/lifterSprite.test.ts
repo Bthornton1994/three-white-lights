@@ -1078,9 +1078,16 @@ describe('the reference is measured, not remembered', () => {
           `${REF.figure.litBoundarySamples} lit crossings -> keylined=${isKeylined(REF.figure)}`,
         `head box ${REF_WRESTLER_HEAD_BOX.x},${REF_WRESTLER_HEAD_BOX.y} -> ${REF.head.count} px, ` +
           `mean ${REF.head.meanLuma.toFixed(2)}, interior keyline ${pct(REF.head.interiorKeylineShare)}`,
-        `bounds: upper/lower in [${MIN_UPPER_OVER_LOWER_MEAN.toFixed(4)}, ${MAX_UPPER_OVER_LOWER_MEAN.toFixed(4)}], ` +
-          `interior keyline < ${pct(MAX_INTERIOR_KEYLINE_SHARE)}, limb mean luma > ${MIN_LIMB_MEAN_LUMA.toFixed(2)}, ` +
-          `limb interior keyline < ${pct(MAX_LIMB_INTERIOR_KEYLINE_SHARE)}, face < ${pct(MAX_FACE_INTERIOR_KEYLINE_SHARE)}`,
+        'bounds derived from the above:',
+        `  upper/lower mean ratio       [${MIN_UPPER_OVER_LOWER_MEAN.toFixed(4)}, ${MAX_UPPER_OVER_LOWER_MEAN.toFixed(4)}]`,
+        `  figure interior keyline    < ${pct(MAX_INTERIOR_KEYLINE_SHARE)}`,
+        `  limb mean luma             > ${MIN_LIMB_MEAN_LUMA.toFixed(2)}`,
+        `  limb near-black            < ${pct(MAX_LIMB_NEAR_BLACK_SHARE)}  (not the head: its hair is near-black)`,
+        `  arm/hand interior keyline  < ${pct(MAX_LIMB_INTERIOR_KEYLINE_SHARE)}`,
+        `  head/neck interior keyline < ${pct(MAX_FACE_INTERIOR_KEYLINE_SHARE)}`,
+        'ours-only ratchets, NOT reference comparisons — we keep a keyline and it does not:',
+        `  upper near-black           < ${pct(MAX_UPPER_NEAR_BLACK_SHARE)}`,
+        `  lower near-black           < ${pct(MAX_LOWER_NEAR_BLACK_SHARE)}`,
       ].join('\n'),
     );
     expect(REF.figure.count).toBeGreaterThan(0);
