@@ -610,6 +610,40 @@ type UnionIsExactly<A, B> = [Exclude<A, B>] extends [never]
     : never
   : never;
 
+/**
+ * Every key of every member of a union.
+ *
+ * `keyof` a union is the INTERSECTION of its members' keys, which for a
+ * discriminated union is usually just the discriminant — so `KeysAreExactly`
+ * applied to one checks almost nothing. This distributes, so an allowlist
+ * asserted against it covers both arms.
+ */
+type EveryArmKey<T> = T extends unknown ? keyof T : never;
+
+/** The fields of one arm of a `unit`-tagged reading, other than the tag. */
+type ArmPayloadKeys<T, U extends string> = Exclude<keyof Extract<T, { readonly unit: U }>, 'unit'>;
+
+/**
+ * `true` when a `unit`-tagged reading's arms can be told apart BY FIELD NAME, so
+ * that its numbers are unreachable without a narrow on the unit.
+ *
+ * Written out rather than composed from `AreDisjoint` and `IsNonEmptyUnion`
+ * because those return `true | never` and `never extends true` is TRUE — a
+ * composition over them would pass exactly when its operands failed. The
+ * operands are combined here instead of the results.
+ *
+ * Three claims, in order: the two arms share no payload field; the kilogram arm
+ * has one; the pound arm has one. The last two are the non-vacuity half — an arm
+ * emptied to `{ unit: 'lb' }` is disjoint from everything and proves nothing.
+ */
+type ArmsAreTellableApart<T> = [Extract<ArmPayloadKeys<T, 'kg'>, ArmPayloadKeys<T, 'lb'>>] extends [never]
+  ? [ArmPayloadKeys<T, 'kg'>] extends [never]
+    ? never
+    : [ArmPayloadKeys<T, 'lb'>] extends [never]
+      ? never
+      : true
+  : never;
+
 /** `true` when `A` is a subset of `B`. */
 type IsSubsetOf<A, B> = [Exclude<A, B>] extends [never] ? true : never;
 
@@ -1318,20 +1352,139 @@ export const TRAINING_SET_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
  * See §6 of the header: with a real Edge Function the lights should be
  * re-resolved server-side and this type gets narrower. It is the client's word
  * today because there is nobody else to ask.
+ *
+ * THE WEIGHT IS `weight`, NOT `weightKg`, AND THAT RENAME IS THE POINT. It was
+ * `weightKg`: a bare `number` with a unit in its NAME and nothing behind the
+ * name — the same defect the bodyweight had one field up, nine times over. And
+ * these nine are the numbers that BECOME the total, so they are the ones that
+ * end up in `record.totalKg` permanently and monotonically.
+ *
+ * A row does not carry a unit because a row is not the grain a unit has. A meet
+ * is run under one `MeetLoadingRules` and `meet.ts` says so in as many words —
+ * "It is deliberately ONE unit for the whole meet". The unit therefore rides on
+ * the CARD (`MeetCardReport` below), once, where the domain actually puts it.
+ * Nine per-row units would be nine facts where there is one, eight of them
+ * redundant and every one of them free to disagree with the others; and a card
+ * whose squats were kg and whose bench was lb would make "attempts may not go
+ * down in weight within a lift" (CLAUDE.md, meet structure) a comparison between
+ * two different scales. A shape that can express a state the sport cannot is a
+ * shape somebody has to write a refusal for.
  */
 export interface MeetAttemptReport {
   readonly lift: LiftKind;
   readonly attemptNumber: 1 | 2 | 3;
-  readonly weightKg: number;
+  readonly weight: number;
   readonly good: boolean;
 }
 
-export const MEET_ATTEMPT_REPORT_KEYS = ['lift', 'attemptNumber', 'weightKg', 'good'] as const;
+export const MEET_ATTEMPT_REPORT_KEYS = ['lift', 'attemptNumber', 'weight', 'good'] as const;
 
 export const MEET_ATTEMPT_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
   MeetAttemptReport,
   (typeof MEET_ATTEMPT_REPORT_KEYS)[number]
 > = true;
+
+/**
+ * THE NINE NUMBERS, WITH THE UNIT THEY WERE LIFTED IN. One tag for the whole
+ * card, because a card is one meet and a meet is one unit.
+ *
+ * WHY THIS EXISTS. `MeetResultReport` used to carry `attempts: readonly
+ * MeetAttemptReport[]` and each row a `weightKg`. Nothing anywhere proved that
+ * `Kg`. `meetServer.ts` replayed those numbers through `createMeet(meet.rules)`
+ * and then checked `readTotal(state).unit` — but that unit is stamped by the
+ * MEET DEFINITION the caller passed in beside the report, so the check was a
+ * label read off one argument being used to vouch for the numbers in another.
+ * `meetServer.test.ts`'s own positive control shows what that costs: 405 / 425 /
+ * 442.5 / 265 / 275 / 280 / 500 / 525 / 545 is a legal POUND card and a legal
+ * KILOGRAM card, because pound calls land on 2.5 lb and kilogram calls on 2.5
+ * kg. Essentially every legal pound card is a legal kilogram card. A client
+ * playing in lb against a server that looked the definition up and found a kg
+ * meet banked a total 2.2x too large — and `nextTotalKg` is monotone, so no
+ * later honest meet can ever walk it back.
+ *
+ * THE SHAPE IS `BodyweightReading`'S, DELIBERATELY, AND FOR ITS REASONS:
+ *
+ *   - A TAGGED PAIR RATHER THAN A BRAND, because the consumer that has to be
+ *     convinced is a SERVER and the value reaches it as JSON. A brand is erased
+ *     by `JSON.stringify`; a `unit` field is not.
+ *   - THE ARMS CARRY DIFFERENT FIELD NAMES, so the nine numbers cannot be
+ *     reached without narrowing on the unit first. There is no `attempts` field
+ *     on this type — a field reachable from both arms would put the hole
+ *     straight back, which is exactly what `attempts` was.
+ *
+ * WHAT THAT BUYS AND WHAT IT DOES NOT, because the last two rounds of this both
+ * overclaimed: reaching the weights WITHOUT NAMING A UNIT is now a compile
+ * error, everywhere, because no such expression exists. Whether the unit named
+ * is the TRUE one is a runtime refusal in `meetServer.ts` (`applyMeetResult`
+ * compares it against `meet.rules.unit`, which is server-owned data rather than
+ * a constant) and not a compile-time property, because both arms are
+ * representable — as they must be, since this is what an untrusted client sends.
+ *
+ * `'lb'` IS REPRESENTABLE FOR THAT REASON. Narrowing this to the kilogram arm
+ * would move the refusal to `tsc` on the client, which is the half of the system
+ * this file exists because it does not trust.
+ *
+ * IT LIVES HERE RATHER THAN BESIDE `BodyweightReading` IN `dots.ts` for one
+ * mechanical reason: `dots.ts` imports nothing, and an attempt row names
+ * `LiftKind`.
+ */
+export type MeetCardReport =
+  /** Lifted in kilograms. The only unit permanent progression can store. */
+  | { readonly unit: 'kg'; readonly kilogramAttempts: readonly MeetAttemptReport[] }
+  /** Lifted in pounds. Carried so it can be REFUSED by name, not converted. */
+  | { readonly unit: 'lb'; readonly poundAttempts: readonly MeetAttemptReport[] };
+
+/**
+ * The arm of `MeetCardReport` whose numbers a kilogram consumer may use.
+ *
+ * Named rather than written out at each use so "these weights have been proven
+ * to be kilograms" is one type with one spelling, and `Extract` rather than a
+ * second literal so it cannot drift from the union. `dots.ts`'s
+ * `KilogramBodyweight` is the same construction for the other number.
+ */
+export type KilogramMeetCard = Extract<MeetCardReport, { readonly unit: 'kg' }>;
+
+/**
+ * Every field name either arm of a card can put on the wire.
+ *
+ * ONE ALLOWLIST FOR BOTH ARMS. `keyof` a union is the INTERSECTION of its
+ * members' keys — for this type, just `'unit'` — so a per-type `KeysAreExactly`
+ * would silently check almost nothing. `EveryArmKey` distributes instead, and
+ * the assertion below therefore fails if either arm gains, loses or renames a
+ * field.
+ */
+export const MEET_CARD_REPORT_KEYS = ['unit', 'kilogramAttempts', 'poundAttempts'] as const;
+
+export const MEET_CARD_REPORT_IS_EXACTLY_ITS_ALLOWLIST: UnionIsExactly<
+  EveryArmKey<MeetCardReport>,
+  (typeof MEET_CARD_REPORT_KEYS)[number]
+> = true;
+
+/**
+ * COMPILE-TIME ASSERTION, AND THE ONE THE WHOLE UNIT BOUNDARY RESTS ON: a
+ * unit-tagged reading on this wire cannot have its numbers read without
+ * narrowing on its unit.
+ *
+ * Round 2 gave `BodyweightReading` two arms with different field names and said,
+ * correctly, that this made deleting `meetServer.ts`'s check a compile error.
+ * NOTHING ASSERTED IT. Rename `pounds` to `kilograms` on the pound arm — one
+ * word, in a diff that looks like a tidy-up — and the property evaporates while
+ * every test stays green, because `bodyweight.kilograms` now type-checks against
+ * an unnarrowed union.
+ *
+ * So it is asserted, over both readings on this path rather than over the one
+ * that happened to be built last. That is what makes this a statement about the
+ * SHAPE instead of about a field: a third unit-tagged reading gets one line here
+ * and inherits the guarantee.
+ *
+ * BOTH HALVES ARE CHECKED. Disjoint arms is the claim; two arms that both have
+ * payload fields is what stops it passing vacuously, since an arm emptied to
+ * `{ unit: 'lb' }` is trivially disjoint from everything and carries no number
+ * to protect.
+ */
+export const A_MEET_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT: ArmsAreTellableApart<MeetCardReport> = true;
+
+export const A_BODYWEIGHT_CANNOT_BE_READ_WITHOUT_ITS_UNIT: ArmsAreTellableApart<BodyweightReading> = true;
 
 /**
  * A finished daily session.
@@ -1379,10 +1532,20 @@ export const SET_RECOVERY_DAY_PROTECTION_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAr
 > = true;
 
 /**
- * A finished meet. INPUTS ONLY: the attempts and the bodyweight. There is no
+ * A finished meet. INPUTS ONLY: the card and the bodyweight. There is no
  * `totalKg` and the allowlist forbids one — GDD §6.4's "total = sum of best
  * successful attempt per lift" is a server computation, and a client that could
  * send a total could send any total.
+ *
+ * EVERY NUMBER ON THIS REPORT NOW TRAVELS WITH ITS UNIT, and that is a property
+ * of the type rather than of the fields that happened to get fixed: three
+ * separate rounds closed `totalKg`, then `bodyweightKg`, then the nine attempt
+ * weights, each after a critic found the next bare `Kg` beside the one just
+ * fixed. What is left is two fields, both tagged, and
+ * `A_MEET_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT` /
+ * `A_BODYWEIGHT_CANNOT_BE_READ_WITHOUT_ITS_UNIT` assert the property that makes
+ * a tag load-bearing, so a fourth number added here has one line to copy and a
+ * failing assertion if it does not.
  *
  * THE BODYWEIGHT CARRIES ITS UNIT, and the field is `bodyweight` rather than
  * `bodyweightKg` because the old name was the whole defect: it was a bare
@@ -1410,10 +1573,20 @@ export const SET_RECOVERY_DAY_PROTECTION_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAr
 export interface MeetResultReport {
   readonly meetId: MeetId;
   readonly bodyweight: BodyweightReading;
-  readonly attempts: readonly MeetAttemptReport[];
+  /**
+   * THE ATTEMPTS, WITH THE UNIT THEY WERE LIFTED IN. This field was `attempts:
+   * readonly MeetAttemptReport[]`, and it was the last bare-unit number on this
+   * path — the one that actually becomes `record.totalKg`. See `MeetCardReport`.
+   *
+   * BOTH NUMBERS ON THIS REPORT NOW TRAVEL WITH THEIR UNIT, and they are still
+   * two independent facts: a lifter can weigh in on one scale and lift on
+   * another. `meetServer.ts` refuses each on its own terms and does not convert
+   * either.
+   */
+  readonly card: MeetCardReport;
 }
 
-export const MEET_RESULT_REPORT_KEYS = ['meetId', 'bodyweight', 'attempts'] as const;
+export const MEET_RESULT_REPORT_KEYS = ['meetId', 'bodyweight', 'card'] as const;
 
 export const MEET_RESULT_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
   MeetResultReport,
@@ -1679,8 +1852,8 @@ export const PURCHASABLE_PROPOSAL_KINDS: readonly PurchasableProposalKind[] =
  * (`sku`), and you cannot pay for it without a store receipt or a currency. No
  * earned report carries any of them, and `progression.test.ts` checks both
  * directions of that against the real report allowlists — every exported one,
- * including the nested `TRAINING_SET_REPORT_KEYS` and `MEET_ATTEMPT_REPORT_KEYS`
- * that the type-level check below cannot reach.
+ * including the nested `TRAINING_SET_REPORT_KEYS`, `MEET_CARD_REPORT_KEYS` and
+ * `MEET_ATTEMPT_REPORT_KEYS` that the type-level check below cannot reach.
  */
 export const PURCHASE_EVIDENCE_KEYS = ['sku', 'receipt', 'currency'] as const;
 
@@ -2408,7 +2581,43 @@ function validateProposal(proposal: ProgressionProposal): ProgressionError | nul
       return null;
     }
     case 'record-meet-result': {
-      if (proposal.report.attempts.length === 0) {
+      // THE CARD'S UNIT, CHECKED BY VALUE, for the same reason the bodyweight's
+      // is below: `MeetCardReport` is two literals to `tsc` and whatever the
+      // sender wrote once it has been through JSON. An unrecognised unit has no
+      // arm, so there is no array to read and nothing to validate — refused
+      // rather than assumed to be kilograms.
+      //
+      // THE ARM IS READ THROUGH THE NARROW, never through a shared field, which
+      // is why there is no `attempts` on `MeetCardReport` to reach for.
+      // `| undefined` because a request body can simply omit the field, and
+      // reading `.unit` off nothing throws where it should refuse.
+      const card: MeetCardReport | undefined = proposal.report.card;
+      const declared =
+        card === undefined
+          ? null
+          : card.unit === 'kg'
+            ? card.kilogramAttempts
+            : card.unit === 'lb'
+              ? card.poundAttempts
+              : null;
+      if (declared === null) {
+        return {
+          code: 'INVALID_PROPOSAL',
+          message:
+            'progression: a reported card must say which unit it was lifted in, not ' +
+            JSON.stringify(card?.unit),
+        };
+      }
+      // A TAG WITH NOTHING UNDER IT. `{ "unit": "kg" }` narrows perfectly and
+      // yields `undefined`; `{ "unit": "kg", "poundAttempts": [...] }` names the
+      // wrong arm and yields the same. Both are a declared unit attached to no
+      // numbers, which is not a card.
+      //
+      // Bound straight back to the declared type: `Array.isArray` narrows a
+      // READONLY array to `any[]`, so the annotation is what keeps the rows typed
+      // for the loop below.
+      const attempts: readonly MeetAttemptReport[] | null = Array.isArray(declared) ? declared : null;
+      if (attempts === null || attempts.length === 0) {
         return { code: 'INVALID_PROPOSAL', message: 'progression: a meet result must report at least one attempt' };
       }
       // SHAPE, NOT POLICY. This validates that the bodyweight is a usable
@@ -2440,8 +2649,8 @@ function validateProposal(proposal: ProgressionProposal): ProgressionError | nul
       if (!isFiniteWeight(reported)) {
         return { code: 'INVALID_PROPOSAL', message: 'progression: a reported bodyweight must be finite and positive' };
       }
-      for (const attempt of proposal.report.attempts) {
-        if (!isFiniteWeight(attempt.weightKg)) {
+      for (const attempt of attempts) {
+        if (!isFiniteWeight(attempt.weight)) {
           return { code: 'INVALID_PROPOSAL', message: 'progression: a reported attempt weight must be finite and positive' };
         }
       }

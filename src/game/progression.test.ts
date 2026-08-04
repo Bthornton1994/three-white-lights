@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { dotsScore, officialTotalKg, type OfficialTotalKg } from './dots';
+import { dotsScore, officialTotalKg, type BodyweightReading, type OfficialTotalKg } from './dots';
 import { estimateE1rm } from './e1rm';
 import { LIFT_ORDER, type LiftKind } from './meet';
 import * as progressionModule from './progression';
@@ -27,6 +27,7 @@ import {
   isConfirmedReading,
   markCacheStale,
   MEET_ATTEMPT_REPORT_KEYS,
+  MEET_CARD_REPORT_KEYS,
   MEET_RESULT_REPORT_KEYS,
   meetsQualifyingTotal,
   OPEN_FACTS,
@@ -65,6 +66,7 @@ import {
   type ConfirmedTotalKg,
   type EntitlementEffect,
   type InFlightProposal,
+  type MeetCardReport,
   type MeetResultReport,
   type ProgressionCache,
   type ProgressionProjection,
@@ -180,11 +182,14 @@ const A_MEET_PROPOSAL: ProposalOfKind<'record-meet-result'> = {
   report: {
     meetId: asMeetId('meet-2026-autumn'),
     bodyweight: { unit: 'kg', kilograms: 93 },
-    attempts: [
-      { lift: 'squat', attemptNumber: 1, weightKg: 220, good: true },
-      { lift: 'bench', attemptNumber: 1, weightKg: 150, good: true },
-      { lift: 'deadlift', attemptNumber: 1, weightKg: 275, good: true },
-    ],
+    card: {
+      unit: 'kg',
+      kilogramAttempts: [
+        { lift: 'squat', attemptNumber: 1, weight: 220, good: true },
+        { lift: 'bench', attemptNumber: 1, weight: 150, good: true },
+        { lift: 'deadlift', attemptNumber: 1, weight: 275, good: true },
+      ],
+    },
   },
 };
 
@@ -277,7 +282,7 @@ function proposeUntyped(
 const PAYLOAD_KEYS_BY_PROPOSAL_KIND: Record<ProgressionProposalKind, readonly string[]> = {
   'record-training-session': [...TRAINING_SESSION_REPORT_KEYS, ...TRAINING_SET_REPORT_KEYS],
   'set-recovery-day-protection': [...SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS],
-  'record-meet-result': [...MEET_RESULT_REPORT_KEYS, ...MEET_ATTEMPT_REPORT_KEYS],
+  'record-meet-result': [...MEET_RESULT_REPORT_KEYS, ...MEET_CARD_REPORT_KEYS, ...MEET_ATTEMPT_REPORT_KEYS],
   'redeem-entitlement': [...REDEEM_ENTITLEMENT_REPORT_KEYS],
   'spend-currency': [...SPEND_CURRENCY_REPORT_KEYS],
 };
@@ -622,8 +627,11 @@ describe('the fact allowlist', () => {
       'deviceWallClock',
       'protectionEnabled',
     ]);
-    expect([...MEET_ATTEMPT_REPORT_KEYS].sort()).toEqual(['attemptNumber', 'good', 'lift', 'weightKg']);
-    expect([...MEET_RESULT_REPORT_KEYS].sort()).toEqual(['attempts', 'bodyweight', 'meetId']);
+    // `weight`, NOT `weightKg`. The unit is not on the row — it is on the card,
+    // once, at the grain a meet actually has one.
+    expect([...MEET_ATTEMPT_REPORT_KEYS].sort()).toEqual(['attemptNumber', 'good', 'lift', 'weight']);
+    expect([...MEET_CARD_REPORT_KEYS].sort()).toEqual(['kilogramAttempts', 'poundAttempts', 'unit']);
+    expect([...MEET_RESULT_REPORT_KEYS].sort()).toEqual(['bodyweight', 'card', 'meetId']);
     expect([...REDEEM_ENTITLEMENT_REPORT_KEYS].sort()).toEqual(['receipt', 'sku']);
     expect([...SPEND_CURRENCY_REPORT_KEYS].sort()).toEqual(['amount', 'currency', 'sku']);
   });
@@ -634,6 +642,7 @@ describe('the fact allowlist', () => {
       ...TRAINING_SESSION_REPORT_KEYS,
       ...SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS,
       ...MEET_ATTEMPT_REPORT_KEYS,
+      ...MEET_CARD_REPORT_KEYS,
       ...MEET_RESULT_REPORT_KEYS,
       ...REDEEM_ENTITLEMENT_REPORT_KEYS,
       ...SPEND_CURRENCY_REPORT_KEYS,
@@ -1729,11 +1738,70 @@ describe('a purchase cannot reach performance', () => {
     const report: MeetResultReport = {
       meetId: asMeetId('meet-1'),
       bodyweight: { unit: 'kg', kilograms: 93 },
-      attempts: [{ lift: 'squat', attemptNumber: 1, weightKg: 220, good: true }],
+      card: { unit: 'kg', kilogramAttempts: [{ lift: 'squat', attemptNumber: 1, weight: 220, good: true }] },
       // @ts-expect-error - MeetResultReport is inputs only; there is no totalKg.
       totalKg: 900,
     };
     expect(report.bodyweight.unit).toBe('kg');
+  });
+
+  it('will not let a card hand over its weights without naming a unit', () => {
+    // THE COMPILE-TIME HALF OF THE ATTEMPT-UNIT BOUNDARY, and the reason the
+    // shape is a tagged pair rather than a `unit` field beside an `attempts`
+    // array. There is no field on `MeetCardReport` that yields the nine numbers
+    // from both arms, so every expression in the tree that reaches an attempt
+    // weight has had to name a unit to get there. A `unit` field beside a shared
+    // `attempts` array would have compiled here and left the check deletable.
+    //
+    // INVISIBLE TO VITEST — esbuild strips the directive — so this is checked by
+    // `npm run typecheck`, where an UNUSED `@ts-expect-error` is itself an error.
+    const card: MeetCardReport = {
+      unit: 'kg',
+      kilogramAttempts: [{ lift: 'squat', attemptNumber: 1, weight: 220, good: true }],
+    };
+    // @ts-expect-error - there is no `attempts` on a card, from either arm.
+    const smuggled = card.attempts;
+    expect(smuggled).toBeUndefined();
+    // ...and the pound arm's field is not reachable off an unnarrowed card either.
+    // @ts-expect-error - `poundAttempts` does not exist on the kilogram arm.
+    expect(card.poundAttempts).toBeUndefined();
+    if (card.unit !== 'kg') throw new Error('unreachable');
+    expect(card.kilogramAttempts.length).toBe(1);
+  });
+
+  it('pins the property the two tagged readings on this wire are built on', () => {
+    // THE RUNTIME TWIN of `A_MEET_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT` and
+    // `A_BODYWEIGHT_CANNOT_BE_READ_WITHOUT_ITS_UNIT`. Those are type-level and
+    // therefore invisible to `npm test`; this asserts the same thing about the
+    // values that actually travel.
+    //
+    // WHICH MUTATIONS EACH ONE CATCHES, because they are not the same set and
+    // the difference has been overstated in this codebase before. Renaming one
+    // arm's payload field to match the other's fails `tsc` at the assertion — and
+    // it also stops this file compiling, so vitest never runs it. Adding a
+    // convenience field reachable from BOTH arms (`attempts?:` on each) is the
+    // mutation that compiles everywhere else: `tsc` catches it at the assertion,
+    // and this test does NOT, because an optional field absent at runtime has no
+    // key to see. So the type-level assertion is the load-bearing one and this is
+    // the check that the real objects have not drifted from it.
+    const kgCard: MeetCardReport = { unit: 'kg', kilogramAttempts: [] };
+    const lbCard: MeetCardReport = { unit: 'lb', poundAttempts: [] };
+    const kgBody: BodyweightReading = { unit: 'kg', kilograms: 93 };
+    const lbBody: BodyweightReading = { unit: 'lb', pounds: 205 };
+    const payloadKeys = (value: object): readonly string[] =>
+      Object.keys(value).filter((key) => key !== 'unit');
+    for (const [a, b] of [
+      [kgCard, lbCard],
+      [kgBody, lbBody],
+    ] as const) {
+      const left = payloadKeys(a);
+      const right = payloadKeys(b);
+      // Non-vacuity first: two arms with no payload at all would be trivially
+      // disjoint and would prove nothing.
+      expect(left.length).toBeGreaterThan(0);
+      expect(right.length).toBeGreaterThan(0);
+      expect(left.filter((key) => right.includes(key))).toEqual([]);
+    }
   });
 
   it('has no Recovery Day balance in the wallet to buy against', () => {
@@ -1978,6 +2046,8 @@ describe('the module exports no writer', () => {
     const expected = [
       'AN_IN_FLIGHT_PROPOSAL_HAS_NO_STRING_KEY',
       'AN_UNCLAIMED_PROJECTION_IS_A_PROJECTION',
+      'A_BODYWEIGHT_CANNOT_BE_READ_WITHOUT_ITS_UNIT',
+      'A_MEET_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT',
       'A_MEET_RESULT_PROJECTION_CAN_CLAIM_A_TOTAL',
       'A_TRAINING_SESSION_PROJECTION_CANNOT_CLAIM_A_TOTAL',
       'CONFIRMED_MEET_RESULT_KEYS',
@@ -1993,6 +2063,8 @@ describe('the module exports no writer', () => {
       'FACT_PROTECTION_KINDS',
       'MEET_ATTEMPT_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'MEET_ATTEMPT_REPORT_KEYS',
+      'MEET_CARD_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
+      'MEET_CARD_REPORT_KEYS',
       'MEET_RESULT_IS_EXACTLY_ITS_ALLOWLIST',
       'MEET_RESULT_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
       'MEET_RESULT_REPORT_KEYS',
@@ -2186,7 +2258,7 @@ describe('the boundary lets legitimate work through', () => {
         report: {
           meetId: asMeetId('meet-1'),
           bodyweight: { unit: 'kg', kilograms: 93 },
-          attempts: [{ lift: 'squat', attemptNumber: 1, weightKg: 220, good: true }],
+          card: { unit: 'kg', kilogramAttempts: [{ lift: 'squat', attemptNumber: 1, weight: 220, good: true }] },
         },
       },
       { kind: 'redeem-entitlement', report: { sku: 'chalk-pack-3', receipt: 'txn-1' } },

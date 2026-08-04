@@ -195,10 +195,20 @@ export function useMeetDay(initial?: MeetDayState, frozen: boolean = false): Mee
   // WHAT HAPPENS WHEN THE SERVER SAYS NO, written here because this is the file
   // somebody editing this effect is looking at. `applyMeetResult` refuses:
   // `MEET_REPLAY_REFUSED`, `MEET_INCOMPLETE`, `MEET_OVERRUN`,
-  // `MEET_ALREADY_RECORDED`, `BAD_DAY`, and `UNSUPPORTED_MEET_UNIT` for a meet
-  // not run in kilograms or a lifter not weighed in kilograms. None of those is
-  // reachable from the shipped `MEET_LOCAL` + `MEET_ENTRY`; all of them are one
-  // second meet definition away, and GDD §11 has that ruling open.
+  // `MEET_ALREADY_RECORDED`, `BAD_DAY`; `UNSUPPORTED_MEET_UNIT` for a meet not
+  // run in kilograms, a lifter not weighed in kilograms, or a card whose
+  // declared unit is not the unit its meet runs in; `MEET_ID_MISMATCH` when the
+  // definition passed is not the meet the report names; and `MALFORMED_READING`
+  // for a unit-tagged number with nothing under the tag.
+  //
+  // NONE of them is reachable from the shipped `MEET_LOCAL` + `MEET_ENTRY`, and
+  // the two newest are structurally unreachable from HERE rather than merely
+  // unused: `meetResultProposal` takes the meet id and the card's unit off
+  // `state.context.meet`, and this effect passes that same object as the
+  // definition — so the id always matches and the card's unit always agrees with
+  // the rules it was played under. They exist for the JSON body a real Edge
+  // Function is handed, which is not built by this file. The rest are one second
+  // meet definition away, and GDD §11 has that ruling open.
   //
   // THE RECAP DOES NOT APPEAR IN THAT CASE. `recap` is derived from `applied`,
   // `applied` is only set on success, and the loop returns no route back except

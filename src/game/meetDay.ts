@@ -142,6 +142,7 @@ import {
   isGoodLift,
   isSplitDecision,
   meetLoadingRules,
+  readTotal,
   resolveAttempt,
   suggestNextAttempt,
   suggestOpener,
@@ -161,7 +162,7 @@ import { nextRandom, seedState } from './prng';
 import { sessionFeel, type FatigueState, type LiftMoment, type SessionFeel } from './fatigue';
 import type { LiftConfig, LiftResolution, MissReason } from './lift';
 import type { HapticPattern } from './liftTuning';
-import type { MeetAttemptReport, MeetResultReport, MeetId } from './progression';
+import type { MeetAttemptReport, MeetCardReport, MeetResultReport, MeetId } from './progression';
 import { asMeetId } from './progression';
 import {
   NO_VALUE_DISPLAY,
@@ -1170,21 +1171,49 @@ export function attemptsOnLift(state: MeetDayState, lift: LiftKind): readonly Me
 }
 
 /**
- * The attempts as the SERVER is told about them.
+ * The attempt ROWS as the SERVER is told about them. The unit is not here — see
+ * `meetResultCard` below, which is what a caller should be reaching for.
  *
  * INPUTS ONLY: which lift, which attempt, what was on the bar and whether it
  * stood. There is no total in it and `progression.ts`'s allowlist forbids one —
  * GDD §6.4's "total = sum of best successful attempt per lift" is a server
  * computation, and `meetServer.ts` recomputes it by replaying these through the
  * same engine rather than taking the client's word for the arithmetic.
+ *
+ * `weight`, NOT `weightKg`, on the report side. The loop's own `MeetDayAttempt`
+ * still says `weightKg` and that name is only true because `MEET_LOCAL` is a
+ * kilogram meet — see (c) in `meetServer.ts`'s residuals. What crosses the
+ * progression boundary carries no unit in a field name; it carries one on the
+ * card.
  */
 export function meetAttemptReports(state: MeetDayState): readonly MeetAttemptReport[] {
   return state.attempts.map((attempt) => ({
     lift: attempt.lift,
     attemptNumber: attempt.attemptNumber,
-    weightKg: attempt.weightKg,
+    weight: attempt.weightKg,
     good: attempt.good,
   }));
+}
+
+/**
+ * The card as the SERVER is told about it: the rows, plus the unit they were
+ * lifted in.
+ *
+ * THE UNIT IS READ OFF THE MEET THE ROWS CAME OUT OF, not off the context and
+ * not off a literal typed here. `state.meet` is the `MeetState` every one of
+ * those weights was declared into, `readTotal` is the accessor `meet.ts` gives
+ * for "what unit is this state in", and `meetServer.ts` then checks the answer
+ * against the definition it resolves for the reported `meetId`. Stamping `'kg'`
+ * here would make that check compare a literal this function typed with a
+ * literal `meetTuning.ts` typed, which is two spellings of the same guess.
+ *
+ * Same posture as the bodyweight one field over: FORWARDED, NOT STAMPED.
+ */
+export function meetResultCard(state: MeetDayState): MeetCardReport {
+  const attempts = meetAttemptReports(state);
+  return readTotal(state.meet).unit === 'kg'
+    ? { unit: 'kg', kilogramAttempts: attempts }
+    : { unit: 'lb', poundAttempts: attempts };
 }
 
 /** The id this meet reports under. */
@@ -1212,7 +1241,11 @@ export function meetResultProposal(
       // one, or `meetServer.ts`'s refusal would be checking a literal typed
       // here rather than a fact.
       bodyweight: state.context.entry.bodyweight,
-      attempts: meetAttemptReports(state),
+      // THE SAME POSTURE FOR THE OTHER NUMBER, and it took three rounds to
+      // arrive. The nine weights used to go out as a bare array whose rows said
+      // `weightKg` with nothing behind the name; the server then "checked" them
+      // by reading a unit off the meet definition it happened to be handed.
+      card: meetResultCard(state),
     },
   };
 }

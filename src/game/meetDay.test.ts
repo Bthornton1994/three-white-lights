@@ -9,6 +9,7 @@ import {
   isSplitDecision,
   lightestCallableWeightIgnoringTheCard,
   meetLoadingRules,
+  POUND_MEET_RULES,
   suggestOpener,
   type LiftKind,
   type MeetState,
@@ -36,6 +37,7 @@ import {
   judgeSeedFor,
   judgingMargin,
   meetAttemptReports,
+  meetResultCard,
   meetResultProposal,
   stepMeetDay,
   suggestedOpeners,
@@ -44,7 +46,14 @@ import {
   type MeetDayContext,
   type MeetDayState,
 } from './meetDay';
-import { MEET_COPY, MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW, MEET_TUNING } from './meetTuning';
+import {
+  MEET_COPY,
+  MEET_ENTRY,
+  MEET_LOCAL,
+  MEET_PREVIEW,
+  MEET_TUNING,
+  type MeetDefinition,
+} from './meetTuning';
 import {
   MEET_MOMENTS,
   playMeet,
@@ -770,8 +779,10 @@ describe('bombing out (GDD §6.3)', () => {
     const state = bombedSquat();
     const proposal = meetResultProposal(state);
     expect(proposal).not.toBeNull();
-    expect(proposal?.report.attempts.length).toBe(ATTEMPTS_PER_LIFT);
-    expect(proposal?.report.attempts.every((attempt) => !attempt.good)).toBe(true);
+    const card = proposal?.report.card;
+    if (card?.unit !== 'kg') throw new Error('the shipped meet is a kilogram meet');
+    expect(card.kilogramAttempts.length).toBe(ATTEMPTS_PER_LIFT);
+    expect(card.kilogramAttempts.every((attempt) => !attempt.good)).toBe(true);
   });
 });
 
@@ -1021,17 +1032,48 @@ describe('the recap (GDD §6.5)', () => {
 // ---------------------------------------------------------------------------
 
 describe('what the client reports', () => {
-  it('carries the attempts and nothing that could be a total', () => {
+  it('carries the card and nothing that could be a total', () => {
     const state = playMeet(ALL_GOOD);
     const proposal = meetResultProposal(state);
     expect(proposal).not.toBeNull();
     if (proposal === null) throw new Error('unreachable');
-    expect(Object.keys(proposal.report).sort()).toEqual(['attempts', 'bodyweight', 'meetId']);
+    expect(Object.keys(proposal.report).sort()).toEqual(['bodyweight', 'card', 'meetId']);
     const serialised = JSON.stringify(proposal).toLowerCase();
     expect(serialised).not.toContain('total');
-    for (const attempt of proposal.report.attempts) {
-      expect(Object.keys(attempt).sort()).toEqual(['attemptNumber', 'good', 'lift', 'weightKg']);
+    const card = proposal.report.card;
+    if (card.unit !== 'kg') throw new Error('the shipped meet is a kilogram meet');
+    expect(Object.keys(card).sort()).toEqual(['kilogramAttempts', 'unit']);
+    for (const attempt of card.kilogramAttempts) {
+      // `weight`, not `weightKg`. The row makes no unit claim; the card does.
+      expect(Object.keys(attempt).sort()).toEqual(['attemptNumber', 'good', 'lift', 'weight']);
     }
+  });
+
+  it('takes the card’s unit off the meet the weights were declared into', () => {
+    // FORWARDED, NOT STAMPED, the same way the bodyweight is. If this function
+    // typed `'kg'` here, `meetServer.ts`'s cross-check would be comparing one
+    // hard-coded literal against another and would pass for every meet.
+    //
+    // The pound half is the one that bites: the loop runs a pound meet end to
+    // end (`meet.ts` exports the rules and `MeetDefinition.rules` takes them),
+    // and the card that comes out has to SAY so, or the server is back to
+    // reading nine pound numbers as kilograms.
+    const kgState = playMeet(ALL_GOOD);
+    expect(kgState.context.meet.rules.unit).toBe('kg');
+    expect(meetResultCard(kgState).unit).toBe('kg');
+
+    const poundMeet: MeetDefinition = { ...MEET_LOCAL, id: 'pound-open-2026', rules: POUND_MEET_RULES };
+    const poundState = playMeet(ALL_GOOD, () => 'small', { ...previewContext(), meet: poundMeet });
+    expect(poundState.context.meet.rules.unit).toBe('lb');
+    const poundCard = meetResultCard(poundState);
+    expect(poundCard.unit).toBe('lb');
+    if (poundCard.unit !== 'lb') throw new Error('unreachable');
+    expect(poundCard.poundAttempts.length).toBeGreaterThan(0);
+    // And the rows are the same nine numbers either way — nothing about the
+    // weights themselves tells the units apart, which is why the tag exists.
+    expect(poundCard.poundAttempts.map((a) => a.weight)).toEqual(
+      meetAttemptReports(poundState).map((a) => a.weight),
+    );
   });
 
   it('is null while the meet is still running', () => {
@@ -1046,7 +1088,7 @@ describe('what the client reports', () => {
     expect(reports.length).toBe(state.attempts.length);
     reports.forEach((report, index) => {
       const attempt = state.attempts[index];
-      expect(report.weightKg).toBe(attempt?.weightKg);
+      expect(report.weight).toBe(attempt?.weightKg);
       expect(report.good).toBe(attempt?.good);
       expect(report.good).toBe(isGoodLift(attempt?.lights ?? ['red', 'red', 'red']));
     });
