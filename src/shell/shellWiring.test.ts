@@ -122,9 +122,32 @@ describe('the shell is the join, and it is the only one', () => {
     // all 2183 tests — stayed green. `tools/verify-shell-route.mjs` caught it
     // and named eleven broken checks; nothing here could see it, because
     // accepting a callback and never calling it is invisible to a type and to
-    // every pure test. This scan closes the cheap half. It does NOT close the
-    // class: a control that mounts and stays at zero opacity would pass this
-    // and fail the browser, which is why the browser check is the decisive one.
+    // every pure test. This scan closes the cheap half.
+    //
+    // IT DOES NOT CLOSE THE CLASS — AND NEITHER DOES "THE BROWSER" BY ITSELF.
+    // This comment used to say: "a control that mounts and stays at zero
+    // opacity would pass this and fail the browser, which is why the browser
+    // check is the decisive one." THAT WAS FALSE, and expensively so.
+    // Playwright's `isVisible()` means "has a non-empty box and is not
+    // `visibility: hidden`" — it returns TRUE at `opacity: 0` — and
+    // `document.elementFromPoint`, which the tool's `hitTest` and Playwright's
+    // own click actionability both rest on, hits a fully transparent element
+    // too. An opacity-zero control sails through a naive browser check exactly
+    // as happily as it sails through this scan.
+    //
+    // The proof is in this run's own evidence. With a fixed 2600 ms settle,
+    // `.gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png` photographed a
+    // screen with NO EXIT ANYWHERE ON IT, while `route.json` recorded
+    // "ok    the bomb-out beat keeps its own way out" — because `BombOutView`'s
+    // action row is not drawn until 4220 ms. The app was correct. The check was
+    // not.
+    //
+    // So the browser check is decisive only because it was made to MEASURE
+    // OPACITY and to wait for the fade each screen actually plays — `onScreen`,
+    // `waitUntilDrawn` and `BOMB_OUT_SETTLE_MS` in
+    // `tools/verify-shell-route.mjs`. Rendering does not verify itself; the
+    // timing has to be right, and it has to be derived from the constant the
+    // screen animates on rather than from one global settle.
     expect(SESSION_SCREEN).toMatch(/onPhase\?\.\(state\.phase\)/);
     expect(MEET_SCREEN).toMatch(/onPhase\?\.\(state\.phase\)/);
   });
@@ -215,6 +238,48 @@ describe('navigating away and back cannot buy a second session of the day', () =
   it('the already-trained surface is still there and still gated on the server’s answer', () => {
     expect(SESSION_SCREEN).toMatch(/loop\.alreadyTrainedToday/);
     expect(source('src/session/SessionScreen.tsx')).toMatch(/testID=""session-already-trained""|testID="session-already-trained"/);
+  });
+
+  it('AND IT RENDERS ON THE `check-in` BEAT, so the shell’s pill is on it too', () => {
+    // THE JOIN THAT MAKES A SECOND VISIT NOT A DEAD END, in two halves.
+    //
+    // Half one, here: `SessionScreen` renders the already-trained surface while
+    // `state.phase === 'check-in'` and reports that same `state.phase` to the
+    // shell (pinned above, `onPhase?.(state.phase)`). So the beat the shell's
+    // gate sees on the already-trained screen IS `'check-in'`.
+    //
+    // Half two, in `shellRoute.test.ts`: `shellAffordanceFor(session,
+    // 'check-in')` is pinned by a HAND-WRITTEN literal to `'open-meet'`.
+    //
+    // Compose them and a player who opens the app for the second time today
+    // gets somewhere to go rather than a screen with nothing on it — GDD §12.3's
+    // "never punish daily engagement" line applied to navigation. Neither half
+    // states it alone, which is why this scan exists: `'check-in'` could be
+    // changed to a bespoke phase here and the literal in `shellRoute.test.ts`
+    // would stay green while the second visit went back to being a dead end.
+    //
+    // WHAT THIS DOES NOT SETTLE: whether the pill visually collides with the
+    // already-trained copy. The surface is `styles.centred` (`flex: 1`,
+    // `justifyContent: 'center'`), so it occupies the middle band and the pill
+    // is anchored `SHELL_LAYOUT.NAV_BOTTOM_INSET` from the bottom — but that is
+    // an argument, not a photograph, and this path has no `?session=` moment
+    // that reaches it (the already-trained branch requires `preview ===
+    // undefined`), so `verify-shell-route.mjs` cannot drive it. Recorded as
+    // open rather than asserted.
+    expect(SESSION_SCREEN).toMatch(
+      /loop\.alreadyTrainedToday && state\.phase === '' && preview === undefined/,
+    );
+    // ...and the phase it is gated on, in the raw source, is `check-in` itself.
+    expect(source('src/session/SessionScreen.tsx')).toMatch(
+      /loop\.alreadyTrainedToday && state\.phase === 'check-in'/,
+    );
+    // The scan can see the shape it is looking for, and can see it change.
+    expect(codeOnly("if (a && state.phase === 'check-in' && b) {")).toMatch(
+      /state\.phase === ''/,
+    );
+    expect("loop.alreadyTrainedToday && state.phase === 'rest'").not.toMatch(
+      /loop\.alreadyTrainedToday && state\.phase === 'check-in'/,
+    );
   });
 });
 

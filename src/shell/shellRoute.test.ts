@@ -33,6 +33,7 @@ import {
   resolveEntry,
   sessionEntryFrom,
   shellAffordanceFor,
+  type ShellIntent,
   type ShellRoute,
   type ShellSurface,
 } from './shellRoute';
@@ -40,10 +41,99 @@ import { SHELL_COPY, SHELL_NAV } from './shellTuning';
 import { MEET_MOMENTS } from '../game/meetPreview';
 import { SESSION_MOMENTS } from '../session/sessionPreview';
 import { CAPTURE_MOMENTS } from '../lift/liftReplay';
-import { MEET_DAY_PHASES } from '../game/meetDay';
-import { SESSION_PHASES } from '../game/session';
+import { MEET_DAY_PHASES, type MeetDayPhaseId } from '../game/meetDay';
+import { SESSION_PHASES, type SessionPhase } from '../game/session';
 
 const AS_PLAYER = (surface: ShellSurface): ShellRoute => ({ surface, source: 'player' });
+
+// ---------------------------------------------------------------------------
+// THE ANSWER SHEET — WRITTEN OUT BY HAND, DERIVED FROM NOTHING
+// ---------------------------------------------------------------------------
+/**
+ * WHAT THE SHELL DRAWS ON EVERY BEAT OF THE GAME. Every value below is a
+ * literal somebody typed. Nothing here reads `SHELL_NAV`, and that is the whole
+ * point of it.
+ *
+ * ===========================================================================
+ * THE DEFECT THIS TABLE EXISTS TO MAKE IMPOSSIBLE
+ * ===========================================================================
+ * The chrome-gate tests used to read their own expectations out of the constant
+ * they existed to check:
+ *
+ *     const listed: readonly string[] = SHELL_NAV.SESSION_PHASES;
+ *     expect(shellAffordanceFor(route, phase)).toBe(
+ *       listed.includes(phase) ? 'open-meet' : null,   // <- the same constant
+ *     );
+ *
+ * Empty `SHELL_NAV.SESSION_PHASES` to `[]` and `listed.includes(phase)` is
+ * false for every phase; `shellAffordanceFor` reads the same emptied constant
+ * and returns null for every phase. BOTH SIDES MOVE TOGETHER, the assertion
+ * passes vacuously, and the app silently regresses to the exact dead ends this
+ * piece was built to close — meet day unreachable, the recap and the result
+ * card with no way out — with the whole suite green.
+ *
+ * That is not a hypothetical mutation. `src/tuning/index.ts` names these two
+ * lists as "the ones to turn first and the ones most likely to be wrong": they
+ * are the values GDD §12.1's playtest pass is expected to HAND-EDIT. A
+ * playtester who decides the recap wants a bespoke exit and empties
+ * `MEET_PHASES` by mistake has to be told, not applauded.
+ *
+ * ===========================================================================
+ * SO YES, THIS DUPLICATES A TUNED VALUE, DELIBERATELY
+ * ===========================================================================
+ * `SHELL_NAV` is still the one home the app reads from — CLAUDE.md's rule is
+ * about where the SHIPPING code gets its numbers, and no component holds these.
+ * This is an EXPECTATION, and an expectation that derives itself from its own
+ * subject cannot fail. `tools/verify-shell-route.mjs` writes out its testIDs by
+ * hand for the same reason and says so in its header.
+ *
+ * IF YOU ARE TUNING `SHELL_NAV`, EDIT THIS TABLE TOO. The cross-check below —
+ * "the table and SHELL_NAV are two statements of one fact" — fails loudly and
+ * by name when they disagree, so the second edit is not something you can
+ * forget. It is something the suite asks you for.
+ *
+ * The `Record<SessionPhase, ...>` / `Record<MeetDayPhaseId, ...>` types make
+ * the table EXHAUSTIVE at compile time: a phase added to either union is a type
+ * error here until somebody decides what the shell does on it.
+ */
+const ON_A_SESSION_BEAT: Readonly<Record<SessionPhase, ShellIntent | null>> = Object.freeze({
+  /** GDD §3.2's first beat — and the "already trained today" surface too. */
+  'check-in': 'open-meet',
+  /** Choosing an RPE. Deciding, not lifting. */
+  briefing: 'open-meet',
+  /** THE MECHANIC. A pill here is a mis-tap that costs a rep. */
+  set: null,
+  /** The gap between two sets. Still the mechanic's screen. */
+  rest: null,
+  /** The end of a session — the "finish training, reach a meet" path. */
+  'close-out': 'open-meet',
+});
+
+const ON_A_MEET_BEAT: Readonly<Record<MeetDayPhaseId, ShellIntent | null>> = Object.freeze({
+  'weigh-in': null,
+  openers: null,
+  /** GDD §6.3's choice. The tensest decision in the game; leave it alone. */
+  'attempt-select': null,
+  walkout: null,
+  lift: null,
+  deliberation: null,
+  verdict: null,
+  /** GDD §6.3's somber beat draws its OWN way out. */
+  bombed: null,
+  /** GDD §6.5. The meet is over, and the way out is a route. */
+  recap: 'leave-meet',
+});
+
+/** The beats the hand-written table above gives `intent` to, sorted. */
+function tableBeatsFor(
+  table: Readonly<Record<string, ShellIntent | null>>,
+  intent: ShellIntent,
+): readonly string[] {
+  return Object.entries(table)
+    .filter(([, drawn]) => drawn === intent)
+    .map(([phase]) => phase)
+    .sort();
+}
 
 // ---------------------------------------------------------------------------
 // THE ONE THAT MATTERS
@@ -163,54 +253,148 @@ describe('the route graph', () => {
 // The chrome gate
 // ---------------------------------------------------------------------------
 
-describe('when the shell may draw a control', () => {
-  it('offers the way to meet day on the beats SHELL_NAV lists, and nowhere else', () => {
-    const listed: readonly string[] = SHELL_NAV.SESSION_PHASES;
-    for (const phase of SESSION_PHASES) {
-      expect(shellAffordanceFor(DEFAULT_ROUTE, phase), phase).toBe(
-        listed.includes(phase) ? 'open-meet' : null,
-      );
-    }
+describe('when the shell may draw a control — pinned, one beat at a time', () => {
+  // ONE `expect` PER BEAT, WITH THE ANSWER TYPED OUT NEXT TO IT. No loop, no
+  // list membership, no ternary that reads the module under test. Emptying
+  // `SHELL_NAV.SESSION_PHASES` reddens the first three lines below; adding
+  // `set` to it reddens the pair after that.
+  const SESSION = DEFAULT_ROUTE;
+  const MEET = AS_PLAYER('meet');
+
+  it('THE WAY TO MEET DAY IS ON THE CHECK-IN, THE BRIEFING AND THE CLOSE-OUT', () => {
+    expect(shellAffordanceFor(SESSION, 'check-in')).toBe('open-meet');
+    expect(shellAffordanceFor(SESSION, 'briefing')).toBe('open-meet');
+    expect(shellAffordanceFor(SESSION, 'close-out')).toBe('open-meet');
   });
 
-  it('draws NOTHING over a live set or the rest between two of them', () => {
+  it('AND IT IS DRAWN OVER NEITHER A LIVE SET NOR THE REST BETWEEN TWO OF THEM', () => {
     // The one assertion here that is about feel rather than routing, and the
-    // reason the gate exists: a pill over the mechanic is a mis-tap that costs
-    // a rep. Pinned by name rather than by list membership so loosening
-    // SHELL_NAV cannot quietly loosen this.
-    expect(shellAffordanceFor(DEFAULT_ROUTE, 'set')).toBeNull();
-    expect(shellAffordanceFor(DEFAULT_ROUTE, 'rest')).toBeNull();
+    // reason the gate exists at all: a pill over the mechanic is a mis-tap that
+    // costs a rep.
+    expect(shellAffordanceFor(SESSION, 'set')).toBe(null);
+    expect(shellAffordanceFor(SESSION, 'rest')).toBe(null);
   });
 
-  it('offers the way back only once meet day is over', () => {
-    const meet = AS_PLAYER('meet');
-    const listed: readonly string[] = SHELL_NAV.MEET_PHASES;
-    for (const phase of MEET_DAY_PHASES) {
-      expect(shellAffordanceFor(meet, phase), phase).toBe(
-        listed.includes(phase) ? 'leave-meet' : null,
-      );
-    }
-    // Spelled out: no control over a walk-out, an attempt, or a verdict.
-    for (const phase of ['walkout', 'lift', 'deliberation', 'verdict'] as const) {
-      expect(shellAffordanceFor(meet, phase), phase).toBeNull();
+  it('THE WAY BACK IS ON GDD §6.5’s RECAP', () => {
+    expect(shellAffordanceFor(MEET, 'recap')).toBe('leave-meet');
+  });
+
+  it('AND ON NO OTHER BEAT OF MEET DAY — every one named', () => {
+    expect(shellAffordanceFor(MEET, 'weigh-in')).toBe(null);
+    expect(shellAffordanceFor(MEET, 'openers')).toBe(null);
+    expect(shellAffordanceFor(MEET, 'attempt-select')).toBe(null);
+    expect(shellAffordanceFor(MEET, 'walkout')).toBe(null);
+    expect(shellAffordanceFor(MEET, 'lift')).toBe(null);
+    expect(shellAffordanceFor(MEET, 'deliberation')).toBe(null);
+    expect(shellAffordanceFor(MEET, 'verdict')).toBe(null);
+    // GDD §6.3: `BombOutView` has an `onDone` wired to the same route, and a
+    // second control on that beat would clutter the one screen the GDD asks to
+    // be left somber.
+    expect(shellAffordanceFor(MEET, 'bombed')).toBe(null);
+  });
+
+  it('the already-trained-today surface gets the pill, because it IS the check-in', () => {
+    // GDD §3.2 allows one session a day, and `SessionScreen` renders its
+    // "already trained" surface while `state.phase === 'check-in'` — the same
+    // beat as a fresh check-in. `shellWiring.test.ts` pins that gate against the
+    // real source; this is the other half of the join. Together they say: a
+    // player who opens the app for the second time today gets somewhere to go
+    // rather than a dead end, which is GDD §12.3's "never punish daily
+    // engagement" line applied to navigation.
+    expect(shellAffordanceFor(SESSION, 'check-in')).toBe('open-meet');
+    expect(shellAffordanceFor(AS_PLAYER('session'), 'check-in')).toBe('open-meet');
+  });
+
+  it('the answer does not depend on HOW the player got to the surface', () => {
+    // `source` is why the route is up — default launch, walked to, or pinned by
+    // a debug URL. The gate is about the BEAT, so all three agree.
+    for (const source of ['default', 'player', 'debug'] as const) {
+      const route: ShellRoute = { surface: 'session', source };
+      expect(shellAffordanceFor(route, 'check-in'), source).toBe('open-meet');
+      expect(shellAffordanceFor(route, 'set'), source).toBe(null);
+      expect(shellAffordanceFor({ surface: 'meet', source }, 'recap'), source).toBe('leave-meet');
+      expect(shellAffordanceFor({ surface: 'meet', source }, 'lift'), source).toBe(null);
     }
   });
 
-  it('leaves GDD §6.3’s bomb-out to draw its own way out', () => {
-    // BombOutView has an `onDone` wired to the same route. A second control on
-    // that beat would clutter the one screen the GDD asks to be left somber.
-    expect(shellAffordanceFor(AS_PLAYER('meet'), 'bombed')).toBeNull();
+  it('a beat belonging to the OTHER surface draws nothing', () => {
+    // Guards against the two lists being merged into one: the session's beats
+    // must not open a way out of a meet, and vice versa.
+    expect(shellAffordanceFor(SESSION, 'recap')).toBe(null);
+    expect(shellAffordanceFor(SESSION, 'weigh-in')).toBe(null);
+    expect(shellAffordanceFor(MEET, 'check-in')).toBe(null);
+    expect(shellAffordanceFor(MEET, 'close-out')).toBe(null);
   });
 
   it('draws nothing before a surface has reported a beat, or over the harness', () => {
-    expect(shellAffordanceFor(DEFAULT_ROUTE, null)).toBeNull();
-    expect(shellAffordanceFor(AS_PLAYER('replay'), null)).toBeNull();
-    expect(shellAffordanceFor(AS_PLAYER('replay'), 'check-in')).toBeNull();
+    expect(shellAffordanceFor(DEFAULT_ROUTE, null)).toBe(null);
+    expect(shellAffordanceFor(AS_PLAYER('replay'), null)).toBe(null);
+    expect(shellAffordanceFor(AS_PLAYER('replay'), 'check-in')).toBe(null);
+    expect(shellAffordanceFor(AS_PLAYER('replay'), 'recap')).toBe(null);
   });
 
-  it('the recap is reachable and IS a listed beat — the way back is drawable', () => {
-    // Guards the pair: `MEET_PHASES` naming a phase that `meetDay.ts` does not
-    // have would make the gate silently never fire.
+  it('every beat of the game is in the answer sheet, and answers as written', () => {
+    // Exhaustive sweep, driven by the HAND-WRITTEN table rather than by
+    // `SHELL_NAV`. It cannot go vacuous: the table's type is
+    // `Record<SessionPhase, …>`, so emptying it is a type error and not a green
+    // run.
+    for (const [phase, drawn] of Object.entries(ON_A_SESSION_BEAT)) {
+      expect(shellAffordanceFor(DEFAULT_ROUTE, phase as SessionPhase), phase).toBe(drawn);
+    }
+    for (const [phase, drawn] of Object.entries(ON_A_MEET_BEAT)) {
+      expect(shellAffordanceFor(MEET, phase as MeetDayPhaseId), phase).toBe(drawn);
+    }
+    // ...and the sweep really did run, on every beat there is.
+    expect(Object.keys(ON_A_SESSION_BEAT).sort()).toEqual([...SESSION_PHASES].sort());
+    expect(Object.keys(ON_A_MEET_BEAT).sort()).toEqual([...MEET_DAY_PHASES].sort());
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The answer sheet and the tuning module are two statements of one fact
+// ---------------------------------------------------------------------------
+
+describe('the table and SHELL_NAV are two statements of one fact', () => {
+  // The pair of properties this file needs at once:
+  //
+  //   - the assertions above are literals, so they cannot go vacuous when
+  //     `SHELL_NAV` is emptied;
+  //   - and this block says the literals are still describing the REAL
+  //     constant, so a playtester who turns `SHELL_NAV` and forgets the table —
+  //     or turns the table and forgets `SHELL_NAV` — is told by name.
+  //
+  // Neither alone is enough. Only the literals can fail vacuously; only this
+  // can drift.
+
+  it('SHELL_NAV.SESSION_PHASES is exactly the beats the table gives the pill to', () => {
+    expect([...SHELL_NAV.SESSION_PHASES].sort()).toEqual(
+      tableBeatsFor(ON_A_SESSION_BEAT, 'open-meet'),
+    );
+    // Spelled out, so a failure names the beats rather than only a diff.
+    expect(tableBeatsFor(ON_A_SESSION_BEAT, 'open-meet')).toEqual([
+      'briefing',
+      'check-in',
+      'close-out',
+    ]);
+  });
+
+  it('SHELL_NAV.MEET_PHASES is exactly the beats the table gives the way out to', () => {
+    expect([...SHELL_NAV.MEET_PHASES].sort()).toEqual(tableBeatsFor(ON_A_MEET_BEAT, 'leave-meet'));
+    expect(tableBeatsFor(ON_A_MEET_BEAT, 'leave-meet')).toEqual(['recap']);
+  });
+
+  it('and neither list is empty, which is the mutation that used to pass', () => {
+    // Stated on its own, because "the lists are non-empty" is the property the
+    // whole piece rests on: an empty `SESSION_PHASES` puts meet day out of reach
+    // again, and an empty `MEET_PHASES` makes the recap and the result card dead
+    // ends again — the two defects this piece was built to close.
+    expect(SHELL_NAV.SESSION_PHASES.length).toBeGreaterThan(0);
+    expect(SHELL_NAV.MEET_PHASES.length).toBeGreaterThan(0);
+  });
+
+  it('every listed beat is a beat the game actually has', () => {
+    // Guards the other direction: `MEET_PHASES` naming a phase that
+    // `meetDay.ts` does not have would make the gate silently never fire.
     for (const phase of SHELL_NAV.MEET_PHASES) {
       expect(MEET_DAY_PHASES as readonly string[], phase).toContain(phase);
     }
