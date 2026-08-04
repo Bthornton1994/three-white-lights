@@ -15,6 +15,8 @@ import {
 } from './sessionServer';
 import { SESSION_PROGRESSION_GUARD, SESSION_TUNING } from './sessionTuning';
 import {
+  A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT,
+  TRAINING_CARD_REPORT_KEYS,
   applyServerSnapshot,
   asProposalId,
   emptyProgressionCache,
@@ -28,6 +30,8 @@ import {
   type ProposalOfKind,
   type TrainingSetReport,
 } from './progression';
+import { KILOGRAMS_PER_POUND } from './dots';
+import { RPE_LOADING_TUNING } from './rpe';
 import { LIFT_ORDER, type LiftKind } from './meet';
 import { SIM_LIFTS, UNLUCKIEST_ROLLS, LUCKIEST_ROLLS } from './fatigue';
 import {
@@ -203,6 +207,297 @@ describe('deriving e1RM from what was reported', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// THE FOURTH NUMBER, AND THE ONE IN THE OTHER MODE: the training set weights
+//
+// `TrainingSetReport.weightKg` was a bare `number` with the unit in its name,
+// thirty lines above the meet attempt row that had just been renamed for exactly
+// that defect, in the same list of untrusted wire reports.
+//
+// NOTHING ON THE PATH PROVED THE `Kg`:
+//
+//   client        `weightKg`, a bare number, no tag and no reading
+//   decoder       `isFiniteWeight` — finiteness, not unit
+//   estimator     `tryEstimateE1rm`, and `e1rm.ts` is documented UNIT-AGNOSTIC
+//                 ("kg in -> kg out, lb in -> lb out. Do not convert inside this
+//                 module"). Not an oversight there. The design.
+//   write         `record.bestE1rmKg`, in a module with no occurrence of "unit"
+//   monotone      `nextBestE1rm` never returns below what is held
+//   permanent     `ConfirmedFacts.bestE1rmKg`, a `ConfirmedKg`, `'protected'`
+//
+// WHY MONOTONE IS WHAT MAKES IT THE BAD KIND. A pound number banked as kilograms
+// is 2.2046x too large and no later honest session lowers it. It is what every
+// future prescription is computed from (`todayForLifter`), what every future PR
+// is tested against, and — through `meetServer.ts`'s `meetDayFacts` — what meet
+// day suggests an opener from and what `stageLoadRatio` divides a proven
+// kilogram meet weight by.
+//
+// AND THERE IS NO ARITHMETIC THAT CAN TELL THE TWO APART. 405 for 3 at RPE 8 is
+// an ordinary pound set and an ordinary kilogram set; so is 172.5. The unit has
+// to be carried, because it cannot be inferred.
+// ---------------------------------------------------------------------------
+
+describe('a session whose unit this record cannot store is refused, not recorded', () => {
+  /** One honest working set. Pound-shaped, and a perfectly ordinary kg set too. */
+  const ROWS: readonly TrainingSetReport[] = [set('squat', 405, 3, 8), set('squat', 405, 3, 8)];
+
+  it('THE POUND SESSION: every other check passes and this one refuses', () => {
+    // THE ADVERSARIAL CASE IN FULL, and the shape it arrives in matters. A client
+    // running the daily loop in pounds — GDD §11's per-user display-unit question
+    // one mode over — submits to a server that stores kilograms. No cast, no
+    // `as`, no typed lie: every field below is honestly filled in by somebody who
+    // lifted in pounds.
+    const before = newServerRecord();
+    const snapshot = structuredClone(before);
+
+    // (1) THE DAY'S CHECK PASSES. Demonstrated, not asserted: day 0 is the day
+    //     the kilogram twin records on, three assertions down.
+    // (2) THE LIFT CHECKS PASS. Every row names a competition lift and they all
+    //     name the SAME one, so neither `NOT_A_COMPETITION_LIFT` nor
+    //     `MIXED_LIFTS` has anything to fire on.
+    expect([...new Set(ROWS.map((row) => row.lift))]).toEqual(['squat']);
+    expect(ROWS.every((row) => (LIFT_ORDER as readonly string[]).includes(row.lift))).toBe(true);
+    // (3) THE STREAK WOULD ACCEPT THE DAY, and the e1RM step would produce a
+    //     number rather than declining to. Shown by running the SAME rows through
+    //     the kilogram twin, so the values the other checks would have seen are
+    //     on the page rather than argued about.
+    const asKg = applyTrainingSession(newServerRecord(), 0, kgProposalOf(ROWS), 'p-kg');
+    expect(asKg.ok, asKg.ok ? '' : asKg.error.message).toBe(true);
+    if (!asKg.ok) throw new Error('unreachable');
+    expect(asKg.value.streakAfter).toBe(1);
+    expect(asKg.value.isPr).toBe(true);
+    // Capped by `MAX_E1RM_GAIN_FRACTION_PER_SESSION`, which is a bound on a lying
+    // client and is NOT a defence against this one — see the harm test below for
+    // what it does and does not buy.
+    expect(asKg.value.bestE1rmKg).toBeCloseTo(
+      SESSION_TUNING.STARTING_E1RM_KG.squat *
+        (1 + SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION),
+      9,
+    );
+
+    // (4) AND THE UNIT'S CHECK IS WHAT REFUSES. Honestly declared `lb`, against a
+    //     record that stores kilograms.
+    const applied = applyTrainingSession(before, 0, lbProposalOf(ROWS), 'p-lb');
+    expect(applied.ok).toBe(false);
+    if (applied.ok) throw new Error('unreachable');
+    expect(applied.error.code).toBe('UNSUPPORTED_SESSION_UNIT');
+    // Not the day, not the lift, not a mixed session, not the streak, not a
+    // malformed body: the one thing wrong with this submission is which unit its
+    // numbers are in.
+    expect(applied.error.code).not.toBe('BAD_DAY');
+    expect(applied.error.code).not.toBe('NOT_A_COMPETITION_LIFT');
+    expect(applied.error.code).not.toBe('MIXED_LIFTS');
+    expect(applied.error.code).not.toBe('STREAK_REFUSED');
+    expect(applied.error.code).not.toBe('MALFORMED_SESSION_CARD');
+    // Nothing was produced to write, and the record handed in is untouched —
+    // including the streak, which the refusal runs ahead of.
+    expect(applied).not.toHaveProperty('value');
+    expect(before).toEqual(snapshot);
+  });
+
+  it('THE POSITIVE CONTROL: the same rows, declared kg, record', () => {
+    // Built so it CANNOT be satisfied by a check keyed on anything but the tag.
+    // The two cards hold THE SAME ARRAY OBJECT — same magnitudes, same decimals,
+    // same set count, same reps, same RPE — so the only difference between the
+    // refusal above and the record below is which string the card carries. A
+    // check written on magnitude ("> 300 must be pounds"), on decimals, on set
+    // count, or on whether the weights look pound-ish would refuse this one too.
+    const lb = lbProposalOf(ROWS);
+    const kg = kgProposalOf(ROWS);
+    if (lb.report.card.unit !== 'lb' || kg.report.card.unit !== 'kg') throw new Error('unreachable');
+    expect(lb.report.card.poundSets).toBe(kg.report.card.kilogramSets);
+    expect(lb.report.card.poundSets).toHaveLength(2);
+
+    const refused = applyTrainingSession(newServerRecord(), 0, lb, 'p-lb');
+    const recorded = applyTrainingSession(newServerRecord(), 0, kg, 'p-kg');
+    expect(refused.ok).toBe(false);
+    expect(recorded.ok, recorded.ok ? '' : recorded.error.message).toBe(true);
+    if (!recorded.ok) throw new Error('unreachable');
+    expect(recorded.value.record.bestE1rmKg.squat).toBeCloseTo(
+      SESSION_TUNING.STARTING_E1RM_KG.squat *
+        (1 + SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION),
+      9,
+    );
+    expect(recorded.value.isPr).toBe(true);
+    expect(recorded.value.streakAfter).toBe(1);
+  });
+
+  it('shows what the old code banked, so the harm is a number rather than a worry', () => {
+    // 405 lb for 3 at RPE 8 is 469.29 on the chart read backwards. Read as
+    // kilograms that is a 469 kg squat e1RM; the truth is 405 lb = 183.70 kg, so
+    // 212.87 kg. 2.2046x — the same factor the meet path banked on the total.
+    const asIfKilograms = bestE1rmFromSets(ROWS).squat;
+    expect(asIfKilograms).not.toBeNull();
+    const truth = (asIfKilograms ?? Number.NaN) * KILOGRAMS_PER_POUND;
+    expect(asIfKilograms).toBeCloseTo(469.2932, 4);
+    expect(truth).toBeCloseTo(212.8678, 4);
+    expect((asIfKilograms ?? Number.NaN) / truth).toBeCloseTo(1 / KILOGRAMS_PER_POUND, 9);
+
+    // WHAT THE PER-SESSION CAP DOES AND DOES NOT BUY, measured rather than
+    // assumed, because it is the one thing that could be mistaken for a defence.
+    // `MAX_E1RM_GAIN_FRACTION_PER_SESSION` bounds ONE session's jump — so the
+    // first pound session banks +6%, not 2.2x. It bounds the RATE, not the
+    // destination: the same submission repeated ratchets to the full pound number
+    // and stops there, because `nextBestE1rm` never goes down.
+    let record = newServerRecord();
+    let sessions = 0;
+    while ((record.bestE1rmKg.squat ?? 0) < (asIfKilograms ?? 0) - 1e-9 && sessions < 100) {
+      const step = applyTrainingSession(record, sessions, kgProposalOf(ROWS), `p-${sessions}`);
+      if (!step.ok) throw new Error(step.error.message);
+      record = step.value.record;
+      sessions += 1;
+    }
+    expect(sessions).toBe(17);
+    expect(record.bestE1rmKg.squat).toBeCloseTo(asIfKilograms ?? Number.NaN, 9);
+
+    // ...and once there it cannot be walked back. A later, honest 180 kg session
+    // leaves it exactly where it is.
+    const honest = applyTrainingSession(record, 40, kgProposalOf([set('squat', 180, 3, 8)]), 'p-h');
+    expect(honest.ok, honest.ok ? '' : honest.error.message).toBe(true);
+    if (!honest.ok) throw new Error('unreachable');
+    expect(honest.value.record.bestE1rmKg.squat).toBe(record.bestE1rmKg.squat);
+    expect(honest.value.isPr).toBe(false);
+
+    // And it is not a number anything downstream would have blinked at: it is
+    // what tomorrow's bar is prescribed from, and — through `meetDayFacts` —
+    // what meet day suggests an opener off.
+    expect(todayForLifter(record, 41, 'squat').e1rmKg).toBe(record.bestE1rmKg.squat);
+  });
+
+  it('refuses BEFORE the e1RM is derived and BEFORE the streak moves', () => {
+    // Order is the whole point. `e1rm.ts` is unit-agnostic and answers happily
+    // in pounds; `nextBestE1rm` only ever goes up. A refusal downstream of either
+    // is not a defence of the number.
+    //
+    // Shown by the streak, which is the observable that moves first in the
+    // accepted path: after a refused pound session the record's streak is
+    // untouched, and the SAME day then records under kilograms — which it could
+    // not do if the pound attempt had already consumed it (GDD §3.2, one session
+    // a day).
+    let record = newServerRecord();
+    const refused = applyTrainingSession(record, 0, lbProposalOf(ROWS), 'p-lb');
+    expect(refused.ok).toBe(false);
+    expect(record.streak.lastTrainedDay).toBeNull();
+    expect(record.bestE1rmKg.squat).toBe(SESSION_TUNING.STARTING_E1RM_KG.squat);
+
+    const second = applyTrainingSession(record, 0, kgProposalOf(ROWS), 'p-kg');
+    expect(second.ok, second.ok ? '' : second.error.message).toBe(true);
+    if (!second.ok) throw new Error('unreachable');
+    record = second.value.record;
+    expect(record.streak.currentStreak).toBe(1);
+  });
+
+  it('refuses a unit it has never heard of, rather than assuming kilograms', () => {
+    // The fail-safe direction, and the only way it can be reached: `unit` is
+    // whatever the sender wrote once the body has been through JSON. `'lbs'`,
+    // `'KG'` and `''` are all "not the unit this record stores".
+    for (const unit of ['lbs', 'KG', 'pounds', '']) {
+      const forged = {
+        kind: 'record-training-session',
+        report: { deviceWallClock: WALL_CLOCK, card: { unit, kilogramSets: ROWS } },
+      } as unknown as ProposalOfKind<'record-training-session'>;
+      const applied = applyTrainingSession(newServerRecord(), 0, forged, 'p-x');
+      expect(applied.ok, `unit ${JSON.stringify(unit)}`).toBe(false);
+      if (applied.ok) throw new Error('unreachable');
+      expect(applied.error.code).toBe('UNSUPPORTED_SESSION_UNIT');
+    }
+  });
+
+  it('refuses a tag with nothing under it, with its own code', () => {
+    // `{ "unit": "kg" }` narrows perfectly and yields `undefined`; so does
+    // `{ "unit": "kg", "poundSets": [...] }`, which names the wrong arm. Both are
+    // a declared unit attached to no numbers, and the remedy is to fix the sender
+    // rather than to convert anything — which is why it is a different code from
+    // the one above. `meetServer.ts` learned this after shipping a round where a
+    // checked tag over an unchecked payload wrote `undefined` with `ok: true`.
+    const bodies: readonly unknown[] = [
+      { deviceWallClock: WALL_CLOCK, card: { unit: 'kg' } },
+      { deviceWallClock: WALL_CLOCK, card: { unit: 'kg', poundSets: ROWS } },
+      { deviceWallClock: WALL_CLOCK, card: { unit: 'kg', kilogramSets: 2 } },
+      { deviceWallClock: WALL_CLOCK },
+    ];
+    for (const report of bodies) {
+      const forged = { kind: 'record-training-session', report } as unknown as ProposalOfKind<
+        'record-training-session'
+      >;
+      const applied = applyTrainingSession(newServerRecord(), 0, forged, 'p-x');
+      expect(applied.ok, JSON.stringify(report)).toBe(false);
+      if (applied.ok) throw new Error('unreachable');
+      expect(applied.error.code).toBe('MALFORMED_SESSION_CARD');
+    }
+  });
+
+  it('still records a KILOGRAM SESSION THE CHART REFUSES — the check must not swallow one', () => {
+    // GDD §12.3 and CLAUDE.md's "never punish daily engagement". `e1rm.ts`
+    // refuses past its chart rather than extrapolating, so a session can be
+    // perfectly legal and produce NO e1RM at all. A unit check written carelessly
+    // — refusing when there is no number to look at, say — would cost that lifter
+    // the day. It does not: the streak advances and the held e1RM is unchanged.
+    const applied = applyTrainingSession(
+      newServerRecord(),
+      0,
+      kgProposalOf([set('squat', 100, 13, 6)]),
+      'p-chart',
+    );
+    expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+    expect(applied.value.record.bestE1rmKg.squat).toBe(SESSION_TUNING.STARTING_E1RM_KG.squat);
+    expect(applied.value.isPr).toBe(false);
+    expect(applied.value.streakAfter).toBe(1);
+  });
+
+  it('is a runtime check, and says so — the compile-time half is the SHAPE', () => {
+    // WHICH GUARANTEE IS WHICH, stated in the suite rather than only in a comment,
+    // because rounding a runtime check up to a compile error is how the meet
+    // path's version of this defect survived two rounds.
+    //
+    // COMPILE-TIME: there is no field on `TrainingCardReport` reachable from both
+    // arms, so no expression anywhere produces the sets without naming a unit.
+    // The assertion that pins it is read here so deleting it is a test failure
+    // too, not only a `tsc` one.
+    expect(A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT).toBe(true);
+    expect([...TRAINING_CARD_REPORT_KEYS].sort()).toEqual(['kilogramSets', 'poundSets', 'unit']);
+    // RUNTIME: which declared unit is ACCEPTED is a string comparison in
+    // `readKilogramSets`, and deleting it is this file's failure rather than the
+    // compiler's. The tests above are what fail.
+    //
+    // AND IT IS WEAKER THAN THE MEET CARD'S, which compares the client's claim
+    // against server-owned data (`meet.rules.unit`). A session has no definition
+    // to compare against, so the strongest question available is "did you say
+    // kg?" — pinned here so the difference is not lost.
+    expect(SESSION_TUNING.LOAD_UNIT).toBe('kg');
+  });
+
+  it('declares the unit off the constant that chose it, not off a literal', () => {
+    // The client half. `sessionProposal` reads `SESSION_TUNING.LOAD_UNIT` — the
+    // same constant `prescribeSession` snapped every one of these weights onto —
+    // rather than typing `'kg'`. A literal is true today and still says `kg` on
+    // the day the loop learns to prescribe in pounds, which is the defect this
+    // whole boundary exists to stop, one field over.
+    const played = playAgainst(newServerRecord(), 0, NEUTRAL, 8);
+    const closeOut = played.state.closeOut;
+    expect(closeOut).not.toBeNull();
+    if (closeOut === null) throw new Error('unreachable');
+    const proposal = sessionProposal(closeOut, WALL_CLOCK);
+    expect(proposal).not.toBeNull();
+    expect(proposal?.report.card.unit).toBe(SESSION_TUNING.LOAD_UNIT);
+    // And the sets are reachable only through the arm the tag names.
+    const card = proposal?.report.card;
+    if (card === undefined || card.unit !== 'kg') throw new Error('the shipped loop loads in kg');
+    expect(card.kilogramSets.length).toBeGreaterThan(0);
+    // NOT A ONE-TOKEN FLIP, and this suite must not imply that it is. Flipping
+    // `LOAD_UNIT` changes the SNAPPING GRID only: `prescribeSession` computes the
+    // load from a kilogram e1RM either way, so the magnitude would stay
+    // kilograms. The card would then declare `lb` over kilogram numbers and this
+    // server would refuse the whole session — loud and unrecorded, which is the
+    // right failure when the alternative is quiet and monotone. Making the
+    // magnitude follow the unit is a change to the loading path and to GDD §11's
+    // open display-unit question, and it is not taken here.
+    expect(RPE_LOADING_TUNING.ROUNDING_INCREMENT.kg).toBe(2.5);
+    expect(RPE_LOADING_TUNING.ROUNDING_INCREMENT.lb).toBe(5);
+  });
+});
+
 describe('accessory work never touches e1RM — the ruling, enforced', () => {
   // GDD §2, §3.2: `LiftKind` stays the three contested lifts; accessory day
   // contributes Training IQ and nothing else lift-specific, and produces no
@@ -213,8 +508,8 @@ describe('accessory work never touches e1RM — the ruling, enforced', () => {
   // boundary in production — a JSON body and a stored row — are neither of them
   // type-checked. Writing the cast out makes the untrusted path explicit rather
   // than untested.
-  const accessorySet = { lift: 'accessory', weightKg: 60, reps: 3, rpe: 8 } as unknown as TrainingSetReport;
-  const nonsenseSet = { lift: 'zercher', weightKg: 60, reps: 3, rpe: 8 } as unknown as TrainingSetReport;
+  const accessorySet = { lift: 'accessory', weight: 60, reps: 3, rpe: 8 } as unknown as TrainingSetReport;
+  const nonsenseSet = { lift: 'zercher', weight: 60, reps: 3, rpe: 8 } as unknown as TrainingSetReport;
 
   it('the compile-time fence is real, and it is not vacuous', () => {
     // These are `true` at runtime only because they type-checked. Reading them
