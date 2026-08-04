@@ -364,27 +364,53 @@ describe('a session whose unit this record cannot store is refused, not recorded
     expect(todayForLifter(record, 41, 'squat').e1rmKg).toBe(record.bestE1rmKg.squat);
   });
 
-  it('refuses BEFORE the e1RM is derived and BEFORE the streak moves', () => {
-    // Order is the whole point. `e1rm.ts` is unit-agnostic and answers happily
-    // in pounds; `nextBestE1rm` only ever goes up. A refusal downstream of either
-    // is not a defence of the number.
+  it('runs the unit check FIRST, and the proof is which refusal comes back', () => {
+    // ORDER IS THE POINT, and it has to be pinned by something observable.
+    // `applyTrainingSession` is pure — it returns a new record and mutates
+    // nothing — so "before the streak moves" cannot be seen by looking at the
+    // input record afterwards: that is true of every refusal, including one
+    // written after the write. WHICH REFUSAL COMES BACK is the observable, and it
+    // is a real property: every check below the unit check reads, throws on, or
+    // reports numbers it is treating as kilograms.
     //
-    // Shown by the streak, which is the observable that moves first in the
-    // accepted path: after a refused pound session the record's streak is
-    // untouched, and the SAME day then records under kilograms — which it could
-    // not do if the pound attempt had already consumed it (GDD §3.2, one session
-    // a day).
-    let record = newServerRecord();
-    const refused = applyTrainingSession(record, 0, lbProposalOf(ROWS), 'p-lb');
-    expect(refused.ok).toBe(false);
-    expect(record.streak.lastTrainedDay).toBeNull();
-    expect(record.bestE1rmKg.squat).toBe(SESSION_TUNING.STARTING_E1RM_KG.squat);
+    // (a) AHEAD OF THE STREAK. A pound session on a day the streak would refuse
+    //     anyway comes back `UNSUPPORTED_SESSION_UNIT`, not `STREAK_REFUSED`.
+    //     Move the check below `recordTrainingDay` and this flips.
+    const trained = applyTrainingSession(newServerRecord(), 0, kgProposalOf(ROWS), 'p-kg');
+    expect(trained.ok, trained.ok ? '' : trained.error.message).toBe(true);
+    if (!trained.ok) throw new Error('unreachable');
+    const already = trained.value.record;
+    // The control: the SAME day, declared kg, is refused by the streak — so the
+    // streak really would have something to say here.
+    const kgAgain = applyTrainingSession(already, 0, kgProposalOf(ROWS), 'p-again');
+    expect(kgAgain.ok).toBe(false);
+    if (kgAgain.ok) throw new Error('unreachable');
+    expect(kgAgain.error.code).toBe('STREAK_REFUSED');
+    const lbAgain = applyTrainingSession(already, 0, lbProposalOf(ROWS), 'p-lb-again');
+    expect(lbAgain.ok).toBe(false);
+    if (lbAgain.ok) throw new Error('unreachable');
+    expect(lbAgain.error.code).toBe('UNSUPPORTED_SESSION_UNIT');
 
-    const second = applyTrainingSession(record, 0, kgProposalOf(ROWS), 'p-kg');
-    expect(second.ok, second.ok ? '' : second.error.message).toBe(true);
-    if (!second.ok) throw new Error('unreachable');
-    record = second.value.record;
-    expect(record.streak.currentStreak).toBe(1);
+    // (b) AHEAD OF THE LIFT CHECKS, which are themselves ahead of
+    //     `bestE1rmFromSets` — the call that hands these numbers to a
+    //     UNIT-AGNOSTIC estimator. A pound card carrying an accessory row comes
+    //     back on its unit, not on its lift.
+    const accessory = { lift: 'accessory', weight: 60, reps: 3, rpe: 8 } as unknown as TrainingSetReport;
+    const kgAccessory = applyTrainingSession(newServerRecord(), 0, kgProposalOf([accessory]), 'p-a');
+    expect(kgAccessory.ok).toBe(false);
+    if (kgAccessory.ok) throw new Error('unreachable');
+    expect(kgAccessory.error.code).toBe('NOT_A_COMPETITION_LIFT');
+    const lbAccessory = applyTrainingSession(newServerRecord(), 0, lbProposalOf([accessory]), 'p-b');
+    expect(lbAccessory.ok).toBe(false);
+    if (lbAccessory.ok) throw new Error('unreachable');
+    expect(lbAccessory.error.code).toBe('UNSUPPORTED_SESSION_UNIT');
+
+    // And a refused session leaves the record handed in exactly as it was —
+    // which is a property of purity, not of ordering, and is stated as such.
+    const before = newServerRecord();
+    const snapshot = structuredClone(before);
+    expect(applyTrainingSession(before, 0, lbProposalOf(ROWS), 'p-lb').ok).toBe(false);
+    expect(before).toEqual(snapshot);
   });
 
   it('refuses a unit it has never heard of, rather than assuming kilograms', () => {
