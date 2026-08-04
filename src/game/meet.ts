@@ -186,31 +186,32 @@
  * ---------------------------------------------------------------------------
  *
  * ---------------------------------------------------------------------------
- * DESIGN CONFLICT — NEEDS A HUMAN DECISION. NOT RESOLVED HERE.
+ * A DESIGN CONFLICT THAT USED TO BE HERE, AND IS SETTLED. NOT AN OPEN ITEM.
  * ---------------------------------------------------------------------------
- * CLAUDE.md ("Domain Correctness") says: "attempts may not go down in weight
- * within a lift."
+ * This block used to flag a contradiction and ask for a human decision. THE
+ * DECISION HAS SINCE BEEN TAKEN, IN THE DOCUMENT. The note is kept, rewritten,
+ * only so nobody re-opens it from a git blame.
  *
- * GDD §6.3 ("Attempt Selection — The Real Tension") says: after a miss the
- * player chooses between "repeat the weight (use the last attempt)" vs "drop
- * down (guaranteed banked total, no PR)."
+ * What it said: CLAUDE.md ("Domain Correctness") requires "attempts may not go
+ * down in weight within a lift", while GDD §6.3 then offered, after a miss,
+ * "repeat the weight" vs "drop down (guaranteed banked total, no PR)". Those
+ * contradict each other; real-sport rules side with CLAUDE.md; and this engine
+ * enforced the non-decreasing rule as a hard invariant (`WEIGHT_DECREASED`),
+ * which is why `AttemptStrategy` has no "drop down" member. It offered a human
+ * two ways out and took neither.
  *
- * These contradict each other. Real-sport rules side with CLAUDE.md: within a
- * lift a lifter's bar weight may be repeated after a miss but never lowered.
- * This engine therefore enforces the NON-DECREASING rule as a hard invariant
- * (`WEIGHT_DECREASED`), which is why `AttemptStrategy` has no "drop down"
- * option.
+ * GDD §6.3 NOW READS: "Attempts within a lift never decrease. This is the
+ * competition rule, not a difficulty choice: once a weight is taken, the next
+ * attempt on that lift either repeats it or goes up", and its post-miss pair is
+ * "repeat vs. increase". That is option (a) of the two the old note offered.
+ * The document and this engine agree, there is nothing left to rule on, and the
+ * invariant below implements §6.3 rather than diverging from it.
  *
- * The GDD is the authoritative document, so this is flagged rather than
- * silently reworded. A human must pick one of:
- *   (a) Reword GDD §6.3's post-miss choice to the real-sport pair —
- *       "repeat the weight" vs "take a smaller jump on the next attempt" —
- *       which preserves the intended tension (bank the total vs chase the PR)
- *       without breaking the rules of the sport; or
- *   (b) Keep a literal "drop down" as a deliberate arcade divergence, in which
- *       case this invariant must be relaxed here and real lifters will notice.
- * Do not resolve this by editing code alone; docs/GDD.md and the engine must
- * end up agreeing.
+ * COMMENT-ONLY CORRECTION, made by the meet-day builder. No rule, type,
+ * message or behaviour in this module changed when this paragraph was
+ * rewritten, and the suite is unchanged. What changed is that the file no
+ * longer misquotes §6.3 and no longer sends a reader looking for a ruling that
+ * has already been made.
  * ---------------------------------------------------------------------------
  *
  * ---------------------------------------------------------------------------

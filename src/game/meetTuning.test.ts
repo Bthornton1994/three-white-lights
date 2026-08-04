@@ -176,6 +176,18 @@ describe('MEET_LOCAL', () => {
     expect(MEET_LOCAL.dateIso).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  it('runs in kilograms, or the recap has no card and no DOTS', () => {
+    // The unit boundary GDD §11 records: `dots.ts` REFUSES a total it cannot
+    // prove is kilograms rather than converting one, and `buildResultCard`
+    // refuses a pound meet outright (`UNSUPPORTED_MEET_UNIT`) because every
+    // column on the sheet is a kilogram column. So a meet configured in pounds
+    // reaches GDD §6.5's recap and cannot produce the card or the score it is
+    // built around — and it would do it silently, as a null recap, rather than
+    // as a failure. Pinning the unit here makes that a test rather than a
+    // discovery.
+    expect(MEET_LOCAL.rules.unit).toBe('kg');
+  });
+
   it('ships no real federation\u2019s name (GDD §11 is still open on licensing)', () => {
     const invented = MEET_LOCAL.federation.toUpperCase();
     for (const real of ['IPF', 'USAPL', 'USPA', 'NPL', 'SBD']) {
