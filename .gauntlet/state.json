@@ -245,9 +245,9 @@
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
-      "status": "rework",
+      "status": "grading",
       "verifiable": true,
-      "note": "THE INSTRUMENT IS RIGHT AND IT IS POINTED AT ONE DIRECTORY. The critic confirmed the technique, the two-way pin, and the parsed-tree-versus-comment separation, and said it COULD NOT CONSTRUCT A SEVENTH ROUTE INSIDE src/ that the sweep misses. Then it found the sweep walks only src/ - and this repo’s shipped TypeScript is not all under src/. I RAN ITS FALSIFIER MYSELF: two lines appended to App.tsx, the app’s entry point and the most reachable file in the repo, declaring a ServerRecord with a full annotation. tsc SILENT. All 133 progression tests GREEN. 7.5 still nine rows. That is route seven. Three things make it worse than narrow scope. First, the correct file list is COMPUTED TWO LINES ABOVE THE WRONG ONE AND DISCARDED - parseJsonConfigFileContent returns parsed.fileNames, which from the tsconfig include is exactly App.tsx, index.ts, vitest.config.ts and all of src/, and the code takes parsed.options and throws the rest away. Second, the file gate appears TWICE, and candidateFiles is built inside the second one, so THE REFLECTION GUARD INHERITS THE NARROWING - the unnamed link defeats all four checks at once where the named one defeats only the literal sweep. Third, progression.ts:915 states the residual as ONE item and then claims \"the two together are the whole surface\", which is closure it does not have. AND THE HOUSE ALREADY SOLVED THIS: audit.test.ts has a test literally titled \"walks the whole repository, not just src/\", whose non-vacuity anchors are App.tsx, index.ts and vitest.config.ts BY NAME, and realIp.ts records that it deliberately copied that walk rather than inventing a second idiom. Round 7 invented a third and made it smaller. Same species progression.test.ts itself names - \"honest scoping, complete within its scope, and the defect lived outside it\" - one level out."
+      "note": "THE SWEEP IS REPO-WIDE, AND THE BUILDER SAW THE NEXT DEFECT BEFORE IT SHIPPED. It rooted the program in parsed.fileNames - the set already being computed and discarded, exactly what tsc compiles, no new idiom. It declined to reuse isAudited and said why: that predicate excludes *.test.ts by design while the route scan NEEDS test files in the program, so reusing it meant re-deriving the rule plus writing the walk, which is a fourth idiom wearing the house’s name. THEN IT NOTICED THE FIX ONLY MOVED THE NARROWING VECTOR: tsconfig.json itself can be narrowed, and every by-name anchor would still pass. So a second test walks the repo and compares - and the line that matters is its own: \"THE WALK IS THE CROSS-CHECK, NOT THE ROOT - a walk as the root is what caused this defect.\" I VERIFIED BOTH MYSELF ON THE MERGED TREE. A record in App.tsx now reddens \"names every route into permanent progression in 7.5\" naming the file. And narrowing tsconfig include to src/ - the vector it anticipated - reddens THREE tests including \"leaves no TypeScript file in the repository out of the scanned set\". NO NEW ROUTES were found in App.tsx or index.ts: neither imports anything from the boundary, so round 7’s TABLE was right and its CHECK was not, and 7.5 says exactly that as a finding. The candidate set is now an IMPORT check rather than a token match, which added three files that reach a record through useMeetDay’s return type while spelling none of the four tokens, and dropped realIp.ts, which spells a token in a string and can produce nothing. Four residuals are listed with NO CLOSURE SENTENCE, which is the thing round 7 got wrong: records with no object literal, the isOurs narrowing inside the candidate walk, FILE EXTENSION (tsc sees no .js or .mjs, and tools/ is about twenty of them), and two literals in one frame. Cost: 6.93s to 8.06s on that file, off the critical path."
     },
     {
       "id": "B1",
@@ -390,9 +390,9 @@
       {
         "id": "X1",
         "name": "Cross-mode coherence",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "The type-checker sweep is the right instrument and no route inside src/ escapes it. But it walks only src/, and I confirmed a fully-annotated ServerRecord in App.tsx passes tsc and leaves all 133 tests green. The correct file list is computed two lines above the wrong one and discarded."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "Sweep is repo-wide, rooted in the project's own file list with a repo walk as cross-check rather than as root. I verified both directions. Round 7's table was right and its check was not — no new routes exist outside src/."
       },
       {
         "id": "B1",
