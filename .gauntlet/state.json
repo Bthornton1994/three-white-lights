@@ -201,9 +201,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work — NOW GRADEABLE, reference committed.",
-      "status": "rework",
+      "status": "grading",
       "verifiable": true,
-      "note": "THE SAME DEFECT A THIRD TIME, ONE LAYER DOWN - AND THE CRITIC REDUCED IT TO A SINGLE UNMEASURED INTEGER. The test named \"is eaten on the far side by the ARM\" NEVER JOINS its two counts: inside and landed go into separate buckets on adjacent lines and are never intersected. I read the loop and confirmed it. So farInsideArm 906 and farMisses 905 are two aggregates CONSISTENT WITH the claim that do not ENTAIL it - and farMissesOnSkin does not close it either, because the seam is over SINGLET, so the skin sitting there could be the deltoid cap, the trap, or plain torso. The critic then did the algebra: because drawArm runs after drawTorso and no later SKIN mark can repaint a landed pixel, missesOutsideArm = rescuedByDespeckle - 1. The whole causal claim reduces to ONE INTEGER - and that integer is exactly the one the file guesses at in prose, unhedged: \"despeckle runs before the marks and rescues a lone contour pixel NOW AND THEN\". If it is 1 the story holds; if it is 60, then 59 far misses have nothing to do with the arm and the stated lever is partly wrong. Nothing in the suite can tell those apart. Second prong: mirroredAnchors pins the STRAP ANCHOR’s symmetry only, while the paragraph it is offered as proof of claims the strap, the deltoid AND THE ARM are all symmetric and \"this one asymmetry is the whole of it\" - in a rig whose header advertises THREE deliberate asymmetries, one of them on the arm, and whose armSpan already applies GRIP_ASYMMETRY_PX to handX. Third: the 849/55 ring-versus-fill split, which is the fact that explains why UPPER_ARM_R moves the number so hard, APPEARS NOWHERE IN THE TREE - the critic grepped for it and found zero hits. It exists only in a builder report. The fix is four expectations in a loop that already holds every operand.",
+      "note": "THE COUNTS ARE JOINED, AND MY BRIEF WAS WRONG TWICE - WHICH IS THE POINT. I predicted farMissesOutsideArm would be 0 and rescued would be 1. Measured: 1 and 2. The IDENTITY the critic derived holds exactly - 906 minus 905 equals 2 minus 1 - but NEITHER TERM IS THE VALUE I NAMED, so the causal story survives at 904 of 905 rather than 905 of 905. Three rounds running, this file has shipped a plausible reconciliation that turned out wrong when somebody finally measured it, and this round is the first where the measurement came back and CONTRADICTED the brief instead of confirming it. The one contradicting pixel is not waved off: depth 0.750 ASCENT, strain 2, pitch 3, pixel (53,36), and the builder probed it - not in the far upper arm at pad 1, not in either far forearm capsule, not in the deltoid disc, but IS inside the strap capsule. CAUSE NOT DIAGNOSED, written that way in the shape TRAP_BAR_SHADOW already uses, and pinned so it cannot grow. The 849/55 ring-versus-fill split that existed only in a report is re-measured from scratch and confirmed: 849 of the 904 pixels the arm eats are eaten by its ONE-PIXEL CONTOUR RING, only 55 by its body, which is the mechanism that explains why UPPER_ARM_R moves the number so hard. And the naming instinct is right: it renamed my \"rescued\" to neutral landedInFill / landedInRing precisely because \"rescued\" bakes in the mechanism. I verified the mutation myself - extending GRIP_ASYMMETRY_PX to elbowX reddens four tests including \"upper-arm spans are mirror images at every pose: expected +0 to be 416\". It also found the 153/112 singlet spec was STILL SHORT A FIELD - it named strain, pitch and load but not DIRECTION, and ASCENT at the same depth counts 135, not 153.",
       "evidence": "gym/screen-hole-3x.png"
     },
     {
@@ -355,9 +355,9 @@
       {
         "id": "A1",
         "name": "Lifter sprites & animation",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "Third causal story in this file reconciling two numbers. The test named for the arm never joins its two counts — 906 and 905 are consistent with the claim, not entailed by it, and the gap between them is a prose guess (\"now and then\") nothing can check."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "The counts are joined. My brief predicted 0 and 1; the measurement came back 1 and 2, so the story holds at 904 of 905, not 905. The one contradicting pixel is probed, undiagnosed, and pinned so it cannot grow."
       },
       {
         "id": "A2",
