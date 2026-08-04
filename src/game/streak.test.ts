@@ -106,13 +106,15 @@ function stateWithRun(streakLength: number, lastDay: StreakDay, balance: number)
   };
 }
 
-/** The same, for a player who has declined protection in settings. */
+/**
+ * The same, for a player who has declined protection in settings.
+ *
+ * BUILT THROUGH `setRecoveryDayProtection` RATHER THAN BY HAND, so a test using
+ * it exercises the toggle instead of asserting against a state literal that
+ * already has the answer written into it.
+ */
 function unprotectedStateWithRun(streakLength: number, lastDay: StreakDay, balance: number): StreakState {
-  return {
-    ...stateWithRun(streakLength, lastDay, balance),
-    armedRecoveryDays: null,
-    recoveryDayProtectionEnabled: false,
-  };
+  return setRecoveryDayProtection(stateWithRun(streakLength, lastDay, balance), false).state;
 }
 
 function clone(state: StreakState): StreakState {
@@ -893,26 +895,49 @@ describe('Recovery Day protection: armed ahead, revealed on return', () => {
 // ---------------------------------------------------------------------------
 
 describe('the Recovery Day protection toggle', () => {
-  it('PREVENTS A SPEND, measured against the identical calendar with it on', () => {
+  it('PREVENTS A SPEND, over the whole flow, measured against the identical calendar with it on', () => {
     // THE POINT OF THE TOGGLE, checked as a difference rather than asserted in a
-    // comment. Same run, same balance, same absence: protection on saves the
-    // streak and spends a Recovery Day; protection off ends the run and spends
-    // nothing.
-    const day = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
+    // comment, and driven through the REAL API from a fresh player: train, flip
+    // the setting, train again (which is where arming happens), then be away.
+    //
+    // Building the declined player as a state literal instead would test that
+    // `armedRecoveryDays: null` spends nothing — true, and nearly tautological.
+    // It would say nothing about whether the toggle produces that state, or
+    // whether the next session quietly re-arms in spite of it.
+    const play = (declineOnDayOne: boolean): {
+      readonly spent: number;
+      readonly streak: number;
+      readonly balance: number;
+      readonly reason: string | null;
+    } => {
+      let state: StreakState = { ...createStreakState(), recoveryDayBalance: 3 };
+      state = unwrap(recordTrainingDay(state, DAY_ZERO)).state;
+      if (declineOnDayOne) state = setRecoveryDayProtection(state, false).state;
+      // A second session, so the arming path runs again after the setting moved.
+      state = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, 1))).state;
+      const backOn = dayAfterGap(addDays(DAY_ZERO, 1), SHORTEST_PAID_GAP);
+      const outcome = unwrap(recordTrainingDay(state, backOn));
+      return {
+        spent: outcome.recoveryDaySave?.recoveryDaysSpent ?? 0,
+        streak: outcome.streakAfter,
+        balance: outcome.state.recoveryDayBalance,
+        reason: outcome.endedRunReason,
+      };
+    };
 
-    const protectedOutcome = unwrap(recordTrainingDay(stateWithRun(9, DAY_ZERO, 3), day));
-    expect(protectedOutcome.recoveryDaySave?.recoveryDaysSpent).toBe(1);
-    expect(protectedOutcome.streakAfter).toBe(10);
-    expect(protectedOutcome.state.recoveryDayBalance).toBe(2);
+    const kept = play(false);
+    expect(kept.spent).toBe(1);
+    expect(kept.streak).toBe(3);
+    expect(kept.balance).toBe(2);
+    expect(kept.reason).toBeNull();
 
-    const declinedOutcome = unwrap(recordTrainingDay(unprotectedStateWithRun(9, DAY_ZERO, 3), day));
-    expect(declinedOutcome.recoveryDaySave).toBeNull();
-    expect(declinedOutcome.previousRunEnded).toBe(true);
-    expect(declinedOutcome.endedRunReason).toBe('recovery-day-protection-declined');
-    expect(declinedOutcome.streakAfter).toBe(1);
+    const declined = play(true);
     // NOT ONE RECOVERY DAY TAKEN. This is the assertion the human's ruling asked
     // for in as many words.
-    expect(declinedOutcome.state.recoveryDayBalance).toBe(3);
+    expect(declined.spent).toBe(0);
+    expect(declined.balance).toBe(3);
+    expect(declined.streak).toBe(1);
+    expect(declined.reason).toBe('recovery-day-protection-declined');
   });
 
   it('spends nothing at any balance or absence length while it is off', () => {
