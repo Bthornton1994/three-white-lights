@@ -218,9 +218,9 @@
       "id": "S1",
       "name": "Daily session loop",
       "bar": "Duolingo-class session. Time-to-first-input, session length, close-out moment.",
-      "status": "majority",
+      "status": "passed",
       "verifiable": false,
-      "note": "MAJORITY-PASS. Time-to-first-input passes on reading but NO TEST ASSERTS IT - a splash screen added tomorrow would break nothing in the suite. Session length passes and is genuinely measured at 54.3 to 60.3 seconds across the ladder, with the floor DROPPED rather than padded and the divergence pinned so it cannot go stale. Both human rulings are honoured in the numbers: the false scarcity prose is gone and survives only inside its own retraction, the 770.65kg curve is pinned as an assertion with a 3.4 pointer, and the accessory fence is real at compile time and at runtime with a non-vacuity control that fails if accessory is deleted rather than fenced. All refusal conditions clear, checked below the name level. THE GAP, now half-closed by me: the close-out had NO rendered artifact, while GDD line 1043 asserted it was photographed. I ran the two tools - 25 checks pass against the running app and 12 frames exist. But the critic second finding stands and a builder is on it: on an accessory day the HEADLINE is still chosen from the client PR prediction, and SESSION_COPY has three close-out headlines none of which is accessory, so a primed accessory day renders a screen headed NEW e1RM over a Training IQ row with no number. I proved that by execution. Nothing catches it because the accessory fixture uses STEADY, the one band that arithmetically cannot produce a PR, while every other close-out fixture uses PRIMED - the same shape as the 685-iteration sweep this piece was already sent back for, a demonstration pointed away from the case where it would fail.",
+      "note": "WINS ITS BAR on everything gradeable. Time-to-first-input and session length pass and are measured at 54.3 to 60.3 seconds, with the floor DROPPED rather than padded. Both human rulings are now honoured in the WORDS as well as the numbers: a primed accessory day reads ACCESSORY BANKED, verified on the running app, where it used to read NEW e1RM over a Training IQ row with no number. The fixture moved from STEADY, the one readiness that arithmetically cannot produce a PR, to PRIMED, with a non-vacuity guard that fails if it is put back. The close-out frames now exist - 12 captured, 27 boundary checks passing. Whether the close-out LANDS is a feel judgement no critic here can make.",
       "evidence": "session/close-out-accessory.png"
     },
     {
@@ -253,16 +253,16 @@
       "id": "B1",
       "name": "Sponsor / licensed-content architecture",
       "bar": "A real-IP audit finds nothing, and fictional entries exercise all three identity tiers end to end.",
-      "status": "ungraded",
+      "status": "majority",
       "verifiable": true,
-      "note": "BUILT AND MERGED, and empty of real identity by construction rather than by inspection. Three tiers as types, two fictional brands and two fictional athletes each carrying Tier 1 colorway and icon-mark, Tier 2 name tag and a full Tier 3 record. UNLOCKED_REAL_PARTNERS is empty and pinned, which is CLAUDE.md's human-unlock gate expressed as code. Tier 3 cannot reach a sprite, enforced FOUR ways rather than documented: the asset is opaque behind a module-private symbol so it is not assignable to string (a branded string WOULD have been, and the header records why); revealTier3 needs a surface witness and the sprite surfaces are a disjoint union that cannot supply one; a compile-time assertion fails if a Tier 3 asset ever STARTS to fit a sprite field; and a test reads every file under src/art and fails if any imports src/licensing, which is the dependency-graph claim no type can see. The no-stat rule has the same shape - an exhaustive field-role map with no silent default, a disjointness assertion between reskin fields and mechanical ones, effectOf returning the base item's SAME OBJECT checked with toBe rather than toEqual because a clone passes deep equality today and drifts tomorrow, and a ts-expect-error for a reskin declaring an effect, which is the exact shape a partner asking for a stat arrives as. Five plants on real files, each verified applied before the result was trusted, all five caught - including one behind the opaque symbol where a naive walk sees nothing. Plant 3 initially tripped only half the check and the builder CLOSED that gap rather than reporting the pass. The citation list is pinned in BOTH directions so deleting provenance to go green fails too, and it fired on this very merge exactly as designed: 24 rows added, all of them A2's own watchlist operands, and one removed where A2 rewrote its plate-colour citation. Two builders reached for a hand-written watchlist unprompted, which is the argument FOR generalising them. Self-disclosed limits worth carrying: the watchlist is a floor rather than a net at ~59 names, and the real names necessarily live in realIp.ts itself, which the builder argued rather than hid."
+      "note": "TIERS 2 AND 3 WIN OUTRIGHT; TIER 1 IS FIXED AND ITS LIMIT IS NOW A HUMAN QUESTION. The real-IP audit is default-deny on renderable strings with five plants all caught, a self-scan that fires on its own header, and a citation list pinned in BOTH directions so deleting provenance fails too. Tier 1 colorways were three-of-four INVALID - equipment-bank indices that would have classified a partner singlet as barbell to every silhouette measurement in the codebase - and the check could not see it because it validated them in a Tier 3 sheet palette. Fixed, and Tier 1 now reaches a real rendered sprite. The finding underneath is the valuable part: bank 0 holds only SINGLET, GEAR, HAIR and CHALK for kit, so a partner green or crimson CANNOT exist without spending a palette slot, and 7.3s no-change-at-all claim is true only for partners whose colours bank 0 already has. Logged for a human rather than amended. The builder also returned a qualified NO on the architecture I proposed, naming the CRAM-swap end state the remap only approximates."
     }
   ],
   "report": {
     "eyebrow": "status report · recounted from the repo, not from the run log",
     "title": "Where this actually is",
     "lede": "Recounted from the current GDD and codebase rather than from earlier reports. Every bar in GDD §12.2 is listed, plus everything added mid-run, plus the four modes §2 defines. The count grew twice already and will grow again: three of the items below did not exist as pieces two days ago.",
-    "wonCount": 7,
+    "wonCount": 9,
     "definedCount": 22,
     "rows": [
       {
@@ -352,9 +352,9 @@
       {
         "id": "S1",
         "name": "Daily session loop",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "Time-to-first-input and session length pass and are measured. I captured the missing close-out frames myself (25 checks pass). Open: a primed accessory day still renders a screen headed NEW e1RM, which the human ruled against — hidden because its fixture uses the one readiness that cannot produce a PR."
+        "state": "won",
+        "stateLabel": "Won its bar",
+        "note": "A primed accessory day now reads ACCESSORY BANKED, verified on the running app; the fixture moved off the one readiness that could not fail. 12 close-out frames captured, 27 boundary checks pass. Whether it LANDS stays a human judgement."
       },
       {
         "id": "S2",
@@ -380,9 +380,9 @@
       {
         "id": "B1",
         "name": "Sponsor / licensed-content architecture",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "Tiers 2 and 3 pass outright — twelve authored drawings on two real surfaces. Tier 1 FAILS: three of four partner colorways use equipment-bank indices, so a partner singlet would not count as the lifter. The check validated them in a Tier 3 palette."
+        "state": "won",
+        "stateLabel": "Won on the gradeable half",
+        "note": "Tiers 2 and 3 outright. Tier 1 fixed and now reaches a real sprite. Its limit is a new human question: bank 0 holds only four kit colours, so a partner green or crimson costs a palette slot."
       },
       {
         "id": "A4",
