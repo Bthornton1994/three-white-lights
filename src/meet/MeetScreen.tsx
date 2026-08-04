@@ -112,6 +112,23 @@ export interface MeetScreenProps {
    * beat draws its own way out, through `onLeave` above.
    */
   readonly onPhase?: ((phase: MeetDayState['phase']) => void) | undefined;
+  /**
+   * Reports whether a GDD §7.2 cut-in is on screen, for the shell's chrome gate.
+   *
+   * The same kind of thing as `onPhase` and forwarded straight to `CutInHost`,
+   * which owns the answer. The shell's pill is a sibling of this whole screen
+   * and paints above the overlay, so a tap meant to dismiss an interrupt would
+   * navigate instead — see `shellAffordanceFor`.
+   */
+  readonly onCutIn?: ((live: boolean) => void) | undefined;
+  /**
+   * `window.location.search`, for the `?cutin=` debug route only.
+   *
+   * Passed down rather than read here, so `App.tsx` stays the one platform edge.
+   * Omitted, `CutInHost` falls back to its own read, which is what a standalone
+   * render wants.
+   */
+  readonly cutInSearch?: string | null | undefined;
 }
 
 export function MeetScreen({
@@ -120,6 +137,8 @@ export function MeetScreen({
   holdWalkoutAtMs = null,
   onLeave,
   onPhase,
+  onCutIn,
+  cutInSearch,
 }: MeetScreenProps = {}): React.ReactElement {
   const loop = useMeetDay(preview, preview !== undefined);
   const { dispatch, restart } = loop;
@@ -172,6 +191,8 @@ export function MeetScreen({
     <CutInHost
       sessionId={cutInSessionId('meet', state.context.day)}
       seed={cutInSessionSeed('meet', state.context.day)}
+      search={cutInSearch}
+      onLive={onCutIn}
     >
       <View style={styles.root} testID="meet-screen">
         {state.phase === 'weigh-in' ? (

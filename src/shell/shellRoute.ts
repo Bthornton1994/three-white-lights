@@ -105,8 +105,19 @@ export const DEFAULT_ROUTE: ShellRoute = Object.freeze({ surface: 'session', sou
 /**
  * Everything a player can ask the shell to do.
  *
- * Two, and that is the honest size of the shell right now. A third would mean a
- * surface that does not exist yet.
+ * Two, and that is the honest size of the shell's ROUTE GRAPH right now: the
+ * daily session and meet day are the surfaces this module moves between.
+ *
+ * THIS IS NOT THE CLAIM THAT NOTHING ELSE RENDERS. `LicensingScreen`
+ * (`src/licensing/LicensedPanelView.tsx`) is a GDD §7.3 identity-tier shop that
+ * renders, has tests, and is reachable at `licensing.html?panel=shop` through
+ * its own entry point (`src/licensing/licensingEntry.tsx`) — it is simply not
+ * wired to this shell, so no `ShellIntent` reaches it and `ShellSurface` does
+ * not name it. Whether that screen counts as one of GDD §2's four modes for the
+ * purpose of "a player can reach every mode" is a scoping call, and this file
+ * is not the place it gets made. What this comment states is only what is true
+ * here: two intents, two player-reachable surfaces, and a third surface that
+ * exists behind a separate entry point rather than behind nothing.
  */
 export type ShellIntent = 'open-meet' | 'leave-meet';
 
@@ -189,6 +200,14 @@ export function pathBetween(from: ShellSurface, to: ShellSurface): readonly Shel
 // ---------------------------------------------------------------------------
 
 /**
+ * Whether a GDD §7.2 cut-in is on screen over the current surface.
+ *
+ * A union rather than a boolean because it is the third argument of a gate and
+ * a bare `true` at a call site says nothing about what is true.
+ */
+export type CutInPresence = 'live' | 'none';
+
+/**
  * The affordance the shell should draw over the current surface, or `null` for
  * none.
  *
@@ -201,11 +220,30 @@ export function pathBetween(from: ShellSurface, to: ShellSurface): readonly Shel
  *
  * `phase` is `null` when the surface has not reported one yet, or when the
  * surface has no phases (the replay harness). No phase, no chrome.
+ *
+ * ---------------------------------------------------------------------------
+ * AND NO CHROME OVER A CUT-IN, WHICH IS THE SAME RULE
+ * ---------------------------------------------------------------------------
+ * GDD §7.2 requires a cut-in to be "always skippable — tap to dismiss", and the
+ * whole screen is the dismiss target. `AppShell` draws the pill as a SIBLING of
+ * the surface, after it, so an overlay mounted inside the surface paints
+ * UNDERNEATH the pill: a tap that lands on the pill navigates to meet day
+ * instead of dismissing the interrupt. Measured on rendered pixels by
+ * `tools/capture-cutin.mjs`, which hit-tested the pill's own centre through a
+ * live cut-in and found the pill.
+ *
+ * The overlay cannot fix it from its side — it would have to give the entire
+ * surface a stacking order that buried the pill permanently — so the fix is
+ * here, and it is the gate this function already applies over a live set. Same
+ * argument, same shape: no chrome on a beat where a mis-tap costs the player
+ * something.
  */
 export function shellAffordanceFor(
   route: ShellRoute,
   phase: SessionPhase | MeetDayPhaseId | null,
+  cutIn: CutInPresence = 'none',
 ): ShellIntent | null {
+  if (cutIn === 'live') return null;
   if (phase === null) return null;
   if (route.surface === 'session') {
     return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-meet' : null;

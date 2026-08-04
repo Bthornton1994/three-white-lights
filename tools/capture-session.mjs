@@ -19,12 +19,20 @@
  * That one proves the touch path is wired; the scripted ones prove what each
  * screen looks like.
  *
+ * THE DRIVING ITSELF LIVES IN `tools/sessionDrive.mjs`, shared with
+ * `verify-shell-route.mjs`, which carries the same played session all the way
+ * to the close-out and one press past it. It used to be hand-rolled here; two
+ * copies of a mouse-driven mechanic would drift, and the one that drifted would
+ * be the one nobody ran.
+ *
  * Usage:
  *   node tools/capture-session.mjs [--url URL] [--out DIR] [--live]
  */
 import { chromium } from 'playwright';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
+
+import { openSessionToFirstSet, playOneRep } from './sessionDrive.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -135,41 +143,33 @@ for (const moment of MOMENTS) {
 
 if (has('live')) {
   // The played path: three taps, an RPE choice, and whatever the loop does.
-  await page.goto(url, { waitUntil: 'load' });
-  await page.getByTestId('check-in-sleep-good').waitFor({ state: 'visible', timeout: 120000 });
-  const taps = ['check-in-sleep-ok', 'check-in-soreness-normal', 'check-in-motivation-steady'];
-  const started = Date.now();
-  for (const id of taps) await page.getByTestId(id).click();
-  await page.getByTestId('session-briefing').waitFor({ state: 'visible', timeout: 10000 });
-  await page.waitForTimeout(600);
-  await page.getByTestId('session-rpe-8').click();
-  await page.getByTestId('session-set').waitFor({ state: 'visible', timeout: 10000 });
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(outDir, 'live-set.png') });
+  const opened = await openSessionToFirstSet(page, url);
+  if (!opened.reached) {
+    console.log(`live               -> NOT REACHED: ${opened.why}`);
+    notes.push({ moment: 'live', file: null, seen: null, why: opened.why });
+  } else {
+    await page.screenshot({ path: path.join(outDir, 'live-set.png') });
 
-  // One real rep, driven by holding the stage. The timing is not expected to be
-  // good — what this checks is that the touch path reaches the mechanic.
-  const stage = page.getByTestId('session-touch');
-  const box = await stage.boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.waitForTimeout(1150);
-  await page.mouse.up();
-  await page.waitForTimeout(900);
-  await page.mouse.down();
-  await page.waitForTimeout(900);
-  await page.mouse.up();
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(outDir, 'live-rep.png') });
-  const live = await page.evaluate(() => {
-    const text = (id) => {
-      const node = document.querySelector(`[data-testid="${id}"]`);
-      return node === null ? null : node.textContent;
-    };
-    return { prompt: text('session-prompt'), detail: text('session-detail'), weight: text('session-weight'), setLabel: text('session-set-label') };
-  });
-  notes.push({ moment: 'live', file: 'live-set.png', seen: live, msFromFirstTapToSet: Date.now() - started });
-  console.log('live               -> live-set.png / live-rep.png', JSON.stringify(live));
+    // One real rep, driven by holding the stage. The timing is not expected to
+    // be good — what this checks is that the touch path reaches the mechanic.
+    const rep = await playOneRep(page);
+    await page.screenshot({ path: path.join(outDir, 'live-rep.png') });
+    const live = await page.evaluate(() => {
+      const text = (id) => {
+        const node = document.querySelector(`[data-testid="${id}"]`);
+        return node === null ? null : node.textContent;
+      };
+      return { prompt: text('session-prompt'), detail: text('session-detail'), weight: text('session-weight'), setLabel: text('session-set-label') };
+    });
+    notes.push({
+      moment: 'live',
+      file: 'live-set.png',
+      seen: live,
+      msFromFirstTapToSet: opened.msFromFirstTapToSet,
+      rep,
+    });
+    console.log('live               -> live-set.png / live-rep.png', JSON.stringify(live));
+  }
 }
 
 await writeFile(path.join(outDir, 'frames.json'), `${JSON.stringify(notes, null, 2)}\n`);

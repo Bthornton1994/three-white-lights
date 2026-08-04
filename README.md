@@ -58,8 +58,9 @@ That is deliberate (GDD §3.2).
    three attempts each. Attempts never go down. Three-light judging.
 7. **Recap → result card**, then `BACK TO TRAINING`.
 
-No control is drawn over a live set or a live attempt, on purpose — a mis-tap
-there costs a rep.
+No control is drawn over a live set, a live attempt, or a cut-in, on purpose — a
+mis-tap there costs a rep, an attempt, or the tap that was meant to skip the
+interrupt.
 
 ### Debug routes
 
@@ -71,8 +72,10 @@ These drive the screenshot harness. They are not reachable in play.
 | `?meet=walkout-third` | one frozen meet beat (`tools/capture-meet.mjs` lists them) |
 | `?session=close-out-accessory` | one frozen session beat |
 | `?replay=0.95&moment=hole` | the lift mechanic alone, at a given load |
+| `?cutin=personal-record` | one frozen cut-in over the daily session (`tools/capture-cutin.mjs` lists the moments); add `&live=1` to let its auto-dismiss timer run |
 
-`?meet=nonsense` boots the daily session rather than a broken screen.
+`?meet=nonsense` boots the daily session rather than a broken screen, and
+`?cutin=nonsense` is inert in the same way.
 
 ---
 

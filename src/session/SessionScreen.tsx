@@ -110,12 +110,31 @@ export interface SessionScreenProps {
    * and tells it nothing else.
    */
   readonly onPhase?: ((phase: SessionPhase) => void) | undefined;
+  /**
+   * Reports whether a GDD §7.2 cut-in is on screen, for the shell's chrome gate.
+   *
+   * The same kind of thing as `onPhase` and forwarded straight to `CutInHost`,
+   * which owns the answer. The shell's pill is a sibling of this whole screen
+   * and paints above the overlay, so a tap meant to dismiss an interrupt would
+   * navigate instead — see `shellAffordanceFor`.
+   */
+  readonly onCutIn?: ((live: boolean) => void) | undefined;
+  /**
+   * `window.location.search`, for the `?cutin=` debug route only.
+   *
+   * Passed down rather than read here, so `App.tsx` stays the one platform edge.
+   * Omitted, `CutInHost` falls back to its own read, which is what a standalone
+   * render wants.
+   */
+  readonly cutInSearch?: string | null | undefined;
 }
 
 export function SessionScreen({
   preview,
   serverPort,
   onPhase,
+  onCutIn,
+  cutInSearch,
 }: SessionScreenProps = {}): React.ReactElement {
   const loop = useSession(preview, serverPort);
   const { dispatch, restartDay } = loop;
@@ -146,6 +165,8 @@ export function SessionScreen({
     <CutInHost
       sessionId={cutInSessionId('training', day)}
       seed={cutInSessionSeed('training', day)}
+      search={cutInSearch}
+      onLive={onCutIn}
     >
       <View style={styles.root} testID="session-screen">
         {state.phase === 'check-in' ? (

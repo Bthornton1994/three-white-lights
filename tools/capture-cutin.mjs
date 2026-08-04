@@ -283,21 +283,25 @@ let wrongLine = 0;
 let unreachableCorner = 0;
 let notOnTop = 0;
 /**
- * A FINDING THIS TOOL REPORTS BUT DOES NOT FAIL ON, AND THE REASON IS STATED SO
- * NOBODY HAS TO GUESS WHETHER IT WAS SWEPT UP.
+ * THIS USED TO BE REPORTED AND NOT FAILED ON. IT IS FAILED ON NOW.
  *
  * `AppShell.tsx` renders its navigation pill as a SIBLING of the whole session
- * surface, after it — so the pill paints above `CutInHost`'s overlay and takes
+ * surface, after it — so the pill painted above `CutInHost`'s overlay and took
  * taps through it. GDD §7.2 wants the whole screen to be the dismiss target,
  * and a control that navigates instead of dismissing is a hole in that.
  *
- * It is not the cut-in's to fix: the overlay cannot lift itself above a sibling
- * of its own ancestor without giving the entire session surface a stacking
- * order that would bury the pill for good. The fix belongs in the shell — draw
- * no chrome while a cut-in is up, the same gate `shellAffordanceFor` already
- * applies over a live set. Counted and printed loudly; deliberately NOT in the
- * exit code, because failing this tool on another file's defect would only
- * teach the next person to stop running it.
+ * It was not the cut-in's to fix: the overlay cannot lift itself above a
+ * sibling of its own ancestor without giving the entire surface a stacking
+ * order that would bury the pill for good. So it was reported loudly and kept
+ * out of the exit code, because failing this tool on another file's defect
+ * would only teach the next person to stop running it.
+ *
+ * The shell has since taken the fix — `shellAffordanceFor` draws no chrome
+ * while a cut-in is live, the same gate it already applied over a live set —
+ * so the finding becomes an assertion. Its positive control is at the baseline
+ * below: with no cut-in up, on the very same check-in beat, the pill must be
+ * present AND hit-testable. Without that, "the pill is not on top" would also
+ * be what a tool that could not find the pill at all would report.
  */
 let shellNavOverTheInterrupt = 0;
 
@@ -323,6 +327,18 @@ if (baselineOverlay.present) {
 // of this tool silently passed.
 if (baselineOverlay.tappableThroughTheCutIn.checkIn !== true) {
   console.log('!! THE "IS IT ON TOP" PROBE IS BLIND — the check-in chip was not hit-testable');
+  missing += 1;
+}
+// AND THE SAME CONTROL FOR THE SHELL PILL, which is now asserted on rather than
+// reported. With no cut-in up this is the check-in beat, where `SHELL_NAV`
+// says the pill belongs — so it must be present and hit-testable here, or
+// "the pill is not on top of the interrupt" below is what a probe that cannot
+// find the pill AT ALL would also say.
+if (baselineOverlay.tappableThroughTheCutIn.shellNav !== true) {
+  console.log(
+    '!! THE SHELL-PILL PROBE IS BLIND — with no cut-in up, the pill was not hit-testable\n' +
+      '   on the check-in beat, so every "no chrome over the interrupt" reading below is vacuous.',
+  );
   missing += 1;
 }
 console.log(
@@ -634,11 +650,12 @@ console.log(
 );
 if (shellNavOverTheInterrupt > 0) {
   console.log(
-    `\n!! REPORTED, NOT FAILED: on ${shellNavOverTheInterrupt} of ${notes.length} frames the shell's ` +
-      "navigation pill sits ON TOP of the cut-in and takes taps through it.\n" +
+    `\n!! on ${shellNavOverTheInterrupt} of ${notes.length} frames the shell's navigation pill sits ` +
+      'ON TOP of the cut-in and takes taps through it.\n' +
       '   GDD §7.2 makes the whole screen the dismiss target; that pill navigates instead.\n' +
-      '   It belongs to src/shell/AppShell.tsx — the chrome should be gated off while a\n' +
-      '   cut-in is up, the same way it is already gated off over a live set.',
+      '   It belongs to src/shell/AppShell.tsx: the chrome is gated off while a cut-in is\n' +
+      '   up (`shellAffordanceFor`), the same way it is gated off over a live set. If this\n' +
+      '   is back, that gate has been undone or the host has stopped reporting `onLive`.',
   );
 }
 if (bombOutMissingOnMeetDay > 0) {
@@ -658,7 +675,8 @@ process.exit(
     notOnTop === 0 &&
     scrimDead === 0 &&
     timing === 0 &&
-    walkoutSpentTheSlot === 0
+    walkoutSpentTheSlot === 0 &&
+    shellNavOverTheInterrupt === 0
     ? 0
     : 1,
 );

@@ -35,11 +35,20 @@
  *      recap's only action was "see your card", and the card had none at all.
  *   5. From the CLOSE-OUT — the end of a session — the way to meet day is on
  *      screen. That is the "finish a session and reach a meet" path.
- *   6. NO CONTROL IS DRAWN OVER A LIVE SET, or over a walk-out, an attempt or a
- *      verdict. A pill over the mechanic is a mis-tap that costs a rep.
- *   7. All four debug query strings still resolve to the surface their capture
+ *   6. THE SCREEN ONE PRESS PAST THE CLOSE-OUT. A REAL SESSION IS PLAYED with a
+ *      mouse, DONE is pressed, and the "already trained today" surface that
+ *      comes up is checked with the same three instruments as the recap. This
+ *      is the TERMINAL SCREEN OF GDD §3.2'S DAILY LOOP — every player lands on
+ *      it, every day — and it draws two lines of text and NO CONTROL OF ITS
+ *      OWN, so the shell's pill is the only thing on it a thumb can press. If
+ *      the pill fails there the core loop of the game ends on a dead end.
+ *   7. NO CONTROL IS DRAWN OVER A LIVE SET, or over a walk-out, an attempt, a
+ *      verdict, or a GDD §7.2 CUT-IN. A pill over the mechanic is a mis-tap
+ *      that costs a rep; a pill over a cut-in eats the tap that was meant to
+ *      dismiss it, and §7.2 makes the whole screen the dismiss target.
+ *   8. All four debug query strings still resolve to the surface their capture
  *      tool expects. Breaking one breaks the run's evidence harness.
- *   8. The shell's chrome shows no Total (GDD §3.2: Total moves on meet day and
+ *   9. The shell's chrome shows no Total (GDD §3.2: Total moves on meet day and
  *      no other day) and no fatigue readout (§3.4, §12.3).
  *
  * "ON SCREEN" HERE MEANS DRAWN, NOT MOUNTED. Every positive check above goes
@@ -54,12 +63,29 @@
  * out of the module under test agrees with a broken module. `BOMB_OUT_*` below
  * is restated for the same reason.
  *
+ * THE ONE EXPECTATION THAT IS NOT INDEPENDENT, AND WHY. `SHELL_NAV_EXPECTED`
+ * below is this tool's own copy of which beats carry the pill, and it is
+ * CROSS-CHECKED against `src/shell/shellTuning.ts` rather than left to drift.
+ * See the block above it: three hand-written statements of that fact already
+ * exist and a re-tune that updates two of them used to leave this one silently
+ * wrong, in the only check that runs a browser.
+ *
  * Usage:
  *   node tools/verify-shell-route.mjs [--url URL] [--settle MS] [--out DIR]
+ *                                     [--src REPO_ROOT]
  */
 import { chromium } from 'playwright';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+
+import {
+  openSessionToFirstSet,
+  playSessionToCloseOut,
+  pressCloseOutAction,
+  waitForCloseOutSettled,
+} from './sessionDrive.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -69,6 +95,19 @@ const flag = (name, dflt) => {
 
 const url = flag('url', 'http://localhost:8081');
 const outDir = path.resolve(flag('out', '.gauntlet/shots/shell'));
+/**
+ * The checkout whose SOURCE is read for the cross-check below and whose commit
+ * is stamped into `route.json`.
+ *
+ * Derived from this file's own location so a builder in a git worktree reads
+ * ITS checkout, the same way `tools/dev-web.sh` derives the tree it serves.
+ *
+ * THIS IS NOT PROOF THE SERVED APP IS THIS TREE. `--url` can point anywhere,
+ * and nothing here can tell that the bundle on the other end was built from
+ * these files. What the provenance record buys is that a reader knows WHICH
+ * tree the source-level claims were made about, instead of guessing.
+ */
+const srcRoot = path.resolve(flag('src', path.join(path.dirname(fileURLToPath(import.meta.url)), '..')));
 // Must exceed SHELL_NAV.FADE_IN_DELAY_MS + FADE_IN_MS (320 + 220 = 540), plus
 // whatever the screen underneath takes to assemble. Deliberately generous: this
 // tool is proving reachability, not measuring latency.
@@ -116,6 +155,115 @@ const DRAWN_POLL_MS = 100;
 
 const NAV_OPEN_MEET = 'shell-open-meet';
 const NAV_LEAVE_MEET = 'shell-leave-meet';
+
+/**
+ * ===========================================================================
+ * THE FOURTH STATEMENT OF WHICH BEATS CARRY THE PILL — AND THE ONE THING THAT
+ * TIES IT TO THE OTHER THREE
+ * ===========================================================================
+ * The same fact is now written down four times, on purpose and not by accident:
+ *
+ *   1. `SHELL_NAV.SESSION_PHASES` / `MEET_PHASES` in `src/shell/shellTuning.ts`
+ *      — what the APP reads. The one home the shipping code gets it from.
+ *   2. `ON_A_SESSION_BEAT` / `ON_A_MEET_BEAT` in `src/shell/shellRoute.test.ts`
+ *      — the hand-written answer sheet, which exists because a test that reads
+ *      its expectation out of its own subject passes when the subject is
+ *      emptied. That file's header has the argument.
+ *   3. `shellWiring.test.ts`'s scan that the already-trained surface renders on
+ *      the `check-in` beat, so the pill's phase list covers it.
+ *   4. THIS, which is what the browser actually asserts screen by screen.
+ *
+ * (1) and (2) already fail loudly when they disagree. (4) did not: it hard-coded
+ * "pill on the close-out, no pill on set / rest / lift / verdict /
+ * attempt-select" as bare literals, so a legitimate re-tune that edited
+ * `shellTuning.ts` AND the answer sheet left `npm test` green and broke only
+ * when a human happened to run this tool — which the suite does not run.
+ *
+ * So the table below is this tool's OWN hand-written copy, and
+ * `checkNavTableMatchesTuning` reads the two lists straight out of
+ * `shellTuning.ts` and fails by name when they differ. Independent enough to be
+ * worth writing, tied in tightly enough that it cannot rot in silence.
+ */
+const SHELL_NAV_EXPECTED = Object.freeze({
+  /** GDD §3.2 beats where the player is deciding rather than lifting. */
+  SESSION_PHASES: Object.freeze(['check-in', 'briefing', 'close-out']),
+  /** GDD §6.5. The meet is over and the way out is a route. */
+  MEET_PHASES: Object.freeze(['recap']),
+});
+
+/**
+ * THE BEATS A PILL MAY NEVER APPEAR ON, whatever anybody tunes.
+ *
+ * Not derived from the table above and not derived from `shellTuning.ts` — this
+ * is the design claim in GDD §3.2 and §6.2/§6.3 that the whole phase gate
+ * exists to serve, and it is the one statement here that a re-tune is not
+ * allowed to move. A mis-tap on a live set costs a rep; a mis-tap on an attempt
+ * costs the attempt; §6.3 asks for the bomb-out to be left alone.
+ */
+const NEVER_A_PILL_BEAT = Object.freeze([
+  'set',
+  'rest',
+  'walkout',
+  'lift',
+  'deliberation',
+  'verdict',
+  'attempt-select',
+  'bombed',
+]);
+
+/**
+ * How much clear space the already-trained copy must leave above the pill.
+ *
+ * A PIN ON THE COPY LENGTH, measured rather than argued. That surface is
+ * `styles.centred` — `flex: 1`, `justifyContent: 'center'` — so its two lines
+ * sit in the middle band and the pill is anchored `NAV_BOTTOM_INSET` from the
+ * bottom, and today they do not touch. Nothing pins the copy: lengthen
+ * `SESSION_COPY.ALREADY_TRAINED_SUBHEAD` enough for it to wrap to three or four
+ * lines and the block grows in both directions from the centre until it reaches
+ * the pill. Asserting only "they do not overlap" would report that the day it
+ * became true by one pixel. This asserts there is still room.
+ */
+const ALREADY_TRAINED_NAV_CLEARANCE_PX = 24;
+
+/**
+ * ===========================================================================
+ * WHERE THIS EVIDENCE CAME FROM
+ * ===========================================================================
+ * `route.json` used to carry a list of checks and nothing else — no time, no
+ * commit, no branch. A reader could not tell whether the file post-dated the
+ * fix it appeared to vindicate, and could not tie it to a tree at all, so
+ * browser evidence had to be discounted rather than used.
+ * `.gauntlet/evidence/suite.txt`'s `# Captured <iso> at <sha> on <branch>`
+ * header is what made that file checkable; this is the same thing, as JSON
+ * fields so the file stays parseable.
+ *
+ * A DIRTY WORKING TREE IS RECORDED AS SUCH. A run against uncommitted edits
+ * must not read like a run against a commit — that is the failure mode this is
+ * for, not a tidiness preference.
+ */
+function provenance() {
+  const record = {
+    capturedAt: new Date().toISOString(),
+    url,
+    sourceRoot: srcRoot,
+    commit: null,
+    branch: null,
+    workingTree: 'unknown',
+    dirtyPaths: [],
+  };
+  const git = (...gitArgs) =>
+    execFileSync('git', ['-C', srcRoot, ...gitArgs], { encoding: 'utf8' }).trim();
+  try {
+    record.commit = git('rev-parse', '--short', 'HEAD');
+    record.branch = git('rev-parse', '--abbrev-ref', 'HEAD');
+    const status = git('status', '--porcelain');
+    record.workingTree = status === '' ? 'clean' : 'DIRTY — this run is not against a commit';
+    record.dirtyPaths = status === '' ? [] : status.split('\n').slice(0, 40);
+  } catch (error) {
+    record.workingTree = `unknown — ${String(error).slice(0, 200)}`;
+  }
+  return record;
+}
 
 const failures = [];
 const notes = [];
@@ -292,6 +440,121 @@ async function hitTest(id) {
 const bodyText = () => page.evaluate(() => (document.body.textContent ?? '').slice(0, 4000));
 
 /**
+ * The smallest rectangle containing every LINE OF TEXT drawn inside `id`.
+ *
+ * Not the container's box. `styles.centred` is `flex: 1` and therefore fills
+ * the screen, so measuring the container against the pill would "prove" a
+ * collision that is not there and could never prove its absence. What a player
+ * sees is the text, so the text is what gets measured — leaf elements only,
+ * with a non-empty box and something in them.
+ */
+async function drawnTextBox(id) {
+  return page.evaluate((wanted) => {
+    const root = document.querySelector(`[data-testid="${wanted}"]`);
+    if (root === null) return null;
+    let top = Infinity;
+    let bottom = -Infinity;
+    let left = Infinity;
+    let right = -Infinity;
+    let lines = 0;
+    let longest = 0;
+    for (const node of root.querySelectorAll('*')) {
+      if (node.querySelector('*') !== null) continue; // leaves only
+      const text = (node.textContent ?? '').trim();
+      if (text === '') continue;
+      const r = node.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      top = Math.min(top, r.top);
+      bottom = Math.max(bottom, r.bottom);
+      left = Math.min(left, r.left);
+      right = Math.max(right, r.right);
+      lines += 1;
+      longest = Math.max(longest, text.length);
+    }
+    return lines === 0 ? null : { top, bottom, left, right, lines, longest };
+  }, id);
+}
+
+// ---------------------------------------------------------------------------
+// The cross-check that ties this tool's phase table to the app's constant
+// ---------------------------------------------------------------------------
+
+/**
+ * The phase names inside `SHELL_NAV.<name>` in a `shellTuning.ts` source text.
+ *
+ * A regex over source rather than an import, for the reason the whole file
+ * gives: this is a `.mjs` tool and that is a `.ts` module with `as const
+ * satisfies` on it. Returns null when the shape is not found at all, which is
+ * itself reported — a parser that quietly matched nothing would be the vacuous
+ * check this exists to avoid.
+ */
+function phasesInTuning(source, name) {
+  const found = new RegExp(`${name}:\\s*Object\\.freeze\\(\\[([\\s\\S]*?)\\]`).exec(source);
+  if (found === null) return null;
+  return [...found[1].matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
+}
+
+/**
+ * A source text this parser is KNOWN to read correctly, and one it must not.
+ *
+ * The positive control. `shellWiring.test.ts` pairs every scan with one of
+ * these for the same reason: a regex that has stopped matching agrees with
+ * every file it is pointed at.
+ */
+const PARSER_FIXTURE = `
+  DEMO_PHASES: Object.freeze([
+    'alpha',
+    'beta-two',
+  ] as const satisfies readonly Thing[]),
+  OTHER_PHASES: Object.freeze(['gamma'] as const satisfies readonly Thing[]),
+`;
+
+async function checkNavTableMatchesTuning() {
+  // Does the parser work at all?
+  const fixtureA = phasesInTuning(PARSER_FIXTURE, 'DEMO_PHASES');
+  const fixtureB = phasesInTuning(PARSER_FIXTURE, 'OTHER_PHASES');
+  const fixtureC = phasesInTuning(PARSER_FIXTURE, 'ABSENT_PHASES');
+  check(
+    JSON.stringify(fixtureA) === JSON.stringify(['alpha', 'beta-two']) &&
+      JSON.stringify(fixtureB) === JSON.stringify(['gamma']) &&
+      fixtureC === null,
+    'the phase-list parser can read a list, and reports a missing one as missing',
+    `fixture -> ${JSON.stringify(fixtureA)} / ${JSON.stringify(fixtureB)} / ${JSON.stringify(fixtureC)}`,
+  );
+
+  const tuningPath = path.join(srcRoot, 'src', 'shell', 'shellTuning.ts');
+  let source = null;
+  try {
+    source = await readFile(tuningPath, 'utf8');
+  } catch {
+    check(false, 'this tool’s phase table is cross-checked against shellTuning.ts', `could not read ${tuningPath}`);
+    return;
+  }
+
+  for (const [name, expected] of [
+    ['SESSION_PHASES', SHELL_NAV_EXPECTED.SESSION_PHASES],
+    ['MEET_PHASES', SHELL_NAV_EXPECTED.MEET_PHASES],
+  ]) {
+    const inTuning = phasesInTuning(source, name);
+    const mine = [...expected].sort();
+    check(
+      inTuning !== null && JSON.stringify(inTuning) === JSON.stringify(mine),
+      `SHELL_NAV.${name} is what this tool checks the browser against`,
+      `shellTuning.ts ${JSON.stringify(inTuning)} vs this tool ${JSON.stringify(mine)}`,
+    );
+  }
+
+  // ...and the beats the design says may never carry one, still do not.
+  const listed = [...SHELL_NAV_EXPECTED.SESSION_PHASES, ...SHELL_NAV_EXPECTED.MEET_PHASES];
+  const trespassing = NEVER_A_PILL_BEAT.filter((beat) => listed.includes(beat));
+  check(
+    trespassing.length === 0,
+    'no beat of the MECHANIC is in the pill’s phase list (GDD §3.2, §6.2, §6.3)',
+    trespassing.length === 0 ? undefined : `would draw a pill over ${trespassing.join(', ')}`,
+  );
+}
+
+/**
  * Press a control and wait for the surface it should produce, REPORTING rather
  * than throwing.
  *
@@ -376,7 +639,17 @@ await press(
   'meet-openers',
   'the weigh-in confirms and the openers come up — the loop is live, not frozen',
 );
-await page.getByTestId('openers-action').click();
+// Reported rather than thrown, for the reason `press` gives at length: a
+// Playwright stack trace tells a reader the harness is unhappy and nothing
+// about WHICH property of the app broke — and it takes the whole run down with
+// it, so every check after this line goes unreported too. (Found by mutating an
+// occluding layer over the shell's chrome: the tool died here instead of naming
+// the eleven things that had stopped working.)
+try {
+  await page.getByTestId('openers-action').click({ timeout: 20000 });
+} catch {
+  check(false, 'the openers screen has an action to confirm with');
+}
 // The walk-out is a TIMED beat and runs itself out, so it is asserted the
 // instant it arrives — settling first would photograph the attempt after it.
 // That the beat elapses on its own is itself the proof the meet is played:
@@ -426,10 +699,29 @@ check(!(await visible('meet-screen')), 'and meet day is no longer on screen');
 
 // The result card behind the recap needs a way out too — it is the last screen
 // of GDD §6.5 and had none of its own.
+//
+// ALL THREE INSTRUMENTS, LIKE THE RECAP. This used to be `checkOnScreen` alone,
+// under the name "the card is not a dead end either" — which established that a
+// control was DRAWN there and nothing whatever about whether a player could
+// leave. The card and the already-trained surface are the two screens whose
+// ONLY exit is the shell's pill, so they are precisely the two that cannot be
+// checked with the weakest instrument.
 await open('/?meet=recap-card', 'result-card-screen');
 await page.screenshot({ path: path.join(outDir, '06-card-with-way-back.png') });
 await checkOnScreen('result-card-screen', 'the shareable card renders');
-await checkOnScreen(NAV_LEAVE_MEET, 'and the card is not a dead end either');
+await checkOnScreen(NAV_LEAVE_MEET, 'the way back is drawn on the card, whose only exit it is');
+const cardHit = await hitTest(NAV_LEAVE_MEET);
+check(
+  cardHit.hit,
+  'and the point a thumb would land on belongs to it',
+  `elementFromPoint -> ${cardHit.why}`,
+);
+await press(
+  NAV_LEAVE_MEET,
+  'session-screen',
+  'PRESSING IT LEAVES THE CARD — so the card is not a dead end',
+);
+check(!(await visible('result-card-screen')), 'and the card is no longer on screen');
 
 // ---------------------------------------------------------------------------
 // 5. From the close-out — finishing a session and reaching a meet
@@ -464,26 +756,227 @@ await checkOnScreen(
 );
 
 // ---------------------------------------------------------------------------
-// 6. Nothing is drawn over the mechanic
+// 6. ONE PRESS PAST THE CLOSE-OUT: the screen the daily loop actually ends on
+// ---------------------------------------------------------------------------
+//
+// ===========================================================================
+// WHY THIS SECTION PLAYS A WHOLE SESSION INSTEAD OF OPENING A URL
+// ===========================================================================
+// Everything above this point reached its screen with a query string. This one
+// cannot: `SessionScreen` renders the already-trained surface only when
+// `preview === undefined`, and `?session=<moment>` IS the preview. The surface
+// exists solely on the far side of a session the server has recorded.
+//
+// It was previously recorded as unreachable by this tool for that reason. That
+// was wrong about the conclusion, not the premise: the surface does not need a
+// `?session=` moment, it needs A SESSION. `capture-session.mjs --live` already
+// drove the opening beats with a mouse; `tools/sessionDrive.mjs` is that code,
+// shared, and carried through to the close-out.
+//
+// ===========================================================================
+// AND WHY IT IS WORTH ROUGHLY A MINUTE OF WALL CLOCK
+// ===========================================================================
+// `CloseOutView`'s DONE calls `restartDay`, which rebuilds the day against a
+// cache that now records today's training, so `alreadyTrainedToday` is true and
+// GDD §3.2's one-session-a-day surface comes up. THAT MAKES IT THE TERMINAL
+// SCREEN OF THE DAILY LOOP — not an edge case, not a second-launch curiosity:
+// every player who finishes a session lands on it, every day.
+//
+// And it draws two `<Text>` nodes inside a `<View>`. It has no pressable
+// element of its own. The shell's pill is the ONLY thing on it a thumb can
+// press, which makes this the screen where "no surface is a dead end" is
+// decided — GDD §12.3's "never punish daily engagement", applied to navigation.
+//
+// It had never been photographed.
+
+const playedOut = { attempted: true };
+{
+  const startedAt = Date.now();
+  const opened = await openSessionToFirstSet(page, url);
+  check(
+    opened.reached,
+    'a real session opens from `/` and reaches its first work set, played with a mouse',
+    opened.reached ? `${opened.msFromFirstTapToSet}ms from the first tap` : opened.why,
+  );
+
+  let played = { reachedCloseOut: false, reps: [] };
+  if (opened.reached) {
+    played = await playSessionToCloseOut(page);
+    check(
+      played.reachedCloseOut,
+      'and it plays through to GDD §3.2’s close-out',
+      played.reachedCloseOut
+        ? `${played.reps.length} reps in ${played.ms}ms`
+        : `${played.why} (after ${played.reps.length} reps)`,
+    );
+  }
+
+  let landed = { landedOn: null, why: 'the session never reached a close-out' };
+  if (played.reachedCloseOut) {
+    // ---- the payoff beat has to finish arriving before DONE means anything --
+    //
+    // The close-out prints the session's e1RM and streak with a tag saying how
+    // sure each is, and blanks the tag when the server confirms. `restartDay`
+    // rebuilds the day out of whatever the cache holds at the instant DONE is
+    // pressed, so this is not politeness: it is the difference between pressing
+    // a confirmed screen and pressing a provisional one.
+    //
+    // IT IS ALSO THE CHECK THAT CATCHES A ROUND TRIP THAT NEVER COMPLETES, and
+    // that is not hypothetical — the first real run of this section found the
+    // close-out stuck on its "SAVING" tag for 22 s against a stand-in server
+    // that answers in 550 ms, because the submitting effect listed the cache it
+    // wrote in its own dependencies and so cancelled its own request. Every
+    // node test passed on that tree.
+    const settled = await waitForCloseOutSettled(page);
+    check(
+      settled.settled,
+      'the close-out’s numbers settle — the server’s answer actually lands',
+      settled.settled ? `after ${settled.ms}ms` : settled.why,
+    );
+
+    // A KNOWN, SEPARATE QUESTION, recorded rather than asserted: DONE is drawn
+    // with no stagger, so a player who presses it inside the round trip gets a
+    // fresh check-in for a day they have already trained. Whether that wants a
+    // disabled button, a settled-only DONE, or nothing at all is a close-out
+    // decision, not a shell one. Noted here so it is written down somewhere.
+    notes.push(
+      '  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day',
+    );
+
+    // Measured BEFORE the press, because the button is gone afterwards. Used
+    // below to say the pill was clear of it, the same way section 5 does.
+    playedOut.doneBox = await page.getByTestId('close-out-action').boundingBox().catch(() => null);
+    landed = await pressCloseOutAction(page);
+    // Distinguished by testID rather than by the button's label, so a copy edit
+    // cannot turn a wrong landing into a right one.
+    check(
+      landed.landedOn === 'already-trained',
+      'PRESSING DONE LANDS ON THE ALREADY-TRAINED SURFACE (GDD §3.2: one session a day)',
+      landed.landedOn === 'already-trained'
+        ? undefined
+        : landed.landedOn === null
+          ? landed.why
+          : landed.landedOn === 'briefing'
+            ? 'it offered a RETRY — the played session banked no reps at all'
+            : 'it offered a SECOND SESSION of the same day — the server’s answer never landed',
+    );
+  } else {
+    check(false, 'SKIPPED: the already-trained checks need a session to have been played');
+  }
+
+  if (landed.landedOn === 'already-trained') {
+    // The pill does not re-fade here: the affordance is `open-meet` on both the
+    // close-out and the check-in beat, so `ShellNav`'s `key` does not change and
+    // it is already fully drawn. `waitUntilDrawn` inside `press` covers the case
+    // where that ever stops being true.
+    await page.waitForTimeout(settleMs);
+    await page.screenshot({ path: path.join(outDir, '10-already-trained-keeps-the-way-out.png') });
+
+    await checkOnScreen(
+      'session-already-trained',
+      'the already-trained surface renders — the last screen of the daily loop',
+    );
+    const drawn = await checkOnScreen(
+      NAV_OPEN_MEET,
+      'THE WAY TO MEET DAY IS ON IT, and it is the only thing on it to press',
+    );
+    const alreadyHit = await hitTest(NAV_OPEN_MEET);
+    check(
+      alreadyHit.hit,
+      'and the point a thumb would land on belongs to it',
+      `elementFromPoint -> ${alreadyHit.why}`,
+    );
+
+    // ---- the layout argument, converted into a measurement -----------------
+    // `styles.centred` was an argument that the copy and the pill do not
+    // collide. This is the photograph's arithmetic.
+    const copy = await drawnTextBox('session-already-trained');
+    const navBox = alreadyHit.box ?? null;
+    check(
+      copy !== null && navBox !== null && navBox.y - copy.bottom >= ALREADY_TRAINED_NAV_CLEARANCE_PX,
+      `the already-trained copy leaves >= ${ALREADY_TRAINED_NAV_CLEARANCE_PX}px clear above the pill`,
+      copy === null
+        ? 'no drawn copy to measure on the already-trained surface'
+        : navBox === null
+          ? `copy measured (${copy.lines} line(s), bottom y=${copy.bottom.toFixed(1)}) but there is no pill to measure it against`
+          : `${copy.lines} line(s), longest ${copy.longest} chars, bottom y=${copy.bottom.toFixed(1)}; pill top y=${navBox.y.toFixed(1)}; gap ${(navBox.y - copy.bottom).toFixed(1)}px`,
+    );
+    if (playedOut.doneBox != null && navBox !== null) {
+      check(
+        navBox.y > playedOut.doneBox.y + playedOut.doneBox.height,
+        'and the pill sat clear of the DONE button it replaced on the screen before',
+        `pill y=${navBox.y.toFixed(1)} vs DONE bottom=${(playedOut.doneBox.y + playedOut.doneBox.height).toFixed(1)}`,
+      );
+    }
+    check(
+      !/\btotal\b/i.test(await bodyText()),
+      'the already-trained surface shows no Total either (GDD §3.2)',
+    );
+
+    if (drawn) {
+      await press(
+        NAV_OPEN_MEET,
+        'meet-screen',
+        'AND PRESSING IT REACHES MEET DAY — the daily loop does not end on a dead end',
+      );
+      await page.screenshot({ path: path.join(outDir, '11-already-trained-reaches-meet.png') });
+      await checkOnScreen(
+        'meet-weigh-in',
+        'landing on the weigh-in, from a session that was actually played',
+      );
+    } else {
+      check(false, 'SKIPPED: no drawn control on the already-trained surface to press');
+    }
+  }
+  playedOut.wallClockMs = Date.now() - startedAt;
+  playedOut.landedOn = landed.landedOn;
+  playedOut.finalDepthHoldMs = played.holdMs;
+  // Every rep, with the hold it was played on and what the mechanic called it.
+  // The evidence for "the played path is reliable" is this list, not an
+  // assertion about it: a reader can see whether the driver converged or got
+  // lucky.
+  playedOut.reps = played.reps.map((rep) => ({
+    set: rep.setLabel ?? null,
+    holdMs: rep.holdMs ?? null,
+    outcome: rep.outcome ?? null,
+    detail: rep.detail ?? null,
+    ...(rep.played === false ? { notPlayed: rep.why } : {}),
+  }));
+  notes.push(`  note  the played-session section cost ${playedOut.wallClockMs}ms of wall clock`);
+}
+
+// ---------------------------------------------------------------------------
+// 7. Nothing is drawn over the mechanic
 // ---------------------------------------------------------------------------
 
-for (const [search, waitFor, what] of [
-  ['/?session=set', 'session-set', 'a live set'],
-  ['/?session=rest', 'session-rest', 'the rest between two sets'],
+// EACH SCREEN IS NAMED WITH THE BEAT IT LANDS ON, so the expectation comes off
+// `SHELL_NAV_EXPECTED` — cross-checked against `shellTuning.ts` above — instead
+// of being a bare literal that a re-tune could leave behind. Every one of these
+// beats is also in `NEVER_A_PILL_BEAT`, which is what makes the absence a
+// design claim and not merely a description of today's constant.
+for (const [search, waitFor, phase, what] of [
+  ['/?session=set', 'session-set', 'set', 'a live set'],
+  ['/?session=rest', 'session-rest', 'rest', 'the rest between two sets'],
 ]) {
   await open(search, waitFor);
   await checkOnScreen(waitFor, `${what} renders`);
-  check(!(await visible(NAV_OPEN_MEET)), `NO CONTROL IS DRAWN OVER ${what}`);
+  check(
+    !SHELL_NAV_EXPECTED.SESSION_PHASES.includes(phase) && !(await visible(NAV_OPEN_MEET)),
+    `NO CONTROL IS DRAWN OVER ${what} (beat '${phase}')`,
+  );
 }
 await page.screenshot({ path: path.join(outDir, '08-set-has-no-nav.png') });
 
-for (const [search, what] of [
-  ['/?meet=lift', 'a live attempt'],
-  ['/?meet=verdict-good', 'the judges’ verdict'],
-  ['/?meet=select-after-miss', 'GDD §6.3’s attempt choice'],
+for (const [search, phase, what] of [
+  ['/?meet=lift', 'lift', 'a live attempt'],
+  ['/?meet=verdict-good', 'verdict', 'the judges’ verdict'],
+  ['/?meet=select-after-miss', 'attempt-select', 'GDD §6.3’s attempt choice'],
 ]) {
   await open(search, 'meet-screen');
-  check(!(await visible(NAV_LEAVE_MEET)), `NO CONTROL IS DRAWN OVER ${what}`);
+  check(
+    !SHELL_NAV_EXPECTED.MEET_PHASES.includes(phase) && !(await visible(NAV_LEAVE_MEET)),
+    `NO CONTROL IS DRAWN OVER ${what} (beat '${phase}')`,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -519,7 +1012,61 @@ await press(
 );
 
 // ---------------------------------------------------------------------------
-// 7. The evidence harness's four query strings still resolve
+// 7b. NO CHROME OVER A CUT-IN — GDD §7.2's whole screen is the dismiss target
+// ---------------------------------------------------------------------------
+//
+// The same rule as "no control over a live set", and it was broken the same
+// way. `CutInHost` mounts the overlay INSIDE whichever surface is up and the
+// shell draws its pill as a SIBLING after that surface, so the pill painted on
+// top of the interrupt and `elementFromPoint` at its own centre came back with
+// the pill. §7.2 says a cut-in is "always skippable — tap to dismiss"; a tap
+// that navigates to meet day instead is a hole in that, and it is the same
+// class of mis-tap this piece already refuses over the mechanic.
+//
+// The overlay cannot fix it from its side, so the fix is the shell's gate and
+// this is where it gets photographed.
+{
+  // THE POSITIVE CONTROL FIRST, and on the SAME screen. `?cutin=nonsense` boots
+  // the daily session with no overlay — which is the check-in beat, where the
+  // pill belongs. If it is not there and hit-testable here, the probe below is
+  // blind and its "the pill is gone" reading would mean nothing.
+  await open('/?cutin=nonsense', 'session-screen');
+  const control = await checkOnScreen(
+    NAV_OPEN_MEET,
+    'CONTROL: with no cut-in up, the pill is on the same screen the probe looks at',
+  );
+  const controlHit = await hitTest(NAV_OPEN_MEET);
+  check(
+    control && controlHit.hit,
+    'CONTROL: and it is hit-testable there, so the probe below can see a pill',
+    `elementFromPoint -> ${controlHit.why}`,
+  );
+  check(
+    !(await visible('cut-in')),
+    '?cutin=nonsense puts no cut-in on screen — an unrecognised debug route is inert',
+  );
+
+  // ...and now with one up. `?cutin=<moment>` is FROZEN — the host does not
+  // start the auto-dismiss timer — so there is no race with the shutter.
+  await open('/?cutin=personal-record', 'cut-in');
+  await page.screenshot({ path: path.join(outDir, '12-cutin-has-no-shell-chrome.png') });
+  const { on: pillDrawn, why: pillWhy } = await onScreen(NAV_OPEN_MEET);
+  check(
+    !pillDrawn,
+    'NO SHELL CHROME IS DRAWN OVER A CUT-IN (GDD §7.2: the whole screen dismisses it)',
+    pillWhy,
+  );
+  const pillHit = await hitTest(NAV_OPEN_MEET);
+  check(
+    !pillHit.hit,
+    'and nothing of the shell’s takes the tap that was meant to skip it',
+    `elementFromPoint at the pill’s own centre -> ${pillHit.why}`,
+  );
+  await checkOnScreen('cut-in', 'the cut-in itself is up, so this was not measured on an empty screen');
+}
+
+// ---------------------------------------------------------------------------
+// 8. The evidence harness's four query strings still resolve
 // ---------------------------------------------------------------------------
 
 const DEBUG_ROUTES = [
@@ -551,6 +1098,14 @@ await checkOnScreen(
   '/?meet=nonsense boots the daily session rather than a broken meet',
 );
 
+// ---------------------------------------------------------------------------
+// 9. This tool's own expectations still match the app's tuning module
+// ---------------------------------------------------------------------------
+// Last, because it needs no browser and its failure is about the CHECK rather
+// than the app — a reader scanning the output for what broke should meet the
+// app's failures first.
+await checkNavTableMatchesTuning();
+
 console.log(notes.join('\n'));
 if (pageErrors.length > 0) {
   console.log('\nPAGE ERRORS:');
@@ -558,7 +1113,11 @@ if (pageErrors.length > 0) {
 }
 await writeFile(
   path.join(outDir, 'route.json'),
-  `${JSON.stringify({ checks: notes, failures, pageErrors }, null, 2)}\n`,
+  `${JSON.stringify(
+    { capturedFrom: provenance(), played: playedOut, checks: notes, failures, pageErrors },
+    null,
+    2,
+  )}\n`,
 );
 await browser.close();
 

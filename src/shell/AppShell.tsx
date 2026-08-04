@@ -38,6 +38,14 @@
  * navigation control is safe here: no pill is ever drawn over a live set, where
  * a mis-tap costs a rep.
  *
+ * THE SAME GATE COVERS A CUT-IN, and for the same reason rather than a similar
+ * one. `CutInHost` mounts GDD §7.2's overlay INSIDE whichever surface is up,
+ * and this pill is a sibling drawn after that surface — so the pill paints on
+ * top of the interrupt and takes the tap that was meant to dismiss it. §7.2
+ * says a cut-in is always skippable and the whole screen is the target. The
+ * hosts therefore report whether one is live, exactly as the screens report
+ * their beat, and no chrome is drawn while one is.
+ *
  * ---------------------------------------------------------------------------
  * WHAT IS DELIBERATELY MISSING: THE CAREER CALENDAR (GDD §6.1)
  * ---------------------------------------------------------------------------
@@ -160,24 +168,41 @@ export function AppShell({ search = null }: AppShellProps = {}): React.ReactElem
   const [sessionPhase, setSessionPhase] = useState<SessionPhase | null>(null);
   const [meetPhase, setMeetPhase] = useState<MeetDayPhaseId | null>(null);
 
+  // WHETHER A GDD §7.2 CUT-IN IS UP, reported by whichever `CutInHost` is
+  // mounted. The shell draws NO chrome while one is — see `shellAffordanceFor`
+  // for the argument, which is the one it already makes about a live set: this
+  // pill is a sibling of the surface and paints ABOVE an overlay mounted inside
+  // it, so a tap meant to dismiss the interrupt navigates to meet day instead,
+  // and §7.2 makes the whole screen the dismiss target.
+  //
+  // Derived from nothing here. The gate session lives in the host, and the
+  // shell may not compute game state (CLAUDE.md).
+  const [cutInLive, setCutInLive] = useState(false);
+
   // THE DESTINATION'S BEAT IS FORGOTTEN ON THE WAY IN, and that is not tidying.
   // The screen being routed to reports its beat in an effect, which lands a
   // commit AFTER the route changes — so a stale phase from a previous visit
   // would be what the gate reads for one frame. Concretely: leave a meet at the
   // recap, open another, and the weigh-in gets a "BACK TO TRAINING" flash. Null
   // means "has not said yet", and `shellAffordanceFor` draws nothing for it.
+  //
+  // The cut-in flag is cleared for the same reason: the host on the surface
+  // being left un-mounts and the one being entered has not reported yet.
   const openMeet = useCallback(() => {
     setMeetPhase(null);
+    setCutInLive(false);
     setRoute((current) => navigate(current, 'open-meet'));
   }, []);
   const leaveMeet = useCallback(() => {
     setSessionPhase(null);
+    setCutInLive(false);
     setRoute((current) => navigate(current, 'leave-meet'));
   }, []);
 
   const affordance = shellAffordanceFor(
     route,
     route.surface === 'meet' ? meetPhase : route.surface === 'session' ? sessionPhase : null,
+    cutInLive ? 'live' : 'none',
   );
   const meetFrame = frozenMeetFor(entry, route);
 
@@ -190,6 +215,8 @@ export function AppShell({ search = null }: AppShellProps = {}): React.ReactElem
           holdWalkoutAtMs={meetFrame?.holdWalkoutAtMs ?? null}
           onLeave={leaveMeet}
           onPhase={setMeetPhase}
+          onCutIn={setCutInLive}
+          cutInSearch={search}
         />
       ) : route.surface === 'replay' && entry.replay !== undefined ? (
         <LiftScreen replay={entry.replay} />
@@ -198,6 +225,8 @@ export function AppShell({ search = null }: AppShellProps = {}): React.ReactElem
           preview={frozenSessionFor(entry, route)}
           serverPort={appSessionPort()}
           onPhase={setSessionPhase}
+          onCutIn={setCutInLive}
+          cutInSearch={search}
         />
       )}
 

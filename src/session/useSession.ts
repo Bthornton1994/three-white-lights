@@ -199,6 +199,18 @@ export function useSession(
     return () => clearTimeout(timer);
   }, [liveState.phase, liveState.setIndex, dispatch]);
 
+  // THE CACHE THE SUBMISSION IS BUILT FROM, MIRRORED INTO A REF.
+  //
+  // Declared BEFORE the submit effect below so it runs first on every commit,
+  // which is what makes `cacheRef.current` the cache of the frame the
+  // submission is built in rather than the one before it.
+  //
+  // See the submit effect for why it may not simply depend on `liveCache`.
+  const cacheRef = useRef<ProgressionCache>(liveCache);
+  useEffect(() => {
+    cacheRef.current = liveCache;
+  }, [liveCache]);
+
   // --- the close-out goes to the server -------------------------------------
   //
   // TWO STATE CHANGES, NOT ONE. The proposal lands first and the cache renders
@@ -206,6 +218,35 @@ export function useSession(
   // say so. The response lands second and REPLACES them. If the server disagrees
   // with the client's projection, this is where the client loses, which is the
   // only arrangement in which server authority is worth anything on screen.
+  //
+  // -------------------------------------------------------------------------
+  // THIS EFFECT MAY NOT DEPEND ON `liveCache`, AND THAT IS NOT A LINT DODGE
+  // -------------------------------------------------------------------------
+  // It used to, and the second state change never happened. The sequence:
+  //
+  //   1. the effect calls `setLiveCache(submission.cache)` — the pending frame
+  //   2. `liveCache` is a dependency, so React CLEANS UP AND RE-RUNS the effect
+  //   3. the cleanup sets `cancelled = true`, on the request still in flight
+  //   4. the re-run short-circuits on `submittedRef`, so nothing re-arms it
+  //   5. the response arrives 550 ms later, sees `cancelled`, and is DISCARDED
+  //
+  // The cache therefore stayed `pending` for the rest of the app's life: the
+  // close-out sat on its "SAVING" tag for ever, and `alreadyTrainedToday`
+  // below — which is read out of the SETTLED streak state — was never true, so
+  // GDD §3.2's one-session-a-day surface could not be reached by playing.
+  // Measured in a browser, not reasoned about: 22 s on the close-out with the
+  // tag unchanged, against a stand-in server that answers in 550 ms.
+  //
+  // Nothing in the node suite could see it. `sessionClient.test.ts` drives the
+  // same round trip through the same functions and settles correctly, because
+  // the defect is in the EFFECT'S WIRING and there is no renderer in the suite
+  // to run an effect. `tools/verify-shell-route.mjs` plays the loop with a
+  // mouse and is what caught it.
+  //
+  // So the cache is read through `cacheRef`, and the deps are the things that
+  // should actually re-arm a submission: which beat the loop is on, and which
+  // close-out it is. `submittedRef` still guarantees one submission per
+  // close-out.
   const closeOut = liveState.closeOut;
   useEffect(() => {
     if (frozen) return undefined;
@@ -221,7 +262,7 @@ export function useSession(
     };
     proposalSeq.current += 1;
     const proposalId = asProposalId(`session-${closeOut.day}-${proposalSeq.current}`);
-    const submission = submitCloseOut(liveCache, closeOut, wallClock, proposalId);
+    const submission = submitCloseOut(cacheRef.current, closeOut, wallClock, proposalId);
     if (submission === null) return undefined;
 
     submittedRef.current = key;
@@ -241,7 +282,7 @@ export function useSession(
     return () => {
       cancelled = true;
     };
-  }, [frozen, liveState.phase, closeOut, liveCache, port]);
+  }, [frozen, liveState.phase, closeOut, port]);
 
   const alreadyTrainedToday = useMemo(() => {
     if (frozen) return false;
