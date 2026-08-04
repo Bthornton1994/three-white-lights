@@ -2,7 +2,11 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-04 (§2/§2.3/§3.2 — Total is set by meet results only
+**Last updated:** 2026-08-04 (§11 — a pound meet's total used to reach DOTS as
+if it were kilograms and print 806.45 against a truth of ~365.8; the unit now
+travels with the total and DOTS refuses rather than converting. Whether pound
+meets ship at all is logged as an open question, not answered. Earlier the same
+day: §2/§2.3/§3.2 — Total is set by meet results only
 and does not move between meets; the stat Sim mode grows daily is e1RM. §6.4 was
 correct as written and is unchanged; §2's currency table was the mislabel.
 Previously 2026-08-01: §4.2/§4.4 — the Recovery Day prompt must disclose
@@ -837,7 +841,9 @@ work.
 ## 11. Open Questions
 
 - [ ] Weight units: default to lbs or kg? Per-user toggle presumably, but which
-      is the default and does it vary by locale?
+      is the default and does it vary by locale? **This question is about
+      *display*.** What unit a meet is *run* in is a separate one, and the build
+      has partly ruled it — see "Pound meets run but do not score" below.
 - [ ] Does Arcade mode use the *same* difficulty tuning as meet day, or is meet
       day deliberately tighter?
 - [ ] How many NPC lifters is the right roster size before it becomes management
@@ -940,6 +946,43 @@ Two are ruled, two are open.**
       which case there is no divergence, because with that allowance the ladder
       runs 63.3–69.3 s. Until it is answered, the code is faster than the
       document and says so out loud.
+
+**Raised by the build, and this one is a §6.4 decision the document never made.
+The code has taken the safe branch and needs a ruling to take any other.**
+
+- [ ] **Pound meets run but do not score.** `meet.ts` exports `POUND_MEET_RULES`
+      — a 45 lb bar, calls on 2.5 lb — and runs a full meet on it. It used to
+      hand the resulting total to DOTS as though it were kilograms: a 1267.5 lb
+      total printed **806.45 DOTS against a truth of ~365.8**, 2.2x wrong,
+      formatted to two decimals, above the 700 the suite's own plausibility band
+      says no human result reaches, and marked by nothing.
+      The engine now records which unit a meet is run in
+      (`MeetLoadingRules.unit`, required, on every `TotalReading`), and `dots.ts`
+      **refuses** a total it cannot prove is kilograms rather than converting
+      one. §6.4 says "use the correct published formula, do not homebrew" — DOTS
+      is published in kg only, so scoring a pound total is homebrewing by
+      arithmetic. Refusal follows `e1rm.ts`'s precedent (refuse past the chart
+      rather than extrapolate) and CLAUDE.md's endorsement of it.
+      **Refusal rather than automatic conversion is deliberate and is the part
+      that needs ruling.** lb→kg is exact by definition, so the module could
+      convert the total — but a DOTS score needs the **bodyweight** in kg too,
+      and that number comes from the lifter profile, not from the meet.
+      Converting one axis while trusting the other trades a 2.2x overstatement
+      for a roughly 2.2x understatement. OpenPowerlifting's own checker carries
+      the same warning: "international meets often do weigh-in in pounds, but
+      lifting in kilos, so keep those separate."
+      `buildResultCard` refuses a pound meet outright (`UNSUPPORTED_MEET_UNIT`)
+      because every column on that sheet — weight class, bodyweight, DOTS — is a
+      kilogram column.
+      **Three ways out, none taken:** (a) rule that the game only ever runs kg
+      meets and lbs is a display skin, in which case `POUND_MEET_RULES` should go
+      and §11's display question answers this by itself; (b) rule that pound
+      meets ship, and give the lifter profile a unit so both axes can be
+      converted at one boundary — the conversion constant is already there
+      (`KILOGRAMS_PER_POUND`); (c) rule that pound meets ship without DOTS, which
+      is what the code does today, and decide what the result card prints in the
+      DOTS column for one. Until this is ruled, a pound meet is a runnable
+      configuration with no leaderboard presence.
 
 ---
 

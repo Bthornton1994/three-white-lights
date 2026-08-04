@@ -28,10 +28,12 @@ import {
 } from './resultCard';
 import {
   DEFAULT_MEET_RULES,
+  POUND_MEET_RULES,
   createMeet,
   declareAttempt,
   finalMeetTotal,
   passAttempt,
+  readTotal,
   resolveAttempt,
   totalOnTheBoard,
   type JudgePanel,
@@ -746,6 +748,47 @@ describe('refusals', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe('MEET_IN_PROGRESS');
+  });
+
+  it('will not card a meet that was not run in kilograms', () => {
+    // Every number on this sheet is a kilogram number: WEIGHT_CLASSES_KG,
+    // formatBodyweight, and the DOTS column, whose published polynomial is
+    // fitted on kilogram bodyweights. A pound meet used to be carded with kg
+    // semantics on lb weights — the DOTS cell read "806.45" against a truth of
+    // "365.76" — so it is refused here rather than printed.
+    const poundState = runMeet(
+      [
+        [405, GOOD],
+        [425, GOOD],
+        [442.5, GOOD],
+        [265, GOOD],
+        [275, GOOD],
+        [280, GOOD],
+        [500, GOOD],
+        [525, GOOD],
+        [545, GOOD],
+      ],
+      POUND_MEET_RULES,
+    );
+    expect(readTotal(poundState).total).toBe(1267.5);
+
+    const result = buildResultCard({ ...CHAPON_INPUT, state: poundState, placing: undefined });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    // A `Result`-returning builder must not throw, and `evaluateMeetDots` throws
+    // on a non-kg reading — so the refusal is translated into this module's own
+    // error shape rather than escaping as an exception.
+    expect(result.error.code).toBe('UNSUPPORTED_MEET_UNIT');
+    expect(result.error.message).toMatch(/lb/);
+    expect(result.error.message).toMatch(/kilogramsFromPounds/);
+
+    // ...and it is refused BEFORE anything reads the numbers, so an in-progress
+    // pound meet is reported as the unit problem it is rather than as a phase
+    // problem that would go away on its own.
+    const midPoundMeet = runMeet([[405, GOOD]], POUND_MEET_RULES);
+    const mid = buildResultCard({ ...CHAPON_INPUT, state: midPoundMeet, placing: undefined });
+    expect(mid.ok).toBe(false);
+    if (!mid.ok) expect(mid.error.code).toBe('UNSUPPORTED_MEET_UNIT');
   });
 
   it('will not accept a placing of zero or a fraction', () => {

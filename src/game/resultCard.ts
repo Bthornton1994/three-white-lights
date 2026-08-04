@@ -263,6 +263,7 @@ import {
 } from './meet';
 import {
   DOTS_NO_TOTAL_DISPLAY,
+  DOTS_TOTAL_UNIT,
   evaluateMeetDots,
   formatDotsOutcome,
   hasDotsScore,
@@ -757,6 +758,15 @@ export type ResultCardErrorCode =
    * board, never ranked at the bottom of it.
    */
   | 'PLACING_WITHOUT_TOTAL'
+  /**
+   * The meet was not run in kilograms. Every number on this sheet is a kilogram
+   * number — `WEIGHT_CLASSES_KG`, `formatBodyweight`, and the DOTS column, whose
+   * published polynomial is fitted on kilogram bodyweights — so a pound meet is
+   * refused here rather than printed with kg semantics on lb weights. Convert the
+   * whole entry (total AND bodyweight) at the call site with
+   * `kilogramsFromPounds` and card the converted meet.
+   */
+  | 'UNSUPPORTED_MEET_UNIT'
   | 'INVALID_PLACING'
   | 'INVALID_LIFTER';
 
@@ -869,6 +879,23 @@ export function buildResultCard(input: ResultCardInput): ResultCardResult {
   }
 
   const reading = readTotal(state);
+  // Checked before anything is read off the reading. `evaluateMeetDots` would
+  // throw on a non-kg meet, and a `Result`-returning builder must not throw:
+  // this turns that refusal into the module's own error shape. It also covers
+  // the columns DOTS has nothing to do with — a lb bodyweight would otherwise be
+  // sorted into a kg weight class.
+  if (reading.unit !== DOTS_TOTAL_UNIT) {
+    return {
+      ok: false,
+      error: {
+        code: 'UNSUPPORTED_MEET_UNIT',
+        message:
+          `This meet was run in ${reading.unit}, and a result sheet here is a kilogram sheet — ` +
+          'weight class, bodyweight and DOTS all read the numbers as kg. Convert the entry ' +
+          '(total and bodyweight both) with kilogramsFromPounds and card the converted meet.',
+      },
+    };
+  }
   if (reading.kind === 'in-progress') {
     return {
       ok: false,

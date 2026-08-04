@@ -94,8 +94,10 @@
  *     multiple from zero. `DECLARATION_INCREMENT_KG` is anchored at zero for
  *     that reason. Note that the modulo is applied to `asNumber`, the number as
  *     DISPLAYED, not to a kg value: at a pound meet the 2.5 grid is 2.5 lb, not
- *     2.5 kg. That is what makes this module unit-agnostic rather than metric
- *     with a conversion layer, and it is why `POUND_MEET_RULES` exists.
+ *     2.5 kg. That is why this module's ARITHMETIC converts nothing and why
+ *     `POUND_MEET_RULES` exists. It is not a claim that the NUMBERS are
+ *     unit-agnostic — they are not, the unit is a rule of the meet, and it rides
+ *     out on every `TotalReading`. See WHICH UNIT A MEET IS RUN IN.
  *   - NOT SUPPORTED, and this is the correction that removed the plate gate:
  *     that a real kit's loadable weights are the multiples of its smallest pair.
  *     `defaultPlatesLbs` above stocks 0.5, 1.25 and 2.5 lb discs at once, so its
@@ -409,10 +411,13 @@
 // CLAUDE.md "Game Feel Values Must Be Tunable": every number that gets tuned by
 // hand lives here as a named export, never inline at a call site.
 //
-// Weights are unit-agnostic numbers. The defaults below are kg values matching
-// the metric defaults in the retrieved OpenLifter source (GDD §11 leaves the
-// display-unit default open); an lb-based federation swaps in its own
-// `MeetLoadingRules` — OpenLifter's lb default for the same field is 45.
+// The ARITHMETIC here is unit-agnostic: nothing in this module converts, and a
+// pound meet is a different `MeetLoadingRules` rather than a conversion layer.
+// The NUMBERS are not unit-agnostic, and this module used not to say which unit
+// they were in — see WHICH UNIT A MEET IS RUN IN, below. The defaults are kg
+// values matching the metric defaults in the retrieved OpenLifter source (GDD
+// §11 leaves the *display* default open); an lb-based federation swaps in
+// `POUND_MEET_RULES` or its own — OpenLifter's lb default for the bar is 45.
 // ---------------------------------------------------------------------------
 
 /** Three attempts per lift. Structural rule of the sport, not a tuning knob. */
@@ -470,13 +475,58 @@ export const MIN_ATTEMPT_INCREMENT_KG = 2.5;
  */
 export const DECLARATION_INCREMENT_KG = 2.5;
 
+// ---------------------------------------------------------------------------
+// WHICH UNIT A MEET IS RUN IN — why `MeetLoadingRules` has a `unit` field
+// ---------------------------------------------------------------------------
+//
+// The arithmetic in this module works the same in either unit, and that is a
+// good property: a pound meet is a different `MeetLoadingRules`, not a
+// conversion layer, and nothing here multiplies by 2.2 anywhere.
+//
+// It does NOT follow that the numbers are unit-agnostic, and this module used to
+// write as though it did. `readTotal(state).total` is a number that leaves the
+// module, and the receiver has to know what it means. `dots.ts` scores a total
+// in KILOGRAMS — DOTS' published polynomial is fitted on kg bodyweights — and a
+// pound total handed to it scored 806.45 where the truth was 365.76: a 2.2x
+// overstatement, formatted to two decimals, with nothing marking it. The magnitude
+// does not give it away either; 1267.5 is a legal kg total for a superheavyweight.
+//
+// So the unit is now a field on the rules and it rides out on every
+// `TotalReading`. It is a RULE OF THE MEET, exactly like the declaration grid:
+// fixed at `createMeet`, the same for all three lifts, and unreadable from the
+// numbers themselves (45 is a legal kg bar weight for a specialty bar; 25 is a
+// legal lb load).
+//
+// It is deliberately ONE unit for the whole meet, which is a simplification and
+// is written down as one. OpenPowerlifting's checker carries the same TODO from
+// the other side — `checker/src/checklib/entries.rs`:
+//
+//     // TODO: This code currently lets you mix Kg and Lbs ... Either the meet
+//     // is in pounds, or in kilos. However, note that international meets often
+//     // do weigh-in in pounds, but lifting in kilos, so keep those separate.
+//
+// Weigh-in unit is NOT modelled here: this module has no bodyweight. That is the
+// caller's number and the caller's unit, and `dots.ts` says so where it refuses.
+// ---------------------------------------------------------------------------
+
+/**
+ * The unit a meet's weights are expressed in. Every number in a `MeetState` —
+ * declared attempts, bar weights, bests, totals — is in this unit.
+ *
+ * `'lb'` rather than OpenPowerlifting's `'lbs'` only because it reads better in
+ * a message; nothing parses it.
+ */
+export type MeetWeightUnit = 'kg' | 'lb';
+
+/** Every unit a meet may be run in. Used to validate rules. */
+export const MEET_WEIGHT_UNITS = ['kg', 'lb'] as const satisfies readonly MeetWeightUnit[];
+
 // --- Pound defaults. --------------------------------------------------------
 //
-// Weights in this module are unit-agnostic numbers, so a pound meet is not a
-// conversion layer — it is a different `MeetLoadingRules`. These exist because
-// the sourcing note's second citation applies its 2.5 modulo to the DISPLAYED
-// number, which means a pound meet declares on 2.5 lb, and because the previous
-// version of this module could not be configured to run one at all.
+// These exist because the sourcing note's second citation applies its 2.5 modulo
+// to the DISPLAYED number, which means a pound meet declares on 2.5 lb, and
+// because the previous version of this module could not be configured to run one
+// at all.
 
 /**
  * CITED: `const defaultBarAndCollarsWeightLbs = 45; // Assuming plastic collars.`
@@ -636,6 +686,14 @@ export interface LiftProgress {
  */
 export interface MeetLoadingRules {
   /**
+   * WHICH UNIT every other number in this object, and every weight in the meet
+   * it starts, is expressed in. Required, and deliberately not defaulted: it is
+   * not derivable from the numbers (45 is a plausible kg bar, 25 a plausible lb
+   * load), and the module that consumes the total is kg-only. See WHICH UNIT A
+   * MEET IS RUN IN above for the number this field exists to stop.
+   */
+  readonly unit: MeetWeightUnit;
+  /**
    * PHYSICS. Weight of the bar and collars with no plates, per lift. Per-lift
    * because some meets run a different bar for one of the three (OpenLifter
    * carries `squat`/`bench`/`deadliftBarAndCollarsWeightKg` separately).
@@ -673,6 +731,7 @@ export interface MeetLoadingRules {
  * with exactly those rules.
  */
 export const DEFAULT_MEET_RULES: MeetLoadingRules = {
+  unit: 'kg',
   barAndCollarsWeight: {
     squat: MIN_LOADABLE_WEIGHT_KG,
     bench: MIN_LOADABLE_WEIGHT_KG,
@@ -689,8 +748,15 @@ export const DEFAULT_MEET_RULES: MeetLoadingRules = {
  * INVALID_MEET_RULES — it declared on 2.5 while the pound kit's smallest pair is
  * 1 lb, and 2.5 is not a whole number of 1s. There is no such cross-check any
  * more, because there is nothing to cross-check against, so it runs.
+ *
+ * It says `unit: 'lb'`, and that is load-bearing rather than documentation:
+ * `readTotal` stamps it onto the reading and `dots.ts` REFUSES a reading that is
+ * not in kilograms. A pound meet runs end to end here and cannot be scored for
+ * DOTS without an explicit, written-down conversion at the call site. See WHICH
+ * UNIT A MEET IS RUN IN above.
  */
 export const POUND_MEET_RULES: MeetLoadingRules = {
+  unit: 'lb',
   barAndCollarsWeight: {
     squat: POUND_BAR_AND_COLLARS_LB,
     bench: POUND_BAR_AND_COLLARS_LB,
@@ -775,6 +841,7 @@ export interface MeetState {
 /** Field-by-field copy, so meet state never aliases anyone else's object. */
 function copyLoadingRules(rules: MeetLoadingRules): MeetLoadingRules {
   return {
+    unit: rules.unit,
     barAndCollarsWeight: {
       squat: rules.barAndCollarsWeight.squat,
       bench: rules.barAndCollarsWeight.bench,
@@ -1001,6 +1068,19 @@ export function roundToCallableWeightIgnoringTheCard(
  * grid).
  */
 export function validateMeetRules(rules: MeetLoadingRules): MeetError | null {
+  // Checked first, and by value rather than by type, because a `unit` is the one
+  // field a JSON round trip or a hand-built config can supply as an arbitrary
+  // string. An unrecognised one must not fall through to a default: defaulting
+  // it to kg is precisely how a pound meet reached DOTS as kilograms.
+  if (!(MEET_WEIGHT_UNITS as readonly string[]).includes(rules.unit)) {
+    return {
+      code: 'INVALID_MEET_RULES',
+      message:
+        `A meet must state the unit its weights are in — one of ${MEET_WEIGHT_UNITS.join(', ')} — ` +
+        `not ${JSON.stringify(rules.unit)}. It is not derivable from the numbers, and the module ` +
+        'that scores the total is kilogram-only.',
+    };
+  }
   if (!Number.isFinite(rules.declarationIncrement) || rules.declarationIncrement <= 0) {
     return { code: 'INVALID_MEET_RULES', message: 'The declaration increment must be a positive number.' };
   }
@@ -1714,24 +1794,45 @@ function buildBombedOutcome(state: MeetState, bombedLift: LiftKind): BombedMeetO
 // result by accident.
 // ---------------------------------------------------------------------------
 
+/**
+ * Every case carries `unit`, including the two that carry no total. A caller
+ * whose integration is in the wrong unit has that bug on the first meet it polls,
+ * not on the first meet that finishes with a total — a defect that only fires on
+ * success is the worst kind to ship.
+ */
 export type TotalReading =
   /** Still lifting. There is no total yet, only what is on the board. */
-  | { readonly kind: 'in-progress'; readonly total: null; readonly totalOnTheBoard: number }
+  | {
+      readonly kind: 'in-progress';
+      readonly total: null;
+      readonly totalOnTheBoard: number;
+      readonly unit: MeetWeightUnit;
+    }
   /** Meet over with a total. This is the official number. */
-  | { readonly kind: 'final'; readonly total: number; readonly totalOnTheBoard: number }
+  | {
+      readonly kind: 'final';
+      readonly total: number;
+      readonly totalOnTheBoard: number;
+      readonly unit: MeetWeightUnit;
+    }
   /** Meet over with a bombed lift: NO total, which is not a total of zero. */
   | {
       readonly kind: 'no-total';
       readonly total: null;
       readonly totalOnTheBoard: number;
+      readonly unit: MeetWeightUnit;
       readonly bombedLift: LiftKind;
     };
 
-/** The one accessor that can tell you whether a total is final. */
+/**
+ * The one accessor that can tell you whether a total is final — and, since the
+ * number leaves the module here, what unit it is in.
+ */
 export function readTotal(state: MeetState): TotalReading {
   const onTheBoard = sumBests(bestByLift(state));
+  const unit = stateRules(state).unit;
   if (state.phase.kind !== 'complete') {
-    return { kind: 'in-progress', total: null, totalOnTheBoard: onTheBoard };
+    return { kind: 'in-progress', total: null, totalOnTheBoard: onTheBoard, unit };
   }
   const outcome = state.phase.outcome;
   if (outcome.kind === 'bombed-out') {
@@ -1739,10 +1840,11 @@ export function readTotal(state: MeetState): TotalReading {
       kind: 'no-total',
       total: null,
       totalOnTheBoard: outcome.totalOnTheBoard,
+      unit,
       bombedLift: outcome.bombedLift,
     };
   }
-  return { kind: 'final', total: outcome.total, totalOnTheBoard: outcome.totalOnTheBoard };
+  return { kind: 'final', total: outcome.total, totalOnTheBoard: outcome.totalOnTheBoard, unit };
 }
 
 /**
