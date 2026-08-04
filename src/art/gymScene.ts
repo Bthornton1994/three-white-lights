@@ -47,20 +47,22 @@
  */
 
 import { fillRect, createGrid, getPx, setPx, type IndexGrid } from './raster';
-import { isTransparentIndex } from './palette';
+import { PAL, isTransparentIndex } from './palette';
 import { deformPose, pitchForLevel, poseAtDepth, strainForLevel } from './rig';
 import { renderContactShadow, type LifterFrameSpec } from './lifterSprite';
-import { GYM, GYM_RAMPS, dimIndex, stepIndex } from './gymPalette';
+import { GYM, GYM_RAMPS, dimIndex, lumaOfIndex, stepIndex } from './gymPalette';
 import { PROP_ART, type PropArt } from './gymProps';
 import {
   GYM_BANNER,
   GYM_CLEAR_BAND,
+  GYM_CONTACT_SHADOW,
   GYM_CROWD,
   GYM_FLOOR_PLAN,
   GYM_LIFT_FOCUS_X,
   GYM_LIFT_STAGE,
   GYM_LIGHTING,
   GYM_PARALLAX,
+  GYM_READABILITY,
   GYM_ROOM,
   GYM_STAGE_CHROME,
   GYM_VENUE,
@@ -509,12 +511,137 @@ function stampProp(
   }
 }
 
+/**
+ * The columns a prop actually TOUCHES THE FLOOR ON, read off the bottom row of
+ * its own drawing.
+ *
+ * Derived rather than authored, so a plate tree's shadow is its base plate and
+ * not its bounding box, a kettlebell row throws three shadows instead of one,
+ * and `PROP_ART` cannot forget to declare one. Returned as spans so the shadow
+ * has the gaps the object has.
+ */
+export function propFootprint(art: PropArt): readonly (readonly [number, number])[] {
+  const bottom = art.H - 1;
+  const on = new Array<boolean>(art.W).fill(false);
+  for (const [rx, ry, rw, rh] of art.RECTS) {
+    if (ry > bottom || ry + rh <= bottom) continue;
+    for (let x = Math.max(0, rx); x < Math.min(art.W, rx + rw); x += 1) on[x] = true;
+  }
+  const spans: [number, number][] = [];
+  let start = -1;
+  for (let x = 0; x <= art.W; x += 1) {
+    if (x < art.W && on[x] === true) {
+      if (start === -1) start = x;
+    } else if (start !== -1) {
+      spans.push([start, x - 1]);
+      start = -1;
+    }
+  }
+  return spans;
+}
+
+/**
+ * Darken the floor under a prop, in the room's own ramp.
+ *
+ * Same mechanism as `contactShadowPatch` does for the figure and for the same
+ * reason: a fixed dark index is a hole on a 136-luma platform and invisible on
+ * 17-luma rubber, so the shadow is made of the surface it falls on. Drawn from
+ * the row the prop stands on FORWARD, because the key light is high and the
+ * shadow pools toward the viewer.
+ *
+ * Ceiling-anchored props do not stand on anything and get nothing.
+ *
+ * ---------------------------------------------------------------------------
+ * HOW FAR DOWN: TWO RULES, AND THE PLATFORM IS THE ONLY SURFACE THAT PASSES
+ * ---------------------------------------------------------------------------
+ * The room's ramps are not evenly spaced, so a fixed number of rungs is a
+ * different shadow on every surface: one rung is 50.5 luma on the lit platform
+ * and 8.9 on mid rubber. So the depth is chosen by rule instead — step down
+ * until the drop is worth drawing, and stop as soon as it is:
+ *
+ *   1. VISIBLE. The drop must reach `PERCEPTIBLE_LUMA_STEP`, or the mark is one
+ *      this piece has itself declared invisible.
+ *   2. CLEAR OF THE SUBJECT. The result must stay `PERCEPTIBLE_LUMA_STEP` above
+ *      the darkest step the FIGURE AND BARBELL are drawn in — the equipment
+ *      keyline at luma 8.9. A shadow darker than that is a piece of room in the
+ *      band the subject's own outline occupies.
+ *
+ * ...and never more than `PROP_MAX_STEPS` rungs either way.
+ *
+ * ---------------------------------------------------------------------------
+ * WHICH MEANS THE RUBBER GETS NO SHADOW, AND THAT IS A MEASURED REFUSAL
+ * ---------------------------------------------------------------------------
+ * `FLOOR_MID` (33.91) has exactly two rungs under it. `FLOOR_DARK` (25.03) is
+ * 8.9 below it, which fails rule 1. `FLOOR_DEEP` (16.91) is 17.0 below it, which
+ * passes rule 1 and fails rule 2 by 1.0 luma — it is 8.0 from the barbell's
+ * keyline, and the sleeves cross those rows at every depth of the rep. There is
+ * no index in the GYM_FLOOR bank in the 18.9-23.9 window that would satisfy
+ * both, and the bank is full.
+ *
+ * That is not theory. Shipping the `FLOOR_DEEP` version was measured, twice:
+ * `rimContrast.p25` on the descent frame fell from 22.15 to 20.19 with one row
+ * of shadow and to 19.37 with two, against a floor of 20. Grounding the
+ * furniture on the rubber costs the readability clause a real, shipped frame, so
+ * it is not drawn there and the number is written down instead of the shadow.
+ *
+ * What it costs artistically is stated too: the five props standing on rubber
+ * still meet the floor with nothing under them. Fixing that needs a rubber
+ * shadow rung in the palette (no free slot) or the barbell's sleeves out of the
+ * props' columns (a wider `GYM_CLEAR_BAND`, which moves the furniture). Both are
+ * bigger than this change.
+ */
+const SUBJECT_DARKEST_LUMA = Math.min(
+  lumaOfIndex(PAL.EQ_OUTLINE) ?? 0,
+  lumaOfIndex(PAL.OUTLINE) ?? 0,
+);
+
+function propShadowIndex(under: number): number | null {
+  for (let steps = 1; steps <= GYM_CONTACT_SHADOW.PROP_MAX_STEPS; steps += 1) {
+    const shaded = stepIndex(under, -steps);
+    const shadedLuma = lumaOfIndex(shaded) ?? 0;
+    const drop = (lumaOfIndex(under) ?? 0) - shadedLuma;
+    if (drop < GYM_READABILITY.PERCEPTIBLE_LUMA_STEP) continue;
+    if (shadedLuma - SUBJECT_DARKEST_LUMA < GYM_READABILITY.PERCEPTIBLE_LUMA_STEP) return null;
+    return shaded;
+  }
+  return null;
+}
+
+function stampPropShadow(g: IndexGrid, art: PropArt, x0: number, baseRow: number): void {
+  if (art.ANCHOR !== 'floor') return;
+  const { PROP_ROWS, PROP_SPREAD } = GYM_CONTACT_SHADOW;
+  for (const [a, b] of propFootprint(art)) {
+    for (let dy = 0; dy < PROP_ROWS; dy += 1) {
+      const y = baseRow + dy;
+      if (y < 0 || y >= g.h) continue;
+      for (let x = x0 + a - PROP_SPREAD; x <= x0 + b + PROP_SPREAD; x += 1) {
+        if (x < 0 || x >= g.w) continue;
+        const shaded = propShadowIndex(getPx(g, x, y));
+        if (shaded === null) continue;
+        setPx(g, x, y, shaded);
+      }
+    }
+  }
+}
+
+/** The rows a prop's contact shadow occupies, for the reservation check. */
+export function propShadowRows(art: PropArt): number {
+  return art.ANCHOR === 'floor' ? GYM_CONTACT_SHADOW.PROP_ROWS : 0;
+}
+
 /** The furniture this spec draws: its own list if it has one, else the venue's. */
 export function sceneProps(spec: GymSceneSpec): readonly GymPropPlacement[] {
   return spec.props ?? GYM_VENUE_PROPS[spec.venue];
 }
 
 function paintProps(g: IndexGrid, spec: GymSceneSpec): void {
+  // Every shadow first, then every prop. Otherwise a near prop's shadow lands on
+  // top of the far prop it overlaps, which is a shadow floating in mid air.
+  for (const placement of sceneProps(spec)) {
+    const art = PROP_ART[placement.ART];
+    const origin = propOrigin(spec, art, placement);
+    stampPropShadow(g, art, origin.x, origin.y + art.H);
+  }
   for (const placement of sceneProps(spec)) {
     const art = PROP_ART[placement.ART];
     const origin = propOrigin(spec, art, placement);
@@ -726,11 +853,22 @@ export function clearBand(spec: GymSceneSpec, lifterHeightPx: number): SceneRect
   };
 }
 
-/** The box a placed prop's drawing occupies, for overlap checks. */
+/**
+ * The box a placed prop's drawing occupies, for overlap checks.
+ *
+ * Includes its contact shadow rows. A shadow is pixels the prop puts in the room
+ * exactly like its own steel is, so the reserved hole has to see them or the
+ * reservation is protecting the wrong rectangle.
+ */
 export function propBox(spec: GymSceneSpec, placement: GymPropPlacement): SceneRect {
   const art = PROP_ART[placement.ART];
   const origin = propOrigin(spec, art, placement);
-  return { x0: origin.x, y0: origin.y, x1: origin.x + art.W - 1, y1: origin.y + art.H - 1 };
+  return {
+    x0: origin.x,
+    y0: origin.y,
+    x1: origin.x + art.W - 1,
+    y1: origin.y + art.H - 1 + propShadowRows(art),
+  };
 }
 
 export function rectsOverlap(a: SceneRect, b: SceneRect): boolean {

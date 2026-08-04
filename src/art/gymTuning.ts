@@ -103,7 +103,38 @@ export const GYM_WALL_PAINT = Object.freeze({
    * dark through the middle, mid where the bounced light off the floor reaches.
    */
   BAND_FRACS: Object.freeze([0.36, 0.74]),
-  /** Rows between block-course mortar lines. */
+  /**
+   * Rows between block-course mortar lines.
+   *
+   * -------------------------------------------------------------------------
+   * THE TOP BAND IS FLAT, AND THAT IS NOW A DECISION RATHER THAN AN OMISSION
+   * -------------------------------------------------------------------------
+   * A course is drawn as `dimIndex` of whatever band it crosses, so how loud it
+   * is depends on the band. The wall has three bands and `GYM_DIM_STEP` has a
+   * rung under two of them:
+   *
+   *     WALL_DEEP  ->  (nothing is darker)  ->  0.00 luma  ->  NO COURSE DRAWN
+   *     WALL_DARK  ->  WALL_DEEP            -> 15.09 luma
+   *     WALL_MID   ->  WALL_DARK            ->  8.89 luma
+   *
+   * So the top 36% of the wall — `BAND_FRACS[0]`, about 43 of 119 rows on the
+   * lift stage — is a flat dark field with no brickwork in it, and that is
+   * visible in `.gauntlet/shots/gym/screen-standing-3x.png`. It reads as an
+   * authored choice and until now it was not one: it was a missing map entry.
+   *
+   * IT IS KEPT, AND HERE IS THE REASON. `WALL_DEEP` (10.85) is the bottom rung
+   * of the wall ramp and the GYM_WALL bank is full — sixteen of sixteen slots
+   * spent — so there is no darker colour to draw a course in and no free slot to
+   * make one. The alternatives were to draw the top course one rung UP instead
+   * (a 15.09-luma LIGHT line at the very top of the frame, brighter than the
+   * course in the band below it, which is a lit ceiling and not a mortar joint)
+   * or to spend a bank slot the crowd and the lamp need. A gym's roofline being
+   * out of the lamps and going to flat black is what the reference does with its
+   * own upper corners, so the band stays flat and stays stated.
+   *
+   * `gymScene.test.ts` pins all three deltas off the RENDERED pixels, including
+   * the zero, so this comment cannot drift away from the renderer again.
+   */
   COURSE_ROWS: 7,
   /** Columns between the staggered vertical joints in each course. */
   JOINT_COLS: 17,
@@ -519,9 +550,53 @@ export const GYM_STAGE_CHROME = Object.freeze({
  *
  * UNPLAYED. One rung reads softer, three reads like a hole. Nobody has looked at
  * this on a phone.
+ *
+ * ---------------------------------------------------------------------------
+ * THE FURNITURE IS GROUNDED THE SAME WAY, AND WAS NOT
+ * ---------------------------------------------------------------------------
+ * The lifter got a contact shadow and the room did not: the rack feet, bench
+ * legs, plate-tree base, chalk stand and kettlebells all terminated flush
+ * against the floor with nothing under them. That is the same defect the figure
+ * had, one layer back, and it is the loudest "stamped on" tell a background
+ * layer has.
+ *
+ * `PROP_*` is that fix. Same mechanism — step the room's own ramp down, never
+ * paint a fixed dark index — for the same reason: a fixed shadow colour is a
+ * hole on a pale platform and invisible on dark rubber.
+ *
+ * The FOOTPRINT is not authored. It is read off the bottom row of the prop's own
+ * drawing in `gymProps.ts`, so a plate tree's shadow is its base plate and not
+ * its bounding box, and a kettlebell row throws three shadows rather than one.
+ * Nothing in `PROP_ART` needs a shadow row and nothing can forget one.
+ *
+ * HOW DARK is not a fixed number of rungs, because the ramps are not evenly
+ * spaced: one rung is 50.5 luma on the lit platform and 8.9 on mid rubber. The
+ * renderer steps down until the drop reaches
+ * `GYM_READABILITY.PERCEPTIBLE_LUMA_STEP` and then stops, so `PROP_MAX_STEPS` is
+ * a CEILING on how dark a prop shadow may get rather than how dark it is.
+ *
+ * ALSO UNPLAYED. Nobody has looked at this on a phone.
  */
 export const GYM_CONTACT_SHADOW = Object.freeze({
+  /** Rungs of the room's own ramp the surface under the FIGURE steps down. */
   STEPS: 2,
+  /**
+   * The most rungs a piece of FURNITURE may darken the floor by. Two: enough to
+   * clear the perceptible step on mid rubber (17.0 luma), and not enough for a
+   * prop standing on the lit platform to punch a 95-luma hole in it.
+   */
+  PROP_MAX_STEPS: 2,
+  /** Rows of shadow, drawn forward from the row the prop stands on. */
+  PROP_ROWS: 2,
+  /**
+   * Columns the shadow spreads either side of the footprint it came from.
+   *
+   * 0, and that is load-bearing rather than lazy: the reserved hole the figure
+   * stands in is only two columns clear of the nearest prop on the left and one
+   * on the right, so a shadow wider than its prop is a prop in the clear band.
+   * `propBox` counts the shadow rows, so the reservation check sees them.
+   */
+  PROP_SPREAD: 0,
 });
 
 /** Column the room is composed around: the lifter's own centre line. */
@@ -535,6 +610,37 @@ export const GYM_LIFTER_HEIGHT_PX = RESOLUTION.LIFTER_HEIGHT_PX;
 // ---------------------------------------------------------------------------
 
 /**
+ * THE ONE AUTHORED NUMBER THE READABILITY RULER IS MADE OF.
+ *
+ * Luma step between neighbouring pixels that counts as a HARD EDGE. Every other
+ * separation threshold in this file is a plain division of it — see
+ * `GYM_READABILITY` below — so there is exactly one number to turn and the rest
+ * move with it.
+ *
+ * ---------------------------------------------------------------------------
+ * WHERE 20 COMES FROM, MEASURED, WITH BOTH BRACKETS
+ * ---------------------------------------------------------------------------
+ * It sits between the loudest mark the WALL draws and the softest mark a PROP
+ * draws against that wall, and both of those are real numbers off the shipped
+ * palette rather than a rounded intuition:
+ *
+ *   - the loudest block course the wall draws is 15.09 luma (`WALL_DARK` 25.94
+ *     stepped to `WALL_DEEP` 10.85). Texture, and 20 is above it, so a course
+ *     does not register as an edge.
+ *   - a steel prop standing against the band the lifter is drawn against is
+ *     23.20 luma (`STEEL_FRAME` 58.03 over `WALL_MID` 34.82). Furniture, and 20
+ *     is below it, so a rack does register.
+ *
+ * 4.9 luma of margin under, 3.2 over. `gymScene.test.ts` pins both brackets off
+ * the palette, so if either mark moves the bracket claim goes red instead of
+ * quietly becoming false.
+ *
+ * WHAT IT IS NOT: a psychophysics claim. Nobody has looked at this on a phone at
+ * real brightness. It is one stated place to turn when somebody does.
+ */
+const EDGE_LUMA_DELTA = 20;
+
+/**
  * Parameters of the readability measurement in `gymReadability.ts`.
  *
  * THESE ARE THE DEFINITION OF THE MEASURE, NOT A DIFFICULTY SETTING, and the
@@ -546,19 +652,21 @@ export const GYM_LIFTER_HEIGHT_PX = RESOLUTION.LIFTER_HEIGHT_PX;
  * are loosened. Raising EDGE_LUMA_DELTA far enough to hide a busy room also
  * stops the checker being called busy, and the suite goes red.
  *
+ * ---------------------------------------------------------------------------
+ * THE THREE SEPARATION THRESHOLDS ARE ONE NUMBER AND TWO DIVISIONS OF IT
+ * ---------------------------------------------------------------------------
+ * `EDGE_LUMA_DELTA` (20) is authored and bracketed above. The other two are
+ * CONVENTIONS — a half and a quarter — and are written as arithmetic on it
+ * rather than as fresh integers so that nobody has to take a comment's word for
+ * how they relate. Turning the anchor turns all three together.
+ *
  * The pass/fail bounds themselves live in the test, deliberately: a bound is
  * the bar, and a bar belongs where it can be read next to the numbers it is
  * judging rather than in a file whose whole invitation is "turn these".
  */
 export const GYM_READABILITY = Object.freeze({
-  /**
-   * Luma step between neighbouring pixels that counts as a hard edge.
-   *
-   * 20 is chosen so the block-course mortar line (10 luma under its wall) does
-   * NOT count and a steel prop against that wall (22) does. Texture is allowed;
-   * clutter is not, and this number is where the line between them is drawn.
-   */
-  EDGE_LUMA_DELTA: 20,
+  /** The anchor. See the block comment above `EDGE_LUMA_DELTA`. */
+  EDGE_LUMA_DELTA,
   /**
    * How far outside the figure's silhouette the background is sampled when
    * measuring rim separation. 1 would sample the sprite's own keyline, which is
@@ -579,19 +687,68 @@ export const GYM_READABILITY = Object.freeze({
   /**
    * The smallest luma step this piece is willing to call VISIBLE at phone scale.
    *
-   * Not a guess and not a psychophysics claim: it is the room's own softest
-   * deliberate mark. The block-course mortar line is drawn one rung under
-   * whatever band it crosses, which measures about 10 luma, and it is authored
-   * to read as texture — present, but not an edge. So 10 is the step this art
-   * already treats as the boundary between "there" and "not there", and
-   * EDGE_LUMA_DELTA (20) is the step it treats as a hard edge. Every separation
-   * floor below is stated in these two numbers rather than in fresh integers.
+   * ---------------------------------------------------------------------------
+   * A CONVENTION — HALF THE HARD-EDGE STEP — AND NOTHING MORE
+   * ---------------------------------------------------------------------------
+   * This is stated plainly because the previous version of this comment did not
+   * state it plainly. It claimed 10 was "the room's own softest deliberate mark
+   * … the block-course mortar line … which measures about 10 luma". THE ROOM
+   * DOES NOT DRAW A 10-LUMA MARK. Courses are drawn with `dimIndex` of whatever
+   * band they cross, and `GYM_DIM_STEP` has no entry for `WALL_DEEP`, so the
+   * three courses the wall actually draws measure:
+   *
+   *     WALL_DEEP  (luma 10.85)   ->  no dimmer neighbour   ->  delta  0.00
+   *     WALL_DARK  (luma 25.94)   ->  WALL_DEEP             ->  delta 15.09
+   *     WALL_MID   (luma 34.82)   ->  WALL_DARK             ->  delta  8.89
+   *
+   * The first row is not a rounding. `WALL_DEEP` is the bottom of the wall ramp
+   * and nothing in the bank is under it, so the top 36% of the wall — every row
+   * above `GYM_WALL_PAINT.BAND_FRACS[0]` — HAS NO BRICKWORK AT ALL. See
+   * `GYM_WALL_PAINT.COURSE_ROWS` for what was decided about that.
+   *
+   * There is no 10 anywhere in that list, and `gymScene.test.ts` now pins all
+   * three off the rendered pixels so the number in a comment cannot drift away
+   * from the number the renderer draws a second time.
+   *
+   * So: 10 is `EDGE_LUMA_DELTA / 2`. A convention, chosen because half of a hard
+   * edge is a reasonable place to put "present but not an edge", and written as
+   * the division so nobody re-derives a provenance for it.
+   *
+   * ---------------------------------------------------------------------------
+   * WHAT IT COSTS TO MOVE IT, SAID OUT LOUD
+   * ---------------------------------------------------------------------------
+   * The rim floors in `gymScene.test.ts` are denominated in this number, and two
+   * of them pass by very little. Measured on the shipped frames:
+   *
+   *   - the meet frame's `rimContrast.p05` is 11.42, so any anchor above 11.42
+   *     (i.e. `EDGE_LUMA_DELTA` above 22.84) FAILS the shipped meet frame.
+   *   - the descent frame's `rimContrast.p25` is 22.15, so `EDGE_LUMA_DELTA`
+   *     above 22.15 fails the shipped descent frame.
+   *   - had the anchor been the wall's real loudest course (15.09) rather than
+   *     this convention, the meet frame (11.42) AND the descent, hole and drive
+   *     frames (14.61) would all fail RIM_P05 outright.
+   *
+   * That is 2.15 luma of headroom on the whole suite, on a convention. It is
+   * pinned as a headroom test rather than left implicit, so the next person to
+   * turn this number learns what it costs before they turn it and not after.
    *
    * WHAT IT IS NOT: a claim that 9 luma is invisible on a real phone at real
-   * brightness. Nobody has looked at this on a phone. It is a stated, single
-   * place to turn if looking at one says the line is somewhere else.
+   * brightness. Nobody has looked at this on a phone.
    */
-  PERCEPTIBLE_LUMA_STEP: 10,
+  PERCEPTIBLE_LUMA_STEP: EDGE_LUMA_DELTA / 2,
+  /**
+   * Below this, two surfaces meeting at the silhouette are the SAME COLOUR.
+   *
+   * A quarter of the hard-edge step — the same kind of convention as the one
+   * above, and derived from the same anchor. It exists because the percentile
+   * rim numbers are structurally blind to a small collision: a contact that is
+   * two per cent of the crossings sits under `p05` and cannot move it, however
+   * bad it is. `rimDeadShare` counts crossings under this threshold, and its
+   * bound is ZERO — the one ceiling in this piece that is not calibrated against
+   * anything, because "no part of the silhouette may vanish" is not a quantity
+   * you tune.
+   */
+  DEAD_CONTACT_LUMA: EDGE_LUMA_DELTA / 4,
   /**
    * The composition grid: how the visible room is cut up before its content is
    * counted, so "where the furniture is" is a number and not an opinion.

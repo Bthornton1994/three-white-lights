@@ -101,7 +101,15 @@ const GYM_WALL_COLORS: readonly Rgb5[] = [
   // same reason `gymPalette.test.ts` exempts the lamp wash and the glass — an
   // exemption `gymScene.test.ts` checks on the rendered pixels rather than
   // taking on trust.
-  [1, 1, 4], //  1 WALL_DEEP      luma 11  — top of the wall, out of the lamps
+  [1, 1, 4], //  1 WALL_DEEP      luma 11  — top of the wall, out of the lamps.
+  //                                 THE BOTTOM RUNG: nothing in this bank is
+  //                                 darker, so `GYM_DIM_STEP` has no entry for
+  //                                 it and a block course drawn in this band is
+  //                                 a 0.00-luma mark, i.e. no mark. The top 36%
+  //                                 of the wall is therefore FLAT, deliberately
+  //                                 — see `GYM_WALL_PAINT.COURSE_ROWS` for the
+  //                                 decision and `wallCourseDeltas()` below for
+  //                                 the three numbers, pinned by test.
   [3, 3, 5], //  2 WALL_DARK      luma 26  — ref crowd median is 36; ours is the
   //                                 band either side of it. ABOVE HIS CROWN.
   [4, 4, 6], //  3 WALL_MID       luma 34  — the band the lifter's head and
@@ -125,8 +133,11 @@ const GYM_WALL_COLORS: readonly Rgb5[] = [
   //                                 backdrop the figure floats in front of.
   //                                 Block courses are NOT drawn in this: they
   //                                 use `dimIndex` of whatever band they cross,
-  //                                 which keeps every course under
-  //                                 GYM_READABILITY.EDGE_LUMA_DELTA. Texture is
+  //                                 which measures 0.00 / 15.09 / 8.89 luma
+  //                                 top to bottom — every one of them under
+  //                                 GYM_READABILITY.EDGE_LUMA_DELTA (20), and
+  //                                 the top one under everything, because there
+  //                                 is no rung below WALL_DEEP. Texture is
   //                                 allowed; texture that reads as an edge at
   //                                 phone scale is noise.
   [6, 3, 3], //  6 STRIPE_DARK    luma 32  — painted band, shadow side
@@ -160,8 +171,22 @@ const GYM_WALL_COLORS: readonly Rgb5[] = [
   // What would actually solve it is not a colour: it is the crowd's seating
   // sitting below his crown rather than behind it, which is a change to the
   // meet venue's geometry and belongs to whoever owns meet-day art.
-  // The bounds still pass — it is about 2% of rim samples, under the p05 floor
-  // — and that is exactly why the number is written down here.
+  //
+  // WHY THE SUITE PASSES ANYWAY, STATED CORRECTLY THIS TIME. The earlier note
+  // here said "about 2% of rim samples, under the p05 floor", which reads as if
+  // the bound had looked and found the contact acceptable. It had not looked.
+  // Measured on the shipped meet composite: 358 rim crossings, ONE of them at
+  // exactly 0.00 luma (HAIR_DARK against CROWD_MID) and seven at 1.03
+  // (OUTLINE against CROWD_DARK) — 1.96% of the crossings. `rimContrast.p05`
+  // reads the 18th-worst sample. A collision smaller than a twentieth of the
+  // silhouette CANNOT MOVE IT, however bad it is: the percentile is
+  // structurally blind to its own worst contact, and it was passing this frame
+  // for that reason and not because the frame is clean.
+  //
+  // `gymReadability.ts` now also reports `rimWorst` (the minimum) and
+  // `rimDeadShare` (the share of crossings under DEAD_CONTACT_LUMA), and
+  // `gymScene.test.ts` records the meet venue as FAILING the dead-contact
+  // ceiling. That is a real unmet bound on a shipped frame, kept visible.
   [3, 2, 4], // 14 CROWD_DARK     luma 20  — meet venue: the seated dark mass
   [6, 5, 7], // 15 CROWD_MID      luma 45  — meet venue: a lit row of heads
 ];
@@ -348,6 +373,51 @@ export const GYM_DIM_STEP: Readonly<Record<number, number>> = Object.freeze({
 /** The one-step-dimmer index, or the index itself where there is no step. */
 export function dimIndex(index: number): number {
   return GYM_DIM_STEP[index] ?? index;
+}
+
+/**
+ * How loud the mark `dimIndex` makes on `index` actually is, in luma.
+ *
+ * Zero where there is no rung below. This exists because a comment claiming the
+ * room's softest deliberate mark "measures about 10 luma" survived a whole round
+ * of review while the renderer drew 0.00, 15.09 and 8.89 — nobody could check it
+ * without reading three files and doing the arithmetic by hand. Now it is one
+ * call, it is exported, and `gymScene.test.ts` pins it against the rendered
+ * pixels.
+ *
+ * `step` is a parameter so a test can hand it a MUTATED map and show the pins
+ * move. Production callers pass nothing.
+ */
+export function dimDelta(
+  index: number,
+  step: Readonly<Record<number, number>> = GYM_DIM_STEP,
+): number {
+  const here = lumaOfIndex(index);
+  const under = lumaOfIndex(step[index] ?? index);
+  if (here === undefined || under === undefined) return 0;
+  return here - under;
+}
+
+/** The wall bands a block course can cross, dark to light. */
+export const WALL_COURSE_BANDS: readonly number[] = Object.freeze([
+  GYM.WALL_DEEP,
+  GYM.WALL_DARK,
+  GYM.WALL_MID,
+]);
+
+/**
+ * THE ROOM'S REAL SOFTEST DELIBERATE MARK, computed rather than asserted.
+ *
+ * One entry per band of the back wall, top to bottom, giving the luma step the
+ * block course drawn across that band actually produces. On the shipped palette
+ * this is `[0, 15.09, 8.89]` — the first because `WALL_DEEP` is the bottom rung
+ * of the ramp and has nothing under it, which is why the top of the wall carries
+ * no brickwork.
+ */
+export function wallCourseDeltas(
+  step: Readonly<Record<number, number>> = GYM_DIM_STEP,
+): readonly number[] {
+  return WALL_COURSE_BANDS.map((index) => dimDelta(index, step));
 }
 
 /**

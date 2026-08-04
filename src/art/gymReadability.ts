@@ -73,6 +73,23 @@
  * on `rimContrast` is not something any dark room can pass, and pretending
  * otherwise would be inventing a bound nobody can meet.
  *
+ * ---------------------------------------------------------------------------
+ * AND A PERCENTILE IS BLIND TO A SMALL COLLISION, SO IT IS NOT ALONE
+ * ---------------------------------------------------------------------------
+ * `rimContrast.p05` reads the 18th-worst of ~358 crossings. A contact affecting
+ * two per cent of the silhouette cannot move it AT ALL, however bad it is — and
+ * the shipped meet composite has exactly that: one crossing at 0.00 luma, where
+ * the lifter's `HAIR_DARK` meets `CROWD_MID`, plus seven at 1.03 where his
+ * `OUTLINE` meets `CROWD_DARK`. The percentile passed that frame not because the
+ * frame is clean but because the measure could not reach the dirt.
+ *
+ * `rimWorst` (the minimum) and `rimDeadShare` (the share at or under
+ * `GYM_READABILITY.DEAD_CONTACT_LUMA`) are reported for that reason. The share
+ * is what carries a bound, because a minimum over a hundred thousand pixel pairs
+ * is one pixel of noise away from meaning nothing; the ceiling on it is ZERO,
+ * which is the only ceiling in this piece that was not calibrated against the
+ * artifact it judges.
+ *
  * `rimFill` is the same crossing measured as the BEST separation available
  * anywhere in the first `RIM_INSET_PX` pixels of the figure — keyline or the
  * paint behind it. That is the question the eye is actually asking at a
@@ -168,6 +185,15 @@ export interface SceneReadability {
   readonly rimContrast: Percentiles;
   /** The same crossings, taking the best separation the first few px offer. */
   readonly rimFill: Percentiles;
+  /**
+   * The single WORST crossing in the frame, and the share of crossings at or
+   * under `DEAD_CONTACT_LUMA`.
+   *
+   * These exist because the percentiles above cannot see a small collision. See
+   * the block comment at the top of this file.
+   */
+  readonly rimWorst: number;
+  readonly rimDeadShare: number;
 }
 
 const NEIGHBOURS: readonly (readonly [number, number])[] = [
@@ -416,6 +442,11 @@ export function measureSceneReadability(
     rimSamples: rim.length,
     rimContrast: percentiles([...rim].sort((a, b) => a - b)),
     rimFill: percentiles([...rimBest].sort((a, b) => a - b)),
+    rimWorst: rim.length === 0 ? 0 : Math.min(...rim),
+    rimDeadShare:
+      rim.length === 0
+        ? 0
+        : rim.filter((v) => v <= GYM_READABILITY.DEAD_CONTACT_LUMA).length / rim.length,
   };
 }
 
@@ -436,5 +467,6 @@ export function formatReadability(r: SceneReadability): string {
     `bright share ${pct(r.backgroundBrightShare)} at/over ${GYM_READABILITY.FIGURE_BAND_LUMA}, ${pct(r.backgroundOverFigureShare)} over the figure median`,
     `rim keyline  ${r.rimSamples} samples, p05 ${n(r.rimContrast.p05)} p10 ${n(r.rimContrast.p10)} p25 ${n(r.rimContrast.p25)} p50 ${n(r.rimContrast.p50)}`,
     `rim fill     p05 ${n(r.rimFill.p05)} p10 ${n(r.rimFill.p10)} p25 ${n(r.rimFill.p25)} p50 ${n(r.rimFill.p50)}`,
+    `rim worst    ${n(r.rimWorst)} luma, ${pct(r.rimDeadShare)} of crossings at/under ${GYM_READABILITY.DEAD_CONTACT_LUMA}`,
   ].join('\n');
 }
