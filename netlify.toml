@@ -1,17 +1,30 @@
+# `canvaskit.wasm` (Skia's web runtime) is gitignored — it is copied from
+# node_modules by tools/dev-web.sh for local development, so it silently
+# exists on any machine that has ever run that script and silently does NOT
+# exist on a fresh clone. Netlify always builds from a fresh clone.
+#
+# Without the cp below, `npx expo export` still succeeds — it has nothing to
+# complain about, because nothing in the export step reads or requires the
+# file — and produces a `dist/` with no canvaskit.wasm in it at all. The
+# break only shows up in the BROWSER, and confusingly: the app requests
+# `/canvaskit.wasm`, gets Netlify's real 404 for it... which the redirect
+# rule below used to rewrite into a 200 response containing index.html —
+# so the browser handed the WebAssembly compiler an HTML page instead of a
+# missing-file error, and reported it as a corrupt magic number rather than
+# a 404. That confusing failure IS this bug; the fix is two changes.
 [build]
-  command = "npx expo export --platform web --output-dir dist"
+  command = "cp node_modules/canvaskit-wasm/bin/full/canvaskit.wasm public/canvaskit.wasm && npx expo export --platform web --output-dir dist"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
 
-# Static export, but the app resolves its own routing from query strings
-# (?meet=, ?session=, ?replay=) rather than URL paths — there is no
-# expo-router app/ directory in use, so no path-based SPA fallback is
-# needed. This redirect exists only for the case a browser or crawler
-# requests a path that was never exported (e.g. a stray /favicon variant);
-# without it Netlify serves its own 404 page instead of the app shell.
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# No catch-all redirect. This app has no path-based routing to fall back
+# for — expo-router is a dependency but unused (no app/ directory), and
+# in-app navigation is query-string based (?meet=, ?session=, ?replay=) on
+# the one exported index.html. A `/* -> /index.html` redirect was here
+# briefly and is the second half of why this bug was confusing rather than
+# obvious: it turns every missing-file 404 into a 200 that serves HTML in
+# place of whatever was actually requested. A missing asset should 404
+# loudly. If a real path-based route is ever added, restore a SCOPED
+# redirect (exclude asset extensions) rather than a bare `/*`.
