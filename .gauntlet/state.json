@@ -256,6 +256,15 @@
       "status": "majority",
       "verifiable": true,
       "note": "TIERS 2 AND 3 WIN OUTRIGHT; TIER 1 IS FIXED AND ITS LIMIT IS NOW A HUMAN QUESTION. The real-IP audit is default-deny on renderable strings with five plants all caught, a self-scan that fires on its own header, and a citation list pinned in BOTH directions so deleting provenance fails too. Tier 1 colorways were three-of-four INVALID - equipment-bank indices that would have classified a partner singlet as barbell to every silhouette measurement in the codebase - and the check could not see it because it validated them in a Tier 3 sheet palette. Fixed, and Tier 1 now reaches a real rendered sprite. The finding underneath is the valuable part: bank 0 holds only SINGLET, GEAR, HAIR and CHALK for kit, so a partner green or crimson CANNOT exist without spending a palette slot, and 7.3s no-change-at-all claim is true only for partners whose colours bank 0 already has. Logged for a human rather than amended. The builder also returned a qualified NO on the architecture I proposed, naming the CRAM-swap end state the remap only approximates."
+    },
+    {
+      "id": "N1",
+      "name": "App shell / navigation",
+      "verifiable": true,
+      "status": "ungraded",
+      "bar": "A player can reach every mode without a debug URL, and no surface is a dead end.",
+      "evidence": "shell/02-meet-from-session.png",
+      "note": "THE LOOP CLOSES. 47 of 47 checks against the running app, including PRESSING IT REACHES MEET DAY with no URL typed and FINISH A SESSION to REACH A MEET in one press. Every debug route survives, which matters because they drive the evidence harness, and a nonsense meet param boots the session rather than a broken meet. Gating is careful where it counts: no control is drawn over a live set, rest, attempt, verdict or 6.3 attempt choice, and the bomb-out keeps its own way out with the shell explicitly declining to add a second. Mutation 8 is the one to read - deleting the phase effect left the node suite FULLY GREEN at 2183 tests and tsc clean while the browser failed 11 checks, and the builder added a source scan then said plainly it does not close the class because a control at zero opacity would pass it. It found a real defect on the way: 6.5 recap and the result card had NO way out at all while App.tsx claimed both did. Career gating deliberately not built, with the three things that change when it lands written down - including that the gate must be a SERVER decision because a Total is a server fact."
     }
   ],
   "report": {
@@ -415,15 +424,15 @@
       {
         "id": "N1",
         "name": "App shell / navigation",
-        "state": "notstarted",
-        "stateLabel": "Not started",
-        "note": "THE FINDING OF THIS CHECK. MeetScreen is reachable only via a ?meet= debug query param, and no file in src/session imports it or vice versa. A player cannot get from a daily session to a meet inside the app at all."
+        "state": "ungraded",
+        "stateLabel": "Built, not graded",
+        "note": "BUILT AND MERGED. 47 of 47 checks on the running app: a player reaches meet day in one press with no URL typed, and nothing is a dead end. Not yet graded by a critic."
       }
     ],
     "groups": [
       {
-        "title": "MVP — one loop playable end to end on a device",
-        "body": "NOT MET, and the gap is one piece rather than many. Every part of the loop exists and is tested — the session opens on first paint, the lift plays, the meet runs attempt selection, judging, bomb-out and a recap that feeds the result card. What does not exist is the join: MeetScreen is only reachable by typing a debug query parameter. Estimate: 1 build round plus 1 to 2 reworks. HIGH CONFIDENCE — this is structural wiring against components that already work, and the two comparable wiring pieces in this run (V1 read-path, S2 venue) each took one build plus one rework."
+        "title": "MVP — one loop playable end to end on a device — MET",
+        "body": "MET as of this commit, and verified on the running app rather than asserted. A player opens the app, does a daily session, enters a meet, completes it and comes back, without typing a URL: 47 of 47 checks pass, including PRESSING IT REACHES MEET DAY with no query string and FINISH A SESSION to REACH A MEET in one press. The estimate was 1 build plus 1 to 2 reworks at high confidence; it took 1 build and 0 reworks, which is the fastest any piece has landed in this run. Two caveats stated rather than buried: 6.1 Career gating is not built, so there is one ungated door to one local meet; and the already-trained-today surface is unit-tested but has no rendered frame, which is the one place the never-punish argument would want pixels."
       },
       {
         "title": "Alpha — four modes present, math and rules bars won",
