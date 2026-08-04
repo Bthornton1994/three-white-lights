@@ -40,6 +40,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import type { LiftKind } from '../game/meet';
 import type { MeetDayAttempt } from '../game/meetDay';
+import { useOfferCutIn } from '../cutin/CutInHost';
 import { playBeat } from './meetFeedback';
 import { AttemptBoard } from './AttemptBoard';
 import { MEET_PALETTE } from './meetPalette';
@@ -70,6 +71,27 @@ export interface BombOutViewProps {
 
 export function BombOutView({ bombedLift, attempts, onDone }: BombOutViewProps): React.ReactElement {
   const liftLabel = MEET_COPY.LIFT_LABEL[bombedLift];
+
+  // GDD §7.2'S THIRD FIRING MOMENT — "Bombing out, the somber counterpart" —
+  // offered to the gate. This screen only reports that the meet ended this way;
+  // `src/cutin/cutInGate.ts` applies the one-per-session cap and the rate.
+  //
+  // THE BEAT THAT USED TO EAT THIS ONE IS GONE. A lift bombs only by missing
+  // all three, so every bomb-out is preceded by that lift's own third-attempt
+  // walk-out — and while the cap was purely first-come, a meet whose walk-out
+  // rate let it through showed "LAST ONE" over the attempt that ended the meet
+  // and nothing at all here. `cutInGate.ts` §4 now disqualifies a walk-out
+  // while its own lift can still bomb, so that trade is not made.
+  //
+  // IT CAN STILL BE REFUSED, and the honest residual is a DIFFERENT lift's
+  // third attempt: bank a squat, fire the cut-in on the squat's third, bomb the
+  // bench, and this beat meets a spent slot. GDD §11 records why closing that
+  // one would delete §7.2's first firing moment rather than fix anything.
+  //
+  // The cut-in is not a consolation and takes nothing away either — it is a
+  // picture, and the four things above that make this screen not a game-over
+  // screen are unchanged by it.
+  useOfferCutIn([{ kind: 'meet-over', bombedOut: true }]);
 
   // ONE LOW BEAT, WHEN THE FIRST LINE ARRIVES, AND NOTHING ELSE.
   //

@@ -48,7 +48,7 @@
 
 import { BANK_SIZE, colorAt, isTransparentIndex, rgb5ToRgb8 } from './palette';
 import { getPx, type IndexGrid } from './raster';
-import { RIG_GEOMETRY, type Pose } from './rig';
+import { RIG_GEOMETRY, armSpan, forearmSpan, type Pose } from './rig';
 
 // ---------------------------------------------------------------------------
 // TUNING — every threshold this file compares against lives in this one block.
@@ -1089,18 +1089,23 @@ export function limbWindows(geometry: LimbGeometry): readonly FieldWindow[] {
     ['left', -1],
     ['right', 1],
   ] as const) {
-    const shX = centerX + sign * pose.shoulderHalfW * G.ATTACH.ARM_ROOT;
-    const elX = centerX + sign * pose.elbowHalfW;
-    const grip = pose.handHalfW + (sign > 0 ? G.GRIP_ASYMMETRY_PX : 0);
-    const haX = centerX + sign * grip;
+    // THE WINDOW IS THE DRAWN MASS, taken from the same `armSpan`/`forearmSpan`
+    // the composer draws between rather than from a second copy of the
+    // arithmetic. The forearm is three radii over two capsules (see
+    // `RIG_GEOMETRY.FOREARM_R`), so the window is too: measuring a bellied limb
+    // through a straight cone's outline would credit or blame it for pixels it
+    // does not own.
+    const shX = armSpan(pose, sign).shoulderX;
+    const f = forearmSpan(pose, sign);
     windows.push({
       name: `${side} arm`,
       contains: (x, y) =>
         Math.abs(x - centerX) >= torsoOut &&
         Math.sign(x - centerX) === sign &&
         !inAnyHand(x, y) &&
-        (inCapsule(x, y, shX, pose.shoulderY, elX, pose.elbowY, G.UPPER_ARM_R[0], G.UPPER_ARM_R[1], pad) ||
-          inCapsule(x, y, elX, pose.elbowY, haX, pose.handY, G.FOREARM_R[0], G.FOREARM_R[1], pad)),
+        (inCapsule(x, y, shX, pose.shoulderY, f.elbowX, f.elbowY, G.UPPER_ARM_R[0], G.UPPER_ARM_R[1], pad) ||
+          inCapsule(x, y, f.elbowX, f.elbowY, f.bellyX, f.bellyY, G.FOREARM_R[0], G.FOREARM_R[1], pad) ||
+          inCapsule(x, y, f.bellyX, f.bellyY, f.handX, f.handY, G.FOREARM_R[1], G.FOREARM_R[2], pad)),
     });
   }
 

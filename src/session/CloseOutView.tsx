@@ -69,10 +69,25 @@
  * copy selection out of `session.ts`, which is a design question rather than a
  * wiring bug; it is logged in GDD §11.
  *
- * NO CUT-IN FIRES HERE. GDD §7.2 puts PR moments on the cut-in list and caps them
- * at one per session (§12.3 makes more than one a refusal condition), and §7.2
- * also says to "cut art entirely from the early prototypes". Firing none is
- * inside both rules; whoever builds the cut-in piece owns the gate.
+ * ---------------------------------------------------------------------------
+ * THE e1RM PR IS OFFERED TO THE CUT-IN GATE, AND IT DECIDES
+ * ---------------------------------------------------------------------------
+ * GDD §7.2's second firing moment is "PR moments (new e1RM, new total,
+ * qualifying for a higher tier)", and the daily loop's share of that is the
+ * e1RM. This file reports it as a beat to `useOfferCutIn` and decides nothing:
+ * `src/cutin/cutInGate.ts` applies §7.2's one-per-session cap (§12.3's refusal
+ * condition) and the day's scarcity rate. That rate is not decoration here —
+ * `session.test.ts` measures a PR on 30 of 30 sessions at today's tuning, so
+ * without it this screen would interrupt a player EVERY DAY.
+ *
+ * IT REPORTS `isPr`, WHICH IS THE READING'S AND NOT THE CLOSE-OUT'S. Same rule
+ * as the gold on the number above it: if the server disagrees with the client's
+ * prediction, the cut-in follows the server. A cut-in celebrating a record the
+ * screen below it does not show would be the same class of lie as showing a
+ * projection as confirmed.
+ *
+ * There is still no cut-in ART (§7.2, GDD §11): what mounts is the placeholder
+ * Tier 3 panel the licensing system already renders.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -95,6 +110,7 @@ import {
 import type { CloseOutReadings } from '../game/sessionClient';
 import type { ProgressionReading } from '../game/progression';
 import type { SessionCloseOut } from '../game/session';
+import { useOfferCutIn } from '../cutin/CutInHost';
 import { SESSION_PALETTE } from './sessionPalette';
 
 const L = SESSION_LAYOUT;
@@ -247,6 +263,11 @@ export function CloseOutView({
   // PR-NESS IS THE READING'S, NOT THE CLOSE-OUT'S. `closeOut.isPr` is what the
   // client predicted; this is what the record actually did.
   const isPr = e1rm !== null && e1rm.isPr;
+
+  // GDD §7.2's PR moment, offered. An ordinary day reports `achieved: false`
+  // and the gate refuses it — the qualification is the gate's, not a condition
+  // on this call.
+  useOfferCutIn([{ kind: 'record', record: 'e1rm', achieved: isPr }]);
 
   const shownE1rm = useCountUp(
     e1rm?.countFromKg ?? 0,

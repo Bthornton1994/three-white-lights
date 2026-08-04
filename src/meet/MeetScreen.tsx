@@ -23,12 +23,28 @@
  * The one branch that is not a phase is the card: `MeetRecap.card` is a built
  * `ResultCard` and `ResultCardScreen` takes one and nothing else, so the
  * hand-off GDD §6.5 asks for is a state flag here and no new rendering at all.
+ *
+ * ---------------------------------------------------------------------------
+ * THE WHOLE MEET IS ONE CUT-IN SESSION (GDD §7.2)
+ * ---------------------------------------------------------------------------
+ * §7.2 caps cut-ins at "no more than one per session" and does not define
+ * session. `src/cutin/cutInGate.ts` §3 rules that A MEET IS ONE — weigh-in to
+ * recap, not one attempt and not one lift — and this is where that ruling is
+ * applied: `CutInHost` wraps the entire router, so the three third-attempt
+ * walk-outs, the recap and the bomb-out are all competing for a single slot
+ * rather than getting one each. Counting an attempt as a session would allow
+ * four cut-ins in ten minutes, which is the tax §7.2 is written against.
+ *
+ * The router still computes nothing: the session id and the seed are
+ * `cutInGate.ts`'s functions of the meet day.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ResultCardScreen } from '../card/ResultCardScreen';
+import { CutInHost } from '../cutin/CutInHost';
+import { cutInSessionId, cutInSessionSeed } from '../cutin/cutInGate';
 import { meetLoadingRules } from '../game/meet';
 import { MEET_COPY } from '../game/meetTuning';
 import { WEIGHT_CLASSES_KG, lifterCategoryText, weightClassString } from '../game/resultCard';
@@ -142,7 +158,7 @@ export function MeetScreen({
     sex: entry.sex,
     division: entry.division,
     equipment: entry.equipment,
-    weightClassText: weightClassString(entry.bodyweightKg, classes),
+    weightClassText: weightClassString(entry.bodyweight.kilograms, classes),
   });
   const decision = attemptDecisionFor(state.meet, state.context.previousBestByLiftKg);
   const judged = lastAttempt(state);
@@ -153,75 +169,80 @@ export function MeetScreen({
   }
 
   return (
-    <View style={styles.root} testID="meet-screen">
-      {state.phase === 'weigh-in' ? (
-        <WeighInView
-          weighIn={weighIn}
-          lifterName={entry.name}
-          meetName={state.context.meet.name}
-          federation={state.context.meet.federation}
-          categoryText={categoryText}
-          onConfirm={() => dispatch({ kind: 'confirm-weigh-in' })}
-        />
-      ) : null}
+    <CutInHost
+      sessionId={cutInSessionId('meet', state.context.day)}
+      seed={cutInSessionSeed('meet', state.context.day)}
+    >
+      <View style={styles.root} testID="meet-screen">
+        {state.phase === 'weigh-in' ? (
+          <WeighInView
+            weighIn={weighIn}
+            lifterName={entry.name}
+            meetName={state.context.meet.name}
+            federation={state.context.meet.federation}
+            categoryText={categoryText}
+            onConfirm={() => dispatch({ kind: 'confirm-weigh-in' })}
+          />
+        ) : null}
 
-      {state.phase === 'openers' ? (
-        <OpenersView
-          openersKg={state.openersKg}
-          overridden={state.openerOverridden}
-          stepKg={meetLoadingRules(state.meet).declarationIncrement}
-          onSet={(lift, weightKg) => dispatch({ kind: 'set-opener', lift, weightKg })}
-          onConfirm={() => dispatch({ kind: 'confirm-openers' })}
-        />
-      ) : null}
+        {state.phase === 'openers' ? (
+          <OpenersView
+            openersKg={state.openersKg}
+            overridden={state.openerOverridden}
+            stepKg={meetLoadingRules(state.meet).declarationIncrement}
+            onSet={(lift, weightKg) => dispatch({ kind: 'set-opener', lift, weightKg })}
+            onConfirm={() => dispatch({ kind: 'confirm-openers' })}
+          />
+        ) : null}
 
-      {state.phase === 'attempt-select' && decision !== null ? (
-        <AttemptSelectView
-          decision={decision}
-          onChoose={(weightKg) => dispatch({ kind: 'declare', weightKg })}
-        />
-      ) : null}
+        {state.phase === 'attempt-select' && decision !== null ? (
+          <AttemptSelectView
+            decision={decision}
+            onChoose={(weightKg) => dispatch({ kind: 'declare', weightKg })}
+          />
+        ) : null}
 
-      {state.phase === 'walkout' && state.live !== null ? (
-        <WalkoutView
-          attempt={state.live}
-          liftLabel={MEET_COPY.LIFT_LABEL[state.live.lift]}
-          barAndCollarsKg={meetLoadingRules(state.meet).barAndCollarsWeight[state.live.lift]}
-          loadRatio={state.live.loadRatio}
-          holdAtMs={holdWalkoutAtMs}
-        />
-      ) : null}
+        {state.phase === 'walkout' && state.live !== null ? (
+          <WalkoutView
+            attempt={state.live}
+            liftLabel={MEET_COPY.LIFT_LABEL[state.live.lift]}
+            barAndCollarsKg={meetLoadingRules(state.meet).barAndCollarsWeight[state.live.lift]}
+            loadRatio={state.live.loadRatio}
+            holdAtMs={holdWalkoutAtMs}
+          />
+        ) : null}
 
-      {state.phase === 'lift' ? <AttemptView state={state} onResolved={onResolved} /> : null}
+        {state.phase === 'lift' ? <AttemptView state={state} onResolved={onResolved} /> : null}
 
-      {(state.phase === 'deliberation' || state.phase === 'verdict') && judged !== null ? (
-        <VerdictView
-          attempt={judged}
-          liftLabel={MEET_COPY.LIFT_LABEL[judged.lift]}
-          revealed={state.phase === 'verdict'}
-          barAndCollarsKg={meetLoadingRules(state.meet).barAndCollarsWeight[judged.lift]}
-          loadRatio={stageLoadRatio(state.context, judged.lift, judged.weightKg)}
-        />
-      ) : null}
+        {(state.phase === 'deliberation' || state.phase === 'verdict') && judged !== null ? (
+          <VerdictView
+            attempt={judged}
+            liftLabel={MEET_COPY.LIFT_LABEL[judged.lift]}
+            revealed={state.phase === 'verdict'}
+            barAndCollarsKg={meetLoadingRules(state.meet).barAndCollarsWeight[judged.lift]}
+            loadRatio={stageLoadRatio(state.context, judged.lift, judged.weightKg)}
+          />
+        ) : null}
 
-      {state.phase === 'bombed' ? (
-        <BombOutView
-          bombedLift={bombedLiftOf(state)}
-          attempts={state.attempts}
-          onDone={leave}
-        />
-      ) : null}
+        {state.phase === 'bombed' ? (
+          <BombOutView
+            bombedLift={bombedLiftOf(state)}
+            attempts={state.attempts}
+            onDone={leave}
+          />
+        ) : null}
 
-      {state.phase === 'recap' ? (
-        recap === null ? (
-          <View style={styles.waiting} testID="meet-recap-waiting">
-            <Text style={styles.waitingText}>{MEET_COPY.RECAP_EYEBROW}</Text>
-          </View>
-        ) : (
-          <RecapView recap={recap} attempts={state.attempts} onSeeCard={onSeeCard} />
-        )
-      ) : null}
-    </View>
+        {state.phase === 'recap' ? (
+          recap === null ? (
+            <View style={styles.waiting} testID="meet-recap-waiting">
+              <Text style={styles.waitingText}>{MEET_COPY.RECAP_EYEBROW}</Text>
+            </View>
+          ) : (
+            <RecapView recap={recap} attempts={state.attempts} onSeeCard={onSeeCard} />
+          )
+        ) : null}
+      </View>
+    </CutInHost>
   );
 }
 

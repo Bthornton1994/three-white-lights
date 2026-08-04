@@ -407,12 +407,25 @@ export const DOTS_DELTA_ZERO_PREFIX = '';
 // WHAT IS DELIBERATELY NOT CLOSED HERE:
 //
 //   - The BODYWEIGHT is still a bare `number` on `dotsScore` / `evaluateDots` /
-//     `evaluateMeetDots`. It does not cross a module boundary — no game module
-//     produces it — so there is no reading to attach a unit to, and branding it
-//     would change every call site in the codebase to close a hazard nobody has
-//     hit. A caller who converts a pound meet must convert BOTH numbers; the
-//     refusal message says so in as many words, and that is the whole of the
-//     defence on that axis. Stated rather than defended, on purpose.
+//     `evaluateMeetDots`. Those three take a number and clamp it to the domain;
+//     they cannot see where it came from and this round did not change them.
+//
+//     WHAT DID CHANGE, and the sentence that used to sit here was wrong about
+//     it: the claim was "it does not cross a module boundary — no game module
+//     produces it". `MeetResultReport`'s bodyweight crosses the progression
+//     boundary and `meetServer.ts` writes it into permanent progression, which
+//     is a harder boundary than this one — a wrong DOTS score is a wrong screen,
+//     a wrong stored bodyweight is a wrong screen forever. That number now
+//     travels as a `BodyweightReading` (above) and `applyMeetResult` refuses one
+//     that is not in kilograms, the same way `officialTotalFromMeet` refuses a
+//     total.
+//
+//     So the honest statement of the residual is narrower than it was: the
+//     bodyweight has a unit on the WRITE path, and does not have one on this
+//     module's own three scoring entry points, where the caller is holding a
+//     number it has already narrowed. Widening those three is a change to every
+//     call site in the codebase and closes a hazard the write path now catches
+//     first; it is not done, and it is not claimed to be.
 //   - `officialTotalKg(kilogramsFromPounds(reading.total))` compiles and scores
 //     correctly. That IS the intended escape: two named calls, both greppable,
 //     one of which is the module's existing written-down assertion. What it is not
@@ -517,6 +530,66 @@ export type MeetTotalReading =
   | { readonly kind: 'final'; readonly total: number; readonly unit: string }
   /** Meet over with a bombed lift: NO total, which is not a total of zero. */
   | { readonly kind: 'no-total'; readonly total: null; readonly unit: string };
+
+/**
+ * A bodyweight with the unit it was WEIGHED IN attached — the second half of
+ * `MeetTotalReading`, for the other number a DOTS score needs.
+ *
+ * WHY IT EXISTS. This module used to say, in as many words, that the bodyweight
+ * was "still a bare `number` ... it does not cross a module boundary — no game
+ * module produces it — so there is no reading to attach a unit to". That was
+ * true of `dotsScore(sex, bodyweightKg, total)`, whose parameter is still a bare
+ * number, and it was NOT true one module over: `MeetResultReport.bodyweightKg`
+ * crosses the progression boundary and is written into permanent progression by
+ * `meetServer.ts`. A bare number named `Kg` is not a kilogram, and 203.7 lb sits
+ * inside `DOTS_BODYWEIGHT_DOMAIN_KG` (40–210 male), so nothing anywhere clamped,
+ * refused or flagged a lifter entered in pounds — they were scored against a
+ * 2.2x-too-heavy denominator and filed in the heaviest weight class, permanently.
+ *
+ * THE SHAPE IS A TAGGED PAIR, NOT A BRAND, and the choice is load-bearing:
+ *
+ *   - The consumer that has to be convinced is a SERVER, and the value reaches
+ *     it as JSON. A TypeScript brand is erased at runtime, so an Edge Function
+ *     would receive a bare number again and would have proven nothing. A `unit`
+ *     field survives `JSON.stringify` and is the thing a real server can read.
+ *   - `TotalReading` is the codebase's own precedent for "a number that travels
+ *     with its unit across a module boundary", and it is a tagged pair.
+ *   - The `Confirmed`/`Projected` brands mark PROVENANCE, which works because
+ *     their mint is module-private. A unit brand's mint cannot be private — the
+ *     caller has to be able to make one — so it would be a label nobody enforces.
+ *
+ * THE ARMS CARRY DIFFERENT FIELD NAMES ON PURPOSE. `kilograms` exists only on
+ * the `'kg'` arm, so a consumer cannot reach a kilogram number without having
+ * narrowed on the unit first: deleting the check in `meetServer.ts` is a COMPILE
+ * error, not a silently passing test. There is no `value` field precisely
+ * because a `value` would be reachable from both arms and would put the hole
+ * straight back.
+ *
+ * WHAT IT DOES NOT DO. It does not convert. lb→kg is exact
+ * (`kilogramsFromPounds`) and this module still refuses rather than converting,
+ * for the reason UNITS gives above and GDD §11 has not yet ruled on. A reading
+ * in pounds is a reading this pipeline says no to; it is not an input to a
+ * multiply that happens quietly.
+ *
+ * WHAT IT STILL CANNOT STOP: a caller writing `{ unit: 'kg', kilograms: 203.7 }`
+ * over a number that came off a pound scale. That is a lie the caller has to
+ * type out, the same residual UNITS names for `unit: 'kg'` on a hand-built
+ * `TotalReading`. Nothing here is tamper-resistance.
+ */
+export type BodyweightReading =
+  /** Weighed in kilograms. The only unit anything downstream of here scores. */
+  | { readonly unit: 'kg'; readonly kilograms: number }
+  /** Weighed in pounds. Carried so it can be REFUSED by name, not converted. */
+  | { readonly unit: 'lb'; readonly pounds: number };
+
+/**
+ * The arm of `BodyweightReading` that a kilogram consumer can actually use.
+ *
+ * Named rather than written out at each use so "this number has been proven to
+ * be kilograms" is one type with one spelling. `Extract` rather than a second
+ * literal so it cannot drift from the union.
+ */
+export type KilogramBodyweight = Extract<BodyweightReading, { readonly unit: 'kg' }>;
 
 /**
  * The key a coefficient's numeric value lives under. Module-private and a

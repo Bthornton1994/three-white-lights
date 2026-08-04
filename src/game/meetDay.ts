@@ -173,7 +173,7 @@ import {
   MEET_COPY,
   MEET_TUNING,
   type MeetDefinition,
-  type MeetEntry,
+  type KilogramMeetEntry,
   type MeetSoundId,
 } from './meetTuning';
 
@@ -213,7 +213,14 @@ export interface MeetDayContext {
   /** Integer streak day. Resolved outside — this module never reads a clock. */
   readonly day: number;
   readonly meet: MeetDefinition;
-  readonly entry: MeetEntry;
+  /**
+   * KILOGRAMS, PROVEN BY THE TYPE. `KilogramMeetEntry` rather than `MeetEntry`,
+   * so a lifter who weighed in on a pound scale does not compile into a meet.
+   * Everything below reads `entry.bodyweight.kilograms` with no narrow because
+   * of this line. See `meetTuning.ts` for why it is a narrowing and not a ruling
+   * on GDD §11.
+   */
+  readonly entry: KilogramMeetEntry;
   /** Best e1RM on record per lift, kg. The opener is suggested from it. */
   readonly bestE1rmKg: Readonly<Record<LiftKind, number>>;
   /** Best competition total on record before today, kg, or null. */
@@ -621,19 +628,20 @@ export interface WeighIn {
  * them; `resultCard.ts` owns the published list and this module does not
  * restate it.
  */
-export function weighInFor(entry: MeetEntry, classesKg: readonly number[]): WeighIn {
+export function weighInFor(entry: KilogramMeetEntry, classesKg: readonly number[]): WeighIn {
+  const bodyweightKg = entry.bodyweight.kilograms;
   let limit: number | null = null;
   for (const candidate of classesKg) {
-    if (entry.bodyweightKg <= candidate) {
+    if (bodyweightKg <= candidate) {
       limit = candidate;
       break;
     }
   }
   const cuttingClose =
-    limit !== null && limit - entry.bodyweightKg <= MEET_TUNING.WATER_CUT_MARGIN_KG;
+    limit !== null && limit - bodyweightKg <= MEET_TUNING.WATER_CUT_MARGIN_KG;
   const top = classesKg[classesKg.length - 1];
   return {
-    bodyweightKg: entry.bodyweightKg,
+    bodyweightKg,
     weightClassText: limit === null ? `${top ?? ''}+` : String(limit),
     classLimitKg: limit,
     cuttingClose,
@@ -1199,7 +1207,11 @@ export function meetResultProposal(
     kind: 'record-meet-result',
     report: {
       meetId: meetIdFor(state.context.meet),
-      bodyweightKg: state.context.entry.bodyweightKg,
+      // FORWARDED, NOT STAMPED. The unit rides out of the entry the lifter was
+      // weighed in under; this function does not know one and must not invent
+      // one, or `meetServer.ts`'s refusal would be checking a literal typed
+      // here rather than a fact.
+      bodyweight: state.context.entry.bodyweight,
       attempts: meetAttemptReports(state),
     },
   };
@@ -1357,7 +1369,7 @@ export function buildMeetRecap(state: MeetDayState, confirmed: ConfirmedMeetFact
     lifter: {
       name: entry.name,
       sex: entry.sex,
-      bodyweightKg: entry.bodyweightKg,
+      bodyweightKg: entry.bodyweight.kilograms,
       division: entry.division,
       equipment: entry.equipment,
     },

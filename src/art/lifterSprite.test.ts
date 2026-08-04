@@ -1177,45 +1177,79 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
     }
   });
 
-  it('KNOWN GAP: the far arm spends more of itself on the ramp floor than the reference ever does', () => {
-    // THIS CLAUSE IS NOT MET, AND IT IS PINNED IN BOTH DIRECTIONS RATHER THAN
-    // LOOSENED UNTIL IT PASSES.
+  it('KNOWN GAP: an arm spends more of itself on the ramp floor than the reference ever does', () => {
+    // THIS CLAUSE IS STILL NOT MET, AND IT IS STILL PINNED IN BOTH DIRECTIONS
+    // RATHER THAN LOOSENED UNTIL IT PASSES. It is closer than it was, by a
+    // measured amount, and the numbers below are that measurement and nothing
+    // else.
     //
     // The bound is the same factor-free one as everywhere else in this block:
     // a window's share of pixels on the darkest entry of its ramp, against the
-    // worst any same-sized patch of the reference's skin reaches. Five of the
-    // six windows clear it at every pose. The screen-right ARM does not: it
-    // exceeds the reference's worst comparable patch in the frames counted
-    // below, by the margin counted below.
+    // worst any same-sized patch of the reference's skin reaches. Four of the
+    // six windows clear it at every pose; both ARMS do not, at the poses
+    // counted below.
     //
-    // WHY, measured rather than guessed: at 96x72 our forearm is four pixels
-    // wide, and `INTERIOR_EDGE.SKIN` puts a one-pixel contour down both sides
-    // of it. The contour is the ramp's darkest entry by construction
-    // (`EDGE_STEP_DROP`), so a third of a four-pixel limb is on the floor
-    // before any shading happens. The reference wrestler's arms are eight to
-    // ten pixels wide and pay a much smaller perimeter tax. Closing this needs
-    // either a wider limb in `rig.ts` or a contour that is not a whole ramp
-    // step down — neither is a shading change, and neither is this round's.
+    // WHAT CHANGED, AND WHAT IT BOUGHT. The forearm was a cone, `FOREARM_R`
+    // [2.0, 1.7], six drawn pixels across with a one-pixel contour down each
+    // flank; the contour is the ramp's darkest entry by construction
+    // (`SHADING.EDGE_STEP_DROP`), so a third of it was on the floor before any
+    // shading happened. It is now a bellied three-radius chain, [2.1, 2.8,
+    // 1.9]. Measured over this same 448-frame sweep:
     //
-    // The pins go BOTH WAYS on purpose. If the sprite improves, `violations`
-    // drops and this test goes RED, and whoever fixed it has to come here and
-    // say so. It cannot decay into a pass.
-    const MAX_FLOOR_EXCESS_FRAMES = 210;
-    const MIN_FLOOR_EXCESS_FRAMES = 1;
-    const MAX_FLOOR_EXCESS = 0.1;
-    let violations = 0;
+    //                            before     after
+    //   far arm floor share      37.1%      31.1%   (mean over the sweep)
+    //   ...worst frame           50.0%      40.5%
+    //   clearance under bound     0.7 pt     4.6 pt (mean)
+    //   window on ramp step 1    34.1%      38.4%   (pixels, whole sweep)
+    //   frames over the bound      200         80
+    //
+    // The frame count is 8 x the number of distinct arm DRAWINGS that fail,
+    // because pitch and plate colour do not move an arm: 25 far-arm drawings
+    // before, 8 far-arm and 2 near-arm now, out of 56 poses.
+    //
+    // WHY IT IS NOT ZERO, stated rather than glossed. A limb's floor share is
+    // its perimeter over its area, so closing the gap entirely means a wider
+    // arm; and `neighbourhoodProfile`'s bound gets STRICTER as the window
+    // grows, so past a certain width the extra pixels cost more bound than they
+    // buy. `RIG_GEOMETRY.FOREARM_R` carries the swept numbers: the far arm's
+    // mean clearance peaks at a belly of 2.8 and falls either side of it. Widths
+    // that beat 80 frames exist — a 3.2/2.4 cone reaches 8 — and they draw a
+    // forearm thicker than the upper arm above it and close the negative space
+    // between the arm and the ribs. That is the trade, and it was declined.
+    //
+    // THE NEAR ARM IS NEW HERE AND IS NOT SWEPT UNDER THE RUG. Before, only the
+    // far arm ever exceeded. The near arm's own mean clearance is 13.2 points,
+    // four times the far arm's, but its window grew with the same forearm and
+    // two of its 56 drawings now cross. Both limbs are counted separately below
+    // so neither can hide inside the other's total.
+    //
+    // The pins go BOTH WAYS on purpose. If the sprite improves, these counts
+    // drop and this test goes RED, and whoever fixed it has to come here and say
+    // so. It cannot decay into a pass.
+    const FLOOR_EXCESS_FRAMES = { 'right arm': 64, 'left arm': 16 } as const;
+    // The worst single frame is ASCENT d0.65 s2, whose far-arm window is 0.380
+    // floor, and it clears its bound by exactly 0.04. Exactly, because both
+    // sides are ratios of small integer pixel counts; no reference figure is
+    // restated here, because the bound is computed above from the decoded PNG
+    // and a number printed in a comment is the thing `@ref` exists to stop.
+    // 0.041 rather than 0.05 because this is a ratchet and the only slack it
+    // needs is enough not to fail on the value it was measured at.
+    const MAX_FLOOR_EXCESS = 0.041;
+    const counted = new Map<string, number>();
     let worstExcess = 0;
     for (const { name, stats } of eachLimb()) {
       const excess = stats.floorShare - refProfileAt(stats.count).maxFloorShare;
       if (excess <= 0) continue;
-      expect(name, 'only the far arm is known to exceed the reference floor share').toBe(
-        'right arm',
-      );
-      violations += 1;
+      expect(
+        Object.keys(FLOOR_EXCESS_FRAMES),
+        'only the arms are known to exceed the reference floor share',
+      ).toContain(name);
+      counted.set(name, (counted.get(name) ?? 0) + 1);
       worstExcess = Math.max(worstExcess, excess);
     }
-    expect(violations).toBeGreaterThanOrEqual(MIN_FLOOR_EXCESS_FRAMES);
-    expect(violations).toBeLessThanOrEqual(MAX_FLOOR_EXCESS_FRAMES);
+    // Exact, per limb, both directions at once: a count that moves either way
+    // fails and has to be re-measured by hand.
+    expect(Object.fromEntries(counted)).toEqual(FLOOR_EXCESS_FRAMES);
     expect(worstExcess).toBeLessThan(MAX_FLOOR_EXCESS);
   });
 
