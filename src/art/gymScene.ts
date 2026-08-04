@@ -105,13 +105,21 @@ export interface GymSceneSpec {
   /** Camera position in scene pixels. Layers slide at `GYM_PARALLAX` rates. */
   readonly cameraX: number;
   /**
-   * Scene rows the seated crowd has come UP by — a hall on its feet.
+   * How far through the STANDING WAVE the seated crowd is — a hall on its feet.
    *
    * Absent or 0 on every room this file builds and on every screen outside meet
    * day, which is both the default and the point: a training gym has no crowd
    * at all (`GYM_VENUE['training-gym'].CROWD`), and a meet hall is seated unless
    * something is happening to it. `src/game/meetTuning.ts`'s `CROWD` block owns
    * WHEN it is non-zero and by how much; this file only draws it.
+   *
+   * IT IS NOT A UNIFORM RISE, and the difference is the whole reason the band
+   * still reads as people. This is scene rows of the FRONT tier's travel; each
+   * tier behind it lags by `GYM_CROWD.ROW_RISE_LAG_PX` and none may pass
+   * `GYM_CROWD.ROW_RISE_MAX_PX`, so a value past the cap does not make anybody
+   * taller — it pushes the wave further back into the hall. See `crowdRowRise`
+   * for the arithmetic that forced it: at this pitch a spectator has one row of
+   * air above them, so a uniform rise of 2 already welds the tiers together.
    *
    * IT ONLY EVER MOVES CROWD PIXELS UPWARD. `paintCrowd` lifts each silhouette's
    * head and stretches its shoulders down to the base it already had, so the
@@ -281,6 +289,57 @@ export function crowdFrontRow(spec: GymSceneSpec): number {
   return Math.max(0, junctionRow(spec) - GYM_CROWD.RISER_ROWS);
 }
 
+/**
+ * How many rows of seating the band holds — the number of tiers, not rows of
+ * pixels.
+ *
+ * Exported because the escalation is a WAVE across these rows and both
+ * `gymScene.test.ts` and `walkout.test.ts` need to reason about which tier is
+ * which. See `crowdRowRise`.
+ */
+export function crowdTierCount(spec: GymSceneSpec): number {
+  const bottom = crowdFrontRow(spec);
+  const top = Math.max(0, bottom - GYM_VENUE[spec.venue].CROWD_ROWS);
+  return Math.max(1, Math.ceil((bottom - top) / GYM_CROWD.ROW_PITCH));
+}
+
+/**
+ * How far ONE tier of seating has come up, given how far through the wave the
+ * hall is.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS NOT JUST `rise`, WITH THE ARITHMETIC THAT FORCED IT
+ * ---------------------------------------------------------------------------
+ * A spectator is `HEAD_H + SHOULDER_ROWS` = 5 rows tall on a `ROW_PITCH` of 6,
+ * so a seated hall has exactly ONE row of air between tiers. `paintCrowd` grows
+ * a figure upward while pinning its seat, so a figure at rise R spans `R + 5`
+ * rows — and **every R >= 2 therefore lands on the tier behind it**. Where two
+ * tiers meet, the stagger that makes them read as separate people is what closes
+ * the row: a 5-wide shoulder run at `ROW_STAGGER` 3 and a 3-wide head run on a
+ * 7-column pitch cover all seven columns between them, so the row goes solid.
+ * Measured on the rendered band: at a uniform rise of 4, four rows in every six
+ * are a full-width slab; at 5, five in six.
+ *
+ * Two things answer it, and both are needed:
+ *
+ *   1. THE WAVE, here. A real hall does not inflate uniformly — the front rows
+ *      come up first and the back rows follow. `rise` is how far the FRONT tier
+ *      has come up; each tier behind it lags by `ROW_RISE_LAG_PX` and none may
+ *      pass `ROW_RISE_MAX_PX`. So the band keeps its texture in the tiers that
+ *      have not moved yet, and the escalation has somewhere to go.
+ *   2. THE KEYLINE, in `paintCrowd`. A dark rim around each silhouette, drawn
+ *      over whatever is behind it. That is what an artist draws when two figures
+ *      overlap, and it is what keeps air in a row two tiers now share.
+ *
+ * At `rise` 0 every tier is 0 and the band is bit-for-bit the seated hall.
+ */
+export function crowdRowRise(rise: number, tiersFromFront: number): number {
+  return Math.min(
+    GYM_CROWD.ROW_RISE_MAX_PX,
+    Math.max(0, rise - tiersFromFront * GYM_CROWD.ROW_RISE_LAG_PX),
+  );
+}
+
 function paintCrowd(g: IndexGrid, spec: GymSceneSpec): void {
   const venue = GYM_VENUE[spec.venue];
   if (!venue.CROWD) return;
@@ -291,15 +350,38 @@ function paintCrowd(g: IndexGrid, spec: GymSceneSpec): void {
   const bottom = crowdFrontRow(spec);
   const top = Math.max(0, bottom - venue.CROWD_ROWS);
   const shift = layerOffset(spec.cameraX, GYM_PARALLAX.WALL);
-  // How far this hall is on its feet. Whole rows, never negative, and clipped
-  // into the band below. See `GymSceneSpec.crowdRisePx`.
+  // How far the FRONT tier of this hall is on its feet. Whole rows, never
+  // negative. See `GymSceneSpec.crowdRisePx` and `crowdRowRise`.
   const rise = Math.max(0, Math.round(spec.crowdRisePx ?? 0));
+  const tiers = crowdTierCount(spec);
+  const keyRows = GYM_CROWD.KEYLINE_ROWS;
+  const keyCols = GYM_CROWD.KEYLINE_COLS;
 
   paintBanner(g, spec, junction, top);
+
+  /**
+   * A rect clipped to the band's own rows.
+   *
+   * The keyline is the only thing here that reaches outside a figure, and both
+   * directions matter: a rim above the back tier would paint seating onto the
+   * wall and extend the band; a rim below the front tier would paint it over the
+   * barrier, which is the one edge that puts the crowd BEHIND the platform.
+   */
+  const fillInBand = (x0: number, y0: number, w: number, h: number, index: number): void => {
+    const a = Math.max(top, y0);
+    const b = Math.min(bottom, y0 + h);
+    if (b <= a) return;
+    fillRect(g, x0, a, w, b - a, index);
+  };
 
   fillRect(g, 0, top, spec.w, bottom - top, GYM.CROWD_DARK);
   let row = 0;
   for (let y = top; y < bottom; y += GYM_CROWD.ROW_PITCH) {
+    // Tiers are drawn back to front, so a tier's keyline cuts into the tier
+    // BEHIND it and never into the one in front. That is the whole reason the
+    // rim reads as one spectator standing in front of another rather than as a
+    // scratch: it is occlusion, drawn in the order occlusion happens.
+    const rowRise = crowdRowRise(rise, tiers - 1 - row);
     const stagger = row % 2 === 0 ? 0 : GYM_CROWD.ROW_STAGGER;
     const first = wrapStart(stagger + shift, GYM_CROWD.HEAD_COLS);
     for (let x = first; x < spec.w; x += GYM_CROWD.HEAD_COLS) {
@@ -315,12 +397,37 @@ function paintCrowd(g: IndexGrid, spec: GymSceneSpec): void {
       // `ROW_PITCH`, so a pure translation by a whole pitch would redraw the
       // same crowd. Growing each figure keeps the base where it was, which is
       // what stops a rise reaching down toward the lifter.
-      const headTop = Math.max(top, y - rise);
+      const headTop = Math.max(top, y - rowRise);
       const headH = Math.min(GYM_CROWD.HEAD_H, Math.max(0, bottom - headTop));
-      fillRect(g, x, headTop, GYM_CROWD.HEAD_W, headH, GYM.CROWD_MID);
       const shoulderTop = headTop + GYM_CROWD.HEAD_H;
       const seatRow = Math.min(bottom, y + GYM_CROWD.HEAD_H + GYM_CROWD.SHOULDER_ROWS);
       const shoulderH = Math.max(0, seatRow - shoulderTop);
+      // THE KEYLINE, both rects grown by `KEYLINE_PX` and stamped in the band's
+      // own dark before either silhouette is filled — the same two-pass shape
+      // `raster.ts`'s `drawLimbChain` uses on the lifter, and for the same
+      // reason: growing every rect first makes the rim the outline of the UNION
+      // rather than a seam between the head and the shoulders.
+      //
+      // AT REST IT IS A NO-OP, bit for bit. A seated figure spans 5 of the 6
+      // rows of its pitch and 5 of the 7 columns of its own, so every pixel the
+      // rim touches is already `CROWD_DARK`. It only draws where a tier has come
+      // up far enough to land on the one behind it — which is exactly where the
+      // band used to go solid.
+      fillInBand(
+        x - keyCols,
+        headTop - keyRows,
+        GYM_CROWD.HEAD_W + keyCols * 2,
+        headH + keyRows * 2,
+        GYM.CROWD_DARK,
+      );
+      fillInBand(
+        x - 1 - keyCols,
+        shoulderTop - keyRows,
+        GYM_CROWD.HEAD_W + 2 + keyCols * 2,
+        shoulderH + keyRows * 2,
+        GYM.CROWD_DARK,
+      );
+      fillRect(g, x, headTop, GYM_CROWD.HEAD_W, headH, GYM.CROWD_MID);
       fillRect(g, x - 1, shoulderTop, GYM_CROWD.HEAD_W + 2, shoulderH, GYM.CROWD_MID);
     }
     row += 1;
