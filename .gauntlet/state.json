@@ -261,10 +261,10 @@
       "id": "N1",
       "name": "App shell / navigation",
       "verifiable": true,
-      "status": "rework",
+      "status": "grading",
       "bar": "A player can reach every mode without a debug URL, and no surface is a dead end.",
       "evidence": "shell/02-meet-from-session.png",
-      "note": "BOTH NAMED DEFECTS CLOSED AND VERIFIED - AND THE CRITIC FOUND THE SCREEN NOBODY HAS EVER LOOKED AT. What is genuinely closed: the phase-gate answer sheet is independent (emptying SESSION_PHASES reddens 7 assertions, MEET_PHASES 5, and tsc still passes on both - so the TESTS are carrying it, correctly), and the opacity measurement is real, with 0.925 after 3918ms reconciling against BombOutView fading to terminal 1.0 from 3600ms over 620ms. The critic re-derived that number from meetTuning.ts rather than accepting it. THE GAP, and I verified every link myself: SessionScreen.tsx:57-64 renders the already-trained surface as TWO TEXT NODES WITH NO PRESSABLE OF ITS OWN, so the shell pill is its only affordance - and CloseOutView DONE calls restartDay, which rebuilds against a cache that now records today, so alreadyTrainedToday is true. That makes it THE TERMINAL SCREEN OF THE DAILY LOOP, reached by every player every day, with zero pixels behind it. The recorded reason it could not be driven is false: capture-session.mjs already drives the played un-previewed loop from / with real mouse presses, and verify-shell-route.mjs measures the DONE button’s box without ever pressing it. Dispatched. Also going out: the result card is the OTHER sole-exit surface and is checked with checkOnScreen alone, so \"not a dead end\" is established as drawn rather than leavable."
+      "note": "PLAYING THE GAME FOUND A REAL BUG THAT 2234 TESTS COULD NOT SEE - and it was in the shipped daily loop, not in a test. useSession.ts’s close-out effect listed liveCache in its deps AND wrote liveCache in its body, so setLiveCache changed the deps, the cleanup cancelled the in-flight request, and the re-run short-circuited on submittedRef. THE SERVER’S ANSWER WAS DISCARDED. Measured: 22 SECONDS stuck on SAVING against a stand-in server that answers in 550ms - and pressing DONE offered A SECOND SESSION OF THE SAME DAY, so the already-trained surface was UNREACHABLE BY PLAYING. Every one of 2234 tests passed on that tree. sessionClient.test.ts drives the same round trip through the same functions and settles correctly, because the defect is in the EFFECT’S WIRING and there is no renderer in the node suite to run an effect. The builder crossed its fence to fix it, in its own revertable commit, and said so - the assigned screen could not be reached otherwise. I RAN THE TOOL MYSELF on the merged tree: 74 checks, zero failures, zero page errors, clean tree, 14 reps in 58 seconds, close-out settling in 562ms. The terminal screen of the daily loop is photographed for the first time: TRAINED TODAY / Come back tomorrow. The bar keeps. / MEET DAY. The styles.centred argument is now a measurement WITH A PIN - copy that grows enough to matter fails before it collides. The result card got the same three instruments. The fourth uncross-checked copy of the phase list is tied in with a parser positive control. And the cut-in chrome bug is closed: no shell control is drawn over a cut-in, verified in pixels with a positive control proving the pill IS there and hit-testable on the same beat with no cut-in up. Cost: ~113 seconds of wall clock, 66-73 of it the played session. Six consecutive runs converged."
     },
     {
       "id": "A4",
@@ -432,9 +432,9 @@
       {
         "id": "N1",
         "name": "App shell / navigation",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "Phase gates and the opacity check are both genuinely closed. But the terminal screen of the daily loop — the already-trained surface, which has no pressable of its own and is reached by every player every day — has never been rendered by any check, and the recorded reason it could not be is refuted by the repo's own capture tool. Dispatched."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "Playing the loop with a mouse found a real shipped bug 2234 tests could not see: the close-out discarded the server's answer, and pressing DONE offered a second session of the same day. The terminal screen is photographed at last. I re-ran the tool: 74 checks, zero failures."
       }
     ],
     "groups": [
