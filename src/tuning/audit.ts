@@ -276,6 +276,19 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     why: 'DEG, the hair-cap inset and the inspection stage backdrop. Poses are in rig.ts.',
   }),
 
+  // --- measurement bounds, not knobs ---------------------------------------
+  // `CRAFT` holds the thresholds the sprite is GRADED against, most of them
+  // derived at load from the decoded reference image rather than typed in. That
+  // makes it `local` rather than `feel`: a playtester never turns these, and
+  // putting them in the tuning index would invite someone to loosen a bound
+  // instead of fixing the sprite — which is the exact move the reference
+  // measurement exists to prevent.
+  'src/art/craftMetrics.ts': Object.freeze({
+    role: 'constants',
+    kind: 'local',
+    why: 'CRAFT — bar thresholds for grading sprite craft, mostly derived from the decoded reference. Feel values are in SPRITE_TUNING.',
+  }),
+
   // --- build configuration -------------------------------------------------
   // Not game code and not a knob, but audited anyway rather than exempted,
   // because the walk starting at the repository root is the property that makes

@@ -503,6 +503,7 @@ describe('the registered allowlist', () => {
         'src/art/spriteMarks.ts',
         'src/art/spriteTuning.ts',
         'src/art/squatAnimation.ts',
+        'src/art/craftMetrics.ts',
         'src/card/cardTuning.ts',
         'src/card/pixelFont.ts',
         'src/card/sampleCards.ts',
