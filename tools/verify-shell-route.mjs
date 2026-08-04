@@ -42,9 +42,17 @@
  *   8. The shell's chrome shows no Total (GDD §3.2: Total moves on meet day and
  *      no other day) and no fatigue readout (§3.4, §12.3).
  *
+ * "ON SCREEN" HERE MEANS DRAWN, NOT MOUNTED. Every positive check above goes
+ * through `onScreen`, which measures the element's effective opacity, because
+ * Playwright's `isVisible()` and `elementFromPoint` DO NOT CONSIDER OPACITY and
+ * this tool has already once reported a control as present at the exact moment
+ * it was invisible. The block above `onScreen` has the whole story and the
+ * photograph that proves it.
+ *
  * The testIDs are written out here rather than imported, on the same principle
  * as `capture-session.mjs`'s moment list: a check that reads its expectations
- * out of the module under test agrees with a broken module.
+ * out of the module under test agrees with a broken module. `BOMB_OUT_*` below
+ * is restated for the same reason.
  *
  * Usage:
  *   node tools/verify-shell-route.mjs [--url URL] [--settle MS] [--out DIR]
@@ -61,10 +69,50 @@ const flag = (name, dflt) => {
 
 const url = flag('url', 'http://localhost:8081');
 const outDir = path.resolve(flag('out', '.gauntlet/shots/shell'));
-// Must exceed SHELL_NAV.FADE_IN_DELAY_MS + FADE_IN_MS, plus whatever the screen
-// underneath takes to assemble. Deliberately generous: this tool is proving
-// reachability, not measuring latency.
+// Must exceed SHELL_NAV.FADE_IN_DELAY_MS + FADE_IN_MS (320 + 220 = 540), plus
+// whatever the screen underneath takes to assemble. Deliberately generous: this
+// tool is proving reachability, not measuring latency.
+//
+// IT IS NOT ENOUGH FOR EVERY SCREEN, and `BOMB_OUT_SETTLE_MS` below is what
+// that costs. One global settle is exactly how this tool came to photograph a
+// bomb-out with no exit anywhere on it and report the exit as present.
 const settleMs = Number(flag('settle', '2600'));
+
+/**
+ * ===========================================================================
+ * THE ONE SCREEN THAT TAKES LONGER TO ARRIVE THAN `settleMs`
+ * ===========================================================================
+ * Restated from `src/game/meetTuning.ts` rather than imported, on the same
+ * principle as the testIDs below: a check that reads its deadline out of the
+ * module under test agrees with a broken module.
+ *
+ * GDD §6.3's bomb-out is the slowest beat in the game ON PURPOSE — the silence
+ * is what makes it somber — and its way out is the LAST thing to arrive:
+ *
+ *     BOMB_OUT_SILENCE_MS                             1500
+ *   + BOMB_OUT_ROW_ORDER.ACTION (3) x STAGGER (700)   2100
+ *   + BOMB_OUT_ROW_FADE_MS                             620
+ *   = the exit is fully drawn at                      4220 ms
+ *
+ * `tools/capture-meet.mjs` already settles 5200 ms for exactly this reason and
+ * says so in as many words. This tool settled 2600 and then asserted the exit
+ * was "on screen" at a moment when it was at zero opacity. See the block above
+ * `onScreen` for why Playwright cheerfully agreed.
+ */
+const BOMB_OUT_EXIT_DRAWN_AT_MS = 1500 + 3 * 700 + 620;
+/** Slack for a software-rendered browser that drops frames. */
+const FADE_GRACE_MS = 1800;
+const BOMB_OUT_SETTLE_MS = BOMB_OUT_EXIT_DRAWN_AT_MS + FADE_GRACE_MS;
+
+/**
+ * Below this, a control is reported ABSENT however happily the DOM says it is
+ * visible. Not a style threshold: a fade that has not finished is a control a
+ * thumb cannot find.
+ */
+const ON_SCREEN_MIN_OPACITY = 0.9;
+
+/** How often `waitUntilDrawn` re-reads an opacity while a fade is running. */
+const DRAWN_POLL_MS = 100;
 
 const NAV_OPEN_MEET = 'shell-open-meet';
 const NAV_LEAVE_MEET = 'shell-leave-meet';
@@ -99,20 +147,127 @@ page.on('pageerror', (e) => pageErrors.push(String(e.message)));
 
 await mkdir(outDir, { recursive: true });
 
-async function open(search, waitFor) {
+async function open(search, waitFor, settle = settleMs) {
   await page.goto(`${url}${search}`, { waitUntil: 'load' });
   if (waitFor !== undefined) {
     await page.getByTestId(waitFor).waitFor({ state: 'visible', timeout: 120000 });
   }
-  await page.waitForTimeout(settleMs);
+  await page.waitForTimeout(settle);
 }
 
+/**
+ * MOUNTED AND NOT `visibility: hidden`. That is ALL this means.
+ *
+ * Used below only for the NEGATIVE checks ("no control is drawn over the
+ * mechanic"), where it is the strict direction: a pill that is mounted but
+ * transparent still fails them, which is what we want. Every POSITIVE check
+ * goes through `onScreen` instead.
+ */
 const visible = (id) => page.getByTestId(id).isVisible().catch(() => false);
+
+/**
+ * ===========================================================================
+ * OPACITY IS NOT VISIBILITY, AND PLAYWRIGHT DOES NOT KNOW THE DIFFERENCE
+ * ===========================================================================
+ * `isVisible()` means "has a non-empty bounding box and is not
+ * `visibility: hidden`". IT RETURNS TRUE FOR AN ELEMENT AT `opacity: 0`.
+ * `document.elementFromPoint` — which `hitTest` below uses, and which
+ * Playwright's own click actionability check uses — ALSO hits an `opacity: 0`
+ * element, and `click()` will happily press one. Nothing in the toolkit
+ * considers opacity.
+ *
+ * This is not a theoretical hole; it is a bug this file shipped. The run's own
+ * evidence caught it: `.gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png`
+ * photographs a screen with NO EXIT ANYWHERE ON IT, sitting in the same run
+ * directory as a `route.json` line reading
+ *
+ *     "ok    the bomb-out beat keeps its own way out"
+ *
+ * because the check looked at `settleMs` = 2600 ms and `BombOutView`'s action
+ * row does not finish fading in until 4220 ms. The app was fine. The CHECK
+ * reported "on screen" about something that, at the instant it looked, a human
+ * could not see and a thumb could not have found.
+ *
+ * TWO THINGS FIX THAT AND BOTH ARE NEEDED:
+ *
+ *   1. `effectiveOpacity` multiplies the computed opacity all the way up the
+ *      ancestor chain — React Native Web nests the animated wrapper above the
+ *      Pressable, so the control's own opacity is 1 while its parent is 0 — and
+ *      `onScreen` refuses anything under `ON_SCREEN_MIN_OPACITY`. That turns
+ *      the false PASS into a failure with a measured number attached.
+ *   2. THE WAIT HAS TO BE RIGHT. (1) alone would only convert a false pass into
+ *      a false failure, which is no more honest. So the deadline for a screen
+ *      is computed from the same constants the screen animates on, and
+ *      `waitUntilDrawn` waits for the fade the app actually plays instead of a
+ *      fixed settle that predates it.
+ */
+async function effectiveOpacity(id) {
+  const handle = await page
+    .getByTestId(id)
+    .elementHandle({ timeout: 2000 })
+    .catch(() => null);
+  if (handle === null) return 0;
+  const value = await page
+    .evaluate((node) => {
+      let el = node;
+      let acc = 1;
+      while (el !== null && el.nodeType === 1) {
+        const cs = window.getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') return 0;
+        const own = Number.parseFloat(cs.opacity);
+        acc *= Number.isFinite(own) ? own : 1;
+        el = el.parentElement;
+      }
+      return acc;
+    }, handle)
+    .catch(() => 0);
+  await handle.dispose().catch(() => {});
+  return value;
+}
+
+/** In the DOM, and actually drawn. The measured opacity comes back either way. */
+async function onScreen(id) {
+  if (!(await visible(id))) return { on: false, why: 'not rendered at all' };
+  const o = await effectiveOpacity(id);
+  return { on: o >= ON_SCREEN_MIN_OPACITY, why: `opacity ${o.toFixed(3)}` };
+}
+
+/** `check` for "X is on screen", reporting the opacity it measured either way. */
+async function checkOnScreen(id, what) {
+  const { on, why } = await onScreen(id);
+  check(on, what, why);
+  return on;
+}
+
+/**
+ * Wait for a control to finish arriving, up to `timeout`, and report what it
+ * was at when the clock ran out.
+ *
+ * A BOUNDED wait, not an unbounded one: "the exit arrives within the time its
+ * own animation says it should" is a falsifiable claim, and an unbounded wait
+ * would not be one.
+ */
+async function waitUntilDrawn(id, timeout) {
+  const started = Date.now();
+  for (;;) {
+    const o = await effectiveOpacity(id);
+    if (o >= ON_SCREEN_MIN_OPACITY) {
+      return { drawn: true, why: `opacity ${o.toFixed(3)} after ${Date.now() - started}ms` };
+    }
+    if (Date.now() - started >= timeout) {
+      return { drawn: false, why: `opacity ${o.toFixed(3)}, still, after ${timeout}ms` };
+    }
+    await page.waitForTimeout(DRAWN_POLL_MS);
+  }
+}
 
 /**
  * Is the control not merely in the DOM but the thing a thumb would actually
  * hit? A pill under a transparent full-screen touch layer is present, visible,
  * and unpressable — and that is precisely the failure a `querySelector` misses.
+ *
+ * NOTE THE LIMIT: `elementFromPoint` ignores opacity too, so this answers "is
+ * anything on top of it", NOT "can a human see it". Pair it with `onScreen`.
  */
 async function hitTest(id) {
   const box = await page.getByTestId(id).boundingBox().catch(() => null);
@@ -145,8 +300,17 @@ const bodyText = () => page.evaluate(() => (document.body.textContent ?? '').sli
  * can tell WHICH property of the app broke. A crash tells them the harness is
  * unhappy and nothing else. (Learned by mutating the phase report out of
  * `SessionScreen` — the tool caught it, and said so unreadably.)
+ *
+ * It waits for the control to be DRAWN before pressing, not merely present:
+ * Playwright will click a control at zero opacity, so a press that succeeded
+ * would otherwise be no evidence at all that a player could have made it.
  */
-async function press(id, expect, what) {
+async function press(id, expect, what, drawWithin = settleMs) {
+  const arrived = await waitUntilDrawn(id, drawWithin);
+  if (!arrived.drawn) {
+    check(false, what, `the control ${id} was not drawn to press — ${arrived.why}`);
+    return false;
+  }
   try {
     await page.getByTestId(id).click({ timeout: 20000 });
   } catch {
@@ -171,8 +335,8 @@ async function press(id, expect, what) {
 await open('/', 'session-screen');
 await page.screenshot({ path: path.join(outDir, '01-session-with-nav.png') });
 
-check(await visible('session-screen'), 'the app opens on the daily session with no query string');
-check(await visible(NAV_OPEN_MEET), `the way to meet day is on screen (${NAV_OPEN_MEET})`);
+await checkOnScreen('session-screen', 'the app opens on the daily session with no query string');
+await checkOnScreen(NAV_OPEN_MEET, `the way to meet day is on screen (${NAV_OPEN_MEET})`);
 const openHit = await hitTest(NAV_OPEN_MEET);
 check(openHit.hit, 'and the point a thumb would land on belongs to it', `elementFromPoint -> ${openHit.why}`);
 check(
@@ -192,8 +356,8 @@ const reachedMeet = await press(
 await page.screenshot({ path: path.join(outDir, '02-meet-from-session.png') });
 
 check(!(await visible('session-screen')), 'and the daily session is no longer on screen');
-check(
-  await visible('meet-weigh-in'),
+await checkOnScreen(
+  'meet-weigh-in',
   'it lands on GDD §6.1’s weigh-in, which is what meet day opens on',
 );
 
@@ -251,8 +415,8 @@ check(
 
 await open('/?meet=recap', 'meet-screen');
 await page.screenshot({ path: path.join(outDir, '04-recap-with-way-back.png') });
-check(await visible('meet-recap'), 'the recap renders');
-check(await visible(NAV_LEAVE_MEET), `the way back is on screen (${NAV_LEAVE_MEET})`);
+await checkOnScreen('meet-recap', 'the recap renders');
+await checkOnScreen(NAV_LEAVE_MEET, `the way back is on screen (${NAV_LEAVE_MEET})`);
 const leaveHit = await hitTest(NAV_LEAVE_MEET);
 check(leaveHit.hit, 'and it is what a thumb would hit', `elementFromPoint -> ${leaveHit.why}`);
 
@@ -264,8 +428,8 @@ check(!(await visible('meet-screen')), 'and meet day is no longer on screen');
 // of GDD §6.5 and had none of its own.
 await open('/?meet=recap-card', 'result-card-screen');
 await page.screenshot({ path: path.join(outDir, '06-card-with-way-back.png') });
-check(await visible('result-card-screen'), 'the shareable card renders');
-check(await visible(NAV_LEAVE_MEET), 'and the card is not a dead end either');
+await checkOnScreen('result-card-screen', 'the shareable card renders');
+await checkOnScreen(NAV_LEAVE_MEET, 'and the card is not a dead end either');
 
 // ---------------------------------------------------------------------------
 // 5. From the close-out — finishing a session and reaching a meet
@@ -273,8 +437,11 @@ check(await visible(NAV_LEAVE_MEET), 'and the card is not a dead end either');
 
 await open('/?session=close-out-pr', 'session-close-out');
 await page.screenshot({ path: path.join(outDir, '07-close-out-with-nav.png') });
-check(await visible('session-close-out'), 'the close-out renders');
-check(await visible(NAV_OPEN_MEET), 'the way to meet day is on the close-out — the end of a session');
+await checkOnScreen('session-close-out', 'the close-out renders');
+await checkOnScreen(
+  NAV_OPEN_MEET,
+  'the way to meet day is on the close-out — the end of a session',
+);
 const closeOutHit = await hitTest(NAV_OPEN_MEET);
 check(closeOutHit.hit, 'and it is pressable there', `elementFromPoint -> ${closeOutHit.why}`);
 
@@ -291,8 +458,8 @@ check(
 );
 
 await press(NAV_OPEN_MEET, 'meet-screen', 'FINISH A SESSION -> REACH A MEET, in one press');
-check(
-  await visible('meet-weigh-in'),
+await checkOnScreen(
+  'meet-weigh-in',
   'and it is a fresh meet, not the frozen beat the launch URL named',
 );
 
@@ -305,7 +472,7 @@ for (const [search, waitFor, what] of [
   ['/?session=rest', 'session-rest', 'the rest between two sets'],
 ]) {
   await open(search, waitFor);
-  check(await visible(waitFor), `${what} renders`);
+  await checkOnScreen(waitFor, `${what} renders`);
   check(!(await visible(NAV_OPEN_MEET)), `NO CONTROL IS DRAWN OVER ${what}`);
 }
 await page.screenshot({ path: path.join(outDir, '08-set-has-no-nav.png') });
@@ -319,10 +486,27 @@ for (const [search, what] of [
   check(!(await visible(NAV_LEAVE_MEET)), `NO CONTROL IS DRAWN OVER ${what}`);
 }
 
+// ---------------------------------------------------------------------------
 // GDD §6.3's bomb-out draws its OWN way out, and the shell stays off it.
-await open('/?meet=bombed', 'meet-bombed');
+//
+// THE SLOWEST SCREEN IN THE GAME, AND THE ONE THIS TOOL GOT WRONG. Its exit is
+// not drawn until BOMB_OUT_EXIT_DRAWN_AT_MS (4220), and the tool looked at
+// `settleMs` (2600) and reported it present — because Playwright counts an
+// `opacity: 0` element as visible. See the block above `onScreen`.
+//
+// So: open with NO settle, wait for the fade the screen actually plays, bounded
+// by the deadline its own constants imply, and photograph it after that. The
+// screenshot is part of the claim — a shot of an empty screen filed under "the
+// bomb-out keeps its own way out" is worse than no shot.
+// ---------------------------------------------------------------------------
+await open('/?meet=bombed', 'meet-bombed', 0);
+const bombExit = await waitUntilDrawn('bomb-out-action', BOMB_OUT_SETTLE_MS);
 await page.screenshot({ path: path.join(outDir, '09-bombed-keeps-its-own-exit.png') });
-check(await visible('bomb-out-action'), 'the bomb-out beat keeps its own way out');
+check(
+  bombExit.drawn,
+  `the bomb-out beat keeps its own way out, drawn within ${BOMB_OUT_SETTLE_MS}ms`,
+  bombExit.why,
+);
 check(
   !(await visible(NAV_LEAVE_MEET)),
   'and the shell does not add a second one to it (GDD §6.3: leave that beat somber)',
@@ -331,6 +515,7 @@ await press(
   'bomb-out-action',
   'session-screen',
   'and pressing it returns to the daily session',
+  BOMB_OUT_SETTLE_MS,
 );
 
 // ---------------------------------------------------------------------------
@@ -361,7 +546,10 @@ for (const [search, expected] of DEBUG_ROUTES) {
 
 // An unrecognised debug string boots the app normally rather than half-applying.
 await open('/?meet=nonsense', 'session-screen');
-check(await visible('session-screen'), '/?meet=nonsense boots the daily session rather than a broken meet');
+await checkOnScreen(
+  'session-screen',
+  '/?meet=nonsense boots the daily session rather than a broken meet',
+);
 
 console.log(notes.join('\n'));
 if (pageErrors.length > 0) {
