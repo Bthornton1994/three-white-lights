@@ -54,7 +54,7 @@
  * building `MEET_LOCAL` itself. Nothing about the route graph changes.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -112,7 +112,7 @@ function ShellNav({
   readonly onPress: () => void;
 }): React.ReactElement {
   const shown = useSharedValue(0);
-  React.useEffect(() => {
+  useEffect(() => {
     shown.value = withDelay(
       SHELL_NAV.FADE_IN_DELAY_MS,
       withTiming(1, { duration: SHELL_NAV.FADE_IN_MS }),

@@ -109,6 +109,18 @@ describe('the shell is the join, and it is the only one', () => {
     expect(SHELL).not.toMatch(/setRoute\(\{/);
   });
 
+  it('the screens actually REPORT their beat, rather than only accepting the prop', () => {
+    // Added after this exact deletion was mutated in and the whole node suite —
+    // all 2183 tests — stayed green. `tools/verify-shell-route.mjs` caught it
+    // and named eleven broken checks; nothing here could see it, because
+    // accepting a callback and never calling it is invisible to a type and to
+    // every pure test. This scan closes the cheap half. It does NOT close the
+    // class: a control that mounts and stays at zero opacity would pass this
+    // and fail the browser, which is why the browser check is the decisive one.
+    expect(SESSION_SCREEN).toMatch(/onPhase\?\.\(state\.phase\)/);
+    expect(MEET_SCREEN).toMatch(/onPhase\?\.\(state\.phase\)/);
+  });
+
   it('asks `shellAffordanceFor` when to draw a control, and draws only that', () => {
     expect(SHELL).toMatch(/shellAffordanceFor\(/);
     // The gate must be the thing that decides, so the pill cannot be rendered

@@ -136,6 +136,34 @@ async function hitTest(id) {
 
 const bodyText = () => page.evaluate(() => (document.body.textContent ?? '').slice(0, 4000));
 
+/**
+ * Press a control and wait for the surface it should produce, REPORTING rather
+ * than throwing.
+ *
+ * A missing control has to come out as a named failed check, not as a Playwright
+ * stack trace: the whole point of this tool is that somebody reading its output
+ * can tell WHICH property of the app broke. A crash tells them the harness is
+ * unhappy and nothing else. (Learned by mutating the phase report out of
+ * `SessionScreen` — the tool caught it, and said so unreadably.)
+ */
+async function press(id, expect, what) {
+  try {
+    await page.getByTestId(id).click({ timeout: 20000 });
+  } catch {
+    check(false, what, `the control ${id} was never there to press`);
+    return false;
+  }
+  try {
+    await page.getByTestId(expect).waitFor({ state: 'visible', timeout: 30000 });
+  } catch {
+    check(false, what, `pressed ${id}, but ${expect} never came up`);
+    return false;
+  }
+  await page.waitForTimeout(settleMs);
+  check(true, what);
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // 1 + 2. The app opens on the session, and the control reaches meet day
 // ---------------------------------------------------------------------------
@@ -156,15 +184,13 @@ check(
   'and no fatigue readout (GDD §3.4, §12.3)',
 );
 
-await page.getByTestId(NAV_OPEN_MEET).click();
-await page.getByTestId('meet-screen').waitFor({ state: 'visible', timeout: 30000 });
-await page.waitForTimeout(settleMs);
-await page.screenshot({ path: path.join(outDir, '02-meet-from-session.png') });
-
-check(
-  await visible('meet-screen'),
+const reachedMeet = await press(
+  NAV_OPEN_MEET,
+  'meet-screen',
   'PRESSING IT REACHES MEET DAY — no URL typed, no query string',
 );
+await page.screenshot({ path: path.join(outDir, '02-meet-from-session.png') });
+
 check(!(await visible('session-screen')), 'and the daily session is no longer on screen');
 check(
   await visible('meet-weigh-in'),
@@ -175,9 +201,17 @@ check(
 // 3. The meet a player opened is PLAYED, not a frozen screenshot
 // ---------------------------------------------------------------------------
 
-await page.getByTestId('weigh-in-action').click();
-await page.getByTestId('meet-openers').waitFor({ state: 'visible', timeout: 30000 });
-check(true, 'the weigh-in confirms and the openers come up — the loop is live, not frozen');
+if (!reachedMeet) {
+  // Everything below this point is about the meet that was never reached.
+  // Reported as skipped rather than left to throw one screen further down.
+  check(false, 'SKIPPED: the played-meet checks need a meet to have opened');
+  await open('/?meet=live', 'meet-screen');
+}
+await press(
+  'weigh-in-action',
+  'meet-openers',
+  'the weigh-in confirms and the openers come up — the loop is live, not frozen',
+);
 await page.getByTestId('openers-action').click();
 // The walk-out is a TIMED beat and runs itself out, so it is asserted the
 // instant it arrives — settling first would photograph the attempt after it.
@@ -222,11 +256,8 @@ check(await visible(NAV_LEAVE_MEET), `the way back is on screen (${NAV_LEAVE_MEE
 const leaveHit = await hitTest(NAV_LEAVE_MEET);
 check(leaveHit.hit, 'and it is what a thumb would hit', `elementFromPoint -> ${leaveHit.why}`);
 
-await page.getByTestId(NAV_LEAVE_MEET).click();
-await page.getByTestId('session-screen').waitFor({ state: 'visible', timeout: 30000 });
-await page.waitForTimeout(settleMs);
+await press(NAV_LEAVE_MEET, 'session-screen', 'PRESSING IT RETURNS TO THE DAILY SESSION');
 await page.screenshot({ path: path.join(outDir, '05-back-on-the-session.png') });
-check(await visible('session-screen'), 'PRESSING IT RETURNS TO THE DAILY SESSION');
 check(!(await visible('meet-screen')), 'and meet day is no longer on screen');
 
 // The result card behind the recap needs a way out too — it is the last screen
@@ -259,10 +290,7 @@ check(
   'the close-out still shows no Total with the shell over it (GDD §3.2)',
 );
 
-await page.getByTestId(NAV_OPEN_MEET).click();
-await page.getByTestId('meet-screen').waitFor({ state: 'visible', timeout: 30000 });
-await page.waitForTimeout(settleMs);
-check(await visible('meet-screen'), 'FINISH A SESSION -> REACH A MEET, in one press');
+await press(NAV_OPEN_MEET, 'meet-screen', 'FINISH A SESSION -> REACH A MEET, in one press');
 check(
   await visible('meet-weigh-in'),
   'and it is a fresh meet, not the frozen beat the launch URL named',
@@ -299,9 +327,11 @@ check(
   !(await visible(NAV_LEAVE_MEET)),
   'and the shell does not add a second one to it (GDD §6.3: leave that beat somber)',
 );
-await page.getByTestId('bomb-out-action').click();
-await page.getByTestId('session-screen').waitFor({ state: 'visible', timeout: 30000 });
-check(await visible('session-screen'), 'and pressing it returns to the daily session');
+await press(
+  'bomb-out-action',
+  'session-screen',
+  'and pressing it returns to the daily session',
+);
 
 // ---------------------------------------------------------------------------
 // 7. The evidence harness's four query strings still resolve
