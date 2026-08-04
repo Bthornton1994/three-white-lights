@@ -2,8 +2,8 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 5,
-    "waveName": "Wave 5 — four merged fixes back under fresh critics, and the tuning audit that nothing yet enforces",
+    "wave": 6,
+    "waveName": "Wave 6 - every piece is built; the run is now grading and closing gaps",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
@@ -198,9 +198,9 @@
       "id": "A2",
       "name": "Gym / environment art",
       "bar": "Blind A/B, same era. Readability at phone scale.",
-      "status": "pending",
+      "status": "grading",
       "verifiable": false,
-      "note": "Reference unreachable — bar will report unverifiable."
+      "note": "BUILT AND MERGED, with the directional trap found by the builder itself and reported as a table: a DELETED layer and a BUSIER wall both score BETTER on rim contrast than the shipped room. So every rim floor is bracketed by aggregate floors AND ceilings, and the traps are encoded as TESTS rather than prose - DELETING THE ROOM fails the floors and passes every rim bound, A ROOM PAINTED IN THE FIGURE OWN VALUES fails ONLY the rim floors, plus a positive control asserting the shipped room reports nothing so any finding is the plant. The mutation that matters is busy-but-NOT-bright: mean luma DOWN to 32.2 and rim contrast UP, and it still failed on edge share, where a brightness bound alone would have passed it. Two venues from one renderer, sized by spec so S2 can call it at its own box, proved by rendering at 260x86 with a different floor row. New background banks are kept apart from the three sprite banks the way SNES mode 1 separates BG and OBJ, and palette.ts and spriteTuning.ts were left untouched - which mattered, because the A1 rework is live in both. Measuring the COMPOSITE rather than the palette found two real defects it then fixed: a rubber floor 0.6 luma from a red disc shade half, and a platform 3 luma from the lifter own shin. Era A/B correctly NOT claimed: no 16-bit gym interior is committed, so what it anchored to is sprite-ref-1 measured value structure, which is era-typical evidence rather than a gym-interior comparison."
     },
     {
       "id": "S1",
