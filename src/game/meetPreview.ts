@@ -179,7 +179,7 @@ export function previewServerRecord(): ServerRecord {
         meetDayIndex: MEET_PREVIEW.DAY - MEET_PREVIEW.PREVIOUS_MEET_DAYS_AGO,
         totalKg: MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG,
         bestByLift: MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG,
-        bodyweightKg: MEET_ENTRY.bodyweightKg,
+        bodyweightKg: MEET_ENTRY.bodyweight.kilograms,
       },
     ],
   };

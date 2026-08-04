@@ -53,7 +53,12 @@ import {
   type MeetDayState,
   type MeetRecap,
 } from '../game/meetDay';
-import { applyMeetResult, meetDayFacts, type AppliedMeetResult } from '../game/meetServer';
+import {
+  applyMeetResult,
+  meetDayFacts,
+  type AppliedMeetResult,
+  type MeetServerError,
+} from '../game/meetServer';
 import { newServerRecord, snapshotWireFor, type ServerRecord } from '../game/sessionServer';
 import { previewServerRecord } from '../game/meetPreview';
 import {
@@ -88,6 +93,21 @@ export interface MeetDayLoop {
   readonly recap: MeetRecap | null;
   /** The server's own answer, for the bomb-out screen's "what you kept" list. */
   readonly applied: AppliedMeetResult | null;
+  /**
+   * WHY THE MEET DID NOT RECORD, when it did not. Null on the happy path and on
+   * every meet the shipped configuration can play.
+   *
+   * IT IS NOT RENDERED BY ANYTHING YET, and saying so is the point of the field.
+   * A refused submission used to be dropped on the floor inside `setCache` and
+   * existed nowhere afterwards, so the screen showed a player who had just taken
+   * nine attempts an empty recap with no explanation and no route back except
+   * `restart()`. This does not fix that screen — the screen is GDD §11's open
+   * pound-meet ruling and is somebody's deliberate design work, not a `?? ''`
+   * bolted on here — but it means the refusal survives the effect, can be
+   * asserted on in a test, and is one `if` away from being shown by whoever
+   * takes the ruling. See the submit effect for what happens to the retry.
+   */
+  readonly submissionError: MeetServerError | null;
   readonly dispatch: (event: MeetDayEvent) => void;
   readonly restart: () => void;
 }
@@ -130,6 +150,7 @@ export function useMeetDay(initial?: MeetDayState, frozen: boolean = false): Mee
 
   const [state, setState] = useState<MeetDayState>(() => initial ?? buildMeet());
   const [applied, setApplied] = useState<AppliedMeetResult | null>(null);
+  const [submissionError, setSubmissionError] = useState<MeetServerError | null>(null);
   const submittedRef = useRef<string>('');
   const proposalSeq = useRef<number>(0);
 
@@ -140,6 +161,7 @@ export function useMeetDay(initial?: MeetDayState, frozen: boolean = false): Mee
   const restart = useCallback(() => {
     setState(buildMeet());
     setApplied(null);
+    setSubmissionError(null);
     submittedRef.current = '';
   }, [buildMeet]);
 
@@ -169,6 +191,31 @@ export function useMeetDay(initial?: MeetDayState, frozen: boolean = false): Mee
   }, [frozen, state.phase, verdictKey, dispatch]);
 
   // --- the finished meet goes to the server --------------------------------
+  //
+  // WHAT HAPPENS WHEN THE SERVER SAYS NO, written here because this is the file
+  // somebody editing this effect is looking at. `applyMeetResult` refuses:
+  // `MEET_REPLAY_REFUSED`, `MEET_INCOMPLETE`, `MEET_OVERRUN`,
+  // `MEET_ALREADY_RECORDED`, `BAD_DAY`, and `UNSUPPORTED_MEET_UNIT` for a meet
+  // not run in kilograms or a lifter not weighed in kilograms. None of those is
+  // reachable from the shipped `MEET_LOCAL` + `MEET_ENTRY`; all of them are one
+  // second meet definition away, and GDD §11 has that ruling open.
+  //
+  // THE RECAP DOES NOT APPEAR IN THAT CASE. `recap` is derived from `applied`,
+  // `applied` is only set on success, and the loop returns no route back except
+  // `restart()`. That is the right shape for a case that cannot happen and the
+  // wrong one for a player who has just taken nine attempts. The refusal is now
+  // at least KEPT (`submissionError`) instead of dropped; showing it is a screen
+  // and a screen is not this file's to invent.
+  //
+  // AND IT IS NOT RETRIED, deliberately. `submittedRef` is set BEFORE the call,
+  // so a refusal is final for this meet until `restart()`. Setting it only on
+  // success would look kinder and would be worse: every refusal above is a pure
+  // function of (record, day, meet, card), none of which changes while the meet
+  // sits in `recap`/`bombed`, so a retry re-runs the same computation and gets
+  // the same answer — once per render, forever, with the screen still empty. The
+  // day this call becomes a real `fetch`, that reasoning stops holding, because
+  // a transport failure IS retryable: the fix then is for the error to carry
+  // whether it is transient, and to retry only those. Not before.
   const meetOver = state.phase === 'bombed' || state.phase === 'recap';
   useEffect(() => {
     if (!meetOver) return;
@@ -189,7 +236,12 @@ export function useMeetDay(initial?: MeetDayState, frozen: boolean = false): Mee
         proposal,
         proposalId,
       );
-      if (!result.ok) return current;
+      if (!result.ok) {
+        // KEPT, NOT SWALLOWED. See the note above the effect for why there is no
+        // retry and why there is no screen for this yet.
+        setSubmissionError(result.error);
+        return current;
+      }
       // The one thing a meet may show optimistically while the request is in
       // flight is the Total it just made — `ProjectionWithinReach<'record-meet-
       // result'>` permits it and makes a training session's Total a compile
@@ -215,5 +267,5 @@ export function useMeetDay(initial?: MeetDayState, frozen: boolean = false): Mee
     return built.ok ? built.recap : null;
   }, [applied, state]);
 
-  return { state, cache, recap, applied, dispatch, restart };
+  return { state, cache, recap, applied, submissionError, dispatch, restart };
 }

@@ -144,18 +144,18 @@ describe('the weigh-in beat (GDD §6.1)', () => {
   const classes = WEIGHT_CLASSES_KG.male;
 
   it('puts the lifter in the lightest class they make', () => {
-    expect(weighInFor({ ...MEET_ENTRY, bodyweightKg: 92.4 }, classes).weightClassText).toBe('93');
-    expect(weighInFor({ ...MEET_ENTRY, bodyweightKg: 93 }, classes).weightClassText).toBe('93');
-    expect(weighInFor({ ...MEET_ENTRY, bodyweightKg: 93.1 }, classes).weightClassText).toBe('105');
+    expect(weighInFor({ ...MEET_ENTRY, bodyweight: { unit: 'kg', kilograms: 92.4 } }, classes).weightClassText).toBe('93');
+    expect(weighInFor({ ...MEET_ENTRY, bodyweight: { unit: 'kg', kilograms: 93 } }, classes).weightClassText).toBe('93');
+    expect(weighInFor({ ...MEET_ENTRY, bodyweight: { unit: 'kg', kilograms: 93.1 } }, classes).weightClassText).toBe('105');
   });
 
   it('calls a close cut close, and a comfortable one comfortable', () => {
     const tight = weighInFor(
-      { ...MEET_ENTRY, bodyweightKg: 93 - MEET_TUNING.WATER_CUT_MARGIN_KG / 2 },
+      { ...MEET_ENTRY, bodyweight: { unit: 'kg', kilograms: 93 - MEET_TUNING.WATER_CUT_MARGIN_KG / 2 } },
       classes,
     );
     const easy = weighInFor(
-      { ...MEET_ENTRY, bodyweightKg: 93 - MEET_TUNING.WATER_CUT_MARGIN_KG * 4 },
+      { ...MEET_ENTRY, bodyweight: { unit: 'kg', kilograms: 93 - MEET_TUNING.WATER_CUT_MARGIN_KG * 4 } },
       classes,
     );
     expect(tight.cuttingClose).toBe(true);
@@ -170,11 +170,11 @@ describe('the weigh-in beat (GDD §6.1)', () => {
     // openers, same floors, same bar, same beats.
     const tight: MeetDayContext = {
       ...previewContext(),
-      entry: { ...MEET_ENTRY, bodyweightKg: 93 - MEET_TUNING.WATER_CUT_MARGIN_KG / 2 },
+      entry: { ...MEET_ENTRY, bodyweight: { unit: 'kg', kilograms: 93 - MEET_TUNING.WATER_CUT_MARGIN_KG / 2 } },
     };
     const easy: MeetDayContext = {
       ...previewContext(),
-      entry: { ...MEET_ENTRY, bodyweightKg: 93 - MEET_TUNING.WATER_CUT_MARGIN_KG * 4 },
+      entry: { ...MEET_ENTRY, bodyweight: { unit: 'kg', kilograms: 93 - MEET_TUNING.WATER_CUT_MARGIN_KG * 4 } },
     };
     expect(weighInFor(tight.entry, classes).cuttingClose).toBe(true);
     expect(weighInFor(easy.entry, classes).cuttingClose).toBe(false);
@@ -1026,7 +1026,7 @@ describe('what the client reports', () => {
     const proposal = meetResultProposal(state);
     expect(proposal).not.toBeNull();
     if (proposal === null) throw new Error('unreachable');
-    expect(Object.keys(proposal.report).sort()).toEqual(['attempts', 'bodyweightKg', 'meetId']);
+    expect(Object.keys(proposal.report).sort()).toEqual(['attempts', 'bodyweight', 'meetId']);
     const serialised = JSON.stringify(proposal).toLowerCase();
     expect(serialised).not.toContain('total');
     for (const attempt of proposal.report.attempts) {

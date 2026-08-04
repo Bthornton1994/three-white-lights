@@ -2,7 +2,15 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-04 (§11 — the pound-meet refusal now guards the WRITE
+**Last updated:** 2026-08-04 (§11 — the write-path unit refusal now covers the
+BODYWEIGHT as well as the total. The total's half shipped first and left the
+sharper hole open: a caller who took its own named remedy, converted the
+attempts, and ran a legal kilogram meet passed the check cleanly while
+`MeetResultReport.bodyweightKg` — a bare number — was written into permanent
+progression 2.2x too heavy, inside the published DOTS domain, flagged by
+nothing. The report's bodyweight now carries its unit and the meet-day context
+takes a kilogram entry. Still no ruling on whether pound meets ship. Earlier the
+same day: §11 — the pound-meet refusal now guards the WRITE
 path: `applyMeetResult` was recording a pound total into permanent progression
 before either read-side refusal could fire, and `MeetResultWire` has no unit
 field to recover the unit from once it is there. Also §11 — a Tier 1 colorway
@@ -1170,7 +1178,33 @@ The code has taken the safe branch and needs a ruling to take any other.**
       `UNSUPPORTED_MEET_UNIT`, spelled the same as `resultCard.ts`'s because it
       is one refusal reached at two points in one pipeline. It does not convert,
       for the reason above: a meet result is the total *and* the bodyweight, and
-      `MeetResultReport.bodyweightKg` is a bare number the server cannot verify.
+      those are two independent facts in two independently-chosen units.
+      **AND THE BODYWEIGHT IS NOW CHECKED TOO, which is the half that mattered
+      more.** For a round the write path hard-refused the number it could check
+      and silently accepted the one it could not, three lines apart in the same
+      object literal — and that made the refusal's own advice into a trap. A
+      caller who did exactly what it said, converted the *attempts*, and ran the
+      meet under kilogram rules passed the total's check cleanly and banked a
+      bodyweight 2.2x too heavy. Nothing downstream would have caught it: 92.4 kg
+      entered as 203.7 lb sits **inside** the published DOTS bodyweight domain
+      (40–210 kg male), so it is not clamped, not out of domain, and not refused
+      by `dots.ts` or `resultCard.ts` — both of those refuse on the *total's*
+      unit. The consequence was a permanently wrong DOTS denominator and a lifter
+      filed in the heaviest weight class.
+      `MeetResultReport.bodyweight` is now a `BodyweightReading` — a tagged
+      `{ unit, kilograms | pounds }` pair rather than a branded number, because
+      the consumer that has to be convinced is a **server** and a brand does not
+      survive JSON. Its two arms carry different field names, so a kilogram
+      number cannot be reached without narrowing on the unit: deleting the check
+      in `meetServer.ts` is a compile error rather than a quiet test. The unit is
+      *declared at the source* (`MeetEntry.bodyweight`) and forwarded, not
+      stamped on the way past, and `MeetDayContext.entry` is a
+      `KilogramMeetEntry`, so a pound-weighed lifter does not compile into a meet
+      at all. What remains unclosed and is named as such: a caller can still
+      write `{ unit: 'kg', … }` over a pound number, which is a lie somebody has
+      to type, not a field that means nothing.
+      **None of that takes the ruling below.** The code still refuses; it now
+      refuses both numbers instead of one.
       **Three ways out, none taken:** (a) rule that the game only ever runs kg
       meets and lbs is a display skin, in which case `POUND_MEET_RULES` should go
       and §11's display question answers this by itself; (b) rule that pound
@@ -1178,14 +1212,24 @@ The code has taken the safe branch and needs a ruling to take any other.**
       converted at one boundary — the conversion constant is already there
       (`KILOGRAMS_PER_POUND`); (c) rule that pound meets ship without DOTS, and
       decide what the result card prints in the DOTS column for one.
+      *(The lifter profile that (b) asks for now HAS a unit —
+      `MeetEntry.bodyweight` — but nothing converts with it and nothing is meant
+      to. It was added so the refusal has a fact to check rather than a literal;
+      it makes (b) cheaper to take and does not take it. The one line (b) would
+      widen is `KilogramMeetEntry`.)*
       **What the code does today is none of the three — it is stricter than (c).**
       A pound meet runs end to end on the platform and then cannot be recorded at
       all: no Total, no stored result, no placing, no card, no score. That is the
       safe branch and it is deliberate, but it is not a shippable answer, because
-      a player who took nine attempts is currently told nothing —
-      `useMeetDay.ts` drops a refused `applyMeetResult` silently and renders no
-      recap, which is correct for a case that cannot happen and wrong for one a
-      player can reach. Ruling (a) makes the refusal unreachable and is the
+      a player who took nine attempts is still told nothing. `useMeetDay.ts` now
+      **keeps** the refusal (`MeetDayLoop.submissionError`) instead of dropping
+      it on the floor inside `setCache`, and says at the site which refusals
+      exist and why there is no retry — the meet is marked submitted *before* the
+      call on purpose, because every refusal is a pure function of inputs that do
+      not change while the meet sits in recap, so retrying would recompute the
+      same answer once per render forever. **Nothing renders it.** That is a
+      screen, and the screen is part of this ruling rather than something to bolt
+      on ahead of it. Ruling (a) makes the refusal unreachable and is the
       cheapest exit; (b) and (c) each need a conversion boundary *and* a screen
       for the failure. Until it is ruled, `POUND_MEET_RULES` is a configuration
       the engine supports and progression will not accept.

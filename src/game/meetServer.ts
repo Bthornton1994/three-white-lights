@@ -81,9 +81,11 @@
  *     definition, a proposal and an id. It has no parameter for a purchase, an
  *     entitlement, a boost or a balance, so nothing purchasable can change what
  *     a meet is worth (GDD §8.1, §12.3).
- *   - A TOTAL IT CANNOT PROVE IS KILOGRAMS. See THE UNIT below. This is the LAST
- *     place the unit exists: `MeetResultWire` has no unit field, so a pound total
- *     that gets past here is a bare number named `totalKg` forever.
+ *   - A TOTAL IT CANNOT PROVE IS KILOGRAMS, AND A BODYWEIGHT IT CANNOT PROVE IS
+ *     KILOGRAMS. See THE UNIT below. This is the LAST place either unit exists:
+ *     `MeetResultWire` has no unit field for either number, so a pound total that
+ *     gets past here is a bare number named `totalKg` forever and a pound
+ *     bodyweight is a bare number named `bodyweightKg` forever.
  *
  * ---------------------------------------------------------------------------
  * THE UNIT — why the write path checks it, and why it refuses rather than
@@ -102,6 +104,14 @@
  * already been ranked against `MeetDefinition.ghostTotalsKg` (a kg field). A
  * refusal that fires downstream of the write is not a defence of the write.
  *
+ * NEITHER OF THEM WOULD HAVE FIRED ON THE BODYWEIGHT AT ALL. Both refuse on the
+ * TOTAL's unit; the bodyweight reaches `evaluateMeetDots` and `weightClassString`
+ * as a bare number, and a lifter entered at 203.7 lb sits inside
+ * `DOTS_BODYWEIGHT_DOMAIN_KG` (40–210 male), so it would not have been clamped
+ * either. The kilogram meet with the pound lifter is the case where every
+ * downstream refusal in the tree stays silent, which is why the check has to be
+ * on the number rather than on the meet.
+ *
  * So the reading's unit is checked HERE, before `nextTotalKg` and before the
  * `MeetResultWire` is built, and `totalKg` is taken off the CHECKED reading
  * rather than from `finalMeetTotal(state)` — which is `readTotal(state).total`
@@ -110,15 +120,31 @@
  *
  * WHY REFUSE RATHER THAN CONVERT, given `kilogramsFromPounds` exists and is
  * exact: the same reason `dots.ts` gives, and it is stronger here. A meet result
- * is TWO numbers — the total, which arrives from `meet.ts` with its unit
- * attached, and `MeetResultReport.bodyweightKg`, which arrives from the CALLER
- * as a bare number whose name this module cannot verify. Converting the total
- * while trusting the bodyweight replaces a 2.2x overstatement with a different
- * wrong number, written permanently, by a module that now claims to handle
- * units. A caller running a pound meet converts the whole entry at the call site
- * — both numbers, with `kilogramsFromPounds`, in one visible place — and records
- * the converted meet. Same posture as `e1rm.ts` past the RPE chart: refuse, and
- * name the remedy.
+ * is TWO numbers in two independently-chosen units — the total, which arrives
+ * from `meet.ts` with `meet.rules.unit` attached, and the bodyweight, which
+ * arrives from the lifter's entry with its own. Converting one while trusting
+ * the other replaces a 2.2x overstatement with a different wrong number, written
+ * permanently, by a module that now claims to handle units. A caller running a
+ * pound meet converts the whole entry at the call site — both numbers, with
+ * `kilogramsFromPounds`, in one visible place — and records the converted meet.
+ * Same posture as `e1rm.ts` past the RPE chart: refuse, and name the remedy.
+ *
+ * AND THE REMEDY IS NOW ENFORCED ON BOTH HALVES, which it was not. The paragraph
+ * above shipped for a round while only the total was checked, and that made the
+ * refusal's own advice into a trap: a caller who did exactly what it said —
+ * converted the attempts, ran the meet under `DEFAULT_MEET_RULES`, and forgot
+ * the bodyweight — passed the check cleanly and produced precisely the outcome
+ * this header said it refused to create. `MeetResultReport.bodyweight` is a
+ * `BodyweightReading` now (`dots.ts`), so that caller is refused too:
+ * `UNSUPPORTED_MEET_UNIT`, before the replay, before anything is written.
+ *
+ * THE TWO CHECKS ARE NOT THE SAME KIND OF CHECK, and the difference is worth a
+ * sentence. The total's is a runtime string comparison against a reading, and it
+ * has to be: `MeetTotalReading.unit` is typed `string` on purpose so an unknown
+ * unit fails safe. The bodyweight's is a discriminated narrow, so the kilogram
+ * field literally does not exist until the check has run — delete the `if` and
+ * `tsc` fails at the `MeetResultWire` rather than a test going quiet. Both
+ * refuse; only one of them cannot be deleted silently.
  *
  * ---------------------------------------------------------------------------
  * WHAT IT CANNOT CHECK, SAID PLAINLY
@@ -133,25 +159,44 @@
  * would be cheated through; it closes when the rep itself is resolved
  * server-side, not by anything that could be written here.
  *
- * (2) WHAT UNIT THE BODYWEIGHT IS IN. `MeetResultReport.bodyweightKg` is a bare
- * `number` with `Kg` in its name and nothing behind the name — no reading, no
- * brand, no rules object it came out of. The TOTAL's unit is checkable because
- * `meet.ts` attaches it; the bodyweight's is not, because no module produces it.
- * A lifter entered in pounds is stored as a lighter lifter, and the number that
- * misreads is the DOTS input on the result card. This is the identical gap
- * `dots.ts` names and declines to close ("the BODYWEIGHT is still a bare
- * `number` ... it does not cross a module boundary"); it is written down here
- * too because this is where the number is written down PERMANENTLY, and a
- * header that lists one unchecked unit while omitting the other reads as though
- * the unit question were settled. It closes by giving the report's bodyweight a
- * unit, not by anything this function can inspect.
+ * (2) WHETHER A DECLARED UNIT IS TRUE. This entry (2) USED TO SAY THE
+ * BODYWEIGHT'S UNIT WAS UNCHECKABLE, "because no module produces it". That was
+ * the open hole and it is closed: `MeetResultReport.bodyweight` is a
+ * `BodyweightReading`, `meetTuning.ts`'s `MeetEntry` declares which unit the
+ * lifter weighed in under, `meetDay.ts` forwards it rather than stamping one,
+ * and `applyMeetResult` refuses the pound arm with the same
+ * `UNSUPPORTED_MEET_UNIT` before the replay.
  *
- * (3) WHETHER THE ATTEMPT WEIGHTS ARE THE UNIT THEY CLAIM. `MeetAttemptReport.
- * weightKg` has the same shape of problem, but only the same shape: the
- * attempts are replayed against `meet.rules`, so a card whose numbers are in the
- * wrong unit for its own meet is refused as illegal (below the bar, off the
- * declaration grid) or lands in the same reading the unit check above covers.
- * It is listed for completeness, not as an open hole.
+ * WHAT IS LEFT IS SMALLER AND IS NOT THE SAME THING. A caller can still write
+ * `{ unit: 'kg', kilograms: 203.7 }` over a number that came off a pound scale,
+ * exactly as it can write `unit: 'kg'` on a hand-built `TotalReading`. That is a
+ * lie somebody has to type, not a field that quietly means nothing, and nothing
+ * in this file is tamper-resistance — see (1).
+ *
+ * (3) WHETHER THE ATTEMPT WEIGHTS ARE THE UNIT THEIR MEET CLAIMS. THIS ENTRY
+ * USED TO CLAIM SUCH A CARD WAS "REFUSED AS ILLEGAL (below the bar, off the
+ * declaration grid)" AND THAT IS FALSE. This file's own positive control
+ * disproves it: `meetServer.test.ts` records 405 / 425 / 442.5 / 265 / 275 /
+ * 280 / 500 / 525 / 545 — nine pound-shaped numbers — as a perfectly legal
+ * kilogram meet, because those weights are legal calls under kilogram rules too.
+ * A report whose attempts are pound numbers against a meet whose rules say `kg`
+ * is REPLAYED AS KILOGRAMS, produces a kg-labelled reading, passes the unit
+ * check on the total, and is written. There is no refusal in that path.
+ *
+ * THE TRUE REASON IT IS NOT REACHABLE IN THIS TREE, which is a different and
+ * weaker claim than the one it replaces: an attempt weight is never authored by
+ * a caller. `meetDay.ts`'s `meetAttemptReports` reads the weights back out of
+ * the `MeetState` the player actually lifted on, and that state was built by
+ * `createMeet(meet.rules)` — so the numbers and the rules come from one object,
+ * and `applyMeetResult` is handed that same `MeetDefinition`. The residual is
+ * that NOTHING FORCES the `meet` argument to be the definition the card was
+ * played on; a caller that passed a different one would be lying about the
+ * meet, which is (2)'s class of problem, not a hole this function can inspect.
+ *
+ * It is listed as an open residual, which is what it is. It was previously
+ * listed as closed, resting on an argument the file's own tests contradict — and
+ * in a header whose whole value is that its arguments are checked, that is worse
+ * than the gap it was papering over.
  */
 
 import {
@@ -205,6 +250,21 @@ const REPLAY_NO_LIFT: JudgePanel = ['red', 'red', 'red'];
  */
 const PROGRESSION_TOTAL_UNIT = DOTS_TOTAL_UNIT;
 
+/**
+ * The one unit permanent progression stores a BODYWEIGHT in.
+ *
+ * The same string as `PROGRESSION_TOTAL_UNIT` and a separate name on purpose,
+ * because they are two independent facts rather than one fact spelled twice —
+ * OpenPowerlifting's checker says it in one sentence ("international meets often
+ * do weigh-in in pounds, but lifting in kilos, so keep those separate") and
+ * `dots.ts` quotes it. A ruling that converted one of these would not
+ * automatically convert the other, and a single constant would hide that.
+ *
+ * Aliased off `DOTS_TOTAL_UNIT` for the reason above it: one string in the tree
+ * that a unit check compares against.
+ */
+const PROGRESSION_BODYWEIGHT_UNIT = DOTS_TOTAL_UNIT;
+
 export type MeetServerErrorCode =
   /** The reported attempts are not a legal meet card. */
   | 'MEET_REPLAY_REFUSED'
@@ -215,9 +275,21 @@ export type MeetServerErrorCode =
   /** This lifter already has a result for this meet. */
   | 'MEET_ALREADY_RECORDED'
   /**
-   * The meet was not run in kilograms, so its total cannot be written into a
-   * record whose fields are kilogram fields. See THE UNIT in the header for why
-   * this refuses instead of converting.
+   * A NUMBER WHOSE UNIT THIS RECORD CANNOT STORE. Two of them reach this
+   * function and this one code covers both, because it is one refusal — this
+   * entry is in the wrong unit for this pipeline:
+   *
+   *   - the TOTAL, when the meet was not run in kilograms; and
+   *   - the BODYWEIGHT, when the lifter was not weighed in kilograms.
+   *
+   * ONE CODE RATHER THAN TWO, and the message says which number it was. Two
+   * codes would suggest two problems with two remedies, and there is one of
+   * each: convert the whole entry at the call site, or do not record it. It was
+   * exactly the appearance of a per-number remedy that made the total-only
+   * version of this check dangerous — a caller who converted the attempts and
+   * left the bodyweight alone passed it.
+   *
+   * See THE UNIT in the header for why this refuses instead of converting.
    *
    * SPELLED THE SAME AS `ResultCardErrorCode['UNSUPPORTED_MEET_UNIT']` ON
    * PURPOSE. It is one refusal — this meet is in the wrong unit for this
@@ -404,12 +476,18 @@ export function previousBestByLift(record: ServerRecord): Readonly<Record<LiftKi
  * @param day the streak day the SERVER resolved (GDD §4.1). Stored on the meet
  *   result so a recap can order a lifter's meets; it does NOT touch the streak.
  *
- * REFUSES A MEET THAT IS NOT RUN IN KILOGRAMS (`UNSUPPORTED_MEET_UNIT`), before
- * anything is written. See THE UNIT in the header. A CALLER MUST HANDLE THIS
- * LIKE ANY OTHER REFUSAL — `useMeetDay.ts` currently drops a failed
- * `applyMeetResult` silently and shows no recap, which is the right thing for an
- * impossible case and the wrong thing for a player who just finished nine
- * attempts. That is a UI question, not this module's, and it is named here so
+ * REFUSES A MEET THAT IS NOT RUN IN KILOGRAMS, AND A LIFTER NOT WEIGHED IN
+ * KILOGRAMS (`UNSUPPORTED_MEET_UNIT` for both), before anything is written. See
+ * THE UNIT in the header.
+ *
+ * A CALLER MUST HANDLE THIS LIKE ANY OTHER REFUSAL. `useMeetDay.ts` now KEEPS a
+ * failed `applyMeetResult` (`MeetDayLoop.submissionError`) rather than dropping
+ * it, and does not retry — a refusal here is a pure function of inputs that do
+ * not change while the meet sits in recap, so retrying would recompute the same
+ * answer forever. What it still does NOT do is SHOW it: there is no recap and no
+ * explanation, which is the right thing for an impossible case and the wrong
+ * thing for a player who just finished nine attempts. That is a UI question, not
+ * this module's, it is GDD §11's open pound-meet ruling, and it is named here so
  * whoever adds the second meet definition finds it written down.
  *
  * AN OPEN QUESTION THIS LEAVES, stated rather than discovered later: a meet day
@@ -435,6 +513,49 @@ export function applyMeetResult(
       error: {
         code: 'MEET_ALREADY_RECORDED',
         message: `meetServer: this lifter already has a result for ${proposal.report.meetId}.`,
+      },
+    };
+  }
+
+  // THE BODYWEIGHT'S UNIT, CHECKED BEFORE THE REPLAY AND SO BEFORE ANY WRITE.
+  //
+  // Held in a `const` and narrowed here rather than read at the point of use, so
+  // that the narrowing is what makes the use legal: `bodyweight.kilograms` does
+  // not exist on the pound arm of `BodyweightReading`, so DELETING THIS CHECK IS
+  // A COMPILE ERROR at the `MeetResultWire` below rather than a test that goes
+  // quiet. That is the whole reason the two arms carry different field names.
+  //
+  // BEFORE THE REPLAY, unlike the total's check, which cannot run until the
+  // engine has produced a reading. This one needs nothing from the card, so a
+  // caller wired to a pound scale finds out on every meet it submits — including
+  // the ones whose card was also illegal, which are exactly the submissions a
+  // check placed later would report as a different problem.
+  //
+  // WHAT WAS HERE BEFORE WAS NOTHING. `bodyweightKg` was a bare `number` written
+  // straight into `MeetResultWire` three lines under the total's refusal, and
+  // 203.7 lb is inside `DOTS_BODYWEIGHT_DOMAIN_KG` (40–210 male), so it clamped
+  // nowhere, refused nowhere and was flagged by nothing — it was simply a lifter
+  // who now weighs 203.7 kg, forever. The refusal below names the remedy the
+  // total's refusal already named; the difference is that the remedy is now
+  // enforced on both halves of it instead of on the half that was checkable.
+  const bodyweight = proposal.report.bodyweight;
+  if (bodyweight.unit !== PROGRESSION_BODYWEIGHT_UNIT) {
+    return {
+      ok: false,
+      error: {
+        code: 'UNSUPPORTED_MEET_UNIT',
+        message:
+          `meetServer: this lifter was weighed in ${JSON.stringify(bodyweight.unit)}, and a ` +
+          `recorded bodyweight is a ${PROGRESSION_BODYWEIGHT_UNIT} number — MeetResultWire.` +
+          'bodyweightKg and ConfirmedMeetResult.bodyweightKg are kilogram fields with nowhere to ' +
+          'put a unit, and the result card reads the stored number as kilograms twice over (the ' +
+          'DOTS denominator and the weight class). Writing this would store a plausible number ' +
+          'that is wrong by the conversion factor, permanently and unrecoverably: 203.7 lb is ' +
+          'inside the published DOTS bodyweight domain, so nothing downstream would clamp it, ' +
+          'refuse it or mark it. This does NOT convert for you — the total and the bodyweight ' +
+          'are separate facts in separate units and converting one while trusting the other is a ' +
+          'different wrong number. Convert the whole entry at the call site with ' +
+          'kilogramsFromPounds and record the converted meet.',
       },
     };
   }
@@ -509,7 +630,12 @@ export function applyMeetResult(
     // as many words and refuses a zero that means "no total".
     totalKg,
     bestByLift: bestByLiftKg,
-    bodyweightKg: proposal.report.bodyweightKg,
+    // OFF THE CHECKED READING, exactly as `totalKg` is. `proposal.report.
+    // bodyweight` is still in scope and still a union; this reads the kilogram
+    // arm, which only exists because the refusal above ran. There is
+    // deliberately no expression left in this file that produces a bodyweight
+    // without having looked at its unit first.
+    bodyweightKg: bodyweight.kilograms,
   };
 
   const next: ServerRecord = {

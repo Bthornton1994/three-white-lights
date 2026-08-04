@@ -16,8 +16,23 @@ import {
   type MeetState,
 } from './meet';
 import type { MeetAttemptReport, ProposalOfKind } from './progression';
-import { asMeetId, asProposalId, receiveProgressionSnapshot } from './progression';
-import { newServerRecord, type ServerRecord } from './sessionServer';
+import {
+  asMeetId,
+  asProposalId,
+  applyServerSnapshot,
+  emptyProgressionCache,
+  emptyProjection,
+  proposeChange,
+  receiveProgressionSnapshot,
+} from './progression';
+import {
+  KILOGRAMS_PER_POUND,
+  dotsDomainStatus,
+  dotsScore,
+  isBodyweightInDotsDomain,
+  officialTotalKg,
+} from './dots';
+import { newServerRecord, snapshotWireFor, type ServerRecord } from './sessionServer';
 import {
   applyMeetResult,
   meetDayFacts,
@@ -25,9 +40,10 @@ import {
   previousBestByLift,
   replayMeetCard,
 } from './meetServer';
-import { meetAttemptReports, meetResultProposal } from './meetDay';
-import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW, type MeetDefinition } from './meetTuning';
-import { playMeet, previewServerRecord, previewStateFor, type RepStyle } from './meetPreview';
+import { meetAttemptReports, meetResultProposal, type MeetDayContext } from './meetDay';
+import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW, type MeetDefinition, type MeetEntry } from './meetTuning';
+import { playMeet, previewContext, previewServerRecord, previewStateFor, type RepStyle } from './meetPreview';
+import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
 import { SESSION_TUNING } from './sessionTuning';
 
 const DAY = MEET_PREVIEW.DAY;
@@ -38,7 +54,7 @@ function proposalFrom(attempts: readonly MeetAttemptReport[]): ProposalOfKind<'r
     kind: 'record-meet-result',
     report: {
       meetId: asMeetId(MEET_LOCAL.id),
-      bodyweightKg: MEET_ENTRY.bodyweightKg,
+      bodyweight: MEET_ENTRY.bodyweight,
       attempts,
     },
   };
@@ -73,6 +89,19 @@ function applyClean(
   attempts: readonly MeetAttemptReport[] = cleanCard(),
 ) {
   return applyMeetResult(record, DAY, MEET_LOCAL, proposalFrom(attempts), PROPOSAL_ID);
+}
+
+/**
+ * A cache holding real server truth, so `proposeChange` gets as far as
+ * validating the proposal instead of refusing for want of anything to propose
+ * against.
+ */
+function confirmedCache() {
+  const received = receiveProgressionSnapshot(snapshotWireFor(newServerRecord(), null));
+  if (!received.ok) throw new Error(received.error.message);
+  const applied = applyServerSnapshot(emptyProgressionCache(), received.value);
+  if (!applied.ok) throw new Error(applied.error.message);
+  return applied.value;
 }
 
 /** A record with a total already on the board, without going through a meet. */
@@ -314,7 +343,7 @@ describe('what a meet moves', () => {
     const stored = applied.value.record.meets[applied.value.record.meets.length - 1];
     expect(stored?.meetId).toBe(MEET_LOCAL.id);
     expect(stored?.meetDayIndex).toBe(DAY);
-    expect(stored?.bodyweightKg).toBe(MEET_ENTRY.bodyweightKg);
+    expect(stored?.bodyweightKg).toBe(MEET_ENTRY.bodyweight.kilograms);
   });
 
   it('produces a wire the one door actually accepts', () => {
@@ -416,7 +445,7 @@ describe('per-lift competition PRs', () => {
         kind: 'record-meet-result',
         report: {
           meetId: asMeetId('local-open-2026-b'),
-          bodyweightKg: MEET_ENTRY.bodyweightKg,
+          bodyweight: MEET_ENTRY.bodyweight,
           attempts: cleanCard({
             squat: [225, 230, 235],
             bench: [125, 130, 135],
@@ -602,7 +631,7 @@ describe('the client never sends a total', () => {
       if (proposal === null) throw new Error('unreachable');
       const keys = new Set(Object.keys(proposal.report));
       expect(keys.has('totalKg')).toBe(false);
-      expect([...keys].sort()).toEqual(['attempts', 'bodyweightKg', 'meetId']);
+      expect([...keys].sort()).toEqual(['attempts', 'bodyweight', 'meetId']);
       for (const attempt of meetAttemptReports(state)) {
         expect(Object.keys(attempt).sort()).toEqual([
           'attemptNumber',
@@ -708,7 +737,7 @@ function poundProposal(attempts: readonly MeetAttemptReport[]): ProposalOfKind<'
     kind: 'record-meet-result',
     report: {
       meetId: asMeetId(MEET_POUND.id),
-      bodyweightKg: MEET_ENTRY.bodyweightKg,
+      bodyweight: MEET_ENTRY.bodyweight,
       attempts,
     },
   };
@@ -817,7 +846,7 @@ describe('the kilogram write path is untouched by the unit check', () => {
         kind: 'record-meet-result',
         report: {
           meetId: asMeetId(kgMeet.id),
-          bodyweightKg: MEET_ENTRY.bodyweightKg,
+          bodyweight: MEET_ENTRY.bodyweight,
           attempts: reports,
         },
       },
@@ -854,5 +883,292 @@ describe('the kilogram write path is untouched by the unit check', () => {
     if (!applied.ok) throw new Error('unreachable');
     expect(applied.value.totalKg).toBeNull();
     expect(applied.value.record.meets.length).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE OTHER NUMBER: the bodyweight's unit, on the same write path
+//
+// The total's unit was checked for a round while the bodyweight, written three
+// lines below it into the same object literal, was not. `MeetResultReport`
+// carried a bare `number` named `bodyweightKg` and `applyMeetResult` copied it
+// straight into `MeetResultWire`.
+//
+// WHY THAT WAS WORSE THAN THE TOTAL'S VERSION OF THE SAME BUG, and why the case
+// below is the one that matters: the refusal above names its own remedy —
+// "convert the whole entry at the call site with kilogramsFromPounds and record
+// the converted meet". A caller who did exactly that for the ATTEMPTS and
+// forgot the bodyweight ran a legal kilogram meet, passed the total's check
+// cleanly, and banked a bodyweight 2.2x too heavy. Nothing downstream would have
+// caught it either: 203.7 is inside `DOTS_BODYWEIGHT_DOMAIN_KG` (40-210 male),
+// so `clampBodyweightToDotsDomain` does not clamp and `dotsDomainStatus` says
+// `in-domain`.
+// ---------------------------------------------------------------------------
+
+/** `MEET_ENTRY`'s lifter, weighed on a pound scale instead. Same human. */
+const BODYWEIGHT_LB = MEET_ENTRY.bodyweight.kilograms / KILOGRAMS_PER_POUND;
+
+/**
+ * A proposal for a KILOGRAM meet whose bodyweight is in pounds.
+ *
+ * This is the adversarial case in full: `DEFAULT_MEET_RULES`, a legal card, and
+ * the one number the caller forgot to convert. No cast anywhere —
+ * `MeetResultReport.bodyweight` is a `BodyweightReading` and `'lb'` is one of
+ * its two arms, because that is what an untrusted client can send.
+ */
+function poundBodyweightProposal(
+  attempts: readonly MeetAttemptReport[],
+  meetId: string = MEET_LOCAL.id,
+): ProposalOfKind<'record-meet-result'> {
+  return {
+    kind: 'record-meet-result',
+    report: {
+      meetId: asMeetId(meetId),
+      bodyweight: { unit: 'lb', pounds: BODYWEIGHT_LB },
+      attempts,
+    },
+  };
+}
+
+describe('a bodyweight that is not in kilograms is refused, not recorded', () => {
+  it('THE CONVERTED-ATTEMPTS CASE: a kg meet with a pound lifter does not reach a write', () => {
+    // The caller took the total refusal's advice and converted the attempts.
+    // They are running `DEFAULT_MEET_RULES`, the card replays, the reading is
+    // in kg, and the total's check passes. The bodyweight is still in pounds.
+    const { state, reports } = playCard(DEFAULT_MEET_RULES, [200, 210, 220, 130, 135, 140, 240, 250, 260]);
+    expect(readTotal(state).unit).toBe('kg');
+
+    const before = newServerRecord();
+    const snapshot = structuredClone(before);
+    const applied = applyMeetResult(before, DAY, MEET_LOCAL, poundBodyweightProposal(reports), PROPOSAL_ID);
+
+    expect(applied.ok).toBe(false);
+    if (applied.ok) throw new Error('unreachable');
+    expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
+    // Not the card, not the day, not a duplicate: the ONLY thing wrong with this
+    // submission is the unit of one number.
+    expect(applied.error.code).not.toBe('MEET_REPLAY_REFUSED');
+    expect(applied.error.code).not.toBe('MEET_INCOMPLETE');
+    expect(applied.error.code).not.toBe('BAD_DAY');
+    // Nothing was produced to write, and the record handed in is untouched.
+    expect(applied).not.toHaveProperty('value');
+    expect(before).toEqual(snapshot);
+  });
+
+  it('is the case the OLD check passed — same card, kg bodyweight, and it records', () => {
+    // THE PROOF THAT THE CASE ABOVE IS NEW. Identical meet, identical nine
+    // attempts, identical everything except which unit the lifter was weighed
+    // in. The total-only check saw no difference between these two, because
+    // there is none on the total side.
+    const { reports } = playCard(DEFAULT_MEET_RULES, [200, 210, 220, 130, 135, 140, 240, 250, 260]);
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, proposalFrom(reports), PROPOSAL_ID);
+    expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+    const stored = applied.value.record.meets[0];
+    expect(stored?.bodyweightKg).toBe(MEET_ENTRY.bodyweight.kilograms);
+  });
+
+  it('discriminates the UNIT, not the magnitude and not the decimal', () => {
+    // THE POSITIVE CONTROL, built so it cannot be satisfied by a check keyed on
+    // anything but the unit. The SAME NUMBER, 203.7-ish, declared in kilograms:
+    // a legal (huge) superheavyweight, inside `DOTS_BODYWEIGHT_DOMAIN_KG`'s
+    // 40-210 male band, with the same decimals as the pound reading. A check
+    // written as `bodyweight > 150`, or `!Number.isInteger(bodyweight)`, or
+    // "looks like pounds" would refuse this one too. This must record.
+    const { reports } = playCard(DEFAULT_MEET_RULES, [200, 210, 220, 130, 135, 140, 240, 250, 260]);
+    const heavy: ProposalOfKind<'record-meet-result'> = {
+      kind: 'record-meet-result',
+      report: {
+        meetId: asMeetId(MEET_LOCAL.id),
+        bodyweight: { unit: 'kg', kilograms: BODYWEIGHT_LB },
+        attempts: reports,
+      },
+    };
+    expect(BODYWEIGHT_LB).toBeGreaterThan(200);
+    expect(Number.isInteger(BODYWEIGHT_LB)).toBe(false);
+    expect(isBodyweightInDotsDomain('male', BODYWEIGHT_LB)).toBe(true);
+
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, heavy, PROPOSAL_ID);
+    expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+    expect(applied.value.record.meets[0]?.bodyweightKg).toBe(BODYWEIGHT_LB);
+  });
+
+  it('shows what the old code would have banked, so the harm is a number', () => {
+    // NOT ABSTRACT: the same lifter, read twice. Both of these are permanent,
+    // and — the part that makes this the dangerous case rather than the obvious
+    // one — NEITHER IS CLAMPED, FLAGGED OR REFUSED ANYWHERE DOWNSTREAM. 203.7
+    // sits inside the published DOTS bodyweight domain, so `dotsDomainStatus`
+    // reports a normal score on it.
+    expect(dotsDomainStatus('male', BODYWEIGHT_LB)).toBe('in-domain');
+
+    // (1) The weight class. 92.4 kg is a 93 kg lifter; read as 203.7 kg they are
+    // filed in the unbounded top class, which is the loudest line on the card.
+    const classes = WEIGHT_CLASSES_KG.male;
+    expect(weightClassString(MEET_ENTRY.bodyweight.kilograms, classes)).toBe('93');
+    const banked = weightClassString(BODYWEIGHT_LB, classes);
+    expect(banked).not.toBe('93');
+    expect(banked).toContain('+');
+
+    // (2) The DOTS score. The coefficient curve is not linear in bodyweight, so
+    // the error is NOT the 2.2x the conversion factor is — it is about a fifth
+    // of the score, understated, forever. Written as a measured band rather than
+    // a round number so it says what it actually is.
+    const honest = dotsScore('male', MEET_ENTRY.bodyweight.kilograms, officialTotalKg(NINE_ATTEMPTS_TOTAL));
+    const scored = dotsScore('male', BODYWEIGHT_LB, officialTotalKg(NINE_ATTEMPTS_TOTAL));
+    expect(scored).toBeLessThan(honest);
+    expect(honest / scored).toBeGreaterThan(1.2);
+    expect(honest / scored).toBeLessThan(1.4);
+  });
+
+  it('refuses a bombed kg meet with a pound lifter, where there is no total at all', () => {
+    // The bodyweight check runs before the replay, so it does not depend on the
+    // meet having finished with a total. Same posture as the total's check
+    // running on every reading kind.
+    const { reports } = playCard(DEFAULT_MEET_RULES, [200, 200, 200], () => false);
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, poundBodyweightProposal(reports), PROPOSAL_ID);
+    expect(applied.ok).toBe(false);
+    if (applied.ok) throw new Error('unreachable');
+    expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
+  });
+
+  it('still records a kilogram bomb-out — the check must not swallow one', () => {
+    // GDD §12.3 and CLAUDE.md's "never punish daily engagement". A lifter who
+    // bombed still competed; a unit check that refused their meet because the
+    // bodyweight branch was written carelessly would cost them the record of
+    // the day AND the streak grace around it.
+    const { reports } = playCard(DEFAULT_MEET_RULES, [200, 200, 200], () => false);
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, proposalFrom(reports), PROPOSAL_ID);
+    expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+    expect(applied.value.totalKg).toBeNull();
+    expect(applied.value.record.meets.length).toBe(1);
+    expect(applied.value.record.meets[0]?.bodyweightKg).toBe(MEET_ENTRY.bodyweight.kilograms);
+  });
+
+  it('names which number was wrong and what to do, not just no', () => {
+    const { reports } = playCard(DEFAULT_MEET_RULES, [200, 210, 220, 130, 135, 140, 240, 250, 260]);
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, poundBodyweightProposal(reports), PROPOSAL_ID);
+    if (applied.ok) throw new Error('unreachable');
+    expect(applied.error.message).toContain('weighed');
+    expect(applied.error.message).toContain('lb');
+    expect(applied.error.message).toContain('kilogramsFromPounds');
+    // It must not read as the TOTAL's refusal, or a caller fixes the wrong number.
+    expect(applied.error.message).toContain('bodyweight');
+  });
+
+  it('refuses a unit nobody has taught it, which is what arrives from JSON', () => {
+    // THE RUNTIME BITE FOR ANYONE WHO CASTS AROUND THE TYPE. `BodyweightReading`
+    // is two literals to `tsc`, but a proposal decoded from a request body is
+    // whatever the sender wrote. The cast here is the test standing in for that
+    // transport; the refusal is real. Fail-safe direction: an unrecognised unit
+    // is refused rather than assumed to be kilograms.
+    const { reports } = playCard(DEFAULT_MEET_RULES, [200, 210, 220, 130, 135, 140, 240, 250, 260]);
+    const smuggled = {
+      kind: 'record-meet-result',
+      report: {
+        meetId: asMeetId(MEET_LOCAL.id),
+        bodyweight: { unit: 'stone', stones: 14.5 },
+        attempts: reports,
+      },
+    } as unknown as ProposalOfKind<'record-meet-result'>;
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, smuggled, PROPOSAL_ID);
+    expect(applied.ok).toBe(false);
+    if (applied.ok) throw new Error('unreachable');
+    expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
+    // And the boundary's own shape validation refuses it a second time, one
+    // layer out, so a caller that never reaches `applyMeetResult` is covered.
+    const shaped = proposeChange(
+      confirmedCache(),
+      asProposalId(PROPOSAL_ID),
+      smuggled,
+      emptyProjection(),
+    );
+    expect(shaped.ok).toBe(false);
+    if (shaped.ok) throw new Error('unreachable');
+    expect(shaped.error.code).toBe('INVALID_PROPOSAL');
+    // NAMING THE UNIT, not just refusing. Without this the assertion above
+    // passes on a version that dropped the unknown-unit arm entirely: a
+    // `'stone'` reading has neither `kilograms` nor `pounds`, so a careless
+    // narrow yields `undefined` and the finite-number check refuses it by
+    // accident. Refusing for the right reason is the claim.
+    expect(shaped.error.message).toContain('stone');
+    expect(shaped.error.message).toContain('unit');
+  });
+
+  it('refuses BOTH numbers under one code when both are wrong', () => {
+    // A pound meet AND a pound lifter. One code, `UNSUPPORTED_MEET_UNIT`,
+    // because there is one remedy: convert the whole entry. Two codes would
+    // invite a caller to fix one and resubmit.
+    const { reports } = playCard(POUND_MEET_RULES);
+    const applied = applyMeetResult(
+      newServerRecord(),
+      DAY,
+      MEET_POUND,
+      poundBodyweightProposal(reports, MEET_POUND.id),
+      PROPOSAL_ID,
+    );
+    expect(applied.ok).toBe(false);
+    if (applied.ok) throw new Error('unreachable');
+    expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
+  });
+});
+
+describe('the unit rides in from the entry rather than being stamped on the way past', () => {
+  it('takes the report bodyweight straight off the entry the lifter weighed in as', () => {
+    // The check at the write is only worth something if the thing it checks is a
+    // FACT rather than a literal typed one hop upstream. `meetResultProposal`
+    // forwards `entry.bodyweight`; it does not construct one.
+    const state = previewStateFor({ moment: 'recap' });
+    const proposal = meetResultProposal(state);
+    if (proposal === null) throw new Error('unreachable');
+    expect(proposal.report.bodyweight).toBe(state.context.entry.bodyweight);
+    expect(proposal.report.bodyweight).toBe(MEET_ENTRY.bodyweight);
+  });
+
+  it('ships a kilogram entry, stated rather than assumed from the field name', () => {
+    expect(MEET_ENTRY.bodyweight.unit).toBe('kg');
+    expect(MEET_ENTRY.bodyweight.kilograms).toBeGreaterThan(0);
+  });
+
+  it('survives the transport, which is why the unit is a field and not a brand', () => {
+    // THE REASON THE SHAPE IS A TAGGED PAIR. `MeetResultReport` is a request
+    // body: a real Edge Function receives it as JSON. A branded `Kg` would be
+    // erased by `JSON.stringify` and the server would be checking a bare number
+    // again, having proven nothing. This asserts the property the choice was
+    // made for, rather than asserting the choice.
+    const state = previewStateFor({ moment: 'recap' });
+    const proposal = meetResultProposal(state);
+    if (proposal === null) throw new Error('unreachable');
+    const overTheWire = JSON.parse(JSON.stringify(proposal)) as ProposalOfKind<'record-meet-result'>;
+    expect(overTheWire.report.bodyweight.unit).toBe('kg');
+
+    // And the far side of that transport still records it.
+    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, overTheWire, PROPOSAL_ID);
+    expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
+    if (!applied.ok) throw new Error('unreachable');
+    expect(applied.value.record.meets[0]?.bodyweightKg).toBe(MEET_ENTRY.bodyweight.kilograms);
+
+    // ...while the same journey in pounds is refused on arrival rather than on
+    // departure, which is the half a compile-time-only fix would not have.
+    const inPounds = JSON.parse(
+      JSON.stringify(poundBodyweightProposal(overTheWire.report.attempts)),
+    ) as ProposalOfKind<'record-meet-result'>;
+    const refused = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, inPounds, PROPOSAL_ID);
+    expect(refused.ok).toBe(false);
+    if (refused.ok) throw new Error('unreachable');
+    expect(refused.error.code).toBe('UNSUPPORTED_MEET_UNIT');
+  });
+
+  it('will not let a pound-weighed lifter into a meet at all', () => {
+    // THE COMPILE-TIME HALF, and it is the half that stops the mistake rather
+    // than reporting it. `MeetDayContext.entry` is a `KilogramMeetEntry`, so the
+    // caller who forgets to convert the bodyweight does not get as far as
+    // building a proposal. The runtime refusal above is for the numbers that
+    // arrive from outside this tree.
+    const poundLifter: MeetEntry = { ...MEET_ENTRY, bodyweight: { unit: 'lb', pounds: BODYWEIGHT_LB } };
+    // @ts-expect-error - a MeetEntry weighed in pounds is not a KilogramMeetEntry.
+    const context: MeetDayContext = { ...previewContext(), entry: poundLifter };
+    expect(context.entry.bodyweight.unit).toBe('lb');
   });
 });
