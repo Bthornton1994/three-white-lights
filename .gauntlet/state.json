@@ -2,8 +2,8 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 9,
-    "waveName": "Wave 9 - the audits themselves came under audit, and one was wrong by 3.5x",
+    "wave": 10,
+    "waveName": "Wave 10 - the harness came under audit, and every evidence bundle was stale",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
@@ -201,9 +201,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work — NOW GRADEABLE, reference committed.",
-      "status": "rework",
+      "status": "grading",
       "verifiable": true,
-      "note": "REVERTED, AND THE GUARD IT LEFT BEHIND IS WORTH MORE THAN THE ROUND THAT CAUSED IT. UPPER_ARM_R is back to the cone and the numbers returned exactly as predicted - 64 far / 16 near, worst excess 0.0400, mean clearance 4.58 - verified rather than assumed. THE ARITHMETIC IS NOW ASSERTED, not just written down: over 14,260 (pose, sign, row) triples, 11 authored drawings plus all 416 deformed ones, both signs, the arm’s outermost column is IDENTICAL at every biceps radius from 2.448 to 3.8. Zero rows differ. The upper arm’s furthest pixel is 14px from centre at every radius - AT THE ELBOW CAP, NOT THE BELLY - against a grip of 15. That closes a whole direction off for good. It also CORRECTED MY BRIEF: I said the invariance held to 4.0; it is exact to 3.8 and breaks by 1px in 16 of 14,260 rows at 4.0, on strained poses where ELBOW_TUCK pulls the elbow in. THE GUARD: it rejected the obvious shape after MEASURING it - STRAP_SEAM in alwaysOn CANNOT FIRE at 3.0, because the check is per mark over both sides and the near seam lands 99.8% at every pose, so it only bites at 3.4. Its words: \"a green guard named after the thing it fails to protect is worse than none.\" Instead it built a landing floor over every mark, kit and flesh, MEASURED PER SIDE - and per-side is the load-bearing part, because the strap is 99.8% near against 27.5% far behind a 63.7% aggregate. Turning per-side on immediately found TRAP_BAR_SHADOW at 64.1% far hiding behind a 78.2% aggregate, which it pinned and honestly labelled as a number it does not understand. I ran the mutation myself: pushing UPPER_ARM_R to 3.4 now reddens FIVE tests where it was previously silent. And it found the previous round’s neutrality claim was FALSE rather than merely unasserted - the chain and the cone agree on the four numbers that were reported and DISAGREE on near-arm clearance, 13.22 against 13.00 at an identical window, which is exactly the axial-shading restart a split capsule causes. || SENT BACK ON PROSE, NOT MECHANICS - and the critic corrected my brief while doing it. It verified the guard by hand, found the revert correct and every refusal condition clean, and confirmed the 14px reach three ways. It also told me I was WRONG about why per-side matters: I said an aggregate floor would have missed the 3.0 mutation, but at 3.0 the aggregate is 55.1% against a 0.6 floor and fires too. What per-side actually buys is SENSITIVITY - the FAR key trips on 2.5 points of far-side loss where ALL needs 7.4, since aggregate is the mean of sides - and the genuine proof is TRAP_BAR_SHADOW at 64.1% far behind a 78.2% aggregate. THE DEFECT: the doc on MARK_LANDING_FLOOR, the constant this round exists to add, explains the 99.8/27.5 split as the far DELTOID sitting over the strap - and the same file says the opposite thirty-eight lines later, correctly, because drawTorso lays the deltoid down BEFORE the strap capsule and it is overpainted. So a builder acting on that comment would go tune DELTOID_R and find it changes nothing. And the real cause is named nowhere: everything both comments mention is mirror-symmetric, so none of it can produce a left-right split at all. The critic derived it - markTargets applies the mark origin UNMIRRORED while anchorPoint is mirrored, so STRAP_SEAM’s origin [1,1] puts the seam column inboard on the near side and outboard on the far side, onto the arm. That is the same defect class lifterSprite.test.ts:1958 already names as \"THE DEFECT CLASS THIS WHOLE PIECE HAS BEEN FIGHTING\" - a sentence with no way to fail - shipped inside the round that added the guard.",
+      "note": "THE DOC IS FIXED BY MEASUREMENT, AND THE BUILDER CORRECTED THE CRITIC. It rendered rather than reasoned: every critic figure reproduced to 3 decimal places except one. \"One row of three lost at BRACE\" is WRONG - all three land, because (52,23) is inside the arm’s CONTOUR RING but not its fill, and despeckle runs between the draw and the mark stamp and replaces that isolated ring pixel. BRACE is also not a member of the 416-frame pose space at all, so it was a poor worked example twice over; the builder wrote the aggregate facts instead. Its own refinement is the useful one: of 905 far misses only 55 are inside the arm’s FILL and 849 are in the one-pixel contour ring, so the far seam is eaten mostly by the arm’s OUTLINE, which is why UPPER_ARM_R moves the number so hard. The mechanism is now ASSERTED, not narrated - anchors mirror-symmetric in 416/416 frames, far seam outboard of its axis in 1248/1248, near seam inside the near arm in 0 of 1248, far seam inside the far arm in 906. And it found a FOURTH copy of the capsule rule hiding in lifterSprite.test.ts: eight arguments where the shared one takes nine, so its import silently lost to a hoisted local declaration, the pad argument was dropped, and the test reported 80,908 FALSE FAILURES with no TypeScript error at all. For inProbeCapsule it took neither option I offered and picked a better one - it made the agreement MEASURED, drawing each capsule with the real drawLimb and requiring the painted set and the predicate set to be the same set over 2562 capsules, on the grounds that sharing code would only make the predicate agree with itself while the claim was that it agrees with DRAWN PIXELS.",
       "evidence": "gym/screen-hole-3x.png"
     },
     {
@@ -245,9 +245,9 @@
       "id": "X1",
       "name": "Cross-module inconsistency (found, unfixed)",
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
-      "status": "rework",
+      "status": "grading",
       "verifiable": true,
-      "note": "ROUND 5 WON THE TRAINING PATH AND CLOSED IT HARDER THAN THE MEET PATH - AND THERE IS NO FIFTH FIELD. The critic swept every ServerRecord construction site in non-test code, found five, and re-derived the table rather than taking the builder’s own 7 sweep at its word. Deleting the session unit check is a compile error AND three red tests (I confirmed the TS2322 myself); the ordering is pinned by an observable that DISCRIMINATES ON ERROR CODE, with a control on both arms - same day kg card gives STREAK_REFUSED, lb card gives UNSUPPORTED_SESSION_UNIT - so it cannot pass with the check moved. The compile-vs-runtime table holds on every row including the weak ones, and the builder correctly refused to round any up: a second branch reading poundSets compiles, so it is test-only; and a poundSets-to-kilogramSets rename is compile-red with npm test FULLY GREEN, because vitest strips types. The honest ceiling is stated in both places: a session has no server-owned definition, so this compares against a CONSTANT, not against server data like the meet path does. THE GAP IS ONE ROUTE OVER INTO THE SAME FIELD: SESSION_TUNING.STARTING_E1RM_KG is three bare numbers whose unit is in the identifier, and newServerRecord assigns them straight into record.bestE1rmKg - the same field, same brand, same protection the round just fenced - on EVERY ACCOUNT. nextBestE1rm is monotone, so the seed is a permanent FLOOR. It crosses the boundary as a bare record: meetServer takes fallbackE1rmKg with no unit in the signature and meetDay divides a proven-kilogram meet weight by it. And its own comment says PLACEHOLDER DATA, NOT PROGRESSION - NOTHING HERE IS PERSISTED - which I read and which is FALSE ON BOTH CLAUSES. The precedent is exact and already in this tree: MeetEntry.bodyweight is also in-tree placeholder data and WAS given a unit tag, recorded in 11 \"so the refusal has a fact to check rather than a literal\". Dispatched round 6, small and mechanical."
+      "note": "ROUND 6 CLOSED THE SEED, AND THE BEST PART OF THE REPORT IS WHAT IT REFUSED TO CLAIM. The seed now carries its unit as a FIELD, and I verified the mutation myself: flipping unit to lb without converting magnitudes is a COMPILE ERROR, TS2345 at the read sites. It also ran the escape route - widening the annotation back to the union - and that is a compile error too, four TS2339s. THEN IT STATED PLAINLY THAT THE CASE THAT MATTERS IS STILL NOT CAUGHT: pound magnitudes under a kg tag compile clean. And it went further, qualifying something that could have been read as a pass - that edit DOES turn 11 tests red, but they are change-detectors pinning the arithmetic 180/120/220 produce, they would go red identically for a legitimate retune from 180 to 185, and NOT ONE MENTIONS A UNIT. A human retuning the seed updates those expectations and the pound magnitudes go through. It deliberately did NOT add a plausibility band, because that is a guessed constant standing in for a check, which 11 already records going wrong once. Mutation G is the other honest one: dropping the annotation entirely compiles clean, so THE ANNOTATION IS NOT THE CHECK - what is load-bearing is that the arms carry different field names, and it wrote that ranking into the binding rather than letting the annotation take credit. It also found a THIRD false comment at the write site itself, newServerRecord’s own docstring, saying the same \"not progression\" thing. 7 is reorganised from fields to ROUTES-AND-FIELDS, because organising by field is exactly what let a second route into an already-proven field survive, and a new 7.4 states the claim in falsifiable form and names three things that would break it - including that the guarantee against a sixth route is a manual grep, not a test."
     },
     {
       "id": "B1",
@@ -355,9 +355,9 @@
       {
         "id": "A1",
         "name": "Lifter sprites & animation",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "Guard and revert both verified sound. But the doc on the round's headline constant blames the deltoid, and the same file refutes it 38 lines later — the deltoid is drawn before the strap and overpainted. The real cause, an unmirrored mark origin against a mirrored anchor, is named nowhere."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "Doc fixed by measurement, and the builder corrected the critic on one figure. It also found a fourth copy of the capsule rule whose import silently lost to a hoisted local, dropping an argument and producing 80,908 false failures with no type error."
       },
       {
         "id": "A2",
@@ -390,9 +390,9 @@
       {
         "id": "X1",
         "name": "Cross-mode coherence",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "No fifth field — the training path is closed harder than the meet path. But the same field has a second route: the starting-e1RM seed is written into protected monotone progression on every account with its unit in the identifier, under a comment claiming it is not progression at all."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "The seed carries its unit as a field; flipping it is a compile error, verified. The report's best feature is refusing to claim the wrong-magnitudes case is caught, and naming the 11 red tests as change-detectors that would fire on a legitimate retune too."
       },
       {
         "id": "B1",
