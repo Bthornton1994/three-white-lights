@@ -11,6 +11,7 @@ import { GYM, lumaOfIndex, sceneColorAt } from './gymPalette';
 import { GYM_PROP_KINDS, PROP_ART } from './gymProps';
 import {
   GYM_CLEAR_BAND,
+  GYM_CONTACT_SHADOW,
   GYM_LIFT_FOCUS_X,
   GYM_LIFT_STAGE,
   GYM_LIGHTING,
@@ -19,6 +20,7 @@ import {
   GYM_PROPS_TRAINING,
   GYM_READABILITY,
   GYM_ROOM,
+  GYM_STAGE_CHROME,
   GYM_VENUE_PROPS,
   GYM_WINDOWS,
   type GymPropPlacement,
@@ -27,14 +29,18 @@ import {
 import {
   blitOver,
   clearBand,
+  contactShadowPatch,
   floorDepth,
   junctionRow,
   layerOffset,
+  liftContactShadow,
+  liftStageOccluders,
   liftStageScene,
   platformBackRow,
   propBox,
   rectsOverlap,
   renderGymScene,
+  sceneProps,
   type GymSceneSpec,
   type SceneRect,
 } from './gymScene';
@@ -55,25 +61,41 @@ import { frameSpecFrom, isBodyIndex, renderLifterFrame } from './lifterSprite';
  * Nothing in this file claims it.
  *
  * The other clause — "readability at phone scale" — is measurable, and this is
- * where it is measured, on the composited pixels the screen actually shows.
+ * where it is measured, ON THE PIXELS THAT SURVIVE THE SCREEN.
+ *
+ * ===========================================================================
+ * WHAT THE SCREEN PAINTS OVER THE ROOM IS PART OF THE COMPOSITE
+ * ===========================================================================
+ * `LiftStage.tsx` draws an opaque bar-path panel over the right-hand strip of
+ * the canvas after the room. It hides 4160 of the room's 22490 pixels on every
+ * frame, and the previous version of this file counted every one of them as
+ * visible. `liftStageOccluders()` is now passed to every measurement here, and
+ * `describe('the panel is part of the composite')` proves the numbers move when
+ * the panel widens — which under the old measurement they could not.
  *
  * ===========================================================================
  * EVERY BOUND IS BRACKETED AT BOTH ENDS
  * ===========================================================================
- * The failure this run has found nineteen times is a check that a WORSE
- * artifact satisfies more easily. Every readability quantity here has that
- * shape available, and every one is therefore bounded on both sides:
+ * The failure this run keeps finding is a check that a WORSE artifact satisfies
+ * more easily. Every readability quantity here has that shape available, and
+ * every one is therefore bounded on both sides:
  *
  *   - a blank black rectangle has PERFECT rim contrast and zero busyness. It
- *     fails `MEAN_LUMA`, `INDEX_COUNT`, `EDGE_SHARE` and `BRIGHT_SHARE` floors.
+ *     fails `MEAN_LUMA`, `INDEX_COUNT`, `EDGE_SHARE`, `FURNITURE_SHARE`,
+ *     `FILLED_CELLS` and `BRIGHT_SHARE` floors.
  *   - a lit, cluttered room has plenty of content. It fails the `EDGE_SHARE`,
- *     `BEHIND_EDGE_SHARE`, `MEAN_LUMA` and `BRIGHT_SHARE` ceilings.
+ *     `BEHIND_EDGE_SHARE`, `FURNITURE_SHARE` and `OVER_FIGURE_SHARE` ceilings.
  *   - a room drawn in the figure's own value band passes both of those and
  *     fails the `RIM_*` floors.
+ *   - a room with the SHELL and no furniture in it passes everything the old
+ *     `INDEX_COUNT` floor was pretending to catch — a bare shell reaches twenty
+ *     indices on its own — and fails `FURNITURE_SHARE` and `FILLED_CELLS`.
+ *   - a room with every prop shoved to one side passes all of those and fails
+ *     `CONTENT_BALANCE`.
  *
- * `describe('the bounds bite')` plants each of those three and asserts the
- * SPECIFIC bound that catches it. If a bound were ever loosened until it could
- * not fail, those tests go red rather than green.
+ * `describe('the bounds bite')` plants each of those and asserts the SPECIFIC
+ * bound that catches it. If a bound were ever loosened until it could not fail,
+ * those tests go red rather than green.
  */
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -86,36 +108,58 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
  * The pass/fail bar for a composited frame.
  *
  * Deliberately here and not in `gymTuning.ts`. The measurement's terms — what
- * counts as an edge, how far out the rim is probed — are tuning, because they
- * define the instrument. A BAR is not tuning; it belongs where it can be read
- * next to the numbers it is judging, and where moving it is an edit to a test
- * rather than a knob in a file whose whole invitation is "turn these".
+ * counts as an edge, how far out the rim is probed, what luma step counts as
+ * visible — are tuning, because they define the instrument. A BAR is not tuning;
+ * it belongs where it can be read next to the numbers it is judging, and where
+ * moving it is an edit to a test rather than a knob in a file whose whole
+ * invitation is "turn these".
  *
- * Measured values on the shipped training gym across four squat depths, for
- * the record and so the headroom is visible rather than implied:
+ * ---------------------------------------------------------------------------
+ * MEASURED VALUES, WITH THE PANEL COUNTED AS OPAQUE
+ * ---------------------------------------------------------------------------
+ * Training gym, four squat depths, and the meet venue, all with the bar-path
+ * panel occluding 4160 px — so the headroom below is visible rather than
+ * implied. The bracketed figure is the same quantity with the occluder REMOVED,
+ * where it differs, which is what the previous version of this file reported:
  *
- *   indices            26-27          mean luma        33.9-34.4
- *   luma p90           58-71.8        edge share       10.1-10.5%
- *   behind edge share  16.6-20.7%     bright share     0.10%
- *   over figure median 7.6-7.8%       rim p05/p10      8.0 / 8.0-16.1
- *   rim p25/p50        19.4-29.1 / 40.1-48.2
+ *   indices            26-27          mean luma  36.8-37.1  (35.7 unoccluded)
+ *   luma p90           54.6-71.8      edge share 12.2-12.7% (10.9 unoccluded)
+ *   behind edge share  20.3-23.9%     bright     0.08-0.09% (0.10 unoccluded)
+ *   over figure median 8.4-9.5%       (7.6 unoccluded)
+ *   furniture share    5.5-6.0%       (4.8 unoccluded)
+ *   content balance    -0.01..+0.15   (-0.05 unoccluded)
+ *   filled cells       8-9 of 12      (9 unoccluded)
+ *   rim keyline p05/p25/p50   11.3-15.4 / 25.0 / 39.1-45.7
+ *   rim fill    p05/p10        11.4-24.5 / 24.3-25.0
  *
- * And the three planted rooms, for the same quantities, so the headroom is on
- * the record in both directions:
+ * And the planted rooms, for the same quantities, so the headroom is on the
+ * record in both directions:
  *
- *   deleted layer      1 index, mean 10.9, edge 0%,    rim p25/p50 26.4 / 62.1
- *   busy-but-dark      27,      mean 32.2, edge 17.5%, rim p25/p50 26.8 / 49.1
- *   figure-band room   14,      mean ~55,  edge ~8%,   rim p05/p10 ~1 / ~4
+ *   deleted layer   1 index, mean 10.9, edge 0%,     furn 0%,    cells 0/12
+ *   checker         2,       mean 48.2, edge 54.4%,  furn 32.4%, rim p05 1.9
+ *   figure-band     14,      mean 55.8, edge 7.2%,   rim keyline p05 3.6 p25 15.0
+ *   shell, no props 20,      mean 35.9, edge 8.1%,   furn 3.4%,  cells 6/12
+ *   props all-left  27,      mean 37.1, edge 12.5%,  balance 0.441
  *
- * Read the middle row twice. A busier wall made the room DARKER on average and
- * IMPROVED every rim percentile. Nothing but the edge-share ceiling catches it.
+ * Read the last two rows twice. The bare shell reaches TWENTY indices with
+ * nothing standing in the room, which is why `INDEX_COUNT_MIN` no longer claims
+ * to be a furniture floor and `FURNITURE_SHARE_MIN` is. And the all-left room
+ * is byte-for-byte the same furniture as the shipped one, moved: every quantity
+ * above it except `CONTENT_BALANCE` is within a point of the shipped room's.
  */
 const BOUNDS = {
-  /** A flat fill has one. A room has furniture. */
+  /**
+   * A flat fill has one. NOT A FURNITURE COUNT — the shell of the room alone
+   * (wall bands, courses, joints, windows, stripe, kickplate, floor bands,
+   * platform, seams, lamp wash, truss) measures 20 with the prop table empty, so
+   * a floor of 14 is satisfied by a room with nothing in it. `FURNITURE_SHARE`
+   * is the bound that needs furniture; this one only catches a flat fill and is
+   * documented as doing only that.
+   */
   INDEX_COUNT_MIN: 14,
   /** The whole scene index space is 36; a cap much above that says nothing. */
   INDEX_COUNT_MAX: 34,
-  /** Black screen 17.9 fails this. */
+  /** Black screen 10.9 fails this. */
   MEAN_LUMA_MIN: 25,
   /** A room bright enough to compete with the figure fails this. */
   MEAN_LUMA_MAX: 70,
@@ -127,6 +171,20 @@ const BOUNDS = {
   EDGE_SHARE_MAX: 0.14,
   BEHIND_EDGE_SHARE_MIN: 0.02,
   BEHIND_EDGE_SHARE_MAX: 0.28,
+  /**
+   * THE FURNITURE FLOOR, and this one really does need furniture.
+   *
+   * `furnitureShare` counts only steps across a HORIZONTAL neighbour — vertical
+   * boundaries, uprights. The shell of this room is bands: every mark it makes
+   * runs left to right, so it scores 3.4% however many colours it spends, and
+   * almost all of that 3.4% is the platform's own two sides. The shipped room
+   * with its eight props scores 5.5-6.0%. 4.5% sits between them with about a
+   * point of margin on each side, and `describe('the bounds bite')` renders the
+   * shell with `props: []` and asserts it fails.
+   */
+  FURNITURE_SHARE_MIN: 0.045,
+  /** ...and a checkerboard is 32.4%, which is not furniture, it is noise. */
+  FURNITURE_SHARE_MAX: 0.15,
   /** There is a light source in the room... */
   BRIGHT_SHARE_MIN: 0.0002,
   /** ...and it is a filament, not a wall. */
@@ -136,27 +194,78 @@ const BOUNDS = {
   OVER_FIGURE_SHARE_MIN: 0.01,
   OVER_FIGURE_SHARE_MAX: 0.2,
   /**
-   * Rim separation percentiles, figure fill against room fill, with the
-   * sprite's own keyline stepped over at both ends.
+   * COMPOSITION. Every other bound in this file is invariant under permuting
+   * the props: relocate all eight and none of them moves by more than rounding.
+   * These three see WHERE the content is.
    *
-   * HIGHER IS BETTER, so these are floors only — which makes them the most
-   * directional numbers in the file and the reason the four bounds above exist.
-   * A black rectangle scores BETTER on every one of them than the shipped room
-   * does. They are worth something only in combination.
+   * `FILLED_CELLS_MIN` — of a 4x3 grid over the frame, how many cells carry at
+   * least a quarter of an even share. The shipped room manages 8; the bare shell
+   * manages 6. Two of the four it misses are the right-hand column, which the
+   * panel is sitting on, and one is the band reserved for the figure — so 8 of
+   * 12 is close to this screen's ceiling and the floor is set one below it.
+   *
+   * `CONTENT_BALANCE_MAX` — content left of the figure minus content right of
+   * him, over the total. Shipped runs -0.01 to +0.15; the same furniture pushed
+   * to one side runs 0.44.
+   *
+   * `CONTENT_PEAK_MAX` — the busiest cell's share of all content. A room whose
+   * content is one stripe scores 1.0.
    */
-  RIM_P05_MIN: 4,
-  RIM_P10_MIN: 6,
-  RIM_P25_MIN: 14,
-  RIM_P50_MIN: 32,
+  FILLED_CELLS_MIN: 7,
+  CONTENT_BALANCE_MAX: 0.3,
+  CONTENT_PEAK_MAX: 0.35,
+  /**
+   * RIM SEPARATION. Floors only, which makes them the most directional numbers
+   * in the file and the reason every bound above exists: a black rectangle
+   * scores BETTER on all of them than the shipped room does.
+   *
+   * Stated in `GYM_READABILITY`'s two anchors rather than in fresh integers, so
+   * "is this a real contrast bound or a collision detector" has an answer that
+   * is not an opinion:
+   *
+   *   PERCEPTIBLE_LUMA_STEP (10) is the room's own softest deliberate mark, the
+   *   block-course mortar line, which is authored to read as texture.
+   *   EDGE_LUMA_DELTA (20) is the step this piece calls a hard edge.
+   *
+   * WHY THE KEYLINE FLOOR IS NOT HIGHER, WITH THE ARITHMETIC. `rimContrast`
+   * samples the outermost reachable pixel of the figure, which on a 16-bit
+   * sprite is the keyline. The lifter has two: luma 9 on equipment and 19 on the
+   * body. A room value clearing BOTH by 10 has to be 29 or brighter, and a room
+   * whose darkest band is 29 cannot hold the bottom of the value range — which
+   * is the entire reason the figure owns the top of it. More generally his
+   * fifteen colours leave no gap wider than 18 luma below 125, so NO background
+   * value under 125 is more than 9 luma from every step of him. A p05 floor of
+   * 10 is therefore a statement about how many bad contacts occur, not about the
+   * palette, and it is set at exactly the step the art already calls visible.
+   */
+  RIM_P05_MIN: GYM_READABILITY.PERCEPTIBLE_LUMA_STEP,
+  RIM_P25_MIN: GYM_READABILITY.EDGE_LUMA_DELTA,
+  RIM_P50_MIN: GYM_READABILITY.EDGE_LUMA_DELTA + GYM_READABILITY.PERCEPTIBLE_LUMA_STEP,
+  /**
+   * The same crossings, measured as the best separation anywhere in the first
+   * `RIM_INSET_PX` pixels — keyline or the paint behind it. That is the question
+   * the eye asks at a silhouette, so it carries the harder floor. It does NOT
+   * replace the keyline percentiles: the figure-band plant scores 38.7 here and
+   * 3.6 there, so only the keyline measure catches a room painted in the
+   * figure's own values.
+   */
+  RIM_FILL_P05_MIN: GYM_READABILITY.PERCEPTIBLE_LUMA_STEP,
+  RIM_FILL_P10_MIN: GYM_READABILITY.EDGE_LUMA_DELTA,
   /** The figure keeps the top of the range outright. */
   FIGURE_OVER_ROOM_P90_MIN: 60,
 } as const;
 
 type Violation = string;
 
-/** Every bound the frame fails, by name. Empty is a pass. */
-function violations(grid: IndexGrid): Violation[] {
-  const r = measureSceneReadability(grid);
+/**
+ * Every bound the frame fails, by name. Empty is a pass.
+ *
+ * `occluders` defaults to the lift stage's, because that is what the screen
+ * does. Passing `[]` measures the image nobody sees, and exactly one test does
+ * that on purpose, to show the difference.
+ */
+function violations(grid: IndexGrid, occluders: readonly SceneRect[] = OCCLUDERS): Violation[] {
+  const r = measureSceneReadability(grid, { occluders });
   const out: Violation[] = [];
   const check = (name: string, value: number, min: number, max: number): void => {
     if (value < min) out.push(`${name}_LOW(${value.toFixed(4)}<${min})`);
@@ -172,6 +281,7 @@ function violations(grid: IndexGrid): Violation[] {
     BOUNDS.BEHIND_EDGE_SHARE_MIN,
     BOUNDS.BEHIND_EDGE_SHARE_MAX,
   );
+  check('FURNITURE_SHARE', r.furnitureShare, BOUNDS.FURNITURE_SHARE_MIN, BOUNDS.FURNITURE_SHARE_MAX);
   check('BRIGHT_SHARE', r.backgroundBrightShare, BOUNDS.BRIGHT_SHARE_MIN, BOUNDS.BRIGHT_SHARE_MAX);
   check(
     'OVER_FIGURE_SHARE',
@@ -179,16 +289,20 @@ function violations(grid: IndexGrid): Violation[] {
     BOUNDS.OVER_FIGURE_SHARE_MIN,
     BOUNDS.OVER_FIGURE_SHARE_MAX,
   );
-  const rimMax = Number.POSITIVE_INFINITY;
-  check('RIM_P05', r.rimContrast.p05, BOUNDS.RIM_P05_MIN, rimMax);
-  check('RIM_P10', r.rimContrast.p10, BOUNDS.RIM_P10_MIN, rimMax);
-  check('RIM_P25', r.rimContrast.p25, BOUNDS.RIM_P25_MIN, rimMax);
-  check('RIM_P50', r.rimContrast.p50, BOUNDS.RIM_P50_MIN, rimMax);
+  const noCeiling = Number.POSITIVE_INFINITY;
+  check('FILLED_CELLS', r.filledCells, BOUNDS.FILLED_CELLS_MIN, noCeiling);
+  check('CONTENT_BALANCE', Math.abs(r.contentBalance), 0, BOUNDS.CONTENT_BALANCE_MAX);
+  check('CONTENT_PEAK', r.contentPeak, 0, BOUNDS.CONTENT_PEAK_MAX);
+  check('RIM_P05', r.rimContrast.p05, BOUNDS.RIM_P05_MIN, noCeiling);
+  check('RIM_P25', r.rimContrast.p25, BOUNDS.RIM_P25_MIN, noCeiling);
+  check('RIM_P50', r.rimContrast.p50, BOUNDS.RIM_P50_MIN, noCeiling);
+  check('RIM_FILL_P05', r.rimFill.p05, BOUNDS.RIM_FILL_P05_MIN, noCeiling);
+  check('RIM_FILL_P10', r.rimFill.p10, BOUNDS.RIM_FILL_P10_MIN, noCeiling);
   check(
     'FIGURE_OVER_ROOM',
     r.figureLuma.p90 - r.backgroundLuma.p90,
     BOUNDS.FIGURE_OVER_ROOM_P90_MIN,
-    rimMax,
+    noCeiling,
   );
   return out;
 }
@@ -200,6 +314,7 @@ function violations(grid: IndexGrid): Violation[] {
 const SPEC = liftStageScene();
 const MEET_SPEC: GymSceneSpec = { ...SPEC, venue: 'meet-platform' };
 const DEMO_TOTAL_KG = 250;
+const OCCLUDERS = liftStageOccluders();
 
 const REP = buildSquatRep(LOAD_PRESETS.MAXIMAL);
 const LIGHT_REP = buildSquatRep(LOAD_PRESETS.LIGHT);
@@ -211,19 +326,38 @@ function frameAt(frac: number): (typeof REP.frames)[number] {
   return frame;
 }
 
+/**
+ * The room, the shadow he throws on it, and the figure — the exact three-layer
+ * stack `LiftStage.tsx` draws, in the order it draws them.
+ */
+function compositeOnto(scene: IndexGrid, frac: number, shadow: boolean = true): IndexGrid {
+  const spec = frameSpecFrom(frameAt(frac), DEMO_TOTAL_KG);
+  if (shadow) {
+    const patch = contactShadowPatch(
+      scene,
+      liftContactShadow(spec),
+      GYM_LIFT_STAGE.SPRITE_X,
+      GYM_LIFT_STAGE.SPRITE_Y,
+      GYM_CONTACT_SHADOW.STEPS,
+    );
+    if (patch !== null) blitOver(scene, patch.grid, patch.x, patch.y);
+  }
+  const { grid } = renderLifterFrame(spec);
+  return blitOver(scene, grid, GYM_LIFT_STAGE.SPRITE_X, GYM_LIFT_STAGE.SPRITE_Y);
+}
+
 /** The room with the lifter standing in it, exactly as the stage composites. */
 function composite(frac: number, spec: GymSceneSpec = SPEC): IndexGrid {
-  const scene = renderGymScene(spec);
-  const { grid } = renderLifterFrame(frameSpecFrom(frameAt(frac), DEMO_TOTAL_KG));
-  return blitOver(scene, grid, GYM_LIFT_STAGE.SPRITE_X, GYM_LIFT_STAGE.SPRITE_Y);
+  return compositeOnto(renderGymScene(spec), frac);
 }
 
 /** The same figure over a background made by `paint`, for the adversarial set. */
 function compositeOverPainted(paint: (g: IndexGrid) => void, frac: number = 0.5): IndexGrid {
   const bg = createGrid(SPEC.w, SPEC.h, GYM.WALL_DEEP);
   paint(bg);
-  const { grid } = renderLifterFrame(frameSpecFrom(frameAt(frac), DEMO_TOTAL_KG));
-  return blitOver(bg, grid, GYM_LIFT_STAGE.SPRITE_X, GYM_LIFT_STAGE.SPRITE_Y);
+  // No shadow on a planted background: the plants are about what the ROOM does,
+  // and a shadow stepped down an arbitrary painted surface is not that.
+  return compositeOnto(bg, frac, false);
 }
 
 const MOMENTS: readonly (readonly [string, number])[] = [
@@ -259,7 +393,8 @@ describe('the room is a room', () => {
       ['window glass', GYM.GLASS_DIM],
       ['rubber floor', GYM.FLOOR_MID],
       ['platform boards', GYM.WOOD_LIGHT],
-      ['platform edge', GYM.STEEL_FRAME],
+      ['steel on the equipment', GYM.STEEL_FRAME],
+      ['platform edge', GYM.WOOD_LIGHT],
       ['lamp filament', GYM.LAMP_CORE],
       ['coloured plates on a tree', GYM.ACCENT_RED],
       ['chalk', GYM.CHALK_DUST],
@@ -513,38 +648,215 @@ describe('the room goes behind the figure and stays there', () => {
 // READABILITY
 // ---------------------------------------------------------------------------
 
+const report = (grid: IndexGrid): string =>
+  formatReadability(measureSceneReadability(grid, { occluders: OCCLUDERS }));
+
 describe('readability at phone scale', () => {
   it('passes every bound at every moment of the rep', () => {
     for (const [name, frac] of MOMENTS) {
       const grid = composite(frac);
-      const bad = violations(grid);
-      expect(bad, `${name}:\n${formatReadability(measureSceneReadability(grid))}`).toEqual([]);
+      expect(violations(grid), `${name}:\n${report(grid)}`).toEqual([]);
     }
   });
 
   it('passes them in the meet venue too', () => {
     const grid = composite(0, MEET_SPEC);
-    expect(violations(grid), formatReadability(measureSceneReadability(grid))).toEqual([]);
+    expect(violations(grid), report(grid)).toEqual([]);
   });
 
   it('measures a real figure and a real room, not two empty sets', () => {
     // The vacuity guard. Every share above is a ratio, and a ratio over zero
     // pixels reports whatever the denominator guard says.
-    const r = measureSceneReadability(composite(0.5));
+    const r = measureSceneReadability(composite(0.5), { occluders: OCCLUDERS });
     expect(r.figurePx).toBeGreaterThan(500);
     expect(r.barbellPx).toBeGreaterThan(200);
     expect(r.backgroundPx).toBeGreaterThan(SPEC.w * SPEC.h * 0.5);
     expect(r.behindPx).toBeGreaterThan(1000);
     expect(r.rimSamples).toBeGreaterThan(200);
-    expect(r.figurePx + r.barbellPx + r.backgroundPx).toBe(SPEC.w * SPEC.h);
+    // ...and the three roles plus the hidden strip account for every pixel.
+    expect(r.figurePx + r.barbellPx + r.backgroundPx + r.hiddenPx).toBe(SPEC.w * SPEC.h);
+    expect(r.visiblePx + r.hiddenPx).toBe(SPEC.w * SPEC.h);
   });
 
   it('keeps the figure at the top of the range, by a distance', () => {
-    const r = measureSceneReadability(composite(0));
+    const r = measureSceneReadability(composite(0), { occluders: OCCLUDERS });
     expect(r.figureLuma.p90 - r.backgroundLuma.p90).toBeGreaterThan(
       BOUNDS.FIGURE_OVER_ROOM_P90_MIN,
     );
     expect(r.figureMeanLuma).toBeGreaterThan(r.backgroundMeanLuma * 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE PANEL IS PART OF THE COMPOSITE
+// ---------------------------------------------------------------------------
+
+describe('the panel is part of the composite', () => {
+  const S = GYM_LIFT_STAGE;
+  const C = GYM_STAGE_CHROME;
+  const L = LIFT_TUNING.LAYOUT;
+
+  it('takes the occluder from the screen that draws it, not from a guess', () => {
+    // Same discipline `GYM_LIFT_STAGE` is held to: the numbers are written down
+    // in the tuning file and re-derived here, so they cannot drift away from
+    // the panel `LiftStage.tsx` actually paints.
+    expect(C.PANEL_X).toBe(L.TRACE_X);
+    expect(C.PANEL_W).toBe(L.TRACE_W);
+    expect(C.PANEL_TOP).toBe(L.TRACE_TOP);
+    expect(C.PANEL_BOTTOM).toBe(L.TRACE_BOTTOM);
+  });
+
+  it('converts it to the scene pixels the panel really covers', () => {
+    const [rect] = OCCLUDERS;
+    expect(OCCLUDERS.length).toBe(1);
+    if (rect === undefined) throw new Error('no occluder');
+    // Every scene pixel inside the rect is more than half covered on each axis,
+    // and every pixel just outside it is not. Checked against the geometry
+    // rather than against the constant that produced it.
+    const coveredFrac = (i: number, origin: number, lo: number, hi: number): number => {
+      const a = origin + i * S.SCALE;
+      const b = a + S.SCALE;
+      return Math.max(0, Math.min(b, hi) - Math.max(a, lo)) / S.SCALE;
+    };
+    const inX = (i: number): number => coveredFrac(i, S.ORIGIN_X, C.PANEL_X, C.PANEL_X + C.PANEL_W);
+    const inY = (i: number): number => coveredFrac(i, S.ORIGIN_Y, C.PANEL_TOP, C.PANEL_BOTTOM);
+    for (const [name, f, i] of [
+      ['x0', inX, rect.x0],
+      ['x1', inX, rect.x1],
+      ['y0', inY, rect.y0],
+      ['y1', inY, rect.y1],
+    ] as const) {
+      expect(f(i), `${name} inside`).toBeGreaterThan(C.OCCLUSION_COVERAGE_MIN);
+    }
+    expect(inX(rect.x0 - 1)).toBeLessThanOrEqual(C.OCCLUSION_COVERAGE_MIN);
+    expect(inX(rect.x1 + 1)).toBeLessThanOrEqual(C.OCCLUSION_COVERAGE_MIN);
+    expect(inY(rect.y0 - 1)).toBeLessThanOrEqual(C.OCCLUSION_COVERAGE_MIN);
+    expect(inY(rect.y1 + 1)).toBeLessThanOrEqual(C.OCCLUSION_COVERAGE_MIN);
+  });
+
+  it('hides about a fifth of the room, and the busy fifth', () => {
+    const r = measureSceneReadability(composite(0), { occluders: OCCLUDERS });
+    expect(r.hiddenPx).toBe(4160);
+    expect(r.hiddenPx / (SPEC.w * SPEC.h)).toBeGreaterThan(0.18);
+    // The props that are behind it, named, so this is not an abstract fraction.
+    const [rect] = OCCLUDERS;
+    if (rect === undefined) throw new Error('no occluder');
+    const hiddenFraction = (placement: GymPropPlacement): number => {
+      const box = propBox(SPEC, placement);
+      const w = Math.max(0, Math.min(box.x1, rect.x1) - Math.max(box.x0, rect.x0) + 1);
+      const h = Math.max(0, Math.min(box.y1, rect.y1) - Math.max(box.y0, rect.y0) + 1);
+      return (w * h) / ((box.x1 - box.x0 + 1) * (box.y1 - box.y0 + 1));
+    };
+    // No prop is now MOSTLY behind the panel. Before this rework the dumbbell
+    // rack was 73% behind it, the loaded bar 62% and the flat bench 32%, and
+    // every one of those pixels counted towards the readability numbers.
+    for (const placement of GYM_PROPS_TRAINING) {
+      expect(hiddenFraction(placement), `${placement.ART} is mostly behind the panel`).toBeLessThan(
+        0.5,
+      );
+    }
+  });
+
+  it('MOVES THE NUMBERS — widening the panel changes what the room measures', () => {
+    // THE MUTATION. Under the old measurement this test could not have gone
+    // green in one direction and red in the other, because the occluder was not
+    // an input at all: every number was identical for every panel.
+    const grid = composite(0);
+    const wider: SceneRect[] = [{ x0: 60, x1: SPEC.w - 1, y0: 0, y1: SPEC.h - 1 }];
+    const shipped = measureSceneReadability(grid, { occluders: OCCLUDERS });
+    const mutated = measureSceneReadability(grid, { occluders: wider });
+    // Assert the mutation applied before trusting what it says.
+    expect(mutated.hiddenPx).toBeGreaterThan(shipped.hiddenPx * 2);
+    expect(mutated.backgroundPx).toBeLessThan(shipped.backgroundPx);
+    // ...and then that it lands somewhere.
+    expect(mutated.furnitureShare).not.toBeCloseTo(shipped.furnitureShare, 4);
+    expect(mutated.backgroundMeanLuma).not.toBeCloseTo(shipped.backgroundMeanLuma, 3);
+    expect(mutated.contentBalance).not.toBeCloseTo(shipped.contentBalance, 3);
+    expect(mutated.filledCells).toBeLessThan(shipped.filledCells);
+    // A panel over half the room takes half its furniture with it.
+    expect(violations(grid, wider).length).toBeGreaterThan(0);
+  });
+
+  it('and removing it changes them the other way', () => {
+    const grid = composite(0);
+    const occluded = measureSceneReadability(grid, { occluders: OCCLUDERS });
+    const raw = measureSceneReadability(grid, { occluders: [] });
+    expect(raw.hiddenPx).toBe(0);
+    expect(raw.backgroundPx).toBeGreaterThan(occluded.backgroundPx);
+    // Every one of these was reported as the room's number before the occluder
+    // existed. None of them is.
+    expect(raw.backgroundEdgeShare).toBeLessThan(occluded.backgroundEdgeShare);
+    expect(raw.furnitureShare).toBeLessThan(occluded.furnitureShare);
+    expect(raw.backgroundOverFigureShare).toBeLessThan(occluded.backgroundOverFigureShare);
+    expect(raw.backgroundBrightShare).toBeGreaterThan(occluded.backgroundBrightShare);
+    expect(raw.contentBalance).toBeLessThan(occluded.contentBalance);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The lifter stands on something
+// ---------------------------------------------------------------------------
+
+describe('the figure is grounded', () => {
+  it('darkens the platform under his feet, in the room own ramp', () => {
+    const room = renderGymScene(SPEC);
+    const before = Array.from(room.data);
+    const spec = frameSpecFrom(frameAt(0), DEMO_TOTAL_KG);
+    const patch = contactShadowPatch(
+      room,
+      liftContactShadow(spec),
+      GYM_LIFT_STAGE.SPRITE_X,
+      GYM_LIFT_STAGE.SPRITE_Y,
+      GYM_CONTACT_SHADOW.STEPS,
+    );
+    expect(patch, 'no shadow at all').not.toBeNull();
+    if (patch === null) return;
+    // It does not mutate what it measures.
+    expect(Array.from(room.data)).toEqual(before);
+    // It sits under the lifter and on the platform, and it is darker than what
+    // it landed on, everywhere.
+    let painted = 0;
+    for (let y = 0; y < patch.grid.h; y += 1) {
+      for (let x = 0; x < patch.grid.w; x += 1) {
+        const index = getPx(patch.grid, x, y);
+        if (isTransparentIndex(index)) continue;
+        painted += 1;
+        const under = getPx(room, x + patch.x, y + patch.y);
+        expect(lumaOfIndex(index) ?? 0, `not darker at (${x},${y})`).toBeLessThan(
+          lumaOfIndex(under) ?? 0,
+        );
+        // Still the room's own palette — the shadow never introduces a colour.
+        expect(roleOf(index)).toBe('background');
+      }
+    }
+    expect(painted).toBeGreaterThan(100);
+    expect(patch.y).toBeGreaterThan(platformBackRow(SPEC));
+  });
+
+  it('narrows as he descends, because the key light is high', () => {
+    const area = (frac: number): number => {
+      const mask = liftContactShadow(frameSpecFrom(frameAt(frac), DEMO_TOTAL_KG));
+      let n = 0;
+      for (let i = 0; i < mask.data.length; i += 1) {
+        if (!isTransparentIndex(mask.data[i] ?? 0)) n += 1;
+      }
+      return n;
+    };
+    expect(area(0.5)).toBeLessThan(area(0));
+  });
+
+  it('is what the composite draws, not only what a tool draws', () => {
+    // The defect this closes: `renderContactShadow` existed and was called by
+    // `tools/sprites.mjs` and by unit tests only, so on the shipped stage the
+    // lifter stood on a 136-luma platform with nothing under his feet.
+    const withShadow = compositeOnto(renderGymScene(SPEC), 0, true);
+    const without = compositeOnto(renderGymScene(SPEC), 0, false);
+    expect(Array.from(withShadow.data)).not.toEqual(Array.from(without.data));
+    const a = measureSceneReadability(withShadow, { occluders: OCCLUDERS });
+    const b = measureSceneReadability(without, { occluders: OCCLUDERS });
+    expect(a.backgroundEdgeShare).toBeGreaterThan(b.backgroundEdgeShare);
+    // ...and the grounded frame still passes every bound.
+    expect(violations(withShadow), report(withShadow)).toEqual([]);
   });
 });
 
@@ -666,12 +978,18 @@ describe('the bounds bite', () => {
       GYM.ACCENT_YELLOW,
     ];
     const BAND_ROWS = 14;
-    const SEAM_ROWS = 25;
+    // UPRIGHTS, evenly spread across the frame — pillars, near enough. Without
+    // them this plant would fail `FURNITURE_SHARE`, `FILLED_CELLS` and
+    // `CONTENT_PEAK` as well, and stop being the sharp "only the rim catches it"
+    // case it exists to be. One column in twenty-five is enough content to clear
+    // the furniture floor and few enough to stay under the busyness ceiling.
+    const SEAM_COLS = 25;
     const grid = planted((g) => {
       for (let y = 0; y < g.h; y += 1) {
         const band = BANDS[Math.min(BANDS.length - 1, Math.floor(y / BAND_ROWS))] ?? BANDS[0] ?? 0;
-        const seam = y % SEAM_ROWS === 0;
-        for (let x = 0; x < g.w; x += 1) setPx(g, x, y, seam ? GYM.CHALK_DUST : band);
+        for (let x = 0; x < g.w; x += 1) {
+          setPx(g, x, y, x % SEAM_COLS === 0 ? GYM.LAMP_GLOW : band);
+        }
       }
       // A light source, so BRIGHT_SHARE has something to find.
       for (let y = 0; y < 2; y += 1) {
@@ -680,9 +998,9 @@ describe('the bounds bite', () => {
     });
     const bad = violations(grid);
     expect(bad.some((v) => v.startsWith('RIM_P05_LOW')), bad.join(' ')).toBe(true);
-    expect(bad.some((v) => v.startsWith('RIM_P10_LOW')), bad.join(' ')).toBe(true);
-    // ...and it passes the four aggregate floors and ceilings that catch the
-    // blank screen and the blown-out one, which is what makes the rim bounds
+    expect(bad.some((v) => v.startsWith('RIM_P25_LOW')), bad.join(' ')).toBe(true);
+    // ...and it passes every aggregate that catches the blank screen, the
+    // blown-out one and the unfurnished one, which is what makes the rim bounds
     // load-bearing rather than redundant.
     for (const passed of [
       'INDEX_COUNT',
@@ -691,11 +1009,99 @@ describe('the bounds bite', () => {
       'EDGE_SHARE',
       'BRIGHT_SHARE',
       'OVER_FIGURE_SHARE',
+      'FURNITURE_SHARE',
+      'FILLED_CELLS',
+      'CONTENT_BALANCE',
+      'CONTENT_PEAK',
     ]) {
       expect(bad.some((v) => v.startsWith(passed)), `${passed} also fired: ${bad.join(' ')}`).toBe(
         false,
       );
     }
+    // ...and the FILL percentiles pass it outright, which is exactly why the
+    // keyline percentiles are kept as their own bound rather than replaced.
+    const r = measureSceneReadability(grid, { occluders: OCCLUDERS });
+    expect(r.rimFill.p05).toBeGreaterThan(BOUNDS.RIM_FILL_P05_MIN * 3);
+    expect(r.rimContrast.p05).toBeLessThan(BOUNDS.RIM_P05_MIN);
+  });
+
+  it('A ROOM WITH NO FURNITURE IN IT fails the furniture floor', () => {
+    // THE ONE THE OLD `INDEX_COUNT_MIN` CLAIMED TO BE. This is the shipped
+    // shell — every wall band, course, joint, window, stripe, kickplate, floor
+    // band, platform, seam, lamp and wash — with the prop table emptied.
+    const bare: GymSceneSpec = { ...SPEC, props: [] };
+    const shell = renderGymScene(bare);
+    // Assert the mutation applied: it really is a different room, and really is
+    // missing exactly the furniture.
+    expect(sceneProps(bare).length).toBe(0);
+    expect(sceneProps(SPEC).length).toBe(GYM_PROPS_TRAINING.length);
+    expect(Array.from(shell.data)).not.toEqual(Array.from(renderGymScene(SPEC).data));
+
+    const grid = compositeOnto(shell, 0);
+    const r = measureSceneReadability(grid, { occluders: OCCLUDERS });
+    // It clears the old floor comfortably — which is the whole point. A bare
+    // shell is not short of colours.
+    expect(r.backgroundIndexCount).toBeGreaterThan(BOUNDS.INDEX_COUNT_MIN);
+    const bad = violations(grid);
+    expect(bad.some((v) => v.startsWith('FURNITURE_SHARE_LOW')), bad.join(' ')).toBe(true);
+    expect(bad.some((v) => v.startsWith('FILLED_CELLS_LOW')), bad.join(' ')).toBe(true);
+    expect(bad.some((v) => v.startsWith('INDEX_COUNT'))).toBe(false);
+    // ...and the shipped room, with the same shell and eight props in it, passes.
+    expect(violations(composite(0))).toEqual([]);
+  });
+
+  it('THE SAME FURNITURE, MOVED, fails the balance ceiling', () => {
+    // THE PERMUTATION TEST. Eleven of the bounds in this file are invariant
+    // under moving the props and the rest are local-neighbour statistics; before
+    // `contentBalance` existed, relocating every prop to a legal position left
+    // all of them unchanged. This room has the identical prop list with one
+    // number per entry changed.
+    const shoved: readonly GymPropPlacement[] = GYM_PROPS_TRAINING.map((p) => ({
+      ...p,
+      XF: 0.02,
+    }));
+    expect(shoved.length).toBe(GYM_PROPS_TRAINING.length);
+    expect(shoved.map((p) => p.ART)).toEqual(GYM_PROPS_TRAINING.map((p) => p.ART));
+    const moved = renderGymScene({ ...SPEC, props: shoved });
+    expect(Array.from(moved.data), 'the shove did not move anything').not.toEqual(
+      Array.from(renderGymScene(SPEC).data),
+    );
+
+    const grid = compositeOnto(moved, 0);
+    const bad = violations(grid);
+    expect(bad.some((v) => v.startsWith('CONTENT_BALANCE_HIGH')), bad.join(' ')).toBe(true);
+    // ...and it passes every bound that cannot see where anything is, which is
+    // what makes the balance bound load-bearing rather than decorative.
+    for (const blind of [
+      'INDEX_COUNT',
+      'MEAN_LUMA',
+      'P90_LUMA',
+      'EDGE_SHARE',
+      'BRIGHT_SHARE',
+      'OVER_FIGURE_SHARE',
+      'FURNITURE_SHARE',
+      'RIM_',
+    ]) {
+      expect(bad.some((v) => v.startsWith(blind)), `${blind} also fired: ${bad.join(' ')}`).toBe(
+        false,
+      );
+    }
+  });
+
+  it('and a legal reshuffle moves the composition numbers without failing', () => {
+    // The other half of the same proof: the metric is not a constant that only
+    // fires on absurd input. Mirroring the room about its centre is a perfectly
+    // legal arrangement, and it swings the balance from positive to negative.
+    const mirrored: readonly GymPropPlacement[] = GYM_PROPS_TRAINING.map((p) => ({
+      ...p,
+      XF: 0.92 - p.XF,
+    }));
+    const grid = compositeOnto(renderGymScene({ ...SPEC, props: mirrored }), 0);
+    const a = measureSceneReadability(composite(0), { occluders: OCCLUDERS });
+    const b = measureSceneReadability(grid, { occluders: OCCLUDERS });
+    expect(Math.sign(a.contentBalance)).not.toBe(Math.sign(b.contentBalance));
+    expect(Math.abs(a.contentBalance - b.contentBalance)).toBeGreaterThan(0.1);
+    expect(a.contentCells).not.toEqual(b.contentCells);
   });
 
   it('reports nothing at all for the shipped room, so a finding is the plant', () => {

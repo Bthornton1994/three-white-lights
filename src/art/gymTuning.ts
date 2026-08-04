@@ -153,8 +153,25 @@ export const GYM_WINDOWS = Object.freeze({
  * middle of the scene on any screen that has a panel down one side.
  */
 export const GYM_FLOOR_PLAN = Object.freeze({
-  /** Fractions of the floor's depth at which the rubber steps value. */
-  BAND_FRACS: Object.freeze([0.22, 0.5, 0.78]),
+  /**
+   * Fractions of the floor's depth at which the rubber steps value.
+   *
+   * Front-loaded, and MEASURED rather than eyeballed. At an even [0.22, 0.5,
+   * 0.78] the twelve rows directly under the wall were FLOOR_DEEP (luma 17) and
+   * the fifteen under those were FLOOR_DARK (25) — and those are exactly the
+   * rows the barbell's discs cross at every depth of the rep. The lifter's own
+   * two keylines are luma 9 (equipment) and 19 (body), so a 17-luma floor put 8
+   * luma between a disc's outline and the room, and 2.4 between the lifter's
+   * outline and the room. The silhouette dissolved into the back of the floor,
+   * and the rim percentiles said so.
+   *
+   * FLOOR_MID (34) clears the equipment keyline by 25 and the body keyline by
+   * 15, and is still 15 under the bottom of the figure's own value band. So the
+   * recession happens in the first six rows — which is what a shadow at the base
+   * of a wall looks like anyway — and the rest of the rubber is the value the
+   * figure can be seen against.
+   */
+  BAND_FRACS: Object.freeze([0.01, 0.03, 0.85]),
   /**
    * Where the platform's back edge sits, as a fraction of floor depth.
    *
@@ -245,10 +262,28 @@ export const GYM_PROPS_TRAINING: readonly GymPropPlacement[] = Object.freeze([
   Object.freeze({ ART: 'BUMPER_STACK' as const, XF: 0.1, DEPTH: 0.16, DIM: false }),
   Object.freeze({ ART: 'CHALK_STAND' as const, XF: 0.08, DEPTH: 0.64, DIM: false }),
   Object.freeze({ ART: 'KETTLEBELL_ROW' as const, XF: 0.0, DEPTH: 0.86, DIM: false }),
-  Object.freeze({ ART: 'PLATE_TREE' as const, XF: 0.57, DEPTH: 0.06, DIM: false }),
-  Object.freeze({ ART: 'DUMBBELL_RACK' as const, XF: 0.71, DEPTH: 0.02, DIM: true }),
-  Object.freeze({ ART: 'FLAT_BENCH' as const, XF: 0.62, DEPTH: 0.34, DIM: true }),
-  Object.freeze({ ART: 'LOADED_BAR' as const, XF: 0.68, DEPTH: 0.72, DIM: false }),
+  // ---------------------------------------------------------------------
+  // THE RIGHT-HAND GROUP, PULLED BACK OUT FROM BEHIND THE BAR-PATH PANEL.
+  //
+  // These four used to sit at XF 0.57 / 0.62 / 0.68 / 0.71, which on the lift
+  // stage put the dumbbell rack 73% behind the panel, the loaded bar 62% and
+  // the bench 32%. None of that showed on any screen, and the measurement was
+  // counting all of it, so the busy half of the room was also the invisible
+  // half. `GYM_STAGE_CHROME` now names the panel and the readability numbers
+  // ignore what is under it; these placements are the other half of that fix —
+  // the furniture moved to where the frame actually is.
+  //
+  // Ordered back to front, so a nearer prop overlaps a further one rather than
+  // the other way round. They deliberately still run past the panel's left edge:
+  // a gym does not stop at the edge of the viewport.
+  Object.freeze({ ART: 'DUMBBELL_RACK' as const, XF: 0.57, DEPTH: 0.02, DIM: true }),
+  Object.freeze({ ART: 'PLATE_TREE' as const, XF: 0.66, DEPTH: 0.06, DIM: false }),
+  // Undimmed, unlike before. At DEPTH 0.34 the bench stands on rubber the floor
+  // re-banding put at luma 34, and `dimIndex` takes its steel from 58 to 25 —
+  // nine luma off the floor behind it, which is a bench nobody can see. A prop
+  // in the middle of the room is not a far prop.
+  Object.freeze({ ART: 'FLAT_BENCH' as const, XF: 0.56, DEPTH: 0.34, DIM: false }),
+  Object.freeze({ ART: 'LOADED_BAR' as const, XF: 0.56, DEPTH: 0.72, DIM: false }),
 ]);
 
 /**
@@ -404,6 +439,72 @@ export const GYM_LIFT_STAGE = Object.freeze({
   FLOOR_ROW: 165,
 });
 
+/**
+ * THE CHROME THE SCREEN PAINTS ON TOP OF THE ROOM.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY A BACKGROUND LAYER HAS TO KNOW THIS
+ * ---------------------------------------------------------------------------
+ * It does not know it in order to DRAW anything — `renderGymScene` is still a
+ * layer that has never heard of the lift mechanic. It knows it in order to be
+ * MEASURED honestly.
+ *
+ * `LiftStage.tsx` paints an opaque bar-path panel over the right-hand strip of
+ * the canvas, after the room and before the lifter. At `GYM_LIFT_STAGE.SCALE`
+ * that panel covers 4160 of the room's 22490 pixels — 18.5% of it — on every
+ * single frame. A readability number computed over all 22490 is a number about
+ * an image nobody ever sees, and the hidden fifth is not a neutral sample of the
+ * room: it is the busy half. The measurement therefore takes an occluder list,
+ * and this is where the lift stage's occluder is written down.
+ *
+ * IN SCREEN POINTS, not scene pixels, because that is the space the chrome is
+ * authored in. `liftStageOccluders()` converts. `gymScene.test.ts` asserts every
+ * number below against `LIFT_TUNING.LAYOUT` so the two cannot drift apart.
+ *
+ * NOT A KNOB — moving these does not change how anything looks, it changes what
+ * the measurement believes is visible. They are here because they are the
+ * screen's geometry and there is one place for the screen's geometry.
+ */
+export const GYM_STAGE_CHROME = Object.freeze({
+  /** The bar-path panel, in screen points: `LIFT_TUNING.LAYOUT.TRACE_*`. */
+  PANEL_X: 300,
+  PANEL_W: 78,
+  PANEL_TOP: 20,
+  PANEL_BOTTOM: 500,
+  /**
+   * How much of a scene pixel an occluder must cover before that pixel counts
+   * as hidden. 0.5 — a pixel more than half covered is gone; a pixel less than
+   * half covered still shows a sliver. The panel's edges land on scene-pixel
+   * boundaries in every direction but one, so this threshold moves the count by
+   * 26 pixels out of 4160 and is not doing real work; it is named so the rule is
+   * stated rather than left implicit in a rounding.
+   */
+  OCCLUSION_COVERAGE_MIN: 0.5,
+});
+
+/**
+ * The contact shadow, where the composite draws it.
+ *
+ * The SHAPE is `renderContactShadow` in `lifterSprite.ts` and belongs to the
+ * figure — it narrows as he descends because the key light is high. What
+ * belongs to the room is what the shadow DOES to the surface it lands on, and
+ * this is that: how many rungs down the room's own ramp the lit platform goes
+ * where he is standing on it.
+ *
+ * Two rungs rather than a flat black ellipse, on purpose. The platform top is
+ * luma 136 and `PAL.CONTACT_SHADOW` is 17; painting that index straight on would
+ * put a 119-luma hole in the brightest surface in the room, and would also put a
+ * luma-17 shape inside the 9-19 band the lifter's own keyline lives in. Stepping
+ * the wood ramp down instead keeps the shadow made of the floor it is on, which
+ * is what a BG layer with sixteen colours had to do anyway.
+ *
+ * UNPLAYED. One rung reads softer, three reads like a hole. Nobody has looked at
+ * this on a phone.
+ */
+export const GYM_CONTACT_SHADOW = Object.freeze({
+  STEPS: 2,
+});
+
 /** Column the room is composed around: the lifter's own centre line. */
 export const GYM_LIFT_FOCUS_X = GYM_LIFT_STAGE.SPRITE_X + CENTER_X;
 
@@ -456,6 +557,39 @@ export const GYM_READABILITY = Object.freeze({
    * band the figure is supposed to own alone.
    */
   FIGURE_BAND_LUMA: 160,
+  /**
+   * The smallest luma step this piece is willing to call VISIBLE at phone scale.
+   *
+   * Not a guess and not a psychophysics claim: it is the room's own softest
+   * deliberate mark. The block-course mortar line is drawn one rung under
+   * whatever band it crosses, which measures about 10 luma, and it is authored
+   * to read as texture — present, but not an edge. So 10 is the step this art
+   * already treats as the boundary between "there" and "not there", and
+   * EDGE_LUMA_DELTA (20) is the step it treats as a hard edge. Every separation
+   * floor below is stated in these two numbers rather than in fresh integers.
+   *
+   * WHAT IT IS NOT: a claim that 9 luma is invisible on a real phone at real
+   * brightness. Nobody has looked at this on a phone. It is a stated, single
+   * place to turn if looking at one says the line is somewhere else.
+   */
+  PERCEPTIBLE_LUMA_STEP: 10,
+  /**
+   * The composition grid: how the visible room is cut up before its content is
+   * counted, so "where the furniture is" is a number and not an opinion.
+   *
+   * 4 x 3 over the VISIBLE region. Coarse on purpose — a finer grid measures
+   * individual props, and the question is whether the room is arranged, not
+   * whether a bench is four pixels left of where it was.
+   */
+  COMPOSITION_COLS: 4,
+  COMPOSITION_ROWS: 3,
+  /**
+   * How much of an EVEN share of the room's content a cell has to carry before
+   * it counts as filled rather than bare. A quarter: a room laid out evenly puts
+   * 1/12 of its content in each cell of a 4x3 grid, and a cell holding a quarter
+   * of that has something in it without pretending the layout is a lattice.
+   */
+  CELL_FILLED_FRACTION_OF_EVEN: 0.25,
   /**
    * The quantiles every distribution in the report is summarised at.
    *

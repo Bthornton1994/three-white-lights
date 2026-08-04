@@ -48,6 +48,8 @@
 
 import { fillRect, createGrid, getPx, setPx, type IndexGrid } from './raster';
 import { isTransparentIndex } from './palette';
+import { deformPose, pitchForLevel, poseAtDepth, strainForLevel } from './rig';
+import { renderContactShadow, type LifterFrameSpec } from './lifterSprite';
 import { GYM, GYM_RAMPS, dimIndex, stepIndex } from './gymPalette';
 import { PROP_ART, type PropArt } from './gymProps';
 import {
@@ -60,6 +62,7 @@ import {
   GYM_LIGHTING,
   GYM_PARALLAX,
   GYM_ROOM,
+  GYM_STAGE_CHROME,
   GYM_VENUE,
   GYM_VENUE_PROPS,
   GYM_WALL_PAINT,
@@ -76,6 +79,18 @@ export interface GymSceneSpec {
   readonly venue: GymVenue;
   readonly w: number;
   readonly h: number;
+  /**
+   * The furniture, when it is not the venue's own table.
+   *
+   * Absent on every production caller — `liftStageScene()` does not set it, and
+   * `GYM_VENUE_PROPS[venue]` is what a room gets. It exists so a test can render
+   * THE SHELL WITH NOTHING IN IT and hold the furniture floor over it: a bound
+   * that claims "a room has furniture" is worth nothing until a room with no
+   * furniture can be built and shown to fail it.
+   *
+   * Still not player state. It is a list of drawings and where they stand.
+   */
+  readonly props?: readonly GymPropPlacement[];
   /** The row the figure's soles rest on. The floor is drawn through it. */
   readonly floorRow: number;
   /**
@@ -351,7 +366,18 @@ function paintPlatform(g: IndexGrid, spec: GymSceneSpec): void {
     }
   }
 
-  // Steel edge banding along the back edge, lit on its top face.
+  // The raised back edge of the platform, lit along its top face.
+  //
+  // DRAWN IN THE WOOD RAMP, NOT IN STEEL, and that is a fix rather than a
+  // preference. In steel this band was STEEL_LIT (92) over STEEL_FRAME (58) — and
+  // it runs the full width of the platform, straight through the columns the
+  // lifter's own legs occupy. His knee sleeves are GEAR_DARK 59 and GEAR_MID
+  // 101, so at the bottom of a squat his sleeve sat 0.9 luma off the band behind
+  // it and his shin 8.9 off the lit face. The rim percentiles found it; nothing
+  // else could. WOOD_LIGHT (136) sits in the one gap the figure's whole ramp
+  // leaves below 150 — between GEAR_MID 101 / SKIN_MID 117 / 125 and
+  // SINGLET_LIGHT 148 / GEAR_LIGHT 149 — and it is the only value in either gym
+  // bank that clears every step of his kit by more than a visible margin.
   const edgeHalf = Math.round(spec.w * GYM_FLOOR_PLAN.PLATFORM_BACK_HALF_WF);
   fillRect(
     g,
@@ -359,9 +385,9 @@ function paintPlatform(g: IndexGrid, spec: GymSceneSpec): void {
     backRow,
     edgeHalf * 2 + 1,
     GYM_FLOOR_PLAN.EDGE_ROWS,
-    GYM.STEEL_FRAME,
+    GYM.WOOD_DARK,
   );
-  fillRect(g, centre - edgeHalf, backRow, edgeHalf * 2 + 1, 1, GYM.STEEL_LIT);
+  fillRect(g, centre - edgeHalf, backRow, edgeHalf * 2 + 1, 1, GYM.WOOD_LIGHT);
 }
 
 /**
@@ -477,8 +503,13 @@ function stampProp(
   }
 }
 
+/** The furniture this spec draws: its own list if it has one, else the venue's. */
+export function sceneProps(spec: GymSceneSpec): readonly GymPropPlacement[] {
+  return spec.props ?? GYM_VENUE_PROPS[spec.venue];
+}
+
 function paintProps(g: IndexGrid, spec: GymSceneSpec): void {
-  for (const placement of GYM_VENUE_PROPS[spec.venue]) {
+  for (const placement of sceneProps(spec)) {
     const art = PROP_ART[placement.ART];
     const origin = propOrigin(spec, art, placement);
     stampProp(g, art, origin.x, origin.y, placement.DIM);
@@ -557,6 +588,110 @@ export const LIFT_SPRITE_ORIGIN = Object.freeze({
   x: GYM_LIFT_STAGE.SPRITE_X,
   y: GYM_LIFT_STAGE.SPRITE_Y,
 });
+
+/**
+ * The shadow this frame's lifter throws, as a mask.
+ *
+ * A one-line bridge, and it lives here rather than in `lifterSprite.ts` because
+ * of what it is FOR: `renderContactShadow` has existed since A1 and, until now,
+ * was called only by an offline contact-sheet tool and by unit tests. On the
+ * shipped stage the lifter stood on a 136-luma platform with nothing under his
+ * feet. Grounding a figure is a property of the composite, not of the sprite, so
+ * the composite is where the call belongs.
+ *
+ * The pose is rebuilt from the frame spec by the same three steps
+ * `renderLifterFrame` uses, rather than by rasterising the sprite a second time
+ * to read the pose off the result.
+ */
+export function liftContactShadow(spec: LifterFrameSpec): IndexGrid {
+  const pose = deformPose(
+    poseAtDepth(spec.depth, spec.direction),
+    strainForLevel(spec.strainLevel),
+    pitchForLevel(spec.pitchLevel ?? 0),
+  );
+  return renderContactShadow(pose, spec.depth);
+}
+
+/**
+ * Darken `base` wherever `mask` is opaque, by `steps` rungs of the room's own
+ * ramps, and return ONLY the affected box.
+ *
+ * This is how the contact shadow reaches the composite. It is a patch rather
+ * than a whole re-render because the room is a constant built once at module
+ * load and the shadow is not: the shadow changes shape every time the lifter
+ * changes depth, and rasterising 22,490 pixels to darken 300 of them would undo
+ * the reason the room is a constant in the first place.
+ *
+ * The patch's pixels are the ROOM'S OWN INDICES stepped down, so the shadow is
+ * made of the surface it falls on and the scene never gains a colour. Pixels the
+ * mask does not cover are left transparent, so the patch composites like any
+ * other sprite. Returns null when the mask is empty or lands entirely off-grid.
+ */
+export function contactShadowPatch(
+  base: IndexGrid,
+  mask: IndexGrid,
+  dx: number,
+  dy: number,
+  steps: number,
+): { readonly grid: IndexGrid; readonly x: number; readonly y: number } | null {
+  let x0 = base.w;
+  let x1 = -1;
+  let y0 = base.h;
+  let y1 = -1;
+  for (let y = 0; y < mask.h; y += 1) {
+    for (let x = 0; x < mask.w; x += 1) {
+      if (isTransparentIndex(getPx(mask, x, y))) continue;
+      const bx = x + dx;
+      const by = y + dy;
+      if (bx < 0 || by < 0 || bx >= base.w || by >= base.h) continue;
+      if (bx < x0) x0 = bx;
+      if (bx > x1) x1 = bx;
+      if (by < y0) y0 = by;
+      if (by > y1) y1 = by;
+    }
+  }
+  if (x1 < x0 || y1 < y0) return null;
+  const grid = createGrid(x1 - x0 + 1, y1 - y0 + 1);
+  for (let y = 0; y < mask.h; y += 1) {
+    for (let x = 0; x < mask.w; x += 1) {
+      if (isTransparentIndex(getPx(mask, x, y))) continue;
+      const bx = x + dx;
+      const by = y + dy;
+      if (bx < x0 || by < y0 || bx > x1 || by > y1) continue;
+      setPx(grid, bx - x0, by - y0, stepIndex(getPx(base, bx, by), -steps));
+    }
+  }
+  return { grid, x: x0, y: y0 };
+}
+
+/**
+ * The boxes of the room the screen paints over, in SCENE pixels.
+ *
+ * `GYM_STAGE_CHROME` authors the bar-path panel in screen points because that is
+ * the space `LiftStage.tsx` lays it out in. This is the conversion, and it is
+ * conservative in the direction that matters: a scene pixel counts as hidden
+ * only once the chrome covers more than `OCCLUSION_COVERAGE_MIN` of it, so a
+ * pixel showing a sliver is still counted as room.
+ */
+export function liftStageOccluders(): readonly SceneRect[] {
+  const S = GYM_LIFT_STAGE;
+  const C = GYM_STAGE_CHROME;
+  // A scene pixel `i` spans screen points [origin + i*SCALE, origin + (i+1)*SCALE).
+  // It is hidden when the chrome covers more than OCCLUSION_COVERAGE_MIN of that
+  // span, on each axis independently — which at 0.5 is the ordinary
+  // pixel-centre rule and is why the threshold is named rather than rounded.
+  const first = (edge: number, origin: number): number =>
+    Math.floor((edge - origin) / S.SCALE + C.OCCLUSION_COVERAGE_MIN - 1) + 1;
+  const last = (edge: number, origin: number): number =>
+    Math.ceil((edge - origin) / S.SCALE - C.OCCLUSION_COVERAGE_MIN) - 1;
+  const rect: SceneRect = {
+    x0: Math.max(0, first(C.PANEL_X, S.ORIGIN_X)),
+    x1: Math.min(S.W - 1, last(C.PANEL_X + C.PANEL_W, S.ORIGIN_X)),
+    y0: Math.max(0, first(C.PANEL_TOP, S.ORIGIN_Y)),
+    y1: Math.min(S.H - 1, last(C.PANEL_BOTTOM, S.ORIGIN_Y)),
+  };
+  return rect.x1 < rect.x0 || rect.y1 < rect.y0 ? [] : [rect];
+}
 
 // ---------------------------------------------------------------------------
 // The reserved band
