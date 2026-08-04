@@ -227,9 +227,9 @@
       "id": "S2",
       "name": "Meet day",
       "bar": "Dread and anticipation comparable to a real third-attempt walkout.",
-      "status": "grading",
+      "status": "rework",
       "verifiable": false,
-      "note": "THE HOLE IS CLOSED AND I RE-RAN THE ACCEPTANCE MUTATION MYSELF ON THE MERGED TREE. The back tier now gets the same window DEPTH every other tier has, and the window it opens (rows 70-74) lies entirely off the band - rows 63-74 are uniformly WALL_DARK - so a spectator pixel up there is one drawn outside the seating whichever tier drew it, and the back tier needs no column-exclusivity argument at all. That is a stronger position than the other three tiers have. ownCols came out byte-identical for all four (57/36/38/36), so widening pulled in nothing. tierRises are unchanged - seated [0,0,0,0], walk-out [0,1,3,4], cheer [0,3,4,4] - because the point was to change WHY index 0 reads 0, not what it reads. THE MUTATION: deleting the head clamp at gymScene.ts:400 left ALL 2234 TESTS GREEN on the parent commit and now reddens two named tests, \"agrees with the wave where the band has room, and reads the clamp where it does not\" and \"keeps every spectator inside the seating band, at every rise\". I ran it on the parent and on the merged tree; the builder independently ran it on the parent too and got the same green. The second finding was handled by fixing the false sentence rather than pinning literals, on the measured grounds that the byte-identity plant already catches both keyline values (280 and 126 differing pixels). One self-disclosed residual now with the critic: backTierCeiling falls back to BAND_TOP for a single-tier venue, which would silently restore the blind window; unreachable at the shipped four tiers and untested. The overall S2 bar stays unverifiable - nothing here says the rise READS as a hall getting to its feet.",
+      "note": "ROUND 3 IS VERIFIED GOOD; ROUND 4 IS A CITATION THAT CANNOT DELIVER. The critic hand-executed the whole geometry against the renderer rather than reading it: junction 119, BAND_BOTTOM 99, BAND_TOP 75, tiers at 75/81/87/93, backTierCeiling returning 70 - so the back tier gets the same 5-row depth every other tier gets, in rows that are provably wall, and ownCols came out 57/36/38/36 unchanged. It re-derived the whole tierRises table by hand and confirmed the clamp mutation lands exactly where the evidence says. It also confirmed route (b) was NOT redundant: topRowOf reads only CROWD_MID, so an escaping keyline pixel is invisible to route (a) alone. THE GAP: the docstring cites \"never lets a risen hall reach down toward the lifter\" as the downward bound, but paintCrowd FILLS THE ENTIRE BAND with CROWD_DARK at every rise (gymScene.ts:377), so that test’s isCrowd(now) && !isCrowd(was) predicate is UNSATISFIABLE anywhere inside the band. It can only ever see crowd escaping the band’s bottom edge. Same species as round 2 - two true facts joined by a reason that is not the operative one. I RAN THE CONSEQUENCE rather than reasoning it: making paintCrowd skip the back tier whenever rise > 0, so an entire tier VANISHES from every risen frame, leaves ALL 2330 TESTS GREEN. airOf even IMPROVES, because it skips rows with no lit pixels, so a vanished tier raises worstRowAir. Dispatched with a derived constant-free floor - each tier keeps at least as many CROWD_MID pixels in its own columns as at rest - and the vanishing-tier mutation as the non-negotiable acceptance test.",
       "evidence": "meet/verdict-good.png"
     },
     {
@@ -376,9 +376,9 @@
       {
         "id": "S2",
         "name": "Meet day",
-        "state": "grading",
-        "stateLabel": "Re-grading",
-        "note": "The back tier's probe window was zero rows deep, so its reading was a constant. Now it looks at rows entirely off the band, which is a stronger claim than the other tiers have. The mutation that left all 2234 green now reddens two named tests — I re-ran it myself on the merged tree."
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "Round 3 verified good by hand-executed geometry. But the test cited as the downward bound is blind by construction — the band is filled with crowd at every rise, so its predicate cannot fire inside it. I ran it: an entire tier can vanish from every risen frame with all 2330 green."
       },
       {
         "id": "S3",
