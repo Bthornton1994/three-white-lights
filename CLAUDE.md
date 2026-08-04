@@ -128,6 +128,20 @@ physiology.
 - **No forced ads.** Rewarded-only, if ads ship at all.
 - **Never punish daily engagement.** Injury setbacks are short, soft, and
   recoverable. A player who shows up every day must never feel penalized for it.
+- **No real identity, until a human unlocks one.** No real, named athlete,
+  brand, or company identity — name, logo, likeness, or wordmark — may be
+  hardcoded into any asset, string, config, or code path. The licensing system
+  stays populated with **fictional placeholders only** until a human explicitly
+  unlocks a specific real partner by name, once an actual licensing agreement
+  exists. This is a legal exposure, not a style preference: shipping an
+  unlicensed real mark is a different category of mistake from shipping an ugly
+  one, and it cannot be walked back by a patch.
+- **A sponsor does not buy a stat.** This is the pay-to-win rule applied to
+  licensing, and it does not bend for a paying partner. Any branded or sponsored
+  consumable is **cosmetic and flavor-only, mechanically identical to the
+  existing fictional item it reskins**. A sponsor paying for placement buys
+  visibility, never a stat effect. If a partner asks for one, that is a refusal,
+  not a negotiation.
 
 ## Code Conventions
 

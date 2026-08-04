@@ -722,6 +722,9 @@ precedent; this is a proven pairing, not a novel gamble.
 - Bombing out — the somber counterpart
 - Coach reactions on a heavy set (ties to the coach voice-pack cosmetic)
 
+**Cut-ins are Tier 3 surfaces.** See §7.3 — this is where a licensed portrait or
+wordmark would live, never on the base sprite.
+
 **Scarcity is the entire mechanic.** Cut-ins work because they interrupt. Firing
 one on every set turns a 60-second daily session into a 2-second tax that players
 resent by day 4.
@@ -739,6 +742,50 @@ sprites cannot. This is the solution to "does meet day feel serious enough."
 asset class in this plan and is completely orthogonal to whether the game is fun.
 Placeholder rectangles until meet day is proven to land.
 
+### 7.3 The Identity Tier System
+
+How a lifter — fictional or, later, real and licensed — is identified on screen.
+This is an **architecture pattern**, and it exists so that adding a real partner
+later is a data change rather than an art rebuild.
+
+**No real identity is populated today.** Every entry in this system is a
+fictional placeholder until a human explicitly unlocks a named partner against a
+real licensing agreement (see CLAUDE.md and §12.3). The tiers describe where a
+real identity *would* go, not where one is.
+
+| Tier | Surface | Carries | Never carries |
+|---|---|---|---|
+| **1** | The base sprite | Build, colorway, icon-mark | Wordmark text, face |
+| **2** | The name tag | The actual identification | — |
+| **3** | High-fidelity art | Portrait, real wordmark, product photography | — |
+
+**Tier 1 — the base sprite.** Build, colorway and an abstract icon-mark only. No
+wordmark text and no face. **This is what already exists**, and it is deliberate
+rather than a limitation: at 16-bit sprite scale a wordmark is unreadable and a
+face is a smear, so neither was ever load-bearing. The consequence worth stating
+is that the base sprite needs **no change at all** to support a licensed athlete
+— a real lifter's sprite is a build and a colorway, exactly like a fictional
+one's.
+
+**Tier 2 — the name tag.** The name tag does the identifying, and always has in
+this genre — that is how 16-bit sports games shipped rosters, and how the result
+card already identifies a lifter today. Because identification is a **string**,
+it works for a real name the moment one is licensed, with no art dependency at
+all. Tier 2 is the whole reason Tier 1 can stay generic.
+
+**Tier 3 — the high-fidelity surface.** Portrait art, a real wordmark, product
+photography. It lives on **cut-ins (§7.2), character select, the shop screen, and
+the result card (§6.5)** — surfaces that are large, static and deliberate, where
+detail reads and a mark can be reproduced faithfully enough to satisfy a brand
+guideline.
+
+**Tier 3 never appears on the base sprite.** That separation is the load-bearing
+part of the pattern, for two reasons. Artistically, a licensed wordmark rendered
+into a 30-pixel figure is both illegible and a brand-guideline violation.
+Practically, it means the sprite pipeline never has to know a partner exists — so
+losing a licensing deal removes rows from a table and swaps some Tier 3 art,
+rather than forcing a re-render of every animation frame.
+
 ---
 
 ## 8. Monetization
@@ -749,6 +796,24 @@ Placeholder rectangles until meet day is proven to land.
 are 100% skill- and consistency-driven. Any whiff of pay-to-lift-more ends
 credibility with the community the game depends on. This is a design constraint,
 not a guideline.
+
+**A sponsor does not buy a stat.** The rule holds identically when the money
+comes from a brand rather than a player, and this is where it will actually be
+tested — a paying partner has leverage a player does not. Any branded or
+sponsored consumable is **cosmetic and flavor-only, mechanically identical to the
+fictional item it reskins**. A branded chalk is the existing chalk with different
+art. A sponsored recovery product does not shorten a setback by an hour.
+Placement buys visibility and nothing else.
+
+This is not only ethics, it is the same credibility argument one layer down: a
+community that would punish pay-to-win will punish sponsor-to-win faster, because
+it reads as the game having been bought. **If a partner asks for a stat effect,
+that is a refusal, not a negotiation** — and it is cheaper to have said so in
+this document before the conversation than during it.
+
+**No real identity ships un-unlocked.** See §7.3 and §12.3. The licensing system
+carries fictional placeholders only until a human unlocks a specific real partner
+against an actual agreement.
 
 ### 8.2 Currencies
 
@@ -763,7 +828,13 @@ not a guideline.
 **A. Cosmetics (primary, safest)**
 
 - Singlet designs, chalk VFX, bar/plate skins, gym decor themes, lifter appearance
-- Potential apparel brand partnerships (Rogue, SBD, A7) as a later play
+- **Apparel and equipment brand partnerships as a later play.** Deliberately
+  unnamed here. An earlier draft of this line listed three real companies as
+  examples; they are removed, because §12.3 now forbids a real brand name in any
+  asset, string, config or code path, and a design document that names candidate
+  partners while stating that rule is the document arguing with itself. The
+  category is the plan; the names arrive with the agreements. Routed through the
+  §7.3 tier system when they do.
 - Coach personality/voice packs for session commentary — pure flavor, zero stat impact
 - Meet-day entrance animations — public-facing vanity, high willingness-to-pay
 
@@ -1139,6 +1210,29 @@ sends the work back regardless of how good it otherwise looks:
 - An injury or setback that punishes a player for showing up daily (§3.5)
 - Homebrewed RPE, e1RM, or DOTS values (§9 domain correctness)
 - Cut-ins firing more than once per session (§7.2)
+- **Any real, named athlete, brand, or company identity** — name, logo,
+  likeness, or wordmark — hardcoded into any asset, string, config, or code path
+  (§7.3, §8.1)
+- **A branded or sponsored item with any mechanical effect** its fictional
+  equivalent does not have (§8.1)
+
+**The real-IP condition is checked on every piece, not just the licensing one.**
+It is listed here rather than in the licensing piece's own bar precisely because
+a real mark can arrive anywhere — a placeholder lifter name in a test fixture, a
+gym poster in the environment art, a plate brand on a sprite, a sample result
+card. Every critic sweeps it the same way it sweeps the fatigue meter, and the
+answer is a name-by-name statement of what was searched, not "looks fine".
+
+Two properties make this condition different from the others, and both argue for
+checking it constantly rather than once:
+
+- **It is legal exposure, not taste.** Shipping an unlicensed real mark is a
+  different category of mistake from shipping an ugly one, and unlike the others
+  it cannot be walked back by a patch once it is in a store build.
+- **It arrives by accident.** Nobody will deliberately hardcode a real brand.
+  It gets in as a "realistic" placeholder name a builder reached for because a
+  real one was the first thing that came to mind — which is exactly the sort of
+  thing a fresh critic catches and an author does not.
 
 ### 12.4 Run Discipline
 
