@@ -270,9 +270,9 @@
       "id": "A4",
       "name": "Cut-in firing gate (mechanism, not art)",
       "bar": "One per session enforced by the gate itself; always skippable; fires only at 7.2 moments; Tier 3 surface path reused, not duplicated.",
-      "status": "grading",
+      "status": "rework",
       "verifiable": true,
-      "note": "BUILT AND MERGED, FRESH CRITIC DISPATCHED. The 12.3 refusal condition that had nothing enforcing it now has a gate, and the load-bearing decision is that SCREENS REPORT BEATS, NOT MOMENTS - a caller says \"this is attempt 3 of 3\" or \"the meet ended with no total\", and the gate decides whether that is one of 7.2s four. A caller that could name a moment could fire whatever it liked, and the no-firing-on-a-non-qualifying-beat property would become a claim about five .tsx files that a node-environment suite cannot see. A wiring test proves no leaf view imports the gate at all. I RAN TWO MUTATIONS MYSELF: forcing the cap check false reddens 4 named tests including THE GATE REFUSES THE SECOND CUT-IN OF A SESSION; emptying CUT_IN_MOMENTS to [] reddens 31 across 2 of 3 files - and that second one is the exact defect shape found in the app shell, where a list that decided whether anything rendered could be emptied with the suite green. Suite 2310 across 54 files. THE ART STAYS UNBUILT per 7.2 and 11, and 12.2s cut-in bar is reported UNMET rather than claimed - it is an art bar. Two disclosures worth a human eye: the builder ruled that a whole meet counts as ONE session (so one cut-in across nine attempts), and across time the earlier beat takes the slot regardless of priority, so a lifter can bomb out and see no bomb-out cut-in."
+      "note": "WINS THE GRADEABLE PART, AND THE GAP IS A GOOD ONE. All four bar items hold at the mechanism level: the cap is the gate’s and a hostile caller cannot spend a second slot within a host lifetime, dismissal is the whole screen from the first frame, qualification lives in momentFor so screens report facts and cannot name what fires, and the Tier 3 path is consumed rather than duplicated - typed so removing cut-in from TIER_3_SURFACES is a compile error. Every refusal condition passes, including a serialisation test that refuses total/e1rm/kg/streak/currency in the fired state. The \"a meet is one session\" ruling is flagged as RULED rather than smuggled in. THE GAP, and I verified every link myself: CUT_IN_MOMENT_PRIORITY SELECTS NOTHING IN PRODUCTION - all five call sites offer beats mapping to at most one moment, so the ranking never breaks a tie and every priority test builds arrays no caller can produce. The contest that does happen is across time and runs BACKWARDS: meetDay.ts:929 defines bombRisk as attemptNumber === ATTEMPTS_PER_LIFT && banked === null, so EVERY BOMB-OUT IS PRECEDED BY THAT LIFT’S OWN THIRD-ATTEMPT WALKOUT, by definition. At walkout 0.5 against bomb-out 1, half of all bomb-outs show no bomb-out cut-in and instead already showed LAST ONE over the attempt that ended the meet. The rate-1 argument is defeated by architecture, not tuning. And the GDD entry excusing it says the alternative \"needs lookahead the gate cannot have\" - which is false: WalkoutView ALREADY HOLDS attempt.bombRisk, uses it for copy and beat length, and explicitly refuses to pass it, conflating a trigger with a disqualifier. Leaving the behaviour is defensible; recording a false reason for it is not. Also dispatched: the whole view and host layer has never rendered a pixel - there is no capture route for the cut-in and vitest is node-environment, so the tap target, the auto-dismiss and the mount ordering are verified by source grep alone."
     }
   ],
   "report": {
@@ -404,9 +404,9 @@
       {
         "id": "A4",
         "name": "Cut-in firing gate (§7.2 scarcity, not the art)",
-        "state": "grading",
-        "stateLabel": "Grading",
-        "note": "Built. Screens report beats, not moments, so a caller cannot name what fires. I ran the mutations myself: killing the cap reddens 4 tests, emptying the moment list reddens 31. The art stays unbuilt and §12.2's cut-in bar is reported unmet rather than claimed."
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "The gate wins its mechanism bar outright. But its priority order selects nothing in production, and because every bomb-out is by definition preceded by that lift’s third attempt, half of all bomb-outs lose the somber beat to the walkout — logged in §11 behind a reason that is not true. The view layer has also never rendered a pixel. Dispatched."
       },
       {
         "id": "C1",
