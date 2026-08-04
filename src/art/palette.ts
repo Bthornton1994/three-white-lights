@@ -104,6 +104,27 @@ export function chan8To5(c8: number): number {
   return (c8 >> 3) & 0x1f;
 }
 
+/**
+ * The RGBA8888 byte layout every grid-to-bytes converter writes.
+ *
+ * Straight (non-premultiplied), row-major, no row padding. Named here rather
+ * than left inline because `rgba.ts`, `sheetPalette.ts`, `LifterSpriteView.tsx`
+ * and `ResultCardView.tsx` each carried their own bare `4` for the stride and
+ * bare `255` for opaque. Four copies of a format constant is three too many,
+ * and two of them were in components.
+ *
+ * NOT A TUNABLE. Skia is handed `ColorType.RGBA_8888`; these numbers are that
+ * choice spelled out. Turning one produces garbage pixels, not a look.
+ */
+export const RGBA = Object.freeze({
+  BYTES_PER_PIXEL: 4,
+  RED_OFFSET: 0,
+  GREEN_OFFSET: 1,
+  BLUE_OFFSET: 2,
+  ALPHA_OFFSET: 3,
+  OPAQUE: 255,
+});
+
 export interface PaletteBank {
   readonly name: string;
   /** Index 0 is the transparent sentinel; its colour value is never drawn. */

@@ -1441,9 +1441,9 @@ function nextLiftAfter(lift: LiftKind): LiftKind | null {
 }
 
 function nextAttemptNumber(attemptNumber: AttemptNumber): AttemptNumber | null {
-  if (attemptNumber === 1) return 2;
-  if (attemptNumber === 2) return 3;
-  return null;
+  // Read off ATTEMPT_NUMBERS rather than restating the ladder, so widening the
+  // attempt count is one edit rather than two places that could disagree.
+  return ATTEMPT_NUMBERS[ATTEMPT_NUMBERS.indexOf(attemptNumber) + 1] ?? null;
 }
 
 function withLift(state: MeetState, lift: LiftKind, progress: LiftProgress): MeetState {

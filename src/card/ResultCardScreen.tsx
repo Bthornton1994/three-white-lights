@@ -19,7 +19,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import type { ResultCard } from '../game/resultCard';
 import { ResultCardView } from './ResultCardView';
-import { CARD } from './cardTuning';
+import { CARD, CARD_SCREEN } from './cardTuning';
 
 export interface ResultCardScreenProps {
   readonly card: ResultCard;
@@ -46,22 +46,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: LIFT_PALETTE.BACKDROP,
-    paddingVertical: 16,
+    paddingVertical: CARD_SCREEN.PAD_Y,
   },
   eyebrow: {
     color: LIFT_PALETTE.TEXT_DIM,
-    fontSize: 12,
-    letterSpacing: 2,
-    marginBottom: 12,
+    fontSize: CARD_SCREEN.EYEBROW_FONT,
+    letterSpacing: CARD_SCREEN.EYEBROW_TRACKING,
+    marginBottom: CARD_SCREEN.EYEBROW_GAP,
   },
   cardFrame: {
-    borderWidth: 1,
+    borderWidth: CARD_SCREEN.FRAME_BORDER,
     borderColor: LIFT_PALETTE.PANEL_EDGE,
     backgroundColor: LIFT_PALETTE.PANEL,
   },
   hint: {
     color: LIFT_PALETTE.TEXT_DIM,
-    fontSize: 12,
-    marginTop: 14,
+    fontSize: CARD_SCREEN.HINT_FONT,
+    marginTop: CARD_SCREEN.HINT_GAP,
   },
 });

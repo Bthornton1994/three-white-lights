@@ -99,6 +99,25 @@ import type { SquatFrame } from './squatAnimation';
 
 const DEG = Math.PI / 180;
 
+/**
+ * Hair cap inset, in sprite pixels.
+ *
+ * The hair ellipsoid is drawn a hair narrower than the skull so the skull's own
+ * edge index survives at the temples instead of being overdrawn. A fraction of
+ * a pixel, because `drawEllipsoid` thresholds on the radius rather than
+ * rounding it — a full pixel would visibly shrink the head.
+ */
+const HAIR_RX_INSET = 0.1;
+
+/**
+ * Height of the lighter backdrop band above the platform, in sprite pixels.
+ *
+ * Only the inspection stage (`renderStage`) draws it; the app composites the
+ * sprite over `LIFT_PALETTE.STAGE`. Kept here rather than in `SPRITE_TUNING`
+ * because it is scenery for the contact sheet, not a value the played rep uses.
+ */
+const BACKDROP_BAND_H = 18;
+
 export interface LifterFrameSpec {
   /** 0 = standing, 1 = bottom of the hole. Quantised by the animation. */
   readonly depth: number;
@@ -545,7 +564,7 @@ function drawHead(g: IndexGrid, pose: Pose, skin: Ramp): void {
     edgeFollowsLight: true,
     stepBias: SHADING.HEAD_STEP_BIAS,
   });
-  drawEllipsoid(g, hx, hy - G.HEAD_RY + G.HAIR_RY, G.HEAD_RX - 0.1, G.HAIR_RY, RAMPS.HAIR, {});
+  drawEllipsoid(g, hx, hy - G.HEAD_RY + G.HAIR_RY, G.HEAD_RX - HAIR_RX_INSET, G.HAIR_RY, RAMPS.HAIR, {});
 }
 
 function drawTorso(g: IndexGrid, pose: Pose): void {
@@ -890,7 +909,7 @@ export function renderContactShadow(pose: Pose, depth: number): IndexGrid {
 export function renderStage(): IndexGrid {
   const g = createGrid(CELL.W, CELL.H, PAL.BACKDROP_DARK);
   for (let y = 0; y < CELL.FLOOR_Y; y += 1) {
-    const idx = y > CELL.FLOOR_Y - 18 ? PAL.BACKDROP_MID : PAL.BACKDROP_DARK;
+    const idx = y > CELL.FLOOR_Y - BACKDROP_BAND_H ? PAL.BACKDROP_MID : PAL.BACKDROP_DARK;
     for (let x = 0; x < CELL.W; x += 1) setPx(g, x, y, idx);
   }
   for (let y = CELL.FLOOR_Y; y < CELL.H; y += 1) {

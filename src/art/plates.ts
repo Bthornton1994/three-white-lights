@@ -101,6 +101,19 @@ export const BAR_AND_COLLARS_KG = 25;
 /** Smallest change disc; also the resolution of the greedy remainder. */
 const SMALLEST_KG = 0.25;
 
+/** Plate diameters are specified in millimetres; the sprite scale is per metre. */
+const MM_PER_METRE = 1000;
+
+/**
+ * Fixed-point guard for the greedy stack.
+ *
+ * kg arithmetic at 0.25 resolution accumulates float error fast enough to drop
+ * a change disc if `remaining >= spec.kg` is compared naively. Not a tunable:
+ * anything larger than a float ulp and smaller than the smallest disc does the
+ * same job.
+ */
+const PLATE_KG_EPSILON = 1e-9;
+
 export interface LoadedPlate {
   readonly spec: PlateSpec;
   /** Disc height in sprite px, from the real diameter. NOT exaggerated. */
@@ -117,7 +130,7 @@ export interface PlateStack {
 
 /** Disc diameter in sprite pixels, at true scale. */
 export function plateDiameterPx(spec: PlateSpec): number {
-  return (spec.diameterMm / 1000) * PX_PER_METRE;
+  return (spec.diameterMm / MM_PER_METRE) * PX_PER_METRE;
 }
 
 /**
@@ -137,9 +150,7 @@ export function visualPlateStack(totalKg: number, barKg: number = BAR_AND_COLLAR
   }
 
   for (const spec of PLATE_SPECS) {
-    // Fixed-point guard: kg arithmetic at 0.25 resolution accumulates float
-    // error fast enough to drop a 0.25 disc if compared naively.
-    while (remaining + 1e-9 >= spec.kg) {
+    while (remaining + PLATE_KG_EPSILON >= spec.kg) {
       perSide.push({ spec, diameterPx: plateDiameterPx(spec) });
       remaining -= spec.kg;
     }

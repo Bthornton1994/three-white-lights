@@ -47,7 +47,7 @@
  * renderer (CLAUDE.md "Game Feel Values Must Be Tunable").
  */
 
-import { BANK_SIZE, colorAt, isTransparentIndex, paletteIndex, rgb5ToRgb8, type PaletteBank, type Rgb5 } from '../art/palette';
+import { BANK_SIZE, RGBA, colorAt, isTransparentIndex, paletteIndex, rgb5ToRgb8, type PaletteBank, type Rgb5 } from '../art/palette';
 import type { IndexGrid } from '../art/raster';
 
 /** The bank this file owns. Banks 0-2 are the lifter sprite's. */
@@ -114,18 +114,18 @@ export function sheetColorAt(index: number): Rgb5 | undefined {
  * reason in the header.
  */
 export function sheetGridToRgba(grid: IndexGrid): Uint8Array {
-  const out = new Uint8Array(grid.w * grid.h * 4);
+  const out = new Uint8Array(grid.w * grid.h * RGBA.BYTES_PER_PIXEL);
   for (let i = 0; i < grid.w * grid.h; i += 1) {
     const index = grid.data[i] ?? 0;
     if (isTransparentIndex(index)) continue;
     const c5 = sheetColorAt(index);
     if (c5 === undefined) continue;
     const [r, gg, b] = rgb5ToRgb8(c5);
-    const o = i * 4;
-    out[o] = r;
-    out[o + 1] = gg;
-    out[o + 2] = b;
-    out[o + 3] = 255;
+    const o = i * RGBA.BYTES_PER_PIXEL;
+    out[o + RGBA.RED_OFFSET] = r;
+    out[o + RGBA.GREEN_OFFSET] = gg;
+    out[o + RGBA.BLUE_OFFSET] = b;
+    out[o + RGBA.ALPHA_OFFSET] = RGBA.OPAQUE;
   }
   return out;
 }

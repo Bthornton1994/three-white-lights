@@ -187,6 +187,25 @@ function movingAverage(values: readonly number[], window: number): number[] {
 const VELOCITY_GRID = 1024;
 
 /**
+ * Hermite smoothstep coefficients: `smoothstep(u) = u²(3 − 2u)`.
+ *
+ * NOT A KNOB. Change either number and the curve stops being smoothstep and
+ * starts being wrong — it no longer has zero derivative at both ends, which is
+ * the entire reason the descent uses it. The knob is
+ * `DESCENT.SMOOTHSTEP_MIX` in `spriteTuning.ts`: how much of this curve gets
+ * blended against a straight ramp.
+ */
+const SMOOTHSTEP = Object.freeze({ CUBIC: 3, QUADRATIC: 2 });
+
+/**
+ * Default sample count for `ascentShapeVariation`.
+ *
+ * Numerical resolution, not feel: the statistic it feeds is in normalised time,
+ * so raising this makes the number more exact without changing what it measures.
+ */
+const SHAPE_VARIATION_STEPS = 64;
+
+/**
  * Normalised ascent velocity at bar height h.
  * Exported so the inspection tool can plot the same curve the frames come from
  * rather than a redrawn approximation of it.
@@ -213,7 +232,7 @@ function ascentHeightSampler(loadRatio: number): (u: number) => number {
     const hPrev = (j - 1) * dh;
     const hCur = j * dh;
     // Trapezoid on 1/v, which is where the time actually accumulates.
-    const inv = 0.5 * (1 / ascentVelocity(hPrev, loadRatio) + 1 / ascentVelocity(hCur, loadRatio));
+    const inv = (1 / ascentVelocity(hPrev, loadRatio) + 1 / ascentVelocity(hCur, loadRatio)) / 2;
     t += inv * dh;
     heights[j] = hCur;
     times[j] = t;
@@ -250,7 +269,7 @@ function ascentHeightSampler(loadRatio: number): (u: number) => number {
 
 function descentDepth(u: number, loadRatio: number): number {
   const mix = byLoad(DESCENT.SMOOTHSTEP_MIX, loadRatio);
-  const smooth = u * u * (3 - 2 * u);
+  const smooth = u * u * (SMOOTHSTEP.CUBIC - SMOOTHSTEP.QUADRATIC * u);
   const shaped = (1 - mix) * u + mix * smooth;
   return BRACE_SETTLE_DEPTH + (1 - BRACE_SETTLE_DEPTH) * shaped;
 }
@@ -663,7 +682,10 @@ export function normalisedAscentProfile(rep: SquatRep, steps: number): number[] 
  * a rep that is simply a slowed-down copy of another scores IDENTICALLY. This
  * is the number that separates "heavier" from "slower".
  */
-export function ascentShapeVariation(rep: SquatRep, steps: number = 64): number {
+export function ascentShapeVariation(
+  rep: SquatRep,
+  steps: number = SHAPE_VARIATION_STEPS,
+): number {
   const profile = normalisedAscentProfile(rep, steps);
   const deltas: number[] = [];
   for (let i = 1; i < profile.length; i += 1) {

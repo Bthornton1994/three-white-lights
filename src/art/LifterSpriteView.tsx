@@ -38,6 +38,7 @@ import {
 
 import { RESOLUTION } from './spriteTuning';
 import { SPRITE_CELL, frameSpecFrom, renderLifterFrame, type LifterFrameSpec } from './lifterSprite';
+import { RGBA } from './palette';
 import { gridToRgba } from './rgba';
 import type { SquatFrame } from './squatAnimation';
 
@@ -56,7 +57,7 @@ export function makeSpriteImage(spec: LifterFrameSpec): SkImage | null {
       colorType: ColorType.RGBA_8888,
     },
     data,
-    grid.w * 4,
+    grid.w * RGBA.BYTES_PER_PIXEL,
   );
 }
 

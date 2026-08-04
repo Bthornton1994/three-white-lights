@@ -472,6 +472,14 @@ export const STREAK_DAY_BOUNDARY = {
    * lifter believes they are in. UNTUNED.
    */
   ROLLOVER_HOUR_LOCAL: 3,
+
+  /**
+   * Hours in a civil day, for validating a caller's wall-clock hour.
+   *
+   * NOT A TUNABLE — it is what "hour" means. It lives beside the rollover so
+   * the one place that reads an hour has one place to read its bounds from.
+   */
+  HOURS_PER_DAY: 24,
 } as const;
 
 /** GDD §4.2 "Guardrails". */
@@ -764,7 +772,11 @@ export function civilDateFromStreakDay(day: StreakDay): CivilDate {
  * @throws {RangeError} on a non-existent date or an hour outside 0-23.
  */
 export function streakDayFromLocalWallClock(now: LocalWallClock): StreakDay {
-  if (!Number.isSafeInteger(now.hour) || now.hour < 0 || now.hour > 23) {
+  if (
+    !Number.isSafeInteger(now.hour) ||
+    now.hour < 0 ||
+    now.hour >= STREAK_DAY_BOUNDARY.HOURS_PER_DAY
+  ) {
     throw new RangeError(`streak: local hour must be a whole number 0-23, received ${now.hour}`);
   }
   const civilDay = streakDayFromCivilDate(now);

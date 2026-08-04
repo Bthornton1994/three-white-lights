@@ -309,6 +309,16 @@ export const NO_LIFT_STRIKES_THROUGH = true;
 /** Decimal places a bodyweight is printed to. Real sheets print two ([R2]). */
 export const BODYWEIGHT_DECIMALS = 2;
 
+/**
+ * OpenLifter's correction for a hundredths digit of 9, transcribed from
+ * `displayWeight` [R5]: a lb<->kg conversion lands on 192.49999999999997, which
+ * rounds to 19249 hundredths and would print "192.49" rather than "192.5".
+ *
+ * NOT A TUNABLE. `DIGIT` is 9 because 9 is the digit a downward float artefact
+ * produces, and `RADIX` is 10 because the printed form is decimal.
+ */
+const HUNDREDTHS_ARTEFACT = Object.freeze({ RADIX: 10, DIGIT: 9 });
+
 /** Month abbreviations for the meet date. Uppercase; ours, see the note above. */
 export const MONTH_ABBREVIATIONS = [
   'JAN',
@@ -473,7 +483,7 @@ export function formatWeight(weight: number): string {
     throw new RangeError(`resultCard: cannot format a non-finite weight (${String(weight)})`);
   }
   let hundredths = Math.round(weight * 100);
-  if (Math.abs(hundredths) % 10 === 9) {
+  if (Math.abs(hundredths) % HUNDREDTHS_ARTEFACT.RADIX === HUNDREDTHS_ARTEFACT.DIGIT) {
     hundredths += hundredths < 0 ? -1 : 1;
   }
   const value = hundredths / 100;

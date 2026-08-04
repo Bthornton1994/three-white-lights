@@ -27,6 +27,7 @@ import {
   type SkImage,
 } from '@shopify/react-native-skia';
 
+import { RGBA } from '../art/palette';
 import type { ResultCard } from '../game/resultCard';
 import { CARD } from './cardTuning';
 import { renderResultCard } from './renderResultCard';
@@ -47,7 +48,7 @@ export function makeResultCardImage(card: ResultCard): SkImage | null {
       colorType: ColorType.RGBA_8888,
     },
     data,
-    grid.w * 4,
+    grid.w * RGBA.BYTES_PER_PIXEL,
   );
 }
 

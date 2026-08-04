@@ -53,6 +53,26 @@
 import { SHADING, type AxialProfile } from './spriteTuning';
 import { isTransparentIndex, outlineIndexForBank, type Ramp } from './palette';
 
+/**
+ * Divide-by-zero guard for the normal and profile maths.
+ *
+ * NOT A TUNABLE, and deliberately not in `spriteTuning.ts`: it exists so a
+ * degenerate limb (zero length, zero width) produces a finite number instead of
+ * `Infinity`. Turning it does not change how anything looks until it is large
+ * enough to change what a *correct* limb computes, at which point it is a bug.
+ */
+const EPSILON = 1e-6;
+
+/**
+ * Half a pixel — the offset from a pixel's corner, where integer coordinates
+ * live, to its centre, where a distance test should be evaluated.
+ *
+ * Fixed by the pixel grid, not by taste. It appears as a floor on a radius (a
+ * shape thinner than one pixel still has a centre) and as the corner-knock
+ * inset on a plate edge.
+ */
+const HALF_PIXEL = 0.5;
+
 export interface IndexGrid {
   readonly w: number;
   readonly h: number;
@@ -187,7 +207,7 @@ export function limbNormal(
   const nz = Math.sqrt(Math.max(0, 1 - a * a - b * b));
   const x = px * a + ux * b;
   const y = py * a + uy * b;
-  const inv = 1 / Math.max(1e-6, Math.sqrt(x * x + y * y + nz * nz));
+  const inv = 1 / Math.max(EPSILON, Math.sqrt(x * x + y * y + nz * nz));
   return { x: x * inv, y: y * inv, z: nz * inv };
 }
 
@@ -212,16 +232,18 @@ export function limbNormal(
  */
 export function axialTerm(profile: AxialProfile, t: number): number {
   const u = Math.min(1, Math.max(0, t));
-  const d = (u - profile.BELLY_FRAC) / Math.max(1e-6, profile.BELLY_WIDTH);
+  const d = (u - profile.BELLY_FRAC) / Math.max(EPSILON, profile.BELLY_WIDTH);
   const belly = Math.exp(-d * d);
-  const w = Math.max(1e-6, profile.JOINT_WIDTH);
+  const w = Math.max(EPSILON, profile.JOINT_WIDTH);
   const joint = Math.max(Math.max(0, 1 - u / w), Math.max(0, 1 - (1 - u) / w));
   return profile.BELLY_GAIN * belly - profile.JOINT_DROP * joint;
 }
 
 function thresholdsFor(steps: number): readonly number[] {
-  if (steps >= 4) return SHADING.THRESHOLDS_4;
-  if (steps === 3) return SHADING.THRESHOLDS_3;
+  // A ramp of N steps needs N-1 thresholds, so the step counts are read off
+  // the tables themselves rather than restated as literals that could drift.
+  if (steps >= SHADING.THRESHOLDS_4.length + 1) return SHADING.THRESHOLDS_4;
+  if (steps === SHADING.THRESHOLDS_3.length + 1) return SHADING.THRESHOLDS_3;
   return SHADING.THRESHOLDS_2;
 }
 
@@ -371,7 +393,7 @@ function limbPass(g: IndexGrid, seg: LimbSegment, pass: 0 | 1): void {
   const dx = bx - ax;
   const dy = by - ay;
   const len = Math.hypot(dx, dy);
-  if (len < 1e-6) return;
+  if (len < EPSILON) return;
   const ux = dx / len;
   const uy = dy / len;
   // Left-hand perpendicular; sign is consistent so the lit flank is consistent.
@@ -410,7 +432,7 @@ function limbPass(g: IndexGrid, seg: LimbSegment, pass: 0 | 1): void {
       const dist = Math.hypot(perp, overA + overB);
       if (dist > r) continue;
 
-      const rCore = Math.max(0.5, r);
+      const rCore = Math.max(HALF_PIXEL, r);
       const n = Math.min(1, Math.max(-1, perp / rCore));
       // Cylinder normal, blended toward a DOME of the limb's own radius by
       // however far this mass has rotated out of the screen plane. At
@@ -528,7 +550,7 @@ export function drawTrunk(
       const x0 = Math.floor(cx - hw);
       const x1 = Math.ceil(cx + hw);
       for (let x = x0; x <= x1; x += 1) {
-        const nx = (x - cx) / Math.max(0.5, hw);
+        const nx = (x - cx) / Math.max(HALF_PIXEL, hw);
         if (Math.abs(nx) > 1) continue;
         const nz = Math.sqrt(Math.max(0, 1 - nx * nx));
         const vertical = SHADING.VERTICAL_GAIN * (1 - 2 * f);
@@ -575,7 +597,7 @@ export function drawPlateEdge(
       // Knock the corners: at 90% of the radius the disc has visibly curved in,
       // which is what stops a stack of these looking like a picket fence.
       if (dy > r) continue;
-      if (dy > r - 0.5 && facePx > 1 && x !== xInner) continue;
+      if (dy > r - HALF_PIXEL && facePx > 1 && x !== xInner) continue;
       setPx(g, x, y, y <= litUntil ? light : shade);
     }
   }

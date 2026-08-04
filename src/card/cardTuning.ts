@@ -493,3 +493,29 @@ export const CARD_LABELS = {
    */
   BARBELL_DETAIL_SEPARATOR: '  ',
 } as const;
+
+/**
+ * The SCREEN the card is shown on — chrome, not card.
+ *
+ * Everything above this line is the card's own 192x240 pixel grid, measured in
+ * card pixels. Everything here is React Native layout in logical points around
+ * it, and the two must not be confused: `CARD.MARGIN` is 6 sprite pixels, which
+ * at `DEFAULT_UPSCALE` is 12 logical points.
+ *
+ * These were bare numbers inside `ResultCardScreen.tsx`'s StyleSheet until the
+ * audit found them. UNTUNED, like everything else here.
+ */
+export const CARD_SCREEN = {
+  /** Breathing room above and below the whole stack. */
+  PAD_Y: 16,
+  /** "MEET COMPLETE" / "MEET OVER". */
+  EYEBROW_FONT: 12,
+  EYEBROW_TRACKING: 2,
+  /** Gap between the eyebrow and the card frame. */
+  EYEBROW_GAP: 12,
+  /** Hairline around the card, so it reads as a printed object on a surface. */
+  FRAME_BORDER: 1,
+  /** "Share your result". */
+  HINT_FONT: 12,
+  HINT_GAP: 14,
+} as const;
