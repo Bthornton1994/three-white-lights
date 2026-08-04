@@ -495,6 +495,12 @@ describe('the registered allowlist', () => {
     // allowlist becoming a way to make the audit pass.
     expect(REGISTERED).toEqual(
       [
+        // The environment layer (GDD §12.2 "Gym / environment art"): a feel
+        // home, a colour home and an authored-drawing home, split on exactly
+        // the line spriteTuning / palette / rig already draw.
+        'src/art/gymPalette.ts',
+        'src/art/gymProps.ts',
+        'src/art/gymTuning.ts',
         'src/art/lifterSprite.ts',
         'src/art/palette.ts',
         'src/art/plates.ts',

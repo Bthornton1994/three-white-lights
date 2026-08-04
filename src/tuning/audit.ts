@@ -213,12 +213,22 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'feel',
     why: 'Result-card sheet layout and the screen chrome around it.',
   }),
+  'src/art/gymTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'GYM_* — the environment layer: room proportions, lighting, parallax, prop placement.',
+  }),
 
   // --- palettes ------------------------------------------------------------
   'src/art/palette.ts': Object.freeze({
     role: 'palette',
     kind: 'colour',
     why: 'The 5-bit sprite banks. Hues sourced from real meet software.',
+  }),
+  'src/art/gymPalette.ts': Object.freeze({
+    role: 'palette',
+    kind: 'colour',
+    why: 'The two 5-bit BACKGROUND banks, kept apart from the sprite banks as the hardware did.',
   }),
   'src/card/sheetPalette.ts': Object.freeze({
     role: 'palette',
@@ -290,6 +300,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     role: 'constants',
     kind: 'data',
     why: 'MARKS / MARK_ANCHOR_GEOMETRY — authored decal placement.',
+  }),
+  'src/art/gymProps.ts': Object.freeze({
+    role: 'constants',
+    kind: 'data',
+    why: 'PROP_ART — hand-authored rack, bench, plate-tree and lamp drawings. Where they GO is gymTuning.',
   }),
   'src/card/pixelFont.ts': Object.freeze({
     role: 'constants',

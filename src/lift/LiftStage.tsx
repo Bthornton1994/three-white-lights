@@ -1,10 +1,17 @@
 /**
  * LiftStage — everything the mechanic draws, on one Skia canvas.
  *
- * CLAUDE.md: "Skia for bar-path and rep rendering." Three things share the
+ * CLAUDE.md: "Skia for bar-path and rep rendering." Four things share the
  * canvas so they can be composited against each other rather than stacked as
  * separate views:
  *
+ *   0. THE ROOM (GDD §12.2 "Gym / environment art"), drawn first and behind
+ *      everything. It is a background LAYER, not a screen: `renderGymScene`
+ *      knows nothing about the mechanic, and this screen knows nothing about
+ *      what is in the room. Its pixel grid is pinned to the sprite's — same
+ *      integer scale, and an origin chosen so the two lattices are in phase —
+ *      because two nearest-neighbour images at different phases shimmer along
+ *      every edge where they meet. See `GYM_LIFT_STAGE`.
  *   1. THE LIFTER, as the 16-bit sprite the art system already renders. Drawn
  *      through `makeSpriteImage` with nearest-neighbour sampling and an integer
  *      upscale (GDD §7.1 — a fractional scale produces uneven pixel sizes and
@@ -37,6 +44,8 @@ import {
 } from '@shopify/react-native-skia';
 
 import { makeSpriteImage } from '../art/LifterSpriteView';
+import { GymSceneLayer } from '../art/GymSceneView';
+import { liftStageScene } from '../art/gymScene';
 import { LIFT_TUNING, STICK_HEIGHT_FRAC, STICK_WIDTH } from '../game/liftTuning';
 import { cueProgress, type LiftState } from '../game/lift';
 import { LIFT_PALETTE } from './liftPalette';
@@ -55,6 +64,16 @@ import {
 
 const L = LIFT_TUNING.LAYOUT;
 const F = LIFT_TUNING.FEEDBACK;
+
+/**
+ * The room, built once at module load.
+ *
+ * It is a constant because it is one: `renderGymScene` is pure and this spec
+ * never changes on this screen — no camera pan, no venue switch, nothing about
+ * the player. Rebuilding it per render would raster 22,490 pixels a frame to
+ * produce the same bytes.
+ */
+const SCENE = liftStageScene();
 
 export interface LiftStageProps {
   readonly state: LiftState;
@@ -134,7 +153,13 @@ export function LiftStage({ state, history, totalKg }: LiftStageProps): React.Re
 
   return (
     <Canvas style={{ width: L.STAGE_W, height: L.STAGE_H }}>
+      {/* The base fill is still here and still does a job: the room is an
+          integer number of scene pixels and the stage is not, so this is what
+          the last fractional row lands on rather than on nothing. */}
       <Rect x={0} y={0} width={L.STAGE_W} height={L.STAGE_H} color={LIFT_PALETTE.STAGE} />
+
+      {/* --- the room the lift happens in ------------------------------ */}
+      <GymSceneLayer spec={SCENE} />
 
       {/* --- bar-path plot -------------------------------------------- */}
       <Group>
