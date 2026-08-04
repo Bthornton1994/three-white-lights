@@ -2,7 +2,40 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-04 (§12.2 — the CRUDER of the two route guards is no
+**Last updated:** 2026-08-04 (§12.2 — **"test file" is now a DERIVED set, not a
+regular expression's opinion.** Both route guards skipped test files, and the
+skip was justified by an argument — "a fixture reaches no player, persists
+nothing, and is read by the same reviewer as the assertion beside it". That
+argument is true of the files vitest runs and the exemption is *necessary* for
+them (banning `as unknown as` in the files that prove the ban is circular). It
+was not true of the set the filter named. `progression.test.ts` said
+`/\.test\.tsx?$/`; `vitest.config.ts` includes only `.test.ts` under `src/`;
+nothing asserted the two were the same set and **they were not**. Every
+`*.test.tsx` anywhere, and every `*.test.ts` outside `src/`, was compiled by the
+project, dropped from the reflective sweep, discarded from the §7.5 route table
+as a "fixture", dropped by `src/tuning/audit.ts`'s magic-number auditor on the
+identical regex — and **run by nothing**, so there was no assertion beside it and
+no reviewer. It would also *bundle*: no `metro.config.js` exists, so Expo's
+default `sourceExts` resolves `./seed` to `seed.test.tsx`. Proved by execution:
+`src/card/seed.test.tsx` holding a fully annotated `const seeded: ServerRecord =
+{ ...newServerRecord(), totalKg: 900 }` type-checked clean and left the suite
+green at the counts it had without the file — 57 files, 2437 tests. **The fix is
+not a narrower regex** (`/\.test\.ts$/` would leave such a file swept, still
+unexecuted and still importable); it is **two assertions**: the set the sweep
+drops is asserted equal, both ways, to the set vitest runs — asked of vitest via
+its own config loader and `globTestSpecifications()`, not restated from its
+globs — and no file the sweep covers may resolve an import to one it drops, with
+the edges coming from the type checker rather than a hand-written list of import
+constructs. Same move the root set already made when it collapsed "compiles into
+this app" and "this scan sees it" into `tsconfig.json`'s file list. Also this
+round: the reflective sweep's exemption table pins the **matched line** as well
+as the count, so a swap inside one file can no longer hold the count still; and
+`as any as` joins the three text patterns — the one escape worth taking, being
+the same shape as the `as unknown as` row already running, with the other five
+deliberately left as a stated bound. §7.5 gains a residual naming the three
+filters whose justification is still an argument rather than an enumeration:
+`node_modules`, declaration files, and the two target type names themselves.
+Earlier the same day: §12.2 — the CRUDER of the two route guards is no
 longer scoped either, and the residual it covers is stated as a bound rather
 than as closure. The literal sweep cannot see a record assembled without an
 object literal, which is what a three-pattern text check exists for; that check
@@ -1619,6 +1652,15 @@ The code has taken the safe branch and needs a ruling to take any other.**
       dozen records between them, a pin over those would go red on every new
       fixture, and a table that goes red weekly is one people fix by editing the
       number.
+      **And "test fixture" is a derived set, not a regular expression's
+      opinion** — that was the last scope in this piece justified by an argument
+      instead of by enumeration, and it was wrong by exactly the files nothing
+      runs. The set the sweep drops is asserted equal, in both directions, to the
+      set vitest actually collects (asked of vitest, not restated from its
+      globs), and no file the sweep covers may resolve an import to one it drops.
+      Before that, a `*.test.tsx` anywhere in the compiled tree was invisible to
+      the route table, to the reflective sweep, to the magic-number auditor and
+      to the test runner at once, while bundling normally.
       **What still slips, named rather than left for a seventh round:** a record
       assembled with no object literal — `Object.assign`, `structuredClone`, a
       cast through `unknown` — has no node for the checker to type. A second,
@@ -1648,16 +1690,22 @@ The code has taken the safe branch and needs a ruling to take any other.**
       excused by file, idiom and count in a table pinned both ways. The type walk
       that computed the candidate set is deleted, so the sweep also got cheaper.
       **What is left is stated as a bound rather than as closure**, which is the
-      other half of this round. "Closed by a second, cruder test" was over-strong:
-      three string patterns cannot close an unbounded class. §7.5 residual 1 now
-      names what walks past them — a hand-written `class Forged`, `JSON.parse(s)
-      as ServerRecord` off an `any`, `x as any as ServerRecord`,
-      `Object.fromEntries(…) as ServerRecord`, `Object.create`, `Reflect.set`, an
-      aliased `Object.assign` — and notes that comment stripping is textual, so a
-      `//` inside a string literal blanks the rest of its line. Adding patterns
-      would chase an unbounded class with a bounded instrument and produce
-      another approximation. A residual honestly bounded is worth more than one
-      falsely closed.
+      other half of that round. "Closed by a second, cruder test" was over-strong:
+      a handful of string patterns cannot close an unbounded class. §7.5 residual
+      1 names what walks past them — a hand-written `class Forged`, `JSON.parse(s)
+      as ServerRecord` off an `any`, `Object.fromEntries(…) as ServerRecord`,
+      `Object.create`, `Reflect.set`, an aliased `Object.assign` — and notes that
+      comment stripping is textual, so a `//` inside a string literal blanks the
+      rest of its line. A seventh escape, `x as any as ServerRecord`, has since
+      been **taken** and is the fourth pattern: it is the same shape as the
+      `as unknown as` row already running, `noImplicitAny` is on repo-wide, and it
+      excused nothing. The other six stay listed rather than chased — adding
+      patterns one per round is how a bounded instrument comes to be read as a
+      closure. A residual honestly bounded is worth more than one falsely closed.
+      The exemption table that excuses live occurrences now pins the **matched
+      line** as well as the file, idiom and count, so deleting one excused
+      occurrence and adding a different one in the same file no longer stays
+      green on an unchanged count.
       **The preview builders are still not fenced, and the reason is now stated
       per site.** Two of the three exist because the server functions cannot
       produce what they photograph. The third does not: `applyTrainingSession`

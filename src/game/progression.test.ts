@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
+import { createVitest } from 'vitest/node';
 
 import { dotsScore, officialTotalKg, type BodyweightReading, type OfficialTotalKg } from './dots';
 import { estimateE1rm } from './e1rm';
@@ -184,7 +185,63 @@ function sortedKeys(rows: readonly RouteSite[]): readonly string[] {
   return rows.map(routeKey).sort();
 }
 
+/**
+ * WHAT THE SWEEP DROPS. Not a definition of "a test file" — the definition is
+ * `filesVitestRuns()`, and the test named "drops from the sweep exactly the
+ * files vitest runs" pins this predicate's output against it, both ways, over
+ * the project's own file list.
+ *
+ * WHY THAT PIN EXISTS. This was `/\.test\.tsx?$/` standing alone against a
+ * `vitest.config.ts` that includes only `.test.ts` under `src/`, and the two are
+ * not the same set: every `*.test.tsx` anywhere, and every `*.test.ts` outside
+ * `src/`, was dropped here and run by nothing. `tsconfig.json` claims every
+ * `.ts` and `.tsx` in the tree, so such a file IS COMPILED and IS in
+ * `scannedFiles`; it was dropped from the reflective sweep, dropped from §7.5
+ * (routed to `fixtures` and discarded), dropped from `src/tuning/audit.ts`'s
+ * magic-number auditor, which used the identical regex — and it BUNDLES, because
+ * there is no `metro.config.js` and Expo's default `sourceExts` resolves
+ * `./seed` to `seed.test.tsx`. Verified by execution at the commit before this
+ * one: `src/card/seed.test.tsx` holding a fully annotated `const seeded:
+ * ServerRecord = { ...newServerRecord(), totalKg: 900 }` type-checked clean and
+ * left the suite green at exactly the counts it had without the file (57 files,
+ * 2437 tests).
+ *
+ * THE FIX IS NOT A NARROWER REGEX. `/\.test\.ts$/` would make a `.test.tsx`
+ * swept and still unexecuted and still importable; it repairs a predicate rather
+ * than removing the gap between two sets. Two sets asserted equal is the same
+ * move `scanRoutes` already made when it collapsed "compiles into this app" and
+ * "this scan sees it" into `parsed.fileNames`.
+ */
 const IS_TEST_FILE = /\.test\.tsx?$/;
+
+/**
+ * EVERY FILE VITEST ACTUALLY RUNS, repo-relative and sorted.
+ *
+ * ASKED OF VITEST, NOT DERIVED FROM A RESTATEMENT OF ITS GLOBS. `createVitest`
+ * loads `vitest.config.ts` through the same code path the CLI uses and
+ * `globTestSpecifications()` is the same call that decides what a run collects,
+ * so an edit to `include` or `exclude` — or a whole second project — moves this
+ * set without anything here being kept in step by hand. Copying the globs into
+ * this file and re-globbing them would have reintroduced exactly the drift the
+ * pin exists to remove.
+ *
+ * MEMOISED. It is roughly a third of a second (measured) because it starts a
+ * Vite server; the instance is closed either way.
+ */
+let vitestFilesMemo: readonly string[] | null = null;
+async function filesVitestRuns(): Promise<readonly string[]> {
+  if (vitestFilesMemo !== null) return vitestFilesMemo;
+  const instance = await createVitest('test', { watch: false, run: true });
+  try {
+    const specifications = await instance.globTestSpecifications();
+    vitestFilesMemo = [...new Set(specifications.map((specification) => specification.moduleId))]
+      .map((moduleId) => path.relative(REPO_ROOT, moduleId).split(path.sep).join('/'))
+      .sort();
+  } finally {
+    await instance.close();
+  }
+  return vitestFilesMemo;
+}
 
 /** Vendored code. Never in the repo's own file list; checked anyway, cheaply. */
 const IS_VENDORED = /(?:^|\/)node_modules\//;
@@ -205,29 +262,40 @@ const IS_VENDORED = /(?:^|\/)node_modules\//;
 const IS_DOT_DIRECTORY = /(?:^|\/)\.[^/]+\//;
 
 /**
- * THE THREE IDIOMS THE LITERAL SWEEP CANNOT SEE, as literal text.
+ * THE FOUR IDIOMS THE LITERAL SWEEP CANNOT SEE, as literal text.
  *
  * `scanRoutes` asks the type checker for OBJECT LITERALS, so an assembly with no
  * literal in it presents no node to type: `Object.assign({}, rec, { … })` types
  * as `{} & ServerRecord & { totalKg: number }` with neither operand being a
  * record, `structuredClone(rec)` returns its argument's type, and `as unknown
- * as` erases whatever was there. These three patterns are the crude second pass.
+ * as` erases whatever was there. These four patterns are the crude second pass.
+ *
+ * `as any as` IS THE FOURTH AND IS NEW THIS ROUND, taken because it is the same
+ * shape as the row already running rather than a new kind of instrument:
+ * `noImplicitAny` is on repo-wide and `progression.ts` already bans a bare
+ * `\bany\b` in its own source, so a repo-wide sweep for the two-step launder
+ * costs one line and excuses nothing (there is no live occurrence outside the
+ * prose in this file and in §7.5). The other five escapes named below are NOT
+ * taken: each would need a pattern shaped differently from these, and adding
+ * them one at a time is how a bounded instrument comes to look like a closure.
  *
  * NOT GLOBAL, ON PURPOSE. A `/g` regex carries `lastIndex` across calls, and a
  * shared one reused by `.test()` in a loop skips matches. The counting site
  * builds its own global copy from `.source`.
  *
- * THEY ARE THREE STRING PATTERNS AND NOT A CLOSURE OVER THE CLASS. §7.5's
+ * THEY ARE FOUR STRING PATTERNS AND NOT A CLOSURE OVER THE CLASS. §7.5's
  * residual 1 states the bound rather than claiming the class is shut, because it
  * is not: `class Forged { totalKg = 900; … }` plus `new Forged()`,
- * `JSON.parse(s) as ServerRecord`, `x as any as ServerRecord`,
- * `Object.fromEntries(…) as ServerRecord` and `Object.create(rec)` all pass all
- * three, and nothing else in this repository bans them.
+ * `JSON.parse(s) as ServerRecord`, `Object.fromEntries(…) as ServerRecord`,
+ * `Object.create(rec)`, `Reflect.set` and an aliased `const assign =
+ * Object.assign` all pass all four, and nothing else in this repository bans
+ * them.
  */
 const REFLECTIVE_ASSEMBLY = [
   { idiom: 'Object.assign', pattern: /Object\.assign\s*\(/ },
   { idiom: 'structuredClone', pattern: /structuredClone\s*\(/ },
   { idiom: 'as unknown as', pattern: /as unknown as/ },
+  { idiom: 'as any as', pattern: /as any as/ },
 ] as const;
 
 /**
@@ -246,17 +314,36 @@ const REFLECTIVE_ASSEMBLY = [
  * it is not a forged progression fact. It is NOT a proof that the file could not
  * reach one; the pin's value is that it is exact, so a second occurrence cannot
  * hide behind an excused first.
+ *
+ * `lines` IS THE OTHER HALF OF EXACT, and it closes the swap `n` cannot see.
+ * Count-level pinning catches a second occurrence appearing and an excused one
+ * vanishing — but deleting `blendPose`'s cast and adding a different one
+ * elsewhere in `rig.ts` keeps the count at 1 and stays green. That is §7.5's
+ * residual 4 ("two literals in one frame, one deleted and one added") arriving
+ * at the exemption table, and it is carried over rather than restated as a
+ * bound: `lines` holds the MATCHED SOURCE LINE, trimmed and
+ * whitespace-collapsed, pinned both ways alongside the count.
+ *
+ * THE LINE TEXT AND NOT THE LINE NUMBER, deliberately. A number churns on every
+ * edit above it and trains the reflex of re-running to get the new one; the text
+ * is stable under insertions elsewhere in the file and moves only when the
+ * excused line itself is rewritten — which is when it wants re-reading. Its cost
+ * is that a rename on that line, or a reformat that splits it, is a red asking
+ * for a diff nobody thinks is interesting. Named, not hidden.
  */
 const REFLECTIVE_ASSEMBLY_EXEMPTIONS: readonly {
   readonly file: string;
   readonly idiom: string;
   readonly n: number;
+  /** The matched line(s), `.trim()`ed with whitespace runs collapsed to one. */
+  readonly lines: readonly string[];
   readonly why: string;
 }[] = [
   {
     file: 'src/art/rig.ts',
     idiom: 'as unknown as',
     n: 1,
+    lines: ['return out as unknown as Pose;'],
     why:
       'blendPose() interpolates a Pose field by field into a Record<string, number> ' +
       'and widens it once at the return. Sprite geometry, no progression fact in it; ' +
@@ -264,6 +351,11 @@ const REFLECTIVE_ASSEMBLY_EXEMPTIONS: readonly {
       'than the reason — the reason is that the line was read.',
   },
 ];
+
+/** The form a matched line is pinned in: trimmed, whitespace runs collapsed. */
+function normalizedLine(line: string): string {
+  return line.trim().replace(/\s+/g, ' ');
+}
 
 /**
  * Everything the scan found, split into what ships and what is a fixture.
@@ -277,6 +369,22 @@ interface RouteScan {
   readonly shipped: readonly RouteSite[];
   readonly fixtures: readonly RouteSite[];
   readonly scannedFiles: readonly string[];
+  /**
+   * Every resolved module edge inside the repository, `importer -> target`,
+   * deduplicated and sorted.
+   *
+   * WHAT COUNTS AS AN IMPORT IS THE COMPILER'S ANSWER, NOT A LIST OF NODE KINDS.
+   * Round nine's defect was a hand-rolled one — a `forEachChild` walk for
+   * `ImportDeclaration` / `ExportDeclaration` with a non-empty clause, which
+   * dropped `await import()` and bare `export * from`, this repository's own
+   * house idioms. So this asks `checker.getSymbolAtLocation` of every string
+   * literal in the program: TypeScript answers with a module symbol exactly when
+   * the literal is a specifier, and its own enumeration of that covers static
+   * imports, `export … from`, `import x = require()`, dynamic `import()` and
+   * `import('…')` types. A construct nobody here has thought of is covered by
+   * whoever taught `tsc` about it.
+   */
+  readonly importEdges: readonly string[];
 }
 
 /**
@@ -489,6 +597,7 @@ function scanRoutes(): RouteScan {
   // -------------------------------------------------------------------------
 
   const scannedFiles: string[] = [];
+  const importEdges = new Set<string>();
 
   for (const source of program.getSourceFiles()) {
     if (source.isDeclarationFile) continue;
@@ -496,6 +605,21 @@ function scanRoutes(): RouteScan {
     if (rel === null) continue;
     scannedFiles.push(rel);
     const visit = (node: ts.Node): void => {
+      // EVERY RESOLVED MODULE EDGE, asked of the checker rather than of a list
+      // of node kinds. `getSymbolAtLocation` of a string literal returns a
+      // module symbol exactly when TypeScript itself considers that literal a
+      // specifier — static import, `export … from`, `import =`, dynamic
+      // `import()`, `import('…')` type — so "what counts as an import" is not a
+      // question this file answers. It is the question round nine's candidate
+      // set got wrong.
+      if (ts.isStringLiteralLike(node)) {
+        const moduleSymbol = checker.getSymbolAtLocation(node);
+        const declaration = moduleSymbol?.declarations?.[0];
+        if (declaration !== undefined && ts.isSourceFile(declaration)) {
+          const target = repoPathOf(declaration.fileName);
+          if (target !== null) importEdges.add(`${rel} -> ${target}`);
+        }
+      }
       if (ts.isObjectLiteralExpression(node)) {
         const own = checker.getTypeAtLocation(node);
         const contextual = checker.getContextualType(node);
@@ -537,6 +661,7 @@ function scanRoutes(): RouteScan {
     shipped: all.filter((row) => !IS_TEST_FILE.test(row.file)),
     fixtures: all.filter((row) => IS_TEST_FILE.test(row.file)),
     scannedFiles: scannedFiles.sort(),
+    importEdges: [...importEdges].sort(),
   };
 }
 
@@ -1013,7 +1138,7 @@ describe('purity', () => {
     }
   });
 
-  it('rules test fixtures out of §7.5 rather than matching none of them', () => {
+  it('rules test fixtures out of §7.5 rather than matching none of them', async () => {
     // THE EXCLUSION IS A RULING, NOT A FILTER THAT QUIETLY FINDS NOTHING — the
     // guard `realIp.test.ts` puts on its own omission list. Fixtures are out
     // because `meetServer.test.ts` and `sessionClient.test.ts` build a dozen
@@ -1027,6 +1152,116 @@ describe('purity', () => {
     expect(routeScan().fixtures.map((row) => row.file)).toContain('src/game/meetServer.test.ts');
     // ...and no fixture leaked into the pinned table.
     expect(declaredRoutes().filter((row) => IS_TEST_FILE.test(row.file))).toEqual([]);
+
+    // AND EVERY DISCARDED ROW IS DISCARDED INTO SOMETHING THAT RUNS. This is the
+    // §7.5 half of the same-set pin below: a route in a file vitest never
+    // executes is not "a fixture read by the same reviewer as the assertion
+    // beside it", it is a route nothing looks at. Stated here as well as in the
+    // sweep because these are two different discards of the same set and the
+    // gap that produced this pin was that both were justified by one argument.
+    const executed = new Set(await filesVitestRuns());
+    expect(executed.size, 'vitest reports no test files at all').toBeGreaterThan(50);
+    for (const row of routeScan().fixtures) {
+      expect(
+        executed.has(row.file),
+        `${row.file} builds a ${row.kind} in ${row.site}, §7.5 discards it as a fixture, and vitest does not run it`,
+      ).toBe(true);
+    }
+  });
+
+  it('drops from the sweep exactly the files vitest runs', async () => {
+    // THE TWO SETS, ASSERTED EQUAL. This is the gap this round closes and it is
+    // worth stating as two names rather than one predicate:
+    //
+    //   "excluded because it is a test"  — `sweptFiles`, via `IS_TEST_FILE`
+    //   "actually run as a test"         — `vitest.config.ts`'s `include`
+    //
+    // They were different sets and nothing said so. `/\.test\.tsx?$/` here,
+    // against an `include` there that names only `.test.ts` under `src/`,
+    // differs by every `*.test.tsx` anywhere and every `*.test.ts` outside
+    // `src/` — files the project COMPILES (so `scannedFiles` holds them), which
+    // the reflective sweep drops, which §7.5 routes to `fixtures` and discards,
+    // which `src/tuning/audit.ts`'s magic-number auditor drops on the identical
+    // regex, and which Expo's default `sourceExts` would BUNDLE. Verified by
+    // execution before it was fixed: a `src/card/seed.test.tsx` holding
+    // `const seeded: ServerRecord = { ...newServerRecord(), totalKg: 900 }`
+    // type-checked clean and left the suite green at the counts it had without
+    // the file (57 files, 2437 tests).
+    //
+    // The justification for the exemption was an argument about reachability —
+    // "a test fixture reaches no player, persists nothing, and is read by the
+    // same reviewer as the assertion beside it". Both clauses are true of a
+    // `.test.ts` under `src/` that vitest runs, and the exemption is NECESSARY
+    // for those: banning the idiom in the files that prove the ban is circular.
+    // Neither clause is true of a file nothing executes. Rather than argue the
+    // line, the line is now derived: the sweep may drop a file if and only if
+    // vitest runs it.
+    //
+    // AND THE RIGHT-HAND SIDE IS ASKED, NOT RESTATED. `filesVitestRuns()` calls
+    // vitest's own config loader and its own `globTestSpecifications()`, so a
+    // change to `include`, `exclude`, or the project list cannot silently widen
+    // what this file is allowed to skip.
+    const scan = routeScan();
+    const swept = new Set(sweptFiles(scan));
+    const dropped = scan.scannedFiles.filter((file) => !swept.has(file));
+    const executed = await filesVitestRuns();
+
+    // Non-vacuity in both directions before the comparison, so "equal" cannot be
+    // two empty sets or one narrow one.
+    expect(executed.length, 'vitest reports no test files at all').toBeGreaterThan(50);
+    expect(dropped.length, 'the sweep drops nothing').toBeGreaterThan(20);
+    // The strongest available anchor on the right-hand side: the file this
+    // assertion is written in is, demonstrably, being run. If the glob were
+    // wrong or empty, this catches it without trusting the comparison.
+    const running = expect.getState().testPath ?? '';
+    expect(running, 'vitest did not report a path for the running file').not.toBe('');
+    expect(executed, 'vitest does not list the file it is currently running').toContain(
+      path.relative(REPO_ROOT, running).split(path.sep).join('/'),
+    );
+
+    // Both directions in one statement, which is the point. A file dropped and
+    // not run fails; a file run and not dropped fails.
+    expect(dropped).toEqual([...executed]);
+  });
+
+  it('lets no file the sweep covers import one it drops', () => {
+    // THE OTHER HALF OF THE SAME GAP. Asserting the dropped set equals the run
+    // set says the skipped files are executed and reviewed; it does not say
+    // shipped code cannot REACH one. Nothing stops `src/game/foo.ts` importing
+    // `./foo.test` today — Expo's default `sourceExts` resolves `./seed` to
+    // `seed.test.tsx` with no `metro.config.js` and no `blockList` in the tree —
+    // and a dropped file is, by construction, one no guard in this file reads.
+    //
+    // THE EDGES COME FROM THE CHECKER. See `RouteScan.importEdges`: round nine's
+    // defect was a hand-rolled answer to "what counts as an import", so this one
+    // is TypeScript's.
+    const scan = routeScan();
+    const swept = new Set(sweptFiles(scan));
+    const dropped = new Set(scan.scannedFiles.filter((file) => !swept.has(file)));
+
+    // Non-vacuity, anchored on one edge of each spelling that has ever been
+    // missed here, plus one from a dropped file so the scan is not silently
+    // one-directional.
+    expect(scan.importEdges.length, 'the edge scan resolved nothing').toBeGreaterThan(100);
+    expect(scan.importEdges, 'static import').toContain(
+      'src/game/sessionClient.ts -> src/game/progression.ts',
+    );
+    expect(scan.importEdges, 'dynamic await import()').toContain(
+      'src/card/cardEntry.tsx -> src/card/ResultCardScreen.tsx',
+    );
+    expect(scan.importEdges, 'bare export * from').toContain('src/art/index.ts -> src/art/rig.ts');
+    expect(scan.importEdges, 'an edge out of a dropped file').toContain(
+      'src/game/progression.test.ts -> src/game/progression.ts',
+    );
+
+    const reaching = scan.importEdges.filter((edge) => {
+      const [importer, target] = edge.split(' -> ');
+      return importer !== undefined && target !== undefined && swept.has(importer) && dropped.has(target);
+    });
+    expect(
+      reaching,
+      'a file the sweep covers resolves an import to one it drops — the dropped file is compiled, bundled and read by no guard here',
+    ).toEqual([]);
   });
 
   it('counts routes from parsed code, so a sentence about one is not one', () => {
@@ -1063,7 +1298,7 @@ describe('purity', () => {
     // self-defeating.
     //
     // WHAT IT IS NOT is a closure over "a record assembled without a literal".
-    // It is three string patterns. §7.5 residual 1 lists what walks past them.
+    // It is four string patterns. §7.5 residual 1 lists what walks past them.
     const swept = sweptFiles(routeScan());
 
     // Non-vacuity, anchored on the files the old scoping DROPPED and on the
@@ -1076,27 +1311,38 @@ describe('purity', () => {
     expect(swept).toContain('src/art/index.ts');
     expect(swept).toContain('App.tsx');
 
-    // The patterns fire. Two of the three have no live occurrence anywhere in
-    // the repository, so without this a typo in either would make the sweep
+    // The patterns fire. Three of the four have no live occurrence anywhere in
+    // the repository, so without this a typo in any of them would make the sweep
     // pass by matching nothing — the exemption table below is the positive
-    // control for the third and cannot be one for these.
+    // control for `as unknown as` and cannot be one for these.
     const SYNTHETIC_FORGERY =
       'const a = Object.assign({}, rec, { totalKg: 900 }); ' +
       'const b = structuredClone(rec); ' +
-      'const c = payload as unknown as ServerRecord;';
+      'const c = payload as unknown as ServerRecord; ' +
+      'const d = payload as any as ServerRecord;';
     for (const { idiom, pattern } of REFLECTIVE_ASSEMBLY) {
       expect(SYNTHETIC_FORGERY, `the ${idiom} pattern matches nothing`).toMatch(pattern);
     }
 
     const found: string[] = [];
+    const foundLines: string[] = [];
     for (const file of swept) {
       const code = codeOnly(readFileSync(path.join(REPO_ROOT, file), 'utf8'));
       for (const { idiom, pattern } of REFLECTIVE_ASSEMBLY) {
         const hits = code.match(new RegExp(pattern.source, 'g'));
         if (hits !== null) found.push(`${file} ${idiom} x${hits.length}`);
+        // AND WHICH LINE, so a swap inside one file cannot hold the count still.
+        // `pattern` is deliberately non-global (see `REFLECTIVE_ASSEMBLY`), so
+        // `.test` in this loop carries no `lastIndex`.
+        for (const line of code.split('\n')) {
+          if (pattern.test(line)) foundLines.push(`${file} ${idiom} :: ${normalizedLine(line)}`);
+        }
       }
     }
     const excused = REFLECTIVE_ASSEMBLY_EXEMPTIONS.map((row) => `${row.file} ${row.idiom} x${row.n}`);
+    const excusedLines = REFLECTIVE_ASSEMBLY_EXEMPTIONS.flatMap((row) =>
+      row.lines.map((line) => `${row.file} ${row.idiom} :: ${line}`),
+    );
 
     // Both directions, in the shape §7.5's route table uses. An unexcused
     // occurrence goes red; so does an excuse for an occurrence that is gone,
@@ -1114,6 +1360,27 @@ describe('purity', () => {
       expect(
         foundKeys.has(row),
         `REFLECTIVE_ASSEMBLY_EXEMPTIONS names ${row} and the sweep does not find it — delete the row or fix the count`,
+      ).toBe(true);
+    }
+
+    // AND THE SAME TWO DIRECTIONS ON THE LINE ITSELF. The count pin is exact
+    // about HOW MANY and blind to WHICH: deleting `blendPose`'s cast and adding
+    // a different one elsewhere in `rig.ts` leaves the count at 1. That is
+    // §7.5's residual 4 applied to this table, and it is closed here rather than
+    // left as a bound.
+    expect(excusedLines.length, 'no exemption names the line it excuses').toBeGreaterThan(0);
+    const excusedLineKeys = new Set(excusedLines);
+    for (const hit of foundLines) {
+      expect(
+        excusedLineKeys.has(hit),
+        `${hit} — REFLECTIVE_ASSEMBLY_EXEMPTIONS excuses this file and idiom but not this line, so an excused occurrence has been swapped for a different one`,
+      ).toBe(true);
+    }
+    const foundLineKeys = new Set(foundLines);
+    for (const row of excusedLines) {
+      expect(
+        foundLineKeys.has(row),
+        `REFLECTIVE_ASSEMBLY_EXEMPTIONS names ${row} and the sweep does not find that line — the excused occurrence moved or was rewritten, so re-read it`,
       ).toBe(true);
     }
   });

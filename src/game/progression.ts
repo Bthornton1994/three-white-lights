@@ -836,6 +836,14 @@
  * claim is stated against THE FILE LIST rather than against "the codebase",
  * because those are not the same set and 7.5's item 3 says where they part.
  *
+ * AND "NON-TEST" IN THAT PHRASE IS NOW A DERIVED SET, not a regular expression's
+ * opinion. It reads "the project's file list, minus the files vitest runs", and
+ * the minus is asserted equal to vitest's own answer in both directions rather
+ * than described — see 7.5's "AND 'TEST FILE' IS NOW A DERIVED SET". The version
+ * before this one differed from vitest's set by every `*.test.tsx` in the tree,
+ * and a route in one of those was compiled, bundled, exempted and executed by
+ * nothing.
+ *
  * WHAT WOULD FALSIFY IT, concretely, so this is not a claim that survives by
  * being unfalsifiable:
  *
@@ -961,9 +969,62 @@
  * clone freely BECAUSE they are demonstrating what the boundary refuses —
  * `progression.test.ts` itself holds several `as unknown as` lines whose whole
  * job is to force a value past the compiler and show the runtime still refuses
- * it. Banning the idiom in the files that prove the ban would be circular. This
- * is the one filter left in front of that guard and it is stated rather than
- * computed: `.test.ts` / `.test.tsx`, nothing else.
+ * it. Banning the idiom in the files that prove the ban would be circular.
+ *
+ * AND "TEST FILE" IS NOW A DERIVED SET RATHER THAN AN ARGUMENT, which is this
+ * round's fix and the fifth time in a row this section's remaining defect has
+ * been a scope justified by reasoning instead of by enumeration. Both paragraphs
+ * above are TRUE of a `.test.ts` under `src/` that vitest runs, and the second
+ * one's exemption is NECESSARY for those files. Neither was true of the set the
+ * filter actually named. The filter was `/\.test\.tsx?$/` here; `vitest.config
+ * .ts` includes only `.test.ts` under `src/`; nothing asserted the two were the
+ * same set, and they were not. The difference is every `*.test.tsx` anywhere
+ * plus every `*.test.ts` outside `src/` — and such a file
+ *   · IS COMPILED by the project, whose `include` claims every `.ts` and `.tsx`
+ *     in the tree, so it is in `parsed.fileNames` and in the scanned set;
+ *   · is dropped from the reflective sweep;
+ *   · is dropped from THIS table — a fully annotated record in one is found by
+ *     the scan, routed to `fixtures` and discarded;
+ *   · is dropped from `src/tuning/audit.ts`'s magic-number auditor, which used
+ *     the identical regex, so a bare `900` does not even need laundering;
+ *   · is EXECUTED BY NOTHING, so there is no assertion beside it and no reviewer
+ *     reading it as a fixture;
+ *   · and it BUNDLES: there is no `metro.config.js` in the repository, so Expo's
+ *     default `sourceExts` resolves `./seed` to `seed.test.tsx`, and no
+ *     `blockList` excludes it.
+ * Verified by execution rather than reasoned about: at the commit before this
+ * one, `src/card/seed.test.tsx` holding `const seeded: ServerRecord = {
+ * ...newServerRecord(), totalKg: 900 }` type-checked clean and left the suite
+ * green at exactly the counts it had without the file (57 files, 2437 tests).
+ * Nothing ran it; no guard saw it.
+ *
+ * THE FIX IS NOT A NARROWER REGEX. `/\.test\.ts$/` would have made such a file
+ * swept and still unexecuted and still importable; it repairs a predicate
+ * instead of removing the gap between two sets, and the next round would be
+ * about whichever extension it forgot. TWO ASSERTIONS REPLACE THE ARGUMENT:
+ *   (1) THE SET THE SWEEP DROPS EQUALS THE SET VITEST RUNS, both ways
+ *       ("drops from the sweep exactly the files vitest runs"). The right-hand
+ *       side is ASKED OF VITEST — `createVitest` loads `vitest.config.ts`
+ *       through vitest's own config loader and `globTestSpecifications()` is the
+ *       call a real run collects with — rather than restated here, so an edit to
+ *       `include` or `exclude` cannot silently widen what this file may skip.
+ *       Same move `scanRoutes` already made when it collapsed "compiles into
+ *       this app" and "this scan sees it" into `parsed.fileNames`.
+ *       The fixtures ruling carries the same pin: every row discarded as a
+ *       fixture must be in a file vitest runs.
+ *   (2) NO FILE THE SWEEP COVERS RESOLVES AN IMPORT TO ONE IT DROPS ("lets no
+ *       file the sweep covers import one it drops"). Equality alone says the
+ *       skipped files are executed and reviewed; it does not say shipped code
+ *       cannot REACH one, and Metro's default resolution means reaching one is a
+ *       four-character import. The edges come from `checker.getSymbolAtLocation`
+ *       on every string literal, because "what counts as an import" is the
+ *       question round nine's candidate set got wrong and it is not a question
+ *       this repository should be answering by hand.
+ * A `.test.tsx` was invisible from four ends — unswept, untabled, unaudited,
+ * unexecuted — while `.mts`/`.cts` were pinned in the walk AHEAD of there being
+ * one, on the argument that a file invisible from both ends "is the one shape
+ * this cross-check exists to make impossible". That inconsistency inside one
+ * file was the finding, and it is fixed the way `.mts` was.
  *
  * WHAT STILL SLIPS, stated rather than left to be found for a seventh time —
  * and stated as a LIST, because the previous version of this paragraph named
@@ -980,30 +1041,41 @@
  *      THIS USED TO SAY "CLOSED BY A SECOND, CRUDER TEST RATHER THAN ARGUED
  *      AWAY", AND "CLOSED" WAS OVER-STRONG. The class is unbounded — every way
  *      of producing an object without writing one down — and what stands
- *      against it is THREE STRING PATTERNS. So the honest form is what they
+ *      against it is FOUR STRING PATTERNS. So the honest form is what they
  *      catch, what they do not, and where they run.
  *
- *      WHERE THEY RUN, which is the part that changed this round: over EVERY
- *      NON-TEST FILE THE PROJECT COMPILES. There is no candidate set any more.
- *      The three patterns are `Object.assign(`, `structuredClone(` and
- *      `as unknown as`, over comment-stripped source, and the occurrences that
- *      exist are excused BY FILE, IDIOM AND COUNT in
+ *      WHERE THEY RUN: over EVERY FILE THE PROJECT COMPILES THAT VITEST DOES
+ *      NOT RUN. There is no candidate set, and as of this round the dropped set
+ *      is not a predicate either — see the two assertions above. The four
+ *      patterns are `Object.assign(`, `structuredClone(`, `as unknown as` and
+ *      `as any as`, over comment-stripped source, and the occurrences that
+ *      exist are excused BY FILE, IDIOM, COUNT AND MATCHED LINE in
  *      `REFLECTIVE_ASSEMBLY_EXEMPTIONS`, pinned both ways — an unexcused
- *      occurrence goes red, and so does an excuse for one that is gone. There
- *      is exactly one row today (`src/art/rig.ts`, `blendPose()` widening a
- *      `Record<string, number>` to a `Pose`).
+ *      occurrence goes red, an excuse for one that is gone goes red, and (new
+ *      this round, see residual 4) a swap that holds the count still goes red.
+ *      There is exactly one row today (`src/art/rig.ts`, `blendPose()` widening
+ *      a `Record<string, number>` to a `Pose`).
+ *
+ *      `as any as` IS THE FOURTH PATTERN AND WAS THE ONE ESCAPE WORTH TAKING,
+ *      which is a judgement and is written down as one. It came off the list
+ *      below rather than out of a new idea about what to scan for: it is the
+ *      same SHAPE as the `as unknown as` row already running (a two-step launder
+ *      spelled one way), `noImplicitAny` is on repo-wide, and this module already
+ *      bans a bare `\bany\b` in its own source — so it cost one line and excused
+ *      nothing, there being no live occurrence outside prose. THE OTHER FIVE ARE
+ *      DELIBERATELY NOT TAKEN. Each needs an instrument shaped differently from
+ *      these four, and adding them one per round is exactly how a bounded
+ *      instrument comes to be read as a closure; that is the mistake the round
+ *      before last corrected and it is not being re-made for a smaller prize.
  *
  *      WHAT THEY DO NOT CATCH, named because the list above is not a closure:
  *      `class Forged { totalKg = 900; … }` followed by `new Forged()`;
- *      `JSON.parse(s) as ServerRecord`, where the source is `any` and no
- *      `as unknown as` is needed; `x as any as ServerRecord`;
- *      `Object.fromEntries(…) as ServerRecord`; `Object.create(rec)`;
- *      `Reflect.set`; an aliased `const assign = Object.assign`. Nothing in
- *      `src/` bans any of them — the "does not cast its way past its own
- *      boundary" test is scoped to THIS FILE's source only. Adding more
- *      patterns would chase an unbounded class with a bounded instrument and
- *      produce another approximation, which is the mistake this section keeps
- *      making; the residual is bounded instead of closed.
+ *      `JSON.parse(s) as ServerRecord`, where the source is `any` and no cast
+ *      chain is needed; `Object.fromEntries(…) as ServerRecord`;
+ *      `Object.create(rec)`; `Reflect.set`; an aliased `const assign =
+ *      Object.assign`. Nothing in `src/` bans any of them — the "does not cast
+ *      its way past its own boundary" test is scoped to THIS FILE's source
+ *      only. The residual is bounded, not closed.
  *      One more bound on the instrument itself: comments are stripped with a
  *      regex, so a `//` inside a string literal blanks the rest of that line
  *      and a `/*` inside one blanks up to the next close. An idiom sitting
@@ -1094,8 +1166,61 @@
  *      and namespaces are deliberately not frames, being scopes rather than
  *      bodies. Smallest of the four; a review catches it and a test does not.
  *
+ *      THIS HAZARD IS NO LONGER OPEN ON THE EXEMPTION TABLE, which it was and
+ *      which nothing said. `REFLECTIVE_ASSEMBLY_EXEMPTIONS` was pinned at COUNT
+ *      level in both directions — a second `as unknown as` in `rig.ts` reddens,
+ *      a vanished one reddens — and a SWAP inside the file (delete `blendPose`'s
+ *      cast, add a different one elsewhere) held the count at 1 and stayed
+ *      green. Exactly this residual, one table over, and not carried across. A
+ *      row now names the MATCHED LINE as well as the count, pinned both ways,
+ *      so the swap reddens naming the line it did not expect. THE LINE TEXT AND
+ *      NOT THE LINE NUMBER: a number churns on every edit above it, and a table
+ *      that goes red for unrelated edits is a table people fix by editing the
+ *      number. The cost is that renaming a variable on the excused line, or a
+ *      reformat that splits it, is a red — which is a re-read of one line, and
+ *      is the intended trade rather than an accident.
+ *      WHAT REMAINS ON THE ROUTE TABLE is the frame-level version above: `site`
+ *      + `n` still cannot see a swap inside one frame, and no line pin was added
+ *      there, because a route row's line would churn on every edit to the
+ *      function it names. Bounded, open, and smaller than the table version was.
+ *
+ *   5. THE FILTERS WHOSE JUSTIFICATION IS STILL AN ARGUMENT, listed because
+ *      five rounds running have ended on that exact question and the honest
+ *      thing is to answer it in the file rather than wait to be asked again.
+ *      After this round, `scanRoutes` applies precisely three filters that are
+ *      not derived from something else, and none of them is a path or an
+ *      extension:
+ *        (a) `IS_VENDORED` — anything under `node_modules/`. Argument: it is
+ *            not this repository's code and a route in it would be a finding
+ *            about a dependency, not about this boundary. Cross-checked only in
+ *            that the scanned set is ASSERTED to contain none.
+ *        (b) `source.isDeclarationFile` — `.d.ts` and friends. Argument: a
+ *            declaration file holds no expressions, so it can hold neither an
+ *            object literal for the checker to type nor a call for the text
+ *            sweep to match. Sound by what a declaration file IS, and still an
+ *            argument rather than a check.
+ *        (c) THE TARGETS THEMSELVES — `ServerRecord`, `ProgressionSnapshotWire`
+ *            and `receiveProgressionSnapshot`, three names written by hand.
+ *            Nothing derives "these are the types a permanent fact rides on".
+ *            This is the largest of the three and the one a new fact-carrying
+ *            type would walk past; what stands against it is the OTHER
+ *            direction, 7.1/7.2's sweep over the derived fact set, which fails
+ *            when a fact is added and unlisted. Two hand-written names on one
+ *            side and a derived set on the other is not the same as a pin.
+ *      Everything else that used to be on this list is gone rather than
+ *      re-argued: the `src/` root (round seven), the candidate set (round
+ *      nine), and "what counts as a test file" (this round).
+ *
  * There is no "and therefore nothing else" sentence here. Three rounds of this
  * section ended with one, and two of the three were wrong.
+ *
+ * AND ONE BOUND THIS ROUND'S FIX INTRODUCED, named rather than left for the
+ * next reader. "Which files does vitest run" is answered by CALLING VITEST
+ * (`createVitest` + `globTestSpecifications`), which is the strongest available
+ * answer and is also a dependency on a programmatic API: if a future vitest
+ * renames it, this file stops compiling or stops running rather than silently
+ * passing, which is the safe direction, but it is a real coupling and it costs
+ * about a third of a second per run.
  */
 
 import type { BodyweightReading, OfficialTotalKg } from './dots';
