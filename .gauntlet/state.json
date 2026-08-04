@@ -2,8 +2,8 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 4,
-    "waveName": "Wave 4 — the app is playable; grading the lift and closing the streak guardrail",
+    "wave": 5,
+    "waveName": "Wave 5 — four merged fixes back under fresh critics, and the tuning audit that nothing yet enforces",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
@@ -158,8 +158,9 @@
       "id": "T1",
       "name": "Tuning constants",
       "bar": "Every game-feel value a named constant in one place. Enforced by a magic-number audit.",
-      "status": "pending",
-      "verifiable": true
+      "status": "building",
+      "verifiable": true,
+      "note": "Dispatched. The constants half is largely done already — four domain tuning modules (spriteTuning 1216 lines, liftTuning 827, cardTuning 488, sessionTuning 431) plus four palettes, and components do import from them. The missing half is ENFORCEMENT: nothing stops the next component hardcoding a timing window. The brief asks for an audit that runs IN the suite rather than a script nobody invokes, a defended allowlist (array indices, /2 centering, flex:1 and arithmetic derived from a named constant are not magic numbers), and a ruling on whether four domain modules satisfy CLAUDE.md one place or need an index. It must prove the audit bites by planting real magic numbers in real components and showing each fails — an audit whose regex never matches is precisely the eighteen-times failure mode of this run."
     },
     {
       "id": "V1",
@@ -199,7 +200,7 @@
       "id": "S1",
       "name": "Daily session loop",
       "bar": "Duolingo-class session. Time-to-first-input, session length, close-out moment.",
-      "status": "ungraded",
+      "status": "grading",
       "verifiable": false,
       "note": "Built and merged; 1432 tests across 27 files, typecheck clean. The app now opens straight onto the readiness check-in — no splash, no home screen, three questions and nine chips live at first paint. It MEASURED the bar rather than estimating: 929ms median to first tappable input, and a full played session of 58.7s at RPE 6 and 64.7s at RPE 8 against the GDD 60-to-90 target. Twelve mutations all bite. Two decisions in its resolution rules are worth recording: a missed set reports as reps-minus-one at RPE 10, because on a reps-in-reserve chart RPE 10 IS failure rather than an estimate of it; and prescribed load rounds DOWN, because rounding to nearest lets a target-hit session report an e1RM a kilo or two above the one it was prescribed from, which becomes a permanent PR bought with rounding and then compounds daily. It wrote the Edge Function body now rather than later so the client never learns to write progression directly. It raised two things it refused to decide alone and both are genuine design questions, now with the human.",
       "evidence": "session-open.png"
