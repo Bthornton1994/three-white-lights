@@ -132,6 +132,55 @@ export function lambert(nx: number, ny: number, nz: number): number {
 }
 
 /**
+ * The lamp, plus whatever a mass does to itself along its own axis.
+ *
+ * AMBIENT IS A FLOOR HERE, NOT A BASE, and that is the whole content of this
+ * function. `lambert` already bottoms out at AMBIENT, but `axialTerm`'s
+ * `JOINT_DROP` was subtracted afterwards and could take a pixel BELOW it: on
+ * the shadow flank of a limb, where the lamp contributes nothing, the joint
+ * bands at each end of every capsule went from AMBIENT to AMBIENT - JOINT_DROP.
+ * With four capsule ends down each arm that put whole wedges of every limb on
+ * the darkest entry of the ramp — measured, 48-64% of the far arm's own window,
+ * against a reference figure whose worst limb-sized patch of skin anywhere is
+ * 37-50% and whose median never lands there at all.
+ *
+ * Ambient is light that arrives from everywhere; a muscle belly does not
+ * occlude it. So the axial profile modulates the KEY light and stops at the
+ * ambient floor, which leaves the ramp's darkest step to the thing that is
+ * actually drawn in it — the contour (`INTERIOR_EDGE.SKIN`), one step under the
+ * fill beside it. The joint articulation is unchanged where anyone can see it:
+ * on the lit flank the drop still has the full range to work in.
+ */
+export function litWithAxial(lambertValue: number, axial: number): number {
+  return Math.min(1, Math.max(SHADING.AMBIENT, lambertValue + axial));
+}
+
+/**
+ * Push a lit value toward ambient — a mass standing further from the lamp.
+ *
+ * THIS REPLACES A RAMP-STEP BIAS, and the difference is the whole point. A
+ * step bias renumbers the ramp: every pixel of the mass drops one entry, so a
+ * limb whose lit flank was the top step is capped one below it and everything
+ * that was one step off the floor lands ON the floor. Measured on the far arm
+ * that was 54-93% of its skin at `SKIN_SHADOW` with a median AT the floor in
+ * every frame the animation can produce, and zero pixels at `SKIN_HI` — a flat
+ * dark mass beside a near arm running the whole ramp.
+ *
+ * Scaling toward ambient is what a dimmer lamp actually does. The shadow flank
+ * is already sitting at ambient and does not move, so nothing extra is pushed
+ * onto the floor; the lit flank comes down, so the mass reads further away; and
+ * where the surface really does face the lamp it can still cross the top
+ * threshold, which is how both of `sprite-ref-1`'s arms reach the top two steps
+ * of one skin ramp under one light.
+ *
+ * `scale` 1 is a no-op, bit for bit.
+ */
+export function dimToward(lit: number, scale: number): number {
+  if (scale === 1) return lit;
+  return SHADING.AMBIENT + scale * (lit - SHADING.AMBIENT);
+}
+
+/**
  * Peak Lambert value a cylinder lying in the screen plane can reach, for an
  * axis at `angleRad` on screen. Exported because it is the arithmetic behind
  * `SHADING.FORESHORTEN`, and a claim about the shading model that the tests can
@@ -266,8 +315,15 @@ export function shadeToIndex(ramp: Ramp, lit: number, stepBias: number = 0): num
 // ---------------------------------------------------------------------------
 
 export interface PartOptions {
-  /** Shift the whole part's ramp step. Depth separation for far limbs. */
+  /** Shift the whole part's ramp step. */
   readonly stepBias?: number;
+  /**
+   * Dim this part's lamp toward ambient — depth separation for far masses.
+   *
+   * Omitted means 1, which is bit-for-bit no change. See `dimToward` for why
+   * this and not `stepBias`, and `SHADING.FAR_LIMB_LIGHT_SCALE` for the value.
+   */
+  readonly lightScale?: number;
   /** Stamp a 1px outline around the part before filling it. */
   readonly edge?: boolean;
   /** Outline colour for `edge`. Defaults to the part's own bank outline. */
@@ -407,6 +463,7 @@ function limbPass(g: IndexGrid, seg: LimbSegment, pass: 0 | 1): void {
   const y1 = Math.ceil(Math.max(ay, by) + pad);
 
   const stepBias = opts?.stepBias ?? 0;
+  const lightScale = opts?.lightScale ?? 1;
   const edgeIdx = edgeIndexFor(ramp, opts);
   const litEdge = opts?.edgeFollowsLight === true;
   const axial = opts?.axial ?? SHADING.AXIAL_LIMB;
@@ -443,9 +500,9 @@ function limbPass(g: IndexGrid, seg: LimbSegment, pass: 0 | 1): void {
       const N = limbNormal(px, py, ux, uy, n, (along - domeCentre) / rCore, camera);
       // `t` is the position DOWN the limb. Reading it here is the whole
       // difference between a modelled limb and an extruded stripe.
-      const lit = Math.min(
-        1,
-        Math.max(0, lambert(N.x, N.y, N.z) + axialScale * axialTerm(axial, t)),
+      const lit = dimToward(
+        litWithAxial(lambert(N.x, N.y, N.z), axialScale * axialTerm(axial, t)),
+        lightScale,
       );
       if (pass === 0) {
         setPx(
@@ -481,6 +538,7 @@ export function drawEllipsoid(
   opts?: PartOptions,
 ): void {
   const stepBias = opts?.stepBias ?? 0;
+  const lightScale = opts?.lightScale ?? 1;
   const wantEdge = opts?.edge === true;
   const edgeIdx = edgeIndexFor(ramp, opts);
   const litEdge = opts?.edgeFollowsLight === true;
@@ -500,18 +558,17 @@ export function drawEllipsoid(
         const q = nx * nx + ny * ny;
         if (q > 1) continue;
         const nz = Math.sqrt(Math.max(0, 1 - q));
+        const lit = dimToward(lambert(nx, ny, nz), lightScale);
         if (pass === 0) {
           setPx(
             g,
             x,
             y,
-            litEdge
-              ? shadeToIndex(ramp, lambert(nx, ny, nz), stepBias - SHADING.EDGE_STEP_DROP)
-              : edgeIdx,
+            litEdge ? shadeToIndex(ramp, lit, stepBias - SHADING.EDGE_STEP_DROP) : edgeIdx,
           );
           continue;
         }
-        setPx(g, x, y, shadeToIndex(ramp, lambert(nx, ny, nz), stepBias));
+        setPx(g, x, y, shadeToIndex(ramp, lit, stepBias));
       }
     }
   }
@@ -533,6 +590,7 @@ export function drawTrunk(
   opts?: PartOptions,
 ): void {
   const stepBias = opts?.stepBias ?? 0;
+  const lightScale = opts?.lightScale ?? 1;
   const wantEdge = opts?.edge === true;
   const edgeIdx = edgeIndexFor(ramp, opts);
   const litEdge = opts?.edgeFollowsLight === true;
@@ -554,9 +612,9 @@ export function drawTrunk(
         if (Math.abs(nx) > 1) continue;
         const nz = Math.sqrt(Math.max(0, 1 - nx * nx));
         const vertical = SHADING.VERTICAL_GAIN * (1 - 2 * f);
-        const lit = Math.min(
-          1,
-          Math.max(0, lambert(nx, 0, nz) + vertical + axialTerm(axial, f)),
+        const lit = dimToward(
+          litWithAxial(lambert(nx, 0, nz), vertical + axialTerm(axial, f)),
+          lightScale,
         );
         if (pass === 0) {
           setPx(

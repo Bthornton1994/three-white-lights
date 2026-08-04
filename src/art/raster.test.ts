@@ -21,6 +21,7 @@ import {
   cameraBlendForTilt,
   createGrid,
   cylinderPeakLit,
+  dimToward,
   drawLimb,
   drawLimbChain,
   getPx,
@@ -141,12 +142,41 @@ describe('the quantiser', () => {
     expect(shadeToIndex(ramp, 1, -9)).toBe(ramp[0]);
   });
 
-  it('keeps the far-limb bias a real step down, not a rounding artefact', () => {
+  it('dims the far limb without renumbering its ramp', () => {
+    // The property the far-limb separation had to gain, stated as arithmetic.
+    //
+    // A STEP BIAS is a renumbering: whatever the surface does, it comes out one
+    // entry lower, so the shadow flank — already on the floor — cannot go
+    // anywhere, everything one step off the floor lands ON it, and the top step
+    // is unreachable at ANY brightness. That is what put the far arm's median on
+    // SKIN_SHADOW in every frame the animation can produce.
+    //
+    // `dimToward` is a lamp, so it does none of those three things.
     const ramp = RAMPS.SKIN;
-    const lit = 1;
-    expect(shadeToIndex(ramp, lit, SHADING.FAR_LIMB_STEP_BIAS)).not.toBe(
-      shadeToIndex(ramp, lit, 0),
+    const k = SHADING.FAR_LIMB_LIGHT_SCALE;
+    expect(k).toBeGreaterThan(0);
+    expect(k).toBeLessThan(1);
+
+    // 1. The shadow flank does not move: it is already at AMBIENT.
+    expect(dimToward(SHADING.AMBIENT, k)).toBeCloseTo(SHADING.AMBIENT, 12);
+    expect(shadeToIndex(ramp, dimToward(SHADING.AMBIENT, k))).toBe(
+      shadeToIndex(ramp, SHADING.AMBIENT),
     );
+
+    // 2. The top of the ramp is still reachable — a surface square to the lamp
+    //    keeps it. A -1 step bias cannot, by construction.
+    expect(shadeToIndex(ramp, dimToward(1, k))).toBe(ramp[ramp.length - 1]);
+    expect(shadeToIndex(ramp, 1, -1)).not.toBe(ramp[ramp.length - 1]);
+
+    // 3. It still separates: a value just over the top threshold comes down.
+    const mid = (SHADING.THRESHOLDS_4[2] ?? 1) + 1e-6;
+    expect(shadeToIndex(ramp, dimToward(mid, k))).not.toBe(shadeToIndex(ramp, mid));
+
+    // 4. And 1 is exactly a no-op, so every part that does not opt in is
+    //    bit-for-bit untouched.
+    for (const lit of [0, 0.13, 0.2, 0.37, 0.55, 0.89, 1]) {
+      expect(dimToward(lit, 1)).toBe(lit);
+    }
   });
 });
 
@@ -183,10 +213,16 @@ describe('the cylinder model is angle-dependent, which is why FORESHORTEN exists
     const towardLamp = cylinderPeakLit(45 * DEG);
     const top = SHADING.THRESHOLDS_4[2] ?? 1;
     const belly = SHADING.AXIAL_LIMB.BELLY_GAIN;
-    // Not "roughly dimmer": the gap is bigger than half the distance between
-    // two steps of the four-step skin ramp, which is why it was visible.
-    const stepGap = (SHADING.THRESHOLDS_4[1] ?? 0) - (SHADING.THRESHOLDS_4[0] ?? 0);
-    expect(vertical - towardLamp).toBeGreaterThan(0.5 * stepGap);
+    // Not "roughly dimmer": the deficit is bigger than the ENTIRE muscle-belly
+    // term, so no axial highlight can give back what the drawing angle took.
+    //
+    // This used to be measured against half the distance between two of
+    // THRESHOLDS_4's entries, which made a claim about the lamp depend on where
+    // the quantiser's cuts happen to sit — move a threshold for an unrelated
+    // reason and the sentence changes meaning without anyone editing it. The
+    // belly gain is a property of the shading model, which is what the claim is
+    // about.
+    expect(vertical - towardLamp).toBeGreaterThan(belly);
     // And it lands across a threshold rather than inside a step: with the WHOLE
     // muscle belly behind it, a limb at this angle still cannot reach the top
     // skin step, and a vertical one can. That is a limb out of its band.
@@ -405,9 +441,17 @@ describe('foreshortening keeps a limb in its band', () => {
     const flat = angledLimb(45);
     const tilted = angledLimb(45, 0.9);
     expect(shareAtOrAbove(tilted, LIT)).toBeGreaterThan(shareAtOrAbove(flat, LIT) * 1.2);
-    // And the floor of the ramp — the mud — goes away rather than moving.
+    // And the floor of the ramp — the mud — is not where a lit mass lives.
+    //
+    // This used to read "tilted has less than half the floor share of flat",
+    // and it now passes for a stronger reason than it was written for: with
+    // THRESHOLDS_4's bottom entry under AMBIENT and `litWithAxial` flooring
+    // there, the LAMP CANNOT PUT A FILL PIXEL ON THE DARKEST STEP AT ALL. The
+    // ramp floor is the contour's colour. Asserted on both drawings, because
+    // "less than half of nothing" would have been vacuous.
     const floorShare = (g: IndexGrid): number => 1 - shareAtOrAbove(g, 1);
-    expect(floorShare(tilted)).toBeLessThan(0.5 * floorShare(flat));
+    expect(floorShare(flat)).toBe(0);
+    expect(floorShare(tilted)).toBe(0);
   });
 
   it('does not turn the joint drop into a whole-limb drop on a stubby limb', () => {

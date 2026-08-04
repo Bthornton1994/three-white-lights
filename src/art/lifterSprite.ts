@@ -32,12 +32,13 @@
  * worn objects and the body itself almost untouched.
  *
  * The frontal view has no true far and near side, so the sprite is shaded as if
- * the lifter were turned a couple of degrees: the screen-right limbs render one
- * ramp step darker (SHADING.FAR_LIMB_STEP_BIAS). Together with the upper-left
- * key light and the off-centre head this is what stops a mirror-symmetric pose
- * from rendering as a mirror-symmetric image, which is the giveaway of a sprite
- * that was generated rather than drawn. The mark table respects it: marks are
- * translated to each side, never mirrored, and the deltoid is authored twice.
+ * the lifter were turned a couple of degrees: the screen-right limbs stand a
+ * little further from the lamp (SHADING.FAR_LIMB_LIGHT_SCALE). Together with
+ * the upper-left key light and the off-centre head this is what stops a
+ * mirror-symmetric pose from rendering as a mirror-symmetric image, which is
+ * the giveaway of a sprite that was generated rather than drawn. The mark table
+ * respects it: marks are translated to each side, never mirrored, and the
+ * deltoid is authored twice.
  */
 
 import {
@@ -428,14 +429,14 @@ function drawLeg(g: IndexGrid, pose: Pose, sign: number, bias: number): void {
  * capsules that meet each stamp a ring, and the second one's ring lands on the
  * first one's fill — a doubled dark band across the elbow of a five-pixel limb.
  */
-function drawArm(g: IndexGrid, pose: Pose, sign: number, bias: number, skin: Ramp): void {
+function drawArm(g: IndexGrid, pose: Pose, sign: number, lightScale: number, skin: Ramp): void {
   const cx = CENTER_X;
   const shX = cx + sign * pose.shoulderHalfW * RIG_GEOMETRY.ATTACH.ARM_ROOT;
   const elX = cx + sign * pose.elbowHalfW;
   const grip = pose.handHalfW + (sign > 0 ? RIG_GEOMETRY.GRIP_ASYMMETRY_PX : 0);
   const haX = cx + sign * grip;
   const opts = {
-    stepBias: bias,
+    lightScale,
     edge: true,
     edgeIndex: INTERIOR_EDGE.SKIN,
     edgeFollowsLight: true,
@@ -495,7 +496,7 @@ function drawHand(
   lateralPx: number,
   tiltDeg: number,
   bendPx: number,
-  bias: number,
+  lightScale: number,
 ): void {
   const { x, y } = handCentre(pose, sign, barCy, lateralPx, tiltDeg, bendPx);
   // The interior ring is skin shadow, not the keyline. This is the mass the
@@ -513,7 +514,7 @@ function drawHand(
     RIG_GEOMETRY.HAND_R + RIG_GEOMETRY.NUDGE.HAND_TALL,
     RAMPS.SKIN,
     {
-      stepBias: bias,
+      lightScale,
       edge: true,
       edgeIndex: INTERIOR_EDGE.SKIN,
       edgeFollowsLight: true,
@@ -612,7 +613,7 @@ function drawTorso(g: IndexGrid, pose: Pose): void {
       A.DELTOID_R,
       A.DELTOID_R,
       RAMPS.SKIN,
-      { stepBias: sign > 0 ? SHADING.FAR_LIMB_STEP_BIAS : 0 },
+      { lightScale: sign > 0 ? SHADING.FAR_LIMB_LIGHT_SCALE : 1 },
     );
   }
 
@@ -775,11 +776,11 @@ export function renderLifterFrame(spec: LifterFrameSpec): RenderedFrame {
   drawNeck(g, pose, skin);
   drawTorso(g, pose);
   drawInnerLegSeam(g, pose);
-  drawArm(g, pose, 1, SHADING.FAR_LIMB_STEP_BIAS, skin);
-  drawArm(g, pose, -1, 0, skin);
+  drawArm(g, pose, 1, SHADING.FAR_LIMB_LIGHT_SCALE, skin);
+  drawArm(g, pose, -1, 1, skin);
   drawHead(g, pose, skin);
-  drawHand(g, pose, 1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, SHADING.FAR_LIMB_STEP_BIAS);
-  drawHand(g, pose, -1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, 0);
+  drawHand(g, pose, 1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, SHADING.FAR_LIMB_LIGHT_SCALE);
+  drawHand(g, pose, -1, barCy, spec.barLateralPx, spec.barTiltDeg, spec.barBendPx, 1);
   drawCording(g, pose, spec.strainLevel);
   drawChalk(g, pose, spec.chalkMotes, barCy, spec.barLateralPx);
 

@@ -216,11 +216,12 @@ export type MarkAnchorKey =
  * Which side(s) a mark is placed on.
  *
  * `NEAR` is the screen-left limb and `FAR` the screen-right one, the same
- * language `SHADING.FAR_LIMB_STEP_BIAS` uses: the frontal view is shaded as if
- * the lifter were turned a couple of degrees, so the screen-right limbs sit one
- * ramp step darker. A mark that lightens skin therefore has to be authored
- * twice, once per side, at different ramp steps — a single `BOTH` highlight
- * would paint the far arm as bright as the near one and undo the separation.
+ * language `SHADING.FAR_LIMB_LIGHT_SCALE` uses: the frontal view is shaded as
+ * if the lifter were turned a couple of degrees, so the screen-right limbs
+ * stand a little further from the lamp. A mark that lightens skin therefore has
+ * to be authored twice, once per side, at different ramp steps — a single
+ * `BOTH` highlight would paint the far arm as bright as the near one and undo
+ * the separation.
  */
 export type MarkSide = 'CENTER' | 'BOTH' | 'NEAR' | 'FAR';
 
@@ -491,7 +492,8 @@ export const MARKS: readonly Mark[] = [
   // --- torso --------------------------------------------------------------
   // Trap ridge: the shelf of muscle the bar is actually sitting on. Authored
   // twice, near brighter than far, because a single BOTH map at one ink would
-  // paint the far trap as light as the near one and undo FAR_LIMB_STEP_BIAS.
+  // paint the far trap as light as the near one and undo the far-side lamp
+  // falloff (SHADING.FAR_LIMB_LIGHT_SCALE).
   //
   // This and the shadow below are the pair that makes a back squat read as a
   // back squat from the front: a lit ridge with a hard dark line under it says

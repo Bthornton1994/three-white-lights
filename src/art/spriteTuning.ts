@@ -761,13 +761,29 @@ export const SHADING = {
   /**
    * Fractions of the lit range at which the ramp steps up.
    *
-   * The top entry decides where the brightest step of the skin ramp can appear
-   * at all, and it is set ABOVE a cylinder's peak lambert (0.83 under this
-   * lamp) on purpose. The consequence is worth stating plainly: a limb cannot
-   * reach the top skin step from its surface normal alone. It gets there only
-   * where AXIAL_LIMB's belly bump lifts it — a cluster over the muscle belly —
-   * or where a hand-placed mark puts it. Spheres (head, hands) can still reach
-   * it, because a sphere really does have a facet pointing at the lamp.
+   * THE BOTTOM ENTRY SITS JUST UNDER `AMBIENT`, AND THAT IS THE WHOLE POINT OF
+   * ITS VALUE. `lambert` bottoms out at AMBIENT and `litWithAxial` now floors
+   * there too, so at 0.19 the LAMP CAN NEVER REACH THE DARKEST STEP OF A RAMP.
+   * That step belongs to the contour — `INTERIOR_EDGE.SKIN` is exactly it, and
+   * `EDGE_STEP_DROP` puts the ring one step under the fill beside it — which is
+   * how `sprite-ref-1` uses the bottom of its own skin ramp: 10.4% of the
+   * wrestler's skin, spent on contour, with a bare thigh row reading
+   * 80/152/200/233/233/233/233/116/152/116 and not one pixel on the floor.
+   *
+   * At 0.30 the shadow flank of every mass landed on the floor as well, and so
+   * did the joint bands at each end of every capsule. Measured over the whole
+   * 448-frame sweep with that value, the far arm's own window ran 48-75% floor
+   * with its MEDIAN on the floor in every frame; the near arm, the hands and
+   * the neck were 46-62%. The reference's worst limb-sized patch of skin
+   * anywhere on the figure is 37-50%, and its median is never there.
+   *
+   * The top entry is set ABOVE a cylinder's peak lambert (0.830 under this
+   * lamp) on purpose, and 0.84 keeps that true. The consequence is worth
+   * stating plainly: a limb cannot reach the top skin step from its surface
+   * normal alone. It gets there only where AXIAL_LIMB's belly bump lifts it — a
+   * cluster over the muscle belly — or where a hand-placed mark puts it.
+   * Spheres (head, hands) can still reach it, because a sphere really does have
+   * a facet pointing at the lamp.
    *
    * At 0.82 with no axial term the top step was a one-pixel sliver down the
    * whole length of every limb and the far limbs could not reach it at all, so
@@ -775,8 +791,12 @@ export const SHADING = {
    * red discs carried the top of the frame — the reverse of the reference,
    * where the wrestlers hold the brightest pixels and the crowd is suppressed
    * to luma 16-80.
+   *
+   * ONLY THE 4-STEP RAMPS READ THIS TABLE, which is `SKIN` and `SKIN_FLUSHED`
+   * and nothing else (see `thresholdsFor`). Kit, hair, steel and the plates are
+   * 2- and 3-step ramps on their own tables and did not move.
    */
-  THRESHOLDS_4: [0.3, 0.54, 0.88],
+  THRESHOLDS_4: [0.19, 0.5, 0.84],
   THRESHOLDS_3: [0.36, 0.72],
   THRESHOLDS_2: [0.52],
   /**
@@ -787,26 +807,35 @@ export const SHADING = {
    */
   VERTICAL_GAIN: 0.17,
   /**
-   * Far-side ARM, hand and deltoid: drop this many ramp steps for depth.
+   * Far-side ARM, hand and deltoid: how far its lamp is dimmed toward AMBIENT.
    *
-   * SAY WHAT THIS COSTS, because the note that used to sit here said the
-   * opposite. It claimed a whole-step bias was "affordable on an arm, because an
-   * arm is drawn against the torso and keeps its peak at the top of the ramp".
-   * Measured over the far arm's own capsules at 250 kg, it does not: 54-56% of
-   * its skin sits on SKIN_SHADOW (73), the floor of the ramp, its median is that
-   * floor at every depth, and it reaches SKIN_HI on zero pixels because -1 caps
-   * it at SKIN_LIGHT. The near arm over the same capsules is 34-40% floor with
-   * 20-23% at SKIN_HI. In sprite-ref-1 BOTH of the blond wrestler's arms reach
-   * the top two steps of his skin ramp (200 and 234 of a 82-234 range).
+   * THIS USED TO BE A RAMP-STEP BIAS OF -1, AND THE NOTE HERE RECORDED WHAT
+   * THAT COST AND KEPT IT ANYWAY. The record, restated because it is the reason
+   * the mechanism changed: measured over the far arm's own limb window across
+   * every frame the animation can produce, 54-93% of its skin sat on
+   * SKIN_SHADOW (73), the floor of the ramp; its median was that floor in
+   * 448 frames out of 448; and it reached SKIN_HI on zero pixels, because -1
+   * capped it at SKIN_LIGHT. The near arm over the same window ran the whole
+   * ramp. In sprite-ref-1 BOTH of the blond wrestler's arms reach the top two
+   * steps of one skin ramp under one lamp, and no limb-sized patch of his skin
+   * anywhere on the figure has its median on the darkest step.
    *
-   * It stays at -1 anyway, and that is a deliberate hold rather than a finding:
-   * it is one of the two things separating the arms in depth on a front-on pose,
-   * it also drives the far deltoid and the far hand, and it is a feel value that
-   * GDD §12.1 hands to a human. Turning it to 0 is the first thing to try if the
-   * far arm reads flat, and `FAR_LEG_STEP_BIAS` below is the precedent for what
-   * happens when it goes.
+   * A STEP BIAS CANNOT DO WHAT A DIMMER LAMP DOES. It renumbers the ramp, so
+   * every pixel one step off the floor lands ON the floor and the top step
+   * becomes unreachable however square to the lamp the surface is. Scaling the
+   * lit value toward ambient instead leaves the shadow flank exactly where it
+   * was — it is already at ambient — and takes the lit flank down, which is the
+   * separation that was wanted, without spending the mass's whole value range.
+   * See `raster.dimToward`.
+   *
+   * 0.86 is a feel value and GDD §12.1 hands it to a human. What it is picked
+   * against is stated so it can be re-picked: at 1.0 the two arms differ only
+   * by the lamp's own left-right asymmetry, and at 0.72 the far arm's belly no
+   * longer crosses THRESHOLDS_4's top entry, so it stops reaching SKIN_HI and
+   * the old flatness comes back by a slower route. It is the first number to
+   * turn if the far arm reads either pasted-on or too close to the near one.
    */
-  FAR_LIMB_STEP_BIAS: -1,
+  FAR_LIMB_LIGHT_SCALE: 0.86,
   /**
    * The same, for the far LEG — thigh, shin, knee sleeve and shoe.
    *
@@ -847,7 +876,7 @@ export const SHADING = {
   // without redrawing the pose it names", which is why anchors stay there. A
   // ramp-step bias is the opposite — it is a knob that turns on its own, it
   // changes no geometry, and its effect is visible in one render. It is the
-  // same KIND of number as FAR_LIMB_STEP_BIAS and EDGE_STEP_DROP directly
+  // same KIND of number as FAR_LIMB_LIGHT_SCALE and EDGE_STEP_DROP directly
   // above, and CLAUDE.md asks for every such value in one named place.
   // -------------------------------------------------------------------------
 
@@ -876,7 +905,7 @@ export const SHADING = {
   /**
    * The same argument, for the knee sleeve, arriving late because the sleeve
    * used to be held down by something else. While the whole far leg carried
-   * FAR_LIMB_STEP_BIAS the far sleeve was dragged down with it, and the near
+   * the far-limb bias the far sleeve was dragged down with it, and the near
    * sleeve's GEAR_LIGHT flank was one object among many. With the blanket leg
    * bias gone (FAR_LEG_STEP_BIAS) both sleeves rendered their own lit flank at
    * GEAR_LIGHT, luma 149 — above the bare leg's own median of SKIN_MID (117) —
@@ -931,7 +960,7 @@ export const SHADING = {
    * value over the whole mass. On the near leg that lands on SKIN_LIGHT, which
    * is why the frames looked fixed. It was not enough on its own, for a reason
    * that has nothing to do with foreshortening: with a blanket
-   * FAR_LIMB_STEP_BIAS the far leg then sat one step under that, on SKIN_MID
+   * far-limb ramp-step bias the far leg then sat one step under that, on SKIN_MID
    * (117), which is BELOW GEAR_LIGHT (149) — the same inversion, one leg over.
    * And the thigh is only 12-26 px of visible bare skin at depth against the
    * shin's 37-50, so fixing the femur alone could not fix the lower body.
