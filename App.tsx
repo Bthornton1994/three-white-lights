@@ -4,28 +4,48 @@ import { StyleSheet, View } from 'react-native';
 import { LiftScreen } from './src/lift/LiftScreen';
 import { LIFT_PALETTE } from './src/lift/liftPalette';
 import { replayRequestFrom } from './src/lift/replayRoute';
+import { SessionScreen } from './src/session/SessionScreen';
+import { previewStateFor, sessionPreviewFrom } from './src/session/sessionPreview';
 
-// Prototype 1 (GDD §10): the lift mechanic, in complete isolation. One rep,
-// played — no progression, no meta, no backend.
+// THE APP OPENS INTO THE DAILY SESSION LOOP (GDD §3.2): readiness check-in ->
+// modifier -> the work sets, on the lift mechanic -> close-out. There is no
+// splash and no home screen in front of it, because GDD §12.2 measures this
+// piece on time-to-first-input.
 //
 // `index.ts` must not import this module until `LoadSkiaWeb` has resolved:
 // Skia's web build binds `global.CanvasKit` at module-evaluation time, and
 // everything below transitively imports Skia.
 //
-// THE ONE PIECE OF ROUTING IN THE APP is the debug replay query string, and it
-// is here rather than inside the screen so the screen stays a renderer. On
-// native `window` does not exist and the branch is dead, which is correct — the
-// route exists to let the screenshot harness photograph the web build at
-// moments a wall clock cannot reliably hit (see `src/lift/liftReplay.ts`).
+// ALL ROUTING IN THE APP IS TWO DEBUG QUERY STRINGS, and both are here rather
+// than inside a screen so the screens stay renderers. On native `window` does
+// not exist and both branches are dead, which is correct — they exist so the
+// screenshot harness can photograph the web build at moments a wall clock
+// cannot reliably hit.
+//
+//   ?replay=<load>&moment=<id>   one beat of a scripted REP. The Prototype-1
+//                                lift screen, unchanged, and still the thing
+//                                `tools/verify-lift-shots.mjs` photographs.
+//   ?session=<moment>            one beat of a scripted SESSION.
 function replayFromLocation() {
   if (typeof window === 'undefined') return undefined;
   return replayRequestFrom(window.location.search) ?? undefined;
 }
 
+function sessionPreviewFromLocation() {
+  if (typeof window === 'undefined') return undefined;
+  const request = sessionPreviewFrom(window.location.search);
+  return request === null ? undefined : previewStateFor(request);
+}
+
 export default function App() {
+  const replay = replayFromLocation();
   return (
     <View style={styles.container}>
-      <LiftScreen replay={replayFromLocation()} />
+      {replay === undefined ? (
+        <SessionScreen preview={sessionPreviewFromLocation()} />
+      ) : (
+        <LiftScreen replay={replay} />
+      )}
       <StatusBar style="light" />
     </View>
   );
