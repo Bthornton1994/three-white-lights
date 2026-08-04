@@ -3,7 +3,7 @@
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
     "wave": 8,
-    "waveName": "Wave 8 - three fixes merged and mutation-verified, two new gaps found in the graded work",
+    "waveName": "Wave 8 - five merges, four sent back on gaps their own critics found, one defect class on its third round",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
@@ -201,9 +201,9 @@
       "id": "A1",
       "name": "Lifter sprites & animation",
       "bar": "Blind A/B against real 16-bit sprite work — NOW GRADEABLE, reference committed.",
-      "status": "rework",
+      "status": "grading",
       "verifiable": true,
-      "note": "THE MECHANISM IS FIXED AND THE CLAUSE IS REPORTED UNMET - which is the right outcome, not a failure. The bound that could not fire is deleted: LIMB_MEAN_LUMA_FLOOR_FACTOR was 0.55 x 130.16 = 71.59 against a SKIN_SHADOW of 72.98, so a limb painted entirely in the darkest colour in the ramp passed a test named for keeping no limb darker than the reference. It is replaced by ramp-POSITION bounds, the only thing comparable between a 4-step and a 6-step ramp. All five fitted terms are gone and craftMetrics.test.ts now FORBIDS CRAFT from holding any key ending _FACTOR or _SLACK, so a bound is either computed entirely from reference pixels with no free term or named as an ours-only ratchet making no reference claim. neighbourhoodProfiles is the mechanism: for every reference skin pixel it measures the n nearest, where n is the window size being bounded, over all 824 patches, and the only input from our side is n, which comes from the rig. The far-arm slab is genuinely fixed - the median ramp step was the FLOOR in 448 of 448 frames and SKIN_HI was reached on zero pixels ever; it is now never on the floor and reaches SKIN_HI - and getting there required two upstream corrections it found on the way, AMBIENT being treated as a base rather than a floor, and the joint drop pushing the shadow flank BELOW ambient at four capsule ends per arm. The stale prose figures cannot come back: an @ref convention with a test walking every .ts under src, 49 tags across six files, checked against the decoded PNG at the precision the comment printed, plus a denylist of the four retired figures. And the craft clause is UNMET and pinned in BOTH directions - the far arm exceeds the reference worst comparable patch in 200 of 448 frames because at 96x72 our forearm is four pixels wide with a one-pixel contour down both sides, so a third of it is on the ramp floor before any shading, against reference arms of eight to ten pixels. MIN_FLOOR_EXCESS_FRAMES is 1, so if the sprite improves the test goes RED and whoever fixed it has to come and say so. || DISPATCHED THIS WAVE. The cause is named precisely enough to act on: rig.ts:409 is FOREARM_R [2.0, 1.7], so the forearm is four pixels wide with a one-pixel contour down BOTH sides and a third of it is on the ramp floor before any shading, against reference arms of eight to ten. The builder is told not to touch the ratchet: MIN_FLOOR_EXCESS_FRAMES is 1, so a genuine improvement turns the test RED, and that going red is the success signal, to be re-pinned at an honestly measured value rather than loosened. It is also told the legitimate losing outcome - if the width that fixes shadability makes the figure read as a cartoon at 96x72, report the clause still unmet with the tradeoff quantified rather than shipping a proportion nobody would ship.",
+      "note": "THE CRAFT CLAUSE MOVED FOR THE FIRST TIME: 200 FRAMES OVER THE BOUND DOWN TO 80. The lever was not plain widening - that was measured and rejected, because a [3.2, 2.4] cone reaches 8 frames but out-masses the upper arm and closes the forearm-to-ribs gap. What won was a bellied three-radius chain [2.1, 2.8, 1.9] at the brachioradialis, and the belly position is NOT a new free parameter: it is the fraction spriteMarks.ts had already authored its FOREARM_BELLY mark at, moved into the rig with the old anchor deleted so mass and mark read one number. Floor-share mean 37.1% to 31.1%, worst frame 50.0% to 40.5%, mean clearance 0.7 to 4.6 points. Widening the UPPER arm was measured too and makes it WORSE (200 to 240), because the window grows and the bound tightens faster than the floor share falls. The stopping point is a real judgement and is disclosed as one: clearance peaks at belly 2.8 and falls after, while the raw count favours 3.0 - the builder picked the continuous quantity over the noisier threshold-crossing count. MIN_FLOOR_EXCESS_FRAMES is gone as a scalar, replaced by an exact deep-equality pin per limb so neither arm can hide inside the other total, and I VERIFIED IT FIRES ON AN IMPROVEMENT: moving the belly to 3.0 reddens \"KNOWN GAP: an arm spends more of itself on the ramp floor than the reference ever does\". It also found and fixed a real raster.ts bug in passing - outlinePass filled a one-pixel notch bitten out of the OUTSIDE of a limb, leaving fill touching open space with no keyline. Two near-arm drawings now cross where none did, disclosed rather than buried. Fresh critic dispatched to look at actual frames; whether the belly READS as a forearm is not the builder’s to say.",
       "evidence": "gym/screen-hole-3x.png"
     },
     {
@@ -247,7 +247,7 @@
       "bar": "The four modes must feel like one game — the smoothing-pass concern.",
       "status": "rework",
       "verifiable": true,
-      "note": "THE TOTAL IS CLOSED; THE BODYWEIGHT BESIDE IT IS NOT. The critic passed the gradeable part - the refusal genuinely bites (deleting it kills five named assertions and nothing else in the repo), the positive control discriminates unit from magnitude AND decimals, kg bomb-outs still record, and the GDD edit is a stale-fact correction that correctly leaves the human ruling open. THE GAP, and I verified every link myself before dispatching: meetServer.ts:512 writes bodyweightKg straight into the wire with no check, three lines under the check that was just added. MeetResultReport.bodyweightKg is a bare number that nothing produces, so nothing can attach a unit to it; ConfirmedMeetResult types it as plain number while totalKg beside it is ConfirmedTotalKg. It is the DOTS DENOMINATOR and the weight-class input. Shipped numbers: 92.4 kg is 203.7 lb, which is INSIDE DOTS_BODYWEIGHT_DOMAIN_KG.male of 40-210, so nothing clamps, nothing refuses, and the lifter is scored on a 2.2x-too-heavy denominator permanently. Worst of all, the existing refusal TELLS the caller to convert the entry at the call site - and a caller who converts the attempts and forgets the bodyweight passes the new check cleanly. Dispatched."
+      "note": "THE BODYWEIGHT IS WON OUTRIGHT AND THE SAME DEFECT IS ONE FIELD OVER - THIRD ROUND ON THE SAME CLASS. What round 2 won, and the critic verified rather than accepted: the tagged union whose two arms carry DIFFERENT FIELD NAMES makes deleting the check a compile error (TS2339), not just a test failure - a shared value field was rejected precisely because it would still compile. The adversarial converted-attempts case is genuine and its sibling proves the total’s own check passes in it, so the bodyweight check is demonstrably what refuses. The positive control asserts > 200, non-integer and in-domain, so a check keyed on magnitude or decimals fails it. The KilogramMeetEntry narrowing does NOT take 11’s ruling - all three options stay open and lb stays representable. THE GAP: MeetAttemptReport.weightKg is still a bare number named Kg, in the very report whose bodyweight was just fixed one field above it - and those NINE NUMBERS, not the bodyweight, are what become record.totalKg. The total’s unit is a label taken off the meet ARGUMENT, and applyMeetResult never checks meet.id === proposal.report.meetId, so the only thing proving it is an unchecked second argument. I confirmed both. Pound calls are 2.5 lb and kg calls are 2.5 kg, so essentially EVERY LEGAL POUND CARD IS A LEGAL KILOGRAM CARD - the file’s own positive control records nine pound-shaped numbers as a legal kg meet. And nextTotalKg is monotone, so a fake total can never be walked back. Dispatched with instructions to fix the SHAPE rather than a fourth field."
     },
     {
       "id": "B1",
@@ -355,9 +355,9 @@
       {
         "id": "A1",
         "name": "Lifter sprites & animation",
-        "state": "failing",
-        "stateLabel": "Sent back",
-        "note": "Cause is rig geometry, not shading: the forearm is 4px wide with a 1px contour on both sides, so a third of it is on the ramp floor before shading, against reference arms of 8-10px. Dispatched. The ratchet is pinned so an improvement turns the suite red rather than passing quietly."
+        "state": "grading",
+        "stateLabel": "Re-grading",
+        "note": "The clause moved for the first time: 200 frames over the bound down to 80, by bellying the forearm rather than widening it — widening was measured and makes it worse. The ratchet now fires in both directions; I confirmed an improvement turns it red."
       },
       {
         "id": "A2",
@@ -392,7 +392,7 @@
         "name": "Cross-mode coherence",
         "state": "failing",
         "stateLabel": "Sent back",
-        "note": "The total is proven now; the bodyweight written three lines below it is not, and it is the DOTS denominator. 92.4 kg reads as 203.7 lb, which is inside the DOTS domain, so nothing refuses. Verified line by line and dispatched."
+        "note": "Bodyweight won outright — deleting its check is a compile error. But the nine attempt weights that actually become the total are still bare numbers, and the unit proving them is a label off an argument the server never cross-checks against the reported meet id. Third round on this class; dispatched to fix the shape."
       },
       {
         "id": "B1",
