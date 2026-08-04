@@ -444,13 +444,41 @@ a mid-absence spend to re-arm anything — which is the check that the fix broug
 the daily model into line with the returning one rather than the reverse.
 
 **It is an improvement on 1948, not a fix.** Two more days of calendar and the
-counts climb again — 210 and 384 at 15 days, worst deficit 5. The asymmetry is
-inherent to a finite consumable spent to keep a live run alive: the grace
-removes every instance built out of absences shorter than the threshold, which
-is most of them. The deficit still has no ceiling — it is the length of the run
-that dies, so 37 trained days ending on 37 against 38 ending on 18 still exists.
+counts climb again — 210 and 384 at 15 days, worst deficit 5. The grace removes
+every instance built out of absences shorter than the threshold, which is most
+of them. The deficit still has no ceiling — it is the length of the run that
+dies, so 37 trained days ending on 37 against 38 ending on 18 still exists.
 `src/game/streak.test.ts` pins both calendar lengths so the improvement and its
 limit stay on the record together.
+
+**The residue follows from manual use, not from finiteness — corrected.** An
+earlier version of this paragraph called the asymmetry "inherent to a finite
+consumable spent to keep a live run alive." That is false, and `streak.ts`'s
+header already retracted it while this section still carried it; §4.2 has said
+the correct thing all along. The precedent the design is built on refutes it
+directly: Duolingo's streak freeze *is* a finite consumable spent to keep a live
+run alive, and it has **no** such residue — because it is armed ahead of time and
+consumed by the missed day itself, so nothing about its outcome depends on when
+the player looks.
+
+What produces the residue here is §4.2's **manual use, not auto-apply**. Tying
+the spend to the day the player opens the app is what makes the outcome depend on
+their looking — and it is also the entire "phew" moment the feature exists for.
+
+**This distinction is the whole decision, which is why the wording mattered.**
+"Inherent" would mean there is nothing to escalate. "Price of manual use" means
+there is a specific, named, working alternative the design has declined, and the
+trade is:
+
+- **Manual prompt (today):** the "phew" moment survives; a player who trains one
+  extra day can end with a materially lower streak, without bound.
+- **Armed ahead of time (Duolingo model):** the residue disappears entirely; the
+  save becomes automatic and the "phew" beat is lost.
+
+Until this is ruled on, the piece does not win the first four words of its bar
+("Never punishes daily engagement"), and CLAUDE.md's rule that a player who shows
+up every day must never feel penalized for it is violated in a real, measured,
+unbounded way — not a theoretical one.
 
 What still holds, and is what the design leans on:
 
