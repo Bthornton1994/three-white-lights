@@ -43,12 +43,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { blitOver, renderGymScene } from '../art/gymScene';
+import { blitOver, crowdFrontRow, renderGymScene } from '../art/gymScene';
 import { GYM } from '../art/gymPalette';
-import { GYM_CROWD, GYM_LIFT_STAGE } from '../art/gymTuning';
+import { GYM_CROWD, GYM_LIFT_STAGE, GYM_VENUE } from '../art/gymTuning';
 import { renderLifterFrame } from '../art/lifterSprite';
 import { BAR_AND_COLLARS_KG, layoutSleeve, visualPlateStack } from '../art/plates';
-import type { IndexGrid } from '../art/raster';
+import { fillRect, type IndexGrid } from '../art/raster';
 import { LOAD_PRESETS, QUANTISE, RESOLUTION, STRAIN } from '../art/spriteTuning';
 import { LIFT_TUNING } from '../game/liftTuning';
 import { meetLoadingRules } from '../game/meet';
@@ -143,6 +143,172 @@ function crowdPixels(grid: IndexGrid): number {
   let n = 0;
   for (const v of grid.data) if (v === GYM.CROWD_DARK || v === GYM.CROWD_MID) n += 1;
   return n;
+}
+
+// ---------------------------------------------------------------------------
+// THE INSTRUMENT FOR "IS THIS STILL A CROWD" — air BETWEEN spectators
+// ---------------------------------------------------------------------------
+
+/** The rows the seating band occupies, top inclusive, bottom exclusive. */
+const BAND_BOTTOM = crowdFrontRow(MEET_HALL_SCENE);
+const BAND_TOP = Math.max(0, BAND_BOTTOM - GYM_VENUE[MEET_HALL_SCENE.venue].CROWD_ROWS);
+
+interface BandAir {
+  /**
+   * The SMALLEST share of any occupied row that is air.
+   *
+   * "Occupied" means the row has at least one spectator pixel in it, which is
+   * what makes this a measure of the gaps between people rather than of the
+   * empty rows above them. The worst row rather than the mean, because one solid
+   * row through the middle of the band is exactly the failure an average hides.
+   */
+  readonly worstRowAir: number;
+  /** How many rows have anybody in them. The non-vacuity handle. */
+  readonly occupiedRows: number;
+  /** Spectator pixels over all band pixels in those rows — figure vs ground. */
+  readonly litShare: number;
+  readonly litPx: number;
+  readonly darkPx: number;
+  /**
+   * The SAME two counts taken the way the bound this replaced took them: every
+   * crowd pixel anywhere in the frame, including the rows at the top of the band
+   * that no figure grows into. Kept only so the mutation below can show that the
+   * old bound passes the picture the new one fails.
+   */
+  readonly rectLitPx: number;
+  readonly rectDarkPx: number;
+  /** How far each tier's heads are drawn above their seated row, back to front. */
+  readonly tierRises: readonly number[];
+}
+
+function sumOf(values: readonly number[]): number {
+  let total = 0;
+  for (const v of values) total += v;
+  return total;
+}
+
+/** `BandAir` for a rendered room. Reads only the two crowd indices. */
+function airOf(grid: IndexGrid): BandAir {
+  let worstRowAir = 1;
+  let occupiedRows = 0;
+  let litPx = 0;
+  let darkPx = 0;
+  for (let y = BAND_TOP; y < BAND_BOTTOM; y += 1) {
+    let lit = 0;
+    let dark = 0;
+    for (let x = 0; x < grid.w; x += 1) {
+      const v = grid.data[y * grid.w + x];
+      if (v === GYM.CROWD_MID) lit += 1;
+      else if (v === GYM.CROWD_DARK) dark += 1;
+    }
+    if (lit === 0) continue;
+    occupiedRows += 1;
+    litPx += lit;
+    darkPx += dark;
+    worstRowAir = Math.min(worstRowAir, dark / (lit + dark));
+  }
+  let rectLitPx = 0;
+  let rectDarkPx = 0;
+  for (const v of grid.data) {
+    if (v === GYM.CROWD_MID) rectLitPx += 1;
+    else if (v === GYM.CROWD_DARK) rectDarkPx += 1;
+  }
+  return {
+    worstRowAir: occupiedRows === 0 ? 0 : worstRowAir,
+    occupiedRows,
+    litShare: litPx + darkPx === 0 ? 0 : litPx / (litPx + darkPx),
+    litPx,
+    darkPx,
+    rectLitPx,
+    rectDarkPx,
+    tierRises: tierRisesOf(grid),
+  };
+}
+
+/**
+ * How high each tier's heads are drawn above the row they sit on, back to front.
+ *
+ * Read off the PIXELS — the topmost spectator row within each tier's own pitch
+ * window — rather than off `crowdRowRise`, so "the hall really did stand" is a
+ * statement about the picture and not a restatement of the arithmetic.
+ */
+function tierRisesOf(grid: IndexGrid): readonly number[] {
+  const out: number[] = [];
+  for (let y = BAND_TOP; y < BAND_BOTTOM; y += GYM_CROWD.ROW_PITCH) {
+    let highest = y;
+    for (let probe = Math.max(BAND_TOP, y - GYM_CROWD.ROW_PITCH); probe < y; probe += 1) {
+      let lit = 0;
+      for (let x = 0; x < grid.w; x += 1) {
+        if (grid.data[probe * grid.w + x] === GYM.CROWD_MID) lit += 1;
+      }
+      // A tier's own heads run the whole width; a stray pixel from the tier
+      // behind does not. Half the width is far outside either.
+      if (lit > grid.w / 2) {
+        highest = probe;
+        break;
+      }
+    }
+    out.push(y - highest);
+  }
+  return out;
+}
+
+/** The shipped hall at `rise`, as air. */
+function bandOf(rise: number): BandAir {
+  return airOf(renderGymScene(hallScene(rise)));
+}
+
+/**
+ * THE PLANT: the crowd band redrawn the way it was drawn before this pass —
+ * EVERY TIER RISEN BY THE SAME AMOUNT, and no keyline around anybody.
+ *
+ * Painted over a freshly rendered hall rather than produced by re-rendering with
+ * different constants, because `GYM_CROWD` is frozen and the mechanism is not a
+ * field on `GymSceneSpec`. It is the same technique `gymScene.test.ts` uses to
+ * plant `RISER_ROWS: 0`. Every number it draws with comes from `GYM_CROWD`, so
+ * it is the old renderer and not a second guess at one — and `rise` 0 is
+ * asserted to reproduce the shipped band exactly, which is what makes that
+ * claim checkable.
+ */
+function uniformlyRisenBand(rise: number): IndexGrid {
+  const shipped = renderGymScene(MEET_HALL_SCENE);
+  const grid = renderGymScene(MEET_HALL_SCENE);
+  const { HEAD_COLS, HEAD_H, HEAD_W, ROW_PITCH, ROW_STAGGER, SHOULDER_ROWS } = GYM_CROWD;
+  fillRect(grid, 0, BAND_TOP, grid.w, BAND_BOTTOM - BAND_TOP, GYM.CROWD_DARK);
+  let row = 0;
+  for (let y = BAND_TOP; y < BAND_BOTTOM; y += ROW_PITCH) {
+    const stagger = row % 2 === 0 ? 0 : ROW_STAGGER;
+    for (let x = stagger - HEAD_COLS; x < grid.w; x += HEAD_COLS) {
+      const headTop = Math.max(BAND_TOP, y - rise);
+      const headH = Math.min(HEAD_H, Math.max(0, BAND_BOTTOM - headTop));
+      fillRect(grid, x, headTop, HEAD_W, headH, GYM.CROWD_MID);
+      const shoulderTop = headTop + HEAD_H;
+      const seatRow = Math.min(BAND_BOTTOM, y + HEAD_H + SHOULDER_ROWS);
+      fillRect(
+        grid,
+        x - 1,
+        shoulderTop,
+        HEAD_W + 2,
+        Math.max(0, seatRow - shoulderTop),
+        GYM.CROWD_MID,
+      );
+    }
+    row += 1;
+  }
+  // Everything that stands IN FRONT of the seating goes back on top: the front
+  // rail, and the four columns of the judges' table that reach into the band's
+  // bottom rows. Restored from the shipped render by "was this pixel a crowd
+  // colour", so the plant re-draws the crowd and nothing else — which is what
+  // lets `rise` 0 be asserted byte-identical to the shipped room below.
+  for (let y = BAND_TOP; y < BAND_BOTTOM; y += 1) {
+    for (let x = 0; x < grid.w; x += 1) {
+      const i = y * grid.w + x;
+      const was = shipped.data[i];
+      if (was === GYM.CROWD_MID || was === GYM.CROWD_DARK) continue;
+      grid.data[i] = was ?? 0;
+    }
+  }
+  return grid;
 }
 
 describe('the composite this file measures is the composite the screen draws', () => {
@@ -396,39 +562,87 @@ describe('a third attempt is a different picture from an opener', () => {
 
   it('stands the crowd up without turning it into a slab', () => {
     // THE OTHER FAILURE MODE, and the one a "make it more visible" tuning pass
-    // would walk into. Each silhouette grows UPWARD, so enough rise closes every
-    // dark gap between spectators and the band stops reading as people at all.
-    // Both bounds are on rendered pixels.
-    const bandOf = (rise: number): { lit: number; dark: number } => {
-      const grid = renderGymScene(hallScene(rise));
-      let lit = 0;
-      let dark = 0;
-      for (const v of grid.data) {
-        if (v === GYM.CROWD_MID) lit += 1;
-        else if (v === GYM.CROWD_DARK) dark += 1;
-      }
-      return { lit, dark };
-    };
-
+    // walked straight into. A spectator is `HEAD_H + SHOULDER_ROWS` = 5 rows on
+    // a `ROW_PITCH` of 6, so a silhouette grown upward lands on the tier behind
+    // it at a rise of 2, and the stagger that makes them read as separate people
+    // then fills every column between them. The band goes solid.
+    //
+    // ---------------------------------------------------------------------
+    // WHAT THIS USED TO MEASURE, AND WHY IT COULD NOT FAIL FOR ITS OWN REASON
+    // ---------------------------------------------------------------------
+    // It counted `CROWD_DARK` across the band's whole RECTANGLE and asked for a
+    // fifth of it, reporting 26% at the walk-out and 23% at the cheer. But the
+    // top rows of that rectangle are rows no figure grows into — the band is 24
+    // rows and the seating is four tiers of 5 — so nearly all the surviving dark
+    // was up there, in rows with nobody in them. It passed at a uniform rise of
+    // 5 while the MIDDLE of the band had zero air in it: five rows in every six
+    // were a full-width slab, and a critic reading the shipped frames saw the
+    // band invert into a lit field with dark squares punched through it.
+    //
+    // So the bound is now the thing its own comment always claimed: the air
+    // BETWEEN SPECTATORS, measured only in the rows spectators actually occupy,
+    // and taken at the WORST such row rather than averaged — because a solid row
+    // in the middle of the band is exactly what averaging hides.
     const seated = bandOf(0);
     const walkout = bandOf(MEET_TUNING.CROWD.WALKOUT_RISE_PX);
     const cheer = bandOf(MEET_TUNING.CROWD.CHEER_RISE_PX);
 
-    // They really do stand: more of the band is a person than was.
-    expect(walkout.lit).toBeGreaterThan(seated.lit);
-    expect(cheer.lit).toBeGreaterThan(walkout.lit);
+    // Non-vacuity: there is a band, it has people in it, and they are in rows.
+    expect(seated.occupiedRows, 'there is no seating to measure').toBeGreaterThan(
+      GYM_CROWD.ROW_PITCH,
+    );
+    expect(seated.litPx).toBeGreaterThan(0);
 
-    // ...and there is still air between them. A fifth of the band's pixels is
-    // the floor; at these values the walk-out leaves 26% and the cheer 23%.
-    const band = seated.lit + seated.dark;
-    expect(band, 'there is no seating to measure').toBeGreaterThan(0);
-    expect(walkout.dark / band).toBeGreaterThan(1 / 5);
-    expect(cheer.dark / band).toBeGreaterThan(1 / 5);
+    // THE BOUND. Every row a spectator is drawn in keeps at least this much of
+    // itself as air. A seated hall measures 2 of every 7 columns — the gap the
+    // shoulder pitch leaves, 28.6% — and the risen hall must not do worse.
+    const AIR_BETWEEN_SPECTATORS = 1 / 5;
+    // ...and the second bound, on the same rows: the band stays more ground than
+    // figure by a margin. A seated hall is 53.6% figure across its occupied rows
+    // and the shipped rises hold 53.2-54.7%; the uniform rise that shipped
+    // before this pass is 84.4%, which is the inversion `gymTuning.ts`'s own
+    // rule forbids — "held to the bottom of the value range so the busiest area
+    // of the screen is also the quietest one".
+    const STILL_MOSTLY_GROUND = 3 / 5;
+    for (const [name, band] of [
+      ['seated', seated],
+      ['walk-out', walkout],
+      ['cheer', cheer],
+    ] as const) {
+      expect(band.worstRowAir, `${name}: a row of the band is solid`).toBeGreaterThan(
+        AIR_BETWEEN_SPECTATORS,
+      );
+      expect(band.litShare, `${name}: the band is more figure than ground`).toBeLessThan(
+        STILL_MOSTLY_GROUND,
+      );
+    }
 
-    // The bound bites: a rise of two whole seating pitches closes the gaps and
-    // fails it, which is what makes the numbers above a choice rather than a
-    // description.
-    expect(bandOf(GYM_CROWD.ROW_PITCH * 2).dark / band).toBeLessThan(1 / 5);
+    // AND THE HALL STILL STANDS UP. The rise is not bought by doing nothing:
+    // every one of these tiers is drawn higher than it was seated.
+    expect(walkout.tierRises.some((r) => r > 0)).toBe(true);
+    expect(sumOf(cheer.tierRises)).toBeGreaterThan(sumOf(walkout.tierRises));
+
+    // ---------------------------------------------------------------------
+    // THE MUTATION. The old mechanism, replayed on real pixels: every tier
+    // risen by the same amount, no keyline. At the 5 rows that shipped it fails
+    // the corrected bound outright — the worst occupied row has NO air in it —
+    // while passing the old rectangle-wide bound it was written against.
+    // ---------------------------------------------------------------------
+    const uniform5 = airOf(uniformlyRisenBand(5));
+    expect(uniform5.worstRowAir, 'the planted slab has air in every row').toBe(0);
+    expect(uniform5.litShare, 'the planted slab did not invert').toBeGreaterThan(
+      STILL_MOSTLY_GROUND,
+    );
+    // ...and the check that used to stand here waves it through. Both halves are
+    // asserted, so "the old bound was too weak" is measured rather than argued.
+    const oldBound = (band: BandAir): number =>
+      band.rectDarkPx / (seated.rectLitPx + seated.rectDarkPx);
+    expect(oldBound(uniform5), 'the old bound would have caught it').toBeGreaterThan(1 / 5);
+
+    // The plant is the OLD DRAWING and not a broken one: at rest it reproduces
+    // the shipped hall BYTE FOR BYTE, so what fails above is the rise and
+    // nothing else about how the plant is built.
+    expect(differingPixels(uniformlyRisenBand(0), renderGymScene(MEET_HALL_SCENE))).toBe(0);
   });
 
   it('leaves a seated hall byte-identical to the room every other beat draws', () => {

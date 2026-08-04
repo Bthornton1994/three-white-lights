@@ -241,9 +241,35 @@ export const MEET_TUNING = Object.freeze({
    * channel that CAN be checked carried a text colour and a different sentence.
    *
    * This is the channel that reaches the picture. `crowdRisePx` on
-   * `GymSceneSpec` moves each spectator's silhouette UP by this many scene rows
-   * — heads lift, shoulders stretch, the base of the band stays where it is —
-   * which in silhouette is a seated hall standing.
+   * `GymSceneSpec` is how far through the STANDING WAVE the hall is: the front
+   * tier of seating comes up by that many scene rows, each tier behind it lags
+   * by `GYM_CROWD.ROW_RISE_LAG_PX`, and none may pass `GYM_CROWD.ROW_RISE_MAX_PX`.
+   * Heads lift, shoulders stretch, the base of the band stays where it is, and
+   * each spectator carries a dark keyline so the tier in front reads as standing
+   * IN FRONT OF the tier behind rather than merging with it.
+   *
+   * ---------------------------------------------------------------------------
+   * IT USED TO BE A UNIFORM RISE, AND THAT IS THE BUG THIS BLOCK RECORDS
+   * ---------------------------------------------------------------------------
+   * Every spectator inflating by the same amount does not read as a hall
+   * standing up; past one row it reads as the band dissolving. A spectator is 5
+   * rows tall on a 6-row pitch, so at a uniform rise of 2 the tiers land on each
+   * other and the staggered rows fill every column between them. Measured on the
+   * rendered band under the old mechanism: at rise 4, four rows in six were a
+   * full-width slab; at 5, five in six, 84% of the band lit, and the figure and
+   * the ground had swapped — a lit field with dark squares punched through it.
+   *
+   * The wave and the keyline are what fixed it (see `GYM_CROWD`). What that buys,
+   * measured the same way, is a bigger change to the picture for LESS lit area:
+   *
+   *                       differing scene px vs a seated hall   lit share of band
+   *   uniform, rise 4                         959                     79.9%
+   *   uniform, rise 5                       1,088                     84.4%
+   *   wave + keyline, rise 5                1,113                     46.1%
+   *   wave + keyline, rise 7                1,484                     47.3%
+   *
+   * A seated hall is 46.3%, so the band now stays as quiet as the one
+   * `gymTuning.ts` says it is held to be, while the escalation got louder.
    *
    * ---------------------------------------------------------------------------
    * IT IS SCARCE ON PURPOSE (GDD §7.2)
@@ -260,38 +286,46 @@ export const MEET_TUNING = Object.freeze({
    */
   CROWD: Object.freeze({
     /**
-     * Rows the seating rises by on an urgent walk-out.
+     * How far through the standing wave an urgent walk-out takes the hall.
      *
-     * MEASURED, not guessed at, and this is the only number in the block that
-     * has a real bound under it. Each spectator's silhouette grows upward, so
-     * enough rise turns the band into a solid slab and the crowd stops reading
-     * as people. On the shipped band (`GYM_CROWD`, 24 rows, pitch 6):
+     * NOT A UNIFORM RISE, and the unit needs saying: it is scene rows of the
+     * FRONT tier's travel, and the tiers behind lag by `ROW_RISE_LAG_PX` each,
+     * so a value past `ROW_RISE_MAX_PX` does not make the front tier taller — it
+     * pushes the wave further back through the hall. On the shipped band
+     * (`GYM_CROWD`, 24 rows, pitch 6, 4 tiers, lag 2, cap 4) the per-tier rises
+     * front-to-back and what the picture does, against a seated hall:
      *
-     *   rise 0   1,331 lit / 1,747 dark    the seated hall
-     *   rise 3   2,050 / 1,028             719 scene pixels changed
-     *   rise 4   2,290 /   788             959 changed  <- here
-     *   rise 6   2,548 /   530           1,217 changed
-     *   rise 8   2,622 /   456           1,291 changed, and saturating
+     *   rise 0    0/0/0/0        —                 46.3% of the band lit
+     *   rise 4    4/2/0/0      853 px changed      46.1%
+     *   rise 5    4/3/1/0    1,113 changed  <- here 46.1%
+     *   rise 6    4/4/2/0    1,373 changed        46.1%
+     *   rise 7    4/4/3/0    1,484 changed        47.3%
+     *   rise 8    4/4/4/0    1,633 changed, and saturating   48.6%
      *
-     * Past about 6 the dark gaps between spectators are gone and further rise
-     * buys almost nothing — the last two rows add 74 pixels between them.
-     * `walkout.test.ts` holds a floor under the change and a floor under the
-     * remaining gaps, so both failure modes are bounded rather than described.
+     * The back tier's heads sit on the top row of the band, so it is clamped and
+     * never moves: 8 is the ceiling and further rise buys nothing at all.
+     *
+     * `walkout.test.ts` holds a floor under the change and a floor under the air
+     * BETWEEN SPECTATORS — measured inside the rows figures actually occupy, not
+     * across the band's whole rectangle — so both failure modes are bounded
+     * rather than described.
      *
      * NOBODY HAS LOOKED AT IT ON A PHONE. The measurement says the picture
-     * changes; it does not say four rows reads as a hall standing up.
+     * changes and that the band keeps its air; it does not say this reads as a
+     * hall getting to its feet.
      */
-    WALKOUT_RISE_PX: 4,
+    WALKOUT_RISE_PX: 5,
     /** How long after the last disc lands the hall starts getting up. */
     WALKOUT_RISE_DELAY_MS: 180,
     /** And how long it takes to finish. A hall rises in a wave, not on a switch. */
     WALKOUT_RISE_MS: 900,
 
     /**
-     * Rows the seating rises by on a GOOD LIFT, after the last lamp. Higher than
-     * the walk-out's: they are on their feet rather than getting to them.
+     * How far through the wave a GOOD LIFT takes it, after the last lamp. Deeper
+     * into the hall than the walk-out's: the front rows are already up and the
+     * rows behind them are coming.
      */
-    CHEER_RISE_PX: 5,
+    CHEER_RISE_PX: 7,
     /** Faster, too — a reaction rather than an anticipation. */
     CHEER_RISE_MS: 380,
   }),
@@ -452,6 +486,23 @@ export const MEET_TUNING = Object.freeze({
    * nearest-neighbour rule for one frame of motion. What the camera can see is
    * the weight transfer: the body plants left, then right, then centre; the bar
    * rocks the other way and tilts; the whip damps out. That is what these are.
+   *
+   * ---------------------------------------------------------------------------
+   * THE ONE NUMBER A HUMAN TUNING PASS SHOULD HOLD AGAINST REAL FOOTAGE
+   * ---------------------------------------------------------------------------
+   * Written down here so it is not lost, and it is a LEAD RATHER THAN A VERDICT.
+   * A critic reading secondary sources — descriptions of competition walk-outs,
+   * not footage — found a real one put at three named steps taken over SEVERAL
+   * SECONDS, inside the one-minute clock a lifter gets from the bar being loaded.
+   * The sheet below is `UNRACK_MS 260 + STEP_COUNT 3 x STEP_MS 220 + SETTLE_MS
+   * 300 = 1,220 ms` from the hooks to set: roughly an order of magnitude faster.
+   *
+   * That is NOT recorded as a defect. A game beat is not a stopwatch transcript,
+   * GDD §6.2 calls this beat "brief", and dread is not duration — a walk-out
+   * played at real time inside a 60-90 s session would be most of the session.
+   * It is recorded because §12.2 judges this beat against broadcast footage and
+   * nobody in this environment can watch any, so the first person who CAN should
+   * hold these four numbers against a real clip. This block is where they turn.
    *
    * NOBODY HAS WATCHED IT. GDD §12.1. These are a starting shape, not tuned
    * values, and the pacing half of §12.2's bar remains unverifiable here.

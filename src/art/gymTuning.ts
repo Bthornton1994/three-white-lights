@@ -391,6 +391,78 @@ export const GYM_CROWD = Object.freeze({
   SHOULDER_ROWS: 2,
   /** The barrier rail across the front of the seating. */
   RAIL_ROWS: 2,
+
+  // -------------------------------------------------------------------------
+  // A HALL ON ITS FEET
+  //
+  // `GymSceneSpec.crowdRisePx` is how far the FRONT tier has come up.
+  // `src/game/meetTuning.ts`'s `CROWD` block owns when it is non-zero; these
+  // three own what the band does about it.
+  //
+  // WHY IT IS NOT ONE NUMBER, WITH THE ARITHMETIC. A spectator is
+  // `HEAD_H + SHOULDER_ROWS` = 5 rows tall on a `ROW_PITCH` of 6 — one row of
+  // air. `paintCrowd` grows a figure upward with its seat pinned, so a figure
+  // risen by R spans R + 5 rows and EVERY R >= 2 lands on the tier behind it.
+  // Where two tiers share a row, the stagger that makes them read as separate
+  // people is what closes it: 5 columns of shoulder at `ROW_STAGGER` 3 plus 3
+  // columns of head on a 7-column pitch cover all seven. Measured on the
+  // rendered band, uniform rise:
+  //
+  //   rise 0   lit 1,321 / dark 1,533   46.3% lit   worst row 27.7% air
+  //   rise 1   1,598 / 1,256            56.0%       27.7%
+  //   rise 2   1,819 / 1,035            63.7%        0.0%  <- rows go solid
+  //   rise 4   2,280 /   574            79.9%        0.0%
+  //   rise 5   2,409 /   445            84.4%        0.0%
+  //
+  // Which is why a critic reading the shipped frames saw the band invert:
+  // at 5 it is a lit field with dark squares punched through it, not people.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Rows of rise each tier lags the one in FRONT of it.
+   *
+   * The front rows come up first, which is what a hall does and is also what
+   * keeps the back of the band at rest while the front is moving. At 1 the wave
+   * takes `ROW_RISE_LAG_PX * (tiers - 1)` more of `crowdRisePx` to reach the
+   * back tier than the front, so the useful range of the rise is
+   * `ROW_RISE_MAX_PX + ROW_RISE_LAG_PX * (tiers - 1)` — 7 on the shipped band.
+   */
+  ROW_RISE_LAG_PX: 2,
+
+  /**
+   * The most any one tier may come up, whatever `crowdRisePx` says.
+   *
+   * The geometric safety valve. Past this a tier's figures reach two tiers back
+   * and the keyline is separating three silhouettes in one row, which is more
+   * than 7 columns can carry.
+   */
+  ROW_RISE_MAX_PX: 4,
+
+  /**
+   * The dark rim drawn around each spectator before it is filled — how far it
+   * reaches ABOVE and BESIDE the silhouette.
+   *
+   * It is the whole reason a risen tier still reads as people rather than as a
+   * slab, so it is two named numbers rather than one, and both are the largest
+   * the geometry affords WITHOUT changing the seated hall:
+   *
+   *   ROWS 1 — a seated figure is 5 rows in a 6-row pitch, so there is exactly
+   *     one row of air above it. A second row would eat the shoulders of the
+   *     tier behind on a hall at rest, which is the art nobody asked to change.
+   *   COLS 2 — a seated figure is 5 columns in a 7-column pitch, so there are
+   *     exactly two. Two is also what makes the rim do its job: `HEAD_W + 2*2`
+   *     is the pitch exactly, so a spectator standing in front of another hides
+   *     that one COMPLETELY in the rows it has risen into, instead of leaving a
+   *     two-pixel stub of their shoulders poking up between the heads in front.
+   *     Those stubs are what a one-column rim leaves, and at 3x they read as a
+   *     mesh rather than as people.
+   *
+   * At rest both draw on pixels that are already `CROWD_DARK`, so a seated hall
+   * is bit-for-bit what it was before this existed. `gymScene.test.ts` pins the
+   * seated band row by row.
+   */
+  KEYLINE_ROWS: 1,
+  KEYLINE_COLS: 2,
   /**
    * HOW FAR THE SEATING IS RAISED ABOVE THE PLATFORM FLOOR, in scene rows,
    * measured from the wall/floor junction up to the front rail.
