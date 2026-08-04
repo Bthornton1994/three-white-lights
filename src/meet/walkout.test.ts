@@ -43,7 +43,14 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { blitOver, crowdFrontRow, renderGymScene } from '../art/gymScene';
+import {
+  blitOver,
+  crowdFrontRow,
+  crowdRowRise,
+  crowdTierCount,
+  renderGymScene,
+  type GymSceneSpec,
+} from '../art/gymScene';
 import { GYM } from '../art/gymPalette';
 import { GYM_CROWD, GYM_LIFT_STAGE, GYM_VENUE } from '../art/gymTuning';
 import { renderLifterFrame } from '../art/lifterSprite';
@@ -153,6 +160,27 @@ function crowdPixels(grid: IndexGrid): number {
 const BAND_BOTTOM = crowdFrontRow(MEET_HALL_SCENE);
 const BAND_TOP = Math.max(0, BAND_BOTTOM - GYM_VENUE[MEET_HALL_SCENE.venue].CROWD_ROWS);
 
+/**
+ * THE HALL WITH NOBODY ON THEIR FEET, rendered once.
+ *
+ * Every rise measured below is a DIFFERENCE from this picture, so "a hall that
+ * did not move measures zero" is a property of how the reading is defined
+ * rather than a claim about it.
+ */
+const REST_BAND = renderGymScene(MEET_HALL_SCENE);
+
+/**
+ * The rise the BEAT asks the hall for when it settles, and the one a good lift
+ * asks for at the end of its ramp.
+ *
+ * Read out of the sequence and out of the ramp rather than copied from
+ * `MEET_TUNING.CROWD`, so that severing the wire — a walk-out that stops asking
+ * the hall to stand, a ramp that never reaches its top — reaches these
+ * measurements instead of leaving them measuring a constant nobody is using.
+ */
+const WALKOUT_HALL_RISE = walkoutFrameAt(URGENT, URGENT.motionMs).crowdRisePx;
+const CHEER_HALL_RISE = crowdRisePxAt(MEET_TUNING.CROWD.CHEER_RISE_MS, CHEER_CROWD_RISE);
+
 interface BandAir {
   /**
    * The SMALLEST share of any occupied row that is air.
@@ -177,7 +205,11 @@ interface BandAir {
    */
   readonly rectLitPx: number;
   readonly rectDarkPx: number;
-  /** How far each tier's heads are drawn above their seated row, back to front. */
+  /**
+   * How far each tier's heads are drawn above the row they sit on when nobody
+   * has moved, back to front. Zero for every tier of a hall at rest, by the
+   * definition in `tierRisesOf`.
+   */
   readonly tierRises: readonly number[];
 }
 
@@ -225,32 +257,141 @@ function airOf(grid: IndexGrid): BandAir {
   };
 }
 
-/**
- * How high each tier's heads are drawn above the row they sit on, back to front.
+// ---------------------------------------------------------------------------
+// THE INSTRUMENT FOR "DID THE HALL GET UP" — each tier's OWN columns, read
+// against the same reading on the hall at rest
+// ---------------------------------------------------------------------------
+
+/*
+ * ===========================================================================
+ * WHAT THE PROBE THIS REPLACES COULD NOT SEE
+ * ===========================================================================
+ * It walked up from each tier line looking for "a row of that tier", and it
+ * decided by counting `CROWD_MID` across the whole row against `grid.w / 2` —
+ * 65 of the stage's 130 columns. On this band a HEAD row lights 55-57 columns
+ * (`HEAD_W` 3 on a `HEAD_COLS` pitch of 7) and a SHOULDER row lights 90-94. So
+ * the question it actually asked was "is this a shoulder row", and a head — the
+ * thing that lifts when somebody stands — could never answer yes.
  *
- * Read off the PIXELS — the topmost spectator row within each tier's own pitch
- * window — rather than off `crowdRowRise`, so "the hall really did stand" is a
- * statement about the picture and not a restatement of the arithmetic.
+ * Every number it returned was therefore the topmost SHOULDER row of the tier
+ * BEHIND, which at rest already sits three rows above the tier line. It was a
+ * fixed property of the seated drawing:
+ *
+ *     seated, nobody moved     [0, 3, 3, 3]   sum 9
+ *     the shipped walk-out     [0, 3, 0, 6]   sum 9
+ *
+ * The beat this whole file exists to prove scored IDENTICALLY to a hall that
+ * never moved, and the guard that named it — `some((r) => r > 0)` — passed on
+ * the seated hall, so it could not fail for the reason it claimed. It was also
+ * directional the wrong way: a band drawn with more shoulder overhang scored
+ * higher without anybody getting up.
+ *
+ * ===========================================================================
+ * WHAT THIS ONE MEASURES INSTEAD
+ * ===========================================================================
+ * The rise of a tier is how far the topmost pixel THAT TIER OWNS has moved off
+ * the row it owns it on. Both halves of that are read out of the SEATED render
+ * rather than derived from the constants `paintCrowd` draws with:
+ *
+ *   - A TIER LINE is a row of the band whose figures start there: it has
+ *     spectator pixels in it and the row above it does not. On a hall at rest
+ *     there is exactly one row of air between tiers, which is what makes this
+ *     readable at all, and `the seated band is the drawing these measurements
+ *     assume` below pins that as a picture rather than as an assumption.
+ *   - A TIER'S OWN COLUMNS are the columns lit on its tier line that are lit
+ *     NOWHERE in the rows between it and the tier behind. Adjacent tiers are
+ *     staggered, so each keeps a couple of columns per pitch that the tier
+ *     behind's widest row — its shoulders — never reaches. Standing up moves
+ *     rows and never columns, so a column the tier behind cannot paint at rest
+ *     is a column it cannot paint risen either.
+ *
+ * That gives a number no threshold has to be chosen for, and it is reported as
+ * a DIFFERENCE against the same reading on `REST_BAND`, so a hall that did not
+ * move reads 0 by construction rather than by luck. Back to front, on the
+ * shipped band:
+ *
+ *     seated, nobody moved     [0, 0, 0, 0]   sum  0
+ *     the walk-out's rise 5    [0, 1, 3, 4]   sum  8
+ *     a good lift's rise 7     [0, 3, 4, 4]   sum 11
+ *
+ * The rises are `MEET_TUNING.CROWD`'s to turn and nobody has watched them on a
+ * phone (GDD §12.1), so what is asserted below is the ORDER and the floor at
+ * zero, not these values.
  */
-function tierRisesOf(grid: IndexGrid): readonly number[] {
+
+/** One tier of seating, as the hall AT REST describes it. */
+interface SeatedTier {
+  /** Back to front: 0 is the tier furthest from the platform. */
+  readonly index: number;
+  /** The row this tier's heads are drawn on when nobody has moved. */
+  readonly seatRow: number;
+  /**
+   * The highest row this tier could be seen in — one below the tier behind's
+   * own seat row, so a reading can never be somebody else's spectator.
+   */
+  readonly ceilingRow: number;
+  /** Columns this tier paints above `seatRow` and no other tier can. */
+  readonly ownCols: readonly number[];
+}
+
+/** The spectator columns in one row of a rendered room. */
+function litColumnsAt(grid: IndexGrid, y: number): readonly number[] {
   const out: number[] = [];
-  for (let y = BAND_TOP; y < BAND_BOTTOM; y += GYM_CROWD.ROW_PITCH) {
-    let highest = y;
-    for (let probe = Math.max(BAND_TOP, y - GYM_CROWD.ROW_PITCH); probe < y; probe += 1) {
-      let lit = 0;
-      for (let x = 0; x < grid.w; x += 1) {
-        if (grid.data[probe * grid.w + x] === GYM.CROWD_MID) lit += 1;
-      }
-      // A tier's own heads run the whole width; a stray pixel from the tier
-      // behind does not. Half the width is far outside either.
-      if (lit > grid.w / 2) {
-        highest = probe;
-        break;
-      }
-    }
-    out.push(y - highest);
+  for (let x = 0; x < grid.w; x += 1) {
+    if (grid.data[y * grid.w + x] === GYM.CROWD_MID) out.push(x);
   }
   return out;
+}
+
+/** The band's tiers, read off the hall at rest. See `SeatedTier`. */
+function seatedTiersOf(rest: IndexGrid): readonly SeatedTier[] {
+  const seatRows: number[] = [];
+  for (let y = BAND_TOP; y < BAND_BOTTOM; y += 1) {
+    if (litColumnsAt(rest, y).length === 0) continue;
+    if (y > BAND_TOP && litColumnsAt(rest, y - 1).length > 0) continue;
+    seatRows.push(y);
+  }
+  return seatRows.map((seatRow, index) => {
+    const behind = seatRows[index - 1];
+    const ceilingRow = behind === undefined ? BAND_TOP : behind + 1;
+    const taken = new Set<number>();
+    for (let y = ceilingRow; y < seatRow; y += 1) {
+      for (const x of litColumnsAt(rest, y)) taken.add(x);
+    }
+    return {
+      index,
+      seatRow,
+      ceilingRow,
+      ownCols: litColumnsAt(rest, seatRow).filter((x) => !taken.has(x)),
+    };
+  });
+}
+
+const SEATED_TIERS = seatedTiersOf(REST_BAND);
+
+/** The highest row of `grid` this tier has anybody in. Its seat row, at rest. */
+function topRowOf(grid: IndexGrid, tier: SeatedTier): number {
+  for (let y = tier.ceilingRow; y < tier.seatRow; y += 1) {
+    if (tier.ownCols.some((x) => grid.data[y * grid.w + x] === GYM.CROWD_MID)) return y;
+  }
+  return tier.seatRow;
+}
+
+/**
+ * How far each tier is drawn above where it sits at rest, back to front.
+ *
+ * A DIFFERENCE between two pictures, so the hall that did not move is the zero
+ * of the scale. Nothing here reads `crowdRowRise`: "the hall really did stand"
+ * stays a statement about pixels rather than a restatement of the arithmetic
+ * that drew them.
+ *
+ * THE BACK TIER CANNOT BE SEEN TO MOVE, and that is the picture and not the
+ * probe: its heads are drawn on the band's own top row, `paintCrowd` clamps
+ * them there, and there is no row above for them to rise into. The reading is
+ * 0 for the same reason the drawing is.
+ */
+function tierRisesOf(grid: IndexGrid): readonly number[] {
+  return SEATED_TIERS.map((tier) => topRowOf(REST_BAND, tier) - topRowOf(grid, tier));
 }
 
 /** The shipped hall at `rise`, as air. */
@@ -329,6 +470,170 @@ describe('the composite this file measures is the composite the screen draws', (
     // The other non-vacuity control: `hallAt` really does render the meet hall.
     expect(crowdPixels(hallAt(null))).toBeGreaterThan(0);
     expect(hallAt(null).data.length).toBe(GYM_LIFT_STAGE.W * GYM_LIFT_STAGE.H);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The ruler, before anything is measured with it
+// ---------------------------------------------------------------------------
+
+describe('the ruler this file reads the hall’s rise off', () => {
+  /**
+   * The runs of AIR between spectators in one row: columns of `CROWD_DARK`
+   * with a spectator on both sides of them.
+   *
+   * A run has to be air the whole way across to count. The judges' table stands
+   * in front of the band's bottom rows and hides a spectator or two behind it,
+   * which leaves a wider hole that is furniture rather than a gap in the crowd;
+   * so does the frame's own edge, which is why a run reaching column 0 is
+   * dropped as well.
+   */
+  function interiorAirGaps(grid: IndexGrid, y: number): readonly number[] {
+    const gaps: number[] = [];
+    let run = 0;
+    let air = true;
+    for (let x = 0; x < grid.w; x += 1) {
+      const value = grid.data[y * grid.w + x];
+      if (value === GYM.CROWD_MID) {
+        if (run > 0 && run < x && air) gaps.push(run);
+        run = 0;
+        air = true;
+        continue;
+      }
+      run += 1;
+      if (value !== GYM.CROWD_DARK) air = false;
+    }
+    return gaps;
+  }
+
+  it('is calibrated on the seated band the renderer actually drew', () => {
+    // THE PIN THE KEYLINE'S OWN ARITHMETIC RESTS ON, on pixels. `GYM_CROWD`
+    // argues `KEYLINE_ROWS: 1` and `KEYLINE_COLS: 2` are "the largest the
+    // geometry affords WITHOUT changing the seated hall", from a spectator
+    // being 5 rows in a 6-row pitch and 5 columns in a 7-column one. Both
+    // halves of that are visible in the rendered band, and neither was checked
+    // anywhere until now — which also made the probe below unreadable, because
+    // it is the row of air that says where one tier stops and the next starts.
+    expect(SEATED_TIERS.length, 'the band has no tiers in it').toBe(
+      crowdTierCount(MEET_HALL_SCENE),
+    );
+    for (const tier of SEATED_TIERS) {
+      // Every tier sits a whole pitch below the one behind it...
+      const behind = SEATED_TIERS[tier.index - 1];
+      if (behind !== undefined) {
+        expect(tier.seatRow - behind.seatRow, `tier ${tier.index} is off the pitch`).toBe(
+          GYM_CROWD.ROW_PITCH,
+        );
+        // ...with EXACTLY `KEYLINE_ROWS` rows of air above it: the row above
+        // the seat row is empty and the row above that is the tier behind's
+        // shoulders. A second rim row would eat them.
+        for (let above = 1; above <= GYM_CROWD.KEYLINE_ROWS; above += 1) {
+          expect(
+            litColumnsAt(REST_BAND, tier.seatRow - above).length,
+            `tier ${tier.index}: row ${above} above its seat is not air`,
+          ).toBe(0);
+        }
+        expect(
+          litColumnsAt(REST_BAND, tier.seatRow - GYM_CROWD.KEYLINE_ROWS - 1).length,
+          `tier ${tier.index}: there is more air above it than the keyline claims`,
+        ).toBeGreaterThan(0);
+      }
+      // And EXACTLY `KEYLINE_COLS` columns of air beside every spectator, at
+      // the widest row the tier occupies — its shoulders.
+      const rows: number[] = [];
+      for (let y = tier.seatRow; y < BAND_BOTTOM; y += 1) {
+        if (litColumnsAt(REST_BAND, y).length === 0) break;
+        rows.push(y);
+      }
+      const widest = rows.reduce((a, b) =>
+        litColumnsAt(REST_BAND, b).length > litColumnsAt(REST_BAND, a).length ? b : a,
+      );
+      const gaps = interiorAirGaps(REST_BAND, widest);
+      expect(gaps.length, `tier ${tier.index} has no gaps between spectators`).toBeGreaterThan(0);
+      for (const gap of gaps) {
+        expect(gap, `tier ${tier.index}: a gap between spectators is not the keyline's width`)
+          .toBe(GYM_CROWD.KEYLINE_COLS);
+      }
+      // ...which is what leaves this tier columns of its own to be measured in.
+      expect(tier.ownCols.length, `tier ${tier.index} owns no columns`).toBeGreaterThan(0);
+    }
+  });
+
+  it('reads ZERO on every tier of a hall that nobody stood up', () => {
+    // The reading the probe this replaced could not produce: on the room every
+    // other beat draws, it returned [0, 3, 3, 3] — the seated drawing's own
+    // shoulder overhang — and the "the hall still stands up" guard passed on
+    // it. This is the same room. Every tier must read nothing.
+    const rest = tierRisesOf(renderGymScene(MEET_HALL_SCENE));
+    expect(rest.length).toBe(SEATED_TIERS.length);
+    for (const [tier, rise] of rest.entries()) {
+      expect(rise, `tier ${tier} of a seated hall is drawn off its seat`).toBe(0);
+    }
+    // ...and it is the same zero through the path every other test takes.
+    expect(bandOf(0).tierRises).toEqual(rest);
+  });
+
+  it('reads the shipped walk-out strictly higher than the hall at rest', () => {
+    // THE CHECK THAT TURNS RED WHEN THE HALL STOPS GETTING UP, and it was run
+    // both ways round before it was written down:
+    //
+    //   `hallScene(rise)` returns `MEET_HALL_SCENE` whatever it is asked for
+    //     — the room never redraws. This test fails here, on `higher.length`.
+    //     The guard this replaces (`some((r) => r > 0)`) stayed GREEN under it.
+    //   `buildWalkout` emits `crowdRisePx: 0` on every frame — the beat stops
+    //     asking. This test fails here too, because `WALKOUT_HALL_RISE` is read
+    //     out of the settled frame rather than out of `MEET_TUNING`. Under that
+    //     mutation the whole of `stands the crowd up without turning it into a
+    //     slab` used to pass, because it measured the constant and not the beat.
+    const rest = tierRisesOf(renderGymScene(MEET_HALL_SCENE));
+    const walkout = tierRisesOf(renderGymScene(hallScene(WALKOUT_HALL_RISE)));
+    const higher = walkout.filter((rise, tier) => rise > (rest[tier] ?? 0));
+    expect(higher.length, 'the walk-out hall is drawn exactly where the seated one is')
+      .toBeGreaterThan(0);
+    expect(sumOf(walkout)).toBeGreaterThan(sumOf(rest));
+    // The cheer goes further into the hall than the walk-out does, tier by tier
+    // and not only on the total.
+    const cheer = tierRisesOf(renderGymScene(hallScene(CHEER_HALL_RISE)));
+    for (const [tier, rise] of cheer.entries()) {
+      expect(rise, `tier ${tier} is lower on a cheer than on a walk-out`).toBeGreaterThanOrEqual(
+        walkout[tier] ?? 0,
+      );
+    }
+    expect(sumOf(cheer)).toBeGreaterThan(sumOf(walkout));
+  });
+
+  it('agrees with the wave where the band has room, and reads the clamp where it does not', () => {
+    // THE CALIBRATION, and it is not the claim above: this compares the ruler
+    // against `crowdRowRise`, which is the arithmetic the drawing is supposed to
+    // realise. Two independent computations of the same quantity — one counting
+    // pixels, one doing the sums — so agreement means the ruler is reading in
+    // the right units, and disagreement means one of them is wrong.
+    //
+    // WHERE THEY DISAGREE ON PURPOSE: the back tier's heads are drawn on the
+    // band's top row, so `paintCrowd` clamps them and they never move however
+    // far through the wave the hall is. At the cheer's 7 the arithmetic asks it
+    // for 1 row and the PICTURE gives 0. The pixels are the ones telling the
+    // truth, which is the whole reason this file measures them.
+    const tiers = crowdTierCount(MEET_HALL_SCENE);
+    for (const rise of [WALKOUT_HALL_RISE, CHEER_HALL_RISE]) {
+      const measured = tierRisesOf(renderGymScene(hallScene(rise)));
+      for (const [index, seen] of measured.entries()) {
+        const tier = SEATED_TIERS[index];
+        if (tier === undefined) throw new Error('unreachable');
+        const asked = crowdRowRise(rise, tiers - 1 - index);
+        const room = tier.seatRow - tier.ceilingRow;
+        expect(seen, `rise ${rise}, tier ${index}: drawn higher than the wave asked for`)
+          .toBeLessThanOrEqual(asked);
+        if (asked <= room) {
+          expect(seen, `rise ${rise}, tier ${index}: had room to come up and did not`).toBe(asked);
+        }
+        // The instrument saturates at the tier behind. If a tuning pass ever
+        // pushes a tier that far, this says so rather than quietly reading low.
+        expect(seen, `rise ${rise}, tier ${index}: the ruler ran out of band`).toBeLessThan(
+          Math.max(1, room),
+        );
+      }
+    }
   });
 });
 
@@ -583,9 +888,12 @@ describe('a third attempt is a different picture from an opener', () => {
     // BETWEEN SPECTATORS, measured only in the rows spectators actually occupy,
     // and taken at the WORST such row rather than averaged — because a solid row
     // in the middle of the band is exactly what averaging hides.
+    // The two risen halls are the ones the BEAT asks for — the settled frame of
+    // an urgent walk-out and the top of the cheer's ramp — rather than the two
+    // constants they are tuned from. See `WALKOUT_HALL_RISE`.
     const seated = bandOf(0);
-    const walkout = bandOf(MEET_TUNING.CROWD.WALKOUT_RISE_PX);
-    const cheer = bandOf(MEET_TUNING.CROWD.CHEER_RISE_PX);
+    const walkout = bandOf(WALKOUT_HALL_RISE);
+    const cheer = bandOf(CHEER_HALL_RISE);
 
     // Non-vacuity: there is a band, it has people in it, and they are in rows.
     expect(seated.occupiedRows, 'there is no seating to measure').toBeGreaterThan(
@@ -617,10 +925,27 @@ describe('a third attempt is a different picture from an opener', () => {
       );
     }
 
-    // AND THE HALL STILL STANDS UP. The rise is not bought by doing nothing:
-    // every one of these tiers is drawn higher than it was seated.
-    expect(walkout.tierRises.some((r) => r > 0)).toBe(true);
+    // AND THE HALL STILL STANDS UP. The rise is not bought by doing nothing —
+    // measured against what the SEATED hall reads on the same ruler, which is
+    // zero. (The check that used to stand here asked only that some tier read
+    // above zero, and the seated hall passed it; see `tierRisesOf`.)
+    expect(seated.tierRises, 'a hall nobody stood up reads as risen').toEqual(
+      seated.tierRises.map(() => 0),
+    );
+    expect(sumOf(walkout.tierRises), 'the walk-out hall is drawn where the seated one is')
+      .toBeGreaterThan(sumOf(seated.tierRises));
     expect(sumOf(cheer.tierRises)).toBeGreaterThan(sumOf(walkout.tierRises));
+    for (const [name, band] of [
+      ['walk-out', walkout],
+      ['cheer', cheer],
+    ] as const) {
+      expect(band.tierRises.some((r) => r > 0), `${name}: no tier came up`).toBe(true);
+      // ...and nobody sank: a "rise" that pushed a tier DOWN would still beat a
+      // seated hall on the sum if the sum were all this asked for.
+      for (const [tier, rise] of band.tierRises.entries()) {
+        expect(rise, `${name}: tier ${tier} is drawn below its seat`).toBeGreaterThanOrEqual(0);
+      }
+    }
 
     // ---------------------------------------------------------------------
     // THE MUTATION. The old mechanism, replayed on real pixels: every tier
@@ -651,7 +976,25 @@ describe('a third attempt is a different picture from an opener', () => {
     // becomes a different object with a different memo key.
     expect(hallScene(0)).toBe(MEET_HALL_SCENE);
     expect(hallScene(-MEET_TUNING.CROWD.CHEER_RISE_PX)).toBe(MEET_HALL_SCENE);
-    expect(differingPixels(renderGymScene(hallScene(0)), renderGymScene(MEET_HALL_SCENE))).toBe(0);
+
+    // AND THE ROOM IS THE SAME ROOM, not just the same object. A rest hall
+    // REBUILT — a different spec, carrying `crowdRisePx` explicitly — has to
+    // rasterise byte for byte the same, because that is what says a zero rise is
+    // a no-op in the RENDERER rather than only a short circuit in `hallScene`.
+    // (What stood here compared `renderGymScene(hallScene(0))` with
+    // `renderGymScene(MEET_HALL_SCENE)`, which the line above had just proved
+    // is the same argument: it compared a room with itself and could not fail.)
+    const rebuilt: GymSceneSpec = { ...MEET_HALL_SCENE, crowdRisePx: 0 };
+    expect(rebuilt, 'the rebuilt spec is the frozen one').not.toBe(MEET_HALL_SCENE);
+    expect(differingPixels(renderGymScene(rebuilt), REST_BAND)).toBe(0);
+
+    // ...and the renderer's own clamp is what makes a hall that is asked to sit
+    // DOWN sit still, so nothing depends on `hallScene` catching it first.
+    const below: GymSceneSpec = {
+      ...MEET_HALL_SCENE,
+      crowdRisePx: -MEET_TUNING.CROWD.CHEER_RISE_PX,
+    };
+    expect(differingPixels(renderGymScene(below), REST_BAND)).toBe(0);
   });
 
   it('comes up over time rather than switching on', () => {
