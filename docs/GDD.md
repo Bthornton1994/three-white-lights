@@ -2,8 +2,21 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-04 (§11/§12.2 — the ROUTE half of the unit sweep is now
-DERIVED rather than hand-counted. Six rounds of §7 ended with a human finding one
+**Last updated:** 2026-08-04 (§12.2 — the derived route table now has the WHOLE
+PROJECT as its root set, not `src/`. The sweep it replaced was rooted at a
+hand-walked `src/`, and this repository's TypeScript is not all under `src/`:
+`App.tsx` and `index.ts` sit at the root and imports point into `src/` and never
+out, so a fully annotated `const seeded: ServerRecord = { ...newServerRecord(),
+totalKg: 900 }` appended to `App.tsx` type-checked clean, passed the whole suite,
+and added no row. The correct file list was being computed two lines above the
+wrong one and discarded — `tsconfig.json`'s own `parsed.fileNames` — and the scan
+is now rooted in it, with `App.tsx` and `index.ts` anchored BY NAME so a future
+narrowing goes red. Neither entry point holds a route today; widening the sweep
+added no row, so the table was right and the check was not. §7.5's residual list
+no longer claims closure, the reflection guard's candidate set is an IMPORT check
+instead of a token match that could not see `previewServerRecord`, and the one
+row that covered two `useMeetDay` sites is now two. Earlier: §11/§12.2 — the ROUTE
+half of the unit sweep is now DERIVED rather than hand-counted. Six rounds of §7 ended with a human finding one
 more construction site and five of the six were found by a grep; the sixth,
 `sessionPreview.ts`'s `recordBeforeSession()`, is now named, and §7.5 is a table
 `progression.test.ts` reconstructs from the TYPE CHECKER and compares both ways —
@@ -1774,13 +1787,16 @@ strong, because the claim quantified over a set nobody could produce. Clause
 (ii) makes the set producible, so the claim becomes falsifiable, which is the
 property §12.4's method actually needs.
 
-**Two corrections a builder would want made before it were taken.**
+**Three corrections a builder would want made before it were taken.** A critic
+reviewing the first two endorsed both, and supplied the wording for (i) that is
+quoted below. The third is new and was found by breaking the pin the first two
+describe.
 
 1. **Clause (ii) needs to name both directions.** "A table a test fails on" is
    satisfied by a table that only ever grows, and a table that only grows fills
    with rulings about deleted code until the live rows are unskimmable. The pin
-   built this round fails on an unlisted site *and* on a listed site that no
-   longer exists, and it is the second half that keeps the first half readable.
+   fails on an unlisted site *and* on a listed site that no longer exists, and
+   it is the second half that keeps the first half readable.
 2. **Clause (i) flattens checks of different strength.** A comparison against
    server-owned data (`card.unit === meet.rules.unit`) and a comparison against
    an in-tree constant (`PROGRESSION_E1RM_UNIT`) and a compile-time narrow on a
@@ -1788,6 +1804,19 @@ property §12.4's method actually needs.
    which. If the clause is taken it should read "*past a check the table names,
    with the strength of that check stated*", or a future round will report four
    green ticks over three different things.
+3. **Clause (ii) also needs to say what the test's SCOPE must be.** "A table a
+   test fails on" is satisfied by a test that scans less than the codebase, and
+   that is not hypothetical: the round after the pin was built, its scan was
+   rooted at `src/`, and `App.tsx` — the app's entry point, at the repo root,
+   reachable from nothing under `src/` — could hold an annotated `ServerRecord`
+   with the whole suite green. The table was complete; the instrument reading it
+   was not, and every non-vacuity check inside it passed because they all asked
+   about files the scan already had. If the clause is taken it should require
+   the enumeration to be over *the project's own file list*, with at least one
+   file outside the main source directory named in the check by hand — which is
+   the shape `src/tuning/audit.test.ts` already uses ("walks the whole
+   repository, not just src/", anchored on `App.tsx`, `index.ts`,
+   `vitest.config.ts`).
 
 **What neither clause touches, and what a human may want a third clause for:**
 whether a declared unit is *true*. `{ unit: 'kg', kilograms: { squat: 397 } }`
