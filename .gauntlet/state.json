@@ -261,10 +261,10 @@
       "id": "N1",
       "name": "App shell / navigation",
       "verifiable": true,
-      "status": "grading",
+      "status": "rework",
       "bar": "A player can reach every mode without a debug URL, and no surface is a dead end.",
       "evidence": "shell/02-meet-from-session.png",
-      "note": "MERGED, FRESH CRITIC DISPATCHED. Two defects closed, and the second one was not in the brief. (1) The phase gates are pinned to two hand-written literal tables that read nothing from SHELL_NAV, typed so a new beat is a compile error; emptying both lists now turns 8 tests red where the whole suite used to stay green, and drift on EITHER side fails. (2) THE BROWSER CHECK WAS PASSING ON A FALSE PREMISE - Playwright isVisible() returns true at opacity 0 and click() presses straight through a transparent element, so the bomb-out exit check could not tell a drawn control from an invisible one and was passing at opacity 0.000. It now waits for the real fade and measures effective opacity up the parent chain. I re-ran it myself on the merged tree: the same check now reports opacity 0.925 after 3918ms. So the 47 was a true count with one member measuring nothing, and it is 47 again with all of them biting. Suite 2230 green."
+      "note": "BOTH NAMED DEFECTS CLOSED AND VERIFIED - AND THE CRITIC FOUND THE SCREEN NOBODY HAS EVER LOOKED AT. What is genuinely closed: the phase-gate answer sheet is independent (emptying SESSION_PHASES reddens 7 assertions, MEET_PHASES 5, and tsc still passes on both - so the TESTS are carrying it, correctly), and the opacity measurement is real, with 0.925 after 3918ms reconciling against BombOutView fading to terminal 1.0 from 3600ms over 620ms. The critic re-derived that number from meetTuning.ts rather than accepting it. THE GAP, and I verified every link myself: SessionScreen.tsx:57-64 renders the already-trained surface as TWO TEXT NODES WITH NO PRESSABLE OF ITS OWN, so the shell pill is its only affordance - and CloseOutView DONE calls restartDay, which rebuilds against a cache that now records today, so alreadyTrainedToday is true. That makes it THE TERMINAL SCREEN OF THE DAILY LOOP, reached by every player every day, with zero pixels behind it. The recorded reason it could not be driven is false: capture-session.mjs already drives the played un-previewed loop from / with real mouse presses, and verify-shell-route.mjs measures the DONE button’s box without ever pressing it. Dispatched. Also going out: the result card is the OTHER sole-exit surface and is checked with checkOnScreen alone, so \"not a dead end\" is established as drawn rather than leavable."
     },
     {
       "id": "A4",
@@ -432,9 +432,9 @@
       {
         "id": "N1",
         "name": "App shell / navigation",
-        "state": "grading",
-        "stateLabel": "Re-grading",
-        "note": "Phase gates pinned to literal tables independent of the constant they grade. Separately: the bomb-out browser check was passing at opacity 0.000, because isVisible() is true on a transparent element. It measures opacity now — I re-ran it and saw 0.925."
+        "state": "failing",
+        "stateLabel": "Sent back",
+        "note": "Phase gates and the opacity check are both genuinely closed. But the terminal screen of the daily loop — the already-trained surface, which has no pressable of its own and is reached by every player every day — has never been rendered by any check, and the recorded reason it could not be is refuted by the repo's own capture tool. Dispatched."
       }
     ],
     "groups": [
