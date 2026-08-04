@@ -62,6 +62,41 @@
  *   - ANYTHING BOUGHT. `applyTrainingSession` takes a proposal and a record. It
  *     has no parameter for a purchase, an entitlement, a boost or a balance, so
  *     nothing purchasable can change what a session is worth (GDD §8.1).
+ *   - AN ACCESSORY SESSION CLAIMING AN e1RM. See below.
+ *
+ * ---------------------------------------------------------------------------
+ * ACCESSORY WORK NEVER TOUCHES e1RM — RULED, AND ENFORCED HERE
+ * ---------------------------------------------------------------------------
+ * GDD §3.2 puts an accessory day in the daily rotation. The ruling on what it
+ * may move: `LiftKind` stays exactly the three contested lifts, matching real
+ * meet structure; accessory work does not write `bestE1rmKg` and produces no
+ * e1RM close-out; it contributes **Training IQ** (GDD §2's existing currency)
+ * and nothing else lift-specific.
+ *
+ * TWO ENFORCEMENTS, because a comment is not one:
+ *
+ *   1. AT COMPILE TIME. `ACCESSORY_IS_NOT_A_COMPETITION_LIFT` and
+ *      `REPORTED_LIFT_IS_A_COMPETITION_LIFT` below fail `tsc` if `LiftKind`
+ *      grows a fourth member or if the wire's `TrainingSetReport.lift` is
+ *      widened to `SimLift` to let accessory through. That is the route the
+ *      ruling actually forbids, and it is now a build error rather than a
+ *      convention.
+ *   2. AT RUNTIME. `TrainingSetReport` is a compile-time claim about a caller;
+ *      a JS caller or a hand-edited save can put `'accessory'` in it. Before
+ *      this was checked, such a session was ACCEPTED: the streak advanced, a
+ *      fatigue record was written under `lift: 'accessory'`, and
+ *      `AppliedTrainingSession.bestE1rmKg` came back as `undefined` while
+ *      typed `number | null` — the e1RM path survived only because
+ *      `estimate > undefined` happens to be false. `applyTrainingSession` now
+ *      returns `NOT_A_COMPETITION_LIFT` and `bestE1rmFromSets` throws.
+ *
+ * WHAT IS NOT BUILT HERE, said plainly so nobody reads the enforcement as the
+ * feature: there is no accessory day in `SESSION_TUNING.LIFT_ROTATION` and no
+ * Training IQ balance. Both need a `progression.ts` change this module cannot
+ * make on its own — a `trainingIq` fact (with a §8.1 protection answer) and a
+ * proposal kind for a session that reports no `LiftKind` — plus a close-out
+ * that shows IQ instead of an e1RM. GDD §11 records the ruling and what is
+ * outstanding.
  */
 
 import { estimateE1rm, tryEstimateE1rm } from './e1rm';
@@ -94,6 +129,61 @@ import {
 } from './streak';
 import { nextBestE1rm } from './session';
 import { SESSION_TUNING } from './sessionTuning';
+
+// ---------------------------------------------------------------------------
+// The accessory-day boundary, at compile time
+// ---------------------------------------------------------------------------
+
+/**
+ * COMPILE-TIME ASSERTION: `'accessory'` IS NOT A COMPETITION LIFT.
+ *
+ * The ruling keeps `LiftKind` at exactly squat / bench / deadlift, because that
+ * is the structure of the sport (GDD §6.2) and every meet-day type is keyed by
+ * it. Widening it to carry accessory work is the edit this refuses. `never` is
+ * not assignable from `true`, so the failure is a build error on this line with
+ * this constant's name in it.
+ */
+type AccessoryIsNotACompetitionLift = 'accessory' extends LiftKind ? never : true;
+export const ACCESSORY_IS_NOT_A_COMPETITION_LIFT: AccessoryIsNotACompetitionLift = true;
+
+/**
+ * COMPILE-TIME ASSERTION: WHAT A TRAINING SESSION MAY REPORT IS A COMPETITION
+ * LIFT.
+ *
+ * The other half, and the one that closes the obvious workaround: leaving
+ * `LiftKind` alone and widening the WIRE to `SimLift` instead, so an accessory
+ * set reaches `bestE1rmFromSets` legitimately. That change fails here.
+ */
+type ReportedLiftIsACompetitionLift = [TrainingSetReport['lift']] extends [LiftKind] ? true : never;
+export const REPORTED_LIFT_IS_A_COMPETITION_LIFT: ReportedLiftIsACompetitionLift = true;
+
+/**
+ * COMPILE-TIME ASSERTION: the Sim vocabulary is the competition lifts plus
+ * accessory, and nothing else.
+ *
+ * The control for the two above. Both are satisfied by a world where
+ * `'accessory'` stopped existing at all, which would make them pass while the
+ * thing they are guarding had quietly been deleted rather than fenced. This
+ * fails in that world, and fails again if a fifth Sim lift appears without
+ * anybody deciding what it reports.
+ */
+type SimLiftIsCompetitionLiftsPlusAccessory = [SimLift] extends [LiftKind | 'accessory']
+  ? [LiftKind | 'accessory'] extends [SimLift]
+    ? true
+    : never
+  : never;
+export const SIM_LIFTS_ARE_COMPETITION_LIFTS_PLUS_ACCESSORY: SimLiftIsCompetitionLiftsPlusAccessory =
+  true;
+
+/**
+ * Whether a reported lift is one the progression boundary can name, at RUNTIME.
+ *
+ * `LIFT_ORDER` is `meet.ts`'s own list, not a second copy of it, so this cannot
+ * drift from the type above.
+ */
+function isCompetitionLift(lift: string): lift is LiftKind {
+  return (LIFT_ORDER as readonly string[]).includes(lift);
+}
 
 // ---------------------------------------------------------------------------
 // What the server stores
@@ -198,12 +288,26 @@ export function snapshotWireFor(
  * cannot answer for is SKIPPED rather than throwing the whole session away.
  * `e1rm.ts` refuses past an effective rep max of 16 and this respects the
  * refusal: no number is produced for such a set, and none is invented.
+ *
+ * @throws {RangeError} on a set naming anything but a competition lift. Accessory
+ * work has no e1RM by ruling (see the header), and `TrainingSetReport.lift` is
+ * only a compile-time claim about the caller — before this guard, an accessory
+ * set walked through and was silently dropped by an `estimate > undefined`
+ * comparison, which is an accident rather than a boundary.
  */
 export function bestE1rmFromSets(
   sets: readonly TrainingSetReport[],
 ): Readonly<Record<LiftKind, number | null>> {
   const out: Record<LiftKind, number | null> = { squat: null, bench: null, deadlift: null };
   for (const set of sets) {
+    // UNTRUSTED KEY: this is a wire value, and an unknown one would otherwise
+    // become a fourth key on an object typed as having exactly three.
+    if (!isCompetitionLift(set.lift)) {
+      throw new RangeError(
+        `sessionServer: ${String(set.lift)} is not a competition lift and has no e1RM. ` +
+          `Accessory work contributes Training IQ only (GDD §2, §3.2).`,
+      );
+    }
     const estimate = tryEstimateE1rm({ weight: set.weightKg, reps: set.reps, rpe: set.rpe });
     if (estimate === null) continue;
     const held = out[set.lift];
@@ -257,6 +361,12 @@ export function fatigueRecordFor(
 export type SessionServerErrorCode =
   /** The reported sets name more than one lift. One lift a day (GDD §3.2). */
   | 'MIXED_LIFTS'
+  /**
+   * A reported set names something that is not a competition lift — accessory
+   * work, or a lift that does not exist. Accessory work contributes Training IQ
+   * and never an e1RM, so it has no business on this proposal (see the header).
+   */
+  | 'NOT_A_COMPETITION_LIFT'
   /** `streak.ts` refused: already trained, a day in the past, an offer pending. */
   | 'STREAK_REFUSED'
   /** The reported day is not one this record can move to. */
@@ -306,6 +416,24 @@ export function applyTrainingSession(
     return { ok: false, error: { code: 'BAD_DAY', message: `sessionServer: day ${day} is not a day index.` } };
   }
   const sets = proposal.report.sets;
+  // BEFORE ANYTHING ELSE, AND BEFORE THE STREAK MOVES. A session naming a lift
+  // this boundary cannot answer for is refused whole rather than half-recorded:
+  // an accessory set used to advance the streak and land in the fatigue ledger
+  // while contributing nothing to e1RM, which is a session the player performed
+  // and the server has no honest row for.
+  for (const set of sets) {
+    if (!isCompetitionLift(set.lift)) {
+      return {
+        ok: false,
+        error: {
+          code: 'NOT_A_COMPETITION_LIFT',
+          message:
+            `sessionServer: a training session reports competition lifts, received ${String(set.lift)}. ` +
+            `Accessory work contributes Training IQ and never an e1RM (GDD §2, §3.2).`,
+        },
+      };
+    }
+  }
   const lifts = new Set<LiftKind>(sets.map((set) => set.lift));
   if (lifts.size > 1) {
     return {

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ACCESSORY_IS_NOT_A_COMPETITION_LIFT,
+  REPORTED_LIFT_IS_A_COMPETITION_LIFT,
+  SIM_LIFTS_ARE_COMPETITION_LIFTS_PLUS_ACCESSORY,
   applyTrainingSession,
   bestE1rmFromSets,
   fatigueRecordFor,
@@ -26,7 +29,7 @@ import {
   type TrainingSetReport,
 } from './progression';
 import { LIFT_ORDER, type LiftKind } from './meet';
-import { UNLUCKIEST_ROLLS, LUCKIEST_ROLLS } from './fatigue';
+import { SIM_LIFTS, UNLUCKIEST_ROLLS, LUCKIEST_ROLLS } from './fatigue';
 import {
   createSession,
   liftForDay,
@@ -177,6 +180,103 @@ describe('deriving e1RM from what was reported', () => {
     expect(server).not.toBeNull();
     expect(client).toBeCloseTo(server ?? Number.NaN, 6);
     expect(serverE1rmForSet(sets[0]!)).toBeCloseTo(172.5 / 0.863, 8);
+  });
+});
+
+describe('accessory work never touches e1RM — the ruling, enforced', () => {
+  // GDD §2, §3.2: `LiftKind` stays the three contested lifts; accessory day
+  // contributes Training IQ and nothing else lift-specific, and produces no
+  // e1RM close-out.
+  //
+  // The cast is the whole point of these tests. `TrainingSetReport.lift` is a
+  // COMPILE-TIME claim about the caller, and the two things that reach this
+  // boundary in production — a JSON body and a stored row — are neither of them
+  // type-checked. Writing the cast out makes the untrusted path explicit rather
+  // than untested.
+  const accessorySet = { lift: 'accessory', weightKg: 60, reps: 3, rpe: 8 } as unknown as TrainingSetReport;
+  const nonsenseSet = { lift: 'zercher', weightKg: 60, reps: 3, rpe: 8 } as unknown as TrainingSetReport;
+
+  it('the compile-time fence is real, and it is not vacuous', () => {
+    // These are `true` at runtime only because they type-checked. Reading them
+    // here is what keeps them from being deleted as unused: `tsc` is the
+    // assertion, and this is the reminder that it ran.
+    expect(ACCESSORY_IS_NOT_A_COMPETITION_LIFT).toBe(true);
+    expect(REPORTED_LIFT_IS_A_COMPETITION_LIFT).toBe(true);
+    expect(SIM_LIFTS_ARE_COMPETITION_LIFTS_PLUS_ACCESSORY).toBe(true);
+    // The runtime shadow of the same claim, so a reader can see what the types
+    // above are asserting without reading a conditional type.
+    expect([...LIFT_ORDER]).toEqual(['squat', 'bench', 'deadlift']);
+    expect([...SIM_LIFTS].filter((lift) => !(LIFT_ORDER as readonly string[]).includes(lift))).toEqual([
+      'accessory',
+    ]);
+  });
+
+  it('bestE1rmFromSets REFUSES an accessory set instead of quietly dropping it', () => {
+    // Before this guard it returned `{squat:null,bench:null,deadlift:null}` and
+    // looked correct — but only because `estimate > undefined` is false. The
+    // set was neither counted nor refused, which is the shape of accident this
+    // fence exists to convert into a decision.
+    expect(() => bestE1rmFromSets([accessorySet])).toThrow(RangeError);
+    expect(() => bestE1rmFromSets([accessorySet])).toThrow(/Training IQ/);
+    expect(() => bestE1rmFromSets([nonsenseSet])).toThrow(RangeError);
+    // The positive control: the same call on a real lift still answers.
+    expect(bestE1rmFromSets([set('squat', 172.5, 3, 8)]).squat).toBeCloseTo(199.8841, 4);
+  });
+
+  it('applyTrainingSession refuses the whole session, and moves nothing', () => {
+    const record = newServerRecord();
+    const applied = applyTrainingSession(record, 0, proposalOf([accessorySet]), 'p-accessory');
+    expect(applied.ok).toBe(false);
+    if (applied.ok) return;
+    expect(applied.error.code).toBe('NOT_A_COMPETITION_LIFT');
+    expect(applied.error.message).toMatch(/Training IQ/);
+    // Nothing half-happened. The streak did not advance and the hidden ledger
+    // did not gain a row under a lift the wire cannot name.
+    expect(record.streak.currentStreak).toBe(0);
+    expect(record.fatigue.sessions).toEqual([]);
+    expect(record.bestE1rmKg).toEqual({ squat: 180, bench: 120, deadlift: 220 });
+  });
+
+  it('refuses even when a real lift is in the same session', () => {
+    // The mixed case: one squat set and one accessory set. `MIXED_LIFTS` would
+    // also refuse this, so the test pins WHICH refusal fires — the lift-name
+    // check runs first, and its message is the one that explains the ruling.
+    const applied = applyTrainingSession(
+      newServerRecord(),
+      0,
+      proposalOf([set('squat', 172.5, 3, 8), accessorySet]),
+      'p-mixed',
+    );
+    expect(applied.ok).toBe(false);
+    if (applied.ok) return;
+    expect(applied.error.code).toBe('NOT_A_COMPETITION_LIFT');
+  });
+
+  it('and a session of only competition lifts is still accepted', () => {
+    // The positive control for all three refusals above: a guard that refused
+    // everything would satisfy them too.
+    const applied = applyTrainingSession(
+      newServerRecord(),
+      0,
+      proposalOf([set('squat', 172.5, 3, 8)]),
+      'p-ok',
+    );
+    expect(applied.ok).toBe(true);
+  });
+
+  it('the daily rotation names no lift the progression boundary cannot answer for', () => {
+    // The rotation is the one place an accessory day could be introduced by
+    // editing a constant. Until `progression.ts` can carry a Training IQ fact
+    // and a session that reports no `LiftKind`, that edit would put a session on
+    // screen the server refuses — so it is checked here as well as in
+    // `sessionTuning.test.ts`.
+    for (const lift of SESSION_TUNING.LIFT_ROTATION) {
+      expect(LIFT_ORDER, `${lift}`).toContain(lift);
+      expect(lift).not.toBe('accessory');
+    }
+    for (let day = 0; day < 12; day += 1) {
+      expect(LIFT_ORDER as readonly string[], `day ${day}`).toContain(liftForDay(day));
+    }
   });
 });
 

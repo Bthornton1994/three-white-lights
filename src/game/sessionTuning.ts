@@ -69,19 +69,28 @@ export const SESSION_TUNING = Object.freeze({
   /**
    * The daily rotation (GDD §3.2: "One lift per day ... on rotation").
    *
-   * THREE LIFTS, NOT FOUR, AND THIS IS A KNOWN DIVERGENCE FROM THE GDD rather
-   * than an oversight. §3.2 names "squat day, bench day, deadlift day,
-   * accessory day". An accessory day cannot be built through the progression
-   * boundary as it stands: `TrainingSetReport.lift` is `meet.ts`'s `LiftKind`,
-   * which is exactly the three contested lifts and (per its own comment) "must
-   * never grow a fourth member", and `ConfirmedFacts.bestE1rmKg` is keyed by the
-   * same three. So an accessory session has no lift it can name on the wire and
-   * no e1RM for its close-out to move — which is the one thing §3.2 says the
-   * close-out is for.
+   * THREE LIFTS, NOT FOUR. §3.2 names "squat day, bench day, deadlift day,
+   * accessory day", and what an accessory day may move HAS NOW BEEN RULED:
+   * `LiftKind` stays exactly the three contested lifts, matching real meet
+   * structure; accessory work does not write `bestE1rmKg` and produces no e1RM
+   * close-out; it contributes **Training IQ** (GDD §2's existing currency) and
+   * nothing else lift-specific.
    *
-   * Adding a fourth entry here without widening that boundary would put a
-   * session on screen that cannot be recorded. Whoever widens it owns the
-   * decision about what an accessory day's payoff beat is.
+   * SO THIS LIST IS STILL THREE, AND THE REASON HAS CHANGED. It is no longer an
+   * unanswered question — it is that the ruling's other half is not built.
+   * Recording an accessory session needs two things `progression.ts` does not
+   * have: a `trainingIq` fact (with a §8.1 protection answer, which is a real
+   * decision — Training IQ is "how well you train", so whether it counts as
+   * training pace under §8.1 has to be answered rather than assumed) and a
+   * proposal kind for a session that reports no `LiftKind` at all. Adding a
+   * fourth entry here before those exist would put a session on screen that the
+   * server refuses — `sessionServer.ts` now returns `NOT_A_COMPETITION_LIFT`
+   * rather than half-recording it, and `sessionServer.test.ts` checks this list
+   * against `LIFT_ORDER` for exactly that reason.
+   *
+   * The parts of the ruling that ARE enforced today are the refusals: see the
+   * accessory-day section of `sessionServer.ts`'s header for the compile-time
+   * and runtime fences.
    */
   LIFT_ROTATION: Object.freeze(['squat', 'bench', 'deadlift'] as const satisfies readonly LiftKind[]),
 

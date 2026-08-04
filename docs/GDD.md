@@ -774,7 +774,7 @@ work.
       (USAPL, USPA, NPL)?
 - [ ] Equipped lifting: a mode, a cosmetic layer, or out of scope for v1?
 
-**Raised by the build, and both are §3 conflicts rather than unknowns — the code
+**Raised by the build. These are §3 conflicts rather than unknowns — the code
 diverges from this document today and is doing so knowingly rather than quietly.**
 
 - [ ] **The RPE choice is degenerate on reward.** §3.3 says picking an RPE target
@@ -798,17 +798,58 @@ diverges from this document today and is doing so knowingly rather than quietly.
       timing-window width** but not in reward, and §3.3's claim is stronger than
       the code earns.
 
-- [ ] **Accessory day has no lift it can name.** §3.2 puts an accessory day in
-      the rotation. `meet.ts`'s `LiftKind` is squat/bench/deadlift, and
-      `ConfirmedFacts.bestE1rmKg` is keyed the same, so an accessory session has
-      nothing to report on the progression wire and no e1RM for its close-out to
-      move. The session loop **rotates three lifts** and says so in
-      `SESSION_TUNING.LIFT_ROTATION` rather than silently widening a boundary
-      that took several rounds to fence.
-      Three ways out: widen the lift vocabulary for training only, keeping the
-      meet engine's three; let accessory day feed Training IQ or technique points
-      instead, both of which already exist as §2 currencies; or drop accessory day
-      and correct §3.2.
+- [x] **Accessory day has no lift it can name — RULED.** §3.2 puts an accessory
+      day in the rotation and `meet.ts`'s `LiftKind` is squat/bench/deadlift.
+      **The ruling: `LiftKind` stays exactly three members, matching real meet
+      structure. Accessory day does not write `bestE1rmKg` and produces no e1RM
+      close-out. It contributes Training IQ (§2's existing currency) and nothing
+      else lift-specific.**
+      Built against that ruling: the refusals. `sessionServer.ts` fences the
+      boundary at compile time — `ACCESSORY_IS_NOT_A_COMPETITION_LIFT`,
+      `REPORTED_LIFT_IS_A_COMPETITION_LIFT` and a non-vacuity control — so
+      widening `LiftKind`, or widening the wire's `TrainingSetReport.lift` to
+      `SimLift` to sneak accessory through, is a build error. And at runtime,
+      `NOT_A_COMPETITION_LIFT`, so a hand-edited save or a JSON body naming
+      accessory is refused whole. Before this, such a session was **accepted**:
+      the streak advanced, a fatigue row was written under `lift: 'accessory'`,
+      and `AppliedTrainingSession.bestE1rmKg` came back `undefined` while typed
+      `number | null` — the e1RM path survived only because `estimate >
+      undefined` happens to be false.
+      **Still outstanding, and why `SESSION_TUNING.LIFT_ROTATION` is still three
+      lifts:** an accessory day cannot yet be *recorded*. `progression.ts` needs
+      a `trainingIq` fact and a proposal kind for a session that reports no
+      `LiftKind`, and the close-out needs an accessory variant that shows IQ
+      instead of an e1RM. Adding a fourth rotation entry before those exist
+      would put a session on screen that the server refuses.
+      **One live question inside that work:** §8.1 forbids selling training
+      pace, and `progression.ts` answers "can this be bought?" per fact. Training
+      IQ is "how *well* you train" and shapes long-run growth, so the answer
+      reads as `protected` — but the name `trainingIq` slips past
+      `PERFORMANCE_FACT_VOCABULARY.pace`, which is a **name**-based floor
+      containing no word it matches. A fact that means pace without naming it is
+      precisely what that floor cannot see, so whoever adds it must answer §8.1
+      deliberately rather than let the scan answer by silence.
+
+- [ ] **A played session is faster than §3.2's floor, and that is not treated as
+      a defect.** §3.2 budgets 60–90 s. Measured by `session.test.ts`, playing
+      every rep of the shipped 5 × 3 through the real lift mechanic with a
+      cue-obedient player: **54.3 s at RPE 6, 55.6 s at RPE 7, 57.8 s at RPE 8,
+      58.3 s at RPE 9, 60.3 s at RPE 10** — machine time only, so four of the
+      five rungs land under the floor.
+      The suite asserts the **ceiling only**. §12.2 judges this piece against a
+      best-in-class daily-habit app on "time-to-first-input, session length, and
+      whether the close-out moment lands", and the bar is that ours "must not be
+      slower or flabbier" — a session that finishes early wins that bar rather
+      than failing it. A `>= 60_000` assertion did exist, and it passed only
+      because `SESSION_TUNING.HUMAN_INPUT_BUDGET_MS` — a guess that no shipping
+      code reads — was added to the measurement first. Propping a floor up with a
+      guessed constant is not a check, so the floor is gone and the divergence is
+      recorded here.
+      What needs deciding is whether 60 s is a floor at all, or whether §3.2
+      means "60–90 s **including** the player's own reading and tapping" — in
+      which case there is no divergence, because with that allowance the ladder
+      runs 63.3–69.3 s. Until it is answered, the code is faster than the
+      document and says so out loud.
 
 ---
 
