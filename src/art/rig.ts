@@ -406,103 +406,132 @@ export const RIG_GEOMETRY = {
   NECK_OVERLAP: 1,
 
   /**
-   * Upper arm: shoulder attach -> biceps belly -> elbow. THREE radii, for
-   * exactly the reason `FOREARM_R` below has three, applied to the segment above
-   * it.
+   * Upper arm: shoulder attach -> elbow. TWO radii, a cone.
    *
-   * WAS [2.7, 2.1], a cone, and it was left a cone in the round that bellied the
-   * forearm. That round's own argument condemns it: `spriteMarks.ts` stamps a
-   * BICEPS mark at `BICEPS_BELLY_ALONG`, and its comment says "the belly of the
-   * biceps sits in the upper third of the upper arm" — on a mass that tapered
-   * monotonically from shoulder to elbow and had no belly anywhere. Same defect,
-   * same sentence, one segment up: the mark was drawing a shape the geometry did
-   * not have.
+   * IT WAS [2.7, 3.0, 2.1] FOR EXACTLY ONE ROUND AND IS BACK. The case made for
+   * the belly was sound as far as it went — `spriteMarks.ts` stamps a BICEPS
+   * mark at `BICEPS_BELLY_ALONG` on a bone that tapers monotonically, and the
+   * forearm's drawn 7.6 px against the upper arm's 6.9 at that same fraction
+   * inverts the arm's proportion against `sprite-ref-1`. Both of those are true
+   * and neither is fixed here, because THIS CONSTANT CANNOT REACH THEM. What it
+   * did instead was paint over the singlet. The arithmetic is below, it is short,
+   * and it closes off the whole direction.
    *
-   * AND THE CONE HAD INVERTED THE ARM'S MODELLED PROPORTION. Every figure in
-   * this table is OURS, computed from these radii by the convention this file
-   * already uses — drawn width = 2 x (radius + the one px of contour):
+   * ---------------------------------------------------------------------------
+   * WHY A BICEPS BELLY IS NOT A LEVER ON THIS RIG
+   * ---------------------------------------------------------------------------
    *
-   *              before   after
-   *   shoulder     7.4     7.4    (attachment; it sits under the deltoid disc,
-   *                                and `limbWindows` clips it out entirely)
-   *   biceps       6.9     8.0    <- the modelled peak of the arm, now
-   *   elbow        6.2     6.2
-   *   forearm      7.6     7.6
-   *   wrist        5.8     5.8
+   * READ THIS BEFORE WIDENING THE UPPER ARM FOR ANY REASON. Every figure in this
+   * block is OURS, computed from the drawings in `POSES` above by this file's own
+   * convention — a mass's outboard reach is |offset from centre| + radius + the
+   * one px of contour `PartOptions.edge` stamps.
    *
-   * Before, the widest mass anywhere on the bare arm was the FOREARM belly, 7.6
-   * against 6.9 of upper arm at the very fraction `spriteMarks.ts` stamps a
-   * biceps on. In `sprite-ref-1` the upper arm is plainly the dominant mass of
-   * the arm — that is an eye judgement off the decoded crop, not a measured
-   * figure, and no committed metric measures per-bone width on the reference, so
-   * it is stated as what it is. Belly to belly, ours is now 8.0 upper against
-   * 7.6 forearm.
+   * 1. THE HANDS ARE THE WIDEST POINT AT EVERY POSE. `handHalfW` is 15 in ALL
+   *    ELEVEN drawings — grep it — against `elbowHalfW` of 10.4 to 11.5 and
+   *    `shoulderHalfW` of 8.0 to 8.8. The lifter is holding a bar, so his grip
+   *    is fixed and his elbows are inside it by four to five pixels at every
+   *    depth this rig draws.
    *
-   * BELLY-TO-BELLY IS THE RIGHT COMPARISON, and the old ceiling argument on
-   * `FOREARM_R` below was not. It read the forearm's 7.6 against the upper arm's
-   * 7.4 AT THE SHOULDER — an attachment radius on a bone with no modelled belly,
-   * i.e. a proportion ceiling measured off the shape defect this constant fixes.
-   * That paragraph is rewritten below and both radii are now swept together.
+   * 2. THE FOREARM CROSSES BACK OVER THE UPPER ARM'S OWN ROWS. In every pose the
+   *    elbow is BELOW the hand (BRACE: elbowY 29, handY 22; HOLE: 43.5 and 36),
+   *    so the forearm runs from the elbow UP and OUT to the fist and passes
+   *    outboard of the upper arm through the whole shoulder->elbow row band. The
+   *    silhouette in those rows is the forearm's, not the biceps'.
    *
-   * 3.0 IS ONE NOTCH PAST THE FOREARM ON THE 0.2 PX GRID BOTH ARE SWEPT ON, AND
-   * IT IS NOT THE VALUE THE FLOOR-SHARE METRIC PREFERS. Said plainly because the
-   * two answers disagree and the metric's answer is an artefact. Swept jointly
-   * with `FOREARM_R[1]` — 6 x 6 grid, 0.2 px steps, all 448 frames at each point
-   * — the far arm's mean clearance under the reference bound peaks in the
-   * forearm axis at 2.8 for EVERY biceps radius, but in the biceps axis it is
-   * flat to 3.2 and then climbs without turning: 4.58, 4.46, 4.52, 4.42, 4.51,
-   * 5.05, 5.29, 5.71, 5.68 as the biceps goes 2.45 (the old cone's interpolated
-   * value at this fraction), 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0. All ours,
-   * measured. The full grid is in `lifterSprite.test.ts`'s KNOWN GAP comment.
+   * 3. THE ARITHMETIC AT BRACE, WHICH IS THE WIDEST-SHOULDERED STANDING POSE.
+   *    Shoulder attach = shoulderHalfW 8.3 x ATTACH.ARM_ROOT 0.82 = 6.806.
+   *    Elbow = elbowHalfW = 10.700. The mark fraction is 0.42, so the belly axis
+   *    sits at 6.806 + (10.700 - 6.806) x 0.42 = 8.441 from centre. Across all
+   *    eleven drawings that axis runs 8.215 (STAND) to 8.926 (ASC_DRIVE).
    *
-   * WHY THAT CLIMB IS NOT A REASON TO GO WIDER, measured rather than argued.
-   * Every figure in this paragraph is OURS, off our own rendered frames. At this
-   * fraction the biceps is not on the silhouette at all: at BRACE and in the
-   * HOLE the outermost skin pixel of every row from the shoulder to the elbow is
-   * IDENTICAL, row for row, at every biceps radius from 2.448 to 4.0, because
-   * the lifter's hands are wider than his elbows and the FOREARM is the outboard
-   * mass in that band at every pose this rig draws. What the extra width does
-   * instead is paint over the singlet: at those two poses the drawn singlet goes
-   * 141 -> 125 px and 98 -> 76 px across that same range, and the strap on the
-   * far shoulder disappears entirely past about 3.6. So the metric improves
-   * because the arm window catches skin pixels that used to be singlet, not
-   * because the arm got bigger. Buying floor share by burying the singlet is the
-   * same trade the forearm declined one constant down, and it is declined here
-   * for the same reason.
+   *      biceps r    upper-arm reach at the belly       fist outer edge
+   *      2.448 (*)   8.441 + 2.448 + 1 = 11.889         15 + HAND_R 1.9 + 1
+   *      3.0         8.441 + 3.0   + 1 = 12.441            = 17.9  (near side)
+   *      3.4         8.441 + 3.4   + 1 = 12.841            = 18.9  (far side,
+   *      4.0         8.441 + 4.0   + 1 = 13.441             + GRIP_ASYMMETRY_PX)
+   *
+   *    (*) what the cone interpolates to at f = 0.42, and therefore what ships.
+   *
+   *    AND THE UPPER ARM'S FURTHEST PIXEL IS NOT AT THE BELLY AT ALL. Swept over
+   *    every pose the renderer can draw, it is 14 px from centre — at the ELBOW's
+   *    rounded cap, where the radius is 2.1 but the axis is out at 11.5 — and it
+   *    is 14 at the shipped cone and at every belly radius up to 4.0 alike. The
+   *    grip is 15. `lifterSprite.test.ts` asserts that number.
+   *
+   *      SO THE BELLY CANNOT APPEAR IN THE OUTLINE. Measured on the drawn
+   *      capsules rather than argued: over 14,260 (pose, sign, row) triples —
+   *      the eleven authored drawings plus all 416 deformed ones — the arm's
+   *      outermost column is IDENTICAL at every biceps radius from 2.448 to 3.8.
+   *      Zero rows differ. At a cartoon 4.0 it finally moves, by ONE px, in 16
+   *      of those 14,260, none of them on an authored drawing; all sixteen are
+   *      strained poses where `STRAIN.ELBOW_TUCK` has pulled the elbow in to 7.6.
+   *      Both figures are asserted in `lifterSprite.test.ts`.
+   *
+   * 4. THE MEASUREMENT WINDOW BARELY SEES IT EITHER. The belly axis is 8.2-8.9
+   *    px from centre, and `CRAFT.LIMB_TORSO_CLEARANCE_PX` puts the arm window's
+   *    inner edge at `torsoOut` 9.5-10.14. Only the belly's OUTBOARD FLANK enters
+   *    the window — which is why the far arm's mean window size did move, 52.6 ->
+   *    53.1 px, and why "clipped out of the window at every pose", as the
+   *    reverted round put it, was overstated.
+   *
+   * 5. SO THE ONLY CHANNEL LEFT IS INBOARD, ONTO THE KIT. `renderLifterFrame`
+   *    draws `drawTorso` BEFORE both `drawArm` calls, so a wider upper arm paints
+   *    over the singlet and the shoulder straps. Measured over the 416-frame pose
+   *    space, the FAR strap seam (screen-right, the dimmed arm) lands:
+   *
+   *      biceps r        far STRAP_SEAM px      frames with the far seam gone
+   *      cone (ships)    343 of 1248 (27.5%)      206 of 416
+   *      belly 3.0       130 of 1248 (10.4%)      322 of 416
+   *      belly 3.4        34 of 1248 ( 2.7%)      383 of 416
+   *
+   *    The NEAR seam is 99.8% at the cone and at 3.0, and 96.4% at 3.4 — so an
+   *    aggregate over both sides hides almost all of this, which is why
+   *    `spriteMarks.test.ts` floors the two sides separately. Drawn singlet
+   *    pixels fall with it: 153 -> 147 -> 142 at BRACE and 112 -> 105 -> 103 in
+   *    the HOLE. (The reverted round quoted 141 and 98 for the same two poses; it
+   *    did not say at what strain, pitch or load it rendered them, and this file
+   *    measures 153/112 at strain 0, pitch 0, 250 kg. A bare pixel count is easy
+   *    to quote at the wrong spec, which is a reason to guard the STRAP MARK
+   *    rather than the count.)
+   *
+   * 6. AND THE CLAUSE IT WAS AIMED AT DID NOT MOVE. 80 frames over the reference
+   *    floor-share bound before and after, worst excess 0.0400 both times, far
+   *    arm mean clearance 4.58 -> 4.42 pt — 0.16 pt WORSE. See the KNOWN GAP
+   *    comment in `lifterSprite.test.ts` for the full 6 x 6 sweep.
+   *
+   * WHAT THAT LEAVES. The arm's proportion against the reference is a real
+   * finding and it is not answered here; two critics have read our figure at 6x
+   * as "arms with a torso behind them" where the reference's torso is the
+   * dominant mass. That is a question about the whole rig, not about a radius,
+   * and it is on the human blocker list rather than in this constant.
    *
    * THE ELBOW STAYS 2.1 AND MUST. It is `FOREARM_R[0]` exactly, so the two
    * capsules meet at the same width and the joint is a break in shading rather
-   * than a step in the silhouette. Raising it fattens the one part of the arm
-   * that should be the narrowest thing between two bellies.
+   * than a step in the silhouette.
    */
-  UPPER_ARM_R: [2.7, 3.0, 2.1] as const,
+  UPPER_ARM_R: [2.7, 2.1] as const,
   /**
-   * Where the biceps belly sits, shoulder (0) to elbow (1).
+   * Where the biceps MARK sits, shoulder (0) to elbow (1).
    *
-   * ONE NUMBER FOR THE MASS AND THE MARK, the same move `FOREARM_BELLY_ALONG`
-   * made. `spriteMarks.ts` used to carry its own `BICEPS_TOWARD_ELBOW` at this
-   * value; now that the mass has a belly, the fraction names a place ON the
-   * mass, and a belly mark that can slide off the belly it is naming is the
-   * defect `singletHemY` was extracted to prevent.
+   * ONE NUMBER, AND IT LIVES HERE RATHER THAN IN `MARK_ANCHOR_GEOMETRY`.
+   * `spriteMarks.ts` used to carry its own `BICEPS_TOWARD_ELBOW` at this exact
+   * value; that duplicate is gone and `anchorPoint('BICEPS')` reads `upperArmSpan`
+   * below, which reads this. Keep it that way whatever happens to the radii: two
+   * copies of a fraction that has to agree is the defect `singletHemY` was
+   * extracted to prevent, and it does not stop being a defect because the mass
+   * under the mark is currently a cone.
    *
-   * Proximal on purpose, and that reason is unchanged from the mark table: past
-   * halfway the near forearm crosses in front of the upper arm at squat depth
-   * and there is no upper arm left to paint on. It also lands just under the
-   * deltoid disc, which reaches `NUDGE.DELTOID_DROP + ATTACH.DELTOID_R` = 3.1
-   * rows below the shoulder line on a shoulder-to-elbow run of about 9 rows —
-   * i.e. f = 0.34 — so 0.42 is the first bare row of upper arm below it. Ours,
-   * read off the drawn rig.
+   * IT IS A MARK POSITION AND NOT A DRAWN BELLY, said plainly. `UPPER_ARM_R` is
+   * two radii — the mass tapers monotonically through this fraction and does not
+   * swell at it. That mismatch is real and is the one thing the reverted round
+   * got right; see `UPPER_ARM_R` for why the fix is not a third radius.
    *
-   * WHAT THAT COSTS, AND IT IS NOT NOTHING. Ours, measured on the drawn rig: at
-   * 0.42 the belly sits about 8.2 px from centre while
-   * `CRAFT.LIMB_TORSO_CLEARANCE_PX` puts the arm measurement window's inner edge
-   * at 9.5-10.0 — so the belly is CLIPPED OUT OF THE WINDOW at every pose, and
-   * `UPPER_ARM_R[1]` reaches the floor-share number only through the
-   * belly->elbow capsule's taper. Moving this fraction
-   * outboard would put the belly in the window and on the silhouette, but it
-   * moves the biceps MARK with it — that is the whole point of the constant —
-   * and the mark's own constraint above is what stops it. Left as a knob rather
-   * than resolved.
+   * Proximal on purpose. Past halfway the near forearm crosses in front of the
+   * upper arm at squat depth and there is no upper arm left to paint on. It also
+   * lands just under the deltoid disc, which reaches
+   * `NUDGE.DELTOID_DROP + ATTACH.DELTOID_R` = 3.1 rows below the shoulder line on
+   * a shoulder-to-elbow run of about 9 rows — i.e. f = 0.34 — so 0.42 is the
+   * first bare row of upper arm below it. Ours, read off the drawn rig.
    */
   BICEPS_BELLY_ALONG: 0.42,
   /**
@@ -524,10 +553,9 @@ export const RIG_GEOMETRY = {
    * two of them contour, and over the 448-frame sweep the far arm's window ran
    * 37.1% floor with a mean clearance of 0.7 points under the bound
    * `lifterSprite.test.ts` measures off the reference. At [2.1, 2.8, 1.9] it
-   * runs 31.1% with 4.4 points of clearance (it was 4.6 before `UPPER_ARM_R`
-   * grew a belly; the arm is measured in ONE window, so the two constants share
-   * a number). Both figures are OURS, measured on our own frames; what the bound
-   * is, is the reference's business and is computed there.
+   * runs 31.1% with 4.58 points of clearance. Both figures are OURS, measured on
+   * our own frames; what the bound is, is the reference's business and is
+   * computed there.
    *
    * 2.8 IS A MEASURED PEAK, NOT A ROUND NUMBER, and it is not the widest that
    * scores well. Widening the belly raises the window's pixel count, and
@@ -535,30 +563,39 @@ export const RIG_GEOMETRY = {
    * reference's worst patch of a given size shrinks with the size. Past 2.8 the
    * extra pixels cost more bound than they buy margin. All ours, measured.
    *
-   * THAT PEAK IS NOW A 2-D ONE, and it was a 1-D slice when it was written. The
+   * THAT PEAK IS A 2-D ONE, and it was a 1-D slice when it was written. The
    * original sweep held `UPPER_ARM_R` fixed and moved this radius alone, which
    * is a line through a space with at least two axes in it; the claim "past 2.8
    * the extra pixels cost more bound than they buy" was true only along that
    * line. Re-swept jointly, 6 x 6 at 0.2 px steps on both axes over all 448
-   * frames, the far arm's mean clearance still peaks at forearm 2.8 in EVERY one
-   * of the nine biceps rows tried (2.45 through 4.0) — so the turn is real and
-   * it is not an artefact of the fixed upper arm. The grid is printed in
-   * `lifterSprite.test.ts`'s KNOWN GAP comment. The violation COUNT keeps
-   * drifting either way at that scale, because it is a threshold crossing on a
-   * quantised drawing and a fifth of a pixel flips whole poses across it. The
-   * clearance is the quantity, and it turns here.
+   * frames, the far arm's mean clearance PEAKS AT FOREARM 2.8 IN FOUR OF THE SIX
+   * BICEPS ROWS AND TIES IN THE OTHER TWO.
    *
-   * AND 2.8 IS ALSO WHERE THE PROPORTION RUNS OUT — RESTATED BELLY TO BELLY,
-   * WHICH IS NOT WHAT THIS PARAGRAPH USED TO SAY. It used to read the forearm's
-   * drawn 7.6 against the UPPER ARM AT THE SHOULDER, 7.4: an attachment radius,
-   * on a bone that was then a cone with no modelled belly at all. That is a
-   * ceiling measured off a shape defect, and the defect is fixed one constant
-   * up. The comparison that means something is belly against belly: 7.6 forearm
-   * against `UPPER_ARM_R`'s 8.0 biceps. One notch under the upper arm is a
-   * forearm; level with it or over it is a forearm thicker than the arm it hangs
-   * off, and rendered frames at 3.4 close the negative space between the forearm
-   * and the ribs that is most of what reads as "a man holding a bar". Both
-   * figures ours.
+   * That is a correction to what this paragraph said last round, which was "peaks
+   * at forearm 2.8 in EVERY one of the nine biceps rows tried". Two rows too
+   * strong. Margins of 2.8 over the next-best cell (always fa 2.6), from the grid
+   * in `lifterSprite.test.ts`: 0.26, 0.16, 0.19, 0.13 pt in the ua 2.45 / 2.60 /
+   * 2.80 / 3.00 rows — a peak — and 0.06 pt (ua 3.20) and 0.05 pt (ua 3.40),
+   * which is a tie at this grid's own resolution. The same paragraph says a fifth
+   * of a pixel flips whole poses across the threshold; a margin of 0.05 pt cannot
+   * be read as a turn on a metric that noisy. The shipped row is ua 2.45 — the
+   * cone's interpolated radius at `BICEPS_BELLY_ALONG` — and there the peak is
+   * the clearest of the six.
+   *
+   * The violation COUNT keeps drifting either way at that scale, because it is a
+   * threshold crossing on a quantised drawing. The clearance is the quantity.
+   *
+   * AND 2.8 IS ALSO WHERE THE PROPORTION RUNS OUT. Drawn (radius plus the one px
+   * of contour, doubled) the belly is 7.6 px against the upper arm's 7.4 at the
+   * shoulder attachment and 6.9 at `BICEPS_BELLY_ALONG`. Stating both, because
+   * this paragraph has now been written each way and neither reading is a clean
+   * ceiling: the shoulder figure is an attachment radius under the deltoid disc,
+   * and the belly figure is a point on a cone. What is NOT in doubt is that
+   * rendered frames at 3.4 close the negative space between the forearm and the
+   * ribs that is most of what reads as "a man holding a bar" — that is the
+   * binding constraint, and it is a picture rather than a ratio. All figures ours.
+   * The arm-versus-torso proportion question this keeps circling is on the human
+   * blocker list; see `UPPER_ARM_R`.
    *
    * THE WRIST IS THE NARROWEST POINT AND MUST STAY THAT WAY. 1.9 is the hand's
    * own radius (`HAND_R`), so the capsule disappears into the fist instead of
@@ -794,13 +831,22 @@ export function armSpan(
 }
 
 /**
- * The upper arm's three points: shoulder attach, biceps belly, elbow.
+ * The upper arm's three points: shoulder attach, biceps mark, elbow.
  *
- * Same contract as `forearmSpan` below and for the same reason: the composer
- * draws the mass between these points, `craftMetrics.limbWindows` measures the
- * mass between these points, and `spriteMarks.ts` anchors the BICEPS mark to the
- * middle one. Three copies of the arithmetic is three chances for the measured
- * window, the drawn mass and the authored mark to drift apart.
+ * ONE FUNCTION, for the same reason `singletHemY` is one function. The composer
+ * draws the mass between the OUTER two (`drawArm`), `craftMetrics.limbWindows`
+ * measures the mass between the same outer two, and `spriteMarks.ts` anchors the
+ * BICEPS mark to the middle one. Three copies of the arithmetic is three chances
+ * for the measured window, the drawn mass and the authored mark to drift apart,
+ * and a limb check aimed at empty space is the shape of defect this area keeps
+ * producing.
+ *
+ * `bellyX/bellyY` IS A MARK ANCHOR, NOT A DRAWN BELLY. `UPPER_ARM_R` is two
+ * radii: the mass tapers straight through this point. It is returned from here
+ * anyway so `RIG_GEOMETRY.BICEPS_BELLY_ALONG` has exactly one reader in the tree
+ * — `spriteMarks.ts` used to keep a second copy of the fraction and they are the
+ * kind of pair that drifts. Unlike `forearmSpan` below, whose middle point IS a
+ * drawn belly, nothing here consumes it as geometry.
  */
 export function upperArmSpan(
   pose: Pose,
