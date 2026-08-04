@@ -422,10 +422,22 @@ export const GYM_CROWD = Object.freeze({
    * Rows of rise each tier lags the one in FRONT of it.
    *
    * The front rows come up first, which is what a hall does and is also what
-   * keeps the back of the band at rest while the front is moving. At 1 the wave
-   * takes `ROW_RISE_LAG_PX * (tiers - 1)` more of `crowdRisePx` to reach the
-   * back tier than the front, so the useful range of the rise is
-   * `ROW_RISE_MAX_PX + ROW_RISE_LAG_PX * (tiers - 1)` — 7 on the shipped band.
+   * keeps the back of the band at rest while the front is moving. The wave takes
+   * `ROW_RISE_LAG_PX * (tiers - 1)` more of `crowdRisePx` to reach the back tier
+   * than the front, so the useful range of the rise is
+   * `ROW_RISE_MAX_PX + ROW_RISE_LAG_PX * (tiers - 1)` — **10** on the shipped
+   * band: four tiers, a cap of 4, a lag of 2.
+   *
+   * This line said "7", and "At 1 the wave takes...", which is that arithmetic
+   * at a LAG OF 1. The number was left behind when the lag went to 2. It matters
+   * because `walkout.test.ts` now sweeps that range under the title "at every
+   * rise" and asserts on rendered pixels that nothing past the end of it draws a
+   * different room — a sweep to 7 would have stopped three short of the cap.
+   * (On the shipped band the picture in fact stops changing at 8 rather than 10,
+   * because the back tier's heads are already on the band's top row and
+   * `paintCrowd` clamps them there; 10 is the bound this arithmetic gives
+   * without knowing about that clamp, and sweeping past the last change costs
+   * two renders.)
    */
   ROW_RISE_LAG_PX: 2,
 
