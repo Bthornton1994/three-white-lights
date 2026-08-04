@@ -1,11 +1,11 @@
-# Captured 2026-08-04T20:03:28Z at 8b7ee6a on claude/agent-config-setup-m2r6ny
+# Captured 2026-08-04T20:15:59Z at 9602da1 on claude/agent-config-setup-m2r6ny
 # NOTE: committed AFTER capture; the commit adding it is one later than the stamp.
 
 ## npm test
  Test Files  57 passed (57)
-      Tests  2405 passed (2405)
-   Start at  20:03:29
-   Duration  35.21s (transform 4.11s, setup 0ms, import 17.04s, tests 61.36s, environment 8ms)
+      Tests  2418 passed (2418)
+   Start at  20:16:00
+   Duration  35.14s (transform 4.63s, setup 0ms, import 17.80s, tests 59.64s, environment 9ms)
 
 
 ## npm run typecheck
@@ -15,13 +15,12 @@
 (exit 0)
 
 ## mutation run by the LEAD AGENT, not the builder
-src/art/rig.ts  UPPER_ARM_R [2.7, 2.1] -> [2.7, 3.4]   (an inward-painting change that used to be silent)
-   x lands EVERY mark, kit and flesh, on most of the pixels it asks for - per side
-   x breaks the arm ramp between the deltoid and the biceps
-   x never lets the upper arm out past the fist, even at the cartoon radius
-   x KNOWN GAP: an arm spends more of itself on the ramp floor than the reference ever does
-   x never out-values the bare leg it is worn on, by area, anywhere in the pose space
-   Tests  5 failed | 352 passed (357) in src/art/  -- reverted, git diff clean
-
-## browser, run by the lead on the merged shell work
-   PASSED 74 checks, failures [], pageErrors []; route.json capturedFrom workingTree: clean
+src/game/sessionServer.ts:434  delete the card.unit !== PROGRESSION_E1RM_UNIT check
+   tsc: error TS2322: Type 'TrainingCardReport' is not assignable to type
+        '{ readonly unit: "kg"; readonly kilogramSets: ... }'
+        Property 'kilogramSets' is missing in the 'lb' arm.
+   x THE POUND SESSION: every other check passes and this one refuses
+   x runs the unit check FIRST, and the proof is which refusal comes back
+   x refuses a unit it has never heard of, rather than assuming kilograms
+   Tests  3 failed | 39 passed (42) in sessionServer.test.ts
+   BOTH a compile error and a test failure - stronger than the meet path's, as claimed. Reverted.

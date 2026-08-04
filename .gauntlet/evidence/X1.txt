@@ -1,0 +1,121 @@
+EVIDENCE BUNDLE — piece X1
+generated 2026-08-04T20:23:08.022Z
+repo /home/user/three-white-lights
+commit 9602da16ebd03a97f75772288ea7aae0a4731106
+working tree clean (ignoring .gauntlet/ run artefacts)
+
+This file is raw, unedited output of the commands shown. It is produced by
+the run harness, not by the agent that wrote the code under test.
+
+CHECK THE COMMIT ABOVE against the code you were asked to grade. If it does
+not match, this bundle describes different code and its results do not apply
+— report the evidence as stale rather than grading against it.
+
+======================================================================
+$ npx vitest run src/game/meetServer.test.ts --reporter=verbose
+[tests] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/three-white-lights
+
+ ✓ src/game/meetServer.test.ts > the total is the server’s arithmetic (GDD §6.4) > is the sum of the best SUCCESSFUL attempt per lift 6ms
+ ✓ src/game/meetServer.test.ts > the total is the server’s arithmetic (GDD §6.4) > equals what the engine says the meet totalled 1ms
+ ✓ src/game/meetServer.test.ts > the total is the server’s arithmetic (GDD §6.4) > matches the total of a meet actually played on screen 52ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > refuses a weight that goes down within a lift 1ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > refuses a repeat after a good lift 0ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > refuses a weight off the declaration grid 0ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > refuses a weight below the bar 0ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > refuses attempts out of order 1ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > refuses a fourth attempt on a lift 1ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > refuses attempts reported after a bomb-out 1ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > refuses an unfinished card 0ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > refuses a second result for the same meet 1ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > refuses a day that is not a day index 0ms
+ ✓ src/game/meetServer.test.ts > an illegal card is refused, not scored > accepts the legal card the illegal ones were built from 1ms
+ ✓ src/game/meetServer.test.ts > what a meet moves > raises the total from null on a lifter’s first meet 1ms
+ ✓ src/game/meetServer.test.ts > what a meet moves > keeps the better total when a later meet is worse 0ms
+ ✓ src/game/meetServer.test.ts > what a meet moves > raises it when a later meet is better 0ms
+ ✓ src/game/meetServer.test.ts > what a meet moves > leaves e1RM EXACTLY where it was — a meet is not a training session 1ms
+ ✓ src/game/meetServer.test.ts > what a meet moves > leaves the streak, the wallet and the hidden ledger exactly where they were 2ms
+ ✓ src/game/meetServer.test.ts > what a meet moves > cannot be changed by a balance — nothing purchasable reaches a total 1ms
+ ✓ src/game/meetServer.test.ts > what a meet moves > bumps the revision and appends exactly one meet 0ms
+ ✓ src/game/meetServer.test.ts > what a meet moves > produces a wire the one door actually accepts 1ms
+ ✓ src/game/meetServer.test.ts > a bomb-out takes nothing (GDD §12.3) > records NO total, which is not a total of zero 0ms
+ ✓ src/game/meetServer.test.ts > a bomb-out takes nothing (GDD §12.3) > cannot erase a total the lifter already had 0ms
+ ✓ src/game/meetServer.test.ts > a bomb-out takes nothing (GDD §12.3) > leaves e1RM, the streak, the wallet and the ledger untouched 0ms
+ ✓ src/game/meetServer.test.ts > a bomb-out takes nothing (GDD §12.3) > does not place the lifter 0ms
+ ✓ src/game/meetServer.test.ts > a bomb-out takes nothing (GDD §12.3) > is still recorded — the meet happened 0ms
+ ✓ src/game/meetServer.test.ts > a bomb-out takes nothing (GDD §12.3) > is what a meet played to a bomb-out on screen produces 4ms
+ ✓ src/game/meetServer.test.ts > per-lift competition PRs > are measured against the lifter’s stored meets, not their e1RM 1ms
+ ✓ src/game/meetServer.test.ts > per-lift competition PRs > read every stored meet, not just the last one 0ms
+ ✓ src/game/meetServer.test.ts > per-lift competition PRs > are null-safe on a lifter who has bombed a lift before 0ms
+ ✓ src/game/meetServer.test.ts > placing in the field (GDD §6.5, §6.6) > is first above every ghost and last below every ghost 0ms
+ ✓ src/game/meetServer.test.ts > placing in the field (GDD §6.5, §6.6) > counts only the ghosts that actually beat the lifter 0ms
+ ✓ src/game/meetServer.test.ts > placing in the field (GDD §6.5, §6.6) > places a tie ahead of the ghost it tied with 0ms
+ ✓ src/game/meetServer.test.ts > placing in the field (GDD §6.5, §6.6) > gives a lifter with no total no place at all 0ms
+ ✓ src/game/meetServer.test.ts > placing in the field (GDD §6.5, §6.6) > separates real results on the shipped field 0ms
+ ✓ src/game/meetServer.test.ts > meetDayFacts > hands over the lifter’s best e1RM, which is what the opener is built from 0ms
+ ✓ src/game/meetServer.test.ts > meetDayFacts > falls back to the onboarding placeholder for a lift with no e1RM yet 0ms
+ ✓ src/game/meetServer.test.ts > meetDayFacts > carries the previous best total and the previous per-lift bests 0ms
+ ✓ src/game/meetServer.test.ts > previewServerRecord (DEBUG) > holds the history previewContext() describes 0ms
+ ✓ src/game/meetServer.test.ts > previewServerRecord (DEBUG) > does not collide with the meet about to be recorded 30ms
+ ✓ src/game/meetServer.test.ts > previewServerRecord (DEBUG) > stores a prior meet whose total is the sum of its own bests 0ms
+ ✓ src/game/meetServer.test.ts > the client never sends a total > has no field for one on any meet the loop can play 37ms
+ ✓ src/game/meetServer.test.ts > a total that is not in kilograms is refused, not recorded > is a legal, complete, replayable meet — the refusal is about the UNIT and nothing else 1ms
+ ✓ src/game/meetServer.test.ts > a total that is not in kilograms is refused, not recorded > refuses to write it 1ms
+ ✓ src/game/meetServer.test.ts > a total that is not in kilograms is refused, not recorded > produces no record at all, and does not touch the one it was handed 1ms
+ ✓ src/game/meetServer.test.ts > a total that is not in kilograms is refused, not recorded > does not convert — the refusal is the whole answer 1ms
+ ✓ src/game/meetServer.test.ts > a total that is not in kilograms is refused, not recorded > refuses a bombed pound meet too, where there is no total at all 1ms
+ ✓ src/game/meetServer.test.ts > a total that is not in kilograms is refused, not recorded > would have placed the lb total first in a kg field, which is the harm 0ms
+ ✓ src/game/meetServer.test.ts > a total that is not in kilograms is refused, not recorded > names the unit, and names the remedy rather than just saying no 1ms
+ ✓ src/game/meetServer.test.ts > the kilogram write path is untouched by the unit check > records the SAME NINE NUMBERS when the meet is run in kg 1ms
+ ✓ src/game/meetServer.test.ts > the kilogram write path is untouched by the unit check > still records the shipped meet, which is the one the game actually plays 0ms
+ ✓ src/game/meetServer.test.ts > the kilogram write path is untouched by the unit check > still records a kilogram bomb-out, which has no total to check the unit of 0ms
+ ✓ src/game/meetServer.test.ts > a bodyweight that is not in kilograms is refused, not recorded > THE CONVERTED-ATTEMPTS CASE: a kg meet with a pound lifter does not reach a write 1ms
+ ✓ src/game/meetServer.test.ts > a bodyweight that is not in kilograms is refused, not recorded > is the case the OLD check passed — same card, kg bodyweight, and it records 0ms
+ ✓ src/game/meetServer.test.ts > a bodyweight that is not in kilograms is refused, not recorded > discriminates the UNIT, not the magnitude and not the decimal 1ms
+ ✓ src/game/meetServer.test.ts > a bodyweight that is not in kilograms is refused, not recorded > shows what the old code would have banked, so the harm is a number 1ms
+ ✓ src/game/meetServer.test.ts > a bodyweight that is not in kilograms is refused, not recorded > refuses a bombed kg meet with a pound lifter, where there is no total at all 0ms
+ ✓ src/game/meetServer.test.ts > a bodyweight that is not in kilograms is refused, not recorded > still records a kilogram bomb-out — the check must not swallow one 0ms
+ ✓ src/game/meetServer.test.ts > a bodyweight that is not in kilograms is refused, not recorded > names which number was wrong and what to do, not just no 0ms
+ ✓ src/game/meetServer.test.ts > a bodyweight that is not in kilograms is refused, not recorded > refuses a unit nobody has taught it, which is what arrives from JSON 1ms
+ ✓ src/game/meetServer.test.ts > a bodyweight that is not in kilograms is refused, not recorded > refuses BOTH numbers under one code when both are wrong 0ms
+ ✓ src/game/meetServer.test.ts > a card whose unit is not its meet’s is refused, not replayed > THE POUND CARD AGAINST A KILOGRAM MEET: the other two checks pass and this one refuses 1ms
+ ✓ src/game/meetServer.test.ts > a card whose unit is not its meet’s is refused, not replayed > shows what the old code banked, so the harm is a number rather than a worry 1ms
+ ✓ src/game/meetServer.test.ts > a card whose unit is not its meet’s is refused, not replayed > THE POSITIVE CONTROL: the same nine numbers, declared kg, record 0ms
+ ✓ src/game/meetServer.test.ts > a card whose unit is not its meet’s is refused, not replayed > refuses the mirror too — a kilogram card against a pound meet 0ms
+ ✓ src/game/meetServer.test.ts > a card whose unit is not its meet’s is refused, not replayed > refuses before the replay, so a bombed pound card is caught too 0ms
+ ✓ src/game/meetServer.test.ts > a card whose unit is not its meet’s is refused, not replayed > still records a KILOGRAM BOMB-OUT — the check must not swallow one 0ms
+ ✓ src/game/meetServer.test.ts > a card whose unit is not its meet’s is refused, not replayed > names both units and the remedy, rather than just saying no 0ms
+ ✓ src/game/meetServer.test.ts > a card whose unit is not its meet’s is refused, not replayed > survives the transport, which is why the unit is a field and not a brand 0ms
+ ✓ src/game/meetServer.test.ts > the meet definition must be the meet being reported > refuses a report whose meetId is not this definition’s 0ms
+ ✓ src/game/meetServer.test.ts > the meet definition must be the meet being reported > is the check that makes the card’s unit worth anything 0ms
+ ✓ src/game/meetServer.test.ts > the meet definition must be the meet being reported > accepts the matched pair the mismatches were built from 0ms
+ ✓ src/game/meetServer.test.ts > the meet definition must be the meet being reported > is what the live client already satisfies, so the check costs the game nothing 30ms
+ ✓ src/game/meetServer.test.ts > a reading that declares a unit and carries no number is refused > refuses a bodyweight tagged kg with nothing under the tag 1ms
+ ✓ src/game/meetServer.test.ts > a reading that declares a unit and carries no number is refused > refuses a bodyweight tagged kg whose number is under the POUND field 0ms
+ ✓ src/game/meetServer.test.ts > a reading that declares a unit and carries no number is refused > refuses a card tagged kg with no attempts under the tag 0ms
+ ✓ src/game/meetServer.test.ts > a reading that declares a unit and carries no number is refused > refuses a card tagged kg whose attempts are under the POUND field 0ms
+ ✓ src/game/meetServer.test.ts > a reading that declares a unit and carries no number is refused > refuses a report with no card at all, rather than throwing 0ms
+ ✓ src/game/meetServer.test.ts > a reading that declares a unit and carries no number is refused > calls it MALFORMED rather than UNSUPPORTED, because the remedy is different 0ms
+ ✓ src/game/meetServer.test.ts > a reading that declares a unit and carries no number is refused > records the same submissions once the numbers are actually in them 0ms
+ ✓ src/game/meetServer.test.ts > a reading that declares a unit and carries no number is refused > never writes a hole into a wire, which is what the old check did 0ms
+ ✓ src/game/meetServer.test.ts > the unit rides in from the entry rather than being stamped on the way past > takes the report bodyweight straight off the entry the lifter weighed in as 29ms
+ ✓ src/game/meetServer.test.ts > the unit rides in from the entry rather than being stamped on the way past > ships a kilogram entry, stated rather than assumed from the field name 0ms
+ ✓ src/game/meetServer.test.ts > the unit rides in from the entry rather than being stamped on the way past > survives the transport, which is why the unit is a field and not a brand 24ms
+ ✓ src/game/meetServer.test.ts > the unit rides in from the entry rather than being stamped on the way past > will not let a pound-weighed lifter into a meet at all 0ms
+
+ Test Files  1 passed (1)
+      Tests  86 passed (86)
+   Start at  20:23:08
+   Duration  1.16s (transform 594ms, setup 0ms, import 705ms, tests 256ms, environment 0ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx tsc --noEmit
+[typecheck] exit code: 0
+======================================================================
+(no output)
