@@ -89,7 +89,22 @@ import {
   STREAK_DAY_BOUNDARY,
   STREAK_MILESTONE_DAYS,
 } from '../game/streak';
+import {
+  GYM_CLEAR_BAND,
+  GYM_CROWD,
+  GYM_FLOOR_PLAN,
+  GYM_LIFT_STAGE,
+  GYM_LIGHTING,
+  GYM_PARALLAX,
+  GYM_PROPS_MEET,
+  GYM_PROPS_TRAINING,
+  GYM_READABILITY,
+  GYM_ROOM,
+  GYM_VENUE,
+  GYM_WALL_PAINT,
+} from '../art/gymTuning';
 import { PALETTE_BANKS, PAL, RAMPS } from '../art/palette';
+import { GYM, GYM_BANKS, GYM_RAMPS } from '../art/gymPalette';
 import { SHEET, SHEET_BANK } from '../card/sheetPalette';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { SESSION_PALETTE } from '../session/sessionPalette';
@@ -134,6 +149,31 @@ export const TUNING = Object.freeze({
     SHADOW: SPRITE_TUNING_MODULE.SHADOW,
     CHALK: SPRITE_TUNING_MODULE.CHALK,
     BRACE_SETTLE_DEPTH: SPRITE_TUNING_MODULE.BRACE_SETTLE_DEPTH,
+  }),
+
+  /**
+   * THE ROOM. What the lift happens in: how far back the wall is, where the
+   * lamps hang, how much of the frame the platform takes, which prop stands
+   * where, and how fast each layer slides under a camera nothing pans yet.
+   *
+   * GDD §12.2 grades this on readability at phone scale, so `GYM_READABILITY`
+   * is here too — but read its comment before turning anything in it. It is the
+   * definition of the measurement, not a difficulty setting, and loosening it
+   * turns the suite red rather than green.
+   */
+  gym: Object.freeze({
+    GYM_ROOM,
+    GYM_WALL_PAINT,
+    GYM_FLOOR_PLAN,
+    GYM_LIGHTING,
+    GYM_CROWD,
+    GYM_PARALLAX,
+    GYM_PROPS_TRAINING,
+    GYM_PROPS_MEET,
+    GYM_VENUE,
+    GYM_CLEAR_BAND,
+    GYM_LIFT_STAGE,
+    GYM_READABILITY,
   }),
 
   /**
@@ -219,6 +259,7 @@ export const TUNING = Object.freeze({
  */
 export const PALETTES = Object.freeze({
   sprite: Object.freeze({ PAL, RAMPS, PALETTE_BANKS }),
+  gym: Object.freeze({ GYM, GYM_RAMPS, GYM_BANKS }),
   sheet: Object.freeze({ SHEET, SHEET_BANK }),
   liftScreen: LIFT_PALETTE,
   sessionScreen: SESSION_PALETTE,
@@ -236,6 +277,7 @@ export const PALETTES = Object.freeze({
 export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Object.freeze({
   rep: 'src/game/liftTuning.ts',
   sprite: 'src/art/spriteTuning.ts',
+  gym: 'src/art/gymTuning.ts',
   session: 'src/game/sessionTuning.ts',
   fatigue: 'src/game/fatigue.ts',
   streak: 'src/game/streak.ts',
@@ -246,6 +288,7 @@ export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Obj
 /** Where each palette physically lives. Same cross-check as above. */
 export const PALETTE_MODULES: Readonly<Record<keyof typeof PALETTES, string>> = Object.freeze({
   sprite: 'src/art/palette.ts',
+  gym: 'src/art/gymPalette.ts',
   sheet: 'src/card/sheetPalette.ts',
   liftScreen: 'src/lift/liftPalette.ts',
   sessionScreen: 'src/session/sessionPalette.ts',
