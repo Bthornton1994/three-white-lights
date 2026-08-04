@@ -66,13 +66,28 @@ function meetPreviewFromLocation() {
   return { state: meetPreviewStateFor(request), card: showsCard(request.moment) };
 }
 
+/**
+ * Leaving meet day. GDD §6.3's bomb-out beat and §6.5's recap both offer a way
+ * out, and the way out of a mode is a ROUTE — so it is here, with the other two
+ * query strings, rather than inside a screen.
+ *
+ * The destination is the daily session, because that is what this app opens on
+ * (GDD §3.2) and there is no Career calendar yet to return to. On native there
+ * is no `window` and this is a no-op, which leaves the screens' own fallback —
+ * restarting the meet — in place until the calendar exists.
+ */
+function leaveMeet() {
+  if (typeof window === 'undefined') return;
+  window.location.search = '';
+}
+
 export default function App() {
   const replay = replayFromLocation();
   const meet = meetPreviewFromLocation();
   return (
     <View style={styles.container}>
       {meet !== undefined ? (
-        <MeetScreen preview={meet.state} showCard={meet.card} />
+        <MeetScreen preview={meet.state} showCard={meet.card} onLeave={leaveMeet} />
       ) : replay === undefined ? (
         <SessionScreen preview={sessionPreviewFromLocation()} />
       ) : (

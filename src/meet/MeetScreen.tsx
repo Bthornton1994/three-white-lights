@@ -63,9 +63,23 @@ export interface MeetScreenProps {
   readonly preview?: MeetDayState | undefined;
   /** DEBUG ONLY. Opens straight onto the shareable card. */
   readonly showCard?: boolean | undefined;
+  /**
+   * Where the lifter goes when the meet is over.
+   *
+   * SUPPLIED BY THE ROUTER, because this file is a renderer and all routing in
+   * the app lives in `App.tsx`. Omitted, the buttons restart the meet — which
+   * is honest for a harness but is NOT what "BACK TO TRAINING" means, so the
+   * played build passes one. The real destination is the Career calendar's, and
+   * that piece is out of this one's scope (GDD §6.1).
+   */
+  readonly onLeave?: (() => void) | undefined;
 }
 
-export function MeetScreen({ preview, showCard = false }: MeetScreenProps = {}): React.ReactElement {
+export function MeetScreen({
+  preview,
+  showCard = false,
+  onLeave,
+}: MeetScreenProps = {}): React.ReactElement {
   const loop = useMeetDay(preview, preview !== undefined);
   const { dispatch, restart } = loop;
   const state = preview ?? loop.state;
@@ -76,6 +90,10 @@ export function MeetScreen({ preview, showCard = false }: MeetScreenProps = {}):
     [dispatch],
   );
   const onSeeCard = useCallback(() => setCardOpen(true), []);
+  const leave = useCallback(() => {
+    if (onLeave === undefined) restart();
+    else onLeave();
+  }, [onLeave, restart]);
 
   const entry = state.context.entry;
   const classes = WEIGHT_CLASSES_KG[entry.sex];
@@ -146,7 +164,7 @@ export function MeetScreen({ preview, showCard = false }: MeetScreenProps = {}):
         <BombOutView
           bombedLift={bombedLiftOf(state)}
           attempts={state.attempts}
-          onDone={restart}
+          onDone={leave}
         />
       ) : null}
 
