@@ -992,6 +992,21 @@ work.
       and cut-in *art* stay unbuilt; grading and closing what already exists
       continues without waiting on this answer.
 
+- [x] **The licensing screen is not a "mode", so the shell does not have to
+      reach it — lead scoping call, overrulable.** A critic grading N1 flagged
+      that `LicensingScreen` renders, has tests, and is reachable only at
+      `licensing.html?panel=shop` via its own entry bundle, which makes
+      `shellRoute.ts`'s comment that a third shell intent "would mean a surface
+      that does not exist yet" false as written. The comment is being
+      corrected. But §2 names the four modes — Career, Sim, Arcade, Gym
+      Empire — and a shop screen is none of them, so N1's bar ("reach every
+      mode without a debug URL") is not violated by the licensing surface
+      living on a separate bundle. Its purpose is B1's bar instead: fictional
+      entries exercising all three identity tiers end to end. **Recorded rather
+      than left implicit, because it is a judgement about what a bar covers and
+      a human may disagree.** If the shop becomes a player-facing surface with
+      an economy behind it, this flips and the shell owns a third intent.
+
 - [ ] Weight units: default to lbs or kg? Per-user toggle presumably, but which
       is the default and does it vary by locale? **This question is about
       *display*.** What unit a meet is *run* in is a separate one, and the build
