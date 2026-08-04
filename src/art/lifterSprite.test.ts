@@ -549,6 +549,7 @@ const MAX_LIMB_INTERIOR_KEYLINE_SHARE =
   REF.figure.interiorKeylineShare * CRAFT.LIMB_INTERIOR_KEYLINE_FACTOR;
 const MAX_FACE_INTERIOR_KEYLINE_SHARE =
   REF.head.interiorKeylineShare * CRAFT.FACE_INTERIOR_KEYLINE_FACTOR;
+const MAX_LIMB_NEAR_BLACK_SHARE = REF.figure.nearBlackShare * CRAFT.LIMB_NEAR_BLACK_FACTOR;
 
 /**
  * OURS-ONLY RATCHETS, and labelled as such.
@@ -818,6 +819,33 @@ describe('every limb is measured as a limb, not inside an aggregate', () => {
           stats.interiorKeylineShare,
           `${frame.where}: ${w.name} interior keyline`,
         ).toBeLessThan(MAX_LIMB_INTERIOR_KEYLINE_SHARE);
+      }
+    }
+  });
+
+  it('keeps raw near-black off every limb of bare flesh, at the reference rate', () => {
+    // Like-for-like with the reference: both sides are material only, with the
+    // silhouette keyline taken off, so this compares the drawing rather than
+    // the outline round it.
+    //
+    // It is here because the interior measure alone could not see a near-black
+    // ring put back on the NECK. The traps cover most of the neck, so the ring
+    // lands on its silhouette instead of inside it — measured, 8.9% interior
+    // before and 13.3% after, inside normal pose variation. Raw near-black
+    // separates them: 16.7% before, 29.7% after.
+    //
+    // The HEAD is excluded, and that exclusion is not a convenience: HAIR_DARK
+    // is luma 37.2, under the near-black threshold, and the lifter's hair is
+    // 30-41% of his head window in every frame drawn correctly. The head is
+    // covered instead by the interior-keyline check below, which does not count
+    // a solid mass.
+    for (const frame of CRAFT_SWEEP) {
+      for (const w of frame.windows) {
+        if (w.name === 'head') continue;
+        const stats = measureRegion(frame.core, w.contains);
+        expect(stats.nearBlackShare, `${frame.where}: ${w.name} near-black`).toBeLessThan(
+          MAX_LIMB_NEAR_BLACK_SHARE,
+        );
       }
     }
   });

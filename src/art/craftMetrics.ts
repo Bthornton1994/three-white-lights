@@ -141,6 +141,20 @@ export const CRAFT = {
    */
   LIMB_INTERIOR_KEYLINE_FACTOR: 3.6,
   /**
+   * RAW near-black on a limb of bare flesh, as a multiple of the reference
+   * figure's 3.83%. Like-for-like: both sides are material only, with the
+   * silhouette keyline off.
+   *
+   * This exists because the interior measure alone did not catch a near-black
+   * ring put back on the NECK — most of the neck is covered by the traps, so
+   * the ring lands on its silhouette rather than inside it, and 3 px of a 23 px
+   * window is 13% either way. Raw near-black sees it: 16.7% becomes 29.7%.
+   * It is NOT applied to the head, whose hair is legitimately near-black
+   * (HAIR_DARK, luma 37.2) and runs to 41% of the head window on its own.
+   * Ours peaks at 16.7% on the neck and 10.0% on an arm, against a cap of 21.1%.
+   */
+  LIMB_NEAR_BLACK_FACTOR: 5.5,
+  /**
    * A head's or neck's interior keyline, as a multiple of the REFERENCE HEAD's
    * own 3.67% — a separate anchor, because a face carries marks a forearm does
    * not and one bound over both would either be too loose for the arm or would
