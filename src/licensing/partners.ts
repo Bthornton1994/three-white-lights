@@ -55,10 +55,47 @@
  * A colorway is three palette INDICES. The hues live in `src/art/palette.ts`,
  * which is a registered palette module and not this piece's to edit, and a
  * `#rrggbb` string here would be a colour literal outside a palette module —
- * which `src/tuning/audit.ts` would report, correctly. The consequence worth
- * knowing: a partner colorway can only use hues the 5-bit banks already hold.
- * A real partner needing an exact brand hue needs a slot added to a bank, which
- * is a palette edit and the one art change licensing can force.
+ * which `src/tuning/audit.ts` would report, correctly.
+ *
+ * ===========================================================================
+ * AND THE INDICES HAVE TO BE BANK 0. THREE OF THESE FOUR WERE NOT.
+ * ===========================================================================
+ *
+ * A colorway's whole purpose is the singlet ramp on the BASE SPRITE, and
+ * `lifterSprite.ts` decides what is on that sprite with `isBodyIndex`: bank 0 is
+ * the lifter, bank 1 is the equipment. `ninebar-blue`, `halberd-green` and
+ * `vondrak-crimson` were written out of the PLATE ramps and `CHROME_HI` — bank 1
+ * — so worn on a real frame they would have made the athlete's torso barbell as
+ * far as `bodyPixelDiff`, the silhouette measure and the phone-scale readability
+ * bounds are concerned. `CHROME_HI` is additionally reserved by `palette.ts` for
+ * a single specular pixel, and two of the four made it the entire highlight step
+ * of a singlet.
+ *
+ * Nothing caught it because the only Tier 1 colour check asked
+ * `sheetColorAt(index) !== undefined`, and that resolves any index in any of the
+ * four banks — the Tier 1 payload was being validated in the palette of a Tier 3
+ * surface. `spriteKit.ts`'s `colorwayProblems` is the replacement and it asks
+ * the sprite's own question.
+ *
+ * ===========================================================================
+ * WHAT THAT COSTS, STATED RATHER THAN GLOSSED: BANK 0 HAS FOUR KIT HUES
+ * ===========================================================================
+ *
+ * Bank 0 is sixteen slots and most of them are spoken for — five of skin, two of
+ * hair, one outline, one transparent. What is left to dress a lifter in is the
+ * SINGLET ramp (navy), the GEAR ramp (slate), HAIR (a warm plum, borrowed) and
+ * CHALK (near-white). That is the entire Tier 1 palette, so the four colorways
+ * below are navy, slate, plum and grey-to-white — and `halberd-green` cannot be
+ * green on the sprite at all.
+ *
+ * SO §7.3'S "THE BASE SPRITE NEEDS NO CHANGE AT ALL" IS TRUE ONLY FOR A PARTNER
+ * WHOSE COLOURS BANK 0 ALREADY HOLDS. A real partner arriving with an exact
+ * brand hue needs a slot added to bank 0, which is a `palette.ts` edit, which is
+ * the one art change licensing can force — the header used to say this as a
+ * hypothetical and it is now the live constraint on three of four rows. The
+ * brand hue that does not fit lives at TIER 3 instead, where the sheet palette
+ * has the full plate ramps: Halberd's green halberd head and Vondrak's crimson
+ * singlet are drawn below, on surfaces large enough to carry them.
  */
 
 import { PAL } from '../art/palette';
@@ -133,27 +170,64 @@ export const HOUSE_COLORWAY: Colorway = Object.freeze({
   light: PAL.SINGLET_LIGHT,
 });
 
+/**
+ * Ninebar's team kit: the house navy, opened out and taken to a chalk highlight.
+ *
+ * SAME BASE AS THE HOUSE RAMP, DIFFERENT TOP. It keeps `SINGLET_DARK` so the
+ * figure still has a dark anchor under the bar, skips the mid step and finishes
+ * on `CHALK` — a navy singlet with a white chest panel, which is what the Tier 3
+ * product drawing shows and what a kit brand's team singlet looks like. The
+ * house ramp is the compact one (54 -> 92 -> 148 luma); this is the loud one
+ * (54 -> 148 -> 246), and at sprite scale that difference is the whole read.
+ */
 export const NINEBAR_COLORWAY: Colorway = Object.freeze({
   id: 'ninebar-blue',
-  dark: PAL.PLATE_BLUE_SHADE,
-  mid: PAL.PLATE_BLUE_LIGHT,
-  light: PAL.CHROME_HI,
-});
-
-export const HALBERD_COLORWAY: Colorway = Object.freeze({
-  id: 'halberd-green',
-  dark: PAL.PLATE_GREEN_SHADE,
-  mid: PAL.PLATE_GREEN_LIGHT,
+  dark: PAL.SINGLET_DARK,
+  mid: PAL.SINGLET_LIGHT,
   light: PAL.CHALK,
 });
 
-export const VONDRAK_COLORWAY: Colorway = Object.freeze({
-  id: 'vondrak-crimson',
-  dark: PAL.PLATE_RED_SHADE,
-  mid: PAL.PLATE_RED_LIGHT,
-  light: PAL.CHROME_HI,
+/**
+ * Halberd's kit: pressed-chalk white over slate.
+ *
+ * NOT GREEN, AND THE NAME SAYS SO NOW. Bank 0 holds no green — see the header —
+ * so the brand's green cannot reach a 30-pixel figure without a palette slot
+ * that is not this piece's to add. The kit that CAN reach it is the one the
+ * brand actually sells: a block of pressed chalk. Slate base, slate highlight,
+ * chalk top. The green halberd head stays at Tier 3, where the sheet palette has
+ * it and the surface is big enough to read it.
+ */
+export const HALBERD_COLORWAY: Colorway = Object.freeze({
+  id: 'halberd-chalk',
+  dark: PAL.GEAR_DARK,
+  mid: PAL.GEAR_LIGHT,
+  light: PAL.CHALK,
 });
 
+/**
+ * Vondrak's signature kit: the warm dark ramp, as close to crimson as bank 0
+ * gets.
+ *
+ * `HAIR_DARK` and `HAIR_LIGHT` are the bank's only warm non-flesh steps —
+ * (49,41,58) and (90,66,82), a near-black plum and a mauve — and borrowing them
+ * for a kit is the same move `kessling-slate` makes with the GEAR ramp, which is
+ * belt-and-shoe leather worn as a singlet. `GEAR_LIGHT` tops it off, because a
+ * warm ramp with no light step is a silhouette.
+ *
+ * THE HONEST VERSION OF THIS ROW: her Tier 3 portrait and signature singlet are
+ * CRIMSON, drawn in the plate-red ramp the sheet palette has. Tier 1 cannot
+ * match them and does not pretend to. That divergence is the concrete price of
+ * bank 0 having no red that is not flesh, and it is the argument for the palette
+ * slot rather than an argument for putting a plate colour on a lifter.
+ */
+export const VONDRAK_COLORWAY: Colorway = Object.freeze({
+  id: 'vondrak-plum',
+  dark: PAL.HAIR_DARK,
+  mid: PAL.HAIR_LIGHT,
+  light: PAL.GEAR_LIGHT,
+});
+
+/** Kessling's slate: the GEAR ramp, worn as a kit. Already bank 0, unchanged. */
 export const KESSLING_COLORWAY: Colorway = Object.freeze({
   id: 'kessling-slate',
   dark: PAL.GEAR_DARK,
