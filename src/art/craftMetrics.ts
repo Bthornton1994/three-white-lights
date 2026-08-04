@@ -5,12 +5,14 @@
  * ---------------------------------------------------------------------------
  * WHY THIS FILE EXISTS
  * ---------------------------------------------------------------------------
- * `lifterSprite.test.ts` used to justify its bounds with sentences like "the
- * reference's upper half is 553 px at mean luma 133.2, near-black 1.3%".
+ * `lifterSprite.test.ts` used to justify its bounds with sentences giving the
+ * reference's upper half a pixel count, a mean luma and a near-black share.
  * Nothing in the repository opened `docs/reference/sprite-ref-1-snes-wrestling.png`.
- * Two different such sentences in the same file disagreed by 17% on the same
- * quantity and the file shrugged at the contradiction, because there was no way
- * for either number to be wrong: a comment cannot fail.
+ * Two such sentences in the same file disagreed by 17% on the same quantity and
+ * the file shrugged at the contradiction, because there was no way for either
+ * number to be wrong: a comment cannot fail. The retired figures are not
+ * restated here either — `lifterSprite.test.ts` names them once, in the test
+ * that forbids them, and nowhere else.
  *
  * Everything here is pure — no file reads, no React — and takes decoded pixels.
  * The test does the I/O (that is the convention in this repo: `src/game/*.test.ts`
@@ -57,9 +59,9 @@ import { RIG_GEOMETRY, type Pose } from './rig';
 export const CRAFT = {
   /**
    * Luma below which a pixel counts as "near-black". 40 sits above the
-   * reference wrestler's darkest trunk step (39.5) and well below his darkest
-   * skin step (52.8), so it separates "a black line" from "the dark end of a
-   * ramp" on the actual reference art.
+   * reference wrestler's darkest kit step (`@ref kit.luma0 = 39.5`) and well
+   * below his darkest skin step (`@ref skin.luma0 = 52.8`), so it separates "a
+   * black line" from "the dark end of a ramp" on the actual reference art.
    */
   NEAR_BLACK_LUMA: 40,
   /**
@@ -82,11 +84,14 @@ export const CRAFT = {
    * MASS.
    *
    * Without this the measure cannot tell a keyline from dark material, and the
-   * distinction is the whole point: our lifter's hair is `HAIR_DARK` at luma
-   * 37.2, which is under NEAR_BLACK_LUMA, so a plain near-black count scored a
-   * perfectly legitimate hair mass at 30-38% of the head — a bigger number than
-   * any keyline defect would have produced, and one no amount of drawing could
-   * ever have fixed. A pixel is line-like when the near-black run through it is
+   * distinction is the whole point. The case it was built for: our lifter's hair
+   * used to be `HAIR_DARK` at luma 37.2, under NEAR_BLACK_LUMA, so a plain
+   * near-black count scored a perfectly legitimate hair mass at 30-41% of the
+   * head — a bigger number than any keyline defect would have produced, and one
+   * no amount of drawing could have fixed. HAIR_DARK has since been lifted to
+   * 45.2 (see palette.ts) so the hair is not in that class at all any more, and
+   * this rule is what covers every OTHER dark mass, drawn or yet to be drawn.
+   * A pixel is line-like when the near-black run through it is
    * short along at least ONE axis; every pixel of a solid mass has a long run
    * along both, and every pixel of a one- or two-pixel band has a short one
    * across the band. 2 rather than 1 so the doubled band where two masses meet

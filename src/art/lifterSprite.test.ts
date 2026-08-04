@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { decodePng } from '../../tools/png.mjs';
@@ -22,6 +22,7 @@ import {
   isKeylined,
   limbWindows,
   luma8,
+  lumaAt,
   measureEraConformance,
   measureFigure,
   measureRamp,
@@ -432,7 +433,8 @@ describe('the drawing responds to load, not only the clock', () => {
 // In the 16-bit sports reference the figures hold the brightest, most contrasty
 // pixels in the frame and everything behind them is deliberately suppressed —
 // sampled off `docs/reference/sprite-ref-1-snes-wrestling.png`, the wrestler's
-// skin runs up to luma 234 while the crowd behind him sits between 16 and 80.
+// skin runs up to `@ref skin.luma5 = 233.8` while the crowd behind him has a
+// median of `@ref crowd.medianLuma = 37.3`.
 //
 // Ours had it the other way round: the skin ramp topped out a hair under the
 // steel of the sprite's own collars, the top step was reachable only as a
@@ -488,6 +490,25 @@ const HIGHLIGHT_LUMA = 170;
 // ---------------------------------------------------------------------------
 
 const REFERENCE_DIR = path.resolve(__dirname, '../../docs/reference');
+
+/**
+ * Every non-test TypeScript file under `dir`, recursively.
+ *
+ * Used by the `@ref` tag check below, which has to walk the whole tree rather
+ * than a list: the contradictory figures were in two different files and a
+ * hand-maintained list is the same kind of artefact as a hand-maintained
+ * figure.
+ */
+function listSourceFiles(dir: string, includeTests: boolean): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...listSourceFiles(full, includeTests));
+    else if (!/\.tsx?$/.test(entry.name)) continue;
+    else if (includeTests || !/\.test\.tsx?$/.test(entry.name)) out.push(full);
+  }
+  return out;
+}
 
 function readReference(file: string): RgbaImage {
   return decodePng(readFileSync(path.join(REFERENCE_DIR, file)));
@@ -558,6 +579,100 @@ const REF = {
   head: measureRegion(refField, inRefBox(REF_WRESTLER_HEAD_BOX)),
   era: measureEraConformance(refImage),
 } as const;
+
+/**
+ * The crowd behind the ring, and the mat the figures stand on.
+ *
+ * Committed boxes, like the wrestler's, because a 256x224 game frame cannot be
+ * segmented into "crowd" and "floor" without being told where to look. They
+ * exist so that the STAGE bank's justification — the busiest area of the screen
+ * is held to the bottom of the range, the floor is pale so dark boots read
+ * against it — is a figure something computes rather than a sentence.
+ */
+const REF_CROWD_BOX: PixelBox = { x: 0, y: 60, w: 256, h: 40 };
+const REF_MAT_BOX: PixelBox = { x: 20, y: 175, w: 216, h: 30 };
+
+function boxLumaStats(box: PixelBox): { mean: number; median: number; p90: number } {
+  const v: number[] = [];
+  for (let y = box.y; y < box.y + box.h; y += 1) {
+    for (let x = box.x; x < box.x + box.w; x += 1) v.push(lumaAt(refImage, x, y));
+  }
+  v.sort((a, b) => a - b);
+  const at = (f: number): number => v[Math.min(v.length - 1, Math.floor(v.length * f))] ?? 0;
+  return { mean: v.reduce((a, b) => a + b, 0) / v.length, median: at(0.5), p90: at(0.9) };
+}
+
+const refCrowd = boxLumaStats(REF_CROWD_BOX);
+const refMat = boxLumaStats(REF_MAT_BOX);
+/** His skin, as ramp positions rather than colours. See `stepFieldFromColours`. */
+const refSkinSteps = stepFieldFromColours(
+  refImage,
+  REF_WRESTLER_BOX,
+  REF_WRESTLER_SKIN_DARK_TO_LIGHT,
+);
+const refSkin = measureRamp(refSkinSteps);
+const refSkinRampLuma = REF_WRESTLER_SKIN_DARK_TO_LIGHT.map((c) =>
+  luma8((c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff),
+);
+/** His trunks, knee pads and boots: one saturated pink ramp, darkest first. */
+const REF_WRESTLER_KIT_DARK_TO_LIGHT: readonly number[] = [
+  0x840000, 0xb51031, 0xe73163, 0xe77373,
+];
+const refKitRampLuma = REF_WRESTLER_KIT_DARK_TO_LIGHT.map((c) =>
+  luma8((c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff),
+);
+
+/**
+ * EVERY FIGURE ANY COMMENT IN THIS CODEBASE IS ALLOWED TO STATE ABOUT
+ * `sprite-ref-1`, COMPUTED FROM THE FILE.
+ *
+ * The defect this closes has recurred in every round of this piece. A comment
+ * saying "mean luma 133.2 against 118.8" cannot fail, so two of them
+ * contradicted each other by 17% in the same file and both survived; a round
+ * claimed to have resolved them and they shipped again, now also contradicted
+ * by this suite's own decoder, which computes 137.99 and 123.89.
+ *
+ * The fix is a convention with a test behind it. A comment that states a
+ * reference number writes it as `@ref NAME = VALUE`, where NAME is a key of
+ * this table. The test below walks every non-test source file, finds every tag,
+ * and fails if the decoder disagrees to the precision the comment printed — or
+ * if the name is not a key here at all, so a tag cannot be invented to describe
+ * something nothing measures. A percentage may be written with a trailing `%`.
+ */
+const REF_FIGURES: Readonly<Record<string, number>> = {
+  'figure.count': REF.figure.count,
+  'figure.meanLuma': REF.figure.meanLuma,
+  'figure.nearBlackShare': REF.figure.nearBlackShare,
+  'figure.interiorKeylineShare': REF.figure.interiorKeylineShare,
+  'figure.upperMeanLuma': REF.figure.upper.meanLuma,
+  'figure.lowerMeanLuma': REF.figure.lower.meanLuma,
+  'figure.upperNearBlackShare': REF.figure.upper.nearBlackShare,
+  'figure.lowerNearBlackShare': REF.figure.lower.nearBlackShare,
+  'figure.upperOverLowerMean': REF.figure.upperOverLowerMean,
+  'figure.litBoundaryDarkShare': REF.figure.litBoundaryDarkShare,
+  'head.count': REF.head.count,
+  'head.meanLuma': REF.head.meanLuma,
+  'head.interiorKeylineShare': REF.head.interiorKeylineShare,
+  'skin.count': refSkin.count,
+  'skin.floorShare': refSkin.floorShare,
+  'skin.topTwoShare': refSkin.topTwoShare,
+  'skin.meanPosition': refSkin.meanPosition,
+  'skin.luma0': refSkinRampLuma[0] ?? 0,
+  'skin.luma1': refSkinRampLuma[1] ?? 0,
+  'skin.luma2': refSkinRampLuma[2] ?? 0,
+  'skin.luma3': refSkinRampLuma[3] ?? 0,
+  'skin.luma4': refSkinRampLuma[4] ?? 0,
+  'skin.luma5': refSkinRampLuma[5] ?? 0,
+  'kit.luma0': refKitRampLuma[0] ?? 0,
+  'kit.luma1': refKitRampLuma[1] ?? 0,
+  'kit.luma2': refKitRampLuma[2] ?? 0,
+  'kit.luma3': refKitRampLuma[3] ?? 0,
+  'crowd.meanLuma': refCrowd.mean,
+  'crowd.medianLuma': refCrowd.median,
+  'mat.meanLuma': refMat.mean,
+  'mat.medianLuma': refMat.median,
+  'mat.p90Luma': refMat.p90,
+};
 
 /**
  * BOUNDS, AND THE ONE RULE THEY ALL OBEY.
@@ -695,12 +810,6 @@ const CRAFT_SWEEP: readonly CraftFrame[] = (() => {
  * changes size is compared against the reference at its NEW size automatically
  * — the one way a matched-size comparison could have gone stale.
  */
-const refSkinSteps = stepFieldFromColours(
-  refImage,
-  REF_WRESTLER_BOX,
-  REF_WRESTLER_SKIN_DARK_TO_LIGHT,
-);
-
 const REF_PROFILES: ReadonlyMap<number, NeighbourhoodProfile> = new Map(
   neighbourhoodProfiles(
     refSkinSteps,
@@ -769,7 +878,8 @@ describe('the lifter is the brightest thing in his own frame', () => {
     //
     // THE LOWER END OF THIS IS A REFERENCE FACT WITH NO SLACK AT ALL, and that
     // replaces a bracket of `REF.upperOverLowerMean +/- 0.22` whose width was
-    // chosen by looking at our own range. The reference's ratio is 1.1138: HIS
+    // chosen by looking at our own range. His ratio is
+    // `@ref figure.upperOverLowerMean = 1.1138`: HIS
     // UPPER HALF IS THE BRIGHTER ONE, and that is asserted below as a property
     // of the reference rather than assumed. So must ours be. A darker upper body
     // — the failure this test exists for, the one that had the arms ringed in
@@ -1178,8 +1288,9 @@ describe('the reference is measured, not remembered', () => {
       expect(m.litBoundaryDarkShare, `${frame.where}: keyline coverage`).toBeGreaterThan(0.85);
     }
     // Which is why nothing above compares a RAW near-black share between the
-    // two. The reference's is 3.8%; ours is five times that and the difference
-    // is the keyline, not the drawing underneath it.
+    // two. The reference's is `@ref figure.nearBlackShare = 3.83%`; ours with
+    // the keyline on is several times that and the difference IS the keyline,
+    // not the drawing underneath it.
     expect(REF.figure.nearBlackShare).toBeLessThan(0.05);
   });
 
@@ -1221,7 +1332,8 @@ describe('the reference is measured, not remembered', () => {
 
     // Same procedure, opposite truth, and the verdict comes out BACKWARDS: our
     // keylined figure scores 1.8% near-black under this mask against the
-    // unkeylined reference's 3.8%. Read that way the outlined sprite looks
+    // unkeylined reference's `@ref figure.nearBlackShare = 3.83%`. Read that
+    // way the outlined sprite looks
     // CLEANER than the drawing it is supposed to be measured against, which is
     // as clear a demonstration as there is that the mask was never measuring
     // outlines.
@@ -1260,6 +1372,63 @@ describe('the reference is measured, not remembered', () => {
         rgba: gridToRgba(frame.grid),
       };
       expect(measureEraConformance(image).latticePixelShare, frame.where).toBe(1);
+    }
+  });
+
+  it('agrees with every reference figure any comment in the tree states', () => {
+    // THE DEFECT CLASS THIS WHOLE PIECE HAS BEEN FIGHTING, closed by making the
+    // prose checkable rather than by proofreading it again.
+    //
+    // Two comments in one file once carried "mean upper luma 133.2" and
+    // "113.7" — 17% apart, both labelled MEASURED — and neither could fail, so
+    // both survived. A round reported them resolved; they shipped again, and by
+    // then the decoder in this very suite computed 137.99. A prose figure
+    // nobody can check is not a weaker measurement, it is a different thing.
+    //
+    // So: a comment stating a reference number writes `@ref NAME = VALUE`, and
+    // this walks every non-test source file and compares. Tolerance is half a
+    // unit in the last decimal place the comment printed, so "3.8%" and "3.83%"
+    // are both legal and each is checked at the precision it claims. A name
+    // that is not a key of REF_FIGURES fails, so a tag cannot be invented for
+    // something nothing measures.
+    const TAG = /@ref\s+([A-Za-z][\w.]*)\s*=\s*(-?\d+(?:\.\d+)?)(%?)/g;
+    let checked = 0;
+    for (const file of listSourceFiles(path.resolve(__dirname, '..'), true)) {
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(TAG)) {
+        const name = m[1] ?? '';
+        const digits = m[2] ?? '';
+        const percent = m[3] === '%';
+        const where = `${path.relative(process.cwd(), file)}: @ref ${name} = ${digits}${m[3] ?? ''}`;
+        const actual = REF_FIGURES[name];
+        expect(actual, `${where} names nothing the decoder computes`).toBeTypeOf('number');
+        const scale = percent ? 100 : 1;
+        const decimals = digits.includes('.') ? (digits.split('.')[1] ?? '').length : 0;
+        expect(Math.abs((actual ?? 0) * scale - Number(digits)), where).toBeLessThanOrEqual(
+          0.5 * 10 ** -decimals,
+        );
+        checked += 1;
+      }
+    }
+    // A convention nobody used would pass vacuously.
+    expect(checked, 'tagged reference figures found in the tree').toBeGreaterThan(15);
+  });
+
+  it('has no retired reference figure still in the tree', () => {
+    // The four numbers the contradiction was made of. They are not "values that
+    // were corrected" — nothing in the repository ever computed them and the
+    // decoder disagrees with all four. A tag would catch them now; this catches
+    // them if one is pasted back in untagged, which is how they survived the
+    // round that reported them resolved.
+    const RETIRED = ['133.2', '118.8', '113.7', '109.0'];
+    for (const file of listSourceFiles(path.resolve(__dirname, '..'), false)) {
+      const text = readFileSync(file, 'utf8');
+      for (const stale of RETIRED) {
+        expect(
+          text.includes(stale),
+          `${path.relative(process.cwd(), file)} still states the retired figure ${stale}`,
+        ).toBe(false);
+      }
     }
   });
 

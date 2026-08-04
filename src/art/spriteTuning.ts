@@ -766,16 +766,19 @@ export const SHADING = {
    * there too, so at 0.19 the LAMP CAN NEVER REACH THE DARKEST STEP OF A RAMP.
    * That step belongs to the contour — `INTERIOR_EDGE.SKIN` is exactly it, and
    * `EDGE_STEP_DROP` puts the ring one step under the fill beside it — which is
-   * how `sprite-ref-1` uses the bottom of its own skin ramp: 10.4% of the
-   * wrestler's skin, spent on contour, with a bare thigh row reading
-   * 80/152/200/233/233/233/233/116/152/116 and not one pixel on the floor.
+   * how `sprite-ref-1` uses the bottom of its own skin ramp:
+   * `@ref skin.floorShare = 10.4%` of the wrestler's skin, spent on contour,
+   * with a bare thigh row reading his ramp steps 1/3/4/5/5/5/5/2/3/2 and not one
+   * pixel on the floor.
    *
    * At 0.30 the shadow flank of every mass landed on the floor as well, and so
    * did the joint bands at each end of every capsule. Measured over the whole
    * 448-frame sweep with that value, the far arm's own window ran 48-75% floor
    * with its MEDIAN on the floor in every frame; the near arm, the hands and
    * the neck were 46-62%. The reference's worst limb-sized patch of skin
-   * anywhere on the figure is 37-50%, and its median is never there.
+   * anywhere on the figure runs 35-58% depending on the patch size, and its
+   * median is essentially never there — `lifterSprite.test.ts` computes both
+   * against the decoded file and prints the table.
    *
    * The top entry is set ABOVE a cylinder's peak lambert (0.830 under this
    * lamp) on purpose, and 0.84 keeps that true. The consequence is worth

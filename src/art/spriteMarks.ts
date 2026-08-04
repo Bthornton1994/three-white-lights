@@ -98,9 +98,11 @@
  *     value on a chest about as wide as ours. His arm carries a highlight
  *     cluster on the deltoid, a dark insertion crease straight across the limb,
  *     and a second cluster on the biceps below it. Sampled at native scale his
- *     skin runs from luma 53 to luma 234 across six steps, with the top two
- *     covering about a quarter of the body — the figure holds the brightest
- *     pixels in the frame and the crowd behind him sits between 16 and 80.
+ *     skin runs from `@ref skin.luma0 = 52.8` to `@ref skin.luma5 = 233.8`
+ *     across six steps, with the top two covering
+ *     `@ref skin.topTwoShare = 25.6%` of his skin — the figure holds the
+ *     brightest pixels in the frame and the crowd behind him has a mean of
+ *     `@ref crowd.meanLuma = 36.8`.
  *   - sprite-ref-2-16bit-baseball.png — black belt band across the waist,
  *     contrast piping on the shoulder, a sock band breaking the leg above the
  *     shoe.
@@ -461,10 +463,16 @@ export const MARKS: readonly Mark[] = [
   // 53-234 ramp) and there is no near-black anywhere on his face; the only
   // near-black inside his head box at all is the darkest step of his red
   // headband. Ours were `PAL.OUTLINE` at luma 19, which is why our head window
-  // measured 16.9% interior keyline against the reference head's 3.7% — four
-  // times the rate, on a face a third the size. A face at this scale is value
-  // steps inside one ramp, which is the rule `INTERIOR_EDGE` already applies to
-  // every other boundary on this figure.
+  // measured 16.9% interior keyline against the reference head's
+  // `@ref head.interiorKeylineShare = 3.67%` — four and a half times the rate,
+  // on a face a third the size. A face at this scale is value steps inside one
+  // ramp, which is the rule `INTERIOR_EDGE` already applies to every other
+  // boundary on this figure.
+  //
+  // GDD §7.3 TIER 1: these three marks are an EXPRESSION, not a likeness — two
+  // eye pixels and a mouth that changes shape under strain, on a seven-pixel
+  // skull. No portrait and no wordmark reaches the base sprite; those are Tier 3
+  // surfaces (cut-ins, character select, shop, result card).
   {
     name: 'FACE_CALM',
     depicts: 'FLESH',
@@ -903,8 +911,12 @@ export const MARKS: readonly Mark[] = [
     origin: [-4, 2],
     map: ['gggggggg'],
   },
-  // Brand mark on the sleeve face. Small on purpose: two pixels is a logo,
-  // four is a stripe.
+  // An ABSTRACT ICON-MARK on the sleeve face — GDD §7.3 Tier 1, which carries
+  // build, colorway and an icon-mark and never a wordmark. Two dark pixels, no
+  // glyph, no letterform, and deliberately not a real manufacturer's shape:
+  // powerlifting kit has a small set of very well-known makers and §12.3 refuses
+  // any of them anywhere in an asset. Small on purpose in the drawing sense too:
+  // two pixels is a mark, four is a stripe.
   {
     name: 'KNEE_SLEEVE_LOGO',
     depicts: 'KIT',

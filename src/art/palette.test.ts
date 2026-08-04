@@ -193,9 +193,10 @@ describe('the kit below the belt sits in a usable band', () => {
   it('keeps worn kit UNDER flesh: a sleeve is a dark object on a lit leg', () => {
     // Deliberate, and the one place this ramp does NOT go where a lift would
     // take it. Sampled off sprite-ref-1, the wrestler's kit ramp tops out at
-    // 140 against a skin third step of 152 — his kit stays under his flesh, and
-    // sleeves, belts and shoes are black kit in this sport. A GEAR_LIGHT that
-    // reached SKIN_LIGHT would make the sleeve read as the leg.
+    // `@ref kit.luma3 = 149.7` against a skin fourth step of
+    // `@ref skin.luma3 = 155.5` — his kit stays under his flesh, and sleeves,
+    // belts and shoes are black kit in this sport. A GEAR_LIGHT that reached
+    // SKIN_LIGHT would make the sleeve read as the leg.
     expect(of(PAL.GEAR_LIGHT)).toBeLessThan(of(PAL.SKIN_LIGHT));
     expect(of(PAL.GEAR_MID)).toBeLessThan(of(PAL.SKIN_MID));
   });
@@ -203,7 +204,8 @@ describe('the kit below the belt sits in a usable band', () => {
   it('gives the shoe a pale platform to sit on', () => {
     // meet-photo-ref-1: a black shoe against a pale platform. The contact only
     // reads if the floor out-values the sole; sprite-ref-1's mat measures a
-    // median of 102 under figures whose boots run 53-91.
+    // median of `@ref mat.medianLuma = 93.4` under figures whose boots are drawn
+    // from the bottom of their kit ramp, `@ref kit.luma0 = 39.5` upward.
     expect(of(PAL.PLATFORM_LIGHT)).toBeGreaterThan(of(PAL.GEAR_DARK));
     expect(of(PAL.PLATFORM_MID)).toBeGreaterThan(of(PAL.GEAR_DARK));
     // ...and the platform must not out-value the lifter either.

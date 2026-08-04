@@ -342,10 +342,12 @@ export interface PartOptions {
    * A flat ring is a rim of the ramp's floor on every side of the mass at once —
    * the lit flank gets the same near-black as the shadow flank, which is the one
    * thing a lamp cannot do. Sampled off sprite-ref-1 at native scale, a bare
-   * thigh row reads 80 / 152 / 200 / 233 / 233 / 233 / 233 / 116 / 152 / 116:
-   * one dark pixel where the light leaves the form, and a MID step, not a dark
-   * one, on the other side. That asymmetry is most of what makes the reference's
-   * limbs read as lit cylinders rather than as outlined tubes.
+   * thigh row runs his six-step skin ramp as 1/3/4/5/5/5/5/2/3/2: one step-1
+   * pixel where the light leaves the form, a run of the top step across the face
+   * of the mass, and a MID step, not a dark one, on the other side — and NOT ONE
+   * pixel of that row on step 0 (`@ref skin.luma0 = 52.8`). That asymmetry is
+   * most of what makes the reference's limbs read as lit cylinders rather than
+   * as outlined tubes.
    */
   readonly edgeFollowsLight?: boolean;
   /**
