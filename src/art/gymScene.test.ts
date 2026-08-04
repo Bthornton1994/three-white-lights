@@ -90,11 +90,20 @@ import { frameSpecFrom, isBodyIndex, renderLifterFrame } from './lifterSprite';
  * the panel widens — which under the old measurement they could not.
  *
  * ===========================================================================
- * EVERY BOUND IS BRACKETED AT BOTH ENDS
+ * EVERY BOUND HAS A PLANT THAT FAILS IT — EXCEPT THREE, WHICH ARE NAMED
  * ===========================================================================
+ * This heading used to read "EVERY BOUND IS BRACKETED AT BOTH ENDS", and three
+ * ceilings had nothing behind them at the time. It is now the weaker, true
+ * claim, and `describe('what this file can and cannot make fail')` at the bottom
+ * of the file ENFORCES it rather than promising it: a ledger of every bound any
+ * grid here has actually been measured against and failed, asserted against
+ * `Object.keys(BOUNDS)`, with `RIM_P25_MIN`, `RIM_P50_MIN` and
+ * `FIGURE_OVER_ROOM_P90_MIN` declared as having no plant and the reasons written
+ * down. A new bound cannot arrive without landing in one of the two lists.
+ *
  * The failure this run keeps finding is a check that a WORSE artifact satisfies
- * more easily. Every readability quantity here has that shape available, and
- * every one is therefore bounded on both sides:
+ * more easily. Most readability quantities here have that shape available, and
+ * are therefore bounded on both sides:
  *
  *   - a blank black rectangle has PERFECT rim contrast and zero busyness. It
  *     fails `MEAN_LUMA`, `INDEX_COUNT`, `EDGE_SHARE`, `FURNITURE_SHARE`,
@@ -119,10 +128,11 @@ import { frameSpecFrom, isBodyIndex, renderLifterFrame } from './lifterSprite';
  * those tests go red rather than green.
  *
  * The last three arrived late, and the honest reason is on the record: a
- * previous version of this header made the same claim with only six plants
- * behind it, and `CONTENT_PEAK_MAX`, `INDEX_COUNT_MAX` and `BRIGHT_SHARE_MAX`
- * had nothing that could fail them. An overstated header is the same defect as
- * an unfalsifiable check, one level up.
+ * previous version of this header made the blanket claim with only six plants
+ * behind it, and `CONTENT_PEAK_MAX` (0.35 against the artifact's worst 0.236),
+ * `INDEX_COUNT_MAX` (34 in a 36-index space) and `BRIGHT_SHARE_MAX` (1% against
+ * 0.086%) had nothing that could fail them. An overstated header is the same
+ * defect as an unfalsifiable check, one level up.
  *
  * ===========================================================================
  * AND TWO BOUNDS ARE CALIBRATED AGAINST THE ARTIFACT, WHICH IS SAID OUT LOUD
@@ -326,6 +336,20 @@ const BOUNDS = {
 type Violation = string;
 
 /**
+ * THE COVERAGE LEDGER.
+ *
+ * Every bound any grid in this file has ever been measured against and failed,
+ * accumulated as the suite runs. The last test in the file asserts it, which is
+ * what turns "every bound is bracketed at both ends" from a claim in a header
+ * into something that goes red when it stops being true.
+ *
+ * Whole-file by construction: a `vitest -t` run that skips the plants will fail
+ * the ledger, and that is correct — a filtered run is not a coverage run.
+ */
+const FIRED_BOUNDS = new Set<string>();
+let MEASURED_GRIDS = 0;
+
+/**
  * Every bound the frame fails, by name. Empty is a pass.
  *
  * `occluders` defaults to the lift stage's, because that is what the screen
@@ -335,6 +359,7 @@ type Violation = string;
 function violations(grid: IndexGrid, occluders: readonly SceneRect[] = OCCLUDERS): Violation[] {
   const r = measureSceneReadability(grid, { occluders });
   const out: Violation[] = [];
+  MEASURED_GRIDS += 1;
   const check = (name: string, value: number, min: number, max: number): void => {
     if (value < min) out.push(`${name}_LOW(${value.toFixed(4)}<${min})`);
     if (value > max) out.push(`${name}_HIGH(${value.toFixed(4)}>${max})`);
@@ -373,6 +398,7 @@ function violations(grid: IndexGrid, occluders: readonly SceneRect[] = OCCLUDERS
     BOUNDS.FIGURE_OVER_ROOM_P90_MIN,
     noCeiling,
   );
+  for (const v of out) FIRED_BOUNDS.add(v.split('(')[0] ?? v);
   return out;
 }
 
@@ -1363,6 +1389,8 @@ describe('the bounds bite', () => {
     const bad = violations(grid);
     expect(bad.some((v) => v.startsWith('EDGE_SHARE_HIGH')), bad.join(' ')).toBe(true);
     expect(bad.some((v) => v.startsWith('BEHIND_EDGE_SHARE_HIGH'))).toBe(true);
+    // ...and 32% of it is an upright, which is not furniture, it is noise.
+    expect(bad.some((v) => v.startsWith('FURNITURE_SHARE_HIGH'))).toBe(true);
   });
 
   it('A BUSY ROOM ONLY BEHIND THE FIGURE fails the behind-the-figure ceiling', () => {
@@ -2103,5 +2131,68 @@ describe('the props are drawings that fit their own boxes', () => {
     const band = clearBand(SPEC, RESOLUTION.LIFTER_HEIGHT_PX);
     const glassBottom = Math.round(junctionRow(SPEC) * GYM_WINDOWS.TOP_FRAC) + GYM_WINDOWS.H;
     expect(glassBottom).toBeLessThan(band.y0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE COVERAGE LEDGER — RUN LAST, DELIBERATELY
+// ---------------------------------------------------------------------------
+
+describe('what this file can and cannot make fail', () => {
+  /**
+   * Three floors have no room in this file that trips them, and they are named
+   * rather than covered by a header sentence.
+   *
+   *   RIM_P25_MIN, RIM_P50_MIN — every plant that drives the quarter or the
+   *     median of the rim distribution down drives its fifth percentile down
+   *     first, so `RIM_P05_LOW` is what fires and these two never do. A
+   *     distribution with a healthy p05 and a broken p25 is constructible in
+   *     principle; no ROOM built out of this palette produces one, and inventing
+   *     a synthetic luma histogram to trip them would be measuring the checker
+   *     rather than the art.
+   *   FIGURE_OVER_ROOM_P90_MIN — the figure's own p90 is 174.9 on every frame,
+   *     so this fires only once the background's p90 passes 114.9. The brightest
+   *     plant here tops out at LAMP_GLOW (106): the room would have to be a wall
+   *     of filaments, which is a plant that already exists for BRIGHT_SHARE and
+   *     which is kept deliberately small so it stays specific to that bound.
+   *
+   * All three are REPORTED on every frame and would catch a regression on the
+   * shipped room. What they do not have is a plant, and this says so.
+   */
+  const UNPLANTED = ['RIM_P25_MIN', 'RIM_P50_MIN', 'FIGURE_OVER_ROOM_P90_MIN'] as const;
+
+  it('accounts for every bound in BOUNDS, as planted or as declared unplanted', () => {
+    // A new bound cannot arrive without landing in one of the two lists.
+    const twoSided = ['INDEX_COUNT', 'MEAN_LUMA', 'P90_LUMA', 'EDGE_SHARE'];
+    for (const name of twoSided) {
+      expect(FIRED_BOUNDS.has(`${name}_LOW`), `${name} has no low plant`).toBe(true);
+      expect(FIRED_BOUNDS.has(`${name}_HIGH`), `${name} has no high plant`).toBe(true);
+    }
+    const accountedFor = new Set<string>(UNPLANTED);
+    for (const key of Object.keys(BOUNDS)) {
+      if (accountedFor.has(key)) continue;
+      const base = key.replace(/_(MIN|MAX)$/, '');
+      const side = key.endsWith('_MIN') ? 'LOW' : 'HIGH';
+      expect(FIRED_BOUNDS.has(`${base}_${side}`), `${key} has no plant and is not declared`).toBe(
+        true,
+      );
+    }
+  });
+
+  it('has actually run the plants — a filtered run is not a coverage run', () => {
+    expect(MEASURED_GRIDS).toBeGreaterThan(20);
+    expect(FIRED_BOUNDS.size).toBeGreaterThan(15);
+  });
+
+  it('has NOT quietly acquired a plant for the three it says it lacks', () => {
+    // The other direction. If one of these ever does get a plant, this goes red
+    // and the list above shrinks by hand, which is the point.
+    for (const key of UNPLANTED) {
+      const base = key.replace(/_(MIN|MAX)$/, '');
+      const side = key.endsWith('_MIN') ? 'LOW' : 'HIGH';
+      expect(FIRED_BOUNDS.has(`${base}_${side}`), `${key} is planted now — update the list`).toBe(
+        false,
+      );
+    }
   });
 });
