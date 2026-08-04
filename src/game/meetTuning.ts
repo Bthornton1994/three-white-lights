@@ -317,6 +317,7 @@ export const MEET_TUNING = Object.freeze({
    * whole verdict is held before the meet moves on.
    */
   FEEDBACK_REVEAL_DELAY_MS: 420,
+  FEEDBACK_FADE_MS: 300,
   VERDICT_HOLD_MS: 1600,
 
   // -------------------------------------------------------------------------
@@ -353,17 +354,28 @@ export const MEET_TUNING = Object.freeze({
   DELIBERATION_MARGIN: 0.72,
 
   /**
-   * How far outside the depth window a high squat has to land before every
+   * How far from the IDEAL depth moment a high squat has to land before every
    * referee agrees it was high, in ms.
    *
    * This is what makes a MISS able to be a close call. The mechanic records a
    * signed offset for the depth cue even when the input landed outside the
    * window (`gradeTiming` grades it 'missed' with quality 0 but keeps
    * `offsetMs`), so "how badly did they miss depth" is a real measurement
-   * rather than a guess. A lifter who was 40 ms high gets a deliberation and a
-   * 2-1; a lifter who never went near depth gets three reds immediately.
+   * rather than a guess. A lifter a few ms outside the window gets a
+   * deliberation and can get a 2-1; a lifter who never went near depth gets
+   * three reds immediately.
+   *
+   * MUST EXCEED HALF THE DEPTH WINDOW, or no miss can ever be a close call: a
+   * miss is by definition outside the window, so its offset is already at least
+   * the half-width, and a threshold at or below that would score every miss at
+   * margin 1. `meetTuning.test.ts` checks this against `LIFT_TUNING`'s own
+   * window rather than trusting the note. Measured from the ideal moment rather
+   * than from the window edge because the edge moves with fatigue
+   * (`adjustedTimingWindowMs`) and the ideal moment does not — a threshold
+   * anchored to a moving edge would make the judges harsher on a tired lifter,
+   * which is a punishment nobody designed.
    */
-  CLOSE_MISS_OFFSET_MS: 150,
+  HIGH_SQUAT_UNANIMOUS_OFFSET_MS: 420,
 
   /**
    * How much a grind erodes the call margin, as a fraction, at a fully-stalled
@@ -449,10 +461,14 @@ export const MEET_TUNING = Object.freeze({
    * exactly one constants block.
    */
   PRECISION_DECIMALS: 6,
-
-  /** Decimal places a weight is displayed to on a meet screen. Presentation. */
-  WEIGHT_DISPLAY_DECIMALS: 1,
 });
+
+// NOTE ON HOW A WEIGHT IS PRINTED, since there is deliberately no constant for
+// it here: every meet screen formats a weight with `resultCard.ts`'s
+// `formatWeight`, which is transcribed from real meet software (at most two
+// decimals, trailing zeros hidden, no `Intl`). One formatter means the walkout,
+// the attempt board and the shareable card cannot print the same bar three
+// ways, and it means the in-app number matches the sheet a lifter shares.
 
 /**
  * The one meet the prototype runs (GDD §6.6's async local meet).
@@ -626,6 +642,8 @@ export const MEET_COPY = Object.freeze({
   SELECT_FLOOR_OPENER: 'Nothing on the board yet.',
   SELECT_FLOOR_AFTER_MAKE: 'Banked. From here the bar only goes up.',
 
+  /** What a card prints instead of a "+2.5" when the bar does not move. */
+  OPTION_SAME_WEIGHT: 'same weight',
   OPTION_REPEAT: 'TAKE IT AGAIN',
   OPTION_REPEAT_WHY: 'Same weight, second chance. Nothing gained beyond what was already on the bar.',
   OPTION_SMALL: 'SMALL JUMP',

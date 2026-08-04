@@ -233,7 +233,7 @@ export function judgingMargin(resolution: LiftResolution): number {
     // Only a high squat is arguable. A bar that stalled, buried the lifter or
     // never got the command is one everybody in the room saw the same way.
     if (reason !== 'no-depth' || depth === undefined) return 1;
-    return clamp01(Math.abs(depth.offsetMs) / MEET_TUNING.CLOSE_MISS_OFFSET_MS);
+    return clamp01(Math.abs(depth.offsetMs) / MEET_TUNING.HIGH_SQUAT_UNANIMOUS_OFFSET_MS);
   }
   // A made lift. How convincing was the depth, and how much of the ascent was
   // spent going nowhere?
@@ -1122,9 +1122,25 @@ export interface MeetRecap {
   readonly bombedLift: LiftKind | null;
 }
 
+/**
+ * `resultCard.ts`'s refusals, plus one of this module's own.
+ *
+ * `TOTAL_DISAGREES_WITH_CARD` is the client-is-a-renderer check (CLAUDE.md:
+ * "Local state is a cache of server truth, not the truth itself"). The card is
+ * built from the meet the CLIENT played; the total comes back from the server,
+ * which replayed the same attempts through the same engine. Those two numbers
+ * must be the same number, and if they ever are not, the honest thing is to
+ * refuse rather than to put the server's total next to a card printing a
+ * different one — which is what would happen if this module simply preferred
+ * one of them.
+ */
+export type MeetRecapError =
+  | ResultCardError
+  | { readonly code: 'TOTAL_DISAGREES_WITH_CARD'; readonly message: string };
+
 export type MeetRecapResult =
   | { readonly ok: true; readonly recap: MeetRecap }
-  | { readonly ok: false; readonly error: ResultCardError };
+  | { readonly ok: false; readonly error: MeetRecapError };
 
 function recapRowsFor(
   state: MeetDayState,
@@ -1182,6 +1198,17 @@ export function buildMeetRecap(state: MeetDayState, confirmed: ConfirmedMeetFact
   });
   if (!built.ok) return { ok: false, error: built.error };
   const card = built.card;
+  if (card.totalKg !== confirmed.totalKg) {
+    return {
+      ok: false,
+      error: {
+        code: 'TOTAL_DISAGREES_WITH_CARD',
+        message:
+          `meetDay: the server recorded a total of ${String(confirmed.totalKg)} but this meet's card ` +
+          `reads ${String(card.totalKg)}. The recap will not print two totals for one meet.`,
+      },
+    };
+  }
   const isFirstTotal = confirmed.totalKg !== null && confirmed.previousBestTotalKg === null;
   return {
     ok: true,

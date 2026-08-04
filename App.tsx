@@ -4,6 +4,12 @@ import { StyleSheet, View } from 'react-native';
 import { LiftScreen } from './src/lift/LiftScreen';
 import { LIFT_PALETTE } from './src/lift/liftPalette';
 import { replayRequestFrom } from './src/lift/replayRoute';
+import { MeetScreen } from './src/meet/MeetScreen';
+import {
+  meetPreviewFrom,
+  previewStateFor as meetPreviewStateFor,
+  showsCard,
+} from './src/game/meetPreview';
 import { SessionScreen } from './src/session/SessionScreen';
 import { previewStateFor, sessionPreviewFrom } from './src/session/sessionPreview';
 
@@ -16,9 +22,9 @@ import { previewStateFor, sessionPreviewFrom } from './src/session/sessionPrevie
 // Skia's web build binds `global.CanvasKit` at module-evaluation time, and
 // everything below transitively imports Skia.
 //
-// ALL ROUTING IN THE APP IS TWO DEBUG QUERY STRINGS, and both are here rather
-// than inside a screen so the screens stay renderers. On native `window` does
-// not exist and both branches are dead, which is correct — they exist so the
+// ALL ROUTING IN THE APP IS THREE DEBUG QUERY STRINGS, and all three are here
+// rather than inside a screen so the screens stay renderers. On native `window`
+// does not exist and every branch is dead, which is correct — they exist so the
 // screenshot harness can photograph the web build at moments a wall clock
 // cannot reliably hit.
 //
@@ -26,6 +32,15 @@ import { previewStateFor, sessionPreviewFrom } from './src/session/sessionPrevie
 //                                lift screen, unchanged, and still the thing
 //                                `tools/verify-lift-shots.mjs` photographs.
 //   ?session=<moment>            one beat of a scripted SESSION.
+//   ?meet=<moment>               one beat of a scripted MEET (GDD §6).
+//
+// WHY MEET DAY IS BEHIND A QUERY STRING AND NOT THE DEFAULT SCREEN. GDD §6.1
+// enters a meet from the Career calendar, which is out of scope for this piece,
+// and §3.2's daily session is what the app is supposed to open on. Wiring meet
+// day in front of the daily loop would spend the retention core's
+// time-to-first-input on a screen a player sees a few times a season. Whoever
+// builds the calendar owns the real entry point; until then a meet is reachable
+// and photographable without changing what the app opens on.
 function replayFromLocation() {
   if (typeof window === 'undefined') return undefined;
   return replayRequestFrom(window.location.search) ?? undefined;
@@ -37,11 +52,21 @@ function sessionPreviewFromLocation() {
   return request === null ? undefined : previewStateFor(request);
 }
 
+function meetPreviewFromLocation() {
+  if (typeof window === 'undefined') return undefined;
+  const request = meetPreviewFrom(window.location.search);
+  if (request === null) return undefined;
+  return { state: meetPreviewStateFor(request), card: showsCard(request.moment) };
+}
+
 export default function App() {
   const replay = replayFromLocation();
+  const meet = meetPreviewFromLocation();
   return (
     <View style={styles.container}>
-      {replay === undefined ? (
+      {meet !== undefined ? (
+        <MeetScreen preview={meet.state} showCard={meet.card} />
+      ) : replay === undefined ? (
         <SessionScreen preview={sessionPreviewFromLocation()} />
       ) : (
         <LiftScreen replay={replay} />
