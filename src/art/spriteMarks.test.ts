@@ -27,10 +27,18 @@ import {
   type MarkAnchorKey,
 } from './spriteMarks';
 import { renderLifterFrame, type LifterFrameSpec } from './lifterSprite';
+import { inCapsule } from './craftMetrics';
 import { BANK_SIZE, PAL, isAllocatedIndex } from './palette';
 import { cloneGrid, despeckle, getPx, type IndexGrid } from './raster';
-import { POSES, RIG_GEOMETRY, deformPose, poseAtDepth, strainForLevel } from './rig';
-import { PITCH, RESOLUTION, STRAIN } from './spriteTuning';
+import {
+  POSES,
+  RIG_GEOMETRY,
+  deformPose,
+  poseAtDepth,
+  strainForLevel,
+  upperArmSpan,
+} from './rig';
+import { CENTER_X, PITCH, RESOLUTION, STRAIN } from './spriteTuning';
 
 const BASE: LifterFrameSpec = {
   depth: 0,
@@ -191,7 +199,12 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  * landing test below opened with `if (!ANATOMY_MARKS.includes(mark.name))
  * continue`, so no KIT mark was measured by it at all — and the one kit mark an
  * arm can eat, the singlet's shoulder strap, was the lowest-landing mark on the
- * whole sheet at 46% while three separate guards looked straight past it. The
+ * whole sheet at 46% while three separate guards looked straight past it. (That
+ * 46% is HISTORICAL — it describes the rig of the round that found it and is not
+ * reproducible against the drawing this file renders today, which lands the
+ * aggregate at 63.7%. Every rate that IS current is pinned in
+ * `MARK_LANDING_MEASURED`; this one is left as a note on why the floor changed
+ * shape, and should not be read as a measurement of anything shipping.) The
  * `alwaysOn` list two tests down carries `SINGLET_HEM_TRIM` (the waist) and not
  * `STRAP_SEAM` (the shoulder); "no dead mark" only needs a mark to land SOMEWHERE
  * in the pose space; and the one test with "strap" in its name reads chest
@@ -200,12 +213,59 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  *
  * AND IT IS MEASURED PER SIDE, not just in aggregate. The straps are the case
  * that forces it: at the shipped rig the NEAR strap seam lands 99.8% of its
- * pixels and the FAR one 27.5%, because `renderLifterFrame` draws the torso
- * before both arms and the far deltoid sits over the far strap's outer flank.
- * The aggregate of those two is 63.7%, which is a number that looks like a
- * coverage fact and is actually one side at full strength and one side nearly
- * gone. Every `side: 'BOTH'` mark is now floored on each side separately AND on
- * the aggregate, so nothing gets weaker and asymmetric loss stops hiding.
+ * pixels and the FAR one 27.5%. The aggregate of those two is 63.7%, which is a
+ * number that looks like a coverage fact and is actually one side at full
+ * strength and one side nearly gone. Every `side: 'BOTH'` mark is now floored on
+ * each side separately AND on the aggregate, so nothing gets weaker and
+ * asymmetric loss stops hiding.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY ONE SIDE AND NOT THE OTHER, ON A RIG WHERE EVERYTHING IS MIRRORED
+ * ---------------------------------------------------------------------------
+ *
+ * THIS PARAGRAPH USED TO SAY "the far deltoid sits over the far strap's outer
+ * flank", and `MARK_LANDING_EXCEPTIONS` forty lines down said the opposite in
+ * the same file — that the deltoid is drawn BEFORE the straps and therefore
+ * cannot cover them. The second one was right, and a builder who acted on this
+ * one would have gone to `ATTACH.DELTOID` / `ATTACH.DELTOID_R` and found nothing
+ * to move: at the shipped rig a deltoid cap's painted disc contains THREE seam
+ * pixels in the whole 416-frame pose space, and the strap capsule — laid down by
+ * the same `drawTorso` call, after the caps — covers all three. Two comments in
+ * one file carrying contradictory measured claims, both surviving because a
+ * sentence has no way to fail, is the exact defect `lifterSprite.test.ts` calls
+ * THE DEFECT CLASS THIS WHOLE PIECE HAS BEEN FIGHTING, one category over: this
+ * pair is ours-prose rather than a reference figure, so the `@ref` convention
+ * that kills it for references never looked at it. So the cause is named once,
+ * here, and every
+ * step of it is asserted by 'the far strap seam is eaten by the far ARM' below
+ * rather than argued.
+ *
+ * The cause is that the seam column is placed UNMIRRORED against a MIRRORED
+ * anchor. `anchorPoint('STRAP')` is `CENTER_X + sign * ...`, so the two strap
+ * anchors are exact mirror images. `markTargets` then adds the origin as plain
+ * screen x — `x: anchor.x + ox + col` — and `STRAP_SEAM`'s origin is `[1, 1]`.
+ * So the seam column lands one px screen-RIGHT of the strap axis on both sides,
+ * which is INBOARD on the near side and OUTBOARD on the far side. Every piece of
+ * GEOMETRY in the neighbourhood is mirror-symmetric — the strap capsule, the
+ * deltoid disc and `drawArm`'s upper-arm capsule are all `CENTER_X + sign * ...`
+ * with identical radii, and the two sides differ only in lighting
+ * (`SHADING.FAR_LIMB_LIGHT_SCALE`), which moves no pixel. So none of them can
+ * produce a 99.8/27.5 split by itself, and this one asymmetry is the whole of it.
+ *
+ * What that costs: the far seam sits on the arm's side of the strap and the near
+ * seam on the chest's. `renderLifterFrame` draws the torso before both arms, so
+ * the far arm paints over its seam and the near arm never reaches its own.
+ * Measured over the pose space and asserted below: the far seam is inside the far
+ * upper arm's drawn outline in 906 of 1248 (frame, row) pairs and the near seam
+ * is inside the near one in ZERO of 1248; every far-side miss is a SKIN pixel in
+ * the finished grid; the deltoid disc touches three seam pixels in the whole pose
+ * space and the strap capsule, which `drawTorso` draws after it, covers all
+ * three.
+ *
+ * SO THE LEVER IS THE PAIR (`STRAP_SEAM.origin`, `ATTACH.ARM_ROOT` /
+ * `UPPER_ARM_R[0]`) — which side of the axis the seam is authored on, and where
+ * the arm's inboard flank runs. It is NOT the deltoid. Whoever moves either half
+ * of that pair owns this number and has to come back and re-measure it.
  */
 const MARK_LANDING_FLOOR = 0.7;
 
@@ -214,9 +274,19 @@ const MARK_LANDING_FLOOR = 0.7;
  * the reason, keyed `NAME|ALL`, `NAME|NEAR` or `NAME|FAR`.
  *
  * Every number here is OURS, measured over the whole pose space at this
- * authoring, and every one is a RATCHET: it sits just under what the drawing
- * currently does, so the next change that eats one of these goes red and whoever
- * made it has to come here and re-measure by hand. None of them is a target.
+ * authoring, and none of them is a target.
+ *
+ * THE RATCHET IS `MARK_LANDING_MEASURED`, NOT THIS BLOCK. This doc used to claim
+ * that each floor "sits just under what the drawing currently does, so the next
+ * change that eats one of these goes red" — which is true of the floors, and is
+ * NOT the ratchet it was being read as. A floor only fires downward: the rates
+ * quoted in the comments below could all improve, or drift up by a few points,
+ * and every quoted percentage would silently become false prose while the suite
+ * stayed green. Eight numbers, unfalsifiable, in the block whose whole job is to
+ * be the honest record of what the drawing does.
+ *
+ * So the eight rates are pinned separately and in BOTH directions, in
+ * `MARK_LANDING_MEASURED`, and the floors below are left as floors.
  */
 const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
   // 58.8% and 59.1%. Past about two thirds depth the singlet hem and the knee
@@ -242,10 +312,12 @@ const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
   // 63.7% aggregate, 99.8% near, 27.5% far. THE FAR STRAP IS THE ONE THAT
   // MATTERS, and what eats it is the far ARM — not the deltoid, which
   // `drawTorso` draws BEFORE the straps and therefore cannot cover them.
-  // `renderLifterFrame` draws the whole torso, then `drawArm(sign +1)`, and at
-  // BRACE the upper arm's shoulder end sits on axis x = CENTER_X + 6.806 with a
-  // 2.7 radius and a px of contour, which spans the seam's column at the top of
-  // its three-row run and has moved outboard of it by the bottom row. So the
+  // `renderLifterFrame` draws the whole torso, then `drawArm(sign +1)`, and the
+  // far seam column sits OUTBOARD of the far strap axis where the near one sits
+  // inboard of the near axis, so the far arm's inboard flank runs across it and
+  // the near arm never reaches its own. That asymmetry is `STRAP_SEAM.origin`
+  // being applied unmirrored against a mirrored anchor; the full derivation is on
+  // `MARK_LANDING_FLOOR` and every step of it is asserted, not argued. So the
   // seam survives in 210 of 416 frames, partially. That much is anatomy — from
   // the front an arm does cross a singlet strap — and it is why this gets a
   // floor rather than a place in `alwaysOn`, which it could not meet.
@@ -254,6 +326,10 @@ const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
   // inboard comes straight off this number, and nothing else in the suite can
   // see it. Re-bellying `UPPER_ARM_R` at 3.0 takes the far seam to 10.4% and the
   // aggregate to 55.1%; at 3.4, 2.7% and 49.6%. Both fire here, on both keys.
+  // THOSE FOUR BELLY FIGURES ARE A RECORD, NOT A CHECKED NUMBER: they describe a
+  // three-radius chain that `drawArm` no longer builds, and nothing in the tree
+  // can reproduce them without splicing the belly back in. The three CONE rates
+  // beside them are pinned in `MARK_LANDING_MEASURED` and cannot go stale.
   'STRAP_SEAM|ALL': 0.6,
   'STRAP_SEAM|FAR': 0.25,
   // 64.1% far against 92.3% near, and THE CAUSE IS NOT DIAGNOSED — said plainly
@@ -269,6 +345,88 @@ const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
   // round is a revert.
   'TRAP_BAR_SHADOW|FAR': 0.6,
 };
+
+/**
+ * EVERY LANDING RATE ANY COMMENT IN THIS FILE STATES, as exact pixel counts.
+ *
+ * `[landed, requested]` over the whole pose space, and the string is what
+ * `(landed / requested * 100).toFixed(1)` prints — which is the form the comments
+ * above quote, so the quoted number is the asserted number rather than a
+ * transcription of it. All OURS.
+ *
+ * This exists because the exceptions block described itself as a ratchet and was
+ * not one. A floor fires downward only; these fire in BOTH directions, which is
+ * the doctrine `lifterSprite.test.ts` settles on for ours-only figures. If the
+ * drawing gets better these go red too, and whoever improved it comes here and
+ * says so. That is the cost of the sentences above being true.
+ */
+const MARK_LANDING_MEASURED: Readonly<Record<string, readonly [number, number, string]>> = {
+  'QUAD_SWEEP_NEAR|ALL': [2202, 3744, '58.8%'],
+  'QUAD_SWEEP_FAR|ALL': [2213, 3744, '59.1%'],
+  'SHOE_UPPER|ALL': [4192, 7488, '56.0%'],
+  'SHOE_UPPER|NEAR': [2096, 3744, '56.0%'],
+  'SHOE_UPPER|FAR': [2096, 3744, '56.0%'],
+  // Not exceptions — they clear the floor — but SHOE_UPPER's comment does its
+  // arithmetic off them, so they are pinned with the rest.
+  'SHOE_COLLAR|ALL': [5856, 7488, '78.2%'],
+  'SHOE_SOLE|ALL': [5856, 7488, '78.2%'],
+  'STRAP_SEAM|ALL': [1589, 2496, '63.7%'],
+  'STRAP_SEAM|NEAR': [1246, 1248, '99.8%'],
+  'STRAP_SEAM|FAR': [343, 1248, '27.5%'],
+  'TRAP_BAR_SHADOW|ALL': [1952, 2496, '78.2%'],
+  'TRAP_BAR_SHADOW|NEAR': [1152, 1248, '92.3%'],
+  'TRAP_BAR_SHADOW|FAR': [800, 1248, '64.1%'],
+};
+
+/**
+ * Frames in which the FAR strap seam loses every one of its three pixels.
+ *
+ * OURS. The `alwaysOn` comment below quotes it, and the exception above quotes
+ * its complement — "survives in 210 of 416 frames" — so one number is pinned and
+ * the other is arithmetic on it.
+ */
+const FAR_SEAM_FRAMES_FULLY_GONE = 206;
+
+/**
+ * (frame, seam row) pairs on one side: 416 frames times a three-row map.
+ *
+ * OURS. It is the denominator of every per-side seam figure in this file.
+ */
+const SEAM_ROWS_MEASURED = 1248;
+
+/**
+ * Far seam pixels that fall inside the far upper arm's drawn outline.
+ *
+ * OURS, 906 of `SEAM_ROWS_MEASURED`, against ZERO on the near side. That pair is
+ * the whole of the 99.8/27.5 split and is asserted below. It is larger than the
+ * 905 that actually fail to land, because `despeckle` runs before the marks and
+ * rescues a lone contour pixel now and then.
+ */
+const FAR_SEAM_PIXELS_INSIDE_ARM = 906;
+
+/**
+ * Seam pixels inside a deltoid cap's painted disc, both sides, whole pose space.
+ *
+ * OURS. `drawTorso` draws the caps with `drawEllipsoid` and no `edge` option, so
+ * the disc of `ATTACH.DELTOID_R` is exactly what a cap can touch — the ceiling on
+ * how much of the far seam's loss the DELTOID could explain, before even
+ * accounting for the straps being drawn after the caps. Three pixels out of 905.
+ *
+ * The number is here because a comment in this file used to name the deltoid as
+ * the cause. It is not a fact anybody needs; it is the fact that closes off a
+ * direction a builder was pointed in.
+ */
+const SEAM_PIXELS_UNDER_DELTOID = 3;
+
+/**
+ * Near seam pixels that fail to land, over the whole pose space.
+ *
+ * OURS. Two, and both are `PAL.GEAR_DARK` in the finished grid — worn kit, which
+ * is asserted below. Whatever piece of kit that is, it is NOT skin, and that is
+ * the load-bearing half: the near arm is inside its own seam at zero poses, so
+ * the near side has no arm loss at all to compare against the far side's 905.
+ */
+const NEAR_SEAM_MISSES = 2;
 
 const EXPECTED_FLESH_MARKS: readonly string[] = [
   'FACE_CALM',
@@ -368,6 +526,22 @@ describe('marks reach the pixels', () => {
       expect(req.has(key), `${key} is an exception for a bucket nothing measures`).toBe(true);
     }
 
+    // THE RATCHET, MADE REAL. Every rate the comments above state is pinned as an
+    // exact pair of pixel counts, in both directions, and the percentage they
+    // print is compared as the string the comment quotes. See
+    // `MARK_LANDING_MEASURED` for why a floor was not this.
+    for (const key of Object.keys(MARK_LANDING_EXCEPTIONS)) {
+      expect(
+        MARK_LANDING_MEASURED[key],
+        `${key} is floored but its measured rate is not pinned`,
+      ).toBeDefined();
+    }
+    for (const [key, [landed, asked, printed]] of Object.entries(MARK_LANDING_MEASURED)) {
+      expect(req.get(key), `${key} is pinned for a bucket nothing measures`).toBe(asked);
+      expect(got.get(key), `${key} landed pixels`).toBe(landed);
+      expect(`${((landed / asked) * 100).toFixed(1)}%`, `${key} printed rate`).toBe(printed);
+    }
+
     for (const mark of MARKS) {
       for (const bucket of buckets(mark)) {
         const key = `${mark.name}|${bucket}`;
@@ -411,7 +585,20 @@ describe('marks reach the pixels', () => {
     // names half-eaten is worse than no guard, because it reads as coverage.
     //
     // The strap is floored by landing RATE instead, per side, at
-    // `MARK_LANDING_EXCEPTIONS`. That fires at 3.0 and at 3.4.
+    // `MARK_LANDING_EXCEPTIONS`. That fires at 3.0 and at 3.4. (The 206 is pinned
+    // below; the belly figures are a record of a shape `drawArm` no longer
+    // builds — see the note on the exception itself.)
+    //
+    // WHAT PER-SIDE ACTUALLY BUYS IS SENSITIVITY, not reach, and that is worth
+    // saying exactly because it is easy to overstate. An aggregate-only floor
+    // would ALSO have fired at a 3.0 belly — 55.1% against 0.6 — so per-side is
+    // not what makes that mutation visible. What it is, is roughly three times
+    // sharper: the FAR key trips on 2.5 points of far-side loss (27.5% against
+    // 0.25) where the ALL key needs 7.4, since the aggregate is the mean of two
+    // sides and only one of them is moving. The proof that per-side sees things
+    // aggregate cannot is `TRAP_BAR_SHADOW`, found at 64.1% on the far side
+    // behind a 78.2% aggregate that cleared the general 0.7 floor.
+    let seamFullyGone = 0;
     const alwaysOn = [
       'BELT_LEVER',
       'SHOE_SOLE',
@@ -427,6 +614,8 @@ describe('marks reach the pixels', () => {
       'CALF_TAPER',
       'ANKLE_SHADOW',
     ];
+    const seam = MARKS.find((m) => m.name === 'STRAP_SEAM');
+    expect(seam, 'STRAP_SEAM').toBeDefined();
     for (const s of poseSpace()) {
       const frame = renderLifterFrame(s);
       for (const name of alwaysOn) {
@@ -438,7 +627,157 @@ describe('marks reach the pixels', () => {
           `${name} at depth ${s.depth.toFixed(2)} ${s.direction} s${s.strainLevel} p${s.pitchLevel}`,
         ).toBeGreaterThan(0);
       }
+      if (seam !== undefined && markPixelsInGrid(frame.grid, { ...seam, side: 'FAR' }, frame) === 0) {
+        seamFullyGone += 1;
+      }
     }
+    // "Gone from the far shoulder in 206 of 416 frames" and "survives in 210",
+    // both pinned, both directions. See `FAR_SEAM_FRAMES_FULLY_GONE`.
+    expect(seamFullyGone, 'frames with no far seam pixel at all').toBe(FAR_SEAM_FRAMES_FULLY_GONE);
+    expect(poseSpace().length - seamFullyGone, 'frames the far seam survives in').toBe(210);
+  });
+
+  it('is eaten on the far side by the ARM, because the seam is authored unmirrored', () => {
+    // THE CAUSE OF 99.8% AGAINST 27.5%, ASSERTED RATHER THAN NARRATED. See
+    // `MARK_LANDING_FLOOR` for the prose; this is the same claim as numbers, and
+    // the two live together so neither can rot without the other going red.
+    //
+    // Every step is measured on the shipped rig over the whole pose space:
+    //
+    //   1. the strap ANCHOR is exactly mirror-symmetric at every pose;
+    //   2. the seam COLUMN is one px screen-right of it on both sides, which is
+    //      inboard on the near side and outboard on the far side, because
+    //      `markTargets` adds `origin` as plain screen x;
+    //   3. so the far seam falls inside the far upper arm's DRAWN outline in most
+    //      (frame, row) pairs and the near seam falls inside the near one in NONE;
+    //   4. and every far-side pixel that fails to land is SKIN in the finished
+    //      grid, while the near side's two failures are GEAR.
+    //
+    // Step 3 uses `craftMetrics.inCapsule` with a pad of 1, which is the contour
+    // pass's own `grow` — the same rule the renderer rasterises with, and
+    // `lifterSprite.test.ts` compares it to the drawn pixels capsule for capsule.
+    // Nothing here is a fourth copy of it.
+    const seam = MARKS.find((m) => m.name === 'STRAP_SEAM');
+    expect(seam, 'STRAP_SEAM').toBeDefined();
+    if (seam === undefined) return;
+    const G = RIG_GEOMETRY;
+    const skin = new Set<number>(MARK_SURFACES.SKIN);
+    let pairs = 0;
+    let mirroredAnchors = 0;
+    let farOutboard = 0;
+    let nearInboard = 0;
+    let farInsideArm = 0;
+    let nearInsideArm = 0;
+    let farMisses = 0;
+    let farMissesOnSkin = 0;
+    let nearMisses = 0;
+    let nearMissesOnGear = 0;
+    let seamPixelsUnderDeltoid = 0;
+    let thoseCoveredByTheStrap = 0;
+    for (const s of poseSpace()) {
+      const frame = renderLifterFrame(s);
+      const pose = frame.pose;
+      const strained = frame.strain > STRAIN.FLUSH_THRESHOLD;
+      const nearAnchor = anchorPoint('STRAP', pose, -1);
+      const farAnchor = anchorPoint('STRAP', pose, 1);
+      // 1.
+      if (farAnchor.x - CENTER_X === -(nearAnchor.x - CENTER_X) && farAnchor.y === nearAnchor.y) {
+        mirroredAnchors += 1;
+      }
+      const near = markTargets({ ...seam, side: 'NEAR' }, pose, strained);
+      const far = markTargets({ ...seam, side: 'FAR' }, pose, strained);
+      expect(near.length, 'the two sides ask for the same pixels').toBe(far.length);
+      for (const [sign, anchor, targets, arm] of [
+        [-1, nearAnchor, near, upperArmSpan(pose, -1)],
+        [1, farAnchor, far, upperArmSpan(pose, 1)],
+      ] as const) {
+        // The deltoid cap's painted extent, exactly. `drawTorso` calls
+        // `drawEllipsoid` for it with `lightScale` and nothing else — no `edge` —
+        // so `drawEllipsoid` runs the fill pass alone at `grow` 0 and the pixels
+        // it can touch are precisely `(dx/r)^2 + (dy/r)^2 <= 1` on equal radii,
+        // which is this disc. No slack is needed and none is added.
+        const dcx = CENTER_X + sign * pose.shoulderHalfW * G.ATTACH.DELTOID;
+        const dcy = pose.shoulderY + G.NUDGE.DELTOID_DROP;
+        for (const t of targets) {
+          const inside = inCapsule(
+            t.x,
+            t.y,
+            arm.shoulderX,
+            arm.shoulderY,
+            arm.elbowX,
+            arm.elbowY,
+            G.UPPER_ARM_R[0],
+            G.UPPER_ARM_R[1],
+            1,
+          );
+          const px = getPx(frame.grid, t.x, t.y);
+          const landed = px === t.ink;
+          if (sign > 0) {
+            pairs += 1;
+            if (t.x - anchor.x > 0) farOutboard += 1;
+            if (inside) farInsideArm += 1;
+            if (!landed) {
+              farMisses += 1;
+              if (skin.has(px)) farMissesOnSkin += 1;
+            }
+          } else {
+            // Screen-right of the near axis is toward the centre line.
+            if (t.x - anchor.x > 0) nearInboard += 1;
+            if (inside) nearInsideArm += 1;
+            if (!landed) {
+              nearMisses += 1;
+              if (px === PAL.GEAR_DARK) nearMissesOnGear += 1;
+            }
+          }
+          if (Math.hypot(t.x - dcx, t.y - dcy) <= G.ATTACH.DELTOID_R) {
+            seamPixelsUnderDeltoid += 1;
+            const covered = inCapsule(
+              t.x,
+              t.y,
+              CENTER_X + sign * pose.shoulderHalfW * G.ATTACH.STRAP_TOP,
+              pose.shoulderY - G.NUDGE.STRAP_LIFT,
+              CENTER_X + sign * pose.shoulderHalfW * G.ATTACH.STRAP_BOTTOM,
+              pose.chestY,
+              G.ATTACH.STRAP_R[0],
+              G.ATTACH.STRAP_R[1],
+              0,
+            );
+            if (covered) thoseCoveredByTheStrap += 1;
+          }
+        }
+      }
+    }
+
+    // 1. The rig either side of the seam is mirror-symmetric, so nothing about
+    //    the DRAWING can produce the split on its own.
+    expect(mirroredAnchors, 'strap anchors are mirror images at every pose').toBe(
+      poseSpace().length,
+    );
+    // 2. The seam column is not.
+    expect(pairs, '(frame, row) pairs').toBe(SEAM_ROWS_MEASURED);
+    expect(farOutboard, 'far seam is OUTBOARD of its strap axis').toBe(pairs);
+    expect(nearInboard, 'near seam is INBOARD of its strap axis').toBe(pairs);
+    // 3. Which puts one of them on the arm and the other nowhere near it.
+    expect(farInsideArm, 'far seam pixels inside the far upper arm').toBe(
+      FAR_SEAM_PIXELS_INSIDE_ARM,
+    );
+    expect(nearInsideArm, 'near seam pixels inside the near upper arm').toBe(0);
+    // 4. And the pixel that won is skin, in the finished grid, every time.
+    expect(farMisses, 'far seam pixels that did not land').toBe(
+      pairs - (MARK_LANDING_MEASURED['STRAP_SEAM|FAR']?.[0] ?? 0),
+    );
+    expect(farMissesOnSkin, 'every far miss is SKIN').toBe(farMisses);
+    expect(nearMisses, 'near seam pixels that did not land').toBe(NEAR_SEAM_MISSES);
+    expect(nearMissesOnGear, 'and both near misses are GEAR, not skin').toBe(nearMisses);
+    // NOT THE DELTOID. A cap's painted disc contains three seam pixels in the
+    // whole pose space, and the strap capsule — which `drawTorso` lays down AFTER
+    // the deltoid caps — covers all three. Three cannot explain 905.
+    expect(seamPixelsUnderDeltoid, 'seam pixels within reach of a deltoid cap').toBe(
+      SEAM_PIXELS_UNDER_DELTOID,
+    );
+    expect(thoseCoveredByTheStrap, 'and the strap, drawn later, covers them').toBe(
+      seamPixelsUnderDeltoid,
+    );
   });
 
   it('gives the face a mouth and both eyes at every depth', () => {

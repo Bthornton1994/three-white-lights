@@ -484,9 +484,29 @@ export const RIG_GEOMETRY = {
    *      belly 3.0       130 of 1248 (10.4%)      322 of 416
    *      belly 3.4        34 of 1248 ( 2.7%)      383 of 416
    *
-   *    The NEAR seam is 99.8% at the cone and at 3.0, and 96.4% at 3.4 — so an
-   *    aggregate over both sides hides almost all of this, which is why
-   *    `spriteMarks.test.ts` floors the two sides separately. Drawn singlet
+   *    The NEAR seam is 99.8% at the cone and at 3.0, and 96.4% at 3.4.
+   *
+   *    WHICH OF THOSE ROWS IS CHECKABLE, said plainly. The CONE row is the shipped
+   *    drawing and is asserted in `spriteMarks.test.ts` rather than quoted: 343 of
+   *    1248 and 206 of 416 are pinned there in both directions, so if this row
+   *    ever goes stale that suite goes red. The two BELLY rows describe a shape
+   *    this file no longer draws — a three-radius chain, where `UPPER_ARM_R` is
+   *    now two radii and one capsule — and nothing in the tree can reproduce them
+   *    without splicing the belly back into `drawArm`. They are a record of a
+   *    measurement, not a checked figure, and should be re-measured rather than
+   *    trusted by anyone who splices it back.
+   *
+   *    WHAT PER-SIDE FLOORING BUYS IS SENSITIVITY, NOT REACH, and the difference
+   *    matters because the stronger claim is easy to make and is false. An
+   *    aggregate-only floor would ALSO have caught the 3.0 belly, on the figure
+   *    recorded beside it in `spriteMarks.test.ts`: the aggregate goes to 55.1%
+   *    against an `STRAP_SEAM|ALL` floor of 0.6. What per-side is, is about three
+   *    times sharper. The aggregate is the mean of two sides and only one of them
+   *    moves, so `|ALL` needs 7.4 points of far-side loss to trip where `|FAR`
+   *    needs 2.5 — arithmetic on the shipped 63.7% and 27.5%, both pinned. The
+   *    case per-side sees and aggregate cannot is `TRAP_BAR_SHADOW`, which sits at
+   *    64.1% far behind a 78.2% aggregate that clears the general floor
+   *    comfortably; all three of those are pinned too. Drawn singlet
    *    pixels fall with it: 153 -> 147 -> 142 at BRACE and 112 -> 105 -> 103 in
    *    the HOLE. (The reverted round quoted 141 and 98 for the same two poses; it
    *    did not say at what strain, pitch or load it rendered them, and this file
