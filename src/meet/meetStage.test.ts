@@ -339,11 +339,31 @@ const UNSTAGED_BEATS: readonly { readonly beat: string; readonly file: string; r
 export function resolveBeatVenue(source: string, liftStageSource: string): GymVenue | null {
   const staged = resolveStageVenue(source, liftStageSource);
   if (staged !== null) return staged;
-  if (!source.includes('<MeetHallView')) return null;
+  if (meetHallElementIn(source) === null) return null;
   // `MeetHallView` takes no venue: it IS the meet hall, and the room it draws is
   // `MEET_HALL_SCENE`, built from `MEET_TUNING.VENUE`. A screen cannot ask it
   // for the training gym, which is the point.
   return MEET_HALL_SCENE.venue;
+}
+
+/**
+ * The whole `<MeetHallView … />` element, or null if the component draws none.
+ *
+ * A SEPARATE PARSER FROM `resolveBeatVenue`'s `includes`, and it exists because
+ * of a check that did not fail. "The walkout hands the hall a plate count" was
+ * asserted as `source.toContain('platesLoaded')` — which the `useState` line
+ * satisfies on its own, so deleting the PROP left the bar fully loaded from the
+ * first frame and the suite stayed green. Reading the element is what makes the
+ * difference between the state existing and the state being handed over.
+ */
+export function meetHallElementIn(source: string): string | null {
+  const open = source.indexOf('<MeetHallView');
+  if (open === -1) return null;
+  const close = source.indexOf('/>', open);
+  if (close === -1) {
+    throw new Error('<MeetHallView> is not self-closing; this parser cannot read it');
+  }
+  return source.slice(open, close + 2);
 }
 
 describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
@@ -450,10 +470,41 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     // Non-vacuity for the stripper: it does still see the code around them.
     expect(walkout).toContain('MeetHallView');
     expect(codeOnly('// borderRadius: 3,\nconst a = 1;')).not.toContain('borderRadius');
-    // ...and it hands the hall a plate count, so the bar LOADS rather than
-    // appearing. Deleting the prop leaves a bar that is loaded from the first
-    // frame, and this line goes red.
-    expect(walkout).toContain('platesLoaded');
+
+    // ...and it HANDS THE HALL a plate count, so the bar loads rather than
+    // appearing already loaded.
+    //
+    // READ OFF THE ELEMENT, NOT THE FILE, and that is a correction rather than a
+    // flourish: written as `expect(source).toContain('platesLoaded')` this check
+    // could not fail, because the `useState` line contains the word. Deleting
+    // the prop was measured and the suite stayed green.
+    const element = meetHallElementIn(read('meet/WalkoutView.tsx'));
+    expect(element, 'WalkoutView draws no MeetHallView').not.toBeNull();
+    expect(element ?? '', 'the walkout hands the hall no plate count').toContain('platesLoaded');
+    // ...and it hands over the STATE, not the finished total. `platesLoaded:
+    // plateCount` names the prop and defeats the beat: the bar would be fully
+    // loaded on the first frame with the word still in the file. The shorthand
+    // form is what distinguishes them.
+    //
+    // COUPLED TO A FORMATTING CHOICE, and stated rather than hidden: a rewrite to
+    // `platesLoaded={platesLoaded}` fails this and is not wrong. It earns the
+    // coupling because the alternative is a check that cannot fail, which this
+    // file has now shipped once.
+    expect(element ?? '', 'the walkout hands the hall a fixed count').toMatch(
+      /\bplatesLoaded\s*[,}]/,
+    );
+  });
+
+  it('the element parser can tell a prop from a mention of its name', () => {
+    // The positive control for the correction above.
+    const withProp = 'const [platesLoaded] = x();\n  <MeetHallView lifter={{ platesLoaded }} />';
+    const without = 'const [platesLoaded] = x();\n  <MeetHallView lifter={{ totalKg }} />';
+    expect(meetHallElementIn(withProp) ?? '').toContain('platesLoaded');
+    expect(meetHallElementIn(without) ?? '').not.toContain('platesLoaded');
+    expect(meetHallElementIn('nothing here')).toBeNull();
+    // ...and it throws rather than guessing at an element it cannot close, the
+    // same way `liftStageElementIn` does.
+    expect(() => meetHallElementIn('<MeetHallView lifter={x}>')).toThrow(/not self-closing/);
   });
 });
 
