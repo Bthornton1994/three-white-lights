@@ -30,10 +30,16 @@
  * condition; firing none is inside that rule, and the gate belongs to whoever
  * builds the cut-in piece.
  *
- * NO SOUND EITHER, and §12.2 explicitly judges "pacing AND sound". There is no
- * audio anywhere in this codebase yet. Half of this beat's bar is therefore
- * unbuilt, not merely untuned, and that should be reported as a gap rather than
- * discovered.
+ * WHAT IT IS FELT AS. The beat is no longer silent on the phone: each plate
+ * lands with its own thud on `BAR_LOAD_PLATE_STAGGER_MS`, and the call arrives
+ * with one beat that is heavier when the attempt is a third, a PR or a bomb
+ * risk. Which pattern belongs to which moment is `hapticForBeat` in
+ * `meetDay.ts`; this file only says when. NONE OF IT HAS BEEN FELT — web has no
+ * haptic engine, so no capture and no critic can check it (GDD §12.1).
+ *
+ * SOUND IS STILL MISSING AND §12.2 EXPLICITLY JUDGES "pacing AND sound". There
+ * is no audio dependency in this project at all, so half of this beat's bar is
+ * unbuilt rather than untuned. Stated here rather than left to be discovered.
  *
  * NO ARITHMETIC HERE. The plate stack is drawn from the weight and the bar, and
  * `plateStackFor` lives in `meetPlates.ts` because CLAUDE.md forbids computing
@@ -45,7 +51,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
-import type { LiveAttempt } from '../game/meetDay';
+import { hapticForBeat, type LiveAttempt } from '../game/meetDay';
+import { playHaptic } from '../lift/haptics';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
 import { formatWeight } from '../game/resultCard';
 import { plateStackFor, type PlateMark } from './meetPlates';
@@ -53,15 +60,32 @@ import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
 
-/** One plate, landing on its own beat so the bar loads rather than appears. */
-function Plate({ plate, index }: { readonly plate: PlateMark; readonly index: number }): React.ReactElement {
+/**
+ * One plate, landing on its own beat so the bar loads rather than appears.
+ *
+ * `felt` is false on the mirrored sleeve: both sleeves are drawn and both are
+ * staggered identically, so firing a haptic from each would double every thud
+ * and make a six-plate bar feel like a twelve-plate one.
+ */
+function Plate({
+  plate,
+  index,
+  felt,
+}: {
+  readonly plate: PlateMark;
+  readonly index: number;
+  readonly felt: boolean;
+}): React.ReactElement {
   const shown = useSharedValue(0);
   React.useEffect(() => {
-    shown.value = withDelay(
-      index * MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS,
-      withTiming(1, { duration: MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS }),
-    );
-  }, [index, shown]);
+    const at = index * MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS;
+    shown.value = withDelay(at, withTiming(1, { duration: MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS }));
+    if (!felt) return undefined;
+    // Same constant as the fade, so what is seen and what is felt are the same
+    // event rather than two schedules that can drift.
+    const timer = setTimeout(() => playHaptic(hapticForBeat({ kind: 'bar-plate' })), at);
+    return () => clearTimeout(timer);
+  }, [felt, index, shown]);
   const style = useAnimatedStyle(() => ({ opacity: shown.value }));
   return (
     <Animated.View
@@ -98,7 +122,15 @@ export function WalkoutView({ attempt, liftLabel, barAndCollarsKg }: WalkoutView
       MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS,
       withTiming(1, { duration: MEET_TUNING.OPENER_ROW_FADE_MS }),
     );
-  }, [revealed, attempt.lift, attempt.attemptNumber]);
+    // The call is felt as it arrives, and harder when the attempt is a third,
+    // a PR or a bomb risk — the same three conditions that pick the line and
+    // that lengthen the beat (`walkoutMs`).
+    const timer = setTimeout(
+      () => playHaptic(hapticForBeat({ kind: 'walkout-call', urgent })),
+      MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [revealed, urgent, attempt.lift, attempt.attemptNumber]);
   const lineStyle = useAnimatedStyle(() => ({ opacity: revealed.value }));
 
   return (
@@ -122,13 +154,14 @@ export function WalkoutView({ attempt, liftLabel, barAndCollarsKg }: WalkoutView
               key={`l-${plate.weightKg}-${index}`}
               plate={plate}
               index={stack.length - index - 1}
+              felt={false}
             />
           ))}
         </View>
         <View style={styles.shaft} />
         <View style={styles.sleeve}>
           {stack.map((plate, index) => (
-            <Plate key={`r-${plate.weightKg}-${index}`} plate={plate} index={index} />
+            <Plate key={`r-${plate.weightKg}-${index}`} plate={plate} index={index} felt />
           ))}
         </View>
       </View>

@@ -150,6 +150,7 @@ import {
   type AttemptNumber,
   type AttemptOutcome,
   type CompletedAttempt,
+  type JudgeLight,
   type JudgePanel,
   type LiftKind,
   type MeetError,
@@ -159,6 +160,7 @@ import {
 import { nextRandom, seedState } from './prng';
 import { sessionFeel, type FatigueState, type LiftMoment, type SessionFeel } from './fatigue';
 import type { LiftConfig, LiftResolution, MissReason } from './lift';
+import type { HapticPattern } from './liftTuning';
 import type { MeetAttemptReport, MeetResultReport, MeetId } from './progression';
 import { asMeetId } from './progression';
 import {
@@ -681,6 +683,87 @@ export function verdictMs(): number {
 /** When the nth referee's light comes up, in ms from the start of the verdict. */
 export function lightRevealDelayMs(seat: number): number {
   return MEET_TUNING.LIGHT_REVEAL_FIRST_DELAY_MS + seat * MEET_TUNING.LIGHT_REVEAL_STAGGER_MS;
+}
+
+// ---------------------------------------------------------------------------
+// What meet day FEELS like (GDD §12.2 — "judge pacing and sound")
+// ---------------------------------------------------------------------------
+
+/**
+ * A moment on meet day that the phone should register in the hand.
+ *
+ * Deliberately the SAME SHAPE as `lift.ts`'s `LiftEvent` -> `hapticFor` pair,
+ * and here for the same reason that one is in `lift.ts`: which pattern a moment
+ * gets is a decision about the game, not about React, and CLAUDE.md forbids it
+ * living in a component. The screens' only job is to say WHEN a beat happened.
+ *
+ * These are the beats the meet-day screens own. The rep inside the attempt is
+ * `lift.ts`'s and is not restated here.
+ */
+export type MeetBeat =
+  /** One plate landing on the sleeve as the bar is loaded. */
+  | { readonly kind: 'bar-plate' }
+  /** The walk-out line arriving. `urgent` on a third, a PR or a bomb risk. */
+  | { readonly kind: 'walkout-call'; readonly urgent: boolean }
+  /** The panel goes dark and the judges take their beat. */
+  | { readonly kind: 'deliberation' }
+  /** One referee's lamp coming up. */
+  | { readonly kind: 'light'; readonly light: JudgeLight }
+  /** GOOD LIFT / NO LIFT, after the last lamp. */
+  | { readonly kind: 'verdict'; readonly good: boolean }
+  /** The bomb-out's first line, after its silence (GDD §6.3). */
+  | { readonly kind: 'bomb-out' }
+  /** The floor landing on the attempt-select screen. */
+  | { readonly kind: 'floor'; readonly raisedByMiss: boolean }
+  /** An attempt declared. A one-way ratchet — §6.3's whole point. */
+  | { readonly kind: 'attempt-declared' };
+
+/** Every beat kind, for the exhaustiveness check in `meetDay.test.ts`. */
+export const MEET_BEAT_KINDS = Object.freeze([
+  'bar-plate',
+  'walkout-call',
+  'deliberation',
+  'light',
+  'verdict',
+  'bomb-out',
+  'floor',
+  'attempt-declared',
+] as const satisfies readonly MeetBeat['kind'][]);
+
+/**
+ * The haptic pattern for a meet-day beat, or null if that beat is felt as
+ * nothing.
+ *
+ * Null is a REAL ANSWER here and not a missing case. A floor that was not
+ * raised by a miss is silent precisely so the one that was is not — the
+ * difference between "the weight you just made" and "the weight that just beat
+ * you" is GDD §6.3's entire argument, and a beat that fired on both would
+ * flatten it.
+ *
+ * NONE OF THESE HAVE BEEN FELT. See `MEET_TUNING.HAPTICS`.
+ */
+export function hapticForBeat(beat: MeetBeat): HapticPattern | null {
+  const h = MEET_TUNING.HAPTICS;
+  switch (beat.kind) {
+    case 'bar-plate':
+      return h.BAR_PLATE;
+    case 'walkout-call':
+      return beat.urgent ? h.WALKOUT_CALL_URGENT : h.WALKOUT_CALL;
+    case 'deliberation':
+      return h.DELIBERATION;
+    case 'light':
+      return beat.light === 'white' ? h.LIGHT_WHITE : h.LIGHT_RED;
+    case 'verdict':
+      return beat.good ? h.VERDICT_GOOD : h.VERDICT_NO_LIFT;
+    case 'bomb-out':
+      return h.BOMB_OUT;
+    case 'floor':
+      return beat.raisedByMiss ? h.FLOOR_RAISED : null;
+    case 'attempt-declared':
+      return h.ATTEMPT_DECLARED;
+    default:
+      return null;
+  }
 }
 
 // ---------------------------------------------------------------------------

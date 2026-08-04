@@ -27,8 +27,22 @@
  * deliberate divergence from the real sport in the direction §12.2's bar asks
  * for, and it is stated rather than hidden.
  *
- * NO LOGIC HERE. Which lights, whether it was close, and what the feedback line
- * says are all decided in `meetDay.ts` and arrive as data.
+ * ---------------------------------------------------------------------------
+ * AND THEY CLACK
+ * ---------------------------------------------------------------------------
+ * Three white lights is the thing this game is named after, and until now it
+ * was a fade with no physical event behind it in an app that vibrates during an
+ * ordinary training rep. Each lamp fires a haptic on the same delay it comes up
+ * on, white and red are different patterns, and the verdict lands after the
+ * last one. The deliberation beat gets a single soft tick and then silence.
+ *
+ * NOTHING FIRED HERE LEAKS THE VERDICT EARLY: the deliberation tick is the same
+ * whichever way the call went, and a lamp's pattern arrives exactly when that
+ * lamp's colour becomes visible — not before.
+ *
+ * NO LOGIC HERE. Which lights, whether it was close, what the feedback line
+ * says and which haptic a lamp gets are all decided in `meetDay.ts` and arrive
+ * as data.
  */
 
 import React from 'react';
@@ -36,7 +50,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
-import { lightRevealDelayMs, type MeetDayAttempt } from '../game/meetDay';
+import { hapticForBeat, lightRevealDelayMs, type MeetDayAttempt } from '../game/meetDay';
+import { playHaptic } from '../lift/haptics';
 import { JUDGE_COUNT, type JudgeLight } from '../game/meet';
 import { formatWeight } from '../game/resultCard';
 import { MEET_PALETTE } from './meetPalette';
@@ -57,13 +72,16 @@ function Lamp({
   React.useEffect(() => {
     if (!revealed) {
       lit.value = 0;
-      return;
+      return undefined;
     }
-    lit.value = withDelay(
-      lightRevealDelayMs(seat),
-      withTiming(1, { duration: MEET_TUNING.LIGHT_FADE_MS }),
-    );
-  }, [lit, revealed, seat]);
+    const at = lightRevealDelayMs(seat);
+    lit.value = withDelay(at, withTiming(1, { duration: MEET_TUNING.LIGHT_FADE_MS }));
+    // THE CLACK. One per referee, on the same delay the lamp comes up on, and
+    // a different pattern for white and red — a lifter watching a 2-1 assemble
+    // should be able to feel the third one land the wrong way without looking.
+    const timer = setTimeout(() => playHaptic(hapticForBeat({ kind: 'light', light })), at);
+    return () => clearTimeout(timer);
+  }, [lit, light, revealed, seat]);
   const style = useAnimatedStyle(() => ({ opacity: lit.value }));
   return (
     <View style={styles.lampWell} testID={`verdict-lamp-${seat}`}>
@@ -87,21 +105,31 @@ export interface VerdictViewProps {
 }
 
 export function VerdictView({ attempt, liftLabel, revealed }: VerdictViewProps): React.ReactElement {
+  const good = attempt.good;
   const feedback = useSharedValue(0);
   React.useEffect(() => {
     if (!revealed) {
       feedback.value = 0;
-      return;
+      return undefined;
     }
     // After the LAST referee's lamp, not before it: the feedback line explains
     // a verdict, and a line that arrived first would be explaining one the
     // player has not been told yet.
-    feedback.value = withDelay(
-      lightRevealDelayMs(JUDGE_COUNT - 1) + MEET_TUNING.FEEDBACK_REVEAL_DELAY_MS,
-      withTiming(1, { duration: MEET_TUNING.FEEDBACK_FADE_MS }),
-    );
-  }, [feedback, revealed]);
+    const at = lightRevealDelayMs(JUDGE_COUNT - 1) + MEET_TUNING.FEEDBACK_REVEAL_DELAY_MS;
+    feedback.value = withDelay(at, withTiming(1, { duration: MEET_TUNING.FEEDBACK_FADE_MS }));
+    const timer = setTimeout(() => playHaptic(hapticForBeat({ kind: 'verdict', good })), at);
+    return () => clearTimeout(timer);
+  }, [feedback, good, revealed]);
   const feedbackStyle = useAnimatedStyle(() => ({ opacity: feedback.value }));
+
+  // The panel going dark. One soft tick and then nothing — the silence is the
+  // beat, and a pulse through it would be a metronome rather than a panel
+  // making up its mind. Fires on the DELIBERATION screen only, so it cannot
+  // leak which way the call went.
+  React.useEffect(() => {
+    if (revealed) return undefined;
+    return playHaptic(hapticForBeat({ kind: 'deliberation' }));
+  }, [revealed]);
 
   return (
     <View style={styles.root} testID={revealed ? 'meet-verdict' : 'meet-deliberation'}>

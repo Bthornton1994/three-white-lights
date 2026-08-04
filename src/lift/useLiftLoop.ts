@@ -8,6 +8,9 @@
  * rule about the lift ever appears in this file it is in the wrong file
  * (CLAUDE.md: "Never inline game math into a component").
  *
+ * HOW a pattern reaches the motor is `haptics.ts`, shared with meet day. WHICH
+ * pattern an event gets is `lift.ts`'s `hapticFor`. Neither decision is here.
+ *
  * ---------------------------------------------------------------------------
  * FIXED TIMESTEP, NOT FRAME-RATE-DEPENDENT
  * ---------------------------------------------------------------------------
@@ -32,8 +35,6 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
 
 import {
   createLift,
@@ -43,7 +44,8 @@ import {
   type LiftInputKind,
   type LiftState,
 } from '../game/lift';
-import { LIFT_TUNING, TICK_MS, type HapticPattern, type HapticStyle } from '../game/liftTuning';
+import { LIFT_TUNING, TICK_MS } from '../game/liftTuning';
+import { playHaptic } from './haptics';
 
 /**
  * Most ticks the loop will run in one frame. See the header — this is a
@@ -51,54 +53,6 @@ import { LIFT_TUNING, TICK_MS, type HapticPattern, type HapticStyle } from '../g
  * block with the rest of them.
  */
 const MAX_CATCH_UP_TICKS = LIFT_TUNING.FEEDBACK.MAX_CATCH_UP_TICKS;
-
-// ---------------------------------------------------------------------------
-// Haptics
-// ---------------------------------------------------------------------------
-
-const IMPACT: Partial<Record<HapticStyle, Haptics.ImpactFeedbackStyle>> = {
-  light: Haptics.ImpactFeedbackStyle.Light,
-  medium: Haptics.ImpactFeedbackStyle.Medium,
-  heavy: Haptics.ImpactFeedbackStyle.Heavy,
-  rigid: Haptics.ImpactFeedbackStyle.Rigid,
-  soft: Haptics.ImpactFeedbackStyle.Soft,
-};
-
-const NOTIFY: Partial<Record<HapticStyle, Haptics.NotificationFeedbackType>> = {
-  success: Haptics.NotificationFeedbackType.Success,
-  warning: Haptics.NotificationFeedbackType.Warning,
-  error: Haptics.NotificationFeedbackType.Error,
-};
-
-/**
- * Play one pattern.
- *
- * WEB IS A NO-OP AND THAT IS NOT A BUG, it is the platform: there is no haptic
- * engine behind a browser tab. Said out loud because the screenshot harness
- * runs on web, so nothing about how this feels can be verified there — GDD
- * §9.1 calls haptics critical to lift feel and budgets device time for exactly
- * this reason.
- */
-function playHaptic(pattern: HapticPattern): void {
-  if (Platform.OS === 'web') return;
-  for (const beat of pattern.beats) {
-    const fire = (): void => {
-      const impact = IMPACT[beat.style];
-      if (impact !== undefined) {
-        void Haptics.impactAsync(impact);
-        return;
-      }
-      const notify = NOTIFY[beat.style];
-      if (notify !== undefined) {
-        void Haptics.notificationAsync(notify);
-        return;
-      }
-      void Haptics.selectionAsync();
-    };
-    if (beat.delayMs <= 0) fire();
-    else setTimeout(fire, beat.delayMs);
-  }
-}
 
 // ---------------------------------------------------------------------------
 // The loop
@@ -175,10 +129,7 @@ export function useLiftLoop(initial: LiftConfig, paused: boolean = false): LiftL
           next = stepLift(next, queued === undefined ? null : { kind: queued });
           historyRef.current.push(next);
           changed = true;
-          for (const event of next.events) {
-            const pattern = hapticFor(event);
-            if (pattern !== null) playHaptic(pattern);
-          }
+          for (const event of next.events) playHaptic(hapticFor(event));
         }
         if (changed) {
           stateRef.current = next;

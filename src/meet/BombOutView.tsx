@@ -39,7 +39,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import type { LiftKind } from '../game/meet';
-import type { MeetDayAttempt } from '../game/meetDay';
+import { hapticForBeat, type MeetDayAttempt } from '../game/meetDay';
+import { playHaptic } from '../lift/haptics';
 import { AttemptBoard } from './AttemptBoard';
 import { MEET_PALETTE } from './meetPalette';
 
@@ -69,6 +70,22 @@ export interface BombOutViewProps {
 
 export function BombOutView({ bombedLift, attempts, onDone }: BombOutViewProps): React.ReactElement {
   const liftLabel = MEET_COPY.LIFT_LABEL[bombedLift];
+
+  // ONE LOW BEAT, WHEN THE FIRST LINE ARRIVES, AND NOTHING ELSE.
+  //
+  // Deliberately not an `error` notification: that is the pattern this app uses
+  // for a missed rep, and filing the worst moment in the sport under the same
+  // feeling as a mistimed press would make it read as a fail state. GDD §6.3
+  // asks for somber and explicitly not punitive. `MEET_TUNING.HAPTICS.BOMB_OUT`
+  // is `soft`, once, after `BOMB_OUT_SILENCE_MS` of nothing.
+  React.useEffect(() => {
+    const timer = setTimeout(
+      () => playHaptic(hapticForBeat({ kind: 'bomb-out' })),
+      MEET_TUNING.BOMB_OUT_SILENCE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <View style={styles.root} testID="meet-bombed">
       <Line index={MEET_TUNING.BOMB_OUT_ROW_ORDER.CALL}>

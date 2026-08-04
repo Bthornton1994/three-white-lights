@@ -76,10 +76,19 @@
  *     "attempt-increment default" this screen owns. The kilos come from the
  *     engine.
  *
- *   - THE REP. `LIFT_TUNING` owns descent rates, cue windows, forces and
- *     haptics. A meet attempt is the same mechanic (GDD §6.2: "Lift resolves
- *     through the Arcade bar-path mechanic") and this file does not restate one
- *     of its numbers.
+ *   - THE REP. `LIFT_TUNING` owns descent rates, cue windows, forces and the
+ *     haptics OF THE REP ITSELF. A meet attempt is the same mechanic (GDD §6.2:
+ *     "Lift resolves through the Arcade bar-path mechanic") and this file does
+ *     not restate one of its numbers.
+ *
+ *     `MEET_TUNING.HAPTICS` below is not an exception to that. It holds the
+ *     beats AROUND the rep — the bar loading, the walk-out call, the judges'
+ *     lights, the verdict, the bomb-out — which `LIFT_TUNING` has no events
+ *     for and no business owning. It is built with `liftTuning.ts`'s own
+ *     `hapticPattern` constructor, so the two vocabularies are the same frozen
+ *     shape and `playHaptic` has exactly one kind of thing to play. What is
+ *     imported is the constructor and the `HapticStyle` alphabet; no duration,
+ *     no style choice and no pattern crosses over.
  *
  *   - FATIGUE. `FATIGUE_TUNING` owns the hidden ledger and the window-width
  *     scaling GDD §6.2 step 3 asks for. Meet day passes a `SessionFeel` into
@@ -95,6 +104,7 @@
 import { DEFAULT_MEET_RULES, type LiftKind, type MeetLoadingRules, type ProgressiveAttemptStrategy } from './meet';
 import type { DotsSex } from './dots';
 import type { GymVenue } from '../art/gymTuning';
+import { hapticPattern } from './liftTuning';
 
 // ---------------------------------------------------------------------------
 // What a meet IS, as configuration
@@ -452,6 +462,78 @@ export const MEET_TUNING = Object.freeze({
    * day and on no other day).
    */
   RECAP_ROW_ORDER: Object.freeze({ TOTAL: 0, LIFTS: 1, DOTS: 2, PLACE: 3, CARD: 4 }),
+
+  // -------------------------------------------------------------------------
+  // Haptics — what meet day FEELS like
+  //
+  // NONE OF THESE HAVE BEEN FELT. Same status as `LIFT_TUNING.HAPTICS`, whose
+  // constructor they are built with: a starting vocabulary, not tuned values.
+  // GDD §12.1 is explicit that no critic can judge haptic timing it cannot
+  // feel, and web — where every screenshot in this repo is taken — has no
+  // haptic engine at all, so nothing here has been verified by anything.
+  //
+  // WHY THE MEET NEEDS ITS OWN. `useLiftLoop` fires `LIFT_TUNING.HAPTICS`
+  // during the rep, so an ordinary training set already vibrates. Before this
+  // block the three beats around a competition attempt — the bar loading, the
+  // judges' lights, the verdict — fired nothing, which meant the loudest
+  // moments in the game were the only silent ones on the phone.
+  //
+  // THE SHAPE, which is a design claim even though the values are not:
+  //
+  //   1. The bar LOADS. One thud per plate, staggered by the same constant the
+  //      plates are drawn with, so the sleeve filling up is felt and not just
+  //      watched. This is the only repeated pattern here.
+  //   2. The walkout CALL is a single beat, and a heavier one when the attempt
+  //      is a third, a PR or a bomb risk.
+  //   3. DELIBERATION is one soft tick and then nothing. The silence is the
+  //      beat; a pulse during it would be a metronome telling the lifter to
+  //      wait rather than a panel making up its mind.
+  //   4. THE LIGHTS CLACK, one per referee, on `lightRevealDelayMs(seat)`. A
+  //      white and a red are DIFFERENT patterns — a lifter watching a 2-1 come
+  //      up should be able to feel the third one land the wrong way. This is
+  //      the game's title moment and it had no physical event at all.
+  //   5. The VERDICT lands after the last lamp: success or error.
+  //   6. THE BOMB-OUT IS NOT AN ERROR BUZZ. GDD §6.3: "not a generic game-over
+  //      screen, and not punitive." An `error` notification is the pattern this
+  //      app uses for a missed rep, and using it here would file the worst
+  //      moment in the sport under the same feeling as a mistimed press. It is
+  //      one low, soft beat after the silence, and nothing else.
+  // -------------------------------------------------------------------------
+
+  HAPTICS: Object.freeze({
+    /** One plate landing on the sleeve. Fired once per plate, per side. */
+    BAR_PLATE: hapticPattern({ style: 'rigid', delayMs: 0 }),
+    /** The walk-out line arriving on an ordinary attempt. */
+    WALKOUT_CALL: hapticPattern({ style: 'soft', delayMs: 0 }),
+    /** ...and on a third attempt, a PR attempt, or one with a bomb on it. */
+    WALKOUT_CALL_URGENT: hapticPattern(
+      { style: 'heavy', delayMs: 0 },
+      { style: 'medium', delayMs: 90 },
+    ),
+    /** The panel goes dark and the judges take their beat. Then silence. */
+    DELIBERATION: hapticPattern({ style: 'soft', delayMs: 0 }),
+    /** One referee's lamp coming up white. */
+    LIGHT_WHITE: hapticPattern({ style: 'rigid', delayMs: 0 }),
+    /** One referee's lamp coming up red. Duller, and it lands twice. */
+    LIGHT_RED: hapticPattern({ style: 'heavy', delayMs: 0 }, { style: 'soft', delayMs: 70 }),
+    /** GOOD LIFT. */
+    VERDICT_GOOD: hapticPattern({ style: 'success', delayMs: 0 }),
+    /** NO LIFT. A warning, not an error — the error is reserved for the rep. */
+    VERDICT_NO_LIFT: hapticPattern({ style: 'warning', delayMs: 0 }),
+    /** The bomb-out's first line, after the silence. See the note above. */
+    BOMB_OUT: hapticPattern({ style: 'soft', delayMs: 0 }),
+    /**
+     * The floor arriving on the attempt-select screen when a miss RAISED it
+     * (GDD §6.3's bite). When the floor is merely the weight just made, this
+     * screen is silent — the difference is the whole point of the beat.
+     */
+    FLOOR_RAISED: hapticPattern({ style: 'warning', delayMs: 0 }),
+    /**
+     * An attempt being declared. Attempts within a lift never decrease, so this
+     * is a one-way latch and should feel like one.
+     */
+    ATTEMPT_DECLARED: hapticPattern({ style: 'rigid', delayMs: 0 }, { style: 'light', delayMs: 80 }),
+  }),
 
   // -------------------------------------------------------------------------
   // Determinism

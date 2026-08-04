@@ -136,6 +136,17 @@ function pattern(...beats: readonly { style: HapticStyle; delayMs: number }[]): 
   return Object.freeze({ beats: Object.freeze(beats.map((b) => Object.freeze({ ...b }))) });
 }
 
+/**
+ * The same constructor, for the other tuning module that holds haptic patterns.
+ *
+ * `MEET_TUNING.HAPTICS` is built with this rather than with a second local copy
+ * so both vocabularies are the same shape and the same frozen data, and so
+ * `playHaptic` has exactly one kind of thing to play. Meet day's patterns live
+ * in `meetTuning.ts` — with the rest of meet day's feel values — and not here,
+ * because a playtester turning the walkout should not be reading descent rates.
+ */
+export { pattern as hapticPattern };
+
 export const LIFT_TUNING = Object.freeze({
   // -------------------------------------------------------------------------
   // The lifter

@@ -37,7 +37,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
-import type { AttemptDecision, AttemptOption } from '../game/meetDay';
+import { hapticForBeat, type AttemptDecision, type AttemptOption } from '../game/meetDay';
+import { playHaptic } from '../lift/haptics';
 import { formatWeight } from '../game/resultCard';
 import { MEET_PALETTE } from './meetPalette';
 
@@ -93,6 +94,28 @@ export interface AttemptSelectViewProps {
 }
 
 export function AttemptSelectView({ decision, onChoose }: AttemptSelectViewProps): React.ReactElement {
+  const raised = decision.floorRaisedByMiss;
+
+  // THE FLOOR, FELT ONLY WHEN A MISS RAISED IT.
+  //
+  // `hapticForBeat` returns null for a floor that is merely the weight just
+  // made, and that asymmetry is the design, not an omission: §6.3's bite is
+  // that a miss RAISES the floor, and a beat that fired either way would say
+  // nothing. Silence on the good path is what gives the bad one its weight.
+  React.useEffect(
+    () => playHaptic(hapticForBeat({ kind: 'floor', raisedByMiss: raised })),
+    [raised],
+  );
+
+  // A declaration is a one-way ratchet — the attempt cannot come back down.
+  const choose = React.useCallback(
+    (weightKg: number) => {
+      playHaptic(hapticForBeat({ kind: 'attempt-declared' }));
+      onChoose(weightKg);
+    },
+    [onChoose],
+  );
+
   return (
     <View style={styles.root} testID="meet-attempt-select">
       <Text style={styles.eyebrow}>{MEET_COPY.SELECT_EYEBROW}</Text>
@@ -136,7 +159,7 @@ export function AttemptSelectView({ decision, onChoose }: AttemptSelectViewProps
             option={option}
             index={index}
             bold={option.id === 'big'}
-            onChoose={onChoose}
+            onChoose={choose}
           />
         ))}
       </View>
