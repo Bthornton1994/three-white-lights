@@ -537,6 +537,10 @@ describe('the registered allowlist', () => {
         'src/lift/liftPalette.ts',
         'src/meet/meetPalette.ts',
         'src/session/sessionPalette.ts',
+        // The app shell (GDD §3.2 -> §6 navigation). A `feel` home: which beats
+        // a navigation control may be drawn over is a judgement about when a
+        // control is in the way, and it needs a thumb on a phone to settle.
+        'src/shell/shellTuning.ts',
         // Build config, classified `local`. Registered rather than exempted:
         // the walk starting at the repository root is what makes this audit
         // hard to escape, and a carve-out for "config" invites the next one.
