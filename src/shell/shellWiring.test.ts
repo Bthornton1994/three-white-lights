@@ -109,6 +109,14 @@ describe('the shell is the join, and it is the only one', () => {
     expect(SHELL).not.toMatch(/setRoute\(\{/);
   });
 
+  it('forgets the destination’s beat on the way in, so no stale control flashes', () => {
+    // The screen being routed to reports its beat in an effect, a commit later.
+    // Without these, a meet opened after a previous one ended shows the recap's
+    // "way back" over its weigh-in for a frame.
+    expect(SHELL).toMatch(/setMeetPhase\(null\);\s*\n\s*setRoute\(\(current\) => navigate\(current, ''\)\)/);
+    expect(SHELL).toMatch(/setSessionPhase\(null\);\s*\n\s*setRoute\(\(current\) => navigate\(current, ''\)\)/);
+  });
+
   it('the screens actually REPORT their beat, rather than only accepting the prop', () => {
     // Added after this exact deletion was mutated in and the whole node suite —
     // all 2183 tests — stayed green. `tools/verify-shell-route.mjs` caught it

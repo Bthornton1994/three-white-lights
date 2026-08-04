@@ -160,8 +160,20 @@ export function AppShell({ search = null }: AppShellProps = {}): React.ReactElem
   const [sessionPhase, setSessionPhase] = useState<SessionPhase | null>(null);
   const [meetPhase, setMeetPhase] = useState<MeetDayPhaseId | null>(null);
 
-  const openMeet = useCallback(() => setRoute((current) => navigate(current, 'open-meet')), []);
-  const leaveMeet = useCallback(() => setRoute((current) => navigate(current, 'leave-meet')), []);
+  // THE DESTINATION'S BEAT IS FORGOTTEN ON THE WAY IN, and that is not tidying.
+  // The screen being routed to reports its beat in an effect, which lands a
+  // commit AFTER the route changes — so a stale phase from a previous visit
+  // would be what the gate reads for one frame. Concretely: leave a meet at the
+  // recap, open another, and the weigh-in gets a "BACK TO TRAINING" flash. Null
+  // means "has not said yet", and `shellAffordanceFor` draws nothing for it.
+  const openMeet = useCallback(() => {
+    setMeetPhase(null);
+    setRoute((current) => navigate(current, 'open-meet'));
+  }, []);
+  const leaveMeet = useCallback(() => {
+    setSessionPhase(null);
+    setRoute((current) => navigate(current, 'leave-meet'));
+  }, []);
 
   const affordance = shellAffordanceFor(
     route,
