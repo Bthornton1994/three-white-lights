@@ -956,53 +956,124 @@
  * a test fixture reaches no player, persists nothing, and is read by the same
  * reviewer as the assertion beside it.
  *
+ * TEST FILES ARE ALSO OUT OF THE SECOND, CRUDER GUARD (residual 1), and there
+ * for a different reason worth separating from the one above: fixtures cast and
+ * clone freely BECAUSE they are demonstrating what the boundary refuses —
+ * `progression.test.ts` itself holds several `as unknown as` lines whose whole
+ * job is to force a value past the compiler and show the runtime still refuses
+ * it. Banning the idiom in the files that prove the ban would be circular. This
+ * is the one filter left in front of that guard and it is stated rather than
+ * computed: `.test.ts` / `.test.tsx`, nothing else.
+ *
  * WHAT STILL SLIPS, stated rather than left to be found for a seventh time —
  * and stated as a LIST, because the previous version of this paragraph named
  * one item and then claimed closure ("the two together are the whole surface"),
  * which is how the scoping defect above survived a round. There is no closure
  * claim here. These are the links, ranked by how much they defeat:
  *
- *   1. A RECORD ASSEMBLED WITHOUT AN OBJECT LITERAL. `Object.assign({}, rec,
- *      { … })`, `structuredClone`, a reflective helper returning `unknown` —
- *      no node for the checker to type, so the literal sweep cannot see it.
- *      Closed by a second, cruder test rather than argued away: no shipped
- *      module that can reach `ServerRecord` may contain `Object.assign(`,
- *      `structuredClone(` or `as unknown as`, and today none does. This one
- *      defeats the literal sweep only.
+ *   1. A RECORD ASSEMBLED WITHOUT AN OBJECT LITERAL — no node for the checker
+ *      to type, so the literal sweep cannot see it at all. `Object.assign({},
+ *      rec, { … })` types as `{} & ServerRecord & { totalKg: number }` with
+ *      neither operand being a record; `structuredClone(rec)` returns its
+ *      argument's type; `as unknown as` erases whatever was there.
  *
- *   2. THE CANDIDATE SET THAT GUARD RUNS OVER. It is now an IMPORT check
- *      matching its own argument — a file is a candidate if it declares a
- *      target type or if any symbol it imports from a repository module has a
- *      type that REACHES one — which is transitive for free and catches
- *      `meetPreview.ts`'s `previewServerRecord(): ServerRecord`. It used to be
- *      a token match on `\b(ServerRecord|ProgressionSnapshotWire|sessionServer|
- *      localSessionServer)\b`, and `\bServerRecord\b` does not match inside
- *      `previewServerRecord`: a file importing that obtained a real record,
- *      matched no trigger, and could have forged one freely. Latent rather than
- *      live at the time — that function's only shipped consumer also imports
- *      `sessionServer` — but the token match was an approximation of the
- *      argument rather than the argument.
- *      WHAT IS LEFT OF IT: the type walk does not descend into the MEMBERS of a
- *      type declared in `node_modules` (it does descend into type arguments and
- *      union arms), so a foreign container exposing a record through a merged
- *      member would not make its importer a candidate. Nothing does that here.
- *      The narrowing is a cost control — 53 seconds against 0.4 — and it
- *      shrinks the guard's coverage, so it is named rather than folded in.
+ *      THIS USED TO SAY "CLOSED BY A SECOND, CRUDER TEST RATHER THAN ARGUED
+ *      AWAY", AND "CLOSED" WAS OVER-STRONG. The class is unbounded — every way
+ *      of producing an object without writing one down — and what stands
+ *      against it is THREE STRING PATTERNS. So the honest form is what they
+ *      catch, what they do not, and where they run.
+ *
+ *      WHERE THEY RUN, which is the part that changed this round: over EVERY
+ *      NON-TEST FILE THE PROJECT COMPILES. There is no candidate set any more.
+ *      The three patterns are `Object.assign(`, `structuredClone(` and
+ *      `as unknown as`, over comment-stripped source, and the occurrences that
+ *      exist are excused BY FILE, IDIOM AND COUNT in
+ *      `REFLECTIVE_ASSEMBLY_EXEMPTIONS`, pinned both ways — an unexcused
+ *      occurrence goes red, and so does an excuse for one that is gone. There
+ *      is exactly one row today (`src/art/rig.ts`, `blendPose()` widening a
+ *      `Record<string, number>` to a `Pose`).
+ *
+ *      WHAT THEY DO NOT CATCH, named because the list above is not a closure:
+ *      `class Forged { totalKg = 900; … }` followed by `new Forged()`;
+ *      `JSON.parse(s) as ServerRecord`, where the source is `any` and no
+ *      `as unknown as` is needed; `x as any as ServerRecord`;
+ *      `Object.fromEntries(…) as ServerRecord`; `Object.create(rec)`;
+ *      `Reflect.set`; an aliased `const assign = Object.assign`. Nothing in
+ *      `src/` bans any of them — the "does not cast its way past its own
+ *      boundary" test is scoped to THIS FILE's source only. Adding more
+ *      patterns would chase an unbounded class with a bounded instrument and
+ *      produce another approximation, which is the mistake this section keeps
+ *      making; the residual is bounded instead of closed.
+ *      One more bound on the instrument itself: comments are stripped with a
+ *      regex, so a `//` inside a string literal blanks the rest of that line
+ *      and a `/*` inside one blanks up to the next close. An idiom sitting
+ *      behind either, in the same file, is invisible to the sweep.
+ *
+ *   2. THE CANDIDATE SET THIS ITEM USED TO DESCRIBE IS DELETED, and the reason
+ *      is worth keeping rather than quietly dropping. The guard was scoped to
+ *      files that could obtain a record, first by a token match and then by an
+ *      import check — "a file is a candidate if it declares a target type or if
+ *      any symbol it imports from a repository module has a type that REACHES
+ *      one". The implementation walked `source.forEachChild` for
+ *      `ImportDeclaration` / `ExportDeclaration` nodes with a non-empty clause,
+ *      and that is not what "imports" means here:
+ *        · `await import('./m')` is a `CallExpression` inside a FUNCTION BODY —
+ *          past the top-level walk and past the node-kind filter both. It is
+ *          this repository's house idiom for everything downstream of the Skia
+ *          WASM boot: `index.ts`, `src/card/cardEntry.tsx` and
+ *          `src/licensing/licensingEntry.tsx` hold six between them.
+ *        · `export * from './m'` has `exportClause === undefined` and was
+ *          dropped one line later. `src/art/index.ts` is fourteen of them.
+ *      ON SUCH A FILE THE TWO CHECKS COMPOSED TO ZERO — the literal sweep is
+ *      blind to a no-literal assembly BY CONSTRUCTION, and the guard that
+ *      exists to cover that never looked at the file. Verified by execution:
+ *      six lines on `cardEntry.tsx`'s own template, taking a Total off the query
+ *      string through `Object.assign`, `snapshotWireFor` and the pinned
+ *      `receiveSnapshot` into the cache as confirmed truth, type-checked clean
+ *      and passed all 2437 tests.
+ *      THE FIX WAS NOT MORE CONSTRUCTS. Teaching the walk `import()`, bare
+ *      `export *` and `import =` leaves a hand-rolled approximation that the
+ *      next unusual construct reopens, and every round of this piece has been a
+ *      scope error one construct further out. A guard whose whole purpose is
+ *      preventing under-scoping was itself scoped. It is not any more, and it
+ *      cost nothing to widen: reading 109 files and running three regexes is
+ *      milliseconds, and deleting the type walk gave that back. Measured,
+ *      `progression.test.ts` runs at 7.4–7.7s against 7.8s before, and the whole
+ *      suite is 38s either way.
+ *      WHAT WENT WITH IT: `importsTheBoundary`, `typeReaches` and `isOurs` are
+ *      deleted rather than orphaned, so the `node_modules`-member narrowing
+ *      this item used to name no longer exists to be named.
  *
  *   3. A FILE THAT IS NOT TYPESCRIPT. The scan sees exactly what
- *      `tsc --noEmit` compiles, and the "which files" half of that is now
- *      checked from both ends: `progression.test.ts` walks the repository and
- *      fails if any `.ts`/`.tsx` outside `node_modules` and outside a
- *      dot-directory is missing from the project's list, so narrowing
- *      `tsconfig.json`'s `include` or adding an `exclude` goes red rather than
- *      quietly shrinking the sweep. THE WALK IS THE CROSS-CHECK, NOT THE ROOT —
- *      a walk as the root is what produced the defect above, because someone
- *      has to choose the directory.
- *      WHAT IS LEFT IS THE EXTENSION. A `.js`, `.jsx` or `.mjs` file is
- *      invisible to `tsc` and therefore to this. `tools/` is the live example:
- *      twenty-odd `.mjs` capture and verify scripts, offline, never bundled,
- *      no player path — and `audit.test.ts` records exactly this limit for
- *      exactly this reason. Nothing under `src/` or at the root is `.js` today.
+ *      `tsc --noEmit` compiles, and the "which files" half of that is checked
+ *      from both ends: `progression.test.ts` walks the repository and fails if
+ *      any TypeScript file outside `node_modules` and outside a dot-directory
+ *      is missing from the project's list, so narrowing `tsconfig.json`'s
+ *      `include` or adding an `exclude` goes red rather than quietly shrinking
+ *      the sweep. THE WALK IS THE CROSS-CHECK, NOT THE ROOT — a walk as the
+ *      root is what produced the defect above, because someone has to choose
+ *      the directory.
+ *      WHAT IS LEFT IS THE EXTENSION, and it is smaller than it was. A `.js`,
+ *      `.jsx` or `.mjs` file is invisible to `tsc` and therefore to this.
+ *      `tools/` is the live and only example: exactly 21 non-`.ts` JS-family
+ *      files, all under `tools/` (20 `.mjs` plus `png.d.mts`), offline capture
+ *      and verify scripts, never bundled, no player path — and `audit.test.ts`
+ *      records the same limit for the same reason. Nothing under `src/` or at
+ *      the root is `.js`, and `package.json`'s `main` is `index.ts`.
+ *      `.mts` / `.cts` WERE THE UNNAMED EDGE and are now covered from the walk
+ *      side. `tsconfig.json`'s `include` names the `.ts` and `.tsx` extensions
+ *      and neither wildcard matches `foo.mts`, so such a file would have fallen
+ *      out of the project list AND out of a walk keyed on `.ts` / `.tsx` —
+ *      invisible from both ends, which is the one shape the cross-check exists
+ *      to make impossible. The walk now matches the `m` and `c` spellings too,
+ *      so one goes red until `tsconfig.json` claims it.
+ *      THE TWO REPOSITORY WALKS DO NOT AGREE, which is worth knowing before
+ *      reading both: `audit.test.ts` skips a FIXED list (`node_modules`,
+ *      `.git`, `.expo`, `dist`, `coverage`, `.claude`); this one skips every
+ *      dot-prefixed entry and does NOT skip `dist` or `coverage`. Neither
+ *      exists today, and the divergence is in the safe direction here — a
+ *      `dist/` with TypeScript in it makes this go red demanding it be in the
+ *      project's list, which is a diff rather than a silence.
  *      DOT-DIRECTORIES are the other edge: TypeScript's wildcard includes skip
  *      them, which is what keeps `.claude/worktrees/` — complete second
  *      checkouts of this repository — out of the program. That is load-bearing
@@ -1011,11 +1082,17 @@
  *
  *   4. TWO LITERALS IN ONE FRAME, one deleted and one added. `n` catches a
  *      second literal appearing (the count moves) and catches one disappearing,
- *      but a swap inside the same frame leaves the row identical. The frame is
- *      now as fine as the syntax allows without noise — a call's callee names
- *      its arrow, which is what split `useMeetDay` — but two records at MODULE
- *      scope in one file still share `<module>`. Smallest of the four; a review
- *      catches it and a test does not.
+ *      but a swap inside the same frame leaves the row identical. The frame
+ *      enumeration is now every node that OWNS A FUNCTION BODY — function
+ *      declarations and expressions, arrows, methods, get and set accessors,
+ *      constructors and class static blocks — because the argument that added
+ *      `PropertyDeclaration` ("nothing in the repo is written that way today,
+ *      which is exactly why it was worth adding") applied word for word to the
+ *      four that were left out. What still collapses: two records at MODULE
+ *      scope in one file share `<module>`; a getter and its setter share the
+ *      property's name, so `get facts` and `set facts` are one row; and classes
+ *      and namespaces are deliberately not frames, being scopes rather than
+ *      bodies. Smallest of the four; a review catches it and a test does not.
  *
  * There is no "and therefore nothing else" sentence here. Three rounds of this
  * section ended with one, and two of the three were wrong.

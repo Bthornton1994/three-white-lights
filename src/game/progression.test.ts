@@ -139,6 +139,18 @@ function codeOnly(source: string): string {
 // away. The scan is now rooted in it, which is exactly the set `npm run
 // typecheck` checks, so "it compiles into this app" and "this scan sees it" are
 // the same statement rather than two overlapping ones.
+//
+// AND THE SECOND, CRUDER GUARD IS NO LONGER SCOPED EITHER. The literal sweep is
+// blind to a record assembled without a literal, which is what the three-pattern
+// text check exists for — and that check spent a round running over a computed
+// CANDIDATE SET whose implementation missed `await import()` and bare
+// `export * from`, this repository's own idioms. On a file that used either, the
+// two checks composed to zero: nothing to type and nothing to grep. It now runs
+// over every non-test file the project compiles, with the pre-existing
+// occurrences excused by name and count. The reasoning that licensed the
+// scoping — "it can only make the guard cover fewer files" — is exactly what
+// left those two constructs unnamed; direction-of-harm is not a substitute for
+// enumeration in a check whose job is enumeration.
 // ---------------------------------------------------------------------------
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -193,31 +205,86 @@ const IS_VENDORED = /(?:^|\/)node_modules\//;
 const IS_DOT_DIRECTORY = /(?:^|\/)\.[^/]+\//;
 
 /**
- * How far into a type the import scan will chase a `ServerRecord`.
+ * THE THREE IDIOMS THE LITERAL SWEEP CANNOT SEE, as literal text.
  *
- * `applyMeetResult` returns `ProgressionResult<{ record: ServerRecord; … }>`,
- * which is three hops (union arm → object → property), so the bound has to
- * clear that with room. It is a cost control, not a judgement: raising it
- * widens the candidate set, which makes the reflection guard STRICTER, so an
- * over-generous value is the safe direction to be wrong in.
+ * `scanRoutes` asks the type checker for OBJECT LITERALS, so an assembly with no
+ * literal in it presents no node to type: `Object.assign({}, rec, { … })` types
+ * as `{} & ServerRecord & { totalKg: number }` with neither operand being a
+ * record, `structuredClone(rec)` returns its argument's type, and `as unknown
+ * as` erases whatever was there. These three patterns are the crude second pass.
+ *
+ * NOT GLOBAL, ON PURPOSE. A `/g` regex carries `lastIndex` across calls, and a
+ * shared one reused by `.test()` in a loop skips matches. The counting site
+ * builds its own global copy from `.source`.
+ *
+ * THEY ARE THREE STRING PATTERNS AND NOT A CLOSURE OVER THE CLASS. §7.5's
+ * residual 1 states the bound rather than claiming the class is shut, because it
+ * is not: `class Forged { totalKg = 900; … }` plus `new Forged()`,
+ * `JSON.parse(s) as ServerRecord`, `x as any as ServerRecord`,
+ * `Object.fromEntries(…) as ServerRecord` and `Object.create(rec)` all pass all
+ * three, and nothing else in this repository bans them.
  */
-const IMPORT_TYPE_REACH_DEPTH = 8;
+const REFLECTIVE_ASSEMBLY = [
+  { idiom: 'Object.assign', pattern: /Object\.assign\s*\(/ },
+  { idiom: 'structuredClone', pattern: /structuredClone\s*\(/ },
+  { idiom: 'as unknown as', pattern: /as unknown as/ },
+] as const;
+
+/**
+ * Every occurrence of one of those idioms in the project's non-test files, by
+ * file, idiom and COUNT — pinned both ways, so an occurrence that is not on this
+ * list goes red and a row whose occurrence is gone goes red too.
+ *
+ * WHY A LIST RATHER THAN A SCOPE. The sweep used to run over a computed
+ * CANDIDATE SET — files that import something reaching the boundary — and the
+ * computation was a hand-rolled approximation of the word "imports" that missed
+ * `await import()` and `export * from`. An exemption list is the other shape:
+ * it cannot be wrong about which files it covers, because it covers all of them,
+ * and everything excused is excused BY NAME in a diff a human reads.
+ *
+ * WHAT A ROW IS AND IS NOT. It is a statement that somebody read that line and
+ * it is not a forged progression fact. It is NOT a proof that the file could not
+ * reach one; the pin's value is that it is exact, so a second occurrence cannot
+ * hide behind an excused first.
+ */
+const REFLECTIVE_ASSEMBLY_EXEMPTIONS: readonly {
+  readonly file: string;
+  readonly idiom: string;
+  readonly n: number;
+  readonly why: string;
+}[] = [
+  {
+    file: 'src/art/rig.ts',
+    idiom: 'as unknown as',
+    n: 1,
+    why:
+      'blendPose() interpolates a Pose field by field into a Record<string, number> ' +
+      'and widens it once at the return. Sprite geometry, no progression fact in it; ' +
+      'the sprite rig imports nothing from this boundary, which is context rather ' +
+      'than the reason — the reason is that the line was read.',
+  },
+];
 
 /**
  * Everything the scan found, split into what ships and what is a fixture.
  *
- * `candidateFiles` is the set the reflection guard runs over: every non-test
- * file that could obtain a `ServerRecord` at all.
- *
- * `scannedFiles` is every repository file the program actually parsed. It
- * exists so the non-vacuity tests can name `App.tsx` and `index.ts` and fail
- * loudly the day someone narrows the root set again.
+ * `scannedFiles` is every repository file the program actually parsed. It does
+ * double duty: the non-vacuity tests name `App.tsx` and `index.ts` in it so a
+ * narrowed root set fails loudly, and `sweptFiles` derives the reflective
+ * sweep's set from it rather than computing a second one that could disagree.
  */
 interface RouteScan {
   readonly shipped: readonly RouteSite[];
   readonly fixtures: readonly RouteSite[];
-  readonly candidateFiles: readonly string[];
   readonly scannedFiles: readonly string[];
+}
+
+/**
+ * The files the reflective sweep runs over: every non-test file the project
+ * compiles. No other filter, which is the whole of round nine's fix.
+ */
+function sweptFiles(scan: RouteScan): readonly string[] {
+  return scan.scannedFiles.filter((file) => !IS_TEST_FILE.test(file));
 }
 
 function scanRoutes(): RouteScan {
@@ -256,7 +323,6 @@ function scanRoutes(): RouteScan {
     readonly from: string;
     type?: ts.Type;
     symbol?: ts.Symbol;
-    declaredIn?: ts.SourceFile;
   }[] = [
     { kind: 'record', name: 'ServerRecord', from: 'src/game/sessionServer.ts' },
     { kind: 'wire', name: 'ProgressionSnapshotWire', from: 'src/game/progression.ts' },
@@ -264,7 +330,6 @@ function scanRoutes(): RouteScan {
   for (const target of targets) {
     const declaring = program.getSourceFile(path.join(REPO_ROOT, target.from));
     if (declaring === undefined) throw new Error(`${target.from} is not in the program`);
-    target.declaredIn = declaring;
     declaring.forEachChild((node) => {
       if (ts.isInterfaceDeclaration(node) && node.name.text === target.name) {
         target.type = checker.getTypeAtLocation(node.name);
@@ -282,11 +347,23 @@ function scanRoutes(): RouteScan {
   /**
    * One frame, named, or `null` for a node that is not one.
    *
-   * `ts.isPropertyDeclaration` is here because it was missing: a class property
-   * arrow — `private readonly build = (): ServerRecord => …` — matched none of
-   * the other forms, so the walk ran past it to the module and reported
-   * `<module>`. Nothing in the repo is written that way today, which is exactly
-   * why it was worth adding rather than waiting for one.
+   * THE ENUMERATION IS THE WHOLE SET OF NODES THAT OWN A FUNCTION BODY, and it
+   * is written out rather than sampled. `ts.isPropertyDeclaration` was added
+   * first, on the argument "nothing in the repo is written that way today, which
+   * is exactly why it was worth adding" — and that argument applies word for
+   * word to accessors, to constructors and to class static blocks, which were
+   * left out. A principle applied to one of four cases is not a principle, so
+   * the remaining three are here: a record built inside `get facts()`, inside a
+   * constructor, or inside a `static { … }` block used to collapse to the outer
+   * frame, and two of them collapsed all the way to `<module>`.
+   *
+   * The list is: `FunctionDeclaration`, `FunctionExpression`, `ArrowFunction`,
+   * `MethodDeclaration`, `GetAccessorDeclaration`, `SetAccessorDeclaration`,
+   * `ConstructorDeclaration`, `ClassStaticBlockDeclaration`. `MethodSignature`
+   * and the ambient forms have no body to hold a literal. CLASSES AND NAMESPACES
+   * ARE DELIBERATELY NOT FRAMES: they are scopes, not function bodies, and
+   * naming them would rewrite every existing row's `site` for granularity §7.5's
+   * residual already prices.
    *
    * A BINDING COUNTS WHEN IT HOLDS A FUNCTION, not whenever it holds anything.
    * The wider rule was tried and is worse: it names the binding a call's RESULT
@@ -304,11 +381,17 @@ function scanRoutes(): RouteScan {
     if (
       (ts.isFunctionDeclaration(node) ||
         ts.isMethodDeclaration(node) ||
-        ts.isFunctionExpression(node)) &&
+        ts.isFunctionExpression(node) ||
+        ts.isGetAccessorDeclaration(node) ||
+        ts.isSetAccessorDeclaration(node)) &&
       node.name !== undefined
     ) {
       return node.name.getText();
     }
+    // The two body-owning forms with no name of their own. Named for what they
+    // are, because `<module>` is a lie about where the literal sits.
+    if (ts.isConstructorDeclaration(node)) return 'constructor';
+    if (ts.isClassStaticBlockDeclaration(node)) return 'static';
     if (
       (ts.isVariableDeclaration(node) ||
         ts.isPropertyAssignment(node) ||
@@ -356,136 +439,55 @@ function scanRoutes(): RouteScan {
   };
 
   // -------------------------------------------------------------------------
-  // THE REFLECTION GUARD'S CANDIDATE SET — AN IMPORT CHECK, NOT A TOKEN MATCH.
+  // THERE IS NO CANDIDATE SET, AND THAT IS ROUND NINE'S FIX.
   //
-  // The argument for scoping the guard has always been about IMPORTS: "a module
-  // that imports nothing from this boundary has nothing to clone". The check was
-  // a regex over identifiers — `\b(ServerRecord|ProgressionSnapshotWire|
-  // sessionServer|localSessionServer)\b` — and the two do not line up.
-  // `meetPreview.ts` exports `previewServerRecord(): ServerRecord`, and
-  // `\bServerRecord\b` does not match inside `previewServerRecord`. A file
-  // importing THAT obtained a real record, matched no trigger, was not a
-  // candidate, and could `Object.assign` freely; forge there, call
-  // `snapshotWireFor` from a clean candidate file, hand the wire to the pinned
-  // `receiveSnapshot`, and no row moves. Latent rather than live — that
-  // function's only shipped consumer also imports `sessionServer` — but the fix
-  // is to make the set match the argument rather than to add more tokens, since
-  // the next export named around the type would reopen it.
+  // The reflective-assembly guard below used to run over a computed subset of
+  // the project — "a file is a candidate if it declares a target type or if any
+  // symbol it imports from a repository module has a type that reaches one" —
+  // implemented as a walk of `source.forEachChild` for `ImportDeclaration` and
+  // `ExportDeclaration` nodes with a non-empty clause. That is not "imports",
+  // and the two constructs it missed are this repository's own house idioms:
   //
-  // So: a file is a candidate if it DECLARES a target type, or if any symbol it
-  // imports from a repository module has a type that REACHES one. That is
-  // transitive for free — a wrapper whose inferred return type is `ServerRecord`
-  // makes its importer a candidate without this needing to know the wrapper
-  // exists — and it is bounded to repo modules because a target type cannot be
-  // obtained from `react-native`.
+  //   · `await import('./m')` is a `CallExpression` inside a FUNCTION BODY, so
+  //     it was past the top-level walk and past the node-kind filter both.
+  //     `index.ts`, `src/card/cardEntry.tsx` and `src/licensing/licensingEntry
+  //     .tsx` hold six between them — everything downstream of the Skia WASM
+  //     boot has to be loaded this way.
+  //   · `export * from './m'` has `exportClause === undefined` and was dropped
+  //     one line later. `src/art/index.ts` is fourteen of them.
+  //
+  // ON SUCH A FILE THE TWO CHECKS COMPOSED TO ZERO. The literal sweep is blind
+  // to a no-literal assembly BY CONSTRUCTION — that is why the cruder guard
+  // exists — and the cruder guard never looked at the file. Six lines appended
+  // to `boot()` in `cardEntry.tsx`, on its own dynamic-import template:
+  //
+  //     const { newServerRecord, snapshotWireFor } =
+  //       await import('../game/sessionServer');
+  //     const { emptyProgressionCache } = await import('../game/progression');
+  //     const { receiveSnapshot } = await import('../game/sessionClient');
+  //     const claimed = Number(new URLSearchParams(location.search).get('total'));
+  //     const forged = Object.assign({}, newServerRecord(), { totalKg: claimed });
+  //     receiveSnapshot(emptyProgressionCache(), snapshotWireFor(forged, null));
+  //
+  // No object literal assignable to a record, no `ImportDeclaration` naming the
+  // boundary, and no bare number for the magic-number audit to catch either —
+  // a Total off the query string entering the cache as confirmed truth, `tsc`
+  // clean, all 2437 tests green. (Taking the number off the URL rather than
+  // writing `900` matters: a literal trips `audit.test.ts`, which would have
+  // looked like this boundary catching it when it was not.)
+  //
+  // THE FIX IS NOT MORE CONSTRUCTS. Teaching the walk `import()`, bare
+  // `export *` and `import =` leaves a hand-rolled approximation that the next
+  // unusual construct reopens, and every round of this piece has been a scope
+  // error one construct further out. The guard's entire purpose is preventing
+  // under-scoping, so scoping it was self-defeating. It now runs over EVERY
+  // non-test file the project compiles (`sweptFiles`), with the one live
+  // occurrence in the tree excused BY NAME AND COUNT in
+  // `REFLECTIVE_ASSEMBLY_EXEMPTIONS` rather than by a predicate. Reading 109
+  // files and running three regexes is milliseconds, and deleting the type walk
+  // gave that back: measured, this file runs at 7.4–7.7s against 7.8s before.
   // -------------------------------------------------------------------------
-  const targetSymbols = new Set(
-    targets.map((target) => target.symbol).filter((symbol): symbol is ts.Symbol => symbol !== undefined),
-  );
 
-  /**
-   * Is this type's own declaration inside the repository?
-   *
-   * THE ONE PLACE THIS WALK NARROWS, AND IT IS STATED RATHER THAN BURIED. The
-   * walk does not descend into the MEMBERS of a type declared in
-   * `node_modules` — a `ViewStyle` has hundreds of properties, each of which
-   * has hundreds, and chasing them cost 53 seconds against the 0.4 this does.
-   * It still descends into TYPE ARGUMENTS and UNION ARMS unconditionally, so
-   * `Promise<ServerRecord>`, `Array<ServerRecord>` and
-   * `ServerRecord | null` are all caught through a foreign wrapper. A type with
-   * no declaration at all — an anonymous object type — is treated as ours and
-   * walked.
-   *
-   * What it can miss: a foreign type that exposes a record through a MEMBER
-   * rather than a parameter, e.g. a third-party container whose `.value` is
-   * typed `ServerRecord` by declaration merging. Nothing in this repo does
-   * that. This narrows the CANDIDATE SET, which makes the reflection guard
-   * cover fewer files, so it is a real (small) hole and is listed in §7.5's
-   * residual rather than argued away.
-   */
-  const isOurs = (type: ts.Type): boolean => {
-    const declarations = (type.aliasSymbol ?? type.getSymbol())?.declarations;
-    if (declarations === undefined || declarations.length === 0) return true;
-    return declarations.some((node) => repoPathOf(node.getSourceFile().fileName) !== null);
-  };
-
-  const typeReaches = (type: ts.Type, at: ts.Node, seen: Set<ts.Type>, depth: number): boolean => {
-    if (depth < 0 || seen.has(type)) return false;
-    seen.add(type);
-    const symbol = type.aliasSymbol ?? type.getSymbol();
-    if (symbol !== undefined && targetSymbols.has(symbol)) return true;
-    if (type.isUnionOrIntersection()) {
-      return type.types.some((part) => typeReaches(part, at, seen, depth - 1));
-    }
-    const isReference =
-      (type.flags & ts.TypeFlags.Object) !== 0 &&
-      ((type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference) !== 0;
-    if (isReference) {
-      for (const argument of checker.getTypeArguments(type as ts.TypeReference)) {
-        if (typeReaches(argument, at, seen, depth - 1)) return true;
-      }
-    }
-    if (!isOurs(type)) return false;
-    for (const signature of [...type.getCallSignatures(), ...type.getConstructSignatures()]) {
-      if (typeReaches(checker.getReturnTypeOfSignature(signature), at, seen, depth - 1)) return true;
-      for (const parameter of signature.getParameters()) {
-        const parameterType = checker.getTypeOfSymbolAtLocation(parameter, at);
-        if (typeReaches(parameterType, at, seen, depth - 1)) return true;
-      }
-    }
-    for (const property of type.getProperties()) {
-      const propertyType = checker.getTypeOfSymbolAtLocation(property, at);
-      if (typeReaches(propertyType, at, seen, depth - 1)) return true;
-    }
-    return false;
-  };
-
-  /** Does this file import a value or type from which a target can be had? */
-  const importsTheBoundary = (source: ts.SourceFile): boolean => {
-    let found = false;
-    const consider = (name: ts.Node): void => {
-      if (found) return;
-      const symbol = checker.getSymbolAtLocation(name);
-      if (symbol === undefined) return;
-      const resolved =
-        (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(symbol) : symbol;
-      if (targetSymbols.has(resolved)) {
-        found = true;
-        return;
-      }
-      if (typeReaches(checker.getTypeOfSymbolAtLocation(resolved, name), name, new Set(), IMPORT_TYPE_REACH_DEPTH)) {
-        found = true;
-      }
-    };
-    source.forEachChild((node) => {
-      if (found) return;
-      if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) return;
-      // Only repository modules. A target type cannot come out of `expo`, and
-      // walking `react-native`'s types would cost more than the whole scan.
-      const specifier = node.moduleSpecifier;
-      if (specifier === undefined || !ts.isStringLiteral(specifier)) return;
-      const resolvedModule = checker.getSymbolAtLocation(specifier)?.declarations?.[0]?.getSourceFile();
-      if (resolvedModule === undefined || repoPathOf(resolvedModule.fileName) === null) return;
-      const clause = ts.isImportDeclaration(node) ? node.importClause : node.exportClause;
-      if (clause === undefined) return;
-      if (ts.isImportClause(clause)) {
-        if (clause.name !== undefined) consider(clause.name);
-        const bindings = clause.namedBindings;
-        if (bindings !== undefined) {
-          if (ts.isNamespaceImport(bindings)) consider(bindings.name);
-          else for (const element of bindings.elements) consider(element.name);
-        }
-      } else if (ts.isNamedExports(clause)) {
-        for (const element of clause.elements) consider(element.name);
-      } else {
-        // `export * as ns from './m'` — the namespace carries every export.
-        consider(clause.name);
-      }
-    });
-    return found;
-  };
-
-  const candidateFiles: string[] = [];
   const scannedFiles: string[] = [];
 
   for (const source of program.getSourceFiles()) {
@@ -493,12 +495,6 @@ function scanRoutes(): RouteScan {
     const rel = repoPathOf(source.fileName);
     if (rel === null) continue;
     scannedFiles.push(rel);
-    if (
-      !IS_TEST_FILE.test(rel) &&
-      (targets.some((target) => target.declaredIn === source) || importsTheBoundary(source))
-    ) {
-      candidateFiles.push(rel);
-    }
     const visit = (node: ts.Node): void => {
       if (ts.isObjectLiteralExpression(node)) {
         const own = checker.getTypeAtLocation(node);
@@ -540,7 +536,6 @@ function scanRoutes(): RouteScan {
   return {
     shipped: all.filter((row) => !IS_TEST_FILE.test(row.file)),
     fixtures: all.filter((row) => IS_TEST_FILE.test(row.file)),
-    candidateFiles: candidateFiles.sort(),
     scannedFiles: scannedFiles.sort(),
   };
 }
@@ -925,6 +920,25 @@ describe('purity', () => {
     // skips only vendored code and dot-directories, both of which are the same
     // two exclusions asserted above, so what this compares is two independent
     // answers to "which TypeScript files are in this repository".
+    //
+    // THIS WALK AND `audit.test.ts`'s DO NOT AGREE, and the divergence is worth
+    // naming rather than leaving for someone to trip over. That one skips a
+    // FIXED list (`node_modules`, `.git`, `.expo`, `dist`, `coverage`,
+    // `.claude`); this one skips every dot-prefixed entry and does NOT skip
+    // `dist` or `coverage`. Neither directory exists today. If one appears with
+    // TypeScript in it, this goes RED demanding it be in the project's file list
+    // — which is the safe direction for a check whose failure mode is seeing too
+    // little — and the fix at that point is an `exclude` in `tsconfig.json`,
+    // visible in a diff, rather than a skip list here.
+    //
+    // `.mts` / `.cts` ARE WALKED, ahead of there being one. `tsconfig.json`'s
+    // `include` says `**/*.ts` and `**/*.tsx`, neither of which matches
+    // `foo.mts`, so an ES-module-flavoured source would fall out of the project
+    // list AND out of a `/\.tsx?$/` walk — invisible from both ends, which is
+    // the one shape this cross-check exists to make impossible. Matching them
+    // here means such a file goes red until `tsconfig.json` claims it.
+    // `tools/png.d.mts` is the live case and is excluded as a declaration file,
+    // by the same rule as `src/audio/assets.d.ts`.
     const found: string[] = [];
     const walk = (dir: string): void => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -936,7 +950,7 @@ describe('purity', () => {
         // hold no expressions, so there is no object literal in one to find.
         // `src/audio/assets.d.ts` is the live example — it types `*.mp3`
         // imports. Including it here would only ever fail for that reason.
-        else if (/\.tsx?$/.test(entry.name) && !/\.d\.tsx?$/.test(entry.name)) {
+        else if (/\.[mc]?tsx?$/.test(entry.name) && !/\.d\.[mc]?tsx?$/.test(entry.name)) {
           found.push(path.relative(REPO_ROOT, full).split(path.sep).join('/'));
         }
       }
@@ -1034,64 +1048,116 @@ describe('purity', () => {
     expect(sortedKeys(routeScan().shipped)).toContain('receive src/game/sessionClient.ts receiveSnapshot x1');
   });
 
-  it('lets no module that can reach a ServerRecord forge one without an object literal', () => {
-    // THE RESIDUAL THE SCAN CANNOT SEE, closed by a cruder check rather than
-    // argued away. `Object.assign({}, record, { totalKg: 900 })` produces a
-    // record with no object literal for the checker to type: the `{}` is not a
-    // `ServerRecord` and neither is the patch. Same for `structuredClone` and
-    // for anything laundered through `as unknown as`.
+  it('lets no file the project compiles assemble an object reflectively, except by name', () => {
+    // THE RESIDUAL THE LITERAL SWEEP CANNOT SEE. `Object.assign({}, record,
+    // { totalKg: 900 })` produces a record with no object literal for the
+    // checker to type: the `{}` is not a `ServerRecord` and neither is the
+    // patch. Same for `structuredClone` and for anything laundered through
+    // `as unknown as`.
     //
-    // Scoped to files that can actually obtain one — a module that imports
-    // nothing from this boundary has nothing to clone. THE SCOPE IS NOW THE
-    // ARGUMENT ITSELF rather than a token match standing in for it: a file is a
-    // candidate if it declares a target type or if any symbol it imports from a
-    // repository module has a type that REACHES one. See `importsTheBoundary`
-    // for what that still misses, and §7.5 item 2 for why the token match was
-    // not the same question.
-    expect(routeScan().candidateFiles).toContain('src/game/sessionServer.ts');
-    expect(routeScan().candidateFiles).toContain('src/session/sessionPreview.ts');
-    expect(routeScan().candidateFiles).toContain('src/game/meetPreview.ts');
-    expect(routeScan().candidateFiles.length).toBeGreaterThan(5);
-    for (const file of routeScan().candidateFiles) {
+    // IT RUNS OVER EVERY NON-TEST FILE THE PROJECT COMPILES, and the scoping
+    // that used to stand in front of it is deleted rather than repaired. See
+    // `scanRoutes`'s "THERE IS NO CANDIDATE SET" note for the two constructs the
+    // old import check missed and how the two checks composed to zero on a file
+    // that used either. This is a guard against under-scoping; scoping it was
+    // self-defeating.
+    //
+    // WHAT IT IS NOT is a closure over "a record assembled without a literal".
+    // It is three string patterns. §7.5 residual 1 lists what walks past them.
+    const swept = sweptFiles(routeScan());
+
+    // Non-vacuity, anchored on the files the old scoping DROPPED and on the
+    // three the whole boundary is built around.
+    expect(swept.length).toBeGreaterThan(100);
+    expect(swept).toContain('src/game/sessionServer.ts');
+    expect(swept).toContain('src/session/sessionPreview.ts');
+    expect(swept).toContain('src/game/meetPreview.ts');
+    expect(swept).toContain('src/card/cardEntry.tsx');
+    expect(swept).toContain('src/art/index.ts');
+    expect(swept).toContain('App.tsx');
+
+    // The patterns fire. Two of the three have no live occurrence anywhere in
+    // the repository, so without this a typo in either would make the sweep
+    // pass by matching nothing — the exemption table below is the positive
+    // control for the third and cannot be one for these.
+    const SYNTHETIC_FORGERY =
+      'const a = Object.assign({}, rec, { totalKg: 900 }); ' +
+      'const b = structuredClone(rec); ' +
+      'const c = payload as unknown as ServerRecord;';
+    for (const { idiom, pattern } of REFLECTIVE_ASSEMBLY) {
+      expect(SYNTHETIC_FORGERY, `the ${idiom} pattern matches nothing`).toMatch(pattern);
+    }
+
+    const found: string[] = [];
+    for (const file of swept) {
       const code = codeOnly(readFileSync(path.join(REPO_ROOT, file), 'utf8'));
-      expect(code, `${file} uses Object.assign`).not.toMatch(/Object\.assign\s*\(/);
-      expect(code, `${file} uses structuredClone`).not.toMatch(/structuredClone\s*\(/);
-      expect(code, `${file} casts through unknown`).not.toMatch(/as unknown as/);
+      for (const { idiom, pattern } of REFLECTIVE_ASSEMBLY) {
+        const hits = code.match(new RegExp(pattern.source, 'g'));
+        if (hits !== null) found.push(`${file} ${idiom} x${hits.length}`);
+      }
+    }
+    const excused = REFLECTIVE_ASSEMBLY_EXEMPTIONS.map((row) => `${row.file} ${row.idiom} x${row.n}`);
+
+    // Both directions, in the shape §7.5's route table uses. An unexcused
+    // occurrence goes red; so does an excuse for an occurrence that is gone,
+    // because a stale exemption is a hole somebody else can move into.
+    const excusedKeys = new Set(excused);
+    for (const hit of found) {
+      expect(
+        excusedKeys.has(hit),
+        `${hit} — a non-test file the project compiles assembles an object reflectively, and REFLECTIVE_ASSEMBLY_EXEMPTIONS does not name it at that count`,
+      ).toBe(true);
+    }
+    const foundKeys = new Set(found);
+    expect(excused.length, 'the exemption list is empty, so it proves nothing fired').toBeGreaterThan(0);
+    for (const row of excused) {
+      expect(
+        foundKeys.has(row),
+        `REFLECTIVE_ASSEMBLY_EXEMPTIONS names ${row} and the sweep does not find it — delete the row or fix the count`,
+      ).toBe(true);
     }
   });
 
-  it('picks candidates by what they import, not by what words they contain', () => {
-    // THE CONTROL FOR THE PARAGRAPH ABOVE, in both directions, because "scoped
-    // to files that can obtain one" is worth nothing if the scoping is really
-    // the old regex wearing a type checker's coat.
+  it('sweeps every non-test file the project compiles, with no import check in the way', () => {
+    // ROUND NINE'S DEFECT, PINNED BY NAME, in the shape "scans the whole
+    // project, not just src/" uses for round seven's.
     //
-    // The old trigger was `\b(ServerRecord|ProgressionSnapshotWire|sessionServer|
-    // localSessionServer)\b` over comment-stripped source. Two disagreements
-    // prove the sets are not the same instrument:
-    const OLD_TRIGGER =
-      /\b(ServerRecord|ProgressionSnapshotWire|sessionServer|localSessionServer)\b/;
-    const candidates = routeScan().candidateFiles;
+    // The sweep above ran over a computed candidate set whose implementation
+    // walked `source.forEachChild` for `ImportDeclaration` / `ExportDeclaration`
+    // with a non-empty clause. Two constructs fell straight through, and both
+    // are house idioms here rather than curiosities. A future narrowing back to
+    // any predicate at all fails here with the file it dropped.
+    const scan = routeScan();
+    const swept = sweptFiles(scan);
+    expect(swept).toEqual(scan.scannedFiles.filter((file) => !IS_TEST_FILE.test(file)));
+    expect(scan.scannedFiles.length - swept.length, 'no test file was excluded').toBeGreaterThan(20);
+
     const codeOf = (file: string): string => codeOnly(readFileSync(path.join(REPO_ROOT, file), 'utf8'));
 
-    // (1) IN THE NEW SET, INVISIBLE TO THE OLD ONE. These reach a record only
-    //     through a hook or a re-export, and spell none of the four tokens.
-    //     `\bServerRecord\b` does not match inside `previewServerRecord`, which
-    //     is the shape of the hole: import that, get a real record, trip no
-    //     trigger, forge freely.
-    const reachedByTypeOnly = candidates.filter((file) => !OLD_TRIGGER.test(codeOf(file)));
-    expect(reachedByTypeOnly.length, 'the import check found nothing the token match missed').toBeGreaterThan(0);
-    // Anchored by name as well as by count, so this cannot go vacuous through
-    // some unrelated file drifting in. `MeetScreen.tsx` reaches a record only
-    // through `useMeetDay`'s return type (`applied.record`) and spells none of
-    // the four tokens. If it genuinely stops reaching one, edit this line —
-    // that is a real change, and it should be visible in a diff.
-    expect(reachedByTypeOnly).toContain('src/meet/MeetScreen.tsx');
+    // (1) DYNAMIC `import()` — a `CallExpression` in a function body, invisible
+    //     to a top-level `ImportDeclaration` walk. Everything downstream of the
+    //     Skia WASM boot is loaded this way, so this is not a hypothetical.
+    //     Each anchor is paired with the construct that used to hide it: if one
+    //     stops using `await import(`, this says so and a new anchor is owed.
+    for (const file of ['index.ts', 'src/card/cardEntry.tsx', 'src/licensing/licensingEntry.tsx']) {
+      expect(swept, `${file} is not swept`).toContain(file);
+      expect(codeOf(file), `${file} no longer uses await import() — pick another anchor`).toMatch(
+        /await import\(/,
+      );
+    }
 
-    // (2) OUT OF THE NEW SET, IN THE OLD ONE. A file may spell `ServerRecord`
-    //     in a string — a citation, a watchlist row — without importing
-    //     anything that can produce one, and guarding it was noise.
-    expect(candidates).not.toContain('src/licensing/realIp.ts');
-    expect(OLD_TRIGGER.test(codeOf('src/licensing/realIp.ts'))).toBe(true);
+    // (2) BARE `export * from` — `exportClause === undefined`, dropped one line
+    //     after the node-kind filter. `src/art/index.ts` is fourteen of them.
+    expect(swept).toContain('src/art/index.ts');
+    expect(codeOf('src/art/index.ts'), 'src/art/index.ts no longer bare-re-exports').toMatch(
+      /^export \* from '/m,
+    );
+
+    // (3) AND A FILE WITH NO ROUTE TO THE BOUNDARY AT ALL is swept too, which is
+    //     the point of having no predicate. `src/licensing/realIp.ts` spells
+    //     `ServerRecord` in a watchlist string and imports nothing that can
+    //     produce one; under the old scoping it was explicitly out.
+    expect(swept).toContain('src/licensing/realIp.ts');
   });
 
   it('mints server truth in exactly one place', () => {

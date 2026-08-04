@@ -2,8 +2,29 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-04 (§12.2 — the derived route table now has the WHOLE
-PROJECT as its root set, not `src/`. The sweep it replaced was rooted at a
+**Last updated:** 2026-08-04 (§12.2 — the CRUDER of the two route guards is no
+longer scoped either, and the residual it covers is stated as a bound rather
+than as closure. The literal sweep cannot see a record assembled without an
+object literal, which is what a three-pattern text check exists for; that check
+ran over a computed candidate set whose implementation walked top-level
+`ImportDeclaration` / `ExportDeclaration` nodes and therefore missed
+`await import()` and bare `export * from` — this repository's own idioms, six
+and fourteen occurrences respectively. On a file using either, **the two checks
+composed to zero**: nothing for the checker to type and nothing to grep. Proved
+by execution on `cardEntry.tsx`'s own dynamic-import template — a Total off the
+query string reaching the cache as confirmed truth, `tsc` clean, all 2437 tests
+green. The scoping is DELETED rather than taught more constructs: the guard's
+purpose is preventing under-scoping, and every round of this piece has been a
+scope error one construct further out. It now runs over every non-test file the
+project compiles, with the one live occurrence in the tree excused by file,
+idiom and count in a table pinned both ways. "Closed by a second, cruder test"
+is gone with it — three string patterns cannot close an unbounded class, and
+§7.5 residual 1 now names what walks past them. Also: the frame enumeration
+covers accessors, constructors and class static blocks, applying the principle
+that added `PropertyDeclaration`; and the disk cross-check matches `.mts` /
+`.cts`, the one extension that would have fallen out of both the project list
+and the walk. Earlier the same day: §12.2 — the derived route table has the
+WHOLE PROJECT as its root set, not `src/`. The sweep it replaced was rooted at a
 hand-walked `src/`, and this repository's TypeScript is not all under `src/`:
 `App.tsx` and `index.ts` sit at the root and imports point into `src/` and never
 out, so a fully annotated `const seeded: ServerRecord = { ...newServerRecord(),
@@ -13,9 +34,8 @@ wrong one and discarded — `tsconfig.json`'s own `parsed.fileNames` — and the
 is now rooted in it, with `App.tsx` and `index.ts` anchored BY NAME so a future
 narrowing goes red. Neither entry point holds a route today; widening the sweep
 added no row, so the table was right and the check was not. §7.5's residual list
-no longer claims closure, the reflection guard's candidate set is an IMPORT check
-instead of a token match that could not see `previewServerRecord`, and the one
-row that covered two `useMeetDay` sites is now two. Earlier: §11/§12.2 — the ROUTE
+no longer claims closure and the one row that covered two `useMeetDay` sites is
+now two. Earlier: §11/§12.2 — the ROUTE
 half of the unit sweep is now DERIVED rather than hand-counted. Six rounds of §7 ended with a human finding one
 more construction site and five of the six were found by a grep; the sixth,
 `sessionPreview.ts`'s `recordBeforeSession()`, is now named, and §7.5 is a table
@@ -1602,11 +1622,42 @@ The code has taken the safe branch and needs a ruling to take any other.**
       **What still slips, named rather than left for a seventh round:** a record
       assembled with no object literal — `Object.assign`, `structuredClone`, a
       cast through `unknown` — has no node for the checker to type. A second,
-      cruder test bans all three from every shipped module that can reach a
-      `ServerRecord`, and none uses them today. The remaining step — "a module
-      that imports nothing from this boundary has nothing to clone" — is an
-      argument, not a check, and it is the one place a seventh route could enter
-      without a test noticing.
+      cruder test looks for those three as literal text.
+      **That second test was itself scoped, and the scoping was the defect.** It
+      ran over a computed candidate set — "a file is a candidate if it declares a
+      target type or if any symbol it imports from a repository module has a type
+      that reaches one" — implemented as a walk of top-level `ImportDeclaration`
+      and `ExportDeclaration` nodes with a non-empty clause. That is not what
+      "imports" means in this repository: `await import()` is a call expression
+      inside a function body, which is how everything downstream of the Skia WASM
+      boot is loaded (`index.ts`, `cardEntry.tsx`, `licensingEntry.tsx` hold six
+      between them), and bare `export * from` has no export clause at all
+      (`src/art/index.ts` is fourteen). **On a file using either, the two checks
+      composed to zero** — the literal sweep is blind to a no-literal assembly by
+      construction, and the guard that exists to cover that never looked at the
+      file. Proved by execution: six lines on `cardEntry.tsx`'s own dynamic-import
+      template, taking a Total off the query string through `Object.assign`,
+      `snapshotWireFor` and the pinned `receiveSnapshot` into the cache as
+      confirmed truth, type-checked clean and passed all 2437 tests.
+      **The fix was to delete the scoping, not to teach it more constructs.** The
+      guard's whole purpose is preventing under-scoping, so scoping it was
+      self-defeating, and every round of this piece has been a scope error one
+      construct further out — another hand-rolled predicate would have reopened
+      at the next unusual import form. It now runs over **every non-test file the
+      project compiles**, with the one pre-existing occurrence in the repository
+      excused by file, idiom and count in a table pinned both ways. The type walk
+      that computed the candidate set is deleted, so the sweep also got cheaper.
+      **What is left is stated as a bound rather than as closure**, which is the
+      other half of this round. "Closed by a second, cruder test" was over-strong:
+      three string patterns cannot close an unbounded class. §7.5 residual 1 now
+      names what walks past them — a hand-written `class Forged`, `JSON.parse(s)
+      as ServerRecord` off an `any`, `x as any as ServerRecord`,
+      `Object.fromEntries(…) as ServerRecord`, `Object.create`, `Reflect.set`, an
+      aliased `Object.assign` — and notes that comment stripping is textual, so a
+      `//` inside a string literal blanks the rest of its line. Adding patterns
+      would chase an unbounded class with a bounded instrument and produce
+      another approximation. A residual honestly bounded is worth more than one
+      falsely closed.
       **The preview builders are still not fenced, and the reason is now stated
       per site.** Two of the three exist because the server functions cannot
       produce what they photograph. The third does not: `applyTrainingSession`
