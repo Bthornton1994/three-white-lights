@@ -39,7 +39,15 @@ import { createGrid, fillRect, setPx, type IndexGrid } from '../art/raster';
 import { SHEET } from '../card/sheetPalette';
 import { FONT, drawText, measureText } from '../card/pixelFont';
 import { fitScale } from '../card/renderResultCard';
-import { PANEL, PANEL_TEXT, RAMP_STEPS, SHELF, TIER_1_STRIP, LICENSING_COPY } from './licensingTuning';
+import {
+  LICENSING_COPY,
+  LICENSING_SCREEN,
+  PANEL,
+  PANEL_TEXT,
+  RAMP_STEPS,
+  SHELF,
+  TIER_1_STRIP,
+} from './licensingTuning';
 import type { BaseItem, SponsoredReskin } from './catalogue';
 import { baseItemOf, partnerOf, shelf, type LicensingCatalogue } from './catalogue';
 import type { IconMark, IdentityEntry, Tier3Art, Tier3Slot, Tier3Surface } from './tiers';
@@ -372,6 +380,24 @@ export function renderCharacterSelect(catalogue: LicensingCatalogue): IndexGrid 
     renderPanel({ entry, slot: 'portrait' }, 'character-select'),
   );
   return sheetFor(panels, LICENSING_COPY.SELECT_TITLE);
+}
+
+/**
+ * The largest whole-number upscale at which a sheet fits `available` points.
+ *
+ * PURE, AND HERE RATHER THAN IN THE VIEW, for a reason worth writing down: it
+ * lives in the file the tests can import. `LicensedPanelView.tsx` pulls in
+ * react-native, which the vitest node environment cannot parse at all — so a
+ * scaling rule defined there is a rule nothing can check, and "does the sheet
+ * still double on a phone?" is exactly the assertion that has to survive
+ * somebody widening a panel by two pixels.
+ *
+ * Floors at 1 rather than going fractional: a layout that needs a size between
+ * two integer scales letterboxes the smaller one, which is the rule
+ * `ResultCardView` and `LifterSpriteView` already follow (GDD §7.1).
+ */
+export function scaleToFit(sheetW: number, available: number): number {
+  return Math.max(1, Math.min(LICENSING_SCREEN.MAX_SCALE, Math.floor(available / sheetW)));
 }
 
 /** The two surfaces this module can draw, for the harness and the tests. */

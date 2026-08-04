@@ -36,7 +36,7 @@ import { RGBA } from '../art/palette';
 import { sheetGridToRgba } from '../card/sheetPalette';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LICENSING_COPY, LICENSING_SCREEN } from './licensingTuning';
-import { renderLicensingPanel, type LicensingPanelId } from './renderPanels';
+import { renderLicensingPanel, scaleToFit, type LicensingPanelId } from './renderPanels';
 import type { LicensingCatalogue } from './catalogue';
 
 /** Build an SkImage for a licensing sheet. Cheap enough to run on change. */
@@ -60,17 +60,6 @@ export function makeLicensingImage(
     grid.w * RGBA.BYTES_PER_PIXEL,
   );
   return { image, w: grid.w, h: grid.h };
-}
-
-/**
- * The largest whole-number upscale that fits `available` points.
- *
- * Floors at 1 rather than going fractional: a layout that needs a size between
- * two integer scales letterboxes the smaller one, which is the rule
- * `ResultCardView` and `LifterSpriteView` already follow.
- */
-export function scaleToFit(sheetW: number, available: number): number {
-  return Math.max(1, Math.min(LICENSING_SCREEN.MAX_SCALE, Math.floor(available / sheetW)));
 }
 
 export interface LicensedPanelViewProps {
