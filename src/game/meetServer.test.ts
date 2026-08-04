@@ -15,7 +15,12 @@ import {
   type MeetLoadingRules,
   type MeetState,
 } from './meet';
-import type { MeetAttemptReport, MeetCardReport, ProposalOfKind } from './progression';
+import type {
+  KilogramStartingE1rm,
+  MeetAttemptReport,
+  MeetCardReport,
+  ProposalOfKind,
+} from './progression';
 import {
   asMeetId,
   asProposalId,
@@ -45,7 +50,7 @@ import { meetAttemptReports, meetResultCard, meetResultProposal, type MeetDayCon
 import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW, type MeetDefinition, type MeetEntry } from './meetTuning';
 import { playMeet, previewContext, previewServerRecord, previewStateFor, type RepStyle } from './meetPreview';
 import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
-import { SESSION_TUNING, type KilogramStartingE1rm } from './sessionTuning';
+import { SESSION_TUNING } from './sessionTuning';
 
 const DAY = MEET_PREVIEW.DAY;
 const PROPOSAL_ID = 'meet-test-1';

@@ -51,89 +51,24 @@
 
 import type { RoundingMode, WeightUnit } from './rpe';
 import type { LiftKind } from './meet';
+import type { StartingE1rmSeed } from './progression';
 
 /**
- * THE STARTING e1RMs, WITH THE UNIT THEY ARE EXPRESSED IN.
+ * THE SEED'S TYPE LIVES IN `progression.ts`, WITH ITS THREE SIBLINGS.
  *
- * ---------------------------------------------------------------------------
- * WHY THIS IS A TAGGED PAIR AND NOT THREE BARE NUMBERS UNDER A `_KG` NAME
- * ---------------------------------------------------------------------------
- * This constant used to be `STARTING_E1RM_KG: { squat: 180, bench: 120,
- * deadlift: 220 }` — three numbers whose unit lived in the identifier and
- * nowhere else — under a comment that called it "PLACEHOLDER DATA, NOT
- * PROGRESSION. Nothing here is persisted and nothing derives from it once the
- * server has a real number." BOTH CLAUSES WERE FALSE, and the comment pointed
- * away from exactly the edit that breaks it:
+ * `StartingE1rmSeed` and `KilogramStartingE1rm` were declared here, on the
+ * argument that a unit should be declared at the authoring site. THE VALUE IS
+ * STILL AUTHORED HERE and still carries that argument — see `STARTING_E1RM`
+ * below, which is `satisfies StartingE1rmSeed` with the whole paragraph on what
+ * it reaches. Only the TYPE moved, and it moved for one reason: `progression.ts`
+ * asserts `ArmsAreTellableApart` over each unit-tagged pair on the progression
+ * wire, the helper is module-private there, and the seed was the one pair of the
+ * four with no such assertion — the property called "the guarantee" in
+ * `sessionServer.ts`, held by convention. It has one now.
  *
- *   - `sessionServer.ts`'s `newServerRecord()` assigns these straight into
- *     `record.bestE1rmKg`, which goes out on `ProgressionSnapshotWire` and
- *     arrives as `ConfirmedFacts.bestE1rmKg` — a `ConfirmedKg`, a
- *     `PROGRESSION_FACT_KEYS` member, `'protected'` in `FACT_PROTECTION`. The
- *     same field, the same brand and the same protection as the number
- *     `readKilogramSets` was built to fence. It is progression, on every
- *     account.
- *   - `session.ts`'s `nextBestE1rm` is MONOTONE, so the seed is a permanent
- *     FLOOR rather than a value the first real session replaces. A lifter whose
- *     true squat e1RM is 150 kg carries 180 forever;
- *     `sessionServer.test.ts` pins exactly that. It never stops deriving,
- *     because the floor never falls.
- *
- * And it crosses the mode boundary: `meetServer.ts`'s `meetDayFacts` hands it
- * to meet day, where `suggestOpener` turns it into a declared attempt and
- * `stageLoadRatio` divides a proven-kilogram meet weight by it.
- *
- * ---------------------------------------------------------------------------
- * THE EDIT THIS SHAPE EXISTS TO CATCH
- * ---------------------------------------------------------------------------
- * GDD §11's display-unit question is open and a human is being asked to answer
- * it. If the answer is "the loop loads in pounds", the first edit is
- * `LOAD_UNIT: 'lb'` — which `sessionProposal` forwards onto the card, so the
- * server refuses the session loudly, as designed. THE SECOND, NATURAL EDIT is
- * these three magnitudes. With the unit in the identifier that edit seeded a
- * kilogram field with pound numbers silently, with every guard in the tree
- * green, and monotonicity made it unwalkable back.
- *
- * THE SHAPE IS `BodyweightReading`'S, `MeetCardReport`'S AND
- * `TrainingCardReport`'S — the tree's three existing tagged pairs. The arms
- * carry DIFFERENT FIELD NAMES, so the magnitudes cannot be reached without
- * narrowing on the unit first, and there is deliberately no `value` or
- * `perLift` field reachable from both arms. GDD §11 records the precedent
- * directly: `MeetEntry.bodyweight` is in-tree placeholder data too and was
- * given a unit tag anyway, "so the refusal has a fact to check rather than a
- * literal".
- *
- * ---------------------------------------------------------------------------
- * WHAT IT PROVES AND WHAT IT DOES NOT — said plainly
- * ---------------------------------------------------------------------------
- * A tag proves what was DECLARED, not what was TYPED. Editing these three
- * magnitudes to pound numbers while leaving `unit: 'kg'` is NOT caught here and
- * is not caught anywhere: 397/265/485 under a `'kg'` tag is a lie somebody
- * committed, the same residual `progression.ts` §7.3(b) names for every other
- * declared unit on this boundary. What this shape buys is that the unit and the
- * magnitudes can no longer drift apart WITHOUT SOMEBODY SAYING SO.
- *
- * The `'lb'` arm exists so a pound seed can be REFUSED BY NAME rather than
- * converted, matching `dots.ts` past its domain, `e1rm.ts` past the chart and
- * both servers on a pound card. It is not the answer to §11 and does not take
- * one: `KILOGRAMS_PER_POUND` is right there and nothing calls it.
+ * This module therefore imports a type from `progression.ts` and nothing else.
+ * The import is `import type`, so it is erased and no runtime edge exists.
  */
-export type StartingE1rmSeed =
-  /** Expressed in kilograms. The only unit permanent progression can store. */
-  | { readonly unit: 'kg'; readonly kilograms: Readonly<Record<LiftKind, number>> }
-  /** Expressed in pounds. Carried so it can be REFUSED by name, not converted. */
-  | { readonly unit: 'lb'; readonly pounds: Readonly<Record<LiftKind, number>> };
-
-/**
- * The arm of `StartingE1rmSeed` a kilogram consumer may read.
- *
- * `Extract` rather than a second literal so it cannot drift from the union,
- * exactly as `KilogramTrainingCard`, `KilogramMeetCard` and `KilogramBodyweight`
- * are built. `sessionServer.ts` binds the seed to this type at module scope, so
- * a seed declared in any other unit is a BUILD error rather than a runtime
- * refusal — see that module for why a compile-time check is available here and
- * is not available for a card that arrives as JSON.
- */
-export type KilogramStartingE1rm = Extract<StartingE1rmSeed, { readonly unit: 'kg' }>;
 
 /** The three check-in questions, in the order GDD §3.2 lists them. */
 export type CheckInQuestion = 'sleep' | 'soreness' | 'motivation';
@@ -263,8 +198,8 @@ export const SESSION_TUNING = Object.freeze({
   /**
    * Starting e1RM per lift for a lifter with no history, with the unit it is
    * expressed in as a FIELD rather than as part of a name. See
-   * `StartingE1rmSeed` above for why the shape is this and not three bare
-   * numbers, and for the edit it exists to catch.
+   * `StartingE1rmSeed` in `progression.ts` for why the shape is this and not
+   * three bare numbers, and for the edit it exists to catch.
    *
    * PLACEHOLDER MAGNITUDES — AND PROGRESSION. Say both halves, because the
    * comment this replaced said only the first and got the second backwards.
@@ -420,14 +355,47 @@ export const SESSION_TUNING = Object.freeze({
  * headless browser cannot reliably hit — the same problem, and the same idiom,
  * as `LIFT_TUNING.DEMO` and `src/lift/liftReplay.ts`.
  *
- * NOT PROGRESSION. Nothing here is persisted, nothing derives from it in a
- * played session, and the preview route is never reached by a player. With a
- * backend these numbers do not exist at all.
+ * THREE CLAUSES USED TO STAND HERE AND ONE OF THEM WAS FALSE, in the identical
+ * technical sense that the same sentence was false over `STARTING_E1RM_KG` a
+ * round earlier. It read: "NOT PROGRESSION. Nothing here is persisted, nothing
+ * derives from it in a played session, and the preview route is never reached by
+ * a player."
+ *
+ *   - "Nothing here is persisted" — TRUE. A preview cache is rebuilt on every
+ *     call and dies with the tab; nothing writes a row.
+ *   - "Nothing derives from it in a played session" — TRUE. `previewFrameFor` is
+ *     reached from `?session=` and from nowhere the played loop runs.
+ *   - "NOT PROGRESSION" — FALSE. `sessionPreview.ts`'s `recordBeforeSession()`
+ *     writes `BEST_E1RM_KG` into `ServerRecord.bestE1rmKg`, which goes out on
+ *     `snapshotWireFor` and arrives as `ConfirmedFacts.bestE1rmKg`: a
+ *     `ConfirmedKg`, a `PROGRESSION_FACT_KEYS` member, `'protected'` in
+ *     `FACT_PROTECTION`. The same field, brand and protection as the seed and
+ *     the training card. It is a progression number on a debug route, which is a
+ *     smaller thing than the seed and is NOT the same thing as "not
+ *     progression".
+ *
+ * WHY THE DISTINCTION IS WORTH THE PARAGRAPH rather than a shorter denial: the
+ * previous version of this sentence is what let the route go unnamed in
+ * `progression.ts` §7 for a round. §7.3(c)(iii) now names the site, states why
+ * it is not fenced, and says plainly that its exemption is weaker than the other
+ * two previews'. If these magnitudes ever stop being debug-only, they are a seed
+ * and take the seed's shape — a `StartingE1rmSeed`, not a `_KG` suffix.
+ *
+ * With a backend these numbers do not exist at all.
  */
 export const SESSION_PREVIEW = Object.freeze({
   /** Day index the preview pins, so the rotation and the lift are stable. */
   DAY: 20300,
   E1RM_KG: 200,
+  /**
+   * The e1RM the preview's stand-in row holds BEFORE the scripted session.
+   *
+   * THE ONE VALUE IN THIS BLOCK THAT REACHES A PROTECTED FACT (see above, and
+   * `progression.ts` §7.3(c)(iii)). Its unit is in the identifier rather than in
+   * a field, which is the shape the seed was moved off; it keeps that shape
+   * because it is debug-only and reaches no stored row, and the ruling is
+   * recorded in §7.3(c) rather than left to be inferred from the name.
+   */
   BEST_E1RM_KG: 200,
   STREAK_BEFORE: 11,
   /** RPE the preview session is taken at. */

@@ -2,7 +2,16 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-04 (§11 — the unit refusal now covers the ACCOUNT
+**Last updated:** 2026-08-04 (§11/§12.2 — the ROUTE half of the unit sweep is now
+DERIVED rather than hand-counted. Six rounds of §7 ended with a human finding one
+more construction site and five of the six were found by a grep; the sixth,
+`sessionPreview.ts`'s `recordBeforeSession()`, is now named, and §7.5 is a table
+`progression.test.ts` reconstructs from the TYPE CHECKER and compares both ways —
+an unlisted site goes red, a stale row goes red. The seed's type moved beside its
+three siblings so the `ArmsAreTellableApart` assertion it was missing could be
+written. §12.2 records a proposed two-clause restatement of the unit bar,
+explicitly NOT TAKEN. Magnitudes remain unproven and no plausibility band was
+invented. Earlier the same day: §11 — the unit refusal now covers the ACCOUNT
 SEED, which is a second route into a field the sweep had already marked proven
 rather than a fifth field. `SESSION_TUNING.STARTING_E1RM_KG` went straight into
 protected, monotone `bestE1rmKg` on every account, with its unit in the
@@ -1542,6 +1551,75 @@ The code has taken the safe branch and needs a ruling to take any other.**
       `meetLoadingRules(state.meet).unit`. The engine still runs the pound meet
       and progression still refuses to record it; only the screen stopped lying
       while that is true.
+      **AND THERE WAS A SIXTH ROUTE, WHICH IS THE LAST INTERESTING FACT ABOUT
+      THIS ENTRY — NOT BECAUSE IT WAS BAD, BUT BECAUSE OF HOW IT WAS FOUND.**
+      `sessionPreview.ts`'s `recordBeforeSession()` builds a `ServerRecord` and
+      writes `SESSION_PREVIEW.BEST_E1RM_KG` — a bare `200` with its unit in the
+      identifier — into `bestE1rmKg`, from there to `ConfirmedFacts.bestE1rmKg`,
+      a `ConfirmedKg` on the `'protected'` row. `progression.ts` §7 named *two*
+      hand-built records and there were *three*; §7.4 said "Five routes" and
+      there were six. Its constant carried the **same sentence** the seed's did
+      one round earlier — "NOT PROGRESSION. Nothing here is persisted…" — of
+      which clauses 2 and 3 are true and clause 1 is false in the identical
+      technical sense.
+      **The route itself is small: debug-only, persisting nothing, unreachable
+      without a hand-typed query string. What is not small is that six rounds in
+      a row ended this way, and five of the six were found by a grep** — a human
+      typing `: ServerRecord` and reading the hits. The fact half of §7's sweep
+      had been mechanical for rounds; the ROUTE half was a hand-written list, and
+      a hand-written list of routes is what this section has got wrong every
+      round it has existed.
+      **So the enumeration is now derived.** §7.5 is a table of every place a
+      `ServerRecord` or a `ProgressionSnapshotWire` is built and every caller of
+      the client's snapshot door, and `progression.test.ts` reconstructs the same
+      set by building a `ts.Program` over `src/` and asking the **type checker**
+      — not a regular expression — for every object literal that is one of those
+      types, by contextual type *or* by structural assignability. It compares the
+      two sets **both ways**: a construction site added anywhere under `src/`
+      without a row goes red, and a row whose site is deleted goes red. Counts
+      are per row, so a second literal inside a function that already has a row
+      is caught too. The declared side is a comment and the found side is a
+      parsed syntax tree, so prose about a route can neither create one nor
+      cover for one that was deleted.
+      Test fixtures are excluded, deliberately and with the exclusion asserted to
+      be non-empty: `meetServer.test.ts` and `sessionClient.test.ts` build a
+      dozen records between them, a pin over those would go red on every new
+      fixture, and a table that goes red weekly is one people fix by editing the
+      number.
+      **What still slips, named rather than left for a seventh round:** a record
+      assembled with no object literal — `Object.assign`, `structuredClone`, a
+      cast through `unknown` — has no node for the checker to type. A second,
+      cruder test bans all three from every shipped module that can reach a
+      `ServerRecord`, and none uses them today. The remaining step — "a module
+      that imports nothing from this boundary has nothing to clone" — is an
+      argument, not a check, and it is the one place a seventh route could enter
+      without a test noticing.
+      **The preview builders are still not fenced, and the reason is now stated
+      per site.** Two of the three exist because the server functions cannot
+      produce what they photograph. The third does not: `applyTrainingSession`
+      *can* produce an eleven-day streak and a 200 kg e1RM — that is its job — it
+      just cannot produce them cheaply or on a round number, and a photographed
+      beat exists to be compared across builds. That is a fixture argument, and
+      it is written down as one instead of being folded under a sentence that
+      covered the other two.
+      **The seed's type moved and gained the assertion it was missing.**
+      `StartingE1rmSeed` now lives in `progression.ts` beside the three report
+      pairs, so `A_STARTING_E1RM_SEED_CANNOT_BE_READ_WITHOUT_ITS_UNIT` can be
+      written. It was the only one of the four tagged pairs on this boundary with
+      no `ArmsAreTellableApart` line, which meant the property `sessionServer.ts`
+      correctly calls "the guarantee" — the arms carry different field names —
+      was held by convention. The edit it now catches: add a convenience field
+      reachable from both arms (`perLift`, so `STARTING_E1RM.perLift[lift]` works
+      without a switch) and, before this line, `tsc` passed and every read site
+      passed. The **value** is still authored in `sessionTuning.ts`, so the
+      "declare the unit at the authoring site" argument is intact.
+      **No §11 ruling is taken by any of this**, and the magnitudes are still
+      unproven. No plausibility band was invented for them: the RPE chart is
+      unit-invariant, the plate grid gives a rounding increment rather than a
+      validity range, DOTS carries coefficients rather than a domain, and the
+      inter-lift ordering survives a 2.2x seed intact — so a bound on "how strong
+      may a new lifter be" would be a guess wearing a check's clothes, which is
+      what the `HUMAN_INPUT_BUDGET_MS` entry above records going wrong once.
 - [ ] **Who owns the close-out's WORDS when the server disagrees with the
       client?** The daily loop's payoff beat now reads its numbers back through
       the progression boundary, so a server answer the client did not predict is
@@ -1669,6 +1747,54 @@ test results — never a summary written by the builder.
 | **Lifting math** | Published RPE charts, e1RM formulas, and DOTS coefficients. This bar is binary and testable — the critic verifies against source values, not vibes. No blind A/B needed. |
 | **Anime cut-ins** | 16-bit-era cut-in art. Judge intensity, not polish. A cut-in that reads cute has failed. |
 | **Cross-mode coherence** | The four modes must feel like one game. This is the smoothing-pass critic — run it fresh at the end of each wave, inspecting the whole artifact. |
+
+#### Proposed revision to one sub-bar — **NOT TAKEN.** A bar is the human's to set.
+
+The unit half of cross-mode coherence has been run as: *"no number may be
+written into permanent progression whose unit the server has not proven."* Seven
+rounds have been graded against it. It is recorded here, unchanged and still
+authoritative, together with a revision a critic proposed and a builder's
+assessment of it — CLAUDE.md says a conflict with this document gets stated
+rather than silently resolved, and changing a bar mid-run without a human is the
+same move as grading your own work.
+
+**The proposal:** split it into two clauses, both checkable.
+
+> *(i) every number reaching a `ConfirmedFacts` mass field arrives past a check
+> on a unit field it carries, and (ii) the set of routes that writes one is
+> enumerated in a table a test fails on.*
+
+**Why it is worth considering.** The bar as written cannot be discharged, and
+not because the work is unfinished. "The server has not proven" is a claim over
+an *unenumerated* set — every route that exists — so no amount of evidence
+closes it and no evidence can falsify it either. Six rounds in a row ended with
+a human finding one more route, which is what an unenumerable bar looks like
+from the inside: each round's work was correct and each round's *claim* was too
+strong, because the claim quantified over a set nobody could produce. Clause
+(ii) makes the set producible, so the claim becomes falsifiable, which is the
+property §12.4's method actually needs.
+
+**Two corrections a builder would want made before it were taken.**
+
+1. **Clause (ii) needs to name both directions.** "A table a test fails on" is
+   satisfied by a table that only ever grows, and a table that only grows fills
+   with rulings about deleted code until the live rows are unskimmable. The pin
+   built this round fails on an unlisted site *and* on a listed site that no
+   longer exists, and it is the second half that keeps the first half readable.
+2. **Clause (i) flattens checks of different strength.** A comparison against
+   server-owned data (`card.unit === meet.rules.unit`) and a comparison against
+   an in-tree constant (`PROGRESSION_E1RM_UNIT`) and a compile-time narrow on a
+   literal are not the same guarantee, and §7.1 is careful to say which is
+   which. If the clause is taken it should read "*past a check the table names,
+   with the strength of that check stated*", or a future round will report four
+   green ticks over three different things.
+
+**What neither clause touches, and what a human may want a third clause for:**
+whether a declared unit is *true*. `{ unit: 'kg', kilograms: { squat: 397 } }`
+satisfies (i) and (ii) and is 2.2x wrong. That is not a gap in the restatement —
+it is genuinely out of reach without a server to re-derive against — but it is
+the failure most readers assume this bar covers, so it is worth saying in the
+bar rather than only in the code.
 
 ### 12.3 Constraints the Critics Must Enforce
 
