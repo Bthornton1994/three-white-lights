@@ -199,9 +199,9 @@
       "id": "S1",
       "name": "Daily session loop",
       "bar": "Duolingo-class session. Time-to-first-input, session length, close-out moment.",
-      "status": "pending",
+      "status": "building",
       "verifiable": false,
-      "note": "Absolute metrics measurable; blind A/B against the real app is not."
+      "note": "Dispatched — the last big §12.2 bar row, unblocked now that the lift mechanic passes. Judged against a best-in-class daily-habit session on three measures: time-to-first-input, session length against the GDD 60 to 90 second target, and whether the close-out lands. The builder must MEASURE the first two rather than estimate them, and per CLAUDE.md build the tunable version of the third rather than assert it feels right. It consumes six existing modules and may modify none of them: the rep mechanic, the published RPE chart for load, Epley for e1RM including its refusal past chart coverage, the hidden fatigue model whose input is the check-in, the streak module, and the progression boundary through which it proposes rather than writes. The human ruling governs the close-out directly — the number that moves after a session is e1RM or a session PR, never Total, and progression.ts will not let a training session propose one."
     },
     {
       "id": "S2",
