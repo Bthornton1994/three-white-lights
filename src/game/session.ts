@@ -78,18 +78,57 @@
  * this loop does not autoregulate mid-session, and pretending it did would be
  * inventing a rule the GDD does not have.
  *
- * WHAT THIS MEANS FOR PROGRESSION, said plainly rather than left to be found:
- * because the load goes out through the chart and the estimate comes back
- * through the same chart, a session hit exactly on target reports exactly the
- * e1RM it was prescribed from — the round trip `e1rm.ts` is built to protect.
- * So e1RM does NOT move on an ordinary day, and the close-out says so. It moves
- * when the readiness nudge put a heavier bar up and the player made it. That
- * scarcity is deliberate: a PR every day is not a PR.
+ * WHAT THIS MEANS FOR PROGRESSION, MEASURED RATHER THAN ASSERTED. An earlier
+ * version of this comment claimed that "e1RM does NOT move on an ordinary day"
+ * and that "a PR every day is not a PR". THAT WAS FALSE, and it is written out
+ * here rather than quietly deleted because the shape of the mistake matters:
+ * the claim was true of the ONE check-in the suite happened to exercise and of
+ * no other.
  *
- * WHAT IS UNRESOLVED, and is not this piece's to resolve: nothing here paces
- * that growth over weeks. The prescribed fraction of e1RM is the same whatever
- * the e1RM is, so the mechanic does not get harder as the number climbs. GDD
- * §3.4 gives multi-week arcs to Career mode and this loop leaves them there.
+ * What actually happens, driven through this module's own public API
+ * (`prescribeSession` -> `playedSetFrom` -> `sessionE1rmFrom` ->
+ * `nextBestE1rm`), every rep made exactly on target:
+ *
+ *   CHECK-IN      NUDGE   30 SESSIONS FROM 200 kg     PRs
+ *   grinding       -5%    200.00 kg                    0 / 30
+ *   steady          0%    200.00 kg                    0 / 30
+ *   ready          +2%    292.85 kg  (at RPE 6)       30 / 30
+ *   primed         +5%    770.65 kg  (at RPE 6)       30 / 30
+ *
+ * The mechanism, in four steps, none of which is a bug on its own:
+ *
+ *   1. The load goes out as `e1RM x chart(reps, rpe) x (1 + nudge)` and the
+ *      estimate comes back as `weight / chart(reps, rpe)`. The chart cancels,
+ *      which is the round trip `e1rm.ts` exists to protect and is CORRECT. On a
+ *      flat check-in it is the whole story and the number holds.
+ *   2. On a positive check-in the surviving factor is `(1 + nudge)`, so the set
+ *      reports an e1RM above the one it was prescribed from.
+ *   3. `nextBestE1rm` is monotone and its cap
+ *      (`MAX_E1RM_GAIN_FRACTION_PER_SESSION`, 6%) is above the largest nudge
+ *      (5%), so the cap never binds and the higher number is kept.
+ *   4. `sessionServer.todayForLifter` prescribes tomorrow from the best on
+ *      record — i.e. from the number today's nudge just minted. It compounds.
+ *
+ * `session.test.ts` sweeps all four bands across 137 e1RMs and five rungs and
+ * pins the counts, and runs the 30-session loop above and pins the totals.
+ *
+ * THE FIX IS NOT HERE, AND DELIBERATELY SO. It is not `e1rm.ts` — the
+ * cancellation is right, and paying a higher rung more for the same relative
+ * performance is exactly the two-parts-disagree failure CLAUDE.md's one-formula
+ * rule forbids. It is that `FATIGUE_TUNING.READINESS_LOAD_ADJUSTMENT_PERCENT`
+ * is a FLAT CONSTANT paid for three unverified taps, with no coupling to what
+ * the lifter has actually been doing. Session-over-session growth should scale
+ * with RPE/effort history, and that belongs to the fatigue/progression module
+ * when it is built. It is a RECORDED DEPENDENCY (GDD §3.4), not an oversight,
+ * and a stopgap pacing constant here would be a knob somebody later has to
+ * unpick. Until it lands, this module must not claim a scarcity it does not
+ * provide — GDD §3.2's "a session e1RM PR where they set one" and §7.2's
+ * "scarcity is the entire mechanic" are both stronger than the code earns.
+ *
+ * ALSO UNRESOLVED, and separate: the prescribed fraction of e1RM is the same
+ * whatever the e1RM is, so the mechanic does not get harder as the number
+ * climbs. GDD §3.4 gives multi-week arcs to Career mode and this loop leaves
+ * them there.
  *
  * ---------------------------------------------------------------------------
  * THE KNOWN DEGENERACY IN THE RPE CHOICE. READ THIS BEFORE TUNING IT.
@@ -636,10 +675,19 @@ export function sessionE1rmFrom(sets: readonly TrainingSetReport[]): number | nu
  *      up).
  *   2. CAPPED. One session may not raise it by more than
  *      `MAX_E1RM_GAIN_FRACTION_PER_SESSION`. At the shipped value this does not
- *      bind on any session this loop can produce — the largest honest jump is
- *      the readiness nudge's +5% — and `sessionServer.test.ts` checks that
- *      rather than assuming it. It is a bound on a lying client, not a pacing
- *      lever, and it is NOT a solution to long-run progression pacing.
+ *      bind on any session this loop can produce — the largest jump the loop
+ *      offers is the readiness nudge's +5%, against a 6% cap — and
+ *      `sessionServer.test.ts` checks that rather than assuming it. It is a
+ *      bound on a lying client, not a pacing lever, and it is NOT a solution to
+ *      long-run progression pacing.
+ *
+ * SO NOTHING HERE PACES ANYTHING, and the header's measured table is what that
+ * costs: on a positive check-in this returns a higher number every session,
+ * forever, and tomorrow's bar is prescribed from it. The coupling that fixes it
+ * is a recorded dependency on the fatigue/progression module (GDD §3.4) — the
+ * nudge has to scale with RPE/effort history instead of being a flat constant.
+ * Do not paper over it with a cap here: a pacing constant in this file would be
+ * a knob invented before the thing it is pacing exists.
  */
 export function nextBestE1rm(held: number | null, sessionEstimate: number | null): number | null {
   if (sessionEstimate === null) return held;

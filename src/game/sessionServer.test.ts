@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ACCESSORY_IS_NOT_A_COMPETITION_LIFT,
+  REPORTED_LIFT_IS_A_COMPETITION_LIFT,
+  SIM_LIFTS_ARE_COMPETITION_LIFTS_PLUS_ACCESSORY,
   applyTrainingSession,
   bestE1rmFromSets,
   fatigueRecordFor,
@@ -26,7 +29,7 @@ import {
   type TrainingSetReport,
 } from './progression';
 import { LIFT_ORDER, type LiftKind } from './meet';
-import { UNLUCKIEST_ROLLS, LUCKIEST_ROLLS } from './fatigue';
+import { SIM_LIFTS, UNLUCKIEST_ROLLS, LUCKIEST_ROLLS } from './fatigue';
 import {
   createSession,
   liftForDay,
@@ -177,6 +180,103 @@ describe('deriving e1RM from what was reported', () => {
     expect(server).not.toBeNull();
     expect(client).toBeCloseTo(server ?? Number.NaN, 6);
     expect(serverE1rmForSet(sets[0]!)).toBeCloseTo(172.5 / 0.863, 8);
+  });
+});
+
+describe('accessory work never touches e1RM — the ruling, enforced', () => {
+  // GDD §2, §3.2: `LiftKind` stays the three contested lifts; accessory day
+  // contributes Training IQ and nothing else lift-specific, and produces no
+  // e1RM close-out.
+  //
+  // The cast is the whole point of these tests. `TrainingSetReport.lift` is a
+  // COMPILE-TIME claim about the caller, and the two things that reach this
+  // boundary in production — a JSON body and a stored row — are neither of them
+  // type-checked. Writing the cast out makes the untrusted path explicit rather
+  // than untested.
+  const accessorySet = { lift: 'accessory', weightKg: 60, reps: 3, rpe: 8 } as unknown as TrainingSetReport;
+  const nonsenseSet = { lift: 'zercher', weightKg: 60, reps: 3, rpe: 8 } as unknown as TrainingSetReport;
+
+  it('the compile-time fence is real, and it is not vacuous', () => {
+    // These are `true` at runtime only because they type-checked. Reading them
+    // here is what keeps them from being deleted as unused: `tsc` is the
+    // assertion, and this is the reminder that it ran.
+    expect(ACCESSORY_IS_NOT_A_COMPETITION_LIFT).toBe(true);
+    expect(REPORTED_LIFT_IS_A_COMPETITION_LIFT).toBe(true);
+    expect(SIM_LIFTS_ARE_COMPETITION_LIFTS_PLUS_ACCESSORY).toBe(true);
+    // The runtime shadow of the same claim, so a reader can see what the types
+    // above are asserting without reading a conditional type.
+    expect([...LIFT_ORDER]).toEqual(['squat', 'bench', 'deadlift']);
+    expect([...SIM_LIFTS].filter((lift) => !(LIFT_ORDER as readonly string[]).includes(lift))).toEqual([
+      'accessory',
+    ]);
+  });
+
+  it('bestE1rmFromSets REFUSES an accessory set instead of quietly dropping it', () => {
+    // Before this guard it returned `{squat:null,bench:null,deadlift:null}` and
+    // looked correct — but only because `estimate > undefined` is false. The
+    // set was neither counted nor refused, which is the shape of accident this
+    // fence exists to convert into a decision.
+    expect(() => bestE1rmFromSets([accessorySet])).toThrow(RangeError);
+    expect(() => bestE1rmFromSets([accessorySet])).toThrow(/Training IQ/);
+    expect(() => bestE1rmFromSets([nonsenseSet])).toThrow(RangeError);
+    // The positive control: the same call on a real lift still answers.
+    expect(bestE1rmFromSets([set('squat', 172.5, 3, 8)]).squat).toBeCloseTo(199.8841, 4);
+  });
+
+  it('applyTrainingSession refuses the whole session, and moves nothing', () => {
+    const record = newServerRecord();
+    const applied = applyTrainingSession(record, 0, proposalOf([accessorySet]), 'p-accessory');
+    expect(applied.ok).toBe(false);
+    if (applied.ok) return;
+    expect(applied.error.code).toBe('NOT_A_COMPETITION_LIFT');
+    expect(applied.error.message).toMatch(/Training IQ/);
+    // Nothing half-happened. The streak did not advance and the hidden ledger
+    // did not gain a row under a lift the wire cannot name.
+    expect(record.streak.currentStreak).toBe(0);
+    expect(record.fatigue.sessions).toEqual([]);
+    expect(record.bestE1rmKg).toEqual({ squat: 180, bench: 120, deadlift: 220 });
+  });
+
+  it('refuses even when a real lift is in the same session', () => {
+    // The mixed case: one squat set and one accessory set. `MIXED_LIFTS` would
+    // also refuse this, so the test pins WHICH refusal fires — the lift-name
+    // check runs first, and its message is the one that explains the ruling.
+    const applied = applyTrainingSession(
+      newServerRecord(),
+      0,
+      proposalOf([set('squat', 172.5, 3, 8), accessorySet]),
+      'p-mixed',
+    );
+    expect(applied.ok).toBe(false);
+    if (applied.ok) return;
+    expect(applied.error.code).toBe('NOT_A_COMPETITION_LIFT');
+  });
+
+  it('and a session of only competition lifts is still accepted', () => {
+    // The positive control for all three refusals above: a guard that refused
+    // everything would satisfy them too.
+    const applied = applyTrainingSession(
+      newServerRecord(),
+      0,
+      proposalOf([set('squat', 172.5, 3, 8)]),
+      'p-ok',
+    );
+    expect(applied.ok).toBe(true);
+  });
+
+  it('the daily rotation names no lift the progression boundary cannot answer for', () => {
+    // The rotation is the one place an accessory day could be introduced by
+    // editing a constant. Until `progression.ts` can carry a Training IQ fact
+    // and a session that reports no `LiftKind`, that edit would put a session on
+    // screen the server refuses — so it is checked here as well as in
+    // `sessionTuning.test.ts`.
+    for (const lift of SESSION_TUNING.LIFT_ROTATION) {
+      expect(LIFT_ORDER, `${lift}`).toContain(lift);
+      expect(lift).not.toBe('accessory');
+    }
+    for (let day = 0; day < 12; day += 1) {
+      expect(LIFT_ORDER as readonly string[], `day ${day}`).toContain(liftForDay(day));
+    }
   });
 });
 
@@ -522,16 +622,31 @@ describe('the whole round trip — client proposes, server publishes, client rea
     expect(readingValue(total)).toBeNull();
   });
 
-  it('the server’s published e1RM agrees with what the close-out showed', () => {
+  it('the server’s published e1RM agrees with what the close-out showed, and climbs by the amounts below', () => {
     // The property CLAUDE.md's one-formula rule exists for: two parts of the
     // app cannot report different numbers for the same set. Checked over the
     // whole ladder, both readiness ends, on a lifter with history.
+    //
+    // AND THE MAGNITUDE, which this loop used to watch climb without ever
+    // looking at it. Agreement alone passes just as happily when both halves
+    // agree on a number that has run away, so every step is recorded and the
+    // ten-session trail is asserted below.
+    interface Step {
+      readonly day: number;
+      readonly lift: LiftKind;
+      readonly beforeKg: number | null;
+      readonly afterKg: number | null;
+      readonly isPr: boolean;
+    }
+    const trail: Step[] = [];
+
     let record = newServerRecord();
     let day = 0;
     for (const answers of [NEUTRAL, PRIMED]) {
       for (const rpe of SESSION_TUNING.RPE_CHOICES) {
         const played = playAgainst(record, day, answers, rpe);
         const closeOut = played.state.closeOut!;
+        const beforeKg = record.bestE1rmKg[played.lift];
         const applied = applyTrainingSession(
           record,
           day,
@@ -545,10 +660,76 @@ describe('the whole round trip — client proposes, server publishes, client rea
         } else {
           expect(applied.value.bestE1rmKg).toBe(closeOut.previousBestE1rmKg);
         }
+        trail.push({
+          day,
+          lift: played.lift,
+          beforeKg,
+          afterKg: applied.value.bestE1rmKg,
+          isPr: applied.value.isPr,
+        });
         record = applied.value.record;
         day += 1;
       }
     }
     expect(day).toBe(10);
+    expect(trail).toHaveLength(10);
+
+    // ------------------------------------------------------------------
+    // THE MAGNITUDE. Pinned as MEASURED CURRENT BEHAVIOUR, not as a target.
+    // ------------------------------------------------------------------
+    // Days 0-4 are the neutral half: the load goes out through a chart cell and
+    // the estimate comes back through the same cell, so nothing moves. That is
+    // `e1rm.ts`'s cancellation working exactly as designed.
+    //
+    // Days 5-9 are the primed half, and every one of them is a PR — including
+    // days 8 and 9, which are the SECOND time this lifter trained that lift and
+    // are computed from the number the first one minted. That compounding is
+    // the known gap: the readiness nudge is a flat constant paid for three taps
+    // rather than something coupled to training stimulus, and coupling it is a
+    // recorded dependency on the fatigue/progression work (GDD §3.4). When it
+    // lands, these numbers are what has to change.
+    const neutralHalf = trail.slice(0, 5);
+    const primedHalf = trail.slice(5);
+    expect(neutralHalf.filter((step) => step.isPr)).toEqual([]);
+    for (const step of neutralHalf) {
+      expect(step.afterKg, `day ${step.day} ${step.lift}`).toBe(step.beforeKg);
+    }
+    expect(primedHalf.filter((step) => step.isPr)).toHaveLength(5);
+
+    // Hand-written per lift, from the onboarding placeholders in
+    // `SESSION_TUNING.STARTING_E1RM_KG` (squat 180, bench 120, deadlift 220).
+    expect(primedHalf.map((step) => step.lift)).toEqual([
+      'deadlift',
+      'squat',
+      'bench',
+      'deadlift',
+      'squat',
+    ]);
+    expect(primedHalf[0]!.afterKg).toBeCloseTo(228.1134, 4); // 220 -> +3.7%
+    expect(primedHalf[1]!.afterKg).toBeCloseTo(188.172, 3); // 180 -> +4.5%
+    expect(primedHalf[2]!.afterKg).toBeCloseTo(124.5655, 4); // 120 -> +3.8%
+    // The compounding ones: each is the previous PR's number, nudged again.
+    expect(primedHalf[3]!.beforeKg).toBeCloseTo(228.1134, 4);
+    expect(primedHalf[3]!.afterKg).toBeCloseTo(238.2287, 4);
+    expect(primedHalf[4]!.beforeKg).toBeCloseTo(188.172, 3);
+    expect(primedHalf[4]!.afterKg).toBeCloseTo(195.2278, 4);
+
+    // Five primed sessions across three lifts, and every lift's published best
+    // is above where it started. Nothing here caps it: the one guard in the
+    // path is 6% per session against a 5% nudge.
+    expect(record.bestE1rmKg.squat).toBeCloseTo(195.2278, 4);
+    expect(record.bestE1rmKg.bench).toBeCloseTo(124.5655, 4);
+    expect(record.bestE1rmKg.deadlift).toBeCloseTo(238.2287, 4);
+    expect(record.bestE1rmKg.squat! / SESSION_TUNING.STARTING_E1RM_KG.squat).toBeCloseTo(1.0846, 4);
+    expect(
+      record.bestE1rmKg.deadlift! / SESSION_TUNING.STARTING_E1RM_KG.deadlift,
+    ).toBeCloseTo(1.0829, 4);
+    // Two sessions on one lift, eight percent. Written as an explicit bound so
+    // that a change which makes it worse fails here rather than passing.
+    for (const lift of LIFT_ORDER) {
+      const grown = record.bestE1rmKg[lift]! / SESSION_TUNING.STARTING_E1RM_KG[lift];
+      expect(grown, `${lift} grew`).toBeGreaterThan(1);
+      expect(grown, `${lift} grew`).toBeLessThan(1.09);
+    }
   });
 });

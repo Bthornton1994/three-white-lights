@@ -21,7 +21,13 @@ import { CHART_MAX_REP_MAX, tryEstimateE1rm } from './e1rm';
 import { LIFT_ORDER } from './meet';
 import { ascentDemand } from './lift';
 import { LIFT_TUNING } from './liftTuning';
-import { FATIGUE_TUNING, READINESS_BAND_ORDER, isFreeSession } from './fatigue';
+import {
+  FATIGUE_TUNING,
+  READINESS_BAND_ORDER,
+  isFreeSession,
+  type ReadinessBand,
+  type ReadinessCheckIn,
+} from './fatigue';
 import { prescribeSession } from './session';
 import { readinessCheckIn } from './fatigue';
 
@@ -253,11 +259,52 @@ describe('copy', () => {
   it('has a headline for every readiness band, via fatigue.ts', () => {
     // The session does not restate these; this is the check that it does not
     // need to.
+    //
+    // WHAT THIS USED TO DO, so it does not get written that way again: it
+    // looped over `READINESS_BAND_ORDER` and, in the body, asserted
+    // `band.length > 0` (true of every non-empty string) and re-read the SAME
+    // neutral headline N times. A band whose headline was `''` passed it, which
+    // is the one thing it claimed to rule out. The fix is to reach each band
+    // for real.
+    //
+    // Answers chosen by hand against `FATIGUE_TUNING.READINESS_BAND_MIN_SCORE`,
+    // not derived from it — deriving the input from the table under test would
+    // pass on any table.
+    const REACHES: Readonly<Record<ReadinessBand, ReadinessCheckIn>> = {
+      primed: { sleep: 'good', soreness: 'fresh', motivation: 'fired-up' },
+      ready: { sleep: 'good', soreness: 'normal', motivation: 'steady' },
+      steady: { sleep: 'ok', soreness: 'normal', motivation: 'steady' },
+      grinding: { sleep: 'poor', soreness: 'sore', motivation: 'flat' },
+    };
+
+    const headlines = new Map<ReadinessBand, string>();
     for (const band of READINESS_BAND_ORDER) {
-      expect(readinessCheckIn({ sleep: 'ok', soreness: 'normal', motivation: 'steady' }).headline)
-        .not.toBe('');
-      expect(band.length).toBeGreaterThan(0);
+      const report = readinessCheckIn(REACHES[band]);
+      // The fixture actually lands in the band it is filed under. Without this
+      // every row could be measuring `steady` again.
+      expect(report.band, `${band} is reachable`).toBe(band);
+      expect(report.headline.trim(), `${band} headline`).not.toBe('');
+      expect(report.label.trim(), `${band} label`).not.toBe('');
+      expect(report.label.startsWith(report.headline), `${band} label`).toBe(true);
+      headlines.set(band, report.headline);
     }
+
+    // Every band was reached, and no two share a headline — a table that
+    // answered the same phrase for all four would satisfy a non-empty check.
+    expect(headlines.size).toBe(READINESS_BAND_ORDER.length);
+    expect(new Set(headlines.values()).size).toBe(READINESS_BAND_ORDER.length);
+
+    // GDD §3.2 gives two of the four verbatim. Hand-written from the document.
+    expect(headlines.get('primed')).toBe('Feeling primed');
+    expect(headlines.get('grinding')).toBe('Grinding today');
+
+    // And the signed percentage §3.2 asks to be surfaced is on the label at the
+    // ends and absent in the middle, where there is no nudge to name.
+    expect(readinessCheckIn(REACHES.primed).label).toBe('Feeling primed +5%');
+    expect(readinessCheckIn(REACHES.grinding).label).toBe('Grinding today -5%');
+    expect(readinessCheckIn(REACHES.steady).label).toBe(
+      readinessCheckIn(REACHES.steady).headline,
+    );
   });
 });
 
