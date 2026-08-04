@@ -131,6 +131,20 @@ Open app
 
 One lift per day (squat day, bench day, deadlift day, accessory day on rotation).
 
+**Accessory day pays Training IQ, and nothing lift-specific — RULED.** The
+competition lifts are exactly three, because that is the meet (§6.2), so
+`LiftKind` stays a three-member type: squat, bench, deadlift. Accessory day does
+**not** widen it, does **not** write `bestE1rmKg`, and does **not** get an e1RM
+close-out — there is no fourth lift for it to have a one-rep max in.
+
+What it pays instead is **Training IQ**, the §2 currency that already exists for
+exactly this: how *well* you train, grown by good Sim decisions. Accessory work
+is the part of training that makes you a better lifter without directly moving a
+competition lift's number, so the currency and the fiction agree.
+
+This is a boundary, not a convention: an accessory session that emits an e1RM is
+a bug, and the code enforces that rather than documenting it.
+
 **The number that moves at the close-out is e1RM — never Total.** This is a
 constraint on whoever builds this loop, not a note. The session's payoff beat
 shows the lifter's e1RM for the lift they just trained, or a session e1RM PR
@@ -164,6 +178,37 @@ Hidden stat. **Never display a fatigue bar** — surface it through feel:
 Fatigue operates on a **same-day / next-day horizon**, not multi-week arcs. Push
 too hard today → tomorrow's session starts harder. Multi-week arcs belong to
 Career mode.
+
+#### Required of this module: couple the nudge to training stimulus — RULED
+
+**This is a stated requirement for whoever builds fatigue/progression properly,
+not a suggestion.** It is recorded here because the daily loop was built first
+and cannot satisfy it alone.
+
+Session-over-session growth — the readiness "nudge" that decides how much heavier
+today's bar is than the e1RM it was prescribed from — **must scale with RPE and
+effort history. It must not stay a flat constant.** Growth is earned by training
+stimulus; it is not a reward for opening the app and tapping *good / fresh /
+fired up*.
+
+What the daily loop ships today, and why that is knowingly incomplete: the nudge
+is a flat percentage keyed only to the three check-in taps, which nothing
+verifies against the fatigue ledger. Measured over 30 sessions with every set hit
+exactly on target, a 200 kg e1RM becomes **200.00 kg** at neutral and **770.65 kg**
+at primed, with a PR reported on **30 of 30** sessions. The optimal play is
+therefore the lightest rung plus a primed tap — the easiest possible session
+paying the maximum reward.
+
+**`e1rm.ts` is correct and is not the defect.** Its chart-cancellation property —
+a set hit exactly on target reports exactly the e1RM it was prescribed from — is
+the round-trip guarantee the whole domain layer rests on, and it must be left
+untouched. The gap is upstream of it: nothing yet decides how much stimulus
+*earns* a heavier prescription. Do not "fix" the curve by paying higher RPE rungs
+more; that is the two-parts-disagree failure CLAUDE.md's one-formula rule exists
+to prevent, and it is a separate open question below.
+
+Until this module exists, the daily loop's growth curve is not a shipping
+progression model and must not be tuned as though it were.
 
 ### 3.5 Injury Setbacks
 
@@ -774,8 +819,31 @@ work.
       (USAPL, USPA, NPL)?
 - [ ] Equipped lifting: a mode, a cosmetic layer, or out of scope for v1?
 
-**Raised by the build, and both are §3 conflicts rather than unknowns — the code
-diverges from this document today and is doing so knowingly rather than quietly.**
+**Raised by the build. Both were §3 conflicts rather than unknowns; one is now
+ruled and closed, one remains open.**
+
+- [x] **Session-over-session growth is not coupled to training stimulus —
+      RULED, and deferred by decision rather than by oversight.** The readiness
+      nudge is a flat constant keyed only to the three check-in taps, so a primed
+      tap is free, unverified and strictly dominant: 200 kg → 770.65 kg over 30
+      sessions, a PR on 30 of 30. **`e1rm.ts` and its cancellation property are
+      correct and stay untouched — that is not the bug.** The gap is that nothing
+      yet decides how much stimulus *earns* a heavier prescription, and the fix
+      belongs to the fatigue/progression module, which does not exist yet.
+      Building a stopgap in the daily loop would be work thrown away plus a
+      constant someone later has to unpick, so it is deliberately **not** fixed
+      now. The requirement is written into **§3.4** as a stated condition on that
+      module: the nudge must scale with RPE and effort history. Until then the
+      loop's growth curve is not a shipping progression model and must not be
+      tuned as one. The tests that cover it pin **actual** behaviour with a
+      pointer to §3.4, so the gap is visible in the suite rather than implied.
+
+- [x] **Accessory day has no lift it can name — RULED.** `LiftKind` stays exactly
+      three members, matching real meet structure. Accessory day contributes to
+      **Training IQ** (the §2 currency that already exists for it) and nothing
+      else lift-specific: no `bestE1rmKg` write, no e1RM close-out. Recorded in
+      **§3.2**, and enforced in code rather than by convention — an accessory
+      session that emits an e1RM is a bug the type system or a refusal catches.
 
 - [ ] **The RPE choice is degenerate on reward.** §3.3 says picking an RPE target
       is "what makes the mode feel real rather than arbitrary." It is not, as
@@ -797,18 +865,6 @@ diverges from this document today and is doing so knowingly rather than quietly.
       Until this is ruled on, the rungs differ in **fatigue, injury exposure and
       timing-window width** but not in reward, and §3.3's claim is stronger than
       the code earns.
-
-- [ ] **Accessory day has no lift it can name.** §3.2 puts an accessory day in
-      the rotation. `meet.ts`'s `LiftKind` is squat/bench/deadlift, and
-      `ConfirmedFacts.bestE1rmKg` is keyed the same, so an accessory session has
-      nothing to report on the progression wire and no e1RM for its close-out to
-      move. The session loop **rotates three lifts** and says so in
-      `SESSION_TUNING.LIFT_ROTATION` rather than silently widening a boundary
-      that took several rounds to fence.
-      Three ways out: widen the lift vocabulary for training only, keeping the
-      meet engine's three; let accessory day feed Training IQ or technique points
-      instead, both of which already exist as §2 currencies; or drop accessory day
-      and correct §3.2.
 
 ---
 
