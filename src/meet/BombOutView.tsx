@@ -40,6 +40,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import type { LiftKind } from '../game/meet';
 import type { MeetDayAttempt } from '../game/meetDay';
+import { useOfferCutIn } from '../cutin/CutInHost';
 import { playBeat } from './meetFeedback';
 import { AttemptBoard } from './AttemptBoard';
 import { MEET_PALETTE } from './meetPalette';
@@ -70,6 +71,20 @@ export interface BombOutViewProps {
 
 export function BombOutView({ bombedLift, attempts, onDone }: BombOutViewProps): React.ReactElement {
   const liftLabel = MEET_COPY.LIFT_LABEL[bombedLift];
+
+  // GDD §7.2'S THIRD FIRING MOMENT — "Bombing out, the somber counterpart" —
+  // offered to the gate. This screen only reports that the meet ended this way;
+  // `src/cutin/cutInGate.ts` applies the one-per-session cap and the rate.
+  //
+  // ITS RATE IS 1 AND ITS PRIORITY IS THE HIGHEST, and it can still be refused:
+  // a meet that already spent its cut-in on a third-attempt walk-out has none
+  // left, because §7.2's cap is a count and this beat arrives later. That is
+  // recorded as a live open question in GDD §11 rather than papered over.
+  //
+  // The cut-in is not a consolation and takes nothing away either — it is a
+  // picture, and the four things above that make this screen not a game-over
+  // screen are unchanged by it.
+  useOfferCutIn([{ kind: 'meet-over', bombedOut: true }]);
 
   // ONE LOW BEAT, WHEN THE FIRST LINE ARRIVES, AND NOTHING ELSE.
   //

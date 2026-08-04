@@ -228,6 +228,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'feel',
     why: 'SHELL_NAV / SHELL_LAYOUT / SHELL_COPY — the app shell: which beats of GDD §3.2 and §6 a navigation control may be drawn over, how long it takes to arrive, and where it sits. When a control is welcome and when it is in the way is a judgement that needs a thumb on a phone, so it is a knob rather than a constant nobody may turn.',
   }),
+  'src/cutin/cutInTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'CUT_IN_TUNING / CUT_IN_ART / CUT_IN_LAYOUT / CUT_IN_COPY — the GDD §7.2 cut-in gate: how often a firing moment is allowed to interrupt, what counts as a heavy set, how long the interrupt holds, and how soon a tap dismisses it. §7.2 calls scarcity "the entire mechanic", and how scarce is scarce enough is exactly the judgement that needs a thumb on a phone. MAX_PER_SESSION lives here too and is flagged in place as NOT a knob: it is §12.3’s refusal condition, not a value to turn.',
+  }),
   'src/licensing/licensingTuning.ts': Object.freeze({
     role: 'constants',
     kind: 'feel',

@@ -30,11 +30,24 @@
  * `progression.ts` says the record now is (via `sessionClient.ts`). This file
  * does not pick between a projection and a confirmation, or compute either — it
  * hands the reading down and `CloseOutView` renders how sure it is.
+ *
+ * ---------------------------------------------------------------------------
+ * IT OWNS THE DAY'S ONE CUT-IN SLOT (GDD §7.2)
+ * ---------------------------------------------------------------------------
+ * `CutInHost` wraps the whole loop, because §7.2's cap is per SESSION and no
+ * single beat of the loop knows what a session is. One host, one slot, keyed on
+ * `cutInSessionId('training', day)` — so the rest beat and the close-out are
+ * competing for the same one cut-in rather than getting one each.
+ *
+ * The router still routes and still computes nothing: the session id and the
+ * seed are `cutInGate.ts`'s functions of the day, not arithmetic done here.
  */
 
 import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { CutInHost } from '../cutin/CutInHost';
+import { cutInSessionId, cutInSessionSeed } from '../cutin/cutInGate';
 import { SESSION_COPY, SESSION_LAYOUT } from '../game/sessionTuning';
 import { plannedTemplateFor } from '../game/session';
 import type { SessionPhase } from '../game/session';
@@ -119,6 +132,8 @@ export function SessionScreen({
   const onBeginSet = useCallback(() => dispatch({ kind: 'begin-set' }), [dispatch]);
   const onRetry = useCallback(() => dispatch({ kind: 'retry' }), [dispatch]);
 
+  const day = state.context.day;
+
   if (loop.alreadyTrainedToday && state.phase === 'check-in' && preview === undefined) {
     return (
       <View style={styles.root} testID="session-screen">
@@ -128,48 +143,54 @@ export function SessionScreen({
   }
 
   return (
-    <View style={styles.root} testID="session-screen">
-      {state.phase === 'check-in' ? (
-        <CheckInView
-          answers={state.answers}
-          onTap={(tap) => dispatch({ kind: 'check-in-tap', tap })}
-        />
-      ) : null}
+    <CutInHost
+      sessionId={cutInSessionId('training', day)}
+      seed={cutInSessionSeed('training', day)}
+    >
+      <View style={styles.root} testID="session-screen">
+        {state.phase === 'check-in' ? (
+          <CheckInView
+            answers={state.answers}
+            onTap={(tap) => dispatch({ kind: 'check-in-tap', tap })}
+          />
+        ) : null}
 
-      {state.phase === 'briefing' && state.readiness !== null ? (
-        <BriefingView
-          lift={state.context.lift}
-          readiness={state.readiness}
-          injury={state.injury}
-          workSets={plannedTemplateFor(state).workSets}
-          repsPerSet={plannedTemplateFor(state).repsPerSet}
-          ladderReady={loop.ladderReady}
-          onChooseRpe={(rpe) => dispatch({ kind: 'choose-rpe', rpe })}
-        />
-      ) : null}
+        {state.phase === 'briefing' && state.readiness !== null ? (
+          <BriefingView
+            lift={state.context.lift}
+            readiness={state.readiness}
+            injury={state.injury}
+            workSets={plannedTemplateFor(state).workSets}
+            repsPerSet={plannedTemplateFor(state).repsPerSet}
+            ladderReady={loop.ladderReady}
+            onChooseRpe={(rpe) => dispatch({ kind: 'choose-rpe', rpe })}
+          />
+        ) : null}
 
-      {state.phase === 'set' ? <SetView state={state} onRepResolved={onRepResolved} /> : null}
+        {state.phase === 'set' ? <SetView state={state} onRepResolved={onRepResolved} /> : null}
 
-      {state.phase === 'rest' && state.plan !== null ? (
-        <RestView
-          nextSet={state.setIndex + 1}
-          workSets={state.plan.workSets}
-          weightKg={state.plan.weightKg}
-          onBeginSet={onBeginSet}
-        />
-      ) : null}
+        {state.phase === 'rest' && state.plan !== null ? (
+          <RestView
+            nextSet={state.setIndex + 1}
+            workSets={state.plan.workSets}
+            weightKg={state.plan.weightKg}
+            loadRatio={state.plan.loadRatio}
+            onBeginSet={onBeginSet}
+          />
+        ) : null}
 
-      {state.phase === 'close-out' &&
-      state.closeOut !== null &&
-      loop.closeOutReadings !== null ? (
-        <CloseOutView
-          closeOut={state.closeOut}
-          readings={loop.closeOutReadings}
-          onDone={restartDay}
-          onRetry={onRetry}
-        />
-      ) : null}
-    </View>
+        {state.phase === 'close-out' &&
+        state.closeOut !== null &&
+        loop.closeOutReadings !== null ? (
+          <CloseOutView
+            closeOut={state.closeOut}
+            readings={loop.closeOutReadings}
+            onDone={restartDay}
+            onRetry={onRetry}
+          />
+        ) : null}
+      </View>
+    </CutInHost>
   );
 }
 

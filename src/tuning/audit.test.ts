@@ -519,6 +519,12 @@ describe('the registered allowlist', () => {
         'src/audio/synth.ts',
         'src/card/cardTuning.ts',
         'src/card/pixelFont.ts',
+        // The cut-in gate (GDD §7.2). A `feel` home: §7.2 says scarcity "is
+        // the entire mechanic" and then says only "ideally not every session",
+        // which is a rate somebody has to settle by playing. The one-per-
+        // session CAP lives in the same block and is flagged there as a §12.3
+        // refusal condition rather than a knob.
+        'src/cutin/cutInTuning.ts',
         'src/card/sampleCards.ts',
         'src/card/sheetPalette.ts',
         'src/game/dots.ts',

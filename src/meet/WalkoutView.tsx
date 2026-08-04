@@ -78,10 +78,18 @@
  * third-attempt PR with a bomb on the line is both the loudest line and the
  * longest silence in the piece.
  *
- * NO CUT-IN. GDD §7.2 puts "third-attempt walkout at a meet" first on its
- * cut-in list and then says to "cut art entirely from the early prototypes".
- * §12.3 makes more than one cut-in per session a refusal condition; firing none
- * is inside that rule, and the gate belongs to whoever builds the cut-in piece.
+ * THE CUT-IN IS OFFERED HERE NOW, AND THIS SCREEN DOES NOT DECIDE IT. GDD §7.2
+ * puts "third-attempt walkout at a meet" first on its cut-in list. What this
+ * file does is REPORT THE BEAT — which attempt of how many — to
+ * `useOfferCutIn`; `src/cutin/cutInGate.ts` decides whether that is one of
+ * §7.2's four moments, whether the meet has already spent its one cut-in
+ * (§12.3's refusal condition), and whether this meet's rates let it through.
+ * An opener reports the same beat and is refused, which is the point: the rule
+ * lives in the gate, not in a condition on this screen.
+ *
+ * There is still no cut-in ART. §7.2 says to "cut art entirely from the early
+ * prototypes" and GDD §11 records the working assumption this run applies; what
+ * mounts is the placeholder Tier 3 panel the licensing system already renders.
  *
  * WHAT IT IS FELT AND HEARD AS. Each plate lands with its own thud and its own
  * rattle on `BAR_LOAD_PLATE_STAGGER_MS` — the same constant the clip steps on,
@@ -103,6 +111,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import { LIFT_TUNING } from '../game/liftTuning';
 import type { LiveAttempt } from '../game/meetDay';
+import { useOfferCutIn } from '../cutin/CutInHost';
 import { playBeat } from './meetFeedback';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
 import { formatWeight } from '../game/resultCard';
@@ -146,6 +155,19 @@ export function WalkoutView({
         ? MEET_COPY.WALKOUT_THIRD
         : MEET_COPY.WALKOUT_PROMPT;
   const urgent = attempt.bombRisk || attempt.isPrAttempt || attempt.attemptNumber === ATTEMPTS_PER_LIFT;
+
+  // GDD §7.2's first firing moment, OFFERED not fired. The beat is facts —
+  // which attempt, of how many — and `cutInGate.ts` qualifies it. `urgent` is
+  // deliberately not passed: it is this screen's own escalation for the copy
+  // and the crowd, and letting it reach the gate would give the cut-in a
+  // second, softer trigger that §7.2 does not list.
+  useOfferCutIn([
+    {
+      kind: 'meet-walkout',
+      attemptNumber: attempt.attemptNumber,
+      attemptsPerLift: ATTEMPTS_PER_LIFT,
+    },
+  ]);
 
   // THE BAR LOADS. One disc per side per `BAR_LOAD_PLATE_STAGGER_MS`, and the
   // same tick fires the thud and the rattle — one schedule, so what is seen and

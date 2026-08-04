@@ -740,6 +740,35 @@ resent by day 4.
 - Always skippable — tap to dismiss. Daily players will see these hundreds of
   times.
 
+**"Session" means one sitting of one mode, and a meet is one — RULED.** The rule
+above did not say, and two of the four firing moments happen at a meet. One daily
+training session (§3.2) is a session. **One whole meet (§6) — weigh-in to recap —
+is also one session**, not one attempt and not one lift. That is the reading that
+makes the cap mean anything: a meet is nine attempts, three of them thirds, plus
+a recap and possibly a bomb-out, so counting an attempt as a session would permit
+four cut-ins in ten minutes, which is exactly the tax this section is written
+against. Consequences of the ruling, stated rather than discovered later:
+
+- A meet and a training session on the same day are two sittings and get one
+  cut-in each.
+- Inside one meet, the first qualifying beat takes the slot. A meet that fires
+  the squat's third-attempt walkout will refuse the total-PR and bomb-out
+  cut-ins that follow. See the open question in §11.
+
+**The gate is a module, not a convention.** `src/cutin/cutInGate.ts` owns the cap
+and refuses the second request itself, so a caller written later cannot spend a
+second cut-in by not knowing the rule. Screens report *beats* — "this is attempt
+3 of 3", "the meet ended with a bomb-out" — and the gate decides whether that is
+one of the four moments above. "Ideally not every session" is a per-moment rate
+(`CUT_IN_TUNING.SESSION_ALLOWANCE`) rolled once per sitting; **the rates are a
+starting point and have never been played** (§12.1).
+
+**Priority among simultaneous moments**, highest first: bombing out (terminal and
+unrepeatable), third-attempt walkout (§12.2 grades the piece on it), PR, coach
+reaction (the most frequent and the least load-bearing). This settles beats that
+are true *at the same instant*. Across time the cap is a count, so an earlier
+beat wins regardless of rank.
+
 **Cut-ins also resolve the tone problem.** Retro sprites read playful, which is
 right for the casual funnel but risks undercutting meet-day tension. A hand-drawn
 shot of a lifter's face under a maximal attempt carries intensity that cute
@@ -748,6 +777,14 @@ sprites cannot. This is the solution to "does meet day feel serious enough."
 **Cut art entirely from the early prototypes.** Cut-in art is the most expensive
 asset class in this plan and is completely orthogonal to whether the game is fun.
 Placeholder rectangles until meet day is proven to land.
+
+**The gate is not the art, and the gate ships first.** Everything above about
+scarcity, skippability and where cut-ins fire is *mechanism*, and it is what
+decides whether the art will be welcome when it arrives. It is built
+(`src/cutin/`); the art is not, per §11's working assumption. What mounts today
+is the placeholder Tier 3 panel the licensing system already renders (§7.3), read
+through the same surface witness a licensed portrait would be — so the art pass,
+when it happens, is a row in the identity table and not a rewiring.
 
 ### 7.3 The Identity Tier System
 
@@ -1020,6 +1057,26 @@ Two are ruled, two are open.**
       loop's growth curve is not a shipping progression model and must not be
       tuned as one. The tests that cover it pin **actual** behaviour with a
       pointer to §3.4, so the gap is visible in the suite rather than implied.
+
+- [ ] **The cut-in cap is first-come across time, so an earlier beat can lock
+      out a better one. Recorded, not resolved.** §7.2 caps cut-ins at one per
+      session and the gate enforces it as a count, which means the first
+      qualifying beat to arrive takes the slot regardless of the priority order
+      §7.2 now declares. Two live consequences, both real at today's tuning:
+      **a lifter can bomb out and see no bomb-out cut-in**, because the squat's
+      third-attempt walkout came first and spent the meet's one slot; and in a
+      training session a coach reaction fires during the sets and would take the
+      slot from the close-out's PR. The only levers today are the per-moment
+      rates (`SESSION_ALLOWANCE`), and `coach-heavy-set` is set lowest for
+      exactly this reason. The obvious alternative — hold the slot back if a
+      higher-ranked moment might still arrive — needs lookahead the gate cannot
+      have, and a gate that guesses wrong holds the slot for a moment that never
+      comes. **This wants a human ruling, and it is a feel question**: whichever
+      way it goes, only playing a meet can say whether the walkout or the
+      bomb-out is the beat that should have interrupted. Until then the
+      behaviour is pinned by a named test ("ACROSS TIME THE EARLIER BEAT TAKES
+      THE SLOT, WHATEVER ITS PRIORITY") so it is visible in the suite rather
+      than implied.
 
 - [ ] **The RPE choice is degenerate on reward.** §3.3 says picking an RPE target
       is "what makes the mode feel real rather than arbitrary." It is not, as

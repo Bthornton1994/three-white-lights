@@ -116,6 +116,7 @@ import {
   SHELF,
   TIER_1_STRIP,
 } from '../licensing/licensingTuning';
+import { CUT_IN_ART, CUT_IN_COPY, CUT_IN_LAYOUT, CUT_IN_TUNING } from '../cutin/cutInTuning';
 import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV } from '../shell/shellTuning';
 import { PALETTE_BANKS, PAL, RAMPS } from '../art/palette';
 import { GYM, GYM_BANKS, GYM_RAMPS } from '../art/gymPalette';
@@ -275,6 +276,25 @@ export const TUNING = Object.freeze({
   }),
 
   /**
+   * THE CUT-IN GATE (GDD §7.2). How often the game is allowed to interrupt the
+   * player, and for how long.
+   *
+   * `SESSION_ALLOWANCE` is the one to turn first and the one most likely to be
+   * wrong. §7.2 gives a hard rule and a soft one — "no more than one per
+   * session, ideally not every session" — and only the hard one is a number the
+   * document states. The soft one is four rates guessed at by reading the
+   * paragraph, and §7.2's own failure case ("a 2-second tax that players resent
+   * by day 4") is a feeling, not a threshold. Turn these after four days of
+   * play, not after one.
+   *
+   * `MAX_PER_SESSION` IS IN THIS BLOCK AND IS NOT A KNOB. GDD §12.3 lists
+   * "cut-ins firing more than once per session" as a refusal condition. It is
+   * here because the audit requires every number to have a home, not because it
+   * is yours to move; its own comment says so at length.
+   */
+  cutIn: Object.freeze({ CUT_IN_TUNING, CUT_IN_ART, CUT_IN_LAYOUT, CUT_IN_COPY }),
+
+  /**
    * THE APP SHELL. The one control that carries a player between the daily loop
    * (GDD §3.2) and meet day (GDD §6), and the rules about when it may be on
    * screen at all.
@@ -343,6 +363,7 @@ export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Obj
   card: 'src/card/cardTuning.ts',
   meet: 'src/game/meetTuning.ts',
   licensing: 'src/licensing/licensingTuning.ts',
+  cutIn: 'src/cutin/cutInTuning.ts',
   shell: 'src/shell/shellTuning.ts',
 });
 
