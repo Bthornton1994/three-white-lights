@@ -1,16 +1,13 @@
-# Captured 2026-08-04T17:54:49Z at bce51f9 on claude/agent-config-setup-m2r6ny
-# working tree: 1 modified path(s)
+# Captured 2026-08-04T18:14:13Z at 9282708 on claude/agent-config-setup-m2r6ny
+# NOTE: this file is committed AFTER capture, so the commit adding it is one later than the stamp.
+# working tree at capture: 1 modified path(s)
 
 ## npm test
-Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
- RUN  v4.1.10 /home/user/three-white-lights
-
-
- Test Files  54 passed (54)
-      Tests  2310 passed (2310)
-   Start at  17:54:50
-   Duration  27.61s (transform 4.12s, setup 0ms, import 18.36s, tests 50.83s, environment 7ms)
+ Test Files  55 passed (55)
+      Tests  2330 passed (2330)
+   Start at  18:14:14
+   Duration  32.00s (transform 5.14s, setup 0ms, import 22.95s, tests 58.46s, environment 8ms)
 
 
 ## npm run typecheck
@@ -20,12 +17,8 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
 (exit 0)
 
-## mutations run by the lead agent, not the builder — each reverted, git diff clean after
-cutInGate.ts:505 cap check forced false:
-   x THE GATE REFUSES THE SECOND CUT-IN OF A SESSION
-   x A HUNDRED QUALIFYING BEATS IN ONE SESSION PRODUCE EXACTLY ONE CUT-IN
-   x dismissing does NOT refund the slot
-   x ACROSS TIME THE EARLIER BEAT TAKES THE SLOT, WHATEVER ITS PRIORITY
-   Tests  4 failed | 72 passed (76)
-CUT_IN_MOMENTS emptied to []:
-   Tests 31 failed | 45 passed (76)  across 2 of 3 files
+## mutation run by the LEAD AGENT, not the builder
+src/art/rig.ts FOREARM_R belly 2.8 -> 3.0 (an IMPROVEMENT in raw violation count, 80 -> 48 per the builder):
+   x KNOWN GAP: an arm spends more of itself on the ramp floor than the reference ever does
+   Tests  1 failed | 67 passed (68)  in src/art/lifterSprite.test.ts
+   So the ratchet fires on a CHANGE IN EITHER DIRECTION, which is what an exact deep-equality pin buys. Reverted.

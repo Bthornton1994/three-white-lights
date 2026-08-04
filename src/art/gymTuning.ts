@@ -468,11 +468,23 @@ export const GYM_CROWD = Object.freeze({
    *     air out of the rendered room — exactly `KEYLINE_ROWS` empty rows above
    *     every tier that has one behind it, with that tier's shoulders in the
    *     next row up, and exactly `KEYLINE_COLS` columns of air between
-   *     neighbouring spectators in the widest row of every tier. Raise either
-   *     number and the rim starts drawing on somebody, and that test says so.
+   *     neighbouring spectators in the widest row of every tier. It says the
+   *     rendered band and these two numbers AGREE, which is what the probe in
+   *     that file needs in order to be readable at all. IT DOES NOT PIN THEM:
+   *     its expectations are written in terms of the constants, so raising one
+   *     moves the expectation with it — the rim eats a row or a column of
+   *     somebody, and the test then measures and accepts the band it just
+   *     changed. (This bullet used to end "raise either number and the rim
+   *     starts drawing on somebody, and that test says so." The first half is
+   *     true and the second is not; both mutations below leave it green.)
    *   - the plant in that file redraws the whole band with NO rim at all and is
    *     asserted byte-identical to the shipped room at rest, which is the
-   *     "bit-for-bit" claim itself.
+   *     "bit-for-bit" claim itself — AND IS THE THING THAT CATCHES A CHANGE TO
+   *     EITHER NUMBER, because the plant's geometry does not move when they do.
+   *     Run both ways round: `KEYLINE_ROWS: 2` fails it on 280 differing
+   *     pixels, `KEYLINE_COLS: 3` on 126, and in each case the only red in the
+   *     suite is `stands the crowd up without turning it into a slab`, which is
+   *     the test that assertion lives in.
    */
   KEYLINE_ROWS: 1,
   KEYLINE_COLS: 2,
