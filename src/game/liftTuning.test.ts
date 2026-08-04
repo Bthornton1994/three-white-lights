@@ -340,10 +340,21 @@ describe('copy', () => {
 });
 
 // ---------------------------------------------------------------------------
-// THE MAGIC-NUMBER SCAN
+// THE MAGIC-NUMBER SCAN — THIS ONE IS LOCAL AND IS NOT THE AUTHORITY
 //
-// CLAUDE.md: "Never scatter them as magic numbers across components." This is
-// the part of that rule that is enforced rather than requested.
+// CLAUDE.md: "Never scatter them as magic numbers across components."
+//
+// `src/tuning/audit.ts` is the tree-wide enforcement of that rule and it is
+// STRICTER than what follows: it understands regex literals and template
+// interpolations, and it does not treat a bare `2` in a property-value
+// position as structural. What is kept here is what it does NOT do — the
+// dead-knob sweep over `LIFT_TUNING`'s own keys, and the structural fence that
+// keeps a base window width out of the renderer. Those are about this file's
+// contents, not about the tree, so they belong beside this file.
+//
+// The numeric scan below is therefore redundant but not wrong. It is left in
+// place because a second, independently written scan over the same directory
+// is cheap insurance against a bug in the first one.
 // ---------------------------------------------------------------------------
 
 /** Strip comments and string literals so only real code is scanned. */

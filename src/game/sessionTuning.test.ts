@@ -262,11 +262,17 @@ describe('copy', () => {
 });
 
 // ---------------------------------------------------------------------------
-// THE MAGIC-NUMBER SCAN
+// THE MAGIC-NUMBER SCAN — LOCAL, AND NOT THE AUTHORITY
 //
-// CLAUDE.md: "Never scatter them as magic numbers across components." This is
-// the part of that rule that is enforced rather than requested, for the session
-// loop's own sources.
+// `src/tuning/audit.ts` enforces CLAUDE.md's "never scatter them as magic
+// numbers across components" over the WHOLE tree, and more strictly than this
+// does: it understands regex literals and template interpolations, and it does
+// not treat a bare `2` in a property-value position as structural.
+//
+// What is kept here is the part it does not do — the dead-knob sweep over
+// `SESSION_TUNING` and `SESSION_LAYOUT`'s own keys, which is about this file's
+// contents rather than about the tree. The numeric scan below is redundant,
+// and left in place as a second independent opinion on the same directory.
 // ---------------------------------------------------------------------------
 
 /** Strip comments and string literals so only real code is scanned. */

@@ -56,9 +56,20 @@ const ROOT = path.resolve(HERE, '..', '..');
 // Reading the tree
 // ---------------------------------------------------------------------------
 
+/**
+ * Directories the walk does not descend into.
+ *
+ * Everything else in the repository is walked, including the root, so a new
+ * top-level directory — an `app/` for expo-router, say — is audited the day it
+ * appears rather than the day someone remembers to add it here. Nothing on
+ * this list contains TypeScript that ships.
+ */
+const NOT_WALKED: readonly string[] = ['node_modules', '.git', '.expo', 'dist', 'coverage'];
+
 function walk(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
+    if (NOT_WALKED.includes(entry)) continue;
     const full = path.join(dir, entry);
     if (statSync(full).isDirectory()) out.push(...walk(full));
     else out.push(full);
@@ -68,11 +79,7 @@ function walk(dir: string): string[] {
 
 /** Every audited source file, repository-relative POSIX, sorted. */
 function auditedFiles(): string[] {
-  return [
-    ...walk(path.join(ROOT, 'src')),
-    path.join(ROOT, 'App.tsx'),
-    path.join(ROOT, 'index.ts'),
-  ]
+  return walk(ROOT)
     .map((f) => path.relative(ROOT, f).split(path.sep).join('/'))
     .filter(isAudited)
     .sort();
@@ -118,9 +125,29 @@ describe('the audit has something to audit', () => {
       'src/art/LifterSpriteView.tsx',
       'src/game/lift.ts',
       'App.tsx',
+      'index.ts',
+      'vitest.config.ts',
     ]) {
       expect(FILES, `${anchor} is missing from the audited set`).toContain(anchor);
     }
+  });
+
+  it('walks the whole repository, not just src/', () => {
+    // The walk starts at the root and skips only NOT_WALKED, so a new
+    // top-level directory is covered the day it appears. `vitest.config.ts`
+    // above is the proof: it is outside `src/` and nothing added it by hand.
+    expect(FILES.some((f) => !f.startsWith('src/'))).toBe(true);
+    expect(FILES.every((f) => !f.includes('node_modules'))).toBe(true);
+  });
+
+  it('does not reach the offline tools, and says so', () => {
+    // `tools/` is `.mjs`, so `isAudited` skips it by extension. That is a real
+    // limit, not a claim of coverage: an offline capture script could hold a
+    // bare number and this would not see it. Shipped game code is `.ts`/`.tsx`.
+    expect(isAudited('tools/sprites.mjs')).toBe(false);
+    expect(FILES.filter((f) => f.startsWith('tools/'))).toEqual([]);
+    // ...but a TypeScript file added there WOULD be audited.
+    expect(isAudited('tools/shoot.ts')).toBe(true);
   });
 
   it('audits the auditor, with no self-exemption', () => {
