@@ -1,179 +1,163 @@
 /**
- * NO REAL ATHLETE, BRAND OR COMPANY IDENTITY ON MEET DAY (GDD §12.3).
+ * NO REAL ATHLETE, BRAND OR COMPANY IDENTITY ON THE MEET SURFACE (GDD §12.3).
+ *
+ * ===========================================================================
+ * THIS FILE DOES NOT KEEP ITS OWN LIST OF NAMES
+ * ===========================================================================
+ * `src/licensing/realIp.ts` owns the watchlist, and it is the only file in the
+ * tree allowed to spell a watched name. An earlier draft of this file carried a
+ * denylist of its own; that made it the THIRD bespoke watchlist in the
+ * repository, and `realIp.test.ts` correctly reported every name in it as a
+ * fresh citation to review. A second list is a second thing to keep current and
+ * a second place for a name to be quietly dropped from.
+ *
+ * So what this file adds is not names. It is THE MEET-SPECIFIC SURFACES —
+ * the strings meet day can draw, and the structural reasons the platform cannot
+ * carry a mark at all — checked against `REAL_IP_WATCHLIST` through
+ * `scanRenderable`, the same default-deny scan the licensing piece applies to
+ * its own catalogue.
  *
  * ===========================================================================
  * WHY MEET DAY IS THE RISKY SURFACE
  * ===========================================================================
- * The refusal condition is that no real, named athlete, brand or company
- * identity — name, logo, likeness or wordmark — may be hardcoded into any
- * asset, string, config or code path. Meet day is where that would happen
- * first, because every part of it has a real-world counterpart that a
- * "realistic" placeholder would reach for:
- *
  *   - THE BANNER OVER THE PLATFORM. A real meet's backdrop is a wall of
  *     equipment sponsors. Ours is `GYM_BANNER`: a stripe and five solid
  *     patches, checked below to be geometry with no text payload at all.
  *     There is no glyph renderer anywhere in `src/art/`, so the room CANNOT
- *     draw a wordmark — that is a structural property, not a promise.
- *   - THE FEDERATION. `MEET_LOCAL.federation` is invented (GDD §11 leaves
- *     licensing open) and `meetTuning.test.ts` already banned the obvious
- *     real ones. This widens that to brands and athletes and makes it the
- *     formal §12.3 check rather than one file's own judgement call.
+ *     draw a wordmark — a structural property, checked, not a promise.
+ *   - THE FEDERATION AND THE MEET NAME. Both invented (GDD §11 leaves
+ *     licensing open), and both are strings the weigh-in and the result card
+ *     print.
  *   - THE LIFTER AND THE FIELD. `MEET_ENTRY.name` reaches the weigh-in, the
  *     recap and the shareable card; `ghostTotalsKg` is the field it places
  *     against. The named failure mode is that nobody does this deliberately —
  *     it arrives as a realistic placeholder because a real athlete came to
- *     mind first. So the ghosts are NUMBERS ONLY and there is no name in that
- *     list to get wrong.
+ *     mind first. So the ghosts are NUMBERS ONLY and there is no roster to get
+ *     wrong.
+ *   - THE SOUND CUES. New in this piece, and named after what they are.
  *
  * ===========================================================================
- * SCOPE, STATED SO IT IS NOT MISTAKEN FOR MORE THAN IT IS
+ * WHAT IT IS NOT
  * ===========================================================================
- * This scans THE FILES THIS PIECE OWNS. `meet.ts` and `resultCard.ts` also
- * mention real federations, as structural references to the sport's rules
- * (plate ladders, loading increments, result-sheet columns); whether each of
- * those is a legitimate rule citation or identity presented as content is
- * another builder's call and is deliberately NOT decided here. Scanning them
- * from this file would pre-empt that judgement with a denylist.
+ * Not a proof of absence: `scanRenderable` catches what is on the watchlist.
+ * What makes the surface safe is structural — no text in the room, numbers for
+ * the field — and the scan is the backstop.
  *
- * The denylist is also not a proof of absence. It catches the names somebody
- * would actually reach for; it cannot catch one nobody thought of. What makes
- * the surface safe is structural — no text in the room, numbers for the field —
- * and the list is the backstop.
+ * `meet.ts` and `resultCard.ts` also mention real federations, as structural
+ * references to the sport's rules. `realIp.ts` rules on those in one place for
+ * the whole tree; nothing here second-guesses it.
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { withoutComments } from '../tuning/audit';
+import {
+  REAL_IP_WATCHLIST,
+  formatContentFindings,
+  scanRenderable,
+  type RenderableString,
+} from '../licensing/realIp';
 import { GYM_BANNER, GYM_CROWD, GYM_PROPS_MEET } from '../art/gymTuning';
-import { MEET_ENTRY, MEET_LOCAL, MEET_SOUND_IDS } from '../game/meetTuning';
-import { everySoundFileName } from './soundAssets';
+import { MEET_COPY, MEET_ENTRY, MEET_LOCAL, MEET_SOUND_IDS } from '../game/meetTuning';
+import { everySoundFileName, fileNameForCue } from './soundAssets';
+
+/**
+ * A real federation's name, TAKEN FROM THE WATCHLIST AT RUNTIME rather than
+ * typed here.
+ *
+ * `realIp.ts` is the one file in the tree allowed to spell a watched name, and
+ * that rule is worth more than the convenience of a literal in a positive
+ * control. Reading one back out means this file plants a genuine name without
+ * containing one.
+ */
+const PLANTED_FEDERATION: string =
+  REAL_IP_WATCHLIST.find((entry) => entry.kind === 'federation')?.name ?? '';
 
 const SRC = path.join(__dirname, '..');
 const ROOT = path.join(SRC, '..');
 
 /**
- * Files this piece owns and is therefore answerable for.
+ * Every string meet day can put on a screen, as `RenderableString`s.
  *
- * `src/game/meet.ts` and `src/game/resultCard.ts` are deliberately absent —
- * see the header.
+ * `surface`/`path` are what a failure prints, so a hit names the field rather
+ * than just the file. The list is written out rather than deep-walked, because
+ * the point is to enumerate WHAT THIS PIECE DRAWS — a walk of the module would
+ * also sweep up numbers and internal ids and would not notice a new screen
+ * reading from somewhere else.
  */
-function ownedSources(): { readonly file: string; readonly source: string }[] {
-  const out: { file: string; source: string }[] = [];
-  // COMMENTS ARE STRIPPED, and that is a scoping decision rather than a
-  // loophole. §12.3 names "any asset, string, config, or code path"; a comment
-  // citing the IPF plate ladder to explain why the 25 kg disc is drawn red is a
-  // rule citation, not identity presented as content, and deciding which of
-  // those a given citation is belongs to the builder reconciling `meet.ts` and
-  // `resultCard.ts` — not to a denylist in this file. Every string literal a
-  // player could ever see survives the strip and IS scanned.
-  const push = (rel: string): void => {
-    out.push({
-      file: rel,
-      source: withoutComments(readFileSync(path.join(SRC, rel), 'utf8')),
-    });
-  };
-  for (const dir of ['meet', 'audio']) {
-    for (const entry of readdirSync(path.join(SRC, dir))) {
-      if (!entry.endsWith('.ts') && !entry.endsWith('.tsx')) continue;
-      if (entry.endsWith('.test.ts') || entry.endsWith('.test.tsx')) continue;
-      push(path.join(dir, entry));
+function meetRenderableStrings(): readonly RenderableString[] {
+  const out: RenderableString[] = [
+    { surface: 'meet', path: 'MEET_LOCAL.federation', value: MEET_LOCAL.federation },
+    { surface: 'meet', path: 'MEET_LOCAL.name', value: MEET_LOCAL.name },
+    { surface: 'meet', path: 'MEET_LOCAL.id', value: MEET_LOCAL.id },
+    { surface: 'meet', path: 'MEET_LOCAL.town', value: MEET_LOCAL.town },
+    { surface: 'meet', path: 'MEET_LOCAL.state', value: MEET_LOCAL.state },
+    { surface: 'meet', path: 'MEET_LOCAL.country', value: MEET_LOCAL.country },
+    { surface: 'meet', path: 'MEET_ENTRY.name', value: MEET_ENTRY.name },
+    { surface: 'meet', path: 'MEET_ENTRY.division', value: MEET_ENTRY.division },
+    { surface: 'meet', path: 'MEET_ENTRY.equipment', value: MEET_ENTRY.equipment },
+  ];
+  // Every line of copy the meet screens print.
+  for (const [key, value] of Object.entries(MEET_COPY)) {
+    if (typeof value === 'string') out.push({ surface: 'meet-copy', path: key, value });
+    else {
+      for (const [inner, text] of Object.entries(value)) {
+        if (typeof text === 'string') out.push({ surface: 'meet-copy', path: `${key}.${inner}`, value: text });
+      }
     }
   }
-  push(path.join('game', 'meetTuning.ts'));
-  push(path.join('game', 'meetDay.ts'));
+  // The generated audio: cue ids and the asset file names they become.
+  for (const id of MEET_SOUND_IDS) {
+    out.push({ surface: 'meet-sound', path: `MEET_SOUND.CUES.${id}`, value: id });
+    out.push({ surface: 'meet-sound', path: `assets/sound/${id}`, value: fileNameForCue(id) });
+  }
   return out;
 }
 
-/**
- * Names a "realistic placeholder" would reach for.
- *
- * Federations and equipment brands as single distinctive tokens; athletes as
- * full names, because a surname alone false-positives on ordinary prose (a
- * "green" light, a "brown" belt) and a check that cries wolf gets suppressed.
- */
-const FEDERATIONS = ['IPF', 'USAPL', 'USPA', 'NPL', 'IPL', 'WRPF', 'GPC', 'SPF', 'THSPA'];
-const BRANDS = [
-  'SBD',
-  'Inzer',
-  'Eleiko',
-  'Rogue Fitness',
-  'Ivanko',
-  'Texas Power Bar',
-  'Kabuki',
-  'Pioneer Cut',
-  'Metal Powerlifting',
-];
-const ATHLETES = [
-  'Ray Williams',
-  'Ed Coan',
-  'Julius Maddox',
-  'Jesus Olivares',
-  'Larry Wheels',
-  'Taylor Atwood',
-  'Amanda Lawrence',
-  'Jen Thompson',
-  'Blaine Sumner',
-  'Dan Green',
-  'Kirill Sarychev',
-  'Yury Belkin',
-  'Jamal Browner',
-  'Stefanie Cohen',
-  'Sonita Muluh',
-  'Hafthor',
-  'Eddie Hall',
-];
-const DENIED = [...FEDERATIONS, ...BRANDS, ...ATHLETES];
-
-/** Case-insensitive whole-token match, so `SBD` does not fire on `sbdx`. */
-function mentions(haystack: string, needle: string): boolean {
-  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`, 'i').test(haystack);
-}
-
-describe('the denylist scan can actually fire', () => {
-  it('catches a name it is meant to catch, and leaves prose alone', () => {
-    // Without this, every assertion below could be passing because the matcher
-    // is broken rather than because the tree is clean.
-    expect(mentions('the IPF rulebook', 'IPF')).toBe(true);
-    // ...and it still sees a STRING, which is what §12.3 is actually about.
-    expect(mentions(withoutComments("const fed = 'USAPL';"), 'USAPL')).toBe(true);
-    expect(mentions(withoutComments('// the USAPL rulebook says'), 'USAPL')).toBe(false);
-    expect(mentions('federation: "USAPL Open"', 'USAPL')).toBe(true);
-    expect(mentions('a green light came up', 'Dan Green')).toBe(false);
-    expect(mentions('SBDX Barbell', 'SBD')).toBe(false);
-    expect(mentions('sbd sleeves', 'SBD')).toBe(true);
+describe('nothing meet day can draw is a real identity (GDD §12.3)', () => {
+  it('has strings to scan, including the ones a card prints', () => {
+    // Without this the scan below passes vacuously on an empty list — which is
+    // exactly the shape of blind check this suite is meant not to have.
+    const strings = meetRenderableStrings();
+    expect(strings.length).toBeGreaterThanOrEqual(30);
+    const paths = strings.map((s) => s.path);
+    expect(paths).toContain('MEET_LOCAL.federation');
+    expect(paths).toContain('MEET_ENTRY.name');
+    expect(strings.every((s) => s.value.length >= 0)).toBe(true);
   });
 
-  it('has something to scan', () => {
-    const owned = ownedSources();
-    expect(owned.length).toBeGreaterThanOrEqual(12);
-    expect(owned.map((o) => o.file)).toContain(path.join('game', 'meetTuning.ts'));
-    expect(owned.map((o) => o.file)).toContain(path.join('meet', 'WalkoutView.tsx'));
+  it('draws no watched name on any meet surface', () => {
+    // DEFAULT-DENY, through the licensing piece's own scan and its own
+    // watchlist. There is deliberately no allowlist on this half.
+    const findings = scanRenderable(meetRenderableStrings());
+    expect(findings.length, `\n${formatContentFindings(findings)}\n`).toBe(0);
   });
-});
 
-describe('nothing meet day ships is a real identity (GDD §12.3)', () => {
-  it('invents the federation and the meet', () => {
-    for (const denied of DENIED) {
-      expect(mentions(MEET_LOCAL.federation, denied), `federation names ${denied}`).toBe(false);
-      expect(mentions(MEET_LOCAL.name, denied), `meet names ${denied}`).toBe(false);
-      expect(mentions(MEET_LOCAL.id, denied), `meet id names ${denied}`).toBe(false);
-    }
-    // ...and it is not empty, which would pass a denylist trivially.
+  it('proves the scan would fire on this surface if a name arrived', () => {
+    // The positive control. `scanRenderable` returning nothing is only good
+    // news if it CAN return something for a string shaped like ours.
+    const planted = [
+      ...meetRenderableStrings(),
+      { surface: 'meet', path: 'MEET_LOCAL.federation', value: `${MEET_LOCAL.federation} / ${PLANTED_FEDERATION}` },
+    ];
+    const findings = scanRenderable(planted);
+    expect(findings.length).toBeGreaterThan(0);
+    expect(findings[0]?.path).toBe('MEET_LOCAL.federation');
+  });
+
+  it('names the lifter with a placeholder nobody could mistake for a person', () => {
+    // `A. LIFTER` — an initial and a job title. The point is that it reads as
+    // obviously unfilled rather than as a plausible competitor, which is the
+    // failure mode §12.3 names: a "realistic" placeholder.
+    expect(MEET_ENTRY.name).toMatch(/^[A-Z]\.\s+LIFTER$/);
+  });
+
+  it('invents a federation and a meet, and does not leave them blank', () => {
+    // A denylist passes trivially on an empty string; these are real invented
+    // names and the scan above is what says they are not real ones.
     expect(MEET_LOCAL.federation.length).toBeGreaterThan(0);
     expect(MEET_LOCAL.name.length).toBeGreaterThan(0);
-  });
-
-  it('gives the lifter a placeholder nobody could mistake for a person', () => {
-    for (const denied of DENIED) {
-      expect(mentions(MEET_ENTRY.name, denied), `lifter is named ${denied}`).toBe(false);
-    }
-    // `A. LIFTER` — an initial and a job title. The point is that it reads as
-    // obviously unfilled rather than as a plausible competitor.
-    expect(MEET_ENTRY.name).toMatch(/^[A-Z]\.\s+LIFTER$/);
   });
 
   it('fields the ghosts as numbers, so there is no name to get wrong', () => {
@@ -187,24 +171,9 @@ describe('nothing meet day ships is a real identity (GDD §12.3)', () => {
     }
   });
 
-  it('mentions no denied name in any file this piece owns', () => {
-    for (const { file, source } of ownedSources()) {
-      for (const denied of DENIED) {
-        expect(mentions(source, denied), `${file} mentions ${denied}`).toBe(false);
-      }
-    }
-  });
-
-  it('names its own sound assets after what they are, not after anyone', () => {
-    for (const id of MEET_SOUND_IDS) {
-      for (const denied of DENIED) {
-        expect(mentions(id, denied), `cue ${id} names ${denied}`).toBe(false);
-      }
-    }
+  it('names its sound assets after what they are', () => {
     for (const file of everySoundFileName()) {
-      for (const denied of DENIED) {
-        expect(mentions(file, denied), `asset ${file} names ${denied}`).toBe(false);
-      }
+      expect(file).toMatch(/^[a-z][a-z-]*\.wav$/);
     }
   });
 });

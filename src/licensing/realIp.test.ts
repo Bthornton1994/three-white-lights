@@ -648,7 +648,12 @@ describe('the reviewable citation list', () => {
     // which is why the `code` bucket is not empty and should not be.
     const code = INVENTORY_ROWS.filter((r) => r.where === 'code');
     expect(code.some((r) => r.file === 'src/tuning/audit.ts')).toBe(true);
-    expect(code.some((r) => r.file === 'src/game/meetTuning.test.ts')).toBe(true);
+    // `gymScene.test.ts` is the remaining bespoke real-IP ban, and its names sit
+    // in `code` position because they are the check's own operands. It used to
+    // be `meetTuning.test.ts` here as well; that ban was retired by its owner,
+    // exactly as this module's header asked for, so naming it now would pin a
+    // file to a citation it is supposed to have stopped having.
+    expect(code.some((r) => r.file === 'src/art/gymScene.test.ts')).toBe(true);
   });
 
   it('lists only files that exist', () => {

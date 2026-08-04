@@ -801,10 +801,14 @@ export function formatCitations(rows: readonly CitationRow[]): string {
  *   - `sampleCards.ts`, `meetTuning.ts`, `tuning/index.ts` — COMMENTS SAYING
  *     "we did not use these names", which is the correct thing for a comment to
  *     say and would be lost by deleting the names from it.
- *   - `meetTuning.test.ts` — the bespoke five-name federation ban this module
- *     generalises. Its names are in `code` position because they are the check's
- *     own operands. KEEP until whoever owns that file removes the now-redundant
- *     test.
+ *   - `meetTuning.test.ts` — REMOVED. This was the bespoke five-name federation
+ *     ban this module generalises, listed with "KEEP until whoever owns that
+ *     file removes the now-redundant test". The meet-day builder did: the test
+ *     now asserts only that the federation is invented and not blank, and the
+ *     names it used to carry are gone. `src/meet/meetIdentity.test.ts` runs this
+ *     module's own `scanRenderable` over every string meet day can draw
+ *     instead, and takes the one name it plants as a positive control OUT OF
+ *     `REAL_IP_WATCHLIST` at runtime rather than spelling it. Five rows fewer.
  *   - `pixelFont.test.ts` — a real lifter's ACCENTED name, used as the
  *     diacritic-folding fixture for the card font. `code` position, and the one
  *     row on this list that is a real name being used as ordinary test DATA
@@ -843,13 +847,15 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/GDD.md', name: 'USPA', where: 'prose', count: 1 },
   { file: 'docs/reference/meet-photo-ref-1-ipf-squat-bottom.webp', name: 'IPF', where: 'filename', count: 1 },
   { file: 'docs/reference/README.md', name: 'IPF', where: 'prose', count: 2 },
-  // `gymScene.test.ts` is the SECOND bespoke real-IP ban in the tree, alongside
-  // `meetTuning.test.ts` below, and its names are here for the same reason: they
-  // are the check's own operands. The environment builder wrote it independently
-  // and before this module existed, which is worth recording rather than tidying
-  // away — two builders reached for a hand-written watchlist unprompted, which is
-  // the argument for this module generalising them rather than the argument
-  // against it. KEEP until whoever owns that file removes the now-redundant test.
+  // `gymScene.test.ts` is now the LAST bespoke real-IP ban in the tree; its
+  // names are here because they are the check's own operands. The environment
+  // builder wrote it independently and before this module existed, which is
+  // worth recording rather than tidying away — three builders reached for a
+  // hand-written watchlist unprompted (this one, that one, and a first draft of
+  // `meetIdentity.test.ts`), which is the argument for this module generalising
+  // them rather than the argument against it. `meetTuning.test.ts`'s ban has
+  // since been retired by its owner and its five rows are gone from this list.
+  // KEEP until whoever owns this one removes the now-redundant test.
   { file: 'src/art/gymScene.test.ts', name: 'Adidas', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'Amanda Lawrence', where: 'code', count: 1 },
   { file: 'src/art/gymScene.test.ts', name: 'BVDK', where: 'code', count: 1 },
@@ -897,11 +903,6 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/game/meet.ts', name: 'IPF', where: 'comment', count: 4 },
   { file: 'src/game/meet.ts', name: 'USAPL', where: 'comment', count: 1 },
   { file: 'src/game/meet.ts', name: 'USPA', where: 'comment', count: 1 },
-  { file: 'src/game/meetTuning.test.ts', name: 'IPF', where: 'code', count: 1 },
-  { file: 'src/game/meetTuning.test.ts', name: 'NPL', where: 'code', count: 1 },
-  { file: 'src/game/meetTuning.test.ts', name: 'SBD', where: 'code', count: 1 },
-  { file: 'src/game/meetTuning.test.ts', name: 'USAPL', where: 'code', count: 1 },
-  { file: 'src/game/meetTuning.test.ts', name: 'USPA', where: 'code', count: 1 },
   { file: 'src/game/meetTuning.ts', name: 'NPL', where: 'comment', count: 1 },
   { file: 'src/game/meetTuning.ts', name: 'USAPL', where: 'comment', count: 1 },
   { file: 'src/game/meetTuning.ts', name: 'USPA', where: 'comment', count: 1 },

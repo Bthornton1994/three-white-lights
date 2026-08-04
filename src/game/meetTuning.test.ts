@@ -188,11 +188,19 @@ describe('MEET_LOCAL', () => {
     expect(MEET_LOCAL.rules.unit).toBe('kg');
   });
 
-  it('ships no real federation\u2019s name (GDD §11 is still open on licensing)', () => {
-    const invented = MEET_LOCAL.federation.toUpperCase();
-    for (const real of ['IPF', 'USAPL', 'USPA', 'NPL', 'SBD']) {
-      expect(invented.split(/\s+/), `federation names ${real}`).not.toContain(real);
-    }
+  it('leaves the real-federation ban to the one watchlist that owns it', () => {
+    // THIS TEST USED TO KEEP ITS OWN FIVE-NAME DENYLIST. `src/licensing/realIp.ts`
+    // now owns the watchlist for the whole tree and is the only file allowed to
+    // spell a watched name; `src/meet/meetIdentity.test.ts` runs its default-deny
+    // scan over every string meet day can draw, including this one. A second
+    // hand-written list is a second thing to keep current and a second place a
+    // name can be quietly dropped from, so the list is gone and what remains is
+    // the pointer to where the check lives.
+    //
+    // What is still asserted here is the part that is this file's business: the
+    // federation is INVENTED and not blank. GDD §11 is still open on licensing.
+    expect(MEET_LOCAL.federation.length).toBeGreaterThan(0);
+    expect(MEET_LOCAL.federation).not.toBe(MEET_LOCAL.name);
   });
 });
 

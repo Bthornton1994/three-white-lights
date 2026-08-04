@@ -44,7 +44,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { GYM } from '../art/gymPalette';
+import { GYM, lumaOfIndex } from '../art/gymPalette';
+import { LOAD_PRESETS } from '../art/spriteTuning';
+import { buildSquatRep } from '../art/squatAnimation';
+import { frameSpecFrom, isBodyIndex, renderLifterFrame } from '../art/lifterSprite';
+import { GYM_LIFT_STAGE } from '../art/gymTuning';
+import { blitOver } from '../art/gymScene';
 import { GYM_VENUE, GYM_VENUE_PROPS, type GymVenue } from '../art/gymTuning';
 import { liftStageScene, renderGymScene } from '../art/gymScene';
 import type { IndexGrid } from '../art/raster';
@@ -255,5 +260,121 @@ describe('a meet attempt is not lifted in the training gym (GDD §6, §12.2)', (
     expect(resolveStageVenue(read(SESSION_SET), liftStage)).toBe(defaultVenueIn(liftStage));
     expect(resolveStageVenue(read(LIFT_HARNESS), liftStage)).toBe(defaultVenueIn(liftStage));
     expect(defaultVenueIn(liftStage)).toBe('training-gym');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE FIGURE AGAINST THE CROWD — a known, measured, UNCLOSED gap
+// ---------------------------------------------------------------------------
+
+/**
+ * The lifter composited into a room, at three points in a maximal squat.
+ *
+ * This is the thing no shipped screen had ever drawn before this piece: the
+ * readability suite passes on the meet venue because nothing was standing in
+ * front of it.
+ */
+function crossingsAgainst(venue: GymVenue): {
+  readonly total: number;
+  readonly subPerceptual: number;
+  readonly againstCrowd: number;
+} {
+  const rep = buildSquatRep(LOAD_PRESETS.MAXIMAL);
+  const scene = renderGymScene({ ...liftStageScene(), venue });
+  let total = 0;
+  let subPerceptual = 0;
+  let againstCrowd = 0;
+  for (const frac of FRAMES_SAMPLED) {
+    const at = Math.min(rep.frames.length - 1, Math.round((rep.frames.length - 1) * frac));
+    const frame = rep.frames[at];
+    if (frame === undefined) continue;
+    const { grid } = renderLifterFrame(frameSpecFrom(frame, DEMO_TOTAL_KG));
+    const comp = blitOver(scene, grid, GYM_LIFT_STAGE.SPRITE_X, GYM_LIFT_STAGE.SPRITE_Y);
+    for (let y = 1; y < comp.h - 1; y += 1) {
+      for (let x = 1; x < comp.w - 1; x += 1) {
+        const inside = comp.data[y * comp.w + x] ?? 0;
+        if (!isBodyIndex(inside)) continue;
+        for (const { dx, dy } of NEIGHBOURS) {
+          const outside = comp.data[(y + dy) * comp.w + (x + dx)] ?? 0;
+          if (isBodyIndex(outside)) continue;
+          total += 1;
+          // `lumaOfIndex` is undefined for an index outside the scene banks.
+          // Skipping rather than defaulting: a pixel whose colour cannot be
+          // resolved is not evidence either way, and defaulting it to 0 would
+          // silently count it as a maximal-contrast edge.
+          const insideLuma = lumaOfIndex(inside);
+          const outsideLuma = lumaOfIndex(outside);
+          if (insideLuma === undefined || outsideLuma === undefined) continue;
+          if (Math.abs(insideLuma - outsideLuma) > PERCEPTUAL_LUMA) continue;
+          subPerceptual += 1;
+          if (outside === GYM.CROWD_DARK || outside === GYM.CROWD_MID) againstCrowd += 1;
+        }
+      }
+    }
+  }
+  return { total, subPerceptual, againstCrowd };
+}
+
+const FRAMES_SAMPLED: readonly number[] = [0, 0.5, 0.75];
+const NEIGHBOURS: readonly { readonly dx: number; readonly dy: number }[] = [
+  { dx: 1, dy: 0 },
+  { dx: -1, dy: 0 },
+  { dx: 0, dy: 1 },
+  { dx: 0, dy: -1 },
+];
+/** Luma difference below which two adjacent pixels do not read as an edge. */
+const PERCEPTUAL_LUMA = 12;
+const DEMO_TOTAL_KG = 250;
+
+describe('the lifter against the crowd — MEASURED, AND NOT FIXED IN THIS PIECE', () => {
+  /**
+   * WHAT THIS RECORDS, PLAINLY.
+   *
+   * The environment builder measured and wrote into `gymPalette.ts` that
+   * `CROWD_MID` is the lifter's `HAIR_DARK` to one decimal place and
+   * `CROWD_DARK` is 1.0 luma from his `OUTLINE`, that no other pair in the
+   * safe rgb5 window improves it, and that "the actual fix is geometric".
+   * Nothing had ever composited the two, because no shipped screen drew the
+   * meet venue. This piece is what made it shipped, so this is the first
+   * measurement of the pair, and it agrees with the warning:
+   *
+   *   training gym    62 / 874 silhouette crossings sub-perceptual (7.1%)
+   *   meet platform  176 / 874 (20.1%), of which 114 are against the crowd,
+   *                  worst separation 1.0 luma
+   *
+   * WHY IT IS NOT FIXED HERE. The crowd is anchored to the wall/floor junction
+   * and painted upward, and the junction row (119) sits INSIDE the figure's
+   * vertical span (103-165) — so his head and neck are always in front of the
+   * band's top rows. Shrinking `CROWD_ROWS` was swept from 30 down to 0: it
+   * moves the count (30 -> 176, 24 -> 113, 12 -> 92, 4 -> 62) but not the worst
+   * case, it is non-monotonic because it depends on where a head row lands, and
+   * at 0 there is no crowd, which is the whole reason the venue exists. The
+   * real fix needs `paintCrowd` to take a bottom offset so the seating clears
+   * the figure's span — and `gymScene.ts` belongs to another piece of this run.
+   *
+   * So this test does not assert the gap away. It PINS THE CEILING, so the
+   * composite cannot quietly get worse while somebody else fixes it.
+   */
+  it('records how much worse the meet room is for the silhouette', () => {
+    const gym = crossingsAgainst('training-gym');
+    const meet = crossingsAgainst('meet-platform');
+
+    // The measurement is real: there are crossings to measure at all.
+    expect(gym.total).toBeGreaterThan(500);
+    expect(meet.total).toBe(gym.total);
+
+    // The training gym has no crowd, so none of its bad crossings are against
+    // one. That is the control for the count below.
+    expect(gym.againstCrowd).toBe(0);
+
+    // THE GAP, stated as a fact rather than asserted away.
+    expect(meet.subPerceptual).toBeGreaterThan(gym.subPerceptual);
+    expect(meet.againstCrowd).toBeGreaterThan(0);
+
+    // THE CEILING. A regression that made the crowd worse — a wider band, a
+    // lighter figure, a new pose — fails here. Set just above the measured
+    // value rather than at a round number, so it has to be re-read to be moved.
+    const share = meet.subPerceptual / meet.total;
+    expect(share, `meet room sub-perceptual share ${(share * 100).toFixed(1)}%`).toBeLessThan(0.22);
   });
 });

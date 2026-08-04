@@ -79,6 +79,7 @@ import {
   MEET_LAYOUT,
   MEET_LOCAL,
   MEET_PREVIEW,
+  MEET_SOUND,
   MEET_TUNING,
 } from '../game/meetTuning';
 import { FATIGUE_COPY, FATIGUE_TUNING } from '../game/fatigue';
@@ -207,11 +208,18 @@ export const TUNING = Object.freeze({
    * MEET DAY. The walk-out beat, the "judges deliberating" delay, the
    * light-reveal stagger, the bomb-out silence, and the four thresholds that
    * decide when a call is close. GDD §12.2 judges this piece against broadcast
-   * footage of a third-attempt walkout and says to judge PACING — which is
-   * exactly what this block is, and none of it has been played.
+   * footage of a third-attempt walkout and says to judge PACING AND SOUND —
+   * which is exactly what `MEET_TUNING` and `MEET_SOUND` are, and none of it
+   * has been played or heard.
+   *
+   * `MEET_TUNING.HAPTICS` is in here too, so the three things a meet beat is
+   * made of — how long it holds, what it feels like, what it sounds like — are
+   * all reachable from this one file. Turning `MEET_SOUND` means re-running
+   * `node tools/sound.mjs`; the suite fails if you forget.
    */
   meet: Object.freeze({
     MEET_TUNING,
+    MEET_SOUND,
     MEET_LAYOUT,
     MEET_COPY,
     MEET_LOCAL,
