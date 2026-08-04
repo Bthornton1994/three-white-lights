@@ -81,26 +81,83 @@
  *     definition, a proposal and an id. It has no parameter for a purchase, an
  *     entitlement, a boost or a balance, so nothing purchasable can change what
  *     a meet is worth (GDD §8.1, §12.3).
+ *   - A TOTAL IT CANNOT PROVE IS KILOGRAMS. See THE UNIT below. This is the LAST
+ *     place the unit exists: `MeetResultWire` has no unit field, so a pound total
+ *     that gets past here is a bare number named `totalKg` forever.
+ *
+ * ---------------------------------------------------------------------------
+ * THE UNIT — why the write path checks it, and why it refuses rather than
+ * converts
+ * ---------------------------------------------------------------------------
+ * `meet.ts` runs a meet in EITHER unit and says so: `MeetLoadingRules.unit` is
+ * required, `POUND_MEET_RULES` is exported and validates, and `MeetDefinition.
+ * rules` takes whatever it is handed — so `replayMeetCard`'s `createMeet(meet.
+ * rules)` will happily replay a pound meet through the front door, no cast
+ * needed.
+ *
+ * `dots.ts` and `resultCard.ts` already refuse a reading that is not in
+ * kilograms. Both of those are READ paths, and both run AFTER this function: by
+ * the time `buildResultCard` says `UNSUPPORTED_MEET_UNIT`, the pound number is
+ * already in `record.totalKg` and in `record.meets[n].totalKg`, and it has
+ * already been ranked against `MeetDefinition.ghostTotalsKg` (a kg field). A
+ * refusal that fires downstream of the write is not a defence of the write.
+ *
+ * So the reading's unit is checked HERE, before `nextTotalKg` and before the
+ * `MeetResultWire` is built, and `totalKg` is taken off the CHECKED reading
+ * rather than from `finalMeetTotal(state)` — which is `readTotal(state).total`
+ * with the unit thrown away. There is deliberately no expression left in this
+ * file that produces a total without having looked at its unit first.
+ *
+ * WHY REFUSE RATHER THAN CONVERT, given `kilogramsFromPounds` exists and is
+ * exact: the same reason `dots.ts` gives, and it is stronger here. A meet result
+ * is TWO numbers — the total, which arrives from `meet.ts` with its unit
+ * attached, and `MeetResultReport.bodyweightKg`, which arrives from the CALLER
+ * as a bare number whose name this module cannot verify. Converting the total
+ * while trusting the bodyweight replaces a 2.2x overstatement with a different
+ * wrong number, written permanently, by a module that now claims to handle
+ * units. A caller running a pound meet converts the whole entry at the call site
+ * — both numbers, with `kilogramsFromPounds`, in one visible place — and records
+ * the converted meet. Same posture as `e1rm.ts` past the RPE chart: refuse, and
+ * name the remedy.
  *
  * ---------------------------------------------------------------------------
  * WHAT IT CANNOT CHECK, SAID PLAINLY
  * ---------------------------------------------------------------------------
- * Whether the lights were real. `MeetAttemptReport.good` is the client's word,
- * and `progression.ts` says so where the type is defined: "with a real Edge
- * Function the lights should be re-resolved server-side and this type gets
+ * (1) WHETHER THE LIGHTS WERE REAL. `MeetAttemptReport.good` is the client's
+ * word, and `progression.ts` says so where the type is defined: "with a real
+ * Edge Function the lights should be re-resolved server-side and this type gets
  * narrower. It is the client's word today because there is nobody else to ask."
  *
  * So this module re-derives the ARITHMETIC and the RULES and takes the client's
  * word for the VERDICT. That is a real gap and it is the one a leaderboard
  * would be cheated through; it closes when the rep itself is resolved
  * server-side, not by anything that could be written here.
+ *
+ * (2) WHAT UNIT THE BODYWEIGHT IS IN. `MeetResultReport.bodyweightKg` is a bare
+ * `number` with `Kg` in its name and nothing behind the name — no reading, no
+ * brand, no rules object it came out of. The TOTAL's unit is checkable because
+ * `meet.ts` attaches it; the bodyweight's is not, because no module produces it.
+ * A lifter entered in pounds is stored as a lighter lifter, and the number that
+ * misreads is the DOTS input on the result card. This is the identical gap
+ * `dots.ts` names and declines to close ("the BODYWEIGHT is still a bare
+ * `number` ... it does not cross a module boundary"); it is written down here
+ * too because this is where the number is written down PERMANENTLY, and a
+ * header that lists one unchecked unit while omitting the other reads as though
+ * the unit question were settled. It closes by giving the report's bodyweight a
+ * unit, not by anything this function can inspect.
+ *
+ * (3) WHETHER THE ATTEMPT WEIGHTS ARE THE UNIT THEY CLAIM. `MeetAttemptReport.
+ * weightKg` has the same shape of problem, but only the same shape: the
+ * attempts are replayed against `meet.rules`, so a card whose numbers are in the
+ * wrong unit for its own meet is refused as illegal (below the bar, off the
+ * declaration grid) or lands in the same reading the unit check above covers.
+ * It is listed for completeness, not as an open hole.
  */
 
 import {
   LIFT_ORDER,
   createMeet,
   declareAttempt,
-  finalMeetTotal,
   isMeetComplete,
   readTotal,
   resolveAttempt,
@@ -108,6 +165,10 @@ import {
   type LiftKind,
   type MeetState,
 } from './meet';
+// `finalMeetTotal` is deliberately NOT imported. It is `readTotal(state).total`
+// with the unit discarded, and this module must not hold a total that has
+// forgotten what it is measured in — see THE UNIT in the header.
+import { DOTS_TOTAL_UNIT } from './dots';
 import type { MeetResultWire, ProgressionSnapshotWire, ProposalOfKind } from './progression';
 import { snapshotWireFor, type ServerRecord } from './sessionServer';
 import type { MeetDefinition } from './meetTuning';
@@ -128,6 +189,22 @@ import type { MeetDefinition } from './meetTuning';
 const REPLAY_GOOD: JudgePanel = ['white', 'white', 'white'];
 const REPLAY_NO_LIFT: JudgePanel = ['red', 'red', 'red'];
 
+/**
+ * The one unit permanent progression stores a total in.
+ *
+ * `DOTS_TOTAL_UNIT` rather than a fresh `'kg'` literal, and the name is worth a
+ * sentence because it says DOTS while the reason here is not DOTS.
+ * `MeetResultWire.totalKg`, `ServerRecord.totalKg` and
+ * `MeetDefinition.ghostTotalsKg` are kilogram fields by their names and by the
+ * ghost numbers actually in them; DOTS is only the loudest of the things that
+ * would go wrong. Reusing the constant means there is exactly ONE string in the
+ * tree that a unit check compares against, spelled the way `meet.ts` spells it
+ * and pinned to that spelling by `dots.test.ts` — a second literal here could
+ * drift from `MeetWeightUnit` without anything noticing. `resultCard.ts` reuses
+ * it the same way, for the same non-DOTS reasons.
+ */
+const PROGRESSION_TOTAL_UNIT = DOTS_TOTAL_UNIT;
+
 export type MeetServerErrorCode =
   /** The reported attempts are not a legal meet card. */
   | 'MEET_REPLAY_REFUSED'
@@ -137,6 +214,17 @@ export type MeetServerErrorCode =
   | 'MEET_OVERRUN'
   /** This lifter already has a result for this meet. */
   | 'MEET_ALREADY_RECORDED'
+  /**
+   * The meet was not run in kilograms, so its total cannot be written into a
+   * record whose fields are kilogram fields. See THE UNIT in the header for why
+   * this refuses instead of converting.
+   *
+   * SPELLED THE SAME AS `ResultCardErrorCode['UNSUPPORTED_MEET_UNIT']` ON
+   * PURPOSE. It is one refusal — this meet is in the wrong unit for this
+   * pipeline — reached at two different points in it, and giving it two names
+   * would make the write path's version look like a different problem.
+   */
+  | 'UNSUPPORTED_MEET_UNIT'
   /** The reported day is not one this record can move to. */
   | 'BAD_DAY';
 
@@ -271,7 +359,13 @@ export interface AppliedMeetResult {
   readonly wire: ProgressionSnapshotWire;
   /** The meet as the engine replayed it. What the recap and the card read. */
   readonly meet: MeetState;
-  /** This meet's total, kg, or null on a bomb-out. NOT the best on record. */
+  /**
+   * This meet's total, kg, or null on a bomb-out. NOT the best on record.
+   *
+   * The `Kg` is now load-bearing rather than aspirational: `applyMeetResult`
+   * refuses a meet that is not run in kilograms, so there is no path by which an
+   * `AppliedMeetResult` exists carrying a total in another unit.
+   */
   readonly totalKg: number | null;
   /** The best on record BEFORE this meet, kg, or null. */
   readonly previousBestTotalKg: number | null;
@@ -310,6 +404,14 @@ export function previousBestByLift(record: ServerRecord): Readonly<Record<LiftKi
  * @param day the streak day the SERVER resolved (GDD §4.1). Stored on the meet
  *   result so a recap can order a lifter's meets; it does NOT touch the streak.
  *
+ * REFUSES A MEET THAT IS NOT RUN IN KILOGRAMS (`UNSUPPORTED_MEET_UNIT`), before
+ * anything is written. See THE UNIT in the header. A CALLER MUST HANDLE THIS
+ * LIKE ANY OTHER REFUSAL — `useMeetDay.ts` currently drops a failed
+ * `applyMeetResult` silently and shows no recap, which is the right thing for an
+ * impossible case and the wrong thing for a player who just finished nine
+ * attempts. That is a UI question, not this module's, and it is named here so
+ * whoever adds the second meet definition finds it written down.
+ *
  * AN OPEN QUESTION THIS LEAVES, stated rather than discovered later: a meet day
  * is not a trained day, so a player who competes instead of training does not
  * increment their streak. GDD §4.4's free grace absorbs a gap that short, so
@@ -342,10 +444,42 @@ export function applyMeetResult(
   const state = replayed.value;
 
   // GDD §6.4's total, computed by the engine from the engine's own card.
-  // `finalMeetTotal` is null on a bomb-out and there is no way to get a
-  // provisional number out of it.
-  const totalKg = finalMeetTotal(state);
   const reading = readTotal(state);
+
+  // THE UNIT, CHECKED BEFORE ANYTHING IS WRITTEN. Everything below this line
+  // treats `reading.total` as kilograms — `nextTotalKg`, `MeetResultWire.
+  // totalKg`, and `placingFor` against a kg ghost field — and this is the last
+  // point at which the unit still exists to be checked: `MeetResultWire` has no
+  // field to carry it. Checked on the READING, which is the form of this number
+  // that still knows, rather than on `meet.rules`, so the thing checked is the
+  // thing written. Checked on every kind, including the two with no total, for
+  // the reason `dots.ts` gives: a defect that only fires on a meet that finished
+  // with a total is the worst kind to ship.
+  if (reading.unit !== PROGRESSION_TOTAL_UNIT) {
+    return {
+      ok: false,
+      error: {
+        code: 'UNSUPPORTED_MEET_UNIT',
+        message:
+          `meetServer: this meet was run in ${JSON.stringify(reading.unit)}, and a recorded ` +
+          `total is a ${PROGRESSION_TOTAL_UNIT} number — record.totalKg, MeetResultWire.totalKg ` +
+          'and the meet’s ghost field are all kilogram fields, and none of them has anywhere to ' +
+          'put a unit. Writing this would store a plausible number that is wrong by the ' +
+          'conversion factor, permanently and unrecoverably, and every read downstream ' +
+          '(dots.ts, resultCard.ts) would refuse it too late to help. This does NOT convert for ' +
+          'you: a meet result is the total AND the bodyweight, and the bodyweight arrives here ' +
+          'as a bare number this module cannot verify, so converting one while trusting the ' +
+          'other is a different wrong number rather than a fix. Convert the whole entry at the ' +
+          'call site with kilogramsFromPounds and record the converted meet.',
+      },
+    };
+  }
+
+  // Taken off the CHECKED reading. `null` on a bomb-out — and it is `null` there
+  // rather than provisional, because `TotalReading.total` is a number only in
+  // the 'final' case and `totalOnTheBoard` is a different field this never
+  // reaches for.
+  const totalKg = reading.total;
   const bombedLift = reading.kind === 'no-total' ? reading.bombedLift : null;
 
   const bestByLiftKg: Record<LiftKind, number | null> = {
