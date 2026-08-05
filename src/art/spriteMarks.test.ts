@@ -1605,6 +1605,16 @@ const RATE_PROSE_FILES: readonly string[] = [
  *
  * DECIMAL DIGITS ONLY. A count written with a thousands separator, or spelled
  * out in words, walks straight past.
+ *
+ * AND IT CANNOT TELL A POLICED COUNT FROM AN UNRELATED NUMBER THAT EQUALS IT.
+ * Observed, not imagined: re-measuring this instrument at a wider `UPPER_ARM_R`
+ * moved `FAR_SEAM_FRAMES_FULLY_GONE` onto the same value as the authored-pixel
+ * figure in `FLOOR_MARK_PIXELS_PER_FRAME`'s doc twenty lines from the top of
+ * this file, and the ban fired on that sentence, which is about a completely
+ * different thing. Nothing here can distinguish the two, because a value-based
+ * ban only knows values. If that happens for real the fix is to reword the
+ * innocent sentence, not to widen the exemptions — but it is a cost of this
+ * design and it is written down rather than waited for.
  */
 const SEAM_INTEGER_PROSE_FILES: readonly string[] = [
   'src/art/spriteMarks.test.ts',
