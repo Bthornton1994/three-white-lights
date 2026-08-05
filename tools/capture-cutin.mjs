@@ -98,7 +98,15 @@ const capturedFrom = (() => {
     // Kept in step with SELF_DIRTYING there deliberately — a capture that
     // reads DIRTY because an evidence bundle is uncommitted is a false alarm,
     // and false alarms are how a real one gets waved through.
-    const notCode = [path.relative(srcRoot, outDir), '.gauntlet/evidence/', '.gauntlet/state.json'];
+    // `.gauntlet/shots/` WHOLESALE, not just this tool's own directory. The
+    // sibling capture tool writes a different shot directory, so running the
+    // two in sequence made the second report the first's fresh pixels as
+    // uncommitted CODE — which they are not; no shot is an input to the app.
+    // Each record's own staleness is cross-checked independently by
+    // `tools/evidence.mjs --verify`, which reads every tracked shot record and
+    // fails on one that is undated, dirty, stale or red. This field answers a
+    // narrower question: was the CODE the browser ran committed.
+    const notCode = ['.gauntlet/shots/', '.gauntlet/evidence/', '.gauntlet/state.json'];
     const code = lines.filter((line) => {
       const p = line.replace(/^\s*\S+\s+/, '');
       return !notCode.some((prefix) => p.startsWith(prefix));
