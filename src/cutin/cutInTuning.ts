@@ -152,6 +152,13 @@ export const CUT_IN_TUNING = Object.freeze({
    * §7.2 does not carve one out. If a playtest argues for one, this is the line
    * to move, and `cutInGate.test.ts`'s "A CUT-IN IS DISMISSIBLE ON ITS FIRST
    * FRAME" is the test that will go red and make somebody argue for it.
+   *
+   * AND MOVING IT NOW MOVES THE APP, which is not something this comment could
+   * honestly say until recently. The only reader of this number was
+   * `canDismissAt`, and the only caller of THAT was a unit test: the view's
+   * `onPress` went straight to an ungated dismiss, so setting this to 300 turned
+   * two tests red and changed nothing a player could feel. The tap path now goes
+   * through `tapDismissCutIn` (`CutInHost.dismissByTap` holds the clock).
    */
   DISMISS_ENABLED_AFTER_MS: 0,
 

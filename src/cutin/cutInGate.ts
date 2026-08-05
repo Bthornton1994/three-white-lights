@@ -46,10 +46,11 @@
  *       WHETHER THE RATES ARE RIGHT IS A PLAYTEST JUDGEMENT AND IS NOT
  *       VERIFIED HERE (CLAUDE.md, "What You Cannot Do").
  *
- *   (c) ALWAYS SKIPPABLE. `dismissCutIn` takes the cut-in off screen and
- *       `canDismissAt` says a tap is accepted from the first frame
- *       (`DISMISS_ENABLED_AFTER_MS` is 0). Dismissing does NOT give the
- *       session's slot back — a skipped cut-in has still fired.
+ *   (c) ALWAYS SKIPPABLE. A TAP goes through `tapDismissCutIn`, which asks
+ *       `canDismissAt` and accepts from the first frame because
+ *       `DISMISS_ENABLED_AFTER_MS` is 0; the auto-dismiss goes through
+ *       `dismissCutIn` and answers to `HOLD_MS` instead. Dismissing does NOT
+ *       give the session's slot back — a skipped cut-in has still fired.
  *
  *   (d) TIER 3 CONTENT COMES FROM THE IDENTITY TABLE. A `LiveCutIn` carries an
  *       identity id and a Tier 3 slot, never art. `cutInArt.ts` turns that into
