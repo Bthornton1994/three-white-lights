@@ -1038,6 +1038,21 @@ export function coveredDaysArmed(state: StreakState, day: StreakDay): number {
 }
 
 /**
+ * Covered days left in the window this state's snapshot belongs to, ignoring
+ * both the calendar and the protection setting.
+ *
+ * THE DIRECT HEIR OF `recoveryDayBalance`, and it is what a screen shows as
+ * "2 left this month". It deliberately does NOT take a day: it reports the
+ * snapshot, not what a given day would resolve to. `coveredDaysArmed` is the
+ * one that answers "what can this absence actually draw", and it is the one
+ * every decision in this file reads — a reader who confuses the two will
+ * conclude a lifter has nothing left when their window has in fact turned over.
+ */
+export function coveredDaysLeftInWindow(state: StreakState): number {
+  return Math.max(0, state.entitlement.coveredDaysLeft) + Math.max(0, state.entitlement.purchasedDaysLeft);
+}
+
+/**
  * MIGRATION ONLY: writes a signup day onto a state that was built before the
  * field existed.
  *
