@@ -48,6 +48,13 @@
  *     It cannot prove absence, and the counts it returns are pinned so that a
  *     change in them is visible.
  *
+ * There are TWO parameter blocks below, and they answer different questions.
+ * `MONOTONICITY_SWEEP` is the measurement of what the two no-free-absence rules
+ * CLOSED; `RESIDUE_SWEEP` is the measurement of what they LEFT. They share the
+ * seeds and the attendance distribution and differ only in which calendars and
+ * which counterfactuals they run, so the second cannot quietly restate the
+ * first on a friendlier population.
+ *
  * ===========================================================================
  * THE ATTENDANCE DISTRIBUTION, AND WHY IT IS THIS ONE
  * ===========================================================================
@@ -131,6 +138,56 @@ export const MONOTONICITY_SWEEP = Object.freeze({
 
   /** Width of the attendance range above `MIN_ATTENDANCE`. See the header. */
   ATTENDANCE_SPREAD: 0.7,
+});
+
+/**
+ * THE SECOND MEASUREMENT'S PARAMETERS: the one that characterises what is LEFT
+ * after the two no-free-absence rules, rather than what they closed.
+ *
+ * SEPARATE FROM `MONOTONICITY_SWEEP` ON PURPOSE. Adding 80 and 100 to
+ * `SAMPLED_LENGTHS` would silently change what GDD §4.4's published 40/60 table
+ * means, and would make a table that is quoted in three places grow a column
+ * every time somebody asks a new question. The seeds, the schedule count and
+ * the attendance distribution are shared — this block only says *which further
+ * calendars* and *which counterfactuals* the residue was characterised on.
+ */
+export const RESIDUE_SWEEP = Object.freeze({
+  /**
+   * Further calendar lengths, swept to answer "does the residue grow without
+   * bound, or does it saturate?". A streak game is played for years, so a
+   * defect whose rate climbs with the calendar is a different and worse thing
+   * than one that plateaus, and the count at any single length cannot tell them
+   * apart.
+   *
+   * 80 and 100 rather than 200 and 400 because these two cost about three
+   * seconds in the suite and 400 costs fifteen. The longer lengths were
+   * measured by hand off this same generator and are recorded in GDD §4.4 as
+   * unpinned observations, which is the honest label for a number no test
+   * re-derives.
+   */
+  LENGTHS: Object.freeze([80, 100]),
+
+  /** The length the counterfactuals below are run at. */
+  COUNTERFACTUAL_LENGTH: 60,
+
+  /**
+   * Calendar days on which the SCHEDULE-INDEPENDENT INCOME counterfactual drops
+   * one Recovery Day.
+   *
+   * WHAT THIS EXISTS TO SEPARATE. The published counterfactual switched streak
+   * milestone income OFF, and with it off there is no income at all in this
+   * sweep after the signup grant — so it could only ever show that income is
+   * *involved*. It could not tell "income whose ARRIVAL the schedule decides"
+   * apart from "income at all". These days are fixed points on the calendar
+   * that both members of a pair reach identically, so income exists, is the
+   * same size, and arrives at a moment neither lifter's training can move.
+   *
+   * Two of them, mid and late, because a grant landing early has most of the
+   * calendar to wash out in and a grant landing late does not — measured, the
+   * two positions behave very differently, and one of them alone would have
+   * been a misleading sample.
+   */
+  FIXED_INCOME_DAYS: Object.freeze([20, 40]),
 });
 
 /** One calendar: `true` on the days the lifter trained. */

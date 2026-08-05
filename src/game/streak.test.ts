@@ -46,8 +46,10 @@ import {
 } from './streak';
 import {
   MONOTONICITY_SWEEP,
+  RESIDUE_SWEEP,
   exhaustiveCalendar,
   exhaustiveCalendarCount,
+  renderSchedule,
   seededSchedules,
   singleDaySupersets,
   trainedDayCount,
@@ -2005,6 +2007,11 @@ function opensOn(schedule: OpeningSchedule, index: number, trained: boolean): bo
  *
  * `settleAtEnd` opens the final day one last time so the returned state is
  * settled rather than stale — see the staleness test for what that is worth.
+ *
+ * `grantSize` is how many Recovery Days a grant day drops. One by default. It
+ * is a parameter only because the residue counterfactuals need a drop large
+ * enough to keep the balance pinned at the hold cap every day, which is how
+ * "the stock never runs out" is expressed without editing `streak.ts`.
  */
 function simulate(
   attend: readonly boolean[],
@@ -2012,6 +2019,7 @@ function simulate(
   initial: StreakState,
   opens: OpeningSchedule = 'daily',
   settleAtEnd = false,
+  grantSize = 1,
 ): SimResult {
   let state = initial;
   let spent = 0;
@@ -2027,7 +2035,7 @@ function simulate(
   for (let i = 0; i < attend.length; i += 1) {
     const day = addDays(DAY_ZERO, i);
     if (grantOn[i] === true) {
-      state = unwrap(grantRecoveryDays(state, { source: 'purchase-chalk', amount: 1 })).state;
+      state = unwrap(grantRecoveryDays(state, { source: 'purchase-chalk', amount: grantSize })).state;
     }
     if (opensOn(opens, i, attend[i] === true)) state = open(state, day, true);
     if (attend[i] === true) {
@@ -2367,30 +2375,165 @@ const SAMPLED_MEASUREMENT = {
   VIOLATING_PAIRS_AT_60: [33, 21, 33, 23, 12],
   WORST_DEFICIT_AT_60: [11, 13, 14, 10, 9],
   WAS_VIOLATING_PAIRS_AT_60: [203, 299, 235, 236, 296],
+
+  /**
+   * THE LIFETIME BEST, AT THE SAMPLED LENGTHS — AND IT IS NOT ZERO.
+   *
+   * This file pins `longestStreak` inversions at zero over every exhaustive
+   * calendar of 8 to 16 days, and GDD §4.4 publishes that row. Nobody had ever
+   * measured the same quantity on the 40- and 60-day sweeps, which ran the
+   * `currentStreak` comparison only. They are 14 and 150.
+   *
+   * WHY IT IS THE MORE SERIOUS HALF, said plainly. A `currentStreak` deficit
+   * heals: train again and the run rebuilds. `longestStreak` is a permanent
+   * record, it is what a profile displays, and — because milestones are paid
+   * once per lifetime off it — a lifter whose lifetime best is inverted has
+   * also lost the milestone income attached to the streak they did not get
+   * credit for, permanently. `THE RESIDUE, REPRODUCED BY HAND` is exactly that
+   * case, in 23 days.
+   */
+  LONGEST_STREAK_INVERSIONS_AT_40: [3, 0, 11, 0, 0],
+  LONGEST_STREAK_INVERSIONS_AT_60: [32, 35, 24, 31, 28],
+
+  /**
+   * Pairs compared at each sampled length — the denominator the counts above
+   * are counts OUT OF. Pinned because `RESIDUE_GROWTH`'s answer to "does it
+   * terminate" is a comparison of rates, and a rate quoted without its
+   * denominator is how a count that only grew because the sweep grew gets read
+   * as a defect getting worse.
+   */
+  PAIRS_CHECKED_AT_40: 36_820,
+  PAIRS_CHECKED_AT_60: 53_872,
 } as const;
 
 /**
- * THE RESIDUE'S CAUSE, MEASURED. Streak-milestone income is paid once per
- * lifetime and its arrival is timed by the streak, so the lifter who trains
- * more banks a Recovery Day EARLIER and can lose it to a doomed absence that
- * the lazier lifter — whose identical payout has not arrived yet — walks away
- * from with the Recovery Day still in hand.
+ * DOES IT TERMINATE? The residue at `RESIDUE_SWEEP.LENGTHS`, so that "122 at 60
+ * days" can be read as a trend rather than as a number.
  *
- * The counterfactual runs against the REAL engine rather than a model: a lifter
- * whose `longestStreak` already exceeds the largest milestone can never reach
- * one again, so `milestonesReached` is empty for every session and the
- * streak-milestone income path is off. With it off the sweep is clean at 40 AND
- * 60 days at every seed, which is what makes "milestone timing is the cause" a
- * measurement instead of a story.
+ * IT MATTERS MORE THAN THE COUNT AT ANY ONE LENGTH. A streak game is played for
+ * years. A defect whose RATE climbs with the calendar is live at real-world
+ * timescales however small it looks at sixty days; one that plateaus is bounded
+ * and can be described.
  *
- * NOBODY HAS RULED ON IT. Both obvious fixes — paying milestones on a schedule
- * that is not the streak, or protecting income from a doomed absence — change
- * GDD §4.2's earning table, which is a monetisation decision rather than a
- * streak one.
+ * WHAT THE NUMBERS SAY. Violating pairs per seed swing wildly — a seed that
+ * gives 68 at 80 days gives 26 at 100, and two seeds that give 32 and 27 at 80
+ * give 0 at 100 — because a violation needs the balance difference to still be
+ * decisive on the calendar's last day, and where the last day falls is
+ * arbitrary. THE RATE DOES NOT CLIMB: 3.5e-4 at 40, 2.3e-3 at 60, 2.0e-3 at 80,
+ * 8.1e-4 at 100. Measured by hand off the same generator at lengths this suite
+ * does not pin, and recorded as unpinned observations because no test
+ * re-derives them: 7.4e-4 at 150, 6.5e-4 at 200, 3.0e-4 at 300, 9.9e-5 at 400.
+ *
+ * THE WORST DEFICIT DOES NOT PLATEAU, and that is the part that should worry a
+ * reader. It is 13 at 40 days, 25 at 80, and — unpinned, same generator — 61 at
+ * 150, 86 at 200, 189 at 400, where the lazier lifter ended on 189 and the
+ * lifter who trained one day more ended on 0. The FREQUENCY saturates; the
+ * MAGNITUDE scales with how long the lifter has been playing, because the
+ * deficit is bounded by the streak that was available to lose.
+ *
+ * The `longestStreak` inversion RATE is the steadier signal and it plateaus
+ * too: 3.8e-4 at 40, 2.8e-3 at 60, 3.8e-3 at 80, 2.4e-3 at 100, and — unpinned
+ * — 5.0e-3 at 200 and 2.3e-3 at 400.
  */
-const MILESTONE_INCOME_RESIDUE = {
-  /** Violating pairs with milestone income unreachable. Zero at every seed. */
-  VIOLATING_PAIRS: 0,
+const RESIDUE_GROWTH = {
+  /** Violating pairs per seed at `RESIDUE_SWEEP.LENGTHS[0]` (80 days). */
+  VIOLATING_PAIRS_AT_80: [68, 0, 15, 32, 27],
+  WORST_DEFICIT_AT_80: [24, 0, 21, 25, 9],
+  LONGEST_STREAK_INVERSIONS_AT_80: [121, 24, 38, 54, 39],
+
+  /** And at `RESIDUE_SWEEP.LENGTHS[1]` (100 days). */
+  VIOLATING_PAIRS_AT_100: [26, 21, 0, 0, 27],
+  WORST_DEFICIT_AT_100: [10, 7, 0, 0, 19],
+  LONGEST_STREAK_INVERSIONS_AT_100: [57, 53, 36, 30, 45],
+
+  /**
+   * Pairs compared at each length. Pinned because a rate is meaningless without
+   * its denominator, and because the denominator grows with the calendar (a
+   * longer calendar has more idle days, so more single-day supersets) — which
+   * is on its own enough to make a raw count rise without anything getting
+   * worse.
+   */
+  PAIRS_CHECKED_AT_80: 72_680,
+  PAIRS_CHECKED_AT_100: 91_091,
+} as const;
+
+/**
+ * THE RESIDUE'S CAUSE, TRACED AND THEN MEASURED — AND IT IS NOT THE ONE THIS
+ * FILE USED TO NAME.
+ *
+ * WHAT THIS BLOCK USED TO SAY: "streak-milestone income is paid once per
+ * lifetime and its arrival is timed by the streak, so the lifter who trains
+ * more banks a Recovery Day earlier and loses it", supported by ONE
+ * counterfactual — milestone income switched off, sweep goes to 0. That
+ * counterfactual is sound and it still passes (`NO_INCOME_VIOLATING_PAIRS`
+ * below). It does not support the conclusion that was drawn from it, because
+ * MILESTONE INCOME IS THE ONLY INCOME THIS SWEEP HAS after the signup grant.
+ * Switching it off does not switch off "income timed by the streak"; it
+ * switches off income. Two further counterfactuals separate them, and both say
+ * the published cause is wrong:
+ *
+ *   - INCOME WHOSE ARRIVAL DAY THE SCHEDULE CANNOT MOVE still violates.
+ *     Milestones unreachable, one Recovery Day dropped on each of
+ *     `RESIDUE_SWEEP.FIXED_INCOME_DAYS` — fixed points on the calendar both
+ *     members of a pair reach identically. 81 violating pairs, worst deficit
+ *     11. So streak-keyed timing is not necessary.
+ *   - A STOCK THAT CAN NEVER RUN OUT still violates, and violates MORE. Topped
+ *     to the hold cap every single day, so coverage can never be limited by
+ *     what the lifter can afford. 194 violating pairs. So scarcity is not
+ *     necessary either.
+ *
+ * WHAT THE TRACE SHOWS INSTEAD, and `THE RESIDUE, REPRODUCED BY HAND` below
+ * pins it as a 23-day calendar rather than a story: the doomed-absence debit of
+ * GDD §4.2 RULE 2 is THE WHOLE ARMED COUNT, so it is INCREASING IN HOW MUCH THE
+ * LIFTER HOLDS. Training one more day makes a lifter hold MORE at a given
+ * calendar day — either because the extra day spared them a save, or because it
+ * carried them to a milestone sooner — so the extra day makes the next doomed
+ * absence CONFISCATE MORE. The lifter who trained more comes out of it poorer
+ * and dies at a later absence the lazier lifter survives.
+ *
+ * IT IS NOT THE FREE-ABSENCE SHAPE, and that is measurable rather than a
+ * matter of taste: in 110 of the 122 pairs at 60 days the two lifters spend
+ * EXACTLY THE SAME NUMBER of Recovery Days in total. No charge is created. The
+ * same budget is committed at a different moment, and the doomed branch buys
+ * nothing with it.
+ *
+ * WHY THAT MATTERS FOR THE RULING NOBODY HAS MADE YET: the two fixes GDD §4.4
+ * offered the human — pay milestones off the streak, or protect income from a
+ * doomed absence — are aimed at the cause this block used to name. The first is
+ * measured above and does NOT close it. Bringing either one forward as "the
+ * fix" would have spent a monetisation ruling on the wrong mechanism.
+ */
+const RESIDUE_MEASUREMENT = {
+  /**
+   * Violating pairs at 60 days with no income at all after the signup grant —
+   * a lifter whose `longestStreak` is already past every milestone can never
+   * reach one again. Zero, at every seed. This is the ONE counterfactual this
+   * file used to carry, and it is kept because it is true and load-bearing: the
+   * residue does need a balance that moves.
+   */
+  NO_INCOME_VIOLATING_PAIRS: [0, 0, 0, 0, 0],
+
+  /**
+   * The same sweep with income restored on FIXED CALENDAR DAYS — same amount,
+   * arrival day identical for both members of every pair. If streak-keyed
+   * timing were the cause this would be zero. It is not.
+   */
+  FIXED_DAY_INCOME_VIOLATING_PAIRS: [30, 2, 5, 37, 7],
+  FIXED_DAY_INCOME_WORST_DEFICIT: [11, 7, 7, 7, 8],
+
+  /**
+   * The same sweep with the balance topped to the hold cap every day, so the
+   * stock is inexhaustible and coverage is limited only by
+   * `MAX_CONSECUTIVE_USES`. MORE violations than the shipped economy, not
+   * fewer — because a lifter who is always rich always loses the maximum to a
+   * doomed absence, and the extra trained day decides who is standing in one.
+   *
+   * The deficits are all 1 here rather than the shipped economy's 9-14: an
+   * inexhaustible stock produces many small inversions where the real one
+   * produces few large ones.
+   */
+  NEVER_EXHAUSTED_VIOLATING_PAIRS: [25, 79, 19, 51, 20],
+  NEVER_EXHAUSTED_WORST_DEFICIT: [1, 1, 1, 1, 1],
 } as const;
 
 /**
@@ -2848,10 +2991,18 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // per schedule — so every number below is re-derivable from the repository.
     //
     // BEFORE, at 40 days: [100, 148, 116, 121, 178] violating pairs by seed,
-    // worst deficits [16, 14, 15, 15, 12]. AFTER: [0, 0, 11, 2, 0]. The 13 that
-    // remain are the milestone-income residue the next test measures.
+    // worst deficits [16, 14, 15, 15, 12]. AFTER: [0, 0, 11, 2, 0]. What remains
+    // is the residue the next three tests characterise.
+    //
+    // THE LIFETIME BEST IS COUNTED HERE TOO, and it had never been. This sweep
+    // compared `currentStreak` only, while the exhaustive sweep above compared
+    // both — so the one row GDD §4.4 publishes as zero everywhere was only ever
+    // measured on calendars of 16 days or fewer. It is not zero at 40.
     const initial = freshState();
-    const measured: Record<number, { pairs: number[]; worst: number[] }> = {};
+    const measured: Record<
+      number,
+      { pairs: number[]; worst: number[]; longest: number[]; checked: number }
+    > = {};
     let schedulesSwept = 0;
     let deadRunsSeen = 0;
 
@@ -2859,32 +3010,46 @@ describe('daily engagement is never worse than skipping — where that holds, an
       const noGrants = Array.from({ length }, () => false);
       const pairs: number[] = [];
       const worst: number[] = [];
+      const longest: number[] = [];
+      let checked = 0;
       for (const seed of MONOTONICITY_SWEEP.SEEDS) {
         let violations = 0;
         let worstHere = 0;
+        let longestHere = 0;
         for (const schedule of seededSchedules(seed, length)) {
           const lazy = simulate(schedule, noGrants, initial, 'daily', true);
           schedulesSwept += 1;
           if (lazy.state.currentStreak === 0) deadRunsSeen += 1;
           for (const superset of singleDaySupersets(schedule)) {
             const diligent = simulate(superset, noGrants, initial, 'daily', true);
+            checked += 1;
             const deficit = lazy.state.currentStreak - diligent.state.currentStreak;
             if (deficit > 0) {
               violations += 1;
               worstHere = Math.max(worstHere, deficit);
             }
+            if (diligent.state.longestStreak < lazy.state.longestStreak) longestHere += 1;
           }
         }
         pairs.push(violations);
         worst.push(worstHere);
+        longest.push(longestHere);
       }
-      measured[length] = { pairs, worst };
+      measured[length] = { pairs, worst, longest, checked };
     }
 
     expect(measured[40]?.pairs).toEqual([...SAMPLED_MEASUREMENT.VIOLATING_PAIRS_AT_40]);
     expect(measured[40]?.worst).toEqual([...SAMPLED_MEASUREMENT.WORST_DEFICIT_AT_40]);
     expect(measured[60]?.pairs).toEqual([...SAMPLED_MEASUREMENT.VIOLATING_PAIRS_AT_60]);
     expect(measured[60]?.worst).toEqual([...SAMPLED_MEASUREMENT.WORST_DEFICIT_AT_60]);
+    expect(measured[40]?.longest).toEqual([
+      ...SAMPLED_MEASUREMENT.LONGEST_STREAK_INVERSIONS_AT_40,
+    ]);
+    expect(measured[60]?.longest).toEqual([
+      ...SAMPLED_MEASUREMENT.LONGEST_STREAK_INVERSIONS_AT_60,
+    ]);
+    expect(measured[40]?.checked).toBe(SAMPLED_MEASUREMENT.PAIRS_CHECKED_AT_40);
+    expect(measured[60]?.checked).toBe(SAMPLED_MEASUREMENT.PAIRS_CHECKED_AT_60);
 
     // Three of five seeds are clean at 40 days, including the seed the defect
     // was first measured on. Stated as a number rather than left to be counted
@@ -2913,41 +3078,86 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(deadRunsSeen).toBeGreaterThan(0);
   });
 
-  it('THE RESIDUE IS MILESTONE INCOME TIMING, and here is the counterfactual that says so', () => {
-    // The pairs that remain above are not "noise" and they are not the
-    // asymmetry this piece closed. They come from streak-milestone income:
-    // paid once per lifetime, timed by the streak, so the lifter who trains more
-    // banks it EARLIER and can lose it to a doomed absence the lazier lifter
-    // reaches with the payout still ahead of them.
+  it('THE RESIDUE IS NOT MILESTONE TIMING: three counterfactuals, and two of them say so', () => {
+    // WHAT THIS TEST USED TO BE. One counterfactual — milestone income switched
+    // off, sweep goes to 0 — and the conclusion "so the cause is the TIMING of
+    // milestone income". The counterfactual is real and it still passes. The
+    // conclusion does not follow from it, because milestone income is the ONLY
+    // income this sweep has after the signup grant, so switching it off
+    // switches off income, not income timing. See `RESIDUE_MEASUREMENT`.
     //
-    // THE COUNTERFACTUAL RUNS ON THE REAL ENGINE, not a model. A lifter whose
-    // `longestStreak` is already past the largest milestone can never reach one
-    // again, so `milestonesReached` is empty at every session and the income
-    // path is off. Same seeds, same schedules, same comparator, both lengths.
+    // Three runs, same seeds, same schedules, same comparator, same engine.
+    const LENGTH = RESIDUE_SWEEP.COUNTERFACTUAL_LENGTH;
+    const noGrants = Array.from({ length: LENGTH }, () => false);
     const beyondEveryMilestone: StreakState = {
       ...freshState(),
       longestStreak: Math.max(...STREAK_MILESTONE_DAYS) + 1,
     };
-    let violations = 0;
+    const fixedDayGrants = Array.from({ length: LENGTH }, (_, day) =>
+      RESIDUE_SWEEP.FIXED_INCOME_DAYS.includes(day),
+    );
+    const everyDay = Array.from({ length: LENGTH }, () => true);
 
-    for (const length of MONOTONICITY_SWEEP.SAMPLED_LENGTHS) {
-      const noGrants = Array.from({ length }, () => false);
+    const sweepPairs = (
+      initial: StreakState,
+      grantOn: readonly boolean[],
+      grantSize: number,
+    ): { pairs: number[]; worst: number[]; consumed: number } => {
+      const pairs: number[] = [];
+      const worst: number[] = [];
+      let consumed = 0;
       for (const seed of MONOTONICITY_SWEEP.SEEDS) {
-        for (const schedule of seededSchedules(seed, length)) {
-          const lazy = simulate(schedule, noGrants, beyondEveryMilestone, 'daily', true);
+        let violations = 0;
+        let worstHere = 0;
+        for (const schedule of seededSchedules(seed, LENGTH)) {
+          const lazy = simulate(schedule, grantOn, initial, 'daily', true, grantSize);
+          consumed += lazy.recoveryDaysSpent;
           for (const superset of singleDaySupersets(schedule)) {
-            const diligent = simulate(superset, noGrants, beyondEveryMilestone, 'daily', true);
-            if (lazy.state.currentStreak > diligent.state.currentStreak) violations += 1;
+            const diligent = simulate(superset, grantOn, initial, 'daily', true, grantSize);
+            const deficit = lazy.state.currentStreak - diligent.state.currentStreak;
+            if (deficit > 0) {
+              violations += 1;
+              worstHere = Math.max(worstHere, deficit);
+            }
           }
         }
+        pairs.push(violations);
+        worst.push(worstHere);
       }
-    }
+      return { pairs, worst, consumed };
+    };
 
-    expect(violations).toBe(MILESTONE_INCOME_RESIDUE.VIOLATING_PAIRS);
+    // (1) NO INCOME AT ALL after the signup grant. The published counterfactual.
+    const noIncome = sweepPairs(beyondEveryMilestone, noGrants, 1);
+    expect(noIncome.pairs).toEqual([...RESIDUE_MEASUREMENT.NO_INCOME_VIOLATING_PAIRS]);
 
-    // NOT VACUOUS. The counterfactual has to actually switch the income off, or
-    // it is the same sweep twice. A lifter with a lifetime best past every
-    // milestone collects nothing; a fresh one collects at seven.
+    // (2) INCOME RESTORED, ARRIVAL DAY FIXED ON THE CALENDAR. Same size, same
+    // day for both members of every pair, so nothing either lifter does can
+    // move when it lands. If streak-keyed timing were the cause this is zero.
+    const fixedDay = sweepPairs(beyondEveryMilestone, fixedDayGrants, 1);
+    expect(fixedDay.pairs).toEqual([...RESIDUE_MEASUREMENT.FIXED_DAY_INCOME_VIOLATING_PAIRS]);
+    expect(fixedDay.worst).toEqual([...RESIDUE_MEASUREMENT.FIXED_DAY_INCOME_WORST_DEFICIT]);
+    expect(fixedDay.pairs.reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
+
+    // (3) A STOCK THAT CANNOT RUN OUT: topped to the hold cap every day, so no
+    // absence is ever unaffordable. If scarcity were the cause this is zero. It
+    // is larger than the shipped economy's 122.
+    const neverExhausted = sweepPairs(freshState(), everyDay, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
+    expect(neverExhausted.pairs).toEqual([...RESIDUE_MEASUREMENT.NEVER_EXHAUSTED_VIOLATING_PAIRS]);
+    expect(neverExhausted.worst).toEqual([...RESIDUE_MEASUREMENT.NEVER_EXHAUSTED_WORST_DEFICIT]);
+    expect(neverExhausted.pairs.reduce((a, b) => a + b, 0)).toBeGreaterThan(
+      SAMPLED_MEASUREMENT.VIOLATING_PAIRS_AT_60.reduce((a: number, b: number) => a + b, 0),
+    );
+
+    // NONE OF THE THREE IS VACUOUS, and (1) needs it most because it is the
+    // zero. Recovery Days really were consumed in all three, and the two income
+    // runs really did credit income.
+    expect(noIncome.consumed).toBeGreaterThan(0);
+    expect(fixedDay.consumed).toBeGreaterThan(0);
+    expect(neverExhausted.consumed).toBeGreaterThan(0);
+
+    // A lifter with a lifetime best past every milestone collects nothing; a
+    // fresh one collects at seven. That is what makes (1) an income switch.
     const suppressed = unwrap(recordTrainingDay(beyondEveryMilestone, DAY_ZERO));
     expect(suppressed.milestonesReached).toEqual([]);
     let milestonesPaid = 0;
@@ -2959,6 +3169,175 @@ describe('daily engagement is never worse than skipping — where that holds, an
       normal = outcome.state;
     }
     expect(milestonesPaid).toBe(1);
+
+    // And the fixed-day counterfactual really is schedule-independent: the days
+    // it grants on are calendar positions, not streak lengths.
+    expect(RESIDUE_SWEEP.FIXED_INCOME_DAYS.every((d) => d > 0 && d < LENGTH)).toBe(true);
+  });
+
+  it('THE RESIDUE, REPRODUCED BY HAND: one extra trained day, 23 days, streak 8 becomes 1', () => {
+    // THE MECHANISM, AS A CALENDAR RATHER THAN AS A CAUSE. Every sweep above is
+    // a count; this is the thing being counted, small enough to read, built out
+    // of the named guardrails so a retune moves the calendar instead of
+    // silently invalidating the case.
+    //
+    // WHAT IT SHOWS. The doomed-absence debit of GDD §4.2 RULE 2 is THE WHOLE
+    // ARMED COUNT, so it is increasing in how much the lifter holds. The extra
+    // trained day carries the diligent lifter to the first streak milestone,
+    // which pays a Recovery Day — so when the absence that nothing can hold
+    // arrives, the diligent lifter has MORE to lose and loses it. Both lifters
+    // come out on zero. Both then rebuild to exactly the milestone, but
+    // milestones are once per LIFETIME: the lazy lifter is reaching it for the
+    // first time and is paid, and the diligent lifter — who already reached it,
+    // and whose payout was confiscated — is not. That single Recovery Day
+    // covers the lazy lifter's last absence and the diligent lifter's run dies.
+    //
+    // TRAINING ONE MORE DAY COSTS SEVEN DAYS OF STREAK AND ONE DAY OF LIFETIME
+    // BEST, and the lifetime best does not grow back.
+    const grace = RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS;
+    const maxUses = RECOVERY_DAY_GUARDRAILS.MAX_CONSECUTIVE_USES;
+    const milestone = STREAK_MILESTONE_DAYS[0] as number;
+
+    const lazyDays: boolean[] = [];
+    const diligentDays: boolean[] = [];
+    const both = (trained: boolean): void => {
+      lazyDays.push(trained);
+      diligentDays.push(trained);
+    };
+    // THE ONE EXTRA DAY, and it is the only difference between the two.
+    lazyDays.push(false);
+    diligentDays.push(true);
+    // Enough more to put the diligent lifter exactly on the milestone and the
+    // lazy lifter exactly one short of it.
+    for (let i = 0; i < milestone - 1; i += 1) both(true);
+    // An absence one day longer than anything can hold, so both runs die and
+    // both armed banks are confiscated — by different amounts.
+    for (let i = 0; i < grace + maxUses + 1; i += 1) both(false);
+    // Both rebuild to exactly the milestone. Only one of them is paid for it.
+    for (let i = 0; i < milestone; i += 1) both(true);
+    // An absence costing exactly one Recovery Day. One of them can afford it.
+    for (let i = 0; i < grace + 1; i += 1) both(false);
+    both(true);
+
+    const noGrants = lazyDays.map(() => false);
+    const lazy = simulate(lazyDays, noGrants, freshState(), 'daily', true);
+    const diligent = simulate(diligentDays, noGrants, freshState(), 'daily', true);
+
+    // The two calendars differ in exactly one day, and it is a trained one.
+    expect(diligentDays.length).toBe(lazyDays.length);
+    expect(trainedDayCount(diligentDays)).toBe(trainedDayCount(lazyDays) + 1);
+    expect(singleDaySupersets(lazyDays).map(renderSchedule)).toContain(renderSchedule(diligentDays));
+
+    // THE INVERSION, on both fields, from one extra session.
+    expect(lazy.state.currentStreak).toBe(milestone + 1);
+    expect(diligent.state.currentStreak).toBe(1);
+    expect(lazy.state.longestStreak).toBe(milestone + 1);
+    expect(diligent.state.longestStreak).toBe(milestone);
+
+    // AND THE REASON, not just the result: the diligent lifter's confiscation
+    // was strictly larger, because they were strictly richer when it landed.
+    // Same total spend either way — no charge is created here, it is committed
+    // at a different moment and buys nothing.
+    const confiscated = (days: readonly boolean[]): number => {
+      let state = freshState();
+      let lost = 0;
+      for (let i = 0; i < days.length; i += 1) {
+        const day = addDays(DAY_ZERO, i);
+        if (openDay(state, day).kind === 'streak-broken') {
+          state = unwrap(settleBrokenStreak(state, day)).state;
+        }
+        if (days[i] === true) {
+          const outcome = unwrap(recordTrainingDay(state, day));
+          lost += outcome.recoveryDaysLostToTheAbsence;
+          state = outcome.state;
+        }
+      }
+      return lost;
+    };
+    expect(confiscated(diligentDays)).toBeGreaterThan(confiscated(lazyDays));
+    expect(diligent.recoveryDaysSpent).toBe(lazy.recoveryDaysSpent);
+
+    // IT IS SHORTER THAN THE SHORTEST SWEEP THAT COULD HAVE FOUND IT. The
+    // exhaustive sweep stops at 16 days for time reasons, and this needs 23 —
+    // which is why a defect a new lifter could hit in their first month was
+    // invisible to a proof over every calendar of 16.
+    expect(lazyDays.length).toBeGreaterThan(Math.max(...MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS));
+    expect(lazyDays.length).toBeLessThan(MONOTONICITY_SWEEP.SAMPLED_LENGTHS[0] as number);
+  });
+
+  it('DOES IT TERMINATE: the residue at 80 and 100 days, with its denominator', () => {
+    // 40 days gives 13 violating pairs, 60 gives 122. Read alone that is a
+    // defect doubling with the calendar, which at a real player's timescale
+    // would matter more than any count at one length. It is not: the count
+    // includes a denominator that grows on its own, because a longer calendar
+    // has more idle days and therefore more single-day supersets to compare.
+    //
+    // See `RESIDUE_GROWTH` for the rates, including the lengths past 100 that
+    // are measured off this same generator but not pinned here because they
+    // cost more suite time than they are worth.
+    const initial = freshState();
+    const measured: Record<
+      number,
+      { pairs: number[]; worst: number[]; longest: number[]; checked: number }
+    > = {};
+
+    for (const length of RESIDUE_SWEEP.LENGTHS) {
+      const noGrants = Array.from({ length }, () => false);
+      const pairs: number[] = [];
+      const worst: number[] = [];
+      const longest: number[] = [];
+      let checked = 0;
+      for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+        let violations = 0;
+        let worstHere = 0;
+        let longestHere = 0;
+        for (const schedule of seededSchedules(seed, length)) {
+          const lazy = simulate(schedule, noGrants, initial, 'daily', true);
+          for (const superset of singleDaySupersets(schedule)) {
+            const diligent = simulate(superset, noGrants, initial, 'daily', true);
+            checked += 1;
+            const deficit = lazy.state.currentStreak - diligent.state.currentStreak;
+            if (deficit > 0) {
+              violations += 1;
+              worstHere = Math.max(worstHere, deficit);
+            }
+            if (diligent.state.longestStreak < lazy.state.longestStreak) longestHere += 1;
+          }
+        }
+        pairs.push(violations);
+        worst.push(worstHere);
+        longest.push(longestHere);
+      }
+      measured[length] = { pairs, worst, longest, checked };
+    }
+
+    expect(measured[80]?.pairs).toEqual([...RESIDUE_GROWTH.VIOLATING_PAIRS_AT_80]);
+    expect(measured[80]?.worst).toEqual([...RESIDUE_GROWTH.WORST_DEFICIT_AT_80]);
+    expect(measured[80]?.longest).toEqual([...RESIDUE_GROWTH.LONGEST_STREAK_INVERSIONS_AT_80]);
+    expect(measured[80]?.checked).toBe(RESIDUE_GROWTH.PAIRS_CHECKED_AT_80);
+
+    expect(measured[100]?.pairs).toEqual([...RESIDUE_GROWTH.VIOLATING_PAIRS_AT_100]);
+    expect(measured[100]?.worst).toEqual([...RESIDUE_GROWTH.WORST_DEFICIT_AT_100]);
+    expect(measured[100]?.longest).toEqual([...RESIDUE_GROWTH.LONGEST_STREAK_INVERSIONS_AT_100]);
+    expect(measured[100]?.checked).toBe(RESIDUE_GROWTH.PAIRS_CHECKED_AT_100);
+
+    // THE ANSWER, AS AN ASSERTION RATHER THAN AS PROSE. The rate at 100 days is
+    // below the rate at 60, so the defect does not grow with the calendar —
+    // this is what "it terminates" means, and it is the half of the question
+    // that a count at one length cannot answer.
+    const sum = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0);
+    const rateAt60 =
+      sum(SAMPLED_MEASUREMENT.VIOLATING_PAIRS_AT_60) / SAMPLED_MEASUREMENT.PAIRS_CHECKED_AT_60;
+    const rateAt100 = sum(measured[100]?.pairs ?? []) / RESIDUE_GROWTH.PAIRS_CHECKED_AT_100;
+    expect(rateAt100).toBeLessThan(rateAt60);
+
+    // AND THE HALF THAT DOES NOT TERMINATE, pinned so it is not mistaken for
+    // the good news above: the worst deficit keeps climbing, because the
+    // deficit is bounded by the streak that was there to lose and that grows
+    // with the calendar. 13 at 40 days, 14 at 60, 25 at 80.
+    expect(Math.max(...(measured[80]?.worst ?? []))).toBeGreaterThan(
+      Math.max(...SAMPLED_MEASUREMENT.WORST_DEFICIT_AT_60),
+    );
   });
 
   it('SUBSET MONOTONICITY: training a superset of another lifter\'s days never ends below them', () => {
