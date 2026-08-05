@@ -97,7 +97,9 @@
  *
  * There is still no cut-in ART. §7.2 says to "cut art entirely from the early
  * prototypes" and GDD §11 records the working assumption this run applies; what
- * mounts is the placeholder Tier 3 panel the licensing system already renders.
+ * mounts is `cutInArt.ts`'s own composition around the placeholder Tier 3
+ * DRAWING the licensing table already holds, read through §7.3's surface
+ * witness. It is not the shop panel: GDD §7.2 rules on that by name.
  *
  * WHAT IT IS FELT AND HEARD AS. Each plate lands with its own thud and its own
  * rattle on `BAR_LOAD_PLATE_STAGGER_MS` — the same constant the clip steps on,

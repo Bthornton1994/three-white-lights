@@ -21,16 +21,18 @@
  * stopped matching passes every file.
  */
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import ts from 'typescript';
 
-import { withoutComments } from '../tuning/audit';
+import { onlyComments, withoutComments } from '../tuning/audit';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(HERE, '..');
+const REPO_ROOT = path.resolve(SRC, '..');
 
 function source(relPath: string): string {
   return readFileSync(path.join(SRC, relPath), 'utf8');
@@ -39,6 +41,23 @@ function source(relPath: string): string {
 /** Comments blanked, string contents kept — a testID and a JSX prop are code. */
 function code(relPath: string): string {
   return withoutComments(source(relPath));
+}
+
+/**
+ * The other half of the same file: its COMMENTS, as one flat run of prose.
+ *
+ * `onlyComments` is `withoutComments`'s complement and `audit.test.ts` checks
+ * that they partition the file. Decoration — the leading `*` of a jsdoc line,
+ * the `//` of a line comment, the fences — is stripped and runs of whitespace
+ * are collapsed, so a claim that wraps across four lines is one string to match
+ * against rather than four.
+ */
+function prose(relPath: string): string {
+  return onlyComments(source(relPath))
+    .replace(/^\s*(?:\/\*+|\*+\/|[*/]+)/gm, ' ')
+    .replace(/\*+\/|\/\*+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 const VIEW = code('cutin/CutInView.tsx');
@@ -68,16 +87,30 @@ const CALLERS: readonly (readonly [string, string, string])[] = [
   ['a coach reaction on a heavy set', 'session/RestView.tsx', "kind: 'work-set'"],
 ];
 
-/** The two screens that own a sitting and mount the host over it. */
+/**
+ * The two screens that own a sitting and mount the host over it.
+ *
+ * `src/`-relative, like `CALLERS`. The sitting derivation further down works in
+ * REPOSITORY-relative paths — its file list is the compiler's, which reaches
+ * outside `src/` — and prefixes these rather than keeping a second list.
+ */
 const HOST_SCREENS: readonly string[] = ['meet/MeetScreen.tsx', 'session/SessionScreen.tsx'];
 
-/** Every non-test source file under `src/`, as a path relative to `src/`. */
-function everySourceFile(dir: string = ''): readonly string[] {
+/**
+ * Every non-test source file under `src/`, as a path relative to `src/`.
+ *
+ * `includeTests` DEFAULTS TO FALSE AND NO CALLER BELOW PASSES IT except the
+ * prose scan, so every walk in this file behaves as it did before the parameter
+ * existed. The prose scan wants tests too: a comment in a test file describes
+ * the architecture to the next reader exactly as loudly as one in a module, and
+ * `cutInArt.test.ts` is where most of this piece's history is written down.
+ */
+function everySourceFile(dir: string = '', includeTests: boolean = false): readonly string[] {
   return readdirSync(path.join(SRC, dir), { withFileTypes: true }).flatMap((entry) => {
     const rel = dir === '' ? entry.name : `${dir}/${entry.name}`;
-    if (entry.isDirectory()) return everySourceFile(rel);
+    if (entry.isDirectory()) return everySourceFile(rel, includeTests);
     if (!/\.tsx?$/.test(entry.name)) return [];
-    if (/\.test\.tsx?$/.test(entry.name)) return [];
+    if (!includeTests && /\.test\.tsx?$/.test(entry.name)) return [];
     return [rel];
   });
 }
@@ -86,6 +119,15 @@ function everySourceFile(dir: string = ''): readonly string[] {
  * The piece's own module. Excluded from the walks below BY PREFIX rather than
  * by name, so a file added to `src/cutin/` cannot escape the exclusion and a
  * file added anywhere else cannot fall into it.
+ *
+ * THE RESIDUAL THAT LEAVES, STATED RATHER THAN DISCOVERED: a NEW file inside
+ * `src/cutin/` could open a session and no check here would see it. That is
+ * left standing on purpose and is the softer of the two holes — it has to be
+ * written inside the module whose entire purpose is the cap, next to the
+ * comments explaining it, and `resumeCutInSession` makes a re-open under an
+ * existing id idempotent, so the damage needs a NEW id as well as a new file.
+ * The alias hole below did not have either protection, which is why it was
+ * closed first.
  */
 const THE_GATE_ITSELF = 'cutin/';
 
@@ -100,21 +142,153 @@ const THE_GATE_ITSELF = 'cutin/';
 const GATE_ENTRY_POINTS =
   /\b(?:useOfferCutIn|openCutInSession|resumeCutInSession|requestCutIn|rememberCutInSession|forgetAllCutInSessions)\b/;
 
-/**
- * Naming any of these claims a SITTING, which is what the cap counts.
- *
- * `<CutInHost` and not `CutInHost`: the five beat-reporting screens import
- * `useOfferCutIn` FROM `../cutin/CutInHost`, so the bare name is in their import
- * lines and would put all five in this set. What matters is MOUNTING one.
- */
-const SITTING_ENTRY_POINTS = /\b(?:cutInSessionId|cutInSessionSeed)\b|<CutInHost\b/;
-
 /** Files outside `src/cutin/` whose code matches `pattern`. */
 function filesNaming(pattern: RegExp): readonly string[] {
   return everySourceFile()
     .filter((rel) => !rel.startsWith(THE_GATE_ITSELF))
     .filter((rel) => pattern.test(code(rel)))
     .sort();
+}
+
+// ---------------------------------------------------------------------------
+// WHO CLAIMS A SITTING — asked of the type checker, not of a JSX spelling
+// ---------------------------------------------------------------------------
+
+/**
+ * THE THREE BINDINGS THAT CLAIM A SITTING, by module and exported name.
+ *
+ * A SITTING IS WHAT THE CAP COUNTS (GDD §7.2), so the set of files that can open
+ * one is the set §12.3's refusal condition actually rests on. It used to be
+ * derived from the text `<CutInHost`, and that is a JSX SPELLING rather than a
+ * binding: a screen doing
+ *
+ *     import { CutInHost as Interrupt } from '../cutin/CutInHost';
+ *     <Interrupt sessionId="meet-7" seed={3} />
+ *
+ * matched neither `<CutInHost\b` nor `cutInSessionId|cutInSessionSeed` — it
+ * passes a literal id — and so opened a SECOND gate session under a SECOND id
+ * inside one sitting, handing the player a second cut-in with nothing red.
+ * `AppShell.tsx` is the plausible author of that edit: it is the one file in the
+ * tree that talks about hosts without mounting one.
+ *
+ * SO THE SET IS ASKED OF THE COMPILER. Every identifier in the project is
+ * resolved with `checker.getSymbolAtLocation`, aliases followed with
+ * `getAliasedSymbol`, and compared against the symbols these three exports
+ * declare. An alias, a namespace import, a re-export chain and a dynamic
+ * `import()` all resolve to the same symbol, so "what counts as a reference" is
+ * not a question this file answers — which is the same move `progression.test.ts`
+ * makes for the route table, and for the same reason: it hand-rolled that answer
+ * once and the hand-rolled version was the defect.
+ *
+ * IT IS COARSER THAN THE OLD PATTERN ON PURPOSE. Referencing `CutInHost` AT ALL
+ * puts a file in this set, including a type-only import. That errs toward red,
+ * and red on a file that turns out to be innocent is a line added to
+ * `HOST_SCREENS` on purpose — which is the direction a refusal condition should
+ * fail in.
+ */
+const SITTING_BINDINGS: readonly (readonly [string, readonly string[]])[] = [
+  ['src/cutin/CutInHost.tsx', ['CutInHost']],
+  ['src/cutin/cutInGate.ts', ['cutInSessionId', 'cutInSessionSeed']],
+];
+
+/** Repo-relative posix path, or `null` for anything outside the repository. */
+function repoPathOf(fileName: string): string | null {
+  const rel = path.relative(REPO_ROOT, fileName).split(path.sep).join('/');
+  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  if (/(?:^|\/)node_modules\//.test(rel)) return null;
+  return rel;
+}
+
+/** The declared symbols of `names`, as `file` exports them. */
+function exportedSymbols(
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  file: string,
+  names: readonly string[],
+): readonly ts.Symbol[] {
+  const source = program.getSourceFile(path.join(REPO_ROOT, file));
+  if (source === undefined) throw new Error(`${file} is not in the program`);
+  const moduleSymbol = checker.getSymbolAtLocation(source);
+  if (moduleSymbol === undefined) throw new Error(`${file} is not a module`);
+  const exported = checker.getExportsOfModule(moduleSymbol);
+  return names.map((name) => {
+    const found = exported.find((symbol) => symbol.name === name);
+    if (found === undefined) throw new Error(`${file} no longer exports ${name}`);
+    return found;
+  });
+}
+
+/** Every file in `program` holding an identifier that resolves into `wanted`. */
+function filesReferencing(
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  wanted: ReadonlySet<ts.Symbol>,
+): { readonly scanned: readonly string[]; readonly referencing: readonly string[] } {
+  const scanned: string[] = [];
+  const referencing: string[] = [];
+  for (const source of program.getSourceFiles()) {
+    if (source.isDeclarationFile) continue;
+    const rel = repoPathOf(source.fileName);
+    if (rel === null) continue;
+    scanned.push(rel);
+    let found = false;
+    const visit = (node: ts.Node): void => {
+      if (found) return;
+      if (ts.isIdentifier(node)) {
+        const symbol = checker.getSymbolAtLocation(node);
+        const resolved =
+          symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+            ? checker.getAliasedSymbol(symbol)
+            : symbol;
+        if (resolved !== undefined && wanted.has(resolved)) found = true;
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    if (found) referencing.push(rel);
+  }
+  return { scanned: scanned.sort(), referencing: referencing.sort() };
+}
+
+/**
+ * The scan, run once and shared.
+ *
+ * MEMOISED RATHER THAN RUN AT IMPORT, the same call `progression.test.ts` makes:
+ * building a `ts.Program` over the whole project is a few seconds of real work,
+ * and an import that takes seconds has neither a timeout nor a useful failure
+ * message. Inside a test it has both.
+ *
+ * THE ROOT SET IS `tsconfig.json`'s OWN, not a walk of `src/`. §12.2 records why
+ * — a scan rooted at `src/` cannot see `App.tsx`, which sits at the repository
+ * root, mounts the shell, and could mount a host. The non-vacuity check below
+ * names it by hand.
+ */
+let sittingScanMemo: { readonly scanned: readonly string[]; readonly referencing: readonly string[] } | null =
+  null;
+function sittingScan(): { readonly scanned: readonly string[]; readonly referencing: readonly string[] } {
+  if (sittingScanMemo !== null) return sittingScanMemo;
+  const configPath = path.join(REPO_ROOT, 'tsconfig.json');
+  const config: unknown = ts.readConfigFile(configPath, ts.sys.readFile).config;
+  const parsed = ts.parseJsonConfigFileContent(config, ts.sys, REPO_ROOT);
+  if (parsed.fileNames.length === 0) {
+    throw new Error('tsconfig.json resolved to no files — the sitting pin would pass vacuously');
+  }
+  const program = ts.createProgram([...parsed.fileNames], {
+    ...parsed.options,
+    noEmit: true,
+    skipLibCheck: true,
+  });
+  const checker = program.getTypeChecker();
+  const wanted = new Set(
+    SITTING_BINDINGS.flatMap(([file, names]) => exportedSymbols(program, checker, file, names)),
+  );
+  sittingScanMemo = filesReferencing(program, checker, wanted);
+  return sittingScanMemo;
+}
+
+/** Repo-relative files outside `src/cutin/` that claim a sitting. */
+function filesClaimingASitting(): readonly string[] {
+  return sittingScan().referencing.filter((rel) => !rel.startsWith(`src/${THE_GATE_ITSELF}`));
 }
 
 // ---------------------------------------------------------------------------
@@ -152,9 +326,281 @@ describe('the scans are not blind', () => {
     // FIRST of those is guaranteed by the equality itself, so both are asserted.
     expect(GATE_ENTRY_POINTS.test(code('cutin/CutInHost.tsx'))).toBe(true);
     expect(GATE_ENTRY_POINTS.test(code('meet/WalkoutView.tsx'))).toBe(true);
-    expect(SITTING_ENTRY_POINTS.test(code('meet/MeetScreen.tsx'))).toBe(true);
     // The exclusion is a prefix on the walk's own output, not a missing file.
     expect(filesNaming(GATE_ENTRY_POINTS)).not.toContain('cutin/CutInHost.tsx');
+  });
+
+  it('AN ALIASED IMPORT IS STILL A REFERENCE — the sitting scan’s positive control', () => {
+    // The mutation this whole derivation exists for, run against a THREE-FILE
+    // PROGRAM BUILT IN MEMORY so the control is permanent rather than a thing a
+    // builder once did by hand and reverted. If `getAliasedSymbol` stopped being
+    // followed, the equality below would report the two host screens and look
+    // exactly like a pass while a third screen mounted its own host.
+    const files: Readonly<Record<string, string>> = {
+      '/v/host.tsx': 'export function CutInHost(p: { sessionId: string; seed: number }): unknown { return p; }\n',
+      '/v/aliased.tsx':
+        "import { CutInHost as Interrupt } from './host';\n" +
+        'export const a = <Interrupt sessionId="meet-7" seed={3} />;\n',
+      '/v/namespaced.tsx':
+        "import * as Gate from './host';\n" +
+        'export const b = <Gate.CutInHost sessionId="meet-7" seed={3} />;\n',
+      '/v/innocent.tsx': 'export const c = 2;\n',
+    };
+    const host: ts.CompilerHost = {
+      fileExists: (name) => name in files,
+      readFile: (name) => files[name],
+      getSourceFile: (name, languageVersion) => {
+        const text = files[name];
+        return text === undefined ? undefined : ts.createSourceFile(name, text, languageVersion, true);
+      },
+      getDefaultLibFileName: () => '/v/lib.d.ts',
+      writeFile: () => undefined,
+      getCurrentDirectory: () => '/v',
+      getCanonicalFileName: (name) => name,
+      useCaseSensitiveFileNames: () => true,
+      getNewLine: () => '\n',
+    };
+    const program = ts.createProgram(
+      Object.keys(files),
+      { noLib: true, noEmit: true, jsx: ts.JsxEmit.Preserve },
+      host,
+    );
+    const checker = program.getTypeChecker();
+    const declaring = program.getSourceFile('/v/host.tsx');
+    expect(declaring, 'the virtual program did not build').toBeDefined();
+    if (declaring === undefined) return;
+    const moduleSymbol = checker.getSymbolAtLocation(declaring);
+    expect(moduleSymbol).toBeDefined();
+    if (moduleSymbol === undefined) return;
+    const target = checker.getExportsOfModule(moduleSymbol).find((s) => s.name === 'CutInHost');
+    expect(target).toBeDefined();
+    if (target === undefined) return;
+
+    const seen: string[] = [];
+    for (const sourceFile of program.getSourceFiles()) {
+      let found = false;
+      const visit = (node: ts.Node): void => {
+        if (found) return;
+        if (ts.isIdentifier(node)) {
+          const symbol = checker.getSymbolAtLocation(node);
+          const resolved =
+            symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+              ? checker.getAliasedSymbol(symbol)
+              : symbol;
+          if (resolved === target) found = true;
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sourceFile);
+      if (found) seen.push(sourceFile.fileName);
+    }
+    // The aliased JSX tag and the namespaced one both count; the file that
+    // imports nothing does not. A text scan for `<CutInHost` sees none of the
+    // first two.
+    expect(seen.sort()).toEqual(['/v/aliased.tsx', '/v/host.tsx', '/v/namespaced.tsx']);
+    expect(seen).not.toContain('/v/innocent.tsx');
+    expect(files['/v/aliased.tsx'], 'the fixture stopped being the aliased shape').not.toMatch(
+      /<CutInHost\b/,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE PROSE HAS TO DESCRIBE THE ARCHITECTURE THAT IS THERE — GDD §7.2
+// ---------------------------------------------------------------------------
+
+/**
+ * WHY A COMMENT NEEDS A TEST AT ALL.
+ *
+ * Every other claim this piece makes is pinned by something that reddens. This
+ * one was pinned by nothing, in the files most likely to be read first, and it
+ * went false in the most damaging possible way: after GDD §7.2 ruled that the
+ * cut-in composes its own frame and does NOT mount `renderPanels.ts`'s
+ * `renderPanel`, four separate headers went on telling the next reader that the
+ * thing on screen was the licensing panel — `CutInView.tsx`, `cutInGate.ts`,
+ * `WalkoutView.tsx` and `CloseOutView.tsx`. All four are quoted verbatim in
+ * `THE_DELETED_CLAIMS` below, which is a string array and therefore CODE: this
+ * header does not have to write the sentence it bans, and the scan does not
+ * have to make an exception for the file that defines it. A stale comment is
+ * not cosmetic here — it is an instruction to rebuild the thing that was just
+ * graded as broken, and `cutInArt.test.ts` only guards `cutInArt.ts`'s CODE.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IS BANNED, AND WHAT IS DELIBERATELY NOT
+ * ---------------------------------------------------------------------------
+ * NOT the word `renderPanel`. The sentence worth keeping most in this whole
+ * module is the historical one — "this used to mount `renderPanel` and that was
+ * a §7.3 failure" — and a scan that killed it would trade one kind of ignorance
+ * for another. `cutInArt.ts`'s header, `cutInTuning.ts`'s and GDD §7.2 all
+ * explain the change by naming the thing that changed.
+ *
+ * What is banned is the ORDERED CLAIM: a noun for what this piece puts on
+ * screen, then a PRESENT-TENSE verb of provenance, then the panel — inside one
+ * sentence, with nothing disowning it in between. `THE_DELETED_CLAIMS` holds
+ * four real examples of that shape and `THE_HISTORY_WORTH_KEEPING` holds six
+ * sentences that are near it and must survive: a past-tense mounting note, a
+ * statement of what `renderPanel` itself is, and a contrast that says this
+ * surface borrows nothing from it. Every one of the second set is really in the
+ * tree today.
+ *
+ * THREE GUARDS MAKE THAT WORK, and each is a way the scan is weak:
+ *
+ *   - PRESENT TENSE ONLY in `PROVENANCE_VERB`. A historical note is written in
+ *     the past — "mounted", "printed", "consumed" — so tense does most of the
+ *     separating and it does it without a keyword list. It also means a claim
+ *     written in the present about the past ("the cut-in mounts the panel, as
+ *     it did until last week") is missed. Nobody writes that.
+ *   - `DISOWNED` — a closed list of six negating constructions. If one appears
+ *     between the subject and the panel, the sentence is denying the
+ *     architecture rather than asserting it.
+ *   - `WITHIN_A_SENTENCE` — a bounded, sentence-local gap. The bound stops the
+ *     match wandering across a full stop into an unrelated clause, which it did
+ *     at 90 characters and does not at `CLAIM_GAP`.
+ *
+ * IT IS A FLOOR, NOT A PROOF. A false claim written some other way is missed.
+ * What it catches is the one that has actually happened four times.
+ */
+const PICTURE_SUBJECT =
+  '(?:the picture|the cut-?in|a cut-?in|the overlay|the interrupt|this file|this piece|this view|what it shows|what mounts|what the overlay shows)';
+const PROVENANCE_VERB =
+  '(?:is|are|mounts|shows|draws|renders|composes|consumes|prints|comes from|comes out of)';
+const THE_PANEL = '(?:renderPanels?\\b|(?:licensing|shop|character-select|Tier 3) panel\\b)';
+const DISOWNED = '(?:not|never|no longer|used to|rather than|instead of|without)';
+/** How far apart the three parts may sit and still be one claim, in characters. */
+const CLAIM_GAP = 60;
+const WITHIN_A_SENTENCE = `(?:(?!\\.\\s+[A-Z])(?!\\b${DISOWNED}\\b)[\\s\\S]){0,${CLAIM_GAP}}?`;
+const MOUNTS_THE_PANEL = new RegExp(
+  `\\b${PICTURE_SUBJECT}\\b${WITHIN_A_SENTENCE}\\b${PROVENANCE_VERB}\\b${WITHIN_A_SENTENCE}\\b${THE_PANEL}`,
+  'gi',
+);
+
+/** Every claim of that shape in one file's comments. */
+function panelClaimsIn(relPath: string): readonly string[] {
+  return [...prose(relPath).matchAll(MOUNTS_THE_PANEL)].map((match) => match[0]);
+}
+
+describe('no comment says the cut-in mounts the shop panel — GDD §7.2', () => {
+  /**
+   * THE FOUR SENTENCES THAT WERE REALLY IN THE TREE, verbatim off the commit
+   * that carried them. A planted fixture would only prove the regex matches
+   * something the same author wrote to be matched; these are the actual prose,
+   * including the one in `CutInView.tsx` that survived the §7.3 fix by two
+   * rounds and was still instructing the next builder to mount the panel.
+   */
+  const THE_DELETED_CLAIMS: readonly string[] = [
+    'Nothing here is drawn for the cut-in: the picture is the Tier 3 panel `src/licensing/renderPanels.ts` already produces, read through §7.3’s surface witness.',
+    'What the overlay shows is the placeholder Tier 3 panel `src/licensing/` already renders, read through §7.3’s surface witness (see `cutInArt.ts`).',
+    'There is still no cut-in ART. §7.2 says to "cut art entirely from the early prototypes"; what mounts is the placeholder Tier 3 panel the licensing system already renders.',
+    'There is still no cut-in ART (§7.2, GDD §11): what mounts is the placeholder Tier 3 panel the licensing system already renders.',
+  ];
+
+  /**
+   * SENTENCES THAT MUST STAY GREEN, and every one is really in the tree today —
+   * see the non-vacuity check below, which fails if the module stops explaining
+   * itself. A scan that killed these would delete the record of WHY the
+   * architecture changed, which is the more useful half of the prose.
+   */
+  const THE_HISTORY_WORTH_KEEPING: readonly string[] = [
+    '`renderPanel` is the CHARACTER-SELECT / SHOP composition, one layer above the identity read.',
+    'It used to mount `renderPanel`, which is the character-select / shop composition.',
+    'the cut-in composes its own shape rather than borrowing the shop panel',
+    'a cut-in is a full-screen interrupt and a shelf panel is a thumbnail',
+    'GDD §7.2’s promise that the art pass is "a row in the identity table and not a rewiring" was false for as long as the cut-in read the panel.',
+    'While the cut-in mounted the panel, GDD §7.2’s "the art pass is a row in the identity table and not a rewiring" was false as written.',
+  ];
+
+  it('THE SCAN SEES THE DELETED SENTENCES — the positive control', () => {
+    // Without this the whole check below is theatre: a pattern that had stopped
+    // matching would report every file clean and look exactly like a pass.
+    for (const claim of THE_DELETED_CLAIMS) {
+      expect(claim.match(MOUNTS_THE_PANEL), `the scan cannot see: ${claim}`).not.toBeNull();
+    }
+  });
+
+  it('and it does NOT see the history that explains why they went — the negative control', () => {
+    for (const kept of THE_HISTORY_WORTH_KEEPING) {
+      expect(kept.match(MOUNTS_THE_PANEL), `the scan would delete: ${kept}`).toBeNull();
+    }
+  });
+
+  it('the reader really is reading comments, and only comments', () => {
+    // `prose` is the complement of `code`, so a scan built on it can see what
+    // every other scan in this file is blind to — and must be blind to what
+    // they see, or the two would double-count.
+    expect(prose('cutin/CutInView.tsx')).toMatch(/THE WHOLE SCREEN IS THE DISMISS TARGET/);
+    expect(prose('cutin/CutInView.tsx')).not.toMatch(/onPress=\{onDismiss\}/);
+    expect(code('cutin/CutInView.tsx')).toMatch(/onPress=\{onDismiss\}/);
+    expect(code('cutin/CutInView.tsx')).not.toMatch(/THE WHOLE SCREEN IS THE DISMISS TARGET/);
+  });
+
+  it('NO FILE IN THE TREE SAYS THE CUT-IN’S PICTURE IS THE PANEL', () => {
+    // THE WHOLE TREE, not `src/cutin/`. Two of the four stale sentences were in
+    // screens — `WalkoutView.tsx` and `CloseOutView.tsx` — because a caller
+    // describes what it triggers, and a scan rooted at the module would have
+    // left both standing. Tests are included: `cutInArt.test.ts` carries more
+    // of this piece's history than any module does.
+    const files = everySourceFile('', true);
+    expect(files.length, 'the walk found almost nothing').toBeGreaterThan(50);
+    expect(files, 'the walk skipped the tests it is supposed to read').toContain(
+      'cutin/cutInArt.test.ts',
+    );
+    for (const file of files) {
+      expect(
+        panelClaimsIn(file),
+        `${file} still tells its reader the cut-in's picture is the licensing panel. ` +
+          'GDD §7.2: "The cut-in composes its own frame; it does not mount the shop panel — ' +
+          'RULED." Say what it does instead, or say what it USED TO do.',
+      ).toEqual([]);
+    }
+  });
+
+  it('AND IT IS CLEAN FOR A REASON, NOT BECAUSE THE PROSE WENT QUIET', () => {
+    // The failure mode the check above cannot see by itself: a module that
+    // deleted every mention of the panel would pass it and would also have
+    // thrown away the explanation. So the history has to still be there, in the
+    // two files that carry it, while the claim scan reads zero.
+    for (const file of ['cutin/cutInArt.ts', 'cutin/cutInTuning.ts']) {
+      const text = prose(file);
+      expect(text, `${file} no longer explains what it does not mount`).toMatch(/renderPanel/);
+      expect(text, `${file} no longer names the failure it fixed`).toMatch(/§7\.3/);
+      expect(panelClaimsIn(file), file).toEqual([]);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE EVIDENCE THE HEADER CITES IS REALLY IN THE REPOSITORY
+// ---------------------------------------------------------------------------
+
+describe('`CutInView.tsx` cites pictures that a fresh checkout really has', () => {
+  /**
+   * The loop this closes. `.gitignore` carries a negation for
+   * `.gauntlet/shots/cutin/` whose comment gives `CutInView.tsx` as the reason —
+   * "the sentence that was false until the pictures were committed" — and for
+   * two rounds that header went on saying the pixels were NOT in the repo. One
+   * side of the loop was closed and the other was left open, with nothing that
+   * could notice.
+   */
+  const SHOTS = path.join(REPO_ROOT, '.gauntlet/shots/cutin');
+
+  it('the directory the header names is in the tree', () => {
+    expect(existsSync(SHOTS), `${SHOTS} is gone — see .gitignore and CutInView.tsx`).toBe(true);
+    expect(existsSync(path.join(SHOTS, 'frames.json'))).toBe(true);
+    const pngs = readdirSync(SHOTS).filter((name) => name.endsWith('.png'));
+    expect(pngs.length, 'the header says ten PNGs').toBe(10);
+  });
+
+  it('and the header names it, and the instrument that writes it', () => {
+    // The other direction: pictures with nothing pointing at them are evidence
+    // nobody finds. Both halves have to hold for the sentence to be true.
+    const header = prose('cutin/CutInView.tsx');
+    expect(header).toMatch(/\.gauntlet\/shots\/cutin\//);
+    expect(header).toMatch(/tools\/capture-cutin\.mjs/);
+    expect(existsSync(path.join(REPO_ROOT, 'tools/capture-cutin.mjs'))).toBe(true);
+    // And it must not have drifted back to denying they are here.
+    expect(header, 'the header denies pixels that are committed').not.toMatch(
+      /THE PIXELS ARE NOT IN THE REPO/,
+    );
   });
 });
 
@@ -239,7 +685,23 @@ describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
     // `CutInHost` over. A third screen doing that inside an existing sitting
     // would hand it a second cut-in without ever touching `CALLERS` — so the
     // set of files that can open one is derived too, not listed in a loop.
-    expect(filesNaming(SITTING_ENTRY_POINTS)).toEqual([...HOST_SCREENS].sort());
+    //
+    // DERIVED FROM THE TYPE CHECKER, not from a JSX spelling. See
+    // `SITTING_BINDINGS`: the old text scan for `<CutInHost` was blind to an
+    // aliased import, which is §12.3's refusal condition reached by a rename.
+    //
+    // The paths are REPOSITORY-relative here — `src/meet/MeetScreen.tsx`, not
+    // `meet/MeetScreen.tsx` — because the enumeration is over the project's own
+    // file list and that list reaches outside `src/`.
+    const claimants = filesClaimingASitting();
+    // Non-vacuity, three ways: the program really compiled the project, it
+    // really reached a file outside `src/`, and the pattern really matches
+    // something. Without the last, `[] === []` would pass for ever.
+    const scanned = sittingScan().scanned;
+    expect(scanned.length, 'the program compiled almost nothing').toBeGreaterThan(50);
+    expect(scanned, 'the root set does not reach outside src/').toContain('App.tsx');
+    expect(claimants.length, 'nothing in the tree claims a sitting at all').toBeGreaterThan(0);
+    expect(claimants).toEqual([...HOST_SCREENS.map((file) => `src/${file}`)].sort());
   });
 
   it('the host is the only file that opens a session or requests a cut-in', () => {

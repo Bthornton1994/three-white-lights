@@ -98,11 +98,26 @@ export function drawArt(
  *
  * Floors at 1: a drawing too big for its well sits at 1x and overflows visibly
  * rather than being silently cropped to something that looks deliberate.
+ *
+ * `maxScale` DEFAULTS TO THE PANEL'S OWN CEILING AND THE PANEL NEVER PASSES IT,
+ * so every call in this file behaves exactly as it did before the parameter
+ * existed — the same argument `wrapToWidth` below makes for `maxLines`, and the
+ * same caller. `cutInArt.ts` needs this rule with its own ceiling
+ * (`CUT_IN_PANEL.ART_MAX_SCALE`), because a full-screen interrupt and a shelf
+ * thumbnail should not have to move together. An argument was preferred to a
+ * second copy of the arithmetic: two sizing rules is two chances for a licensed
+ * portrait to be sized differently on two surfaces, which is the failure
+ * `partners.ts` calls "exactly what nobody notices".
  */
-export function artScaleFor(art: Tier3Art, wellW: number, wellH: number): number {
+export function artScaleFor(
+  art: Tier3Art,
+  wellW: number,
+  wellH: number,
+  maxScale: number = PANEL.ART_MAX_SCALE,
+): number {
   const { w, h } = artSize(art);
   if (w === 0 || h === 0) return 1;
-  return Math.max(1, Math.min(PANEL.ART_MAX_SCALE, Math.floor(wellW / w), Math.floor(wellH / h)));
+  return Math.max(1, Math.min(maxScale, Math.floor(wellW / w), Math.floor(wellH / h)));
 }
 
 /**
@@ -191,8 +206,14 @@ function strokeRect(grid: IndexGrid, x: number, y: number, w: number, h: number,
   fillRect(grid, x + w - PANEL.BORDER, y, PANEL.BORDER, h, index);
 }
 
-/** The widest drawing dimension, so the art well can centre it. */
-function artSize(art: Tier3Art): { w: number; h: number } {
+/**
+ * The widest drawing dimension, so the art well can centre it.
+ *
+ * EXPORTED FOR THE SAME REASON `artScaleFor` TAKES A CEILING. `cutInArt.ts` has
+ * to centre the same drawing in its own well and had its own copy of this line;
+ * one measurement of a drawing is one answer on both surfaces.
+ */
+export function artSize(art: Tier3Art): { readonly w: number; readonly h: number } {
   return { w: art.rows[0]?.length ?? 0, h: art.rows.length };
 }
 

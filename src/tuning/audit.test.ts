@@ -37,6 +37,7 @@ import {
   formatFindings,
   isAudited,
   isStructuralIdiom,
+  onlyComments,
   ruleFor,
   withoutComments,
 } from './audit';
@@ -479,6 +480,46 @@ describe('the allowlist is not a sieve', () => {
     // A URL fragment or an id selector is not a colour: three-to-eight hex
     // digits and nothing else. `#section` and `#1` are left alone.
     expect(auditSource('src/session/Fake.tsx', "const u = 'docs.md#section';")).toEqual([]);
+  });
+
+  it('`onlyComments` is the complement of `withoutComments`, character for character', () => {
+    // THE PROPERTY THAT MAKES IT A COMPLEMENT, checked as a property rather than
+    // on one example: at every position, exactly one of the two outputs holds
+    // the source character and the other holds a space. Anything else means the
+    // two disagree about where a comment starts, and a scanner built on the pair
+    // would either read something twice or miss it entirely.
+    const sample = [
+      "const a = 1; // a trailing note about #1c2230",
+      '/* a block',
+      ' * over lines, containing // a slash pair',
+      ' */',
+      "const url = 'https://example.invalid/x';",
+      'function f(): void {} // done',
+    ].join('\n');
+    const code = withoutComments(sample);
+    const comments = onlyComments(sample);
+    expect(code.length).toBe(sample.length);
+    expect(comments.length).toBe(sample.length);
+    for (let i = 0; i < sample.length; i += 1) {
+      const ch = sample[i];
+      if (ch === '\n' || ch === ' ') continue;
+      const inCode = code[i] === ch;
+      const inComments = comments[i] === ch;
+      expect(inCode !== inComments, `position ${i} (${ch}) is in both halves or neither`).toBe(true);
+    }
+  });
+
+  it('`onlyComments` keeps prose and drops code, both ways round', () => {
+    expect(onlyComments('// a trailing note\n')).toContain('a trailing note');
+    expect(onlyComments('const a = 1; // note')).not.toContain('const');
+    expect(onlyComments('/* a block note */ const a = 1;')).toContain('a block note');
+    expect(onlyComments('/* a block note */ const a = 1;')).not.toContain('const');
+    // A URL inside code is not a comment. `LINE_COMMENT` refuses a preceding
+    // colon, which is the whole reason `https://` survives `withoutComments`.
+    expect(onlyComments("const u = 'https://example.invalid/x';")).not.toContain('example');
+    // Line numbers survive, so a match index in the output is a real one.
+    expect(onlyComments('const a = 1;\n// second line\n').split('\n')[1]).toContain('second line');
+    expect(onlyComments('const a = 1;\n// second line\n').split('\n')[0]?.trim()).toBe('');
   });
 });
 
