@@ -492,6 +492,18 @@ measured over every 13-day calendar, the anchor alone leaves **32** violating
 pairs and the doomed-absence charge alone leaves **24**, against **0** for both.
 §4.4 has the full table.
 
+**That argument covers calendars up to 16 days and does not extend past them,
+and the reason is RULE 2 below.** "Splitting can only reduce the total charge"
+is arithmetic about a charge that depends on the ABSENCE — the days past the
+grace. Rule 2's charge depends on what the lifter is HOLDING. It works, and it
+works because taking the whole armed count drains the bank, so the second half
+of a split absence finds nothing left to take. The same property makes the
+charge proportional to wealth, and training more is a way of being wealthier.
+§4.4's "what is left" records what that costs, measured; it is the price of the
+closure rather than a defect in it, and no arithmetic on Rule 2's amount
+separates the two halves — both alternatives were measured and are recorded
+there.
+
 ---
 
 **RULE 1 — Idle days before the first session are charged, anchored at a new
@@ -539,6 +551,14 @@ make the outcome depend on when they came back — which would give away the
 invariant §4.2 exists for. Capping it at the consecutive-use limit instead was
 measured and does **not** close the defect: two absences may each cost the cap,
 so splitting a long one still costs more than leaving it whole.
+
+*Re-measured, with numbers this time.* Capping the debit at the consecutive-use
+limit reopens the exhaustive defect at 14, 15 and 16 days — **8, 36 and 124**
+violating pairs against **0** today — and makes the longer sweeps worse as well:
+**51** violating pairs at 40 days against 13, and **149** at 60 against 122.
+Charging `min(days past the grace, armed count)` instead is measurably identical
+to today's rule on the whole sampled population. The rule as written is the best
+of the three, and what it costs is in §4.4.
 
 *This reverses the previous rule*, which read "an absence that ends the run
 debits nothing, and the player keeps every Recovery Day because none of them
@@ -748,6 +768,10 @@ of each:
 | lifetime-best inversions, before | 0 | 0 | 0 | 0 | 1 | 5 | 19 | 66 | 211 |
 | lifetime-best inversions, after | 0 | 0 | 0 | **0** | **0** | **0** | **0** | **0** | **0** |
 
+The lifetime-best row above is **only true at these lengths**, and until this
+round nobody had checked it anywhere else — the sampled sweeps below compared
+`currentStreak` alone. It is not zero at 40 days.
+
 Sampled, 400 schedules per seed against every single-day superset, violating
 pairs per seed:
 
@@ -757,31 +781,121 @@ pairs per seed:
 | 40 days, after | **0** | **0** | 11 | 2 | **0** |
 | 60 days, before | 203 | 299 | 235 | 236 | 296 |
 | 60 days, after | **33** | **21** | **33** | **23** | **12** |
+| 80 days | 68 | 0 | 15 | 32 | 27 |
+| 100 days | 26 | 21 | 0 | 0 | 27 |
+
+And the same sweeps counting `longestStreak` inversions — the lifetime best,
+which the exhaustive table above reports as zero everywhere and which nobody had
+measured on these lengths at all:
+
+| | seed 1 | seed 2 | seed 3 | seed 4 | seed 5 |
+|---|---|---|---|---|---|
+| 40 days | 3 | 0 | 11 | 0 | 0 |
+| 60 days | 32 | 35 | 24 | 31 | 28 |
+| 80 days | 121 | 24 | 38 | 54 | 39 |
+| 100 days | 57 | 53 | 36 | 30 | 45 |
 
 The constructive family that produced "37 trained days end on 37, 38 end on 18"
 now ends both lifters on 18, with the lifter who trained more holding the higher
 lifetime best, at every run length from 8 to 1000.
 
-**What is left, and it is a different defect.** Across all five seeds at 40 days,
-13 violating pairs remain, and at 60 days 122. Their cause is measured rather
-than guessed: **streak-milestone income is paid once per lifetime and its arrival
-is timed by the streak.** The lifter who trains more reaches a milestone earlier,
-banks the Recovery Day earlier, and can lose it to a doomed absence that the
-lazier lifter — whose identical payout has not arrived yet — walks away from with
-the Recovery Day still in hand. Run the same sweep with milestone income
-unreachable and it is 0 at 40 *and* 60 days at every seed; raise the hold cap so
-no payout can ever be clipped and it does not move at all. So it is the *timing*
-of the income, not the loss of it to the cap.
+**What is left — THE CAUSE, CORRECTED A FOURTH TIME, and this time from a trace
+rather than from a counterfactual.** Across all five seeds at 40 days, 13
+violating pairs remain, and at 60 days 122.
 
-**That one has not been ruled on.** Both obvious fixes — paying milestones on a
-schedule that is not the streak, or protecting income from a doomed absence —
-change the §4.2 earning table, which is a monetisation decision rather than a
-streak one.
+*What this section used to say, and why it was wrong.* It said the cause was
+**streak-milestone income, paid once per lifetime and timed by the streak** — the
+lifter who trains more banks a Recovery Day earlier and loses it to a doomed
+absence the lazier lifter reaches with the payout still ahead of them. That was
+read off one counterfactual: switch milestone income off, and the sweep is 0 at
+40 and 60 days at every seed. The counterfactual is real and still passes.
+**The conclusion does not follow from it**, because milestone income is the only
+income the sweep has after the signup grant, so switching it off switches off
+income rather than income *timing*. Two counterfactuals that do separate them
+both refute it:
+
+| counterfactual at 60 days | violating pairs |
+|---|---|
+| no income at all after signup (the published one) | **0** |
+| income restored on **fixed calendar days**, arrival identical for both lifters | **81** |
+| balance topped to the hold cap every day, so the stock **can never run out** | **194** |
+| the shipped economy, for comparison | 122 |
+
+So it is neither the streak-keyed timing of the income nor the scarcity of the
+stock. Note the third row: an *inexhaustible* stock is worse than the real one.
+
+*What the trace shows instead.* **Rule 2's debit is the whole armed count, so it
+is increasing in how much the lifter holds** — and training one more day is a way
+of holding more at a given calendar day, either because the extra day spared
+them a save or because it carried them to a milestone sooner. The lifter who
+trained more walks into a doomed absence richer, loses more, and dies at a later
+absence the lazier lifter survives. Where a milestone is involved the loss is
+permanent, because milestones are paid once per lifetime and the confiscated one
+is never re-earned.
+
+*It is not the free-absence shape.* No charge is created: in **110 of the 122**
+pairs at 60 days the two lifters spend exactly the same number of Recovery Days
+in total. The same budget is committed at a different moment, and the doomed
+branch buys nothing with it. This is an allocation failure, not a free lunch,
+which is why the fixes aimed at the old diagnosis do not close it.
+
+*Reproduced by hand, in 23 days.* `src/game/streak.test.ts` builds the case out
+of the named guardrails: one extra trained day turns a final streak of **8 into
+1** and a lifetime best of **8 into 7**. It is longer than the 16-day exhaustive
+proof and shorter than the 40-day sweep, which is exactly why nothing caught it —
+a new lifter could hit it in their first month.
+
+**The lifetime best is inverted too, and nobody had measured it past 16 days.**
+The exhaustive sweep counts `longestStreak` inversions and the table above pins
+them at zero. The 40- and 60-day sweeps only ever compared `currentStreak`.
+Counted now: **14** inversions at 40 days, **150** at 60, **276** at 80, **221**
+at 100. This is the more serious half. A `currentStreak` deficit heals — train
+again and the run rebuilds — and a lifetime best does not; and because milestones
+are paid off `longestStreak`, a lifter whose best is inverted has permanently
+lost the income attached to the streak they were not credited with.
+
+**Does it grow without bound? No — the frequency saturates, the magnitude does
+not.** A streak game is played for years, so the trend matters more than the
+count at any one length. Swept through the same generator at 80 and 100 days
+(`RESIDUE_SWEEP` in `src/game/streakSweep.ts`), with the pair count as the
+denominator:
+
+| calendar length | 40 | 60 | 80 | 100 | 150* | 200* | 300* | 400* |
+|---|---|---|---|---|---|---|---|---|
+| violating pairs | 13 | 122 | 142 | 74 | 100 | 117 | 82 | 36 |
+| pairs compared | 36,820 | 53,872 | 72,680 | 91,091 | 135,294 | 180,170 | 272,880 | 365,504 |
+| rate | 3.5e-4 | 2.3e-3 | 2.0e-3 | 8.1e-4 | 7.4e-4 | 6.5e-4 | 3.0e-4 | 9.9e-5 |
+| worst deficit | 13 | 14 | 25 | 19 | 61 | 86 | 82 | **189** |
+| lifetime-best inversions | 14 | 150 | 276 | 221 | — | 908 | — | 847 |
+
+*\* measured off the same generator but **not pinned** by any test, because the
+longer lengths cost more suite time than they are worth. 40 through 100 are
+pinned.*
+
+The rate does not climb. The **worst deficit does**: at 400 days the lazier
+lifter ended on a streak of 189 and the lifter who trained one more day ended on
+0. The deficit is bounded by the streak that was there to lose, and that grows
+with the calendar — so the chance of being hit saturates at roughly one pair in
+a thousand while the cost of being hit scales with how long you have played.
+
+**That one has not been ruled on, and the ruling it needs has changed.** Both
+fixes this section used to offer — paying milestones on a schedule that is not
+the streak, or protecting income from a doomed absence — are aimed at the
+diagnosis retracted above, and the first of them is **measured not to work**
+(the fixed-calendar-day row of the table: 81 pairs). What the measurements point
+at is a tension rather than a bug: a doomed-absence debit that drains the bank is
+what makes splitting a doomed absence free, and a debit that drains the bank is
+necessarily proportional to what the lifter holds. Both alternatives to the
+amount were measured and are recorded in §4.2. Escaping the tension means
+coverage that is not funded from a stock at all — which is a decision about what
+§8.2 sells, and belongs to a human.
 
 **Where that leaves the bar.** "Never punishes daily engagement" is met over
-every calendar length this repository can search exhaustively, and met on the
-40-day sweep at three of five seeds. It is **not** met everywhere: the milestone
-residue above is real, measured, and named rather than rounded up.
+every calendar length this repository can search exhaustively — 8 to 16 days,
+both fields — and is **not** met past it. On the sampled sweeps it fails at every
+length from 40 days up, on `currentStreak` and on `longestStreak` both. It is
+real, measured, bounded in frequency, unbounded in magnitude, and named rather
+than rounded up.
 
 What holds, and is what the design leans on:
 
