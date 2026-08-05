@@ -12,6 +12,7 @@
  * Usage: node tools/evidence.mjs <piece-id> [testPathPattern]
  */
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -127,10 +128,45 @@ const dirty = git(['status', '--porcelain'])
  * and not the JSON. That is the same false pass the shots were committed to
  * kill, so it fails here rather than being left for a grader to catch.
  */
+/**
+ * DEFAULT-DENY, AND IT WAS AN ALLOWLIST UNTIL A CRITIC READ IT.
+ *
+ * This used to diff `-- src package.json tsconfig.json vitest.config.ts`. Three
+ * things that decide what a browser record measured are outside that pathspec:
+ *
+ *   - `App.tsx` and `index.ts` — the app's ENTRY POINT, at the repo root.
+ *   - all of `tools/` — including the instrument that WRITES the record.
+ *
+ * The critic's demonstration, which I checked and which holds: change
+ * `App.tsx`'s `<AppShell search={locationSearch()} />` to `<AppShell />`. It
+ * typechecks, because `search` is optional and defaults to null. Every debug
+ * route then boots the daily check-in, so roughly forty of `route.json`'s
+ * eighty-two checks describe screens the app can no longer show — and vitest is
+ * green, tsc is green, and `--verify` prints "current and green", because the
+ * one file that changed is not in the list. Worse in the other direction:
+ * editing `ON_SCREEN_MIN_OPACITY` to 0 inside `verify-shell-route.mjs` leaves a
+ * committed green record attributed to an instrument that no longer exists.
+ *
+ * The `SELF_DIRTYING` denylist twenty lines above got this right and this
+ * function did not, in the same file, in the same commit. So: diff EVERYTHING,
+ * then subtract the run artefacts by name. A new source directory, a new tool,
+ * a new config at the root is covered the day it is added rather than the day
+ * somebody remembers to widen a list.
+ */
+const NOT_CODE = [
+  // Regenerated evidence, the progress page's data, and the shot records
+  // themselves. A commit touching only these did not move what the browser ran.
+  '.gauntlet/',
+  // Prose. A GDD or CLAUDE.md edit does not change what the app does.
+  'docs/',
+  'CLAUDE.md',
+  'README.md',
+];
 const codeChangedBetween = (from, to) =>
-  git(['diff', '--name-only', `${from}..${to}`, '--', 'src', 'package.json', 'tsconfig.json', 'vitest.config.ts'])
+  git(['diff', '--name-only', `${from}..${to}`])
     .split('\n')
-    .filter((line) => line.trim() !== '');
+    .filter((line) => line.trim() !== '')
+    .filter((p) => !NOT_CODE.some((prefix) => p.startsWith(prefix)));
 
 const checkCommittedShots = () => {
   const tracked = git(['ls-files', '.gauntlet/shots'])
@@ -171,6 +207,31 @@ const checkCommittedShots = () => {
       problems.push(
         `${rel}: RED — ${record.failures.length} failure(s) recorded, e.g. ${JSON.stringify(record.failures[0]).slice(0, 160)}`,
       );
+    }
+    // A stale SHA and a stale INSTRUMENT are different failures and only one of
+    // them moves the commit. Re-hash the tools the record names and compare, so
+    // a record cannot claim currency for a measuring device that has since
+    // been edited underneath it.
+    if (!from.instrument || typeof from.instrument !== 'object') {
+      problems.push(`${rel}: records no instrument digest — it cannot say WHICH tool measured this`);
+    } else {
+      for (const [name, digest] of Object.entries(from.instrument)) {
+        let now;
+        try {
+          now = createHash('sha256')
+            .update(readFileSync(path.join(ROOT, 'tools', name)))
+            .digest('hex')
+            .slice(0, 16);
+        } catch (error) {
+          problems.push(`${rel}: names tools/${name}, which cannot be read (${String(error).slice(0, 80)})`);
+          continue;
+        }
+        if (now !== digest) {
+          problems.push(
+            `${rel}: measured by tools/${name}@${digest}, but that file is now ${now} — the instrument moved, re-capture`,
+          );
+        }
+      }
     }
   }
   return problems;

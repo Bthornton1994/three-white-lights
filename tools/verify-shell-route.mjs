@@ -85,6 +85,8 @@
  */
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -445,6 +447,31 @@ function provenance() {
   } catch (error) {
     record.workingTree = `unknown — ${String(error).slice(0, 200)}`;
   }
+  /**
+   * WHICH MEASURING DEVICE PRODUCED THIS RECORD.
+   *
+   * A commit SHA says which app the browser ran. It says nothing about the
+   * instrument, and the instrument is half of what a check means: edit
+   * `ON_SCREEN_MIN_OPACITY` to 0 here, or drop a row from `NEVER_A_PILL_BEAT`
+   * together with its probe — both self-consistent under
+   * `checkNavTableMatchesTuning`'s two-way pin — and every committed "ok" line
+   * is now attributed to a device that no longer exists. A critic found that
+   * the harness could certify such a record as current.
+   *
+   * So the record carries a digest of this file and the driver it plays the
+   * session with. A reader comparing them against the tree can tell a stale
+   * instrument from a stale app, which the SHA alone cannot distinguish.
+   */
+  record.instrument = Object.fromEntries(
+    ['verify-shell-route.mjs', 'sessionDrive.mjs'].map((name) => {
+      const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
+      try {
+        return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
+      } catch (error) {
+        return [name, `unreadable — ${String(error).slice(0, 80)}`];
+      }
+    }),
+  );
   return record;
 }
 

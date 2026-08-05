@@ -41,6 +41,8 @@ import { chromium } from 'playwright';
 import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { decodePng, diffPixels } from './png.mjs';
 
@@ -95,6 +97,20 @@ const capturedFrom = (() => {
   } catch (error) {
     record.workingTree = `unknown — ${String(error).slice(0, 200)}`;
   }
+  // A digest of the measuring device, not just the app it measured. See the
+  // matching block in `verify-shell-route.mjs` for why a SHA alone is not
+  // enough: an edited instrument leaves a green record describing a check that
+  // no longer exists, and the commit is unchanged.
+  record.instrument = Object.fromEntries(
+    ['capture-cutin.mjs', 'png.mjs'].map((name) => {
+      const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
+      try {
+        return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
+      } catch (error) {
+        return [name, `unreadable — ${String(error).slice(0, 80)}`];
+      }
+    }),
+  );
   return record;
 })();
 const width = Number(flag('w', '390'));
