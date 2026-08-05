@@ -1501,6 +1501,51 @@ describe('the shipped engine is the composition this battery graded', () => {
     expect(cases.some((schedule) => drive(schedule, DEFAULT).currentStreak === 0)).toBe(true);
   });
 
+  it('agrees WITH PURCHASES IN THE FIELD, which is what makes §8.3E\'s table transfer', () => {
+    // THE GAP THIS CLOSES, and it would have been easy to leave open. Every pin
+    // above drives both engines with NO purchases, so the moment `drive` grew a
+    // purchase path the §8.3E table became a statement about the reference
+    // composition and not about `src/game/streak.ts`. GDD §4.4 says in terms
+    // that the pin is what makes these tables mean anything about the shipped
+    // game; a purchase table with no purchase pin under it would mean nothing.
+    //
+    // Both arms are pinned, not just the safe one: the reference and the engine
+    // have to agree about the violating case too, or the negative control is a
+    // control on a program nobody ships.
+    let checked = 0;
+    let purchasedSeen = 0;
+    let differedFromNoPurchase = 0;
+    for (const trainingKeyed of [false, true]) {
+      for (const length of ENTITLEMENT_VERIFICATION.LENGTHS) {
+        for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+          for (const schedule of seededSchedules(seed, length).slice(0, 12)) {
+            const buys = coveredDayPurchaseDays(schedule, trainingKeyed);
+            const reference = drive(schedule, { ...DEFAULT, purchaseDays: buys });
+            const shipped = driveThroughStreakEngine(schedule, buys);
+            expect(
+              JSON.stringify(shipped),
+              `keyed=${trainingKeyed} ${renderSchedule(schedule)}: reference ${JSON.stringify(reference)}`,
+            ).toBe(JSON.stringify(reference));
+            purchasedSeen += reference.peakPurchased;
+            if (
+              JSON.stringify(drive(schedule, DEFAULT)) !==
+              JSON.stringify({ ...reference, bought: 0, peakPurchased: 0 })
+            ) {
+              differedFromNoPurchase += 1;
+            }
+            checked += 1;
+          }
+        }
+      }
+    }
+    expect(checked).toBe(2 * ENTITLEMENT_VERIFICATION.LENGTHS.length * MONOTONICITY_SWEEP.SEEDS.length * 12);
+    // NOT VACUOUS TWICE OVER: purchased days really were in the field, and
+    // buying really did change some outcome — so this is not the zero-purchase
+    // pin above under a different name.
+    expect(purchasedSeen, 'no run ever held a purchased day').toBeGreaterThan(0);
+    expect(differedFromNoPurchase, 'buying changed no outcome anywhere').toBeGreaterThan(0);
+  });
+
   it('DETECTS A DIFFERENCE: the pin is not comparing two copies of one engine', () => {
     // THE ANTI-VACUITY FOR THE PIN ITSELF, and it needs its own test because
     // every assertion above is "these are equal". A comparator that could not
