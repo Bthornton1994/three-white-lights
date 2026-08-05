@@ -131,73 +131,83 @@ physiology.
 
   This is checkable, and it is checked. In the streak system it means: **for two
   training histories identical except that one has an extra trained day, the
-  player who trained more must never end on a lower streak.** `src/game/streak
-  .test.ts` measures it exhaustively over every calendar of 8–16 days and on a
-  seeded 40- and 60-day sweep, and pins the counts. Do not weaken those pins
-  into bounds — a bound lets the defect grow back quietly.
+  player who trained more must never end on a lower streak.** Do not weaken the
+  pins below into bounds — a bound lets the defect grow back quietly.
 
-  **The measurement's inputs live in `src/game/streakSweep.ts`**, not in the
-  test: the seeds, the calendar lengths and the attendance distribution, as
-  named constants and a deterministic generator. That file exists because the
-  first version of this measurement was reported with its seeds unstated and
-  could not afterwards be reproduced by anyone — six plausible
-  parameterisations gave six different numbers. A measurement whose inputs are
-  not written down is an anecdote. If you take a new one, put its parameters
-  there and re-derive the counts in GDD §4.4 rather than sampling at a call
-  site.
+  `src/game/streak.test.ts` measures it exhaustively over
+  every calendar of 8–16 days *and* on seeded 40 / 60 / 80 / 100-day sweeps, on
+  `currentStreak`, on `longestStreak` and on the worst deficit, and pins the
+  counts at **zero on all three**. The stock's numbers — 13 / 122 / 142 / 74
+  violating pairs, 14 / 150 / 276 / 221 lifetime-best inversions, worst deficit
+  189 at 400 days — stay in the file as the thing the zeros are zero against.
+  Do not weaken those pins into bounds.
 
-  Two rules in `src/game/streak.ts` exist *only* to keep that property, and both
-  are load-bearing in a way that reads as harsh if you meet them alone:
+  **Coverage is a rolling entitlement, not a stock.** GDD §4.2 Option 1;
+  `src/game/streakEntitlement.ts`, wired into `streak.ts`.
+  `COVERED_DAYS_PER_WINDOW` covered days in every `WINDOW_DAYS` window, anchored
+  at signup, nothing carrying over. There is no hold cap, no earning table and
+  no balance to hoard — because a balance you hold is a quantity training can
+  make you rich in at the wrong moment, which was the defect.
 
-  - **`StreakState.signupDay` (account creation) anchors an absence until the
-    first trained day replaces it.** Idle days before a lifter's first session
-    are charged like any others. Required and non-nullable: an absent signup day
-    is an unanchored, uncharged, free window, which is the defect.
-  - **An absence that outran what was armed still consumes it.** Coverage is
-    all-or-nothing; the charge is not.
+  Three rules keep the property, and all three read as harsh if you meet them
+  alone:
 
-  Both consumptions are **reported, never silent**, and that is enforced rather
-  than promised: the read model announces what the next session will cost before
-  it costs it, the session reports what it took, and the suite drives every
-  12-day calendar at every balance asserting that no balance moves by more than
-  what was reported. The announcement side is an exhaustive switch over the read
-  model's cases, so a new screen state cannot ship with a silent debit behind it.
+  - **`StreakState.signupDay` (account creation) anchors an absence** until the
+    first trained day replaces it. Idle days before a lifter's first session are
+    charged like any others. Required and non-nullable: an absent signup day is
+    an unanchored, uncharged, free window, which is the defect.
+  - **A doomed absence still consumes everything left in the window.** This is
+    the rule whose wealth-dependence caused the residue, and **dropping it is
+    worse than the stock it replaces** — 1051 violating pairs at 60 days, 673 at
+    100, against 0. The doomed branch has no subadditive arithmetic available,
+    so its consumption must be *idempotent under splitting*, and "take
+    everything left" is the only thing that is. What the entitlement changed is
+    the blast radius: bounded by one window, restored at the next boundary.
+  - **No grant of covered days may be keyed to anything the lifter does.** A
+    grant whose arrival day the player's own training can move is the defect.
+    Measured: a covered day granted at a streak length gives 54 violating pairs
+    at 100 days; granted every N sessions, 1156; granted on a fixed calendar
+    day, 0. This binds every future earning table, season pass and reward —
+    GDD §8.3C's pass tiers were the worst offender in the document until they
+    were re-keyed to the week. Milestones therefore mark, and pay nothing.
 
-  A free absence is what an extra trained day converts into a charged one, so
-  every free case is a hole in the property. Removing either rule reopens it —
-  measured: 32 and 24 violating pairs respectively over every 13-day calendar,
-  against 0 with both. GDD §4.2 and §4.4 carry the full measurement.
+  Every consumption is **reported, never silent**, enforced rather than
+  promised: the read model announces what the next session will cost before it
+  costs it, the session reports what it took, and the suite drives every 12-day
+  calendar at every window state asserting that coverage never moves further
+  than what was reported. The announcement side is an exhaustive switch over the
+  read model's cases, so a new screen state cannot ship with a silent debit
+  behind it. Note the reading that balances is *what the day has available in
+  its window regardless of arming* — not the snapshot (stale at a boundary) and
+  not the armed count (zero for a player who declined protection, which made
+  every one of their sessions read as a silent credit).
 
-  What is still open, named rather than rounded up — and note the property does
-  **not** hold on the 40-, 60-, 80- and 100-day sweeps, which pin nonzero counts
-  rather than zero. It holds exhaustively only for calendars of 8–16 days.
+  **The verification is pinned to the shipped engine.**
+  `streakEntitlement.test.ts`'s battery grades a reference composition of grace
+  and entitlement; it and `src/game/streak.ts` are asserted byte-identical on
+  the battery's own calendars, at the shipped tuning. Without that pin the
+  battery transfers to nothing.
 
-  The cause is **rule 2 itself**: a doomed absence debits the whole armed
-  holding, so the debit is *increasing in wealth*, and training more is a way of
-  being wealthy at the wrong moment. The Recovery Day is **confiscated, not
-  spent** — a save buys a run, a confiscation buys nothing — and that
-  distinction is the whole mechanism.
+  `src/game/streakSweep.ts` holds the parameters of the sampled test: the seeds,
+  the calendar lengths and the attendance distribution, as named constants and a
+  deterministic generator, with `ENTITLEMENT_VERIFICATION` holding the battery's
+  own parameters. That file exists because the first version of this measurement
+  was reported with its seeds unstated and could not afterwards be reproduced by
+  anyone — six plausible parameterisations gave six different numbers. A
+  measurement whose inputs are not written down is an anecdote. If you take a
+  new one, put its parameters there and re-derive the counts in GDD §4.4 rather
+  than sampling at a call site.
 
-  An earlier version of this paragraph blamed milestone-income *timing*. That is
-  measured false and is recorded here rather than quietly deleted: income paid
-  on fixed calendar days, arriving identically for both lifters, still gives 81
-  violating pairs at 60 days, and a balance topped to the hold cap daily — stock
-  that can never run out — gives 194, more than the shipped 122. The
-  counterfactual that produced the old claim only ever showed income was
-  *involved*, because milestone income is the only income the sweep has.
+  **Kept as history, because a retracted diagnosis is worth more than a deleted
+  one:** an earlier version of this section blamed milestone-income *timing*.
+  That was measured false — income paid on fixed calendar days, arriving
+  identically for both lifters, still gave 81 violating pairs at 60 days, and a
+  stock that could never run out gave 194, *more* than the shipped 122. The
+  counterfactual behind the claim only ever showed income was *involved*,
+  because milestone income was the only income the sweep had. Those
+  counterfactuals can no longer be run against this engine — all three are
+  variations on a stock — and their results stand as pinned history.
 
-  Two figures worth carrying: **`longestStreak` inversions were never measured
-  past 16 days** and are 14 / 150 / 276 / 221 at 40 / 60 / 80 / 100 days. That is
-  the more serious half — a current-streak deficit heals, a lifetime best does
-  not, and milestones are paid off `longestStreak`, so an inverted best
-  permanently forfeits income. And the defect's **frequency saturates but its
-  magnitude does not**: the rate settles near 1e-3 and declines, while the worst
-  deficit reaches 189 at 400 days.
-
-  No arithmetic fix is known. Capping the debit reopens the exhaustive case;
-  `min(chargeable, armed)` is measurably identical; paying milestones off the
-  streak is the fixed-calendar-day row above. Escaping it means coverage not
-  funded from a stock, which is a GDD §8.2 decision and a human's to make.
 - **No real identity, until a human unlocks one.** No real, named athlete,
   brand, or company identity — name, logo, likeness, or wordmark — may be
   hardcoded into any asset, string, config, or code path. The licensing system
