@@ -1,0 +1,193 @@
+{
+  "capturedFrom": {
+    "capturedAt": "2026-08-05T14:05:38.479Z",
+    "url": "http://localhost:8081",
+    "sourceRoot": "/home/user/three-white-lights",
+    "commit": "ff98e5b",
+    "branch": "claude/agent-config-setup-m2r6ny",
+    "workingTree": "clean",
+    "dirtyPaths": []
+  },
+  "played": {
+    "attempted": true,
+    "doneBox": {
+      "x": 20,
+      "y": 575,
+      "width": 350,
+      "height": 48
+    },
+    "wallClockMs": 79432,
+    "landedOn": "already-trained",
+    "finalDepthHoldMs": 1000,
+    "reps": [
+      {
+        "set": "SET 1 OF 5",
+        "holdMs": 1000,
+        "outcome": "GOOD LIFT",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 1 OF 5",
+        "holdMs": 1000,
+        "outcome": "GRINDER",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 1 OF 5",
+        "holdMs": 1000,
+        "outcome": "GOOD LIFT",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 2 OF 5",
+        "holdMs": 1000,
+        "outcome": "GOOD LIFT",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 2 OF 5",
+        "holdMs": 1000,
+        "outcome": "GOOD LIFT",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 2 OF 5",
+        "holdMs": 1000,
+        "outcome": "GOOD LIFT",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 3 OF 5",
+        "holdMs": 1000,
+        "outcome": "GRINDER",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 3 OF 5",
+        "holdMs": 1000,
+        "outcome": "GOOD LIFT",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 3 OF 5",
+        "holdMs": 1000,
+        "outcome": "GRINDER",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 4 OF 5",
+        "holdMs": 1000,
+        "outcome": "GOOD LIFT",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 4 OF 5",
+        "holdMs": 1000,
+        "outcome": "GOOD LIFT",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 4 OF 5",
+        "holdMs": 1000,
+        "outcome": "GRINDER",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 5 OF 5",
+        "holdMs": 1000,
+        "outcome": "GRINDER",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 5 OF 5",
+        "holdMs": 1000,
+        "outcome": "GRINDER",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      },
+      {
+        "set": "SET 5 OF 5",
+        "holdMs": 1000,
+        "outcome": "GOOD LIFT",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+      }
+    ]
+  },
+  "checks": [
+    "  ok    the app opens on the daily session with no query string — opacity 1.000",
+    "  ok    the way to meet day is on screen (shell-open-meet) — opacity 1.000",
+    "  ok    and the point a thumb would land on belongs to it — elementFromPoint -> self",
+    "  ok    the session surface shows no Total in the shell chrome (GDD §3.2)",
+    "  ok    and no fatigue readout (GDD §3.4, §12.3)",
+    "  ok    PRESSING IT REACHES MEET DAY — no URL typed, no query string",
+    "  ok    and the daily session is no longer on screen",
+    "  ok    it lands on GDD §6.1’s weigh-in, which is what meet day opens on — opacity 1.000",
+    "  ok    the weigh-in confirms and the openers come up — the loop is live, not frozen",
+    "  ok    the openers confirm and a walk-out begins (GDD §6.2 step 1)",
+    "  ok    NO CONTROL IS DRAWN OVER THE WALK-OUT — a mis-tap here costs the attempt",
+    "  ok    and the walk-out ELAPSES on its own into the attempt — clocks running, not a screenshot",
+    "  ok    NO CONTROL IS DRAWN OVER THE ATTEMPT ITSELF",
+    "  ok    the recap renders — opacity 1.000",
+    "  ok    the way back is on screen (shell-leave-meet) — opacity 1.000",
+    "  ok    and it is what a thumb would hit — elementFromPoint -> self",
+    "  ok    PRESSING IT RETURNS TO THE DAILY SESSION",
+    "  ok    and meet day is no longer on screen",
+    "  ok    the shareable card renders — opacity 1.000",
+    "  ok    the way back is drawn on the card, whose only exit it is — opacity 1.000",
+    "  ok    and the point a thumb would land on belongs to it — elementFromPoint -> self",
+    "  ok    PRESSING IT LEAVES THE CARD — so the card is not a dead end",
+    "  ok    and the card is no longer on screen",
+    "  ok    the close-out renders — opacity 1.000",
+    "  ok    the way to meet day is on the close-out — the end of a session — opacity 1.000",
+    "  ok    and it is pressable there — elementFromPoint -> self",
+    "  ok    and it sits clear of the close-out’s DONE button rather than over it — nav y=762 vs DONE bottom=623",
+    "  ok    the close-out still shows no Total with the shell over it (GDD §3.2)",
+    "  ok    FINISH A SESSION -> REACH A MEET, in one press",
+    "  ok    and it is a fresh meet, not the frozen beat the launch URL named — opacity 1.000",
+    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1460ms from the first tap",
+    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 70821ms",
+    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 549ms",
+    "  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day",
+    "  ok    PRESSING DONE LANDS ON THE ALREADY-TRAINED SURFACE (GDD §3.2: one session a day)",
+    "  ok    the already-trained surface renders — the last screen of the daily loop — opacity 1.000",
+    "  ok    THE WAY TO MEET DAY IS ON IT, and it is the only thing on it to press — opacity 1.000",
+    "  ok    and the point a thumb would land on belongs to it — elementFromPoint -> self",
+    "  ok    the already-trained copy leaves >= 24px clear above the pill — 2 line(s), longest 34 chars, bottom y=447.5; pill top y=762.0; gap 314.5px",
+    "  ok    and the pill sat clear of the DONE button it replaced on the screen before — pill y=762.0 vs DONE bottom=623.0",
+    "  ok    the already-trained surface shows no Total either (GDD §3.2)",
+    "  ok    AND PRESSING IT REACHES MEET DAY — the daily loop does not end on a dead end",
+    "  ok    landing on the weigh-in, from a session that was actually played — opacity 1.000",
+    "  note  the played-session section cost 79432ms of wall clock",
+    "  ok    a live set renders — opacity 1.000",
+    "  ok    NO CONTROL IS DRAWN OVER a live set (beat 'set')",
+    "  ok    the rest between two sets renders — opacity 1.000",
+    "  ok    NO CONTROL IS DRAWN OVER the rest between two sets (beat 'rest')",
+    "  ok    NO CONTROL IS DRAWN OVER a live attempt (beat 'lift')",
+    "  ok    NO CONTROL IS DRAWN OVER the judges’ verdict (beat 'verdict')",
+    "  ok    NO CONTROL IS DRAWN OVER GDD §6.3’s attempt choice (beat 'attempt-select')",
+    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.961 after 3878ms",
+    "  ok    and the shell does not add a second one to it (GDD §6.3: leave that beat somber)",
+    "  ok    and pressing it returns to the daily session",
+    "  ok    CONTROL: with no cut-in up, the pill is on the same screen the probe looks at — opacity 1.000",
+    "  ok    CONTROL: and it is hit-testable there, so the probe below can see a pill — elementFromPoint -> self",
+    "  ok    ?cutin=nonsense puts no cut-in on screen — an unrecognised debug route is inert",
+    "  ok    NO SHELL CHROME IS DRAWN OVER A CUT-IN (GDD §7.2: the whole screen dismisses it) — not rendered at all",
+    "  ok    and nothing of the shell’s takes the tap that was meant to skip it — elementFromPoint at the pill’s own centre -> no box",
+    "  ok    the cut-in itself is up, so this was not measured on an empty screen — opacity 1.000",
+    "  ok    /?meet=weigh-in still resolves to meet-screen",
+    "  ok    /?meet=walkout-third still resolves to meet-screen",
+    "  ok    /?meet=recap still resolves to meet-screen",
+    "  ok    /?meet=live still resolves to meet-screen",
+    "  ok    /?session=check-in still resolves to session-screen",
+    "  ok    /?session=briefing still resolves to session-screen",
+    "  ok    /?session=close-out-accessory still resolves to session-screen",
+    "  ok    /?replay=0.95&moment=hole still resolves to lift-screen",
+    "  ok    /?replay=0.6&moment=lockout still resolves to lift-screen",
+    "  ok    /?meet=nonsense boots the daily session rather than a broken meet — opacity 1.000",
+    "  ok    the phase-list parser can read a list, and reports a missing one as missing — fixture -> [\"alpha\",\"beta-two\"] / [\"gamma\"] / null",
+    "  ok    SHELL_NAV.SESSION_PHASES is what this tool checks the browser against — shellTuning.ts [\"briefing\",\"check-in\",\"close-out\"] vs this tool [\"briefing\",\"check-in\",\"close-out\"]",
+    "  ok    SHELL_NAV.MEET_PHASES is what this tool checks the browser against — shellTuning.ts [\"recap\"] vs this tool [\"recap\"]",
+    "  ok    no beat of the MECHANIC is in the pill’s phase list (GDD §3.2, §6.2, §6.3)"
+  ],
+  "failures": [],
+  "pageErrors": []
+}

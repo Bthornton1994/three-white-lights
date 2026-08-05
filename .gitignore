@@ -48,7 +48,11 @@ public/canvaskit.wasm
 
 # Run output: state.json is tracked (it drives the progress page); the
 # generated page and most screenshot evidence are regenerable, so they are not.
-.gauntlet/shots/
+# `shots/*` and not `shots/`: git does not descend into an ignored DIRECTORY,
+# so `!.gauntlet/shots/shell/` under a `.gauntlet/shots/` rule re-includes
+# nothing and `git add -A` stages only this file. It looks like it worked.
+# Ignore the directory's CONTENTS and the negation can reach inside.
+.gauntlet/shots/*
 .gauntlet/progress.html
 
 # EXCEPT the shell run, which is graded evidence rather than a regenerable
