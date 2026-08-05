@@ -168,11 +168,42 @@ const codeChangedBetween = (from, to) =>
     .filter((line) => line.trim() !== '')
     .filter((p) => !NOT_CODE.some((prefix) => p.startsWith(prefix)));
 
+/**
+ * THE RECORDS THAT MUST EXIST, because `git ls-files` returning nothing is a
+ * PASS and that is the whole failure mode this file keeps re-learning.
+ *
+ * A critic grading A4 found it: `checkCommittedShots` iterated the tracked shot
+ * records and reported every problem it found among them — and an empty list
+ * has no problems in it. Drop the `!.gauntlet/shots/cutin/` negation from
+ * `.gitignore`, `git rm --cached` the directory, and the browser evidence is
+ * gone from the repo with `--verify` still printing "current and green". That
+ * is the FIRST of the two historical falsehoods this directory was tracked to
+ * kill — "gitignored, existed on one machine" — reachable again, with the whole
+ * suite green.
+ *
+ * A non-vacuity guard is the standard fix and it is one this run has demanded
+ * of builders repeatedly; the harness had not applied it to itself. These two
+ * paths mirror the negations in `.gitignore`. Adding a third tracked shot
+ * directory means adding it here, and the cost of forgetting is a loud failure
+ * rather than a silent pass.
+ */
+const REQUIRED_SHOT_RECORDS = [
+  '.gauntlet/shots/shell/route.json',
+  '.gauntlet/shots/cutin/frames.json',
+];
+
 const checkCommittedShots = () => {
   const tracked = git(['ls-files', '.gauntlet/shots'])
     .split('\n')
     .filter((p) => p.endsWith('.json'));
   const problems = [];
+  for (const required of REQUIRED_SHOT_RECORDS) {
+    if (!tracked.includes(required)) {
+      problems.push(
+        `${required} is NOT TRACKED — committed browser evidence has gone missing, and an untracked record is checked by nothing here`,
+      );
+    }
+  }
   for (const rel of tracked) {
     let record;
     try {
