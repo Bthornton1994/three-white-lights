@@ -1793,6 +1793,66 @@ describe('the window entitlement', () => {
     }
   });
 
+  it('NO PAY-TO-WIN, END TO END: ten purchased days do not make a five-day absence survivable', () => {
+    // THE ASSERTION GDD §8.3E'S FIRST RULE RESTS ON, driven through the shipped
+    // engine now that the purchase is real. `streakEntitlement.test.ts` makes
+    // the same check against the entitlement in isolation; this one buys through
+    // `applySettledCoveredDayPurchase` and then walks a lifter into an absence.
+    //
+    // IT HAD TO BE WRITTEN, NOT JUST KEPT. The `streak.ts`-level ceiling test
+    // this sits beside runs on a fixture whose purchased count is zero, so a
+    // mutant that raised the per-absence draw for anyone holding a purchased day
+    // — pay-to-win in one line — left it green. This is the version that bites.
+    let state: StreakState = freshState();
+    for (let i = 0; i < 10; i += 1) {
+      state = unwrap(
+        applySettledCoveredDayPurchase(state, DAY_ZERO, {
+          orderId: `order-${i}`,
+          coveredDays: 1,
+          tender: 'chalk',
+        }),
+      ).state;
+    }
+    state = unwrap(recordTrainingDay(state, DAY_ZERO)).state;
+    expect(state.entitlement.purchasedDaysLeft).toBe(10);
+    expect(coveredDaysLeftInWindow(state)).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + 10);
+
+    // The ceiling is `LONGEST_REPAIRABLE_ABSENCE_DAYS`, and money does not move
+    // it. One day past is dead however much was bought.
+    const survivable = dayAfterGap(DAY_ZERO, LONGEST_REPAIRABLE_ABSENCE_DAYS);
+    const doomed = dayAfterGap(DAY_ZERO, LONGEST_REPAIRABLE_ABSENCE_DAYS + 1);
+    expect(absenceOutcome(state, survivable).protectionHolds).toBe(true);
+    expect(
+      absenceOutcome(state, doomed).protectionHolds,
+      'ten purchased days must not buy through the per-absence ceiling',
+    ).toBe(false);
+    expect(absenceOutcome(state, doomed).breakReason).toBe('absence-longer-than-consecutive-limit');
+
+    const returned = unwrap(recordTrainingDay(state, doomed));
+    expect(returned.previousRunEnded).toBe(true);
+    expect(returned.streakAfter).toBe(1);
+    // AND THE PURCHASE IS BURNED WITH THE REST, not spared for having been paid
+    // for. A bought covered day is not a better covered day.
+    expect(returned.recoveryDaysLostToTheAbsence).toBe(
+      RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + 10,
+    );
+    expect(coveredDaysLeftInWindow(returned.state)).toBe(0);
+
+    // AND IT NEVER ADDS TO A RUN. The purchase itself moves neither figure, and
+    // says so on the outcome rather than leaving it to be checked.
+    const bought = unwrap(
+      applySettledCoveredDayPurchase(stateWithRun(9, DAY_ZERO, 1), DAY_ZERO, {
+        orderId: 'order-x',
+        coveredDays: 4,
+        tender: 'real-money',
+      }),
+    );
+    expect(bought.state.currentStreak).toBe(9);
+    expect(bought.state.longestStreak).toBe(stateWithRun(9, DAY_ZERO, 1).longestStreak);
+    expect(bought.currentStreakUnchanged).toBe(9);
+    expect(bought.longestStreakUnchanged).toBe(bought.state.longestStreak);
+  });
+
   it('AND THE EXEMPTION IS NOT A HOLE: the purchase credits the ORDER, and never a day more', () => {
     // THE GAP THE TWO GUARDS ABOVE LEFT, CLOSED. Both of them let the one
     // exempt entry point do whatever it likes — the declaration allowlist
