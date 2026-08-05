@@ -603,6 +603,31 @@ is `COVERED_DAYS_PER_WINDOW` covered days in every `WINDOW_DAYS` window,
 anchored at the signup day.** `src/game/streakEntitlement.ts` is the whole
 mechanic; §4.4 has the verification the ruling was conditional on.
 
+> **IMPLEMENTATION STATUS — READ THIS BEFORE QUOTING THE PARAGRAPHS BELOW.**
+> The mechanic is **built and verified** (`src/game/streakEntitlement.ts`,
+> `streakEntitlement.test.ts`). It is **not yet wired into `src/game/streak.ts`**,
+> which still runs the Recovery Day stock. So the behaviour that ships today is
+> still the stock behaviour, **with the residue §4.4 measures on it** — 13 / 122
+> / 142 / 74 violating pairs at 40 / 60 / 80 / 100 days and a worst deficit
+> reaching 189 at 400. CLAUDE.md still describes the stock for exactly that
+> reason and is correct as written; it needs its edit when the wiring lands, not
+> before.
+>
+> **What the wiring still has to do**, so that it is a list and not a surprise:
+> replace `recoveryDayBalance` and `armedRecoveryDays` on `StreakState` with the
+> entitlement snapshot; delete `grantRecoveryDays`, the hold cap and the §4.2
+> earning table; re-point `DayOpening` and `RecoveryDaySave` at covered days;
+> and carry the state-shape change through the **same server boundary the
+> `signupDay` field went through**, including a migration for accounts that
+> carry a balance. The read model's "reported, never silent" guarantee and the
+> app-opening purity invariant both have to come through intact — they are the
+> two things this module has repeatedly been most expensive to get back.
+>
+> It was left out of this round deliberately rather than started and abandoned:
+> it touches 232 references in the test suite, and a half-finished version of it
+> would put the two invariants above at risk for no gain. The verification came
+> first because a design that failed it must not get 232 references built on it.
+
 **Why.** RULE 2 above debits a doomed absence the whole armed holding, which is
 what makes splitting a doomed absence cost the same as leaving it whole — and it
 is therefore what makes the exhaustive sweep clean. The same rule makes the
