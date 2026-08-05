@@ -1,4 +1,13 @@
 {
+  "capturedFrom": {
+    "capturedAt": "2026-08-05T15:57:24.632Z",
+    "url": "http://localhost:8081",
+    "sourceRoot": "/home/user/three-white-lights",
+    "commit": "49e21c8",
+    "branch": "claude/agent-config-setup-m2r6ny",
+    "workingTree": "clean",
+    "dirtyPaths": []
+  },
   "frames": [
     {
       "moment": "third-attempt-walkout",
@@ -213,18 +222,20 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 701,
+    "stillUpAt": 700,
     "stillUp": true,
-    "goneAt": 2102,
+    "goneAt": 1559,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 18,
-    "goneAt": 30,
+    "tappedAt": 29,
+    "goneAt": 36,
     "wellInsideTheHold": true
   },
   "playedPath": {
     "onWalkout": null,
     "onBombOut": "THAT IS THE MEET"
-  }
+  },
+  "failures": [],
+  "pageErrors": []
 }
