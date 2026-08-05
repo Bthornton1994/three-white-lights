@@ -70,6 +70,15 @@
  * exist and a re-tune that updates two of them used to leave this one silently
  * wrong, in the only check that runs a browser.
  *
+ * EVERY NUMBER IN THIS FILE THAT A SCREEN IS JUDGED AGAINST IS EITHER DERIVED
+ * OR CONTROLLED. That is not a style rule, it is the defect this file keeps
+ * finding in itself: `BOMB_OUT_EXIT_DRAWN_AT_MS` is `meetTuning.ts`'s
+ * arithmetic rather than a settle somebody liked; the already-trained
+ * clearance floor is `SHELL_LAYOUT`'s reserved band divided out, after a typed
+ * `24` sat there for a while passing by a factor of thirteen; `PARSER_FIXTURE`
+ * and `LINE_BOX_PROBE` exist because a parser and a counter that have stopped
+ * working agree with everything they are pointed at.
+ *
  * Usage:
  *   node tools/verify-shell-route.mjs [--url URL] [--settle MS] [--out DIR]
  *                                     [--src REPO_ROOT]
@@ -81,6 +90,8 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import {
+  SESSION_DRIVE,
+  SESSION_PROMPTS,
   openSessionToFirstSet,
   playSessionToCloseOut,
   pressCloseOutAction,
@@ -108,14 +119,30 @@ const outDir = path.resolve(flag('out', '.gauntlet/shots/shell'));
  * tree the source-level claims were made about, instead of guessing.
  */
 const srcRoot = path.resolve(flag('src', path.join(path.dirname(fileURLToPath(import.meta.url)), '..')));
-// Must exceed SHELL_NAV.FADE_IN_DELAY_MS + FADE_IN_MS (320 + 220 = 540), plus
-// whatever the screen underneath takes to assemble. Deliberately generous: this
-// tool is proving reachability, not measuring latency.
-//
-// IT IS NOT ENOUGH FOR EVERY SCREEN, and `BOMB_OUT_SETTLE_MS` below is what
-// that costs. One global settle is exactly how this tool came to photograph a
-// bomb-out with no exit anywhere on it and report the exit as present.
-const settleMs = Number(flag('settle', '2600'));
+/**
+ * Must exceed SHELL_NAV.FADE_IN_DELAY_MS + FADE_IN_MS (320 + 220 = 540), plus
+ * whatever the screen underneath takes to assemble. Deliberately generous: this
+ * tool is proving reachability, not measuring latency.
+ *
+ * IT IS NOT ENOUGH FOR EVERY SCREEN, and `BOMB_OUT_SETTLE_MS` below is what
+ * that costs. One global settle is exactly how this tool came to photograph a
+ * bomb-out with no exit anywhere on it and report the exit as present.
+ *
+ * Named rather than left as a bare literal inside the `flag()` call: it is the
+ * number every screen in this file is read at, and an argument list is not a
+ * place a playtester looks.
+ */
+const DEFAULT_SETTLE_MS = 2600;
+const settleMs = Number(flag('settle', String(DEFAULT_SETTLE_MS)));
+
+/**
+ * THE PHONE THIS TOOL MEASURES ON, in one place.
+ *
+ * `newContext` renders at it AND the already-trained geometry below is derived
+ * from it. Two copies of 844 would let the derivation describe a screen the
+ * browser was not drawing.
+ */
+const VIEWPORT = Object.freeze({ WIDTH: 390, HEIGHT: 844 });
 
 /**
  * ===========================================================================
@@ -212,18 +239,156 @@ const NEVER_A_PILL_BEAT = Object.freeze([
 ]);
 
 /**
- * How much clear space the already-trained copy must leave above the pill.
+ * Which of those beats a browser probe below ACTUALLY VISITED, filled in by the
+ * probes themselves as they run.
  *
- * A PIN ON THE COPY LENGTH, measured rather than argued. That surface is
- * `styles.centred` — `flex: 1`, `justifyContent: 'center'` — so its two lines
- * sit in the middle band and the pill is anchored `NAV_BOTTOM_INSET` from the
- * bottom, and today they do not touch. Nothing pins the copy: lengthen
- * `SESSION_COPY.ALREADY_TRAINED_SUBHEAD` enough for it to wrap to three or four
- * lines and the block grows in both directions from the centre until it reaches
- * the pill. Asserting only "they do not overlap" would report that the day it
- * became true by one pixel. This asserts there is still room.
+ * ===========================================================================
+ * WHY THE LIST ABOVE NEEDED A CONTROL AT ALL
+ * ===========================================================================
+ * The only thing that used to be asserted about it was
+ * `NEVER_A_PILL_BEAT ∩ SHELL_NAV_EXPECTED = ∅`. EMPTY THE LIST TO `[]` AND
+ * THAT IS TRUE. Misspell a row and it is true. `trespassing` comes back `[]`
+ * either way and the check goes green — on the one statement this file calls
+ * the one a re-tune is not allowed to move, and the only one with no control on
+ * it. `shellRoute.test.ts:428-446` writes both halves out explicitly for
+ * `SHELL_NAV`; this had neither.
+ *
+ * The probes below already hard-code their own phase strings, which is what
+ * makes the fix cheap and two-way: pin the LIST and the PROBED SET equal, in
+ * both directions. Emptying the list is then red (eight beats probed, none
+ * listed); misspelling a row is red twice over (one listed and never probed,
+ * one probed and not listed); and dropping a probe is red as well, which is the
+ * failure that let `deliberation` sit on this list with no browser behind it.
  */
-const ALREADY_TRAINED_NAV_CLEARANCE_PX = 24;
+const beatsProbedInTheBrowser = new Set();
+
+/**
+ * ===========================================================================
+ * THE SHELL'S AND THE SESSION'S GEOMETRY, RESTATED SO THE PINS BELOW CAN BE
+ * ARITHMETIC RATHER THAN TYPED NUMBERS
+ * ===========================================================================
+ * Restated rather than imported, on the same principle as the testIDs and
+ * `BOMB_OUT_EXIT_DRAWN_AT_MS` above: a check that reads its expectation out of
+ * the module under test agrees with a broken module.
+ *
+ * WHAT KEEPS THE RESTATEMENT HONEST is not a regex over the source — it is that
+ * `NAV_TOP_Y` is asserted against the pill THE BROWSER ACTUALLY DREW, within
+ * `NAV_TOP_TOLERANCE_PX`. Re-tune `NAV_BOTTOM_INSET` or `NAV_HEIGHT` in
+ * `shellTuning.ts` without touching this and that check names the drift with
+ * both numbers in it, which is more than a source scan would have proved.
+ */
+const SHELL_LAYOUT_RESTATED = Object.freeze({
+  /** src/shell/shellTuning.ts — SHELL_LAYOUT.NAV_BOTTOM_INSET */
+  NAV_BOTTOM_INSET: 44,
+  /** SHELL_LAYOUT.NAV_HEIGHT */
+  NAV_HEIGHT: 38,
+});
+
+const SESSION_LAYOUT_RESTATED = Object.freeze({
+  /** src/game/sessionTuning.ts — SESSION_LAYOUT.ROW_GAP, the gap `styles.centred` sets */
+  ROW_GAP: 10,
+  /** SESSION_LAYOUT.HEADLINE_FONT */
+  HEADLINE_FONT: 22,
+  /** SESSION_LAYOUT.SUBHEAD_FONT */
+  SUBHEAD_FONT: 13,
+});
+
+/** The top edge of the drawn pill: 844 - 44 - 38 = 762. */
+const NAV_TOP_Y =
+  VIEWPORT.HEIGHT - SHELL_LAYOUT_RESTATED.NAV_BOTTOM_INSET - SHELL_LAYOUT_RESTATED.NAV_HEIGHT;
+/** Sub-pixel rounding and a 1px border. Not a style allowance. */
+const NAV_TOP_TOLERANCE_PX = 2;
+
+/**
+ * ===========================================================================
+ * THE CLEARANCE FLOOR IS NOW A DIVISION, AND IT IS NOT THE COPY PIN
+ * ===========================================================================
+ * IT USED TO BE `24`, under a comment saying it existed so that lengthening
+ * `SESSION_COPY.ALREADY_TRAINED_SUBHEAD` "to three or four lines" would be
+ * reported. IT WOULD NOT HAVE BEEN, and the arithmetic is not close. The block
+ * is two `<Text>` nodes in `styles.centred` (`flex: 1`,
+ * `justifyContent: 'center'`), so it is ~51px tall centred in 844 and its
+ * bottom sits at 447.5 against a pill top of 762 — 314.5px of clearance against
+ * a 24px floor. For the check to go red the block has to reach ~632px tall,
+ * about forty wrapped lines. The three-or-four-line regression its own comment
+ * named adds ~15-25px and passes with ~290px to spare. It had become a
+ * measurement of something true rather than a pin on anything.
+ *
+ * TWO DIFFERENT CLAIMS WERE HIDING IN THE ONE NUMBER. They are now two checks:
+ *
+ * THE FLOOR (here) is a claim about the BOTTOM-ANCHORED CHROME, and it is
+ * derived from the promise `SHELL_LAYOUT` writes down in its own comment:
+ * "every surface the shell draws over ... centres its content and leaves the
+ * bottom sixth of the screen empty, so this is the one band where chrome
+ * overlaps nothing." The clearance that promise implies is the distance from
+ * the top of the reserved band to the top of the pill:
+ *
+ *     reserved band top   844 - 844/6     =  703.33
+ *     pill top            844 - 44 - 38   =  762
+ *     floor                               =   58.67 px
+ *
+ * Move the pill up or make it taller and the floor drops on its own, which is
+ * right: less empty band, less clearance to promise. Nothing here is typed.
+ *
+ * SAY PLAINLY WHAT IT STILL DOES NOT DO. A floor on the gap beneath a CENTRED
+ * block is loose by construction, because the block grows in both directions at
+ * once. This guards the chrome's band. It does NOT catch the copy regression
+ * its predecessor claimed to catch — the two checks below do, by asserting on
+ * the thing that actually moves when the copy changes.
+ */
+const CHROME_BAND_FRACTION = 6;
+const CHROME_BAND_TOP_Y = VIEWPORT.HEIGHT - VIEWPORT.HEIGHT / CHROME_BAND_FRACTION;
+const ALREADY_TRAINED_NAV_CLEARANCE_PX = NAV_TOP_Y - CHROME_BAND_TOP_Y;
+
+/**
+ * ===========================================================================
+ * THE PIN THAT BITES: HOW BIG THE ALREADY-TRAINED COPY MAY GET
+ * ===========================================================================
+ * `AlreadyTrained` is a headline and a subhead. ONE LINE EACH is the layout it
+ * was drawn for, and a subhead that wraps is exactly the change the old comment
+ * was worried about — so the LINE COUNT is what gets asserted, measured as line
+ * boxes (`Range.getClientRects()`) rather than as leaf elements. The field this
+ * file used to report as `lines` counted ELEMENTS and was therefore 2 whatever
+ * the copy said, which is why it could be reported and never asserted on.
+ *
+ * The height ceiling is the second half and catches what a line count cannot:
+ * the same two lines at a bigger font. `line-height: normal` measured 26/22 =
+ * 1.18 for the headline and 15/13 = 1.15 for the subhead in the browser this
+ * was written against. `LINE_BOX_FACTOR` is a deliberately loose upper bound on
+ * that, because the line count is the tight half and a pixel ceiling one font
+ * metric away from red would be a flaky check rather than a strict one.
+ *
+ *     22 x 1.35  +  ROW_GAP 10  +  13 x 1.35  =  57.25 px
+ *
+ * against a block that measures 26 + 10 + 15 = 51.
+ */
+const ALREADY_TRAINED_LINES = Object.freeze({ HEADLINE: 1, SUBHEAD: 1 });
+const ALREADY_TRAINED_MAX_LINE_BOXES =
+  ALREADY_TRAINED_LINES.HEADLINE + ALREADY_TRAINED_LINES.SUBHEAD;
+const LINE_BOX_FACTOR = 1.35;
+const ALREADY_TRAINED_MAX_COPY_HEIGHT_PX =
+  ALREADY_TRAINED_LINES.HEADLINE * SESSION_LAYOUT_RESTATED.HEADLINE_FONT * LINE_BOX_FACTOR +
+  SESSION_LAYOUT_RESTATED.ROW_GAP +
+  ALREADY_TRAINED_LINES.SUBHEAD * SESSION_LAYOUT_RESTATED.SUBHEAD_FONT * LINE_BOX_FACTOR;
+
+/**
+ * The probe that proves the line-box counter can count past one.
+ *
+ * Same job as `PARSER_FIXTURE` below: a counter that has stopped counting
+ * reports "one line" about every block it is pointed at, and "<= 2 line boxes"
+ * would then be a check that cannot fail — the precise defect this whole block
+ * is here to repair, reintroduced one level down. So a detached element of a
+ * known width holding a known-wrapping string is measured by THE SAME code path
+ * and removed again, and the check fails if it does not come back over
+ * `EXPECT_AT_LEAST`. (Measured at 3 line boxes / 48px in the browser this was
+ * written against.)
+ */
+const LINE_BOX_PROBE = Object.freeze({
+  WIDTH_PX: 120,
+  FONT_PX: 13,
+  TEXT: 'one two three four five six seven eight nine ten eleven twelve',
+  EXPECT_AT_LEAST: 3,
+});
 
 /**
  * ===========================================================================
@@ -266,14 +431,30 @@ function provenance() {
 }
 
 const failures = [];
-const notes = [];
+/**
+ * CHECKS AND NOTES ARE NOT THE SAME THING AND NO LONGER SHARE AN ARRAY.
+ *
+ * They used to, and the summary printed the length of the shared one, so this
+ * tool's headline read "PASSED 74 checks" over 72 checks and 2 free-text notes.
+ * Small, but a run graded on counted claims cannot have its own count be a
+ * different number from the thing it names. `log` keeps them interleaved in the
+ * order they happened, for the console and for `route.json`.
+ */
+const checks = [];
+const observations = [];
+const log = [];
 const check = (ok, what, detail) => {
   const line = `${what}${detail === undefined ? '' : ` — ${detail}`}`;
-  if (ok) notes.push(`  ok    ${line}`);
-  else {
-    failures.push(line);
-    notes.push(`  FAIL  ${line}`);
-  }
+  const entry = `  ${ok ? 'ok  ' : 'FAIL'}  ${line}`;
+  if (!ok) failures.push(line);
+  checks.push(entry);
+  log.push(entry);
+};
+/** An observation, deliberately NOT a claim. Counted separately. */
+const note = (text) => {
+  const entry = `  note  ${text}`;
+  observations.push(entry);
+  log.push(entry);
 };
 
 const browser = await chromium.launch({
@@ -286,7 +467,7 @@ const browser = await chromium.launch({
   ],
 });
 const context = await browser.newContext({
-  viewport: { width: 390, height: 844 },
+  viewport: { width: VIEWPORT.WIDTH, height: VIEWPORT.HEIGHT },
   deviceScaleFactor: 2,
 });
 const page = await context.newPage();
@@ -440,13 +621,29 @@ async function hitTest(id) {
 const bodyText = () => page.evaluate(() => (document.body.textContent ?? '').slice(0, 4000));
 
 /**
- * The smallest rectangle containing every LINE OF TEXT drawn inside `id`.
+ * The smallest rectangle containing every LINE OF TEXT drawn inside `id`, its
+ * height, and HOW MANY LINE BOXES it was laid out into.
  *
  * Not the container's box. `styles.centred` is `flex: 1` and therefore fills
  * the screen, so measuring the container against the pill would "prove" a
  * collision that is not there and could never prove its absence. What a player
  * sees is the text, so the text is what gets measured — leaf elements only,
  * with a non-empty box and something in them.
+ *
+ * `lineBoxes` IS THE FIELD THAT MOVES WHEN COPY CHANGES, and the reason this
+ * function was changed. It used to return `lines`, which counted leaf ELEMENTS:
+ * on the already-trained surface that is 2 no matter how long the subhead gets,
+ * so it was a number that could be printed and never asserted on.
+ *
+ * IT COUNTS DISTINCT RECT TOPS, NOT RECTS. A `Range` over a node's contents
+ * returns a client rect per laid-out text box, and React Native Web's `<Text>`
+ * carries `white-space: pre-wrap`, which splits ONE visual line into several
+ * boxes wherever a preserved space sits at a wrap. Measured: a subhead wrapped
+ * to four visible lines reported SEVEN rects. Every box on the same line shares
+ * a `top`, so collapsing on the rounded top gives the number a reader means by
+ * "three or four lines" — and the failure text then says something a human can
+ * check against the screenshot beside it instead of a number only this function
+ * understands.
  */
 async function drawnTextBox(id) {
   return page.evaluate((wanted) => {
@@ -456,7 +653,8 @@ async function drawnTextBox(id) {
     let bottom = -Infinity;
     let left = Infinity;
     let right = -Infinity;
-    let lines = 0;
+    let leaves = 0;
+    let lineBoxes = 0;
     let longest = 0;
     for (const node of root.querySelectorAll('*')) {
       if (node.querySelector('*') !== null) continue; // leaves only
@@ -468,11 +666,50 @@ async function drawnTextBox(id) {
       bottom = Math.max(bottom, r.bottom);
       left = Math.min(left, r.left);
       right = Math.max(right, r.right);
-      lines += 1;
+      leaves += 1;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const tops = new Set();
+      for (const rect of range.getClientRects()) tops.add(Math.round(rect.top));
+      // A drawn leaf occupies at least one line even where the range reports
+      // no rects at all, so this can never read as fewer lines than there are.
+      lineBoxes += Math.max(1, tops.size);
       longest = Math.max(longest, text.length);
     }
-    return lines === 0 ? null : { top, bottom, left, right, lines, longest };
+    return leaves === 0
+      ? null
+      : { top, bottom, left, right, height: bottom - top, leaves, lineBoxes, longest };
   }, id);
+}
+
+/**
+ * Count the line boxes of a block whose answer is known, using the same code
+ * path `drawnTextBox` uses, and take it away again.
+ *
+ * The probe is appended to `document.body` as a SIBLING of the React root and
+ * removed in a `finally`, so nothing of the app is touched. See
+ * `LINE_BOX_PROBE` for why a counter needs a control at all.
+ */
+async function lineBoxProbe() {
+  return page.evaluate((spec) => {
+    const probe = document.createElement('div');
+    probe.style.cssText = `position:absolute;left:-99999px;top:0;width:${spec.WIDTH_PX}px;font-size:${spec.FONT_PX}px;`;
+    probe.textContent = spec.TEXT;
+    // `pre-wrap` too, so the probe is measured through the same quirk the
+    // surface is. A control that took an easier path than the reading it
+    // vouches for is not a control.
+    probe.style.whiteSpace = 'pre-wrap';
+    document.body.appendChild(probe);
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(probe);
+      const tops = new Set();
+      for (const rect of range.getClientRects()) tops.add(Math.round(rect.top));
+      return Math.max(1, tops.size);
+    } finally {
+      probe.remove();
+    }
+  }, LINE_BOX_PROBE);
 }
 
 // ---------------------------------------------------------------------------
@@ -480,16 +717,22 @@ async function drawnTextBox(id) {
 // ---------------------------------------------------------------------------
 
 /**
- * The phase names inside `SHELL_NAV.<name>` in a `shellTuning.ts` source text.
+ * The phase names inside a frozen list called `<name>` in a `.ts` source text.
  *
  * A regex over source rather than an import, for the reason the whole file
- * gives: this is a `.mjs` tool and that is a `.ts` module with `as const
- * satisfies` on it. Returns null when the shape is not found at all, which is
+ * gives: this is a `.mjs` tool and those are `.ts` modules with `as const
+ * satisfies` on them. Returns null when the shape is not found at all, which is
  * itself reported — a parser that quietly matched nothing would be the vacuous
  * check this exists to avoid.
+ *
+ * TWO SHAPES, because two different kinds of list are read through it: the
+ * PROPERTY form (`SESSION_PHASES: Object.freeze([...])`, inside `SHELL_NAV`)
+ * and the EXPORT form (`export const MEET_DAY_PHASES = Object.freeze([...])`,
+ * which is how `session.ts` and `meetDay.ts` write the game's own phase unions
+ * down). Both are in the fixture below.
  */
-function phasesInTuning(source, name) {
-  const found = new RegExp(`${name}:\\s*Object\\.freeze\\(\\[([\\s\\S]*?)\\]`).exec(source);
+function phaseListInSource(source, name) {
+  const found = new RegExp(`${name}\\s*[:=]\\s*Object\\.freeze\\(\\[([\\s\\S]*?)\\]`).exec(source);
   if (found === null) return null;
   return [...found[1].matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
 }
@@ -507,19 +750,38 @@ const PARSER_FIXTURE = `
     'beta-two',
   ] as const satisfies readonly Thing[]),
   OTHER_PHASES: Object.freeze(['gamma'] as const satisfies readonly Thing[]),
+  export const EXPORTED_PHASES = Object.freeze([
+    'delta',
+  ] as const satisfies readonly Thing[]);
 `;
+
+/**
+ * Where the game writes down every beat it actually has.
+ *
+ * Read so that a row of `NEVER_A_PILL_BEAT` naming a phase that does not exist
+ * — a typo, or a beat that was renamed out from under it — is reported instead
+ * of quietly passing every negative check it appears in. `shellRoute.test.ts`
+ * gets this from the type checker; a `.mjs` tool cannot, so it reads the same
+ * two lists the type is spelled out in.
+ */
+const GAME_PHASE_LISTS = Object.freeze([
+  Object.freeze({ file: ['src', 'game', 'session.ts'], name: 'SESSION_PHASES' }),
+  Object.freeze({ file: ['src', 'game', 'meetDay.ts'], name: 'MEET_DAY_PHASES' }),
+]);
 
 async function checkNavTableMatchesTuning() {
   // Does the parser work at all?
-  const fixtureA = phasesInTuning(PARSER_FIXTURE, 'DEMO_PHASES');
-  const fixtureB = phasesInTuning(PARSER_FIXTURE, 'OTHER_PHASES');
-  const fixtureC = phasesInTuning(PARSER_FIXTURE, 'ABSENT_PHASES');
+  const fixtureA = phaseListInSource(PARSER_FIXTURE, 'DEMO_PHASES');
+  const fixtureB = phaseListInSource(PARSER_FIXTURE, 'OTHER_PHASES');
+  const fixtureC = phaseListInSource(PARSER_FIXTURE, 'ABSENT_PHASES');
+  const fixtureD = phaseListInSource(PARSER_FIXTURE, 'EXPORTED_PHASES');
   check(
     JSON.stringify(fixtureA) === JSON.stringify(['alpha', 'beta-two']) &&
       JSON.stringify(fixtureB) === JSON.stringify(['gamma']) &&
+      JSON.stringify(fixtureD) === JSON.stringify(['delta']) &&
       fixtureC === null,
-    'the phase-list parser can read a list, and reports a missing one as missing',
-    `fixture -> ${JSON.stringify(fixtureA)} / ${JSON.stringify(fixtureB)} / ${JSON.stringify(fixtureC)}`,
+    'the phase-list parser reads both list shapes, and reports a missing one as missing',
+    `fixture -> ${JSON.stringify(fixtureA)} / ${JSON.stringify(fixtureB)} / ${JSON.stringify(fixtureD)} / ${JSON.stringify(fixtureC)}`,
   );
 
   const tuningPath = path.join(srcRoot, 'src', 'shell', 'shellTuning.ts');
@@ -535,7 +797,7 @@ async function checkNavTableMatchesTuning() {
     ['SESSION_PHASES', SHELL_NAV_EXPECTED.SESSION_PHASES],
     ['MEET_PHASES', SHELL_NAV_EXPECTED.MEET_PHASES],
   ]) {
-    const inTuning = phasesInTuning(source, name);
+    const inTuning = phaseListInSource(source, name);
     const mine = [...expected].sort();
     check(
       inTuning !== null && JSON.stringify(inTuning) === JSON.stringify(mine),
@@ -544,9 +806,49 @@ async function checkNavTableMatchesTuning() {
     );
   }
 
+  // -------------------------------------------------------------------------
   // ...and the beats the design says may never carry one, still do not.
-  const listed = [...SHELL_NAV_EXPECTED.SESSION_PHASES, ...SHELL_NAV_EXPECTED.MEET_PHASES];
-  const trespassing = NEVER_A_PILL_BEAT.filter((beat) => listed.includes(beat));
+  //
+  // FOUR STATEMENTS, NOT ONE. Only the last of them used to be here, and it is
+  // the only one of the four that an EMPTY `NEVER_A_PILL_BEAT` satisfies. See
+  // the block above `beatsProbedInTheBrowser`.
+  // -------------------------------------------------------------------------
+  check(
+    NEVER_A_PILL_BEAT.length > 0,
+    'the list of beats a pill may never appear on is not empty — the mutation the check below passes',
+    `${NEVER_A_PILL_BEAT.length} beat(s): ${NEVER_A_PILL_BEAT.join(', ')}`,
+  );
+
+  const gamePhases = [];
+  let unreadable = null;
+  for (const { file, name } of GAME_PHASE_LISTS) {
+    const where = path.join(srcRoot, ...file);
+    const text = await readFile(where, 'utf8').catch(() => null);
+    const found = text === null ? null : phaseListInSource(text, name);
+    if (found === null) unreadable = `${name} in ${where}`;
+    else gamePhases.push(...found);
+  }
+  const notARealBeat = NEVER_A_PILL_BEAT.filter((beat) => !gamePhases.includes(beat));
+  check(
+    unreadable === null && notARealBeat.length === 0,
+    'every beat on that list is a beat the game actually has (session.ts, meetDay.ts)',
+    unreadable !== null
+      ? `could not read ${unreadable}`
+      : notARealBeat.length === 0
+        ? `all ${NEVER_A_PILL_BEAT.length} found among the ${gamePhases.length} phases the game declares`
+        : `not phases at all: ${notARealBeat.join(', ')}`,
+  );
+
+  const probed = [...beatsProbedInTheBrowser].sort();
+  const forbidden = [...NEVER_A_PILL_BEAT].sort();
+  check(
+    JSON.stringify(probed) === JSON.stringify(forbidden),
+    'and every one of them was PROBED in a browser above, with nothing probed that is not on it',
+    `listed ${JSON.stringify(forbidden)} vs probed ${JSON.stringify(probed)}`,
+  );
+
+  const pillBeats = [...SHELL_NAV_EXPECTED.SESSION_PHASES, ...SHELL_NAV_EXPECTED.MEET_PHASES];
+  const trespassing = NEVER_A_PILL_BEAT.filter((beat) => pillBeats.includes(beat));
   check(
     trespassing.length === 0,
     'no beat of the MECHANIC is in the pill’s phase list (GDD §3.2, §6.2, §6.3)',
@@ -802,12 +1104,18 @@ const playedOut = { attempted: true };
   let played = { reachedCloseOut: false, reps: [] };
   if (opened.reached) {
     played = await playSessionToCloseOut(page);
+    // `drove` is in the detail, both ways, because WITHOUT IT THE TWO FAILURES
+    // READ THE SAME AND THE TEXT BLAMES THE APP. "The driver stopped
+    // recognising the DRIVE cue" and "the app stopped banking reps" produce the
+    // identical "the loop left the sets without closing out"; the count of reps
+    // that got past a drive press is what separates them.
+    const drove = played.reps.filter((rep) => rep.drove === true).length;
     check(
       played.reachedCloseOut,
       'and it plays through to GDD §3.2’s close-out',
       played.reachedCloseOut
-        ? `${played.reps.length} reps in ${played.ms}ms`
-        : `${played.why} (after ${played.reps.length} reps)`,
+        ? `${played.reps.length} reps in ${played.ms}ms, ${drove} of them past a DRIVE cue`
+        : `${played.why} — ${played.reps.length} reps, ${drove} past a DRIVE cue (0 there means THIS DRIVER stopped recognising ${JSON.stringify(SESSION_PROMPTS.DRIVE)}, not that the app stopped banking)`,
     );
   }
 
@@ -827,7 +1135,23 @@ const playedOut = { attempted: true };
     // that answers in 550 ms, because the submitting effect listed the cache it
     // wrote in its own dependencies and so cancelled its own request. Every
     // node test passed on that tree.
+    //
+    // THE CONTROL COMES FIRST, because the check under it has a way of passing
+    // without watching anything. `waitForCloseOutSettled` counts an ABSENT tag
+    // as settled — deliberately, and rightly: the accessory close-out has no
+    // e1RM row and "no number to be unsure about" is not "unsure". But rename
+    // `close-out-e1rm-tag` and `close-out-streak-tag` and the ONE check written
+    // to catch the 22-second SAVING defect returns `settled: true` at 0ms and
+    // passes over an empty DOM. So the wait now reports which tags it ever saw,
+    // and seeing one is its own claim.
     const settled = await waitForCloseOutSettled(page);
+    check(
+      settled.sawAnyTag,
+      'CONTROL: the close-out has a certainty tag for that wait to watch',
+      settled.sawAnyTag
+        ? `${settled.tagsSeen.join(', ')} in the DOM`
+        : `neither ${Object.values(SESSION_DRIVE.CLOSE_OUT_TAG_IDS).join(' nor ')} is in the DOM, so "settled" was decided at ${settled.ms}ms over nothing`,
+    );
     check(
       settled.settled,
       'the close-out’s numbers settle — the server’s answer actually lands',
@@ -839,8 +1163,8 @@ const playedOut = { attempted: true };
     // fresh check-in for a day they have already trained. Whether that wants a
     // disabled button, a settled-only DONE, or nothing at all is a close-out
     // decision, not a shell one. Noted here so it is written down somewhere.
-    notes.push(
-      '  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day',
+    note(
+      'DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day, which the server then refuses',
     );
 
     // Measured BEFORE the press, because the button is gone afterwards. Used
@@ -887,19 +1211,60 @@ const playedOut = { attempted: true };
       `elementFromPoint -> ${alreadyHit.why}`,
     );
 
-    // ---- the layout argument, converted into a measurement -----------------
-    // `styles.centred` was an argument that the copy and the pill do not
-    // collide. This is the photograph's arithmetic.
+    // ---- the layout argument, converted into measurements ------------------
+    //
+    // `styles.centred` was an ARGUMENT that the copy and the pill do not
+    // collide. What stood here was one measurement of the gap between them
+    // against a typed 24px, which was true, was 13x looser than it read, and
+    // could not fail on the copy change its own comment named. These are the
+    // photograph's arithmetic, split into the claims that were tangled in it:
+    // the COPY may not grow (line count, then height) and the CHROME's reserved
+    // band stays clear. See the block above `ALREADY_TRAINED_NAV_CLEARANCE_PX`.
     const copy = await drawnTextBox('session-already-trained');
     const navBox = alreadyHit.box ?? null;
+
+    // The control on the instrument, before either reading taken with it.
+    const probeLineBoxes = await lineBoxProbe();
+    check(
+      probeLineBoxes >= LINE_BOX_PROBE.EXPECT_AT_LEAST,
+      'CONTROL: the line-box counter reports a wrapped block as more than one line',
+      `a ${LINE_BOX_PROBE.WIDTH_PX}px-wide probe -> ${probeLineBoxes} line box(es), expected >= ${LINE_BOX_PROBE.EXPECT_AT_LEAST}`,
+    );
+
+    check(
+      copy !== null && copy.lineBoxes <= ALREADY_TRAINED_MAX_LINE_BOXES,
+      `the already-trained copy is still ${ALREADY_TRAINED_MAX_LINE_BOXES} lines — one headline, one subhead`,
+      copy === null
+        ? 'no drawn copy to measure on the already-trained surface'
+        : `${copy.lineBoxes} line box(es) across ${copy.leaves} text node(s), longest ${copy.longest} chars`,
+    );
+
+    check(
+      copy !== null && copy.height <= ALREADY_TRAINED_MAX_COPY_HEIGHT_PX,
+      `and no taller than ${ALREADY_TRAINED_MAX_COPY_HEIGHT_PX.toFixed(2)}px, the height that line budget implies`,
+      copy === null
+        ? 'no drawn copy to measure on the already-trained surface'
+        : `${copy.height.toFixed(1)}px tall, y ${copy.top.toFixed(1)}..${copy.bottom.toFixed(1)}`,
+    );
+
+    // The pill really is where SHELL_LAYOUT puts it, so the floor derived from
+    // those two numbers is a floor on THIS screen and not on a stale copy.
+    check(
+      navBox !== null && Math.abs(navBox.y - NAV_TOP_Y) <= NAV_TOP_TOLERANCE_PX,
+      `the pill’s top is where SHELL_LAYOUT puts it (y=${NAV_TOP_Y}), so the floor below is derived from the drawn screen`,
+      navBox === null
+        ? 'no pill to measure'
+        : `drawn at y=${navBox.y.toFixed(1)} against a derived ${NAV_TOP_Y}`,
+    );
+
     check(
       copy !== null && navBox !== null && navBox.y - copy.bottom >= ALREADY_TRAINED_NAV_CLEARANCE_PX,
-      `the already-trained copy leaves >= ${ALREADY_TRAINED_NAV_CLEARANCE_PX}px clear above the pill`,
+      `and it stays out of the band SHELL_LAYOUT reserves for chrome — >= ${ALREADY_TRAINED_NAV_CLEARANCE_PX.toFixed(2)}px clear above the pill`,
       copy === null
         ? 'no drawn copy to measure on the already-trained surface'
         : navBox === null
-          ? `copy measured (${copy.lines} line(s), bottom y=${copy.bottom.toFixed(1)}) but there is no pill to measure it against`
-          : `${copy.lines} line(s), longest ${copy.longest} chars, bottom y=${copy.bottom.toFixed(1)}; pill top y=${navBox.y.toFixed(1)}; gap ${(navBox.y - copy.bottom).toFixed(1)}px`,
+          ? `copy measured (bottom y=${copy.bottom.toFixed(1)}) but there is no pill to measure it against`
+          : `copy bottom y=${copy.bottom.toFixed(1)}; pill top y=${navBox.y.toFixed(1)}; gap ${(navBox.y - copy.bottom).toFixed(1)}px`,
     );
     if (playedOut.doneBox != null && navBox !== null) {
       check(
@@ -927,6 +1292,16 @@ const playedOut = { attempted: true };
     } else {
       check(false, 'SKIPPED: no drawn control on the already-trained surface to press');
     }
+  } else if (played.reachedCloseOut) {
+    // A MARKER, because the branch above is a dozen checks and without one the
+    // total silently drops by a dozen on the run that most needs explaining.
+    // The `reachedCloseOut` branch already emits its own, which is why this is
+    // conditional on that having succeeded rather than on nothing.
+    check(
+      false,
+      'SKIPPED: DONE did not land on the already-trained surface, so its checks did not run',
+      landed.landedOn === null ? landed.why : `landed on ${landed.landedOn}`,
+    );
   }
   playedOut.wallClockMs = Date.now() - startedAt;
   playedOut.landedOn = landed.landedOn;
@@ -935,14 +1310,20 @@ const playedOut = { attempted: true };
   // The evidence for "the played path is reliable" is this list, not an
   // assertion about it: a reader can see whether the driver converged or got
   // lucky.
+  //
+  // `drove` IS KEPT. It was computed by the driver and dropped here, and it is
+  // the one field that tells a reader which side a bad run came from: reps
+  // played with `drove: false` throughout mean the driver never saw the DRIVE
+  // cue, which is a fact about `SESSION_PROMPTS`, not about the app.
   playedOut.reps = played.reps.map((rep) => ({
     set: rep.setLabel ?? null,
     holdMs: rep.holdMs ?? null,
     outcome: rep.outcome ?? null,
     detail: rep.detail ?? null,
+    drove: rep.drove ?? null,
     ...(rep.played === false ? { notPlayed: rep.why } : {}),
   }));
-  notes.push(`  note  the played-session section cost ${playedOut.wallClockMs}ms of wall clock`);
+  note(`the played-session section cost ${playedOut.wallClockMs}ms of wall clock`);
 }
 
 // ---------------------------------------------------------------------------
@@ -959,6 +1340,7 @@ for (const [search, waitFor, phase, what] of [
   ['/?session=rest', 'session-rest', 'rest', 'the rest between two sets'],
 ]) {
   await open(search, waitFor);
+  beatsProbedInTheBrowser.add(phase);
   await checkOnScreen(waitFor, `${what} renders`);
   check(
     !SHELL_NAV_EXPECTED.SESSION_PHASES.includes(phase) && !(await visible(NAV_OPEN_MEET)),
@@ -967,12 +1349,23 @@ for (const [search, waitFor, phase, what] of [
 }
 await page.screenshot({ path: path.join(outDir, '08-set-has-no-nav.png') });
 
+// `walkout` is also checked LIVE in section 3, on a meet a player opened, which
+// is the stronger evidence. It is repeated here on a frozen frame so the beat
+// has a probe that does not depend on a played meet having got that far — the
+// set-equality check at the end is only as good as the probes it counts.
+//
+// `deliberation` had NO probe at all. It sat on `NEVER_A_PILL_BEAT` with three
+// hand-written statements behind it and nothing that had ever looked at the
+// screen, which is exactly the gap the set-equality check now makes loud.
 for (const [search, phase, what] of [
+  ['/?meet=walkout-third', 'walkout', 'GDD §6.2’s walk-out, held on a third attempt'],
   ['/?meet=lift', 'lift', 'a live attempt'],
+  ['/?meet=deliberation', 'deliberation', 'GDD §6.2 step 4’s deliberation — the judges taking a beat'],
   ['/?meet=verdict-good', 'verdict', 'the judges’ verdict'],
   ['/?meet=select-after-miss', 'attempt-select', 'GDD §6.3’s attempt choice'],
 ]) {
   await open(search, 'meet-screen');
+  beatsProbedInTheBrowser.add(phase);
   check(
     !SHELL_NAV_EXPECTED.MEET_PHASES.includes(phase) && !(await visible(NAV_LEAVE_MEET)),
     `NO CONTROL IS DRAWN OVER ${what} (beat '${phase}')`,
@@ -993,6 +1386,7 @@ for (const [search, phase, what] of [
 // bomb-out keeps its own way out" is worse than no shot.
 // ---------------------------------------------------------------------------
 await open('/?meet=bombed', 'meet-bombed', 0);
+beatsProbedInTheBrowser.add('bombed');
 const bombExit = await waitUntilDrawn('bomb-out-action', BOMB_OUT_SETTLE_MS);
 await page.screenshot({ path: path.join(outDir, '09-bombed-keeps-its-own-exit.png') });
 check(
@@ -1106,7 +1500,7 @@ await checkOnScreen(
 // app's failures first.
 await checkNavTableMatchesTuning();
 
-console.log(notes.join('\n'));
+console.log(log.join('\n'));
 if (pageErrors.length > 0) {
   console.log('\nPAGE ERRORS:');
   for (const e of pageErrors.slice(0, 8)) console.log('  ', e);
@@ -1114,7 +1508,14 @@ if (pageErrors.length > 0) {
 await writeFile(
   path.join(outDir, 'route.json'),
   `${JSON.stringify(
-    { capturedFrom: provenance(), played: playedOut, checks: notes, failures, pageErrors },
+    {
+      capturedFrom: provenance(),
+      played: playedOut,
+      checks,
+      notes: observations,
+      failures,
+      pageErrors,
+    },
     null,
     2,
   )}\n`,
@@ -1123,8 +1524,10 @@ await browser.close();
 
 console.log('');
 if (failures.length > 0) {
-  console.log(`FAILED ${failures.length} check(s):`);
+  console.log(`FAILED ${failures.length} of ${checks.length} check(s):`);
   for (const f of failures) console.log(`  - ${f}`);
   process.exit(1);
 }
-console.log(`PASSED ${notes.length} checks against the running app.`);
+console.log(
+  `PASSED ${checks.length} checks against the running app (and ${observations.length} note(s), which are not checks).`,
+);

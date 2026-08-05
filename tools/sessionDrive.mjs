@@ -39,10 +39,28 @@
  *       DEPTH_LEGAL     0.8  is reached at ~710 ms of hold
  *       DEPTH_IDEAL     1.0  at ~890 ms
  *       DEPTH_COLLAPSE  1.3  (buried, an instant miss) at ~1155 ms
- *   so anything in roughly 710-1150 ms is a legal rep and DEPTH_HOLD_MS sits in
- *   the middle of it. Those numbers are `liftTuning.ts`'s and are restated here
- *   as a derivation, not imported: this is a starting point for a hold, not an
- *   expectation about the app.
+ *   so anything in roughly 710-1150 ms is a legal rep.
+ *
+ *   DEPTH_HOLD_MS IS 1000: ABOVE THE IDEAL, NOT THE MIDDLE OF THE BAND, AND ON
+ *   PURPOSE. This paragraph used to say "sits in the middle of it", which the
+ *   shipped 1000 is not — the middle is 930 — and a derivation that disagrees
+ *   with its own constant is the drift CLAUDE.md's tunable-values rule exists
+ *   to stop, so the DERIVATION is what was wrong and this is it corrected.
+ *
+ *   The three figures above are SIM TICKS converted to wall clock AT A FULL
+ *   60 Hz, and the sim does not get 60 Hz here. `useLiftLoop` takes at most
+ *   `FEEDBACK.MAX_CATCH_UP_TICKS` (4) ticks per animation frame, deliberately,
+ *   so on a loaded software-rendered browser a wall-clock millisecond buys LESS
+ *   depth than this arithmetic says and the legal band slides UP in wall-clock
+ *   terms. A hold at the ideal is therefore biased toward the "came up short of
+ *   depth" miss — the failure that has actually been observed, five reps out of
+ *   five — while the other end of the band only ever moves away. 1000 keeps
+ *   155 ms of headroom to DEPTH_COLLAPSE at a perfect 60 Hz and more than that
+ *   whenever the machine is slower, which is the only direction it goes.
+ *
+ *   Those numbers are `liftTuning.ts`'s and are restated here as a derivation,
+ *   not imported: this is a starting point for a hold, not an expectation about
+ *   the app. NONE OF IT HAS BEEN PLAYED BY A HUMAN.
  *
  * A re-tune of the mechanic can move that band out from under this constant.
  * That shows up as reps that miss, which `playSessionToCloseOut` reports as
@@ -110,8 +128,8 @@ export const SESSION_DRIVE = Object.freeze({
 
   /**
    * How long the finger stays down after the descent starts. See the header for
-   * the band this sits in. A STARTING POINT, not a fixed value — see
-   * `DEPTH_HOLD_STEP_MS`.
+   * the band this sits in AND for why it sits above the ideal rather than in
+   * the middle. A STARTING POINT, not a fixed value — see `DEPTH_HOLD_STEP_MS`.
    */
   DEPTH_HOLD_MS: 1000,
   /**
@@ -124,7 +142,9 @@ export const SESSION_DRIVE = Object.freeze({
    * `LIFT_TUNING.FEEDBACK.MAX_CATCH_UP_TICKS` (4) ticks per animation frame — a
    * deliberate choice, so a hitch slows a rep down instead of fast-forwarding
    * through the player's input. Below 15 fps the sim therefore falls behind the
-   * clock, and a fixed 900 ms hold buys less depth than it should.
+   * clock, and a hold fixed ANYWHERE buys less depth than the header's 60 Hz
+   * arithmetic says it should. (That is why `DEPTH_HOLD_MS` starts above the
+   * ideal; this is why starting anywhere is not on its own enough.)
    *
    * That is not hypothetical either: a software-rendered browser under load
    * missed all five reps of a session on "came up short of depth", which is
@@ -132,9 +152,10 @@ export const SESSION_DRIVE = Object.freeze({
    *
    * So the driver reads WHY a rep missed and moves the hold in the direction the
    * miss names, HALVING THE STEP EACH TIME THE DIRECTION REVERSES — an ordinary
-   * bisection, because a fixed step overshoots: 900 -> 1080 -> 1260 -> 1440
-   * found a legal rep and then buried the next two at the same hold. It does not
-   * need the machine to be fast, only consistent for a few seconds at a time.
+   * bisection, because a fixed step overshoots: a search stepping
+   * 900 -> 1080 -> 1260 -> 1440 found a legal rep and then buried the next two
+   * at the same hold. It does not need the machine to be fast, only consistent
+   * for a few seconds at a time.
    */
   DEPTH_HOLD_STEP_MS: 180,
   /** The step stops halving here, so the search cannot stall on a rounding. */
@@ -179,6 +200,24 @@ export const SESSION_DRIVE = Object.freeze({
    * sleep would not make it one.
    */
   CLOSE_OUT_SETTLE_TIMEOUT_MS: 15000,
+
+  /**
+   * The close-out's two certainty tags — the elements `waitForCloseOutSettled`
+   * watches to know the server's answer landed.
+   *
+   * NAMED AND EXPORTED, because that function counts an ABSENT tag as settled.
+   * That is right (the accessory close-out has no e1RM row, and "no number to
+   * be unsure about" is not "unsure") and it is also the shape of a check that
+   * cannot fail: rename BOTH of these and the one check written to catch a
+   * round trip that never completes returns settled at 0 ms over an empty DOM.
+   * So the wait reports which of them it ever saw and the caller asserts it saw
+   * one — and the caller can name them in its failure text without a third
+   * copy of the strings.
+   */
+  CLOSE_OUT_TAG_IDS: Object.freeze({
+    e1rm: 'close-out-e1rm-tag',
+    streak: 'close-out-streak-tag',
+  }),
 
   /**
    * A hard stop on the rep loop. GDD §3.2's session is
@@ -509,29 +548,49 @@ export async function playSessionToCloseOut(page) {
  *
  * A tag element that is absent counts as settled: the accessory close-out has
  * no e1RM row at all, and "no number to be unsure about" is not "unsure".
+ *
+ * ===========================================================================
+ * WHICH IS WHY IT ALSO REPORTS WHAT IT SAW
+ * ===========================================================================
+ * "Absent counts as settled" makes `settled: true` reachable WITHOUT LOOKING AT
+ * ANYTHING: rename both of `SESSION_DRIVE.CLOSE_OUT_TAG_IDS` and this returns
+ * on its first poll, at `ms: 0`, and the caller's check passes green over a DOM
+ * it never found. So `tagsSeen` is every tag that was IN THE DOM at any poll —
+ * present, not pending, so a screen that had already settled still counts — and
+ * `sawAnyTag` is the positive control the caller asserts on. `settled` on its
+ * own is not evidence; `settled` with a tag behind it is.
  */
 export async function waitForCloseOutSettled(page) {
   const readTags = () =>
-    page.evaluate(() => {
-      const tag = (id) => {
+    page.evaluate((ids) => {
+      const out = {};
+      for (const [key, id] of Object.entries(ids)) {
         const node = document.querySelector(`[data-testid="${id}"]`);
-        return node === null ? null : (node.textContent ?? '').trim();
-      };
-      return { e1rm: tag('close-out-e1rm-tag'), streak: tag('close-out-streak-tag') };
-    });
+        out[key] = node === null ? null : (node.textContent ?? '').trim();
+      }
+      return out;
+    }, SESSION_DRIVE.CLOSE_OUT_TAG_IDS);
 
   const started = Date.now();
+  const seen = new Set();
   for (;;) {
     const tags = await readTags();
+    for (const [key, text] of Object.entries(tags)) {
+      if (text !== null) seen.add(key);
+    }
+    const tagsSeen = [...seen].sort();
+    const sawAnyTag = tagsSeen.length > 0;
     const pending = Object.entries(tags).filter(([, text]) => text !== null && text !== '');
     if (pending.length === 0) {
-      return { settled: true, ms: Date.now() - started, tags };
+      return { settled: true, ms: Date.now() - started, tags, tagsSeen, sawAnyTag };
     }
     if (Date.now() - started >= SESSION_DRIVE.CLOSE_OUT_SETTLE_TIMEOUT_MS) {
       return {
         settled: false,
         ms: Date.now() - started,
         tags,
+        tagsSeen,
+        sawAnyTag,
         why: `still ${pending.map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(', ')} after ${SESSION_DRIVE.CLOSE_OUT_SETTLE_TIMEOUT_MS}ms`,
       };
     }
