@@ -1252,15 +1252,24 @@ export function absenceOutcome(state: StreakState, today: StreakDay): AbsenceOut
   // (anchor, entitlement snapshot, today). Not of the balance, because there is
   // no balance; not of the day anybody opened the app, because that is not a
   // parameter here and cannot become one.
-  const outcome = state.entitlementArmed
-    ? resolveEntitlement(
-        RECOVERY_ENTITLEMENT,
-        state.entitlement,
-        entitlementWindowFor(state, today),
-        chargeable,
-      )
-    : null;
-  const holds = outcome !== null && outcome.covers;
+  //
+  // DECLINING PROTECTION ZEROES WHAT IS AVAILABLE; IT DOES NOT SKIP THE
+  // RESOLUTION. That distinction is the whole of GDD §4.4's ruling that the free
+  // grace survives the settings toggle: the toggle declines DRAWING on the
+  // entitlement, and the grace draws nothing, so there is nothing in it to
+  // decline. Running the disarmed case through the same `resolveEntitlement`
+  // call with an empty window makes that fall out of the arithmetic —
+  // `chargeable <= 0` still covers, and `consumed` is still 0 — instead of
+  // depending on a second branch that has to remember to say so. An earlier
+  // revision short-circuited to `holds = false` when nothing was armed, which
+  // ended a run for a one-day miss and reset the streak on a lifter who had
+  // trained the day before.
+  const window = entitlementWindowFor(state, today);
+  const armedEntitlement: EntitlementState = state.entitlementArmed
+    ? state.entitlement
+    : { windowIndex: window, coveredDaysLeft: 0, purchasedDaysLeft: 0 };
+  const outcome = resolveEntitlement(RECOVERY_ENTITLEMENT, armedEntitlement, window, chargeable);
+  const holds = outcome.covers;
 
   if (!holds) {
     return {
@@ -1272,7 +1281,7 @@ export function absenceOutcome(state: StreakState, today: StreakDay): AbsenceOut
       // as long as the lifter stays away, and a debit that grew with it would
       // make the outcome depend on when the absence was resolved. What is left
       // in the window does not move while they are away. See §5.
-      recoveryDaysConsumed: outcome?.consumed ?? 0,
+      recoveryDaysConsumed: outcome.consumed,
       protectionHolds: false,
       breakReason: breakReasonFor(state, chargeable),
     };
