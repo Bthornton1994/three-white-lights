@@ -1,26 +1,15 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-05T23:37:19.645Z",
+    "capturedAt": "2026-08-05T23:44:15.018Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "08aa861",
+    "commit": "1f5890b",
     "branch": "claude/agent-config-setup-m2r6ny",
-    "workingTree": "DIRTY — this run is not against a commit",
+    "workingTree": "clean",
     "dirtyPaths": [
-      "A  .gauntlet/shots/cutin/baseline-no-cutin.png",
-      "A  .gauntlet/shots/cutin/bomb-out.png",
-      "A  .gauntlet/shots/cutin/coach-heavy-set.png",
-      "A  .gauntlet/shots/cutin/frames.json",
-      "A  .gauntlet/shots/cutin/live-after-auto-dismiss.png",
-      "A  .gauntlet/shots/cutin/live-after-tap.png",
-      "A  .gauntlet/shots/cutin/live-mid-hold.png",
-      "A  .gauntlet/shots/cutin/personal-record.png",
-      "A  .gauntlet/shots/cutin/played-bombed.png",
-      "A  .gauntlet/shots/cutin/played-walkout-third.png",
-      "A  .gauntlet/shots/cutin/third-attempt-walkout.png",
+      "M .gauntlet/shots/shell/03-meet-played-walkout.png",
       " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/route.json",
-      " M tools/capture-cutin.mjs"
+      " M .gauntlet/shots/shell/route.json"
     ],
     "instrument": {
       "capture-cutin.mjs": "645ae099011f133b",
@@ -241,13 +230,13 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 700,
+    "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1603,
+    "goneAt": 1589,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 16,
+    "tappedAt": 17,
     "goneAt": 28,
     "wellInsideTheHold": true
   },
