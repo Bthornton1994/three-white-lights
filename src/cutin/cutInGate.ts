@@ -656,6 +656,39 @@ export function canDismissAt(elapsedMs: number): boolean {
 }
 
 /**
+ * A TAP, `elapsedMs` INTO THE BEAT. The gate decides whether it counts.
+ *
+ * WHY THIS EXISTS AT ALL, when `dismissCutIn` was already here. It is the half
+ * `DISMISS_ENABLED_AFTER_MS` was missing. That constant was registered,
+ * documented, pinned by a unit test, described in `cutInTuning.ts` as "the line
+ * to move" if a playtest ever asks for a short un-skippable window — and read by
+ * NOTHING on the route the app actually takes: `CutInView`'s `onPress` went straight
+ * to the host's `dismiss`, which consults no clock. Setting the constant to 300
+ * would have turned two unit tests red and changed the behaviour of the app not
+ * at all. That is the same defect `SCRIM_OPACITY` had one round earlier — a
+ * tunable that reached no pixel — and CLAUDE.md's "keep every such value as a
+ * named constant" is worth nothing if the constant is not the thing being read.
+ *
+ * SO THE TAP PATH GOES THROUGH THE GATE, like every other §7.2 decision. The
+ * host holds the clock (`Date.now()` is not this module's to read) and hands the
+ * elapsed time in; the gate decides. A refused tap returns the state UNCHANGED,
+ * so the caller can tell the two apart by identity or by `live`.
+ *
+ * TODAY IT REFUSES NOTHING, because the window is zero, and that is the point:
+ * the behaviour is identical and the knob is now real. `cutInGate.test.ts` reads
+ * the constant rather than the number, so the pair of assertions holds for
+ * whatever a playtest sets it to.
+ *
+ * THE AUTO-DISMISS DOES NOT COME THROUGH HERE. `HOLD_MS` is the timer's clock;
+ * routing it through the tap window would let a window longer than the hold
+ * strand a cut-in on screen for ever.
+ */
+export function tapDismissCutIn(state: CutInSessionState, elapsedMs: number): CutInSessionState {
+  if (!canDismissAt(elapsedMs)) return state;
+  return dismissCutIn(state);
+}
+
+/**
  * HAS THE CUT-IN OUTSTAYED ITS HOLD? It leaves on its own as well as on a tap,
  * because an interrupt that waits for permission is a modal dialog.
  *
