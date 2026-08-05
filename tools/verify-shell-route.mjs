@@ -405,6 +405,20 @@ const LINE_BOX_PROBE = Object.freeze({
  * A DIRTY WORKING TREE IS RECORDED AS SUCH. A run against uncommitted edits
  * must not read like a run against a commit — that is the failure mode this is
  * for, not a tidiness preference.
+ *
+ * TAKEN BEFORE THE FIRST SCREENSHOT, NOT AT WRITE TIME, AND IT MATTERS.
+ * `provenance()` used to be called inline while assembling `route.json` — i.e.
+ * after twelve PNGs had been written into `outDir`. So the tool photographed a
+ * tree it had itself just dirtied, and `dirtyPaths` listed its own output:
+ * whether a run read "clean" depended on whether the new pixels happened to be
+ * byte-identical to the committed ones. That is a coin flip reported as a
+ * provenance field. Snapshotting at startup answers the question the field is
+ * actually for — WHICH CODE DID THIS BROWSER RUN — because the app was built
+ * from the tree as it stood before any of these writes.
+ *
+ * `outDir` is excluded from the clean/dirty VERDICT for the same reason (a
+ * previous run's leftovers are not code the app ran), but is still listed in
+ * `dirtyPaths`, so nothing is hidden from a reader — only re-labelled.
  */
 function provenance() {
   const record = {
@@ -422,13 +436,20 @@ function provenance() {
     record.commit = git('rev-parse', '--short', 'HEAD');
     record.branch = git('rev-parse', '--abbrev-ref', 'HEAD');
     const status = git('status', '--porcelain');
-    record.workingTree = status === '' ? 'clean' : 'DIRTY — this run is not against a commit';
-    record.dirtyPaths = status === '' ? [] : status.split('\n').slice(0, 40);
+    const lines = status === '' ? [] : status.split('\n');
+    const own = path.relative(srcRoot, outDir);
+    const code = lines.filter((line) => !line.replace(/^\s*\S+\s+/, '').startsWith(own));
+    record.workingTree =
+      code.length === 0 ? 'clean' : 'DIRTY — this run is not against a commit';
+    record.dirtyPaths = lines.slice(0, 40);
   } catch (error) {
     record.workingTree = `unknown — ${String(error).slice(0, 200)}`;
   }
   return record;
 }
+
+// Snapshot now, before `outDir` is created or written to. See the block above.
+const capturedFrom = provenance();
 
 const failures = [];
 /**
@@ -1509,7 +1530,7 @@ await writeFile(
   path.join(outDir, 'route.json'),
   `${JSON.stringify(
     {
-      capturedFrom: provenance(),
+      capturedFrom,
       played: playedOut,
       checks,
       notes: observations,

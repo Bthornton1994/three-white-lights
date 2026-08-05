@@ -817,12 +817,32 @@ export const NOT_WALKED: readonly string[] = Object.freeze([
  * Pinning those copies would make the citation list churn on every capture, and
  * would make this audit's verdict depend on WHEN SOMEBODY LAST RAN THE SUITE —
  * the same "verdict moves with unrelated state" failure `audit.test.ts` records
- * for sibling worktrees. Nothing under `.gauntlet` ships, nothing there is
- * authored, and its shots are gitignored.
+ * for sibling worktrees. Nothing under `.gauntlet` ships and nothing there is
+ * authored: every string in it is a COPY of one this audit reads at its source.
  *
- * THE HOLE THIS LEAVES, stated rather than glossed: a real name typed by hand
- * into `.gauntlet/state.json` would not be seen. That file is run bookkeeping
- * for the loop itself and never reaches a build.
+ * That last clause used to end "and its shots are gitignored", which was true
+ * when it was written and is not any more — `.gauntlet/shots/shell/` and
+ * `.gauntlet/shots/cutin/` are now tracked, deliberately, so a grader can date
+ * browser evidence instead of trusting it. The exclusion survives the change
+ * because it never rested on those files being untracked; it rests on them
+ * being derived. But a justification that has gone false is worth exactly as
+ * much as no justification, so it is corrected here rather than left to read
+ * plausibly.
+ *
+ * THE HOLE THIS LEAVES, stated rather than glossed, and it is now three files
+ * wide rather than one:
+ *
+ *   - `.gauntlet/state.json` — run bookkeeping for the loop, typed by hand.
+ *   - `.gauntlet/shots/shell/route.json` and `.../cutin/frames.json` — copy
+ *     strings SCRAPED FROM THE RUNNING APP. A real name could only get into
+ *     them by first existing in `src/`, where this audit does scan it, so the
+ *     derived-copy argument holds; what does not hold is any claim that the
+ *     scrape itself is checked.
+ *   - the committed PNGs, which are pixels. A real wordmark DRAWN by the
+ *     sprite code would be invisible to a string audit in any directory, so
+ *     this is not a hole `.gauntlet` opened.
+ *
+ * None of these reach a build.
  */
 export const NOT_WALKED_REASONS: Readonly<Record<string, string>> = Object.freeze({
   node_modules: 'vendored code nobody here authored; full of real company names by definition',
