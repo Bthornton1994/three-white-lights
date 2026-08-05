@@ -418,6 +418,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'data',
     why: 'MULBERRY32 — the published generator constants.',
   }),
+  'src/game/streakSweep.ts': Object.freeze({
+    role: 'constants',
+    kind: 'data',
+    why: 'MONOTONICITY_SWEEP — the seeds, calendar lengths and attendance distribution GDD §4.4’s "training one more day never lowers your streak" counts were measured on. Data about a measurement, not a knob: turning a seed does not change the game, only which calendars the property is checked over. It is `data` rather than `feel` for exactly that reason, and is deliberately not re-exported from the tuning index — a playtester has no business turning it. It exists at all because the first version of that measurement was published with its seeds unstated and could not be reproduced by anyone afterwards.',
+  }),
   'src/card/sampleCards.ts': Object.freeze({
     role: 'constants',
     kind: 'data',

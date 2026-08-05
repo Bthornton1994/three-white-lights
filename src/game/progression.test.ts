@@ -89,6 +89,14 @@ import {
 } from './progression';
 import { createStreakState, recordTrainingDay, streakDayFromCivilDate, STREAK_FACT_KEYS } from './streak';
 
+/**
+ * The day these fixtures pretend the account was created on (GDD 4.2 signup
+ * day; `streak.ts` 1b). Day 0, because every simulated session below is
+ * recorded on day 0 or later and a signup day after a session is refused.
+ */
+const SIGNUP_DAY = 0;
+
+
 const MODULE_SOURCE = readFileSync(fileURLToPath(new URL('./progression.ts', import.meta.url)), 'utf8');
 
 /**
@@ -134,7 +142,7 @@ function codeOnly(source: string): string {
 // repository's own entry points sit OUTSIDE it. `App.tsx` and `index.ts` are at
 // the repo root, imports point INTO `src/` and never out, so neither was reached
 // directly or transitively — and a fully annotated `const seeded: ServerRecord =
-// { ...newServerRecord(), totalKg: 900 }` appended to `App.tsx` compiled clean,
+// { ...newServerRecord(SIGNUP_DAY), totalKg: 900 }` appended to `App.tsx` compiled clean,
 // passed every test here, and added no row. `tsconfig.json` already knew better:
 // `parsed.fileNames` was being computed two lines above the hand-walk and thrown
 // away. The scan is now rooted in it, which is exactly the set `npm run
@@ -202,7 +210,7 @@ function sortedKeys(rows: readonly RouteSite[]): readonly string[] {
  * there is no `metro.config.js` and Expo's default `sourceExts` resolves
  * `./seed` to `seed.test.tsx`. Verified by execution at the commit before this
  * one: `src/card/seed.test.tsx` holding a fully annotated `const seeded:
- * ServerRecord = { ...newServerRecord(), totalKg: 900 }` type-checked clean and
+ * ServerRecord = { ...newServerRecord(SIGNUP_DAY), totalKg: 900 }` type-checked clean and
  * left the suite green at exactly the counts it had without the file (57 files,
  * 2437 tests).
  *
@@ -574,7 +582,7 @@ function scanRoutes(): RouteScan {
   //     const { emptyProgressionCache } = await import('../game/progression');
   //     const { receiveSnapshot } = await import('../game/sessionClient');
   //     const claimed = Number(new URLSearchParams(location.search).get('total'));
-  //     const forged = Object.assign({}, newServerRecord(), { totalKg: claimed });
+  //     const forged = Object.assign({}, newServerRecord(SIGNUP_DAY), { totalKg: claimed });
   //     receiveSnapshot(emptyProgressionCache(), snapshotWireFor(forged, null));
   //
   // No object literal assignable to a record, no `ImportDeclaration` naming the
@@ -712,6 +720,7 @@ function wire(overrides: Partial<ProgressionSnapshotWire> = {}): ProgressionSnap
     totalKg: 630,
     bestE1rmKg: { squat: 240, bench: 150, deadlift: 280 },
     streak: {
+      signupDay: 19_000,
       currentStreak: 12,
       longestStreak: 31,
       lastTrainedDay: 20_000,
@@ -997,7 +1006,7 @@ describe('purity', () => {
     // `walk(REPO_ROOT + '/src')`. `App.tsx` and `index.ts` are at the repo root
     // and every import points INTO `src/` and never out, so neither was reached
     // directly or transitively — and a fully annotated
-    // `const seeded: ServerRecord = { ...newServerRecord(), totalKg: 900 }`
+    // `const seeded: ServerRecord = { ...newServerRecord(SIGNUP_DAY), totalKg: 900 }`
     // appended to `App.tsx` compiled clean, passed all 133 tests here, and added
     // no §7.5 row. Same species as the `meetServer.ts` sweep §7 replaced, one
     // level out: honestly scoped, complete within scope, defect outside it.
@@ -1184,7 +1193,7 @@ describe('purity', () => {
     // which `src/tuning/audit.ts`'s magic-number auditor drops on the identical
     // regex, and which Expo's default `sourceExts` would BUNDLE. Verified by
     // execution before it was fixed: a `src/card/seed.test.tsx` holding
-    // `const seeded: ServerRecord = { ...newServerRecord(), totalKg: 900 }`
+    // `const seeded: ServerRecord = { ...newServerRecord(SIGNUP_DAY), totalKg: 900 }`
     // type-checked clean and left the suite green at the counts it had without
     // the file (57 files, 2437 tests).
     //
@@ -2282,6 +2291,45 @@ describe('receiveProgressionSnapshot', () => {
     expect(expectErr(bad).code).toBe('INVALID_SNAPSHOT');
   });
 
+  it('refuses a streak whose signup day is missing, fractional, or after a recorded session', () => {
+    // GDD §4.2: `signupDay` is the day the account was created, and `streak.ts`
+    // charges a lifter's idle days from it. A snapshot that gets it wrong is a
+    // migration bug, and the two ways it can be wrong are different bugs:
+    //
+    //   - not a day index at all — the wire carried something that is not a day;
+    //   - later than `lastTrainedDay` — an account created after a session was
+    //     recorded on it, which is not a fact about anything.
+    //
+    // Neither is clamped or defaulted. A quiet default here would be a quiet
+    // Recovery Day balance for the lifter's whole first week.
+    const fractional = receiveProgressionSnapshot(
+      wire({ streak: { ...wire().streak, signupDay: 19_000.5 } }),
+    );
+    expect(expectErr(fractional).code).toBe('INVALID_SNAPSHOT');
+    expect(expectErr(fractional).message).toMatch(/streak\.signupDay/);
+
+    const afterTraining = receiveProgressionSnapshot(
+      wire({ streak: { ...wire().streak, signupDay: 20_001, lastTrainedDay: 20_000 } }),
+    );
+    expect(expectErr(afterTraining).code).toBe('INVALID_SNAPSHOT');
+    expect(expectErr(afterTraining).message).toMatch(/signupDay cannot be after/);
+
+    // NOT VACUOUS: the same day equal to the last trained day is legitimate — a
+    // lifter who trained on the day they signed up — and it decodes.
+    const sameDay = receiveProgressionSnapshot(
+      wire({ streak: { ...wire().streak, signupDay: 20_000, lastTrainedDay: 20_000 } }),
+    );
+    expect(sameDay.ok).toBe(true);
+  });
+
+  it('carries the signup day through to the confirmed facts unchanged', () => {
+    // The field crosses the boundary rather than being reconstructed on the far
+    // side, which is what "the client is a renderer" means for a state field.
+    const received = receiveProgressionSnapshot(wire({ streak: { ...wire().streak, signupDay: 18_500 } }));
+    if (!received.ok) throw new Error('expected a valid snapshot');
+    expect(snapshotFacts(received.value).streak.signupDay).toBe(18_500);
+  });
+
   it('refuses a fractional currency balance', () => {
     const bad = receiveProgressionSnapshot(wire({ wallet: { gymBucks: 10.5, chalk: 40 } }));
     expect(expectErr(bad).message).toMatch(/wallet\.gymBucks/);
@@ -2704,7 +2752,7 @@ describe('an unconfirmed value cannot be used as a confirmed one', () => {
     // streak.ts is pure, so the client really can compute the next state. What
     // it cannot do is put the answer where the server's answer goes.
     const day = streakDayFromCivilDate({ year: 2026, month: 8, day: 3 });
-    const advanced = recordTrainingDay(createStreakState(), day);
+    const advanced = recordTrainingDay(createStreakState(day), day);
     expect(advanced.ok).toBe(true);
     const facts = snapshotFacts(snapshot());
     // @ts-expect-error - a number is not a ConfirmedTotalKg; the facts object

@@ -413,8 +413,15 @@ export const A_STARTING_E1RM_CAN_DECLARE_A_UNIT_THIS_RECORD_REFUSES: SeedCanDecl
  *
  * The Recovery Day balance is GDD §4.2's signup grant, read from `streak.ts`'s
  * own economy table rather than restated.
+ *
+ * `signupDay` IS A REQUIRED ARGUMENT AND HAS NO DEFAULT. It is the day the
+ * account was created, and `streak.ts` charges a lifter's idle days from it
+ * (GDD §4.2), so a wrong-but-quiet fallback here would be a wrong-but-quiet
+ * Recovery Day balance for the lifter's whole first week. This module never
+ * reads a clock either; the caller resolves the day, exactly as it does for
+ * `applyTrainingSession`.
  */
-export function newServerRecord(): ServerRecord {
+export function newServerRecord(signupDay: number): ServerRecord {
   return {
     revision: 0,
     totalKg: null,
@@ -424,7 +431,7 @@ export function newServerRecord(): ServerRecord {
       deadlift: PROVEN_STARTING_E1RM.kilograms.deadlift,
     },
     streak: {
-      ...createStreakState(),
+      ...createStreakState(asStreakDay(signupDay)),
       recoveryDayBalance: RECOVERY_DAY_ECONOMY.SIGNUP_GRANT,
     },
     meets: [],
@@ -435,6 +442,7 @@ export function newServerRecord(): ServerRecord {
 
 function streakWire(state: StreakState): StreakStateWire {
   return {
+    signupDay: state.signupDay,
     currentStreak: state.currentStreak,
     longestStreak: state.longestStreak,
     lastTrainedDay: state.lastTrainedDay,

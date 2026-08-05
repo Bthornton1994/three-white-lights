@@ -69,6 +69,14 @@ import {
 import type { LiftKind } from './meet';
 import { newServerRecord, snapshotWireFor } from './sessionServer';
 
+/**
+ * The day these fixtures pretend the account was created on (GDD 4.2 signup
+ * day; `streak.ts` 1b). Day 0, because every simulated session below is
+ * recorded on day 0 or later and a signup day after a session is refused.
+ */
+const SIGNUP_DAY = 0;
+
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -1134,7 +1142,7 @@ describe('the proposal and the projection — the client proposes, the server pu
   });
 
   it('is accepted by progression.ts, and the cache then reads a projected e1RM', () => {
-    const received = receiveProgressionSnapshot(snapshotWireFor(newServerRecord(), null));
+    const received = receiveProgressionSnapshot(snapshotWireFor(newServerRecord(SIGNUP_DAY), null));
     expect(received.ok).toBe(true);
     if (!received.ok) return;
     const seeded = applyServerSnapshot(emptyProgressionCache(), received.value);

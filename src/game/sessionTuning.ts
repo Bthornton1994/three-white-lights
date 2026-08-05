@@ -612,6 +612,28 @@ export const SESSION_BOUNDARY = Object.freeze({
   LOCAL_SERVER_LATENCY_MS: 550,
 
   /**
+   * The day the local stand-in server pretends its one account was created on
+   * (GDD §4.2's signup day; `streak.ts` §1b).
+   *
+   * NOT A FEEL VALUE AND NOT TUNABLE IN THE PLAYTESTING SENSE. It exists
+   * because `newServerRecord` requires a real signup day and the local server
+   * has no account table to read one from. It sits here rather than as a
+   * literal at the call site so that the day the fixtures start on is one
+   * number in one place.
+   *
+   * THE ONE CONSTRAINT IT HAS TO SATISFY, stated because the value itself is
+   * arbitrary and the constraint is not: it must be **no later than any day a
+   * fixture records a session on**, which today means no later than
+   * `SESSION_PREVIEW.DAY`. An account cannot have been created after a session
+   * was recorded on it, and both `adoptSignupDay` and `decodeStreak` refuse that
+   * pair. Anything satisfying that works; 20000 is early 2024 and was picked for
+   * no other reason.
+   *
+   * With a real backend this is deleted along with the local server.
+   */
+  LOCAL_SERVER_SIGNUP_DAY: 20000,
+
+  /**
    * Opacity of a number that is still in flight, against 1 for a settled one.
    *
    * The whole distinction, as one number. Low enough to read as unfinished at

@@ -47,7 +47,12 @@ import {
   type SessionState,
 } from '../game/session';
 import { EMPTY_FATIGUE_STATE, type ReadinessCheckIn } from '../game/fatigue';
-import { SESSION_BOUNDARY_PREVIEW, SESSION_PREVIEW, SESSION_TUNING } from '../game/sessionTuning';
+import {
+  SESSION_BOUNDARY,
+  SESSION_BOUNDARY_PREVIEW,
+  SESSION_PREVIEW,
+  SESSION_TUNING,
+} from '../game/sessionTuning';
 import { receiveSnapshot, submitCloseOut } from '../game/sessionClient';
 import {
   asProposalId,
@@ -171,7 +176,7 @@ const PREVIEW_WALL_CLOCK: LocalWallClock = {
  * written, with only the two the preview pins overridden.
  */
 function recordBeforeSession(): ServerRecord {
-  const fresh = newServerRecord();
+  const fresh = newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
   return {
     ...fresh,
     bestE1rmKg: { ...fresh.bestE1rmKg, [PREVIEW_LIFT]: SESSION_PREVIEW.BEST_E1RM_KG },

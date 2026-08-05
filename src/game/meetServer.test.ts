@@ -52,6 +52,14 @@ import { playMeet, previewContext, previewServerRecord, previewStateFor, type Re
 import { WEIGHT_CLASSES_KG, weightClassString } from './resultCard';
 import { SESSION_TUNING } from './sessionTuning';
 
+/**
+ * The day these fixtures pretend the account was created on (GDD 4.2 signup
+ * day; `streak.ts` 1b). Day 0, because every simulated session below is
+ * recorded on day 0 or later and a signup day after a session is refused.
+ */
+const SIGNUP_DAY = 0;
+
+
 const DAY = MEET_PREVIEW.DAY;
 const PROPOSAL_ID = 'meet-test-1';
 
@@ -108,7 +116,7 @@ function cleanCard(
 }
 
 function applyClean(
-  record: ServerRecord = newServerRecord(),
+  record: ServerRecord = newServerRecord(SIGNUP_DAY),
   attempts: readonly MeetAttemptReport[] = cleanCard(),
 ) {
   return applyMeetResult(record, DAY, MEET_LOCAL, proposalFrom(attempts), PROPOSAL_ID);
@@ -120,7 +128,7 @@ function applyClean(
  * against.
  */
 function confirmedCache() {
-  const received = receiveProgressionSnapshot(snapshotWireFor(newServerRecord(), null));
+  const received = receiveProgressionSnapshot(snapshotWireFor(newServerRecord(SIGNUP_DAY), null));
   if (!received.ok) throw new Error(received.error.message);
   const applied = applyServerSnapshot(emptyProgressionCache(), received.value);
   if (!applied.ok) throw new Error(applied.error.message);
@@ -129,7 +137,7 @@ function confirmedCache() {
 
 /** A record with a total already on the board, without going through a meet. */
 function recordWithTotal(totalKg: number, meets: ServerRecord['meets'] = []): ServerRecord {
-  return { ...newServerRecord(), totalKg, meets };
+  return { ...newServerRecord(SIGNUP_DAY), totalKg, meets };
 }
 
 // ---------------------------------------------------------------------------
@@ -145,7 +153,7 @@ describe('the total is the server’s arithmetic (GDD §6.4)', () => {
       { squat: [200, 210, 220], bench: [130, 135, 140], deadlift: [240, 250, 260] },
       (_lift, attemptNumber) => attemptNumber !== 3,
     );
-    const applied = applyClean(newServerRecord(), attempts);
+    const applied = applyClean(newServerRecord(SIGNUP_DAY), attempts);
     expect(applied.ok).toBe(true);
     if (!applied.ok) throw new Error(applied.error.message);
     expect(applied.value.totalKg).toBe(210 + 135 + 250);
@@ -171,7 +179,7 @@ describe('the total is the server’s arithmetic (GDD §6.4)', () => {
     const proposal = meetResultProposal(played);
     expect(proposal).not.toBeNull();
     if (proposal === null) throw new Error('unreachable');
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, proposal, PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, proposal, PROPOSAL_ID);
     if (!applied.ok) throw new Error(applied.error.message);
     expect(applied.value.totalKg).toBe(finalMeetTotal(played.meet));
     expect(applied.value.totalKg).toBeGreaterThan(0);
@@ -200,7 +208,7 @@ describe('an illegal card is refused, not scored', () => {
 
   for (const [name, attempts] of cases) {
     it(`refuses ${name}`, () => {
-      const applied = applyClean(newServerRecord(), attempts);
+      const applied = applyClean(newServerRecord(SIGNUP_DAY), attempts);
       expect(applied.ok, name).toBe(false);
       if (applied.ok) throw new Error('unreachable');
       expect(applied.error.code).toBe('MEET_REPLAY_REFUSED');
@@ -210,7 +218,7 @@ describe('an illegal card is refused, not scored', () => {
   it('refuses attempts out of order', () => {
     const ordered = cleanCard();
     const shuffled = [...ordered.slice(3, 6), ...ordered.slice(0, 3), ...ordered.slice(6)];
-    const applied = applyClean(newServerRecord(), shuffled);
+    const applied = applyClean(newServerRecord(SIGNUP_DAY), shuffled);
     expect(applied.ok).toBe(false);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.code).toBe('MEET_REPLAY_REFUSED');
@@ -221,7 +229,7 @@ describe('an illegal card is refused, not scored', () => {
       ...cleanCard(),
       { lift: 'deadlift' as const, attemptNumber: 3 as const, weight: 270, good: true },
     ];
-    const applied = applyClean(newServerRecord(), attempts);
+    const applied = applyClean(newServerRecord(SIGNUP_DAY), attempts);
     expect(applied.ok).toBe(false);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.code).toBe('MEET_OVERRUN');
@@ -234,14 +242,14 @@ describe('an illegal card is refused, not scored', () => {
     );
     // A bomb-out ends the meet on the squat, so the bench rows have nowhere to
     // go. `meet.ts` decides that, not this module.
-    const applied = applyClean(newServerRecord(), attempts);
+    const applied = applyClean(newServerRecord(SIGNUP_DAY), attempts);
     expect(applied.ok).toBe(false);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.code).toBe('MEET_OVERRUN');
   });
 
   it('refuses an unfinished card', () => {
-    const applied = applyClean(newServerRecord(), cleanCard().slice(0, 5));
+    const applied = applyClean(newServerRecord(SIGNUP_DAY), cleanCard().slice(0, 5));
     expect(applied.ok).toBe(false);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.code).toBe('MEET_INCOMPLETE');
@@ -264,7 +272,7 @@ describe('an illegal card is refused, not scored', () => {
 
   it('refuses a day that is not a day index', () => {
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       Number.NaN,
       MEET_LOCAL,
       proposalFrom(cleanCard()),
@@ -289,7 +297,7 @@ describe('an illegal card is refused, not scored', () => {
 
 describe('what a meet moves', () => {
   it('raises the total from null on a lifter’s first meet', () => {
-    const before = newServerRecord();
+    const before = newServerRecord(SIGNUP_DAY);
     expect(before.totalKg).toBeNull();
     const applied = applyClean(before);
     if (!applied.ok) throw new Error(applied.error.message);
@@ -323,7 +331,7 @@ describe('what a meet moves', () => {
       cleanCard(),
       cleanCard({ squat: [400, 410, 420], bench: [300, 305, 310], deadlift: [450, 460, 470] }),
     ]) {
-      const before = newServerRecord();
+      const before = newServerRecord(SIGNUP_DAY);
       const applied = applyClean(before, card);
       if (!applied.ok) throw new Error(applied.error.message);
       expect(applied.value.record.bestE1rmKg).toEqual(before.bestE1rmKg);
@@ -332,7 +340,7 @@ describe('what a meet moves', () => {
   });
 
   it('leaves the streak, the wallet and the hidden ledger exactly where they were', () => {
-    const before = newServerRecord();
+    const before = newServerRecord(SIGNUP_DAY);
     const applied = applyClean(before);
     if (!applied.ok) throw new Error(applied.error.message);
     expect(applied.value.record.streak).toEqual(before.streak);
@@ -345,8 +353,8 @@ describe('what a meet moves', () => {
     // has no parameter for a purchase, so the behavioural form of that is: two
     // lifters with wildly different balances get the identical result from the
     // identical card.
-    const poor = { ...newServerRecord(), wallet: { gymBucks: 0, chalk: 0 } };
-    const rich = { ...newServerRecord(), wallet: { gymBucks: 999999, chalk: 999999 } };
+    const poor = { ...newServerRecord(SIGNUP_DAY), wallet: { gymBucks: 0, chalk: 0 } };
+    const rich = { ...newServerRecord(SIGNUP_DAY), wallet: { gymBucks: 999999, chalk: 999999 } };
     const a = applyClean(poor);
     const b = applyClean(rich);
     if (!a.ok || !b.ok) throw new Error('unreachable');
@@ -358,7 +366,7 @@ describe('what a meet moves', () => {
   });
 
   it('bumps the revision and appends exactly one meet', () => {
-    const before = newServerRecord();
+    const before = newServerRecord(SIGNUP_DAY);
     const applied = applyClean(before);
     if (!applied.ok) throw new Error(applied.error.message);
     expect(applied.value.record.revision).toBe(before.revision + 1);
@@ -388,7 +396,7 @@ describe('a bomb-out takes nothing (GDD §12.3)', () => {
     () => false,
   ).slice(0, 3);
 
-  function bombed(record: ServerRecord = newServerRecord()) {
+  function bombed(record: ServerRecord = newServerRecord(SIGNUP_DAY)) {
     const applied = applyMeetResult(record, DAY, MEET_LOCAL, proposalFrom(BOMBED), PROPOSAL_ID);
     if (!applied.ok) throw new Error(applied.error.message);
     return applied.value;
@@ -441,11 +449,11 @@ describe('a bomb-out takes nothing (GDD §12.3)', () => {
     const played = previewStateFor({ moment: 'bombed' });
     const proposal = meetResultProposal(played);
     if (proposal === null) throw new Error('unreachable');
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, proposal, PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, proposal, PROPOSAL_ID);
     if (!applied.ok) throw new Error(applied.error.message);
     expect(applied.value.totalKg).toBeNull();
     expect(applied.value.bombedLift).toBe('squat');
-    expect(applied.value.record.bestE1rmKg).toEqual(newServerRecord().bestE1rmKg);
+    expect(applied.value.record.bestE1rmKg).toEqual(newServerRecord(SIGNUP_DAY).bestE1rmKg);
   });
 });
 
@@ -455,7 +463,7 @@ describe('a bomb-out takes nothing (GDD §12.3)', () => {
 
 describe('per-lift competition PRs', () => {
   it('are measured against the lifter’s stored meets, not their e1RM', () => {
-    const first = applyClean(newServerRecord(), cleanCard());
+    const first = applyClean(newServerRecord(SIGNUP_DAY), cleanCard());
     if (!first.ok) throw new Error(first.error.message);
     expect(first.value.liftPrs).toEqual({ squat: true, bench: true, deadlift: true });
 
@@ -486,7 +494,7 @@ describe('per-lift competition PRs', () => {
 
   it('read every stored meet, not just the last one', () => {
     const record: ServerRecord = {
-      ...newServerRecord(),
+      ...newServerRecord(SIGNUP_DAY),
       meets: [
         {
           meetId: 'a',
@@ -509,7 +517,7 @@ describe('per-lift competition PRs', () => {
 
   it('are null-safe on a lifter who has bombed a lift before', () => {
     const record: ServerRecord = {
-      ...newServerRecord(),
+      ...newServerRecord(SIGNUP_DAY),
       meets: [
         {
           meetId: 'a',
@@ -564,7 +572,7 @@ describe('placing in the field (GDD §6.5, §6.6)', () => {
 describe('meetDayFacts', () => {
   it('hands over the lifter’s best e1RM, which is what the opener is built from', () => {
     const record: ServerRecord = {
-      ...newServerRecord(),
+      ...newServerRecord(SIGNUP_DAY),
       bestE1rmKg: { squat: 240, bench: 150, deadlift: 280 },
     };
     const facts = meetDayFacts(record, DAY, SESSION_TUNING.STARTING_E1RM);
@@ -574,7 +582,7 @@ describe('meetDayFacts', () => {
 
   it('falls back to the seed for a lift with no e1RM yet', () => {
     const record: ServerRecord = {
-      ...newServerRecord(),
+      ...newServerRecord(SIGNUP_DAY),
       bestE1rmKg: { squat: null, bench: 150, deadlift: null },
     };
     const facts = meetDayFacts(record, DAY, SESSION_TUNING.STARTING_E1RM);
@@ -598,7 +606,7 @@ describe('meetDayFacts', () => {
     // build. `tsc` is the assertion; these are its runtime shadow.
     expect(SESSION_TUNING.STARTING_E1RM.unit).toBe(DOTS_TOTAL_UNIT);
     const record: ServerRecord = {
-      ...newServerRecord(),
+      ...newServerRecord(SIGNUP_DAY),
       bestE1rmKg: { squat: null, bench: null, deadlift: null },
     };
     const facts = meetDayFacts(record, DAY, SESSION_TUNING.STARTING_E1RM);
@@ -820,7 +828,7 @@ describe('a total that is not in kilograms is refused, not recorded', () => {
 
   it('refuses to write it', () => {
     const { reports } = playCard(POUND_MEET_RULES);
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
     expect(applied.ok).toBe(false);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
@@ -835,7 +843,7 @@ describe('a total that is not in kilograms is refused, not recorded', () => {
     // that cannot fail: `applyMeetResult` is pure and returns a new record, so
     // "the input is unchanged" is true whether it refused or wrote a 1267.5 lb
     // total. The claim that actually bites is that there is no NEW record.
-    const before = newServerRecord();
+    const before = newServerRecord(SIGNUP_DAY);
     const snapshot = structuredClone(before);
     const { reports } = playCard(POUND_MEET_RULES);
     const applied = applyMeetResult(before, DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
@@ -856,7 +864,7 @@ describe('a total that is not in kilograms is refused, not recorded', () => {
     // converting, this fails: a converted 1267.5 lb is 574.9 kg, and there is no
     // result object for it to arrive in.
     const { reports } = playCard(POUND_MEET_RULES);
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
     expect(applied).not.toHaveProperty('value');
     expect(applied.ok).toBe(false);
   });
@@ -867,7 +875,7 @@ describe('a total that is not in kilograms is refused, not recorded', () => {
     // records rather than on the first one that finishes with a total. A defect
     // that only fires on success is the worst kind to ship.
     const { reports } = playCard(POUND_MEET_RULES, [405, 425, 425], () => false);
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
     expect(applied.ok).toBe(false);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
@@ -883,7 +891,7 @@ describe('a total that is not in kilograms is refused, not recorded', () => {
 
   it('names the unit, and names the remedy rather than just saying no', () => {
     const { reports } = playCard(POUND_MEET_RULES);
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_POUND, poundProposal(reports), PROPOSAL_ID);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.message).toContain('lb');
     expect(applied.error.message).toContain('kilogramsFromPounds');
@@ -899,7 +907,7 @@ describe('the kilogram write path is untouched by the unit check', () => {
     const kgMeet: MeetDefinition = { ...MEET_LOCAL, id: 'kg-twin-2026', rules: DEFAULT_MEET_RULES };
     const { reports } = playCard(DEFAULT_MEET_RULES);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       kgMeet,
       {
@@ -938,7 +946,7 @@ describe('the kilogram write path is untouched by the unit check', () => {
       { squat: [200, 200, 200], bench: [130, 135, 140], deadlift: [240, 250, 260] },
       () => false,
     ).slice(0, 3);
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, proposalFrom(bombed), PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, proposalFrom(bombed), PROPOSAL_ID);
     expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
     if (!applied.ok) throw new Error('unreachable');
     expect(applied.value.totalKg).toBeNull();
@@ -998,7 +1006,7 @@ describe('a bodyweight that is not in kilograms is refused, not recorded', () =>
     const { state, reports } = playCard(DEFAULT_MEET_RULES, [200, 210, 220, 130, 135, 140, 240, 250, 260]);
     expect(readTotal(state).unit).toBe('kg');
 
-    const before = newServerRecord();
+    const before = newServerRecord(SIGNUP_DAY);
     const snapshot = structuredClone(before);
     const applied = applyMeetResult(before, DAY, MEET_LOCAL, poundBodyweightProposal(kgCard(reports)), PROPOSAL_ID);
 
@@ -1021,7 +1029,7 @@ describe('a bodyweight that is not in kilograms is refused, not recorded', () =>
     // in. The total-only check saw no difference between these two, because
     // there is none on the total side.
     const { reports } = playCard(DEFAULT_MEET_RULES, [200, 210, 220, 130, 135, 140, 240, 250, 260]);
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, proposalFrom(reports), PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, proposalFrom(reports), PROPOSAL_ID);
     expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
     if (!applied.ok) throw new Error('unreachable');
     const stored = applied.value.record.meets[0];
@@ -1048,7 +1056,7 @@ describe('a bodyweight that is not in kilograms is refused, not recorded', () =>
     expect(Number.isInteger(BODYWEIGHT_LB)).toBe(false);
     expect(isBodyweightInDotsDomain('male', BODYWEIGHT_LB)).toBe(true);
 
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, heavy, PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, heavy, PROPOSAL_ID);
     expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
     if (!applied.ok) throw new Error('unreachable');
     expect(applied.value.record.meets[0]?.bodyweightKg).toBe(BODYWEIGHT_LB);
@@ -1086,7 +1094,7 @@ describe('a bodyweight that is not in kilograms is refused, not recorded', () =>
     // meet having finished with a total. Same posture as the total's check
     // running on every reading kind.
     const { reports } = playCard(DEFAULT_MEET_RULES, [200, 200, 200], () => false);
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, poundBodyweightProposal(kgCard(reports)), PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, poundBodyweightProposal(kgCard(reports)), PROPOSAL_ID);
     expect(applied.ok).toBe(false);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
@@ -1098,7 +1106,7 @@ describe('a bodyweight that is not in kilograms is refused, not recorded', () =>
     // bodyweight branch was written carelessly would cost them the record of
     // the day AND the streak grace around it.
     const { reports } = playCard(DEFAULT_MEET_RULES, [200, 200, 200], () => false);
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, proposalFrom(reports), PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, proposalFrom(reports), PROPOSAL_ID);
     expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
     if (!applied.ok) throw new Error('unreachable');
     expect(applied.value.totalKg).toBeNull();
@@ -1108,7 +1116,7 @@ describe('a bodyweight that is not in kilograms is refused, not recorded', () =>
 
   it('names which number was wrong and what to do, not just no', () => {
     const { reports } = playCard(DEFAULT_MEET_RULES, [200, 210, 220, 130, 135, 140, 240, 250, 260]);
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, poundBodyweightProposal(kgCard(reports)), PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, poundBodyweightProposal(kgCard(reports)), PROPOSAL_ID);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.message).toContain('weighed');
     expect(applied.error.message).toContain('lb');
@@ -1132,7 +1140,7 @@ describe('a bodyweight that is not in kilograms is refused, not recorded', () =>
         card: kgCard(reports),
       },
     } as unknown as ProposalOfKind<'record-meet-result'>;
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, smuggled, PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, smuggled, PROPOSAL_ID);
     expect(applied.ok).toBe(false);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
@@ -1162,7 +1170,7 @@ describe('a bodyweight that is not in kilograms is refused, not recorded', () =>
     // invite a caller to fix one and resubmit.
     const { reports } = playCard(POUND_MEET_RULES);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_POUND,
       poundBodyweightProposal(lbCard(reports), MEET_POUND.id),
@@ -1238,7 +1246,7 @@ describe('a card whose unit is not its meet’s is refused, not replayed', () =>
 
     // (3) AND THE CARD'S CHECK IS WHAT REFUSES. Honestly declared `lb`, against
     //     a meet whose rules say `kg`.
-    const before = newServerRecord();
+    const before = newServerRecord(SIGNUP_DAY);
     const snapshot = structuredClone(before);
     const applied = applyMeetResult(before, DAY, MEET_KG_TWIN, proposalFor(MEET_KG_TWIN, lbCard(reports)), PROPOSAL_ID);
 
@@ -1286,14 +1294,14 @@ describe('a card whose unit is not its meet’s is refused, not replayed', () =>
     // this one too.
     const { reports } = playCard(DEFAULT_MEET_RULES);
     const refused = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       proposalFor(MEET_KG_TWIN, lbCard(reports)),
       PROPOSAL_ID,
     );
     const recorded = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       proposalFor(MEET_KG_TWIN, kgCard(reports)),
@@ -1319,7 +1327,7 @@ describe('a card whose unit is not its meet’s is refused, not replayed', () =>
     // exactly as hard as one who did the opposite.
     const { reports } = playCard(POUND_MEET_RULES);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_POUND,
       proposalFor(MEET_POUND, kgCard(reports)),
@@ -1337,7 +1345,7 @@ describe('a card whose unit is not its meet’s is refused, not replayed', () =>
     // one that can see this at all.
     const { reports } = playCard(POUND_MEET_RULES, [405, 425, 425], () => false);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       proposalFor(MEET_KG_TWIN, lbCard(reports)),
@@ -1355,7 +1363,7 @@ describe('a card whose unit is not its meet’s is refused, not replayed', () =>
     // cost them the record of the meet.
     const { reports } = playCard(DEFAULT_MEET_RULES, [200, 200, 200], () => false);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       proposalFor(MEET_KG_TWIN, kgCard(reports)),
@@ -1371,7 +1379,7 @@ describe('a card whose unit is not its meet’s is refused, not replayed', () =>
   it('names both units and the remedy, rather than just saying no', () => {
     const { reports } = playCard(POUND_MEET_RULES);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       proposalFor(MEET_KG_TWIN, lbCard(reports)),
@@ -1396,7 +1404,7 @@ describe('a card whose unit is not its meet’s is refused, not replayed', () =>
       JSON.stringify(proposalFor(MEET_KG_TWIN, lbCard(reports))),
     ) as ProposalOfKind<'record-meet-result'>;
     expect(overTheWire.report.card.unit).toBe('lb');
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_KG_TWIN, overTheWire, PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_KG_TWIN, overTheWire, PROPOSAL_ID);
     expect(applied.ok).toBe(false);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.code).toBe('UNSUPPORTED_MEET_UNIT');
@@ -1411,7 +1419,7 @@ describe('the meet definition must be the meet being reported', () => {
     // the replay. So "this total is kilograms" rested on an unchecked argument.
     const { reports } = playCard(DEFAULT_MEET_RULES);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       // A card reported for the SHIPPED meet, handed the twin's definition.
@@ -1439,7 +1447,7 @@ describe('the meet definition must be the meet being reported', () => {
     const card = lbCard(reports);
     expect(card.unit).toBe(otherPoundMeet.rules.unit);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       otherPoundMeet,
       proposalFor(MEET_POUND, card),
@@ -1455,7 +1463,7 @@ describe('the meet definition must be the meet being reported', () => {
     // function that refuses every meet.
     const { reports } = playCard(DEFAULT_MEET_RULES);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       proposalFor(MEET_KG_TWIN, kgCard(reports)),
@@ -1473,7 +1481,7 @@ describe('the meet definition must be the meet being reported', () => {
     const proposal = meetResultProposal(played);
     if (proposal === null) throw new Error('unreachable');
     expect(String(proposal.report.meetId)).toBe(played.context.meet.id);
-    expect(applyMeetResult(newServerRecord(), DAY, played.context.meet, proposal, PROPOSAL_ID).ok).toBe(true);
+    expect(applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, played.context.meet, proposal, PROPOSAL_ID).ok).toBe(true);
   });
 });
 
@@ -1490,7 +1498,7 @@ describe('a reading that declares a unit and carries no number is refused', () =
   it('refuses a bodyweight tagged kg with nothing under the tag', () => {
     const { reports } = playCard(DEFAULT_MEET_RULES);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       smuggle({ meetId: asMeetId(MEET_KG_TWIN.id), bodyweight: { unit: 'kg' }, card: kgCard(reports) }),
@@ -1508,7 +1516,7 @@ describe('a reading that declares a unit and carries no number is refused', () =
     // than one that sent nothing.
     const { reports } = playCard(DEFAULT_MEET_RULES);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       smuggle({
@@ -1525,7 +1533,7 @@ describe('a reading that declares a unit and carries no number is refused', () =
 
   it('refuses a card tagged kg with no attempts under the tag', () => {
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       smuggle({
@@ -1546,7 +1554,7 @@ describe('a reading that declares a unit and carries no number is refused', () =
     // malformed body has told the caller nothing.
     const { reports } = playCard(DEFAULT_MEET_RULES);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       smuggle({
@@ -1563,7 +1571,7 @@ describe('a reading that declares a unit and carries no number is refused', () =
 
   it('refuses a report with no card at all, rather than throwing', () => {
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       smuggle({ meetId: asMeetId(MEET_KG_TWIN.id), bodyweight: MEET_ENTRY.bodyweight }),
@@ -1581,7 +1589,7 @@ describe('a reading that declares a unit and carries no number is refused', () =
     // code for the two units.
     const { reports } = playCard(DEFAULT_MEET_RULES);
     const empty = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       smuggle({ meetId: asMeetId(MEET_KG_TWIN.id), bodyweight: { unit: 'kg' }, card: kgCard(reports) }),
@@ -1598,7 +1606,7 @@ describe('a reading that declares a unit and carries no number is refused', () =
     // numbers under the fields their units name.
     const { reports } = playCard(DEFAULT_MEET_RULES);
     const applied = applyMeetResult(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       DAY,
       MEET_KG_TWIN,
       proposalFor(MEET_KG_TWIN, kgCard(reports)),
@@ -1627,7 +1635,7 @@ describe('a reading that declares a unit and carries no number is refused', () =
       smuggle({ meetId: asMeetId(MEET_KG_TWIN.id), bodyweight: MEET_ENTRY.bodyweight, card: { unit: 'kg' } }),
     ];
     for (const submission of submissions) {
-      const applied = applyMeetResult(newServerRecord(), DAY, MEET_KG_TWIN, submission, PROPOSAL_ID);
+      const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_KG_TWIN, submission, PROPOSAL_ID);
       if (applied.ok) {
         // If it ever records one of these, it must at least not have written a
         // hole — this is the assertion that fails loudly rather than the `ok`
@@ -1670,7 +1678,7 @@ describe('the unit rides in from the entry rather than being stamped on the way 
     expect(overTheWire.report.bodyweight.unit).toBe('kg');
 
     // And the far side of that transport still records it.
-    const applied = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, overTheWire, PROPOSAL_ID);
+    const applied = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, overTheWire, PROPOSAL_ID);
     expect(applied.ok, applied.ok ? '' : applied.error.message).toBe(true);
     if (!applied.ok) throw new Error('unreachable');
     expect(applied.value.record.meets[0]?.bodyweightKg).toBe(MEET_ENTRY.bodyweight.kilograms);
@@ -1680,7 +1688,7 @@ describe('the unit rides in from the entry rather than being stamped on the way 
     const inPounds = JSON.parse(
       JSON.stringify(poundBodyweightProposal(overTheWire.report.card)),
     ) as ProposalOfKind<'record-meet-result'>;
-    const refused = applyMeetResult(newServerRecord(), DAY, MEET_LOCAL, inPounds, PROPOSAL_ID);
+    const refused = applyMeetResult(newServerRecord(SIGNUP_DAY), DAY, MEET_LOCAL, inPounds, PROPOSAL_ID);
     expect(refused.ok).toBe(false);
     if (refused.ok) throw new Error('unreachable');
     expect(refused.error.code).toBe('UNSUPPORTED_MEET_UNIT');

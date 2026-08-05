@@ -649,7 +649,7 @@
  *     is exactly the reasoning that left `weightKg` alone for three rounds
  * ---------------------------------------------------------------------------
  *
- *   `meets[n].meetDayIndex`, `streak.lastTrainedDay`
+ *   `meets[n].meetDayIndex`, `streak.lastTrainedDay`, `streak.signupDay`
  *       DAY INDICES. The unit is "civil days since an epoch the server owns"
  *       (GDD §4.1), and it is proven by construction: `asStreakDay` is the one
  *       mint, `decodeStreak` refuses a non-integer, and the day is resolved by
@@ -2910,6 +2910,12 @@ function fail<T>(code: ProgressionErrorCode, message: string): ProgressionResult
  * two that drift are none.
  */
 export interface StreakStateWire {
+  /**
+   * GDD §4.2: the day the account was created, as a civil-day index. Required,
+   * because `streak.ts` charges idle days from it and a state without one is a
+   * state whose idle days are free — see `StreakState.signupDay`.
+   */
+  readonly signupDay: number;
   readonly currentStreak: number;
   readonly longestStreak: number;
   readonly lastTrainedDay: number | null;
@@ -3061,8 +3067,18 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
       return fail('INVALID_SNAPSHOT', `progression: streak.${name} must be a boolean`);
     }
   }
+  if (!Number.isSafeInteger(wire.signupDay)) {
+    return fail('INVALID_SNAPSHOT', 'progression: streak.signupDay must be a whole day index');
+  }
   if (wire.lastTrainedDay !== null && !Number.isSafeInteger(wire.lastTrainedDay)) {
     return fail('INVALID_SNAPSHOT', 'progression: streak.lastTrainedDay must be a whole day index or null');
+  }
+  // An account cannot have been created after a session was recorded on it, and
+  // a snapshot that says otherwise is a migration bug rather than a state the
+  // client should try to render. `streak.ts`'s `adoptSignupDay` refuses the same
+  // pair on the way in; this refuses it on the way back.
+  if (wire.lastTrainedDay !== null && wire.signupDay > wire.lastTrainedDay) {
+    return fail('INVALID_SNAPSHOT', 'progression: streak.signupDay cannot be after streak.lastTrainedDay');
   }
   // The armed count is a COUNT that may be absent, not a day index: `null` means
   // "no Recovery Day protection armed for the absence in progress" (GDD §4.2's
@@ -3081,6 +3097,7 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
   }
   const lastTrainedDay: StreakDay | null = wire.lastTrainedDay === null ? null : asStreakDay(wire.lastTrainedDay);
   return ok({
+    signupDay: asStreakDay(wire.signupDay),
     currentStreak: wire.currentStreak,
     longestStreak: wire.longestStreak,
     lastTrainedDay,

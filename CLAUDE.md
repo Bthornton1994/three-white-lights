@@ -128,6 +128,52 @@ physiology.
 - **No forced ads.** Rewarded-only, if ads ship at all.
 - **Never punish daily engagement.** Injury setbacks are short, soft, and
   recoverable. A player who shows up every day must never feel penalized for it.
+
+  This is checkable, and it is checked. In the streak system it means: **for two
+  training histories identical except that one has an extra trained day, the
+  player who trained more must never end on a lower streak.** `src/game/streak
+  .test.ts` measures it exhaustively over every calendar of 8–16 days and on a
+  seeded 40- and 60-day sweep, and pins the counts. Do not weaken those pins
+  into bounds — a bound lets the defect grow back quietly.
+
+  **The measurement's inputs live in `src/game/streakSweep.ts`**, not in the
+  test: the seeds, the calendar lengths and the attendance distribution, as
+  named constants and a deterministic generator. That file exists because the
+  first version of this measurement was reported with its seeds unstated and
+  could not afterwards be reproduced by anyone — six plausible
+  parameterisations gave six different numbers. A measurement whose inputs are
+  not written down is an anecdote. If you take a new one, put its parameters
+  there and re-derive the counts in GDD §4.4 rather than sampling at a call
+  site.
+
+  Two rules in `src/game/streak.ts` exist *only* to keep that property, and both
+  are load-bearing in a way that reads as harsh if you meet them alone:
+
+  - **`StreakState.signupDay` (account creation) anchors an absence until the
+    first trained day replaces it.** Idle days before a lifter's first session
+    are charged like any others. Required and non-nullable: an absent signup day
+    is an unanchored, uncharged, free window, which is the defect.
+  - **An absence that outran what was armed still consumes it.** Coverage is
+    all-or-nothing; the charge is not.
+
+  Both consumptions are **reported, never silent**, and that is enforced rather
+  than promised: the read model announces what the next session will cost before
+  it costs it, the session reports what it took, and the suite drives every
+  12-day calendar at every balance asserting that no balance moves by more than
+  what was reported. The announcement side is an exhaustive switch over the read
+  model's cases, so a new screen state cannot ship with a silent debit behind it.
+
+  A free absence is what an extra trained day converts into a charged one, so
+  every free case is a hole in the property. Removing either rule reopens it —
+  measured: 32 and 24 violating pairs respectively over every 13-day calendar,
+  against 0 with both. GDD §4.2 and §4.4 carry the full measurement.
+
+  What is still open, named rather than rounded up: streak-milestone income is
+  paid once per lifetime and timed by the streak, so a lifter who trains more
+  banks it earlier and can lose it to a doomed absence the lazier lifter reaches
+  with the payout still ahead of them. That leaves a small measured residue past
+  ~40 days. It needs a human ruling because both fixes change the GDD §4.2
+  earning table.
 - **No real identity, until a human unlocks one.** No real, named athlete,
   brand, or company identity — name, logo, likeness, or wordmark — may be
   hardcoded into any asset, string, config, or code path. The licensing system
