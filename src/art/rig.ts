@@ -540,10 +540,13 @@ export const RIG_GEOMETRY = {
    *    THE SPEC WAS ALSO SHORT BY A FIELD. The reverted round quoted two other
    *    counts for the same two poses and did not say at what strain, pitch or
    *    load it rendered them; the correction added strain, pitch and load and
-   *    did not say at what DIRECTION, which is not a free variable — BRACE is a
+   *    did not say at what DIRECTION, which at BRACE is not a free variable —
+   *    BRACE is a
    *    DESCENT anchor (depth `BRACE_SETTLE_DEPTH`), and asking the ASCENT ladder
    *    for the same depth draws a different pose and counts
-   *    `@ours SINGLET_PX_DRAWN.BRACE_ASCENT = 135`, eighteen px less.
+   *    `@ours SINGLET_PX_DRAWN.BRACE_ASCENT = 135`, eighteen px less. ("At
+   *    BRACE" is doing work in that sentence: measured this round, the two
+   *    ladders agree in the HOLE and differ only here.)
    *
    *    `SINGLET_PX_DRAWN` HOLDS ALL FOUR ROWS: BRACE and HOLE on the DESCENT
    *    ladder and on the ASCENT ladder, each rendered from a spec written out in
