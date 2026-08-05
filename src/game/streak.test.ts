@@ -1713,30 +1713,55 @@ describe('the consecutive-use limit', () => {
     expect(coveredDaysLeftInWindow(unwrap(recordTrainingDay(state, tooLong)).state)).toBe(0);
   });
 
-  it('binds before the balance does, which is the whole reason it exists', () => {
-    // With a hold cap of 5 a player could otherwise afford the chargeable days
-    // of a much longer absence. The limit is what stops a week away being
-    // buyable, so it has to bite while Recovery Days are still in the bank.
+  it('ends the run with coverage still unspent, which is the whole reason it exists', () => {
+    // WHAT THIS USED TO ASSERT, and why it cannot: `HOLD_CAP > MAX_CONSECUTIVE
+    // _USES`. The hold cap went with the stock, and `streakEntitlement.ts`
+    // states outright that the window rate and the per-absence ceiling are "2
+    // and 2 today by coincidence of tuning" and that raising the rate to 5
+    // without raising the ceiling must still leave a week away unbuyable. A
+    // strict inequality between them encodes a rank the design refuses, and at
+    // the shipped tuning it is simply false.
+    //
+    // THE BEHAVIOUR IT WAS A PROXY FOR IS UNCHANGED and is what is checked now:
+    // the run ends because the absence outran the CEILING, while the window
+    // still has covered days in it. That is the difference between "you could
+    // not afford this" and "this was never for sale", and it is what the reason
+    // code has to get right.
     const state = stateWithRun(9, DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
-    expect(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW).toBeGreaterThan(LIMIT);
     const opening = openDay(state, dayAfterGap(DAY_ZERO, GRACE + LIMIT + 1));
     if (opening.kind !== 'streak-broken') throw new Error('expected a break');
     expect(opening.reason).toBe('absence-longer-than-consecutive-limit');
     expect(opening.coveredDaysAvailable).toBeGreaterThan(0);
+    // ...and it bit at the ceiling rather than at the window: the lifter could
+    // draw exactly LIMIT days and no more, holding a full window.
+    expect(armedGapDays(state, TODAY_FOR_READS)).toBe(LIMIT);
+    expect(openDay(state, dayAfterGap(DAY_ZERO, GRACE + LIMIT)).kind).toBe(
+      'gap-covered-by-recovery-days',
+    );
   });
 
   it('does NOT stop an alternating pattern of one trained day per chargeable absence', () => {
     // The module header claims this out loud rather than implying a guard it
     // does not have. Here it is: every trained day re-arms, so a player who
-    // trains one day after each shortest chargeable absence spends one Recovery
-    // Day per absence until the bank is empty, and only then breaks.
-    const STARTING_BALANCE = 3;
+    // trains one day after each shortest chargeable absence spends one covered
+    // day per absence until the WINDOW is empty, and only then breaks.
+    //
+    // THE BOUND CHANGED FROM A HOLD CAP TO A WINDOW, and that is the only thing
+    // about this test that moved. The starting balance used to be a hand-picked
+    // 3 — more than the window can now hold, which is why `withCoveredDays`
+    // refuses it. It is the window rate now, and the pattern has to stay inside
+    // ONE window or the refill would rescue it, which the arithmetic below
+    // checks rather than assumes.
+    const STARTING_BALANCE = RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW;
+    const CYCLES = STARTING_BALANCE + 2;
+    expect((CYCLES + 1) * (SHORTEST_PAID_GAP + 1)).toBeLessThan(RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+
     let state: StreakState = stateWithRun(1, DAY_ZERO, STARTING_BALANCE);
     let spent = 0;
     let day = DAY_ZERO;
     let brokeAfter = -1;
 
-    for (let cycle = 0; cycle < STARTING_BALANCE + 2 && brokeAfter < 0; cycle += 1) {
+    for (let cycle = 0; cycle < CYCLES && brokeAfter < 0; cycle += 1) {
       day = dayAfterGap(day, SHORTEST_PAID_GAP);
       const outcome = unwrap(recordTrainingDay(state, day));
       spent += outcome.recoveryDaySave?.recoveryDaysSpent ?? 0;
@@ -1747,6 +1772,9 @@ describe('the consecutive-use limit', () => {
     expect(spent).toBe(STARTING_BALANCE);
     expect(coveredDaysLeftInWindow(state)).toBe(0);
     expect(brokeAfter).toBe(STARTING_BALANCE);
+    // Every day of the pattern really was inside window 0, so the break is the
+    // window running out and not the pattern outrunning the calendar.
+    expect(entitlementWindowFor(state, day)).toBe(0);
   });
 
   it('is re-armed by any training day', () => {
@@ -2007,17 +2035,38 @@ describe('the first-save moment', () => {
   });
 
   it('is not burned by a break that could never have been saved', () => {
-    const broke = { ...stateWithRun(9, DAY_ZERO, 0), entitlementArmed: true };
+    // NOTHING IS HAND-BUILT AFTER THE FIRST STATE, and that is the change the
+    // entitlement forced. This used to refill the bank between the break and
+    // the later save by writing a balance onto the state; under a window there
+    // is no balance to write, and refilling by hand would be asserting against
+    // a state no calendar produces. So the refill is the real one: the lifter
+    // trains through to the end of their first window and the save lands in the
+    // second.
+    const broke = stateWithRun(9, DAY_ZERO, 0);
     const brokeOn = dayAfterGap(DAY_ZERO, SHORTEST_PAID_GAP);
     const settled = unwrap(settleBrokenStreak(broke, brokeOn));
+    // THE PROPERTY UNDER TEST: a break nothing could have held is not the
+    // teaching moment, so it must not consume it.
     expect(settled.state.hasBankedFirstRecoveryDaySave).toBe(false);
 
+    // Rebuild from the day of the break to the last day of window 0. The first
+    // of those sessions closes a doomed absence and takes what the window has,
+    // which is nothing — so no save is banked anywhere in here either.
+    const lastDayOfWindowZero = addDays(DAY_ZERO, RECOVERY_ENTITLEMENT.WINDOW_DAYS - 1);
     const restarted = trainConsecutively(
-      { ...settled.state, entitlement: withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW) },
-      addDays(brokeOn, 1),
-      4,
+      settled.state,
+      brokeOn,
+      daysBetween(brokeOn, lastDayOfWindowZero) + 1,
     );
-    const opening = openDay(restarted, dayAfterGap(addDays(brokeOn, 4), SHORTEST_PAID_GAP));
+    expect(restarted.lastTrainedDay).toBe(lastDayOfWindowZero);
+    expect(restarted.hasBankedFirstRecoveryDaySave).toBe(false);
+    expect(coveredDaysLeftInWindow(restarted)).toBe(0);
+
+    // The next window refills on the calendar, so the first chargeable absence
+    // that resolves inside it is covered — and it is still the FIRST save.
+    const backOn = dayAfterGap(lastDayOfWindowZero, SHORTEST_PAID_GAP);
+    expect(entitlementWindowFor(restarted, backOn)).toBe(1);
+    const opening = openDay(restarted, backOn);
     if (opening.kind !== 'gap-covered-by-recovery-days') throw new Error('expected a save');
     expect(opening.isFirstRecoveryDaySave).toBe(true);
   });
@@ -2070,34 +2119,76 @@ describe('streak milestones', () => {
     );
   });
 
-  it('pays each milestone once in a lifetime, so breaking and rebuilding cannot farm them', () => {
-    // Broke and started again with nothing: `armedRecoveryDays` matches the
-    // balance, or the state would be one no session could have produced.
-    let state: StreakState = { ...freshState(), entitlement: withCoveredDays(0), entitlementArmed: true };
-    state = trainConsecutively(state, DAY_ZERO, 7);
-    expect(coveredDaysLeftInWindow(state)).toBe(1);
+  it('marks each milestone once in a lifetime, so breaking and rebuilding cannot farm them', () => {
+    // THE FARMING GUARD, AND WHAT IT IS A GUARD ON NOW. Under the Recovery Day
+    // stock a milestone paid a token, so this test read the balance: reach
+    // seven, break, reach seven again, and the balance must not have gone up
+    // twice. GDD §4.2's Option 1 ruling pays nothing for a milestone at all
+    // (`STREAK_MILESTONE_DAYS` carries the measurement that forbids it), so a
+    // balance assertion cannot tell a once-per-lifetime ledger from a ledger
+    // that is not there.
+    //
+    // WHAT IS STILL REAL, AND IS WHAT THIS CHECKS: the milestone EVENT is once
+    // per lifetime, read off `longestStreak`. It is what a UI marks and what
+    // any future reward would be hung on, so the ledger has to be right whether
+    // or not anything currently hangs on it.
+    const milestone = STREAK_MILESTONE_DAYS[0] as number;
+    let state: StreakState = freshState();
 
-    // The fourteen-day absence ends the run AND takes the Recovery Day the
-    // milestone paid, because it was armed against that absence (§5).
+    const firstRun: number[][] = [];
+    for (let i = 0; i < milestone; i += 1) {
+      const outcome = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, i)));
+      firstRun.push([...outcome.milestonesReached]);
+      state = outcome.state;
+    }
+    // Reached exactly once, on the day it was reached.
+    expect(firstRun.flat()).toEqual([milestone]);
+    expect(firstRun[milestone - 1]).toEqual([milestone]);
+
+    // A fourteen-day absence ends the run AND takes everything the window has,
+    // because it was armed against that absence (§5 of `streak.ts`). Under the
+    // stock that confiscated the milestone's payout; under the entitlement it
+    // confiscates the window, which the next one restores.
     const back = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, 20)));
-    expect(back.recoveryDaysLostToTheAbsence).toBe(1);
+    expect(back.previousRunEnded).toBe(true);
+    expect(back.recoveryDaysLostToTheAbsence).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+    expect(back.milestonesReached).toEqual([]);
     state = back.state;
-    state = trainConsecutively(state, addDays(DAY_ZERO, 21), 6);
-    expect(state.currentStreak).toBe(7);
-    // Still 0: reaching seven a SECOND time pays nothing, which is the point.
-    expect(coveredDaysLeftInWindow(state)).toBe(0);
+
+    const secondRun: number[][] = [];
+    for (let i = 0; i < milestone - 1; i += 1) {
+      const outcome = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, 21 + i)));
+      secondRun.push([...outcome.milestonesReached]);
+      state = outcome.state;
+    }
+    expect(state.currentStreak).toBe(milestone);
+    // NOTHING THE SECOND TIME. Reaching seven again is not a milestone, and it
+    // is not one whether or not a milestone pays anything.
+    expect(secondRun.flat()).toEqual([]);
   });
 
-  it('still pays a milestone the first time a rebuilt run passes the previous best', () => {
-    let state: StreakState = { ...freshState(), entitlement: withCoveredDays(0), entitlementArmed: true };
-    state = trainConsecutively(state, DAY_ZERO, 7);
+  it('still marks a milestone the first time a rebuilt run passes the previous best', () => {
+    const first = STREAK_MILESTONE_DAYS[0] as number;
+    const second = STREAK_MILESTONE_DAYS[1] as number;
+    let state: StreakState = freshState();
+    state = trainConsecutively(state, DAY_ZERO, first);
     state = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, 20))).state;
-    state = trainConsecutively(state, addDays(DAY_ZERO, 21), 29);
-    expect(state.currentStreak).toBe(30);
-    expect(state.longestStreak).toBe(30);
-    // One, not two: the seven-day payout was lost to the absence that ended the
-    // first run, and only the thirty-day payout is in hand.
-    expect(coveredDaysLeftInWindow(state)).toBe(1);
+
+    const reached: number[][] = [];
+    let credited = 0;
+    for (let i = 0; i < second - 1; i += 1) {
+      const outcome = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, 21 + i)));
+      reached.push([...outcome.milestonesReached]);
+      credited += outcome.recoveryDaysGranted;
+      state = outcome.state;
+    }
+    expect(state.currentStreak).toBe(second);
+    expect(state.longestStreak).toBe(second);
+    // The thirty-day milestone is marked once, on the day the rebuilt run
+    // passes the previous best — and the seven-day one is NOT marked again.
+    expect(reached.flat()).toEqual([second]);
+    // AND NOTHING WAS PAID FOR EITHER OF THEM, across the whole rebuild.
+    expect(credited).toBe(0);
   });
 
   it('cannot be reached faster by spending Recovery Days', () => {
@@ -2205,10 +2296,30 @@ describe('what a purchased Recovery Day can reach', () => {
     // every source. There is no source now: `recordTrainingDay(state, day)` is
     // still the only function that can draw on coverage, and coverage itself is
     // a window every account has on the same terms.
-    const run = { ...stateWithRun(9, DAY_ZERO, 0), entitlementArmed: true };
+    const run = stateWithRun(9, DAY_ZERO, 0);
+    expect(streakModule.recordTrainingDay).toHaveLength(2);
     expect(JSON.stringify(run)).not.toContain('source');
-    expect(JSON.stringify(run)).not.toContain('purchase');
     expect(JSON.stringify(run)).not.toContain('chalk');
+    expect(JSON.stringify(run)).not.toContain('gymBucks');
+
+    // ONE HONEST EXCEPTION, NAMED RATHER THAN SCANNED AROUND. The state does
+    // carry `purchasedDaysLeft`, and a blanket ban on the string "purchase"
+    // would fail on it. It is not a provenance in the sense this test is about
+    // — nothing branches on where a covered day came from in `streak.ts` — but
+    // it is not nothing either: `streakEntitlement.afterSession` spends the
+    // granted entitlement BEFORE the purchased one, so the two are told apart
+    // by one line in the sibling module.
+    //
+    // WHAT MAKES THAT SAFE HERE is that the field is unreachable from this
+    // module: GDD §8.3E is PROPOSED AND NOT RULED, nothing exported can credit
+    // one, and 'THE PURCHASE PATH IS NOT IMPLEMENTED' pins it at zero across
+    // every state this module can produce. So the exception is checked, not
+    // waved through.
+    const purchaseMentions = [...JSON.stringify(run).matchAll(/"(\w*[Pp]urchas\w*)"/g)].map(
+      (match) => match[1],
+    );
+    expect(purchaseMentions).toEqual(['purchasedDaysLeft']);
+    expect(run.entitlement.purchasedDaysLeft).toBe(0);
     // Two lifters in the same window, one who has trained far more than the
     // other, draw on exactly the same coverage.
     const busy = trainConsecutively(freshState(), DAY_ZERO, 20);
