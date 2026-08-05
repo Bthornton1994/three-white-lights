@@ -39,6 +39,37 @@
  * knowingly. There is no anti-abuse check in this file.
  *
  * ===========================================================================
+ * 1b. SIGNUP DAY — THE DAY THE CLOCK STARTS, STATED RATHER THAN IMPLIED
+ * ===========================================================================
+ *
+ * `StreakState.signupDay` IS THE DAY THE ACCOUNT WAS CREATED. Not the first
+ * session, not the first app open, not the day a migration ran: account
+ * creation, which is the first day on which the player could possibly have a
+ * gap at all. It is written once, by whatever creates the account, and never
+ * moves again.
+ *
+ * IT IS REQUIRED AND IT IS NOT NULLABLE, and that is a decision with a reason
+ * rather than an oversight about legacy accounts. Every absence in this module
+ * is measured from an anchor day (`absenceAnchorDay`): the last TRAINED day if
+ * there is one, and the signup day if there is not. A state with no anchor has
+ * no absence, and a player with no absence is never charged for idle days — the
+ * exact asymmetry §6 exists to delete. So an optional signup day would leave
+ * the defect live for every account that had not been backfilled, which at the
+ * moment of the change is all of them. The type refuses to express that.
+ *
+ * WHAT A MIGRATION MUST DO, since accounts created before this field existed do
+ * not carry one: the server backfills it from the account's creation timestamp,
+ * resolved to a local civil day the same way every other day here is. Where
+ * that timestamp is genuinely unrecoverable, the honest backfill is the day the
+ * migration runs, and the reason it is safe is worth stating: monotonicity is a
+ * property of two POSSIBLE FUTURES from the same state, and both of them share
+ * whatever anchor the state carries. Days before the backfill are history, not
+ * a choice anyone can still make differently, so making them free costs nothing.
+ * Backfilling to a day AFTER `lastTrainedDay` is meaningless rather than unsafe
+ * — the trained day wins the anchor — but it is still wrong, and
+ * `adoptSignupDay` refuses it rather than storing a lie.
+ *
+ * ===========================================================================
  * 2. THE STREAK
  * ===========================================================================
  *
@@ -46,6 +77,11 @@
  * `RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS` missed days keeps the run alive
  * at no cost and with nothing to answer. A longer one ends the run unless
  * Recovery Days armed ahead of time cover the days past the grace.
+ *
+ * AN ABSENCE IS MEASURED FROM THE ANCHOR DAY, WHICH MAY BE THE SIGNUP DAY. A
+ * lifter who has never trained is not outside the system: their idle days are
+ * counted from `signupDay` and charged exactly as a lifter's inside a run are.
+ * See §1b for what that field is and §6 for the measurement that forced it.
  *
  * `currentStreak` counts **trained days** in the live run. A Recovery Day keeps
  * the run alive across an absence; it does not add to the count. That is a
@@ -73,6 +109,10 @@
  *   - `recordTrainingDay` **arms** whatever the player holds:
  *     `armedRecoveryDays` is set to the balance at the end of every session
  *     (or to `null` if the player has turned protection off).
+ *   - `createStreakState` arms the signup grant the same way, because the
+ *     signup day is an anchor like any other and the absence that follows it is
+ *     chargeable like any other. A new lifter is protected from the moment the
+ *     account exists, not from their first session.
  *   - the missed days themselves consume what is armed. `absenceOutcome` is a
  *     pure function of `(lastTrainedDay, armedRecoveryDays, today)`, so an
  *     absence costs and covers exactly the same thing whether the player opens
@@ -202,14 +242,16 @@
  * as happily if one were written as the other.
  *
  * AN ABSENCE IS THE UNIT, AND THERE IS NO SMALLER ONE. An absence is everything
- * since the last TRAINED day. Nothing is committed part-way through one: the
+ * since the ANCHOR DAY — the last TRAINED day, or the signup day for a lifter
+ * who has not trained yet (§1b). Nothing is committed part-way through one: the
  * balance does not move, no marker is written, and there is no per-gap
  * bookkeeping that could re-arm the grace or the consecutive-use allowance.
  * The whole thing is one subtraction:
  *
- *     daysMissed = today - lastTrainedDay - 1
+ *     daysMissed = today - absenceAnchorDay - 1
  *     chargeable = max(0, daysMissed - FREE_GRACE_GAP_DAYS)
  *     covered   <=>  chargeable <= min(armedRecoveryDays, MAX_CONSECUTIVE_USES)
+ *     consumed   =  covered ? chargeable : armedRecoveryDays
  *
  * so the longest survivable absence is `LONGEST_REPAIRABLE_ABSENCE_DAYS` =
  * `FREE_GRACE_GAP_DAYS + MAX_CONSECUTIVE_USES` days — four at today's values,
@@ -219,13 +261,40 @@
  * previous implementation needed a paragraph and a table to defend the same
  * sentence; this one cannot express the alternative.
  *
- * COVERAGE IS ALL-OR-NOTHING, AND IT IS NOW LITERALLY TRUE. A Recovery Day is
- * debited only by the training day that ends the absence it covered. An absence
- * longer than what is armed ends the run **with the balance untouched** — the
- * player keeps every Recovery Day, because none of them bought anything. There
- * is no longer any way to spend part of a balance on an absence that ends the
- * run anyway; the old design had one, reachable by opening the app mid-absence,
- * and deleting it is one of the two things this rework bought.
+ * AN ABSENCE IS CHARGED WHETHER OR NOT IT SAVED ANYTHING. Coverage is still
+ * all-or-nothing — a run either survives an absence or it does not, and there
+ * is no half-saved run — but the CHARGE is not. An absence that outran what was
+ * armed consumes the armed Recovery Days anyway: they were committed to holding
+ * that absence open, they failed, and they are gone.
+ *
+ * THIS REVERSES A RULE THAT USED TO BE HERE, and the reversal is measured
+ * rather than preferred. The previous revision said "an absence that ends the
+ * run debits nothing", which is kinder to read and is the direct cause of a
+ * hard-constraint violation: see §6. In one sentence — if a doomed absence is
+ * free, then training one extra day inside a doomed absence splits it into two
+ * shorter ones that are NOT free, and the player who trained more pays more.
+ *
+ * IT IS ALSO WHAT THE PRECEDENT GDD §12.2 NAMES ACTUALLY DOES. A Duolingo
+ * streak freeze is consumed by the day it covers, not by whether the streak
+ * survived the week; the "spend nothing on a lost cause" rule was this
+ * codebase's own invention and not the model it was measured against.
+ *
+ * THE DEBIT IS STILL TAKEN IN EXACTLY ONE PLACE: `recordTrainingDay`, the
+ * training day that ends the absence. `settleBrokenStreak` records the end of a
+ * run and moves no balance, so the armed count survives a settle as a pending
+ * commitment and the debit cannot depend on which day anybody opened the app.
+ * A player who never comes back is never charged, because nothing ever ends
+ * their absence.
+ *
+ * WHY THE DEBIT IS THE WHOLE ARMED COUNT AND NOT `min(chargeable, armed)`,
+ * which would be gentler and reads more naturally. `chargeable` grows with
+ * every day the player stays away, so a debit that depended on it would depend
+ * on WHEN the absence was resolved, and §6's first invariant would be gone. The
+ * armed count is fixed the moment the session ends, so a debit equal to it is
+ * the same number whether the player returns tomorrow or in a year. Measured:
+ * capping the debit at `MAX_CONSECUTIVE_USES` instead is also fixed, and it
+ * does not close the violation — two absences may each cost the cap, so
+ * splitting a long one still costs more than leaving it whole.
  *
  * WHAT IS *NOT* GUARDED, said plainly because the opposite would be a claim
  * this file cannot back:
@@ -248,7 +317,8 @@
  *     §3: arming happens when you train. This is the visible cost of making the
  *     outcome independent of app-opening, and it is stated on the read model
  *     (`DayOpening` reports what is armed, not what is held) rather than left
- *     for a player to discover.
+ *     for a player to discover. It is also how the Duolingo-style armed-ahead
+ *     model GDD §12.2 points at behaves, so it is a cost the bar already pays.
  *
  * ===========================================================================
  * 6. NEVER PUNISH DAILY ENGAGEMENT (CLAUDE.md, GDD §3.5, §12.3)
@@ -264,7 +334,9 @@
  *     directly, by full state equality, over a sweep of opening schedules and
  *     exhaustively over every calendar of a fixed length. This is the invariant
  *     the manual prompt broke and the whole reason for the rework.
- *   - NOTHING IS EVER SPENT ON AN ABSENCE THAT ENDS THE RUN. See §5.
+ *   - AN ABSENCE IS CHARGED WHETHER IT SAVED THE RUN OR NOT, AND FOR A FIXED
+ *     AMOUNT EITHER WAY. See §5. This is the rule that used to say the
+ *     opposite; §5 says why it had to turn round.
  *   - LOCALLY. Across a grid of run lengths and balances, training today
  *     dominates skipping today on every field that matters: streak up by one,
  *     longest streak no lower, balance no lower, coverage no worse.
@@ -281,61 +353,73 @@
  *     backwards across an absence, so the spender's run contains the
  *     comparator's.
  *
- * WHAT DOES NOT HOLD, and is pinned by tests rather than glossed over:
+ *   - MONOTONICITY IN THE TRAINED SET, over every calendar of 13, 15, 16 and 17
+ *     days — exhaustive, every single-day superset of every calendar — and over
+ *     a seeded sweep of 40-day calendars. Training one MORE day never lowers
+ *     `currentStreak` and never lowers `longestStreak`. This did NOT hold before
+ *     the signup-day rework and the numbers it used to fail by are recorded in
+ *     `MONOTONICITY_MEASUREMENT` in `streak.test.ts`, with the new ones beside
+ *     them so the change is a measurement rather than a claim.
  *
- *     A player who trains one MORE day can end on a shorter streak — the live
- *     one on the home screen, and their lifetime best — than the same player
- *     who trained one day fewer. Without bound: the deficit is the length of
- *     the run that dies.
+ * HOW IT WAS CLOSED, in the order the two halves matter:
  *
- * THE CAUSE, MEASURED RATHER THAN ASSERTED, AND IT IS NOT THE PROMPT. GDD §4.4
- * attributed this residue to §4.2's manual use, on the grounds that Duolingo's
- * armed-ahead streak freeze has no such residue. Deleting the prompt was the
- * test of that claim, and the claim did not survive it: with the prompt gone,
- * the auto-protected engine reproduces the same family at the same size. The
- * 37-versus-38 case is still 37 against 18.
+ *   (1) THE ANCHOR. Idle days before a run existed used to be free, because
+ *       `daysMissedBefore` returned 0 with no `lastTrainedDay` to measure from.
+ *       They are now measured from `signupDay` (§1b) and charged like any other
+ *       idle days. This is GDD §4.2's "charge both sides".
+ *   (2) THE DOOMED ABSENCE. An absence that outran what was armed used to be
+ *       free. It is now charged the armed count (§5).
  *
- * WHAT THE PROMPT ACTUALLY CAUSED was the *other* residue — the one about
- * balances rather than streaks, where a player who opened the app mid-absence
- * paid for part of an absence that ended the run anyway. That one is gone
- * completely, and it is gone in the strong sense: the whole outcome is now a
- * function of the calendar, so there is nothing left for app-opening to change.
+ * NEITHER HALF WORKS ALONE, and that is measured rather than reasoned. At the
+ * tunables this file ships, over every 13-day calendar and its single-day
+ * supersets: the defect was 36 violating pairs, worst deficit 3. The anchor
+ * alone leaves 32 pairs. The doomed-absence charge alone leaves 24. Together
+ * they leave 0. On a seeded sweep of 400 forty-day calendars the same three
+ * numbers are 100 pairs, 92, and 0.
  *
- * ROOT CAUSE OF WHAT REMAINS, and it is one asymmetry rather than a pile of
- * edge cases. Idle days BEFORE a run exists are free: there is no live run, so
- * `daysMissedBefore` returns 0 and nothing is armed against anything. Idle days
- * INSIDE a live run past the free grace cost Recovery Days. An extra training
- * day converts the first kind into the second, drains a finite pool, and leaves
- * a later absence uncoverable — so a run dies that would otherwise have been
- * saved. Both players spend the same TOTAL; what differs is *when* they were
- * able to, and a Recovery Day spent protecting a one-day run is worth one day.
+ * WHY BOTH HALVES ARE THE SAME FIX SEEN TWICE. Adding a trained day always
+ * SPLITS one absence into two shorter ones. Splitting can only reduce the total
+ * charge — `max(0, a-G) + max(0, b-G) <= max(0, a+b+1-G)` — so a charge that is
+ * levied on EVERY absence is automatically monotone. Every free case is a hole
+ * in that argument, because splitting a free absence into charged ones creates
+ * charge out of nothing. There were exactly two free cases: the absence before
+ * a run existed, and the absence that killed one. Both are now charged, and the
+ * argument closes.
  *
- * WHY NOTHING IN THIS MODULE CLOSES IT, as an argument rather than a shrug.
- * The property "one more trained day never lowers the final streak" requires
- * that a live run never cost more to keep than no run at all. Every way of
- * arranging that removes something the design is built on:
+ * WHAT THE PROMPT ACTUALLY CAUSED, since GDD §4.4 blamed it and was wrong: the
+ * *other* residue, the one about balances rather than streaks, where a player
+ * who opened the app mid-absence paid for part of an absence that ended the run
+ * anyway. That one is gone, and gone in the strong sense — the whole outcome is
+ * a function of the calendar, so nothing is left for app-opening to change.
+ * Deleting the prompt was run as a clean test of the blame and the monotonicity
+ * family did not move at all, which is what sent the search back to the
+ * asymmetry above.
  *
- *   - CHARGE ABSENCES BEFORE A RUN TOO. Restores monotonicity by making a new
- *     player pay Recovery Days for days on which they had no streak to protect.
- *     A charge that buys nothing is worse than the defect.
- *   - REFUND WHEN THE PROTECTED RUN DIES. The refund arrives after the death.
- *     It restores the balance, not the run, and the deficit is measured in
- *     streak days.
- *   - ONLY PROTECT RUNS LONGER THAN SOME THRESHOLD. Moves the asymmetry to the
- *     threshold instead of removing it — the same construction reappears with
- *     the divergent day placed where a run crosses it — and adds a cliff where
- *     a young streak is worth less than an old one.
- *   - STOP CONSUMING RECOVERY DAYS AT ALL. This is the one that works, and it
- *     is a monetisation decision, not a streak decision: a Recovery Day that is
- *     never consumed has no hold cap worth having (GDD §4.2), nothing to earn
- *     on the free-path table (§4.2) and nothing to sell (§8.2). It needs a
- *     human ruling, and it has not had one.
+ * THE ARGUMENT §4.4 MADE FOR THE PROMPT'S GUILT was that the Duolingo model
+ * GDD §12.2 sets as the daily-loop bar arms its protection ahead and has no
+ * such residue. The first half of that is true and this module now matches it.
+ * The second half was doing no work: what made the residue was two kinds of
+ * FREE absence, and an armed-ahead design has those or does not have those
+ * quite independently of whether anybody is prompted. Correcting §4.4 was part
+ * of this piece; the correction is that the cause was the free cases, and the
+ * Duolingo comparison was a red herring rather than a proof.
  *
- * So the residue is a property of a FINITE CONSUMABLE SPENT TO PROTECT A LIVE
- * RUN, and the Duolingo precedent does not refute that — a streak freeze is
- * consumed by a miss only when there is a streak to freeze, which is the same
- * asymmetry. What Duolingo's armed-ahead model does remove, and what this
- * module now removes with it, is every dependence on when the player looks.
+ * WHAT STILL DOES NOT HOLD, and is measured rather than glossed. Beyond about
+ * forty days of calendar the sweep finds violations again, at a fraction of the
+ * old rate, and their cause is a third asymmetry this rework did not touch:
+ * STREAK MILESTONE INCOME IS PAID ONCE PER LIFETIME AND ITS ARRIVAL IS TIMED BY
+ * THE STREAK. The player who trains more reaches a milestone EARLIER, banks the
+ * Recovery Day EARLIER, and can therefore lose it to a doomed absence that the
+ * lazier player — whose identical payout has not arrived yet — walks away from
+ * with the Recovery Day still in hand. Measured: with `STREAK_MILESTONE_DAYS`
+ * emptied, the 60-day sweep goes to 0 at every seed tried; with the hold cap
+ * raised to a value that can never clip a payout, it does not move at all. So
+ * it is the TIMING of the income, not the loss of it to the cap.
+ *
+ * NOBODY HAS RULED ON THAT ONE. The fixes that suggest themselves — paying
+ * milestones on a schedule that is not the streak, or protecting income from a
+ * doomed absence — both change GDD §4.2's earning table, which is a design and
+ * monetisation decision rather than a streak one.
  *
  * A TRAP FOR ANYONE MEASURING THIS. `currentStreak` is only true as of the last
  * day someone called `openDay` on the state. A run that has already died sits
@@ -735,6 +819,7 @@ export function streakDayFromLocalWallClock(now: LocalWallClock): StreakDay {
  * exactly that.
  */
 export const STREAK_FACT_KEYS = [
+  'signupDay',
   'currentStreak',
   'longestStreak',
   'lastTrainedDay',
@@ -759,6 +844,22 @@ type KeysAreExactly<T, Keys extends string> = [Exclude<keyof T, Keys>] extends [
 
 /** Everything the streak system knows about one lifter. JSON-safe. */
 export interface StreakState {
+  /**
+   * THE DAY THE ACCOUNT WAS CREATED (§1b of the header).
+   *
+   * Not the first session, not the first app open, not the day a migration ran:
+   * account creation, which is the first day on which this lifter could
+   * possibly have a gap. Written once and never moved.
+   *
+   * It is the ANCHOR every absence is measured from until the first training
+   * day replaces it (`absenceAnchorDay`), which is what makes idle days before
+   * a run cost the same as idle days inside one. REQUIRED AND NON-NULLABLE on
+   * purpose: an absent signup day means no anchor, no absence and no charge,
+   * which is precisely the asymmetry §6 exists to delete. Migration of accounts
+   * that predate the field is `adoptSignupDay`'s job, and §1b says what value
+   * it should be given.
+   */
+  readonly signupDay: StreakDay;
   /**
    * TRAINED days in the live run. Recovery Days keep a run alive but never add
    * to this — see §2 of the header for why that is the pay-to-win-safe choice.
@@ -819,7 +920,9 @@ export type StreakErrorCode =
   /** The run is intact or covered; there is nothing to settle. */
   | 'NOTHING_TO_SETTLE'
   /** Grant amount was not a positive whole number. */
-  | 'INVALID_GRANT';
+  | 'INVALID_GRANT'
+  /** A migration tried to set a signup day later than a recorded session. */
+  | 'SIGNUP_DAY_AFTER_TRAINING';
 
 export interface StreakError {
   readonly code: StreakErrorCode;
@@ -844,39 +947,97 @@ function fail<T>(code: StreakErrorCode, message: string): StreakResult<T> {
 // ---------------------------------------------------------------------------
 
 /**
- * A fresh lifter: no run, the GDD §4.2 signup grant already credited, and
- * protection on by default (`RECOVERY_DAY_PROTECTION.DEFAULT_ENABLED`).
+ * A fresh lifter on `signupDay`: no run, the GDD §4.2 signup grant already
+ * credited, and protection on by default
+ * (`RECOVERY_DAY_PROTECTION.DEFAULT_ENABLED`).
  *
- * `armedRecoveryDays` is null because arming happens at a training session and
- * there has not been one. Nothing is at risk before the first session, so there
- * is nothing for it to protect.
+ * `signupDay` IS ACCOUNT CREATION and the caller owns resolving it — this
+ * module never reads a clock (§1 of the header). See §1b for the definition and
+ * for what a migration of an older account must supply.
+ *
+ * `armedRecoveryDays` IS ARMED HERE, WHICH IT USED NOT TO BE. The old comment
+ * on this function said "nothing is at risk before the first session, so there
+ * is nothing for it to protect". That was the defect: it made the days before a
+ * lifter's first session free, and free days are what a player who trains one
+ * extra day converts into charged ones (§6). The signup day is an anchor like
+ * any other, so the absence after it is chargeable like any other, so the
+ * signup grant is armed against it like any other.
+ *
+ * WHAT THAT COSTS, stated rather than discovered: a lifter who creates an
+ * account and then does not train for longer than `LONGEST_REPAIRABLE_ABSENCE_
+ * DAYS` loses the signup grant to that absence, the same way a lifter who
+ * abandons a live run loses what was armed for it. Onboarding copy should say
+ * so. It is not avoidable while the two sides are charged alike.
  */
-export function createStreakState(): StreakState {
+export function createStreakState(signupDay: StreakDay): StreakState {
+  const balance = Math.min(RECOVERY_DAY_ECONOMY.SIGNUP_GRANT, RECOVERY_DAY_GUARDRAILS.HOLD_CAP);
   return {
+    signupDay: asStreakDay(signupDay),
     currentStreak: 0,
     longestStreak: 0,
     lastTrainedDay: null,
-    armedRecoveryDays: null,
-    recoveryDayBalance: Math.min(RECOVERY_DAY_ECONOMY.SIGNUP_GRANT, RECOVERY_DAY_GUARDRAILS.HOLD_CAP),
+    armedRecoveryDays: RECOVERY_DAY_PROTECTION.DEFAULT_ENABLED ? balance : null,
+    recoveryDayBalance: balance,
     recoveryDayProtectionEnabled: RECOVERY_DAY_PROTECTION.DEFAULT_ENABLED,
     hasBankedFirstRecoveryDaySave: false,
   };
 }
 
 /**
- * Days between the last trained day and `today` that the player did not train.
- * 0 when the run is intact (trained today, or today is the very next day), and
- * 0 when there is no live run at all — there is nothing to miss.
+ * MIGRATION ONLY: writes a signup day onto a state that was built before the
+ * field existed.
  *
- * MEASURED FROM `lastTrainedDay` AND NOTHING ELSE. There is no coverage marker
- * to measure from any more, because nothing is committed part-way through an
- * absence. That is what removed the old "does a spend re-arm the grace?"
- * question rather than answering it.
+ * There is deliberately no other way to move it. §1b says what value belongs
+ * here (account creation, or the migration day if that is unrecoverable) and
+ * why a later day is safe for monotonicity but still wrong.
+ *
+ * It refuses a day after `lastTrainedDay`, because a signup day after a session
+ * is not a fact about anything — the trained day would win the anchor and the
+ * stored value would be a lie nobody ever reads.
+ *
+ * @throws never. Errors come back as a `StreakResult`.
+ */
+export function adoptSignupDay(state: StreakState, signupDay: StreakDay): StreakResult<StreakState> {
+  if (state.lastTrainedDay !== null && signupDay > state.lastTrainedDay) {
+    return fail(
+      'SIGNUP_DAY_AFTER_TRAINING',
+      'An account cannot have been created after a session was recorded on it.',
+    );
+  }
+  return ok({ ...state, signupDay: asStreakDay(signupDay) });
+}
+
+/**
+ * THE DAY EVERY ABSENCE IS MEASURED FROM: the last TRAINED day if there is one,
+ * and `signupDay` if there is not.
+ *
+ * ONE FUNCTION, SO THERE IS ONE ANSWER. Before the signup-day rework this
+ * choice was made inline in `daysMissedBefore` and the "no live run" branch
+ * returned 0 days missed, which made every idle day before a lifter's first
+ * session free. §6 of the header has the measurement that cost.
+ *
+ * A state whose run has ENDED has `lastTrainedDay: null` and therefore anchors
+ * at the signup day too. That is not a special case and it changes nothing: the
+ * absence measured from the signup day is at least as long as the one measured
+ * from the day the run died, so it is doomed either way, and `settleBrokenStreak`
+ * has already zeroed what it could have cost.
+ */
+export function absenceAnchorDay(state: StreakState): StreakDay {
+  return state.lastTrainedDay ?? state.signupDay;
+}
+
+/**
+ * Days between `absenceAnchorDay` and `today` that the player did not train. 0
+ * when the run is intact (trained today, or today is the very next day) and 0
+ * on the anchor day itself.
+ *
+ * MEASURED FROM THE ANCHOR AND NOTHING ELSE. There is no coverage marker to
+ * measure from, because nothing is committed part-way through an absence. That
+ * is what removed the old "does a spend re-arm the grace?" question rather than
+ * answering it.
  */
 export function daysMissedBefore(state: StreakState, today: StreakDay): number {
-  const { lastTrainedDay } = state;
-  if (lastTrainedDay === null) return 0;
-  return Math.max(0, daysBetween(lastTrainedDay, today) - 1);
+  return Math.max(0, daysBetween(absenceAnchorDay(state), today) - 1);
 }
 
 /**
@@ -990,11 +1151,22 @@ export interface AbsenceOutcome {
   /** How many of them the free grace covers for nothing (GDD §4.4). */
   readonly daysCoveredFreeByGrace: number;
   /**
-   * Recovery Days holding the run open across this absence. Debited by the
-   * training day that ends it, and by nothing else — an absence that outlives
-   * what is armed debits nothing at all (§5 of the header, all-or-nothing).
+   * Recovery Days holding the run open across this absence. 0 when the absence
+   * outlived what was armed — nothing is holding a run that has ended.
    */
   readonly recoveryDaysHolding: number;
+  /**
+   * Recovery Days this absence COSTS, whether or not it saved anything.
+   *
+   * Equal to `recoveryDaysHolding` while the run is alive, and to the whole
+   * armed count once it is not: the armed Recovery Days were committed to this
+   * absence, they did not hold it, and they are spent (§5 of the header).
+   *
+   * FIXED FOR THE WHOLE ABSENCE IN BOTH CASES, which is what keeps the outcome
+   * independent of when anybody looks. Debited by the training day that ends
+   * the absence, and by nothing else.
+   */
+  readonly recoveryDaysConsumed: number;
   /** True when the run is still alive as of `today`. */
   readonly protectionHolds: boolean;
   /** Why it is not, when it is not. Null while the run is alive. */
@@ -1009,7 +1181,7 @@ export interface AbsenceOutcome {
  * alone, because the first call changed nothing there was to change.
  */
 export function absenceOutcome(state: StreakState, today: StreakDay): AbsenceOutcome {
-  const { lastTrainedDay } = state;
+  const anchor = absenceAnchorDay(state);
   const daysMissed = daysMissedBefore(state, today);
   const chargeable = chargeableGapDays(daysMissed);
   const daysCoveredFreeByGrace = daysMissed - chargeable;
@@ -1021,22 +1193,25 @@ export function absenceOutcome(state: StreakState, today: StreakDay): AbsenceOut
       coveredDays: [],
       daysCoveredFreeByGrace,
       recoveryDaysHolding: 0,
+      // The armed count, not `chargeable`: `chargeable` grows for as long as
+      // the player stays away, and a debit that grew with it would make the
+      // outcome depend on when the absence was resolved. See §5.
+      recoveryDaysConsumed: Math.max(0, state.armedRecoveryDays ?? 0),
       protectionHolds: false,
       breakReason: breakReasonFor(state, chargeable),
     };
   }
 
   const coveredDays: StreakDay[] = [];
-  if (lastTrainedDay !== null) {
-    for (let offset = 1; offset <= daysMissed; offset += 1) {
-      coveredDays.push(addDays(lastTrainedDay, offset));
-    }
+  for (let offset = 1; offset <= daysMissed; offset += 1) {
+    coveredDays.push(addDays(anchor, offset));
   }
   return {
     daysMissed,
     coveredDays,
     daysCoveredFreeByGrace,
     recoveryDaysHolding: chargeable,
+    recoveryDaysConsumed: chargeable,
     protectionHolds: true,
     breakReason: null,
   };
@@ -1132,10 +1307,17 @@ export type DayOpening =
       readonly daysMissed: number;
       readonly reason: StreakBreakReason;
       /**
-       * Recovery Days held. UNCHANGED BY THE BREAK, always: an absence that
-       * ends a run spends nothing (§5 of the header).
+       * Recovery Days held RIGHT NOW. Unchanged by the break itself — the
+       * break moves no balance.
        */
       readonly recoveryDayBalance: number;
+      /**
+       * What the absence will cost once the player's next session closes it:
+       * the Recovery Days that were armed against it and could not hold it
+       * (§5). Shown so the reveal can be honest rather than leaving the player
+       * to notice a smaller number later.
+       */
+      readonly recoveryDaysCommittedToTheAbsence: number;
     }
   /**
    * `today` is earlier than a day already accounted for. Only reachable through
@@ -1170,6 +1352,7 @@ export function openDay(state: StreakState, today: StreakDay): DayOpening {
       daysMissed: absence.daysMissed,
       reason: absence.breakReason ?? 'not-enough-recovery-days-armed',
       recoveryDayBalance: state.recoveryDayBalance,
+      recoveryDaysCommittedToTheAbsence: absence.recoveryDaysConsumed,
     };
   }
   if (absence.recoveryDaysHolding === 0) {
@@ -1198,13 +1381,23 @@ export function openDay(state: StreakState, today: StreakDay): DayOpening {
 // Transitions
 // ---------------------------------------------------------------------------
 
-/** A run that has ended, reset to "no live run". `longestStreak` survives. */
+/**
+ * A run that has ended, reset to "no live run". `longestStreak` survives.
+ *
+ * IT MOVES NO BALANCE AND IT KEEPS `armedRecoveryDays`, which is not an
+ * oversight. The armed count is a COMMITMENT to the absence that killed the
+ * run, and §5 charges it on the training day that ends that absence — the same
+ * place a covered absence is charged. Clearing it here would move the debit to
+ * whichever day somebody happened to call `settleBrokenStreak`, and combined
+ * with the hold cap that would make the final balance depend on when the app
+ * was opened. The commitment survives the settle; the debit happens once, later,
+ * and only if the player comes back.
+ */
 function endRun(state: StreakState): StreakState {
   return {
     ...state,
     currentStreak: 0,
     lastTrainedDay: null,
-    armedRecoveryDays: null,
   };
 }
 
@@ -1281,6 +1474,17 @@ export interface TrainingDayOutcome {
    * bank. THE ONLY PLACE A RECOVERY DAY IS EVER SPENT.
    */
   readonly recoveryDaySave: RecoveryDaySave | null;
+  /**
+   * Recovery Days this session paid for an absence that had ALREADY ended the
+   * run — armed against it, unable to hold it, and spent anyway (§5).
+   *
+   * 0 whenever the run survived, so it and `recoveryDaySave` are never both
+   * non-zero. It is reported rather than folded into the save because it is the
+   * opposite kind of news: a save is "your run held", this is "your run did
+   * not, and here is what it cost". A UI that stayed silent about it would show
+   * a balance dropping for no visible reason.
+   */
+  readonly recoveryDaysLostToTheAbsence: number;
   /** Milestones reached today for the first time ever (GDD §4.2), ascending. */
   readonly milestonesReached: readonly number[];
   /** Recovery Days actually credited by those milestones. */
@@ -1326,10 +1530,11 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
   const previousRunEnded = !absence.protectionHolds;
   const base = previousRunEnded ? endRun(state) : state;
 
-  // ALL-OR-NOTHING, ENFORCED HERE RATHER THAN DESCRIBED: an absence that ended
-  // the run debits nothing, so a Recovery Day is spent only where it demonstrably
-  // held a run open all the way to this session.
-  const spend = previousRunEnded ? 0 : absence.recoveryDaysHolding;
+  // THE ONE DEBIT, AND IT DOES NOT ASK WHETHER THE RUN SURVIVED (§5). A covered
+  // absence costs the days past the grace; a doomed one costs the Recovery Days
+  // that were armed against it. Both figures are fixed for the whole absence,
+  // so neither can depend on when the app was opened.
+  const spend = absence.recoveryDaysConsumed;
   const balanceAfterSpend = base.recoveryDayBalance - spend;
   const streakAfter = base.currentStreak + 1;
 
@@ -1348,7 +1553,7 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
   const armedForNextAbsence = state.recoveryDayProtectionEnabled ? balanceAfter : null;
 
   const recoveryDaySave: RecoveryDaySave | null =
-    spend > 0
+    !previousRunEnded && spend > 0
       ? {
           coveredDays: absence.coveredDays,
           daysCoveredFreeByGrace: absence.daysCoveredFreeByGrace,
@@ -1361,6 +1566,7 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
 
   return ok({
     state: {
+      signupDay: state.signupDay,
       currentStreak: streakAfter,
       longestStreak: Math.max(base.longestStreak, streakAfter),
       lastTrainedDay: day,
@@ -1376,6 +1582,7 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
     endedRunLength: previousRunEnded ? state.currentStreak : 0,
     endedRunReason: previousRunEnded ? absence.breakReason : null,
     recoveryDaySave,
+    recoveryDaysLostToTheAbsence: previousRunEnded ? spend : 0,
     milestonesReached,
     recoveryDaysGranted: credited,
     recoveryDaysWastedToHoldCap: wasted,
@@ -1391,8 +1598,21 @@ export interface StreakBreakOutcome {
   readonly endedRunLength: number;
   readonly daysMissed: number;
   readonly reason: StreakBreakReason;
-  /** Recovery Days held afterwards. A break never costs one. */
+  /**
+   * Recovery Days held afterwards. UNCHANGED by settling: the break itself
+   * moves no balance. What the absence costs is debited by the session that
+   * ends it (§5), so a player who never returns is never charged.
+   */
   readonly balanceAfter: number;
+  /**
+   * What this absence WILL cost when the player's next session closes it — the
+   * armed count, already committed and unable to hold the run.
+   *
+   * Reported so a "your streak ended" screen can be honest about the balance
+   * the player is about to see, rather than showing an unchanged number now and
+   * a smaller one after their next session.
+   */
+  readonly recoveryDaysCommittedToTheAbsence: number;
 }
 
 /**
@@ -1412,6 +1632,13 @@ export interface StreakBreakOutcome {
  * spends one (§5 of the header).
  */
 export function settleBrokenStreak(state: StreakState, today: StreakDay): StreakResult<StreakBreakOutcome> {
+  // THERE IS NO RUN TO SETTLE BEFORE THE FIRST SESSION, and this guard is why
+  // the signup anchor did not quietly turn every new account into a settleable
+  // break. A lifter who has not trained has no run; their signup absence is
+  // still charged, by the session that ends it, like everyone else's.
+  if (state.lastTrainedDay === null) {
+    return fail('NOTHING_TO_SETTLE', 'There is no streak running, so there is nothing to settle.');
+  }
   const absence = absenceOutcome(state, today);
   if (absence.daysMissed === 0) {
     return fail('NOTHING_TO_SETTLE', 'Your streak is intact — there is nothing to settle.');
@@ -1425,6 +1652,7 @@ export function settleBrokenStreak(state: StreakState, today: StreakDay): Streak
     daysMissed: absence.daysMissed,
     reason: absence.breakReason ?? 'not-enough-recovery-days-armed',
     balanceAfter: state.recoveryDayBalance,
+    recoveryDaysCommittedToTheAbsence: absence.recoveryDaysConsumed,
   });
 }
 

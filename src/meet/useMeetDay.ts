@@ -72,7 +72,7 @@ import {
   type ProgressionCache,
 } from '../game/progression';
 import { streakDayFromLocalWallClock, type LocalWallClock } from '../game/streak';
-import { SESSION_TUNING } from '../game/sessionTuning';
+import { SESSION_BOUNDARY, SESSION_TUNING } from '../game/sessionTuning';
 import { MEET_ENTRY, MEET_LOCAL } from '../game/meetTuning';
 
 /** Reads the one real clock this screen touches. */
@@ -125,7 +125,7 @@ export function useMeetDay(initial?: MeetDayState, frozen: boolean = false): Mee
   // so its stand-in server has to hold that history or the recap reports a
   // first total for a lifter who has competed before. Debug-only, and the one
   // branch in this file that a played meet never takes.
-  const recordRef = useRef<ServerRecord>(frozen ? previewServerRecord() : newServerRecord());
+  const recordRef = useRef<ServerRecord>(frozen ? previewServerRecord() : newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY));
   const [cache, setCache] = useState<ProgressionCache>(() => {
     const received = receiveProgressionSnapshot(snapshotWireFor(recordRef.current, null));
     if (!received.ok) return emptyProgressionCache();

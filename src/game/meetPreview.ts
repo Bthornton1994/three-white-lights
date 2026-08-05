@@ -44,6 +44,7 @@ import {
 } from './meetDay';
 import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW } from './meetTuning';
 import { newServerRecord, type ServerRecord } from './sessionServer';
+import { SESSION_BOUNDARY } from './sessionTuning';
 
 /** The beats a preview can be frozen on. In loop order. */
 export type MeetMomentId =
@@ -171,7 +172,7 @@ export function meetPreviewFrom(search: string): MeetPreviewRequest | null {
  */
 export function previewServerRecord(): ServerRecord {
   return {
-    ...newServerRecord(),
+    ...newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY),
     totalKg: MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG,
     meets: [
       {

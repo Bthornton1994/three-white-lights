@@ -51,6 +51,14 @@ import {
 } from './session';
 import type { ReadinessCheckIn } from './fatigue';
 
+/**
+ * The day these fixtures pretend the account was created on (GDD 4.2 signup
+ * day; `streak.ts` 1b). Day 0, because every simulated session below is
+ * recorded on day 0 or later and a signup day after a session is refused.
+ */
+const SIGNUP_DAY = 0;
+
+
 const WALL_CLOCK = { year: 2026, month: 8, day: 3, hour: 19 };
 const NEUTRAL: ReadinessCheckIn = { sleep: 'ok', soreness: 'normal', motivation: 'steady' };
 const PRIMED: ReadinessCheckIn = { sleep: 'good', soreness: 'fresh', motivation: 'fired-up' };
@@ -131,7 +139,7 @@ function playAgainst(
 
 describe('a new lifter', () => {
   it('starts with the onboarding placeholders, no meets and no Total', () => {
-    const record = newServerRecord();
+    const record = newServerRecord(SIGNUP_DAY);
     expect(record.totalKg).toBeNull();
     expect(record.meets).toEqual([]);
     expect(record.streak.currentStreak).toBe(0);
@@ -143,13 +151,13 @@ describe('a new lifter', () => {
   });
 
   it('produces a wire the one door in progression.ts accepts', () => {
-    const received = receiveProgressionSnapshot(snapshotWireFor(newServerRecord(), null));
+    const received = receiveProgressionSnapshot(snapshotWireFor(newServerRecord(SIGNUP_DAY), null));
     expect(received.ok).toBe(true);
   });
 
   it('does not put the hidden fatigue ledger on the wire — GDD §3.4, §12.3', () => {
     const injured = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       1,
       proposalOf([set('bench', 200, 3, 10), set('bench', 200, 3, 10), set('bench', 200, 3, 10)]),
       'p',
@@ -188,7 +196,7 @@ describe('deriving e1RM from what was reported', () => {
     expect(best.squat).toBeNull();
     // And a session made only of such sets moves nothing.
     const applied = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       0,
       proposalOf([set('squat', 100, 13, 6)]),
       'p',
@@ -252,7 +260,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
     // one mode over — submits to a server that stores kilograms. No cast, no
     // `as`, no typed lie: every field below is honestly filled in by somebody who
     // lifted in pounds.
-    const before = newServerRecord();
+    const before = newServerRecord(SIGNUP_DAY);
     const snapshot = structuredClone(before);
 
     // (1) THE DAY'S CHECK PASSES. Demonstrated, not asserted: day 0 is the day
@@ -266,7 +274,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
     //     number rather than declining to. Shown by running the SAME rows through
     //     the kilogram twin, so the values the other checks would have seen are
     //     on the page rather than argued about.
-    const asKg = applyTrainingSession(newServerRecord(), 0, kgProposalOf(ROWS), 'p-kg');
+    const asKg = applyTrainingSession(newServerRecord(SIGNUP_DAY), 0, kgProposalOf(ROWS), 'p-kg');
     expect(asKg.ok, asKg.ok ? '' : asKg.error.message).toBe(true);
     if (!asKg.ok) throw new Error('unreachable');
     expect(asKg.value.streakAfter).toBe(1);
@@ -313,8 +321,8 @@ describe('a session whose unit this record cannot store is refused, not recorded
     expect(lb.report.card.poundSets).toBe(kg.report.card.kilogramSets);
     expect(lb.report.card.poundSets).toHaveLength(2);
 
-    const refused = applyTrainingSession(newServerRecord(), 0, lb, 'p-lb');
-    const recorded = applyTrainingSession(newServerRecord(), 0, kg, 'p-kg');
+    const refused = applyTrainingSession(newServerRecord(SIGNUP_DAY), 0, lb, 'p-lb');
+    const recorded = applyTrainingSession(newServerRecord(SIGNUP_DAY), 0, kg, 'p-kg');
     expect(refused.ok).toBe(false);
     expect(recorded.ok, recorded.ok ? '' : recorded.error.message).toBe(true);
     if (!recorded.ok) throw new Error('unreachable');
@@ -344,7 +352,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
     // first pound session banks +6%, not 2.2x. It bounds the RATE, not the
     // destination: the same submission repeated ratchets to the full pound number
     // and stops there, because `nextBestE1rm` never goes down.
-    let record = newServerRecord();
+    let record = newServerRecord(SIGNUP_DAY);
     let sessions = 0;
     while ((record.bestE1rmKg.squat ?? 0) < (asIfKilograms ?? 0) - 1e-9 && sessions < 100) {
       const step = applyTrainingSession(record, sessions, kgProposalOf(ROWS), `p-${sessions}`);
@@ -381,7 +389,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
     // (a) AHEAD OF THE STREAK. A pound session on a day the streak would refuse
     //     anyway comes back `UNSUPPORTED_SESSION_UNIT`, not `STREAK_REFUSED`.
     //     Move the check below `recordTrainingDay` and this flips.
-    const trained = applyTrainingSession(newServerRecord(), 0, kgProposalOf(ROWS), 'p-kg');
+    const trained = applyTrainingSession(newServerRecord(SIGNUP_DAY), 0, kgProposalOf(ROWS), 'p-kg');
     expect(trained.ok, trained.ok ? '' : trained.error.message).toBe(true);
     if (!trained.ok) throw new Error('unreachable');
     const already = trained.value.record;
@@ -401,18 +409,18 @@ describe('a session whose unit this record cannot store is refused, not recorded
     //     UNIT-AGNOSTIC estimator. A pound card carrying an accessory row comes
     //     back on its unit, not on its lift.
     const accessory = { lift: 'accessory', weight: 60, reps: 3, rpe: 8 } as unknown as TrainingSetReport;
-    const kgAccessory = applyTrainingSession(newServerRecord(), 0, kgProposalOf([accessory]), 'p-a');
+    const kgAccessory = applyTrainingSession(newServerRecord(SIGNUP_DAY), 0, kgProposalOf([accessory]), 'p-a');
     expect(kgAccessory.ok).toBe(false);
     if (kgAccessory.ok) throw new Error('unreachable');
     expect(kgAccessory.error.code).toBe('NOT_A_COMPETITION_LIFT');
-    const lbAccessory = applyTrainingSession(newServerRecord(), 0, lbProposalOf([accessory]), 'p-b');
+    const lbAccessory = applyTrainingSession(newServerRecord(SIGNUP_DAY), 0, lbProposalOf([accessory]), 'p-b');
     expect(lbAccessory.ok).toBe(false);
     if (lbAccessory.ok) throw new Error('unreachable');
     expect(lbAccessory.error.code).toBe('UNSUPPORTED_SESSION_UNIT');
 
     // And a refused session leaves the record handed in exactly as it was —
     // which is a property of purity, not of ordering, and is stated as such.
-    const before = newServerRecord();
+    const before = newServerRecord(SIGNUP_DAY);
     const snapshot = structuredClone(before);
     expect(applyTrainingSession(before, 0, lbProposalOf(ROWS), 'p-lb').ok).toBe(false);
     expect(before).toEqual(snapshot);
@@ -427,7 +435,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
         kind: 'record-training-session',
         report: { deviceWallClock: WALL_CLOCK, card: { unit, kilogramSets: ROWS } },
       } as unknown as ProposalOfKind<'record-training-session'>;
-      const applied = applyTrainingSession(newServerRecord(), 0, forged, 'p-x');
+      const applied = applyTrainingSession(newServerRecord(SIGNUP_DAY), 0, forged, 'p-x');
       expect(applied.ok, `unit ${JSON.stringify(unit)}`).toBe(false);
       if (applied.ok) throw new Error('unreachable');
       expect(applied.error.code).toBe('UNSUPPORTED_SESSION_UNIT');
@@ -451,7 +459,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
       const forged = { kind: 'record-training-session', report } as unknown as ProposalOfKind<
         'record-training-session'
       >;
-      const applied = applyTrainingSession(newServerRecord(), 0, forged, 'p-x');
+      const applied = applyTrainingSession(newServerRecord(SIGNUP_DAY), 0, forged, 'p-x');
       expect(applied.ok, JSON.stringify(report)).toBe(false);
       if (applied.ok) throw new Error('unreachable');
       expect(applied.error.code).toBe('MALFORMED_SESSION_CARD');
@@ -465,7 +473,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
     // — refusing when there is no number to look at, say — would cost that lifter
     // the day. It does not: the streak advances and the held e1RM is unchanged.
     const applied = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       0,
       kgProposalOf([set('squat', 100, 13, 6)]),
       'p-chart',
@@ -505,7 +513,7 @@ describe('a session whose unit this record cannot store is refused, not recorded
     // rather than typing `'kg'`. A literal is true today and still says `kg` on
     // the day the loop learns to prescribe in pounds, which is the defect this
     // whole boundary exists to stop, one field over.
-    const played = playAgainst(newServerRecord(), 0, NEUTRAL, 8);
+    const played = playAgainst(newServerRecord(SIGNUP_DAY), 0, NEUTRAL, 8);
     const closeOut = played.state.closeOut;
     expect(closeOut).not.toBeNull();
     if (closeOut === null) throw new Error('unreachable');
@@ -545,7 +553,7 @@ describe('the seed that starts a record is progression, and its unit is a field'
     // The claim the old comment denied, demonstrated end to end rather than
     // argued: nothing here is a stub, every step is the shipped function, and
     // the number that comes out the far side is the one the constant declares.
-    const record = newServerRecord();
+    const record = newServerRecord(SIGNUP_DAY);
     const received = receiveProgressionSnapshot(snapshotWireFor(record, null));
     expect(received.ok, received.ok ? '' : received.error.message).toBe(true);
     if (!received.ok) throw new Error('unreachable');
@@ -573,7 +581,7 @@ describe('the seed that starts a record is progression, and its unit is a field'
     const seeded = SESSION_TUNING.STARTING_E1RM.kilograms.squat;
     // 138 kg for 3 @ RPE 8 is ~160 kg on the chart read backwards: an honest,
     // legal, fully-recorded session from a genuinely weaker lifter.
-    const honest = applyTrainingSession(newServerRecord(), 0, kgProposalOf([set('squat', 138, 3, 8)]), 'p-1');
+    const honest = applyTrainingSession(newServerRecord(SIGNUP_DAY), 0, kgProposalOf([set('squat', 138, 3, 8)]), 'p-1');
     expect(honest.ok, honest.ok ? '' : honest.error.message).toBe(true);
     if (!honest.ok) throw new Error('unreachable');
     expect(honest.value.record.bestE1rmKg.squat).toBe(seeded);
@@ -599,7 +607,7 @@ describe('the seed that starts a record is progression, and its unit is a field'
     // a lifter who has just signed up must be able to train today. The first
     // session's ceiling is the seed times the per-session cap, which is only
     // true while the seed is what the record was started with.
-    const record = newServerRecord();
+    const record = newServerRecord(SIGNUP_DAY);
     const today = todayForLifter(record, 0, 'squat');
     expect(today.e1rmKg).toBe(SESSION_TUNING.STARTING_E1RM.kilograms.squat);
     expect(today.bestE1rmKg).toBe(SESSION_TUNING.STARTING_E1RM.kilograms.squat);
@@ -650,7 +658,7 @@ describe('the seed that starts a record is progression, and its unit is a field'
     // so the export cannot be deleted as unused.
     expect(A_STARTING_E1RM_SEED_CANNOT_BE_READ_WITHOUT_ITS_UNIT).toBe(true);
     // The write really does come off the tagged field, per lift.
-    expect(newServerRecord().bestE1rmKg).toEqual({ ...SESSION_TUNING.STARTING_E1RM.kilograms });
+    expect(newServerRecord(SIGNUP_DAY).bestE1rmKg).toEqual({ ...SESSION_TUNING.STARTING_E1RM.kilograms });
   });
 
   it('THE RESIDUAL, PINNED: the tag proves what was DECLARED, not what was TYPED', () => {
@@ -741,7 +749,7 @@ describe('accessory work never touches e1RM — the ruling, enforced', () => {
   });
 
   it('applyTrainingSession refuses the whole session, and moves nothing', () => {
-    const record = newServerRecord();
+    const record = newServerRecord(SIGNUP_DAY);
     const applied = applyTrainingSession(record, 0, proposalOf([accessorySet]), 'p-accessory');
     expect(applied.ok).toBe(false);
     if (applied.ok) return;
@@ -759,7 +767,7 @@ describe('accessory work never touches e1RM — the ruling, enforced', () => {
     // also refuse this, so the test pins WHICH refusal fires — the lift-name
     // check runs first, and its message is the one that explains the ruling.
     const applied = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       0,
       proposalOf([set('squat', 172.5, 3, 8), accessorySet]),
       'p-mixed',
@@ -773,7 +781,7 @@ describe('accessory work never touches e1RM — the ruling, enforced', () => {
     // The positive control for all three refusals above: a guard that refused
     // everything would satisfy them too.
     const applied = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       0,
       proposalOf([set('squat', 172.5, 3, 8)]),
       'p-ok',
@@ -821,7 +829,7 @@ describe('nextBestE1rm', () => {
     // cap ever starts biting on a real session the close-out would show a
     // number the maths does not support, so this is a real check and not a
     // restatement of the constant.
-    const record = newServerRecord();
+    const record = newServerRecord(SIGNUP_DAY);
     const played = playAgainst(record, 0, PRIMED, 10);
     const closeOut = played.state.closeOut!;
     const held = record.bestE1rmKg[played.lift]!;
@@ -832,7 +840,7 @@ describe('nextBestE1rm', () => {
 
 describe('applying a training session', () => {
   it('moves the streak and the trained lift’s e1RM', () => {
-    const record = newServerRecord();
+    const record = newServerRecord(SIGNUP_DAY);
     const applied = applyTrainingSession(
       record,
       10,
@@ -855,7 +863,7 @@ describe('applying a training session', () => {
     // 200 x 3 @ RPE 8 implies 231.75, a 28.7% gain on the starting 180. The
     // guard holds it at 180 x 1.06.
     const applied = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       10,
       proposalOf([set('squat', 200, 3, 8)]),
       'p-1',
@@ -868,9 +876,9 @@ describe('applying a training session', () => {
   it('NEVER MOVES THE TOTAL — GDD §2, §3.2, §6.4', () => {
     // Swept over every lift, every rung, and both a fresh lifter and one who
     // already has a Total on record from a meet.
-    const withMeet: ServerRecord = { ...newServerRecord(), totalKg: 500 };
+    const withMeet: ServerRecord = { ...newServerRecord(SIGNUP_DAY), totalKg: 500 };
     let day = 0;
-    for (const record of [newServerRecord(), withMeet]) {
+    for (const record of [newServerRecord(SIGNUP_DAY), withMeet]) {
       for (const lift of LIFT_ORDER) {
         for (const rpe of SESSION_TUNING.RPE_CHOICES) {
           day += 1;
@@ -892,7 +900,7 @@ describe('applying a training session', () => {
 
   it('refuses a second session on the same day — GDD §3.2, one a day', () => {
     const first = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       5,
       proposalOf([set('squat', 150, 3, 8)]),
       'p-1',
@@ -912,7 +920,7 @@ describe('applying a training session', () => {
 
   it('refuses a session that trains more than one lift', () => {
     const mixed = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       5,
       proposalOf([set('squat', 150, 3, 8), set('bench', 100, 3, 8)]),
       'p-1',
@@ -924,7 +932,7 @@ describe('applying a training session', () => {
 
   it('refuses a day that is not a day', () => {
     const bad = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       0.5,
       proposalOf([set('squat', 150, 3, 8)]),
       'p-1',
@@ -940,7 +948,7 @@ describe('applying a training session', () => {
     // strongest form of this check is that the wire's e1RM tracks the SETS and
     // nothing the client could have added.
     const applied = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       3,
       proposalOf([set('deadlift', 230, 1, 10)]),
       'p-1',
@@ -953,7 +961,7 @@ describe('applying a training session', () => {
   });
 
   it('pays a milestone from streak.ts rather than a second ledger', () => {
-    let record = newServerRecord();
+    let record = newServerRecord(SIGNUP_DAY);
     for (let day = 0; day < 7; day += 1) {
       const applied = applyTrainingSession(
         record,
@@ -980,9 +988,9 @@ describe('applying a training session', () => {
       set('squat', 200, 3, 10),
       set('squat', 200, 3, 10),
     ];
-    const lucky = applyTrainingSession(newServerRecord(), 0, proposalOf(brutal), 'p', LUCKIEST_ROLLS);
+    const lucky = applyTrainingSession(newServerRecord(SIGNUP_DAY), 0, proposalOf(brutal), 'p', LUCKIEST_ROLLS);
     const unlucky = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       0,
       proposalOf(brutal),
       'p',
@@ -1000,7 +1008,7 @@ describe('applying a training session', () => {
   it('an ordinary session at the shipped template cannot injure at any frequency', () => {
     // GDD §3.5 / §12.3: showing up must never be what hurts you. 5x3 at the
     // default rung, thirty days running, with the unluckiest possible roll.
-    let record = newServerRecord();
+    let record = newServerRecord(SIGNUP_DAY);
     for (let day = 0; day < 30; day += 1) {
       const lift = liftForDay(day);
       const sets = Array.from({ length: SESSION_TUNING.WORK_SETS }, () =>
@@ -1046,14 +1054,14 @@ describe('the ledger entry a session leaves', () => {
 
 describe('today, for the client to prescribe from', () => {
   it('reads the streak’s own answer to what today does', () => {
-    const fresh = todayForLifter(newServerRecord(), 100, 'squat');
+    const fresh = todayForLifter(newServerRecord(SIGNUP_DAY), 100, 'squat');
     expect(fresh.streakBefore).toBe(0);
     expect(fresh.streakIfTrainedToday).toBe(1);
     expect(fresh.alreadyTrainedToday).toBe(false);
     expect(fresh.e1rmKg).toBe(180);
 
     const trained = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       100,
       proposalOf([set('squat', 150, 3, 8)]),
       'p',
@@ -1070,7 +1078,7 @@ describe('today, for the client to prescribe from', () => {
 
   it('prescribes from the best e1RM once there is one', () => {
     const trained = applyTrainingSession(
-      newServerRecord(),
+      newServerRecord(SIGNUP_DAY),
       100,
       proposalOf([set('squat', 185, 1, 10)]),
       'p',
@@ -1083,7 +1091,7 @@ describe('today, for the client to prescribe from', () => {
   it('a two-day gap is covered by the free grace and the run survives', () => {
     // GDD §4.4 / §12.3. `streak.ts` owns the rule; this checks the session path
     // does not undo it.
-    let record = newServerRecord();
+    let record = newServerRecord(SIGNUP_DAY);
     const first = applyTrainingSession(record, 0, proposalOf([set('squat', 150, 3, 8)]), 'a');
     expect(first.ok).toBe(true);
     if (!first.ok) return;
@@ -1097,7 +1105,7 @@ describe('today, for the client to prescribe from', () => {
 
 describe('the whole round trip — client proposes, server publishes, client reads', () => {
   it('ends with a CONFIRMED e1RM and streak, and an unmoved Total', () => {
-    const record = newServerRecord();
+    const record = newServerRecord(SIGNUP_DAY);
     const seed = receiveProgressionSnapshot(snapshotWireFor(record, null));
     expect(seed.ok).toBe(true);
     if (!seed.ok) return;
@@ -1157,7 +1165,7 @@ describe('the whole round trip — client proposes, server publishes, client rea
     }
     const trail: Step[] = [];
 
-    let record = newServerRecord();
+    let record = newServerRecord(SIGNUP_DAY);
     let day = 0;
     for (const answers of [NEUTRAL, PRIMED]) {
       for (const rpe of SESSION_TUNING.RPE_CHOICES) {

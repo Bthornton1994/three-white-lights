@@ -79,7 +79,7 @@ export interface LocalSessionServerOptions {
  * `SESSION_BOUNDARY.LOCAL_SERVER_LATENCY_MS`.
  */
 export function localSessionServer(options: LocalSessionServerOptions = {}): SessionServerPort {
-  let record: ServerRecord = options.record ?? newServerRecord();
+  let record: ServerRecord = options.record ?? newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
   const latencyMs = options.latencyMs ?? SESSION_BOUNDARY.LOCAL_SERVER_LATENCY_MS;
   const sleep = options.sleep ?? realSleep;
 

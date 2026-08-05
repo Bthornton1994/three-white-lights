@@ -48,6 +48,14 @@ import { SESSION_BOUNDARY, SESSION_BOUNDARY_COPY, SESSION_COPY, SESSION_TUNING }
 import { asStreakDay, type LocalWallClock } from './streak';
 import type { LiftKind } from './meet';
 
+/**
+ * The day these fixtures pretend the account was created on (GDD 4.2 signup
+ * day; `streak.ts` 1b). Day 0, because every simulated session below is
+ * recorded on day 0 or later and a signup day after a session is refused.
+ */
+const SIGNUP_DAY = 0;
+
+
 const MODULE_SOURCE = readFileSync(fileURLToPath(new URL('./sessionClient.ts', import.meta.url)), 'utf8');
 
 function codeOnly(source: string): string {
@@ -72,7 +80,7 @@ const PROPOSAL_ID: ProposalId = asProposalId('test-session');
 const WALL_CLOCK: LocalWallClock = { year: 2026, month: 8, day: 4, hour: 19 };
 
 function storedRecord(bestKg: number): ServerRecord {
-  const fresh = newServerRecord();
+  const fresh = newServerRecord(SIGNUP_DAY);
   return {
     ...fresh,
     bestE1rmKg: { ...fresh.bestE1rmKg, [LIFT]: bestKg },
@@ -513,7 +521,7 @@ describe('the PR call', () => {
   });
 
   it('a first-ever e1RM is a PR', () => {
-    const fresh = newServerRecord();
+    const fresh = newServerRecord(SIGNUP_DAY);
     const blank: ServerRecord = {
       ...fresh,
       bestE1rmKg: { squat: null, bench: null, deadlift: null },

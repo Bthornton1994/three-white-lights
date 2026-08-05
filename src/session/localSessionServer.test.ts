@@ -22,6 +22,14 @@ import { FATIGUE_TUNING, type SessionRecord } from '../game/fatigue';
 import { SESSION_BOUNDARY, SESSION_TUNING } from '../game/sessionTuning';
 import { asStreakDay, type LocalWallClock } from '../game/streak';
 
+/**
+ * The day these fixtures pretend the account was created on (GDD 4.2 signup
+ * day; `streak.ts` 1b). Day 0, because every simulated session below is
+ * recorded on day 0 or later and a signup day after a session is refused.
+ */
+const SIGNUP_DAY = 0;
+
+
 const DAY = 20301;
 const LIFT = liftForDay(DAY);
 const BEST_KG = 200;
@@ -30,7 +38,7 @@ const PROPOSAL_ID: ProposalId = asProposalId('local-test');
 const WALL_CLOCK: LocalWallClock = { year: 2026, month: 8, day: 4, hour: 19 };
 
 function storedRecord(): ServerRecord {
-  const fresh = newServerRecord();
+  const fresh = newServerRecord(SIGNUP_DAY);
   return {
     ...fresh,
     bestE1rmKg: { ...fresh.bestE1rmKg, [LIFT]: BEST_KG },

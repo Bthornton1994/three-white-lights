@@ -1490,7 +1490,7 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/game/rpe.ts', name: 'Sculpt-AI', where: 'comment', count: 2 },
   { file: 'src/game/sessionServer.ts', name: 'Supabase', where: 'comment', count: 2 },
   { file: 'src/game/streak.test.ts', name: 'Duolingo', where: 'comment', count: 1 },
-  { file: 'src/game/streak.ts', name: 'Duolingo', where: 'comment', count: 3 },
+  { file: 'src/game/streak.ts', name: 'Duolingo', where: 'comment', count: 4 },
   { file: 'src/meet/AttemptBoard.tsx', name: 'OpenLifter', where: 'comment', count: 1 },
   { file: 'src/meet/AttemptBoard.tsx', name: 'OpenPowerlifting', where: 'comment', count: 1 },
   { file: 'src/session/localSessionServer.ts', name: 'Supabase', where: 'comment', count: 1 },
