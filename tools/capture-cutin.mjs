@@ -40,6 +40,8 @@
 import { chromium } from 'playwright';
 import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { decodePng, diffPixels } from './png.mjs';
 
 const args = process.argv.slice(2);
@@ -50,6 +52,51 @@ const flag = (name, dflt) => {
 
 const url = flag('url', 'http://localhost:8081');
 const outDir = path.resolve(flag('out', '.gauntlet/shots/cutin'));
+const srcRoot = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
+
+/**
+ * WHERE THIS EVIDENCE CAME FROM.
+ *
+ * `frames.json` shipped for weeks with no provenance at all, and
+ * `tools/evidence.mjs --verify` found it the first time it was taught to look:
+ * "no capturedFrom.commit — this record cannot be dated". These shots are
+ * TRACKED, in `.gitignore`, under a comment naming this directory, because a
+ * critic is asked to open the pixels and a screenshot carries no provenance of
+ * its own. A JSON sidecar that also carries none leaves the artifact exactly as
+ * undatable as it was before — which is how the sibling `route.json` came to
+ * sit in the repo describing a different commit while looking authoritative.
+ *
+ * Snapshotted BEFORE `outDir` is wiped and rewritten, so it records the tree
+ * the browser was served from rather than one this tool has already dirtied.
+ * `outDir` is excluded from the clean/dirty verdict — a previous run's leftover
+ * pixels are not code the app ran — but still listed, so nothing is hidden.
+ */
+const capturedFrom = (() => {
+  const record = {
+    capturedAt: new Date().toISOString(),
+    url,
+    sourceRoot: srcRoot,
+    commit: null,
+    branch: null,
+    workingTree: 'unknown',
+    dirtyPaths: [],
+  };
+  const git = (...gitArgs) =>
+    execFileSync('git', ['-C', srcRoot, ...gitArgs], { encoding: 'utf8' }).trim();
+  try {
+    record.commit = git('rev-parse', '--short', 'HEAD');
+    record.branch = git('rev-parse', '--abbrev-ref', 'HEAD');
+    const status = git('status', '--porcelain');
+    const lines = status === '' ? [] : status.split('\n');
+    const own = path.relative(srcRoot, outDir);
+    const code = lines.filter((line) => !line.replace(/^\s*\S+\s+/, '').startsWith(own));
+    record.workingTree = code.length === 0 ? 'clean' : 'DIRTY — this run is not against a commit';
+    record.dirtyPaths = lines.slice(0, 40);
+  } catch (error) {
+    record.workingTree = `unknown — ${String(error).slice(0, 200)}`;
+  }
+  return record;
+})();
 const width = Number(flag('w', '390'));
 const height = Number(flag('h', '844'));
 const dpr = Number(flag('dpr', '2'));
@@ -629,9 +676,54 @@ try {
   console.log(`!! COULD NOT DRIVE THE PLAYED MEET PATH: ${String(e).split('\n')[0]}`);
 }
 
+/**
+ * ONE LIST DRIVES BOTH THE RECORD AND THE EXIT CODE.
+ *
+ * These counters used to feed the `process.exit` at the bottom of this file and
+ * nothing else, so a red run wrote a `frames.json` indistinguishable from a
+ * green one and the verdict lived only in a terminal that was already closed.
+ * The sibling tool shipped exactly that failure — a committed record of a
+ * failing run, sitting in the graded artifact, reading as green to anyone who
+ * looked at the pictures rather than the JSON.
+ *
+ * So the array is BUILT ONCE and used twice. `process.exit` below reads
+ * `failures.length`; it does not restate the conjunction. Add a counter and
+ * forget to add it to the exit condition and the two cannot silently disagree,
+ * because there is no longer a second copy of the condition to forget.
+ *
+ * `bombOutMissingOnMeetDay` is deliberately NOT here: it is a tuning reading,
+ * not a broken gate, and the block below says so at length.
+ */
+const failures = [
+  [missing, 'moment(s) showed no cut-in'],
+  [wrongLine, 'wrong line(s) or hint(s)'],
+  [duplicates, 'duplicate frame(s)'],
+  [unreachableCorner, 'frame(s) had a corner the tap could not reach'],
+  [notOnTop, 'frame(s) had the screen behind still taking taps'],
+  [scrimDead, 'frame(s) had an opaque scrim'],
+  [timing, 'timing check(s) failed'],
+  [walkoutSpentTheSlot, "played walk-out(s) spent the bomb-out's slot"],
+  [shellNavOverTheInterrupt, 'frame(s) had the shell pill on top of the cut-in (GDD §7.2)'],
+]
+  .filter(([count]) => count > 0)
+  .map(([count, what]) => `${count} ${what}`);
+
 await writeFile(
   path.join(outDir, 'frames.json'),
-  `${JSON.stringify({ frames: notes, artDiffs, leavesOnItsOwn, tapDismissed, playedPath }, null, 2)}\n`,
+  `${JSON.stringify(
+    {
+      capturedFrom,
+      frames: notes,
+      artDiffs,
+      leavesOnItsOwn,
+      tapDismissed,
+      playedPath,
+      failures,
+      pageErrors: errors,
+    },
+    null,
+    2,
+  )}\n`,
 );
 
 if (errors.length > 0) {
@@ -667,16 +759,6 @@ if (bombOutMissingOnMeetDay > 0) {
       '   walk-out which can still bomb does not spend the slot — and that IS failed on.',
   );
 }
-process.exit(
-  missing === 0 &&
-    wrongLine === 0 &&
-    duplicates === 0 &&
-    unreachableCorner === 0 &&
-    notOnTop === 0 &&
-    scrimDead === 0 &&
-    timing === 0 &&
-    walkoutSpentTheSlot === 0 &&
-    shellNavOverTheInterrupt === 0
-    ? 0
-    : 1,
-);
+// Reads the array written into `frames.json`, rather than restating the
+// conjunction. See the block that builds it.
+process.exit(failures.length === 0 ? 0 : 1);
