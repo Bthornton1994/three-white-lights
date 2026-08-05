@@ -190,6 +190,109 @@ export const RESIDUE_SWEEP = Object.freeze({
   FIXED_INCOME_DAYS: Object.freeze([20, 40]),
 });
 
+/**
+ * THE THIRD MEASUREMENT'S PARAMETERS: the verification of the ROLLING
+ * ENTITLEMENT that GDD §4.2 ruled in to replace the Recovery Day stock.
+ *
+ * WHY IT IS ITS OWN BLOCK AND ITS OWN GRID. The two blocks above measure a
+ * defect. This one is asked to establish an ABSENCE of one, and a zero is the
+ * easiest number in the world to get by accident — the last two "this closes
+ * it" claims on this module both survived a single sweep and died under a
+ * trace. So this block does not describe one sweep; it describes a battery,
+ * aimed at the specific failure classes the stock design turned out to have:
+ *
+ *   - the LIFETIME BEST, which was never measured past 16 days and was the half
+ *     that does not heal;
+ *   - the deficit MAGNITUDE at long horizons, because the stock's frequency
+ *     saturated while its worst case kept climbing to 189 days;
+ *   - MANY PARAMETERISATIONS, because one model is how the previous two claims
+ *     lasted as long as they did.
+ */
+export const ENTITLEMENT_VERIFICATION = Object.freeze({
+  /** Lengths the full battery runs at, at `SCHEDULES_PER_SEED` per seed. */
+  LENGTHS: Object.freeze([40, 60, 80, 100]),
+
+  /**
+   * Long horizons, for MAGNITUDE rather than frequency. A streak game is played
+   * for years and the stock design's worst deficit reached 189 days at 400.
+   *
+   * Fewer schedules per seed than the short lengths, and that is a stated
+   * trade rather than an oversight: 400 days at the full 400 schedules costs
+   * about twenty-five seconds on its own, which is most of this file's budget
+   * for one number.
+   */
+  LONG_LENGTHS: Object.freeze([200, 400]),
+  LONG_SCHEDULES_PER_SEED: 100,
+
+  /**
+   * Attendance rates for the population the seeded generator does NOT produce.
+   * `seededSchedules` draws one rate per schedule from [0.2, 0.9], so it has
+   * few near-perfect and no sub-0.2 lifters. These aim at both tails directly.
+   */
+  FIXED_ATTENDANCE_RATES: Object.freeze([0.1, 0.25, 0.5, 0.75, 0.95]),
+  FIXED_ATTENDANCE_LENGTH: 120,
+  FIXED_ATTENDANCE_SCHEDULES: 120,
+  FIXED_ATTENDANCE_SEED: 0x51de_51de,
+
+  /**
+   * Window lengths and per-window entitlements the property is checked over.
+   * The shipped tuning is one point in this grid; a playtester moving the knob
+   * must not be able to move the property.
+   *
+   * 1 and 365 are in deliberately: a window of one day is "the entitlement
+   * refreshes daily" and a window of a year is "it barely refreshes at all",
+   * and the property should not care.
+   */
+  WINDOW_DAYS_GRID: Object.freeze([1, 7, 13, 30, 31, 365]),
+  PER_WINDOW_GRID: Object.freeze([0, 1, 2, 3, 5]),
+
+  /**
+   * Calendar days a granted covered day lands on, for the purchase path. These
+   * are FIXED POSITIONS ON THE CALENDAR, which is the whole point — see
+   * `streakEntitlement.ts` §3 for the measurement that says a grant keyed to
+   * anything the lifter does reopens the defect.
+   *
+   * 30 is exactly a window boundary at the shipped tuning, and it is in the
+   * list for that reason.
+   */
+  CALENDAR_GRANT_DAYS: Object.freeze([Object.freeze([10]), Object.freeze([30]), Object.freeze([15, 45])]),
+
+  /**
+   * Purchase schedules for the BANKABLE variant — a purchased covered day that
+   * does NOT expire with its window.
+   *
+   * The shipped module expires it. This grid exists because the first version
+   * of GDD §8.2 justified the expiry as a SAFETY property, and that turned out
+   * to be false: the burn is what keeps a purchase safe, not the expiry. Ten
+   * purchases and a front-loaded block are in here specifically because a
+   * hoard is what a bankable product produces and a hoard is what the old
+   * Recovery Day defect was made of.
+   */
+  BANKABLE_PURCHASE_DAYS: Object.freeze([
+    Object.freeze([10, 40]),
+    Object.freeze([5, 15, 25, 35, 45, 55, 65, 75, 85, 95]),
+    Object.freeze([0, 1, 2, 3, 4, 5]),
+  ]),
+
+  /**
+   * The adversarial search: random restarts, then hill-climbing on single-day
+   * mutations towards the largest deficit any single-day superset shows.
+   *
+   * IT LOOKS FOR THE VIOLATION INSTEAD OF WAITING FOR ONE TO BE SAMPLED, which
+   * is the difference between a sweep and an attack. Sized so it costs a few
+   * seconds: the point is that it is run every time, not that it is exhaustive.
+   */
+  ADVERSARIAL: Object.freeze({ LENGTH: 90, RESTARTS: 12, STEPS: 120, SEED: 0x0bad_c0de }),
+
+  /**
+   * Grant schedules that MUST fail — the negative controls. A verification that
+   * only ever reports zeros cannot distinguish a property that holds from a
+   * harness that is not looking.
+   */
+  STREAK_KEYED_GRANT_AT: 7,
+  SESSION_KEYED_GRANT_EVERY: 10,
+});
+
 /** One calendar: `true` on the days the lifter trained. */
 export type TrainingSchedule = readonly boolean[];
 
@@ -246,6 +349,49 @@ export function seededSchedules(seed: number, length: number): readonly Training
       const draw = nextRandom(state);
       state = draw.state;
       days.push(draw.value < attendance);
+    }
+    schedules.push(days);
+  }
+  return schedules;
+}
+
+/**
+ * Schedules drawn at ONE FIXED attendance rate, rather than at a rate drawn per
+ * schedule.
+ *
+ * `seededSchedules` deliberately varies the rate so that one sweep contains a
+ * population of different lifters. That is the right default and it is why the
+ * rate range is written down — but it means the sweep contains almost no
+ * near-perfect attenders and nobody below 0.2. This aims a population where it
+ * is wanted, which is what `ENTITLEMENT_VERIFICATION.FIXED_ATTENDANCE_RATES`
+ * exists to do.
+ *
+ * @throws {RangeError} if the length or count is not a positive whole number,
+ * or the rate is outside [0, 1].
+ */
+export function fixedRateSchedules(
+  seed: number,
+  length: number,
+  rate: number,
+  count: number,
+): readonly TrainingSchedule[] {
+  if (!Number.isSafeInteger(length) || length < 1) {
+    throw new RangeError(`streakSweep: a calendar length must be a whole number of at least 1, received ${length}`);
+  }
+  if (!Number.isSafeInteger(count) || count < 1) {
+    throw new RangeError(`streakSweep: a schedule count must be a whole number of at least 1, received ${count}`);
+  }
+  if (!(rate >= 0 && rate <= 1)) {
+    throw new RangeError(`streakSweep: an attendance rate must be within [0, 1], received ${rate}`);
+  }
+  const schedules: TrainingSchedule[] = [];
+  let state = seedState(seed);
+  for (let index = 0; index < count; index += 1) {
+    const days: boolean[] = [];
+    for (let day = 0; day < length; day += 1) {
+      const draw = nextRandom(state);
+      state = draw.state;
+      days.push(draw.value < rate);
     }
     schedules.push(days);
   }

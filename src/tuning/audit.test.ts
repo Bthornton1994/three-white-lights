@@ -997,6 +997,10 @@ describe('the registered allowlist', () => {
         // attendance distribution GDD §4.4's counts were measured on. `data`,
         // not `feel` — nobody playtests a seed — so it is registered here and
         // deliberately absent from the tuning index.
+        // The rolling entitlement that funds a streak save (GDD §4.2 Option
+        // 1). `feel` — how forgiving a streak is needs playing to settle — so
+        // it is re-exported from the tuning index like every other feel home.
+        'src/game/streakEntitlement.ts',
         'src/game/streakSweep.ts',
         'src/licensing/licensingTuning.ts',
         'src/licensing/realIp.ts',

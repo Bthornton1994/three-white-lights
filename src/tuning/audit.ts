@@ -418,10 +418,15 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'data',
     why: 'MULBERRY32 — the published generator constants.',
   }),
+  'src/game/streakEntitlement.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'RECOVERY_ENTITLEMENT — the rolling entitlement that funds a streak save since GDD §4.2’s Option 1 ruling: covered days per window, the window length, and the per-absence ceiling. `feel`, not `data`: how forgiving a streak is has to be settled by playing it, and all three are UNTUNED starting values. What is NOT a matter of taste is the monotonicity property they sit inside — `streakEntitlement.test.ts` re-checks it across a grid of window lengths and entitlement sizes, so a playtester can turn these knobs without being able to turn the property off.',
+  }),
   'src/game/streakSweep.ts': Object.freeze({
     role: 'constants',
     kind: 'data',
-    why: 'MONOTONICITY_SWEEP and RESIDUE_SWEEP — the seeds, calendar lengths, attendance distribution and counterfactual parameters GDD §4.4’s "training one more day never lowers your streak" counts were measured on: the first block for what the no-free-absence rules closed, the second for what they left. Data about a measurement, not a knob: turning a seed does not change the game, only which calendars the property is checked over. It is `data` rather than `feel` for exactly that reason, and is deliberately not re-exported from the tuning index — a playtester has no business turning it. It exists at all because the first version of that measurement was published with its seeds unstated and could not be reproduced by anyone afterwards.',
+    why: 'MONOTONICITY_SWEEP, RESIDUE_SWEEP and ENTITLEMENT_VERIFICATION — the seeds, calendar lengths, attendance distribution and counterfactual parameters GDD §4.4’s "training one more day never lowers your streak" counts were measured on: the first block for what the no-free-absence rules closed, the second for what they left, and the third for the battery the replacement mechanic is verified against. Data about a measurement, not a knob: turning a seed does not change the game, only which calendars the property is checked over. It is `data` rather than `feel` for exactly that reason, and is deliberately not re-exported from the tuning index — a playtester has no business turning it. It exists at all because the first version of that measurement was published with its seeds unstated and could not be reproduced by anyone afterwards.',
   }),
   'src/card/sampleCards.ts': Object.freeze({
     role: 'constants',
