@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece S2
-generated 2026-08-05T16:20:51.068Z
+generated 2026-08-05T16:57:51.399Z
 repo /home/user/three-white-lights
-commit 6cdfc993f17e3934900825dace1673a8e7eafd07
+commit 61dea3e0e212ccfbff663ffdd1d65d4544d5c938
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -20,20 +20,20 @@ $ npx vitest run src/meet --reporter=verbose
 
  ✓ src/meet/meetStage.test.ts > the source parser this file depends on > reads a venue prop, and reads the default when there is none 2ms
  ✓ src/meet/meetStage.test.ts > the source parser this file depends on > reads a bare string literal too 0ms
- ✓ src/meet/meetStage.test.ts > the source parser this file depends on > returns null for a component that draws no stage at all 0ms
+ ✓ src/meet/meetStage.test.ts > the source parser this file depends on > returns null for a component that draws no stage at all 5ms
  ✓ src/meet/meetStage.test.ts > the source parser this file depends on > throws rather than guessing at an expression it cannot read 1ms
  ✓ src/meet/meetStage.test.ts > the source parser this file depends on > throws if LiftStage stops declaring a default it can find 0ms
  ✓ src/meet/meetStage.test.ts > the source parser this file depends on > finds a real <LiftStage> in every screen that draws one 1ms
  ✓ src/meet/meetStage.test.ts > the source parser this file depends on > checks that LiftStage DRAWS the venue it is handed, not just takes it 0ms
  ✓ src/meet/meetStage.test.ts > a meet attempt is not lifted in the training gym (GDD §6, §12.2) > hands the meet screen and the Sim set two different venues 1ms
- ✓ src/meet/meetStage.test.ts > a meet attempt is not lifted in the training gym (GDD §6, §12.2) > renders a materially different room for each, in pixels 23ms
- ✓ src/meet/meetStage.test.ts > a meet attempt is not lifted in the training gym (GDD §6, §12.2) > puts a crowd behind the meet and none behind the Sim set 43ms
+ ✓ src/meet/meetStage.test.ts > a meet attempt is not lifted in the training gym (GDD §6, §12.2) > renders a materially different room for each, in pixels 22ms
+ ✓ src/meet/meetStage.test.ts > a meet attempt is not lifted in the training gym (GDD §6, §12.2) > puts a crowd behind the meet and none behind the Sim set 33ms
  ✓ src/meet/meetStage.test.ts > a meet attempt is not lifted in the training gym (GDD §6, §12.2) > furnishes the two rooms differently — no training kit on a platform 0ms
- ✓ src/meet/meetStage.test.ts > a meet attempt is not lifted in the training gym (GDD §6, §12.2) > leaves every other screen in the training gym 4ms
+ ✓ src/meet/meetStage.test.ts > a meet attempt is not lifted in the training gym (GDD §6, §12.2) > leaves every other screen in the training gym 0ms
  ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > the beat parser reads a MeetHallView, and still reads a LiftStage 0ms
- ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > the hall MeetHallView draws is the meet platform, not the gym 1ms
- ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > stages the walkout beat in the meet hall 9ms
- ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > stages the the rep beat in the meet hall 2ms
+ ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > the hall MeetHallView draws is the meet platform, not the gym 0ms
+ ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > stages the walkout beat in the meet hall 8ms
+ ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > stages the the rep beat in the meet hall 8ms
  ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > stages the deliberation and verdict beat in the meet hall 6ms
  ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > stages the attempt-select beat in the meet hall 2ms
  ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > deliberately leaves the weigh-in beat unstaged 0ms
@@ -41,34 +41,29 @@ $ npx vitest run src/meet --reporter=verbose
  ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > deliberately leaves the bomb-out beat unstaged 0ms
  ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > deliberately leaves the recap beat unstaged 0ms
  ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > covers every screen the router can reach, staged or not 1ms
- ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > draws the hall nearest-neighbour at an integer scale (GDD §7.1) 11ms
+ ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > draws the hall nearest-neighbour at an integer scale (GDD §7.1) 5ms
+ ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > draws the walkout bar through the SPRITE, not out of Views 4ms
  ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > has cues at all 2ms
- ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.BAR_RATTLE as audible, unclipped samples 7ms
- ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.CROWD_SWELL as audible, unclipped samples 28ms
- ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.CROWD_SWELL_BIG as audible, unclipped samples 14ms
- ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.LIGHT_CLACK_WHITE as audible, unclipped samples 3ms
- ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.LIGHT_CLACK_RED as audible, unclipped samples 4ms
- ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.CROWD_CHEER as audible, unclipped samples 16ms
- ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.BOMB_TONE as audible, unclipped samples 55ms
- ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > draws the walkout bar through the SPRITE, not out of Views 9ms
- ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > hands the hall a WALK-OUT, and brings the hall up on the beats that ask 20ms
+ ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.BAR_RATTLE as audible, unclipped samples 8ms
+ ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.CROWD_SWELL as audible, unclipped samples 34ms
+ ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.CROWD_SWELL_BIG as audible, unclipped samples 32ms
+ ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.LIGHT_CLACK_WHITE as audible, unclipped samples 2ms
+ ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.LIGHT_CLACK_RED as audible, unclipped samples 2ms
+ ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.CROWD_CHEER as audible, unclipped samples 24ms
+ ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > hands the hall a WALK-OUT, and brings the hall up on the beats that ask 27ms
  ✓ src/meet/meetStage.test.ts > every beat of meet day happens somewhere (GDD §12.2) > the element parser can tell a prop from a mention of its name 0ms
- ✓ src/meet/meetStage.test.ts > the lifter against the crowd — MEASURED BEFORE AND AFTER > leaves no sub-perceptual crossing against the crowd at all 165ms
- ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders the same samples every time 188ms
+ ✓ src/meet/meetStage.test.ts > the lifter against the crowd — MEASURED BEFORE AND AFTER > leaves no sub-perceptual crossing against the crowd at all 211ms
+ ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders MEET_SOUND.CUES.BOMB_TONE as audible, unclipped samples 35ms
+ ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > renders the same samples every time 274ms
+ ✓ src/meet/meetStage.test.ts > the lifter against the crowd — MEASURED BEFORE AND AFTER > is a property of the SEATING, shown by putting it back on the floor 82ms
  ✓ src/meet/walkout.test.ts > the composite this file measures is the composite the screen draws > places the sprite where MeetHallView places it, at the same integer scale 2ms
- ✓ src/meet/walkout.test.ts > the composite this file measures is the composite the screen draws > measures a room with people in it 124ms
- ✓ src/meet/meetStage.test.ts > the lifter against the crowd — MEASURED BEFORE AND AFTER > is a property of the SEATING, shown by putting it back on the floor 83ms
- ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > is calibrated on the seated band the renderer actually drew 8ms
- ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > reads ZERO on every tier of a hall that nobody stood up 11ms
- ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > reads the shipped walk-out strictly higher than the hall at rest 27ms
- ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > agrees with the wave where the band has room, and reads the clamp where it does not 21ms
- ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > keeps every spectator inside the seating band, at every rise 42ms
- ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > goes silent when the mix is muted, and that is checkable 13ms
- ✓ src/meet/meetSound.test.ts > the cues are the shapes the design says they are > swells and decays the crowd rather than switching it on 8ms
+ ✓ src/meet/walkout.test.ts > the composite this file measures is the composite the screen draws > measures a room with people in it 142ms
+ ✓ src/meet/meetSound.test.ts > every meet-day cue makes a sound > goes silent when the mix is muted, and that is checkable 38ms
+ ✓ src/meet/meetSound.test.ts > the cues are the shapes the design says they are > swells and decays the crowd rather than switching it on 24ms
  ✓ src/meet/meetSound.test.ts > the cues are the shapes the design says they are > makes the light clack a transient, not a beep 1ms
  ✓ src/meet/meetSound.test.ts > the cues are the shapes the design says they are > lands the bar rattle instantly and lets it ring out 1ms
- ✓ src/meet/meetSound.test.ts > the cues are the shapes the design says they are > fades the bomb-out tone IN, so it arrives rather than hits 5ms
- ✓ src/meet/meetSound.test.ts > the cues are the shapes the design says they are > does not let a red light sound like a white one 1ms
+ ✓ src/meet/meetSound.test.ts > the cues are the shapes the design says they are > fades the bomb-out tone IN, so it arrives rather than hits 6ms
+ ✓ src/meet/meetSound.test.ts > the cues are the shapes the design says they are > does not let a red light sound like a white one 2ms
  ✓ src/meet/meetSound.test.ts > the cue a beat plays > plays BAR_RATTLE on the {"kind":"bar-plate"} beat 0ms
  ✓ src/meet/meetSound.test.ts > the cue a beat plays > plays CROWD_SWELL on the {"kind":"walkout-call","urgent":false} beat 0ms
  ✓ src/meet/meetSound.test.ts > the cue a beat plays > plays CROWD_SWELL_BIG on the {"kind":"walkout-call","urgent":true} beat 0ms
@@ -79,69 +74,74 @@ $ npx vitest run src/meet --reporter=verbose
  ✓ src/meet/meetSound.test.ts > the cue a beat plays > leaves no cue in the table that no beat plays 0ms
  ✓ src/meet/meetSound.test.ts > the cue a beat plays > is silent where silence is the design, and pins each one 0ms
  ✓ src/meet/meetSound.test.ts > the cue a beat plays > answers for every beat kind rather than falling through 0ms
- ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > has a file for every cue and no others 0ms
- ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > bar-rattle.wav is byte-identical to a fresh render 9ms
- ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > crowd-swell.wav is byte-identical to a fresh render 47ms
- ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > crowd-swell-big.wav is byte-identical to a fresh render 72ms
+ ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > has a file for every cue and no others 1ms
+ ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > bar-rattle.wav is byte-identical to a fresh render 20ms
+ ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > crowd-swell.wav is byte-identical to a fresh render 42ms
+ ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > is calibrated on the seated band the renderer actually drew 6ms
+ ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > reads ZERO on every tier of a hall that nobody stood up 20ms
+ ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > reads the shipped walk-out strictly higher than the hall at rest 29ms
+ ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > agrees with the wave where the band has room, and reads the clamp where it does not 29ms
+ ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > keeps every spectator inside the seating band, at every rise 61ms
+ ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > crowd-swell-big.wav is byte-identical to a fresh render 54ms
  ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > light-clack-white.wav is byte-identical to a fresh render 2ms
  ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > light-clack-red.wav is byte-identical to a fresh render 2ms
- ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > crowd-cheer.wav is byte-identical to a fresh render 31ms
- ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > bomb-tone.wav is byte-identical to a fresh render 53ms
- ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > writes a WAV a player will actually accept 8ms
+ ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > crowd-cheer.wav is byte-identical to a fresh render 30ms
+ ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > bomb-tone.wav is byte-identical to a fresh render 52ms
+ ✓ src/meet/meetSound.test.ts > the committed assets are the output of the recipe table > writes a WAV a player will actually accept 4ms
  ✓ src/meet/meetSound.test.ts > the player can reach every cue > imports a file for every cue in the table 1ms
  ✓ src/meet/meetSound.test.ts > the player can reach every cue > routes sound through the one join the screens call 0ms
- ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > has nothing left to give past the end of this sweep 9ms
- ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > reads its rise off a WHOLE tier, at every rise 26ms
- ✓ src/meet/walkout.test.ts > the walk-out moves (GDD §6.2 step 1) > draws a different picture at every stage of the beat 81ms
- ✓ src/meet/walkout.test.ts > the walk-out moves (GDD §6.2 step 1) > moves the LIFTER, not just the room 19ms
+ ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > has nothing left to give past the end of this sweep 18ms
+ ✓ src/meet/walkout.test.ts > the ruler this file reads the hall’s rise off > reads its rise off a WHOLE tier, at every rise 22ms
+ ✓ src/meet/walkout.test.ts > the walk-out moves (GDD §6.2 step 1) > draws a different picture at every stage of the beat 89ms
+ ✓ src/meet/walkout.test.ts > the walk-out moves (GDD §6.2 step 1) > moves the LIFTER, not just the room 23ms
  ✓ src/meet/walkout.test.ts > the walk-out moves (GDD §6.2 step 1) > takes the bar off the hooks: he starts dipped and ends standing 0ms
  ✓ src/meet/walkout.test.ts > the walk-out moves (GDD §6.2 step 1) > steps back: the body plants each way and the bar rocks the other way 0ms
- ✓ src/meet/walkout.test.ts > the walk-out moves (GDD §6.2 step 1) > settles onto EXACTLY the drawing the rep begins from 15ms
+ ✓ src/meet/walkout.test.ts > the walk-out moves (GDD §6.2 step 1) > settles onto EXACTLY the drawing the rep begins from 11ms
  ✓ src/meet/walkout.test.ts > the walk-out moves (GDD §6.2 step 1) > goes still and stays still — no loop, no drift 0ms
- ✓ src/meet/walkout.test.ts > a third attempt is a different picture from an opener > brings the hall up, and an opener does not 7ms
- ✓ src/meet/walkout.test.ts > a third attempt is a different picture from an opener > never lets a risen hall reach down toward the lifter 20ms
- ✓ src/meet/walkout.test.ts > a third attempt is a different picture from an opener > stands the crowd up without turning it into a slab 32ms
- ✓ src/meet/walkout.test.ts > a third attempt is a different picture from an opener > leaves a seated hall byte-identical to the room every other beat draws 2ms
+ ✓ src/meet/walkout.test.ts > a third attempt is a different picture from an opener > brings the hall up, and an opener does not 10ms
+ ✓ src/meet/walkout.test.ts > a third attempt is a different picture from an opener > never lets a risen hall reach down toward the lifter 31ms
+ ✓ src/meet/walkout.test.ts > a third attempt is a different picture from an opener > stands the crowd up without turning it into a slab 20ms
+ ✓ src/meet/walkout.test.ts > a third attempt is a different picture from an opener > leaves a seated hall byte-identical to the room every other beat draws 9ms
  ✓ src/meet/walkout.test.ts > a third attempt is a different picture from an opener > comes up over time rather than switching on 1ms
  ✓ src/meet/walkout.test.ts > the hall reacts to a good lift, and to nothing else > is a different room after the last lamp than during the deliberation 2ms
- ✓ src/meet/walkout.test.ts > the hall reacts to a good lift, and to nothing else > stands FURTHER than it does on a walk-out 10ms
+ ✓ src/meet/walkout.test.ts > the hall reacts to a good lift, and to nothing else > stands FURTHER than it does on a walk-out 0ms
  ✓ src/meet/walkout.test.ts > the hall reacts to a good lift, and to nothing else > is seated before its ramp starts, so it cannot leak a verdict 0ms
  ✓ src/meet/walkout.test.ts > the hall reacts to a good lift, and to nothing else > rises in whole rows, so the room is rasterised a handful of times 0ms
  ✓ src/meet/walkout.test.ts > the bar is loaded before he takes it off the hooks > holds the unrack until the last disc could have landed 0ms
  ✓ src/meet/walkout.test.ts > the bar is loaded before he takes it off the hooks > never runs the choreography past the beat the meet gives it 0ms
  ✓ src/meet/walkout.test.ts > the bar is loaded before he takes it off the hooks > walks its stages in order and reaches every one of them 0ms
  ✓ src/meet/walkout.test.ts > the walk-out is a finite sheet, not a per-frame deformation (GDD §7.1) > coalesces into a sheet a 16-bit game could have shipped 0ms
- ✓ src/meet/walkout.test.ts > the walk-out is a finite sheet, not a per-frame deformation (GDD §7.1) > puts every channel on the sheet’s own quanta 11ms
+ ✓ src/meet/walkout.test.ts > the walk-out is a finite sheet, not a per-frame deformation (GDD §7.1) > puts every channel on the sheet’s own quanta 13ms
  ✓ src/meet/walkout.test.ts > the walk-out is a finite sheet, not a per-frame deformation (GDD §7.1) > adds strain only where he is actually driving the bar 0ms
- ✓ src/meet/walkout.test.ts > the walk-out is a finite sheet, not a per-frame deformation (GDD §7.1) > is deterministic — the same attempt is the same beat every time 3ms
- ✓ src/meet/walkout.test.ts > the walk-out is a finite sheet, not a per-frame deformation (GDD §7.1) > indexes a frame by time the same way the render loop does 1ms
- ✓ src/meet/walkout.test.ts > the mid-motion preview beats land where they are named > holds walkout-unrack inside the unrack and walkout-step inside a step 28ms
+ ✓ src/meet/walkout.test.ts > the walk-out is a finite sheet, not a per-frame deformation (GDD §7.1) > is deterministic — the same attempt is the same beat every time 7ms
+ ✓ src/meet/walkout.test.ts > the walk-out is a finite sheet, not a per-frame deformation (GDD §7.1) > indexes a frame by time the same way the render loop does 2ms
+ ✓ src/meet/walkout.test.ts > the mid-motion preview beats land where they are named > holds walkout-unrack inside the unrack and walkout-step inside a step 27ms
  ✓ src/meet/walkout.test.ts > the mid-motion preview beats land where they are named > lets every other beat play, and freezes only these two 0ms
  ✓ src/meet/walkout.test.ts > the mid-motion preview beats land where they are named > photographs the SAME attempt at all three walk-out instants 9ms
  ✓ src/meet/walkout.test.ts > what this file does NOT claim > records that the pacing half of GDD §12.2 is unverified 0ms
  ✓ src/meet/meetHall.test.ts > MEET_HALL_SCENE > is the rep’s own box with the meet venue in it 2ms
- ✓ src/meet/meetHall.test.ts > MEET_HALL_SCENE > renders a room that is materially not the training gym 68ms
- ✓ src/meet/meetHall.test.ts > the walkout’s bar is the sprite’s bar > counts the discs on ONE side, from the art module’s own loader 1ms
+ ✓ src/meet/meetHall.test.ts > MEET_HALL_SCENE > renders a room that is materially not the training gym 23ms
+ ✓ src/meet/meetHall.test.ts > the walkout’s bar is the sprite’s bar > counts the discs on ONE side, from the art module’s own loader 6ms
  ✓ src/meet/meetHall.test.ts > the walkout’s bar is the sprite’s bar > opens the window one disc at a time, inboard first 1ms
- ✓ src/meet/meetHall.test.ts > the walkout’s bar is the sprite’s bar > reveals WHOLE discs — the count in the window is the count asked for 58ms
- ✓ src/meet/meetHall.test.ts > the walkout’s bar is the sprite’s bar > draws a heavier bar with more sleeve on it than a lighter one 52ms
- ✓ src/meet/meetHall.test.ts > the bare bar and the loaded bar are one body > differs from the loaded bar in twelve pixels, all beside the hands 19ms
+ ✓ src/meet/meetHall.test.ts > the walkout’s bar is the sprite’s bar > reveals WHOLE discs — the count in the window is the count asked for 55ms
+ ✓ src/meet/meetHall.test.ts > the walkout’s bar is the sprite’s bar > draws a heavier bar with more sleeve on it than a lighter one 66ms
+ ✓ src/meet/meetHall.test.ts > the bare bar and the loaded bar are one body > differs from the loaded bar in twelve pixels, all beside the hands 33ms
  ✓ src/meet/meetHall.test.ts > the bare bar and the loaded bar are one body > stands the lifter up rather than drawing him mid-rep 1ms
- ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > has strings to scan, including the ones a card prints 3ms
- ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > draws no watched name on any meet surface 22ms
- ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > proves the scan would fire on this surface if a name arrived 9ms
- ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > names the lifter with a placeholder nobody could mistake for a person 0ms
- ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > invents a federation and a meet, and does not leave them blank 0ms
- ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > fields the ghosts as numbers, so there is no name to get wrong 1ms
- ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > names its sound assets after what they are 1ms
- ✓ src/meet/meetIdentity.test.ts > the meet platform carries no wordmark, structurally > draws the sponsor banner as geometry with no text payload 1ms
- ✓ src/meet/meetIdentity.test.ts > the meet platform carries no wordmark, structurally > furnishes the platform only from the closed abstract prop catalogue 1ms
- ✓ src/meet/meetIdentity.test.ts > the meet platform carries no wordmark, structurally > has no glyph renderer in the art layer at all 4ms
  ✓ src/meet/useMeetDay.test.ts > a refused meet submission is disclosed rather than dropped > keeps the error instead of returning the cache unchanged and forgetting it 2ms
- ✓ src/meet/useMeetDay.test.ts > a refused meet submission is disclosed rather than dropped > hands the error out of the hook, so a screen has something to read 0ms
+ ✓ src/meet/useMeetDay.test.ts > a refused meet submission is disclosed rather than dropped > hands the error out of the hook, so a screen has something to read 1ms
  ✓ src/meet/useMeetDay.test.ts > a refused meet submission is disclosed rather than dropped > clears it on restart, so a fresh meet does not open holding the last refusal 0ms
  ✓ src/meet/useMeetDay.test.ts > a refused meet submission is disclosed rather than dropped > does not retry: the meet is marked submitted BEFORE the call, not after 0ms
  ✓ src/meet/useMeetDay.test.ts > a refused meet submission is disclosed rather than dropped > says at the site what the refusals are, so an editor of this file finds them 2ms
+ ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > has strings to scan, including the ones a card prints 7ms
+ ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > draws no watched name on any meet surface 24ms
+ ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > proves the scan would fire on this surface if a name arrived 20ms
+ ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > names the lifter with a placeholder nobody could mistake for a person 0ms
+ ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > invents a federation and a meet, and does not leave them blank 0ms
+ ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > fields the ghosts as numbers, so there is no name to get wrong 1ms
+ ✓ src/meet/meetIdentity.test.ts > nothing meet day can draw is a real identity (GDD §12.3) > names its sound assets after what they are 0ms
+ ✓ src/meet/meetIdentity.test.ts > the meet platform carries no wordmark, structurally > draws the sponsor banner as geometry with no text payload 1ms
+ ✓ src/meet/meetIdentity.test.ts > the meet platform carries no wordmark, structurally > furnishes the platform only from the closed abstract prop catalogue 1ms
+ ✓ src/meet/meetIdentity.test.ts > the meet platform carries no wordmark, structurally > has no glyph renderer in the art layer at all 6ms
  ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > fires MEET_TUNING.HAPTICS.BAR_PLATE on the {"kind":"bar-plate"} beat 2ms
  ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > fires MEET_TUNING.HAPTICS.WALKOUT_CALL on the {"kind":"walkout-call","urgent":false} beat 0ms
  ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > fires MEET_TUNING.HAPTICS.WALKOUT_CALL_URGENT on the {"kind":"walkout-call","urgent":true} beat 0ms
@@ -150,7 +150,7 @@ $ npx vitest run src/meet --reporter=verbose
  ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > fires MEET_TUNING.HAPTICS.LIGHT_RED on the {"kind":"light","light":"red"} beat 0ms
  ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > fires MEET_TUNING.HAPTICS.VERDICT_GOOD on the {"kind":"verdict","good":true} beat 0ms
  ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > fires MEET_TUNING.HAPTICS.VERDICT_NO_LIFT on the {"kind":"verdict","good":false} beat 0ms
- ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > fires MEET_TUNING.HAPTICS.BOMB_OUT on the {"kind":"bomb-out"} beat 0ms
+ ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > fires MEET_TUNING.HAPTICS.BOMB_OUT on the {"kind":"bomb-out"} beat 1ms
  ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > fires MEET_TUNING.HAPTICS.FLOOR_RAISED on the {"kind":"floor","raisedByMiss":true} beat 0ms
  ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > fires MEET_TUNING.HAPTICS.ATTEMPT_DECLARED on the {"kind":"attempt-declared"} beat 0ms
  ✓ src/meet/meetFeel.test.ts > every meet-day beat is felt > routes every beat kind the screens can produce 0ms
@@ -162,7 +162,7 @@ $ npx vitest run src/meet --reporter=verbose
  ✓ src/meet/meetFeel.test.ts > the beats that carry a verdict are distinguishable by feel alone > does not file a bomb-out under the same feeling as a mistimed rep 0ms
  ✓ src/meet/meetFeel.test.ts > the source scan this file depends on > finds a beat, and finds none where there is none 0ms
  ✓ src/meet/meetFeel.test.ts > the source scan this file depends on > notices a call it cannot read 0ms
- ✓ src/meet/meetFeel.test.ts > the four meet screens fire the beats they own > WalkoutView.tsx fires bar-plate, walkout-call 0ms
+ ✓ src/meet/meetFeel.test.ts > the four meet screens fire the beats they own > WalkoutView.tsx fires bar-plate, walkout-call 1ms
  ✓ src/meet/meetFeel.test.ts > the four meet screens fire the beats they own > VerdictView.tsx fires light, verdict, deliberation 0ms
  ✓ src/meet/meetFeel.test.ts > the four meet screens fire the beats they own > BombOutView.tsx fires bomb-out 0ms
  ✓ src/meet/meetFeel.test.ts > the four meet screens fire the beats they own > AttemptSelectView.tsx fires floor, attempt-declared 0ms
@@ -171,8 +171,8 @@ $ npx vitest run src/meet --reporter=verbose
 
  Test Files  7 passed (7)
       Tests  150 passed (150)
-   Start at  16:20:51
-   Duration  1.80s (transform 1.57s, setup 0ms, import 2.34s, tests 1.75s, environment 1ms)
+   Start at  16:57:52
+   Duration  2.15s (transform 1.75s, setup 0ms, import 2.71s, tests 2.00s, environment 1ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -187,9 +187,9 @@ $ npx vitest run
 
 
  Test Files  57 passed (57)
-      Tests  2457 passed (2457)
-   Start at  16:20:54
-   Duration  31.60s (transform 3.83s, setup 0ms, import 14.93s, tests 69.91s, environment 6ms)
+      Tests  2470 passed (2470)
+   Start at  16:57:54
+   Duration  38.65s (transform 4.75s, setup 0ms, import 19.08s, tests 82.83s, environment 11ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
