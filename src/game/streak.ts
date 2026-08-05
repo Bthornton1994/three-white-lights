@@ -353,13 +353,20 @@
  *     backwards across an absence, so the spender's run contains the
  *     comparator's.
  *
- *   - MONOTONICITY IN THE TRAINED SET, over every calendar of 13, 15, 16 and 17
- *     days — exhaustive, every single-day superset of every calendar — and over
- *     a seeded sweep of 40-day calendars. Training one MORE day never lowers
- *     `currentStreak` and never lowers `longestStreak`. This did NOT hold before
- *     the signup-day rework and the numbers it used to fail by are recorded in
- *     `MONOTONICITY_MEASUREMENT` in `streak.test.ts`, with the new ones beside
- *     them so the change is a measurement rather than a claim.
+ *   - MONOTONICITY IN THE TRAINED SET, over every calendar of 8 TO 16 DAYS —
+ *     exhaustive, every single-day superset of every calendar. Training one
+ *     MORE day never lowers `currentStreak` and never lowers `longestStreak`.
+ *     This did NOT hold before the signup-day rework and the numbers it used to
+ *     fail by are recorded in `MONOTONICITY_MEASUREMENT` in `streak.test.ts`,
+ *     with the new ones beside them so the change is a measurement rather than
+ *     a claim.
+ *
+ *     THE LENGTHS ARE THE WHOLE OF THE CLAIM AND THE BOUND IS NOT DECORATIVE.
+ *     This bullet used to add "and over a seeded sweep of 40-day calendars",
+ *     which was false in both fields: 13 `currentStreak` violations and 14
+ *     `longestStreak` inversions at 40 days, and more at 60. What holds is
+ *     exhaustive up to 16 days and nothing past it. See the closing paragraphs
+ *     of this section for what fails and why.
  *
  * HOW IT WAS CLOSED, in the order the two halves matter:
  *
@@ -386,6 +393,37 @@
  * a run existed, and the absence that killed one. Both are now charged, and the
  * argument closes.
  *
+ * WHERE THAT ARGUMENT STOPS BEING A PROOF, AND IT IS EXACTLY WHERE THE RESIDUE
+ * LIVES. `max(0, len - G)` is the charge on a COVERED absence. A DOOMED absence
+ * is charged `armedRecoveryDays`, which is not a function of the absence length
+ * at all — it is a function of what the lifter happens to be holding. So the
+ * subadditivity above says nothing about the doomed branch, and the sentence
+ * "a charge levied on every absence is automatically monotone" is true only of
+ * charges that depend on the absence alone. Ours does not.
+ *
+ * WHAT THE DOOMED BRANCH DOES INSTEAD, and it is worth understanding rather
+ * than patching. Because `armedRecoveryDays` is the whole balance at the last
+ * session, a doomed absence DRAINS THE BANK TO ZERO. That is what makes
+ * splitting a doomed absence cost the same as leaving it whole — the second
+ * piece finds nothing left to take — and it is precisely why the two halves
+ * measure 0 over every calendar of 8 to 16 days. It is also why the debit is
+ * INCREASING IN WEALTH, and training one more day is a way of being wealthier:
+ * a spared save leaves a Recovery Day in the bank, and an earlier milestone
+ * puts one there. So the lifter who trained more can walk into a doomed absence
+ * holding more, lose more, and die at a later absence the lazier lifter
+ * survives.
+ *
+ * THOSE TWO PROPERTIES ARE THE SAME PROPERTY. A debit that drains the bank is
+ * idempotent under splitting (good) and proportional to holdings (bad), and no
+ * arithmetic on the doomed branch separates them — measured, not reasoned:
+ * capping the debit at `MAX_CONSECUTIVE_USES` makes it wealth-independent and
+ * REOPENS the exhaustive defect at 14, 15 and 16 days (8, 36 and 124 violating
+ * pairs against 0 today) while making the 40- and 60-day residue worse (51 and
+ * 149 against 13 and 122). Charging `min(chargeable, armed)` instead is
+ * measurably identical to today on this population. `streak.test.ts` records
+ * the residue this leaves; §6's closing paragraphs say what is and is not known
+ * about it.
+ *
  * WHAT THE PROMPT ACTUALLY CAUSED, since GDD §4.4 blamed it and was wrong: the
  * *other* residue, the one about balances rather than streaks, where a player
  * who opened the app mid-absence paid for part of an absence that ended the run
@@ -405,21 +443,60 @@
  * Duolingo comparison was a red herring rather than a proof.
  *
  * WHAT STILL DOES NOT HOLD, and is measured rather than glossed. Beyond about
- * forty days of calendar the sweep finds violations again, at a fraction of the
- * old rate, and their cause is a third asymmetry this rework did not touch:
- * STREAK MILESTONE INCOME IS PAID ONCE PER LIFETIME AND ITS ARRIVAL IS TIMED BY
- * THE STREAK. The player who trains more reaches a milestone EARLIER, banks the
- * Recovery Day EARLIER, and can therefore lose it to a doomed absence that the
- * lazier player — whose identical payout has not arrived yet — walks away from
- * with the Recovery Day still in hand. Measured: with `STREAK_MILESTONE_DAYS`
- * emptied, the 60-day sweep goes to 0 at every seed tried; with the hold cap
- * raised to a value that can never clip a payout, it does not move at all. So
- * it is the TIMING of the income, not the loss of it to the cap.
+ * twenty days of calendar the property fails again, at a fraction of the old
+ * rate. THE CAUSE IS THE DOOMED-ABSENCE CHARGE ITSELF — half of the fix above,
+ * behaving as the paragraphs above describe: the debit is the whole armed
+ * count, so it is increasing in wealth, and training more is a way of being
+ * wealthy at the wrong moment.
  *
- * NOBODY HAS RULED ON THAT ONE. The fixes that suggest themselves — paying
- * milestones on a schedule that is not the streak, or protecting income from a
- * doomed absence — both change GDD §4.2's earning table, which is a design and
- * monetisation decision rather than a streak one.
+ * THIS FILE USED TO NAME A DIFFERENT CAUSE — "streak milestone income is paid
+ * once per lifetime and its arrival is timed by the streak" — on the strength
+ * of one counterfactual: empty `STREAK_MILESTONE_DAYS` and the 60-day sweep
+ * goes to 0. The counterfactual is real and still passes. The conclusion drawn
+ * from it was wrong, because milestone income is THE ONLY INCOME the sweep has
+ * after the signup grant, so emptying it switches off income rather than income
+ * timing. Two counterfactuals that separate them both refute it: income
+ * credited on FIXED CALENDAR DAYS, whose arrival neither lifter can move, still
+ * gives 81 violating pairs at 60 days; and a balance topped to the hold cap
+ * every day, which can never run out, gives 194 — MORE than the 122 the shipped
+ * economy gives. So it is neither the streak-keyed timing nor the scarcity.
+ *
+ * NOR IS IT THE FREE-LUNCH SHAPE THE TWO RULES ABOVE CLOSED. No charge is
+ * created: in 110 of the 122 pairs at 60 days the two lifters spend exactly the
+ * same number of Recovery Days in total. The same budget is committed at a
+ * different moment, and the doomed branch buys nothing with it. That is an
+ * ALLOCATION failure, not a free absence, and it is why the fixes aimed at the
+ * old diagnosis do not close it.
+ *
+ * `streak.test.ts` reproduces the whole thing by hand in a 23-DAY calendar —
+ * longer than the exhaustive proof, shorter than the sampled sweep, which is
+ * why it hid — where one extra trained day turns a final streak of 8 into 1 and
+ * a lifetime best of 8 into 7.
+ *
+ * THE LIFETIME BEST IS INVERTED TOO, and that had never been measured past 16
+ * days. The exhaustive sweep counts it and pins it at 0; the 40- and 60-day
+ * sweeps only ever compared `currentStreak`. Counted now: 14 inversions at 40
+ * days and 150 at 60. It is the more serious half — a `currentStreak` deficit
+ * heals and a lifetime best does not, and since milestones are paid off
+ * `longestStreak` a lifter whose best is inverted has lost the income attached
+ * to it permanently.
+ *
+ * IT DOES NOT GROW WITHOUT BOUND, which is the one piece of good news and is
+ * also measured: the violating-pair RATE is 3.5e-4 at 40 days, 2.3e-3 at 60,
+ * 2.0e-3 at 80 and 8.1e-4 at 100, and keeps falling past that. The WORST
+ * DEFICIT does keep climbing — 13, 14, 25 at those lengths, and 189 at 400 days
+ * — because it is bounded by the streak that was there to lose. Frequency
+ * saturates; magnitude scales with how long the lifter has been playing.
+ *
+ * NOBODY HAS RULED ON IT, AND THE RULING IT NEEDS HAS CHANGED. The two fixes
+ * GDD §4.4 offered — paying milestones on a schedule that is not the streak, or
+ * protecting income from a doomed absence — are aimed at the diagnosis this
+ * comment retracts, and the first of them is measured NOT to work. What the
+ * measurements point at instead is a genuine tension rather than a bug: a
+ * doomed-absence debit that drains the bank is what makes splitting a doomed
+ * absence free, and a debit that drains the bank is necessarily proportional to
+ * what the lifter holds. Escaping it means coverage that is not funded from a
+ * stock at all, which is a decision about what GDD §8.2 sells.
  *
  * A TRAP FOR ANYONE MEASURING THIS. `currentStreak` is only true as of the last
  * day someone called `openDay` on the state. A run that has already died sits

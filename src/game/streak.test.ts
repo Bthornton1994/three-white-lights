@@ -2350,12 +2350,11 @@ const SAMPLED_MEASUREMENT = {
    * deficits `[16, 14, 15, 15, 12]`, on 36/33/30/29/36 violating schedules.
    *
    * THE REMAINING 13 ARE A RECORDED RESIDUAL, NOT A REGRESSION THAT SLIPPED IN.
-   * Every one of them is the streak-milestone income timing traced in
-   * `MILESTONE_INCOME_RESIDUE` below, which measures the cause rather than
-   * asserting it: with milestone income unreachable the same sweep is 0 at 40
-   * AND 60 days at every seed. If this array moves, the question to ask first
-   * is whether the mover is that residue or something new — the counterfactual
-   * test is the instrument for telling them apart.
+   * `RESIDUE_MEASUREMENT` below has what they are — the doomed-absence debit
+   * being proportional to what the lifter holds — with the three
+   * counterfactuals that pin it down and the two that refute the cause this
+   * comment used to name. If this array moves, those counterfactuals are the
+   * instrument for telling the known residue from something new.
    *
    * PINNED RATHER THAN BOUNDED, deliberately. `toBeLessThan(20)` would let this
    * drift back up to 19 without anybody noticing.
@@ -2366,9 +2365,12 @@ const SAMPLED_MEASUREMENT = {
   WAS_WORST_DEFICIT_AT_40: [16, 14, 15, 15, 12],
 
   /**
-   * Sixty days. The residue is larger here, and for the same reason: sixty days
-   * is long enough for the 30-day milestone to land inside the calendar, so
-   * there is a second payout whose arrival the two lifters can disagree about.
+   * Sixty days, where the residue is an order of magnitude larger than at
+   * forty. NOT because a second milestone lands inside the calendar, which is
+   * what this comment used to say: it is because a longer calendar gives more
+   * room for a doomed absence to fall between the two lifters' banks and for
+   * the difference to still be decisive on the last day. `RESIDUE_GROWTH` has
+   * the trend with its denominator, which is what makes that readable.
    *
    * WAS `[203, 299, 235, 236, 296]`, worst deficits `[24, 21, 23, 25, 22]`.
    */
