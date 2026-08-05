@@ -31,7 +31,15 @@ import {
   type EntitlementState,
   type EntitlementTuning,
 } from './streakEntitlement';
-import { RECOVERY_DAY_GUARDRAILS } from './streak';
+import {
+  RECOVERY_DAY_GUARDRAILS,
+  asStreakDay,
+  createStreakState,
+  openDay,
+  recordTrainingDay,
+  settleBrokenStreak,
+  type StreakState,
+} from './streak';
 import {
   ENTITLEMENT_VERIFICATION,
   MONOTONICITY_SWEEP,
@@ -153,6 +161,62 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
 }
 
 const DEFAULT: RunOptions = { tuning: RECOVERY_ENTITLEMENT, grant: { kind: 'none' }, burnOnDoom: true };
+
+/**
+ * THE SAME CALENDAR, THROUGH THE SHIPPED ENGINE.
+ *
+ * WHY THIS EXISTS, and it is the thing the whole battery below rests on.
+ * `drive` is a REFERENCE COMPOSITION of the free grace and the entitlement — it
+ * calls the real `streakEntitlement.ts` but it re-implements the streak
+ * bookkeeping around it in twenty lines. Every attack in this file grades
+ * `drive`. If `drive` and `src/game/streak.ts` disagree by so much as one day,
+ * every one of those attacks is a statement about a program nobody ships and
+ * the verification GDD §4.2's ruling was made on transfers to nothing.
+ *
+ * So the two are PINNED EQUAL, byte for byte, on the same calendars the battery
+ * uses — see 'the shipped engine is the composition this battery graded'.
+ *
+ * SIGNUP DAY IS DAY 0 in both, so the window grids coincide. `drive` hardcodes
+ * that (`windowIndexOf(tuning, 0, day)`); this passes it explicitly.
+ *
+ * WHAT THE PIN CANNOT COVER, said plainly rather than left to be assumed:
+ * `streak.ts` reads `RECOVERY_ENTITLEMENT` as a module constant, so it can only
+ * be driven at the SHIPPED tuning. The battery's window-length and
+ * entitlement-size grids, its purchase paths and its negative controls are all
+ * `drive`-only, and they transfer to the shipped engine only through the
+ * shipped tuning being one point in each grid — which `streak.test.ts` asserts
+ * directly ('ships a tuning the verification battery actually covers').
+ */
+function driveThroughStreakEngine(schedule: TrainingSchedule): RunResult {
+  let state: StreakState = createStreakState(asStreakDay(0));
+  let consumed = 0;
+
+  for (let i = 0; i < schedule.length; i += 1) {
+    const day = asStreakDay(i);
+    // The daily open, which settles a run the calendar has already ended. This
+    // is `drive`'s `if (lastTrainedDay !== null && i > lastTrainedDay)` branch:
+    // `openDay` reports `'streak-broken'` on exactly that condition.
+    if (openDay(state, day).kind === 'streak-broken') {
+      const settled = settleBrokenStreak(state, day);
+      if (settled.ok) state = settled.value.state;
+    }
+    if (schedule[i] !== true) continue;
+
+    const outcome = recordTrainingDay(state, day);
+    if (!outcome.ok) throw new Error(`streak engine refused day ${i}: ${outcome.error.code}`);
+    consumed +=
+      (outcome.value.recoveryDaySave?.recoveryDaysSpent ?? 0) + outcome.value.recoveryDaysLostToTheAbsence;
+    state = outcome.value.state;
+  }
+
+  // Settle at the end, so two states are never compared at different staleness.
+  const last = asStreakDay(schedule.length - 1);
+  if (openDay(state, last).kind === 'streak-broken') {
+    const settled = settleBrokenStreak(state, last);
+    if (settled.ok) state = settled.value.state;
+  }
+  return { currentStreak: state.currentStreak, longestStreak: state.longestStreak, consumed };
+}
 
 // ---------------------------------------------------------------------------
 // The judge
@@ -729,5 +793,183 @@ describe('never punish daily engagement — the entitlement under attack', () =>
       foundOnBroken = Math.max(foundOnBroken, score);
     }
     expect(foundOnBroken, 'the search must be able to find a violation that is there').toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The pin: everything above grades `drive`, and `drive` has to BE the engine
+// ---------------------------------------------------------------------------
+
+describe('the shipped engine is the composition this battery graded', () => {
+  /**
+   * Compares the reference composition against `src/game/streak.ts` on one
+   * calendar, and reports the first field that differs.
+   */
+  const disagreement = (schedule: TrainingSchedule): string | null => {
+    const reference = drive(schedule, DEFAULT);
+    const shipped = driveThroughStreakEngine(schedule);
+    if (JSON.stringify(reference) === JSON.stringify(shipped)) return null;
+    return `${renderSchedule(schedule)}: reference ${JSON.stringify(reference)} vs shipped ${JSON.stringify(shipped)}`;
+  };
+
+  /**
+   * Runs the pin over a set of calendars and fails on the first disagreement.
+   *
+   * Returns how many calendars were compared and how many covered days the
+   * reference drew across them. The second is the anti-vacuity number and it is
+   * accumulated by the CALLER rather than asserted here, because some
+   * populations legitimately never draw one — at an attendance rate of 0.95
+   * almost every absence is inside the free grace, and that population is in
+   * the battery precisely because the seeded generator does not reach it.
+   */
+  const pin = (
+    label: string,
+    schedules: Iterable<TrainingSchedule>,
+  ): { checked: number; consumed: number } => {
+    let checked = 0;
+    let consumed = 0;
+    for (const schedule of schedules) {
+      const rows = disagreement(schedule);
+      expect(rows, `${label}: ${rows ?? ''}`).toBeNull();
+      consumed += drive(schedule, DEFAULT).consumed;
+      checked += 1;
+    }
+    expect(checked, `${label}: no calendars were compared`).toBeGreaterThan(0);
+    return { checked, consumed };
+  };
+
+  it('agrees EXHAUSTIVELY on every calendar of 8 to 13 days', () => {
+    // Every calendar of these lengths, not every PAIR — the pin is about the
+    // two implementations agreeing, and a pair of calendars is two calendars.
+    // 13 rather than 16 because the pin costs two engines per calendar and 2^16
+    // of those is most of this file's time budget for one number.
+    let checked = 0;
+    let consumed = 0;
+    for (const length of [8, 9, 10, 11, 12, 13]) {
+      const count = exhaustiveCalendarCount(length);
+      const calendars: TrainingSchedule[] = [];
+      for (let mask = 0; mask < count; mask += 1) calendars.push(exhaustiveCalendar(mask, length));
+      const run = pin(`exhaustive ${length}`, calendars);
+      checked += run.checked;
+      consumed += run.consumed;
+    }
+    expect(checked).toBe([8, 9, 10, 11, 12, 13].reduce((total, l) => total + 2 ** l, 0));
+    expect(consumed, 'no covered day was ever drawn').toBeGreaterThan(0);
+  });
+
+  it('agrees on the sampled calendars the battery is scored on, at every length', () => {
+    // THE LENGTHS THAT MATTER MOST, because they are the ones the exhaustive
+    // sweep cannot reach and the ones the stock design failed at. Every seed,
+    // a slice of the schedules per seed — enough to cross several window
+    // boundaries at every length.
+    const PER_SEED = 60;
+    let checked = 0;
+    let consumed = 0;
+    for (const length of ENTITLEMENT_VERIFICATION.LENGTHS) {
+      expect(length).toBeGreaterThan(RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+      const calendars: TrainingSchedule[] = [];
+      for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+        calendars.push(...seededSchedules(seed, length).slice(0, PER_SEED));
+      }
+      const run = pin(`sampled ${length}`, calendars);
+      checked += run.checked;
+      consumed += run.consumed;
+    }
+    expect(checked).toBe(
+      ENTITLEMENT_VERIFICATION.LENGTHS.length * MONOTONICITY_SWEEP.SEEDS.length * PER_SEED,
+    );
+    expect(consumed, 'no covered day was ever drawn').toBeGreaterThan(0);
+  });
+
+  it('agrees at long horizons and at attendance rates the seeded generator does not reach', () => {
+    // The two populations the battery adds on purpose: 200- and 400-day
+    // calendars, where the stock's worst deficit reached 189, and the fixed
+    // attendance rates at both tails — 0.1 is a lifter whose absences almost
+    // always outrun the ceiling, 0.95 is one who almost never misses.
+    let checked = 0;
+    let consumed = 0;
+    for (const length of ENTITLEMENT_VERIFICATION.LONG_LENGTHS) {
+      const calendars: TrainingSchedule[] = [];
+      for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+        calendars.push(...seededSchedules(seed, length).slice(0, 12));
+      }
+      const run = pin(`long ${length}`, calendars);
+      checked += run.checked;
+      consumed += run.consumed;
+    }
+    let drawnAtSomeRate = 0;
+    for (const rate of ENTITLEMENT_VERIFICATION.FIXED_ATTENDANCE_RATES) {
+      const run = pin(
+        `attendance ${rate}`,
+        fixedRateSchedules(
+          ENTITLEMENT_VERIFICATION.FIXED_ATTENDANCE_SEED,
+          ENTITLEMENT_VERIFICATION.FIXED_ATTENDANCE_LENGTH,
+          rate,
+          30,
+        ),
+      );
+      checked += run.checked;
+      drawnAtSomeRate += run.consumed;
+    }
+    expect(checked).toBe(
+      ENTITLEMENT_VERIFICATION.LONG_LENGTHS.length * MONOTONICITY_SWEEP.SEEDS.length * 12 +
+        ENTITLEMENT_VERIFICATION.FIXED_ATTENDANCE_RATES.length * 30,
+    );
+    expect(consumed, 'the long horizons never drew a covered day').toBeGreaterThan(0);
+    expect(drawnAtSomeRate, 'no fixed-rate population ever drew a covered day').toBeGreaterThan(0);
+  });
+
+  it('agrees on the shapes a calendar generator does not produce', () => {
+    // HAND-BUILT EDGE CASES, because the generators above are Bernoulli and a
+    // Bernoulli draw at 0.2 will not reliably produce "never trains at all" or
+    // "trains only on a window boundary". Each of these is a case where the two
+    // implementations could plausibly have been written differently.
+    const W = RECOVERY_ENTITLEMENT.WINDOW_DAYS;
+    const at = (length: number, days: readonly number[]): TrainingSchedule =>
+      Array.from({ length }, (_, i) => days.includes(i));
+
+    const cases: readonly TrainingSchedule[] = [
+      at(W * 3, []), // never trains: the signup absence, resolved by nobody
+      at(W * 3, [0]), // trains once, on the signup day, then vanishes
+      at(W * 3, [W * 3 - 1]), // trains once, on the last day, after a huge absence
+      at(W * 3, [W - 1, W]), // either side of a window boundary
+      at(W * 3, [W - 1, W + GRACE + 1]), // an absence that STRADDLES a boundary
+      at(W * 3, [0, W, W * 2]), // one session per window, absences of a window each
+      Array.from({ length: W * 2 }, () => true), // trains every single day
+      Array.from({ length: W * 2 }, (_, i) => i % (GRACE + 1) === 0), // the free-grace treadmill
+      Array.from({ length: W * 2 }, (_, i) => i % (GRACE + 2) === 0), // one covered day per absence
+    ];
+    for (const [index, schedule] of cases.entries()) {
+      expect(disagreement(schedule), `hand-built case ${index}`).toBeNull();
+    }
+    // Not vacuous: at least one of them really did draw on the entitlement, and
+    // at least one really did end with a dead run.
+    expect(cases.some((schedule) => drive(schedule, DEFAULT).consumed > 0)).toBe(true);
+    expect(cases.some((schedule) => drive(schedule, DEFAULT).currentStreak === 0)).toBe(true);
+  });
+
+  it('DETECTS A DIFFERENCE: the pin is not comparing two copies of one engine', () => {
+    // THE ANTI-VACUITY FOR THE PIN ITSELF, and it needs its own test because
+    // every assertion above is "these are equal". A comparator that could not
+    // tell the two apart would pass all of them while proving nothing — which
+    // is precisely the failure mode this module has had twice.
+    //
+    // `burnOnDoom: false` is the one variant of `drive` that is known to differ
+    // from the shipped rule, and it is the negative control the battery already
+    // relies on: GDD §4.2 RULE 2 says a doomed absence consumes what was armed,
+    // and dropping it measures 1051 violating pairs at 60 days.
+    const withoutTheBurn: RunOptions = { ...DEFAULT, burnOnDoom: false };
+    let disagreements = 0;
+    let compared = 0;
+    for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+      for (const schedule of seededSchedules(seed, 60).slice(0, 40)) {
+        const shipped = driveThroughStreakEngine(schedule);
+        const variant = drive(schedule, withoutTheBurn);
+        compared += 1;
+        if (JSON.stringify(shipped) !== JSON.stringify(variant)) disagreements += 1;
+      }
+    }
+    expect(compared).toBe(MONOTONICITY_SWEEP.SEEDS.length * 40);
+    expect(disagreements, 'the comparator cannot see a rule change').toBeGreaterThan(0);
   });
 });

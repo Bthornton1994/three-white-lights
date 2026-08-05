@@ -1,3 +1,4 @@
+import { RECOVERY_ENTITLEMENT } from './streakEntitlement';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -147,7 +148,7 @@ describe('a new lifter', () => {
     expect(record.bestE1rmKg.squat).toBe(180);
     expect(record.bestE1rmKg.bench).toBe(120);
     expect(record.bestE1rmKg.deadlift).toBe(220);
-    expect(record.streak.recoveryDayBalance).toBe(3);
+    expect(record.streak.entitlement.coveredDaysLeft).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
   });
 
   it('produces a wire the one door in progression.ts accepts', () => {
@@ -976,8 +977,10 @@ describe('applying a training session', () => {
       expect(applied.value.milestonesReached).toEqual(day === 6 ? [7] : []);
     }
     expect(record.streak.currentStreak).toBe(7);
-    // Signup grant 3 plus one milestone.
-    expect(record.streak.recoveryDayBalance).toBe(4);
+    // NO SIGNUP GRANT AND NO MILESTONE PAYOUT. GDD §4.2's Option 1 ruling
+    // replaced both with a window entitlement everybody has on the same terms,
+    // so a lifter seven days in has exactly what a lifter on day one has.
+    expect(record.streak.entitlement.coveredDaysLeft).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
   });
 
   it('starts a setback only from the roll it is handed — no Math.random here', () => {

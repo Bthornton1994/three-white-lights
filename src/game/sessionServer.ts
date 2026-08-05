@@ -201,7 +201,6 @@ import type {
   WalletCurrency,
 } from './progression';
 import {
-  RECOVERY_DAY_ECONOMY,
   asStreakDay,
   createStreakState,
   openDay,
@@ -430,10 +429,7 @@ export function newServerRecord(signupDay: number): ServerRecord {
       bench: PROVEN_STARTING_E1RM.kilograms.bench,
       deadlift: PROVEN_STARTING_E1RM.kilograms.deadlift,
     },
-    streak: {
-      ...createStreakState(asStreakDay(signupDay)),
-      recoveryDayBalance: RECOVERY_DAY_ECONOMY.SIGNUP_GRANT,
-    },
+    streak: createStreakState(asStreakDay(signupDay)),
     meets: [],
     wallet: { gymBucks: 0, chalk: 0 },
     fatigue: EMPTY_FATIGUE_STATE,
@@ -446,8 +442,8 @@ function streakWire(state: StreakState): StreakStateWire {
     currentStreak: state.currentStreak,
     longestStreak: state.longestStreak,
     lastTrainedDay: state.lastTrainedDay,
-    armedRecoveryDays: state.armedRecoveryDays,
-    recoveryDayBalance: state.recoveryDayBalance,
+    entitlement: state.entitlement,
+    entitlementArmed: state.entitlementArmed,
     recoveryDayProtectionEnabled: state.recoveryDayProtectionEnabled,
     hasBankedFirstRecoveryDaySave: state.hasBankedFirstRecoveryDaySave,
   };

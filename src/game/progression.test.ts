@@ -724,8 +724,8 @@ function wire(overrides: Partial<ProgressionSnapshotWire> = {}): ProgressionSnap
       currentStreak: 12,
       longestStreak: 31,
       lastTrainedDay: 20_000,
-      armedRecoveryDays: 2,
-      recoveryDayBalance: 2,
+      entitlement: { windowIndex: 33, coveredDaysLeft: 2, purchasedDaysLeft: 0 },
+      entitlementArmed: true,
       recoveryDayProtectionEnabled: true,
       hasBankedFirstRecoveryDaySave: true,
     },
@@ -1702,7 +1702,9 @@ describe('the fact allowlist', () => {
     expect([...WALLET_CURRENCIES]).toEqual(['gymBucks', 'chalk']);
     const facts = snapshotFacts(snapshot());
     expect(Object.keys(facts.wallet)).not.toContain('recoveryDays');
-    expect(facts.streak.recoveryDayBalance).toBe(2);
+    expect(facts.streak.entitlement.coveredDaysLeft).toBe(2);
+    // GDD §8.3E is not ruled, so a snapshot may never carry a purchased day.
+    expect(facts.streak.entitlement.purchasedDaysLeft).toBe(0);
   });
 
   it('tracks streak.ts own allowlist rather than duplicating it', () => {

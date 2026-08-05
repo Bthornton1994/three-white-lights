@@ -603,30 +603,56 @@ is `COVERED_DAYS_PER_WINDOW` covered days in every `WINDOW_DAYS` window,
 anchored at the signup day.** `src/game/streakEntitlement.ts` is the whole
 mechanic; §4.4 has the verification the ruling was conditional on.
 
-> **IMPLEMENTATION STATUS — READ THIS BEFORE QUOTING THE PARAGRAPHS BELOW.**
-> The mechanic is **built and verified** (`src/game/streakEntitlement.ts`,
-> `streakEntitlement.test.ts`). It is **not yet wired into `src/game/streak.ts`**,
-> which still runs the Recovery Day stock. So the behaviour that ships today is
-> still the stock behaviour, **with the residue §4.4 measures on it** — 13 / 122
-> / 142 / 74 violating pairs at 40 / 60 / 80 / 100 days and a worst deficit
-> reaching 189 at 400. CLAUDE.md still describes the stock for exactly that
-> reason and is correct as written; it needs its edit when the wiring lands, not
-> before.
+> **IMPLEMENTATION STATUS — WIRED.** The mechanic is built, verified and **live
+> in `src/game/streak.ts`**. The behaviour that ships is the entitlement's, and
+> the residue this block used to warn about — 13 / 122 / 142 / 74 violating
+> pairs at 40 / 60 / 80 / 100 days, lifetime-best inversions of 14 / 150 / 276 /
+> 221, a worst deficit reaching 189 at 400 — is **zero on all three at every
+> pinned length**, measured through the real engine.
 >
-> **What the wiring still has to do**, so that it is a list and not a surprise:
-> replace `recoveryDayBalance` and `armedRecoveryDays` on `StreakState` with the
-> entitlement snapshot; delete `grantRecoveryDays`, the hold cap and the §4.2
-> earning table; re-point `DayOpening` and `RecoveryDaySave` at covered days;
-> and carry the state-shape change through the **same server boundary the
-> `signupDay` field went through**, including a migration for accounts that
-> carry a balance. The read model's "reported, never silent" guarantee and the
-> app-opening purity invariant both have to come through intact — they are the
-> two things this module has repeatedly been most expensive to get back.
+> **What the wiring did**, item by item, because this block used to be a list of
+> what it still had to do: `recoveryDayBalance` and `armedRecoveryDays` are
+> replaced on `StreakState` by an entitlement snapshot plus an armed flag;
+> `grantRecoveryDays`, the hold cap and the §4.2 earning table are gone;
+> `DayOpening` and `RecoveryDaySave` report covered days; the state-shape change
+> went through `StreakStateWire` in `progression.ts` under the same
+> `KeysAreExactly` coupling `signupDay` did, with field-by-field validation; and
+> `migrateFromRecoveryDayBalance` converts an account that holds a balance,
+> returning the held count as **compensation for the caller to settle in
+> another currency** rather than carrying it forward. Both invariants came
+> through and are asserted rather than promised: app-opening purity by full JSON
+> state equality across five opening schedules, and "reported, never silent"
+> over every 12-day calendar at every window state.
 >
-> It was left out of this round deliberately rather than started and abandoned:
-> it touches 232 references in the test suite, and a half-finished version of it
-> would put the two invariants above at risk for no gain. The verification came
-> first because a design that failed it must not get 232 references built on it.
+> **THREE THINGS THE WIRING FOUND, none of which was in the plan above:**
+>
+> 1. **The free grace does not survive a declined protection unless it is
+>    written to.** The first wiring short-circuited to "nothing armed means the
+>    absence is not covered", which ended a run on a one-day miss for any lifter
+>    who had turned protection off — and reset a live streak on a *consecutive*
+>    session, since a zero-day absence is also "not covered" under that
+>    short-circuit. §4.4's ruling is the opposite and the fix is to resolve the
+>    disarmed case against an **empty window** rather than to skip the
+>    resolution, so "the grace draws nothing, so there is nothing in it to
+>    decline" falls out of the arithmetic.
+> 2. **A state that holds coverage with none of it armed is now
+>    unrepresentable**, because `entitlementArmed` is a boolean and what an
+>    absence may draw is the window itself. That case had a test; it is recorded
+>    as removed rather than quietly re-pointed.
+> 3. **The verification battery grades a reference composition, not the engine.**
+>    `streakEntitlement.test.ts`'s `drive()` re-implements the streak
+>    bookkeeping around the entitlement in twenty lines, so every attack in it
+>    was a statement about a program nobody ships. The two are now **pinned
+>    byte-identical** on the battery's own calendars, with a negative control
+>    proving the comparator can see a rule change. The pin is what makes the
+>    table below transfer; without it the ruling rests on nothing.
+>
+> **What the pin does not cover, stated rather than assumed:** `streak.ts` reads
+> `RECOVERY_ENTITLEMENT` as a module constant, so it can only be driven at the
+> shipped tuning. The battery's window-length and entitlement-size grids, its
+> purchase paths and its negative controls remain `drive`-only, and they reach
+> the shipped engine only through the shipped tuning being one point in each
+> grid — which `streak.test.ts` asserts directly.
 
 **Why.** RULE 2 above debits a doomed absence the whole armed holding, which is
 what makes splitting a doomed absence cost the same as leaving it whole — and it
@@ -955,12 +981,48 @@ amount were measured and are recorded in §4.2. Escaping the tension means
 coverage that is not funded from a stock at all — which is a decision about what
 §8.2 sells, and belongs to a human.
 
-**Where that leaves the bar, under the stock design.** "Never punishes daily
-engagement" is met over every calendar length this repository can search
-exhaustively — 8 to 16 days, both fields — and is **not** met past it. On the
-sampled sweeps it fails at every length from 40 days up, on `currentStreak` and
-on `longestStreak` both. It is real, measured, bounded in frequency, unbounded in
-magnitude, and named rather than rounded up.
+**Where that left the bar, under the stock design.** "Never punishes daily
+engagement" was met over every calendar length this repository can search
+exhaustively — 8 to 16 days, both fields — and was **not** met past it. On the
+sampled sweeps it failed at every length from 40 days up, on `currentStreak` and
+on `longestStreak` both. It was real, measured, bounded in frequency, unbounded
+in magnitude, and named rather than rounded up.
+
+**Where it leaves the bar now that the entitlement is WIRED (§4.2's status
+block).** The tables above are the STOCK's numbers and are kept as the thing the
+zeros below are zero against. Re-measured through `src/game/streak.ts` with the
+entitlement live, on the same generator, the same seeds and the same comparator:
+
+| | 40 days | 60 days | 80 days | 100 days |
+|---|---|---|---|---|
+| violating pairs, stock | 13 | 122 | 142 | 74 |
+| violating pairs, entitlement | **0** | **0** | **0** | **0** |
+| lifetime-best inversions, stock | 14 | 150 | 276 | 221 |
+| lifetime-best inversions, entitlement | **0** | **0** | **0** | **0** |
+| worst deficit, stock | 13 | 14 | 25 | 19 |
+| worst deficit, entitlement | **0** | **0** | **0** | **0** |
+
+The exhaustive 8-to-16-day table is unchanged at zero on both fields, and the
+constructive family that produced "37 trained days end on 37, 38 end on 18" now
+ends both lifters level at every run length from 8 to 1000.
+
+**And the two hand-built cases, because a table of zeros is the easiest thing in
+the world to get by accident.** The 23-day case that reproduced the residue by
+hand — one extra trained day turning a streak of 8 into 1 and a lifetime best of
+8 into 7 — is level at 1 and 7. **Which way it levelled is worth reading:** the
+LAZIER lifter lost their eight-day run rather than the diligent one keeping
+theirs. The entitlement is stricter there, not more generous. What went away is
+the asymmetry, and the traced cause with it — the two confiscations used to
+differ, because the diligent lifter was richer when the doomed absence landed,
+and they are now equal.
+
+**What the extra trained day can still change, measured rather than claimed to
+be nothing.** Over the 60-day sweep, 6,462 of 53,872 pairs confiscate different
+TOTALS: one extra day splits an absence, and a split can move which window a
+doomed absence resolves in. The difference is bounded by one window's
+entitlement and is erased at the next boundary, which is the whole of the fix —
+under the stock the difference was whatever had been hoarded and it was
+permanent, because a confiscated milestone payout was never re-earned.
 
 ---
 
@@ -1007,6 +1069,21 @@ ruling as written, and both are load-bearing:
    covered days whose arrival day the lifter's own training can move reopens the
    defect, and the season-pass tier shape is the worst offender measured. §8.3C
    and §8.3E carry the consequence.
+
+**And the third, which the WIRING added and which is a fact about this table
+rather than about the design.** Everything above grades `drive()` — a twenty-line
+reference composition of the free grace and the entitlement inside
+`streakEntitlement.test.ts`, not `src/game/streak.ts`. Until the wiring landed
+nothing checked that the two agreed, so every row of both tables was a statement
+about a program nobody ships. They are now **pinned byte-identical** on
+`currentStreak`, `longestStreak` and consumption across every calendar of 8 to 13
+days, 60 schedules per seed at each sampled length, the 200- and 400-day
+horizons, all five fixed attendance rates and nine hand-built shapes a Bernoulli
+generator does not produce — with a negative control that proves the comparator
+can see a rule change. **The pin is what makes these tables mean anything about
+the shipped game**, and it only covers the shipped tuning: the grid rows, the
+purchase rows and the negative controls are `drive`-only and reach the engine
+solely through the shipped tuning being a point in each grid.
 
 **What this is still not.** It is a property about single-day supersets over
 sampled and exhaustive calendars, plus a hill-climb. It is not a proof. The
