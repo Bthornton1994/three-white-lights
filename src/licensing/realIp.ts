@@ -1434,7 +1434,14 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/game/dots.test.ts', name: 'Amanda Lawrence', where: 'comment', count: 1 },
   { file: 'src/game/dots.test.ts', name: 'IPF', where: 'comment', count: 1 },
   { file: 'src/game/dots.test.ts', name: 'Jesus Olivares', where: 'comment', count: 1 },
-  { file: 'src/game/dots.test.ts', name: 'OpenPowerlifting', where: 'comment', count: 2 },
+  // THE EXTERNAL SCORE PIN's provenance block. Two retrieval citations, both in
+  // the same comment and both load-bearing: the pinned-commit URL the reference
+  // implementation was fetched from, and the sentence recording that that
+  // implementation's own header says it was copied from the other project — which
+  // is the limit of what the pin establishes and cannot be written without naming
+  // the project it was copied from.
+  { file: 'src/game/dots.test.ts', name: 'OpenLifter', where: 'comment', count: 2 },
+  { file: 'src/game/dots.test.ts', name: 'OpenPowerlifting', where: 'comment', count: 3 },
   { file: 'src/game/dots.test.ts', name: 'SBD', where: 'comment', count: 1 },
   { file: 'src/game/dots.test.ts', name: 'SBD Sheffield', where: 'comment', count: 1 },
   { file: 'src/game/dots.ts', name: 'BVDK', where: 'comment', count: 2 },
