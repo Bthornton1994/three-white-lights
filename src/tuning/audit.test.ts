@@ -893,9 +893,15 @@ describe('the allowlist is not a sieve', () => {
     expect(onlyComments('const a = 1; // note')).not.toContain('const');
     expect(onlyComments('/* a block note */ const a = 1;')).toContain('a block note');
     expect(onlyComments('/* a block note */ const a = 1;')).not.toContain('const');
-    // A URL inside code is not a comment. `LINE_COMMENT` refuses a preceding
-    // colon, which is the whole reason `https://` survives `withoutComments`.
+    // A URL inside code is not a comment, and the REASON has changed. The
+    // substitution this replaced got here by refusing a `//` with a colon in
+    // front of it — a rule that works on `https://` and on nothing else. The
+    // scan is already inside a string when it reaches the slashes, so it does
+    // not look for a comment there, and the same holds for a URL with no scheme,
+    // a path, or any other pair of slashes a string might contain.
     expect(onlyComments("const u = 'https://example.invalid/x';")).not.toContain('example');
+    expect(onlyComments("const p = 'a // b';")).not.toContain('b');
+    expect(withoutComments("const p = 'a // b';")).toContain("'a // b'");
     // Line numbers survive, so a match index in the output is a real one.
     expect(onlyComments('const a = 1;\n// second line\n').split('\n')[1]).toContain('second line');
     expect(onlyComments('const a = 1;\n// second line\n').split('\n')[0]?.trim()).toBe('');
