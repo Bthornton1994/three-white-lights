@@ -84,8 +84,6 @@ import {
 } from '../game/meetTuning';
 import { FATIGUE_COPY, FATIGUE_TUNING } from '../game/fatigue';
 import {
-  RECOVERY_DAY_ECONOMY,
-  RECOVERY_DAY_GRANT_AMOUNT,
   RECOVERY_DAY_GUARDRAILS,
   STREAK_DAY_BOUNDARY,
   STREAK_MILESTONE_DAYS,
@@ -255,8 +253,6 @@ export const TUNING = Object.freeze({
   streak: Object.freeze({
     STREAK_DAY_BOUNDARY,
     RECOVERY_DAY_GUARDRAILS,
-    RECOVERY_DAY_ECONOMY,
-    RECOVERY_DAY_GRANT_AMOUNT,
     STREAK_MILESTONE_DAYS,
   }),
 

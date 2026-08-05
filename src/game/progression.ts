@@ -657,7 +657,7 @@
  *       documented a HINT and is not read by `applyTrainingSession`.
  *
  *   `streak.currentStreak`, `streak.longestStreak`,
- *   `streak.recoveryDayBalance`, `streak.armedRecoveryDays`
+ *   `streak.entitlement`, `streak.entitlementArmed`
  *       COUNTS. Unit is "one day" / "one Recovery Day"; `isCount` proves
  *       whole-and-non-negative and `streak.ts` owns the invariants between them.
  *       Nothing here is a mass.
@@ -1765,7 +1765,7 @@ export type WalletCurrency = (typeof WALLET_CURRENCIES)[number];
 /**
  * Balances, server-confirmed.
  *
- * RECOVERY DAYS ARE NOT HERE. Their ledger is `StreakState.recoveryDayBalance`
+ * COVERED DAYS ARE NOT HERE. Their entitlement is `StreakState.entitlement`
  * and duplicating it would create a second truth for one consumable — the one
  * with the hold cap and the consecutive-use limit on it is the real one.
  */
@@ -2919,8 +2919,22 @@ export interface StreakStateWire {
   readonly currentStreak: number;
   readonly longestStreak: number;
   readonly lastTrainedDay: number | null;
-  readonly armedRecoveryDays: number | null;
-  readonly recoveryDayBalance: number;
+  /**
+   * GDD §4.2 Option 1: the rolling entitlement that funds a streak save,
+   * replacing the Recovery Day balance and armed count that used to be two
+   * numbers here.
+   *
+   * IT CROSSES THE BOUNDARY AS AN OBJECT, and it is validated field by field
+   * below rather than trusted, because the server is the authority on it and
+   * the client is a renderer — a client that could write a window index could
+   * hand itself a fresh entitlement whenever it liked.
+   */
+  readonly entitlement: {
+    readonly windowIndex: number;
+    readonly coveredDaysLeft: number;
+    readonly purchasedDaysLeft: number;
+  };
+  readonly entitlementArmed: boolean;
   readonly recoveryDayProtectionEnabled: boolean;
   readonly hasBankedFirstRecoveryDaySave: boolean;
 }
@@ -3048,7 +3062,6 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
   const counts: readonly [string, number][] = [
     ['currentStreak', wire.currentStreak],
     ['longestStreak', wire.longestStreak],
-    ['recoveryDayBalance', wire.recoveryDayBalance],
   ];
   for (const [name, value] of counts) {
     if (!isCount(value)) {
@@ -3061,6 +3074,7 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
   const flags: readonly [string, boolean][] = [
     ['recoveryDayProtectionEnabled', wire.recoveryDayProtectionEnabled],
     ['hasBankedFirstRecoveryDaySave', wire.hasBankedFirstRecoveryDaySave],
+    ['entitlementArmed', wire.entitlementArmed],
   ];
   for (const [name, value] of flags) {
     if (typeof value !== 'boolean') {
@@ -3080,19 +3094,34 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
   if (wire.lastTrainedDay !== null && wire.signupDay > wire.lastTrainedDay) {
     return fail('INVALID_SNAPSHOT', 'progression: streak.signupDay cannot be after streak.lastTrainedDay');
   }
-  // The armed count is a COUNT that may be absent, not a day index: `null` means
-  // "no Recovery Day protection armed for the absence in progress" (GDD §4.2's
-  // settings toggle), which is not the same as zero armed.
-  if (wire.armedRecoveryDays !== null && !isCount(wire.armedRecoveryDays)) {
-    return fail(
-      'INVALID_SNAPSHOT',
-      'progression: streak.armedRecoveryDays must be a non-negative whole number or null',
-    );
+  // THE ENTITLEMENT, VALIDATED RATHER THAN TRUSTED. Every field is a count and
+  // the window index is a count too — it is measured from the account's own
+  // signup day, so it is never negative for a well-formed account.
+  const entitlement: unknown = wire.entitlement;
+  if (entitlement === null || typeof entitlement !== 'object') {
+    return fail('INVALID_SNAPSHOT', 'progression: streak.entitlement must be an object');
   }
-  if (wire.armedRecoveryDays !== null && wire.armedRecoveryDays > wire.recoveryDayBalance) {
+  const entitlementCounts: readonly [string, number][] = [
+    ['windowIndex', wire.entitlement.windowIndex],
+    ['coveredDaysLeft', wire.entitlement.coveredDaysLeft],
+    ['purchasedDaysLeft', wire.entitlement.purchasedDaysLeft],
+  ];
+  for (const [name, value] of entitlementCounts) {
+    if (!isCount(value)) {
+      return fail(
+        'INVALID_SNAPSHOT',
+        `progression: streak.entitlement.${name} must be a non-negative whole number`,
+      );
+    }
+  }
+  // GDD §8.3E's Extra Covered Day is PROPOSED AND NOT RULED, so nothing in the
+  // shipped game can credit a purchased day. A snapshot that carries one is a
+  // server running ahead of the design, and the client refuses it rather than
+  // rendering a product nobody approved.
+  if (wire.entitlement.purchasedDaysLeft !== 0) {
     return fail(
       'INVALID_SNAPSHOT',
-      'progression: streak.armedRecoveryDays cannot exceed streak.recoveryDayBalance',
+      'progression: streak.entitlement.purchasedDaysLeft must be 0 — GDD §8.3E is not ruled, so nothing may grant one',
     );
   }
   const lastTrainedDay: StreakDay | null = wire.lastTrainedDay === null ? null : asStreakDay(wire.lastTrainedDay);
@@ -3101,8 +3130,12 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
     currentStreak: wire.currentStreak,
     longestStreak: wire.longestStreak,
     lastTrainedDay,
-    armedRecoveryDays: wire.armedRecoveryDays,
-    recoveryDayBalance: wire.recoveryDayBalance,
+    entitlement: {
+      windowIndex: wire.entitlement.windowIndex,
+      coveredDaysLeft: wire.entitlement.coveredDaysLeft,
+      purchasedDaysLeft: wire.entitlement.purchasedDaysLeft,
+    },
+    entitlementArmed: wire.entitlementArmed,
     recoveryDayProtectionEnabled: wire.recoveryDayProtectionEnabled,
     hasBankedFirstRecoveryDaySave: wire.hasBankedFirstRecoveryDaySave,
   });
