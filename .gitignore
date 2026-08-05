@@ -47,6 +47,22 @@ public/canvaskit.wasm
 .claude/worktrees/
 
 # Run output: state.json is tracked (it drives the progress page); the
-# generated page and the screenshot evidence are regenerable, so they are not.
+# generated page and most screenshot evidence are regenerable, so they are not.
 .gauntlet/shots/
 .gauntlet/progress.html
+
+# EXCEPT the shell run, which is graded evidence rather than a regenerable
+# picture. "Regenerable" was true and beside the point: a critic asked to open
+# these found nine stale shots and a 47-check `route.json` with pre-fix wordings
+# sitting where a 74-check run should have been, and — the part that matters —
+# `09-bombed-keeps-its-own-exit.png` was a bomb-out screen with NO EXIT ON IT,
+# filed next to a record saying that check passed. That is the exact false pass
+# the opacity fix was written to kill, preserved as its own refutation, and no
+# reader could date it because a screenshot carries no provenance.
+#
+# The GDD logged this once already (§ the "photographed" sentence naming a
+# gitignored artifact). Logging it twice and ignoring it a third time is not a
+# policy. `route.json` now carries `capturedFrom` — commit, branch, dirty state —
+# so these are datable; 380K is a cheap price for evidence a grader can check
+# instead of trust.
+!.gauntlet/shots/shell/
