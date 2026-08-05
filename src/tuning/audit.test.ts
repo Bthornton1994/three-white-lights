@@ -601,6 +601,18 @@ describe('the allowlist is not a sieve', () => {
         'Fixing it means scanning rather than substituting, which is `src/tuning/`s call to make, ' +
         'and until then this row is what stops the pair claiming a completeness it has not got.',
     ],
+    [
+      'src/shell/shellWiring.test.ts',
+      37,
+      'THE SAME BUG, FOUND A SECOND TIME, IN A FILE WRITTEN IN PARALLEL WITH THE CHECK THAT ' +
+        'CAUGHT IT. A line comment containing `src/shell/**` — the `/**` opens a block the ' +
+        'line-comment pass then never gets to close. Recorded rather than dodged: the one-line ' +
+        'fix is to reword that comment so it contains no `/*`, and rewording prose to avoid a ' +
+        'scanner defect is how the defect stops being visible without stopping being real. Two ' +
+        'independent authors have now tripped it without trying, which is the argument that it is ' +
+        'a bug in the scanner and not a quirk of one file — the substitution approach cannot be ' +
+        'made right by adding rows here, and the rows exist to say so out loud until it is.',
+    ],
   ];
 
   it('AND A REAL PARSER AGREES ABOUT WHERE THE COMMENTS ARE — except here', () => {
