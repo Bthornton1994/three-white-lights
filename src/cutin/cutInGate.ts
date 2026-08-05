@@ -693,24 +693,24 @@ export function tapDismissCutIn(state: CutInSessionState, elapsedMs: number): Cu
  * HAS THE CUT-IN OUTSTAYED ITS HOLD? It leaves on its own as well as on a tap,
  * because an interrupt that waits for permission is a modal dialog.
  *
- * The hold does not include the exit: `HOLD_MS` is time on screen at full
- * weight, and `EXIT_MS` runs after it.
+ * `HOLD_MS` is time on screen at full weight, and nothing follows it: the
+ * overlay un-mounts on the same tick. This paragraph used to end "and `EXIT_MS`
+ * runs after it", which was false — see `ENTER_MS` in `cutInTuning.ts` for what
+ * that constant was and why it is gone rather than wired.
  */
 export function cutInExpiredAt(elapsedMs: number): boolean {
   return elapsedMs >= CUT_IN_TUNING.HOLD_MS;
 }
 
 /**
- * WHEN THE HOST SHOULD TAKE IT DOWN IF NOBODY TAPPED.
+ * WHEN THE HOST SHOULD TAKE IT DOWN IF NOBODY TAPPED — the arrival plus the
+ * hold, which is also THE WHOLE BEAT, enter to gone.
  *
- * The arrival plus the hold. The exit is not in it, because the exit is what
- * happens AFTER this fires, on both routes out.
+ * ONE FUNCTION, NOT TWO. There was a `cutInTotalMs` beside this one, adding an
+ * exit duration that no animation performed, and its only callers were three
+ * assertions in `cutInGate.test.ts`. Two names for the length of one beat is
+ * how two parts of an app come to report different numbers for the same thing.
  */
 export function cutInAutoDismissMs(): number {
   return CUT_IN_TUNING.ENTER_MS + CUT_IN_TUNING.HOLD_MS;
-}
-
-/** The whole beat, enter to gone. The longest a cut-in can be on screen. */
-export function cutInTotalMs(): number {
-  return cutInAutoDismissMs() + CUT_IN_TUNING.EXIT_MS;
 }

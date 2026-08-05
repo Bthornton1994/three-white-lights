@@ -157,8 +157,13 @@ const SKIP_HINT = 'TAP TO SKIP';
 /**
  * `CUT_IN_TUNING`'s timings, restated. Same rule as above.
  *
- *   ENTER_MS 120 + HOLD_MS 1600 = 1720 ms, the auto-dismiss
- *   + EXIT_MS 100               = 1820 ms, the whole beat
+ *   ENTER_MS 120 + HOLD_MS 1600 = 1720 ms, the auto-dismiss AND the whole beat
+ *
+ * THE SECOND LINE IS GONE, and it was false while it was here: it read
+ * "+ EXIT_MS 100 = 1820 ms, the whole beat", and this tool's own output
+ * disproves it — `frames.json` puts the tap dismissal at `tappedAt: 14,
+ * goneAt: 26`. Nothing animated an exit; the overlay un-mounts on the tick. The
+ * constant is deleted, not merely unmentioned (`cutInTuning.ts`, `ENTER_MS`).
  *
  * These are STARTING POINTS nobody has played (GDD §12.1). The tool checks the
  * timer fires inside a generous window around them rather than pinning them, so

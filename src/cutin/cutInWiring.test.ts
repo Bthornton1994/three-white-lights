@@ -53,12 +53,21 @@ function code(relPath: string): string {
  * are collapsed, so a claim that wraps across four lines is one string to match
  * against rather than four.
  */
-function prose(relPath: string): string {
-  return onlyComments(source(relPath))
+function proseOfText(text: string): string {
+  return onlyComments(text)
     .replace(/^\s*(?:\/\*+|\*+\/|[*/]+)/gm, ' ')
     .replace(/\*+\/|\/\*+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function prose(relPath: string): string {
+  return proseOfText(source(relPath));
+}
+
+/** The same, for a REPOSITORY-relative path — `App.tsx`, `tools/…`, `src/…`. */
+function proseOf(repoRel: string): string {
+  return proseOfText(readFileSync(path.join(REPO_ROOT, repoRel), 'utf8'));
 }
 
 const VIEW = code('cutin/CutInView.tsx');
@@ -100,20 +109,54 @@ const HOST_SCREENS: readonly string[] = ['meet/MeetScreen.tsx', 'session/Session
 /**
  * Every non-test source file under `src/`, as a path relative to `src/`.
  *
- * `includeTests` DEFAULTS TO FALSE AND NO CALLER BELOW PASSES IT except the
- * prose scan, so every walk in this file behaves as it did before the parameter
- * existed. The prose scan wants tests too: a comment in a test file describes
- * the architecture to the next reader exactly as loudly as one in a module, and
- * `cutInArt.test.ts` is where most of this piece's history is written down.
+ * `src/`-SCOPED ON PURPOSE, and its callers are the ones whose subject really is
+ * the application's own modules — the gate's callers and the text cross-check on
+ * them. The PROSE scan is not one of them any more: see `everyProseFile`.
  */
-function everySourceFile(dir: string = '', includeTests: boolean = false): readonly string[] {
+function everySourceFile(dir: string = ''): readonly string[] {
   return readdirSync(path.join(SRC, dir), { withFileTypes: true }).flatMap((entry) => {
     const rel = dir === '' ? entry.name : `${dir}/${entry.name}`;
-    if (entry.isDirectory()) return everySourceFile(rel, includeTests);
+    if (entry.isDirectory()) return everySourceFile(rel);
     if (!/\.tsx?$/.test(entry.name)) return [];
-    if (!includeTests && /\.test\.tsx?$/.test(entry.name)) return [];
+    if (/\.test\.tsx?$/.test(entry.name)) return [];
     return [rel];
   });
+}
+
+/** Repo-relative paths git actually tracks under `dir`. */
+function trackedUnder(dir: string): readonly string[] {
+  const out = execFileSync('git', ['ls-files', '-z', '--', dir], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+  });
+  return out.split('\0').filter((line) => line !== '');
+}
+
+/**
+ * THE WHOLE TREE, for the prose ban — repository-relative, ASKED OF GIT.
+ *
+ * IT USED TO BE A WALK OF `src/` FOR `.ts(x)`, under a test named "NO FILE IN
+ * THE TREE…", and that was two different sets wearing one name. `App.tsx` sits
+ * at the repository root and every file in `tools/` is a `.mjs`, so neither was
+ * ever read — while `theProject()`, 200 lines up, gives the reason a scan rooted
+ * at `src/` cannot see `App.tsx` as its own justification for taking the
+ * compiler's root set instead. The argument was made and then not applied here.
+ *
+ * GIT RATHER THAN A WALK, for the reason `THE PIXELS ARE TRACKED` gives one
+ * screen down: the index is the only instrument that answers a question about a
+ * FRESH CHECKOUT, and it also picks up a directory nobody remembered to add.
+ * `tools/` is not incidental scope — `tools/capture-cutin.mjs` describes this
+ * overlay at length and is the file the ceiling measurement trips on first.
+ *
+ * TESTS ARE IN. A comment in a test file describes the architecture to the next
+ * reader exactly as loudly as one in a module, and `cutInArt.test.ts` is where
+ * most of this piece's history is written down.
+ */
+function everyProseFile(): readonly string[] {
+  return trackedUnder('.')
+    .filter((rel) => /\.(?:ts|tsx|mjs|cjs|js|jsx)$/.test(rel))
+    .filter((rel) => existsSync(path.join(REPO_ROOT, rel)))
+    .sort();
 }
 
 /**
@@ -408,10 +451,15 @@ describe('the scans are not blind', () => {
     }
   });
 
-  it('THE WALK REACHES THE WHOLE TREE, and the patterns match a real caller', () => {
+  it('THE WALK REACHES EVERY MODULE UNDER `src/`, and the patterns match a real caller', () => {
     // Three positive controls for the derivation below, because a walk that
     // returned nothing and a pattern that matched nothing would agree with a
     // hand-written list right up until the day they were needed.
+    //
+    // `src/` IS THE RIGHT SCOPE FOR THIS ONE and the test is named for it now:
+    // its subject is which application module talks to the gate. The scan whose
+    // subject really is the whole repository takes `everyProseFile`, which is
+    // git's answer rather than a walk.
     const all = everySourceFile();
     expect(all.length, 'the walk found almost nothing').toBeGreaterThan(50);
     // It descends into directories rather than reading only the top level...
@@ -568,7 +616,7 @@ describe('the scans are not blind', () => {
  * but it does it as `PAST_TENSE`, a disowner, rather than as an enumeration of
  * present-tense verbs that a synonym walks around.
  *
- * FOUR GUARDS MAKE THAT WORK, and each is a way the scan is weak:
+ * FIVE GUARDS MAKE THAT WORK, and each is a way the scan is weak:
  *
  *   - `PAST_TENSE` — `-ed`, plus the irregulars, minus the present passive: a
  *     claim in the passive voice is a live claim and only the ACTIVE past is
@@ -590,15 +638,31 @@ describe('the scans are not blind', () => {
  *     of its own clause, not the object of the claim. Without it "a cut-in is a
  *     full-screen interrupt and a shelf panel is a thumbnail" — a real contrast
  *     in `cutInTuning.ts` — goes red.
+ *   - `ASIDE_CHARS` — a clause SET OFF by a pair of commas or by parentheses
+ *     costs the gap one character instead of its length, because an aside is
+ *     not part of the claim's own clause. Added this round, and it is the fifth
+ *     because a pure length bound could not do the job: see `THE THREE LENGTHS`
+ *     below for the measurement that refused the simpler fix. Named subjects
+ *     only — a pronoun subject does not also get to skip a parenthetical.
  *
  * IT IS A FLOOR, NOT A PROOF, AND THE FLOOR IS MEASURED RATHER THAN ASSERTED.
- * `THE_HELD_OUT_PARAPHRASES` is twelve rewrites written AFTER this pattern was
- * settled and never tuned against; eight are caught and the four misses are
- * pinned as misses, with the reason, so nobody has to take the ban's word for
- * its own coverage. The biggest known hole is the REVERSED claim ("the shop
- * panel is what the interrupt shows"): an alternative for it was written and
- * MEASURED, and it reddened six true sentences in the tree — contrastive prose
- * and the judging panel again — so it is refused rather than shipped.
+ * Three tables say so and none of them lets this file grade itself:
+ *
+ *   - `THE_HELD_OUT_PARAPHRASES` — twelve rewrites written AFTER the pattern was
+ *     settled and never tuned against; eight caught, four pinned as misses with
+ *     the reason. The largest of ITS four is the REVERSED claim ("the shop panel
+ *     is what the interrupt shows"): an alternative for it was written and
+ *     MEASURED, and it reddened six true sentences in the tree — contrastive
+ *     prose and the judging panel — so it is refused rather than shipped. The
+ *     three LENGTH classes below are bigger holes than any of the four.
+ *   - `THE_MEASURED_BOUNDS` — a straddle pair per length, so that each of the
+ *     three numbers is red one character below AND one character above. Twelve
+ *     hand-written sentences by the same author in the same session is better
+ *     than nothing and is not independence; the twelve missed the escape that
+ *     forced this round entirely.
+ *   - `THE_MECHANICAL_VERDICTS` — twenty-eight variants of the four historical
+ *     claims, produced by a fixed list of edits applied to every claim, so the
+ *     author does not choose which rewrites get tried.
  */
 const NAMED_SUBJECT = [
   'the picture',
@@ -666,10 +730,6 @@ const DISOWNED = [
   IRREGULAR_PAST,
 ].join('|');
 
-/** How far apart the two parts may sit and still be one claim, in characters. */
-const CLAIM_GAP = 60;
-/** How far back a pronoun may reach for the noun it stands in for. */
-const PRONOUN_REACH = 160;
 /**
  * A past tense — EXCEPT after a copula, where an `-ed` word is a present
  * PASSIVE. A claim in the passive voice is still a claim; only the active past
@@ -677,19 +737,170 @@ const PRONOUN_REACH = 160;
  */
 const PAST_TENSE = '(?<!\\b(?:is|are|be|been|being|get|gets|got)\\s)\\b\\w+ed\\b';
 const NOTHING_DISOWNING = `(?!\\b(?:${DISOWNED})\\b)(?!${PAST_TENSE})`;
-const WITHIN_A_SENTENCE = `(?:(?!\\.\\s+[A-Z\`§])${NOTHING_DISOWNING}[\\s\\S]){0,${CLAIM_GAP}}?`;
-/** The pronoun's reach DOES cross a full stop. That is what it is for. */
-const ACROSS_A_FULL_STOP = `(?:${NOTHING_DISOWNING}[\\s\\S]){0,${PRONOUN_REACH}}?`;
-const PRONOUN_SUBJECT = `(?:cut-?in|overlay|interrupt)\\b${ACROSS_A_FULL_STOP}\\b(?:it|this|these|they)`;
+/** A full stop before a capital ends the sentence, and ends a named claim. */
+const NOT_A_NEW_SENTENCE = '(?!\\.\\s+[A-Z`§])';
 const NOT_ITS_OWN_CLAUSE = '(?!\\s+(?:is|are|was|were)\\b)';
-const MOUNTS_THE_PANEL = new RegExp(
-  `\\b(?:${NAMED_SUBJECT}|${PRONOUN_SUBJECT})\\b${WITHIN_A_SENTENCE}\\b(?:${THE_PANEL})${NOT_ITS_OWN_CLAUSE}`,
-  'gi',
-);
+const AN_ANTECEDENT = '(?:cut-?in|overlay|interrupt)';
+const A_PRONOUN = '(?:it|this|these|they)';
 
-/** Every claim of that shape in one file's comments. */
-function panelClaimsIn(relPath: string): readonly string[] {
-  return [...prose(relPath).matchAll(MOUNTS_THE_PANEL)].map((match) => match[0]);
+/**
+ * ---------------------------------------------------------------------------
+ * THE THREE LENGTHS, WHAT EACH ONE IS FOR, AND WHAT EACH WAS MEASURED AGAINST
+ * ---------------------------------------------------------------------------
+ * These are the only numbers in the ban, and they used to be pinned by nothing:
+ * `CLAIM_GAP` could go 60 → 48 and `PRONOUN_REACH` 160 → 15 with the suite
+ * green, because every fixture in this file sat well inside both and a SMALLER
+ * reach can only match LESS. Two things fix that, and both are below:
+ *
+ *   - `THE_MEASURED_BOUNDS` is a straddle pair per length — a real claim sitting
+ *     EXACTLY ON the number, asserted caught, and the same claim one character
+ *     longer, asserted MISSED and declared as a miss. Lower the number and the
+ *     first goes green-when-it-should-be-red; raise it and the second does. Each
+ *     number is now pinned within ±1 from both sides.
+ *   - `the ceiling is the tree, not a preference` measures the other end: the
+ *     largest `CLAIM_GAP` at which the whole repository is still clean. It is
+ *     `CLAIM_GAP_CORPUS_CEILING`, and one character past it a TRUE sentence in
+ *     `tools/capture-cutin.mjs` goes red.
+ *
+ * THEY ARE EMPIRICAL. There is no derivation for any of the three; what there is
+ * is a measurement over every file `everyProseFile` returns — about 190 tracked
+ * files and 18,000 sentences, roughly 170 of which carry a `THE_PANEL` token —
+ * and the tests below re-run the part of it that matters rather than quoting
+ * these counts, which drift with the tree and are here only for scale.
+ *
+ * ---------------------------------------------------------------------------
+ * AND A LENGTH BOUND ALONE COULD NOT DO THE JOB — WHICH IS WHY `ASIDE_CHARS`
+ * ---------------------------------------------------------------------------
+ * The escape that forced this round is one qualifying clause spliced into a
+ * sentence this file already shipped, and it is not adversarial — long qualified
+ * clauses are the house style here. Measured, that claim's subject sits 90
+ * characters from its object. The obvious answer, "raise `CLAIM_GAP` to 90", was
+ * MEASURED AND REFUSED: at 66 the tree is no longer clean, and at 90 two true
+ * sentences go red. So the corpus permits at most 65 and the escape needs 90,
+ * and no value of one number is both.
+ *
+ * `ASIDE_CHARS` is what closes it, and it is a STRUCTURAL rule rather than a
+ * longer one: a clause SET OFF by a pair of commas, or by parentheses, costs the
+ * gap ONE character instead of its length. That is what an aside is — it is not
+ * part of the claim's own clause — and it separates the two cases cleanly, since
+ * the true sentence in `tools/` runs 66 unbroken characters and the escape's 90
+ * are 68 of them inside a comma pair. The aside must still hold nothing
+ * disowning and may not cross a full stop, so it launders nothing.
+ *
+ * IT IS OFFERED TO THE NAMED SUBJECTS ONLY. A pronoun subject has already
+ * crossed a sentence boundary to find its antecedent and is the weaker signal of
+ * the two; giving it the aside as well reddens a true sentence in `cutInArt.ts`
+ * at every setting measured. Stated as a bound rather than discovered later: a
+ * PRONOUN-subject claim with a set-off aside in its gap escapes.
+ */
+interface ClaimBounds {
+  /** How far apart the two parts may sit and still be one claim, in characters. */
+  readonly claimGap: number;
+  /** How long one set-off aside may be and still cost the gap a single character. */
+  readonly asideChars: number;
+  /** How far back a pronoun may reach for the noun it stands in for. */
+  readonly pronounReach: number;
+}
+
+/**
+ * MEASURED FLOOR 47, MEASURED CEILING 65. The floor is the longest gap in any
+ * caught fixture in this file; the ceiling is `CLAIM_GAP_CORPUS_CEILING`. 60
+ * sits inside that window and the window is 19 wide, so the exact value is a
+ * CHOICE and not a derivation — what the tests pin is that it is 60 and that
+ * both ends of the window are real.
+ */
+const CLAIM_GAP = 60;
+/**
+ * MEASURED FLOOR 68 — the inner length of the escape's clause, which is one
+ * ordinary qualifying clause of this codebase's prose. NO CEILING WAS FOUND: the
+ * tree is still clean at 800, so this is the one of the three that the corpus
+ * does not bound at all. 80 is about one printed line, which is what an aside
+ * usually is here, and the straddle pair below is the whole of its pinning.
+ */
+const ASIDE_CHARS = 80;
+/**
+ * MEASURED FLOOR 15 — `THE_ESCAPES_THAT_USED_TO_WORK`'s `takes` row, whose
+ * antecedent sits 15 characters behind its pronoun. NO CEILING WAS FOUND either:
+ * the tree is clean at 3000. So 160 is a POLICY value — about one sentence of
+ * this prose, which is as far as a reader carries an antecedent — and not a
+ * corpus reading. It is pinned by the straddle pair and by nothing else.
+ */
+const PRONOUN_REACH = 160;
+
+const THE_BOUNDS: ClaimBounds = {
+  claimGap: CLAIM_GAP,
+  asideChars: ASIDE_CHARS,
+  pronounReach: PRONOUN_REACH,
+};
+
+/**
+ * THE LARGEST `CLAIM_GAP` AT WHICH THE WHOLE TREE IS STILL CLEAN. Measured, and
+ * re-measured by `the ceiling is the tree, not a preference`, which also names
+ * the sentence that goes red one character past it.
+ */
+const CLAIM_GAP_CORPUS_CEILING = 65;
+
+/** The ban, at whatever lengths it is asked for. */
+function mountsThePanel(bounds: ClaimBounds): RegExp {
+  const ordinary = `${NOT_A_NEW_SENTENCE}${NOTHING_DISOWNING}[\\s\\S]`;
+  const insideAnAside = `(?:${NOT_A_NEW_SENTENCE}${NOTHING_DISOWNING}[^,()]){0,${bounds.asideChars}}?`;
+  const anAside = `(?:,${insideAnAside},|\\(${insideAnAside}\\))`;
+  const namedGap = `(?:${anAside}|${ordinary}){0,${bounds.claimGap}}?`;
+  /** No aside for a pronoun subject — see the header above. */
+  const pronounGap = `(?:${ordinary}){0,${bounds.claimGap}}?`;
+  /** The pronoun's reach DOES cross a full stop. That is what it is for. */
+  const acrossAFullStop = `(?:${NOTHING_DISOWNING}[\\s\\S]){0,${bounds.pronounReach}}?`;
+  const pronounSubject = `${AN_ANTECEDENT}\\b${acrossAFullStop}\\b${A_PRONOUN}`;
+  return new RegExp(
+    `(?:\\b(?:${NAMED_SUBJECT})\\b${namedGap}|\\b(?:${pronounSubject})\\b${pronounGap})` +
+      `\\b(?:${THE_PANEL})${NOT_ITS_OWN_CLAUSE}`,
+    'gi',
+  );
+}
+
+const MOUNTS_THE_PANEL = mountsThePanel(THE_BOUNDS);
+
+// ---------------------------------------------------------------------------
+// THE THREE LENGTHS, MEASURED OFF A CLAIM RATHER THAN ASSERTED ABOUT IT
+// ---------------------------------------------------------------------------
+// `THE_MEASURED_BOUNDS` records a length for every fixture it holds, and these
+// three functions re-derive it from the string. A fixture whose wording drifted
+// would otherwise stop straddling the bound it is named for and nothing would
+// say so — which is how a straddle pair turns back into two more sentences that
+// happen to pass.
+
+/** Characters between the nearest named subject and the object it claims. */
+function ordinaryGapOf(claim: string): number {
+  const subjects = [...claim.matchAll(new RegExp(`\\b(?:${NAMED_SUBJECT})\\b`, 'gi'))];
+  const objects = [...claim.matchAll(new RegExp(`\\b(?:${THE_PANEL})`, 'gi'))];
+  let best = -1;
+  for (const subject of subjects) {
+    for (const object of objects) {
+      const distance = object.index - (subject.index + subject[0].length);
+      if (distance >= 0 && (best === -1 || distance < best)) best = distance;
+    }
+  }
+  return best;
+}
+
+/** Characters inside the one comma-set-off aside in a claim. */
+function asideInnerLengthOf(claim: string): number {
+  const found = /,([^,()]*),/.exec(claim);
+  return found === null ? -1 : (found[1] ?? '').length;
+}
+
+/** Characters between an antecedent and the pronoun standing in for it. */
+function antecedentReachOf(claim: string): number {
+  const antecedent = new RegExp(`${AN_ANTECEDENT}\\b`, 'i').exec(claim);
+  if (antecedent === null) return -1;
+  const from = antecedent.index + antecedent[0].length;
+  const pronoun = new RegExp(`\\b${A_PRONOUN}\\b`, 'i').exec(claim.slice(from));
+  return pronoun === null ? -1 : pronoun.index;
+}
+
+/** Every claim of that shape in one repository-relative file's comments. */
+function panelClaimsIn(repoRel: string): readonly string[] {
+  return [...proseOf(repoRel).matchAll(MOUNTS_THE_PANEL)].map((match) => match[0]);
 }
 
 describe('no comment says the cut-in mounts the shop panel — GDD §7.2', () => {
@@ -774,6 +985,15 @@ describe('no comment says the cut-in mounts the shop panel — GDD §7.2', () =>
    * recorded as they came out. `false` is not a to-do: it is the measured bound
    * on this ban, and a future round that widens the pattern to catch one has to
    * come here and say so.
+   *
+   * AND TWELVE OF THE AUTHOR'S OWN SENTENCES IS NOT INDEPENDENCE, which this
+   * table used to imply and which the next round disproved: the escape that
+   * forced `ASIDE_CHARS` is a clause insertion, the most ordinary edit in this
+   * codebase's register, and it is in none of the twelve. The four misses below
+   * are also not the biggest holes this ban has — the three LENGTH classes in
+   * `THE_MEASURED_BOUNDS` are bigger, and they are declared there. What this
+   * table is, is twelve sentences the pattern was never fitted to, which is
+   * worth having and is not a coverage claim.
    */
   const THE_HELD_OUT_PARAPHRASES: readonly (readonly [boolean, string, string])[] = [
     [true, 'a named subject and a bare panel', 'What the interrupt puts on screen is the shop panel, scaled up.'],
@@ -843,6 +1063,416 @@ describe('no comment says the cut-in mounts the shop panel — GDD §7.2', () =>
     expect(THE_HELD_OUT_PARAPHRASES.length, 'the held-out set changed size').toBe(12);
   });
 
+  // -------------------------------------------------------------------------
+  // THE ESCAPE THAT FORCED THIS ROUND — one clause, and not an adversarial one
+  // -------------------------------------------------------------------------
+
+  /**
+   * A SENTENCE THIS FILE REALLY SHIPPED, WITH ONE CLAUSE SPLICED INTO IT.
+   *
+   * `THE_DELETED_CLAIMS[1]` with `, until GDD §11’s art pass lands and there is
+   * a real portrait to draw,` between its subject and its object, and nothing
+   * else changed. The meaning is the banned one, the register is this
+   * repository's own — long qualified clauses are the house style, so the edit
+   * is not an attack, it is what somebody writes on a Tuesday.
+   *
+   * IT DEFEATED THE BAN PURELY BY LENGTH. Measured, its subject sits 90
+   * characters from its object against a bound of 60. The obvious fix — raise
+   * the bound — was measured and refused; see `the ceiling is the tree, not a
+   * preference`, where 66 is already too far. `ASIDE_CHARS` is what catches it.
+   */
+  const THE_ESCAPE_THAT_FORCED_THIS_ROUND =
+    'What the overlay shows, until GDD §11’s art pass lands and there is a real portrait to draw, is the placeholder Tier 3 panel the licensing system already renders.';
+
+  it('THE LONG-CLAUSE ESCAPE IS CAUGHT, AND ONLY THE ASIDE RULE CATCHES IT', () => {
+    expect(
+      THE_ESCAPE_THAT_FORCED_THIS_ROUND.match(MOUNTS_THE_PANEL),
+      'the escape this round exists for is loose again',
+    ).not.toBeNull();
+    // ...and here is WHY it is caught, which is the half a green assertion
+    // cannot show. Its subject really is 90 characters from its object — far
+    // outside `CLAIM_GAP` — so a bigger `CLAIM_GAP` is not what is catching it.
+    const SO_FAR_APART_NO_BOUND_THE_TREE_ALLOWS_WOULD_REACH = 90;
+    expect(ordinaryGapOf(THE_ESCAPE_THAT_FORCED_THIS_ROUND)).toBe(
+      SO_FAR_APART_NO_BOUND_THE_TREE_ALLOWS_WOULD_REACH,
+    );
+    expect(SO_FAR_APART_NO_BOUND_THE_TREE_ALLOWS_WOULD_REACH).toBeGreaterThan(
+      CLAIM_GAP_CORPUS_CEILING,
+    );
+    // With the aside rule switched off — `asideChars: 0` — the same string walks
+    // straight past, which is exactly what it did before this round.
+    expect(
+      THE_ESCAPE_THAT_FORCED_THIS_ROUND.match(mountsThePanel({ ...THE_BOUNDS, asideChars: 0 })),
+      'the aside rule is not what catches the escape — something else changed',
+    ).toBeNull();
+  });
+
+  // -------------------------------------------------------------------------
+  // EACH OF THE THREE LENGTHS, STRADDLED
+  // -------------------------------------------------------------------------
+
+  interface BoundFixture {
+    /** Which length this pair straddles. */
+    readonly bound: 'CLAIM_GAP' | 'ASIDE_CHARS' | 'PRONOUN_REACH';
+    readonly caught: boolean;
+    /** The length this claim measures, in that bound's own unit. */
+    readonly measures: number;
+    readonly why: string;
+    readonly claim: string;
+  }
+
+  /**
+   * SIX CLAIMS, TWO PER LENGTH, ONE CHARACTER APART.
+   *
+   * WHAT THIS TABLE IS FOR. Before it, each of these numbers was read in exactly
+   * one place and pinned by nothing: `CLAIM_GAP` could go 60 → 48 and
+   * `PRONOUN_REACH` 160 → 15 with every test in this file still green, because
+   * a SMALLER reach can only match LESS and the tree was already clean. Nothing
+   * distinguished 48 from 60 from 600.
+   *
+   * Every row is a real claim of the banned shape, differing from its partner by
+   * one word — usually one CHARACTER, an article or a plural — with the shorter
+   * of the pair asserted CAUGHT and the longer asserted MISSED. So lowering a
+   * bound turns the caught row green-when-it-should-be-red, and raising it turns
+   * the missed row red. Both directions, ±1.
+   *
+   * THE MISSES ARE THE LENGTH CLASS, DECLARED. Read as prose they say: a subject
+   * more than `CLAIM_GAP` characters of ordinary text from its object escapes; a
+   * set-off aside longer than `ASIDE_CHARS` is not skipped, so the claim around
+   * it escapes; a pronoun more than `PRONOUN_REACH` characters from its
+   * antecedent escapes. Those are bigger holes than most of what
+   * `THE_HELD_OUT_PARAPHRASES` declares, and until now none of the three was
+   * written down anywhere.
+   */
+  const THE_MEASURED_BOUNDS: readonly BoundFixture[] = [
+    {
+      bound: 'CLAIM_GAP',
+      caught: true,
+      measures: 60,
+      why: 'a qualifying phrase that fills the gap exactly',
+      claim:
+        'What mounts above the platform on a maximal attempt is the placeholder Tier 3 panel the licensing system already renders.',
+    },
+    {
+      bound: 'CLAIM_GAP',
+      caught: false,
+      measures: 61,
+      why: 'THE LENGTH CLASS: a subject more than CLAIM_GAP characters of ORDINARY text from its object escapes. One letter — a plural — is the whole edit.',
+      claim:
+        'What mounts above the platforms on a maximal attempt is the placeholder Tier 3 panel the licensing system already renders.',
+    },
+    {
+      bound: 'ASIDE_CHARS',
+      caught: true,
+      measures: 80,
+      why: 'a set-off clause that fills the aside exactly, so the gap is charged one character for it',
+      claim:
+        'What the overlay shows, until the art pass GDD §11 leaves for later finally lands and a portrait exists, is the placeholder Tier 3 panel the licensing system already renders.',
+    },
+    {
+      bound: 'ASIDE_CHARS',
+      caught: false,
+      measures: 81,
+      why: 'THE LENGTH CLASS: an aside longer than ASIDE_CHARS is not skipped, so the claim around it is charged the full 103 characters and escapes.',
+      claim:
+        'What the overlay shows, until the art pass GDD §11 leaves for later finally lands and a portrait arrives, is the placeholder Tier 3 panel the licensing system already renders.',
+    },
+    {
+      bound: 'PRONOUN_REACH',
+      caught: true,
+      measures: 160,
+      why: 'an antecedent that sits exactly at the end of the pronoun’s reach',
+      claim:
+        'The cut-in is the loudest thing in an app and the one screen that stops a lifter in the middle of a session so a sentence a reader finds here has to survive an art pass. It shows the shop panel.',
+    },
+    {
+      bound: 'PRONOUN_REACH',
+      caught: false,
+      measures: 161,
+      why: 'THE LENGTH CLASS: a pronoun more than PRONOUN_REACH characters from its antecedent has no subject to match, so the claim escapes. `an` to `the` is the edit.',
+      claim:
+        'The cut-in is the loudest thing in an app and the one screen that stops a lifter in the middle of a session so a sentence a reader finds here has to survive the art pass. It shows the shop panel.',
+    },
+  ];
+
+  const MEASURE: Readonly<Record<BoundFixture['bound'], (claim: string) => number>> = {
+    CLAIM_GAP: ordinaryGapOf,
+    ASIDE_CHARS: asideInnerLengthOf,
+    PRONOUN_REACH: antecedentReachOf,
+  };
+  const VALUE: Readonly<Record<BoundFixture['bound'], number>> = {
+    CLAIM_GAP,
+    ASIDE_CHARS,
+    PRONOUN_REACH,
+  };
+
+  it('EVERY BOUND HAS A CLAIM SITTING ON IT AND A CLAIM ONE CHARACTER PAST IT', () => {
+    for (const row of THE_MEASURED_BOUNDS) {
+      // The fixture still measures what it says it measures. Without this the
+      // pair could drift apart on a reword and stop straddling anything.
+      expect(
+        MEASURE[row.bound](row.claim),
+        `${row.bound}: this fixture no longer measures ${row.measures} — ${row.claim}`,
+      ).toBe(row.measures);
+      // ...and it really is ON the bound, or one past it. THIS is the assertion
+      // that makes the number un-lowerable and un-raisable in silence.
+      expect(
+        row.measures,
+        `${row.bound} moved and this fixture no longer straddles it`,
+      ).toBe(row.caught ? VALUE[row.bound] : VALUE[row.bound] + 1);
+      // ...and the ban agrees.
+      expect(
+        row.claim.match(MOUNTS_THE_PANEL) !== null,
+        `${row.bound} ${row.caught ? 'should catch' : 'is declared to MISS'} at ` +
+          `${row.measures} — ${row.why}: ${row.claim}`,
+      ).toBe(row.caught);
+    }
+    // Three bounds, two rows each, and no bound left un-straddled.
+    for (const bound of ['CLAIM_GAP', 'ASIDE_CHARS', 'PRONOUN_REACH'] as const) {
+      const rows = THE_MEASURED_BOUNDS.filter((row) => row.bound === bound);
+      expect(rows.map((row) => row.caught).sort(), `${bound} has no straddle pair`).toEqual([
+        false,
+        true,
+      ]);
+    }
+  });
+
+  it('the ceiling is the tree, not a preference — CLAIM_GAP cannot simply be raised', () => {
+    // THE OTHER END OF THE WINDOW, and the reason the escape above is caught by
+    // a structural rule rather than by a bigger number. `CLAIM_GAP` is bounded
+    // BELOW by the straddle pair and ABOVE by the repository itself: one
+    // character past `CLAIM_GAP_CORPUS_CEILING` a TRUE sentence goes red.
+    //
+    // Measured over every file `everyProseFile` returns, at two settings.
+    const files = everyProseFile();
+    const dirtyAt = (claimGap: number): readonly string[] => {
+      const pattern = mountsThePanel({ ...THE_BOUNDS, claimGap });
+      return files.filter((file) => [...proseOf(file).matchAll(pattern)].length > 0);
+    };
+    expect(CLAIM_GAP, 'CLAIM_GAP is above the measured ceiling').toBeLessThanOrEqual(
+      CLAIM_GAP_CORPUS_CEILING,
+    );
+    expect(dirtyAt(CLAIM_GAP_CORPUS_CEILING), 'the measured ceiling moved down').toEqual([]);
+    // ...and one past it, a sentence about where the OVERLAY'S OWN panel sits
+    // when a moment's line wraps — nothing to do with the licensing
+    // composition — goes red. Named, so the ceiling is a fact about a file
+    // somebody can go and read rather than a number in this header.
+    expect(dirtyAt(CLAIM_GAP_CORPUS_CEILING + 1), 'the measured ceiling moved up').toEqual([
+      'tools/capture-cutin.mjs',
+    ]);
+  });
+
+  /**
+   * WHAT THE ASIDE RULE COSTS, MEASURED — TRUE SENTENCES IT REDDENS.
+   *
+   * A ban that widens without saying what it broke is the same defect one
+   * direction round. `[redWithoutTheAsideRule, redWithIt, sentence]`, and every
+   * sentence here is TRUE — a contrast between this overlay and the shelf, the
+   * kind of thing `cutInTuning.ts` writes constantly. They are strings and
+   * therefore CODE, so this table does not put them in the tree's prose.
+   *
+   * WHAT THE MEASUREMENT SAYS. Row 1 was already red before this round: a short
+   * contrast has always tripped the ban, and that cost is not new. Rows 2 to 4
+   * are NEW — a long set-off clause used to hold the two halves more than
+   * `CLAIM_GAP` apart, and now it costs one character, so the contrast around it
+   * closes up and reddens. That is the price of catching the escape, and it is
+   * the direction this ban should fail in: a red on a true sentence is a
+   * reword with a message attached, and a green on a false one is an
+   * instruction to rebuild the architecture GDD §7.2 ruled against.
+   *
+   * NONE OF THEM IS IN THE TREE TODAY — `NO FILE IN THE TREE…` reads zero over
+   * all 191 tracked files, and `the ceiling is the tree…` is what stops the
+   * price rising quietly.
+   */
+  const THE_TRUE_SENTENCES_THIS_BAN_REDDENS: readonly (readonly [boolean, boolean, string])[] = [
+    [true, true, 'The cut-in, drawn at 3x, sits beside the shop panel on the shelf.'],
+    [
+      false,
+      true,
+      'The cut-in, which the capture tool photographs on every run of the harness, is wider than the shop panel.',
+    ],
+    [
+      false,
+      true,
+      'The overlay, whose grid the phone upscales by a whole number that a wider caption lowers, has more room than the shelf panel.',
+    ],
+    [
+      false,
+      true,
+      'This view, the last thing a builder reaches for when a beat looks wrong on a phone, prints one line where the shop panel prints four.',
+    ],
+  ];
+
+  it('AND HERE IS WHAT THE WIDENING COSTS — true sentences that go red', () => {
+    const withoutTheAsideRule = mountsThePanel({ ...THE_BOUNDS, asideChars: 0 });
+    for (const [wasRed, isRed, sentence] of THE_TRUE_SENTENCES_THIS_BAN_REDDENS) {
+      expect(sentence.match(withoutTheAsideRule) !== null, `before: ${sentence}`).toBe(wasRed);
+      expect(sentence.match(MOUNTS_THE_PANEL) !== null, `after: ${sentence}`).toBe(isRed);
+    }
+    // The cost is real and it is bounded: three of the four are new this round.
+    const newlyRed = THE_TRUE_SENTENCES_THIS_BAN_REDDENS.filter(
+      ([wasRed, isRed]) => !wasRed && isRed,
+    ).length;
+    expect(newlyRed, 'the measured cost of the aside rule moved').toBe(3);
+  });
+
+  // -------------------------------------------------------------------------
+  // ONE-EDIT VARIANTS THE AUTHOR DID NOT CHOOSE
+  // -------------------------------------------------------------------------
+
+  /**
+   * SEVEN EDITS, APPLIED MECHANICALLY TO ALL FOUR HISTORICAL CLAIMS.
+   *
+   * WHY NOT MORE HAND-WRITTEN PARAPHRASES. `THE_HELD_OUT_PARAPHRASES` is twelve
+   * sentences the same author wrote in the same session as the pattern, and that
+   * is better than nothing and is not independence: the author picks which
+   * rewrites get tried, and the ones that would fail are the ones that do not
+   * occur to them. The escape that forced this round is the proof — it is a
+   * clause insertion, the most ordinary edit in this codebase's register, and it
+   * was in none of the twelve.
+   *
+   * So the edits below are a fixed list of TRANSFORMATIONS, applied to every one
+   * of `THE_DELETED_CLAIMS` without the author choosing which pairing gets
+   * tried. 4 × 7 = 28 variants, and the verdict vector is pinned whole. Any
+   * change to the pattern that moves any one of the 28 has to come here and say
+   * which, which is the property the twelve hand-written rows cannot have.
+   *
+   * THE MISSES ARE RECORDED, NOT FIXED. Same rule as the held-out table: `false`
+   * is a measured bound on this ban and not a to-do.
+   */
+  const insertAfterTheLastSubject = (claim: string, insert: string): string => {
+    const subjects = [...claim.matchAll(new RegExp(`\\b(?:${NAMED_SUBJECT})\\b`, 'gi'))];
+    const object = new RegExp(`\\b(?:${THE_PANEL})`, 'i').exec(claim);
+    if (object === null) return claim;
+    // The LAST subject before the object, because that is the one an author
+    // would qualify and the one whose gap the edit actually stretches.
+    const at = subjects
+      .filter((subject) => subject.index + subject[0].length <= object.index)
+      .map((subject) => subject.index + subject[0].length)
+      .pop();
+    return at === undefined ? claim : `${claim.slice(0, at)}${insert}${claim.slice(at)}`;
+  };
+
+  /** `null` where an edit has nothing to bite on in that claim. */
+  const changedOr = (claim: string, edited: string): string | null =>
+    edited === claim ? null : edited;
+
+  const ONE_EDIT_AWAY: readonly (readonly [string, (claim: string) => string | null])[] = [
+    [
+      'drop the qualifier in front of the noun',
+      (claim) =>
+        changedOr(
+          claim,
+          claim.replace(/\b(?:placeholder |Tier 3 |licensing |shop |shelf )+panel/gi, 'panel'),
+        ),
+    ],
+    ['pluralise the object', (claim) => changedOr(claim, claim.replace(/\bpanel\b/gi, 'panels'))],
+    [
+      'drop the article from the subject',
+      (claim) =>
+        changedOr(
+          claim,
+          claim.replace(/\bthe (cut-?in|overlay|interrupt|picture|beat|shot)\b/gi, '$1s'),
+        ),
+    ],
+    [
+      'splice in a set-off aside',
+      (claim) =>
+        changedOr(
+          claim,
+          insertAfterTheLastSubject(
+            claim,
+            ', until GDD §11’s art pass lands and there is a real portrait to draw,',
+          ),
+        ),
+    ],
+    [
+      'splice in a plain qualifying phrase',
+      (claim) =>
+        changedOr(claim, insertAfterTheLastSubject(claim, ' above the platform on a maximal attempt')),
+    ],
+    [
+      'wrap a qualifier in parentheses',
+      (claim) => changedOr(claim, insertAfterTheLastSubject(claim, ' (as of today)')),
+    ],
+    ['shout it', (claim) => changedOr(claim, claim.toUpperCase())],
+  ];
+
+  /**
+   * THE VERDICT VECTOR, MEASURED ONCE AND WRITTEN DOWN.
+   *
+   * `"<claim index>/<edit index> <verdict>"` for all 28 pairings, in order.
+   * `caught` is the wanted answer; `MISSED` is a hole in this ban and is
+   * recorded rather than fixed; `n/a` is an edit with nothing to bite on in that
+   * claim — the article-drop cannot run on a claim whose subject is `what
+   * mounts`, which carries no article to drop.
+   *
+   * Read as prose: the only sentences that beat the ban here are the two where
+   * the article really could be dropped, and they land on the hole
+   * `THE_HELD_OUT_PARAPHRASES` already declares — the subject vocabulary is a
+   * list of phrases that all begin `the`, `a` or `what`, so a bare plural has no
+   * subject to match. Found again, this time by a route nobody chose.
+   */
+  const THE_MECHANICAL_VERDICTS: readonly string[] = [
+    '0/0 caught',
+    '0/1 caught',
+    '0/2 MISSED',
+    '0/3 caught',
+    '0/4 caught',
+    '0/5 caught',
+    '0/6 caught',
+    '1/0 caught',
+    '1/1 caught',
+    '1/2 MISSED',
+    '1/3 caught',
+    '1/4 caught',
+    '1/5 caught',
+    '1/6 caught',
+    '2/0 caught',
+    '2/1 caught',
+    '2/2 n/a',
+    '2/3 caught',
+    '2/4 caught',
+    '2/5 caught',
+    '2/6 caught',
+    '3/0 caught',
+    '3/1 caught',
+    '3/2 n/a',
+    '3/3 caught',
+    '3/4 caught',
+    '3/5 caught',
+    '3/6 caught',
+  ];
+
+  it('AND HERE IS WHAT IT SCORED ON 28 VARIANTS NOBODY PICKED', () => {
+    const verdicts: string[] = [];
+    const seen = new Set<string>();
+    THE_DELETED_CLAIMS.forEach((claim, claimIndex) => {
+      ONE_EDIT_AWAY.forEach(([, edit], editIndex) => {
+        const variant = edit(claim);
+        if (variant !== null) seen.add(variant);
+        const verdict =
+          variant === null ? 'n/a' : variant.match(MOUNTS_THE_PANEL) === null ? 'MISSED' : 'caught';
+        verdicts.push(`${claimIndex}/${editIndex} ${verdict}`);
+      });
+    });
+    // Two edits that collapsed to one sentence would inflate the count without
+    // testing anything new.
+    expect(seen.size, 'two edits produced the same sentence').toBe(
+      verdicts.filter((line) => !line.endsWith('n/a')).length,
+    );
+    expect(
+      verdicts,
+      'the mechanical verdict vector moved. A `MISSED` is a variant of a sentence GDD §7.2 ' +
+        'ruled against that this ban does not see. Say which and why, here.',
+    ).toEqual(THE_MECHANICAL_VERDICTS);
+    // Non-vacuity: a table of 28 `n/a`s would agree with itself for ever.
+    expect(
+      verdicts.filter((line) => line.endsWith('caught')).length,
+      'the mechanical edits stopped producing anything the ban can see',
+    ).toBeGreaterThan(THE_MECHANICAL_VERDICTS.length / 2);
+  });
+
   it('and it does NOT see the history that explains why they went — the negative control', () => {
     for (const kept of THE_HISTORY_WORTH_KEEPING) {
       expect(kept.match(MOUNTS_THE_PANEL), `the scan would delete: ${kept}`).toBeNull();
@@ -883,16 +1513,22 @@ describe('no comment says the cut-in mounts the shop panel — GDD §7.2', () =>
   });
 
   it('NO FILE IN THE TREE SAYS THE CUT-IN’S PICTURE IS THE PANEL', () => {
-    // THE WHOLE TREE, not `src/cutin/`. Two of the four stale sentences were in
-    // screens — `WalkoutView.tsx` and `CloseOutView.tsx` — because a caller
-    // describes what it triggers, and a scan rooted at the module would have
-    // left both standing. Tests are included: `cutInArt.test.ts` carries more
-    // of this piece's history than any module does.
-    const files = everySourceFile('', true);
-    expect(files.length, 'the walk found almost nothing').toBeGreaterThan(50);
-    expect(files, 'the walk skipped the tests it is supposed to read').toContain(
-      'cutin/cutInArt.test.ts',
+    // THE WHOLE TREE, and it now IS the whole tree. Two of the four stale
+    // sentences were in screens — `WalkoutView.tsx` and `CloseOutView.tsx` —
+    // because a caller describes what it triggers, and a scan rooted at the
+    // module would have left both standing. The walk this loop used to take was
+    // `src/`-and-`.ts(x)`-only, which left `App.tsx` and all twenty files of
+    // `tools/` unread under a name that said otherwise. See `everyProseFile`.
+    const files = everyProseFile();
+    expect(files.length, 'git answered almost nothing — the instrument is broken').toBeGreaterThan(
+      50,
     );
+    // The three shapes the old walk could not reach, by name.
+    expect(files, 'the walk skipped the tests it is supposed to read').toContain(
+      'src/cutin/cutInArt.test.ts',
+    );
+    expect(files, 'the walk cannot see the repository root').toContain('App.tsx');
+    expect(files, 'the walk cannot see a `.mjs`').toContain('tools/capture-cutin.mjs');
     for (const file of files) {
       expect(
         panelClaimsIn(file),
@@ -903,13 +1539,42 @@ describe('no comment says the cut-in mounts the shop panel — GDD §7.2', () =>
     }
   });
 
+  it('AND EVERY ONE OF THOSE FILES REALLY YIELDED PROSE TO READ', () => {
+    // The vacuity the loop above cannot see by itself. It ran over ~190 files
+    // and only THREE of them are proved anywhere in this file to produce a
+    // non-empty `prose()`; a regression that returned '' for some other file
+    // shape — a `.mjs` with a shebang, a file whose only comments are `//`,
+    // a lexer that lost track inside a template literal — would sail through
+    // the other ~187 with nothing to say and look exactly like a clean tree.
+    //
+    // DERIVED, NOT A THRESHOLD. `onlyComments` is the lexer and `prose` is only
+    // its decoration-stripper, so the two must agree file by file: if the lexer
+    // found a word inside a comment, the stripper has to still have one. That is
+    // an IFF over every file, with no number in it to tune.
+    const files = everyProseFile();
+    let withProse = 0;
+    for (const file of files) {
+      const raw = readFileSync(path.join(REPO_ROOT, file), 'utf8');
+      const lexed = /\w/.test(onlyComments(raw));
+      const read = /\w/.test(proseOf(file));
+      expect(read, `${file}: onlyComments found ${lexed ? 'a comment' : 'none'}, prose() ${read ? 'did' : 'did not'}`).toBe(
+        lexed,
+      );
+      if (read) withProse += 1;
+    }
+    // ...and the iff is not satisfied by both sides being empty everywhere.
+    expect(withProse, 'no file in the tree has a comment — the lexer is broken').toBeGreaterThan(
+      files.length / 2,
+    );
+  });
+
   it('AND IT IS CLEAN FOR A REASON, NOT BECAUSE THE PROSE WENT QUIET', () => {
     // The failure mode the check above cannot see by itself: a module that
     // deleted every mention of the panel would pass it and would also have
     // thrown away the explanation. So the history has to still be there, in the
     // two files that carry it, while the claim scan reads zero.
-    for (const file of ['cutin/cutInArt.ts', 'cutin/cutInTuning.ts']) {
-      const text = prose(file);
+    for (const file of ['src/cutin/cutInArt.ts', 'src/cutin/cutInTuning.ts']) {
+      const text = proseOf(file);
       expect(text, `${file} no longer explains what it does not mount`).toMatch(/renderPanel/);
       expect(text, `${file} no longer names the failure it fixed`).toMatch(/§7\.3/);
       expect(panelClaimsIn(file), file).toEqual([]);
@@ -941,15 +1606,6 @@ describe('`CutInView.tsx` cites pictures that a fresh checkout really has', () =
    * empty list of tracked shot records was a pass.
    */
   const SHOTS_DIR = '.gauntlet/shots/cutin';
-
-  /** Repo-relative paths git actually tracks under `dir`. */
-  function trackedUnder(dir: string): readonly string[] {
-    const out = execFileSync('git', ['ls-files', '-z', '--', dir], {
-      cwd: REPO_ROOT,
-      encoding: 'utf8',
-    });
-    return out.split('\0').filter((line) => line !== '');
-  }
 
   it('THE PIXELS ARE TRACKED, not merely present on this disk', () => {
     const tracked = trackedUnder(SHOTS_DIR);

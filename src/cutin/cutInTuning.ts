@@ -136,11 +136,32 @@ export const CUT_IN_TUNING = Object.freeze({
    */
   HOLD_MS: 1600,
 
-  /** How long the cut-in takes to arrive. Short: it is a cut, not a fade-up. */
+  /**
+   * How long the cut-in takes to arrive. Short: it is a cut, not a fade-up.
+   *
+   * THE ONLY TIMING HERE THAT DRIVES AN ANIMATION, and the reason there is no
+   * `EXIT_MS` beside it. There WAS one, at 100 ms, described as "how long it
+   * takes to leave, on a tap or on the hold expiring" — and that sentence was
+   * false in three files. Nothing animated an exit: `CutInView` has an arrival
+   * and no departure, and `CutInHost` un-mounts the overlay synchronously on
+   * `setLive(null)`. The committed pixels say so too — `frames.json` records the
+   * tap dismissal at `tappedAt: 14, goneAt: 26`, twelve milliseconds, which is a
+   * frame and not a hundred-millisecond fade. Setting it to 0 left the whole
+   * suite green and moved no pixel.
+   *
+   * SO IT WAS DELETED RATHER THAN WIRED, and the choice is arguable rather than
+   * forced. §7.2 asks for an interrupt that CUTS in and is always skippable and
+   * says nothing either way about how it leaves, so wiring an exit would have
+   * been ADDING a beat nobody has asked for or played — and the obvious wiring,
+   * holding the overlay mounted for a hundred milliseconds after the tap, leaves
+   * a full-screen `Pressable` over the screen underneath for that long unless
+   * something also turns it off, which is a new way to get "always skippable"
+   * wrong. Deleting is the move that makes three sentences true and changes no
+   * behaviour. If a playtest wants a fade out, it comes back as a constant with
+   * an animation reading it and a captured frame showing it — not as a number
+   * three comments describe and nothing performs.
+   */
   ENTER_MS: 120,
-
-  /** How long it takes to leave, on a tap or on the hold expiring. */
-  EXIT_MS: 100,
 
   /**
    * HOW LONG BEFORE A TAP IS ACCEPTED, MILLISECONDS. ZERO, DELIBERATELY.

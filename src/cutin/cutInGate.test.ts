@@ -36,7 +36,6 @@ import {
   cutInExpiredAt,
   cutInSessionId,
   cutInSessionSeed,
-  cutInTotalMs,
   dismissCutIn,
   identityForMoment,
   isCutInMoment,
@@ -759,12 +758,19 @@ describe('SKIPPABILITY: always, and from the first frame', () => {
     expect(CUT_IN_TUNING.HOLD_MS).toBeLessThanOrEqual(PAST_ANY_HOLD_THIS_PIECE_CLAIMS_MS);
     // The interrupt is short. §7.2 calls a bad one "a 2-second tax", so this
     // pins the whole beat under three seconds until a playtest says otherwise.
-    expect(cutInTotalMs()).toBeLessThan(3000);
-    expect(cutInTotalMs()).toBeGreaterThan(CUT_IN_TUNING.HOLD_MS);
-    // The host's timer fires before the exit, not after it, or the cut-in
-    // would sit at full weight for the length of its own fade.
-    expect(cutInAutoDismissMs()).toBeLessThan(cutInTotalMs());
+    //
+    // ONE FUNCTION FOR THE WHOLE BEAT. These three lines read `cutInTotalMs()`
+    // until this round, which was `cutInAutoDismissMs()` plus an `EXIT_MS`
+    // nothing performed — and these were its only callers anywhere, so setting
+    // that constant to 0 left the suite green and moved no pixel. The arrival
+    // plus the hold IS the beat: the overlay un-mounts on the tick the timer
+    // fires.
+    const A_BAD_INTERRUPT_IS_A_TWO_SECOND_TAX_MS = 3000;
+    expect(cutInAutoDismissMs()).toBeLessThan(A_BAD_INTERRUPT_IS_A_TWO_SECOND_TAX_MS);
     expect(cutInAutoDismissMs()).toBeGreaterThan(CUT_IN_TUNING.HOLD_MS);
+    // ...and it is longer than the hold by exactly the arrival, which is the
+    // only animation the beat has.
+    expect(cutInAutoDismissMs() - CUT_IN_TUNING.HOLD_MS).toBe(CUT_IN_TUNING.ENTER_MS);
   });
 });
 
