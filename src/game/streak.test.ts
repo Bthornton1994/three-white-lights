@@ -44,6 +44,7 @@ import {
 } from './streak';
 import * as streakModule from './streak';
 import {
+  MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW,
   RECOVERY_ENTITLEMENT,
   coveredDaysAvailable,
   freshEntitlement,
@@ -51,6 +52,7 @@ import {
   type EntitlementState,
 } from './streakEntitlement';
 import {
+  ENTITLEMENT_VERIFICATION,
   MONOTONICITY_SWEEP,
   RESIDUE_SWEEP,
   exhaustiveCalendar,
@@ -265,9 +267,37 @@ describe('purity contract', () => {
     expect(code).not.toContain('Howard Hinnant');
   });
 
-  it('imports nothing at all, so it cannot import React', () => {
-    expect(code).not.toMatch(/^\s*import\s/m);
+  it('imports only sibling pure modules, so it cannot import React or reach a host API', () => {
+    // THIS USED TO READ "imports nothing at all". That was a proxy for purity
+    // and it stopped being true honestly rather than sloppily: GDD §4.2's
+    // Option 1 ruling put the entitlement in its own module, and this one has
+    // to reach it. So the check is now an ALLOWLIST of what may be imported
+    // rather than a ban on importing, for the same reason `STREAK_FACT_KEYS` is
+    // an allowlist: a ban on `react` is guessable around (`react-native`,
+    // `expo-haptics`, `node:fs`) and an allowlist is not.
+    //
+    // EVERY ENTRY HAS TO BE A SIBLING PURE MODULE — one that is itself under a
+    // purity scan of its own. `streakEntitlement.test.ts` scans
+    // `streakEntitlement.ts` the same way this scans `streak.ts`, so the
+    // guarantee composes instead of stopping at the import.
+    const PURE_SIBLINGS: readonly string[] = ['./streakEntitlement'];
+
+    const specifiers = [...code.matchAll(/^\s*import[\s\S]*?from\s*['"]([^'"]+)['"]/gm)].map(
+      (match) => match[1] as string,
+    );
+    // The scan has to have found the import that exists, or an allowlist of one
+    // entry proves nothing about a file it failed to parse.
+    expect(specifiers).toEqual([...PURE_SIBLINGS]);
+    for (const specifier of specifiers) {
+      expect(PURE_SIBLINGS, `streak.ts imports ${specifier}`).toContain(specifier);
+    }
+    // Side-effect imports (`import './x'`) have no `from` and would slip past
+    // the scan above, so they are banned outright — this module has no reason
+    // for one and a side-effect import is precisely what a purity claim cannot
+    // survive.
+    expect(code).not.toMatch(/^\s*import\s+['"]/m);
     expect(code).not.toMatch(/\brequire\s*\(/);
+    expect(code).not.toMatch(/\bimport\s*\(/);
   });
 
   it('never reads a clock', () => {
@@ -308,15 +338,35 @@ describe('purity contract', () => {
     expect(code).not.toMatch(/RECOVERY_DECISION_PENDING|OFFER_DOES_NOT_MATCH_STATE/);
   });
 
-  it('resolves an absence from the armed count, never from the live balance', () => {
-    // The one-line reason the outcome cannot depend on when the app is opened:
-    // a Recovery Day that arrives DURING an absence raises `recoveryDayBalance`,
-    // and `absenceOutcome` must not be able to see it. Scanned because the
-    // difference is invisible to any test that does not grant mid-absence.
+  it('resolves an absence from the ENTITLEMENT SNAPSHOT and the calendar, and from nothing else', () => {
+    // The one-line reason the outcome cannot depend on when the app is opened.
+    // Under the Recovery Day stock the danger was a grant landing mid-absence
+    // and raising `recoveryDayBalance` where `absenceOutcome` could see it;
+    // GDD §4.2's Option 1 ruling deleted the grant path, so the danger is now
+    // the shape rather than the name — a resolution that read anything other
+    // than the snapshot the last session left and the window `today` falls in
+    // would be a resolution the calendar does not fully decide.
+    //
+    // SCANNED RATHER THAN DRIVEN, because the difference is invisible to any
+    // test that cannot make coverage change mid-absence — and nothing in this
+    // module can, which is exactly why a behavioural test cannot see it.
     const body = code.slice(code.indexOf('export function absenceOutcome'));
     const fn = body.slice(0, body.indexOf('\n}\n') + 1);
-    expect(fn).toContain('armedGapDays');
+    // Its two and only two inputs.
+    expect(fn).toContain('state.entitlement');
+    expect(fn).toContain('entitlementWindowFor(state, today)');
+    expect(fn).toContain('resolveEntitlement');
+    // The stock's names cannot come back under the old spelling...
     expect(fn).not.toContain('recoveryDayBalance');
+    expect(fn).not.toContain('armedRecoveryDays');
+    // ...and nothing may reach a figure that is not a function of the calendar.
+    expect(fn).not.toMatch(/grant|credit|\bbuy\b/i);
+    // A purchased covered day is mentioned exactly once, as the literal zero
+    // that says none of one reaches this resolution (GDD §8.3E is not ruled).
+    expect([...fn.matchAll(/purchas\w*/gi)].map((match) => match[0])).toEqual(['purchasedDaysLeft']);
+    expect(fn).toContain('purchasedDaysLeft: 0');
+    // Two parameters, and there is nowhere for a third to hide.
+    expect(streakModule.absenceOutcome).toHaveLength(2);
   });
 });
 
@@ -432,21 +482,73 @@ describe('the day boundary', () => {
 
 describe('tunable constants sit inside the ranges GDD §4.2 specifies', () => {
   const source = readFileSync(fileURLToPath(new URL('./streak.ts', import.meta.url)), 'utf8');
+  const entitlementSource = readFileSync(
+    fileURLToPath(new URL('./streakEntitlement.ts', import.meta.url)),
+    'utf8',
+  );
 
-  it('holds 3-5 Recovery Days', () => {
-    expect(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW).toBeGreaterThanOrEqual(3);
-    expect(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW).toBeLessThanOrEqual(5);
+  it('funds coverage from a window entitlement, which is what the 3-5 hold cap became', () => {
+    // WHAT THIS USED TO CHECK, and why the check had to change rather than be
+    // re-pointed: GDD §4.2's "Hold cap of 3-5 tokens" is a guardrail on a
+    // STOCK, and the Option 1 ruling in the same section deleted the stock —
+    // "no balance to hoard and nothing to lose by using them". Re-pointing the
+    // 3-5 range at `COVERED_DAYS_PER_WINDOW` is what the wiring did, and it is
+    // wrong in a way that matters: the entitlement is 2 precisely so that the
+    // ceiling GDD §4.2 promises stays at four days, so the old range would
+    // forbid the tuning the ruling requires.
+    //
+    // WHAT SURVIVES IS THE SHAPE, not the numbers. Coverage has to exist
+    // (at least one covered day per window, or nothing is ever protected) and
+    // it has to arrive on a window of whole days.
+    expect(Number.isInteger(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW)).toBe(true);
+    expect(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW).toBeGreaterThanOrEqual(1);
+    expect(Number.isInteger(RECOVERY_ENTITLEMENT.WINDOW_DAYS)).toBe(true);
+    expect(RECOVERY_ENTITLEMENT.WINDOW_DAYS).toBeGreaterThanOrEqual(1);
   });
 
-  it('grants 2-3 at signup, and never more than the hold cap', () => {
-    expect(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW).toBeGreaterThanOrEqual(2);
-    expect(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW).toBeLessThanOrEqual(3);
-    expect(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW).toBeLessThanOrEqual(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+  it('ships a tuning the verification battery actually covers', () => {
+    // THE HEIR OF "sits inside the range the GDD specifies", and it is a
+    // stronger question than the one it replaces. GDD §4.2's Option 1 ruling is
+    // conditional on `streakEntitlement.test.ts`'s battery, and that battery
+    // runs over a GRID of window lengths and entitlement sizes
+    // (`ENTITLEMENT_VERIFICATION`). A retune to a value outside the grid would
+    // ship a tuning nothing has ever checked the monotonicity property at —
+    // which is exactly how the last two "this closes it" claims got out.
+    //
+    // So the range that binds is not a number in a document. It is the set of
+    // points the property has been measured at.
+    expect([...ENTITLEMENT_VERIFICATION.PER_WINDOW_GRID]).toContain(
+      RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
+    );
+    expect([...ENTITLEMENT_VERIFICATION.WINDOW_DAYS_GRID]).toContain(RECOVERY_ENTITLEMENT.WINDOW_DAYS);
   });
 
-  it('has a consecutive-use limit of at least 1 and below the hold cap', () => {
+  it('has a per-absence ceiling of at least 1, combined with the window rate by MIN and not by rank', () => {
+    // The direct heir of `MAX_CONSECUTIVE_USES`, and the half of the old
+    // assertion that survives is the `>= 1`. The other half — "and below the
+    // hold cap" — does not: `streakEntitlement.ts` says in as many words that
+    // the two are "2 and 2 today by coincidence of tuning" and that raising the
+    // window rate to 5 without raising this one must still leave a week away
+    // unbuyable. An assertion that one is strictly below the other would forbid
+    // the shipped tuning and would encode a rank the design explicitly refuses.
+    expect(Number.isInteger(RECOVERY_ENTITLEMENT.MAX_COVERED_DAYS_PER_ABSENCE)).toBe(true);
     expect(RECOVERY_ENTITLEMENT.MAX_COVERED_DAYS_PER_ABSENCE).toBeGreaterThanOrEqual(1);
-    expect(RECOVERY_ENTITLEMENT.MAX_COVERED_DAYS_PER_ABSENCE).toBeLessThan(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+
+    // WHAT REPLACES THE RANK: the two are composed by `min`, so neither
+    // ordering is assumed and neither can be raised into a longer repairable
+    // absence on its own. Checked at both orderings, not only the shipped one.
+    expect(MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW).toBe(
+      Math.min(
+        RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
+        RECOVERY_ENTITLEMENT.MAX_COVERED_DAYS_PER_ABSENCE,
+      ),
+    );
+    // AND THE GUARDRAIL THE LIMIT EXISTS FOR: a week away ends a run, at every
+    // entitlement the grid permits.
+    for (const perWindow of ENTITLEMENT_VERIFICATION.PER_WINDOW_GRID) {
+      const ceiling = GRACE + Math.min(perWindow, RECOVERY_ENTITLEMENT.MAX_COVERED_DAYS_PER_ABSENCE);
+      expect(ceiling, `a week is buyable at ${perWindow} covered days per window`).toBeLessThan(7);
+    }
   });
 
   it('defines the free grace and the consecutive-use limit as two independent literals', () => {
@@ -461,23 +563,49 @@ describe('tunable constants sit inside the ranges GDD §4.2 specifies', () => {
     // other behaves identically in every respect — the difference is only
     // visible in the text, and only becomes behavioural the day somebody
     // retunes one of them and silently moves the other.
-    const block = source.slice(
+    //
+    // THEY NOW LIVE IN TWO FILES, which makes collapsing them harder to do by
+    // accident and this scan harder to write: `MAX_CONSECUTIVE_USES` became
+    // `RECOVERY_ENTITLEMENT.MAX_COVERED_DAYS_PER_ABSENCE` in
+    // `streakEntitlement.ts` under GDD §4.2's Option 1 ruling, and the grace
+    // stayed here because it is the one part of coverage that is a pure
+    // function of the absence. The human's requirement did not move with it, so
+    // neither did this test — it reads both blocks.
+    const literalIn = (block: string, name: string, where: string): string => {
+      const match = new RegExp(`\\n  ${name}:\\s*([^,\\n]+),`).exec(block);
+      if (match === null) throw new Error(`could not find ${name} in ${where}`);
+      return (match[1] as string).trim();
+    };
+    const graceBlock = source.slice(
       source.indexOf('export const RECOVERY_DAY_GUARDRAILS'),
       source.indexOf('export const RECOVERY_DAY_PROTECTION'),
     );
-    const literal = (name: string): string => {
-      const match = new RegExp(`\\n  ${name}:\\s*([^,\\n]+),`).exec(block);
-      if (match === null) throw new Error(`could not find ${name} in RECOVERY_DAY_GUARDRAILS`);
-      return (match[1] as string).trim();
-    };
-    expect(literal('FREE_GRACE_GAP_DAYS')).toMatch(/^\d+$/);
-    expect(literal('MAX_CONSECUTIVE_USES')).toMatch(/^\d+$/);
+    const entitlementBlock = entitlementSource.slice(
+      entitlementSource.indexOf('export const RECOVERY_ENTITLEMENT'),
+      entitlementSource.indexOf('export const MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW'),
+    );
+    expect(literalIn(graceBlock, 'FREE_GRACE_GAP_DAYS', 'RECOVERY_DAY_GUARDRAILS')).toMatch(/^\d+$/);
+    expect(literalIn(entitlementBlock, 'MAX_COVERED_DAYS_PER_ABSENCE', 'RECOVERY_ENTITLEMENT')).toMatch(
+      /^\d+$/,
+    );
+    // The window rate is the third of the three and is just as capable of being
+    // written as one of the others — `COVERED_DAYS_PER_WINDOW:
+    // MAX_COVERED_DAYS_PER_ABSENCE` would behave identically today.
+    expect(literalIn(entitlementBlock, 'COVERED_DAYS_PER_WINDOW', 'RECOVERY_ENTITLEMENT')).toMatch(/^\d+$/);
+
+    // AND NEITHER BLOCK MENTIONS THE OTHER'S NAME, so one cannot be defined in
+    // terms of the other across the file boundary either.
+    expect(graceBlock).not.toContain('MAX_COVERED_DAYS_PER_ABSENCE');
+    expect(graceBlock).not.toContain('COVERED_DAYS_PER_WINDOW');
+    expect(entitlementBlock).not.toContain('FREE_GRACE_GAP_DAYS');
 
     // ...and the shape checks the old test did keep, since they are still true
-    // and still worth failing on.
+    // and still worth failing on. The `GRACE < HOLD_CAP` line that used to sit
+    // here went with the hold cap: the grace is a length of absence and the
+    // entitlement is a count of covered days, so there was never a reason for
+    // one to bound the other beyond both happening to be small.
     expect(Number.isInteger(GRACE)).toBe(true);
     expect(GRACE).toBeGreaterThanOrEqual(0);
-    expect(GRACE).toBeLessThan(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
     expect(RECOVERY_ENTITLEMENT.MAX_COVERED_DAYS_PER_ABSENCE).toBeGreaterThanOrEqual(1);
   });
 
@@ -614,7 +742,7 @@ describe('a new lifter', () => {
       kind: 'no-active-streak',
       longestStreak: 0,
       recoveryDaysCommittedToTheAbsence: 0,
-      recoveryDayBalance: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
+      coveredDaysAvailable: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
     });
 
     // ...and once the signup absence has outrun the grace plus what is armed,
@@ -624,7 +752,7 @@ describe('a new lifter', () => {
       kind: 'no-active-streak',
       longestStreak: 0,
       recoveryDaysCommittedToTheAbsence: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
-      recoveryDayBalance: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
+      coveredDaysAvailable: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
     });
   });
 
@@ -775,20 +903,25 @@ describe('streak increments', () => {
 
 describe('streak breaks', () => {
   it('breaks on a chargeable absence when nothing is armed', () => {
-    const state = { ...stateWithRun(6, addDays(DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW), 0), entitlementArmed: true };
+    // The run ends on day 5; the sixth day of the run is DAY_ZERO + 5. That
+    // offset is a POSITION IN THE CALENDAR and has nothing to do with any
+    // tunable — the wiring had replaced it with `COVERED_DAYS_PER_WINDOW`,
+    // which silently moved the absence three days longer and made this a test
+    // of the per-absence ceiling instead of a test of an empty window.
+    const state = stateWithRun(6, addDays(DAY_ZERO, 5), 0);
     const opening = openDay(state, dayAfterGap(addDays(DAY_ZERO, 5), SHORTEST_PAID_GAP));
     expect(opening).toEqual({
       kind: 'streak-broken',
       brokenRunLength: 6,
       daysMissed: SHORTEST_PAID_GAP,
       reason: 'not-enough-recovery-days-armed',
-      entitlement: withCoveredDays(0),
+      coveredDaysAvailable: 0,
       recoveryDaysCommittedToTheAbsence: 0,
     });
   });
 
   it('starts a new run at 1 when training after an uncoverable absence', () => {
-    const state = { ...stateWithRun(6, addDays(DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW), 0), entitlementArmed: true };
+    const state = stateWithRun(6, addDays(DAY_ZERO, 5), 0);
     const outcome = unwrap(
       recordTrainingDay(state, dayAfterGap(addDays(DAY_ZERO, 5), SHORTEST_PAID_GAP)),
     );
@@ -820,12 +953,23 @@ describe('streak breaks', () => {
     expect(outcome.state.hasBankedFirstRecoveryDaySave).toBe(false);
   });
 
-  it('charges nothing for a doomed absence when nothing was armed against it', () => {
-    const state = { ...stateWithRun(20, DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW), entitlementArmed: true };
+  it('charges nothing for a doomed absence when the window had nothing left to take', () => {
+    // A CASE THAT CHANGED SHAPE RATHER THAN GOING AWAY, and it is worth being
+    // explicit about which. Under the Recovery Day stock this state was "held
+    // five, armed none" — a hoard that survived a doomed absence because none
+    // of it had been armed at the last session. THAT STATE IS NOW
+    // UNREPRESENTABLE: `entitlementArmed` is a boolean and what an absence may
+    // draw is the window itself, so there is no way to hold coverage and have
+    // none of it armed. Deleting the hoard deleted the case.
+    //
+    // What survives is the other way of arriving at "nothing to take": the
+    // window is empty. The burn takes everything left, and everything left is
+    // nothing.
+    const state = stateWithRun(20, DAY_ZERO, 0);
     const outcome = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, 10)));
     expect(outcome.previousRunEnded).toBe(true);
     expect(outcome.recoveryDaysLostToTheAbsence).toBe(0);
-    expect(coveredDaysLeftInWindow(outcome.state)).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+    expect(coveredDaysLeftInWindow(outcome.state)).toBe(0);
   });
 
   it('charges nothing for a doomed absence when the player declined protection', () => {
@@ -1044,7 +1188,10 @@ describe('Recovery Day protection: armed ahead, revealed on return', () => {
       daysMissed: SHORTEST_PAID_GAP,
       daysCoveredFreeByGrace: GRACE,
       recoveryDaysHolding: 1,
-      balanceIfBankedToday: 2,
+      // ONE COVERED DAY OUT OF THE WINDOW, not "two left out of the old signup
+      // grant of three". Derived rather than written as a literal so a retune
+      // moves it instead of quietly making this a test of a different tuning.
+      balanceIfBankedToday: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW - 1,
       lastDayStreakCanBeSaved: addDays(DAY_ZERO, 1 + coverableGapDays(state, TODAY_FOR_READS)),
       isFirstRecoveryDaySave: true,
     });
@@ -1092,15 +1239,16 @@ describe('Recovery Day protection: armed ahead, revealed on return', () => {
       coveredDays: Array.from({ length: SHORTEST_PAID_GAP }, (_, i) => addDays(DAY_ZERO, i + 1)),
       daysCoveredFreeByGrace: GRACE,
       recoveryDaysSpent: 1,
-      balanceAfter: 2,
+      balanceAfter: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW - 1,
       streakProtected: 9,
       wasFirstRecoveryDaySave: true,
     });
     expect(outcome.streakAfter).toBe(10);
     expect(outcome.previousRunEnded).toBe(false);
-    expect(coveredDaysLeftInWindow(outcome.state)).toBe(2);
-    // ...and the next absence is armed with what is left, not with what was held.
-    expect(coveredDaysArmed(outcome.state, TODAY_FOR_READS)).toBe(2);
+    expect(coveredDaysLeftInWindow(outcome.state)).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW - 1);
+    // ...and the next absence is armed with what is left of the WINDOW, not
+    // with what the lifter was holding — there is nothing to hold.
+    expect(coveredDaysArmed(outcome.state, day)).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW - 1);
   });
 
   it('covers a longer absence in one go, charging only the days past the grace', () => {
@@ -1130,8 +1278,8 @@ describe('Recovery Day protection: armed ahead, revealed on return', () => {
       brokenRunLength: 9,
       daysMissed: gap,
       reason: 'not-enough-recovery-days-armed',
-      // Held right now: the break itself moves nothing.
-      entitlement: withCoveredDays(1),
+      // Available right now: the break itself moves nothing.
+      coveredDaysAvailable: 1,
       // ...and what the next session will take for it.
       recoveryDaysCommittedToTheAbsence: 1,
     });
@@ -1228,14 +1376,17 @@ describe('the Recovery Day protection toggle', () => {
     const kept = play(false);
     expect(kept.spent).toBe(1);
     expect(kept.streak).toBe(3);
-    expect(kept.balance).toBe(2);
+    // ONE COVERED DAY OUT OF THE WINDOW. Written as a subtraction from the
+    // window rather than as the literal 2 it used to be, which was the old
+    // signup grant of three minus the one this absence spent.
+    expect(kept.balance).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW - 1);
     expect(kept.reason).toBeNull();
 
     const declined = play(true);
     // NOT ONE RECOVERY DAY TAKEN. This is the assertion the human's ruling asked
     // for in as many words.
     expect(declined.spent).toBe(0);
-    expect(declined.balance).toBe(3);
+    expect(declined.balance).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
     expect(declined.streak).toBe(1);
     expect(declined.reason).toBe('recovery-day-protection-declined');
   });
@@ -1285,7 +1436,10 @@ describe('the Recovery Day protection toggle', () => {
     const off = setRecoveryDayProtection(state, false);
     expect(off.appliesToTheAbsenceInProgress).toBe(true);
     expect(off.armedRecoveryDays).toBeNull();
-    expect(coveredDaysLeftInWindow(off.state)).toBe(3);
+    // THE ENTITLEMENT ITSELF IS NEVER CLEARED — only the arming is. That is what
+    // stops off-then-on-then-train being a free refill, so the window still
+    // reads full here even though nothing can draw on it.
+    expect(coveredDaysLeftInWindow(off.state)).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
     expect(openDay(off.state, day).kind).toBe('streak-broken');
     expect(coveredDaysLeftInWindow(unwrap(recordTrainingDay(off.state, day)).state)).toBe(
       RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
@@ -1308,7 +1462,7 @@ describe('the Recovery Day protection toggle', () => {
 
     // ...and the session after it arms normally.
     const trained = unwrap(recordTrainingDay(on.state, day));
-    expect(trained.armedForNextAbsence).toBe(3);
+    expect(trained.armedForNextAbsence).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
     expect(openDay(trained.state, dayAfterGap(day, SHORTEST_PAID_GAP)).kind).toBe(
       'gap-covered-by-recovery-days',
     );
@@ -1318,7 +1472,10 @@ describe('the Recovery Day protection toggle', () => {
     const state = stateWithRun(9, DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
     const off = setRecoveryDayProtection(state, false).state;
     const changed = STREAK_FACT_KEYS.filter((key) => off[key] !== state[key]);
-    expect([...changed].sort()).toEqual(['armedRecoveryDays', 'recoveryDayProtectionEnabled']);
+    // `entitlementArmed` is the heir of `armedRecoveryDays`: the toggle disarms,
+    // and it must not touch the entitlement itself.
+    expect([...changed].sort()).toEqual(['entitlementArmed', 'recoveryDayProtectionEnabled']);
+    expect(off.entitlement).toBe(state.entitlement);
     expect(setRecoveryDayProtection(state, true).state).toEqual(state);
   });
 });
@@ -1391,14 +1548,19 @@ describe('a Recovery Day save preserves the streak exactly', () => {
     const changed = STREAK_FACT_KEYS.filter((key) => outcome.state[key] !== before[key]);
     expect([...changed].sort()).toEqual(
       [
-        'armedRecoveryDays',
         'currentStreak',
+        // The two stock fields — `recoveryDayBalance` and `armedRecoveryDays` —
+        // collapsed into this one snapshot. `entitlementArmed` is NOT in the
+        // list, and that is the observable half of the collapse: a save moves
+        // what the window has left, and re-arming is no longer a number that
+        // has to move with it.
+        'entitlement',
         'hasBankedFirstRecoveryDaySave',
         'lastTrainedDay',
         'longestStreak',
-        'recoveryDayBalance',
       ].sort(),
     );
+    expect(outcome.state.entitlementArmed).toBe(before.entitlementArmed);
   });
 
   it('is a DIFFERENT path from the free grace, and the free path is the one that spends nothing', () => {
@@ -1542,7 +1704,7 @@ describe('the consecutive-use limit', () => {
       brokenRunLength: 9,
       daysMissed: GRACE + LIMIT + 1,
       reason: 'absence-longer-than-consecutive-limit',
-      entitlement: withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW),
+      coveredDaysAvailable: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
       recoveryDaysCommittedToTheAbsence: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
     });
     // The guardrail bit rather than the balance — that is what the REASON says —
@@ -1668,7 +1830,7 @@ describe('a long absence', () => {
       brokenRunLength: 50,
       daysMissed: AWAY_DAYS,
       reason: 'absence-longer-than-consecutive-limit',
-      entitlement: withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW),
+      coveredDaysAvailable: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
       recoveryDaysCommittedToTheAbsence: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
     });
   });
