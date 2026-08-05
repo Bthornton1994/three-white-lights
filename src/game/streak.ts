@@ -495,6 +495,15 @@
  *     app mid-absence paid for part of an absence that ended the run anyway —
  *     and that one is gone in the strong sense: the whole outcome is a function
  *     of the calendar, so nothing is left for app-opening to change.
+ *
+ *     THE ARGUMENT FOR THE PROMPT'S GUILT was that the Duolingo model GDD §12.2
+ *     sets as the daily-loop bar arms its protection ahead and has no such
+ *     residue. The first half is true and this module matches it. The second
+ *     half was doing no work: what made the residue was two kinds of FREE
+ *     absence, and an armed-ahead design has those or does not have those quite
+ *     independently of whether anybody is prompted. The Duolingo comparison was
+ *     a red herring rather than a proof, and it is recorded here rather than
+ *     quietly dropped because it is the reason the search took two rounds.
  *   - "MILESTONE INCOME, PAID ONCE PER LIFETIME AND TIMED BY THE STREAK", on
  *     the strength of one counterfactual: empty `STREAK_MILESTONE_DAYS` and the
  *     60-day sweep goes to 0. The counterfactual was real; the conclusion did
