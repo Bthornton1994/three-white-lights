@@ -49,9 +49,9 @@ public/canvaskit.wasm
 # Run output: state.json is tracked (it drives the progress page); the
 # generated page and most screenshot evidence are regenerable, so they are not.
 # `shots/*` and not `shots/`: git does not descend into an ignored DIRECTORY,
-# so `!.gauntlet/shots/shell/` under a `.gauntlet/shots/` rule re-includes
-# nothing and `git add -A` stages only this file. It looks like it worked.
-# Ignore the directory's CONTENTS and the negation can reach inside.
+# so a negation under a `.gauntlet/shots/` rule re-includes nothing and
+# `git add -A` stages only this file. It looks like it worked. Ignore the
+# directory's CONTENTS and the negation can reach inside.
 .gauntlet/shots/*
 .gauntlet/progress.html
 
@@ -70,3 +70,8 @@ public/canvaskit.wasm
 # so these are datable; 380K is a cheap price for evidence a grader can check
 # instead of trust.
 !.gauntlet/shots/shell/
+
+# Same argument for the cut-in run: `frames.json` records eight checks a critic
+# is asked to read, and `CutInView.tsx` cites this directory by name — the
+# sentence that was false until the pictures were committed.
+!.gauntlet/shots/cutin/
