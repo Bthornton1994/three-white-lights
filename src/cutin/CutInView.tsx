@@ -21,13 +21,35 @@
  * out, which is the tax the rule exists to remove.
  *
  * ---------------------------------------------------------------------------
- * IT IS PLACEHOLDER ART AND SAYS SO BY BEING THE LICENSING PANEL
+ * IT IS PLACEHOLDER ART, AND WHAT MAKES IT PLACEHOLDER IS THE TABLE IT READS
  * ---------------------------------------------------------------------------
  * GDD §7.2 says to cut cut-in art entirely from the early prototypes, and §11
- * records the working assumption this run applies. Nothing here is drawn for
- * the cut-in: the picture is the Tier 3 panel `src/licensing/renderPanels.ts`
- * already produces, read through §7.3's surface witness. A licensed portrait
- * later is a row in `partners.ts` and this file does not change.
+ * records the working assumption this run applies. Nothing is drawn here or in
+ * `cutInArt.ts` — `cutInArt.test.ts` reads both files and fails on an authored
+ * drawing. What arrives on screen is `renderCutIn`'s CUT-IN GRID: the Tier 3
+ * drawing `partners.ts` already holds, stamped into a cut-in-shaped composition
+ * of a ground, two rules and a well, with ONE line of Tier 3 caption under it.
+ *
+ * THE SAME WITNESS, NOT THE SAME PICTURE. `cutInArt.ts` reads the table through
+ * `tier3Of(entry, live.slot, CUT_IN_SURFACE)` — the identical §7.3 door
+ * `src/licensing/renderPanels.ts` goes through — and stamps with that module's
+ * own `drawArt`. So a licensed portrait later is still a row in `partners.ts`
+ * and this file still does not change. What it does NOT do is mount
+ * `renderPanel`: that is the character-select / shop composition, it draws all
+ * three tiers at once by design, and on the interrupt beat it printed the
+ * partner's name twice with `COMPACT BUILD` under it over a colorway strip. GDD
+ * §7.2 rules on this by name, and §7.2 also records why it was a §7.3 failure
+ * rather than an ugly frame: no row of the table could have removed that build
+ * label, so the promise that the art pass is a data change was false as written
+ * while the cut-in read the panel.
+ *
+ * SO THERE IS NO TIER 2 AND NO TIER 1 FURNITURE ON THIS SCREEN — no name tag, no
+ * colorway swatches, no build label. The one identity line is the Tier 3
+ * CAPTION, because the caption is a field of the same `Tier3Content` as the
+ * drawing and therefore follows the slot. That ruling is PER MOMENT, and the
+ * per-moment table is `CUT_IN_ART.SLOT` in `cutInTuning.ts`: point a beat at
+ * `wordmark` or `product` there and the picture and the line move together,
+ * which a name tag would not. `cutInArt.ts`'s header states the cost.
  *
  * NEAREST NEIGHBOUR ONLY (GDD §7.1), the same two ways `LicensedPanelView` and
  * `ResultCardView` do it: `FilterMode.Nearest` with mipmaps off, and a whole
@@ -43,25 +65,39 @@
  * now. `tools/capture-cutin.mjs` measures it on real frames: an overlay that
  * had gone opaque again would leave zero blended pixels behind it.
  *
- * NOT VERIFIED AS FEELING LIKE AN INTERRUPT, AND THE PIXELS ARE NOT IN THE REPO.
- * This used to say it "has now been photographed — `.gauntlet/shots/cutin/`",
- * which was true only on a machine that had just taken the photographs:
- * `.gauntlet/shots/` is gitignored, so that directory does not exist in a fresh
- * checkout or after a clean, and a reader who went looking for the evidence
- * found nothing. What is true is that the INSTRUMENT is in the repo. Run
+ * THE PIXELS ARE IN THE REPOSITORY. `.gauntlet/shots/cutin/` is committed — ten
+ * PNGs and `frames.json` — so a reader who goes looking for the evidence finds
+ * it in a fresh checkout instead of being told to take it themselves. This
+ * sentence has been wrong twice in opposite directions: it first claimed the
+ * screen "has now been photographed" while `.gauntlet/shots/` was gitignored and
+ * the directory existed on one machine, then went on denying the pictures were
+ * here after `.gitignore` was amended to keep them. What is there now:
+ *
+ *     .gauntlet/shots/cutin/baseline-no-cutin.png     `?cutin=nonsense`, no overlay
+ *     .gauntlet/shots/cutin/<moment>.png              one frozen frame per §7.2 moment
+ *     .gauntlet/shots/cutin/live-mid-hold.png         the timer running
+ *     .gauntlet/shots/cutin/live-after-auto-dismiss.png
+ *     .gauntlet/shots/cutin/live-after-tap.png        a CORNER tap, not the centre
+ *     .gauntlet/shots/cutin/played-*.png              the two played `?meet=` paths
+ *     .gauntlet/shots/cutin/frames.json               every measurement below
+ *
+ * TO REGENERATE THEM, with the instrument that is also in the repo:
  *
  *     npx expo start --web        # then, against whatever port it prints
  *     node tools/capture-cutin.mjs --url http://localhost:8081
  *
- * and `.gauntlet/shots/cutin/` is written: a `?cutin=nonsense` baseline, one
- * frozen frame per firing moment, the live auto-dismiss and corner-tap frames,
- * the two played `?meet=` paths, and `frames.json`. That run also measures what
- * a source scan cannot — the four corners hit-tested with `elementFromPoint`,
- * whether the overlay is above the screen it interrupts, and how many pixels
- * survive `SCRIM_OPACITY` — and exits non-zero if any of it is wrong.
+ * That run measures what a source scan cannot — the four corners hit-tested with
+ * `elementFromPoint`, whether the overlay is above the screen it interrupts, and
+ * how many pixels survive `SCRIM_OPACITY` — writes the answers into
+ * `frames.json`, and exits non-zero if any of it is wrong. `cutInWiring.test.ts`
+ * fails if the directory this paragraph names stops being in the tree, so the
+ * sentence cannot go stale a third time without something going red.
  *
- * Whether it READS as an interrupt is still a playtest judgement (GDD §12.1):
- * no critic can judge a beat it cannot feel, and a screenshot is not a feeling.
+ * WHAT THE PICTURES STILL DO NOT SETTLE. Whether it READS as an interrupt is a
+ * playtest judgement (GDD §12.1): no critic can judge a beat it cannot feel, and
+ * a screenshot is not a feeling. Nor do they date themselves — `frames.json`
+ * carries no `capturedFrom` the way `.gauntlet/shots/shell/route.json` does, so
+ * a reader can see what was measured but not which commit it was measured on.
  */
 
 import React from 'react';

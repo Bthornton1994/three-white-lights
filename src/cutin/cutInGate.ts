@@ -17,8 +17,11 @@
  *   entirely from the early prototypes... Placeholder rectangles until meet day
  *   is proven to land", and GDD §11 records the working assumption this run
  *   applies: cut-in ART STAYS UNBUILT. Nothing here draws a face. What the
- *   overlay shows is the placeholder Tier 3 panel `src/licensing/` already
- *   renders, read through §7.3's surface witness (see `cutInArt.ts`).
+ *   overlay shows is `cutInArt.ts`'s own cut-in-shaped composition — a ground,
+ *   two rules, a well and ONE line of Tier 3 caption — around the placeholder
+ *   Tier 3 DRAWING `src/licensing/partners.ts` already holds, read through
+ *   §7.3's surface witness. It is not the shop panel `renderPanels.ts` draws:
+ *   GDD §7.2 rules on that by name, and `cutInArt.ts` says why.
  *
  *   THE GATE — "Scarcity is the entire mechanic. Cut-ins work because they
  *   interrupt. Firing one on every set turns a 60-second daily session into a

@@ -99,18 +99,32 @@
  *      that mark, set. Printing the game's own `displayName` over a licensed
  *      lockup is the thing a partner objects to.
  *
- * THE COST: a cut-in carries no Tier 2 at all, so if a caption is ever left
- * looser than a name — a product line rather than a person — the interrupt
- * identifies by picture and product rather than by name. That is a judgement
- * about a surface nobody has seen with real art on it, and it is one line to
- * change here if a human disagrees.
+ * THE COST IS TWO THINGS, AND THE SECOND IS EASY TO MISS.
+ *
+ *   - IDENTIFICATION. A cut-in carries no Tier 2 at all, so if a caption is ever
+ *     left looser than a name — a product line rather than a person — the
+ *     interrupt identifies by picture and product rather than by name.
+ *   - THE SHORT NAME. `tier2.shortName` is the panel's overflow remedy: when a
+ *     `displayName` is wider than the panel's inner width, `renderPanel` prints
+ *     the short form instead (see its name-tag block). A cut-in has no Tier 2,
+ *     so it has no short form to fall back on, and its substitute is
+ *     `CUT_IN_PANEL.CAPTION_LINES` of wrapping and then visible overflow — plus
+ *     a grid that widens to hold what still does not fit, which lowers the
+ *     on-screen upscale `cutInScaleFor` can pick. So a very long licensed
+ *     caption costs the interrupt SIZE where it would only have cost the shelf a
+ *     shorter string. Neither surface truncates; that part is deliberate on both.
+ *
+ * Both are judgements about a surface nobody has seen with real art on it, and
+ * the first is one line to change here if a human disagrees. The second is a
+ * missing field, not a line: a `shortCaption` on `Tier3Content` is what it would
+ * take, and nothing needs one yet.
  */
 
 import { createGrid, fillRect, type IndexGrid } from '../art/raster';
 import { FONT, drawText, measureText } from '../card/pixelFont';
 import { SHEET } from '../card/sheetPalette';
 import type { LicensingCatalogue } from '../licensing/catalogue';
-import { drawArt, wrapToWidth } from '../licensing/renderPanels';
+import { artScaleFor, artSize, drawArt, wrapToWidth } from '../licensing/renderPanels';
 import type { IdentityEntry, Tier3Art, Tier3Surface } from '../licensing/tiers';
 import { isTier3Surface, tier3Of } from '../licensing/tiers';
 import type { LiveCutIn } from './cutInGate';
@@ -142,13 +156,15 @@ export function cutInIdentity(catalogue: LicensingCatalogue, identityId: string)
   return entry;
 }
 
-/** How many columns and rows a Tier 3 drawing occupies at 1x. */
-function artSize(art: Tier3Art): { readonly w: number; readonly h: number } {
-  return { w: art.rows[0]?.length ?? 0, h: art.rows.length };
-}
-
 /**
  * The largest WHOLE-NUMBER upscale at which a drawing fits the cut-in's well.
+ *
+ * `artScaleFor` IS THE LICENSING MODULE'S OWN, called with this surface's
+ * ceiling. It used to be a copy of that function differing only in which
+ * `ART_MAX_SCALE` it capped at, which is two chances for a licensed portrait to
+ * be sized differently on two surfaces; `artScaleFor` took a defaulted
+ * `maxScale` for the same reason `wrapToWidth` took a defaulted `maxLines`, and
+ * the panel's own calls are unchanged.
  *
  * Floors at 1 and never interpolates (GDD §7.1). A drawing too big for the well
  * sits at 1x and the WELL GROWS to hold it — see `renderCutIn` — rather than the
@@ -157,12 +173,7 @@ function artSize(art: Tier3Art): { readonly w: number; readonly h: number } {
  * notices".
  */
 function cutInArtScale(art: Tier3Art, wellW: number, wellH: number): number {
-  const { w, h } = artSize(art);
-  if (w === 0 || h === 0) return 1;
-  return Math.max(
-    1,
-    Math.min(CUT_IN_PANEL.ART_MAX_SCALE, Math.floor(wellW / w), Math.floor(wellH / h)),
-  );
+  return artScaleFor(art, wellW, wellH, CUT_IN_PANEL.ART_MAX_SCALE);
 }
 
 /**

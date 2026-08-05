@@ -86,8 +86,10 @@
  * screen below it does not show would be the same class of lie as showing a
  * projection as confirmed.
  *
- * There is still no cut-in ART (§7.2, GDD §11): what mounts is the placeholder
- * Tier 3 panel the licensing system already renders.
+ * There is still no cut-in ART (§7.2, GDD §11): what mounts is `cutInArt.ts`'s
+ * own composition around the placeholder Tier 3 DRAWING the licensing table
+ * already holds, read through §7.3's surface witness. It is not the shop panel:
+ * GDD §7.2 rules on that by name.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
