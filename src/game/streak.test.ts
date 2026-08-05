@@ -45,7 +45,9 @@ import {
 import * as streakModule from './streak';
 import {
   RECOVERY_ENTITLEMENT,
+  coveredDaysAvailable,
   freshEntitlement,
+  windowStartDay,
   type EntitlementState,
 } from './streakEntitlement';
 import {
@@ -210,6 +212,30 @@ function unprotectedStateWithRun(streakLength: number, lastDay: StreakDay, balan
 
 function clone(state: StreakState): StreakState {
   return { ...state };
+}
+
+/**
+ * COVERAGE THE WINDOW `day` FALLS IN HAS AVAILABLE TO THIS STATE — the quantity
+ * "reported, never silent" is a statement about, and the one a session's
+ * arithmetic is closed over.
+ *
+ * THREE READINGS EXIST AND ONLY THIS ONE BALANCES THE BOOKS. `coveredDays
+ * LeftInWindow` reports the SNAPSHOT, which is stale the moment the window
+ * turns over, so a session on the first day of a new window looks like a silent
+ * credit against it. `coveredDaysArmed` reports what the ABSENCE MAY DRAW,
+ * which is 0 for a lifter who has declined protection in settings — so a
+ * session of theirs looks like a silent credit of the entire window against
+ * that. This reads what the DAY has, regardless of arming, which is exactly
+ * what `recordTrainingDay` starts from: `afterSession` refreshes the window
+ * first and then subtracts what the outcome reported.
+ *
+ * An earlier version of the sweeps below used `coveredDaysArmed` here, and the
+ * protection-declined sweeps failed on it with "coverage moved by -2, reported
+ * 0" — a false alarm, but a false alarm produced by the invariant being written
+ * about the wrong number.
+ */
+function coverageAvailableOn(state: StreakState, day: StreakDay): number {
+  return coveredDaysAvailable(RECOVERY_ENTITLEMENT, state.entitlement, entitlementWindowFor(state, day));
 }
 
 /** Deterministic PRNG (mulberry32) so the property sweeps are reproducible. */
@@ -2137,11 +2163,15 @@ function simulate(
     void grantSize;
     if (opensOn(opens, i, attend[i] === true)) state = open(state, day, true);
     if (attend[i] === true) {
-      // WHAT IS AVAILABLE ON THIS DAY, not what the snapshot happened to hold.
-      // The entitlement refreshes at a window boundary, so a session on the
-      // first day of a new window legitimately starts from a full window — and
-      // an invariant that read the snapshot would call that a silent credit.
-      const before = coveredDaysArmed(state, day);
+      // WHAT THE DAY HAS AVAILABLE — see `coverageAvailableOn` for why it is
+      // neither the snapshot nor the armed count. The entitlement refreshes at
+      // a window boundary, so a session on the first day of a new window
+      // legitimately starts from a full window and an invariant written against
+      // the snapshot would call that a silent credit; and a lifter who has
+      // declined protection still HAS their window, they simply cannot draw on
+      // it, so an invariant written against the armed count would call their
+      // every session a silent credit of the whole thing.
+      const before = coverageAvailableOn(state, day);
       const outcome = unwrap(recordTrainingDay(state, day));
       // Local invariants, checked on every recorded session in every simulation
       // in this file. A bare throw rather than `expect`: the exhaustive sweeps
@@ -2175,8 +2205,15 @@ function simulate(
       if (lost > 0 && !outcome.previousRunEnded) {
         throw new Error(`day ${i}: a LOSS was reported for an absence that did not end a run`);
       }
-      if ((coveredDaysArmed(outcome.state, TODAY_FOR_READS) ?? 0) > coveredDaysLeftInWindow(outcome.state)) {
-        throw new Error(`day ${i}: armed ${coveredDaysArmed(outcome.state, TODAY_FOR_READS)} exceeds the balance`);
+      // WHAT IS ARMED IS NEVER MORE THAN WHAT EXISTS, read on the day of the
+      // session rather than at a fixed day: a state whose window has turned
+      // over reads a full window on its own day and a stale snapshot on
+      // DAY_ZERO, so the fixed-day version of this check compared two different
+      // windows and could not fail.
+      if (coveredDaysArmed(outcome.state, day) > coverageAvailableOn(outcome.state, day)) {
+        throw new Error(
+          `day ${i}: armed ${coveredDaysArmed(outcome.state, day)} exceeds the ${coverageAvailableOn(outcome.state, day)} the window has`,
+        );
       }
       if (outcome.streakAfter < 1) throw new Error(`day ${i}: streak ${outcome.streakAfter}`);
       spent += debited;
@@ -3660,21 +3697,24 @@ describe('daily engagement is never worse than skipping — where that holds, an
             const lost = outcome.recoveryDaysLostToTheAbsence;
             sessionsChecked += 1;
 
-            // (1) NOTHING MOVES UNREPORTED. The balance after is exactly the
-            // balance before, minus what was reported, plus what was granted.
+            // (1) NOTHING MOVES UNREPORTED. What the window holds after the
+            // session is exactly what THE DAY had available, minus what was
+            // reported, plus what was granted. `coverageAvailableOn` rather
+            // than the snapshot or the armed count — see its comment for why
+            // the other two readings do not balance.
             expect(coveredDaysLeftInWindow(outcome.state)).toBe(
-              coveredDaysLeftInWindow(before) - (saved + lost) + outcome.recoveryDaysGranted,
+              coverageAvailableOn(before, day) - (saved + lost) + outcome.recoveryDaysGranted,
             );
             if (
               coveredDaysLeftInWindow(outcome.state) - outcome.recoveryDaysGranted <
-              coveredDaysLeftInWindow(before)
+              coverageAvailableOn(before, day)
             ) {
               expect(saved + lost).toBeGreaterThan(0);
             }
 
             // (2) ONE KIND OR THE OTHER, NEVER BOTH, AND THE RIGHT ONE.
             expect(saved > 0 && lost > 0).toBe(false);
-            expect(lost > 0).toBe(outcome.previousRunEnded && (coveredDaysArmed(before, TODAY_FOR_READS) ?? 0) > 0);
+            expect(lost > 0).toBe(outcome.previousRunEnded && coveredDaysArmed(before, day) > 0);
             expect(saved > 0).toBe(!outcome.previousRunEnded && outcome.recoveryDaySave !== null);
 
             if (saved > 0) savesSeen += 1;
