@@ -443,6 +443,9 @@ export function ruleFor(relPath: string): SourceRule {
 // Stripping comments, strings, templates and regexes
 // ---------------------------------------------------------------------------
 
+/** The one line break in this module. Every blanking pass preserves it. */
+const LINE_BREAK = '\n';
+
 const REGEX_PRECEDERS: ReadonlySet<string> = new Set([
   '',
   '(',
@@ -488,10 +491,44 @@ const WHITESPACE = /\s/;
 const WORD_CHAR = /[\w$]/;
 
 /**
- * Blank out everything that is not executable code, PRESERVING OFFSETS so line
- * and column numbers survive. `codeOnly(s).length === s.length` always, which
- * `audit.test.ts` asserts against every real file in the tree — a scanner bug
- * that eats code would otherwise make the whole audit quietly vacuous.
+ * WHERE ONE COMMENT SITS. Half-open, in UTF-16 code units, and it covers the
+ * delimiters too: `/*` … `*` + `/` for a block, `//` to the newline (exclusive)
+ * for a line.
+ */
+export interface CommentRange {
+  /** 0-based, inclusive. */
+  readonly from: number;
+  /** 0-based, exclusive. */
+  readonly to: number;
+}
+
+interface ScanResult {
+  /** `codeOnly`'s answer: everything that is not executable code, blanked. */
+  readonly masked: string;
+  /** Every comment in the file, in source order, non-overlapping. */
+  readonly comments: readonly CommentRange[];
+}
+
+/**
+ * THE ONE LEXICAL WALK. `codeOnly`, `withoutComments` and `onlyComments` are
+ * all three views of this single pass, so they cannot disagree about where a
+ * comment is — they are reading the same answer.
+ *
+ * They used to disagree, and that is why this exists. `withoutComments` and
+ * `onlyComments` were regex substitutions: a block-comment pass, then a
+ * line-comment pass over its output. Substitution cannot express "a `/*` inside
+ * a line comment is prose", because by the time the line pass runs the block
+ * pass has already opened a comment there and eaten the `//` that would have
+ * told it. `` `**\/*` `` in a note about a glob lost 58 characters of real prose
+ * out of BOTH halves; `` `src/shell/**` `` in a different file, by a different
+ * author, in the same week, lost 37 more. Two independent authors tripped it
+ * without trying, which is what makes it a defect in the approach rather than a
+ * quirk of a file. A scan knows what context it is in; a substitution never can.
+ *
+ * OFFSETS ARE PRESERVED, so line and column numbers survive:
+ * `codeOnly(s).length === s.length` always, which `audit.test.ts` asserts
+ * against every real file in the tree — a scanner bug that eats code would
+ * otherwise make the whole audit quietly vacuous.
  *
  * Hand-written rather than regex-chained, because the regex version this
  * replaces (duplicated in `liftTuning.test.ts` and `sessionTuning.test.ts`)
@@ -508,9 +545,17 @@ const WORD_CHAR = /[\w$]/;
  * almost always the end of a JSX expression container), and `/>` never starts
  * one (it is a self-closing tag). Without those, `<A x={0} /> <B y={1} />` on
  * one line has its middle eaten as a regex body.
+ *
+ * HAND-WRITTEN IS ALSO THE POINT, not a shortcut. `audit.test.ts` checks this
+ * walk's comment ranges against `typescript`'s own parser over every file in
+ * the tree. That check is only worth running while the two are DIFFERENT
+ * implementations: building this on `ts.createSourceFile` would make the oracle
+ * compare the parser to itself and the strongest assertion in that file would
+ * quietly become `expect(x).toEqual(x)`.
  */
-export function codeOnly(source: string): string {
+function scanSource(source: string): ScanResult {
   const out: string[] = [];
+  const comments: CommentRange[] = [];
   const n = source.length;
   /** Brace depths at which an open `${` is waiting for its template. */
   const templateStack: number[] = [];
@@ -580,14 +625,21 @@ export function codeOnly(source: string): string {
     const next = source[i + 1] ?? '';
 
     // --- comments ---------------------------------------------------------
+    // Reached ONLY from code context. A `/*` inside a string, a template's
+    // text, a regex body or an already-open comment never gets here, which is
+    // the whole difference between this and the substitution it replaces.
     if (ch === '/' && next === '*') {
       const end = source.indexOf('*/', i);
+      const from = i;
       blankTo(end === -1 ? n : end + '*/'.length);
+      comments.push({ from, to: i });
       continue;
     }
     if (ch === '/' && next === '/') {
       const end = source.indexOf('\n', i);
+      const from = i;
       blankTo(end === -1 ? n : end);
+      comments.push({ from, to: i });
       continue;
     }
 
@@ -709,7 +761,21 @@ export function codeOnly(source: string): string {
     i += 1;
   }
 
-  return out.join('');
+  return { masked: out.join(''), comments };
+}
+
+/**
+ * Blank out everything that is not executable code, preserving offsets.
+ *
+ * See `scanSource` for what it does and why it is written the way it is.
+ */
+export function codeOnly(source: string): string {
+  return scanSource(source).masked;
+}
+
+/** Where every comment in `source` sits, in source order. */
+export function commentRanges(source: string): readonly CommentRange[] {
+  return scanSource(source).comments;
 }
 
 // ---------------------------------------------------------------------------
@@ -902,15 +968,24 @@ export function isStructuralIdiom(code: string, index: number, text: string): bo
  * which is why the numeric scan and this one cannot share an input.
  */
 const COLOUR_LITERAL = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b|\brgba?\s*\(/g;
-const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//g;
-const LINE_COMMENT = /(^|[^:])\/\/[^\n]*/g;
-const NON_NEWLINE = /[^\n]/g;
 
-/** `codeOnly`, but keeping string contents. Comments still go. */
+/** A blank that keeps the line structure: everything but a newline goes. */
+function blankChar(ch: string | undefined): string {
+  return ch === LINE_BREAK ? LINE_BREAK : ' ';
+}
+
+/**
+ * `codeOnly`, but keeping string contents. Comments still go.
+ *
+ * Split by UTF-16 code unit rather than by code point, so an astral character
+ * anywhere in the file cannot shift every index after it.
+ */
 export function withoutComments(source: string): string {
-  return source
-    .replace(BLOCK_COMMENT, (m) => m.replace(NON_NEWLINE, ' '))
-    .replace(LINE_COMMENT, (m, keep: string) => keep + ' '.repeat(m.length - keep.length));
+  const out = source.split('');
+  for (const { from, to } of commentRanges(source)) {
+    for (let i = from; i < to; i += 1) out[i] = blankChar(out[i]);
+  }
+  return out.join('');
 }
 
 /**
@@ -927,26 +1002,20 @@ export function withoutComments(source: string): string {
  * so a match index in the output is a real line number in the file. Code is
  * blanked to spaces rather than removed.
  *
- * BLOCK COMMENTS FIRST, then line comments on what the block pass left behind —
- * the same order and the same reason as `withoutComments`. A double slash inside
- * a block comment is prose, not a second comment, and a `://` in a URL is
- * neither (`LINE_COMMENT` refuses a preceding colon).
- *
- * WHAT IT CANNOT DO, stated rather than discovered: a `//` inside a STRING
- * LITERAL is read as a comment and its tail is kept. That is the same blind spot
- * `withoutComments` has from the other side — it blanks the same tail — and both
- * inherit it from doing this with regular expressions instead of a parser.
+ * THE PAIR PARTITIONS THE FILE BY CONSTRUCTION, character for character, on any
+ * input at all: both read the same `commentRanges`, one keeps what the other
+ * blanks, and neither can reach a character the scan did not classify. That is
+ * not a property the previous implementation could state. It applied two
+ * regular expressions in two passes and a `/*` written inside a LINE comment —
+ * ordinary technical prose, a glob or a path — opened a block the line pass then
+ * never saw, dropping the text out of both halves at once. `cutInWiring.test.ts`
+ * bans a specific false architectural claim from this stream, so that blind spot
+ * was a hole in a guard, shaped exactly like the prose the guard reads.
  */
 export function onlyComments(source: string): string {
-  const out = [...source.replace(NON_NEWLINE, ' ')];
-  const paste = (text: string, at: number): void => {
-    for (let i = 0; i < text.length; i += 1) out[at + i] = text[i] ?? ' ';
-  };
-  for (const match of source.matchAll(BLOCK_COMMENT)) paste(match[0], match.index);
-  const blocksGone = source.replace(BLOCK_COMMENT, (m) => m.replace(NON_NEWLINE, ' '));
-  for (const match of blocksGone.matchAll(LINE_COMMENT)) {
-    const skip = (match[1] ?? '').length;
-    paste(match[0].slice(skip), match.index + skip);
+  const out = source.split('').map(blankChar);
+  for (const { from, to } of commentRanges(source)) {
+    for (let i = from; i < to; i += 1) out[i] = source.charAt(i);
   }
   return out.join('');
 }
@@ -955,12 +1024,10 @@ export function onlyComments(source: string): string {
 // The audit
 // ---------------------------------------------------------------------------
 
-const NEWLINE = '\n';
-
 function lineColumn(text: string, index: number): { line: number; column: number } {
   const upto = text.slice(0, index);
-  const lastBreak = upto.lastIndexOf(NEWLINE);
-  return { line: upto.split(NEWLINE).length, column: index - lastBreak };
+  const lastBreak = upto.lastIndexOf(LINE_BREAK);
+  return { line: upto.split(LINE_BREAK).length, column: index - lastBreak };
 }
 
 const RENDERER_ADVICE =

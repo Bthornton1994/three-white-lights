@@ -533,53 +533,147 @@ describe('the allowlist is not a sieve', () => {
     expect(auditSource('src/session/Fake.tsx', "const u = 'docs.md#section';")).toEqual([]);
   });
 
-  it('`onlyComments` and `withoutComments` agree with each other — A CONSISTENCY CHECK, NOT A CORRECTNESS ONE', () => {
-    // WHAT THIS DOES AND DOES NOT SHOW, said plainly because it used to be read
-    // as more than it is. Both functions apply the SAME two regular expressions
-    // in the SAME order, so "exactly one of them holds each character" is close
-    // to true by construction: it can only fail where the two passes disagree
-    // about their own output, and on a hand-written sample it does not. It says
-    // nothing about whether either function's notion of "a comment" is RIGHT.
-    //
-    // The check below it is the correctness half, and it is the one that found
-    // a real file where this property does not hold.
-    const sample = [
-      "const a = 1; // a trailing note about #1c2230",
-      '/* a block',
-      ' * over lines, containing // a slash pair',
-      ' */',
-      "const url = 'https://example.invalid/x';",
-      'function f(): void {} // done',
-    ].join('\n');
-    const code = withoutComments(sample);
-    const comments = onlyComments(sample);
-    expect(code.length).toBe(sample.length);
-    expect(comments.length).toBe(sample.length);
-    for (let i = 0; i < sample.length; i += 1) {
-      const ch = sample[i];
-      if (ch === '\n' || ch === ' ') continue;
+  /**
+   * Every character of `source` is in exactly one of the two halves. Returns
+   * the positions where that fails, with enough context to read the failure.
+   */
+  const partitionFailures = (label: string, source: string): readonly string[] => {
+    const code = withoutComments(source);
+    const comments = onlyComments(source);
+    const out: string[] = [];
+    if (code.length !== source.length) out.push(`${label}: withoutComments changed the length`);
+    if (comments.length !== source.length) out.push(`${label}: onlyComments changed the length`);
+    for (let i = 0; i < source.length; i += 1) {
+      const ch = source[i];
+      if (ch === undefined || ch === '\n' || ch === ' ') continue;
       const inCode = code[i] === ch;
       const inComments = comments[i] === ch;
-      expect(inCode !== inComments, `position ${i} (${ch}) is in both halves or neither`).toBe(true);
+      if (inCode !== inComments) continue;
+      out.push(
+        `${label}@${i} (${JSON.stringify(ch)}) is in ${inCode ? 'BOTH halves' : 'NEITHER half'}: ` +
+          JSON.stringify(source.slice(Math.max(0, i - 50), i + 30)),
+      );
+    }
+    return out;
+  };
+
+  it('`onlyComments` and `withoutComments` PARTITION EVERY REAL FILE, character for character', () => {
+    // THE TREE, NOT A SAMPLE, and that change is the point. This used to run on
+    // six hand-written lines and it said so: both functions applied the SAME two
+    // regular expressions in the SAME order, so "exactly one half holds each
+    // character" was nearly true by construction on anything the author thought
+    // to write down. It was FALSE on two real files in this repository, and a
+    // sample could never have found them — the shape that breaks a substitution
+    // is ordinary technical prose (a glob, a path) that nobody writes into a
+    // fixture because nobody thinks of it as a hard case.
+    //
+    // It is now true by construction for a different and much stronger reason:
+    // both functions read the same `commentRanges` from one scan, one keeping
+    // what the other blanks. Running it over the whole tree anyway is what
+    // proves the scan terminates and stays in range on every file that exists,
+    // which construction does not give you.
+    const files = everyTypeScriptFileUnder();
+    expect(files.length, 'the walk found almost nothing').toBeGreaterThan(50);
+    let charactersChecked = 0;
+    const failures: string[] = [];
+    for (const rel of files) {
+      const source = read(rel);
+      charactersChecked += source.length;
+      failures.push(...partitionFailures(rel, source));
+    }
+    // Non-vacuity: a walk that returned empty files would report no failures.
+    expect(charactersChecked, 'the files read were empty').toBeGreaterThan(1_000_000);
+    expect(failures.slice(0, 20)).toEqual([]);
+  });
+
+  /**
+   * THE SHAPE THAT BROKE THE OLD PAIR, kept as a fixture that cannot go stale.
+   *
+   * Lines 2, 4 and 5 are the two real cases, reduced: a LINE comment containing
+   * `` `**\/*` `` and one containing `` `src/shell/**` ``. Both contain a `/*`,
+   * both are prose about a path, and neither opens anything. A substitution
+   * cannot know that — its block pass runs first, opens a comment inside the
+   * line comment, and the line pass afterwards has no `//` left to work from.
+   *
+   * THE BACKSLASH IN THAT FIRST GLOB IS NOT DECORATION. Written plainly it
+   * contains a `*` followed by a `/`, which really does end this block comment —
+   * that one is the language, not a scanner defect, and it is why the fixture
+   * itself is a STRING and not prose.
+   *
+   * The rest is the other half of the same question: a `//` inside a string, a
+   * regex made of slashes, a `//` inside a template's text, and a real block
+   * comment whose `*` + `/` is what the fake block above latches onto.
+   */
+  const THE_SHAPE_THAT_BROKE_IT: string = [
+    'const before = 1;',
+    '// A glob in prose: `**/*` — a path pattern, not a comment opener.',
+    'const between = 2;',
+    '// And `**/*.ts` again, where the tail of this line used to go missing.',
+    '// A second one: `src/shell/**` belonged to another builder in the wave.',
+    '/* A real block comment. */',
+    "const url = 'https://example.invalid/x'; // a real trailing note",
+    "const slashy = 'a // b'; // and a slash pair inside a string is not one",
+    'const rx = /[/]+/; // a regex made of slashes',
+    'const t = `a ${before} // not a comment`; // but this one is',
+    'const after = 3;',
+  ].join('\n');
+
+  it('A LINE COMMENT CONTAINING `/*` KEEPS ALL ITS PROSE — the bug this pair was rewritten for', () => {
+    expect(partitionFailures('the shape', THE_SHAPE_THAT_BROKE_IT)).toEqual([]);
+
+    // Not just partitioned — the prose is really in the prose half, all of it.
+    const comments = onlyComments(THE_SHAPE_THAT_BROKE_IT);
+    for (const phrase of [
+      'A glob in prose: `**/*` — a path pattern, not a comment opener.',
+      'And `**/*.ts` again, where the tail of this line used to go missing.',
+      'A second one: `src/shell/**` belonged to another builder in the wave.',
+      'A real block comment.',
+      'a real trailing note',
+      'and a slash pair inside a string is not one',
+      'a regex made of slashes',
+      'but this one is',
+    ]) {
+      expect(comments, `the prose half lost: ${phrase}`).toContain(phrase);
+    }
+
+    // ...and the code is really in the code half, none of it in the prose half.
+    const code = withoutComments(THE_SHAPE_THAT_BROKE_IT);
+    for (const fragment of [
+      'const before = 1;',
+      'const between = 2;',
+      "const url = 'https://example.invalid/x';",
+      "const slashy = 'a // b';",
+      'const rx = /[/]+/;',
+      'const t = `a ${before} // not a comment`;',
+      'const after = 3;',
+    ]) {
+      expect(code, `the code half lost: ${fragment}`).toContain(fragment);
+      expect(comments, `the prose half claimed code: ${fragment}`).not.toContain(fragment);
     }
   });
 
   /**
    * THE CORRECTNESS HALF: A REAL PARSER SAYS WHERE THE COMMENTS ARE.
    *
-   * The consistency check above compares the pair against itself. This one
-   * compares `onlyComments` against `typescript`'s own parser — a different
-   * implementation, by different people, that has to be right for the compiler
-   * to work — over every `.ts` and `.tsx` file under `src/`. It is the first
-   * check in this file that could tell the pair being WRONG from the pair being
-   * CONSISTENT, and on the first run it found both a bound and a bug.
+   * The partition check above compares the pair against itself, and after the
+   * rewrite it can only ever pass — both halves read one scan. This one compares
+   * the scan against `typescript`'s own parser: a different implementation, by
+   * different people, that has to be right for the compiler to work. It is the
+   * only check in this file that can tell the pair being WRONG from the pair
+   * being CONSISTENT, and it found the bug the pair was rewritten for.
    *
-   * WHY THE PARSER AND NOT THE SCANNER. `ts.createScanner` is context-free and
-   * desynchronises on `${}` inside a template literal, after which it reports
-   * six kilobytes of one file as a single template token and every comment
-   * inside that range disappears. Measured, not assumed: 92 of 169 files
-   * "diverged" against the scanner and every one of those divergences was the
-   * oracle's fault. The parser handles JSX text and template substitution
+   * WHY `audit.ts` MUST NOT USE THE PARSER ITSELF. It would be less code, and it
+   * would make this check worthless: the oracle would be comparing the parser to
+   * the parser, and the strongest assertion in this file would quietly become
+   * `expect(x).toEqual(x)`. The implementation is deliberately a hand-written
+   * scan so that this stays a comparison of two independent answers.
+   *
+   * WHY THE PARSER AND NOT THE SCANNER, on this side. `ts.createScanner` is
+   * context-free and desynchronises on `${}` inside a template literal, after
+   * which it reports six kilobytes of one file as a single template token and
+   * every comment inside that range disappears. Measured, not assumed: 92 of 169
+   * files "diverged" against the scanner and every one of those divergences was
+   * the oracle's fault. The parser handles JSX text and template substitution
    * because it must.
    *
    * EVERY COMMENT IS IN THE LEADING TRIVIA OF EXACTLY ONE TOKEN — or, for one
@@ -588,40 +682,46 @@ describe('the allowlist is not a sieve', () => {
    * `forEachLeadingCommentRange` alone silently drops end-of-line comments,
    * which is worth 44 false divergences.
    */
-  const THE_PARSER_DISAGREES_HERE: readonly (readonly [string, number, string])[] = [
-    [
-      'src/game/progression.test.ts',
-      58,
-      'A LINE comment containing the glob `**/*`. The block-comment pass runs FIRST and by design ' +
-        '(a `//` inside a block comment is prose, not a second comment) — but a `/*` inside a LINE ' +
-        'comment is prose too, and this pass does not know that. It opens a block there, and the ' +
-        'line-comment pass afterwards no longer sees a `//` to work from. 58 characters of real ' +
-        'prose end up in NEITHER half, which is also the one place in the tree where the ' +
-        'consistency check above would fail if it were run on real files instead of a sample. ' +
-        'Fixing it means scanning rather than substituting, which is `src/tuning/`s call to make, ' +
-        'and until then this row is what stops the pair claiming a completeness it has not got.',
-    ],
-    [
-      'src/shell/shellWiring.test.ts',
-      37,
-      'THE SAME BUG, FOUND A SECOND TIME, IN A FILE WRITTEN IN PARALLEL WITH THE CHECK THAT ' +
-        'CAUGHT IT. A line comment containing `src/shell/**` — the `/**` opens a block the ' +
-        'line-comment pass then never gets to close. Recorded rather than dodged: the one-line ' +
-        'fix is to reword that comment so it contains no `/*`, and rewording prose to avoid a ' +
-        'scanner defect is how the defect stops being visible without stopping being real. Two ' +
-        'independent authors have now tripped it without trying, which is the argument that it is ' +
-        'a bug in the scanner and not a quirk of one file — the substitution approach cannot be ' +
-        'made right by adding rows here, and the rows exist to say so out loud until it is.',
-    ],
-  ];
+  interface Divergence {
+    readonly filesRead: number;
+    /** Characters the parser calls comment and the stream does not, per file. */
+    readonly missedPerFile: ReadonlyMap<string, number>;
+    /** Characters the stream calls comment and the parser does not, per file. */
+    readonly overClaimedPerFile: ReadonlyMap<string, number>;
+    /** Characters both call comment. The number that makes the rest mean something. */
+    readonly agreed: number;
+    /** One readable line per over-claimed RUN, for the failure message. */
+    readonly overClaims: readonly string[];
+  }
 
-  it('AND A REAL PARSER AGREES ABOUT WHERE THE COMMENTS ARE — except here', () => {
+  /**
+   * Compare a comment stream against the parser, over a list of real files.
+   *
+   * LIFTED OUT OF THE TEST ON PURPOSE. The list of known divergences below is
+   * now EMPTY, and a check that iterates a list of problems passes trivially
+   * when the list is empty — this run has been bitten by exactly that three
+   * times. Making the comparison a function means it can be pointed at a stream
+   * that is KNOWN to be wrong, and the test can assert that it says so. That is
+   * the only way an empty list is evidence rather than silence.
+   *
+   * COUNTED IN CHARACTERS AS WELL AS RUNS, which the version this replaces did
+   * not do, and the difference was hiding most of the defect. Runs merge: a run
+   * whose first character follows a newline that was itself over-claimed never
+   * gets counted at all, because the newline is skipped as whitespace before the
+   * run test runs. The old pair scored 54 RUNS in this tree and 26,734
+   * CHARACTERS, 20,612 of them in one file — real code, handed to the cut-in
+   * prose ban as prose, by a counter that reported everything was accounted for.
+   */
+  function compareToParser(
+    commentStream: (source: string) => string,
+    files: readonly string[],
+  ): Divergence {
     const missedPerFile = new Map<string, number>();
-    let overClaimedRuns = 0;
-    let filesRead = 0;
+    const overClaimedPerFile = new Map<string, number>();
+    const overClaims: string[] = [];
+    let agreed = 0;
 
-    for (const rel of everyTypeScriptFileUnder()) {
-      filesRead += 1;
+    for (const rel of files) {
       const source = read(rel);
       const sourceFile = ts.createSourceFile(
         rel.endsWith('.tsx') ? 'probe.tsx' : 'probe.ts',
@@ -630,47 +730,106 @@ describe('the allowlist is not a sieve', () => {
         true,
       );
       const isComment = parserCommentMask(sourceFile, source);
-      const comments = onlyComments(source);
+      const comments = commentStream(source);
       for (let i = 0; i < source.length; i += 1) {
         const ch = source[i];
-        if (ch === '\n' || ch === ' ') continue;
+        if (ch === undefined || ch === '\n' || ch === ' ') continue;
         const mineSaysComment = comments[i] === ch;
-        if (isComment[i] && !mineSaysComment) {
+        if (isComment[i] === true && mineSaysComment) agreed += 1;
+        if (isComment[i] === true && !mineSaysComment) {
           missedPerFile.set(rel, (missedPerFile.get(rel) ?? 0) + 1);
         }
-        if (!isComment[i] && mineSaysComment) {
+        if (isComment[i] !== true && mineSaysComment) {
+          overClaimedPerFile.set(rel, (overClaimedPerFile.get(rel) ?? 0) + 1);
           const previous = source[i - 1];
-          const continues = previous !== undefined && comments[i - 1] === previous && !isComment[i - 1];
+          const continues =
+            previous !== undefined && comments[i - 1] === previous && isComment[i - 1] !== true;
           if (continues) continue;
-          overClaimedRuns += 1;
-          // WHERE THE OVER-CLAIM STARTS IS THE WHOLE STATEMENT OF THE BLIND
-          // SPOT. `onlyComments`'s header says a `//` inside a STRING LITERAL is
-          // read as a comment; this asserts that is the ONLY way it over-claims,
-          // rather than taking the header's word for it. 54 runs in the tree,
-          // and every one starts inside a string, a regular expression or a
-          // template head.
           const kind = ts.SyntaxKind[tokenKindAt(sourceFile, i)];
-          expect(
-            ['StringLiteral', 'RegularExpressionLiteral', 'TemplateHead'],
-            `${rel}@${i}: over-claimed prose starting in a ${kind}, which is not the documented ` +
-              `blind spot: ${JSON.stringify(source.slice(Math.max(0, i - 60), i + 30))}`,
-          ).toContain(kind);
+          overClaims.push(
+            `${rel}@${i}: code read as prose, starting in a ${kind}: ` +
+              JSON.stringify(source.slice(Math.max(0, i - 60), i + 30)),
+          );
         }
       }
     }
+    return { filesRead: files.length, missedPerFile, overClaimedPerFile, agreed, overClaims };
+  }
 
-    // Non-vacuity, three ways: the walk found files, the oracle found comments
-    // to disagree about, and the blind spot really is exercised by this tree.
-    expect(filesRead, 'the walk found almost nothing').toBeGreaterThan(50);
-    expect(overClaimedRuns, 'nothing over-claims — the oracle has stopped working').toBeGreaterThan(
-      0,
+  /**
+   * THE SUBSTITUTION THIS PAIR REPLACED, kept as a KNOWN-WRONG STREAM.
+   *
+   * Verbatim off the commit that carried it — the block-comment pass, then the
+   * line-comment pass over its output. It is here for one job: to be fed to
+   * `compareToParser` so that the empty divergence list below is a measurement
+   * and not an empty loop. Deleting it silently makes two assertions vacuous,
+   * which is why they name it.
+   */
+  const OLD_BLOCK_COMMENT = /\/\*[\s\S]*?\*\//g;
+  const OLD_LINE_COMMENT = /(^|[^:])\/\/[^\n]*/g;
+  const OLD_NON_NEWLINE = /[^\n]/g;
+
+  function theSubstitutionThisReplaced(source: string): string {
+    const out = [...source.replace(OLD_NON_NEWLINE, ' ')];
+    const paste = (text: string, at: number): void => {
+      for (let i = 0; i < text.length; i += 1) out[at + i] = text[i] ?? ' ';
+    };
+    for (const match of source.matchAll(OLD_BLOCK_COMMENT)) paste(match[0], match.index);
+    const blocksGone = source.replace(OLD_BLOCK_COMMENT, (m) => m.replace(OLD_NON_NEWLINE, ' '));
+    for (const match of blocksGone.matchAll(OLD_LINE_COMMENT)) {
+      const skip = (match[1] ?? '').length;
+      paste(match[0].slice(skip), match.index + skip);
+    }
+    return out.join('');
+  }
+
+  /**
+   * FILES WHERE THE PARSER AND THIS SCAN DISAGREE. EMPTY, AND IT HAS TO STAY SO.
+   *
+   * It held two rows, both the same defect found twice by two authors who were
+   * not looking for it: `src/game/progression.test.ts` lost 58 characters of
+   * real prose out of BOTH halves to a line comment containing `` `**\/*` ``,
+   * and `src/shell/shellWiring.test.ts` lost 37 to one containing
+   * `` `src/shell/**` ``. They were rows in a debt list rather than a fix, and
+   * the debt list said so: "the substitution approach cannot be made right by
+   * adding rows here".
+   *
+   * It was not made right by adding rows. `audit.ts` scans now, and a `/*`
+   * inside a line comment is prose, because the scan knows it is already inside
+   * a comment when it gets there.
+   *
+   * AN EMPTY LIST MUST NOT MAKE THE CHECK VACUOUS. The test below reads it in
+   * both directions AND re-runs the same comparison against
+   * `theSubstitutionThisReplaced`, which must still be caught. If the oracle
+   * ever stops working, that second run is what goes red.
+   */
+  const THE_PARSER_DISAGREES_HERE: readonly (readonly [string, number, string])[] = [];
+
+  it('AND A REAL PARSER AGREES ABOUT WHERE THE COMMENTS ARE — everywhere in the tree', () => {
+    const files = everyTypeScriptFileUnder();
+    const found = compareToParser(onlyComments, files);
+
+    // Non-vacuity: the walk found files, and the oracle found a great deal of
+    // comment to agree about. Without this, a walk that returned nothing — or a
+    // parser mask that came back all-false — would report a spotless tree.
+    expect(found.filesRead, 'the walk found almost nothing').toBeGreaterThan(50);
+    expect(found.agreed, 'the parser found no comments at all — the oracle is broken').toBeGreaterThan(
+      100_000,
     );
 
+    // OVER-CLAIMING IS GONE, and this is the assertion that says so. It used to
+    // read `toBeGreaterThan(0)` with a note pinning 54 runs, "every one starting
+    // inside a string, a regular expression or a template head" — the price of
+    // doing this with regular expressions. A scan pays no such price: it knows
+    // it is inside a string, so it does not look for a comment there.
+    expect(found.overClaims.slice(0, 10)).toEqual([]);
+    expect([...found.overClaimedPerFile]).toEqual([]);
+
     // MISSED COMMENTS, PINNED BOTH WAYS. An unlisted file that loses prose is
-    // red; a listed file that stops losing it is also red, so the row goes when
-    // the defect does rather than outliving it.
+    // red; a listed file that stops losing it is also red, so a row goes when
+    // its defect does rather than outliving it.
     const pinned = new Map(THE_PARSER_DISAGREES_HERE.map(([file, count]) => [file, count]));
-    for (const [file, count] of missedPerFile) {
+    for (const [file, count] of found.missedPerFile) {
       expect(
         pinned.get(file),
         `${file} drops ${count} characters of real comment out of BOTH halves, and is not in ` +
@@ -678,8 +837,55 @@ describe('the allowlist is not a sieve', () => {
       ).toBe(count);
     }
     for (const [file, count] of pinned) {
-      expect(missedPerFile.get(file) ?? 0, `${file} no longer diverges — delete its row`).toBe(count);
+      expect(found.missedPerFile.get(file) ?? 0, `${file} no longer diverges — delete its row`).toBe(
+        count,
+      );
     }
+  });
+
+  it('...AND THE EMPTY LIST IS A MEASUREMENT: the same check still catches the old substitution', () => {
+    // THE NON-VACUITY GUARD FOR AN EMPTY LIST. Everything above passes if the
+    // comparison has stopped comparing. So the comparison is pointed at the
+    // implementation that was really here until this commit, and must convict
+    // it — in both directions, on real files, with the same oracle.
+    const files = everyTypeScriptFileUnder();
+    const broken = compareToParser(theSubstitutionThisReplaced, files);
+
+    expect(
+      [...broken.missedPerFile.keys()].length,
+      'the old substitution lost no prose — the detector has stopped detecting',
+    ).toBeGreaterThan(0);
+    expect(
+      [...broken.overClaimedPerFile.values()].reduce((a, b) => a + b, 0),
+      'the old substitution over-claimed nothing — the detector has stopped detecting',
+    ).toBeGreaterThan(1000);
+
+    // And on the fixture, where the numbers cannot go stale because the input is
+    // right here: the old pair loses 122 characters of prose and hands back 35
+    // characters of code as prose. The new one does neither.
+    const oldStream = theSubstitutionThisReplaced(THE_SHAPE_THAT_BROKE_IT);
+    const newStream = onlyComments(THE_SHAPE_THAT_BROKE_IT);
+    const sourceFile = ts.createSourceFile(
+      'probe.ts',
+      THE_SHAPE_THAT_BROKE_IT,
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const isComment = parserCommentMask(sourceFile, THE_SHAPE_THAT_BROKE_IT);
+    const score = (stream: string): { missed: number; over: number } => {
+      let missed = 0;
+      let over = 0;
+      for (let i = 0; i < THE_SHAPE_THAT_BROKE_IT.length; i += 1) {
+        const ch = THE_SHAPE_THAT_BROKE_IT[i];
+        if (ch === undefined || ch === '\n' || ch === ' ') continue;
+        const mine = stream[i] === ch;
+        if (isComment[i] === true && !mine) missed += 1;
+        if (isComment[i] !== true && mine) over += 1;
+      }
+      return { missed, over };
+    };
+    expect(score(oldStream)).toEqual({ missed: 122, over: 35 });
+    expect(score(newStream)).toEqual({ missed: 0, over: 0 });
   });
 
   it('`onlyComments` keeps prose and drops code, both ways round', () => {
