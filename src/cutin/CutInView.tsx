@@ -95,9 +95,14 @@
  *
  * WHAT THE PICTURES STILL DO NOT SETTLE. Whether it READS as an interrupt is a
  * playtest judgement (GDD §12.1): no critic can judge a beat it cannot feel, and
- * a screenshot is not a feeling. Nor do they date themselves — `frames.json`
- * carries no `capturedFrom` the way `.gauntlet/shots/shell/route.json` does, so
- * a reader can see what was measured but not which commit it was measured on.
+ * a screenshot is not a feeling. That is the whole of it now — this paragraph
+ * used to add that the frames could not date themselves, which was true when it
+ * was written and stopped being true in the same wave: `frames.json` now
+ * carries `capturedFrom` (commit, branch, clean/dirty) and an `instrument`
+ * digest of the tools that produced it, the same way
+ * `.gauntlet/shots/shell/route.json` does, and `tools/evidence.mjs --verify`
+ * fails on a record that is missing either, was captured dirty, stamps a commit
+ * with code changes since, or reports its own run as red.
  */
 
 import React from 'react';
