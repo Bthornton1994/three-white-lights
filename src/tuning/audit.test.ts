@@ -579,6 +579,11 @@ describe('the registered allowlist', () => {
         'src/game/rpe.ts',
         'src/game/sessionTuning.ts',
         'src/game/streak.ts',
+        // The streak monotonicity fixture: seeds, calendar lengths and the
+        // attendance distribution GDD §4.4's counts were measured on. `data`,
+        // not `feel` — nobody playtests a seed — so it is registered here and
+        // deliberately absent from the tuning index.
+        'src/game/streakSweep.ts',
         'src/licensing/licensingTuning.ts',
         'src/licensing/realIp.ts',
         'src/lift/liftPalette.ts',

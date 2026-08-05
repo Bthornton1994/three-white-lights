@@ -619,9 +619,15 @@ export const SESSION_BOUNDARY = Object.freeze({
    * because `newServerRecord` requires a real signup day and the local server
    * has no account table to read one from. It sits here rather than as a
    * literal at the call site so that the day the fixtures start on is one
-   * number in one place, and so that it can be read beside `SESSION_PREVIEW.DAY`
-   * — it is deliberately EARLIER than that day, because a signup day after a
-   * recorded session is refused by `adoptSignupDay` and by `decodeStreak`.
+   * number in one place.
+   *
+   * THE ONE CONSTRAINT IT HAS TO SATISFY, stated because the value itself is
+   * arbitrary and the constraint is not: it must be **no later than any day a
+   * fixture records a session on**, which today means no later than
+   * `SESSION_PREVIEW.DAY`. An account cannot have been created after a session
+   * was recorded on it, and both `adoptSignupDay` and `decodeStreak` refuse that
+   * pair. Anything satisfying that works; 20000 is early 2024 and was picked for
+   * no other reason.
    *
    * With a real backend this is deleted along with the local server.
    */

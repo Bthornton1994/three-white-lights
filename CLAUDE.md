@@ -133,8 +133,18 @@ physiology.
   training histories identical except that one has an extra trained day, the
   player who trained more must never end on a lower streak.** `src/game/streak
   .test.ts` measures it exhaustively over every calendar of 8–16 days and on a
-  seeded 40-day sweep, and pins the counts. Do not weaken those pins into
-  bounds — a bound lets the defect grow back quietly.
+  seeded 40- and 60-day sweep, and pins the counts. Do not weaken those pins
+  into bounds — a bound lets the defect grow back quietly.
+
+  **The measurement's inputs live in `src/game/streakSweep.ts`**, not in the
+  test: the seeds, the calendar lengths and the attendance distribution, as
+  named constants and a deterministic generator. That file exists because the
+  first version of this measurement was reported with its seeds unstated and
+  could not afterwards be reproduced by anyone — six plausible
+  parameterisations gave six different numbers. A measurement whose inputs are
+  not written down is an anecdote. If you take a new one, put its parameters
+  there and re-derive the counts in GDD §4.4 rather than sampling at a call
+  site.
 
   Two rules in `src/game/streak.ts` exist *only* to keep that property, and both
   are load-bearing in a way that reads as harsh if you meet them alone:
@@ -145,6 +155,13 @@ physiology.
     is an unanchored, uncharged, free window, which is the defect.
   - **An absence that outran what was armed still consumes it.** Coverage is
     all-or-nothing; the charge is not.
+
+  Both consumptions are **reported, never silent**, and that is enforced rather
+  than promised: the read model announces what the next session will cost before
+  it costs it, the session reports what it took, and the suite drives every
+  12-day calendar at every balance asserting that no balance moves by more than
+  what was reported. The announcement side is an exhaustive switch over the read
+  model's cases, so a new screen state cannot ship with a silent debit behind it.
 
   A free absence is what an extra trained day converts into a charged one, so
   every free case is a hole in the property. Removing either rule reopens it —

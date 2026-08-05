@@ -476,10 +476,26 @@ at an unfavorable rate (gives grinders a non-cash path).
   behavioural test can tell a build where one is *written as* the other; the
   test that guards this reads the source.
 
-#### Signup day, and charging both sides — RULED
+#### No free absences — RULED
 
-**Status: decided. `StreakState` carries a `signupDay`, and idle days are
-charged from it.**
+**Status: decided. There are two ways an absence used to cost nothing. Both are
+now charged. They are two rules, not one, and each has its own player-visible
+cost.**
+
+**Why this is one heading and two rules.** Adding a trained day always SPLITS
+one absence into two shorter ones, and splitting can only reduce the total
+charge — *unless one of the pieces was free*, in which case the split creates a
+charge out of nothing and the lifter who trained more pays more. So every free
+absence is a hole in "never punish daily engagement" (§12.3). There were exactly
+two, and closing one without the other closes about a tenth of the defect:
+measured over every 13-day calendar, the anchor alone leaves **32** violating
+pairs and the doomed-absence charge alone leaves **24**, against **0** for both.
+§4.4 has the full table.
+
+---
+
+**RULE 1 — Idle days before the first session are charged, anchored at a new
+state field: `signupDay`.**
 
 **Signup day is account creation.** Not the first session, not the first app
 open, not the day a migration ran: the day the account came into existence,
@@ -493,36 +509,64 @@ idle days count from the signup day and are charged exactly as a lifter's inside
 a run are. The signup grant is therefore **armed from the moment the account
 exists**, not from the first session.
 
-**A doomed absence is charged too.** Coverage is still all-or-nothing — a run
-either survives an absence or it does not, and there is no half-saved run — but
-the *charge* is not. An absence that outran what was armed consumes the armed
-Recovery Days anyway: they were committed to holding it open, they failed, and
-they are gone. The amount is the **armed count**, which is fixed for the whole
-absence, so it cannot depend on when the player comes back or on when anybody
-opened the app.
-
-*This reverses the previous rule, which said an absence that ends a run debits
-nothing.* The reversal is a measurement, not a preference — see §4.4.
-
-**The visible costs, stated rather than discovered:**
-
-- A lifter who creates an account and does not train for longer than the §4.2
-  ceiling loses the signup grant to that absence. Onboarding copy has to say so.
-- A lifter whose run dies loses the Recovery Days that were armed against the
-  absence that killed it. This is what the Duolingo streak-freeze precedent
-  §12.2 names already does — a freeze is consumed by the day it covers, not by
-  whether the week ended well — so it is a cost the bar already pays.
-- The loss is **reported**, never silent: the training day that closes the
-  absence returns it, and the break's read model shows what the next session
-  will take.
+*The cost:* a lifter who creates an account and does not train for longer than
+the §4.2 ceiling **loses the signup grant** to that absence. Onboarding copy has
+to say so. This is the charge that "buys nothing", and it was refused in an
+earlier draft of §4.4 on exactly that ground — the ruling overrides that
+refusal, because the alternative is a hole in a §12.3 refusal condition.
 
 **Migration.** Accounts created before the field existed do not carry a signup
-day. The server backfills it from the account's creation timestamp; where that
-is unrecoverable the honest backfill is the day the migration runs, which is
-safe because monotonicity is a property of two possible *futures* from the same
-state and both share whatever anchor the state carries. The field is **required
-and non-nullable** so that an un-backfilled account cannot silently keep the old
+day. The server backfills it from the account's creation timestamp; where that is
+unrecoverable the honest backfill is the day the migration runs, which is safe
+because monotonicity is a property of two possible *futures* from the same state
+and both share whatever anchor the state carries. The field is **required and
+non-nullable** so that an un-backfilled account cannot silently keep the old
 free-lunch behaviour.
+
+---
+
+**RULE 2 — An absence that outran what was armed consumes it anyway.**
+
+Coverage is still all-or-nothing — a run either survives an absence or it does
+not, and there is no half-saved run — but the **charge** is not. Recovery Days
+armed against an absence were committed to holding it open; if it outran them,
+they failed and they are gone.
+
+**The amount is the armed count**, which is fixed the moment the last session
+ended. It deliberately is not "the days past the grace", because that number
+grows for as long as the lifter stays away, and a charge that grew with it would
+make the outcome depend on when they came back — which would give away the
+invariant §4.2 exists for. Capping it at the consecutive-use limit instead was
+measured and does **not** close the defect: two absences may each cost the cap,
+so splitting a long one still costs more than leaving it whole.
+
+*This reverses the previous rule*, which read "an absence that ends the run
+debits nothing, and the player keeps every Recovery Day because none of them
+bought anything". That sentence is the direct cause of a §12.3 violation, and
+the reversal is a measurement rather than a preference.
+
+*The cost:* a lifter whose run dies **loses the Recovery Days that were armed
+against the absence that killed it**. This is what the Duolingo streak-freeze
+precedent §12.2 names already does — a freeze is consumed by the day it covers,
+not by whether the week ended well — so it is a cost the bar already pays.
+
+**The debit happens in exactly one place: the session that ends the absence.**
+Settling a broken streak records the end of a run and moves no balance, so a
+lifter who never comes back is never charged, and no amount of opening the app
+can change what is owed.
+
+---
+
+**Both consumptions are reported, never silent — and that is enforced, not
+promised.** Every event that reduces the balance is announced twice: the read
+model says what the next session will cost *before* it costs it, and the session
+that takes it reports what it took. `src/game/streak.test.ts` drives every
+12-day calendar at every balance under both settling behaviours and asserts that
+no balance ever moves by more than the outcome reports, that a save and a loss
+are never both reported for one absence, and that **both** named events —
+signup-grant expiry and dead-run consumption — actually occur in the sweep. The
+announcement side is an exhaustive switch over the read model's cases, so a new
+screen state cannot be added with a silent consumption behind it.
 
 **The residual the prompt used to carry is gone.** Under the manual prompt, a
 player who opened the app mid-absence, accepted a save, and then stayed away
@@ -617,11 +661,18 @@ expressible: there is no per-gap marker to recompute a grace from.
 **What the grace bought, measured over every 13-day calendar** (pairs differing
 by one trained day, where the player who trained more ends strictly lower):
 
-| | before §4.4 | first implementation | grace per absence | auto-protect | signup day (today) |
+| | before §4.4 | first implementation | grace per absence | auto-protect | no free absences (today) |
 |---|---|---|---|---|---|
 | opening the app every day | 1948 | 0 | 24 | 36 | **0** |
 | opening only on training days | 4250 | 36 | 36 | 36 | **0** |
 | worst deficit | 6 | 3 | 3 | 3 | **0** |
+
+*The worst-deficit row counts only pairs where both lifters spent the same
+number of Recovery Days, which is a narrower question than the rows above it.
+Measured without that filter the auto-protect column's worst deficit is 5, not
+6. The narrower figure is kept because it is what the earlier columns were taken
+with, and changing a comparator mid-table is how a before/after stops meaning
+anything.*
 
 **The two lower numbers in the middle columns were both bought by spending
 Recovery Days that did not buy anything.** The 0 came from a spend re-arming the
@@ -677,18 +728,42 @@ leaves **24**; the two together leave **0**. That is why §4.2 carries both, and
 it is the finding that mattered most in this piece — the mechanism as first
 diagnosed would have closed less than a tenth of the defect.
 
-**What the fix is worth, measured the way the defect was measured.** Exhaustively
-over every calendar of 8 to 16 days and every single-day superset of each: **0**
-violating pairs at every length, **0** worst deficit, and **0** inversions of a
-lifter's lifetime best. On a seeded sweep of 40-day calendars — 400 schedules per
-seed, five written-down seeds — the seed the defect was first measured on goes
-from **36 violating schedules / 100 violating pairs / worst deficit 16** to
-**0**. The constructive family that produced "37 trained days end on 37, 38 end
-on 18" now ends both lifters on 18, with the lifter who trained more holding the
-higher lifetime best, at every run length from 8 to 1000.
+**What the fix is worth, measured the way the defect was measured — and every
+input is in the repository.** `src/game/streakSweep.ts` holds the seeds, the
+calendar lengths and the attendance distribution these numbers were taken on,
+as named constants and a deterministic generator, so anything below can be
+re-derived without asking anyone what parameters were used. That file exists
+because the first version of this measurement was published with its seeds
+unstated and could not afterwards be reproduced by anyone, including the person
+who took it.
+
+Exhaustively, over every calendar of 8 to 16 days and every single-day superset
+of each:
+
+| length | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|---|---|---|---|---|---|---|---|---|---|
+| violating pairs, before | 0 | 0 | 0 | 2 | 10 | 36 | 124 | 384 | 1096 |
+| violating pairs, after | 0 | 0 | 0 | **0** | **0** | **0** | **0** | **0** | **0** |
+| worst deficit, before | 0 | 0 | 0 | 1 | 2 | 3 | 4 | 5 | 5 |
+| lifetime-best inversions, before | 0 | 0 | 0 | 0 | 1 | 5 | 19 | 66 | 211 |
+| lifetime-best inversions, after | 0 | 0 | 0 | **0** | **0** | **0** | **0** | **0** | **0** |
+
+Sampled, 400 schedules per seed against every single-day superset, violating
+pairs per seed:
+
+| | seed 1 | seed 2 | seed 3 | seed 4 | seed 5 |
+|---|---|---|---|---|---|
+| 40 days, before | 100 | 148 | 116 | 121 | 178 |
+| 40 days, after | **0** | **0** | 11 | 2 | **0** |
+| 60 days, before | 203 | 299 | 235 | 236 | 296 |
+| 60 days, after | **33** | **21** | **33** | **23** | **12** |
+
+The constructive family that produced "37 trained days end on 37, 38 end on 18"
+now ends both lifters on 18, with the lifter who trained more holding the higher
+lifetime best, at every run length from 8 to 1000.
 
 **What is left, and it is a different defect.** Across all five seeds at 40 days,
-13 violating pairs remain, and at 60 days more. Their cause is measured rather
+13 violating pairs remain, and at 60 days 122. Their cause is measured rather
 than guessed: **streak-milestone income is paid once per lifetime and its arrival
 is timed by the streak.** The lifter who trains more reaches a milestone earlier,
 banks the Recovery Day earlier, and can lose it to a doomed absence that the

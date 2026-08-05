@@ -1252,7 +1252,27 @@ function breakReasonFor(state: StreakState, chargeable: number): StreakBreakReas
  */
 export type DayOpening =
   /** No live run: a brand-new lifter, or one whose last run has ended. */
-  | { readonly kind: 'no-active-streak'; readonly longestStreak: number }
+  /**
+   * No live run: a brand-new lifter, or one whose last run has ended.
+   *
+   * IT STILL REPORTS A PENDING CONSUMPTION, and that is not decoration. A
+   * lifter who has never trained is inside a chargeable absence from their
+   * signup day (§1b), so the Recovery Days armed at account creation can be
+   * spent by the session that ends it — and this was the one opening kind from
+   * which that was invisible. "Reported, never silent" has to hold for the
+   * signup-grant expiry too, not only for a run that dies.
+   */
+  | {
+      readonly kind: 'no-active-streak';
+      readonly longestStreak: number;
+      /**
+       * What the lifter's next session will pay for the absence they are
+       * currently in. 0 while the grace still covers it.
+       */
+      readonly recoveryDaysCommittedToTheAbsence: number;
+      /** Recovery Days held right now. Nothing has been taken yet. */
+      readonly recoveryDayBalance: number;
+    }
   /** Already trained today. Nothing to do; nothing at risk. */
   | { readonly kind: 'already-trained-today'; readonly currentStreak: number }
   /** The run is intact and today extends it. */
@@ -1327,7 +1347,12 @@ export type DayOpening =
 
 export function openDay(state: StreakState, today: StreakDay): DayOpening {
   if (state.lastTrainedDay === null) {
-    return { kind: 'no-active-streak', longestStreak: state.longestStreak };
+    return {
+      kind: 'no-active-streak',
+      longestStreak: state.longestStreak,
+      recoveryDaysCommittedToTheAbsence: absenceOutcome(state, today).recoveryDaysConsumed,
+      recoveryDayBalance: state.recoveryDayBalance,
+    };
   }
   if (today === state.lastTrainedDay) {
     return { kind: 'already-trained-today', currentStreak: state.currentStreak };

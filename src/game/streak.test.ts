@@ -38,11 +38,20 @@ import {
   streakDayFromCivilDate,
   streakDayFromLocalWallClock,
   streakDeadlineDay,
+  type DayOpening,
   type RecoveryDayGrant,
   type StreakDay,
   type StreakResult,
   type StreakState,
 } from './streak';
+import {
+  MONOTONICITY_SWEEP,
+  exhaustiveCalendar,
+  exhaustiveCalendarCount,
+  seededSchedules,
+  singleDaySupersets,
+  trainedDayCount,
+} from './streakSweep';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -497,8 +506,26 @@ describe('a new lifter', () => {
     expect(state.hasBankedFirstRecoveryDaySave).toBe(false);
   });
 
-  it('shows "no active streak" until the first session', () => {
-    expect(openDay(freshState(), DAY_ZERO)).toEqual({ kind: 'no-active-streak', longestStreak: 0 });
+  it('shows "no active streak" until the first session — and what the absence will cost', () => {
+    // The kind is unchanged; what it carries is not. A lifter who has never
+    // trained is inside a chargeable absence from their signup day, so this was
+    // the one opening from which a pending consumption used to be invisible.
+    expect(openDay(freshState(), DAY_ZERO)).toEqual({
+      kind: 'no-active-streak',
+      longestStreak: 0,
+      recoveryDaysCommittedToTheAbsence: 0,
+      recoveryDayBalance: RECOVERY_DAY_ECONOMY.SIGNUP_GRANT,
+    });
+
+    // ...and once the signup absence has outrun the grace plus what is armed,
+    // it says so, before the session that takes it.
+    const lapsed = openDay(freshState(), dayAfterGap(SIGNUP_DAY, LONGEST_REPAIRABLE_ABSENCE_DAYS + 1));
+    expect(lapsed).toEqual({
+      kind: 'no-active-streak',
+      longestStreak: 0,
+      recoveryDaysCommittedToTheAbsence: RECOVERY_DAY_ECONOMY.SIGNUP_GRANT,
+      recoveryDayBalance: RECOVERY_DAY_ECONOMY.SIGNUP_GRANT,
+    });
   });
 
   it('is inside a chargeable absence from the signup day, not outside the system', () => {
@@ -2065,8 +2092,6 @@ function committedRecoveryDays(result: SimResult, today: StreakDay): number {
   return result.recoveryDaysSpent + absence.recoveryDaysConsumed;
 }
 
-const trainedDayCount = (history: readonly boolean[]): number => history.filter(Boolean).length;
-
 /** `T` trained, `.` idle — so a failing case names itself in the error. */
 const renderCalendar = (history: readonly boolean[]): string =>
   history.map((trained) => (trained ? 'T' : '.')).join('');
@@ -2234,124 +2259,121 @@ describe('the outcome does not depend on when the player opens the app', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * THE MONOTONICITY MEASUREMENT: what "training one more day never costs you
- * anything" is worth as a number, at the tunables `streak.ts` currently ships.
+ * WHAT THE MONOTONICITY SWEEP RETURNED, on the calendars `streakSweep.ts`
+ * generates. The INPUTS live there, as named constants and a deterministic
+ * generator; only the RESULTS live here.
+ *
+ * That split is the whole point. The first version of this measurement was
+ * published with its seeds unstated, and could not afterwards be reproduced by
+ * anyone — the same sweep at six plausible parameterisations gave six different
+ * numbers. Every figure below can now be re-derived from the repository alone:
+ * `MONOTONICITY_SWEEP` says which calendars, this says what they returned.
  *
  * A VIOLATION is a pair of calendars identical except that one has one extra
- * trained day, where the player who trained MORE ends on a strictly LOWER
- * `currentStreak`. Both members of a pair are SETTLED to the same final day
- * before they are compared — see the staleness test for why comparing unsettled
- * states gets the answer wrong in both directions.
+ * trained day, where the lifter who trained MORE ends on a strictly LOWER
+ * `currentStreak`. Both members are SETTLED to the same final day before being
+ * compared — see the staleness test for why comparing unsettled states gets the
+ * answer wrong in both directions.
  *
- * EVERY NUMBER HERE WAS MEASURED, none was derived, and they all move if
- * `RECOVERY_DAY_GUARDRAILS` or `STREAK_MILESTONE_DAYS` move. That is the point
- * of pinning them: retuning changes how badly a player can be punished for
- * training more, so it should break this file and make somebody read the new
+ * EVERY NUMBER HERE WAS MEASURED. They all move if `RECOVERY_DAY_GUARDRAILS`,
+ * `STREAK_MILESTONE_DAYS` or `MONOTONICITY_SWEEP` move, which is the point of
+ * pinning them: a retune should break this file and make somebody read the new
  * number rather than change it quietly.
  */
 const MONOTONICITY_MEASUREMENT = {
   /**
-   * Calendar lengths swept EXHAUSTIVELY — all 2^L calendars of each length, and
-   * every way of turning one skipped day into a trained one.
-   *
-   * The range starts below the length at which the defect used to first appear,
-   * so a sweep that "passes" by starting above the interesting length is not
-   * what is happening here.
-   */
-  EXHAUSTIVE_LENGTHS: [8, 9, 10, 11, 12, 13, 14, 15, 16],
-
-  /**
-   * Violating pairs at each of those lengths. ZERO, everywhere.
-   *
-   * WHAT IT WAS, so the change is a measurement rather than a claim: before the
-   * signup-day rework this file pinned 36 violating pairs at 13 days (worst
-   * deficit 3) and 384 at 15 days (worst deficit 5), with the worst deficit
-   * climbing 0,0,0,1,2,3,4,5,6 across exactly the lengths above.
+   * Violating pairs at each of `MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS`
+   * (8..16 days, all 2^L calendars of each, every single-day superset of each).
+   * ZERO, everywhere.
    */
   VIOLATIONS_BY_LENGTH: [0, 0, 0, 0, 0, 0, 0, 0, 0],
 
   /** Worst `currentStreak` deficit at each length. Zero, because there are none. */
   WORST_DEFICIT_BY_LENGTH: [0, 0, 0, 0, 0, 0, 0, 0, 0],
 
-  /**
-   * The same, for `longestStreak` — a lifter's lifetime best, which the old
-   * defect also inverted (5 pairs at 13 days, 66 at 15).
-   */
+  /** The same for `longestStreak` — a lifter's lifetime best. */
   LONGEST_STREAK_INVERSIONS_BY_LENGTH: [0, 0, 0, 0, 0, 0, 0, 0, 0],
 
   /**
-   * THE TWO LENGTHS THIS FILE USED TO PIN, kept by name so the before/after can
-   * be read without reconstructing it from the arrays above.
+   * THE SAME SWEEP AGAINST THE PRE-REWORK ENGINE, so the before and after are
+   * one table rather than a claim about a build nobody can run any more. Taken
+   * by replaying `streakSweep.ts`'s calendars through the engine as it stood at
+   * `claude/agent-config-setup-m2r6ny`, with the same comparator and the same
+   * settling.
+   *
+   * NOTE THE COMPARATOR. These are ALL violating pairs. The figure this file
+   * used to pin (`[0,0,0,1,2,3,4,5,6]`) counted only pairs where both lifters
+   * spent the SAME number of Recovery Days, which is a narrower question and is
+   * why its tail reads 6 where the unfiltered worst deficit is 5.
    */
-  WAS_AT_13: { VIOLATIONS: 36, WORST_DEFICIT: 3 },
-  WAS_AT_15: { VIOLATIONS: 384, WORST_DEFICIT: 5 },
+  WAS_VIOLATIONS_BY_LENGTH: [0, 0, 0, 2, 10, 36, 124, 384, 1096],
+  WAS_WORST_DEFICIT_BY_LENGTH: [0, 0, 0, 1, 2, 3, 4, 5, 5],
+  WAS_LONGEST_STREAK_INVERSIONS_BY_LENGTH: [0, 0, 0, 0, 1, 5, 19, 66, 211],
 
   /**
    * NEITHER HALF OF THE FIX WORKS ALONE, at 13 days. Measured on a standalone
-   * model of this engine that reproduces the committed before-numbers exactly
-   * (36 and 384 pairs, worst 3 and 5), with one half of the fix switched off at
-   * a time:
+   * model of this engine that reproduces the before-numbers above exactly, with
+   * one half of the fix switched off at a time:
    *
    *   - signup-day anchor only, doomed absences still free ....... 32 pairs
    *   - doomed absences charged only, no signup anchor ............ 24 pairs
    *   - both ..................................................... 0 pairs
    *
-   * THESE TWO ARE HISTORY RATHER THAN ASSERTIONS — the shipped engine cannot be
-   * run with half the fix, so nothing here can check them. They are recorded
-   * because "the ruled mechanism was not sufficient on its own" is the single
-   * most important thing a future reader needs to know about this rework.
+   * HISTORY RATHER THAN ASSERTIONS — the shipped engine cannot be run with half
+   * the fix, so nothing here can check them. They are recorded because "the
+   * ruled mechanism was not sufficient on its own" is the single most important
+   * thing a future reader needs to know about this rework.
    */
   ANCHOR_ALONE_VIOLATIONS_AT_13: 32,
   DOOM_CHARGE_ALONE_VIOLATIONS_AT_13: 24,
 } as const;
 
 /**
- * The seeded 40-day sweep: the measurement the human asked for by name, because
- * the exhaustive lengths stop at 16 and forty days is a real training block.
+ * The SAMPLED sweep — `MONOTONICITY_SWEEP.SCHEDULES_PER_SEED` calendars per
+ * seed, at each of `MONOTONICITY_SWEEP.SAMPLED_LENGTHS`, against every
+ * single-day superset. Forty days is a training block; sixty reaches the second
+ * streak milestone.
  *
- * `mulberry32` is deterministic and the seeds are written down, so these numbers
- * are reproducible rather than "a random sample looked fine".
+ * Rows are per seed, in `MONOTONICITY_SWEEP.SEEDS` order.
  */
-const FORTY_DAY_SWEEP = {
-  LENGTH: 40,
-  SCHEDULES_PER_SEED: 400,
-
+const SAMPLED_MEASUREMENT = {
   /**
-   * Attendance is drawn once per schedule and then applied per day, so the
-   * sweep contains near-daily lifters and near-absent ones rather than 400
-   * copies of the same density.
-   */
-  MIN_ATTENDANCE: 0.2,
-  ATTENDANCE_SPREAD: 0.7,
-
-  SEEDS: [0x5eed_1eaf, 0x09e2_31f5, 1, 0xc0ffee, 0xdead_beef],
-
-  /**
-   * Violating PAIRS per seed, in the order above.
+   * Violating pairs per seed at 40 days. WAS `[100, 148, 116, 121, 178]`, worst
+   * deficits `[16, 14, 15, 15, 12]`, on 36/33/30/29/36 violating schedules.
    *
-   * THE FIRST SEED WAS 36 VIOLATING SCHEDULES / 100 VIOLATING PAIRS / WORST
-   * DEFICIT 16 before the rework, which is the measurement that opened this
-   * piece. It is 0 now, and 13 pairs remain across all five seeds put together.
-   * Every one of those 13 has the same cause: see `MILESTONE_INCOME_RESIDUE`,
-   * which measures it rather than asserting it.
+   * THE REMAINING 13 ARE A RECORDED RESIDUAL, NOT A REGRESSION THAT SLIPPED IN.
+   * Every one of them is the streak-milestone income timing traced in
+   * `MILESTONE_INCOME_RESIDUE` below, which measures the cause rather than
+   * asserting it: with milestone income unreachable the same sweep is 0 at 40
+   * AND 60 days at every seed. If this array moves, the question to ask first
+   * is whether the mover is that residue or something new — the counterfactual
+   * test is the instrument for telling them apart.
    *
    * PINNED RATHER THAN BOUNDED, deliberately. `toBeLessThan(20)` would let this
    * drift back up to 19 without anybody noticing.
    */
-  VIOLATING_PAIRS_BY_SEED: [0, 0, 11, 2, 0],
+  VIOLATING_PAIRS_AT_40: [0, 0, 11, 2, 0],
+  WORST_DEFICIT_AT_40: [0, 0, 7, 13, 0],
+  WAS_VIOLATING_PAIRS_AT_40: [100, 148, 116, 121, 178],
+  WAS_WORST_DEFICIT_AT_40: [16, 14, 15, 15, 12],
 
-  /** Worst `currentStreak` deficit per seed. */
-  WORST_DEFICIT_BY_SEED: [0, 0, 7, 13, 0],
-
-  /** What the first seed returned before the rework, for the side-by-side. */
-  WAS_AT_FIRST_SEED: { VIOLATING_SCHEDULES: 36, VIOLATING_PAIRS: 100, WORST_DEFICIT: 16 },
+  /**
+   * Sixty days. The residue is larger here, and for the same reason: sixty days
+   * is long enough for the 30-day milestone to land inside the calendar, so
+   * there is a second payout whose arrival the two lifters can disagree about.
+   *
+   * WAS `[203, 299, 235, 236, 296]`, worst deficits `[24, 21, 23, 25, 22]`.
+   */
+  VIOLATING_PAIRS_AT_60: [33, 21, 33, 23, 12],
+  WORST_DEFICIT_AT_60: [11, 13, 14, 10, 9],
+  WAS_VIOLATING_PAIRS_AT_60: [203, 299, 235, 236, 296],
 } as const;
 
 /**
  * THE RESIDUE'S CAUSE, MEASURED. Streak-milestone income is paid once per
- * lifetime and its arrival is timed by the streak, so the player who trains
+ * lifetime and its arrival is timed by the streak, so the lifter who trains
  * more banks a Recovery Day EARLIER and can lose it to a doomed absence that
- * the lazier player — whose identical payout has not arrived yet — walks away
+ * the lazier lifter — whose identical payout has not arrived yet — walks away
  * from with the Recovery Day still in hand.
  *
  * The counterfactual runs against the REAL engine rather than a model: a lifter
@@ -2367,8 +2389,6 @@ const FORTY_DAY_SWEEP = {
  * streak one.
  */
 const MILESTONE_INCOME_RESIDUE = {
-  /** Lengths the counterfactual sweeps. 60 as well as 40: the residue grows. */
-  LENGTHS: [40, 60],
   /** Violating pairs with milestone income unreachable. Zero at every seed. */
   VIOLATING_PAIRS: 0,
 } as const;
@@ -2727,39 +2747,37 @@ describe('daily engagement is never worse than skipping — where that holds, an
   });
 
   it('MONOTONICITY, EXHAUSTIVE: over every calendar of 8 to 16 days, one more trained day never loses ground', () => {
-    // THE MEASUREMENT THIS PIECE EXISTS FOR, and the instrument is the same one
-    // that recorded the defect — all 2^L calendars at each length, every way of
-    // turning one skipped day into a trained one, both members settled to the
-    // same final day before they are compared.
+    // THE MEASUREMENT THIS PIECE EXISTS FOR. The calendars come from
+    // `streakSweep.ts` — all 2^L at each length, every single-day superset of
+    // each — so the inputs are in the repository rather than in a helper here,
+    // and both members are settled to the same final day before comparison.
     //
-    // WAS 36 violating pairs at 13 days (worst deficit 3) and 384 at 15 (worst
-    // 5), with the worst deficit climbing 0,0,0,1,2,3,4,5,6 across exactly these
-    // lengths. It is now zero everywhere, on `currentStreak` AND on the lifetime
-    // best. `MONOTONICITY_MEASUREMENT` above has the before-and-after side by
-    // side and says which halves of the fix were needed.
+    // WAS `[0,0,0,2,10,36,124,384,1096]` violating pairs across these lengths,
+    // worst deficit rising to 5, with the lifetime best inverted 211 times at
+    // 16 days. It is now zero everywhere on all three.
     const initial = freshState();
     const violationsByLength: number[] = [];
     const worstByLength: number[] = [];
     const longestInversionsByLength: number[] = [];
     let pairsChecked = 0;
     let deadRunsSeen = 0;
-    let savesSeen = 0;
+    let recoveryDaysConsumed = 0;
 
-    for (const length of MONOTONICITY_MEASUREMENT.EXHAUSTIVE_LENGTHS) {
+    for (const length of MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS) {
       const noGrants = Array.from({ length }, () => false);
+      const count = exhaustiveCalendarCount(length);
       const results: SimResult[] = [];
-      for (let mask = 0; mask < 1 << length; mask += 1) {
-        const attend = Array.from({ length }, (_, i) => (mask & (1 << i)) !== 0);
-        const result = simulate(attend, noGrants, initial, 'daily', true);
+      for (let mask = 0; mask < count; mask += 1) {
+        const result = simulate(exhaustiveCalendar(mask, length), noGrants, initial, 'daily', true);
         results.push(result);
         if (result.state.currentStreak === 0) deadRunsSeen += 1;
-        savesSeen += result.recoveryDaysSpent;
+        recoveryDaysConsumed += result.recoveryDaysSpent;
       }
 
       let violations = 0;
       let worst = 0;
       let longestInversions = 0;
-      for (let mask = 0; mask < 1 << length; mask += 1) {
+      for (let mask = 0; mask < count; mask += 1) {
         const lazy = results[mask] as SimResult;
         for (let flip = 0; flip < length; flip += 1) {
           if ((mask & (1 << flip)) !== 0) continue;
@@ -2785,26 +2803,26 @@ describe('daily engagement is never worse than skipping — where that holds, an
     ]);
 
     // ANTI-VACUITY, and a zero result needs it more than a non-zero one did. A
-    // sweep in which no run ever died and no Recovery Day was ever spent would
-    // report zero violations while proving nothing at all.
+    // sweep in which no run ever died and no Recovery Day was ever consumed
+    // would report zero violations while proving nothing at all.
     expect(pairsChecked).toBeGreaterThan(400_000);
     expect(deadRunsSeen).toBeGreaterThan(0);
-    expect(savesSeen).toBeGreaterThan(0);
+    expect(recoveryDaysConsumed).toBeGreaterThan(0);
 
     // BOTH APP-OPENING MODELS, at the length GDD §4.4's table is written for.
-    // The table has a column per model because they used to disagree (24 against
-    // 36); this measures the second one directly rather than deriving it from
-    // the purity invariant, so the published table is checked rather than
-    // reasoned about.
+    // That table has a column per model because they used to disagree (24
+    // against 36); this measures the second directly rather than deriving it
+    // from the purity invariant, so the published table is checked.
     const LENGTH = 13;
     const noGrants = Array.from({ length: LENGTH }, () => false);
     const onTrainingDays: SimResult[] = [];
-    for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
-      const attend = Array.from({ length: LENGTH }, (_, i) => (mask & (1 << i)) !== 0);
-      onTrainingDays.push(simulate(attend, noGrants, initial, 'on-training-days', true));
+    for (let mask = 0; mask < exhaustiveCalendarCount(LENGTH); mask += 1) {
+      onTrainingDays.push(
+        simulate(exhaustiveCalendar(mask, LENGTH), noGrants, initial, 'on-training-days', true),
+      );
     }
     let violationsUnderTheOtherModel = 0;
-    for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
+    for (let mask = 0; mask < exhaustiveCalendarCount(LENGTH); mask += 1) {
       const lazy = onTrainingDays[mask] as SimResult;
       for (let flip = 0; flip < LENGTH; flip += 1) {
         if ((mask & (1 << flip)) !== 0) continue;
@@ -2814,74 +2832,89 @@ describe('daily engagement is never worse than skipping — where that holds, an
     }
     expect(violationsUnderTheOtherModel).toBe(0);
 
-    // The lengths that used to fail are inside the sweep, and their old numbers
-    // are on the record beside the new ones.
-    expect(MONOTONICITY_MEASUREMENT.EXHAUSTIVE_LENGTHS).toContain(13);
-    expect(MONOTONICITY_MEASUREMENT.EXHAUSTIVE_LENGTHS).toContain(15);
-    expect(MONOTONICITY_MEASUREMENT.WAS_AT_13.VIOLATIONS).toBeGreaterThan(0);
-    expect(MONOTONICITY_MEASUREMENT.WAS_AT_15.VIOLATIONS).toBeGreaterThan(
-      MONOTONICITY_MEASUREMENT.WAS_AT_13.VIOLATIONS,
+    // The before-numbers are a real table, not a decoration: the defect grew
+    // with the calendar, and the lengths that failed are inside this sweep.
+    expect(MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS).toContain(13);
+    expect(MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS).toContain(15);
+    expect(MONOTONICITY_MEASUREMENT.WAS_VIOLATIONS_BY_LENGTH.at(-1)).toBeGreaterThan(
+      MONOTONICITY_MEASUREMENT.WAS_VIOLATIONS_BY_LENGTH[0] as number,
     );
   });
 
-  it('MONOTONICITY, 40-DAY SEEDED SWEEP: 2000 calendars against every single-day superset', () => {
+  it('MONOTONICITY, SAMPLED: 2000 forty-day and 2000 sixty-day calendars, every single-day superset', () => {
     // THE SWEEP THE HUMAN ASKED FOR BY NAME, because sixteen days of exhaustive
-    // calendar is not a training block and forty is. Five written-down seeds,
-    // 400 schedules each, every untrained day of every schedule flipped.
+    // calendar is not a training block and forty is. The schedules come from
+    // `streakSweep.ts` — five written-down seeds, 400 each, one attendance rate
+    // per schedule — so every number below is re-derivable from the repository.
     //
-    // BEFORE: 36 of the first seed's 400 schedules ended on a WORSE streak when
-    // one more day was trained — 100 violating pairs, worst deficit 16.
-    // AFTER: 0 on that seed, and 13 pairs across all five seeds put together.
-    // The 13 are pinned rather than bounded, and the test below this one
-    // measures their cause rather than describing it.
+    // BEFORE, at 40 days: [100, 148, 116, 121, 178] violating pairs by seed,
+    // worst deficits [16, 14, 15, 15, 12]. AFTER: [0, 0, 11, 2, 0]. The 13 that
+    // remain are the milestone-income residue the next test measures.
     const initial = freshState();
-    const pairsBySeed: number[] = [];
-    const worstBySeed: number[] = [];
+    const measured: Record<number, { pairs: number[]; worst: number[] }> = {};
     let schedulesSwept = 0;
     let deadRunsSeen = 0;
 
-    for (const seed of FORTY_DAY_SWEEP.SEEDS) {
-      const random = mulberry32(seed);
-      let violations = 0;
-      let worst = 0;
-      for (let trial = 0; trial < FORTY_DAY_SWEEP.SCHEDULES_PER_SEED; trial += 1) {
-        const attendance =
-          FORTY_DAY_SWEEP.MIN_ATTENDANCE + random() * FORTY_DAY_SWEEP.ATTENDANCE_SPREAD;
-        const attend = Array.from({ length: FORTY_DAY_SWEEP.LENGTH }, () => random() < attendance);
-        const noGrants = Array.from({ length: FORTY_DAY_SWEEP.LENGTH }, () => false);
-        const lazy = simulate(attend, noGrants, initial, 'daily', true);
-        schedulesSwept += 1;
-        if (lazy.state.currentStreak === 0) deadRunsSeen += 1;
-        for (let flip = 0; flip < FORTY_DAY_SWEEP.LENGTH; flip += 1) {
-          if (attend[flip] === true) continue;
-          const attendMore = attend.map((trained, i) => (i === flip ? true : trained));
-          const diligent = simulate(attendMore, noGrants, initial, 'daily', true);
-          const deficit = lazy.state.currentStreak - diligent.state.currentStreak;
-          if (deficit > 0) {
-            violations += 1;
-            worst = Math.max(worst, deficit);
+    for (const length of MONOTONICITY_SWEEP.SAMPLED_LENGTHS) {
+      const noGrants = Array.from({ length }, () => false);
+      const pairs: number[] = [];
+      const worst: number[] = [];
+      for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+        let violations = 0;
+        let worstHere = 0;
+        for (const schedule of seededSchedules(seed, length)) {
+          const lazy = simulate(schedule, noGrants, initial, 'daily', true);
+          schedulesSwept += 1;
+          if (lazy.state.currentStreak === 0) deadRunsSeen += 1;
+          for (const superset of singleDaySupersets(schedule)) {
+            const diligent = simulate(superset, noGrants, initial, 'daily', true);
+            const deficit = lazy.state.currentStreak - diligent.state.currentStreak;
+            if (deficit > 0) {
+              violations += 1;
+              worstHere = Math.max(worstHere, deficit);
+            }
           }
         }
+        pairs.push(violations);
+        worst.push(worstHere);
       }
-      pairsBySeed.push(violations);
-      worstBySeed.push(worst);
+      measured[length] = { pairs, worst };
     }
 
-    expect(pairsBySeed).toEqual([...FORTY_DAY_SWEEP.VIOLATING_PAIRS_BY_SEED]);
-    expect(worstBySeed).toEqual([...FORTY_DAY_SWEEP.WORST_DEFICIT_BY_SEED]);
-    // The seed the defect was first measured on is clean.
-    expect(pairsBySeed[0]).toBe(0);
-    expect(FORTY_DAY_SWEEP.WAS_AT_FIRST_SEED.VIOLATING_PAIRS).toBe(100);
-    expect(FORTY_DAY_SWEEP.WAS_AT_FIRST_SEED.WORST_DEFICIT).toBe(16);
+    expect(measured[40]?.pairs).toEqual([...SAMPLED_MEASUREMENT.VIOLATING_PAIRS_AT_40]);
+    expect(measured[40]?.worst).toEqual([...SAMPLED_MEASUREMENT.WORST_DEFICIT_AT_40]);
+    expect(measured[60]?.pairs).toEqual([...SAMPLED_MEASUREMENT.VIOLATING_PAIRS_AT_60]);
+    expect(measured[60]?.worst).toEqual([...SAMPLED_MEASUREMENT.WORST_DEFICIT_AT_60]);
+
+    // Three of five seeds are clean at 40 days, including the seed the defect
+    // was first measured on. Stated as a number rather than left to be counted
+    // off the array.
+    expect(measured[40]?.pairs.filter((n) => n === 0).length).toBe(3);
+    expect(measured[40]?.pairs[0]).toBe(0);
+
+    // AND THE MEASUREMENT REALLY SHRANK, every seed, both lengths. This is what
+    // stops the pins above from being read as "some numbers".
+    for (let i = 0; i < MONOTONICITY_SWEEP.SEEDS.length; i += 1) {
+      expect(measured[40]?.pairs[i] as number).toBeLessThan(
+        SAMPLED_MEASUREMENT.WAS_VIOLATING_PAIRS_AT_40[i] as number,
+      );
+      expect(measured[60]?.pairs[i] as number).toBeLessThan(
+        SAMPLED_MEASUREMENT.WAS_VIOLATING_PAIRS_AT_60[i] as number,
+      );
+    }
 
     // ANTI-VACUITY: the sweep really ran, and it really reached lifters whose
     // runs died — a sweep of unbroken streaks cannot invert anything.
-    expect(schedulesSwept).toBe(FORTY_DAY_SWEEP.SEEDS.length * FORTY_DAY_SWEEP.SCHEDULES_PER_SEED);
+    expect(schedulesSwept).toBe(
+      MONOTONICITY_SWEEP.SEEDS.length *
+        MONOTONICITY_SWEEP.SCHEDULES_PER_SEED *
+        MONOTONICITY_SWEEP.SAMPLED_LENGTHS.length,
+    );
     expect(deadRunsSeen).toBeGreaterThan(0);
   });
 
   it('THE RESIDUE IS MILESTONE INCOME TIMING, and here is the counterfactual that says so', () => {
-    // The 13 remaining pairs above are not "noise" and they are not the
+    // The pairs that remain above are not "noise" and they are not the
     // asymmetry this piece closed. They come from streak-milestone income:
     // paid once per lifetime, timed by the streak, so the lifter who trains more
     // banks it EARLIER and can lose it to a doomed absence the lazier lifter
@@ -2889,28 +2922,21 @@ describe('daily engagement is never worse than skipping — where that holds, an
     //
     // THE COUNTERFACTUAL RUNS ON THE REAL ENGINE, not a model. A lifter whose
     // `longestStreak` is already past the largest milestone can never reach one
-    // again, so `milestonesReached` is empty at every session and the income path
-    // is off. Same seeds, same comparator, 40 days AND 60.
+    // again, so `milestonesReached` is empty at every session and the income
+    // path is off. Same seeds, same schedules, same comparator, both lengths.
     const beyondEveryMilestone: StreakState = {
       ...freshState(),
       longestStreak: Math.max(...STREAK_MILESTONE_DAYS) + 1,
     };
-    let milestonesPaid = 0;
     let violations = 0;
 
-    for (const length of MILESTONE_INCOME_RESIDUE.LENGTHS) {
+    for (const length of MONOTONICITY_SWEEP.SAMPLED_LENGTHS) {
       const noGrants = Array.from({ length }, () => false);
-      for (const seed of FORTY_DAY_SWEEP.SEEDS) {
-        const random = mulberry32(seed);
-        for (let trial = 0; trial < FORTY_DAY_SWEEP.SCHEDULES_PER_SEED; trial += 1) {
-          const attendance =
-            FORTY_DAY_SWEEP.MIN_ATTENDANCE + random() * FORTY_DAY_SWEEP.ATTENDANCE_SPREAD;
-          const attend = Array.from({ length }, () => random() < attendance);
-          const lazy = simulate(attend, noGrants, beyondEveryMilestone, 'daily', true);
-          for (let flip = 0; flip < length; flip += 1) {
-            if (attend[flip] === true) continue;
-            const attendMore = attend.map((trained, i) => (i === flip ? true : trained));
-            const diligent = simulate(attendMore, noGrants, beyondEveryMilestone, 'daily', true);
+      for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+        for (const schedule of seededSchedules(seed, length)) {
+          const lazy = simulate(schedule, noGrants, beyondEveryMilestone, 'daily', true);
+          for (const superset of singleDaySupersets(schedule)) {
+            const diligent = simulate(superset, noGrants, beyondEveryMilestone, 'daily', true);
             if (lazy.state.currentStreak > diligent.state.currentStreak) violations += 1;
           }
         }
@@ -2920,10 +2946,11 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(violations).toBe(MILESTONE_INCOME_RESIDUE.VIOLATING_PAIRS);
 
     // NOT VACUOUS. The counterfactual has to actually switch the income off, or
-    // it is the same sweep twice. A lifter at streak 1 with a lifetime best past
-    // every milestone collects nothing; a fresh one collects at seven.
+    // it is the same sweep twice. A lifter with a lifetime best past every
+    // milestone collects nothing; a fresh one collects at seven.
     const suppressed = unwrap(recordTrainingDay(beyondEveryMilestone, DAY_ZERO));
     expect(suppressed.milestonesReached).toEqual([]);
+    let milestonesPaid = 0;
     let normal: StreakState = { ...freshState(), recoveryDayBalance: 0, armedRecoveryDays: 0 };
     const firstMilestone = STREAK_MILESTONE_DAYS[0] as number;
     for (let i = 0; i < firstMilestone; i += 1) {
@@ -3071,6 +3098,198 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // way, so `settleAtEnd` is not simply zeroing everything it touches.
     expect(stale('TTTTTTTTTTTTT')).toBe(13);
     expect(settled('TTTTTTTTTTTTT')).toBe(13);
+  });
+
+  it('EVERY CONSUMPTION IS REPORTED — exhaustively, both events, no silent debit anywhere', () => {
+    // THE GENERAL PROPERTY, not two examples of it. GDD §4.2 promises the loss
+    // is "reported, never silent"; this is what makes that a fact.
+    //
+    // Two things must hold on every reachable input:
+    //
+    //   (1) the balance never moves by more than what the outcome REPORTS, and
+    //       any drop at all comes with a non-zero report;
+    //   (2) the report is one KIND or the other and never both — a save is
+    //       "your run held", a loss is "it did not, and here is what it cost",
+    //       and a UI that confused them would tell the player the opposite of
+    //       what happened.
+    //
+    // Driven over every 12-day calendar, day by day, at every starting balance
+    // up to the hold cap, under BOTH settling behaviours: 4096 calendars x 6
+    // balances x 2. Not a grid of hand-built states — a stream of states the
+    // engine actually produced. The second settling behaviour is not padding:
+    // settling nulls `lastTrainedDay`, so a sweep that always settles never
+    // reaches a doomed absence resolved from a live run.
+    const LENGTH = 12;
+    let sessionsChecked = 0;
+    let savesSeen = 0;
+    let signupGrantExpiriesSeen = 0;
+    let deadRunLossesSeen = 0;
+
+    for (const settleOnOpen of [true, false]) {
+      for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
+        const initial: StreakState = {
+          ...freshState(),
+          recoveryDayBalance: balance,
+          armedRecoveryDays: balance,
+        };
+        for (let mask = 0; mask < exhaustiveCalendarCount(LENGTH); mask += 1) {
+          const schedule = exhaustiveCalendar(mask, LENGTH);
+          let state = initial;
+          for (let i = 0; i < LENGTH; i += 1) {
+            const day = addDays(DAY_ZERO, i);
+            if (settleOnOpen && openDay(state, day).kind === 'streak-broken') {
+              state = unwrap(settleBrokenStreak(state, day)).state;
+            }
+            if (schedule[i] !== true) continue;
+
+            const before = state;
+            const outcome = unwrap(recordTrainingDay(before, day));
+            const saved = outcome.recoveryDaySave?.recoveryDaysSpent ?? 0;
+            const lost = outcome.recoveryDaysLostToTheAbsence;
+            sessionsChecked += 1;
+
+            // (1) NOTHING MOVES UNREPORTED. The balance after is exactly the
+            // balance before, minus what was reported, plus what was granted.
+            expect(outcome.state.recoveryDayBalance).toBe(
+              before.recoveryDayBalance - (saved + lost) + outcome.recoveryDaysGranted,
+            );
+            if (
+              outcome.state.recoveryDayBalance - outcome.recoveryDaysGranted <
+              before.recoveryDayBalance
+            ) {
+              expect(saved + lost).toBeGreaterThan(0);
+            }
+
+            // (2) ONE KIND OR THE OTHER, NEVER BOTH, AND THE RIGHT ONE.
+            expect(saved > 0 && lost > 0).toBe(false);
+            expect(lost > 0).toBe(outcome.previousRunEnded && (before.armedRecoveryDays ?? 0) > 0);
+            expect(saved > 0).toBe(!outcome.previousRunEnded && outcome.recoveryDaySave !== null);
+
+            if (saved > 0) savesSeen += 1;
+            if (lost > 0) {
+              // THE TWO CONSUMPTION EVENTS THE HUMAN NAMED, told apart by
+              // whether this lifter has ever trained. NOT by `lastTrainedDay`:
+              // settling a break nulls that, so it would file every dead-run
+              // loss as a signup-grant expiry and leave the other event at zero
+              // — which is exactly what the first version of this test did.
+              const hasEverTrained = before.longestStreak > 0;
+              if (hasEverTrained) deadRunLossesSeen += 1;
+              else signupGrantExpiriesSeen += 1;
+            }
+            state = outcome.state;
+          }
+        }
+      }
+    }
+
+    // ANTI-VACUITY, and it is the whole reason this test counts three things.
+    // "Every consumption is reported" is trivially true in a sweep with no
+    // consumption in it, and the human named BOTH events, so both have to be
+    // demonstrably present.
+    expect(sessionsChecked).toBeGreaterThan(200_000);
+    expect(savesSeen).toBeGreaterThan(0);
+    expect(signupGrantExpiriesSeen).toBeGreaterThan(0);
+    expect(deadRunLossesSeen).toBeGreaterThan(0);
+  });
+
+  it('EVERY PENDING CONSUMPTION IS ANNOUNCED BEFORE IT HAPPENS, on every opening kind', () => {
+    // The other half of "reported, never silent": the read model a screen
+    // renders has to say what the next session will cost BEFORE it costs it, or
+    // the player watches a number drop for no visible reason.
+    //
+    // `announced` is an EXHAUSTIVE SWITCH over `DayOpening`. That is the
+    // structural half of this test: a new opening kind fails to compile here
+    // until somebody says what it reports, so a future screen cannot be added
+    // with a silent consumption behind it.
+    const announced = (opening: DayOpening): number => {
+      switch (opening.kind) {
+        case 'no-active-streak':
+          return opening.recoveryDaysCommittedToTheAbsence;
+        case 'streak-broken':
+          return opening.recoveryDaysCommittedToTheAbsence;
+        case 'gap-covered-by-recovery-days':
+          return opening.recoveryDaysHolding;
+        // Nothing is pending on these: the run is intact and the absence, if
+        // there is one, is inside the free grace.
+        case 'already-trained-today':
+        case 'streak-alive':
+        case 'gap-covered-by-grace':
+          return 0;
+        // Not an opening at all — clock skew or a bad caller.
+        case 'day-in-past':
+          return 0;
+      }
+    };
+
+    const LENGTH = 12;
+    let openingsChecked = 0;
+    const kindsSeen = new Set<string>();
+    let announcedNonZero = 0;
+
+    for (let balance = 0; balance <= RECOVERY_DAY_GUARDRAILS.HOLD_CAP; balance += 1) {
+      const initial: StreakState = {
+        ...freshState(),
+        recoveryDayBalance: balance,
+        armedRecoveryDays: balance,
+      };
+      for (let mask = 0; mask < exhaustiveCalendarCount(LENGTH); mask += 1) {
+        const schedule = exhaustiveCalendar(mask, LENGTH);
+        let state = initial;
+        for (let i = 0; i < LENGTH; i += 1) {
+          const day = addDays(DAY_ZERO, i);
+          const opening = openDay(state, day);
+          kindsSeen.add(opening.kind);
+          openingsChecked += 1;
+
+          // WHAT IS ANNOUNCED IS WHAT WILL BE TAKEN. Not an estimate, not a
+          // rounded figure: the same number the session will debit.
+          const willBeTaken = absenceOutcome(state, day).recoveryDaysConsumed;
+          if (opening.kind !== 'day-in-past') {
+            expect(announced(opening), `${opening.kind} on day ${i}`).toBe(willBeTaken);
+            if (willBeTaken > 0) announcedNonZero += 1;
+          }
+
+          // ...and if the lifter does train, that is exactly what they pay.
+          if (schedule[i] === true) {
+            const outcome = unwrap(recordTrainingDay(state, day));
+            const paid = (outcome.recoveryDaySave?.recoveryDaysSpent ?? 0) + outcome.recoveryDaysLostToTheAbsence;
+            expect(paid).toBe(willBeTaken);
+            state = outcome.state;
+            // AND THE SCREEN AFTER THE SESSION ANNOUNCES NOTHING PENDING. This
+            // re-open is what a real app does — train, then re-render — and it
+            // is the only way `'already-trained-today'` is reachable at all, so
+            // without it that opening kind would go unchecked.
+            const afterTraining = openDay(state, day);
+            kindsSeen.add(afterTraining.kind);
+            openingsChecked += 1;
+            expect(afterTraining.kind).toBe('already-trained-today');
+            expect(announced(afterTraining)).toBe(absenceOutcome(state, day).recoveryDaysConsumed);
+            expect(announced(afterTraining)).toBe(0);
+          } else if (opening.kind === 'streak-broken') {
+            const settled = unwrap(settleBrokenStreak(state, day));
+            // The settle screen says the same number, and takes none of it.
+            expect(settled.recoveryDaysCommittedToTheAbsence).toBe(willBeTaken);
+            expect(settled.balanceAfter).toBe(state.recoveryDayBalance);
+            state = settled.state;
+          }
+        }
+      }
+    }
+
+    // ANTI-VACUITY: every opening kind a lifter can actually reach was seen,
+    // and the announcement was non-zero often enough to be doing work.
+    expect(openingsChecked).toBeGreaterThan(100_000);
+    expect(kindsSeen).toEqual(
+      new Set([
+        'no-active-streak',
+        'already-trained-today',
+        'streak-alive',
+        'gap-covered-by-grace',
+        'gap-covered-by-recovery-days',
+        'streak-broken',
+      ]),
+    );
+    expect(announcedNonZero).toBeGreaterThan(0);
   });
 
   it('training debits exactly what the absence it closes consumes, and nothing else', () => {
