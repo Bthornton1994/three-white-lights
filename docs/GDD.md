@@ -594,6 +594,46 @@ past what their balance covered ended poorer than one who never looked. That was
 the price of tying the spend to the day the player opens the app, and removing
 the prompt removed it: there is now nothing for app-opening to change.
 
+---
+
+#### Coverage is a rolling entitlement, not a balance — RULED (Option 1)
+
+**Status: decided. Recovery Days stop being a stock the lifter holds. Coverage
+is `COVERED_DAYS_PER_WINDOW` covered days in every `WINDOW_DAYS` window,
+anchored at the signup day.** `src/game/streakEntitlement.ts` is the whole
+mechanic; §4.4 has the verification the ruling was conditional on.
+
+**Why.** RULE 2 above debits a doomed absence the whole armed holding, which is
+what makes splitting a doomed absence cost the same as leaving it whole — and it
+is therefore what makes the exhaustive sweep clean. The same rule makes the
+debit **proportional to wealth**, and training one more day is a way of being
+wealthy at the wrong moment. Deleting the wealth deletes the wealth-dependence.
+An entitlement is the same number for everybody at the start of every window, so
+there is nothing for a debit to be proportional to, and two lifters who differ
+inside a window **re-converge at its boundary** — which a stock never did,
+because the income that refilled it was paid once per lifetime.
+
+**RULE 2 IS KEPT, AND THAT IS THE FINDING THAT MATTERS MOST HERE.** It is
+tempting to drop the burn along with the stock: it is the rule whose
+wealth-dependence caused the defect, and it reads as harsh. Measured, dropping it
+is **worse than the design it replaces** — 1051 violating pairs at 60 days and
+673 at 100, against 0 with it. The doomed branch has no subadditive arithmetic to
+lean on, so its consumption must be *idempotent under splitting* instead, and
+"take everything left in the window" is the only thing that is. What changed is
+the blast radius: everything left is bounded by one window's entitlement and is
+restored at the boundary regardless of what happened.
+
+**What a lifter sees.** Two covered days a month, the same for everyone, no
+balance to hoard and nothing to lose by using them. The ceiling §4.2 already
+promises is unchanged — grace plus the per-absence cap, four days — because
+`MAX_COVERED_DAYS_PER_ABSENCE` survives as the direct heir of the consecutive-use
+limit. A week away still ends a run, at any entitlement and at any price.
+
+*The cost, stated rather than discovered:* unused entitlement **does not carry
+over**. A lifter who trains every day all month gets nothing to keep at the end
+of it. That is the point — carrying over is what a stock is — but store and
+onboarding copy have to say it plainly, and so does the reveal screen.
+
 ### 4.3 The First-Save Reveal
 
 The first time a Recovery Day actually saves a player's streak, tell them — with
@@ -890,12 +930,66 @@ amount were measured and are recorded in §4.2. Escaping the tension means
 coverage that is not funded from a stock at all — which is a decision about what
 §8.2 sells, and belongs to a human.
 
-**Where that leaves the bar.** "Never punishes daily engagement" is met over
-every calendar length this repository can search exhaustively — 8 to 16 days,
-both fields — and is **not** met past it. On the sampled sweeps it fails at every
-length from 40 days up, on `currentStreak` and on `longestStreak` both. It is
-real, measured, bounded in frequency, unbounded in magnitude, and named rather
-than rounded up.
+**Where that leaves the bar, under the stock design.** "Never punishes daily
+engagement" is met over every calendar length this repository can search
+exhaustively — 8 to 16 days, both fields — and is **not** met past it. On the
+sampled sweeps it fails at every length from 40 days up, on `currentStreak` and
+on `longestStreak` both. It is real, measured, bounded in frequency, unbounded in
+magnitude, and named rather than rounded up.
+
+---
+
+**THE REPLACEMENT, AND THE VERIFICATION IT WAS RULED IN ON.** §4.2's Option 1
+ruling replaces the stock with a rolling entitlement. A zero is the easiest
+number in the world to get by accident, and this section has now published two
+"this closes it" claims that died under later tracing — the first because the
+sweep compared `currentStreak` only, the second because the one counterfactual
+available could not separate a cause from its vehicle. So the replacement is not
+reported as a count. It is reported as a battery aimed at the failure classes
+those two produced, with the parameters in `ENTITLEMENT_VERIFICATION`
+(`src/game/streakSweep.ts`) and the runs in `src/game/streakEntitlement.test.ts`.
+
+| attack | result |
+|---|---|
+| exhaustive, every calendar of 8–16 days, both fields | **0** |
+| sampled 40 / 60 / 80 / 100 days, `currentStreak` | **0** |
+| sampled 40 / 60 / 80 / 100 days, **lifetime best** | **0** |
+| 200 and 400 days, worst deficit as well as count | **0** |
+| five fixed attendance rates (0.1–0.95) the seeded generator does not reach | **0** |
+| six window lengths (1, 7, 13, 30, 31, 365) | **0** |
+| five entitlement sizes (0, 1, 2, 3, 5), per-absence cap above and below | **0** |
+| purchase path, three fixed grant schedules, one on a window boundary | **0** |
+| adversarial hill-climb, random restarts, largest deficit reachable | **0** |
+
+**And the negative controls, which run first and must be non-zero**, because a
+battery that only ever prints zero cannot distinguish a property that holds from
+a harness that is not looking:
+
+| control | violating pairs | worst deficit |
+|---|---|---|
+| a doomed absence consumes nothing (RULE 2 dropped) | 1051 at 60 days, 673 at 100 | 20 |
+| a covered day granted at a streak length | 54 at 100 days | 19 |
+| a covered day granted every N sessions | 1156 at 100 days | 54 |
+| the adversarial search, pointed at the broken variant | finds one | — |
+
+**The two things the battery changed about the ruling.** Neither was in the
+ruling as written, and both are load-bearing:
+
+1. **RULE 2 has to survive the redesign.** Dropping the burn is worse than the
+   stock it replaces. §4.2 says why the doomed branch needs an idempotent
+   consumption rather than a subadditive one.
+2. **The earning and purchase paths are constrained, not free.** Any grant of
+   covered days whose arrival day the lifter's own training can move reopens the
+   defect, and the season-pass tier shape is the worst offender measured. §8.3C
+   and §8.3E carry the consequence.
+
+**What this is still not.** It is a property about single-day supersets over
+sampled and exhaustive calendars, plus a hill-climb. It is not a proof. The
+exhaustive half is a proof for calendars of 16 days or fewer, which is precisely
+the range that hid the last defect — a 23-day hand-built case. The honest
+statement is that the battery is aimed at every failure class known to have
+occurred on this module, that it finds none, and that it will find the next one
+only if the next one resembles the last two.
 
 What holds, and is what the design leans on:
 
@@ -1290,8 +1384,22 @@ against an actual agreement.
 | Currency | Type | Earned | Spent on |
 |---|---|---|---|
 | **Gym Bucks** | Soft | Idle mode, check-ins, achievements | Cosmetics, gym decor, minor convenience |
-| **Chalk** | Premium | Purchased; small trickle from rewarded ads / rare achievements | Cosmetics, timer skips, Recovery Days at premium rate |
-| **Recovery Days** | Functional | Earned or bought | Streak saves (see §4.2) |
+| **Chalk** | Premium | Purchased; small trickle from rewarded ads / rare achievements | Cosmetics, timer skips, **Extra Covered Days** at premium rate |
+| ~~Recovery Days~~ | — | — | **Removed by §4.2's Option 1 ruling.** Coverage is a rolling entitlement now, not a held balance. |
+
+**What replaced the Recovery Day, and why the replacement is not just the same
+thing renamed.** A Recovery Day was a *stock*: bought, banked, carried
+indefinitely, and — because a doomed absence took the whole holding —
+proportional to how much a lifter happened to have. That proportionality is the
+defect §4.4 traces. The **Extra Covered Day** is a *rate widening*: it adds one
+covered day **to the window it is bought in and expires with that window**.
+Nothing accumulates, so there is no wealth for a doomed absence to be
+proportional to, and no ledger to hoard.
+
+**PROPOSED, NOT RULED — this table's bottom two rows need a human.** §4.2's
+Option 1 ruling removed a currency; what a player may buy instead is a
+monetisation decision and is written here as a proposal with its measurements
+attached, in the same way RULE 2's alternatives were. See §8.3E.
 
 ### 8.3 Revenue Pillars
 
@@ -1317,12 +1425,66 @@ against an actual agreement.
 **C. Season pass — "Meet Cycle"**
 
 12-week seasons mirroring real competition prep cycles. Free track + premium
-track. Cosmetic rewards, Chalk, Recovery Days.
+track. Cosmetic rewards, Chalk, Extra Covered Days.
+
+**The pass pays covered days BY WEEK, NEVER BY TIER, and that is a measurement
+rather than a preference.** A pass tier normally unlocks by playing, and a
+covered day granted on a tier is a grant whose arrival day the lifter's own
+training decides — which is exactly the shape §4.4 traces as the defect. Measured
+on the shipped mechanic at 100 days: a grant keyed to session count gives **1156
+violating pairs, worst deficit 54**; keyed to the streak, **54 pairs and 239
+lifetime-best inversions**; landed on a fixed calendar day, **0**. So "week 3 of
+the season" is safe and "tier 4" is not. `streakEntitlement.test.ts` pins all
+three, the two bad ones as negative controls, so a future earning table that keys
+off progress fails a test rather than a playtest.
 
 **D. Ads (optional, decide after playtesting)**
 
 Rewarded-only. Never interstitial or forced — forced ads in a daily-habit app
 will tank retention. Consider skipping entirely if pass + cosmetics perform.
+
+**E. Extra Covered Days — PROPOSED, NOT RULED**
+
+The purchase path that replaces the Recovery Day. Written out here because
+§4.2's Option 1 ruling removed a currency and an implicit removal of the
+monetisation with it would be a design decision taken by omission.
+
+**The product.** One Extra Covered Day widens the current window's entitlement
+by one. Flat price in Chalk, or a small bundle at a flat price. It expires at the
+end of the window it was bought in.
+
+**Checked against the three rules it has to satisfy:**
+
+- **No pay-to-win (§8.1, §12.3).** It buys *protection*, never *progress* —
+  the same category the Recovery Day was carefully kept in, where a save holds a
+  run open and never adds to `currentStreak`. A covered day cannot add to a
+  streak either: it decides whether an absence ends a run, and nothing else. And
+  the per-absence ceiling is out of money's reach by construction — buying ten
+  covered days still does not make a five-day absence survivable, because
+  `MAX_COVERED_DAYS_PER_ABSENCE` caps what one absence may draw regardless of
+  what the window holds. `streakEntitlement.test.ts` asserts exactly that.
+- **No gacha (§12.3).** Flat price, fixed quantity, no pull, no rarity.
+- **Never punish daily engagement (§12.3).** This is the trap RULE 2 fell into,
+  so it is measured rather than argued: with a covered day granted on each of
+  three fixed calendar schedules — including one landing exactly on a window
+  boundary — the property holds on all four figures at 100 days. **A purchase
+  cannot create a monotonicity violation, provided it lands on a calendar day.**
+
+**What a human still has to decide, and it is not a detail.** An expiring
+consumable is a weaker product than a bankable one: a lifter who buys a covered
+day and then does not miss a day has spent money on nothing. That is honest, and
+it may also be bad. The three ways out are a lower price, refunding an unused day
+as Chalk, or letting the purchase name the window it applies to — and the third
+is the one to be careful with, because "choose when it applies" is a decision
+taken *during* an absence, which is the app-opening dependence §4.2 spent a whole
+rework deleting. **Not attempted here.**
+
+**Also unresolved: the free earning path is gone.** §4.2's old table paid
+Recovery Days at signup, at streak milestones, for achievements and from Gym
+Empire drops. Milestones and achievements are progress-keyed, so they cannot pay
+covered days at all. What a free player gets now is the entitlement itself —
+which is more than the old free path gave a lapsed lifter and less than it gave a
+diligent one. Whether that is the right trade is a human's call.
 
 ### 8.4 Pricing Anchor
 
