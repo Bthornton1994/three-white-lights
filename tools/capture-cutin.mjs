@@ -205,7 +205,22 @@ const browser = await chromium.launch({
   ],
 });
 
-await rm(outDir, { recursive: true, force: true });
+/**
+ * THE WIPE HAPPENS AFTER THE FIRST PAGE LOADS, NOT BEFORE THE BROWSER OPENS.
+ *
+ * It used to be here, and it cost committed evidence. The dev server had died
+ * between one capture and the next; `page.goto` threw ERR_CONNECTION_REFUSED —
+ * and by then the ten PNGs and `frames.json` were already deleted, so the
+ * tracked directory was empty and the next `git add` swept the deletion into a
+ * commit. `evidence.mjs --verify`'s non-vacuity guard caught it, which is the
+ * guard working, but nothing should have needed catching: A TOOL THAT CANNOT
+ * RUN MUST NOT BE ABLE TO DESTROY THE ARTIFACT IT WAS GOING TO REPLACE.
+ *
+ * The wipe still has to happen — a renamed or deleted frame would otherwise
+ * linger and be read as current, which is this directory's whole failure mode.
+ * It just belongs after the first successful `goto`, by which point the run is
+ * committed to producing replacements.
+ */
 await mkdir(outDir, { recursive: true });
 
 const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: dpr });
@@ -400,6 +415,12 @@ let shellNavOverTheInterrupt = 0;
 // taken against and the proof that an unrecognised debug route is inert.
 await page.goto(`${url}?cutin=nonsense`, { waitUntil: 'load' });
 await page.getByTestId('session-check-in').waitFor({ state: 'visible', timeout: 120000 });
+
+// SAFE TO CLEAR NOW — see the block above `mkdir`. The page loaded and the app
+// mounted, so this run will write replacements for everything it removes.
+await rm(outDir, { recursive: true, force: true });
+await mkdir(outDir, { recursive: true });
+
 await page.waitForTimeout(1500);
 const baselineFile = path.join(outDir, 'baseline-no-cutin.png');
 await page.screenshot({ path: baselineFile });
