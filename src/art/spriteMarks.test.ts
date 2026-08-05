@@ -71,6 +71,16 @@ function poseSpace(): LifterFrameSpec[] {
   return out;
 }
 
+/**
+ * Frames the sweep above actually contains.
+ *
+ * OURS, and DERIVED rather than typed: it is `poseSpace().length`, so it moves
+ * the day `STRAIN.LEVELS` or `PITCH.LEVELS` does and every sentence tagged
+ * `@ours POSE_SPACE_FRAMES` goes red with it. It is the denominator of every
+ * "n of all frames" sentence in this file and in `rig.ts`.
+ */
+const POSE_SPACE_FRAMES = poseSpace().length;
+
 /** Pixels of a mark that are present in the finished grid, with the right ink. */
 function markPixelsInGrid(grid: IndexGrid, mark: Mark, frame: ReturnType<typeof renderLifterFrame>): number {
   const strained = frame.strain > STRAIN.FLUSH_THRESHOLD;
@@ -239,8 +249,10 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  * the same file — that the deltoid is drawn BEFORE the straps and therefore
  * cannot cover them. The second one was right, and a builder who acted on this
  * one would have gone to `ATTACH.DELTOID` / `ATTACH.DELTOID_R` and found nothing
- * to move: at the shipped rig a deltoid cap's painted disc contains THREE seam
- * pixels in the whole 416-frame pose space, and the strap capsule — laid down by
+ * to move: at the shipped rig a deltoid cap's painted disc contains
+ * `@ours SEAM_PIXELS_UNDER_DELTOID = 3` seam pixels in the whole
+ * `@ours POSE_SPACE_FRAMES = 416`-frame pose space, and the strap capsule — laid
+ * down by
  * the same `drawTorso` call, after the caps — covers all three. Two comments in
  * one file carrying contradictory measured claims, both surviving because a
  * sentence has no way to fail, is the exact defect `lifterSprite.test.ts` calls
@@ -261,7 +273,8 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  * WHAT IS ASSERTED ABOUT THE SYMMETRY, AND WHAT IS ONLY READ OFF THE SOURCE.
  * This paragraph used to say "the strap capsule, the deltoid disc and `drawArm`'s
  * upper-arm capsule are all `CENTER_X + sign * ...` ... this one asymmetry is the
- * whole of it", and offered `mirroredAnchors === 416` below as the proof of it.
+ * whole of it", and offered `mirroredAnchors` at all
+ * `@ours POSE_SPACE_FRAMES = 416` frames below as the proof of it.
  * That pin covers the strap ANCHOR alone. Three of the four things the sentence
  * named were not asserted anywhere — on a rig whose own header advertises three
  * deliberate asymmetries, one of them on the arm. So, exactly:
@@ -282,8 +295,9 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  *     (`SHADING.FAR_LIMB_LIGHT_SCALE`), which moves no pixel.
  *
  * So the seam origin is the only asymmetry in the neighbourhood that is BOTH
- * asserted and able to move a pixel, and it accounts for 904 of the 905 far
- * misses. One does not fall inside the arm at all and is not diagnosed; see
+ * asserted and able to move a pixel, and it accounts for
+ * `@ours FAR_SEAM_MISSES_INSIDE_ARM = 904` of the `@ours FAR_SEAM_MISSES = 905`
+ * far misses. One does not fall inside the arm at all and is not diagnosed; see
  * `FAR_SEAM_ARM_JOIN`. "This one asymmetry is the whole of it" was the old
  * sentence and it was one pixel too strong.
  *
@@ -291,11 +305,17 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  * seam on the chest's. `renderLifterFrame` draws the torso before both arms, so
  * the far arm paints over its seam and the near arm never reaches its own.
  * Measured over the pose space and asserted below: the far seam is inside the far
- * upper arm's drawn outline in 906 of 1248 (frame, row) pairs and the near seam
- * is inside the near one in ZERO of 1248; every far-side miss is a SKIN pixel in
- * the finished grid; AND THOSE ARE THE SAME PIXELS — 904 of the 905 misses are
- * inside the arm, 55 in its fill and 849 in its one-px contour ring, with 2
- * covered pixels landing anyway and 1 miss outside the arm entirely
+ * upper arm's drawn outline in `@ours FAR_SEAM_PIXELS_INSIDE_ARM = 906` of the
+ * `@ours SEAM_ROWS_MEASURED = 1248` (frame, row) pairs a side has, and the near
+ * seam is inside the near one in ZERO of them; every far-side miss is a SKIN
+ * pixel in the finished grid; AND THOSE ARE THE SAME PIXELS —
+ * `@ours FAR_SEAM_MISSES_INSIDE_ARM = 904` of the
+ * `@ours FAR_SEAM_MISSES = 905` misses are inside the arm,
+ * `@ours FAR_SEAM_ARM_JOIN.missInFill = 55` in its fill and
+ * `@ours FAR_SEAM_ARM_JOIN.missInRing = 849` in its one-px contour ring, with
+ * `@ours FAR_SEAM_ARM_JOIN.landedInRing = 2`
+ * covered pixels landing anyway and `@ours FAR_SEAM_ARM_JOIN.missOutside = 1`
+ * miss outside the arm entirely
  * (`FAR_SEAM_ARM_JOIN`, which is the join those two counts never made). The
  * deltoid disc touches three seam pixels in the whole pose space and the strap
  * capsule, which `drawTorso` draws after it, covers all three.
@@ -303,8 +323,11 @@ const ANATOMY_MARKS: readonly string[] = MARKS.filter((m) => m.depicts === 'FLES
  * SO THE LEVER IS THE PAIR (`STRAP_SEAM.origin`, `ATTACH.ARM_ROOT` /
  * `UPPER_ARM_R[0]`) — which side of the axis the seam is authored on, and where
  * the arm's inboard flank runs. It is NOT the deltoid. And the half of the pair
- * that does the work is the RADIUS, because 849 of the 904 seam pixels the arm
- * eats are eaten by its one-px CONTOUR RING and only 55 by its body. Whoever
+ * that does the work is the RADIUS, because
+ * `@ours FAR_SEAM_ARM_JOIN.missInRing = 849` of the
+ * `@ours FAR_SEAM_MISSES_INSIDE_ARM = 904` seam pixels the arm
+ * eats are eaten by its one-px CONTOUR RING and only
+ * `@ours FAR_SEAM_ARM_JOIN.missInFill = 55` by its body. Whoever
  * moves either half owns this number and has to come back and re-measure it.
  */
 const MARK_LANDING_FLOOR = 0.7;
@@ -364,9 +387,12 @@ const MARK_LANDING_EXCEPTIONS: Readonly<Record<string, number>> = {
   // `MARK_LANDING_FLOOR`, which now also says which steps are asserted and which
   // are read off the source rather than measured. The join between "the arm
   // covers it" and "it fails to land" — the step that makes this a cause and not
-  // two coincidences — is `FAR_SEAM_ARM_JOIN`: 904 of the 905 far misses, with
+  // two coincidences — is `FAR_SEAM_ARM_JOIN`:
+  // `@ours FAR_SEAM_MISSES_INSIDE_ARM = 904` of the `@ours FAR_SEAM_MISSES = 905`
+  // far misses, with
   // one left over that the arm does not cover and nothing here explains. So the
-  // seam survives in 210 of 416 frames, partially. That much is anatomy — from
+  // seam survives in `@ours FAR_SEAM_FRAMES_SURVIVING = 210` of
+  // `@ours POSE_SPACE_FRAMES = 416` frames, partially. That much is anatomy — from
   // the front an arm does cross a singlet strap — and it is why this gets a
   // floor rather than a place in `alwaysOn`, which it could not meet.
   //
@@ -444,25 +470,47 @@ const MARK_LANDING_MEASURED: Readonly<Record<string, readonly [number, number, s
  * Frames in which the FAR strap seam loses every one of its three pixels.
  *
  * OURS. The `alwaysOn` comment below quotes it, and the exception above quotes
- * its complement — "survives in 210 of 416 frames" — so one number is pinned and
- * the other is arithmetic on it.
+ * its complement — `@ours FAR_SEAM_FRAMES_SURVIVING = 210` of
+ * `@ours POSE_SPACE_FRAMES = 416` — so one number is pinned and the other is
+ * arithmetic on it, in `FAR_SEAM_FRAMES_SURVIVING` below.
  */
 const FAR_SEAM_FRAMES_FULLY_GONE = 206;
 
 /**
- * (frame, seam row) pairs on one side: 416 frames times a three-row map.
+ * The complement of `FAR_SEAM_FRAMES_FULLY_GONE`, DERIVED and not typed.
+ *
+ * OURS. Both halves are quoted in prose, so both need a tag, and the arithmetic
+ * between them is done here once rather than in a sentence.
+ */
+const FAR_SEAM_FRAMES_SURVIVING = POSE_SPACE_FRAMES - FAR_SEAM_FRAMES_FULLY_GONE;
+
+/**
+ * (frame, seam row) pairs on one side: `@ours POSE_SPACE_FRAMES = 416` frames
+ * times a three-row map.
  *
  * OURS. It is the denominator of every per-side seam figure in this file.
  */
 const SEAM_ROWS_MEASURED = 1248;
 
 /**
+ * Far seam pixels that LAND, and the misses that are the other half of the join.
+ *
+ * OURS, both DERIVED from `MARK_LANDING_MEASURED` rather than typed, so the
+ * landing rate and the miss count can never disagree. Every sentence naming how
+ * many far seam pixels land, or how many fail to, is tagged against these.
+ */
+const STRAP_SEAM_FAR_LANDED = MARK_LANDING_MEASURED['STRAP_SEAM|FAR']?.[0] ?? 0;
+const FAR_SEAM_MISSES = SEAM_ROWS_MEASURED - STRAP_SEAM_FAR_LANDED;
+
+/**
  * Far seam pixels that fall inside the far upper arm's drawn outline.
  *
- * OURS, 906 of `SEAM_ROWS_MEASURED`, against ZERO on the near side.
+ * OURS, `@ours FAR_SEAM_PIXELS_INSIDE_ARM = 906` of `SEAM_ROWS_MEASURED`,
+ * against ZERO on the near side.
  *
- * THIS NUMBER AND THE 905 BESIDE IT WERE TWO BUCKETS, NOT A JOIN, for three
- * rounds. "906 pixels are inside the arm" and "905 pixels fail to land" are
+ * THIS NUMBER AND THE `@ours FAR_SEAM_MISSES = 905` BESIDE IT WERE TWO BUCKETS,
+ * NOT A JOIN, for three
+ * rounds. "inside the arm" and "fails to land" are
  * consistent with the arm having eaten its own seam and do not entail it: no
  * assertion in this file ever asked whether a LOST pixel was an INSIDE pixel,
  * and the one integer that decides it — how many misses fall outside the arm
@@ -472,46 +520,57 @@ const SEAM_ROWS_MEASURED = 1248;
  * the lever named on `MARK_LANDING_FLOOR` would have been partly wrong.
  *
  * `FAR_SEAM_ARM_JOIN` below is that join, measured. The phrase is now the
- * integer 2 and the gap between 906 and 905 is arithmetic on two pinned counts.
+ * integer `@ours FAR_SEAM_ARM_JOIN.landedInRing = 2` and the gap between the two
+ * counts above is arithmetic on two pinned counts.
  */
 const FAR_SEAM_PIXELS_INSIDE_ARM = 906;
 
 /**
  * THE JOIN: is a far seam pixel that fails to land a pixel the far arm covers?
  *
- * All OURS, all measured this round over the whole pose space, all asserted in
- * both directions below. `inCapsule` pad 1 is the arm's whole painted footprint
+ * All OURS, all measured this round over the whole pose space, all pinned so
+ * they fire whether they rise or fall. `inCapsule` pad 1 is the arm's whole
+ * painted footprint
  * (`raster.limbPass` stamps the contour ring at `grow` 1 and fills at `grow` 0),
  * and pad 0 is the FILL alone, so pad1-minus-pad0 is the one-px contour RING.
  *
- *   inside the arm, pad 1 ....................... 906  (`FAR_SEAM_PIXELS_INSIDE_ARM`)
- *     of which in the FILL ...................... 55   `insideFill`
- *     of which in the one-px contour RING ....... 851  (906 - 55)
- *   fail to land ................................ 905  (`MARK_LANDING_MEASURED`)
- *     inside, in the fill ....................... 55   `missInFill`
- *     inside, in the ring ....................... 849  `missInRing`
- *     OUTSIDE THE ARM ALTOGETHER ................ 1    `missOutside`
- *   land anyway despite being inside ............ 2    `landedInRing` + `landedInFill`
- *     in the fill ............................... 0    `landedInFill`
- *     in the ring ............................... 2    `landedInRing`
+ *   inside the arm, pad 1 ..... `@ours FAR_SEAM_PIXELS_INSIDE_ARM = 906`
+ *     of which in the FILL .... `@ours FAR_SEAM_ARM_JOIN.insideFill = 55`
+ *     of which in the RING .... `@ours FAR_SEAM_PIXELS_INSIDE_ARM_RING = 851`
+ *   fail to land .............. `@ours FAR_SEAM_MISSES = 905`
+ *     inside, in the fill ..... `@ours FAR_SEAM_ARM_JOIN.missInFill = 55`
+ *     inside, in the ring ..... `@ours FAR_SEAM_ARM_JOIN.missInRing = 849`
+ *     OUTSIDE THE ARM ......... `@ours FAR_SEAM_ARM_JOIN.missOutside = 1`
+ *   land anyway despite inside  `landedInFill` + `landedInRing`
+ *     in the fill ............. `@ours FAR_SEAM_ARM_JOIN.landedInFill = 0`
+ *     in the ring ............. `@ours FAR_SEAM_ARM_JOIN.landedInRing = 2`
  *
- * So the arm accounts for 904 of the 905, and 906 - 905 = 2 - 1.
+ * So the arm accounts for `@ours FAR_SEAM_MISSES_INSIDE_ARM = 904` of the
+ * misses, and `FAR_SEAM_PIXELS_INSIDE_ARM` less `FAR_SEAM_MISSES` is
+ * `landedInRing` less `missOutside` — asserted below as arithmetic on the pins
+ * rather than written out here as four more integers.
  *
  * THE RING IS THE MECHANISM, and it is why `UPPER_ARM_R` moves this number so
- * hard: 849 of the 904 seam pixels the arm eats are eaten by its one-pixel
- * CONTOUR, and only 55 by its body. A radius change moves the ring, and the ring
+ * hard: `@ours FAR_SEAM_ARM_JOIN.missInRing = 849` of the
+ * `@ours FAR_SEAM_MISSES_INSIDE_ARM = 904` seam pixels the arm eats are eaten by
+ * its one-pixel
+ * CONTOUR, and only `@ours FAR_SEAM_ARM_JOIN.missInFill = 55` by its body. A
+ * radius change moves the ring, and the ring
  * is where the seam is. That split existed only in a builder's report until now
- * — 849 and 55 appeared nowhere in the tree, and a critic grepping for them found
+ * — neither count appeared anywhere in the tree, and a critic grepping for them
+ * found
  * nothing — and re-measuring this round reproduced both exactly.
  *
  * `missOutside` IS ONE, NOT ZERO, AND ITS CAUSE IS NOT DIAGNOSED — said plainly,
  * in the shape `TRAP_BAR_SHADOW|FAR` above already uses, rather than guessed at.
- * It is a single (frame, row) pair of 1248: depth 0.750 ASCENT, strain 2, pitch
+ * It is a single (frame, row) pair of `@ours SEAM_ROWS_MEASURED = 1248`: depth
+ * 0.750 ASCENT, strain 2, pitch
  * 3, seam row 2, at (53, 36). What IS measured about it: the finished pixel is
  * skin, it is not inside the far upper arm at pad 1, it is not inside either far
  * FOREARM capsule at pad 1, and it is not inside the far deltoid disc. It is
  * inside the strap capsule, so the strap did reach it. Nothing here explains it
- * and nothing here pretends to; it is 1 of 905 and it is pinned so it cannot
+ * and nothing here pretends to; it is one of `@ours FAR_SEAM_MISSES = 905` and
+ * it is pinned so it cannot
  * grow quietly.
  *
  * `landedInRing` IS THE COUNT THE OLD PROSE CALLED "rescued by despeckle". Two,
@@ -532,12 +591,26 @@ const FAR_SEAM_ARM_JOIN = {
 } as const;
 
 /**
+ * The two rows of the table above that are ARITHMETIC on it, not separate pins.
+ *
+ * OURS, DERIVED. They exist because prose quotes them — the ring's share of the
+ * misses, and the ring's share of what the arm covers — and a quoted number with
+ * no owner is the defect this whole
+ * block is about. Deriving them means a change to `FAR_SEAM_ARM_JOIN` or to
+ * `FAR_SEAM_PIXELS_INSIDE_ARM` reddens the sentences too.
+ */
+const FAR_SEAM_MISSES_INSIDE_ARM = FAR_SEAM_ARM_JOIN.missInFill + FAR_SEAM_ARM_JOIN.missInRing;
+const FAR_SEAM_PIXELS_INSIDE_ARM_RING = FAR_SEAM_PIXELS_INSIDE_ARM - FAR_SEAM_ARM_JOIN.insideFill;
+
+/**
  * Seam pixels inside a deltoid cap's painted disc, both sides, whole pose space.
  *
  * OURS. `drawTorso` draws the caps with `drawEllipsoid` and no `edge` option, so
  * the disc of `ATTACH.DELTOID_R` is exactly what a cap can touch — the ceiling on
  * how much of the far seam's loss the DELTOID could explain, before even
- * accounting for the straps being drawn after the caps. Three pixels out of 905.
+ * accounting for the straps being drawn after the caps.
+ * `@ours SEAM_PIXELS_UNDER_DELTOID = 3` pixels out of
+ * `@ours FAR_SEAM_MISSES = 905`.
  *
  * The number is here because a comment in this file used to name the deltoid as
  * the cause. It is not a fact anybody needs; it is the fact that closes off a
@@ -548,37 +621,56 @@ const SEAM_PIXELS_UNDER_DELTOID = 3;
 /**
  * Near seam pixels that fail to land, over the whole pose space.
  *
- * OURS. Two, and both are `PAL.GEAR_DARK` in the finished grid — worn kit, which
+ * OURS. `@ours NEAR_SEAM_MISSES = 2`, and both are `PAL.GEAR_DARK` in the
+ * finished grid — worn kit, which
  * is asserted below. Whatever piece of kit that is, it is NOT skin, and that is
  * the load-bearing half: the near arm is inside its own seam at zero poses, so
- * the near side has no arm loss at all to compare against the far side's 905.
+ * the near side has no arm loss at all to compare against the far side's
+ * `@ours FAR_SEAM_MISSES = 905`.
  */
 const NEAR_SEAM_MISSES = 2;
 
 /**
- * Singlet pixels DRAWN in a finished frame, at the two poses `rig.ts` quotes.
+ * Singlet pixels DRAWN in a finished frame, at the poses `rig.ts` quotes — and
+ * at the other DIRECTION of each, which is the field `rig.ts` used to leave out.
  *
  * OURS, measured this round, and it lives here because the surface a seam lands
  * ON is this file's business — `MARK_SURFACES.SINGLET` is the gate every strap
  * figure above is measured through.
  *
- * `RIG_GEOMETRY.UPPER_ARM_R` states "153 -> 147 -> 142 at BRACE and 112 -> 105 ->
- * 103 in the HOLE" as the singlet area a wider upper arm eats. The two middle and
- * two right-hand figures are a record of a shape `drawArm` no longer builds, like
- * the belly landing rates beside them. The two SHIPPED ones are reproducible, and
+ * `RIG_GEOMETRY.UPPER_ARM_R` states two shipped counts and, beside each, a pair
+ * of figures for a re-bellied arm: the middle and right-hand figures are a
+ * record of a shape `drawArm` no longer builds, like the belly landing rates
+ * beside them. The two SHIPPED ones are reproducible, and
  * were the only current ours-figure in that block with no pin — in a paragraph
  * headed "WHICH OF THOSE ROWS IS CHECKABLE, said plainly". Disclosure is not the
  * same as a check: prose that says "this is unguarded" still goes stale silently,
  * it just apologises first.
  *
- * THE SPEC IS PART OF THE FIGURE. `rig.ts` quoted these at "strain 0, pitch 0,
- * 250 kg" and left the direction out; BRACE is an anchor on the DESCENT ladder
- * only, and the ASCENT ladder at the same depth draws a different pose and counts
- * 135. So the spec is written out in full here and rendered rather than quoted.
+ * THE SPEC IS PART OF THE FIGURE, AND THE DIRECTION IS PART OF THE SPEC.
+ * `rig.ts` quoted these at "strain 0, pitch 0, 250 kg" and left the direction
+ * out; BRACE is an anchor on the DESCENT ladder only, and the ASCENT ladder at
+ * the same depth draws a different pose. So every spec is written out in full
+ * here and rendered rather than quoted, and the table carries FOUR rows — both
+ * depths on both ladders — so that "in both directions" is a fact about this
+ * table rather than a hope. Measured this round:
+ *
+ *   - at BRACE the ladder MATTERS. DESCENT draws
+ *     `@ours SINGLET_PX_DRAWN.BRACE_DESCENT = 153` and ASCENT at the same depth
+ *     draws `@ours SINGLET_PX_DRAWN.BRACE_ASCENT = 135`, an eighteen-pixel gap
+ *     that a count quoted at BRACE with no ladder named hides completely;
+ *   - in the HOLE it does not. `@ours SINGLET_PX_DRAWN.HOLE_DESCENT = 112` and
+ *     `@ours SINGLET_PX_DRAWN.HOLE_ASCENT = 112` are the same count, which is
+ *     what the two ladders meeting at the bottom of the lift looks like from
+ *     the singlet's side. That is measured here, not assumed: it is the row
+ *     that makes the BRACE gap a fact about the ladders rather than about
+ *     rendering noise.
  */
 const SINGLET_PX_DRAWN: Readonly<Record<string, readonly [LifterFrameSpec, number]>> = {
-  BRACE: [spec({ depth: BRACE_SETTLE_DEPTH, direction: 'DESCENT' }), 153],
-  HOLE: [spec({ depth: 1, direction: 'DESCENT' }), 112],
+  BRACE_DESCENT: [spec({ depth: BRACE_SETTLE_DEPTH, direction: 'DESCENT' }), 153],
+  BRACE_ASCENT: [spec({ depth: BRACE_SETTLE_DEPTH, direction: 'ASCENT' }), 135],
+  HOLE_DESCENT: [spec({ depth: 1, direction: 'DESCENT' }), 112],
+  HOLE_ASCENT: [spec({ depth: 1, direction: 'ASCENT' }), 112],
 };
 
 const EXPECTED_FLESH_MARKS: readonly string[] = [
@@ -732,16 +824,18 @@ describe('marks reach the pixels', () => {
     // like an oversight and was reported as one. It is not a list this mark can
     // join. The check is per MARK, over both sides at once, and the NEAR seam
     // lands `@ours STRAP_SEAM|NEAR = 99.8%` of its pixels at every pose — so a
-    // strap already gone from the far shoulder in 206 of 416 frames passes this
+    // strap already gone from the far shoulder in
+    // `@ours FAR_SEAM_FRAMES_FULLY_GONE = 206` of `@ours POSE_SPACE_FRAMES = 416`
+    // frames passes this
     // test today, passes it with
     // `UPPER_ARM_R` re-bellied at 3.0, and only fails at 3.4, where the near
     // side finally drops out in 13 frames. A guard that green with the thing it
     // names half-eaten is worse than no guard, because it reads as coverage.
     //
     // The strap is floored by landing RATE instead, per side, at
-    // `MARK_LANDING_EXCEPTIONS`. That fires at 3.0 and at 3.4. (The 206 is pinned
-    // below; the belly figures are a record of a shape `drawArm` no longer
-    // builds — see the note on the exception itself.)
+    // `MARK_LANDING_EXCEPTIONS`. That fires at 3.0 and at 3.4. (The fully-gone
+    // count is pinned below; the belly figures are a record of a shape `drawArm`
+    // no longer builds — see the note on the exception itself.)
     //
     // WHAT PER-SIDE ACTUALLY BUYS IS SENSITIVITY, not reach, and that is worth
     // saying exactly because it is easy to overstate. An aggregate-only floor
@@ -787,10 +881,15 @@ describe('marks reach the pixels', () => {
         seamFullyGone += 1;
       }
     }
-    // "Gone from the far shoulder in 206 of 416 frames" and "survives in 210",
-    // both pinned, both directions. See `FAR_SEAM_FRAMES_FULLY_GONE`.
+    // "Gone from the far shoulder in `@ours FAR_SEAM_FRAMES_FULLY_GONE = 206` of
+    // `@ours POSE_SPACE_FRAMES = 416` frames" and "survives in
+    // `@ours FAR_SEAM_FRAMES_SURVIVING = 210`", both pinned, and both fire
+    // whether the count rises or falls. See `FAR_SEAM_FRAMES_FULLY_GONE`.
     expect(seamFullyGone, 'frames with no far seam pixel at all').toBe(FAR_SEAM_FRAMES_FULLY_GONE);
-    expect(poseSpace().length - seamFullyGone, 'frames the far seam survives in').toBe(210);
+    expect(poseSpace().length, 'frames in the sweep').toBe(POSE_SPACE_FRAMES);
+    expect(poseSpace().length - seamFullyGone, 'frames the far seam survives in').toBe(
+      FAR_SEAM_FRAMES_SURVIVING,
+    );
   });
 
   it('is eaten on the far side by the ARM, because the seam is authored unmirrored', () => {
@@ -812,8 +911,11 @@ describe('marks reach the pixels', () => {
     //   5. AND THE TWO ARE THE SAME PIXELS. Steps 3 and 4 used to be counted into
     //      separate buckets and never joined, which made them consistent with the
     //      arm eating the seam without entailing it. `FAR_SEAM_ARM_JOIN` is the
-    //      intersection: of the 905 that fail, 904 are inside the arm and ONE is
-    //      not, split 55 in the arm's fill and 849 in its one-px contour ring.
+    //      intersection: of the `@ours FAR_SEAM_MISSES = 905` that fail,
+    //      `@ours FAR_SEAM_MISSES_INSIDE_ARM = 904` are inside the arm and ONE is
+    //      not, split `@ours FAR_SEAM_ARM_JOIN.missInFill = 55` in the arm's fill
+    //      and `@ours FAR_SEAM_ARM_JOIN.missInRing = 849` in its one-px contour
+    //      ring.
     //
     // Step 3 uses `craftMetrics.inCapsule` with a pad of 1, which is the contour
     // pass's own `grow` — the same rule the renderer rasterises with, and
@@ -986,11 +1088,16 @@ describe('marks reach the pixels', () => {
     expect(farMisses, 'far seam pixels that did not land').toBe(
       pairs - (MARK_LANDING_MEASURED['STRAP_SEAM|FAR']?.[0] ?? 0),
     );
+    // Same quantity, spelled as the constant the prose is tagged against, so a
+    // tagged sentence and this assertion cannot come apart.
+    expect(farMisses, 'far misses against FAR_SEAM_MISSES').toBe(FAR_SEAM_MISSES);
     expect(farMissesOnSkin, 'every far miss is SKIN').toBe(farMisses);
     expect(nearMisses, 'near seam pixels that did not land').toBe(NEAR_SEAM_MISSES);
     expect(nearMissesOnGear, 'and both near misses are GEAR, not skin').toBe(nearMisses);
     // 5. THE JOIN, which is the step 3 and 4 above never made: a lost pixel and a
-    //    covered pixel are THE SAME PIXEL, 904 times out of 905. See
+    //    covered pixel are THE SAME PIXEL,
+    //    `@ours FAR_SEAM_MISSES_INSIDE_ARM = 904` times out of
+    //    `@ours FAR_SEAM_MISSES = 905`. See
     //    `FAR_SEAM_ARM_JOIN` for every count here and for the one that is not
     //    explained.
     expect(farMissesOutsideArm, 'far misses the arm does NOT cover — undiagnosed').toBe(
@@ -1011,7 +1118,16 @@ describe('marks reach the pixels', () => {
     expect(farInsideArmFill, "far seam pixels inside the arm's FILL").toBe(
       FAR_SEAM_ARM_JOIN.insideFill,
     );
-    //    And the arithmetic that ties 906 to 905, so neither can drift alone.
+    //    And the two DERIVED counts the prose quotes, measured here rather than
+    //    only computed, so a tag on either is backed by a rendered frame.
+    expect(farMissesInArmFill + farMissesInArmRing, 'far misses the arm DOES cover').toBe(
+      FAR_SEAM_MISSES_INSIDE_ARM,
+    );
+    expect(farInsideArm - farInsideArmFill, "far seam pixels in the arm's RING").toBe(
+      FAR_SEAM_PIXELS_INSIDE_ARM_RING,
+    );
+    //    And the arithmetic that ties inside-the-arm to failed-to-land, so
+    //    neither can drift alone.
     expect(farMissesInArmFill + farMissesInArmRing + farMissesOutsideArm, 'the misses add up').toBe(
       farMisses,
     );
@@ -1019,9 +1135,11 @@ describe('marks reach the pixels', () => {
       farMissesInArmFill + farMissesInArmRing + farLandedInsideArmFill + farLandedInsideArmRing,
       'and the covered pixels add up',
     ).toBe(farInsideArm);
-    // NOT THE DELTOID. A cap's painted disc contains three seam pixels in the
+    // NOT THE DELTOID. A cap's painted disc contains
+    // `@ours SEAM_PIXELS_UNDER_DELTOID = 3` seam pixels in the
     // whole pose space, and the strap capsule — which `drawTorso` lays down AFTER
-    // the deltoid caps — covers all three. Three cannot explain 905.
+    // the deltoid caps — covers all three. Three cannot explain
+    // `@ours FAR_SEAM_MISSES = 905`.
     expect(seamPixelsUnderDeltoid, 'seam pixels within reach of a deltoid cap').toBe(
       SEAM_PIXELS_UNDER_DELTOID,
     );
@@ -1034,8 +1152,14 @@ describe('marks reach the pixels', () => {
     // See `SINGLET_PX_DRAWN`. The only current ours-figure in `UPPER_ARM_R`'s
     // block that nothing checked, in the paragraph headed "WHICH OF THOSE ROWS IS
     // CHECKABLE, said plainly" — disclosed as unguarded, which is honest, and
-    // still a number that could go stale in silence. Both directions.
+    // still a number that could go stale in silence. Pinned so it fires whether
+    // the count rises or falls, at both depths on BOTH LADDERS.
+    //
+    // The table's DESCENT and ASCENT rows are the reason this is four renders and
+    // not two: `rig.ts` quoted a count for BRACE without saying which ladder, and
+    // the two ladders do not agree there.
     const singlet = new Set<number>(MARK_SURFACES.SINGLET);
+    const seen = new Set<string>();
     for (const [where, [at, expected]] of Object.entries(SINGLET_PX_DRAWN)) {
       const frame = renderLifterFrame(at);
       let drawn = 0;
@@ -1045,7 +1169,12 @@ describe('marks reach the pixels', () => {
         }
       }
       expect(drawn, `singlet px at ${where}, ${at.direction} depth ${at.depth}`).toBe(expected);
+      seen.add(at.direction);
     }
+    // "In both directions" is checked, not asserted in a comment: the table used
+    // to hold two rows and both were DESCENT, while the doc beside it said the
+    // ladder mattered.
+    expect([...seen].sort(), 'ladders the table actually renders').toEqual(['ASCENT', 'DESCENT']);
   });
 
   it('gives the face a mouth and both eyes at every depth', () => {
@@ -1078,7 +1207,7 @@ describe('marks are stamped after despeckle, and that matters', () => {
     // that point "the ordering is load-bearing" is being asserted by an
     // accident rather than demonstrated.
     //
-    // Measured at this authoring: 389 of 416 frames would lose at least one
+    // Measured at this authoring: 389 of `@ours POSE_SPACE_FRAMES = 416` frames would lose at least one
     // authored pixel and 1188 would go in total, the worst hit being the pec
     // shelf's one-pixel sternum notch and both drawings of the face.
     let eaten = 0;
@@ -1338,11 +1467,86 @@ describe('authored pixel budget', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The prose quoting these rates is checked too
+// The prose quoting these figures is checked too — rates AND counts
 // ---------------------------------------------------------------------------
 
-/** `@ours STRAP_SEAM|FAR = 27.5%` — key, then the printed rate. */
-const OURS_TAG = /@ours\s+([A-Z_]+\|[A-Z]+)\s*=\s*(\d+(?:\.\d+)?%)/g;
+/**
+ * The NUMBER half of a prose tag, shared with `@ref` CHARACTER FOR CHARACTER.
+ *
+ * `@ours` was built as a narrower copy of `lifterSprite.test.ts`'s `@ref`: same
+ * idea, same job, but its value grammar was percent-only, with a mandatory
+ * percent sign. So the round that measured the seam produced eleven INTEGERS the
+ * convention could not express, and every one of them went back to being a third
+ * copy restated in prose. Two dialects, one narrower than the other, is how that
+ * happens.
+ *
+ * This is that grammar, lifted verbatim from `@ref`, and
+ * 'writes the same number grammar `@ref` does' below reads the other file and
+ * fails if the two drift apart. The two tags still resolve against DIFFERENT
+ * TABLES and that is deliberate, not an oversight:
+ *
+ *   - `@ref` names a figure decoded off the reference PNG and is compared with a
+ *     tolerance of half a unit in the last decimal the comment printed, because
+ *     a decoded mean is a real number quoted at whatever precision the sentence
+ *     wanted.
+ *   - `@ours` names a figure counted off our own rendered frames and is compared
+ *     EXACTLY, because a pixel count and a `.toFixed(1)` rate both have one
+ *     correct spelling and a tolerance would only let a stale one through.
+ *
+ * Sharing the resolution would mean merging a decoder's output with a
+ * rasteriser's, which is the one thing the two words exist to keep apart.
+ */
+const TAG_NUMBER = String.raw`(-?\d+(?:\.\d+)?)(%?)`;
+
+/**
+ * `@ours STRAP_SEAM|FAR = 27.5%`, `@ours FAR_SEAM_ARM_JOIN.missInRing = 849`.
+ *
+ * The NAME half is a superset of `@ref`'s: it admits the `NAME|BUCKET` keys the
+ * landing table is keyed by as well as the dotted `CONST.field` names `@ref`
+ * already uses.
+ */
+const OURS_TAG = new RegExp(String.raw`@ours\s+([A-Z][\w.|]*)\s*=\s*` + TAG_NUMBER, 'g');
+
+/** The same shape for `@ref`, used only to strip those tags before a ban runs. */
+const REF_TAG = new RegExp(String.raw`@ref\s+([A-Za-z][\w.]*)\s*=\s*` + TAG_NUMBER, 'g');
+
+/**
+ * EVERY OURS-FIGURE A COMMENT MAY STATE, name to the one spelling that is right.
+ *
+ * Rates come from `MARK_LANDING_MEASURED`. Counts come from the pins above and
+ * from the arithmetic on them, and NONE of them is typed twice: the derived
+ * entries are computed, so moving `FAR_SEAM_ARM_JOIN.missInRing` moves
+ * `FAR_SEAM_MISSES_INSIDE_ARM` and reddens every sentence tagged with either.
+ *
+ * A name that is not a key here fails the scan, so a tag cannot be invented for
+ * something nothing measures; and every key here must be quoted somewhere, so a
+ * figure cannot be pinned for prose that no longer exists.
+ */
+const OURS_FIGURES: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(
+    Object.entries(MARK_LANDING_MEASURED).map(([key, [, , printed]]) => [key, printed]),
+  ),
+  POSE_SPACE_FRAMES: String(POSE_SPACE_FRAMES),
+  SEAM_ROWS_MEASURED: String(SEAM_ROWS_MEASURED),
+  STRAP_SEAM_FAR_LANDED: String(STRAP_SEAM_FAR_LANDED),
+  FAR_SEAM_MISSES: String(FAR_SEAM_MISSES),
+  FAR_SEAM_MISSES_INSIDE_ARM: String(FAR_SEAM_MISSES_INSIDE_ARM),
+  FAR_SEAM_PIXELS_INSIDE_ARM: String(FAR_SEAM_PIXELS_INSIDE_ARM),
+  FAR_SEAM_PIXELS_INSIDE_ARM_RING: String(FAR_SEAM_PIXELS_INSIDE_ARM_RING),
+  'FAR_SEAM_ARM_JOIN.insideFill': String(FAR_SEAM_ARM_JOIN.insideFill),
+  'FAR_SEAM_ARM_JOIN.missInFill': String(FAR_SEAM_ARM_JOIN.missInFill),
+  'FAR_SEAM_ARM_JOIN.missInRing': String(FAR_SEAM_ARM_JOIN.missInRing),
+  'FAR_SEAM_ARM_JOIN.missOutside': String(FAR_SEAM_ARM_JOIN.missOutside),
+  'FAR_SEAM_ARM_JOIN.landedInFill': String(FAR_SEAM_ARM_JOIN.landedInFill),
+  'FAR_SEAM_ARM_JOIN.landedInRing': String(FAR_SEAM_ARM_JOIN.landedInRing),
+  FAR_SEAM_FRAMES_FULLY_GONE: String(FAR_SEAM_FRAMES_FULLY_GONE),
+  FAR_SEAM_FRAMES_SURVIVING: String(FAR_SEAM_FRAMES_SURVIVING),
+  SEAM_PIXELS_UNDER_DELTOID: String(SEAM_PIXELS_UNDER_DELTOID),
+  NEAR_SEAM_MISSES: String(NEAR_SEAM_MISSES),
+  ...Object.fromEntries(
+    Object.entries(SINGLET_PX_DRAWN).map(([key, [, px]]) => [`SINGLET_PX_DRAWN.${key}`, String(px)]),
+  ),
+};
 
 /**
  * The files whose prose is allowed to state a landing rate at all.
@@ -1363,6 +1567,167 @@ const RATE_PROSE_FILES: readonly string[] = [
   'src/art/lifterSprite.test.ts',
 ];
 
+/**
+ * WHERE THE UNTAGGED-INTEGER BAN LOOKS, AND WHAT IT THEREFORE CANNOT CATCH.
+ *
+ * TWO FILES, NOT THE THREE ABOVE. `lifterSprite.test.ts` quotes seam RATES —
+ * that is why it is in `RATE_PROSE_FILES` — but it states no seam COUNT, and it
+ * carries integers of its own that collide by value: its far-arm sweep table
+ * prints a frame count that equals `SINGLET_PX_DRAWN.HOLE_DESCENT`, and a
+ * sentence about a pose sweep prints the same number again. Both are honest
+ * numbers about something else. Adding the file would make the ban a
+ * false-positive generator on its first run, which is the failure mode that gets
+ * a guard suppressed.
+ *
+ * COMMENTS ONLY. The scan runs over `commentProse`, so the pins themselves —
+ * every `const` above holding one of these counts — the assertions, the table
+ * rows and every string literal are invisible to it. A number is only policed
+ * where it is being ASSERTED BY A SENTENCE, which is the only place a sentence
+ * can be wrong.
+ *
+ * INTEGERS OF `OURS_BAN_MIN_INTEGER` AND UP, AND THAT IS A REAL HOLE. Four of
+ * the join's counts are 0, 1, 2 and 3, and in this file's own comments those
+ * digits appear as "pitch 3", "step 3", "row 2", "pad 0", "sign 1" and "two px"
+ * — measured, not guessed: a value-based ban on 3 alone would fire on four lines
+ * of correct prose. So `FAR_SEAM_ARM_JOIN.missOutside`, `.landedInFill`,
+ * `.landedInRing`, `SEAM_PIXELS_UNDER_DELTOID` and `NEAR_SEAM_MISSES` can be
+ * restated untagged and this will not notice. What still protects the sentence
+ * that matters is that its OTHER halves are above the line: the ring's count and
+ * the fill's, the two numbers that say which half of the lever does the work,
+ * cannot be written untagged, and a wrong small integer beside a right big one
+ * is a much narrower hole than the one this closes.
+ *
+ * NOT A GENERAL MAGIC-NUMBER RULE. It bans exactly the values in `OURS_FIGURES`.
+ * The frame counts the despeckle block quotes, the authored-pixel budget and the
+ * belly-radius record in `rig.ts` are untagged integers in these same comments
+ * and stay legal, because nothing pins them. `src/tuning/audit.ts` is the general
+ * rule and it deliberately does not read test files.
+ *
+ * DECIMAL DIGITS ONLY. A count written with a thousands separator, or spelled
+ * out in words, walks straight past.
+ *
+ * AND IT CANNOT TELL A POLICED COUNT FROM AN UNRELATED NUMBER THAT EQUALS IT.
+ * Observed, not imagined: re-measuring this instrument at a wider `UPPER_ARM_R`
+ * moved `FAR_SEAM_FRAMES_FULLY_GONE` onto the same value as the authored-pixel
+ * figure in `FLOOR_MARK_PIXELS_PER_FRAME`'s doc twenty lines from the top of
+ * this file, and the ban fired on that sentence, which is about a completely
+ * different thing. Nothing here can distinguish the two, because a value-based
+ * ban only knows values. If that happens for real the fix is to reword the
+ * innocent sentence, not to widen the exemptions — but it is a cost of this
+ * design and it is written down rather than waited for.
+ */
+const SEAM_INTEGER_PROSE_FILES: readonly string[] = [
+  'src/art/spriteMarks.test.ts',
+  'src/art/rig.ts',
+];
+
+/** Below this, an integer in prose is structure, not a measurement. */
+const OURS_BAN_MIN_INTEGER = 10;
+
+/**
+ * The COMMENT text of a TypeScript source, one entry per line of the original.
+ *
+ * Code, string literals and regex literals are dropped; line comments and block
+ * comments are kept. Line numbers are preserved so a finding can be pointed at.
+ * `commentProse` is exercised on a hand-written sample below rather than
+ * trusted, because a ban that reads the wrong half of the file is worse than no
+ * ban.
+ */
+function commentProse(text: string): string[] {
+  const REGEX_PRECEDERS = '(,=:[!&|?{};+-*%<>~^';
+  const out: string[] = [];
+  let line = '';
+  let state: 'code' | 'line' | 'block' | 'string' | 'regex' = 'code';
+  let quote = '';
+  let prev = '';
+  let i = 0;
+  while (i < text.length) {
+    const c = text[i] ?? '';
+    const d = text[i + 1] ?? '';
+    if (c === '\n') {
+      if (state === 'line' || state === 'string' || state === 'regex') state = 'code';
+      out.push(line);
+      line = '';
+      i += 1;
+      continue;
+    }
+    if (state === 'code') {
+      if (c === '/' && d === '/') {
+        state = 'line';
+        i += 2;
+        continue;
+      }
+      if (c === '/' && d === '*') {
+        state = 'block';
+        i += 2;
+        continue;
+      }
+      if (c === '/' && (prev === '' || REGEX_PRECEDERS.includes(prev))) {
+        state = 'regex';
+        i += 1;
+        continue;
+      }
+      if (c === "'" || c === '"' || c === '`') {
+        state = 'string';
+        quote = c;
+        i += 1;
+        continue;
+      }
+      if (c.trim() !== '') prev = c;
+      i += 1;
+      continue;
+    }
+    if (state === 'string' || state === 'regex') {
+      if (c === '\\') {
+        i += 2;
+        continue;
+      }
+      if (state === 'string' ? c === quote : c === '/') {
+        state = 'code';
+        prev = 'x';
+      }
+      i += 1;
+      continue;
+    }
+    if (state === 'block' && c === '*' && d === '/') {
+      state = 'code';
+      i += 2;
+      continue;
+    }
+    line += c;
+    i += 1;
+  }
+  out.push(line);
+  return out;
+}
+
+/**
+ * Every line of `prose` that states a policed integer with no `@ours` tag on it.
+ *
+ * Returned rather than asserted so the check can be shown to FIRE, on a sample
+ * written for the purpose, in the same test that shows it silent on the tree.
+ */
+function untaggedOursIntegers(
+  rel: string,
+  prose: readonly string[],
+  banned: ReadonlyMap<string, readonly string[]>,
+): string[] {
+  const hits: string[] = [];
+  prose.forEach((raw, index) => {
+    const bare = raw.replace(OURS_TAG, '').replace(REF_TAG, '');
+    for (const [value, names] of banned) {
+      // Not part of a longer number, not the digits after a decimal point, and
+      // not the integer part of one either.
+      if (!new RegExp(String.raw`(?<![\w.])${value}(?![\w])(?!\.\d)`).test(bare)) continue;
+      hits.push(
+        `${rel}:${index + 1} states the measured integer ${value} ` +
+          `(${names.join(' / ')}) with no @ours tag: "${raw.trim()}"`,
+      );
+    }
+  });
+  return hits;
+}
+
 function sourceFilesUnder(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -1377,8 +1742,8 @@ function sourceFilesUnder(dir: string): string[] {
   return out;
 }
 
-describe('the prose that quotes a landing rate', () => {
-  it('agrees with every landing rate any comment in the tree states', () => {
+describe('the prose that quotes an ours-figure', () => {
+  it('agrees with every ours-figure any comment in the tree states', () => {
     // THE DEFECT CLASS THIS WHOLE PIECE HAS BEEN FIGHTING, one category over from
     // where `lifterSprite.test.ts` closed it. Its `@ref` check exists because two
     // comments in one file carried reference figures 17% apart, both labelled
@@ -1387,33 +1752,61 @@ describe('the prose that quotes a landing rate', () => {
     // the sentences quoting that string — in this file, in `rig.ts`, in
     // `lifterSprite.test.ts` — were compared to nothing.
     //
-    // Same mechanism, different table: a comment stating one of our landing rates
-    // writes `@ours KEY = VALUE`, and this compares it to `MARK_LANDING_MEASURED`
-    // exactly. A key nothing pins fails, so a tag cannot be invented.
+    // Same mechanism, different table: a comment stating one of our figures
+    // writes `@ours NAME = VALUE`, and this compares it to `OURS_FIGURES`
+    // exactly. A name nothing pins fails, so a tag cannot be invented.
+    //
+    // AND THE FIGURES INCLUDE COUNTS NOW. The round before this one measured the
+    // far seam's join with the arm and produced eleven integers; the tag could
+    // only express a percentage, so all eleven went straight back into prose as a
+    // third copy, including the sentence that names which half of the lever does
+    // the work.
     const root = path.resolve(__dirname, '..');
     let checked = 0;
+    let integers = 0;
     const tagged = new Set<string>();
     for (const file of sourceFilesUnder(root)) {
       const text = readFileSync(file, 'utf8');
       for (const m of text.matchAll(OURS_TAG)) {
         const key = m[1] ?? '';
-        const quoted = m[2] ?? '';
+        const quoted = `${m[2] ?? ''}${m[3] ?? ''}`;
         const where = `${path.relative(process.cwd(), file)}: @ours ${key} = ${quoted}`;
-        const pinned = MARK_LANDING_MEASURED[key];
-        expect(pinned, `${where} names nothing MARK_LANDING_MEASURED pins`).toBeDefined();
-        expect(quoted, where).toBe(pinned?.[2]);
+        const pinned = OURS_FIGURES[key];
+        expect(pinned, `${where} names nothing OURS_FIGURES pins`).toBeTypeOf('string');
+        expect(quoted, where).toBe(pinned);
         checked += 1;
+        if (!quoted.endsWith('%')) integers += 1;
         tagged.add(key);
       }
     }
-    // A convention nobody used would pass vacuously.
-    expect(checked, 'tagged landing rates found in the tree').toBeGreaterThan(15);
-    // And every pinned rate is quoted somewhere, or it is a pin with no prose
+    // A convention nobody used would pass vacuously, and one that quietly went
+    // back to percentages only would pass the line above.
+    expect(checked, 'tagged ours-figures found in the tree').toBeGreaterThan(15);
+    expect(integers, 'tagged ours-INTEGERS found in the tree').toBeGreaterThan(15);
+    // And every pinned figure is quoted somewhere, or it is a pin with no prose
     // behind it and the block above is claiming to serve a sentence that is gone.
-    expect([...tagged].sort()).toEqual(Object.keys(MARK_LANDING_MEASURED).sort());
+    expect([...tagged].sort()).toEqual(Object.keys(OURS_FIGURES).sort());
   });
 
-  it('never states one of them untagged, so a fourth copy cannot start', () => {
+  it('writes the same number grammar `@ref` does, character for character', () => {
+    // `@ours` is a copy of `@ref` and the copy was made narrower than the
+    // original, which is the whole reason this round exists: `@ref` had always
+    // handled integers and `@ours` had not, so eleven measured counts had no
+    // convention to live in. This reads the other file and fails if the two
+    // number grammars drift apart again, in either direction.
+    //
+    // It compares the NUMBER half only. The name halves are deliberately
+    // different — ours admits `NAME|BUCKET` — and pinning those together would
+    // redden this for a change that is none of its business.
+    const refText = readFileSync(path.resolve(__dirname, 'lifterSprite.test.ts'), 'utf8');
+    const literal = /\/@ref[^\n]*?\/g;/.exec(refText)?.[0] ?? '';
+    expect(literal, 'the @ref tag regex, read out of lifterSprite.test.ts').not.toBe('');
+    expect(literal, 'the @ref number grammar and TAG_NUMBER must stay one dialect').toContain(
+      TAG_NUMBER,
+    );
+  });
+
+  it('never states one of the RATES untagged, so a fourth copy cannot start', () => {
     // The tag only helps if prose CANNOT quote a rate without it. Strip the tags
     // and no printed rate string may survive anywhere in the files that discuss
     // mark landing. See `RATE_PROSE_FILES` for why that is three files and not
@@ -1434,5 +1827,86 @@ describe('the prose that quotes a landing rate', () => {
     for (const rel of RATE_PROSE_FILES) {
       expect(existsSync(path.resolve(__dirname, '../..', rel)), rel).toBe(true);
     }
+  });
+
+  it('reads comments and not code, on a sample written to break it', () => {
+    // `commentProse` is the whole scope of the ban below. If it leaked code, the
+    // pins themselves would trip it; if it swallowed comments, the ban would be
+    // silent and look green. Both failure modes are invisible from the outside,
+    // so the parser is exercised on a sample containing the two constructs that
+    // actually break naive versions: a string holding comment punctuation, and a
+    // regex literal holding a quote.
+    const sample = [
+      'const A = 906; // note 906',
+      "/* block 906 */ const s = '// not a comment 906';",
+      "const r = /'/; // after regex 906",
+      '',
+    ].join('\n');
+    expect(commentProse(sample)).toEqual([' note 906', ' block 906 ', ' after regex 906', '']);
+  });
+
+  it('never states one of the seam COUNTS untagged either', () => {
+    // The gap this closes: `@ours` was built for percentages, so the eleven
+    // integers the join was measured in had no tag to wear and went back to being
+    // restated prose at seven separated sites. Tagging them is half the job; this
+    // is the half that stops an eighth site appearing.
+    //
+    // Read `SEAM_INTEGER_PROSE_FILES` before widening this. It is two files,
+    // comments only, and integers of `OURS_BAN_MIN_INTEGER` and up, and each of
+    // those three limits is there because the alternative was measured and
+    // produced false positives on correct prose.
+    const banned = new Map<string, string[]>();
+    for (const [name, printed] of Object.entries(OURS_FIGURES)) {
+      if (printed.endsWith('%')) continue;
+      if (Number(printed) < OURS_BAN_MIN_INTEGER) continue;
+      banned.set(printed, [...(banned.get(printed) ?? []), name]);
+    }
+    // The set is not empty and is not one lonely number.
+    expect(banned.size, 'distinct seam integers this ban polices').toBeGreaterThan(8);
+
+    // THE SCOPE IS PINNED, NOT DEFAULTED. Emptying the list left this test green
+    // — found by breaking it — which is the shape of failure GDD §12.2 spends a
+    // page on: a guard whose enumeration nobody checks passes by scanning
+    // nothing. Both halves are named here, so shrinking the scan is an edit a
+    // reader sees rather than a silence.
+    expect([...SEAM_INTEGER_PROSE_FILES].sort()).toEqual([
+      'src/art/rig.ts',
+      'src/art/spriteMarks.test.ts',
+    ]);
+
+    for (const rel of SEAM_INTEGER_PROSE_FILES) {
+      const full = path.resolve(__dirname, '../..', rel);
+      expect(existsSync(full), rel).toBe(true);
+      const prose = commentProse(readFileSync(full, 'utf8'));
+      expect(untaggedOursIntegers(rel, prose, banned), `untagged seam integers in ${rel}`).toEqual(
+        [],
+      );
+
+      // AND EACH FILE IS A FILE THIS CAN CATCH SOMETHING IN. Put every tagged
+      // number back the way it was written before the tag — same digits, no
+      // `@ours` in front — and the ban must fire on that file. A listed file
+      // where it does not fire is a file with no policed integer in it, which
+      // means the green above was measuring nothing.
+      const detagged = prose.map((l) =>
+        l.replace(OURS_TAG, (_all: string, _name: string, digits: string, pct: string) =>
+          `${digits}${pct}`,
+        ),
+      );
+      expect(
+        untaggedOursIntegers(rel, detagged, banned).length,
+        `${rel} states no policed integer at all, so the check above is vacuous`,
+      ).toBeGreaterThan(0);
+    }
+
+    // AND IT FIRES ON EXACTLY THE UNTAGGED LINE, not on its tagged neighbour.
+    const ring = OURS_FIGURES['FAR_SEAM_ARM_JOIN.missInRing'] ?? '';
+    const sample = [
+      ` * the arm eats ${ring} of them in its contour ring`,
+      ` * but \`@ours FAR_SEAM_ARM_JOIN.missInRing = ${ring}\` is fine`,
+    ];
+    const fired = untaggedOursIntegers('sample.ts', sample, banned);
+    expect(fired.length, 'the ban catches the untagged line and only that line').toBe(1);
+    expect(fired[0]).toContain('sample.ts:1');
+    expect(fired[0]).toContain('FAR_SEAM_ARM_JOIN.missInRing');
   });
 });
