@@ -4,7 +4,9 @@
     "subtitle": "Gauntlet Loop build run",
     "wave": 13,
     "waveName": "Wave 13 - the graders were reading a stale artifact; the harness that was supposed to catch that was blind to it",
-    "startedIso": "2026-07-31T03:10:00Z"
+    "startedIso": "2026-07-31T03:10:00Z",
+    "publishedAt": "https://claude.ai/code/artifact/eef0d0ae-c6fd-4e27-9200-69e60a23e38a",
+    "publishNote": "tools/progress.mjs output, published as a private Artifact so the page is openable on a phone. .gauntlet/progress.html is gitignored, so this URL is the only way anyone sees it — republish the same file path to keep the URL."
   },
   "blockers": [
     {
