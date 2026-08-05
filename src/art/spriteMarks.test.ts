@@ -1854,16 +1854,41 @@ describe('the prose that quotes an ours-figure', () => {
     // The set is not empty and is not one lonely number.
     expect(banned.size, 'distinct seam integers this ban polices').toBeGreaterThan(8);
 
+    // THE SCOPE IS PINNED, NOT DEFAULTED. Emptying the list left this test green
+    // — found by breaking it — which is the shape of failure GDD §12.2 spends a
+    // page on: a guard whose enumeration nobody checks passes by scanning
+    // nothing. Both halves are named here, so shrinking the scan is an edit a
+    // reader sees rather than a silence.
+    expect([...SEAM_INTEGER_PROSE_FILES].sort()).toEqual([
+      'src/art/rig.ts',
+      'src/art/spriteMarks.test.ts',
+    ]);
+
     for (const rel of SEAM_INTEGER_PROSE_FILES) {
       const full = path.resolve(__dirname, '../..', rel);
       expect(existsSync(full), rel).toBe(true);
-      const hits = untaggedOursIntegers(rel, commentProse(readFileSync(full, 'utf8')), banned);
-      expect(hits, `untagged seam integers in ${rel}`).toEqual([]);
+      const prose = commentProse(readFileSync(full, 'utf8'));
+      expect(untaggedOursIntegers(rel, prose, banned), `untagged seam integers in ${rel}`).toEqual(
+        [],
+      );
+
+      // AND EACH FILE IS A FILE THIS CAN CATCH SOMETHING IN. Put every tagged
+      // number back the way it was written before the tag — same digits, no
+      // `@ours` in front — and the ban must fire on that file. A listed file
+      // where it does not fire is a file with no policed integer in it, which
+      // means the green above was measuring nothing.
+      const detagged = prose.map((l) =>
+        l.replace(OURS_TAG, (_all: string, _name: string, digits: string, pct: string) =>
+          `${digits}${pct}`,
+        ),
+      );
+      expect(
+        untaggedOursIntegers(rel, detagged, banned).length,
+        `${rel} states no policed integer at all, so the check above is vacuous`,
+      ).toBeGreaterThan(0);
     }
 
-    // AND IT FIRES. A ban that has never been seen to catch anything is
-    // indistinguishable from a ban whose scan is pointed at an empty set, which
-    // is a mistake this file has made before in another form.
+    // AND IT FIRES ON EXACTLY THE UNTAGGED LINE, not on its tagged neighbour.
     const ring = OURS_FIGURES['FAR_SEAM_ARM_JOIN.missInRing'] ?? '';
     const sample = [
       ` * the arm eats ${ring} of them in its contour ring`,
