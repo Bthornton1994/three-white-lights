@@ -88,6 +88,8 @@ const PLATES = hallPlateCount(HEAVY_KG, BAR_AND_COLLARS_KG);
 const URGENT = buildWalkout({ loadRatio: LOAD, plateCount: PLATES, urgent: true });
 const ORDINARY = buildWalkout({ loadRatio: LOAD, plateCount: PLATES, urgent: false });
 const AT = walkoutStageStartMs(PLATES);
+/** The sheet's own clock. `TICK_MS` is the quantum every instant lands on. */
+const MOTION = MEET_TUNING.WALKOUT_MOTION;
 
 // ---------------------------------------------------------------------------
 // The instrument
@@ -647,6 +649,165 @@ function bandOf(rise: number): BandAir {
   return airOf(renderGymScene(hallScene(rise)));
 }
 
+// ---------------------------------------------------------------------------
+// THE INSTRUMENT FOR "WHEN" — the drawn hall against the clock
+// ---------------------------------------------------------------------------
+
+/*
+ * ===========================================================================
+ * EVERYTHING ABOVE THIS LINE IS SPATIAL, AND THAT WAS THE WHOLE FILE
+ * ===========================================================================
+ * `tierRisesOf` and its pins answer "is the hall drawn where the wave asked",
+ * for a GIVEN rise. Nothing answered "and when in the beat is that rise on the
+ * screen". The one test that claimed to — `comes up over time rather than
+ * switching on` — mapped the sheet to `crowdRisePx` and threw `startMs` and
+ * `holdMs` away, so its whole temporal claim was the CARDINALITY of a `Set`
+ * plus monotonicity. `WALKOUT_RISE_MS` was referenced by one assertion in the
+ * repository (`toBeGreaterThan(0)`, in the test named "what this file does NOT
+ * claim") and `WALKOUT_RISE_DELAY_MS` by none at all.
+ *
+ * WHAT THAT COST, RUN RATHER THAN REASONED. `crowdRisePxAt` compressed into the
+ * last quarter of its window — `smoothstep(u)` becomes `smoothstep(4u - 3)`,
+ * writable with only the literals this directory's bare-literal scan permits,
+ * both constants untouched at 180 ms and 900 ms:
+ *
+ *     Test Files  59 passed (59)
+ *          Tests  2534 passed (2534)
+ *
+ * The hall then sits DEAD for the first 720 ms of the 900 ms ramp and pops to
+ * its feet in the remaining 140 ms — measured on the sheet, not estimated. Every
+ * ruler above passes it, because they all render `hallScene(rise)` for a given
+ * rise and never ask when that rise is on screen; `Set.size` was 6 either way;
+ * monotone held; `crowdRisePx` at `AT.LOAD` was still 0; and the settled frame
+ * still reached `WALKOUT_HALL_RISE`. That is the beat's anticipation channel
+ * deleted and replaced with a jump-scare, on the one screen GDD §12.2 judges for
+ * dread, with the whole tree green.
+ *
+ * ===========================================================================
+ * SO THE READING IS TAKEN THE WAY THE REST OF THE FILE TAKES READINGS
+ * ===========================================================================
+ * Off the COMPOSITE. `drawnRiseTimeline` renders `hallAt` for every frame of the
+ * sheet and reads `tierRisesOf` on it, then merges consecutive frames that draw
+ * the same hall. The result is the step function the SCREEN shows against the
+ * clock — `startMs` and `holdMs` are what build it — rather than the numbers in
+ * the frame records. A number in a frame record is not a pixel on a screen, and
+ * that is this file's whole method.
+ *
+ * ===========================================================================
+ * IT BOUNDS THE SHAPE OF THE MOTION, NOT ITS NUMBERS
+ * ===========================================================================
+ * GDD §12.1: these durations are hand-tuned afterwards, across roughly thirty
+ * playtest iterations. A pin that fires when somebody tunes the ramp for a good
+ * reason is worse than the hole it fills. So every bound below is a FRACTION OF
+ * `WALKOUT_RISE_MS` or a comparison against the hall's own settled reading —
+ * nothing here knows that the ramp is 900 ms, that the delay is 180 ms, that the
+ * rise is 5 rows, or that the curve is a smoothstep. Retuning any of those moves
+ * both sides of every assertion together; COMPRESSING the motion inside the
+ * window moves only one.
+ */
+
+/** One drawn hall, and the span of the beat it is on screen for. */
+interface DrawnRise {
+  /** ms from the top of the beat this drawing goes up. */
+  readonly startMs: number;
+  /** ms from the top of the beat the next distinct drawing replaces it. */
+  readonly endMs: number;
+  /** The scalar the sheet asked the room for. Kept only for calibration. */
+  readonly crowdRisePx: number;
+  /** `tierRisesOf` the COMPOSITE, back to front. */
+  readonly tiers: readonly number[];
+}
+
+function sameRise(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+/**
+ * The whole beat as drawn halls against the clock.
+ *
+ * One composite per FRAME — 33 of them on the urgent walk-out, about 3 ms each —
+ * and consecutive frames drawing the same hall are merged, because the sheet
+ * breaks on the lifter's channels too and a run of frames the crowd does not
+ * move through is one drawing of the room.
+ */
+function drawnRiseTimeline(sequence: typeof URGENT): readonly DrawnRise[] {
+  const runs: DrawnRise[] = [];
+  for (const frame of sequence.frames) {
+    const tiers = tierRisesOf(hallAt(frame));
+    const open = runs[runs.length - 1];
+    const endMs = frame.startMs + frame.holdMs;
+    if (open !== undefined && sameRise(open.tiers, tiers)) {
+      runs[runs.length - 1] = { ...open, endMs };
+      continue;
+    }
+    runs.push({ startMs: frame.startMs, endMs, crowdRisePx: frame.crowdRisePx, tiers });
+  }
+  return runs;
+}
+
+const RISE_TIMELINE = drawnRiseTimeline(URGENT);
+
+/** Where the ramp is measured from, and to. The beat's own clock. */
+const RAMP_START_MS = AT.UNRACK + WALKOUT_CROWD_RISE.delayMs;
+const RAMP_END_MS = RAMP_START_MS + WALKOUT_CROWD_RISE.rampMs;
+
+/** The hall the beat comes to rest on, as the composite draws it. */
+const RISE_SETTLED: readonly number[] = RISE_TIMELINE[RISE_TIMELINE.length - 1]?.tiers ?? [];
+
+function firstDrawnMs(matches: (run: DrawnRise) => boolean): number | null {
+  return RISE_TIMELINE.find(matches)?.startMs ?? null;
+}
+
+/** When anybody at all is first drawn off their seat. */
+const RISE_FIRST_MOVED_MS = firstDrawnMs((run) => sumOf(run.tiers) > 0);
+/** When the hall is first drawn where it will still be when he sets. */
+const RISE_FIRST_SETTLED_MS = firstDrawnMs((run) => sameRise(run.tiers, RISE_SETTLED));
+
+/**
+ * ===========================================================================
+ * THE THREE BOUNDS ON THE SHAPE, AND WHAT EACH MEASURES TODAY
+ * ===========================================================================
+ * Grouped here rather than beside their assertions so a tuning pass can see all
+ * of them at once, in the file's own style (`A_PICTURE_THAT_CHANGED`,
+ * `THE_HALL_KNOWS`, `AIR_BETWEEN_SPECTATORS`). None of them is a game-feel value
+ * — the feel values are `MEET_TUNING.CROWD`'s and are not touched here — they are
+ * how far a shape may drift from the design claim before the suite says so.
+ *
+ *   measured on the shipped ramp        bound        headroom
+ *   spread                 0.62 x       >= 1/3       1.9x
+ *   longest still hall     0.20 x       <= 1/2       2.5x
+ *   biggest single step    1 row        <= 2 rows    2x
+ *
+ * WHICH ONE IS LOAD-BEARING, since they are not interchangeable and the round
+ * that added them was asked to say:
+ *
+ *   THE SPREAD AND THE STILLNESS ARE WHAT CATCH A COMPRESSION. Under
+ *     `smoothstep(4u - 3)` the spread is 0.16 and the longest still hall is
+ *     0.80 — both red, and the stillness bound is the one whose message names
+ *     the dead time.
+ *   THE STEP BOUND CATCHES NOTHING A COMPRESSION DOES, and it was checked rather
+ *     than assumed: the compressed ramp still climbs one row at a time, because
+ *     `TICK_MS` 20 against a 900 ms window is fine enough that even four times
+ *     the slope cannot skip a row. What it catches is the OTHER shape a
+ *     "distributed" rise can fake — a staircase that waits and then jumps two
+ *     tiers at one frame boundary, which satisfies both bounds above.
+ *
+ * So the answer is: the spread bounds the failure this round was sent for, and
+ * the step bound is what stops the fix being satisfiable by a staircase.
+ */
+const RISE_SPREAD_MIN_FRAC = 1 / 3;
+const RISE_MAX_STILL_FRAC = 1 / 2;
+const RISE_MAX_ROWS_PER_STEP = 2;
+
+/**
+ * Where in the ramp the hall is photographed and pinned.
+ *
+ * Quarters because they are the coarsest sample that can distinguish "coming up
+ * across the window" from "coming up in a corner of it", and because a bound
+ * stated at a fraction of the ramp survives the ramp being retuned.
+ */
+const RISE_PROBE_FRACS: readonly number[] = [1 / 4, 1 / 2, 3 / 4];
+
 /**
  * THE PLANT: the crowd band redrawn the way it was drawn before this pass —
  * EVERY TIER RISEN BY THE SAME AMOUNT, and no keyline around anybody.
@@ -1173,6 +1334,35 @@ describe('the ruler this file reads the hall’s rise off', () => {
       }
     }
   });
+
+  it('reads the same rise through the COMPOSITE as it does off the bare room', () => {
+    // THE CALIBRATION THE TIME AXIS NEEDS, and the one reading nothing else in
+    // this file takes. Every tier measurement above is taken off
+    // `renderGymScene(hallScene(rise))` — a room with nobody in it.
+    // `drawnRiseTimeline` reads the same ruler on `hallAt`, which is that room
+    // with the LIFTER BLITTED OVER IT, because "when is this rise on the screen"
+    // is a question about the screen and the screen has a man on it.
+    //
+    // The two are only the same reading while the sprite stays clear of the
+    // scan windows, and it very nearly does not: `SPRITE_Y` is 97 and the band's
+    // bottom row is 99, so the sprite's cell starts INSIDE the seating band and
+    // is kept out of the readings by 4 rows — the gap between the front tier's
+    // seat row and the band's floor. A taller sprite, a higher stage, or a band
+    // pushed down would put the lifter's crown in the front tier's window and
+    // every timing measurement below would quietly become a measurement of his
+    // head. That is a thing to be told about rather than to discover.
+    const seen = new Set<number>();
+    for (const run of RISE_TIMELINE) {
+      seen.add(run.crowdRisePx);
+      expect(
+        run.tiers,
+        `rise ${run.crowdRisePx} at ${run.startMs}ms: the composite and the bare room disagree — the lifter is standing in front of the ruler`,
+      ).toEqual(tierRisesOf(renderGymScene(hallScene(run.crowdRisePx))));
+    }
+    // Non-vacuity: the beat really does put more than one room on the screen, so
+    // this compared different pictures rather than one picture with itself.
+    expect(seen.size, 'the urgent beat draws one room for its whole length').toBeGreaterThan(2);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1595,7 +1785,15 @@ describe('a third attempt is a different picture from an opener', () => {
     expect(differingPixels(renderGymScene(below), REST_BAND)).toBe(0);
   });
 
-  it('comes up over time rather than switching on', () => {
+  it('never sits back down, and never comes up on an opener', () => {
+    // THIS TEST USED TO BE CALLED `comes up over time rather than switching on`
+    // AND COULD NOT SEE TIME. It maps the sheet to `crowdRisePx` and throws
+    // `startMs` and `holdMs` away, so what is below is monotonicity, an
+    // off-switch and the cardinality of a `Set` — three true things, none of
+    // which is about WHEN. A ramp compressed into the last quarter of its window
+    // passes every line of it (see the block above `drawnRiseTimeline`). The
+    // name moved to the tests that measure it; these assertions stayed, because
+    // they are cheap and they are the sheet-level half.
     const rises = ORDINARY.frames.map((f) => f.crowdRisePx);
     expect(new Set(rises).size, 'an opener has a crowd doing something').toBe(1);
 
@@ -1608,6 +1806,234 @@ describe('a third attempt is a different picture from an opener', () => {
     // Seated while the bar is still being loaded — the hall reacts to him
     // taking it, not to the crew.
     expect(walkoutFrameAt(URGENT, AT.LOAD).crowdRisePx).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE FOURTH CLAIM, AND THE AXIS THE OTHER THREE HAVE NO OPINION ABOUT:
+// the hall comes up ACROSS the ramp
+// ---------------------------------------------------------------------------
+
+describe('the hall comes up across the ramp rather than switching on', () => {
+  it('sits through WALKOUT_RISE_DELAY_MS and is on its feet before he is set', () => {
+    // THE TWO CONSTANTS, MADE TO MEAN SOMETHING. Before this,
+    // `WALKOUT_RISE_MS` was referenced by one assertion in the repository —
+    // `toBeGreaterThan(0)` — and `WALKOUT_RISE_DELAY_MS` by none.
+    //
+    // Both readings come off the composite timeline, so what is pinned is when
+    // the SCREEN moves, not when the arithmetic does.
+    expect(sumOf(RISE_SETTLED), 'the hall never gets up at all').toBeGreaterThan(0);
+    expect(RISE_FIRST_MOVED_MS, 'nobody in the hall ever leaves their seat').not.toBeNull();
+    const moved = RISE_FIRST_MOVED_MS ?? 0;
+    const settled = RISE_FIRST_SETTLED_MS ?? 0;
+    // (`RISE_FIRST_SETTLED_MS` gets no null check of its own. The settled
+    // drawing is the LAST drawing, and the last drawing is always its own first
+    // occurrence, so it can only be null on an empty timeline — which the line
+    // above this one already fails on. An assertion that cannot fail for its own
+    // reason reads as coverage without being any.)
+
+    // THE DELAY. Nobody is drawn off their seat until it has run.
+    //
+    // HOW STRONG THIS PIN ACTUALLY IS, stated rather than implied, because it is
+    // weaker than it looks and the next reader should not have to re-derive
+    // that. It is structurally safe in the direction that matters — at exactly
+    // `delayMs` the ramp's own `u` is 0 and any easing curve worth the name
+    // draws 0 there — so no retuning of the delay, the ramp, the rise or the
+    // curve can make it fire. What it catches is the delay term being DELETED
+    // from `crowdRisePxAt`, and it catches that today by one tick and one row:
+    // the shipped curve's own lead-in is 180 ms out of 900, which is the delay
+    // to the millisecond, so an undelayed ramp draws its first row at exactly
+    // the instant the delay would have ended (`5 * smoothstep(0.2)` is 0.52 and
+    // rounds up). Delete the delay and this reads 1080 against a bound of 1080.
+    // A shorter delay or a curve with a slower start would make it catch less.
+    expect(
+      moved,
+      `the hall is drawn off its seat at ${moved}ms, and the ${WALKOUT_CROWD_RISE.delayMs}ms delay after the unrack does not end until ${RAMP_START_MS}ms`,
+    ).toBeGreaterThan(RAMP_START_MS);
+
+    // THE RAMP, from the top end: the window the constant names is the window
+    // the motion happens in. A drawing that kept climbing past it would mean
+    // `WALKOUT_RISE_MS` is not the duration of anything on screen.
+    expect(
+      settled,
+      `the hall is still climbing at ${settled}ms and the ${WALKOUT_CROWD_RISE.rampMs}ms ramp ended at ${RAMP_END_MS}ms`,
+    ).toBeLessThanOrEqual(RAMP_END_MS);
+
+    // ...and the beat resolves: he is set on a hall that is already up, which is
+    // what makes `WALKOUT_HALL_RISE` — read off the settled frame — the top of
+    // the ramp rather than a point part-way through it. Stated on the DRAWING
+    // and not on the constants, so a ramp lengthened to any value that still
+    // finishes in time stays green.
+    expect(
+      settled,
+      `the hall is still climbing at ${settled}ms and he is set at ${URGENT.motionMs}ms`,
+    ).toBeLessThanOrEqual(URGENT.motionMs);
+
+    // (What used to close this test was `RISE_SETTLED` pinned to
+    // `tierRisesOf(renderGymScene(hallScene(WALKOUT_HALL_RISE)))`. It is a
+    // restatement: `WALKOUT_HALL_RISE` IS the settled frame's `crowdRisePx`, so
+    // the two sides differ only by the sprite blit — which is exactly what
+    // `reads the same rise through the COMPOSITE as it does off the bare room`
+    // checks, on every drawing of the beat rather than on this one.)
+  });
+
+  it('is drawn PARTWAY up partway through the ramp', () => {
+    // THE READING AT AN INSTANT, which is the thing this file had no way to
+    // take. At each quarter of the ramp the hall is rendered as the screen
+    // composites it and measured with the same ruler every other reading here
+    // uses. Two separate claims come out of it, and they fail for different
+    // reasons:
+    //
+    //   (a) EXACTNESS — what is on the screen at that instant is what the ramp
+    //       asks for at that instant. This is the only thing in the repository
+    //       that ties `startMs` / `holdMs` to `crowdRisePxAt` at all. It CANNOT
+    //       catch a compressed ramp, and that is not a defect in it: both sides
+    //       read `crowdRisePxAt`, so a change to the curve moves both together.
+    //       What it catches is the frame LOOKUP drifting from the ramp — a sheet
+    //       that holds a drawing past its time, or a `walkoutFrameAt` that
+    //       returns the wrong frame for an instant.
+    //   (b) SHAPE — the hall is partway up at the halfway point: some of it is
+    //       off its seat and not all of it has arrived. Nothing in (b) knows the
+    //       curve, the ramp length or the number of rows.
+    //
+    // A ONE-ROW RISE HAS NO "PARTWAY", so it is refused rather than measured.
+    // At `WALKOUT_RISE_PX: 1` the hall genuinely does switch on — there is one
+    // step and no shape to bound — and this file would be claiming to have
+    // checked something it cannot.
+    expect(
+      WALKOUT_CROWD_RISE.toPx,
+      'a one-row rise cannot come up over time: there is one step in it and nothing partway',
+    ).toBeGreaterThan(1);
+
+    const tiers = crowdTierCount(MEET_HALL_SCENE);
+    const shots = RISE_PROBE_FRACS.map((frac) => {
+      const ms = RAMP_START_MS + frac * WALKOUT_CROWD_RISE.rampMs;
+      const frame = walkoutFrameAt(URGENT, ms);
+      return { frac, ms, frame, drawn: tierRisesOf(hallAt(frame)) };
+    });
+
+    for (const shot of shots) {
+      // (a) The frame the render loop would be showing really does cover this
+      // instant...
+      expect(shot.ms, `${shot.ms}ms is before frame ${shot.frame.index} starts`)
+        .toBeGreaterThanOrEqual(shot.frame.startMs);
+      expect(shot.ms, `frame ${shot.frame.index} has already been replaced by ${shot.ms}ms`)
+        .toBeLessThan(shot.frame.startMs + shot.frame.holdMs);
+
+      // ...and the hall it draws is the hall the ramp asks for at the tick the
+      // sheet sampled. The sheet is quantised to `TICK_MS`, so the instant's own
+      // tick is what it can possibly be showing.
+      const tick = Math.floor(shot.ms / MOTION.TICK_MS) * MOTION.TICK_MS;
+      const asked = crowdRisePxAt(tick - AT.UNRACK, WALKOUT_CROWD_RISE);
+      expect(
+        shot.frame.crowdRisePx,
+        `${Math.round(shot.frac * 100)}% into the ramp (${shot.ms}ms) the sheet is showing frame ${shot.frame.index} at rise ${shot.frame.crowdRisePx}, and the ramp asks for ${asked}`,
+      ).toBe(asked);
+
+      // ...on pixels, tier by tier, clipped to the band's room exactly as
+      // `agrees with the wave where the band has room` clips it.
+      for (const tier of SEATED_TIERS) {
+        const drawn = Math.min(
+          crowdRowRise(asked, tiers - 1 - tier.index),
+          tier.seatRow - BAND_TOP,
+        );
+        expect(
+          shot.drawn[tier.index],
+          `${Math.round(shot.frac * 100)}% into the ramp (${shot.ms}ms), tier ${tier.index}: the wave asks for ${drawn} rows and the screen shows ${shot.drawn[tier.index]}`,
+        ).toBe(drawn);
+      }
+    }
+
+    // (b) THE SHAPE, and this is the half a compressed ramp fails. The middle
+    // shot must be a hall part-way out of its seat: something is up, and not
+    // everything has arrived.
+    //
+    // THE MIDDLE SHOT IS THE WHOLE OF IT, and the two obvious companions are
+    // deliberately not here. "The first quarter is not already finished" and
+    // "the third quarter has started" are both IMPLIED by this pair plus the
+    // monotonicity below — `first <= middle < total` and `last >= middle > 0` —
+    // so writing them out would read as three times the coverage of one claim.
+    const total = sumOf(RISE_SETTLED);
+    const middle = sumOf(shots[1]?.drawn ?? []);
+    expect(
+      middle,
+      `half-way through the ${WALKOUT_CROWD_RISE.rampMs}ms ramp (${shots[1]?.ms}ms) the hall is still entirely in its seat`,
+    ).toBeGreaterThan(0);
+    expect(
+      middle,
+      `half-way through the ${WALKOUT_CROWD_RISE.rampMs}ms ramp (${shots[1]?.ms}ms) the hall is already all the way up: ${middle} of ${total} rows`,
+    ).toBeLessThan(total);
+    // ...and no tier goes backwards between the shots, which is what makes the
+    // pair above a statement about the whole of the ramp and not only its middle.
+    for (let i = 1; i < shots.length; i += 1) {
+      const before = shots[i - 1];
+      const after = shots[i];
+      if (before === undefined || after === undefined) throw new Error('unreachable');
+      for (const tier of SEATED_TIERS) {
+        expect(
+          after.drawn[tier.index],
+          `tier ${tier.index} sits back down between ${before.ms}ms and ${after.ms}ms`,
+        ).toBeGreaterThanOrEqual(before.drawn[tier.index] ?? 0);
+      }
+    }
+  });
+
+  it('spreads the rise across the ramp instead of stepping it', () => {
+    // WHAT AN INSTANT PIN CANNOT SAY. Three readings at three quarters are
+    // satisfied by a staircase that happens to have a step near each of them.
+    // These three bounds are about the WHOLE interval: how much of the ramp the
+    // motion occupies, how long the picture is allowed to be still while it is
+    // happening, and how much any one frame boundary may carry.
+    //
+    // Every one is a fraction of `WALKOUT_RISE_MS` or a count of rows against
+    // the hall's own settled reading. See the block above `RISE_SPREAD_MIN_FRAC`
+    // for the measured values, the headroom, and which of them catches what.
+    const ramp = WALKOUT_CROWD_RISE.rampMs;
+    const moved = RISE_FIRST_MOVED_MS ?? 0;
+    const settled = RISE_FIRST_SETTLED_MS ?? 0;
+
+    // 1. THE SPREAD. The rise occupies a real share of its own window.
+    const spread = settled - moved;
+    expect(
+      spread / ramp,
+      `the hall comes up between ${moved}ms and ${settled}ms — ${spread}ms of a ${ramp}ms ramp`,
+    ).toBeGreaterThanOrEqual(RISE_SPREAD_MIN_FRAC);
+
+    // 2. THE STILLNESS. No single drawing of the room may hold for more than a
+    // stated share of the ramp while the hall is on its way up. Clipped to the
+    // ramp on the left because the seated hall is one long drawing that reaches
+    // back to the top of the beat, and to the settled instant on the right
+    // because after that the hall is SUPPOSED to hold — that is the beat.
+    for (const run of RISE_TIMELINE) {
+      const from = Math.max(run.startMs, RAMP_START_MS);
+      const to = Math.min(run.endMs, settled);
+      if (to <= from) continue;
+      expect(
+        (to - from) / ramp,
+        `the hall is the same picture from ${from}ms to ${to}ms — ${to - from}ms of a ${ramp}ms ramp — drawn at ${JSON.stringify(run.tiers)}`,
+      ).toBeLessThanOrEqual(RISE_MAX_STILL_FRAC);
+    }
+
+    // 3. THE STEP. No frame boundary carries more than a couple of rows of any
+    // one tier. This is what stops 1 and 2 being satisfiable by a staircase.
+    for (let i = 1; i < RISE_TIMELINE.length; i += 1) {
+      const before = RISE_TIMELINE[i - 1];
+      const after = RISE_TIMELINE[i];
+      if (before === undefined || after === undefined) throw new Error('unreachable');
+      for (const tier of SEATED_TIERS) {
+        const step = (after.tiers[tier.index] ?? 0) - (before.tiers[tier.index] ?? 0);
+        expect(
+          step,
+          `tier ${tier.index} jumps ${step} rows at ${after.startMs}ms, from ${JSON.stringify(before.tiers)} to ${JSON.stringify(after.tiers)}`,
+        ).toBeLessThanOrEqual(RISE_MAX_ROWS_PER_STEP);
+      }
+    }
+
+    // (A non-vacuity handle for 2 and 3 — "the ramp window holds more than two
+    // drawings of the room" — was written here and then deleted, because it is
+    // implied by 1. Fewer than three drawings inside the window means the hall
+    // went up in one step, which puts `moved` and `settled` at the same instant
+    // and makes the spread 0. Its message names the degenerate case anyway.)
   });
 });
 
