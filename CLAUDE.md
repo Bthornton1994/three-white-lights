@@ -168,12 +168,36 @@ physiology.
   measured: 32 and 24 violating pairs respectively over every 13-day calendar,
   against 0 with both. GDD §4.2 and §4.4 carry the full measurement.
 
-  What is still open, named rather than rounded up: streak-milestone income is
-  paid once per lifetime and timed by the streak, so a lifter who trains more
-  banks it earlier and can lose it to a doomed absence the lazier lifter reaches
-  with the payout still ahead of them. That leaves a small measured residue past
-  ~40 days. It needs a human ruling because both fixes change the GDD §4.2
-  earning table.
+  What is still open, named rather than rounded up — and note the property does
+  **not** hold on the 40-, 60-, 80- and 100-day sweeps, which pin nonzero counts
+  rather than zero. It holds exhaustively only for calendars of 8–16 days.
+
+  The cause is **rule 2 itself**: a doomed absence debits the whole armed
+  holding, so the debit is *increasing in wealth*, and training more is a way of
+  being wealthy at the wrong moment. The Recovery Day is **confiscated, not
+  spent** — a save buys a run, a confiscation buys nothing — and that
+  distinction is the whole mechanism.
+
+  An earlier version of this paragraph blamed milestone-income *timing*. That is
+  measured false and is recorded here rather than quietly deleted: income paid
+  on fixed calendar days, arriving identically for both lifters, still gives 81
+  violating pairs at 60 days, and a balance topped to the hold cap daily — stock
+  that can never run out — gives 194, more than the shipped 122. The
+  counterfactual that produced the old claim only ever showed income was
+  *involved*, because milestone income is the only income the sweep has.
+
+  Two figures worth carrying: **`longestStreak` inversions were never measured
+  past 16 days** and are 14 / 150 / 276 / 221 at 40 / 60 / 80 / 100 days. That is
+  the more serious half — a current-streak deficit heals, a lifetime best does
+  not, and milestones are paid off `longestStreak`, so an inverted best
+  permanently forfeits income. And the defect's **frequency saturates but its
+  magnitude does not**: the rate settles near 1e-3 and declines, while the worst
+  deficit reaches 189 at 400 days.
+
+  No arithmetic fix is known. Capping the debit reopens the exhaustive case;
+  `min(chargeable, armed)` is measurably identical; paying milestones off the
+  streak is the fixed-calendar-day row above. Escaping it means coverage not
+  funded from a stock, which is a GDD §8.2 decision and a human's to make.
 - **No real identity, until a human unlocks one.** No real, named athlete,
   brand, or company identity — name, logo, likeness, or wordmark — may be
   hardcoded into any asset, string, config, or code path. The licensing system
