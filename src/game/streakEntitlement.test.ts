@@ -538,6 +538,105 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     ).toBe(true);
   });
 
+  it('A BANKABLE purchase is ALSO safe — expiry is a product choice, not a safety property', () => {
+    // CORRECTING A CLAIM THIS BRANCH MADE AND DID NOT CHECK. `grantCoveredDays`
+    // expires a purchased day with its window, and the first version of GDD
+    // §8.2 justified that by saying "nothing accumulates, so there is no wealth
+    // for a doomed absence to be proportional to" — which reads as "a bankable
+    // purchase would reopen the defect". Measured, it would not.
+    //
+    // THE BURN IS WHAT MAKES IT SAFE, NOT THE EXPIRY. A doomed absence takes
+    // everything available including the bank, so two lifters holding different
+    // banks are both left on zero, and the base entitlement refreshes them
+    // identically at the next boundary. The bank re-converges for the same
+    // reason the entitlement does.
+    //
+    // WHY THIS MATTERS RATHER THAN BEING A FOOTNOTE: §8.3E flags that an
+    // expiring consumable is a weaker product than a bankable one, and this is
+    // the measurement that says the better product is available. The module
+    // still expires, because that is the shipped choice until a human rules;
+    // this models the alternative rather than implementing it.
+    const tuning = RECOVERY_ENTITLEMENT;
+    const windowAt = (day: number): number => windowIndexOf(tuning, 0, day);
+
+    const driveBankable = (schedule: TrainingSchedule, buyDays: readonly number[]): RunResult => {
+      let entitlement = freshEntitlement(tuning, 0);
+      let bank = 0;
+      let currentStreak = 0;
+      let longestStreak = 0;
+      let lastTrainedDay: number | null = null;
+      let consumed = 0;
+      const resolveAt = (today: number): { missed: number; covers: boolean; take: number } => {
+        const missed = Math.max(0, today - (lastTrainedDay ?? 0) - 1);
+        const chargeable = Math.max(0, missed - GRACE);
+        const available = coveredDaysAvailable(tuning, entitlement, windowAt(today)) + bank;
+        const covers = chargeable <= Math.min(available, tuning.MAX_COVERED_DAYS_PER_ABSENCE);
+        return { missed, covers, take: covers ? chargeable : available };
+      };
+      for (let i = 0; i < schedule.length; i += 1) {
+        if (buyDays.includes(i)) bank += 1;
+        if (lastTrainedDay !== null && i > lastTrainedDay) {
+          const r = resolveAt(i);
+          if (r.missed > 0 && !r.covers) {
+            currentStreak = 0;
+            lastTrainedDay = null;
+          }
+        }
+        if (schedule[i] !== true) continue;
+        const r = resolveAt(i);
+        if (!r.covers) {
+          currentStreak = 0;
+          lastTrainedDay = null;
+        }
+        const base = coveredDaysAvailable(tuning, entitlement, windowAt(i));
+        const fromBase = Math.min(base, r.take);
+        bank -= r.take - fromBase;
+        entitlement = afterSession(tuning, entitlement, windowAt(i), fromBase);
+        consumed += r.take;
+        currentStreak += 1;
+        longestStreak = Math.max(longestStreak, currentStreak);
+        lastTrainedDay = i;
+      }
+      const last = schedule.length - 1;
+      if (lastTrainedDay !== null && last > lastTrainedDay) {
+        const r = resolveAt(last);
+        if (r.missed > 0 && !r.covers) currentStreak = 0;
+      }
+      return { currentStreak, longestStreak, consumed };
+    };
+
+    const length = ENTITLEMENT_VERIFICATION.LENGTHS[3] as number;
+    for (const buyDays of ENTITLEMENT_VERIFICATION.BANKABLE_PURCHASE_DAYS) {
+      let currentInversions = 0;
+      let longestInversions = 0;
+      let worst = 0;
+      let consumed = 0;
+      let pairs = 0;
+      for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+        for (const schedule of seededSchedules(seed, length)) {
+          const lazy = driveBankable(schedule, buyDays);
+          consumed += lazy.consumed;
+          for (const superset of singleDaySupersets(schedule)) {
+            const diligent = driveBankable(superset, buyDays);
+            pairs += 1;
+            const deficit = lazy.currentStreak - diligent.currentStreak;
+            if (deficit > 0) {
+              currentInversions += 1;
+              worst = Math.max(worst, deficit);
+            }
+            if (diligent.longestStreak < lazy.longestStreak) longestInversions += 1;
+          }
+        }
+      }
+      const label = `bankable purchase on ${JSON.stringify(buyDays)}`;
+      expect(pairs, label).toBeGreaterThan(0);
+      expect(consumed, `${label}: nothing consumed`).toBeGreaterThan(0);
+      expect(currentInversions, label).toBe(0);
+      expect(longestInversions, `${label}: lifetime best`).toBe(0);
+      expect(worst, `${label}: worst deficit`).toBe(0);
+    }
+  });
+
   it('ADVERSARIAL SEARCH: hill-climbs towards a violation instead of waiting for one', () => {
     // Every other test here samples and hopes. This one optimises: random
     // restarts, then repeatedly accept any single-day mutation that does not

@@ -82,6 +82,20 @@
  * `streakEntitlement.test.ts` measures all three and pins them, so a future
  * earning table that keys off progress fails a test rather than a playtest.
  *
+ * WHAT THE EXPIRY IS AND IS NOT DOING, corrected because the first version of
+ * this header got it wrong. A purchased day expiring with its window is a
+ * PRODUCT decision, not a safety property. A bankable purchased day — one that
+ * accumulates across windows, which is the hoard the old Recovery Day defect
+ * was made of — is measured monotone-safe too, at 0 violating pairs across
+ * three purchase schedules including ten purchases and a front-loaded block.
+ *
+ * THE BURN IS WHAT KEEPS A PURCHASE SAFE, NOT THE EXPIRY. A doomed absence
+ * takes everything available including whatever was banked, so two lifters
+ * holding different amounts are both left on zero, and the entitlement refreshes
+ * them identically at the next boundary. That is worth knowing precisely because
+ * GDD §8.3E flags the expiring version as the weaker product: the better product
+ * is available, and it is a human's call rather than a constraint.
+ *
  * THIS MODULE PRICES NOTHING and knows nothing about currency. It receives an
  * already-decided grant, exactly as the Recovery Day grant path did.
  */

@@ -1418,8 +1418,16 @@ indefinitely, and — because a doomed absence took the whole holding —
 proportional to how much a lifter happened to have. That proportionality is the
 defect §4.4 traces. The **Extra Covered Day** is a *rate widening*: it adds one
 covered day **to the window it is bought in and expires with that window**.
-Nothing accumulates, so there is no wealth for a doomed absence to be
-proportional to, and no ledger to hoard.
+
+*A correction, because the first version of this paragraph justified the expiry
+as a safety property and that is measurably false.* A **bankable** purchased day
+— one that accumulates across windows — is monotone-safe too: 0 violating pairs
+across three purchase schedules including ten purchases and a front-loaded block.
+**The burn is what keeps a purchase safe, not the expiry.** A doomed absence takes
+everything available including whatever was banked, so two lifters holding
+different amounts are both left on zero and the entitlement refreshes them
+identically at the next boundary. The expiry is a product decision and it is
+§8.3E's open question, not a constraint the mechanic imposes.
 
 **PROPOSED, NOT RULED — this table's bottom two rows need a human.** §4.2's
 Option 1 ruling removed a currency; what a player may buy instead is a
@@ -1498,11 +1506,21 @@ end of the window it was bought in.
 **What a human still has to decide, and it is not a detail.** An expiring
 consumable is a weaker product than a bankable one: a lifter who buys a covered
 day and then does not miss a day has spent money on nothing. That is honest, and
-it may also be bad. The three ways out are a lower price, refunding an unused day
-as Chalk, or letting the purchase name the window it applies to — and the third
-is the one to be careful with, because "choose when it applies" is a decision
-taken *during* an absence, which is the app-opening dependence §4.2 spent a whole
-rework deleting. **Not attempted here.**
+it may also be bad.
+
+**And the better product is measurably available.** A bankable Extra Covered Day
+— accumulating across windows, never expiring — was checked against the same
+battery and is clean: 0 violating pairs on all four figures across three purchase
+schedules, including one with ten purchases and one with six bought on
+consecutive days. So the choice between expiring and bankable is a **pricing and
+feel decision, not a safety one**. The shipped module expires, because that is
+the conservative default until somebody rules; switching it is a small change to
+`grantCoveredDays` and the test that pins the alternative already exists.
+
+The one option to be careful with is letting the purchase **name the window it
+applies to**. "Choose when it applies" is a decision taken *during* an absence,
+which is the app-opening dependence §4.2 spent a whole rework deleting. **Not
+attempted, and not recommended without measuring it first.**
 
 **Also unresolved: the free earning path is gone.** §4.2's old table paid
 Recovery Days at signup, at streak milestones, for achievements and from Gym

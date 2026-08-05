@@ -258,6 +258,23 @@ export const ENTITLEMENT_VERIFICATION = Object.freeze({
   CALENDAR_GRANT_DAYS: Object.freeze([Object.freeze([10]), Object.freeze([30]), Object.freeze([15, 45])]),
 
   /**
+   * Purchase schedules for the BANKABLE variant — a purchased covered day that
+   * does NOT expire with its window.
+   *
+   * The shipped module expires it. This grid exists because the first version
+   * of GDD §8.2 justified the expiry as a SAFETY property, and that turned out
+   * to be false: the burn is what keeps a purchase safe, not the expiry. Ten
+   * purchases and a front-loaded block are in here specifically because a
+   * hoard is what a bankable product produces and a hoard is what the old
+   * Recovery Day defect was made of.
+   */
+  BANKABLE_PURCHASE_DAYS: Object.freeze([
+    Object.freeze([10, 40]),
+    Object.freeze([5, 15, 25, 35, 45, 55, 65, 75, 85, 95]),
+    Object.freeze([0, 1, 2, 3, 4, 5]),
+  ]),
+
+  /**
    * The adversarial search: random restarts, then hill-climbing on single-day
    * mutations towards the largest deficit any single-day superset shows.
    *
