@@ -1793,6 +1793,59 @@ describe('the window entitlement', () => {
     }
   });
 
+  it('AND THE EXEMPTION IS NOT A HOLE: the purchase credits the ORDER, and never a day more', () => {
+    // THE GAP THE TWO GUARDS ABOVE LEFT, CLOSED. Both of them let the one
+    // exempt entry point do whatever it likes — the declaration allowlist
+    // because `applySettledCoveredDayPurchase` is on it, the export-surface
+    // sweep because it is skipped. So a training-keyed bonus written INSIDE it
+    //
+    //     purchase.coveredDays + (state.currentStreak >= 7 ? 1 : 0)
+    //
+    // passed every test in this file and in `streakEntitlement.test.ts`. That
+    // mutant is a covered day awarded for a streak, which is exactly what GDD
+    // §8.3E condition 3 forbids and exactly the shape §4.4 traces as the defect.
+    //
+    // What closes it is not another allowlist but an EXACT arithmetic: the
+    // coverage this function adds equals what the order says, over states that
+    // differ in every field a bonus could plausibly key off.
+    const orders = [1, 2, 5];
+    let checked = 0;
+    for (const streak of [0, 1, 6, 7, 30, 100]) {
+      for (const armed of [true, false]) {
+        for (const gapDays of [0, 3, 40]) {
+          for (const coveredDays of orders) {
+            const base: StreakState = {
+              ...stateWithRun(streak, DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW),
+              entitlementArmed: armed,
+              recoveryDayProtectionEnabled: armed,
+            };
+            const day = addDays(DAY_ZERO, gapDays);
+            const before = coveredDaysLeftInWindow(base);
+            const outcome = unwrap(
+              applySettledCoveredDayPurchase(base, day, {
+                orderId: `order-${checked}`,
+                coveredDays,
+                tender: 'chalk',
+              }),
+            );
+            const grew = outcome.state.entitlement.purchasedDaysLeft - base.entitlement.purchasedDaysLeft;
+            expect(grew, `streak ${streak}, armed ${armed}, gap ${gapDays}`).toBe(coveredDays);
+            expect(outcome.coveredDaysCredited).toBe(coveredDays);
+            // And the free side is untouched, except where the window turned
+            // over on its own — which is the calendar, not the purchase.
+            const turnedOver = entitlementWindowFor(base, day) > base.entitlement.windowIndex;
+            if (!turnedOver) {
+              expect(outcome.state.entitlement.coveredDaysLeft).toBe(base.entitlement.coveredDaysLeft);
+              expect(coveredDaysLeftInWindow(outcome.state)).toBe(before + coveredDays);
+            }
+            checked += 1;
+          }
+        }
+      }
+    }
+    expect(checked).toBe(6 * 2 * 3 * 3);
+  });
+
   it('caps how far back a run can be rescued, whatever the balance', () => {
     const state = stateWithRun(50, DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
     expect(armedGapDays(state, TODAY_FOR_READS)).toBe(RECOVERY_ENTITLEMENT.MAX_COVERED_DAYS_PER_ABSENCE);
