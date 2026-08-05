@@ -1,18 +1,12 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-05T14:59:04.248Z",
+    "capturedAt": "2026-08-05T15:52:19.553Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "1b7eb40",
+    "commit": "f25042f",
     "branch": "claude/agent-config-setup-m2r6ny",
-    "workingTree": "DIRTY — this run is not against a commit",
-    "dirtyPaths": [
-      "M .gauntlet/shots/shell/03-meet-played-walkout.png",
-      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/10-already-trained-keeps-the-way-out.png",
-      " M .gauntlet/shots/shell/12-cutin-has-no-shell-chrome.png",
-      " M src/game/sessionTuning.ts"
-    ]
+    "workingTree": "clean",
+    "dirtyPaths": []
   },
   "played": {
     "attempted": true,
@@ -22,20 +16,13 @@
       "width": 350,
       "height": 48
     },
-    "wallClockMs": 79472,
+    "wallClockMs": 73801,
     "landedOn": "already-trained",
     "finalDepthHoldMs": 1000,
     "reps": [
       {
         "set": "SET 1 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
-        "drove": true
-      },
-      {
-        "set": "SET 1 OF 5",
-        "holdMs": 1000,
         "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
@@ -43,12 +30,12 @@
       {
         "set": "SET 1 OF 5",
         "holdMs": 1000,
-        "outcome": "GOOD LIFT",
+        "outcome": "GRINDER",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
       {
-        "set": "SET 2 OF 5",
+        "set": "SET 1 OF 5",
         "holdMs": 1000,
         "outcome": "GRINDER",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
@@ -57,15 +44,8 @@
       {
         "set": "SET 2 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
-        "drove": true
-      },
-      {
-        "set": "SET 2 OF 5",
-        "holdMs": 1000,
-        "outcome": "GRINDER",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "outcome": "NO LIFT",
+        "detail": "The bar beat you at the sticking point.",
         "drove": true
       },
       {
@@ -92,7 +72,7 @@
       {
         "set": "SET 4 OF 5",
         "holdMs": 1000,
-        "outcome": "GOOD LIFT",
+        "outcome": "GRINDER",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
@@ -127,7 +107,7 @@
       {
         "set": "SET 5 OF 5",
         "holdMs": 1000,
-        "outcome": "GOOD LIFT",
+        "outcome": "GRINDER",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       }
@@ -164,21 +144,21 @@
     "  ok    the close-out still shows no Total with the shell over it (GDD §3.2)",
     "  ok    FINISH A SESSION -> REACH A MEET, in one press",
     "  ok    and it is a fresh meet, not the frozen beat the launch URL named — opacity 1.000",
-    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1481ms from the first tap",
-    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 70974ms, 15 of them past a DRIVE cue",
+    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1431ms from the first tap",
+    "  ok    and it plays through to GDD §3.2’s close-out — 13 reps in 65433ms, 13 of them past a DRIVE cue",
     "  ok    CONTROL: the close-out has a certainty tag for that wait to watch — e1rm, streak in the DOM",
-    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 558ms",
+    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 573ms",
     "  ok    PRESSING DONE LANDS ON THE ALREADY-TRAINED SURFACE (GDD §3.2: one session a day)",
     "  ok    the already-trained surface renders — the last screen of the daily loop — opacity 1.000",
     "  ok    THE WAY TO MEET DAY IS ON IT, and it is the only thing on it to press — opacity 1.000",
     "  ok    and the point a thumb would land on belongs to it — elementFromPoint -> self",
     "  ok    CONTROL: the line-box counter reports a wrapped block as more than one line — a 120px-wide probe -> 3 line box(es), expected >= 3",
-    "  FAIL  the already-trained copy is still 2 lines — one headline, one subhead — 4 line box(es) across 2 text node(s), longest 145 chars",
-    "  FAIL  and no taller than 57.25px, the height that line budget implies — 81.0px tall, y 381.5..462.5",
+    "  ok    the already-trained copy is still 2 lines — one headline, one subhead — 2 line box(es) across 2 text node(s), longest 34 chars",
+    "  ok    and no taller than 57.25px, the height that line budget implies — 51.0px tall, y 396.5..447.5",
     "  ok    the pill’s top is where SHELL_LAYOUT puts it (y=762), so the floor below is derived from the drawn screen — drawn at y=762.0 against a derived 762",
-    "  ok    and it stays out of the band SHELL_LAYOUT reserves for chrome — >= 58.67px clear above the pill — copy bottom y=462.5; pill top y=762.0; gap 299.5px",
+    "  ok    and it stays out of the band SHELL_LAYOUT reserves for chrome — >= 58.67px clear above the pill — copy bottom y=447.5; pill top y=762.0; gap 314.5px",
     "  ok    and the pill sat clear of the DONE button it replaced on the screen before — pill y=762.0 vs DONE bottom=623.0",
-    "  FAIL  the already-trained surface shows no Total either (GDD §3.2)",
+    "  ok    the already-trained surface shows no Total either (GDD §3.2)",
     "  ok    AND PRESSING IT REACHES MEET DAY — the daily loop does not end on a dead end",
     "  ok    landing on the weigh-in, from a session that was actually played — opacity 1.000",
     "  ok    a live set renders — opacity 1.000",
@@ -190,7 +170,7 @@
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.2 step 4’s deliberation — the judges taking a beat (beat 'deliberation')",
     "  ok    NO CONTROL IS DRAWN OVER the judges’ verdict (beat 'verdict')",
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.3’s attempt choice (beat 'attempt-select')",
-    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.925 after 3755ms",
+    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.961 after 3667ms",
     "  ok    and the shell does not add a second one to it (GDD §6.3: leave that beat somber)",
     "  ok    and pressing it returns to the daily session",
     "  ok    CONTROL: with no cut-in up, the pill is on the same screen the probe looks at — opacity 1.000",
@@ -219,12 +199,8 @@
   ],
   "notes": [
     "  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day, which the server then refuses",
-    "  note  the played-session section cost 79472ms of wall clock"
+    "  note  the played-session section cost 73801ms of wall clock"
   ],
-  "failures": [
-    "the already-trained copy is still 2 lines — one headline, one subhead — 4 line box(es) across 2 text node(s), longest 145 chars",
-    "and no taller than 57.25px, the height that line budget implies — 81.0px tall, y 381.5..462.5",
-    "the already-trained surface shows no Total either (GDD §3.2)"
-  ],
+  "failures": [],
   "pageErrors": []
 }
