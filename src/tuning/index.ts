@@ -90,6 +90,7 @@ import {
   STREAK_DAY_BOUNDARY,
   STREAK_MILESTONE_DAYS,
 } from '../game/streak';
+import { RECOVERY_ENTITLEMENT } from '../game/streakEntitlement';
 import {
   GYM_CLEAR_BAND,
   GYM_CONTACT_SHADOW,
@@ -260,6 +261,22 @@ export const TUNING = Object.freeze({
   }),
 
   /**
+   * WHAT FUNDS A STREAK SAVE, since GDD §4.2's Option 1 ruling: a rolling
+   * entitlement of covered days per window, rather than a balance the lifter
+   * holds. Its own group rather than a row of `streak` because it lives in its
+   * own module, and it lives in its own module because the monotonicity
+   * property the whole piece exists for is a property of THIS arithmetic.
+   *
+   * TURN THESE FREELY. `streakEntitlement.test.ts` re-checks the property
+   * across a grid of window lengths and entitlement sizes, so moving them
+   * cannot move the property — only how forgiving the game feels, which is
+   * exactly what a playtester is for.
+   */
+  streakEntitlement: Object.freeze({
+    RECOVERY_ENTITLEMENT,
+  }),
+
+  /**
    * THE IDENTITY TIER SURFACES (GDD §7.3). The shop shelf and character
    * select: panel proportions in card pixels, the screen chrome around them in
    * points, and the copy that states §8.1's no-stat promise where a player can
@@ -372,6 +389,7 @@ export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Obj
   session: 'src/game/sessionTuning.ts',
   fatigue: 'src/game/fatigue.ts',
   streak: 'src/game/streak.ts',
+  streakEntitlement: 'src/game/streakEntitlement.ts',
   card: 'src/card/cardTuning.ts',
   meet: 'src/game/meetTuning.ts',
   licensing: 'src/licensing/licensingTuning.ts',
