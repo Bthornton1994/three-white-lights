@@ -2,8 +2,8 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 11,
-    "waveName": "Wave 11 - stopped tunnelling; two merged pieces had gone eleven rounds ungraded",
+    "wave": 12,
+    "waveName": "Wave 12 - four merged pieces in grading at once, the backlog the X1 tunnel created",
     "startedIso": "2026-07-31T03:10:00Z"
   },
   "blockers": [
@@ -278,7 +278,7 @@
   "report": {
     "eyebrow": "status report · recounted from the repo, not from the run log",
     "title": "Where this actually is",
-    "lede": "Recounted from the current GDD and codebase rather than from earlier reports. Every bar in GDD §12.2 is listed, plus everything added mid-run, plus the four modes §2 defines. **11 of 22 pieces defined so far have won their bar outright.** Two more (A2, B1) won the half of their bar that is gradeable here and are reported as half-wins rather than wins, because the other half needs a reference this environment cannot fetch. Five are sent back with a verified, named defect. Four are not started, three of those gated on human playtesting the run cannot do for itself (§11). The count grew again this wave: A4 did not exist as a piece before it.",
+    "lede": "Recounted from the repo at HEAD, not from the run log. Suite 2447 across 57 files, typecheck clean, browser 82 of 82. **Eight of 22 pieces have won their bar outright and five more won the half of it that is gradeable here** - the other half of each needs a reference this environment cannot fetch, and that is reported as a half-win rather than a win. **Four are in grading right now** (A1, S2, N1, A4), which is itself the finding of this wave: they had been merged and left ungraded while one piece took eleven consecutive rounds. One is in rework, one is blocked on a human, and three are not started because GDD 10 gates them on playtesting this run cannot do for itself.",
     "wonCount": 11,
     "definedCount": 22,
     "rows": [

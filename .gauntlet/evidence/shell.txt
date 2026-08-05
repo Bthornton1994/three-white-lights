@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece shell
-generated 2026-08-05T13:48:25.761Z
+generated 2026-08-05T15:33:14.677Z
 repo /home/user/three-white-lights
-commit 7229c65abea902c1bfa957d4c38556435c497e04
+commit b57a1aae1844036315af81027ccfbb45ec5ab63b
 working tree clean (ignoring .gauntlet/ run artefacts)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -19,7 +19,7 @@ $ npx vitest run src/shell --reporter=verbose
  RUN  v4.1.10 /home/user/three-white-lights
 
  ✓ src/shell/shellWiring.test.ts > the scans can see what they are looking for > strips comments and keeps code 2ms
- ✓ src/shell/shellWiring.test.ts > the scans can see what they are looking for > the files it reads are the real ones 1ms
+ ✓ src/shell/shellWiring.test.ts > the scans can see what they are looking for > the files it reads are the real ones 0ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > renders both surfaces — the two halves of the loop are in one file 1ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > the two screens still know nothing about each other 1ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > drives the route through `navigate`, rather than setting a surface by hand 0ms
@@ -31,7 +31,7 @@ $ npx vitest run src/shell --reporter=verbose
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > gives the meet its way out — GDD §6.5 ends somewhere 0ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > the way out is a route, not a page reload 1ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > App.tsx is the platform edge and nothing else 0ms
- ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the app has ONE session-server connection, and asking twice returns it 0ms
+ ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the app has ONE session-server connection, and asking twice returns it 1ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > it really is a session-server port and not a stub 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the port is memoised at module scope, not in a component 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the shell hands that port to the session, rather than letting it build one 0ms
@@ -64,34 +64,34 @@ $ npx vitest run src/shell --reporter=verbose
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > the answer does not depend on HOW the player got to the surface 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > a beat belonging to the OTHER surface draws nothing 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > draws nothing before a surface has reported a beat, or over the harness 0ms
- ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > every beat of the game is in the answer sheet, and answers as written 1ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > every beat of the game is in the answer sheet, and answers as written 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > A LIVE CUT-IN TAKES THE CHROME OFF EVERY BEAT — GDD §7.2, tap to dismiss 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > and `none` is what the two-argument call means, so old call sites are safe 0ms
  ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > SHELL_NAV.SESSION_PHASES is exactly the beats the table gives the pill to 0ms
  ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > SHELL_NAV.MEET_PHASES is exactly the beats the table gives the way out to 0ms
  ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > and neither list is empty, which is the mutation that used to pass 0ms
  ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > every listed beat is a beat the game actually has 0ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?meet=<moment> opens a frozen meet, for every moment capture-meet.mjs asks for 98ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?meet=<moment> opens a frozen meet, for every moment capture-meet.mjs asks for 89ms
  ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?meet=live opens a PLAYED meet — no frozen state, clocks running 0ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?session=<moment> opens a frozen session, for every moment capture-session.mjs asks for 9ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?session=<moment> opens a frozen session, for every moment capture-session.mjs asks for 8ms
  ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?replay=<load>&moment=<id> opens the lift harness, for every capture moment 1ms
  ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > holds the walk-out at an instant only for the two mid-motion beats 6ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > opens straight onto the shareable card for exactly one beat 65ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > precedence is meet, then replay, then session — the order App.tsx used 20ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > opens straight onto the shareable card for exactly one beat 62ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > precedence is meet, then replay, then session — the order App.tsx used 19ms
  ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > refuses what it does not recognise and boots normally 0ms
  ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > has no URL to read on native, and every debug branch is dead there 0ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > entryRoute and resolveEntry cannot disagree about a query string 40ms
- ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > a player-opened meet gets no frozen frame, even from a debug launch URL 20ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > entryRoute and resolveEntry cannot disagree about a query string 36ms
+ ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > a player-opened meet gets no frozen frame, even from a debug launch URL 18ms
  ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > the same for the session 1ms
- ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > a frozen frame is never handed to the wrong surface 23ms
+ ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > a frozen frame is never handed to the wrong surface 19ms
  ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > the default launch has nothing frozen anywhere 0ms
- ✓ src/shell/shellRoute.test.ts > the shell routes and renders; it does not carry the numbers > nothing the shell can say mentions a Total 1ms
- ✓ src/shell/shellRoute.test.ts > the shell routes and renders; it does not carry the numbers > a route carries a surface and a reason and nothing else 20ms
+ ✓ src/shell/shellRoute.test.ts > the shell routes and renders; it does not carry the numbers > nothing the shell can say mentions a Total 0ms
+ ✓ src/shell/shellRoute.test.ts > the shell routes and renders; it does not carry the numbers > a route carries a surface and a reason and nothing else 19ms
 
  Test Files  2 passed (2)
       Tests  69 passed (69)
-   Start at  13:48:26
-   Duration  1.01s (transform 716ms, setup 0ms, import 959ms, tests 337ms, environment 0ms)
+   Start at  15:33:15
+   Duration  889ms (transform 620ms, setup 0ms, import 827ms, tests 307ms, environment 0ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -106,9 +106,9 @@ $ npx vitest run
 
 
  Test Files  57 passed (57)
-      Tests  2439 passed (2439)
-   Start at  13:48:28
-   Duration  30.59s (transform 3.92s, setup 0ms, import 15.62s, tests 60.01s, environment 7ms)
+      Tests  2447 passed (2447)
+   Start at  15:33:16
+   Duration  25.45s (transform 3.23s, setup 0ms, import 12.82s, tests 50.67s, environment 6ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json

@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece A4
-generated 2026-08-05T13:46:54.500Z
+generated 2026-08-05T15:31:32.813Z
 repo /home/user/three-white-lights
-commit 7229c65abea902c1bfa957d4c38556435c497e04
+commit b57a1aae1844036315af81027ccfbb45ec5ab63b
 working tree clean (ignoring .gauntlet/ run artefacts)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -20,37 +20,16 @@ $ npx vitest run src/cutin --reporter=verbose
 
  ✓ src/cutin/cutInWiring.test.ts > the scans are not blind > strips comments and keeps code 2ms
  ✓ src/cutin/cutInWiring.test.ts > the scans are not blind > reads the real files 1ms
- ✓ src/cutin/cutInWiring.test.ts > the cut-in is dismissed by tapping it — GDD §7.2 > THE PRESS HANDLER IS THE DISMISS HANDLER 0ms
- ✓ src/cutin/cutInWiring.test.ts > the cut-in is dismissed by tapping it — GDD §7.2 > THE WHOLE SCREEN IS THE TARGET, not a button in a corner 0ms
- ✓ src/cutin/cutInWiring.test.ts > the cut-in is dismissed by tapping it — GDD §7.2 > says it is skippable, because a player has to know 1ms
- ✓ src/cutin/cutInWiring.test.ts > the cut-in is dismissed by tapping it — GDD §7.2 > the host really calls the gate’s dismiss, not just setLive(null) 0ms
- ✓ src/cutin/cutInWiring.test.ts > the cut-in is dismissed by tapping it — GDD §7.2 > THE SCRIM IS ITS OWN LAYER, so its opacity is not overridden by the arrival 1ms
- ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > the host is the only file that opens a session or requests a cut-in 5ms
- ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > ONE GATE SESSION PER SITTING, GUARDED ON ITS ID 1ms
- ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > THE COUNT OUTLIVES THE COMPONENT — the cap is per sitting, not per mount 0ms
- ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > THE DEBUG ROUTE IS NOT REACHABLE IN PLAY 4ms
- ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > both loops mount exactly one host, above the whole loop 1ms
- ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > A MEET IS ONE SESSION, AND A TRAINING DAY IS ANOTHER 1ms
- ✓ src/cutin/cutInWiring.test.ts > every firing moment of GDD §7.2 is wired to a screen > EACH OF THE FOUR IS OFFERED BY THE SCREEN THAT KNOWS ABOUT IT 2ms
- ✓ src/cutin/cutInWiring.test.ts > every firing moment of GDD §7.2 is wired to a screen > covers all four of the gate’s beat kinds between them 2ms
- ✓ src/cutin/cutInWiring.test.ts > every firing moment of GDD §7.2 is wired to a screen > no screen qualifies the beat itself — it reports facts 3ms
- ✓ src/cutin/cutInWiring.test.ts > every firing moment of GDD §7.2 is wired to a screen > THE WALK-OUT REPORTS WHETHER ITS LIFT CAN STILL BOMB 2ms
- ✓ src/cutin/cutInWiring.test.ts > CUT_IN_MOMENT_PRIORITY is a declared invariant, not a live tie-break > the reader can see a two-kind call when there is one 2ms
- ✓ src/cutin/cutInWiring.test.ts > CUT_IN_MOMENT_PRIORITY is a declared invariant, not a live tie-break > THE PRIORITY ORDER DECIDES NOTHING TODAY, AND HERE IS THE READING THAT SAYS SO 2ms
- ✓ src/cutin/cutInWiring.test.ts > CUT_IN_MOMENT_PRIORITY is a declared invariant, not a live tie-break > and the ranking is still declared, so the invariant has an implementation 0ms
- ✓ src/cutin/cutInWiring.test.ts > the three "the gate belongs to somebody else" comments are gone > the scan can see the sentence it is looking for 0ms
- ✓ src/cutin/cutInWiring.test.ts > the three "the gate belongs to somebody else" comments are gone > replaced by wiring, not by a different comment 2ms
- ✓ src/cutin/cutInWiring.test.ts > nothing in the cut-in path can touch a number the player earns > the view and the host read no progression, no total and no e1RM 1ms
- ✓ src/cutin/cutInWiring.test.ts > nothing in the cut-in path can touch a number the player earns > the cut-in path never reaches the fatigue ledger either — GDD §3.4, §12.3 0ms
+ ✓ src/cutin/cutInWiring.test.ts > the scans are not blind > THE WALK REACHES THE WHOLE TREE, and the patterns match a real caller 96ms
  ✓ src/cutin/cutInGate.test.ts > the firing moments are GDD §7.2’s four, and the list is load-bearing > CUT_IN_MOMENTS is exactly the four §7.2 names, spelled out here by hand 2ms
  ✓ src/cutin/cutInGate.test.ts > the firing moments are GDD §7.2’s four, and the list is load-bearing > names the three kinds of PR moment §7.2 lists 0ms
  ✓ src/cutin/cutInGate.test.ts > the firing moments are GDD §7.2’s four, and the list is load-bearing > EVERY ONE OF THE FOUR CAN ACTUALLY FIRE 1ms
  ✓ src/cutin/cutInGate.test.ts > the firing moments are GDD §7.2’s four, and the list is load-bearing > fires on each of the three PR kinds, not only on the first 0ms
  ✓ src/cutin/cutInGate.test.ts > the firing moments are GDD §7.2’s four, and the list is load-bearing > isCutInMoment refuses a string that is not one 0ms
  ✓ src/cutin/cutInGate.test.ts > THE GATE DOES NOT FIRE ON A NON-QUALIFYING BEAT > an opener walk-out is not a firing moment — §7.2 says THIRD attempt 0ms
- ✓ src/cutin/cutInGate.test.ts > THE GATE DOES NOT FIRE ON A NON-QUALIFYING BEAT > a second attempt is not a firing moment either 2ms
+ ✓ src/cutin/cutInGate.test.ts > THE GATE DOES NOT FIRE ON A NON-QUALIFYING BEAT > a second attempt is not a firing moment either 0ms
  ✓ src/cutin/cutInGate.test.ts > THE GATE DOES NOT FIRE ON A NON-QUALIFYING BEAT > A THIRD ATTEMPT WITH NOTHING BANKED IS NOT A FIRING MOMENT — a bomb-out is still live 0ms
- ✓ src/cutin/cutInGate.test.ts > THE GATE DOES NOT FIRE ON A NON-QUALIFYING BEAT > ...and the same attempt WITH something banked still is one 1ms
+ ✓ src/cutin/cutInGate.test.ts > THE GATE DOES NOT FIRE ON A NON-QUALIFYING BEAT > ...and the same attempt WITH something banked still is one 0ms
  ✓ src/cutin/cutInGate.test.ts > THE GATE DOES NOT FIRE ON A NON-QUALIFYING BEAT > a record that was NOT achieved is not a PR moment 0ms
  ✓ src/cutin/cutInGate.test.ts > THE GATE DOES NOT FIRE ON A NON-QUALIFYING BEAT > a meet that finished with a total is not a bomb-out 0ms
  ✓ src/cutin/cutInGate.test.ts > THE GATE DOES NOT FIRE ON A NON-QUALIFYING BEAT > an ordinary top set draws no coach reaction 0ms
@@ -66,13 +45,13 @@ $ npx vitest run src/cutin --reporter=verbose
  ✓ src/cutin/cutInGate.test.ts > THE HARD CAP: no more than one cut-in per session > every refusal reason is one of the three named ones 0ms
  ✓ src/cutin/cutInGate.test.ts > scarcity: "ideally not every session" (GDD §7.2) > DOES NOT FIRE IN EVERY SESSION, AND DOES FIRE IN SOME 2ms
  ✓ src/cutin/cutInGate.test.ts > scarcity: "ideally not every session" (GDD §7.2) > THE PR-EVERY-SESSION WORLD STILL SEES A MINORITY OF CUT-INS 0ms
- ✓ src/cutin/cutInGate.test.ts > scarcity: "ideally not every session" (GDD §7.2) > a held-back moment stays held back however many times it is offered 6ms
+ ✓ src/cutin/cutInGate.test.ts > scarcity: "ideally not every session" (GDD §7.2) > a held-back moment stays held back however many times it is offered 7ms
  ✓ src/cutin/cutInGate.test.ts > scarcity: "ideally not every session" (GDD §7.2) > holding one moment back does not hold back the others 0ms
  ✓ src/cutin/cutInGate.test.ts > scarcity: "ideally not every session" (GDD §7.2) > the same session id and seed always decide the same way 0ms
  ✓ src/cutin/cutInGate.test.ts > scarcity: "ideally not every session" (GDD §7.2) > every moment has a rate, and none is outside [0, 1] 0ms
  ✓ src/cutin/cutInGate.test.ts > priority among simultaneous moments — DECLARED, AND UNREACHABLE IN PRODUCTION > the priority list is a permutation of the four moments 0ms
  ✓ src/cutin/cutInGate.test.ts > priority among simultaneous moments — DECLARED, AND UNREACHABLE IN PRODUCTION > a third-attempt walk-out that is also a PR attempt fires the walk-out 0ms
- ✓ src/cutin/cutInGate.test.ts > priority among simultaneous moments — DECLARED, AND UNREACHABLE IN PRODUCTION > a bomb-out outranks everything 3ms
+ ✓ src/cutin/cutInGate.test.ts > priority among simultaneous moments — DECLARED, AND UNREACHABLE IN PRODUCTION > a bomb-out outranks everything 1ms
  ✓ src/cutin/cutInGate.test.ts > priority among simultaneous moments — DECLARED, AND UNREACHABLE IN PRODUCTION > a PR outranks a coach reaction 0ms
  ✓ src/cutin/cutInGate.test.ts > priority among simultaneous moments — DECLARED, AND UNREACHABLE IN PRODUCTION > the order the caller lists its beats in does not decide 0ms
  ✓ src/cutin/cutInGate.test.ts > priority among simultaneous moments — DECLARED, AND UNREACHABLE IN PRODUCTION > momentsFor de-duplicates and returns priority order 0ms
@@ -80,7 +59,7 @@ $ npx vitest run src/cutin --reporter=verbose
  ✓ src/cutin/cutInGate.test.ts > priority among simultaneous moments — DECLARED, AND UNREACHABLE IN PRODUCTION > ACROSS TIME THE EARLIER BEAT TAKES THE SLOT, WHATEVER ITS PRIORITY 0ms
  ✓ src/cutin/cutInGate.test.ts > a bomb-out is not starved by its own lift’s walk-out > A MEET THAT BOMBS SHOWS THE BOMB-OUT CUT-IN 0ms
  ✓ src/cutin/cutInGate.test.ts > a bomb-out is not starved by its own lift’s walk-out > the walk-out that ended the meet did not print its line over it 0ms
- ✓ src/cutin/cutInGate.test.ts > a bomb-out is not starved by its own lift’s walk-out > EVERY SEEDED MEET THAT BOMBS EITHER SHOWS THE BOMB-OUT OR SHOWS NOTHING 8ms
+ ✓ src/cutin/cutInGate.test.ts > a bomb-out is not starved by its own lift’s walk-out > EVERY SEEDED MEET THAT BOMBS EITHER SHOWS THE BOMB-OUT OR SHOWS NOTHING 4ms
  ✓ src/cutin/cutInGate.test.ts > a bomb-out is not starved by its own lift’s walk-out > THE RESIDUAL, PINNED: ANOTHER LIFT’S THIRD ATTEMPT CAN STILL TAKE THE SLOT 0ms
  ✓ src/cutin/cutInGate.test.ts > SKIPPABILITY: always, and from the first frame > A DISMISSED CUT-IN LEAVES THE SCREEN 0ms
  ✓ src/cutin/cutInGate.test.ts > SKIPPABILITY: always, and from the first frame > A CUT-IN IS DISMISSIBLE ON ITS FIRST FRAME 0ms
@@ -90,7 +69,7 @@ $ npx vitest run src/cutin --reporter=verbose
  ✓ src/cutin/cutInGate.test.ts > a sitting has one name and one seed > A MEET AND A TRAINING DAY ARE DIFFERENT SITTINGS ON THE SAME DAY 0ms
  ✓ src/cutin/cutInGate.test.ts > a sitting has one name and one seed > gives every day of a year its own id and seed 1ms
  ✓ src/cutin/cutInGate.test.ts > a sitting has one name and one seed > CONSECUTIVE DAYS DO NOT RHYME 1ms
- ✓ src/cutin/cutInGate.test.ts > a cut-in is cosmetic — GDD §8.1, §12.3 > carries an identity id and a Tier 3 slot, and no game state at all 0ms
+ ✓ src/cutin/cutInGate.test.ts > a cut-in is cosmetic — GDD §8.1, §12.3 > carries an identity id and a Tier 3 slot, and no game state at all 1ms
  ✓ src/cutin/cutInGate.test.ts > a cut-in is cosmetic — GDD §8.1, §12.3 > gives the coach beat a different face from the lifter’s 0ms
  ✓ src/cutin/cutInGate.test.ts > a cut-in is cosmetic — GDD §8.1, §12.3 > lets the caller name the identity, and defaults when it does not 0ms
  ✓ src/cutin/cutInGate.test.ts > a cut-in is cosmetic — GDD §8.1, §12.3 > every moment has a Tier 3 slot and a line of copy 0ms
@@ -98,17 +77,55 @@ $ npx vitest run src/cutin --reporter=verbose
  ✓ src/cutin/cutInGate.test.ts > the gate is a pure module (CLAUDE.md architecture rules) > imports no React and reads no clock or dice of its own 0ms
  ✓ src/cutin/cutInGate.test.ts > the gate is a pure module (CLAUDE.md architecture rules) > holds no bare number of its own — every knob is in cutInTuning 0ms
  ✓ src/cutin/cutInGate.test.ts > the gate is a pure module (CLAUDE.md architecture rules) > has a test for every exported function 1ms
+ ✓ src/cutin/cutInWiring.test.ts > the cut-in is dismissed by tapping it — GDD §7.2 > THE PRESS HANDLER IS THE DISMISS HANDLER 0ms
+ ✓ src/cutin/cutInWiring.test.ts > the cut-in is dismissed by tapping it — GDD §7.2 > THE WHOLE SCREEN IS THE TARGET, not a button in a corner 0ms
+ ✓ src/cutin/cutInWiring.test.ts > the cut-in is dismissed by tapping it — GDD §7.2 > says it is skippable, because a player has to know 0ms
+ ✓ src/cutin/cutInWiring.test.ts > the cut-in is dismissed by tapping it — GDD §7.2 > the host really calls the gate’s dismiss, not just setLive(null) 0ms
+ ✓ src/cutin/cutInWiring.test.ts > the cut-in is dismissed by tapping it — GDD §7.2 > THE SCRIM IS ITS OWN LAYER, so its opacity is not overridden by the arrival 0ms
+ ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > THE SET OF FILES THAT TALK TO THE GATE IS THIS SET — derived, not restated 75ms
+ ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > AND THE SET OF SCREENS THAT CLAIM A SITTING IS THE TWO LOOPS 76ms
+ ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > the host is the only file that opens a session or requests a cut-in 3ms
+ ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > ONE GATE SESSION PER SITTING, GUARDED ON ITS ID 0ms
+ ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > THE COUNT OUTLIVES THE COMPONENT — the cap is per sitting, not per mount 0ms
+ ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > THE DEBUG ROUTE IS NOT REACHABLE IN PLAY 2ms
+ ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > both loops mount exactly one host, above the whole loop 1ms
+ ✓ src/cutin/cutInWiring.test.ts > only the host talks to the gate — GDD §7.2, §12.3 > A MEET IS ONE SESSION, AND A TRAINING DAY IS ANOTHER 1ms
+ ✓ src/cutin/cutInWiring.test.ts > every firing moment of GDD §7.2 is wired to a screen > EACH OF THE FOUR IS OFFERED BY THE SCREEN THAT KNOWS ABOUT IT 2ms
+ ✓ src/cutin/cutInWiring.test.ts > every firing moment of GDD §7.2 is wired to a screen > covers all four of the gate’s beat kinds between them 2ms
+ ✓ src/cutin/cutInWiring.test.ts > every firing moment of GDD §7.2 is wired to a screen > no screen qualifies the beat itself — it reports facts 1ms
+ ✓ src/cutin/cutInWiring.test.ts > every firing moment of GDD §7.2 is wired to a screen > THE WALK-OUT REPORTS WHETHER ITS LIFT CAN STILL BOMB 1ms
+ ✓ src/cutin/cutInWiring.test.ts > CUT_IN_MOMENT_PRIORITY is a declared invariant, not a live tie-break > the reader can see a two-kind call when there is one, and sees every call 1ms
+ ✓ src/cutin/cutInWiring.test.ts > CUT_IN_MOMENT_PRIORITY is a declared invariant, not a live tie-break > THE PRIORITY ORDER DECIDES NOTHING TODAY, AND HERE IS THE READING THAT SAYS SO 72ms
+ ✓ src/cutin/cutInWiring.test.ts > CUT_IN_MOMENT_PRIORITY is a declared invariant, not a live tie-break > and the ranking is still declared, so the invariant has an implementation 0ms
+ ✓ src/cutin/cutInWiring.test.ts > the three "the gate belongs to somebody else" comments are gone > the scan can see the sentence it is looking for 0ms
+ ✓ src/cutin/cutInWiring.test.ts > the three "the gate belongs to somebody else" comments are gone > replaced by wiring, not by a different comment 1ms
+ ✓ src/cutin/cutInWiring.test.ts > nothing in the cut-in path can touch a number the player earns > the view and the host read no progression, no total and no e1RM 1ms
+ ✓ src/cutin/cutInWiring.test.ts > nothing in the cut-in path can touch a number the player earns > the cut-in path never reaches the fatigue ledger either — GDD §3.4, §12.3 0ms
  ✓ src/cutin/cutInPreview.test.ts > the route refuses everything it does not recognise > a query string with no cutin key is not a preview request 2ms
  ✓ src/cutin/cutInPreview.test.ts > the route refuses everything it does not recognise > AN UNKNOWN MOMENT BOOTS THE APP NORMALLY RATHER THAN A BROKEN SCREEN 0ms
- ✓ src/cutin/cutInPreview.test.ts > the route refuses everything it does not recognise > names each of the four moments, and the key the harness uses 1ms
+ ✓ src/cutin/cutInPreview.test.ts > the route refuses everything it does not recognise > names each of the four moments, and the key the harness uses 0ms
  ✓ src/cutin/cutInPreview.test.ts > the route refuses everything it does not recognise > is frozen by default, and runs its clock only when asked 0ms
  ✓ src/cutin/cutInPreview.test.ts > the route refuses everything it does not recognise > every previewable moment is one of GDD §7.2’s four 1ms
  ✓ src/cutin/cutInPreview.test.ts > THE PREVIEW GOES THROUGH THE GATE, IT DOES NOT GO ROUND IT > EVERY MOMENT THE ROUTE OFFERS REALLY FIRES, THROUGH `requestCutIn` 1ms
- ✓ src/cutin/cutInPreview.test.ts > THE PREVIEW GOES THROUGH THE GATE, IT DOES NOT GO ROUND IT > the walk-out preview uses an attempt that CAN still take the slot 0ms
+ ✓ src/cutin/cutInPreview.test.ts > THE PREVIEW GOES THROUGH THE GATE, IT DOES NOT GO ROUND IT > the walk-out preview uses an attempt that CAN still take the slot 1ms
  ✓ src/cutin/cutInPreview.test.ts > THE PREVIEW GOES THROUGH THE GATE, IT DOES NOT GO ROUND IT > the seed it picks is one the rate ALLOWS, not a forced fire 0ms
  ✓ src/cutin/cutInPreview.test.ts > THE PREVIEW GOES THROUGH THE GATE, IT DOES NOT GO ROUND IT > a preview sitting cannot collide with a played one 1ms
  ✓ src/cutin/cutInPreview.test.ts > THE PREVIEW GOES THROUGH THE GATE, IT DOES NOT GO ROUND IT > THE CAP APPLIES TO A PREVIEW TOO 0ms
  ✓ src/cutin/cutInPreview.test.ts > THE PREVIEW GOES THROUGH THE GATE, IT DOES NOT GO ROUND IT > carries no game state — a preview is still just a picture 1ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > “cut-in” is one of §7.3’s four Tier 3 surfaces 2ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > renders through the existing licensing panel path, not a parallel one 3ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > DRAWS A DIFFERENT PICTURE FOR A DIFFERENT IDENTITY 7ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > refuses an identity that is not in the table 1ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > every identity the gate can name is really in the table 0ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > a cut-in the GATE fired renders — the two halves fit together 4ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in prints ONE line of identity text — GDD §7.2, §7.3 > THE SCAN CAN SEE THE BUILD LABEL WHERE IT REALLY IS — the positive control 43ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in prints ONE line of identity text — GDD §7.2, §7.3 > THE SCAN CAN SEE TEXT IN A CUT-IN GRID — the second positive control 4ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in prints ONE line of identity text — GDD §7.2, §7.3 > NO CUT-IN SHOWS A TIER 1 BUILD LABEL, FOR ANY ENTRY IN THE TABLE 39ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in prints ONE line of identity text — GDD §7.2, §7.3 > THE IDENTITY IS NAMED ONCE, NOT TWICE 3ms
+ ✓ src/cutin/cutInArt.test.ts > the cut-in prints ONE line of identity text — GDD §7.2, §7.3 > and it draws the TIER 3 CAPTION, which is the line that follows the slot 10ms
+ ✓ src/cutin/cutInArt.test.ts > THIS PIECE AUTHORS NO CUT-IN ART — GDD §7.2, §11 > the scan can see a drawing when there is one 1ms
+ ✓ src/cutin/cutInArt.test.ts > THIS PIECE AUTHORS NO CUT-IN ART — GDD §7.2, §11 > holds no authored pixel rows and no legend of its own 1ms
+ ✓ src/cutin/cutInArt.test.ts > THIS PIECE AUTHORS NO CUT-IN ART — GDD §7.2, §11 > reads the table through §7.3’s witness and stamps with the licensing renderer 0ms
  ✓ src/cutin/cutInLedger.test.ts > THE CAP IS PER SITTING, NOT PER MOUNT (GDD §7.2, §12.3) > A REMOUNT INSIDE ONE SITTING DOES NOT HAND OUT A SECOND CUT-IN 3ms
  ✓ src/cutin/cutInLedger.test.ts > THE CAP IS PER SITTING, NOT PER MOUNT (GDD §7.2, §12.3) > AND NOT A THIRD, OR A TENTH 1ms
  ✓ src/cutin/cutInLedger.test.ts > THE CAP IS PER SITTING, NOT PER MOUNT (GDD §7.2, §12.3) > a resumed sitting keeps the rates it rolled, rather than re-rolling 1ms
@@ -118,20 +135,11 @@ $ npx vitest run src/cutin --reporter=verbose
  ✓ src/cutin/cutInLedger.test.ts > the ledger is bounded, and forgetting an old sitting is safe > keeps the most recent sittings and drops the oldest 1ms
  ✓ src/cutin/cutInLedger.test.ts > the ledger is bounded, and forgetting an old sitting is safe > re-remembering a sitting keeps it warm 0ms
  ✓ src/cutin/cutInLedger.test.ts > the ledger is bounded, and forgetting an old sitting is safe > the bound is at least two, so a day’s training and meet cannot evict each other 0ms
- ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > “cut-in” is one of §7.3’s four Tier 3 surfaces 2ms
- ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > renders through the existing licensing panel path, not a parallel one 4ms
- ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > DRAWS A DIFFERENT PICTURE FOR A DIFFERENT IDENTITY 6ms
- ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > refuses an identity that is not in the table 1ms
- ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > every identity the gate can name is really in the table 0ms
- ✓ src/cutin/cutInArt.test.ts > the cut-in is a Tier 3 surface — GDD §7.3 > a cut-in the GATE fired renders — the two halves fit together 2ms
- ✓ src/cutin/cutInArt.test.ts > THIS PIECE AUTHORS NO CUT-IN ART — GDD §7.2, §11 > the scan can see a drawing when there is one 1ms
- ✓ src/cutin/cutInArt.test.ts > THIS PIECE AUTHORS NO CUT-IN ART — GDD §7.2, §11 > holds no authored pixel rows and no legend of its own 1ms
- ✓ src/cutin/cutInArt.test.ts > THIS PIECE AUTHORS NO CUT-IN ART — GDD §7.2, §11 > goes through the licensing renderer rather than importing the drawings 1ms
 
  Test Files  5 passed (5)
-      Tests  109 passed (109)
-   Start at  13:46:55
-   Duration  765ms (transform 725ms, setup 0ms, import 1.12s, tests 121ms, environment 1ms)
+      Tests  117 passed (117)
+   Start at  15:31:33
+   Duration  842ms (transform 712ms, setup 0ms, import 938ms, tests 516ms, environment 1ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -146,9 +154,9 @@ $ npx vitest run
 
 
  Test Files  57 passed (57)
-      Tests  2439 passed (2439)
-   Start at  13:46:56
-   Duration  30.55s (transform 3.92s, setup 0ms, import 15.83s, tests 60.20s, environment 7ms)
+      Tests  2447 passed (2447)
+   Start at  15:31:34
+   Duration  31.88s (transform 3.84s, setup 0ms, import 15.73s, tests 62.59s, environment 12ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
