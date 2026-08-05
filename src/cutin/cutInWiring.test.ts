@@ -582,9 +582,10 @@ describe('the scans are not blind', () => {
  *     through" is true and must stay green.
  *   - `PRONOUN_SUBJECT` — `it`/`this` count as a subject only with a `cut-in`,
  *     `overlay` or `interrupt` ANTECEDENT within `PRONOUN_REACH`, and nothing
- *     disowning in between. Without that, a bare `it` next to a bare `panel`
- *     reddens eight true sentences elsewhere in the tree — including two about
- *     the MEET JUDGING panel, which is a different noun with the same spelling.
+ *     disowning in between. Without that requirement the pattern matches
+ *     FIFTEEN true sentences across TEN files — counted, not estimated — two of
+ *     them about the MEET JUDGING panel, which is a different noun with the same
+ *     spelling and lives in a module this scan has to walk anyway.
  *   - `NOT_ITS_OWN_CLAUSE` — a panel noun followed by a copula is the subject
  *     of its own clause, not the object of the claim. Without it "a cut-in is a
  *     full-screen interrupt and a shelf panel is a thumbnail" — a real contrast
