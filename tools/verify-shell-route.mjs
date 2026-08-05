@@ -63,21 +63,33 @@
  * out of the module under test agrees with a broken module. `BOMB_OUT_*` below
  * is restated for the same reason.
  *
- * THE ONE EXPECTATION THAT IS NOT INDEPENDENT, AND WHY. `SHELL_NAV_EXPECTED`
- * below is this tool's own copy of which beats carry the pill, and it is
- * CROSS-CHECKED against `src/shell/shellTuning.ts` rather than left to drift.
- * See the block above it: three hand-written statements of that fact already
- * exist and a re-tune that updates two of them used to leave this one silently
- * wrong, in the only check that runs a browser.
+ * THE EXPECTATIONS THAT ARE NOT INDEPENDENT, AND WHY. Two blocks below are this
+ * tool's own copies of values the app owns, and both are CROSS-CHECKED against
+ * the module they were copied from rather than left to drift:
+ * `SHELL_NAV_EXPECTED` against `src/shell/shellTuning.ts` (see the block above
+ * it — three hand-written statements of that fact already exist, and a re-tune
+ * that updated two of them used to leave this one silently wrong, in the only
+ * check that runs a browser), and `SESSION_LAYOUT_RESTATED` against
+ * `src/game/sessionTuning.ts` AND against the drawn screen.
  *
- * EVERY NUMBER IN THIS FILE THAT A SCREEN IS JUDGED AGAINST IS EITHER DERIVED
- * OR CONTROLLED. That is not a style rule, it is the defect this file keeps
+ * EVERY NUMBER IN THIS FILE THAT A SCREEN IS JUDGED AGAINST IS EITHER DERIVED,
+ * MEASURED AGAINST THE DRAWN SCREEN, OR CROSS-CHECKED AGAINST THE MODULE IT WAS
+ * COPIED FROM. That is not a style rule, it is the defect this file keeps
  * finding in itself: `BOMB_OUT_EXIT_DRAWN_AT_MS` is `meetTuning.ts`'s
  * arithmetic rather than a settle somebody liked; the already-trained
  * clearance floor is `SHELL_LAYOUT`'s reserved band divided out, after a typed
- * `24` sat there for a while passing by a factor of thirteen; `PARSER_FIXTURE`
- * and `LINE_BOX_PROBE` exist because a parser and a counter that have stopped
- * working agree with everything they are pointed at.
+ * `24` sat there for a while passing by a factor of thirteen; `PARSER_FIXTURE`,
+ * `NUMBER_FIXTURE` and `LINE_BOX_PROBE` exist because a parser and a counter
+ * that have stopped working agree with everything they are pointed at.
+ *
+ * THE SENTENCE ABOVE WAS FALSE WHEN IT WAS WRITTEN, and a critic caught it in
+ * the block immediately under it: `SESSION_LAYOUT_RESTATED`'s three numbers
+ * (`ROW_GAP`, `HEADLINE_FONT`, `SUBHEAD_FONT`) fed the already-trained copy
+ * ceiling and were checked against nothing at all — not the tuning module they
+ * were transcribed from, not the screen. They now have both controls, which is
+ * why the claim is worded as three named mechanisms rather than as an adjective:
+ * a sentence asserting a property this file does not have is worse than no
+ * sentence, because the next reader stops checking.
  *
  * Usage:
  *   node tools/verify-shell-route.mjs [--url URL] [--settle MS] [--out DIR]
@@ -186,6 +198,28 @@ const NAV_OPEN_MEET = 'shell-open-meet';
 const NAV_LEAVE_MEET = 'shell-leave-meet';
 
 /**
+ * WHAT EACH PHOTOGRAPHED BEAT SAYS ON SCREEN, so a filename can be checked
+ * against the pixels under it rather than trusted.
+ *
+ * `08-set-has-no-nav.png` was, for a while, a photograph of the REST beat —
+ * `RACK IT` / `NEXT SET · SET 2 OF 5` — because the single shutter for that
+ * section fired after the loop's second iteration. Both beats were checked in
+ * the DOM, so nothing was false; but the one claim in that section a human can
+ * verify by eye had no true picture behind it, and the picture it had was
+ * labelled as the other beat.
+ *
+ * Restated from the app's copy rather than imported, like the testIDs, and
+ * cross-checked against `sessionTuning.ts` at the end of the run so the
+ * restatement cannot rot.
+ */
+const BEAT_SAYS = Object.freeze({
+  /** tools/sessionDrive.mjs — SESSION_PROMPTS.BRACE, the mechanic's first cue. */
+  SET: SESSION_PROMPTS.BRACE,
+  /** src/game/sessionTuning.ts — SESSION_COPY.REST_PROMPT. */
+  REST: 'RACK IT',
+});
+
+/**
  * ===========================================================================
  * THE FOURTH STATEMENT OF WHICH BEATS CARRY THE PILL — AND THE ONE THING THAT
  * TIES IT TO THE OTHER THREE
@@ -241,6 +275,56 @@ const NEVER_A_PILL_BEAT = Object.freeze([
 ]);
 
 /**
+ * THE BEATS WHERE A PILL IS A TUNING QUESTION RATHER THAN A REFUSAL.
+ *
+ * ===========================================================================
+ * WHY A SECOND LIST EXISTS AT ALL: THE THIRD DIRECTION
+ * ===========================================================================
+ * The pins below used to run two ways — listed <-> probed, and listed ⊆ the
+ * phases the game declares — and NOT the third: game phases ⊆ (listed ∪ the
+ * pill list). The evidence file said so out of its own mouth without anybody
+ * noticing, in the detail text of a passing check:
+ *
+ *     "all 8 found among the 14 phases the game declares"
+ *
+ * Eight and one and one is ten. `weigh-in` and `openers` were on NEITHER list:
+ * no browser probe, no design claim, nothing that would go red. And that is the
+ * general case, not a two-row oversight — ADD A BEAT TO THE GAME TOMORROW and
+ * it lands in the same gap, unprobed and unclaimed, while every check here stays
+ * green. `shellRoute.test.ts` catches the routing half at compile time
+ * (`Record<SessionPhase, …>` makes its answer sheet exhaustive), but nothing
+ * made the PIXELS exhaustive.
+ *
+ * So the two lists are now a PARTITION of every phase the game declares, pinned
+ * in both directions below: no phase in neither, no phase in both.
+ *
+ * ===========================================================================
+ * WHY `weigh-in` AND `openers` GO HERE AND NOT ON THE LIST ABOVE
+ * ===========================================================================
+ * They carry no pill today — `SHELL_NAV.MEET_PHASES` is `['recap']` — but that
+ * is a TUNING answer, not a design refusal, and the two lists mean different
+ * things. `NEVER_A_PILL_BEAT` says a pill here is a bug whatever anybody tunes,
+ * because a mis-tap costs a rep, an attempt, or §6.3's silence. Nothing in the
+ * GDD says that about the weigh-in: "I opened meet day by mistake, let me go
+ * back" is a perfectly good reason for a future tuner to put `leave-meet` on it.
+ * Filing them under "never" would have smuggled a design decision nobody made
+ * into the one list this file calls unmovable.
+ *
+ * This list therefore asserts nothing about what is drawn. It says only: these
+ * beats are ACCOUNTED FOR, and `SHELL_NAV` is where their answer lives.
+ */
+const PILL_IS_A_TUNING_CHOICE = Object.freeze([
+  // Session beats where the player is deciding. All three carry one today.
+  'check-in',
+  'briefing',
+  'close-out',
+  // Meet beats before the platform and after it.
+  'weigh-in',
+  'openers',
+  'recap',
+]);
+
+/**
  * Which of those beats a browser probe below ACTUALLY VISITED, filled in by the
  * probes themselves as they run.
  *
@@ -273,11 +357,17 @@ const beatsProbedInTheBrowser = new Set();
  * `BOMB_OUT_EXIT_DRAWN_AT_MS` above: a check that reads its expectation out of
  * the module under test agrees with a broken module.
  *
- * WHAT KEEPS THE RESTATEMENT HONEST is not a regex over the source — it is that
- * `NAV_TOP_Y` is asserted against the pill THE BROWSER ACTUALLY DREW, within
- * `NAV_TOP_TOLERANCE_PX`. Re-tune `NAV_BOTTOM_INSET` or `NAV_HEIGHT` in
- * `shellTuning.ts` without touching this and that check names the drift with
- * both numbers in it, which is more than a source scan would have proved.
+ * WHAT KEEPS THIS PARTICULAR RESTATEMENT HONEST is not a regex over the source
+ * — it is that `NAV_TOP_Y` is asserted against the pill THE BROWSER ACTUALLY
+ * DREW, within `NAV_TOP_TOLERANCE_PX`. Re-tune `NAV_BOTTOM_INSET` or
+ * `NAV_HEIGHT` in `shellTuning.ts` without touching this and that check names
+ * the drift with both numbers in it, which is more than a source scan would have
+ * proved.
+ *
+ * THAT ARGUMENT COVERS THESE TWO NUMBERS AND NO OTHERS. It used to sit above
+ * both restatement blocks and was read as covering the session block too, which
+ * had no control of any kind. The session block now carries its own argument,
+ * directly above it, naming its own two controls.
  */
 const SHELL_LAYOUT_RESTATED = Object.freeze({
   /** src/shell/shellTuning.ts — SHELL_LAYOUT.NAV_BOTTOM_INSET */
@@ -286,6 +376,37 @@ const SHELL_LAYOUT_RESTATED = Object.freeze({
   NAV_HEIGHT: 38,
 });
 
+/**
+ * ===========================================================================
+ * AND THESE THREE, WHICH WERE JUST TYPED NUMBERS UNTIL A CRITIC READ THEM
+ * ===========================================================================
+ * The honesty argument above covers `SHELL_LAYOUT_RESTATED` and nothing else:
+ * `NAV_TOP_Y` genuinely is asserted against the pill the browser drew, so a
+ * re-tune that moves the pill is named with both numbers in it. THESE THREE HAD
+ * NOTHING. They feed `ALREADY_TRAINED_MAX_COPY_HEIGHT_PX`, they came from
+ * `sessionTuning.ts`, and nothing checked them against `sessionTuning.ts` or
+ * against the screen — so bumping `HEADLINE_FONT` to 30 would have left the
+ * ceiling computed from a 22 that no longer existed, and the check would have
+ * gone red about the COPY when the copy had not changed.
+ *
+ * That made this file's own headline claim — "every number in this file that a
+ * screen is judged against is either derived or controlled" — false, in the
+ * three-number block directly under it.
+ *
+ * They are now controlled TWICE, and the two controls fail differently:
+ *
+ *   - `checkSessionLayoutMatchesTuning` reads them straight out of
+ *     `src/game/sessionTuning.ts` and fails by name when they drift. That is a
+ *     claim about the SOURCE.
+ *   - the already-trained section measures the DRAWN font sizes and the DRAWN
+ *     gap between the two rows and compares them to these same numbers. That is
+ *     a claim about the PIXELS, and it is the one that would catch a style
+ *     override that stopped reading `SESSION_LAYOUT` at all.
+ *
+ * Still RESTATED rather than imported, for the reason the whole file gives: a
+ * `.mjs` tool cannot import a `.ts` module, and a check that reads its
+ * expectation out of its subject agrees with a broken subject.
+ */
 const SESSION_LAYOUT_RESTATED = Object.freeze({
   /** src/game/sessionTuning.ts — SESSION_LAYOUT.ROW_GAP, the gap `styles.centred` sets */
   ROW_GAP: 10,
@@ -294,6 +415,16 @@ const SESSION_LAYOUT_RESTATED = Object.freeze({
   /** SESSION_LAYOUT.SUBHEAD_FONT */
   SUBHEAD_FONT: 13,
 });
+
+/**
+ * How far a measured font size or row gap may sit from the constant it is
+ * supposed to be.
+ *
+ * Sub-pixel layout and a browser that rounds, not a style allowance — the same
+ * kind of number as `NAV_TOP_TOLERANCE_PX`, and deliberately small enough that
+ * a one-point re-tune of either font is red.
+ */
+const DRAWN_METRIC_TOLERANCE_PX = 0.5;
 
 /** The top edge of the drawn pill: 844 - 44 - 38 = 762. */
 const NAV_TOP_Y =
@@ -687,6 +818,43 @@ async function hitTest(id) {
 const bodyText = () => page.evaluate(() => (document.body.textContent ?? '').slice(0, 4000));
 
 /**
+ * Photograph a beat AND assert the file that just landed is a photograph of it.
+ *
+ * ===========================================================================
+ * WHY THE SHUTTER AND THE CHECK ARE ONE CALL
+ * ===========================================================================
+ * `08-set-has-no-nav.png` was for a while a photograph of the REST beat —
+ * `RACK IT` / `NEXT SET · SET 2 OF 5` — because the shutter for that section sat
+ * AFTER the loop that visited both beats, and so fired on the second one. Every
+ * assertion in the section was true; both beats were genuinely checked in the
+ * DOM. What was wrong was the one artefact a human grader reads with their eyes,
+ * and its filename said the opposite of its pixels.
+ *
+ * Taking the shot and reading the words off the same screen in the same function
+ * is what stops that separating again: a shutter moved out of its loop takes the
+ * check with it and fails on the wrong beat, instead of leaving a mislabelled
+ * file behind quietly. (What it still cannot catch is a shutter DELETED
+ * outright — the check goes with it, and the run's check count drops by one
+ * rather than turning red. Said plainly rather than implied.)
+ *
+ * `says` is the beat's own line, restated in `BEAT_SAYS` and cross-checked
+ * against the app's copy at the end of the run.
+ */
+async function shootBeat(shot, phase, says) {
+  await page.screenshot({ path: path.join(outDir, shot) });
+  const said = (await bodyText()).replace(/\s+/g, ' ').trim();
+  check(
+    shot.includes(phase) && said.includes(says),
+    `and ${shot} really is a photograph of the '${phase}' beat, which is what its name says`,
+    !shot.includes(phase)
+      ? `the filename ${shot} does not name the beat '${phase}' it was taken on`
+      : said.includes(says)
+        ? `the screen says ${JSON.stringify(says)}`
+        : `expected the screen to say ${JSON.stringify(says)}; it says ${JSON.stringify(said.slice(0, 90))}`,
+  );
+}
+
+/**
  * The smallest rectangle containing every LINE OF TEXT drawn inside `id`, its
  * height, and HOW MANY LINE BOXES it was laid out into.
  *
@@ -722,6 +890,10 @@ async function drawnTextBox(id) {
     let leaves = 0;
     let lineBoxes = 0;
     let longest = 0;
+    // Per-row geometry, in document order, so the caller can check the DRAWN
+    // font sizes and the DRAWN gap between rows against the tuning module they
+    // are supposed to come from. See `SESSION_LAYOUT_RESTATED`.
+    const rows = [];
     for (const node of root.querySelectorAll('*')) {
       if (node.querySelector('*') !== null) continue; // leaves only
       const text = (node.textContent ?? '').trim();
@@ -741,10 +913,16 @@ async function drawnTextBox(id) {
       // no rects at all, so this can never read as fewer lines than there are.
       lineBoxes += Math.max(1, tops.size);
       longest = Math.max(longest, text.length);
+      rows.push({
+        top: r.top,
+        bottom: r.bottom,
+        fontSize: Number.parseFloat(window.getComputedStyle(node).fontSize),
+      });
     }
+    rows.sort((a, b) => a.top - b.top);
     return leaves === 0
       ? null
-      : { top, bottom, left, right, height: bottom - top, leaves, lineBoxes, longest };
+      : { top, bottom, left, right, height: bottom - top, leaves, lineBoxes, longest, rows };
   }, id);
 }
 
@@ -804,6 +982,21 @@ function phaseListInSource(source, name) {
 }
 
 /**
+ * The number a property called `<name>` is given in a `.ts` source text, or
+ * null when there is no such property.
+ *
+ * Same job and same caveat as `phaseListInSource`: a regex, because this is a
+ * `.mjs` tool reading a `.ts` module, and therefore paired with a fixture below
+ * that it must read correctly and one it must refuse. Deliberately anchored on
+ * a WORD BOUNDARY at the start, so `HEADLINE_FONT` does not match
+ * `SUB_HEADLINE_FONT`, and refuses anything that is not a plain number.
+ */
+function numberInSource(source, name) {
+  const found = new RegExp(`(?:^|[^A-Z_])${name}\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?)\\s*,`).exec(source);
+  return found === null ? null : Number(found[1]);
+}
+
+/**
  * A source text this parser is KNOWN to read correctly, and one it must not.
  *
  * The positive control. `shellWiring.test.ts` pairs every scan with one of
@@ -822,6 +1015,19 @@ const PARSER_FIXTURE = `
 `;
 
 /**
+ * The same thing for `numberInSource`, and the trap it must not fall into:
+ * `SUB_HEADLINE_FONT` must not answer a question about `HEADLINE_FONT`, or the
+ * three session numbers would be "checked" against whatever property happened
+ * to share a suffix with them.
+ */
+const NUMBER_FIXTURE = `
+  SUB_HEADLINE_FONT: 99,
+  HEADLINE_FONT: 22,
+  ROW_GAP: 10,
+  A_STRING: 'not a number',
+`;
+
+/**
  * Where the game writes down every beat it actually has.
  *
  * Read so that a row of `NEVER_A_PILL_BEAT` naming a phase that does not exist
@@ -834,6 +1040,50 @@ const GAME_PHASE_LISTS = Object.freeze([
   Object.freeze({ file: ['src', 'game', 'session.ts'], name: 'SESSION_PHASES' }),
   Object.freeze({ file: ['src', 'game', 'meetDay.ts'], name: 'MEET_DAY_PHASES' }),
 ]);
+
+/**
+ * The three session numbers this file restates are the ones `sessionTuning.ts`
+ * holds. See the block above `SESSION_LAYOUT_RESTATED` for why they needed a
+ * control at all — they were the counter-example to this file's own claim that
+ * every number here is derived or controlled.
+ */
+async function checkSessionLayoutMatchesTuning() {
+  check(
+    numberInSource(NUMBER_FIXTURE, 'HEADLINE_FONT') === 22 &&
+      numberInSource(NUMBER_FIXTURE, 'ROW_GAP') === 10 &&
+      numberInSource(NUMBER_FIXTURE, 'ABSENT_FONT') === null &&
+      numberInSource(NUMBER_FIXTURE, 'A_STRING') === null,
+    'the number parser reads a property, refuses a missing one, and is not fooled by a longer name',
+    `fixture -> HEADLINE_FONT ${numberInSource(NUMBER_FIXTURE, 'HEADLINE_FONT')} (want 22; SUB_HEADLINE_FONT is 99 and must not be the answer),` +
+      ` ROW_GAP ${numberInSource(NUMBER_FIXTURE, 'ROW_GAP')} (want 10),` +
+      ` ABSENT_FONT ${numberInSource(NUMBER_FIXTURE, 'ABSENT_FONT')} and A_STRING ${numberInSource(NUMBER_FIXTURE, 'A_STRING')} (want null)`,
+  );
+
+  const where = path.join(srcRoot, 'src', 'game', 'sessionTuning.ts');
+  const text = await readFile(where, 'utf8').catch(() => null);
+  if (text === null) {
+    check(false, 'this tool’s session geometry is cross-checked against sessionTuning.ts', `could not read ${where}`);
+    return;
+  }
+  for (const [name, mine] of Object.entries(SESSION_LAYOUT_RESTATED)) {
+    const theirs = numberInSource(text, name);
+    check(
+      theirs === mine,
+      `SESSION_LAYOUT.${name} is the number this tool computes the copy ceiling from`,
+      `sessionTuning.ts ${theirs} vs this tool ${mine}`,
+    );
+  }
+
+  // The rest beat's prompt is the other restatement, and it decides which
+  // photograph is judged to be of which beat. Checked here so it cannot rot in
+  // silence either — a copy edit to `REST_PROMPT` would otherwise leave the
+  // beat check above looking for words no screen says any more.
+  check(
+    text.includes(`REST_PROMPT: '${BEAT_SAYS.REST}'`),
+    'SESSION_COPY.REST_PROMPT is the line this tool identifies the rest beat’s photograph by',
+    `looked for REST_PROMPT: '${BEAT_SAYS.REST}' in sessionTuning.ts`,
+  );
+}
 
 async function checkNavTableMatchesTuning() {
   // Does the parser work at all?
@@ -919,6 +1169,59 @@ async function checkNavTableMatchesTuning() {
     trespassing.length === 0,
     'no beat of the MECHANIC is in the pill’s phase list (GDD §3.2, §6.2, §6.3)',
     trespassing.length === 0 ? undefined : `would draw a pill over ${trespassing.join(', ')}`,
+  );
+
+  // -------------------------------------------------------------------------
+  // THE THIRD DIRECTION: every beat the game has is accounted for by one list
+  // or the other.
+  //
+  // Without this, the two pins above run listed -> probed and listed -> game,
+  // and a beat that appears in the game and on NEITHER list is invisible to all
+  // of them. `weigh-in` and `openers` sat in exactly that gap, and the passing
+  // check's own detail text said "all 8 found among the 14 phases the game
+  // declares" for as long as anybody cared to read it. See the block above
+  // `PILL_IS_A_TUNING_CHOICE`.
+  // -------------------------------------------------------------------------
+  const accountedFor = [...NEVER_A_PILL_BEAT, ...PILL_IS_A_TUNING_CHOICE];
+  const unaccounted = unreadable === null ? gamePhases.filter((beat) => !accountedFor.includes(beat)) : [];
+  check(
+    unreadable === null && unaccounted.length === 0,
+    'EVERY beat the game declares is on one of the two lists — a new beat cannot arrive unprobed and unclaimed',
+    unreadable !== null
+      ? `could not read ${unreadable}`
+      : unaccounted.length === 0
+        ? `${gamePhases.length} phases: ${NEVER_A_PILL_BEAT.length} where a pill is refused, ${PILL_IS_A_TUNING_CHOICE.length} where it is SHELL_NAV's call`
+        : `on neither list, so nothing here would ever look at them: ${unaccounted.join(', ')}`,
+  );
+
+  // ...and the two lists are disjoint, and neither invents a beat. Without
+  // these, "accounted for" could be satisfied by putting everything on both
+  // lists, or by a list that names phases the game does not have. (The
+  // never-list's membership of the game's phases is checked separately above,
+  // because its failure text is about a different mistake.)
+  const inBoth = NEVER_A_PILL_BEAT.filter((beat) => PILL_IS_A_TUNING_CHOICE.includes(beat));
+  const invented = unreadable === null ? PILL_IS_A_TUNING_CHOICE.filter((beat) => !gamePhases.includes(beat)) : [];
+  check(
+    inBoth.length === 0 && invented.length === 0,
+    'and the two lists are disjoint, and the second names only beats the game has',
+    inBoth.length > 0
+      ? `both refused and tunable at once: ${inBoth.join(', ')}`
+      : invented.length > 0
+        ? `not phases at all: ${invented.join(', ')}`
+        : `${NEVER_A_PILL_BEAT.length} + ${PILL_IS_A_TUNING_CHOICE.length} = ${accountedFor.length} distinct beats`,
+  );
+
+  // The pill's own beats are a subset of the tunable list, which follows from
+  // the two above only if they really are the game's phases — so it is stated.
+  // A pill list naming a beat the game does not have would draw nothing and
+  // fail nothing.
+  const pillOffTheList = pillBeats.filter((beat) => !PILL_IS_A_TUNING_CHOICE.includes(beat));
+  check(
+    pillOffTheList.length === 0,
+    'and every beat SHELL_NAV actually draws a pill on is one of the beats it is allowed to decide',
+    pillOffTheList.length === 0
+      ? `${pillBeats.length} of ${PILL_IS_A_TUNING_CHOICE.length} tunable beats carry one today`
+      : `SHELL_NAV draws a pill on ${pillOffTheList.join(', ')}, which is on neither list`,
   );
 }
 
@@ -1313,6 +1616,35 @@ const playedOut = { attempted: true };
         : `${copy.height.toFixed(1)}px tall, y ${copy.top.toFixed(1)}..${copy.bottom.toFixed(1)}`,
     );
 
+    // ---- and the ceiling above was computed from the screen's own numbers ---
+    //
+    // The three `SESSION_LAYOUT_RESTATED` values are the inputs to that ceiling
+    // and were, until a critic read them, three typed numbers checked against
+    // nothing. `checkSessionLayoutMatchesTuning` pins them to `sessionTuning.ts`
+    // at the end of the run; this pins them to the PIXELS, which is the half
+    // that would catch a style override that had stopped reading the tuning
+    // module at all. Same instrument as the pill's `NAV_TOP_Y` check, and the
+    // same reason: a restatement nothing measures is a magic number.
+    const rows = copy?.rows ?? [];
+    const drawnFonts = rows.map((row) => row.fontSize);
+    const wantFonts = [SESSION_LAYOUT_RESTATED.HEADLINE_FONT, SESSION_LAYOUT_RESTATED.SUBHEAD_FONT];
+    check(
+      drawnFonts.length === wantFonts.length &&
+        wantFonts.every((want, i) => Math.abs(drawnFonts[i] - want) <= DRAWN_METRIC_TOLERANCE_PX),
+      `the headline and subhead are drawn at SESSION_LAYOUT's ${wantFonts.join('px / ')}px, which the ceiling above is computed from`,
+      `drawn ${drawnFonts.map((f) => `${f}px`).join(', ') || 'nothing'} against ${wantFonts.map((f) => `${f}px`).join(', ')}`,
+    );
+
+    const drawnGap = rows.length === 2 ? rows[1].top - rows[0].bottom : null;
+    check(
+      drawnGap !== null &&
+        Math.abs(drawnGap - SESSION_LAYOUT_RESTATED.ROW_GAP) <= DRAWN_METRIC_TOLERANCE_PX,
+      `and the gap between them is SESSION_LAYOUT.ROW_GAP (${SESSION_LAYOUT_RESTATED.ROW_GAP}px), the third number that ceiling rests on`,
+      drawnGap === null
+        ? `expected 2 drawn rows to measure a gap between, found ${rows.length}`
+        : `drawn ${drawnGap.toFixed(2)}px against ${SESSION_LAYOUT_RESTATED.ROW_GAP}px`,
+    );
+
     // The pill really is where SHELL_LAYOUT puts it, so the floor derived from
     // those two numbers is a floor on THIS screen and not on a stale copy.
     check(
@@ -1401,19 +1733,47 @@ const playedOut = { attempted: true };
 // of being a bare literal that a re-tune could leave behind. Every one of these
 // beats is also in `NEVER_A_PILL_BEAT`, which is what makes the absence a
 // design claim and not merely a description of today's constant.
-for (const [search, waitFor, phase, what] of [
-  ['/?session=set', 'session-set', 'set', 'a live set'],
-  ['/?session=rest', 'session-rest', 'rest', 'the rest between two sets'],
+//
+// ===========================================================================
+// ONE SHUTTER PER BEAT, AND THE FILENAME IS THE BEAT'S
+// ===========================================================================
+// There used to be ONE screenshot, taken after the loop had finished — i.e.
+// after its SECOND iteration — and it was filed as `08-set-has-no-nav.png`.
+// So the committed photograph of "a live set with no pill" was a photograph of
+// the REST beat: `RACK IT` / `NEXT SET · SET 2 OF 5`, which is
+// `SESSION_COPY.REST_PROMPT` and `REST_NEXT`. Both beats were genuinely checked
+// in the DOM, so no assertion was false — but the ONE claim this section makes
+// that a human can check by eye, "no pill over the mechanic", had no true
+// picture behind it, and the picture it did have was labelled as something
+// else. A grader who opens the shots is reading the filenames.
+//
+// The shot name is now a field of the row, so a beat cannot acquire a
+// photograph of its neighbour: adding a row without a name is a missing file
+// rather than a mislabelled one.
+for (const [search, waitFor, phase, what, shot, says] of [
+  ['/?session=set', 'session-set', 'set', 'a live set', '08-set-has-no-nav.png', BEAT_SAYS.SET],
+  [
+    '/?session=rest',
+    'session-rest',
+    'rest',
+    'the rest between two sets',
+    '08b-rest-has-no-nav.png',
+    BEAT_SAYS.REST,
+  ],
 ]) {
   await open(search, waitFor);
   beatsProbedInTheBrowser.add(phase);
   await checkOnScreen(waitFor, `${what} renders`);
+  // Taken AFTER the positive check, so the pixels are known to be of a screen
+  // that had finished arriving, and BEFORE the negative one, so they are the
+  // same screen state the "no pill" reading below is taken from. The shutter
+  // carries its own verification — see `shootBeat`.
+  await shootBeat(shot, phase, says);
   check(
     !SHELL_NAV_EXPECTED.SESSION_PHASES.includes(phase) && !(await visible(NAV_OPEN_MEET)),
-    `NO CONTROL IS DRAWN OVER ${what} (beat '${phase}')`,
+    `NO CONTROL IS DRAWN OVER ${what} (beat '${phase}') — photographed in ${shot}`,
   );
 }
-await page.screenshot({ path: path.join(outDir, '08-set-has-no-nav.png') });
 
 // `walkout` is also checked LIVE in section 3, on a meet a player opened, which
 // is the stronger evidence. It is repeated here on a frozen frame so the beat
@@ -1565,6 +1925,7 @@ await checkOnScreen(
 // than the app — a reader scanning the output for what broke should meet the
 // app's failures first.
 await checkNavTableMatchesTuning();
+await checkSessionLayoutMatchesTuning();
 
 console.log(log.join('\n'));
 if (pageErrors.length > 0) {
