@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece M6
-generated 2026-08-05T18:25:26.507Z
+generated 2026-08-05T19:15:34.245Z
 repo /home/user/three-white-lights
-commit 28ba33ce973e52a57de55c058a42d673cb088404
+commit 33308f149d94cc337890e9fd89fcd2978b003852
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -18,33 +18,33 @@ $ npx vitest run src/game/streak --reporter=verbose
 
  RUN  v4.1.10 /home/user/three-white-lights
 
- ✓ src/game/streak.test.ts > purity contract > strips comments without destroying the code (sanity check for the scans below) 5ms
- ✓ src/game/streak.test.ts > purity contract > imports nothing at all, so it cannot import React 4ms
+ ✓ src/game/streakSweep.test.ts > the sweep is deterministic, which is the whole reason it is a fixture > returns byte-identical schedules for the same seed, every time 78ms
+ ✓ src/game/streakSweep.test.ts > the sweep is deterministic, which is the whole reason it is a fixture > returns DIFFERENT schedules for different seeds 11ms
+ ✓ src/game/streakSweep.test.ts > the sweep is deterministic, which is the whole reason it is a fixture > draws the promised number of schedules, at the promised length 14ms
+ ✓ src/game/streak.test.ts > purity contract > strips comments without destroying the code (sanity check for the scans below) 2ms
+ ✓ src/game/streak.test.ts > purity contract > imports nothing at all, so it cannot import React 1ms
  ✓ src/game/streak.test.ts > purity contract > never reads a clock 0ms
  ✓ src/game/streak.test.ts > purity contract > never uses randomness 0ms
- ✓ src/game/streak.test.ts > purity contract > has no ambient side-effect surface (no process, no globalThis) 0ms
+ ✓ src/game/streak.test.ts > purity contract > has no ambient side-effect surface (no process, no globalThis) 1ms
  ✓ src/game/streak.test.ts > purity contract > calls a Recovery Day a Recovery Day — no "token", "freeze", "shield" or "save" API 0ms
  ✓ src/game/streak.test.ts > purity contract > exposes no manual accept/decline path, because auto-protect replaced it 0ms
  ✓ src/game/streak.test.ts > purity contract > resolves an absence from the armed count, never from the live balance 0ms
- ✓ src/game/streak.test.ts > civil day arithmetic > matches an independent reference implementation on known dates 3ms
- ✓ src/game/streak.test.ts > civil day arithmetic > agrees with Date.UTC across three centuries of month starts 71ms
- ✓ src/game/streak.test.ts > civil day arithmetic > round-trips every day across a decade 39ms
- ✓ src/game/streakSweep.test.ts > the sweep is deterministic, which is the whole reason it is a fixture > returns byte-identical schedules for the same seed, every time 53ms
- ✓ src/game/streakSweep.test.ts > the sweep is deterministic, which is the whole reason it is a fixture > returns DIFFERENT schedules for different seeds 6ms
- ✓ src/game/streakSweep.test.ts > the sweep is deterministic, which is the whole reason it is a fixture > draws the promised number of schedules, at the promised length 12ms
+ ✓ src/game/streak.test.ts > civil day arithmetic > matches an independent reference implementation on known dates 2ms
+ ✓ src/game/streak.test.ts > civil day arithmetic > agrees with Date.UTC across three centuries of month starts 92ms
  ✓ src/game/streakSweep.test.ts > the sweep is deterministic, which is the whole reason it is a fixture > refuses a length that is not a whole number of days 1ms
  ✓ src/game/streakSweep.test.ts > the attendance distribution reaches the population the property is about > draws the rate ONCE PER SCHEDULE, so the population has tails and not just a mean 4ms
  ✓ src/game/streakSweep.test.ts > the attendance distribution reaches the population the property is about > contains absences long enough to end a run 5ms
- ✓ src/game/streakSweep.test.ts > the attendance distribution reaches the population the property is about > leaves every schedule with at least one idle day to flip 64ms
- ✓ src/game/streakSweep.test.ts > the comparator is exactly "one more trained day, nothing else" > produces one superset per idle day, each differing in exactly that day 1ms
- ✓ src/game/streakSweep.test.ts > the comparator is exactly "one more trained day, nothing else" > produces nothing for a schedule with no idle day 0ms
- ✓ src/game/streakSweep.test.ts > the exhaustive enumeration is every calendar of a length, once > enumerates 2^L distinct calendars 3ms
+ ✓ src/game/streakSweep.test.ts > the attendance distribution reaches the population the property is about > leaves every schedule with at least one idle day to flip 94ms
+ ✓ src/game/streakSweep.test.ts > the comparator is exactly "one more trained day, nothing else" > produces one superset per idle day, each differing in exactly that day 0ms
+ ✓ src/game/streakSweep.test.ts > the comparator is exactly "one more trained day, nothing else" > produces nothing for a schedule with no idle day 1ms
+ ✓ src/game/streakSweep.test.ts > the exhaustive enumeration is every calendar of a length, once > enumerates 2^L distinct calendars 5ms
  ✓ src/game/streakSweep.test.ts > the exhaustive enumeration is every calendar of a length, once > puts bit i on day i, so a failing mask can be read back 0ms
  ✓ src/game/streakSweep.test.ts > the exhaustive enumeration is every calendar of a length, once > refuses a mask that is not a calendar of that length 0ms
  ✓ src/game/streakSweep.test.ts > the parameters themselves > sweeps below the length the defect used to first appear at 0ms
  ✓ src/game/streakSweep.test.ts > the parameters themselves > keeps the attendance range inside (0, 1) with room at both ends 0ms
  ✓ src/game/streakSweep.test.ts > the parameters themselves > uses five distinct seeds, so a clean result is not one lucky draw 0ms
  ✓ src/game/streakSweep.test.ts > the parameters themselves > is frozen, so a test cannot quietly re-parameterise the measurement 0ms
+ ✓ src/game/streak.test.ts > civil day arithmetic > round-trips every day across a decade 45ms
  ✓ src/game/streak.test.ts > civil day arithmetic > consecutive calendar dates are always exactly one day apart 10ms
  ✓ src/game/streak.test.ts > civil day arithmetic > accepts real leap days and rejects fake ones 1ms
  ✓ src/game/streak.test.ts > civil day arithmetic > rejects impossible dates 0ms
@@ -55,12 +55,12 @@ $ npx vitest run src/game/streak --reporter=verbose
  ✓ src/game/streak.test.ts > the day boundary > rejects hours outside 0-23 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > holds 3-5 Recovery Days 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > grants 2-3 at signup, and never more than the hold cap 0ms
- ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > has a consecutive-use limit of at least 1 and below the hold cap 0ms
+ ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > has a consecutive-use limit of at least 1 and below the hold cap 1ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > defines the free grace and the consecutive-use limit as two independent literals 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > gives the two constants different jobs, checked by behaviour as well as by text 1ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > sets the longest repairable absence to the grace plus the consecutive-use limit 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > charges only the days past the grace 0ms
- ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > gives every absence its own full grace, because nothing is banked between them 1ms
+ ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > gives every absence its own full grace, because nothing is banked between them 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > defaults Recovery Day protection to on 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > pays milestones at 7 / 30 / 100 days, 1 each 0ms
  ✓ src/game/streak.test.ts > tunable constants sit inside the ranges GDD §4.2 specifies > pays 1 per achievement 0ms
@@ -128,7 +128,7 @@ $ npx vitest run src/game/streak --reporter=verbose
  ✓ src/game/streak.test.ts > the consecutive-use limit > is re-armed by any training day 0ms
  ✓ src/game/streak.test.ts > a long absence > cannot be repaired on the day the player comes back, even holding a full bank 0ms
  ✓ src/game/streak.test.ts > a long absence > takes the armed Recovery Days with it — WHERE THIS ONCE ASSERTED THE BANK SURVIVED 0ms
- ✓ src/game/streak.test.ts > a long absence > THE ABSENCE-LENGTH TABLE: identical whether the app is opened daily or once on the way back 2ms
+ ✓ src/game/streak.test.ts > a long absence > THE ABSENCE-LENGTH TABLE: identical whether the app is opened daily or once on the way back 3ms
  ✓ src/game/streak.test.ts > a long absence > costs the same whether the player checked in during it or not 0ms
  ✓ src/game/streak.test.ts > a long absence > THE RESIDUE THE OLD DESIGN HAD, GONE: a spend can no longer be wasted by looking 0ms
  ✓ src/game/streak.test.ts > a long absence > does not let a purchase repair it either 0ms
@@ -137,10 +137,10 @@ $ npx vitest run src/game/streak --reporter=verbose
  ✓ src/game/streak.test.ts > the first-save moment > is not consumed by merely looking, so closing the app re-shows it 0ms
  ✓ src/game/streak.test.ts > the first-save moment > is not burned by a break that could never have been saved 0ms
  ✓ src/game/streak.test.ts > the first-save moment > fires exactly once across a long simulated history 0ms
- ✓ src/game/streak.test.ts > streak milestones > pays out at 7, 30 and 100 trained days, once each 0ms
+ ✓ src/game/streak.test.ts > streak milestones > pays out at 7, 30 and 100 trained days, once each 1ms
  ✓ src/game/streak.test.ts > streak milestones > pays each milestone once in a lifetime, so breaking and rebuilding cannot farm them 0ms
  ✓ src/game/streak.test.ts > streak milestones > still pays a milestone the first time a rebuilt run passes the previous best 0ms
- ✓ src/game/streak.test.ts > streak milestones > cannot be reached faster by spending Recovery Days 0ms
+ ✓ src/game/streak.test.ts > streak milestones > cannot be reached faster by spending Recovery Days 1ms
  ✓ src/game/streak.test.ts > streak milestones > never counts a Recovery Day as a training day 0ms
  ✓ src/game/streak.test.ts > what a purchased Recovery Day can reach > persists nothing outside the declared streak-fact allowlist 0ms
  ✓ src/game/streak.test.ts > what a purchased Recovery Day can reach > reports nothing outside the declared spend allowlist 0ms
@@ -149,36 +149,57 @@ $ npx vitest run src/game/streak --reporter=verbose
  ✓ src/game/streak.test.ts > what a purchased Recovery Day can reach > spends a purchased Recovery Day to exactly the same effect as an earned one 0ms
  ✓ src/game/streak.test.ts > what a purchased Recovery Day can reach > does not record where a Recovery Day came from 0ms
  ✓ src/game/streak.test.ts > what a purchased Recovery Day can reach > cannot buy a longer streak, only a surviving one 1ms
- ✓ src/game/streak.test.ts > the outcome does not depend on when the player opens the app > OPEN-DAY OFFSET: identical final state whether they return the next day, in three days, in ten, or never 3ms
- ✓ src/game/streak.test.ts > the outcome does not depend on when the player opens the app > OPEN-DAY SCHEDULE, EXHAUSTIVE: every 13-day calendar ends identically under five opening schedules 123ms
+ ✓ src/game/streak.test.ts > the outcome does not depend on when the player opens the app > OPEN-DAY OFFSET: identical final state whether they return the next day, in three days, in ten, or never 6ms
+ ✓ src/game/streak.test.ts > the outcome does not depend on when the player opens the app > OPEN-DAY SCHEDULE, EXHAUSTIVE: every 13-day calendar ends identically under five opening schedules 131ms
  ✓ src/game/streak.test.ts > the outcome does not depend on when the player opens the app > OPEN-DAY SCHEDULE, WITH GRANTS AND LONG RANDOM CALENDARS 39ms
  ✓ src/game/streak.test.ts > the outcome does not depend on when the player opens the app > settling a break is a recording, not a decision: doing it early, late, twice or never is the same 0ms
  ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > training today beats skipping today, step by step, from any live state 2ms
  ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > showing up 365 days running never breaks, never costs, and never errors 11ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > PROPERTY, EXHAUSTIVE, PROTECTION DECLINED: training an extra day never loses ground 257ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > PROPERTY, PROTECTION DECLINED: holds over long randomised histories with grants landing mid-run 19ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > PROPERTY, EXHAUSTIVE, PROTECTION DECLINED: training an extra day never loses ground 269ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > PROPERTY, PROTECTION DECLINED: holds over long randomised histories with grants landing mid-run 18ms
  ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > THE OLD MINIMAL CASE IS STILL FIXED: single missed days cost nothing, so they cannot invert 0ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > THE NAMED MINIMAL PAIR IS FIXED: {5,6,7} and {0,5,6,7} now end level, and the extra day is never worse 0ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > THE NAMED MINIMAL PAIR IS FIXED: {5,6,7} and {0,5,6,7} now end level, and the extra day is never worse 1ms
  ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > WAS "37 TRAINED DAYS END ON 37, 38 END ON 18": the constructive family no longer inverts 1ms
  ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > WAS "THE DEFICIT HAS NO CEILING": the same family is level at every run length up to 1000 34ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > MONOTONICITY, EXHAUSTIVE: over every calendar of 8 to 16 days, one more trained day never loses ground 521ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > MONOTONICITY, SAMPLED: 2000 forty-day and 2000 sixty-day calendars, every single-day superset 572ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > THE RESIDUE IS NOT MILESTONE TIMING: three counterfactuals, and two of them say so 1316ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > MONOTONICITY, EXHAUSTIVE: over every calendar of 8 to 16 days, one more trained day never loses ground 525ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > is a pure module: no clock, no randomness, no React 4ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > has exactly the fields the allowlist names 1ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > anchors its windows at the signup day, not at a calendar month 0ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > gives every lifter the same entitlement at the start of every window 0ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > covers an absence it can afford and consumes exactly the chargeable days 0ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > BURNS THE REST OF THE WINDOW on an absence it cannot afford 0ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > caps what ONE absence may draw, separately from the window rate 0ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > spends the granted entitlement before the purchased one 0ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > expires a purchased covered day with its window — nothing accumulates 1ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > a purchase can never buy through the per-absence ceiling 0ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > refuses nonsense rather than absorbing it 1ms
+ ✓ src/game/streakEntitlement.test.ts > the rolling entitlement > never mutates the state it is given 0ms
+ ✓ src/game/streakEntitlement.test.ts > never punish daily engagement — the entitlement under attack > NEGATIVE CONTROLS: the harness can see a violation when there is one 1555ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > MONOTONICITY, SAMPLED: 2000 forty-day and 2000 sixty-day calendars, every single-day superset 595ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > THE RESIDUE IS NOT MILESTONE TIMING: three counterfactuals, and two of them say so 1319ms
  ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > THE RESIDUE, REPRODUCED BY HAND: one extra trained day, 23 days, streak 8 becomes 1 1ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > DOES IT TERMINATE: the residue at 80 and 100 days, with its denominator 1651ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > SUBSET MONOTONICITY: training a superset of another lifter's days never ends below them 93ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > DOES IT TERMINATE: the residue at 80 and 100 days, with its denominator 1721ms
+ ✓ src/game/streakEntitlement.test.ts > never punish daily engagement — the entitlement under attack > EXHAUSTIVE: every calendar of 8 to 16 days, both fields 3669ms
+ ✓ src/game/streakEntitlement.test.ts > never punish daily engagement — the entitlement under attack > SAMPLED: 40, 60, 80 and 100 days — including the LIFETIME BEST 2673ms
+ ✓ src/game/streakEntitlement.test.ts > never punish daily engagement — the entitlement under attack > MAGNITUDE AT LONG HORIZONS: 200 and 400 days 6079ms
+ ✓ src/game/streakEntitlement.test.ts > never punish daily engagement — the entitlement under attack > POPULATIONS the seeded generator does not reach 432ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > SUBSET MONOTONICITY: training a superset of another lifter's days never ends below them 92ms
  ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > A STREAK READ OFF AN UNOPENED STATE IS STALE, so two states settled to different days must not be compared 0ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > EVERY CONSUMPTION IS REPORTED — exhaustively, both events, no silent debit anywhere 10515ms
- ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > EVERY PENDING CONSUMPTION IS ANNOUNCED BEFORE IT HAPPENS, on every opening kind 8058ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > EVERY CONSUMPTION IS REPORTED — exhaustively, both events, no silent debit anywhere 10652ms
+ ✓ src/game/streakEntitlement.test.ts > never punish daily engagement — the entitlement under attack > EVERY TUNING IN THE GRID: a playtester must not be able to turn the property off 4963ms
+ ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > EVERY PENDING CONSUMPTION IS ANNOUNCED BEFORE IT HAPPENS, on every opening kind 7886ms
  ✓ src/game/streak.test.ts > daily engagement is never worse than skipping — where that holds, and where it does not > training debits exactly what the absence it closes consumes, and nothing else 8ms
  ✓ src/game/streak.test.ts > read models > never mutate the state they are handed 0ms
  ✓ src/game/streak.test.ts > read models > never mutate the state a transition is handed 0ms
  ✓ src/game/streak.test.ts > read models > agree with each other about what an absence does, across every balance and length 3ms
+ ✓ src/game/streakEntitlement.test.ts > never punish daily engagement — the entitlement under attack > THE PURCHASE PATH cannot itself create a violation 4295ms
+ ✓ src/game/streakEntitlement.test.ts > never punish daily engagement — the entitlement under attack > A BANKABLE purchase is ALSO safe — expiry is a product choice, not a safety property 2422ms
+ ✓ src/game/streakEntitlement.test.ts > never punish daily engagement — the entitlement under attack > ADVERSARIAL SEARCH: hill-climbs towards a violation instead of waiting for one 467ms
 
- Test Files  2 passed (2)
-      Tests  156 passed (156)
-   Start at  18:25:27
-   Duration  23.80s (transform 380ms, setup 0ms, import 455ms, tests 23.56s, environment 0ms)
+ Test Files  3 passed (3)
+      Tests  177 passed (177)
+   Start at  19:15:34
+   Duration  27.01s (transform 681ms, setup 0ms, import 801ms, tests 50.30s, environment 0ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -192,10 +213,10 @@ $ npx vitest run
  RUN  v4.1.10 /home/user/three-white-lights
 
 
- Test Files  58 passed (58)
-      Tests  2510 passed (2510)
-   Start at  18:25:51
-   Duration  38.50s (transform 3.73s, setup 0ms, import 15.99s, tests 89.54s, environment 6ms)
+ Test Files  59 passed (59)
+      Tests  2534 passed (2534)
+   Start at  19:16:02
+   Duration  49.03s (transform 3.71s, setup 0ms, import 15.64s, tests 121.44s, environment 6ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
