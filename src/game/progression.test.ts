@@ -1697,14 +1697,65 @@ describe('the fact allowlist', () => {
   });
 
   it('keeps the Recovery Day ledger out of the wallet', () => {
-    // One consumable, one ledger. `streak.ts` holds it, with the hold cap and
-    // the consecutive-use limit attached.
+    // One consumable, one ledger. `streak.ts` holds it, with the per-absence
+    // ceiling and the window rate attached.
     expect([...WALLET_CURRENCIES]).toEqual(['gymBucks', 'chalk']);
     const facts = snapshotFacts(snapshot());
     expect(Object.keys(facts.wallet)).not.toContain('recoveryDays');
     expect(facts.streak.entitlement.coveredDaysLeft).toBe(2);
-    // GDD §8.3E is not ruled, so a snapshot may never carry a purchased day.
     expect(facts.streak.entitlement.purchasedDaysLeft).toBe(0);
+  });
+
+  it('CARRIES A PURCHASED COVERED DAY ACROSS THE WIRE, now that GDD §8.3E is ruled in', () => {
+    // THIS REVERSES A REFUSAL. `receiveProgressionSnapshot` used to reject any
+    // snapshot with `purchasedDaysLeft !== 0` outright, on the grounds that
+    // §8.3E was proposed and not ruled and a server carrying one was a server
+    // running ahead of the design. It is ruled in, so the refusal is gone and
+    // the field crosses the boundary like every other count.
+    //
+    // WHAT DID NOT CHANGE IS WHO OWNS IT. This decodes what the server says;
+    // no client path writes it, and `streak.applySettledCoveredDayPurchase`
+    // needs a settled order the server alone can produce.
+    const base = wire();
+    const withPurchase = {
+      ...base,
+      streak: {
+        ...base.streak,
+        entitlement: { ...base.streak.entitlement, purchasedDaysLeft: 4 },
+      },
+    };
+    const received = receiveProgressionSnapshot(withPurchase);
+    expect(received.ok).toBe(true);
+    if (!received.ok) return;
+    expect(snapshotFacts(received.value).streak.entitlement.purchasedDaysLeft).toBe(4);
+
+    // NO CEILING IS VALIDATED, DELIBERATELY. A large purchased balance is not a
+    // suspicious snapshot: `MAX_COVERED_DAYS_PER_ABSENCE` caps what any one
+    // absence may draw regardless of what the window holds, so ten thousand
+    // purchased days buy exactly the protection two do. Refusing a number here
+    // would be enforcing a bound that does not exist.
+    const enormous = {
+      ...base,
+      streak: {
+        ...base.streak,
+        entitlement: { ...base.streak.entitlement, purchasedDaysLeft: 10_000 },
+      },
+    };
+    expect(receiveProgressionSnapshot(enormous).ok).toBe(true);
+
+    // What IS still refused is a value that is not a count at all.
+    for (const bad of [-1, 1.5, Number.NaN]) {
+      const broken = {
+        ...base,
+        streak: {
+          ...base.streak,
+          entitlement: { ...base.streak.entitlement, purchasedDaysLeft: bad },
+        },
+      };
+      const result = receiveProgressionSnapshot(broken);
+      expect(result.ok, `purchasedDaysLeft ${bad} must be refused`).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe('INVALID_SNAPSHOT');
+    }
   });
 
   it('tracks streak.ts own allowlist rather than duplicating it', () => {
