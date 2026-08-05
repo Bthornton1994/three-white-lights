@@ -1,19 +1,18 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-05T16:39:11.377Z",
+    "capturedAt": "2026-08-05T16:44:23.342Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "354b587",
+    "commit": "24fd2c7",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "DIRTY — this run is not against a commit",
     "dirtyPaths": [
-      "M .gauntlet/evidence/A1.txt",
-      " M .gauntlet/shots/shell/02-meet-from-session.png",
+      "M .gauntlet/shots/shell/02-meet-from-session.png",
       " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
       " M .gauntlet/shots/shell/route.json"
     ],
     "instrument": {
-      "capture-cutin.mjs": "d91be31176b0a475",
+      "capture-cutin.mjs": "6f23f79bb0705ef1",
       "png.mjs": "6356a0d0b0dcb696"
     }
   },
@@ -231,14 +230,14 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 702,
+    "stillUpAt": 700,
     "stillUp": true,
-    "goneAt": 1554,
+    "goneAt": 1562,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 12,
-    "goneAt": 21,
+    "tappedAt": 22,
+    "goneAt": 30,
     "wellInsideTheHold": true
   },
   "playedPath": {
