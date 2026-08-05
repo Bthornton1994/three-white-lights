@@ -626,19 +626,32 @@ function foreignWindowPixels(grid: IndexGrid, tier: SeatedTier): number {
  * a different claim from this one. Two true facts joined by a reason that was
  * not the operative one.
  *
- * WHAT IS STILL NOT BOUNDED, named rather than implied, because an honest "not
- * bounded" is worth more than a citation that cannot deliver: NOTHING IN THIS
- * FILE STOPS A TIER GROWING DOWNWARD INSIDE THE BAND. Run rather than reasoned —
- * `paintCrowd` made to draw every silhouette one row deeper whenever
- * `rise > 0`, so the whole hall reaches toward the lifter as it stands, leaves
- * all 2,332 tests green. The reasons are worth writing down because they are not
- * obvious: the tiers behind the front one are legitimately eaten from below by
- * the tier in front's keyline, so there is no rest reading to hold their bottoms
- * to; and the FRONT tier's growth is invisible, because `paintCrowd` clips at
- * the band's bottom row and paints `RAIL_ROWS` of barrier over what is left.
- * `never lets a risen hall reach down toward the lifter` does now take a reading
- * inside the band at every rise, but it is a pin on the front edge's POSITION,
- * not a bound on growth — its own comment says which.
+ * A TIER GROWING DOWNWARD INSIDE THE BAND USED TO BE DECLARED HERE AS A HOLE,
+ * AND MEASUREMENT SAYS IT IS NOT ONE. What stood here read "NOTHING IN THIS FILE
+ * STOPS A TIER GROWING DOWNWARD INSIDE THE BAND", on the evidence that
+ * `paintCrowd` made to draw every silhouette one row deeper whenever `rise > 0`
+ * left the whole tree green. The tree is green under that mutation because THE
+ * MUTATION CHANGES NO PIXEL. Re-run at four depths — one row, three rows, and
+ * twelve, which is two whole tier pitches — and compared as a checksum over the
+ * ENTIRE 130x173 grid rather than as crowd counts: byte-identical to the shipped
+ * render at every rise from 0 to 8. An instrument cannot be blind to something
+ * that is not there.
+ *
+ * WHY IT IS NOT THERE, and the three equalities it rests on: everything below a
+ * tier's seat row is repainted, at full width, by the tier in FRONT of it, whose
+ * keyline is exactly as wide as the head pitch and starts exactly one row above
+ * its own head; and the front-most tier has nothing in front of it but has the
+ * band's bottom clip and `RAIL_ROWS` of barrier instead. All three of those are
+ * at ZERO slack at today's constants, which is the part worth being told about,
+ * so they are pinned by name in `hides a tier growing DOWNWARD behind the tier in
+ * front of it` rather than left in this paragraph.
+ *
+ * WHAT IS STILL NOT BOUNDED, named rather than implied: that pin is an ARGUED
+ * bound with its constants pinned, not a measurement of the drawing. It says a
+ * tier's downward growth cannot REACH the picture; it does not say the renderer
+ * does not attempt one. `never lets a risen hall reach down toward the lifter`
+ * takes a reading inside the band at every rise, but it is a pin on the front
+ * edge's POSITION, not a bound on growth — its own comment says which.
  */
 function tierRisesOf(grid: IndexGrid): readonly number[] {
   return SEATED_TIERS.map((tier) => topRowOf(REST_BAND, tier) - topRowOf(grid, tier));
@@ -725,8 +738,9 @@ function sameRise(a: readonly number[], b: readonly number[]): boolean {
 /**
  * The whole beat as drawn halls against the clock.
  *
- * One composite per FRAME — 33 of them on the urgent walk-out, about 3 ms each —
- * and consecutive frames drawing the same hall are merged, because the sheet
+ * One composite per FRAME — 33 of them on the urgent walk-out, roughly 5 ms each,
+ * so the whole timeline costs about a sixth of a second at import — and
+ * consecutive frames drawing the same hall are merged, because the sheet
  * breaks on the lifter's channels too and a run of frames the crowd does not
  * move through is one drawing of the room.
  */
@@ -783,14 +797,19 @@ const RISE_FIRST_SETTLED_MS = firstDrawnMs((run) => sameRise(run.tiers, RISE_SET
  *
  *   THE SPREAD AND THE STILLNESS ARE WHAT CATCH A COMPRESSION. Under
  *     `smoothstep(4u - 3)` the spread is 0.16 and the longest still hall is
- *     0.80 — both red, and the stillness bound is the one whose message names
- *     the dead time.
+ *     0.80, and both are red. The spread is written first and is therefore the
+ *     message a reader sees: "the hall comes up between 1800ms and 1940ms —
+ *     140ms of a 900ms ramp". The stillness bound is the one that names the dead
+ *     time — "the hall is the same picture from 1080ms to 1800ms ... drawn at
+ *     [0,0,0,0]" — and it was run on its own, with the spread bound relaxed to
+ *     zero, to check it fires for its own reason rather than riding along.
  *   THE STEP BOUND CATCHES NOTHING A COMPRESSION DOES, and it was checked rather
  *     than assumed: the compressed ramp still climbs one row at a time, because
  *     `TICK_MS` 20 against a 900 ms window is fine enough that even four times
  *     the slope cannot skip a row. What it catches is the OTHER shape a
- *     "distributed" rise can fake — a staircase that waits and then jumps two
- *     tiers at one frame boundary, which satisfies both bounds above.
+ *     "distributed" rise can fake — a staircase that waits and then moves one
+ *     tier three rows at a single frame boundary, which satisfies both bounds
+ *     above. Run: `crowdRowRise` tripled fails it and nothing else in the file.
  *
  * So the answer is: the spread bounds the failure this round was sent for, and
  * the step bound is what stops the fix being satisfiable by a staircase.
@@ -1335,22 +1354,101 @@ describe('the ruler this file reads the hall’s rise off', () => {
     }
   });
 
-  it('reads the same rise through the COMPOSITE as it does off the bare room', () => {
-    // THE CALIBRATION THE TIME AXIS NEEDS, and the one reading nothing else in
-    // this file takes. Every tier measurement above is taken off
-    // `renderGymScene(hallScene(rise))` — a room with nobody in it.
+  it('hides a tier growing DOWNWARD behind the tier in front of it', () => {
+    // ---------------------------------------------------------------------
+    // THE RESIDUAL THIS FILE DECLARED THREE TIMES, MEASURED AND THEN ARGUED
+    // ---------------------------------------------------------------------
+    // The declaration was: nothing here stops a tier growing downward inside
+    // the band, evidenced by `paintCrowd` made to draw every silhouette one row
+    // deeper whenever `rise > 0` leaving the whole tree green.
+    //
+    // MEASURED FIRST, because "the tree is green" has two explanations and the
+    // declaration assumed the wrong one. That mutation — and the same mutation
+    // at three rows and at TWELVE, two whole tier pitches — leaves the rendered
+    // scene byte-identical at every rise from 0 to 8, compared as a checksum
+    // over all 22,490 pixels rather than as crowd counts. There is nothing to
+    // see, so there is nothing an instrument could have seen.
+    //
+    // ARGUED SECOND, with the constants the argument needs PINNED, which is the
+    // same standing `ownColumnPixels` gives its own two exclusions. Three
+    // equalities carry it, and every one is at ZERO SLACK today — one tuning
+    // step from a hall that really can reach toward the lifter with nothing
+    // watching. That is the reason this is a test and not a paragraph.
+    const { HEAD_COLS, HEAD_H, HEAD_W, KEYLINE_COLS, KEYLINE_ROWS } = GYM_CROWD;
+    const { RAIL_ROWS, ROW_PITCH, SHOULDER_ROWS } = GYM_CROWD;
+
+    // 1. ACROSS. A spectator's keyline is stamped `KEYLINE_COLS` beyond each
+    //    side of its head, and heads repeat every `HEAD_COLS`. When the two
+    //    meet, the union of one tier's keylines covers EVERY column of the rows
+    //    it occupies — so the tier in front does not merely overlap the tier
+    //    behind's growth, it repaints the whole row it lands in. One column
+    //    short and a stripe of the tier behind shows through.
+    expect(
+      HEAD_W + KEYLINE_COLS * 2,
+      'a tier’s keyline no longer covers its whole head pitch, so a tier behind can show through between spectators',
+    ).toBeGreaterThanOrEqual(HEAD_COLS);
+
+    // 2. DOWN. A tier's own drawing ends at `HEAD_H + SHOULDER_ROWS` below its
+    //    seat row, and the tier in front starts painting `KEYLINE_ROWS` above
+    //    its own head, a whole `ROW_PITCH` further down. For the growth to have
+    //    nowhere to land, those two have to meet with no row between them.
+    expect(
+      HEAD_H + SHOULDER_ROWS + KEYLINE_ROWS,
+      'there is now a row below a tier’s seat that the tier in front does not repaint',
+    ).toBeGreaterThanOrEqual(ROW_PITCH);
+
+    // 3. AND THE FRONT TIER, which has nobody in front of it. Everything it can
+    //    grow into is between the bottom of its own silhouette and the band's
+    //    bottom clip, and the barrier is painted over that after the crowd. If
+    //    the rail ever stops reaching that high, the one tier nearest the lifter
+    //    is the one tier whose growth becomes visible.
+    const front = SEATED_TIERS[SEATED_TIERS.length - 1];
+    if (front === undefined) throw new Error('the band has no tiers in it');
+    expect(
+      BAND_BOTTOM - RAIL_ROWS,
+      'the barrier no longer covers the rows the front tier could grow into',
+    ).toBeLessThanOrEqual(front.seatRow + HEAD_H + SHOULDER_ROWS);
+
+    // Non-vacuity, and it is not a restatement of any of the three: the front
+    // tier really is the last one drawn and really does sit against the band's
+    // floor, which is what makes 3 a statement about the tier nearest the
+    // lifter rather than about an empty strip.
+    expect(front.seatRow + HEAD_H + SHOULDER_ROWS, 'the front tier does not reach the band’s floor')
+      .toBeGreaterThanOrEqual(BAND_BOTTOM - ROW_PITCH);
+  });
+
+  it('measures the crowd in rows the LIFTER is never drawn in', () => {
+    // THE CALIBRATION THE TIME AXIS NEEDS. Every tier measurement above is taken
+    // off `renderGymScene(hallScene(rise))` — a room with nobody in it.
     // `drawnRiseTimeline` reads the same ruler on `hallAt`, which is that room
     // with the LIFTER BLITTED OVER IT, because "when is this rise on the screen"
     // is a question about the screen and the screen has a man on it.
     //
-    // The two are only the same reading while the sprite stays clear of the
-    // scan windows, and it very nearly does not: `SPRITE_Y` is 97 and the band's
-    // bottom row is 99, so the sprite's cell starts INSIDE the seating band and
-    // is kept out of the readings by 4 rows — the gap between the front tier's
-    // seat row and the band's floor. A taller sprite, a higher stage, or a band
-    // pushed down would put the lifter's crown in the front tier's window and
-    // every timing measurement below would quietly become a measurement of his
-    // head. That is a thing to be told about rather than to discover.
+    // THE CLEARANCE IS THE LOAD-BEARING HALF, and it is thinner than it looks.
+    // The sprite's cell is blitted at `SPRITE_Y` 97 and the seating band's floor
+    // is row 99, so the man's cell starts INSIDE the band; what keeps him out of
+    // the readings is that the lowest row any tier is measured in is the front
+    // tier's seat row, 93. Four rows. A taller sprite, a higher stage or a band
+    // pushed down puts his crown in the front tier's scan window and every
+    // timing measurement in this file quietly becomes a measurement of his head.
+    // Run: `SPRITE_Y: 57` fails here by name.
+    const lowestMeasuredRow = Math.max(...SEATED_TIERS.map((tier) => tier.seatRow));
+    expect(
+      GYM_LIFT_STAGE.SPRITE_Y,
+      `the lifter's cell starts at row ${GYM_LIFT_STAGE.SPRITE_Y} and the crowd is measured down to row ${lowestMeasuredRow}`,
+    ).toBeGreaterThan(lowestMeasuredRow);
+
+    // ...and the two readings do agree, drawing for drawing, over the whole
+    // beat. STATED AS WHAT IT IS RATHER THAN AS A BOUND, because it is weaker
+    // than it reads and that was established by running rather than by arguing:
+    // `SPRITE_Y` walked from 97 up to 20 — the clearance above violated the
+    // whole way — and `tierRisesOf` never moved a row. Two structural reasons,
+    // both outside this file: the ruler reads all 130 columns of the scene and
+    // the sprite's cell is 96 of them, so a blit can never blank a whole row of
+    // any tier's own columns; and `GYM.CROWD_MID` is in a gym palette bank
+    // (`GYM_BANK_FIRST`) that the lifter's indices cannot collide with, so a
+    // blit cannot ADD a spectator either. So this is a corroboration of the
+    // clearance, and the clearance is the assertion that bites.
     const seen = new Set<number>();
     for (const run of RISE_TIMELINE) {
       seen.add(run.crowdRisePx);
@@ -1359,8 +1457,10 @@ describe('the ruler this file reads the hall’s rise off', () => {
         `rise ${run.crowdRisePx} at ${run.startMs}ms: the composite and the bare room disagree — the lifter is standing in front of the ruler`,
       ).toEqual(tierRisesOf(renderGymScene(hallScene(run.crowdRisePx))));
     }
-    // Non-vacuity: the beat really does put more than one room on the screen, so
-    // this compared different pictures rather than one picture with itself.
+    // Non-vacuity, and this one does fire: the beat really does put more than
+    // one room on the screen, so the loop compared different pictures rather
+    // than one picture with itself. (Run: a hall that switches on instead of
+    // rising draws two rooms and fails here.)
     expect(seen.size, 'the urgent beat draws one room for its whole length').toBeGreaterThan(2);
   });
 });
@@ -1615,17 +1715,17 @@ describe('a third attempt is a different picture from an opener', () => {
     // crowd-coloured row is a table rather than a spectator, and a bound taken
     // on it would be pinned by furniture and could never move.
     //
-    // WHAT THIS DOES NOT COVER, AND IT IS MOST OF THE DOWNWARD DIRECTION. It is
-    // a pin on the front edge, not a bound on growth. `paintCrowd` clips every
-    // silhouette at the band's bottom row and then paints `RAIL_ROWS` of barrier
-    // over it, so a figure drawn further down than it sits is hidden by the rail
-    // before this can see it — RUN BOTH WAYS ROUND: making every silhouette
-    // `SHOULDER_ROWS + 1` deep whenever `rise > 0`, so the whole hall grows
-    // downward as it stands, leaves the WHOLE TREE green. What this does catch
-    // is a spectator becoming visible in a band row the seated hall keeps clear
-    // — the rail no longer covering the seating, or the bottom clip going.
-    // Nothing in this file bounds a tier growing downward inside the band; see
-    // `tierRisesOf`.
+    // WHAT THIS DOES NOT COVER. It is a pin on the front edge, not a bound on
+    // growth: a figure drawn further down than it sits is hidden by the rail and
+    // by the tier in front before this can see it, and making every silhouette
+    // `SHOULDER_ROWS + 1` deep whenever `rise > 0` leaves the WHOLE TREE green.
+    // THE REASON IS NOT THAT NOTHING IS WATCHING, which is what this comment
+    // used to say: that mutation draws the identical picture, checksummed over
+    // the whole grid at every rise and at four depths. `hides a tier growing
+    // DOWNWARD behind the tier in front of it` has the measurement and pins the
+    // three zero-slack equalities it rests on. What this test does catch is a
+    // spectator becoming visible in a band row the seated hall keeps clear — the
+    // rail no longer covering the seating, or the bottom clip going.
     const lowestSpectatorRow = (grid: IndexGrid): number => {
       let row = -1;
       for (let y = BAND_TOP; y < BAND_BOTTOM; y += 1) {
@@ -1823,14 +1923,15 @@ describe('the hall comes up across the ramp rather than switching on', () => {
     // Both readings come off the composite timeline, so what is pinned is when
     // the SCREEN moves, not when the arithmetic does.
     expect(sumOf(RISE_SETTLED), 'the hall never gets up at all').toBeGreaterThan(0);
-    expect(RISE_FIRST_MOVED_MS, 'nobody in the hall ever leaves their seat').not.toBeNull();
     const moved = RISE_FIRST_MOVED_MS ?? 0;
     const settled = RISE_FIRST_SETTLED_MS ?? 0;
-    // (`RISE_FIRST_SETTLED_MS` gets no null check of its own. The settled
-    // drawing is the LAST drawing, and the last drawing is always its own first
-    // occurrence, so it can only be null on an empty timeline — which the line
-    // above this one already fails on. An assertion that cannot fail for its own
-    // reason reads as coverage without being any.)
+    // (NEITHER OF THOSE GETS A NULL CHECK, and both were written with one and
+    // then had it deleted, because neither can be null for its own reason. The
+    // settled drawing is the LAST drawing and the last drawing is always its own
+    // first occurrence; and a hall whose settled reading is off its seat — the
+    // line above — has at least one drawing off its seat by definition. Run:
+    // `buildWalkout` emitting `crowdRisePx: 0` on every frame fails on the line
+    // above, and the two null checks were never the failing line.)
 
     // THE DELAY. Nobody is drawn off their seat until it has run.
     //
@@ -1859,15 +1960,20 @@ describe('the hall comes up across the ramp rather than switching on', () => {
       `the hall is still climbing at ${settled}ms and the ${WALKOUT_CROWD_RISE.rampMs}ms ramp ended at ${RAMP_END_MS}ms`,
     ).toBeLessThanOrEqual(RAMP_END_MS);
 
-    // ...and the beat resolves: he is set on a hall that is already up, which is
-    // what makes `WALKOUT_HALL_RISE` — read off the settled frame — the top of
-    // the ramp rather than a point part-way through it. Stated on the DRAWING
-    // and not on the constants, so a ramp lengthened to any value that still
-    // finishes in time stays green.
-    expect(
-      settled,
-      `the hall is still climbing at ${settled}ms and he is set at ${URGENT.motionMs}ms`,
-    ).toBeLessThanOrEqual(URGENT.motionMs);
+    // "AND THE HALL IS UP BEFORE HE IS SET" IS NOT WRITTEN HERE, AND THE REASON
+    // IS WORTH THE LINES, because it was written, it passed, and it could not
+    // have failed. `RISE_SETTLED` is the drawing at the END of the sheet, so
+    // `settled <= motionMs` holds for every possible beat by construction of
+    // this instrument: a ramp that outran the walk-out would not push that
+    // instant later, it would lower the reading it is measured against. Run:
+    // `WALKOUT_RISE_MS: 1600` — a ramp 380 ms longer than the whole beat — left
+    // it green, reading a settled hall of [0,0,2,4] instead of [0,0,3,4].
+    //
+    // What DOES catch that is already in the file: `brings the hall up, and an
+    // opener does not` pins the settled frame's `crowdRisePx` to
+    // `WALKOUT_RISE_PX`, and under that ramp it fails with "expected 4 to be 5".
+    // A second assertion here would have reported the same defect as a
+    // tautology.
 
     // (What used to close this test was `RISE_SETTLED` pinned to
     // `tierRisesOf(renderGymScene(hallScene(WALKOUT_HALL_RISE)))`. It is a
