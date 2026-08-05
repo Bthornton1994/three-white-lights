@@ -34,6 +34,7 @@ import {
   auditTree,
   blankLiteralTypeUnions,
   codeOnly,
+  commentRanges,
   declarationRegions,
   formatFindings,
   isAudited,
@@ -556,6 +557,34 @@ describe('the allowlist is not a sieve', () => {
     }
     return out;
   };
+
+  it('`commentRanges` reports each comment once, in order, delimiters included', () => {
+    // THE PRIMITIVE BOTH HALVES READ, checked on its own rather than only
+    // through them. `withoutComments` and `onlyComments` agree with each other
+    // no matter what this returns — they are the same list read two ways — so a
+    // wrong list is invisible from either of them alone.
+    const text = ['const a = 1; // trailing', '/* block', ' * over lines', ' */', 'const b = 2;'].join(
+      '\n',
+    );
+    const ranges = commentRanges(text);
+    expect(ranges.map((r) => text.slice(r.from, r.to))).toEqual([
+      '// trailing',
+      '/* block\n * over lines\n */',
+    ]);
+    // Ordered, non-overlapping, and inside the string.
+    let previousEnd = 0;
+    for (const { from, to } of ranges) {
+      expect(from).toBeGreaterThanOrEqual(previousEnd);
+      expect(to).toBeGreaterThan(from);
+      expect(to).toBeLessThanOrEqual(text.length);
+      previousEnd = to;
+    }
+    // A line comment stops BEFORE its newline, so the line structure survives.
+    expect(text.charAt(ranges[0]?.to ?? 0)).toBe('\n');
+    // And nothing that only looks like a comment gets a range.
+    expect(commentRanges("const u = 'https://x/y'; const d = a / b / c;")).toEqual([]);
+    expect(commentRanges('// a glob `**/*.ts` is one comment, not two')).toHaveLength(1);
+  });
 
   it('`onlyComments` and `withoutComments` PARTITION EVERY REAL FILE, character for character', () => {
     // THE TREE, NOT A SAMPLE, and that change is the point. This used to run on
