@@ -62,7 +62,7 @@
  * 3. WHAT MAY AND MAY NOT ADD COVERED DAYS (GDD §8.2, §8.3)
  * ===========================================================================
  *
- * `grantCoveredDays` widens the CURRENT window's entitlement. It expires with
+ * `creditCoveredDays` widens the CURRENT window's entitlement. It expires with
  * the window; nothing accumulates. That is the shape a purchase or a season
  * reward has to take, and the constraint on it is measured rather than
  * asserted:
@@ -97,7 +97,45 @@
  * is available, and it is a human's call rather than a constraint.
  *
  * THIS MODULE PRICES NOTHING and knows nothing about currency. It receives an
- * already-decided grant, exactly as the Recovery Day grant path did.
+ * already-decided credit, exactly as the Recovery Day grant path did.
+ *
+ * ===========================================================================
+ * 3b. PROVENANCE: WHY THERE IS A SOURCE NOW, AND WHY IT IS NOT THE BRANCH THE
+ *     PAY-TO-WIN ARGUMENT BANS
+ * ===========================================================================
+ *
+ * GDD §8.3E is RULED IN. `purchasedDaysLeft` is live, and a covered day now
+ * arrives from one of exactly two places — `COVERAGE_SOURCES`:
+ *
+ *   - `'window-entitlement'`: the rolling window every account has on identical
+ *     terms, plus any CALENDAR-KEYED grant that widens it (GDD §8.3C's season
+ *     pass paying in week 3). Free. Never bought.
+ *   - `'purchase'`: bought, for money or for Chalk. Never granted, never earned,
+ *     never awarded by anything the lifter does.
+ *
+ * THE OLD ARGUMENT SAID "NO PROVENANCE TO BRANCH ON", AND THAT ARGUMENT IS
+ * INTACT — because it was about the SPEND path, and this is the CREDIT path.
+ * `resolveEntitlement` still takes no source, cannot see the split, and cannot
+ * be given one: `coveredDaysAvailable` SUMS the two counters and every decision
+ * downstream reads the sum. What a purchased covered day *does* is therefore
+ * identical to what an entitlement covered day does, which is the property the
+ * no-pay-to-win rule actually requires.
+ *
+ * AND FOR THE SHIPPED (EXPIRING) PRODUCT THE SPLIT IS NOT MERELY UNUSED, IT IS
+ * UNOBSERVABLE. Every read is of `b + p`; `afterSession` subtracts the same
+ * total whichever counter it comes out of; and a window turnover resets `b` to
+ * the full entitlement and `p` to zero regardless of either. So the state
+ * `(b, p)` and the state `(b + p, 0)` behave identically forever.
+ * `streakEntitlement.test.ts` proves that over every split at every sum rather
+ * than asserting it, which is what lets the provenance be REPORTED without it
+ * being a mechanic. Under a BANKABLE purchased day the split would become
+ * observable — that is the one thing switching the product would change about
+ * this paragraph, and it is flagged rather than glossed.
+ *
+ * THE SOURCE IS MANDATORY, and that is the point of it. There is no way to
+ * credit a covered day without naming where it came from, so "an in-game action
+ * awarded a purchased day" is not something that can happen by omission.
+ * `PURCHASED_DAY_TOUCHING_FUNCTIONS` below is the enforcement.
  */
 
 /**
@@ -333,59 +371,160 @@ export function afterSession(
   };
 }
 
-/** What a grant of covered days did. Reported, never silent. */
-export interface CoveredDayGrantOutcome {
+// ---------------------------------------------------------------------------
+// Provenance (GDD §8.2, §8.3E). See §3b of the header.
+// ---------------------------------------------------------------------------
+
+/**
+ * THE COMPLETE SET OF PLACES A COVERED DAY MAY COME FROM.
+ *
+ * Two, and they are not interchangeable. `'window-entitlement'` is the free
+ * side — the rolling window plus any calendar-keyed grant widening it.
+ * `'purchase'` is the bought side and is the ONLY thing that may ever credit
+ * `purchasedDaysLeft`.
+ *
+ * Adding a third fails `tsc` at `COVERAGE_SOURCE_COUNTER` until it declares
+ * which counter it lands in, which is the edit that has to be argued for: a
+ * source that lands in `purchasedDaysLeft` without being a purchase is
+ * precisely the defect GDD §8.3E's condition 3 forbids.
+ */
+export const COVERAGE_SOURCES = ['window-entitlement', 'purchase'] as const;
+
+export type CoverageSource = (typeof COVERAGE_SOURCES)[number];
+
+/**
+ * Which counter each source credits — exhaustive by `satisfies`, so a new
+ * source cannot ship without an answer and a renamed counter cannot leave a
+ * stale one behind.
+ *
+ * IT IS A CREDIT-SIDE MAP AND NOTHING READS IT ON THE SPEND SIDE. See §3b:
+ * `resolveEntitlement` has no source parameter and `coveredDaysAvailable` sums
+ * both counters, so this decides where a day is *written*, never what it *does*.
+ */
+export const COVERAGE_SOURCE_COUNTER = {
+  'window-entitlement': 'coveredDaysLeft',
+  purchase: 'purchasedDaysLeft',
+} as const satisfies Readonly<Record<CoverageSource, EntitlementFactKey>>;
+
+/**
+ * THE ONLY SOURCE THAT MAY CREDIT `purchasedDaysLeft`, derived from the map
+ * above rather than written beside it.
+ *
+ * GDD §8.3E condition 3, as a value a test can read: a purchased covered day is
+ * never grantable, earnable or awarded by an in-game action. Re-point
+ * `COVERAGE_SOURCE_COUNTER['window-entitlement']` at `purchasedDaysLeft` and
+ * this stops being a single source, which `streakEntitlement.test.ts` fails on.
+ */
+export const SOURCES_THAT_CREDIT_A_PURCHASED_DAY: readonly CoverageSource[] = COVERAGE_SOURCES.filter(
+  (source) => COVERAGE_SOURCE_COUNTER[source] === 'purchasedDaysLeft',
+);
+
+/**
+ * EVERY FUNCTION IN THE TWO STREAK MODULES ALLOWED TO NAME `purchasedDaysLeft`
+ * OR THE `'purchase'` SOURCE — the enforcement half of GDD §8.3E condition 3.
+ *
+ * WHY A LIST OF FUNCTION NAMES AND NOT A RULE ABOUT NAMING. The obvious guard
+ * is a blocklist on words like `grant`, `credit`, `buy`, `award` — and
+ * `streak.test.ts` used to carry exactly that. It cannot catch
+ * `markStreakMilestone` handing out a purchased day, because the mutant simply
+ * does not use any of those words. This keys on THE FIELD instead of on the
+ * VOCABULARY: any function that touches the purchased counter, under any name,
+ * has to appear here, and `streakEntitlement.test.ts` asserts the set is exact
+ * in both directions.
+ *
+ * SO ADDING AN IN-GAME ACTION THAT AWARDS A PURCHASED DAY IS A RED TEST, not a
+ * silent success, whatever it is called. The visible edit it forces is an entry
+ * in this list, sitting under this paragraph.
+ *
+ * It is a floor and not a ceiling, stated rather than glossed: a mutant that
+ * awards a purchased day from INSIDE one of the functions already listed passes
+ * this and is caught by the behavioural drive in `streak.test.ts` instead. Two
+ * guards, because neither one covers the other's blind spot.
+ */
+export const PURCHASED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
+  // streakEntitlement.ts — reads (the sum, the reset, the spend order)
+  'freshEntitlement',
+  'coveredDaysAvailable',
+  'afterSession',
+  // streakEntitlement.ts — the one writer
+  'creditCoveredDays',
+  // streak.ts — reads
+  'coveredDaysLeftInWindow',
+  'absenceOutcome',
+  // streak.ts — the one entry point a purchase arrives through
+  'applySettledCoveredDayPurchase',
+];
+
+/** What a credit of covered days did. Reported, never silent. */
+export interface CoveredDayCreditOutcome {
   readonly state: EntitlementState;
+  /** Where the day came from. Reported; never read by the spend path. */
+  readonly source: CoverageSource;
   /** Covered days that actually landed. */
   readonly credited: number;
   /** The window they expire at the end of, so a UI can say when. */
   readonly expiresAfterWindowIndex: number;
-  /** Covered days available in this window once the grant has landed. */
+  /** Covered days available in this window once the credit has landed. */
   readonly availableAfter: number;
 }
 
 /**
- * Widens the CURRENT window's entitlement by `amount` covered days.
+ * Widens the CURRENT window's entitlement by `amount` covered days, from
+ * `source`.
  *
- * THIS IS THE ENTIRE PURCHASE SURFACE and it is deliberately the only one. It
+ * THIS IS THE ENTIRE CREDIT SURFACE and it is deliberately the only one. It
  * cannot bank anything for a later window, so nothing accumulates and there is
  * no wealth for a doomed absence to be proportional to — which is what makes a
  * purchased covered day monotone-safe where a purchased Recovery Day was not.
  *
- * IT TAKES NO SOURCE, for the reason `recordTrainingDay` took none: with no
- * provenance stored, no code path can make a bought covered day behave
- * differently from a granted one.
+ * IT TAKES A SOURCE, AND THAT REVERSES A LINE THAT USED TO BE HERE. The
+ * previous revision said "it takes no source, so no code path can make a bought
+ * covered day behave differently from a granted one". The no-source version
+ * bought that property by making the two INDISTINGUISHABLE, which also made
+ * "nothing may award a purchased day" unstatable — there was no such thing as a
+ * purchased day to forbid awarding. §3b of the header has the resolution: the
+ * source is mandatory on the CREDIT and absent from the SPEND, so the two are
+ * told apart where they are written and are provably identical where they are
+ * used.
  *
  * WHAT A CALLER MUST NOT DO, and the measurement that says so is in §3 of the
- * header: do not call this on a day the lifter's own training decides. A grant
+ * header: do not call this on a day the lifter's own training decides. A credit
  * keyed to the streak or to a session count reintroduces the defect this whole
- * module exists to remove. Calendar days only.
+ * module exists to remove. Calendar days only — and for `'purchase'`, see GDD
+ * §8.3E on the Chalk path, where the same rule reaches one hop further out.
  *
- * @throws {RangeError} if `amount` is not a whole number of at least 1.
+ * @throws {RangeError} if `amount` is not a whole number of at least 1, or the
+ * source is not one of `COVERAGE_SOURCES`.
  */
-export function grantCoveredDays(
+export function creditCoveredDays(
   tuning: EntitlementTuning,
   state: EntitlementState,
   windowNow: number,
   amount: number,
-): CoveredDayGrantOutcome {
+  source: CoverageSource,
+): CoveredDayCreditOutcome {
   if (!Number.isSafeInteger(amount) || amount < 1) {
     throw new RangeError(
-      `streakEntitlement: a covered-day grant must be a whole number of at least 1, received ${amount}`,
+      `streakEntitlement: a covered-day credit must be a whole number of at least 1, received ${amount}`,
     );
+  }
+  if (!COVERAGE_SOURCES.includes(source)) {
+    throw new RangeError(`streakEntitlement: ${String(source)} is not a covered-day source`);
   }
   const turnedOver = windowNow > state.windowIndex;
   const base = turnedOver ? tuning.COVERED_DAYS_PER_WINDOW : Math.max(0, state.coveredDaysLeft);
-  const purchased = (turnedOver ? 0 : Math.max(0, state.purchasedDaysLeft)) + amount;
+  const purchased = turnedOver ? 0 : Math.max(0, state.purchasedDaysLeft);
+  const intoPurchased = COVERAGE_SOURCE_COUNTER[source] === 'purchasedDaysLeft';
   const next: EntitlementState = {
     windowIndex: windowNow,
-    coveredDaysLeft: base,
-    purchasedDaysLeft: purchased,
+    coveredDaysLeft: intoPurchased ? base : base + amount,
+    purchasedDaysLeft: intoPurchased ? purchased + amount : purchased,
   };
   return {
     state: next,
+    source,
     credited: amount,
     expiresAfterWindowIndex: windowNow,
-    availableAfter: base + purchased,
+    availableAfter: next.coveredDaysLeft + next.purchasedDaysLeft,
   };
 }

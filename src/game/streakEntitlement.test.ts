@@ -24,7 +24,7 @@ import {
   afterSession,
   coveredDaysAvailable,
   freshEntitlement,
-  grantCoveredDays,
+  creditCoveredDays,
   resolveEntitlement,
   windowIndexOf,
   windowStartDay,
@@ -118,7 +118,7 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
   };
 
   const addCoveredDay = (day: number): void => {
-    entitlement = grantCoveredDays(tuning, entitlement, windowAt(day), 1).state;
+    entitlement = creditCoveredDays(tuning, entitlement, windowAt(day), 1, 'window-entitlement').state;
   };
 
   for (let i = 0; i < schedule.length; i += 1) {
@@ -390,7 +390,7 @@ describe('the rolling entitlement', () => {
   });
 
   it('spends the granted entitlement before the purchased one', () => {
-    const bought = grantCoveredDays(RECOVERY_ENTITLEMENT, freshEntitlement(RECOVERY_ENTITLEMENT, 0), 0, 1).state;
+    const bought = creditCoveredDays(RECOVERY_ENTITLEMENT, freshEntitlement(RECOVERY_ENTITLEMENT, 0), 0, 1, 'purchase').state;
     const after = afterSession(RECOVERY_ENTITLEMENT, bought, 0, 1);
     expect(after.coveredDaysLeft).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW - 1);
     expect(after.purchasedDaysLeft).toBe(1);
@@ -399,7 +399,7 @@ describe('the rolling entitlement', () => {
   it('expires a purchased covered day with its window — nothing accumulates', () => {
     // The property that makes a purchase monotone-safe where a purchased
     // Recovery Day was not, and the thing store copy has to say out loud.
-    const bought = grantCoveredDays(RECOVERY_ENTITLEMENT, freshEntitlement(RECOVERY_ENTITLEMENT, 0), 0, 3).state;
+    const bought = creditCoveredDays(RECOVERY_ENTITLEMENT, freshEntitlement(RECOVERY_ENTITLEMENT, 0), 0, 3, 'purchase').state;
     expect(coveredDaysAvailable(RECOVERY_ENTITLEMENT, bought, 0)).toBe(
       RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + 3,
     );
@@ -414,7 +414,7 @@ describe('the rolling entitlement', () => {
     // ten covered days does not make a week away survivable, because the
     // ceiling is per absence and money cannot reach it.
     let state = freshEntitlement(RECOVERY_ENTITLEMENT, 0);
-    for (let i = 0; i < 10; i += 1) state = grantCoveredDays(RECOVERY_ENTITLEMENT, state, 0, 1).state;
+    for (let i = 0; i < 10; i += 1) state = creditCoveredDays(RECOVERY_ENTITLEMENT, state, 0, 1, 'purchase').state;
     const outcome = resolveEntitlement(
       RECOVERY_ENTITLEMENT,
       state,
@@ -430,8 +430,8 @@ describe('the rolling entitlement', () => {
     expect(() => resolveEntitlement(RECOVERY_ENTITLEMENT, state, 0, -1)).toThrow(RangeError);
     expect(() => resolveEntitlement(RECOVERY_ENTITLEMENT, state, 0, 1.5)).toThrow(RangeError);
     expect(() => afterSession(RECOVERY_ENTITLEMENT, state, 0, -1)).toThrow(RangeError);
-    expect(() => grantCoveredDays(RECOVERY_ENTITLEMENT, state, 0, 0)).toThrow(RangeError);
-    expect(() => grantCoveredDays(RECOVERY_ENTITLEMENT, state, 0, 1.5)).toThrow(RangeError);
+    expect(() => creditCoveredDays(RECOVERY_ENTITLEMENT, state, 0, 0, 'purchase')).toThrow(RangeError);
+    expect(() => creditCoveredDays(RECOVERY_ENTITLEMENT, state, 0, 1.5, 'purchase')).toThrow(RangeError);
   });
 
   it('never mutates the state it is given', () => {
@@ -439,7 +439,7 @@ describe('the rolling entitlement', () => {
     const copy = { ...state };
     resolveEntitlement(RECOVERY_ENTITLEMENT, state, 3, 2);
     afterSession(RECOVERY_ENTITLEMENT, state, 3, 2);
-    grantCoveredDays(RECOVERY_ENTITLEMENT, state, 3, 2);
+    creditCoveredDays(RECOVERY_ENTITLEMENT, state, 3, 2, 'purchase');
     expect(state).toEqual(copy);
   });
 });
