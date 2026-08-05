@@ -152,11 +152,29 @@ export interface AppShellProps {
    * Taken as a prop rather than read here so this component is a pure function
    * of its input and the one platform read lives in `App.tsx`. On native it is
    * always `null` and every debug branch below is correctly dead.
+   *
+   * ---------------------------------------------------------------------------
+   * REQUIRED, AND IT USED TO BE OPTIONAL WITH A DEFAULT OF `null`
+   * ---------------------------------------------------------------------------
+   * That default made the app's ONE link from the browser into this route graph
+   * deletable in silence. `<AppShell />` typechecked, and then `resolveEntry`
+   * saw `null` for every URL, so `?meet=recap`, `?meet=live`, `?meet=bombed`,
+   * `?session=set`, `?replay=` and `?cutin=` ALL booted the daily check-in —
+   * while `npx tsc --noEmit` was clean, all 2457 node tests were green, and the
+   * committed browser record still read 82 ok lines beside twelve screenshots of
+   * the check-in, because a capture tool photographs whatever is on screen.
+   *
+   * Making it required puts the type checker on that deletion: `<AppShell />` is
+   * now `Property 'search' is missing`. It does NOT cover `<AppShell
+   * search={null} />`, which typechecks and is the same defect — that half is
+   * pinned in `shellWiring.test.ts`, which parses the entry file and requires
+   * some prop of this element to carry a real `location.search` read. Two
+   * instruments, because the type checker can only see the shape.
    */
-  readonly search?: string | null;
+  readonly search: string | null;
 }
 
-export function AppShell({ search = null }: AppShellProps = {}): React.ReactElement {
+export function AppShell({ search }: AppShellProps): React.ReactElement {
   // The launch URL, resolved once. Building a meet preview plays a whole
   // scripted meet, so this must not run per render.
   const entry = useMemo(() => resolveEntry(search), [search]);

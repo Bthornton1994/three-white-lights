@@ -22,10 +22,11 @@
  * stopped matching passes every file.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { appSessionPort } from './appServer';
@@ -241,12 +242,445 @@ describe('the shell is the join, and it is the only one', () => {
 
   it('App.tsx is the platform edge and nothing else', () => {
     // One `window` read, handed to a pure module. No routing decisions here.
+    //
+    // NOTE WHAT THESE THREE LINES DO NOT SAY, and read the next describe block
+    // for the part that does. They assert that the entry file MENTIONS a
+    // `window.location.search` read and MENTIONS `AppShell`. They do not assert
+    // that the first is handed to the second, and for a while nothing anywhere
+    // did: `<AppShell />` left every one of these green.
     expect(APP).toMatch(/typeof window/);
     expect(APP).toMatch(/window\.location\.search/);
     expect(APP).toMatch(/AppShell/);
     for (const banned of ['MeetScreen', 'SessionScreen', 'LiftScreen', 'previewStateFor']) {
       expect(APP, banned).not.toMatch(new RegExp(`\\b${banned}\\b`));
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE ONE LINK FROM `window` INTO THE ROUTE GRAPH
+// ---------------------------------------------------------------------------
+
+/**
+ * ===========================================================================
+ * THE DEFECT THIS BLOCK EXISTS TO MAKE IMPOSSIBLE
+ * ===========================================================================
+ * Delete the prop — `<AppShell />` — and:
+ *
+ *   - `npx tsc --noEmit` was clean (`search` was optional, defaulting to null);
+ *   - all 2457 node tests were green, including every scan in the file above,
+ *     because they ask whether `App.tsx` MENTIONS `window.location.search` and
+ *     whether it MENTIONS `AppShell`, and both were still true;
+ *   - `resolveEntry(null)` then returns `DEFAULT_ROUTE` for every URL, so
+ *     `?meet=recap`, `?meet=live`, `?meet=bombed`, `?session=set`, `?replay=`
+ *     and `?cutin=` all boot the daily check-in;
+ *   - and `tools/verify-shell-route.mjs` would photograph the check-in twelve
+ *     times, under twelve filenames naming twelve other screens, because a
+ *     capture tool photographs whatever is on screen.
+ *
+ * Roughly forty of that tool's eighty-two checks would have been describing
+ * screens the app could no longer draw. The irony a critic pointed out is the
+ * shape of the hole: `cutInSearch={search}` one level down is pinned twice, by
+ * two separate assertions, and the one link that actually reaches `window` was
+ * pinned zero times.
+ *
+ * ===========================================================================
+ * WHY AN AST AND NOT A REGEX
+ * ===========================================================================
+ * `expect(APP).toMatch(/search=\{locationSearch\(\)\}/)` would close today's
+ * hole and would be a worse check than nothing, because it pins the SPELLING.
+ * Rename the prop, inline the helper, hoist the read into a `useMemo`, move the
+ * read into its own module — every one of those is a legitimate restructure and
+ * every one turns that regex red while the app is correct, which is how a check
+ * gets deleted rather than fixed.
+ *
+ * So the property asserted is the DATA FLOW: some attribute of the `<AppShell>`
+ * element is fed, directly or through names this file can follow, by a read of
+ * `<something>.location.search`. `<AppShell search={window.location.search} />`,
+ * `<AppShell urlQuery={readSearch()} />` and
+ * `<AppShell {...{ search: locationSearch() }} />` all pass. `<AppShell />`,
+ * `<AppShell search={null} />`, and a file that DEFINES `locationSearch` and
+ * never passes it all fail — that last one being exactly the state the old
+ * scans could not tell from the good one.
+ *
+ * ===========================================================================
+ * AND WHY IT IS DISCOVERED RATHER THAN POINTED AT `App.tsx`
+ * ===========================================================================
+ * The entry file is at the REPOSITORY ROOT, not under `src/`. A sibling piece
+ * in this run shipped a scan rooted at `src/`, with every non-vacuity control
+ * inside it passing, because they all asked about files the scan already had —
+ * a scan cannot notice the file it never looked at. So this one walks the whole
+ * tree from the root, requires that EVERY non-test file mounting the shell hands
+ * over the URL, and separately requires that at least one of those files is
+ * reachable from `package.json`'s `main` by following imports. Move `App.tsx`
+ * to `src/AppRoot.tsx` and the check follows it; add a second mount point that
+ * forgets the URL and the check names it.
+ */
+const HAND_OFF = Object.freeze({
+  /** The component every mount of which must be fed the browser's URL. */
+  COMPONENT: 'AppShell',
+  /** The read that IS the platform edge: `<something>.location.search`. */
+  LOCATION: 'location',
+  SEARCH: 'search',
+  /**
+   * How many names deep the analyser will follow a value before giving up —
+   * `search={locationSearch()}` is one hop, a helper in another module is two.
+   * Bounded so a cycle or a deep graph cannot hang the suite; generous enough
+   * that no plausible restructure runs out of budget.
+   */
+  MAX_DEPTH: 8,
+  /** How many modules the entry-point walk will load before giving up. */
+  MAX_MODULES: 600,
+  /**
+   * Directories the repository walk does not descend into.
+   *
+   * `.claude` for the reason `src/tuning/audit.test.ts` gives at length: it
+   * holds `worktrees/`, and a git worktree is a COMPLETE SECOND CHECKOUT of this
+   * repository, so walking into one makes this test's verdict depend on what
+   * some other agent has half-finished.
+   */
+  NOT_WALKED: Object.freeze(['node_modules', '.git', '.expo', 'dist', 'coverage', '.claude', '.gauntlet']),
+  /** What a relative import may resolve to, in the order Metro would try. */
+  MODULE_EXTENSIONS: Object.freeze(['.tsx', '.ts']),
+});
+
+interface Module {
+  /** Repository-relative POSIX path, for failure text. */
+  readonly file: string;
+  readonly ast: ts.SourceFile;
+}
+
+function parseModule(relPath: string, text: string): Module {
+  return {
+    file: relPath,
+    ast: ts.createSourceFile(relPath, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX),
+  };
+}
+
+/** Resolves a relative import the way Metro would, or `null` if nothing is there. */
+type Loader = (fromFile: string, specifier: string) => Module | null;
+
+const loadFromDisk: Loader = (fromFile, specifier) => {
+  if (!specifier.startsWith('.')) return null;
+  const base = path.resolve(ROOT, path.dirname(fromFile), specifier);
+  const candidates = [
+    ...HAND_OFF.MODULE_EXTENSIONS.map((ext) => `${base}${ext}`),
+    ...HAND_OFF.MODULE_EXTENSIONS.map((ext) => path.join(base, `index${ext}`)),
+    base,
+  ];
+  for (const candidate of candidates) {
+    if (!existsSync(candidate) || statSync(candidate).isDirectory()) continue;
+    const rel = path.relative(ROOT, candidate).split(path.sep).join('/');
+    return parseModule(rel, readFileSync(candidate, 'utf8'));
+  }
+  return null;
+};
+
+/** Is this node the read `<something>.location.search`? */
+function isLocationSearchRead(node: ts.Node): boolean {
+  const named = (child: ts.Node, name: string): boolean => {
+    if (ts.isIdentifier(child)) return child.text === name;
+    if (ts.isPropertyAccessExpression(child)) return child.name.text === name;
+    if (ts.isElementAccessExpression(child)) {
+      const arg = child.argumentExpression;
+      return ts.isStringLiteralLike(arg) && arg.text === name;
+    }
+    return false;
+  };
+  if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+    return named(node, HAND_OFF.SEARCH) && named(node.expression, HAND_OFF.LOCATION);
+  }
+  return false;
+}
+
+/** Every name declared in a module, so an identifier can be followed to its value. */
+function declarationsIn(ast: ts.SourceFile): ReadonlyMap<string, ts.Node> {
+  const out = new Map<string, ts.Node>();
+  const visit = (node: ts.Node): void => {
+    if (ts.isFunctionDeclaration(node) && node.name !== undefined) out.set(node.name.text, node);
+    else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) out.set(node.name.text, node);
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(ast, visit);
+  return out;
+}
+
+/** Local name -> `{ module specifier, name inside that module }`, for every import. */
+function importsIn(ast: ts.SourceFile): ReadonlyMap<string, { readonly from: string; readonly as: string }> {
+  const out = new Map<string, { from: string; as: string }>();
+  for (const stmt of ast.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    const from = stmt.moduleSpecifier.text;
+    const clause = stmt.importClause;
+    if (clause === undefined) continue;
+    if (clause.name !== undefined) out.set(clause.name.text, { from, as: 'default' });
+    const bound = clause.namedBindings;
+    if (bound !== undefined && ts.isNamedImports(bound)) {
+      for (const element of bound.elements) {
+        out.set(element.name.text, { from, as: (element.propertyName ?? element.name).text });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Does the value of `node` come, however indirectly, from a `location.search`
+ * read?
+ *
+ * Follows identifiers to the declarations they name — in this module, or one
+ * relative import away — up to `MAX_DEPTH`. `seen` is the cycle guard and is
+ * keyed by file so the same helper name in two modules is two different names.
+ */
+function readsPlatformSearch(
+  node: ts.Node,
+  module: Module,
+  loader: Loader,
+  depth = 0,
+  seen: Set<string> = new Set(),
+): boolean {
+  if (depth > HAND_OFF.MAX_DEPTH) return false;
+  const locals = declarationsIn(module.ast);
+  const imported = importsIn(module.ast);
+  let found = false;
+  const visit = (child: ts.Node): void => {
+    if (found) return;
+    if (isLocationSearchRead(child)) {
+      found = true;
+      return;
+    }
+    if (ts.isIdentifier(child)) {
+      const key = `${module.file}#${child.text}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        const local = locals.get(child.text);
+        if (local !== undefined) {
+          if (readsPlatformSearch(local, module, loader, depth + 1, seen)) found = true;
+          return;
+        }
+        const via = imported.get(child.text);
+        if (via !== undefined) {
+          const next = loader(module.file, via.from);
+          const target = next === null ? undefined : declarationsIn(next.ast).get(via.as);
+          if (next !== null && target !== undefined) {
+            if (readsPlatformSearch(target, next, loader, depth + 1, seen)) found = true;
+          }
+          return;
+        }
+      }
+      return;
+    }
+    ts.forEachChild(child, visit);
+  };
+  visit(node);
+  return found;
+}
+
+interface ShellMount {
+  readonly file: string;
+  /** The attribute carrying the platform read, or `null` when none does. */
+  readonly fedBy: string | null;
+  /** Every attribute the element was given, for the failure text. */
+  readonly props: readonly string[];
+}
+
+/** Every `<AppShell>` element in a module, and what feeds each one. */
+function shellMountsIn(module: Module, loader: Loader): readonly ShellMount[] {
+  const mounts: ShellMount[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) {
+      if (node.tagName.getText(module.ast) === HAND_OFF.COMPONENT) {
+        const props: string[] = [];
+        let fedBy: string | null = null;
+        for (const attribute of node.attributes.properties) {
+          const name = ts.isJsxAttribute(attribute)
+            ? attribute.name.getText(module.ast)
+            : '{...spread}';
+          props.push(name);
+          const value = ts.isJsxAttribute(attribute) ? attribute.initializer : attribute.expression;
+          if (value === undefined) continue;
+          if (fedBy === null && readsPlatformSearch(value, module, loader)) fedBy = name;
+        }
+        mounts.push({ file: module.file, fedBy, props });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(module.ast);
+  return mounts;
+}
+
+/** Every non-test TypeScript file in the repository, repository-relative POSIX. */
+function repositorySources(): readonly string[] {
+  const out: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir)) {
+      if (HAND_OFF.NOT_WALKED.includes(entry)) continue;
+      const full = path.join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(full) && !/\.test\.tsx?$/.test(full)) {
+        out.push(path.relative(ROOT, full).split(path.sep).join('/'));
+      }
+    }
+  };
+  walk(ROOT);
+  return out.sort();
+}
+
+/** Every module the app boots, from `package.json`'s `main` outwards. */
+function bootedModules(): readonly string[] {
+  const main = String((JSON.parse(source('package.json')) as { main?: unknown }).main ?? '');
+  const start = loadFromDisk('package.json', main.startsWith('.') ? main : `./${main}`);
+  if (start === null) return [];
+  const reached = new Set<string>([start.file]);
+  const queue: Module[] = [start];
+  while (queue.length > 0 && reached.size < HAND_OFF.MAX_MODULES) {
+    const module = queue.shift() as Module;
+    const specifiers: string[] = [];
+    const visit = (node: ts.Node): void => {
+      // Static `import ... from './x'` and dynamic `await import('./x')`, which
+      // is how `index.ts` reaches the app at all — it defers the import until
+      // Skia's WASM has loaded, so a static-only walk would never find `App`.
+      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+        specifiers.push(node.moduleSpecifier.text);
+      }
+      if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+        const [arg] = node.arguments;
+        if (arg !== undefined && ts.isStringLiteralLike(arg)) specifiers.push(arg.text);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(module.ast);
+    for (const specifier of specifiers) {
+      const next = loadFromDisk(module.file, specifier);
+      if (next === null || reached.has(next.file)) continue;
+      reached.add(next.file);
+      queue.push(next);
+    }
+  }
+  return [...reached].sort();
+}
+
+describe('the browser’s URL actually reaches the route graph', () => {
+  /**
+   * A loader for the fixtures: no disk, one fake module, so the import-following
+   * branch is exercised without inventing files in the tree.
+   */
+  const FIXTURE_HELPER = 'src/shell/fixtureSearch.ts';
+  const fixtureLoader: Loader = (_from, specifier) =>
+    specifier.endsWith('fixtureSearch')
+      ? parseModule(
+          FIXTURE_HELPER,
+          'export function readSearch(): string | null { return window.location.search; }',
+        )
+      : null;
+
+  const verdictFor = (text: string): ShellMount | undefined =>
+    shellMountsIn(parseModule('fixture.tsx', text), fixtureLoader)[0];
+
+  it('CONTROL: the analyser sees the hand-off, and sees it go missing', () => {
+    // A scan that has stopped matching agrees with every file it is pointed at,
+    // so the shapes it must ACCEPT and the shapes it must REJECT are both
+    // written out. The rejections are the half that matters: each one is a way
+    // the app could be broken while `tsc` and the whole suite stayed green.
+    const passes = [
+      // What the app does today.
+      `const s = () => window.location.search;\nconst a = <AppShell search={s()} />;`,
+      // Inlined.
+      `const a = <AppShell search={window.location.search} />;`,
+      // The prop renamed — the restructure a regex on the spelling would break on.
+      `const s = () => window.location.search;\nconst a = <AppShell urlQuery={s()} />;`,
+      // Spread rather than a named attribute.
+      `const s = () => window.location.search;\nconst a = <AppShell {...{ search: s() }} />;`,
+      // The read extracted into its own module.
+      `import { readSearch } from './fixtureSearch';\nconst a = <AppShell search={readSearch()} />;`,
+      // Not self-closing, and read off a bare `location`.
+      `const a = <AppShell search={location.search}>{null}</AppShell>;`,
+      // Through two names and a ternary.
+      `const raw = window.location.search;\nconst s = raw ?? null;\nconst a = <AppShell search={s} />;`,
+    ];
+    for (const text of passes) {
+      expect(verdictFor(text)?.fedBy, text).not.toBeNull();
+    }
+
+    const failures = [
+      // THE MUTATION. Typechecked before `search` was made required.
+      `const s = () => window.location.search;\nconst a = <AppShell />;`,
+      // Typechecks even now, which is why the type alone is not enough.
+      `const s = () => window.location.search;\nconst a = <AppShell search={null} />;`,
+      // The helper exists and is called, and its result goes somewhere else —
+      // the shape every "does App.tsx mention window.location.search" scan
+      // passed on.
+      `const s = () => window.location.search;\nconst used = s();\nconst a = <AppShell search={''} />;`,
+      // A different property of location is not the query string.
+      `const a = <AppShell search={window.location.pathname} />;`,
+      // Imported from a module that does not read it.
+      `import { readSearch } from './somewhereElse';\nconst a = <AppShell search={readSearch()} />;`,
+    ];
+    for (const text of failures) {
+      expect(verdictFor(text)?.fedBy, text).toBeNull();
+    }
+
+    // ...and the element finder itself can come back empty, so "no mount points"
+    // is distinguishable from "a mount point with nothing feeding it".
+    expect(shellMountsIn(parseModule('fixture.tsx', 'const a = <Other />;'), fixtureLoader)).toEqual(
+      [],
+    );
+  });
+
+  it('EVERY file in the repository that mounts the shell hands it the URL', () => {
+    const mounts = repositorySources().flatMap((file) =>
+      shellMountsIn(parseModule(file, source(file)), loadFromDisk),
+    );
+
+    // The walk found something at all. Rooted at the repository, not at `src/`:
+    // the entry file is `App.tsx`, at the top level, and a scan that starts one
+    // directory down cannot see it however many controls it carries.
+    expect(
+      mounts.length,
+      `nothing in the repository mounts <${HAND_OFF.COMPONENT}> — either the walk stopped working or the app no longer has a shell`,
+    ).toBeGreaterThan(0);
+
+    const starved = mounts.filter((mount) => mount.fedBy === null);
+    expect(
+      starved,
+      starved
+        .map(
+          (mount) =>
+            `${mount.file} mounts <${HAND_OFF.COMPONENT}> but no prop of it carries a ${HAND_OFF.LOCATION}.${HAND_OFF.SEARCH} read` +
+            ` (props given: ${mount.props.length === 0 ? 'none' : mount.props.join(', ')}).` +
+            ' Every debug URL and every deep link would boot DEFAULT_ROUTE.',
+        )
+        .join('\n'),
+    ).toEqual([]);
+  });
+
+  it('and the file that does is one the app actually boots into', () => {
+    // The other half. A perfectly wired mount point in a file nothing imports is
+    // the same defect one level up, and it is the shape this whole piece exists
+    // to close: `MeetScreen` was correct, tested, and unreachable.
+    const booted = bootedModules();
+    expect(
+      booted.length,
+      `could not follow package.json's "main" to anything — the import walk found ${booted.length} module(s)`,
+    ).toBeGreaterThan(1);
+
+    const mounting = booted.filter(
+      (file) => shellMountsIn(parseModule(file, source(file)), loadFromDisk).length > 0,
+    );
+    expect(
+      mounting.length,
+      `package.json's "main" reaches ${booted.length} module(s) and none of them mounts <${HAND_OFF.COMPONENT}>`,
+    ).toBeGreaterThan(0);
+
+    const fed = mounting.filter((file) =>
+      shellMountsIn(parseModule(file, source(file)), loadFromDisk).every(
+        (mount) => mount.fedBy !== null,
+      ),
+    );
+    expect(fed, `the booted mount point(s) ${mounting.join(', ')} do not all get the URL`).toEqual(
+      mounting,
+    );
   });
 });
 
