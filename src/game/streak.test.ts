@@ -677,18 +677,25 @@ describe('tunable constants sit inside the ranges GDD §4.2 specifies', () => {
     expect(STREAK_MILESTONE_DAYS).toEqual([7, 30, 100]);
 
     const milestone = STREAK_MILESTONE_DAYS[0] as number;
-    let state: StreakState = freshState();
+    // THE WINDOW STARTS EMPTY, AND THAT IS NOT INCIDENTAL. Run from a fresh
+    // account the window is already full, so a payout of one covered day is
+    // clipped to a full window and this test cannot see it — mutation-tested:
+    // a build that pays a covered day at a milestone passed here and was caught
+    // only by the sweeps. From empty, a payout has somewhere to go.
+    let state: StreakState = { ...freshState(), entitlement: withCoveredDays(0) };
     let sawTheMilestone = false;
     for (let i = 0; i < milestone; i += 1) {
       const outcome = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, i)));
       // Nothing was granted, on the day it was reached or on any other day.
       expect(outcome.recoveryDaysGranted).toBe(0);
+      // AND THE ENTITLEMENT DID NOT MOVE, on any day of the run — not only on
+      // the milestone day. A session that missed nothing has nothing to pay for
+      // and nothing to be paid.
+      expect(outcome.state.entitlement).toEqual(state.entitlement);
+      expect(coveredDaysLeftInWindow(outcome.state)).toBe(0);
       if (outcome.milestonesReached.length > 0) {
         sawTheMilestone = true;
         expect(outcome.milestonesReached).toEqual([milestone]);
-        // AND THE ENTITLEMENT DID NOT MOVE. Crossing the milestone is a moment,
-        // not an earning event: same window, same covered days left.
-        expect(outcome.state.entitlement).toEqual(state.entitlement);
       }
       state = outcome.state;
     }
