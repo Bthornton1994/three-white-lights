@@ -460,7 +460,8 @@ export const RIG_GEOMETRY = {
    *
    *      SO THE BELLY CANNOT APPEAR IN THE OUTLINE. Measured on the drawn
    *      capsules rather than argued: over 14,260 (pose, sign, row) triples —
-   *      the eleven authored drawings plus all 416 deformed ones — the arm's
+   *      the eleven authored drawings plus all
+   *      `@ours POSE_SPACE_FRAMES = 416` deformed ones — the arm's
    *      outermost column is IDENTICAL at every biceps radius from 2.448 to 3.8.
    *      Zero rows differ. At a cartoon 4.0 it finally moves, by ONE px, in 16
    *      of those 14,260, none of them on an authored drawing; all sixteen are
@@ -476,13 +477,21 @@ export const RIG_GEOMETRY = {
    *
    * 5. SO THE ONLY CHANNEL LEFT IS INBOARD, ONTO THE KIT. `renderLifterFrame`
    *    draws `drawTorso` BEFORE both `drawArm` calls, so a wider upper arm paints
-   *    over the singlet and the shoulder straps. Measured over the 416-frame pose
-   *    space, the FAR strap seam (screen-right, the dimmed arm) lands:
+   *    over the singlet and the shoulder straps. Measured over the pose space —
+   *    `@ours POSE_SPACE_FRAMES = 416` frames, `@ours SEAM_ROWS_MEASURED = 1248`
+   *    (frame, seam row) pairs a side — the FAR strap seam (screen-right, the
+   *    dimmed arm) lands, out of those two denominators:
    *
-   *      biceps r        far STRAP_SEAM px      frames with the far seam gone
-   *      cone (ships)    343 of 1248              206 of 416
-   *      belly 3.0       130 of 1248 (10.4%)      322 of 416
-   *      belly 3.4        34 of 1248 ( 2.7%)      383 of 416
+   *      biceps r        far STRAP_SEAM px    frames with the far seam gone
+   *      cone (ships)    see below            see below
+   *      belly 3.0       130 (10.4%)          322
+   *      belly 3.4        34 ( 2.7%)          383
+   *
+   *    The CONE row is the shipped drawing and is deliberately not written into
+   *    that table, because it is the one row a reader could act on and it would
+   *    be a restatement: it is `@ours STRAP_SEAM_FAR_LANDED = 343` seam pixels
+   *    landing and `@ours FAR_SEAM_FRAMES_FULLY_GONE = 206` frames losing the
+   *    seam outright, both tagged here and both pinned in `spriteMarks.test.ts`.
    *
    *    As a rate the cone row is `@ours STRAP_SEAM|FAR = 27.5%`, and the NEAR seam
    *    is `@ours STRAP_SEAM|NEAR = 99.8%` at the cone and at 3.0, and 96.4% at 3.4.
@@ -491,15 +500,16 @@ export const RIG_GEOMETRY = {
    *    deliberately not tagged, because nothing can reproduce them. See
    *    `MARK_LANDING_MEASURED`.)
    *
-   *    WHICH OF THOSE ROWS IS CHECKABLE, said plainly. The CONE row is the shipped
-   *    drawing and is asserted in `spriteMarks.test.ts` rather than quoted: 343 of
-   *    1248 and 206 of 416 are pinned there in both directions, so if this row
-   *    ever goes stale that suite goes red. The two BELLY rows describe a shape
+   *    WHICH OF THOSE ROWS IS CHECKABLE, said plainly. The CONE row is asserted in
+   *    `spriteMarks.test.ts`, and the four figures above that quote it carry
+   *    `@ours` tags, so a stale one here reddens that suite rather than sitting
+   *    in a comment nobody compares. The two BELLY rows describe a shape
    *    this file no longer draws — a three-radius chain, where `UPPER_ARM_R` is
    *    now two radii and one capsule — and nothing in the tree can reproduce them
    *    without splicing the belly back into `drawArm`. They are a record of a
    *    measurement, not a checked figure, and should be re-measured rather than
-   *    trusted by anyone who splices it back.
+   *    trusted by anyone who splices it back. That is why they are untagged: a
+   *    tag would be a claim that something still measures them.
    *
    *    WHAT PER-SIDE FLOORING BUYS IS SENSITIVITY, NOT REACH, and the difference
    *    matters because the stronger claim is easy to make and is false. An
@@ -514,21 +524,37 @@ export const RIG_GEOMETRY = {
    *    `@ours TRAP_BAR_SHADOW|FAR = 64.1%` far behind a
    *    `@ours TRAP_BAR_SHADOW|ALL = 78.2%` aggregate that clears the general floor
    *    comfortably; all three of those are pinned too. Drawn singlet
-   *    pixels fall with it: 153 -> 147 -> 142 at BRACE and 112 -> 105 -> 103 in
-   *    the HOLE.
+   *    pixels fall with it: `@ours SINGLET_PX_DRAWN.BRACE_DESCENT = 153` -> 147
+   *    -> 142 at BRACE and `@ours SINGLET_PX_DRAWN.HOLE_DESCENT = 112` -> 105 ->
+   *    103 in the HOLE. The shipped count at each end of that arrow is tagged;
+   *    the two behind it are the belly record and are not.
    *
-   *    THE TWO SHIPPED COUNTS IN THAT LINE ARE PINNED NOW, and the spec they were
-   *    quoted at was still short by one field. The reverted round quoted 141 and 98
-   *    for the same two poses and did not say at what strain, pitch or load it
-   *    rendered them; the correction said "153/112 at strain 0, pitch 0, 250 kg"
-   *    and did not say at what DIRECTION, which is not a free variable — BRACE is a
+   *    THE TWO SHIPPED COUNTS IN THAT LINE ARE PINNED NOW, AND THEY ARE ALSO
+   *    STILL STATED HERE — which is fine, and was not. This paragraph used to end
+   *    "pinned in `spriteMarks.test.ts` ... rather than restated here", ten lines
+   *    under a line that restates them both, so the file asserted the opposite of
+   *    what it did. A restatement is not the problem; an UNCHECKED restatement
+   *    is. Both counts above now carry `@ours` tags resolved against
+   *    `SINGLET_PX_DRAWN`, so this file may say them as often as it is useful to.
+   *
+   *    THE SPEC WAS ALSO SHORT BY A FIELD. The reverted round quoted two other
+   *    counts for the same two poses and did not say at what strain, pitch or
+   *    load it rendered them; the correction added strain, pitch and load and
+   *    did not say at what DIRECTION, which is not a free variable — BRACE is a
    *    DESCENT anchor (depth `BRACE_SETTLE_DEPTH`), and asking the ASCENT ladder
-   *    for the same depth draws a different pose and counts 135. So the full spec
-   *    plus both counts are pinned in `spriteMarks.test.ts` as `SINGLET_PX_DRAWN`,
-   *    in both directions, rather than restated here as a number a reader cannot
-   *    reproduce. A bare pixel count is easy to quote at the wrong spec, which is
-   *    still a reason to guard the STRAP MARK as well as the count, not instead of
-   *    it.
+   *    for the same depth draws a different pose and counts
+   *    `@ours SINGLET_PX_DRAWN.BRACE_ASCENT = 135`, eighteen px less.
+   *
+   *    `SINGLET_PX_DRAWN` HOLDS ALL FOUR ROWS: BRACE and HOLE on the DESCENT
+   *    ladder and on the ASCENT ladder, each rendered from a spec written out in
+   *    full. It used to hold two, both DESCENT, under a sentence that said "in
+   *    both directions" — a phrase that reads as ASCENT-and-DESCENT here and
+   *    meant "the pin fires whether the count rises or falls" there. Both are now
+   *    true and neither is left to a reader's guess: the fourth row records that
+   *    in the HOLE the two ladders draw the SAME count, which is what makes the
+   *    gap at BRACE a fact about the ladders rather than about noise. A bare
+   *    pixel count is easy to quote at the wrong spec, which is still a reason to
+   *    guard the STRAP MARK as well as the count, not instead of it.
    *
    * 6. AND THE CLAUSE IT WAS AIMED AT DID NOT MOVE. 80 frames over the reference
    *    floor-share bound before and after, worst excess 0.0400 both times, far
