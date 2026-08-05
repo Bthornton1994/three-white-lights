@@ -48,7 +48,6 @@ import {
   RECOVERY_ENTITLEMENT,
   coveredDaysAvailable,
   freshEntitlement,
-  windowStartDay,
   type EntitlementState,
 } from './streakEntitlement';
 import {
@@ -3572,8 +3571,9 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(measured[40]?.pairs.filter((n) => n === 0).length).toBe(
       MONOTONICITY_SWEEP.SEEDS.length,
     );
-    expect(SAMPLED_MEASUREMENT.WAS_VIOLATING_PAIRS_AT_40.filter((n) => n === 0).length).toBe(0);
-    expect(SAMPLED_MEASUREMENT.WAS_VIOLATING_PAIRS_AT_60.filter((n) => n === 0).length).toBe(0);
+    const wasAt = (xs: readonly number[]): readonly number[] => xs;
+    expect(wasAt(SAMPLED_MEASUREMENT.WAS_VIOLATING_PAIRS_AT_40).filter((n) => n === 0).length).toBe(0);
+    expect(wasAt(SAMPLED_MEASUREMENT.WAS_VIOLATING_PAIRS_AT_60).filter((n) => n === 0).length).toBe(0);
 
     // AND THE MEASUREMENT REALLY SHRANK, every seed, both lengths. This is what
     // stops the pins above from being read as "some numbers".
@@ -3596,101 +3596,170 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(deadRunsSeen).toBeGreaterThan(0);
   });
 
-  it('THE RESIDUE IS NOT MILESTONE TIMING: three counterfactuals, and two of them say so', () => {
-    // WHAT THIS TEST USED TO BE. One counterfactual — milestone income switched
-    // off, sweep goes to 0 — and the conclusion "so the cause is the TIMING of
-    // milestone income". The counterfactual is real and it still passes. The
-    // conclusion does not follow from it, because milestone income is the ONLY
-    // income this sweep has after the signup grant, so switching it off
-    // switches off income, not income timing. See `RESIDUE_MEASUREMENT`.
+  it('WAS "THE RESIDUE IS NOT MILESTONE TIMING": the cause is gone, so the counterfactuals cannot be run', () => {
+    // WHAT THIS TEST USED TO BE, AND WHY IT COULD NOT SURVIVE INTACT. It ran
+    // three counterfactuals over the same 60-day sweep — no income at all,
+    // income on FIXED CALENDAR DAYS, and a stock topped to the hold cap every
+    // day — to show that the residue was caused neither by the streak-keyed
+    // TIMING of milestone income nor by the SCARCITY of the stock. Its results
+    // were 0, 81 and 194 violating pairs, and the two non-zeros were the whole
+    // point: they refuted the cause GDD §4.4 had published twice.
     //
-    // Three runs, same seeds, same schedules, same comparator, same engine.
+    // ALL THREE COUNTERFACTUALS ARE VARIATIONS ON A STOCK, and GDD §4.2's
+    // Option 1 ruling deleted the stock. There is no income to re-time, no hold
+    // cap to top up, and — deliberately — no exported function anywhere in
+    // `streak.ts` that can add coverage to a state, so the harness cannot
+    // inject one either. Run against today's engine the three are literally the
+    // same simulation, and a test whose three arms are one arm reports zero for
+    // a reason that has nothing to do with the property.
+    //
+    // The findings themselves are history now and are kept as history, in
+    // `RESIDUE_MEASUREMENT` above and in GDD §4.4. What is measured HERE is the
+    // mechanism that replaced them, which nothing measured before: the traced
+    // cause was that a doomed absence confiscated THE WHOLE ARMED HOLDING, so
+    // the debit was increasing in wealth. Two things had to become true for
+    // that to stop, and both are checked below over the same seeded sweep, at
+    // the same length, with the same comparator.
     const LENGTH = RESIDUE_SWEEP.COUNTERFACTUAL_LENGTH;
     const noGrants = Array.from({ length: LENGTH }, () => false);
+    const initial = freshState();
+
+    let pairsChecked = 0;
+    let confiscationsSeen = 0;
+    let worstConfiscation = 0;
+    /** Pairs whose coverage differed at some point inside a window. */
+    let divergedInsideAWindow = 0;
+    /** Pairs whose coverage differed at a window boundary. Must stay 0. */
+    let divergedAtABoundary = 0;
+    /** Pairs where the two lifters confiscated different totals. Must stay 0. */
+    let unequalConfiscation = 0;
+    let worstConfiscationGap = 0;
+
+    const lastDay = addDays(DAY_ZERO, LENGTH - 1);
+    expect(LENGTH).toBeGreaterThan(RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+
+    /**
+     * Replays a calendar and reports the largest single confiscation, the total
+     * confiscated, and what coverage the lifter would have on a given day.
+     */
+    const play = (
+      schedule: readonly boolean[],
+    ): { readonly state: StreakState; readonly confiscated: number; readonly worst: number } => {
+      let state = initial;
+      let confiscated = 0;
+      let worst = 0;
+      for (let i = 0; i < schedule.length; i += 1) {
+        const day = addDays(DAY_ZERO, i);
+        if (openDay(state, day).kind === 'streak-broken') {
+          state = unwrap(settleBrokenStreak(state, day)).state;
+        }
+        if (schedule[i] !== true) continue;
+        const outcome = unwrap(recordTrainingDay(state, day));
+        confiscated += outcome.recoveryDaysLostToTheAbsence;
+        worst = Math.max(worst, outcome.recoveryDaysLostToTheAbsence);
+        state = outcome.state;
+      }
+      return { state, confiscated, worst };
+    };
+
+    for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+      for (const schedule of seededSchedules(seed, LENGTH)) {
+        const lazy = play(schedule);
+        for (const superset of singleDaySupersets(schedule)) {
+          const diligent = play(superset);
+          pairsChecked += 1;
+          if (lazy.worst > 0) confiscationsSeen += 1;
+          worstConfiscation = Math.max(worstConfiscation, lazy.worst, diligent.worst);
+          if (lazy.confiscated !== diligent.confiscated) unequalConfiscation += 1;
+          worstConfiscationGap = Math.max(worstConfiscationGap, Math.abs(lazy.confiscated - diligent.confiscated));
+
+          // (1) THE BLAST RADIUS IS ONE WINDOW. A doomed absence still takes
+          //     everything — RULE 2 survives, and dropping it measures 1051
+          //     violating pairs at this very length — but "everything" is now
+          //     bounded by what a window holds rather than by what a lifter has
+          //     hoarded. That is the difference between the two designs stated
+          //     as a number, and it is what makes the debit stop being
+          //     increasing in wealth: there is no wealth.
+          if (lazy.worst > RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW) {
+            throw new Error(`${renderSchedule(schedule)} confiscated ${lazy.worst} in one absence`);
+          }
+
+          // (2) THE TWO RE-CONVERGE AT THE FIRST BOUNDARY PAST BOTH OF THEM.
+          //     This is the sentence GDD §4.2 leans on and nothing measured it:
+          //     a stock never re-converged, because the income that refilled it
+          //     was paid once per lifetime, so a difference opened by one extra
+          //     trained day was PERMANENT and every later doomed absence
+          //     confiscated a different amount from each lifter. Inside a
+          //     window the two may differ — `divergedInsideAWindow` insists
+          //     that they do — and at the start of the next window that neither
+          //     of their last sessions falls in, they are the same lifter
+          //     again. Checked at three consecutive boundaries, because a
+          //     snapshot that leaked forward would re-open at a later one.
+          const laterWindow = Math.max(
+            entitlementWindowFor(lazy.state, lastDay),
+            entitlementWindowFor(diligent.state, lastDay),
+            lazy.state.entitlement.windowIndex,
+            diligent.state.entitlement.windowIndex,
+          );
+          for (let ahead = 1; ahead <= 3; ahead += 1) {
+            const boundary = addDays(SIGNUP_DAY, (laterWindow + ahead) * RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+            if (coveredDaysArmed(lazy.state, boundary) !== coveredDaysArmed(diligent.state, boundary)) {
+              divergedAtABoundary += 1;
+            }
+          }
+          if (coveredDaysArmed(lazy.state, lastDay) !== coveredDaysArmed(diligent.state, lastDay)) {
+            divergedInsideAWindow += 1;
+          }
+        }
+      }
+    }
+
+    expect(divergedAtABoundary).toBe(0);
+
+    // (3) WHAT THE EXTRA TRAINED DAY CAN STILL CHANGE, MEASURED — AND IT IS NOT
+    //     ZERO. The first draft of this test asserted that the two lifters
+    //     confiscate the same TOTAL across the calendar, which is what the
+    //     23-day hand-built case does. It is false in general and the sweep
+    //     said so: 6,462 of 53,872 pairs confiscate different totals. The extra
+    //     trained day splits an absence, and a split can move which window a
+    //     doomed absence resolves in.
+    //
+    //     WHAT IS BOUNDED IS THE SIZE OF THE DIFFERENCE. It is at most one
+    //     window's entitlement, and that is the whole of the fix: under the
+    //     stock the difference was whatever the lifter had accumulated and it
+    //     was PERMANENT, because a confiscated milestone payout was never
+    //     re-earned. Here it is bounded by a rate and erased at (2).
+    expect(unequalConfiscation).toBe(6_462);
+    expect(worstConfiscationGap).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+    expect(worstConfiscationGap).toBeLessThanOrEqual(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+
+    // ANTI-VACUITY, AND IT IS DOING MORE WORK THAN USUAL HERE, because two of
+    // the three assertions above are zeros. Confiscations really happened; they
+    // really were bounded by a window rather than being trivially small; and
+    // the two lifters really did hold different coverage at some point inside a
+    // window, which is the only thing that makes "they re-converge at the
+    // boundary" a claim rather than a tautology.
+    expect(pairsChecked).toBeGreaterThan(10_000);
+    expect(confiscationsSeen).toBeGreaterThan(0);
+    expect(worstConfiscation).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+    expect(divergedInsideAWindow).toBe(1_954);
+
+    // AND THE HISTORY IS NOT QUIETLY DELETED. The three counterfactuals'
+    // results stay pinned as constants so the argument they settled can still
+    // be read, and the two non-zero ones are what made them worth running.
+    const asNumbers = (xs: readonly number[]): readonly number[] => xs;
+    expect(asNumbers(RESIDUE_MEASUREMENT.NO_INCOME_VIOLATING_PAIRS).every((n) => n === 0)).toBe(true);
+    expect(asNumbers(RESIDUE_MEASUREMENT.FIXED_DAY_INCOME_VIOLATING_PAIRS).some((n) => n > 0)).toBe(true);
+    expect(asNumbers(RESIDUE_MEASUREMENT.NEVER_EXHAUSTED_VIOLATING_PAIRS).some((n) => n > 0)).toBe(true);
+    // A lifter past every milestone still collects nothing and a fresh one
+    // still reaches seven — the switch the first counterfactual was built on is
+    // still there, it simply no longer switches any income.
     const beyondEveryMilestone: StreakState = {
       ...freshState(),
       longestStreak: Math.max(...STREAK_MILESTONE_DAYS) + 1,
     };
-    const fixedDayGrants = Array.from({ length: LENGTH }, (_, day) =>
-      RESIDUE_SWEEP.FIXED_INCOME_DAYS.includes(day),
-    );
-    const everyDay = Array.from({ length: LENGTH }, () => true);
-
-    const sweepPairs = (
-      initial: StreakState,
-      grantOn: readonly boolean[],
-      grantSize: number,
-    ): { pairs: number[]; worst: number[]; consumed: number } => {
-      const pairs: number[] = [];
-      const worst: number[] = [];
-      let consumed = 0;
-      for (const seed of MONOTONICITY_SWEEP.SEEDS) {
-        let violations = 0;
-        let worstHere = 0;
-        for (const schedule of seededSchedules(seed, LENGTH)) {
-          const lazy = simulate(schedule, grantOn, initial, 'daily', true, grantSize);
-          consumed += lazy.recoveryDaysSpent;
-          for (const superset of singleDaySupersets(schedule)) {
-            const diligent = simulate(superset, grantOn, initial, 'daily', true, grantSize);
-            const deficit = lazy.state.currentStreak - diligent.state.currentStreak;
-            if (deficit > 0) {
-              violations += 1;
-              worstHere = Math.max(worstHere, deficit);
-            }
-          }
-        }
-        pairs.push(violations);
-        worst.push(worstHere);
-      }
-      return { pairs, worst, consumed };
-    };
-
-    // (1) NO INCOME AT ALL after the signup grant. The published counterfactual.
-    const noIncome = sweepPairs(beyondEveryMilestone, noGrants, 1);
-    expect(noIncome.pairs).toEqual([...RESIDUE_MEASUREMENT.NO_INCOME_VIOLATING_PAIRS]);
-
-    // (2) INCOME RESTORED, ARRIVAL DAY FIXED ON THE CALENDAR. Same size, same
-    // day for both members of every pair, so nothing either lifter does can
-    // move when it lands. If streak-keyed timing were the cause this is zero.
-    const fixedDay = sweepPairs(beyondEveryMilestone, fixedDayGrants, 1);
-    expect(fixedDay.pairs).toEqual([...RESIDUE_MEASUREMENT.FIXED_DAY_INCOME_VIOLATING_PAIRS]);
-    expect(fixedDay.worst).toEqual([...RESIDUE_MEASUREMENT.FIXED_DAY_INCOME_WORST_DEFICIT]);
-    expect(fixedDay.pairs.reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
-
-    // (3) A STOCK THAT CANNOT RUN OUT: topped to the hold cap every day, so no
-    // absence is ever unaffordable. If scarcity were the cause this is zero. It
-    // is larger than the shipped economy's 122.
-    const neverExhausted = sweepPairs(freshState(), everyDay, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
-    expect(neverExhausted.pairs).toEqual([...RESIDUE_MEASUREMENT.NEVER_EXHAUSTED_VIOLATING_PAIRS]);
-    expect(neverExhausted.worst).toEqual([...RESIDUE_MEASUREMENT.NEVER_EXHAUSTED_WORST_DEFICIT]);
-    expect(neverExhausted.pairs.reduce((a, b) => a + b, 0)).toBeGreaterThan(
-      SAMPLED_MEASUREMENT.VIOLATING_PAIRS_AT_60.reduce((a: number, b: number) => a + b, 0),
-    );
-
-    // NONE OF THE THREE IS VACUOUS, and (1) needs it most because it is the
-    // zero. Recovery Days really were consumed in all three, and the two income
-    // runs really did credit income.
-    expect(noIncome.consumed).toBeGreaterThan(0);
-    expect(fixedDay.consumed).toBeGreaterThan(0);
-    expect(neverExhausted.consumed).toBeGreaterThan(0);
-
-    // A lifter with a lifetime best past every milestone collects nothing; a
-    // fresh one collects at seven. That is what makes (1) an income switch.
-    const suppressed = unwrap(recordTrainingDay(beyondEveryMilestone, DAY_ZERO));
-    expect(suppressed.milestonesReached).toEqual([]);
-    let milestonesPaid = 0;
-    let normal: StreakState = { ...freshState(), entitlement: withCoveredDays(0), entitlementArmed: true };
-    const firstMilestone = STREAK_MILESTONE_DAYS[0] as number;
-    for (let i = 0; i < firstMilestone; i += 1) {
-      const outcome = unwrap(recordTrainingDay(normal, addDays(DAY_ZERO, i)));
-      milestonesPaid += outcome.milestonesReached.length;
-      normal = outcome.state;
-    }
-    expect(milestonesPaid).toBe(1);
-
-    // And the fixed-day counterfactual really is schedule-independent: the days
-    // it grants on are calendar positions, not streak lengths.
-    expect(RESIDUE_SWEEP.FIXED_INCOME_DAYS.every((d) => d > 0 && d < LENGTH)).toBe(true);
+    expect(unwrap(recordTrainingDay(beyondEveryMilestone, DAY_ZERO)).milestonesReached).toEqual([]);
+    expect(noGrants.every((granted) => !granted)).toBe(true);
   });
 
   it('WAS "THE RESIDUE, REPRODUCED BY HAND": the 23-day case is level on both fields', () => {
