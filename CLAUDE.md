@@ -163,8 +163,18 @@ physiology.
     so its consumption must be *idempotent under splitting*, and "take
     everything left" is the only thing that is. What the entitlement changed is
     the blast radius: bounded by one window, restored at the next boundary.
-  - **No grant of covered days may be keyed to anything the lifter does.** A
-    grant whose arrival day the player's own training can move is the defect.
+  - **No grant of covered days may be keyed to anything the lifter does — and
+    neither may any currency that buys them.** A grant whose arrival day the
+    player's own training can move is the defect, and so is a *purchase* the
+    player's training lets them afford sooner. Measured on the shipped engine,
+    matched purse and price, the only difference being whether the diligent
+    lifter's buying schedule is recomputed from their own training: a covered
+    day funded by achievement-earned Chalk gives **105 / 305 / 733 / 785**
+    violating pairs at 40 / 60 / 80 / 100 days, worst deficit 54, against
+    **0** for the same purse funded on the calendar. The zero-purchase baseline
+    is also 0, so these are not violations made worse — they are violations
+    *created*. `purchasedDaysLeft` is live;
+    `applySettledCoveredDayPurchase` is its only writer.
     Measured: a covered day granted at a streak length gives 54 violating pairs
     at 100 days; granted every N sessions, 1156; granted on a fixed calendar
     day, 0. This binds every future earning table, season pass and reward —
