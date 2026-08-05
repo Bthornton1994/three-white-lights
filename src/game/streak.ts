@@ -1773,6 +1773,50 @@ export const COVERED_DAY_TENDERS = ['chalk', 'real-money'] as const;
 export type CoveredDayTender = (typeof COVERED_DAY_TENDERS)[number];
 
 /**
+ * THE COMPLETE SET OF WAYS A TENDER MAY ARRIVE IN A PLAYER'S HANDS — and there
+ * is deliberately no `'training'` member.
+ *
+ * WHY THIS EXISTS RATHER THAN JUST THE LIST ABOVE. The list on its own is a
+ * list: adding `'milestone'` to it costs one word, and `applySettledCovered
+ * DayPurchase` would then accept a covered day awarded for a streak while every
+ * other guard in this codebase stayed green. That is precisely "true by the
+ * current absence of a code path" rather than enforced, which is what GDD
+ * §8.3E's condition 3 rules out.
+ *
+ * So every tender has to declare how it reaches the player, and the only
+ * answers available are ones training cannot move:
+ *
+ *   - `'payment'` — real money. A player buys when they choose to; one extra
+ *     trained day does not move the day they choose.
+ *   - `'calendar-or-payment'` — bought, or trickled on a calendar-dated event
+ *     or a rewarded ad. GDD §8.2 has the measurement that forbids the third
+ *     option, and it forbids it one hop out: a currency that buys coverage IS
+ *     coverage, so Chalk earned for an achievement is a covered day earned for
+ *     an achievement.
+ *
+ * ADDING A TRAINING-KEYED TENDER THEREFORE COSTS THREE VISIBLE EDITS, and the
+ * escalation was walked rather than assumed: a new tender fails `tsc` at the
+ * map below until it declares an arrival; declaring `'training'` fails `tsc`
+ * again until `TENDER_ARRIVALS` is widened; widening it fails `streak.test.ts`,
+ * which rejects any arrival whose name says training, streak, session,
+ * milestone, achievement, tier, progress or earn.
+ *
+ * THE FOURTH STEP GETS THROUGH, and it is named rather than glossed: an arrival
+ * called `'q7'` satisfies all three. The vocabulary check is a floor. The
+ * load-bearing part is that the answer has to be written down at all, here,
+ * under the paragraph saying why it may not be a training one.
+ */
+export const TENDER_ARRIVALS = ['payment', 'calendar-or-payment'] as const;
+
+export type TenderArrival = (typeof TENDER_ARRIVALS)[number];
+
+/** Exhaustive by `satisfies`: a new tender cannot ship without an answer. */
+export const COVERED_DAY_TENDER_ARRIVAL = {
+  chalk: 'calendar-or-payment',
+  'real-money': 'payment',
+} as const satisfies Readonly<Record<CoveredDayTender, TenderArrival>>;
+
+/**
  * THE COMPLETE SET OF FIELDS A SETTLED PURCHASE MAY CARRY. Same mechanism as
  * `STREAK_FACT_KEYS`, applied to the one input money arrives on: adding
  * `streakBonusDays` here is a visible edit under this comment, and adding it to

@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest';
 import {
   LONGEST_REPAIRABLE_ABSENCE_DAYS,
   RECOVERY_DAY_GUARDRAILS,
+  COVERED_DAY_TENDERS,
+  COVERED_DAY_TENDER_ARRIVAL,
   RECOVERY_DAY_OUTCOME_KEYS,
   RECOVERY_DAY_PROTECTION,
   STREAK_DAY_BOUNDARY,
@@ -37,6 +39,8 @@ import {
   streakDayFromCivilDate,
   streakDayFromLocalWallClock,
   streakDeadlineDay,
+  TENDER_ARRIVALS,
+  type CoveredDayTender,
   type DayOpening,
   type LegacyStreakStateWithBalance,
   type StreakDay,
@@ -1851,6 +1855,50 @@ describe('the window entitlement', () => {
     expect(bought.state.longestStreak).toBe(stateWithRun(9, DAY_ZERO, 1).longestStreak);
     expect(bought.currentStreakUnchanged).toBe(9);
     expect(bought.longestStreakUnchanged).toBe(bought.state.longestStreak);
+  });
+
+  it('NO TENDER ARRIVES BY TRAINING — the list of ways to pay cannot grow an earned one quietly', () => {
+    // The last route condition 3 left open. `COVERED_DAY_TENDERS` on its own is
+    // a list, and adding `'milestone'` to it costs one word — after which
+    // `applySettledCoveredDayPurchase` would accept a covered day awarded for a
+    // streak with every other guard in this codebase still green. That is
+    // exactly "true by the current absence of a code path".
+    //
+    // `COVERED_DAY_TENDER_ARRIVAL` makes it cost an answer instead, and the
+    // available answers are the ones training cannot move.
+    expect(Object.keys(COVERED_DAY_TENDER_ARRIVAL).sort()).toEqual([...COVERED_DAY_TENDERS].sort());
+    for (const tender of COVERED_DAY_TENDERS) {
+      expect(TENDER_ARRIVALS).toContain(COVERED_DAY_TENDER_ARRIVAL[tender]);
+    }
+    // NO ARRIVAL NAMES SOMETHING THE LIFTER DOES. A floor, not a guarantee —
+    // an arrival called `'q7'` satisfies it — but the load-bearing half is that
+    // a new tender has to declare an arrival at all, in `streak.ts`, under the
+    // paragraph that says why it may not be a training one.
+    for (const arrival of TENDER_ARRIVALS) {
+      expect(arrival, `arrival ${arrival} names something training reaches`).not.toMatch(
+        /train|streak|session|milestone|achiev|tier|progress|earn/i,
+      );
+    }
+    // And the refusal really is keyed to the list rather than to a hardcoded
+    // pair, so a tender removed from it stops being accepted.
+    for (const notATender of ['milestone', 'achievement', 'streak', 'free', '']) {
+      const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
+        orderId: 'order-1',
+        coveredDays: 1,
+        tender: notATender as CoveredDayTender,
+      });
+      expect(outcome.ok, `${notATender} must not be a way to obtain a covered day`).toBe(false);
+      if (!outcome.ok) expect(outcome.error.code).toBe('INVALID_PURCHASE');
+    }
+    // Both real tenders work, so the refusal above is not refusing everything.
+    for (const tender of COVERED_DAY_TENDERS) {
+      const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
+        orderId: 'order-1',
+        coveredDays: 1,
+        tender,
+      });
+      expect(outcome.ok, `${tender} must be a way to buy one`).toBe(true);
+    }
   });
 
   it('AND THE EXEMPTION IS NOT A HOLE: the purchase credits the ORDER, and never a day more', () => {
