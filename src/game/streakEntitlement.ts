@@ -420,38 +420,67 @@ export const SOURCES_THAT_CREDIT_A_PURCHASED_DAY: readonly CoverageSource[] = CO
 );
 
 /**
- * EVERY FUNCTION IN THE TWO STREAK MODULES ALLOWED TO NAME `purchasedDaysLeft`
- * OR THE `'purchase'` SOURCE — the enforcement half of GDD §8.3E condition 3.
+ * EVERY TOP-LEVEL DECLARATION IN `streakEntitlement.ts` AND `streak.ts` ALLOWED
+ * TO NAME A PURCHASED COVERED DAY — the enforcement half of GDD §8.3E's
+ * condition 3, that a purchased day is never grantable, earnable or awarded.
  *
- * WHY A LIST OF FUNCTION NAMES AND NOT A RULE ABOUT NAMING. The obvious guard
- * is a blocklist on words like `grant`, `credit`, `buy`, `award` — and
+ * WHY A LIST OF DECLARATION NAMES AND NOT A RULE ABOUT NAMING. The obvious
+ * guard is a blocklist on words like `grant`, `credit`, `buy`, `award` — and
  * `streak.test.ts` used to carry exactly that. It cannot catch
  * `markStreakMilestone` handing out a purchased day, because the mutant simply
- * does not use any of those words. This keys on THE FIELD instead of on the
- * VOCABULARY: any function that touches the purchased counter, under any name,
- * has to appear here, and `streakEntitlement.test.ts` asserts the set is exact
- * in both directions.
+ * does not use any of those words. This keys on THE THING instead of on the
+ * VOCABULARY: any declaration whose body so much as says `purchas`, under any
+ * name, has to appear here, and `streakEntitlement.test.ts` asserts the set is
+ * exact in BOTH directions — a stale entry fails too, because an allowlist that
+ * can only grow is one nobody prunes.
  *
  * SO ADDING AN IN-GAME ACTION THAT AWARDS A PURCHASED DAY IS A RED TEST, not a
  * silent success, whatever it is called. The visible edit it forces is an entry
- * in this list, sitting under this paragraph.
+ * in this list, sitting under this paragraph, where a reviewer will see it.
  *
- * It is a floor and not a ceiling, stated rather than glossed: a mutant that
- * awards a purchased day from INSIDE one of the functions already listed passes
- * this and is caught by the behavioural drive in `streak.test.ts` instead. Two
- * guards, because neither one covers the other's blind spot.
+ * TYPES AND CONSTANTS ARE IN IT, NOT JUST FUNCTIONS, and deliberately: a `const`
+ * holding an arrow function is a function, and a guard that only looked for the
+ * `function` keyword would be walked around by one line of syntax.
+ *
+ * IT IS A FLOOR AND NOT A CEILING, stated rather than glossed: a mutant that
+ * awards a purchased day from INSIDE a declaration already listed passes this,
+ * and is caught by the behavioural drive in `streak.test.ts` — which runs every
+ * other entry point over a long fuzzed history and asserts the field never
+ * moves. Two guards, because neither one covers the other's blind spot.
  */
 export const PURCHASED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
-  // streakEntitlement.ts — reads (the sum, the reset, the spend order)
+  // ---- streakEntitlement.ts -----------------------------------------------
+  // The provenance vocabulary itself.
+  'COVERAGE_SOURCES',
+  'COVERAGE_SOURCE_COUNTER',
+  'SOURCES_THAT_CREDIT_A_PURCHASED_DAY',
+  'PURCHASED_DAY_TOUCHING_FUNCTIONS',
+  // The field allowlist and the state that carries the counter.
+  'ENTITLEMENT_FACT_KEYS',
+  'EntitlementState',
+  // Reads: the sum, the window reset, the spend order.
   'freshEntitlement',
   'coveredDaysAvailable',
   'afterSession',
-  // streakEntitlement.ts — the one writer
+  // THE ONE WRITER. `CoveredDayCreditOutcome` is deliberately NOT here: it
+  // reports a `CoverageSource` without naming either counter, so the scan does
+  // not find it and listing it anyway fails the staleness half. That is the
+  // exactness working in the direction people forget about.
   'creditCoveredDays',
-  // streak.ts — reads
+  // ---- streak.ts -----------------------------------------------------------
+  // Reads: the snapshot figure a screen shows, and the disarmed-branch zero.
   'coveredDaysLeftInWindow',
   'absenceOutcome',
-  // streak.ts — the one entry point a purchase arrives through
+  // THE ONE ENTRY POINT MONEY ARRIVES ON, and the shapes it needs.
+  'StreakErrorCode',
+  'COVERED_DAY_PURCHASE_KEYS',
+  'CoveredDayPurchaseKey',
+  'SettledCoveredDayPurchase',
+  'COVERED_DAY_PURCHASE_IS_EXACTLY_ITS_ALLOWLIST',
+  'COVERED_DAY_PURCHASE_OUTCOME_KEYS',
+  'CoveredDayPurchaseOutcomeKey',
+  'CoveredDayPurchaseOutcome',
+  'COVERED_DAY_PURCHASE_OUTCOME_IS_COVERAGE_ONLY',
   'applySettledCoveredDayPurchase',
 ];
 

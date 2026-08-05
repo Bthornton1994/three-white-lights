@@ -293,8 +293,122 @@ export const ENTITLEMENT_VERIFICATION = Object.freeze({
   SESSION_KEYED_GRANT_EVERY: 10,
 });
 
+/**
+ * THE FOURTH MEASUREMENT'S PARAMETERS: GDD §8.3E's Extra Covered Day purchase,
+ * and specifically the question the by-week rule in §8.3C does NOT answer.
+ *
+ * WHY IT NEEDS ITS OWN BLOCK. §8.3C was re-keyed so the season pass pays covered
+ * days by week and never by tier, because a tier unlocks by playing. But the pass
+ * also pays CHALK, and Chalk buys covered days — so if Chalk arrives on anything
+ * training reaches ("rare achievements" in §8.2, a pass tier in §8.3C), the
+ * lifter's own training moves the day they can AFFORD coverage. That is the
+ * banned shape one hop further out, and the by-week rule as written does not
+ * reach it. It is measured here rather than argued.
+ *
+ * THE DESIGN IS MATCHED, AND THE MATCHING IS THE WHOLE POINT. An earlier cut of
+ * this measurement compared "buy every 7 days" against "buy when affordable" and
+ * found the training-keyed model looking BETTER — an artifact, because the
+ * calendar model also bought roughly twice as many covered days, and a bigger
+ * bank hides violations for reasons that have nothing to do with keying. So all
+ * three arms below share one purse, one price and one rule, and the lazy
+ * member of every pair buys on identical days in all of them. The only thing
+ * that varies is what the DILIGENT member's purchase schedule is computed from:
+ *
+ *   - `calendar`: Chalk trickles on the calendar only, so both members buy on
+ *     the same days by construction. The training-independent control.
+ *   - `frozen`: Chalk trickles on achievements, but the diligent member is
+ *     handed the LAZY member's purchase days. Same rule, same purse, same
+ *     price — training simply cannot move the schedule. The matched control.
+ *   - `responsive`: the same achievement trickle, recomputed from the diligent
+ *     member's own training. The hazard.
+ *
+ * `frozen` and `responsive` differ in exactly one thing, and it is the thing
+ * under test.
+ */
+export const COVERED_DAY_PURCHASE_SWEEP = Object.freeze({
+  /**
+   * Schedules per seed for the purchase arms, below `MONOTONICITY_SWEEP.
+   * SCHEDULES_PER_SEED` because these arms run three times over and the suite
+   * has a time budget.
+   *
+   * IT IS A STATED TRADE, NOT AN OVERSIGHT. At the full 400 the responsive arm
+   * measures 105 / 305 / 733 / 785 violating pairs at 40 / 60 / 80 / 100; at 150
+   * it measures 59 / 108 / 203 / 484. The property being asserted is a ZERO on
+   * the two clean arms and a NON-ZERO on the negative control, and both survive
+   * the reduction with room to spare. GDD §8.3E publishes the full-population
+   * numbers and names this constant as the reason the pinned ones are smaller.
+   */
+  SCHEDULES_PER_SEED: 150,
+
+  /**
+   * What one Extra Covered Day costs, in Chalk. Arbitrary and fixed: the
+   * measurement is about WHEN a purchase can be afforded, not about the price,
+   * and a price that no schedule can ever reach would make the sweep vacuous.
+   */
+  PRICE_IN_CHALK: 3,
+
+  /**
+   * Chalk that arrives on the CALENDAR — one per this many days. Neither
+   * lifter's training can move it. GDD §8.2's "purchased" row, and §8.3C's pass
+   * paying by week.
+   */
+  CHALK_PER_CALENDAR_DAYS: 10,
+
+  /**
+   * Chalk that arrives on an ACHIEVEMENT — one per this many sessions ever.
+   * This is the shape GDD §8.2 gives Chalk's free trickle ("rare achievements")
+   * and the shape a season-pass TIER has. It is the arm under test, and it is a
+   * property of the sweep rather than of the shipped game: nothing in the
+   * codebase pays Chalk yet, which is exactly why this is measured before an
+   * earning table exists rather than after one ships.
+   */
+  CHALK_PER_SESSIONS: 5,
+
+  /** Covered days one order buys. Flat quantity, flat price — GDD §12.3, no gacha. */
+  COVERED_DAYS_PER_ORDER: 1,
+});
+
 /** One calendar: `true` on the days the lifter trained. */
 export type TrainingSchedule = readonly boolean[];
+
+/**
+ * The days a lifter on `schedule` can afford an Extra Covered Day, under
+ * `COVERED_DAY_PURCHASE_SWEEP`'s purse. Buys as soon as affordable, which is
+ * the behaviour the hazard needs and the one a real player has.
+ *
+ * `trainingKeyed` switches the achievement trickle on. With it off, the result
+ * is a pure function of the calendar length and is identical for every schedule
+ * of that length — which is what makes the `calendar` arm training-independent
+ * BY CONSTRUCTION rather than by assumption.
+ *
+ * DETERMINISTIC AND PURE. Same schedule, same days, every time.
+ *
+ * @throws {RangeError} if the schedule is empty.
+ */
+export function coveredDayPurchaseDays(
+  schedule: TrainingSchedule,
+  trainingKeyed: boolean,
+): readonly number[] {
+  if (schedule.length < 1) {
+    throw new RangeError('streakSweep: a purchase schedule needs a calendar of at least 1 day');
+  }
+  const purse = COVERED_DAY_PURCHASE_SWEEP;
+  const days: number[] = [];
+  let chalk = 0;
+  let sessions = 0;
+  for (let day = 0; day < schedule.length; day += 1) {
+    if (day > 0 && day % purse.CHALK_PER_CALENDAR_DAYS === 0) chalk += 1;
+    if (schedule[day] === true) {
+      sessions += 1;
+      if (trainingKeyed && sessions % purse.CHALK_PER_SESSIONS === 0) chalk += 1;
+    }
+    while (chalk >= purse.PRICE_IN_CHALK) {
+      chalk -= purse.PRICE_IN_CHALK;
+      days.push(day);
+    }
+  }
+  return days;
+}
 
 /**
  * The `mask`-th calendar of `length` days: bit *i* set means "trained on day

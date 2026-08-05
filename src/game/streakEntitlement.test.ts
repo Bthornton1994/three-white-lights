@@ -17,10 +17,15 @@
  * repository and from nothing else.
  */
 import { describe, expect, it } from 'vitest';
+import * as entitlementModule from './streakEntitlement';
 import {
+  COVERAGE_SOURCES,
+  COVERAGE_SOURCE_COUNTER,
   ENTITLEMENT_FACT_KEYS,
   MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW,
+  PURCHASED_DAY_TOUCHING_FUNCTIONS,
   RECOVERY_ENTITLEMENT,
+  SOURCES_THAT_CREDIT_A_PURCHASED_DAY,
   afterSession,
   coveredDaysAvailable,
   freshEntitlement,
@@ -28,11 +33,13 @@ import {
   resolveEntitlement,
   windowIndexOf,
   windowStartDay,
+  type CoverageSource,
   type EntitlementState,
   type EntitlementTuning,
 } from './streakEntitlement';
 import {
   RECOVERY_DAY_GUARDRAILS,
+  applySettledCoveredDayPurchase,
   asStreakDay,
   createStreakState,
   openDay,
@@ -41,8 +48,10 @@ import {
   type StreakState,
 } from './streak';
 import {
+  COVERED_DAY_PURCHASE_SWEEP,
   ENTITLEMENT_VERIFICATION,
   MONOTONICITY_SWEEP,
+  coveredDayPurchaseDays,
   exhaustiveCalendar,
   exhaustiveCalendarCount,
   fixedRateSchedules,
@@ -78,12 +87,28 @@ interface RunOptions {
   readonly grant: GrantShape;
   /** Off reproduces "a doomed absence consumes nothing" — must violate. */
   readonly burnOnDoom: boolean;
+  /**
+   * Days an Extra Covered Day (GDD §8.3E) is BOUGHT on, credited through
+   * `'purchase'` so it lands in `purchasedDaysLeft` rather than in the free
+   * entitlement. This is the human's condition 2: the invariants below are
+   * re-run with the purchased field actually populated, not structurally
+   * present and zeroed.
+   *
+   * It is a DAY LIST rather than a rule on purpose — the whole matched design
+   * turns on being able to hand the diligent lifter the lazy one's schedule.
+   * `streakSweep.coveredDayPurchaseDays` is what computes one.
+   */
+  readonly purchaseDays: readonly number[];
 }
 
 interface RunResult {
   readonly currentStreak: number;
   readonly longestStreak: number;
   readonly consumed: number;
+  /** Covered days bought. Zero means the purchase arms proved nothing. */
+  readonly bought: number;
+  /** Peak `purchasedDaysLeft` reached, so "populated" is checked not assumed. */
+  readonly peakPurchased: number;
 }
 
 /**
@@ -95,7 +120,7 @@ interface RunResult {
  * to agree with it when the two are wired together.
  */
 function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
-  const { tuning, grant, burnOnDoom } = options;
+  const { tuning, grant, burnOnDoom, purchaseDays } = options;
   const windowAt = (day: number): number => windowIndexOf(tuning, 0, day);
   let entitlement = freshEntitlement(tuning, 0);
   let currentStreak = 0;
@@ -103,6 +128,8 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
   let lastTrainedDay: number | null = null;
   let sessions = 0;
   let consumedTotal = 0;
+  let bought = 0;
+  let peakPurchased = 0;
 
   const resolveAt = (today: number): { daysMissed: number; chargeable: number; covers: boolean; consumed: number } => {
     const anchor = lastTrainedDay ?? 0;
@@ -123,6 +150,24 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
 
   for (let i = 0; i < schedule.length; i += 1) {
     if (grant.kind === 'calendar' && grant.days.includes(i)) addCoveredDay(i);
+
+    // THE PURCHASE, THROUGH THE REAL CREDIT PATH AND INTO THE REAL FIELD. A day
+    // may appear more than once when the purse can afford two at once, so this
+    // counts rather than tests membership.
+    //
+    // INDEXED AND LENGTH-GUARDED rather than `for...of`, which is not style: the
+    // no-purchase arms run this loop tens of millions of times and a `for...of`
+    // over an empty array still allocates an iterator every day of every
+    // calendar. Written the obvious way it added twenty seconds to this file.
+    if (purchaseDays.length > 0) {
+      for (let k = 0; k < purchaseDays.length; k += 1) {
+        if (purchaseDays[k] !== i) continue;
+        const amount = COVERED_DAY_PURCHASE_SWEEP.COVERED_DAYS_PER_ORDER;
+        entitlement = creditCoveredDays(tuning, entitlement, windowAt(i), amount, 'purchase').state;
+        bought += amount;
+        peakPurchased = Math.max(peakPurchased, entitlement.purchasedDaysLeft);
+      }
+    }
 
     // The daily open, which settles a run the calendar has already ended.
     if (lastTrainedDay !== null && i > lastTrainedDay) {
@@ -157,10 +202,15 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
     const r = resolveAt(last);
     if (r.daysMissed > 0 && !r.covers) currentStreak = 0;
   }
-  return { currentStreak, longestStreak, consumed: consumedTotal };
+  return { currentStreak, longestStreak, consumed: consumedTotal, bought, peakPurchased };
 }
 
-const DEFAULT: RunOptions = { tuning: RECOVERY_ENTITLEMENT, grant: { kind: 'none' }, burnOnDoom: true };
+const DEFAULT: RunOptions = {
+  tuning: RECOVERY_ENTITLEMENT,
+  grant: { kind: 'none' },
+  burnOnDoom: true,
+  purchaseDays: [],
+};
 
 /**
  * THE SAME CALENDAR, THROUGH THE SHIPPED ENGINE.
@@ -187,12 +237,33 @@ const DEFAULT: RunOptions = { tuning: RECOVERY_ENTITLEMENT, grant: { kind: 'none
  * shipped tuning being one point in each grid — which `streak.test.ts` asserts
  * directly ('ships a tuning the verification battery actually covers').
  */
-function driveThroughStreakEngine(schedule: TrainingSchedule): RunResult {
+function driveThroughStreakEngine(
+  schedule: TrainingSchedule,
+  purchaseDays: readonly number[] = [],
+): RunResult {
   let state: StreakState = createStreakState(asStreakDay(0));
   let consumed = 0;
+  let bought = 0;
+  let peakPurchased = 0;
 
   for (let i = 0; i < schedule.length; i += 1) {
     const day = asStreakDay(i);
+    // GDD §8.3E's purchase, through the SHIPPED entry point rather than through
+    // `streakEntitlement` directly — so the pin below covers the purchase path
+    // and not only the absence path.
+    for (let k = 0; purchaseDays.length > 0 && k < purchaseDays.length; k += 1) {
+      if (purchaseDays[k] !== i) continue;
+      const amount = COVERED_DAY_PURCHASE_SWEEP.COVERED_DAYS_PER_ORDER;
+      const applied = applySettledCoveredDayPurchase(state, day, {
+        orderId: `sweep-${i}-${bought}`,
+        coveredDays: amount,
+        tender: 'chalk',
+      });
+      if (!applied.ok) throw new Error(`streak engine refused a purchase on day ${i}: ${applied.error.code}`);
+      state = applied.value.state;
+      bought += amount;
+      peakPurchased = Math.max(peakPurchased, state.entitlement.purchasedDaysLeft);
+    }
     // The daily open, which settles a run the calendar has already ended. This
     // is `drive`'s `if (lastTrainedDay !== null && i > lastTrainedDay)` branch:
     // `openDay` reports `'streak-broken'` on exactly that condition.
@@ -215,7 +286,13 @@ function driveThroughStreakEngine(schedule: TrainingSchedule): RunResult {
     const settled = settleBrokenStreak(state, last);
     if (settled.ok) state = settled.value.state;
   }
-  return { currentStreak: state.currentStreak, longestStreak: state.longestStreak, consumed };
+  return {
+    currentStreak: state.currentStreak,
+    longestStreak: state.longestStreak,
+    consumed,
+    bought,
+    peakPurchased,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -297,6 +374,221 @@ function* sampledPairs(length: number, perSeed?: number): Generator<readonly [Tr
       for (const superset of singleDaySupersets(schedule)) yield [schedule, superset] as const;
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// GDD §8.3E — the matched purchase judge
+// ---------------------------------------------------------------------------
+
+/**
+ * The three purchase arms. See `COVERED_DAY_PURCHASE_SWEEP` for why they are
+ * matched and what the earlier unmatched cut got wrong.
+ */
+type PurchaseArm =
+  /** Chalk on the calendar only. Both members buy identically BY CONSTRUCTION. */
+  | 'calendar'
+  /** Achievement Chalk, but the diligent member is handed the lazy one's days. */
+  | 'frozen'
+  /** Achievement Chalk, recomputed from the diligent member's own training. */
+  | 'responsive';
+
+interface PurchaseVerdict extends Verdict {
+  /** Covered days the lazy members bought, summed over schedules. */
+  readonly boughtByLazy: number;
+  /** Covered days the diligent members bought, summed over PAIRS. */
+  readonly boughtByDiligent: number;
+  /** Highest `purchasedDaysLeft` any run reached. The "populated" check. */
+  readonly peakPurchased: number;
+}
+
+/**
+ * Judges one arm at one calendar length.
+ *
+ * THE LAZY MEMBER IS IDENTICAL ACROSS `frozen` AND `responsive` by
+ * construction: both compute its purchase days from the same rule on the same
+ * schedule. So `boughtByLazy` is a control that must come out equal between
+ * those two arms, and `judgePurchaseArm`'s callers assert exactly that rather
+ * than trusting the description.
+ */
+function judgePurchaseArm(length: number, arm: PurchaseArm, options: RunOptions = DEFAULT): PurchaseVerdict {
+  const trainingKeyed = arm !== 'calendar';
+  let currentInversions = 0;
+  let longestInversions = 0;
+  let worstCurrentDeficit = 0;
+  let worstLongestDeficit = 0;
+  let pairsChecked = 0;
+  let consumed = 0;
+  let boughtByLazy = 0;
+  let boughtByDiligent = 0;
+  let peakPurchased = 0;
+  let witness: string | null = null;
+
+  for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+    const schedules = seededSchedules(seed, length).slice(0, COVERED_DAY_PURCHASE_SWEEP.SCHEDULES_PER_SEED);
+    for (const schedule of schedules) {
+      const lazyBuys = coveredDayPurchaseDays(schedule, trainingKeyed);
+      const lazy = drive(schedule, { ...options, purchaseDays: lazyBuys });
+      consumed += lazy.consumed;
+      boughtByLazy += lazy.bought;
+      peakPurchased = Math.max(peakPurchased, lazy.peakPurchased);
+      for (const superset of singleDaySupersets(schedule)) {
+        // THE ONE LINE THE WHOLE MEASUREMENT TURNS ON.
+        const buys = arm === 'responsive' ? coveredDayPurchaseDays(superset, trainingKeyed) : lazyBuys;
+        const diligent = drive(superset, { ...options, purchaseDays: buys });
+        pairsChecked += 1;
+        boughtByDiligent += diligent.bought;
+        peakPurchased = Math.max(peakPurchased, diligent.peakPurchased);
+        const currentDeficit = lazy.currentStreak - diligent.currentStreak;
+        const longestDeficit = lazy.longestStreak - diligent.longestStreak;
+        if (currentDeficit > 0) {
+          currentInversions += 1;
+          if (currentDeficit > worstCurrentDeficit) {
+            worstCurrentDeficit = currentDeficit;
+            witness =
+              `${renderSchedule(schedule)} (${lazy.currentStreak}, bought ${lazy.bought}) beats ` +
+              `${renderSchedule(superset)} (${diligent.currentStreak}, bought ${diligent.bought})`;
+          }
+        }
+        if (longestDeficit > 0) {
+          longestInversions += 1;
+          worstLongestDeficit = Math.max(worstLongestDeficit, longestDeficit);
+        }
+      }
+    }
+  }
+  return {
+    currentInversions,
+    longestInversions,
+    worstCurrentDeficit,
+    worstLongestDeficit,
+    pairsChecked,
+    consumed,
+    witness,
+    boughtByLazy,
+    boughtByDiligent,
+    peakPurchased,
+  };
+}
+
+/**
+ * THE ALTERNATIVE PRODUCT: a purchased covered day that does NOT expire with its
+ * window but accumulates — the hoard the old Recovery Day defect was made of.
+ *
+ * Modelled here rather than implemented, because the shipped module expires and
+ * GDD §8.2 records the switch as a human's call. It keeps a `bank` beside the
+ * real entitlement and spends the entitlement first, which is the same order
+ * `afterSession` uses.
+ */
+function driveBankable(schedule: TrainingSchedule, buyDays: readonly number[]): RunResult {
+  const tuning = RECOVERY_ENTITLEMENT;
+  const windowAt = (day: number): number => windowIndexOf(tuning, 0, day);
+  let entitlement = freshEntitlement(tuning, 0);
+  let bank = 0;
+  let currentStreak = 0;
+  let longestStreak = 0;
+  let lastTrainedDay: number | null = null;
+  let consumed = 0;
+  let bought = 0;
+  let peakPurchased = 0;
+  const resolveAt = (today: number): { missed: number; covers: boolean; take: number } => {
+    const missed = Math.max(0, today - (lastTrainedDay ?? 0) - 1);
+    const chargeable = Math.max(0, missed - GRACE);
+    const available = coveredDaysAvailable(tuning, entitlement, windowAt(today)) + bank;
+    const covers = chargeable <= Math.min(available, tuning.MAX_COVERED_DAYS_PER_ABSENCE);
+    return { missed, covers, take: covers ? chargeable : available };
+  };
+  for (let i = 0; i < schedule.length; i += 1) {
+    for (let k = 0; buyDays.length > 0 && k < buyDays.length; k += 1) {
+      if (buyDays[k] !== i) continue;
+      bank += COVERED_DAY_PURCHASE_SWEEP.COVERED_DAYS_PER_ORDER;
+      bought += COVERED_DAY_PURCHASE_SWEEP.COVERED_DAYS_PER_ORDER;
+      peakPurchased = Math.max(peakPurchased, bank);
+    }
+    if (lastTrainedDay !== null && i > lastTrainedDay) {
+      const r = resolveAt(i);
+      if (r.missed > 0 && !r.covers) {
+        currentStreak = 0;
+        lastTrainedDay = null;
+      }
+    }
+    if (schedule[i] !== true) continue;
+    const r = resolveAt(i);
+    if (!r.covers) {
+      currentStreak = 0;
+      lastTrainedDay = null;
+    }
+    const base = coveredDaysAvailable(tuning, entitlement, windowAt(i));
+    const fromBase = Math.min(base, r.take);
+    bank -= r.take - fromBase;
+    entitlement = afterSession(tuning, entitlement, windowAt(i), fromBase);
+    consumed += r.take;
+    currentStreak += 1;
+    longestStreak = Math.max(longestStreak, currentStreak);
+    lastTrainedDay = i;
+  }
+  const last = schedule.length - 1;
+  if (lastTrainedDay !== null && last > lastTrainedDay) {
+    const r = resolveAt(last);
+    if (r.missed > 0 && !r.covers) currentStreak = 0;
+  }
+  return { currentStreak, longestStreak, consumed, bought, peakPurchased };
+}
+
+/** `judgePurchaseArm`, over the bankable product. Same arms, same matching. */
+function judgeBankablePurchaseArm(length: number, arm: PurchaseArm): PurchaseVerdict {
+  const trainingKeyed = arm !== 'calendar';
+  let currentInversions = 0;
+  let longestInversions = 0;
+  let worstCurrentDeficit = 0;
+  let worstLongestDeficit = 0;
+  let pairsChecked = 0;
+  let consumed = 0;
+  let boughtByLazy = 0;
+  let boughtByDiligent = 0;
+  let peakPurchased = 0;
+  let witness: string | null = null;
+
+  for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+    const schedules = seededSchedules(seed, length).slice(0, COVERED_DAY_PURCHASE_SWEEP.SCHEDULES_PER_SEED);
+    for (const schedule of schedules) {
+      const lazyBuys = coveredDayPurchaseDays(schedule, trainingKeyed);
+      const lazy = driveBankable(schedule, lazyBuys);
+      consumed += lazy.consumed;
+      boughtByLazy += lazy.bought;
+      peakPurchased = Math.max(peakPurchased, lazy.peakPurchased);
+      for (const superset of singleDaySupersets(schedule)) {
+        const buys = arm === 'responsive' ? coveredDayPurchaseDays(superset, trainingKeyed) : lazyBuys;
+        const diligent = driveBankable(superset, buys);
+        pairsChecked += 1;
+        boughtByDiligent += diligent.bought;
+        const currentDeficit = lazy.currentStreak - diligent.currentStreak;
+        const longestDeficit = lazy.longestStreak - diligent.longestStreak;
+        if (currentDeficit > 0) {
+          currentInversions += 1;
+          if (currentDeficit > worstCurrentDeficit) {
+            worstCurrentDeficit = currentDeficit;
+            witness = `${renderSchedule(schedule)} beats ${renderSchedule(superset)}`;
+          }
+        }
+        if (longestDeficit > 0) {
+          longestInversions += 1;
+          worstLongestDeficit = Math.max(worstLongestDeficit, longestDeficit);
+        }
+      }
+    }
+  }
+  return {
+    currentInversions,
+    longestInversions,
+    worstCurrentDeficit,
+    worstLongestDeficit,
+    pairsChecked,
+    consumed,
+    witness,
+    boughtByLazy,
+    boughtByDiligent,
+    peakPurchased,
+  };
 }
 
 function* exhaustivePairs(length: number): Generator<readonly [TrainingSchedule, TrainingSchedule]> {
@@ -445,6 +737,204 @@ describe('the rolling entitlement', () => {
 });
 
 // ---------------------------------------------------------------------------
+// GDD §8.3E CONDITION 1 — a purchased day is a genuinely distinct source
+// ---------------------------------------------------------------------------
+
+describe('a purchased covered day has a provenance, and the provenance is on the CREDIT only', () => {
+  it('lands in a different counter from a free covered day, and that is the provenance', () => {
+    // NOT "the same number arriving under two names". The two sources write two
+    // different fields, so a state carrying a bought day and a state carrying a
+    // free one are DISTINGUISHABLE — which is the thing the previous design
+    // could not do and the thing condition 3 needs in order to be statable.
+    const fresh = freshEntitlement(RECOVERY_ENTITLEMENT, 0);
+    const free = creditCoveredDays(RECOVERY_ENTITLEMENT, fresh, 0, 1, 'window-entitlement');
+    const bought = creditCoveredDays(RECOVERY_ENTITLEMENT, fresh, 0, 1, 'purchase');
+
+    expect(free.state).not.toEqual(bought.state);
+    expect(free.state.coveredDaysLeft).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + 1);
+    expect(free.state.purchasedDaysLeft).toBe(0);
+    expect(bought.state.coveredDaysLeft).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+    expect(bought.state.purchasedDaysLeft).toBe(1);
+
+    // And the source is REPORTED rather than only used — GDD §12.3's "reported,
+    // never silent" applied to the credit as well as to the spend.
+    expect(free.source).toBe('window-entitlement');
+    expect(bought.source).toBe('purchase');
+  });
+
+  it('is credited by EXACTLY ONE source, and that source is the purchase', () => {
+    // Condition 3, at the level of the map rather than of the code. Re-point
+    // `'window-entitlement'` at `purchasedDaysLeft` — which is what "an earned
+    // day is really a purchased day" would look like as a diff — and this stops
+    // being a single source.
+    expect(SOURCES_THAT_CREDIT_A_PURCHASED_DAY).toEqual(['purchase']);
+    expect(COVERAGE_SOURCE_COUNTER['window-entitlement']).toBe('coveredDaysLeft');
+    expect(COVERAGE_SOURCE_COUNTER.purchase).toBe('purchasedDaysLeft');
+    // Every source has to name a real field, or the map is a spelling exercise.
+    for (const source of COVERAGE_SOURCES) {
+      expect(ENTITLEMENT_FACT_KEYS).toContain(COVERAGE_SOURCE_COUNTER[source]);
+    }
+    // No source may be added without a decision: the map is exhaustive over the
+    // list, and the list is exhaustive over the map.
+    expect(Object.keys(COVERAGE_SOURCE_COUNTER).sort()).toEqual([...COVERAGE_SOURCES].sort());
+  });
+
+  it('refuses a source that is not one of the two, rather than defaulting to the free side', () => {
+    const state = freshEntitlement(RECOVERY_ENTITLEMENT, 0);
+    // A caller reaching this module from untyped JSON — a server payload, a
+    // migration — must not have "unknown source" silently mean "free".
+    expect(() =>
+      creditCoveredDays(RECOVERY_ENTITLEMENT, state, 0, 1, 'achievement' as CoverageSource),
+    ).toThrow(RangeError);
+    expect(() => creditCoveredDays(RECOVERY_ENTITLEMENT, state, 0, 1, '' as CoverageSource)).toThrow(RangeError);
+  });
+
+  it('SPENDS IDENTICALLY: the split is invisible to every decision, at every split of every sum', () => {
+    // THE RESOLUTION OF THE TENSION §4(c) OF `streak.ts` USED TO HOLD. That
+    // paragraph banned provenance because a bought covered day must not behave
+    // differently from a free one. The ban was about the SPEND path, and this is
+    // what makes it true rather than promised: for the shipped EXPIRING product,
+    // `(b, p)` and `(b + p, 0)` are indistinguishable forever.
+    //
+    // PROVED OVER THE SPLITS RATHER THAN ARGUED, because "nothing reads it" is
+    // exactly the kind of claim that stops being true one refactor later.
+    let checked = 0;
+    for (let total = 0; total <= 8; total += 1) {
+      for (let purchased = 0; purchased <= total; purchased += 1) {
+        const split: EntitlementState = {
+          windowIndex: 3,
+          coveredDaysLeft: total - purchased,
+          purchasedDaysLeft: purchased,
+        };
+        const merged: EntitlementState = { windowIndex: 3, coveredDaysLeft: total, purchasedDaysLeft: 0 };
+        for (const windowNow of [3, 4]) {
+          expect(coveredDaysAvailable(RECOVERY_ENTITLEMENT, split, windowNow)).toBe(
+            coveredDaysAvailable(RECOVERY_ENTITLEMENT, merged, windowNow),
+          );
+          for (let chargeable = 0; chargeable <= 6; chargeable += 1) {
+            expect(resolveEntitlement(RECOVERY_ENTITLEMENT, split, windowNow, chargeable)).toEqual(
+              resolveEntitlement(RECOVERY_ENTITLEMENT, merged, windowNow, chargeable),
+            );
+            // And the states they leave behind are equivalent under the same
+            // relation, so the equivalence survives arbitrarily many sessions
+            // rather than holding for one.
+            const afterSplit = afterSession(RECOVERY_ENTITLEMENT, split, windowNow, chargeable);
+            const afterMerged = afterSession(RECOVERY_ENTITLEMENT, merged, windowNow, chargeable);
+            expect(afterSplit.windowIndex).toBe(afterMerged.windowIndex);
+            expect(afterSplit.coveredDaysLeft + afterSplit.purchasedDaysLeft).toBe(
+              afterMerged.coveredDaysLeft + afterMerged.purchasedDaysLeft,
+            );
+            checked += 1;
+          }
+        }
+      }
+    }
+    expect(checked).toBe(45 * 2 * 7);
+  });
+
+  it('AND `resolveEntitlement` HAS NOWHERE TO PUT A SOURCE — three arguments, and the state is one', () => {
+    // The structural half of the test above. A behavioural proof that nothing
+    // reads the split cannot stop a fourth parameter being added tomorrow; this
+    // fails the moment one is.
+    expect(resolveEntitlement).toHaveLength(4); // tuning, state, windowNow, chargeableDays
+    expect(afterSession).toHaveLength(4); // tuning, state, windowNow, consumed
+    expect(coveredDaysAvailable).toHaveLength(3); // tuning, state, windowNow
+    // The credit path is the one that grew a source, and only it.
+    expect(creditCoveredDays).toHaveLength(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GDD §8.3E CONDITION 3 — never grantable, earnable or awarded. ENFORCED.
+// ---------------------------------------------------------------------------
+
+describe('nothing can award a purchased covered day, and that is enforced rather than absent', () => {
+  const read = (file: string): string => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const source: string = require('node:fs').readFileSync(
+      require('node:path').join(__dirname, file),
+      'utf8',
+    );
+    return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  };
+
+  /**
+   * Every TOP-LEVEL DECLARATION in a module, as `[name, body]`. Functions and
+   * consts both, because a const holding an arrow function is a function and a
+   * guard that only looked at `function` keywords would be walked around by one.
+   */
+  const declarations = (code: string): readonly (readonly [string, string])[] => {
+    const pattern = /^(?:export )?(?:declare )?(?:async )?(?:function|const|let|class|interface|type)\s+(\w+)/gm;
+    const starts: { name: string; at: number }[] = [];
+    for (const match of code.matchAll(pattern)) {
+      starts.push({ name: match[1] as string, at: match.index as number });
+    }
+    return starts.map(({ name, at }, index) => {
+      const end = index + 1 < starts.length ? (starts[index + 1] as { at: number }).at : code.length;
+      return [name, code.slice(at, end)] as const;
+    });
+  };
+
+  it('THE ALLOWLIST IS EXACT: every declaration that can name a purchased day is listed', () => {
+    // THE GUARD THAT DOES NOT DEPEND ON WHAT A FUNCTION IS CALLED. The obvious
+    // version of this test is a blocklist on `grant`, `credit`, `buy`, `award` —
+    // and `streak.test.ts` carried exactly that until this round. It cannot
+    // catch `markStreakMilestone` handing out a purchased day, because the
+    // mutant uses none of those words. This keys on the FIELD: any declaration
+    // that so much as names the purchased counter or the `'purchase'` source has
+    // to appear in `PURCHASED_DAY_TOUCHING_FUNCTIONS`, whatever it is called.
+    //
+    // EXACT IN BOTH DIRECTIONS, so a stale entry fails too — an allowlist that
+    // can only grow is one nobody prunes and eventually one that permits
+    // everything.
+    const found: string[] = [];
+    for (const file of ['streakEntitlement.ts', 'streak.ts']) {
+      for (const [name, body] of declarations(read(file))) {
+        if (/purchas/i.test(body)) found.push(name);
+      }
+    }
+    expect(found.sort()).toEqual([...PURCHASED_DAY_TOUCHING_FUNCTIONS].sort());
+  });
+
+  it('AND THE SCAN CAN SEE A NEW ONE: it is not matching nothing', () => {
+    // ANTI-VACUITY FOR THE SCANNER ITSELF. The test above is a set equality, and
+    // a `declarations` that returned an empty list would satisfy it against an
+    // empty allowlist while proving nothing. This drives the same scanner over a
+    // synthetic module containing exactly the mutant condition 3 forbids.
+    const mutant = [
+      'export function ordinaryHelper(a: number): number {',
+      '  return a + 1;',
+      '}',
+      'export function markStreakMilestone(state: EntitlementState): EntitlementState {',
+      '  return { ...state, purchasedDaysLeft: state.purchasedDaysLeft + 1 };',
+      '}',
+    ].join('\n');
+    const names = declarations(mutant)
+      .filter(([, body]) => /purchas/i.test(body))
+      .map(([name]) => name);
+    expect(names).toEqual(['markStreakMilestone']);
+    expect(PURCHASED_DAY_TOUCHING_FUNCTIONS).not.toContain('markStreakMilestone');
+    // The allowlist is non-empty, so the equality above is not two empty sets.
+    expect(PURCHASED_DAY_TOUCHING_FUNCTIONS.length).toBeGreaterThan(0);
+  });
+
+  it('the entitlement module exports no way to earn one — the only credit needs a source', () => {
+    // Vocabulary-based and stated as such: it is a floor under the scan above,
+    // not the guarantee. The guarantee is that a source is MANDATORY, so there
+    // is no argument list by which a covered day arrives anonymously and lands
+    // in the bought counter by default.
+    const crediting = Object.keys(entitlementModule).filter((name) =>
+      /grant|credit|buy|award|earn/i.test(name),
+    );
+    // Two, and the second is the constant that says the first has exactly one
+    // source for the bought counter. There is no third — in particular nothing
+    // named for granting, awarding or earning a covered day.
+    expect(crediting.sort()).toEqual(['SOURCES_THAT_CREDIT_A_PURCHASED_DAY', 'creditCoveredDays']);
+    expect(crediting.filter((name) => /grant|buy|award|earn/i.test(name))).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // THE VERIFICATION BATTERY
 // ---------------------------------------------------------------------------
 
@@ -580,12 +1070,17 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     }
   });
 
-  it('THE PURCHASE PATH cannot itself create a violation', () => {
-    // GDD §8.2's purchase path, checked against the rule it exists under. A
+  it('THE FREE GRANT PATH cannot itself create a violation', () => {
+    // GDD §8.3C's season-pass grant, checked against the rule it exists under. A
     // covered day granted on a fixed calendar day — including one landing
     // exactly on a window boundary — leaves the property intact on all four
-    // figures. This is the measured basis for the §8.3 proposal, not a claim
-    // about it.
+    // figures.
+    //
+    // THIS IS THE `'window-entitlement'` SOURCE, NOT THE PURCHASE. The two were
+    // one path until GDD §8.3E was ruled in and they were split; the purchase
+    // arms are below and are measured separately, because "a pass pays a covered
+    // day in week 3" and "a player buys one" are different events even though
+    // the mechanic is the same.
     const length = ENTITLEMENT_VERIFICATION.LENGTHS[3] as number;
     for (const days of ENTITLEMENT_VERIFICATION.CALENDAR_GRANT_DAYS) {
       expectClean(`grant on ${JSON.stringify(days)}`, judge(sampledPairs(length), {
@@ -600,6 +1095,113 @@ describe('never punish daily engagement — the entitlement under attack', () =>
         days.some((d) => d % RECOVERY_ENTITLEMENT.WINDOW_DAYS === 0),
       ),
     ).toBe(true);
+  });
+
+  it('THE PURCHASE PATH, POPULATED: 40 / 60 / 80 / 100 days with real purchased days in the field', () => {
+    // GDD §8.3E CONDITION 2, and the reason it was asked for: every invariant in
+    // this file was previously proved against a `purchasedDaysLeft` that was
+    // structurally present and pinned at zero. These runs actually populate it.
+    //
+    // TWO CLEAN ARMS AND THEY ARE MATCHED. `calendar` funds the purchase from
+    // Chalk that arrives on the calendar, so both members of a pair buy on the
+    // same days by construction. `frozen` funds it from ACHIEVEMENT Chalk — the
+    // shape GDD §8.2 gives Chalk's free trickle and the shape a season-pass tier
+    // has — but hands the diligent member the lazy member's purchase days, so
+    // the rule, the price, the purse and the schedule are all identical and the
+    // only thing removed is training's ability to MOVE the arrival.
+    //
+    // The negative control that says the difference is real is the next test.
+    const seen: Record<string, PurchaseVerdict> = {};
+    for (const arm of ['calendar', 'frozen'] as const) {
+      for (const length of ENTITLEMENT_VERIFICATION.LENGTHS) {
+        const verdict = judgePurchaseArm(length, arm);
+        expectClean(`${arm} purchases L=${length}`, verdict);
+        // NOT VACUOUS IN THE WAY THAT MATTERS HERE: covered days were bought,
+        // and the purchased counter really carried them. A sweep that bought
+        // nothing would satisfy every assertion above and mean nothing.
+        expect(verdict.boughtByLazy, `${arm} L=${length}: nothing was bought`).toBeGreaterThan(0);
+        expect(verdict.peakPurchased, `${arm} L=${length}: purchasedDaysLeft never left zero`).toBeGreaterThan(0);
+        seen[`${arm}-${length}`] = verdict;
+      }
+    }
+    // THE MATCHING, CHECKED RATHER THAN DESCRIBED. `frozen` and `responsive`
+    // share a lazy member; `calendar` does not, and its purse is deliberately
+    // smaller. Asserting the first pair here would be circular, so what is
+    // asserted is that the two arms are NOT the same measurement — if they were,
+    // the negative control below would be comparing an arm against itself.
+    const frozen40 = seen['frozen-40'] as PurchaseVerdict;
+    const calendar40 = seen['calendar-40'] as PurchaseVerdict;
+    expect(frozen40.boughtByLazy).not.toBe(calendar40.boughtByLazy);
+  });
+
+  it('NEGATIVE CONTROL, MATCHED: the SAME purse violates once training can move the purchase day', () => {
+    // THE HAZARD GDD §8.2 CREATES AND §8.3C DOES NOT CLOSE. Chalk is earned in
+    // part from "rare achievements", achievements are reached by playing, and
+    // Chalk buys Extra Covered Days — so a buy-when-affordable player has a
+    // covered-day arrival their own training shifts. §8.3C re-keyed the pass's
+    // covered days to the WEEK, which closes the one-hop path; it says nothing
+    // about the pass's CHALK, and this is the two-hop version.
+    //
+    // MATCHED AGAINST `frozen` AND NOTHING ELSE. Same rule, same price, same
+    // purse, same seeds, same schedules, and a bit-identical lazy member. The
+    // only difference is whether the diligent member's purchase days are frozen
+    // from the lazy run or recomputed from their own training.
+    //
+    // AN EARLIER CUT OF THIS MEASUREMENT COMPARED A CALENDAR MODEL AGAINST A
+    // RESPONSIVE ONE AND FOUND THE RESPONSIVE ONE LOOKING BETTER. That was an
+    // artifact of the calendar model buying roughly twice as many covered days;
+    // a bigger bank hides violations for reasons that have nothing to do with
+    // keying. Hence the frozen arm.
+    for (const length of ENTITLEMENT_VERIFICATION.LENGTHS) {
+      const frozen = judgePurchaseArm(length, 'frozen');
+      const responsive = judgePurchaseArm(length, 'responsive');
+
+      // THE CONTROL: the lazy side is identical, so the arms differ in exactly
+      // the intended place. If this ever fails the comparison below is void.
+      expect(frozen.boughtByLazy, `L=${length}: the arms must share a lazy member`).toBe(
+        responsive.boughtByLazy,
+      );
+      expect(frozen.pairsChecked).toBe(responsive.pairsChecked);
+      expect(frozen.consumed).toBe(responsive.consumed);
+
+      // AND THE DILIGENT LIFTER BUYS MORE, NOT LESS. This is what kills the
+      // "they just had a smaller bank" reading: the player who is beaten more
+      // often is also the player who bought more coverage.
+      expect(responsive.boughtByDiligent, `L=${length}`).toBeGreaterThan(frozen.boughtByDiligent);
+
+      expect(frozen.currentInversions, `L=${length}: frozen must be clean`).toBe(0);
+      expect(
+        responsive.currentInversions,
+        `L=${length}: a training-keyed purchase must break this, or the arm is not measuring`,
+      ).toBeGreaterThan(0);
+      expect(responsive.longestInversions, `L=${length}: lifetime best`).toBeGreaterThan(0);
+      expect(responsive.worstCurrentDeficit, `L=${length}: worst deficit`).toBeGreaterThan(0);
+    }
+  });
+
+  it('A BANKABLE purchase is training-keyed-unsafe in the same way, so the choice is still a product one', () => {
+    // GDD §8.2 records that a BANKABLE purchased day — one that survives its
+    // window — is monotone-safe, and that the burn rather than the expiry is
+    // what makes a purchase safe. That finding SURVIVES the purchase path going
+    // live, and so does its limit: bankable is clean exactly where expiring is
+    // clean and violates exactly where expiring violates.
+    //
+    // WHICH SETTLES SOMETHING AND NOT SOMETHING ELSE. It settles that switching
+    // the product does not buy safety and does not cost any. It does not settle
+    // the product question, which is about whether a lifter who buys a covered
+    // day and does not miss a day has wasted their money.
+    //
+    // Run at one length rather than four, and that is a suite-time trade rather
+    // than a claim: the full table at all four lengths is in GDD §8.3E.
+    const length = ENTITLEMENT_VERIFICATION.LENGTHS[3] as number;
+    const frozen = judgeBankablePurchaseArm(length, 'frozen');
+    const responsive = judgeBankablePurchaseArm(length, 'responsive');
+    expect(frozen.boughtByLazy).toBe(responsive.boughtByLazy);
+    expect(frozen.boughtByLazy).toBeGreaterThan(0);
+    expect(frozen.currentInversions, 'bankable, frozen').toBe(0);
+    expect(frozen.longestInversions, 'bankable, frozen: lifetime best').toBe(0);
+    expect(frozen.worstCurrentDeficit, 'bankable, frozen: worst deficit').toBe(0);
+    expect(responsive.currentInversions, 'bankable, responsive').toBeGreaterThan(0);
   });
 
   it('A BANKABLE purchase is ALSO safe — expiry is a product choice, not a safety property', () => {
@@ -620,55 +1222,6 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     // the measurement that says the better product is available. The module
     // still expires, because that is the shipped choice until a human rules;
     // this models the alternative rather than implementing it.
-    const tuning = RECOVERY_ENTITLEMENT;
-    const windowAt = (day: number): number => windowIndexOf(tuning, 0, day);
-
-    const driveBankable = (schedule: TrainingSchedule, buyDays: readonly number[]): RunResult => {
-      let entitlement = freshEntitlement(tuning, 0);
-      let bank = 0;
-      let currentStreak = 0;
-      let longestStreak = 0;
-      let lastTrainedDay: number | null = null;
-      let consumed = 0;
-      const resolveAt = (today: number): { missed: number; covers: boolean; take: number } => {
-        const missed = Math.max(0, today - (lastTrainedDay ?? 0) - 1);
-        const chargeable = Math.max(0, missed - GRACE);
-        const available = coveredDaysAvailable(tuning, entitlement, windowAt(today)) + bank;
-        const covers = chargeable <= Math.min(available, tuning.MAX_COVERED_DAYS_PER_ABSENCE);
-        return { missed, covers, take: covers ? chargeable : available };
-      };
-      for (let i = 0; i < schedule.length; i += 1) {
-        if (buyDays.includes(i)) bank += 1;
-        if (lastTrainedDay !== null && i > lastTrainedDay) {
-          const r = resolveAt(i);
-          if (r.missed > 0 && !r.covers) {
-            currentStreak = 0;
-            lastTrainedDay = null;
-          }
-        }
-        if (schedule[i] !== true) continue;
-        const r = resolveAt(i);
-        if (!r.covers) {
-          currentStreak = 0;
-          lastTrainedDay = null;
-        }
-        const base = coveredDaysAvailable(tuning, entitlement, windowAt(i));
-        const fromBase = Math.min(base, r.take);
-        bank -= r.take - fromBase;
-        entitlement = afterSession(tuning, entitlement, windowAt(i), fromBase);
-        consumed += r.take;
-        currentStreak += 1;
-        longestStreak = Math.max(longestStreak, currentStreak);
-        lastTrainedDay = i;
-      }
-      const last = schedule.length - 1;
-      if (lastTrainedDay !== null && last > lastTrainedDay) {
-        const r = resolveAt(last);
-        if (r.missed > 0 && !r.covers) currentStreak = 0;
-      }
-      return { currentStreak, longestStreak, consumed };
-    };
-
     const length = ENTITLEMENT_VERIFICATION.LENGTHS[3] as number;
     for (const buyDays of ENTITLEMENT_VERIFICATION.BANKABLE_PURCHASE_DAYS) {
       let currentInversions = 0;
