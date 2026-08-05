@@ -116,7 +116,13 @@ import {
   SHELF,
   TIER_1_STRIP,
 } from '../licensing/licensingTuning';
-import { CUT_IN_ART, CUT_IN_COPY, CUT_IN_LAYOUT, CUT_IN_TUNING } from '../cutin/cutInTuning';
+import {
+  CUT_IN_ART,
+  CUT_IN_COPY,
+  CUT_IN_LAYOUT,
+  CUT_IN_PANEL,
+  CUT_IN_TUNING,
+} from '../cutin/cutInTuning';
 import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV } from '../shell/shellTuning';
 import { PALETTE_BANKS, PAL, RAMPS } from '../art/palette';
 import { GYM, GYM_BANKS, GYM_RAMPS } from '../art/gymPalette';
@@ -291,8 +297,14 @@ export const TUNING = Object.freeze({
    * "cut-ins firing more than once per session" as a refusal condition. It is
    * here because the audit requires every number to have a home, not because it
    * is yours to move; its own comment says so at length.
+   *
+   * `CUT_IN_PANEL` is the interrupt's own grid in CARD PIXELS — a different unit
+   * from `CUT_IN_LAYOUT`, which is logical points. Its proportions are the least
+   * evidenced numbers in the block: the cut-in composes its own shape rather
+   * than borrowing the shop panel's, so how wide and how tall an interrupt
+   * should be is a judgement nobody in this run made with a phone in their hand.
    */
-  cutIn: Object.freeze({ CUT_IN_TUNING, CUT_IN_ART, CUT_IN_LAYOUT, CUT_IN_COPY }),
+  cutIn: Object.freeze({ CUT_IN_TUNING, CUT_IN_ART, CUT_IN_PANEL, CUT_IN_LAYOUT, CUT_IN_COPY }),
 
   /**
    * THE APP SHELL. The one control that carries a player between the daily loop

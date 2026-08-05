@@ -246,11 +246,108 @@ export const CUT_IN_ART = Object.freeze({
 });
 
 /**
+ * THE CUT-IN'S OWN GRID, in CARD PIXELS.
+ *
+ * DIFFERENT UNIT FROM `CUT_IN_LAYOUT` BELOW, which is React Native logical
+ * points. These are 1x pixels on the same grid `renderResultCard.ts` and
+ * `renderPanels.ts` work in, upscaled by a whole number for display (GDD §7.1,
+ * nearest neighbour throughout). `licensingTuning.ts` draws the same line for
+ * `PANEL` and says why.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THE CUT-IN HAS ITS OWN SHAPE INSTEAD OF BORROWING `PANEL`
+ * ---------------------------------------------------------------------------
+ * It used to mount `renderPanel`, which is the character-select / shop
+ * composition: a bordered 82x132 card carrying the Tier 3 art, the Tier 3
+ * caption, the Tier 2 name tag, the Tier 1 colorway strip and the Tier 1 build
+ * label, all at once. That is right for a shelf a player is choosing from and
+ * wrong for an interrupt: for both identities the gate can reach the caption and
+ * the name tag are the same string, so the beat printed the same name twice with
+ * "COMPACT BUILD" under it — and `tier1.build` is required on every entry with a
+ * non-empty label for every value, so NO row in `partners.ts` could have removed
+ * that line. GDD §7.2's promise that the art pass is "a row in the identity
+ * table and not a rewiring" was false for as long as the cut-in read the panel.
+ *
+ * So the cut-in composes its own grid from `tier3Of` — the same §7.3 witness the
+ * panel goes through — and prints ONE line of identity text. The numbers below
+ * are that grid.
+ *
+ * NONE OF THEM HAVE BEEN LOOKED AT ON A PHONE. Proportion is a judgement and
+ * §12.1 says this run cannot make it.
+ */
+export const CUT_IN_PANEL = Object.freeze({
+  /**
+   * Grid width.
+   *
+   * SIZED BY THE PHONE, the same argument `PANEL.W` makes. `cutInScaleFor`
+   * picks the largest whole upscale that fits `availableWidth - SCREEN_PAD * 2`
+   * and caps at `CUT_IN_LAYOUT.MAX_SCALE`, so on a 390pt viewport the usable
+   * width is 342 and 114 is the widest grid that still TRIPLES. One pixel wider
+   * and the interrupt drops to 2x. Change this and re-shoot
+   * `tools/capture-cutin.mjs` before believing anything.
+   *
+   * It is a MINIMUM, not a cap: `renderCutIn` widens the grid rather than crop
+   * a drawing or a caption that does not fit. A licensed portrait wider than
+   * this makes the cut-in wider and the on-screen upscale smaller, which is
+   * visible, rather than silently losing the left and right of a partner's face.
+   */
+  W: 114,
+  /** Inset from the grid edge to any content. */
+  PAD: 4,
+  /**
+   * The bright rule along the top and bottom edge — the "cut" of a cut-in.
+   *
+   * The whole of this piece's chrome, and deliberately almost nothing: GDD §7.2
+   * cuts cut-in ART from the early prototypes, so what is drawn here is a
+   * ground, two rules and a well. There is no drawing in this file and
+   * `cutInArt.test.ts` reads it to check.
+   */
+  EDGE_RULE: 1,
+  /**
+   * Height of the well the Tier 3 drawing sits in.
+   *
+   * Also a minimum — a taller drawing makes a taller well. 66 is three times
+   * the 22-row placeholder portraits in `partners.ts`, so today's art lands at
+   * 3x inside it and the face is the biggest thing on the interrupt, which is
+   * what §7.2 says a cut-in is for.
+   */
+  ART_H: 66,
+  /**
+   * Largest whole upscale the drawing is stamped at inside the well.
+   *
+   * Whole numbers only and floored at 1 (GDD §7.1). Its own value rather than
+   * `PANEL.ART_MAX_SCALE` because a cut-in is a full-screen interrupt and a
+   * shelf panel is a thumbnail; they should not have to move together.
+   */
+  ART_MAX_SCALE: 4,
+  /** Gap between the bottom of the well and the identity line. */
+  CAPTION_GAP: 5,
+  /**
+   * Whole upscale of the identity line. Fractional scaling is forbidden
+   * everywhere in this codebase (GDD §7.1) and `drawText` rounds anyway.
+   */
+  CAPTION_SCALE: 1,
+  /**
+   * How many lines the identity text may wrap to before it starts overflowing
+   * visibly.
+   *
+   * A LICENSED WORDMARK IS NOT TRUNCATABLE — `renderPanels.ts`'s `wrapToWidth`
+   * makes the same argument for the shelf — so a caption too long for this many
+   * lines is appended to the last one and overruns where somebody can see it,
+   * rather than being cut off where nobody can. Every portrait caption in
+   * `partners.ts` fits on ONE line at today's width; this is the headroom for a
+   * longer name.
+   */
+  CAPTION_LINES: 2,
+  /** Vertical pitch between two wrapped identity lines, before `CAPTION_SCALE`. */
+  CAPTION_PITCH: 9,
+});
+
+/**
  * THE OVERLAY'S LAYOUT, in logical points.
  *
- * Points rather than card pixels: the Tier 3 drawing inside is `renderPanel`'s
- * and is scaled in whole numbers by `renderPanels.ts`'s own rules (GDD §7.1).
- * These are the chrome around it.
+ * Points rather than card pixels: the Tier 3 grid inside is `cutInArt.ts`'s and
+ * is scaled in whole numbers (GDD §7.1). These are the chrome around it.
  */
 export const CUT_IN_LAYOUT = Object.freeze({
   /** How much of the screen behind is left visible. A cut-in interrupts. */
@@ -262,7 +359,7 @@ export const CUT_IN_LAYOUT = Object.freeze({
   HINT_FONT: 11,
   LETTER_SPACING: 2,
   HINT_OPACITY: 0.55,
-  /** The whole-number upscale ceiling for the panel inside the overlay. */
+  /** The whole-number upscale ceiling for the cut-in grid inside the overlay. */
   MAX_SCALE: 3,
 });
 
