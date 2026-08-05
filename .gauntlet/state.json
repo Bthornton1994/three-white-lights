@@ -2,8 +2,8 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 21,
-    "waveName": "Wave 21 - three merges, and refusing to bulk-edit 35 tests found two live bugs",
+    "wave": 22,
+    "waveName": "Wave 22 - the checkout rewound a third time, and a builder caught it by verifying its brief",
     "startedIso": "2026-07-31T03:10:00Z",
     "publishedAt": "https://claude.ai/code/artifact/eef0d0ae-c6fd-4e27-9200-69e60a23e38a",
     "publishNote": "tools/progress.mjs output, published as a private Artifact so the page is openable on a phone. .gauntlet/progress.html is gitignored, so this URL is the only way anyone sees it — republish the same file path to keep the URL."
@@ -36,7 +36,7 @@
     {
       "severity": "environment",
       "title": "Two agents died silently, and node_modules was found wiped",
-      "body": "The result-card and shot-verifier agents both last committed three days ago and never notified — the same silent kill as the earlier spend-limit halt. Four commits of finished result-card work sat unmerged the whole time. Separately, node_modules/.bin was empty and the vitest package was gone, so the suite exited 216 with NO output at all, which reads like a code crash rather than a broken install.",
+      "body": "THIRD REWIND, AND THIS ONE COST A ROUND. The working checkout silently reset to a commit from the previous day (8cd4f1c, netlify.toml) while origin held everything through wave 21. I dispatched a §8.3E builder from that rewound state, so its git worktree inherited it, and its brief described an entitlement engine that was not in the tree it could see. IT VERIFIED EVERY PREMISE BY COMMAND AND REFUSED TO BUILD - a table of eight false claims, each checked - which is exactly right and saved a round of work built on sand. Origin was intact; reset restored 2547 green. THE RULE THIS MAKES STANDING: verify HEAD before dispatching any builder, not just before reading a tracked file. A worktree inherits the main checkout state, so a rewind propagates silently into every agent spawned during it. Two earlier builders reported the same symptom from the other side, seeing an Epley-or-Brzycki CLAUDE.md and Reanimated 3 in their worktrees, and I filed both as harmless staleness rather than as the same fault. || The result-card and shot-verifier agents both last committed three days ago and never notified — the same silent kill as the earlier spend-limit halt. Four commits of finished result-card work sat unmerged the whole time. Separately, node_modules/.bin was empty and the vitest package was gone, so the suite exited 216 with NO output at all, which reads like a code crash rather than a broken install.",
       "consequence": "Both recovered by hand: npm install restored the toolchain, 21 merged worktrees were pruned to free 2.2G, and the card work is merged at 1244 tests across 23 files. The lesson is that a silent agent death looks identical to a slow one, so unmerged branches need checking by commit age rather than waiting for a notification."
     },
     {
