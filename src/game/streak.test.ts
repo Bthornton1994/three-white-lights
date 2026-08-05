@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest';
 import {
   LONGEST_REPAIRABLE_ABSENCE_DAYS,
   RECOVERY_DAY_GUARDRAILS,
+  COVERED_DAY_TENDERS,
+  COVERED_DAY_TENDER_ARRIVAL,
   RECOVERY_DAY_OUTCOME_KEYS,
   RECOVERY_DAY_PROTECTION,
   STREAK_DAY_BOUNDARY,
@@ -15,6 +17,7 @@ import {
   absenceOutcome,
   adoptSignupDay,
   addDays,
+  applySettledCoveredDayPurchase,
   armedGapDays,
   asStreakDay,
   chargeableDaysBefore,
@@ -36,6 +39,8 @@ import {
   streakDayFromCivilDate,
   streakDayFromLocalWallClock,
   streakDeadlineDay,
+  TENDER_ARRIVALS,
+  type CoveredDayTender,
   type DayOpening,
   type LegacyStreakStateWithBalance,
   type StreakDay,
@@ -1655,14 +1660,31 @@ describe('the window entitlement', () => {
     expect(coveredDaysLeftInWindow(outcome.state)).toBe(0);
   });
 
-  it('THE PURCHASE PATH IS NOT IMPLEMENTED, and that is checked rather than promised', () => {
-    // GDD §8.3E's Extra Covered Day is PROPOSED AND NOT RULED. This module
-    // exports nothing that can credit one, so `purchasedDaysLeft` is zero on
-    // every state any exported function can produce. Drive a long, varied
-    // history and assert it never moves.
-    let state: StreakState = freshState();
-    expect(state.entitlement.purchasedDaysLeft).toBe(0);
+  it('NOTHING IN THE GAME AWARDS A PURCHASED DAY — every other entry point, driven, from a state that HAS some', () => {
+    // GDD §8.3E CONDITION 3, behaviourally. `applySettledCoveredDayPurchase` is
+    // the one function that may raise `purchasedDaysLeft`; this drives a long,
+    // varied history through every OTHER transition and asserts the field never
+    // goes up.
+    //
+    // IT STARTS FROM A STATE THAT ALREADY HOLDS PURCHASED DAYS, which the
+    // version of this test that pinned the field at zero could not do. A sweep
+    // that begins on zero and asserts zero is satisfied by an engine that
+    // cannot represent the number at all; this one can watch the count fall as
+    // absences draw on it and would see it rise.
+    const bought = unwrap(
+      applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
+        orderId: 'order-1',
+        coveredDays: 5,
+        tender: 'chalk',
+      }),
+    );
+    let state: StreakState = bought.state;
+    expect(state.entitlement.purchasedDaysLeft).toBe(5);
+
+    let highWater = state.entitlement.purchasedDaysLeft;
+    let everFell = false;
     for (let i = 0; i < 90; i += 1) {
+      const before = state.entitlement.purchasedDaysLeft;
       if (i % 5 !== 0) {
         const outcome = recordTrainingDay(state, addDays(DAY_ZERO, i));
         if (outcome.ok) state = outcome.value.state;
@@ -1670,12 +1692,266 @@ describe('the window entitlement', () => {
       const settled = settleBrokenStreak(state, addDays(DAY_ZERO, i));
       if (settled.ok) state = settled.value.state;
       state = setRecoveryDayProtection(state, i % 7 !== 0).state;
-      expect(state.entitlement.purchasedDaysLeft).toBe(0);
+      const adopted = adoptSignupDay(state, DAY_ZERO);
+      if (adopted.ok) state = adopted.value;
+      // Read models too: none of them returns a state, but all of them are
+      // handed one, and a read model that mutated its argument would show here.
+      openDay(state, addDays(DAY_ZERO, i));
+      absenceOutcome(state, addDays(DAY_ZERO, i));
+      coveredDaysArmed(state, addDays(DAY_ZERO, i));
+
+      const after = state.entitlement.purchasedDaysLeft;
+      expect(after, `day ${i}: a purchased covered day was awarded by a game action`).toBeLessThanOrEqual(
+        before,
+      );
+      if (after < before) everFell = true;
+      highWater = Math.max(highWater, after);
     }
-    // And the exported surface has no way in: no function name in this module
-    // grants, credits or buys anything.
-    const exported = Object.keys(streakModule);
-    expect(exported.filter((name) => /grant|credit|buy|purchase/i.test(name))).toEqual([]);
+    // NOT VACUOUS: the count really did move, so "it never rose" is a statement
+    // about a live number rather than about an untouched one.
+    expect(everFell, 'no purchased day was ever spent, so this history proves nothing').toBe(true);
+    expect(highWater).toBe(5);
+  });
+
+  it('AND EXHAUSTIVELY OVER THE EXPORT SURFACE: every exported function, called every way it can be', () => {
+    // THE GUARD THAT DOES NOT DEPEND ON THIS TEST REMEMBERING A FUNCTION. The
+    // drive above names its transitions, so a NEW exported transition that
+    // awards a purchased day would slip past it. This one enumerates the
+    // module's exports at runtime, calls each with every plausible argument
+    // tuple, and deep-scans whatever comes back for an entitlement whose
+    // purchased count is higher than the one it was handed.
+    //
+    // Throws are ignored on purpose: most of these calls are type-nonsense and
+    // the ones that refuse are refusing correctly. What is not ignored is a
+    // function that ACCEPTS nonsense and hands back extra coverage.
+    const seed = unwrap(
+      applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
+        orderId: 'order-1',
+        coveredDays: 3,
+        tender: 'chalk',
+      }),
+    ).state;
+    const held = seed.entitlement.purchasedDaysLeft;
+
+    const purchasedIn = (value: unknown, depth = 0): number => {
+      if (depth > 6 || value === null || typeof value !== 'object') return 0;
+      const record = value as Record<string, unknown>;
+      let worst = 0;
+      if (typeof record.purchasedDaysLeft === 'number') worst = record.purchasedDaysLeft;
+      for (const key of Object.keys(record)) worst = Math.max(worst, purchasedIn(record[key], depth + 1));
+      return worst;
+    };
+
+    const day = addDays(DAY_ZERO, 40);
+    const tuples: readonly unknown[][] = [
+      [seed],
+      [seed, day],
+      [seed, DAY_ZERO],
+      [seed, true],
+      [seed, false],
+      [seed, 99],
+      [day],
+      [99],
+      [seed, day, { orderId: '', coveredDays: 99, tender: 'chalk' }],
+      [seed, day, { orderId: 'x', coveredDays: 99, tender: 'milestone' }],
+      [seed, day, { orderId: 'x', coveredDays: 99 }],
+    ];
+
+    const exemptFromTheCeiling = 'applySettledCoveredDayPurchase';
+    let called = 0;
+    let observed = 0;
+    for (const [name, exported] of Object.entries(streakModule)) {
+      if (typeof exported !== 'function') continue;
+      if (name === exemptFromTheCeiling) continue;
+      for (const args of tuples) {
+        let result: unknown;
+        try {
+          result = (exported as (...a: unknown[]) => unknown)(...args);
+        } catch {
+          continue;
+        }
+        called += 1;
+        const reached = purchasedIn(result);
+        if (reached > 0) observed += 1;
+        expect(
+          reached,
+          `${name}(${args.length} args) produced ${reached} purchased days from ${held}`,
+        ).toBeLessThanOrEqual(held);
+      }
+    }
+    // The harness really ran, and really saw the field: a scan that never found
+    // a `purchasedDaysLeft` anywhere would pass this while checking nothing.
+    expect(called).toBeGreaterThan(20);
+    expect(observed, 'no call ever returned a state carrying purchased days').toBeGreaterThan(0);
+
+    // AND THE EXEMPT ONE IS EXEMPT FOR A REASON: it is the only export that can
+    // raise the count, and it needs a settled order to do it. Handed the same
+    // nonsense tuples as everything else, it refuses.
+    for (const args of tuples.slice(-3)) {
+      const outcome = applySettledCoveredDayPurchase(
+        args[0] as StreakState,
+        args[1] as StreakDay,
+        args[2] as Parameters<typeof applySettledCoveredDayPurchase>[2],
+      );
+      expect(outcome.ok, 'a malformed order must be refused, not absorbed').toBe(false);
+    }
+  });
+
+  it('NO PAY-TO-WIN, END TO END: ten purchased days do not make a five-day absence survivable', () => {
+    // THE ASSERTION GDD §8.3E'S FIRST RULE RESTS ON, driven through the shipped
+    // engine now that the purchase is real. `streakEntitlement.test.ts` makes
+    // the same check against the entitlement in isolation; this one buys through
+    // `applySettledCoveredDayPurchase` and then walks a lifter into an absence.
+    //
+    // IT HAD TO BE WRITTEN, NOT JUST KEPT. The `streak.ts`-level ceiling test
+    // this sits beside runs on a fixture whose purchased count is zero, so a
+    // mutant that raised the per-absence draw for anyone holding a purchased day
+    // — pay-to-win in one line — left it green. This is the version that bites.
+    let state: StreakState = freshState();
+    for (let i = 0; i < 10; i += 1) {
+      state = unwrap(
+        applySettledCoveredDayPurchase(state, DAY_ZERO, {
+          orderId: `order-${i}`,
+          coveredDays: 1,
+          tender: 'chalk',
+        }),
+      ).state;
+    }
+    state = unwrap(recordTrainingDay(state, DAY_ZERO)).state;
+    expect(state.entitlement.purchasedDaysLeft).toBe(10);
+    expect(coveredDaysLeftInWindow(state)).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + 10);
+
+    // The ceiling is `LONGEST_REPAIRABLE_ABSENCE_DAYS`, and money does not move
+    // it. One day past is dead however much was bought.
+    const survivable = dayAfterGap(DAY_ZERO, LONGEST_REPAIRABLE_ABSENCE_DAYS);
+    const doomed = dayAfterGap(DAY_ZERO, LONGEST_REPAIRABLE_ABSENCE_DAYS + 1);
+    expect(absenceOutcome(state, survivable).protectionHolds).toBe(true);
+    expect(
+      absenceOutcome(state, doomed).protectionHolds,
+      'ten purchased days must not buy through the per-absence ceiling',
+    ).toBe(false);
+    expect(absenceOutcome(state, doomed).breakReason).toBe('absence-longer-than-consecutive-limit');
+
+    const returned = unwrap(recordTrainingDay(state, doomed));
+    expect(returned.previousRunEnded).toBe(true);
+    expect(returned.streakAfter).toBe(1);
+    // AND THE PURCHASE IS BURNED WITH THE REST, not spared for having been paid
+    // for. A bought covered day is not a better covered day.
+    expect(returned.recoveryDaysLostToTheAbsence).toBe(
+      RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + 10,
+    );
+    expect(coveredDaysLeftInWindow(returned.state)).toBe(0);
+
+    // AND IT NEVER ADDS TO A RUN. The purchase itself moves neither figure, and
+    // says so on the outcome rather than leaving it to be checked.
+    const bought = unwrap(
+      applySettledCoveredDayPurchase(stateWithRun(9, DAY_ZERO, 1), DAY_ZERO, {
+        orderId: 'order-x',
+        coveredDays: 4,
+        tender: 'real-money',
+      }),
+    );
+    expect(bought.state.currentStreak).toBe(9);
+    expect(bought.state.longestStreak).toBe(stateWithRun(9, DAY_ZERO, 1).longestStreak);
+    expect(bought.currentStreakUnchanged).toBe(9);
+    expect(bought.longestStreakUnchanged).toBe(bought.state.longestStreak);
+  });
+
+  it('NO TENDER ARRIVES BY TRAINING — the list of ways to pay cannot grow an earned one quietly', () => {
+    // The last route condition 3 left open. `COVERED_DAY_TENDERS` on its own is
+    // a list, and adding `'milestone'` to it costs one word — after which
+    // `applySettledCoveredDayPurchase` would accept a covered day awarded for a
+    // streak with every other guard in this codebase still green. That is
+    // exactly "true by the current absence of a code path".
+    //
+    // `COVERED_DAY_TENDER_ARRIVAL` makes it cost an answer instead, and the
+    // available answers are the ones training cannot move.
+    expect(Object.keys(COVERED_DAY_TENDER_ARRIVAL).sort()).toEqual([...COVERED_DAY_TENDERS].sort());
+    for (const tender of COVERED_DAY_TENDERS) {
+      expect(TENDER_ARRIVALS).toContain(COVERED_DAY_TENDER_ARRIVAL[tender]);
+    }
+    // NO ARRIVAL NAMES SOMETHING THE LIFTER DOES. A floor, not a guarantee —
+    // an arrival called `'q7'` satisfies it — but the load-bearing half is that
+    // a new tender has to declare an arrival at all, in `streak.ts`, under the
+    // paragraph that says why it may not be a training one.
+    for (const arrival of TENDER_ARRIVALS) {
+      expect(arrival, `arrival ${arrival} names something training reaches`).not.toMatch(
+        /train|streak|session|milestone|achiev|tier|progress|earn/i,
+      );
+    }
+    // And the refusal really is keyed to the list rather than to a hardcoded
+    // pair, so a tender removed from it stops being accepted.
+    for (const notATender of ['milestone', 'achievement', 'streak', 'free', '']) {
+      const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
+        orderId: 'order-1',
+        coveredDays: 1,
+        tender: notATender as CoveredDayTender,
+      });
+      expect(outcome.ok, `${notATender} must not be a way to obtain a covered day`).toBe(false);
+      if (!outcome.ok) expect(outcome.error.code).toBe('INVALID_PURCHASE');
+    }
+    // Both real tenders work, so the refusal above is not refusing everything.
+    for (const tender of COVERED_DAY_TENDERS) {
+      const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
+        orderId: 'order-1',
+        coveredDays: 1,
+        tender,
+      });
+      expect(outcome.ok, `${tender} must be a way to buy one`).toBe(true);
+    }
+  });
+
+  it('AND THE EXEMPTION IS NOT A HOLE: the purchase credits the ORDER, and never a day more', () => {
+    // THE GAP THE TWO GUARDS ABOVE LEFT, CLOSED. Both of them let the one
+    // exempt entry point do whatever it likes — the declaration allowlist
+    // because `applySettledCoveredDayPurchase` is on it, the export-surface
+    // sweep because it is skipped. So a training-keyed bonus written INSIDE it
+    //
+    //     purchase.coveredDays + (state.currentStreak >= 7 ? 1 : 0)
+    //
+    // passed every test in this file and in `streakEntitlement.test.ts`. That
+    // mutant is a covered day awarded for a streak, which is exactly what GDD
+    // §8.3E condition 3 forbids and exactly the shape §4.4 traces as the defect.
+    //
+    // What closes it is not another allowlist but an EXACT arithmetic: the
+    // coverage this function adds equals what the order says, over states that
+    // differ in every field a bonus could plausibly key off.
+    const orders = [1, 2, 5];
+    let checked = 0;
+    for (const streak of [0, 1, 6, 7, 30, 100]) {
+      for (const armed of [true, false]) {
+        for (const gapDays of [0, 3, 40]) {
+          for (const coveredDays of orders) {
+            const base: StreakState = {
+              ...stateWithRun(streak, DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW),
+              entitlementArmed: armed,
+              recoveryDayProtectionEnabled: armed,
+            };
+            const day = addDays(DAY_ZERO, gapDays);
+            const before = coveredDaysLeftInWindow(base);
+            const outcome = unwrap(
+              applySettledCoveredDayPurchase(base, day, {
+                orderId: `order-${checked}`,
+                coveredDays,
+                tender: 'chalk',
+              }),
+            );
+            const grew = outcome.state.entitlement.purchasedDaysLeft - base.entitlement.purchasedDaysLeft;
+            expect(grew, `streak ${streak}, armed ${armed}, gap ${gapDays}`).toBe(coveredDays);
+            expect(outcome.coveredDaysCredited).toBe(coveredDays);
+            // And the free side is untouched, except where the window turned
+            // over on its own — which is the calendar, not the purchase.
+            const turnedOver = entitlementWindowFor(base, day) > base.entitlement.windowIndex;
+            if (!turnedOver) {
+              expect(outcome.state.entitlement.coveredDaysLeft).toBe(base.entitlement.coveredDaysLeft);
+              expect(coveredDaysLeftInWindow(outcome.state)).toBe(before + coveredDays);
+            }
+            checked += 1;
+          }
+        }
+      }
+    }
+    expect(checked).toBe(6 * 2 * 3 * 3);
   });
 
   it('caps how far back a run can be rescued, whatever the balance', () => {
@@ -2280,20 +2556,78 @@ describe('what a purchased Recovery Day can reach', () => {
     }
   });
 
-  it('has no source to treat differently, because it has no grant at all', () => {
-    // WHAT THIS TEST USED TO BE: a sweep over every `RecoveryDaySource`,
-    // asserting a bought Recovery Day and an earned one produced identical
-    // states. GDD §4.2's Option 1 ruling removed the grant path entirely, so
-    // there is no source, no ledger and nothing that could carry a provenance.
-    // Coverage comes from a window every account has on the same terms.
+  it('HAS a source, and a bought covered day still does exactly what a free one does', () => {
+    // WHAT THIS TEST USED TO BE, TWICE OVER. First a sweep over every
+    // `RecoveryDaySource` asserting a bought Recovery Day and an earned one
+    // produced identical states; then, after GDD §4.2's Option 1 ruling deleted
+    // the grant path, the assertion that there was no source at all.
     //
-    // The replacement is the stronger assertion: no exported function can add
-    // coverage to a state at all, so a bought covered day cannot exist to
-    // behave differently from an earned one.
+    // GDD §8.3E IS RULED IN AND THERE IS A SOURCE AGAIN, so the second version
+    // is retired rather than quietly loosened. What replaces it is the FIRST
+    // version's claim, restated for the mechanic that exists now and checked
+    // through the shipped engine rather than through a table of sources: a
+    // covered day bought with money and a covered day the window handed over
+    // for free protect exactly the same absences.
+    //
+    // The provenance lives on the credit and not on the spend
+    // (`streakEntitlement.ts` §3b), and `streakEntitlement.test.ts` proves the
+    // split is invisible to every decision at every split of every sum. This is
+    // the end-to-end version of that, at the one place a player would feel it.
+    const boughtState = unwrap(
+      applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
+        orderId: 'order-1',
+        coveredDays: 2,
+        tender: 'chalk',
+      }),
+    ).state;
+    // The comparator: a lifter with the same TOTAL coverage, all of it free.
+    const freeState: StreakState = {
+      ...boughtState,
+      entitlement: {
+        windowIndex: boughtState.entitlement.windowIndex,
+        coveredDaysLeft:
+          boughtState.entitlement.coveredDaysLeft + boughtState.entitlement.purchasedDaysLeft,
+        purchasedDaysLeft: 0,
+      },
+    };
+    expect(boughtState.entitlement.purchasedDaysLeft).toBe(2);
+    expect(coveredDaysLeftInWindow(boughtState)).toBe(coveredDaysLeftInWindow(freeState));
+
+    for (let gap = 0; gap <= 8; gap += 1) {
+      const day = dayAfterGap(DAY_ZERO, gap);
+      expect(absenceOutcome(boughtState, day), `gap ${gap}`).toEqual(absenceOutcome(freeState, day));
+      expect(openDay(boughtState, day), `gap ${gap}`).toEqual(openDay(freeState, day));
+      expect(coveredDaysArmed(boughtState, day), `gap ${gap}`).toBe(coveredDaysArmed(freeState, day));
+      const fromBought = recordTrainingDay(boughtState, day);
+      const fromFree = recordTrainingDay(freeState, day);
+      expect(fromBought.ok).toBe(fromFree.ok);
+      if (fromBought.ok && fromFree.ok) {
+        // Everything except the entitlement's internal split is identical, and
+        // the split itself sums to the same number.
+        expect({ ...fromBought.value, state: null }, `gap ${gap}`).toEqual({
+          ...fromFree.value,
+          state: null,
+        });
+        expect(coveredDaysLeftInWindow(fromBought.value.state), `gap ${gap}`).toBe(
+          coveredDaysLeftInWindow(fromFree.value.state),
+        );
+      }
+    }
+
+    // The deleted names stay deleted.
     const exported = Object.keys(streakModule);
-    expect(exported.filter((name) => /grant|credit|buy|purchase/i.test(name))).toEqual([]);
     expect(exported).not.toContain('grantRecoveryDays');
     expect(exported).not.toContain('recoveryDayCapacity');
+    // And the CALLABLE surface's only concession to money is the one entry
+    // point. Restricted to functions on purpose: the allowlist constants that
+    // fence that entry point in are named for it and would otherwise read as
+    // four more ways to buy something.
+    const callable = exported.filter(
+      (name) => typeof (streakModule as Record<string, unknown>)[name] === 'function',
+    );
+    expect(callable.filter((name) => /grant|credit|buy|purchase|award|earn/i.test(name))).toEqual([
+      'applySettledCoveredDayPurchase',
+    ]);
   });
 
   it('has no spend entry point that could take a provenance', () => {
@@ -2432,14 +2766,30 @@ function simulate(
 
   for (let i = 0; i < attend.length; i += 1) {
     const day = addDays(DAY_ZERO, i);
-    // NO GRANT HOOK ANY MORE. `grantOn` and `grantSize` are kept in the
-    // signature because dozens of call sites pass them and because they
-    // document what this harness deliberately cannot do: GDD §4.2's Option 1
-    // ruling removed every path that adds coverage to a state, so a simulation
-    // cannot inject one either. `streakEntitlement.test.ts` models grants where
-    // it needs them, and pins the shapes that would reopen the defect.
-    void grantOn;
-    void grantSize;
+    // THE GRANT HOOK IS BACK, AS A PURCHASE (GDD §8.3E, ruled in). It was a
+    // documented no-op for the whole of the Option 1 rework, because nothing
+    // could add coverage to a state; `applySettledCoveredDayPurchase` can, so
+    // every simulation in this file that passes a `grantOn` now drives real
+    // purchased days through the field rather than through a `void`.
+    //
+    // THAT IS THE POINT OF RE-WIRING IT rather than leaving the sweeps on zero:
+    // every invariant below — the app-opening purity, the reported-consumption
+    // sweeps, the monotonicity properties — was proved against a
+    // `purchasedDaysLeft` that could not be anything but zero.
+    //
+    // THE BUY DAYS COME FROM THE CALLER'S ARRAY AND NOT FROM THE RUN, which is
+    // the safe keying: `grantOn` is a fixed calendar, so both members of any
+    // monotonicity pair buy on the same days and training cannot move the
+    // arrival. `streakEntitlement.test.ts` measures what happens when it can.
+    if (grantOn[i] === true) {
+      const bought = applySettledCoveredDayPurchase(state, day, {
+        orderId: `sim-${i}`,
+        coveredDays: grantSize,
+        tender: 'chalk',
+      });
+      if (!bought.ok) throw new Error(`day ${i}: the simulated purchase was refused (${bought.error.code})`);
+      state = bought.value.state;
+    }
     if (opensOn(opens, i, attend[i] === true)) state = open(state, day, true);
     if (attend[i] === true) {
       // WHAT THE DAY HAS AVAILABLE — see `coverageAvailableOn` for why it is
@@ -2659,32 +3009,57 @@ describe('the outcome does not depend on when the player opens the app', () => {
     expect(revealsUnderNever).toBe(0);
   });
 
-  it('OPEN-DAY SCHEDULE, WITH GRANTS AND LONG RANDOM CALENDARS', () => {
-    // Grants landing mid-history are the case the armed snapshot exists for: a
-    // Recovery Day that arrives during an absence must not rescue it, or the
-    // GDD §4.2 Gym Empire drop (which lands on a check-in) would make coverage
-    // depend on opening the app.
+  it('OPEN-DAY SCHEDULE, WITH PURCHASES AND LONG RANDOM CALENDARS', () => {
+    // Coverage landing mid-history is the case the armed snapshot exists for: a
+    // covered day that arrives during an absence must not rescue it, or the
+    // purchase would make an absence's fate depend on the moment somebody
+    // opened a store.
+    //
+    // THESE ARE REAL PURCHASES NOW (GDD §8.3E). The hook was a documented no-op
+    // for the whole of the Option 1 rework, so this test — the app-opening
+    // purity invariant, in full JSON-state equality — was passing over a
+    // `purchasedDaysLeft` that could not be anything but zero. It is re-run here
+    // with the field populated, which is what makes the equality mean
+    // something: the states compared now DIFFER from the empty case, and still
+    // agree with each other across four opening schedules.
     const rng = mulberry32(0x09e2_31f5);
     const initial = freshState();
     let trials = 0;
-    let grantsLanded = 0;
+    let purchasesLanded = 0;
+    let purchasedDaysSeen = 0;
+    let differedFromNoPurchase = 0;
 
     for (let trial = 0; trial < 300; trial += 1) {
       const length = 20 + Math.floor(rng() * 40);
       const attendance = 0.2 + rng() * 0.7;
       const attend = Array.from({ length }, () => rng() < attendance);
-      const grantOn = Array.from({ length }, () => rng() < 0.15);
-      grantsLanded += grantOn.filter(Boolean).length;
-      const baseline = simulate(attend, grantOn, initial, 'never', true);
+      const buyOn = Array.from({ length }, () => rng() < 0.15);
+      const never = Array.from({ length }, () => false);
+      purchasesLanded += buyOn.filter(Boolean).length;
+      const baseline = simulate(attend, buyOn, initial, 'never', true);
+      purchasedDaysSeen += baseline.state.entitlement.purchasedDaysLeft;
       for (const schedule of ['daily', 'on-training-days', 'every-third-day'] as const) {
-        const other = simulate(attend, grantOn, initial, schedule, true);
+        const other = simulate(attend, buyOn, initial, schedule, true);
+        // FULL JSON-STATE EQUALITY across opening schedules, purchases included.
+        expect(JSON.stringify(other.state)).toBe(JSON.stringify(baseline.state));
         expect(other.state).toEqual(baseline.state);
         expect(other.recoveryDaysSpent).toBe(baseline.recoveryDaysSpent);
+      }
+      // NOT VACUOUS: buying really did change the outcome somewhere, so the
+      // equality above is over histories the purchase actually reached.
+      const withoutBuying = simulate(attend, never, initial, 'never', true);
+      if (JSON.stringify(withoutBuying.state) !== JSON.stringify(baseline.state)) {
+        differedFromNoPurchase += 1;
       }
       trials += 1;
     }
     expect(trials).toBe(300);
-    expect(grantsLanded).toBeGreaterThan(100);
+    expect(purchasesLanded).toBeGreaterThan(100);
+    expect(purchasedDaysSeen, 'no run ever ended holding a purchased day').toBeGreaterThan(0);
+    expect(
+      differedFromNoPurchase,
+      'buying changed nothing anywhere, so this sweep is the zero-purchase sweep again',
+    ).toBeGreaterThan(0);
   });
 
   it('settling a break is a recording, not a decision: doing it early, late, twice or never is the same', () => {
@@ -3230,7 +3605,22 @@ describe('daily engagement is never worse than skipping — where that holds, an
 
       expect(diligent.state.currentStreak).toBeGreaterThanOrEqual(lazy.state.currentStreak);
       expect(diligent.state.longestStreak).toBeGreaterThanOrEqual(lazy.state.longestStreak);
-      expect(coveredDaysLeftInWindow(diligent.state)).toBeGreaterThanOrEqual(coveredDaysLeftInWindow(lazy.state));
+      // COMPARED ON THE DAY, NOT ON THE SNAPSHOT, and the change is forced
+      // rather than cosmetic. `grantOn` became a real purchase when GDD §8.3E
+      // was ruled in, and with purchased days actually in the field this line
+      // failed reading `coveredDaysLeftInWindow` — 2 against 5 — because a
+      // snapshot is stale at a window boundary and the two lifters' last events
+      // fall in different windows. That is the reading CLAUDE.md already names
+      // as the one that does not balance; it went unnoticed for as long as
+      // nothing could put a number in the field for it to be stale about.
+      //
+      // THE PROPERTY IS UNCHANGED AND IS NOT WEAKENED BY THE FIX: measured on
+      // the same 400 trials, what a day HAS AVAILABLE in its window is never
+      // lower for the lifter who trained more.
+      const lastDay = addDays(DAY_ZERO, length - 1);
+      expect(coverageAvailableOn(diligent.state, lastDay)).toBeGreaterThanOrEqual(
+        coverageAvailableOn(lazy.state, lastDay),
+      );
     }
     expect(casesChecked).toBeGreaterThan(350);
   });
@@ -4219,6 +4609,97 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(savesSeen).toBeGreaterThan(0);
     expect(signupGrantExpiriesSeen).toBeGreaterThan(0);
     expect(deadRunLossesSeen).toBeGreaterThan(0);
+  });
+
+  it('A PURCHASED DAY BEING CONSUMED IS A CONSUMPTION — reported, never silent, exhaustively', () => {
+    // GDD §12.3's "reported, never silent", extended to the field GDD §8.3E
+    // made live. The sweep above runs at `purchasedDaysLeft: 0` in every state
+    // it visits, so its balance equation has never once had to account for a
+    // bought covered day leaving the window.
+    //
+    // THE CASE THAT ONLY EXISTS WITH PURCHASES IN THE FIELD. A COVERING absence
+    // can draw at most `MAX_COVERED_DAYS_PER_ABSENCE`, which the free window
+    // alone can pay at the shipped tuning — so the free and bought counters are
+    // only ever spent together by a DOOMED absence, which burns everything left.
+    // That is the case a player would most notice going unreported: they paid
+    // for coverage, the run died anyway, and the purchase went with it.
+    //
+    // LENGTH 10 RATHER THAN 12, AND THAT IS A SUITE-TIME TRADE STATED RATHER
+    // THAN HIDDEN. The sweep above costs about seven seconds; adding a
+    // purchased-days axis to it would have doubled that. Ten days is still
+    // exhaustive over its own length — every one of the 1024 calendars — and it
+    // is long enough to reach a doomed absence from a live run, which the
+    // counters below prove rather than assume.
+    const LENGTH = 10;
+    const STARTS: readonly (readonly [number, number])[] = [
+      [0, 1], // nothing free, one bought — the purchase alone holds the run
+      [1, 2], // both counters live, so a burn has to span them
+      [RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW, 3], // a full window plus a bundle
+    ];
+    let sessionsChecked = 0;
+    let burnsSpanningBothCounters = 0;
+    let savesDrawingOnAPurchase = 0;
+
+    for (const settleOnOpen of [true, false]) {
+      for (const [free, purchased] of STARTS) {
+        const initial: StreakState = {
+          ...freshState(),
+          entitlement: { windowIndex: 0, coveredDaysLeft: free, purchasedDaysLeft: purchased },
+          entitlementArmed: true,
+        };
+        for (let mask = 0; mask < exhaustiveCalendarCount(LENGTH); mask += 1) {
+          const schedule = exhaustiveCalendar(mask, LENGTH);
+          let state = initial;
+          for (let i = 0; i < LENGTH; i += 1) {
+            const day = addDays(DAY_ZERO, i);
+            if (settleOnOpen && openDay(state, day).kind === 'streak-broken') {
+              state = unwrap(settleBrokenStreak(state, day)).state;
+            }
+            if (schedule[i] !== true) continue;
+
+            const before = state;
+            const purchasedBefore = before.entitlement.purchasedDaysLeft;
+            const outcome = unwrap(recordTrainingDay(before, day));
+            const saved = outcome.recoveryDaySave?.recoveryDaysSpent ?? 0;
+            const lost = outcome.recoveryDaysLostToTheAbsence;
+            sessionsChecked += 1;
+
+            // THE SAME BALANCE EQUATION, now over a window that holds bought
+            // days as well as free ones. It is stated on the SUM because that is
+            // what a lifter has; the split is reported separately below.
+            expect(coveredDaysLeftInWindow(outcome.state)).toBe(
+              coverageAvailableOn(before, day) - (saved + lost) + outcome.recoveryDaysGranted,
+            );
+
+            // AND NO BOUGHT DAY LEAVES WITHOUT A REPORT. The purchased counter
+            // can fall for exactly two reasons — it was spent, in which case the
+            // outcome says so, or its window turned over, which is the calendar
+            // and is announced by `expiresAfterDay` at the point of sale.
+            const purchasedAfter = outcome.state.entitlement.purchasedDaysLeft;
+            const windowTurned = entitlementWindowFor(before, day) > before.entitlement.windowIndex;
+            if (purchasedAfter < purchasedBefore && !windowTurned) {
+              expect(
+                saved + lost,
+                `day ${i}: purchased fell ${purchasedBefore} -> ${purchasedAfter} with nothing reported`,
+              ).toBeGreaterThan(0);
+              // The drop can never exceed what was reported in total.
+              expect(purchasedBefore - purchasedAfter).toBeLessThanOrEqual(saved + lost);
+              if (lost > 0) burnsSpanningBothCounters += 1;
+              if (saved > 0) savesDrawingOnAPurchase += 1;
+            }
+            state = outcome.state;
+          }
+        }
+      }
+    }
+
+    const SESSIONS_PER_START = LENGTH * 2 ** (LENGTH - 1);
+    expect(sessionsChecked).toBe(2 * STARTS.length * SESSIONS_PER_START);
+    // ANTI-VACUITY, and it is the reason for the `[0, 1]` starting state: with
+    // nothing free in the window, a covering absence has to draw on the
+    // purchase, so both consumption kinds really reach the bought counter.
+    expect(burnsSpanningBothCounters, 'no doomed absence ever burned a purchased day').toBeGreaterThan(0);
+    expect(savesDrawingOnAPurchase, 'no save ever drew on a purchased day').toBeGreaterThan(0);
   });
 
   it('EVERY PENDING CONSUMPTION IS ANNOUNCED BEFORE IT HAPPENS, on every opening kind', () => {

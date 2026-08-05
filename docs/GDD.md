@@ -649,10 +649,19 @@ mechanic; §4.4 has the verification the ruling was conditional on.
 >
 > **What the pin does not cover, stated rather than assumed:** `streak.ts` reads
 > `RECOVERY_ENTITLEMENT` as a module constant, so it can only be driven at the
-> shipped tuning. The battery's window-length and entitlement-size grids, its
-> purchase paths and its negative controls remain `drive`-only, and they reach
-> the shipped engine only through the shipped tuning being one point in each
-> grid — which `streak.test.ts` asserts directly.
+> shipped tuning. The battery's window-length and entitlement-size grids and its
+> negative controls remain `drive`-only, and they reach the shipped engine only
+> through the shipped tuning being one point in each grid — which
+> `streak.test.ts` asserts directly.
+>
+> **The purchase path used to be on that list and no longer is.** When §8.3E was
+> ruled in, `drive()` grew a purchase and the pin did not, which would have made
+> §8.3E's table a statement about the reference composition rather than about the
+> shipped game — the exact defect item 3 above records, arriving a second time
+> through a new door. The pin now runs both engines with purchased days in the
+> field, on both the calendar-funded and the training-funded arm, and asserts
+> that buying changed some outcome so the agreement is not agreement about
+> nothing.
 
 **Why.** RULE 2 above debits a doomed absence the whole armed holding, which is
 what makes splitting a doomed absence cost the same as leaving it whole — and it
@@ -1045,7 +1054,9 @@ those two produced, with the parameters in `ENTITLEMENT_VERIFICATION`
 | five fixed attendance rates (0.1–0.95) the seeded generator does not reach | **0** |
 | six window lengths (1, 7, 13, 30, 31, 365) | **0** |
 | five entitlement sizes (0, 1, 2, 3, 5), per-absence cap above and below | **0** |
-| purchase path, three fixed grant schedules, one on a window boundary | **0** |
+| free grant path, three fixed calendar schedules, one on a window boundary | **0** |
+| **purchase path, calendar-funded, 40 / 60 / 80 / 100 days, purchased days populated** | **0** |
+| **purchase path, achievement-funded but with the purchase schedule FROZEN** | **0** |
 | adversarial hill-climb, random restarts, largest deficit reachable | **0** |
 
 **And the negative controls, which run first and must be non-zero**, because a
@@ -1057,7 +1068,18 @@ a harness that is not looking:
 | a doomed absence consumes nothing (RULE 2 dropped) | 1051 at 60 days, 673 at 100 | 20 |
 | a covered day granted at a streak length | 54 at 100 days | 19 |
 | a covered day granted every N sessions | 1156 at 100 days | 54 |
+| **a covered day BOUGHT with a currency training earns** | **105 / 305 / 733 / 785 at 40 / 60 / 80 / 100** | **54** |
 | the adversarial search, pointed at the broken variant | finds one | — |
+
+**The fourth control is new, and it is the one §8.3E is conditional on.** It is
+matched against the frozen row above: same purse, same price, same rule, same
+seeds, and a bit-identical lazy member. The only difference is whether the
+diligent lifter's purchase days are frozen from the lazy run or recomputed from
+their own training. **The lifter who buys MORE is the one who is beaten more
+often** — 509,581 covered days bought against 504,316 at 100 days — which rules
+out "they simply had a smaller bank", the artifact that made an earlier,
+unmatched cut of this measurement read the wrong way round. §8.3E has the full
+table and the consequence for §8.2's Chalk row.
 
 **The two things the battery changed about the ruling.** Neither was in the
 ruling as written, and both are load-bearing:
@@ -1486,8 +1508,36 @@ against an actual agreement.
 | Currency | Type | Earned | Spent on |
 |---|---|---|---|
 | **Gym Bucks** | Soft | Idle mode, check-ins, achievements | Cosmetics, gym decor, minor convenience |
-| **Chalk** | Premium | Purchased; small trickle from rewarded ads / rare achievements | Cosmetics, timer skips, **Extra Covered Days** at premium rate |
+| **Chalk** | Premium | Purchased; small trickle from rewarded ads and from **calendar-dated** events (see below) | Cosmetics, timer skips, **Extra Covered Days** at premium rate |
 | ~~Recovery Days~~ | — | — | **Removed by §4.2's Option 1 ruling.** Coverage is a rolling entitlement now, not a held balance. |
+
+**CHALK MAY NOT BE EARNED FROM ANYTHING TRAINING REACHES, AND THAT IS A
+MEASUREMENT.** This row used to read "small trickle from rewarded ads / **rare
+achievements**". Achievements are reached by playing, and Chalk buys Extra
+Covered Days — so a lifter who buys as soon as they can afford it has a
+**covered-day arrival their own training moves**, which is the defect §4.4
+traces, one hop further out than the rule that closed it.
+
+§8.3C already re-keyed the season pass so that it pays covered days **by week,
+never by tier**. That closes the one-hop path and says nothing at all about the
+two-hop one, because the pass also pays **Chalk** — and a tier unlocks by
+playing. Measured on the shipped mechanic with the purchase path live: a covered
+day funded by achievement-earned Chalk gives **105 / 305 / 733 / 785 violating
+pairs at 40 / 60 / 80 / 100 days, worst deficit 54**, against **0** for the same
+purse funded on the calendar. §8.3E has the matched design and the full table.
+
+**So the rule that binds §8.3C's covered days binds §8.3C's Chalk too**, and it
+binds every future achievement table: a currency that buys coverage is coverage.
+The safe shapes for a free Chalk trickle are a **rewarded ad** (the player
+chooses when, and one extra trained day does not move it) and a **calendar-dated
+event** — "week 3 of the season", "the first of the month". The unsafe shape is
+anything counted in sessions, streak days or unlocked tiers.
+
+*Not yet enforceable in code, and said plainly rather than implied.* Nothing in
+the codebase pays Chalk yet, so there is no earning table for a test to fail
+against. What exists is the negative control in `streakEntitlement.test.ts`,
+which fails if the training-keyed shape ever stops violating — so the day an
+earning table is written, the measurement it has to satisfy is already there.
 
 **What replaced the Recovery Day, and why the replacement is not just the same
 thing renamed.** A Recovery Day was a *stock*: bought, banked, carried
@@ -1506,10 +1556,12 @@ different amounts are both left on zero and the entitlement refreshes them
 identically at the next boundary. The expiry is a product decision and it is
 §8.3E's open question, not a constraint the mechanic imposes.
 
-**PROPOSED, NOT RULED — this table's bottom two rows need a human.** §4.2's
-Option 1 ruling removed a currency; what a player may buy instead is a
-monetisation decision and is written here as a proposal with its measurements
-attached, in the same way RULE 2's alternatives were. See §8.3E.
+**RULED IN, WITH CONDITIONS — see §8.3E.** §4.2's Option 1 ruling removed a
+currency; what a player may buy instead was written here as a proposal with its
+measurements attached, and a human has since ruled it in subject to three
+conditions on provenance, on the invariants and on what may award a purchased
+day. All three are discharged in §8.3E. The expiring-versus-bankable question is
+still open and is still a product decision rather than a safety one.
 
 ### 8.3 Revenue Pillars
 
@@ -1548,20 +1600,39 @@ the season" is safe and "tier 4" is not. `streakEntitlement.test.ts` pins all
 three, the two bad ones as negative controls, so a future earning table that keys
 off progress fails a test rather than a playtest.
 
+**AND THE SAME RULE BINDS THE PASS'S CHALK, WHICH THE RULE AS WRITTEN DID NOT
+REACH.** The paragraph above was written about the reward this track calls a
+*covered day*. This track also pays *Chalk*, and Chalk buys Extra Covered Days
+(§8.2) — so **Chalk on a tier is coverage on a tier, two hops instead of one**,
+and the by-week rule protected only the direct grant. That gap was real: measured
+with the purchase path live, a covered day funded by tier-earned Chalk gives
+**105 / 305 / 733 / 785 violating pairs at 40 / 60 / 80 / 100 days**, against
+**0** for the identical purse paid out on the calendar.
+
+So **every reward on this track that can turn into a covered day is paid by
+week**, not by tier: covered days and Chalk alike. Cosmetics may sit on tiers,
+because a singlet does not buy protection. The general form of the rule is in
+§8.2: *a currency that buys coverage is coverage.*
+
 **D. Ads (optional, decide after playtesting)**
 
 Rewarded-only. Never interstitial or forced — forced ads in a daily-habit app
 will tank retention. Consider skipping entirely if pass + cosmetics perform.
 
-**E. Extra Covered Days — PROPOSED, NOT RULED**
+**E. Extra Covered Days — RULED IN, WITH CONDITIONS**
 
-The purchase path that replaces the Recovery Day. Written out here because
-§4.2's Option 1 ruling removed a currency and an implicit removal of the
-monetisation with it would be a design decision taken by omission.
+The purchase path that replaces the Recovery Day, ruled in subject to three
+conditions: that a purchased day is provenance-tracked as a genuinely distinct
+source, that the §4.4 invariants still hold with purchased days *actually
+flowing through the field* rather than structurally present and zeroed, and that
+a purchased day is never grantable, earnable or awarded by any in-game action —
+enforced, not merely true by the current absence of a code path.
 
 **The product.** One Extra Covered Day widens the current window's entitlement
 by one. Flat price in Chalk, or a small bundle at a flat price. It expires at the
-end of the window it was bought in.
+end of the window it was bought in. `streak.applySettledCoveredDayPurchase` is
+the only way it reaches the mechanic; it takes a **settled order**, so no game
+event can call it, and it refuses a backdated one.
 
 **Checked against the three rules it has to satisfy:**
 
@@ -1572,39 +1643,117 @@ end of the window it was bought in.
   the per-absence ceiling is out of money's reach by construction — buying ten
   covered days still does not make a five-day absence survivable, because
   `MAX_COVERED_DAYS_PER_ABSENCE` caps what one absence may draw regardless of
-  what the window holds. `streakEntitlement.test.ts` asserts exactly that.
-- **No gacha (§12.3).** Flat price, fixed quantity, no pull, no rarity.
-- **Never punish daily engagement (§12.3).** This is the trap RULE 2 fell into,
-  so it is measured rather than argued: with a covered day granted on each of
-  three fixed calendar schedules — including one landing exactly on a window
-  boundary — the property holds on all four figures at 100 days. **A purchase
-  cannot create a monotonicity violation, provided it lands on a calendar day.**
+  what the window holds. Asserted twice: against the entitlement in isolation,
+  and **end to end through the shipped engine**, where the second was needed
+  because the first fixture held no purchased days and a mutant that raised the
+  draw for anyone holding one left it green.
+- **No gacha (§12.3).** Flat price, fixed quantity, no pull, no rarity. The
+  quantity is on the order and there is no randomness anywhere in the module.
+- **Never punish daily engagement (§12.3).** Measured, and the measurement
+  changed the design — see the table below.
 
-**What a human still has to decide, and it is not a detail.** An expiring
-consumable is a weaker product than a bankable one: a lifter who buys a covered
-day and then does not miss a day has spent money on nothing. That is honest, and
-it may also be bad.
+#### The measurement, and the condition it failed
 
-**And the better product is measurably available.** A bankable Extra Covered Day
-— accumulating across windows, never expiring — was checked against the same
-battery and is clean: 0 violating pairs on all four figures across three purchase
-schedules, including one with ten purchases and one with six bought on
-consecutive days. So the choice between expiring and bankable is a **pricing and
-feel decision, not a safety one**. The shipped module expires, because that is
-the conservative default until somebody rules; switching it is a small change to
-`grantCoveredDays` and the test that pins the alternative already exists.
+**A purchase is safe when the calendar decides the day it lands on, and unsafe
+when the lifter's training does.** Three matched arms, one purse, one price, one
+rule, a bit-identical lazy member; the only difference is what the *diligent*
+lifter's purchase schedule is computed from.
+
+| arm | how Chalk arrives | 40 | 60 | 80 | 100 | worst deficit |
+|---|---|---|---|---|---|---|
+| **calendar** | on the calendar only | **0** | **0** | **0** | **0** | **0** |
+| **frozen** | on achievements, purchase days frozen from the lazy run | **0** | **0** | **0** | **0** | **0** |
+| **responsive** | on achievements, recomputed from own training | 105 | 305 | 733 | 785 | **54** |
+
+Violating pairs on `currentStreak`; the lifetime-best row runs 47 / 154 / 349 /
+480 on the responsive arm and **0** on the other two. Five seeds, 400 schedules
+per seed, every single-day superset — 36,820 to 91,091 pairs per cell. The
+committed tests run at 150 schedules per seed for suite time
+(`COVERED_DAY_PURCHASE_SWEEP.SCHEDULES_PER_SEED`) and measure 59 / 108 / 203 /
+484, which is the same finding at a smaller population.
+
+**The matching is what makes this readable, and an earlier unmatched cut of it
+read the wrong way round.** That version compared "buy every 7 days" against
+"buy when affordable" and found the training-keyed model looking *better* — an
+artifact, because the calendar model also bought roughly twice as many covered
+days and a bigger bank hides violations for reasons unrelated to keying. Here
+the two arms buy 12,338 covered days on the lazy side in both, and **the
+diligent lifter in the responsive arm buys MORE than in the frozen arm — 509,581
+against 504,316 — and is beaten more often.** The extra day they earned by
+training is what beats them.
+
+**Every one of those 785 violations is created rather than merely uncaught.**
+With no purchase at all the same population measures zero, so the ratio of
+"violations added to violations removed" is not 2.3 or any other number — the
+denominator is empty. A training-keyed purchase on this engine can only add.
+
+**The consequence is §8.2's Chalk row**, which used to pay a trickle for "rare
+achievements" and no longer may. A currency that buys coverage is coverage.
+
+#### Expiring or bankable — still the human's call, and still not a safety one
+
+An expiring consumable is a weaker product than a bankable one: a lifter who
+buys a covered day and then does not miss a day has spent money on nothing. That
+is honest, and it may also be bad.
+
+**Both were measured again with the purchase path live, and they behave the
+same.** A bankable Extra Covered Day — accumulating across windows, never
+expiring — is clean on exactly the arms the expiring one is clean on (calendar
+and frozen, 0 everywhere) and violates on exactly the arm it violates on
+(responsive: 77 / 275 / 696 / 681). Its worst deficit is *smaller* — 14 against
+54 — which is a difference in severity, not in kind. So switching the product
+buys no safety and costs none, and the choice stays a pricing and feel decision.
+The shipped module expires, because that is the conservative default until
+somebody rules; switching it is a small change to `creditCoveredDays` and the
+test that models the alternative already exists.
+
+**One thing the switch WOULD change, and it is worth knowing before choosing.**
+Under the expiring product the split between the free counter and the bought one
+is provably **unobservable** — `(b, p)` and `(b + p, 0)` behave identically
+forever, because both counters reset together at a window boundary, which is
+what lets a purchase be provenance-tracked without the provenance being a
+mechanic. Under a bankable day the bought counter survives a boundary and the
+split becomes observable. That does not make it unsafe — it is measured — but it
+does mean the pay-to-win argument would need re-reading rather than re-citing.
 
 The one option to be careful with is letting the purchase **name the window it
 applies to**. "Choose when it applies" is a decision taken *during* an absence,
 which is the app-opening dependence §4.2 spent a whole rework deleting. **Not
-attempted, and not recommended without measuring it first.**
+attempted, and not recommended without measuring it first.** What ships instead
+is that a purchase applies to the window its own day falls in, and backdating is
+refused rather than clamped.
+
+#### How condition 3 is enforced
+
+"Nothing awards a purchased day" is held by **three** guards, because
+mutation-testing the first two found a hole they left in each other:
+
+1. **A declaration allowlist keyed to the field, not the vocabulary**
+   (`PURCHASED_DAY_TOUCHING_FUNCTIONS`). Every top-level declaration in the two
+   streak modules that so much as names a purchased day has to be on it, exact in
+   both directions. The blocklist it replaces — banning names containing *grant*,
+   *credit*, *buy* — could not catch `markStreakMilestone` handing one out,
+   because that mutant uses none of those words. This one does.
+2. **A behavioural sweep of the whole export surface.** Every exported function,
+   called every way it can be called, starting from a state that *holds*
+   purchased days, must never return one more than it was given.
+3. **An exact arithmetic on the one exempt entry point.** Guards 1 and 2 both let
+   `applySettledCoveredDayPurchase` do as it likes — one because it is on the
+   list, the other because it is skipped. A training-keyed bonus written *inside*
+   it (`purchase.coveredDays + (currentStreak >= 7 ? 1 : 0)`) passed all 175
+   tests in both files. That is a covered day awarded for a streak, arriving
+   through the one door left open. It now fails: the coverage a purchase adds
+   equals what the order says, across states differing in streak length, armed
+   state and absence length.
 
 **Also unresolved: the free earning path is gone.** §4.2's old table paid
 Recovery Days at signup, at streak milestones, for achievements and from Gym
 Empire drops. Milestones and achievements are progress-keyed, so they cannot pay
-covered days at all. What a free player gets now is the entitlement itself —
-which is more than the old free path gave a lapsed lifter and less than it gave a
-diligent one. Whether that is the right trade is a human's call.
+covered days at all — and, per the measurement above, cannot pay the *currency*
+that buys them either. What a free player gets now is the entitlement itself,
+plus whatever §8.3C pays by week — which is more than the old free path gave a
+lapsed lifter and less than it gave a diligent one. Whether that is the right
+trade is a human's call.
 
 ### 8.4 Pricing Anchor
 

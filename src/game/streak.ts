@@ -189,16 +189,16 @@
  * 4. THE PAY-TO-WIN LINE, EXPRESSED IN THE TYPES (GDD §8.1, §12.3)
  * ===========================================================================
  *
- * COVERAGE IS NOT PURCHASABLE TODAY. GDD §4.2's Option 1 ruling replaced the
- * purchasable Recovery Day with a window entitlement every account has on the
- * same terms, and GDD §8.3E's Extra Covered Day — the product that would make
- * it purchasable again — is PROPOSED AND NOT RULED. So this module exports
- * nothing that can add coverage to a state, and `streak.test.ts` checks that
- * rather than trusting it.
+ * COVERAGE IS PURCHASABLE AGAIN, AND THAT REVERSES WHAT THIS SECTION USED TO
+ * SAY. GDD §4.2's Option 1 ruling replaced the purchasable Recovery Day with a
+ * window entitlement every account has on the same terms; GDD §8.3E's Extra
+ * Covered Day is now RULED IN, and `applySettledCoveredDayPurchase` is the one
+ * function in this module that can add coverage to a state. It takes a settled
+ * order, so it cannot be reached from a game event.
  *
- * THE FOUR MECHANISMS BELOW ARE KEPT ANYWAY, because §8.3E may yet be ruled in
- * and because they are what makes "it only protects a streak" checkable rather
- * than promised. All four are mechanical:
+ * THE FOUR MECHANISMS BELOW ARE WHAT MAKES "IT ONLY PROTECTS A STREAK"
+ * CHECKABLE RATHER THAN PROMISED, and they matter more now that money can reach
+ * the mechanic than they did when nothing could. All four are mechanical:
  *
  *  (a) THE STATE ALLOWLIST. `STREAK_FACT_KEYS` is the complete list of fields
  *      `StreakState` may have. `RECOVERY_DAY_REACH_IS_STREAK_ONLY` is a
@@ -214,17 +214,30 @@
  *      `RecoveryDaySave`, the only thing a spent Recovery Day ever reports.
  *      Every field on it is a streak fact or a description of the spend itself.
  *
- *  (c) NO PROVENANCE TO BRANCH ON. `RecoveryDaySource` exists on the *grant*
- *      existed on the deleted grant path for receipts and analytics and was
- *      thrown away immediately. THERE IS NO GRANT PATH AT ALL NOW, so the
- *      property got stronger again rather than going away: `recordTrainingDay
- *      (state, day)` is still the only function that can draw on coverage and
- *      it has no parameter that could carry a provenance, and there is nothing
- *      that could put one on a state either. The one field that names a
- *      provenance — `EntitlementState.purchasedDaysLeft`, which
- *      `streakEntitlement.afterSession` spends AFTER the granted entitlement —
- *      is unreachable from here and pinned at zero by `streak.test.ts`, which
- *      names the exception rather than scanning around it.
+ *  (c) PROVENANCE ON THE CREDIT, NONE ON THE SPEND. There IS a provenance now —
+ *      `streakEntitlement.COVERAGE_SOURCES` — and this paragraph used to say
+ *      there must never be one, so the reversal is stated rather than quietly
+ *      dropped.
+ *
+ *      THE OLD RULE WAS ABOUT THE SPEND PATH AND IT IS UNCHANGED.
+ *      `recordTrainingDay(state, day)` is still the only function that can draw
+ *      on coverage, it still has no parameter that could carry a provenance,
+ *      and `resolveEntitlement` still cannot see which counter a covered day
+ *      sits in — `coveredDaysAvailable` sums them and every decision reads the
+ *      sum. A bought covered day and a free one therefore DO exactly the same
+ *      thing, which is the property the no-pay-to-win rule requires.
+ *
+ *      WHAT THE OLD RULE COULD NOT SAY is "nothing may award a purchased day",
+ *      because with no provenance there was no such thing as a purchased day to
+ *      forbid awarding. That is GDD §8.3E's condition 3 and it needs the split
+ *      to exist. See §3b of `streakEntitlement.ts`, and
+ *      `PURCHASED_DAY_TOUCHING_FUNCTIONS` for the enforcement.
+ *
+ *      AND FOR THE SHIPPED EXPIRING PRODUCT THE SPLIT IS UNOBSERVABLE, proved
+ *      over every split at every sum rather than argued: `(b, p)` and
+ *      `(b + p, 0)` behave identically forever, because both counters reset
+ *      together at a window boundary. A bankable purchased day would change
+ *      that, and GDD §8.2 records it as the open product question.
  *
  *  (d) NOTHING TO SELL. This module exports no streak multiplier, no
  *      streak-derived load bonus, no "training pace" figure and no session
@@ -572,9 +585,11 @@ import {
   RECOVERY_ENTITLEMENT,
   afterSession,
   coveredDaysAvailable,
+  creditCoveredDays,
   freshEntitlement,
   resolveEntitlement,
   windowIndexOf,
+  windowStartDay,
   type EntitlementState,
 } from './streakEntitlement';
 
@@ -929,12 +944,11 @@ export interface StreakState {
    * function of the calendar too — `coveredDaysAvailable` reads it off the day,
    * not off a visit.
    *
-   * `purchasedDaysLeft` IS ALWAYS ZERO IN EVERY SHIPPED PATH. GDD §8.3E's Extra
-   * Covered Day is PROPOSED AND NOT RULED, so this module exports nothing that
-   * can credit one; the field exists because `streakEntitlement.ts` is verified
-   * with it. `streak.test.ts` asserts no exported function can make it
-   * non-zero, so "the purchase path is not implemented" is checked rather than
-   * promised.
+   * `purchasedDaysLeft` IS LIVE (GDD §8.3E, ruled in). Exactly one exported
+   * function can raise it — `applySettledCoveredDayPurchase`, which takes a
+   * settled order — and `streak.test.ts` drives every other entry point over a
+   * long fuzzed history asserting it never moves, so "nothing in the game
+   * awards a purchased day" is checked rather than promised.
    */
   readonly entitlement: EntitlementState;
   /**
@@ -986,6 +1000,8 @@ export type StreakErrorCode =
   | 'NOTHING_TO_SETTLE'
   /** Grant amount was not a positive whole number. */
   | 'INVALID_GRANT'
+  /** A settled covered-day purchase was malformed (GDD §8.3E). */
+  | 'INVALID_PURCHASE'
   /** A migration tried to set a signup day later than a recorded session. */
   | 'SIGNUP_DAY_AFTER_TRAINING';
 
@@ -1734,6 +1750,256 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
     recoveryDaysGranted: 0,
     isNewLongestStreak: streakAfter > state.longestStreak,
     armedForNextAbsence,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// GDD §8.3E — the Extra Covered Day purchase. The ONE way money reaches this
+// module, and the only function in it that can raise `purchasedDaysLeft`.
+// ---------------------------------------------------------------------------
+
+/**
+ * What a covered day may be bought WITH. No third option, and in particular no
+ * `'earned'`, `'milestone'` or `'achievement'` member: GDD §8.3E's condition 3
+ * says a purchased covered day is never earnable, and the way to keep that true
+ * is to leave the vocabulary for earning it out of the type.
+ *
+ * Both members are real payments. A caller that wants to hand a player a
+ * covered day for free wants `creditCoveredDays(..., 'window-entitlement')` and
+ * a calendar-keyed day to hand it on — see GDD §8.3C.
+ */
+export const COVERED_DAY_TENDERS = ['chalk', 'real-money'] as const;
+
+export type CoveredDayTender = (typeof COVERED_DAY_TENDERS)[number];
+
+/**
+ * THE COMPLETE SET OF WAYS A TENDER MAY ARRIVE IN A PLAYER'S HANDS — and there
+ * is deliberately no `'training'` member.
+ *
+ * WHY THIS EXISTS RATHER THAN JUST THE LIST ABOVE. The list on its own is a
+ * list: adding `'milestone'` to it costs one word, and `applySettledCovered
+ * DayPurchase` would then accept a covered day awarded for a streak while every
+ * other guard in this codebase stayed green. That is precisely "true by the
+ * current absence of a code path" rather than enforced, which is what GDD
+ * §8.3E's condition 3 rules out.
+ *
+ * So every tender has to declare how it reaches the player, and the only
+ * answers available are ones training cannot move:
+ *
+ *   - `'payment'` — real money. A player buys when they choose to; one extra
+ *     trained day does not move the day they choose.
+ *   - `'calendar-or-payment'` — bought, or trickled on a calendar-dated event
+ *     or a rewarded ad. GDD §8.2 has the measurement that forbids the third
+ *     option, and it forbids it one hop out: a currency that buys coverage IS
+ *     coverage, so Chalk earned for an achievement is a covered day earned for
+ *     an achievement.
+ *
+ * ADDING A TRAINING-KEYED TENDER THEREFORE COSTS THREE VISIBLE EDITS, and the
+ * escalation was walked rather than assumed: a new tender fails `tsc` at the
+ * map below until it declares an arrival; declaring `'training'` fails `tsc`
+ * again until `TENDER_ARRIVALS` is widened; widening it fails `streak.test.ts`,
+ * which rejects any arrival whose name says training, streak, session,
+ * milestone, achievement, tier, progress or earn.
+ *
+ * THE FOURTH STEP GETS THROUGH, and it is named rather than glossed: an arrival
+ * called `'q7'` satisfies all three. The vocabulary check is a floor. The
+ * load-bearing part is that the answer has to be written down at all, here,
+ * under the paragraph saying why it may not be a training one.
+ */
+export const TENDER_ARRIVALS = ['payment', 'calendar-or-payment'] as const;
+
+export type TenderArrival = (typeof TENDER_ARRIVALS)[number];
+
+/** Exhaustive by `satisfies`: a new tender cannot ship without an answer. */
+export const COVERED_DAY_TENDER_ARRIVAL = {
+  chalk: 'calendar-or-payment',
+  'real-money': 'payment',
+} as const satisfies Readonly<Record<CoveredDayTender, TenderArrival>>;
+
+/**
+ * THE COMPLETE SET OF FIELDS A SETTLED PURCHASE MAY CARRY. Same mechanism as
+ * `STREAK_FACT_KEYS`, applied to the one input money arrives on: adding
+ * `streakBonusDays` here is a visible edit under this comment, and adding it to
+ * the type without adding it here fails `tsc`.
+ */
+export const COVERED_DAY_PURCHASE_KEYS = ['orderId', 'coveredDays', 'tender'] as const;
+
+export type CoveredDayPurchaseKey = (typeof COVERED_DAY_PURCHASE_KEYS)[number];
+
+/**
+ * A purchase the SERVER HAS ALREADY SETTLED. This module does not price
+ * anything, does not hold a wallet and cannot take payment — it applies a
+ * receipt. Keeping the price out of here is the same call §4 of the header
+ * makes: a currency balance in the same module as the streak is the coupling
+ * worth avoiding.
+ *
+ * NO GACHA (GDD §12.3), STRUCTURALLY. `coveredDays` is a fixed quantity on the
+ * order, there is no randomness anywhere in this file, and applying the same
+ * order to the same state always gives the same result. There is no pull, no
+ * rarity and nothing to roll.
+ */
+export interface SettledCoveredDayPurchase {
+  /** The server-side order this applies. Reported back so a receipt matches. */
+  readonly orderId: string;
+  /** Covered days bought. Flat quantity at a flat price; never rolled. */
+  readonly coveredDays: number;
+  /** What it was paid with. */
+  readonly tender: CoveredDayTender;
+}
+
+/** Compile-time assertion, same mechanism as `RECOVERY_DAY_REACH_IS_STREAK_ONLY`. */
+export const COVERED_DAY_PURCHASE_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
+  SettledCoveredDayPurchase,
+  CoveredDayPurchaseKey
+> = true;
+
+/**
+ * THE COMPLETE SET OF FIELDS A PURCHASE MAY REPORT. Every entry is either a
+ * description of the purchase itself or a coverage figure — and the last two
+ * are the pay-to-win receipt, reporting the two numbers the purchase did NOT
+ * move.
+ */
+export const COVERED_DAY_PURCHASE_OUTCOME_KEYS = [
+  'state',
+  'orderId',
+  'tender',
+  'coveredDaysCredited',
+  'coveredDaysAvailableAfter',
+  'expiresAfterDay',
+  'currentStreakUnchanged',
+  'longestStreakUnchanged',
+] as const;
+
+export type CoveredDayPurchaseOutcomeKey = (typeof COVERED_DAY_PURCHASE_OUTCOME_KEYS)[number];
+
+/**
+ * What applying a settled purchase did. REPORTED, NEVER SILENT: a player who
+ * spends money is told exactly what landed, how much coverage they now have,
+ * and the day it stops being worth anything.
+ */
+export interface CoveredDayPurchaseOutcome {
+  readonly state: StreakState;
+  readonly orderId: string;
+  readonly tender: CoveredDayTender;
+  /** Covered days that actually landed. Equal to `purchase.coveredDays`. */
+  readonly coveredDaysCredited: number;
+  /** Coverage in this window afterwards — the free side and the bought side. */
+  readonly coveredDaysAvailableAfter: number;
+  /**
+   * THE LAST DAY THIS PURCHASE IS WORTH ANYTHING. The shipped product expires
+   * with the window it was bought in, so a store that does not say this is
+   * selling something the player will misunderstand. GDD §8.2 records that a
+   * BANKABLE day is equally monotone-safe and that the choice between them is a
+   * product decision — if it is ever made the other way, this field goes away
+   * rather than growing a null.
+   */
+  readonly expiresAfterDay: StreakDay;
+  /**
+   * THE PAY-TO-WIN RECEIPT (GDD §8.1, §12.3). A purchase decides whether an
+   * absence ends a run; it never adds to a run. These two are carried out of
+   * the function so the property is reported at the call site rather than only
+   * asserted in a test.
+   */
+  readonly currentStreakUnchanged: number;
+  readonly longestStreakUnchanged: number;
+}
+
+/** Compile-time assertion, same mechanism as `RECOVERY_DAY_OUTCOME_IS_STREAK_ONLY`. */
+export const COVERED_DAY_PURCHASE_OUTCOME_IS_COVERAGE_ONLY: KeysAreExactly<
+  CoveredDayPurchaseOutcome,
+  CoveredDayPurchaseOutcomeKey
+> = true;
+
+/**
+ * Applies a settled Extra Covered Day purchase (GDD §8.3E) to `state`, widening
+ * the entitlement of the window `day` falls in.
+ *
+ * THE ONLY FUNCTION IN THIS MODULE THAT CAN RAISE `purchasedDaysLeft`, and the
+ * only one that names a purchase at all.
+ * `streakEntitlement.PURCHASED_DAY_TOUCHING_FUNCTIONS` lists it, and the test
+ * that reads that list is exact in both directions — so an in-game action that
+ * awards a purchased day is a red test rather than a design change nobody
+ * noticed. `streak.test.ts` proves that by mutation rather than claiming it.
+ *
+ * IT CANNOT BE REACHED FROM A GAME EVENT. It takes a settled order, so there is
+ * no `(state, day)` call that produces a purchased day; `recordTrainingDay`
+ * still takes two arguments and there is no parameter on it for this.
+ *
+ * WHAT IT DELIBERATELY DOES NOT TOUCH: `currentStreak`, `longestStreak`,
+ * `lastTrainedDay`, `entitlementArmed`, `recoveryDayProtectionEnabled` and
+ * `hasBankedFirstRecoveryDaySave`. Only `entitlement` moves, and only its
+ * bought half. Buying coverage is not training, so it does not arm anything a
+ * session has not armed and it does not bank a first save.
+ *
+ * THE PER-ABSENCE CEILING IS OUT OF ITS REACH BY CONSTRUCTION.
+ * `MAX_COVERED_DAYS_PER_ABSENCE` caps what one absence may draw regardless of
+ * what the window holds, and this function cannot see that constant let alone
+ * move it. Ten purchased days do not make a five-day absence survivable.
+ *
+ * @throws never. Errors come back as a `StreakResult`.
+ */
+export function applySettledCoveredDayPurchase(
+  state: StreakState,
+  day: StreakDay,
+  purchase: SettledCoveredDayPurchase,
+): StreakResult<CoveredDayPurchaseOutcome> {
+  if (typeof purchase.orderId !== 'string' || purchase.orderId.length === 0) {
+    return fail('INVALID_PURCHASE', 'A covered-day purchase must name the order that settled it.');
+  }
+  if (!COVERED_DAY_TENDERS.includes(purchase.tender)) {
+    return fail('INVALID_PURCHASE', 'A covered day can only be bought, never awarded.');
+  }
+  if (!Number.isSafeInteger(purchase.coveredDays) || purchase.coveredDays < 1) {
+    return fail('INVALID_PURCHASE', 'A covered-day purchase must be for a whole number of at least one day.');
+  }
+
+  const window = entitlementWindowFor(state, day);
+  // A PURCHASE MAY NOT REWIND THE WINDOW, and this refusal is load-bearing
+  // rather than defensive. `coveredDaysAvailable` reports a FULL window
+  // whenever the day asked about is past the snapshot's window, so writing an
+  // earlier window index onto the snapshot would make the next read see a
+  // turnover that has not happened and hand out a free refill. Backdating a
+  // purchase is therefore refused, not clamped: a clamp would silently apply
+  // the order to a window the buyer did not buy.
+  if (window < state.entitlement.windowIndex) {
+    return fail('INVALID_PURCHASE', 'A covered day cannot be bought into a window that has already passed.');
+  }
+  if (day < state.signupDay) {
+    return fail('INVALID_PURCHASE', 'A covered day cannot be bought before the account existed.');
+  }
+  const credit = creditCoveredDays(
+    RECOVERY_ENTITLEMENT,
+    state.entitlement,
+    window,
+    purchase.coveredDays,
+    'purchase',
+  );
+  // The last day of the window this landed in. Derived from the same anchored
+  // grid `entitlementWindowFor` reads, so the two can never disagree about
+  // which window a day is in.
+  const expiresAfterDay = addDays(
+    asStreakDay(windowStartDay(RECOVERY_ENTITLEMENT, state.signupDay, day)),
+    RECOVERY_ENTITLEMENT.WINDOW_DAYS - 1,
+  );
+
+  return ok({
+    state: {
+      signupDay: state.signupDay,
+      currentStreak: state.currentStreak,
+      longestStreak: state.longestStreak,
+      lastTrainedDay: state.lastTrainedDay,
+      entitlement: credit.state,
+      entitlementArmed: state.entitlementArmed,
+      recoveryDayProtectionEnabled: state.recoveryDayProtectionEnabled,
+      hasBankedFirstRecoveryDaySave: state.hasBankedFirstRecoveryDaySave,
+    },
+    orderId: purchase.orderId,
+    tender: purchase.tender,
+    coveredDaysCredited: credit.credited,
+    coveredDaysAvailableAfter: credit.availableAfter,
+    expiresAfterDay,
+    currentStreakUnchanged: state.currentStreak,
+    longestStreakUnchanged: state.longestStreak,
   });
 }
 

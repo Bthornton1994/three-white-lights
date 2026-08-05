@@ -3114,16 +3114,18 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
       );
     }
   }
-  // GDD §8.3E's Extra Covered Day is PROPOSED AND NOT RULED, so nothing in the
-  // shipped game can credit a purchased day. A snapshot that carries one is a
-  // server running ahead of the design, and the client refuses it rather than
-  // rendering a product nobody approved.
-  if (wire.entitlement.purchasedDaysLeft !== 0) {
-    return fail(
-      'INVALID_SNAPSHOT',
-      'progression: streak.entitlement.purchasedDaysLeft must be 0 — GDD §8.3E is not ruled, so nothing may grant one',
-    );
-  }
+  // GDD §8.3E IS RULED IN, so a purchased day is a legitimate thing for a
+  // snapshot to carry and the flat refusal that used to sit here is gone. It is
+  // still validated as a count above, and it is still SERVER-OWNED: this
+  // function decodes what the server says, and no client path anywhere writes
+  // it. `streak.applySettledCoveredDayPurchase` needs a settled order, which
+  // only the server can produce.
+  //
+  // NO CEILING IS CHECKED HERE ON PURPOSE. A large purchased balance is not a
+  // suspicious snapshot — `MAX_COVERED_DAYS_PER_ABSENCE` caps what any one
+  // absence may draw regardless of what the window holds, so ten thousand
+  // purchased days buy exactly the same protection as two. Refusing a number
+  // here would be validating a bound that does not exist.
   const lastTrainedDay: StreakDay | null = wire.lastTrainedDay === null ? null : asStreakDay(wire.lastTrainedDay);
   return ok({
     signupDay: asStreakDay(wire.signupDay),
