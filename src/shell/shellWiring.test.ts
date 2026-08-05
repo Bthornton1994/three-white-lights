@@ -628,6 +628,34 @@ describe('the browser’s URL actually reaches the route graph', () => {
     );
   });
 
+  it('CONTROL: the walk covers the whole repository, not just src/', () => {
+    // THE SHAPE GDD §12.2 ASKS FOR, BY NAME. Its third correction is about this
+    // exact instrument defect, in this exact repository: "the round after the
+    // pin was built, its scan was rooted at `src/`, and `App.tsx` — the app's
+    // entry point, at the repo root, reachable from nothing under `src/` —
+    // could hold an annotated `ServerRecord` with the whole suite green. The
+    // table was complete; the instrument reading it was not, and every
+    // non-vacuity check inside it passed because they all asked about files the
+    // scan already had."
+    //
+    // Its prescription is to name at least one file outside the main source
+    // directory BY HAND, which is what `src/tuning/audit.test.ts` does. Doing it
+    // here too is not redundant with the check below: today `App.tsx` is the
+    // only file that mounts the shell, so a walk that lost the root would fail
+    // that one as well — but add a second mount point under `src/` and it would
+    // not, and the root-blind walk would be back with everything green.
+    const walked = repositorySources();
+    for (const anchor of ['App.tsx', 'index.ts']) {
+      expect(walked, `${anchor} is outside src/ and the walk must still see it`).toContain(anchor);
+    }
+    // ...and it does reach into `src/`, so "covers the root" is not "covers only
+    // the root".
+    expect(walked).toContain('src/shell/AppShell.tsx');
+    // Test files are deliberately excluded: a test may legitimately render a
+    // shell with no URL. Stated as a fact of the walk rather than left implicit.
+    expect(walked.filter((file) => file.endsWith('.test.ts'))).toEqual([]);
+  });
+
   it('EVERY file in the repository that mounts the shell hands it the URL', () => {
     const mounts = repositorySources().flatMap((file) =>
       shellMountsIn(parseModule(file, source(file)), loadFromDisk),
