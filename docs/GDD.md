@@ -909,9 +909,36 @@ Placeholder rectangles until meet day is proven to land.
 scarcity, skippability and where cut-ins fire is *mechanism*, and it is what
 decides whether the art will be welcome when it arrives. It is built
 (`src/cutin/`); the art is not, per §11's working assumption. What mounts today
-is the placeholder Tier 3 panel the licensing system already renders (§7.3), read
+is the placeholder Tier 3 *drawing* the identity table already holds (§7.3), read
 through the same surface witness a licensed portrait would be — so the art pass,
 when it happens, is a row in the identity table and not a rewiring.
+
+**The cut-in composes its own frame; it does not mount the shop panel — RULED.**
+The sentence above said "panel" and meant it: `renderCutIn` called
+`renderPanels.ts`'s `renderPanel`, which is the character-select and shop
+composition. That draws all three tiers at once *on purpose* — art, Tier 3
+caption, Tier 2 name tag, Tier 1 colorway strip, and, with no sponsored offer to
+name, the **Tier 1 build label**. Right for a shelf a player is choosing from.
+On the interrupt beat it printed the partner's name twice — caption and name tag
+are the same string for every identity the gate can reach — with `COMPACT BUILD`
+underneath. **And that was a §7.3 failure rather than an ugly frame**: `build` is
+required on every identity row and every build label is non-empty, so *no row of
+the table could remove that line*; only editing a render path could, which made
+the promise in the paragraph above false as written. The fix is not a second
+renderer. `cutInArt.ts` reads `tier3Of(entry, slot, 'cut-in')` — the same
+witness, the same `drawArt` stamp — and lays the drawing and **one** line of
+identity text onto a cut-in-shaped grid (`CUT_IN_PANEL`).
+
+**The one line is the Tier 3 caption, not the Tier 2 name tag — RULED.** §7.3
+gives Tier 2 the identifying, and this is the one surface where that yields,
+because the caption is a field of the *same* `Tier3Content` as the drawing: it
+follows the slot. `CUT_IN_ART.SLOT` is per-moment precisely so a later pass can
+lead a beat with a wordmark or a product instead of a portrait, and the caption
+moves with that while a name tag would not. Two identity sources on one surface
+with nothing making them agree is how the doubled name reached the screen in the
+first place. **The cost is that a cut-in carries no Tier 2 at all**, so a beat
+led by the `product` slot identifies by picture and product line rather than by
+person — a trade nobody has seen with real art on it, logged in §11.
 
 ### 7.3 The Identity Tier System
 
@@ -1277,6 +1304,23 @@ Two are ruled, two are open.**
       **Note that the ranking is not what protects the bomb-out**: priority
       settles one instant, the bomb-out lost across time, and the disqualifier
       above is what fixed it.
+
+- [ ] **A cut-in carries no Tier 2, and a `product`-led beat would identify by
+      product line rather than by person.** §7.2's ruling above keeps exactly one
+      identity string on the interrupt and makes it the Tier 3 **caption**,
+      because the caption is a field of the same `Tier3Content` as the drawing
+      and therefore follows `CUT_IN_ART.SLOT`. Today all four moments lead with
+      `portrait`, whose caption is the person's name, so the question is
+      dormant. It stops being dormant the moment a beat is given a different
+      lead: the `product` slot's caption in the placeholder table is
+      "Vondrak Signature Singlet", and a cut-in showing a singlet under that
+      line names an item where the old panel would have named a lifter. Two ways
+      out if a human dislikes it — put the name tag back as a second line, which
+      re-introduces the doubling this was written against on every
+      `portrait`-led beat, or keep the beats portrait-led and treat a
+      product-led cut-in as an advert that belongs on a different screen
+      (§8.3A). **Nobody has seen either with real art on it**, which is why this
+      is logged rather than settled.
 
 - [ ] **The RPE choice is degenerate on reward.** §3.3 says picking an RPE target
       is "what makes the mode feel real rather than arbitrary." It is not, as

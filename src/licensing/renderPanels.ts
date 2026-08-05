@@ -113,8 +113,20 @@ export function artScaleFor(art: Tier3Art, wellW: number, wellH: number): number
  * is worse than wrapping it. Anything that still does not fit after the last
  * line is appended to it and overflows, visibly, rather than disappearing:
  * `renderPanels.test.ts` asserts no line is dropped.
+ *
+ * `maxLines` DEFAULTS TO THE PANEL'S OWN CAP AND THE PANEL NEVER PASSES IT, so
+ * every call in this file behaves exactly as it did before the parameter
+ * existed. It is here because `cutInArt.ts` needs the same wrapping rule with
+ * its own line budget (`CUT_IN_PANEL.CAPTION_LINES`) — a cut-in is not a shelf
+ * thumbnail and should not have to move when `PANEL.TEXT_LINES` does. Adding an
+ * argument was preferred to a second copy of the loop: two wrappers is two
+ * chances for a licensed name to break differently on two surfaces.
  */
-export function wrapToWidth(text: string, maxWidth: number): readonly string[] {
+export function wrapToWidth(
+  text: string,
+  maxWidth: number,
+  maxLines: number = PANEL.TEXT_LINES,
+): readonly string[] {
   const words = text.split(' ').filter((w) => w.length > 0);
   const lines: string[] = [];
   for (const word of words) {
@@ -124,7 +136,7 @@ export function wrapToWidth(text: string, maxWidth: number): readonly string[] {
       lines[lines.length - 1] = joined;
       continue;
     }
-    if (lines.length >= PANEL.TEXT_LINES && last !== undefined) {
+    if (lines.length >= maxLines && last !== undefined) {
       lines[lines.length - 1] = joined;
       continue;
     }

@@ -16,40 +16,105 @@
  * GDD §11 records the working assumption this run applies, which keeps cut-in
  * ART unbuilt while the GATE is built.
  *
- * So this file authors NOTHING. It has no drawing, no legend and no pixels of
- * its own — `cutInWiring.test.ts` checks that by reading it. What it shows is
- * the Tier 3 panel the licensing system already renders, which §7.3 calls
+ * So this file AUTHORS NOTHING. It has no drawing, no legend and no pixels of
+ * its own — `cutInArt.test.ts` checks that by reading it. The picture it shows
+ * is the Tier 3 drawing `partners.ts` already holds, which §7.3 calls
  * placeholder tier in its own words.
  *
+ * IT DOES COMPOSE, and the difference is worth being exact about. Everything
+ * drawn below that is not the table's drawing is a rectangle: a ground, a rule
+ * along each cut edge, and the well the drawing sits in. Four `fillRect` calls
+ * and one line of type. That is layout, not art, and the art bar in §12.2 stays
+ * unmet on purpose (§7.2, §11) — nothing here should be read as a claim on it.
+ *
  * ===========================================================================
- * IT REACHES THAT PANEL THROUGH §7.3'S WITNESS, LIKE EVERY OTHER READER
+ * IT READS THE TABLE THROUGH §7.3'S WITNESS, LIKE EVERY OTHER READER
  * ===========================================================================
  *
- * `renderPanel(input, 'cut-in')` — and `'cut-in'` is a member of
+ * `tier3Of(entry, slot, 'cut-in')` — and `'cut-in'` is a member of
  * `TIER_3_SURFACES`, which GDD §7.3 defines as "cut-ins (§7.2), character
- * select, the shop screen, and the result card". Everything downstream of that
- * call goes through `tier3Of` -> `revealTier3`, so:
+ * select, the shop screen, and the result card". That call is `revealTier3`
+ * with a named surface, which is the same door `renderPanels.ts` goes through
+ * and the only one there is:
  *
  *   - The content cannot be read without naming a Tier 3 surface, and this file
  *     names one. `'base-sprite'` would not compile here.
- *   - The art, the caption and the name tag all come out of `partners.ts`, the
- *     identity table. A licensed portrait later is a row in that table and this
- *     file does not change — which is the entire claim §7.3 makes and the
- *     reason the cut-in surface had to read from the table before any art
- *     existed rather than after.
+ *   - THE DRAWING AND THE ONE LINE UNDER IT COME OUT OF THE SAME `Tier3Content`
+ *     — `content.art` and `content.caption`, one read of one row of
+ *     `partners.ts`. A licensed portrait later is a row in that table and this
+ *     file does not change, which is the entire claim §7.3 makes and the reason
+ *     the cut-in surface had to read from the table before any art existed
+ *     rather than after.
  *
- * NO PARALLEL PATH. There is no second renderer, no cached content, no copy of
- * a drawing. If `renderPanels.ts` changes what a panel looks like, the cut-in
- * changes with it.
+ * ===========================================================================
+ * WHY NOT `renderPanel`, WHICH IS WHAT THIS USED TO MOUNT
+ * ===========================================================================
+ *
+ * `renderPanel` is the CHARACTER-SELECT / SHOP composition, one layer above the
+ * identity read. It draws all three tiers at once by design (see its header):
+ * the Tier 3 art, the Tier 3 caption, the Tier 2 name tag, the Tier 1 colorway
+ * swatches and icon-mark, and — with no `offer` to name — the Tier 1 BUILD
+ * LABEL. On a shelf that is right. On §7.2's interrupt beat it printed
+ *
+ *     <name>            the Tier 3 caption
+ *     <name>            the Tier 2 name tag, byte-identical for every identity
+ *                       the gate can reach
+ *     COMPACT BUILD     the Tier 1 build label
+ *
+ * over three colour swatches, under "LAST ONE".
+ *
+ * THAT WAS A §7.3 DEFECT AND NOT MERELY AN UGLY ONE. `tier1.build` is required
+ * on every `IdentityEntry` and every `LICENSING_COPY.BUILD_LABELS` value is
+ * non-empty, so no row of `partners.ts` could remove that third line: only
+ * editing a render path could. GDD §7.2's "the art pass, when it happens, is a
+ * row in the identity table and not a rewiring" was therefore false while the
+ * cut-in consumed the panel — which is exactly the property §7.3 exists to
+ * guarantee, and it fails worse on a licensed surface than on a placeholder one.
+ *
+ * NO PARALLEL PATH ALL THE SAME. This composes from the licensing module's own
+ * primitives — `tier3Of` for the content, `drawArt` for the stamp — so there is
+ * still one identity read, one drawing routine and no cached copy of anything.
+ * What it does not carry is the shelf's furniture.
+ *
+ * ===========================================================================
+ * ONE LINE OF IDENTITY TEXT, AND IT IS THE TIER 3 CAPTION
+ * ===========================================================================
+ *
+ * A real call, because §7.3 says "Tier 2 — the name tag ... does the
+ * identifying" while a cut-in is a TIER 3 surface. The caption wins for three
+ * reasons, and the cost is stated after them:
+ *
+ *   1. IT IS BOUND TO THE PICTURE. The caption is a field of the same
+ *      `Tier3Content` as the art, per SLOT. `CUT_IN_ART.SLOT` is a per-moment
+ *      table precisely so a later pass can lead a beat with `wordmark` or
+ *      `product` instead of `portrait`; the caption follows that change and the
+ *      name tag would not. A product shot with the athlete's display name under
+ *      it is the mismatch this avoids by construction.
+ *   2. IT IS ONE READ. Taking Tier 2 here would put two identity sources on the
+ *      one surface §7.3 designates for the licensed one, with nothing making
+ *      them agree — which is how the doubled name got on screen in the first
+ *      place.
+ *   3. A BRAND GUIDELINE GOVERNS THE CAPTION. Tier 3 is where "a real wordmark"
+ *      lives and where "a mark can be reproduced faithfully"; the caption is
+ *      that mark, set. Printing the game's own `displayName` over a licensed
+ *      lockup is the thing a partner objects to.
+ *
+ * THE COST: a cut-in carries no Tier 2 at all, so if a caption is ever left
+ * looser than a name — a product line rather than a person — the interrupt
+ * identifies by picture and product rather than by name. That is a judgement
+ * about a surface nobody has seen with real art on it, and it is one line to
+ * change here if a human disagrees.
  */
 
-import type { IndexGrid } from '../art/raster';
+import { createGrid, fillRect, type IndexGrid } from '../art/raster';
+import { FONT, drawText, measureText } from '../card/pixelFont';
+import { SHEET } from '../card/sheetPalette';
 import type { LicensingCatalogue } from '../licensing/catalogue';
-import { renderPanel } from '../licensing/renderPanels';
-import type { IdentityEntry, Tier3Surface } from '../licensing/tiers';
-import { isTier3Surface } from '../licensing/tiers';
+import { drawArt, wrapToWidth } from '../licensing/renderPanels';
+import type { IdentityEntry, Tier3Art, Tier3Surface } from '../licensing/tiers';
+import { isTier3Surface, tier3Of } from '../licensing/tiers';
 import type { LiveCutIn } from './cutInGate';
-import { CUT_IN_LAYOUT } from './cutInTuning';
+import { CUT_IN_LAYOUT, CUT_IN_PANEL } from './cutInTuning';
 
 /**
  * THE SURFACE THIS PIECE DRAWS ON (GDD §7.3).
@@ -77,8 +142,35 @@ export function cutInIdentity(catalogue: LicensingCatalogue, identityId: string)
   return entry;
 }
 
+/** How many columns and rows a Tier 3 drawing occupies at 1x. */
+function artSize(art: Tier3Art): { readonly w: number; readonly h: number } {
+  return { w: art.rows[0]?.length ?? 0, h: art.rows.length };
+}
+
+/**
+ * The largest WHOLE-NUMBER upscale at which a drawing fits the cut-in's well.
+ *
+ * Floors at 1 and never interpolates (GDD §7.1). A drawing too big for the well
+ * sits at 1x and the WELL GROWS to hold it — see `renderCutIn` — rather than the
+ * drawing being cropped, because a licensed portrait quietly missing its left
+ * and right thirds is the failure `partners.ts` calls "exactly what nobody
+ * notices".
+ */
+function cutInArtScale(art: Tier3Art, wellW: number, wellH: number): number {
+  const { w, h } = artSize(art);
+  if (w === 0 || h === 0) return 1;
+  return Math.max(
+    1,
+    Math.min(CUT_IN_PANEL.ART_MAX_SCALE, Math.floor(wellW / w), Math.floor(wellH / h)),
+  );
+}
+
 /**
  * The cut-in's picture, as palette indices.
+ *
+ * The whole composition, top to bottom: a bright rule, the Tier 3 drawing in a
+ * well, ONE line of Tier 3 caption, a bright rule. Nothing else — see the header
+ * for why the Tier 2 name tag and the Tier 1 build label are not here.
  *
  * @throws {RangeError} through `cutInIdentity`, and through `revealTier3` if
  *   the surface constant above is ever tampered with at runtime.
@@ -88,11 +180,66 @@ export function renderCutIn(catalogue: LicensingCatalogue, live: LiveCutIn): Ind
     throw new RangeError(`cutIn: ${CUT_IN_SURFACE} is not a Tier 3 surface (GDD §7.3)`);
   }
   const entry = cutInIdentity(catalogue, live.identityId);
-  return renderPanel({ entry, slot: live.slot }, CUT_IN_SURFACE);
+  const content = tier3Of(entry, live.slot, CUT_IN_SURFACE);
+
+  // --- the well, which is a floor and not a cage ----------------------------
+  const nominalWellW = CUT_IN_PANEL.W - CUT_IN_PANEL.PAD * 2;
+  const scale = cutInArtScale(content.art, nominalWellW, CUT_IN_PANEL.ART_H);
+  const size = artSize(content.art);
+  const drawnW = size.w * scale;
+  const drawnH = size.h * scale;
+  const wellW = Math.max(nominalWellW, drawnW);
+  const wellH = Math.max(CUT_IN_PANEL.ART_H, drawnH);
+
+  // --- the one identity line, wrapped rather than truncated -----------------
+  const captionScale = Math.max(1, Math.round(CUT_IN_PANEL.CAPTION_SCALE));
+  const lines = wrapToWidth(
+    content.caption,
+    Math.floor(wellW / captionScale),
+    CUT_IN_PANEL.CAPTION_LINES,
+  );
+  const pitch = CUT_IN_PANEL.CAPTION_PITCH * captionScale;
+  const captionW = lines.reduce((widest, line) => Math.max(widest, measureText(line)), 0) * captionScale;
+  const captionH = (lines.length - 1) * pitch + FONT.GLYPH_H * captionScale;
+
+  const w = Math.max(wellW, captionW) + CUT_IN_PANEL.PAD * 2;
+  const h = CUT_IN_PANEL.PAD * 2 + wellH + CUT_IN_PANEL.CAPTION_GAP + captionH;
+  const grid = createGrid(w, h, SHEET.BAND_DARK);
+
+  // --- the cut edges -------------------------------------------------------
+  fillRect(grid, 0, 0, w, CUT_IN_PANEL.EDGE_RULE, SHEET.ACCENT_HI);
+  fillRect(grid, 0, h - CUT_IN_PANEL.EDGE_RULE, w, CUT_IN_PANEL.EDGE_RULE, SHEET.ACCENT_HI);
+
+  // --- Tier 3: the drawing -------------------------------------------------
+  // The well is filled light because the drawings in `partners.ts` are authored
+  // against a light ground — their outline is `PAL.OUTLINE`, near-black, which
+  // would disappear into the band's navy if it were stamped straight onto it.
+  const wellX = Math.round((w - wellW) / 2);
+  const wellY = CUT_IN_PANEL.PAD;
+  fillRect(grid, wellX, wellY, wellW, wellH, SHEET.PAPER_SHADE);
+  drawArt(
+    grid,
+    content.art,
+    wellX + Math.round((wellW - drawnW) / 2),
+    wellY + Math.round((wellH - drawnH) / 2),
+    scale,
+  );
+
+  // --- Tier 3: the caption, and nothing else -------------------------------
+  const centre = Math.round(w / 2);
+  const captionY = wellY + wellH + CUT_IN_PANEL.CAPTION_GAP;
+  lines.forEach((line, i) => {
+    drawText(grid, line, centre, captionY + i * pitch, SHEET.BAND_INK, {
+      align: 'center',
+      scale: captionScale,
+    });
+  });
+
+  return grid;
 }
 
 /**
- * The largest WHOLE-NUMBER upscale at which the panel fits the screen.
+ * The largest WHOLE-NUMBER upscale at which the cut-in grid fits the screen.
  *
  * PURE, AND HERE RATHER THAN IN THE VIEW, for the reason `renderPanels.ts`
  * gives about its own `scaleToFit`: a scaling rule defined in a `.tsx` is a

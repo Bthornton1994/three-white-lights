@@ -43,10 +43,25 @@
  * now. `tools/capture-cutin.mjs` measures it on real frames: an overlay that
  * had gone opaque again would leave zero blended pixels behind it.
  *
- * NOT VERIFIED AS FEELING LIKE AN INTERRUPT. It has now been photographed —
- * `.gauntlet/shots/cutin/` — so the tap target, the arrival and the scrim are
- * pixels somebody can look at. Whether it READS as an interrupt is still a
- * playtest judgement (GDD §12.1): no critic can judge a beat it cannot feel.
+ * NOT VERIFIED AS FEELING LIKE AN INTERRUPT, AND THE PIXELS ARE NOT IN THE REPO.
+ * This used to say it "has now been photographed — `.gauntlet/shots/cutin/`",
+ * which was true only on a machine that had just taken the photographs:
+ * `.gauntlet/shots/` is gitignored, so that directory does not exist in a fresh
+ * checkout or after a clean, and a reader who went looking for the evidence
+ * found nothing. What is true is that the INSTRUMENT is in the repo. Run
+ *
+ *     npx expo start --web        # then, against whatever port it prints
+ *     node tools/capture-cutin.mjs --url http://localhost:8081
+ *
+ * and `.gauntlet/shots/cutin/` is written: a `?cutin=nonsense` baseline, one
+ * frozen frame per firing moment, the live auto-dismiss and corner-tap frames,
+ * the two played `?meet=` paths, and `frames.json`. That run also measures what
+ * a source scan cannot — the four corners hit-tested with `elementFromPoint`,
+ * whether the overlay is above the screen it interrupts, and how many pixels
+ * survive `SCRIM_OPACITY` — and exits non-zero if any of it is wrong.
+ *
+ * Whether it READS as an interrupt is still a playtest judgement (GDD §12.1):
+ * no critic can judge a beat it cannot feel, and a screenshot is not a feeling.
  */
 
 import React from 'react';

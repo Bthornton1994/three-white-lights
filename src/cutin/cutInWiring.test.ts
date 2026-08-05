@@ -21,7 +21,7 @@
  * stopped matching passes every file.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -50,6 +50,15 @@ const HOST = code('cutin/CutInHost.tsx');
  * Spelled out here rather than derived, so deleting a `useOfferCutIn` call from
  * any one of these screens turns this file red by name. A gate with no callers
  * is the same failure as an empty firing-moment list, one layer out.
+ *
+ * IT IS NOT THE SCOPE OF THE SCANS BELOW, and that distinction is the whole
+ * point of `THE SET OF FILES THAT TALK TO THE GATE IS THIS SET` further down.
+ * Every scan in this file used to read only these five paths, so a SIXTH screen
+ * — one offering two beat kinds at once, or one opening its own gate session —
+ * was invisible to all of them and the run's ruled claims about the priority
+ * order and the cap would have gone quietly false. The list is now checked to
+ * be exhaustive by walking `src/`, which is the difference between a statement
+ * and a restatement.
  */
 const CALLERS: readonly (readonly [string, string, string])[] = [
   ['third-attempt walk-out', 'meet/WalkoutView.tsx', "kind: 'meet-walkout'"],
@@ -58,6 +67,55 @@ const CALLERS: readonly (readonly [string, string, string])[] = [
   ['bombing out', 'meet/BombOutView.tsx', "kind: 'meet-over'"],
   ['a coach reaction on a heavy set', 'session/RestView.tsx', "kind: 'work-set'"],
 ];
+
+/** The two screens that own a sitting and mount the host over it. */
+const HOST_SCREENS: readonly string[] = ['meet/MeetScreen.tsx', 'session/SessionScreen.tsx'];
+
+/** Every non-test source file under `src/`, as a path relative to `src/`. */
+function everySourceFile(dir: string = ''): readonly string[] {
+  return readdirSync(path.join(SRC, dir), { withFileTypes: true }).flatMap((entry) => {
+    const rel = dir === '' ? entry.name : `${dir}/${entry.name}`;
+    if (entry.isDirectory()) return everySourceFile(rel);
+    if (!/\.tsx?$/.test(entry.name)) return [];
+    if (/\.test\.tsx?$/.test(entry.name)) return [];
+    return [rel];
+  });
+}
+
+/**
+ * The piece's own module. Excluded from the walks below BY PREFIX rather than
+ * by name, so a file added to `src/cutin/` cannot escape the exclusion and a
+ * file added anywhere else cannot fall into it.
+ */
+const THE_GATE_ITSELF = 'cutin/';
+
+/**
+ * NAMING ANY OF THESE IS TALKING TO THE GATE.
+ *
+ * `useOfferCutIn` is how a screen reports a beat; the other four are the gate
+ * and the ledger themselves, which no screen may reach — a screen that opened
+ * its own session would mint itself a second slot and §12.3's refusal condition
+ * would become a convention.
+ */
+const GATE_ENTRY_POINTS =
+  /\b(?:useOfferCutIn|openCutInSession|resumeCutInSession|requestCutIn|rememberCutInSession|forgetAllCutInSessions)\b/;
+
+/**
+ * Naming any of these claims a SITTING, which is what the cap counts.
+ *
+ * `<CutInHost` and not `CutInHost`: the five beat-reporting screens import
+ * `useOfferCutIn` FROM `../cutin/CutInHost`, so the bare name is in their import
+ * lines and would put all five in this set. What matters is MOUNTING one.
+ */
+const SITTING_ENTRY_POINTS = /\b(?:cutInSessionId|cutInSessionSeed)\b|<CutInHost\b/;
+
+/** Files outside `src/cutin/` whose code matches `pattern`. */
+function filesNaming(pattern: RegExp): readonly string[] {
+  return everySourceFile()
+    .filter((rel) => !rel.startsWith(THE_GATE_ITSELF))
+    .filter((rel) => pattern.test(code(rel)))
+    .sort();
+}
 
 // ---------------------------------------------------------------------------
 // The scans can see what they are looking for
@@ -75,6 +133,28 @@ describe('the scans are not blind', () => {
     for (const [, file] of CALLERS) {
       expect(source(file).length, file).toBeGreaterThan(500);
     }
+  });
+
+  it('THE WALK REACHES THE WHOLE TREE, and the patterns match a real caller', () => {
+    // Three positive controls for the derivation below, because a walk that
+    // returned nothing and a pattern that matched nothing would agree with a
+    // hand-written list right up until the day they were needed.
+    const all = everySourceFile();
+    expect(all.length, 'the walk found almost nothing').toBeGreaterThan(50);
+    // It descends into directories rather than reading only the top level...
+    expect(all).toContain('cutin/CutInHost.tsx');
+    expect(all).toContain('meet/WalkoutView.tsx');
+    // ...it skips tests, which are full of these names by design...
+    expect(all.filter((f) => f.includes('.test.'))).toEqual([]);
+    // ...and both patterns really do match the files that really do call the
+    // gate. If either stopped matching, `filesNaming` would return `[]` and the
+    // equality below would fail loudly rather than pass silently — but only the
+    // FIRST of those is guaranteed by the equality itself, so both are asserted.
+    expect(GATE_ENTRY_POINTS.test(code('cutin/CutInHost.tsx'))).toBe(true);
+    expect(GATE_ENTRY_POINTS.test(code('meet/WalkoutView.tsx'))).toBe(true);
+    expect(SITTING_ENTRY_POINTS.test(code('meet/MeetScreen.tsx'))).toBe(true);
+    // The exclusion is a prefix on the walk's own output, not a missing file.
+    expect(filesNaming(GATE_ENTRY_POINTS)).not.toContain('cutin/CutInHost.tsx');
   });
 });
 
@@ -135,6 +215,33 @@ describe('the cut-in is dismissed by tapping it — GDD §7.2', () => {
 // ---------------------------------------------------------------------------
 
 describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
+  it('THE SET OF FILES THAT TALK TO THE GATE IS THIS SET — derived, not restated', () => {
+    // WHY THIS EXISTS. `CALLERS` is a hand-written list of five paths and every
+    // other scan in this file reads only those five. Nothing asserted that the
+    // list was COMPLETE, so:
+    //
+    //   - a sixth screen offering two beat kinds at once would leave "THE
+    //     PRIORITY ORDER DECIDES NOTHING TODAY" green while GDD §7.2's ruled
+    //     claim went false, and
+    //   - a sixth screen calling `openCutInSession` directly would mint itself a
+    //     second slot inside one sitting with no test red at all — which is
+    //     §12.3's refusal condition, reached by a route no scan was looking at.
+    //
+    // Derived by walking `src/` so it cannot agree with itself. `src/cutin/` is
+    // the gate's own module and is excluded by prefix; everything else in the
+    // tree that so much as names the gate has to be one of the five.
+    expect(filesNaming(GATE_ENTRY_POINTS)).toEqual([...CALLERS.map(([, file]) => file)].sort());
+  });
+
+  it('AND THE SET OF SCREENS THAT CLAIM A SITTING IS THE TWO LOOPS', () => {
+    // The other half of the same hole. The cap is per SITTING (§7.2), and a
+    // sitting is whatever a caller names with `cutInSessionId` and mounts a
+    // `CutInHost` over. A third screen doing that inside an existing sitting
+    // would hand it a second cut-in without ever touching `CALLERS` — so the
+    // set of files that can open one is derived too, not listed in a loop.
+    expect(filesNaming(SITTING_ENTRY_POINTS)).toEqual([...HOST_SCREENS].sort());
+  });
+
   it('the host is the only file that opens a session or requests a cut-in', () => {
     expect(HOST).toMatch(/resumeCutInSession/);
     expect(HOST).toMatch(/requestCutIn/);
@@ -278,34 +385,59 @@ describe('every firing moment of GDD §7.2 is wired to a screen', () => {
 
 describe('CUT_IN_MOMENT_PRIORITY is a declared invariant, not a live tie-break', () => {
   /**
-   * The text of a file's one `useOfferCutIn(...)` call, parentheses balanced.
+   * The text of EVERY `useOfferCutIn(...)` call in a file, parentheses balanced.
    *
    * Read off the real source rather than restated, because the claim being
    * checked is about what the CALL SITES can produce and a restatement would
    * agree with itself for ever.
+   *
+   * ALL OF THEM, not the first. This used to stop at `indexOf`, so a screen that
+   * grew a second `useOfferCutIn` offering two kinds at once kept the assertion
+   * below green on the strength of its first call — the same class of blind spot
+   * as the five-file `CALLERS` list, one scope in.
    */
-  function offerCallIn(file: string): string {
-    const text = code(file);
+  function offerCalls(text: string): readonly string[] {
     const marker = 'useOfferCutIn(';
-    const start = text.indexOf(marker);
-    if (start === -1) return '';
-    let depth = 0;
-    for (let i = start + marker.length - 1; i < text.length; i += 1) {
-      if (text[i] === '(') depth += 1;
-      else if (text[i] === ')') {
-        depth -= 1;
-        if (depth === 0) return text.slice(start, i + 1);
+    const calls: string[] = [];
+    let from = 0;
+    for (;;) {
+      const start = text.indexOf(marker, from);
+      if (start === -1) return calls;
+      let depth = 0;
+      let end = -1;
+      for (let i = start + marker.length - 1; i < text.length; i += 1) {
+        if (text[i] === '(') depth += 1;
+        else if (text[i] === ')') {
+          depth -= 1;
+          if (depth === 0) {
+            end = i;
+            break;
+          }
+        }
       }
+      if (end === -1) return calls;
+      calls.push(text.slice(start, end + 1));
+      from = end + 1;
     }
-    return '';
   }
 
-  function beatKindsOffered(file: string): readonly string[] {
-    const call = offerCallIn(file);
-    return [...new Set([...call.matchAll(/kind: '([a-z-]+)'/g)].map((m) => m[1] ?? ''))];
+  /**
+   * TEXT IN, CALLS OUT — deliberately, so the positive control below can feed
+   * the SAME function a two-call string. A reader that only ever took a path
+   * could not be shown to find a second call without planting a second call in
+   * the tree.
+   */
+  function offerCallsIn(file: string): readonly string[] {
+    return offerCalls(code(file));
   }
 
-  it('the reader can see a two-kind call when there is one', () => {
+  function beatKindsPerCall(file: string): readonly (readonly string[])[] {
+    return offerCallsIn(file).map((call) => [
+      ...new Set([...call.matchAll(/kind: '([a-z-]+)'/g)].map((m) => m[1] ?? '')),
+    ]);
+  }
+
+  it('the reader can see a two-kind call when there is one, and sees every call', () => {
     // Positive control. A scan that had stopped matching would report every
     // file as single-kind and the assertion below would pass on anything.
     const twoKinds = "useOfferCutIn([{ kind: 'record' }, { kind: 'meet-over' }]);";
@@ -313,9 +445,21 @@ describe('CUT_IN_MOMENT_PRIORITY is a declared invariant, not a live tie-break',
       'record',
       'meet-over',
     ]);
-    // ...and it really is reading the call, not the whole file.
-    expect(offerCallIn('meet/RecapView.tsx')).toMatch(/^useOfferCutIn\(/);
-    expect(offerCallIn('meet/RecapView.tsx')).not.toMatch(/ScrollView/);
+    // ...it really is reading the call, not the whole file...
+    expect(offerCallsIn('meet/RecapView.tsx')[0]).toMatch(/^useOfferCutIn\(/);
+    expect(offerCallsIn('meet/RecapView.tsx')[0]).not.toMatch(/ScrollView/);
+    expect(offerCallsIn('meet/RecapView.tsx').length).toBe(1);
+    // ...and it does not stop at the first one, which is what it used to do.
+    // The same balancing reader, given a text with two calls — the second of
+    // which is the two-kind shape the assertion below is hunting for.
+    const twice =
+      "useOfferCutIn([{ kind: 'record', achieved: f(1) }]);\nconst x = 1;\n" +
+      "useOfferCutIn([{ kind: 'meet-over' }, { kind: 'work-set' }]);";
+    const calls = offerCalls(twice);
+    expect(calls.length, 'the reader still stops at the first call').toBe(2);
+    expect([...new Set([...(calls[1] ?? '').matchAll(/kind: '([a-z-]+)'/g)].map((m) => m[1]))]).toEqual(
+      ['meet-over', 'work-set'],
+    );
   });
 
   it('THE PRIORITY ORDER DECIDES NOTHING TODAY, AND HERE IS THE READING THAT SAYS SO', () => {
@@ -329,14 +473,23 @@ describe('CUT_IN_MOMENT_PRIORITY is a declared invariant, not a live tie-break',
     // does, the ranking starts deciding real beats and somebody should look at
     // it on purpose rather than discover it — which is the whole reason the
     // constant is kept rather than deleted.
-    for (const [moment, file] of CALLERS) {
-      const kinds = beatKindsOffered(file);
-      expect(kinds.length, `${moment} (${file}) offers no beat`).toBeGreaterThan(0);
-      expect(
-        kinds.length,
-        `${moment} (${file}) now offers ${kinds.join(' + ')} at once — the priority ` +
-          'order has started deciding something. See CUT_IN_MOMENT_PRIORITY.',
-      ).toBe(1);
+    //
+    // EVERY CALL IN EVERY FILE THAT TALKS TO THE GATE — and the file set is the
+    // derived one, not `CALLERS`, so a sixth screen is inside this loop the day
+    // it is written rather than the day somebody remembers to add it.
+    const offering = filesNaming(GATE_ENTRY_POINTS);
+    expect(offering.length, 'no file offers a beat at all').toBeGreaterThan(0);
+    for (const file of offering) {
+      const perCall = beatKindsPerCall(file);
+      expect(perCall.length, `${file} offers no beat`).toBeGreaterThan(0);
+      perCall.forEach((kinds, i) => {
+        expect(kinds.length, `${file} call ${i + 1} offers no beat`).toBeGreaterThan(0);
+        expect(
+          kinds.length,
+          `${file} call ${i + 1} now offers ${kinds.join(' + ')} at once — the priority ` +
+            'order has started deciding something. See CUT_IN_MOMENT_PRIORITY.',
+        ).toBe(1);
+      });
     }
   });
 
