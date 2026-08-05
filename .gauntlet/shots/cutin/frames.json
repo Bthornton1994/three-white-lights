@@ -1,12 +1,19 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-05T15:57:24.632Z",
+    "capturedAt": "2026-08-05T16:14:05.600Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "49e21c8",
+    "commit": "2440e69",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
-    "dirtyPaths": []
+    "dirtyPaths": [
+      "M .gauntlet/shots/cutin/frames.json",
+      " M .gauntlet/shots/cutin/live-after-auto-dismiss.png"
+    ],
+    "instrument": {
+      "capture-cutin.mjs": "d91be31176b0a475",
+      "png.mjs": "6356a0d0b0dcb696"
+    }
   },
   "frames": [
     {
@@ -222,14 +229,14 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 700,
+    "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1559,
+    "goneAt": 1565,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 29,
-    "goneAt": 36,
+    "tappedAt": 13,
+    "goneAt": 21,
     "wellInsideTheHold": true
   },
   "playedPath": {
