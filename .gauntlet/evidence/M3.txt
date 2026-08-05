@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece M3
-generated 2026-08-05T16:44:57.052Z
+generated 2026-08-05T16:52:19.139Z
 repo /home/user/three-white-lights
-commit 7a5ababb52fdfbfa0aa550f48666511b5eb0b96d
+commit e1082042716badbfc62f461cef40fd0492ae1600
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -20,14 +20,14 @@ $ npx vitest run src/game/dots --reporter=verbose
 
  ✓ src/game/dots.test.ts > published DOTS coefficients > matches the published male coefficients exactly 2ms
  ✓ src/game/dots.test.ts > published DOTS coefficients > matches the published female coefficients exactly 0ms
- ✓ src/game/dots.test.ts > published DOTS coefficients > uses the published numerator of 500 0ms
- ✓ src/game/dots.test.ts > published DOTS coefficients > uses the published bodyweight domain: [40, 210] kg male, [40, 150] kg female 1ms
+ ✓ src/game/dots.test.ts > published DOTS coefficients > uses the published numerator of 500 3ms
+ ✓ src/game/dots.test.ts > published DOTS coefficients > uses the published bodyweight domain: [40, 210] kg male, [40, 150] kg female 0ms
  ✓ src/game/dots.test.ts > published DOTS coefficients > orders the coefficients so that c0 is the constant term and c4 the bw^4 term 1ms
  ✓ src/game/dots.test.ts > the external score pin > reproduces every externally-scored row inside the published domain 1ms
  ✓ src/game/dots.test.ts > the external score pin > reproduces every clamped row, which pins the published bodyweight domain too 0ms
  ✓ src/game/dots.test.ts > the external score pin > prints every externally-scored row exactly as the two-decimal sources returned it 2ms
  ✓ src/game/dots.test.ts > the external score pin > records a two-decimal column the unrounded column actually rounds to 1ms
- ✓ src/game/dots.test.ts > the external score pin > agrees with the external sources far more closely than the tolerance asks 1ms
+ ✓ src/game/dots.test.ts > the external score pin > agrees with the external sources far more closely than the tolerance asks 0ms
  ✓ src/game/dots.test.ts > the external score pin > keeps every pinned score clear of a two-decimal rounding boundary 2ms
  ✓ src/game/dots.test.ts > the external score pin > spans both sexes and both ends of both published domains 3ms
  ✓ src/game/dots.test.ts > the external score pin > evaluates a supplied coefficient set exactly the way the module does 1ms
@@ -64,13 +64,13 @@ $ npx vitest run src/game/dots --reporter=verbose
  ✓ src/game/dots.test.ts > dotsScore — reference values > male, 100 kg bw, 600 kg total -> 369.3094587358 DOTS 0ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > male, 165 kg bw, 1152.5 kg total -> 604.4039466647 DOTS 0ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > male, 40 kg bw, 400 kg total -> 508.4440043433 DOTS 0ms
- ✓ src/game/dots.test.ts > dotsScore — reference values > male, 210 kg bw, 1000 kg total -> 495.6206617883 DOTS 2ms
- ✓ src/game/dots.test.ts > dotsScore — reference values > female, 63 kg bw, 400 kg total -> 430.2059831222 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > male, 210 kg bw, 1000 kg total -> 495.6206617883 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > female, 63 kg bw, 400 kg total -> 430.2059831222 DOTS 3ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > female, 84 kg bw, 645 kg total -> 593.4990569957 DOTS 0ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > female, 57 kg bw, 300 kg total -> 343.708561391 DOTS 0ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > female, 47 kg bw, 250 kg total -> 327.6409556178 DOTS 0ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > female, 76 kg bw, 500 kg total -> 483.6129134833 DOTS 0ms
- ✓ src/game/dots.test.ts > dotsScore — reference values > female, 40 kg bw, 250 kg total -> 371.1991420204 DOTS 0ms
+ ✓ src/game/dots.test.ts > dotsScore — reference values > female, 40 kg bw, 250 kg total -> 371.1991420204 DOTS 3ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > female, 150 kg bw, 600 kg total -> 462.4539879237 DOTS 0ms
  ✓ src/game/dots.test.ts > dotsScore — reference values > female, 69 kg bw, 200 kg total -> 203.8983981512 DOTS 0ms
  ✓ src/game/dots.test.ts > bodyweight domain > treats the exact bounds as in-domain 0ms
@@ -93,7 +93,7 @@ $ npx vitest run src/game/dots --reporter=verbose
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 1b: even a scored lifter`s coefficient cannot be multiplied by a number 0ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 1c: the whole original line does not typecheck at its first term 2ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 2: `dotsCoefficient(...) * (finalMeetTotal(state) ?? 0)` does not compile 1ms
- ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 3: `dotsCoefficient(...) * totalOnTheBoard(state)` does not compile 0ms
+ ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 3: `dotsCoefficient(...) * totalOnTheBoard(state)` does not compile 1ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 3b: a provisional board sum is not an official total anywhere 1ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 4: a negative DOTS delta renders instead of throwing 0ms
  ✓ src/game/dots.test.ts > the four exploit lines > EXPLOIT 5: a lifter who did not total cannot be rendered as a negative delta 0ms
@@ -119,8 +119,8 @@ $ npx vitest run src/game/dots --reporter=verbose
  ✓ src/game/dots.test.ts > a meet not run in kilograms > IS a first-class configuration, not a hypothetical — so the hazard is real 0ms
  ✓ src/game/dots.test.ts > a meet not run in kilograms > CANNOT produce the wrong score through the module’s advertised entry point 0ms
  ✓ src/game/dots.test.ts > a meet not run in kilograms > says which unit it got, what DOTS needs, and what to do instead 1ms
- ✓ src/game/dots.test.ts > a meet not run in kilograms > refuses on every reading kind, so the bug fires on the first poll not the first total 2ms
- ✓ src/game/dots.test.ts > a meet not run in kilograms > refuses a unit it has never heard of, rather than defaulting it to kg 0ms
+ ✓ src/game/dots.test.ts > a meet not run in kilograms > refuses on every reading kind, so the bug fires on the first poll not the first total 1ms
+ ✓ src/game/dots.test.ts > a meet not run in kilograms > refuses a unit it has never heard of, rather than defaulting it to kg 5ms
  ✓ src/game/dots.test.ts > a meet not run in kilograms > scores correctly once the WHOLE entry is converted, which is the intended escape 0ms
  ✓ src/game/dots.test.ts > a meet not run in kilograms > pins the exact conversion constant, which is a definition rather than a measurement 0ms
  ✓ src/game/dots.test.ts > a meet not run in kilograms > spells the kg unit the same way meet.ts does, checked against meet.ts 0ms
@@ -130,8 +130,8 @@ $ npx vitest run src/game/dots --reporter=verbose
  ✓ src/game/dots.test.ts > a lifter with no total is absent from the ranking, not last in it > prints a no-total lifter as the placeholder, never as 0.00 0ms
  ✓ src/game/dots.test.ts > structural properties > scales linearly with the total 0ms
  ✓ src/game/dots.test.ts > structural properties > equals coefficient x total 0ms
- ✓ src/game/dots.test.ts > structural properties > gives a strictly decreasing coefficient across the whole male domain 13ms
- ✓ src/game/dots.test.ts > structural properties > gives a strictly decreasing coefficient across the whole female domain 7ms
+ ✓ src/game/dots.test.ts > structural properties > gives a strictly decreasing coefficient across the whole male domain 9ms
+ ✓ src/game/dots.test.ts > structural properties > gives a strictly decreasing coefficient across the whole female domain 9ms
  ✓ src/game/dots.test.ts > structural properties > gives female lifters a higher coefficient than male lifters at equal bodyweight 0ms
  ✓ src/game/dots.test.ts > structural properties > keeps two lifters with equal totals ordered by bodyweight 0ms
  ✓ src/game/dots.test.ts > input handling > rejects non-finite input 0ms
@@ -151,19 +151,19 @@ $ npx vitest run src/game/dots --reporter=verbose
  ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > refuses an end that is not a real score, in either position 0ms
  ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > THE STRUCTURAL MINT CAN THROW ON A CALL THAT TYPECHECKS, so its docstring may not say otherwise 0ms
  ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > THE ~37 DOTS FLOOR IS A FACT ABOUT meet.ts, so it is driven through meet.ts 1ms
- ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > DISCLOSED: the floor is a fact about the DEFAULT rules, not about meet.ts as such 0ms
+ ✓ src/game/dots.test.ts > DOTS deltas (GDD §6.5 recap call-outs) > DISCLOSED: the floor is a fact about the DEFAULT rules, not about meet.ts as such 1ms
  ✓ src/game/dots.test.ts > plausibility sanity check > 'untrained male' lands in a plausible DOTS band 0ms
  ✓ src/game/dots.test.ts > plausibility sanity check > 'novice male' lands in a plausible DOTS band 0ms
  ✓ src/game/dots.test.ts > plausibility sanity check > 'intermediate male' lands in a plausible DOTS band 0ms
  ✓ src/game/dots.test.ts > plausibility sanity check > 'advanced male' lands in a plausible DOTS band 0ms
  ✓ src/game/dots.test.ts > plausibility sanity check > 'novice female' lands in a plausible DOTS band 0ms
- ✓ src/game/dots.test.ts > plausibility sanity check > 'advanced female' lands in a plausible DOTS band 0ms
+ ✓ src/game/dots.test.ts > plausibility sanity check > 'advanced female' lands in a plausible DOTS band 1ms
  ✓ src/game/dots.test.ts > plausibility sanity check > puts the elite threshold where the community puts it (~500 for a male raw lifter) 0ms
  ✓ src/game/dots.test.ts > plausibility sanity check > scores real all-time-great totals in the 550-650 range, and nothing above 700 0ms
  ✓ src/game/dots.test.ts > plausibility sanity check > and the pound meet that used to breach that band cannot produce a number at all 0ms
  ✓ src/game/dots.test.ts > module purity > strips comments without destroying the code (sanity check for the scans below) 0ms
  ✓ src/game/dots.test.ts > module purity > has no imports at all, so it cannot reach React, I/O or sibling modules 0ms
- ✓ src/game/dots.test.ts > module purity > reads no clock, rolls no dice, and touches no ambient global 1ms
+ ✓ src/game/dots.test.ts > module purity > reads no clock, rolls no dice, and touches no ambient global 0ms
  ✓ src/game/dots.test.ts > module purity > exports no function NAMED like a numeric coefficient accessor — a name scan, nothing more 0ms
  ✓ src/game/dots.test.ts > module purity > describes its own load-time evaluation without understating it 0ms
  ✓ src/game/dots.test.ts > module purity > keeps the coefficient provenance block rather than asserting the numbers flatly 0ms
@@ -176,8 +176,8 @@ $ npx vitest run src/game/dots --reporter=verbose
 
  Test Files  1 passed (1)
       Tests  155 passed (155)
-   Start at  16:44:57
-   Duration  508ms (transform 210ms, setup 0ms, import 249ms, tests 85ms, environment 0ms)
+   Start at  16:52:19
+   Duration  527ms (transform 214ms, setup 0ms, import 251ms, tests 94ms, environment 0ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -193,8 +193,8 @@ $ npx vitest run
 
  Test Files  57 passed (57)
       Tests  2470 passed (2470)
-   Start at  16:44:59
-   Duration  31.77s (transform 4.05s, setup 0ms, import 15.78s, tests 68.66s, environment 6ms)
+   Start at  16:52:21
+   Duration  34.07s (transform 4.08s, setup 0ms, import 16.15s, tests 74.25s, environment 7ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
