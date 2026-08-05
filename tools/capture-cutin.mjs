@@ -41,6 +41,8 @@ import { chromium } from 'playwright';
 import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { decodePng, diffPixels } from './png.mjs';
 
@@ -69,7 +71,9 @@ const srcRoot = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.ur
  * Snapshotted BEFORE `outDir` is wiped and rewritten, so it records the tree
  * the browser was served from rather than one this tool has already dirtied.
  * `outDir` is excluded from the clean/dirty verdict — a previous run's leftover
- * pixels are not code the app ran — but still listed, so nothing is hidden.
+ * pixels are not code the app ran — as are the other run artefacts named at the
+ * filter below. All of them stay listed in `dirtyPaths`, so nothing is hidden
+ * from a reader; they are re-labelled, not dropped.
  */
 const capturedFrom = (() => {
   const record = {
@@ -88,13 +92,44 @@ const capturedFrom = (() => {
     record.branch = git('rev-parse', '--abbrev-ref', 'HEAD');
     const status = git('status', '--porcelain');
     const lines = status === '' ? [] : status.split('\n');
-    const own = path.relative(srcRoot, outDir);
-    const code = lines.filter((line) => !line.replace(/^\s*\S+\s+/, '').startsWith(own));
+    // Not code the app ran: this tool's own output directory, plus the run
+    // artefacts `tools/evidence.mjs` excludes for the same reason (a bundle or
+    // a progress-page update is not a change to what the browser executed).
+    // Kept in step with SELF_DIRTYING there deliberately — a capture that
+    // reads DIRTY because an evidence bundle is uncommitted is a false alarm,
+    // and false alarms are how a real one gets waved through.
+    // `.gauntlet/shots/` WHOLESALE, not just this tool's own directory. The
+    // sibling capture tool writes a different shot directory, so running the
+    // two in sequence made the second report the first's fresh pixels as
+    // uncommitted CODE — which they are not; no shot is an input to the app.
+    // Each record's own staleness is cross-checked independently by
+    // `tools/evidence.mjs --verify`, which reads every tracked shot record and
+    // fails on one that is undated, dirty, stale or red. This field answers a
+    // narrower question: was the CODE the browser ran committed.
+    const notCode = ['.gauntlet/shots/', '.gauntlet/evidence/', '.gauntlet/state.json'];
+    const code = lines.filter((line) => {
+      const p = line.replace(/^\s*\S+\s+/, '');
+      return !notCode.some((prefix) => p.startsWith(prefix));
+    });
     record.workingTree = code.length === 0 ? 'clean' : 'DIRTY — this run is not against a commit';
     record.dirtyPaths = lines.slice(0, 40);
   } catch (error) {
     record.workingTree = `unknown — ${String(error).slice(0, 200)}`;
   }
+  // A digest of the measuring device, not just the app it measured. See the
+  // matching block in `verify-shell-route.mjs` for why a SHA alone is not
+  // enough: an edited instrument leaves a green record describing a check that
+  // no longer exists, and the commit is unchanged.
+  record.instrument = Object.fromEntries(
+    ['capture-cutin.mjs', 'png.mjs'].map((name) => {
+      const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
+      try {
+        return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
+      } catch (error) {
+        return [name, `unreadable — ${String(error).slice(0, 80)}`];
+      }
+    }),
+  );
   return record;
 })();
 const width = Number(flag('w', '390'));

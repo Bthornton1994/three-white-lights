@@ -85,6 +85,8 @@
  */
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -417,8 +419,9 @@ const LINE_BOX_PROBE = Object.freeze({
  * from the tree as it stood before any of these writes.
  *
  * `outDir` is excluded from the clean/dirty VERDICT for the same reason (a
- * previous run's leftovers are not code the app ran), but is still listed in
- * `dirtyPaths`, so nothing is hidden from a reader — only re-labelled.
+ * previous run's leftovers are not code the app ran), as are the other run
+ * artefacts named at the filter below. All of them stay listed in `dirtyPaths`,
+ * so nothing is hidden from a reader — only re-labelled.
  */
 function provenance() {
   const record = {
@@ -437,14 +440,56 @@ function provenance() {
     record.branch = git('rev-parse', '--abbrev-ref', 'HEAD');
     const status = git('status', '--porcelain');
     const lines = status === '' ? [] : status.split('\n');
-    const own = path.relative(srcRoot, outDir);
-    const code = lines.filter((line) => !line.replace(/^\s*\S+\s+/, '').startsWith(own));
+    // Not code the app ran: this tool's own output directory, plus the run
+    // artefacts `tools/evidence.mjs` excludes for the same reason (a bundle or
+    // a progress-page update is not a change to what the browser executed).
+    // Kept in step with SELF_DIRTYING there deliberately — a capture that
+    // reads DIRTY because an evidence bundle is uncommitted is a false alarm,
+    // and false alarms are how a real one gets waved through.
+    // `.gauntlet/shots/` WHOLESALE, not just this tool's own directory. The
+    // sibling capture tool writes a different shot directory, so running the
+    // two in sequence made the second report the first's fresh pixels as
+    // uncommitted CODE — which they are not; no shot is an input to the app.
+    // Each record's own staleness is cross-checked independently by
+    // `tools/evidence.mjs --verify`, which reads every tracked shot record and
+    // fails on one that is undated, dirty, stale or red. This field answers a
+    // narrower question: was the CODE the browser ran committed.
+    const notCode = ['.gauntlet/shots/', '.gauntlet/evidence/', '.gauntlet/state.json'];
+    const code = lines.filter((line) => {
+      const p = line.replace(/^\s*\S+\s+/, '');
+      return !notCode.some((prefix) => p.startsWith(prefix));
+    });
     record.workingTree =
       code.length === 0 ? 'clean' : 'DIRTY — this run is not against a commit';
     record.dirtyPaths = lines.slice(0, 40);
   } catch (error) {
     record.workingTree = `unknown — ${String(error).slice(0, 200)}`;
   }
+  /**
+   * WHICH MEASURING DEVICE PRODUCED THIS RECORD.
+   *
+   * A commit SHA says which app the browser ran. It says nothing about the
+   * instrument, and the instrument is half of what a check means: edit
+   * `ON_SCREEN_MIN_OPACITY` to 0 here, or drop a row from `NEVER_A_PILL_BEAT`
+   * together with its probe — both self-consistent under
+   * `checkNavTableMatchesTuning`'s two-way pin — and every committed "ok" line
+   * is now attributed to a device that no longer exists. A critic found that
+   * the harness could certify such a record as current.
+   *
+   * So the record carries a digest of this file and the driver it plays the
+   * session with. A reader comparing them against the tree can tell a stale
+   * instrument from a stale app, which the SHA alone cannot distinguish.
+   */
+  record.instrument = Object.fromEntries(
+    ['verify-shell-route.mjs', 'sessionDrive.mjs'].map((name) => {
+      const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
+      try {
+        return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
+      } catch (error) {
+        return [name, `unreadable — ${String(error).slice(0, 80)}`];
+      }
+    }),
+  );
   return record;
 }
 

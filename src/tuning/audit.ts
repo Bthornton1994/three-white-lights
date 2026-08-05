@@ -908,6 +908,44 @@ export function withoutComments(source: string): string {
     .replace(LINE_COMMENT, (m, keep: string) => keep + ' '.repeat(m.length - keep.length));
 }
 
+/**
+ * THE COMPLEMENT OF `withoutComments`: the comments, and nothing else.
+ *
+ * Every other scanner in this repository reads a file with its comments blanked,
+ * which is right for asking what the CODE does and leaves one thing unasked —
+ * whether the prose next to it still describes that code. A comment that has
+ * gone false is invisible to every check in the tree, and prose is what the next
+ * reader acts on. `cutInWiring.test.ts` uses this to hold one module's comments
+ * to its own architecture.
+ *
+ * SAME LENGTH AND SAME LINE BREAKS AS THE INPUT, exactly like `withoutComments`,
+ * so a match index in the output is a real line number in the file. Code is
+ * blanked to spaces rather than removed.
+ *
+ * BLOCK COMMENTS FIRST, then line comments on what the block pass left behind —
+ * the same order and the same reason as `withoutComments`. A double slash inside
+ * a block comment is prose, not a second comment, and a `://` in a URL is
+ * neither (`LINE_COMMENT` refuses a preceding colon).
+ *
+ * WHAT IT CANNOT DO, stated rather than discovered: a `//` inside a STRING
+ * LITERAL is read as a comment and its tail is kept. That is the same blind spot
+ * `withoutComments` has from the other side — it blanks the same tail — and both
+ * inherit it from doing this with regular expressions instead of a parser.
+ */
+export function onlyComments(source: string): string {
+  const out = [...source.replace(NON_NEWLINE, ' ')];
+  const paste = (text: string, at: number): void => {
+    for (let i = 0; i < text.length; i += 1) out[at + i] = text[i] ?? ' ';
+  };
+  for (const match of source.matchAll(BLOCK_COMMENT)) paste(match[0], match.index);
+  const blocksGone = source.replace(BLOCK_COMMENT, (m) => m.replace(NON_NEWLINE, ' '));
+  for (const match of blocksGone.matchAll(LINE_COMMENT)) {
+    const skip = (match[1] ?? '').length;
+    paste(match[0].slice(skip), match.index + skip);
+  }
+  return out.join('');
+}
+
 // ---------------------------------------------------------------------------
 // The audit
 // ---------------------------------------------------------------------------

@@ -2,7 +2,19 @@
 
 **Status:** Pre-prototype
 **Stack:** React Native + Expo, TypeScript, Reanimated 4, Skia, Supabase
-**Last updated:** 2026-08-04 (§12.2 — **"test file" is now a DERIVED set, not a
+**Last updated:** 2026-08-05 (§7.2 — the cut-in's "no Tier 2 at all" cost is
+**two costs, not one**. It was stated as an identification cost only; the surface
+also loses `tier2.shortName`, which is the panel's remedy for a name too wide for
+it, and the cut-in's substitute — wrap, then overflow, then widen the grid —
+spends the interrupt's on-screen upscale instead. Nothing about the ruling
+changes; the trade is now written down in full. Alongside it, in code only: the
+prose in four files still told its reader the cut-in mounts the shop panel two
+rounds after §7.2 ruled that it does not, and `cutInWiring.test.ts` now reads
+COMMENTS as well as code and fails on that claim, with the historical note that
+explains the change deliberately left green. The set of files that may claim a
+sitting is derived from the TYPE CHECKER rather than from the JSX spelling
+`<CutInHost`, which an aliased import walked straight past into §12.3's refusal
+condition. Earlier: 2026-08-04 — §12.2 — **"test file" is now a DERIVED set, not a
 regular expression's opinion.** Both route guards skipped test files, and the
 skip was justified by an argument — "a fixture reaches no player, persists
 nothing, and is read by the same reviewer as the assertion beside it". That
@@ -1000,9 +1012,16 @@ follows the slot. `CUT_IN_ART.SLOT` is per-moment precisely so a later pass can
 lead a beat with a wordmark or a product instead of a portrait, and the caption
 moves with that while a name tag would not. Two identity sources on one surface
 with nothing making them agree is how the doubled name reached the screen in the
-first place. **The cost is that a cut-in carries no Tier 2 at all**, so a beat
-led by the `product` slot identifies by picture and product line rather than by
-person — a trade nobody has seen with real art on it, logged in §11.
+first place. **The cost is that a cut-in carries no Tier 2 at all**, and it is
+two costs rather than one. A beat led by the `product` slot identifies by picture
+and product line rather than by person; and **the cut-in also loses
+`tier2.shortName`**, which is the panel's remedy for a name too wide for it. The
+substitute is wrapping to `CUT_IN_PANEL.CAPTION_LINES`, then visible overflow,
+then a grid that widens to hold it — and a wider grid takes a smaller whole-number
+upscale on the phone, so a very long licensed caption costs the interrupt SIZE
+where it would only have cost the shelf a shorter string. Neither surface
+truncates a licensed mark; that part is deliberate on both. A trade nobody has
+seen with real art on it, logged in §11.
 
 ### 7.3 The Identity Tier System
 

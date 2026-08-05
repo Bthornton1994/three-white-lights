@@ -290,6 +290,14 @@ export const CUT_IN_PANEL = Object.freeze({
    * a drawing or a caption that does not fit. A licensed portrait wider than
    * this makes the cut-in wider and the on-screen upscale smaller, which is
    * visible, rather than silently losing the left and right of a partner's face.
+   *
+   * AND THAT WIDENING IS THE WHOLE OVERFLOW REMEDY HERE, which is the second
+   * half of the "no Tier 2 at all" cost `cutInArt.ts` states. A shelf panel with
+   * a too-long name prints `tier2.shortName` instead; a cut-in has no Tier 2, so
+   * a too-long CAPTION wraps to `CAPTION_LINES`, then overflows visibly, then
+   * widens this grid — and a wider grid is a smaller upscale on the phone. The
+   * cost of a long licensed caption lands on the SIZE of the interrupt rather
+   * than on a shorter string.
    */
   W: 114,
   /** Inset from the grid edge to any content. */

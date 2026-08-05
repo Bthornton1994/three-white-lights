@@ -467,18 +467,94 @@ function topRowOf(grid: IndexGrid, tier: SeatedTier): number {
  * that is what the keyline is for, and it is the drawing standing up is supposed
  * to produce — so a count taken down there FALLS as the hall rises: at the
  * walk-out's rise the second tier keeps 108 of the 180 own-column pixels it has
- * at rest in those rows. Above and on its seat row nothing else reaches it. The
- * tier behind's columns are excluded from `ownCols` by construction; the tier in
- * front's rim tops out `ROW_PITCH - ROW_RISE_MAX_PX - KEYLINE_ROWS` = 1 row
- * BELOW this window's bottom. That second half is not taken on trust — anything
- * else painting in here would push the count ABOVE the equality asserted in
- * `reads its rise off a WHOLE tier, at every rise`, which is an equality and not
- * a floor precisely so that it can fail in both directions.
+ * at rest in those rows. Above and on its seat row nothing else reaches it.
+ *
+ * WHAT "NOTHING ELSE REACHES IT" ACTUALLY RESTS ON, in three parts, of which
+ * only the third is a measurement of the window itself. What used to stand here
+ * claimed the equality in `reads its rise off a WHOLE tier, at every rise` made
+ * this self-checking, because "anything else painting in here would push the
+ * count ABOVE the equality ... which is an equality and not a floor precisely so
+ * that it can fail in both directions". THAT WAS FALSE, and one line of algebra
+ * says so: `topRowOf` returns the topmost row of this window with an own column
+ * lit, so the equality's right-hand side is `(seatRow - topRow + 1) * |ownCols|`
+ * — and the left-hand side sums those same rows, each contributing at most
+ * `|ownCols|`. It cannot fail upward for any grid. Foreign paint contiguous with
+ * this tier's head is not pushed above the equality; it is absorbed into the
+ * measured rise, and both sides go up together.
+ *
+ *   1. THE TIER BEHIND — ARGUED, and here is the argument. `ownCols` excludes
+ *      every column lit anywhere in `[ceilingRow, seatRow)` on the SEATED hall.
+ *      Those rows are the last four of the tier behind's five, so they include
+ *      BOTH its shoulder rows — its widest, `HEAD_W + 2` columns on a `HEAD_COLS`
+ *      pitch — and its head columns are a subset of those, so what is excluded is
+ *      its whole column set and not part of one. Standing up then moves rows and
+ *      never columns (`paintCrowd` grows a figure upward and pins its seat: the
+ *      same two rects, in different rows), so a risen tier covers a SUBSET of the
+ *      columns it covers at rest and can never reach a column the tier in front
+ *      owns. At `HEAD_COLS` 7 and `ROW_STAGGER` 3 the two sets are {6,0,1,2,3}
+ *      and {4,5} mod 7. This half is reasoning and not measurement, because a
+ *      finished grid cannot say which tier drew a pixel.
+ *   2. THE TIER IN FRONT — ARGUED, with the constants the argument needs PINNED.
+ *      Its rim tops out `ROW_PITCH - ROW_RISE_MAX_PX - KEYLINE_ROWS` = 1 row
+ *      BELOW this window's bottom, so even at full rise it paints nothing in
+ *      here. That clearance is asserted positive in `reads its rise off a WHOLE
+ *      tier, at every rise`, so a tuning pass that eats it fails there rather
+ *      than silently corrupting every reading in this file.
+ *   3. THE READING — MEASURED, in both directions, which is what makes 1 and 2
+ *      belt-and-braces rather than the only thing between this probe and a wrong
+ *      answer. The same test PINS the measured rise to `crowdRowRise` clipped to
+ *      the band's room — computed from the wave's arithmetic and the SEATED
+ *      render's seat rows, neither of which the grid under test can inflate. So
+ *      paint that lifts the reading above what the wave asked for is red whoever
+ *      put it there, and so is a hall drawn BELOW what the wave asked for — one
+ *      that sits through the ramp and switches on at the end.
+ *
+ *      THE TWO DIRECTIONS COME FROM ONE ASSERTION, and it is worth saying which,
+ *      because this paragraph used to get it wrong. It read "bounds the measured
+ *      rise ABOVE ... and the equality bounds it below", and the equality — the
+ *      solid-rows product — does not bound the READING in any direction. It
+ *      bounds the pixel count GIVEN the reading, which is the same fact the
+ *      paragraph above this list spends six lines on: a tier drawn at rise 2 when
+ *      the wave asked 4 satisfies the product exactly, and satisfied the old `<=`
+ *      ceiling too. What closes both directions is that the ceiling is now an
+ *      equality itself; the reasoning that makes pinning it safe rather than
+ *      lucky is written out where the assertion is.
  */
 function ownColumnPixels(grid: IndexGrid, tier: SeatedTier): number {
   let lit = 0;
   for (let y = tier.ceilingRow; y <= tier.seatRow; y += 1) {
     for (const x of tier.ownCols) {
+      if (grid.data[y * grid.w + x] === GYM.CROWD_MID) lit += 1;
+    }
+  }
+  return lit;
+}
+
+/**
+ * The same window, in the columns this tier does NOT own: everybody else's
+ * pixels in it.
+ *
+ * The one instrument here that can see a neighbouring tier growing INTO this
+ * window at all — `ownColumnPixels` looks at disjoint pixels and cannot. For the
+ * BACK tier it reads 0 at every rise, which turns "nothing else is in that
+ * window" from an argument into a measurement; its window is wall.
+ *
+ * IT IS ASSERTED ONE-SIDED, and the stronger form was tried first and is RED ON
+ * CORRECT ART. Pinning this to `REST_BAND` fails because the count legitimately
+ * FALLS as the hall rises: a tier's own keyline is stamped over the tier behind,
+ * so the tier behind loses pixels inside this window exactly as it is supposed
+ * to. Measured, tier 1: 321 foreign pixels at rest, 321 through rise 4, 246 at
+ * the walk-out's 5, 171 at 6, and 169 from rise 8 to saturation. So what is
+ * asserted is the direction that can only mean a defect — foreign paint GROWING
+ * into the window — and the headroom in it is stated rather than glossed: at the
+ * walk-out's rise tier 1 sits 75 pixels under its own rest reading.
+ */
+function foreignWindowPixels(grid: IndexGrid, tier: SeatedTier): number {
+  const own = new Set(tier.ownCols);
+  let lit = 0;
+  for (let y = tier.ceilingRow; y <= tier.seatRow; y += 1) {
+    for (let x = 0; x < grid.w; x += 1) {
+      if (own.has(x)) continue;
       if (grid.data[y * grid.w + x] === GYM.CROWD_MID) lit += 1;
     }
   }
@@ -520,6 +596,22 @@ function ownColumnPixels(grid: IndexGrid, tier: SeatedTier): number {
  * before that test existed: `paintCrowd` made to skip the back tier whenever
  * `rise > 0` — an entire tier of the hall gone from every risen frame — left all
  * 2,330 tests in the tree green.
+ *
+ * AND IT CANNOT SEE UPWARD ON ITS OWN EITHER, which is the other half and was
+ * missed for longer. `topRowOf` reports the topmost row of the window with an own
+ * column lit; it cannot ask who lit it. Paint that is not this tier's, landing in
+ * this tier's own columns above its head, is scored as this tier's rise — and the
+ * solid-rows product cannot object, because the same pixels raise both sides of
+ * it (see `ownColumnPixels`). Run rather than reasoned: `paintCrowd` made to
+ * stamp `CROWD_MID` into tier 1's own columns in the three rows above its head,
+ * only at rises 1 to 3 — rises the walk-out's own ramp draws on the way up — left
+ * all 2,447 tests in the tree green. What closes it is the PIN in `reads its rise
+ * off a WHOLE tier, at every rise`: the measured rise EQUALS what the wave asked
+ * for, at every rise rather than at the two the beat settles on. It was written
+ * as a one-sided ceiling first, and that left the DOWNWARD half of the same hole
+ * open — a hall drawn lower than the wave asked, or not risen at all until the
+ * last frame, is under a ceiling. Measured: `paintCrowd` made to hold `rowRise`
+ * at 0 until `rise` reaches the walk-out's left all 2,470 tests green.
  *
  * THAT SENTENCE USED TO CITE `never lets a risen hall reach down toward the
  * lifter`, AND THAT TEST CANNOT DELIVER IT. It counts pixels that are crowd NOW
@@ -889,7 +981,7 @@ describe('the ruler this file reads the hall’s rise off', () => {
 
   it('reads its rise off a WHOLE tier, at every rise', () => {
     // ---------------------------------------------------------------------
-    // THE FLOOR UNDER `tierRisesOf`, AND THE HOLE IT FILLS
+    // THE FLOOR AND THE CEILING UNDER `tierRisesOf`, AND THE HOLES THEY FILL
     // ---------------------------------------------------------------------
     // `topRowOf` falls back to the seat row, so a tier that is NOT DRAWN AT ALL
     // reads exactly what a tier that did not move reads: 0. Nothing else in the
@@ -914,19 +1006,49 @@ describe('the ruler this file reads the hall’s rise off', () => {
     //     `tierRisesOf`.
     //
     // ---------------------------------------------------------------------
-    // WHY EQUALITY AND NOT "AT LEAST AS MANY AS AT REST"
+    // WHY A PRODUCT AND NOT "AT LEAST AS MANY AS AT REST", AND WHAT THE PRODUCT
+    // CANNOT DO
     // ---------------------------------------------------------------------
-    // The floor is true here and it is asserted, but it is the weaker of the two
-    // statements and it is only true in THIS window — see `ownColumnPixels` for
-    // why the window stops at the seat row, and for the measurement that says a
-    // count taken further down falls with the wave instead of holding.
-    //
-    // The exact relation is a product. Standing up is the head lifting and the
+    // The relation is a product. Standing up is the head lifting and the
     // shoulders STRETCHING to a seat that stays put, so a tier risen by R is
     // solid from `seatRow - R` to `seatRow` in its own columns — R + 1 rows of
     // them, every one full. Asserting the product says that; a floor would not.
-    // A tier drawn as a floating head with a gap under it, or one that grew a
-    // row wider than its own columns, passes a floor and fails this.
+    // A tier drawn as a floating head with a gap under it fails this, and so
+    // does one that came up with a NARROWER head — half its own columns lit in
+    // the risen row — because the product wants every own column in every row
+    // down to the seat. Both pass a floor. (What used to stand here offered "or
+    // one that grew a row wider than its own columns" as the second example.
+    // That one is wrong: `ownColumnPixels` never counts a pixel outside
+    // `ownCols`, so a tier that grew wider passes the product untouched.)
+    //
+    // WHAT IT CANNOT DO, and the reason the rise is pinned below as well as
+    // counted: THE PRODUCT CANNOT FAIL UPWARD. `topRowOf` returns the topmost
+    // row of the window with an own column lit, so the right-hand side is
+    // `(seatRow - topRow + 1) * |ownCols|`, and the left-hand side sums exactly
+    // those rows at no more than `|ownCols|` apiece. `seen <= rows * |ownCols|`
+    // therefore holds for every grid there is — one with foreign paint in it,
+    // one with a tier missing, one of noise. Paint that lands inside the window
+    // raises the measured rise rather than breaking the count. So the product is
+    // a SOLIDITY check and nothing more, and the exclusivity of this window is
+    // argued in `ownColumnPixels` rather than checked by it.
+    //
+    // (A floor of `seen >= atRest` also used to be restated here as a third
+    // assertion. `atRest` is pinned to `|ownCols|` two lines above and `rows` is
+    // never below 1, so it was strictly implied by the product and could not be
+    // the failing line. A restatement reads as coverage without being any, so it
+    // is gone rather than kept for emphasis.)
+    //
+    // THE CLEARANCE `ownColumnPixels`'S SECOND ARGUMENT NEEDS, pinned rather
+    // than left in prose: the tier in FRONT's keyline tops out this many rows
+    // below the window's bottom. At 0 its rim would reach the seat row being
+    // measured and every reading in this file would be partly somebody else's
+    // drawing.
+    expect(
+      GYM_CROWD.ROW_PITCH - GYM_CROWD.ROW_RISE_MAX_PX - GYM_CROWD.KEYLINE_ROWS,
+      'a tier in front can now paint inside the tier behind’s scan window',
+    ).toBeGreaterThan(0);
+
+    const tiers = crowdTierCount(MEET_HALL_SCENE);
     for (const rise of EVERY_RISE) {
       const grid = renderGymScene(hallScene(rise));
       const measured = tierRisesOf(grid);
@@ -938,19 +1060,116 @@ describe('the ruler this file reads the hall’s rise off', () => {
         expect(atRest, `tier ${tier.index} is not drawn on its own seat row at rest`)
           .toBe(tier.ownCols.length);
 
+        const seenRise = measured[tier.index] ?? 0;
         const seen = ownColumnPixels(grid, tier);
-        const rows = (measured[tier.index] ?? 0) + 1;
+        const rows = seenRise + 1;
         expect(
           seen,
-          `rise ${rise}, tier ${tier.index}: read as risen ${rows - 1}, which owes ${rows} solid rows of ${tier.ownCols.length} and drew ${seen} pixels`,
+          `rise ${rise}, tier ${tier.index}: read as risen ${seenRise}, which owes ${rows} solid rows of ${tier.ownCols.length} and drew ${seen} pixels`,
         ).toBe(rows * tier.ownCols.length);
-        // ...and the floor, restated as the thing it is rather than left as a
-        // corollary: a rise adds rows to a tier and takes none away, so no tier
-        // ever has FEWER of its own pixels here than the seated hall gives it.
+
+        // ...AND THE RISE ITSELF, PINNED, which is the half the product cannot
+        // supply and the half that makes a reading of "risen" an accusation
+        // against THIS tier and no other. Both terms of the expected value come
+        // from outside the picture being measured, which is the entire point:
+        // `crowdRowRise` is the wave's own arithmetic on the scalar `rise`, and
+        // the band's room is this tier's seat row on the SEATED render — the
+        // same `bandRoom` clip `agrees with the wave` applies, and neither is a
+        // number `grid` can move. So a tier drawn higher than the wave asked, or
+        // a neighbour reaching into this tier's own columns above its head — the
+        // defect the product absorbs into the rise instead of reporting — is red
+        // here, and so is a tier drawn LOWER than the wave asked.
+        //
+        // A PIN AND NOT A BOUND, and the assertion that lets it be one is the
+        // clearance three lines above rather than an argument here.
+        //
+        // WHAT `<=` COST, run rather than reasoned. The only rises where "the
+        // hall is drawn where the wave asked" is pinned exactly anywhere else
+        // in this file are the two `agrees with the wave` samples — the
+        // walk-out's and the cheer's, 5 and 7 at today's constants — so at 9 of
+        // the 11 rises in `EVERY_RISE` a bound was the whole of the claim.
+        // `paintCrowd` made to apply `rowRise` only once `rise` reaches the
+        // walk-out's, so the entire interior of the beat's `WALKOUT_RISE_MS`
+        // ramp draws a SEATED hall and the crowd switches on in one step on the
+        // last frame:
+        //
+        //     Test Files  57 passed (57)
+        //          Tests  2470 passed (2470)
+        //
+        // Every instrument in reach read green on it. `seenRise` 0 was under
+        // the bound; the product wanted one solid row and got one; the foreign
+        // count was under its rest reading; `keeps every spectator inside the
+        // seating band`, `never lets a risen hall reach down` and `has nothing
+        // left to give past the end of this sweep` are all satisfied by a hall
+        // that never moved; and `comes up over time rather than switching on`
+        // reads `crowdRisePx` off the frames and never a pixel. A hall that
+        // SWITCHES ON instead of coming up is the failure this file's header
+        // was written to end, and it had arrived one level down.
+        //
+        // WHY THE EQUALITY IS STRUCTURAL AND NOT A COINCIDENCE OF TODAY'S
+        // NUMBERS, which is what makes pinning it safe rather than lucky:
+        //
+        //   WHAT IS DRAWN. `paintCrowd` puts this tier's head at
+        //     `headTop = Math.max(top, y - rowRise)`, so the rise it DRAWS is
+        //     `min(rowRise, seatRow - BAND_TOP)` — the `drawn` expression
+        //     below, character for character. (Same name and same formula as
+        //     in `agrees with the wave`, because it is the same quantity.)
+        //   WHAT IS READ. `topRowOf` returns that row provided it is inside the
+        //     scan window, which is `probeWindow = seatRow - ceilingRow` rows
+        //     deep. That is `ROW_PITCH - 1` for every tier: `ceilingRow` is the
+        //     row under the tier behind's seat and `is calibrated on the seated
+        //     band` pins the pitch between them, and the back tier gets the
+        //     same depth by construction in `backTierCeiling` (measured: 5 on
+        //     all four tiers, off a `BAND_TOP` of 75 — far enough down the
+        //     frame that the `Math.max(0, ...)` in there never clips. If it ever
+        //     did, that tier's `seatRow` is `BAND_TOP`, so its `bandRoom` and
+        //     its drawn rise are both 0 and the equality holds anyway).
+        //   WHY THE READ CANNOT SATURATE. The drawn rise is at most
+        //     `ROW_RISE_MAX_PX`, and the clearance asserted above forces
+        //     `ROW_RISE_MAX_PX <= ROW_PITCH - KEYLINE_ROWS - 1` — which is
+        //     `probeWindow - 1` or shallower, since `KEYLINE_ROWS >= 1` is
+        //     itself pinned by `is calibrated on the seated band` (run:
+        //     `KEYLINE_ROWS: 0` reddens it on "there is more air above it than
+        //     the keyline claims"). So the head always lands inside the window
+        //     with a row to spare: 4 against 5 today.
+        //   WHY NOTHING OVERWRITES IT. The same clearance keeps the tier in
+        //     FRONT's keyline off these rows, and the tier BEHIND cannot reach
+        //     these columns at all; both are argued in `ownColumnPixels`.
+        //
+        // SO THE CASE THIS COMMENT USED TO CITE AS THE REASON FOR THE SLACK —
+        // "past `probeWindow` rows the instrument saturates and reads low" —
+        // is the case the clearance assertion three lines up exists to exclude,
+        // and it was already excluded when the slack was written. Run rather
+        // than reasoned: `ROW_RISE_MAX_PX: 5` closes the clearance to 0 and
+        // reddens THERE by name, plus `agrees with the wave`'s own saturation
+        // guard — not here — which is where that conversation belongs.
+        //
+        // Swept the other way too, so this is not a pin that only holds at one
+        // constant set: all 44 (rise, tier) pairs in `EVERY_RISE` satisfy the
+        // equality, so do the rises past saturation and the negative ones
+        // `paintCrowd` clamps to zero, and so does this assertion at
+        // `ROW_RISE_MAX_PX` 3 and 1 and at `ROW_RISE_LAG_PX` 1 and 3. (At
+        // `ROW_RISE_MAX_PX: 1` two OTHER tests in this file go red, because a
+        // cap that low stops the cheer reaching further into the hall than the
+        // walk-out does. That is the escalation failing, not the ruler.)
+        const drawn = Math.min(
+          crowdRowRise(rise, tiers - 1 - tier.index),
+          tier.seatRow - BAND_TOP,
+        );
         expect(
-          seen,
-          `rise ${rise}, tier ${tier.index}: fewer spectators than the seated hall has`,
-        ).toBeGreaterThanOrEqual(atRest);
+          seenRise,
+          `rise ${rise}, tier ${tier.index}: reads as risen ${seenRise}, and the wave asked for exactly ${drawn} — higher means something in this tier's own columns is not this tier, lower means the hall is not drawn where the wave asked`,
+        ).toBe(drawn);
+
+        // ...and the window's OTHER columns, where a neighbour's pixels
+        // legitimately live. One-sided on purpose and by measurement, not by
+        // preference — see `foreignWindowPixels` for the readings that make
+        // pinning it to the seated hall red on correct art. The back tier's
+        // reading here is 0 at every rise: its window is wall.
+        expect(
+          foreignWindowPixels(grid, tier),
+          `rise ${rise}, tier ${tier.index}: something else is painting into this tier's scan window`,
+        ).toBeLessThanOrEqual(foreignWindowPixels(REST_BAND, tier));
       }
     }
   });
@@ -1320,20 +1539,28 @@ describe('a third attempt is a different picture from an opener', () => {
 
     // ---------------------------------------------------------------------
     // THE MUTATION. The old mechanism, replayed on real pixels: every tier
-    // risen by the same amount, no keyline. At the 5 rows that shipped it fails
-    // the corrected bound outright — the worst occupied row has NO air in it —
-    // while passing the old rectangle-wide bound it was written against.
+    // risen by the same amount, no keyline. At the rise the walk-out actually
+    // asks for it fails the corrected bound outright — the worst occupied row
+    // has NO air in it — while passing the old rectangle-wide bound it was
+    // written against.
+    //
+    // The rise is `WALKOUT_HALL_RISE`, read out of the settled frame rather than
+    // written as a bare 5 or copied from `MEET_TUNING.CROWD.WALKOUT_RISE_PX`,
+    // for the reason given where it is defined: the plant is supposed to be the
+    // old drawing AT THE RISE THIS BEAT ASKS FOR, so severing the wire has to
+    // reach this measurement too rather than leaving it planting a constant
+    // nobody is using.
     // ---------------------------------------------------------------------
-    const uniform5 = airOf(uniformlyRisenBand(5));
-    expect(uniform5.worstRowAir, 'the planted slab has air in every row').toBe(0);
-    expect(uniform5.litShare, 'the planted slab did not invert').toBeGreaterThan(
+    const uniform = airOf(uniformlyRisenBand(WALKOUT_HALL_RISE));
+    expect(uniform.worstRowAir, 'the planted slab has air in every row').toBe(0);
+    expect(uniform.litShare, 'the planted slab did not invert').toBeGreaterThan(
       STILL_MOSTLY_GROUND,
     );
     // ...and the check that used to stand here waves it through. Both halves are
     // asserted, so "the old bound was too weak" is measured rather than argued.
     const oldBound = (band: BandAir): number =>
       band.rectDarkPx / (seated.rectLitPx + seated.rectDarkPx);
-    expect(oldBound(uniform5), 'the old bound would have caught it').toBeGreaterThan(1 / 5);
+    expect(oldBound(uniform), 'the old bound would have caught it').toBeGreaterThan(1 / 5);
 
     // The plant is the OLD DRAWING and not a broken one: at rest it reproduces
     // the shipped hall BYTE FOR BYTE, so what fails above is the rise and

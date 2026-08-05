@@ -41,6 +41,7 @@ import {
   type DotsCoefficient,
   type DotsDelta,
   type DotsOutcome,
+  type DotsPolynomial,
   type DotsSex,
   type OfficialTotalKg,
   type ScoredDots,
@@ -64,22 +65,37 @@ import {
 } from './meet';
 
 /**
- * Reference values in this file come from two places, both independent of the
- * module under test:
+ * WHERE THE REFERENCE NUMBERS IN THIS FILE COME FROM, AND WHAT EACH KIND PROVES.
  *
- *  - The coefficients themselves are asserted literally against the published
- *    values as read from fetched source code (openpowerlifting
- *    `crates/coefficients/src/dots.rs`, and the `powerlifting-formulas`
- *    TypeScript package). See the provenance block in `dots.ts`.
- *  - The expected scores were produced by a separate reference implementation
- *    written in Python that evaluates the polynomial with plain powers
- *    (`a*bw**4 + b*bw**3 + ...`) rather than Horner's method, so a mistake in
- *    term ordering or exponent in `dots.ts` cannot be mirrored by the expected
- *    values.
+ * There are two kinds and they are not the same strength. An earlier revision of
+ * this note ran them together and claimed more for the second than it could
+ * support; the split is spelled out here because a critic reading only this
+ * paragraph would otherwise think the whole file terminates outside the
+ * repository, and most of it does not.
  *
- * Precision: expected scores are quoted to 10 decimal places and compared to 6,
- * which is far tighter than any display or leaderboard use and still tolerant of
- * the ~1e-12 difference between the two evaluation orders.
+ *  1. THE EXTERNAL SCORE PIN, in `the external score pin` below. DOTS scores
+ *     computed by three implementations that are not this one, downloaded and
+ *     executed, each pinned by a commit SHA or an npm integrity hash. These are
+ *     the only numbers in this file that a wrong digit in `dots.ts` cannot also
+ *     make wrong. Read that block's header for what it does and does not
+ *     establish.
+ *
+ *  2. EVERYTHING ELSE — the coefficient literals, the denominator and
+ *     coefficient tables, `dotsScore — reference values`. These were produced
+ *     from the same published constants this module holds (whose sources are
+ *     named in the provenance block at the top of `dots.ts`), by a scratch
+ *     reference implementation that evaluated the polynomial with plain powers
+ *     (`a*bw**4 + b*bw**3 + ...`) rather than Horner's method. That catches a
+ *     term-ordering or exponent mistake in `dotsDenominator`, which is a real
+ *     class of bug and worth keeping. It CANNOT catch a coefficient mistyped at
+ *     authoring time: the scratch script is not committed, was fed the same ten
+ *     numbers, and would have produced a self-consistent wrong table. Treat
+ *     these as consistency checks on the arithmetic, not as provenance.
+ *
+ * Precision for kind 2: expected values are quoted to 10 decimal places and
+ * compared to 6, which is far tighter than any display or leaderboard use and
+ * still tolerant of the difference between the two evaluation orders. Kind 1
+ * carries its own, much tighter, tolerance and says why.
  */
 const SCORE_PRECISION = 6;
 const COEFFICIENT_PRECISION = 8;
@@ -274,6 +290,488 @@ describe('published DOTS coefficients', () => {
       expect(Math.abs(k.c4)).toBeLessThan(1e-5);
       expect(dotsDenominator(sex, 80)).toBeGreaterThan(0);
     }
+  });
+});
+
+/* ===========================================================================
+ * THE EXTERNAL SCORE PIN
+ * ===========================================================================
+ * WHAT THIS BLOCK IS FOR, AND WHAT WAS WRONG WITHOUT IT.
+ *
+ * Every other reference number in this file terminates inside this repository.
+ * `published DOTS coefficients` above reads `DOTS_COEFFICIENTS` and asserts it
+ * equals ten literals typed into this file by the same hand that typed the
+ * module; `dotsScore — reference values` compares the module's output against a
+ * table produced from those same ten numbers. A digit transposed at authoring
+ * time — in `dots.ts` and again here, or in the reference run that generated the
+ * expected scores — produces a SELF-CONSISTENT WRONG ANSWER and a green suite.
+ * Catching that required a human to go and look outside the repository, and
+ * nothing made the next reader do it.
+ *
+ * This block does. The rows below are DOTS SCORES computed by three
+ * implementations that are not this one, retrieved over the network and executed
+ * locally. A wrong digit in any of the ten coefficients moves a score and turns
+ * the suite red — which is a property this file also proves, rather than asserts,
+ * in 'would catch a one-last-digit slip in any of the ten coefficients'.
+ *
+ * It is deliberately SCORES rather than a second copy of the coefficients.
+ * Committing ten external coefficient literals and diffing them against our ten
+ * is the same closed loop one level out: it checks the transcription and nothing
+ * downstream of it. A score exercises the coefficients, the term order, the
+ * numerator, the domain clamp and the multiply in one number.
+ *
+ * ---------------------------------------------------------------------------
+ * PROVENANCE — FETCHED, NOT TRANSCRIBED
+ * ---------------------------------------------------------------------------
+ * Every number below was produced by running code that this builder downloaded
+ * on 2026-08-05 from the URLs given. None of it was typed off a web page, and
+ * none of it came out of a search summary — `dots.ts`'s own provenance header
+ * warns at length that search results about this formula are contaminated, and
+ * this round produced a fresh example: a search made while building this block
+ * returned four numbers labelled "the official DOTS coefficients", confidently
+ * and with a federation attached, which are in fact one arm of an entirely
+ * different scoring formula's coefficient set.
+ *
+ *   E1  npm package `wilks`, version 2.3.0
+ *       https://registry.npmjs.org/wilks/-/wilks-2.3.0.tgz
+ *       sha512-us38S09lowEQYgLiw5zKkr0AeRuDhQeNdLG0QDdmON+K+O4nS2uo7two/A+ljvVB7ppOKSVLixVaFmA0WMFG5A==
+ *       Called as `dots({ gender, bodyweight, total, unit: 'kg' })`. It rounds
+ *       its own result to two decimals, which is why it supplies the
+ *       `dotsRounded` column and not the `dots` one. Re-check with
+ *       `npm pack wilks@2.3.0` and the integrity hash above.
+ *
+ *   E2  OpenLifter, `src/logic/coefficients/dots.ts`, at the commit that last
+ *       touched that path (2019-08-06):
+ *       https://gitlab.com/openpowerlifting/openlifter/-/raw/364806789a59e77ad2456767dac600c57ffab998/src/logic/coefficients/dots.ts
+ *       2849 bytes, sha256
+ *       6504fb3bf04a9e71994eefd3e3579a25510348392270cb5f5d3640920d98bb06.
+ *       Pinned to a commit, like the RPE fixtures in `rpe.test.ts`, so re-fetching
+ *       that URL years from now returns these same bytes. It returns an unrounded
+ *       double, so it is the source of the `dots` column.
+ *
+ *       HOW IT WAS RUN, because "we executed it" is not reproducible on its own:
+ *       the fetched file was placed at its own path unmodified, its two imports
+ *       (`../../types/dataTypes` for the `Sex` union and `../../types/utils` for
+ *       `checkExhausted`) were satisfied with two stub files, and the result was
+ *       compiled with this repository's `tsc`. NOT ONE LINE OF THE FETCHED FILE
+ *       WAS EDITED — including the `.js` extension the emitted import needed,
+ *       which was added to the COMPILER OUTPUT, not the source.
+ *
+ *   E3  npm package `powerlifting-formulas`, version 0.2.3
+ *       https://registry.npmjs.org/powerlifting-formulas/-/powerlifting-formulas-0.2.3.tgz
+ *       sha512-t7sFRk1svnnqxAw5OGu91eXCilZnE2iKaF3dneMFRQFqAQN1sB4Q2OM+afpHwS4jx1rVs3WfrlCnjMNC6OJNIw==
+ *       Called as `dots(bodyweight, total, gender, 'kg')`. Also rounds to two
+ *       decimals. `dots.ts`'s header already cites this project's source file;
+ *       here it is executed rather than read.
+ *
+ * ALL THREE AGREED, at every row, with nothing tuned to make them: E1 and E3
+ * returned identical two-decimal values, and both equalled E2's unrounded value
+ * rounded to two decimals. So `dotsRounded` below is one number that two separate
+ * codebases produced and a third corroborates.
+ *
+ * THE THREE EVALUATE THE POLYNOMIAL DIFFERENTLY, which is worth something on its
+ * own: E2 builds explicit powers (`a*x4 + b*x3 + c*x2 + d*x + e`), E1 and E3 both
+ * fold a coefficient ARRAY with `Math.pow(bw, index)` in ASCENDING order, and
+ * `dots.ts` uses Horner in ascending order. A term-order or exponent slip in
+ * `dotsDenominator` cannot be mirrored by any of them.
+ *
+ * ---------------------------------------------------------------------------
+ * THE LIMIT OF THIS PIN — STATED BECAUSE IT IS EASY TO OVERREAD
+ * ---------------------------------------------------------------------------
+ * These are not established as three independent readings of the published
+ * formula. E2's own header says its implementation was "taken from the main
+ * OpenPowerlifting repo"; E3's README says its formulas were "heavily inspired
+ * on" the same coefficients crate; E1 makes no such statement but holds
+ * numerically identical coefficients. If all three descend from one text, then an
+ * error that entered that text before 2019 passes this whole block silently.
+ *
+ * So the claim is narrow and it is the one the gap needed: A TRANSCRIPTION ERROR
+ * MADE IN THIS REPOSITORY CANNOT PASS. It is NOT "the published formula is
+ * correct" — no test here can reach the original publication. The primary source
+ * (the author's original release, and the governing federation's own evaluation
+ * report) is unreachable from this sandbox, which `dots.ts` already records.
+ * Same limit, same wording, as the RPE fixtures in `rpe.test.ts`.
+ *
+ * ---------------------------------------------------------------------------
+ * MEASURED, NOT ASSUMED — the two numbers the tolerance sits between
+ * ---------------------------------------------------------------------------
+ * Both were measured over exactly the rows below, on 2026-08-05:
+ *
+ *   FLOOR   9.4e-16 relative — the largest disagreement between `dotsScore` and
+ *           E2 across all 26 rows, i.e. four or so units in the last place of a
+ *           double. That is the price of Horner versus explicit powers and
+ *           nothing else.
+ *   SIGNAL  3.5e-9 relative — the WEAKEST of the ten coefficients, at the row
+ *           that discriminates it best (female `c2`, at the 150 kg domain
+ *           ceiling), when its last written digit is bumped by one.
+ *
+ * `EXTERNAL_PIN_RELATIVE_TOLERANCE` is set at the geometric middle of those,
+ * rounded to a round number: about a thousand times looser than the float noise,
+ * about three thousand times tighter than the weakest coefficient signal.
+ * ========================================================================= */
+
+/**
+ * One externally-scored row, inside the published bodyweight domain.
+ *
+ * The bodyweights and totals are SYNTHETIC. They are not any real lifter's
+ * result and no row is taken from a results database — GDD §12.3 forbids a real
+ * athlete's identity in this repository, and a published total is one query away
+ * from a name. What a pin needs is coverage of the polynomial's domain, which
+ * invented numbers give and a real result sheet does not.
+ */
+interface ExternalDotsScoreRow {
+  readonly sex: DotsSex;
+  readonly bodyweightKg: number;
+  readonly totalKg: number;
+  /** Unrounded score from E2, at 17 significant figures (an exact double). */
+  readonly dots: number;
+  /** The same score as E1 and E3 return it: already rounded to two decimals. */
+  readonly dotsRounded: number;
+}
+
+/** A row outside the domain. Only E2 clamps, so only E2 has a value for it. */
+interface ExternalClampedDotsScoreRow {
+  readonly sex: DotsSex;
+  readonly bodyweightKg: number;
+  readonly totalKg: number;
+  readonly dots: number;
+}
+
+/**
+ * WHY THESE BODYWEIGHTS. Each sex spans its whole published domain and includes
+ * both exact bounds, because that is where the coefficients' contributions are
+ * most lopsided: at the floor the constant term `c0` carries the most weight
+ * relative to a small denominator, and at the ceiling `c2`, `c3` and `c4` all
+ * peak (at 210 kg male the `bw^2` term is -8461.7 and the `bw^3` term +6845.1
+ * against a denominator of 1008.8 — roughly eight and seven times its size, so
+ * the high-order coefficients are doing almost all the work and cancelling each
+ * other to get there).
+ *
+ * A CORRECTION TO THE OBVIOUS THIRD CRITERION, measured rather than assumed:
+ * there is no turning point of the denominator inside either domain to sample
+ * near. `D'(bw) = c1 + 2*c2*bw + 3*c3*bw^2 + 4*c4*bw^3` has exactly one real root
+ * in the physical range, and for both sexes it sits just OUTSIDE the clamp —
+ * about 228.8 kg against a 210 kg male ceiling, about 153.6 kg against a 150 kg
+ * female ceiling. The published fit is monotone across the whole domain and turns
+ * over shortly after it, which reads like the reason the clamps are where they
+ * are. The closest thing to a turning point that can be sampled is therefore the
+ * top of the domain, where `|D'|` is smallest (0.80 male, 0.19 female) — and the
+ * clamped rows below sit past it, on the far side of the bound.
+ */
+const EXTERNAL_DOTS_SCORES: readonly ExternalDotsScoreRow[] = [
+  { sex: 'male', bodyweightKg: 40.0, totalKg: 300.0, dots: 381.33300325745142, dotsRounded: 381.33 },
+  { sex: 'male', bodyweightKg: 52.5, totalKg: 402.5, dots: 382.04450355855886, dotsRounded: 382.04 },
+  { sex: 'male', bodyweightKg: 66.5, totalKg: 512.5, dots: 399.32753538475026, dotsRounded: 399.33 },
+  { sex: 'male', bodyweightKg: 74.0, totalKg: 600.0, dots: 434.19117180830972, dotsRounded: 434.19 },
+  { sex: 'male', bodyweightKg: 83.0, totalKg: 655.5, dots: 442.51977474150385, dotsRounded: 442.52 },
+  { sex: 'male', bodyweightKg: 93.0, totalKg: 700.0, dots: 445.37582442169628, dotsRounded: 445.38 },
+  { sex: 'male', bodyweightKg: 105.5, totalKg: 757.5, dots: 455.97485702150379, dotsRounded: 455.97 },
+  { sex: 'male', bodyweightKg: 120.0, totalKg: 800.0, dots: 459.44481525449322, dotsRounded: 459.44 },
+  { sex: 'male', bodyweightKg: 155.0, totalKg: 900.0, dots: 479.77647868401164, dotsRounded: 479.78 },
+  { sex: 'male', bodyweightKg: 183.5, totalKg: 950.0, dots: 484.89512313450155, dotsRounded: 484.9 },
+  { sex: 'male', bodyweightKg: 210.0, totalKg: 1000.0, dots: 495.62066178825597, dotsRounded: 495.62 },
+  { sex: 'female', bodyweightKg: 40.0, totalKg: 250.0, dots: 371.19914202039979, dotsRounded: 371.2 },
+  { sex: 'female', bodyweightKg: 47.0, totalKg: 300.0, dots: 393.16914674138297, dotsRounded: 393.17 },
+  { sex: 'female', bodyweightKg: 52.0, totalKg: 327.5, dots: 399.1902423892206, dotsRounded: 399.19 },
+  { sex: 'female', bodyweightKg: 57.0, totalKg: 350.0, dots: 400.99332162284389, dotsRounded: 400.99 },
+  { sex: 'female', bodyweightKg: 63.0, totalKg: 380.0, dots: 408.69568396608844, dotsRounded: 408.7 },
+  { sex: 'female', bodyweightKg: 69.0, totalKg: 400.0, dots: 407.79679630238309, dotsRounded: 407.8 },
+  { sex: 'female', bodyweightKg: 76.4, totalKg: 425.0, dots: 409.94855815849053, dotsRounded: 409.95 },
+  { sex: 'female', bodyweightKg: 84.0, totalKg: 450.0, dots: 414.06910953185411, dotsRounded: 414.07 },
+  { sex: 'female', bodyweightKg: 110.0, totalKg: 500.0, dots: 412.15482303429241, dotsRounded: 412.15 },
+  { sex: 'female', bodyweightKg: 132.5, totalKg: 525.0, dots: 411.19898663223756, dotsRounded: 411.2 },
+  { sex: 'female', bodyweightKg: 150.0, totalKg: 550.0, dots: 423.91615559672169, dotsRounded: 423.92 },
+];
+
+/**
+ * Rows the published fit does not cover, scored through E2's clamp.
+ *
+ * These pin `DOTS_BODYWEIGHT_DOMAIN_KG` to something outside this repository as
+ * well, which the coefficient block above cannot: 40 / 210 / 150 are asserted
+ * there against three literals typed in the same file. Move a bound by one
+ * kilogram and the clamped score moves with it, past the tolerance.
+ *
+ * E1 and E3 do not clamp at all — they will happily evaluate the polynomial at
+ * 240 kg — so they have no opinion to record here and no `dotsRounded` column.
+ * That difference is itself worth writing down: clamping is a behaviour of the
+ * canonical implementation, not of the formula, and two of the three published
+ * packages simply do not have it.
+ */
+const EXTERNAL_CLAMPED_DOTS_SCORES: readonly ExternalClampedDotsScoreRow[] = [
+  { sex: 'male', bodyweightKg: 32.5, totalKg: 300.0, dots: 381.33300325745142 },
+  { sex: 'male', bodyweightKg: 240.0, totalKg: 1100.0, dots: 545.18272796708163 },
+  { sex: 'female', bodyweightKg: 34.0, totalKg: 250.0, dots: 371.19914202039979 },
+  { sex: 'female', bodyweightKg: 172.5, totalKg: 600.0, dots: 462.45398792369639 },
+];
+
+// ---------------------------------------------------------------------------
+// The pin's tuning, in one place. None of this is game feel — a DOTS score is
+// not a knob — but the same rule applies: a threshold nobody can find is a
+// threshold nobody can revise.
+// ---------------------------------------------------------------------------
+
+/**
+ * How far `dotsScore` may sit from an external score, as a FRACTION of that
+ * score. Relative rather than absolute because the pin spans scores from ~370 to
+ * ~600 and the disagreement being measured is floating-point, which scales.
+ *
+ * 1e-12 is chosen, not inherited: it is ~1,000x above the 9.4e-16 that
+ * `agrees with the external sources far more closely than the tolerance asks`
+ * actually measures, and ~3,500x below the 3.5e-9 that
+ * `would catch a one-last-digit slip in any of the ten coefficients` actually
+ * measures. Both ends are asserted, so this number cannot quietly stop sitting
+ * between them.
+ *
+ * IT IS NOT THE PUBLISHED-TABLE TOLERANCE and must not be confused with it.
+ * Result sheets print two decimals, so a table read off one supports at best
+ * `EXTERNAL_PIN_ROUNDED_TOLERANCE` below — and at that width a last-digit slip in
+ * eight of the ten coefficients is INVISIBLE, because it moves a ~450 DOTS score
+ * by less than a millionth of a point. Pinning against unrounded doubles from a
+ * running implementation is what makes the mutation test above possible at all.
+ */
+const EXTERNAL_PIN_RELATIVE_TOLERANCE = 1e-12;
+
+/**
+ * How far `dotsScore` may sit from a score that arrived already rounded to the
+ * two decimals a federation prints. Exactly half of the last printed place: at
+ * that width, and no tighter, a value and its two-decimal rendering agree.
+ */
+const EXTERNAL_PIN_ROUNDED_TOLERANCE = 0.005;
+
+/**
+ * The observed float disagreement must stay under this. It is the FLOOR the
+ * tolerance sits above, asserted so that "the tolerance has three orders of
+ * headroom" is measured on every run instead of remembered from the day it was
+ * written. Measured 9.4e-16; the bound is set an order up so an evaluation-order
+ * refactor in `dots.ts` does not red the suite for a legitimate reason.
+ */
+const EXTERNAL_PIN_FLOAT_NOISE_CEILING = 1e-14;
+
+/**
+ * Every one of the ten coefficients must move some pinned score by at least this
+ * fraction when its last written digit is bumped by one. It is the SIGNAL the
+ * tolerance sits below. Measured weakest: 3.5e-9 (female `c2` at 150 kg).
+ *
+ * IF THIS FAILS, THE FIX IS BETTER ROWS, NOT A SMALLER TOLERANCE. A coefficient
+ * that no row discriminates is a coefficient this pin is blind to, and shrinking
+ * the epsilon until the number goes green would hide that rather than fix it.
+ */
+const EXTERNAL_PIN_MIN_COEFFICIENT_SIGNAL = 1e-9;
+
+/**
+ * No pinned score may sit closer than this to a two-decimal rounding boundary.
+ * Without it, `formatDotsScore` matching `dotsRounded` would be a coin flip on
+ * some future row rather than a fact, and the flip would land as a mystery
+ * failure long after the row was added.
+ */
+const EXTERNAL_PIN_MIN_ROUNDING_MARGIN = 1e-5;
+
+/**
+ * The largest last-digit bump the mutation test is allowed to make. A guard on
+ * the guard: if somebody rewrote `c0` as `-307.75`, the "last written digit"
+ * would become a hundredth, the mutation would be enormous, and the sensitivity
+ * test would pass while saying nothing. Bumping at most the fifth decimal keeps
+ * the test's claim the claim it advertises.
+ */
+const EXTERNAL_PIN_MAX_LAST_DIGIT_STEP = 1e-5;
+
+/** The five polynomial terms, in ascending power order. */
+const DOTS_POLYNOMIAL_TERMS = ['c0', 'c1', 'c2', 'c3', 'c4'] as const;
+
+const BOTH_SEXES = ['male', 'female'] as const;
+
+/**
+ * The value of one unit in a number's last WRITTEN decimal place — the smallest
+ * edit a hand can make to the literal in `dots.ts` without adding a digit.
+ *
+ * Derived from `String(value)`, which is the shortest decimal that round-trips,
+ * so it tracks the literal instead of being a second copy of it. `-0.000001093`
+ * yields 1e-9; `-0.1918759221` yields 1e-10.
+ */
+function lastWrittenDecimalStep(value: number): number {
+  const text = String(Math.abs(value));
+  const exponential = /^(\d)(?:\.(\d+))?e([+-]\d+)$/.exec(text);
+  if (exponential) {
+    const fractionDigits = exponential[2]?.length ?? 0;
+    return 10 ** (Number(exponential[3]) - fractionDigits);
+  }
+  const point = text.indexOf('.');
+  return point === -1 ? 1 : 10 ** -(text.length - point - 1);
+}
+
+/**
+ * The published formula, evaluated against a SUPPLIED coefficient set.
+ *
+ * This exists for one purpose — feeding `dots.ts` a deliberately-wrong set and
+ * watching the pin catch it — and it is the one place in this block that
+ * restates the module's arithmetic. It is not used by any assertion about a
+ * score: every one of those goes through `dotsScore` and terminates in the
+ * external rows. Fed the REAL coefficients it must reproduce `dotsScore`
+ * exactly, which is asserted below so it cannot drift into a second, wrong
+ * implementation that makes the mutation test meaningless.
+ */
+function scoreWithCoefficients(
+  polynomial: DotsPolynomial,
+  sex: DotsSex,
+  bodyweightKg: number,
+  totalKg: number,
+): number {
+  const domain = DOTS_BODYWEIGHT_DOMAIN_KG[sex];
+  const bw = Math.min(Math.max(bodyweightKg, domain.min), domain.max);
+  const denominator =
+    ((((polynomial.c4 * bw + polynomial.c3) * bw + polynomial.c2) * bw + polynomial.c1) * bw) +
+    polynomial.c0;
+  return (DOTS_NUMERATOR / denominator) * totalKg;
+}
+
+/** Every pinned row, in-domain and clamped, as one list. */
+const ALL_PINNED_ROWS: readonly ExternalClampedDotsScoreRow[] = [
+  ...EXTERNAL_DOTS_SCORES,
+  ...EXTERNAL_CLAMPED_DOTS_SCORES,
+];
+
+function relativeGapToPin(row: ExternalClampedDotsScoreRow): number {
+  return Math.abs(dotsScore(row.sex, row.bodyweightKg, total(row.totalKg)) - row.dots) / row.dots;
+}
+
+function roundToTwoDecimals(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+describe('the external score pin', () => {
+  it('reproduces every externally-scored row inside the published domain', () => {
+    for (const row of EXTERNAL_DOTS_SCORES) {
+      const label = `${row.sex} ${row.bodyweightKg} kg / ${row.totalKg} kg`;
+      expect(relativeGapToPin(row), label).toBeLessThanOrEqual(EXTERNAL_PIN_RELATIVE_TOLERANCE);
+    }
+  });
+
+  it('reproduces every clamped row, which pins the published bodyweight domain too', () => {
+    for (const row of EXTERNAL_CLAMPED_DOTS_SCORES) {
+      const label = `${row.sex} ${row.bodyweightKg} kg / ${row.totalKg} kg (clamped)`;
+      expect(relativeGapToPin(row), label).toBeLessThanOrEqual(EXTERNAL_PIN_RELATIVE_TOLERANCE);
+    }
+  });
+
+  it('prints every externally-scored row exactly as the two-decimal sources returned it', () => {
+    for (const row of EXTERNAL_DOTS_SCORES) {
+      const label = `${row.sex} ${row.bodyweightKg} kg / ${row.totalKg} kg`;
+      const ours = dotsScore(row.sex, row.bodyweightKg, total(row.totalKg));
+      expect(Math.abs(ours - row.dotsRounded), label).toBeLessThanOrEqual(
+        EXTERNAL_PIN_ROUNDED_TOLERANCE,
+      );
+      expect(formatDotsScore(ours), label).toBe(row.dotsRounded.toFixed(DOTS_DISPLAY_DECIMALS));
+    }
+  });
+
+  it('records a two-decimal column the unrounded column actually rounds to', () => {
+    // Fixture-internal, and it is the assertion that makes "all three sources
+    // agreed" a checkable statement rather than a sentence in a comment: E1 and
+    // E3 produced `dotsRounded`, E2 produced `dots`, and this says they are the
+    // same number. If a row were mistyped into either column, this fails without
+    // any reference to `dots.ts` at all.
+    for (const row of EXTERNAL_DOTS_SCORES) {
+      const label = `${row.sex} ${row.bodyweightKg} kg / ${row.totalKg} kg`;
+      expect(roundToTwoDecimals(row.dots), label).toBe(row.dotsRounded);
+    }
+  });
+
+  it('agrees with the external sources far more closely than the tolerance asks', () => {
+    // The FLOOR the tolerance sits above. Measured every run so the headroom
+    // claim in the header cannot go stale.
+    let worst = 0;
+    for (const row of ALL_PINNED_ROWS) {
+      worst = Math.max(worst, relativeGapToPin(row));
+    }
+    expect(worst).toBeLessThanOrEqual(EXTERNAL_PIN_FLOAT_NOISE_CEILING);
+    expect(EXTERNAL_PIN_RELATIVE_TOLERANCE).toBeGreaterThan(EXTERNAL_PIN_FLOAT_NOISE_CEILING * 10);
+  });
+
+  it('keeps every pinned score clear of a two-decimal rounding boundary', () => {
+    for (const row of EXTERNAL_DOTS_SCORES) {
+      const label = `${row.sex} ${row.bodyweightKg} kg / ${row.totalKg} kg`;
+      const hundredths = row.dots * 100;
+      const distanceToBoundary = Math.abs(0.5 - Math.abs(hundredths - Math.round(hundredths)));
+      expect(distanceToBoundary / 100, label).toBeGreaterThan(EXTERNAL_PIN_MIN_ROUNDING_MARGIN);
+    }
+  });
+
+  it('spans both sexes and both ends of both published domains', () => {
+    // Non-vacuity. A pin that only sampled the middle would be blind to exactly
+    // the coefficients whose contribution peaks at an edge.
+    for (const sex of BOTH_SEXES) {
+      const domain = DOTS_BODYWEIGHT_DOMAIN_KG[sex];
+      const inDomain = EXTERNAL_DOTS_SCORES.filter((row) => row.sex === sex);
+      const clamped = EXTERNAL_CLAMPED_DOTS_SCORES.filter((row) => row.sex === sex);
+      expect(inDomain.length, `${sex} rows`).toBeGreaterThanOrEqual(10);
+      expect(inDomain.map((row) => row.bodyweightKg), `${sex} floor`).toContain(domain.min);
+      expect(inDomain.map((row) => row.bodyweightKg), `${sex} ceiling`).toContain(domain.max);
+      expect(
+        clamped.some((row) => row.bodyweightKg < domain.min),
+        `${sex} below the floor`,
+      ).toBe(true);
+      expect(
+        clamped.some((row) => row.bodyweightKg > domain.max),
+        `${sex} above the ceiling`,
+      ).toBe(true);
+    }
+  });
+
+  it('evaluates a supplied coefficient set exactly the way the module does', () => {
+    // The mutation test below is only worth something if the local evaluator is
+    // the module's arithmetic. Fed the real coefficients it must agree bit for
+    // bit, or the "slip" it reports could be its own.
+    for (const row of ALL_PINNED_ROWS) {
+      const label = `${row.sex} ${row.bodyweightKg} kg / ${row.totalKg} kg`;
+      expect(
+        scoreWithCoefficients(DOTS_COEFFICIENTS[row.sex], row.sex, row.bodyweightKg, row.totalKg),
+        label,
+      ).toBe(dotsScore(row.sex, row.bodyweightKg, total(row.totalKg)));
+    }
+  });
+
+  it('would catch a one-last-digit slip in any of the ten coefficients', () => {
+    // THE POINT OF THE WHOLE BLOCK, made checkable. For each coefficient in turn,
+    // add one to its last written decimal place and ask how far the worst pinned
+    // row moves. If that is not comfortably past the tolerance, the pin cannot
+    // see that coefficient and the rows need fixing — not the epsilon.
+    for (const sex of BOTH_SEXES) {
+      const published = DOTS_COEFFICIENTS[sex];
+      const rows = ALL_PINNED_ROWS.filter((row) => row.sex === sex);
+      for (const term of DOTS_POLYNOMIAL_TERMS) {
+        const step = lastWrittenDecimalStep(published[term]);
+        expect(step, `${sex}.${term} step`).toBeLessThanOrEqual(EXTERNAL_PIN_MAX_LAST_DIGIT_STEP);
+
+        const slipped: DotsPolynomial = { ...published, [term]: published[term] + step };
+        let strongest = 0;
+        for (const row of rows) {
+          const moved =
+            Math.abs(scoreWithCoefficients(slipped, sex, row.bodyweightKg, row.totalKg) - row.dots) /
+            row.dots;
+          strongest = Math.max(strongest, moved);
+        }
+        expect(strongest, `${sex}.${term} signal`).toBeGreaterThanOrEqual(
+          EXTERNAL_PIN_MIN_COEFFICIENT_SIGNAL,
+        );
+        expect(strongest, `${sex}.${term} vs tolerance`).toBeGreaterThan(
+          EXTERNAL_PIN_RELATIVE_TOLERANCE * 100,
+        );
+      }
+    }
+  });
+
+  it('reads the last written decimal place off a literal rather than remembering it', () => {
+    // Self-check on the helper the mutation test leans on. Written as synthetic
+    // numbers, not as the coefficients, so it stays true if a coefficient is ever
+    // re-quoted at a different precision.
+    expect(lastWrittenDecimalStep(-307.75076)).toBeCloseTo(1e-5, 20);
+    expect(lastWrittenDecimalStep(24.0900756)).toBeCloseTo(1e-7, 20);
+    expect(lastWrittenDecimalStep(-0.1918759221)).toBeCloseTo(1e-10, 20);
+    expect(lastWrittenDecimalStep(0.0000010706)).toBeCloseTo(1e-10, 20);
+    // Below 1e-6 JavaScript prints exponentially; the helper must not be fooled.
+    expect(String(1.5e-8)).toBe('1.5e-8');
+    expect(lastWrittenDecimalStep(1.5e-8)).toBeCloseTo(1e-9, 20);
+    expect(lastWrittenDecimalStep(7)).toBe(1);
   });
 });
 
