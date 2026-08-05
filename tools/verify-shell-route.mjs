@@ -419,8 +419,9 @@ const LINE_BOX_PROBE = Object.freeze({
  * from the tree as it stood before any of these writes.
  *
  * `outDir` is excluded from the clean/dirty VERDICT for the same reason (a
- * previous run's leftovers are not code the app ran), but is still listed in
- * `dirtyPaths`, so nothing is hidden from a reader — only re-labelled.
+ * previous run's leftovers are not code the app ran), as are the other run
+ * artefacts named at the filter below. All of them stay listed in `dirtyPaths`,
+ * so nothing is hidden from a reader — only re-labelled.
  */
 function provenance() {
   const record = {
@@ -439,8 +440,17 @@ function provenance() {
     record.branch = git('rev-parse', '--abbrev-ref', 'HEAD');
     const status = git('status', '--porcelain');
     const lines = status === '' ? [] : status.split('\n');
-    const own = path.relative(srcRoot, outDir);
-    const code = lines.filter((line) => !line.replace(/^\s*\S+\s+/, '').startsWith(own));
+    // Not code the app ran: this tool's own output directory, plus the run
+    // artefacts `tools/evidence.mjs` excludes for the same reason (a bundle or
+    // a progress-page update is not a change to what the browser executed).
+    // Kept in step with SELF_DIRTYING there deliberately — a capture that
+    // reads DIRTY because an evidence bundle is uncommitted is a false alarm,
+    // and false alarms are how a real one gets waved through.
+    const notCode = [path.relative(srcRoot, outDir), '.gauntlet/evidence/', '.gauntlet/state.json'];
+    const code = lines.filter((line) => {
+      const p = line.replace(/^\s*\S+\s+/, '');
+      return !notCode.some((prefix) => p.startsWith(prefix));
+    });
     record.workingTree =
       code.length === 0 ? 'clean' : 'DIRTY — this run is not against a commit';
     record.dirtyPaths = lines.slice(0, 40);

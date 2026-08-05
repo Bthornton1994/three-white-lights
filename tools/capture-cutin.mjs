@@ -71,7 +71,9 @@ const srcRoot = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.ur
  * Snapshotted BEFORE `outDir` is wiped and rewritten, so it records the tree
  * the browser was served from rather than one this tool has already dirtied.
  * `outDir` is excluded from the clean/dirty verdict — a previous run's leftover
- * pixels are not code the app ran — but still listed, so nothing is hidden.
+ * pixels are not code the app ran — as are the other run artefacts named at the
+ * filter below. All of them stay listed in `dirtyPaths`, so nothing is hidden
+ * from a reader; they are re-labelled, not dropped.
  */
 const capturedFrom = (() => {
   const record = {
@@ -90,8 +92,17 @@ const capturedFrom = (() => {
     record.branch = git('rev-parse', '--abbrev-ref', 'HEAD');
     const status = git('status', '--porcelain');
     const lines = status === '' ? [] : status.split('\n');
-    const own = path.relative(srcRoot, outDir);
-    const code = lines.filter((line) => !line.replace(/^\s*\S+\s+/, '').startsWith(own));
+    // Not code the app ran: this tool's own output directory, plus the run
+    // artefacts `tools/evidence.mjs` excludes for the same reason (a bundle or
+    // a progress-page update is not a change to what the browser executed).
+    // Kept in step with SELF_DIRTYING there deliberately — a capture that
+    // reads DIRTY because an evidence bundle is uncommitted is a false alarm,
+    // and false alarms are how a real one gets waved through.
+    const notCode = [path.relative(srcRoot, outDir), '.gauntlet/evidence/', '.gauntlet/state.json'];
+    const code = lines.filter((line) => {
+      const p = line.replace(/^\s*\S+\s+/, '');
+      return !notCode.some((prefix) => p.startsWith(prefix));
+    });
     record.workingTree = code.length === 0 ? 'clean' : 'DIRTY — this run is not against a commit';
     record.dirtyPaths = lines.slice(0, 40);
   } catch (error) {
