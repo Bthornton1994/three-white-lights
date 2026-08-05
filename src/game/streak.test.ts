@@ -2578,9 +2578,29 @@ describe('the outcome does not depend on when the player opens the app', () => {
       }
     }
     expect(rows).toEqual([]);
-    // ANTI-VACUITY. The sweep must have reached both sides of the ceiling, or
-    // "identical" would be a statement about absences nothing ever happened in.
-    expect(casesChecked).toBeGreaterThan(150);
+
+    // ANTI-VACUITY, DERIVED FROM THE LOOPS RATHER THAN READ OFF A RUN. The
+    // sweep must have reached both sides of the ceiling, or "identical" would
+    // be a statement about absences nothing ever happened in.
+    //
+    // THIS NUMBER USED TO BE A BOUND — `> 200` under the Recovery Day stock,
+    // then `> 150` when the balance dimension shrank from 0..5 to 0..2 and the
+    // actual count fell below 200. Both were read off what the sweep happened
+    // to produce, and a threshold read off a run is a threshold that passes
+    // anything: at `> 150` this sweep could lose a whole balance (60 cases) and
+    // still be green. It is an EQUALITY now, composed from the three loop
+    // bounds directly above, so removing any dimension fails here rather than
+    // sliding under a bound.
+    //
+    //   balances  = COVERED_DAYS_PER_WINDOW + 1     (0 .. full window)   = 3
+    //   lengths   = LONGEST_REPAIRABLE_ABSENCE_DAYS + 6                  = 10
+    //   schedules = every schedule but the baseline                      = 6
+    //                                                                    ---
+    //                                                       3 x 10 x 6 =  180
+    const BALANCES_SWEPT = RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + 1;
+    const ABSENCE_LENGTHS_SWEPT = LONGEST_REPAIRABLE_ABSENCE_DAYS + 6;
+    const SCHEDULES_COMPARED = 6;
+    expect(casesChecked).toBe(BALANCES_SWEPT * ABSENCE_LENGTHS_SWEPT * SCHEDULES_COMPARED);
     expect(coveredCases).toBeGreaterThan(0);
     expect(brokenCases).toBeGreaterThan(0);
   });
@@ -2991,6 +3011,37 @@ const FAMILY_STARTING_BALANCE = 2;
 const FAMILY_RUN_LENGTHS: readonly number[] = [8, 19, 31, 50, 101, 365, 1000];
 
 /**
+ * WHAT THE CONSTRUCTIVE FAMILY DOES TO THE ENTITLEMENT, MEASURED — one row per
+ * entry of `FAMILY_RUN_LENGTHS`, at `runRebuilt = runLost + 1`.
+ *
+ * THE FAMILY NO LONGER BREAKS ANYBODY, and that is a bigger change than the
+ * inversion going away. It is a machine for draining a bank: it places one
+ * chargeable absence immediately, one after each milestone payout, and one
+ * "fatal" absence timed for the moment the lazy lifter holds exactly one
+ * Recovery Day and the diligent lifter holds none. Under a stock that worked,
+ * because the bank was refilled once per lifetime. Under a rolling entitlement
+ * the fatal absence lands in whichever window it lands in, that window is full
+ * again, and it covers BOTH lifters — so the runs run on and the final streak
+ * is much longer than the rebuild the family was sized for.
+ *
+ * PINNED RATHER THAN DERIVED, because a derivation would restate the
+ * implementation. These are what the engine returned; a retune moves them and
+ * somebody has to read the new numbers.
+ */
+const FAMILY_MEASUREMENT = {
+  /** `currentStreak` both lifters end on. Identical, which is the property. */
+  FINAL_STREAK: [9, 32, 56, 94, 196, 724, 1994],
+  /** Covered days each of them consumed across the whole calendar. */
+  CONSUMED: [2, 3, 4, 4, 5, 5, 5],
+  /**
+   * WAS: the diligent lifter ended on 0 and the lazy one on `runLost`, at every
+   * length — that is what "the deficit has no ceiling" meant. The whole vector
+   * is equal now, on both fields and on the spend.
+   */
+  WAS_DILIGENT_ENDED_ON: 0,
+} as const;
+
+/**
  * Builds the two histories of the inversion family. They are identical except
  * that the diligent player ALSO trains on day 0 — one extra session, nothing
  * else.
@@ -3265,14 +3316,25 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(trainedDayCount(diligentHistory)).toBe(38);
     expect(diligentHistory.filter((trained, i) => trained !== lazyHistory[i])).toEqual([true]);
 
-    // WAS 37 against 18. Both end on 18 now — the family's absences cost both
-    // lifters the same, so both runs die in the same place — and the diligent
-    // lifter's lifetime best is HIGHER rather than seventeen days lower.
-    expect(lazy.state.currentStreak).toBe(18);
-    expect(diligent.state.currentStreak).toBe(18);
-    expect(lazy.state.longestStreak).toBe(19);
-    expect(diligent.state.longestStreak).toBe(20);
+    // THE PROPERTY, FIRST AND IN ITS OWN RIGHT: one extra trained day is never
+    // worse, on either field. Written as inequalities so it is the thing that
+    // fails if the family starts inverting again, rather than a literal that
+    // could be edited to match whatever came out.
+    expect(diligent.state.currentStreak).toBeGreaterThanOrEqual(lazy.state.currentStreak);
+    expect(diligent.state.longestStreak).toBeGreaterThanOrEqual(lazy.state.longestStreak);
     expect(diligent.recoveryDaysSpent).toBe(lazy.recoveryDaysSpent);
+
+    // AND THE MEASUREMENT, so a retune has to re-read it. WAS 37 against 18.
+    // Both lifters now end on the SAME streak — and it is 30 rather than 18,
+    // because the fatal absence this family is built around is no longer fatal:
+    // it lands in a window that has refilled, and covers both of them. See
+    // `FAMILY_MEASUREMENT` for what that says about the machine.
+    expect(lazy.state.currentStreak).toBe(30);
+    expect(diligent.state.currentStreak).toBe(30);
+    expect(lazy.state.longestStreak).toBe(30);
+    expect(diligent.state.longestStreak).toBe(30);
+    // NOT VACUOUS: coverage really was drawn on, by both of them.
+    expect(lazy.recoveryDaysSpent).toBeGreaterThan(0);
 
     // AND IT IS THE SAME UNDER EVERY OPENING SCHEDULE.
     for (const schedule of ['on-training-days', 'never', 'every-third-day'] as const) {
@@ -3291,9 +3353,7 @@ describe('daily engagement is never worse than skipping — where that holds, an
       entitlement: withCoveredDays(FAMILY_STARTING_BALANCE),
       entitlementArmed: true,
     };
-    const lifetimeFreeIncome = FAMILY_STARTING_BALANCE + STREAK_MILESTONE_DAYS.length;
-
-    for (const runLost of FAMILY_RUN_LENGTHS) {
+    for (const [index, runLost] of FAMILY_RUN_LENGTHS.entries()) {
       const runRebuilt = runLost + 1;
       const { lazy: lazyHistory, diligent: diligentHistory } = inversionHistories(runLost, runRebuilt);
       const noGrants = Array.from({ length: lazyHistory.length }, () => false);
@@ -3302,13 +3362,30 @@ describe('daily engagement is never worse than skipping — where that holds, an
       const diligent = simulate(diligentHistory, noGrants, initial, 'daily', true);
 
       expect(trainedDayCount(diligentHistory)).toBe(trainedDayCount(lazyHistory) + 1);
-      // The lazy lifter's final run is the rebuild, because the fatal absence is
-      // now fatal for both of them rather than for the diligent one alone.
-      expect(lazy.state.currentStreak).toBe(runRebuilt);
-      expect(diligent.state.currentStreak).toBe(runRebuilt);
+      // THE PROPERTY: level on the live streak, never behind on the lifetime
+      // best, and the same spend — at one day of run and at a thousand.
+      expect(diligent.state.currentStreak).toBe(lazy.state.currentStreak);
       expect(diligent.state.longestStreak).toBeGreaterThanOrEqual(lazy.state.longestStreak);
       expect(diligent.recoveryDaysSpent).toBe(lazy.recoveryDaysSpent);
-      expect(lazy.recoveryDaysSpent).toBeLessThanOrEqual(lifetimeFreeIncome);
+
+      // AND THE MEASUREMENT, pinned rather than derived — see
+      // `FAMILY_MEASUREMENT` for why the numbers are far above `runRebuilt`
+      // now, which is what the old version of this loop asserted.
+      expect(lazy.state.currentStreak).toBe(FAMILY_MEASUREMENT.FINAL_STREAK[index]);
+      expect(lazy.recoveryDaysSpent).toBe(FAMILY_MEASUREMENT.CONSUMED[index]);
+      expect(diligent.state.currentStreak).toBeGreaterThan(FAMILY_MEASUREMENT.WAS_DILIGENT_ENDED_ON);
+
+      // THE BOUND THAT REPLACED "lifetime free income". Under the stock the
+      // whole calendar could only ever spend the signup grant plus three
+      // milestone payouts, because that was all the income there was. Under a
+      // rolling entitlement the bound is a RATE: no calendar can consume more
+      // than one window's entitlement per window it spans. That is the
+      // "cannot be hoarded" property seen from the spending side, and it is
+      // tight at the short lengths (2 of 2 at `runLost` = 8).
+      const windowsSpanned = Math.ceil(lazyHistory.length / RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+      expect(lazy.recoveryDaysSpent).toBeLessThanOrEqual(
+        windowsSpanned * RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
+      );
 
       // STRUCTURAL FACT THE FAMILY DEPENDS ON, checked rather than asserted in
       // prose: inside the live run every absence is exactly SHORTEST_PAID_GAP
@@ -3487,11 +3564,16 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(measured[40]?.checked).toBe(SAMPLED_MEASUREMENT.PAIRS_CHECKED_AT_40);
     expect(measured[60]?.checked).toBe(SAMPLED_MEASUREMENT.PAIRS_CHECKED_AT_60);
 
-    // Three of five seeds are clean at 40 days, including the seed the defect
-    // was first measured on. Stated as a number rather than left to be counted
-    // off the array.
-    expect(measured[40]?.pairs.filter((n) => n === 0).length).toBe(3);
-    expect(measured[40]?.pairs[0]).toBe(0);
+    // ALL FIVE SEEDS ARE CLEAN AT 40 DAYS, AND NONE OF THEM WAS. This line used
+    // to read "three of five", which was a true and useful sentence about the
+    // stock's residue and is now just a restatement of the all-zero pin above.
+    // What is NOT a restatement is the other half of the comparison: every seed
+    // violated before, so the zeros are not five lucky draws.
+    expect(measured[40]?.pairs.filter((n) => n === 0).length).toBe(
+      MONOTONICITY_SWEEP.SEEDS.length,
+    );
+    expect(SAMPLED_MEASUREMENT.WAS_VIOLATING_PAIRS_AT_40.filter((n) => n === 0).length).toBe(0);
+    expect(SAMPLED_MEASUREMENT.WAS_VIOLATING_PAIRS_AT_60.filter((n) => n === 0).length).toBe(0);
 
     // AND THE MEASUREMENT REALLY SHRANK, every seed, both lengths. This is what
     // stops the pins above from being read as "some numbers".
@@ -3611,25 +3693,37 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(RESIDUE_SWEEP.FIXED_INCOME_DAYS.every((d) => d > 0 && d < LENGTH)).toBe(true);
   });
 
-  it('THE RESIDUE, REPRODUCED BY HAND: one extra trained day, 23 days, streak 8 becomes 1', () => {
+  it('WAS "THE RESIDUE, REPRODUCED BY HAND": the 23-day case is level on both fields', () => {
     // THE MECHANISM, AS A CALENDAR RATHER THAN AS A CAUSE. Every sweep above is
     // a count; this is the thing being counted, small enough to read, built out
     // of the named guardrails so a retune moves the calendar instead of
     // silently invalidating the case.
     //
-    // WHAT IT SHOWS. The doomed-absence debit of GDD §4.2 RULE 2 is THE WHOLE
-    // ARMED COUNT, so it is increasing in how much the lifter holds. The extra
-    // trained day carries the diligent lifter to the first streak milestone,
-    // which pays a Recovery Day — so when the absence that nothing can hold
-    // arrives, the diligent lifter has MORE to lose and loses it. Both lifters
-    // come out on zero. Both then rebuild to exactly the milestone, but
-    // milestones are once per LIFETIME: the lazy lifter is reaching it for the
-    // first time and is paid, and the diligent lifter — who already reached it,
-    // and whose payout was confiscated — is not. That single Recovery Day
-    // covers the lazy lifter's last absence and the diligent lifter's run dies.
+    // WHAT IT USED TO SHOW, and it is the case the human quoted when ordering
+    // the rework. The doomed-absence debit of GDD §4.2 RULE 2 is THE WHOLE
+    // ARMED COUNT, so under a stock it was increasing in how much the lifter
+    // held. The extra trained day carried the diligent lifter to the first
+    // streak milestone, which paid a Recovery Day — so when the absence that
+    // nothing can hold arrived, the diligent lifter had MORE to lose and lost
+    // it. Both rebuilt to exactly the milestone, but milestones are once per
+    // LIFETIME: the lazy lifter was reaching it for the first time and was
+    // paid, the diligent lifter was not, and that single Recovery Day covered
+    // the lazy lifter's last absence while the diligent lifter's run died.
+    // TRAINING ONE MORE DAY COST SEVEN DAYS OF STREAK AND ONE DAY OF LIFETIME
+    // BEST: **8 and 8 against 1 and 7**.
     //
-    // TRAINING ONE MORE DAY COSTS SEVEN DAYS OF STREAK AND ONE DAY OF LIFETIME
-    // BEST, and the lifetime best does not grow back.
+    // WHAT IT SHOWS NOW, AND WHY THE CALENDAR IS KEPT UNCHANGED. Both lifters
+    // end on **1 and 7** — the diligent lifter's old numbers, reached by both.
+    // Note which way that went: the LAZY lifter lost their eight-day run,
+    // rather than the diligent lifter keeping theirs. That is the entitlement
+    // being stricter here, not more generous, and it is worth saying out loud
+    // because "the inversion is gone" is true in two very different ways and
+    // this is the less flattering one.
+    //
+    // THE CAUSE IS GONE TOO, AND THAT IS THE ASSERTION THAT MATTERS: the two
+    // confiscations are now EQUAL. Under the stock the diligent lifter's was
+    // strictly larger, because they were strictly richer when it landed. There
+    // is nothing to be richer in.
     const grace = RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS;
     const maxUses = RECOVERY_ENTITLEMENT.MAX_COVERED_DAYS_PER_ABSENCE;
     const milestone = STREAK_MILESTONE_DAYS[0] as number;
@@ -3664,16 +3758,21 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(trainedDayCount(diligentDays)).toBe(trainedDayCount(lazyDays) + 1);
     expect(singleDaySupersets(lazyDays).map(renderSchedule)).toContain(renderSchedule(diligentDays));
 
-    // THE INVERSION, on both fields, from one extra session.
-    expect(lazy.state.currentStreak).toBe(milestone + 1);
+    // NO INVERSION, on either field, from the extra session.
+    expect(diligent.state.currentStreak).toBeGreaterThanOrEqual(lazy.state.currentStreak);
+    expect(diligent.state.longestStreak).toBeGreaterThanOrEqual(lazy.state.longestStreak);
+    // WAS 8 and 8 for the lazy lifter against 1 and 7 for the diligent one.
+    expect(lazy.state.currentStreak).toBe(1);
     expect(diligent.state.currentStreak).toBe(1);
-    expect(lazy.state.longestStreak).toBe(milestone + 1);
+    expect(lazy.state.longestStreak).toBe(milestone);
     expect(diligent.state.longestStreak).toBe(milestone);
 
-    // AND THE REASON, not just the result: the diligent lifter's confiscation
-    // was strictly larger, because they were strictly richer when it landed.
-    // Same total spend either way — no charge is created here, it is committed
-    // at a different moment and buys nothing.
+    // AND THE REASON, not just the result. Under the stock the diligent
+    // lifter's confiscation was STRICTLY LARGER, because they were strictly
+    // richer when it landed — that is the whole traced cause, and this line
+    // used to be `toBeGreaterThan`. It is `toBe` now: the confiscation is one
+    // window's entitlement for whoever is standing in the absence, and the
+    // extra trained day cannot make anybody hold more of one.
     const confiscated = (days: readonly boolean[]): number => {
       let state = freshState();
       let lost = 0;
@@ -3690,7 +3789,11 @@ describe('daily engagement is never worse than skipping — where that holds, an
       }
       return lost;
     };
-    expect(confiscated(diligentDays)).toBeGreaterThan(confiscated(lazyDays));
+    expect(confiscated(diligentDays)).toBe(confiscated(lazyDays));
+    // NOT VACUOUS: a confiscation really happened, and it is bounded by one
+    // window rather than by a hoard.
+    expect(confiscated(lazyDays)).toBeGreaterThan(0);
+    expect(confiscated(lazyDays)).toBeLessThanOrEqual(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
     expect(diligent.recoveryDaysSpent).toBe(lazy.recoveryDaysSpent);
 
     // IT IS SHORTER THAN THE SHORTEST SWEEP THAT COULD HAVE FOUND IT. The
@@ -3843,10 +3946,19 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // population the old zero-commitment filter threw away.
     expect(comparatorsWhoCommitted).toBeGreaterThan(0);
 
-    // WAS `[0, 1, 2, 3, 4]`, with a note that eleven days was not enough calendar
-    // to spend the whole hold cap. It is now enough, because a doomed absence
-    // takes the whole armed bank in one go (§5 of `streak.ts`).
-    expect([...spendCountsExercised].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5]);
+    // ANTI-VACUITY, RE-DERIVED RATHER THAN RE-READ. This used to assert
+    // `[0, 1, 2, 3, 4, 5]` — every spend up to the hold cap of five. The
+    // reachable set is now decided by arithmetic and not by a hold cap: an
+    // eleven-day calendar sits entirely inside window 0
+    // (11 < WINDOW_DAYS), so the most any history in this sweep can consume is
+    // one window's entitlement, and every count from 0 to it is reachable.
+    // Written as that derivation so a retune of either constant moves it.
+    expect(LENGTH).toBeLessThan(RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+    const reachableSpends = Array.from(
+      { length: RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + 1 },
+      (_, n) => n,
+    );
+    expect([...spendCountsExercised].sort((a, b) => a - b)).toEqual(reachableSpends);
     expect(Math.max(...spendCountsExercised)).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
 
     // PART TWO — DEPTH. A constructed history that spends exactly N Recovery
@@ -4011,7 +4123,23 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // "Every consumption is reported" is trivially true in a sweep with no
     // consumption in it, and the human named BOTH events, so both have to be
     // demonstrably present.
-    expect(sessionsChecked).toBeGreaterThan(140_000);
+    //
+    // THE SESSION COUNT IS DERIVED, NOT READ OFF A RUN. It was `> 200_000`
+    // under the stock and was lowered to `> 140_000` when the balance
+    // dimension shrank from 0..5 to 0..2 — a number chosen because it was under
+    // what the sweep now returns, which is exactly how a threshold stops
+    // checking anything. The count is exact and composable:
+    //
+    //   settling behaviours .................................... 2
+    //   balances = COVERED_DAYS_PER_WINDOW + 1 ................. 3
+    //   sessions across all 2^L calendars of L days = L x 2^(L-1)
+    //     (each of the L days is trained in half of them) ...... 12 x 2048
+    //                                                          ------------
+    //                                            2 x 3 x 24_576 =    147_456
+    const SETTLING_BEHAVIOURS = 2;
+    const BALANCES_SWEPT = RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + 1;
+    const SESSIONS_PER_BALANCE = LENGTH * 2 ** (LENGTH - 1);
+    expect(sessionsChecked).toBe(SETTLING_BEHAVIOURS * BALANCES_SWEPT * SESSIONS_PER_BALANCE);
     expect(savesSeen).toBeGreaterThan(0);
     expect(signupGrantExpiriesSeen).toBeGreaterThan(0);
     expect(deadRunLossesSeen).toBeGreaterThan(0);
