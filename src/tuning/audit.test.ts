@@ -24,6 +24,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 
 import {
   RENDERER_RULE,
@@ -102,6 +103,56 @@ function auditedFiles(): string[] {
 
 function read(relPath: string): string {
   return readFileSync(path.join(ROOT, relPath), 'utf8');
+}
+
+/** Every `.ts`/`.tsx` file the walk reaches, tests included. */
+function everyTypeScriptFileUnder(): readonly string[] {
+  return walk(ROOT)
+    .map((f) => path.relative(ROOT, f).split(path.sep).join('/'))
+    .filter((f) => /\.tsx?$/.test(f))
+    .sort();
+}
+
+/**
+ * WHICH CHARACTERS ARE INSIDE A COMMENT, according to the TypeScript parser.
+ *
+ * Every comment is in the LEADING trivia of exactly one token, except one at
+ * the end of a line, which is in the TRAILING trivia of the token before it.
+ * Both are collected, over every token including the end-of-file one, so a
+ * comment at the bottom of a file is covered.
+ */
+function parserCommentMask(sourceFile: ts.SourceFile, source: string): readonly boolean[] {
+  const mask = new Array<boolean>(source.length).fill(false);
+  const mark = (from: number, to: number): void => {
+    for (let i = from; i < to; i += 1) mask[i] = true;
+  };
+  const visit = (node: ts.Node): void => {
+    const children = node.getChildren(sourceFile);
+    if (children.length === 0) {
+      ts.forEachLeadingCommentRange(source, node.getFullStart(), (from, to) => mark(from, to));
+      ts.forEachTrailingCommentRange(source, node.getEnd(), (from, to) => mark(from, to));
+      return;
+    }
+    for (const child of children) visit(child);
+  };
+  visit(sourceFile);
+  return mask;
+}
+
+/** The kind of the innermost token covering `pos`. */
+function tokenKindAt(sourceFile: ts.SourceFile, pos: number): ts.SyntaxKind {
+  let found: ts.SyntaxKind = sourceFile.kind;
+  const visit = (node: ts.Node): void => {
+    if (pos < node.getStart(sourceFile) || pos >= node.getEnd()) return;
+    const children = node.getChildren(sourceFile);
+    if (children.length === 0) {
+      found = node.kind;
+      return;
+    }
+    for (const child of children) visit(child);
+  };
+  visit(sourceFile);
+  return found;
 }
 
 const FILES = auditedFiles();
@@ -482,12 +533,16 @@ describe('the allowlist is not a sieve', () => {
     expect(auditSource('src/session/Fake.tsx', "const u = 'docs.md#section';")).toEqual([]);
   });
 
-  it('`onlyComments` is the complement of `withoutComments`, character for character', () => {
-    // THE PROPERTY THAT MAKES IT A COMPLEMENT, checked as a property rather than
-    // on one example: at every position, exactly one of the two outputs holds
-    // the source character and the other holds a space. Anything else means the
-    // two disagree about where a comment starts, and a scanner built on the pair
-    // would either read something twice or miss it entirely.
+  it('`onlyComments` and `withoutComments` agree with each other — A CONSISTENCY CHECK, NOT A CORRECTNESS ONE', () => {
+    // WHAT THIS DOES AND DOES NOT SHOW, said plainly because it used to be read
+    // as more than it is. Both functions apply the SAME two regular expressions
+    // in the SAME order, so "exactly one of them holds each character" is close
+    // to true by construction: it can only fail where the two passes disagree
+    // about their own output, and on a hand-written sample it does not. It says
+    // nothing about whether either function's notion of "a comment" is RIGHT.
+    //
+    // The check below it is the correctness half, and it is the one that found
+    // a real file where this property does not hold.
     const sample = [
       "const a = 1; // a trailing note about #1c2230",
       '/* a block',
@@ -506,6 +561,112 @@ describe('the allowlist is not a sieve', () => {
       const inCode = code[i] === ch;
       const inComments = comments[i] === ch;
       expect(inCode !== inComments, `position ${i} (${ch}) is in both halves or neither`).toBe(true);
+    }
+  });
+
+  /**
+   * THE CORRECTNESS HALF: A REAL PARSER SAYS WHERE THE COMMENTS ARE.
+   *
+   * The consistency check above compares the pair against itself. This one
+   * compares `onlyComments` against `typescript`'s own parser — a different
+   * implementation, by different people, that has to be right for the compiler
+   * to work — over every `.ts` and `.tsx` file under `src/`. It is the first
+   * check in this file that could tell the pair being WRONG from the pair being
+   * CONSISTENT, and on the first run it found both a bound and a bug.
+   *
+   * WHY THE PARSER AND NOT THE SCANNER. `ts.createScanner` is context-free and
+   * desynchronises on `${}` inside a template literal, after which it reports
+   * six kilobytes of one file as a single template token and every comment
+   * inside that range disappears. Measured, not assumed: 92 of 169 files
+   * "diverged" against the scanner and every one of those divergences was the
+   * oracle's fault. The parser handles JSX text and template substitution
+   * because it must.
+   *
+   * EVERY COMMENT IS IN THE LEADING TRIVIA OF EXACTLY ONE TOKEN — or, for one
+   * sitting at the end of a line, the TRAILING trivia of the token before it.
+   * Walking every token and asking for both is how the whole set is collected;
+   * `forEachLeadingCommentRange` alone silently drops end-of-line comments,
+   * which is worth 44 false divergences.
+   */
+  const THE_PARSER_DISAGREES_HERE: readonly (readonly [string, number, string])[] = [
+    [
+      'src/game/progression.test.ts',
+      58,
+      'A LINE comment containing the glob `**/*`. The block-comment pass runs FIRST and by design ' +
+        '(a `//` inside a block comment is prose, not a second comment) — but a `/*` inside a LINE ' +
+        'comment is prose too, and this pass does not know that. It opens a block there, and the ' +
+        'line-comment pass afterwards no longer sees a `//` to work from. 58 characters of real ' +
+        'prose end up in NEITHER half, which is also the one place in the tree where the ' +
+        'consistency check above would fail if it were run on real files instead of a sample. ' +
+        'Fixing it means scanning rather than substituting, which is `src/tuning/`s call to make, ' +
+        'and until then this row is what stops the pair claiming a completeness it has not got.',
+    ],
+  ];
+
+  it('AND A REAL PARSER AGREES ABOUT WHERE THE COMMENTS ARE — except here', () => {
+    const missedPerFile = new Map<string, number>();
+    let overClaimedRuns = 0;
+    let filesRead = 0;
+
+    for (const rel of everyTypeScriptFileUnder()) {
+      filesRead += 1;
+      const source = read(rel);
+      const sourceFile = ts.createSourceFile(
+        rel.endsWith('.tsx') ? 'probe.tsx' : 'probe.ts',
+        source,
+        ts.ScriptTarget.Latest,
+        true,
+      );
+      const isComment = parserCommentMask(sourceFile, source);
+      const comments = onlyComments(source);
+      for (let i = 0; i < source.length; i += 1) {
+        const ch = source[i];
+        if (ch === '\n' || ch === ' ') continue;
+        const mineSaysComment = comments[i] === ch;
+        if (isComment[i] && !mineSaysComment) {
+          missedPerFile.set(rel, (missedPerFile.get(rel) ?? 0) + 1);
+        }
+        if (!isComment[i] && mineSaysComment) {
+          const previous = source[i - 1];
+          const continues = previous !== undefined && comments[i - 1] === previous && !isComment[i - 1];
+          if (continues) continue;
+          overClaimedRuns += 1;
+          // WHERE THE OVER-CLAIM STARTS IS THE WHOLE STATEMENT OF THE BLIND
+          // SPOT. `onlyComments`'s header says a `//` inside a STRING LITERAL is
+          // read as a comment; this asserts that is the ONLY way it over-claims,
+          // rather than taking the header's word for it. 54 runs in the tree,
+          // and every one starts inside a string, a regular expression or a
+          // template head.
+          const kind = ts.SyntaxKind[tokenKindAt(sourceFile, i)];
+          expect(
+            ['StringLiteral', 'RegularExpressionLiteral', 'TemplateHead'],
+            `${rel}@${i}: over-claimed prose starting in a ${kind}, which is not the documented ` +
+              `blind spot: ${JSON.stringify(source.slice(Math.max(0, i - 60), i + 30))}`,
+          ).toContain(kind);
+        }
+      }
+    }
+
+    // Non-vacuity, three ways: the walk found files, the oracle found comments
+    // to disagree about, and the blind spot really is exercised by this tree.
+    expect(filesRead, 'the walk found almost nothing').toBeGreaterThan(50);
+    expect(overClaimedRuns, 'nothing over-claims — the oracle has stopped working').toBeGreaterThan(
+      0,
+    );
+
+    // MISSED COMMENTS, PINNED BOTH WAYS. An unlisted file that loses prose is
+    // red; a listed file that stops losing it is also red, so the row goes when
+    // the defect does rather than outliving it.
+    const pinned = new Map(THE_PARSER_DISAGREES_HERE.map(([file, count]) => [file, count]));
+    for (const [file, count] of missedPerFile) {
+      expect(
+        pinned.get(file),
+        `${file} drops ${count} characters of real comment out of BOTH halves, and is not in ` +
+          'THE_PARSER_DISAGREES_HERE. A prose scan built on this cannot see what it has lost.',
+      ).toBe(count);
+    }
+    for (const [file, count] of pinned) {
+      expect(missedPerFile.get(file) ?? 0, `${file} no longer diverges — delete its row`).toBe(count);
     }
   });
 

@@ -2,19 +2,32 @@
  * CutInView.tsx — the interrupt, on screen.
  *
  * A THIN LAYER. It decides nothing: whether a cut-in fires is `cutInGate.ts`'s,
- * what it shows is `cutInArt.ts`'s, how long it lasts is `CutInHost.tsx`'s
- * timer, and every number it uses is `CUT_IN_LAYOUT`'s. What is left here is
- * one full-screen `Pressable`, a Skia image and two lines of type.
+ * what it shows is `cutInArt.ts`'s, and how long it lasts is `CutInHost.tsx`'s
+ * timer. Its LAYOUT numbers are all `CUT_IN_LAYOUT`'s; the one number it takes
+ * from anywhere else is `CUT_IN_TUNING.ENTER_MS`, the arrival duration, which
+ * lives with the gate's other timings because it is a beat and not a box. What
+ * is left here is one full-screen `Pressable`, a Skia image and two lines of
+ * type.
  *
  * ---------------------------------------------------------------------------
  * THE WHOLE SCREEN IS THE DISMISS TARGET
  * ---------------------------------------------------------------------------
  * GDD §7.2: "Always skippable — tap to dismiss. Daily players will see these
  * hundreds of times." So there is no close button in a corner and no minimum
- * hold: the `Pressable` is `absoluteFill`, its `onPress` IS the dismiss
- * handler, and `CUT_IN_TUNING.DISMISS_ENABLED_AFTER_MS` is zero so the first
- * frame accepts a tap. `cutInWiring.test.ts` reads this file and fails if the
- * press handler stops being the dismiss handler.
+ * hold: the `Pressable` is `absoluteFill` and its `onPress` IS the dismiss
+ * handler. `cutInWiring.test.ts` reads this file and fails if the press handler
+ * stops being the dismiss handler.
+ *
+ * WHERE THE FIRST-FRAME TAP IS ACTUALLY DECIDED, which is NOT here. This header
+ * used to say `CUT_IN_TUNING.DISMISS_ENABLED_AFTER_MS` is zero "so the first
+ * frame accepts a tap", and that causation was false: nothing on the route from
+ * this `onPress` to the gate consulted a clock, so the first frame accepted a
+ * tap because NO window was implemented, and setting the constant to 300 —
+ * which `cutInTuning.ts` invites in writing — would have reddened two unit tests
+ * and changed the behaviour of the app not at all. The window is now real and it
+ * is the HOST's: `CutInHost.dismissByTap` measures the beat and asks
+ * `tapDismissCutIn`, so the zero is what makes the first frame dismissible and
+ * moving it is a change to what a player can do.
  *
  * The skip hint is PRINTED rather than implied, for the same "hundreds of
  * times" reason: a player who does not know the screen is tappable waits it

@@ -15,6 +15,16 @@
  * caller could route around is a convention, not a gate.
  *
  * ---------------------------------------------------------------------------
+ * TWO WAYS OUT, AND ONLY ONE OF THEM IS A TAP
+ * ---------------------------------------------------------------------------
+ * `dismiss` is the timer's route and answers to `HOLD_MS`. `dismissByTap` is
+ * §7.2's "tap to dismiss" and answers to `DISMISS_ENABLED_AFTER_MS` through
+ * `tapDismissCutIn` — the host holds the clock, the gate makes the decision. The
+ * window is 0, so today the two behave identically; what changed is that the
+ * constant is READ on the route the app takes, which is what `cutInTuning.ts`
+ * has always said about it and what it did not do.
+ *
+ * ---------------------------------------------------------------------------
  * ONE GATE SESSION PER SITTING, AND IT OUTLIVES THIS COMPONENT
  * ---------------------------------------------------------------------------
  * `cutInGate.ts` §5 states the one thing it cannot defend against: a caller
@@ -80,6 +90,7 @@ import {
   cutInAutoDismissMs,
   dismissCutIn,
   requestCutIn,
+  tapDismissCutIn,
   type CutInBeat,
   type CutInSessionState,
   type LiveCutIn,
@@ -201,6 +212,15 @@ export function CutInHost({
     setLive(null);
   }, [activeSessionId, activeSeed]);
 
+  // WHEN THE CURRENT CUT-IN ARRIVED, for `DISMISS_ENABLED_AFTER_MS`. The clock
+  // is the host's because the gate is pure — `cutInGate.ts` may not read
+  // `Date.now()` — and it is a ref rather than state because nothing renders it.
+  //
+  // It starts at 0, which is BEFORE any real timestamp, so an unset clock reads
+  // as "long ago" and the tap is accepted. Failing open is the right direction
+  // for a §7.2 skip: a bug here must not cost a player the tap.
+  const shownAt = React.useRef<number>(0);
+
   const offer = React.useCallback((beats: readonly CutInBeat[]) => {
     const decision = requestCutIn(session.current, beats);
     session.current = decision.state;
@@ -208,12 +228,32 @@ export function CutInHost({
     // spent its slot is remembered as having spent it even if the host goes
     // away between the fire and the next beat.
     rememberCutInSession(decision.state);
-    if (decision.outcome.kind === 'fire') setLive(decision.outcome.live);
+    if (decision.outcome.kind === 'fire') {
+      shownAt.current = Date.now();
+      setLive(decision.outcome.live);
+    }
   }, []);
 
   const dismiss = React.useCallback(() => {
     session.current = dismissCutIn(session.current);
     rememberCutInSession(session.current);
+    setLive(null);
+  }, []);
+
+  // THE TAP GOES THROUGH THE GATE; THE TIMER DOES NOT.
+  //
+  // `dismiss` above is the auto-dismiss route and answers to `HOLD_MS`. This one
+  // is GDD §7.2's "tap to dismiss" and answers to `DISMISS_ENABLED_AFTER_MS`,
+  // which is 0 — so today it refuses nothing and the two routes behave
+  // identically. The difference is that the constant is now READ: moving it is a
+  // real change to what the app does, which is what `cutInTuning.ts` has always
+  // claimed about it. See `tapDismissCutIn`.
+  const dismissByTap = React.useCallback(() => {
+    const next = tapDismissCutIn(session.current, Date.now() - shownAt.current);
+    // The gate refused the tap: too early, so the cut-in stays up.
+    if (next.live !== null) return;
+    session.current = next;
+    rememberCutInSession(next);
     setLive(null);
   }, []);
 
@@ -265,7 +305,7 @@ export function CutInHost({
             live={live}
             catalogue={catalogue}
             availableWidth={width}
-            onDismiss={dismiss}
+            onDismiss={dismissByTap}
           />
         )}
       </View>

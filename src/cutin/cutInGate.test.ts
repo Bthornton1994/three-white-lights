@@ -44,6 +44,7 @@ import {
   momentsFor,
   openCutInSession,
   requestCutIn,
+  tapDismissCutIn,
   type CutInBeat,
   type CutInMoment,
   type CutInSessionState,
@@ -704,6 +705,35 @@ describe('SKIPPABILITY: always, and from the first frame', () => {
     for (const elapsed of [0, 1, 100, 1000, 100000]) {
       expect(canDismissAt(elapsed), `${elapsed}ms`).toBe(true);
     }
+  });
+
+  it('THE TAP ROUTE READS THE WINDOW — whatever the window is set to', () => {
+    // WHY THIS IS NOT A RESTATEMENT OF `canDismissAt`. Until this round nothing
+    // outside this file called that function: `CutInView`'s `onPress` went
+    // straight to the host's ungated `dismiss`, so setting
+    // `DISMISS_ENABLED_AFTER_MS` to 300 — which `cutInTuning.ts` invites in
+    // writing — reddened two unit tests and changed the app not at all. The tap
+    // now goes through `tapDismissCutIn`, and this is the assertion that goes
+    // red if it stops consulting the clock.
+    //
+    // READ OFF THE CONSTANT, NOT OFF ITS VALUE, so the pair still means
+    // something after a playtest moves it. The window is 0 today, so the "one
+    // millisecond early" probe is a NEGATIVE elapsed — which cannot happen from
+    // the host's `Date.now()` arithmetic and is exactly why the pin has to be
+    // written this way rather than with a plausible-looking 150.
+    const fired = requestCutIn(sessionAllowing(['bomb-out']), [BOMBED_OUT]);
+    expect(fired.outcome.kind).toBe('fire');
+    const live = fired.state;
+    expect(live.live).not.toBeNull();
+
+    const tooEarly = CUT_IN_TUNING.DISMISS_ENABLED_AFTER_MS - 1;
+    expect(tapDismissCutIn(live, tooEarly), 'the tap window is not being read').toBe(live);
+    expect(tapDismissCutIn(live, tooEarly).live, 'a refused tap took the cut-in down').not.toBeNull();
+
+    const onTime = CUT_IN_TUNING.DISMISS_ENABLED_AFTER_MS;
+    expect(tapDismissCutIn(live, onTime).live, 'an accepted tap left it up').toBeNull();
+    // And it does not refund the slot, exactly like `dismissCutIn`.
+    expect(tapDismissCutIn(live, onTime).firedCount).toBe(live.firedCount);
   });
 
   it('dismissing when nothing is live changes nothing', () => {
