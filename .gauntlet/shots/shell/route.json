@@ -1,12 +1,15 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-05T14:05:38.479Z",
-    "url": "http://localhost:8081",
-    "sourceRoot": "/home/user/three-white-lights",
-    "commit": "ff98e5b",
-    "branch": "claude/agent-config-setup-m2r6ny",
-    "workingTree": "clean",
-    "dirtyPaths": []
+    "capturedAt": "2026-08-05T14:46:22.439Z",
+    "url": "http://localhost:8099",
+    "sourceRoot": "/home/user/three-white-lights/.claude/worktrees/n1-shell-pin",
+    "commit": "ad01cb2",
+    "branch": "claude/n1-shell-clearance-pin",
+    "workingTree": "DIRTY — this run is not against a commit",
+    "dirtyPaths": [
+      "M .gauntlet/shots/shell/03-meet-played-walkout.png",
+      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png"
+    ]
   },
   "played": {
     "attempted": true,
@@ -16,7 +19,7 @@
       "width": 350,
       "height": 48
     },
-    "wallClockMs": 79432,
+    "wallClockMs": 79350,
     "landedOn": "already-trained",
     "finalDepthHoldMs": 1000,
     "reps": [
@@ -24,91 +27,106 @@
         "set": "SET 1 OF 5",
         "holdMs": 1000,
         "outcome": "GOOD LIFT",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
         "set": "SET 1 OF 5",
         "holdMs": 1000,
         "outcome": "GRINDER",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
         "set": "SET 1 OF 5",
         "holdMs": 1000,
         "outcome": "GOOD LIFT",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
         "set": "SET 2 OF 5",
         "holdMs": 1000,
         "outcome": "GOOD LIFT",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
         "set": "SET 2 OF 5",
         "holdMs": 1000,
-        "outcome": "GOOD LIFT",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "outcome": "GRINDER",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
         "set": "SET 2 OF 5",
         "holdMs": 1000,
-        "outcome": "GOOD LIFT",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
-      },
-      {
-        "set": "SET 3 OF 5",
-        "holdMs": 1000,
         "outcome": "GRINDER",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
         "set": "SET 3 OF 5",
         "holdMs": 1000,
         "outcome": "GOOD LIFT",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
         "set": "SET 3 OF 5",
         "holdMs": 1000,
         "outcome": "GRINDER",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
+      },
+      {
+        "set": "SET 3 OF 5",
+        "holdMs": 1000,
+        "outcome": "GRINDER",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
         "set": "SET 4 OF 5",
         "holdMs": 1000,
         "outcome": "GOOD LIFT",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
-      },
-      {
-        "set": "SET 4 OF 5",
-        "holdMs": 1000,
-        "outcome": "GOOD LIFT",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
         "set": "SET 4 OF 5",
         "holdMs": 1000,
         "outcome": "GRINDER",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
-        "set": "SET 5 OF 5",
+        "set": "SET 4 OF 5",
         "holdMs": 1000,
         "outcome": "GRINDER",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
-      },
-      {
-        "set": "SET 5 OF 5",
-        "holdMs": 1000,
-        "outcome": "GRINDER",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       },
       {
         "set": "SET 5 OF 5",
         "holdMs": 1000,
         "outcome": "GOOD LIFT",
-        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole"
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
+      },
+      {
+        "set": "SET 5 OF 5",
+        "holdMs": 1000,
+        "outcome": "GRINDER",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
+      },
+      {
+        "set": "SET 5 OF 5",
+        "holdMs": 1000,
+        "outcome": "GRINDER",
+        "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
+        "drove": true
       }
     ]
   },
@@ -143,28 +161,33 @@
     "  ok    the close-out still shows no Total with the shell over it (GDD §3.2)",
     "  ok    FINISH A SESSION -> REACH A MEET, in one press",
     "  ok    and it is a fresh meet, not the frozen beat the launch URL named — opacity 1.000",
-    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1460ms from the first tap",
-    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 70821ms",
-    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 549ms",
-    "  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day",
+    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1491ms from the first tap",
+    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 70871ms, 15 of them past a DRIVE cue",
+    "  ok    CONTROL: the close-out has a certainty tag for that wait to watch — e1rm, streak in the DOM",
+    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 563ms",
     "  ok    PRESSING DONE LANDS ON THE ALREADY-TRAINED SURFACE (GDD §3.2: one session a day)",
     "  ok    the already-trained surface renders — the last screen of the daily loop — opacity 1.000",
     "  ok    THE WAY TO MEET DAY IS ON IT, and it is the only thing on it to press — opacity 1.000",
     "  ok    and the point a thumb would land on belongs to it — elementFromPoint -> self",
-    "  ok    the already-trained copy leaves >= 24px clear above the pill — 2 line(s), longest 34 chars, bottom y=447.5; pill top y=762.0; gap 314.5px",
+    "  ok    CONTROL: the line-box counter reports a wrapped block as more than one line — a 120px-wide probe -> 3 line box(es), expected >= 3",
+    "  ok    the already-trained copy is still 2 lines — one headline, one subhead — 2 line box(es) across 2 text node(s), longest 34 chars",
+    "  ok    and no taller than 57.25px, the height that line budget implies — 51.0px tall, y 396.5..447.5",
+    "  ok    the pill’s top is where SHELL_LAYOUT puts it (y=762), so the floor below is derived from the drawn screen — drawn at y=762.0 against a derived 762",
+    "  ok    and it stays out of the band SHELL_LAYOUT reserves for chrome — >= 58.67px clear above the pill — copy bottom y=447.5; pill top y=762.0; gap 314.5px",
     "  ok    and the pill sat clear of the DONE button it replaced on the screen before — pill y=762.0 vs DONE bottom=623.0",
     "  ok    the already-trained surface shows no Total either (GDD §3.2)",
     "  ok    AND PRESSING IT REACHES MEET DAY — the daily loop does not end on a dead end",
     "  ok    landing on the weigh-in, from a session that was actually played — opacity 1.000",
-    "  note  the played-session section cost 79432ms of wall clock",
     "  ok    a live set renders — opacity 1.000",
     "  ok    NO CONTROL IS DRAWN OVER a live set (beat 'set')",
     "  ok    the rest between two sets renders — opacity 1.000",
     "  ok    NO CONTROL IS DRAWN OVER the rest between two sets (beat 'rest')",
+    "  ok    NO CONTROL IS DRAWN OVER GDD §6.2’s walk-out, held on a third attempt (beat 'walkout')",
     "  ok    NO CONTROL IS DRAWN OVER a live attempt (beat 'lift')",
+    "  ok    NO CONTROL IS DRAWN OVER GDD §6.2 step 4’s deliberation — the judges taking a beat (beat 'deliberation')",
     "  ok    NO CONTROL IS DRAWN OVER the judges’ verdict (beat 'verdict')",
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.3’s attempt choice (beat 'attempt-select')",
-    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.961 after 3878ms",
+    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.975 after 3767ms",
     "  ok    and the shell does not add a second one to it (GDD §6.3: leave that beat somber)",
     "  ok    and pressing it returns to the daily session",
     "  ok    CONTROL: with no cut-in up, the pill is on the same screen the probe looks at — opacity 1.000",
@@ -183,10 +206,17 @@
     "  ok    /?replay=0.95&moment=hole still resolves to lift-screen",
     "  ok    /?replay=0.6&moment=lockout still resolves to lift-screen",
     "  ok    /?meet=nonsense boots the daily session rather than a broken meet — opacity 1.000",
-    "  ok    the phase-list parser can read a list, and reports a missing one as missing — fixture -> [\"alpha\",\"beta-two\"] / [\"gamma\"] / null",
+    "  ok    the phase-list parser reads both list shapes, and reports a missing one as missing — fixture -> [\"alpha\",\"beta-two\"] / [\"gamma\"] / [\"delta\"] / null",
     "  ok    SHELL_NAV.SESSION_PHASES is what this tool checks the browser against — shellTuning.ts [\"briefing\",\"check-in\",\"close-out\"] vs this tool [\"briefing\",\"check-in\",\"close-out\"]",
     "  ok    SHELL_NAV.MEET_PHASES is what this tool checks the browser against — shellTuning.ts [\"recap\"] vs this tool [\"recap\"]",
+    "  ok    the list of beats a pill may never appear on is not empty — the mutation the check below passes — 8 beat(s): set, rest, walkout, lift, deliberation, verdict, attempt-select, bombed",
+    "  ok    every beat on that list is a beat the game actually has (session.ts, meetDay.ts) — all 8 found among the 14 phases the game declares",
+    "  ok    and every one of them was PROBED in a browser above, with nothing probed that is not on it — listed [\"attempt-select\",\"bombed\",\"deliberation\",\"lift\",\"rest\",\"set\",\"verdict\",\"walkout\"] vs probed [\"attempt-select\",\"bombed\",\"deliberation\",\"lift\",\"rest\",\"set\",\"verdict\",\"walkout\"]",
     "  ok    no beat of the MECHANIC is in the pill’s phase list (GDD §3.2, §6.2, §6.3)"
+  ],
+  "notes": [
+    "  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day, which the server then refuses",
+    "  note  the played-session section cost 79350ms of wall clock"
   ],
   "failures": [],
   "pageErrors": []
