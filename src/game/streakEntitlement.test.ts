@@ -156,12 +156,18 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
     const anchor = lastTrainedDay ?? 0;
     const daysMissed = Math.max(0, today - anchor - 1);
     const chargeable = Math.max(0, daysMissed - GRACE);
+    // COVERS IS DECIDED BY THE ARMED SNAPSHOT; THE DOOMED BURN IS READ OFF THE
+    // LIVE BALANCE. See `streak.ts`'s `absenceOutcome` for why the two halves
+    // read different fields — a mid-absence arrival may not rescue the absence
+    // and may not be spared by it either, and the second half is what keeps the
+    // doomed consumption idempotent under splitting.
     const outcome = resolveEntitlement(tuning, armed, windowAt(today), chargeable);
+    const burn = resolveEntitlement(tuning, entitlement, windowAt(today), chargeable);
     return {
       daysMissed,
       chargeable,
       covers: outcome.covers,
-      consumed: outcome.covers ? outcome.consumed : burnOnDoom ? outcome.consumed : 0,
+      consumed: outcome.covers ? outcome.consumed : burnOnDoom ? burn.availableBefore : 0,
     };
   };
 

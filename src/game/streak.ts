@@ -1461,6 +1461,23 @@ export interface AbsenceOutcome {
    * idempotent under splitting an absence, and dropping it measures 1051
    * violating pairs at 60 days — worse than the stock design it replaced.
    *
+   * "EVERYTHING LEFT IN THE WINDOW" MEANS THE LIVE ENTITLEMENT, INCLUDING A
+   * COVERED DAY BOUGHT DURING THE ABSENCE — which reads harsh and is the only
+   * arithmetic that works. GDD §4.2 RULE 2 words the amount as "the armed
+   * count", and the two were the same number until GDD §8.3E made coverage
+   * arrivable mid-absence. Charging the ARMED count instead was built and
+   * measured: it lets a mid-absence purchase survive the absence, so an extra
+   * trained day SPLITS the absence and the second piece finds a covered day the
+   * whole absence would have taken — 3 violating pairs on `real-money` at 40
+   * days, 23 lifetime-best inversions on the free calendar grant, and 1 in the
+   * FROZEN control where both lifters buy on identical days. That last one is
+   * the proof it is the rule and not the schedule.
+   *
+   * SO THE TWO HALVES ARE READ OFF DIFFERENT FIELDS ON PURPOSE. Whether the run
+   * SURVIVES is decided by the armed snapshot (a mid-absence arrival cannot
+   * rescue it); what a doomed absence COSTS is everything live (a mid-absence
+   * arrival is not spared by it). §5 of the header carries the full argument.
+   *
    * FIXED FOR THE WHOLE ABSENCE IN BOTH CASES, which is what keeps the outcome
    * independent of when anybody looks. Debited by the training day that ends
    * the absence, and by nothing else.
@@ -1509,13 +1526,35 @@ export function absenceOutcome(state: StreakState, today: StreakDay): AbsenceOut
   // ended a run for a one-day miss and reset the streak on a lifter who had
   // trained the day before.
   const window = entitlementWindowFor(state, today);
-  const drawableFrom: EntitlementState = state.entitlementArmed
-    ? state.armedEntitlement.entitlement
-    : { windowIndex: window, coveredDaysLeft: 0, purchasedDaysLeft: 0 };
+  const nothing: EntitlementState = { windowIndex: window, coveredDaysLeft: 0, purchasedDaysLeft: 0 };
+  const drawableFrom: EntitlementState = state.entitlementArmed ? state.armedEntitlement.entitlement : nothing;
   const outcome = resolveEntitlement(RECOVERY_ENTITLEMENT, drawableFrom, window, chargeable);
   const holds = outcome.covers;
 
   if (!holds) {
+    // THE BURN IS READ OFF THE LIVE ENTITLEMENT, NOT OFF THE SNAPSHOT ABOVE,
+    // and the split is the whole subtlety of this function.
+    //
+    // WHETHER THE RUN SURVIVES is decided by what was ARMED, so a covered day
+    // that arrived mid-absence cannot rescue it (GDD §4.2).
+    //
+    // WHAT A DOOMED ABSENCE COSTS is everything the window has LIVE, so a
+    // covered day that arrived mid-absence is not spared by it either. That is
+    // not symmetry for its own sake: "take everything left" is the only doomed
+    // consumption that is IDEMPOTENT UNDER SPLITTING, and anything a doomed
+    // absence leaves behind is something an extra trained day can split the
+    // absence to go and spend. Charging the armed count instead was built and
+    // measured at 3 violating pairs on `real-money` at 40 days and 1 in the
+    // frozen control where both lifters buy on identical days — a §12.3 breach
+    // created by the rule itself. `streakEntitlement.ts` §2 has the argument;
+    // `AbsenceOutcome.recoveryDaysConsumed` has the numbers.
+    //
+    // A LIFTER WHO DECLINED PROTECTION STILL BURNS NOTHING, which is why this
+    // resolves through `nothing` rather than through the live field: GDD §4.2's
+    // toggle promises that no Recovery Day of theirs is ever spent, and a burn
+    // is a spend.
+    const burnFrom = state.entitlementArmed ? state.entitlement : nothing;
+    const burn = resolveEntitlement(RECOVERY_ENTITLEMENT, burnFrom, window, chargeable);
     return {
       daysMissed,
       coveredDays: [],
@@ -1524,8 +1563,9 @@ export function absenceOutcome(state: StreakState, today: StreakDay): AbsenceOut
       // Everything left in the window, not `chargeable`: `chargeable` grows for
       // as long as the lifter stays away, and a debit that grew with it would
       // make the outcome depend on when the absence was resolved. What is left
-      // in the window does not move while they are away. See §5.
-      recoveryDaysConsumed: outcome.consumed,
+      // in the window does not move while they are away, except by a purchase
+      // they made themselves. See §5.
+      recoveryDaysConsumed: burn.availableBefore,
       protectionHolds: false,
       breakReason: breakReasonFor(state, chargeable),
     };
