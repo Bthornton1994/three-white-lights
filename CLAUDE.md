@@ -87,8 +87,22 @@ already work: scanned tree-wide, resolved against real measured values, with an
 untagged-value ban and a non-vacuity guard. Converge on that machinery rather
 than growing a third dialect.
 
+**A TAG THAT RESOLVES IS NOT A TAG THAT BITES, and this is measured.** The
+first enforcement pass covered **19 of 185** claims — about a tenth — and then
+mutation-tested 8 of those 19. **Two named a test that stayed green when the
+guarantee was broken**: one exercised the calendar but never a purchase, the
+other started from a full window so clearing the entitlement was invisible. Both
+tags resolved perfectly. So the tag is a pointer, and a pointer to a test that
+cannot fail is the same defect one level out. The 11 unverified tags carry no
+evidence at all. If you add a tag, mutation-test the test it names.
+
 **And be honest about the limit.** No scan can decide which prose asserts a
-guarantee, so any mechanism here is necessarily partial. State in the code what
+guarantee, so any mechanism here is necessarily partial. The current scoping
+rule keys on a run of capitalised absolutes, which is this codebase's house
+style for a load-bearing sentence — so a **lower-case** guarantee walks past it,
+and the fifth defect's own sentence was lower-case and got caught only because
+its paragraph happened to open with a capitalised absolute. That is luck, and it
+is recorded as luck. State in the code what
 its scoping rule catches and what it therefore cannot, and say what fraction of
 existing claims it covers. A narrow honest ban beats a broad one that has to be
 suppressed everywhere; a partial mechanism that declares its coverage beats one
