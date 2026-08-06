@@ -2561,15 +2561,21 @@ export interface StreakBreakOutcome {
  * actually holds is the second bullet: not "armed rather than length-dependent"
  * but "not length-dependent at all, whichever field it reads".
  *
- * ONE THING IT DOES CHANGE, AND IT IS NOT THE STATE. Since the store refuses to
- * sell a covered day into an already-doomed absence, the store's verdict is a
- * function of `absenceOutcome` — and a settle performed on an EARLIER day
- * changes what a LATER day sees, because the anchor it would have been measured
- * from is gone. On a day where a window boundary has refilled the armed
- * snapshot, an unsettled state can report a live run where a settled one reports
- * a signup-anchored absence, so one client is sold and another refused. Measured
- * at 1 pair in 900 and pinned in `streakSweep.STORE_VERDICT_DIVERGENCE`. It does
- * not reach the state, which is why the equality above still holds.
+ * ONE THING IT DOES CHANGE, AND IT IS NOT THE STATE. A settle performed on an
+ * EARLIER day changes what a LATER day sees, because the anchor it would have
+ * been measured from is gone. On a day where a window boundary has refilled the
+ * armed snapshot, an unsettled state can report a live run where a settled one
+ * reports a signup-anchored absence. That difference is real, it is still here,
+ * and `streakSweep.STORE_VERDICT_DIVERGENCE` counts it — 1984 probes in the
+ * doomed-sale sweep. It does not reach the state, which is why the equality
+ * above still holds.
+ *
+ * WHAT IT USED TO CHANGE, AND NO LONGER DOES: the store's verdict. Since the
+ * store refuses to sell into an already-doomed absence, that verdict was a
+ * function of `absenceOutcome`, so one client was sold where another was refused
+ * — 1 pair in 900. `applySettledCoveredDayPurchase` now re-validates through
+ * `settledStateAsOf` before finalising, so a completed sale is one settled state
+ * authorises whether or not this function has been called. The count is 0.
  *
  * It never spends a Recovery Day, because an absence that ends a run never
  * spends one (§5 of the header).

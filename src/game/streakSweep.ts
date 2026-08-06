@@ -430,46 +430,6 @@ export const COVERED_DAY_PURCHASE_SWEEP = Object.freeze({
 });
 
 /**
- * WHERE THE STORE'S VERDICT USED TO DEPEND ON WHEN THE APP WAS OPENED, and what
- * closed it.
- *
- * WHAT IT WAS. Since the store refuses to sell into an already-doomed absence,
- * the store's verdict is a function of `absenceOutcome`. `settleBrokenStreak`
- * nulls `lastTrainedDay`, which drops the anchor to the signup day and makes the
- * absence longer — and the armed snapshot REFILLS at a window boundary, so an
- * absence doomed on the last day of a window can be COVERED again on the first
- * day of the next one. On that revival day the two states disagree: the
- * unsettled one has a live run and the settled one has a 29-day absence. So a
- * client that settled nightly was refused a sale that a client which never
- * opened the app was sold.
- *
- * THE TWO HALVES ARE STILL THERE, AND STILL DELIBERATE. The anchor reset is what
- * makes a settled break stay settled; the boundary refill is GDD §4.2's "refills
- * without anybody opening the app". Neither moved. `STALE_VERDICTS_IN_THE_
- * DOOMED_SALE_SWEEP` counts how often they still disagree, and the count is not
- * zero — that is the point.
- *
- * WHAT MOVED IS WHERE THE STORE ASKS. The human's ruling separates rendering
- * from finalising: a stale offer on screen is acceptable, a completed sale that
- * settled state would have refused is not. So
- * `applySettledCoveredDayPurchase` re-validates through `settledStateAsOf`
- * before finalising and refuses with `ABSENCE_SETTLED_WHILE_AWAY`. No coverage
- * arithmetic was re-derived to do it — the walk offers each day to
- * `settleBrokenStreak` and the verdict is the same `absenceOutcome(...)
- * .protectionHolds` call `recordTrainingDay` branches on.
- *
- * IT NEVER REACHED THE STATE, EVEN BEFORE. Every full-state equality across
- * opening schedules held throughout; what differed was how many orders the store
- * took and therefore the spend. That is the difference between a store defect
- * and a §12.3 monotonicity defect, and it is worth being exact about which this
- * was.
- *
- * MEASURED ON THE SHIPPED ENGINE at the parameters in
- * `streak.test.ts`'s `OPEN-DAY SCHEDULE, WITH PURCHASES AND LONG RANDOM
- * CALENDARS`: 300 trials of 20–60 days, three opening schedules compared against
- * `'never'`, so 900 pairs.
- */
-/**
  * THE DOOMED-SALE SWEEP: where the store's door is checked, in BOTH directions.
  *
  * THE FALSE-POSITIVE DIRECTION IS THE ONE THIS EXISTS FOR. "Refuses a doomed
@@ -562,6 +522,46 @@ export const DOOMED_SALE_SWEEP = Object.freeze({
   CALENDAR_START_OFFSETS: [0, 16, 17, 18, 19, 20] as readonly number[],
 });
 
+/**
+ * WHERE THE STORE'S VERDICT USED TO DEPEND ON WHEN THE APP WAS OPENED, and what
+ * closed it.
+ *
+ * WHAT IT WAS. Since the store refuses to sell into an already-doomed absence,
+ * the store's verdict is a function of `absenceOutcome`. `settleBrokenStreak`
+ * nulls `lastTrainedDay`, which drops the anchor to the signup day and makes the
+ * absence longer — and the armed snapshot REFILLS at a window boundary, so an
+ * absence doomed on the last day of a window can be COVERED again on the first
+ * day of the next one. On that revival day the two states disagree: the
+ * unsettled one has a live run and the settled one has a 29-day absence. So a
+ * client that settled nightly was refused a sale that a client which never
+ * opened the app was sold.
+ *
+ * THE TWO HALVES ARE STILL THERE, AND STILL DELIBERATE. The anchor reset is what
+ * makes a settled break stay settled; the boundary refill is GDD §4.2's "refills
+ * without anybody opening the app". Neither moved. `STALE_VERDICTS_IN_THE_
+ * DOOMED_SALE_SWEEP` counts how often they still disagree, and the count is not
+ * zero — that is the point.
+ *
+ * WHAT MOVED IS WHERE THE STORE ASKS. The human's ruling separates rendering
+ * from finalising: a stale offer on screen is acceptable, a completed sale that
+ * settled state would have refused is not. So
+ * `applySettledCoveredDayPurchase` re-validates through `settledStateAsOf`
+ * before finalising and refuses with `ABSENCE_SETTLED_WHILE_AWAY`. No coverage
+ * arithmetic was re-derived to do it — the walk offers each day to
+ * `settleBrokenStreak` and the verdict is the same `absenceOutcome(...)
+ * .protectionHolds` call `recordTrainingDay` branches on.
+ *
+ * IT NEVER REACHED THE STATE, EVEN BEFORE. Every full-state equality across
+ * opening schedules held throughout; what differed was how many orders the store
+ * took and therefore the spend. That is the difference between a store defect
+ * and a §12.3 monotonicity defect, and it is worth being exact about which this
+ * was.
+ *
+ * MEASURED ON THE SHIPPED ENGINE at the parameters in
+ * `streak.test.ts`'s `OPEN-DAY SCHEDULE, WITH PURCHASES AND LONG RANDOM
+ * CALENDARS`: 300 trials of 20–60 days, three opening schedules compared against
+ * `'never'`, so 900 pairs.
+ */
 export const STORE_VERDICT_DIVERGENCE = Object.freeze({
   /**
    * Pairs, out of 900, where an opening schedule changed whether the store sold.

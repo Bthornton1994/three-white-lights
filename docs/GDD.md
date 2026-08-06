@@ -493,28 +493,73 @@ generates the support ticket.
   background job ran. That is the 11-versus-1 defect in the text rather than in
   the state, and it was caught by mutation before it shipped.
 - **Both directions are swept**, exhaustively, over every calendar of 10 days in
-  three state shapes, probed out past a window boundary — 98 304 store decisions,
-  asserting the store sells *exactly* when the absence holds. The
-  false-positive half is the load-bearing one: "refuses a doomed absence" is
-  satisfied perfectly by a store that refuses everything. Non-vacuity is pinned
-  exactly: **12 328** sellable, **85 976** refused.
+  three state shapes and at six placements against the window boundary, probed
+  out past that boundary — **589 824** store decisions, asserting the store sells
+  *exactly* when the absence holds. The false-positive half is the load-bearing
+  one: "refuses a doomed absence" is satisfied perfectly by a store that refuses
+  everything. Non-vacuity is pinned exactly: **71 912** sellable, **517 912**
+  refused.
 - **It does not make the covers/burn asymmetry moot.** A covered day bought while
   an absence is still salvageable, carried into one that then goes doomed, is
   still burned — so the two halves still read different fields for the reason
   above. Measured, not assumed.
 
-**One place it is not app-open neutral, and it is recorded rather than
-smoothed.** `settleBrokenStreak` nulls `lastTrainedDay`, dropping the anchor to
-the signup day; the armed snapshot refills at a window boundary. So on a day
-where a boundary has revived an absence, an unsettled state reports a live run
-and a settled one reports a signup-anchored absence, and one client is sold where
-another is refused. Both halves are deliberate and pinned elsewhere, so closing
-this from inside the store means either re-deriving the coverage rule or changing
-one of them. Measured at **1 pair in 900** and pinned exactly in
-`streakSweep.STORE_VERDICT_DIVERGENCE`, with a hand-driven reproduction. It does
-not reach the state — every full-state equality across opening schedules still
-holds — which is the difference between a store defect and a §12.3 monotonicity
-defect.
+#### Completing a sale re-validates against settled state — RULED IN
+
+`settleBrokenStreak` nulls `lastTrainedDay`, dropping the anchor to the signup
+day; the armed snapshot refills at a window boundary. So on a day where a
+boundary has revived an absence, an unsettled state reports a live run and a
+settled one reports a signup-anchored absence. **This was measured at 1 pair in
+900, documented, and pinned rather than fixed.** A human ruled it in:
+
+> A completed purchase must never be inconsistent with what settled state would
+> authorize at that moment. An unsettled client's store verdict may render stale,
+> but sale completion must always re-validate against live settled state before
+> finalizing.
+
+**Rendering and finalising are now different things.** A stale offer on screen is
+acceptable — the client's state is a cache. `applySettledCoveredDayPurchase`
+settles first, through `settledStateAsOf`, and then asks the same
+`absenceOutcome(...).protectionHolds` call it always asked. **No coverage
+arithmetic was re-derived**: the walk offers each day to `settleBrokenStreak` and
+keeps what that returns.
+
+- **A single settle at the completion day does not close it**, and this is pinned
+  rather than left as a note. On the revival day the absence *holds*, so
+  `settleBrokenStreak` reports `NOTHING_TO_SETTLE` and the revived run walks
+  straight through. The walk finds the break on the day it actually happened.
+- **A third refusal sentence, and a distinct code.**
+  `ABSENCE_SETTLED_WHILE_AWAY` means *your device is behind, refresh*;
+  `ABSENCE_ALREADY_DOOMED` means *we both already know this run is over*. A
+  player who was shown an offer and then refused is told which happened. The
+  copy is keyed to the client's own rendered verdict, so it is the one thing here
+  that is *not* app-open invariant — deliberately, because a client whose screen
+  already said "refused" never produces the tap. The **decision** is invariant,
+  which is what §12.3 is about.
+- **The old sweep could not express the case at all.** Anchored at signup, all
+  98 304 store decisions contained **zero** probes where a raw state and a
+  nightly-settled one disagreed: a covered absence only survives
+  `LONGEST_REPAIRABLE_ABSENCE_DAYS` past the last session, and with a 10-day
+  calendar starting at signup that can never reach day 30. So the domain that was
+  meant to be checking the store had exactly one answer to the question the
+  ruling asked. `DOOMED_SALE_SWEEP.CALENDAR_START_OFFSETS` adds the six
+  placements — derived from `WINDOW_DAYS` and `LONGEST_REPAIRABLE_ABSENCE_DAYS`,
+  and re-derived in the test — where a still-covered absence can straddle the
+  boundary.
+- **The two states still disagree, and that is the anti-vacuity guard.** Across
+  the extended sweep, raw and nightly-settled states disagree about the absence on
+  **1 984** probes, pinned exactly. Completion divergence across those same
+  probes is **0**. A sweep where the first number fell to zero would make the
+  second meaningless.
+- **The day-sweep's spend equality is unconditional again.** It had been weakened
+  to "wherever the store made the same decision" with the exception count pinned
+  at 1. `STORE_VERDICT_DIVERGENCE.PAIRS_IN_THIS_SWEEP` is now **0**, the equality
+  has nothing conditioning it, and the counter is kept — pinned at zero — so the
+  gap reopening is a red test rather than a silence.
+- **It never reached the state, even before.** Every full-state equality across
+  opening schedules held throughout; what differed was how many orders the store
+  took and therefore the spend. That is the difference between a store defect and
+  a §12.3 monotonicity defect, and it is worth being exact about which this was.
 
 **The invariant this buys, which is the point of the whole rule:** for a fixed
 training history and a fixed armed state, the final streak, the final balance
