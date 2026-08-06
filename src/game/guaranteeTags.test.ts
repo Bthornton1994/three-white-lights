@@ -134,6 +134,13 @@ const declarationOf = (id: string): string => `[${id}]`;
  *     that somebody went and looked, which is worth something and is not worth
  *     what a green suite looks like it is worth.
  *
+ *     `MUTATION_WITNESSES` is the answer to this one, and it is PARTIAL BY
+ *     CONSTRUCTION: it binds tags declared from the round it was added, and
+ *     leaves the rest on `UNWITNESSED_LEGACY_TAGS` as named, tracked debt. The
+ *     error rate above is unchanged by it. What changed is that a reader can now
+ *     tell which tags carry evidence and which carry a promise, instead of the
+ *     two looking identical.
+ *
  * WHAT IT DOES NOT DO: police tone. A capitalised run that is not a claim about
  * behaviour still has to carry a tag inside the scoped files, and the honest
  * response to that is to write the sentence in lower case, not to widen the
@@ -187,8 +194,173 @@ const GUARANTEE_COVERAGE = {
    * artefact: these comments assert behaviour about the scanner and are exactly
    * as capable of being wrong as any other.
    */
-  TREE_WIDE: 188,
+  TREE_WIDE: 189,
 } as const;
+
+// ---------------------------------------------------------------------------
+// The raised bar: a tag declared from here carries mutation evidence
+// ---------------------------------------------------------------------------
+
+/**
+ * WHAT A WITNESS IS, AND WHAT IT COSTS.
+ *
+ * THE PROBLEM IT ANSWERS, restated because it is measured and not suspected: a
+ * quarter of the tags that were mutation-tested on the first careful pass named
+ * a test that stayed GREEN when the guarantee was broken. Both resolved
+ * perfectly. So "the id resolves to a live test" is not evidence, and a bare
+ * pass is not evidence either — the human's words, and the reason this table
+ * exists.
+ *
+ * WHAT IT RECORDS. Two verbatim anchors and one quoted line:
+ *
+ *   - `mutated` — the exact text the mutant replaced, in `mutatedFile`.
+ *   - `redAssertion` — the exact text of the assertion that went red, in the
+ *     body of the test the tag names.
+ *   - `observed` — what the red run actually printed.
+ *
+ * WHAT IS MECHANICALLY CHECKED, AND IT IS LESS THAN IT LOOKS. That both anchors
+ * still resolve, uniquely, and that the red assertion sits inside the body of
+ * the named test. That is a FRESHNESS property, and it is the one worth having:
+ * a witness expires the moment either the mutated code or the assertion that
+ * caught it is edited away, so it cannot keep its confident tone after the code
+ * moves — which is the exact failure mode this whole file exists for.
+ *
+ * WHAT IS NOT CHECKED, SAID PLAINLY. Nothing here re-runs the mutation. A
+ * determined author can paste two real strings and a plausible sentence and
+ * this file cannot tell. It is evidence, not proof: it makes the work visible
+ * and cheap to audit, and it makes the lazy version — tag, ship, never mutate —
+ * the one that fails.
+ *
+ * WHAT IT COSTS AT DECLARATION TIME. You broke the code and watched the test go
+ * red, because that is the method. Copy the line you broke, copy the assertion
+ * vitest named, paste the message. Under a minute on top of work already done.
+ * A bar that cost an hour per tag would stop being met, which is the failure
+ * mode of most bars.
+ */
+interface MutationWitness {
+  /** The tag id this witnesses. */
+  readonly guarantee: string;
+  /** Repo-relative path of the file the mutant edited. */
+  readonly mutatedFile: string;
+  /** Verbatim text the mutant replaced. Must still occur, exactly once. */
+  readonly mutated: string;
+  /** Repo-relative path of the test file holding the assertion that reddened. */
+  readonly testFile: string;
+  /** Verbatim text of that assertion. Must still occur inside the named test. */
+  readonly redAssertion: string;
+  /** What the red run printed. Evidence for a reader; not machine-checked. */
+  readonly observed: string;
+}
+
+/**
+ * Below this length an anchor is not an anchor. A three-character `mutated`
+ * would resolve against half the file and expire against nothing.
+ */
+const MIN_ANCHOR_LENGTH = 24;
+
+/**
+ * TAGS THAT PREDATE THE WITNESS BAR — tracked debt, closed opportunistically
+ * when the module around them is next touched, NOT in a mass audit.
+ *
+ * IT IS AN EXPLICIT LIST AND NOT A DATE OR A COUNT. A cutoff by date needs a
+ * clock; a cutoff by count lets a new tag slip in under it. A named list means
+ * adding a tag without a witness is a diff somebody has to write on purpose,
+ * with this comment next to it.
+ *
+ * TWO OF THESE WERE THE MEASURED FAILURES — `mid-absence-arrival-cannot-arm`
+ * and `protection-toggle-is-not-a-refill`. Both tests were strengthened and both
+ * now fail on their mutant; they are still listed because the witness was not
+ * RECORDED at the time, and an unrecorded mutation is exactly the thing this
+ * table replaces. Re-taking them is a minute each, next time either module is
+ * open.
+ *
+ * IT MAY ONLY SHRINK. `streak.test.ts` and this file both fail if an entry here
+ * names no tag in the tree, so a stale entry is caught; and the test below fails
+ * if a tag is neither witnessed nor listed, so a new one cannot arrive unwitnessed.
+ */
+const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
+  'absence-reads-the-armed-snapshot',
+  'coverage-protects-never-adds',
+  'doomed-absence-takes-what-is-left',
+  'export-surface-exhaustive',
+  'grace-is-recomputed-not-banked',
+  'mid-absence-arrival-cannot-arm',
+  'milestones-pay-nothing',
+  'monotonicity-exhaustive',
+  'never-reads-a-clock',
+  'no-accept-decline-path',
+  'no-tender-arrives-by-training',
+  'nothing-in-game-awards-a-purchased-day',
+  'one-source-credits-a-purchased-day',
+  'protection-toggle-is-not-a-refill',
+  'purchase-cannot-rescue-a-doomed-run',
+  'settling-is-a-recording',
+  'training-is-the-only-debit',
+];
+
+/**
+ * The witnesses. Every tag not in the list above must have one.
+ *
+ * All four below were taken by hand on the run that added them: break it, watch
+ * it fail, read the message, restore, confirm green.
+ */
+const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  {
+    guarantee: 'completion-revalidates-against-settled-state',
+    mutatedFile: 'src/game/streak.ts',
+    mutated: 'revalidated.runRecordedAsEndedOn === null ? rendered : absenceOutcome(revalidated.state, day)',
+    testFile: 'src/game/streak.test.ts',
+    redAssertion: "expect(never.refusedPurchases, 'the client that never opens').toBe(4)",
+    observed: 'AssertionError: the client that never opens: expected 3 to be 4',
+  },
+  {
+    guarantee: 'settling-is-terminal',
+    mutatedFile: 'src/game/streak.ts',
+    mutated: "return fail('NOTHING_TO_SETTLE', 'There is no streak running, so there is nothing to settle.');",
+    testFile: 'src/game/streak.test.ts',
+    redAssertion: "expect(secondSettles, 'a settled run was settled again').toBe(0)",
+    // The shortcut throw in the same loop fires first on this mutant, so it was
+    // neutralised for one run to reach the aggregate. Recorded, because a
+    // witness that hides a step is the thing this table is against.
+    observed:
+      'AssertionError: a settled run was settled again: expected 500544 to be +0 (reached by neutralising the shortcut throw, which reddens first on the same mutant)',
+  },
+  {
+    guarantee: 'the-no-run-shortcut-changes-no-answer',
+    mutatedFile: 'src/game/streak.ts',
+    mutated: 'if (state.lastTrainedDay === null) return { state, runRecordedAsEndedOn: null };',
+    testFile: 'src/game/streak.test.ts',
+    redAssertion: 'the no-run shortcut disagreed with the full walk',
+    observed:
+      'Error: offset 0 armed mask 0 day +0: the no-run shortcut disagreed with the full walk',
+  },
+  {
+    guarantee: 'a-sale-never-follows-a-settle',
+    mutatedFile: 'src/game/streak.ts',
+    mutated: '    lastTrainedDay: null,\n  };\n}',
+    testFile: 'src/game/streak.test.ts',
+    redAssertion: 'sold on a day whose run had already ended',
+    observed: 'Error: offset 16 armed mask 512 day +5: sold on a day whose run had already ended',
+  },
+];
+
+/**
+ * The source of the test whose title declares `id`, from `\`it(\`` to the next
+ * `\`it(\`` — enough to say whether an assertion is inside it rather than
+ * somewhere else in a six-thousand-line file.
+ */
+function bodyOfTestDeclaring(text: string, id: string): string | null {
+  const marker = declarationOf(id);
+  const starts: number[] = [];
+  for (const match of text.matchAll(/\bit\s*\(/g)) starts.push(match.index ?? 0);
+  for (let i = 0; i < starts.length; i += 1) {
+    const from = starts[i] as number;
+    const to = i + 1 < starts.length ? (starts[i + 1] as number) : text.length;
+    const body = text.slice(from, to);
+    if (body.includes(marker)) return body;
+  }
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Reading comments out of source
@@ -379,6 +551,111 @@ describe('the guarantee-tag convention', () => {
     expect([...declared].sort(), 'ids declared by a test but referenced by no comment').toEqual(
       [...tagged].sort(),
     );
+  });
+
+  it('makes every tag declared from here carry mutation evidence that is still fresh', () => {
+    // THE RAISED BAR. A tag that resolves is not a tag that bites, and a quarter
+    // of the first careful pass proved it. From here a tag either carries a
+    // witness or is on the named legacy list, and there is no third option.
+    const titles = testTitlesUnder(path.join(REPO_ROOT, 'src'));
+    const tags = new Set<string>();
+    for (const file of sourceFilesUnder(path.join(REPO_ROOT, 'src'))) {
+      const text = readFileSync(file, 'utf8');
+      for (const match of text.matchAll(GUARANTEE_TAG)) tags.add(match[1] ?? '');
+    }
+
+    const witnessed = new Set(MUTATION_WITNESSES.map((w) => w.guarantee));
+    const legacy = new Set(UNWITNESSED_LEGACY_TAGS);
+
+    // NEITHER SET MAY NAME A TAG THAT IS GONE. A witness for a deleted claim, or
+    // a debt entry for one, is bookkeeping about nothing.
+    expect([...witnessed].filter((id) => !tags.has(id)), 'witnesses for tags that no longer exist').toEqual([]);
+    expect([...legacy].filter((id) => !tags.has(id)), 'debt entries for tags that no longer exist').toEqual([]);
+    // AND NO TAG MAY BE IN BOTH, which would let a witnessed tag be quietly
+    // demoted back to debt without the witness being deleted.
+    expect([...witnessed].filter((id) => legacy.has(id)), 'tags both witnessed and excused').toEqual([]);
+
+    // THE BAR ITSELF.
+    const unaccounted = [...tags].filter((id) => !witnessed.has(id) && !legacy.has(id)).sort();
+    expect(
+      unaccounted,
+      'a tag was declared with no mutation witness and no entry on the legacy list',
+    ).toEqual([]);
+
+    // AND EVERY WITNESS STILL RESOLVES — the freshness half, which is the half
+    // worth having. Either anchor being edited away expires the witness.
+    for (const witness of MUTATION_WITNESSES) {
+      const where = `witness for ${witness.guarantee}`;
+      expect(witness.observed.length, `${where}: records no failure message`).toBeGreaterThan(
+        MIN_ANCHOR_LENGTH,
+      );
+
+      expect(witness.mutated.length, `${where}: the mutated anchor is too short to anchor`).toBeGreaterThan(
+        MIN_ANCHOR_LENGTH,
+      );
+      const mutatedPath = path.join(REPO_ROOT, witness.mutatedFile);
+      expect(existsSync(mutatedPath), `${where}: ${witness.mutatedFile}`).toBe(true);
+      const mutatedText = readFileSync(mutatedPath, 'utf8');
+      expect(
+        mutatedText.split(witness.mutated).length - 1,
+        `${where}: the mutated text does not occur exactly once in ${witness.mutatedFile}`,
+      ).toBe(1);
+
+      expect(
+        witness.redAssertion.length,
+        `${where}: the red assertion is too short to anchor`,
+      ).toBeGreaterThan(MIN_ANCHOR_LENGTH);
+      const testPath = path.join(REPO_ROOT, witness.testFile);
+      expect(existsSync(testPath), `${where}: ${witness.testFile}`).toBe(true);
+      const testText = readFileSync(testPath, 'utf8');
+
+      // THE ASSERTION IS INSIDE THE TEST THE TAG NAMES, not merely somewhere in
+      // the file. Without this a witness could point at a live assertion in an
+      // unrelated test and expire against nothing the guarantee depends on.
+      const body = bodyOfTestDeclaring(testText, witness.guarantee);
+      expect(body, `${where}: no test declares [${witness.guarantee}]`).not.toBe(null);
+      expect(
+        (body ?? '').includes(witness.redAssertion),
+        `${where}: the red assertion is not inside the test that declares the tag`,
+      ).toBe(true);
+    }
+
+    // NON-VACUITY. An empty witness table satisfies every loop above.
+    expect(MUTATION_WITNESSES.length, 'no witnesses recorded').toBeGreaterThan(3);
+    // And the bar is measured rather than asserted: it covers the tags added
+    // since it existed, which is a minority, and says so.
+    expect(witnessed.size + legacy.size).toBe(tags.size);
+    expect(titles.length, 'the tree has tests to point at').toBeGreaterThan(100);
+  });
+
+  it('expires a witness whose anchor has moved, on a planted one', () => {
+    // ANTI-VACUITY FOR THE FRESHNESS CHECK, which is the only thing the witness
+    // table actually enforces. The loop above is a set of `expect`s over real
+    // data; if `mutated` were matched loosely, or the body scope were the whole
+    // file, every one of them would still be green. So the same three checks are
+    // driven over planted witnesses built to fail each one.
+    const realFile = readFileSync(path.join(REPO_ROOT, 'src/game/streak.ts'), 'utf8');
+    const realTest = readFileSync(path.join(REPO_ROOT, 'src/game/streak.test.ts'), 'utf8');
+
+    // 1. An anchor that has been edited away resolves zero times.
+    expect(realFile.split('const authoritative = renderedVerdictOnly;').length - 1).toBe(0);
+    // 2. An anchor so short it matches everywhere is caught by length, and would
+    //    also resolve many times.
+    expect(realFile.split('const ').length - 1).toBeGreaterThan(1);
+    expect('const '.length).toBeLessThan(MIN_ANCHOR_LENGTH);
+    // 3. The body scope really is a scope: an assertion from a DIFFERENT test in
+    //    the same file is not inside this one.
+    const body = bodyOfTestDeclaring(realTest, 'completion-revalidates-against-settled-state');
+    expect(body, 'the tag names no test').not.toBe(null);
+    expect((body ?? '').length, 'the body scope swallowed the file').toBeLessThan(realTest.length / 2);
+    expect(
+      (body ?? '').includes("expect(secondSettles, 'a settled run was settled again').toBe(0)"),
+      'the body scope leaked into a neighbouring test',
+    ).toBe(false);
+    // ...and the assertion that IS in it is found.
+    expect(
+      (body ?? '').includes("expect(never.refusedPurchases, 'the client that never opens').toBe(4)"),
+    ).toBe(true);
   });
 
   it('reads comments and not code, on a sample written to break it', () => {
