@@ -1453,6 +1453,34 @@ describe('Recovery Day protection: armed ahead, revealed on return', () => {
     // And the session that ends it arms whatever its own window holds.
     const restarted = unwrap(recordTrainingDay(broke, day)).state;
     expect(coveredDaysArmed(restarted, day)).toBe(0);
+
+    // A PURCHASE ARRIVING MID-ABSENCE STILL CANNOT ARM IT, and this half was
+    // missing — which is the point of the tag on the comment that claims it.
+    // Everything above is about the CALENDAR; §8.3E put a second thing back
+    // that can change coverage mid-absence, and pointing a purchase at
+    // `armedEntitlement` left every assertion above green.
+    //
+    // IT HAS TO BE A SALVAGEABLE ABSENCE, because the store will not sell into a
+    // doomed one at all — so the case worth testing is the one that is still
+    // alive, where a rescue would actually be a rescue.
+    const covered = stateWithRun(9, DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+    const midAbsence = addDays(DAY_ZERO, GRACE);
+    expect(absenceOutcome(covered, midAbsence).protectionHolds, 'still sellable').toBe(true);
+    const armedBefore = coveredDaysArmed(covered, midAbsence);
+    const afterBuying = unwrap(
+      applySettledCoveredDayPurchase(covered, midAbsence, {
+        orderId: 'mid-absence',
+        coveredDays: 1,
+        tender: 'chalk-purchased',
+      }),
+    ).state;
+    // The balance rose...
+    expect(coveredDaysLeftInWindow(afterBuying)).toBe(coveredDaysLeftInWindow(covered) + 1);
+    // ...and what the absence in progress may draw did not.
+    expect(coveredDaysArmed(afterBuying, midAbsence), 'the purchase armed this absence').toBe(
+      armedBefore,
+    );
+    expect(afterBuying.armedEntitlement, 'the snapshot moved').toEqual(covered.armedEntitlement);
   });
 
   it('keeps the runway fixed for the whole absence, so reminder copy cannot change its mind', () => {

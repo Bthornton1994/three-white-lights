@@ -113,8 +113,14 @@ const declarationOf = (id: string): string => `[${id}]`;
  *     function of the absence's length" — is lower-case prose. It is caught here
  *     only because the paragraph it sits in opens with a capitalised absolute.
  *     That is luck, and it is written down as luck.
- *   - ANY OF THE 162 TRIGGERING PARAGRAPHS OUTSIDE `GUARANTEE_PROSE_FILES`. See
- *     `GUARANTEE_COVERAGE` for the measured fraction.
+ *   - ANY TRIGGERING PARAGRAPH OUTSIDE `GUARANTEE_PROSE_FILES`, which is most of
+ *     them. See `GUARANTEE_COVERAGE` for the measured fraction.
+ *   - A TAG POINTING AT A TEST THAT DOES NOT ACTUALLY BITE. This is the big one
+ *     and it is not hypothetical: bringing the 19 paragraphs below under the
+ *     convention turned up one — `mid-absence-arrival-cannot-arm` named a test
+ *     that only ever exercised the CALENDAR, so pointing a purchase straight at
+ *     `armedEntitlement` left it green. The tag resolved perfectly. Only
+ *     mutation found it, and the test had to be strengthened by hand.
  *
  * WHAT IT DOES NOT DO: police tone. A capitalised run that is not a claim about
  * behaviour still has to carry a tag inside the scoped files, and the honest
@@ -169,7 +175,7 @@ const GUARANTEE_COVERAGE = {
    * artefact: these comments assert behaviour about the scanner and are exactly
    * as capable of being wrong as any other.
    */
-  TREE_WIDE: 184,
+  TREE_WIDE: 185,
 } as const;
 
 // ---------------------------------------------------------------------------
