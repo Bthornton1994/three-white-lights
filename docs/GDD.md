@@ -443,15 +443,78 @@ rule and not the schedule. So the two halves read different fields on purpose:
 whether the run **survives** is decided by what was armed, what a doomed absence
 **costs** is everything live.
 
-*The residual, stated because it is real:* only a session arms, so a covered day
-bought **before** a session on the same day is armed by it and one bought
-**after** arms at the next session; and a covered day bought before a session
-that closes a doomed absence is burned by that absence. Both follow this ruling
-read literally — arming happens at a session, and anything after one arrives
-during the absence that session started — but the clock time of a purchase is
-therefore observable. It is not an app-opening dependence. The honest fixes are
-store copy ("armed from your next session") or a server-side refusal to sell
-during a doomed absence; neither belongs in `streak.ts`.
+#### The same-day purchase-timing rule — INTENTIONAL, not a residual
+
+**A covered day bought BEFORE a session on the same day is armed by that
+session. One bought AFTER it arms at the next session.** This used to be
+recorded here as a residual; a human has ruled it an intentional rule, and it is
+written down as one so that it cannot later be "fixed" into symmetry by somebody
+who reads it as an accident.
+
+It is this ruling read literally rather than an exception to it. Only a session
+arms; a purchase that lands after a session has landed *during the absence that
+session started*, and this section's own sentence — "a Recovery Day that arrives
+during an absence does not cover it" — is exactly what then applies to it. Making
+the two orders symmetric means either arming outside a session (which lets a
+purchase rescue a run the calendar has ended) or refusing to arm a purchase that
+was in the window when the session ran (which would make a session's arming
+depend on where the day's coverage came from).
+
+**What it costs, stated:** the clock time of a purchase is observable. It is
+**not** an app-opening dependence — the player chose when to spend money, and
+the two orders are two different player actions rather than one action seen from
+two clients. `streak.test.ts` pins both orders ("A PURCHASE BEFORE A SESSION AND
+ONE AFTER IT DIFFER"), so the documented rule is enforced rather than described.
+
+#### The store may not sell into an already-doomed absence — RULED IN
+
+This section used to name two honest fixes for the second half of the old
+residual — a covered day bought before the session that closes a doomed absence
+is burned by that absence — and say neither belonged in `streak.ts`. **A human
+has ruled the server-side refusal in, and it is built.**
+
+`applySettledCoveredDayPurchase` refuses an order applied on a day whose absence
+has already ended the run, with a distinct code (`ABSENCE_ALREADY_DOOMED`, not
+`INVALID_PURCHASE` — the order is well formed and the money is good; what is
+wrong is the moment) and a player-facing sentence. **A refusal, never a greyed-out
+button**: a store that silently disables the control tells the player nothing and
+generates the support ticket.
+
+- **The predicate is the absence's own arithmetic.** `absenceOutcome(state,
+  day).protectionHolds` — the identical call `recordTrainingDay` branches on to
+  decide whether the run survived. Not a re-derivation from `daysMissed` and the
+  grace, which would be a second implementation of the coverage rule that agrees
+  with the first only until one of them is edited.
+- **The message keys on `entitlementArmed`, not on `StreakBreakReason`.**
+  `breakReasonFor` is ordered hardest-constraint-first, so which reason an absence
+  reports depends on its *length* — and a nightly `settleBrokenStreak` makes the
+  same absence longer. Keying the copy to the reason gives two different
+  explanations for the same money on the same calendar, decided by whether a
+  background job ran. That is the 11-versus-1 defect in the text rather than in
+  the state, and it was caught by mutation before it shipped.
+- **Both directions are swept**, exhaustively, over every calendar of 10 days in
+  three state shapes, probed out past a window boundary — 98 304 store decisions,
+  asserting the store sells *exactly* when the absence holds. The
+  false-positive half is the load-bearing one: "refuses a doomed absence" is
+  satisfied perfectly by a store that refuses everything. Non-vacuity is pinned
+  exactly: **12 328** sellable, **85 976** refused.
+- **It does not make the covers/burn asymmetry moot.** A covered day bought while
+  an absence is still salvageable, carried into one that then goes doomed, is
+  still burned — so the two halves still read different fields for the reason
+  above. Measured, not assumed.
+
+**One place it is not app-open neutral, and it is recorded rather than
+smoothed.** `settleBrokenStreak` nulls `lastTrainedDay`, dropping the anchor to
+the signup day; the armed snapshot refills at a window boundary. So on a day
+where a boundary has revived an absence, an unsettled state reports a live run
+and a settled one reports a signup-anchored absence, and one client is sold where
+another is refused. Both halves are deliberate and pinned elsewhere, so closing
+this from inside the store means either re-deriving the coverage rule or changing
+one of them. Measured at **1 pair in 900** and pinned exactly in
+`streakSweep.STORE_VERDICT_DIVERGENCE`, with a hand-driven reproduction. It does
+not reach the state — every full-state equality across opening schedules still
+holds — which is the difference between a store defect and a §12.3 monotonicity
+defect.
 
 **The invariant this buys, which is the point of the whole rule:** for a fixed
 training history and a fixed armed state, the final streak, the final balance
@@ -1206,7 +1269,7 @@ that a purchased day is credited in one window and expires in the next.
 |---|---|---|---|---|---|---|---|---|---|
 | pairs, each arm | 1 024 | 2 304 | 5 120 | 11 264 | 24 576 | 53 248 | 114 688 | 245 760 | 524 288 |
 | consumed, no purchases | 452 | 1 264 | 3 344 | 8 512 | 20 988 | 50 368 | 118 352 | 277 888 | 644 288 |
-| consumed, with purchases | 524 | 1 472 | 3 904 | 10 192 | 25 664 | 62 872 | 150 544 | 351 048 | 808 528 |
+| consumed, with purchases | 500 | 1 392 | 3 700 | 9 480 | 23 836 | 58 648 | 141 236 | 326 236 | 750 632 |
 | violating pairs, both arms | **0** | **0** | **0** | **0** | **0** | **0** | **0** | **0** | **0** |
 
 Zero on `currentStreak`, on lifetime best and on both worst deficits, over
@@ -1216,6 +1279,14 @@ calendar accrues one Chalk against a price of three and buys nothing, so both
 arms reported byte-identical consumption. The fixed buy days
 (`BOUNDARY_CROSSING_PURCHASE_DAYS`) are what make the third row differ from the
 second, and the test asserts that it does.
+
+**The with-purchases row dropped when the doomed-sale refusal landed** — its
+total fell from 1 414 748 to 1 315 660 — and it dropped for the reason the
+refusal exists. Some of those fixed buy days fall inside an absence that has
+already ended the run; the store will not sell into one, so those covered days
+are never bought and never burned. The no-purchase row is unchanged, which is
+what says the drop is the store rule and not a change to the absence rule. Both
+arms stay at zero violating pairs.
 
 This is `drive`-only — `streak.ts` reads `RECOVERY_ENTITLEMENT` as a module
 constant and cannot be driven at another window length — so it reaches the
@@ -1816,6 +1887,18 @@ by one. Flat price in Chalk, or a small bundle at a flat price. It expires at th
 end of the window it was bought in. `streak.applySettledCoveredDayPurchase` is
 the only way it reaches the mechanic; it takes a **settled order**, so no game
 event can call it, and it refuses a backdated one.
+
+**And it refuses to sell during an already-doomed absence** — a human's ruling,
+built, with the predicate, the copy rule, the two-directional sweep and the one
+known app-open sensitivity all in §4.2 under "The store may not sell into an
+already-doomed absence". The short version: a covered day cannot arm the absence
+it arrives in, so on a doomed absence the sale is protection the player cannot
+receive, and because the doomed burn takes what is live the next session then
+eats the day they just bought. Sold a save that cannot save, then billed for it.
+
+**The same-day purchase-timing rule** — bought before a session, armed by that
+session; bought after, armed at the next — is likewise an intentional rule now
+rather than a residual, and §4.2 carries it.
 
 **Checked against the three rules it has to satisfy:**
 

@@ -115,6 +115,14 @@ interface RunResult {
   readonly bought: number;
   /** Peak `purchasedDaysLeft` reached, so "populated" is checked not assumed. */
   readonly peakPurchased: number;
+  /**
+   * Orders the store refused because the absence was already doomed.
+   *
+   * PART OF THE PINNED RESULT, not a diagnostic. Both engines have to agree
+   * about which buy days they turned away, or the §8.3E table transfers from a
+   * composition that bought on days the shipped engine will not sell on.
+   */
+  readonly refusedPurchases: number;
 }
 
 /**
@@ -151,6 +159,7 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
   let consumedTotal = 0;
   let bought = 0;
   let peakPurchased = 0;
+  let refusedPurchases = 0;
 
   const resolveAt = (today: number): { daysMissed: number; chargeable: number; covers: boolean; consumed: number } => {
     const anchor = lastTrainedDay ?? 0;
@@ -203,9 +212,20 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
     // no-purchase arms run this loop tens of millions of times and a `for...of`
     // over an empty array still allocates an iterator every day of every
     // calendar. Written the obvious way it added twenty seconds to this file.
+    //
+    // AND THE STORE REFUSES DURING AN ALREADY-DOOMED ABSENCE, which this
+    // composition has to model or the §8.3E pin stops transferring. The shipped
+    // `applySettledCoveredDayPurchase` asks `absenceOutcome(...).protectionHolds`
+    // and returns `ABSENCE_ALREADY_DOOMED` when it is false; `resolveAt(i).covers`
+    // is the identical arithmetic here, off the identical armed snapshot. A buy
+    // day the store would refuse therefore credits nothing on either side.
     if (purchaseDays.length > 0) {
       for (let k = 0; k < purchaseDays.length; k += 1) {
         if (purchaseDays[k] !== i) continue;
+        if (!resolveAt(i).covers) {
+          refusedPurchases += 1;
+          continue;
+        }
         const amount = COVERED_DAY_PURCHASE_SWEEP.COVERED_DAYS_PER_ORDER;
         credit(i, amount, 'purchase');
         bought += amount;
@@ -252,7 +272,7 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
     const r = resolveAt(last);
     if (r.daysMissed > 0 && !r.covers) currentStreak = 0;
   }
-  return { currentStreak, longestStreak, consumed: consumedTotal, bought, peakPurchased };
+  return { currentStreak, longestStreak, consumed: consumedTotal, bought, peakPurchased, refusedPurchases };
 }
 
 const DEFAULT: RunOptions = {
@@ -295,6 +315,7 @@ function driveThroughStreakEngine(
   let consumed = 0;
   let bought = 0;
   let peakPurchased = 0;
+  let refusedPurchases = 0;
 
   for (let i = 0; i < schedule.length; i += 1) {
     const day = asStreakDay(i);
@@ -309,7 +330,16 @@ function driveThroughStreakEngine(
         coveredDays: amount,
         tender: 'chalk-purchased',
       });
-      if (!applied.ok) throw new Error(`streak engine refused a purchase on day ${i}: ${applied.error.code}`);
+      // A DOOMED-ABSENCE REFUSAL IS AN EXPECTED ANSWER AND IS COUNTED; anything
+      // else is a harness bug and still throws, so a malformed order or a
+      // rejected tender cannot hide inside this branch.
+      if (!applied.ok) {
+        if (applied.error.code !== 'ABSENCE_ALREADY_DOOMED') {
+          throw new Error(`streak engine refused a purchase on day ${i}: ${applied.error.code}`);
+        }
+        refusedPurchases += 1;
+        continue;
+      }
       state = applied.value.state;
       bought += amount;
       peakPurchased = Math.max(peakPurchased, state.entitlement.purchasedDaysLeft);
@@ -342,6 +372,7 @@ function driveThroughStreakEngine(
     consumed,
     bought,
     peakPurchased,
+    refusedPurchases,
   };
 }
 
@@ -560,6 +591,7 @@ function driveBankable(schedule: TrainingSchedule, buyDays: readonly number[]): 
   let consumed = 0;
   let bought = 0;
   let peakPurchased = 0;
+  let refusedPurchases = 0;
   const resolveAt = (today: number): { missed: number; covers: boolean; take: number } => {
     const missed = Math.max(0, today - (lastTrainedDay ?? 0) - 1);
     const chargeable = Math.max(0, missed - GRACE);
@@ -570,6 +602,15 @@ function driveBankable(schedule: TrainingSchedule, buyDays: readonly number[]): 
   for (let i = 0; i < schedule.length; i += 1) {
     for (let k = 0; buyDays.length > 0 && k < buyDays.length; k += 1) {
       if (buyDays[k] !== i) continue;
+      // THE STORE RULE APPLIES TO THIS PRODUCT TOO, or the two products are no
+      // longer being compared like for like: one of them would be refusing sales
+      // the other took, and the difference in the table would be the store rather
+      // than the banking. This model has no armed snapshot, so its `covers` is
+      // its own — which is the point, since it is a model of a different product.
+      if (!resolveAt(i).covers) {
+        refusedPurchases += 1;
+        continue;
+      }
       bank += COVERED_DAY_PURCHASE_SWEEP.COVERED_DAYS_PER_ORDER;
       bought += COVERED_DAY_PURCHASE_SWEEP.COVERED_DAYS_PER_ORDER;
       peakPurchased = Math.max(peakPurchased, bank);
@@ -601,7 +642,7 @@ function driveBankable(schedule: TrainingSchedule, buyDays: readonly number[]): 
     const r = resolveAt(last);
     if (r.missed > 0 && !r.covers) currentStreak = 0;
   }
-  return { currentStreak, longestStreak, consumed, bought, peakPurchased };
+  return { currentStreak, longestStreak, consumed, bought, peakPurchased, refusedPurchases };
 }
 
 /** `judgePurchaseArm`, over the bankable product. Same axes, same matching. */
@@ -836,7 +877,7 @@ describe('a purchased covered day has a provenance, and the provenance is on the
     expect(bought.source).toBe('purchase');
   });
 
-  it('is credited by EXACTLY ONE source, and that source is the purchase', () => {
+  it('[one-source-credits-a-purchased-day] is credited by EXACTLY ONE source, and that source is the purchase', () => {
     // Condition 3, at the level of the map rather than of the code. Re-point
     // `'window-entitlement'` at `purchasedDaysLeft` — which is what "an earned
     // day is really a purchased day" would look like as a diff — and this stops
@@ -1107,8 +1148,15 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     // THE PUBLISHED NUMBERS, PINNED. GDD 4.4 prints this table; pinning the
     // totals here is what stops the two drifting apart, and a total that moves
     // is a sweep that is measuring something else.
+    //
+    // THE WITH-PURCHASE ROW FELL FROM 1 414 748 WHEN THE DOOMED-SALE RULING
+    // LANDED, and it fell for the reason the ruling exists: some of these fixed
+    // buy days sit inside an absence that has already ended the run, the store
+    // will not sell into one, and a covered day that is never bought is never
+    // burned. The no-purchase row is untouched, which is the check that the drop
+    // is the store and not the absence rule. Both arms are still clean.
     expect(consumedWithout, 'GDD 4.4 boundary table, no-purchase row total').toBe(1_125_456);
-    expect(consumedWith, 'GDD 4.4 boundary table, with-purchase row total').toBe(1_414_748);
+    expect(consumedWith, 'GDD 4.4 boundary table, with-purchase row total').toBe(1_315_660);
 
     // ANTI-VACUITY, AND IT IS THE CHECK THIS SWEEP FAILED ON ITS FIRST RUN. The
     // first version funded the purchase arm through `coveredDayPurchaseDays`,

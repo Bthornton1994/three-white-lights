@@ -440,6 +440,7 @@ export const COVERAGE_SOURCE_COUNTER = {
 /**
  * THE ONLY SOURCE THAT MAY CREDIT `purchasedDaysLeft`, derived from the map
  * above rather than written beside it.
+ * `@guarantee one-source-credits-a-purchased-day`
  *
  * GDD §8.3E condition 3, as a value a test can read: a purchased covered day is
  * never grantable, earnable or awarded by an in-game action. Re-point
