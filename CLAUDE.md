@@ -63,9 +63,9 @@ place"*, *"nothing else paints in here"*, *"every number here is derived"* —
 then there must be a test that goes red if the guarantee stops holding. Prose is
 not a check, and a reader cannot tell the difference by looking.
 
-This is not a style preference. It has now failed **five times** in this
-codebase, and the fifth was found inside the comment that had just been
-rewritten to fix the fourth:
+This is not a style preference. It has now failed **six times** in this
+codebase; the fifth was found inside the comment that had just been rewritten to
+fix the fourth, and the sixth one file away from where the fifth was fixed:
 
 - a scrim constant *"registered, documented and read by no pixel"*;
 - a dismiss window whose stated causation nothing on the app's route consulted;
@@ -75,7 +75,9 @@ rewritten to fix the fourth:
   order it ran in decided 11 versus 1;
 - and, in the corrected version of that same docstring, *"the doomed burn is the
   armed amount"* — the precise arithmetic that had been measured at 3 / 23 / 1
-  violating pairs and rejected as a §12.3 breach one commit earlier.
+  violating pairs and rejected as a §12.3 breach one commit earlier;
+- and a docstring saying the store's refusal copy was keyed by
+  `StreakBreakReason` when it had been keyed on `entitlementArmed` for a round.
 
 Every one was true-sounding, none could be reddened, and each survived a round.
 The pattern is not carelessness — it is that a sentence written while the code
@@ -99,8 +101,12 @@ evidence at all.
 **So a tag must survive a mutation check WHEN IT IS DECLARED, not merely name a
 test that passes.** A bare pass is not evidence — a quarter of the sample that
 was actually checked failed exactly that bar. Break the guarantee, watch the
-named test go red, restore. Do it at declaration time, when the code is already
-in your head and it costs a minute; a bar that costs an hour per tag stops being
+named test go red, restore, and **record the witness in `MUTATION_WITNESSES`** —
+the verbatim text the mutant replaced and the verbatim assertion that reddened,
+both required to resolve uniquely, with the assertion required to sit inside the
+named test's body, so a witness expires the moment either is edited away. Do it
+at declaration time, when the code is already in your head and it costs two
+copy-pastes on top of a mutation you already ran; a bar that costs an hour per tag stops being
 met, which is how the backlog got here.
 
 **The existing backlog is tracked debt, not a mass audit.** Close a tag's
@@ -226,6 +232,18 @@ physiology.
   is load-bearing rather than an oversight — charging the doomed burn against
   the armed count instead measures 3 / 23 / 1 violating pairs, including one in
   a control where both lifters buy on identical days, which is a §12.3 breach.
+
+  **A store verdict may render stale; a completed sale may not.** Finalising
+  re-validates through `settledStateAsOf`, which walks every day from the
+  absence anchor to today, offers each to the real `settleBrokenStreak`, and
+  keeps the first thing it records — then asks the same `protectionHolds` call
+  the refusal always asked. A single settle **at the completion day is
+  measurably not enough**: on a revival day the absence still holds, so that
+  settle records `NOTHING_TO_SETTLE` and the revived run walks straight
+  through. Only the walk finds the break where it happened. With this in place
+  the store-verdict exception count is **zero** and the open-day spend equality
+  is unconditional again; the counter stays pinned at zero so a reopening is
+  red rather than silent.
 
   Without the snapshot, a purchase during an absence retroactively rescued a run
   `openDay` had already called broken, and *which way it went depended on
