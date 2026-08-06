@@ -443,6 +443,7 @@ function streakWire(state: StreakState): StreakStateWire {
     longestStreak: state.longestStreak,
     lastTrainedDay: state.lastTrainedDay,
     entitlement: state.entitlement,
+    armedEntitlement: state.armedEntitlement,
     entitlementArmed: state.entitlementArmed,
     recoveryDayProtectionEnabled: state.recoveryDayProtectionEnabled,
     hasBankedFirstRecoveryDaySave: state.hasBankedFirstRecoveryDaySave,

@@ -155,13 +155,28 @@
  * ARMING HAPPENS WHEN YOU TRAIN, AND NOWHERE ELSE. That is the whole of the
  * rule, and it is what makes the outcome independent of app-opening:
  *
- *   - NOTHING CAN CREDIT COVERAGE AT ALL any more. GDD §4.2's Option 1 ruling
- *     deleted `grantRecoveryDays`, the hold cap and the earning table with it,
- *     so the question "can a Recovery Day arriving mid-absence arm it?" no
- *     longer has anything to ask about — and `streak.test.ts` asserts that no
- *     exported name matches /grant|credit|buy|purchase/. What can still change
- *     mid-absence is the CALENDAR, and it changes identically whether or not
- *     anybody looks.
+ *   - EXACTLY ONE THING CAN CREDIT COVERAGE, AND IT CANNOT ARM AN ABSENCE IN
+ *     PROGRESS. GDD §4.2's Option 1 ruling deleted `grantRecoveryDays`, the
+ *     hold cap and the earning table; GDD §8.3E then ruled the Extra Covered
+ *     Day back in, so "can a Recovery Day arriving mid-absence arm it?" is a
+ *     live question again and the answer is NO.
+ *     `applySettledCoveredDayPurchase` is the only credit path — the callable
+ *     surface's ONLY name matching /grant|credit|buy|purchase|award|earn/, and
+ *     `streak.test.ts` asserts that list is exactly `['applySettledCovered
+ *     DayPurchase']` rather than empty. What it credits is the LIVE
+ *     entitlement; what an absence draws on is `armedEntitlement`, the snapshot
+ *     the last session left. A purchase reaches that snapshot only when it is
+ *     dated on or before the day the snapshot was taken, which by definition is
+ *     not during the absence.
+ *
+ *     THIS PARAGRAPH USED TO SAY "NOTHING CAN CREDIT COVERAGE AT ALL any more",
+ *     and it stayed there for a whole round after §8.3E was ruled in. It is
+ *     recorded rather than quietly replaced because a comment that was false in
+ *     the reassuring direction is what let the live field be read by the
+ *     absence path without anybody noticing.
+ *
+ *     What can also change mid-absence is the CALENDAR, and it changes
+ *     identically whether or not anybody looks.
  *   - turning protection ON mid-absence does not arm it either; it applies from
  *     the next session (`appliesToTheAbsenceInProgress` says so, so a UI can
  *     tell the player rather than leaving them to discover it).
@@ -378,16 +393,31 @@
  *     trained day re-arms. `streak.test.ts` demonstrates that pattern draining
  *     a full window rather than leaving it as prose. The only thing bounding it
  *     is the rate — `COVERED_DAYS_PER_WINDOW` per `WINDOW_DAYS` days.
- *   - COVERAGE ARRIVING DURING AN ABSENCE DOES NOT COVER IT. Nothing can arrive
- *     any more — there is no grant path — so the only thing that changes
- *     mid-absence is the window turning over, and a later window's entitlement
- *     does not reach back into an absence that is resolving in an earlier one.
- *     See
- *     §3: arming happens when you train. This is the visible cost of making the
- *     outcome independent of app-opening, and it is stated on the read model
- *     (`DayOpening` reports what is armed, not what is held) rather than left
- *     for a player to discover. It is also how the Duolingo-style armed-ahead
- *     model GDD §12.2 points at behaves, so it is a cost the bar already pays.
+ *   - COVERAGE ARRIVING DURING AN ABSENCE DOES NOT COVER IT — and coverage CAN
+ *     arrive, which is where this paragraph used to be wrong. It said "nothing
+ *     can arrive any more; there is no grant path", which stopped being true
+ *     the moment GDD §8.3E ruled the Extra Covered Day in, and §4 of this
+ *     header said so on the same page.
+ *
+ *     WHAT MAKES IT TRUE NOW IS A FIELD, NOT AN ABSENT CODE PATH.
+ *     `StreakState.entitlement` is the live balance and a settled purchase
+ *     raises it; `StreakState.armedEntitlement` is the snapshot the last
+ *     session left, it is what `absenceOutcome` and `coveredDaysArmed` resolve
+ *     against, and a purchase reaches it only when dated on or before the day
+ *     it was taken. A covered day bought mid-absence therefore tops up the
+ *     balance and arms the NEXT absence, which is GDD §4.2 in as many words —
+ *     and it is not burned by the doomed absence either, because the burn is
+ *     the armed amount.
+ *
+ *     THE OTHER THING THAT CHANGES MID-ABSENCE IS THE WINDOW TURNING OVER, and
+ *     a later window's entitlement does not reach back into an absence
+ *     resolving in an earlier one. See §3: arming happens when you train.
+ *
+ *     This is the visible cost of making the outcome independent of
+ *     app-opening, and it is stated on the read model (`DayOpening` reports
+ *     what is armed, not what is held) rather than left for a player to
+ *     discover. It is also how the Duolingo-style armed-ahead model GDD §12.2
+ *     points at behaves, so it is a cost the bar already pays.
  *
  * ===========================================================================
  * 6. NEVER PUNISH DAILY ENGAGEMENT (CLAUDE.md, GDD §3.5, §12.3)
@@ -540,11 +570,24 @@
  *
  * WHAT IS STILL NOT PROVEN, said plainly because the opposite would be a claim
  * this file cannot back. The exhaustive half is a proof for calendars of 16
- * days or fewer. Everything past that is sampling plus an adversarial
- * hill-climb, and the last defect this module had was a 23-day calendar —
- * inside neither. `streakEntitlement.test.ts` is aimed at every failure class
- * known to have occurred here and finds none; it will find the next one only if
- * the next one resembles the last two.
+ * days or fewer, and — this half was missing and it mattered more than the
+ * length did — the exhaustive sweep THROUGH THIS ENGINE also stops at ONE
+ * WINDOW. `WINDOW_DAYS` is 30, every exhaustive fixture anchors `signupDay` at
+ * day 0, and 8-to-16-day calendars therefore live entirely inside window 0: the
+ * refill, the re-convergence of two lifters at a boundary, and a purchased day
+ * expiring are all outside the proof, which is a fair description of the
+ * sub-mechanism that was never in doubt rather than of the mechanism.
+ * `streakEntitlement.test.ts` closes the second half against the reference
+ * composition by re-running the exhaustive judge at
+ * `MONOTONICITY_SWEEP.BOUNDARY_CROSSING_WINDOW_DAYS`, where every one of those
+ * calendars straddles at least one boundary; it transfers here only through the
+ * pin that the two agree at the shipped tuning.
+ *
+ * Everything past 16 days is sampling plus an adversarial hill-climb, and the
+ * last defect this module had was a 23-day calendar — inside neither.
+ * `streakEntitlement.test.ts` is aimed at every failure class known to have
+ * occurred here and finds none; it will find the next one only if the next one
+ * resembles the last two.
  *
  * AND THE VERIFICATION IS PINNED TO THIS FILE, which it was not when it was
  * taken. That battery grades a twenty-line REFERENCE COMPOSITION of the grace
@@ -894,12 +937,22 @@ export const STREAK_FACT_KEYS = [
   'longestStreak',
   'lastTrainedDay',
   'entitlement',
+  'armedEntitlement',
   'entitlementArmed',
   'recoveryDayProtectionEnabled',
   'hasBankedFirstRecoveryDaySave',
 ] as const;
 
 export type StreakFactKey = (typeof STREAK_FACT_KEYS)[number];
+
+/**
+ * THE COMPLETE SET OF FIELDS `ArmedEntitlement` MAY HAVE. Same mechanism and
+ * same reason as `STREAK_FACT_KEYS`: this is what an absence in progress
+ * resolves against, so what can reach it is an allowlist rather than a promise.
+ */
+export const ARMED_ENTITLEMENT_KEYS = ['entitlement', 'asOfDay'] as const;
+
+export type ArmedEntitlementKey = (typeof ARMED_ENTITLEMENT_KEYS)[number];
 
 /**
  * `true` when `keyof T` is EXACTLY `Keys` — neither a field missing from the
@@ -911,6 +964,43 @@ type KeysAreExactly<T, Keys extends string> = [Exclude<keyof T, Keys>] extends [
     ? true
     : never
   : never;
+
+/**
+ * WHAT THE ABSENCE IN PROGRESS RESOLVES AGAINST, and the day that fixed it.
+ *
+ * THE TWO FIELDS MOVE TOGETHER OR NOT AT ALL, which is why they are one object
+ * rather than two fields on `StreakState`. A snapshot without the day it was
+ * taken on cannot answer the only question the purchase path has to ask — "did
+ * this covered day arrive before the arming, or during the absence?" — and two
+ * loose fields are two fields a future edit can update one of.
+ */
+export interface ArmedEntitlement {
+  /**
+   * The entitlement as of `asOfDay`. NOT the live one: `StreakState.entitlement`
+   * is what the lifter holds now, this is what the absence they are in may draw
+   * on. They are equal for every lifter who has never bought a covered day
+   * mid-absence, which is why this field is invisible in almost every test.
+   */
+  readonly entitlement: EntitlementState;
+  /**
+   * The day the snapshot above was taken: the last training day, or the signup
+   * day for a lifter who has not trained yet.
+   *
+   * IT IS NOT `absenceAnchorDay` AND THE DIFFERENCE IS THE WHOLE POINT.
+   * `settleBrokenStreak` nulls `lastTrainedDay`, which moves the anchor back to
+   * the signup day — so a purchase rule written against the anchor would arm or
+   * not arm depending on whether anything had settled the break first, which is
+   * exactly the app-opening dependence this field exists to delete. Settling
+   * does not touch this day, so nothing an app-open does can move it.
+   */
+  readonly asOfDay: StreakDay;
+}
+
+/** Compile-time assertion, same mechanism as `RECOVERY_DAY_REACH_IS_STREAK_ONLY`. */
+export const ARMED_ENTITLEMENT_REACH_IS_COVERAGE_ONLY: KeysAreExactly<
+  ArmedEntitlement,
+  ArmedEntitlementKey
+> = true;
 
 /** Everything the streak system knows about one lifter. JSON-safe. */
 export interface StreakState {
@@ -943,7 +1033,8 @@ export interface StreakState {
   /** Last day the player trained. Null when there is no live run. */
   readonly lastTrainedDay: StreakDay | null;
   /**
-   * THE ENTITLEMENT AS OF THE LAST SESSION — what coverage is funded from.
+   * THE LIVE ENTITLEMENT — what the lifter holds right now, and the number a
+   * screen shows as "2 left this month" (`coveredDaysLeftInWindow`).
    *
    * Replaces `armedRecoveryDays` and `recoveryDayBalance`, which were a stock,
    * and the reason is the whole of GDD §4.2's Option 1 ruling: a doomed absence
@@ -952,23 +1043,55 @@ export interface StreakState {
    * An entitlement is the same number for everybody at the start of every
    * window, so there is nothing to be proportional to.
    *
-   * IT IS A SNAPSHOT TAKEN AT A SESSION, not a live figure. Nothing that
-   * happens while the lifter is away changes it, which is what keeps an
-   * absence's outcome a pure function of the calendar. The one thing that
-   * "changes" without a session is the window turning over, and that is a pure
-   * function of the calendar too — `coveredDaysAvailable` reads it off the day,
-   * not off a visit.
+   * IT IS LIVE, AND THIS DOCSTRING USED TO SAY THE OPPOSITE. It said "IT IS A
+   * SNAPSHOT TAKEN AT A SESSION, not a live figure", which was true for exactly
+   * as long as nothing could credit coverage. GDD §8.3E ruled the Extra Covered
+   * Day in, `applySettledCoveredDayPurchase` writes here, and a lifter who buys
+   * one mid-absence sees it here immediately — that is what "tops up the
+   * balance" means in GDD §4.2.
    *
-   * `purchasedDaysLeft` IS LIVE (GDD §8.3E, ruled in). Exactly one exported
-   * function can raise it — `applySettledCoveredDayPurchase`, which takes a
-   * settled order — and `streak.test.ts` drives every other entry point over a
-   * long fuzzed history asserting it never moves, so "nothing in the game
-   * awards a purchased day" is checked rather than promised.
+   * SO NO ABSENCE READS THIS FIELD. `armedEntitlement` below is the snapshot an
+   * absence resolves against, and the split is the fix for a defect that made a
+   * run's fate depend on whether a purchase happened before or after something
+   * settled the break. Buying mid-absence tops up here and arms the NEXT
+   * absence, which is GDD §4.2 in as many words.
+   *
+   * `purchasedDaysLeft` IS LIVE. Exactly one exported function can raise it —
+   * `applySettledCoveredDayPurchase`, which takes a settled order — and
+   * `streak.test.ts` drives every other entry point over a long fuzzed history
+   * asserting it never moves, so "nothing in the game awards a purchased day"
+   * is checked rather than promised.
    */
   readonly entitlement: EntitlementState;
   /**
+   * THE SNAPSHOT THE ABSENCE IN PROGRESS RESOLVES AGAINST (GDD §4.2: "A
+   * Recovery Day that arrives during an absence does not cover it").
+   *
+   * WRITTEN BY A SESSION AND BY NOTHING ELSE, with one deliberate exception
+   * that is not a hole: `applySettledCoveredDayPurchase` also credits it when
+   * the purchase is dated ON OR BEFORE `asOfDay`, i.e. when the covered day did
+   * NOT arrive during the absence. Without that exception, buying at 09:00 and
+   * training at 18:00 would arm the purchase and buying at 20:00 after the same
+   * session would not — an order-within-a-day dependence, which is the same
+   * defect one level down.
+   *
+   * THE ONE THING IT IS NOT IS A SECOND BALANCE. It is never larger than
+   * `entitlement`, it is never spent from directly (the debit is applied to
+   * `entitlement` and then re-snapshotted here), and a lifter who has never
+   * bought a covered day has the two byte-identical at every moment of their
+   * history — `streak.test.ts` asserts exactly that, so this field cannot drift
+   * into a second stock without a red test.
+   */
+  readonly armedEntitlement: ArmedEntitlement;
+  /**
    * Whether that entitlement is ARMED for the absence in progress — i.e.
    * whether protection was on at the last session (or at signup).
+   *
+   * DISTINCT FROM `armedEntitlement` ABOVE, and the names are close enough to
+   * be worth separating in one sentence: this is WHETHER anything is armed
+   * (the settings toggle, as of the last session), that is WHAT is armed (the
+   * entitlement snapshot). Protection off makes the snapshot undrawable; it
+   * does not erase it, for the reason immediately below.
    *
    * SEPARATE FROM THE SETTING BELOW, and the separation is load-bearing.
    * Turning protection ON mid-absence must not rescue a run the calendar has
@@ -1090,6 +1213,12 @@ export function createStreakState(signupDay: StreakDay): StreakState {
     longestStreak: 0,
     lastTrainedDay: null,
     entitlement: freshEntitlement(RECOVERY_ENTITLEMENT, 0),
+    // ARMED FROM THE MOMENT THE ACCOUNT EXISTS (GDD §4.2 RULE 1): the signup
+    // day is an anchor like any other, so it arms like a session.
+    armedEntitlement: {
+      entitlement: freshEntitlement(RECOVERY_ENTITLEMENT, 0),
+      asOfDay: asStreakDay(signupDay),
+    },
     entitlementArmed: RECOVERY_DAY_PROTECTION.DEFAULT_ENABLED,
     recoveryDayProtectionEnabled: RECOVERY_DAY_PROTECTION.DEFAULT_ENABLED,
     hasBankedFirstRecoveryDaySave: false,
@@ -1113,22 +1242,37 @@ export function entitlementWindowFor(state: StreakState, day: StreakDay): number
  * 0 when protection was off at their last session, because nothing was armed.
  * The full window entitlement once the window has turned over, whether or not
  * anybody opened the app to see it.
+ *
+ * IT READS THE ARMED SNAPSHOT, NOT THE LIVE ENTITLEMENT, and that is the whole
+ * of GDD §4.2's "a Recovery Day that arrives during an absence does not cover
+ * it". A covered day bought while the lifter is away raises
+ * `state.entitlement`, which this function cannot see.
  */
 export function coveredDaysArmed(state: StreakState, day: StreakDay): number {
   if (!state.entitlementArmed) return 0;
-  return coveredDaysAvailable(RECOVERY_ENTITLEMENT, state.entitlement, entitlementWindowFor(state, day));
+  return coveredDaysAvailable(
+    RECOVERY_ENTITLEMENT,
+    state.armedEntitlement.entitlement,
+    entitlementWindowFor(state, day),
+  );
 }
 
 /**
- * Covered days left in the window this state's snapshot belongs to, ignoring
- * both the calendar and the protection setting.
+ * Covered days the lifter HOLDS in the window their live entitlement belongs
+ * to, ignoring the calendar and the protection setting.
  *
  * THE DIRECT HEIR OF `recoveryDayBalance`, and it is what a screen shows as
  * "2 left this month". It deliberately does NOT take a day: it reports the
- * snapshot, not what a given day would resolve to. `coveredDaysArmed` is the
- * one that answers "what can this absence actually draw", and it is the one
- * every decision in this file reads — a reader who confuses the two will
- * conclude a lifter has nothing left when their window has in fact turned over.
+ * balance, not what a given day would resolve to.
+ *
+ * THREE READINGS, AND MIXING THEM UP IS THE MISTAKE THIS PARAGRAPH EXISTS FOR:
+ * this one is what the lifter HOLDS (live, purchases included);
+ * `coveredDaysArmed` is what THIS ABSENCE MAY DRAW (the snapshot the last
+ * session left, protection included); and `coveredDaysAvailable` on the live
+ * entitlement at a given day is what the DAY has, turnover included. A screen
+ * that shows the first while an absence resolves against the second is correct
+ * and has to say so: a covered day bought today is real, and it arms the next
+ * absence rather than this one.
  */
 export function coveredDaysLeftInWindow(state: StreakState): number {
   return Math.max(0, state.entitlement.coveredDaysLeft) + Math.max(0, state.entitlement.purchasedDaysLeft);
@@ -1155,7 +1299,15 @@ export function adoptSignupDay(state: StreakState, signupDay: StreakDay): Streak
       'An account cannot have been created after a session was recorded on it.',
     );
   }
-  return ok({ ...state, signupDay: asStreakDay(signupDay) });
+  // THE ARMING DAY FOLLOWS THE ANCHOR WHEN THE ANCHOR IS THE SIGNUP DAY. A
+  // lifter who has not trained was armed by the account existing, so a
+  // backfilled signup day is the day that arming happened. Once there is a
+  // trained day the arming came from it and a migration must not touch it.
+  const armedEntitlement: ArmedEntitlement =
+    state.lastTrainedDay === null
+      ? { ...state.armedEntitlement, asOfDay: asStreakDay(signupDay) }
+      : state.armedEntitlement;
+  return ok({ ...state, signupDay: asStreakDay(signupDay), armedEntitlement });
 }
 
 /**
@@ -1334,9 +1486,16 @@ export function absenceOutcome(state: StreakState, today: StreakDay): AbsenceOut
   const daysCoveredFreeByGrace = daysMissed - chargeable;
 
   // THE ONE PLACE COVERAGE IS DECIDED, and it is a pure function of
-  // (anchor, entitlement snapshot, today). Not of the balance, because there is
-  // no balance; not of the day anybody opened the app, because that is not a
-  // parameter here and cannot become one.
+  // (anchor, armed snapshot, today). NOT of `state.entitlement`, which is the
+  // live balance a purchase can raise mid-absence; not of the day anybody
+  // opened the app, because that is not a parameter here and cannot become one.
+  //
+  // READING THE LIVE FIELD HERE WAS A REAL DEFECT, not a hypothetical one, and
+  // it is worth one sentence so nobody re-introduces it as a simplification: a
+  // settled purchase applied during a doomed absence used to rescue the run,
+  // but only if nothing had called `settleBrokenStreak` first — same calendar,
+  // same money, final streak 11 or 1 depending on the order within one day.
+  // `streak.test.ts` drives that scenario in all three intra-day orders.
   //
   // DECLINING PROTECTION ZEROES WHAT IS AVAILABLE; IT DOES NOT SKIP THE
   // RESOLUTION. That distinction is the whole of GDD §4.4's ruling that the free
@@ -1350,10 +1509,10 @@ export function absenceOutcome(state: StreakState, today: StreakDay): AbsenceOut
   // ended a run for a one-day miss and reset the streak on a lifter who had
   // trained the day before.
   const window = entitlementWindowFor(state, today);
-  const armedEntitlement: EntitlementState = state.entitlementArmed
-    ? state.entitlement
+  const drawableFrom: EntitlementState = state.entitlementArmed
+    ? state.armedEntitlement.entitlement
     : { windowIndex: window, coveredDaysLeft: 0, purchasedDaysLeft: 0 };
-  const outcome = resolveEntitlement(RECOVERY_ENTITLEMENT, armedEntitlement, window, chargeable);
+  const outcome = resolveEntitlement(RECOVERY_ENTITLEMENT, drawableFrom, window, chargeable);
   const holds = outcome.covers;
 
   if (!holds) {
@@ -1722,9 +1881,13 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
   const base = previousRunEnded ? endRun(state) : state;
 
   // THE ONE DEBIT, AND IT DOES NOT ASK WHETHER THE RUN SURVIVED (§5). A covered
-  // absence costs the days past the grace; a doomed one costs everything left
-  // in the window. Both figures are fixed for the whole absence, so neither can
-  // depend on when the app was opened.
+  // absence costs the days past the grace; a doomed one costs everything the
+  // ARMED SNAPSHOT had. Both figures are fixed for the whole absence, so
+  // neither can depend on when the app was opened — and since the doomed burn
+  // is now what was armed rather than what is held, a covered day bought during
+  // the absence is not burned by it either. That is the same GDD §4.2 sentence
+  // read the kind way round: it did not cover the absence, so the absence does
+  // not get to take it.
   const spend = absence.recoveryDaysConsumed;
   const window = entitlementWindowFor(state, day);
   const entitlementAfter = afterSession(RECOVERY_ENTITLEMENT, state.entitlement, window, spend);
@@ -1764,6 +1927,11 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
       longestStreak: Math.max(base.longestStreak, streakAfter),
       lastTrainedDay: day,
       entitlement: entitlementAfter,
+      // ARMING, AND IT IS THE ONLY UNCONDITIONAL WRITE TO THIS FIELD. Whatever
+      // the session leaves in the window — purchases included, because they are
+      // in `entitlementAfter` — is what the NEXT absence draws on, and today is
+      // the day that fixes it.
+      armedEntitlement: { entitlement: entitlementAfter, asOfDay: day },
       entitlementArmed: state.recoveryDayProtectionEnabled,
       recoveryDayProtectionEnabled: state.recoveryDayProtectionEnabled,
       hasBankedFirstRecoveryDaySave: state.hasBankedFirstRecoveryDaySave || recoveryDaySave !== null,
@@ -1956,9 +2124,23 @@ export const COVERED_DAY_PURCHASE_OUTCOME_IS_COVERAGE_ONLY: KeysAreExactly<
  *
  * WHAT IT DELIBERATELY DOES NOT TOUCH: `currentStreak`, `longestStreak`,
  * `lastTrainedDay`, `entitlementArmed`, `recoveryDayProtectionEnabled` and
- * `hasBankedFirstRecoveryDaySave`. Only `entitlement` moves, and only its
- * bought half. Buying coverage is not training, so it does not arm anything a
- * session has not armed and it does not bank a first save.
+ * `hasBankedFirstRecoveryDaySave`. Buying coverage is not training, so it does
+ * not bank a first save and it cannot turn protection on.
+ *
+ * WHAT IT DOES MOVE, AND THE SECOND ONE IS CONDITIONAL. `entitlement` — the
+ * live balance — always, and only its bought half. `armedEntitlement.
+ * entitlement` ONLY when `day <= armedEntitlement.asOfDay`, i.e. only when the
+ * covered day did not arrive during the absence in progress. GDD §4.2 rules
+ * that a Recovery Day arriving mid-absence tops up the balance and arms the
+ * NEXT absence; the body says why the comparison is against `asOfDay` rather
+ * than against the anchor, and why it is `<=`.
+ *
+ * SO A PURCHASE CANNOT RESCUE A RUN THE CALENDAR HAS ALREADY ENDED, which is
+ * the property, and it is a property about *this* function rather than about
+ * the absence of a code path. `streak.test.ts` reproduces the failure it
+ * closes: a settled purchase applied on the return day used to end the run at
+ * `currentStreak` 11 or 1 on the same calendar for the same money, depending
+ * only on whether anything had called `settleBrokenStreak` first.
  *
  * THE PER-ABSENCE CEILING IS OUT OF ITS REACH BY CONSTRUCTION.
  * `MAX_COVERED_DAYS_PER_ABSENCE` caps what one absence may draw regardless of
@@ -2023,6 +2205,47 @@ export function applySettledCoveredDayPurchase(
     purchase.coveredDays,
     'purchase',
   );
+  // GDD §4.2, THE RULE THIS FUNCTION IS FENCED BY: "A Recovery Day that arrives
+  // during an absence does not cover it. Buying or earning one mid-absence tops
+  // up the balance and arms the *next* absence."
+  //
+  // So the credit above always lands in the LIVE entitlement, and it reaches
+  // the armed snapshot only when the purchase is dated on or before the day
+  // that arming was taken — i.e. when it did not arrive during the absence.
+  //
+  // WHY THE COMPARISON IS AGAINST `asOfDay` AND NOT AGAINST `absenceAnchorDay`.
+  // `settleBrokenStreak` nulls `lastTrainedDay`, so the anchor moves back to
+  // the signup day the moment anything records a break. A rule written against
+  // the anchor would therefore arm or not arm depending on whether the app had
+  // been opened first, which is the defect in a smaller font.
+  //
+  // WHY IT IS `<=` AND NOT `<`. A purchase on the day of the session is part of
+  // that day, and the alternative is worse in the way that matters: buy at
+  // 09:00 and train at 18:00 and the session snapshots the purchase, buy at
+  // 20:00 after the same session and it does not. Same day, same money,
+  // different outcome — an order-within-a-day dependence, which is precisely
+  // what this whole change deletes. With `<=` the three orders agree, and
+  // `streak.test.ts` sweeps them.
+  //
+  // WHAT THIS CANNOT DEFEND AGAINST, said plainly rather than implied: `day` is
+  // supplied by the caller. A caller that dates a settled order at the lifter's
+  // last training day when it really settled a week later has lied about the
+  // calendar, and this module cannot tell — the same way it cannot tell that
+  // `openDay(state, wrongDay)` is wrong. §1 of the header already owns that:
+  // resolving days is the server's job, and there is no anti-abuse check here.
+  const arrivedBeforeTheAbsence = day <= state.armedEntitlement.asOfDay;
+  const armedEntitlement: ArmedEntitlement = arrivedBeforeTheAbsence
+    ? {
+        ...state.armedEntitlement,
+        entitlement: creditCoveredDays(
+          RECOVERY_ENTITLEMENT,
+          state.armedEntitlement.entitlement,
+          window,
+          purchase.coveredDays,
+          'purchase',
+        ).state,
+      }
+    : state.armedEntitlement;
   // The last day of the window this landed in. Derived from the same anchored
   // grid `entitlementWindowFor` reads, so the two can never disagree about
   // which window a day is in.
@@ -2038,6 +2261,7 @@ export function applySettledCoveredDayPurchase(
       longestStreak: state.longestStreak,
       lastTrainedDay: state.lastTrainedDay,
       entitlement: credit.state,
+      armedEntitlement,
       entitlementArmed: state.entitlementArmed,
       recoveryDayProtectionEnabled: state.recoveryDayProtectionEnabled,
       hasBankedFirstRecoveryDaySave: state.hasBankedFirstRecoveryDaySave,
@@ -2089,6 +2313,20 @@ export interface StreakBreakOutcome {
  * Calling it early, late, repeatedly or never leaves the player in exactly the
  * same place — which is why `streak.test.ts` can assert that opening the app is
  * neutral by full state equality.
+ *
+ * THAT CLAIM WAS FALSE FOR ONE ROUND AND THE COUNTEREXAMPLE IS WORTH KEEPING,
+ * because this docstring invites a nightly job to be the thing that runs first
+ * and the defect was exactly about what runs first. Settling nulls
+ * `lastTrainedDay`, so the anchor falls back to the signup day and the absence
+ * gets LONGER. While `absenceOutcome` read the live entitlement, a covered day
+ * bought on the return day covered a three-day absence that had not been
+ * settled and could not cover the twelve-day one that had — final streak 11
+ * against 1, same calendar, same money, decided by whether a nightly job had
+ * run. The fix is that the absence resolves against `armedEntitlement`, whose
+ * `asOfDay` this function does not touch: the anchor still moves, but nothing
+ * that depends on it can change the verdict, because a settled break is always
+ * already doomed and the doomed burn is the armed amount rather than a function
+ * of the absence's length.
  *
  * It never spends a Recovery Day, because an absence that ends a run never
  * spends one (§5 of the header).
@@ -2269,6 +2507,14 @@ export function migrateFromRecoveryDayBalance(
       longestStreak: legacy.longestStreak,
       lastTrainedDay: legacy.lastTrainedDay,
       entitlement: freshEntitlement(RECOVERY_ENTITLEMENT, window),
+      // THE MIGRATED STATE IS ARMED WITH EXACTLY WHAT IT HOLDS, which is what
+      // every state this module produces looks like until a covered day is
+      // bought mid-absence. `asOfDay` is the arming day the legacy state
+      // implies: its last session, or the signup day if it never had one.
+      armedEntitlement: {
+        entitlement: freshEntitlement(RECOVERY_ENTITLEMENT, window),
+        asOfDay: legacy.lastTrainedDay ?? legacy.signupDay,
+      },
       entitlementArmed: legacy.armedRecoveryDays !== null,
       recoveryDayProtectionEnabled: legacy.recoveryDayProtectionEnabled,
       hasBankedFirstRecoveryDaySave: legacy.hasBankedFirstRecoveryDaySave,

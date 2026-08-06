@@ -128,7 +128,22 @@ interface RunResult {
 function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
   const { tuning, grant, burnOnDoom, purchaseDays } = options;
   const windowAt = (day: number): number => windowIndexOf(tuning, 0, day);
+  // THE LIVE BALANCE, and separately THE ARMED SNAPSHOT the absence in progress
+  // resolves against (GDD §4.2: "A Recovery Day that arrives during an absence
+  // does not cover it. Buying or earning one mid-absence tops up the balance and
+  // arms the *next* absence"). `armedOnDay` is the day the snapshot was taken —
+  // day 0 is signup, which arms like a session — and it is what decides whether
+  // a credit landed before the absence or during it.
+  //
+  // THIS USED TO BE ONE VARIABLE, and that is precisely the defect the shipped
+  // engine had: a settled purchase applied during a doomed absence rescued the
+  // run, but only when nothing had settled the break first. This composition
+  // could not see it, because it resolves and credits in a fixed order within
+  // each day — which is the same reason every other harness in the repo was
+  // green on it.
   let entitlement = freshEntitlement(tuning, 0);
+  let armed = freshEntitlement(tuning, 0);
+  let armedOnDay = 0;
   let currentStreak = 0;
   let longestStreak = 0;
   let lastTrainedDay: number | null = null;
@@ -141,7 +156,7 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
     const anchor = lastTrainedDay ?? 0;
     const daysMissed = Math.max(0, today - anchor - 1);
     const chargeable = Math.max(0, daysMissed - GRACE);
-    const outcome = resolveEntitlement(tuning, entitlement, windowAt(today), chargeable);
+    const outcome = resolveEntitlement(tuning, armed, windowAt(today), chargeable);
     return {
       daysMissed,
       chargeable,
@@ -150,8 +165,25 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
     };
   };
 
+  /**
+   * Credits `amount` covered days, from `source`, on `day`.
+   *
+   * IT ALWAYS RAISES THE LIVE BALANCE and reaches the armed snapshot only when
+   * the credit is dated on or before the day that snapshot was taken. That is
+   * one rule for both sources, which is what GDD §4.2 says — "buying OR
+   * EARNING" — so the free grant path is fenced by exactly the same sentence
+   * the purchase path is.
+   */
+  const credit = (day: number, amount: number, source: 'window-entitlement' | 'purchase'): void => {
+    const w = windowAt(day);
+    entitlement = creditCoveredDays(tuning, entitlement, w, amount, source).state;
+    if (day <= armedOnDay) {
+      armed = creditCoveredDays(tuning, armed, w, amount, source).state;
+    }
+  };
+
   const addCoveredDay = (day: number): void => {
-    entitlement = creditCoveredDays(tuning, entitlement, windowAt(day), 1, 'window-entitlement').state;
+    credit(day, 1, 'window-entitlement');
   };
 
   for (let i = 0; i < schedule.length; i += 1) {
@@ -169,7 +201,7 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
       for (let k = 0; k < purchaseDays.length; k += 1) {
         if (purchaseDays[k] !== i) continue;
         const amount = COVERED_DAY_PURCHASE_SWEEP.COVERED_DAYS_PER_ORDER;
-        entitlement = creditCoveredDays(tuning, entitlement, windowAt(i), amount, 'purchase').state;
+        credit(i, amount, 'purchase');
         bought += amount;
         peakPurchased = Math.max(peakPurchased, entitlement.purchasedDaysLeft);
       }
@@ -191,7 +223,13 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
       currentStreak = 0;
       lastTrainedDay = null;
     }
+    // THE SESSION DEBITS THE LIVE BALANCE BY WHAT THE ARMED SNAPSHOT COST, and
+    // then re-arms with whatever is left. A covered day bought during the
+    // absence is in `entitlement` but was not in `armed`, so it neither covered
+    // the absence nor was burned by it — and from here it arms the next one.
     entitlement = afterSession(tuning, entitlement, windowAt(i), r.consumed);
+    armed = entitlement;
+    armedOnDay = i;
     consumedTotal += r.consumed;
     currentStreak += 1;
     longestStreak = Math.max(longestStreak, currentStreak);

@@ -180,6 +180,15 @@ function stateWithRun(streakLength: number, lastDay: StreakDay, balance: number)
     longestStreak: streakLength,
     lastTrainedDay: lastDay,
     entitlement: withCoveredDays(balance, windowOf(lastDay)),
+    // ARMED WITH EXACTLY WHAT IS HELD, and armed on the last training day —
+    // which is what a real session leaves behind. A fixture whose armed
+    // snapshot differed from its live entitlement would be a lifter who had
+    // bought a covered day mid-absence, and that is a case tests ask for by
+    // name rather than one every fixture should quietly be in.
+    armedEntitlement: {
+      entitlement: withCoveredDays(balance, windowOf(lastDay)),
+      asOfDay: lastDay,
+    },
     entitlementArmed: true,
     recoveryDayProtectionEnabled: true,
     hasBankedFirstRecoveryDaySave: false,
@@ -221,6 +230,30 @@ function withCoveredDays(coveredDaysLeft: number, windowIndex = 0): EntitlementS
     );
   }
   return { windowIndex, coveredDaysLeft, purchasedDaysLeft: 0 };
+}
+
+/**
+ * `state`, holding `entitlement` AND ARMED WITH IT — the shape a real session
+ * leaves behind.
+ *
+ * WHY THIS EXISTS RATHER THAN `{ ...state, entitlement }`, which is what every
+ * fixture here used to write. Since the armed snapshot split off from the live
+ * balance (GDD §4.2: a covered day arriving mid-absence does not cover it), an
+ * override that writes one and not the other builds a lifter ARMED WITH MORE
+ * THAN THEY HOLD. No entry point in `streak.ts` can produce that state, so
+ * every invariant checked on it is a statement about a program nobody ships —
+ * and four sweeps in this file were in exactly that shape the moment the field
+ * was added, which is how it was found.
+ *
+ * `asOfDay` follows the state's own anchor, because that is where a session
+ * would have put it.
+ */
+function holding(state: StreakState, entitlement: EntitlementState): StreakState {
+  return {
+    ...state,
+    entitlement,
+    armedEntitlement: { entitlement, asOfDay: state.lastTrainedDay ?? state.signupDay },
+  };
 }
 
 /**
@@ -710,7 +743,7 @@ describe('tunable constants sit inside the ranges GDD §4.2 specifies', () => {
     // clipped to a full window and this test cannot see it — mutation-tested:
     // a build that pays a covered day at a milestone passed here and was caught
     // only by the sweeps. From empty, a payout has somewhere to go.
-    let state: StreakState = { ...freshState(), entitlement: withCoveredDays(0) };
+    let state: StreakState = holding(freshState(), withCoveredDays(0));
     let sawTheMilestone = false;
     for (let i = 0; i < milestone; i += 1) {
       const outcome = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, i)));
@@ -1074,11 +1107,10 @@ describe('streak breaks', () => {
   });
 
   it('keeps the longest streak across a break', () => {
-    let state: StreakState = {
-      ...trainConsecutively(freshState(), DAY_ZERO, 12),
-      entitlement: withCoveredDays(0),
-      entitlementArmed: true,
-    };
+    let state: StreakState = holding(
+      { ...trainConsecutively(freshState(), DAY_ZERO, 12), entitlementArmed: true },
+      withCoveredDays(0),
+    );
     state = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, 20))).state;
     expect(state.currentStreak).toBe(1);
     expect(state.longestStreak).toBe(12);
@@ -1167,7 +1199,7 @@ describe('the free grace period (GDD §4.4)', () => {
     // the accepted cost of the §4.4 ruling, pinned so it is on the record rather
     // than discovered in playtesting.
     const CYCLES = 40;
-    let state: StreakState = { ...freshState(), entitlement: withCoveredDays(0) };
+    let state: StreakState = holding(freshState(), withCoveredDays(0));
     let day = DAY_ZERO;
     let trainedDays = 0;
 
@@ -1190,7 +1222,7 @@ describe('the free grace period (GDD §4.4)', () => {
   });
 
   it('extends the run without extending the count — a covered day is not a trained day', () => {
-    let state: StreakState = { ...freshState(), entitlement: withCoveredDays(0) };
+    let state: StreakState = holding(freshState(), withCoveredDays(0));
     let day = DAY_ZERO;
     let sessions = 0;
     let milestoneAtSessions = -1;
@@ -1392,7 +1424,7 @@ describe('the Recovery Day protection toggle', () => {
       readonly balance: number;
       readonly reason: string | null;
     } => {
-      let state: StreakState = { ...freshState(), entitlement: withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW) };
+      let state: StreakState = holding(freshState(), withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW));
       state = unwrap(recordTrainingDay(state, DAY_ZERO)).state;
       if (declineOnDayOne) state = setRecoveryDayProtection(state, false).state;
       // A second session, so the arming path runs again after the setting moved.
@@ -1589,6 +1621,12 @@ describe('a Recovery Day save preserves the streak exactly', () => {
         // what the window has left, and re-arming is no longer a number that
         // has to move with it.
         'entitlement',
+        // A SESSION RE-ARMS, so the snapshot the NEXT absence will resolve
+        // against moves too — both what it holds and the day it was taken on.
+        // This is the one entry point that may move it unconditionally;
+        // `applySettledCoveredDayPurchase` moves it only for a purchase dated
+        // on or before the arming day, and the sweeps below check that.
+        'armedEntitlement',
         'hasBankedFirstRecoveryDaySave',
         'lastTrainedDay',
         'longestStreak',
@@ -1661,10 +1699,7 @@ describe('the window entitlement', () => {
     // A lifter who spent their whole entitlement gets it back when the window
     // turns, and the turn is a function of the calendar rather than of a visit.
     // This is what a stock never did: the two lifters re-converge.
-    const spent: StreakState = {
-      ...stateWithRun(9, DAY_ZERO, 0),
-      entitlement: withCoveredDays(0, 0),
-    };
+    const spent: StreakState = holding(stateWithRun(9, DAY_ZERO, 0), withCoveredDays(0, 0));
     expect(coveredDaysArmed(spent, DAY_ZERO)).toBe(0);
     const nextWindow = addDays(DAY_ZERO, RECOVERY_ENTITLEMENT.WINDOW_DAYS);
     expect(coveredDaysArmed(spent, nextWindow)).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
@@ -2437,10 +2472,7 @@ describe('the first-save moment', () => {
   });
 
   it('fires exactly once across a long simulated history', () => {
-    let state: StreakState = {
-      ...freshState(),
-      entitlement: withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW),
-    };
+    let state: StreakState = holding(freshState(), withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW));
     let firstSaves = 0;
     let savesSeen = 0;
     let day = DAY_ZERO;
@@ -2470,7 +2502,7 @@ describe('the first-save moment', () => {
 
 describe('streak milestones', () => {
   it('pays out at 7, 30 and 100 trained days, once each', () => {
-    let state: StreakState = { ...freshState(), entitlement: withCoveredDays(0) };
+    let state: StreakState = holding(freshState(), withCoveredDays(0));
     const paidOn: number[] = [];
     for (let i = 0; i < 120; i += 1) {
       const outcome = unwrap(recordTrainingDay(state, addDays(DAY_ZERO, i)));
@@ -2560,10 +2592,7 @@ describe('streak milestones', () => {
     // A Recovery Day keeps the run alive but is not a training day, so the
     // seventh milestone still costs seven sessions. This is what stops bought
     // Recovery Days from earning more Recovery Days.
-    let state: StreakState = {
-      ...freshState(),
-      entitlement: withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW),
-    };
+    let state: StreakState = holding(freshState(), withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW));
     let sessions = 0;
     let milestoneAtSessions = -1;
     let recoveryDaysUsed = 0;
@@ -2664,15 +2693,12 @@ describe('what a purchased Recovery Day can reach', () => {
       }),
     ).state;
     // The comparator: a lifter with the same TOTAL coverage, all of it free.
-    const freeState: StreakState = {
-      ...boughtState,
-      entitlement: {
-        windowIndex: boughtState.entitlement.windowIndex,
-        coveredDaysLeft:
-          boughtState.entitlement.coveredDaysLeft + boughtState.entitlement.purchasedDaysLeft,
-        purchasedDaysLeft: 0,
-      },
-    };
+    const freeState: StreakState = holding(boughtState, {
+      windowIndex: boughtState.entitlement.windowIndex,
+      coveredDaysLeft:
+        boughtState.entitlement.coveredDaysLeft + boughtState.entitlement.purchasedDaysLeft,
+      purchasedDaysLeft: 0,
+    });
     expect(boughtState.entitlement.purchasedDaysLeft).toBe(2);
     expect(coveredDaysLeftInWindow(boughtState)).toBe(coveredDaysLeftInWindow(freeState));
 
@@ -2733,16 +2759,27 @@ describe('what a purchased Recovery Day can reach', () => {
     // granted entitlement BEFORE the purchased one, so the two are told apart
     // by one line in the sibling module.
     //
-    // WHAT MAKES THAT SAFE HERE is that the field is unreachable from this
-    // module: GDD §8.3E is PROPOSED AND NOT RULED, nothing exported can credit
-    // one, and 'THE PURCHASE PATH IS NOT IMPLEMENTED' pins it at zero across
-    // every state this module can produce. So the exception is checked, not
-    // waved through.
+    // WHAT MAKES THAT SAFE HERE, and this paragraph used to say something that
+    // stopped being true: it said "GDD §8.3E is PROPOSED AND NOT RULED, nothing
+    // exported can credit one". §8.3E is RULED IN and
+    // `applySettledCoveredDayPurchase` credits one. What is still true — and is
+    // the property this test is actually about — is that nothing on the SPEND
+    // side can see where a covered day came from. `recordTrainingDay(state,
+    // day)` takes two arguments, `coveredDaysAvailable` sums the two counters,
+    // and no branch anywhere in `streak.ts` asks which counter paid.
+    //
+    // TWICE, NOT ONCE, and the second one is the fix for the app-opening defect
+    // rather than a duplicate: the state carries a LIVE entitlement and the
+    // ARMED SNAPSHOT an absence resolves against, and each has a purchased
+    // half. A state serialising only one of them would be a state that had lost
+    // either the balance the player was shown or the number their run depends
+    // on.
     const purchaseMentions = [...JSON.stringify(run).matchAll(/"(\w*[Pp]urchas\w*)"/g)].map(
       (match) => match[1],
     );
-    expect(purchaseMentions).toEqual(['purchasedDaysLeft']);
+    expect(purchaseMentions).toEqual(['purchasedDaysLeft', 'purchasedDaysLeft']);
     expect(run.entitlement.purchasedDaysLeft).toBe(0);
+    expect(run.armedEntitlement.entitlement.purchasedDaysLeft).toBe(0);
     // Two lifters in the same window, one who has trained far more than the
     // other, draw on exactly the same coverage.
     const busy = trainConsecutively(freshState(), DAY_ZERO, 20);
@@ -3663,12 +3700,11 @@ describe('daily engagement is never worse than skipping — where that holds, an
 
     for (const placement of placements) {
       for (const buys of [noGrants, withBuys]) {
-        const initial: StreakState = {
+        const initial: StreakState = holding({
           ...createStreakState(placement.signupDay),
-          entitlement: withCoveredDays(2, windowIndexFor(placement.signupDay, DAY_ZERO)),
           recoveryDayProtectionEnabled: false,
           entitlementArmed: false,
-        };
+        }, withCoveredDays(2, windowIndexFor(placement.signupDay, DAY_ZERO)));
         for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
           const attend = Array.from({ length: LENGTH }, (_, i) => (mask & (1 << i)) !== 0);
           for (let flip = 0; flip < LENGTH; flip += 1) {
@@ -3792,12 +3828,11 @@ describe('daily engagement is never worse than skipping — where that holds, an
 
   it('PROPERTY, PROTECTION DECLINED: holds over long randomised histories with grants landing mid-run', () => {
     const random = mulberry32(0x5eed_1eaf);
-    const initial: StreakState = {
+    const initial: StreakState = holding({
       ...freshState(),
-      entitlement: withCoveredDays(2),
       recoveryDayProtectionEnabled: false,
       entitlementArmed: false,
-    };
+    }, withCoveredDays(2));
     let casesChecked = 0;
 
     for (let trial = 0; trial < 400; trial += 1) {
@@ -3845,7 +3880,7 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // These two eleven-day histories used to end on best streaks of 2 and 1 —
     // the player who trained MORE ending lower. With every gap here one day
     // long, the free grace covers them all and the inversion is gone.
-    const initial: StreakState = { ...freshState(), entitlement: withCoveredDays(2) };
+    const initial: StreakState = holding(freshState(), withCoveredDays(2));
     const parse = (pattern: string): boolean[] => [...pattern].map((c) => c === 'T');
     const noGrants = Array.from({ length: 11 }, () => false);
 
@@ -3912,11 +3947,10 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // manual Recovery Day prompt, citing the Duolingo freeze as an armed-ahead
     // design with no such residue. Deleting the prompt was run as a clean test
     // of that claim and this family did not move by a single day.
-    const initial: StreakState = {
+    const initial: StreakState = holding({
       ...freshState(),
-      entitlement: withCoveredDays(FAMILY_STARTING_BALANCE),
       entitlementArmed: true,
-    };
+    }, withCoveredDays(FAMILY_STARTING_BALANCE));
     const { lazy: lazyHistory, diligent: diligentHistory } = inversionHistories(19, 18);
     const noGrants = Array.from({ length: lazyHistory.length }, () => false);
 
@@ -3959,11 +3993,10 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // the run that died, at any run length — one day, or a thousand. The machine
     // that built those cases is unchanged; what it produces now is two lifters
     // who end on the same streak, the same lifetime best and the same spend.
-    const initial: StreakState = {
+    const initial: StreakState = holding({
       ...freshState(),
-      entitlement: withCoveredDays(FAMILY_STARTING_BALANCE),
       entitlementArmed: true,
-    };
+    }, withCoveredDays(FAMILY_STARTING_BALANCE));
     for (const [index, runLost] of FAMILY_RUN_LENGTHS.entries()) {
       const runRebuilt = runLost + 1;
       const { lazy: lazyHistory, diligent: diligentHistory } = inversionHistories(runLost, runRebuilt);
@@ -4594,11 +4627,10 @@ describe('daily engagement is never worse than skipping — where that holds, an
     let comparatorsWhoCommitted = 0;
 
     for (let balance = 0; balance <= RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW; balance += 1) {
-      const initial: StreakState = {
+      const initial: StreakState = holding({
         ...freshState(),
-        entitlement: withCoveredDays(balance),
         entitlementArmed: true,
-      };
+      }, withCoveredDays(balance));
       const results: SimResult[] = [];
       for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
         const attend = Array.from({ length: LENGTH }, (_, i) => (mask & (1 << i)) !== 0);
@@ -4654,11 +4686,10 @@ describe('daily engagement is never worse than skipping — where that holds, an
       }
       history.push(true);
       const grants = Array.from({ length: history.length }, () => false);
-      const initial: StreakState = {
+      const initial: StreakState = holding({
         ...freshState(),
-        entitlement: withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW),
         entitlementArmed: true,
-      };
+      }, withCoveredDays(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW));
       const spender = simulate(history, grants, initial, 'daily', true);
       // The construction has to actually spend N, or the loop proves nothing.
       expect(spender.recoveryDaysSpent).toBe(n);
@@ -4742,11 +4773,10 @@ describe('daily engagement is never worse than skipping — where that holds, an
 
     for (const settleOnOpen of [true, false]) {
       for (let balance = 0; balance <= RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW; balance += 1) {
-        const initial: StreakState = {
+        const initial: StreakState = holding({
           ...freshState(),
-          entitlement: withCoveredDays(balance),
           entitlementArmed: true,
-        };
+        }, withCoveredDays(balance));
         for (let mask = 0; mask < exhaustiveCalendarCount(LENGTH); mask += 1) {
           const schedule = exhaustiveCalendar(mask, LENGTH);
           let state = initial;
@@ -4857,11 +4887,10 @@ describe('daily engagement is never worse than skipping — where that holds, an
 
     for (const settleOnOpen of [true, false]) {
       for (const [free, purchased] of STARTS) {
-        const initial: StreakState = {
+        const initial: StreakState = holding({
           ...freshState(),
-          entitlement: { windowIndex: 0, coveredDaysLeft: free, purchasedDaysLeft: purchased },
           entitlementArmed: true,
-        };
+        }, { windowIndex: 0, coveredDaysLeft: free, purchasedDaysLeft: purchased });
         for (let mask = 0; mask < exhaustiveCalendarCount(LENGTH); mask += 1) {
           const schedule = exhaustiveCalendar(mask, LENGTH);
           let state = initial;
@@ -4952,11 +4981,10 @@ describe('daily engagement is never worse than skipping — where that holds, an
     let announcedNonZero = 0;
 
     for (let balance = 0; balance <= RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW; balance += 1) {
-      const initial: StreakState = {
+      const initial: StreakState = holding({
         ...freshState(),
-        entitlement: withCoveredDays(balance),
         entitlementArmed: true,
-      };
+      }, withCoveredDays(balance));
       for (let mask = 0; mask < exhaustiveCalendarCount(LENGTH); mask += 1) {
         const schedule = exhaustiveCalendar(mask, LENGTH);
         let state = initial;
@@ -5030,7 +5058,7 @@ describe('daily engagement is never worse than skipping — where that holds, an
       for (let balance = 0; balance <= RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW; balance += 1) {
         for (const gap of [0, 1, 2, 3, 9]) {
           const base = streak === 0 ? freshState() : stateWithRun(streak, DAY_ZERO, balance);
-          const state = { ...base, entitlement: withCoveredDays(balance), entitlementArmed: true };
+          const state = holding({ ...base, entitlementArmed: true }, withCoveredDays(balance));
           const day = addDays(DAY_ZERO, gap + 1);
           const outcome = unwrap(recordTrainingDay(state, day));
           const saved = outcome.recoveryDaySave?.recoveryDaysSpent ?? 0;
