@@ -3798,16 +3798,23 @@ describe('the outcome does not depend on when the player opens the app', () => {
             if (errorMessageOf(result) !== expectedSentence) {
               throw new Error(`${label}: refused as ${code} with the wrong sentence`);
             }
-            // NOBODY IS TOLD THE OFFER WAS GOOD WHEN IT WAS ALREADY DEAD, and
-            // nobody is told to report a bug for a screen that was right. The
-            // honesty half, stated as its own pair of checks rather than left
-            // implied by the routing above, because these two sentences are the
-            // ones that assert an ordering of events to the player.
-            if (code === 'ABSENCE_ENDED_AFTER_OFFER' && !runWasAliveWhenDrawn) {
-              throw new Error(`${label}: said the offer was good when it was already dead`);
-            }
-            if (code === 'ABSENCE_ALREADY_DOOMED' && renderedOffer.offered) {
-              throw new Error(`${label}: told a client its own offer should never have been shown`);
+            // NOBODY IS TOLD THE OFFER WAS GOOD WHEN IT WAS ALREADY DEAD.
+            //
+            // THIS ONE READS A DIFFERENT FUNCTION, WHICH IS THE ONLY REASON IT
+            // IS HERE. A check phrased on `runWasAliveWhenDrawn` would be a
+            // restatement of the line above and could never fire first — and a
+            // pile of assertions that cannot fire is what this file keeps being
+            // burnt by, so the tautological version was written, noticed and
+            // deleted rather than left in looking like defence in depth.
+            // `absenceOutcome` at the render day is the read model a store
+            // screen is actually gated on: it comes from the coverage rule
+            // rather than from the settle walk, so a `settleBrokenStreak` guard
+            // that stopped recording breaks would move the walk and not this.
+            if (
+              code === 'ABSENCE_ENDED_AFTER_OFFER' &&
+              !absenceOutcome(state, renderDay).protectionHolds
+            ) {
+              throw new Error(`${label}: said the offer was good when the screen could not have shown it`);
             }
             // A refusal only ever happens where there is no run left to protect —
             // read off the SETTLED state, which is the one the refusal is about.
