@@ -242,8 +242,6 @@ function withCoveredDays(coveredDaysLeft: number, windowIndex = 0): EntitlementS
  * and four sweeps in this file were in exactly that shape the moment the field
  * was added, which is how it was found.
  *
- * `asOfDay` follows the state's own anchor, because that is where a session
- * would have put it.
  */
 function holding(state: StreakState, entitlement: EntitlementState): StreakState {
   return {
