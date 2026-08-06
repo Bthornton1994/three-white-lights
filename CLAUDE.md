@@ -164,16 +164,32 @@ physiology.
     everything left" is the only thing that is. What the entitlement changed is
     the blast radius: bounded by one window, restored at the next boundary.
   - **No grant of covered days may be keyed to anything the lifter does — and
-    neither may any currency that buys them.** A grant whose arrival day the
-    player's own training can move is the defect, and so is a *purchase* the
-    player's training lets them afford sooner. Measured on the shipped engine,
-    matched purse and price, the only difference being whether the diligent
-    lifter's buying schedule is recomputed from their own training: a covered
-    day funded by achievement-earned Chalk gives **105 / 305 / 733 / 785**
-    violating pairs at 40 / 60 / 80 / 100 days, worst deficit 54, against
+    that covers INDIRECT paths, not only direct grants.** Currency earned via
+    training frequency and later spent on protection is keyed to the lifter's
+    training just as much as a grant handed straight to them. The rule as first
+    enforced caught only direct grants, and a laundered path walked past it: an
+    achievement pays Chalk, Chalk buys a covered day, and the covered day's
+    arrival is back under the player's training schedule with a currency in
+    between. A season-pass tier that unlocks by playing is the same shape one
+    hop further out — a tier every N sessions is an achievement every N
+    sessions.
+
+    **The restriction is scoped to the mechanism, not to the currency.**
+    Achievement-earned and pass-tier-earned Chalk stay fully valid for
+    cosmetics, timer skips and everything else. What they may not do is fund
+    the GDD §8.3E Extra Covered Day, which accepts only currency from a
+    non-training-gated source — calendar-earned Chalk, direct real-money
+    purchase, or equivalent. Training-funded currency must be **structurally
+    unable** to reach that purchase, not merely observed not to at the horizons
+    someone happened to sweep.
+
+    Measured on the shipped engine, matched purse and price, with only the
+    diligent lifter's buying schedule recomputed from their own training: a
+    covered day funded by achievement-earned Chalk gives **105 / 305 / 733 /
+    785** violating pairs at 40 / 60 / 80 / 100 days, worst deficit 54, against
     **0** for the same purse funded on the calendar. The zero-purchase baseline
-    is also 0, so these are not violations made worse — they are violations
-    *created*. `purchasedDaysLeft` is live;
+    is also 0, so these are not violations made worse by a purchase — they are
+    violations *created* by one. `purchasedDaysLeft` is live;
     `applySettledCoveredDayPurchase` is its only writer.
     Measured: a covered day granted at a streak length gives 54 violating pairs
     at 100 days; granted every N sessions, 1156; granted on a fixed calendar
