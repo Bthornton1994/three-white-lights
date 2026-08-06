@@ -118,6 +118,41 @@ export const SESSION_DRIVE = Object.freeze({
     'check-in-soreness-normal',
     'check-in-motivation-steady',
   ]),
+  /**
+   * ===========================================================================
+   * THE SAME CHECK-IN, ANSWERED AT THE TOP OF THE LADDER — AND WHY A CALLER
+   * WOULD WANT THAT
+   * ===========================================================================
+   * A caller that needs the played session to actually MOVE the lifter's e1RM
+   * has to use these, because at the mid answers above it does not. MEASURED, on
+   * the shipped tuning, playing every rep perfectly through the real mechanic on
+   * a day-1 lifter — `sessionE1rmKg` against `STARTING_E1RM`:
+   *
+   *              seed    ok/normal/steady        good/fresh/fired-up
+   *   squat      180     178.8 – 179.6  (no)     187.1 – 188.3  (PR)
+   *   bench      120     117.1 – 119.5  (no)     123.3 – 125.4  (PR)
+   *   deadlift   220     217.3 – 219.6  (no)     228.1 – 230.5  (PR)
+   *
+   * Across RPE 6, 7, 8, 9 and 10 — every RPE the briefing offers. So at the mid
+   * answers there is NO RPE and NO LIFT on which a perfectly played first
+   * session beats the signup seed, and `bestE1rmKg` is monotone, so the record
+   * still reads exactly `STARTING_E1RM` afterwards.
+   *
+   * That matters to a check, not just to a playtester: `verify-shell-route.mjs`
+   * asks whether meet day's openers follow the session that was just played, and
+   * a lifter whose e1RM is still the seed is INDISTINGUISHABLE from the empty
+   * record the defect fabricated. The comparison has nothing to bite on. Hence
+   * the option, and hence these numbers written down rather than an adjective.
+   *
+   * NOT MADE THE DEFAULT, deliberately. The mid answers are what an ordinary
+   * player's ordinary day looks like, and they are what the capture tools should
+   * go on photographing.
+   */
+  BEST_CHECK_IN_TAPS: Object.freeze([
+    'check-in-sleep-good',
+    'check-in-soreness-fresh',
+    'check-in-motivation-fired-up',
+  ]),
   /** The RPE the driver picks. Mid-ladder: heavy enough to be a real session. */
   RPE_CHOICE: 'session-rpe-8',
 
@@ -292,7 +327,13 @@ const resolved = (state) =>
  * used here: they set `preview`, and everything past the check-in in this
  * function depends on the loop being live.
  */
-export async function openSessionToFirstSet(page, url) {
+/**
+ * @param checkInTaps which three readiness answers to press. Defaults to
+ * `SESSION_DRIVE.CHECK_IN_TAPS` — an ordinary day. Pass
+ * `SESSION_DRIVE.BEST_CHECK_IN_TAPS` when the caller needs the session to move
+ * the lifter's e1RM; the block above that constant has the measurements.
+ */
+export async function openSessionToFirstSet(page, url, checkInTaps = SESSION_DRIVE.CHECK_IN_TAPS) {
   await page.goto(url, { waitUntil: 'load' });
   await page
     .getByTestId('check-in-sleep-good')
@@ -302,7 +343,7 @@ export async function openSessionToFirstSet(page, url) {
   // Reported, not thrown. A check-in answer that cannot be pressed — covered by
   // something, or gone — is a fact about the app, and the caller has to be able
   // to say which one it was rather than die inside the harness.
-  for (const id of SESSION_DRIVE.CHECK_IN_TAPS) {
+  for (const id of checkInTaps) {
     try {
       await page.getByTestId(id).click({ timeout: 20000 });
     } catch {

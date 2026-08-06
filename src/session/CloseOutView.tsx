@@ -313,7 +313,15 @@ export function CloseOutView({
 
       {e1rm !== null && e1rm.valueKg !== null ? (
         <Row index={SESSION_TUNING.CLOSE_OUT_ROW_ORDER.E1RM}>
-          <Text style={styles.statLabel}>
+          {/*
+            WHICH LIFT THE NUMBER BELONGS TO, ON THE ELEMENT RATHER THAN IN THE
+            COPY. `tools/verify-shell-route.mjs` reads this to know which of meet
+            day's three openers the e1RM beside it should have decided; without
+            it that tool would have to parse `LIFT_LABEL` out of the copy table,
+            and a copy edit could turn a wrong opener into a right one. The
+            screen renders the label exactly as before.
+          */}
+          <Text style={styles.statLabel} testID={`close-out-e1rm-lift-${e1rm.lift}`}>
             {`${SESSION_COPY.LIFT_LABEL[e1rm.lift]} ${SESSION_COPY.CLOSE_OUT_E1RM_LABEL}`}
           </Text>
           <Provisional certainty={e1rm.reading.kind} tagTestID="close-out-e1rm-tag">
