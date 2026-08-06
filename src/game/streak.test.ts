@@ -3972,7 +3972,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
     }
   });
 
-  it('settling a break is a recording, not a decision: doing it early, late, twice or never is the same', () => {
+  it('[settling-is-a-recording] doing it early, late, twice or never is the same', () => {
     // `settleBrokenStreak` is the only state change an app-open can trigger.
     // If it could change an outcome, the invariant above would be luck.
     const state: StreakState = { ...stateWithRun(30, DAY_ZERO, 1), entitlementArmed: true };
@@ -3992,6 +3992,62 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // Not vacuous: the run really did end, and settling really did happen.
     expect(never.previousRunEnded).toBe(true);
     expect(early.lastTrainedDay).toBeNull();
+
+    // AND THE TWO REASONS IT HOLDS, ASSERTED SEPARATELY, because the docstring
+    // on `settleBrokenStreak` states them as the mechanism and stating a
+    // mechanism nothing checks is how the wrong one survived a round there.
+    // (It used to say the doomed burn was "the armed amount". It is the LIVE
+    // amount; what makes it settling-proof is that it is not a function of the
+    // absence's LENGTH at all.)
+    //
+    // REASON 1: a longer absence on the SAME DAY is still doomed. Settling
+    // raises `chargeable` and leaves what is drawable alone, so the verdict can
+    // only go covered -> doomed and never back.
+    //
+    // ITS FIXTURE TRAINS AWAY FROM THE SIGNUP DAY ON PURPOSE. `state` above has
+    // `lastTrainedDay === signupDay`, so settling moves the anchor NOWHERE and
+    // the premise of this bullet is unobservable on it — found by writing the
+    // assertion and watching it read 6 against 6.
+    const laterAnchor: StreakState = {
+      ...stateWithRun(30, addDays(DAY_ZERO, 5), 1),
+      entitlementArmed: true,
+    };
+    const probeDay = addDays(DAY_ZERO, 5 + LONGEST_REPAIRABLE_ABSENCE_DAYS + 2);
+    const settledOnce = unwrap(settleBrokenStreak(laterAnchor, probeDay)).state;
+    expect(
+      absenceOutcome(laterAnchor, probeDay).daysMissed,
+      'the premise: settling really does lengthen the absence',
+    ).toBeLessThan(absenceOutcome(settledOnce, probeDay).daysMissed);
+    expect(absenceOutcome(laterAnchor, probeDay).protectionHolds).toBe(false);
+    expect(absenceOutcome(settledOnce, probeDay).protectionHolds).toBe(false);
+
+    // REASON 2: the doomed burn is not a function of the absence's length. Same
+    // state, same window, four different absence lengths — one figure.
+    const burns = new Set<number>();
+    for (let extra = 0; extra < 4; extra += 1) {
+      const day = addDays(brokenOn, extra);
+      const outcome = absenceOutcome(state, day);
+      expect(outcome.protectionHolds, `doomed at +${extra}`).toBe(false);
+      burns.add(outcome.recoveryDaysConsumed);
+    }
+    expect(burns.size, 'the burn moved with the absence length').toBe(1);
+    // ...and it is the LIVE figure, not the armed one. Built by buying while the
+    // absence was still salvageable, so the two really differ.
+    const salvageable = addDays(DAY_ZERO, GRACE);
+    expect(absenceOutcome(state, salvageable).protectionHolds, 'still sellable').toBe(true);
+    const carrying = unwrap(
+      applySettledCoveredDayPurchase(state, salvageable, {
+        orderId: 'burn-reads-live',
+        coveredDays: 1,
+        tender: 'chalk-purchased',
+      }),
+    ).state;
+    expect(coveredDaysArmed(carrying, brokenOn), 'the armed snapshot did not move').toBe(1);
+    expect(coveredDaysLeftInWindow(carrying), 'the live balance did').toBe(2);
+    expect(
+      absenceOutcome(carrying, brokenOn).recoveryDaysConsumed,
+      'the burn is the LIVE balance, not the armed one',
+    ).toBe(2);
   });
 });
 

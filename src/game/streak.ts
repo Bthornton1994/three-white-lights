@@ -2435,11 +2435,12 @@ export interface StreakBreakOutcome {
  * so a "your streak ended" screen, or a server-side nightly job, can record the
  * fact without waiting for the next session.
  *
- * IT CANNOT CHANGE ANY OUTCOME, and that is the point rather than a caveat. The
- * run ended on the day the absence outran what was armed; this only records it.
- * Calling it early, late, repeatedly or never leaves the player in exactly the
- * same place — which is why `streak.test.ts` can assert that opening the app is
- * neutral by full state equality.
+ * IT CANNOT CHANGE THE STATE ANY OUTCOME IS COMPUTED FROM, and that is the point
+ * rather than a caveat. The run ended on the day the absence outran what was
+ * armed; this only records it. Calling it early, late, repeatedly or never
+ * leaves the player in exactly the same place — which is why `streak.test.ts`
+ * can assert that opening the app is neutral by full state equality.
+ * `@guarantee settling-is-a-recording`
  *
  * THAT CLAIM WAS FALSE FOR ONE ROUND AND THE COUNTEREXAMPLE IS WORTH KEEPING,
  * because this docstring invites a nightly job to be the thing that runs first
@@ -2449,12 +2450,44 @@ export interface StreakBreakOutcome {
  * bought on the return day covered a three-day absence that had not been
  * settled and could not cover the twelve-day one that had — final streak 11
  * against 1, same calendar, same money, decided by whether a nightly job had
- * run. The fix is that the absence resolves against `armedEntitlement`, whose
- * `armedEntitlement` this function does not touch: the anchor still moves, but
- * nothing that depends on it can change the verdict, because a settled break is
- * always
- * already doomed and the doomed burn is the armed amount rather than a function
- * of the absence's length.
+ * run.
+ *
+ * THE FIX IS THAT THE ABSENCE RESOLVES AGAINST `armedEntitlement`, WHICH THIS
+ * FUNCTION DOES NOT TOUCH. The anchor still moves, and two separate facts are
+ * what stop the move reaching the verdict — the second of which this paragraph
+ * asserted WRONGLY for a round, in the sentence that justified the guarantee
+ * above it:
+ *
+ *   - A LONGER ABSENCE ON THE SAME DAY IS STILL DOOMED. `covers` is
+ *     `chargeable <= drawable`; settling raises `chargeable` and leaves
+ *     `drawable` alone, so the verdict can only go from covered to doomed and
+ *     never back. Settling succeeds only on an absence that was already doomed,
+ *     so there is nothing left for it to flip.
+ *   - THE DOOMED BURN IS NOT A FUNCTION OF THE ABSENCE'S LENGTH. It is
+ *     `resolveEntitlement(...).availableBefore` — everything the window holds —
+ *     and `availableBefore` reads the entitlement and the window index only.
+ *     `chargeable` is not one of its inputs, so making the absence longer
+ *     changes nothing it depends on.
+ *
+ * THE BURN READS THE LIVE ENTITLEMENT AND NOT THE ARMED SNAPSHOT, and this
+ * paragraph used to say the opposite — "the doomed burn is the armed amount".
+ * `absenceOutcome` computes it from `state.entitlement`, deliberately, and it
+ * must: charging the burn against the armed count instead measures 3 / 23 / 1
+ * violating pairs including one in a frozen control, which is a GDD §12.3
+ * breach. So the sentence was wrong twice over — it named as the REASON the
+ * guarantee held the very field that would have broken a different one. What
+ * actually holds is the second bullet: not "armed rather than length-dependent"
+ * but "not length-dependent at all, whichever field it reads".
+ *
+ * ONE THING IT DOES CHANGE, AND IT IS NOT THE STATE. Since the store refuses to
+ * sell a covered day into an already-doomed absence, the store's verdict is a
+ * function of `absenceOutcome` — and a settle performed on an EARLIER day
+ * changes what a LATER day sees, because the anchor it would have been measured
+ * from is gone. On a day where a window boundary has refilled the armed
+ * snapshot, an unsettled state can report a live run where a settled one reports
+ * a signup-anchored absence, so one client is sold and another refused. Measured
+ * at 1 pair in 900 and pinned in `streakSweep.STORE_VERDICT_DIVERGENCE`. It does
+ * not reach the state, which is why the equality above still holds.
  *
  * It never spends a Recovery Day, because an absence that ends a run never
  * spends one (§5 of the header).
