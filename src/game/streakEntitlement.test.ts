@@ -1154,6 +1154,23 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     for (const tender of NON_TRAINING_GATED_TENDERS) {
       for (const length of ENTITLEMENT_VERIFICATION.LENGTHS) {
         const verdict = judgePurchaseArm(length, tender, 'responsive');
+        // THE TWO TREATMENTS AGREE, CHECKED FIRST AND ON PURPOSE. For a legal
+        // tender the diligent member's recomputation returns the lazy member's
+        // day list, so `responsive` and `frozen` must produce the same verdict.
+        // It reports the CAUSE where the zero below reports the symptom, so it
+        // is asserted first.
+        //
+        // IT IS SHARPER THAN THE ZERO AND IT IS NOT THE SHARPEST — measured,
+        // not assumed. A mutation that gave a calendar tender a tiny training
+        // sensitivity (one extra Chalk on a lifter's 60th session) moved 2362
+        // of 34338 purchase-day lists at 100 days and changed NO aggregate in
+        // this verdict, so it walked straight past this line. The assertion
+        // that caught it is the day-list one in the next test, and it is there
+        // because this one was written claiming to do its job.
+        expect(
+          JSON.stringify(judgePurchaseArm(length, tender, 'frozen')),
+          `${tender} L=${length}: a legal tender's purchase moved an OUTCOME with training`,
+        ).toBe(JSON.stringify(verdict));
         expectClean(`${tender} purchases L=${length}`, verdict);
         // NOT VACUOUS IN THE WAY THAT MATTERS HERE: covered days were bought,
         // and the purchased counter really carried them. A sweep that bought
@@ -1163,17 +1180,6 @@ describe('never punish daily engagement — the entitlement under attack', () =>
           verdict.peakPurchased,
           `${tender} L=${length}: purchasedDaysLeft never left zero`,
         ).toBeGreaterThan(0);
-        // "CLEAN BY CONSTRUCTION", CHECKED RATHER THAN CLAIMED. For a legal
-        // tender the diligent member's recomputation returns the lazy member's
-        // day list, so the `responsive` and `frozen` treatments must agree BIT
-        // FOR BIT. This is a much sharper instrument than the zero above: it
-        // goes red the moment a legal tender's purse becomes sensitive to
-        // training, which is strictly earlier than the moment that sensitivity
-        // happens to produce a violation at one of these four lengths.
-        expect(
-          JSON.stringify(judgePurchaseArm(length, tender, 'frozen')),
-          `${tender} L=${length}: a legal tender's purchase day moved with training`,
-        ).toBe(JSON.stringify(verdict));
         seen[`${tender}-${length}`] = verdict;
       }
     }
@@ -1185,6 +1191,72 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     expect(Object.keys(seen).length).toBe(
       NON_TRAINING_GATED_TENDERS.length * ENTITLEMENT_VERIFICATION.LENGTHS.length,
     );
+  });
+
+  it('STRUCTURALLY, NOT EMPIRICALLY: a legal tender\'s purchase DAYS do not move when a lifter trains more', () => {
+    // THE SHARPEST INSTRUMENT IN THIS FILE, AND THE ONE THAT ACTUALLY STATES
+    // THE PROPERTY. Everything else here measures OUTCOMES — violating pairs,
+    // final streaks, verdict equality — and an outcome is downstream of the
+    // thing the rule is about. The rule is: *a lifter's own training must not
+    // move the day their covered day arrives.* That is a statement about the
+    // purchase-day list, and this asserts it on the purchase-day list.
+    //
+    // WHY IT IS NOT REDUNDANT WITH THE SWEEP ABOVE, measured rather than
+    // argued. A mutation giving `'calendar'` a tiny training sensitivity — one
+    // extra Chalk on the lifter's 60th session — moved **2362 of 34338**
+    // purchase-day lists at 100 days, produced **zero** violations at 40 / 60 /
+    // 80 / 100, and left every aggregate in the verdict identical. The sweep
+    // was green. This is the assertion that goes red, and it goes red on the
+    // sensitivity itself rather than on the day a sensitivity happens to matter.
+    //
+    // That is the difference between "structurally unable" and "empirically
+    // clean at the lengths we happened to test", which is the distinction this
+    // whole round exists to make.
+    let comparisons = 0;
+    for (const tender of NON_TRAINING_GATED_TENDERS) {
+      const arrival = purchaseArrivalOf(tender);
+      for (const length of ENTITLEMENT_VERIFICATION.LENGTHS) {
+        for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+          const schedules = seededSchedules(seed, length).slice(
+            0,
+            COVERED_DAY_PURCHASE_SWEEP.SCHEDULES_PER_SEED,
+          );
+          for (const schedule of schedules) {
+            const lazyBuys = JSON.stringify(coveredDayPurchaseDays(schedule, arrival));
+            for (const superset of singleDaySupersets(schedule)) {
+              comparisons += 1;
+              if (JSON.stringify(coveredDayPurchaseDays(superset, arrival)) !== lazyBuys) {
+                throw new Error(
+                  `${tender} L=${length}: training one more day moved the purchase day — ` +
+                    `${renderSchedule(schedule)} buys ${lazyBuys}, ${renderSchedule(superset)} buys ` +
+                    JSON.stringify(coveredDayPurchaseDays(superset, arrival)),
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(comparisons, 'no pair was compared, so this proves nothing').toBeGreaterThan(0);
+
+    // AND THE INSTRUMENT CAN SEE A MOVE WHEN THERE IS ONE. A banned tender's
+    // days really do move with training, on this same population — so the
+    // equality above is a property of the legal tenders and not of the
+    // comparison.
+    let moved = 0;
+    let looked = 0;
+    const bannedArrival = purchaseArrivalOf(TRAINING_GATED_TENDERS[0] as CoveredDayTender);
+    for (const seed of MONOTONICITY_SWEEP.SEEDS) {
+      for (const schedule of seededSchedules(seed, 60).slice(0, 40)) {
+        const lazyBuys = JSON.stringify(coveredDayPurchaseDays(schedule, bannedArrival));
+        for (const superset of singleDaySupersets(schedule)) {
+          looked += 1;
+          if (JSON.stringify(coveredDayPurchaseDays(superset, bannedArrival)) !== lazyBuys) moved += 1;
+        }
+      }
+    }
+    expect(looked).toBeGreaterThan(0);
+    expect(moved, 'the comparison cannot detect a purchase day moving at all').toBeGreaterThan(0);
   });
 
   it('NEGATIVE CONTROL, MATCHED: the SAME purse violates once training can move the purchase day', () => {

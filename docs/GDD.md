@@ -1844,12 +1844,21 @@ population (150 schedules per seed); the full-population figures are the 105 /
 **A clean row is not the evidence, and saying so is the point.** The five clean
 rows are clean *by construction* — a calendar or player-chosen arrival returns
 the identical purchase-day list whether it is computed from the lazy schedule or
-the diligent one — and the test asserts that construction directly, by requiring
-the `responsive` and `frozen` treatments to agree **bit for bit**. That goes red
-the moment a legal tender's purse becomes sensitive to training, which is
-strictly earlier than the moment that sensitivity happens to produce a violation
-at one of these four lengths. "Empirically clean at the lengths we happened to
-test" is what hid this defect twice; it is not what is being claimed here.
+the diligent one — and the construction is asserted **on the purchase-day list
+itself**, not on the outcomes downstream of it: for every legal tender, at every
+length, over every pair in the population, adding a trained day must leave the
+list byte-identical.
+
+*That assertion exists because a weaker one was tried and measured to be too
+weak.* The first version compared the two treatments' aggregate verdicts. A
+mutation giving a calendar tender a tiny training sensitivity — one extra Chalk
+on the lifter's 60th session — moved **2362 of 34338** purchase-day lists at 100
+days, produced **zero** violations at all four lengths, and left every aggregate
+in the verdict identical. The sweep was green and the verdict comparison was
+green. Only the day-list assertion goes red, and it goes red on the sensitivity
+rather than on the day a sensitivity happens to matter. "Empirically clean at the
+lengths we happened to test" is what hid this defect twice; the day-list
+assertion is what makes this round's claim a different kind of claim.
 
 **And the line is checked from both sides.** Every legal tender is clean, *and*
 every banned tender actually violates. The first alone is satisfied by a
