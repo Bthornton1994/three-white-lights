@@ -429,6 +429,46 @@ export const COVERED_DAY_PURCHASE_SWEEP = Object.freeze({
   COVERED_DAYS_PER_ORDER: 1,
 });
 
+/**
+ * THE ONE PLACE THE DOOMED-SALE REFUSAL IS NOT APP-OPEN NEUTRAL, measured.
+ *
+ * WHAT IT IS. Since the store refuses to sell into an already-doomed absence,
+ * the store's verdict is a function of `absenceOutcome`. `settleBrokenStreak`
+ * nulls `lastTrainedDay`, which drops the anchor to the signup day and makes the
+ * absence longer — and the armed snapshot REFILLS at a window boundary, so an
+ * absence doomed on the last day of a window can be COVERED again on the first
+ * day of the next one. On that revival day the two states disagree: the
+ * unsettled one has a live run and the settled one has a 29-day absence. So a
+ * client that settles nightly is refused a sale that a client which never opens
+ * is sold.
+ *
+ * WHY IT IS PINNED HERE RATHER THAN FIXED. Both halves are deliberate and
+ * pinned elsewhere: the anchor reset is what makes a settled break stay settled,
+ * and the boundary refill is GDD §4.2's "refills without anybody opening the
+ * app", with its own test. Closing this from inside the store means either
+ * re-deriving the coverage rule — the drift this ruling was explicitly told not
+ * to introduce — or changing one of those two, which is a different piece.
+ *
+ * IT DOES NOT REACH THE STATE. Every full-state equality across opening
+ * schedules still holds; what differs is how many orders the store took and
+ * therefore the spend. That is the difference between a store defect and a
+ * §12.3 monotonicity defect, and it is worth being exact about which this is.
+ *
+ * MEASURED ON THE SHIPPED ENGINE at the parameters in
+ * `streak.test.ts`'s `OPEN-DAY SCHEDULE, WITH PURCHASES AND LONG RANDOM
+ * CALENDARS`: 300 trials of 20–60 days, three opening schedules compared against
+ * `'never'`, so 900 pairs.
+ */
+export const STORE_VERDICT_DIVERGENCE = Object.freeze({
+  /**
+   * Pairs, out of 900, where an opening schedule changed whether the store sold.
+   *
+   * ONE. Pinned exactly rather than bounded, so making it commoner is a red test
+   * and a number somebody has to read, not a threshold that absorbs it.
+   */
+  PAIRS_IN_THIS_SWEEP: 1,
+});
+
 /** One calendar: `true` on the days the lifter trained. */
 export type TrainingSchedule = readonly boolean[];
 

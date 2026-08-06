@@ -1206,7 +1206,7 @@ that a purchased day is credited in one window and expires in the next.
 |---|---|---|---|---|---|---|---|---|---|
 | pairs, each arm | 1 024 | 2 304 | 5 120 | 11 264 | 24 576 | 53 248 | 114 688 | 245 760 | 524 288 |
 | consumed, no purchases | 452 | 1 264 | 3 344 | 8 512 | 20 988 | 50 368 | 118 352 | 277 888 | 644 288 |
-| consumed, with purchases | 524 | 1 472 | 3 904 | 10 192 | 25 664 | 62 872 | 150 544 | 351 048 | 808 528 |
+| consumed, with purchases | 500 | 1 392 | 3 700 | 9 480 | 23 836 | 58 648 | 141 236 | 326 236 | 750 632 |
 | violating pairs, both arms | **0** | **0** | **0** | **0** | **0** | **0** | **0** | **0** | **0** |
 
 Zero on `currentStreak`, on lifetime best and on both worst deficits, over
@@ -1216,6 +1216,14 @@ calendar accrues one Chalk against a price of three and buys nothing, so both
 arms reported byte-identical consumption. The fixed buy days
 (`BOUNDARY_CROSSING_PURCHASE_DAYS`) are what make the third row differ from the
 second, and the test asserts that it does.
+
+**The with-purchases row dropped when the doomed-sale refusal landed** — its
+total fell from 1 414 748 to 1 315 660 — and it dropped for the reason the
+refusal exists. Some of those fixed buy days fall inside an absence that has
+already ended the run; the store will not sell into one, so those covered days
+are never bought and never burned. The no-purchase row is unchanged, which is
+what says the drop is the store rule and not a change to the absence rule. Both
+arms stay at zero violating pairs.
 
 This is `drive`-only — `streak.ts` reads `RECOVERY_ENTITLEMENT` as a module
 constant and cannot be driven at another window length — so it reaches the

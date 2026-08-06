@@ -64,6 +64,7 @@ import {
   ENTITLEMENT_VERIFICATION,
   MONOTONICITY_SWEEP,
   RESIDUE_SWEEP,
+  STORE_VERDICT_DIVERGENCE,
   exhaustiveCalendar,
   exhaustiveCalendarCount,
   renderSchedule,
@@ -2103,8 +2104,16 @@ describe('the window entitlement', () => {
     // What closes it is not another allowlist but an EXACT arithmetic: the
     // coverage this function adds equals what the order says, over states that
     // differ in every field a bonus could plausibly key off.
+    //
+    // THE STORE NOW REFUSES SOME OF THIS GRID, and the sweep asserts on both
+    // sides of the door rather than shrinking to the sellable corner. Where it
+    // sells, the credit is exactly the order; where it refuses, it credits
+    // nothing at all — which is the same property read the other way, and the
+    // half a `streak >= 7 ? 1 : 0` mutant could otherwise hide in.
     const orders = [1, 2, 5];
     let checked = 0;
+    let sold = 0;
+    let refused = 0;
     for (const streak of [0, 1, 6, 7, 30, 100]) {
       for (const armed of [true, false]) {
         for (const gapDays of [0, 3, 40]) {
@@ -2116,22 +2125,35 @@ describe('the window entitlement', () => {
             };
             const day = addDays(DAY_ZERO, gapDays);
             const before = coveredDaysLeftInWindow(base);
-            const outcome = unwrap(
-              applySettledCoveredDayPurchase(base, day, {
-                orderId: `order-${checked}`,
-                coveredDays,
-                tender: 'chalk-purchased',
-              }),
-            );
-            const grew = outcome.state.entitlement.purchasedDaysLeft - base.entitlement.purchasedDaysLeft;
-            expect(grew, `streak ${streak}, armed ${armed}, gap ${gapDays}`).toBe(coveredDays);
-            expect(outcome.coveredDaysCredited).toBe(coveredDays);
-            // And the free side is untouched, except where the window turned
-            // over on its own — which is the calendar, not the purchase.
-            const turnedOver = entitlementWindowFor(base, day) > base.entitlement.windowIndex;
-            if (!turnedOver) {
-              expect(outcome.state.entitlement.coveredDaysLeft).toBe(base.entitlement.coveredDaysLeft);
-              expect(coveredDaysLeftInWindow(outcome.state)).toBe(before + coveredDays);
+            const label = `streak ${streak}, armed ${armed}, gap ${gapDays}`;
+            const result = applySettledCoveredDayPurchase(base, day, {
+              orderId: `order-${checked}`,
+              coveredDays,
+              tender: 'chalk-purchased',
+            });
+            if (result.ok) {
+              sold += 1;
+              const outcome = result.value;
+              const grew =
+                outcome.state.entitlement.purchasedDaysLeft - base.entitlement.purchasedDaysLeft;
+              expect(grew, label).toBe(coveredDays);
+              expect(outcome.coveredDaysCredited).toBe(coveredDays);
+              // And the free side is untouched, except where the window turned
+              // over on its own — which is the calendar, not the purchase.
+              const turnedOver = entitlementWindowFor(base, day) > base.entitlement.windowIndex;
+              if (!turnedOver) {
+                expect(outcome.state.entitlement.coveredDaysLeft).toBe(
+                  base.entitlement.coveredDaysLeft,
+                );
+                expect(coveredDaysLeftInWindow(outcome.state)).toBe(before + coveredDays);
+              }
+            } else {
+              refused += 1;
+              // A REFUSAL CREDITS NOTHING, at any streak length. A bonus written
+              // into the refused branch would be just as much a covered day
+              // awarded for a streak as one written into the sold branch.
+              expect(errorCodeOf(result), label).toBe('ABSENCE_ALREADY_DOOMED');
+              expect(absenceOutcome(base, day).protectionHolds, label).toBe(false);
             }
             checked += 1;
           }
@@ -2139,6 +2161,30 @@ describe('the window entitlement', () => {
       }
     }
     expect(checked).toBe(6 * 2 * 3 * 3);
+    // BOTH SIDES REACHED, or one of the two branches above is asserting over an
+    // empty column.
+    expect(sold, 'orders the store took').toBeGreaterThan(0);
+    expect(refused, 'orders the store refused').toBeGreaterThan(0);
+    expect(sold + refused).toBe(checked);
+    // AND THE SOLD SIDE STILL VARIES THE STREAK, which is what makes the exact
+    // arithmetic above a test of the mutant rather than of one streak length.
+    const streaksThatSold = new Set<number>();
+    for (const streak of [0, 1, 6, 7, 30, 100]) {
+      const base: StreakState = stateWithRun(
+        streak,
+        DAY_ZERO,
+        RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
+      );
+      const result = applySettledCoveredDayPurchase(base, DAY_ZERO, {
+        orderId: `vary-${streak}`,
+        coveredDays: 1,
+        tender: 'chalk-purchased',
+      });
+      if (result.ok) streaksThatSold.add(streak);
+    }
+    expect(streaksThatSold, 'the sold side spans the streak lengths a bonus could key off').toEqual(
+      new Set([0, 1, 6, 7, 30, 100]),
+    );
   });
 
   it('caps how far back a run can be rescued, whatever the balance', () => {
@@ -2906,6 +2952,14 @@ interface SimResult {
   readonly recoveryDaysSpent: number;
   /** Return-visit reveals the simulated player was shown. */
   readonly revealsSeen: number;
+  /**
+   * Covered-day orders the store refused because the absence was already doomed.
+   *
+   * REPORTED SO A SWEEP CAN PROVE ITS BUYING CALENDAR REACHED THE REFUSAL, and
+   * so the training-keyed-arrival hazard the refusal introduces is visible in
+   * the harness rather than only in `streak.ts`.
+   */
+  readonly refusedPurchases: number;
 }
 
 /**
@@ -2959,6 +3013,7 @@ function simulate(
   let state = initial;
   let spent = 0;
   let revealsSeen = 0;
+  let refusedPurchases = 0;
 
   const open = (from: StreakState, day: StreakDay, count: boolean): StreakState => {
     const opening = openDay(from, day);
@@ -2984,14 +3039,32 @@ function simulate(
     // the safe keying: `grantOn` is a fixed calendar, so both members of any
     // monotonicity pair buy on the same days and training cannot move the
     // arrival. `streakEntitlement.test.ts` measures what happens when it can.
+    //
+    // A SIMULATED PURCHASE MAY NOW BE REFUSED, and the harness records it rather
+    // than throwing. Since the doomed-sale ruling the store will not sell into
+    // an absence that has already ended the run, so a fixed buying calendar no
+    // longer implies a fixed set of covered days that ARRIVE — the lifter's own
+    // training decides which of their buy days the store is open on.
+    //
+    // THAT IS A TRAINING-KEYED ARRIVAL AND IT IS THE HAZARD GDD §4.4 TRACES, so
+    // it is measured rather than reasoned about: `refusedPurchases` is carried
+    // out on the result, and the monotonicity sweeps below re-derive their pinned
+    // zeros with this live. `ABSENCE_ALREADY_DOOMED` is the only refusal a
+    // well-formed simulated order can draw; anything else is a harness bug and
+    // still throws.
     if (grantOn[i] === true) {
       const bought = applySettledCoveredDayPurchase(state, day, {
         orderId: `sim-${i}`,
         coveredDays: grantSize,
         tender: 'chalk-purchased',
       });
-      if (!bought.ok) throw new Error(`day ${i}: the simulated purchase was refused (${bought.error.code})`);
-      state = bought.value.state;
+      if (bought.ok) {
+        state = bought.value.state;
+      } else if (bought.error.code === 'ABSENCE_ALREADY_DOOMED') {
+        refusedPurchases += 1;
+      } else {
+        throw new Error(`day ${i}: the simulated purchase was refused (${bought.error.code})`);
+      }
     }
     if (opensOn(opens, i, attend[i] === true)) state = open(state, day, true);
     if (attend[i] === true) {
@@ -3057,7 +3130,7 @@ function simulate(
     // simulated player made, so it does not count as a reveal they were shown.
     state = open(state, addDays(DAY_ZERO, attend.length - 1), false);
   }
-  return { state, recoveryDaysSpent: spent, revealsSeen };
+  return { state, recoveryDaysSpent: spent, revealsSeen, refusedPurchases };
 }
 
 /**
@@ -3231,6 +3304,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
     let purchasesLanded = 0;
     let purchasedDaysSeen = 0;
     let differedFromNoPurchase = 0;
+    let storeVerdictDivergedInPairs = 0;
 
     for (let trial = 0; trial < 300; trial += 1) {
       const length = 20 + Math.floor(rng() * 40);
@@ -3246,7 +3320,14 @@ describe('the outcome does not depend on when the player opens the app', () => {
         // FULL JSON-STATE EQUALITY across opening schedules, purchases included.
         expect(JSON.stringify(other.state)).toBe(JSON.stringify(baseline.state));
         expect(other.state).toEqual(baseline.state);
-        expect(other.recoveryDaysSpent).toBe(baseline.recoveryDaysSpent);
+        // THE SPEND MATCHES WHEREVER THE STORE MADE THE SAME DECISION, and
+        // where it did not, the pair is counted rather than excused. See
+        // `STORE_VERDICT_DIVERGENCE` for the mechanism and the pinned count.
+        if (other.refusedPurchases === baseline.refusedPurchases) {
+          expect(other.recoveryDaysSpent).toBe(baseline.recoveryDaysSpent);
+        } else {
+          storeVerdictDivergedInPairs += 1;
+        }
       }
       // NOT VACUOUS: buying really did change the outcome somewhere, so the
       // equality above is over histories the purchase actually reached.
@@ -3263,6 +3344,95 @@ describe('the outcome does not depend on when the player opens the app', () => {
       differedFromNoPurchase,
       'buying changed nothing anywhere, so this sweep is the zero-purchase sweep again',
     ).toBeGreaterThan(0);
+    // PINNED EXACTLY, NOT BOUNDED. `toBe`, so the number moves the day the
+    // mechanism does and somebody has to read it.
+    expect(storeVerdictDivergedInPairs, 'store-verdict divergences').toBe(
+      STORE_VERDICT_DIVERGENCE.PAIRS_IN_THIS_SWEEP,
+    );
+  });
+
+  it('THE STORE VERDICT IS APP-OPEN SENSITIVE AT A WINDOW BOUNDARY — reproduced, not inferred', () => {
+    // THE ONE PLACE THE DOOMED-SALE RULING IS NOT APP-OPEN NEUTRAL, driven by
+    // hand off the calendar the sweep above found it on. It is here rather than
+    // only in a count because a defect with no reproduction gets re-derived from
+    // scratch by the next person, and because the fix for it is NOT in this
+    // module and somebody has to be able to see why.
+    //
+    // TWO PINNED BEHAVIOURS MEET AND THE STORE IS WHERE THEY LAND.
+    //
+    // (1) `settleBrokenStreak` nulls `lastTrainedDay`, so the anchor drops to
+    //     the signup day and the absence gets LONGER. Documented, deliberate,
+    //     and harmless to the STATE — every equality above still holds.
+    //
+    // (2) The armed snapshot REFILLS at a window boundary. `coveredDaysAvailable`
+    //     returns a full window whenever the day asked about is past the
+    //     snapshot's window, so an absence that was doomed on the last day of a
+    //     window can be COVERED again on the first day of the next one. That is
+    //     GDD §4.2's "refills without anybody opening the app", pinned by its own
+    //     test, and it is not this piece's to change.
+    //
+    // Put together: on the revival day, an unsettled state reports a live run
+    // and a settled state reports a 29-day absence from signup. The store asks
+    // the absence — the same call `recordTrainingDay` asks — and gets two
+    // different answers for the same lifter on the same day, so one client sells
+    // and another refuses.
+    const attend = [...'1.......1..11.......1.1..1.....11......'].map((c) => c === '1');
+    const buyOn = [...'.B....BB...B........B.....B...B.B......'].map((c) => c === 'B');
+    const initial = freshState();
+    const never = simulate(attend, buyOn, initial, 'never', true);
+    const daily = simulate(attend, buyOn, initial, 'daily', true);
+
+    // THE STATE IS STILL IDENTICAL, which is the §12.3 property and is what
+    // stops this being a monotonicity defect as well as a store one.
+    expect(JSON.stringify(daily.state)).toBe(JSON.stringify(never.state));
+    // What differs is how many orders the store took, and therefore the spend.
+    expect(never.refusedPurchases, 'a client that never opens is refused fewer').toBe(3);
+    expect(daily.refusedPurchases, 'a client that settles nightly is refused more').toBe(4);
+    expect(never.recoveryDaysSpent).toBe(7);
+    expect(daily.recoveryDaysSpent).toBe(6);
+
+    // AND THE MECHANISM, ISOLATED. Day 29 is the last day of window 0 and day 30
+    // the first of window 1, for an account created on DAY_ZERO.
+    const lastTrained = addDays(DAY_ZERO, 25);
+    const drained: StreakState = {
+      ...stateWithRun(3, lastTrained, 0),
+      entitlement: withCoveredDays(0, windowOf(lastTrained)),
+      armedEntitlement: withCoveredDays(0, windowOf(lastTrained)),
+    };
+    const lastDayOfWindow = addDays(DAY_ZERO, RECOVERY_ENTITLEMENT.WINDOW_DAYS - 1);
+    const firstDayOfNextWindow = addDays(DAY_ZERO, RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+    expect(entitlementWindowFor(drained, lastDayOfWindow)).toBe(0);
+    expect(entitlementWindowFor(drained, firstDayOfNextWindow)).toBe(1);
+
+    // Doomed on the last day of the window...
+    expect(absenceOutcome(drained, lastDayOfWindow).protectionHolds).toBe(false);
+    // ...and COVERED again on the first day of the next one, because the armed
+    // snapshot reads a full window once the window has turned over.
+    expect(
+      absenceOutcome(drained, firstDayOfNextWindow).protectionHolds,
+      'the window boundary revives the absence',
+    ).toBe(true);
+
+    // So the store sells on the revival day to a client that did not settle...
+    expect(
+      applySettledCoveredDayPurchase(drained, firstDayOfNextWindow, {
+        orderId: 'revived',
+        coveredDays: 1,
+        tender: 'chalk-purchased',
+      }).ok,
+    ).toBe(true);
+    // ...and refuses one that did, because settling moved the anchor to signup
+    // and a 29-day absence outruns even a refilled window.
+    const settled = unwrap(settleBrokenStreak(drained, lastDayOfWindow)).state;
+    expect(
+      errorCodeOf(
+        applySettledCoveredDayPurchase(settled, firstDayOfNextWindow, {
+          orderId: 'revived',
+          coveredDays: 1,
+          tender: 'chalk-purchased',
+        }),
+      ),
+    ).toBe('ABSENCE_ALREADY_DOOMED');
   });
 
   it('THE 11-VERSUS-1 SCENARIO: a purchase during an absence cannot rescue it, in any intra-day order', () => {
@@ -3302,19 +3472,70 @@ describe('the outcome does not depend on when the player opens the app', () => {
     expect(coveredDaysArmed(drained, returnDay)).toBe(0);
     expect(openDay(drained, returnDay).kind).toBe('streak-broken');
 
-    const buy = (state: StreakState): StreakState =>
-      unwrap(applySettledCoveredDayPurchase(state, returnDay, order)).state;
     const settleIfBroken = (state: StreakState): StreakState => {
       const settled = settleBrokenStreak(state, returnDay);
       return settled.ok ? settled.value.state : state;
     };
 
+    // SINCE THE DOOMED-SALE RULING, THIS EXACT SALE IS REFUSED AT THE DOOR. The
+    // scenario is kept rather than retired, because the refusal has to be
+    // app-open neutral for the same reason the outcome did, and this is the
+    // calendar that proves it.
+    //
+    // THE REFUSAL IS BYTE-IDENTICAL WHETHER OR NOT A NIGHTLY JOB SETTLED FIRST,
+    // and that is a real assertion rather than a formality: settling nulls
+    // `lastTrainedDay`, so the anchor drops to the signup day and this absence
+    // grows from 3 days to 13. `breakReasonFor` is ordered hardest-first, so the
+    // REASON flips from `'not-enough-recovery-days-armed'` to
+    // `'absence-longer-than-consecutive-limit'` across that line — and the first
+    // draft of this refusal keyed its message to the reason, which reproduced
+    // 11-versus-1 in the copy. Compare the whole error, not the code.
+    const refusedDirect = applySettledCoveredDayPurchase(drained, returnDay, order);
+    const refusedAfterSettle = applySettledCoveredDayPurchase(
+      settleIfBroken(drained),
+      returnDay,
+      order,
+    );
+    expect(errorCodeOf(refusedDirect), 'the store refuses a doomed absence').toBe(
+      'ABSENCE_ALREADY_DOOMED',
+    );
+    expect(refusedAfterSettle, 'same money, same day, same sentence').toEqual(refusedDirect);
+    // The premise of that comparison: the reason really does drift underneath it.
+    expect(absenceOutcome(drained, returnDay).breakReason).toBe('not-enough-recovery-days-armed');
+    expect(absenceOutcome(settleIfBroken(drained), returnDay).breakReason).toBe(
+      'absence-longer-than-consecutive-limit',
+    );
+
+    // AND THE RESCUE PROPERTY IS RE-DRIVEN WITH A PURCHASE THE STORE DOES SELL.
+    // The ruling closes the door on buying INTO a doomed absence; it does not
+    // close the door on an absence going doomed AFTER a legal purchase, which is
+    // the case that keeps the covers/burn asymmetry load-bearing. Bought on the
+    // last day the grace still covered this absence, then carried into a break.
+    const lastSellableDay = addDays(SIGNUP_DAY, 12);
+    expect(absenceOutcome(drained, lastSellableDay).protectionHolds, 'still salvageable').toBe(true);
+    const carried = unwrap(
+      applySettledCoveredDayPurchase(drained, lastSellableDay, order),
+    ).state;
+    expect(coveredDaysLeftInWindow(carried), 'the legal purchase landed').toBe(1);
+    // It raised the LIVE balance and not the armed snapshot, so the absence it
+    // was bought during still cannot draw on it.
+    expect(coveredDaysArmed(carried, returnDay)).toBe(0);
+    expect(absenceOutcome(carried, returnDay).protectionHolds, 'and it did not rescue').toBe(false);
+
+    const buy = (state: StreakState): StreakState =>
+      unwrap(applySettledCoveredDayPurchase(state, lastSellableDay, order)).state;
+
     // ORDER 1 — buy, then let the app open and settle, then train. This is the
     // order that used to end on 11.
     const buyThenSettle = unwrap(recordTrainingDay(settleIfBroken(buy(drained)), returnDay));
     // ORDER 2 — the app opens and settles first, then the store, then train.
-    // This is the order that used to end on 1, for the same money.
-    const settleThenBuy = unwrap(recordTrainingDay(buy(settleIfBroken(drained)), returnDay));
+    // This is the order that used to end on 1, for the same money. Settling on
+    // the SELLING day, so the store still sees a salvageable absence.
+    const settledFirst = (): StreakState => {
+      const settled = settleBrokenStreak(drained, lastSellableDay);
+      return settled.ok ? settled.value.state : drained;
+    };
+    const settleThenBuy = unwrap(recordTrainingDay(buy(settledFirst()), returnDay));
     // ORDER 3 — never settle at all. `recordTrainingDay` settles the same break.
     const buyThenTrain = unwrap(recordTrainingDay(buy(drained), returnDay));
 
@@ -3329,10 +3550,18 @@ describe('the outcome does not depend on when the player opens the app', () => {
     expect(buyThenSettle.state, 'settling before or after the purchase').toEqual(settleThenBuy.state);
     expect(buyThenTrain.state, 'settling early or not at all').toEqual(settleThenBuy.state);
 
+    // THE DOOMED BURN STILL TAKES A PURCHASED DAY, which is the measurement that
+    // says the covers/burn asymmetry survived this ruling rather than being
+    // quietly made moot by it. Whether the run SURVIVES read the armed snapshot
+    // and said no; what the break COSTS reads the live balance and takes the day
+    // the lifter bought while it was still salvageable.
+    expect(buyThenTrain.recoveryDaysLostToTheAbsence, 'the live purchased day burned').toBe(1);
+    expect(coveredDaysLeftInWindow(buyThenTrain.state)).toBe(0);
+
     // NOT VACUOUS: the purchase really did land, and the store really did tell
     // the player they now hold a covered day. It arms the NEXT absence — GDD
     // §4.2 — which is a different promise from rescuing this one.
-    const bought = unwrap(applySettledCoveredDayPurchase(drained, returnDay, order));
+    const bought = unwrap(applySettledCoveredDayPurchase(drained, lastSellableDay, order));
     expect(bought.coveredDaysCredited).toBe(1);
     expect(coveredDaysLeftInWindow(bought.state)).toBe(1);
     // ...and it is still not drawable by the absence in progress.
@@ -3362,9 +3591,17 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // return day — which is exactly the pair that separates "did this arrive
     // before the arming" from "did this arrive before the anchor", and the
     // anchor is the thing `settleBrokenStreak` moves.
+    //
+    // SINCE THE DOOMED-SALE RULING THE STORE REFUSES SOME OF THESE, so the sweep
+    // carries a second property of the same shape: WHETHER THE SALE HAPPENS AT
+    // ALL must also be independent of the order within the day, and so must the
+    // sentence the refusal carries. A refusal that depended on whether a nightly
+    // job had run would be the original defect relocated into the store.
     let cases = 0;
     let brokenSeen = 0;
     let coveredSeen = 0;
+    let sold = 0;
+    let refused = 0;
     let purchasesThatRaisedTheBalance = 0;
     const order = { orderId: 'sweep', coveredDays: 1, tender: 'chalk-purchased' } as const;
 
@@ -3383,22 +3620,60 @@ describe('the outcome does not depend on when the player opens the app', () => {
             // `DAY_ZERO` is this fixture's last training day and therefore the
             // day its coverage was armed on. `day` is the return day.
             for (const purchaseDay of [DAY_ZERO, day]) {
-              const buy = (state: StreakState): StreakState =>
-                unwrap(applySettledCoveredDayPurchase(state, purchaseDay, order)).state;
+              // THE STORE MAY REFUSE, AND A REFUSAL IS AN ANSWER RATHER THAN AN
+              // ERROR HERE. `attempt` carries the whole result so the sweep can
+              // compare the refusals to each other, not only the states.
+              const attempt = (
+                state: StreakState,
+              ): { readonly state: StreakState; readonly result: StreakResult<unknown> } => {
+                const result = applySettledCoveredDayPurchase(state, purchaseDay, order);
+                return { state: result.ok ? result.value.state : state, result };
+              };
+              const buy = (state: StreakState): StreakState => attempt(state).state;
               const settle = (state: StreakState): StreakState => {
                 const result = settleBrokenStreak(state, day);
                 return result.ok ? result.value.state : state;
               };
+              const label = `run ${runLength} balance ${balance} gap ${gap} armed ${armed} bought on ${
+                purchaseDay === DAY_ZERO ? 'the arming day' : 'the return day'
+              }`;
+
               // NO PURCHASE, AT ANY DATE, RAISES WHAT THE ABSENCE MAY DRAW —
-              // and it raises the balance every time, so the order really did
-              // land. This pair is the property and its own anti-vacuity:
-              // "nothing changed" and "nothing was bought" produce the same
-              // first line and are told apart by the second.
-              expect(coveredDaysArmed(buy(base), day), `armed after buying on ${purchaseDay}`).toBe(
+              // and where the store sells, it raises the balance every time, so
+              // the order really did land. This pair is the property and its own
+              // anti-vacuity: "nothing changed" and "nothing was bought" produce
+              // the same first line and are told apart by the second.
+              const direct = attempt(base);
+              expect(coveredDaysArmed(direct.state, day), `armed after buying on ${purchaseDay}`).toBe(
                 coveredDaysArmed(base, day),
               );
-              if (coveredDaysLeftInWindow(buy(base)) > coveredDaysLeftInWindow(base)) {
+              if (direct.result.ok) {
+                sold += 1;
+                expect(coveredDaysLeftInWindow(direct.state), label).toBeGreaterThan(
+                  coveredDaysLeftInWindow(base),
+                );
                 purchasesThatRaisedTheBalance += 1;
+              } else {
+                refused += 1;
+                expect(errorCodeOf(direct.result), label).toBe('ABSENCE_ALREADY_DOOMED');
+              }
+
+              // THE SALE DECISION AND ITS SENTENCE ARE THE SAME IN EVERY ORDER.
+              // Settling before the store is asked must not change whether it
+              // sells, nor — when it refuses — one character of what it says.
+              //
+              // THE VERDICT AND THE REFUSAL, NOT THE WHOLE SUCCESS OUTCOME, and
+              // the difference was found by asserting too much: a successful
+              // outcome reports `currentStreakUnchanged`, and after settling
+              // that is honestly 0 rather than the pre-break length, because the
+              // run really has ended. Pinning the receipt would be pinning the
+              // settle rather than the sale.
+              const settledFirst = attempt(settle(base)).result;
+              expect(settledFirst.ok, `${label}: settled first, sold?`).toBe(direct.result.ok);
+              if (!settledFirst.ok && !direct.result.ok) {
+                expect(settledFirst.error, `${label}: settled first, sentence`).toEqual(
+                  direct.result.error,
+                );
               }
 
               // Buy first, then the app opens. Then the app opens, then buy.
@@ -3408,9 +3683,6 @@ describe('the outcome does not depend on when the player opens the app', () => {
               const settleThenBuy = unwrap(recordTrainingDay(buy(settle(base)), day)).state;
               const neverSettle = unwrap(recordTrainingDay(buy(base), day)).state;
 
-              const label = `run ${runLength} balance ${balance} gap ${gap} armed ${armed} bought on ${
-                purchaseDay === DAY_ZERO ? 'the arming day' : 'the return day'
-              }`;
               expect(buyThenSettle, label).toEqual(settleThenBuy);
               expect(neverSettle, label).toEqual(settleThenBuy);
               cases += 1;
@@ -3425,9 +3697,16 @@ describe('the outcome does not depend on when the player opens the app', () => {
     expect(cases).toBeGreaterThan(200);
     expect(brokenSeen).toBeGreaterThan(0);
     expect(coveredSeen).toBeGreaterThan(0);
-    // AND EVERY ONE OF THOSE PURCHASES REALLY LANDED, or "the absence could
-    // draw no more afterwards" is a statement about an order that did nothing.
-    expect(purchasesThatRaisedTheBalance, 'no purchase ever raised the balance').toBe(cases);
+    // AND THE SWEEP REACHED BOTH SIDES OF THE STORE'S DOOR. All-sold makes the
+    // refusal comparison vacuous; all-refused makes the landing assertion
+    // vacuous. Neither is allowed to be the whole column.
+    expect(sold, 'sales the store allowed').toBeGreaterThan(0);
+    expect(refused, 'sales the store refused as doomed').toBeGreaterThan(0);
+    expect(sold + refused).toBe(cases);
+    // AND EVERY ONE OF THE PURCHASES THAT LANDED REALLY LANDED, or "the absence
+    // could draw no more afterwards" is a statement about an order that did
+    // nothing.
+    expect(purchasesThatRaisedTheBalance, 'a sale that raised nothing').toBe(sold);
   });
 
   it('A PURCHASE BEFORE A SESSION AND ONE AFTER IT DIFFER, and here is exactly where', () => {
@@ -3451,45 +3730,104 @@ describe('the outcome does not depend on when the player opens the app', () => {
     //
     // WHY THIS IS NOT THE DEFECT ABOVE. Nothing here depends on an APP-OPEN.
     // The player chose when to spend money; the two orders are two different
-    // player actions, not one action seen from two clients. It is still a rough
-    // edge, and the honest fixes are store copy ("armed from your next
-    // session") or a server-side refusal to sell during a doomed absence —
-    // neither of which belongs in this module.
+    // player actions, not one action seen from two clients.
+    //
+    // ONE OF THE TWO FIXES THIS PARAGRAPH USED TO NAME AS UNBUILT IS NOW BUILT,
+    // and the note is corrected rather than left to read as a to-do somebody
+    // else owns. A human ruled the server-side refusal in: the store no longer
+    // sells into an already-doomed absence, so mechanism (1) can no longer be
+    // entered by buying INTO a break. It is still reachable — buy while the
+    // absence is salvageable, then let it go doomed — and part (3) below drives
+    // exactly that, because a mechanism that survives the fix has to keep being
+    // measured rather than assumed gone.
+    //
+    // THE REMAINING DIFFERENCE IS THE SAME-DAY PURCHASE-TIMING RULE, and it is
+    // an intentional rule now rather than a residual: a covered day bought
+    // BEFORE a session is armed by that session; one bought AFTER it arms at the
+    // next. GDD §4.2 and §8.3E carry it. Part (1) pins both orders so the
+    // documented rule is enforced rather than described.
     const drained: StreakState = {
       ...stateWithRun(10, addDays(SIGNUP_DAY, 9), 0),
       currentStreak: 10,
       longestStreak: 10,
     };
-    const returnDay = addDays(SIGNUP_DAY, 13);
     const order = { orderId: 'residual', coveredDays: 1, tender: 'chalk-purchased' } as const;
-    const buy = (state: StreakState): StreakState =>
-      unwrap(applySettledCoveredDayPurchase(state, returnDay, order)).state;
 
-    const before = unwrap(recordTrainingDay(buy(drained), returnDay)).state;
-    const after = buy(unwrap(recordTrainingDay(drained, returnDay)).state);
+    // ---------------------------------------------------------------------
+    // (1) THE SAME-DAY PURCHASE-TIMING RULE, BOTH ORDERS, ON A LIVE RUN.
+    // ---------------------------------------------------------------------
+    // A session the day after the last one: nothing missed, nothing doomed, so
+    // the store sells in both orders and the only variable is the clock time of
+    // the purchase against the clock time of the session.
+    const sessionDay = addDays(SIGNUP_DAY, 10);
+    const buyOn = (state: StreakState, day: StreakDay): StreakState =>
+      unwrap(applySettledCoveredDayPurchase(state, day, order)).state;
 
-    // The run is dead either way, and the purchase never touched the streak.
-    // THE PAY-TO-WIN LINE HOLDS IN BOTH ORDERS, which is the part that is not
-    // allowed to be a residual.
-    expect(before.currentStreak).toBe(1);
-    expect(after.currentStreak).toBe(1);
-    expect(before.longestStreak).toBe(after.longestStreak);
+    const boughtBeforeSession = unwrap(
+      recordTrainingDay(buyOn(drained, sessionDay), sessionDay),
+    ).state;
+    const boughtAfterSession = buyOn(
+      unwrap(recordTrainingDay(drained, sessionDay)).state,
+      sessionDay,
+    );
 
-    // MECHANISM (1): bought before the session, the doomed absence burned it.
-    expect(coveredDaysLeftInWindow(before), 'bought before the session: burned').toBe(0);
+    // BEFORE THE SESSION: armed by that same session. The session arms whatever
+    // the window holds when it runs, and the purchase was already in it.
+    expect(
+      coveredDaysArmed(boughtBeforeSession, sessionDay),
+      'bought before the session: armed the same session',
+    ).toBe(1);
+
+    // AFTER THE SESSION: held, and armed by the NEXT one. Not by this one, and
+    // not never.
+    expect(
+      coveredDaysLeftInWindow(boughtAfterSession),
+      'bought after the session: held',
+    ).toBe(1);
+    expect(
+      coveredDaysArmed(boughtAfterSession, sessionDay),
+      'bought after the session: not armed yet',
+    ).toBe(0);
+    const nextSession = unwrap(recordTrainingDay(boughtAfterSession, addDays(sessionDay, 1))).state;
+    expect(
+      coveredDaysArmed(nextSession, addDays(sessionDay, 1)),
+      'bought after the session: armed by the next session',
+    ).toBe(1);
+
+    // AND THE RUN IS UNTOUCHED BY EITHER ORDER — the pay-to-win line, which is
+    // the part that is not allowed to be a residual.
+    expect(boughtBeforeSession.currentStreak).toBe(11);
+    expect(boughtAfterSession.currentStreak).toBe(11);
+    expect(boughtBeforeSession.longestStreak).toBe(boughtAfterSession.longestStreak);
+
+    // ---------------------------------------------------------------------
+    // (2) BUYING INTO A DOOMED ABSENCE IS REFUSED, so the old route into
+    //     mechanism (1) is closed at the door.
+    // ---------------------------------------------------------------------
+    const returnDay = addDays(SIGNUP_DAY, 13);
+    expect(absenceOutcome(drained, returnDay).protectionHolds).toBe(false);
+    expect(
+      errorCodeOf(applySettledCoveredDayPurchase(drained, returnDay, order)),
+      'the store refuses to sell into the break',
+    ).toBe('ABSENCE_ALREADY_DOOMED');
+
+    // ---------------------------------------------------------------------
+    // (3) MECHANISM (1) IS STILL REACHABLE, and still burns. Bought on the last
+    //     day the absence was salvageable, then carried into a doomed one.
+    // ---------------------------------------------------------------------
+    const lastSellableDay = addDays(SIGNUP_DAY, 12);
+    expect(absenceOutcome(drained, lastSellableDay).protectionHolds).toBe(true);
+    const before = unwrap(
+      recordTrainingDay(buyOn(drained, lastSellableDay), returnDay),
+    ).state;
+    expect(coveredDaysLeftInWindow(before), 'the doomed burn took the purchased day').toBe(0);
     expect(coveredDaysArmed(before, returnDay), 'nothing left to arm').toBe(0);
-
-    // MECHANISM (2): bought after, it survives — and is held, not armed.
-    expect(coveredDaysLeftInWindow(after), 'bought after the session: held').toBe(1);
-    expect(coveredDaysArmed(after, returnDay), 'held but not armed until the next session').toBe(0);
-    // It arms at the next session, and only then.
-    const nextSession = unwrap(recordTrainingDay(after, addDays(returnDay, 1))).state;
-    expect(coveredDaysArmed(nextSession, addDays(returnDay, 1)), 'armed by the next session').toBe(1);
+    expect(before.currentStreak, 'and it never rescued the run').toBe(1);
 
     // ARMED IS NEVER MORE THAN HELD, in any of them. A state where a lifter is
     // armed with more than they hold is one no entry point can produce, and it
     // is the shape every invariant in this file would quietly stop meaning.
-    for (const state of [before, after, nextSession]) {
+    for (const state of [boughtBeforeSession, boughtAfterSession, nextSession, before]) {
       expect(coveredDaysArmed(state, addDays(returnDay, 1))).toBeLessThanOrEqual(
         coveredDaysLeftInWindow(state),
       );
@@ -4090,9 +4428,21 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // protection ON the 29-day absence before the first session is doomed and
     // burns the window, which would make this test about the burn rule instead
     // of about the reading.
+    //
+    // AND THE LIFTER TRAINS THE DAY BEFORE BUYING, which is new and is the
+    // doomed-sale ruling reaching this fixture. The 29-day absence from signup
+    // is doomed whatever the toggle says, so the store will not sell into it —
+    // one session the day before puts the buyer inside a salvageable absence
+    // without changing anything the test is about. With protection declined that
+    // session debits nothing, so the entitlement it arms is a full window and
+    // the three bought days land on top of it exactly as before.
     const base: StreakState = setRecoveryDayProtection(createStreakState(signupDay), false).state;
+    const dayBefore = addDays(inFirstWindow, -1);
+    expect(windowIndexFor(signupDay, dayBefore), 'the warm-up session is in window 0').toBe(0);
+    const warmedUp = unwrap(recordTrainingDay(base, dayBefore));
+    expect(warmedUp.recoveryDaysLostToTheAbsence, 'protection declined: nothing was burned').toBe(0);
     const bought = unwrap(
-      applySettledCoveredDayPurchase(base, inFirstWindow, {
+      applySettledCoveredDayPurchase(warmedUp.state, inFirstWindow, {
         orderId: 'order-1',
         coveredDays: 3,
         tender: 'chalk-purchased',
