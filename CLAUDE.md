@@ -94,7 +94,21 @@ guarantee was broken**: one exercised the calendar but never a purchase, the
 other started from a full window so clearing the entitlement was invisible. Both
 tags resolved perfectly. So the tag is a pointer, and a pointer to a test that
 cannot fail is the same defect one level out. The 11 unverified tags carry no
-evidence at all. If you add a tag, mutation-test the test it names.
+evidence at all.
+
+**So a tag must survive a mutation check WHEN IT IS DECLARED, not merely name a
+test that passes.** A bare pass is not evidence — a quarter of the sample that
+was actually checked failed exactly that bar. Break the guarantee, watch the
+named test go red, restore. Do it at declaration time, when the code is already
+in your head and it costs a minute; a bar that costs an hour per tag stops being
+met, which is how the backlog got here.
+
+**The existing backlog is tracked debt, not a mass audit.** Close a tag's
+evidence gap when its module is next touched. Deliberately not a sweep: the two
+that were proven vacuous were fixed immediately because they were proven, and
+the rest are unproven rather than known-broken. Do not let that distinction blur
+in either direction — an unverified tag is not evidence, and it is also not a
+known defect.
 
 **And be honest about the limit.** No scan can decide which prose asserts a
 guarantee, so any mechanism here is necessarily partial. The current scoping
