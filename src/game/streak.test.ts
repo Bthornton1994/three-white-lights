@@ -4146,6 +4146,179 @@ describe('the outcome does not depend on when the player opens the app', () => {
     ).toBe(4);
   });
 
+  it('THE RENDERED OFFER IS VALIDATED LIKE ANY OTHER FIELD ON THE ORDER, not treated as a calendar refusal', () => {
+    // A SETTLED ORDER ARRIVES AS JSON AND JSON HAS NO TYPES, which is the same
+    // reason `tender` is re-checked at runtime after being typed. A malformed
+    // `renderedOffer` is a BUG IN THE CALLER and must report as one: answering
+    // "your streak already ended" to a missing field would hide a defect behind
+    // a design rule, and the player would be told something about their account
+    // that is not about their account.
+    type Wire = Parameters<typeof applySettledCoveredDayPurchase>[2];
+    const state = stateWithRun(5, DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+    const day = addDays(DAY_ZERO, 2);
+    const wire = (renderedOffer: unknown): Wire =>
+      ({ orderId: 'o', coveredDays: 1, tender: 'chalk-purchased', renderedOffer } as unknown as Wire);
+
+    // The control: this order, well formed, is SOLD. Without it every refusal
+    // below could be a refusal for some other reason entirely.
+    expect(
+      applySettledCoveredDayPurchase(state, day, wire({ day, offered: true })).ok,
+      'the well-formed control must sell, or the refusals below prove nothing',
+    ).toBe(true);
+
+    for (const [what, renderedOffer] of [
+      ['missing', undefined],
+      ['null', null],
+      ['not an object', 'yes'],
+      ['no offered flag', { day }],
+      ['offered is not a boolean', { day, offered: 'true' }],
+      ['no day', { offered: true }],
+      ['day is not a whole number', { day: 1.5, offered: true }],
+    ] as const) {
+      const result = applySettledCoveredDayPurchase(state, day, wire(renderedOffer));
+      expect(errorCodeOf(result), `a ${what} rendered offer`).toBe('INVALID_PURCHASE');
+    }
+
+    // A SCREEN DRAWN AFTER THE ORDER SETTLED IS REFUSED RATHER THAN CLAMPED. A
+    // clamp would silently answer for a day the player never saw, which is the
+    // guessing this field exists to stop.
+    expect(
+      errorCodeOf(
+        applySettledCoveredDayPurchase(state, day, wire({ day: addDays(day, 1), offered: true })),
+      ),
+      'a screen drawn after the order it belongs to',
+    ).toBe('INVALID_PURCHASE');
+    // ...and one drawn before the account existed, same call, same reason.
+    expect(
+      errorCodeOf(
+        applySettledCoveredDayPurchase(state, day, wire({ day: addDays(SIGNUP_DAY, -1), offered: true })),
+      ),
+      'a screen drawn before the account existed',
+    ).toBe('INVALID_PURCHASE');
+    // The boundary itself is legal: drawn on the day it settled.
+    expect(applySettledCoveredDayPurchase(state, day, wire({ day, offered: true })).ok).toBe(true);
+
+    // STRUCTURE IS CHECKED BEFORE THE CALENDAR, and this is the assertion that
+    // says so rather than the ordering of two `if`s saying it. On a day where
+    // the absence is doomed — a real `ABSENCE_ALREADY_DOOMED` — a malformed
+    // rendered offer still reports as malformed.
+    const doomed = addDays(DAY_ZERO, LONGEST_REPAIRABLE_ABSENCE_DAYS + 3);
+    expect(absenceOutcome(state, doomed).protectionHolds, 'the day really is doomed').toBe(false);
+    expect(
+      errorCodeOf(applySettledCoveredDayPurchase(state, doomed, wire({ day: doomed, offered: false }))),
+      'well formed on a doomed day: the calendar refusal',
+    ).toBe('ABSENCE_ALREADY_DOOMED');
+    expect(
+      errorCodeOf(applySettledCoveredDayPurchase(state, doomed, wire(undefined))),
+      'malformed on a doomed day: still the malformed-order refusal',
+    ).toBe('INVALID_PURCHASE');
+  });
+
+  it('TWO RULINGS THIS MODULE MAKES AND DOES NOT ENFORCE: retrying an order, and a player holding two devices', () => {
+    // BOTH OF THESE WERE RAISED AS OPEN QUESTIONS AND BOTH ARE ANSWERED HERE
+    // RATHER THAN IN A REPORT, because a ruling that lives only in prose is the
+    // thing this file exists to stop. Neither is a defect being papered over:
+    // each is a real limit of a pure module that is handed one state and one
+    // order, and each is pinned so that a future change to it is a red test.
+    const lastTrained = addDays(DAY_ZERO, 25);
+    const drained: StreakState = {
+      ...stateWithRun(3, lastTrained, 0),
+      entitlement: withCoveredDays(0, windowOf(lastTrained)),
+      armedEntitlement: withCoveredDays(0, windowOf(lastTrained)),
+    };
+    const revivalDay = addDays(DAY_ZERO, RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+    const order = {
+      orderId: 'one-payment',
+      coveredDays: 1,
+      tender: 'chalk-purchased',
+      renderedOffer: offerAsRenderedOn(drained, revivalDay),
+    } as const;
+    expect(order.renderedOffer.offered, 'the screen really did offer the sale').toBe(true);
+
+    // ---- RULING 1: NO IDEMPOTENCY KEY, AND THE CALLER OWNS DE-DUPLICATION ---
+    //
+    // A REFUSAL COSTS NOTHING, which is what makes retrying a refused order safe
+    // and is the half the module CAN guarantee: every failure path returns an
+    // error and no state, so there is nothing to apply twice.
+    const first = applySettledCoveredDayPurchase(drained, revivalDay, order);
+    expect(errorCodeOf(first)).toBe('ABSENCE_ENDED_BEFORE_OFFER');
+    const retried = applySettledCoveredDayPurchase(drained, revivalDay, order);
+    expect(retried, 'the same order against the same state is the same answer').toEqual(first);
+
+    // AND THE HALF IT CANNOT: an ACCEPTED order applied twice credits twice.
+    // Measured rather than promised, because the docstring tells a caller not to
+    // do it and an untested "do not do this" is indistinguishable from a
+    // guarantee that it is handled.
+    const live = stateWithRun(5, DAY_ZERO, 0);
+    const buyDay = addDays(DAY_ZERO, 1);
+    const once = unwrap(
+      applySettledCoveredDayPurchase(live, buyDay, {
+        ...order,
+        renderedOffer: offerAsRenderedOn(live, buyDay),
+      }),
+    ).state;
+    const twice = unwrap(
+      applySettledCoveredDayPurchase(once, buyDay, {
+        ...order,
+        renderedOffer: offerAsRenderedOn(once, buyDay),
+      }),
+    ).state;
+    expect(once.entitlement.purchasedDaysLeft, 'one application of one order').toBe(1);
+    expect(
+      twice.entitlement.purchasedDaysLeft,
+      'the module does not de-duplicate: the caller that settled the order must',
+    ).toBe(2);
+
+    // WHY IT IS NOT FIXED HERE, as a checkable fact and not an argument: there is
+    // nowhere to put an order ledger. `StreakState` is exactly `STREAK_FACT_KEYS`
+    // and every §12.3 sweep compares whole states, so a growing list of order ids
+    // would make "the two lifters ended identically" depend on what they bought.
+    expect(
+      STREAK_FACT_KEYS.some((key) => key.toLowerCase().includes('order')),
+      'the state holds no order ledger, and that is the ruling',
+    ).toBe(false);
+
+    // ---- RULING 2: TWO DEVICES ARE OUT OF THIS MODULE'S REACH, HONESTLY -----
+    //
+    // The tablet has refreshed and holds settled state; the phone is behind and
+    // still shows the offer. One player, two screens, one run.
+    const tablet = unwrap(
+      settleBrokenStreak(drained, addDays(DAY_ZERO, RECOVERY_ENTITLEMENT.WINDOW_DAYS - 1)),
+    ).state;
+    const phone = drained;
+
+    const fromTheTablet = applySettledCoveredDayPurchase(tablet, revivalDay, {
+      ...order,
+      renderedOffer: offerAsRenderedOn(tablet, revivalDay),
+    });
+    const fromThePhone = applySettledCoveredDayPurchase(phone, revivalDay, order);
+
+    // THE PLAYER IS GIVEN TWO SENTENCES, AND THE OLD CLAIM THAT THIS CANNOT
+    // HAPPEN IS THE ONE THAT WAS DELETED. What is asserted instead is that each
+    // sentence is true of the screen it answers.
+    expect(errorCodeOf(fromTheTablet)).toBe('ABSENCE_ALREADY_DOOMED');
+    expect(errorCodeOf(fromThePhone)).toBe('ABSENCE_ENDED_BEFORE_OFFER');
+    expect(errorMessageOf(fromTheTablet)).not.toBe(errorMessageOf(fromThePhone));
+
+    // The tablet's screen said no — so "we both already know" is true of it.
+    expect(
+      offerAsRenderedOn(tablet, revivalDay).offered,
+      'the tablet drew no offer, so its sentence is the one for a screen that said no',
+    ).toBe(false);
+    // The phone's screen said yes, and the run had ended before it was drawn —
+    // so "this screen was drawn over a run that had already ended" is true of it.
+    expect(
+      settledStateAsOf(phone, revivalDay).runRecordedAsEndedOn,
+      'the run ended before the day the phone drew its screen',
+    ).toBeLessThan(revivalDay);
+
+    // AND THE DECISION IS THE SAME ON BOTH DEVICES, which is the §12.3 property
+    // and the one that is NOT out of reach. Two screens may produce two
+    // sentences; they may never produce two outcomes.
+    expect(fromTheTablet.ok, 'both devices are refused').toBe(false);
+    expect(fromThePhone.ok, 'both devices are refused').toBe(false);
+  });
+
   it('[purchase-cannot-rescue-a-doomed-run] THE 11-VERSUS-1 SCENARIO: a purchase during an absence cannot rescue it, in any intra-day order', () => {
     // THE DEFECT THIS PIECE WAS REWORKED FOR, reproduced as its own test rather
     // than left to a sweep — because it was a sweep's blind spot that hid it.

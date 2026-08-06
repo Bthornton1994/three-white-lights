@@ -194,7 +194,7 @@ const GUARANTEE_COVERAGE = {
    * artefact: these comments assert behaviour about the scanner and are exactly
    * as capable of being wrong as any other.
    */
-  TREE_WIDE: 193,
+  TREE_WIDE: 194,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -306,12 +306,51 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
  */
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   {
+    // RETAKEN. The previous witness anchored on
+    // `revalidated.runRecordedAsEndedOn === null ? rendered : ...`, which is
+    // gone: `rendered` was a re-derivation of the client's verdict and the
+    // client now reports it. The witness expired exactly as designed, and this
+    // is the same mutation against the line that replaced it.
     guarantee: 'completion-revalidates-against-settled-state',
     mutatedFile: 'src/game/streak.ts',
-    mutated: 'revalidated.runRecordedAsEndedOn === null ? rendered : absenceOutcome(revalidated.state, day)',
+    mutated: 'const authoritative = absenceOutcome(revalidated.state, day);',
     testFile: 'src/game/streak.test.ts',
     redAssertion: "expect(never.refusedPurchases, 'the client that never opens').toBe(4)",
     observed: 'AssertionError: the client that never opens: expected 3 to be 4',
+  },
+  {
+    guarantee: 'the-decision-ignores-the-rendered-offer',
+    mutatedFile: 'src/game/streak.ts',
+    mutated: '  if (!authoritative.protectionHolds) {',
+    testFile: 'src/game/streak.test.ts',
+    redAssertion: 'the rendered offer moved the decision',
+    observed: 'Error: offset 0 armed mask 0 day +0: the rendered offer moved the decision',
+  },
+  {
+    // The mutant swapped the two ordering branches, so a client whose screen was
+    // right was told its screen was wrong and vice versa. It reddened on the
+    // de-mirrored oracle at a probe with a render-day LAG OF 2 — a probe the
+    // sweep could not produce before this round, which is the axis earning its
+    // keep rather than being asserted to.
+    guarantee: 'every-refusal-sentence-is-true-of-its-screen',
+    mutatedFile: 'src/game/streak.ts',
+    mutated: "      ? fail('ABSENCE_ENDED_BEFORE_OFFER', DOOMED_SALE_REFUSAL_MESSAGE.endedBeforeOffer)",
+    testFile: 'src/game/streak.test.ts',
+    redAssertion: 'refused as ${code}, expected ${expectedCode} (lag ${lag})',
+    observed:
+      'Error: offset 0 armed mask 5 day +0: refused as ABSENCE_ENDED_BEFORE_OFFER, expected ABSENCE_ENDED_AFTER_OFFER (lag 2)',
+  },
+  {
+    // The mutant read the COMPLETION day where the code reads the day the client
+    // says its screen was drawn for — which is the whole content of the claim,
+    // and is the exact defect the 03:00 rollover produced in the shipped code.
+    guarantee: 'the-copy-reads-the-clients-screen',
+    mutatedFile: 'src/game/streak.ts',
+    mutated: 'endedOn === null || endedOn <= renderedOffer.day',
+    testFile: 'src/game/streak.test.ts',
+    redAssertion: "expect(errorCodeOf(lateSale)).toBe('ABSENCE_ENDED_AFTER_OFFER')",
+    observed:
+      "AssertionError: expected 'ABSENCE_ENDED_BEFORE_OFFER' to be 'ABSENCE_ENDED_AFTER_OFFER'",
   },
   {
     guarantee: 'settling-is-terminal',
