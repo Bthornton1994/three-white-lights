@@ -2419,6 +2419,34 @@ export const DOOMED_SALE_REFUSAL_MESSAGE = {
 } as const;
 
 /**
+ * WHETHER A COVERED-DAY SALE IS AUTHORISED ON `day`, asked of settled state.
+ *
+ * ONE PREDICATE, ASKED AT TWO HORIZONS, and that is the whole reason it is a
+ * function rather than two inline expressions. `applySettledCoveredDayPurchase`
+ * asks it at the COMPLETION day to decide whether the order lands, and at the
+ * client's RENDER day to decide which of two true sentences to say about it. A
+ * refusal whose two halves came from two differently-shaped expressions is how
+ * the routing got inverted in the first place.
+ *
+ * IT RE-DERIVES NOTHING. `settledStateAsOf` offers each day to the real
+ * `settleBrokenStreak` and keeps what that returns; `absenceOutcome(...)
+ * .protectionHolds` is the identical call `recordTrainingDay` branches on to
+ * decide whether a run survived. There is no arithmetic here about grace,
+ * windows or ceilings, so this cannot disagree with the coverage rule — it does
+ * not hold an opinion about it.
+ *
+ * IT NEEDS NO BREAK TO HAVE BEEN RECORDED, which is the property the expression
+ * it replaced lacked. A lifter who has never trained has no run for
+ * `settleBrokenStreak` to record at any horizon, and their signup absence still
+ * runs out of coverage on a definite day; a predicate keyed to
+ * `runRecordedAsEndedOn` reads null for them forever and answers the wrong
+ * question. This one reads the absence, which they have.
+ */
+function saleAuthorisedOn(state: StreakState, day: StreakDay): boolean {
+  return absenceOutcome(settledStateAsOf(state, day).state, day).protectionHolds;
+}
+
+/**
  * Applies a settled Extra Covered Day purchase (GDD §8.3E) to `state`, widening
  * the entitlement of the window `day` falls in.
  *
@@ -2647,9 +2675,8 @@ export function applySettledCoveredDayPurchase(
   // nightly job would have left. `settledStateAsOf` returns the input state
   // unchanged when it recorded nothing, so this is one call and not a branch.
   // `@guarantee completion-revalidates-against-settled-state`
-  const revalidated = settledStateAsOf(state, day);
-  const authoritative = absenceOutcome(revalidated.state, day);
-  if (!authoritative.protectionHolds) {
+  const authoritative = saleAuthorisedOn(state, day);
+  if (!authoritative) {
     // THREE THINGS, AND THEY USED TO BE ONE. The decision above is settled
     // state's. The SENTENCE below is decided by two further facts that are not
     // that decision and not each other:
@@ -2659,20 +2686,23 @@ export function applySettledCoveredDayPurchase(
     //       `absenceOutcome(state, day).protectionHolds`, which is a different
     //       question asked of a different day about a state the client may never
     //       have seen.
-    //   (b) whether the run had already ended BY THE DAY THAT SCREEN WAS DRAWN.
-    //       Read straight off the walk: `settledStateAsOf` settles the FIRST day
-    //       it can and reports it, so `runRecordedAsEndedOn <= renderedOffer.day`
-    //       is exactly "walking only as far as the render day would have found
-    //       it too". `streak.test.ts` asserts that equivalence against a second,
-    //       independent walk rather than leaving it as this paragraph.
+    //   (b) whether the sale WOULD HAVE BEEN AUTHORISED ON THE DAY THAT SCREEN
+    //       WAS DRAWN. That is the identical question (a) is not — the same
+    //       `saleAuthorisedOn` the decision above is, asked at the render day
+    //       instead of the completion day. Two horizons, one predicate.
     //
-    // NULL MEANS EARLIER, NOT LATER. `runRecordedAsEndedOn` is null when the
-    // walk recorded nothing — and inside this branch, where settled state
-    // refuses, that means the run was already over before the walk began. There
-    // was no live run at any point this screen could have been drawn, so the
-    // screen was wrong when it was drawn.
-    const endedOn = revalidated.runRecordedAsEndedOn;
-    const runHadEndedByTheTimeTheScreenWasDrawn = endedOn === null || endedOn <= renderedOffer.day;
+    // AN EARLIER VERSION OF THIS COMPARED THE WALK'S RECORDED DAY AGAINST THE
+    // RENDER DAY, and it was wrong for every account with NO RUN TO RECORD.
+    // `settleBrokenStreak` refuses a state whose `lastTrainedDay` is null, so a
+    // lifter who has never trained never gets a break recorded — while their
+    // signup absence still runs out of coverage on a definite day. Their
+    // `runRecordedAsEndedOn` is null at every horizon, so "null means it ended
+    // earlier" told a lifter whose coverage ran out the day AFTER their screen
+    // was drawn that the screen had been wrong. Measured, on the shipped engine,
+    // at 6 of the day-pairs a fresh account can produce in its first 40 days.
+    // Asking the authorisation question at both horizons has no such blind spot,
+    // because it never needs a break to have been recorded.
+    const authorisedWhenTheScreenWasDrawn = saleAuthorisedOn(state, renderedOffer.day);
     if (!renderedOffer.offered) {
       // THE CLIENT AND SETTLED STATE AGREE. This is the only branch where "the
       // offer should never have been on screen" is true, and the only one keyed
@@ -2685,9 +2715,9 @@ export function applySettledCoveredDayPurchase(
           : DOOMED_SALE_REFUSAL_MESSAGE.protectionDeclined,
       );
     }
-    return runHadEndedByTheTimeTheScreenWasDrawn
-      ? fail('ABSENCE_ENDED_BEFORE_OFFER', DOOMED_SALE_REFUSAL_MESSAGE.endedBeforeOffer)
-      : fail('ABSENCE_ENDED_AFTER_OFFER', DOOMED_SALE_REFUSAL_MESSAGE.endedAfterOffer);
+    return authorisedWhenTheScreenWasDrawn
+      ? fail('ABSENCE_ENDED_AFTER_OFFER', DOOMED_SALE_REFUSAL_MESSAGE.endedAfterOffer)
+      : fail('ABSENCE_ENDED_BEFORE_OFFER', DOOMED_SALE_REFUSAL_MESSAGE.endedBeforeOffer);
   }
   // THE SALE PATH NEVER CARRIES A SETTLE, so crediting against `state` below is
   // crediting against the state re-validation approved. A settle that succeeded

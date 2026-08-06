@@ -194,7 +194,7 @@ const GUARANTEE_COVERAGE = {
    * artefact: these comments assert behaviour about the scanner and are exactly
    * as capable of being wrong as any other.
    */
-  TREE_WIDE: 194,
+  TREE_WIDE: 196,
 } as const;
 
 // ---------------------------------------------------------------------------

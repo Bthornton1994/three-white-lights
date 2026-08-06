@@ -3761,22 +3761,36 @@ describe('the outcome does not depend on when the player opens the app', () => {
             //
             //   - `renderedOffer.offered`, an INPUT the test built off the
             //     render day. The subject never re-derives it.
-            //   - TWO WALKS AT TWO HORIZONS. `ABSENCE_ENDED_AFTER_OFFER` needs
-            //     positive evidence that the run was still alive when the screen
-            //     was drawn, and the independent way to get it is to walk to the
-            //     completion day (finds a break) and walk again only as far as
-            //     the render day (finds none). The subject instead walks ONCE
-            //     and compares the day it recorded against `renderedOffer.day`.
-            //     Different computation, same answer required: an off-by-one in
-            //     that comparison, a swap to `<`, or a fall back to
-            //     `absenceOutcome` all redden here.
-            const endedByCompletion = revalidated.runRecordedAsEndedOn !== null;
-            const endedByTheRenderDay = settledStateAsOf(state, renderDay).runRecordedAsEndedOn !== null;
-            const runWasAliveWhenDrawn = endedByCompletion && !endedByTheRenderDay;
-            if (!endedByCompletion) refusalsWithNoRecordedEnd += 1;
+            //   - A NIGHTLY-SETTLED TWIN BUILT BY THIS TEST, advanced to the
+            //     RENDER day with a hand loop over the real `settleBrokenStreak`
+            //     — the same construction the `nightly` twin above uses, and for
+            //     the same stated reason: an oracle that called
+            //     `settledStateAsOf` would agree with the subject by
+            //     construction and measure nothing.
+            //
+            // AND THE FIRST VERSION OF THIS ORACLE WAS NOT INDEPENDENT ENOUGH,
+            // which is worth recording because it was green. It asked whether
+            // the walk had RECORDED a break by the render day — the same shape
+            // the subject then used — so both shared one blind spot:
+            // `settleBrokenStreak` refuses a state with no `lastTrainedDay`, so
+            // a lifter who never trained never gets a break recorded, while
+            // their signup absence still runs out of coverage on a definite day.
+            // Oracle and subject agreed, and both were wrong. Reading the
+            // ABSENCE rather than the recording has no such hole.
+            const renderAnchor = absenceAnchorDay(state);
+            let settledAtRender = state;
+            for (let probe = 1; addDays(renderAnchor, probe) <= renderDay; probe += 1) {
+              const settledThen = settleBrokenStreak(settledAtRender, addDays(renderAnchor, probe));
+              if (settledThen.ok) {
+                settledAtRender = settledThen.value.state;
+                break;
+              }
+            }
+            const authorisedWhenDrawn = absenceOutcome(settledAtRender, renderDay).protectionHolds;
+            if (revalidated.runRecordedAsEndedOn === null) refusalsWithNoRecordedEnd += 1;
             const expectedCode = !renderedOffer.offered
               ? 'ABSENCE_ALREADY_DOOMED'
-              : runWasAliveWhenDrawn
+              : authorisedWhenDrawn
                 ? 'ABSENCE_ENDED_AFTER_OFFER'
                 : 'ABSENCE_ENDED_BEFORE_OFFER';
             if (code !== expectedCode) {
@@ -3798,24 +3812,16 @@ describe('the outcome does not depend on when the player opens the app', () => {
             if (errorMessageOf(result) !== expectedSentence) {
               throw new Error(`${label}: refused as ${code} with the wrong sentence`);
             }
-            // NOBODY IS TOLD THE OFFER WAS GOOD WHEN IT WAS ALREADY DEAD.
-            //
-            // THIS ONE READS A DIFFERENT FUNCTION, WHICH IS THE ONLY REASON IT
-            // IS HERE. A check phrased on `runWasAliveWhenDrawn` would be a
-            // restatement of the line above and could never fire first — and a
-            // pile of assertions that cannot fire is what this file keeps being
-            // burnt by, so the tautological version was written, noticed and
-            // deleted rather than left in looking like defence in depth.
-            // `absenceOutcome` at the render day is the read model a store
-            // screen is actually gated on: it comes from the coverage rule
-            // rather than from the settle walk, so a `settleBrokenStreak` guard
-            // that stopped recording breaks would move the walk and not this.
-            if (
-              code === 'ABSENCE_ENDED_AFTER_OFFER' &&
-              !absenceOutcome(state, renderDay).protectionHolds
-            ) {
-              throw new Error(`${label}: said the offer was good when the screen could not have shown it`);
-            }
+            // THERE IS DELIBERATELY NO SECOND "HONESTY" CHECK HERE. Two were
+            // written — "never says the offer was good when it was already
+            // dead", "never tells a client its own offer should not have been
+            // shown" — and both were deleted once it was clear they restate the
+            // expectation above and can never fire first. A pile of assertions
+            // that cannot fail is the defect this file is full of warnings
+            // about, wearing the costume of defence in depth. The oracle IS the
+            // honesty check: it is built from the client's reported screen and
+            // from a twin this test settles by hand, so agreeing with it is the
+            // property, not a proxy for it.
             // A refusal only ever happens where there is no run left to protect —
             // read off the SETTLED state, which is the one the refusal is about.
             const settledOpening = openDay(nightly, day).kind;
@@ -4173,7 +4179,12 @@ describe('the outcome does not depend on when the player opens the app', () => {
       ['no offered flag', { day }],
       ['offered is not a boolean', { day, offered: 'true' }],
       ['no day', { offered: true }],
-      ['day is not a whole number', { day: 1.5, offered: true }],
+      // IN RANGE AND FRACTIONAL, DELIBERATELY. The first draft of this row used
+      // `1.5`, which is also before the signup day — so it was refused by the
+      // account-existed check and stayed green when the whole-number check was
+      // weakened away. A fixture that passes for the wrong reason is the hazard
+      // this file is full of warnings about, and it was found by mutating.
+      ['day is not a whole number', { day: day - 0.5, offered: true }],
     ] as const) {
       const result = applySettledCoveredDayPurchase(state, day, wire(renderedOffer));
       expect(errorCodeOf(result), `a ${what} rendered offer`).toBe('INVALID_PURCHASE');
@@ -4212,6 +4223,71 @@ describe('the outcome does not depend on when the player opens the app', () => {
       errorCodeOf(applySettledCoveredDayPurchase(state, doomed, wire(undefined))),
       'malformed on a doomed day: still the malformed-order refusal',
     ).toBe('INVALID_PURCHASE');
+  });
+
+  it('A LIFTER WITH NO RUN TO RECORD STILL GETS THE RIGHT SENTENCE — the hole the first fix had', () => {
+    // FOUND BY MEASURING THE FIX, NOT BY REVIEWING IT, and kept because the
+    // first version of this rework shipped it and the sweep was green on it.
+    //
+    // THE HOLE. The routing asked whether the settle walk had RECORDED a break
+    // by the render day. `settleBrokenStreak` refuses a state whose
+    // `lastTrainedDay` is null, so a lifter who has NEVER TRAINED never gets a
+    // break recorded at any horizon — while their signup absence still runs out
+    // of coverage on a definite day (§1b: the signup day is an anchor like any
+    // other). `runRecordedAsEndedOn` is null for them forever, "null means it
+    // ended earlier" fired, and a player whose coverage ran out the day AFTER
+    // their screen was drawn was told the screen had been wrong.
+    //
+    // WHY THE SWEEP DID NOT CATCH IT. The oracle asked the same question in the
+    // same shape, so it shared the blind spot exactly. Two computations that are
+    // independent in FORM can still be dependent in the FACT they read, and that
+    // is the mirror hazard one level subtler than the one this round started on.
+    //
+    // WHAT FIXED IT: asking whether the SALE WOULD HAVE BEEN AUTHORISED, at the
+    // render day and at the completion day — one predicate, two horizons. It
+    // reads the absence, which this lifter has, rather than a recording, which
+    // they never will.
+    const fresh = createStreakState(SIGNUP_DAY);
+    expect(fresh.lastTrainedDay, 'the premise: no session, so nothing to record').toBe(null);
+
+    let drawnOn: StreakDay | null = null;
+    for (let d = 1; d <= RECOVERY_ENTITLEMENT.WINDOW_DAYS && drawnOn === null; d += 1) {
+      const here = addDays(SIGNUP_DAY, d);
+      if (
+        absenceOutcome(fresh, here).protectionHolds &&
+        !absenceOutcome(fresh, addDays(here, 1)).protectionHolds
+      ) {
+        drawnOn = here;
+      }
+    }
+    if (drawnOn === null) throw new Error('no day where this account stops being covered');
+    const landedOn = addDays(drawnOn, 1);
+
+    // Nothing is ever recorded for this account, at either horizon. That is the
+    // premise the old routing tripped over, asserted rather than described.
+    expect(settledStateAsOf(fresh, drawnOn).runRecordedAsEndedOn).toBe(null);
+    expect(settledStateAsOf(fresh, landedOn).runRecordedAsEndedOn).toBe(null);
+
+    const result = applySettledCoveredDayPurchase(fresh, landedOn, {
+      orderId: 'never-trained',
+      coveredDays: 1,
+      tender: 'chalk-purchased',
+      renderedOffer: offerAsRenderedOn(fresh, drawnOn),
+    });
+    expect(offerAsRenderedOn(fresh, drawnOn).offered, 'the screen really did offer it').toBe(true);
+    // THE SENTENCE THAT WOULD BE A LIE IS THE ONE THIS USED TO GIVE.
+    expect(errorCodeOf(result)).toBe('ABSENCE_ENDED_AFTER_OFFER');
+    expect(errorMessageOf(result)).toBe(DOOMED_SALE_REFUSAL_MESSAGE.endedAfterOffer);
+
+    // And the same account, drawn on the day it landed, is the other sentence —
+    // so this is a routing that moves, not one that answers AFTER to everything.
+    const sameDay = applySettledCoveredDayPurchase(fresh, landedOn, {
+      orderId: 'never-trained',
+      coveredDays: 1,
+      tender: 'chalk-purchased',
+      renderedOffer: { day: landedOn, offered: true },
+    });
+    expect(errorCodeOf(sameDay)).toBe('ABSENCE_ENDED_BEFORE_OFFER');
   });
 
   it('TWO RULINGS THIS MODULE MAKES AND DOES NOT ENFORCE: retrying an order, and a player holding two devices', () => {
@@ -4317,6 +4393,31 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // sentences; they may never produce two outcomes.
     expect(fromTheTablet.ok, 'both devices are refused').toBe(false);
     expect(fromThePhone.ok, 'both devices are refused').toBe(false);
+
+    // THE PHONE'S SENTENCE FOLLOWS THE PHONE'S SCREEN AND NOT THE PHONE'S STATE,
+    // and this pair is what says so. Same state, same day, same order — only the
+    // client's report of what it drew changes, and the sentence changes with it.
+    //
+    // IT WAS ADDED BECAUSE MUTATING FOUND THE TEST WITHOUT IT TOO WEAK. Replacing
+    // the read of `renderedOffer.offered` with a re-derivation off the completion
+    // day left every other assertion in this test green, because in this fixture
+    // the honest phone's screen and the re-derivation agree. They disagree here.
+    const phoneThatRedrewAndSaidNo = applySettledCoveredDayPurchase(phone, revivalDay, {
+      ...order,
+      renderedOffer: { day: revivalDay, offered: false },
+    });
+    expect(
+      absenceOutcome(phone, revivalDay).protectionHolds,
+      'a re-derivation off this state and day would say the offer was live',
+    ).toBe(true);
+    expect(
+      errorCodeOf(phoneThatRedrewAndSaidNo),
+      'the sentence must follow the reported screen, not a re-derivation',
+    ).toBe('ABSENCE_ALREADY_DOOMED');
+    expect(
+      phoneThatRedrewAndSaidNo.ok,
+      'and changing the reported screen must not change the decision',
+    ).toBe(fromThePhone.ok);
   });
 
   it('[purchase-cannot-rescue-a-doomed-run] THE 11-VERSUS-1 SCENARIO: a purchase during an absence cannot rescue it, in any intra-day order', () => {
