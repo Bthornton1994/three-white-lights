@@ -1609,6 +1609,25 @@ describe('the Recovery Day protection toggle', () => {
     expect(coveredDaysLeftInWindow(unwrap(recordTrainingDay(off.state, day)).state)).toBe(
       RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
     );
+
+    // ...AND IT IS CHECKED ON A PARTLY-SPENT WINDOW, which is the only place
+    // "never cleared" is observable. The fixture above starts at a FULL window,
+    // so a mutant that refreshed the entitlement on the way out of the toggle
+    // left every line above green — the refill and the real value were the same
+    // number. Found by mutation, not by reading.
+    const partlySpent = stateWithRun(9, DAY_ZERO, 1);
+    expect(coveredDaysLeftInWindow(partlySpent), 'the premise: not a full window').toBeLessThan(
+      RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
+    );
+    const offAgain = setRecoveryDayProtection(partlySpent, false).state;
+    expect(coveredDaysLeftInWindow(offAgain), 'turning protection off refilled the window').toBe(1);
+    // And back on, then a session: still one, not a fresh window.
+    const backOn = setRecoveryDayProtection(offAgain, true).state;
+    expect(coveredDaysLeftInWindow(backOn), 'turning protection on refilled the window').toBe(1);
+    expect(
+      coveredDaysLeftInWindow(unwrap(recordTrainingDay(backOn, addDays(DAY_ZERO, 1))).state),
+      'off-then-on-then-train was a free refill',
+    ).toBe(1);
   });
 
   it('turning it ON applies from the next session, and says so', () => {
