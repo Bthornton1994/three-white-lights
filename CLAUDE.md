@@ -183,6 +183,20 @@ physiology.
     unable** to reach that purchase, not merely observed not to at the horizons
     someone happened to sweep.
 
+    **"Structurally unable" has two readings and the rule means both.** One is
+    *the purchase cannot be constructed* — a training-gated tender is a type
+    error, which is where `currencyProvenance.ts` puts it. The other is *the
+    purchase day cannot move with training*, and no type gives you that: a
+    perfectly legal tender could acquire a training sensitivity without a single
+    type changing. The distinction is not theoretical. A builder wrote a check
+    it believed covered the second, and mutation-testing its own check found a
+    legal tender given one extra unit on the lifter's 60th session **moved 2362
+    of 34338 purchase-day lists at 100 days, produced zero violations, and left
+    every aggregate in the comparison identical** — sweep green, verdict green,
+    claim false. The second reading needs an assertion on the purchase-day list
+    itself: for every legal tender, at every length, adding a trained day leaves
+    the list byte-identical.
+
     Measured on the shipped engine, matched purse and price, with only the
     diligent lifter's buying schedule recomputed from their own training: a
     covered day funded by achievement-earned Chalk gives **105 / 305 / 733 /
