@@ -115,12 +115,24 @@ const declarationOf = (id: string): string => `[${id}]`;
  *     That is luck, and it is written down as luck.
  *   - ANY TRIGGERING PARAGRAPH OUTSIDE `GUARANTEE_PROSE_FILES`, which is most of
  *     them. See `GUARANTEE_COVERAGE` for the measured fraction.
- *   - A TAG POINTING AT A TEST THAT DOES NOT ACTUALLY BITE. This is the big one
- *     and it is not hypothetical: bringing the 19 paragraphs below under the
- *     convention turned up one — `mid-absence-arrival-cannot-arm` named a test
- *     that only ever exercised the CALENDAR, so pointing a purchase straight at
- *     `armedEntitlement` left it green. The tag resolved perfectly. Only
- *     mutation found it, and the test had to be strengthened by hand.
+ *   - A TAG POINTING AT A TEST THAT DOES NOT ACTUALLY BITE. This is the big one,
+ *     it is not hypothetical, and it is measured. Eight of the nineteen tags
+ *     below were mutation-tested when they were written; TWO OF THE EIGHT named
+ *     a test that did not fail when the guarantee was broken:
+ *
+ *       `mid-absence-arrival-cannot-arm` named a test that only ever exercised
+ *       the CALENDAR, so pointing a purchase straight at `armedEntitlement` left
+ *       it green; and `protection-toggle-is-not-a-refill` named one whose fixture
+ *       starts at a FULL window, so clearing the entitlement on the way out of
+ *       the toggle was invisible — the refill and the real value were the same
+ *       number.
+ *
+ *     Both tags RESOLVED PERFECTLY. Nothing in this file could have known. Both
+ *     tests were strengthened by hand and both now fail on the mutant. A quarter
+ *     is the honest error rate on a careful first pass, and the eleven tags that
+ *     were not mutation-tested carry no evidence at all — they are a promise
+ *     that somebody went and looked, which is worth something and is not worth
+ *     what a green suite looks like it is worth.
  *
  * WHAT IT DOES NOT DO: police tone. A capitalised run that is not a claim about
  * behaviour still has to carry a tag inside the scoped files, and the honest
