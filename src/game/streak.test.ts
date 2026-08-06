@@ -3507,7 +3507,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
     ).toBe(0);
   });
 
-  it('[settling-is-terminal][a-sale-never-follows-a-settle] THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days, at six placements against the window boundary', () => {
+  it('[settling-is-terminal][a-sale-never-follows-a-settle][the-decision-ignores-the-rendered-offer][every-refusal-sentence-is-true-of-its-screen] THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days, at six placements against the window boundary and three render-day lags', () => {
     // THE HUMAN'S RULING, MEASURED. Two halves, and the second is the one that
     // hides a bug: the store must refuse an already-doomed absence, AND it must
     // not refuse any absence that is still salvageable. A store that answers
@@ -3932,7 +3932,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('[completion-revalidates-against-settled-state] THE STORE VERDICT AT A WINDOW BOUNDARY: rendered stale, finalised against settled state', () => {
+  it('[completion-revalidates-against-settled-state][the-copy-reads-the-clients-screen] THE STORE VERDICT AT A WINDOW BOUNDARY, AND THE TWO WAYS THE COPY USED TO LIE ABOUT IT', () => {
     // THE DIVERGENCE THIS PIECE WAS REWORKED FOR, on the calendar the sweep
     // found it on, kept as a reproduction rather than only as a count — because a
     // defect with no reproduction gets re-derived from scratch by the next
@@ -4086,8 +4086,14 @@ describe('the outcome does not depend on when the player opens the app', () => {
     );
 
     // A run whose coverage runs out exactly one day after the screen was drawn.
+    // The screen day is READ OFF THE READ MODEL rather than counted by hand, so
+    // retuning the grace or the per-absence ceiling moves this fixture with them
+    // instead of stranding it on a day that is no longer the last one.
     const rollover = unwrap(recordTrainingDay(freshState(), DAY_ZERO)).state;
-    const drawnOn = addDays(DAY_ZERO, coverableGapDays(rollover, DAY_ZERO));
+    const drawnOn = lastDayStreakCanBeSaved(rollover, DAY_ZERO);
+    // Null would mean this lifter has no savable run at all, which would make
+    // every assertion below vacuous rather than merely wrong.
+    if (drawnOn === null) throw new Error('the rollover fixture has no savable run');
     const landedOn = addDays(drawnOn, 1);
     expect(absenceOutcome(rollover, drawnOn).protectionHolds, 'the offer was good when drawn').toBe(
       true,

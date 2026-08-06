@@ -578,10 +578,13 @@ export const DOOMED_SALE_SWEEP = Object.freeze({
  * from finalising: a stale offer on screen is acceptable, a completed sale that
  * settled state would have refused is not. So
  * `applySettledCoveredDayPurchase` re-validates through `settledStateAsOf`
- * before finalising and refuses with `ABSENCE_SETTLED_WHILE_AWAY`. No coverage
- * arithmetic was re-derived to do it — the walk offers each day to
- * `settleBrokenStreak` and the verdict is the same `absenceOutcome(...)
- * .protectionHolds` call `recordTrainingDay` branches on.
+ * before finalising and refuses with `ABSENCE_ENDED_BEFORE_OFFER` — the code
+ * that says the screen was drawn over a run that had already ended. (It was
+ * `ABSENCE_SETTLED_WHILE_AWAY` for a round. That name asserted a settle had
+ * happened elsewhere, which this module cannot see and which the boundary
+ * revival does without.) No coverage arithmetic was re-derived to do it — the
+ * walk offers each day to `settleBrokenStreak` and the verdict is the same
+ * `absenceOutcome(...).protectionHolds` call `recordTrainingDay` branches on.
  *
  * IT NEVER REACHED THE STATE, EVEN BEFORE. Every full-state equality across
  * opening schedules held throughout; what differed was how many orders the store

@@ -186,7 +186,7 @@ const GUARANTEE_PROSE_FILES: readonly string[] = [
  */
 const GUARANTEE_COVERAGE = {
   /** Triggering paragraphs in `GUARANTEE_PROSE_FILES`. All must carry a tag. */
-  IN_SCOPE: 20,
+  IN_SCOPE: 23,
   /**
    * Triggering paragraphs anywhere under `src`, the scoped ones included.
    *
@@ -194,7 +194,7 @@ const GUARANTEE_COVERAGE = {
    * artefact: these comments assert behaviour about the scanner and are exactly
    * as capable of being wrong as any other.
    */
-  TREE_WIDE: 189,
+  TREE_WIDE: 193,
 } as const;
 
 // ---------------------------------------------------------------------------

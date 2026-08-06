@@ -1186,7 +1186,7 @@ export type StreakErrorCode =
    * recorded by anybody. The old code said "your break was already recorded
    * while you were away" to that player, which was false. This name says only
    * what the walk actually found: the run had ended by the time that screen was
-   * drawn.
+   * drawn. `@guarantee every-refusal-sentence-is-true-of-its-screen`
    */
   | 'ABSENCE_ENDED_BEFORE_OFFER'
   /**
@@ -2121,7 +2121,11 @@ export type RenderedStoreOfferKey = (typeof RENDERED_STORE_OFFER_KEYS)[number];
  *   rather than exotic.
  *
  * SO THE CLIENT REPORTS IT AND THIS MODULE NEVER RE-DERIVES IT. `offered` is the
- * screen's own answer; `day` is the streak day the screen was drawn for.
+ * screen's own answer; `day` is the streak day the screen was drawn for. Move
+ * only `day` on an otherwise identical order and the SENTENCE changes while the
+ * refusal does not — which is the shortest statement of what this field is for,
+ * and `streak.test.ts` pins that exact pair.
+ * `@guarantee the-copy-reads-the-clients-screen`
  *
  * IT CANNOT MOVE THE DECISION, AND THAT IS THE §12.3 HALF. Nothing in
  * `applySettledCoveredDayPurchase` branches on this field except the choice of
@@ -2171,8 +2175,8 @@ export const RENDERED_OFFER_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
  * `streakBonusDays` here is a visible edit under this comment, and adding it to
  * the type without adding it here fails `tsc`.
  *
- * `renderedOffer` WAS ADDED DELIBERATELY AND IS THE ONLY ADDITION SINCE THIS
- * LIST WAS WRITTEN. It carries no money, no quantity and no entitlement — it is
+ * `renderedOffer` was added under this comment, on purpose, with the type edited
+ * in the same diff. It carries no money, no quantity and no entitlement — it is
  * the client's own report of what it drew, and it reaches nothing but the
  * refusal copy.
  */
@@ -2350,6 +2354,7 @@ export const COVERED_DAY_PURCHASE_OUTCOME_IS_COVERAGE_ONLY: KeysAreExactly<
  *   completion time against a state the client may never have seen. A player who
  *   taps from two screens gets two sentences because they had two screens, and
  *   each is true of its own.
+ *   `@guarantee every-refusal-sentence-is-true-of-its-screen`
  *
  * THE DECISION IS STILL APP-OPEN INVARIANT, which is the §12.3 property and is
  * unchanged: `renderedOffer` reaches the sentence and nothing else. See
