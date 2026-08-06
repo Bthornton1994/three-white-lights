@@ -55,11 +55,17 @@ import {
   exhaustiveCalendar,
   exhaustiveCalendarCount,
   fixedRateSchedules,
+  purchaseArrivalOf,
   renderSchedule,
   seededSchedules,
   singleDaySupersets,
   type TrainingSchedule,
 } from './streakSweep';
+import {
+  NON_TRAINING_GATED_TENDERS,
+  TRAINING_GATED_TENDERS,
+  type CoveredDayTender,
+} from './currencyProvenance';
 import { nextRandom, seedState } from './prng';
 
 /** The free grace belongs to `streak.ts`; the entitlement composes with it. */
@@ -257,7 +263,7 @@ function driveThroughStreakEngine(
       const applied = applySettledCoveredDayPurchase(state, day, {
         orderId: `sweep-${i}-${bought}`,
         coveredDays: amount,
-        tender: 'chalk',
+        tender: 'chalk-purchased',
       });
       if (!applied.ok) throw new Error(`streak engine refused a purchase on day ${i}: ${applied.error.code}`);
       state = applied.value.state;
@@ -381,16 +387,28 @@ function* sampledPairs(length: number, perSeed?: number): Generator<readonly [Tr
 // ---------------------------------------------------------------------------
 
 /**
- * The three purchase arms. See `COVERED_DAY_PURCHASE_SWEEP` for why they are
- * matched and what the earlier unmatched cut got wrong.
+ * THE TREATMENT APPLIED TO THE DILIGENT MEMBER OF A PAIR — the one axis, now
+ * that the funding source is the other one.
+ *
+ * WHAT CHANGED AND WHY. This used to be a three-member type where one member
+ * (`'calendar'`) was really a funding source and the other two were really
+ * treatments, which meant the calendar arm and the frozen arm differed in TWO
+ * things at once and only the comment said which one mattered. Splitting them
+ * lets the sweep run every tender under the same treatment, which is what
+ * "0 violations across all funding sources" has to mean to be worth anything.
+ *
+ *   - `'responsive'`: the diligent member's purchase days are recomputed from
+ *     THEIR OWN schedule. The honest question — can training move the day the
+ *     purchase lands? For a calendar or player-chosen tender the recomputation
+ *     returns the identical list, so the arm is clean BY CONSTRUCTION rather
+ *     than by luck, and the sweep proves the construction rather than assuming.
+ *   - `'frozen'`: the diligent member is handed the LAZY member's purchase
+ *     days. Same rule, same purse, same price; training simply cannot move the
+ *     schedule. The matched control that isolates the keying from the size of
+ *     the bank — see `COVERED_DAY_PURCHASE_SWEEP` for the unmatched cut that
+ *     read the wrong way round.
  */
-type PurchaseArm =
-  /** Chalk on the calendar only. Both members buy identically BY CONSTRUCTION. */
-  | 'calendar'
-  /** Achievement Chalk, but the diligent member is handed the lazy one's days. */
-  | 'frozen'
-  /** Achievement Chalk, recomputed from the diligent member's own training. */
-  | 'responsive';
+type PurchaseTreatment = 'frozen' | 'responsive';
 
 interface PurchaseVerdict extends Verdict {
   /** Covered days the lazy members bought, summed over schedules. */
@@ -402,16 +420,24 @@ interface PurchaseVerdict extends Verdict {
 }
 
 /**
- * Judges one arm at one calendar length.
+ * Judges one TENDER under one TREATMENT at one calendar length.
  *
- * THE LAZY MEMBER IS IDENTICAL ACROSS `frozen` AND `responsive` by
- * construction: both compute its purchase days from the same rule on the same
- * schedule. So `boughtByLazy` is a control that must come out equal between
- * those two arms, and `judgePurchaseArm`'s callers assert exactly that rather
- * than trusting the description.
+ * THE LAZY MEMBER IS IDENTICAL ACROSS THE TWO TREATMENTS by construction: both
+ * compute its purchase days from the same rule on the same schedule. So
+ * `boughtByLazy` is a control that must come out equal between them, and the
+ * callers assert exactly that rather than trusting the description.
+ *
+ * THE FUNDING RULE COMES FROM `purchaseArrivalOf`, so this function does not
+ * know which tenders are training-keyed and cannot disagree with
+ * `currencyProvenance.ts` about it.
  */
-function judgePurchaseArm(length: number, arm: PurchaseArm, options: RunOptions = DEFAULT): PurchaseVerdict {
-  const trainingKeyed = arm !== 'calendar';
+function judgePurchaseArm(
+  length: number,
+  tender: CoveredDayTender,
+  treatment: PurchaseTreatment,
+  options: RunOptions = DEFAULT,
+): PurchaseVerdict {
+  const arrival = purchaseArrivalOf(tender);
   let currentInversions = 0;
   let longestInversions = 0;
   let worstCurrentDeficit = 0;
@@ -426,14 +452,14 @@ function judgePurchaseArm(length: number, arm: PurchaseArm, options: RunOptions 
   for (const seed of MONOTONICITY_SWEEP.SEEDS) {
     const schedules = seededSchedules(seed, length).slice(0, COVERED_DAY_PURCHASE_SWEEP.SCHEDULES_PER_SEED);
     for (const schedule of schedules) {
-      const lazyBuys = coveredDayPurchaseDays(schedule, trainingKeyed);
+      const lazyBuys = coveredDayPurchaseDays(schedule, arrival);
       const lazy = drive(schedule, { ...options, purchaseDays: lazyBuys });
       consumed += lazy.consumed;
       boughtByLazy += lazy.bought;
       peakPurchased = Math.max(peakPurchased, lazy.peakPurchased);
       for (const superset of singleDaySupersets(schedule)) {
         // THE ONE LINE THE WHOLE MEASUREMENT TURNS ON.
-        const buys = arm === 'responsive' ? coveredDayPurchaseDays(superset, trainingKeyed) : lazyBuys;
+        const buys = treatment === 'responsive' ? coveredDayPurchaseDays(superset, arrival) : lazyBuys;
         const diligent = drive(superset, { ...options, purchaseDays: buys });
         pairsChecked += 1;
         boughtByDiligent += diligent.bought;
@@ -534,9 +560,13 @@ function driveBankable(schedule: TrainingSchedule, buyDays: readonly number[]): 
   return { currentStreak, longestStreak, consumed, bought, peakPurchased };
 }
 
-/** `judgePurchaseArm`, over the bankable product. Same arms, same matching. */
-function judgeBankablePurchaseArm(length: number, arm: PurchaseArm): PurchaseVerdict {
-  const trainingKeyed = arm !== 'calendar';
+/** `judgePurchaseArm`, over the bankable product. Same axes, same matching. */
+function judgeBankablePurchaseArm(
+  length: number,
+  tender: CoveredDayTender,
+  treatment: PurchaseTreatment,
+): PurchaseVerdict {
+  const arrival = purchaseArrivalOf(tender);
   let currentInversions = 0;
   let longestInversions = 0;
   let worstCurrentDeficit = 0;
@@ -551,13 +581,13 @@ function judgeBankablePurchaseArm(length: number, arm: PurchaseArm): PurchaseVer
   for (const seed of MONOTONICITY_SWEEP.SEEDS) {
     const schedules = seededSchedules(seed, length).slice(0, COVERED_DAY_PURCHASE_SWEEP.SCHEDULES_PER_SEED);
     for (const schedule of schedules) {
-      const lazyBuys = coveredDayPurchaseDays(schedule, trainingKeyed);
+      const lazyBuys = coveredDayPurchaseDays(schedule, arrival);
       const lazy = driveBankable(schedule, lazyBuys);
       consumed += lazy.consumed;
       boughtByLazy += lazy.bought;
       peakPurchased = Math.max(peakPurchased, lazy.peakPurchased);
       for (const superset of singleDaySupersets(schedule)) {
-        const buys = arm === 'responsive' ? coveredDayPurchaseDays(superset, trainingKeyed) : lazyBuys;
+        const buys = treatment === 'responsive' ? coveredDayPurchaseDays(superset, arrival) : lazyBuys;
         const diligent = driveBankable(superset, buys);
         pairsChecked += 1;
         boughtByDiligent += diligent.bought;
@@ -887,8 +917,15 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     // EXACT IN BOTH DIRECTIONS, so a stale entry fails too — an allowlist that
     // can only grow is one nobody prunes and eventually one that permits
     // everything.
+    //
+    // THE SCAN READS THREE FILES NOW. `currencyProvenance.ts` decides who may
+    // buy a covered day, which is where the laundered path went — an
+    // achievement pays Chalk, Chalk buys a covered day, and neither of the
+    // other two files ever sees an achievement. Leaving it unscanned would
+    // leave the exact edit this allowlist exists to surface — a new tender —
+    // invisible to it.
     const found: string[] = [];
-    for (const file of ['streakEntitlement.ts', 'streak.ts']) {
+    for (const file of ['streakEntitlement.ts', 'streak.ts', 'currencyProvenance.ts']) {
       for (const [name, body] of declarations(read(file))) {
         if (/purchas/i.test(body)) found.push(name);
       }
@@ -1097,50 +1134,74 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     ).toBe(true);
   });
 
-  it('THE PURCHASE PATH, POPULATED: 40 / 60 / 80 / 100 days with real purchased days in the field', () => {
-    // GDD §8.3E CONDITION 2, and the reason it was asked for: every invariant in
-    // this file was previously proved against a `purchasedDaysLeft` that was
-    // structurally present and pinned at zero. These runs actually populate it.
+  it('EVERY FUNDABLE TENDER, EVERY HORIZON: 0 violations across the whole legal funding surface', () => {
+    // GDD §8.3E CONDITION 2 AND THE HUMAN'S BAR ON THE PROVENANCE FIX, in one
+    // sweep. Condition 2 asks that the invariants hold with `purchasedDaysLeft`
+    // ACTUALLY POPULATED rather than structurally present and zeroed. The bar
+    // asks for zero violations across all funding sources and horizons.
     //
-    // TWO CLEAN ARMS AND THEY ARE MATCHED. `calendar` funds the purchase from
-    // Chalk that arrives on the calendar, so both members of a pair buy on the
-    // same days by construction. `frozen` funds it from ACHIEVEMENT Chalk — the
-    // shape GDD §8.2 gives Chalk's free trickle and the shape a season-pass tier
-    // has — but hands the diligent member the lazy member's purchase days, so
-    // the rule, the price, the purse and the schedule are all identical and the
-    // only thing removed is training's ability to MOVE the arrival.
+    // SO THE TABLE IS EVERY TENDER `applySettledCoveredDayPurchase` WILL ACCEPT,
+    // enumerated from `NON_TRAINING_GATED_TENDERS` rather than listed here — a
+    // tender added to `currencyProvenance.ts` and tagged non-training-gated
+    // appears in this sweep without anybody remembering to add it.
     //
-    // The negative control that says the difference is real is the next test.
+    // AND THE TREATMENT IS `'responsive'` FOR ALL OF THEM, which is the strong
+    // form. Every diligent member recomputes their own purchase days from their
+    // own schedule. For a calendar or player-chosen arrival that recomputation
+    // returns an identical list, so the arm is clean by construction — and this
+    // sweep is what turns "by construction" from a claim into a measurement.
     const seen: Record<string, PurchaseVerdict> = {};
-    for (const arm of ['calendar', 'frozen'] as const) {
+    for (const tender of NON_TRAINING_GATED_TENDERS) {
       for (const length of ENTITLEMENT_VERIFICATION.LENGTHS) {
-        const verdict = judgePurchaseArm(length, arm);
-        expectClean(`${arm} purchases L=${length}`, verdict);
+        const verdict = judgePurchaseArm(length, tender, 'responsive');
+        expectClean(`${tender} purchases L=${length}`, verdict);
         // NOT VACUOUS IN THE WAY THAT MATTERS HERE: covered days were bought,
         // and the purchased counter really carried them. A sweep that bought
         // nothing would satisfy every assertion above and mean nothing.
-        expect(verdict.boughtByLazy, `${arm} L=${length}: nothing was bought`).toBeGreaterThan(0);
-        expect(verdict.peakPurchased, `${arm} L=${length}: purchasedDaysLeft never left zero`).toBeGreaterThan(0);
-        seen[`${arm}-${length}`] = verdict;
+        expect(verdict.boughtByLazy, `${tender} L=${length}: nothing was bought`).toBeGreaterThan(0);
+        expect(
+          verdict.peakPurchased,
+          `${tender} L=${length}: purchasedDaysLeft never left zero`,
+        ).toBeGreaterThan(0);
+        // "CLEAN BY CONSTRUCTION", CHECKED RATHER THAN CLAIMED. For a legal
+        // tender the diligent member's recomputation returns the lazy member's
+        // day list, so the `responsive` and `frozen` treatments must agree BIT
+        // FOR BIT. This is a much sharper instrument than the zero above: it
+        // goes red the moment a legal tender's purse becomes sensitive to
+        // training, which is strictly earlier than the moment that sensitivity
+        // happens to produce a violation at one of these four lengths.
+        expect(
+          JSON.stringify(judgePurchaseArm(length, tender, 'frozen')),
+          `${tender} L=${length}: a legal tender's purchase day moved with training`,
+        ).toBe(JSON.stringify(verdict));
+        seen[`${tender}-${length}`] = verdict;
       }
     }
-    // THE MATCHING, CHECKED RATHER THAN DESCRIBED. `frozen` and `responsive`
-    // share a lazy member; `calendar` does not, and its purse is deliberately
-    // smaller. Asserting the first pair here would be circular, so what is
-    // asserted is that the two arms are NOT the same measurement — if they were,
-    // the negative control below would be comparing an arm against itself.
-    const frozen40 = seen['frozen-40'] as PurchaseVerdict;
-    const calendar40 = seen['calendar-40'] as PurchaseVerdict;
-    expect(frozen40.boughtByLazy).not.toBe(calendar40.boughtByLazy);
+    // THE TABLE IS NOT ONE MEASUREMENT REPEATED. Player-chosen and calendar
+    // arrivals are modelled identically ON PURPOSE (see `coveredDayPurchase
+    // Days`), so those rows SHOULD coincide — what must not coincide is this
+    // whole block with the training-keyed control below, and the next test
+    // asserts the purses differ.
+    expect(Object.keys(seen).length).toBe(
+      NON_TRAINING_GATED_TENDERS.length * ENTITLEMENT_VERIFICATION.LENGTHS.length,
+    );
   });
 
   it('NEGATIVE CONTROL, MATCHED: the SAME purse violates once training can move the purchase day', () => {
     // THE HAZARD GDD §8.2 CREATES AND §8.3C DOES NOT CLOSE. Chalk is earned in
-    // part from "rare achievements", achievements are reached by playing, and
-    // Chalk buys Extra Covered Days — so a buy-when-affordable player has a
+    // part from achievements, achievements are reached by playing, and Chalk
+    // buys Extra Covered Days — so a buy-when-affordable player has a
     // covered-day arrival their own training shifts. §8.3C re-keyed the pass's
     // covered days to the WEEK, which closes the one-hop path; it says nothing
     // about the pass's CHALK, and this is the two-hop version.
+    //
+    // THIS ARM IS NOW UNREACHABLE THROUGH THE SHIPPED ENTRY POINT, and that is
+    // the whole of what changed. `applySettledCoveredDayPurchase` will not take
+    // a training-gated tender — `streak.test.ts` proves the runtime refusal and
+    // the type proves the compile-time one. The measurement is kept anyway,
+    // driven through `streakEntitlement` directly, because a restriction whose
+    // justification nobody re-derives is a restriction somebody eventually
+    // relaxes. This is the number that says what relaxing it costs.
     //
     // MATCHED AGAINST `frozen` AND NOTHING ELSE. Same rule, same price, same
     // purse, same seeds, same schedules, and a bit-identical lazy member. The
@@ -1152,9 +1213,12 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     // artifact of the calendar model buying roughly twice as many covered days;
     // a bigger bank hides violations for reasons that have nothing to do with
     // keying. Hence the frozen arm.
+    expect(TRAINING_GATED_TENDERS.length, 'nothing is restricted, so nothing is measured').toBeGreaterThan(0);
+    const banned = TRAINING_GATED_TENDERS[0] as CoveredDayTender;
+    const legal = NON_TRAINING_GATED_TENDERS[0] as CoveredDayTender;
     for (const length of ENTITLEMENT_VERIFICATION.LENGTHS) {
-      const frozen = judgePurchaseArm(length, 'frozen');
-      const responsive = judgePurchaseArm(length, 'responsive');
+      const frozen = judgePurchaseArm(length, banned, 'frozen');
+      const responsive = judgePurchaseArm(length, banned, 'responsive');
 
       // THE CONTROL: the lazy side is identical, so the arms differ in exactly
       // the intended place. If this ever fails the comparison below is void.
@@ -1177,6 +1241,32 @@ describe('never punish daily engagement — the entitlement under attack', () =>
       expect(responsive.longestInversions, `L=${length}: lifetime best`).toBeGreaterThan(0);
       expect(responsive.worstCurrentDeficit, `L=${length}: worst deficit`).toBeGreaterThan(0);
     }
+    // AND THE BANNED ARM IS NOT THE LEGAL ARM UNDER ANOTHER NAME: the purses
+    // genuinely differ, so the clean table above is not this measurement with a
+    // different label on it.
+    const bannedPurse = judgePurchaseArm(40, banned, 'frozen').boughtByLazy;
+    const legalPurse = judgePurchaseArm(40, legal, 'frozen').boughtByLazy;
+    expect(bannedPurse).not.toBe(legalPurse);
+  });
+
+  it('AND EVERY BANNED TENDER VIOLATES, so the restriction is drawn where the hazard is', () => {
+    // THE LINE IS IN THE RIGHT PLACE, CHECKED FROM BOTH SIDES. The sweep above
+    // says every LEGAL tender is clean. On its own that is satisfiable by a
+    // restriction that banned far too much — banning all of Chalk, which is the
+    // fix a human rejected as too broad. This says every BANNED tender is
+    // actually a hazard, so nothing is on the wrong side of the line.
+    //
+    // Run at one length rather than four: it is the same arm the test above
+    // measures at all four, and the point here is coverage of the TENDER list,
+    // not of the horizon.
+    const length = ENTITLEMENT_VERIFICATION.LENGTHS[1] as number;
+    for (const tender of TRAINING_GATED_TENDERS) {
+      const responsive = judgePurchaseArm(length, tender, 'responsive');
+      expect(
+        responsive.currentInversions,
+        `${tender} is banned but does not violate — the restriction is too broad`,
+      ).toBeGreaterThan(0);
+    }
   });
 
   it('A BANKABLE purchase is training-keyed-unsafe in the same way, so the choice is still a product one', () => {
@@ -1194,8 +1284,9 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     // Run at one length rather than four, and that is a suite-time trade rather
     // than a claim: the full table at all four lengths is in GDD §8.3E.
     const length = ENTITLEMENT_VERIFICATION.LENGTHS[3] as number;
-    const frozen = judgeBankablePurchaseArm(length, 'frozen');
-    const responsive = judgeBankablePurchaseArm(length, 'responsive');
+    const banned = TRAINING_GATED_TENDERS[0] as CoveredDayTender;
+    const frozen = judgeBankablePurchaseArm(length, banned, 'frozen');
+    const responsive = judgeBankablePurchaseArm(length, banned, 'responsive');
     expect(frozen.boughtByLazy).toBe(responsive.boughtByLazy);
     expect(frozen.boughtByLazy).toBeGreaterThan(0);
     expect(frozen.currentInversions, 'bankable, frozen').toBe(0);
@@ -1512,19 +1603,26 @@ describe('the shipped engine is the composition this battery graded', () => {
     // Both arms are pinned, not just the safe one: the reference and the engine
     // have to agree about the violating case too, or the negative control is a
     // control on a program nobody ships.
+    //
+    // THE DAY PATTERNS COME FROM BOTH ARRIVALS AND THE TENDER IS LEGAL IN BOTH,
+    // which is not a contradiction and is worth stating. Legality is about who
+    // may buy; this pin is about whether the two engines do the same ARITHMETIC
+    // given a list of buy days. Feeding it the session-keyed day pattern is
+    // strictly more coverage — those calendars are lumpier — and says nothing
+    // about whether that pattern is purchasable.
     let checked = 0;
     let purchasedSeen = 0;
     let differedFromNoPurchase = 0;
-    for (const trainingKeyed of [false, true]) {
+    for (const arrival of ['calendar', 'session-count'] as const) {
       for (const length of ENTITLEMENT_VERIFICATION.LENGTHS) {
         for (const seed of MONOTONICITY_SWEEP.SEEDS) {
           for (const schedule of seededSchedules(seed, length).slice(0, 12)) {
-            const buys = coveredDayPurchaseDays(schedule, trainingKeyed);
+            const buys = coveredDayPurchaseDays(schedule, arrival);
             const reference = drive(schedule, { ...DEFAULT, purchaseDays: buys });
             const shipped = driveThroughStreakEngine(schedule, buys);
             expect(
               JSON.stringify(shipped),
-              `keyed=${trainingKeyed} ${renderSchedule(schedule)}: reference ${JSON.stringify(reference)}`,
+              `arrival=${arrival} ${renderSchedule(schedule)}: reference ${JSON.stringify(reference)}`,
             ).toBe(JSON.stringify(reference));
             purchasedSeen += reference.peakPurchased;
             if (

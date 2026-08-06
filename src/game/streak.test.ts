@@ -6,8 +6,6 @@ import { describe, expect, it } from 'vitest';
 import {
   LONGEST_REPAIRABLE_ABSENCE_DAYS,
   RECOVERY_DAY_GUARDRAILS,
-  COVERED_DAY_TENDERS,
-  COVERED_DAY_TENDER_ARRIVAL,
   RECOVERY_DAY_OUTCOME_KEYS,
   RECOVERY_DAY_PROTECTION,
   STREAK_DAY_BOUNDARY,
@@ -39,8 +37,6 @@ import {
   streakDayFromCivilDate,
   streakDayFromLocalWallClock,
   streakDeadlineDay,
-  TENDER_ARRIVALS,
-  type CoveredDayTender,
   type DayOpening,
   type LegacyStreakStateWithBalance,
   type StreakDay,
@@ -48,6 +44,15 @@ import {
   type StreakState,
 } from './streak';
 import * as streakModule from './streak';
+import {
+  COVERED_DAY_TENDERS,
+  NON_TRAINING_GATED_TENDERS,
+  TENDER_ARRIVAL,
+  TENDER_ARRIVALS,
+  TENDER_CURRENCY,
+  TRAINING_GATED_TENDERS,
+  type NonTrainingGatedTender,
+} from './currencyProvenance';
 import {
   MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW,
   RECOVERY_ENTITLEMENT,
@@ -284,7 +289,12 @@ describe('purity contract', () => {
     // purity scan of its own. `streakEntitlement.test.ts` scans
     // `streakEntitlement.ts` the same way this scans `streak.ts`, so the
     // guarantee composes instead of stopping at the import.
-    const PURE_SIBLINGS: readonly string[] = ['./streakEntitlement'];
+    //
+    // `./currencyProvenance` joined it with the tender-provenance fix, and it
+    // qualifies on the same terms: it is a LEAF (it imports nothing at all) and
+    // `currencyProvenance.test.ts` scans it for the same host reaches this
+    // block scans `streak.ts` for.
+    const PURE_SIBLINGS: readonly string[] = ['./currencyProvenance', './streakEntitlement'];
 
     const specifiers = [...code.matchAll(/^\s*import[\s\S]*?from\s*['"]([^'"]+)['"]/gm)].map(
       (match) => match[1] as string,
@@ -1675,7 +1685,7 @@ describe('the window entitlement', () => {
       applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
         orderId: 'order-1',
         coveredDays: 5,
-        tender: 'chalk',
+        tender: 'chalk-purchased',
       }),
     );
     let state: StreakState = bought.state;
@@ -1728,7 +1738,7 @@ describe('the window entitlement', () => {
       applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
         orderId: 'order-1',
         coveredDays: 3,
-        tender: 'chalk',
+        tender: 'chalk-purchased',
       }),
     ).state;
     const held = seed.entitlement.purchasedDaysLeft;
@@ -1752,7 +1762,7 @@ describe('the window entitlement', () => {
       [seed, 99],
       [day],
       [99],
-      [seed, day, { orderId: '', coveredDays: 99, tender: 'chalk' }],
+      [seed, day, { orderId: '', coveredDays: 99, tender: 'chalk-purchased' }],
       [seed, day, { orderId: 'x', coveredDays: 99, tender: 'milestone' }],
       [seed, day, { orderId: 'x', coveredDays: 99 }],
     ];
@@ -1813,7 +1823,7 @@ describe('the window entitlement', () => {
         applySettledCoveredDayPurchase(state, DAY_ZERO, {
           orderId: `order-${i}`,
           coveredDays: 1,
-          tender: 'chalk',
+          tender: 'chalk-purchased',
         }),
       ).state;
     }
@@ -1857,47 +1867,107 @@ describe('the window entitlement', () => {
     expect(bought.longestStreakUnchanged).toBe(bought.state.longestStreak);
   });
 
-  it('NO TENDER ARRIVES BY TRAINING — the list of ways to pay cannot grow an earned one quietly', () => {
-    // The last route condition 3 left open. `COVERED_DAY_TENDERS` on its own is
-    // a list, and adding `'milestone'` to it costs one word — after which
-    // `applySettledCoveredDayPurchase` would accept a covered day awarded for a
-    // streak with every other guard in this codebase still green. That is
-    // exactly "true by the current absence of a code path".
+  it('NO TENDER ARRIVES BY TRAINING — AT RUNTIME, for the callers the compiler never sees', () => {
+    // THE SECOND LINE OF THE PROVENANCE FIX, and this test exists BECAUSE the
+    // first line cannot be tested from TypeScript: `tender` is typed
+    // `NonTrainingGatedTender`, so the honest way to write the illegal call
+    // does not compile at all. `currencyProvenance.test.ts` owns the structural
+    // half; this one casts past the type on purpose, exactly as a JSON payload
+    // decoded from an Edge Function response does.
     //
-    // `COVERED_DAY_TENDER_ARRIVAL` makes it cost an answer instead, and the
-    // available answers are the ones training cannot move.
-    expect(Object.keys(COVERED_DAY_TENDER_ARRIVAL).sort()).toEqual([...COVERED_DAY_TENDERS].sort());
-    for (const tender of COVERED_DAY_TENDERS) {
-      expect(TENDER_ARRIVALS).toContain(COVERED_DAY_TENDER_ARRIVAL[tender]);
+    // WHAT THE OLD VERSION OF THIS TEST CHECKED AND WHY IT WAS NOT ENOUGH. It
+    // asserted that every tender declares an arrival and that no arrival is
+    // NAMED after something training reaches. Both were true of the shipped
+    // code while the shipped code accepted achievement Chalk, because the
+    // tender was `'chalk'` and its declared arrival was `'calendar-or-payment'`
+    // — a true-sounding claim about a currency, made where the fact lives on
+    // the individual units. The measurement that fell out of that hole is
+    // 105 / 305 / 733 / 785 violating pairs.
+    type Wire = Parameters<typeof applySettledCoveredDayPurchase>[2];
+    const asWire = (tender: string): Wire =>
+      ({ orderId: 'order-1', coveredDays: 1, tender } as unknown as Wire);
+
+    // EVERY TRAINING-GATED TENDER IS REFUSED, enumerated from the derived list
+    // rather than spelled out, so a tender re-tagged in `TENDER_ARRIVAL` is
+    // covered here without anybody editing this test.
+    expect(TRAINING_GATED_TENDERS.length, 'a partition with an empty side restricts nothing').toBeGreaterThan(0);
+    for (const tender of TRAINING_GATED_TENDERS) {
+      const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, asWire(tender));
+      expect(outcome.ok, `${tender} must not be able to buy a covered day`).toBe(false);
+      // A DISTINCT CODE, not `INVALID_PURCHASE`. This is a real balance being
+      // refused for one purchase while staying valid for every other, and a
+      // store that says "invalid purchase" to that is lying to the player.
+      if (!outcome.ok) expect(outcome.error.code).toBe('TRAINING_FUNDED_TENDER');
     }
-    // NO ARRIVAL NAMES SOMETHING THE LIFTER DOES. A floor, not a guarantee —
-    // an arrival called `'q7'` satisfies it — but the load-bearing half is that
-    // a new tender has to declare an arrival at all, in `streak.ts`, under the
-    // paragraph that says why it may not be a training one.
-    for (const arrival of TENDER_ARRIVALS) {
-      expect(arrival, `arrival ${arrival} names something training reaches`).not.toMatch(
-        /train|streak|session|milestone|achiev|tier|progress|earn/i,
-      );
-    }
-    // And the refusal really is keyed to the list rather than to a hardcoded
-    // pair, so a tender removed from it stops being accepted.
-    for (const notATender of ['milestone', 'achievement', 'streak', 'free', '']) {
-      const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
-        orderId: 'order-1',
-        coveredDays: 1,
-        tender: notATender as CoveredDayTender,
-      });
+    // AND SOMETHING THAT IS NOT A TENDER AT ALL IS A DIFFERENT REFUSAL.
+    for (const notATender of ['milestone', 'achievement', 'streak', 'free', 'chalk', '']) {
+      const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, asWire(notATender));
       expect(outcome.ok, `${notATender} must not be a way to obtain a covered day`).toBe(false);
       if (!outcome.ok) expect(outcome.error.code).toBe('INVALID_PURCHASE');
     }
-    // Both real tenders work, so the refusal above is not refusing everything.
-    for (const tender of COVERED_DAY_TENDERS) {
+    // `'chalk'` IS IN THAT LIST DELIBERATELY. It was the shipped tender one
+    // commit ago and it is now a refusal, because "Chalk" is not an answer to
+    // "where did this money come from".
+
+    // AND EVERY NON-TRAINING-GATED TENDER WORKS, so the refusals above are not
+    // refusing everything — and the receipt reports the provenance it was paid
+    // with, not just the currency.
+    expect(NON_TRAINING_GATED_TENDERS.length).toBeGreaterThan(0);
+    for (const tender of NON_TRAINING_GATED_TENDERS) {
       const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
         orderId: 'order-1',
         coveredDays: 1,
         tender,
       });
       expect(outcome.ok, `${tender} must be a way to buy one`).toBe(true);
+      if (outcome.ok) {
+        expect(outcome.value.tender).toBe(tender);
+        expect(outcome.value.currency).toBe(TENDER_CURRENCY[tender]);
+      }
+    }
+    // The two halves really are the whole list, so "every tender is checked
+    // above" is a fact rather than a hope.
+    expect([...NON_TRAINING_GATED_TENDERS, ...TRAINING_GATED_TENDERS].sort()).toEqual(
+      [...COVERED_DAY_TENDERS].sort(),
+    );
+  });
+
+  it('THE ESCALATION A TRAINING-KEYED TENDER WOULD HAVE TO WALK, walked rather than assumed', () => {
+    // GDD §8.3E's condition 3 asks for enforcement rather than absence, and the
+    // honest way to check enforcement is to ask what it costs to break it.
+    //
+    //   1. A NEW TENDER fails `tsc` at `TENDER_CURRENCY` and at `TENDER_ARRIVAL`
+    //      until it declares both. Neither map has a default.
+    //   2. DECLARING `'session-count'` makes it a `TrainingGatedTender` by
+    //      construction, so `SettledCoveredDayPurchase.tender` rejects it and
+    //      the runtime refuses it. Nothing else has to be edited for that to
+    //      happen, and nothing else CAN be edited to stop it.
+    //   3. THE ONLY WIDENING EDIT is re-tagging an arrival in `ARRIVAL_GATING`,
+    //      which is one word — and it is one word in a table with the
+    //      measurement printed above it, which fails this test.
+    //
+    // Step 1 and step 2 are `tsc`'s to enforce and are demonstrated by the
+    // module compiling at all. This is step 3.
+    expect(TENDER_ARRIVALS).toContain('session-count');
+    for (const tender of COVERED_DAY_TENDERS) {
+      const arrival = TENDER_ARRIVAL[tender];
+      // A TENDER WHOSE NAME SAYS TRAINING MUST ARRIVE BY `'session-count'`.
+      // A floor and not a ceiling — a tender called `'chalk-q7'` paid on
+      // achievements satisfies it — but it catches the honest mistake, which is
+      // adding `'chalk-milestone'` and tagging it `'calendar'` by copy-paste.
+      if (/streak|session|milestone|achiev|tier|progress|earn/i.test(tender)) {
+        expect(arrival, `${tender} names something training reaches`).toBe('session-count');
+      }
+    }
+    // AND THE VERDICT ON THAT ARRIVAL IS THE ONE THE MEASUREMENT SUPPORTS.
+    // Flipping it is the single edit that reopens 105 / 305 / 733 / 785
+    // violating pairs, and this is the assertion that goes red when somebody
+    // does.
+    for (const tender of TRAINING_GATED_TENDERS) {
+      expect(TENDER_ARRIVAL[tender]).toBe('session-count');
+    }
+    for (const tender of NON_TRAINING_GATED_TENDERS) {
+      expect(TENDER_ARRIVAL[tender]).not.toBe('session-count');
     }
   });
 
@@ -1933,7 +2003,7 @@ describe('the window entitlement', () => {
               applySettledCoveredDayPurchase(base, day, {
                 orderId: `order-${checked}`,
                 coveredDays,
-                tender: 'chalk',
+                tender: 'chalk-purchased',
               }),
             );
             const grew = outcome.state.entitlement.purchasedDaysLeft - base.entitlement.purchasedDaysLeft;
@@ -2577,7 +2647,7 @@ describe('what a purchased Recovery Day can reach', () => {
       applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
         orderId: 'order-1',
         coveredDays: 2,
-        tender: 'chalk',
+        tender: 'chalk-purchased',
       }),
     ).state;
     // The comparator: a lifter with the same TOTAL coverage, all of it free.
@@ -2785,7 +2855,7 @@ function simulate(
       const bought = applySettledCoveredDayPurchase(state, day, {
         orderId: `sim-${i}`,
         coveredDays: grantSize,
-        tender: 'chalk',
+        tender: 'chalk-purchased',
       });
       if (!bought.ok) throw new Error(`day ${i}: the simulated purchase was refused (${bought.error.code})`);
       state = bought.value.state;
