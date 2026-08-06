@@ -725,10 +725,7 @@ function wire(overrides: Partial<ProgressionSnapshotWire> = {}): ProgressionSnap
       longestStreak: 31,
       lastTrainedDay: 20_000,
       entitlement: { windowIndex: 33, coveredDaysLeft: 2, purchasedDaysLeft: 0 },
-      armedEntitlement: {
-        entitlement: { windowIndex: 33, coveredDaysLeft: 2, purchasedDaysLeft: 0 },
-        asOfDay: 20_000,
-      },
+      armedEntitlement: { windowIndex: 33, coveredDaysLeft: 2, purchasedDaysLeft: 0 },
       entitlementArmed: true,
       recoveryDayProtectionEnabled: true,
       hasBankedFirstRecoveryDaySave: true,

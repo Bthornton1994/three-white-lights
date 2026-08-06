@@ -185,10 +185,7 @@ function stateWithRun(streakLength: number, lastDay: StreakDay, balance: number)
     // snapshot differed from its live entitlement would be a lifter who had
     // bought a covered day mid-absence, and that is a case tests ask for by
     // name rather than one every fixture should quietly be in.
-    armedEntitlement: {
-      entitlement: withCoveredDays(balance, windowOf(lastDay)),
-      asOfDay: lastDay,
-    },
+    armedEntitlement: withCoveredDays(balance, windowOf(lastDay)),
     entitlementArmed: true,
     recoveryDayProtectionEnabled: true,
     hasBankedFirstRecoveryDaySave: false,
@@ -252,7 +249,7 @@ function holding(state: StreakState, entitlement: EntitlementState): StreakState
   return {
     ...state,
     entitlement,
-    armedEntitlement: { entitlement, asOfDay: state.lastTrainedDay ?? state.signupDay },
+    armedEntitlement: entitlement,
   };
 }
 
@@ -493,7 +490,7 @@ describe('purity contract', () => {
     expect(fn).toContain('entitlementWindowFor(state, today)');
     expect(fn).toContain('resolveEntitlement');
     // The COVERS decision reads the armed snapshot and nothing else.
-    expect(fn).toContain('state.armedEntitlement.entitlement');
+    expect(fn).toContain('state.armedEntitlement');
     // The stock's names cannot come back under the old spelling...
     expect(fn).not.toContain('recoveryDayBalance');
     expect(fn).not.toContain('armedRecoveryDays');
@@ -2867,7 +2864,7 @@ describe('what a purchased Recovery Day can reach', () => {
     );
     expect(purchaseMentions).toEqual(['purchasedDaysLeft', 'purchasedDaysLeft']);
     expect(run.entitlement.purchasedDaysLeft).toBe(0);
-    expect(run.armedEntitlement.entitlement.purchasedDaysLeft).toBe(0);
+    expect(run.armedEntitlement.purchasedDaysLeft).toBe(0);
     // Two lifters in the same window, one who has trained far more than the
     // other, draw on exactly the same coverage.
     const busy = trainConsecutively(freshState(), DAY_ZERO, 20);

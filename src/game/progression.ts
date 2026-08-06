@@ -663,11 +663,9 @@
  *       Nothing here is a mass.
  *
  *   `streak.armedEntitlement`
- *       A COUNT TRIPLE AND A DAY INDEX, in one object because they only mean
- *       anything together: `.entitlement` is what the absence in progress may
- *       draw on and `.asOfDay` is the day that was fixed. Same units as the two
- *       rows above and proven the same way — `isCount` on the three counters,
- *       `Number.isSafeInteger` plus a not-before-signup check on the day.
+ *       A COUNT TRIPLE — what the absence in progress may draw on. Same units
+ *       as the two rows above and proven the same way, by `isCount` on each of
+ *       the three counters.
  *       LISTED SEPARATELY FROM `streak.entitlement` ON PURPOSE: that one is the
  *       LIVE balance a purchase raises, this one is the snapshot GDD §4.2 says
  *       a mid-absence purchase must not reach, and a table that folded them
@@ -2946,23 +2944,20 @@ export interface StreakStateWire {
     readonly purchasedDaysLeft: number;
   };
   /**
-   * THE SNAPSHOT THE ABSENCE IN PROGRESS RESOLVES AGAINST, and the day it was
-   * taken. Separate from `entitlement` above because that one is LIVE: GDD
-   * §4.2 rules that a covered day arriving mid-absence tops up the balance and
-   * arms the next absence, so the two differ for any lifter who bought one
-   * while away and the wire has to carry both or the server's answer is lost.
+   * THE SNAPSHOT THE ABSENCE IN PROGRESS RESOLVES AGAINST. Separate from
+   * `entitlement` above because that one is LIVE: GDD §4.2 rules that a covered
+   * day arriving mid-absence tops up the balance and arms the next absence, so
+   * the two differ for any lifter who bought one while away and the wire has to
+   * carry both or the server's answer is lost.
    *
    * VALIDATED FIELD BY FIELD like the live one, and for a sharper reason: this
    * is the number an absence draws on, so a client that could write it could
    * arm itself out of a broken run.
    */
   readonly armedEntitlement: {
-    readonly entitlement: {
-      readonly windowIndex: number;
-      readonly coveredDaysLeft: number;
-      readonly purchasedDaysLeft: number;
-    };
-    readonly asOfDay: number;
+    readonly windowIndex: number;
+    readonly coveredDaysLeft: number;
+    readonly purchasedDaysLeft: number;
   };
   readonly entitlementArmed: boolean;
   readonly recoveryDayProtectionEnabled: boolean;
@@ -3138,33 +3133,18 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
   if (armed === null || typeof armed !== 'object') {
     return fail('INVALID_SNAPSHOT', 'progression: streak.armedEntitlement must be an object');
   }
-  const armedEntitlement: unknown = wire.armedEntitlement.entitlement;
-  if (armedEntitlement === null || typeof armedEntitlement !== 'object') {
-    return fail('INVALID_SNAPSHOT', 'progression: streak.armedEntitlement.entitlement must be an object');
-  }
   const entitlementCounts: readonly [string, number][] = [
     ['entitlement.windowIndex', wire.entitlement.windowIndex],
     ['entitlement.coveredDaysLeft', wire.entitlement.coveredDaysLeft],
     ['entitlement.purchasedDaysLeft', wire.entitlement.purchasedDaysLeft],
-    ['armedEntitlement.entitlement.windowIndex', wire.armedEntitlement.entitlement.windowIndex],
-    ['armedEntitlement.entitlement.coveredDaysLeft', wire.armedEntitlement.entitlement.coveredDaysLeft],
-    ['armedEntitlement.entitlement.purchasedDaysLeft', wire.armedEntitlement.entitlement.purchasedDaysLeft],
+    ['armedEntitlement.windowIndex', wire.armedEntitlement.windowIndex],
+    ['armedEntitlement.coveredDaysLeft', wire.armedEntitlement.coveredDaysLeft],
+    ['armedEntitlement.purchasedDaysLeft', wire.armedEntitlement.purchasedDaysLeft],
   ];
   for (const [name, value] of entitlementCounts) {
     if (!isCount(value)) {
       return fail('INVALID_SNAPSHOT', `progression: streak.${name} must be a non-negative whole number`);
     }
-  }
-  if (!Number.isSafeInteger(wire.armedEntitlement.asOfDay)) {
-    return fail('INVALID_SNAPSHOT', 'progression: streak.armedEntitlement.asOfDay must be a whole day index');
-  }
-  // AN ARMING CANNOT PREDATE THE ACCOUNT. It is the day of a session or of
-  // signup, and both are on or after the signup day.
-  if (wire.armedEntitlement.asOfDay < wire.signupDay) {
-    return fail(
-      'INVALID_SNAPSHOT',
-      'progression: streak.armedEntitlement.asOfDay cannot be before streak.signupDay',
-    );
   }
   // GDD §8.3E IS RULED IN, so a purchased day is a legitimate thing for a
   // snapshot to carry and the flat refusal that used to sit here is gone. It is
@@ -3190,12 +3170,9 @@ function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
       purchasedDaysLeft: wire.entitlement.purchasedDaysLeft,
     },
     armedEntitlement: {
-      entitlement: {
-        windowIndex: wire.armedEntitlement.entitlement.windowIndex,
-        coveredDaysLeft: wire.armedEntitlement.entitlement.coveredDaysLeft,
-        purchasedDaysLeft: wire.armedEntitlement.entitlement.purchasedDaysLeft,
-      },
-      asOfDay: asStreakDay(wire.armedEntitlement.asOfDay),
+      windowIndex: wire.armedEntitlement.windowIndex,
+      coveredDaysLeft: wire.armedEntitlement.coveredDaysLeft,
+      purchasedDaysLeft: wire.armedEntitlement.purchasedDaysLeft,
     },
     entitlementArmed: wire.entitlementArmed,
     recoveryDayProtectionEnabled: wire.recoveryDayProtectionEnabled,
