@@ -264,10 +264,18 @@ export const ENTITLEMENT_VERIFICATION = Object.freeze({
    *
    * The shipped module expires it. This grid exists because the first version
    * of GDD §8.2 justified the expiry as a SAFETY property, and that turned out
-   * to be false: the burn is what keeps a purchase safe, not the expiry. Ten
-   * purchases and a front-loaded block are in here specifically because a
-   * hoard is what a bankable product produces and a hoard is what the old
-   * Recovery Day defect was made of.
+   * to be false: the burn is what keeps a CALENDAR-FUNDED purchase safe, not
+   * the expiry. Ten purchases and a front-loaded block are in here specifically
+   * because a hoard is what a bankable product produces and a hoard is what the
+   * old Recovery Day defect was made of.
+   *
+   * EVERY LIST HERE IS A FIXED CALENDAR, AND THE SCOPE IS THE FINDING. These
+   * days are ones neither lifter's training can move, so what this grid can
+   * establish is "banking is free ON THIS ARM" and nothing wider. GDD §8.2's
+   * "a bankable purchased day is monotone-safe" was this measurement read
+   * without its scope, and it is retracted there. On training-keyed funding a
+   * bankable day violates — 77 / 275 / 696 / 681 — which is measured through
+   * `judgeBankablePurchaseArm` instead.
    */
   BANKABLE_PURCHASE_DAYS: Object.freeze([
     Object.freeze([10, 40]),

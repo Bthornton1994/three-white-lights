@@ -1611,7 +1611,10 @@ banking at all — it was evidence about calendar funding, taken at zero real
 purchases. Under the actual purchase flow a bankable day shows the same kind of
 violation as an expiring one: **77 / 275 / 696 / 681** violating pairs at 40 / 60
 / 80 / 100 on the training-funded arm, worst deficit 14 against the expiring
-product's 54. A difference in severity, not in kind.
+product's 54. A difference in severity, not in kind. (Full population, as with
+the expiring table; the committed test runs at
+`COVERED_DAY_PURCHASE_SWEEP.SCHEDULES_PER_SEED` and measures 31 / 86 / 150 / 422,
+worst deficit 5 — the same finding at a smaller population.)
 
 **What survives, and it is the useful half.** Bankable is clean exactly where
 expiring is clean and violates exactly where expiring violates, so switching the
