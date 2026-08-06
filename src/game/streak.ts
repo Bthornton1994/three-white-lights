@@ -324,9 +324,21 @@
  *
  *     daysMissed = today - absenceAnchorDay - 1
  *     chargeable = max(0, daysMissed - FREE_GRACE_GAP_DAYS)
- *     available  = armed ? coveredDaysAvailable(entitlement, windowOf(today)) : 0
- *     covered   <=>  chargeable <= min(available, MAX_COVERED_DAYS_PER_ABSENCE)
- *     consumed   =  covered ? chargeable : available
+ *     drawable   = armed ? coveredDaysAvailable(ARMED.entitlement, windowOf(today)) : 0
+ *     held       = armed ? coveredDaysAvailable(LIVE.entitlement, windowOf(today)) : 0
+ *     covered   <=>  chargeable <= min(drawable, MAX_COVERED_DAYS_PER_ABSENCE)
+ *     consumed   =  covered ? chargeable : held
+ *
+ * TWO ENTITLEMENTS, AND THE TWO LINES THAT READ THEM ARE DIFFERENT ON PURPOSE.
+ * `ARMED` is `StreakState.armedEntitlement.entitlement`, the snapshot the last
+ * session left; `LIVE` is `StreakState.entitlement`, the balance a GDD §8.3E
+ * purchase raises. Whether the run SURVIVES reads the armed one, so a covered
+ * day arriving mid-absence cannot rescue it (GDD §4.2). What a doomed absence
+ * COSTS reads the live one, so a covered day arriving mid-absence is not spared
+ * by it either — which it must not be, because anything a doomed absence leaves
+ * behind is something an extra trained day could split the absence to spend.
+ * `held >= drawable` always, and they are equal for every lifter who has never
+ * bought a covered day while away.
  *
  * so the longest survivable absence is `LONGEST_REPAIRABLE_ABSENCE_DAYS` =
  * `FREE_GRACE_GAP_DAYS + min(COVERED_DAYS_PER_WINDOW,
@@ -1645,7 +1657,16 @@ export type DayOpening =
        * currently in. 0 while the grace still covers it.
        */
       readonly recoveryDaysCommittedToTheAbsence: number;
-      /** Covered days available right now. Nothing has been taken yet. */
+      /**
+       * COVERED DAYS THIS ABSENCE MAY DRAW ON — the armed snapshot, not the
+       * balance. Nothing has been taken yet.
+       *
+       * IT CAN BE LESS THAN WHAT THE LIFTER HOLDS, and a screen has to know
+       * which it is showing. A covered day bought during this absence raises
+       * `coveredDaysLeftInWindow` and not this, because GDD §4.2 rules that it
+       * arms the NEXT absence. Show this one for "what is protecting you right
+       * now" and `coveredDaysLeftInWindow` for "what you own".
+       */
       readonly coveredDaysAvailable: number;
     }
   /** Already trained today. Nothing to do; nothing at risk. */
@@ -1702,8 +1723,14 @@ export type DayOpening =
       readonly daysMissed: number;
       readonly reason: StreakBreakReason;
       /**
-       * Covered days available RIGHT NOW. Unchanged by the break itself — the
-       * break draws nothing.
+       * COVERED DAYS THIS ABSENCE MAY DRAW ON — the armed snapshot, not the
+       * balance. Unchanged by the break itself; the break draws nothing.
+       *
+       * ON THIS OPENING IT IS THE NUMBER THAT EXPLAINS THE BREAK, which is why
+       * it is the armed one: the run ended because what was armed could not
+       * cover the absence, and a covered day bought since is not why. Showing
+       * the balance here would read as "you had coverage and it broke anyway".
+       * `coveredDaysLeftInWindow` is what the lifter owns.
        */
       readonly coveredDaysAvailable: number;
       /**
