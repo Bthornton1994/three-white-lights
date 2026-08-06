@@ -80,9 +80,10 @@ export function appSessionPort(): SessionServerPort {
  * ===========================================================================
  * `appSessionPort() === appMeetPort()`. Not "an equivalent port", not "a port
  * built from the same seed" — the identical object, holding one `ServerRecord`
- * in one closure. `appServer.test.ts` asserts that identity, because it is the
- * entire content of "the four modes are one game because they are one lifter",
- * and it is the thing that was false.
+ * in one closure. That is the entire content of "the four modes are one game
+ * because they are one lifter", and it is the thing that was false.
+ *
+ * @guarantee one-row-behind-one-port
  *
  * Before this, `AppShell` handed `SessionScreen` a port and handed `MeetScreen`
  * nothing, and `useMeetDay` called `newServerRecord(...)` on mount to have

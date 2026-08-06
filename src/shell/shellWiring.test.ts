@@ -742,7 +742,7 @@ describe('navigating away and back cannot buy a second session of the day', () =
   // ONE LIFTER: the meet half reaches the SAME connection
   // -------------------------------------------------------------------------
 
-  it('THE MEET PORT AND THE SESSION PORT ARE THE SAME OBJECT', () => {
+  it('THE MEET PORT AND THE SESSION PORT ARE THE SAME OBJECT [one-row-behind-one-port]', () => {
     // The entire content of "the four modes are one game because they are one
     // lifter", as one assertion. `useMeetDay` used to call `newServerRecord(...)`
     // on mount, so meet day read a lifter who had never trained: the signup
@@ -752,7 +752,25 @@ describe('navigating away and back cannot buy a second session of the day', () =
     // NOT `toEqual`. Two ports built from the same seed are deeply equal on
     // construction and diverge the instant either is written to, which is
     // exactly the bug wearing a passing test. Identity is the claim.
-    expect(appMeetPort()).toBe(appSessionPort());
+    //
+    // THE MESSAGE IS CARRIED BY HAND because the bare identity failure reads
+    // `expected { …(5) } to be { …(5) }`, which tells a reader nothing about
+    // what broke — measured, on the mutation that produced this witness.
+    //
+    // WIDENED TO `unknown` FIRST, and the reason is a small piece of evidence in
+    // its own right: `tsc` refuses `appMeetPort() === appSessionPort()` with
+    // "these types have no overlap", because the two accessors narrow to
+    // interfaces that share only `openingSnapshot` and are otherwise disjoint.
+    // That refusal is the narrowing working — neither screen can reach the other
+    // mode's endpoints through the port it was handed — so the comparison is
+    // about OBJECT IDENTITY and says so, rather than being made to typecheck by
+    // widening the accessors back.
+    const meet: unknown = appMeetPort();
+    const session: unknown = appSessionPort();
+    expect(
+      meet === session,
+      'meet day and the daily session are holding two different servers, so they are two different lifters',
+    ).toBe(true);
   });
 
   it('and it really is a meet-server port, so the identity above is not two stubs', () => {

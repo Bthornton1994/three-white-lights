@@ -196,7 +196,7 @@ describe('what the client reads out of the cache', () => {
 // ---------------------------------------------------------------------------
 
 describe('the opener follows the lifter’s own e1RM', () => {
-  it('a trained lifter opens heavier than a brand-new one, on every lift', () => {
+  it('a trained lifter opens heavier than a brand-new one, on every lift [the-opener-follows-the-lifter]', () => {
     // THE DEFECT, AS AN ASSERTION. Before this change meet day built its own
     // empty record, so both sides of this comparison were the seed's opener and
     // every meet in the game opened at the same three weights for ever.

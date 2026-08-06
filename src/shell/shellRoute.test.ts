@@ -474,7 +474,7 @@ describe('the four debug query strings the evidence harness drives', () => {
     expect(entry.meet?.serverPort).toBeUndefined();
   });
 
-  it('A FRAME CARRIES A STAND-IN SERVER EXACTLY WHEN IT CARRIES A SCRIPTED STATE', () => {
+  it('A FRAME CARRIES A STAND-IN SERVER EXACTLY WHEN IT CARRIES A SCRIPTED STATE [a-preview-server-cannot-reach-a-played-meet]', () => {
     // ===================================================================
     // THE PIN THAT KEEPS THE FABRICATED LIFTER OFF THE PLAYED PATH
     // ===================================================================

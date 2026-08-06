@@ -340,6 +340,8 @@ export interface MeetEntry {
  * A REAL `localSessionServer`, not a stub: same closure, same latency, same
  * `applyMeetResult`. Only the row it starts from differs, which is why the
  * preview's recap has a real total on it.
+ *
+ * @guarantee a-preview-server-cannot-reach-a-played-meet
  */
 function previewMeetPort(): MeetServerPort {
   return localSessionServer({ record: previewServerRecord() });

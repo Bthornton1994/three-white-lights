@@ -256,6 +256,12 @@ export function meetDayHistoryFromCache(cache: ProgressionCache): MeetDayHistory
  * that to `meetServer.ts`'s `meetDayFacts`, which is the same call the server
  * side makes about the same lifter. Two callers, one function, so the two halves
  * cannot report different openers for one e1RM.
+ *
+ * AND WHAT IT READS IS THE LIFTER'S OWN TRAINING, which is the claim GDD §6.1
+ * makes — "opening attempts pre-filled from current Sim-mode e1RM data" — and
+ * which was false of the shipped app for six waves.
+ *
+ * @guarantee the-opener-follows-the-lifter
  */
 export function meetDayFactsFromCache(
   cache: ProgressionCache,
