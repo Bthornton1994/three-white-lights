@@ -63,10 +63,10 @@ place"*, *"nothing else paints in here"*, *"every number here is derived"* —
 then there must be a test that goes red if the guarantee stops holding. Prose is
 not a check, and a reader cannot tell the difference by looking.
 
-This is not a style preference. It has now failed **seven times** in this
+This is not a style preference. It has now failed **eight times** in this
 codebase; the fifth was found inside the comment that had just been rewritten to
 fix the fourth, the sixth one file away from where the fifth was fixed, and the
-seventh in a fix's own verification oracle:
+seventh in a fix's own verification oracle, and the eighth naming a test file that does not exist:
 
 - a scrim constant *"registered, documented and read by no pixel"*;
 - a dismiss window whose stated causation nothing on the app's route consulted;
@@ -168,6 +168,31 @@ not write client-authoritative code that will need unwinding later.)
 ### Client is a renderer
 
 Local state is a cache of server truth, not the truth itself.
+
+### One connection per app run, reached by every mode
+
+**A screen that holds its own `ServerRecord` is the defect, however correct that
+row is.** "Client is a renderer" did not stop this, because the client was not
+rendering the wrong number — it was rendering the right number *about the wrong
+lifter*. `useMeetDay` built its own record on mount while `AppShell` handed
+`MeetScreen` no port, so for six waves every meet suggested openers off the
+signup seed, every recap said FIRST TOTAL, and GDD §6.3's attempt tension — what
+the document calls "The Real Tension" — was dead code in the shipped app.
+
+Three things follow, each of which had already failed once:
+
+- **A guard written for one hook must be applied to its sibling, mechanically.**
+  `sessionWiring.test.ts` banned the six names "the bypass was made of" from
+  `useSession.ts`, and `useMeetDay.ts` contained five of them, one directory
+  over, for six waves. A twin guard must *read* the sibling's list, not copy it.
+- **`vitest.config.ts` is `environment: node`, so no cross-screen state is
+  checked by the suite.** Three defects have now lived entirely in that gap. Any
+  claim that a value survives a navigation needs a browser check that reads the
+  quantity on both sides — the 94 existing checks crossed that exact press and
+  compared opacity, hit-testing and geometry, but never a number.
+- **A check that bites but fails uselessly is half a check.** An identity
+  assertion here reddened with `expected { …(5) } to be { …(5) }`. The witness
+  bar means reading the failure message, not just watching it go red.
 
 ## Domain Correctness
 
