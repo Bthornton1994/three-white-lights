@@ -55,6 +55,46 @@ Keep every such value as a named constant in one place. Never scatter them as
 magic numbers across components. When a task depends on game feel, build the
 tunable version and say so — do not assert the values are right.
 
+## A Comment That Asserts a Guarantee Must Have a Test That Fails Without It
+
+If a comment or docstring says the code guarantees something — *"this cannot
+happen"*, *"calling it early, late or never leaves the player in the same
+place"*, *"nothing else paints in here"*, *"every number here is derived"* —
+then there must be a test that goes red if the guarantee stops holding. Prose is
+not a check, and a reader cannot tell the difference by looking.
+
+This is not a style preference. It has now failed **five times** in this
+codebase, and the fifth was found inside the comment that had just been
+rewritten to fix the fourth:
+
+- a scrim constant *"registered, documented and read by no pixel"*;
+- a dismiss window whose stated causation nothing on the app's route consulted;
+- a crowd-window equality described as failing *"in both directions"* that could
+  not fail upward;
+- `settleBrokenStreak` promising *"it cannot change any outcome"* while the
+  order it ran in decided 11 versus 1;
+- and, in the corrected version of that same docstring, *"the doomed burn is the
+  armed amount"* — the precise arithmetic that had been measured at 3 / 23 / 1
+  violating pairs and rejected as a §12.3 breach one commit earlier.
+
+Every one was true-sounding, none could be reddened, and each survived a round.
+The pattern is not carelessness — it is that a sentence written while the code
+was true keeps its confident tone after the code moves.
+
+**What to do about it.** Tag the claim and let a scan resolve it, the way
+`src/art/spriteMarks.test.ts`'s `@ours` and `lifterSprite.test.ts`'s `@ref` tags
+already work: scanned tree-wide, resolved against real measured values, with an
+untagged-value ban and a non-vacuity guard. Converge on that machinery rather
+than growing a third dialect.
+
+**And be honest about the limit.** No scan can decide which prose asserts a
+guarantee, so any mechanism here is necessarily partial. State in the code what
+its scoping rule catches and what it therefore cannot, and say what fraction of
+existing claims it covers. A narrow honest ban beats a broad one that has to be
+suppressed everywhere; a partial mechanism that declares its coverage beats one
+that implies completeness. What is not acceptable is a guarantee in prose with
+nothing behind it and no note saying so.
+
 ## Architecture Rules
 
 ### Pure logic is separate from UI
