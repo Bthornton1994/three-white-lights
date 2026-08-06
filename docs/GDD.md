@@ -1707,6 +1707,23 @@ will tank retention. Consider skipping entirely if pass + cosmetics perform.
 
 **E. Extra Covered Days — RULED IN, WITH CONDITIONS**
 
+**THE TENDER CONSTRAINS WHAT A PURCHASE DECLARES, NOT WHERE THE MONEY CAME
+FROM — and the difference is a real hole, recorded rather than glossed.**
+`NonTrainingGatedTender` makes an illegal *declaration* fail to typecheck. It
+cannot make illegal *funding* unrepresentable, because the wallet does not
+remember: `WALLET_CURRENCIES` is `['gymBucks', 'chalk']` and `ConfirmedWallet`
+is one pooled count per currency, so a caller may pass `chalk-purchased` while
+the balance it draws on was in fact filled by achievements. Nothing in the type
+system or in the runtime guard can tell.
+
+Closing it needs provenance on the *balance* — chalk held as separate
+non-training-gated and training-gated sub-balances, with the purchase debiting
+only the former. That is a server accounting change, it touches §8.2's currency
+model rather than §4.2's coverage model, and it is **not built**. Until it is,
+the guarantee is exactly: *the app cannot construct a training-gated covered-day
+purchase*, and not *a training-gated currency cannot end up paying for one*.
+
+
 The purchase path that replaces the Recovery Day, ruled in subject to three
 conditions: that a purchased day is provenance-tracked as a genuinely distinct
 source, that the §4.4 invariants still hold with purchased days *actually
