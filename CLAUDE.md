@@ -149,6 +149,25 @@ physiology.
   no balance to hoard — because a balance you hold is a quantity training can
   make you rich in at the wrong moment, which was the defect.
 
+  **Coverage is armed by a session, and an absence resolves against the
+  snapshot, not the balance.** `StreakState.entitlement` is the live balance,
+  which `applySettledCoveredDayPurchase` raises; `StreakState.armedEntitlement`
+  is what an absence may draw, and only `recordTrainingDay` and
+  `createStreakState` write it. Whether a run *survives* reads the armed
+  snapshot; what a doomed absence *costs* reads the live one, and that asymmetry
+  is load-bearing rather than an oversight — charging the doomed burn against
+  the armed count instead measures 3 / 23 / 1 violating pairs, including one in
+  a control where both lifters buy on identical days, which is a §12.3 breach.
+
+  Without the snapshot, a purchase during an absence retroactively rescued a run
+  `openDay` had already called broken, and *which way it went depended on
+  whether anything had called `settleBrokenStreak` first* — 11 versus 1 on the
+  same calendar, the same money and the same day. A client settling on launch
+  would have punished the player who opened the app. Nothing caught it because
+  every fixture hardcoded the safe intra-day order, and the purity test aimed at
+  exactly that hazard varied only *which days* the app was opened, never the
+  *order within a day*.
+
   Three rules keep the property, and all three read as harsh if you meet them
   alone:
 
@@ -218,7 +237,7 @@ physiology.
   than what was reported. The announcement side is an exhaustive switch over the
   read model's cases, so a new screen state cannot ship with a silent debit
   behind it. Note the reading that balances is *what the day has available in
-  its window regardless of arming* — not the snapshot (stale at a boundary) and
+  its window regardless of arming* — not the live snapshot (stale at a boundary) and
   not the armed count (zero for a player who declined protection, which made
   every one of their sessions read as a silent credit).
 
