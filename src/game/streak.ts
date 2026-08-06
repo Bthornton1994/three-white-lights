@@ -2643,50 +2643,35 @@ export interface SettledAsOf {
  * this function contains no arithmetic about grace, windows or ceilings, and
  * cannot disagree with the rule because it does not hold an opinion about it.
  *
- * IT STOPS AT THE FIRST RECORDED BREAK, AND THAT COSTS NOTHING. `endRun` clears
- * `lastTrainedDay`, and `settleBrokenStreak`'s first guard refuses a state with
- * no run, so no later day could record a second break.
+ * IT STOPS AT THE FIRST RECORDED BREAK. `endRun` clears `lastTrainedDay`, and
+ * `settleBrokenStreak`'s first guard refuses a state with no run, so no later
+ * day could record a second break. Swept rather than argued.
  * `@guarantee settling-is-terminal`
- *
- * THE NO-RUN SHORTCUT IS A COPY OF `settleBrokenStreak`'s FIRST GUARD, and a
- * copy is exactly what this file keeps being burnt by, so it is checked rather
- * than reasoned about: `streak.test.ts` runs the shortcut-free walk beside this
- * one over the whole sweep domain and asserts they agree state-for-state.
- * `@guarantee the-no-run-shortcut-changes-no-answer`
- *
- * WHY THE SHORTCUT EARNS ITS RISK. Without it this walks one day at a time from
- * the signup anchor, which for a lifter four hundred days in is four hundred
- * `absenceOutcome` calls on every order — measured at over 400s on
- * `streak.test.ts` alone, against 27s. With it the walk is bounded: a state with
- * a live run reaches `FREE_GRACE_GAP_DAYS + MAX_COVERED_DAYS_PER_ABSENCE + 1`
- * missed days at the latest before the absence outruns anything that could
- * cover it, so the loop settles or ends within a handful of days of the anchor.
- *
- * PURE. It returns a state; it writes nothing. Calling it changes nothing for
- * the caller that does not use what it returns.
- */
-export function settledStateAsOf(state: StreakState, today: StreakDay): SettledAsOf {
-  if (state.lastTrainedDay === null) return { state, runRecordedAsEndedOn: null };
-  return walkSettlingEveryDay(state, today);
-}
-
-/**
- * The walk itself, with no shortcut in it: offer every day from the anchor to
- * `today` to `settleBrokenStreak` and keep the first thing it records.
- *
- * SPLIT OUT SO THE SHORTCUT ABOVE CAN BE DIFFERENCED AGAINST IT. `streak.test.ts`
- * calls this directly on states `settledStateAsOf` short-circuits, which is the
- * only way to see that the short-circuit is not hiding an answer.
  *
  * THE DAY IS VALIDATED AND THE LOOP IS COUNTED, both because the first draft was
  * neither. It walked until `probe > today`, which is false forever when `today`
  * is not a number — and `streak.test.ts`'s export-surface sweep calls every
- * export with a missing second argument, so it hung the whole file rather than
+ * export with a missing second argument, so it HUNG the whole file rather than
  * failing. A total function refuses nonsense; it does not spin on it.
+ *
+ * WHAT IT COSTS, MEASURED, AND THE FIRST MEASUREMENT WAS WRONG. A state with no
+ * run offers every day since signup and settles none of them, so the walk is
+ * O(account age) on those. A draft of this carried a `lastTrainedDay === null`
+ * short-circuit to skip that, justified in this docstring by "over 400s against
+ * 27s" — and that number was the HANG above, misattributed. Timed properly, the
+ * short-circuit was worth 30.9s against 31.8s on `streak.test.ts` and nothing at
+ * all on the full suite: 88.6s against 87.1s. So it bought about a second, in
+ * exchange for a copy of another function's guard, a second exported walk to
+ * difference it against and a guarantee to maintain. It was removed. A duplicated
+ * guard is the specific thing this module keeps being burnt by, and paying that
+ * for one second of a ninety-second suite is not a trade.
+ *
+ * PURE. It returns a state; it writes nothing. Calling it changes nothing for
+ * the caller that does not use what it returns.
  *
  * @throws {RangeError} if `today` is not a whole day index.
  */
-export function walkSettlingEveryDay(state: StreakState, today: StreakDay): SettledAsOf {
+export function settledStateAsOf(state: StreakState, today: StreakDay): SettledAsOf {
   const anchor = absenceAnchorDay(state);
   const lastOffset = daysBetween(anchor, asStreakDay(today));
   for (let offset = 1; offset <= lastOffset; offset += 1) {

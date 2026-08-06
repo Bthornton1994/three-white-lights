@@ -39,7 +39,6 @@ import {
   streakDayFromCivilDate,
   streakDayFromLocalWallClock,
   streakDeadlineDay,
-  walkSettlingEveryDay,
   type DayOpening,
   type LegacyStreakStateWithBalance,
   type StreakDay,
@@ -3454,7 +3453,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
     ).toBe(0);
   });
 
-  it('[settling-is-terminal][the-no-run-shortcut-changes-no-answer][a-sale-never-follows-a-settle] THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days, at six placements against the window boundary', () => {
+  it('[settling-is-terminal][a-sale-never-follows-a-settle] THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days, at six placements against the window boundary', () => {
     // THE HUMAN'S RULING, MEASURED. Two halves, and the second is the one that
     // hides a bug: the store must refuse an already-doomed absence, AND it must
     // not refuse any absence that is still salvageable. A store that answers
@@ -3517,7 +3516,6 @@ describe('the outcome does not depend on when the player opens the app', () => {
     let staleVerdicts = 0;
     let completionDivergences = 0;
     let secondSettles = 0;
-    let shortcutWalksSkipped = 0;
 
     for (const startOffset of DOOMED_SALE_SWEEP.CALENDAR_START_OFFSETS) {
     for (let mask = 0; mask < exhaustiveCalendarCount(length); mask += 1) {
@@ -3625,18 +3623,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
             completionDivergences += 1;
           }
 
-          // THE NO-RUN SHORTCUT CHANGES NO ANSWER: `settledStateAsOf` skips the
-          // walk entirely for a state with no run, and this is the difference
-          // against the walk that has no shortcut in it.
-          const viaShortcut = settledStateAsOf(state, day);
-          const viaWalk = walkSettlingEveryDay(state, day);
-          if (
-            JSON.stringify(viaShortcut.state) !== JSON.stringify(viaWalk.state) ||
-            viaShortcut.runRecordedAsEndedOn !== viaWalk.runRecordedAsEndedOn
-          ) {
-            throw new Error(`${label}: the no-run shortcut disagreed with the full walk`);
-          }
-          if (state.lastTrainedDay === null) shortcutWalksSkipped += 1;
+          const revalidated = settledStateAsOf(state, day);
 
           if (result.ok) {
             sellable += 1;
@@ -3648,7 +3635,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
             }
             // A SALE NEVER FOLLOWS A SETTLE, so the credit the sale applies lands
             // on the state re-validation approved and not on a different one.
-            if (viaShortcut.runRecordedAsEndedOn !== null) {
+            if (revalidated.runRecordedAsEndedOn !== null) {
               throw new Error(`${label}: sold on a day whose run had already ended`);
             }
           } else {
@@ -3728,10 +3715,6 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // This is what makes `settledStateAsOf`'s early return sound.
     expect(secondSettles, 'a settled run was settled again').toBe(0);
 
-    // AND THE NO-RUN SHORTCUT WAS ACTUALLY EXERCISED. The differential above is
-    // only worth running on states the shortcut skips; a domain with none would
-    // compare the walk against itself.
-    expect(shortcutWalksSkipped, 'no probe ever hit the shortcut').toBeGreaterThan(0);
   });
 
   it('[completion-revalidates-against-settled-state] THE STORE VERDICT AT A WINDOW BOUNDARY: rendered stale, finalised against settled state', () => {
