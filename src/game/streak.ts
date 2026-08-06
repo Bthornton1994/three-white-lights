@@ -1146,17 +1146,31 @@ export type StreakErrorCode =
    * absence began before the purchase existed.
    *
    * A REFUSAL AND NOT A DISABLED BUTTON. The store gets a code and a sentence
-   * saying which of the three ways this absence ran out, because "the button is
-   * greyed out" is the version of this that generates the support ticket.
-   * `DOOMED_SALE_REFUSAL_MESSAGE` is the copy, keyed by `StreakBreakReason` so
-   * the sentence is true of the absence in front of the player rather than true
-   * on average.
+   * saying which way this absence ran out, because "the button is greyed out" is
+   * the version of this that generates the support ticket.
+   * `DOOMED_SALE_REFUSAL_MESSAGE` is the copy, keyed by `entitlementArmed` and
+   * NOT by `StreakBreakReason` — that constant's docstring has the measurement
+   * behind the choice. This sentence said "keyed by `StreakBreakReason`" for a
+   * round after the keying was changed, which is the defect class
+   * `guaranteeTags.test.ts` exists for, one file away from where it was fixed.
    *
    * SEPARATE FROM `INVALID_PURCHASE` for the same reason `TRAINING_FUNDED_TENDER`
    * is: the order is perfectly well formed and the money is perfectly good. What
    * is wrong is the moment.
    */
   | 'ABSENCE_ALREADY_DOOMED'
+  /**
+   * The order was finalised against a state this device had not settled, and
+   * settled state refuses it: the run had already been recorded as ended on an
+   * earlier day (GDD §8.3E, §4.4).
+   *
+   * SEPARATE FROM `ABSENCE_ALREADY_DOOMED` because the two ask different things
+   * of a client. That one means this device and the store agree the run is over,
+   * so the offer should never have been on screen. This one means the offer was
+   * legitimate to render and the device is simply behind — the right response is
+   * to refresh the account and re-render, not to report a bug.
+   */
+  | 'ABSENCE_SETTLED_WHILE_AWAY'
   /** A migration tried to set a signup day later than a recorded session. */
   | 'SIGNUP_DAY_AFTER_TRAINING';
 
@@ -2182,8 +2196,19 @@ export const COVERED_DAY_PURCHASE_OUTCOME_IS_COVERAGE_ONLY: KeysAreExactly<
  * the window: the session that closes this absence takes what is LIVE, so the
  * lifter can arrive at their next absence with nothing armed.
  *
+ * THE THIRD SENTENCE IS A DIFFERENT AXIS AND IS KEYED DIFFERENTLY ON PURPOSE.
+ * `alreadyRecorded` is not another reading of the calendar; it answers "why did
+ * the button I just tapped stop working", which the other two cannot be asked.
+ * It is shown when, and only when, this state's OWN verdict was sellable and
+ * re-validation against settled state refused — see
+ * `applySettledCoveredDayPurchase`. So it does drift with app-opening, and that
+ * is not the drift the paragraph above rejects: a client whose screen already
+ * said "refused" never produces the tap, so no single player can ever be given
+ * two explanations for one refusal. The DECISION is app-open invariant, which is
+ * the §12.3 property; the sentence tracks what the player was shown.
+ *
  * COPY, AND UNTUNED LIKE EVERY OTHER STRING HERE. One home, exported, so a store
- * screen shows this refusal rather than inventing a third sentence or — the
+ * screen shows this refusal rather than inventing a fourth sentence or — the
  * thing the ruling forbids — greying the button out and saying nothing.
  */
 export const DOOMED_SALE_REFUSAL_MESSAGE = {
@@ -2201,6 +2226,17 @@ export const DOOMED_SALE_REFUSAL_MESSAGE = {
    */
   protectionDeclined:
     'Recovery Day protection is turned off, so nothing was holding this break and your streak has already ended. You can turn protection back on in Settings — it arms from your next session.',
+  /**
+   * The store offered this and the finalised sale was refused: the break had
+   * already been recorded on an earlier day, and this device was still showing
+   * the account as it stood before that.
+   *
+   * IT NAMES THE STALENESS RATHER THAN THE CALENDAR, because a player who was
+   * just shown a live streak and an open store will not believe "your streak has
+   * already ended" without being told when.
+   */
+  alreadyRecorded:
+    'Your break was already recorded while you were away, so your streak had ended before this order arrived — this screen was still showing your account as it stood earlier. A covered day arms your next break, not one that has already been recorded.',
 } as const;
 
 /**
@@ -2339,15 +2375,49 @@ export function applySettledCoveredDayPurchase(
   // THE MESSAGE IS PICKED OFF `entitlementArmed` AND NOT OFF `breakReason`, and
   // that is not a shortcut — see `DOOMED_SALE_REFUSAL_MESSAGE`. The reason drifts
   // when a nightly settle lengthens the absence; the armed flag does not.
-  const absence = absenceOutcome(state, day);
-  if (!absence.protectionHolds) {
+  //
+  // AND IT IS ASKED TWICE, ONCE OF THIS STATE AND ONCE OF SETTLED STATE. That is
+  // the human's ruling on `STORE_VERDICT_DIVERGENCE`, and it is the only part of
+  // this refusal that is about WHICH state rather than about the arithmetic.
+  //
+  // RENDERING MAY BE STALE; COMPLETING MAY NOT. A client that has not settled
+  // can hold a state whose absence reads COVERED on a day where a settled client
+  // reads a signup-anchored break — `settleBrokenStreak` drops the anchor, and
+  // the armed snapshot refills at a window boundary, so an ended run comes back
+  // to life on the far side of one. Showing the offer off that stale state is
+  // acceptable. Finalising the sale off it is what the ruling forbids: a
+  // completed order must never be one settled state would have refused.
+  //
+  // `settledStateAsOf` IS WHAT MAKES THEM THE SAME QUESTION, and it re-derives
+  // nothing — it offers each day to `settleBrokenStreak` and keeps what that
+  // returns. The verdict below is then the identical `absenceOutcome(...)
+  // .protectionHolds` call `recordTrainingDay` branches on, asked of the state a
+  // nightly job would have left.
+  // `@guarantee completion-revalidates-against-settled-state`
+  const rendered = absenceOutcome(state, day);
+  const revalidated = settledStateAsOf(state, day);
+  const authoritative =
+    revalidated.runRecordedAsEndedOn === null ? rendered : absenceOutcome(revalidated.state, day);
+  if (!authoritative.protectionHolds) {
     return fail(
-      'ABSENCE_ALREADY_DOOMED',
-      state.entitlementArmed
-        ? DOOMED_SALE_REFUSAL_MESSAGE.armed
-        : DOOMED_SALE_REFUSAL_MESSAGE.protectionDeclined,
+      // A DISTINCT CODE FOR THE STALE CASE, because the two are different things
+      // for a client to do about. `ABSENCE_ALREADY_DOOMED` means the store and
+      // this device agree the run is over; `ABSENCE_SETTLED_WHILE_AWAY` means
+      // this device is behind and should refresh before it offers anything else.
+      rendered.protectionHolds ? 'ABSENCE_SETTLED_WHILE_AWAY' : 'ABSENCE_ALREADY_DOOMED',
+      rendered.protectionHolds
+        ? DOOMED_SALE_REFUSAL_MESSAGE.alreadyRecorded
+        : state.entitlementArmed
+          ? DOOMED_SALE_REFUSAL_MESSAGE.armed
+          : DOOMED_SALE_REFUSAL_MESSAGE.protectionDeclined,
     );
   }
+  // THE SALE PATH NEVER CARRIES A SETTLE, so crediting against `state` below is
+  // crediting against the state re-validation approved. A settle that succeeded
+  // on any day at or before `day` leaves an absence anchored at the signup day,
+  // which is never shorter than the one it replaced, so it can only ever have
+  // refused. `streak.test.ts` sweeps that rather than leaving it as an argument.
+  // `@guarantee a-sale-never-follows-a-settle`
   const credit = creditCoveredDays(
     RECOVERY_ENTITLEMENT,
     state.entitlement,
@@ -2491,15 +2561,21 @@ export interface StreakBreakOutcome {
  * actually holds is the second bullet: not "armed rather than length-dependent"
  * but "not length-dependent at all, whichever field it reads".
  *
- * ONE THING IT DOES CHANGE, AND IT IS NOT THE STATE. Since the store refuses to
- * sell a covered day into an already-doomed absence, the store's verdict is a
- * function of `absenceOutcome` — and a settle performed on an EARLIER day
- * changes what a LATER day sees, because the anchor it would have been measured
- * from is gone. On a day where a window boundary has refilled the armed
- * snapshot, an unsettled state can report a live run where a settled one reports
- * a signup-anchored absence, so one client is sold and another refused. Measured
- * at 1 pair in 900 and pinned in `streakSweep.STORE_VERDICT_DIVERGENCE`. It does
- * not reach the state, which is why the equality above still holds.
+ * ONE THING IT DOES CHANGE, AND IT IS NOT THE STATE. A settle performed on an
+ * EARLIER day changes what a LATER day sees, because the anchor it would have
+ * been measured from is gone. On a day where a window boundary has refilled the
+ * armed snapshot, an unsettled state can report a live run where a settled one
+ * reports a signup-anchored absence. That difference is real, it is still here,
+ * and `streakSweep.STORE_VERDICT_DIVERGENCE` counts it — 1984 probes in the
+ * doomed-sale sweep. It does not reach the state, which is why the equality
+ * above still holds.
+ *
+ * WHAT IT USED TO CHANGE, AND NO LONGER DOES: the store's verdict. Since the
+ * store refuses to sell into an already-doomed absence, that verdict was a
+ * function of `absenceOutcome`, so one client was sold where another was refused
+ * — 1 pair in 900. `applySettledCoveredDayPurchase` now re-validates through
+ * `settledStateAsOf` before finalising, so a completed sale is one settled state
+ * authorises whether or not this function has been called. The count is 0.
  *
  * It never spends a Recovery Day, because an absence that ends a run never
  * spends one (§5 of the header).
@@ -2527,6 +2603,83 @@ export function settleBrokenStreak(state: StreakState, today: StreakDay): Streak
     balanceAfter: coveredDaysArmed(state, today),
     recoveryDaysCommittedToTheAbsence: absence.recoveryDaysConsumed,
   });
+}
+
+/** What `settledStateAsOf` found. */
+export interface SettledAsOf {
+  /**
+   * The state a nightly settle job would have left by the end of `today`.
+   * Identical to the input when there was nothing to record.
+   */
+  readonly state: StreakState;
+  /**
+   * The day the run was recorded as ended, or null when nothing was recorded.
+   *
+   * Null covers both "the run is still alive" and "it was already recorded
+   * before this call" — the two cases where a settle job would have had nothing
+   * left to do, which is the same thing from this function's point of view.
+   */
+  readonly runRecordedAsEndedOn: StreakDay | null;
+}
+
+/**
+ * The state a client that settled every night would be holding by the end of
+ * `today` — the input state with every break a nightly job would have recorded
+ * already recorded.
+ *
+ * WHY IT IS NOT `settleBrokenStreak(state, today)`. A single settle asks about
+ * one day. A run that ended on an earlier day can be ALIVE AGAIN on `today`,
+ * because the armed snapshot refills at a window boundary (GDD §4.2's "refills
+ * without anybody opening the app") while `daysMissed` only grows: an absence
+ * that outran a drained window on the last day of it is inside a full window on
+ * the first day of the next. Asked about `today` alone, `settleBrokenStreak`
+ * reports NOTHING_TO_SETTLE and the ended run silently comes back. Measured:
+ * settling once at the completion day leaves the revived absence covered, which
+ * is the whole of the divergence this function exists to close.
+ *
+ * SO IT WALKS THE DAYS, AND IT WALKS THEM THROUGH THE REAL FUNCTION. Every day
+ * from the absence anchor to `today` is offered to `settleBrokenStreak`, which
+ * is exactly what a nightly job does. Nothing here re-derives when a run ends:
+ * this function contains no arithmetic about grace, windows or ceilings, and
+ * cannot disagree with the rule because it does not hold an opinion about it.
+ *
+ * IT STOPS AT THE FIRST RECORDED BREAK. `endRun` clears `lastTrainedDay`, and
+ * `settleBrokenStreak`'s first guard refuses a state with no run, so no later
+ * day could record a second break. Swept rather than argued.
+ * `@guarantee settling-is-terminal`
+ *
+ * THE DAY IS VALIDATED AND THE LOOP IS COUNTED, both because the first draft was
+ * neither. It walked until `probe > today`, which is false forever when `today`
+ * is not a number — and `streak.test.ts`'s export-surface sweep calls every
+ * export with a missing second argument, so it HUNG the whole file rather than
+ * failing. A total function refuses nonsense; it does not spin on it.
+ *
+ * WHAT IT COSTS, MEASURED, AND THE FIRST MEASUREMENT WAS WRONG. A state with no
+ * run offers every day since signup and settles none of them, so the walk is
+ * O(account age) on those. A draft of this carried a `lastTrainedDay === null`
+ * short-circuit to skip that, justified in this docstring by "over 400s against
+ * 27s" — and that number was the HANG above, misattributed. Timed properly, the
+ * short-circuit was worth 30.9s against 31.8s on `streak.test.ts` and nothing at
+ * all on the full suite: 88.6s against 87.1s. So it bought about a second, in
+ * exchange for a copy of another function's guard, a second exported walk to
+ * difference it against and a guarantee to maintain. It was removed. A duplicated
+ * guard is the specific thing this module keeps being burnt by, and paying that
+ * for one second of a ninety-second suite is not a trade.
+ *
+ * PURE. It returns a state; it writes nothing. Calling it changes nothing for
+ * the caller that does not use what it returns.
+ *
+ * @throws {RangeError} if `today` is not a whole day index.
+ */
+export function settledStateAsOf(state: StreakState, today: StreakDay): SettledAsOf {
+  const anchor = absenceAnchorDay(state);
+  const lastOffset = daysBetween(anchor, asStreakDay(today));
+  for (let offset = 1; offset <= lastOffset; offset += 1) {
+    const probe = addDays(anchor, offset);
+    const settled = settleBrokenStreak(state, probe);
+    if (settled.ok) return { state: settled.value.state, runRecordedAsEndedOn: probe };
+  }
+  return { state, runRecordedAsEndedOn: null };
 }
 
 /** What changing the protection setting did. */

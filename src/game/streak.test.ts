@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
+  DOOMED_SALE_REFUSAL_MESSAGE,
   LONGEST_REPAIRABLE_ABSENCE_DAYS,
   RECOVERY_DAY_GUARDRAILS,
   RECOVERY_DAY_OUTCOME_KEYS,
@@ -34,6 +35,7 @@ import {
   recordTrainingDay,
   setRecoveryDayProtection,
   settleBrokenStreak,
+  settledStateAsOf,
   streakDayFromCivilDate,
   streakDayFromLocalWallClock,
   streakDeadlineDay,
@@ -88,6 +90,11 @@ function unwrap<T>(result: StreakResult<T>): T {
 
 function errorCodeOf<T>(result: StreakResult<T>): string {
   return result.ok ? 'OK' : result.error.code;
+}
+
+/** The refusal sentence, so a test can pin the COPY and not only the code. */
+function errorMessageOf<T>(result: StreakResult<T>): string {
+  return result.ok ? 'OK' : result.error.message;
 }
 
 const DAY_ZERO: StreakDay = asStreakDay(20000);
@@ -3008,6 +3015,16 @@ interface SimResult {
    * the harness rather than only in `streak.ts`.
    */
   readonly refusedPurchases: number;
+  /**
+   * Of those, the ones refused as `ABSENCE_SETTLED_WHILE_AWAY` — the completion
+   * re-validation catching a state this client had not settled.
+   *
+   * CARRIED SEPARATELY SO THE SWEEP CAN SEE THE NEW PATH FIRE. `refusedPurchases`
+   * going up is not evidence re-validation ran; this is. A client that opens
+   * daily settles as it goes and can never draw this code, so a sweep in which
+   * it is zero everywhere is a sweep that never reached the case.
+   */
+  readonly refusedAsStale: number;
 }
 
 /**
@@ -3062,6 +3079,7 @@ function simulate(
   let spent = 0;
   let revealsSeen = 0;
   let refusedPurchases = 0;
+  let refusedAsStale = 0;
 
   const open = (from: StreakState, day: StreakDay, count: boolean): StreakState => {
     const opening = openDay(from, day);
@@ -3097,9 +3115,14 @@ function simulate(
     // THAT IS A TRAINING-KEYED ARRIVAL AND IT IS THE HAZARD GDD §4.4 TRACES, so
     // it is measured rather than reasoned about: `refusedPurchases` is carried
     // out on the result, and the monotonicity sweeps below re-derive their pinned
-    // zeros with this live. `ABSENCE_ALREADY_DOOMED` is the only refusal a
-    // well-formed simulated order can draw; anything else is a harness bug and
-    // still throws.
+    // zeros with this live.
+    //
+    // TWO REFUSALS ARE WELL-FORMED NOW, not one. `ABSENCE_ALREADY_DOOMED` is this
+    // client's own state saying the run is over; `ABSENCE_SETTLED_WHILE_AWAY` is
+    // completion re-validation refusing an order this client's UNSETTLED state
+    // would have sold. Both count as refusals; the second is counted again on its
+    // own, because it is the only direct evidence a sweep has that re-validation
+    // ran at all. Anything else is a harness bug and still throws.
     if (grantOn[i] === true) {
       const bought = applySettledCoveredDayPurchase(state, day, {
         orderId: `sim-${i}`,
@@ -3110,6 +3133,9 @@ function simulate(
         state = bought.value.state;
       } else if (bought.error.code === 'ABSENCE_ALREADY_DOOMED') {
         refusedPurchases += 1;
+      } else if (bought.error.code === 'ABSENCE_SETTLED_WHILE_AWAY') {
+        refusedPurchases += 1;
+        refusedAsStale += 1;
       } else {
         throw new Error(`day ${i}: the simulated purchase was refused (${bought.error.code})`);
       }
@@ -3178,7 +3204,7 @@ function simulate(
     // simulated player made, so it does not count as a reveal they were shown.
     state = open(state, addDays(DAY_ZERO, attend.length - 1), false);
   }
-  return { state, recoveryDaysSpent: spent, revealsSeen, refusedPurchases };
+  return { state, recoveryDaysSpent: spent, revealsSeen, refusedPurchases, refusedAsStale };
 }
 
 /**
@@ -3353,6 +3379,8 @@ describe('the outcome does not depend on when the player opens the app', () => {
     let purchasedDaysSeen = 0;
     let differedFromNoPurchase = 0;
     let storeVerdictDivergedInPairs = 0;
+    let staleRefusalsUnderNever = 0;
+    let staleRefusalsUnderDaily = 0;
 
     for (let trial = 0; trial < 300; trial += 1) {
       const length = 20 + Math.floor(rng() * 40);
@@ -3363,17 +3391,27 @@ describe('the outcome does not depend on when the player opens the app', () => {
       purchasesLanded += buyOn.filter(Boolean).length;
       const baseline = simulate(attend, buyOn, initial, 'never', true);
       purchasedDaysSeen += baseline.state.entitlement.purchasedDaysLeft;
+      staleRefusalsUnderNever += baseline.refusedAsStale;
       for (const schedule of ['daily', 'on-training-days', 'every-third-day'] as const) {
         const other = simulate(attend, buyOn, initial, schedule, true);
+        if (schedule === 'daily') staleRefusalsUnderDaily += other.refusedAsStale;
         // FULL JSON-STATE EQUALITY across opening schedules, purchases included.
         expect(JSON.stringify(other.state)).toBe(JSON.stringify(baseline.state));
         expect(other.state).toEqual(baseline.state);
-        // THE SPEND MATCHES WHEREVER THE STORE MADE THE SAME DECISION, and
-        // where it did not, the pair is counted rather than excused. See
-        // `STORE_VERDICT_DIVERGENCE` for the mechanism and the pinned count.
-        if (other.refusedPurchases === baseline.refusedPurchases) {
-          expect(other.recoveryDaysSpent).toBe(baseline.recoveryDaysSpent);
-        } else {
+        // THE SPEND EQUALITY IS UNCONDITIONAL AGAIN.
+        //
+        // It was weakened for one round to "wherever the store made the same
+        // decision", with the exceptions counted into
+        // `storeVerdictDivergedInPairs` and pinned at 1. That condition is gone:
+        // completion re-validates against settled state, so the store takes the
+        // same orders from a client that never opens the app as from one that
+        // settles every night, and the spend that follows is the same number.
+        //
+        // THE COUNTER IS KEPT AND PINNED AT ZERO rather than deleted with the
+        // condition. A count that must be zero fails loudly and names the pair; a
+        // deleted count cannot come back to tell anybody the gap reopened.
+        expect(other.recoveryDaysSpent).toBe(baseline.recoveryDaysSpent);
+        if (other.refusedPurchases !== baseline.refusedPurchases) {
           storeVerdictDivergedInPairs += 1;
         }
       }
@@ -3397,9 +3435,25 @@ describe('the outcome does not depend on when the player opens the app', () => {
     expect(storeVerdictDivergedInPairs, 'store-verdict divergences').toBe(
       STORE_VERDICT_DIVERGENCE.PAIRS_IN_THIS_SWEEP,
     );
+    expect(STORE_VERDICT_DIVERGENCE.PAIRS_IN_THIS_SWEEP, 'the exception count is zero').toBe(0);
+
+    // AND THE ZERO IS NOT A ZERO BECAUSE NOTHING HAPPENED. Re-validation fired in
+    // this sweep, on the client that never opens the app and therefore holds the
+    // stale state — and it fired on NO other, because a client that settles every
+    // night has nothing left for re-validation to find. Both halves are needed:
+    // the first says the path is reachable, the second says the fix landed on the
+    // stale client rather than on everyone.
+    expect(
+      staleRefusalsUnderNever,
+      'completion re-validation never fired, so the zero above is vacuous',
+    ).toBeGreaterThan(0);
+    expect(
+      staleRefusalsUnderDaily,
+      'a nightly-settling client should have nothing left to re-validate',
+    ).toBe(0);
   });
 
-  it('THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days', () => {
+  it('[settling-is-terminal][a-sale-never-follows-a-settle] THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days, at six placements against the window boundary', () => {
     // THE HUMAN'S RULING, MEASURED. Two halves, and the second is the one that
     // hides a bug: the store must refuse an already-doomed absence, AND it must
     // not refuse any absence that is still salvageable. A store that answers
@@ -3415,40 +3469,82 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // `DOOMED_SALE_SWEEP` for why it is that and not a re-derivation, and for why
     // asking the same function is not circular.
     //
+    // AND IT IS ASKED OF THE STATE A NIGHTLY SETTLE JOB WOULD HAVE LEFT, which is
+    // the human's ruling on `STORE_VERDICT_DIVERGENCE` carried onto this domain
+    // rather than into a test of its own. `nightly` below is built by offering
+    // EVERY day the account has existed to `settleBrokenStreak` — the real
+    // function, driven the way a server job drives it. It is deliberately NOT
+    // `settledStateAsOf`: the subject calls that helper, so an oracle that called
+    // it too would agree with the subject by construction.
+    //
     // THREE STATE SHAPES, because the refusal reads two fields and one of them is
     // the protection toggle: protection on, protection declined, and a state
     // carrying a covered day bought legally while the absence was still
     // salvageable — which is the only way `purchasedDaysLeft` can be non-zero
     // inside a doomed absence now.
+    //
+    // AND SIX CALENDAR PLACEMENTS, because with only the signup-anchored one the
+    // whole domain could not express a run that ends and comes back — see
+    // `DOOMED_SALE_SWEEP.CALENDAR_START_OFFSETS`. That is the honest reading of
+    // the old 98,304-decision green: the store was checked exhaustively over
+    // states in which the question this test now asks had exactly one answer.
     const order = {
       coveredDays: DOOMED_SALE_SWEEP.COVERED_DAYS_PER_ORDER,
       tender: 'chalk-purchased',
     } as const;
     const length = DOOMED_SALE_SWEEP.EXHAUSTIVE_LENGTH;
 
+    // THE BAND IS RE-DERIVED FROM THE TUNING CONSTANTS rather than trusted. An
+    // offset puts the calendar's last day at `WINDOW_DAYS - 1 - k`; the placements
+    // that matter are `k` from 0 to `LONGEST_REPAIRABLE_ABSENCE_DAYS`, which is
+    // exactly the range over which an absence can still be covered when it
+    // reaches the boundary. Retune the window and this fails rather than quietly
+    // sweeping the wrong six days.
+    const straddleBand = Array.from(
+      { length: LONGEST_REPAIRABLE_ABSENCE_DAYS + 1 },
+      (_, k) => RECOVERY_ENTITLEMENT.WINDOW_DAYS - length - k,
+    );
+    expect([...DOOMED_SALE_SWEEP.CALENDAR_START_OFFSETS].sort((a, b) => a - b)).toEqual(
+      [0, ...straddleBand].sort((a, b) => a - b),
+    );
+
     let sellable = 0;
     let refused = 0;
     let probes = 0;
     let statesWithAPurchasedDay = 0;
     let refusalsInsideARefilledWindow = 0;
+    let staleVerdicts = 0;
+    let completionDivergences = 0;
+    let secondSettles = 0;
 
+    for (const startOffset of DOOMED_SALE_SWEEP.CALENDAR_START_OFFSETS) {
     for (let mask = 0; mask < exhaustiveCalendarCount(length); mask += 1) {
       const schedule = exhaustiveCalendar(mask, length);
       let trained: StreakState = freshState();
       let lastTrainedIndex = -1;
       for (let i = 0; i < length; i += 1) {
         if (schedule[i] !== true) continue;
-        trained = unwrap(recordTrainingDay(trained, addDays(DAY_ZERO, i))).state;
+        trained = unwrap(recordTrainingDay(trained, addDays(DAY_ZERO, startOffset + i))).state;
         lastTrainedIndex = i;
       }
 
       const declined = setRecoveryDayProtection(trained, false).state;
-      // A LEGAL PURCHASE, ON THE DAY AFTER THE LAST SESSION — nothing missed, so
-      // the absence holds and the store sells. Skipped for a lifter who never
+      // A LEGAL PURCHASE, ON THE LAST SESSION'S OWN DAY — nothing missed, so the
+      // absence holds and the store sells. Skipped for a lifter who never
       // trained, who has no such day.
+      //
+      // ON THE SESSION'S DAY AND NOT THE DAY AFTER, which it used to be. With the
+      // calendar anchored at signup those two were interchangeable; with the
+      // straddle offsets they are not, because the day after the last session can
+      // fall in the NEXT entitlement window while the first probe day is still in
+      // this one. The store refuses to sell into a window that has already passed
+      // — a separate, deliberate refusal with its own test — and this shape was
+      // handing it that case and reading the result as a doomed-sale verdict.
+      // Buying on the session day keeps the shape's entitlement window at or
+      // before every day it is probed on.
       let carrying = trained;
       if (lastTrainedIndex >= 0) {
-        const buyDay = addDays(DAY_ZERO, lastTrainedIndex + 1);
+        const buyDay = addDays(DAY_ZERO, startOffset + lastTrainedIndex);
         const bought = applySettledCoveredDayPurchase(trained, buyDay, {
           ...order,
           orderId: `carry-${mask}`,
@@ -3464,26 +3560,72 @@ describe('the outcome does not depend on when the player opens the app', () => {
         ['declined', declined],
         ['carrying', carrying],
       ] as const) {
+        // THE NIGHTLY-SETTLED TWIN. Carried across the probe loop and advanced one
+        // day at a time from the day after signup, so by the time the loop reaches
+        // a probe day it holds exactly what a client that opened and settled every
+        // night would hold. Days before the last session cannot settle anything —
+        // `settleBrokenStreak` measures from the anchor and finds no missed days —
+        // so starting at signup costs a few refusals and assumes nothing about
+        // where the breaks are.
+        let nightly = state;
+        let nightlySettledOn: StreakDay | null = null;
+        for (let d = 1; d < startOffset + length; d += 1) {
+          const settledEarly = settleBrokenStreak(nightly, addDays(DAY_ZERO, d));
+          if (settledEarly.ok) {
+            nightly = settledEarly.value.state;
+            nightlySettledOn = addDays(DAY_ZERO, d);
+          }
+        }
         for (let offset = 0; offset <= DOOMED_SALE_SWEEP.PROBE_HORIZON_DAYS; offset += 1) {
-          const day = addDays(DAY_ZERO, length - 1 + offset);
+          const day = addDays(DAY_ZERO, startOffset + length - 1 + offset);
+          const settledToday = settleBrokenStreak(nightly, day);
+          if (settledToday.ok) {
+            // SETTLING IS TERMINAL: once a break is recorded, no later day may
+            // record a second one. Counted rather than assumed, because
+            // `settledStateAsOf` returns at the first settle and that shortcut is
+            // only sound if this is true.
+            if (nightlySettledOn !== null) secondSettles += 1;
+            nightly = settledToday.value.state;
+            nightlySettledOn = day;
+          }
+
           const holds = absenceOutcome(state, day).protectionHolds;
+          // THE AUTHORITATIVE VERDICT: the same call, asked of the settled twin.
+          const settledHolds = absenceOutcome(nightly, day).protectionHolds;
           const result = applySettledCoveredDayPurchase(state, day, {
             ...order,
             orderId: `probe-${mask}-${shape}-${offset}`,
           });
+          const settledResult = applySettledCoveredDayPurchase(nightly, day, {
+            ...order,
+            orderId: `probe-${mask}-${shape}-${offset}`,
+          });
           // BARE THROWS RATHER THAN `expect` IN THIS LOOP, which is the same
-          // call `simulate` makes and for the same reason: ninety-eight thousand
-          // probes through `expect` turn a three-second test into a
-          // twenty-second one. The aggregates below are `expect`s.
-          const label = `${shape} mask ${mask} day +${offset}`;
+          // call `simulate` makes and for the same reason: half a million probes
+          // through `expect` turn a three-second test into a two-minute one. The
+          // aggregates below are `expect`s.
+          const label = `offset ${startOffset} ${shape} mask ${mask} day +${offset}`;
           const opening = openDay(state, day).kind;
 
-          // THE EQUIVALENCE.
-          if (result.ok !== holds) {
-            throw new Error(`${label}: store sold=${result.ok}, absence holds=${holds}`);
+          if (holds !== settledHolds) staleVerdicts += 1;
+
+          // THE EQUIVALENCE, AGAINST SETTLED STATE. This used to compare against
+          // `holds` — the raw state's own reading — and that is exactly what the
+          // ruling forbids finalising on.
+          if (result.ok !== settledHolds) {
+            throw new Error(`${label}: store sold=${result.ok}, settled absence holds=${settledHolds}`);
+          }
+          // AND THE AXIS THE RULING ASKED FOR, STATED DIRECTLY: an unsettled
+          // client and a settled one complete identically. Implied by the line
+          // above, counted separately anyway, because "the two clients agree" is
+          // the sentence a reader needs and an implication is not one.
+          if (result.ok !== settledResult.ok) {
+            completionDivergences += 1;
           }
 
-          if (holds) {
+          const revalidated = settledStateAsOf(state, day);
+
+          if (result.ok) {
             sellable += 1;
             // AND THE SECOND ORACLE. A day the store sold on may not be a day
             // the read model calls the run broken — that would be the store and
@@ -3491,14 +3633,26 @@ describe('the outcome does not depend on when the player opens the app', () => {
             if (opening === 'streak-broken') {
               throw new Error(`${label}: sold on a day the read model calls broken`);
             }
+            // A SALE NEVER FOLLOWS A SETTLE, so the credit the sale applies lands
+            // on the state re-validation approved and not on a different one.
+            if (revalidated.runRecordedAsEndedOn !== null) {
+              throw new Error(`${label}: sold on a day whose run had already ended`);
+            }
           } else {
             refused += 1;
-            if (errorCodeOf(result) !== 'ABSENCE_ALREADY_DOOMED') {
-              throw new Error(`${label}: refused as ${errorCodeOf(result)}`);
+            const code = errorCodeOf(result);
+            // TWO REFUSALS, AND WHICH ONE IS DECIDED BY THIS STATE'S OWN VERDICT.
+            // A client whose screen said "no" gets `ABSENCE_ALREADY_DOOMED`; one
+            // whose screen offered the sale gets `ABSENCE_SETTLED_WHILE_AWAY`.
+            const expectedCode = holds ? 'ABSENCE_SETTLED_WHILE_AWAY' : 'ABSENCE_ALREADY_DOOMED';
+            if (code !== expectedCode) {
+              throw new Error(`${label}: refused as ${code}, expected ${expectedCode}`);
             }
-            // A refusal only ever happens where there is no run left to protect.
-            if (opening !== 'streak-broken' && opening !== 'no-active-streak') {
-              throw new Error(`${label}: refused while the read model says ${opening}`);
+            // A refusal only ever happens where there is no run left to protect —
+            // read off the SETTLED state, which is the one the refusal is about.
+            const settledOpening = openDay(nightly, day).kind;
+            if (settledOpening !== 'streak-broken' && settledOpening !== 'no-active-streak') {
+              throw new Error(`${label}: refused while the read model says ${settledOpening}`);
             }
             if (entitlementWindowFor(state, day) > state.armedEntitlement.windowIndex) {
               refusalsInsideARefilledWindow += 1;
@@ -3508,6 +3662,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
         }
       }
     }
+    }
 
     // NON-VACUITY, AND IT IS THE GUARD THE FALSE-POSITIVE HALF NEEDS. A domain
     // containing only doomed absences would let a store that always refuses pass
@@ -3515,11 +3670,14 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // never refuses pass it. Both sides are counted and both are pinned exactly,
     // so shrinking the domain to one answer is a red test rather than a silence.
     expect(probes, 'store decisions swept').toBe(
-      exhaustiveCalendarCount(length) * 3 * (DOOMED_SALE_SWEEP.PROBE_HORIZON_DAYS + 1),
+      exhaustiveCalendarCount(length) *
+        3 *
+        (DOOMED_SALE_SWEEP.PROBE_HORIZON_DAYS + 1) *
+        DOOMED_SALE_SWEEP.CALENDAR_START_OFFSETS.length,
     );
     expect(sellable + refused).toBe(probes);
-    expect(sellable, 'salvageable absences the store sold to').toBe(12_328);
-    expect(refused, 'doomed absences the store refused').toBe(85_976);
+    expect(sellable, 'salvageable absences the store sold to').toBe(71_912);
+    expect(refused, 'doomed absences the store refused').toBe(517_912);
     // Neither side is a rounding error against the other.
     expect(sellable / probes, 'the sellable side is a real fraction of the domain').toBeGreaterThan(
       0.05,
@@ -3534,14 +3692,36 @@ describe('the outcome does not depend on when the player opens the app', () => {
       refusalsInsideARefilledWindow,
       'the sweep never probed past a window boundary',
     ).toBeGreaterThan(0);
+
+    // ---- the completion-re-validation axis ---------------------------------
+
+    // THE RESULT: an unsettled client and a nightly-settled one complete
+    // identically, everywhere in the domain. Pinned at zero, not bounded.
+    expect(completionDivergences, 'unsettled and settled clients completed differently').toBe(0);
+
+    // AND THE ZERO IS NOT VACUOUS, which is the whole reason the offset axis
+    // exists. The two states genuinely disagree about the absence on 1344 of
+    // these probes — they are two different, both-correct readings of two
+    // different states — and the store refuses to let that difference decide a
+    // completed sale. Pinned exactly: if this ever reads 0, the domain has stopped
+    // containing the case and the equality above is measuring nothing.
+    expect(staleVerdicts, 'raw and settled states never disagreed, so the zero above is empty').toBe(
+      STORE_VERDICT_DIVERGENCE.STALE_VERDICTS_IN_THE_DOOMED_SALE_SWEEP,
+    );
+    expect(staleVerdicts).toBeGreaterThan(0);
+
+    // SETTLING IS TERMINAL, swept rather than argued: across every calendar,
+    // shape and day, no nightly job ever recorded a second break after the first.
+    // This is what makes `settledStateAsOf`'s early return sound.
+    expect(secondSettles, 'a settled run was settled again').toBe(0);
+
   });
 
-  it('THE STORE VERDICT IS APP-OPEN SENSITIVE AT A WINDOW BOUNDARY — reproduced, not inferred', () => {
-    // THE ONE PLACE THE DOOMED-SALE RULING IS NOT APP-OPEN NEUTRAL, driven by
-    // hand off the calendar the sweep above found it on. It is here rather than
-    // only in a count because a defect with no reproduction gets re-derived from
-    // scratch by the next person, and because the fix for it is NOT in this
-    // module and somebody has to be able to see why.
+  it('[completion-revalidates-against-settled-state] THE STORE VERDICT AT A WINDOW BOUNDARY: rendered stale, finalised against settled state', () => {
+    // THE DIVERGENCE THIS PIECE WAS REWORKED FOR, on the calendar the sweep
+    // found it on, kept as a reproduction rather than only as a count — because a
+    // defect with no reproduction gets re-derived from scratch by the next
+    // person, and because the two behaviours that produce it are still here.
     //
     // TWO PINNED BEHAVIOURS MEET AND THE STORE IS WHERE THEY LAND.
     //
@@ -3556,25 +3736,36 @@ describe('the outcome does not depend on when the player opens the app', () => {
     //     GDD §4.2's "refills without anybody opening the app", pinned by its own
     //     test, and it is not this piece's to change.
     //
-    // Put together: on the revival day, an unsettled state reports a live run
-    // and a settled state reports a 29-day absence from signup. The store asks
-    // the absence — the same call `recordTrainingDay` asks — and gets two
-    // different answers for the same lifter on the same day, so one client sells
-    // and another refuses.
+    // Put together: on the revival day, an unsettled state reports a live run and
+    // a settled state reports a 29-day absence from signup. NEITHER OF THOSE HAS
+    // CHANGED — the two states still disagree, and both readings are still right
+    // for the state they are read from.
+    //
+    // WHAT CHANGED IS THAT COMPLETING A SALE NO LONGER TRUSTS THE STALE ONE.
+    // `applySettledCoveredDayPurchase` settles first, through `settledStateAsOf`,
+    // and asks the same `absenceOutcome(...).protectionHolds` call it always
+    // asked. So both clients are refused, and the one whose screen had offered
+    // the sale is told which of the two things happened.
     const attend = [...'1.......1..11.......1.1..1.....11......'].map((c) => c === '1');
     const buyOn = [...'.B....BB...B........B.....B...B.B......'].map((c) => c === 'B');
     const initial = freshState();
     const never = simulate(attend, buyOn, initial, 'never', true);
     const daily = simulate(attend, buyOn, initial, 'daily', true);
 
-    // THE STATE IS STILL IDENTICAL, which is the §12.3 property and is what
-    // stops this being a monotonicity defect as well as a store one.
+    // THE STATE IS IDENTICAL, which is the §12.3 property and was true before the
+    // fix as well — this was never a monotonicity defect.
     expect(JSON.stringify(daily.state)).toBe(JSON.stringify(never.state));
-    // What differs is how many orders the store took, and therefore the spend.
-    expect(never.refusedPurchases, 'a client that never opens is refused fewer').toBe(3);
-    expect(daily.refusedPurchases, 'a client that settles nightly is refused more').toBe(4);
-    expect(never.recoveryDaysSpent).toBe(7);
+    // AND SO IS THE STORE'S BEHAVIOUR NOW. Before completion re-validation these
+    // were 3 against 4 refusals and 7 against 6 Recovery Days spent, decided by
+    // nothing but whether a nightly job had run.
+    expect(never.refusedPurchases, 'the client that never opens').toBe(4);
+    expect(daily.refusedPurchases, 'the client that settles nightly').toBe(4);
+    expect(never.recoveryDaysSpent).toBe(6);
     expect(daily.recoveryDaysSpent).toBe(6);
+    // The extra refusal the never-opening client now takes is the re-validation,
+    // and it is the only client that can draw it.
+    expect(never.refusedAsStale, 'the stale client is the one re-validation caught').toBe(1);
+    expect(daily.refusedAsStale, 'a settled client has nothing to re-validate').toBe(0);
 
     // AND THE MECHANISM, ISOLATED. Day 29 is the last day of window 0 and day 30
     // the first of window 1, for an account created on DAY_ZERO.
@@ -3592,32 +3783,53 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // Doomed on the last day of the window...
     expect(absenceOutcome(drained, lastDayOfWindow).protectionHolds).toBe(false);
     // ...and COVERED again on the first day of the next one, because the armed
-    // snapshot reads a full window once the window has turned over.
+    // snapshot reads a full window once the window has turned over. STILL TRUE:
+    // the fix did not touch either behaviour, and a rendered store screen built
+    // on this state legitimately shows the offer.
     expect(
       absenceOutcome(drained, firstDayOfNextWindow).protectionHolds,
       'the window boundary revives the absence',
     ).toBe(true);
 
-    // So the store sells on the revival day to a client that did not settle...
-    expect(
-      applySettledCoveredDayPurchase(drained, firstDayOfNextWindow, {
-        orderId: 'revived',
-        coveredDays: 1,
-        tender: 'chalk-purchased',
-      }).ok,
-    ).toBe(true);
-    // ...and refuses one that did, because settling moved the anchor to signup
-    // and a 29-day absence outruns even a refilled window.
+    const order = { orderId: 'revived', coveredDays: 1, tender: 'chalk-purchased' } as const;
     const settled = unwrap(settleBrokenStreak(drained, lastDayOfWindow)).state;
+
+    // A SINGLE SETTLE AT THE COMPLETION DAY WOULD NOT HAVE CLOSED THIS, and that
+    // is worth pinning because it is the obvious reading of "settle, then
+    // validate" and it is measurably the wrong one. On the revival day the
+    // absence holds, so `settleBrokenStreak` has nothing to record and the
+    // revived run walks straight through.
     expect(
-      errorCodeOf(
-        applySettledCoveredDayPurchase(settled, firstDayOfNextWindow, {
-          orderId: 'revived',
-          coveredDays: 1,
-          tender: 'chalk-purchased',
-        }),
-      ),
-    ).toBe('ABSENCE_ALREADY_DOOMED');
+      errorCodeOf(settleBrokenStreak(drained, firstDayOfNextWindow)),
+      'settling AT the completion day sees a live run and records nothing',
+    ).toBe('NOTHING_TO_SETTLE');
+
+    // SO THE WALK IS WHAT CLOSES IT: the break is found on day 29, where it
+    // actually happened, and re-validation refuses the sale on day 30.
+    const revalidated = settledStateAsOf(drained, firstDayOfNextWindow);
+    expect(revalidated.runRecordedAsEndedOn, 'the day the run actually ended').toBe(lastDayOfWindow);
+    expect(JSON.stringify(revalidated.state), 'and it lands on the settled state').toBe(
+      JSON.stringify(settled),
+    );
+
+    // BOTH CLIENTS ARE NOW REFUSED. The unsettled one gets the code that says
+    // "your device is behind"; the settled one gets the code that says "we both
+    // already know this run is over".
+    const staleSale = applySettledCoveredDayPurchase(drained, firstDayOfNextWindow, order);
+    expect(errorCodeOf(staleSale)).toBe('ABSENCE_SETTLED_WHILE_AWAY');
+    expect(errorMessageOf(staleSale)).toBe(DOOMED_SALE_REFUSAL_MESSAGE.alreadyRecorded);
+
+    const settledSale = applySettledCoveredDayPurchase(settled, firstDayOfNextWindow, order);
+    expect(errorCodeOf(settledSale)).toBe('ABSENCE_ALREADY_DOOMED');
+    expect(errorMessageOf(settledSale)).toBe(DOOMED_SALE_REFUSAL_MESSAGE.armed);
+
+    // AND THE THREE SENTENCES ARE THREE SENTENCES. A refusal the player cannot
+    // tell apart from another refusal is the greyed-out button the ruling
+    // forbids, one layer in.
+    expect(
+      new Set(Object.values(DOOMED_SALE_REFUSAL_MESSAGE)).size,
+      'two refusals share a sentence',
+    ).toBe(3);
   });
 
   it('[purchase-cannot-rescue-a-doomed-run] THE 11-VERSUS-1 SCENARIO: a purchase during an absence cannot rescue it, in any intra-day order', () => {
