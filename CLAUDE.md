@@ -63,9 +63,10 @@ place"*, *"nothing else paints in here"*, *"every number here is derived"* —
 then there must be a test that goes red if the guarantee stops holding. Prose is
 not a check, and a reader cannot tell the difference by looking.
 
-This is not a style preference. It has now failed **six times** in this
+This is not a style preference. It has now failed **seven times** in this
 codebase; the fifth was found inside the comment that had just been rewritten to
-fix the fourth, and the sixth one file away from where the fifth was fixed:
+fix the fourth, the sixth one file away from where the fifth was fixed, and the
+seventh in a fix's own verification oracle:
 
 - a scrim constant *"registered, documented and read by no pixel"*;
 - a dismiss window whose stated causation nothing on the app's route consulted;
@@ -115,6 +116,16 @@ that were proven vacuous were fixed immediately because they were proven, and
 the rest are unproven rather than known-broken. Do not let that distinction blur
 in either direction — an unverified tag is not evidence, and it is also not a
 known defect.
+
+**AN ORACLE CAN BE INDEPENDENT IN FORM AND SHARE ITS SUBJECT'S BLIND SPOT IN
+FACT, and that is the seventh instance.** A fix routed on when a break was
+*recorded*; `settleBrokenStreak` refuses a null `lastTrainedDay`, so a
+never-trained lifter never has one recorded while their signup absence still
+runs out on a definite day. The check written to catch that read the same fact,
+so it was green — differently shaped, identically blind. Writing a second
+implementation is not enough; ask what fact both of them read, and probe the
+region where that fact is unavailable rather than reviewing the two for
+resemblance.
 
 **And be honest about the limit.** No scan can decide which prose asserts a
 guarantee, so any mechanism here is necessarily partial. The current scoping
@@ -243,7 +254,12 @@ physiology.
   through. Only the walk finds the break where it happened. With this in place
   the store-verdict exception count is **zero** and the open-day spend equality
   is unconditional again; the counter stays pinned at zero so a reopening is
-  red rather than silent.
+  red rather than silent. **The refusal copy is keyed to
+  `SettledCoveredDayPurchase.renderedOffer`** — an input, never re-derived — and
+  the enforced claim is *"every refusal sentence is true of the screen the tap
+  came from"*. It is **not** "no player is ever given two explanations", which
+  was false and is deleted: two devices can each get a sentence true of
+  themselves, and what is invariant is the DECISION, not the wording.
 
   Without the snapshot, a purchase during an absence retroactively rescued a run
   `openDay` had already called broken, and *which way it went depended on
