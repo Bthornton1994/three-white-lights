@@ -41,6 +41,8 @@ import {
   streakDeadlineDay,
   type DayOpening,
   type LegacyStreakStateWithBalance,
+  type RenderedStoreOffer,
+  type SettledCoveredDayPurchase,
   type StreakDay,
   type StreakResult,
   type StreakState,
@@ -199,6 +201,28 @@ function stateWithRun(streakLength: number, lastDay: StreakDay, balance: number)
     recoveryDayProtectionEnabled: true,
     hasBankedFirstRecoveryDaySave: false,
   };
+}
+
+/**
+ * The offer a store screen gated on `protectionHolds` would have drawn off
+ * `state` for `day` — the most charitable client there is: one device, one
+ * state, screen drawn and order completed on the same streak day.
+ *
+ * It is the default every call site below uses when the render/complete gap is
+ * not what that test is about. Two things make it the right default rather than
+ * a convenience:
+ *
+ * - it is what a real store would do, so the fixtures describe a shipping UI
+ *   rather than a hypothetical one; and
+ * - it is the shape the boundary-revival attack lives in. That attack needs no
+ *   gap, no second device and no background job — so a suite that only ever used
+ *   this helper would still be able to express it, and does, below.
+ *
+ * The render-day-lags-completion axis is a deliberate variation ON this, not a
+ * replacement for it: see `DOOMED_SALE_SWEEP.RENDER_DAY_LAGS`.
+ */
+function offerAsRenderedOn(state: StreakState, day: StreakDay): RenderedStoreOffer {
+  return { day, offered: absenceOutcome(state, day).protectionHolds };
 }
 
 /**
@@ -1479,6 +1503,7 @@ describe('Recovery Day protection: armed ahead, revealed on return', () => {
         orderId: 'mid-absence',
         coveredDays: 1,
         tender: 'chalk-purchased',
+        renderedOffer: offerAsRenderedOn(covered, midAbsence),
       }),
     ).state;
     // The balance rose...
@@ -1859,6 +1884,7 @@ describe('the window entitlement', () => {
         orderId: 'order-1',
         coveredDays: 5,
         tender: 'chalk-purchased',
+        renderedOffer: offerAsRenderedOn(freshState(), DAY_ZERO),
       }),
     );
     let state: StreakState = bought.state;
@@ -1912,6 +1938,7 @@ describe('the window entitlement', () => {
         orderId: 'order-1',
         coveredDays: 3,
         tender: 'chalk-purchased',
+        renderedOffer: offerAsRenderedOn(freshState(), DAY_ZERO),
       }),
     ).state;
     const held = seed.entitlement.purchasedDaysLeft;
@@ -1997,6 +2024,7 @@ describe('the window entitlement', () => {
           orderId: `order-${i}`,
           coveredDays: 1,
           tender: 'chalk-purchased',
+          renderedOffer: offerAsRenderedOn(state, DAY_ZERO),
         }),
       ).state;
     }
@@ -2032,6 +2060,7 @@ describe('the window entitlement', () => {
         orderId: 'order-x',
         coveredDays: 4,
         tender: 'real-money',
+        renderedOffer: offerAsRenderedOn(stateWithRun(9, DAY_ZERO, 1), DAY_ZERO),
       }),
     );
     expect(bought.state.currentStreak).toBe(9);
@@ -2058,7 +2087,12 @@ describe('the window entitlement', () => {
     // 105 / 305 / 733 / 785 violating pairs.
     type Wire = Parameters<typeof applySettledCoveredDayPurchase>[2];
     const asWire = (tender: string): Wire =>
-      ({ orderId: 'order-1', coveredDays: 1, tender } as unknown as Wire);
+      ({
+        orderId: 'order-1',
+        coveredDays: 1,
+        tender,
+        renderedOffer: offerAsRenderedOn(freshState(), DAY_ZERO),
+      } as unknown as Wire);
 
     // EVERY TRAINING-GATED TENDER IS REFUSED, enumerated from the derived list
     // rather than spelled out, so a tender re-tagged in `TENDER_ARRIVAL` is
@@ -2091,6 +2125,7 @@ describe('the window entitlement', () => {
         orderId: 'order-1',
         coveredDays: 1,
         tender,
+        renderedOffer: offerAsRenderedOn(freshState(), DAY_ZERO),
       });
       expect(outcome.ok, `${tender} must be a way to buy one`).toBe(true);
       if (outcome.ok) {
@@ -2185,6 +2220,7 @@ describe('the window entitlement', () => {
               orderId: `order-${checked}`,
               coveredDays,
               tender: 'chalk-purchased',
+              renderedOffer: offerAsRenderedOn(base, day),
             });
             if (result.ok) {
               sold += 1;
@@ -2234,6 +2270,7 @@ describe('the window entitlement', () => {
         orderId: `vary-${streak}`,
         coveredDays: 1,
         tender: 'chalk-purchased',
+        renderedOffer: offerAsRenderedOn(base, DAY_ZERO),
       });
       if (result.ok) streaksThatSold.add(streak);
     }
@@ -2866,6 +2903,7 @@ describe('what a purchased Recovery Day can reach', () => {
         orderId: 'order-1',
         coveredDays: 2,
         tender: 'chalk-purchased',
+        renderedOffer: offerAsRenderedOn(freshState(), DAY_ZERO),
       }),
     ).state;
     expect(justBought.entitlement.purchasedDaysLeft, 'the order landed').toBe(2);
@@ -3016,15 +3054,23 @@ interface SimResult {
    */
   readonly refusedPurchases: number;
   /**
-   * Of those, the ones refused as `ABSENCE_SETTLED_WHILE_AWAY` — the completion
-   * re-validation catching a state this client had not settled.
+   * Of those, the ones where this client's OWN SCREEN had shown the offer —
+   * `ABSENCE_ENDED_BEFORE_OFFER`, completion re-validation refusing an order the
+   * client had legitimately drawn a button for.
    *
-   * CARRIED SEPARATELY SO THE SWEEP CAN SEE THE NEW PATH FIRE. `refusedPurchases`
+   * IT USED TO BE NAMED FOR STALENESS, and the rename is the point. The code it
+   * counts used to be `ABSENCE_SETTLED_WHILE_AWAY`, which asserted that
+   * something had been settled elsewhere. Nothing here settles elsewhere: this
+   * harness is one client with one state, and it still reaches the branch,
+   * because a window boundary refills the armed snapshot and revives an absence
+   * with nobody's help.
+   *
+   * CARRIED SEPARATELY SO THE SWEEP CAN SEE THE PATH FIRE. `refusedPurchases`
    * going up is not evidence re-validation ran; this is. A client that opens
    * daily settles as it goes and can never draw this code, so a sweep in which
    * it is zero everywhere is a sweep that never reached the case.
    */
-  readonly refusedAsStale: number;
+  readonly refusedAfterOfferingIt: number;
 }
 
 /**
@@ -3079,7 +3125,7 @@ function simulate(
   let spent = 0;
   let revealsSeen = 0;
   let refusedPurchases = 0;
-  let refusedAsStale = 0;
+  let refusedAfterOfferingIt = 0;
 
   const open = (from: StreakState, day: StreakDay, count: boolean): StreakState => {
     const opening = openDay(from, day);
@@ -3117,25 +3163,33 @@ function simulate(
     // out on the result, and the monotonicity sweeps below re-derive their pinned
     // zeros with this live.
     //
-    // TWO REFUSALS ARE WELL-FORMED NOW, not one. `ABSENCE_ALREADY_DOOMED` is this
-    // client's own state saying the run is over; `ABSENCE_SETTLED_WHILE_AWAY` is
-    // completion re-validation refusing an order this client's UNSETTLED state
-    // would have sold. Both count as refusals; the second is counted again on its
-    // own, because it is the only direct evidence a sweep has that re-validation
-    // ran at all. Anything else is a harness bug and still throws.
+    // TWO REFUSALS ARE WELL-FORMED FOR THIS HARNESS, not one and not three.
+    // `ABSENCE_ALREADY_DOOMED` is this client's own screen saying the run is
+    // over; `ABSENCE_ENDED_BEFORE_OFFER` is completion re-validation refusing an
+    // order this client's screen had offered. Both count as refusals; the second
+    // is counted again on its own, because it is the only direct evidence a
+    // sweep has that re-validation ran at all.
+    //
+    // `ABSENCE_ENDED_AFTER_OFFER` IS UNREACHABLE FROM HERE, and that is a fact
+    // about this harness rather than about the module: it renders and completes
+    // on the same day, and the walk can only ever record a break on a day at or
+    // before the one it is asked about. The doomed-sale sweep varies the render
+    // day and is where that third code lives. Anything else is a harness bug and
+    // still throws.
     if (grantOn[i] === true) {
       const bought = applySettledCoveredDayPurchase(state, day, {
         orderId: `sim-${i}`,
         coveredDays: grantSize,
         tender: 'chalk-purchased',
+        renderedOffer: offerAsRenderedOn(state, day),
       });
       if (bought.ok) {
         state = bought.value.state;
       } else if (bought.error.code === 'ABSENCE_ALREADY_DOOMED') {
         refusedPurchases += 1;
-      } else if (bought.error.code === 'ABSENCE_SETTLED_WHILE_AWAY') {
+      } else if (bought.error.code === 'ABSENCE_ENDED_BEFORE_OFFER') {
         refusedPurchases += 1;
-        refusedAsStale += 1;
+        refusedAfterOfferingIt += 1;
       } else {
         throw new Error(`day ${i}: the simulated purchase was refused (${bought.error.code})`);
       }
@@ -3204,7 +3258,7 @@ function simulate(
     // simulated player made, so it does not count as a reveal they were shown.
     state = open(state, addDays(DAY_ZERO, attend.length - 1), false);
   }
-  return { state, recoveryDaysSpent: spent, revealsSeen, refusedPurchases, refusedAsStale };
+  return { state, recoveryDaysSpent: spent, revealsSeen, refusedPurchases, refusedAfterOfferingIt };
 }
 
 /**
@@ -3379,8 +3433,8 @@ describe('the outcome does not depend on when the player opens the app', () => {
     let purchasedDaysSeen = 0;
     let differedFromNoPurchase = 0;
     let storeVerdictDivergedInPairs = 0;
-    let staleRefusalsUnderNever = 0;
-    let staleRefusalsUnderDaily = 0;
+    let offerRefusalsUnderNever = 0;
+    let offerRefusalsUnderDaily = 0;
 
     for (let trial = 0; trial < 300; trial += 1) {
       const length = 20 + Math.floor(rng() * 40);
@@ -3391,10 +3445,10 @@ describe('the outcome does not depend on when the player opens the app', () => {
       purchasesLanded += buyOn.filter(Boolean).length;
       const baseline = simulate(attend, buyOn, initial, 'never', true);
       purchasedDaysSeen += baseline.state.entitlement.purchasedDaysLeft;
-      staleRefusalsUnderNever += baseline.refusedAsStale;
+      offerRefusalsUnderNever += baseline.refusedAfterOfferingIt;
       for (const schedule of ['daily', 'on-training-days', 'every-third-day'] as const) {
         const other = simulate(attend, buyOn, initial, schedule, true);
-        if (schedule === 'daily') staleRefusalsUnderDaily += other.refusedAsStale;
+        if (schedule === 'daily') offerRefusalsUnderDaily += other.refusedAfterOfferingIt;
         // FULL JSON-STATE EQUALITY across opening schedules, purchases included.
         expect(JSON.stringify(other.state)).toBe(JSON.stringify(baseline.state));
         expect(other.state).toEqual(baseline.state);
@@ -3444,11 +3498,11 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // the first says the path is reachable, the second says the fix landed on the
     // stale client rather than on everyone.
     expect(
-      staleRefusalsUnderNever,
+      offerRefusalsUnderNever,
       'completion re-validation never fired, so the zero above is vacuous',
     ).toBeGreaterThan(0);
     expect(
-      staleRefusalsUnderDaily,
+      offerRefusalsUnderDaily,
       'a nightly-settling client should have nothing left to re-validate',
     ).toBe(0);
   });
@@ -3516,6 +3570,22 @@ describe('the outcome does not depend on when the player opens the app', () => {
     let staleVerdicts = 0;
     let completionDivergences = 0;
     let secondSettles = 0;
+    // ---- the render-day axis's own counters ---------------------------------
+    /** Probes drawn at each render-day lag, so the rotation is not a claim. */
+    const lagsDrawn: Record<number, number> = {};
+    /** Refusals by code. Every one of the three must be reached. */
+    const refusalsByCode: Record<string, number> = {};
+    /** Refusals where inverting the client's claim changed the SENTENCE. */
+    let sentencesThatMovedWithTheScreen = 0;
+    /**
+     * Refusals where the walk to the completion day recorded no break at all.
+     *
+     * These are states with no run to record — a lifter who never trained, or
+     * one already settled — so there is no day to compare a render day against.
+     * Counted because the routing treats them as "not alive when drawn", and a
+     * count of zero would mean that branch is untested rather than safe.
+     */
+    let refusalsWithNoRecordedEnd = 0;
 
     for (const startOffset of DOOMED_SALE_SWEEP.CALENDAR_START_OFFSETS) {
     for (let mask = 0; mask < exhaustiveCalendarCount(length); mask += 1) {
@@ -3547,6 +3617,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
         const buyDay = addDays(DAY_ZERO, startOffset + lastTrainedIndex);
         const bought = applySettledCoveredDayPurchase(trained, buyDay, {
           ...order,
+          renderedOffer: offerAsRenderedOn(trained, buyDay),
           orderId: `carry-${mask}`,
         });
         if (bought.ok) {
@@ -3589,17 +3660,51 @@ describe('the outcome does not depend on when the player opens the app', () => {
             nightlySettledOn = day;
           }
 
+          // THE RENDER DAY, WHICH IS NOT ALWAYS THE COMPLETION DAY. Rotated
+          // across the probe grid rather than multiplied into it: every state
+          // meets every lag as `offset` walks its horizon, and `mask` shifts the
+          // phase so a lag is not pinned to a fixed distance from the calendar.
+          // Costs no probes; the count drawn at each lag is pinned below.
+          const lags = DOOMED_SALE_SWEEP.RENDER_DAY_LAGS;
+          const lag = lags[(offset + mask) % lags.length] as number;
+          const renderDay = addDays(day, -lag);
+          lagsDrawn[lag] = (lagsDrawn[lag] ?? 0) + 1;
+
           const holds = absenceOutcome(state, day).protectionHolds;
           // THE AUTHORITATIVE VERDICT: the same call, asked of the settled twin.
           const settledHolds = absenceOutcome(nightly, day).protectionHolds;
+          // WHAT THE CLIENT'S SCREEN SHOWED, computed by the TEST off the render
+          // day and handed to the subject as an input. The subject does not
+          // re-derive it — that re-derivation is the defect this axis exists to
+          // catch.
+          const renderedOffer = offerAsRenderedOn(state, renderDay);
           const result = applySettledCoveredDayPurchase(state, day, {
             ...order,
+            renderedOffer,
             orderId: `probe-${mask}-${shape}-${offset}`,
           });
           const settledResult = applySettledCoveredDayPurchase(nightly, day, {
             ...order,
+            renderedOffer: offerAsRenderedOn(nightly, renderDay),
             orderId: `probe-${mask}-${shape}-${offset}`,
           });
+          // THE DECISION IGNORES THE CLIENT'S CLAIM — swept, not argued. The
+          // same order with the screen's answer inverted must complete or refuse
+          // identically; only the SENTENCE may move. This is what keeps a field
+          // the client fills in from being a lever on whether money lands.
+          const flipped = applySettledCoveredDayPurchase(state, day, {
+            ...order,
+            renderedOffer: { day: renderDay, offered: !renderedOffer.offered },
+            orderId: `probe-${mask}-${shape}-${offset}`,
+          });
+          if (flipped.ok !== result.ok) {
+            throw new Error(
+              `offset ${startOffset} ${shape} mask ${mask} day +${offset}: the rendered offer moved the decision`,
+            );
+          }
+          if (!flipped.ok && !result.ok && flipped.error.code !== result.error.code) {
+            sentencesThatMovedWithTheScreen += 1;
+          }
           // BARE THROWS RATHER THAN `expect` IN THIS LOOP, which is the same
           // call `simulate` makes and for the same reason: half a million probes
           // through `expect` turn a three-second test into a two-minute one. The
@@ -3641,12 +3746,68 @@ describe('the outcome does not depend on when the player opens the app', () => {
           } else {
             refused += 1;
             const code = errorCodeOf(result);
-            // TWO REFUSALS, AND WHICH ONE IS DECIDED BY THIS STATE'S OWN VERDICT.
-            // A client whose screen said "no" gets `ABSENCE_ALREADY_DOOMED`; one
-            // whose screen offered the sale gets `ABSENCE_SETTLED_WHILE_AWAY`.
-            const expectedCode = holds ? 'ABSENCE_SETTLED_WHILE_AWAY' : 'ABSENCE_ALREADY_DOOMED';
+            // THREE REFUSALS, AND THE ORACLE FOR WHICH ONE IS NOT A COPY OF THE
+            // IMPLEMENTATION. This assertion used to read
+            //
+            //     holds ? 'ABSENCE_SETTLED_WHILE_AWAY' : 'ABSENCE_ALREADY_DOOMED'
+            //
+            // off the same `absenceOutcome(state, day)` call the subject made,
+            // character for character — so it could not disagree with the code
+            // it graded, and it graded a routing that was inverted for every
+            // client whose order completed a day after its screen was drawn.
+            //
+            // WHAT IT READS NOW. Two things the subject does not compute this
+            // way:
+            //
+            //   - `renderedOffer.offered`, an INPUT the test built off the
+            //     render day. The subject never re-derives it.
+            //   - TWO WALKS AT TWO HORIZONS. `ABSENCE_ENDED_AFTER_OFFER` needs
+            //     positive evidence that the run was still alive when the screen
+            //     was drawn, and the independent way to get it is to walk to the
+            //     completion day (finds a break) and walk again only as far as
+            //     the render day (finds none). The subject instead walks ONCE
+            //     and compares the day it recorded against `renderedOffer.day`.
+            //     Different computation, same answer required: an off-by-one in
+            //     that comparison, a swap to `<`, or a fall back to
+            //     `absenceOutcome` all redden here.
+            const endedByCompletion = revalidated.runRecordedAsEndedOn !== null;
+            const endedByTheRenderDay = settledStateAsOf(state, renderDay).runRecordedAsEndedOn !== null;
+            const runWasAliveWhenDrawn = endedByCompletion && !endedByTheRenderDay;
+            if (!endedByCompletion) refusalsWithNoRecordedEnd += 1;
+            const expectedCode = !renderedOffer.offered
+              ? 'ABSENCE_ALREADY_DOOMED'
+              : runWasAliveWhenDrawn
+                ? 'ABSENCE_ENDED_AFTER_OFFER'
+                : 'ABSENCE_ENDED_BEFORE_OFFER';
             if (code !== expectedCode) {
-              throw new Error(`${label}: refused as ${code}, expected ${expectedCode}`);
+              throw new Error(`${label}: refused as ${code}, expected ${expectedCode} (lag ${lag})`);
+            }
+            refusalsByCode[code] = (refusalsByCode[code] ?? 0) + 1;
+            // AND THE SENTENCE MATCHES THE CODE, checked against the exported
+            // copy rather than against a string in this file — a refusal whose
+            // code and sentence disagreed would tell the player one thing and
+            // the log another.
+            const expectedSentence =
+              code === 'ABSENCE_ENDED_BEFORE_OFFER'
+                ? DOOMED_SALE_REFUSAL_MESSAGE.endedBeforeOffer
+                : code === 'ABSENCE_ENDED_AFTER_OFFER'
+                  ? DOOMED_SALE_REFUSAL_MESSAGE.endedAfterOffer
+                  : state.entitlementArmed
+                    ? DOOMED_SALE_REFUSAL_MESSAGE.armed
+                    : DOOMED_SALE_REFUSAL_MESSAGE.protectionDeclined;
+            if (errorMessageOf(result) !== expectedSentence) {
+              throw new Error(`${label}: refused as ${code} with the wrong sentence`);
+            }
+            // NOBODY IS TOLD THE OFFER WAS GOOD WHEN IT WAS ALREADY DEAD, and
+            // nobody is told to report a bug for a screen that was right. The
+            // honesty half, stated as its own pair of checks rather than left
+            // implied by the routing above, because these two sentences are the
+            // ones that assert an ordering of events to the player.
+            if (code === 'ABSENCE_ENDED_AFTER_OFFER' && !runWasAliveWhenDrawn) {
+              throw new Error(`${label}: said the offer was good when it was already dead`);
+            }
+            if (code === 'ABSENCE_ALREADY_DOOMED' && renderedOffer.offered) {
+              throw new Error(`${label}: told a client its own offer should never have been shown`);
             }
             // A refusal only ever happens where there is no run left to protect —
             // read off the SETTLED state, which is the one the refusal is about.
@@ -3715,6 +3876,60 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // This is what makes `settledStateAsOf`'s early return sound.
     expect(secondSettles, 'a settled run was settled again').toBe(0);
 
+    // ---- the render-day axis ------------------------------------------------
+
+    // THE AXIS IS IN THE DOMAIN, pinned per lag rather than asserted as present.
+    // The rotation is arithmetic over `offset` and `mask`, and arithmetic that
+    // quietly collapsed to a single lag would leave every check above green
+    // while testing the one case that was already covered.
+    expect(Object.keys(lagsDrawn).map(Number).sort((a, b) => a - b)).toEqual(
+      [...DOOMED_SALE_SWEEP.RENDER_DAY_LAGS].sort((a, b) => a - b),
+    );
+    for (const lag of DOOMED_SALE_SWEEP.RENDER_DAY_LAGS) {
+      expect(lagsDrawn[lag] ?? 0, `probes drawn at render-day lag ${lag}`).toBeGreaterThan(
+        probes / (DOOMED_SALE_SWEEP.RENDER_DAY_LAGS.length * 2),
+      );
+    }
+    expect(
+      Object.values(lagsDrawn).reduce((a, b) => a + b, 0),
+      'every probe drew exactly one lag',
+    ).toBe(probes);
+
+    // ALL THREE REFUSAL CODES ARE REACHED, and the third one is the whole point
+    // of the axis: `ABSENCE_ENDED_AFTER_OFFER` is UNREACHABLE at lag 0, because
+    // the walk can only ever record a break on a day at or before the one it is
+    // asked about. Before this axis existed the domain could not produce it at
+    // all, so the routing that is now three-way was graded as two-way — and the
+    // client that should have been told "your screen was right" was told "the
+    // offer should never have been on screen".
+    expect(Object.keys(refusalsByCode).sort(), 'refusal codes the sweep reached').toEqual([
+      'ABSENCE_ALREADY_DOOMED',
+      'ABSENCE_ENDED_AFTER_OFFER',
+      'ABSENCE_ENDED_BEFORE_OFFER',
+    ]);
+    for (const [code, count] of Object.entries(refusalsByCode)) {
+      expect(count, `${code} is a rounding error in this domain`).toBeGreaterThan(100);
+    }
+    expect(Object.values(refusalsByCode).reduce((a, b) => a + b, 0)).toBe(refused);
+
+    // AND THE BRANCH WITH NO RECORDED END IS REACHED TOO — a lifter with no run
+    // for the walk to settle. It routes as "not alive when the screen was
+    // drawn", which is the conservative direction, and a zero here would mean
+    // that branch was reasoned about rather than exercised.
+    expect(refusalsWithNoRecordedEnd, 'no refusal ever came from a state with no run').toBeGreaterThan(
+      0,
+    );
+
+    // THE SENTENCE MOVES WITH THE SCREEN AND THE DECISION DOES NOT. The throw
+    // inside the loop is the decision half — it fires the moment inverting the
+    // client's claim changes whether the order completes. This is the other
+    // half, and it is the anti-vacuity guard for it: if inverting the claim
+    // never changed anything at all, the decision half would be green against a
+    // field nothing reads.
+    expect(
+      sentencesThatMovedWithTheScreen,
+      'inverting the rendered offer never changed the sentence, so the field is inert',
+    ).toBeGreaterThan(0);
   });
 
   it('[completion-revalidates-against-settled-state] THE STORE VERDICT AT A WINDOW BOUNDARY: rendered stale, finalised against settled state', () => {
@@ -3764,8 +3979,8 @@ describe('the outcome does not depend on when the player opens the app', () => {
     expect(daily.recoveryDaysSpent).toBe(6);
     // The extra refusal the never-opening client now takes is the re-validation,
     // and it is the only client that can draw it.
-    expect(never.refusedAsStale, 'the stale client is the one re-validation caught').toBe(1);
-    expect(daily.refusedAsStale, 'a settled client has nothing to re-validate').toBe(0);
+    expect(never.refusedAfterOfferingIt, 'the stale client is the one re-validation caught').toBe(1);
+    expect(daily.refusedAfterOfferingIt, 'a settled client has nothing to re-validate').toBe(0);
 
     // AND THE MECHANISM, ISOLATED. Day 29 is the last day of window 0 and day 30
     // the first of window 1, for an account created on DAY_ZERO.
@@ -3791,7 +4006,12 @@ describe('the outcome does not depend on when the player opens the app', () => {
       'the window boundary revives the absence',
     ).toBe(true);
 
-    const order = { orderId: 'revived', coveredDays: 1, tender: 'chalk-purchased' } as const;
+    const order = {
+      orderId: 'revived',
+      coveredDays: 1,
+      tender: 'chalk-purchased',
+      renderedOffer: offerAsRenderedOn(drained, firstDayOfNextWindow),
+    } as const;
     const settled = unwrap(settleBrokenStreak(drained, lastDayOfWindow)).state;
 
     // A SINGLE SETTLE AT THE COMPLETION DAY WOULD NOT HAVE CLOSED THIS, and that
@@ -3812,24 +4032,105 @@ describe('the outcome does not depend on when the player opens the app', () => {
       JSON.stringify(settled),
     );
 
-    // BOTH CLIENTS ARE NOW REFUSED. The unsettled one gets the code that says
-    // "your device is behind"; the settled one gets the code that says "we both
-    // already know this run is over".
+    // BOTH CLIENTS ARE NOW REFUSED. The one whose screen offered the sale is told
+    // its screen was drawn over a run that had already ended; the one whose
+    // screen said no is told they already agree.
     const staleSale = applySettledCoveredDayPurchase(drained, firstDayOfNextWindow, order);
-    expect(errorCodeOf(staleSale)).toBe('ABSENCE_SETTLED_WHILE_AWAY');
-    expect(errorMessageOf(staleSale)).toBe(DOOMED_SALE_REFUSAL_MESSAGE.alreadyRecorded);
+    expect(errorCodeOf(staleSale)).toBe('ABSENCE_ENDED_BEFORE_OFFER');
+    expect(errorMessageOf(staleSale)).toBe(DOOMED_SALE_REFUSAL_MESSAGE.endedBeforeOffer);
 
-    const settledSale = applySettledCoveredDayPurchase(settled, firstDayOfNextWindow, order);
+    const settledSale = applySettledCoveredDayPurchase(settled, firstDayOfNextWindow, {
+      ...order,
+      renderedOffer: offerAsRenderedOn(settled, firstDayOfNextWindow),
+    });
     expect(errorCodeOf(settledSale)).toBe('ABSENCE_ALREADY_DOOMED');
     expect(errorMessageOf(settledSale)).toBe(DOOMED_SALE_REFUSAL_MESSAGE.armed);
 
-    // AND THE THREE SENTENCES ARE THREE SENTENCES. A refusal the player cannot
+    // ---- ATTACK 1: THE SENTENCE USED TO BE A LIE, ON THIS EXACT FIXTURE -----
+    //
+    // ONE CLIENT, ONE DEVICE, ONE STATE, NO BACKGROUND JOB, AND NO SECOND
+    // SCREEN. The refusal above is reached with NOTHING having been settled by
+    // anybody: `drained` is byte-identical to what every client and the server
+    // hold, and the only thing that happened between the two renders is that a
+    // day passed. The old code called this `ABSENCE_SETTLED_WHILE_AWAY` and told
+    // the player "your break was already recorded while you were away — this
+    // screen was still showing your account as it stood earlier". Both clauses
+    // were false. That is what the rename and the re-keying fix.
+    expect(
+      settledStateAsOf(drained, lastDayOfWindow).runRecordedAsEndedOn,
+      'the walk finds the break itself — nothing else recorded it',
+    ).toBe(lastDayOfWindow);
+    // The proof that no external recording is involved: the state handed in is
+    // the same object that rendered "refused" a day earlier, unmodified.
+    expect(drained.lastTrainedDay, 'the state still carries a live run').toBe(lastTrained);
+    expect(drained.currentStreak).toBe(3);
+    // And the sentence the player now sees claims no recording event at all.
+    expect(DOOMED_SALE_REFUSAL_MESSAGE.endedBeforeOffer).not.toContain('while you were away');
+    expect(DOOMED_SALE_REFUSAL_MESSAGE.endedBeforeOffer).not.toContain('recorded');
+
+    // ---- ATTACK 2: THE 03:00 ROLLOVER, WHERE COMPLETION LANDS A DAY LATE ----
+    //
+    // NOT AN EXOTIC CASE — IT IS THIS MODULE'S OWN DAY BOUNDARY. A tap at 02:50
+    // and a settlement at 03:10 are two different streak days by
+    // `STREAK_DAY_BOUNDARY.ROLLOVER_HOUR_LOCAL`, so a player on the last day
+    // their absence is covered can tap a live offer and have the order land on
+    // the day it stopped being one. Derived from the constant rather than
+    // hardcoded, so retuning the rollover moves this rather than stranding it.
+    const tapHour = STREAK_DAY_BOUNDARY.ROLLOVER_HOUR_LOCAL - 1;
+    const settleHour = STREAK_DAY_BOUNDARY.ROLLOVER_HOUR_LOCAL;
+    const wallClock = { year: 2024, month: 6, day: 10 } as const;
+    const tapDay = streakDayFromLocalWallClock({ ...wallClock, hour: tapHour });
+    const settlementDay = streakDayFromLocalWallClock({ ...wallClock, hour: settleHour });
+    expect(settlementDay, 'the rollover puts the tap and the settlement a day apart').toBe(
+      addDays(tapDay, 1),
+    );
+
+    // A run whose coverage runs out exactly one day after the screen was drawn.
+    const rollover = unwrap(recordTrainingDay(freshState(), DAY_ZERO)).state;
+    const drawnOn = addDays(DAY_ZERO, coverableGapDays(rollover, DAY_ZERO));
+    const landedOn = addDays(drawnOn, 1);
+    expect(absenceOutcome(rollover, drawnOn).protectionHolds, 'the offer was good when drawn').toBe(
+      true,
+    );
+    expect(absenceOutcome(rollover, landedOn).protectionHolds, 'and dead when it landed').toBe(false);
+
+    const lateOrder = {
+      orderId: 'tapped-at-0250',
+      coveredDays: 1,
+      tender: 'chalk-purchased',
+      renderedOffer: offerAsRenderedOn(rollover, drawnOn),
+    } as const;
+    expect(lateOrder.renderedOffer.offered, 'the client really did draw an offer').toBe(true);
+    const lateSale = applySettledCoveredDayPurchase(rollover, landedOn, lateOrder);
+    // THE ROUTING USED TO BE EXACTLY INVERTED HERE. This client was told
+    // `ABSENCE_ALREADY_DOOMED`, whose meaning is "the store and this device
+    // agree the run is over, so the offer should never have been on screen" —
+    // and the device is the thing that offered it.
+    expect(errorCodeOf(lateSale)).toBe('ABSENCE_ENDED_AFTER_OFFER');
+    expect(errorMessageOf(lateSale)).toBe(DOOMED_SALE_REFUSAL_MESSAGE.endedAfterOffer);
+    expect(
+      DOOMED_SALE_REFUSAL_MESSAGE.endedAfterOffer,
+      'the one sentence that must tell the player their screen was right',
+    ).toContain('good when you saw it');
+
+    // AND THE SAME ORDER, WITH THE SCREEN CLAIMED A DAY LATER, IS A DIFFERENT
+    // SENTENCE AND THE SAME DECISION. This is the render-day axis in one pair:
+    // move only `renderedOffer.day`, and the copy moves while the refusal does
+    // not.
+    const claimedLater = applySettledCoveredDayPurchase(rollover, landedOn, {
+      ...lateOrder,
+      renderedOffer: { day: landedOn, offered: true },
+    });
+    expect(errorCodeOf(claimedLater)).toBe('ABSENCE_ENDED_BEFORE_OFFER');
+    expect(claimedLater.ok, 'the render day must not move the decision').toBe(lateSale.ok);
+
+    // AND THE FOUR SENTENCES ARE FOUR SENTENCES. A refusal the player cannot
     // tell apart from another refusal is the greyed-out button the ruling
     // forbids, one layer in.
     expect(
       new Set(Object.values(DOOMED_SALE_REFUSAL_MESSAGE)).size,
       'two refusals share a sentence',
-    ).toBe(3);
+    ).toBe(4);
   });
 
   it('[purchase-cannot-rescue-a-doomed-run] THE 11-VERSUS-1 SCENARIO: a purchase during an absence cannot rescue it, in any intra-day order', () => {
@@ -3857,10 +4158,24 @@ describe('the outcome does not depend on when the player opens the app', () => {
       longestStreak: 10,
     };
     const returnDay = addDays(SIGNUP_DAY, 13);
+    // THE LAST DAY THE GRACE STILL COVERS THIS ABSENCE, hoisted because both
+    // orders below need a screen day at or before the day they complete on.
+    const lastSellableDay = addDays(SIGNUP_DAY, 12);
+    // TWO ORDERS, BECAUSE THEY COME FROM TWO DIFFERENT SCREENS. The sale that
+    // succeeds was tapped from a screen on the day it lands; the sale that is
+    // refused was tapped from a screen on the return day, where an honest client
+    // gating on `protectionHolds` draws no button at all. Sharing one literal
+    // between them would mean a screen drawn AFTER the order it belongs to,
+    // which is a malformed order and refused as one.
     const order = {
       orderId: 'the-11-versus-1-order',
       coveredDays: 1,
       tender: 'chalk-purchased',
+      renderedOffer: { day: lastSellableDay, offered: true },
+    } as const;
+    const orderFromTheReturnDay = {
+      ...order,
+      renderedOffer: { day: returnDay, offered: false },
     } as const;
 
     // The absence is one chargeable day and there is nothing armed to pay it.
@@ -3887,11 +4202,11 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // `'absence-longer-than-consecutive-limit'` across that line — and the first
     // draft of this refusal keyed its message to the reason, which reproduced
     // 11-versus-1 in the copy. Compare the whole error, not the code.
-    const refusedDirect = applySettledCoveredDayPurchase(drained, returnDay, order);
+    const refusedDirect = applySettledCoveredDayPurchase(drained, returnDay, orderFromTheReturnDay);
     const refusedAfterSettle = applySettledCoveredDayPurchase(
       settleIfBroken(drained),
       returnDay,
-      order,
+      orderFromTheReturnDay,
     );
     expect(errorCodeOf(refusedDirect), 'the store refuses a doomed absence').toBe(
       'ABSENCE_ALREADY_DOOMED',
@@ -3908,7 +4223,6 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // close the door on an absence going doomed AFTER a legal purchase, which is
     // the case that keeps the covers/burn asymmetry load-bearing. Bought on the
     // last day the grace still covered this absence, then carried into a break.
-    const lastSellableDay = addDays(SIGNUP_DAY, 12);
     expect(absenceOutcome(drained, lastSellableDay).protectionHolds, 'still salvageable').toBe(true);
     const carried = unwrap(
       applySettledCoveredDayPurchase(drained, lastSellableDay, order),
@@ -4020,10 +4334,20 @@ describe('the outcome does not depend on when the player opens the app', () => {
               // THE STORE MAY REFUSE, AND A REFUSAL IS AN ANSWER RATHER THAN AN
               // ERROR HERE. `attempt` carries the whole result so the sweep can
               // compare the refusals to each other, not only the states.
+              // ONE SCREEN, HELD FIXED ACROSS EVERY ORDERING BELOW. The screen
+              // is now an input rather than something the module re-derives, so
+              // the app-open axis and the what-did-the-client-draw axis are
+              // separable — and this sweep is about the first one. Letting the
+              // screen move with the state under test would fold the two
+              // together and the equalities below would be measuring both.
+              const screen = offerAsRenderedOn(base, purchaseDay);
               const attempt = (
                 state: StreakState,
               ): { readonly state: StreakState; readonly result: StreakResult<unknown> } => {
-                const result = applySettledCoveredDayPurchase(state, purchaseDay, order);
+                const result = applySettledCoveredDayPurchase(state, purchaseDay, {
+                  ...order,
+                  renderedOffer: screen,
+                });
                 return { state: result.ok ? result.value.state : state, result };
               };
               const buy = (state: StreakState): StreakState => attempt(state).state;
@@ -4158,7 +4482,12 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // the purchase against the clock time of the session.
     const sessionDay = addDays(SIGNUP_DAY, 10);
     const buyOn = (state: StreakState, day: StreakDay): StreakState =>
-      unwrap(applySettledCoveredDayPurchase(state, day, order)).state;
+      unwrap(
+        applySettledCoveredDayPurchase(state, day, {
+          ...order,
+          renderedOffer: offerAsRenderedOn(state, day),
+        }),
+      ).state;
 
     const boughtBeforeSession = unwrap(
       recordTrainingDay(buyOn(drained, sessionDay), sessionDay),
@@ -4204,7 +4533,12 @@ describe('the outcome does not depend on when the player opens the app', () => {
     const returnDay = addDays(SIGNUP_DAY, 13);
     expect(absenceOutcome(drained, returnDay).protectionHolds).toBe(false);
     expect(
-      errorCodeOf(applySettledCoveredDayPurchase(drained, returnDay, order)),
+      errorCodeOf(
+        applySettledCoveredDayPurchase(drained, returnDay, {
+          ...order,
+          renderedOffer: offerAsRenderedOn(drained, returnDay),
+        }),
+      ),
       'the store refuses to sell into the break',
     ).toBe('ABSENCE_ALREADY_DOOMED');
 
@@ -4299,6 +4633,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
         orderId: 'burn-reads-live',
         coveredDays: 1,
         tender: 'chalk-purchased',
+        renderedOffer: offerAsRenderedOn(state, salvageable),
       }),
     ).state;
     expect(coveredDaysArmed(carrying, brokenOn), 'the armed snapshot did not move').toBe(1);
@@ -4899,6 +5234,7 @@ describe('daily engagement is never worse than skipping — where that holds, an
         orderId: 'order-1',
         coveredDays: 3,
         tender: 'chalk-purchased',
+        renderedOffer: offerAsRenderedOn(warmedUp.state, inFirstWindow),
       }),
     ).state;
     const staleInWindowZero = unwrap(recordTrainingDay(bought, inFirstWindow)).state;

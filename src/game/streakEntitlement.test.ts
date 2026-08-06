@@ -39,6 +39,7 @@ import {
 } from './streakEntitlement';
 import {
   RECOVERY_DAY_GUARDRAILS,
+  absenceOutcome,
   applySettledCoveredDayPurchase,
   asStreakDay,
   createStreakState,
@@ -329,6 +330,11 @@ function driveThroughStreakEngine(
         orderId: `sweep-${i}-${bought}`,
         coveredDays: amount,
         tender: 'chalk-purchased',
+        // THE SCREEN A STORE GATED ON `protectionHolds` WOULD HAVE DRAWN, on
+        // the day the order lands. One device, no render/complete gap — this
+        // battery is about the entitlement arithmetic, not about the store's
+        // copy, and `streak.test.ts` owns the render-day axis.
+        renderedOffer: { day, offered: absenceOutcome(state, day).protectionHolds },
       });
       // A DOOMED-ABSENCE REFUSAL IS AN EXPECTED ANSWER AND IS COUNTED; anything
       // else is a harness bug and still throws, so a malformed order or a

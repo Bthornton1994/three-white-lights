@@ -1157,20 +1157,53 @@ export type StreakErrorCode =
    * SEPARATE FROM `INVALID_PURCHASE` for the same reason `TRAINING_FUNDED_TENDER`
    * is: the order is perfectly well formed and the money is perfectly good. What
    * is wrong is the moment.
+   *
+   * THIS IS THE CODE FOR A TAP FROM A SCREEN THAT ALREADY SAID NO —
+   * `purchase.renderedOffer.offered === false`. It is the only one of the three
+   * calendar refusals where the client and settled state agree, and it is the
+   * only one where "the offer should never have been on screen" is a true thing
+   * to say. It used to be handed out on the strength of a re-derivation instead,
+   * which routed a legitimately-offered client here every time the 03:00
+   * rollover put completion a day after render.
    */
   | 'ABSENCE_ALREADY_DOOMED'
   /**
-   * The order was finalised against a state this device had not settled, and
-   * settled state refuses it: the run had already been recorded as ended on an
-   * earlier day (GDD §8.3E, §4.4).
+   * The client's screen showed the offer, and the run had ALREADY ended on or
+   * before the day that screen was drawn for (GDD §8.3E, §4.4).
    *
    * SEPARATE FROM `ABSENCE_ALREADY_DOOMED` because the two ask different things
-   * of a client. That one means this device and the store agree the run is over,
-   * so the offer should never have been on screen. This one means the offer was
-   * legitimate to render and the device is simply behind — the right response is
-   * to refresh the account and re-render, not to report a bug.
+   * of a client. That one means this device's own screen said no. This one means
+   * the device drew an offer over a run that was already over — the right
+   * response is to refresh the account and re-render, not to report a bug.
+   *
+   * IT REPLACES `ABSENCE_SETTLED_WHILE_AWAY`, WHICH ASSERTED SOMETHING THIS
+   * MODULE CANNOT OBSERVE. That name said a settle had happened elsewhere while
+   * the player was away. The module is handed one state and one order; it has no
+   * way to see a second device or a background job, and the commonest way to
+   * reach this branch involves neither. On a window boundary the armed snapshot
+   * refills, so one unchanged state reads DOOMED on day 29 and COVERED on day
+   * 30, and a client that renders on day 30 gets here with nothing having been
+   * recorded by anybody. The old code said "your break was already recorded
+   * while you were away" to that player, which was false. This name says only
+   * what the walk actually found: the run had ended by the time that screen was
+   * drawn.
    */
-  | 'ABSENCE_SETTLED_WHILE_AWAY'
+  | 'ABSENCE_ENDED_BEFORE_OFFER'
+  /**
+   * The client's screen showed the offer, the offer was good when it was drawn,
+   * and the run ended BETWEEN the screen and the order arriving (GDD §8.3E).
+   *
+   * THE CASE THE OLD TWO-CODE SPLIT COULD NOT EXPRESS AT ALL, and it is ordinary
+   * rather than exotic: `STREAK_DAY_BOUNDARY.ROLLOVER_HOUR_LOCAL` puts a tap at
+   * 02:50 and a settlement at 03:10 on two different streak days, so a player on
+   * the last day their absence is covered can tap a live offer and have the
+   * order land on the day it stopped being one. There is nothing for this client
+   * to refresh and nothing for it to report — its screen was right.
+   *
+   * A CLIENT MUST NOT BE TOLD TO TREAT THIS AS A BUG. The refusal is real and
+   * the run is over, but the offer was legitimate; the copy says so.
+   */
+  | 'ABSENCE_ENDED_AFTER_OFFER'
   /** A migration tried to set a signup day later than a recorded session. */
   | 'SIGNUP_DAY_AFTER_TRAINING';
 
@@ -2050,12 +2083,105 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
  */
 
 /**
+ * THE COMPLETE SET OF FIELDS THE CLIENT'S RENDERED OFFER MAY CARRY. Same
+ * mechanism as `STREAK_FACT_KEYS`, one level in.
+ */
+export const RENDERED_STORE_OFFER_KEYS = ['day', 'offered'] as const;
+
+export type RenderedStoreOfferKey = (typeof RENDERED_STORE_OFFER_KEYS)[number];
+
+/**
+ * WHAT THE CLIENT'S SCREEN ACTUALLY SAID, AND WHEN IT SAID IT.
+ *
+ * THIS IS A FACT ABOUT A SCREEN, NOT A VERDICT THIS MODULE HOLDS AN OPINION ON,
+ * and the distinction is the whole reason the field exists. Before it,
+ * `applySettledCoveredDayPurchase` guessed what the client had rendered by
+ * re-running `absenceOutcome(state, day)` at completion time — which conflated
+ * three different things:
+ *
+ *   1. what the client drew,
+ *   2. what a re-derivation at the completion day computes,
+ *   3. what settled state authorises.
+ *
+ * Nothing connected them, and two ordinary cases pulled them apart:
+ *
+ * - **THE WINDOW-BOUNDARY REVIVAL.** One device, one state, no background job.
+ *   The armed snapshot refills at a window boundary, so a state that reads
+ *   DOOMED on the last day of a window reads COVERED on the first day of the
+ *   next — same bytes, one day later. The re-derivation therefore said "this
+ *   client rendered an offer", which was true, and the copy keyed off it said
+ *   "your break was already recorded while you were away", which was FALSE:
+ *   nothing had recorded anything and the client's state was byte-identical to
+ *   the server's.
+ * - **THE 03:00 ROLLOVER.** `STREAK_DAY_BOUNDARY.ROLLOVER_HOUR_LOCAL` means a
+ *   tap at 02:50 and a settlement at 03:10 are two different streak days. The
+ *   re-derivation ran at the COMPLETION day, so a client that was legitimately
+ *   offered the sale on day D was told, on day D+1, that "the offer should never
+ *   have been on screen". The module's own day boundary makes that ordinary
+ *   rather than exotic.
+ *
+ * SO THE CLIENT REPORTS IT AND THIS MODULE NEVER RE-DERIVES IT. `offered` is the
+ * screen's own answer; `day` is the streak day the screen was drawn for.
+ *
+ * IT CANNOT MOVE THE DECISION, AND THAT IS THE §12.3 HALF. Nothing in
+ * `applySettledCoveredDayPurchase` branches on this field except the choice of
+ * SENTENCE — whether the order completes is settled state's answer and nothing
+ * else's. A client that lies here changes which true sentence it is told and
+ * cannot change whether it is charged or credited. `streak.test.ts` sweeps the
+ * decision against all four combinations of this field rather than arguing it.
+ * `@guarantee the-decision-ignores-the-rendered-offer`
+ *
+ * IT IS DELIBERATELY NOT CROSS-CHECKED against what this state would have
+ * rendered on `day`. A client may legitimately have drawn its screen from an
+ * older state than the one being finalised against — that is the whole premise
+ * of "rendering may be stale, completing may not" — so a module that refused an
+ * offer it could not reproduce would be re-deriving the client's verdict again,
+ * one refusal further out.
+ */
+export interface RenderedStoreOffer {
+  /**
+   * The streak day the screen was drawn for.
+   *
+   * NOT THE COMPLETION DAY, and the gap between them is the point. It may be
+   * earlier; it may not be later, and a later one is refused rather than
+   * clamped — a screen drawn after the order settled is not the screen the tap
+   * came from, and quietly accepting it would put the module back to guessing.
+   */
+  readonly day: StreakDay;
+  /**
+   * Whether that screen showed the Extra Covered Day as buyable.
+   *
+   * `false` is a real and common value: the store renders a refusal sentence
+   * rather than greying a button out (see `DOOMED_SALE_REFUSAL_MESSAGE`), and a
+   * player can still reach this call from a screen that already said no —
+   * through a queued order, a retried order, or a second device.
+   */
+  readonly offered: boolean;
+}
+
+/** Compile-time assertion, same mechanism as `RECOVERY_DAY_REACH_IS_STREAK_ONLY`. */
+export const RENDERED_OFFER_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
+  RenderedStoreOffer,
+  RenderedStoreOfferKey
+> = true;
+
+/**
  * THE COMPLETE SET OF FIELDS A SETTLED PURCHASE MAY CARRY. Same mechanism as
  * `STREAK_FACT_KEYS`, applied to the one input money arrives on: adding
  * `streakBonusDays` here is a visible edit under this comment, and adding it to
  * the type without adding it here fails `tsc`.
+ *
+ * `renderedOffer` WAS ADDED DELIBERATELY AND IS THE ONLY ADDITION SINCE THIS
+ * LIST WAS WRITTEN. It carries no money, no quantity and no entitlement — it is
+ * the client's own report of what it drew, and it reaches nothing but the
+ * refusal copy.
  */
-export const COVERED_DAY_PURCHASE_KEYS = ['orderId', 'coveredDays', 'tender'] as const;
+export const COVERED_DAY_PURCHASE_KEYS = [
+  'orderId',
+  'coveredDays',
+  'tender',
+  'renderedOffer',
+] as const;
 
 export type CoveredDayPurchaseKey = (typeof COVERED_DAY_PURCHASE_KEYS)[number];
 
@@ -2087,6 +2213,12 @@ export interface SettledCoveredDayPurchase {
    * type rather than a validation.
    */
   readonly tender: NonTrainingGatedTender;
+  /**
+   * THE SCREEN THIS TAP CAME FROM. Required, not optional: an optional field
+   * would let a caller omit it and put the module straight back to guessing,
+   * which is the defect it was added to close. See `RenderedStoreOffer`.
+   */
+  readonly renderedOffer: RenderedStoreOffer;
 }
 
 /** Compile-time assertion, same mechanism as `RECOVERY_DAY_REACH_IS_STREAK_ONLY`. */
@@ -2196,20 +2328,42 @@ export const COVERED_DAY_PURCHASE_OUTCOME_IS_COVERAGE_ONLY: KeysAreExactly<
  * the window: the session that closes this absence takes what is LIVE, so the
  * lifter can arrive at their next absence with nothing armed.
  *
- * THE THIRD SENTENCE IS A DIFFERENT AXIS AND IS KEYED DIFFERENTLY ON PURPOSE.
- * `alreadyRecorded` is not another reading of the calendar; it answers "why did
- * the button I just tapped stop working", which the other two cannot be asked.
- * It is shown when, and only when, this state's OWN verdict was sellable and
- * re-validation against settled state refused — see
- * `applySettledCoveredDayPurchase`. So it does drift with app-opening, and that
- * is not the drift the paragraph above rejects: a client whose screen already
- * said "refused" never produces the tap, so no single player can ever be given
- * two explanations for one refusal. The DECISION is app-open invariant, which is
- * the §12.3 property; the sentence tracks what the player was shown.
+ * THE OTHER TWO SENTENCES ARE A DIFFERENT AXIS AND ARE KEYED DIFFERENTLY ON
+ * PURPOSE. `endedBeforeOffer` and `endedAfterOffer` are not further readings of
+ * the calendar; they answer "why did the button I just tapped stop working",
+ * which the two above cannot be asked. They are shown when, and only when, the
+ * client reports that its screen SHOWED the offer
+ * (`purchase.renderedOffer.offered`) and settled state refuses the order — see
+ * `applySettledCoveredDayPurchase`.
+ *
+ * WHAT IS ACTUALLY GUARANTEED HERE, replacing a claim that was false. This
+ * constant used to say that "a client whose screen already said 'refused' never
+ * produces the tap, so no single player can ever be given two explanations for
+ * one refusal". Both halves are wrong. A refused screen can produce a tap — a
+ * queued order, a retried order, a second device — and one player with two
+ * devices has two screens and can be told two things. What holds instead, and
+ * what the tests enforce, is narrower and checkable:
+ *
+ *   **Every sentence here is a true statement about the screen the tap came
+ *   from.** The copy is selected by `purchase.renderedOffer` — what the client
+ *   drew, and the day it drew it for — and never by re-deriving a verdict at
+ *   completion time against a state the client may never have seen. A player who
+ *   taps from two screens gets two sentences because they had two screens, and
+ *   each is true of its own.
+ *
+ * THE DECISION IS STILL APP-OPEN INVARIANT, which is the §12.3 property and is
+ * unchanged: `renderedOffer` reaches the sentence and nothing else. See
+ * `RenderedStoreOffer`.
  *
  * COPY, AND UNTUNED LIKE EVERY OTHER STRING HERE. One home, exported, so a store
- * screen shows this refusal rather than inventing a fourth sentence or — the
+ * screen shows this refusal rather than inventing a fifth sentence or — the
  * thing the ruling forbids — greying the button out and saying nothing.
+ *
+ * NONE OF THEM SAYS ANYTHING ABOUT MONEY. This module does not price, hold a
+ * wallet or take payment (see `SettledCoveredDayPurchase`), so a sentence
+ * promising a refund or promising that nothing was charged would be this file
+ * asserting something it cannot see. Whoever settles the order owns that
+ * sentence.
  */
 export const DOOMED_SALE_REFUSAL_MESSAGE = {
   /**
@@ -2227,16 +2381,36 @@ export const DOOMED_SALE_REFUSAL_MESSAGE = {
   protectionDeclined:
     'Recovery Day protection is turned off, so nothing was holding this break and your streak has already ended. You can turn protection back on in Settings — it arms from your next session.',
   /**
-   * The store offered this and the finalised sale was refused: the break had
-   * already been recorded on an earlier day, and this device was still showing
-   * the account as it stood before that.
+   * The screen showed the offer, and the run had already ended on or before the
+   * day that screen was drawn for.
    *
-   * IT NAMES THE STALENESS RATHER THAN THE CALENDAR, because a player who was
-   * just shown a live streak and an open store will not believe "your streak has
-   * already ended" without being told when.
+   * IT NAMES THE ORDER OF EVENTS RATHER THAN A CAUSE, and that is the fix. The
+   * sentence it replaces — "your break was already recorded while you were away"
+   * — asserted a recording event, which this module cannot see and which very
+   * often did not happen: on a window boundary an unchanged state reads DOOMED
+   * one day and COVERED the next, so a client can render this offer with nothing
+   * having been recorded by anybody, anywhere. Saying so was a lie to the player.
+   * This sentence is true whether the break was recorded elsewhere first or has
+   * only just been walked forward here.
+   *
+   * IT SAYS THE SCREEN WAS WRONG, because a player who was just shown a live
+   * streak and an open store will not believe "your streak has already ended"
+   * unless the screen itself is accounted for.
    */
-  alreadyRecorded:
-    'Your break was already recorded while you were away, so your streak had ended before this order arrived — this screen was still showing your account as it stood earlier. A covered day arms your next break, not one that has already been recorded.',
+  endedBeforeOffer:
+    'Your streak had already ended before this screen was drawn — the break went past the covered days you had armed when it started. This screen was still showing the run as live, and it was not. A covered day arms your next break, not one that has already ended.',
+  /**
+   * The screen showed the offer, the offer was good when it was drawn, and the
+   * run ended between then and this order arriving.
+   *
+   * IT TELLS THE PLAYER THEIR SCREEN WAS RIGHT, which is the whole reason this
+   * sentence exists separately. The refusal routed here used to be
+   * `ABSENCE_ALREADY_DOOMED`, whose meaning is "the offer should never have been
+   * on screen" — the exact opposite of what happened, and reachable by nothing
+   * more exotic than tapping at 02:50 and settling at 03:10.
+   */
+  endedAfterOffer:
+    'Your streak ended between this screen being drawn and this order arriving — the break went past the covered days you had armed when it started. The offer was good when you saw it. A covered day arms your next break, not one that has already ended.',
 } as const;
 
 /**
@@ -2291,6 +2465,38 @@ export const DOOMED_SALE_REFUSAL_MESSAGE = {
  * what the window holds, and this function cannot see that constant let alone
  * move it. Ten purchased days do not make a five-day absence survivable.
  *
+ * ---------------------------------------------------------------------------
+ * IT DOES NOT DE-DUPLICATE ORDERS, AND THAT IS A RULING RATHER THAN AN
+ * OVERSIGHT. Applying the same `orderId` twice on the accepting path credits
+ * twice. THE CALLER MUST NOT DO IT, and the caller is the Edge Function that
+ * settled the order.
+ *
+ * WHY NOT HERE. De-duplication needs a memory of orders already applied, and
+ * this module has exactly one place to put one: `StreakState`, which is fenced
+ * by `STREAK_FACT_KEYS` and `KeysAreExactly` and compared byte-for-byte by every
+ * §12.3 monotonicity sweep in `streak.test.ts`. A list of seen order ids is
+ * unbounded, grows with how much the player has bought, and would put a
+ * purchase-shaped quantity inside the streak state — the exact coupling §4 of
+ * this file's header refuses, and it would make "the two lifters ended in the
+ * same state" depend on their purchase history rather than their training.
+ *
+ * AND BECAUSE SETTLEMENT ALREADY OWNS IT. The order arrives here ALREADY
+ * SETTLED. Whoever settled it owns the order-id namespace and is the only party
+ * that can tell a retry from a second purchase; a second, weaker de-duplication
+ * in a pure client-side module would be two implementations of one rule, which
+ * is the defect class this file has shipped more than once.
+ *
+ * WHAT A RETRY LOOKS LIKE IF THE CALLER DOES IT ANYWAY, stated rather than left
+ * to be discovered. A REFUSAL COSTS NOTHING: every failure path returns a
+ * `StreakError` and no state, so retrying a refused order is free and cannot
+ * drift. An ACCEPTED order retried credits again — that is the caller's bug, and
+ * it is a bug this function cannot see. A refused order retried after a refresh
+ * may be refused with a DIFFERENT code, because the refreshed screen is a
+ * different screen: `ABSENCE_ENDED_BEFORE_OFFER` answers the first tap and
+ * `ABSENCE_ALREADY_DOOMED` answers the second. Both are true of the screen they
+ * reply to, which is the only thing `DOOMED_SALE_REFUSAL_MESSAGE` claims.
+ * ---------------------------------------------------------------------------
+ *
  * @throws never. Errors come back as a `StreakResult`.
  */
 export function applySettledCoveredDayPurchase(
@@ -2327,6 +2533,35 @@ export function applySettledCoveredDayPurchase(
   if (!Number.isSafeInteger(purchase.coveredDays) || purchase.coveredDays < 1) {
     return fail('INVALID_PURCHASE', 'A covered-day purchase must be for a whole number of at least one day.');
   }
+  // THE RENDERED OFFER IS VALIDATED LIKE EVERY OTHER FIELD ON THE ORDER, and for
+  // the same reason `tender` is: a settled order decoded from an Edge Function
+  // response is JSON, and JSON has no types. A missing or malformed
+  // `renderedOffer` is a MALFORMED ORDER and not a calendar refusal — reporting
+  // "your streak already ended" for it would hide a bug behind a design rule,
+  // which is the call the structural checks above already make.
+  const renderedOffer: RenderedStoreOffer | null =
+    typeof purchase.renderedOffer === 'object' && purchase.renderedOffer !== null
+      ? purchase.renderedOffer
+      : null;
+  if (renderedOffer === null || typeof renderedOffer.offered !== 'boolean') {
+    return fail(
+      'INVALID_PURCHASE',
+      'A covered-day purchase must say what the screen it was tapped from showed.',
+    );
+  }
+  if (!Number.isSafeInteger(renderedOffer.day)) {
+    return fail('INVALID_PURCHASE', 'A covered-day purchase must say which day its screen was drawn for.');
+  }
+  // REFUSED RATHER THAN CLAMPED, the same call `window < state.entitlement
+  // .windowIndex` makes above. A screen drawn AFTER the order settled is not the
+  // screen the tap came from, and accepting it would put the copy back to being
+  // decided by a day the player never saw.
+  if (renderedOffer.day > day) {
+    return fail(
+      'INVALID_PURCHASE',
+      'A covered-day purchase cannot have been shown on a screen drawn after the order settled.',
+    );
+  }
 
   const window = entitlementWindowFor(state, day);
   // A PURCHASE MAY NOT REWIND THE WINDOW, and this refusal is load-bearing
@@ -2341,6 +2576,13 @@ export function applySettledCoveredDayPurchase(
   }
   if (day < state.signupDay) {
     return fail('INVALID_PURCHASE', 'A covered day cannot be bought before the account existed.');
+  }
+  // AND NEITHER CAN THE SCREEN HAVE BEEN DRAWN THEN. Same refusal, same reason:
+  // `renderedOffer.day` is compared against the day the run ended below, so a
+  // day from before the account existed would put a real comparison on a
+  // fictional date.
+  if (renderedOffer.day < state.signupDay) {
+    return fail('INVALID_PURCHASE', 'A covered-day purchase cannot have been shown before the account existed.');
   }
   // THE STORE MAY NOT SELL DURING AN ALREADY-DOOMED ABSENCE — the human's
   // ruling, and the thing `streak.test.ts`'s before/after-a-session test used to
@@ -2372,13 +2614,18 @@ export function applySettledCoveredDayPurchase(
   // are refused anyway, because the ruling is about selling a save into a run
   // that has already ended, and theirs has. Their message says so specifically.
   //
-  // THE MESSAGE IS PICKED OFF `entitlementArmed` AND NOT OFF `breakReason`, and
-  // that is not a shortcut — see `DOOMED_SALE_REFUSAL_MESSAGE`. The reason drifts
-  // when a nightly settle lengthens the absence; the armed flag does not.
+  // THE MESSAGE FOR A SCREEN THAT SAID NO IS PICKED OFF `entitlementArmed` AND
+  // NOT OFF `breakReason`, and that is not a shortcut — see
+  // `DOOMED_SALE_REFUSAL_MESSAGE`. The reason drifts when a nightly settle
+  // lengthens the absence; the armed flag does not.
   //
-  // AND IT IS ASKED TWICE, ONCE OF THIS STATE AND ONCE OF SETTLED STATE. That is
-  // the human's ruling on `STORE_VERDICT_DIVERGENCE`, and it is the only part of
-  // this refusal that is about WHICH state rather than about the arithmetic.
+  // AND IT IS ASKED OF SETTLED STATE, NOT OF THIS ONE. That is the human's
+  // ruling on `STORE_VERDICT_DIVERGENCE`, and it is the only part of this
+  // refusal that is about WHICH state rather than about the arithmetic. It used
+  // to be asked twice — once of settled state to decide, once of the raw state
+  // to pick the sentence — and the second reading was removed because it was
+  // standing in for a fact the client now reports directly
+  // (`purchase.renderedOffer`).
   //
   // RENDERING MAY BE STALE; COMPLETING MAY NOT. A client that has not settled
   // can hold a state whose absence reads COVERED on a day where a settled client
@@ -2392,25 +2639,50 @@ export function applySettledCoveredDayPurchase(
   // nothing — it offers each day to `settleBrokenStreak` and keeps what that
   // returns. The verdict below is then the identical `absenceOutcome(...)
   // .protectionHolds` call `recordTrainingDay` branches on, asked of the state a
-  // nightly job would have left.
+  // nightly job would have left. `settledStateAsOf` returns the input state
+  // unchanged when it recorded nothing, so this is one call and not a branch.
   // `@guarantee completion-revalidates-against-settled-state`
-  const rendered = absenceOutcome(state, day);
   const revalidated = settledStateAsOf(state, day);
-  const authoritative =
-    revalidated.runRecordedAsEndedOn === null ? rendered : absenceOutcome(revalidated.state, day);
+  const authoritative = absenceOutcome(revalidated.state, day);
   if (!authoritative.protectionHolds) {
-    return fail(
-      // A DISTINCT CODE FOR THE STALE CASE, because the two are different things
-      // for a client to do about. `ABSENCE_ALREADY_DOOMED` means the store and
-      // this device agree the run is over; `ABSENCE_SETTLED_WHILE_AWAY` means
-      // this device is behind and should refresh before it offers anything else.
-      rendered.protectionHolds ? 'ABSENCE_SETTLED_WHILE_AWAY' : 'ABSENCE_ALREADY_DOOMED',
-      rendered.protectionHolds
-        ? DOOMED_SALE_REFUSAL_MESSAGE.alreadyRecorded
-        : state.entitlementArmed
+    // THREE THINGS, AND THEY USED TO BE ONE. The decision above is settled
+    // state's. The SENTENCE below is decided by two further facts that are not
+    // that decision and not each other:
+    //
+    //   (a) `renderedOffer.offered` — WHAT THE CLIENT DREW. An input, reported
+    //       by the client, never re-derived here. This used to be guessed as
+    //       `absenceOutcome(state, day).protectionHolds`, which is a different
+    //       question asked of a different day about a state the client may never
+    //       have seen.
+    //   (b) whether the run had already ended BY THE DAY THAT SCREEN WAS DRAWN.
+    //       Read straight off the walk: `settledStateAsOf` settles the FIRST day
+    //       it can and reports it, so `runRecordedAsEndedOn <= renderedOffer.day`
+    //       is exactly "walking only as far as the render day would have found
+    //       it too". `streak.test.ts` asserts that equivalence against a second,
+    //       independent walk rather than leaving it as this paragraph.
+    //
+    // NULL MEANS EARLIER, NOT LATER. `runRecordedAsEndedOn` is null when the
+    // walk recorded nothing — and inside this branch, where settled state
+    // refuses, that means the run was already over before the walk began. There
+    // was no live run at any point this screen could have been drawn, so the
+    // screen was wrong when it was drawn.
+    const endedOn = revalidated.runRecordedAsEndedOn;
+    const runHadEndedByTheTimeTheScreenWasDrawn = endedOn === null || endedOn <= renderedOffer.day;
+    if (!renderedOffer.offered) {
+      // THE CLIENT AND SETTLED STATE AGREE. This is the only branch where "the
+      // offer should never have been on screen" is true, and the only one keyed
+      // on `entitlementArmed` — see `DOOMED_SALE_REFUSAL_MESSAGE` for why that
+      // and not `breakReason`.
+      return fail(
+        'ABSENCE_ALREADY_DOOMED',
+        state.entitlementArmed
           ? DOOMED_SALE_REFUSAL_MESSAGE.armed
           : DOOMED_SALE_REFUSAL_MESSAGE.protectionDeclined,
-    );
+      );
+    }
+    return runHadEndedByTheTimeTheScreenWasDrawn
+      ? fail('ABSENCE_ENDED_BEFORE_OFFER', DOOMED_SALE_REFUSAL_MESSAGE.endedBeforeOffer)
+      : fail('ABSENCE_ENDED_AFTER_OFFER', DOOMED_SALE_REFUSAL_MESSAGE.endedAfterOffer);
   }
   // THE SALE PATH NEVER CARRIES A SETTLE, so crediting against `state` below is
   // crediting against the state re-validation approved. A settle that succeeded
