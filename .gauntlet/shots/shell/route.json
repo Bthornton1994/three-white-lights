@@ -1,15 +1,15 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-06T19:37:44.897Z",
+    "capturedAt": "2026-08-06T21:56:03.110Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "6f5133b",
+    "commit": "4173abf",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [],
     "instrument": {
-      "verify-shell-route.mjs": "d16191f98be4f971",
-      "sessionDrive.mjs": "288aabf9346b66f5"
+      "verify-shell-route.mjs": "0c3ee3e8b1055967",
+      "sessionDrive.mjs": "2a63eac7a653d32b"
     }
   },
   "played": {
@@ -20,63 +20,63 @@
       "width": 350,
       "height": 48
     },
-    "wallClockMs": 78504,
+    "wallClockMs": 77921,
     "landedOn": "already-trained",
     "finalDepthHoldMs": 1000,
     "reps": [
       {
         "set": "SET 1 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
       {
         "set": "SET 1 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
       {
         "set": "SET 1 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
       {
         "set": "SET 2 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
       {
         "set": "SET 2 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
       {
         "set": "SET 2 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
       {
         "set": "SET 3 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
       {
         "set": "SET 3 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
@@ -90,21 +90,21 @@
       {
         "set": "SET 4 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
       {
         "set": "SET 4 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
       {
         "set": "SET 4 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
@@ -118,7 +118,7 @@
       {
         "set": "SET 5 OF 5",
         "holdMs": 1000,
-        "outcome": "GRINDER",
+        "outcome": "GOOD LIFT",
         "detail": "Hold to descend  ·  release at depth  ·  drive out of the hole",
         "drove": true
       },
@@ -162,10 +162,14 @@
     "  ok    the close-out still shows no Total with the shell over it (GDD §3.2)",
     "  ok    FINISH A SESSION -> REACH A MEET, in one press",
     "  ok    and it is a fresh meet, not the frozen beat the launch URL named — opacity 1.000",
-    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1436ms from the first tap",
-    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 70077ms, 15 of them past a DRIVE cue",
+    "  ok    CONTROL: the block parser reads the block it was asked for, not the decoy above it, and reads the last entry of an inline one — fixture -> REAL_FRACTION.squat 0.9 (want 0.9; DECOY_FRACTION.squat is 0.11 and must not be the answer), NESTED_SEED.squat 180 (want 180, through a nested freeze), NESTED_SEED.deadlift 220 (want 220, and it has NO trailing comma — the shape STARTING_E1RM is written in, and the one this parser first got wrong), ABSENT_BLOCK null (want null)",
+    "  ok    CONTROL: the binding parser reads `export const NAME = n`, typed or not, and refuses a property of the same name — fixture -> REAL_GRID 2.5 (want 2.5), TYPED_GRID 5 (want 5), DECOY_GRID null (want null — it is a property, not a binding)",
+    "  ok    CONTROL: every number the opener crossing is judged against was found in the module that owns it — fraction {\"squat\":0.9,\"bench\":0.9,\"deadlift\":0.9}, seed {\"squat\":180,\"bench\":120,\"deadlift\":220}kg, grid 2.5kg, count-up 900ms after 220ms",
+    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1447ms from the first tap",
+    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 65378ms, 15 of them past a DRIVE cue",
     "  ok    CONTROL: the close-out has a certainty tag for that wait to watch — e1rm, streak in the DOM",
     "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 554ms",
+    "  ok    CONTROL: the close-out prints an e1RM, and says which lift it is for — bench 124.6kg",
     "  ok    PRESSING DONE LANDS ON THE ALREADY-TRAINED SURFACE (GDD §3.2: one session a day)",
     "  ok    the already-trained surface renders — the last screen of the daily loop — opacity 1.000",
     "  ok    THE WAY TO MEET DAY IS ON IT, and it is the only thing on it to press — opacity 1.000",
@@ -181,6 +185,10 @@
     "  ok    the already-trained surface shows no Total either (GDD §3.2)",
     "  ok    AND PRESSING IT REACHES MEET DAY — the daily loop does not end on a dead end",
     "  ok    landing on the weigh-in, from a session that was actually played — opacity 1.000",
+    "  ok    the weigh-in confirms, so GDD §6.1’s pre-filled openers are on screen",
+    "  ok    CONTROL: the openers screen draws a number for the bench — 110kg",
+    "  ok    CONTROL: the session moved the e1RM off the signup seed, so the two answers below are different numbers — trained 124.6kg -> opener 110kg; seed 120kg -> opener 107.5kg",
+    "  ok    THE OPENER FOLLOWS THE SESSION THAT WAS JUST PLAYED — meet day and training are one lifter (GDD §6.1) — bench: close-out said 124.6kg, so the opener must be 110kg; the screen drew 110kg",
     "  ok    a live set renders — opacity 1.000",
     "  ok    and 08-set-has-no-nav.png really is a photograph of the 'set' beat, which is what its name says — the screen says \"TAP AND HOLD TO DESCEND\"",
     "  ok    NO CONTROL IS DRAWN OVER a live set (beat 'set') — photographed in 08-set-has-no-nav.png",
@@ -192,7 +200,7 @@
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.2 step 4’s deliberation — the judges taking a beat (beat 'deliberation')",
     "  ok    NO CONTROL IS DRAWN OVER the judges’ verdict (beat 'verdict')",
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.3’s attempt choice (beat 'attempt-select')",
-    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.944 after 3719ms",
+    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.974 after 3852ms",
     "  ok    and the shell does not add a second one to it (GDD §6.3: leave that beat somber)",
     "  ok    and pressing it returns to the daily session",
     "  ok    CONTROL: with no cut-in up, the pill is on the same screen the probe looks at — opacity 1.000",
@@ -229,7 +237,7 @@
   ],
   "notes": [
     "  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day, which the server then refuses",
-    "  note  the played-session section cost 78504ms of wall clock"
+    "  note  the played-session section cost 77921ms of wall clock"
   ],
   "failures": [],
   "pageErrors": []
