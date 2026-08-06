@@ -128,7 +128,22 @@ interface RunResult {
 function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
   const { tuning, grant, burnOnDoom, purchaseDays } = options;
   const windowAt = (day: number): number => windowIndexOf(tuning, 0, day);
+  // THE LIVE BALANCE, and separately THE ARMED SNAPSHOT the absence in progress
+  // resolves against (GDD §4.2: "A Recovery Day that arrives during an absence
+  // does not cover it. Buying or earning one mid-absence tops up the balance and
+  // arms the *next* absence"). `armedOnDay` is the day the snapshot was taken —
+  // day 0 is signup, which arms like a session — and it is what decides whether
+  // a credit landed before the absence or during it.
+  //
+  // THIS USED TO BE ONE VARIABLE, and that is precisely the defect the shipped
+  // engine had: a settled purchase applied during a doomed absence rescued the
+  // run, but only when nothing had settled the break first. This composition
+  // could not see it, because it resolves and credits in a fixed order within
+  // each day — which is the same reason every other harness in the repo was
+  // green on it.
   let entitlement = freshEntitlement(tuning, 0);
+  let armed = freshEntitlement(tuning, 0);
+  let armedOnDay = 0;
   let currentStreak = 0;
   let longestStreak = 0;
   let lastTrainedDay: number | null = null;
@@ -141,17 +156,40 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
     const anchor = lastTrainedDay ?? 0;
     const daysMissed = Math.max(0, today - anchor - 1);
     const chargeable = Math.max(0, daysMissed - GRACE);
-    const outcome = resolveEntitlement(tuning, entitlement, windowAt(today), chargeable);
+    // COVERS IS DECIDED BY THE ARMED SNAPSHOT; THE DOOMED BURN IS READ OFF THE
+    // LIVE BALANCE. See `streak.ts`'s `absenceOutcome` for why the two halves
+    // read different fields — a mid-absence arrival may not rescue the absence
+    // and may not be spared by it either, and the second half is what keeps the
+    // doomed consumption idempotent under splitting.
+    const outcome = resolveEntitlement(tuning, armed, windowAt(today), chargeable);
+    const burn = resolveEntitlement(tuning, entitlement, windowAt(today), chargeable);
     return {
       daysMissed,
       chargeable,
       covers: outcome.covers,
-      consumed: outcome.covers ? outcome.consumed : burnOnDoom ? outcome.consumed : 0,
+      consumed: outcome.covers ? outcome.consumed : burnOnDoom ? burn.availableBefore : 0,
     };
   };
 
+  /**
+   * Credits `amount` covered days, from `source`, on `day`.
+   *
+   * IT ALWAYS RAISES THE LIVE BALANCE and reaches the armed snapshot only when
+   * the credit is dated on or before the day that snapshot was taken. That is
+   * one rule for both sources, which is what GDD §4.2 says — "buying OR
+   * EARNING" — so the free grant path is fenced by exactly the same sentence
+   * the purchase path is.
+   */
+  const credit = (day: number, amount: number, source: 'window-entitlement' | 'purchase'): void => {
+    const w = windowAt(day);
+    entitlement = creditCoveredDays(tuning, entitlement, w, amount, source).state;
+    if (day <= armedOnDay) {
+      armed = creditCoveredDays(tuning, armed, w, amount, source).state;
+    }
+  };
+
   const addCoveredDay = (day: number): void => {
-    entitlement = creditCoveredDays(tuning, entitlement, windowAt(day), 1, 'window-entitlement').state;
+    credit(day, 1, 'window-entitlement');
   };
 
   for (let i = 0; i < schedule.length; i += 1) {
@@ -169,7 +207,7 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
       for (let k = 0; k < purchaseDays.length; k += 1) {
         if (purchaseDays[k] !== i) continue;
         const amount = COVERED_DAY_PURCHASE_SWEEP.COVERED_DAYS_PER_ORDER;
-        entitlement = creditCoveredDays(tuning, entitlement, windowAt(i), amount, 'purchase').state;
+        credit(i, amount, 'purchase');
         bought += amount;
         peakPurchased = Math.max(peakPurchased, entitlement.purchasedDaysLeft);
       }
@@ -191,7 +229,13 @@ function drive(schedule: TrainingSchedule, options: RunOptions): RunResult {
       currentStreak = 0;
       lastTrainedDay = null;
     }
+    // THE SESSION DEBITS THE LIVE BALANCE BY WHAT THE ARMED SNAPSHOT COST, and
+    // then re-arms with whatever is left. A covered day bought during the
+    // absence is in `entitlement` but was not in `armed`, so it neither covered
+    // the absence nor was burned by it — and from here it arms the next one.
     entitlement = afterSession(tuning, entitlement, windowAt(i), r.consumed);
+    armed = entitlement;
+    armedOnDay = i;
     consumedTotal += r.consumed;
     currentStreak += 1;
     longestStreak = Math.max(longestStreak, currentStreak);
@@ -1010,6 +1054,71 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     for (const length of MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS) {
       expectClean(`exhaustive L=${length}`, judge(exhaustivePairs(length), DEFAULT));
     }
+  });
+
+  it('EXHAUSTIVE, ACROSS A WINDOW BOUNDARY: the same calendars at a 7-day window', () => {
+    // RESIDUAL THE PREVIOUS ROUND LEFT OPEN, and it is a gap in the only
+    // proof-grade sweep in the repository. The shipped `WINDOW_DAYS` is 30 and
+    // every exhaustive fixture anchors signup at day 0, so the sweep above runs
+    // entirely INSIDE WINDOW 0. It cannot see the refill, cannot see two
+    // lifters re-converge at a boundary, and cannot see a purchased day expire
+    // -- the three things the entitlement design rests on. It proved the
+    // property for the sub-mechanism that was never in doubt.
+    //
+    // The fix costs seconds: run the same judge over the same calendars at
+    // `MONOTONICITY_SWEEP.BOUNDARY_CROSSING_WINDOW_DAYS`, where every one of
+    // them straddles at least one boundary and the longest straddles two.
+    //
+    // THIS IS `drive`-ONLY, and the pin is what carries it. `streak.ts` reads
+    // `RECOVERY_ENTITLEMENT` as a module constant, so the shipped engine cannot
+    // be driven at another window length; 'the shipped engine is the
+    // composition this battery graded' is what makes a `drive` result a
+    // statement about the shipped program at the shipped tuning.
+    const tuning: EntitlementTuning = {
+      ...RECOVERY_ENTITLEMENT,
+      WINDOW_DAYS: MONOTONICITY_SWEEP.BOUNDARY_CROSSING_WINDOW_DAYS,
+    };
+    // THE PREMISE, ASSERTED RATHER THAN ASSUMED: the window really is shorter
+    // than the shortest calendar, or this is the sweep above under a new name.
+    expect(tuning.WINDOW_DAYS).toBeLessThan(Math.min(...MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS));
+    expect(tuning.WINDOW_DAYS).toBeLessThan(RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+
+    let consumedWithout = 0;
+    let consumedWith = 0;
+    for (const length of MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS) {
+      // ARM 1 -- no purchases. The refill and the re-convergence.
+      const plain = judge(exhaustivePairs(length), { ...DEFAULT, tuning });
+      expectClean(`boundary W=${tuning.WINDOW_DAYS} L=${length}`, plain);
+      consumedWithout += plain.consumed;
+
+      // ARM 2 -- purchased days in the field, on fixed calendar days, so a
+      // purchased day is credited in one window and expires in the next.
+      const purchaseDays = MONOTONICITY_SWEEP.BOUNDARY_CROSSING_PURCHASE_DAYS.filter((d) => d < length);
+      expect(purchaseDays.length, `L=${length} bought nothing`).toBeGreaterThan(0);
+      // The buys really do span more than one window, or nothing expires.
+      const windowsBoughtIn = new Set(purchaseDays.map((d) => windowIndexOf(tuning, 0, d)));
+      expect(windowsBoughtIn.size, `L=${length} bought inside one window only`).toBeGreaterThan(1);
+
+      const bought = judge(exhaustivePairs(length), { ...DEFAULT, tuning, purchaseDays });
+      expectClean(`boundary W=${tuning.WINDOW_DAYS} L=${length} with purchases`, bought);
+      consumedWith += bought.consumed;
+    }
+
+    // THE PUBLISHED NUMBERS, PINNED. GDD 4.4 prints this table; pinning the
+    // totals here is what stops the two drifting apart, and a total that moves
+    // is a sweep that is measuring something else.
+    expect(consumedWithout, 'GDD 4.4 boundary table, no-purchase row total').toBe(1_125_456);
+    expect(consumedWith, 'GDD 4.4 boundary table, with-purchase row total').toBe(1_414_748);
+
+    // ANTI-VACUITY, AND IT IS THE CHECK THIS SWEEP FAILED ON ITS FIRST RUN. The
+    // first version funded the purchase arm through `coveredDayPurchaseDays`,
+    // which at this purse buys NOTHING inside sixteen days -- so both arms
+    // consumed byte-identical amounts and the purchase arm was the no-purchase
+    // arm with a longer name. Fixed calendar days, and the two arms must differ.
+    expect(consumedWithout, 'nothing was ever consumed').toBeGreaterThan(0);
+    expect(consumedWith, 'the purchase arm consumed no more than the arm with no purchases').toBeGreaterThan(
+      consumedWithout,
+    );
   });
 
   it('SAMPLED: 40, 60, 80 and 100 days — including the LIFETIME BEST', () => {

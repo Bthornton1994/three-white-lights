@@ -115,6 +115,53 @@ export const MONOTONICITY_SWEEP = Object.freeze({
   EXHAUSTIVE_LENGTHS: Object.freeze([8, 9, 10, 11, 12, 13, 14, 15, 16]),
 
   /**
+   * WINDOW LENGTH THE EXHAUSTIVE SWEEP IS RE-RUN AT, so that its calendars
+   * actually cross a window boundary.
+   *
+   * WHY THIS EXISTS, and it is a gap rather than an enhancement. The shipped
+   * `WINDOW_DAYS` is 30 and every exhaustive fixture anchors the signup day at
+   * day 0, so an 8-to-16-day calendar lives entirely inside window 0. The only
+   * PROOF-GRADE sweep in the repository therefore never saw the refill, never
+   * saw two lifters re-converge at a boundary, and never saw a purchased day
+   * expire — it proved the property for the sub-mechanism that was never in
+   * doubt. Everything boundary-related was covered only by the SAMPLED sweeps.
+   *
+   * 7 because it is the largest value that puts at least one boundary inside
+   * the SHORTEST exhaustive calendar (8 days) and at least two inside the
+   * longest (16). Larger and the short lengths go back to being single-window;
+   * much smaller and the entitlement refills so often that no absence can
+   * outlive a window, which makes the sweep clean for an uninteresting reason.
+   *
+   * IT IS A MEASUREMENT PARAMETER, NOT A TUNING. The shipped window stays 30.
+   */
+  BOUNDARY_CROSSING_WINDOW_DAYS: 7,
+
+  /**
+   * Days the boundary-crossing sweep buys an Extra Covered Day on.
+   *
+   * FIXED POSITIONS ON THE CALENDAR, which is the only safe keying — both
+   * members of every monotonicity pair buy on exactly these days, so nothing
+   * the lifter does can move a purchase and the arm measures the ENGINE rather
+   * than the purse. `coveredDayPurchaseDays` is deliberately NOT used here: at
+   * `PRICE_IN_CHALK` 3 and `CHALK_PER_CALENDAR_DAYS` 10 a sixteen-day calendar
+   * accrues one Chalk and buys nothing, so that generator makes this arm
+   * silently identical to the no-purchase arm. It was, on the first run of this
+   * sweep, and the two arms reporting byte-identical consumption is what showed
+   * it.
+   *
+   * CHOSEN SO THAT EVEN THE SHORTEST EXHAUSTIVE CALENDAR BUYS IN TWO WINDOWS.
+   * At `BOUNDARY_CROSSING_WINDOW_DAYS` = 7 the windows are days 0-6, 7-13 and
+   * 14-20, so an eight-day calendar reaches [0, 3, 7] — two windows — and a
+   * sixteen-day one reaches all five and three windows. That guarantees at
+   * least one purchased day is credited in one window and expires unused in the
+   * next, which is one of the three things the shipped-window exhaustive sweep
+   * structurally cannot see. `[0, 3, 6, ...]` was the first attempt and is
+   * wrong: day 6 is the last day of window 0, so an eight-day calendar bought
+   * inside one window only.
+   */
+  BOUNDARY_CROSSING_PURCHASE_DAYS: Object.freeze([0, 3, 7, 10, 14]),
+
+  /**
    * Seeds for the sampled sweep. Arbitrary, fixed, and WRITTEN DOWN — which is
    * the entire point of them. Five rather than one so a clean result is not one
    * lucky draw.

@@ -10,6 +10,7 @@ import {
   trainedDayCount,
   type TrainingSchedule,
 } from './streakSweep';
+import { RECOVERY_ENTITLEMENT } from './streakEntitlement';
 
 // ---------------------------------------------------------------------------
 // The fixture exists so a number in GDD §4.4 can be re-derived from the
@@ -191,6 +192,40 @@ describe('the parameters themselves', () => {
     expect(Math.max(...MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS)).toBeGreaterThan(14);
   });
 
+  it('the boundary-crossing window really does put a boundary inside every exhaustive calendar', () => {
+    // THE PARAMETER THAT MAKES THE SECOND EXHAUSTIVE SWEEP MEAN ANYTHING. At
+    // the shipped 30-day window every 8-to-16-day calendar sits inside window
+    // 0, so the proof-grade sweep never crosses a boundary. This constant is
+    // the whole of the fix, and if it drifts above the shortest calendar the
+    // second sweep silently becomes a duplicate of the first.
+    const W = MONOTONICITY_SWEEP.BOUNDARY_CROSSING_WINDOW_DAYS;
+    const shortest = Math.min(...MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS);
+    const longest = Math.max(...MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS);
+    expect(W, 'no boundary inside the shortest exhaustive calendar').toBeLessThan(shortest);
+    expect(W, 'not shorter than the shipped window, so it proves nothing new').toBeLessThan(
+      RECOVERY_ENTITLEMENT.WINDOW_DAYS,
+    );
+    // At least two boundaries inside the longest, so re-convergence is seen
+    // more than once.
+    expect(Math.floor((longest - 1) / W), 'fewer than two boundaries in the longest calendar').toBeGreaterThan(1);
+
+    // AND THE BUY DAYS SPAN AT LEAST TWO WINDOWS EVEN IN THE SHORTEST CALENDAR,
+    // which is what makes a purchased day expire unused rather than always be
+    // spendable. `[0, 3, 6]` fails this at W=7 — day 6 is the last day of
+    // window 0 — and that was the first list tried.
+    const inShortest = MONOTONICITY_SWEEP.BOUNDARY_CROSSING_PURCHASE_DAYS.filter((d) => d < shortest);
+    expect(inShortest.length).toBeGreaterThan(0);
+    expect(new Set(inShortest.map((d) => Math.floor(d / W))).size).toBeGreaterThan(1);
+    // Ascending, distinct, and inside the longest calendar.
+    expect([...MONOTONICITY_SWEEP.BOUNDARY_CROSSING_PURCHASE_DAYS]).toEqual(
+      [...MONOTONICITY_SWEEP.BOUNDARY_CROSSING_PURCHASE_DAYS].sort((a, b) => a - b),
+    );
+    expect(new Set(MONOTONICITY_SWEEP.BOUNDARY_CROSSING_PURCHASE_DAYS).size).toBe(
+      MONOTONICITY_SWEEP.BOUNDARY_CROSSING_PURCHASE_DAYS.length,
+    );
+    expect(Math.max(...MONOTONICITY_SWEEP.BOUNDARY_CROSSING_PURCHASE_DAYS)).toBeLessThan(longest);
+  });
+
   it('keeps the attendance range inside (0, 1) with room at both ends', () => {
     expect(MONOTONICITY_SWEEP.MIN_ATTENDANCE).toBeGreaterThan(0);
     expect(MONOTONICITY_SWEEP.MIN_ATTENDANCE + MONOTONICITY_SWEEP.ATTENDANCE_SPREAD).toBeLessThan(1);
@@ -205,5 +240,6 @@ describe('the parameters themselves', () => {
     expect(Object.isFrozen(MONOTONICITY_SWEEP)).toBe(true);
     expect(Object.isFrozen(MONOTONICITY_SWEEP.SEEDS)).toBe(true);
     expect(Object.isFrozen(MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS)).toBe(true);
+    expect(Object.isFrozen(MONOTONICITY_SWEEP.BOUNDARY_CROSSING_PURCHASE_DAYS)).toBe(true);
   });
 });
