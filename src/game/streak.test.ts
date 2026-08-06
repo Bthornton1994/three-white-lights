@@ -398,33 +398,107 @@ describe('purity contract', () => {
     expect(code).not.toMatch(/RECOVERY_DECISION_PENDING|OFFER_DOES_NOT_MATCH_STATE/);
   });
 
+  it('the header does not claim coverage is unreachable while a function reaches it', () => {
+    // FOUR COMMENTS IN THIS MODULE ASSERTED THE OPPOSITE OF WHAT IT DID, and
+    // all four said it in the reassuring direction. They are the reason the
+    // defect survived a round of grading: a reader checking whether a purchase
+    // could arm an absence found a paragraph saying nothing could arrive at
+    // all, and stopped.
+    //
+    // WHAT THIS CHECKS IS A CONDITIONAL, not a wordlist. IF the module exports
+    // something that credits coverage, THEN it may not also carry the sentences
+    // that were true only while nothing did. Delete
+    // `applySettledCoveredDayPurchase` and the retracted claims become sayable
+    // again, which is correct — they would be true again.
+    const credits = Object.keys(streakModule).filter(
+      (name) =>
+        typeof (streakModule as Record<string, unknown>)[name] === 'function' &&
+        /credit|buy|purchase/i.test(name),
+    );
+    expect(credits, 'the premise of this test').toEqual(['applySettledCoveredDayPurchase']);
+
+    // The exact retracted sentences, in the source INCLUDING comments — this is
+    // the one scan in the file that must not strip them, because comments are
+    // the artifact under test.
+    const retracted = [
+      // §3 of the header, false since GDD §8.3E was ruled in.
+      /NOTHING CAN CREDIT COVERAGE AT ALL/,
+      /no exported name matches/,
+      // §5 of the header, contradicted by §4 on the same page.
+      /Nothing can arrive\s*\n?\s*\*?\s*any more/,
+      // The `entitlement` field docstring, which described a live field as a
+      // snapshot and is the sentence the whole defect rested on.
+      /IT IS A SNAPSHOT TAKEN AT A SESSION, not a live figure/,
+      // The purchase docstring's list of untouched fields, which used to omit
+      // the one field that matters.
+      /GDD §8.3E is PROPOSED AND NOT RULED/,
+    ];
+    for (const claim of retracted) {
+      expect(source, `a retracted claim is back in streak.ts: ${String(claim)}`).not.toMatch(claim);
+    }
+
+    // AND THE REPLACEMENT CLAIMS ARE PRESENT, so this cannot be satisfied by
+    // deleting the paragraphs rather than correcting them.
+    expect(source).toMatch(/EXACTLY ONE THING CAN CREDIT COVERAGE/);
+    expect(source).toMatch(/COVERAGE ARRIVING DURING AN ABSENCE DOES NOT COVER IT — and coverage CAN/);
+  });
+
   it('resolves an absence from the ENTITLEMENT SNAPSHOT and the calendar, and from nothing else', () => {
     // The one-line reason the outcome cannot depend on when the app is opened.
     // Under the Recovery Day stock the danger was a grant landing mid-absence
-    // and raising `recoveryDayBalance` where `absenceOutcome` could see it;
-    // GDD §4.2's Option 1 ruling deleted the grant path, so the danger is now
-    // the shape rather than the name — a resolution that read anything other
-    // than the snapshot the last session left and the window `today` falls in
-    // would be a resolution the calendar does not fully decide.
+    // and raising `recoveryDayBalance` where `absenceOutcome` could see it.
     //
-    // SCANNED RATHER THAN DRIVEN, because the difference is invisible to any
-    // test that cannot make coverage change mid-absence — and nothing in this
-    // module can, which is exactly why a behavioural test cannot see it.
+    // THAT DANGER IS BACK, AND THIS TEST USED TO SAY IT WAS NOT. It said "GDD
+    // §4.2's Option 1 ruling deleted the grant path, so the danger is now the
+    // shape rather than the name", and it asserted that a purchased day is
+    // "mentioned exactly once, as the literal zero that says none of one
+    // reaches this resolution (GDD §8.3E is not ruled)". §8.3E IS ruled,
+    // `applySettledCoveredDayPurchase` credits coverage, and that literal zero
+    // was only the DISARMED branch — the armed branch passed the whole live
+    // entitlement straight through. So the scan was green while the function it
+    // scanned was reading exactly the field the comment promised it did not.
+    //
+    // DRIVEN NOW, NOT SCANNED, and that is the repair rather than a rewording.
+    // A source scan of this function was never able to fail on the thing it
+    // claimed, because the claim was about WHICH FIELD, and both fields are
+    // spelled `state.entitlement...`. The property is behavioural and is
+    // asserted behaviourally: moving the LIVE entitlement, by any amount,
+    // cannot move the absence's verdict or what it holds open.
+    for (const gap of [0, 1, GRACE, GRACE + 1, GRACE + 2, LONGEST_REPAIRABLE_ABSENCE_DAYS + 1]) {
+      for (let balance = 0; balance <= RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW; balance += 1) {
+        const base = stateWithRun(5, DAY_ZERO, balance);
+        const day = dayAfterGap(DAY_ZERO, gap);
+        // The same lifter, holding a fortune they did not have at their last
+        // session. Only `entitlement` moves; `armedEntitlement` does not.
+        const rich: StreakState = {
+          ...base,
+          entitlement: { windowIndex: windowOf(DAY_ZERO), coveredDaysLeft: 99, purchasedDaysLeft: 99 },
+        };
+        const label = `gap ${gap} balance ${balance}`;
+        expect(absenceOutcome(rich, day).protectionHolds, label).toBe(
+          absenceOutcome(base, day).protectionHolds,
+        );
+        expect(absenceOutcome(rich, day).recoveryDaysHolding, label).toBe(
+          absenceOutcome(base, day).recoveryDaysHolding,
+        );
+        expect(absenceOutcome(rich, day).breakReason, label).toBe(absenceOutcome(base, day).breakReason);
+        expect(openDay(rich, day).kind, label).toBe(openDay(base, day).kind);
+      }
+    }
+
+    // AND THE SCAN IS KEPT FOR WHAT A SCAN IS ACTUALLY GOOD AT: names that must
+    // not come back, and an argument list that must not grow.
     const body = code.slice(code.indexOf('export function absenceOutcome'));
     const fn = body.slice(0, body.indexOf('\n}\n') + 1);
-    // Its two and only two inputs.
-    expect(fn).toContain('state.entitlement');
     expect(fn).toContain('entitlementWindowFor(state, today)');
     expect(fn).toContain('resolveEntitlement');
+    // The COVERS decision reads the armed snapshot and nothing else.
+    expect(fn).toContain('state.armedEntitlement.entitlement');
     // The stock's names cannot come back under the old spelling...
     expect(fn).not.toContain('recoveryDayBalance');
     expect(fn).not.toContain('armedRecoveryDays');
-    // ...and nothing may reach a figure that is not a function of the calendar.
-    expect(fn).not.toMatch(/grant|credit|\bbuy\b/i);
-    // A purchased covered day is mentioned exactly once, as the literal zero
-    // that says none of one reaches this resolution (GDD §8.3E is not ruled).
-    expect([...fn.matchAll(/purchas\w*/gi)].map((match) => match[0])).toEqual(['purchasedDaysLeft']);
-    expect(fn).toContain('purchasedDaysLeft: 0');
+    // ...and nothing may CREDIT a figure here; this function only reads.
+    expect(fn).not.toMatch(/creditCoveredDays|\bgrant\w/i);
     // Two parameters, and there is nowhere for a third to hide.
     expect(streakModule.absenceOutcome).toHaveLength(2);
   });

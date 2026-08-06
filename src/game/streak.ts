@@ -169,11 +169,16 @@
  *     dated on or before the day the snapshot was taken, which by definition is
  *     not during the absence.
  *
- *     THIS PARAGRAPH USED TO SAY "NOTHING CAN CREDIT COVERAGE AT ALL any more",
- *     and it stayed there for a whole round after §8.3E was ruled in. It is
- *     recorded rather than quietly replaced because a comment that was false in
- *     the reassuring direction is what let the live field be read by the
- *     absence path without anybody noticing.
+ *     THIS PARAGRAPH USED TO SAY THE OPPOSITE — that no credit path existed at
+ *     all any more, and that this file's tests asserted no exported name was
+ *     named for one. Both halves were false from the day §8.3E was ruled in,
+ *     and they stayed for a whole round. The retraction is recorded rather than
+ *     quietly replaced because a comment that is false in the REASSURING
+ *     direction is what let the live field be read by the absence path without
+ *     anybody noticing: a reader checking this exact question found a paragraph
+ *     saying there was nothing to check, and stopped.
+ *     `streak.test.ts` now fails if those sentences come back while a credit
+ *     path exists.
  *
  *     What can also change mid-absence is the CALENDAR, and it changes
  *     identically whether or not anybody looks.
@@ -1043,12 +1048,13 @@ export interface StreakState {
    * An entitlement is the same number for everybody at the start of every
    * window, so there is nothing to be proportional to.
    *
-   * IT IS LIVE, AND THIS DOCSTRING USED TO SAY THE OPPOSITE. It said "IT IS A
-   * SNAPSHOT TAKEN AT A SESSION, not a live figure", which was true for exactly
-   * as long as nothing could credit coverage. GDD §8.3E ruled the Extra Covered
-   * Day in, `applySettledCoveredDayPurchase` writes here, and a lifter who buys
-   * one mid-absence sees it here immediately — that is what "tops up the
-   * balance" means in GDD §4.2.
+   * IT IS LIVE, AND THIS DOCSTRING USED TO SAY THE OPPOSITE — that the field
+   * was a snapshot taken at a session and not a live figure, and that nothing
+   * happening while the lifter was away could change it. That was true for
+   * exactly as long as nothing could credit coverage. GDD §8.3E ruled the Extra
+   * Covered Day in, `applySettledCoveredDayPurchase` writes here, and a lifter
+   * who buys one mid-absence sees it here immediately — which is what "tops up
+   * the balance" means in GDD §4.2.
    *
    * SO NO ABSENCE READS THIS FIELD. `armedEntitlement` below is the snapshot an
    * absence resolves against, and the split is the fix for a defect that made a
@@ -2483,9 +2489,15 @@ export interface StreakMigrationOutcome {
    * nothing mechanical, because every way of converting it is wrong:
    *
    *   - carrying it as a stock is the defect the ruling removed;
-   *   - adding it to the current window is GDD §8.3E's Extra Covered Day, which
-   *     is PROPOSED AND NOT RULED, and a migration is not the place to ship an
-   *     unruled product;
+   *   - adding it to the current window is GDD §8.3E's Extra Covered Day. That
+   *     is RULED IN now, and this bullet used to say it was not — but the
+   *     conclusion survives the correction rather than depending on it. §8.3E
+   *     ruled in a PURCHASE, which takes a settled order; a migration has no
+   *     order to present, and inventing one to convert a legacy balance would
+   *     be the one code path in this module that awards a purchased day. It is
+   *     also the wrong product: an Extra Covered Day expires with its window,
+   *     so a lifter holding five would have them converted into two they can
+   *     use this month and three that evaporate;
    *   - discarding it silently takes something a player may have paid for.
    *
    * So the migration hands the number back and the compensation is the caller's
