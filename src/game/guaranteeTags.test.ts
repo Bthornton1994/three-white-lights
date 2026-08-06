@@ -194,7 +194,7 @@ const GUARANTEE_COVERAGE = {
    * artefact: these comments assert behaviour about the scanner and are exactly
    * as capable of being wrong as any other.
    */
-  TREE_WIDE: 196,
+  TREE_WIDE: 195,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -313,15 +313,21 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // is the same mutation against the line that replaced it.
     guarantee: 'completion-revalidates-against-settled-state',
     mutatedFile: 'src/game/streak.ts',
-    mutated: 'const authoritative = absenceOutcome(revalidated.state, day);',
+    mutated: '  const authoritative = saleAuthorisedOn(state, day);',
     testFile: 'src/game/streak.test.ts',
     redAssertion: "expect(never.refusedPurchases, 'the client that never opens').toBe(4)",
     observed: 'AssertionError: the client that never opens: expected 3 to be 4',
   },
   {
+    // The mutant let a client that claimed its screen had shown the offer buy
+    // into a doomed absence — the field moving the DECISION rather than the
+    // sentence, which is the §12.3 line it must never cross.
     guarantee: 'the-decision-ignores-the-rendered-offer',
     mutatedFile: 'src/game/streak.ts',
-    mutated: '  if (!authoritative.protectionHolds) {',
+    // Two lines, because the one that was mutated — `if (!authoritative) {` —
+    // is under `MIN_ANCHOR_LENGTH` on its own, which is the anchor rule doing
+    // its job rather than an exception to it.
+    mutated: '  const authoritative = saleAuthorisedOn(state, day);\n  if (!authoritative) {',
     testFile: 'src/game/streak.test.ts',
     redAssertion: 'the rendered offer moved the decision',
     observed: 'Error: offset 0 armed mask 0 day +0: the rendered offer moved the decision',
@@ -334,19 +340,20 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // keep rather than being asserted to.
     guarantee: 'every-refusal-sentence-is-true-of-its-screen',
     mutatedFile: 'src/game/streak.ts',
-    mutated: "      ? fail('ABSENCE_ENDED_BEFORE_OFFER', DOOMED_SALE_REFUSAL_MESSAGE.endedBeforeOffer)",
+    mutated: "      ? fail('ABSENCE_ENDED_AFTER_OFFER', DOOMED_SALE_REFUSAL_MESSAGE.endedAfterOffer)",
     testFile: 'src/game/streak.test.ts',
     redAssertion: 'refused as ${code}, expected ${expectedCode} (lag ${lag})',
     observed:
       'Error: offset 0 armed mask 5 day +0: refused as ABSENCE_ENDED_BEFORE_OFFER, expected ABSENCE_ENDED_AFTER_OFFER (lag 2)',
   },
   {
-    // The mutant read the COMPLETION day where the code reads the day the client
-    // says its screen was drawn for — which is the whole content of the claim,
-    // and is the exact defect the 03:00 rollover produced in the shipped code.
+    // The mutant asked the authorisation question at the COMPLETION day where
+    // the code asks it at the day the client says its screen was drawn for —
+    // which is the whole content of the claim, and is the exact defect the 03:00
+    // rollover produced in the shipped code.
     guarantee: 'the-copy-reads-the-clients-screen',
     mutatedFile: 'src/game/streak.ts',
-    mutated: 'endedOn === null || endedOn <= renderedOffer.day',
+    mutated: 'const authorisedWhenTheScreenWasDrawn = saleAuthorisedOn(state, renderedOffer.day);',
     testFile: 'src/game/streak.test.ts',
     redAssertion: "expect(errorCodeOf(lateSale)).toBe('ABSENCE_ENDED_AFTER_OFFER')",
     observed:

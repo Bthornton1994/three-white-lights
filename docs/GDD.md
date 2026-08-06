@@ -576,11 +576,36 @@ keeps what that returns.
   hardcoded-fixture hazard as the intra-day ordering defect, one axis over.
   `ABSENCE_ENDED_AFTER_OFFER` is **unreachable at lag 0**, which is why roughly
   six hundred thousand store decisions could be green over an inverted routing.
-- **The oracle for which sentence stopped mirroring the implementation.** It read
-  `holds ? 'ABSENCE_SETTLED_WHILE_AWAY' : 'ABSENCE_ALREADY_DOOMED'` off the same
-  call the subject made, character for character, so it could not disagree with
-  the code it graded. It now reads an input the test supplies and **two walks at
-  two horizons**, where the subject walks once and compares.
+- **One predicate, asked at two horizons.** Which of the two "you were offered
+  it" sentences a client gets is decided by asking *would this sale have been
+  authorised on the day the screen was drawn?* — the identical
+  settle-then-`protectionHolds` question the completion day is decided by, asked
+  at the render day instead. Nothing new is derived; the difference between the
+  two answers is the whole content of the split.
+
+  **The first version of this fix used a different predicate and was wrong**,
+  which is recorded rather than quietly replaced. It compared the day the settle
+  walk *recorded* a break against the render day. `settleBrokenStreak` refuses a
+  state whose `lastTrainedDay` is null, so a lifter who has **never trained**
+  never has a break recorded at any horizon — while their signup absence still
+  runs out of coverage on a definite day. They read as "it ended earlier"
+  forever, so a player whose coverage ran out the day *after* their screen was
+  drawn was told the screen had been wrong. Measured at **6** of the day-pairs a
+  fresh account can produce in its first 40 days.
+- **The oracle for which sentence stopped mirroring the implementation — twice.**
+  It first read `holds ? 'ABSENCE_SETTLED_WHILE_AWAY' : 'ABSENCE_ALREADY_DOOMED'`
+  off the same call the subject made, character for character. Its replacement
+  was independent in *form* and still shared the subject's blind spot, because
+  both asked whether a break had been **recorded** — that is how the never-trained
+  hole above stayed green. The oracle now settles a twin **by hand**, with the
+  test's own loop over the real `settleBrokenStreak`, and reads the **absence**
+  rather than the recording. Two computations can be independent in shape and
+  dependent in the fact they read; only the second kind of independence counts.
+- **The doomed-sale sweep cannot reach the never-trained case**, and that is
+  stated rather than papered over: its probes start at the end of a 10-day
+  calendar, so the first days after signup — where a fresh account's coverage
+  runs out — are outside its horizon. The case has its own named regression test
+  instead of the sweep being multiplied to reach it.
 - **The module does not de-duplicate orders, and this is a ruling.** A settled
   order carries no idempotency key and `StreakState` holds no order ledger:
   such a ledger is unbounded, grows with what the player has bought, and would
