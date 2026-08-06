@@ -2685,14 +2685,27 @@ describe('what a purchased Recovery Day can reach', () => {
     // (`streakEntitlement.ts` §3b), and `streakEntitlement.test.ts` proves the
     // split is invisible to every decision at every split of every sum. This is
     // the end-to-end version of that, at the one place a player would feel it.
-    const boughtState = unwrap(
+    // THE PURCHASE IS ARMED BY A SESSION BEFORE THE COMPARISON, and that step
+    // is not incidental. Only a session arms (GDD §4.2), so a state that has
+    // bought two covered days and not trained since is armed with what it held
+    // BEFORE the purchase — comparing that against a free state holding the
+    // same total would be comparing two different armed counts and calling the
+    // difference a provenance effect. Train once, then compare.
+    const justBought = unwrap(
       applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
         orderId: 'order-1',
         coveredDays: 2,
         tender: 'chalk-purchased',
       }),
     ).state;
-    // The comparator: a lifter with the same TOTAL coverage, all of it free.
+    expect(justBought.entitlement.purchasedDaysLeft, 'the order landed').toBe(2);
+    expect(coveredDaysArmed(justBought, DAY_ZERO), 'and it is held, not armed').toBe(
+      RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
+    );
+    const boughtState = unwrap(recordTrainingDay(justBought, DAY_ZERO)).state;
+    // The comparator: a lifter with the same TOTAL coverage, all of it free —
+    // held AND armed, so the only difference between the two states is which
+    // counter the covered days sit in.
     const freeState: StreakState = holding(boughtState, {
       windowIndex: boughtState.entitlement.windowIndex,
       coveredDaysLeft:
@@ -2701,6 +2714,7 @@ describe('what a purchased Recovery Day can reach', () => {
     });
     expect(boughtState.entitlement.purchasedDaysLeft).toBe(2);
     expect(coveredDaysLeftInWindow(boughtState)).toBe(coveredDaysLeftInWindow(freeState));
+    expect(coveredDaysArmed(boughtState, DAY_ZERO)).toBe(coveredDaysArmed(freeState, DAY_ZERO));
 
     for (let gap = 0; gap <= 8; gap += 1) {
       const day = dayAfterGap(DAY_ZERO, gap);
@@ -3271,9 +3285,18 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // input to anything: a player whose client settles on launch must end
     // exactly where one who ignored the app ends. That is CLAUDE.md's "never
     // punish daily engagement" in its plainest form.
+    // THE PURCHASE DAY IS SWEPT SEPARATELY FROM THE DAY THE APP OPENS, and the
+    // two being the same day is the easy case rather than the interesting one.
+    // A settled order carries the day IT settled on; the server may apply it
+    // later, when a webhook lands or a client reconnects. So the sweep includes
+    // an order dated back on the lifter's last training day and applied on the
+    // return day — which is exactly the pair that separates "did this arrive
+    // before the arming" from "did this arrive before the anchor", and the
+    // anchor is the thing `settleBrokenStreak` moves.
     let cases = 0;
     let brokenSeen = 0;
     let coveredSeen = 0;
+    let purchasesThatRaisedTheBalance = 0;
     const order = { orderId: 'sweep', coveredDays: 1, tender: 'chalk-purchased' } as const;
 
     for (let runLength = 1; runLength <= 4; runLength += 1) {
@@ -3288,24 +3311,41 @@ describe('the outcome does not depend on when the player opens the app', () => {
             if (openDay(base, day).kind === 'streak-broken') brokenSeen += 1;
             if (openDay(base, day).kind === 'gap-covered-by-recovery-days') coveredSeen += 1;
 
-            const buy = (state: StreakState): StreakState =>
-              unwrap(applySettledCoveredDayPurchase(state, day, order)).state;
-            const settle = (state: StreakState): StreakState => {
-              const result = settleBrokenStreak(state, day);
-              return result.ok ? result.value.state : state;
-            };
+            // `DAY_ZERO` is this fixture's last training day and therefore the
+            // day its coverage was armed on. `day` is the return day.
+            for (const purchaseDay of [DAY_ZERO, day]) {
+              const buy = (state: StreakState): StreakState =>
+                unwrap(applySettledCoveredDayPurchase(state, purchaseDay, order)).state;
+              const settle = (state: StreakState): StreakState => {
+                const result = settleBrokenStreak(state, day);
+                return result.ok ? result.value.state : state;
+              };
+              // NO PURCHASE, AT ANY DATE, RAISES WHAT THE ABSENCE MAY DRAW —
+              // and it raises the balance every time, so the order really did
+              // land. This pair is the property and its own anti-vacuity:
+              // "nothing changed" and "nothing was bought" produce the same
+              // first line and are told apart by the second.
+              expect(coveredDaysArmed(buy(base), day), `armed after buying on ${purchaseDay}`).toBe(
+                coveredDaysArmed(base, day),
+              );
+              if (coveredDaysLeftInWindow(buy(base)) > coveredDaysLeftInWindow(base)) {
+                purchasesThatRaisedTheBalance += 1;
+              }
 
-            // Buy first, then the app opens. Then the app opens, then buy. Then
-            // the app never opens at all. Three orders, one calendar, one order
-            // id, and `recordTrainingDay` closes the absence in each.
-            const buyThenSettle = unwrap(recordTrainingDay(settle(buy(base)), day)).state;
-            const settleThenBuy = unwrap(recordTrainingDay(buy(settle(base)), day)).state;
-            const neverSettle = unwrap(recordTrainingDay(buy(base), day)).state;
+              // Buy first, then the app opens. Then the app opens, then buy.
+              // Then the app never opens at all. Three orders, one calendar,
+              // one order id, and `recordTrainingDay` closes the absence in each.
+              const buyThenSettle = unwrap(recordTrainingDay(settle(buy(base)), day)).state;
+              const settleThenBuy = unwrap(recordTrainingDay(buy(settle(base)), day)).state;
+              const neverSettle = unwrap(recordTrainingDay(buy(base), day)).state;
 
-            const label = `run ${runLength} balance ${balance} gap ${gap} armed ${armed}`;
-            expect(buyThenSettle, label).toEqual(settleThenBuy);
-            expect(neverSettle, label).toEqual(settleThenBuy);
-            cases += 1;
+              const label = `run ${runLength} balance ${balance} gap ${gap} armed ${armed} bought on ${
+                purchaseDay === DAY_ZERO ? 'the arming day' : 'the return day'
+              }`;
+              expect(buyThenSettle, label).toEqual(settleThenBuy);
+              expect(neverSettle, label).toEqual(settleThenBuy);
+              cases += 1;
+            }
           }
         }
       }
@@ -3313,9 +3353,12 @@ describe('the outcome does not depend on when the player opens the app', () => {
 
     // ANTI-VACUITY: the sweep reached both the case where the run died and the
     // case where coverage held it, or it is an equality over one column.
-    expect(cases).toBeGreaterThan(100);
+    expect(cases).toBeGreaterThan(200);
     expect(brokenSeen).toBeGreaterThan(0);
     expect(coveredSeen).toBeGreaterThan(0);
+    // AND EVERY ONE OF THOSE PURCHASES REALLY LANDED, or "the absence could
+    // draw no more afterwards" is a statement about an order that did nothing.
+    expect(purchasesThatRaisedTheBalance, 'no purchase ever raised the balance').toBe(cases);
   });
 
   it('A PURCHASE BEFORE A SESSION AND ONE AFTER IT DIFFER, and here is exactly where', () => {
@@ -3324,21 +3367,25 @@ describe('the outcome does not depend on when the player opens the app', () => {
     // not, and pretending otherwise would be the same kind of comment this
     // rework existed to delete.
     //
-    // WHERE IT COMES FROM. A doomed absence consumes everything the window
-    // holds LIVE, which it must — that is the only doomed consumption that is
-    // idempotent under splitting, and charging the armed count instead measures
-    // 3 violating pairs on `real-money` at 40 days (see `absenceOutcome`). So a
-    // covered day bought BEFORE the session that closes a doomed absence is in
-    // the window when the burn happens and is taken; one bought AFTER it is
-    // not. Buying during a doomed absence therefore buys nothing, and buying
-    // after the session that ends it arms the next absence.
+    // WHERE IT COMES FROM, and there are two mechanisms, not one.
     //
-    // WHY IT IS NOT THE DEFECT ABOVE. Nothing here depends on an APP-OPEN. The
-    // player chose when to spend money; the two orders are two different player
-    // actions, not one action seen from two clients. It is still a rough edge —
-    // a store shown during a dead absence is selling something the absence is
-    // about to burn — and the honest fix is store copy or a server-side refusal
-    // to sell during a doomed absence, neither of which belongs in this module.
+    // (1) A doomed absence consumes everything the window holds LIVE, which it
+    //     must — that is the only doomed consumption that is idempotent under
+    //     splitting, and charging the armed count instead measures 3 violating
+    //     pairs on `real-money` at 40 days (see `absenceOutcome`). So a covered
+    //     day bought BEFORE the session that closes a doomed absence is in the
+    //     window when the burn happens and is taken.
+    //
+    // (2) ONLY A SESSION ARMS. So a covered day bought AFTER a session is held
+    //     but not armed until the NEXT one — which is GDD §4.2 read exactly as
+    //     written, because the absence that session started had already begun.
+    //
+    // WHY THIS IS NOT THE DEFECT ABOVE. Nothing here depends on an APP-OPEN.
+    // The player chose when to spend money; the two orders are two different
+    // player actions, not one action seen from two clients. It is still a rough
+    // edge, and the honest fixes are store copy ("armed from your next
+    // session") or a server-side refusal to sell during a doomed absence —
+    // neither of which belongs in this module.
     const drained: StreakState = {
       ...stateWithRun(10, addDays(SIGNUP_DAY, 9), 0),
       currentStreak: 10,
@@ -3353,20 +3400,30 @@ describe('the outcome does not depend on when the player opens the app', () => {
     const after = buy(unwrap(recordTrainingDay(drained, returnDay)).state);
 
     // The run is dead either way, and the purchase never touched the streak.
+    // THE PAY-TO-WIN LINE HOLDS IN BOTH ORDERS, which is the part that is not
+    // allowed to be a residual.
     expect(before.currentStreak).toBe(1);
     expect(after.currentStreak).toBe(1);
     expect(before.longestStreak).toBe(after.longestStreak);
 
-    // WHAT DIFFERS IS THE COVERAGE LEFT, and only that. Bought before the
-    // session, the doomed absence burned it; bought after, it survives and is
-    // armed for the next absence.
+    // MECHANISM (1): bought before the session, the doomed absence burned it.
     expect(coveredDaysLeftInWindow(before), 'bought before the session: burned').toBe(0);
-    expect(coveredDaysLeftInWindow(after), 'bought after the session: armed').toBe(1);
-    expect(coveredDaysArmed(after, returnDay)).toBe(1);
-    // The armed snapshot moves with the live balance in both, so neither is a
-    // state where the lifter is armed with more than they hold.
-    for (const state of [before, after]) {
-      expect(coveredDaysArmed(state, returnDay)).toBeLessThanOrEqual(coveredDaysLeftInWindow(state));
+    expect(coveredDaysArmed(before, returnDay), 'nothing left to arm').toBe(0);
+
+    // MECHANISM (2): bought after, it survives — and is held, not armed.
+    expect(coveredDaysLeftInWindow(after), 'bought after the session: held').toBe(1);
+    expect(coveredDaysArmed(after, returnDay), 'held but not armed until the next session').toBe(0);
+    // It arms at the next session, and only then.
+    const nextSession = unwrap(recordTrainingDay(after, addDays(returnDay, 1))).state;
+    expect(coveredDaysArmed(nextSession, addDays(returnDay, 1)), 'armed by the next session').toBe(1);
+
+    // ARMED IS NEVER MORE THAN HELD, in any of them. A state where a lifter is
+    // armed with more than they hold is one no entry point can produce, and it
+    // is the shape every invariant in this file would quietly stop meaning.
+    for (const state of [before, after, nextSession]) {
+      expect(coveredDaysArmed(state, addDays(returnDay, 1))).toBeLessThanOrEqual(
+        coveredDaysLeftInWindow(state),
+      );
     }
   });
 
