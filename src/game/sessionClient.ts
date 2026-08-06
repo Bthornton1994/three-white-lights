@@ -233,8 +233,18 @@ export function receiveSnapshot(
   return applied.ok ? applied.value : cache;
 }
 
-/** The cache the app opens on. */
-export function openingCache(port: SessionServerPort): ProgressionCache {
+/**
+ * The cache the app opens on.
+ *
+ * TAKES THE METHOD, NOT THE PORT. `SessionServerPort` and `meetClient.ts`'s
+ * `MeetServerPort` both declare `openingSnapshot`, because both modes open on
+ * the same read of the same row; typing this against one of them would make the
+ * other write a second decode of the same wire, and two decodes of one snapshot
+ * is two places for a lifter to be read differently.
+ */
+export function openingCache(port: {
+  readonly openingSnapshot: () => ProgressionSnapshotWire;
+}): ProgressionCache {
   return receiveSnapshot(emptyProgressionCache(), port.openingSnapshot());
 }
 

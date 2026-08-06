@@ -2417,7 +2417,42 @@ work.
 
 **Raised by the build. These are §3 conflicts rather than unknowns — where the
 code diverges from this document it is doing so knowingly rather than quietly.
-Two are ruled, two are open.**
+Four are ruled, three are open.** (The count itself was stale at "two and two"
+for three entries; corrected here rather than left as decoration.)
+
+- [x] **Meet day played a different lifter from the one you had just trained —
+      FIXED, and it made one refusal reachable that had never fired.** §6.1 says
+      "opening attempts pre-filled from current Sim-mode e1RM data". They were
+      not. `useMeetDay` built a `ServerRecord` of its own on mount, so meet day
+      read a lifter with no history at all: the signup seed's openers on day 1
+      and on day 400, `totalKg` always `null` so §6.5's recap said FIRST TOTAL
+      after every meet a player would ever lift, `meets` always empty so §6.3's
+      `isPrAttempt` — **the thing this document calls "The Real Tension"** — was
+      dead code in the shipped app. Every unit test was green throughout and had
+      to be: the pure modules were all correct, and what was wrong was which
+      lifter they were called about. Both hooks now reach one `ServerRecord`
+      behind one port (`appSessionPort() === appMeetPort()`).
+
+      **Measured before and after, in a browser, on the shipped route with no
+      query string:** a real session is played with a mouse, the e1RM is read off
+      the close-out, DONE is pressed, MEET DAY is pressed, the weigh-in is
+      confirmed, and the drawn opener is compared. Before: close-out 124.6 kg,
+      opener implied 110.0 kg, opener drawn **107.5 kg** — which is 0.9 × the
+      120 kg signup seed. After: **110.0 kg**.
+
+      **What this made reachable, stated because it costs a player something.**
+      `MEET_ALREADY_RECORDED` guards against banking one meet twice and could
+      not fire while the row was rebuilt per mount. It fires now, on the **second
+      meet of an app run**, and the verdict is correct — `MEET_LOCAL` is a single
+      dated event and competing at it twice is exactly what the guard is for. But
+      §6.1 enters a meet from a **Career calendar gated by qualifying totals**,
+      and Career mode is unbuilt, so today there is one ungated door to that one
+      meet. A player who opens it a second time plays nine attempts and gets no
+      recap. They are not stranded — the beat is still `recap`, so the shell
+      draws BACK TO TRAINING over it — but it is a blank screen with a way out.
+      **The fix belongs to the calendar, not to the meet loop**, and inventing an
+      entry gate here would be inventing the calendar. Recorded rather than
+      papered over.
 
 - [x] **Session-over-session growth is not coupled to training stimulus —
       RULED, and deferred by decision rather than by oversight.** The readiness

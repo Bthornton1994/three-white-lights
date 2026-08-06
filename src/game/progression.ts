@@ -944,8 +944,16 @@
  *   | record  | src/session/sessionPreview.ts | cacheAfterServer              | 1 |
  *   | wire    | src/game/sessionServer.ts     | snapshotWireFor               | 1 |
  *   | receive | src/game/sessionClient.ts     | receiveSnapshot               | 1 |
- *   | receive | src/meet/useMeetDay.ts        | useMeetDay/useState           | 1 |
- *   | receive | src/meet/useMeetDay.ts        | useMeetDay/useEffect/setCache | 1 |
+ *
+ * THE CLIENT DOOR IS DOWN TO ONE CALLER, and that is the visible half of a
+ * larger change. `useMeetDay` used to hold two of these rows — a boot seed and a
+ * post-meet settle — because it held a `ServerRecord` of its own and decoded its
+ * own wire beside it. It holds neither now: it takes a `MeetServerPort`, and
+ * both of its former sites go through `sessionClient.ts`'s `receiveSnapshot`,
+ * which is the row above. So the mint of a `ProgressionSnapshot` has exactly one
+ * caller in the app, which is what this table was pinning the shape of all
+ * along. `meetClient.ts` adds no row: it READS a cache through the accessors and
+ * mints nothing.
  *
  * NEITHER ENTRY POINT HOLDS A ROUTE TODAY, and that is a finding rather than a
  * relief: widening the sweep added no row. `App.tsx` reads `window.location

@@ -193,8 +193,17 @@ const GUARANTEE_COVERAGE = {
    * It counts this file's own prose too, which is correct rather than an
    * artefact: these comments assert behaviour about the scanner and are exactly
    * as capable of being wrong as any other.
+   *
+   * 195 -> 198 when meet day was wired to the app's one row. The three new
+   * triggering paragraphs are in `meetClient.ts`, `appServer.ts` and
+   * `useMeetDay.ts`, and all three are the same claim in three places: that the
+   * port the meet reads is the object the session writes. It is the ONE claim in
+   * that change with a check that fails in a browser rather than only in prose
+   * — `tools/verify-shell-route.mjs` reads the e1RM off a played close-out and
+   * asserts the opener after it is derived from that number — so it is on the
+   * better side of this file's own complaint, whatever the ratio does.
    */
-  TREE_WIDE: 195,
+  TREE_WIDE: 198,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -374,6 +383,57 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     testFile: 'src/game/streak.test.ts',
     redAssertion: 'sold on a day whose run had already ended',
     observed: 'Error: offset 16 armed mask 512 day +5: sold on a day whose run had already ended',
+  },
+  // -------------------------------------------------------------------------
+  // ONE LIFTER. The three below were taken on the run that wired meet day to
+  // the app's row, by hand, in the order they appear: break it, watch it fail,
+  // read the message, restore, confirm green.
+  //
+  // NOTE ON THE FIRST ONE'S MESSAGE. The mutation is what showed that the bare
+  // `expect(a).toBe(b)` form printed `expected { …(5) } to be { …(5) }`, which
+  // names nothing a reader could act on. The assertion was rewritten to carry
+  // its own sentence and the mutation re-run against the new form; the
+  // `observed` below is from the second run. That is the witness bar doing the
+  // job it was written for — a check that fails uselessly is halfway to a check
+  // nobody reads.
+  // -------------------------------------------------------------------------
+  {
+    // The mutant gave meet day a connection of its own — the defect, in one
+    // line, and the shape the app actually shipped for six waves.
+    guarantee: 'one-row-behind-one-port',
+    mutatedFile: 'src/shell/appServer.ts',
+    mutated: 'export function appMeetPort(): MeetServerPort {\n  return appConnection();\n}',
+    testFile: 'src/shell/shellWiring.test.ts',
+    redAssertion:
+      "'meet day and the daily session are holding two different servers, so they are two different lifters',",
+    observed:
+      'AssertionError: meet day and the daily session are holding two different servers,' +
+      ' so they are two different lifters: expected false to be true',
+  },
+  {
+    // The mutant stopped the crossing reading the lifter's trained e1RM, so
+    // every opener fell back to the signup seed — which is exactly what the
+    // browser measured on the tree before the fix (107.5 kg drawn against
+    // 110.0 kg implied).
+    guarantee: 'the-opener-follows-the-lifter',
+    mutatedFile: 'src/game/meetClient.ts',
+    mutated: '    bestE1rmKg[lift] = readingValue(readBestE1rmKg(cache, lift));',
+    testFile: 'src/game/meetClient.test.ts',
+    redAssertion: 'expect(a.value, lift).toBeGreaterThan(b.value);',
+    observed: 'AssertionError: squat: expected 160 to be greater than 160',
+  },
+  {
+    // The mutant handed `?meet=live` — the debug route to the PLAYED loop — the
+    // preview's stand-in lifter. That is the fabricated record reaching a played
+    // meet, which is the thing the biconditional exists to make impossible.
+    guarantee: 'a-preview-server-cannot-reach-a-played-meet',
+    mutatedFile: 'src/shell/shellRoute.ts',
+    mutated:
+      '    return { state: undefined, card: false, holdWalkoutAtMs: null, serverPort: undefined };',
+    testFile: 'src/shell/shellRoute.test.ts',
+    redAssertion: '(entry?.state !== undefined) === (entry?.serverPort !== undefined),',
+    observed:
+      'AssertionError: ?meet=live: state absent, serverPort present: expected false to be true',
   },
 ];
 

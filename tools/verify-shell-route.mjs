@@ -1028,6 +1028,72 @@ const NUMBER_FIXTURE = `
 `;
 
 /**
+ * The number a property called `<key>` is given INSIDE the braces of a named
+ * block, or null.
+ *
+ * `numberInSource` answers with the first `key: number` in the whole file, which
+ * is fine for a `SCREAMING_CASE` tuning property and useless for `squat`, which
+ * appears in a dozen unrelated objects. This walks braces from the named block
+ * so the answer comes from the right one.
+ */
+function numberInBlock(source, blockName, key) {
+  const at = source.search(new RegExp(`(?:^|[^A-Za-z0-9_$])${blockName}\\s*[:=]`, 'm'));
+  if (at < 0) return null;
+  const open = source.indexOf('{', at);
+  if (open < 0) return null;
+  let depth = 0;
+  for (let i = open; i < source.length; i += 1) {
+    if (source[i] === '{') depth += 1;
+    else if (source[i] === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        // TERMINATED BY `,` OR BY A CLOSING BRACE, not by `,` alone.
+        // `numberInSource` requires the comma, which is right for a property in
+        // a multi-line tuning block and wrong for the LAST entry of an inline
+        // one — and `STARTING_E1RM` is written inline, so its `deadlift` had no
+        // comma after it. The control below reads exactly that shape; it is what
+        // caught this, on the run this check was written for.
+        const found = new RegExp(
+          `(?:^|[^A-Za-z0-9_$])${key}\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?)\\s*[,}\\)]`,
+        ).exec(source.slice(open, i + 1));
+        return found === null ? null : Number(found[1]);
+      }
+    }
+  }
+  return null;
+}
+
+/** The number a top-level `export const NAME = <number>;` is given, or null. */
+function constInSource(source, name) {
+  const found = new RegExp(`export const ${name}\\s*(?::[^=]*)?=\\s*(-?[0-9]+(?:\\.[0-9]+)?)\\s*;`).exec(
+    source,
+  );
+  return found === null ? null : Number(found[1]);
+}
+
+/**
+ * The traps the two parsers above must not fall into.
+ *
+ * `numberInBlock` must not answer out of a NEIGHBOURING block that happens to
+ * have the same key — which is the whole reason it exists — and must not be
+ * fooled by a nested object closing early. `constInSource` must refuse a
+ * property (`:`) when it was asked for a binding (`=`), because the opener grid
+ * is a top-level binding and reading a same-named property instead would check
+ * the screen against the wrong grid.
+ */
+const BLOCK_FIXTURE = `
+  DECOY_FRACTION: Object.freeze({ squat: 0.11, bench: 0.12 }),
+  REAL_FRACTION: Object.freeze({ squat: 0.9, bench: 0.8, deadlift: 0.7 }),
+  NESTED_SEED: Object.freeze({
+    unit: 'kg',
+    kilograms: Object.freeze({ squat: 180, bench: 120, deadlift: 220 }),
+  }),
+  export const REAL_GRID = 2.5;
+  export const TYPED_GRID: number = 5;
+  DECOY_GRID: 99,
+`;
+
+/**
  * Where the game writes down every beat it actually has.
  *
  * Read so that a row of `NEVER_A_PILL_BEAT` naming a phase that does not exist
@@ -1084,6 +1150,141 @@ async function checkSessionLayoutMatchesTuning() {
     `looked for REST_PROMPT: '${BEAT_SAYS.REST}' in sessionTuning.ts`,
   );
 }
+
+/**
+ * ===========================================================================
+ * THE CROSSING: THE NUMBERS THE OPENER CHECK IS COMPUTED FROM
+ * ===========================================================================
+ * Read out of the modules that own them rather than typed here, on this file's
+ * standing rule. Every one is emitted as its own CONTROL by
+ * `readCrossingInputs`, so a rename that stops the parser matching is a failure
+ * instead of a silently-skipped check.
+ *
+ *   OPENER_FRACTION_OF_1RM  `meet.ts` — GDD §6.1's fraction of e1RM.
+ *   DECLARATION_INCREMENT_KG `meet.ts` — the grid `suggestOpener` rounds DOWN to.
+ *   STARTING_E1RM.kilograms  `sessionTuning.ts` — the signup seed. This is the
+ *                            number the defect made every meet open from, so it
+ *                            is what the NON-VACUITY control below is stated
+ *                            against.
+ *   CLOSE_OUT_E1RM_COUNT_MS  `sessionTuning.ts` — the count-up the close-out's
+ *   CLOSE_OUT_ROW_STAGGER_MS e1RM animates through. Read the number too early
+ *                            and this check compares an opener against a frame
+ *                            of an animation.
+ */
+const CROSSING_LIFTS = Object.freeze(['squat', 'bench', 'deadlift']);
+
+async function readCrossingInputs() {
+  check(
+    numberInBlock(BLOCK_FIXTURE, 'REAL_FRACTION', 'squat') === 0.9 &&
+      numberInBlock(BLOCK_FIXTURE, 'REAL_FRACTION', 'deadlift') === 0.7 &&
+      numberInBlock(BLOCK_FIXTURE, 'NESTED_SEED', 'squat') === 180 &&
+      numberInBlock(BLOCK_FIXTURE, 'NESTED_SEED', 'deadlift') === 220 &&
+      numberInBlock(BLOCK_FIXTURE, 'ABSENT_BLOCK', 'squat') === null,
+    'CONTROL: the block parser reads the block it was asked for, not the decoy above it, and reads the last entry of an inline one',
+    `fixture -> REAL_FRACTION.squat ${numberInBlock(BLOCK_FIXTURE, 'REAL_FRACTION', 'squat')} (want 0.9;` +
+      ` DECOY_FRACTION.squat is 0.11 and must not be the answer),` +
+      ` NESTED_SEED.squat ${numberInBlock(BLOCK_FIXTURE, 'NESTED_SEED', 'squat')} (want 180, through a nested freeze),` +
+      ` NESTED_SEED.deadlift ${numberInBlock(BLOCK_FIXTURE, 'NESTED_SEED', 'deadlift')} (want 220, and it has NO trailing comma —` +
+      ` the shape STARTING_E1RM is written in, and the one this parser first got wrong),` +
+      ` ABSENT_BLOCK ${numberInBlock(BLOCK_FIXTURE, 'ABSENT_BLOCK', 'squat')} (want null)`,
+  );
+  check(
+    constInSource(BLOCK_FIXTURE, 'REAL_GRID') === 2.5 &&
+      constInSource(BLOCK_FIXTURE, 'TYPED_GRID') === 5 &&
+      constInSource(BLOCK_FIXTURE, 'DECOY_GRID') === null,
+    'CONTROL: the binding parser reads `export const NAME = n`, typed or not, and refuses a property of the same name',
+    `fixture -> REAL_GRID ${constInSource(BLOCK_FIXTURE, 'REAL_GRID')} (want 2.5),` +
+      ` TYPED_GRID ${constInSource(BLOCK_FIXTURE, 'TYPED_GRID')} (want 5),` +
+      ` DECOY_GRID ${constInSource(BLOCK_FIXTURE, 'DECOY_GRID')} (want null — it is a property, not a binding)`,
+  );
+
+  const meetText = await readFile(path.join(srcRoot, 'src', 'game', 'meet.ts'), 'utf8').catch(() => null);
+  const tuneText = await readFile(path.join(srcRoot, 'src', 'game', 'sessionTuning.ts'), 'utf8').catch(
+    () => null,
+  );
+  if (meetText === null || tuneText === null) {
+    check(false, 'the opener crossing’s inputs are read out of meet.ts and sessionTuning.ts', 'could not read them');
+    return null;
+  }
+
+  const inputs = {
+    fraction: {},
+    seedKg: {},
+    gridKg: constInSource(meetText, 'DECLARATION_INCREMENT_KG'),
+    countMs: numberInSource(tuneText, 'CLOSE_OUT_E1RM_COUNT_MS'),
+    staggerMs: numberInSource(tuneText, 'CLOSE_OUT_ROW_STAGGER_MS'),
+  };
+  for (const lift of CROSSING_LIFTS) {
+    inputs.fraction[lift] = numberInBlock(meetText, 'OPENER_FRACTION_OF_1RM', lift);
+    inputs.seedKg[lift] = numberInBlock(tuneText, 'STARTING_E1RM', lift);
+  }
+
+  const missing = [
+    ...CROSSING_LIFTS.filter((l) => typeof inputs.fraction[l] !== 'number').map((l) => `OPENER_FRACTION_OF_1RM.${l}`),
+    ...CROSSING_LIFTS.filter((l) => typeof inputs.seedKg[l] !== 'number').map((l) => `STARTING_E1RM.${l}`),
+    ...['gridKg', 'countMs', 'staggerMs'].filter((k) => typeof inputs[k] !== 'number'),
+  ];
+  check(
+    missing.length === 0,
+    'CONTROL: every number the opener crossing is judged against was found in the module that owns it',
+    missing.length === 0
+      ? `fraction ${JSON.stringify(inputs.fraction)}, seed ${JSON.stringify(inputs.seedKg)}kg,` +
+        ` grid ${inputs.gridKg}kg, count-up ${inputs.countMs}ms after ${inputs.staggerMs}ms`
+      : `not found: ${missing.join(', ')}`,
+  );
+  return missing.length === 0 ? inputs : null;
+}
+
+/**
+ * `meet.ts`'s `suggestOpener`, restated — and the restatement is the reason the
+ * two CONTROLs above exist.
+ *
+ * The floor (`lightestCallableWeightIgnoringTheCard`) is deliberately NOT
+ * restated: every e1RM this check can see is a competition lift's, so
+ * `e1rm * 0.9` is an order of magnitude above a bare bar and the floor cannot
+ * bind. If that ever stops being true the check goes red rather than quietly
+ * wrong, because the drawn opener would be the floor and this would not be.
+ */
+function openerFor(e1rmKg, lift, inputs) {
+  const steps = Math.floor((e1rmKg * inputs.fraction[lift]) / inputs.gridKg + 1e-9);
+  return Math.round(steps * inputs.gridKg * 1000) / 1000;
+}
+
+/**
+ * The e1RM the close-out is DRAWING, once it has stopped moving.
+ *
+ * `CloseOutView`'s `useCountUp` animates the number on a PR, so a single read
+ * can catch a frame of the animation — which would make this check compare an
+ * opener against an arbitrary intermediate value and fail for the wrong reason.
+ * Polls until two consecutive reads agree, with the deadline derived from the
+ * two tuning numbers the animation is actually built out of.
+ */
+async function readSettledCloseOutE1rm(page, inputs) {
+  const deadline = Date.now() + inputs.staggerMs + inputs.countMs + settleMs;
+  let last = null;
+  let stableSince = null;
+  while (Date.now() < deadline) {
+    const text = await page.getByTestId('close-out-e1rm').innerText().catch(() => null);
+    const value = text === null ? null : Number(text.trim());
+    if (value !== null && Number.isFinite(value) && value === last) {
+      if (stableSince === null) stableSince = Date.now();
+      // Two agreeing reads a poll apart, AFTER the count-up could have ended.
+      if (Date.now() - stableSince >= CROSSING_POLL_MS && Date.now() >= deadline - settleMs) {
+        return { kg: value, why: `settled at ${value}` };
+      }
+    } else {
+      stableSince = null;
+    }
+    last = value;
+    await page.waitForTimeout(CROSSING_POLL_MS);
+  }
+  return last === null || !Number.isFinite(last)
+    ? { kg: null, why: 'no number was drawn in `close-out-e1rm`' }
+    : { kg: last, why: `never went two polls without changing; last read ${last}` };
+}
+
+/** How often the count-up is sampled. Not a game value — an instrument's. */
+const CROSSING_POLL_MS = 120;
 
 async function checkNavTableMatchesTuning() {
   // Does the parser work at all?
@@ -1460,10 +1661,32 @@ await checkOnScreen(
 //
 // It had never been photographed.
 
+/**
+ * What the played session banked, carried across the press to section 6b.
+ *
+ * Filled at the close-out and read at the openers, because those are two
+ * different screens and the whole question is whether they describe one lifter.
+ */
+const crossing = { inputs: await readCrossingInputs(), e1rmKg: null, lift: null };
+
 const playedOut = { attempted: true };
 {
   const startedAt = Date.now();
-  const opened = await openSessionToFirstSet(page, url);
+  // THE READINESS ANSWERS ARE THE TOP OF THE LADDER HERE, AND ONLY HERE.
+  //
+  // Section 6b asks whether meet day's openers follow the session that was just
+  // played. At the driver's ordinary mid answers they cannot be asked to: a
+  // perfectly played day-1 session banks 117–120 kg on the bench against a
+  // signup seed of 120, `bestE1rmKg` is monotone, and the record therefore still
+  // reads exactly the seed afterwards — which is the same record the defect
+  // fabricated. The measurements for all three lifts and all five RPEs are in
+  // the block above `SESSION_DRIVE.BEST_CHECK_IN_TAPS`.
+  //
+  // So the session has to be one that MOVES the number, or 6b's equality holds
+  // for both lifters and proves nothing. Its non-vacuity control is what makes
+  // that visible rather than assumed: it reddens, loudly, if this ever stops
+  // producing a PR.
+  const opened = await openSessionToFirstSet(page, url, SESSION_DRIVE.BEST_CHECK_IN_TAPS);
   check(
     opened.reached,
     'a real session opens from `/` and reaches its first work set, played with a mouse',
@@ -1535,6 +1758,28 @@ const playedOut = { attempted: true };
     note(
       'DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day, which the server then refuses',
     );
+
+    // ---- THE NUMBER THAT HAS TO SURVIVE THE PRESS -------------------------
+    //
+    // Read HERE, off the close-out, because the close-out is gone one press
+    // later and this is the only screen in the app that prints it. What happens
+    // to it afterwards is checked at the openers, below.
+    if (crossing.inputs !== null) {
+      const settledE1rm = await readSettledCloseOutE1rm(page, crossing.inputs);
+      crossing.e1rmKg = settledE1rm.kg;
+      for (const lift of CROSSING_LIFTS) {
+        if (await visible(`close-out-e1rm-lift-${lift}`)) crossing.lift = lift;
+      }
+      check(
+        crossing.e1rmKg !== null && crossing.lift !== null,
+        'CONTROL: the close-out prints an e1RM, and says which lift it is for',
+        crossing.e1rmKg === null
+          ? settledE1rm.why
+          : crossing.lift === null
+            ? `${crossing.e1rmKg}kg drawn, but no close-out-e1rm-lift-<lift> element says whose`
+            : `${crossing.lift} ${crossing.e1rmKg}kg`,
+      );
+    }
 
     // Measured BEFORE the press, because the button is gone afterwards. Used
     // below to say the pill was clear of it, the same way section 5 does.
@@ -1687,6 +1932,81 @@ const playedOut = { attempted: true };
         'meet-weigh-in',
         'landing on the weigh-in, from a session that was actually played',
       );
+
+      // =====================================================================
+      // 6b. IS IT THE SAME LIFTER? — the one quantity compared across the press
+      // =====================================================================
+      //
+      // WHY THIS IS HERE AND WHY IT IS THE CHECK THIS TOOL WAS MISSING. The 94
+      // checks above drive the whole path — play a real session with a mouse,
+      // reach the close-out, press DONE, press MEET DAY, land on the weigh-in —
+      // and NOT ONE OF THEM COMPARED A NUMBER ON THE TWO SIDES OF THAT PRESS.
+      // So all of them stayed green for six waves while `useMeetDay` built a
+      // `ServerRecord` of its own on mount and meet day opened on a lifter who
+      // had never trained: the same three openers on day 1 and on day 400,
+      // FIRST TOTAL after every meet, and GDD §6.3's PR attempt permanently
+      // impossible. Every route was right; the lifter was wrong.
+      //
+      // GDD §6.1: "Opening attempts pre-filled from current Sim-mode e1RM data
+      // as a suggested safe opener." THAT is the sentence this checks, against
+      // the e1RM the player just watched land on their own close-out.
+      //
+      // THE NON-VACUITY CONTROL IS THE LOAD-BEARING HALF. The seed a new
+      // account starts at is a real e1RM, so an opener derived from the seed and
+      // an opener derived from a trained lifter are the same number until the
+      // lifter has actually trained past it. Checking the equality alone would
+      // therefore pass on the broken build. The control says the two answers
+      // DIFFER before the equality is allowed to mean anything — and it is the
+      // control, not the equality, that reddens on a session that banked
+      // nothing.
+      if (crossing.inputs !== null && crossing.e1rmKg !== null && crossing.lift !== null) {
+        const inputs = crossing.inputs;
+        const lift = crossing.lift;
+        await press(
+          'weigh-in-action',
+          'meet-openers',
+          'the weigh-in confirms, so GDD §6.1’s pre-filled openers are on screen',
+        );
+        await page.screenshot({ path: path.join(outDir, '12-openers-follow-the-session.png') });
+
+        const drawnText = await page
+          .getByTestId(`opener-weight-${lift}`)
+          .innerText()
+          .catch(() => null);
+        const drawn = drawnText === null ? null : Number(drawnText.trim());
+        const wanted = openerFor(crossing.e1rmKg, lift, inputs);
+        const fromSeed = openerFor(inputs.seedKg[lift], lift, inputs);
+
+        check(
+          drawn !== null && Number.isFinite(drawn),
+          `CONTROL: the openers screen draws a number for the ${lift}`,
+          drawn === null ? 'opener-weight-<lift> has no readable text' : `${drawn}kg`,
+        );
+        check(
+          wanted !== fromSeed,
+          'CONTROL: the session moved the e1RM off the signup seed, so the two answers below are different numbers',
+          `trained ${crossing.e1rmKg}kg -> opener ${wanted}kg;` +
+            ` seed ${inputs.seedKg[lift]}kg -> opener ${fromSeed}kg` +
+            (wanted === fromSeed
+              ? ' — IDENTICAL, so the equality below cannot distinguish the two lifters and proves nothing'
+              : ''),
+        );
+        check(
+          drawn === wanted,
+          `THE OPENER FOLLOWS THE SESSION THAT WAS JUST PLAYED — meet day and training are one lifter (GDD §6.1)`,
+          `${lift}: close-out said ${crossing.e1rmKg}kg,` +
+            ` so the opener must be ${wanted}kg; the screen drew ${drawn}kg` +
+            (drawn === fromSeed
+              ? ` — which is the SIGNUP SEED's opener. Meet day is reading a lifter who has never trained.`
+              : ''),
+        );
+      } else {
+        check(
+          false,
+          'SKIPPED: the opener crossing needs a close-out e1RM and the parsed tuning to compare against',
+          crossing.inputs === null ? 'the tuning inputs were not readable' : 'no e1RM was read off the close-out',
+        );
+      }
     } else {
       check(false, 'SKIPPED: no drawn control on the already-trained surface to press');
     }

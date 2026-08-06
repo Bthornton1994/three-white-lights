@@ -39,6 +39,9 @@ import {
 } from './shellRoute';
 import { SHELL_COPY, SHELL_NAV } from './shellTuning';
 import { MEET_MOMENTS } from '../game/meetPreview';
+import { MEET_PREVIEW } from '../game/meetTuning';
+import { openingCache } from '../game/sessionClient';
+import { readTotalKg, readingValue } from '../game/progression';
 import { SESSION_MOMENTS } from '../session/sessionPreview';
 import { CAPTURE_MOMENTS } from '../lift/liftReplay';
 import { MEET_DAY_PHASES, type MeetDayPhaseId } from '../game/meetDay';
@@ -465,6 +468,69 @@ describe('the four debug query strings the evidence harness drives', () => {
     expect(entry.meet).toBeDefined();
     expect(entry.meet?.state).toBeUndefined();
     expect(entry.meet?.holdWalkoutAtMs).toBeNull();
+    // AND NO STAND-IN SERVER. `?meet=live` is the debug route to the PLAYED
+    // loop, so it plays against the app's real connection like any other meet.
+    // It is the one debug entry that must not carry a preview lifter.
+    expect(entry.meet?.serverPort).toBeUndefined();
+  });
+
+  it('A FRAME CARRIES A STAND-IN SERVER EXACTLY WHEN IT CARRIES A SCRIPTED STATE [a-preview-server-cannot-reach-a-played-meet]', () => {
+    // ===================================================================
+    // THE PIN THAT KEEPS THE FABRICATED LIFTER OFF THE PLAYED PATH
+    // ===================================================================
+    // `useMeetDay` used to choose its server with
+    //
+    //     frozen ? previewServerRecord() : newServerRecord(SIGNUP_DAY)
+    //
+    // — one ternary doing two jobs, whose LIVE arm handed the played app a
+    // lifter who had never trained, for ever. The replacement is not a better
+    // ternary: it is that the preview's server and the preview's state are ONE
+    // VALUE, so they cannot disagree about which of the two a frame is.
+    //
+    // A BICONDITIONAL, ASSERTED IN BOTH DIRECTIONS AND EXHAUSTIVELY. Checking
+    // only "every scripted moment has a port" would pass a build in which
+    // `?meet=live` had one too, which is the direction that reaches a player.
+    const rows = [
+      ...MEET_MOMENTS.map((moment) => [`?meet=${moment}`, resolveEntry(`?meet=${moment}`).meet] as const),
+      ['?meet=live', resolveEntry('?meet=live').meet] as const,
+    ];
+    // The control: without it an empty list satisfies every claim below.
+    expect(rows.length).toBe(MEET_MOMENTS.length + 1);
+    for (const [search, entry] of rows) {
+      expect(entry, search).toBeDefined();
+      expect(
+        (entry?.state !== undefined) === (entry?.serverPort !== undefined),
+        `${search}: state ${entry?.state === undefined ? 'absent' : 'present'},` +
+          ` serverPort ${entry?.serverPort === undefined ? 'absent' : 'present'}`,
+      ).toBe(true);
+    }
+    // And both arms of the biconditional are actually exercised by the list, so
+    // it is not vacuously true of a set that is all one kind.
+    expect(rows.filter(([, e]) => e?.serverPort !== undefined).length).toBe(MEET_MOMENTS.length);
+    expect(rows.filter(([, e]) => e?.serverPort === undefined).length).toBe(1);
+  });
+
+  it('and a scripted frame’s server is that frame’s own, never a shared one', () => {
+    // Two `?meet=recap` resolutions must not hand back the same port: a preview
+    // banks its meet into whatever row it was given, and a shared row would make
+    // the second capture of the same beat hit MEET_ALREADY_RECORDED and
+    // photograph an empty recap.
+    const first = resolveEntry('?meet=recap').meet?.serverPort;
+    const second = resolveEntry('?meet=recap').meet?.serverPort;
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    expect(second).not.toBe(first);
+  });
+
+  it('the preview’s server describes the lifter the preview data describes', () => {
+    // The reason the preview needs a server of its own at all: `previewContext`
+    // is a lifter with a competition history, and the app's real connection is
+    // whoever is playing. Read through the boundary, because there is no row to
+    // read.
+    const port = resolveEntry('?meet=recap').meet?.serverPort;
+    expect(port).toBeDefined();
+    const total = readingValue(readTotalKg(openingCache(port!)));
+    expect(total).toBe(MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG);
   });
 
   it('?session=<moment> opens a frozen session, for every moment capture-session.mjs asks for', () => {

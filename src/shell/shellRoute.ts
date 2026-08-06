@@ -47,9 +47,18 @@
  * session — is a refusal condition, not a nice-to-have.
  */
 
-import { isLiveMeetRequest, meetPreviewFrom, previewStateFor, showsCard, holdWalkoutAtMs } from '../game/meetPreview';
+import {
+  isLiveMeetRequest,
+  meetPreviewFrom,
+  previewServerRecord,
+  previewStateFor,
+  showsCard,
+  holdWalkoutAtMs,
+} from '../game/meetPreview';
 import { replayRequestFrom } from '../lift/replayRoute';
+import { localSessionServer } from '../session/localSessionServer';
 import { previewFrameFor, sessionPreviewFrom } from '../session/sessionPreview';
+import type { MeetServerPort } from '../game/meetClient';
 import type { MeetDayPhaseId, MeetDayState } from '../game/meetDay';
 import type { ReplayRequest } from '../lift/liftReplay';
 import type { SessionPhase } from '../game/session';
@@ -279,13 +288,72 @@ export interface MeetEntry {
   readonly card: boolean;
   /** Hold the walk-out's choreography at this instant, or `null` to let it run. */
   readonly holdWalkoutAtMs: number | null;
+  /**
+   * The stand-in server this scripted lifter's history lives in, or `undefined`
+   * for a meet that is PLAYED and therefore uses the app's own connection.
+   *
+   * PRESENT EXACTLY WHEN `state` IS, and `shellRoute.test.ts` pins that
+   * biconditional over every moment `MEET_MOMENTS` declares plus `?meet=live`.
+   * That equivalence is the replacement for `useMeetDay`'s old
+   * `frozen ? previewServerRecord() : newServerRecord(...)` — one ternary that
+   * was doing two jobs, whose live arm handed the played app a fabricated lifter
+   * for ever. A boolean and a record that had to agree are now one value that
+   * cannot disagree with itself.
+   */
+  readonly serverPort: MeetServerPort | undefined;
+}
+
+/**
+ * The scripted lifter's stand-in server. DEBUG ONLY.
+ *
+ * ===========================================================================
+ * WHY THE PREVIEW NEEDS A SERVER OF ITS OWN AT ALL
+ * ===========================================================================
+ * `previewContext()` describes a lifter with a competition history — a 605 kg
+ * best total and per-lift bests. The app's real connection describes whoever is
+ * actually playing, which in a capture run is a brand-new account. Photograph
+ * the recap against the real connection and it reads FIRST TOTAL, the PR branch
+ * is unphotographable, and `04-recap-with-way-back.png` stops being a picture of
+ * what it claims to be.
+ *
+ * ===========================================================================
+ * AND WHY IT CANNOT LEAK ONTO THE PLAYED PATH
+ * ===========================================================================
+ * Four things, in decreasing order of how much they would have to be broken:
+ *
+ *   1. It is only ever attached to an entry that has a scripted `state` — the
+ *      `?meet=live` arm below leaves it `undefined` — and that biconditional is
+ *      pinned exhaustively.
+ *   2. An entry only reaches `MeetScreen` through `frozenMeetFor`, which returns
+ *      `undefined` unless `route.source === 'debug'`. A player leaving a debug
+ *      meet and re-entering from the session gets a LIVE meet; that was already
+ *      load-bearing and already pinned.
+ *   3. `useMeetDay` cannot fabricate a substitute if it is handed nothing,
+ *      because `serverPort` is a required parameter with no default, and
+ *      `ServerRecord`/`newServerRecord` are names `useMeetDay.test.ts` forbids
+ *      it. There is no fallback to fall back to.
+ *   4. `tools/verify-shell-route.mjs` plays a real session with a mouse on the
+ *      shipped route — no query string — and asserts meet day's opener is
+ *      derived from the e1RM that session banked. That is the instrument that
+ *      would have caught the original defect, and it now exists.
+ *
+ * A REAL `localSessionServer`, not a stub: same closure, same latency, same
+ * `applyMeetResult`. Only the row it starts from differs, which is why the
+ * preview's recap has a real total on it.
+ *
+ * @guarantee a-preview-server-cannot-reach-a-played-meet
+ */
+function previewMeetPort(): MeetServerPort {
+  return localSessionServer({ record: previewServerRecord() });
 }
 
 /**
  * A meet pinned by the query string, or `undefined`.
  *
- * A frame is a scripted `MeetDayState` AND how to draw it, because two of the
- * walk-out beats are the same state photographed at different instants.
+ * A frame is a scripted `MeetDayState` AND how to draw it AND the server its
+ * lifter exists in, because two of the walk-out beats are the same state
+ * photographed at different instants and all of them are a lifter the app's own
+ * connection has never heard of.
  */
 export function meetEntryFrom(search: string | null): MeetEntry | undefined {
   if (search === null) return undefined;
@@ -293,7 +361,11 @@ export function meetEntryFrom(search: string | null): MeetEntry | undefined {
     // A played meet: no preview state, so the loop builds its own and every
     // beat timer runs — including the walk-out's, which is why the live shot is
     // the one that shows the choreography moving on its own.
-    return { state: undefined, card: false, holdWalkoutAtMs: null };
+    //
+    // AND NO PREVIEW SERVER, for the same reason. `?meet=live` is the debug
+    // route to the PLAYED loop, so it plays against the app's real connection
+    // like any other meet. It is the one debug entry that must not get one.
+    return { state: undefined, card: false, holdWalkoutAtMs: null, serverPort: undefined };
   }
   const request = meetPreviewFrom(search);
   if (request === null) return undefined;
@@ -302,6 +374,7 @@ export function meetEntryFrom(search: string | null): MeetEntry | undefined {
     card: showsCard(request.moment),
     // Null for every beat but the two mid-motion walk-out ones.
     holdWalkoutAtMs: holdWalkoutAtMs(request.moment),
+    serverPort: previewMeetPort(),
   };
 }
 

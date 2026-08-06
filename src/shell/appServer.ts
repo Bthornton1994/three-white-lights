@@ -40,13 +40,14 @@
  * would otherwise have opened.
  */
 
-import { localSessionServer } from '../session/localSessionServer';
+import { localSessionServer, type LocalAppServerPort } from '../session/localSessionServer';
+import type { MeetServerPort } from '../game/meetClient';
 import type { SessionServerPort } from '../game/sessionClient';
 
-let connection: SessionServerPort | null = null;
+let connection: LocalAppServerPort | null = null;
 
 /**
- * The one port, built on first ask and returned unchanged after that.
+ * The one connection, built on first ask and returned unchanged after that.
  *
  * Module scope rather than a React ref on purpose: a ref only survives as long
  * as the component holding it, and the property that matters here — that
@@ -54,7 +55,52 @@ let connection: SessionServerPort | null = null;
  * property about components being unmounted. It is also why this is testable
  * without a renderer: two calls returning the same object IS the guarantee.
  */
-export function appSessionPort(): SessionServerPort {
+function appConnection(): LocalAppServerPort {
   if (connection === null) connection = localSessionServer();
   return connection;
+}
+
+/**
+ * The app's connection, as the DAILY LOOP is allowed to see it.
+ *
+ * The return type narrows to the session half so a screen cannot reach the
+ * other mode's endpoints through the port it was handed. The OBJECT is the same
+ * one `appMeetPort` returns; the types are what keep the two surfaces from
+ * borrowing each other's methods.
+ */
+export function appSessionPort(): SessionServerPort {
+  return appConnection();
+}
+
+/**
+ * The app's connection, as MEET DAY is allowed to see it.
+ *
+ * ===========================================================================
+ * THE SAME OBJECT, AND THAT IS THE WHOLE FIX
+ * ===========================================================================
+ * `appSessionPort() === appMeetPort()`. Not "an equivalent port", not "a port
+ * built from the same seed" — the identical object, holding one `ServerRecord`
+ * in one closure. That is the entire content of "the four modes are one game
+ * because they are one lifter", and it is the thing that was false.
+ *
+ * @guarantee one-row-behind-one-port
+ *
+ * Before this, `AppShell` handed `SessionScreen` a port and handed `MeetScreen`
+ * nothing, and `useMeetDay` called `newServerRecord(...)` on mount to have
+ * something to read. So the lifter who trained and the lifter who competed were
+ * two different people, permanently and by construction: the same three openers
+ * on day 1 and day 400, FIRST TOTAL after every meet, and GDD §6.3's PR attempt
+ * — "The Real Tension" — unreachable. `meetClient.ts`'s header has the full
+ * account.
+ *
+ * WHEN THIS BECOMES A REAL BACKEND, both halves keep pointing at the one client
+ * the block at the top of this file describes, because that is what a client app
+ * has: one connection, many queries. Two clients would be the same defect with a
+ * network in the middle.
+ *
+ * (Worded to avoid naming the vendor a second time: `realIp.ts` pins the
+ * real-name inventory per file, and adding a mention is a human's call.)
+ */
+export function appMeetPort(): MeetServerPort {
+  return appConnection();
 }
