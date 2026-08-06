@@ -82,19 +82,30 @@
  * `streakEntitlement.test.ts` measures all three and pins them, so a future
  * earning table that keys off progress fails a test rather than a playtest.
  *
- * WHAT THE EXPIRY IS AND IS NOT DOING, corrected because the first version of
- * this header got it wrong. A purchased day expiring with its window is a
- * PRODUCT decision, not a safety property. A bankable purchased day — one that
- * accumulates across windows, which is the hoard the old Recovery Day defect
- * was made of — is measured monotone-safe too, at 0 violating pairs across
- * three purchase schedules including ten purchases and a front-loaded block.
+ * WHAT THE EXPIRY IS AND IS NOT DOING, corrected TWICE and the second
+ * correction is a retraction. A purchased day expiring with its window is a
+ * PRODUCT decision, not a safety property — that much stands.
  *
- * THE BURN IS WHAT KEEPS A PURCHASE SAFE, NOT THE EXPIRY. A doomed absence
- * takes everything available including whatever was banked, so two lifters
- * holding different amounts are both left on zero, and the entitlement refreshes
- * them identically at the next boundary. That is worth knowing precisely because
- * GDD §8.3E flags the expiring version as the weaker product: the better product
- * is available, and it is a human's call rather than a constraint.
+ * WHAT DOES NOT STAND is the sentence this paragraph used to carry: "a bankable
+ * purchased day is monotone-safe too, at 0 violating pairs across three
+ * purchase schedules". That zero was measured on FIXED CALENDAR purchase days
+ * only, which is the arm where the EXPIRING product is also zero — so it was
+ * never evidence about banking. Re-measured with the purchase funded the way a
+ * real player funds it, a bankable day violates on exactly the arm the expiring
+ * one violates on: 77 / 275 / 696 / 681 violating pairs at 40 / 60 / 80 / 100
+ * when the funding is training-keyed, against 54 as the expiring product's
+ * worst deficit and 14 as bankable's. A difference in severity, not in kind.
+ *
+ * SO NEITHER PRODUCT IS SAFE AGAINST TRAINING-KEYED FUNDING, and the funding is
+ * what §3b and `currencyProvenance.ts` close. What survives is the comparison:
+ * bankable is clean exactly where expiring is clean and violates exactly where
+ * expiring violates, so switching the product buys no safety and costs none,
+ * and the choice stays a pricing and feel decision.
+ *
+ * THE BURN IS WHAT KEEPS A CALENDAR-FUNDED PURCHASE SAFE, NOT THE EXPIRY. A
+ * doomed absence takes everything available including whatever was banked, so
+ * two lifters holding different amounts are both left on zero, and the
+ * entitlement refreshes them identically at the next boundary.
  *
  * THIS MODULE PRICES NOTHING and knows nothing about currency. It receives an
  * already-decided credit, exactly as the Recovery Day grant path did.
@@ -136,6 +147,26 @@
  * credit a covered day without naming where it came from, so "an in-game action
  * awarded a purchased day" is not something that can happen by omission.
  * `PURCHASED_DAY_TOUCHING_FUNCTIONS` below is the enforcement.
+ *
+ * ===========================================================================
+ * 3c. AND THE SOURCE IS NOT ENOUGH, BECAUSE THE MONEY HAS A PROVENANCE TOO
+ * ===========================================================================
+ *
+ * `'purchase'` says a covered day was bought. It says nothing about where the
+ * money came from, and that is where the defect walked back in: an achievement
+ * pays Chalk, Chalk buys a covered day, and the arrival day of a `'purchase'`
+ * is back under the lifter's own training with a currency in between. Measured
+ * on the shipped engine with matched purse and price: 105 / 305 / 733 / 785
+ * violating pairs at 40 / 60 / 80 / 100 days, worst deficit 54, against 0 for
+ * the same purse funded on the calendar and 0 for no purchase at all. The
+ * purchase does not worsen those violations, it creates them.
+ *
+ * `currencyProvenance.ts` closes it, and closes it in the TYPE:
+ * `SettledCoveredDayPurchase.tender` is `NonTrainingGatedTender`, so
+ * achievement Chalk and season-pass-tier Chalk cannot be written into a
+ * purchase at all. THIS MODULE IS UNCHANGED BY THAT and deliberately: it still
+ * prices nothing, still knows nothing about currency, and still takes an
+ * already-decided credit. The gate is at the door, not in the room.
  */
 
 /**
@@ -420,9 +451,10 @@ export const SOURCES_THAT_CREDIT_A_PURCHASED_DAY: readonly CoverageSource[] = CO
 );
 
 /**
- * EVERY TOP-LEVEL DECLARATION IN `streakEntitlement.ts` AND `streak.ts` ALLOWED
- * TO NAME A PURCHASED COVERED DAY — the enforcement half of GDD §8.3E's
- * condition 3, that a purchased day is never grantable, earnable or awarded.
+ * EVERY TOP-LEVEL DECLARATION IN `streakEntitlement.ts`, `streak.ts` AND
+ * `currencyProvenance.ts` ALLOWED TO NAME A PURCHASED COVERED DAY — the
+ * enforcement half of GDD §8.3E's condition 3, that a purchased day is never
+ * grantable, earnable or awarded.
  *
  * WHY A LIST OF DECLARATION NAMES AND NOT A RULE ABOUT NAMING. The obvious
  * guard is a blocklist on words like `grant`, `credit`, `buy`, `award` — and
@@ -482,6 +514,16 @@ export const PURCHASED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
   'CoveredDayPurchaseOutcome',
   'COVERED_DAY_PURCHASE_OUTCOME_IS_COVERAGE_ONLY',
   'applySettledCoveredDayPurchase',
+  // ---- currencyProvenance.ts ----------------------------------------------
+  // THE SCAN REACHES A THIRD FILE NOW, and it had to. The two modules above
+  // decide what a purchased covered day DOES; that one decides WHO MAY BUY ONE,
+  // which is where the laundered path went — an achievement pays Chalk, Chalk
+  // buys a covered day, and neither of the two files below ever sees an
+  // achievement. A new tender is exactly the edit this allowlist exists to make
+  // visible, so the file that holds the tenders is scanned like the others.
+  'COVERED_DAY_TENDERS',
+  'TENDER_CURRENCY',
+  'TENDER_ARRIVAL',
 ];
 
 /** What a credit of covered days did. Reported, never silent. */

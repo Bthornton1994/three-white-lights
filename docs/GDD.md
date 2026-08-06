@@ -659,9 +659,35 @@ mechanic; §4.4 has the verification the ruling was conditional on.
 > §8.3E's table a statement about the reference composition rather than about the
 > shipped game — the exact defect item 3 above records, arriving a second time
 > through a new door. The pin now runs both engines with purchased days in the
-> field, on both the calendar-funded and the training-funded arm, and asserts
-> that buying changed some outcome so the agreement is not agreement about
-> nothing.
+> field, on both the calendar-funded and the training-funded day pattern, and
+> asserts that buying changed some outcome so the agreement is not agreement
+> about nothing.
+>
+> **A FOURTH THING, FOUND AFTER THE PURCHASE WENT LIVE: the currency that funds
+> a purchase is inside this ruling's scope, and the wiring did not know it.** The
+> rule this whole block exists to hold is that no covered day may arrive on a day
+> the lifter's own training decides. A purchase funded by achievement Chalk does
+> exactly that, one hop out, and every guard here stayed green — because none of
+> them looks at money. Measured, it does not merely worsen the property, it
+> **creates** the violations: 105 / 305 / 733 / 785 violating pairs at 40 / 60 /
+> 80 / 100 against **0** at zero purchases. §8.2 and §8.3E carry the fix; the
+> part that belongs here is that the mechanic's own invariant is only as strong
+> as the provenance of what buys into it, and `SettledCoveredDayPurchase.tender`
+> is now typed so training-funded money cannot compile into this engine.
+>
+> **AND A FIFTH, FOUND BY THE PURCHASES RATHER THAN BY A SWEEP: a coverage
+> snapshot is stale at a window boundary.** `coveredDaysLeftInWindow` reports
+> what was left in the window the lifter's *last event* fell in, so comparing two
+> lifters whose last events fall in different windows compares a September
+> balance against an October one. It was invisible for as long as nothing could
+> put a number in `purchasedDaysLeft` — the free counter refills to the same
+> value every window, so the stale figure and the fresh one were equal. With a
+> purchase in the field the protection-declined sweep failed at "2 against 5".
+> Both protection-declined sweeps now compare what a **day** has available, the
+> exhaustive one is run at a second signup anchor that puts a window boundary
+> *inside* its ten-day calendar, and the staleness itself is pinned in both
+> directions so neither the workaround nor the reason for it can be deleted
+> quietly.
 
 **Why.** RULE 2 above debits a doomed absence the whole armed holding, which is
 what makes splitting a doomed absence cost the same as leaving it whole — and it
@@ -1508,36 +1534,65 @@ against an actual agreement.
 | Currency | Type | Earned | Spent on |
 |---|---|---|---|
 | **Gym Bucks** | Soft | Idle mode, check-ins, achievements | Cosmetics, gym decor, minor convenience |
-| **Chalk** | Premium | Purchased; small trickle from rewarded ads and from **calendar-dated** events (see below) | Cosmetics, timer skips, **Extra Covered Days** at premium rate |
+| **Chalk** | Premium | Purchased; small trickle from rewarded ads, from **calendar-dated** events, from the season pass **by week** — and from **achievements** and **pass tiers** (see the restriction below) | Cosmetics, timer skips, **Extra Covered Days** at premium rate — the last of these from **non-training-gated Chalk only** |
 | ~~Recovery Days~~ | — | — | **Removed by §4.2's Option 1 ruling.** Coverage is a rolling entitlement now, not a held balance. |
 
-**CHALK MAY NOT BE EARNED FROM ANYTHING TRAINING REACHES, AND THAT IS A
-MEASUREMENT.** This row used to read "small trickle from rewarded ads / **rare
-achievements**". Achievements are reached by playing, and Chalk buys Extra
-Covered Days — so a lifter who buys as soon as they can afford it has a
-**covered-day arrival their own training moves**, which is the defect §4.4
-traces, one hop further out than the rule that closed it.
+**CHALK EARNED BY TRAINING MAY NOT BUY AN EXTRA COVERED DAY. IT MAY BUY
+EVERYTHING ELSE.** The restriction is on the *mechanism*, not on the currency,
+and the distinction is the whole of this section.
 
-§8.3C already re-keyed the season pass so that it pays covered days **by week,
-never by tier**. That closes the one-hop path and says nothing at all about the
-two-hop one, because the pass also pays **Chalk** — and a tier unlocks by
-playing. Measured on the shipped mechanic with the purchase path live: a covered
-day funded by achievement-earned Chalk gives **105 / 305 / 733 / 785 violating
-pairs at 40 / 60 / 80 / 100 days, worst deficit 54**, against **0** for the same
-purse funded on the calendar. §8.3E has the matched design and the full table.
+*The hazard, and it is a measurement rather than an argument.* Achievements are
+reached by playing, and Chalk buys Extra Covered Days — so a lifter who buys as
+soon as they can afford one has a **covered-day arrival their own training
+moves**, which is the defect §4.4 traces, one hop further out than the rule that
+closed it. §8.3C already re-keyed the season pass so it pays covered days **by
+week, never by tier**; that closes the one-hop path and says nothing at all
+about the two-hop one, because the pass also pays **Chalk** and a tier unlocks
+by playing. Measured on the shipped mechanic with the purchase path live: a
+covered day funded by achievement-earned Chalk gives **105 / 305 / 733 / 785
+violating pairs at 40 / 60 / 80 / 100 days, worst deficit 54**, against **0** for
+the same purse funded on the calendar and **0** for no purchase at all. §8.3E has
+the matched design and the full table.
 
-**So the rule that binds §8.3C's covered days binds §8.3C's Chalk too**, and it
-binds every future achievement table: a currency that buys coverage is coverage.
-The safe shapes for a free Chalk trickle are a **rewarded ad** (the player
-chooses when, and one extra trained day does not move it) and a **calendar-dated
-event** — "week 3 of the season", "the first of the month". The unsafe shape is
-anything counted in sessions, streak days or unlocked tiers.
+*The fix that was tried first, and rejected.* An earlier revision of this row
+deleted the achievement trickle outright — Chalk could no longer be earned by
+anything training reaches. That closes the hazard and costs far more than the
+hazard is worth: it deletes a whole free-earning path from the game to protect
+one purchase. **A human rejected it as too broad.**
 
-*Not yet enforceable in code, and said plainly rather than implied.* Nothing in
-the codebase pays Chalk yet, so there is no earning table for a test to fail
-against. What exists is the negative control in `streakEntitlement.test.ts`,
-which fails if the training-keyed shape ever stops violating — so the day an
-earning table is written, the measurement it has to satisfy is already there.
+**So the restriction is scoped to the purchase.** Achievement-earned and
+pass-tier-earned Chalk are ordinary Chalk. They buy singlets, chalk VFX, gym
+decor, timer skips and every other thing on the "Spent on" column. The one thing
+they may not do is fund a **§8.3E Extra Covered Day**, which accepts only Chalk
+from a **non-training-gated source** — a rewarded ad, a calendar-dated event, a
+by-week pass payout, Chalk bought with money, or direct real-money purchase.
+
+**AND IT IS ENFORCED IN THE TYPE SYSTEM, NOT BY A VALIDATION.**
+`src/game/currencyProvenance.ts` gives every tender an **arrival** — how its
+units reach a player's hands — and gates on the arrival rather than on the
+tender, so `'chalk-achievement'` and `'chalk-season-pass-tier'` are the *same
+row* and closing one closes both by construction.
+`SettledCoveredDayPurchase.tender` is the derived non-training-gated subset, so
+training-funded money is a **compile error** rather than a runtime branch; the
+runtime refuses it as well, with its own error code, for the callers TypeScript
+never sees. §8.3E's "how condition 3 is enforced" has the full escalation.
+
+*The general rule this leaves behind, which binds every future earning table:* a
+currency that buys coverage **is** coverage, so the safe shapes for Chalk that
+may fund coverage are a **rewarded ad** (the player chooses when, and one extra
+trained day does not move it) and a **calendar-dated event** — "week 3 of the
+season", "the first of the month". The unsafe shape is anything counted in
+sessions, streak days or unlocked tiers. Chalk of that shape may still be
+*earned*; it simply cannot be *tendered* here.
+
+*What is enforceable in code today and what is not, said plainly.* Nothing in the
+codebase pays Chalk yet, so there is still no earning table for a test to fail
+against. What exists now is stronger than the negative control that used to be
+the only thing here: the tender list itself is written down, every member
+declares an arrival, and the day an earning table ships it has to name which
+tender it pays — a table that pays `'chalk-achievement'` is fine, and a purchase
+funded from it does not compile. The negative control is kept as well, and now
+fails if the training-keyed shape ever stops violating.
 
 **What replaced the Recovery Day, and why the replacement is not just the same
 thing renamed.** A Recovery Day was a *stock*: bought, banked, carried
@@ -1546,15 +1601,30 @@ proportional to how much a lifter happened to have. That proportionality is the
 defect §4.4 traces. The **Extra Covered Day** is a *rate widening*: it adds one
 covered day **to the window it is bought in and expires with that window**.
 
-*A correction, because the first version of this paragraph justified the expiry
-as a safety property and that is measurably false.* A **bankable** purchased day
-— one that accumulates across windows — is monotone-safe too: 0 violating pairs
-across three purchase schedules including ten purchases and a front-loaded block.
-**The burn is what keeps a purchase safe, not the expiry.** A doomed absence takes
-everything available including whatever was banked, so two lifters holding
-different amounts are both left on zero and the entitlement refreshes them
-identically at the next boundary. The expiry is a product decision and it is
-§8.3E's open question, not a constraint the mechanic imposes.
+*Corrected twice, and the second correction is a **retraction**.* This paragraph
+used to say a **bankable** purchased day — one that accumulates across windows —
+"is monotone-safe too: 0 violating pairs across three purchase schedules
+including ten purchases and a front-loaded block". **That claim is withdrawn.**
+Those three schedules were fixed calendar days, which is the arm where the
+*expiring* product is also zero, so the measurement was never evidence about
+banking at all — it was evidence about calendar funding, taken at zero real
+purchases. Under the actual purchase flow a bankable day shows the same kind of
+violation as an expiring one: **77 / 275 / 696 / 681** violating pairs at 40 / 60
+/ 80 / 100 on the training-funded arm, worst deficit 14 against the expiring
+product's 54. A difference in severity, not in kind. (Full population, as with
+the expiring table; the committed test runs at
+`COVERED_DAY_PURCHASE_SWEEP.SCHEDULES_PER_SEED` and measures 31 / 86 / 150 / 422,
+worst deficit 5 — the same finding at a smaller population.)
+
+**What survives, and it is the useful half.** Bankable is clean exactly where
+expiring is clean and violates exactly where expiring violates, so switching the
+product **buys no safety and costs none**, and the choice stays a pricing and
+feel decision. **The burn is what keeps a calendar-funded purchase safe, not the
+expiry** — a doomed absence takes everything available including whatever was
+banked, so two lifters holding different amounts are both left on zero and the
+entitlement refreshes them identically at the next boundary. What keeps a
+purchase safe against *training-funded* money is not the burn and not the
+expiry: it is the tender restriction above.
 
 **RULED IN, WITH CONDITIONS — see §8.3E.** §4.2's Option 1 ruling removed a
 currency; what a player may buy instead was written here as a proposal with its
@@ -1600,8 +1670,8 @@ the season" is safe and "tier 4" is not. `streakEntitlement.test.ts` pins all
 three, the two bad ones as negative controls, so a future earning table that keys
 off progress fails a test rather than a playtest.
 
-**AND THE SAME RULE BINDS THE PASS'S CHALK, WHICH THE RULE AS WRITTEN DID NOT
-REACH.** The paragraph above was written about the reward this track calls a
+**AND THE SAME HAZARD REACHES THE PASS'S CHALK, WHICH THE RULE AS WRITTEN DID
+NOT.** The paragraph above was written about the reward this track calls a
 *covered day*. This track also pays *Chalk*, and Chalk buys Extra Covered Days
 (§8.2) — so **Chalk on a tier is coverage on a tier, two hops instead of one**,
 and the by-week rule protected only the direct grant. That gap was real: measured
@@ -1609,10 +1679,26 @@ with the purchase path live, a covered day funded by tier-earned Chalk gives
 **105 / 305 / 733 / 785 violating pairs at 40 / 60 / 80 / 100 days**, against
 **0** for the identical purse paid out on the calendar.
 
-So **every reward on this track that can turn into a covered day is paid by
-week**, not by tier: covered days and Chalk alike. Cosmetics may sit on tiers,
-because a singlet does not buy protection. The general form of the rule is in
-§8.2: *a currency that buys coverage is coverage.*
+**But the two rewards are closed differently, and the difference is the point.**
+
+- **Covered days are paid by week, never by tier.** A covered day on a tier is
+  the hazard directly; there is nothing to scope, so the reward moves.
+- **Chalk may sit on a tier.** It is spendable on cosmetics, timer skips and
+  everything else, and forbidding it would delete a reward to protect one
+  purchase — the too-broad fix §8.2 records as rejected. What tier Chalk may not
+  do is **fund an Extra Covered Day**, and that is enforced where the purchase
+  is rather than where the payout is: the tender is
+  `'chalk-season-pass-tier'`, its arrival is `'session-count'`, and
+  `SettledCoveredDayPurchase` does not accept it. It is the same table row as
+  achievement Chalk, so the pass path and the achievement path are closed by one
+  edit rather than by two rules that can drift apart — which is exactly how this
+  gap opened in the first place.
+- **Cosmetics may sit on tiers**, unchanged, because a singlet does not buy
+  protection.
+
+The general form of the rule is in §8.2: *a currency that buys coverage is
+coverage* — enforced at the point of purchase, so the currency stays spendable
+everywhere else.
 
 **D. Ads (optional, decide after playtesting)**
 
@@ -1687,8 +1773,99 @@ With no purchase at all the same population measures zero, so the ratio of
 "violations added to violations removed" is not 2.3 or any other number — the
 denominator is empty. A training-keyed purchase on this engine can only add.
 
-**The consequence is §8.2's Chalk row**, which used to pay a trickle for "rare
-achievements" and no longer may. A currency that buys coverage is coverage.
+#### The consequence: the tender carries a provenance
+
+The first consequence drawn from the table above was to delete the achievement
+trickle from §8.2's Chalk row. **A human rejected that as too broad**, and the
+rejection is right: it removes a free-earning path from the whole game to close
+one purchase.
+
+**What ships instead is a restriction scoped to the mechanism.** A tender for an
+Extra Covered Day must come from a **non-training-gated source**.
+Achievement-earned and pass-tier-earned Chalk stay fully valid for cosmetics,
+timer skips and everything else — and are not a tender here.
+
+**It is structural, not a validation, and that distinction is the human's bar.**
+`src/game/currencyProvenance.ts`:
+
+- every tender declares an **arrival** — `'player-chosen'`, `'calendar'` or
+  `'session-count'` — and the gating is looked up **from the arrival**, so
+  `'chalk-achievement'` and `'chalk-season-pass-tier'` are one row and closing
+  one closes both by construction rather than by two checks that can drift;
+- `NonTrainingGatedTender` is a **derived** subset — a mapped filter over the
+  gating table, never a second hand-written list — and
+  `SettledCoveredDayPurchase.tender` is declared as it, so a training-funded
+  tender **does not compile**. The compiler's own verdict:
+  `error TS2322: Type '"chalk-achievement"' is not assignable to type 'NonTrainingGatedTender'.`
+- the runtime refuses it anyway, with a **distinct** error code
+  (`TRAINING_FUNDED_TENDER`, not `INVALID_PURCHASE`), because a settled order
+  arrives as JSON from an Edge Function and JSON does not typecheck — and
+  because "your Chalk is invalid" is a lie about a balance that is valid
+  everywhere else;
+- the only edit that widens the subset is re-tagging `'session-count'` in
+  `ARRIVAL_GATING`, which is one word, in a table with this measurement printed
+  above it, and it fails `currencyProvenance.test.ts` and
+  `streakEntitlement.test.ts` together.
+
+**And `'chalk'` is no longer a tender at all.** It was the shipped one until this
+round, and it was the defect in miniature: "Chalk" was never an answer to "where
+did this money come from", and a map asserting that Chalk arrives by
+"calendar-or-payment" was a true-sounding claim about a currency made where the
+fact lives on the individual units.
+
+#### The sweep, re-run with the restriction in place
+
+Every tender the purchase will accept, at every horizon, with the diligent
+member of each pair **recomputing their own purchase days from their own
+training** — the strong treatment, not the frozen control. Five seeds,
+`COVERED_DAY_PURCHASE_SWEEP.SCHEDULES_PER_SEED` schedules per seed, every
+single-day superset.
+
+| tender | arrival | gating | 40 | 60 | 80 | 100 |
+|---|---|---|---|---|---|---|
+| `real-money` | player-chosen | non-training-gated | **0** | **0** | **0** | **0** |
+| `chalk-purchased` | player-chosen | non-training-gated | **0** | **0** | **0** | **0** |
+| `chalk-rewarded-ad` | player-chosen | non-training-gated | **0** | **0** | **0** | **0** |
+| `chalk-calendar-event` | calendar | non-training-gated | **0** | **0** | **0** | **0** |
+| `chalk-season-pass-week` | calendar | non-training-gated | **0** | **0** | **0** | **0** |
+| `chalk-achievement` | session-count | **training-gated — refused** | 59 | 108 | 203 | 484 |
+| `chalk-season-pass-tier` | session-count | **training-gated — refused** | 59 | 108 | 203 | 484 |
+
+Zero on `currentStreak` **and** on lifetime best, with covered days actually
+bought and `purchasedDaysLeft` actually populated in every clean row — a sweep
+that bought nothing would report the same zeros and mean nothing.
+
+**The two bottom rows are the negative control and they are unreachable through
+the shipped entry point.** They are measured through `streakEntitlement`
+directly, because `applySettledCoveredDayPurchase` will not accept those tenders
+at all. Keeping them measured is deliberate: a restriction whose justification
+nobody re-derives is a restriction somebody eventually relaxes, and these are
+the numbers that say what relaxing it costs. They run at the committed
+population (150 schedules per seed); the full-population figures are the 105 /
+305 / 733 / 785 in the table above.
+
+**A clean row is not the evidence, and saying so is the point.** The five clean
+rows are clean *by construction* — a calendar or player-chosen arrival returns
+the identical purchase-day list whether it is computed from the lazy schedule or
+the diligent one — and the construction is asserted **on the purchase-day list
+itself**, not on the outcomes downstream of it: for every legal tender, at every
+length, over every pair in the population, adding a trained day must leave the
+list byte-identical.
+
+*That assertion exists because a weaker one was tried and measured to be too
+weak.* The first version compared the two treatments' aggregate verdicts. A
+mutation giving a calendar tender a tiny training sensitivity — one extra Chalk
+on the lifter's 60th session — moved **2362 of 34338** purchase-day lists at 100
+days, produced **zero** violations at all four lengths, and left every aggregate
+in the verdict identical. The sweep was green and the verdict comparison was
+green. Only the day-list assertion goes red, and it goes red on the sensitivity
+rather than on the day a sensitivity happens to matter. "Empirically clean at the
+lengths we happened to test" is what hid this defect twice; the day-list
+assertion is what makes this round's claim a different kind of claim.
+
+**And the line is checked from both sides.** Every legal tender is clean, *and*
+every banned tender actually violates. The first alone is satisfied by a
+restriction that banned far too much — which is the fix that was rejected.
 
 #### Expiring or bankable — still the human's call, and still not a safety one
 
@@ -1698,14 +1875,22 @@ is honest, and it may also be bad.
 
 **Both were measured again with the purchase path live, and they behave the
 same.** A bankable Extra Covered Day — accumulating across windows, never
-expiring — is clean on exactly the arms the expiring one is clean on (calendar
-and frozen, 0 everywhere) and violates on exactly the arm it violates on
-(responsive: 77 / 275 / 696 / 681). Its worst deficit is *smaller* — 14 against
-54 — which is a difference in severity, not in kind. So switching the product
-buys no safety and costs none, and the choice stays a pricing and feel decision.
-The shipped module expires, because that is the conservative default until
-somebody rules; switching it is a small change to `creditCoveredDays` and the
-test that models the alternative already exists.
+expiring — is clean on exactly the funding the expiring one is clean on
+(non-training-gated tenders, and the frozen treatment of a training-gated one: 0
+everywhere) and violates on exactly the funding it violates on (a training-gated
+tender, recomputed: 77 / 275 / 696 / 681). Its worst deficit is *smaller* — 14
+against 54 — which is a difference in severity, not in kind. So switching the
+product buys no safety and costs none, and the choice stays a pricing and feel
+decision. The shipped module expires, because that is the conservative default
+until somebody rules; switching it is a small change to `creditCoveredDays` and
+the test that models the alternative already exists.
+
+**§8.2 used to record the opposite, and that claim is withdrawn there too.** The
+"bankable is monotone-safe, 0 violating pairs" line was measured at fixed
+calendar purchase days with no real purchase flow, so it was never evidence about
+banking. It is corrected in §8.2 rather than left standing beside this
+paragraph — two sections disagreeing about one measurement is how the first
+version of this got believed.
 
 **One thing the switch WOULD change, and it is worth knowing before choosing.**
 Under the expiring product the split between the free counter and the bought one
@@ -1725,15 +1910,19 @@ refused rather than clamped.
 
 #### How condition 3 is enforced
 
-"Nothing awards a purchased day" is held by **three** guards, because
-mutation-testing the first two found a hole they left in each other:
+"Nothing awards a purchased day" is held by **four** guards, because
+mutation-testing each one found a hole the others left:
 
 1. **A declaration allowlist keyed to the field, not the vocabulary**
-   (`PURCHASED_DAY_TOUCHING_FUNCTIONS`). Every top-level declaration in the two
-   streak modules that so much as names a purchased day has to be on it, exact in
-   both directions. The blocklist it replaces — banning names containing *grant*,
-   *credit*, *buy* — could not catch `markStreakMilestone` handing one out,
-   because that mutant uses none of those words. This one does.
+   (`PURCHASED_DAY_TOUCHING_FUNCTIONS`). Every top-level declaration in the
+   **three** modules that touch the purchase — the two streak modules and
+   `currencyProvenance.ts` — that so much as names a purchased day has to be on
+   it, exact in both directions. The blocklist it replaces — banning names
+   containing *grant*, *credit*, *buy* — could not catch `markStreakMilestone`
+   handing one out, because that mutant uses none of those words. This one does.
+   *`currencyProvenance.ts` joined the scan with the tender fix:* it decides who
+   may buy, which is where the laundered path went, and the other two modules
+   never see an achievement.
 2. **A behavioural sweep of the whole export surface.** Every exported function,
    called every way it can be called, starting from a state that *holds*
    purchased days, must never return one more than it was given.
@@ -1745,15 +1934,26 @@ mutation-testing the first two found a hole they left in each other:
    through the one door left open. It now fails: the coverage a purchase adds
    equals what the order says, across states differing in streak length, armed
    state and absence length.
+4. **A provenance on the tender, in the type.** Guards 1 to 3 all police what
+   *awards* a purchased day, and the hazard did not award one — it awarded
+   **Chalk**, and the player bought the covered day themselves. All three guards
+   were green while that shipped. `SettledCoveredDayPurchase.tender` is now a
+   derived non-training-gated subset, so achievement Chalk is a compile error and
+   not a code path; the runtime refuses it with its own code for the JSON callers
+   `tsc` never sees; and the gating hangs off the **arrival**, so the achievement
+   path and the season-pass-tier path are one row rather than two rules.
 
-**Also unresolved: the free earning path is gone.** §4.2's old table paid
-Recovery Days at signup, at streak milestones, for achievements and from Gym
-Empire drops. Milestones and achievements are progress-keyed, so they cannot pay
-covered days at all — and, per the measurement above, cannot pay the *currency*
-that buys them either. What a free player gets now is the entitlement itself,
-plus whatever §8.3C pays by week — which is more than the old free path gave a
-lapsed lifter and less than it gave a diligent one. Whether that is the right
-trade is a human's call.
+**Also revised: the free earning path is narrower than it looked, not gone.**
+§4.2's old table paid Recovery Days at signup, at streak milestones, for
+achievements and from Gym Empire drops. Milestones and achievements are
+progress-keyed, so they cannot pay **covered days** at all. They *can* pay
+**Chalk** — an earlier revision of this line said they could not, and that was
+the too-broad fix a human rejected. What that Chalk cannot do is fund an Extra
+Covered Day. So what a free player gets is the entitlement itself, plus whatever
+§8.3C pays by week, plus Chalk from every progress-keyed source spendable on
+everything except this one purchase — more than the old free path gave a lapsed
+lifter, and less than it gave a diligent one. Whether that is the right trade is
+a human's call.
 
 ### 8.4 Pricing Anchor
 

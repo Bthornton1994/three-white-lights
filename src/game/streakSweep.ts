@@ -94,6 +94,7 @@
  * calls with the same seed are byte-identical and that different seeds differ.
  */
 
+import { TENDER_ARRIVAL, type CoveredDayTender, type TenderArrival } from './currencyProvenance';
 import { nextRandom, seedState } from './prng';
 
 /**
@@ -263,10 +264,18 @@ export const ENTITLEMENT_VERIFICATION = Object.freeze({
    *
    * The shipped module expires it. This grid exists because the first version
    * of GDD §8.2 justified the expiry as a SAFETY property, and that turned out
-   * to be false: the burn is what keeps a purchase safe, not the expiry. Ten
-   * purchases and a front-loaded block are in here specifically because a
-   * hoard is what a bankable product produces and a hoard is what the old
-   * Recovery Day defect was made of.
+   * to be false: the burn is what keeps a CALENDAR-FUNDED purchase safe, not
+   * the expiry. Ten purchases and a front-loaded block are in here specifically
+   * because a hoard is what a bankable product produces and a hoard is what the
+   * old Recovery Day defect was made of.
+   *
+   * EVERY LIST HERE IS A FIXED CALENDAR, AND THE SCOPE IS THE FINDING. These
+   * days are ones neither lifter's training can move, so what this grid can
+   * establish is "banking is free ON THIS ARM" and nothing wider. GDD §8.2's
+   * "a bankable purchased day is monotone-safe" was this measurement read
+   * without its scope, and it is retracted there. On training-keyed funding a
+   * bankable day violates — 77 / 275 / 696 / 681 — which is measured through
+   * `judgeBankablePurchaseArm` instead.
    */
   BANKABLE_PURCHASE_DAYS: Object.freeze([
     Object.freeze([10, 40]),
@@ -356,11 +365,16 @@ export const COVERED_DAY_PURCHASE_SWEEP = Object.freeze({
 
   /**
    * Chalk that arrives on an ACHIEVEMENT — one per this many sessions ever.
-   * This is the shape GDD §8.2 gives Chalk's free trickle ("rare achievements")
-   * and the shape a season-pass TIER has. It is the arm under test, and it is a
-   * property of the sweep rather than of the shipped game: nothing in the
-   * codebase pays Chalk yet, which is exactly why this is measured before an
-   * earning table exists rather than after one ships.
+   * This is the shape GDD §8.2 gives Chalk's achievement trickle and the shape
+   * a season-pass TIER has, and both of them are `'session-count'` tenders in
+   * `currencyProvenance.TENDER_ARRIVAL`.
+   *
+   * IT IS THE NEGATIVE CONTROL NOW, NOT THE HAZARD. When this block was written
+   * the hazard was live: `applySettledCoveredDayPurchase` took `'chalk'` and
+   * had no way to ask which Chalk. It no longer takes a training-gated tender
+   * at all, so this arm measures a configuration the shipped engine refuses —
+   * which is the point of keeping it. Delete it and the restriction upstream
+   * becomes an assertion nobody re-checks.
    */
   CHALK_PER_SESSIONS: 5,
 
@@ -376,23 +390,48 @@ export type TrainingSchedule = readonly boolean[];
  * `COVERED_DAY_PURCHASE_SWEEP`'s purse. Buys as soon as affordable, which is
  * the behaviour the hazard needs and the one a real player has.
  *
- * `trainingKeyed` switches the achievement trickle on. With it off, the result
- * is a pure function of the calendar length and is identical for every schedule
- * of that length — which is what makes the `calendar` arm training-independent
- * BY CONSTRUCTION rather than by assumption.
+ * IT TAKES A `TenderArrival` RATHER THAN A BOOLEAN, and that is not cosmetic.
+ * The boolean it replaces was `trainingKeyed`, which made "which tenders are
+ * training-keyed" a fact the CALLER decided — so the sweep and
+ * `currencyProvenance.ts` were two places that had to agree about a season-pass
+ * tier, and two places that agree are one rule only until somebody edits one of
+ * them. Now the sweep reads `TENDER_ARRIVAL` like everything else does, so a
+ * tender re-tagged in that table changes which arm it is measured on
+ * automatically. `purchaseArrivalOf` is the bridge.
  *
- * DETERMINISTIC AND PURE. Same schedule, same days, every time.
+ * THE THREE ARRIVALS, AND WHY TWO OF THEM COINCIDE HERE:
+ *
+ *   - `'calendar'` — Chalk trickles once per `CHALK_PER_CALENDAR_DAYS`. Pure
+ *     function of the calendar length: identical for every schedule of that
+ *     length, so both members of a monotonicity pair buy on the same days BY
+ *     CONSTRUCTION rather than by assumption.
+ *   - `'player-chosen'` — real money, a rewarded ad, buying Chalk. Modelled by
+ *     the SAME calendar trickle, and that is a deliberate identity rather than
+ *     laziness: what the sweep measures is whether a lifter's own training can
+ *     MOVE the day they buy, and for a player-chosen arrival it cannot, by
+ *     definition. Its row in the table is expected to be bit-identical to the
+ *     calendar row, and `streakSweep.test.ts` asserts that instead of assuming
+ *     it — an accidental difference would mean one of them had grown a
+ *     dependence on the schedule.
+ *   - `'session-count'` — the calendar trickle PLUS one per
+ *     `CHALK_PER_SESSIONS` sessions ever. The hazard: training moves the
+ *     affordability day. The purse is deliberately larger than the calendar
+ *     arm's, which is why the matched control is the `frozen` treatment and not
+ *     the calendar arm — see `COVERED_DAY_PURCHASE_SWEEP`.
+ *
+ * DETERMINISTIC AND PURE. Same schedule, same arrival, same days, every time.
  *
  * @throws {RangeError} if the schedule is empty.
  */
 export function coveredDayPurchaseDays(
   schedule: TrainingSchedule,
-  trainingKeyed: boolean,
+  arrival: TenderArrival,
 ): readonly number[] {
   if (schedule.length < 1) {
     throw new RangeError('streakSweep: a purchase schedule needs a calendar of at least 1 day');
   }
   const purse = COVERED_DAY_PURCHASE_SWEEP;
+  const trainingKeyed = arrival === 'session-count';
   const days: number[] = [];
   let chalk = 0;
   let sessions = 0;
@@ -408,6 +447,20 @@ export function coveredDayPurchaseDays(
     }
   }
   return days;
+}
+
+/**
+ * The arrival a tender funds through — `TENDER_ARRIVAL`, re-exported as a
+ * function so a sweep never restates the table.
+ *
+ * IT ACCEPTS TRAINING-GATED TENDERS ON PURPOSE, which is the one place in the
+ * codebase that does. `applySettledCoveredDayPurchase` will not take one, and
+ * that is exactly why the hazard has to be measurable here: a negative control
+ * that cannot be constructed is a negative control nobody can check, and the
+ * whole argument for the restriction is the number this arm produces.
+ */
+export function purchaseArrivalOf(tender: CoveredDayTender): TenderArrival {
+  return TENDER_ARRIVAL[tender];
 }
 
 /**

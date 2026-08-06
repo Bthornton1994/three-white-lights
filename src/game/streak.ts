@@ -233,6 +233,14 @@
  *      to exist. See §3b of `streakEntitlement.ts`, and
  *      `PURCHASED_DAY_TOUCHING_FUNCTIONS` for the enforcement.
  *
+ *      AND THERE IS NOW A PROVENANCE ON THE TENDER TOO, one hop further out
+ *      again: `currencyProvenance.NonTrainingGatedTender`. Forbidding an
+ *      in-game action from awarding a covered day does nothing about an in-game
+ *      action awarding the CURRENCY that buys one, and the measured cost of
+ *      that hole is 105 / 305 / 733 / 785 violating pairs. The tender type is
+ *      the closure: a training-gated tender does not typecheck here. See §1 of
+ *      `currencyProvenance.ts`.
+ *
  *      AND FOR THE SHIPPED EXPIRING PRODUCT THE SPLIT IS UNOBSERVABLE, proved
  *      over every split at every sum rather than argued: `(b, p)` and
  *      `(b + p, 0)` behave identically forever, because both counters reset
@@ -580,6 +588,13 @@
  *     does not know or care.
  */
 
+import {
+  TENDER_CURRENCY,
+  isCoveredDayTender,
+  isNonTrainingGatedTender,
+  type NonTrainingGatedTender,
+  type TenderCurrency,
+} from './currencyProvenance';
 import {
   MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW,
   RECOVERY_ENTITLEMENT,
@@ -1002,6 +1017,21 @@ export type StreakErrorCode =
   | 'INVALID_GRANT'
   /** A settled covered-day purchase was malformed (GDD §8.3E). */
   | 'INVALID_PURCHASE'
+  /**
+   * The order tried to pay for a covered day with currency the lifter earned by
+   * TRAINING — achievement Chalk, a season-pass tier's Chalk (GDD §8.2, §8.3E).
+   *
+   * SEPARATE FROM `INVALID_PURCHASE` because it is a separate thing to tell
+   * somebody. A malformed order is a bug; this one is a real balance being
+   * refused for one specific purchase while staying valid for every other, and
+   * a store that reports "invalid purchase" for it will generate a support
+   * ticket nobody can answer.
+   *
+   * IT IS THE SECOND LINE. The first is that `SettledCoveredDayPurchase.tender`
+   * does not typecheck against a training-gated tender at all, so no TypeScript
+   * caller can produce this code. A JSON wire payload can.
+   */
+  | 'TRAINING_FUNDED_TENDER'
   /** A migration tried to set a signup day later than a recorded session. */
   | 'SIGNUP_DAY_AFTER_TRAINING';
 
@@ -1759,62 +1789,30 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
 // ---------------------------------------------------------------------------
 
 /**
- * What a covered day may be bought WITH. No third option, and in particular no
- * `'earned'`, `'milestone'` or `'achievement'` member: GDD §8.3E's condition 3
- * says a purchased covered day is never earnable, and the way to keep that true
- * is to leave the vocabulary for earning it out of the type.
+ * THE TENDER VOCABULARY MOVED OUT OF THIS FILE, and the move is the fix rather
+ * than a tidy-up.
  *
- * Both members are real payments. A caller that wants to hand a player a
- * covered day for free wants `creditCoveredDays(..., 'window-entitlement')` and
- * a calendar-keyed day to hand it on — see GDD §8.3C.
+ * It used to be two members here — `['chalk', 'real-money']` — plus a map
+ * asserting that Chalk arrives by `'calendar-or-payment'`. That assertion was
+ * FALSE, and falsifiably so: GDD §8.2 pays Chalk for achievements and §8.3C
+ * pays it on season-pass tiers, both of which a lifter's training moves. A
+ * covered day funded by that Chalk measured 105 / 305 / 733 / 785 violating
+ * pairs at 40 / 60 / 80 / 100 days against 0 for the same purse funded on the
+ * calendar — and against 0 for no purchase at all, so the purchase CREATED
+ * them.
+ *
+ * The map could not have caught it, because it was keyed to the CURRENCY and
+ * the hazard is in the PROVENANCE. `currencyProvenance.ts` is keyed to the
+ * provenance, and `SettledCoveredDayPurchase.tender` below is typed as the
+ * derived non-training-gated subset, so achievement Chalk fails `tsc` at every
+ * call site rather than being caught by a check somebody has to remember to
+ * write. `streak.test.ts` walks the escalation a new tender would have to make
+ * it through, and `currencyProvenance.test.ts` owns the vocabulary tests.
+ *
+ * WHAT DID NOT MOVE: the runtime refusal is still in this file, in
+ * `applySettledCoveredDayPurchase`, because a settled order arrives as JSON and
+ * JSON does not typecheck.
  */
-export const COVERED_DAY_TENDERS = ['chalk', 'real-money'] as const;
-
-export type CoveredDayTender = (typeof COVERED_DAY_TENDERS)[number];
-
-/**
- * THE COMPLETE SET OF WAYS A TENDER MAY ARRIVE IN A PLAYER'S HANDS — and there
- * is deliberately no `'training'` member.
- *
- * WHY THIS EXISTS RATHER THAN JUST THE LIST ABOVE. The list on its own is a
- * list: adding `'milestone'` to it costs one word, and `applySettledCovered
- * DayPurchase` would then accept a covered day awarded for a streak while every
- * other guard in this codebase stayed green. That is precisely "true by the
- * current absence of a code path" rather than enforced, which is what GDD
- * §8.3E's condition 3 rules out.
- *
- * So every tender has to declare how it reaches the player, and the only
- * answers available are ones training cannot move:
- *
- *   - `'payment'` — real money. A player buys when they choose to; one extra
- *     trained day does not move the day they choose.
- *   - `'calendar-or-payment'` — bought, or trickled on a calendar-dated event
- *     or a rewarded ad. GDD §8.2 has the measurement that forbids the third
- *     option, and it forbids it one hop out: a currency that buys coverage IS
- *     coverage, so Chalk earned for an achievement is a covered day earned for
- *     an achievement.
- *
- * ADDING A TRAINING-KEYED TENDER THEREFORE COSTS THREE VISIBLE EDITS, and the
- * escalation was walked rather than assumed: a new tender fails `tsc` at the
- * map below until it declares an arrival; declaring `'training'` fails `tsc`
- * again until `TENDER_ARRIVALS` is widened; widening it fails `streak.test.ts`,
- * which rejects any arrival whose name says training, streak, session,
- * milestone, achievement, tier, progress or earn.
- *
- * THE FOURTH STEP GETS THROUGH, and it is named rather than glossed: an arrival
- * called `'q7'` satisfies all three. The vocabulary check is a floor. The
- * load-bearing part is that the answer has to be written down at all, here,
- * under the paragraph saying why it may not be a training one.
- */
-export const TENDER_ARRIVALS = ['payment', 'calendar-or-payment'] as const;
-
-export type TenderArrival = (typeof TENDER_ARRIVALS)[number];
-
-/** Exhaustive by `satisfies`: a new tender cannot ship without an answer. */
-export const COVERED_DAY_TENDER_ARRIVAL = {
-  chalk: 'calendar-or-payment',
-  'real-money': 'payment',
-} as const satisfies Readonly<Record<CoveredDayTender, TenderArrival>>;
 
 /**
  * THE COMPLETE SET OF FIELDS A SETTLED PURCHASE MAY CARRY. Same mechanism as
@@ -1843,8 +1841,17 @@ export interface SettledCoveredDayPurchase {
   readonly orderId: string;
   /** Covered days bought. Flat quantity at a flat price; never rolled. */
   readonly coveredDays: number;
-  /** What it was paid with. */
-  readonly tender: CoveredDayTender;
+  /**
+   * WHAT IT WAS PAID WITH, INCLUDING WHERE THAT MONEY CAME FROM.
+   *
+   * `NonTrainingGatedTender` and not `CoveredDayTender`: the training-gated
+   * tenders are real, they exist in real wallets, and they buy everything else
+   * Chalk buys. They cannot appear here, and "cannot" means the compiler says
+   * so — `tender: 'chalk-achievement'` does not build. §1 of
+   * `currencyProvenance.ts` has the measurement that makes this the field's
+   * type rather than a validation.
+   */
+  readonly tender: NonTrainingGatedTender;
 }
 
 /** Compile-time assertion, same mechanism as `RECOVERY_DAY_REACH_IS_STREAK_ONLY`. */
@@ -1863,6 +1870,7 @@ export const COVERED_DAY_PURCHASE_OUTCOME_KEYS = [
   'state',
   'orderId',
   'tender',
+  'currency',
   'coveredDaysCredited',
   'coveredDaysAvailableAfter',
   'expiresAfterDay',
@@ -1880,7 +1888,19 @@ export type CoveredDayPurchaseOutcomeKey = (typeof COVERED_DAY_PURCHASE_OUTCOME_
 export interface CoveredDayPurchaseOutcome {
   readonly state: StreakState;
   readonly orderId: string;
-  readonly tender: CoveredDayTender;
+  /**
+   * The tender, reported back at full provenance. REPORTED, NEVER SILENT
+   * applied to the funding: a receipt that says only "Chalk" cannot be audited
+   * against the rule that some Chalk may not have paid for this.
+   */
+  readonly tender: NonTrainingGatedTender;
+  /**
+   * What that tender is denominated in, for a receipt that wants to say "3
+   * Chalk" without knowing about provenance. DERIVED from `tender` through
+   * `TENDER_CURRENCY`, never taken from the order, so the two can never
+   * disagree about what was spent.
+   */
+  readonly currency: TenderCurrency;
   /** Covered days that actually landed. Equal to `purchase.coveredDays`. */
   readonly coveredDaysCredited: number;
   /** Coverage in this window afterwards — the free side and the bought side. */
@@ -1925,6 +1945,15 @@ export const COVERED_DAY_PURCHASE_OUTCOME_IS_COVERAGE_ONLY: KeysAreExactly<
  * no `(state, day)` call that produces a purchased day; `recordTrainingDay`
  * still takes two arguments and there is no parameter on it for this.
  *
+ * AND IT CANNOT BE REACHED FROM A GAME EVENT ONE HOP OUT EITHER, which is the
+ * hole the sentence above did not cover. An in-game action that pays CHALK, and
+ * a player who spends that Chalk here, is a covered day whose arrival day the
+ * lifter's training moved — measured at 105 / 305 / 733 / 785 violating pairs
+ * against 0 for the same purse funded on the calendar. `purchase.tender` is
+ * therefore typed `NonTrainingGatedTender`, so training-funded money does not
+ * compile into this call, and the body refuses it again for callers that are
+ * not compiled at all.
+ *
  * WHAT IT DELIBERATELY DOES NOT TOUCH: `currentStreak`, `longestStreak`,
  * `lastTrainedDay`, `entitlementArmed`, `recoveryDayProtectionEnabled` and
  * `hasBankedFirstRecoveryDaySave`. Only `entitlement` moves, and only its
@@ -1946,7 +1975,27 @@ export function applySettledCoveredDayPurchase(
   if (typeof purchase.orderId !== 'string' || purchase.orderId.length === 0) {
     return fail('INVALID_PURCHASE', 'A covered-day purchase must name the order that settled it.');
   }
-  if (!COVERED_DAY_TENDERS.includes(purchase.tender)) {
+  // THE SECOND LINE, AND IT IS NOT THE FIRST ONE. The first is the type of
+  // `purchase.tender`: `NonTrainingGatedTender` excludes every training-gated
+  // tender by construction, so a TypeScript caller writing
+  // `tender: 'chalk-achievement'` does not compile. This is here for the
+  // callers that are not TypeScript — a settled order decoded from an Edge
+  // Function response is JSON, and JSON has no types.
+  //
+  // TWO REFUSALS, NOT ONE, because they are different mistakes and a receipt
+  // that conflates them is a support ticket nobody can answer. `'milestone'` is
+  // not a way to pay for anything; `'chalk-achievement'` is real money that is
+  // valid for cosmetics and invalid for this.
+  if (!isNonTrainingGatedTender(purchase.tender)) {
+    // A known tender that failed the gate can only have failed it for one
+    // reason, since the two subsets partition the list
+    // (`TENDER_GATING_IS_A_PARTITION`).
+    if (isCoveredDayTender(purchase.tender)) {
+      return fail(
+        'TRAINING_FUNDED_TENDER',
+        'Covered days cannot be paid for with currency earned by training. That balance still buys everything else.',
+      );
+    }
     return fail('INVALID_PURCHASE', 'A covered day can only be bought, never awarded.');
   }
   if (!Number.isSafeInteger(purchase.coveredDays) || purchase.coveredDays < 1) {
@@ -1995,6 +2044,7 @@ export function applySettledCoveredDayPurchase(
     },
     orderId: purchase.orderId,
     tender: purchase.tender,
+    currency: TENDER_CURRENCY[purchase.tender],
     coveredDaysCredited: credit.credited,
     coveredDaysAvailableAfter: credit.availableAfter,
     expiresAfterDay,

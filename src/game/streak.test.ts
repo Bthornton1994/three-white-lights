@@ -6,8 +6,6 @@ import { describe, expect, it } from 'vitest';
 import {
   LONGEST_REPAIRABLE_ABSENCE_DAYS,
   RECOVERY_DAY_GUARDRAILS,
-  COVERED_DAY_TENDERS,
-  COVERED_DAY_TENDER_ARRIVAL,
   RECOVERY_DAY_OUTCOME_KEYS,
   RECOVERY_DAY_PROTECTION,
   STREAK_DAY_BOUNDARY,
@@ -39,8 +37,6 @@ import {
   streakDayFromCivilDate,
   streakDayFromLocalWallClock,
   streakDeadlineDay,
-  TENDER_ARRIVALS,
-  type CoveredDayTender,
   type DayOpening,
   type LegacyStreakStateWithBalance,
   type StreakDay,
@@ -48,6 +44,15 @@ import {
   type StreakState,
 } from './streak';
 import * as streakModule from './streak';
+import {
+  COVERED_DAY_TENDERS,
+  NON_TRAINING_GATED_TENDERS,
+  TENDER_ARRIVAL,
+  TENDER_ARRIVALS,
+  TENDER_CURRENCY,
+  TRAINING_GATED_TENDERS,
+  type NonTrainingGatedTender,
+} from './currencyProvenance';
 import {
   MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW,
   RECOVERY_ENTITLEMENT,
@@ -181,9 +186,22 @@ function stateWithRun(streakLength: number, lastDay: StreakDay, balance: number)
   };
 }
 
-/** The entitlement window a day falls in, for a fixture anchored at SIGNUP_DAY. */
+/**
+ * The entitlement window a day falls in, for an account created on `signupDay`.
+ *
+ * IT TAKES THE ANCHOR because the window grid is anchored at signup, and the
+ * sweeps below deliberately vary that anchor to move a window boundary INSIDE a
+ * short calendar. A fixture that could only ever be anchored at `SIGNUP_DAY`
+ * cannot reach a boundary at ten days, which is how a stale-snapshot comparison
+ * survived in the exhaustive sweep for as long as it did.
+ */
+function windowIndexFor(signupDay: StreakDay, day: StreakDay): number {
+  return Math.floor((day - signupDay) / RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+}
+
+/** The same, for the fixtures anchored at `SIGNUP_DAY` — which is most of them. */
 function windowOf(day: StreakDay): number {
-  return Math.floor((day - SIGNUP_DAY) / RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+  return windowIndexFor(SIGNUP_DAY, day);
 }
 
 /**
@@ -284,7 +302,12 @@ describe('purity contract', () => {
     // purity scan of its own. `streakEntitlement.test.ts` scans
     // `streakEntitlement.ts` the same way this scans `streak.ts`, so the
     // guarantee composes instead of stopping at the import.
-    const PURE_SIBLINGS: readonly string[] = ['./streakEntitlement'];
+    //
+    // `./currencyProvenance` joined it with the tender-provenance fix, and it
+    // qualifies on the same terms: it is a LEAF (it imports nothing at all) and
+    // `currencyProvenance.test.ts` scans it for the same host reaches this
+    // block scans `streak.ts` for.
+    const PURE_SIBLINGS: readonly string[] = ['./currencyProvenance', './streakEntitlement'];
 
     const specifiers = [...code.matchAll(/^\s*import[\s\S]*?from\s*['"]([^'"]+)['"]/gm)].map(
       (match) => match[1] as string,
@@ -1675,7 +1698,7 @@ describe('the window entitlement', () => {
       applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
         orderId: 'order-1',
         coveredDays: 5,
-        tender: 'chalk',
+        tender: 'chalk-purchased',
       }),
     );
     let state: StreakState = bought.state;
@@ -1728,7 +1751,7 @@ describe('the window entitlement', () => {
       applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
         orderId: 'order-1',
         coveredDays: 3,
-        tender: 'chalk',
+        tender: 'chalk-purchased',
       }),
     ).state;
     const held = seed.entitlement.purchasedDaysLeft;
@@ -1752,7 +1775,7 @@ describe('the window entitlement', () => {
       [seed, 99],
       [day],
       [99],
-      [seed, day, { orderId: '', coveredDays: 99, tender: 'chalk' }],
+      [seed, day, { orderId: '', coveredDays: 99, tender: 'chalk-purchased' }],
       [seed, day, { orderId: 'x', coveredDays: 99, tender: 'milestone' }],
       [seed, day, { orderId: 'x', coveredDays: 99 }],
     ];
@@ -1813,7 +1836,7 @@ describe('the window entitlement', () => {
         applySettledCoveredDayPurchase(state, DAY_ZERO, {
           orderId: `order-${i}`,
           coveredDays: 1,
-          tender: 'chalk',
+          tender: 'chalk-purchased',
         }),
       ).state;
     }
@@ -1857,47 +1880,107 @@ describe('the window entitlement', () => {
     expect(bought.longestStreakUnchanged).toBe(bought.state.longestStreak);
   });
 
-  it('NO TENDER ARRIVES BY TRAINING — the list of ways to pay cannot grow an earned one quietly', () => {
-    // The last route condition 3 left open. `COVERED_DAY_TENDERS` on its own is
-    // a list, and adding `'milestone'` to it costs one word — after which
-    // `applySettledCoveredDayPurchase` would accept a covered day awarded for a
-    // streak with every other guard in this codebase still green. That is
-    // exactly "true by the current absence of a code path".
+  it('NO TENDER ARRIVES BY TRAINING — AT RUNTIME, for the callers the compiler never sees', () => {
+    // THE SECOND LINE OF THE PROVENANCE FIX, and this test exists BECAUSE the
+    // first line cannot be tested from TypeScript: `tender` is typed
+    // `NonTrainingGatedTender`, so the honest way to write the illegal call
+    // does not compile at all. `currencyProvenance.test.ts` owns the structural
+    // half; this one casts past the type on purpose, exactly as a JSON payload
+    // decoded from an Edge Function response does.
     //
-    // `COVERED_DAY_TENDER_ARRIVAL` makes it cost an answer instead, and the
-    // available answers are the ones training cannot move.
-    expect(Object.keys(COVERED_DAY_TENDER_ARRIVAL).sort()).toEqual([...COVERED_DAY_TENDERS].sort());
-    for (const tender of COVERED_DAY_TENDERS) {
-      expect(TENDER_ARRIVALS).toContain(COVERED_DAY_TENDER_ARRIVAL[tender]);
+    // WHAT THE OLD VERSION OF THIS TEST CHECKED AND WHY IT WAS NOT ENOUGH. It
+    // asserted that every tender declares an arrival and that no arrival is
+    // NAMED after something training reaches. Both were true of the shipped
+    // code while the shipped code accepted achievement Chalk, because the
+    // tender was `'chalk'` and its declared arrival was `'calendar-or-payment'`
+    // — a true-sounding claim about a currency, made where the fact lives on
+    // the individual units. The measurement that fell out of that hole is
+    // 105 / 305 / 733 / 785 violating pairs.
+    type Wire = Parameters<typeof applySettledCoveredDayPurchase>[2];
+    const asWire = (tender: string): Wire =>
+      ({ orderId: 'order-1', coveredDays: 1, tender } as unknown as Wire);
+
+    // EVERY TRAINING-GATED TENDER IS REFUSED, enumerated from the derived list
+    // rather than spelled out, so a tender re-tagged in `TENDER_ARRIVAL` is
+    // covered here without anybody editing this test.
+    expect(TRAINING_GATED_TENDERS.length, 'a partition with an empty side restricts nothing').toBeGreaterThan(0);
+    for (const tender of TRAINING_GATED_TENDERS) {
+      const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, asWire(tender));
+      expect(outcome.ok, `${tender} must not be able to buy a covered day`).toBe(false);
+      // A DISTINCT CODE, not `INVALID_PURCHASE`. This is a real balance being
+      // refused for one purchase while staying valid for every other, and a
+      // store that says "invalid purchase" to that is lying to the player.
+      if (!outcome.ok) expect(outcome.error.code).toBe('TRAINING_FUNDED_TENDER');
     }
-    // NO ARRIVAL NAMES SOMETHING THE LIFTER DOES. A floor, not a guarantee —
-    // an arrival called `'q7'` satisfies it — but the load-bearing half is that
-    // a new tender has to declare an arrival at all, in `streak.ts`, under the
-    // paragraph that says why it may not be a training one.
-    for (const arrival of TENDER_ARRIVALS) {
-      expect(arrival, `arrival ${arrival} names something training reaches`).not.toMatch(
-        /train|streak|session|milestone|achiev|tier|progress|earn/i,
-      );
-    }
-    // And the refusal really is keyed to the list rather than to a hardcoded
-    // pair, so a tender removed from it stops being accepted.
-    for (const notATender of ['milestone', 'achievement', 'streak', 'free', '']) {
-      const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
-        orderId: 'order-1',
-        coveredDays: 1,
-        tender: notATender as CoveredDayTender,
-      });
+    // AND SOMETHING THAT IS NOT A TENDER AT ALL IS A DIFFERENT REFUSAL.
+    for (const notATender of ['milestone', 'achievement', 'streak', 'free', 'chalk', '']) {
+      const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, asWire(notATender));
       expect(outcome.ok, `${notATender} must not be a way to obtain a covered day`).toBe(false);
       if (!outcome.ok) expect(outcome.error.code).toBe('INVALID_PURCHASE');
     }
-    // Both real tenders work, so the refusal above is not refusing everything.
-    for (const tender of COVERED_DAY_TENDERS) {
+    // `'chalk'` IS IN THAT LIST DELIBERATELY. It was the shipped tender one
+    // commit ago and it is now a refusal, because "Chalk" is not an answer to
+    // "where did this money come from".
+
+    // AND EVERY NON-TRAINING-GATED TENDER WORKS, so the refusals above are not
+    // refusing everything — and the receipt reports the provenance it was paid
+    // with, not just the currency.
+    expect(NON_TRAINING_GATED_TENDERS.length).toBeGreaterThan(0);
+    for (const tender of NON_TRAINING_GATED_TENDERS) {
       const outcome = applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
         orderId: 'order-1',
         coveredDays: 1,
         tender,
       });
       expect(outcome.ok, `${tender} must be a way to buy one`).toBe(true);
+      if (outcome.ok) {
+        expect(outcome.value.tender).toBe(tender);
+        expect(outcome.value.currency).toBe(TENDER_CURRENCY[tender]);
+      }
+    }
+    // The two halves really are the whole list, so "every tender is checked
+    // above" is a fact rather than a hope.
+    expect([...NON_TRAINING_GATED_TENDERS, ...TRAINING_GATED_TENDERS].sort()).toEqual(
+      [...COVERED_DAY_TENDERS].sort(),
+    );
+  });
+
+  it('THE ESCALATION A TRAINING-KEYED TENDER WOULD HAVE TO WALK, walked rather than assumed', () => {
+    // GDD §8.3E's condition 3 asks for enforcement rather than absence, and the
+    // honest way to check enforcement is to ask what it costs to break it.
+    //
+    //   1. A NEW TENDER fails `tsc` at `TENDER_CURRENCY` and at `TENDER_ARRIVAL`
+    //      until it declares both. Neither map has a default.
+    //   2. DECLARING `'session-count'` makes it a `TrainingGatedTender` by
+    //      construction, so `SettledCoveredDayPurchase.tender` rejects it and
+    //      the runtime refuses it. Nothing else has to be edited for that to
+    //      happen, and nothing else CAN be edited to stop it.
+    //   3. THE ONLY WIDENING EDIT is re-tagging an arrival in `ARRIVAL_GATING`,
+    //      which is one word — and it is one word in a table with the
+    //      measurement printed above it, which fails this test.
+    //
+    // Step 1 and step 2 are `tsc`'s to enforce and are demonstrated by the
+    // module compiling at all. This is step 3.
+    expect(TENDER_ARRIVALS).toContain('session-count');
+    for (const tender of COVERED_DAY_TENDERS) {
+      const arrival = TENDER_ARRIVAL[tender];
+      // A TENDER WHOSE NAME SAYS TRAINING MUST ARRIVE BY `'session-count'`.
+      // A floor and not a ceiling — a tender called `'chalk-q7'` paid on
+      // achievements satisfies it — but it catches the honest mistake, which is
+      // adding `'chalk-milestone'` and tagging it `'calendar'` by copy-paste.
+      if (/streak|session|milestone|achiev|tier|progress|earn/i.test(tender)) {
+        expect(arrival, `${tender} names something training reaches`).toBe('session-count');
+      }
+    }
+    // AND THE VERDICT ON THAT ARRIVAL IS THE ONE THE MEASUREMENT SUPPORTS.
+    // Flipping it is the single edit that reopens 105 / 305 / 733 / 785
+    // violating pairs, and this is the assertion that goes red when somebody
+    // does.
+    for (const tender of TRAINING_GATED_TENDERS) {
+      expect(TENDER_ARRIVAL[tender]).toBe('session-count');
+    }
+    for (const tender of NON_TRAINING_GATED_TENDERS) {
+      expect(TENDER_ARRIVAL[tender]).not.toBe('session-count');
     }
   });
 
@@ -1933,7 +2016,7 @@ describe('the window entitlement', () => {
               applySettledCoveredDayPurchase(base, day, {
                 orderId: `order-${checked}`,
                 coveredDays,
-                tender: 'chalk',
+                tender: 'chalk-purchased',
               }),
             );
             const grew = outcome.state.entitlement.purchasedDaysLeft - base.entitlement.purchasedDaysLeft;
@@ -2577,7 +2660,7 @@ describe('what a purchased Recovery Day can reach', () => {
       applySettledCoveredDayPurchase(freshState(), DAY_ZERO, {
         orderId: 'order-1',
         coveredDays: 2,
-        tender: 'chalk',
+        tender: 'chalk-purchased',
       }),
     ).state;
     // The comparator: a lifter with the same TOTAL coverage, all of it free.
@@ -2785,7 +2868,7 @@ function simulate(
       const bought = applySettledCoveredDayPurchase(state, day, {
         orderId: `sim-${i}`,
         coveredDays: grantSize,
-        tender: 'chalk',
+        tender: 'chalk-purchased',
       });
       if (!bought.ok) throw new Error(`day ${i}: the simulated purchase was refused (${bought.error.code})`);
       state = bought.value.state;
@@ -3546,33 +3629,165 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // THE NAME SAYS "PROTECTION DECLINED" BECAUSE THAT IS THE WHOLE OF WHAT IS
     // CHECKED. With protection on this property is FALSE, by an unbounded
     // margin — see the tests below.
+    //
+    // RUN TWICE, AT TWO PLACEMENTS ON THE WINDOW GRID, and the second placement
+    // is the fix to a real defect rather than extra credit. This sweep used to
+    // run once, at a signup day that put all ten calendar days inside window 0,
+    // and to compare coverage on `coveredDaysLeftInWindow` — the SNAPSHOT. A
+    // snapshot is stale the moment its window turns over, so that comparison is
+    // only sound while no pair can straddle a boundary. It could not, at this
+    // length and that anchor, so the sweep was clean for a reason that had
+    // nothing to do with the property: "empirically clean at the lengths we
+    // happened to test", which is the shape that hid two defects on this module
+    // already. The `straddling` arm makes the boundary reachable, `withBuys`
+    // puts real purchased days in the field for it to be stale ABOUT, and the
+    // comparison now reads what the DAY has.
     const LENGTH = 10;
-    const initial: StreakState = {
-      ...freshState(),
-      entitlement: withCoveredDays(2),
-      recoveryDayProtectionEnabled: false,
-      entitlementArmed: false,
-    };
+    const BOUNDARY_AT = 5;
+    const placements = [
+      { label: 'interior', signupDay: SIGNUP_DAY },
+      // Signing up 25 days before day 0 puts the window boundary on day 5 of a
+      // ten-day calendar, at the shipped `WINDOW_DAYS` of 30.
+      {
+        label: 'straddling',
+        signupDay: asStreakDay(SIGNUP_DAY - (RECOVERY_ENTITLEMENT.WINDOW_DAYS - BOUNDARY_AT)),
+      },
+    ] as const;
     const noGrants = Array.from({ length: LENGTH }, () => false);
+    // Two purchases inside the FIRST window, so the counter is populated before
+    // any pair can cross the boundary. A sweep with nothing in the bought
+    // counter cannot see a reading go stale about it.
+    const withBuys = Array.from({ length: LENGTH }, (_, i) => i === 1 || i === 3);
     let casesChecked = 0;
+    let straddled = 0;
 
-    for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
-      const attend = Array.from({ length: LENGTH }, (_, i) => (mask & (1 << i)) !== 0);
-      for (let flip = 0; flip < LENGTH; flip += 1) {
-        if (attend[flip] === true) continue;
-        const attendMore = attend.map((trained, i) => (i === flip ? true : trained));
-        const lazy = simulate(attend, noGrants, initial, 'daily', true);
-        const diligent = simulate(attendMore, noGrants, initial, 'daily', true);
-        casesChecked += 1;
+    for (const placement of placements) {
+      for (const buys of [noGrants, withBuys]) {
+        const initial: StreakState = {
+          ...createStreakState(placement.signupDay),
+          entitlement: withCoveredDays(2, windowIndexFor(placement.signupDay, DAY_ZERO)),
+          recoveryDayProtectionEnabled: false,
+          entitlementArmed: false,
+        };
+        for (let mask = 0; mask < 1 << LENGTH; mask += 1) {
+          const attend = Array.from({ length: LENGTH }, (_, i) => (mask & (1 << i)) !== 0);
+          for (let flip = 0; flip < LENGTH; flip += 1) {
+            if (attend[flip] === true) continue;
+            const attendMore = attend.map((trained, i) => (i === flip ? true : trained));
+            const lazy = simulate(attend, buys, initial, 'daily', true);
+            const diligent = simulate(attendMore, buys, initial, 'daily', true);
+            casesChecked += 1;
+            if (
+              lazy.state.entitlement.windowIndex !== diligent.state.entitlement.windowIndex
+            ) {
+              straddled += 1;
+            }
 
-        expect(diligent.state.currentStreak).toBeGreaterThanOrEqual(lazy.state.currentStreak);
-        expect(diligent.state.longestStreak).toBeGreaterThanOrEqual(lazy.state.longestStreak);
-        expect(coveredDaysLeftInWindow(diligent.state)).toBeGreaterThanOrEqual(coveredDaysLeftInWindow(lazy.state));
-        expect(diligent.recoveryDaysSpent).toBe(0);
-        expect(lazy.recoveryDaysSpent).toBe(0);
+            expect(diligent.state.currentStreak).toBeGreaterThanOrEqual(lazy.state.currentStreak);
+            expect(diligent.state.longestStreak).toBeGreaterThanOrEqual(lazy.state.longestStreak);
+            // COMPARED ON THE DAY, NOT ON THE SNAPSHOT. See `coverageAvailableOn`.
+            const lastDay = addDays(DAY_ZERO, LENGTH - 1);
+            expect(coverageAvailableOn(diligent.state, lastDay)).toBeGreaterThanOrEqual(
+              coverageAvailableOn(lazy.state, lastDay),
+            );
+            expect(diligent.recoveryDaysSpent).toBe(0);
+            expect(lazy.recoveryDaysSpent).toBe(0);
+          }
+        }
       }
     }
-    expect(casesChecked).toBe(5120);
+    expect(casesChecked).toBe(5120 * 4);
+    // NOT VACUOUS: the two members of a pair really do end up snapshotted in
+    // different windows in this population. Without this the `straddling` arm
+    // could be a copy of the `interior` one under another name, which is
+    // exactly the failure the arm was added to prevent.
+    expect(straddled, 'no pair ever straddled a window boundary, so the second arm adds nothing').toBeGreaterThan(0);
+  });
+
+  it('THE STALE SNAPSHOT, PINNED: `coveredDaysLeftInWindow` inverts at a boundary and the day reading does not', () => {
+    // THE DEFECT THE PURCHASES EXPOSED, as its own named case rather than as a
+    // comment on the line that works around it.
+    //
+    // WHAT IT IS. `coveredDaysLeftInWindow(state)` reports the snapshot: what
+    // was left in the window the lifter's LAST EVENT fell in. It takes no day
+    // and cannot take one. So when two lifters' last events fall in different
+    // windows, the two numbers are not comparable — the earlier one has not had
+    // its window refreshed yet, and the later one has. Comparing them is
+    // comparing a September balance against an October one.
+    //
+    // WHY NOTHING CAUGHT IT FOR SO LONG. Until GDD §8.3E was ruled in, nothing
+    // could put a number into `purchasedDaysLeft`, and the free counter refills
+    // to the same value in every window — so the stale number and the fresh one
+    // were equal and the bug was invisible. A purchase makes the two windows
+    // hold different amounts, and the sweep failed with "2 against 5".
+    //
+    // IT IS PINNED IN BOTH DIRECTIONS. The stale reading really does invert
+    // (so the workaround is necessary), and the day reading really does not (so
+    // the workaround is sufficient). A test that only asserted the second would
+    // pass if somebody "fixed" `coveredDaysLeftInWindow` to take a day, and the
+    // reader would never learn why the sweep is written the way it is.
+    const WINDOW = RECOVERY_ENTITLEMENT.WINDOW_DAYS;
+    const signupDay = asStreakDay(DAY_ZERO - WINDOW);
+    const inFirstWindow = asStreakDay(DAY_ZERO - 1);
+    const inSecondWindow = DAY_ZERO;
+    expect(windowIndexFor(signupDay, inFirstWindow)).toBe(0);
+    expect(windowIndexFor(signupDay, inSecondWindow)).toBe(1);
+
+    // One lifter, three bought covered days, snapshotted at the end of window 0.
+    //
+    // PROTECTION DECLINED, THROUGH THE TOGGLE, so nothing is ever debited and
+    // the only thing moving these numbers is the window turning over. With
+    // protection ON the 29-day absence before the first session is doomed and
+    // burns the window, which would make this test about the burn rule instead
+    // of about the reading.
+    const base: StreakState = setRecoveryDayProtection(createStreakState(signupDay), false).state;
+    const bought = unwrap(
+      applySettledCoveredDayPurchase(base, inFirstWindow, {
+        orderId: 'order-1',
+        coveredDays: 3,
+        tender: 'chalk-purchased',
+      }),
+    ).state;
+    const staleInWindowZero = unwrap(recordTrainingDay(bought, inFirstWindow)).state;
+    // The same lifter, one extra trained day, so their snapshot is in window 1.
+    const freshInWindowOne = unwrap(recordTrainingDay(staleInWindowZero, inSecondWindow)).state;
+
+    // THE STALE READING INVERTS. The lifter who trained MORE reads LOWER,
+    // because their snapshot is a fresh window and the other's is a window with
+    // three purchased days still sitting in it. Neither number is wrong; the
+    // COMPARISON is, because the two are about different windows.
+    expect(coveredDaysLeftInWindow(staleInWindowZero)).toBe(
+      RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + 3,
+    );
+    expect(coveredDaysLeftInWindow(freshInWindowOne)).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
+    expect(
+      coveredDaysLeftInWindow(freshInWindowOne),
+      'if this stops inverting the sweeps may read the snapshot again — and the comment saying why they may not is wrong',
+    ).toBeLessThan(coveredDaysLeftInWindow(staleInWindowZero));
+
+    // THE DAY READING DOES NOT. Asked what each state has available ON THE SAME
+    // DAY, both refresh to the same window and the lifter who trained more is
+    // never behind. This is the reading every sweep in this file uses.
+    expect(coverageAvailableOn(staleInWindowZero, inSecondWindow)).toBe(
+      RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
+    );
+    expect(coverageAvailableOn(freshInWindowOne, inSecondWindow)).toBe(
+      RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW,
+    );
+    expect(coverageAvailableOn(freshInWindowOne, inSecondWindow)).toBeGreaterThanOrEqual(
+      coverageAvailableOn(staleInWindowZero, inSecondWindow),
+    );
+
+    // AND THE STALENESS IS EXACTLY THE WINDOW TURNOVER, not something about
+    // purchases: read on a day inside its OWN window, the snapshot agrees with
+    // the day reading. So the rule is "a snapshot is comparable only to a
+    // snapshot in the same window", which is what the sweeps encode.
+    expect(coverageAvailableOn(staleInWindowZero, inFirstWindow)).toBe(
+      coveredDaysLeftInWindow(staleInWindowZero),
+    );
+    expect(coverageAvailableOn(freshInWindowOne, inSecondWindow)).toBe(
+      coveredDaysLeftInWindow(freshInWindowOne),
+    );
   });
 
   it('PROPERTY, PROTECTION DECLINED: holds over long randomised histories with grants landing mid-run', () => {
