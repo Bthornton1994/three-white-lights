@@ -357,7 +357,7 @@ describe('purity contract', () => {
     expect(code).not.toMatch(/\bimport\s*\(/);
   });
 
-  it('never reads a clock', () => {
+  it('[never-reads-a-clock] never reads a clock', () => {
     expect(code).not.toMatch(/\bDate\b/);
     expect(code).not.toMatch(/\bperformance\s*\./);
     expect(code).not.toMatch(/\bhrtime\b/);
@@ -382,7 +382,7 @@ describe('purity contract', () => {
     expect(code).not.toMatch(/streakSave|StreakSave/);
   });
 
-  it('exposes no manual accept/decline path, because auto-protect replaced it', () => {
+  it('[no-accept-decline-path] exposes no manual accept/decline path, because auto-protect replaced it', () => {
     // THE INVERSE OF THE TEST THAT USED TO BE HERE. Before the GDD §4.2 ruling
     // this scan banned `autoApply`; the ruling made auto-protection the default
     // and deleted the prompt, so what must not come back is the prompt.
@@ -440,7 +440,7 @@ describe('purity contract', () => {
     expect(source).toMatch(/COVERAGE ARRIVING DURING AN ABSENCE DOES NOT COVER IT — and coverage CAN/);
   });
 
-  it('resolves an absence from the ENTITLEMENT SNAPSHOT and the calendar, and from nothing else', () => {
+  it('[absence-reads-the-armed-snapshot] resolves an absence from the ENTITLEMENT SNAPSHOT and the calendar, and from nothing else', () => {
     // The one-line reason the outcome cannot depend on when the app is opened.
     // Under the Recovery Day stock the danger was a grant landing mid-absence
     // and raising `recoveryDayBalance` where `absenceOutcome` could see it.
@@ -800,7 +800,7 @@ describe('tunable constants sit inside the ranges GDD §4.2 specifies', () => {
     expect(freshState().recoveryDayProtectionEnabled).toBe(true);
   });
 
-  it('MARKS milestones at 7 / 30 / 100 days and PAYS NOTHING FOR THEM', () => {
+  it('[milestones-pay-nothing] MARKS milestones at 7 / 30 / 100 days and PAYS NOTHING FOR THEM', () => {
     // GDD §4.2's Option 1 ruling deleted the earning table, and this is the
     // measurement that keeps it deleted rather than the comment that asks
     // nicely. A covered day granted at a streak length gives 54 violating pairs
@@ -1264,7 +1264,7 @@ describe('the free grace period (GDD §4.4)', () => {
     expect(opening.balanceIfBankedToday).toBe(RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW - 1);
   });
 
-  it('is recomputed from the absence rather than banked, so it never runs out', () => {
+  it('[grace-is-recomputed-not-banked] is recomputed from the absence rather than banked, so it never runs out', () => {
     // The grace is not a consumable and has no counter. A player who trains one
     // day in every GRACE + 1 holds a run open forever, spending nothing. This is
     // the accepted cost of the §4.4 ruling, pinned so it is on the record rather
@@ -1429,7 +1429,7 @@ describe('Recovery Day protection: armed ahead, revealed on return', () => {
     expect(outcome.streakAfter).toBe(1);
   });
 
-  it('cannot be armed by a Recovery Day that arrives during the absence', () => {
+  it('[mid-absence-arrival-cannot-arm] cannot be armed by a Recovery Day that arrives during the absence', () => {
     // "ARM AHEAD" IN ONE TEST, and the reason the outcome cannot depend on when
     // the player opens the app: a GDD §4.2 Gym Empire drop lands on a check-in,
     // so a grant that armed would be coverage bought by looking.
@@ -1562,7 +1562,7 @@ describe('the Recovery Day protection toggle', () => {
     expect(hopeless.reason).toBe('absence-longer-than-consecutive-limit');
   });
 
-  it('turning it OFF reaches the absence already in progress', () => {
+  it('[protection-toggle-is-not-a-refill] turning it OFF reaches the absence already in progress', () => {
     // The safe direction: it can only end a run early, never rescue one, so it
     // applies immediately and a player who declines cannot be charged for the
     // absence they are standing in.
@@ -1777,7 +1777,7 @@ describe('the window entitlement', () => {
     expect(entitlementWindowFor(spent, nextWindow)).toBe(1);
   });
 
-  it('A DOOMED ABSENCE TAKES WHAT IS LEFT, AND NO MORE THAN A WINDOW HOLDS', () => {
+  it('[doomed-absence-takes-what-is-left] A DOOMED ABSENCE TAKES WHAT IS LEFT, AND NO MORE THAN A WINDOW HOLDS', () => {
     // GDD §4.2 RULE 2, carried over. Dropping the burn measures 1051 violating
     // pairs at 60 days — worse than the stock it replaced — because it is the
     // only consumption idempotent under splitting an absence.
@@ -1789,7 +1789,7 @@ describe('the window entitlement', () => {
     expect(coveredDaysLeftInWindow(outcome.state)).toBe(0);
   });
 
-  it('NOTHING IN THE GAME AWARDS A PURCHASED DAY — every other entry point, driven, from a state that HAS some', () => {
+  it('[nothing-in-game-awards-a-purchased-day] NOTHING IN THE GAME AWARDS A PURCHASED DAY — every other entry point, driven, from a state that HAS some', () => {
     // GDD §8.3E CONDITION 3, behaviourally. `applySettledCoveredDayPurchase` is
     // the one function that may raise `purchasedDaysLeft`; this drives a long,
     // varied history through every OTHER transition and asserts the field never
@@ -1842,7 +1842,7 @@ describe('the window entitlement', () => {
     expect(highWater).toBe(5);
   });
 
-  it('AND EXHAUSTIVELY OVER THE EXPORT SURFACE: every exported function, called every way it can be', () => {
+  it('[export-surface-exhaustive] AND EXHAUSTIVELY OVER THE EXPORT SURFACE: every exported function, called every way it can be', () => {
     // THE GUARD THAT DOES NOT DEPEND ON THIS TEST REMEMBERING A FUNCTION. The
     // drive above names its transitions, so a NEW exported transition that
     // awards a purchased day would slip past it. This one enumerates the
@@ -1986,7 +1986,7 @@ describe('the window entitlement', () => {
     expect(bought.longestStreakUnchanged).toBe(bought.state.longestStreak);
   });
 
-  it('NO TENDER ARRIVES BY TRAINING — AT RUNTIME, for the callers the compiler never sees', () => {
+  it('[no-tender-arrives-by-training] NO TENDER ARRIVES BY TRAINING — AT RUNTIME, for the callers the compiler never sees', () => {
     // THE SECOND LINE OF THE PROVENANCE FIX, and this test exists BECAUSE the
     // first line cannot be tested from TypeScript: `tender` is typed
     // `NonTrainingGatedTender`, so the honest way to write the illegal call
@@ -2919,7 +2919,7 @@ describe('what a purchased Recovery Day can reach', () => {
     );
   });
 
-  it('cannot draw a longer streak out of coverage, only a surviving one', () => {
+  it('[coverage-protects-never-adds] cannot draw a longer streak out of coverage, only a surviving one', () => {
     // Under the stock this bought 99 Recovery Days first. There is nothing to
     // buy now, so the strongest case is a lifter whose window is always full —
     // which the loop below re-establishes every window anyway.
@@ -3573,7 +3573,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
     ).toBe('ABSENCE_ALREADY_DOOMED');
   });
 
-  it('THE 11-VERSUS-1 SCENARIO: a purchase during an absence cannot rescue it, in any intra-day order', () => {
+  it('[purchase-cannot-rescue-a-doomed-run] THE 11-VERSUS-1 SCENARIO: a purchase during an absence cannot rescue it, in any intra-day order', () => {
     // THE DEFECT THIS PIECE WAS REWORKED FOR, reproduced as its own test rather
     // than left to a sweep — because it was a sweep's blind spot that hid it.
     //
@@ -4904,7 +4904,7 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(Math.max(...FAMILY_RUN_LENGTHS)).toBe(1000);
   });
 
-  it('MONOTONICITY, EXHAUSTIVE: over every calendar of 8 to 16 days, one more trained day never loses ground', () => {
+  it('[monotonicity-exhaustive] MONOTONICITY, EXHAUSTIVE: over every calendar of 8 to 16 days, one more trained day never loses ground', () => {
     // THE MEASUREMENT THIS PIECE EXISTS FOR. The calendars come from
     // `streakSweep.ts` — all 2^L at each length, every single-day superset of
     // each — so the inputs are in the repository rather than in a helper here,
@@ -5903,7 +5903,7 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(announcedNonZero).toBeGreaterThan(0);
   });
 
-  it('training debits exactly what the absence it closes consumes, and nothing else', () => {
+  it('[training-is-the-only-debit] training debits exactly what the absence it closes consumes, and nothing else', () => {
     // The invariant that holds everywhere, restated for the charge-on-doom rule.
     // `recordTrainingDay` cannot take a Recovery Day for anything except the
     // absence it is closing, and cannot take one at all when nothing was missed.

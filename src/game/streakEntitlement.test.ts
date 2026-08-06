@@ -877,7 +877,7 @@ describe('a purchased covered day has a provenance, and the provenance is on the
     expect(bought.source).toBe('purchase');
   });
 
-  it('is credited by EXACTLY ONE source, and that source is the purchase', () => {
+  it('[one-source-credits-a-purchased-day] is credited by EXACTLY ONE source, and that source is the purchase', () => {
     // Condition 3, at the level of the map rather than of the code. Re-point
     // `'window-entitlement'` at `purchasedDaysLeft` — which is what "an earned
     // day is really a purchased day" would look like as a diff — and this stops

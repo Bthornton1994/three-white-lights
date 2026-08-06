@@ -26,6 +26,7 @@
  * exactly one day, and epoch-millisecond division gets that wrong twice a year.
  *
  * THE TIMEZONE ITSELF IS NOT THIS MODULE'S BUSINESS AND IT NEVER LEARNS IT.
+ * `@guarantee never-reads-a-clock`
  * The caller resolves "now" to a local wall-clock date-time and converts:
  *
  *     streakDayFromLocalWallClock({ year, month, day, hour })
@@ -160,6 +161,7 @@
  *     hold cap and the earning table; GDD §8.3E then ruled the Extra Covered
  *     Day back in, so "can a Recovery Day arriving mid-absence arm it?" is a
  *     live question again and the answer is NO.
+ *     `@guarantee mid-absence-arrival-cannot-arm`
  *     `applySettledCoveredDayPurchase` is the only credit path — the callable
  *     surface's ONLY name matching /grant|credit|buy|purchase|award|earn/, and
  *     `streak.test.ts` asserts that list is exactly `['applySettledCovered
@@ -219,6 +221,7 @@
  * THE FOUR MECHANISMS BELOW ARE WHAT MAKES "IT ONLY PROTECTS A STREAK"
  * CHECKABLE RATHER THAN PROMISED, and they matter more now that money can reach
  * the mechanic than they did when nothing could. All four are mechanical:
+ * `@guarantee coverage-protects-never-adds`
  *
  *  (a) THE STATE ALLOWLIST. `STREAK_FACT_KEYS` is the complete list of fields
  *      `StreakState` may have. `RECOVERY_DAY_REACH_IS_STREAK_ONLY` is a
@@ -392,6 +395,7 @@
  * `max(0, len - grace)`, which is subadditive, so splitting can only consume
  * less; the doomed branch has no such arithmetic and needs "take everything
  * left" instead, because the second piece of a split then finds nothing.
+ * `@guarantee doomed-absence-takes-what-is-left`
  *
  * WHAT IS *NOT* GUARDED, said plainly because the opposite would be a claim
  * this file cannot back:
@@ -438,6 +442,7 @@
  *
  * ===========================================================================
  * 6. NEVER PUNISH DAILY ENGAGEMENT (CLAUDE.md, GDD §3.5, §12.3)
+ *    `@guarantee monotonicity-exhaustive`
  * ===========================================================================
  *
  * WHAT HOLDS, and is tested:
@@ -584,6 +589,7 @@
  *     Neither counterfactual can be run against this engine any more, because
  *     all three are variations on a stock; `streak.test.ts` keeps their results
  *     as pinned history and measures the replacement mechanism instead.
+ *     `@guarantee milestones-pay-nothing`
  *
  * WHAT IS STILL NOT PROVEN, said plainly because the opposite would be a claim
  * this file cannot back. The exhaustive half is a proof for calendars of 16
@@ -716,6 +722,7 @@ export const RECOVERY_DAY_GUARDRAILS = {
    * ABSENCE, which is why it is the one part never implicated in any of the
    * monotonicity defects this module has had. Everything stateful now lives in
    * `streakEntitlement.ts`, behind the property that file is verified against.
+   * `@guarantee grace-is-recomputed-not-banked`
    *
    * UNTUNED. 2 means "miss a weekend and nothing happens to you". Raising it
    * makes streaks harder to lose; lowering it to 0 restores the pre-§4.4
@@ -1861,6 +1868,7 @@ export interface TrainingDayOutcome {
   /**
    * The Recovery Day save this session banked, or null if there was nothing to
    * bank. THE ONLY PLACE A RECOVERY DAY IS EVER SPENT.
+   * `@guarantee training-is-the-only-debit`
    */
   readonly recoveryDaySave: RecoveryDaySave | null;
   /**
@@ -1882,6 +1890,7 @@ export interface TrainingDayOutcome {
    * days at a streak length. Kept on the outcome, and pinned at zero by
    * `streak.test.ts`, so that re-adding the payout is a visible edit here and a
    * red test rather than a quiet change to an earning table.
+   * `@guarantee milestones-pay-nothing`
    */
   readonly recoveryDaysGranted: number;
   readonly isNewLongestStreak: boolean;
@@ -1896,7 +1905,7 @@ export interface TrainingDayOutcome {
 /**
  * Records that the player trained on `day`. THE ONLY WAY `currentStreak`
  * INCREASES, THE ONLY WAY A RECOVERY DAY IS SPENT, AND THE ONLY WAY ONE IS
- * ARMED.
+ * ARMED. `@guarantee export-surface-exhaustive`
  *
  * Takes a day and nothing else: there is no parameter for a Recovery Day, a
  * purchase, a boost or a session quality, so nothing bought can change what
@@ -1907,6 +1916,7 @@ export interface TrainingDayOutcome {
  * `RECOVERY_DECISION_PENDING` here to stop a caller skipping the player's
  * prompt; GDD §4.2's auto-protect ruling deleted the prompt, and the error code
  * with it. Training is never blocked by the Recovery Day system.
+ * `@guarantee no-accept-decline-path`
  */
 export function recordTrainingDay(state: StreakState, day: StreakDay): StreakResult<TrainingDayOutcome> {
   if (day === state.lastTrainedDay) {
@@ -1973,7 +1983,7 @@ export function recordTrainingDay(state: StreakState, day: StreakDay): StreakRes
       // ARMING, AND IT IS THE ONLY UNCONDITIONAL WRITE TO THIS FIELD. Whatever
       // the session leaves in the window — purchases included, because they are
       // in `entitlementAfter` — is what the NEXT absence draws on, and today is
-      // the day that fixes it.
+      // the day that fixes it. `@guarantee absence-reads-the-armed-snapshot`
       armedEntitlement: entitlementAfter,
       entitlementArmed: state.recoveryDayProtectionEnabled,
       recoveryDayProtectionEnabled: state.recoveryDayProtectionEnabled,
@@ -2203,10 +2213,12 @@ export const DOOMED_SALE_REFUSAL_MESSAGE = {
  * that reads that list is exact in both directions — so an in-game action that
  * awards a purchased day is a red test rather than a design change nobody
  * noticed. `streak.test.ts` proves that by mutation rather than claiming it.
+ * `@guarantee nothing-in-game-awards-a-purchased-day`
  *
  * IT CANNOT BE REACHED FROM A GAME EVENT. It takes a settled order, so there is
  * no `(state, day)` call that produces a purchased day; `recordTrainingDay`
  * still takes two arguments and there is no parameter on it for this.
+ * `@guarantee nothing-in-game-awards-a-purchased-day`
  *
  * AND IT CANNOT BE REACHED FROM A GAME EVENT ONE HOP OUT EITHER, which is the
  * hole the sentence above did not cover. An in-game action that pays CHALK, and
@@ -2215,7 +2227,7 @@ export const DOOMED_SALE_REFUSAL_MESSAGE = {
  * against 0 for the same purse funded on the calendar. `purchase.tender` is
  * therefore typed `NonTrainingGatedTender`, so training-funded money does not
  * compile into this call, and the body refuses it again for callers that are
- * not compiled at all.
+ * not compiled at all. `@guarantee no-tender-arrives-by-training`
  *
  * WHAT IT DELIBERATELY DOES NOT TOUCH: `currentStreak`, `longestStreak`,
  * `lastTrainedDay`, `armedEntitlement`, `entitlementArmed`,
@@ -2236,7 +2248,7 @@ export const DOOMED_SALE_REFUSAL_MESSAGE = {
  * `streak.test.ts` reproduces the failure it closes: a settled purchase applied
  * on the return day used to end the run at `currentStreak` 11 or 1 on the same
  * calendar for the same money, depending only on whether anything had called
- * `settleBrokenStreak` first.
+ * `settleBrokenStreak` first. `@guarantee purchase-cannot-rescue-a-doomed-run`
  *
  * THE PER-ABSENCE CEILING IS OUT OF ITS REACH BY CONSTRUCTION.
  * `MAX_COVERED_DAYS_PER_ABSENCE` caps what one absence may draw regardless of
@@ -2561,6 +2573,7 @@ export function setRecoveryDayProtection(
   // THE ENTITLEMENT ITSELF IS NEVER CLEARED, and that is what stops
   // off-then-on-then-train being a free refill: a session after protection
   // returns arms whatever the window still had, not a fresh window.
+  // `@guarantee protection-toggle-is-not-a-refill`
   const entitlementArmed = enabled ? state.entitlementArmed : false;
   return {
     state: { ...state, recoveryDayProtectionEnabled: enabled, entitlementArmed },
