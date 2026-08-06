@@ -459,6 +459,61 @@ export const COVERED_DAY_PURCHASE_SWEEP = Object.freeze({
  * CALENDARS`: 300 trials of 20–60 days, three opening schedules compared against
  * `'never'`, so 900 pairs.
  */
+/**
+ * THE DOOMED-SALE SWEEP: where the store's door is checked, in BOTH directions.
+ *
+ * THE FALSE-POSITIVE DIRECTION IS THE ONE THIS EXISTS FOR. "Refuses a doomed
+ * absence" is satisfied by a store that refuses everything, so the load-bearing
+ * half is that every absence still coverable is still SELLABLE — and it has to
+ * be swept rather than sampled, because a refusal that is too eager by one day
+ * is invisible at any fixture somebody picks by hand.
+ *
+ * THE ORACLE IS `absenceOutcome(...).protectionHolds` AND NOT A RE-DERIVATION.
+ * That is the identical call `recordTrainingDay` branches on to decide whether a
+ * run survived. A predicate rebuilt here out of `daysMissed`, the grace and the
+ * per-absence ceiling would be a second implementation of the coverage rule that
+ * agrees with the first only until one of them is edited, and this module has
+ * shipped exactly that mistake before.
+ *
+ * IT IS NOT CIRCULAR EVEN THOUGH THE STORE ASKS THE SAME FUNCTION. The oracle
+ * and the subject are different functions: the sweep asserts that
+ * `applySettledCoveredDayPurchase` — a store, with four other refusals in front
+ * of this one — agrees with the absence rule everywhere. Making the refusal any
+ * eagerer, or any lazier, breaks that agreement immediately. A second,
+ * independent oracle rides along: `openDay`, which must never report
+ * `'streak-broken'` on a day the store was willing to sell.
+ *
+ * THE DOMAIN IS REAL STATES, NOT HAND-BUILT ONES. Every calendar of
+ * `EXHAUSTIVE_LENGTH` days is replayed through `recordTrainingDay`, so each probe
+ * runs against a state the engine actually produces — including the lifter who
+ * has never trained at all, which is mask 0.
+ */
+export const DOOMED_SALE_SWEEP = Object.freeze({
+  /**
+   * Calendar length, exhaustively: all 2^L of them.
+   *
+   * 10 gives 1024 calendars, which crossed with the probe horizon and the three
+   * state shapes is about a hundred thousand store decisions and costs under two
+   * seconds. Raising it doubles the cost per day for a domain that is already
+   * dense in both answers.
+   */
+  EXHAUSTIVE_LENGTH: 10,
+
+  /**
+   * How many days past the end of the calendar each state is probed on.
+   *
+   * IT REACHES PAST A WINDOW BOUNDARY ON PURPOSE. `WINDOW_DAYS` is 30 and the
+   * calendars are anchored at signup, so a horizon that stopped short of day 30
+   * would sweep entirely inside window 0 and never see the armed snapshot refill
+   * — which is the one place the sale verdict is known to be delicate. 31 puts
+   * the boundary strictly inside the probe range for every calendar.
+   */
+  PROBE_HORIZON_DAYS: 31,
+
+  /** Covered days the probe order asks for. Flat, like every other order. */
+  COVERED_DAYS_PER_ORDER: 1,
+});
+
 export const STORE_VERDICT_DIVERGENCE = Object.freeze({
   /**
    * Pairs, out of 900, where an opening schedule changed whether the store sold.

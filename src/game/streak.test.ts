@@ -61,6 +61,7 @@ import {
   type EntitlementState,
 } from './streakEntitlement';
 import {
+  DOOMED_SALE_SWEEP,
   ENTITLEMENT_VERIFICATION,
   MONOTONICITY_SWEEP,
   RESIDUE_SWEEP,
@@ -3349,6 +3350,143 @@ describe('the outcome does not depend on when the player opens the app', () => {
     expect(storeVerdictDivergedInPairs, 'store-verdict divergences').toBe(
       STORE_VERDICT_DIVERGENCE.PAIRS_IN_THIS_SWEEP,
     );
+  });
+
+  it('THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days', () => {
+    // THE HUMAN'S RULING, MEASURED. Two halves, and the second is the one that
+    // hides a bug: the store must refuse an already-doomed absence, AND it must
+    // not refuse any absence that is still salvageable. A store that answers
+    // "no" to everything passes the first half perfectly.
+    //
+    // SO THE ASSERTION IS AN EQUIVALENCE, NOT AN IMPLICATION. For every state
+    // the engine can produce and every day it can be asked about, the store sells
+    // exactly when the absence holds. Make the refusal one day too eager and the
+    // salvageable side goes red; drop it and the doomed side does.
+    //
+    // THE ORACLE IS THE ABSENCE'S OWN ARITHMETIC — `absenceOutcome(state, day)
+    // .protectionHolds`, the same call `recordTrainingDay` branches on. See
+    // `DOOMED_SALE_SWEEP` for why it is that and not a re-derivation, and for why
+    // asking the same function is not circular.
+    //
+    // THREE STATE SHAPES, because the refusal reads two fields and one of them is
+    // the protection toggle: protection on, protection declined, and a state
+    // carrying a covered day bought legally while the absence was still
+    // salvageable — which is the only way `purchasedDaysLeft` can be non-zero
+    // inside a doomed absence now.
+    const order = {
+      coveredDays: DOOMED_SALE_SWEEP.COVERED_DAYS_PER_ORDER,
+      tender: 'chalk-purchased',
+    } as const;
+    const length = DOOMED_SALE_SWEEP.EXHAUSTIVE_LENGTH;
+
+    let sellable = 0;
+    let refused = 0;
+    let probes = 0;
+    let statesWithAPurchasedDay = 0;
+    let refusalsInsideARefilledWindow = 0;
+
+    for (let mask = 0; mask < exhaustiveCalendarCount(length); mask += 1) {
+      const schedule = exhaustiveCalendar(mask, length);
+      let trained: StreakState = freshState();
+      let lastTrainedIndex = -1;
+      for (let i = 0; i < length; i += 1) {
+        if (schedule[i] !== true) continue;
+        trained = unwrap(recordTrainingDay(trained, addDays(DAY_ZERO, i))).state;
+        lastTrainedIndex = i;
+      }
+
+      const declined = setRecoveryDayProtection(trained, false).state;
+      // A LEGAL PURCHASE, ON THE DAY AFTER THE LAST SESSION — nothing missed, so
+      // the absence holds and the store sells. Skipped for a lifter who never
+      // trained, who has no such day.
+      let carrying = trained;
+      if (lastTrainedIndex >= 0) {
+        const buyDay = addDays(DAY_ZERO, lastTrainedIndex + 1);
+        const bought = applySettledCoveredDayPurchase(trained, buyDay, {
+          ...order,
+          orderId: `carry-${mask}`,
+        });
+        if (bought.ok) {
+          carrying = bought.value.state;
+          statesWithAPurchasedDay += 1;
+        }
+      }
+
+      for (const [shape, state] of [
+        ['armed', trained],
+        ['declined', declined],
+        ['carrying', carrying],
+      ] as const) {
+        for (let offset = 0; offset <= DOOMED_SALE_SWEEP.PROBE_HORIZON_DAYS; offset += 1) {
+          const day = addDays(DAY_ZERO, length - 1 + offset);
+          const holds = absenceOutcome(state, day).protectionHolds;
+          const result = applySettledCoveredDayPurchase(state, day, {
+            ...order,
+            orderId: `probe-${mask}-${shape}-${offset}`,
+          });
+          // BARE THROWS RATHER THAN `expect` IN THIS LOOP, which is the same
+          // call `simulate` makes and for the same reason: ninety-eight thousand
+          // probes through `expect` turn a three-second test into a
+          // twenty-second one. The aggregates below are `expect`s.
+          const label = `${shape} mask ${mask} day +${offset}`;
+          const opening = openDay(state, day).kind;
+
+          // THE EQUIVALENCE.
+          if (result.ok !== holds) {
+            throw new Error(`${label}: store sold=${result.ok}, absence holds=${holds}`);
+          }
+
+          if (holds) {
+            sellable += 1;
+            // AND THE SECOND ORACLE. A day the store sold on may not be a day
+            // the read model calls the run broken — that would be the store and
+            // the screen disagreeing about the same absence.
+            if (opening === 'streak-broken') {
+              throw new Error(`${label}: sold on a day the read model calls broken`);
+            }
+          } else {
+            refused += 1;
+            if (errorCodeOf(result) !== 'ABSENCE_ALREADY_DOOMED') {
+              throw new Error(`${label}: refused as ${errorCodeOf(result)}`);
+            }
+            // A refusal only ever happens where there is no run left to protect.
+            if (opening !== 'streak-broken' && opening !== 'no-active-streak') {
+              throw new Error(`${label}: refused while the read model says ${opening}`);
+            }
+            if (entitlementWindowFor(state, day) > state.armedEntitlement.windowIndex) {
+              refusalsInsideARefilledWindow += 1;
+            }
+          }
+          probes += 1;
+        }
+      }
+    }
+
+    // NON-VACUITY, AND IT IS THE GUARD THE FALSE-POSITIVE HALF NEEDS. A domain
+    // containing only doomed absences would let a store that always refuses pass
+    // the equivalence; a domain containing only live ones would let a store that
+    // never refuses pass it. Both sides are counted and both are pinned exactly,
+    // so shrinking the domain to one answer is a red test rather than a silence.
+    expect(probes, 'store decisions swept').toBe(
+      exhaustiveCalendarCount(length) * 3 * (DOOMED_SALE_SWEEP.PROBE_HORIZON_DAYS + 1),
+    );
+    expect(sellable + refused).toBe(probes);
+    expect(sellable, 'salvageable absences the store sold to').toBe(12_328);
+    expect(refused, 'doomed absences the store refused').toBe(85_976);
+    // Neither side is a rounding error against the other.
+    expect(sellable / probes, 'the sellable side is a real fraction of the domain').toBeGreaterThan(
+      0.05,
+    );
+    // AND THE DOMAIN REACHED THE THINGS IT WAS BUILT TO REACH: states actually
+    // carrying a bought covered day, and probes on the far side of a window
+    // boundary where the armed snapshot has refilled.
+    expect(statesWithAPurchasedDay, 'states carrying a legally bought covered day').toBeGreaterThan(
+      500,
+    );
+    expect(
+      refusalsInsideARefilledWindow,
+      'the sweep never probed past a window boundary',
+    ).toBeGreaterThan(0);
   });
 
   it('THE STORE VERDICT IS APP-OPEN SENSITIVE AT A WINDOW BOUNDARY — reproduced, not inferred', () => {
