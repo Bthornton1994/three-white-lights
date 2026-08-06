@@ -1056,6 +1056,71 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     }
   });
 
+  it('EXHAUSTIVE, ACROSS A WINDOW BOUNDARY: the same calendars at a 7-day window', () => {
+    // RESIDUAL THE PREVIOUS ROUND LEFT OPEN, and it is a gap in the only
+    // proof-grade sweep in the repository. The shipped `WINDOW_DAYS` is 30 and
+    // every exhaustive fixture anchors signup at day 0, so the sweep above runs
+    // entirely INSIDE WINDOW 0. It cannot see the refill, cannot see two
+    // lifters re-converge at a boundary, and cannot see a purchased day expire
+    // -- the three things the entitlement design rests on. It proved the
+    // property for the sub-mechanism that was never in doubt.
+    //
+    // The fix costs seconds: run the same judge over the same calendars at
+    // `MONOTONICITY_SWEEP.BOUNDARY_CROSSING_WINDOW_DAYS`, where every one of
+    // them straddles at least one boundary and the longest straddles two.
+    //
+    // THIS IS `drive`-ONLY, and the pin is what carries it. `streak.ts` reads
+    // `RECOVERY_ENTITLEMENT` as a module constant, so the shipped engine cannot
+    // be driven at another window length; 'the shipped engine is the
+    // composition this battery graded' is what makes a `drive` result a
+    // statement about the shipped program at the shipped tuning.
+    const tuning: EntitlementTuning = {
+      ...RECOVERY_ENTITLEMENT,
+      WINDOW_DAYS: MONOTONICITY_SWEEP.BOUNDARY_CROSSING_WINDOW_DAYS,
+    };
+    // THE PREMISE, ASSERTED RATHER THAN ASSUMED: the window really is shorter
+    // than the shortest calendar, or this is the sweep above under a new name.
+    expect(tuning.WINDOW_DAYS).toBeLessThan(Math.min(...MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS));
+    expect(tuning.WINDOW_DAYS).toBeLessThan(RECOVERY_ENTITLEMENT.WINDOW_DAYS);
+
+    let consumedWithout = 0;
+    let consumedWith = 0;
+    for (const length of MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS) {
+      // ARM 1 -- no purchases. The refill and the re-convergence.
+      const plain = judge(exhaustivePairs(length), { ...DEFAULT, tuning });
+      expectClean(`boundary W=${tuning.WINDOW_DAYS} L=${length}`, plain);
+      consumedWithout += plain.consumed;
+
+      // ARM 2 -- purchased days in the field, on fixed calendar days, so a
+      // purchased day is credited in one window and expires in the next.
+      const purchaseDays = MONOTONICITY_SWEEP.BOUNDARY_CROSSING_PURCHASE_DAYS.filter((d) => d < length);
+      expect(purchaseDays.length, `L=${length} bought nothing`).toBeGreaterThan(0);
+      // The buys really do span more than one window, or nothing expires.
+      const windowsBoughtIn = new Set(purchaseDays.map((d) => windowIndexOf(tuning, 0, d)));
+      expect(windowsBoughtIn.size, `L=${length} bought inside one window only`).toBeGreaterThan(1);
+
+      const bought = judge(exhaustivePairs(length), { ...DEFAULT, tuning, purchaseDays });
+      expectClean(`boundary W=${tuning.WINDOW_DAYS} L=${length} with purchases`, bought);
+      consumedWith += bought.consumed;
+    }
+
+    // THE PUBLISHED NUMBERS, PINNED. GDD 4.4 prints this table; pinning the
+    // totals here is what stops the two drifting apart, and a total that moves
+    // is a sweep that is measuring something else.
+    expect(consumedWithout, 'GDD 4.4 boundary table, no-purchase row total').toBe(1_125_456);
+    expect(consumedWith, 'GDD 4.4 boundary table, with-purchase row total').toBe(1_414_748);
+
+    // ANTI-VACUITY, AND IT IS THE CHECK THIS SWEEP FAILED ON ITS FIRST RUN. The
+    // first version funded the purchase arm through `coveredDayPurchaseDays`,
+    // which at this purse buys NOTHING inside sixteen days -- so both arms
+    // consumed byte-identical amounts and the purchase arm was the no-purchase
+    // arm with a longer name. Fixed calendar days, and the two arms must differ.
+    expect(consumedWithout, 'nothing was ever consumed').toBeGreaterThan(0);
+    expect(consumedWith, 'the purchase arm consumed no more than the arm with no purchases').toBeGreaterThan(
+      consumedWithout,
+    );
+  });
+
   it('SAMPLED: 40, 60, 80 and 100 days — including the LIFETIME BEST', () => {
     // The stock design measured 13 / 122 / 142 / 74 `currentStreak` inversions
     // here and 14 / 150 / 276 / 221 lifetime-best inversions. The lifetime-best

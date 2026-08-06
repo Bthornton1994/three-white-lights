@@ -414,6 +414,45 @@ the visible cost of the ruling, and it is the price of the invariant below: the
 Gym Empire drop of the earning table lands on a check-in, so a grant that armed
 would make coverage depend on whether the player opened the app while away.
 
+**How it is enforced, since it was ruled here and contradicted in code for a
+round.** `StreakState` carries two entitlements. `entitlement` is the LIVE
+balance — what the lifter holds, what a screen shows, and what
+`applySettledCoveredDayPurchase` raises. `armedEntitlement` is the snapshot the
+absence in progress resolves against, written by a session and by nothing else.
+Only a session arms.
+
+*What that closed.* `absenceOutcome` used to resolve against the live field, so
+a settled §8.3E purchase applied on the return day rescued a doomed run — but
+only if nothing had recorded the break first, because settling moves the anchor
+back to the signup day and makes the absence longer. Ten-day run, window
+drained, three days missed: final streak **11** if the store opened before the
+client settled and **1** if it settled first. Same calendar, same money. That is
+the §12.3 refusal in its plainest form — a player whose client settles on launch
+punished relative to one who ignored the app.
+
+**A doomed absence still consumes everything the window holds LIVE, including a
+covered day bought during it — and RULE 2 below words that as "the armed
+count", which is the same number only while nothing can arrive mid-absence.**
+The two came apart when §8.3E was ruled in, and charging the armed count instead
+was built and measured: letting a mid-absence purchase survive the absence means
+an extra trained day can *split* the absence and spend a covered day the whole
+absence would have taken. **3** violating pairs on `real-money` at 40 days, **23**
+lifetime-best inversions on the free calendar grant, and **1** in the *frozen*
+control where both lifters buy on identical days — which is the proof it is the
+rule and not the schedule. So the two halves read different fields on purpose:
+whether the run **survives** is decided by what was armed, what a doomed absence
+**costs** is everything live.
+
+*The residual, stated because it is real:* only a session arms, so a covered day
+bought **before** a session on the same day is armed by it and one bought
+**after** arms at the next session; and a covered day bought before a session
+that closes a doomed absence is burned by that absence. Both follow this ruling
+read literally — arming happens at a session, and anything after one arrives
+during the absence that session started — but the clock time of a purchase is
+therefore observable. It is not an app-opening dependence. The honest fixes are
+store copy ("armed from your next session") or a server-side refusal to sell
+during a doomed absence; neither belongs in `streak.ts`.
+
 **The invariant this buys, which is the point of the whole rule:** for a fixed
 training history and a fixed armed state, the final streak, the final balance
 and the number of Recovery Days consumed are **identical** whether the player
@@ -422,6 +461,15 @@ never until they come back. `src/game/streak.test.ts` asserts that directly, by
 full state equality, over a sweep of opening schedules and exhaustively over
 every calendar of a fixed length. Nothing about the outcome depends on when they
 look.
+
+**And it now varies the order WITHIN a day, which is what it was missing.**
+Every harness in the repository fixed the safe intra-day order — buy, then open,
+then train — so the sweep named for this hazard varied only *which days* the app
+was opened and was green for a reason unrelated to the property. It now sweeps
+purchase-before-settle, settle-before-purchase and never-settle over every
+combination of run length, balance, absence length and armed state, at two
+purchase dates, and asserts full state equality across all three. That is the
+assertion whose absence hid the 11-versus-1 defect above.
 
 **What replaced the prompt is the return-visit reveal** (§4.3).
 
@@ -1140,6 +1188,38 @@ the range that hid the last defect — a 23-day hand-built case. The honest
 statement is that the battery is aimed at every failure class known to have
 occurred on this module, that it finds none, and that it will find the next one
 only if the next one resembles the last two.
+
+**It also used to stop at ONE WINDOW, and that was the more serious of the two
+limits.** `WINDOW_DAYS` is 30 and every exhaustive fixture anchors the signup
+day at day 0, so 8-to-16-day calendars lived entirely inside window 0: the only
+proof-grade sweep in the repository never saw the refill, never saw two lifters
+re-converge at a boundary, and never saw a purchased day expire. It proved the
+property for the sub-mechanism that was never in doubt.
+
+*Closed, and here are the numbers.* The same judge, the same calendars, at
+`MONOTONICITY_SWEEP.BOUNDARY_CROSSING_WINDOW_DAYS` = **7**, where every calendar
+straddles at least one boundary and the longest straddles two — run twice, once
+with no purchases and once with covered days bought on fixed calendar days so
+that a purchased day is credited in one window and expires in the next.
+
+| L | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+|---|---|---|---|---|---|---|---|---|---|
+| pairs, each arm | 1 024 | 2 304 | 5 120 | 11 264 | 24 576 | 53 248 | 114 688 | 245 760 | 524 288 |
+| consumed, no purchases | 452 | 1 264 | 3 344 | 8 512 | 20 988 | 50 368 | 118 352 | 277 888 | 644 288 |
+| consumed, with purchases | 524 | 1 472 | 3 904 | 10 192 | 25 664 | 62 872 | 150 544 | 351 048 | 808 528 |
+| violating pairs, both arms | **0** | **0** | **0** | **0** | **0** | **0** | **0** | **0** | **0** |
+
+Zero on `currentStreak`, on lifetime best and on both worst deficits, over
+**982 272 pairs per arm**. The first cut of the purchase arm was **vacuous** and
+said so by accident: funded through `coveredDayPurchaseDays`, a sixteen-day
+calendar accrues one Chalk against a price of three and buys nothing, so both
+arms reported byte-identical consumption. The fixed buy days
+(`BOUNDARY_CROSSING_PURCHASE_DAYS`) are what make the third row differ from the
+second, and the test asserts that it does.
+
+This is `drive`-only — `streak.ts` reads `RECOVERY_ENTITLEMENT` as a module
+constant and cannot be driven at another window length — so it reaches the
+shipped engine only through the pin.
 
 What holds, and is what the design leans on:
 
