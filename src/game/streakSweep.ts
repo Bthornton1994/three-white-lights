@@ -520,6 +520,38 @@ export const DOOMED_SALE_SWEEP = Object.freeze({
    * to save time would trade coverage for coverage.
    */
   CALENDAR_START_OFFSETS: [0, 16, 17, 18, 19, 20] as readonly number[],
+
+  /**
+   * HOW MANY DAYS BEFORE THE COMPLETION DAY THE CLIENT DREW ITS SCREEN — the
+   * axis that lets this domain express a render day that is not the completion
+   * day, which it previously could not.
+   *
+   * WHY IT WAS NEEDED. Every probe in this sweep used to pass the SAME day to
+   * the rendered verdict and to completion, so the render-day-≠-completion-day
+   * axis was not in the domain at all. That is not an exotic case: the streak
+   * day rolls over at `STREAK_DAY_BOUNDARY.ROLLOVER_HOUR_LOCAL`, so a tap at
+   * 02:50 and a settlement at 03:10 are one day apart by the module's own
+   * definition. With the axis missing, a refusal that told a legitimately-served
+   * client "the offer should never have been on screen" was invisible to
+   * roughly six hundred thousand store decisions.
+   *
+   * IT IS THE SAME HAZARD ONE AXIS OVER FROM WHERE IT WAS LAST FIXED. The
+   * fixtures had stopped hardcoding the intra-day ORDER of a purchase against a
+   * settle; they still hardcoded the intra-day IDENTITY of rendering and
+   * completing.
+   *
+   * ZERO IS KEPT AS THE FIRST ENTRY, for the same reason it is kept in
+   * `CALENDAR_START_OFFSETS`: it is the original domain and the shape a
+   * same-day, one-device client actually has.
+   *
+   * TWO AND NOT MORE. `ABSENCE_ENDED_AFTER_OFFER` needs a lag of at least one,
+   * and one day of lag already reaches it; a second day widens the window over
+   * which the run can end without changing the shape of the case. The lag is
+   * rotated across probes rather than multiplied into the domain — see
+   * `streak.test.ts` — so this list costs no probes at all, and the count of
+   * probes actually drawn at each lag is pinned there.
+   */
+  RENDER_DAY_LAGS: [0, 1, 2] as readonly number[],
 });
 
 /**
@@ -546,10 +578,13 @@ export const DOOMED_SALE_SWEEP = Object.freeze({
  * from finalising: a stale offer on screen is acceptable, a completed sale that
  * settled state would have refused is not. So
  * `applySettledCoveredDayPurchase` re-validates through `settledStateAsOf`
- * before finalising and refuses with `ABSENCE_SETTLED_WHILE_AWAY`. No coverage
- * arithmetic was re-derived to do it — the walk offers each day to
- * `settleBrokenStreak` and the verdict is the same `absenceOutcome(...)
- * .protectionHolds` call `recordTrainingDay` branches on.
+ * before finalising and refuses with `ABSENCE_ENDED_BEFORE_OFFER` — the code
+ * that says the screen was drawn over a run that had already ended. (It was
+ * `ABSENCE_SETTLED_WHILE_AWAY` for a round. That name asserted a settle had
+ * happened elsewhere, which this module cannot see and which the boundary
+ * revival does without.) No coverage arithmetic was re-derived to do it — the
+ * walk offers each day to `settleBrokenStreak` and the verdict is the same
+ * `absenceOutcome(...).protectionHolds` call `recordTrainingDay` branches on.
  *
  * IT NEVER REACHED THE STATE, EVEN BEFORE. Every full-state equality across
  * opening schedules held throughout; what differed was how many orders the store

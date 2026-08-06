@@ -47,7 +47,7 @@ import {
   tenderGating,
   type CoveredDayTender,
 } from './currencyProvenance';
-import type { SettledCoveredDayPurchase } from './streak';
+import { asStreakDay, type SettledCoveredDayPurchase } from './streak';
 
 // ---------------------------------------------------------------------------
 // THE STRUCTURAL HALF — graded by `tsc --noEmit`, not by vitest
@@ -59,12 +59,17 @@ describe('a training-funded tender does not typecheck into a covered-day purchas
     // `never` — which would also make the `@ts-expect-error`s pass — these
     // lines would not compile either. They do, so the type is a real subset
     // rather than an empty one.
+    // `renderedOffer` IS WHAT THE CLIENT'S SCREEN SHOWED, and it is required on
+    // every order — see `RenderedStoreOffer`. It carries no money and cannot
+    // move the decision, so it is the same fixed value on every row here; this
+    // test is about `tender` and nothing else.
+    const screen = { day: asStreakDay(0), offered: true } as const;
     const legal: readonly SettledCoveredDayPurchase[] = [
-      { orderId: 'a', coveredDays: 1, tender: 'real-money' },
-      { orderId: 'b', coveredDays: 1, tender: 'chalk-purchased' },
-      { orderId: 'c', coveredDays: 1, tender: 'chalk-rewarded-ad' },
-      { orderId: 'd', coveredDays: 1, tender: 'chalk-calendar-event' },
-      { orderId: 'e', coveredDays: 1, tender: 'chalk-season-pass-week' },
+      { orderId: 'a', coveredDays: 1, tender: 'real-money', renderedOffer: screen },
+      { orderId: 'b', coveredDays: 1, tender: 'chalk-purchased', renderedOffer: screen },
+      { orderId: 'c', coveredDays: 1, tender: 'chalk-rewarded-ad', renderedOffer: screen },
+      { orderId: 'd', coveredDays: 1, tender: 'chalk-calendar-event', renderedOffer: screen },
+      { orderId: 'e', coveredDays: 1, tender: 'chalk-season-pass-week', renderedOffer: screen },
     ];
     // AND THE LIST IS THE WHOLE LIST. Spelled out above so a reader sees the
     // legal surface; cross-checked here so it cannot go stale when a tender is

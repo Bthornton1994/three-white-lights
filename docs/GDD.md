@@ -528,14 +528,94 @@ keeps what that returns.
   rather than left as a note. On the revival day the absence *holds*, so
   `settleBrokenStreak` reports `NOTHING_TO_SETTLE` and the revived run walks
   straight through. The walk finds the break on the day it actually happened.
-- **A third refusal sentence, and a distinct code.**
-  `ABSENCE_SETTLED_WHILE_AWAY` means *your device is behind, refresh*;
-  `ABSENCE_ALREADY_DOOMED` means *we both already know this run is over*. A
-  player who was shown an offer and then refused is told which happened. The
-  copy is keyed to the client's own rendered verdict, so it is the one thing here
-  that is *not* app-open invariant — deliberately, because a client whose screen
-  already said "refused" never produces the tap. The **decision** is invariant,
-  which is what §12.3 is about.
+- **Four refusal sentences, three codes, and the client says which one it is
+  owed.** `ABSENCE_ALREADY_DOOMED` means *your screen said no and so do we*;
+  `ABSENCE_ENDED_BEFORE_OFFER` means *your screen was drawn over a run that had
+  already ended — refresh*; `ABSENCE_ENDED_AFTER_OFFER` means *your screen was
+  right and the run ended between it and this order*.
+
+  **The copy is keyed to what the client reports it drew, and to the day it drew
+  it** — `SettledCoveredDayPurchase.renderedOffer`, carried on the order and
+  never re-derived here. The **decision** is settled state's alone and is
+  app-open invariant, which is what §12.3 is about; only the sentence tracks the
+  screen.
+
+  **A claim this document used to make here has been deleted as false.** It read:
+  *"a client whose screen already said 'refused' never produces the tap, so no
+  single player can ever be given two explanations for one refusal."* Both halves
+  are wrong. A refused screen can produce a tap — a queued order, a retried
+  order, a second device — and a player with two devices has two screens. What
+  replaces it is narrower and is enforced rather than argued:
+
+  > **Every refusal sentence is a true statement about the screen the tap came
+  > from.** A player who taps from two screens gets two sentences because they
+  > had two screens, and each is true of its own.
+
+  Two ordinary cases broke the old claim, and both are now reproductions in
+  `streak.test.ts` rather than notes:
+
+  - **The window-boundary revival.** One device, one state, no background job.
+    The armed snapshot refills at a boundary, so an unchanged state reads DOOMED
+    on the last day of a window and COVERED on the first day of the next. The old
+    code told that player *"your break was already recorded while you were
+    away"* — nothing had recorded anything, and their state was byte-identical to
+    the server's. The module is handed one state and cannot see a second device
+    or a nightly job, so it no longer claims one; the sentence now names only the
+    order of events the walk actually found.
+  - **The 03:00 rollover.** `ROLLOVER_HOUR_LOCAL` puts a tap at 02:50 and a
+    settlement at 03:10 on two different streak days. The refusal was computed at
+    the **completion** day, so a client legitimately offered the sale on day *D*
+    was told, on *D+1*, that the offer *"should never have been on screen"* —
+    the routing exactly inverted, reachable with no second device and no stale
+    state. That case has its own code and its own sentence now.
+
+- **The sweep gained the render-day axis it was missing.**
+  `DOOMED_SALE_SWEEP.RENDER_DAY_LAGS` varies the gap between the day the screen
+  was drawn and the day the order lands. Every probe used to pass the *same* day
+  to both, so the axis was not in the domain at all — the same
+  hardcoded-fixture hazard as the intra-day ordering defect, one axis over.
+  `ABSENCE_ENDED_AFTER_OFFER` is **unreachable at lag 0**, which is why roughly
+  six hundred thousand store decisions could be green over an inverted routing.
+- **One predicate, asked at two horizons.** Which of the two "you were offered
+  it" sentences a client gets is decided by asking *would this sale have been
+  authorised on the day the screen was drawn?* — the identical
+  settle-then-`protectionHolds` question the completion day is decided by, asked
+  at the render day instead. Nothing new is derived; the difference between the
+  two answers is the whole content of the split.
+
+  **The first version of this fix used a different predicate and was wrong**,
+  which is recorded rather than quietly replaced. It compared the day the settle
+  walk *recorded* a break against the render day. `settleBrokenStreak` refuses a
+  state whose `lastTrainedDay` is null, so a lifter who has **never trained**
+  never has a break recorded at any horizon — while their signup absence still
+  runs out of coverage on a definite day. They read as "it ended earlier"
+  forever, so a player whose coverage ran out the day *after* their screen was
+  drawn was told the screen had been wrong. Measured at **6** of the day-pairs a
+  fresh account can produce in its first 40 days.
+- **The oracle for which sentence stopped mirroring the implementation — twice.**
+  It first read `holds ? 'ABSENCE_SETTLED_WHILE_AWAY' : 'ABSENCE_ALREADY_DOOMED'`
+  off the same call the subject made, character for character. Its replacement
+  was independent in *form* and still shared the subject's blind spot, because
+  both asked whether a break had been **recorded** — that is how the never-trained
+  hole above stayed green. The oracle now settles a twin **by hand**, with the
+  test's own loop over the real `settleBrokenStreak`, and reads the **absence**
+  rather than the recording. Two computations can be independent in shape and
+  dependent in the fact they read; only the second kind of independence counts.
+- **The doomed-sale sweep cannot reach the never-trained case**, and that is
+  stated rather than papered over: its probes start at the end of a 10-day
+  calendar, so the first days after signup — where a fresh account's coverage
+  runs out — are outside its horizon. The case has its own named regression test
+  instead of the sweep being multiplied to reach it.
+- **The module does not de-duplicate orders, and this is a ruling.** A settled
+  order carries no idempotency key and `StreakState` holds no order ledger:
+  such a ledger is unbounded, grows with what the player has bought, and would
+  put a purchase-shaped quantity inside the state every monotonicity sweep
+  compares byte-for-byte. **The caller — the Edge Function that settled the
+  order — owns de-duplication**, because it owns the order-id namespace and is
+  the only party that can tell a retry from a second purchase. A refusal costs
+  nothing and can be retried freely; an accepted order applied twice credits
+  twice, and that is the caller's bug. Written down in
+  `applySettledCoveredDayPurchase`'s docstring, where a caller will meet it.
 - **The old sweep could not express the case at all.** Anchored at signup, all
   98 304 store decisions contained **zero** probes where a raw state and a
   nightly-settled one disagreed: a covered absence only survives
