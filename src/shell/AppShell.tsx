@@ -75,7 +75,7 @@ import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen } from '../meet/MeetScreen';
 import { SessionScreen } from '../session/SessionScreen';
-import { appSessionPort } from './appServer';
+import { appMeetPort, appSessionPort } from './appServer';
 import {
   frozenMeetFor,
   frozenSessionFor,
@@ -228,6 +228,21 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
     <View style={styles.root} testID="app-shell">
       {route.surface === 'meet' ? (
         <MeetScreen
+          // THE APP'S CONNECTION, or the frozen frame's own stand-in server.
+          //
+          // `appMeetPort()` IS `appSessionPort()` — the same object, one row —
+          // which is what makes the lifter who trains and the lifter who
+          // competes one lifter. This screen used to be given no port at all,
+          // and `useMeetDay` fabricated a record to have something to read.
+          //
+          // The `??` reads like the ternary it replaces and is not one:
+          // `meetFrame` is `undefined` for every route a player can reach
+          // (`frozenMeetFor` requires `source === 'debug'`), and a frame only
+          // carries a port when it also carries a scripted state. Both halves
+          // are pinned in `shellRoute.test.ts`, and the browser check in
+          // `tools/verify-shell-route.mjs` measures the consequence on the
+          // played path rather than trusting either.
+          serverPort={meetFrame?.serverPort ?? appMeetPort()}
           preview={meetFrame?.state}
           showCard={meetFrame?.card ?? false}
           holdWalkoutAtMs={meetFrame?.holdWalkoutAtMs ?? null}

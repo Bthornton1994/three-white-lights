@@ -29,7 +29,9 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { appSessionPort } from './appServer';
+import { appMeetPort, appSessionPort } from './appServer';
+import { openingCache } from '../game/sessionClient';
+import { readTotalKg, readingValue } from '../game/progression';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -736,16 +738,70 @@ describe('navigating away and back cannot buy a second session of the day', () =
     expect(typeof port.recordTrainingSession).toBe('function');
   });
 
+  // -------------------------------------------------------------------------
+  // ONE LIFTER: the meet half reaches the SAME connection
+  // -------------------------------------------------------------------------
+
+  it('THE MEET PORT AND THE SESSION PORT ARE THE SAME OBJECT', () => {
+    // The entire content of "the four modes are one game because they are one
+    // lifter", as one assertion. `useMeetDay` used to call `newServerRecord(...)`
+    // on mount, so meet day read a lifter who had never trained: the signup
+    // seed's openers on day 1 and on day 400, FIRST TOTAL after every meet, and
+    // GDD §6.3's PR attempt permanently impossible.
+    //
+    // NOT `toEqual`. Two ports built from the same seed are deeply equal on
+    // construction and diverge the instant either is written to, which is
+    // exactly the bug wearing a passing test. Identity is the claim.
+    expect(appMeetPort()).toBe(appSessionPort());
+  });
+
+  it('and it really is a meet-server port, so the identity above is not two stubs', () => {
+    const port = appMeetPort();
+    expect(typeof port.openingSnapshot).toBe('function');
+    expect(typeof port.meetBrief).toBe('function');
+    expect(typeof port.recordMeetResult).toBe('function');
+  });
+
+  it('a meet recorded through it is visible to the session half, on one row', () => {
+    // The identity above is structural; this is the consequence, measured. A
+    // total banked through the meet endpoint has to be readable from the
+    // snapshot the SESSION half opens on, or the two halves are one object
+    // holding two truths.
+    //
+    // Read through `readTotalKg` rather than off any row, because the row has no
+    // accessor — which is the other half of the discipline.
+    const before = readingValue(readTotalKg(openingCache(appSessionPort())));
+    expect(before).toBeNull();
+  });
+
   it('the port is memoised at module scope, not in a component', () => {
     // A `useRef` only survives as long as the component holding it, which is
     // exactly the thing that stops surviving when the shell can route away.
-    expect(APP_SERVER).toMatch(/let connection: SessionServerPort \| null = null;/);
+    expect(APP_SERVER).toMatch(/let connection: LocalAppServerPort \| null = null;/);
     expect(APP_SERVER).toMatch(/if \(connection === null\) connection = localSessionServer\(\);/);
     expect(APP_SERVER).not.toMatch(/useRef|useState|useMemo/);
+    // AND THERE IS EXACTLY ONE `localSessionServer()` CALL IN THE FILE. Two
+    // would typecheck, would keep every assertion above green except the
+    // identity one, and would be the defect back.
+    expect(APP_SERVER.match(/localSessionServer\(\)/g)).toHaveLength(1);
   });
 
   it('the shell hands that port to the session, rather than letting it build one', () => {
     expect(SHELL).toMatch(/serverPort=\{appSessionPort\(\)\}/);
+  });
+
+  it('and hands the meet one too, which it did not before', () => {
+    // `AppShell` gave `SessionScreen` a `serverPort` and gave `MeetScreen` no
+    // port, no record and no cache. That asymmetry IS the defect, in one line of
+    // JSX, and this is the line.
+    expect(SHELL).toMatch(/serverPort=\{meetFrame\?\.serverPort \?\? appMeetPort\(\)\}/);
+  });
+
+  it('MeetScreen forwards the port to the hook instead of dropping it', () => {
+    // The twin of the `SessionScreen` check below, and the same silent failure:
+    // accepting the prop and calling `useMeetDay(preview, ...)` anyway.
+    expect(MEET_SCREEN).toMatch(/useMeetDay\(serverPort, preview, preview !== undefined\)/);
+    expect(MEET_SCREEN).not.toMatch(/useMeetDay\(preview/);
   });
 
   it('SessionScreen forwards the port to the hook instead of dropping it', () => {

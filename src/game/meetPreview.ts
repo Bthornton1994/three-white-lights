@@ -160,15 +160,21 @@ export function meetPreviewFrom(search: string): MeetPreviewRequest | null {
  * The stored row the preview's stand-in server starts from.
  *
  * DEBUG ONLY, and it exists because `previewContext()` describes a lifter with
- * a competition history — a 605 kg best total and per-lift bests — while the
- * stand-in server record starts empty. Without this the preview's recap always
- * reads FIRST TOTAL, the PR branch is unphotographable, and the walkout's PR
- * beat never fires: the screenshots would show a lifter the preview data says
- * does not exist.
+ * a competition history — a 605 kg best total and per-lift bests — while a fresh
+ * server record starts empty. Without this the preview's recap always reads
+ * FIRST TOTAL, the PR branch is unphotographable, and the walkout's PR beat
+ * never fires: the screenshots would show a lifter the preview data says does
+ * not exist.
  *
  * The prior meet carries a DIFFERENT id from `MEET_LOCAL`, because
  * `applyMeetResult` refuses a second result for the same meet and a preview
  * that refused its own submission would produce a null recap.
+ *
+ * IT IS A ROW AND NOT A PORT, because this module is PURE (see the header) and
+ * a port is a closure with a timer in it. `src/shell/shellRoute.ts` is what
+ * wraps this in a real `localSessionServer`, and it does so only for an entry
+ * that has a scripted state — see `previewMeetPort` there for the argument that
+ * the live path cannot reach it.
  */
 export function previewServerRecord(): ServerRecord {
   return {

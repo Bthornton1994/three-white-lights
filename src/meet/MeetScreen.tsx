@@ -64,6 +64,7 @@ import { preloadMeetSound } from './meetSound';
 import { OpenersView } from './OpenersView';
 import { RecapView } from './RecapView';
 import { useMeetDay } from './useMeetDay';
+import type { MeetServerPort } from '../game/meetClient';
 import { VerdictView } from './VerdictView';
 import { WalkoutView } from './WalkoutView';
 import { WeighInView } from './WeighInView';
@@ -72,6 +73,30 @@ import { MEET_LAYOUT } from '../game/meetTuning';
 const L = MEET_LAYOUT;
 
 export interface MeetScreenProps {
+  /**
+   * THE APP'S CONNECTION TO THE SERVER. Required, exactly as `SessionScreen`'s
+   * is, and required is the point.
+   *
+   * ---------------------------------------------------------------------------
+   * IT USED NOT TO EXIST, AND THAT WAS THE DEFECT
+   * ---------------------------------------------------------------------------
+   * `AppShell` gave `SessionScreen` a `serverPort` and gave this screen no port,
+   * no record and no cache, so `useMeetDay` built a `ServerRecord` of its own on
+   * mount and meet day played a lifter who had never trained a day: the signup
+   * seed's openers on day 1 and on day 400, FIRST TOTAL after every meet, and
+   * GDD §6.3's PR attempt permanently impossible. `meetClient.ts`'s header has
+   * the full account.
+   *
+   * REQUIRED RATHER THAN OPTIONAL-WITH-A-DEFAULT, on the same reasoning
+   * `AppShell.search` is required: an optional port would let `<MeetScreen />`
+   * typecheck and silently reopen the hole, and a default value would BE the
+   * fabricated lifter. `tsc` now says `Property 'serverPort' is missing`.
+   *
+   * On the capture path this is the preview's own stand-in server, which arrives
+   * with the frozen frame rather than beside it — see `shellRoute.ts`'s
+   * `MeetEntry.serverPort`.
+   */
+  readonly serverPort: MeetServerPort;
   /**
    * DEBUG ONLY. Freezes the loop on one scripted beat instead of running a
    * played meet (see `meetPreview.ts`). Nothing in the played app passes this;
@@ -132,6 +157,7 @@ export interface MeetScreenProps {
 }
 
 export function MeetScreen({
+  serverPort,
   preview,
   showCard = false,
   holdWalkoutAtMs = null,
@@ -139,8 +165,8 @@ export function MeetScreen({
   onPhase,
   onCutIn,
   cutInSearch,
-}: MeetScreenProps = {}): React.ReactElement {
-  const loop = useMeetDay(preview, preview !== undefined);
+}: MeetScreenProps): React.ReactElement {
+  const loop = useMeetDay(serverPort, preview, preview !== undefined);
   const { dispatch, restart } = loop;
   const state = preview ?? loop.state;
   const [cardOpen, setCardOpen] = useState(showCard);

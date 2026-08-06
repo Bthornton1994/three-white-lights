@@ -702,12 +702,47 @@ export interface AppliedMeetResult {
 }
 
 /**
+ * WHAT MEET DAY NEEDS TO KNOW ABOUT A LIFTER, AS A SHAPE RATHER THAN AS A ROW.
+ *
+ * ===========================================================================
+ * WHY THIS IS STRUCTURAL AND NOT `ServerRecord`
+ * ===========================================================================
+ * `meetDayFacts` below is the one place a training number crosses into meet
+ * day. It used to take a `ServerRecord`, which meant that the only caller able
+ * to reach the crossing was a caller holding the stored row — and the client is
+ * not allowed to hold one (`sessionClient.ts`: "the app cannot hold a
+ * `ServerRecord`"). So `useMeetDay` built its OWN row to have something to pass,
+ * and the crossing carried a brand new lifter's seed on every meet, for ever.
+ *
+ * Widening the parameter to the three fields the arithmetic actually reads is
+ * what lets BOTH sides call the SAME function: `ServerRecord` satisfies this
+ * structurally, and so does what `meetClient.ts` reads back out of a
+ * `ProgressionCache` through `progression.ts`'s read accessors. One arithmetic,
+ * two callers, no second copy to drift.
+ *
+ * IT IS NOT A WIDENING OF WHAT THE CLIENT MAY REACH. Every field here is
+ * already on the wire and already has a read accessor; what the client still
+ * cannot get at is the row itself — `revision`, `wallet`, `streak`, and above
+ * all `fatigue` (GDD §3.4, §12.3).
+ */
+export interface MeetDayHistory {
+  /** Best e1RM per lift, or `null` where the lift has never been trained. */
+  readonly bestE1rmKg: Readonly<Record<LiftKind, number | null>>;
+  /** Best competition total on record, or `null` before the first meet. */
+  readonly totalKg: number | null;
+  /** Meets already stored. Only their per-lift bests are read. */
+  readonly meets: readonly {
+    readonly bestByLift: Readonly<Record<LiftKind, number | null>>;
+  }[];
+}
+
+/**
  * The best competition lift on record, per lift, from the meets already stored.
  *
  * COMPETITION bests, not e1RM. GDD §6.5's "PR call-outs" on a meet recap are
  * about the platform, and an e1RM PR is the daily loop's payoff (§3.2).
  */
-export function previousBestByLift(record: ServerRecord): Readonly<Record<LiftKind, number | null>> {
+export function previousBestByLift(record: MeetDayHistory): Readonly<Record<LiftKind, number | null>> {
   const out: Record<LiftKind, number | null> = { squat: null, bench: null, deadlift: null };
   for (const meet of record.meets) {
     for (const lift of LIFT_ORDER) {
@@ -1012,6 +1047,29 @@ export interface MeetDayFacts {
  * THE ONE PLACE A TRAINING NUMBER CROSSES INTO MEET DAY, and the parameter
  * carries its unit rather than asserting it in a name.
  *
+ * ===========================================================================
+ * THE CROSSING DID NOT HAPPEN FOR SIX WAVES, AND THAT IS WHY THE PARAMETER
+ * CHANGED
+ * ===========================================================================
+ * This sentence was true of the function and false of the app. `useMeetDay.ts`
+ * called `newServerRecord(...)` on mount and passed THAT — so `bestE1rmKg` was
+ * always the signup seed, `previousBestTotalKg` was always `null`, every meet
+ * suggested the same three openers on day 1 and on day 400, and GDD §6.3's
+ * `isPrAttempt` could not fire. The number crossing here was unit-proven and
+ * constant.
+ *
+ * The cause was the type: the parameter was `ServerRecord`, and a client is not
+ * allowed to hold one, so the only way for the hook to call this function was to
+ * fabricate a row. `MeetDayHistory` above is the fix — `meetClient.ts` builds
+ * one out of `progression.ts`'s read accessors and calls THIS function, so the
+ * client crosses the same arithmetic the server does instead of its own copy.
+ *
+ * WHAT IS ENFORCED RATHER THAN PROMISED: `src/meet/useMeetDay.test.ts` bans the
+ * record-shaped names from the hook, `src/game/meetClient.test.ts` pins the two
+ * callers to the same answer on the same lifter, and
+ * `tools/verify-shell-route.mjs` reads the e1RM off a played session's close-out
+ * and asserts the opener drawn after it is `suggestOpener` of that number.
+ *
  * It used to be `fallbackE1rmKg: Readonly<Record<LiftKind, number>>` — a bare
  * record with the unit in the identifier — and `useMeetDay.ts` passed
  * `SESSION_TUNING.STARTING_E1RM_KG`, which was three bare numbers with the unit
@@ -1040,7 +1098,7 @@ export interface MeetDayFacts {
  * inventing a number.
  */
 export function meetDayFacts(
-  record: ServerRecord,
+  record: MeetDayHistory,
   day: number,
   fallbackE1rm: KilogramStartingE1rm,
 ): MeetDayFacts {

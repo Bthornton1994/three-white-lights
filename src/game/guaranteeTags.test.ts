@@ -193,8 +193,17 @@ const GUARANTEE_COVERAGE = {
    * It counts this file's own prose too, which is correct rather than an
    * artefact: these comments assert behaviour about the scanner and are exactly
    * as capable of being wrong as any other.
+   *
+   * 195 -> 198 when meet day was wired to the app's one row. The three new
+   * triggering paragraphs are in `meetClient.ts`, `appServer.ts` and
+   * `useMeetDay.ts`, and all three are the same claim in three places: that the
+   * port the meet reads is the object the session writes. It is the ONE claim in
+   * that change with a check that fails in a browser rather than only in prose
+   * — `tools/verify-shell-route.mjs` reads the e1RM off a played close-out and
+   * asserts the opener after it is derived from that number — so it is on the
+   * better side of this file's own complaint, whatever the ratio does.
    */
-  TREE_WIDE: 195,
+  TREE_WIDE: 198,
 } as const;
 
 // ---------------------------------------------------------------------------

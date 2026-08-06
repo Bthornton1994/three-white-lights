@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { localSessionServer } from './localSessionServer';
+import { meetDayFactsFromCache } from '../game/meetClient';
+import { meetResultProposal } from '../game/meetDay';
+import { playMeet } from '../game/meetPreview';
+import { MEET_ENTRY, MEET_LOCAL } from '../game/meetTuning';
+import { readTotalKg, readingValue } from '../game/progression';
 import {
   closeOutReadings,
   openingCache,
@@ -82,12 +87,20 @@ function closeOutOf(state: SessionState): SessionCloseOut {
 }
 
 describe('the stand-in server port', () => {
-  it('exposes three methods and no way at the row', () => {
+  it('exposes five methods and no way at the row', () => {
     // The whole reason the row moved behind a port. A getter here would put the
     // bypass back within reach of the hook.
+    //
+    // FIVE, NOT THREE, SINCE MEET DAY WAS WIRED TO THE SAME ROW. `meetBrief` and
+    // `recordMeetResult` are the meet half; the count is pinned rather than
+    // bounded so that a sixth — in particular a `record` getter, which is the
+    // only method that could put the bypass back — is a failure and not a
+    // silent widening.
     const port = localSessionServer({ record: storedRecord(), sleep: instantly });
     expect(Object.keys(port).sort()).toEqual([
+      'meetBrief',
       'openingSnapshot',
+      'recordMeetResult',
       'recordTrainingSession',
       'sessionBrief',
     ]);
@@ -183,5 +196,153 @@ describe('the stand-in server port', () => {
     const again = submitCloseOut(cache, closeOut, WALL_CLOCK, asProposalId('local-test-2'))!;
     const refused = await port.recordTrainingSession(DAY, again.proposal, asProposalId('local-test-2'));
     expect(refused.kind).toBe('refused');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ONE ROW, BOTH MODES — and the guard that could not fire until it was one row
+// ---------------------------------------------------------------------------
+
+describe('the meet half writes the row the session half reads', () => {
+  /** Play a whole meet on the real engine, against whatever this port holds. */
+  function playAMeet(port: ReturnType<typeof localSessionServer>, day: number) {
+    const facts = meetDayFactsFromCache(openingCache(port), day, SESSION_TUNING.STARTING_E1RM);
+    const state = playMeet(
+      () => 'perfect',
+      () => 'small',
+      {
+        day,
+        meet: MEET_LOCAL,
+        entry: MEET_ENTRY,
+        bestE1rmKg: facts.bestE1rmKg,
+        previousBestTotalKg: facts.previousBestTotalKg,
+        previousBestByLiftKg: facts.previousBestByLiftKg,
+        fatigue: port.meetBrief(day).fatigue,
+      },
+    );
+    const proposal = meetResultProposal(state);
+    if (proposal === null) throw new Error('the played meet produced no proposal');
+    return proposal;
+  }
+
+  it('A MEET BANKS A TOTAL THAT THE SESSION SIDE CAN THEN READ', async () => {
+    // The whole point, as one assertion. Before this, meet day held a
+    // `ServerRecord` of its own, so the total it banked went into an object that
+    // was garbage when the screen unmounted and no other surface could ever see
+    // it. Read through `readTotalKg`, because there is no row to read.
+    const port = localSessionServer({ record: storedRecord(), sleep: instantly });
+    expect(readingValue(readTotalKg(openingCache(port)))).toBeNull();
+
+    const response = await port.recordMeetResult(
+      DAY,
+      MEET_LOCAL,
+      playAMeet(port, DAY),
+      asProposalId('meet-1'),
+    );
+    expect(response.kind).toBe('recorded');
+    if (response.kind !== 'recorded') throw new Error('unreachable');
+    expect(response.result.totalKg).toBeGreaterThan(0);
+    expect(readingValue(readTotalKg(openingCache(port)))).toBe(response.result.totalKg);
+  });
+
+  it('and the response hands back no stored row', async () => {
+    // `AppliedMeetResult` carries one; `RecordedMeet` must not, or the client
+    // has the bypass back under a different name.
+    const port = localSessionServer({ record: storedRecord(), sleep: instantly });
+    const response = await port.recordMeetResult(
+      DAY,
+      MEET_LOCAL,
+      playAMeet(port, DAY),
+      asProposalId('meet-1'),
+    );
+    if (response.kind !== 'recorded') throw new Error('unreachable');
+    const body: Record<string, unknown> = { ...response.result };
+    expect(body.record).toBeUndefined();
+    expect(Object.keys(body).sort()).toEqual([
+      'bestByLiftKg',
+      'bombedLift',
+      'isTotalPr',
+      'liftPrs',
+      'placing',
+      'previousBestTotalKg',
+      'totalKg',
+    ]);
+  });
+
+  it('MEET_ALREADY_RECORDED FIRES ON THE SECOND MEET — reachable for the first time', async () => {
+    // =======================================================================
+    // WHAT BECAME REACHABLE, AND WHY REACHING IT IS CORRECT
+    // =======================================================================
+    // This guard could not fire while `useMeetDay` rebuilt its row per mount:
+    // the row that would have remembered the first meet was thrown away with
+    // the screen. It fires now, and the verdict is RIGHT rather than merely new
+    // — `MEET_LOCAL` is a single dated event (it carries a `dateIso`), and
+    // banking one competition twice is exactly what this refusal is for.
+    //
+    // WHAT IT COSTS A PLAYER is real and is recorded in GDD §11: with one
+    // ungated door to one meet, a second meet in an app run is refused, so the
+    // recap does not appear. The phase is still `'recap'`, so the shell draws
+    // BACK TO TRAINING and nobody is stranded — but it is a blank screen with a
+    // way out, and the fix is GDD §6.1's Career calendar knowing which meets a
+    // lifter has already competed at.
+    const port = localSessionServer({ record: storedRecord(), sleep: instantly });
+    const first = await port.recordMeetResult(
+      DAY,
+      MEET_LOCAL,
+      playAMeet(port, DAY),
+      asProposalId('meet-1'),
+    );
+    expect(first.kind).toBe('recorded');
+
+    const second = await port.recordMeetResult(
+      DAY,
+      MEET_LOCAL,
+      playAMeet(port, DAY),
+      asProposalId('meet-2'),
+    );
+    expect(second.kind).toBe('refused');
+    if (second.kind !== 'refused') throw new Error('unreachable');
+    expect(second.error.code).toBe('MEET_ALREADY_RECORDED');
+  });
+
+  it('a refused second meet leaves the banked total exactly where it was', async () => {
+    // The refusal must not half-apply. A total that moved on a refused write
+    // would be worse than the defect it replaced, because `totalKg` is monotone
+    // and nothing later can walk it back.
+    const port = localSessionServer({ record: storedRecord(), sleep: instantly });
+    await port.recordMeetResult(DAY, MEET_LOCAL, playAMeet(port, DAY), asProposalId('meet-1'));
+    const banked = readingValue(readTotalKg(openingCache(port)));
+    expect(banked).not.toBeNull();
+
+    await port.recordMeetResult(DAY, MEET_LOCAL, playAMeet(port, DAY), asProposalId('meet-2'));
+    expect(readingValue(readTotalKg(openingCache(port)))).toBe(banked);
+  });
+
+  it('a meet does not touch the streak, so competing is not a training day', async () => {
+    // `applyMeetResult` carries `record.streak` through untouched and
+    // `meetServer.ts` argues why. Asserted from the CLIENT side, because that is
+    // where it would be noticed: a meet that silently logged a training day
+    // would give a player a streak they did not earn and — worse under GDD
+    // §12.3 — would consume that day's coverage.
+    const port = localSessionServer({ record: storedRecord(), sleep: instantly });
+    const before = todayFromCache(openingCache(port), DAY, LIFT);
+
+    await port.recordMeetResult(DAY, MEET_LOCAL, playAMeet(port, DAY), asProposalId('meet-1'));
+    const after = todayFromCache(openingCache(port), DAY, LIFT);
+    expect(after.streakBefore).toBe(before.streakBefore);
+    expect(after.alreadyTrainedToday).toBe(before.alreadyTrainedToday);
+  });
+
+  it('and does not touch the e1RM either — a meet is not a training session', async () => {
+    const port = localSessionServer({ record: storedRecord(), sleep: instantly });
+    const before = todayFromCache(openingCache(port), DAY, LIFT).bestE1rmKg;
+
+    await port.recordMeetResult(DAY, MEET_LOCAL, playAMeet(port, DAY), asProposalId('meet-1'));
+    expect(todayFromCache(openingCache(port), DAY, LIFT).bestE1rmKg).toBe(before);
+  });
+
+  it('the meet brief carries the ledger and nothing else (GDD §3.4, §12.3)', () => {
+    const port = localSessionServer({ record: storedRecord(), sleep: instantly });
+    expect(Object.keys(port.meetBrief(DAY))).toEqual(['fatigue']);
   });
 });
