@@ -117,7 +117,7 @@ budgets roughly 30 hand-tuning passes, by playing it. None have happened.
 ## Checks
 
 ```bash
-npm test                 # 2212 tests across 51 files
+npm test                 # 2654 tests across 63 files
 npm run typecheck        # tsc --noEmit, strict, no `any`
 ```
 

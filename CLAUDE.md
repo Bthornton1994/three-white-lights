@@ -171,6 +171,15 @@ Shapes this has actually taken here:
 - **An input that is silently absent.** A parser that reads a real value as
   missing, or a comparison against a seed the session has not yet beaten, so
   both sides are the same number.
+- **A negative assertion whose two subjects are mutually exclusive by
+  construction.** `!visible('meet-recap')` on the second-meet placeholder screen:
+  `MeetScreen` reaches the placeholder only down the `recap === null` arm of a
+  ternary, and `RecapView` requires a `MeetRecap`, so **no version of the subject
+  draws both**. It reads as the strongest check in its section — a discriminator
+  separating two screens — and it survived deleting the placeholder outright
+  *and* forcing both to render. The tell is that the two things being held apart
+  cannot co-occur regardless of what the code does; move the claim to a screen
+  where they compete.
 - **An empty domain reproduced across every harness.** The sharpest one so far:
   a client mapping was missing a `DayOpening` kind, and the fixture that would
   have caught it set `lastTrainedDay` to yesterday — in the unit tests, in
@@ -241,6 +250,50 @@ Three things follow, each of which had already failed once:
 - **A check that bites but fails uselessly is half a check.** An identity
   assertion here reddened with `expected { …(5) } to be { …(5) }`. The witness
   bar means reading the failure message, not just watching it go red.
+
+### A screen a player reaches needs a check that reaches it the way a player does
+
+**The sibling of the rule above, and it was earned the same way.** That one says
+a claim about a value surviving a navigation needs a browser check reading both
+sides. This one says a claim about a *screen* needs a browser check that arrives
+there through the app's own controls.
+
+`frozenMeetFor` branches on `source === 'debug'`, so the debug arm and the played
+arm are literally different code. Every recap the harness had ever photographed
+came down the debug arm, via `?meet=recap`. 103 checks were green and no exit had
+ever been pressed on a meet a player opened. The second-meet placeholder was
+worse: shipped, pinned by a node test, copy-corrected by a human ruling, and
+never once drawn to a screen in the graded artifact until wave 39.
+
+So when a check opens a screen by URL, that is a different subject from the one
+the player sees, and the difference belongs in the tool's own header rather than
+in whoever reads it next. If the played arm cannot be driven, the honest output
+is a **named SKIPPED check**, not a quiet fallback to the debug URL that leaves
+the section looking complete. Assert the address bar carries no query string at
+the moment the screen is read, so the fallback cannot happen silently.
+
+The measurement worth keeping: driving both whole meets headless was expected to
+be the hard part and was not — 9/9 attempts on each across ~11 runs. A miss does
+not end a meet, only three on one lift do, so meet day tolerates a robot far
+better than a session does. The reachability was assumed impossible without
+anyone having tried it.
+
+### `MUTATION_WITNESSES` cannot hold a browser check, and that is a hole in the rule above
+
+**Stated as an open gap rather than quietly tolerated.** The witness schema
+resolves `testFile`/`redAssertion` against a vitest `it(` body and binds a
+`@guarantee` tag in `src/`. Checks that live in `tools/verify-shell-route.mjs`
+have no `it(` to bind to, so **none of them can be recorded** — including the
+eleven mutants that produced wave 39's findings.
+
+That makes the "record the witness at declaration time" bar unsatisfiable for
+exactly the class of check this file elsewhere calls the one the run most needs:
+the browser class, where three defects have now lived entirely. Until the schema
+grows a `toolFile`/`redCheck` variant, a browser witness is recorded in the merge
+commit that introduces it — the verbatim mutant and the verbatim check text that
+reddened, same two fields, just not machine-resolvable. Do not bend the schema to
+accept an unresolvable entry; a witness that cannot expire when its subject is
+edited away is worse than an honest gap.
 
 ## Domain Correctness
 
