@@ -63,10 +63,11 @@ place"*, *"nothing else paints in here"*, *"every number here is derived"* —
 then there must be a test that goes red if the guarantee stops holding. Prose is
 not a check, and a reader cannot tell the difference by looking.
 
-This is not a style preference. It has now failed **eight times** in this
+This is not a style preference. It has now failed **nine times** in this
 codebase; the fifth was found inside the comment that had just been rewritten to
 fix the fourth, the sixth one file away from where the fifth was fixed, and the
-seventh in a fix's own verification oracle, and the eighth naming a test file that does not exist:
+seventh in a fix's own verification oracle, the eighth naming a test file that does not exist, and the ninth inside a test
+rather than a comment:
 
 - a scrim constant *"registered, documented and read by no pixel"*;
 - a dismiss window whose stated causation nothing on the app's route consulted;
@@ -126,6 +127,20 @@ so it was green — differently shaped, identically blind. Writing a second
 implementation is not enough; ask what fact both of them read, and probe the
 region where that fact is unavailable rather than reviewing the two for
 resemblance.
+
+**A SELF-SATISFYING ASSERTION IS THE SAME FAILURE INSIDE A TEST.** Every
+instance above is prose without a test. This one is a test assertion that cannot
+fail: `MODULE_SOURCE.includes(THE_CONSTANT)`, where the module declares that
+constant from a literal — so the file necessarily contains its own value, the
+check resolves, it reads like a pin, and no mutation of the thing it names can
+redden it. It was caught only because renaming the id reddened a *different*
+direction and left this one green.
+
+**The witness bar does not catch this**, and that is worth knowing: a witness
+proves ONE assertion in a test bites, not that every assertion in it does. When
+you write a check that reads a file for a string, ask where that string comes
+from — if the file is also its source, you have written a tautology with a
+sincere name.
 
 **And be honest about the limit.** No scan can decide which prose asserts a
 guarantee, so any mechanism here is necessarily partial. The current scoping
