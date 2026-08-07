@@ -107,6 +107,60 @@ const CALLERS: readonly (readonly [string, string, string])[] = [
 const HOST_SCREENS: readonly string[] = ['meet/MeetScreen.tsx', 'session/SessionScreen.tsx'];
 
 /**
+ * WHAT EACH CALL SITE ACTUALLY HANDS THE GATE, scoped to the argument of
+ * `useOfferCutIn` rather than swept off the whole file.
+ *
+ * THE SCOPING IS THE POINT. `WalkoutView.tsx` and `BombOutView.tsx` also call
+ * `playBeat({ kind: 'walkout-call' })` and `playBeat({ kind: 'bomb-out' })` —
+ * the SOUND scheduler, an unrelated union that happens to spell its
+ * discriminant the same way. A file-wide `/kind: '…'/` therefore returns a set
+ * that can never be pinned, which is why the check that used it could only ask
+ * "is this one present" and never "is this all of them".
+ *
+ * Braces are walked rather than matched with a regex: a beat is an object
+ * literal with nested objects and expressions in it, and the closing paren of
+ * `useOfferCutIn(` is not the first `)` after it.
+ */
+function offeredBeatArgumentsIn(text: string): readonly string[] {
+  const out: string[] = [];
+  const CALL = 'useOfferCutIn(';
+  for (let at = text.indexOf(CALL); at >= 0; at = text.indexOf(CALL, at + 1)) {
+    let depth = 0;
+    for (let i = at + CALL.length - 1; i < text.length; i += 1) {
+      if (text[i] === '(') depth += 1;
+      else if (text[i] === ')') {
+        depth -= 1;
+        if (depth === 0) {
+          out.push(text.slice(at + CALL.length, i));
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** Every beat kind and record sub-kind the five call sites offer, de-duplicated. */
+function beatKindsOffered(): {
+  readonly kinds: readonly string[];
+  readonly recordKinds: readonly string[];
+  readonly perFile: readonly (readonly [string, readonly string[]])[];
+} {
+  const perFile = CALLERS.map(([, file]) => {
+    const args = offeredBeatArgumentsIn(code(file));
+    return [file, args] as const;
+  }).filter(([, args]) => args.length > 0);
+  const all = perFile.flatMap(([, args]) => args).join('\n');
+  const uniq = (pattern: RegExp): readonly string[] =>
+    [...new Set([...all.matchAll(pattern)].map((m) => m[1] ?? ''))].sort();
+  return {
+    kinds: uniq(/kind: '([a-z-]+)'/g),
+    recordKinds: uniq(/record: '([a-z0-9]+)'/g),
+    perFile,
+  };
+}
+
+/**
  * Every non-test source file under `src/`, as a path relative to `src/`.
  *
  * `src/`-SCOPED ON PURPOSE, and its callers are the ones whose subject really is
@@ -1894,12 +1948,60 @@ describe('every firing moment of GDD §7.2 is wired to a screen', () => {
   it('covers all four of the gate’s beat kinds between them', () => {
     // The union of what the app can report. A beat kind the gate understands
     // but no screen sends is a firing moment that exists only in the tests.
-    const offered = new Set(
-      CALLERS.flatMap(([, file]) => [...code(file).matchAll(/kind: '([a-z-]+)'/g)].map((m) => m[1])),
+    //
+    // PINNED AS A SET, not walked with `has`. The loop this replaced could see
+    // a kind that LEFT and never one that arrived.
+    //
+    // SCOPED TO THE ARGUMENT OF `useOfferCutIn`, which the loop was not: a bare
+    // `/kind: '…'/` over the whole file also matches `playBeat({ kind:
+    // 'walkout-call' })` and `{ kind: 'bar-plate' }`, which are the SOUND
+    // scheduler's beats and have nothing to do with the gate. That is why the
+    // old shape could only ever be a membership test — its input was full of
+    // things that were never going to be in the answer.
+    const offered = beatKindsOffered();
+    expect(offered.kinds, 'the useOfferCutIn scan matched nothing at all').not.toEqual([]);
+    expect(offered.kinds).toEqual(['meet-over', 'meet-walkout', 'record', 'work-set']);
+    // Non-vacuity on the scoping itself: every one of the five call sites must
+    // have contributed, or the set above is a smaller claim than it looks.
+    expect(offered.perFile.map(([file]) => file).sort()).toEqual(
+      [...CALLERS.map(([, file]) => file)].sort(),
     );
-    for (const kind of ['meet-walkout', 'record', 'meet-over', 'work-set']) {
-      expect(offered.has(kind), `nothing reports a ${kind} beat`).toBe(true);
-    }
+  });
+
+  it('AND THE THIRD PR SUB-MOMENT IS REACHED BY NO SCREEN — record: ‘tier’ is unbuilt', () => {
+    // ===================================================================
+    // THE HOLE THE TEST ABOVE COULD NOT SEE, WRITTEN DOWN AS A CHECK
+    // ===================================================================
+    // GDD §7.2 names THREE PR sub-moments — "new e1RM, new total, qualifying
+    // for a higher tier" — and `CUT_IN_RECORD_KINDS` carries all three. The
+    // gate fires on all three and `cutInGate.test.ts`'s "fires on each of the
+    // three PR kinds" proves it.
+    //
+    // NO SCREEN IN THE APP CAN OFFER THE THIRD. `RecapView` sends `total` and
+    // `e1rm`; `CloseOutView` sends `e1rm`. Nothing sends `tier`, because tier
+    // qualification depends on GDD §6.1's Career calendar, which a human has
+    // explicitly deferred. So the gate's third PR kind is reachable only from
+    // a test, and until this check that was disclosed nowhere: the test above
+    // iterates `kind:` and is satisfied by ANY `record` beat, so it passed
+    // whichever of the three sub-kinds the app happened to send.
+    //
+    // THIS IS A DISCLOSURE, NOT A FEATURE REQUEST. Every other residual in
+    // this piece is written down at length — the cross-lift bomb-out
+    // starvation, the reload hole, the coach-beats-PR ordering cost — and this
+    // one's silence was the anomaly. It goes red in both directions: the day a
+    // screen starts offering `tier`, somebody deletes this test and the
+    // paragraph in `cutInGate.ts` §5 that says the same thing; the day a screen
+    // stops offering `total` or `e1rm`, a real PR beat has gone missing.
+    const recordKinds = beatKindsOffered().recordKinds;
+    // Non-vacuity first: the scan really matches something, so `.not.toContain`
+    // below is not being asked of an empty list.
+    expect(recordKinds.length, 'no screen reports a record sub-kind at all').toBeGreaterThan(0);
+    expect(recordKinds).toEqual(['e1rm', 'total']);
+    expect(recordKinds).not.toContain('tier');
+    // ...and the gate does permit the third, spelled out here rather than read
+    // off `CUT_IN_RECORD_KINDS`, so this stays a statement about the GAP
+    // between §7.2's list and the app rather than a tautology.
+    expect(code('cutin/cutInGate.ts')).toMatch(/CUT_IN_RECORD_KINDS = \['e1rm', 'total', 'tier'\]/);
   });
 
   it('no screen qualifies the beat itself — it reports facts', () => {

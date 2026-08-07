@@ -25,7 +25,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { codeOnly } from '../tuning/audit';
+import { auditSource, codeOnly, formatFindings, withoutComments } from '../tuning/audit';
 import {
   CUT_IN_MOMENTS,
   CUT_IN_MOMENT_PRIORITY,
@@ -631,26 +631,48 @@ describe('a bomb-out is not starved by its own lift’s walk-out', () => {
     expect(firedMoment(state, [THIRD_ATTEMPT_WALKOUT_NOTHING_BANKED])).toBeNull();
   });
 
-  it('EVERY SEEDED MEET THAT BOMBS EITHER SHOWS THE BOMB-OUT OR SHOWS NOTHING', () => {
-    // Both bounds, over real rolled sessions rather than one hand-picked seed.
-    // The upper bound is the property: no meet that bombs its first lift can
-    // spend its slot on anything else. The lower bound stops a gate that never
-    // fires at all from passing.
+  it('EVERY SEEDED MEET THAT BOMBS SHOWS THE BOMB-OUT, ON EVERY SEED', () => {
+    // Over real rolled sessions rather than one hand-picked seed.
+    //
+    // THE UPPER BOUND USED TO BE `toBeLessThanOrEqual(MEETS)` AND COULD NOT
+    // FAIL. The cap is one per session and there are `MEETS` sessions, so no
+    // version of this gate — working, broken, or deleted — could produce more.
+    // It read as the sweep's second bound and was decoration.
+    //
+    // WHAT IS TRUE AND IS NOT FREE: `SESSION_ALLOWANCE['bomb-out']` is 1 and
+    // `rollAllowances` compares a draw in [0, 1) against it, so a bomb-out beat
+    // is allowed in EVERY sitting on EVERY seed. So the honest number is not a
+    // bound at all — it is `MEETS`, exactly, and it is spelled as a count.
+    //
+    // Turning the bomb-out rate down turns this red, and that is the intended
+    // behaviour rather than a nuisance: `tools/verify-cutin-cap.mjs` leans on
+    // the same fact to promise a qualifying beat on any day, and the two should
+    // stop being true together rather than one at a time.
     const MEETS = 200;
     let bombOuts = 0;
+    let anythingElse = 0;
+    const wrong: string[] = [];
     for (let seed = 0; seed < MEETS; seed += 1) {
       let state = openCutInSession({ sessionId: `meet-${seed}`, seed });
       for (const beats of A_LIFT_THAT_BOMBS) {
         const decision = requestCutIn(state, beats);
         if (decision.outcome.kind === 'fire') {
-          expect(decision.outcome.live.moment, `seed ${seed}`).toBe('bomb-out');
-          bombOuts += 1;
+          if (decision.outcome.live.moment === 'bomb-out') bombOuts += 1;
+          else {
+            anythingElse += 1;
+            wrong.push(`seed ${seed}: ${decision.outcome.live.moment}`);
+          }
         }
         state = dismissCutIn(decision.state);
       }
     }
-    expect(bombOuts).toBeGreaterThan(0);
-    expect(bombOuts).toBeLessThanOrEqual(MEETS);
+    // The property: no meet that bombs its first lift spends its slot on
+    // anything else. Named, with the seeds, so a reopening says which.
+    expect(wrong.slice(0, 10).join(' | ')).toBe('');
+    expect(anythingElse).toBe(0);
+    // COUNTS, NOT BOUNDS (CLAUDE.md). Every one of the 200 fires, and it fires
+    // the bomb-out.
+    expect(bombOuts).toBe(MEETS);
   });
 
   it('THE RESIDUAL, PINNED: ANOTHER LIFT’S THIRD ATTEMPT CAN STILL TAKE THE SLOT', () => {
@@ -892,6 +914,13 @@ describe('a cut-in is cosmetic — GDD §8.1, §12.3', () => {
 describe('the gate is a pure module (CLAUDE.md architecture rules)', () => {
   const GATE = source('cutInGate.ts');
   /**
+   * The path `audit.ts` resolves its rule from. Repository-relative, because
+   * `ruleFor` keys its allowlist that way and a bare filename would fall
+   * through to the default `renderer` rule by accident rather than on purpose —
+   * which is the right rule here, but arrived at for the wrong reason.
+   */
+  const GATE_PATH = 'src/cutin/cutInGate.ts';
+  /**
    * Comments and strings blanked, offsets preserved. `src/tuning/audit.ts`'s
    * stripper rather than a second one: the header below discusses `Math.random`
    * in prose precisely to say the module does not call it, and a scan that
@@ -917,8 +946,31 @@ describe('the gate is a pure module (CLAUDE.md architecture rules)', () => {
     // The magic-number audit checks this over the whole tree; this is the local
     // statement of it, so the gate's own violation is named by the gate's own
     // suite rather than by a file three directories away.
-    expect(GATE).toMatch(/cutInTuning/);
-    expect(GATE).toMatch(/CUT_IN_TUNING\./);
+    //
+    // IT USED TO BE TWO `toMatch`ES ON THE RAW SOURCE — `/cutInTuning/` and
+    // `/CUT_IN_TUNING\./` — and BOTH WERE SATISFIED BY A COMMENT. The header
+    // discusses `CUT_IN_TUNING.SESSION_ALLOWANCE` in prose, so adding
+    // `const x = 42;` to the gate left this green: the test named the property
+    // and checked a different one, which is worse than no test because the next
+    // reader stops looking.
+    //
+    // SO IT ASKS `audit.ts` — the same scanner `src/tuning/audit.test.ts` runs
+    // over the tree, not a second dialect of it (CLAUDE.md). The control comes
+    // first: the scanner has to be shown finding a bare number in THIS FILE'S
+    // OWN TEXT before its silence is read as an answer.
+    expect(
+      auditSource(GATE_PATH, `${GATE}\nconst aBareNumber = 42;\n`).map((f) => f.text),
+      'the audit no longer sees a bare number in this file, so its silence means nothing',
+    ).toEqual(['42']);
+    // A COUNT, NOT A BOUND: the empty string is "no findings", and a reopening
+    // prints the literal and the declaration it hid in rather than a bare false.
+    expect(formatFindings(auditSource(GATE_PATH, GATE))).toBe('');
+    // ...and the knobs really do come from the tuning module, read off the CODE
+    // rather than off the prose that talks about it. The import PATH is a
+    // string literal, which `codeOnly` blanks along with the comments, so that
+    // half reads `withoutComments` — comments gone, string contents kept.
+    expect(withoutComments(GATE)).toMatch(/from '\.\/cutInTuning'/);
+    expect(GATE_CODE).toMatch(/CUT_IN_TUNING\./);
   });
 
   it('has a test for every exported function', () => {
