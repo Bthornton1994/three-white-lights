@@ -523,7 +523,22 @@ physiology.
 - Prefer editing existing files over creating new ones.
 - Do not create documentation files unless asked.
 - Commit early, commit often, small scopes.
+- **Push after every commit. A local commit is not a durable artifact here.**
+  The checkout has silently rewound four times, and the fourth took the
+  **reflog** with it: `HEAD` came back at a commit from an earlier day, the
+  working tree was at wave 6 with three shipped modules simply absent, every
+  branch the session had created was gone from `git branch`, and the lost
+  commit's SHA was *not a valid object name* — so there was nothing local to
+  recover from. The `/tmp` scratchpad rolled back on the same boundary. Origin
+  was the only surviving copy. Twice now a rewind has been survivable only
+  because origin happened to be ahead, and both times that was luck rather than
+  design. Batching a wave's commits and pushing at the end is the habit that
+  makes the next rewind expensive.
 - Use git worktrees for parallel builders so concurrent work does not collide.
+  Note what the fourth rewind showed about them: worktrees are **not** specially
+  fragile, and they are not specially safe either — the whole machine reverted
+  together, so in-flight agents died with it. Merge and push each builder's
+  result as it lands instead of accumulating several and merging at the end.
 - For human-paced follow-up sessions after the run: one vertical slice at a time,
   working state at the end of each.
 
