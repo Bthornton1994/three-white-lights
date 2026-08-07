@@ -202,8 +202,23 @@ const GUARANTEE_COVERAGE = {
    * — `tools/verify-shell-route.mjs` reads the e1RM off a played close-out and
    * asserts the opener after it is derived from that number — so it is on the
    * better side of this file's own complaint, whatever the ratio does.
+   *
+   * 198 -> 205 when the second meet of an app run got a placeholder recap.
+   * MEASURED PER FILE by removing each and re-reading this count, rather than
+   * apportioned by eye: `careerCalendarPlaceholder.ts` 4,
+   * `careerCalendarPlaceholder.test.ts` 3, and — worth recording because the
+   * first guess said two — `CareerCalendarPlaceholderView.tsx` and the branch
+   * added to `MeetScreen.tsx` contribute ZERO between them. Both of those were
+   * written in lower case, which is exactly the blind spot this file's scoping
+   * rule already declares: a lower-case guarantee walks past it.
+   *
+   * All seven are about the SAME claim — that the placeholder is scaffolding
+   * that cannot quietly grow into calendar logic. It carries the tag
+   * `placeholder-cannot-grow-calendar-authority` and a witness in the table
+   * below, so the new prose is on the better side of this file's complaint —
+   * but the ratio moved the wrong way and this comment is where that is said.
    */
-  TREE_WIDE: 198,
+  TREE_WIDE: 205,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -367,6 +382,24 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     redAssertion: "expect(errorCodeOf(lateSale)).toBe('ABSENCE_ENDED_AFTER_OFFER')",
     observed:
       "AssertionError: expected 'ABSENCE_ENDED_BEFORE_OFFER' to be 'ABSENCE_ENDED_AFTER_OFFER'",
+  },
+  {
+    // The mutant turned the placeholder's one type-only import into a VALUE
+    // import — the exact move by which a "temporary" scaffold acquires a clock,
+    // a row or a meet history, and the thing the bound exists to make loud.
+    // Taken with three others on the same run: adding an export (`nextMeetDay`)
+    // reddens the export-surface equality, giving the placeholder a prop reddens
+    // the empty-parameter-list check, and broadening the gate to any refusal
+    // reddens the per-error-code loop in the sibling test.
+    guarantee: 'placeholder-cannot-grow-calendar-authority',
+    mutatedFile: 'src/meet/careerCalendarPlaceholder.ts',
+    mutated: "import type { MeetDayPhaseId } from '../game/meetDay';",
+    testFile: 'src/meet/careerCalendarPlaceholder.test.ts',
+    redAssertion: 'imports a value, which is how a placeholder acquires a clock, a row or a meet history',
+    observed:
+      'AssertionError: careerCalendarPlaceholder.ts may only "import type" — "import { type ' +
+      "MeetDayPhaseId, meetIdFor } from '../game/meetDay'\" imports a value, which is how a " +
+      'placeholder acquires a clock, a row or a meet history: expected false to be true',
   },
   {
     guarantee: 'settling-is-terminal',

@@ -303,11 +303,29 @@ describe('the placeholder is pinned to the document that owes it', () => {
       MIN_PIN_LENGTH,
     );
 
-    // DIRECTION 1 — the code end. Delete the constant and this reddens.
-    expect(
-      MODULE_SOURCE.includes(CAREER_CALENDAR_GATE),
-      `careerCalendarPlaceholder.ts must name the gate id "${CAREER_CALENDAR_GATE}"`,
-    ).toBe(true);
+    // DIRECTION 1 — THE CODE POINTS AT THE DOCUMENT.
+    //
+    // NOT `MODULE_SOURCE.includes(CAREER_CALENDAR_GATE)`. That was the first
+    // version of this line and it is a NO-OP: the constant is declared in that
+    // file from a literal, so the file necessarily contains its own value and
+    // the assertion cannot fail. Mutation-tested and confirmed — renaming the id
+    // reddened Direction 2 below and left that line green, which is the whole
+    // reason it is gone.
+    //
+    // What has content is that the code cites the SECTION that owes it, so a
+    // reader who opens the module lands on the document. Delete the citation and
+    // this reddens.
+    for (const cite of ['GDD §6.1', 'TEMPORARY SCAFFOLDING']) {
+      expect(
+        MODULE_SOURCE.includes(cite),
+        `careerCalendarPlaceholder.ts must say "${cite}" — a scaffold that does not name the ` +
+          'section that replaces it is a scaffold nobody finds from the document',
+      ).toBe(true);
+      expect(
+        VIEW_SOURCE.includes(cite),
+        `CareerCalendarPlaceholderView.tsx must say "${cite}"`,
+      ).toBe(true);
+    }
 
     // DIRECTION 2 — the document end, and in §6.1 specifically rather than
     // anywhere in a 2500-line file. Delete the TODO and this reddens.
