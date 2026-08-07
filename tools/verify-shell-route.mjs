@@ -1562,6 +1562,25 @@ await open('/?meet=recap', 'meet-screen');
 await page.screenshot({ path: path.join(outDir, '04-recap-with-way-back.png') });
 await checkOnScreen('meet-recap', 'the recap renders');
 await checkOnScreen(NAV_LEAVE_MEET, `the way back is on screen (${NAV_LEAVE_MEET})`);
+
+// THE SECOND-MEET PLACEHOLDER MUST NOT LEAK ONTO A RECAP THAT BUILT.
+//
+// `careerCalendarPlaceholder.ts` is TEMPORARY SCAFFOLDING for the meet the
+// server refuses as already recorded (GDD §6.1, `career-calendar-placeholder`).
+// A player who lifted a real total must never be told "Meet recorded — Career
+// calendar coming soon" instead of their result, and the unit suite cannot see
+// this: `vitest.config.ts` is `environment: node` and has no renderer.
+//
+// WHAT THIS DOES NOT CHECK, said plainly rather than implied: it is the
+// NEGATIVE half only. Reaching the placeholder for real needs two whole meets
+// played in one page session, and the rep is a timing mechanic a headless mouse
+// does not beat reliably — so the positive case ("the second meet draws the
+// placeholder, with the way back on it") is NOT verified here and is not
+// claimed to be. Delete this check with the placeholder.
+check(
+  !(await visible('meet-recap-placeholder')),
+  'the second-meet placeholder is NOT drawn over a recap that built (GDD §6.1 scaffolding)',
+);
 const leaveHit = await hitTest(NAV_LEAVE_MEET);
 check(leaveHit.hit, 'and it is what a thumb would hit', `elementFromPoint -> ${leaveHit.why}`);
 

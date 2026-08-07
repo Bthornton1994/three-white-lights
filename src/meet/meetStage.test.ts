@@ -326,6 +326,15 @@ const UNSTAGED_BEATS: readonly { readonly beat: string; readonly file: string; r
     file: 'meet/RecapView.tsx',
     why: 'GDD §6.5 is a results sheet, read after the meet, not a moment in it.',
   },
+  {
+    beat: 'recap placeholder',
+    file: 'meet/CareerCalendarPlaceholderView.tsx',
+    why:
+      'TEMPORARY SCAFFOLDING for the second meet of an app run, which the server refuses as ' +
+      'already recorded (GDD §6.1, `career-calendar-placeholder`). It is one line of text and ' +
+      'must stay one line of text — a room here would be this stopgap growing, which is the ' +
+      'thing `careerCalendarPlaceholder.test.ts` bounds. Delete this row with the placeholder.',
+  },
 ];
 
 /**

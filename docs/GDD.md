@@ -1498,6 +1498,25 @@ The emotional centerpiece. Deserves the most design care and polish budget.
 - Opening attempts pre-filled from current Sim-mode e1RM data as a suggested
   safe opener. Player can override.
 
+**TODO — `career-calendar-placeholder`. Tracked scaffolding, to be deleted when
+this section is actually built.** There is no calendar yet, so there is one
+ungated door to the one local meet that exists, and a player who opens it a
+second time in an app run has their result refused as already recorded (§11 has
+the measurement: 612.5 kg banked under `local-open-2026`, the second meet
+refused). That left a blank recap. A **minimal placeholder screen** now stands in
+its place — one line, reading "Meet recorded — Career calendar coming soon",
+with the shell's existing BACK TO TRAINING as the way out.
+
+It is a **stopgap ruled by a human, not a design**, and it deliberately does not
+schedule, date, or check eligibility for anything. It lives in
+`src/meet/careerCalendarPlaceholder.ts` and
+`src/meet/CareerCalendarPlaceholderView.tsx`.
+`src/meet/careerCalendarPlaceholder.test.ts` pins the id above in **both** this
+document and that module, so deleting either end reddens the suite, and bounds
+what the placeholder is allowed to do so a later pass cannot grow it into real
+calendar logic while leaving the "temporary" label on. **When the Career calendar
+lands, delete all three files and this block together.**
+
 ### 6.2 Attempt Loop
 
 Order: squat → bench → deadlift. Three attempts each.
