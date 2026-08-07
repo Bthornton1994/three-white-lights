@@ -2112,7 +2112,15 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding) {
       (drive.ended === expected
         ? ''
         : drive.ended === 'bombed'
-          ? " — GDD §6.3's bomb-out. The driver missed all three attempts on a lift, which is a fact about this robot's timing and not about the app"
+          ? // DESCRIBED, NOT DIAGNOSED, and that wording is a mutation's doing.
+            // This branch used to end "which is a fact about this robot's
+            // timing and not about the app" — and the first mutant that reached
+            // it was `afterVerdict` returning 'bombed' unconditionally, i.e.
+            // the app. A failure message that names the wrong culprit is worse
+            // than a terse one, because the next reader stops looking.
+            " — GDD §6.3's bomb-out: three misses on one lift. That is USUALLY this robot's timing" +
+            ' rather than the app; the per-attempt note beside this check is what says which, and a' +
+            ' run where every attempt was a make and the meet still bombed is the engine'
           : drive.ended === 'waiting'
             ? ` — the phase reached 'recap' and the server's answer never landed inside the derived deadline (${drive.why})`
             : ` (${drive.why ?? 'no reason given'})`),
