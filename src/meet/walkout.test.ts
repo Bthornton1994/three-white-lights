@@ -59,13 +59,21 @@ import { fillRect, type IndexGrid } from '../art/raster';
 import { LOAD_PRESETS, QUANTISE, RESOLUTION, STRAIN } from '../art/spriteTuning';
 import { LIFT_TUNING } from '../game/liftTuning';
 import { meetLoadingRules } from '../game/meet';
-import { walkoutMs } from '../game/meetDay';
+import { deliberationMs, walkoutMs } from '../game/meetDay';
 import { holdWalkoutAtMs, MEET_MOMENTS, previewStateFor } from '../game/meetPreview';
 import { MEET_PREVIEW, MEET_TUNING } from '../game/meetTuning';
 import { SPRITE_BOX } from '../lift/liftFrame';
-import { hallLifterFrame, hallPlateCount, hallScene, MEET_HALL_SCENE } from './meetHall';
+import {
+  hallBraceFrame,
+  hallLifterFrame,
+  hallPlateCount,
+  hallScene,
+  MEET_HALL_SCENE,
+} from './meetHall';
 import {
   barLoadMs,
+  bracePhaseAt,
+  buildHold,
   buildWalkout,
   CHEER_CROWD_RISE,
   crowdRisePxAt,
@@ -119,6 +127,32 @@ const AT = walkoutStageStartMs(PLATES, URGENT_BEAT_MS);
 const MOTION = MEET_TUNING.WALKOUT_MOTION;
 const TAIL = MEET_TUNING.WALKOUT_TAIL;
 const MS_PER_S = 1000;
+
+/**
+ * Every shape `walkoutMs` can be asked for: (attempt, previous best, bomb risk).
+ * Written out rather than generated so the counts pinned against it name a list
+ * a reader can see, and so a shape cannot silently vanish from a sweep.
+ */
+const ATTEMPT_SHAPES: readonly (readonly [1 | 2 | 3, number | null, boolean])[] = [
+  [1, null, false],
+  [2, 250, false],
+  [3, 250, false],
+  [3, null, true],
+  [3, 200, true],
+];
+
+/**
+ * How much of the room the tail's own crowd ramp has to move, in scene pixels of
+ * the composite's 22,490.
+ *
+ * A FLOOR AND NOT A PIN, for the same reason `THE_HALL_KNOWS` is one: it is a
+ * function of `WALKOUT_TAIL.HUSH_CROWD_RISE_PX`, which a playtest pass will
+ * turn. Measured at the shipped values the wave travels from rise 5 to rise 8
+ * across the brace and moves 558 scene pixels; the floor is set at rise 6's 298
+ * so losing one row of travel does not fail the suite, and far above zero, which
+ * is what the tail moved before.
+ */
+const A_HALL_STILL_FILLING = 250;
 
 /**
  * The urgent sheet, in the three numbers `walkout.ts`'s header quotes.
@@ -2477,19 +2511,416 @@ describe('the mid-motion preview beats land where they are named', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The one number nobody can check here
+// THE FIFTH CLAIM, AND THE ONE THE ESCALATION ACTUALLY LANDS IN:
+// the tail is not a frozen frame
 // ---------------------------------------------------------------------------
 
-describe('what this file does NOT claim', () => {
-  it('records that the pacing half of GDD §12.2 is unverified', () => {
-    // Not a behaviour test. It is here so the claim is in the suite rather than
-    // only in a comment: every duration the choreography runs on is a starting
-    // point, and GDD §12.1 puts the tuning of them after the run, by hand, with
-    // people watching. Broadcast footage is unreachable from this environment.
-    const motion = MEET_TUNING.WALKOUT_MOTION;
-    expect(motion.UNRACK_MS).toBeGreaterThan(0);
-    expect(motion.STEP_MS).toBeGreaterThan(0);
-    expect(motion.SETTLE_MS).toBeGreaterThan(0);
-    expect(MEET_TUNING.CROWD.WALKOUT_RISE_MS).toBeGreaterThan(0);
+/**
+ * ===========================================================================
+ * THE MEASUREMENT THAT PUT THIS SECTION HERE
+ * ===========================================================================
+ * Everything above measures the walk-out's MOTION, and the motion was fine. What
+ * was not is that the motion is 2,120 ms and the beat is up to 4,800:
+ *
+ *   attempt                         beat     motion   tail    tail as % of beat
+ *   opener / second                2,400     2,120      280        12%
+ *   third                          3,300     2,120    1,180        36%
+ *   third, nothing banked          4,100     2,120    1,980        48%
+ *   third, PR, nothing banked      4,800     2,120    2,680        56%
+ *
+ * `useHallStep` cancelled its frame loop at `motionMs`, the crowd's ramp
+ * saturated at 1,980, the copy finished fading at 660 and `CROWD_SWELL_BIG` had
+ * decayed by 2,520. So every millisecond of `THIRD_ATTEMPT_WALKOUT_EXTRA_MS`,
+ * `PR_ATTEMPT_WALKOUT_EXTRA_MS` and `BOMB_RISK_WALKOUT_EXTRA_MS` — up to 2,400 of
+ * them — was a static raster over silence, and `meetTuning.ts` was telling a
+ * future tuner that `WALKOUT_MS` was the lever for the beat §12.2 judges.
+ *
+ * What is measured below is that the tail draws, that the escalation buys
+ * drawings rather than held frame, and that the brace reads nothing about the
+ * lifter (GDD §12.3).
+ *
+ * PACING IS STILL UNVERIFIABLE HERE. Nothing below says 420 ms is the right
+ * period for a bar under a braced man; it says the tail changes, where it
+ * changes, and that turning the escalation knobs changes it more.
+ */
+
+/** Every instant of a sequence, on the sheet's own quantum. */
+function tickThrough(fromMs: number, toMs: number): readonly number[] {
+  const out: number[] = [];
+  for (let ms = fromMs; ms <= toMs; ms += MOTION.TICK_MS) out.push(ms);
+  return out;
+}
+
+/**
+ * The longest run of the tail, in ms, over which the COMPOSITE does not change.
+ *
+ * The number the defect was: 1,980 ms on a third attempt with nothing banked,
+ * against a beat of 4,100.
+ */
+function longestStillMs(sequence: typeof URGENT): number {
+  const ticks = tickThrough(sequence.motionMs, sequence.beatMs);
+  let worst = 0;
+  let runStart = ticks[0] ?? 0;
+  let previous = walkoutFrameIndexAt(sequence, runStart);
+  for (const ms of ticks) {
+    const index = walkoutFrameIndexAt(sequence, ms);
+    if (index !== previous) {
+      worst = Math.max(worst, ms - runStart);
+      runStart = ms;
+      previous = index;
+    }
+  }
+  return Math.max(worst, (ticks[ticks.length - 1] ?? 0) - runStart);
+}
+
+describe('the walk-out tail is a beat, not a held frame (GDD §12.2)', () => {
+  /**
+   * How much held frame a tail is allowed to end on.
+   *
+   * NOT A FEEL VALUE and not a second copy of one: it IS
+   * `WALKOUT_TAIL.HUSH_MS`, read rather than restated, because the hush is the
+   * designed stillness and anything longer is the defect coming back. Measured
+   * against it, the defective code scored 1,980 ms.
+   */
+  const STILLNESS_BUDGET_MS = TAIL.HUSH_MS;
+
+  it('changes the picture inside the tail, where all of the escalation lands', () => {
+    // THE NUMBER THAT USED TO BE THE WHOLE TAIL. On the shipped defect the sheet
+    // had one drawing from 2,120 ms to 4,100 and `useHallStep` was not even
+    // sampling it. Measured on the composite, not on the frame list, so a sheet
+    // that emitted distinct frame objects drawing the same picture would fail.
+    const inTail = URGENT.frames.filter((f) => f.startMs >= URGENT.motionMs);
+    expect(inTail.length, 'the tail is one held drawing').toBeGreaterThan(1);
+
+    const shots = inTail.map((frame) => hallAt(frame));
+    let distinct = 0;
+    let scheduleOnly = 0;
+    for (let i = 1; i < shots.length; i += 1) {
+      const a = shots[i - 1];
+      const b = shots[i];
+      const before = inTail[i - 1];
+      const after = inTail[i];
+      if (a === undefined || b === undefined) throw new Error('unreachable');
+      if (before === undefined || after === undefined) throw new Error('unreachable');
+      if (differingPixels(a, b) > 0) distinct += 1;
+      else if (before.stage !== after.stage) scheduleOnly += 1;
+    }
+    // EXACTLY ONE BOUNDARY IN THE TAIL IS ALLOWED TO DRAW NOTHING NEW, and it is
+    // named: SET -> HUSH is a boundary in the SCHEDULE, and the brace lands back
+    // on the rest drawing on its way into it, so the two frames either side of
+    // it are the same picture on purpose. Pinned as a count rather than waved
+    // through with a `>=`, so a second silent boundary is a failure.
+    expect(scheduleOnly, 'the tail has a boundary that draws nothing and is not the hush')
+      .toBe(1);
+    expect(
+      distinct,
+      `the tail emits ${inTail.length} frames and ${distinct} of the transitions between them change a pixel`,
+    ).toBe(inTail.length - 1 - scheduleOnly);
+
+    // ...and the stillness inside it is bounded by the hush the design names.
+    const still = longestStillMs(URGENT);
+    expect(
+      still,
+      `the tail holds one drawing for ${still}ms of its ${URGENT.beatMs - URGENT.motionMs}ms`,
+    ).toBeLessThanOrEqual(STILLNESS_BUDGET_MS);
+  });
+
+  it('never ends any attempt on more held frame than the hush it schedules', () => {
+    // Every shape the piece can produce, not only the one §12.2 names. An opener
+    // has no brace window at all (its tail is 280 ms, under
+    // `MIN_BRACE_WINDOW_MS` + `HUSH_MS`), and its whole tail is therefore the
+    // hush — which is the same claim, and is why this loop covers it too.
+    let checked = 0;
+    let braced = 0;
+    for (const [attempt, best, bomb] of ATTEMPT_SHAPES) {
+      const beatMs = walkoutMs(attempt, HEAVY_KG, best, bomb);
+      const sheet = buildWalkout({
+        loadRatio: LOAD,
+        plateCount: PLATES,
+        urgent: attempt === 3 || bomb,
+        beatMs,
+      });
+      const still = longestStillMs(sheet);
+      expect(
+        still,
+        `a ${attempt}-attempt beat of ${beatMs}ms holds one drawing for ${still}ms`,
+      ).toBeLessThanOrEqual(STILLNESS_BUDGET_MS);
+      if (sheet.tail.cycles > 0) braced += 1;
+      checked += 1;
+    }
+    // NON-VACUITY, PINNED AS COUNTS AND NOT AS BOUNDS. Both sides of the
+    // `MIN_BRACE_WINDOW_MS` line have to be exercised or the loop is measuring
+    // one case twice: at the shipped tuning two shapes are too short to brace
+    // (the opener and the second attempt) and three are not.
+    expect(checked, 'attempt shapes swept').toBe(ATTEMPT_SHAPES.length);
+    expect([braced, checked - braced], 'shapes with a brace, and without').toEqual([3, 2]);
+  });
+
+  it('spends the escalation on drawings rather than on held frame', () => {
+    // THE DREAD KNOB, MADE REAL — and this is the assertion that fails on the
+    // code this pass replaced. `meetTuning.ts` tells a future tuner that
+    // `WALKOUT_MS` is "the beat §12.2 judges" and that a playtest finding it too
+    // short should lengthen it "here and nowhere else". Before the tail existed
+    // that instruction was unsatisfiable: adding milliseconds to any of these
+    // four numbers added exactly zero drawings.
+    const base = MEET_TUNING.BAR_LOAD_MS + MEET_TUNING.WALKOUT_MS;
+    const sheetFor = (beatMs: number): typeof URGENT =>
+      buildWalkout({ loadRatio: LOAD, plateCount: PLATES, urgent: true, beatMs });
+
+    const knobs: readonly (readonly [string, number])[] = [
+      ['WALKOUT_MS', MEET_TUNING.WALKOUT_MS],
+      ['THIRD_ATTEMPT_WALKOUT_EXTRA_MS', MEET_TUNING.THIRD_ATTEMPT_WALKOUT_EXTRA_MS],
+      ['PR_ATTEMPT_WALKOUT_EXTRA_MS', MEET_TUNING.PR_ATTEMPT_WALKOUT_EXTRA_MS],
+      ['BOMB_RISK_WALKOUT_EXTRA_MS', MEET_TUNING.BOMB_RISK_WALKOUT_EXTRA_MS],
+    ];
+    // Measured from the longest beat the piece can already produce, so each knob
+    // is being added to a tail that is ALREADY braced — the honest question is
+    // "does turning this up buy more", not "does the first one buy anything".
+    const longest = base +
+      MEET_TUNING.THIRD_ATTEMPT_WALKOUT_EXTRA_MS +
+      MEET_TUNING.PR_ATTEMPT_WALKOUT_EXTRA_MS +
+      MEET_TUNING.BOMB_RISK_WALKOUT_EXTRA_MS;
+    const before = sheetFor(longest);
+    let turned = 0;
+    for (const [name, extraMs] of knobs) {
+      const after = sheetFor(longest + extraMs);
+      expect(
+        after.frames.length,
+        `turning ${name} up by ${extraMs}ms adds ${after.frames.length - before.frames.length} drawings to the beat`,
+      ).toBeGreaterThan(before.frames.length);
+      expect(after.tail.cycles, `${name} buys no extra brace`).toBeGreaterThan(before.tail.cycles);
+      turned += 1;
+    }
+    expect(turned, 'knobs turned').toBe(knobs.length);
+    expect(knobs.length).toBe(4);
+  });
+
+  it('drives the brace off the clock and off nothing about the lifter (GDD §3.4, §12.3)', () => {
+    // §12.3 refuses a visible fatigue meter, and "he looks tighter today" is one
+    // with the numerals filed off. So the oscillation may not read anything
+    // about the man: not readiness, not load, not which attempt this is.
+    //
+    // MEASURED ON THE DRAWN CHANNELS rather than argued from the signature. A
+    // signature argument is exactly the "oracle mirrors its subject" shape —
+    // `bracePhaseAt(ms, plan)` obviously cannot see fatigue, and that says
+    // nothing about what `drawKeyAt` does with it.
+    const braceOf = (sequence: typeof URGENT): readonly string[] => {
+      const rest = hallBraceFrame(1);
+      return sequence.frames
+        .filter((f) => f.startMs >= sequence.motionMs)
+        .map((f) =>
+          [
+            f.startMs,
+            f.barTiltDeg - rest.barTiltDeg,
+            f.barBendPx - rest.barBendPx,
+            f.pitchLevel - rest.pitchLevel,
+          ].join('/'),
+        );
+    };
+    // The reference series, at a maximal bar on an urgent third attempt.
+    const reference = braceOf(URGENT);
+    expect(
+      reference.filter((row) => !row.endsWith('/0/0/0')).length,
+      'the brace never moves any channel, so the comparison below is empty',
+    ).toBeGreaterThan(0);
+
+    // (a) URGENCY. The one thing urgency may reach is the crowd.
+    const calm = buildWalkout({
+      loadRatio: LOAD,
+      plateCount: PLATES,
+      urgent: false,
+      beatMs: URGENT_BEAT_MS,
+    });
+    for (const ms of tickThrough(URGENT.motionMs, URGENT_BEAT_MS)) {
+      const a = walkoutFrameAt(URGENT, ms);
+      const b = walkoutFrameAt(calm, ms);
+      expect(
+        walkoutLifterFrame(b, HEAVY_KG, BAR_AND_COLLARS_KG),
+        `the man is drawn differently at ${ms}ms because the attempt is urgent`,
+      ).toEqual(walkoutLifterFrame(a, HEAVY_KG, BAR_AND_COLLARS_KG));
+    }
+    // ...and the crowd really is different, so the loop above compared two beats
+    // rather than one beat with itself.
+    expect(walkoutFrameAt(URGENT, URGENT.tail.hushStartMs).crowdRisePx).toBe(
+      TAIL.HUSH_CROWD_RISE_PX,
+    );
+    expect(walkoutFrameAt(calm, calm.tail.hushStartMs).crowdRisePx).toBe(0);
+
+    // (b) THE BAR. The brace's TIMING may not move with how heavy it is: the
+    // rest pose does (that is `hallBraceFrame`'s job and GDD §7.1's), the
+    // oscillation on top of it does not.
+    let sweptLoads = 0;
+    for (const load of [0.62, 0.78, 0.9, LOAD]) {
+      const sheet = buildWalkout({
+        loadRatio: load,
+        plateCount: PLATES,
+        urgent: true,
+        beatMs: URGENT_BEAT_MS,
+      });
+      expect(sheet.tail, `load ${load}: the tail is scheduled differently`).toEqual(URGENT.tail);
+      const phases = tickThrough(URGENT.motionMs, URGENT_BEAT_MS).map((ms) =>
+        bracePhaseAt(ms, sheet.tail),
+      );
+      expect(phases, `load ${load}: the brace phase moved with the bar`).toEqual(
+        tickThrough(URGENT.motionMs, URGENT_BEAT_MS).map((ms) => bracePhaseAt(ms, URGENT.tail)),
+      );
+      sweptLoads += 1;
+    }
+    expect(sweptLoads, 'load ratios swept').toBe(4);
+  });
+
+  it('moves the BAR and the man, and the hall, in the tail', () => {
+    // Which channels are actually carrying the tail, on pixels, one at a time —
+    // so a reader can see what would be lost if any of them were dropped and a
+    // future pass cannot delete one and leave the section green on the others.
+    //
+    // THE FIGURE, at two instants that draw the SAME room. Isolating the crowd
+    // out this way is the difference between "the tail changes" and "the tail's
+    // lifter changes"; the first was already true of the crowd ramp alone.
+    const inTail = URGENT.frames.filter((f) => f.startMs >= URGENT.motionMs);
+    const pairs = inTail.flatMap((a, i) =>
+      inTail.slice(i + 1).filter((b) => b.crowdRisePx === a.crowdRisePx).map((b) => [a, b] as const),
+    );
+    const figureMoves = pairs.filter(
+      ([a, b]) => differingPixels(hallAt(a), hallAt(b)) > 0,
+    );
+    expect(
+      figureMoves.length,
+      'no two frames of the tail draw the same room and a different man',
+    ).toBeGreaterThan(0);
+    expect(pairs.length, 'no two frames of the tail draw the same room at all')
+      .toBeGreaterThan(0);
+
+    // THE HALL, from the top of the tail to the hush. The walk-out's own ramp
+    // has saturated by here, so this is the second ramp and nothing else.
+    const set = hallMs(URGENT, URGENT.motionMs);
+    const hushed = hallMs(URGENT, URGENT.tail.hushStartMs);
+    const moved = differingPixels(set, hushed);
+    expect(
+      moved,
+      'the hall is the same picture when he is set and when he is about to lift',
+    ).toBeGreaterThan(A_HALL_STILL_FILLING);
+    // ...and it is the SEATING that moved, not the platform.
+    const span = differingRows(set, hushed);
+    expect(span).not.toBeNull();
+    expect(span?.bottom).toBeLessThan(GYM_LIFT_STAGE.FLOOR_ROW);
+  });
+
+  it('goes quiet before the bar moves, and ends on the drawing the rep begins from', () => {
+    // THE HUSH. Nothing changes in the last `HUSH_MS` — that stillness is the
+    // designed one and the whole point of naming it. Replaces
+    // `goes still and stays still — no loop, no drift`, which asserted the SAME
+    // frame index at `motionMs`, at twice `motionMs` and at the longest beat in
+    // the piece: it was the dead tail, pinned.
+    const hushFrames = new Set(
+      tickThrough(URGENT.tail.hushStartMs, URGENT.beatMs).map((ms) =>
+        walkoutFrameIndexAt(URGENT, ms),
+      ),
+    );
+    expect(hushFrames.size, 'something is still moving during the hush').toBe(1);
+    expect(URGENT.beatMs - URGENT.tail.hushStartMs, 'the hush is not the length it is named')
+      .toBe(TAIL.HUSH_MS);
+
+    // THE CONTINUITY PROPERTY, moved from `motionMs` to the instant the cut
+    // actually happens. It used to be asserted at the end of the MOTION, which
+    // was the end of everything the sheet drew; now the tail runs past that, so
+    // the frame that matters is the one showing when the attempt screen mounts.
+    for (const sequence of [URGENT, ORDINARY]) {
+      expect(
+        walkoutLifterFrame(
+          walkoutFrameAt(sequence, sequence.beatMs),
+          HEAVY_KG,
+          BAR_AND_COLLARS_KG,
+        ),
+        'the man is not drawn at the rest pose when the attempt screen takes over',
+      ).toEqual(hallLifterFrame(LOAD, HEAVY_KG, BAR_AND_COLLARS_KG));
+      expect(walkoutFrameAt(sequence, sequence.beatMs).bodyDxPx).toBe(0);
+    }
+    // ON PIXELS, on the beat whose hall is seated. THE URGENT BEAT IS NOT
+    // COMPARED HERE AND THE REASON IS WORTH THE LINES: its hall ends the beat
+    // RISEN (`HUSH_CROWD_RISE_PX`) while `AttemptView` draws the rep in a seated
+    // room, so the room does snap at that cut — a real discontinuity, older than
+    // this section and outside it, recorded rather than asserted away.
+    expect(differingPixels(hallMs(ORDINARY, ORDINARY.beatMs), hallAt(null))).toBe(0);
+    // ...and it holds at the END OF THE MOTION too, which is where the SETTLE
+    // stage puts him and where the brace starts from.
+    expect(differingPixels(hallMs(ORDINARY, ORDINARY.motionMs), hallAt(null))).toBe(0);
+
+    // AND IT DOES NOT HOLD IN BETWEEN, which is what stops all of the above
+    // being satisfied by a tail that never moved. (The urgent sheet's crowd is
+    // up, so it is compared against ITS OWN settled hall rather than the seated
+    // one.)
+    const braceShots = tickThrough(URGENT.motionMs, URGENT.tail.hushStartMs).filter(
+      (ms) =>
+        differingPixels(
+          hallAt({ ...walkoutFrameAt(URGENT, ms), crowdRisePx: 0 }),
+          hallAt(null),
+        ) > 0,
+    );
+    expect(braceShots.length, 'the man never leaves the rest drawing during the brace')
+      .toBeGreaterThan(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The wait for the lights gets the same tail
+// ---------------------------------------------------------------------------
+
+describe('buildHold — the brace with no walk-out in front of it', () => {
+  const HOLD_BEAT_MS = 2400;
+  const HOLD = buildHold(LOAD, HOLD_BEAT_MS);
+
+  it('starts at the brace instead of at the hooks', () => {
+    expect(HOLD.motionMs).toBe(0);
+    expect(HOLD.beatMs).toBe(HOLD_BEAT_MS);
+    expect(new Set(HOLD.frames.map((f) => f.stage))).toEqual(new Set(['SET', 'HUSH']));
+    // Nobody steps anywhere and the hall does not move: the deliberation's own
+    // rule is that the room is identical whichever way the call went.
+    for (const frame of HOLD.frames) {
+      expect(frame.bodyDxPx, `frame ${frame.index} steps sideways`).toBe(0);
+      expect(frame.crowdRisePx, `frame ${frame.index} brings the hall up`).toBe(0);
+      expect(frame.barLateralPx).toBe(hallBraceFrame(LOAD).barLateralPx);
+    }
+  });
+
+  it('draws, rather than holding one still for the whole wait', () => {
+    const shots = HOLD.frames.map((f) => hallAt(f));
+    let moved = 0;
+    for (let i = 1; i < shots.length; i += 1) {
+      const a = shots[i - 1];
+      const b = shots[i];
+      if (a === undefined || b === undefined) throw new Error('unreachable');
+      if (differingPixels(a, b) > 0) moved += 1;
+    }
+    expect(moved, 'the wait for the lights is one drawing again').toBeGreaterThan(0);
+    // ...and every boundary but the named one draws something new. The exception
+    // is SET -> HUSH, exactly as on the walk-out's own tail.
+    const scheduleOnly = HOLD.frames.filter(
+      (f, i) => i > 0 && f.stage !== HOLD.frames[i - 1]?.stage,
+    ).length;
+    expect(scheduleOnly, 'the hold has a schedule boundary that is not the hush').toBe(1);
+    expect(moved, 'every other frame boundary is a real change').toBe(
+      shots.length - 1 - scheduleOnly,
+    );
+    expect(longestStillMs(HOLD)).toBeLessThanOrEqual(TAIL.HUSH_MS);
+  });
+
+  it('gets longer, and busier, on the attempts the meet turns on', () => {
+    // THE ASYMMETRY THIS CLOSES. `deliberationMs` took no attempt number, so the
+    // beat this game is named after was byte-identical in pacing between the
+    // first squat of the day and the deadlift that decides the meet.
+    const opener = { attemptNumber: 1 as const, isPrAttempt: false, bombRisk: false };
+    const decider = { attemptNumber: 3 as const, isPrAttempt: true, bombRisk: true };
+    const short = buildHold(LOAD, deliberationMs(false, opener));
+    const long = buildHold(LOAD, deliberationMs(false, decider));
+    expect(long.beatMs).toBeGreaterThan(short.beatMs);
+    expect(long.frames.length, 'the longer wait is the same sheet held longer')
+      .toBeGreaterThan(short.frames.length);
+    expect(long.tail.cycles).toBeGreaterThan(short.tail.cycles);
+  });
+
+  it('ends on the rest drawing, so the lamps come up over the settled figure', () => {
+    expect(differingPixels(hallAt(walkoutFrameAt(HOLD, HOLD.beatMs)), hallAt(null))).toBe(0);
+  });
+});
+

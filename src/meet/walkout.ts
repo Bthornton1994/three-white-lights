@@ -272,7 +272,14 @@ function lerp(a: number, b: number, u: number): number {
 }
 
 function quantize(value: number, step: number): number {
-  return Math.round(value / step) * step;
+  const snapped = Math.round(value / step) * step;
+  // NEGATIVE ZERO IS A DIFFERENT NUMBER TO `Object.is` AND THE SAME DRAWING TO
+  // A RENDERER, which is a combination that only ever costs. `Math.round(-0.2)`
+  // is `-0`, so two instants of the tail that draw an identical bar could
+  // compare unequal — and `sameDrawing` uses `===`, where they compare EQUAL, so
+  // the sheet and any test that diffs two frames disagreed about what "the same
+  // frame" means. Normalised here rather than at each of the four call sites.
+  return snapped === 0 ? 0 : snapped;
 }
 
 // ---------------------------------------------------------------------------
