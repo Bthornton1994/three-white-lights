@@ -76,7 +76,17 @@
  *
  * The BEAT gets longer in the same order (`walkoutMs` in `meetDay.ts`), so a
  * third-attempt PR with a bomb on the line is both the loudest line and the
- * longest silence in the piece.
+ * longest wait in the piece.
+ *
+ * AND THE EXTRA MILLISECONDS NOW CARRY SOMETHING, WHICH THEY DID NOT. This
+ * screen ran its frame loop for `sequence.motionMs` — the end of the walk-out
+ * CHOREOGRAPHY — not for the beat. Measured on a third attempt with nothing
+ * banked: the beat is 4,100 ms, the last drawing changed at 1,980, the crowd
+ * cue had decayed by 2,520, and `useHallStep` cancelled the loop at 2,120. So
+ * 1,980 ms — 48% of the beat, and ALL of the escalation — was one held raster
+ * over silence, and a playtester told to lengthen `WALKOUT_MS` could only make
+ * it longer. `MEET_TUNING.WALKOUT_TAIL` and `sequence.beatMs` are the fix; see
+ * `walkout.ts`.
  *
  * THE CUT-IN IS OFFERED HERE NOW, AND THIS SCREEN DOES NOT DECIDE IT. GDD §7.2
  * puts "third-attempt walkout at a meet" first on its cut-in list. What this
@@ -235,16 +245,21 @@ export function WalkoutView({
   // shape `squatAnimation.ts` produces for the rep — and a clock that walks it.
   // Neither the choreography nor the timing is decided here.
   const sequence = React.useMemo(
-    () => buildWalkout({ loadRatio, plateCount, urgent }),
-    [loadRatio, plateCount, urgent],
+    () => buildWalkout({ loadRatio, plateCount, urgent, beatMs: attempt.walkoutMs }),
+    [loadRatio, plateCount, urgent, attempt.walkoutMs],
   );
   const sampleFrame = React.useCallback(
     (elapsedMs: number) => walkoutFrameIndexAt(sequence, elapsedMs),
     [sequence],
   );
-  const frameIndex = useHallStep(sampleFrame, sequence.motionMs, holdAtMs ?? null);
+  // `sequence.beatMs`, NOT `sequence.motionMs`, AND THAT ONE ARGUMENT WAS THE
+  // DEFECT. `useHallStep` cancels its frame loop once `runForMs` has elapsed, so
+  // passing the end of the MOTION froze the picture at 2,120 ms while the beat
+  // ran on for up to 4,800 — every millisecond of the third-attempt, PR and
+  // bomb-risk escalation landed after the last thing that could change.
+  const frameIndex = useHallStep(sampleFrame, sequence.beatMs, holdAtMs ?? null);
   const pose: WalkoutFrame =
-    sequence.frames[frameIndex] ?? walkoutFrameAt(sequence, sequence.motionMs);
+    sequence.frames[frameIndex] ?? walkoutFrameAt(sequence, sequence.beatMs);
 
   return (
     <View style={styles.root} testID="meet-walkout">

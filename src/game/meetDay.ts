@@ -402,6 +402,18 @@ export interface MeetDayAttempt {
   readonly margin: number;
   readonly feedbackText: string;
   readonly lightsText: string;
+  /**
+   * What the attempt was WORTH, carried over from `LiveAttempt` so the beats
+   * AFTER it escalate on the same facts the beats before it did. Satisfies
+   * `AttemptStakes`; see `deliberationMs`.
+   *
+   * Not re-derived here, and that is deliberate: `bombRisk` is a fact about the
+   * attempts banked BEFORE this one, and by the time this record exists the
+   * attempt itself has been resolved into the engine, so re-deriving it would
+   * ask the wrong question of the wrong state.
+   */
+  readonly isPrAttempt: boolean;
+  readonly bombRisk: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -679,13 +691,67 @@ export function walkoutMs(
   return total;
 }
 
-/** The "judges deliberating" beat. Longer when the call is close. */
-export function deliberationMs(deliberated: boolean): number {
-  return MEET_TUNING.VERDICT_SILENCE_MS +
-    (deliberated ? MEET_TUNING.DELIBERATION_MS : MEET_TUNING.CLEAR_CALL_DELIBERATION_MS);
+/**
+ * What an attempt is WORTH, as the three facts every escalating beat reads.
+ *
+ * One type rather than three parameters at each call site, because the walk-out
+ * and the wait for the lights must escalate on the same facts — a beat that
+ * lengthened on a third attempt while its neighbour lengthened on a PR would
+ * read as noise. `LiveAttempt` and `MeetDayAttempt` both satisfy it structurally,
+ * which is the point: the before-picture and the after-picture of one attempt
+ * cannot disagree about what it was worth.
+ */
+export interface AttemptStakes {
+  readonly attemptNumber: AttemptNumber;
+  readonly isPrAttempt: boolean;
+  readonly bombRisk: boolean;
 }
 
-/** Lights come up one at a time, then the feedback cue, then a hold. */
+/** True when this is an attempt the meet turns on. Picks copy, crowd and cues. */
+export function isUrgentAttempt(stakes: AttemptStakes): boolean {
+  return (
+    stakes.bombRisk || stakes.isPrAttempt || stakes.attemptNumber === ATTEMPTS_PER_LIFT
+  );
+}
+
+/**
+ * The "judges deliberating" beat. Longer when the call is close, and longer
+ * again on the attempts the meet turns on.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS TAKES STAKES AND `verdictMs` BELOW DELIBERATELY DOES NOT
+ * ---------------------------------------------------------------------------
+ * The full argument is on `MEET_TUNING.DELIBERATION_STAKES_EXTRA_MS`. In one
+ * line: this beat is ANTICIPATION — the player is waiting for news and waiting
+ * is the content, so length is the escalation — and `verdictMs` is the hold
+ * AFTER the news has broken, where every added millisecond is a frame the player
+ * is waiting to leave. That is the same defect `MEET_TUNING.WALKOUT_TAIL` exists
+ * to remove, and it is not being reintroduced one screen later. What a reaction
+ * escalates instead is intensity: `CROWD.URGENT_CHEER_RISE_PX`.
+ *
+ * IT CANNOT LEAK THE CALL. These extras read which attempt this is — printed on
+ * the screen the player just came from — and nothing the judges decided.
+ */
+export function deliberationMs(deliberated: boolean, stakes: AttemptStakes): number {
+  const extra = MEET_TUNING.DELIBERATION_STAKES_EXTRA_MS;
+  let total =
+    MEET_TUNING.VERDICT_SILENCE_MS +
+    (deliberated ? MEET_TUNING.DELIBERATION_MS : MEET_TUNING.CLEAR_CALL_DELIBERATION_MS);
+  if (stakes.attemptNumber === ATTEMPTS_PER_LIFT) total += extra.THIRD_ATTEMPT;
+  if (stakes.isPrAttempt) total += extra.PR_ATTEMPT;
+  if (stakes.bombRisk) total += extra.BOMB_RISK;
+  return total;
+}
+
+/**
+ * Lights come up one at a time, then the feedback cue, then a hold.
+ *
+ * TAKES NO STAKES ON PURPOSE. See `deliberationMs` above and
+ * `MEET_TUNING.DELIBERATION_STAKES_EXTRA_MS`: a third attempt is not held on
+ * screen longer than an opener, because the player already knows the answer by
+ * then and the extra time would be dead air by construction. A future pass that
+ * wants one must give this screen a live channel first.
+ */
 export function verdictMs(): number {
   return (
     MEET_TUNING.LIGHT_REVEAL_FIRST_DELAY_MS +
@@ -1131,6 +1197,8 @@ export function stepMeetDay(state: MeetDayState, event: MeetDayEvent): MeetDaySt
         margin: call.margin,
         feedbackText: feedbackTextFor(event.resolution, call.margin),
         lightsText: lightsTextFor(call),
+        isPrAttempt: live.isPrAttempt,
+        bombRisk: live.bombRisk,
       };
       return {
         ...state,

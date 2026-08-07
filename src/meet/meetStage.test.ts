@@ -63,6 +63,7 @@ import { buildSquatRep } from '../art/squatAnimation';
 import { frameSpecFrom, isBodyIndex, renderLifterFrame } from '../art/lifterSprite';
 import { GYM_CROWD, GYM_LIFT_STAGE } from '../art/gymTuning';
 import { blitOver, crowdFrontRow } from '../art/gymScene';
+import { BAR_AND_COLLARS_KG } from '../art/plates';
 import { GYM_VENUE, GYM_VENUE_PROPS, type GymVenue } from '../art/gymTuning';
 import { liftStageScene, renderGymScene } from '../art/gymScene';
 import type { IndexGrid } from '../art/raster';
@@ -570,6 +571,79 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     expect(clock, 'the hall clock never samples the elapsed time it measured').toContain(
       'sampleAt(elapsed)',
     );
+  });
+
+  it('runs the walk-out clock for the whole BEAT, not for the end of the motion', () => {
+    // THE ONE ARGUMENT THAT WAS THE DEFECT. `useHallStep` cancels its frame loop
+    // once `runForMs` has elapsed, and `WalkoutView` passed `sequence.motionMs`
+    // — the end of the CHOREOGRAPHY. On a third attempt with nothing banked that
+    // is 2,120 ms of a 4,100 ms beat, so 48% of the beat, and every millisecond
+    // of the third-attempt and bomb-risk escalation, was a frozen raster.
+    //
+    // The pure half of this claim is measured on pixels in `walkout.test.ts`.
+    // What is here is the WIRING, which no pure test can see: the sheet can be
+    // as alive as it likes if the component stops sampling it.
+    const view = codeOnly(read('meet/WalkoutView.tsx'));
+    expect(view, 'the walk-out clock stops at the end of the motion again').toMatch(
+      /useHallStep\(\s*sampleFrame,\s*sequence\.beatMs\s*,/,
+    );
+    expect(view, 'the sheet is built without the beat it has to fill').toMatch(
+      /beatMs:\s*attempt\.walkoutMs/,
+    );
+    // ...and `useHallStep` really does stop at `runForMs`, which is what makes
+    // the argument load-bearing rather than decorative.
+    const clock = codeOnly(read('meet/useHallStep.ts'));
+    expect(clock, 'the hall clock ignores runForMs, so the argument means nothing')
+      .toContain('elapsed < runForMs');
+  });
+
+  it('draws the wait for the lights with the bar still on his back [bar-stays-on-his-back-for-the-call]', () => {
+    // THE CLAIM `MEET_TUNING.VERDICT_SILENCE_MS` MAKES, checked rather than
+    // written. That comment used to say the beat was "dead air between the bar
+    // being racked and anything appearing", and the pixels have never done that:
+    // `VerdictView` hands `MeetHallView` a lifter whose `totalKg` is the
+    // ATTEMPT's weight, so the drawing is a man standing under a fully loaded
+    // bar for the whole deliberation and the whole verdict.
+    //
+    // Correcting the sentence rather than the pixels is deliberate and the
+    // comment says why: `renderLifterFrame` has one pose family — a figure with
+    // a bar across his shoulders — and inventing a racked-bar drawing here is
+    // `src/art/lifterSprite.ts`'s job.
+    const verdict = meetHallElementIn(read('meet/VerdictView.tsx'));
+    expect(verdict, 'VerdictView draws no MeetHallView at all').not.toBeNull();
+    expect(verdict ?? '', 'the verdict draws an empty platform').not.toMatch(
+      /lifter=\{\s*null\s*\}/,
+    );
+    expect(
+      verdict ?? '',
+      'the bar the wait is drawn with is not the attempt’s bar',
+    ).toContain('totalKg: attempt.weightKg');
+    // ...and nothing is holding discs back: `platesLoaded` is the walk-out's
+    // channel, and a verdict that passed one would be drawing a part-loaded bar.
+    expect(verdict ?? '', 'the verdict hides part of the stack').not.toMatch(
+      /\bplatesLoaded\b/,
+    );
+
+    // AND "LOADED" IS A REAL DIFFERENCE IN PIXELS, not just a different number
+    // handed over. Without this the assertions above could be satisfied by a
+    // drawing whose sleeves look the same either way, and the guarantee would be
+    // about a variable name.
+    const attemptKg = 240;
+    const loaded = renderLifterFrame(
+      frameSpecFrom(buildSquatRep(LOAD_PRESETS.MAXIMAL).frames[0]!, attemptKg, BAR_AND_COLLARS_KG),
+    ).grid;
+    const bare = renderLifterFrame(
+      frameSpecFrom(
+        buildSquatRep(LOAD_PRESETS.MAXIMAL).frames[0]!,
+        BAR_AND_COLLARS_KG,
+        BAR_AND_COLLARS_KG,
+      ),
+    ).grid;
+    let differing = 0;
+    for (let i = 0; i < loaded.data.length; i += 1) {
+      if (loaded.data[i] !== bare.data[i]) differing += 1;
+    }
+    expect(differing, 'a loaded bar and a bare one are the same drawing').toBeGreaterThan(0);
   });
 
   it('the element parser can tell a prop from a mention of its name', () => {

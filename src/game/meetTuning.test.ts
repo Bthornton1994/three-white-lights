@@ -5,7 +5,33 @@ import { describe, expect, it } from 'vitest';
 import { LIFT_TUNING } from './liftTuning';
 import { JUDGE_COUNT, LIFT_ORDER, DEFAULT_MEET_RULES } from './meet';
 import { MEET_COPY, MEET_ENTRY, MEET_LAYOUT, MEET_LOCAL, MEET_PREVIEW, MEET_TUNING } from './meetTuning';
-import { deliberates, deliberationMs, dissentChance, verdictMs, walkoutMs } from './meetDay';
+import {
+  deliberates,
+  deliberationMs,
+  dissentChance,
+  verdictMs,
+  walkoutMs,
+  type AttemptStakes,
+} from './meetDay';
+import { BAR_AND_COLLARS_KG } from '../art/plates';
+import { hallPlateCount } from '../meet/meetHall';
+import { buildWalkout } from '../meet/walkout';
+
+/** A heavy competition squat, so the sleeve is long and the beat is real. */
+const HEAVY_BAR_KG = 240;
+
+/**
+ * Every shape `walkoutMs` can be asked for: (attempt, previous best, bomb risk).
+ * Written out rather than generated so the count below pins a list a reader can
+ * see, and so a shape cannot silently vanish from the sweep.
+ */
+const ATTEMPT_SHAPES: readonly (readonly [1 | 2 | 3, number | null, boolean])[] = [
+  [1, null, false],
+  [2, 250, false],
+  [3, 250, false],
+  [3, null, true],
+  [3, 200, true],
+];
 
 const HERE = __dirname;
 const MEET_UI_DIR = path.join(HERE, '..', 'meet');
@@ -105,20 +131,104 @@ describe('the walk-out beat escalates (GDD §6.2 step 1, §7.2, §12.2)', () => 
   });
 });
 
+/** The three facts every escalating beat reads, at each shape they can take. */
+const STAKES = {
+  OPENER: { attemptNumber: 1, isPrAttempt: false, bombRisk: false },
+  SECOND: { attemptNumber: 2, isPrAttempt: false, bombRisk: false },
+  THIRD: { attemptNumber: 3, isPrAttempt: false, bombRisk: false },
+  THIRD_PR: { attemptNumber: 3, isPrAttempt: true, bombRisk: false },
+  THIRD_BOMB: { attemptNumber: 3, isPrAttempt: false, bombRisk: true },
+  THE_WHOLE_MEET: { attemptNumber: 3, isPrAttempt: true, bombRisk: true },
+} as const satisfies Readonly<Record<string, AttemptStakes>>;
+
 describe('the judging beats', () => {
   it('take measurably longer on a close call', () => {
-    expect(deliberationMs(true)).toBeGreaterThan(deliberationMs(false));
+    expect(deliberationMs(true, STAKES.OPENER)).toBeGreaterThan(
+      deliberationMs(false, STAKES.OPENER),
+    );
   });
 
-  it('are each long enough to read as their own moment', () => {
-    // GDD §6.2 lists the walkout, the deliberation and the lights as separate
-    // steps. A beat under a tenth of a second is a frame, not a beat.
-    const READABLE_MS = 100;
-    expect(MEET_TUNING.WALKOUT_MS).toBeGreaterThan(READABLE_MS);
-    expect(deliberationMs(false)).toBeGreaterThan(READABLE_MS);
-    expect(deliberationMs(true)).toBeGreaterThan(READABLE_MS);
-    expect(MEET_TUNING.LIGHT_REVEAL_STAGGER_MS).toBeGreaterThan(READABLE_MS);
-    expect(MEET_TUNING.BOMB_OUT_SILENCE_MS).toBeGreaterThan(READABLE_MS);
+  it('escalate the WAIT for the lights the way the walk-out escalates', () => {
+    // THE ASYMMETRY THIS CLOSES: `deliberationMs` and `verdictMs` used to take
+    // no attempt number and no flags at all, so the beat this game is named
+    // after was byte-identical in pacing between the first squat of the day and
+    // the deadlift that decides the meet, while the walk-out in front of it
+    // escalated three ways. Checked on the SHAPE, at both close-call settings,
+    // because the values have never been played.
+    for (const deliberated of [false, true]) {
+      const opener = deliberationMs(deliberated, STAKES.OPENER);
+      expect(deliberationMs(deliberated, STAKES.SECOND), `close=${deliberated}`).toBe(opener);
+      expect(deliberationMs(deliberated, STAKES.THIRD), `close=${deliberated}`).toBeGreaterThan(
+        opener,
+      );
+      expect(
+        deliberationMs(deliberated, STAKES.THIRD_PR),
+        `close=${deliberated}`,
+      ).toBeGreaterThan(deliberationMs(deliberated, STAKES.THIRD));
+      expect(
+        deliberationMs(deliberated, STAKES.THIRD_BOMB),
+        `close=${deliberated}`,
+      ).toBeGreaterThan(deliberationMs(deliberated, STAKES.THIRD));
+      // The stacked worst case IS the longest wait for the lights in the piece.
+      const everyShape = Object.values(STAKES).map((s) => deliberationMs(deliberated, s));
+      expect(Math.max(...everyShape), `close=${deliberated}`).toBe(
+        deliberationMs(deliberated, STAKES.THE_WHOLE_MEET),
+      );
+      expect(everyShape.length, 'the shapes swept').toBe(6);
+    }
+  });
+
+  it('leave the hold AFTER the call flat, which is the rule and not an omission', () => {
+    // `verdictMs` takes no stakes ON PURPOSE (`DELIBERATION_STAKES_EXTRA_MS`
+    // carries the argument): the wait for news may be lengthened, the news
+    // itself may only be made louder, because a longer hold on a screen whose
+    // answer is already drawn is dead air by construction — which is the exact
+    // defect `WALKOUT_TAIL` exists to remove, one screen later.
+    //
+    // ENFORCED ON THE ARITY, so this fails the moment somebody gives that
+    // function a stakes parameter without giving the screen a channel first.
+    expect(verdictMs.length, 'verdictMs grew a parameter').toBe(0);
+    expect(deliberationMs.length, 'deliberationMs stopped taking stakes').toBe(2);
+    // ...and what escalates instead is the reaction's INTENSITY.
+    expect(MEET_TUNING.CROWD.URGENT_CHEER_RISE_PX).toBeGreaterThan(
+      MEET_TUNING.CROWD.CHEER_RISE_PX,
+    );
+  });
+
+  it('never end a walk-out with more held frame on screen than the hush they schedule', () => {
+    // WHAT THIS REPLACES, AND WHY, because the replacement is the point.
+    //
+    // This test used to read `expect(X).toBeGreaterThan(READABLE_MS)` with
+    // `READABLE_MS = 100` against durations of 1500 / 880 / 2400 / 320 / 1500 —
+    // satisfied by between 3x and 24x, and satisfied identically by the
+    // behaviour this whole pass exists to fix. CLAUDE.md calls that shape "a
+    // bound the unfixed behaviour already satisfied", and it is: the defect was
+    // a beat that ran 4,100 ms with its last drawing at 1,980, and every one of
+    // those five numbers cleared 100 the whole time.
+    //
+    // The bound that bites is the one the defect violated. For every attempt
+    // shape the piece can produce, the last drawing of the sheet must start
+    // within `WALKOUT_TAIL.HUSH_MS` of the end of the beat — so the stillness a
+    // player is left on is the designed one and not the remainder. Measured on
+    // the defective code the worst case was 1,980 ms against a 360 ms budget.
+    const plates = hallPlateCount(HEAVY_BAR_KG, BAR_AND_COLLARS_KG);
+    let checked = 0;
+    for (const [attempt, best, bomb] of ATTEMPT_SHAPES) {
+      const beatMs = walkoutMs(attempt, HEAVY_BAR_KG, best, bomb);
+      const sheet = buildWalkout({ loadRatio: 1, plateCount: plates, urgent: true, beatMs });
+      const last = sheet.frames[sheet.frames.length - 1];
+      expect(last, `${attempt}/${String(best)}/${bomb}`).toBeDefined();
+      const heldForMs = beatMs - (last?.startMs ?? 0);
+      expect(
+        heldForMs,
+        `a ${attempt}-attempt beat of ${beatMs}ms holds its last drawing for ${heldForMs}ms`,
+      ).toBeLessThanOrEqual(MEET_TUNING.WALKOUT_TAIL.HUSH_MS);
+      checked += 1;
+    }
+    // NON-VACUITY, pinned as a count rather than a bound: an empty shape list
+    // would pass the loop above without looking at anything.
+    expect(checked, 'attempt shapes swept').toBe(ATTEMPT_SHAPES.length);
+    expect(ATTEMPT_SHAPES.length).toBe(5);
   });
 
   it('reveal every referee before the verdict beat ends', () => {

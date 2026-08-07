@@ -769,9 +769,11 @@ export const MEET_TUNING = Object.freeze({
    * "Dead air" is also no longer true of the beat: see
    * `DELIBERATION_STAKES_EXTRA_MS` below and `walkout.ts`'s `buildHold`.
    *
-   * @guarantee the deliberation and verdict screens draw the lifter under a
-   * loaded bar — `src/meet/meetStage.test.ts`, "the wait for the lights is
-   * drawn with the bar still on his back".
+   * The claim this sentence now makes — that the wait for the lights is drawn
+   * with the loaded bar still on his back — is checked in
+   * `src/meet/meetStage.test.ts` rather than asserted here.
+   *
+   * @guarantee bar-stays-on-his-back-for-the-call
    */
   VERDICT_SILENCE_MS: 500,
 

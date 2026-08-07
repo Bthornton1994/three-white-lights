@@ -85,11 +85,50 @@ const HEAVY_KG = 240;
 const LOAD = LOAD_PRESETS.MAXIMAL;
 const PLATES = hallPlateCount(HEAVY_KG, BAR_AND_COLLARS_KG);
 
-const URGENT = buildWalkout({ loadRatio: LOAD, plateCount: PLATES, urgent: true });
-const ORDINARY = buildWalkout({ loadRatio: LOAD, plateCount: PLATES, urgent: false });
-const AT = walkoutStageStartMs(PLATES);
+/**
+ * The two beats every measurement below is taken on, and they are the REAL
+ * lengths `meetDay.ts` gives those attempts rather than round numbers.
+ *
+ * `URGENT_BEAT_MS` is a third attempt with nothing banked — the beat GDD §12.2
+ * names — and `ORDINARY_BEAT_MS` is an opener, the shortest beat the piece can
+ * produce. The gap between them is the escalation, and the whole point of this
+ * file's tail section is that the gap now carries something.
+ */
+const URGENT_BEAT_MS = walkoutMs(3, HEAVY_KG, null, true);
+const ORDINARY_BEAT_MS = walkoutMs(1, HEAVY_KG, null, false);
+
+const URGENT = buildWalkout({
+  loadRatio: LOAD,
+  plateCount: PLATES,
+  urgent: true,
+  beatMs: URGENT_BEAT_MS,
+});
+const ORDINARY = buildWalkout({
+  loadRatio: LOAD,
+  plateCount: PLATES,
+  urgent: false,
+  beatMs: ORDINARY_BEAT_MS,
+});
+/**
+ * Stage boundaries. Read at the URGENT beat, because `HUSH` is the one boundary
+ * that is a function of how long the beat is — LOAD through SET are a function
+ * of the bar alone, which is what `motionStartMs` in the module enforces.
+ */
+const AT = walkoutStageStartMs(PLATES, URGENT_BEAT_MS);
 /** The sheet's own clock. `TICK_MS` is the quantum every instant lands on. */
 const MOTION = MEET_TUNING.WALKOUT_MOTION;
+const TAIL = MEET_TUNING.WALKOUT_TAIL;
+const MS_PER_S = 1000;
+
+/**
+ * The urgent sheet, in the three numbers `walkout.ts`'s header quotes.
+ *
+ * PINNED EXACTLY rather than bounded, because the header is prose about a
+ * measurement and prose about a measurement goes stale silently. If a tuning
+ * pass moves any of them, this fails with the new numbers in the message and
+ * the header is corrected in the same diff.
+ */
+const URGENT_SHEET = { DRAWINGS: 20, ROOMS: 9, FRAMES: 53 } as const;
 
 // ---------------------------------------------------------------------------
 // The instrument
@@ -765,8 +804,21 @@ const RISE_TIMELINE = drawnRiseTimeline(URGENT);
 const RAMP_START_MS = AT.UNRACK + WALKOUT_CROWD_RISE.delayMs;
 const RAMP_END_MS = RAMP_START_MS + WALKOUT_CROWD_RISE.rampMs;
 
-/** The hall the beat comes to rest on, as the composite draws it. */
-const RISE_SETTLED: readonly number[] = RISE_TIMELINE[RISE_TIMELINE.length - 1]?.tiers ?? [];
+/**
+ * The hall the WALK-OUT ramp comes to rest on, as the composite draws it.
+ *
+ * READ AT `motionMs` AND NOT AT THE END OF THE SHEET, and the difference is new.
+ * The tail carries a SECOND ramp — the standing wave travelling deeper into the
+ * building across the brace window, up to `WALKOUT_TAIL.HUSH_CROWD_RISE_PX` —
+ * so the last frame of the beat is no longer the top of the ramp this section
+ * is about. Reading the end of the sheet would silently turn every measurement
+ * below into a measurement of the other ramp, which is exactly the kind of
+ * quiet subject-swap this file is written against. The tail's own ramp is
+ * measured in its own section.
+ */
+const RISE_SETTLED: readonly number[] = tierRisesOf(
+  hallAt(walkoutFrameAt(URGENT, URGENT.motionMs)),
+);
 
 function firstDrawnMs(matches: (run: DrawnRise) => boolean): number | null {
   return RISE_TIMELINE.find(matches)?.startMs ?? null;
@@ -2204,7 +2256,10 @@ describe('the bar is loaded before he takes it off the hooks', () => {
       const discs = layoutSleeve(visualPlateStack(kg, BAR_AND_COLLARS_KG)).slots.length;
       const lastDiscAt = Math.max(0, discs - 1) * MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS;
       expect(barLoadMs(discs), `${kg} kg`).toBeGreaterThan(lastDiscAt);
-      expect(walkoutStageStartMs(discs).UNRACK, `${kg} kg`).toBeGreaterThan(lastDiscAt);
+      expect(
+        walkoutStageStartMs(discs, walkoutMs(1, kg, null, false)).UNRACK,
+        `${kg} kg`,
+      ).toBeGreaterThan(lastDiscAt);
     }
     // The measurement is not vacuous: a real bar has real discs on it.
     expect(layoutSleeve(visualPlateStack(HEAVY_KG, BAR_AND_COLLARS_KG)).slots.length)
@@ -2223,29 +2278,61 @@ describe('the bar is loaded before he takes it off the hooks', () => {
   });
 
   it('walks its stages in order and reaches every one of them', () => {
-    const at = walkoutStageStartMs(PLATES);
+    // Measured on the URGENT beat, because it is the only one long enough to
+    // contain every stage: HUSH's start is a function of the beat, and an
+    // opener's tail is entirely hush (see the tail section below).
+    const at = walkoutStageStartMs(PLATES, URGENT_BEAT_MS);
     let previous = -1;
     for (const stage of WALKOUT_STAGES) {
       expect(at[stage], `${stage} does not follow the stage before it`).toBeGreaterThan(previous);
       previous = at[stage];
-      expect(walkoutStageAt(at[stage], PLATES), stage).toBe(stage);
+      expect(walkoutStageAt(at[stage], PLATES, URGENT_BEAT_MS), stage).toBe(stage);
     }
-    expect(new Set(ORDINARY.frames.map((f) => f.stage))).toEqual(new Set(WALKOUT_STAGES));
+    expect(new Set(URGENT.frames.map((f) => f.stage))).toEqual(new Set(WALKOUT_STAGES));
   });
 });
 
 describe('the walk-out is a finite sheet, not a per-frame deformation (GDD §7.1)', () => {
   it('coalesces into a sheet a 16-bit game could have shipped', () => {
-    // A drawing per display frame over a 2 s beat would be ~120 drawings. The
-    // bound is generous but it is a bound: this is what stops the choreography
-    // becoming a continuous tween with a pixel filter on it.
-    const A_SHEET = 48;
+    // A drawing per display frame is 60 a second. The bound is generous but it
+    // is a bound: this is what stops the choreography becoming a continuous
+    // tween with a pixel filter on it.
+    //
+    // PER SECOND OF BEAT, NOT PER SHEET, and the change matters. The bound used
+    // to be a flat 48 drawings, which was a bound on the beat's LENGTH as much
+    // as on its density — a longer third attempt failed it for having more beat
+    // rather than for tweening. Measured at the shipped tuning: 12.9 drawings a
+    // second on both beats.
+    const A_SHEET_PER_SECOND = 24;
+    const perSecond = (sequence: typeof URGENT): number =>
+      sequence.frames.length / (sequence.beatMs / MS_PER_S);
     expect(ORDINARY.frames.length).toBeGreaterThan(WALKOUT_STAGES.length);
-    expect(ORDINARY.frames.length).toBeLessThan(A_SHEET);
-    expect(URGENT.frames.length).toBeLessThan(A_SHEET);
-    // ...and the urgent one costs a few more, because the crowd's rows are part
-    // of the drawn identity.
+    expect(perSecond(ORDINARY), 'the opener tweens').toBeLessThan(A_SHEET_PER_SECOND);
+    expect(perSecond(URGENT), 'the third attempt tweens').toBeLessThan(A_SHEET_PER_SECOND);
+    // ...and the urgent one costs more drawings, because it is a longer beat AND
+    // because the crowd's rows are part of the drawn identity.
     expect(URGENT.frames.length).toBeGreaterThan(ORDINARY.frames.length);
+
+    // AND THE RASTER COST IS THE DISTINCT SPRITE COUNT, not the frame count:
+    // `MeetHallView` caches on `frameKey`, so a beat costs one per-pixel shading
+    // pass per distinct DRAWING however many held frames show it.
+    const drawings = new Set(
+      URGENT.frames.map((f) =>
+        JSON.stringify(walkoutLifterFrame(f, HEAVY_KG, BAR_AND_COLLARS_KG)),
+      ),
+    );
+    const rooms = new Set(URGENT.frames.map((f) => f.crowdRisePx));
+    expect(drawings.size, 'the urgent beat rasterises a sprite per held frame')
+      .toBeLessThan(URGENT.frames.length);
+    expect(rooms.size, 'the urgent beat rasterises a room per held frame')
+      .toBeLessThanOrEqual(MEET_TUNING.WALKOUT_TAIL.HUSH_CROWD_RISE_PX + 1);
+    // Printed rather than only bounded, because these two numbers are the ones
+    // the module's header quotes and a header that drifts is the defect this
+    // codebase keeps finding.
+    expect(
+      [drawings.size, rooms.size, URGENT.frames.length],
+      'the sheet the header describes',
+    ).toEqual([URGENT_SHEET.DRAWINGS, URGENT_SHEET.ROOMS, URGENT_SHEET.FRAMES]);
   });
 
   it('puts every channel on the sheet’s own quanta', () => {
@@ -2281,7 +2368,14 @@ describe('the walk-out is a finite sheet, not a per-frame deformation (GDD §7.1
   });
 
   it('is deterministic — the same attempt is the same beat every time', () => {
-    expect(buildWalkout({ loadRatio: LOAD, plateCount: PLATES, urgent: false })).toEqual(ORDINARY);
+    expect(
+      buildWalkout({
+        loadRatio: LOAD,
+        plateCount: PLATES,
+        urgent: false,
+        beatMs: ORDINARY_BEAT_MS,
+      }),
+    ).toEqual(ORDINARY);
   });
 
   it('indexes a frame by time the same way the render loop does', () => {
@@ -2303,15 +2397,25 @@ describe('the mid-motion preview beats land where they are named', () => {
    * the preview's own state and the federation's own loading rules, so a tuning
    * pass that moves the opener moves this with it.
    */
-  function previewThird(): { sequence: ReturnType<typeof buildWalkout>; plates: number } {
+  function previewThird(): {
+    sequence: ReturnType<typeof buildWalkout>;
+    plates: number;
+    beatMs: number;
+  } {
     const state = previewStateFor({ moment: 'walkout-third' });
     const live = state.live;
     if (live === null) throw new Error('the walkout-third preview has no attempt on the bar');
     const barKg = meetLoadingRules(state.meet).barAndCollarsWeight[live.lift];
     const plates = hallPlateCount(live.weightKg, barKg);
     return {
-      sequence: buildWalkout({ loadRatio: live.loadRatio, plateCount: plates, urgent: true }),
+      sequence: buildWalkout({
+        loadRatio: live.loadRatio,
+        plateCount: plates,
+        urgent: true,
+        beatMs: live.walkoutMs,
+      }),
       plates,
+      beatMs: live.walkoutMs,
     };
   }
 
@@ -2319,11 +2423,11 @@ describe('the mid-motion preview beats land where they are named', () => {
     // The photographs exist to show motion in stills, so each has to land in the
     // stage it is named for. Checked against the sequence the preview's own
     // attempt builds, not against arithmetic on the constants.
-    const { sequence, plates } = previewThird();
+    const { sequence, plates, beatMs } = previewThird();
     const unrackAt = MEET_PREVIEW.WALKOUT_HOLD_MS.UNRACK;
     const stepAt = MEET_PREVIEW.WALKOUT_HOLD_MS.STEP;
-    expect(walkoutStageAt(unrackAt, plates)).toBe('UNRACK');
-    expect(walkoutStageAt(stepAt, plates)).toBe('STEP');
+    expect(walkoutStageAt(unrackAt, plates, beatMs)).toBe('UNRACK');
+    expect(walkoutStageAt(stepAt, plates, beatMs)).toBe('STEP');
 
     // ...and the two are genuinely different pictures from each other and from
     // the settled frame the third-attempt shot is taken at.
