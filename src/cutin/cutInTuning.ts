@@ -144,10 +144,20 @@ export const CUT_IN_TUNING = Object.freeze({
    * takes to leave, on a tap or on the hold expiring" — and that sentence was
    * false in three files. Nothing animated an exit: `CutInView` has an arrival
    * and no departure, and `CutInHost` un-mounts the overlay synchronously on
-   * `setLive(null)`. The committed pixels say so too — `frames.json` records the
-   * tap dismissal at `tappedAt: 14, goneAt: 26`, twelve milliseconds, which is a
-   * frame and not a hundred-millisecond fade. Setting it to 0 left the whole
-   * suite green and moved no pixel.
+   * `setLive(null)`. The committed pixels say so too — `frames.json` records how
+   * long the overlay took to leave after the tap in
+   * `tapDismissed.dismissTookMs`, and it is a frame rather than a
+   * hundred-millisecond fade. Setting `EXIT_MS` to 0 left the whole suite green
+   * and moved no pixel.
+   *
+   * THAT SENTENCE USED TO QUOTE THE MEASUREMENT AND QUOTED IT WRONG. It read
+   * "`frames.json` records the tap dismissal at `tappedAt: 14, goneAt: 26`,
+   * twelve milliseconds" — and the committed record says 16 and 27, which is
+   * eleven. The argument survived the error, which is exactly why the error
+   * survived: a transcribed number in a comment is checked by nobody and ages
+   * silently. It now names the FIELD, so a reader opens the record instead of
+   * trusting this line, and `tools/capture-cutin.mjs` computes the difference
+   * rather than leaving it to be worked out by hand.
    *
    * SO IT WAS DELETED RATHER THAN WIRED, and the choice is arguable rather than
    * forced. §7.2 asks for an interrupt that CUTS in and is always skippable and
