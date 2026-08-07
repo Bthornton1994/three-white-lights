@@ -2295,6 +2295,14 @@ if (!reachedMeet) {
     'meet-recap',
     'GDD §6.5’s recap renders on the app’s OWN connection, not the preview’s',
   );
+  // THE NEGATIVE HALF, ON A MEET A PLAYER ACTUALLY LIFTED FOR. The same claim
+  // section 4c makes about the scripted frame — §6.1's scaffolding must not
+  // appear over a recap that built — except that this is the FIRST meet of a
+  // real app run, which is the case a player meets and the frozen frame is not.
+  check(
+    !(await visible('meet-recap-placeholder')),
+    'and GDD §6.1’s second-meet placeholder is NOT drawn over it — this player’s result is their own',
+  );
   const liveLeaveDrawn = await checkOnScreen(
     NAV_LEAVE_MEET,
     `the way back is on screen on a recap a player lifted for (${NAV_LEAVE_MEET})`,
