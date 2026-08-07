@@ -2122,7 +2122,8 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding) {
             ' rather than the app; the per-attempt note beside this check is what says which, and a' +
             ' run where every attempt was a make and the meet still bombed is the engine'
           : drive.ended === 'waiting'
-            ? ` — the phase reached 'recap' and the server's answer never landed inside the derived deadline (${drive.why})`
+            ? ` — the phase reached 'recap' and NEITHER §6.5's recap NOR §6.1's placeholder was drawn inside` +
+              ` the derived deadline; the screen was still the bare in-flight eyebrow (${drive.why})`
             : ` (${drive.why ?? 'no reason given'})`),
   );
   // NOT AN ASSERTION. The per-attempt list is the evidence that the drive
@@ -2391,14 +2392,25 @@ if (!reachedMeet) {
         'meet-recap-placeholder',
         'the placeholder is DRAWN — the positive half, which nothing had ever rendered',
       );
-      // THE DISCRIMINATOR. Without it "the placeholder is drawn" would be
-      // satisfied by a screen that drew BOTH, which is not the swap the ruling
-      // describes and would put the previous meet's total under the sentence
-      // saying the result on file is the previous meet's.
-      check(
-        !(await visible('meet-recap')),
-        'and §6.5’s recap is NOT drawn behind it — the placeholder REPLACES the recap rather than joining it',
-      );
+      // A CHECK THAT WAS HERE AND IS NOT, WITH ITS REASON, because deleting one
+      // quietly is how the next reader comes to believe it was never needed.
+      //
+      // It read `!(await visible('meet-recap'))` under the name "and §6.5's
+      // recap is NOT drawn behind it — the placeholder REPLACES the recap
+      // rather than joining it". IT COULD NOT FAIL. `MeetScreen` reaches the
+      // placeholder only down the `recap === null` arm of a ternary, and
+      // `RecapView` takes a `MeetRecap` and cannot be rendered without one, so
+      // on this screen there is no version of the subject that draws both. It
+      // survived a mutant that deleted the placeholder outright and a mutant
+      // that rendered the placeholder over a built recap — the second of which
+      // is precisely the failure it claimed to guard, and which reddened the
+      // check on the FIRST meet's recap above instead. That is where the claim
+      // is actually testable, and that is where it now lives.
+      //
+      // The exclusivity itself is structural rather than measured, and saying
+      // so is the point of this paragraph: if `MeetScreen`'s recap branch ever
+      // stops being one ternary, this stops being true for free and something
+      // here has to start asserting it.
       check(
         !(await visible('meet-recap-waiting')),
         'and the bare in-flight eyebrow is gone too, so this is the settled screen and not a frame of the round trip',
