@@ -45,6 +45,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { decodePng, diffPixels } from './png.mjs';
+import { numberInSource, parserSelfTest } from './readTuning.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -155,21 +156,67 @@ const MOMENTS = [
 const SKIP_HINT = 'TAP TO SKIP';
 
 /**
- * `CUT_IN_TUNING`'s timings, restated. Same rule as above.
+ * THE AUTO-DISMISS, READ OUT OF `cutInTuning.ts` — NOT TRANSCRIBED, AND THAT IS
+ * A DELIBERATE EXCEPTION TO THE RULE ABOVE.
  *
- *   ENTER_MS 120 + HOLD_MS 1600 = 1720 ms, the auto-dismiss AND the whole beat
+ * `MOMENTS` above is restated on purpose: it is a second, independent statement
+ * of what the piece is supposed to CONTAIN. This is not that. It is a number the
+ * tool COMPARES AGAINST, and it was typed here by hand as `1720` — so the
+ * question "did the tap beat the hold?" was being answered against a value the
+ * app might have stopped using. On a build whose real hold was 10 ms,
+ * `wellInsideTheHold` would still have come back true. `tools/readTuning.mjs`
+ * has the whole argument for the split.
  *
- * THE SECOND LINE IS GONE, and it was false while it was here: it read
- * "+ EXIT_MS 100 = 1820 ms, the whole beat", and this tool's own output
- * disproves it — `frames.json` puts the tap dismissal at `tappedAt: 14,
- * goneAt: 26`. Nothing animated an exit; the overlay un-mounts on the tick. The
- * constant is deleted, not merely unmentioned (`cutInTuning.ts`, `ENTER_MS`).
+ * The clause survived only because a DIFFERENT check in the same run bounded
+ * the real hold: `leavesOnItsOwn.stillUp` at `STILL_UP_PROBE_MS` says the
+ * overlay was demonstrably still up 700 ms in. That is a real bound and it stays
+ * — but it is not the one the tap comparison was reading, and the comment on the
+ * tap check claimed otherwise.
+ *
+ * A NULL READ IS A FAILURE, NOT A DEFAULT. A regex that has stopped matching
+ * reports "not found", and a "not found" quietly replaced by a literal is
+ * exactly the transcription this change removes.
  *
  * These are STARTING POINTS nobody has played (GDD §12.1). The tool checks the
  * timer fires inside a generous window around them rather than pinning them, so
  * a tuning pass moves one file and not two.
  */
-const AUTO_DISMISS_MS = 1720;
+const cutInTuningText = readFileSync(path.join(srcRoot, 'src', 'cutin', 'cutInTuning.ts'), 'utf8');
+const parserComplaints = parserSelfTest();
+const ENTER_MS = numberInSource(cutInTuningText, 'ENTER_MS');
+const HOLD_MS = numberInSource(cutInTuningText, 'HOLD_MS');
+const AUTO_DISMISS_MS = ENTER_MS === null || HOLD_MS === null ? null : ENTER_MS + HOLD_MS;
+/** Non-zero when this tool could not read the number it compares against. */
+const unreadTuning =
+  parserComplaints.length > 0 || AUTO_DISMISS_MS === null
+    ? [
+        parserComplaints.length > 0 ? `readTuning.mjs self-test: ${parserComplaints.join('; ')}` : null,
+        AUTO_DISMISS_MS === null
+          ? `ENTER_MS=${ENTER_MS} HOLD_MS=${HOLD_MS} in src/cutin/cutInTuning.ts`
+          : null,
+      ].filter((line) => line !== null)
+    : [];
+if (unreadTuning.length > 0) {
+  console.log('!! COULD NOT READ THE AUTO-DISMISS OUT OF cutInTuning.ts:');
+  for (const line of unreadTuning) console.log('  ', line);
+}
+
+/**
+ * How long an exit ANIMATION would have taken, if there were one.
+ *
+ * `CUT_IN_TUNING` had an `EXIT_MS` at 100 ms described as "how long it takes to
+ * leave", and nothing performed it: `CutInView` has an arrival and no
+ * departure, and `CutInHost` un-mounts the overlay synchronously on
+ * `setLive(null)`. It was deleted rather than wired (`cutInTuning.ts`,
+ * `ENTER_MS`), and this number is kept only as the yardstick that says so —
+ * `tapDismissed.dismissTookMs` below is the measurement, recorded in
+ * `frames.json` so a reader checks a field instead of trusting a sentence.
+ *
+ * REPORTED, NOT FAILED ON. A slow machine can take longer than a hundred
+ * milliseconds to notice a node has detached, and a flaky red here would teach
+ * the next person to stop running the tool.
+ */
+const AN_EXIT_ANIMATION_WOULD_HAVE_TAKEN_MS = 100;
 const STILL_UP_PROBE_MS = 700;
 const GONE_BY_MS = 4000;
 
@@ -526,8 +573,101 @@ for (const note of notes) {
 // THE FOUR FRAMES ARE FOUR FRAMES
 // ---------------------------------------------------------------------------
 
-const fingerprints = notes.map((n) => JSON.stringify({ line: n.seen.line, art: n.seen.art }));
+/**
+ * FNV-1a over a decoded frame's RGB. Alpha is skipped: a screenshot is opaque
+ * and including it only slows the walk down.
+ *
+ * TAKES AN IMAGE, NOT A PATH, so the controls below can hash the same pixels
+ * under two different names and a nudged copy of them under one — which is what
+ * makes "this hash is of the picture" a measured statement rather than an
+ * assumption about the implementation.
+ */
+function hashPixels(image) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < image.rgba.length; i += 4) {
+    for (let c = 0; c < 3; c += 1) {
+      hash ^= image.rgba[i + c];
+      hash = Math.imul(hash, 0x01000193);
+    }
+  }
+  return hash >>> 0;
+}
+
+/**
+ * THE FOUR FRAMES ARE FOUR FRAMES, MEASURED ON PIXELS.
+ *
+ * ===========================================================================
+ * THIS COUNTER USED TO BE UNREACHABLE, AND THAT IS WHY IT CHANGED
+ * ===========================================================================
+ * The fingerprint was `{ line, art }` read off the DOM. `line` is unique per
+ * moment BY THE SAME TABLE `wrongLine` checks, and `wrongLine` already fails on
+ * any moment whose line is not its own — so `duplicates` could only exceed zero
+ * in a run that had already failed for a different reason. It was a counter
+ * that could never be the cause of a failure: it appeared in the exit
+ * condition, in the summary line and in `frames.json`, and no state of the
+ * subject would have moved it.
+ *
+ * WHAT IT ASKS NOW IS A QUESTION A DOM READ CANNOT ANSWER: are these four
+ * PICTURES four pictures. `wrongLine` proves the right string is in the tree;
+ * this proves the frame the player would see is not the same frame twice. The
+ * two failure modes that separates — a line present in the DOM and not painted,
+ * and a moment whose whole overlay failed to compose — are exactly the class
+ * this repository keeps finding (a tunable "read by no pixel").
+ *
+ * THE ART IS EXPECTED TO BE IDENTICAL ACROSS THREE OF THE FOUR and that is not
+ * what this measures: `alignedArtDiff` reports the panel, aligned to each
+ * frame's own box, and prints its numbers without requiring them. What this
+ * requires is that the FRAMES differ, which today they do because the line is
+ * different type in a different place.
+ */
+const baselineImage = await imageOf(baselineFile);
+const baselineHash = hashPixels(baselineImage);
+const sameBytesElsewhere = hashPixels({
+  width: baselineImage.width,
+  height: baselineImage.height,
+  rgba: Uint8Array.from(baselineImage.rgba),
+});
+const nudgedBytes = Uint8Array.from(baselineImage.rgba);
+nudgedBytes[0] = nudgedBytes[0] ^ 0xff;
+const nudgedHash = hashPixels({
+  width: baselineImage.width,
+  height: baselineImage.height,
+  rgba: nudgedBytes,
+});
+/**
+ * The hasher's two-sided control, in memory so it writes no frame nobody asked
+ * for. Same pixels in a different buffer must hash the same; ONE channel of ONE
+ * pixel flipped must not. Without the first, a hasher keyed on anything but the
+ * picture would report zero duplicates for ever; without the second, a hasher
+ * that returned a constant would report `notes.length - 1` and look like a
+ * finding rather than a broken instrument.
+ */
+let hasherBlind = 0;
+if (sameBytesElsewhere !== baselineHash || nudgedHash === baselineHash) {
+  hasherBlind += 1;
+  console.log(
+    '!! THE FRAME HASHER IS NOT READING PIXELS — ' +
+      `same bytes: ${sameBytesElsewhere === baselineHash ? 'same hash' : 'DIFFERENT HASH'}, ` +
+      `one channel flipped: ${nudgedHash === baselineHash ? 'SAME HASH' : 'different hash'}`,
+  );
+}
+for (const note of notes) {
+  note.pixelHash = note.seen.present ? hashPixels(await imageOf(note.file)) : null;
+}
+const fingerprints = notes.map((n) => `${n.pixelHash}`);
 let duplicates = fingerprints.length - new Set(fingerprints).size;
+console.log(
+  `frames               ${new Set(fingerprints).size} distinct picture(s) out of ${fingerprints.length}` +
+    `${duplicates === 0 ? '' : ' !! TWO MOMENTS PHOTOGRAPHED THE SAME FRAME'}` +
+    `  (baseline hashes ${baselineHash}, and no moment may match it)`,
+);
+for (const note of notes) {
+  if (note.pixelHash !== baselineHash) continue;
+  // A moment whose frame is byte-identical to the no-cut-in baseline is an
+  // overlay that did not paint, whatever the DOM says about it.
+  duplicates += 1;
+  console.log(`!! ${note.moment} IS THE BASELINE FRAME — nothing was painted over the session`);
+}
 
 /**
  * The panel, compared BETWEEN FRAMES AND ALIGNED TO EACH FRAME'S OWN BOX.
@@ -630,6 +770,11 @@ try {
 // took to see the node and move the mouse, which on a loaded machine has been
 // anywhere from 14 ms to 170 ms. The first-frame claim is
 // `DISMISS_ENABLED_AFTER_MS === 0` and it is a unit test, not a photograph.
+//
+// AND THE COMPARISON IS AGAINST THE APP'S OWN NUMBER NOW. `AUTO_DISMISS_MS` was
+// typed into this file as 1720 and is read out of `cutInTuning.ts` — see the
+// block that reads it. "The tap did it, not the clock" was previously measured
+// against a constant the app could have stopped using.
 await page.goto(`${url}?cutin=bomb-out&live=1`, { waitUntil: 'load' });
 let tapDismissed = null;
 try {
@@ -640,14 +785,29 @@ try {
   await page.getByTestId('cut-in').waitFor({ state: 'detached', timeout: 5000 });
   const goneAt = Date.now() - appearedAt;
   await page.screenshot({ path: path.join(outDir, 'live-after-tap.png') });
-  tapDismissed = { tappedAt, goneAt, wellInsideTheHold: goneAt < AUTO_DISMISS_MS };
+  tapDismissed = {
+    tappedAt,
+    goneAt,
+    // THE MEASUREMENT THREE COMMENTS USED TO QUOTE BY HAND. `cutInTuning.ts`
+    // and this file both cited "tappedAt: 14, goneAt: 26" as the evidence that
+    // nothing animates an exit, and the committed run said 16 / 27. The number
+    // is now a FIELD a reader can open rather than a transcription that ages.
+    dismissTookMs: goneAt - tappedAt,
+    exitAnimationYardstickMs: AN_EXIT_ANIMATION_WOULD_HAVE_TAKEN_MS,
+    wellInsideTheHold: AUTO_DISMISS_MS !== null && goneAt < AUTO_DISMISS_MS,
+    holdReadFromSourceMs: AUTO_DISMISS_MS,
+  };
   if (!tapDismissed.wellInsideTheHold) {
     // Otherwise this proved nothing: the hold would have taken it down anyway.
     timing += 1;
   }
   console.log(
     `tap to dismiss       tapped a CORNER ${tappedAt}ms after the shutter saw it, gone at ${goneAt}ms ` +
-      `${tapDismissed.wellInsideTheHold ? `(the hold is ${AUTO_DISMISS_MS}ms, so the tap did it — not the clock)` : '!! THE HOLD MAY HAVE DONE IT'}`,
+      `${tapDismissed.wellInsideTheHold ? `(the hold is ${AUTO_DISMISS_MS}ms, read from cutInTuning.ts, so the tap did it — not the clock)` : '!! THE HOLD MAY HAVE DONE IT'}`,
+  );
+  console.log(
+    `                     the overlay left ${tapDismissed.dismissTookMs}ms after the tap ` +
+      `(an exit animation would have been ~${AN_EXIT_ANIMATION_WOULD_HAVE_TAKEN_MS}ms; reported, not failed on)`,
   );
 } catch (e) {
   timing += 1;
@@ -756,6 +916,8 @@ try {
  * not a broken gate, and the block below says so at length.
  */
 const failures = [
+  [unreadTuning.length, "timing value(s) this tool compares against could not be read out of cutInTuning.ts"],
+  [hasherBlind, 'frame hasher(s) that are not reading pixels, so the duplicate count means nothing'],
   [missing, 'moment(s) showed no cut-in'],
   [wrongLine, 'wrong line(s) or hint(s)'],
   [duplicates, 'duplicate frame(s)'],
@@ -794,13 +956,12 @@ if (errors.length > 0) {
 await browser.close();
 
 console.log(`\nwrote ${notes.length + 4} frames to ${outDir}`);
-console.log(
-  `${missing} moment(s) showed no cut-in; ${wrongLine} wrong line(s) or hint(s); ` +
-    `${duplicates} duplicate frame(s); ${unreachableCorner} frame(s) had a corner the tap could not reach; ` +
-    `${notOnTop} frame(s) had the screen behind still taking taps; ` +
-    `${scrimDead} frame(s) had an opaque scrim; ${timing} timing check(s) failed; ` +
-    `${walkoutSpentTheSlot} played walk-out(s) spent the bomb-out's slot`,
-);
+// THE SUMMARY READS `failures` TOO, and it did not: it restated seven of the
+// counters by hand, so the two new ones added with this round would have been
+// in the exit code, in `frames.json` and absent from the line a person reads.
+// The block that builds the array says why there must not be a second copy of
+// the condition; this was one.
+console.log(failures.length === 0 ? 'nothing failed' : failures.join('; '));
 if (shellNavOverTheInterrupt > 0) {
   console.log(
     `\n!! on ${shellNavOverTheInterrupt} of ${notes.length} frames the shell's navigation pill sits ` +

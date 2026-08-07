@@ -236,8 +236,28 @@ const GUARANTEE_COVERAGE = {
    *
    * The one paragraph that does trigger sits directly above the assertion that
    * checks it, so it is on the better side of this file's complaint.
+   *
+   * 206 -> 207 when the cut-in piece wrote down that GDD §7.2's third PR
+   * sub-moment — `record: 'tier'` — is reachable by no screen. Measured per
+   * file the same way, by restoring each touched file to its pre-change text
+   * and re-reading this count: `cutInGate.test.ts`, `cutInWiring.test.ts`,
+   * `cutInTuning.ts` and `RecapView.tsx` contribute nothing between them, and
+   * the single new paragraph is the bullet added to `cutInGate.ts` §5, the
+   * section listing what that module does not do. Worth recording:
+   * `RecapView.tsx` carries the same disclosure at similar length and does not
+   * trigger, which is the declared lower-case blind spot again — the ratio
+   * moved because one of the two happened to open with a capitalised absolute.
+   *
+   * The §5 heading is deliberately not quoted in capitals here, for the reason
+   * the 205 -> 206 note above gives: quoting it makes this paragraph trigger as
+   * well, and the scan reading its own documentation is a fair description of
+   * the limit rather than a measurement of the tree.
+   *
+   * That paragraph is TAGGED (`tier-pr-is-reached-by-no-screen`) and carries a
+   * witness below, so it arrived on the better side of this file's complaint
+   * rather than adding to the untagged 90%.
    */
-  TREE_WIDE: 206,
+  TREE_WIDE: 207,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -505,6 +525,23 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     redAssertion: '(entry?.state !== undefined) === (entry?.serverPort !== undefined),',
     observed:
       'AssertionError: ?meet=live: state absent, serverPort present: expected false to be true',
+  },
+  {
+    // The mutant taught the ONE screen that already reports a PR in the daily
+    // loop to report the tier kind instead. That is precisely the change the
+    // claim says has not happened — and it is the change the check that used to
+    // live here could not see, because it iterated `kind:` and any `record`
+    // beat satisfied the `record` row whichever sub-kind it carried.
+    guarantee: 'tier-pr-is-reached-by-no-screen',
+    mutatedFile: 'src/session/CloseOutView.tsx',
+    mutated: "useOfferCutIn([{ kind: 'record', record: 'e1rm', achieved: isPr }]);",
+    testFile: 'src/cutin/cutInWiring.test.ts',
+    redAssertion:
+      "if 'tier' has arrived here, a screen has learnt to report tier qualification — delete this ",
+    observed:
+      "AssertionError: if 'tier' has arrived here, a screen has learnt to report tier " +
+      'qualification — delete this test and the paragraphs it points at in cutInGate.ts §5 and ' +
+      "RecapView.tsx: expected 'e1rm, tier, total' to be 'e1rm, total'",
   },
 ];
 
