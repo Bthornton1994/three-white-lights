@@ -35,17 +35,27 @@ import {
   liftForDay,
   stepSession,
   type SessionCloseOut,
+  type SessionContext,
   type SessionState,
 } from './session';
 import {
   newServerRecord,
   snapshotWireFor,
+  todayForLifter,
   type ServerRecord,
 } from './sessionServer';
 import { EMPTY_FATIGUE_STATE, type FatigueState, type SessionRecord } from './fatigue';
 import { FATIGUE_TUNING } from './fatigue';
 import { SESSION_BOUNDARY, SESSION_BOUNDARY_COPY, SESSION_COPY, SESSION_TUNING } from './sessionTuning';
-import { asStreakDay, type LocalWallClock } from './streak';
+import {
+  RECOVERY_DAY_GUARDRAILS,
+  asStreakDay,
+  createStreakState,
+  openDay,
+  recordTrainingDay,
+  type LocalWallClock,
+  type StreakState,
+} from './streak';
 import type { LiftKind } from './meet';
 
 /**
@@ -95,7 +105,7 @@ function storedRecord(bestKg: number): ServerRecord {
 
 /** Drives the real machine to a close-out, every rep good. */
 function playSession(bestKg: number, ledger: FatigueState = EMPTY_FATIGUE_STATE): SessionState {
-  let state = createSession({
+  return playSessionFrom({
     day: DAY,
     lift: LIFT,
     e1rmKg: bestKg,
@@ -104,6 +114,18 @@ function playSession(bestKg: number, ledger: FatigueState = EMPTY_FATIGUE_STATE)
     streakIfTrainedToday: STARTING_STREAK + 1,
     fatigue: ledger,
   });
+}
+
+/**
+ * The same driver, from a context the caller built.
+ *
+ * `playSession` delegates here so the covered-gap fixtures below drive the SAME
+ * machine by the SAME taps — a second copy of this loop is a second thing to
+ * drift, and the point of those fixtures is that the context differs and
+ * nothing else does.
+ */
+function playSessionFrom(context: SessionContext): SessionState {
+  let state = createSession(context);
   for (const tap of [
     { question: 'sleep', answer: 'good' },
     { question: 'soreness', answer: 'fresh' },
@@ -304,6 +326,103 @@ describe('what today is, read out of the cache', () => {
     expect(context.streakIfTrainedToday).toBe(STARTING_STREAK + 1);
     // And it is a session the machine will accept.
     expect(createSession(context).phase).toBe('check-in');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GDD §4.3's "phew beat", read out of the cache
+// ---------------------------------------------------------------------------
+
+/**
+ * The run length the covered-gap fixture returns from. Any number above 1 will
+ * do; it is >1 so that the defect this file reproduces is VISIBLE — with a
+ * one-day run the wrong answer and the right answer are both 1, which is
+ * exactly why the existing 103 browser checks never saw it.
+ */
+const COVERED_GAP_RUN_DAYS = 10;
+
+/**
+ * How many days the fixture's lifter is away for.
+ *
+ * DERIVED FROM THE TUNING rather than written as a literal: one day past the
+ * free grace is the shortest absence a Recovery Day has to hold, so this tracks
+ * `FREE_GRACE_GAP_DAYS` if it is ever retuned instead of silently becoming a
+ * grace-covered gap (which opens as a different kind and would not exercise
+ * the defect at all).
+ */
+const COVERED_GAP_DAYS_MISSED = RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS + 1;
+
+/** A lifter with a real run behind them, built by TRAINING rather than by hand. */
+function runOf(days: number, signupDay: number): { readonly state: StreakState; readonly lastDay: number } {
+  let state = createStreakState(asStreakDay(signupDay));
+  let lastDay = signupDay;
+  for (let i = 0; i < days; i += 1) {
+    lastDay = signupDay + i;
+    const trained = recordTrainingDay(state, asStreakDay(lastDay));
+    if (!trained.ok) throw new Error(`fixture could not train day ${lastDay}: ${trained.error.code}`);
+    state = trained.value.state;
+  }
+  return { state, lastDay };
+}
+
+function recordHolding(streak: StreakState): ServerRecord {
+  const fresh = newServerRecord(streak.signupDay);
+  return { ...fresh, streak };
+}
+
+describe('a Recovery Day save, read out of the cache (GDD §4.3)', () => {
+  it('the client answers what the server would bank, on the opening a save holds', () => {
+    const { state, lastDay } = runOf(COVERED_GAP_RUN_DAYS, SIGNUP_DAY);
+    const returnDay = lastDay + COVERED_GAP_DAYS_MISSED + 1;
+
+    // The fixture really is the covered-gap opening, and not some neighbour of
+    // it. Without this the test could pass while measuring nothing.
+    const opening = openDay(state, asStreakDay(returnDay));
+    expect(opening.kind).toBe('gap-covered-by-recovery-days');
+    expect(state.currentStreak).toBe(COVERED_GAP_RUN_DAYS);
+
+    // WHAT THE SERVER WILL DO IF THEY TRAIN — the oracle, taken from the real
+    // recorder rather than restated.
+    const banked = recordTrainingDay(state, asStreakDay(returnDay));
+    if (!banked.ok) throw new Error(`the save should be bankable: ${banked.error.code}`);
+    expect(banked.value.streakAfter).toBe(COVERED_GAP_RUN_DAYS + 1);
+    expect(banked.value.recoveryDaySave).not.toBeNull();
+
+    const cache = receiveSnapshot(emptyProgressionCache(), snapshotWireFor(recordHolding(state), null));
+    const lift = liftForDay(returnDay);
+    const today = todayFromCache(cache, returnDay, lift);
+
+    expect(today.streakBefore).toBe(COVERED_GAP_RUN_DAYS);
+    // THE DEFECT, PINNED BEFORE IT IS FIXED. `'gap-covered-by-recovery-days'`
+    // falls through the client's ternary chain to `1`, so the close-out prints
+    // 1 over DAY STREAK — with the celebratory pop, because 1 !== 10 — and then
+    // snaps to 11 when the response lands. The server's twin already says 11.
+    expect(today.streakIfTrainedToday).toBe(1);
+    expect(todayForLifter(recordHolding(state), returnDay, lift).streakIfTrainedToday).toBe(
+      COVERED_GAP_RUN_DAYS + 1,
+    );
+  });
+
+  it('the number the close-out prints under DAY STREAK is the wrong one', () => {
+    const { state, lastDay } = runOf(COVERED_GAP_RUN_DAYS, SIGNUP_DAY);
+    const returnDay = lastDay + COVERED_GAP_DAYS_MISSED + 1;
+    const cache = receiveSnapshot(emptyProgressionCache(), snapshotWireFor(recordHolding(state), null));
+    const lift = liftForDay(returnDay);
+
+    const context = sessionContextFrom(cache, { fatigue: EMPTY_FATIGUE_STATE }, returnDay, lift);
+    const closeOut = closeOutOf(playSessionFrom(context));
+    expect(closeOut.canPropose).toBe(true);
+    expect(closeOut.streakBefore).toBe(COVERED_GAP_RUN_DAYS);
+    expect(closeOut.streakAfter).toBe(1);
+
+    const submitted = submitCloseOut(cache, closeOut, WALL_CLOCK, asProposalId('covered-gap'));
+    if (submitted === null) throw new Error('the close-out should be submittable');
+    const readings = closeOutReadings(submitted.cache, closeOut);
+    // What `CloseOutView` prints under `CLOSE_OUT_STREAK_LABEL`.
+    expect(readings.streakValue).toBe(1);
+    // ...and the pop fires, because the printed value differs from the one the
+    // lifter came in on. GDD §4.3's payoff beat, reading as a loss.
+    expect(readings.streakValue).not.toBe(closeOut.streakBefore);
   });
 });
 
