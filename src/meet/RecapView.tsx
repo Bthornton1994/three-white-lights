@@ -40,6 +40,16 @@
  * rates. A recap with no PR on it reports `achieved: false` and is refused, so
  * the qualification is the gate's rather than a condition here.
  *
+ * THE THIRD ONE LANDS NOWHERE, AND THAT SENTENCE USED TO STOP AT "two of the
+ * three". `record: 'tier'` — §7.2's "qualifying for a higher tier" — is a beat
+ * kind `cutInGate.ts` permits and fires on, and NO SCREEN IN THE APP CAN OFFER
+ * IT. It is not this screen's to send: tier qualification is a fact about a
+ * lifter's standing across meets, which needs GDD §6.1's Career calendar, and a
+ * human has explicitly deferred that. So it is unbuilt rather than missing, and
+ * it is written down here and in `cutInGate.ts` §5 rather than left as a gap a
+ * reader has to notice. `cutInWiring.test.ts`'s "THE THIRD PR SUB-MOMENT IS
+ * REACHED BY NO SCREEN" pins it, and goes red the day one of them starts.
+ *
  * WHAT IT REPORTS IS THE SERVER'S ANSWER. `recap.isTotalPr` comes off the same
  * confirmed recap every number on this screen does, so the cut-in cannot
  * celebrate a record the card does not print.

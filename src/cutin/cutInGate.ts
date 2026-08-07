@@ -173,6 +173,27 @@
  *    re-mounted, which `AppShell`'s surface ternary does on every trip out of a
  *    meet and back. `cutInLedger.test.ts` is the check; it is a real unit test
  *    and not a source scan.
+ *  - ONE OF ITS THREE PR SUB-MOMENTS IS REACHED BY NO SCREEN. §7.2's second
+ *    firing moment is "PR moments (new e1RM, new total, QUALIFYING FOR A HIGHER
+ *    TIER)", and `CUT_IN_RECORD_KINDS` carries all three; `momentFor` fires on
+ *    all three and `cutInGate.test.ts` exercises all three. But `RecapView`
+ *    offers `total` and `e1rm`, `CloseOutView` offers `e1rm`, and NOTHING
+ *    OFFERS `tier`. It is reachable only from a test.
+ *
+ *    UNBUILT RATHER THAN MISSING. Tier qualification is a fact about a lifter's
+ *    standing across meets and needs GDD §6.1's Career calendar, which a human
+ *    has explicitly deferred; building it here would be this piece inventing a
+ *    progression system to have something to interrupt about. The kind stays in
+ *    the union because §7.2 names three and a union that named two would make
+ *    the document and the code disagree silently — which is the failure this
+ *    §5 exists to write down rather than repeat.
+ *
+ *    IT WAS DISCLOSED NOWHERE UNTIL IT WAS PUT HERE, and the check that should
+ *    have caught it could not: `cutInWiring.test.ts`'s "covers all four of the
+ *    gate's beat kinds" iterated `kind:` and was satisfied by ANY `record`
+ *    beat, whichever of the three sub-kinds it carried. It now pins the
+ *    sub-kinds too, and goes red the day a screen starts offering `tier` — at
+ *    which point this paragraph is deleted along with it.
  *  - IT CANNOT SAY THE RATES ARE RIGHT. Nothing in this repository can. GDD
  *    §12.1 is explicit that this is the part of the job that was never
  *    automatable.
