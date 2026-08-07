@@ -1,14 +1,14 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-07T00:31:11.093Z",
+    "capturedAt": "2026-08-07T02:20:51.875Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "9301d17",
+    "commit": "cc030dc",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [],
     "instrument": {
-      "verify-shell-route.mjs": "f96a4b68491b2366",
+      "verify-shell-route.mjs": "cbcc7e0970a41300",
       "sessionDrive.mjs": "2a63eac7a653d32b"
     }
   },
@@ -20,7 +20,7 @@
       "width": 350,
       "height": 48
     },
-    "wallClockMs": 77906,
+    "wallClockMs": 85598,
     "landedOn": "already-trained",
     "finalDepthHoldMs": 1000,
     "reps": [
@@ -166,10 +166,10 @@
     "  ok    CONTROL: the block parser reads the block it was asked for, not the decoy above it, and reads the last entry of an inline one — fixture -> REAL_FRACTION.squat 0.9 (want 0.9; DECOY_FRACTION.squat is 0.11 and must not be the answer), NESTED_SEED.squat 180 (want 180, through a nested freeze), NESTED_SEED.deadlift 220 (want 220, and it has NO trailing comma — the shape STARTING_E1RM is written in, and the one this parser first got wrong), ABSENT_BLOCK null (want null)",
     "  ok    CONTROL: the binding parser reads `export const NAME = n`, typed or not, and refuses a property of the same name — fixture -> REAL_GRID 2.5 (want 2.5), TYPED_GRID 5 (want 5), DECOY_GRID null (want null — it is a property, not a binding)",
     "  ok    CONTROL: every number the opener crossing is judged against was found in the module that owns it — fraction {\"squat\":0.9,\"bench\":0.9,\"deadlift\":0.9}, seed {\"squat\":180,\"bench\":120,\"deadlift\":220}kg, grid 2.5kg, count-up 900ms after 220ms",
-    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1460ms from the first tap",
-    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 65274ms, 15 of them past a DRIVE cue",
+    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1549ms from the first tap",
+    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 72408ms, 15 of them past a DRIVE cue",
     "  ok    CONTROL: the close-out has a certainty tag for that wait to watch — e1rm, streak in the DOM",
-    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 561ms",
+    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 558ms",
     "  ok    CONTROL: the close-out prints an e1RM, and says which lift it is for — bench 124.6kg",
     "  ok    PRESSING DONE LANDS ON THE ALREADY-TRAINED SURFACE (GDD §3.2: one session a day)",
     "  ok    the already-trained surface renders — the last screen of the daily loop — opacity 1.000",
@@ -201,7 +201,7 @@
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.2 step 4’s deliberation — the judges taking a beat (beat 'deliberation')",
     "  ok    NO CONTROL IS DRAWN OVER the judges’ verdict (beat 'verdict')",
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.3’s attempt choice (beat 'attempt-select')",
-    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.925 after 3711ms",
+    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.985 after 4026ms",
     "  ok    and the shell does not add a second one to it (GDD §6.3: leave that beat somber)",
     "  ok    and pressing it returns to the daily session",
     "  ok    CONTROL: with no cut-in up, the pill is on the same screen the probe looks at — opacity 1.000",
@@ -238,7 +238,7 @@
   ],
   "notes": [
     "  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day, which the server then refuses",
-    "  note  the played-session section cost 77906ms of wall clock"
+    "  note  the played-session section cost 85598ms of wall clock"
   ],
   "failures": [],
   "pageErrors": []

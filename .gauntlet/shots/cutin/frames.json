@@ -1,9 +1,9 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-07T00:34:57.655Z",
+    "capturedAt": "2026-08-07T02:25:00.239Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "9301d17",
+    "commit": "cc030dc",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
@@ -231,12 +231,12 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1559,
+    "goneAt": 1597,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 14,
-    "goneAt": 22,
+    "tappedAt": 16,
+    "goneAt": 26,
     "wellInsideTheHold": true
   },
   "playedPath": {
