@@ -3137,6 +3137,22 @@ function deepFreeze<T>(value: T): T {
  *     type-checks. It now throws where it runs, in strict mode, which every
  *     module here is (ES modules are strict by definition, and
  *     `sessionServer.test.ts` pins that the throw is real rather than silent).
+ *     Measured in the shipped bundle as well as in node, because a sealed write
+ *     fails in silence under sloppy mode and that is the shape a fix takes when
+ *     it passes everything while doing nothing. The browser half of that
+ *     measurement is recorded here rather than in `MUTATION_WITNESSES`, which
+ *     CLAUDE.md records as unable to hold a check with no `it(` to bind to:
+ *       · seal removed, the three lines applied, one session played with a
+ *         mouse to its close-out — the screen printed 485.0 kg deadlift e1RM
+ *         against a true 220.0, tagged confirmed, no console error;
+ *       · seal in place, same three lines, same played session — `Cannot assign
+ *         to read only property 'deadlift' of object '#<Object>'`, and the
+ *         e1RM stayed at 220.0.
+ *     The second is also the honest cost. The throw happens inside the `.then()`
+ *     that would have settled the cache, so the close-out sits on its SAVING tag
+ *     and a rogue write becomes a visible wedge rather than a handled refusal.
+ *     Better than banking 485 kg for the life of an account, and not nothing —
+ *     so it is written down rather than left to be found.
  *   - IT SAYS NOTHING ABOUT MAGNITUDES. A wire that leaves the server already
  *     holding a pound number in a kilogram field is sealed just as firmly. That
  *     is 7.4's residual (b) and this does not touch it.
