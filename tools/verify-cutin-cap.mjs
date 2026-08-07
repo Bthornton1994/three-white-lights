@@ -223,6 +223,14 @@ const CAP_DRIVE = Object.freeze({
   CUT_IN_CLEAR_SLACK_MS: 3000,
   /** A beat to let a surface settle after a navigation press. */
   SETTLE_MS: 1200,
+  /**
+   * "Drawn" rather than "mounted". A leg-3 screenshot was a flat dark
+   * rectangle while `bomb-out-action` was already in the DOM — `BombOutView`
+   * opens with a deliberate silence and fades its rows in, the exit last. This
+   * is the line between present and visible, and it is the whole reason that
+   * frame was blank.
+   */
+  DRAWN_MIN_OPACITY: 0.9,
 });
 
 // ---------------------------------------------------------------------------
@@ -316,6 +324,31 @@ const holdMs = numberInSource(tuningText, 'HOLD_MS');
 const latencyMs = numberInSource(sessionTuningText, 'LOCAL_SERVER_LATENCY_MS');
 const feedbackHigh = stringInSource(meetTuningText, 'FEEDBACK_DEPTH_HIGH');
 const feedbackBuried = stringInSource(meetTuningText, 'FEEDBACK_BURIED');
+
+/**
+ * WHEN THE BOMB-OUT SCREEN HAS FINISHED ARRIVING, out of the app's own numbers.
+ *
+ * `BombOutView` delays row `i` by `SILENCE + i * STAGGER` and fades it over
+ * `FADE`; the exit is the last row, `BOMB_OUT_ROW_ORDER.ACTION`. Computed here
+ * rather than typed, so a playtester who lengthens the silence gets a tool that
+ * still waits long enough instead of a tool that starts photographing the
+ * silence again.
+ */
+const bombOutSilenceMs = numberInSource(meetTuningText, 'BOMB_OUT_SILENCE_MS');
+const bombOutStaggerMs = numberInSource(meetTuningText, 'BOMB_OUT_ROW_STAGGER_MS');
+const bombOutFadeMs = numberInSource(meetTuningText, 'BOMB_OUT_ROW_FADE_MS');
+const bombOutRowOrderAction = numberInBlock(meetTuningText, 'BOMB_OUT_ROW_ORDER', 'ACTION');
+const bombOutLastRowMs =
+  bombOutSilenceMs === null || bombOutStaggerMs === null || bombOutFadeMs === null || bombOutRowOrderAction === null
+    ? null
+    : bombOutSilenceMs + bombOutRowOrderAction * bombOutStaggerMs + bombOutFadeMs;
+check(
+  bombOutLastRowMs !== null,
+  "CONTROL: the bomb-out screen's own arrival arithmetic was READ, not guessed — a blank photograph is what a failed read used to look like",
+  bombOutLastRowMs === null
+    ? `COULD NOT READ one of BOMB_OUT_SILENCE_MS / BOMB_OUT_ROW_STAGGER_MS / BOMB_OUT_ROW_FADE_MS / BOMB_OUT_ROW_ORDER.ACTION out of meetTuning.ts`
+    : `${bombOutSilenceMs} + ${bombOutRowOrderAction} x ${bombOutStaggerMs} + ${bombOutFadeMs} = ${bombOutLastRowMs}ms`,
+);
 
 check(
   bombOutAllowance === 1,
@@ -454,6 +487,29 @@ async function read() {
         .filter((id) => /^attempt-option-(repeat|small|big)$/.test(id)),
     };
   });
+}
+
+/**
+ * The computed opacity multiplied all the way up the tree, so a parent fading a
+ * subtree in cannot report a child as drawn. Presence is not visibility, which
+ * is the distinction a blank committed frame was made of.
+ */
+async function effectiveOpacity(id) {
+  return page
+    .evaluate((testId) => {
+      let el = document.querySelector(`[data-testid="${testId}"]`);
+      if (el === null) return 0;
+      let acc = 1;
+      while (el !== null) {
+        const cs = window.getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') return 0;
+        const own = Number.parseFloat(cs.opacity);
+        acc *= Number.isFinite(own) ? own : 1;
+        el = el.parentElement;
+      }
+      return acc;
+    }, id)
+    .catch(() => 0);
 }
 
 async function until(done, timeoutMs) {
@@ -662,34 +718,51 @@ if (booted.ok) {
         (drive.why === undefined ? '' : `  (${drive.why})`),
     );
     /**
-     * WAIT FOR THE ENDING TO BE ON SCREEN BEFORE PHOTOGRAPHING IT.
+     * WAIT UNTIL THE ENDING IS ACTUALLY DRAWN, WHICH IS NOT WHEN IT MOUNTS.
      *
-     * `driveMeet` returns the instant the phase's testID appears, and the view
-     * fades in after that. Photographing on return produced a leg-3 shot that
-     * was A FLAT DARK RECTANGLE — 7KB of nothing — filed under
-     * `leg-3-bombed.png` beside a record saying the leg reached the bomb-out
-     * screen and offered its beat. That is the exact failure `.gitignore`'s
-     * own argument for tracking this directory describes: a photograph of
-     * nothing next to a check that passed.
+     * `leg-3-bombed.png` was a FLAT DARK RECTANGLE — 7KB of nothing — filed
+     * beside a record saying the leg reached GDD §6.3's bomb-out screen and
+     * offered its beat. Two wrong diagnoses before the right one, both worth
+     * recording because each looked sufficient:
      *
-     * It hid because the legs that CONTINUE already wait for `bombExit` below,
-     * before pressing it — so legs 1 and 2 photographed fine and only the last
-     * leg, which breaks before that wait, was ever blank. The waiter existed;
-     * it was on the wrong side of the shutter.
+     *   1. "The shutter fires before the view mounts." It does not. `bombExit`
+     *      is in the DOM 2ms after `driveMeet` returns. Waiting on presence
+     *      changed nothing and produced a byte-identical blank frame, now with
+     *      a GREEN CHECK claiming the photograph was of something — a check
+     *      asserting a falsehood is worse than no check.
+     *   2. "The bomb-out screen renders nothing on a repeat leg." Also wrong,
+     *      and it would have been a real app defect.
      *
-     * Waiting on the ending's own control rather than a timeout, so a screen
-     * that never arrives is a named red rather than a longer blank.
+     * THE APP IS CORRECT AND THE INSTRUMENT WAS NAIVE. `BombOutView` opens
+     * with `BOMB_OUT_SILENCE_MS` of a deliberately almost-empty screen — its
+     * own header calls that beat out — and then fades four rows in, staggered.
+     * The exit is the LAST row. So the element is present, transparent, and
+     * the photograph was of a real screen at a real moment: the silence.
+     *
+     * The wait is therefore computed from the app's own stagger arithmetic,
+     * read from source rather than transcribed, and the check reads EFFECTIVE
+     * OPACITY rather than presence — the distinction the blank frame is
+     * entirely made of.
      */
-    const arrived =
-      drive.ended === 'bombed'
-        ? await until((s) => s.bombExit, CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS)
-        : drive.ended === 'recap'
-          ? await until((s) => s.leaveMeet, CAP_DRIVE.BEAT_TIMEOUT_MS)
-          : { ok: true, ms: 0 };
+    let arrivedMs = 0;
+    let drawn = 1;
+    if (drive.ended === 'bombed') {
+      arrivedMs = bombOutLastRowMs === null ? CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS : bombOutLastRowMs;
+      await until((s) => s.bombExit, CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS);
+      await page.waitForTimeout(arrivedMs);
+      drawn = await effectiveOpacity('bomb-out-action');
+    } else if (drive.ended === 'recap') {
+      const seen = await until((s) => s.leaveMeet, CAP_DRIVE.BEAT_TIMEOUT_MS);
+      arrivedMs = seen.ms;
+      drawn = await effectiveOpacity('meet-recap');
+    }
     check(
-      arrived.ok,
-      `leg ${leg.n}: the '${drive.ended}' screen finished arriving, so the photograph below is of something`,
-      `waited ${arrived.ms}ms for its own exit control`,
+      drawn >= CAP_DRIVE.DRAWN_MIN_OPACITY,
+      `leg ${leg.n}: the '${drive.ended}' screen is DRAWN, not merely mounted, before the shutter`,
+      `effective opacity ${drawn.toFixed(3)} after ${arrivedMs}ms` +
+        (drive.ended === 'bombed'
+          ? ` (BOMB_OUT_SILENCE_MS + ${bombOutRowOrderAction} x BOMB_OUT_ROW_STAGGER_MS + BOMB_OUT_ROW_FADE_MS, read from meetTuning.ts)`
+          : ''),
     );
     await page.screenshot({ path: path.join(outDir, `leg-${leg.n}-${drive.ended}.png`) });
 
