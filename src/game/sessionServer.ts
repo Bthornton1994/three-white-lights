@@ -205,6 +205,7 @@ import {
   createStreakState,
   openDay,
   recordTrainingDay,
+  streakIfTrainedToday,
   type StreakState,
 } from './streak';
 import { nextBestE1rm } from './session';
@@ -909,14 +910,6 @@ export interface TodayForLifter {
 export function todayForLifter(record: ServerRecord, day: number, lift: LiftKind): TodayForLifter {
   const opening = openDay(record.streak, asStreakDay(day));
   const alreadyTrainedToday = opening.kind === 'already-trained-today';
-  const streakIfTrainedToday =
-    opening.kind === 'streak-alive' ||
-    opening.kind === 'gap-covered-by-grace' ||
-    opening.kind === 'gap-covered-by-recovery-days'
-      ? opening.streakIfTrainedToday
-      : opening.kind === 'already-trained-today'
-        ? opening.currentStreak
-        : 1;
   const best = record.bestE1rmKg[lift];
   return {
     day,
@@ -930,7 +923,10 @@ export function todayForLifter(record: ServerRecord, day: number, lift: LiftKind
     e1rmKg: best ?? PROVEN_STARTING_E1RM.kilograms[lift],
     bestE1rmKg: best,
     streakBefore: record.streak.currentStreak,
-    streakIfTrainedToday,
+    // `streak.ts`'s ONE mapping, not a second reading of `opening`. This used
+    // to be a ternary chain here and a shorter one in `sessionClient.ts`, and
+    // the short one is what reached the screen.
+    streakIfTrainedToday: streakIfTrainedToday(opening),
     fatigue: record.fatigue,
     alreadyTrainedToday,
   };

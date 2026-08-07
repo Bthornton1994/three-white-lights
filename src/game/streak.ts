@@ -772,6 +772,18 @@ export const LONGEST_REPAIRABLE_ABSENCE_DAYS: number =
   RECOVERY_DAY_GUARDRAILS.FREE_GRACE_GAP_DAYS + MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW;
 
 /**
+ * What a streak reads on the first day of a new run.
+ *
+ * NOT A TUNABLE — it is what "day one" means, and it is a constant only so that
+ * `streakIfTrainedToday` has a name to return instead of a bare literal. It is
+ * NOT a second source of truth for the recorder's `base.currentStreak + 1`:
+ * `streak.test.ts`'s "ONE MAPPING" sweep checks every opening against what
+ * `recordTrainingDay` actually does, so if this and the recorder ever disagree
+ * the sweep reddens rather than the two quietly diverging.
+ */
+export const FIRST_DAY_OF_A_NEW_RUN = 1;
+
+/**
  * Streak lengths worth telling the player about (GDD §4.2: "Milestone streaks
  * (7 / 30 / 100 days)").
  *
@@ -1768,8 +1780,21 @@ export type DayOpening =
   /**
    * `today` is earlier than a day already accounted for. Only reachable through
    * clock skew or a bad caller; surfaced rather than silently absorbed.
+   *
+   * IT CARRIES `currentStreak` FOR THE SAME REASON `'already-trained-today'`
+   * DOES. These are the two openings on which `recordTrainingDay` REFUSES — with
+   * `DAY_IN_PAST` and `ALREADY_TRAINED_TODAY` — so on both of them the honest
+   * answer to "what will my streak read if I train today" is "what it reads
+   * now", and a screen needs the number to say that. Without this field the
+   * only mapping defined on every kind was a fall-through, which is what
+   * `streakIfTrainedToday` used to be and what shipped the wrong number.
    */
-  | { readonly kind: 'day-in-past'; readonly requestedDay: StreakDay; readonly lastTrainedDay: StreakDay };
+  | {
+      readonly kind: 'day-in-past';
+      readonly requestedDay: StreakDay;
+      readonly lastTrainedDay: StreakDay;
+      readonly currentStreak: number;
+    };
 
 export function openDay(state: StreakState, today: StreakDay): DayOpening {
   if (state.lastTrainedDay === null) {
@@ -1784,7 +1809,12 @@ export function openDay(state: StreakState, today: StreakDay): DayOpening {
     return { kind: 'already-trained-today', currentStreak: state.currentStreak };
   }
   if (today < state.lastTrainedDay) {
-    return { kind: 'day-in-past', requestedDay: today, lastTrainedDay: state.lastTrainedDay };
+    return {
+      kind: 'day-in-past',
+      requestedDay: today,
+      lastTrainedDay: state.lastTrainedDay,
+      currentStreak: state.currentStreak,
+    };
   }
 
   const absence = absenceOutcome(state, today);
@@ -1826,6 +1856,72 @@ export function openDay(state: StreakState, today: StreakDay): DayOpening {
     lastDayStreakCanBeSaved: lastDayStreakCanBeSaved(state, today) ?? today,
     isFirstRecoveryDaySave: !state.hasBankedFirstRecoveryDaySave,
   };
+}
+
+/**
+ * The streak the lifter will be on if they train on the day this opening is for.
+ *
+ * THE ONE MAPPING FROM `DayOpening` TO THAT NUMBER, AND THE REASON IT IS A
+ * FUNCTION AND NOT A CONVENTION. It was written twice — once in
+ * `sessionServer.ts`'s `todayForLifter`, once in `sessionClient.ts`'s
+ * `todayFromCache` — as two chained ternaries that ended in `: 1`. The client's
+ * chain named two kinds where the server's named three, so
+ * `'gap-covered-by-recovery-days'` fell through it to `1`, and the client's is
+ * the copy that reaches the screen. A lifter whose Recovery Day had just saved
+ * a ten-day run was shown `1` under `DAY STREAK`, with the celebratory pop,
+ * for the length of a server round trip — on the exact beat GDD §4.3 calls the
+ * payoff. That is GDD §12.3's "never punish daily engagement" breaking on
+ * screen.
+ *
+ * TWO IMPLEMENTATIONS THAT AGREE WOULD BE A WEAKER PROPERTY THAN ONE THAT
+ * EXISTS, so this is not a shared assertion over two copies: it is the only
+ * copy, and both callers are renderers of it.
+ *
+ * A SWITCH RATHER THAN A TERNARY CHAIN, exhaustive with a `never` fallthrough
+ * (the `projectionClaiming` shape in `progression.test.ts`). An eighth
+ * `DayOpening` kind is a `tsc` error here rather than a silent `1` — which is
+ * precisely the failure mode above, since the fall-through arm was never
+ * written for the kind that used it.
+ *
+ * THE ORACLE THIS OWES: for every state and every day,
+ *
+ *     streakIfTrainedToday(openDay(state, day))
+ *       === the `currentStreak` the state has after offering `day` to
+ *           `recordTrainingDay` — its `streakAfter` when the recorder accepts,
+ *           and the untouched `state.currentStreak` when it refuses.
+ *
+ * One expression, no case analysis, and it runs the real recorder rather than
+ * restating this switch — so it can disagree with it. `streak.test.ts`'s
+ * "ONE MAPPING" sweep drives it over every `DayOpening` kind and pins the seven
+ * it saw. `@guarantee one-streak-mapping`
+ */
+export function streakIfTrainedToday(opening: DayOpening): number {
+  switch (opening.kind) {
+    // The run is live and today extends it. `openDay` has already worked out
+    // what it extends to, grace and Recovery Days included.
+    case 'streak-alive':
+    case 'gap-covered-by-grace':
+    case 'gap-covered-by-recovery-days':
+      return opening.streakIfTrainedToday;
+    // `recordTrainingDay` REFUSES on both of these — `ALREADY_TRAINED_TODAY`
+    // and `DAY_IN_PAST` — so training "today" cannot move the number and the
+    // honest answer is the one the lifter is already on.
+    case 'already-trained-today':
+    case 'day-in-past':
+      return opening.currentStreak;
+    // No live run to extend: today is day one of a new one. `endRun` zeroes
+    // `currentStreak`, and `recordTrainingDay` adds one to it, which is what
+    // the oracle above checks this against rather than trusting the constant.
+    case 'no-active-streak':
+    case 'streak-broken':
+      return FIRST_DAY_OF_A_NEW_RUN;
+    default: {
+      // Exhaustive over `DayOpening`: a new opening kind fails `tsc` here until
+      // somebody says what the streak does on it.
+      const unreachable: never = opening;
+      throw new Error(`streakIfTrainedToday: unhandled opening ${JSON.stringify(unreachable)}`);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
