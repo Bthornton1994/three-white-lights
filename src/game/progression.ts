@@ -971,6 +971,36 @@
  * only mint of a `ProgressionSnapshot` and a fourth caller would be a fourth
  * place local state can be replaced by something claiming to be truth.
  *
+ * "ONE PRODUCER, SO `bestE1rmKg` AND `totalKg` LEAVE THE SERVER THROUGH A
+ * SINGLE FUNCTION" IS TRUE AND WAS READ AS SOMETHING STRONGER THAN IT SAYS.
+ * One producer, yes. One WRITER, no — a wire is an object, and after
+ * `snapshotWireFor` has built it anybody holding it can assign into it. Every
+ * kind in this table is a CONSTRUCTION OR A CALL: a record is born, a wire is
+ * born, a snapshot is admitted. An assignment is none of the three, so it was
+ * not a missing row and the scan was not mis-scoped — the instrument was
+ * counting the wrong species. `readonly` does not stand in for the missing row
+ * either: `Readonly<Record<LiftKind, number | null>>` assigns to a mutable
+ * `Record` with no cast, because property `readonly` is not part of
+ * assignability. Measured, not argued: three lines in `useSession.ts` writing a
+ * pound e1RM into `response.wire` left `tsc --noEmit` clean and the suite at
+ * exactly 63 files / 2654 tests, and the number arrived in
+ * `ConfirmedFacts.bestE1rmKg` as 485.0 against a true 220 kg.
+ *
+ * THE ANSWER IS A SEAL AND NOT A NINTH ROW. Enumerating assignment sites is
+ * strictly harder than enumerating construction sites, and this table's
+ * enumeration has been found too narrow six times; a seventh instrument of the
+ * same shape is the move that keeps failing. `sealServerValue` removes the
+ * capability instead. For a wire that is total and needs no list — one producer,
+ * so one call covers every wire that will ever exist. For a record it is still
+ * an enumeration, six sites, and what makes that different from a fourth
+ * hand-written scan is that `progression.test.ts` asks THIS TABLE'S OWN DERIVED
+ * SET whether each literal it found is handed to the seal. A construction site
+ * added anywhere the project compiles must be sealed or that goes red, and
+ * nobody maintains a list of seal sites.
+ * `@guarantee every-shipped-route-is-sealed`
+ * What that check cannot see is in the residual list below: a literal sealed and
+ * then replaced, and any assembly with no object literal in it at all.
+ *
  * TEST FILES ARE OUT, DELIBERATELY, and the exclusion is worth the sentence.
  * `meetServer.test.ts` and `sessionClient.test.ts` build a dozen records between
  * them and every new fixture adds another; pinning those would make this table

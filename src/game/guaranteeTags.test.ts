@@ -236,8 +236,29 @@ const GUARANTEE_COVERAGE = {
    *
    * The one paragraph that does trigger sits directly above the assertion that
    * checks it, so it is on the better side of this file's complaint.
+   *
+   * 206 -> 207 when what leaves the server was sealed. Measured the same way and
+   * NOT the file a reader would guess: each of the seven touched files was
+   * restored to its pre-fix text in turn and this count re-read.
+   * `progression.ts` — which is where the round's argument was written, several
+   * hundred words of it, including the `@guarantee` — contributes NOTHING,
+   * because none of its new headings happens to contain one of the four trigger
+   * words. Nor do `sessionServer.ts`, `meetServer.ts`, `meetPreview.ts`,
+   * `sessionPreview.ts` or `sessionServer.test.ts`. The single new paragraph is
+   * the one in `progression.test.ts` above the seal scan that lists what the
+   * scan is blind to. It is not quoted here, for the reason the paragraph above
+   * gives: quoting a capitalised run makes this paragraph trigger as well, and
+   * the count would go to 208.
+   *
+   * Two things worth keeping from that. First, the first draft of this comment
+   * named `progression.ts` and was wrong — written while it sounded true, which
+   * is the exact failure this whole file is about, and it was caught by running
+   * the measurement rather than by re-reading the sentence. Second, the one
+   * paragraph that did trigger states a limit rather than a guarantee, so a tag
+   * on it would have nothing to bite. That is the declared blind spot pointing
+   * the other way: this scan reads the shape of a sentence, not its direction.
    */
-  TREE_WIDE: 206,
+  TREE_WIDE: 207,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -348,6 +369,42 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
  * it fail, read the message, restore, confirm green.
  */
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  {
+    // The mutant unwrapped the seal at the ONE producer of a wire, which is the
+    // state the tree was in when a pound e1RM was written into `response.wire`
+    // on the app's close-out route with `tsc --noEmit` clean and the suite at
+    // exactly 63 files / 2654 tests.
+    //
+    // WORTH RECORDING BESIDE IT, because it is the failure this fix was warned
+    // about: a mutant that sealed a SHALLOW SPREAD of the wire and returned the
+    // original left THIS test green — a spread shares its nested objects, so
+    // `bestE1rmKg` was still frozen and the write still threw. It was caught one
+    // assertion over, by `seals every level of the wire, not only its shell`, on
+    // `Object.isFrozen(wire)`. A deep copy sealed and discarded reddens this one.
+    guarantee: 'a-wire-in-flight-refuses-a-write',
+    mutatedFile: 'src/game/sessionServer.ts',
+    mutated: '  return sealServerValue({\n    revision: record.revision,',
+    testFile: 'src/game/sessionServer.test.ts',
+    redAssertion:
+      '      bests.deadlift = (trueKg ?? 0) / KILOGRAMS_PER_POUND;\n    }).toThrow(TypeError);',
+    observed:
+      'AssertionError: expected function to throw an error, but it didn’t — src/game/sessionServer.test.ts:1321',
+  },
+  {
+    // The mutant unwrapped the seal at one of the six `record` rows, in the file
+    // furthest from where the fix was written. The check is the §7.5 route scan
+    // asking its own derived set a third question, so the red names the site
+    // rather than a count somebody has to go and look up.
+    guarantee: 'every-shipped-route-is-sealed',
+    mutatedFile: 'src/game/meetPreview.ts',
+    mutated:
+      '  return sealServerValue({\n    ...newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY),',
+    testFile: 'src/game/progression.test.ts',
+    redAssertion:
+      "      'a record or wire is built in shipped code and not sealed — pass it to sealServerValue',",
+    observed:
+      'AssertionError: a record or wire is built in shipped code and not sealed — pass it to sealServerValue: expected [ Array(1) ] to deeply equal [] — received [ "record src/game/meetPreview.ts previewServerRecord" ]',
+  },
   {
     // RETAKEN. The previous witness anchored on
     // `revalidated.runRecordedAsEndedOn === null ? rendered : ...`, which is
