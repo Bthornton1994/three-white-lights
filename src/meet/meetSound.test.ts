@@ -177,6 +177,10 @@ describe('the cue a beat plays', () => {
     { beat: { kind: 'bar-plate' }, cue: 'BAR_RATTLE' },
     { beat: { kind: 'walkout-call', urgent: false }, cue: 'CROWD_SWELL' },
     { beat: { kind: 'walkout-call', urgent: true }, cue: 'CROWD_SWELL_BIG' },
+    // THE SAME BED AGAIN, LATER — see `soundForBeat`. The walk-out's tail used
+    // to be silent from 2,520 ms of a 4,100 ms beat, and `WalkoutView` schedules
+    // this one so its release lands on the hush.
+    { beat: { kind: 'walkout-brace' }, cue: 'CROWD_SWELL_BIG' },
     { beat: { kind: 'light', light: 'white' }, cue: 'LIGHT_CLACK_WHITE' },
     { beat: { kind: 'light', light: 'red' }, cue: 'LIGHT_CLACK_RED' },
     { beat: { kind: 'verdict', good: true }, cue: 'CROWD_CHEER' },

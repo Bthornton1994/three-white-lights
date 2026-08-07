@@ -145,7 +145,7 @@
 import type { LifterFrameSpec } from '../art/lifterSprite';
 import type { SquatFrame } from '../art/squatAnimation';
 import { PITCH, QUANTISE, STRAIN } from '../art/spriteTuning';
-import { MEET_TUNING } from '../game/meetTuning';
+import { MEET_SOUND, MEET_TUNING } from '../game/meetTuning';
 import { hallBraceFrame } from './meetHall';
 
 const M = MEET_TUNING.WALKOUT_MOTION;
@@ -794,6 +794,41 @@ export function walkoutFrameAt(sequence: WalkoutSequence, ms: number): WalkoutFr
 /** Which frame index is showing at `ms`. What the render loop actually tracks. */
 export function walkoutFrameIndexAt(sequence: WalkoutSequence, ms: number): number {
   return walkoutFrameAt(sequence, ms).index;
+}
+
+/**
+ * When the crowd bed under the BRACE starts, or null when there is no brace.
+ *
+ * ---------------------------------------------------------------------------
+ * IT IS SCHEDULED FROM THE HUSH BACKWARDS, WHICH IS THE WHOLE POINT
+ * ---------------------------------------------------------------------------
+ * `WALKOUT_WEIGHT_HOLD_MS` puts the call's own swell under the copy at 420 ms,
+ * and `CROWD_SWELL_BIG` is 2,100 ms long, so on a third attempt with nothing
+ * banked the hall had gone silent at 2,520 ms of a 4,100 ms beat — 1,580 ms of
+ * the escalation with nothing in ANY channel, which is half of what made the
+ * tail dead. Firing a second bed at a fixed delay would only move the silence.
+ *
+ * So the bed is placed so its RELEASE lands on the hush: the room is there while
+ * he braces and is gone before the bar moves, which is what the last stretch of
+ * a broadcast walk-out sounds like. The clamp at `WALKOUT_WEIGHT_HOLD_MS` stops
+ * it being scheduled before the call it sits under; on the shortest brace window
+ * the piece can produce that clamp binds and the bed runs 120 ms into the hush,
+ * which is stated rather than hidden.
+ *
+ * NULL WHERE THERE IS NO BRACE. An opener's tail is all hush and gets exactly
+ * what it gets today — the call's swell and then quiet.
+ *
+ * NOBODY HAS HEARD IT. Same status as every other cue (GDD §12.1): web has no
+ * audio capture in this repository, so whether a crowd bed dying into 360 ms of
+ * silence reads as a hall going quiet is a listening judgement nothing here
+ * makes.
+ */
+export function braceCueDelayMs(sequence: WalkoutSequence): number | null {
+  if (sequence.tail.braceMs <= 0) return null;
+  return Math.max(
+    MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS,
+    sequence.tail.hushStartMs - MEET_SOUND.CUES.CROWD_SWELL_BIG.durationMs,
+  );
 }
 
 /**

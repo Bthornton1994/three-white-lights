@@ -787,6 +787,17 @@ export type MeetBeat =
   | { readonly kind: 'bar-plate' }
   /** The walk-out line arriving. `urgent` on a third, a PR or a bomb risk. */
   | { readonly kind: 'walkout-call'; readonly urgent: boolean }
+  /**
+   * The bar working under a braced lifter — the walk-out's TAIL (GDD §6.2's
+   * ruling, `MEET_TUNING.WALKOUT_TAIL`).
+   *
+   * Only reported when the beat is long enough to have a brace window at all,
+   * so an opener never carries it. It is what stops the escalated part of the
+   * beat being silent as well as still: measured on a third attempt with
+   * nothing banked, `CROWD_SWELL_BIG` had decayed by 2,520 ms of a 4,100 ms
+   * beat and the last 1,580 ms had nothing in any channel.
+   */
+  | { readonly kind: 'walkout-brace' }
   /** The panel goes dark and the judges take their beat. */
   | { readonly kind: 'deliberation' }
   /** One referee's lamp coming up. */
@@ -804,6 +815,7 @@ export type MeetBeat =
 export const MEET_BEAT_KINDS = Object.freeze([
   'bar-plate',
   'walkout-call',
+  'walkout-brace',
   'deliberation',
   'light',
   'verdict',
@@ -831,6 +843,12 @@ export function hapticForBeat(beat: MeetBeat): HapticPattern | null {
       return h.BAR_PLATE;
     case 'walkout-call':
       return beat.urgent ? h.WALKOUT_CALL_URGENT : h.WALKOUT_CALL;
+    // FELT AS NOTHING, and that is a real answer rather than a missing case.
+    // The tail is the beat where the player is waiting, and a phone that buzzed
+    // through it would be a metronome — the same argument the deliberation's
+    // silence is made of. What the tail has is a picture and a crowd.
+    case 'walkout-brace':
+      return null;
     case 'deliberation':
       return h.DELIBERATION;
     case 'light':
@@ -874,6 +892,13 @@ export function soundForBeat(beat: MeetBeat): MeetSoundId | null {
       return 'BAR_RATTLE';
     case 'walkout-call':
       return beat.urgent ? 'CROWD_SWELL_BIG' : 'CROWD_SWELL';
+    // THE SAME BED AGAIN, LATER. Not a new cue and deliberately so: what the
+    // tail needs is the hall still being there while he stands under the bar,
+    // and a second sound would be a second event. `WalkoutView` schedules it so
+    // its RELEASE lands on the hush, which is what makes the last stretch of the
+    // beat quiet rather than merely the part where the first swell had run out.
+    case 'walkout-brace':
+      return 'CROWD_SWELL_BIG';
     case 'light':
       return beat.light === 'white' ? 'LIGHT_CLACK_WHITE' : 'LIGHT_CLACK_RED';
     case 'verdict':

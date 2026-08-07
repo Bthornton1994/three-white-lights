@@ -61,7 +61,7 @@ import { LIFT_TUNING } from '../game/liftTuning';
 import { meetLoadingRules } from '../game/meet';
 import { deliberationMs, walkoutMs } from '../game/meetDay';
 import { holdWalkoutAtMs, MEET_MOMENTS, previewStateFor } from '../game/meetPreview';
-import { MEET_PREVIEW, MEET_TUNING } from '../game/meetTuning';
+import { MEET_PREVIEW, MEET_SOUND, MEET_TUNING } from '../game/meetTuning';
 import { SPRITE_BOX } from '../lift/liftFrame';
 import {
   hallBraceFrame,
@@ -72,6 +72,7 @@ import {
 } from './meetHall';
 import {
   barLoadMs,
+  braceCueDelayMs,
   bracePhaseAt,
   walkoutTailPlan,
   buildHold,
@@ -2891,6 +2892,105 @@ describe('the walk-out tail is a beat, not a held frame (GDD §12.2)', () => {
     expect(previous, 'the hall never reaches the top of the tail’s ramp').toBe(
       TAIL.HUSH_CROWD_RISE_PX,
     );
+  });
+
+  it('puts the hall back under the brace, and takes it away for the hush', () => {
+    // THE OTHER HALF OF THE DEAD TAIL, AND THE HALF NOBODY HERE CAN HEAR.
+    // `WALKOUT_WEIGHT_HOLD_MS` fires the call's swell at 420 ms and
+    // `CROWD_SWELL_BIG` is 2,100 ms long, so the hall went silent at 2,520 ms of
+    // a 4,100 ms beat: 1,580 ms of the escalation with nothing in any channel.
+    // The bed is scheduled from the hush BACKWARDS so its release lands there.
+    const bed = MEET_SOUND.CUES.CROWD_SWELL_BIG.durationMs;
+    let scheduled = 0;
+    let clamped = 0;
+    for (const [attempt, best, bomb] of ATTEMPT_SHAPES) {
+      const beatMs = walkoutMs(attempt, HEAVY_KG, best, bomb);
+      const sheet = buildWalkout({
+        loadRatio: LOAD,
+        plateCount: PLATES,
+        urgent: true,
+        beatMs,
+      });
+      const at = braceCueDelayMs(sheet);
+      if (sheet.tail.braceMs <= 0) {
+        // No brace window, no second bed: an opener gets the call's swell and
+        // then quiet, which is what it gets today.
+        expect(at, `${attempt}/${String(best)}/${bomb}`).toBeNull();
+        continue;
+      }
+      expect(at, `${attempt}/${String(best)}/${bomb}`).not.toBeNull();
+      const startAt = at ?? 0;
+      // It never starts before the call it sits under...
+      expect(startAt).toBeGreaterThanOrEqual(MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS);
+      // ...and it is over by the hush, or by the clamp's own bounded overrun.
+      const overrun = startAt + bed - sheet.tail.hushStartMs;
+      expect(
+        overrun,
+        `a ${beatMs}ms beat runs its crowd bed ${overrun}ms past the hush at ${sheet.tail.hushStartMs}ms`,
+      ).toBeLessThanOrEqual(MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS);
+      if (overrun > 0) clamped += 1;
+      // ...AND IT REACHES THE HUSH, which is the half a bound on the overrun
+      // alone cannot say. Measured: scheduling this bed at the same fixed
+      // `WALKOUT_WEIGHT_HOLD_MS` the CALL uses — which is what the code did
+      // before and is the shape of the defect — leaves 1,220 ms of silence
+      // before the hush on a third attempt with nothing banked, and every other
+      // assertion in this test stays green through it.
+      expect(
+        startAt + bed,
+        `the crowd bed is over at ${startAt + bed}ms and the hush does not start until ${sheet.tail.hushStartMs}ms — ${sheet.tail.hushStartMs - (startAt + bed)}ms of silence in the middle of the beat`,
+      ).toBeGreaterThanOrEqual(sheet.tail.hushStartMs);
+      // ...and it is still going when he sets, which is the point: the room is
+      // there while he braces rather than having run out before he got there.
+      expect(
+        startAt + bed,
+        `the crowd bed is over at ${startAt + bed}ms and he is not set until ${sheet.motionMs}ms`,
+      ).toBeGreaterThan(sheet.motionMs);
+      scheduled += 1;
+    }
+    // NON-VACUITY, PINNED AS COUNTS RATHER THAN BOUNDS.
+    //
+    // AND THE CLAMP NEVER BINDS AT THE SHIPPED TUNING, said plainly rather than
+    // implied by a passing sweep: the shortest hush this piece can schedule is
+    // at 2,740 ms and the bed is 2,100, so the earliest start is 640 ms and the
+    // floor is 420. It is a defensive branch against a re-tune that shortens the
+    // choreography or lengthens the bed, and the sweep above therefore proves
+    // nothing about it — which is why the arm is exercised directly below.
+    expect([scheduled, clamped], 'beats with a bed, and beats where the clamp binds').toEqual([
+      4, 0,
+    ]);
+    // The headroom, pinned so a re-tune that takes it away lands here.
+    const earliest = Math.min(
+      ...ATTEMPT_SHAPES.map(([attempt, best, bomb]) =>
+        buildWalkout({
+          loadRatio: LOAD,
+          plateCount: PLATES,
+          urgent: true,
+          beatMs: walkoutMs(attempt, HEAVY_KG, best, bomb),
+        }),
+      )
+        .filter((sheet) => sheet.tail.braceMs > 0)
+        .map((sheet) => sheet.tail.hushStartMs - bed),
+    );
+    expect(earliest, 'the earliest the crowd bed is asked to start').toBe(640);
+    expect(earliest).toBeGreaterThan(MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS);
+  });
+
+  it('never schedules the crowd bed before the call it sits under', () => {
+    // THE CLAMP'S OWN ARM, reached directly because no attempt the game can
+    // currently produce reaches it (see the count above). A bed scheduled before
+    // `WALKOUT_WEIGHT_HOLD_MS` would start before the line it is the room's
+    // answer to, and on a short enough hush the arithmetic asks for exactly
+    // that.
+    const impossiblyEarly = {
+      ...URGENT,
+      tail: { ...URGENT.tail, hushStartMs: MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS },
+    };
+    expect(braceCueDelayMs(impossiblyEarly)).toBe(MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS);
+    // ...and the unclamped arithmetic really does ask for something earlier, so
+    // this is the clamp answering rather than the sum happening to agree.
+    expect(
+      impossiblyEarly.tail.hushStartMs - MEET_SOUND.CUES.CROWD_SWELL_BIG.durationMs,
+    ).toBeLessThan(MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS);
   });
 
   it('goes quiet before the bar moves, and ends on the drawing the rep begins from', () => {

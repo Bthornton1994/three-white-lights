@@ -139,7 +139,13 @@ import { hallPlateCount } from './meetHall';
 import { MeetHallView } from './MeetHallView';
 import { MEET_PALETTE } from './meetPalette';
 import { useHallStep } from './useHallStep';
-import { buildWalkout, walkoutFrameAt, walkoutFrameIndexAt, type WalkoutFrame } from './walkout';
+import {
+  braceCueDelayMs,
+  buildWalkout,
+  walkoutFrameAt,
+  walkoutFrameIndexAt,
+  type WalkoutFrame,
+} from './walkout';
 
 const L = MEET_LAYOUT;
 
@@ -260,6 +266,18 @@ export function WalkoutView({
   const frameIndex = useHallStep(sampleFrame, sequence.beatMs, holdAtMs ?? null);
   const pose: WalkoutFrame =
     sequence.frames[frameIndex] ?? walkoutFrameAt(sequence, sequence.beatMs);
+
+  // THE HALL IS STILL THERE WHILE HE BRACES, AND GONE BEFORE THE BAR MOVES.
+  // `braceCueDelayMs` places the bed so its release lands on the hush; it is
+  // null on a beat with no brace window, which is every opener. This is the
+  // other half of the tail: the picture was frozen and the sound had decayed
+  // 1,580 ms before the beat ended.
+  React.useEffect(() => {
+    const at = braceCueDelayMs(sequence);
+    if (at === null) return undefined;
+    const timer = setTimeout(() => playBeat({ kind: 'walkout-brace' }), at);
+    return () => clearTimeout(timer);
+  }, [sequence, attempt.lift, attempt.attemptNumber]);
 
   return (
     <View style={styles.root} testID="meet-walkout">

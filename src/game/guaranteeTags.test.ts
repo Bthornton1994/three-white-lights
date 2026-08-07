@@ -240,24 +240,31 @@ const GUARANTEE_COVERAGE = {
    * 206 -> 209 when the walk-out's tail stopped being a frozen frame and the
    * wait for the lights started escalating. MEASURED PER FILE the same way, by
    * restoring each touched file to its pre-change text and re-reading this
-   * count: `meetTuning.ts` 2, `meetDay.ts` 1, and \u2014 worth recording because the
-   * first guess said otherwise \u2014 `walkout.ts`, `WalkoutView.tsx`,
+   * count: `meetTuning.ts` 2, `meetDay.ts` 1, and — worth recording because the
+   * first guess said otherwise — `walkout.ts`, `WalkoutView.tsx`,
    * `VerdictView.tsx`, `useMeetDay.ts` and all three touched test files
    * contribute ZERO between them, despite `walkout.ts` gaining fifty lines of
    * header. That is the declared blind spot again: the new prose is capitalised
    * absolutes with none of the four trigger words in them, so the scan walks
    * past it.
    *
-   * The three that do trigger are the same claim in two files \u2014 that the beats
+   * The three that do trigger are the same claim in two files — that the beats
    * around an attempt may escalate in duration ONLY where there is a live
    * channel to spend the duration on, and that the reaction after the call
    * therefore escalates in intensity instead. It is checked in
    * `meetTuning.test.ts` ("leave the hold AFTER the call flat, which is the rule
    * and not an omission"), so the new prose is on the better side of this file's
-   * complaint \u2014 but the ratio moved the wrong way again, and this comment is
+   * complaint — but the ratio moved the wrong way again, and this comment is
    * where that is said.
+   *
+   * 209 -> 210 when the tail got a crowd bed as well as a picture. Measured per
+   * file the same way: the single new triggering paragraph is in
+   * `walkout.test.ts`, sitting directly above the assertion that the bed reaches
+   * the hush, and `meetDay.ts`, `walkout.ts`, `WalkoutView.tsx`,
+   * `meetFeel.test.ts` and `meetSound.test.ts` contribute ZERO between them
+   * despite carrying most of the new prose. The declared blind spot again.
    */
-  TREE_WIDE: 209,
+  TREE_WIDE: 210,
 } as const;
 
 // ---------------------------------------------------------------------------
