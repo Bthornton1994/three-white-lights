@@ -1,18 +1,14 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-07T06:38:52.269Z",
+    "capturedAt": "2026-08-07T07:45:44.177Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "4f27c4f",
+    "commit": "3f74b72",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
-    "dirtyPaths": [
-      "M .gauntlet/shots/cutin/frames.json",
-      " M .gauntlet/shots/shell/03-meet-played-walkout.png",
-      " M .gauntlet/shots/shell/route.json"
-    ],
+    "dirtyPaths": [],
     "instrument": {
-      "verify-shell-route.mjs": "cbcc7e0970a41300",
+      "verify-shell-route.mjs": "08efb4eda48c977b",
       "sessionDrive.mjs": "2a63eac7a653d32b"
     }
   },
@@ -24,7 +20,7 @@
       "width": 350,
       "height": 48
     },
-    "wallClockMs": 79338,
+    "wallClockMs": 78221,
     "landedOn": "already-trained",
     "finalDepthHoldMs": 1000,
     "reps": [
@@ -135,10 +131,26 @@
       }
     ]
   },
+  "playerOpenedMeets": {
+    "attemptedSecond": true,
+    "first": {
+      "ended": "recap",
+      "ms": 103793,
+      "attempts": 9,
+      "holdMs": 1000
+    },
+    "second": {
+      "ended": "placeholder",
+      "ms": 108589,
+      "attempts": 9,
+      "holdMs": 1000
+    }
+  },
   "checks": [
     "  ok    the app opens on the daily session with no query string — opacity 1.000",
     "  ok    the way to meet day is on screen (shell-open-meet) — opacity 1.000",
     "  ok    and the point a thumb would land on belongs to it — elementFromPoint -> self",
+    "  ok    and the beat underneath it is GDD §3.2’s check-in — the beat SHELL_NAV says carries this pill",
     "  ok    the session surface shows no Total in the shell chrome (GDD §3.2)",
     "  ok    and no fatigue readout (GDD §3.4, §12.3)",
     "  ok    PRESSING IT REACHES MEET DAY — no URL typed, no query string",
@@ -149,7 +161,34 @@
     "  ok    NO CONTROL IS DRAWN OVER THE WALK-OUT — a mis-tap here costs the attempt",
     "  ok    and the walk-out ELAPSES on its own into the attempt — clocks running, not a screenshot",
     "  ok    NO CONTROL IS DRAWN OVER THE ATTEMPT ITSELF",
-    "  ok    the recap renders — opacity 1.000",
+    "  ok    CONTROL: the deadline the recap’s round trip is given is derived from SESSION_BOUNDARY.LOCAL_SERVER_LATENCY_MS — 550ms of stand-in latency + 2600ms settle = 3150ms",
+    "  ok    THE MEET THE PLAYER OPENED IS PLAYED TO ITS END — nine attempts on the real mechanic, through to GDD §6.5’s recap — 9 attempts in 103793ms, hold settled at 1000ms; ended on 'recap'",
+    "  ok    CONTROL: and it is the meet the PLAYER opened — the address bar carries no query string, so no debug frame is being read — at the recap the page is on \"http://localhost:8081/\"",
+    "  ok    GDD §6.5’s recap renders on the app’s OWN connection, not the preview’s — opacity 1.000",
+    "  ok    and GDD §6.1’s second-meet placeholder is NOT drawn over it — this player’s result is their own",
+    "  ok    the way back is on screen on a recap a player lifted for (shell-leave-meet) — opacity 1.000",
+    "  ok    and it is what a thumb would hit there — elementFromPoint -> self",
+    "  ok    and the recap's last block arrives within 3040ms, the deadline its own stagger implies — opacity 0.944 after 1184ms",
+    "  ok    and 04a-live-recap-with-way-back.png really is a photograph of the 'recap' beat, which is what its name says — the screen says \"SEE YOUR CARD\"",
+    "  ok    PRESSING IT RETURNS TO THE DAILY SESSION — on a meet the player opened, played and finished",
+    "  ok    and that meet is no longer on screen",
+    "  ok    and 05a-check-in-after-a-played-meet.png really is a photograph of the 'check-in' beat, which is what its name says — the screen says \"HOW ARE YOU TODAY?\"",
+    "  ok    PRESSING MEET DAY AGAIN OPENS A SECOND MEET in the same app run — the path §6.1’s scaffolding exists for",
+    "  ok    and the second meet opens on its own weigh-in, live, rather than on the first one’s ending — opacity 1.000",
+    "  ok    THE SECOND MEET IS REFUSED AS ALREADY RECORDED, and GDD §6.1’s placeholder is what stands where §6.5’s recap was — 9 attempts in 108589ms, hold settled at 1000ms; ended on 'placeholder'",
+    "  ok    the placeholder is DRAWN — the positive half, which nothing had ever rendered — opacity 1.000",
+    "  ok    and the bare in-flight eyebrow is gone too, so this is the settled screen and not a frame of the round trip",
+    "  ok    and it says the sentence a human ruled for it, word for word (GDD §6.1)",
+    "  ok    THE WAY BACK IS ON THE PLACEHOLDER, whose only exit it is — it draws no control of its own — opacity 1.000",
+    "  ok    and the point a thumb would land on belongs to it — elementFromPoint -> self",
+    "  ok    the pill’s top on the placeholder is where SHELL_LAYOUT puts it (y=762), so the floor below is derived from this drawn screen — drawn at y=762.0 against a derived 762",
+    "  ok    and the placeholder’s copy stays out of the band SHELL_LAYOUT reserves for chrome — >= 58.67px clear above the pill — copy bottom y=437.0; pill top y=762.0; gap 325.0px",
+    "  ok    and the placeholder shows no Total — the row’s total belongs to the EARLIER meet and this screen is not meet day’s payoff (GDD §3.2, §6.4)",
+    "  ok    and 04b-recap-beat-second-meet-placeholder.png really is a photograph of the 'recap' beat, which is what its name says — the screen says \"Meet complete — results saved to your last recorded meet. Career calendar coming soon.\"",
+    "  ok    AND PRESSING IT RETURNS TO THE DAILY SESSION — a player who competes twice is not stranded",
+    "  ok    and the second meet is no longer on screen either",
+    "  ok    and 05b-check-in-after-the-second-meet.png really is a photograph of the 'check-in' beat, which is what its name says — the screen says \"HOW ARE YOU TODAY?\"",
+    "  ok    the SCRIPTED recap renders — the preview lifter’s, with a competition history behind it — opacity 1.000",
     "  ok    the way back is on screen (shell-leave-meet) — opacity 1.000",
     "  ok    the second-meet placeholder is NOT drawn over a recap that built (GDD §6.1 scaffolding)",
     "  ok    and it is what a thumb would hit — elementFromPoint -> self",
@@ -167,13 +206,16 @@
     "  ok    the close-out still shows no Total with the shell over it (GDD §3.2)",
     "  ok    FINISH A SESSION -> REACH A MEET, in one press",
     "  ok    and it is a fresh meet, not the frozen beat the launch URL named — opacity 1.000",
+    "  ok    GDD §3.2’s briefing renders — the beat where the player picks an RPE — opacity 1.000",
+    "  ok    the way to meet day is drawn on the briefing, which SHELL_NAV says it should be — opacity 1.000",
+    "  ok    and the point a thumb would land on belongs to it there too — elementFromPoint -> self",
     "  ok    CONTROL: the block parser reads the block it was asked for, not the decoy above it, and reads the last entry of an inline one — fixture -> REAL_FRACTION.squat 0.9 (want 0.9; DECOY_FRACTION.squat is 0.11 and must not be the answer), NESTED_SEED.squat 180 (want 180, through a nested freeze), NESTED_SEED.deadlift 220 (want 220, and it has NO trailing comma — the shape STARTING_E1RM is written in, and the one this parser first got wrong), ABSENT_BLOCK null (want null)",
     "  ok    CONTROL: the binding parser reads `export const NAME = n`, typed or not, and refuses a property of the same name — fixture -> REAL_GRID 2.5 (want 2.5), TYPED_GRID 5 (want 5), DECOY_GRID null (want null — it is a property, not a binding)",
     "  ok    CONTROL: every number the opener crossing is judged against was found in the module that owns it — fraction {\"squat\":0.9,\"bench\":0.9,\"deadlift\":0.9}, seed {\"squat\":180,\"bench\":120,\"deadlift\":220}kg, grid 2.5kg, count-up 900ms after 220ms",
-    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1446ms from the first tap",
-    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 66658ms, 15 of them past a DRIVE cue",
+    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1422ms from the first tap",
+    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 65611ms, 15 of them past a DRIVE cue",
     "  ok    CONTROL: the close-out has a certainty tag for that wait to watch — e1rm, streak in the DOM",
-    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 557ms",
+    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 569ms",
     "  ok    CONTROL: the close-out prints an e1RM, and says which lift it is for — deadlift 228.9kg",
     "  ok    PRESSING DONE LANDS ON THE ALREADY-TRAINED SURFACE (GDD §3.2: one session a day)",
     "  ok    the already-trained surface renders — the last screen of the daily loop — opacity 1.000",
@@ -205,7 +247,7 @@
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.2 step 4’s deliberation — the judges taking a beat (beat 'deliberation')",
     "  ok    NO CONTROL IS DRAWN OVER the judges’ verdict (beat 'verdict')",
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.3’s attempt choice (beat 'attempt-select')",
-    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.925 after 3701ms",
+    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.903 after 3689ms",
     "  ok    and the shell does not add a second one to it (GDD §6.3: leave that beat somber)",
     "  ok    and pressing it returns to the daily session",
     "  ok    CONTROL: with no cut-in up, the pill is on the same screen the probe looks at — opacity 1.000",
@@ -234,15 +276,23 @@
     "  ok    EVERY beat the game declares is on one of the two lists — a new beat cannot arrive unprobed and unclaimed — 14 phases: 8 where a pill is refused, 6 where it is SHELL_NAV's call",
     "  ok    and the two lists are disjoint, and the second names only beats the game has — 8 + 6 = 14 distinct beats",
     "  ok    and every beat SHELL_NAV actually draws a pill on is one of the beats it is allowed to decide — 4 of 6 tunable beats carry one today",
+    "  ok    EVERY beat SHELL_NAV says carries a pill was SEEN DRAWN and HIT-TESTED in a browser above, and no other beat was — 4 of 4: briefing, check-in, close-out, recap",
     "  ok    the number parser reads a property, refuses a missing one, and is not fooled by a longer name — fixture -> HEADLINE_FONT 22 (want 22; SUB_HEADLINE_FONT is 99 and must not be the answer), ROW_GAP 10 (want 10), ABSENT_FONT null and A_STRING null (want null)",
     "  ok    SESSION_LAYOUT.ROW_GAP is the number this tool computes the copy ceiling from — sessionTuning.ts 10 vs this tool 10",
     "  ok    SESSION_LAYOUT.HEADLINE_FONT is the number this tool computes the copy ceiling from — sessionTuning.ts 22 vs this tool 22",
     "  ok    SESSION_LAYOUT.SUBHEAD_FONT is the number this tool computes the copy ceiling from — sessionTuning.ts 13 vs this tool 13",
-    "  ok    SESSION_COPY.REST_PROMPT is the line this tool identifies the rest beat’s photograph by — looked for REST_PROMPT: 'RACK IT' in sessionTuning.ts"
+    "  ok    SESSION_COPY.REST_PROMPT is the line this tool identifies the rest beat’s photograph by — looked for REST_PROMPT: 'RACK IT' in sessionTuning.ts",
+    "  ok    MEET_COPY.FEEDBACK_DEPTH_HIGH is the line this tool steers the meet driver by — looked for FEEDBACK_DEPTH_HIGH: 'High. The hips never got under.' in meetTuning.ts",
+    "  ok    MEET_COPY.FEEDBACK_BURIED is the line this tool steers the meet driver by — looked for FEEDBACK_BURIED: 'Too deep to recover.' in meetTuning.ts",
+    "  ok    MEET_COPY.RECAP_ACTION is the line this tool identifies §6.5’s recap by — looked for RECAP_ACTION: 'SEE YOUR CARD' in meetTuning.ts",
+    "  ok    the recap deadline this tool photographs against is MEET_TUNING’s own stagger arithmetic — meetTuning.ts 4 x 240 + 280 = 1240ms vs this tool 1240ms",
+    "  ok    CAREER_CALENDAR_PLACEHOLDER_COPY.LINE is the sentence this tool holds the second meet’s screen to, word for word — looked for LINE: 'Meet complete — results saved to your last recorded meet. Career calendar coming soon.' in careerCalendarPlaceholder.ts"
   ],
   "notes": [
+    "  note  meet 1: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"The bar won that one.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"You hit depth by a hair.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\"",
+    "  note  meet 2: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"The bar won that one.\"",
     "  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day, which the server then refuses",
-    "  note  the played-session section cost 79338ms of wall clock"
+    "  note  the played-session section cost 78221ms of wall clock"
   ],
   "failures": [],
   "pageErrors": []
