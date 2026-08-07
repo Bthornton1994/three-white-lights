@@ -73,6 +73,7 @@ import {
 import {
   barLoadMs,
   bracePhaseAt,
+  walkoutTailPlan,
   buildHold,
   buildWalkout,
   CHEER_CROWD_RISE,
@@ -136,6 +137,11 @@ const MS_PER_S = 1000;
 const ATTEMPT_SHAPES: readonly (readonly [1 | 2 | 3, number | null, boolean])[] = [
   [1, null, false],
   [2, 250, false],
+  // A FIRST attempt above the lifter's best, which is the shortest beat in the
+  // piece that still escalates and the only one whose brace window lands near
+  // `MIN_BRACE_WINDOW_MS`. Left out of the first version of this list, which is
+  // how a mutation that deleted that floor survived the sweep.
+  [1, 200, false],
   [3, 250, false],
   [3, null, true],
   [3, 200, true],
@@ -2637,7 +2643,7 @@ describe('the walk-out tail is a beat, not a held frame (GDD §12.2)', () => {
       const sheet = buildWalkout({
         loadRatio: LOAD,
         plateCount: PLATES,
-        urgent: attempt === 3 || bomb,
+        urgent: attempt === 3 || bomb || (best !== null && HEAVY_KG > best),
         beatMs,
       });
       const still = longestStillMs(sheet);
@@ -2653,7 +2659,44 @@ describe('the walk-out tail is a beat, not a held frame (GDD §12.2)', () => {
     // one case twice: at the shipped tuning two shapes are too short to brace
     // (the opener and the second attempt) and three are not.
     expect(checked, 'attempt shapes swept').toBe(ATTEMPT_SHAPES.length);
-    expect([braced, checked - braced], 'shapes with a brace, and without').toEqual([3, 2]);
+    expect([braced, checked - braced], 'shapes with a brace, and without').toEqual([4, 2]);
+  });
+
+  it('has a working floor under the shortest tail it will oscillate in', () => {
+    // `MIN_BRACE_WINDOW_MS` is what stops a two-tick window being cut into a
+    // "cycle" — the sheet rounds to a whole number of them, so without a floor a
+    // 40 ms tail would get one 40 ms oscillation, which is a twitch and not a
+    // brace.
+    //
+    // AND AT THE SHIPPED TUNING IT DECIDES NOTHING, WHICH IS WORTH SAYING
+    // LOUDLY. Measured: the shortest tail any attempt shape can produce that is
+    // not already zero is a first attempt above a PR — beat 3,100 ms, tail 980,
+    // offering 620 ms after the hush, which clears the 600 ms floor by 20. Every
+    // other shape is either far above it or far below. So a mutation that
+    // DELETES the floor changes no attempt the game can currently reach, and the
+    // count pinned in the test above stays green through it; that is why this
+    // test exercises the boundary directly instead of leaving the constant
+    // covered by a sweep that cannot see it.
+    const shortest = walkoutMotionMs(PLATES) + TAIL.HUSH_MS + TAIL.MIN_BRACE_WINDOW_MS;
+    expect(walkoutTailPlan(walkoutMotionMs(PLATES), shortest).cycles, 'at the floor').toBe(1);
+    expect(
+      walkoutTailPlan(walkoutMotionMs(PLATES), shortest - MOTION.TICK_MS).cycles,
+      'one tick under the floor',
+    ).toBe(0);
+    // ...and under it the whole tail is hush rather than a compressed cycle.
+    const under = walkoutTailPlan(walkoutMotionMs(PLATES), shortest - MOTION.TICK_MS);
+    expect(under.hushStartMs).toBe(under.startMs);
+    expect(under.braceMs).toBe(0);
+
+    // THE HEADROOM THE SHIPPED TUNING HAS, pinned so a re-tune of `WALKOUT_MS`
+    // or of the choreography that quietly takes the shortest urgent tail under
+    // the floor shows up here rather than as a beat that stopped breathing.
+    const offers = ATTEMPT_SHAPES.map(([attempt, best, bomb]) =>
+      Math.max(0, walkoutMs(attempt, HEAVY_KG, best, bomb) - walkoutMotionMs(PLATES) - TAIL.HUSH_MS),
+    ).filter((ms) => ms > 0);
+    expect(offers.length, 'no attempt shape offers a brace window at all').toBeGreaterThan(0);
+    expect(Math.min(...offers), 'the shortest brace window any attempt offers').toBe(620);
+    expect(Math.min(...offers)).toBeGreaterThanOrEqual(TAIL.MIN_BRACE_WINDOW_MS);
   });
 
   it('spends the escalation on drawings rather than on held frame', () => {
@@ -2746,9 +2789,33 @@ describe('the walk-out tail is a beat, not a held frame (GDD §12.2)', () => {
     );
     expect(walkoutFrameAt(calm, calm.tail.hushStartMs).crowdRisePx).toBe(0);
 
-    // (b) THE BAR. The brace's TIMING may not move with how heavy it is: the
-    // rest pose does (that is `hallBraceFrame`'s job and GDD §7.1's), the
-    // oscillation on top of it does not.
+    // (b) THE BAR. The brace's own motion may not move with how heavy it is: the
+    // REST POSE does — that is `hallBraceFrame`'s job and GDD §7.1's — and the
+    // oscillation ON TOP OF IT does not. So the comparison is on the DELTAS from
+    // each load's own rest drawing, at each tick.
+    //
+    // ON THE DRAWN DELTAS AND NOT ON `bracePhaseAt`, and that correction was
+    // earned. The first version of this sweep compared the phase function's
+    // outputs, which take `(ms, plan)` and cannot see a load ratio at all — a
+    // textbook oracle that mirrors its subject. Mutating `drawKeyAt` to multiply
+    // the phase by `request.loadRatio` — the exact §12.3 hazard this test names,
+    // a brace that reads how heavy the attempt is — left it GREEN.
+    const deltasAt = (sheet: typeof URGENT): readonly string[] =>
+      tickThrough(sheet.motionMs, sheet.beatMs).map((ms) => {
+        const frame = walkoutFrameAt(sheet, ms);
+        const settled = walkoutFrameAt(sheet, sheet.beatMs);
+        return [
+          ms,
+          frame.barTiltDeg - settled.barTiltDeg,
+          frame.barBendPx - settled.barBendPx,
+          frame.pitchLevel - settled.pitchLevel,
+        ].join('/');
+      });
+    const referenceDeltas = deltasAt(URGENT);
+    expect(
+      referenceDeltas.filter((row) => !row.endsWith('/0/0/0')).length,
+      'the drawn brace never moves, so the sweep below is empty',
+    ).toBeGreaterThan(0);
     let sweptLoads = 0;
     for (const load of [0.62, 0.78, 0.9, LOAD]) {
       const sheet = buildWalkout({
@@ -2758,11 +2825,8 @@ describe('the walk-out tail is a beat, not a held frame (GDD §12.2)', () => {
         beatMs: URGENT_BEAT_MS,
       });
       expect(sheet.tail, `load ${load}: the tail is scheduled differently`).toEqual(URGENT.tail);
-      const phases = tickThrough(URGENT.motionMs, URGENT_BEAT_MS).map((ms) =>
-        bracePhaseAt(ms, sheet.tail),
-      );
-      expect(phases, `load ${load}: the brace phase moved with the bar`).toEqual(
-        tickThrough(URGENT.motionMs, URGENT_BEAT_MS).map((ms) => bracePhaseAt(ms, URGENT.tail)),
+      expect(deltasAt(sheet), `load ${load}: the drawn brace moved with the bar`).toEqual(
+        referenceDeltas,
       );
       sweptLoads += 1;
     }
@@ -2804,6 +2868,29 @@ describe('the walk-out tail is a beat, not a held frame (GDD §12.2)', () => {
     const span = differingRows(set, hushed);
     expect(span).not.toBeNull();
     expect(span?.bottom).toBeLessThan(GYM_LIFT_STAGE.FLOOR_ROW);
+
+    // AND IT IS SPREAD ACROSS THE WHOLE BRACE, not finished early. Two endpoint
+    // readings are satisfied by a ramp compressed into the first half of the
+    // window — measured: doubling the ramp's rate leaves every assertion above
+    // green — and a hall that arrives early and then waits is the shape this
+    // whole section exists to remove, one channel in.
+    const half = URGENT.tail.startMs + URGENT.tail.braceMs / 2;
+    const midway = walkoutFrameAt(URGENT, half).crowdRisePx;
+    expect(midway, `half way through the brace the hall is at rise ${midway}`).toBeGreaterThan(
+      MEET_TUNING.CROWD.WALKOUT_RISE_PX,
+    );
+    expect(midway, `half way through the brace the hall is already all the way up`)
+      .toBeLessThan(TAIL.HUSH_CROWD_RISE_PX);
+    // ...and nobody sits back down on the way there.
+    let previous = 0;
+    for (const frame of URGENT.frames) {
+      expect(frame.crowdRisePx, `the hall sits down at ${frame.startMs}ms`)
+        .toBeGreaterThanOrEqual(previous);
+      previous = frame.crowdRisePx;
+    }
+    expect(previous, 'the hall never reaches the top of the tail’s ramp').toBe(
+      TAIL.HUSH_CROWD_RISE_PX,
+    );
   });
 
   it('goes quiet before the bar moves, and ends on the drawing the rep begins from', () => {

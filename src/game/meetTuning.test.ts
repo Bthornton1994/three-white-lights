@@ -28,6 +28,11 @@ const HEAVY_BAR_KG = 240;
 const ATTEMPT_SHAPES: readonly (readonly [1 | 2 | 3, number | null, boolean])[] = [
   [1, null, false],
   [2, 250, false],
+  // A FIRST attempt above the lifter's best, which is the shortest beat in the
+  // piece that still escalates and the only one whose brace window lands near
+  // `MIN_BRACE_WINDOW_MS`. Left out of the first version of this list, which is
+  // how a mutation that deleted that floor survived the sweep.
+  [1, 200, false],
   [3, 250, false],
   [3, null, true],
   [3, 200, true],
@@ -228,7 +233,7 @@ describe('the judging beats', () => {
     // NON-VACUITY, pinned as a count rather than a bound: an empty shape list
     // would pass the loop above without looking at anything.
     expect(checked, 'attempt shapes swept').toBe(ATTEMPT_SHAPES.length);
-    expect(ATTEMPT_SHAPES.length).toBe(5);
+    expect(ATTEMPT_SHAPES.length).toBe(6);
   });
 
   it('reveal every referee before the verdict beat ends', () => {

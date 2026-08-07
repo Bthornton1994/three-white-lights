@@ -597,6 +597,35 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
       .toContain('elapsed < runForMs');
   });
 
+  it('runs a clock through the wait for the lights, and stops it when the lamps may come up', () => {
+    // The deliberation got `DELIBERATION_STAKES_EXTRA_MS`, and lengthening a beat
+    // that draws one memoised still is the defect this whole pass removed, one
+    // screen later. `buildHold` is the brace with no walk-out in front of it and
+    // `walkout.test.ts` measures it on pixels; what no pure test can see is
+    // whether this screen SAMPLES it, which is three deleted words away.
+    const view = codeOnly(read('meet/VerdictView.tsx'));
+    expect(view, 'VerdictView builds no hold sheet').toMatch(
+      /buildHold\(loadRatio,\s*deliberationMs\(attempt\.deliberated,\s*attempt\)\)/,
+    );
+    expect(view, 'VerdictView runs no clock through the wait').toContain(
+      'useHallStep(sampleHold',
+    );
+    expect(view, 'the hold sampler ignores elapsed time').toMatch(
+      /walkoutFrameIndexAt\(hold,\s*elapsedMs\)/,
+    );
+    // ...and the clock is STOPPED once the lights may come up: a bar still
+    // rocking under three lamps would be motion competing with the moment this
+    // game is named after.
+    expect(view, 'the hold clock keeps running under the lamps').toMatch(
+      /useHallStep\(sampleHold,\s*revealed \? 0 : hold\.beatMs/,
+    );
+    // AND THE HALL IS HANDED THE POSE. Everything above is satisfied by a
+    // component that computes a pose and draws the settled still anyway — which
+    // is the failure `hands the hall a WALK-OUT` was written for, one screen over.
+    const verdict = meetHallElementIn(read('meet/VerdictView.tsx'));
+    expect(verdict ?? '', 'the verdict hands the hall no pose').toMatch(/\bpose\s*[,}]/);
+  });
+
   it('draws the wait for the lights with the bar still on his back [bar-stays-on-his-back-for-the-call]', () => {
     // THE CLAIM `MEET_TUNING.VERDICT_SILENCE_MS` MAKES, checked rather than
     // written. That comment used to say the beat was "dead air between the bar

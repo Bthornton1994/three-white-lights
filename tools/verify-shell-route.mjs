@@ -1810,7 +1810,23 @@ async function sampleHallTimeline(horizonMs, everyMs, stillOnScreen, probeAfterM
     // the smallest thing the hall draws is one SPRITE pixel, which is three CSS
     // pixels at `GYM_LIFT_STAGE.SCALE`, so nothing this measurement is about is
     // near the resolution floor.
-    shots.push({ atMs, png: await page.screenshot({ clip, scale: 'css' }) });
+    const png = await page.screenshot({ clip, scale: 'css' });
+    // AND THE SCREEN WAS STILL THE WALK-OUT WHEN THE SHUTTER CAME BACK, not just
+    // when it was asked. A screenshot is 50-200 ms here, and the beat can hand
+    // on inside that window: the shot then photographs the ATTEMPT screen and
+    // the comparison reports an enormous change at the very end of the beat.
+    //
+    // THAT ARTEFACT KEPT THE DEFECTIVE BUILD GREEN, measured. With the frame
+    // loop cancelled at `motionMs` the hall went still at 1,921 ms and stayed
+    // still for nine consecutive samples — the defect, photographed — and then
+    // one boundary sample read 47,600 px moved and the "still drawing after the
+    // choreography" check passed on it. Discarding the sample rather than
+    // trusting it is what makes that check bite.
+    if (atMs >= probeAfterMs && !(await stillOnScreen())) {
+      endedAtMs = Date.now() - started;
+      break;
+    }
+    shots.push({ atMs, png });
   }
 
   // DECODED AFTERWARDS. A decode is 20-40 ms on this box and the loop's cadence
