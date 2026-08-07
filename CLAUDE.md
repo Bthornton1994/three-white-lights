@@ -171,6 +171,13 @@ Shapes this has actually taken here:
 - **An input that is silently absent.** A parser that reads a real value as
   missing, or a comparison against a seed the session has not yet beaten, so
   both sides are the same number.
+- **An empty domain reproduced across every harness.** The sharpest one so far:
+  a client mapping was missing a `DayOpening` kind, and the fixture that would
+  have caught it set `lastTrainedDay` to yesterday — in the unit tests, in
+  `sessionPreview.ts`'s hardcoded preview context, *and* in the browser
+  fixtures. Three independent harnesses, blind for one reason, so adding another
+  layer of checking would have added no coverage at all. When a defect survives,
+  ask whether the harnesses are independent or merely numerous.
 
 **The witness bar does not cover this.** A `MUTATION_WITNESSES` entry proves
 *one* assertion in a test bites; it says nothing about the others in the same
@@ -221,7 +228,8 @@ the document calls "The Real Tension" — was dead code in the shipped app.
 
 Three things follow, each of which had already failed once:
 
-- **A guard written for one hook must be applied to its sibling, mechanically.**
+- **A guard written for one hook — or one FIXTURE — must be applied to its
+  sibling, mechanically.**
   `sessionWiring.test.ts` banned the six names "the bypass was made of" from
   `useSession.ts`, and `useMeetDay.ts` contained five of them, one directory
   over, for six waves. A twin guard must *read* the sibling's list, not copy it.
