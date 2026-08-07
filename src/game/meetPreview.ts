@@ -43,6 +43,7 @@ import {
   type MeetDayState,
 } from './meetDay';
 import { MEET_ENTRY, MEET_LOCAL, MEET_PREVIEW } from './meetTuning';
+import { sealServerValue } from './progression';
 import { newServerRecord, type ServerRecord } from './sessionServer';
 import { SESSION_BOUNDARY } from './sessionTuning';
 
@@ -177,7 +178,10 @@ export function meetPreviewFrom(search: string): MeetPreviewRequest | null {
  * the live path cannot reach it.
  */
 export function previewServerRecord(): ServerRecord {
-  return {
+  // SEALED, like every other `record` row in `progression.ts` 7.5. A debug
+  // preview is not a shortcut past the boundary's rules; that it reaches no
+  // stored field is a reason to keep it, not a reason to leave it writable.
+  return sealServerValue({
     ...newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY),
     totalKg: MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG,
     meets: [
@@ -189,7 +193,7 @@ export function previewServerRecord(): ServerRecord {
         bodyweightKg: MEET_ENTRY.bodyweight.kilograms,
       },
     ],
-  };
+  });
 }
 
 export function previewContext(): MeetDayContext {

@@ -189,7 +189,7 @@ import {
   type SimLift,
 } from './fatigue';
 import { LIFT_ORDER, type LiftKind } from './meet';
-import { declaredRows } from './progression';
+import { declaredRows, sealServerValue } from './progression';
 import type {
   KilogramTrainingCard,
   MeetResultWire,
@@ -422,7 +422,7 @@ export const A_STARTING_E1RM_CAN_DECLARE_A_UNIT_THIS_RECORD_REFUSES: SeedCanDecl
  * `applyTrainingSession`.
  */
 export function newServerRecord(signupDay: number): ServerRecord {
-  return {
+  return sealServerValue({
     revision: 0,
     totalKg: null,
     bestE1rmKg: {
@@ -434,7 +434,7 @@ export function newServerRecord(signupDay: number): ServerRecord {
     meets: [],
     wallet: { gymBucks: 0, chalk: 0 },
     fatigue: EMPTY_FATIGUE_STATE,
-  };
+  });
 }
 
 function streakWire(state: StreakState): StreakStateWire {
@@ -460,12 +460,29 @@ function streakWire(state: StreakState): StreakStateWire {
  * The client gets a `SessionFeel` instead, computed from the copy of the ledger
  * it is handed for the session it is about to play — qualitative, and with its
  * one number behind a private symbol.
+ *
+ * SEALED ON THE WAY OUT, and this is the ONE PLACE that has to be, because this
+ * is the one producer of a wire. `readonly` on `ProgressionSnapshotWire` does
+ * not survive an alias — a `Readonly<Record<LiftKind, number | null>>` assigns
+ * to a mutable `Record` with no cast and no diagnostic — so a caller holding a
+ * response in flight could write a pound number into `bestE1rmKg` between here
+ * and `receiveSnapshot` with `tsc` clean. `sealServerValue`'s docstring has the
+ * measurement. Sealing here covers every wire, whoever built the caller.
+ *
+ * IT TOUCHES NOTHING IT WAS HANDED. Every nested object below is constructed on
+ * these lines — a fresh `bestE1rmKg`, a fresh `streakWire`, per-meet copies, a
+ * fresh `wallet` — so the seal reaches no part of `record`. That is a property
+ * of THIS BODY and not of sealing in general: adding a field here that carries a
+ * sub-object of `record` through by reference would start sealing the caller's
+ * row, and `sessionServer.test.ts` fails if one does.
+ *
+ * `@guarantee a-wire-in-flight-refuses-a-write`
  */
 export function snapshotWireFor(
   record: ServerRecord,
   acknowledgedProposalId: string | null,
 ): ProgressionSnapshotWire {
-  return {
+  return sealServerValue({
     revision: record.revision,
     totalKg: record.totalKg,
     bestE1rmKg: {
@@ -477,7 +494,7 @@ export function snapshotWireFor(
     meets: record.meets.map((meet) => ({ ...meet })),
     wallet: { gymBucks: record.wallet.gymBucks, chalk: record.wallet.chalk },
     acknowledgedProposalId,
-  };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -857,7 +874,7 @@ export function applyTrainingSession(
     }
   }
 
-  const next: ServerRecord = {
+  const next: ServerRecord = sealServerValue({
     revision: record.revision + 1,
     // CARRIED THROUGH UNTOUCHED. A training session has no route to a Total.
     totalKg: record.totalKg,
@@ -866,7 +883,7 @@ export function applyTrainingSession(
     meets: record.meets,
     wallet: record.wallet,
     fatigue,
-  };
+  });
   return {
     ok: true,
     value: {

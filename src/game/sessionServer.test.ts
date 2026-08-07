@@ -32,10 +32,12 @@ import {
   readTotalKg,
   readingValue,
   receiveProgressionSnapshot,
+  type ProgressionSnapshotWire,
   type ProposalOfKind,
   type StartingE1rmSeed,
   type TrainingSetReport,
 } from './progression';
+import { receiveSnapshot } from './sessionClient';
 import { KILOGRAMS_PER_POUND } from './dots';
 import { RPE_LOADING_TUNING } from './rpe';
 import { LIFT_ORDER, type LiftKind } from './meet';
@@ -1260,5 +1262,218 @@ describe('the whole round trip — client proposes, server publishes, client rea
       expect(grown, `${lift} grew`).toBeGreaterThan(1);
       expect(grown, `${lift} grew`).toBeLessThan(1.09);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The seal: an ASSIGNMENT is not a construction, and §7.5 counts constructions
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns whatever `this` is at a bare call.
+ *
+ * `undefined` under strict mode, the global object under sloppy — and that is
+ * exactly the difference between the seal below THROWING and the seal below
+ * failing in silence. Written as a function rather than cited from the spec
+ * because "ES modules are always strict" is a claim about how this file is
+ * compiled and run, not something the file can know by asserting it in prose.
+ */
+function thisAtABareCall(this: unknown): unknown {
+  return this;
+}
+
+/**
+ * A wire of the same shape `snapshotWireFor` returns, assembled here and
+ * therefore NOT sealed.
+ *
+ * This is the CONTROL, and it is the reason the throw below is evidence rather
+ * than decoration: it shows the same three lines succeeding, and the pound
+ * number they write arriving in `ConfirmedFacts` as confirmed truth. Without it
+ * a reader cannot tell whether the seal closed a real door or whether the write
+ * was never going to land.
+ */
+function unsealedLike(wire: ProgressionSnapshotWire): ProgressionSnapshotWire {
+  return {
+    revision: wire.revision,
+    totalKg: wire.totalKg,
+    bestE1rmKg: { ...wire.bestE1rmKg },
+    streak: { ...wire.streak },
+    meets: wire.meets.map((meet) => ({ ...meet })),
+    wallet: { ...wire.wallet },
+    acknowledgedProposalId: wire.acknowledgedProposalId,
+  };
+}
+
+describe('what leaves the server is sealed in flight', () => {
+  it('refuses the write that type-checked clean on the app route [a-wire-in-flight-refuses-a-write]', () => {
+    const wire = snapshotWireFor(newServerRecord(SIGNUP_DAY), null);
+    const trueKg = wire.bestE1rmKg.deadlift;
+    expect(trueKg, 'the wire carries a real kilogram e1RM to poison').toBeGreaterThan(0);
+
+    // THE DEFECT, IN THE SHAPE IT WAS ACTUALLY WRITTEN. No cast, no `any`, no
+    // reflective idiom, no numeric literal. `Readonly<Record<K, V>>` assigns to
+    // `Record<K, V>` because property `readonly` is NOT part of assignability,
+    // so `tsc --noEmit` has nothing to say — measured, on three lines in
+    // `useSession.ts`, with the suite at exactly 63 files / 2654 tests.
+    const bests: Record<LiftKind, number | null> = wire.bestE1rmKg;
+    expect(() => {
+      bests.deadlift = (trueKg ?? 0) / KILOGRAMS_PER_POUND;
+    }).toThrow(TypeError);
+
+    // AND — THE HALF THAT DOES NOT DEPEND ON THE MODE THIS RUNS IN. A sealed
+    // write fails either way; under sloppy mode it fails SILENTLY, so asserting
+    // only the throw would make the whole check an assertion about the compiler
+    // rather than about the number.
+    expect(wire.bestE1rmKg.deadlift, 'the e1RM did not move').toBe(trueKg);
+  });
+
+  it('runs strict, so that refusal is a throw and not a silence', () => {
+    expect(thisAtABareCall(), 'a bare call sees no `this`, i.e. strict mode').toBeUndefined();
+  });
+
+  it('would otherwise have taken that write and confirmed it as truth', () => {
+    // THE CONTROL. Same three lines, same numbers, on a wire nobody sealed.
+    const open = snapshotWireFor(newServerRecord(SIGNUP_DAY), null);
+    const trueKg = open.bestE1rmKg.deadlift ?? 0;
+    const loose = unsealedLike(open);
+    const bests: Record<LiftKind, number | null> = loose.bestE1rmKg;
+    bests.deadlift = trueKg / KILOGRAMS_PER_POUND;
+
+    // The write takes, and it is the 2.2x poison and not some rounding.
+    expect(loose.bestE1rmKg.deadlift).toBeCloseTo(trueKg / KILOGRAMS_PER_POUND, 9);
+    expect((loose.bestE1rmKg.deadlift ?? 0) / trueKg).toBeCloseTo(1 / KILOGRAMS_PER_POUND, 9);
+
+    // AND IT LANDS IN PERMANENT PROGRESSION. Through `receiveSnapshot`, which
+    // is §7.5's one client door, arriving as CONFIRMED — not projected, not
+    // stale. This is the bar failing, reproduced, and it is what the seal above
+    // is measured against.
+    const cache = receiveSnapshot(emptyProgressionCache(), loose);
+    const landed = readBestE1rmKg(cache, 'deadlift');
+    expect(isConfirmedReading(landed), 'the poison arrived as confirmed truth').toBe(true);
+    expect(readingValue(landed)).toBeCloseTo(trueKg / KILOGRAMS_PER_POUND, 9);
+
+    // And the sealed wire the server actually hands out reads the true number.
+    const honest = receiveSnapshot(emptyProgressionCache(), open);
+    expect(readingValue(readBestE1rmKg(honest, 'deadlift'))).toBe(trueKg);
+  });
+
+  it('seals every level of the wire, not only its shell', () => {
+    // `Object.freeze` is SHALLOW, and every number this bar is about lives one
+    // or two levels down. A seal that froze the top object and left
+    // `bestE1rmKg`, `streak`, `meets[0]` and `wallet` writable would pass a
+    // check that only wrote to `wire.revision`.
+    const wire = snapshotWireFor(newServerRecord(SIGNUP_DAY), null);
+    expect(Object.isFrozen(wire), 'the wire itself').toBe(true);
+    expect(Object.isFrozen(wire.bestE1rmKg), 'bestE1rmKg').toBe(true);
+    expect(Object.isFrozen(wire.streak), 'streak').toBe(true);
+    expect(Object.isFrozen(wire.meets), 'the meets array').toBe(true);
+    expect(Object.isFrozen(wire.wallet), 'wallet').toBe(true);
+
+    const streak: { currentStreak: number } = wire.streak;
+    expect(() => {
+      streak.currentStreak = wire.streak.longestStreak + 1;
+    }).toThrow(TypeError);
+    const wallet: Record<string, number> = wire.wallet;
+    expect(() => {
+      wallet.gymBucks = 1;
+    }).toThrow(TypeError);
+  });
+
+  it('seals a meet inside the wire, one array element down', () => {
+    // The deepest mass field on the wire, and the only one behind an array.
+    // `Object.freeze` on `meets` stops a `push`; it does not stop a write into
+    // `meets[0]`, which is where a stored meet's Total lives.
+    const record = newServerRecord(SIGNUP_DAY);
+    const withMeet: ServerRecord = {
+      ...record,
+      meets: [
+        {
+          meetId: 'seal-fixture-meet',
+          meetDayIndex: 1,
+          totalKg: 400,
+          bestByLift: { squat: 150, bench: 100, deadlift: 150 },
+          bodyweightKg: 80,
+        },
+      ],
+    };
+    const wire = snapshotWireFor(withMeet, null);
+    const stored = wire.meets[0];
+    expect(stored, 'the fixture meet reached the wire').toBeDefined();
+    const loose: { totalKg: number } = stored as { totalKg: number };
+    expect(() => {
+      loose.totalKg = 400 / KILOGRAMS_PER_POUND;
+    }).toThrow(TypeError);
+    expect(wire.meets[0]?.totalKg, 'the stored Total did not move').toBe(400);
+    const byLift: Record<string, number> = wire.meets[0]?.bestByLift as Record<string, number>;
+    expect(() => {
+      byLift.squat = 150 / KILOGRAMS_PER_POUND;
+    }).toThrow(TypeError);
+  });
+
+  it('seals the record this file produces, at both of its producers', () => {
+    // §7.5's `record` rows for this module. A write into a STORED ROW before
+    // `snapshotWireFor` reads it would be copied onto the wire faithfully and
+    // sealed there, so sealing the wire alone leaves this door open.
+    const fresh = newServerRecord(SIGNUP_DAY);
+    expect(Object.isFrozen(fresh), 'newServerRecord').toBe(true);
+    expect(Object.isFrozen(fresh.bestE1rmKg), 'and its e1RMs').toBe(true);
+    const freshBests: Record<LiftKind, number | null> = fresh.bestE1rmKg;
+    expect(() => {
+      freshBests.squat = (fresh.bestE1rmKg.squat ?? 0) / KILOGRAMS_PER_POUND;
+    }).toThrow(TypeError);
+
+    const played = playAgainst(fresh, 0, PRIMED, 8);
+    const closeOut = played.state.closeOut;
+    expect(closeOut, 'the fixture session reached its close-out').not.toBeNull();
+    const applied = applyTrainingSession(
+      fresh,
+      0,
+      proposalOf(closeOut?.sets ?? []),
+      asProposalId('seal-fixture'),
+    );
+    expect(applied.ok, 'the fixture session was recorded').toBe(true);
+    if (!applied.ok) return;
+    expect(Object.isFrozen(applied.value.record), 'applyTrainingSession').toBe(true);
+    expect(Object.isFrozen(applied.value.record.bestE1rmKg), 'and its e1RMs').toBe(true);
+    const settledBests: Record<LiftKind, number | null> = applied.value.record.bestE1rmKg;
+    expect(() => {
+      settledBests[played.lift] = 0;
+    }).toThrow(TypeError);
+  });
+
+  it('seals nothing it was handed — the caller’s row stays writable', () => {
+    // THE PRECONDITION `sealServerValue` PUTS ON A CALLER, checked rather than
+    // promised. `snapshotWireFor` builds every nested object fresh, so its seal
+    // reaches no part of the record. Change one of those lines to carry a
+    // sub-object of `record` through BY REFERENCE — `bestE1rmKg:
+    // record.bestE1rmKg` — and this goes red, because the server would then be
+    // freezing its own stored row as a side effect of answering a read.
+    const handBuilt = {
+      revision: 0,
+      totalKg: null,
+      bestE1rmKg: { squat: 100, bench: 60, deadlift: 120 },
+      streak: { ...newServerRecord(SIGNUP_DAY).streak },
+      meets: [
+        {
+          meetId: 'caller-owned',
+          meetDayIndex: 1,
+          totalKg: 300,
+          bestByLift: { squat: 100, bench: 60, deadlift: 140 },
+          bodyweightKg: 80,
+        },
+      ],
+      wallet: { gymBucks: 0, chalk: 0 },
+      fatigue: newServerRecord(SIGNUP_DAY).fatigue,
+    };
+    expect(Object.isFrozen(handBuilt.bestE1rmKg), 'before the call').toBe(false);
+
+    snapshotWireFor(handBuilt as ServerRecord, null);
+
+    expect(Object.isFrozen(handBuilt), 'the caller’s row after the call').toBe(false);
+    expect(Object.isFrozen(handBuilt.bestE1rmKg), 'and its e1RMs').toBe(false);
+    expect(Object.isFrozen(handBuilt.wallet), 'and its wallet').toBe(false);
+    expect(Object.isFrozen(handBuilt.meets), 'and its meets').toBe(false);
+    expect(Object.isFrozen(handBuilt.meets[0]), 'and the meet inside them').toBe(false);
+    expect(Object.isFrozen(handBuilt.streak), 'and its streak').toBe(false);
   });
 });

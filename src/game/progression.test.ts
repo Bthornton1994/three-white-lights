@@ -393,6 +393,13 @@ interface RouteScan {
    * whoever taught `tsc` about it.
    */
   readonly importEdges: readonly string[];
+  /**
+   * Every `record` or `wire` literal in SHIPPED code that is not handed straight
+   * to `sealServerValue`, as `kind file site`. Empty is the passing state.
+   */
+  readonly unsealed: readonly string[];
+  /** How many shipped ones ARE. The non-vacuity counterweight to the above. */
+  readonly sealedLiterals: number;
 }
 
 /**
@@ -459,6 +466,10 @@ function scanRoutes(): RouteScan {
 
   const receiverName = 'receiveProgressionSnapshot';
   const receiverFile = path.join(REPO_ROOT, 'src/game/progression.ts');
+  // The seal, by name. `sealServerValue` is asserted to be a real export of
+  // this module below, so a rename cannot leave this string matching nothing —
+  // which is how a scan becomes vacuous without anybody editing it.
+  const SEAL_NAME = 'sealServerValue';
 
   /**
    * One frame, named, or `null` for a node that is not one.
@@ -555,6 +566,43 @@ function scanRoutes(): RouteScan {
   };
 
   // -------------------------------------------------------------------------
+  // AND, OF THE SAME LITERALS, WHETHER EACH ONE IS SEALED.
+  //
+  // A SECOND QUESTION ASKED OF THE SET ABOVE, NOT A SECOND ENUMERATION. §7.5's
+  // rows are already derived from the type checker and pinned in both
+  // directions; this reads the node the scan is holding anyway and asks whether
+  // it is the argument of a `sealServerValue` call. So a construction site added
+  // anywhere the project compiles must be sealed or `seals every record and wire
+  // §7.5 finds in shipped code` goes red — with no list of seal sites to keep
+  // current, which is what every previous round of this section ended up owning.
+  //
+  // WHY THE QUESTION IS "IS IT THIS CALL'S ARGUMENT" AND NOT "IS IT FROZEN".
+  // Frozen-ness is a runtime property of a value and this is a scan over syntax;
+  // it cannot execute the sites. What it can do is refuse a literal that is not
+  // handed straight to the one function whose job this is. That is narrower than
+  // the truth in the safe direction — `sealServerValue(build())` where `build()`
+  // returns the literal reads as unsealed here and is not — and a site written
+  // that way should say so by moving the call, rather than by widening this.
+  //
+  // WHAT IT CANNOT SEE, stated rather than left to be found: a value that is
+  // sealed and then REPLACED, and any assembly with no object literal in it at
+  // all, which is residual 1 above and is not made smaller by this.
+  const unsealed: string[] = [];
+  let sealedLiterals = 0;
+  const isSealedAt = (node: ts.Node): boolean => {
+    const parent = node.parent;
+    if (parent === undefined || !ts.isCallExpression(parent)) return false;
+    if (parent.arguments[0] !== node) return false;
+    const callee = parent.expression;
+    const name = ts.isIdentifier(callee)
+      ? callee.text
+      : ts.isPropertyAccessExpression(callee)
+        ? callee.name.text
+        : '';
+    return name === SEAL_NAME;
+  };
+
+  // -------------------------------------------------------------------------
   // THERE IS NO CANDIDATE SET, AND THAT IS ROUND NINE'S FIX.
   //
   // The reflective-assembly guard below used to run over a computed subset of
@@ -639,7 +687,13 @@ function scanRoutes(): RouteScan {
           // A literal returned from a function whose return type is INFERRED has
           // no contextual type at all and is still a record.
           const byShape = target.type !== undefined && checker.isTypeAssignableTo(own, target.type);
-          if (byContext || byShape) tally(target.kind, rel, enclosingSite(node));
+          if (byContext || byShape) {
+            tally(target.kind, rel, enclosingSite(node));
+            if (!IS_TEST_FILE.test(rel)) {
+              if (isSealedAt(node)) sealedLiterals += 1;
+              else unsealed.push(`${target.kind} ${rel} ${enclosingSite(node)}`);
+            }
+          }
         }
       }
       if (ts.isCallExpression(node)) {
@@ -670,6 +724,8 @@ function scanRoutes(): RouteScan {
     fixtures: all.filter((row) => IS_TEST_FILE.test(row.file)),
     scannedFiles: scannedFiles.sort(),
     importEdges: [...importEdges].sort(),
+    unsealed: unsealed.sort(),
+    sealedLiterals,
   };
 }
 
@@ -1146,6 +1202,35 @@ describe('purity', () => {
         `progression.ts §7.5 names ${row.kind} ${row.file} ${row.site} x${row.n}, and the scan does not find it — delete the row or fix the count`,
       ).toBe(true);
     }
+  });
+
+  it('seals every record and wire §7.5 finds in shipped code [every-shipped-route-is-sealed]', () => {
+    const scan = routeScan();
+
+    // THE THIRD QUESTION ASKED OF §7.5'S DERIVED SET. The two above ask whether
+    // the table's rows and the scan's rows are the same set. This asks whether
+    // each literal the scan found is handed to `sealServerValue` — which is what
+    // makes a NEW construction site have to be sealed rather than merely
+    // documented, without anyone maintaining a list of seal sites.
+    expect(
+      scan.unsealed,
+      'a record or wire is built in shipped code and not sealed — pass it to sealServerValue',
+    ).toEqual([]);
+
+    // NON-VACUITY, AS A COUNT AND NOT A BOUND. An empty domain passes the line
+    // above perfectly: a scan that found nothing, or one whose `SEAL_NAME` no
+    // longer matches any callee, reports zero unsealed sites and looks green.
+    // Seven is the six `record` rows plus the one `wire` row of §7.5.
+    expect(scan.sealedLiterals, 'shipped record/wire literals seen sealed').toBe(7);
+    expect(
+      scan.shipped.filter((row) => row.kind !== 'receive').reduce((sum, row) => sum + row.n, 0),
+      'and that is every shipped record/wire literal §7.5 accounts for',
+    ).toBe(scan.sealedLiterals);
+
+    // AND THE NAME THE SCAN MATCHES ON IS A REAL EXPORT. Without this, renaming
+    // the seal turns the whole check into "no literal is sealed, and none is
+    // required to be" — green, and measuring nothing.
+    expect(Object.keys(progressionModule)).toContain('sealServerValue');
   });
 
   it('rules test fixtures out of §7.5 rather than matching none of them', async () => {
@@ -3372,6 +3457,10 @@ describe('the module exports no writer', () => {
       'readingValue',
       'receiveProgressionSnapshot',
       'rejectProposal',
+      // NOT A WRITER, which is what this list is about. It takes a value away
+      // from every writer there is or ever will be — see its docstring for why
+      // the boundary needs one exported function that does that.
+      'sealServerValue',
       'snapshotAcknowledges',
       'snapshotFacts',
       'snapshotRevision',

@@ -58,6 +58,7 @@ import {
   asProposalId,
   emptyProgressionCache,
   rejectProposal,
+  sealServerValue,
   type ProgressionCache,
 } from '../game/progression';
 import {
@@ -177,7 +178,8 @@ const PREVIEW_WALL_CLOCK: LocalWallClock = {
  */
 function recordBeforeSession(): ServerRecord {
   const fresh = newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
-  return {
+  // SEALED, like every other `record` row in `progression.ts` 7.5.
+  return sealServerValue({
     ...fresh,
     bestE1rmKg: { ...fresh.bestE1rmKg, [PREVIEW_LIFT]: SESSION_PREVIEW.BEST_E1RM_KG },
     streak: {
@@ -186,7 +188,7 @@ function recordBeforeSession(): ServerRecord {
       longestStreak: SESSION_PREVIEW.STREAK_BEFORE,
       lastTrainedDay: asStreakDay(PREVIEW_DAY - 1),
     },
-  };
+  });
 }
 
 function previewContext(): SessionContext {
@@ -281,13 +283,16 @@ function cacheAfterServer(closeOut: SessionCloseOut, driftKg: number): Progressi
   if (!applied.ok) return submission.cache;
   const settled = applied.value.record;
   const best = settled.bestE1rmKg[closeOut.lift];
+  // SEALED, like every other `record` row in `progression.ts` 7.5. `settled`
+  // already is — `applyTrainingSession` seals what it returns — so the seal is a
+  // no-op down the left arm and does the work down the drift arm.
   const answered: ServerRecord =
     driftKg === 0 || best === null
       ? settled
-      : {
+      : sealServerValue({
           ...settled,
           bestE1rmKg: { ...settled.bestE1rmKg, [closeOut.lift]: best + driftKg },
-        };
+        });
   return receiveSnapshot(submission.cache, snapshotWireFor(answered, PREVIEW_PROPOSAL_ID));
 }
 
