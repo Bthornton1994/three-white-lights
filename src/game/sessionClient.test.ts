@@ -393,36 +393,41 @@ describe('a Recovery Day save, read out of the cache (GDD §4.3)', () => {
     const today = todayFromCache(cache, returnDay, lift);
 
     expect(today.streakBefore).toBe(COVERED_GAP_RUN_DAYS);
-    // THE DEFECT, PINNED BEFORE IT IS FIXED. `'gap-covered-by-recovery-days'`
-    // falls through the client's ternary chain to `1`, so the close-out prints
-    // 1 over DAY STREAK — with the celebratory pop, because 1 !== 10 — and then
-    // snaps to 11 when the response lands. The server's twin already says 11.
-    expect(today.streakIfTrainedToday).toBe(1);
+    // THE FIX. This read `1` before `streakIfTrainedToday` became one function:
+    // `'gap-covered-by-recovery-days'` fell through the client's ternary chain,
+    // so the close-out printed 1 over DAY STREAK — with the celebratory pop,
+    // because 1 !== 10 — and snapped to 11 when the response landed.
+    expect(today.streakIfTrainedToday).toBe(banked.value.streakAfter);
+    expect(today.streakIfTrainedToday).toBe(COVERED_GAP_RUN_DAYS + 1);
+    // AND THE TWO SIDES NOW AGREE BECAUSE THERE IS ONLY ONE OF THEM.
     expect(todayForLifter(recordHolding(state), returnDay, lift).streakIfTrainedToday).toBe(
-      COVERED_GAP_RUN_DAYS + 1,
+      today.streakIfTrainedToday,
     );
   });
 
-  it('the number the close-out prints under DAY STREAK is the wrong one', () => {
+  it('the number the close-out prints under DAY STREAK is the one the server will bank', () => {
     const { state, lastDay } = runOf(COVERED_GAP_RUN_DAYS, SIGNUP_DAY);
     const returnDay = lastDay + COVERED_GAP_DAYS_MISSED + 1;
     const cache = receiveSnapshot(emptyProgressionCache(), snapshotWireFor(recordHolding(state), null));
     const lift = liftForDay(returnDay);
 
+    const banked = recordTrainingDay(state, asStreakDay(returnDay));
+    if (!banked.ok) throw new Error(`the save should be bankable: ${banked.error.code}`);
+
     const context = sessionContextFrom(cache, { fatigue: EMPTY_FATIGUE_STATE }, returnDay, lift);
     const closeOut = closeOutOf(playSessionFrom(context));
     expect(closeOut.canPropose).toBe(true);
     expect(closeOut.streakBefore).toBe(COVERED_GAP_RUN_DAYS);
-    expect(closeOut.streakAfter).toBe(1);
+    expect(closeOut.streakAfter).toBe(banked.value.streakAfter);
 
     const submitted = submitCloseOut(cache, closeOut, WALL_CLOCK, asProposalId('covered-gap'));
     if (submitted === null) throw new Error('the close-out should be submittable');
     const readings = closeOutReadings(submitted.cache, closeOut);
-    // What `CloseOutView` prints under `CLOSE_OUT_STREAK_LABEL`.
-    expect(readings.streakValue).toBe(1);
-    // ...and the pop fires, because the printed value differs from the one the
-    // lifter came in on. GDD §4.3's payoff beat, reading as a loss.
-    expect(readings.streakValue).not.toBe(closeOut.streakBefore);
+    // What `CloseOutView` prints under `CLOSE_OUT_STREAK_LABEL`. Was 1.
+    expect(readings.streakValue).toBe(COVERED_GAP_RUN_DAYS + 1);
+    // The pop still fires — the run really did go up by one — but it now fires
+    // over the number GDD §4.3 calls the payoff instead of over a `1`.
+    expect(readings.streakValue).toBe(closeOut.streakBefore + 1);
   });
 });
 

@@ -217,8 +217,27 @@ const GUARANTEE_COVERAGE = {
    * `placeholder-cannot-grow-calendar-authority` and a witness in the table
    * below, so the new prose is on the better side of this file's complaint —
    * but the ratio moved the wrong way and this comment is where that is said.
+   *
+   * 205 -> 206 when `DayOpening -> streakIfTrainedToday` became one function
+   * instead of two disagreeing ternary chains. Measured per file the same way,
+   * by restoring each touched file to its pre-fix text and re-reading this
+   * count: `streak.ts`, `streakSweep.ts`, `sessionClient.ts`, `sessionServer.ts`
+   * and `streak.test.ts` contribute nothing between them, and the single new
+   * paragraph is the one in `sessionClient.test.ts` saying that the client and
+   * the server now agree because there is one implementation. Its trigger word
+   * is the fourth of the four; it is not quoted here, because quoting it made
+   * this paragraph trigger too and took the count to 207 — the scan reading its
+   * own documentation, which is a fair description of the limit.
+   *
+   * Worth recording: the much longer prose added to `streak.ts` uses none of the
+   * four trigger words and walks straight past this scan. That is the declared
+   * blind spot doing exactly what the paragraphs above say it does, and the
+   * ratio moved only because a test file happened to phrase a claim in caps.
+   *
+   * The one paragraph that does trigger sits directly above the assertion that
+   * checks it, so it is on the better side of this file's complaint.
    */
-  TREE_WIDE: 205,
+  TREE_WIDE: 206,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -382,6 +401,25 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     redAssertion: "expect(errorCodeOf(lateSale)).toBe('ABSENCE_ENDED_AFTER_OFFER')",
     observed:
       "AssertionError: expected 'ABSENCE_ENDED_BEFORE_OFFER' to be 'ABSENCE_ENDED_AFTER_OFFER'",
+  },
+  {
+    // THE MUTANT IS THE SHIPPED DEFECT, PUT BACK. `streakIfTrainedToday` was two
+    // ternary chains — one in `sessionServer.ts`, one in `sessionClient.ts` —
+    // and the client's named one fewer kind, so `'gap-covered-by-recovery-days'`
+    // fell through it to 1. This mutant makes the one function return
+    // `FIRST_DAY_OF_A_NEW_RUN` for that kind, which is character-for-character
+    // what the client used to do, and the sweep names the kind and the day.
+    //
+    // The same mutant also reddens both covered-gap tests in
+    // `sessionClient.test.ts` with `expected 1 to be 11` — the number a lifter
+    // on a ten-day run was actually shown under DAY STREAK.
+    guarantee: 'one-streak-mapping',
+    mutatedFile: 'src/game/streak.ts',
+    mutated: "    case 'gap-covered-by-recovery-days':\n      return opening.streakIfTrainedToday;",
+    testFile: 'src/game/streak.test.ts',
+    redAssertion: 'expect(streakIfTrainedToday(opening), `${opening.kind} on day ${i}`).toBe(',
+    observed:
+      'AssertionError: gap-covered-by-recovery-days on day 4: expected 1 to be 2 // Object.is equality',
   },
   {
     // The mutant turned the placeholder's one type-only import into a VALUE

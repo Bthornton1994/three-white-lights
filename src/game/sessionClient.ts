@@ -123,7 +123,13 @@ import {
   type SessionContext,
   type SessionPayoff,
 } from './session';
-import { asStreakDay, openDay, type LocalWallClock } from './streak';
+import {
+  FIRST_DAY_OF_A_NEW_RUN,
+  asStreakDay,
+  openDay,
+  streakIfTrainedToday,
+  type LocalWallClock,
+} from './streak';
 import { SESSION_TUNING } from './sessionTuning';
 
 // ---------------------------------------------------------------------------
@@ -292,18 +298,21 @@ export function todayFromCache(cache: ProgressionCache, day: number, lift: LiftK
   const streakDays = readingValue(readStreakDays(cache));
 
   let streakBefore = 0;
-  let streakIfTrainedToday = 1;
+  // Nothing has been read from the server yet, so there is no opening to map:
+  // a lifter with no history trains today and is on day one. `streak.ts`'s
+  // constant rather than a literal, and the only branch here that is not the
+  // shared mapping.
+  let streakProjection = FIRST_DAY_OF_A_NEW_RUN;
   let alreadyTrainedToday = false;
   if (streak.kind !== 'unknown') {
     const opening = openDay(streak.value, asStreakDay(day));
     streakBefore = streak.value.currentStreak;
     alreadyTrainedToday = opening.kind === 'already-trained-today';
-    streakIfTrainedToday =
-      opening.kind === 'streak-alive' || opening.kind === 'gap-covered-by-grace'
-        ? opening.streakIfTrainedToday
-        : opening.kind === 'already-trained-today'
-          ? opening.currentStreak
-          : 1;
+    // `streak.ts`'s ONE mapping. This used to be a ternary chain that named two
+    // opening kinds where `sessionServer.ts`'s named three, so a lifter whose
+    // Recovery Day had just saved their run fell through it to `1` — and this
+    // is the copy that reaches the screen. See `streakIfTrainedToday`.
+    streakProjection = streakIfTrainedToday(opening);
   }
 
   return {
@@ -328,7 +337,7 @@ export function todayFromCache(cache: ProgressionCache, day: number, lift: LiftK
     // prints and the state the rules run on cannot silently be two different
     // revisions: if they ever disagree, the reading is the one that is rendered.
     streakBefore: streakDays ?? streakBefore,
-    streakIfTrainedToday,
+    streakIfTrainedToday: streakProjection,
     alreadyTrainedToday,
     awaitingFirstSnapshot: streak.kind === 'unknown',
   };

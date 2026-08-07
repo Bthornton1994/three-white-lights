@@ -985,6 +985,51 @@ straightforwardly rather than by analogy: the freeze is armed ahead, consumed by
 the missed day, and reported afterwards, which is exactly the shape §4.2 now
 specifies.
 
+#### The payoff beat rendered the loss — FIXED, and recorded because it shipped
+
+**On the exact beat this section calls the payoff, the daily loop told the
+player their run was gone.** A lifter on a ten-day streak who missed three days
+and came back — the first time a Recovery Day actually saves a streak, which is
+the moment this section exists for — saw **1** under `DAY STREAK`, with the
+celebratory pop, and then watched it snap to 11 about 558 ms later when the
+server answered. `LOCAL_SERVER_LATENCY_MS` is 550, so that is half a second of
+wrong number on screen, not a sub-frame race. It is §12.3's "never punish daily
+engagement" breaking in the one place the player was supposed to feel rescued.
+
+**The cause was one mapping implemented twice.** `DayOpening ->
+streakIfTrainedToday` existed as a chained ternary in `sessionServer.ts` naming
+three opening kinds and a *shorter* one in `sessionClient.ts` naming two, each
+ending in `: 1`. `'gap-covered-by-recovery-days'` fell through the client's
+chain, and the client's is the copy that reaches the screen — the server's
+correct twin, `todayForLifter`, has no caller on the app's route at all.
+
+**The fix is one function, not two that agree.** `streak.ts` exports
+`streakIfTrainedToday(opening)`; both `todayForLifter` and `todayFromCache`
+render it. It is an exhaustive `switch` with a `never` fallthrough, so an eighth
+`DayOpening` kind is a compile error rather than a silent `1` — which is
+precisely how this shipped, since the fall-through arm was never written for the
+kind that ended up using it.
+
+**A second, smaller instance of the same defect was fixed with it.**
+`'day-in-past'` carried no `currentStreak`, so it fell through to `1` too: a
+lifter on a live run whose device clock moved backwards — skew, or a westward
+timezone change — was shown `1`. It is reachable in the shipped app, because the
+day comes from the device wall clock. It now answers "the number does not move",
+which is what `recordTrainingDay` actually does, since it refuses that day.
+
+**Why nothing caught it, which is the part worth keeping.** Every fixture in
+`sessionClient.test.ts` set `lastTrainedDay` to *yesterday*, so the covered-gap
+opening was never generated and its check could not have failed — CLAUDE.md's
+**empty domain** vacuity shape exactly. Nothing in the suite renders. And all
+103 browser checks play a day-1 lifter with no absence, where the fall-through
+to `1` is *coincidentally correct*. The replacement sweep
+(`streak.test.ts`, `[one-streak-mapping]`) grades every opening against what
+`recordTrainingDay` really does and pins per-kind counts rather than bounds:
+6532 / 15360 / 13824 / 8832 / 900 / 632 / 15360 openings across the seven kinds,
+with **900** covered gaps and **11778** day-in-past openings on runs longer than
+one day — the cases where the old `: 1` was a genuinely different number.
+Parameters and counts live in `streakSweep.ts`'s `ONE_MAPPING_SWEEP`.
+
 ### 4.4 Free Grace for Short Gaps — Ruled
 
 **Status: decided. Short gaps are covered for free; Recovery Days are spent only

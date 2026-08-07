@@ -430,6 +430,79 @@ export const COVERED_DAY_PURCHASE_SWEEP = Object.freeze({
 });
 
 /**
+ * THE ONE-MAPPING SWEEP: the parameters and the pinned observations of
+ * `streak.test.ts`'s `[one-streak-mapping]` test.
+ *
+ * WHY IT EXISTS. `DayOpening -> streakIfTrainedToday` was implemented twice —
+ * once in `sessionServer.ts`, once in `sessionClient.ts` — as chained ternaries
+ * ending in `: 1`. The client's chain named one fewer kind, so
+ * `'gap-covered-by-recovery-days'` fell through it, and the client's is the copy
+ * that reaches the screen. On GDD §4.3's payoff beat — the first time a Recovery
+ * Day actually saves a run — the close-out printed `1` under DAY STREAK, with
+ * the celebratory pop, for a server round trip.
+ *
+ * THE COUNTS ARE PINNED, NOT BOUNDED, AND THAT IS THE POINT. Per CLAUDE.md's
+ * vacuity rule, a sweep reports what it actually saw. The failure this replaces
+ * was an EMPTY DOMAIN — `sessionClient.test.ts` only ever built states whose
+ * `lastTrainedDay` was yesterday, so the covered-gap opening was never generated
+ * and its check could not have failed. A bound like "at least one covered gap"
+ * would let the domain shrink back to nothing but one; an exact count reddens.
+ *
+ * `COVERED_GAPS_ABOVE_ONE` and `DAYS_IN_PAST_ABOVE_ONE` count the openings where
+ * the pre-fix `: 1` was a genuinely DIFFERENT number from the right answer. On a
+ * one-day run the fall-through is accidentally correct, which is why the 103
+ * browser checks — all played by a day-1 lifter with no absence — sat exactly
+ * where this defect is invisible. Zero here would mean the sweep had reached the
+ * kind but never the case.
+ *
+ * Re-derive rather than edit if the tuning moves: these are observations of
+ * `LENGTH` and `BALANCES` against the shipped `RECOVERY_ENTITLEMENT`, and
+ * changing either changes them.
+ */
+export const ONE_MAPPING_SWEEP = Object.freeze({
+  /**
+   * Calendar length, exhaustive over all `2 ** LENGTH` attendance masks at every
+   * starting balance. 10 rather than the announcement sweep's 12 because this
+   * one opens the day three times per trained day — today, today again, and
+   * yesterday — to reach `'already-trained-today'` and `'day-in-past'`.
+   */
+  LENGTH: 10,
+
+  /** How many openings of each kind the sweep produced. Measured, not chosen. */
+  OPENINGS_SEEN: Object.freeze({
+    'no-active-streak': 6532,
+    'already-trained-today': 15360,
+    'streak-alive': 13824,
+    'gap-covered-by-grace': 8832,
+    'gap-covered-by-recovery-days': 900,
+    'streak-broken': 632,
+    'day-in-past': 15360,
+  }),
+
+  /**
+   * Covered-gap openings on a run longer than one day.
+   *
+   * EQUAL TO THE KIND'S OWN COUNT — all 900 covered gaps in this sweep sit on a
+   * run of 2 or more, because a covered gap needs a live run and this sweep's
+   * absences are long enough that a one-day run rarely survives one. So every
+   * covered-gap opening here is a case the pre-fix fall-through answered wrongly.
+   */
+  COVERED_GAPS_ABOVE_ONE: 900,
+
+  /**
+   * `'day-in-past'` openings on a run longer than one day — 11778 of the 15360.
+   *
+   * A SECOND, SMALLER INSTANCE OF THE SAME DEFECT, and it is counted because
+   * fixing the mapping fixed it too. `'day-in-past'` carried no `currentStreak`,
+   * so it also fell through to `1`: a lifter on a live run whose device clock
+   * went backwards — skew, or a westward timezone change — was shown `1`. It is
+   * reachable in the shipped app, because `useSession.ts` derives the day from
+   * `streakDayFromLocalWallClock(nowWallClock())`.
+   */
+  DAYS_IN_PAST_ABOVE_ONE: 11778,
+});
+
+/**
  * THE DOOMED-SALE SWEEP: where the store's door is checked, in BOTH directions.
  *
  * THE FALSE-POSITIVE DIRECTION IS THE ONE THIS EXISTS FOR. "Refuses a doomed

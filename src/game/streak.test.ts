@@ -39,6 +39,7 @@ import {
   streakDayFromCivilDate,
   streakDayFromLocalWallClock,
   streakDeadlineDay,
+  streakIfTrainedToday,
   type DayOpening,
   type LegacyStreakStateWithBalance,
   type RenderedStoreOffer,
@@ -68,6 +69,7 @@ import {
   DOOMED_SALE_SWEEP,
   ENTITLEMENT_VERIFICATION,
   MONOTONICITY_SWEEP,
+  ONE_MAPPING_SWEEP,
   RESIDUE_SWEEP,
   STORE_VERDICT_DIVERGENCE,
   exhaustiveCalendar,
@@ -81,6 +83,26 @@ import {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Every `DayOpening` kind, DERIVED FROM THE UNION rather than listed beside it.
+ *
+ * `Record<DayOpening['kind'], true>` is exhaustive both ways: omitting a kind
+ * and inventing one are each a `tsc` error. So the sweep's non-vacuity guard
+ * cannot silently stop covering a kind that was added — which is the failure it
+ * exists to catch, one level out.
+ */
+const DAY_OPENING_KIND_TABLE: Readonly<Record<DayOpening['kind'], true>> = {
+  'no-active-streak': true,
+  'already-trained-today': true,
+  'streak-alive': true,
+  'gap-covered-by-grace': true,
+  'gap-covered-by-recovery-days': true,
+  'streak-broken': true,
+  'day-in-past': true,
+};
+
+const DAY_OPENING_KINDS = Object.keys(DAY_OPENING_KIND_TABLE) as readonly DayOpening['kind'][];
 
 /** Unwraps a successful result, failing loudly with the error code if not. */
 function unwrap<T>(result: StreakResult<T>): T {
@@ -1066,6 +1088,11 @@ describe('streak increments', () => {
       kind: 'day-in-past',
       requestedDay: addDays(DAY_ZERO, 1),
       lastTrainedDay: addDays(DAY_ZERO, 2),
+      // The run this lifter is on. Carried so `streakIfTrainedToday` can answer
+      // "it does not move" — the recorder just refused, one line up. Before it
+      // existed the only total mapping was a fall-through, and this lifter's
+      // three-day run rendered as `1`.
+      currentStreak: 3,
     });
   });
 });
@@ -6783,6 +6810,99 @@ describe('daily engagement is never worse than skipping — where that holds, an
       ]),
     );
     expect(announcedNonZero).toBeGreaterThan(0);
+  });
+
+  it('[one-streak-mapping] ONE MAPPING: every DayOpening answers what recordTrainingDay will actually do', () => {
+    // THE ORACLE IS THE RECORDER, NOT A RESTATEMENT OF THE SWITCH. "What will my
+    // streak read if I train today" has exactly one true answer: the
+    // `currentStreak` the state is on once `recordTrainingDay` has been offered
+    // this day — its `streakAfter` when it accepts, and the untouched
+    // `state.currentStreak` when it refuses. That is one expression with no case
+    // analysis in it, so it cannot mirror `streakIfTrainedToday`'s cases and can
+    // disagree with every one of them.
+    //
+    // This is the check that was missing. The mapping was written twice, the two
+    // disagreed on `'gap-covered-by-recovery-days'`, and the wrong copy was the
+    // one on screen: a lifter whose Recovery Day had just held a ten-day run
+    // open was shown `1` under DAY STREAK on GDD §4.3's payoff beat.
+    const answerFor = (state: StreakState, day: StreakDay): number => {
+      const recorded = recordTrainingDay(state, day);
+      return recorded.ok ? recorded.value.state.currentStreak : state.currentStreak;
+    };
+
+    const LENGTH = ONE_MAPPING_SWEEP.LENGTH;
+    const kindsSeen = new Map<DayOpening['kind'], number>();
+    const see = (kind: DayOpening['kind']): void => {
+      kindsSeen.set(kind, (kindsSeen.get(kind) ?? 0) + 1);
+    };
+    // THE DEFECT'S OWN DOMAIN, COUNTED SEPARATELY. A sweep that only ever
+    // reached covered gaps on one-day runs would have passed against the broken
+    // code, because there the right answer and the fall-through are both 1 —
+    // which is exactly why the 103 browser checks never saw this. These count
+    // the openings where the pre-fix `: 1` was genuinely a different number.
+    let coveredGapsAboveOne = 0;
+    let daysInPastAboveOne = 0;
+
+    for (let balance = 0; balance <= RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW; balance += 1) {
+      const initial: StreakState = holding(
+        { ...freshState(), entitlementArmed: true },
+        withCoveredDays(balance),
+      );
+      for (let mask = 0; mask < exhaustiveCalendarCount(LENGTH); mask += 1) {
+        const schedule = exhaustiveCalendar(mask, LENGTH);
+        let state = initial;
+        for (let i = 0; i < LENGTH; i += 1) {
+          const day = addDays(DAY_ZERO, i);
+
+          const opening = openDay(state, day);
+          see(opening.kind);
+          expect(streakIfTrainedToday(opening), `${opening.kind} on day ${i}`).toBe(
+            answerFor(state, day),
+          );
+          if (opening.kind === 'gap-covered-by-recovery-days' && opening.streakIfTrainedToday > 1) {
+            coveredGapsAboveOne += 1;
+          }
+
+          if (schedule[i] === true) {
+            state = unwrap(recordTrainingDay(state, day)).state;
+
+            // RE-OPENING THE SAME DAY is the only way to reach
+            // `'already-trained-today'`, and the day before it the only way to
+            // reach `'day-in-past'`. Both are openings on which the recorder
+            // REFUSES, so both must answer "the number does not move" — and
+            // `'day-in-past'` is the kind that had no `currentStreak` to answer
+            // with until this fix, which is why it fell through to 1 as well.
+            const again = openDay(state, day);
+            see(again.kind);
+            expect(again.kind).toBe('already-trained-today');
+            expect(streakIfTrainedToday(again)).toBe(answerFor(state, day));
+
+            const yesterday = addDays(day, -1);
+            const past = openDay(state, yesterday);
+            see(past.kind);
+            expect(past.kind).toBe('day-in-past');
+            expect(streakIfTrainedToday(past)).toBe(answerFor(state, yesterday));
+            expect(streakIfTrainedToday(past)).toBe(state.currentStreak);
+            if (state.currentStreak > 1) daysInPastAboveOne += 1;
+          } else if (openDay(state, day).kind === 'streak-broken') {
+            state = unwrap(settleBrokenStreak(state, day)).state;
+          }
+        }
+      }
+    }
+
+    // ANTI-VACUITY, AND IT PINS COUNTS RATHER THAN BOUNDS. All seven
+    // `DayOpening` kinds were really produced — a sweep that never generates
+    // `'gap-covered-by-recovery-days'` is the sweep that already existed and
+    // already passed. `DAY_OPENING_KINDS` is derived from the union itself, so
+    // an eighth kind fails here as well as at `streakIfTrainedToday`'s `never`.
+    expect(new Set(kindsSeen.keys())).toEqual(new Set(DAY_OPENING_KINDS));
+    expect(Object.fromEntries(kindsSeen)).toEqual(ONE_MAPPING_SWEEP.OPENINGS_SEEN);
+    // ...and the defect's own domain was non-empty: covered gaps really did
+    // occur on runs longer than a day, where `1` is the wrong answer and not
+    // coincidentally the right one.
+    expect(coveredGapsAboveOne).toBe(ONE_MAPPING_SWEEP.COVERED_GAPS_ABOVE_ONE);
+    expect(daysInPastAboveOne).toBe(ONE_MAPPING_SWEEP.DAYS_IN_PAST_ABOVE_ONE);
   });
 
   it('[training-is-the-only-debit] training debits exactly what the absence it closes consumes, and nothing else', () => {
