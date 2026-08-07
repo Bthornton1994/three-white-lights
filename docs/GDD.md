@@ -1619,6 +1619,40 @@ Per attempt:
    on close calls
 5. Depth cue or bar-speed replay clip as feedback
 
+**A BEAT MAY ONLY BE LENGTHENED WHERE SOMETHING IS PLAYING IN IT — RULED.**
+Steps 1 and 4 both escalate on the attempts the meet turns on: a third, a PR, or
+one with a bomb on it is held longer than an opener (`walkoutMs` and
+`deliberationMs` in `src/game/meetDay.ts`). That is only worth anything if the
+extra time carries something, and for six waves it did not: the walk-out's frame
+loop stopped at the end of its choreography while the beat ran on for up to
+2,680 ms more, so **every millisecond of the escalation §12.2 judges was a
+static raster over a decayed sound cue** — 48% of a third-attempt beat with
+nothing banked, 56% at a PR. The lever `meetTuning.ts` told a future tuner to
+turn only made the frozen frame longer.
+
+Three rules follow, and the third is the one a later pass will be tempted to
+break:
+
+- **The walk-out's tail is two named windows**, not a remainder: a BRACE, where
+  the loaded bar works under a braced lifter and the hall's standing wave
+  carries further back through the building, and a HUSH, where nothing moves and
+  the room is quiet before the bar does. `MEET_TUNING.WALKOUT_TAIL` owns both.
+  A tail too short to brace in is all hush, which is what an opener is.
+- **The brace reads nothing about the lifter.** Its amplitude and tempo are
+  constants: not readiness, not load, not the attempt number. A brace that
+  varied with fatigue is §3.4's meter with the numerals filed off, and §12.3
+  refuses one.
+- **Anticipation escalates in DURATION; news escalates in INTENSITY.** The
+  walk-out and the wait for the lights are waiting, and waiting is the content,
+  so they get longer. The hold AFTER the call is not: the player already knows,
+  and every millisecond added there is a frame they are waiting to leave — the
+  same defect one screen later. `verdictMs()` therefore takes no attempt
+  information and must not. What a reaction may escalate is loudness, and it
+  does: `CROWD.URGENT_CHEER_RISE_PX` takes the hall further up on a lift the
+  meet turned on.
+
+None of the numbers has been played (§12.1). What is ruled here is the shape.
+
 ### 6.3 Attempt Selection — The Real Tension
 
 **Attempts within a lift never decrease.** This is the competition rule, not a
