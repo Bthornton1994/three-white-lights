@@ -98,17 +98,32 @@
  * THE MUTATION THIS WAS BUILT AGAINST
  * ===========================================================================
  * `CutInHost.tsx`, the `useRef` initialiser, `resumeCutInSession` ->
- * `openCutInSession` (plus the import). Measured on this instrument: the count
- * went from 1 to 3 — legs 1, 2 and 3 each firing their own — and the failure
- * printed all three with their lines and their times. `MUTATION_WITNESSES`
- * cannot hold a browser witness (CLAUDE.md), so it is recorded in the commit
- * that introduces this file and in the block above `THE_CAP`.
+ * `openCutInSession` (plus the import). Run twice on two machines: the builder
+ * measured 1 -> 3, legs 1, 2 and 3 each firing their own; the lead measured
+ * 1 -> 2, legs 2 and 3, because on that day leg 1's roll fired nothing.
+ *
+ * THE MUTANT COUNT IS 2 OR 3 DEPENDING ON THE DAY, AND THAT IS THE POINT
+ * RATHER THAN A WOBBLE. Leg 1 is the played meet, whose beats are rolled from
+ * `cutInSessionSeed('meet', day)`; legs 2 and 3 lean on the bomb-out, allowed
+ * in every sitting. So the mutant is >= 2 on every day and the clean run is
+ * exactly 1 on every day, which is why the check compares against the cap and
+ * not against a fixed expected count. A single-leg version of this tool would
+ * have read 0 + 1 = 1 on the lead's day and passed on the defect it exists for
+ * — that run is the empirical reason legs 2 and 3 are both here.
+ *
+ * The earlier wording of this block quoted "1 to 3" flat, which is a
+ * measurement that does not reproduce; two comments in this piece were being
+ * corrected for exactly that at the time it was written. `MUTATION_WITNESSES`
+ * cannot hold a browser witness (CLAUDE.md), so the witness is recorded in the
+ * commit that introduces this file and in the block above `THE_CAP`.
  *
  * Usage:
  *   node tools/verify-cutin-cap.mjs [--url URL] [--out DIR]
  */
 import { chromium } from 'playwright';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -222,6 +237,9 @@ function check(ok, what, detail) {
   console.log(`${ok ? 'ok  ' : '!!  '}${what}${detail === undefined ? '' : `  — ${detail}`}`);
 }
 
+/** The reds, computed rather than tallied. See `failures` in `writeRecord`. */
+const reds = () => checks.filter((c) => !c.ok);
+
 // ---------------------------------------------------------------------------
 // The premise, read from source
 // ---------------------------------------------------------------------------
@@ -251,6 +269,33 @@ const capturedFrom = (() => {
   } catch (error) {
     record.workingTree = `unknown — ${String(error).slice(0, 200)}`;
   }
+  /**
+   * WHICH MEASURING DEVICE PRODUCED THIS RECORD, and it is not optional.
+   *
+   * `tools/evidence.mjs` refuses a tracked shot record that carries no
+   * instrument digest, and it refused this one the first time it was tracked —
+   * the guard biting on its own first use rather than a round later. A commit
+   * SHA says which app the browser played; it says nothing about the tool, and
+   * the tool is half of what "1 cut-in across 3 legs" means. Turn
+   * `CAP_DRIVE.RECORDER_POLL_MS` up past the whole beat here and the count
+   * silently becomes "cut-ins the poller happened to catch", with the same SHA
+   * and every committed "ok" line intact.
+   *
+   * `readTuning.mjs` is in the list because the premise controls read the
+   * bomb-out allowance and the hold through it: a regression in that parser
+   * takes the guards with it, and the tool's own self-test is the only thing
+   * standing there.
+   */
+  record.instrument = Object.fromEntries(
+    ['verify-cutin-cap.mjs', 'sessionDrive.mjs', 'readTuning.mjs'].map((name) => {
+      const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
+      try {
+        return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
+      } catch (error) {
+        return [name, `unreadable — ${String(error).slice(0, 80)}`];
+      }
+    }),
+  );
   return record;
 })();
 
@@ -714,6 +759,21 @@ async function writeRecord(rec, legs) {
         cutIns: rec === null ? [] : rec.log,
         recorderPolls: rec === null ? 0 : rec.polls,
         checks,
+        /**
+         * THE RED LINES. Required, not decorative: `tools/evidence.mjs` refuses
+         * a tracked record whose `failures` array is non-empty, and it can only
+         * do that if the array EXISTS — a record with no `failures` key is
+         * skipped by that gate entirely, so a red run would commit and verify
+         * as green. This record was tracked without one and the gate caught it
+         * on its first use.
+         *
+         * `reds()` is the single source for both this array and the exit code
+         * below, so the file cannot report green beside a process exiting 1.
+         * That is arranged by construction rather than asserted, because a
+         * check comparing two counters that are incremented together is a check
+         * nothing can redden.
+         */
+        failures: reds(),
         pageErrors,
       },
       null,
@@ -731,4 +791,4 @@ if (pageErrors.length > 0) {
 await browser.close();
 
 console.log(`\n${checks.length} checks, ${failed} failed. ${fired} cut-in(s) across ${legRecords.length} leg(s) of one sitting.`);
-process.exit(failed === 0 ? 0 : 1);
+process.exit(reds().length === 0 ? 0 : 1);

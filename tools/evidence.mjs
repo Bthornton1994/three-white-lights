@@ -190,6 +190,7 @@ const codeChangedBetween = (from, to) =>
 const REQUIRED_SHOT_RECORDS = [
   '.gauntlet/shots/shell/route.json',
   '.gauntlet/shots/cutin/frames.json',
+  '.gauntlet/shots/cutin-cap/cap.json',
 ];
 
 const checkCommittedShots = () => {

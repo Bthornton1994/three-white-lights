@@ -1,0 +1,251 @@
+{
+  "capturedFrom": {
+    "capturedAt": "2026-08-07T16:19:01.081Z",
+    "url": "http://localhost:8081",
+    "commit": "90caed2",
+    "branch": "claude/agent-config-setup-m2r6ny",
+    "workingTree": "clean",
+    "dirtyPaths": []
+  },
+  "theCap": 1,
+  "premise": {
+    "bombOutAllowance": 1,
+    "enterMs": 120,
+    "holdMs": 1600,
+    "wholeBeatMs": 1720
+  },
+  "legs": [
+    {
+      "n": 1,
+      "intent": "make",
+      "whatItIsFor": "a played meet — nine walk-outs and the recap, GDD §7.2’s \"one meet is one sitting\"",
+      "ended": "recap",
+      "attempts": [
+        {
+          "attempt": "SQUAT · ATTEMPT 1 OF 3",
+          "played": true,
+          "intent": "make",
+          "holdMs": 1000,
+          "feedback": "Depth was never in question."
+        },
+        {
+          "attempt": "SQUAT · ATTEMPT 2 OF 3",
+          "played": true,
+          "intent": "make",
+          "holdMs": 1000,
+          "feedback": "It stopped, and you kept driving."
+        },
+        {
+          "attempt": "SQUAT · ATTEMPT 3 OF 3",
+          "played": true,
+          "intent": "make",
+          "holdMs": 1000,
+          "feedback": "You hit depth by a hair."
+        },
+        {
+          "attempt": "BENCH · ATTEMPT 1 OF 3",
+          "played": true,
+          "intent": "make",
+          "holdMs": 1000,
+          "feedback": "You hit depth by a hair."
+        },
+        {
+          "attempt": "BENCH · ATTEMPT 2 OF 3",
+          "played": true,
+          "intent": "make",
+          "holdMs": 1000,
+          "feedback": "You hit depth by a hair."
+        },
+        {
+          "attempt": "BENCH · ATTEMPT 3 OF 3",
+          "played": true,
+          "intent": "make",
+          "holdMs": 1000,
+          "feedback": "You hit depth by a hair."
+        },
+        {
+          "attempt": "DEADLIFT · ATTEMPT 1 OF 3",
+          "played": true,
+          "intent": "make",
+          "holdMs": 1000,
+          "feedback": "You hit depth by a hair."
+        },
+        {
+          "attempt": "DEADLIFT · ATTEMPT 2 OF 3",
+          "played": true,
+          "intent": "make",
+          "holdMs": 1000,
+          "feedback": "You hit depth by a hair."
+        },
+        {
+          "attempt": "DEADLIFT · ATTEMPT 3 OF 3",
+          "played": true,
+          "intent": "make",
+          "holdMs": 1000,
+          "feedback": "It stopped, and you kept driving."
+        }
+      ],
+      "ms": 104811,
+      "stuckBecause": null
+    },
+    {
+      "n": 2,
+      "intent": "miss",
+      "whatItIsFor": "the same sitting again after the host went away — GDD §6.3's bomb-out, allowed in every sitting",
+      "ended": "bombed",
+      "attempts": [
+        {
+          "attempt": "SQUAT · ATTEMPT 1 OF 3",
+          "played": true,
+          "intent": "miss",
+          "holdMs": 80,
+          "feedback": "Too deep to recover."
+        },
+        {
+          "attempt": "SQUAT · ATTEMPT 2 OF 3",
+          "played": true,
+          "intent": "miss",
+          "holdMs": 80,
+          "feedback": "High. The hips never got under."
+        },
+        {
+          "attempt": "SQUAT · ATTEMPT 3 OF 3",
+          "played": true,
+          "intent": "miss",
+          "holdMs": 80,
+          "feedback": "High. The hips never got under."
+        }
+      ],
+      "ms": 42222,
+      "stuckBecause": null
+    },
+    {
+      "n": 3,
+      "intent": "miss",
+      "whatItIsFor": "and once more, so the count bites on a day when leg 1 fires nothing",
+      "ended": "bombed",
+      "attempts": [
+        {
+          "attempt": "SQUAT · ATTEMPT 1 OF 3",
+          "played": true,
+          "intent": "miss",
+          "holdMs": 80,
+          "feedback": "High. The hips never got under."
+        },
+        {
+          "attempt": "SQUAT · ATTEMPT 2 OF 3",
+          "played": true,
+          "intent": "miss",
+          "holdMs": 80,
+          "feedback": "Too deep to recover."
+        },
+        {
+          "attempt": "SQUAT · ATTEMPT 3 OF 3",
+          "played": true,
+          "intent": "miss",
+          "holdMs": 80,
+          "feedback": "Too deep to recover."
+        }
+      ],
+      "ms": 47614,
+      "stuckBecause": null
+    }
+  ],
+  "cutIns": [
+    {
+      "leg": 2,
+      "at": 155353,
+      "line": "THAT IS THE MEET",
+      "hint": "TAP TO SKIP",
+      "over": [
+        "meet-bombed"
+      ],
+      "search": "",
+      "goneAt": 157099
+    }
+  ],
+  "recorderPolls": 7519,
+  "checks": [
+    {
+      "ok": true,
+      "what": "CONTROL: the source readers still read their own fixture",
+      "detail": "readTuning.mjs parses the shapes it claims to"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: this tool's premise — SESSION_ALLOWANCE['bomb-out'] is 1, so the beat legs 2 and 3 lean on qualifies in EVERY sitting",
+      "detail": "read 1 from src/cutin/cutInTuning.ts; anything below 1 makes the roll seed-dependent and this tool can no longer promise a qualifying beat"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the four values this tool steers and waits by came out of the app, not out of this file",
+      "detail": "ENTER_MS 120, HOLD_MS 1600, LOCAL_SERVER_LATENCY_MS 550, FEEDBACK_DEPTH_HIGH \"High. The hips never got under.\", FEEDBACK_BURIED \"Too deep to recover.\""
+    },
+    {
+      "ok": true,
+      "what": "the app opens on GDD §3.2's daily session with no query string",
+      "detail": "search=\"\" after 6156ms"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the address bar carries no query string — this is the played arm, not a debug frame",
+      "detail": "\"\""
+    },
+    {
+      "ok": true,
+      "what": "leg 1: meet day was reached with a finger, not a URL — a played meet — nine walk-outs and the recap, GDD §7.2’s \"one meet is one sitting\"",
+      "detail": "search=\"\""
+    },
+    {
+      "ok": true,
+      "what": "leg 1: the meet surface really went away — CutInHost un-mounted",
+      "detail": "back on the check-in after 2ms, meet-screen present: false"
+    },
+    {
+      "ok": true,
+      "what": "leg 2: meet day was reached with a finger, not a URL — the same sitting again after the host went away — GDD §6.3's bomb-out, allowed in every sitting",
+      "detail": "search=\"\""
+    },
+    {
+      "ok": true,
+      "what": "leg 2: the meet surface really went away — CutInHost un-mounted",
+      "detail": "back on the check-in after 2ms, meet-screen present: false"
+    },
+    {
+      "ok": true,
+      "what": "leg 3: meet day was reached with a finger, not a URL — and once more, so the count bites on a day when leg 1 fires nothing",
+      "detail": "search=\"\""
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the in-page recorder ran at all",
+      "detail": "7519 polls at 16ms; without this, \"no second cut-in\" is what a dead instrument reports"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the local calendar day did not turn over mid-run, so all three legs are ONE sitting",
+      "detail": "Fri Aug 07 2026 -> Fri Aug 07 2026; cutInSessionId('meet', day) is a function of this"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the host was torn down between legs — exactly 2 times",
+      "detail": "saw 2; a run where the surface never went away would not have exercised the remount at all"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the 2 deliberately-bombed legs each reached GDD §6.3's bomb-out screen and OFFERED the beat",
+      "detail": "2 of 2; endings were [\"1:recap\",\"2:bombed\",\"3:bombed\"]. Without this, \"exactly one cut-in\" is also what a run that never offered a second qualifying beat reports."
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: every cut-in counted was on the played arm — no query string in the address bar",
+      "detail": "0 of 1 carried one"
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2 / §12.3: ONE SITTING, ONE CUT-IN — 3 legs of one meet-day sitting fired exactly 1",
+      "detail": "leg 2 @155353ms \"THAT IS THE MEET\" over meet-bombed gone at 157099ms after 1746ms"
+    }
+  ],
+  "pageErrors": []
+}

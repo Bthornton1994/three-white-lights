@@ -75,3 +75,12 @@ public/canvaskit.wasm
 # is asked to read, and `CutInView.tsx` cites this directory by name — the
 # sentence that was false until the pictures were committed.
 !.gauntlet/shots/cutin/
+
+# And the cut-in CAP run, which is the strongest of the three: `cap.json` is the
+# only artifact in this repository that shows GDD §12.3's refusal condition
+# being ENFORCED BY THE RUNNING APP rather than scanned for in source. The
+# regexes that used to pin it all survive the mutation that breaks it. A record
+# of an executed refusal is exactly the thing the two paragraphs above argue
+# must be gradeable rather than regenerable — and it is the record that dates
+# WHICH build was played, which no amount of re-running recovers after the fact.
+!.gauntlet/shots/cutin-cap/
