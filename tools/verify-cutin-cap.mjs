@@ -661,6 +661,36 @@ if (booted.ok) {
       `leg ${leg.n} (${leg.intent})  ${drive.attempts.length} attempts in ${drive.ms}ms -> '${drive.ended}'` +
         (drive.why === undefined ? '' : `  (${drive.why})`),
     );
+    /**
+     * WAIT FOR THE ENDING TO BE ON SCREEN BEFORE PHOTOGRAPHING IT.
+     *
+     * `driveMeet` returns the instant the phase's testID appears, and the view
+     * fades in after that. Photographing on return produced a leg-3 shot that
+     * was A FLAT DARK RECTANGLE — 7KB of nothing — filed under
+     * `leg-3-bombed.png` beside a record saying the leg reached the bomb-out
+     * screen and offered its beat. That is the exact failure `.gitignore`'s
+     * own argument for tracking this directory describes: a photograph of
+     * nothing next to a check that passed.
+     *
+     * It hid because the legs that CONTINUE already wait for `bombExit` below,
+     * before pressing it — so legs 1 and 2 photographed fine and only the last
+     * leg, which breaks before that wait, was ever blank. The waiter existed;
+     * it was on the wrong side of the shutter.
+     *
+     * Waiting on the ending's own control rather than a timeout, so a screen
+     * that never arrives is a named red rather than a longer blank.
+     */
+    const arrived =
+      drive.ended === 'bombed'
+        ? await until((s) => s.bombExit, CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS)
+        : drive.ended === 'recap'
+          ? await until((s) => s.leaveMeet, CAP_DRIVE.BEAT_TIMEOUT_MS)
+          : { ok: true, ms: 0 };
+    check(
+      arrived.ok,
+      `leg ${leg.n}: the '${drive.ended}' screen finished arriving, so the photograph below is of something`,
+      `waited ${arrived.ms}ms for its own exit control`,
+    );
     await page.screenshot({ path: path.join(outDir, `leg-${leg.n}-${drive.ended}.png`) });
 
     if (leg.n === LEGS.length) break;
