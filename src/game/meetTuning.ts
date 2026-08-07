@@ -365,6 +365,24 @@ export const MEET_TUNING = Object.freeze({
      * rows behind them are coming.
      */
     CHEER_RISE_PX: 7,
+
+    /**
+     * ...and where a lift THE MEET TURNED ON takes it — a third attempt, a PR,
+     * or one with a bomb on it, made.
+     *
+     * THE ONE WAY THE VERDICT ESCALATES, and deliberately not a duration. See
+     * `DELIBERATION_STAKES_EXTRA_MS`: a reaction may get louder, it may not get
+     * longer, because the player already knows the answer and a longer hold on
+     * a screen whose news has broken is dead air by construction.
+     *
+     * 8 is the ceiling on the shipped band (4/4/4/0 — the back tier is clamped
+     * against the top of the seating), so the biggest make in the meet is the
+     * one that empties the hall out of its seats and nothing can go past it.
+     * Measured: 149 more scene pixels than `CHEER_RISE_PX`, 558 against a
+     * seated hall.
+     */
+    URGENT_CHEER_RISE_PX: 8,
+
     /** Faster, too — a reaction rather than an anticipation. */
     CHEER_RISE_MS: 380,
   }),
@@ -459,6 +477,15 @@ export const MEET_TUNING = Object.freeze({
    * "Brief" is the GDD's word, so this is short. It is ALSO the beat §12.2
    * judges, so a playtest pass that finds it too short should lengthen it here
    * and nowhere else.
+   *
+   * THAT INSTRUCTION USED TO BE UNSATISFIABLE, AND `WALKOUT_TAIL` IS WHY IT IS
+   * NOT ANY MORE. `WALKOUT_MOTION` below adds up to 1,220 ms of choreography
+   * and `BAR_LOAD_MS` is 900, so at 1500 this number bought 280 ms of beat past
+   * the last thing that moved — and every millisecond of
+   * `THIRD_ATTEMPT_WALKOUT_EXTRA_MS`, `PR_ATTEMPT_WALKOUT_EXTRA_MS` and
+   * `BOMB_RISK_WALKOUT_EXTRA_MS`, up to 2,400 of them, landed there too. Turning
+   * any of the four lengthened a held frame over a decayed sound cue. What the
+   * tail carries now is below.
    */
   WALKOUT_MS: 1500,
 
@@ -593,13 +620,158 @@ export const MEET_TUNING = Object.freeze({
     SETTLE_MS: 300,
   }),
 
+  /**
+   * WALKOUT_TAIL — what happens AFTER he is set, which is where the escalation
+   * actually lands.
+   *
+   * ---------------------------------------------------------------------------
+   * THE DEFECT THIS BLOCK EXISTS TO CLOSE, IN NUMBERS
+   * ---------------------------------------------------------------------------
+   * `WALKOUT_MOTION` runs LOAD -> SET and then stopped: `useHallStep` cancelled
+   * its frame loop at `motionMs` and the sheet held its last drawing. Measured on
+   * a third-attempt squat with nothing banked (207.5 kg, six discs a side):
+   *
+   *   0-900       plates land every 90 ms, one rattle and one haptic each
+   *   420         the urgent line fades in; CROWD_SWELL_BIG (2,100 ms) starts
+   *   660         the line is fully opaque — the last Reanimated change on screen
+   *   1,080-1,980 the hall rises, then SATURATES at CROWD.WALKOUT_RISE_PX
+   *   2,120       motionMs. The frame loop is cancelled.
+   *   2,520       CROWD_SWELL_BIG has decayed to nothing
+   *   2,120-4,100 NOTHING CHANGES IN ANY CHANNEL — 48% of the beat, ~1,580 ms
+   *               of it silent as well as still
+   *
+   * A third attempt at a PR with a bomb on it was 2,680 ms of that, 56%. So all
+   * three escalation extras bought held frames, and a playtester told to lengthen
+   * `WALKOUT_MS` could only make the held frame longer. THAT is what made the
+   * escalation un-tunable rather than merely untuned.
+   *
+   * ---------------------------------------------------------------------------
+   * THE TAIL IS TWO NAMED WINDOWS NOW, NOT A LEFTOVER
+   * ---------------------------------------------------------------------------
+   *   BRACE   he is set and the bar is working. A loaded bar under a braced
+   *           lifter is never perfectly still: it rocks, it whips, and his chest
+   *           and hips move under it. One oscillation per `BRACE_CYCLE_MS`, and
+   *           a longer beat buys MORE OSCILLATIONS AT THE SAME TEMPO rather
+   *           than a slower one — see `walkout.ts`.
+   *   HUSH    the last stretch before the lift. Nothing moves, the hall stops
+   *           rising and the crowd bed is gone. THE STILLNESS IS THE POINT, and
+   *           it is a designed window with a length rather than whatever was
+   *           left over.
+   *
+   * ---------------------------------------------------------------------------
+   * WHY THE BRACE IS A FUNCTION OF TIME AND OF NOTHING ELSE (GDD §3.4, §12.3)
+   * ---------------------------------------------------------------------------
+   * §12.3 refuses a visible fatigue meter, and a brace cue that varied with
+   * readiness would be one with the numerals filed off — a player would learn to
+   * read "how tight he looks" as a readiness bar. So the oscillation's amplitude
+   * and tempo are CONSTANTS: they do not read fatigue, load, attempt number,
+   * weight or seed. `walkout.test.ts` measures that rather than promising it —
+   * the brace deltas are asserted identical across load ratios and across
+   * urgency. What urgency changes in this block is the CROWD and nothing else.
+   *
+   * NOBODY HAS WATCHED ANY OF IT (GDD §12.1). These are a structurally sane
+   * starting shape, exactly like every other number in this file.
+   */
+  WALKOUT_TAIL: Object.freeze({
+    /**
+     * Nominal length of one oscillation of the loaded bar under a braced lifter.
+     *
+     * The ACTUAL period is the brace window divided by the whole number of
+     * cycles nearest this, so the oscillation starts and ends at rest whatever
+     * the beat is worth (which is what keeps the cut into the rep seamless).
+     * A third attempt gets two of them, a third at a PR with a bomb on it gets
+     * six, and the tempo barely moves — the escalation is felt as MORE of the
+     * same waiting, not as a man who has started moving differently.
+     */
+    BRACE_CYCLE_MS: 420,
+
+    /**
+     * The shortest brace window worth oscillating in.
+     *
+     * Below this the whole tail is HUSH and the beat holds its last drawing,
+     * which is exactly what an opener does today: at the shipped tuning an
+     * opener's tail is 280 ms, 12% of its beat, and 280 ms of stillness before
+     * a lift is a settle rather than dead air. This is the line between the
+     * two, and it is the reason the escalation extras are what buy the live
+     * channel — which is the property the defect above was about.
+     */
+    MIN_BRACE_WINDOW_MS: 600,
+
+    /** How long he is simply still before the bar moves. */
+    HUSH_MS: 360,
+
+    /**
+     * Peak extra whip in the bar across one cycle, in SPRITE pixels.
+     *
+     * `QUANTISE.BEND_QUANTUM_PX` is 0.5, so this is one drawn step either way:
+     * measured, one bend quantum moves 77 of the composite's 22,490 scene
+     * pixels.
+     */
+    BRACE_BEND_PX: 0.5,
+
+    /**
+     * ...and how far it rocks, in degrees. One `TILT_QUANTUM_DEG`; measured at
+     * 134 scene pixels.
+     */
+    BRACE_TILT_DEG: 1,
+
+    /**
+     * ...and how many authored PITCH rungs the body takes at the top of a
+     * cycle — the chest-and-hip half of a brace (`PITCH.LEVEL_DELTAS`).
+     *
+     * THE RIG HAS NO BREATH CHANNEL AND THIS IS THE NEAREST ONE, said plainly
+     * rather than dressed up. `pitchLevel` models the bar riding forward and
+     * the lifter fighting it back — hips up, chest down, head craned — which is
+     * what the camera can see of a man taking air under a maximal bar from the
+     * front. A dedicated breath channel belongs to `src/art/lifterSprite.ts`,
+     * not to this screen. Measured at 127 scene pixels for one rung.
+     */
+    BRACE_PITCH_STEPS: 1,
+
+    /**
+     * How far through the standing wave the hall has travelled by the END of
+     * the brace window, on an urgent attempt.
+     *
+     * `CROWD.WALKOUT_RISE_PX` is where the wave is when he is set; this is
+     * where it has reached when he stops moving. On the shipped band 8 is the
+     * ceiling (4/4/4/0 — the back tier's heads sit on the top row and are
+     * clamped), so this is the wave running out of hall, which is the right
+     * shape for a room that has finished getting up. Measured: 298 / 409 / 558
+     * scene pixels against the seated-at-5 picture for rows 6 / 7 / 8.
+     *
+     * The rise is spread over the WHOLE brace window, so a longer beat is a
+     * slower hall rather than a hall that gets up sooner and then waits.
+     */
+    HUSH_CROWD_RISE_PX: 8,
+  }),
+
   // -------------------------------------------------------------------------
   // Judging (GDD §6.2 step 4)
   // -------------------------------------------------------------------------
 
   /**
-   * Dead air between the bar being racked and anything appearing. The lifter
-   * has finished; nobody has said anything yet.
+   * How long the lifter is left standing under the bar with nothing said.
+   *
+   * THE SENTENCE HERE USED TO READ "dead air between the bar being racked and
+   * anything appearing", AND THE PIXELS SAY OTHERWISE. `VerdictView` draws
+   * `MeetHallView` with `hallLifterFrame` — the brace pose, the bar loaded, on
+   * his back — for the whole deliberation and the whole verdict, and
+   * `.gauntlet/shots/meet/deliberation.png` and `verdict-split.png` both
+   * photograph exactly that. Nothing racks anything.
+   *
+   * The drawing is the honest thing to correct the sentence against rather than
+   * the other way round: `renderLifterFrame` has ONE pose family, a figure with
+   * a bar across his shoulders, and there is no racked-bar sprite to switch to.
+   * Making one is `src/art/lifterSprite.ts`'s job (`walkout.ts`'s header records
+   * the same limitation for the loading crew), and inventing a second barbell on
+   * this screen is the GDD §7.1 violation an earlier pass removed.
+   *
+   * "Dead air" is also no longer true of the beat: see
+   * `DELIBERATION_STAKES_EXTRA_MS` below and `walkout.ts`'s `buildHold`.
+   *
+   * @guarantee the deliberation and verdict screens draw the lifter under a
+   * loaded bar — `src/meet/meetStage.test.ts`, "the wait for the lights is
+   * drawn with the bar still on his back".
    */
   VERDICT_SILENCE_MS: 500,
 
@@ -615,6 +787,62 @@ export const MEET_TUNING = Object.freeze({
    * point of the deliberation beat is that the player cannot read it.
    */
   CLEAR_CALL_DELIBERATION_MS: 380,
+
+  /**
+   * WHAT THE WAIT FOR THE LIGHTS IS WORTH, on top of the two numbers above.
+   *
+   * ---------------------------------------------------------------------------
+   * THE ASYMMETRY THIS CLOSES
+   * ---------------------------------------------------------------------------
+   * `walkoutMs` escalated three ways — third attempt, PR, bomb risk — and
+   * `deliberationMs` and `verdictMs` took no attempt number and no flags at all,
+   * so the beat this game is NAMED after was byte-identical in pacing between
+   * the first squat of the day and the deadlift that decides the meet. Nothing
+   * in the tree defended that; it was an omission.
+   *
+   * ---------------------------------------------------------------------------
+   * ONLY THE WAIT ESCALATES IN DURATION. THE NEWS ESCALATES IN INTENSITY.
+   * ---------------------------------------------------------------------------
+   * THIS IS THE RULE, and it is the same lesson `WALKOUT_TAIL` records one
+   * screen over. A beat may be lengthened only if it has something to spend the
+   * length on:
+   *
+   *   - The walk-out and the deliberation are ANTICIPATION. The player is
+   *     waiting for something they know is coming, waiting IS the content, and
+   *     both now have a live channel to wait in (`buildHold` in `walkout.ts`).
+   *     These escalate in duration.
+   *   - `VERDICT_HOLD_MS` is NEWS — it runs after GOOD LIFT / NO LIFT is on
+   *     screen and the player already knows. Every millisecond added there is a
+   *     frame they are waiting to leave, which is precisely the defect
+   *     `WALKOUT_TAIL` exists to remove, reintroduced one screen later. So
+   *     `verdictMs()` takes no stakes and MUST NOT: a third attempt is not held
+   *     on screen longer than an opener.
+   *   - What a reaction may escalate is INTENSITY, and it does:
+   *     `CROWD.URGENT_CHEER_RISE_PX` takes the hall further up on a lift the
+   *     meet turned on than on an ordinary one.
+   *
+   * A future pass that wants a longer third-attempt verdict should give that
+   * screen a channel first and then add the knob, not the other way round.
+   *
+   * ---------------------------------------------------------------------------
+   * IT CANNOT LEAK THE CALL, AND THAT IS WHY IT IS SAFE
+   * ---------------------------------------------------------------------------
+   * `VerdictView`'s standing rule is that the deliberation must not tell the
+   * player which way it went, which is why `DELIBERATION_MARGIN` is set wider
+   * than the band that can actually split. These three extras key on WHICH
+   * ATTEMPT THIS IS — a fact printed on the screen the player just came from —
+   * and on nothing the judges decided. They also make the close-call signal
+   * harder to read rather than easier, by putting a second, louder term into
+   * the same duration.
+   */
+  DELIBERATION_STAKES_EXTRA_MS: Object.freeze({
+    /** A third attempt. §12.2's reference beat, one screen later. */
+    THIRD_ATTEMPT: 600,
+    /** Above the lifter's best competition lift. Stacks. */
+    PR_ATTEMPT: 400,
+    /** Nothing banked: these lights decide whether the lift bombs. Stacks. */
+    BOMB_RISK: 500,
+  }),
 
   /** Delay before the first light comes up, once deliberation ends. */
   LIGHT_REVEAL_FIRST_DELAY_MS: 240,
