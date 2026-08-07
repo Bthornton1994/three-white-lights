@@ -3372,6 +3372,10 @@ describe('the module exports no writer', () => {
       'readingValue',
       'receiveProgressionSnapshot',
       'rejectProposal',
+      // NOT A WRITER, which is what this list is about. It takes a value away
+      // from every writer there is or ever will be — see its docstring for why
+      // the boundary needs one exported function that does that.
+      'sealServerValue',
       'snapshotAcknowledges',
       'snapshotFacts',
       'snapshotRevision',

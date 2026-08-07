@@ -3044,7 +3044,12 @@ export interface ProgressionSnapshot {
  * string-only walk would freeze the shell and leave the facts writable.
  *
  * Freezing is not a side effect in the sense CLAUDE.md forbids: it touches only
- * objects this function's caller just constructed, never an input.
+ * objects this function's caller just constructed, never an input. THAT IS A
+ * CONDITION ON THE CALLER, not a property of this function, and it is the one
+ * thing to check before adding a call: seal something you assembled, never
+ * something you were handed. `sealServerValue` below is the same function under
+ * the name the boundary's other modules call it by, and its docstring carries
+ * the argument for each of its call sites.
  */
 function deepFreeze<T>(value: T): T {
   if (value === null || typeof value !== 'object') {
@@ -3058,6 +3063,78 @@ function deepFreeze<T>(value: T): T {
     deepFreeze((value as Record<string | symbol, unknown>)[key]);
   }
   return Object.freeze(value);
+}
+
+/**
+ * Seals a value the server boundary just assembled, so nothing downstream can
+ * write into it while it is in flight. Deep, and the same function the snapshot
+ * is minted through — one implementation, so a value cannot be sealed two
+ * different amounts depending on which door it came out of.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS EXISTS: `readonly` IS NOT PART OF ASSIGNABILITY
+ * ---------------------------------------------------------------------------
+ * Every field on `ServerRecord` and `ProgressionSnapshotWire` is `readonly`, and
+ * that stops nothing. TypeScript does not consider property `readonly` modifiers
+ * when deciding assignability, so
+ *
+ *     const bests: Record<LiftKind, number | null> = response.wire.bestE1rmKg;
+ *     bests.squat = poundsNumber;
+ *
+ * type-checks with no cast, no `any`, and no diagnostic. That is not a corner
+ * case: it was written into `useSession.ts` on the app's own close-out route,
+ * `tsc --noEmit` stayed clean, the suite stayed at exactly 63 files / 2654
+ * tests, and the pound number arrived in `ConfirmedFacts.bestE1rmKg` as
+ * `{"kind":"confirmed","value":485.0}` against a true 220 kg.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY A SEAL AND NOT A NINTH ROW IN 7.5
+ * ---------------------------------------------------------------------------
+ * 7.5 tallies three kinds of site and all three are CONSTRUCTIONS OR CALLS — a
+ * record is born, a wire is born, a snapshot is admitted. An assignment is none
+ * of those, so no row was missing and no scan was mis-scoped; the instrument was
+ * counting the wrong species. Enumerating assignment sites is strictly harder
+ * than enumerating construction sites, and the construction enumeration has now
+ * been found too narrow six times. Sealing REMOVES THE CAPABILITY instead: the
+ * wire has ONE producer, so sealing there covers every wire that will ever
+ * exist, including ones written by callers nobody has thought of yet. No list to
+ * keep current.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IT DOES NOT BUY, SAID PLAINLY
+ * ---------------------------------------------------------------------------
+ *   - IT IS A RUNTIME REFUSAL, NOT A COMPILE ERROR. The line above still
+ *     type-checks. It now throws where it runs, in strict mode, which every
+ *     module here is (ES modules are strict by definition, and
+ *     `sessionServer.test.ts` pins that the throw is real rather than silent).
+ *   - IT SAYS NOTHING ABOUT MAGNITUDES. A wire that leaves the server already
+ *     holding a pound number in a kilogram field is sealed just as firmly. That
+ *     is 7.4's residual (b) and this does not touch it.
+ *   - IT DOES NOT SEAL WHAT THE SERVER READS BEFORE IT BUILDS. A write into a
+ *     `ServerRecord` is closed by sealing the record's producers, which is done
+ *     — but by an enumeration (7.5's `record` rows) rather than by a chokepoint,
+ *     because a record has six producers and no single one.
+ *
+ * ---------------------------------------------------------------------------
+ * THE PRECONDITION ON A CALLER, WHICH IS DIFFERENT FOR THE TWO KINDS
+ * ---------------------------------------------------------------------------
+ * `snapshotWireFor` builds every nested object fresh — a new `bestE1rmKg`, a new
+ * `streakWire`, a `meets` array of per-meet copies, a new `wallet` — so sealing
+ * a wire touches nothing the function was handed. It is a pure producer.
+ *
+ * A `ServerRecord` producer is NOT: `applyTrainingSession` carries the caller's
+ * `meets` and `wallet` through by reference and `applyMeetResult` carries four
+ * fields through, so sealing the result also seals objects that arrived. That is
+ * deliberate and is the guarantee rather than an accident — every one of those
+ * fields is `readonly` on the type, a caller that writes to one after handing it
+ * in is the exact defect being closed, and in the app the incoming record is
+ * already sealed by its own producer so the recursion is a no-op. It is called
+ * out because it makes this function's effect reach past what the caller built,
+ * which the snapshot mint's version of this comment used to promise it never
+ * would.
+ */
+export function sealServerValue<T>(value: T): T {
+  return deepFreeze(value);
 }
 
 function contents(snapshot: ProgressionSnapshot): SnapshotContents {

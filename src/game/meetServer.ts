@@ -322,7 +322,7 @@ import {
 // with the unit discarded, and this module must not hold a total that has
 // forgotten what it is measured in — see THE UNIT in the header.
 import { DOTS_TOTAL_UNIT } from './dots';
-import { declaredRows } from './progression';
+import { declaredRows, sealServerValue } from './progression';
 import type {
   // `meetDayFacts` takes the training seed's KILOGRAM arm, so the one number
   // that crosses training -> meet arrives with its unit attached instead of
@@ -993,7 +993,10 @@ export function applyMeetResult(
     bodyweightKg: bodyweight.kilograms,
   };
 
-  const next: ServerRecord = {
+  // SEALED. `sealServerValue`'s docstring has the argument and the measurement;
+  // the four fields carried through by reference below are sealed with it, which
+  // is deliberate and is written up there.
+  const next: ServerRecord = sealServerValue({
     revision: record.revision + 1,
     totalKg: nextTotalKg,
     // CARRIED THROUGH UNTOUCHED. A meet has no route to an e1RM — see the
@@ -1007,7 +1010,7 @@ export function applyMeetResult(
     wallet: record.wallet,
     // CARRIED THROUGH UNTOUCHED. The hidden ledger is the daily loop's.
     fatigue: record.fatigue,
-  };
+  });
 
   return {
     ok: true,
