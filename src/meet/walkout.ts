@@ -25,14 +25,24 @@
  * reason: a 16-bit game shipped a finite sheet, and continuous per-frame
  * deformation is a modern-engine tell (GDD §7.1).
  *
- * Measured, at a maximal opener on a six-disc bar: 31 held frames over 2,120 ms,
- * resolving to EIGHTEEN distinct sprite drawings. A third attempt is 33 frames
- * and the same 18 drawings — what its two extra frames carry is the room coming
- * up, not the man. So the renderer rasterises 18 sprites and at most 5 rooms for
- * a whole beat, rather than one of each per display frame.
+ * Measured on a maximal squat on a six-disc bar, at the shipped tuning:
+ *
+ *   attempt                    beat   motion   brace     held   distinct  rooms
+ *                                              window   frames  sprites
+ *   opener / second           2,400    2,120     none      31      18       1
+ *   third                     3,300    2,120  820 (x2)     45      20       9
+ *   third, nothing banked     4,100    2,120  1,620 (x4)   53      20       9
+ *   third, PR, nothing banked 4,800    2,120  2,320 (x6)   59      20       9
+ *
+ * So the longest beat in the piece costs the renderer TWENTY per-pixel shading
+ * passes and nine rooms, rather than one of each per display frame — and the
+ * escalation buys drawings (31 -> 59) rather than held frame, which is exactly
+ * what it did not do before. `walkout.test.ts` pins the third-with-a-bomb row
+ * against this table, so a tuning pass that moves it fails with the new numbers
+ * in the message rather than leaving this paragraph quietly stale.
  *
  * ===========================================================================
- * THE ORDER IS LOAD -> UNRACK -> STEP -> SETTLE -> SET
+ * THE ORDER IS LOAD -> UNRACK -> STEP -> SETTLE -> SET -> HUSH
  * ===========================================================================
  * The discs land BEFORE the bar comes off the hooks. `LOAD` is at least
  * `BAR_LOAD_MS` and at least long enough for every disc on the sleeve at
@@ -118,7 +128,7 @@
  * PURITY AND PROVENANCE
  * ===========================================================================
  * Zero React, zero Skia, zero I/O, no clock and no randomness: the same
- * (loadRatio, plateCount, urgent) gives the same sheet every time. Every number
+ * (loadRatio, plateCount, urgent, beatMs) gives the same sheet every time. Every number
  * comes from `MEET_TUNING.WALKOUT_MOTION`, `MEET_TUNING.CROWD` or the sprite's
  * own `QUANTISE`/`STRAIN`; `meetTuning.test.ts` scans this directory for bare
  * literals.
@@ -764,8 +774,9 @@ function coalesce(
 /**
  * The drawing showing at `ms`.
  *
- * Past the end of the motion this is the last frame — he is set, and the rest of
- * the beat is him standing there, which is the point of the beat.
+ * Past the end of the BEAT this is the last frame. Past the end of the MOTION it
+ * is not: the tail is a brace and a hush and it has drawings of its own, which
+ * is the thing this module did not used to have.
  */
 export function walkoutFrameAt(sequence: WalkoutSequence, ms: number): WalkoutFrame {
   const last = sequence.frames[sequence.frames.length - 1];
