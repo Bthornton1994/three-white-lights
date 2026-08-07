@@ -253,7 +253,7 @@ describe('the placeholder recap stands in for a calendar that does not exist', (
       'an in-flight submission keeps the eyebrow',
     ).toBe(false);
 
-    // EVERY OTHER REFUSAL IS A BUG, AND "Meet recorded" WOULD BE A LIE ON IT.
+    // EVERY OTHER REFUSAL IS A BUG, AND THIS SENTENCE WOULD BE A LIE ON IT.
     for (const other of [
       'MEET_REPLAY_REFUSED',
       'MEET_INCOMPLETE',
@@ -279,7 +279,9 @@ describe('the placeholder recap stands in for a calendar that does not exist', (
   });
 
   it('says the one line it was ruled to say, and is reachable from the screen', () => {
-    expect(CAREER_CALENDAR_PLACEHOLDER_COPY.LINE).toBe('Meet recorded — Career calendar coming soon');
+    expect(CAREER_CALENDAR_PLACEHOLDER_COPY.LINE).toBe(
+      'Meet complete — results saved to your last recorded meet. Career calendar coming soon.',
+    );
 
     // REACHABLE. A placeholder nothing renders is not a fix.
     expect(

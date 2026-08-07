@@ -103,17 +103,21 @@ export const PLACEHOLDER_REFUSAL: MeetServerErrorCode = 'MEET_ALREADY_RECORDED';
 export const PLACEHOLDER_PHASE: MeetDayPhaseId = 'recap';
 
 /**
- * THE COPY, VERBATIM AS RULED.
+ * THE COPY, VERBATIM AS RULED — AND CORRECTED ONCE, FOR ACCURACY.
  *
- * A HUMAN RULED THIS SENTENCE AND IT IS SHIPPED UNEDITED. Recorded here because
- * it is worth a second look and not a builder's call to make: the meet the
- * player just lifted was NOT recorded — it was refused, and the result on the
- * row is the EARLIER meet's. "Meet recorded" is true of the row and arguably
- * misleading about the nine attempts the player just took. Changing it is a
- * copy decision for the human who wrote it; flagging it is this comment's job.
+ * The first ruled sentence was "Meet recorded — Career calendar coming soon".
+ * A builder shipped it unedited and flagged it rather than quietly changing it,
+ * which was right: the meet the player just lifted was NOT recorded. It was
+ * REFUSED, and any number the app can show belongs to the EARLIER meet. "Meet
+ * recorded" was true of the row and misleading about the nine attempts the
+ * player had just taken.
+ *
+ * The human then corrected it. What ships says what actually happened: the meet
+ * is over, and the result on file is the previous one's. That distinction is
+ * the entire reason this screen exists, so the copy has to carry it.
  */
 export const CAREER_CALENDAR_PLACEHOLDER_COPY = Object.freeze({
-  LINE: 'Meet recorded — Career calendar coming soon',
+  LINE: 'Meet complete — results saved to your last recorded meet. Career calendar coming soon.',
 });
 
 /**

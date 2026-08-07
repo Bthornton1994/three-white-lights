@@ -1567,7 +1567,8 @@ await checkOnScreen(NAV_LEAVE_MEET, `the way back is on screen (${NAV_LEAVE_MEET
 //
 // `careerCalendarPlaceholder.ts` is TEMPORARY SCAFFOLDING for the meet the
 // server refuses as already recorded (GDD §6.1, `career-calendar-placeholder`).
-// A player who lifted a real total must never be told "Meet recorded — Career
+// A player who lifted a real total must never be told "Meet complete — results
+// saved to your last recorded meet". The scaffolding line belongs to the Career
 // calendar coming soon" instead of their result, and the unit suite cannot see
 // this: `vitest.config.ts` is `environment: node` and has no renderer.
 //

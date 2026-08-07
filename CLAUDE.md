@@ -63,11 +63,11 @@ place"*, *"nothing else paints in here"*, *"every number here is derived"* —
 then there must be a test that goes red if the guarantee stops holding. Prose is
 not a check, and a reader cannot tell the difference by looking.
 
-This is not a style preference. It has now failed **nine times** in this
+This is not a style preference. It has now failed **eight times** in this
 codebase; the fifth was found inside the comment that had just been rewritten to
 fix the fourth, the sixth one file away from where the fifth was fixed, and the
-seventh in a fix's own verification oracle, the eighth naming a test file that does not exist, and the ninth inside a test
-rather than a comment:
+seventh in a fix's own verification oracle and the eighth naming a test file that
+does not exist:
 
 - a scrim constant *"registered, documented and read by no pixel"*;
 - a dismiss window whose stated causation nothing on the app's route consulted;
@@ -128,20 +128,6 @@ implementation is not enough; ask what fact both of them read, and probe the
 region where that fact is unavailable rather than reviewing the two for
 resemblance.
 
-**A SELF-SATISFYING ASSERTION IS THE SAME FAILURE INSIDE A TEST.** Every
-instance above is prose without a test. This one is a test assertion that cannot
-fail: `MODULE_SOURCE.includes(THE_CONSTANT)`, where the module declares that
-constant from a literal — so the file necessarily contains its own value, the
-check resolves, it reads like a pin, and no mutation of the thing it names can
-redden it. It was caught only because renaming the id reddened a *different*
-direction and left this one green.
-
-**The witness bar does not catch this**, and that is worth knowing: a witness
-proves ONE assertion in a test bites, not that every assertion in it does. When
-you write a check that reads a file for a string, ask where that string comes
-from — if the file is also its source, you have written a tautology with a
-sincere name.
-
 **And be honest about the limit.** No scan can decide which prose asserts a
 guarantee, so any mechanism here is necessarily partial. The current scoping
 rule keys on a run of capitalised absolutes, which is this codebase's house
@@ -154,6 +140,45 @@ existing claims it covers. A narrow honest ban beats a broad one that has to be
 suppressed everywhere; a partial mechanism that declares its coverage beats one
 that implies completeness. What is not acceptable is a guarantee in prose with
 nothing behind it and no note saying so.
+
+## An Assertion Is Vacuous If It Cannot Fail
+
+**A separate rule from the one above, and it needs a separate scan.** That rule
+is about prose with no test behind it. This one is about a test that exists,
+runs, passes, and could not have done anything else. The two look identical in a
+green suite and nothing catches both.
+
+**The definition to check against: an assertion is vacuous if no state of the
+code it is meant to be checking would make it red.** Not "it passes today" —
+*there is no version of the subject that fails it.*
+
+Shapes this has actually taken here:
+
+- **Self-referential.** `MODULE_SOURCE.includes(THE_CONSTANT)` where the module
+  declares that constant from a literal — the file necessarily contains its own
+  value. Caught only because renaming the id reddened a *different* direction
+  and left this one green.
+- **An empty domain.** A sweep whose generator never produces the failing case;
+  a list-walking check that passes trivially when the list is empty; a purchase
+  arm at a price that buys nothing inside the calendar length.
+- **A bound the unfixed behaviour already satisfied**, or an equality that is
+  one-sided by construction and cannot fail upward.
+- **An oracle that mirrors its subject** — an expectation restating the
+  implementation character for character, which cannot disagree with the code it
+  grades.
+- **A domain that cannot reach the case.** The after-offer routing was inverted
+  under ~590,000 green decisions because the case is unreachable at lag 0.
+- **An input that is silently absent.** A parser that reads a real value as
+  missing, or a comparison against a seed the session has not yet beaten, so
+  both sides are the same number.
+
+**The witness bar does not cover this.** A `MUTATION_WITNESSES` entry proves
+*one* assertion in a test bites; it says nothing about the others in the same
+test. So when you write a check, ask the question directly: *what edit to the
+subject turns this red?* If you cannot name one, the check is decoration however
+sincere its message. And give every sweep a non-vacuity guard that pins what it
+actually saw — counts, not bounds — so an empty domain reports itself instead of
+passing.
 
 ## Architecture Rules
 

@@ -1504,7 +1504,7 @@ ungated door to the one local meet that exists, and a player who opens it a
 second time in an app run has their result refused as already recorded (§11 has
 the measurement: 612.5 kg banked under `local-open-2026`, the second meet
 refused). That left a blank recap. A **minimal placeholder screen** now stands in
-its place — one line, reading "Meet recorded — Career calendar coming soon",
+its place — one line, reading "Meet complete — results saved to your last recorded meet. Career calendar coming soon.",
 with the shell's existing BACK TO TRAINING as the way out.
 
 It is a **stopgap ruled by a human, not a design**, and it deliberately does not
