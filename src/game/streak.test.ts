@@ -1090,8 +1090,8 @@ describe('streak increments', () => {
       lastTrainedDay: addDays(DAY_ZERO, 2),
       // The run this lifter is on. Carried so `streakIfTrainedToday` can answer
       // "it does not move" — the recorder just refused, one line up. Before it
-      // existed the only total mapping was a fall-through, and this lifter's
-      // three-day run rendered as `1`.
+      // existed the only mapping defined on every kind was a fall-through, and
+      // this lifter's three-day run rendered as `1`.
       currentStreak: 3,
     });
   });

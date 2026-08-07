@@ -1030,6 +1030,46 @@ with **900** covered gaps and **11778** day-in-past openings on runs longer than
 one day — the cases where the old `: 1` was a genuinely different number.
 Parameters and counts live in `streakSweep.ts`'s `ONE_MAPPING_SWEEP`.
 
+#### What the reveal still needs — NOT BUILT, and scoped here rather than guessed
+
+The number is now right. **The reveal this section describes still does not
+exist**, and the payload it needs is computed correctly and then dropped. Written
+down so the next builder starts from the shape rather than rediscovering it.
+
+`openDay`'s `'gap-covered-by-recovery-days'` already carries everything the
+paragraph above asks for — `daysMissed`, `daysCoveredFreeByGrace`,
+`recoveryDaysHolding`, `balanceIfBankedToday`, `lastDayStreakCanBeSaved`,
+`isFirstRecoveryDaySave`. Two halves are missing, and they are **not** the same
+size:
+
+- **The read half is small and needs no boundary change.** `todayFromCache`
+  already calls `openDay` on cached state, so the payload is available on the
+  client today; it reads none of it and `TodayFromCache` has no field to hold it.
+  Adding one is a named type, a second exhaustive `switch` over `DayOpening`, and
+  a field.
+- **The write half is a boundary decision, not a field.** `recordTrainingDay`
+  returns a populated `RecoveryDaySave`; `applyTrainingSession` drops it and
+  `localSessionServer.recordTrainingSession` returns only the snapshot. Carrying
+  it to the client means either a new fact on `ProgressionSnapshotWire` — which
+  models *idempotent state*, and a save is a *one-time event*, so it does not
+  fit — or a third output on `SessionServerPort`, which `sessionClient.ts`'s
+  header explicitly forbids ("There is no third output and no accessor for the
+  row"). That is a design call, not an edit.
+
+Neither was built, deliberately: a field with no reader is the
+"registered, documented and read by no pixel" failure this codebase has already
+had, and the reveal screen itself is a feature and a human's call.
+
+**A browser check would not currently catch a regression here, and this is the
+third copy of the same blind spot.** `sessionPreview.ts`'s `previewContext()`
+hardcodes `streakIfTrainedToday: SESSION_PREVIEW.STREAK_BEFORE + 1` instead of
+routing through `sessionContextFrom`, so every `?session=` moment — and therefore
+`verify-session-boundary.mjs` and `capture-session.mjs` — bypasses the mapping
+entirely. Its `recordBeforeSession()` also sets `lastTrainedDay` to *yesterday*,
+the same empty domain the unit fixtures had. A check that would bite must drive
+the real `useSession` route from a **seeded** row, which the local stand-in
+supports (`LocalSessionServerOptions.record`) but no debug route reaches.
+
 ### 4.4 Free Grace for Short Gaps — Ruled
 
 **Status: decided. Short gaps are covered for free; Recovery Days are spent only

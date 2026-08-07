@@ -1786,7 +1786,7 @@ export type DayOpening =
    * `DAY_IN_PAST` and `ALREADY_TRAINED_TODAY` — so on both of them the honest
    * answer to "what will my streak read if I train today" is "what it reads
    * now", and a screen needs the number to say that. Without this field the
-   * only total mapping available was a fall-through, which is what
+   * only mapping defined on every kind was a fall-through, which is what
    * `streakIfTrainedToday` used to be and what shipped the wrong number.
    */
   | {
