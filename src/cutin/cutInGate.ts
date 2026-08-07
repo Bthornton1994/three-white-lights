@@ -194,6 +194,7 @@
  *    beat, whichever of the three sub-kinds it carried. It now pins the
  *    sub-kinds too, and goes red the day a screen starts offering `tier` — at
  *    which point this paragraph is deleted along with it.
+ *    @guarantee tier-pr-is-reached-by-no-screen
  *  - IT CANNOT SAY THE RATES ARE RIGHT. Nothing in this repository can. GDD
  *    §12.1 is explicit that this is the part of the job that was never
  *    automatable.

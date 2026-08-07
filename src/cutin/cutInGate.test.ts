@@ -958,10 +958,17 @@ describe('the gate is a pure module (CLAUDE.md architecture rules)', () => {
     // over the tree, not a second dialect of it (CLAUDE.md). The control comes
     // first: the scanner has to be shown finding a bare number in THIS FILE'S
     // OWN TEXT before its silence is read as an answer.
+    //
+    // The control's literal is DISTINCTIVE on purpose. It used to be `42`, and
+    // a mutant that added `const x = 42;` to the gate made the CONTROL fail
+    // ("expected ['42','42'] to equal ['42']") instead of the property — the
+    // test went red for the right reason with the wrong message, which is half
+    // a check by this repository's own rule.
+    const CONTROL_LITERAL = '4242.7';
     expect(
-      auditSource(GATE_PATH, `${GATE}\nconst aBareNumber = 42;\n`).map((f) => f.text),
+      auditSource(GATE_PATH, `${GATE}\nconst aBareNumber = ${CONTROL_LITERAL};\n`).map((f) => f.text),
       'the audit no longer sees a bare number in this file, so its silence means nothing',
-    ).toEqual(['42']);
+    ).toContain(CONTROL_LITERAL);
     // A COUNT, NOT A BOUND: the empty string is "no findings", and a reopening
     // prints the literal and the declaration it hid in rather than a bare false.
     expect(formatFindings(auditSource(GATE_PATH, GATE))).toBe('');

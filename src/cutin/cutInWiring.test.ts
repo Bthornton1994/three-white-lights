@@ -1960,15 +1960,21 @@ describe('every firing moment of GDD §7.2 is wired to a screen', () => {
     // things that were never going to be in the answer.
     const offered = beatKindsOffered();
     expect(offered.kinds, 'the useOfferCutIn scan matched nothing at all').not.toEqual([]);
-    expect(offered.kinds).toEqual(['meet-over', 'meet-walkout', 'record', 'work-set']);
+    // JOINED, NOT COMPARED AS ARRAYS. `expected [ … (1) ] to deeply equal
+    // [ … (2) ]` is the shape CLAUDE.md calls half a check: it goes red and
+    // says nothing about WHICH kind arrived or left.
+    expect(
+      offered.kinds.join(', '),
+      `offered by ${offered.perFile.map(([file, args]) => `${file}(${args.length})`).join(', ')}`,
+    ).toBe('meet-over, meet-walkout, record, work-set');
     // Non-vacuity on the scoping itself: every one of the five call sites must
     // have contributed, or the set above is a smaller claim than it looks.
-    expect(offered.perFile.map(([file]) => file).sort()).toEqual(
-      [...CALLERS.map(([, file]) => file)].sort(),
+    expect(offered.perFile.map(([file]) => file).sort().join(', ')).toBe(
+      [...CALLERS.map(([, file]) => file)].sort().join(', '),
     );
   });
 
-  it('AND THE THIRD PR SUB-MOMENT IS REACHED BY NO SCREEN — record: ‘tier’ is unbuilt', () => {
+  it('AND THE THIRD PR SUB-MOMENT IS REACHED BY NO SCREEN — record: ‘tier’ is unbuilt [tier-pr-is-reached-by-no-screen]', () => {
     // ===================================================================
     // THE HOLE THE TEST ABOVE COULD NOT SEE, WRITTEN DOWN AS A CHECK
     // ===================================================================
@@ -1996,7 +2002,11 @@ describe('every firing moment of GDD §7.2 is wired to a screen', () => {
     // Non-vacuity first: the scan really matches something, so `.not.toContain`
     // below is not being asked of an empty list.
     expect(recordKinds.length, 'no screen reports a record sub-kind at all').toBeGreaterThan(0);
-    expect(recordKinds).toEqual(['e1rm', 'total']);
+    expect(
+      recordKinds.join(', '),
+      "if 'tier' has arrived here, a screen has learnt to report tier qualification — delete this " +
+        'test and the paragraphs it points at in cutInGate.ts §5 and RecapView.tsx',
+    ).toBe('e1rm, total');
     expect(recordKinds).not.toContain('tier');
     // ...and the gate does permit the third, spelled out here rather than read
     // off `CUT_IN_RECORD_KINDS`, so this stays a statement about the GAP
