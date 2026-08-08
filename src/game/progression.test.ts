@@ -400,6 +400,19 @@ interface RouteScan {
   readonly unsealed: readonly string[];
   /** How many shipped ones ARE. The non-vacuity counterweight to the above. */
   readonly sealedLiterals: number;
+  /**
+   * Every call in SHIPPED code spelled `sealServerValue(…)`, as `file site`,
+   * whatever it resolves to — so a shim is counted here rather than skipped.
+   */
+  readonly sealCallSites: readonly string[];
+  /**
+   * The repo-relative files those callees are DECLARED in, deduplicated and
+   * sorted. `['src/game/progression.ts']` is the passing state; anything else is
+   * a second function answering to the seal's name. `<unresolved>` for a callee
+   * the checker cannot follow, so a resolution that stops working reports itself
+   * instead of emptying the set.
+   */
+  readonly sealCalleeSources: readonly string[];
 }
 
 /**
@@ -466,10 +479,65 @@ function scanRoutes(): RouteScan {
 
   const receiverName = 'receiveProgressionSnapshot';
   const receiverFile = path.join(REPO_ROOT, 'src/game/progression.ts');
-  // The seal, by name. `sealServerValue` is asserted to be a real export of
-  // this module below, so a rename cannot leave this string matching nothing —
-  // which is how a scan becomes vacuous without anybody editing it.
+  // The seal. `sealServerValue` is asserted to be a real export of this module
+  // below, so a rename cannot leave this string matching nothing — which is how
+  // a scan becomes vacuous without anybody editing it. THE NAME IS A PREFILTER
+  // AND NOT THE TEST; `declaringFileOf` below is the test.
   const SEAL_NAME = 'sealServerValue';
+  const sealFile = path.join(REPO_ROOT, 'src/game/progression.ts');
+
+  /**
+   * The identifier a callee is spelled with — `f()` and `o.f()`, and nothing
+   * else. Split out because the two name-driven checks below both need it and
+   * one of them used to inline its own copy.
+   */
+  const calleeIdentifier = (call: ts.CallExpression): ts.Identifier | undefined => {
+    const callee = call.expression;
+    if (ts.isIdentifier(callee)) return callee;
+    // `o.#f()` is a `PrivateIdentifier`, which cannot be an import and cannot
+    // name either of the two functions this scan asks about, so it is not one.
+    if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.name)) return callee.name;
+    return undefined;
+  };
+
+  /**
+   * WHERE A CALLEE IS DECLARED, ASKED OF THE CHECKER RATHER THAN OF ITS SPELLING.
+   *
+   * ONE IMPLEMENTATION WITH TWO CALLERS, WHICH IS THE POINT OF THE FUNCTION AND
+   * NOT A TIDINESS PREFERENCE. Both `isSealedAt` and the `receive` tally are
+   * name-driven checks in this one `visit`. The `receive` half resolved through
+   * the checker; the seal half compared `callee.text` to a string twelve lines
+   * up and stopped there. CLAUDE.md's "a guard written for one hook must be
+   * applied to its sibling, mechanically" failed inside a single function body,
+   * and a MEASURED consequence followed — replacing `meetPreview.ts`'s
+   *
+   *     import { sealServerValue } from './progression';
+   *
+   * with an aliased real import plus a local no-op shim spelled the same
+   *
+   *     import { sealServerValue as realSealServerValue } from './progression';
+   *     const sealServerValue = <T,>(value: T): T => { void realSealServerValue; return value; };
+   *
+   * left `tsc --noEmit` at exit 0 and `progression.test.ts` +
+   * `sessionServer.test.ts` + `guaranteeTags.test.ts` green at 202 tests, on the
+   * commit this comment replaces. One import line, no cast, no `any`, and none
+   * of §7.5 residual 1's four string patterns look for it. Copying the four
+   * resolution lines a second time is what let them diverge once; there is now
+   * nothing to copy.
+   *
+   * `SymbolFlags.Alias` is what an imported binding is, so following it is what
+   * turns "a local thing spelled `sealServerValue`" into "progression.ts's
+   * exported function". `getAliasedSymbol` follows a whole re-export chain, so a
+   * barrel between the caller and the declaration resolves the same way.
+   */
+  const declaringFileOf = (identifier: ts.Identifier): string | undefined => {
+    const symbol = checker.getSymbolAtLocation(identifier);
+    const resolved =
+      symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+        ? checker.getAliasedSymbol(symbol)
+        : symbol;
+    return resolved?.declarations?.[0]?.getSourceFile().fileName;
+  };
 
   /**
    * One frame, named, or `null` for a node that is not one.
@@ -584,23 +652,39 @@ function scanRoutes(): RouteScan {
   // returns the literal reads as unsealed here and is not — and a site written
   // that way should say so by moving the call, rather than by widening this.
   //
+  // AND THE CALLEE IS RESOLVED, NOT SPELLED. `declaringFileOf` above has the
+  // measurement; the short version is that comparing `callee.text` to a string
+  // accepted any local function of that name, so one import line defeated this
+  // whole check with `tsc` clean and the suite green.
+  //
   // WHAT IT CANNOT SEE, stated rather than left to be found: a value that is
   // sealed and then REPLACED, and any assembly with no object literal in it at
-  // all, which is residual 1 above and is not made smaller by this.
+  // all, which is residual 1 above and is not made smaller by this. Nor does it
+  // see INSIDE the seal — it proves the callee is progression.ts's export, not
+  // that that export freezes anything, which is what the runtime
+  // `Object.isFrozen` witnesses in `SEAL_RUNTIME_WITNESSES` are for.
   const unsealed: string[] = [];
   let sealedLiterals = 0;
   const isSealedAt = (node: ts.Node): boolean => {
     const parent = node.parent;
     if (parent === undefined || !ts.isCallExpression(parent)) return false;
     if (parent.arguments[0] !== node) return false;
-    const callee = parent.expression;
-    const name = ts.isIdentifier(callee)
-      ? callee.text
-      : ts.isPropertyAccessExpression(callee)
-        ? callee.name.text
-        : '';
-    return name === SEAL_NAME;
+    const identifier = calleeIdentifier(parent);
+    if (identifier === undefined || identifier.text !== SEAL_NAME) return false;
+    return declaringFileOf(identifier) === sealFile;
   };
+
+  // THE SEAL'S CALL SITES IN THEIR OWN RIGHT, so the resolution above has a
+  // non-vacuity counterweight that is a COUNT AND A SET rather than a bound.
+  // `sealedLiterals` alone cannot tell "the resolution works" from "the
+  // resolution accepts everything": both leave it at 7. `sealCalleeSources` can
+  // — it reports where each shipped `sealServerValue(…)` callee is DECLARED, so
+  // a shim named the same adds its own file to the set and the exact-set pin
+  // goes red naming it, whether or not `isSealedAt` still filters on the file.
+  // A callee the checker cannot resolve reports `<unresolved>` rather than
+  // vanishing, because an input that is silently absent is its own defect shape.
+  const sealCallSites: string[] = [];
+  const sealCalleeSources = new Set<string>();
 
   // -------------------------------------------------------------------------
   // THERE IS NO CANDIDATE SET, AND THAT IS ROUND NINE'S FIX.
@@ -697,20 +781,18 @@ function scanRoutes(): RouteScan {
         }
       }
       if (ts.isCallExpression(node)) {
-        const callee = node.expression;
-        const identifier = ts.isIdentifier(callee)
-          ? callee
-          : ts.isPropertyAccessExpression(callee)
-            ? callee.name
-            : undefined;
+        const identifier = calleeIdentifier(node);
         if (identifier !== undefined && identifier.text === receiverName) {
-          const symbol = checker.getSymbolAtLocation(identifier);
-          const resolved =
-            symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
-              ? checker.getAliasedSymbol(symbol)
-              : symbol;
-          const declaredIn = resolved?.declarations?.[0]?.getSourceFile().fileName;
-          if (declaredIn === receiverFile) tally('receive', rel, enclosingSite(node));
+          if (declaringFileOf(identifier) === receiverFile) tally('receive', rel, enclosingSite(node));
+        }
+        if (identifier !== undefined && identifier.text === SEAL_NAME && !IS_TEST_FILE.test(rel)) {
+          const declaredIn = declaringFileOf(identifier);
+          sealCallSites.push(`${rel} ${enclosingSite(node)}`);
+          sealCalleeSources.add(
+            declaredIn === undefined
+              ? '<unresolved>'
+              : (repoPathOf(declaredIn) ?? '<outside the repository>'),
+          );
         }
       }
       ts.forEachChild(node, visit);
@@ -726,6 +808,8 @@ function scanRoutes(): RouteScan {
     importEdges: [...importEdges].sort(),
     unsealed: unsealed.sort(),
     sealedLiterals,
+    sealCallSites: sealCallSites.sort(),
+    sealCalleeSources: [...sealCalleeSources].sort(),
   };
 }
 
@@ -1222,10 +1306,31 @@ describe('purity', () => {
     // longer matches any callee, reports zero unsealed sites and looks green.
     // Seven is the six `record` rows plus the one `wire` row of §7.5.
     expect(scan.sealedLiterals, 'shipped record/wire literals seen sealed').toBe(7);
+
+    // AND THE CALLEE IS THE SEAL, NOT A FUNCTION SPELLED LIKE IT.
+    //
+    // This replaces a line that compared the row-count sum against
+    // `sealedLiterals`. Both sides were written in the same branch over the same
+    // node set, so the identity held by construction and could not be red while
+    // `unsealed` was empty — a check that restates its subject rather than
+    // grading it. What goes here instead is the question that line could not
+    // ask, and the one a measured mutant walked through: a local
+    //
+    //     const sealServerValue = <T,>(value: T): T => value;
+    //
+    // beside an aliased real import left the old text-match check reporting all
+    // seven literals sealed, `tsc` at exit 0 and 202 tests green. The scan now
+    // resolves each callee to its DECLARATION, and this pins the exact set of
+    // files those declarations live in — so the shim shows up as a second
+    // member naming its own file, whether or not `isSealedAt` still filters.
+    // An exact set and not `toContain`: an empty set is red here, which is what
+    // makes it a non-vacuity guard for the resolution rather than a restatement
+    // of it.
     expect(
-      scan.shipped.filter((row) => row.kind !== 'receive').reduce((sum, row) => sum + row.n, 0),
-      'and that is every shipped record/wire literal §7.5 accounts for',
-    ).toBe(scan.sealedLiterals);
+      scan.sealCalleeSources,
+      'a shipped call to sealServerValue resolves somewhere other than the seal',
+    ).toEqual(['src/game/progression.ts']);
+    expect(scan.sealCallSites.length, 'shipped sealServerValue call sites').toBe(7);
 
     // AND THE NAME THE SCAN MATCHES ON IS A REAL EXPORT. Without this, renaming
     // the seal turns the whole check into "no literal is sealed, and none is
