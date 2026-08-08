@@ -1633,7 +1633,15 @@ describe('purity', () => {
     // Non-vacuity first, so a scan that resolved nothing cannot pass by finding
     // nothing: the shipped set has to contain the two server functions the whole
     // boundary is built around, and the scanned set has to reach past `src/`.
-    expect(routeScan().shipped.length).toBeGreaterThan(4);
+    //
+    // A COUNT AND NOT A BOUND, because the count was available. `> 4` is
+    // satisfied by a scan that lost three of the nine rows, and the row-by-row
+    // loop below only fails on a row the TABLE does not name — a route the scan
+    // stopped finding is invisible to it and is caught by the reverse pin one
+    // test down, which had the same bound. Nine is §7.5's eight producer rows
+    // plus its one `receive` row. It moves when a route is added or deleted,
+    // which is a diff somebody writes on purpose.
+    expect(routeScan().shipped.length, 'shipped rows the scan resolves').toBe(9);
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/sessionServer.ts newServerRecord x1');
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/meetServer.ts applyMeetResult x1');
     // The anchor that would have caught round seven's defect. A route pin whose
@@ -1656,7 +1664,13 @@ describe('purity', () => {
     // uses: a table that may only grow is a table that fills up with rulings
     // about code somebody deleted, and every stale row makes the real ones
     // cheaper to skim past. Deleting a builder means deleting its row.
-    expect(declaredRoutes().length).toBeGreaterThan(4);
+    //
+    // A COUNT AND NOT A BOUND. `> 4` passed on a table that had lost four of
+    // its nine rows, and the loop below cannot see a missing row either — it
+    // walks the table, so a deleted row is simply not walked. This is the pin
+    // that catches the table shrinking, and it was the one number in the pair
+    // that could be stated exactly.
+    expect(declaredRoutes().length, '§7.5 rows parsed out of the header').toBe(9);
     const found = new Set(sortedKeys(routeScan().shipped));
     for (const row of declaredRoutes()) {
       expect(
@@ -1915,7 +1929,16 @@ describe('purity', () => {
     //
     // What this asserts is that the scan SEES them, so the exclusion is a
     // decision about a set that exists.
-    expect(routeScan().fixtures.length).toBeGreaterThan(5);
+    //
+    // A COUNT AND NOT A BOUND, AND THE COST IS NAMED RATHER THAN DODGED. §7.5's
+    // header argues that pinning fixtures would make the table churn on work
+    // that has nothing to do with it, and that is true OF A TABLE OF ROWS,
+    // where the churn is a merge conflict on a nine-column list. This is one
+    // integer. What the bound could not do is notice the scan collapsing from
+    // twenty-one fixtures to six — every assertion in this test would still
+    // pass, because they all ask about fixtures the scan already found. Adding
+    // a fixture record moves this number and the diff is one character.
+    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(21);
     expect(routeScan().fixtures.map((row) => row.file)).toContain('src/game/meetServer.test.ts');
     // ...and no fixture leaked into the pinned table.
     expect(declaredRoutes().filter((row) => IS_TEST_FILE.test(row.file))).toEqual([]);
@@ -2204,8 +2227,22 @@ describe('purity', () => {
     // count of MENTIONS: a header paragraph that named the key inflated it and
     // failed this test, and — the direction that matters — deleting a real write
     // could have been masked by adding a sentence about it.
-    const writes = codeOnly(MODULE_SOURCE).match(/\[SNAPSHOT_CONTENTS\]:/g) ?? [];
+    const code = codeOnly(MODULE_SOURCE);
+    const writes = code.match(/\[SNAPSHOT_CONTENTS\]:/g) ?? [];
     expect(writes).toHaveLength(2);
+
+    // AND WHICH LINES, NOT ONLY HOW MANY. The count is exact about how many and
+    // blind to which: deleting the mint and writing the key somewhere else in
+    // this 4000-line module holds the total at 2 and stays green, which defeats
+    // the whole point of pinning the number of doors. §7.5's
+    // `REFLECTIVE_ASSEMBLY_EXEMPTIONS` had this exact defect and closed it by
+    // pinning the matched LINE beside the count; this is that fix carried to
+    // its two siblings, which is where it should have gone at the time. Both
+    // lines are named, so a swap has to rewrite one of them in the diff.
+    expect(
+      code.split('\n').filter((line) => /\[SNAPSHOT_CONTENTS\]:/.test(line)).map(normalizedLine),
+      'the lines that write the snapshot key — a swap holds the count and moves the door',
+    ).toEqual(['readonly [SNAPSHOT_CONTENTS]: SnapshotContents;', '[SNAPSHOT_CONTENTS]: {']);
   });
 
   it('mints the in-flight pairing in exactly one place', () => {
@@ -2222,11 +2259,24 @@ describe('purity', () => {
     //
     // Expected: the interface declaration, and the one construction inside
     // `proposeChange`.
-    const writes = codeOnly(MODULE_SOURCE).match(/\[PAIRING_CHECKED\]:/g) ?? [];
+    const code = codeOnly(MODULE_SOURCE);
+    const writes = code.match(/\[PAIRING_CHECKED\]:/g) ?? [];
     expect(writes).toHaveLength(2);
+
+    // AND WHICH LINES, for the reason the snapshot key's sibling pin above
+    // gives: a count of 2 survives deleting this mint and adding the key
+    // anywhere else in the module.
+    expect(
+      code.split('\n').filter((line) => /\[PAIRING_CHECKED\]:/.test(line)).map(normalizedLine),
+      'the lines that write the pairing key — a swap holds the count and moves the door',
+    ).toEqual([
+      'readonly [PAIRING_CHECKED]: CheckedPairing;',
+      'inFlight: { [PAIRING_CHECKED]: { proposalId, proposal, projection } },',
+    ]);
+
     // And it is a real `unique symbol`, not a string key a caller could guess.
-    expect(codeOnly(MODULE_SOURCE)).toMatch(/const PAIRING_CHECKED: unique symbol = Symbol\(/);
-    expect(codeOnly(MODULE_SOURCE)).not.toMatch(/export const PAIRING_CHECKED/);
+    expect(code).toMatch(/const PAIRING_CHECKED: unique symbol = Symbol\(/);
+    expect(code).not.toMatch(/export const PAIRING_CHECKED/);
   });
 
   it('keeps the in-flight pairing opaque, not branded', () => {

@@ -372,8 +372,20 @@ const GUARANTEE_COVERAGE = {
    * instance yet: the round's actual new guarantees are all in the six files
    * that moved this number by nothing, and the one paragraph it noticed is a
    * heading over assertions a reader can see from the same screen.
+   *
+   * 216 -> 217 on the same round, when the two textual mint pins in
+   * `progression.test.ts` grew a line assertion beside their count. The new
+   * paragraph is the heading over the first of those two, and it is not quoted
+   * here for the reason the three notes above give: a quoted capitalised run
+   * makes this paragraph trigger too, and the count would go to 218. It was
+   * measured going to 218 by writing it out, which is the fourth time this
+   * file's own prose has moved the number it pins. In lower case it says: and
+   * which lines, not merely how many. A heading, directly above the assertion
+   * that discharges it, with the trigger word doing no work — the same shape as
+   * this round's other increment. Recorded rather than reworded, because
+   * rewording to duck the scan is how a count stops meaning anything.
    */
-  TREE_WIDE: 216,
+  TREE_WIDE: 217,
 } as const;
 
 // ---------------------------------------------------------------------------
