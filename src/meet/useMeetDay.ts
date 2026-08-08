@@ -79,6 +79,20 @@ import { streakDayFromLocalWallClock, type LocalWallClock } from '../game/streak
 import { SESSION_TUNING } from '../game/sessionTuning';
 import { MEET_ENTRY, MEET_LOCAL } from '../game/meetTuning';
 
+/**
+ * The stakes of an attempt that does not exist.
+ *
+ * `stepMeetDay` only enters the deliberation phase by pushing an attempt, so
+ * this is unreachable in play. It is the SHORTEST beat rather than the longest,
+ * so a future path that reached it would show up as a rushed wait rather than
+ * silently handing every attempt the third-attempt escalation.
+ */
+const OPENER_STAKES = Object.freeze({
+  attemptNumber: 1 as const,
+  isPrAttempt: false,
+  bombRisk: false,
+});
+
 /** Reads the one real clock this screen touches. */
 function nowWallClock(): LocalWallClock {
   const now = new Date();
@@ -197,12 +211,22 @@ export function useMeetDay(
   }, [frozen, state.phase, walkoutFor, dispatch]);
 
   // --- the "judges deliberating" beat (GDD §6.2 step 4) --------------------
+  //
+  // The stakes come from the attempt JUST RESOLVED, not from `state.live`, which
+  // this phase no longer has. `MeetDayAttempt` carries the same three facts
+  // forward exactly so the beats after an attempt escalate on what the beats
+  // before it escalated on.
   const deliberated = state.call === null ? false : state.call.deliberated;
+  const judgedAttempt = state.attempts[state.attempts.length - 1];
+  const deliberationFor =
+    judgedAttempt === undefined
+      ? deliberationMs(deliberated, OPENER_STAKES)
+      : deliberationMs(deliberated, judgedAttempt);
   useEffect(() => {
     if (frozen || state.phase !== 'deliberation') return undefined;
-    const timer = setTimeout(() => dispatch({ kind: 'deliberation-done' }), deliberationMs(deliberated));
+    const timer = setTimeout(() => dispatch({ kind: 'deliberation-done' }), deliberationFor);
     return () => clearTimeout(timer);
-  }, [frozen, state.phase, deliberated, dispatch]);
+  }, [frozen, state.phase, deliberationFor, dispatch]);
 
   // --- the lights and the feedback cue (GDD §6.2 steps 4-5) ----------------
   const verdictKey = state.attempts.length;

@@ -83,14 +83,26 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import { LIFT_TUNING } from '../game/liftTuning';
-import { lightRevealDelayMs, type MeetDayAttempt } from '../game/meetDay';
+import {
+  deliberationMs,
+  isUrgentAttempt,
+  lightRevealDelayMs,
+  type MeetDayAttempt,
+} from '../game/meetDay';
 import { playBeat } from './meetFeedback';
 import { JUDGE_COUNT, type JudgeLight } from '../game/meet';
 import { formatWeight } from '../game/resultCard';
 import { MeetHallView } from './MeetHallView';
 import { MEET_PALETTE } from './meetPalette';
 import { useHallStep } from './useHallStep';
-import { crowdRisePxAt, CHEER_CROWD_RISE } from './walkout';
+import {
+  buildHold,
+  cheerCrowdRise,
+  crowdRisePxAt,
+  walkoutFrameAt,
+  walkoutFrameIndexAt,
+  type WalkoutFrame,
+} from './walkout';
 
 const L = MEET_LAYOUT;
 
@@ -190,17 +202,47 @@ export function VerdictView({
   // THE HALL REACTS. Only on a good lift, only after the last lamp, and it is
   // the one thing about the room that the call reaches. `crowdRisePxAt` is pure
   // and shared with the walk-out's own rise, so the two cannot be two ramps.
+  //
+  // AND IT REACTS HARDER TO A LIFT THE MEET TURNED ON. That is the ONLY way this
+  // beat escalates, and deliberately not a longer hold — see
+  // `MEET_TUNING.DELIBERATION_STAKES_EXTRA_MS`: the wait for news may be
+  // lengthened, the news itself may only be made louder, because a longer hold
+  // on a screen whose answer is already on it is dead air by construction.
   const cheering = revealed && good;
+  const cheerRamp = isUrgentAttempt(attempt);
   const sampleRise = React.useCallback(
     (elapsedMs: number) =>
-      cheering ? crowdRisePxAt(elapsedMs - cheerDelayMs(), CHEER_CROWD_RISE) : 0,
-    [cheering],
+      cheering ? crowdRisePxAt(elapsedMs - cheerDelayMs(), cheerCrowdRise(cheerRamp)) : 0,
+    [cheering, cheerRamp],
   );
   const crowdRisePx = useHallStep(
     sampleRise,
     cheerDelayMs() + MEET_TUNING.CROWD.CHEER_RISE_MS,
     null,
   );
+
+  // HE IS STILL HOLDING THE BAR, AND THE WAIT IS NOW A WINDOW WITH SOMETHING IN
+  // IT. `deliberationMs` got stakes extras, and lengthening a beat that draws
+  // one memoised still is the very defect `walkout.ts`'s tail exists to remove.
+  // `buildHold` is that same tail with no walk-out in front of it: the bar works
+  // under a braced man for the brace window, then `WALKOUT_TAIL.HUSH_MS` of
+  // stillness before the lamps.
+  //
+  // The clock runs during the DELIBERATION only. Once the lights may come up the
+  // beat belongs to them, and a bar still rocking under three lamps would be
+  // motion competing with the moment this game is named after.
+  const hold = React.useMemo(
+    () => buildHold(loadRatio, deliberationMs(attempt.deliberated, attempt)),
+    [loadRatio, attempt],
+  );
+  const sampleHold = React.useCallback(
+    (elapsedMs: number) => walkoutFrameIndexAt(hold, elapsedMs),
+    [hold],
+  );
+  const holdIndex = useHallStep(sampleHold, revealed ? 0 : hold.beatMs, null);
+  const pose: WalkoutFrame | undefined = revealed
+    ? undefined
+    : (hold.frames[holdIndex] ?? walkoutFrameAt(hold, hold.beatMs));
 
   return (
     <View style={styles.root} testID={revealed ? 'meet-verdict' : 'meet-deliberation'}>
@@ -243,7 +285,7 @@ export function VerdictView({
       {/* He has not left the platform. The bar is still loaded and the room is
           still full; that is what the wait is. */}
       <MeetHallView
-        lifter={{ totalKg: attempt.weightKg, barAndCollarsKg, loadRatio }}
+        lifter={{ totalKg: attempt.weightKg, barAndCollarsKg, loadRatio, pose }}
         scrim={MEET_TUNING.HALL.JUDGING_SCRIM}
         crowdRisePx={crowdRisePx}
       />

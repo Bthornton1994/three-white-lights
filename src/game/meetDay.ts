@@ -402,6 +402,18 @@ export interface MeetDayAttempt {
   readonly margin: number;
   readonly feedbackText: string;
   readonly lightsText: string;
+  /**
+   * What the attempt was WORTH, carried over from `LiveAttempt` so the beats
+   * AFTER it escalate on the same facts the beats before it did. Satisfies
+   * `AttemptStakes`; see `deliberationMs`.
+   *
+   * Not re-derived here, and that is deliberate: `bombRisk` is a fact about the
+   * attempts banked BEFORE this one, and by the time this record exists the
+   * attempt itself has been resolved into the engine, so re-deriving it would
+   * ask the wrong question of the wrong state.
+   */
+  readonly isPrAttempt: boolean;
+  readonly bombRisk: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -679,13 +691,67 @@ export function walkoutMs(
   return total;
 }
 
-/** The "judges deliberating" beat. Longer when the call is close. */
-export function deliberationMs(deliberated: boolean): number {
-  return MEET_TUNING.VERDICT_SILENCE_MS +
-    (deliberated ? MEET_TUNING.DELIBERATION_MS : MEET_TUNING.CLEAR_CALL_DELIBERATION_MS);
+/**
+ * What an attempt is WORTH, as the three facts every escalating beat reads.
+ *
+ * One type rather than three parameters at each call site, because the walk-out
+ * and the wait for the lights must escalate on the same facts — a beat that
+ * lengthened on a third attempt while its neighbour lengthened on a PR would
+ * read as noise. `LiveAttempt` and `MeetDayAttempt` both satisfy it structurally,
+ * which is the point: the before-picture and the after-picture of one attempt
+ * cannot disagree about what it was worth.
+ */
+export interface AttemptStakes {
+  readonly attemptNumber: AttemptNumber;
+  readonly isPrAttempt: boolean;
+  readonly bombRisk: boolean;
 }
 
-/** Lights come up one at a time, then the feedback cue, then a hold. */
+/** True when this is an attempt the meet turns on. Picks copy, crowd and cues. */
+export function isUrgentAttempt(stakes: AttemptStakes): boolean {
+  return (
+    stakes.bombRisk || stakes.isPrAttempt || stakes.attemptNumber === ATTEMPTS_PER_LIFT
+  );
+}
+
+/**
+ * The "judges deliberating" beat. Longer when the call is close, and longer
+ * again on the attempts the meet turns on.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS TAKES STAKES AND `verdictMs` BELOW DELIBERATELY DOES NOT
+ * ---------------------------------------------------------------------------
+ * The full argument is on `MEET_TUNING.DELIBERATION_STAKES_EXTRA_MS`. In one
+ * line: this beat is ANTICIPATION — the player is waiting for news and waiting
+ * is the content, so length is the escalation — and `verdictMs` is the hold
+ * AFTER the news has broken, where every added millisecond is a frame the player
+ * is waiting to leave. That is the same defect `MEET_TUNING.WALKOUT_TAIL` exists
+ * to remove, and it is not being reintroduced one screen later. What a reaction
+ * escalates instead is intensity: `CROWD.URGENT_CHEER_RISE_PX`.
+ *
+ * IT CANNOT LEAK THE CALL. These extras read which attempt this is — printed on
+ * the screen the player just came from — and nothing the judges decided.
+ */
+export function deliberationMs(deliberated: boolean, stakes: AttemptStakes): number {
+  const extra = MEET_TUNING.DELIBERATION_STAKES_EXTRA_MS;
+  let total =
+    MEET_TUNING.VERDICT_SILENCE_MS +
+    (deliberated ? MEET_TUNING.DELIBERATION_MS : MEET_TUNING.CLEAR_CALL_DELIBERATION_MS);
+  if (stakes.attemptNumber === ATTEMPTS_PER_LIFT) total += extra.THIRD_ATTEMPT;
+  if (stakes.isPrAttempt) total += extra.PR_ATTEMPT;
+  if (stakes.bombRisk) total += extra.BOMB_RISK;
+  return total;
+}
+
+/**
+ * Lights come up one at a time, then the feedback cue, then a hold.
+ *
+ * TAKES NO STAKES ON PURPOSE. See `deliberationMs` above and
+ * `MEET_TUNING.DELIBERATION_STAKES_EXTRA_MS`: a third attempt is not held on
+ * screen longer than an opener, because the player already knows the answer by
+ * then and the extra time would be dead air by construction. A future pass that
+ * wants one must give this screen a live channel first.
+ */
 export function verdictMs(): number {
   return (
     MEET_TUNING.LIGHT_REVEAL_FIRST_DELAY_MS +
@@ -721,6 +787,17 @@ export type MeetBeat =
   | { readonly kind: 'bar-plate' }
   /** The walk-out line arriving. `urgent` on a third, a PR or a bomb risk. */
   | { readonly kind: 'walkout-call'; readonly urgent: boolean }
+  /**
+   * The bar working under a braced lifter — the walk-out's TAIL (GDD §6.2's
+   * ruling, `MEET_TUNING.WALKOUT_TAIL`).
+   *
+   * Only reported when the beat is long enough to have a brace window at all,
+   * so an opener never carries it. It is what stops the escalated part of the
+   * beat being silent as well as still: measured on a third attempt with
+   * nothing banked, `CROWD_SWELL_BIG` had decayed by 2,520 ms of a 4,100 ms
+   * beat and the last 1,580 ms had nothing in any channel.
+   */
+  | { readonly kind: 'walkout-brace' }
   /** The panel goes dark and the judges take their beat. */
   | { readonly kind: 'deliberation' }
   /** One referee's lamp coming up. */
@@ -738,6 +815,7 @@ export type MeetBeat =
 export const MEET_BEAT_KINDS = Object.freeze([
   'bar-plate',
   'walkout-call',
+  'walkout-brace',
   'deliberation',
   'light',
   'verdict',
@@ -765,6 +843,12 @@ export function hapticForBeat(beat: MeetBeat): HapticPattern | null {
       return h.BAR_PLATE;
     case 'walkout-call':
       return beat.urgent ? h.WALKOUT_CALL_URGENT : h.WALKOUT_CALL;
+    // FELT AS NOTHING, and that is a real answer rather than a missing case.
+    // The tail is the beat where the player is waiting, and a phone that buzzed
+    // through it would be a metronome — the same argument the deliberation's
+    // silence is made of. What the tail has is a picture and a crowd.
+    case 'walkout-brace':
+      return null;
     case 'deliberation':
       return h.DELIBERATION;
     case 'light':
@@ -808,6 +892,13 @@ export function soundForBeat(beat: MeetBeat): MeetSoundId | null {
       return 'BAR_RATTLE';
     case 'walkout-call':
       return beat.urgent ? 'CROWD_SWELL_BIG' : 'CROWD_SWELL';
+    // THE SAME BED AGAIN, LATER. Not a new cue and deliberately so: what the
+    // tail needs is the hall still being there while he stands under the bar,
+    // and a second sound would be a second event. `WalkoutView` schedules it so
+    // its RELEASE lands on the hush, which is what makes the last stretch of the
+    // beat quiet rather than merely the part where the first swell had run out.
+    case 'walkout-brace':
+      return 'CROWD_SWELL_BIG';
     case 'light':
       return beat.light === 'white' ? 'LIGHT_CLACK_WHITE' : 'LIGHT_CLACK_RED';
     case 'verdict':
@@ -1131,6 +1222,8 @@ export function stepMeetDay(state: MeetDayState, event: MeetDayEvent): MeetDaySt
         margin: call.margin,
         feedbackText: feedbackTextFor(event.resolution, call.margin),
         lightsText: lightsTextFor(call),
+        isPrAttempt: live.isPrAttempt,
+        bombRisk: live.bombRisk,
       };
       return {
         ...state,

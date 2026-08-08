@@ -133,7 +133,17 @@ describe('every meet-day beat is felt', () => {
   it('routes every beat kind the screens can produce', () => {
     // The other direction from the list above: a beat added to `MeetBeat` and
     // forgotten in `hapticForBeat` falls through to `null` and is silent.
-    const routed = new Set(ROUTES.map((r) => r.beat.kind));
+    //
+    // `walkout-brace` IS FELT AS NOTHING ON PURPOSE and is listed here rather
+    // than in `ROUTES`, which pairs a beat with a PATTERN. The tail is the beat
+    // where the player is waiting for the bar to move, and a phone buzzing
+    // through it would be a metronome — the same argument the deliberation's
+    // silence is made of, and it is argued in `hapticForBeat` too.
+    const feltAsNothing = ['walkout-brace'];
+    for (const kind of feltAsNothing) {
+      expect(hapticForBeat({ kind } as MeetBeat), `${kind} is felt after all`).toBeNull();
+    }
+    const routed = new Set([...ROUTES.map((r) => r.beat.kind), ...feltAsNothing]);
     for (const kind of MEET_BEAT_KINDS) {
       expect(routed.has(kind), `no route covers the "${kind}" beat`).toBe(true);
     }

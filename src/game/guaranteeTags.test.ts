@@ -316,8 +316,48 @@ const GUARANTEE_COVERAGE = {
    * That is the declared blind spot measured rather than restated: on this round
    * the scan flagged three sentences that state a limit and demanded nothing of
    * the one sentence that states a guarantee.
+   * 206 -> 209 when the walk-out's tail stopped being a frozen frame and the
+   * wait for the lights started escalating. MEASURED PER FILE the same way, by
+   * restoring each touched file to its pre-change text and re-reading this
+   * count: `meetTuning.ts` 2, `meetDay.ts` 1, and — worth recording because the
+   * first guess said otherwise — `walkout.ts`, `WalkoutView.tsx`,
+   * `VerdictView.tsx`, `useMeetDay.ts` and all three touched test files
+   * contribute ZERO between them, despite `walkout.ts` gaining fifty lines of
+   * header. That is the declared blind spot again: the new prose is capitalised
+   * absolutes with none of the four trigger words in them, so the scan walks
+   * past it.
+   *
+   * The three that do trigger are the same claim in two files — that the beats
+   * around an attempt may escalate in duration ONLY where there is a live
+   * channel to spend the duration on, and that the reaction after the call
+   * therefore escalates in intensity instead. It is checked in
+   * `meetTuning.test.ts` ("leave the hold AFTER the call flat, which is the rule
+   * and not an omission"), so the new prose is on the better side of this file's
+   * complaint — but the ratio moved the wrong way again, and this comment is
+   * where that is said.
+   *
+   * 209 -> 210 when the tail got a crowd bed as well as a picture. Measured per
+   * file the same way: the single new triggering paragraph is in
+   * `walkout.test.ts`, sitting directly above the assertion that the bed reaches
+   * the hush, and `meetDay.ts`, `walkout.ts`, `WalkoutView.tsx`,
+   * `meetFeel.test.ts` and `meetSound.test.ts` contribute ZERO between them
+   * despite carrying most of the new prose. The declared blind spot again.
+   *
+   * AND 215 ON THE MERGE, WHICH IS NEITHER BRANCH'S NUMBER NOR THEIR SUM.
+   * The seal round measured itself to 211 and the walk-out round to 210, both
+   * correctly, both from 208. Naive arithmetic gives 213. The tree measures
+   * 215, because this constant counts PARAGRAPHS and joining two narratives
+   * into one comment block moves the paragraph boundaries — the count is a
+   * property of the merged text, not the sum of two deltas taken against
+   * different parents.
+   *
+   * That is the second time a merge has conflicted on this constant and the
+   * second time re-running beat adding. The first time the two increments
+   * happened to stack and the arithmetic would have been right; this time it
+   * would have been wrong by two. Neither outcome is a reason to trust the
+   * next one — run it.
    */
-  TREE_WIDE: 211,
+  TREE_WIDE: 215,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -513,6 +553,21 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: record src/game/meetPreview.ts previewServerRecord: ' +
       'src/game/meetServer.test.ts does not declare exactly one running test called ' +
       '"freezes the debug preview record too, one meet deep": expected +0 to be 1',
+  },
+  {
+    // Declared with the tag, on the round that corrected the sentence it
+    // guards. `VERDICT_SILENCE_MS` had said the beat was "dead air between the
+    // bar being racked and anything appearing"; the pixels have always drawn a
+    // man standing under a fully loaded bar. The mutant hands the hall the BAR's
+    // own weight instead of the attempt's, which is the drawing that sentence
+    // described, and the check names it.
+    guarantee: 'bar-stays-on-his-back-for-the-call',
+    mutatedFile: 'src/meet/VerdictView.tsx',
+    mutated: 'lifter={{ totalKg: attempt.weightKg, barAndCollarsKg, loadRatio, pose }}',
+    testFile: 'src/meet/meetStage.test.ts',
+    redAssertion: "'the bar the wait is drawn with is not the attempt\u2019s bar',",
+    observed:
+      'AssertionError: the bar the wait is drawn with is not the attempt\u2019s bar: expected \'<MeetHallView\\n        lifter={{ tota…\' to contain \'totalKg: attempt.weightKg\'',
   },
   {
     // RETAKEN. The previous witness anchored on

@@ -119,6 +119,7 @@
  *                                     [--src REPO_ROOT]
  */
 import { chromium } from 'playwright';
+import { decodePng, diffPixels } from './png.mjs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -233,6 +234,169 @@ const BOMB_OUT_SETTLE_MS = BOMB_OUT_EXIT_DRAWN_AT_MS + FADE_GRACE_MS;
  */
 const RECAP_LAST_ROW_DRAWN_AT_MS = 4 * 240 + 280;
 const RECAP_SETTLE_MS = RECAP_LAST_ROW_DRAWN_AT_MS + FADE_GRACE_MS;
+
+/**
+ * ===========================================================================
+ * AND THE WALK-OUT'S TAIL, WHICH IS THE ONE BEAT NO UNIT TEST CAN WATCH RUN
+ * ===========================================================================
+ * `vitest.config.ts` is `environment: node`, so nothing in the suite mounts a
+ * component and watches a clock. That gap is where this defect lived: the sheet
+ * `src/meet/walkout.ts` produces was fine, and `WalkoutView` handed
+ * `useHallStep` the end of the CHOREOGRAPHY (2,120 ms) as the length of the
+ * beat. `useHallStep` cancels its frame loop once `runForMs` has elapsed, so on
+ * a third attempt with nothing banked — a 4,100 ms beat — the last 1,980 ms was
+ * one static raster, and every millisecond of `THIRD_ATTEMPT_WALKOUT_EXTRA_MS`
+ * and `BOMB_RISK_WALKOUT_EXTRA_MS` landed in it.
+ *
+ * A unit test asserting "the sheet has frames past `motionMs`" would not have
+ * caught that, because the sheet was never the thing that was wrong. So this
+ * probe photographs the RUNNING HALL at a fixed cadence and reads the timeline
+ * of when the picture changed. Two opposite claims come off one pass:
+ *
+ *   THE BRACE   the hall's LAST change is after the choreography ends. On the
+ *               defective build the last change is the crowd's ramp saturating
+ *               at ~1,980 ms, which is before it.
+ *   THE HUSH    and the picture then stops, and stays stopped, for the length
+ *               `WALKOUT_TAIL.HUSH_MS` names. This is also the NON-VACUITY
+ *               CONTROL: it is the same comparison, on the same region, in the
+ *               same run, REPORTING "identical" — so a comparison that had
+ *               silently started answering "differs" to everything fails here
+ *               rather than certifying the brace.
+ *
+ * WHICH ARM THIS IS. THE PLAYED ONE, and it was the debug one first. The tail
+ * only exists on a THIRD attempt — an opener's is 280 ms, under
+ * `MIN_BRACE_WINDOW_MS` + `HUSH_MS`, and is all hush by design — and
+ * `?meet=walkout-third` freezes the meet on exactly that beat with its clock
+ * running, which looked like the obvious subject. MEASURED, IT IS UNUSABLE: a
+ * page load re-initialises the Skia surface, `useHallStep`'s frame loop advances
+ * on wall-clock time through that stall, and five consecutive loads had the
+ * whole 4,100 ms beat elapse before the first screenshot came back — 2 changes
+ * seen, none of them after `MOTION_MS`. The timeline is therefore taken during
+ * the meet sections 3 and 4 PLAY WITH A MOUSE, on the first third attempt it
+ * reaches, in a page with no load in front of it. That is also the arm CLAUDE.md
+ * asks for.
+ *
+ * The frozen route is still used, for one thing it is good at: a walk-out that
+ * has certainly come to rest, which is where the comparison is made to say
+ * IDENTICAL.
+ */
+/**
+ * The two lines that identify the beat the tail probe runs on, restated here
+ * for the reason every other copy in this file is restated: a check that reads
+ * its expectation out of the module under test agrees with a broken module.
+ * Both are cross-checked against `src/game/meetTuning.ts` by
+ * `checkMeetRestatementsMatchTuning`.
+ */
+const MEET_TAIL_SAYS = Object.freeze({
+  /** src/game/meetTuning.ts — MEET_COPY.WALKOUT_BOMB_RISK. */
+  NOTHING_BANKED: 'NOTHING BANKED. THIS IS THE LIFT.',
+  /**
+   * Not one constant but the eyebrow `WalkoutView` assembles out of
+   * `MEET_COPY.ATTEMPT_LABEL`, `ATTEMPT_OF` and `ATTEMPTS_PER_LIFT`. Written out
+   * as the player reads it, because that is what the probe is checking.
+   */
+  THIRD_OF_THREE: 'ATTEMPT 3 OF 3',
+  /** src/game/meetTuning.ts — MEET_COPY.WALKOUT_THIRD. */
+  LAST_ONE: 'LAST ONE',
+  /** src/game/meetTuning.ts — MEET_COPY.WALKOUT_PR. */
+  A_PR: 'NOBODY HAS SEEN YOU DO THIS',
+});
+
+/**
+ * `MEET_TUNING.BAR_LOAD_MS`, restated and cross-checked.
+ *
+ * It is the first term of `WALKOUT_TAIL_PROBE.MOTION_MS` below and is named here
+ * so the cross-check can read it out of `meetTuning.ts` by itself — the same
+ * arrangement `RECAP_LAST_ROW_DRAWN_AT_MS`'s three terms have.
+ */
+const BAR_LOAD_MS_RESTATED = 900;
+/**
+ * The other four terms of `walkoutMs`, restated and cross-checked the same way.
+ * Together with `BAR_LOAD_MS_RESTATED` they say how long the beat on screen
+ * runs, which is what `beatMsForLine` needs to place the tail on the sampler's
+ * own clock.
+ */
+const WALKOUT_MS_RESTATED = 1500;
+const THIRD_ATTEMPT_EXTRA_RESTATED = 900;
+const PR_EXTRA_RESTATED = 700;
+const BOMB_RISK_EXTRA_RESTATED = 800;
+
+const WALKOUT_TAIL_PROBE = Object.freeze({
+  /**
+   * How often the hall is photographed. A clipped screenshot plus a decode is
+   * roughly 60-120 ms in this browser, so this is a cadence the loop can
+   * actually keep; the timeline it produces is coarse and the claims below are
+   * written to be true of a coarse timeline.
+   */
+  SAMPLE_EVERY_MS: 120,
+  /**
+   * How long the probe keeps looking. The longest beat the piece can produce is
+   * `BAR_LOAD_MS + WALKOUT_MS + THIRD + PR + BOMB` = 4,800 ms; this is past it
+   * with room for a slow first paint, because the probe's t=0 is when the hall
+   * is first VISIBLE and the component mounted some unknown moment before that.
+   *
+   * THAT OFFSET BIASES SAFE AND IT IS WORTH SAYING WHY. A late t=0 makes every
+   * reported instant EARLIER than the true elapsed time, so "the last change was
+   * at 3,720 ms" understates. The decisive claim is that the last change is
+   * LATER than the choreography's end, and understating can only make that claim
+   * harder to satisfy, never easier.
+   */
+  HORIZON_MS: 6200,
+  /**
+   * Where the choreography ends and the tail begins, restated from
+   * `src/game/meetTuning.ts` and cross-checked against it by
+   * `checkMeetRestatementsMatchTuning`:
+   *
+   *     BAR_LOAD_MS                                 900
+   *   + WALKOUT_MOTION.UNRACK_MS                    260
+   *   + WALKOUT_MOTION.STEP_COUNT (3) x STEP_MS     660
+   *   + WALKOUT_MOTION.SETTLE_MS                    300
+   *   = he is set at                              2,120 ms
+   */
+  MOTION_MS: BAR_LOAD_MS_RESTATED + 260 + 3 * 220 + 300,
+  /** `WALKOUT_TAIL.HUSH_MS` — the designed stillness every beat ends on. */
+  HUSH_MS: 360,
+  /**
+   * How different two channels have to be before two screenshots of a GPU
+   * canvas count as two pictures.
+   *
+   * The same idea `png.mjs`'s `diffPixels` documents: a software-rasterised
+   * canvas is not bit-reproducible, and this must stay far below what an
+   * authored change makes. Measured on the shipped build: consecutive samples
+   * inside the hush differ in 0 pixels at this tolerance, and the brace's own
+   * transitions move thousands.
+   */
+  SAME_PICTURE_TOLERANCE: 12,
+  /**
+   * ...and how many pixels may move under that tolerance before the two count
+   * as different pictures. A floor, not a threshold on magnitude: it is here so
+   * a single stray antialiased pixel is not reported as the hall moving.
+   */
+  SAME_PICTURE_MAX_PX: 40,
+  /**
+   * How many separate changes the tail has to draw.
+   *
+   * A FLOOR WITH THE MEASURED VALUE RECORDED BESIDE IT IN THE RUN'S OWN NOTE.
+   * `walkout.test.ts` counts the sheet's held frames in the tail; a browser
+   * cannot see them all, and the brace returns to the rest drawing twice a cycle
+   * so two samples either side of a peak can legitimately be the same picture.
+   * Measured on the shipped build, on a played third attempt: SEVEN changes in
+   * an 1,180 ms tail, at a cadence of 40-192 ms. The floor is low on purpose —
+   * what it has to separate is "the tail draws" from "the tail is one held
+   * raster", and the defective build scores ZERO.
+   */
+  MIN_TAIL_CHANGES: 3,
+
+  /**
+   * How long the negative control waits before photographing the frozen
+   * walk-out twice. Past the longest beat the piece can produce (4,800 ms) plus
+   * room for a cold page load, because that route re-initialises the Skia
+   * surface and the clock runs through the stall.
+   */
+  SETTLED_AFTER_MS: 8000,
+  /** ...and how far apart the two shots of it are taken. */
+  SETTLED_GAP_MS: 600,
+});
 
 /**
  * Below this, a control is reported ABSENT however happily the DOM says it is
@@ -1588,6 +1752,286 @@ async function checkNavTableMatchesTuning() {
  * numbers the app no longer has, and a deadline is only a falsifiable claim
  * while it is the screen's own.
  */
+/**
+ * Photograph the running hall at a fixed cadence and report when its picture
+ * changed.
+ *
+ * ONE PASS, NOT TWO SHOTS, and the difference is the point. Two shots at two
+ * chosen instants can only ever say "these two differ", which a build that
+ * redrew nothing but the crowd's saturating ramp would also satisfy. The
+ * timeline says WHEN the last change was, which is the fact the defect got
+ * wrong, and it carries the "identical" readings that make the comparison's
+ * negative answer visible in the same run.
+ *
+ * The region is the hall's own box and not the whole page: the copy above it
+ * finishes fading at 660 ms and is static for the rest of the beat, so including
+ * it could only dilute the measurement.
+ *
+ * @returns {Promise<{ samples: {index:number, atMs:number, differing:number, total:number, maxChannelDelta:number, changed:boolean}[], region: object } | null>}
+ */
+async function sampleHallTimeline(horizonMs, everyMs, stillOnScreen, probeAfterMs = 0) {
+  const box = await page.getByTestId('meet-hall').boundingBox().catch(() => null);
+  if (box === null) return null;
+  const clip = {
+    x: Math.round(box.x),
+    y: Math.round(box.y),
+    width: Math.round(box.width),
+    height: Math.round(box.height),
+  };
+  const started = Date.now();
+  /** Raw PNGs and their instants. NOTHING IS DECODED INSIDE THE LOOP. */
+  const shots = [];
+  // WHEN THE BEAT WAS SEEN TO BE OVER, on the sampler's own clock. Every window
+  // below is anchored on THIS rather than on t = 0, because t = 0 is a moment
+  // after the app's clock started (the driver has to notice the screen first)
+  // and the offset is unknown, while the end is observed directly. It is read at
+  // the moment the walk-out is found gone, so it is never EARLIER than the true
+  // end — which is the direction that makes every window derived from it
+  // conservative.
+  let endedAtMs = horizonMs;
+  for (let index = 0; ; index += 1) {
+    const due = started + index * everyMs;
+    const wait = due - Date.now();
+    if (wait > 0) await page.waitForTimeout(wait);
+    const atMs = Date.now() - started;
+    if (atMs > horizonMs) break;
+    // THE LIVENESS PROBE IS A ROUND TRIP AND THE CADENCE IS THE MEASUREMENT, so
+    // it is only asked once the beat could plausibly be over. Before that the
+    // answer is known.
+    if (atMs >= probeAfterMs && !(await stillOnScreen())) {
+      endedAtMs = atMs;
+      break;
+    }
+    // `scale: 'css'` — ONE PIXEL PER CSS PIXEL, not two. The context renders at
+    // `deviceScaleFactor: 2`, and a full-resolution shot of this box is 811,200
+    // pixels to encode, transfer and decode: measured, that held the sampler to
+    // one frame every ~270 ms, which resolves about a fifth of the tail's
+    // drawings. At CSS scale it is a quarter of the work for the same picture —
+    // the smallest thing the hall draws is one SPRITE pixel, which is three CSS
+    // pixels at `GYM_LIFT_STAGE.SCALE`, so nothing this measurement is about is
+    // near the resolution floor.
+    const png = await page.screenshot({ clip, scale: 'css' });
+    // AND THE SCREEN WAS STILL THE WALK-OUT WHEN THE SHUTTER CAME BACK, not just
+    // when it was asked. A screenshot is 50-200 ms here, and the beat can hand
+    // on inside that window: the shot then photographs the ATTEMPT screen and
+    // the comparison reports an enormous change at the very end of the beat.
+    //
+    // THAT ARTEFACT KEPT THE DEFECTIVE BUILD GREEN, measured. With the frame
+    // loop cancelled at `motionMs` the hall went still at 1,921 ms and stayed
+    // still for nine consecutive samples — the defect, photographed — and then
+    // one boundary sample read 47,600 px moved and the "still drawing after the
+    // choreography" check passed on it. Discarding the sample rather than
+    // trusting it is what makes that check bite.
+    if (atMs >= probeAfterMs && !(await stillOnScreen())) {
+      endedAtMs = Date.now() - started;
+      break;
+    }
+    shots.push({ atMs, png });
+  }
+
+  // DECODED AFTERWARDS. A decode is 20-40 ms on this box and the loop's cadence
+  // is what decides how much of an 820 ms brace window it can resolve, so the
+  // work that does not have to happen between two shots does not.
+  const samples = [];
+  let previous = null;
+  for (const [index, shot] of shots.entries()) {
+    const image = decodePng(shot.png);
+    const region = { x: 0, y: 0, w: image.width, h: image.height };
+    if (previous === null) {
+      samples.push({
+        index,
+        atMs: shot.atMs,
+        differing: 0,
+        total: region.w * region.h,
+        maxChannelDelta: 0,
+        changed: false,
+      });
+    } else {
+      const { differing, total, maxChannelDelta } = diffPixels(previous, image, region, {
+        tolerance: WALKOUT_TAIL_PROBE.SAME_PICTURE_TOLERANCE,
+      });
+      samples.push({
+        index,
+        atMs: shot.atMs,
+        differing,
+        total,
+        maxChannelDelta,
+        changed: differing > WALKOUT_TAIL_PROBE.SAME_PICTURE_MAX_PX,
+      });
+    }
+    previous = image;
+  }
+  return { samples, endedAtMs, region: clip };
+}
+
+/** One line of the timeline, for a failure message a human can act on. */
+function describeSample(sample) {
+  return `sample ${sample.index} at ${sample.atMs}ms: ${sample.differing} of ${sample.total} px moved (max channel delta ${sample.maxChannelDelta})`;
+}
+
+async function probeWalkoutTail() {
+  const P = WALKOUT_TAIL_PROBE;
+  const seen = WALKOUT_TAIL_SEEN;
+
+  // (0) THE SUBJECT. The sampler only fires on a third attempt, and if the
+  // driven meet never reached one there is nothing to grade — reported as a
+  // named SKIPPED check rather than as a quiet pass on an empty timeline.
+  if (seen.timeline === null || seen.timeline.samples.length < 2) {
+    check(
+      false,
+      'SKIPPED: the walk-out tail probe needs a THIRD attempt in the played meet, and the drive never reached one',
+      seen.timeline === null
+        ? 'no third-attempt walk-out was seen'
+        : `only ${seen.timeline.samples.length} sample(s) were taken`,
+    );
+    return;
+  }
+  check(
+    true,
+    'the tail probe ran on a PLAYED third attempt, reached with a mouse and no query string',
+    `${JSON.stringify((seen.eyebrow ?? '').trim())} / ${JSON.stringify((seen.line ?? '').trim())}`,
+  );
+
+  const { samples, endedAtMs } = seen.timeline;
+  const changes = samples.filter((s) => s.changed);
+  const last = changes[changes.length - 1] ?? null;
+
+  // WHERE "HE IS SET" FALLS ON THE SAMPLER'S CLOCK.
+  //
+  // ANCHORED ON THE END OF THE BEAT, NOT ON ITS START, and that is the whole
+  // reason this measurement works. t = 0 is a moment AFTER `WalkoutView`
+  // mounted — the driver has to notice the screen, read it, and get a bounding
+  // box first — and that offset is unknown and varies (measured between roughly
+  // 300 and 500 ms on this machine, and over two seconds on a cold page load).
+  // The END, by contrast, is observed directly: the sampler stops when the
+  // walk-out is gone. So the tail is placed by subtracting its own length from
+  // an instant both sides of the comparison share, and the offset cancels.
+  //
+  // IT IS CONSERVATIVE IN BOTH ITS APPROXIMATIONS: `endedAtMs` is read when the
+  // beat is FOUND to be over, so it is never early; and `beatMsForLine` resolves
+  // the one ambiguous line downwards. Both push `setAtMs` LATER, which can only
+  // shrink the window the claims below are allowed to count in.
+  const beatMs = beatMsForLine(seen.line);
+  const tailMs = beatMs - P.MOTION_MS;
+  const setAtMs = endedAtMs - tailMs;
+  const tailChanges = changes.filter((s) => s.atMs > setAtMs);
+
+  // (1) THE DECISIVE ONE. On the defective build NOTHING draws after the
+  // choreography: `useHallStep` was handed `sequence.motionMs` and cancelled its
+  // frame loop there, so the whole tail — 36% of this beat, 48% of a bomb-risk
+  // one — was a single held raster.
+  check(
+    last !== null && last.atMs > setAtMs,
+    'THE HALL IS STILL DRAWING AFTER THE WALK-OUT CHOREOGRAPHY ENDS — the tail is not a frozen frame',
+    last === null
+      ? `the hall never changed at all across ${samples.length} samples over ${samples[samples.length - 1]?.atMs}ms`
+      : `the beat is ${beatMs}ms (line ${JSON.stringify((seen.line ?? '').trim())}), it was seen to end at ${endedAtMs}ms, so he is set at ${setAtMs}ms on this clock; the last change was ${describeSample(last)} — ${last.atMs > setAtMs ? `${Math.round(last.atMs - setAtMs)}ms of the ${tailMs}ms tail drew` : `the whole ${tailMs}ms tail was one held frame`}`,
+  );
+
+  // (2) AND IT DRAWS MORE THAN ONCE IN THERE. A single change past the boundary
+  // would be satisfied by one late crowd row and nothing else.
+  check(
+    tailChanges.length >= P.MIN_TAIL_CHANGES,
+    `the tail draws at least ${P.MIN_TAIL_CHANGES} separate times, not once`,
+    tailChanges.length === 0
+      ? `nothing moved after ${Math.round(setAtMs)}ms across ${samples.filter((s) => s.atMs > setAtMs).length} samples of the ${tailMs}ms tail`
+      : `${tailChanges.length} change(s) in the ${tailMs}ms tail after ${Math.round(setAtMs)}ms: ${tailChanges.map(describeSample).join('; ')}`,
+  );
+
+  // (3) THE TWO FRAMES, NAMED. The gap this section closes asks for two frames
+  // inside the tail proven to differ; these are the two the run actually took,
+  // with their instants and their magnitude, so the evidence is readable rather
+  // than implied by a count.
+  const biggest = [...tailChanges].sort((a, b) => b.differing - a.differing)[0] ?? null;
+  const beforeBiggest = biggest === null ? null : (samples[biggest.index - 1] ?? null);
+  check(
+    biggest !== null && beforeBiggest !== null && biggest.differing > P.SAME_PICTURE_MAX_PX,
+    'two frames INSIDE the tail window differ in pixels',
+    biggest === null || beforeBiggest === null
+      ? 'no two consecutive samples inside the tail were compared'
+      : `${beforeBiggest.atMs}ms vs ${biggest.atMs}ms: ${biggest.differing} of ${biggest.total} px, max channel delta ${biggest.maxChannelDelta}`,
+  );
+
+  // (4) THE POSITIVE HALF OF THE CONTROL: the same instrument, on the same
+  // region, reporting "differs" while he is still WALKING THE BAR OUT — a beat
+  // this piece has had for several rounds and which is not what is being tested
+  // here. Without it, a probe photographing a static corner of the screen would
+  // pass (1) to (3) on noise.
+  const whileWalking = samples.filter((s) => s.index > 0 && s.atMs <= setAtMs);
+  check(
+    whileWalking.some((s) => s.changed),
+    'CONTROL: and it says DIFFERS while he is still walking the bar out, so it is looking at the hall',
+    whileWalking.length === 0
+      ? `no samples landed inside the choreography, which ended at ${Math.round(setAtMs)}ms on this clock`
+      : `${whileWalking.filter((s) => s.changed).length} of ${whileWalking.length} samples before he is set moved: ${whileWalking.filter((s) => s.changed).map(describeSample).join('; ')}`,
+  );
+
+  // REPORTED, NOT ASSERTED. On the shipped build the last change lands exactly
+  // `WALKOUT_TAIL.HUSH_MS` before the beat is seen to end, which is the design
+  // claim about where the stillness starts — but a stalled sampler can miss the
+  // final change and inflate this by a whole gap, so it is evidence for a reader
+  // rather than a bound the run is graded on. The sheet's own hush is measured
+  // in `walkout.test.ts`, where there is no sampler.
+  const heldForMs = last === null ? null : Math.round(endedAtMs - last.atMs);
+  const gaps = samples.slice(1).map((s, i) => s.atMs - (samples[i]?.atMs ?? 0));
+  note(
+    `walk-out tail: the last change was ${heldForMs}ms before the beat was seen to end; ` +
+      `WALKOUT_TAIL.HUSH_MS is ${P.HUSH_MS}ms and the sampler's worst gap this run was ${Math.max(...gaps)}ms`,
+  );
+  note(
+    `walk-out tail (played, third attempt): ${samples.length} samples over ${samples[samples.length - 1]?.atMs}ms, ` +
+      `beat ${beatMs}ms seen to end at ${endedAtMs}ms so he is set at ${Math.round(setAtMs)}ms ` +
+      `(asked for every ${P.SAMPLE_EVERY_MS}ms, actual ${Math.min(...gaps)}-${Math.max(...gaps)}ms), ` +
+      `${changes.length} change(s), last at ${last?.atMs ?? 'never'}ms — ` +
+      samples.map((s) => `${s.atMs}:${s.differing}`).join(' '),
+  );
+
+  // (5) THE NEGATIVE HALF OF THE CONTROL, AND THE ONE THE GAP THIS CLOSES ASKS
+  // FOR BY NAME: the comparison must be shown CAPABLE OF REPORTING "IDENTICAL",
+  // or (1) to (3) are three ways of saying "this instrument answers differs".
+  //
+  // Taken on a WALK-OUT THAT HAS COME TO REST rather than on a blank screen, so
+  // it is the same picture, the same region and the same decoder — `?meet=`
+  // freezes the meet, so once the beat has run out the app holds its last
+  // drawing indefinitely, and two shots `SETTLED_GAP_MS` apart there must be
+  // pixel-identical. A comparison that had started answering "differs" to
+  // everything fails HERE instead of certifying the tail.
+  await page.goto(`${url}/?meet=walkout-third`, { waitUntil: 'load' });
+  await page.getByTestId('meet-hall').waitFor({ state: 'visible', timeout: 120000 });
+  await page.waitForTimeout(P.SETTLED_AFTER_MS);
+  const box = await page.getByTestId('meet-hall').boundingBox().catch(() => null);
+  if (box === null) {
+    check(false, 'CONTROL: the settled walk-out could be photographed', 'meet-hall has no box');
+    return;
+  }
+  const clip = {
+    x: Math.round(box.x),
+    y: Math.round(box.y),
+    width: Math.round(box.width),
+    height: Math.round(box.height),
+  };
+  const first = decodePng(await page.screenshot({ clip }));
+  await page.waitForTimeout(P.SETTLED_GAP_MS);
+  const second = decodePng(await page.screenshot({ clip }));
+  const region = { x: 0, y: 0, w: first.width, h: first.height };
+  const settled = diffPixels(first, second, region, { tolerance: P.SAME_PICTURE_TOLERANCE });
+  check(
+    settled.differing === 0,
+    'CONTROL: and it says IDENTICAL on a walk-out that has come to rest — so its answer above is a reading, not a constant',
+    `two shots ${P.SETTLED_GAP_MS}ms apart at ${P.SETTLED_AFTER_MS}ms into a frozen third-attempt walk-out: ${settled.differing} of ${settled.total} px moved (max channel delta ${settled.maxChannelDelta})`,
+  );
+  // ...on the same beat the timeline was taken on, so the control is not being
+  // run against a different screen.
+  const settledText = (await bodyText()).replace(/\s+/g, ' ');
+  check(
+    settledText.includes(MEET_TAIL_SAYS.NOTHING_BANKED) ||
+      settledText.includes(MEET_TAIL_SAYS.THIRD_OF_THREE),
+    'CONTROL: and it is a third attempt’s walk-out that it says that about',
+    `the screen says ${JSON.stringify(settledText.slice(0, 120))}`,
+  );
+  await page.screenshot({ path: path.join(outDir, '12-walkout-tail-settled.png') });
+}
+
 async function checkMeetRestatementsMatchTuning() {
   const meetWhere = path.join(srcRoot, 'src', 'game', 'meetTuning.ts');
   const meetText = await readFile(meetWhere, 'utf8').catch(() => null);
@@ -1618,6 +2062,51 @@ async function checkMeetRestatementsMatchTuning() {
       theirs === null
         ? `one of RECAP_ROW_STAGGER_MS (${staggerMs}), RECAP_ROW_FADE_MS (${fadeMs}) or RECAP_ROW_ORDER.CARD (${lastBlock}) was not found in meetTuning.ts`
         : `meetTuning.ts ${lastBlock} x ${staggerMs} + ${fadeMs} = ${theirs}ms vs this tool ${RECAP_LAST_ROW_DRAWN_AT_MS}ms`,
+    );
+
+    // THE WALK-OUT TAIL PROBE'S OWN NUMBERS AND LINES. Same arrangement as the
+    // recap deadline above and for the same reason: `MOTION_MS` is arithmetic on
+    // five values `meetTuning.ts` owns, and a re-tune of any of them silently
+    // moves the boundary the decisive check is measured against.
+    for (const [name, mine] of [
+      ['WALKOUT_BOMB_RISK', MEET_TAIL_SAYS.NOTHING_BANKED],
+    ]) {
+      check(
+        meetText.includes(`${name}: '${mine}'`),
+        `MEET_COPY.${name} is the line the walk-out tail probe identifies its beat by`,
+        `looked for ${name}: '${mine}' in meetTuning.ts`,
+      );
+    }
+    const barLoad = numberInSource(meetText, 'BAR_LOAD_MS');
+    check(
+      barLoad === BAR_LOAD_MS_RESTATED,
+      'the bar-load window the tail probe uses as its positive control is MEET_TUNING’s own',
+      `meetTuning.ts ${barLoad}ms vs this tool ${BAR_LOAD_MS_RESTATED}ms`,
+    );
+    const unrack = numberInBlock(meetText, 'WALKOUT_MOTION', 'UNRACK_MS');
+    const stepCount = numberInBlock(meetText, 'WALKOUT_MOTION', 'STEP_COUNT');
+    const stepMs = numberInBlock(meetText, 'WALKOUT_MOTION', 'STEP_MS');
+    const settleMs = numberInBlock(meetText, 'WALKOUT_MOTION', 'SETTLE_MS');
+    const theirMotion =
+      typeof barLoad === 'number' &&
+      typeof unrack === 'number' &&
+      typeof stepCount === 'number' &&
+      typeof stepMs === 'number' &&
+      typeof settleMs === 'number'
+        ? barLoad + unrack + stepCount * stepMs + settleMs
+        : null;
+    check(
+      theirMotion === WALKOUT_TAIL_PROBE.MOTION_MS,
+      'the instant the tail probe calls "he is set" is MEET_TUNING’s own choreography arithmetic',
+      theirMotion === null
+        ? `one of BAR_LOAD_MS (${barLoad}), UNRACK_MS (${unrack}), STEP_COUNT (${stepCount}), STEP_MS (${stepMs}) or SETTLE_MS (${settleMs}) was not found in meetTuning.ts`
+        : `meetTuning.ts ${barLoad} + ${unrack} + ${stepCount} x ${stepMs} + ${settleMs} = ${theirMotion}ms vs this tool ${WALKOUT_TAIL_PROBE.MOTION_MS}ms`,
+    );
+    const hushMs = numberInBlock(meetText, 'WALKOUT_TAIL', 'HUSH_MS');
+    check(
+      hushMs === WALKOUT_TAIL_PROBE.HUSH_MS,
+      'the hush the tail probe holds the beat’s ending to is WALKOUT_TAIL.HUSH_MS',
+      `meetTuning.ts ${hushMs}ms vs this tool ${WALKOUT_TAIL_PROBE.HUSH_MS}ms`,
     );
   }
 
@@ -1844,6 +2333,9 @@ async function readMeetLoop() {
       bombed: has('meet-bombed'),
       prompt: text('attempt-prompt'),
       attemptLabel: text('attempt-label'),
+      /** GDD §6.2 step 1's eyebrow and its line — which attempt, and what it is worth. */
+      walkoutEyebrow: text('walkout-attempt'),
+      walkoutLine: text('walkout-line'),
       /** The judges' one line. See MEET_DRIVE.FEEDBACK_HIGH for why not `attempt-detail`. */
       feedback: text('verdict-feedback'),
       /**
@@ -1856,6 +2348,74 @@ async function readMeetLoop() {
         .filter((id) => /^attempt-option-(repeat|small|big)$/.test(id)),
     };
   });
+}
+
+/**
+ * What the tail probe saw, filled in ONCE by the meet driver and read by
+ * `probeWalkoutTail` after the drive.
+ *
+ * A module-level box rather than a return value because the sampling has to
+ * happen at a particular instant of a meet the driver owns, and threading it
+ * back out through four return shapes would put the plumbing in front of the
+ * measurement.
+ */
+const WALKOUT_TAIL_SEEN = { timeline: null, eyebrow: null, line: null, attempts: 0 };
+
+/**
+ * If the walk-out on screen is a THIRD attempt, photograph the hall through it.
+ *
+ * ON THE PLAYED MEET AND NOT ON A DEBUG URL, and it was the other way round
+ * first. `?meet=walkout-third` freezes the meet on exactly this beat and lets
+ * its clock run, which looks like the easier subject — and MEASURED, it is not
+ * usable: a page load re-initialises the Skia surface, `useHallStep`'s frame
+ * loop advances on wall-clock time through that stall, and five consecutive
+ * cold loads on this machine had the whole 4,100 ms beat elapse before the
+ * first screenshot came back (2 changes seen, none of them in the tail). The
+ * played meet has no load in front of it: the app is warm, `WalkoutView` mounts
+ * in a running page, and the sampler sees the beat from the top. This is also
+ * the arm CLAUDE.md asks for — the screen reached the way a player reaches it.
+ */
+async function sampleTheTailIfThisIsAThird(state) {
+  const eyebrow = state.walkoutEyebrow;
+  if (eyebrow === null || !eyebrow.includes(MEET_TAIL_SAYS.THIRD_OF_THREE)) return;
+  WALKOUT_TAIL_SEEN.eyebrow = eyebrow;
+  WALKOUT_TAIL_SEEN.line = state.walkoutLine;
+  WALKOUT_TAIL_SEEN.timeline = await sampleHallTimeline(
+    WALKOUT_TAIL_PROBE.HORIZON_MS,
+    WALKOUT_TAIL_PROBE.SAMPLE_EVERY_MS,
+    // The beat ends when the attempt takes over. Sampling past it would be
+    // photographing a different screen and calling it the tail. A one-selector
+    // probe rather than `readMeetLoop`, because this runs between samples and
+    // the sampler's cadence is what decides how much of the tail it can resolve.
+    () => page.evaluate(() => document.querySelector('[data-testid="meet-walkout"]') !== null),
+    // ...and it is not asked at all until the beat could be over. The floor is
+    // the shortest beat this line can mean minus a whole sampling gap, so an
+    // early end still lands on the first probe rather than being missed.
+    beatMsForLine(state.walkoutLine) - WALKOUT_TAIL_PROBE.HUSH_MS,
+  );
+}
+
+/**
+ * How long the beat on screen runs for, read off the line it is showing.
+ *
+ * `walkoutMs`'s arithmetic, restated and cross-checked against `meetTuning.ts`
+ * by `checkMeetRestatementsMatchTuning`. The LINE disambiguates the shape:
+ * `WalkoutView` picks it bomb-risk first, then PR, then third, so
+ *
+ *   'LAST ONE'                        a third attempt, no PR, no bomb  -> exact
+ *   'NOBODY HAS SEEN YOU DO THIS'     a PR, no bomb                    -> exact
+ *   'NOTHING BANKED. THIS IS THE LIFT.'  a bomb risk, PR unknown       -> a FLOOR
+ *
+ * The last case is ambiguous and is deliberately resolved DOWNWARDS. Every
+ * window below is `endedAtMs - (beatMs - MOTION_MS)`, so under-estimating the
+ * beat puts the boundary LATER and can only make the claims harder.
+ */
+function beatMsForLine(line) {
+  const said = line ?? '';
+  let total = BAR_LOAD_MS_RESTATED + WALKOUT_MS_RESTATED + THIRD_ATTEMPT_EXTRA_RESTATED;
+  if (said.includes(MEET_TAIL_SAYS.NOTHING_BANKED)) return total + BOMB_RISK_EXTRA_RESTATED;
+  if (said.includes(MEET_TAIL_SAYS.A_PR)) total += PR_EXTRA_RESTATED;
+  return total;
 }
 
 /** Poll `readMeetLoop` until `done(state)`, or the deadline passes. */
@@ -2066,6 +2626,15 @@ async function driveMeetToItsEnd(tag, searchIn) {
     }
 
     if (state.walkout || state.deliberation || state.verdict) {
+      // THE ONE BEAT THIS LOOP DOES MORE THAN WAIT THROUGH. See the block above
+      // `WALKOUT_TAIL_PROBE`: the walk-out's tail is where every millisecond of
+      // §12.2's escalation lands, no unit test can watch a clock run, and the
+      // tail only exists on a third attempt — which the played meet reaches
+      // three times and a page load reaches only by freezing the meet. The
+      // sampler runs on the FIRST of them, and only once.
+      if (state.walkout && WALKOUT_TAIL_SEEN.timeline === null) {
+        await sampleTheTailIfThisIsAThird(state);
+      }
       // Three TIMED beats that run themselves out. Nothing to press on any of
       // them, and that is a design claim section 7 checks rather than an
       // assumption this makes: a pill drawn here would be a mis-tap that costs
@@ -3240,6 +3809,14 @@ await checkOnScreen(
   'session-screen',
   '/?meet=nonsense boots the daily session rather than a broken meet',
 );
+
+// ###########################################################################
+// ###  8b. THE WALK-OUT'S TAIL IS ALIVE, ON A RUNNING CLOCK                 #
+// ###########################################################################
+//
+// See the block above `WALKOUT_TAIL_PROBE` for what this measures, why no unit
+// test can, and which arm it runs on.
+await probeWalkoutTail();
 
 // ---------------------------------------------------------------------------
 // 9. This tool's own expectations still match the app's tuning module
