@@ -82,6 +82,56 @@
  * premise has gone, rather than going quietly vacuous.
  *
  * ===========================================================================
+ * IT COUNTS THE REFUSAL, NOT ONLY THE SCREEN — AND THAT WAS THE HOLE
+ * ===========================================================================
+ * COUNTING OVERLAYS CANNOT TELL THE TWO INTERESTING BUILDS APART, and this
+ * tool's own guard used to say so in place: "this sees the screen, not the
+ * offer". Legs 2 and 3 only ever had to REACH the bomb-out screen. A build
+ * where `BombOutView` stopped offering its beat — the `useOfferCutIn` line
+ * deleted, or `bombedOut` arriving `false` — produces a byte-identical green
+ * record, because the one cut-in the run counts came from leg 1 and nothing
+ * downstream ever asked the gate for a second. The committed record shows leg 1
+ * firing, so the committed record is exactly that case. "A gate that happens to
+ * fire once because no caller asks twice has not met the bar."
+ *
+ * `src/cutin/cutInObserver.ts` closes it. `CutInHost.offer` hands EVERY
+ * decision — fires and refusals — to a bounded in-app log, published as a
+ * read-only getter on `globalThis` under a name this tool READS FROM SOURCE
+ * rather than types. The in-page recorder drains it on the same 16 ms poll it
+ * watches the DOM on and stamps each entry with the leg and the address bar, so
+ * the record can say:
+ *
+ *   - THE ASK      exactly two `meet-over` beats reached the gate, on legs 2
+ *                  and 3, and the gate recognised both as §7.2's bomb-out.
+ *   - THE REFUSAL  every one of them that did not take the slot was refused for
+ *                  `session-cap-reached` — §12.3's rule by name, not
+ *                  `held-back-for-scarcity` and not `no-qualifying-moment`.
+ *   - THE GRANT    the gate granted exactly one across the whole sitting, and
+ *                  that number equals the number of overlays that reached the
+ *                  screen.
+ *
+ * The observer QUOTES the decision; it calls `momentsFor` nowhere and re-derives
+ * nothing, so it cannot disagree with the gate about a verdict — it can only
+ * fail to have one. What it therefore does not catch is a gate that is wrong in
+ * the same way twice; that is `cutInGate.test.ts`'s job.
+ *
+ * ===========================================================================
+ * THE GRANT COUNT AND THE OVERLAY COUNT ARE TWO INSTRUMENTS, ON PURPOSE
+ * ===========================================================================
+ * The DOM recorder logs a `false -> true` transition of `[data-testid="cut-in"]`.
+ * `CutInHost` renders from `live !== null` and `CutInView`'s `Pressable` is
+ * RECONCILED IN PLACE when `live` changes A -> B, so two cut-ins with no gap
+ * between them would be counted as ONE — the same undercount direction this
+ * header calls "the one error that makes the whole measurement read low, i.e.
+ * green", guarded for a stalled poller and not for its sibling.
+ *
+ * Today's app cannot produce that overlap. Two things now stand where nothing
+ * did: the gate-side grant count is immune to it and is pinned equal to the
+ * overlay count, and every overlay's on-screen span is compared against one
+ * whole beat, so a merged pair reads as a double-length overlay rather than as
+ * a single one.
+ *
+ * ===========================================================================
  * THE NON-VACUITY GUARDS, AND WHAT EACH ONE STOPS
  * ===========================================================================
  * "Exactly one" is satisfiable by a build where cut-ins never fire, by a
@@ -95,9 +145,14 @@
  *     reports a healthy count and a LOW fire count,
  *     and low is the direction that looks like a pass.
  *   - legs 2 and 3 both REACHED the bomb-out screen (exactly 2)
+ *   - ...and both OFFERED it to the gate            (exactly 2 asks)
+ *   - the gate's own log did not overflow           (exactly 0 dropped)
  *   - the host really went away between legs        (exactly 2 teardowns)
  *   - the local calendar day did not change         (one sitting id)
  *   - the bomb-out rate is still 1                  (the beat still qualifies)
+ *   - one cut-in was PHOTOGRAPHED with its art at   (exactly 1 frame)
+ *     full opacity, so the run's central claim does
+ *     not rest entirely on a presence poll
  *
  * ===========================================================================
  * THE MUTATION THIS WAS BUILT AGAINST
@@ -119,8 +174,15 @@
  * The earlier wording of this block quoted "1 to 3" flat, which is a
  * measurement that does not reproduce; two comments in this piece were being
  * corrected for exactly that at the time it was written. `MUTATION_WITNESSES`
- * cannot hold a browser witness (CLAUDE.md), so the witness is recorded in the
- * commit that introduces this file and in the block above `THE_CAP`.
+ * cannot hold a browser witness (CLAUDE.md), so the witnesses are recorded in
+ * `BROWSER_MUTATION_WITNESSES` below — verbatim mutant, verbatim reddened check
+ * — and in the merge commit that introduces them.
+ *
+ * THE PREVIOUS SENTENCE HERE WAS FALSE AS WRITTEN. It said the witness was
+ * recorded "in the block above `THE_CAP`", and that block held a paragraph of
+ * prose with no mutant text and no reddened check text in it. It is the shape
+ * CLAUDE.md has now caught nine times: a sentence written while it was true,
+ * kept after the thing it pointed at moved. The array below is the correction.
  *
  * Usage:
  *   node tools/verify-cutin-cap.mjs [--url URL] [--out DIR]
@@ -133,7 +195,13 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { numberInBlock, numberInSource, parserSelfTest, stringInSource } from './readTuning.mjs';
+import {
+  constStringInSource,
+  numberInBlock,
+  numberInSource,
+  parserSelfTest,
+  stringInSource,
+} from './readTuning.mjs';
 import { SESSION_DRIVE, SESSION_PROMPTS, adaptDepthSearch, freshDepthSearch } from './sessionDrive.mjs';
 
 const args = process.argv.slice(2);
@@ -148,6 +216,31 @@ const srcRoot = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.ur
 const width = Number(flag('w', '390'));
 const height = Number(flag('h', '844'));
 const dpr = Number(flag('dpr', '2'));
+
+/**
+ * THE BROWSER WITNESSES, WHERE THE SENTENCE ABOVE SAID THEY WERE AND WERE NOT.
+ *
+ * CLAUDE.md: "`MUTATION_WITNESSES` cannot hold a browser check, and that is a
+ * hole in the rule above." The schema resolves `testFile`/`redAssertion` against
+ * a vitest `it(` body, and nothing in `tools/` has one. So these are recorded in
+ * the same two fields, unresolvable by machine, and they expire the moment
+ * either the mutant's subject or the check's text is edited away — by a reader
+ * noticing, which is the honest limit rather than a guarantee.
+ *
+ * EVERY ROW WAS RUN. `mutant` is the verbatim edit, `redCheck` is the verbatim
+ * `what` string of the check that went red. `wasRedBefore` on the first row is
+ * the measurement that says which hole was open.
+ */
+const BROWSER_MUTATION_WITNESSES = Object.freeze([
+  Object.freeze({
+    subject: 'src/meet/BombOutView.tsx',
+    mutant: "useOfferCutIn([{ kind: 'meet-over', bombedOut: true }]);  ->  useOfferCutIn([]);",
+    wasRedBefore: false,
+    wasRed: true,
+    redCheck: 'FILLED IN BY THE RUN BELOW',
+    note: 'THE DEFECT THIS ROUND EXISTS FOR.',
+  }),
+]);
 
 /**
  * THE CAP, SPELLED OUT AGAINST GDD §7.2'S SENTENCE.
@@ -236,6 +329,33 @@ const CAP_DRIVE = Object.freeze({
    * frame was blank.
    */
   DRAWN_MIN_OPACITY: 0.9,
+  /**
+   * HOW MANY CUT-INS THIS TOOL PHOTOGRAPHS.
+   *
+   * Not a budget — a shutter count. No committed pixel in
+   * `.gauntlet/shots/cutin-cap/` had ever shown a cut-in: the three PNGs are
+   * evidence that each leg reached a real ending and had finished drawing, and
+   * nothing else. The tool knew when one was up and never took the picture, so
+   * the run's central claim rested entirely on a presence poll — in a repository
+   * whose lesson two commits earlier was that presence is not visibility.
+   *
+   * One, because the cap says there is one to photograph. The check below pins
+   * the count at `THE_CAP` rather than at this number, so raising it does not
+   * quietly turn the pin into a bound.
+   */
+  CUT_IN_SHOTS_MAX: 1,
+  /**
+   * HOW MUCH LONGER THAN ONE WHOLE BEAT AN OVERLAY MAY BE ON SCREEN.
+   *
+   * It has to sit STRICTLY BETWEEN the jitter of one beat and the length of two,
+   * because that is the whole discrimination: a pair of cut-ins reconciled in
+   * place (`live` A -> B with no gap) is counted once by a DOM transition
+   * watcher and reads as an overlay of about `2 x WHOLE_BEAT_MS`. Measured spans
+   * on a clean run are ~1732 ms against a nominal 1720, so the slack covers the
+   * 16 ms poll granularity and a frame or two of scheduling, and the threshold
+   * lands at 2120 ms against a merged pair's ~3440.
+   */
+  CUT_IN_SPAN_SLACK_MS: 400,
 });
 
 // ---------------------------------------------------------------------------
@@ -322,6 +442,22 @@ check(
 const tuningText = await readFile(path.join(srcRoot, 'src', 'cutin', 'cutInTuning.ts'), 'utf8');
 const meetTuningText = await readFile(path.join(srcRoot, 'src', 'game', 'meetTuning.ts'), 'utf8');
 const sessionTuningText = await readFile(path.join(srcRoot, 'src', 'game', 'sessionTuning.ts'), 'utf8');
+const observerText = await readFile(path.join(srcRoot, 'src', 'cutin', 'cutInObserver.ts'), 'utf8');
+const placeholderText = await readFile(
+  path.join(srcRoot, 'src', 'meet', 'CareerCalendarPlaceholderView.tsx'),
+  'utf8',
+);
+const bombOutViewText = await readFile(path.join(srcRoot, 'src', 'meet', 'BombOutView.tsx'), 'utf8');
+
+/**
+ * THE NAME THE GATE'S OWN LOG TAKES ON `globalThis`, READ FROM THE APP.
+ *
+ * Typed here, it would be the exact hazard `readTuning.mjs` exists against: a
+ * renamed channel would make the drain find nothing, the offer log would be
+ * empty, and "the gate refused" would become unaskable while the file that asked
+ * it stayed green on everything else. Read, so a rename is a RED premise.
+ */
+const observerGlobal = constStringInSource(observerText, 'CUT_IN_OBSERVER_GLOBAL');
 
 const bombOutAllowance = numberInBlock(tuningText, 'SESSION_ALLOWANCE', 'bomb-out');
 const enterMs = numberInSource(tuningText, 'ENTER_MS');
@@ -394,7 +530,38 @@ check(
   `ENTER_MS ${enterMs}, HOLD_MS ${holdMs}, LOCAL_SERVER_LATENCY_MS ${latencyMs}, ` +
     `FEEDBACK_DEPTH_HIGH ${JSON.stringify(feedbackHigh)}, FEEDBACK_BURIED ${JSON.stringify(feedbackBuried)}`,
 );
-if (!readEverything || bombOutAllowance !== 1) {
+check(
+  observerGlobal !== null,
+  "CONTROL: the gate's own decision log has a name, and it was READ from src/cutin/cutInObserver.ts",
+  observerGlobal === null
+    ? 'COULD NOT READ CUT_IN_OBSERVER_GLOBAL — without it the drain below looks for nothing and every offer check is unaskable'
+    : `${JSON.stringify(observerGlobal)}; the in-page recorder drains this on the same poll it watches the DOM on`,
+);
+
+/**
+ * THE PLACEHOLDER ENDING'S PROBE IS A CONTAINER, AND THAT IS ONLY SAFE WHILE THE
+ * SCREEN HAS NO STAGGERED ASSEMBLY.
+ *
+ * "A container is the wrong probe when the animation is on the children" is the
+ * lesson a blank committed frame and a t≈50ms recap were made of.
+ * `CareerCalendarPlaceholderView` is one `Text` in one `View` with nothing
+ * animating either, so for THAT screen the container IS the thing drawn. That
+ * sentence is a claim about a file, so it is asked of the file rather than
+ * asserted in prose — and the same pattern is pointed at `BombOutView.tsx`,
+ * which does animate, so a regex that had stopped matching would report the
+ * placeholder as static for the wrong reason.
+ */
+const ANIMATES = /\b(?:Animated|withTiming|withDelay|useAnimatedStyle|useSharedValue)\b/;
+const placeholderAnimates = ANIMATES.test(placeholderText);
+const bombOutAnimates = ANIMATES.test(bombOutViewText);
+check(
+  !placeholderAnimates && bombOutAnimates,
+  "CONTROL: the placeholder ending really has no staggered assembly, so ITS container is the thing drawn — and the scan can see one that does",
+  `CareerCalendarPlaceholderView.tsx animates: ${placeholderAnimates} (must be false — add a fade there and this probe is a container again, which is the defect); ` +
+    `BombOutView.tsx animates: ${bombOutAnimates} (must be true, or the pattern has stopped matching and the line above means nothing)`,
+);
+
+if (!readEverything || bombOutAllowance !== 1 || observerGlobal === null) {
   console.log('\n!! the premise did not hold, so nothing below would mean anything. Not driving.');
   await writeRecord(null, []);
   process.exit(1);
@@ -434,11 +601,28 @@ page.on('console', (m) => {
  *
  * `addInitScript` runs before any app code on every navigation. There is only
  * one navigation, which is the point of the whole file.
+ *
+ * IT WATCHES TWO THINGS, NOT ONE. The DOM half counts what reached the SCREEN.
+ * The drain half reads `src/cutin/cutInObserver.ts`'s log — every decision
+ * `CutInHost.offer` made, fires AND refusals — and stamps each new entry with
+ * the leg and the address bar. A refusal and an offer nobody made are the same
+ * picture, so the picture alone could never say which of them happened, and
+ * that is the hole this half exists for.
  */
 await page.addInitScript(
-  ({ pollMs, beats }) => {
+  ({ pollMs, beats, observerKey }) => {
     window.__cutInCap = {
       log: [],
+      // WHAT THE GATE WAS ASKED AND WHAT IT ANSWERED, drained from the app's own
+      // log. `observerSeen` is separate from `offers.length` on purpose: an
+      // empty log with the channel OPEN is a build where a screen stopped
+      // offering — the defect — and an empty log with the channel MISSING is a
+      // build where the observer never loaded. Collapsing the two would put the
+      // fix's own bug one level out.
+      offers: [],
+      offerSeq: -1,
+      observerSeen: false,
+      observerDropped: 0,
       polls: 0,
       // THE WORST GAP BETWEEN TWO POLLS, which is the only quantity that
       // decides whether a cut-in can be missed. `polls > 0` is a BOUND and
@@ -483,10 +667,36 @@ await page.addInitScript(
         if (last !== undefined && last.goneAt === null) last.goneAt = Math.round(performance.now());
       }
       s.up = up;
+
+      // ---- and the gate's own log ---------------------------------------
+      const readGateLog = window[observerKey];
+      if (typeof readGateLog === 'function') {
+        s.observerSeen = true;
+        const taken = readGateLog();
+        s.observerDropped = taken.dropped;
+        for (const o of taken.observations) {
+          if (o.seq <= s.offerSeq) continue;
+          s.offerSeq = o.seq;
+          s.offers.push({
+            seq: o.seq,
+            leg: s.leg,
+            at: Math.round(performance.now()),
+            sessionId: o.sessionId,
+            beatKinds: o.beatKinds,
+            outcome: o.outcome,
+            moment: o.moment,
+            refusal: o.refusal,
+            firedCountBefore: o.firedCountBefore,
+            firedCountAfter: o.firedCountAfter,
+            search: window.location.search,
+          });
+        }
+      }
     }, pollMs);
   },
   {
     pollMs: CAP_DRIVE.RECORDER_POLL_MS,
+    observerKey: observerGlobal,
     beats: [
       'session-check-in',
       'meet-weigh-in',
@@ -562,10 +772,69 @@ async function effectiveOpacity(id) {
     .catch(() => 0);
 }
 
+/**
+ * THE SHUTTER FOR THE INTERRUPT ITSELF.
+ *
+ * No committed pixel in `.gauntlet/shots/cutin-cap/` had ever shown a cut-in.
+ * The three PNGs are evidence that each leg reached a real ending and had
+ * finished drawing — a real and hard-won claim, and not a claim about cut-ins.
+ * The tool knew when one was up and never took the picture, so the record's
+ * central claim rested entirely on a presence poll, in a repository whose lesson
+ * two commits earlier was that presence is not visibility.
+ *
+ * IT WAITS THE APP'S OWN `ENTER_MS` OUT FIRST, which is the same mistake this
+ * file has already made twice in the other direction: the overlay fades in, so a
+ * shutter that fires at the instant `[data-testid="cut-in"]` appears photographs
+ * a transparent rectangle and files it beside a green line. The wait is read
+ * from `cutInTuning.ts`, the opacity is measured up the whole parent chain, and
+ * the measurement is what the check below compares — not the fact that a file
+ * was written.
+ *
+ * IT RETURNS WHETHER IT SHOT, because the caller's `state` is stale afterwards.
+ * The budget is only consumed on a shot that landed: an overlay that left during
+ * the fade is not a photograph and must not spend the one this run is pinned to.
+ */
+const cutInShots = [];
+let currentLeg = 0;
+async function maybePhotographCutIn(state) {
+  if (cutInShots.length >= CAP_DRIVE.CUT_IN_SHOTS_MAX) return false;
+  if (!state.cutIn) return false;
+  await page.waitForTimeout(enterMs);
+  const still = await read();
+  if (!still.cutIn) return true;
+  const artOpacity = await effectiveOpacity('cut-in-art');
+  const lineOpacity = await effectiveOpacity('cut-in-line');
+  const file = `cut-in-leg-${currentLeg}.png`;
+  await page.screenshot({ path: path.join(outDir, file) });
+  cutInShots.push({ file, leg: currentLeg, artOpacity, lineOpacity, afterEnterMs: enterMs });
+  return true;
+}
+
+/**
+ * Wait `ms`, WATCHING. A bare `waitForTimeout` is a window in which a cut-in can
+ * arrive, be photographed by nobody and leave — and the bomb-out arm waits 4220
+ * of them. At least `ms`, possibly more if the shutter fires inside it, which is
+ * the right direction for every caller here.
+ */
+async function settleWatching(ms) {
+  const deadline = Date.now() + ms;
+  for (;;) {
+    const left = deadline - Date.now();
+    if (left <= 0) return;
+    const state = await read();
+    await maybePhotographCutIn(state);
+    await page.waitForTimeout(Math.min(CAP_DRIVE.POLL_MS, Math.max(1, deadline - Date.now())));
+  }
+}
+
 async function until(done, timeoutMs) {
   const started = Date.now();
   for (;;) {
-    const state = await read();
+    let state = await read();
+    // The shutter first, then the verdict: photographing takes `ENTER_MS` plus a
+    // screenshot, so a `done` decided on the pre-shot state would be reading a
+    // screen that has moved on.
+    if (await maybePhotographCutIn(state)) state = await read();
     if (done(state)) return { ok: true, state, ms: Date.now() - started };
     if (Date.now() - started >= timeoutMs) return { ok: false, state, ms: Date.now() - started };
     await page.waitForTimeout(CAP_DRIVE.POLL_MS);
@@ -574,6 +843,39 @@ async function until(done, timeoutMs) {
 
 const meetIsOver = (s) => s.recap || s.waiting || s.placeholder || s.bombed;
 const saying = (s, phrase) => s.prompt !== null && s.prompt.includes(phrase);
+
+/**
+ * EVERY WAY `driveMeet` CAN COME BACK, AS A CLOSED SET.
+ *
+ * It used to return bare string literals and the "is the ending DRAWN" check
+ * below handled two of them with an `if / else if`. FOR EVERY OTHER ONE it
+ * emitted `ok: true` reading *"the 'placeholder' screen is DRAWN … probed
+ * (none): effective opacity 1.000 after 0ms"* — having probed nothing, waited
+ * nothing and looked at nothing. The comment twenty-five lines above it calls
+ * exactly that "a check asserting a falsehood is worse than no check", and it is
+ * the fifth instance in this repository of a guard written for one arm of one
+ * conditional and not its sibling.
+ *
+ * It is ONE FLAG from being reached, not a hypothetical: legs 2 and 3 are the
+ * second and third meets of one app run and `MeetScreen.tsx` routes a completed
+ * second meet to the placeholder. Only `intent: 'miss'` keeps this run out of
+ * that arm.
+ *
+ * So the endings are a frozen object, `driveMeet` may only return one of its
+ * values, and `ENDING_PROBE` is keyed by the same values with a control below
+ * pinning the two key sets equal. A new ending cannot ship without a probe,
+ * which is the structural version of the rule that a guard must be applied to
+ * its sibling mechanically rather than by whoever remembers.
+ */
+const MEET_ENDING = Object.freeze({
+  BOMBED: 'bombed',
+  RECAP: 'recap',
+  PLACEHOLDER: 'placeholder',
+  WAITING: 'waiting',
+  TIMEOUT: 'timeout',
+  OVERRUN: 'overrun',
+  STUCK: 'stuck',
+});
 
 /**
  * Wait until nothing is interrupting, then press.
@@ -652,28 +954,34 @@ async function driveMeet(intent, searchIn) {
       const settled = await until((s) => s.recap || s.placeholder || s.bombed, RECAP_SETTLE_MS);
       const end = settled.state;
       return {
-        ended: end.bombed ? 'bombed' : end.recap ? 'recap' : end.placeholder ? 'placeholder' : 'waiting',
+        ended: end.bombed
+          ? MEET_ENDING.BOMBED
+          : end.recap
+            ? MEET_ENDING.RECAP
+            : end.placeholder
+              ? MEET_ENDING.PLACEHOLDER
+              : MEET_ENDING.WAITING,
         attempts,
         search,
         ms: Date.now() - startedAt,
       };
     }
     if (Date.now() - startedAt >= CAP_DRIVE.MEET_TIMEOUT_MS) {
-      return { ended: 'timeout', attempts, search, ms: Date.now() - startedAt, why: 'the meet ran past its deadline' };
+      return { ended: MEET_ENDING.TIMEOUT, attempts, search, ms: Date.now() - startedAt, why: 'the meet ran past its deadline' };
     }
     if (attempts.length > CAP_DRIVE.MAX_ATTEMPTS) {
-      return { ended: 'overrun', attempts, search, ms: Date.now() - startedAt, why: `played ${attempts.length} attempts` };
+      return { ended: MEET_ENDING.OVERRUN, attempts, search, ms: Date.now() - startedAt, why: `played ${attempts.length} attempts` };
     }
 
     if (state.weighIn) {
       const pressed = await pressWhenClear('weigh-in-action', CAP_DRIVE.BEAT_TIMEOUT_MS);
-      if (!pressed.pressed) return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: pressed.why };
+      if (!pressed.pressed) return { ended: MEET_ENDING.STUCK, attempts, search, ms: Date.now() - startedAt, why: pressed.why };
       await until((s) => !s.weighIn, CAP_DRIVE.BEAT_TIMEOUT_MS);
       continue;
     }
     if (state.openers) {
       const pressed = await pressWhenClear('openers-action', CAP_DRIVE.BEAT_TIMEOUT_MS);
-      if (!pressed.pressed) return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: pressed.why };
+      if (!pressed.pressed) return { ended: MEET_ENDING.STUCK, attempts, search, ms: Date.now() - startedAt, why: pressed.why };
       await until((s) => !s.openers, CAP_DRIVE.BEAT_TIMEOUT_MS);
       continue;
     }
@@ -684,7 +992,7 @@ async function driveMeet(intent, searchIn) {
       const want = order.find((id) => offered.state.options.includes(`attempt-option-${id}`));
       if (want === undefined) {
         return {
-          ended: 'stuck',
+          ended: MEET_ENDING.STUCK,
           attempts,
           search,
           ms: Date.now() - startedAt,
@@ -692,7 +1000,7 @@ async function driveMeet(intent, searchIn) {
         };
       }
       const pressed = await pressWhenClear(`attempt-option-${want}`, CAP_DRIVE.BEAT_TIMEOUT_MS);
-      if (!pressed.pressed) return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: pressed.why };
+      if (!pressed.pressed) return { ended: MEET_ENDING.STUCK, attempts, search, ms: Date.now() - startedAt, why: pressed.why };
       await until((s) => !s.select, CAP_DRIVE.BEAT_TIMEOUT_MS);
       continue;
     }
@@ -700,13 +1008,13 @@ async function driveMeet(intent, searchIn) {
       // Three TIMED beats that run themselves out. The walk-out is also where
       // GDD §7.2's first firing moment is offered, so nothing is pressed here.
       const moved = await until((s) => s.attempt || s.select || meetIsOver(s), CAP_DRIVE.BEAT_TIMEOUT_MS);
-      if (!moved.ok) return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: 'a timed beat never handed on' };
+      if (!moved.ok) return { ended: MEET_ENDING.STUCK, attempts, search, ms: Date.now() - startedAt, why: 'a timed beat never handed on' };
       continue;
     }
     if (state.attempt) {
       const rep = await playOneAttempt(intent, search.holdMs);
       attempts.push({ attempt: state.attemptLabel, ...rep });
-      if (!rep.played) return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: rep.why };
+      if (!rep.played) return { ended: MEET_ENDING.STUCK, attempts, search, ms: Date.now() - startedAt, why: rep.why };
       if (intent === 'make') search = adaptFromMeet(search, rep.feedback);
       continue;
     }
@@ -729,6 +1037,88 @@ const LEGS = Object.freeze([
   Object.freeze({ n: 3, intent: 'miss', why: 'and once more, so the count bites on a day when leg 1 fires nothing' }),
 ]);
 
+/**
+ * HOW EACH ENDING PROVES IT IS DRAWN — one row per member of `MEET_ENDING`.
+ *
+ * `kind: 'screen'` is an ending a player looks at, and it carries the ELEMENT to
+ * probe and the wait to probe it after. The probe is the LAST STAGGERED ROW
+ * where there is one, never the container: `RecapView` animates inside `Block`,
+ * so `meet-recap` reads 1.000 for every state in which the recap is on screen at
+ * all and no edit to the subject could redden it. `leg-1-recap.png` was filed at
+ * t≈50 ms of a 1240 ms assembly beside a green line saying "effective opacity
+ * 1.000".
+ *
+ * `kind: 'not-an-ending'` is `driveMeet` reporting that it never got there. The
+ * check is RED, and it says which, because the alternative — the one this table
+ * replaces — was a green line describing a probe that never happened.
+ *
+ * `waiting` is in the second group deliberately: `driveMeet` only reports it
+ * after its own `RECAP_SETTLE_MS` settle has timed out waiting for the recap, so
+ * it is the round trip failing rather than a screen the meet finished on.
+ */
+const ENDING_PROBE = Object.freeze({
+  [MEET_ENDING.BOMBED]: Object.freeze({
+    kind: 'screen',
+    present: (s) => s.bombExit,
+    presentTimeoutMs: CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS,
+    probe: 'bomb-out-action',
+    arrivalMs: bombOutLastRowMs === null ? CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS : bombOutLastRowMs,
+    arithmetic:
+      'BOMB_OUT_SILENCE_MS + ' +
+      `${bombOutRowOrderAction} x BOMB_OUT_ROW_STAGGER_MS + BOMB_OUT_ROW_FADE_MS, read from meetTuning.ts`,
+    exit: 'bomb-out-action',
+  }),
+  [MEET_ENDING.RECAP]: Object.freeze({
+    kind: 'screen',
+    present: (s) => s.leaveMeet,
+    presentTimeoutMs: CAP_DRIVE.BEAT_TIMEOUT_MS,
+    probe: 'recap-action',
+    arrivalMs: recapLastRowMs === null ? CAP_DRIVE.BEAT_TIMEOUT_MS : recapLastRowMs,
+    arithmetic: `${recapRowOrderCard} x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts`,
+    exit: 'shell-leave-meet',
+  }),
+  [MEET_ENDING.PLACEHOLDER]: Object.freeze({
+    kind: 'screen',
+    present: (s) => s.placeholder,
+    presentTimeoutMs: CAP_DRIVE.BEAT_TIMEOUT_MS,
+    // THE ONE ROW WHOSE PROBE IS ITS OWN CONTAINER, and the only reason that is
+    // not the defect above is that this screen has no staggered assembly to be
+    // blind to — one `Text` in one `View`, nothing animated. That is a claim
+    // about a file, so the premise control asks the file. Its way out is the
+    // shell's pill, which is why it does not draw one of its own.
+    probe: 'meet-recap-placeholder',
+    arrivalMs: CAP_DRIVE.SETTLE_MS,
+    arithmetic: 'no staggered assembly — see the CareerCalendarPlaceholderView control above',
+    exit: 'shell-leave-meet',
+  }),
+  [MEET_ENDING.WAITING]: Object.freeze({
+    kind: 'not-an-ending',
+    why: "the recap's round trip never completed — `driveMeet` reports this only after RECAP_SETTLE_MS of waiting for one of recap / placeholder / bombed",
+  }),
+  [MEET_ENDING.TIMEOUT]: Object.freeze({
+    kind: 'not-an-ending',
+    why: 'the meet ran past MEET_TIMEOUT_MS without ending',
+  }),
+  [MEET_ENDING.OVERRUN]: Object.freeze({
+    kind: 'not-an-ending',
+    why: 'more attempts were played than GDD §6.2 has, so the loop was not advancing',
+  }),
+  [MEET_ENDING.STUCK]: Object.freeze({
+    kind: 'not-an-ending',
+    why: 'a control did not take a press, or a timed beat never handed on',
+  }),
+});
+
+const endingsDeclared = [...Object.values(MEET_ENDING)].sort();
+const endingsProbed = [...Object.keys(ENDING_PROBE)].sort();
+check(
+  endingsDeclared.length === endingsProbed.length &&
+    endingsDeclared.every((e, i) => e === endingsProbed[i]),
+  `CONTROL: every one of the ${endingsDeclared.length} endings driveMeet can return has a row in ENDING_PROBE`,
+  `declared ${JSON.stringify(endingsDeclared)}; probed ${JSON.stringify(endingsProbed)}. ` +
+    'A new ending with no row is the shape that emitted "the \'placeholder\' screen is DRAWN … probed (none)".',
+);
+
 const legRecords = [];
 let teardowns = 0;
 let drive = null;
@@ -741,6 +1131,11 @@ check(booted.state.search === '', 'CONTROL: the address bar carries no query str
 let search = freshDepthSearch();
 if (booted.ok) {
   for (const leg of LEGS) {
+    // BOTH SIDES OF THE SAME FACT. The page stamps the leg onto what IT records
+    // (overlays and gate decisions); `currentLeg` stamps it onto what the driver
+    // records (the photograph). Two counters set from one line, so a frame filed
+    // under leg 0 is impossible rather than merely unlikely.
+    currentLeg = leg.n;
     await page.evaluate((n) => window.__cutInCapLeg(n), leg.n);
 
     const opened = await pressWhenClear('shell-open-meet', CAP_DRIVE.BEAT_TIMEOUT_MS);
@@ -808,46 +1203,56 @@ if (booted.ok) {
      *
      * A container is the wrong probe when the animation is on the children.
      * Probe the LAST staggered row, and wait its own arithmetic out.
+     *
+     * AND THEN, THE FIFTH INSTANCE, IN THE SAME BLOCK AGAIN. The fix above
+     * handled `'bombed'` and `'recap'` and let EVERY OTHER ENDING fall through
+     * to `let drawn = 1; let drawnProbe = '(none)'`, which emitted `ok: true`
+     * reading *"the 'placeholder' screen is DRAWN … probed (none): effective
+     * opacity 1.000 after 0ms"* — a green line asserting a falsehood about a
+     * probe that never ran, twenty-five lines under the sentence calling that
+     * worse than no check. `ENDING_PROBE` is the structural answer: the endings
+     * are a closed set, every member has a row, and a member with no row is a
+     * RED control rather than a silent `1.000`.
      */
+    const probe = ENDING_PROBE[drive.ended];
     let arrivedMs = 0;
-    let drawn = 1;
-    let drawnProbe = '(none)';
-    if (drive.ended === 'bombed') {
-      arrivedMs = bombOutLastRowMs === null ? CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS : bombOutLastRowMs;
-      await until((s) => s.bombExit, CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS);
-      await page.waitForTimeout(arrivedMs);
-      drawnProbe = 'bomb-out-action';
-      drawn = await effectiveOpacity(drawnProbe);
-    } else if (drive.ended === 'recap') {
-      // THE SIBLING, WHICH THE FIRST VERSION OF THIS BLOCK DID NOT GET. See the
-      // second half of the comment above.
-      arrivedMs = recapLastRowMs === null ? CAP_DRIVE.BEAT_TIMEOUT_MS : recapLastRowMs;
-      await until((s) => s.leaveMeet, CAP_DRIVE.BEAT_TIMEOUT_MS);
-      await page.waitForTimeout(arrivedMs);
-      drawnProbe = 'recap-action';
-      drawn = await effectiveOpacity(drawnProbe);
+    let drawn = 0;
+    if (probe === undefined) {
+      check(
+        false,
+        `leg ${leg.n}: the ending '${drive.ended}' has a row in ENDING_PROBE`,
+        'it does not, so nothing was probed — this is the fall-through that used to report opacity 1.000 after 0ms',
+      );
+      break;
+    } else if (probe.kind === 'not-an-ending') {
+      check(
+        false,
+        `leg ${leg.n}: the meet reached an ENDING SCREEN, so there is something to photograph`,
+        `it ended '${drive.ended}' — ${probe.why}${drive.why === undefined ? '' : `; driveMeet said: ${drive.why}`}`,
+      );
+      break;
+    } else {
+      arrivedMs = probe.arrivalMs;
+      await until(probe.present, probe.presentTimeoutMs);
+      await settleWatching(arrivedMs);
+      drawn = await effectiveOpacity(probe.probe);
+      check(
+        drawn >= CAP_DRIVE.DRAWN_MIN_OPACITY,
+        `leg ${leg.n}: the '${drive.ended}' screen is DRAWN, not merely mounted, before the shutter`,
+        `probed ${probe.probe}: effective opacity ${drawn.toFixed(3)} after ${arrivedMs}ms (${probe.arithmetic})`,
+      );
     }
-    check(
-      drawn >= CAP_DRIVE.DRAWN_MIN_OPACITY,
-      `leg ${leg.n}: the '${drive.ended}' screen is DRAWN, not merely mounted, before the shutter`,
-      `probed ${drawnProbe}: effective opacity ${drawn.toFixed(3)} after ${arrivedMs}ms` +
-        (drive.ended === 'bombed'
-          ? ` (BOMB_OUT_SILENCE_MS + ${bombOutRowOrderAction} x BOMB_OUT_ROW_STAGGER_MS + BOMB_OUT_ROW_FADE_MS, read from meetTuning.ts)`
-          : drive.ended === 'recap'
-            ? ` (${recapRowOrderCard} x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)`
-            : ''),
-    );
     await page.screenshot({ path: path.join(outDir, `leg-${leg.n}-${drive.ended}.png`) });
 
     if (leg.n === LEGS.length) break;
 
     // ...and OUT, the way the screen offers. A bomb-out draws its own exit
     // (`SHELL_NAV` gives that beat no chrome); every other ending uses the
-    // shell's pill.
-    const exitId = drive.ended === 'bombed' ? 'bomb-out-action' : 'shell-leave-meet';
-    if (drive.ended === 'bombed') {
-      await until((s) => s.bombExit, CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS);
-    }
+    // shell's pill — and WHICH ONE is a field of the row above rather than a
+    // second ternary on `drive.ended`, because that second ternary is where the
+    // sibling defect keeps getting written.
+    const exitId = probe.exit;
+    await until(probe.present, probe.presentTimeoutMs);
     const left = await pressWhenClear(exitId, CAP_DRIVE.BEAT_TIMEOUT_MS);
     if (!left.pressed) {
       check(false, `leg ${leg.n}: the way out of the meet took a press`, left.why);
@@ -860,11 +1265,11 @@ if (booted.ok) {
     if (back.ok) teardowns += 1;
     check(back.ok, `leg ${leg.n}: the meet surface really went away — CutInHost un-mounted`, `back on the check-in after ${back.ms}ms, meet-screen present: ${back.state.meetScreen}`);
     if (!back.ok) break;
-    await page.waitForTimeout(CAP_DRIVE.SETTLE_MS);
+    await settleWatching(CAP_DRIVE.SETTLE_MS);
   }
 }
 
-await page.waitForTimeout(WHOLE_BEAT_MS + CAP_DRIVE.CUT_IN_CLEAR_SLACK_MS);
+await settleWatching(WHOLE_BEAT_MS + CAP_DRIVE.CUT_IN_CLEAR_SLACK_MS);
 const recorder = await page.evaluate(() => ({
   ...window.__cutInCap,
   endedDay: new Date().toDateString(),
@@ -890,17 +1295,17 @@ check(
   `CONTROL: the host was torn down between legs — exactly ${LEGS.length - 1} times`,
   `saw ${teardowns}; a run where the surface never went away would not have exercised the remount at all`,
 );
-const bombedLegs = legRecords.filter((l) => l.intent === 'miss' && l.ended === 'bombed').length;
+const bombedLegs = legRecords.filter((l) => l.intent === 'miss' && l.ended === MEET_ENDING.BOMBED).length;
 const wantBombed = LEGS.filter((l) => l.intent === 'miss').length;
+const missLegNumbers = LEGS.filter((l) => l.intent === 'miss').map((l) => l.n);
 check(
   bombedLegs === wantBombed,
   // NAMED FOR WHAT IT MEASURES. This computes `intent === 'miss' && ended ===
-  // 'bombed'` — it observes the SCREEN, and never an offer. The earlier wording
-  // said "and OFFERED the beat", which the check has no way to see: a leg whose
-  // BombOutView stopped asking for a cut-in looks identical here. On a day when
-  // leg 1 fires nothing the two-sided `fired === THE_CAP` pin rescues it, since
-  // a view that stopped offering would take leg 2's fire with it and give 0.
-  // On a day when leg 1 DOES fire, it would not.
+  // 'bombed'` — it observes the SCREEN, and never an offer. The pair of checks
+  // below is the offer half, and they are what makes the sentence this one
+  // cannot say true: a leg whose BombOutView stopped asking for a cut-in looks
+  // IDENTICAL here, and on a day when leg 1 fires the `fired === THE_CAP` pin
+  // does not rescue it either.
   `CONTROL: the ${wantBombed} deliberately-bombed legs each REACHED GDD §6.3's bomb-out screen (this sees the screen, not the offer)`,
   `${bombedLegs} of ${wantBombed}; endings were ${JSON.stringify(legRecords.map((l) => `${l.n}:${l.ended}`))}. ` +
     'Without this, "exactly one cut-in" is also what a run that never offered a second qualifying beat reports.',
@@ -910,6 +1315,63 @@ check(
   withQueryString.length === 0,
   'CONTROL: every cut-in counted was on the played arm — no query string in the address bar',
   `${withQueryString.length} of ${recorder.log.length} carried one`,
+);
+
+// ---------------------------------------------------------------------------
+// WHAT THE GATE WAS ASKED, AND WHAT IT ANSWERED
+//
+// Everything above this line watches the SCREEN. A refusal and an offer nobody
+// made draw the same screen, so everything above is blind to the difference
+// between "the gate refused" and "nothing asked" — which is the difference
+// between meeting §12.3's refusal condition and happening to look like it.
+// ---------------------------------------------------------------------------
+
+const offers = recorder.offers ?? [];
+check(
+  recorder.observerSeen === true && recorder.observerDropped === 0,
+  "CONTROL: the gate's own decision channel was open, and its log did not overflow",
+  `channel ${JSON.stringify(observerGlobal)} seen: ${recorder.observerSeen}; dropped ${recorder.observerDropped} ` +
+    `(CUT_IN_TUNING.OBSERVED_DECISIONS is the bound; anything above 0 means the earliest offers of this run are gone and every count below is over a truncated log); ` +
+    `${offers.length} decisions drained`,
+);
+const offersWithQueryString = offers.filter((o) => o.search !== '');
+check(
+  offersWithQueryString.length === 0,
+  'CONTROL: every DECISION observed was on the played arm too — no query string in the address bar',
+  `${offersWithQueryString.length} of ${offers.length} carried one. ` +
+    'The sibling of the cut-in check above, applied mechanically rather than left to whoever reads this: `?cutin=` stages a beat through the same `offer`, so a decision taken down the debug arm would otherwise count here.',
+);
+
+/** Offers the gate recognised as GDD §6.3's bomb-out. */
+const bombOffers = offers.filter((o) => o.beatKinds.includes('meet-over') && o.moment === 'bomb-out');
+const bombOfferLegs = bombOffers.map((o) => o.leg);
+check(
+  bombOffers.length === wantBombed &&
+    bombOfferLegs.length === missLegNumbers.length &&
+    bombOfferLegs.every((n, i) => n === missLegNumbers[i]),
+  `GDD §7.2: THE ASK — the ${wantBombed} deliberately-bombed legs each OFFERED GDD §6.3's bomb-out beat TO THE GATE`,
+  `${bombOffers.length} of ${wantBombed}, on legs ${JSON.stringify(bombOfferLegs)} (expected ${JSON.stringify(missLegNumbers)}). ` +
+    'This is the line the screen check above cannot say. A build where BombOutView stopped offering — the `useOfferCutIn` line gone, or `bombedOut` arriving false so the gate reads the beat as no moment at all — leaves every other check in this file green and reddens here.',
+);
+
+/** How many of those took the slot: 0 on a day leg 1 fired, 1 on a day it did not. */
+const bombFires = bombOffers.filter((o) => o.outcome === 'fire').length;
+const bombCapRefusals = bombOffers.filter((o) => o.refusal === 'session-cap-reached').length;
+check(
+  bombCapRefusals === wantBombed - bombFires,
+  `GDD §12.3: THE REFUSAL — every bomb-out beat that did not take the slot was refused for 'session-cap-reached'`,
+  `${bombCapRefusals} refused by the CAP, ${bombFires} fired, against ${wantBombed} asked. ` +
+    `Reasons in order: ${JSON.stringify(bombOffers.map((o) => o.refusal ?? `FIRED:${o.moment}`))}. ` +
+    "Not 'held-back-for-scarcity' — that is §7.2's soft rate and SESSION_ALLOWANCE['bomb-out'] is 1 — and not 'no-qualifying-moment', which would mean the beat never qualified. " +
+    'Nothing asked at all gives 0 against a want of ' + `${wantBombed}, which is red.`,
+);
+
+const grants = offers.filter((o) => o.outcome === 'fire');
+check(
+  grants.length === THE_CAP,
+  `GDD §12.3: THE GRANT — the gate granted exactly ${THE_CAP} cut-in across the whole sitting`,
+  `${grants.length} grant(s): ${JSON.stringify(grants.map((g) => `leg ${g.leg} ${g.moment} (count ${g.firedCountBefore}->${g.firedCountAfter})`))}. ` +
+    `Every other decision was a refusal: ${JSON.stringify([...new Set(offers.filter((o) => o.outcome !== 'fire').map((o) => o.refusal))])} over ${offers.length - grants.length} of them.`,
 );
 
 const fired = recorder.log.length;
@@ -928,6 +1390,69 @@ check(
         `the cut-in did not reach the screen. Legs: ${JSON.stringify(legRecords.map((l) => `${l.n}:${l.ended}`))}`,
 );
 
+/**
+ * THE TWO INSTRUMENTS AGREE — and the direction they can disagree in is the one
+ * this file's header calls the error that reads green.
+ *
+ * The DOM recorder logs a `false -> true` transition of `[data-testid="cut-in"]`.
+ * `CutInHost` renders from `live !== null` and `CutInView`'s `Pressable` is
+ * RECONCILED IN PLACE when `live` changes A -> B, so two cut-ins with no gap
+ * between them are ONE transition and the screen count reads 1 while the gate
+ * granted 2. Today's app cannot produce that overlap — every grant goes through
+ * a `dismiss` first — but nothing asserted it, and the gate-side count is immune
+ * to it by construction.
+ */
+check(
+  grants.length === fired,
+  'GDD §12.3: the gate’s grant count and the overlay count are the SAME NUMBER',
+  `gate granted ${grants.length}, ${fired} overlay(s) reached the screen. ` +
+    'They come apart in two ways and both matter: a grant that never drew (the view stopped rendering), and two grants counted as one overlay (`live` A->B reconciled in place, which a DOM transition watcher cannot see).',
+);
+
+/**
+ * ...AND THE SIBLING OF THAT, MEASURED ON THE SPAN RATHER THAN THE COUNT. A
+ * merged pair is one transition of about two whole beats. The data was already
+ * in the log — `goneAt - at` against `WHOLE_BEAT_MS` — and nothing asserted on
+ * it.
+ */
+const spans = recorder.log.map((c) => (c.goneAt === null ? null : c.goneAt - c.at));
+const stillUpAtEnd = recorder.log.filter((c) => c.goneAt === null).length;
+const overlong = recorder.log.filter(
+  (c) => c.goneAt !== null && c.goneAt - c.at > WHOLE_BEAT_MS + CAP_DRIVE.CUT_IN_SPAN_SLACK_MS,
+).length;
+check(
+  stillUpAtEnd === 0 && overlong === 0,
+  'GDD §7.2: every overlay was up for ONE whole beat — not two reconciled into one, and none left on screen',
+  `spans ${JSON.stringify(spans)}ms against ENTER_MS + HOLD_MS = ${WHOLE_BEAT_MS}ms ` +
+    `(+${CAP_DRIVE.CUT_IN_SPAN_SLACK_MS}ms slack, so the threshold is ${WHOLE_BEAT_MS + CAP_DRIVE.CUT_IN_SPAN_SLACK_MS}ms against a merged pair's ~${2 * WHOLE_BEAT_MS}ms); ` +
+    `${overlong} over the threshold, ${stillUpAtEnd} still up when the run ended`,
+);
+
+/**
+ * AND A PIXEL OF THE THING ITSELF.
+ *
+ * Every PNG this tool has ever committed is of an ENDING — real evidence, and
+ * evidence about something else. The run's central claim rested entirely on a
+ * presence poll, in a repository whose lesson two commits earlier was that
+ * presence is not visibility. The shutter now fires on the interrupt, after the
+ * app's own `ENTER_MS`, and what is checked is the MEASURED opacity of the art
+ * rather than the existence of a file.
+ */
+const litShots = cutInShots.filter((s) => s.artOpacity >= CAP_DRIVE.DRAWN_MIN_OPACITY);
+check(
+  cutInShots.length === THE_CAP && litShots.length === THE_CAP,
+  `GDD §7.2: the cut-in was PHOTOGRAPHED — ${THE_CAP} frame, with its art drawn rather than merely mounted`,
+  cutInShots.length === 0
+    ? `no frame was taken. Either nothing was ever on screen, or every appearance fell outside a watched wait — the shutter runs inside every \`until\` poll and every settle, so a miss here is a real absence rather than bad luck.`
+    : cutInShots
+        .map(
+          (s) =>
+            `${s.file} (leg ${s.leg}): cut-in-art effective opacity ${s.artOpacity.toFixed(3)}, cut-in-line ${s.lineOpacity.toFixed(3)}, ` +
+            `taken ${s.afterEnterMs}ms after the overlay appeared (ENTER_MS, read from cutInTuning.ts)`,
+        )
+        .join('; '),
+);
+
 // ---------------------------------------------------------------------------
 
 async function writeRecord(rec, legs) {
@@ -941,8 +1466,23 @@ async function writeRecord(rec, legs) {
         premise: { bombOutAllowance, enterMs, holdMs, wholeBeatMs: Number.isFinite(wholeBeatMs) ? wholeBeatMs : null },
         legs,
         cutIns: rec === null ? [] : rec.log,
+        /**
+         * WHAT THE GATE WAS ASKED AND WHAT IT ANSWERED, in the record rather
+         * than only in a console line. `cutIns` above is the SCREEN; this is the
+         * GATE, and the whole point of the round that added it is that the two
+         * are different observations. A reader who only ever sees this file must
+         * be able to tell "refused" from "nobody asked" without re-running.
+         */
+        gateDecisions: rec === null ? [] : (rec.offers ?? []),
+        gateChannel: {
+          name: observerGlobal,
+          seen: rec === null ? false : rec.observerSeen === true,
+          dropped: rec === null ? null : (rec.observerDropped ?? null),
+        },
+        cutInFrames: cutInShots,
         recorderPolls: rec === null ? 0 : rec.polls,
         recorderWorstGapMs: rec === null ? null : Math.round(rec.worstGapMs),
+        browserMutationWitnesses: BROWSER_MUTATION_WITNESSES,
         checks,
         /**
          * THE RED LINES. Required, not decorative: `tools/evidence.mjs` refuses
