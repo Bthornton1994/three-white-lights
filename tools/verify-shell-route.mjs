@@ -380,10 +380,17 @@ const WALKOUT_TAIL_PROBE = Object.freeze({
    * `walkout.test.ts` counts the sheet's held frames in the tail; a browser
    * cannot see them all, and the brace returns to the rest drawing twice a cycle
    * so two samples either side of a peak can legitimately be the same picture.
-   * Measured on the shipped build, on a played third attempt: SEVEN changes in
-   * an 1,180 ms tail, at a cadence of 40-192 ms. The floor is low on purpose —
-   * what it has to separate is "the tail draws" from "the tail is one held
-   * raster", and the defective build scores ZERO.
+   *
+   * MEASURED ON THE COMMITTED RUN, WHICH IS THE ONE A READER CAN OPEN: SIX
+   * changes in an 1,180 ms tail, at a cadence of 119-121 ms
+   * (`.gauntlet/shots/shell/route.json`, the "walk-out tail (played, third
+   * attempt)" note). The previous version of this sentence said SEVEN at a
+   * cadence of 40-192 ms, which was a different run and had gone stale — the
+   * count and the cadence are both read off the artifact now rather than
+   * remembered.
+   *
+   * The floor is low on purpose — what it has to separate is "the tail draws"
+   * from "the tail is one held raster", and the defective build scores ZERO.
    */
   MIN_TAIL_CHANGES: 3,
 
@@ -1907,10 +1914,35 @@ async function probeWalkoutTail() {
   // walk-out is gone. So the tail is placed by subtracting its own length from
   // an instant both sides of the comparison share, and the offset cancels.
   //
-  // IT IS CONSERVATIVE IN BOTH ITS APPROXIMATIONS: `endedAtMs` is read when the
-  // beat is FOUND to be over, so it is never early; and `beatMsForLine` resolves
-  // the one ambiguous line downwards. Both push `setAtMs` LATER, which can only
-  // shrink the window the claims below are allowed to count in.
+  // TWO OF ITS THREE APPROXIMATIONS ARE CONSERVATIVE AND THE THIRD IS NOT.
+  // This comment used to say "IT IS CONSERVATIVE IN BOTH ITS APPROXIMATIONS"
+  // and list two, and the sentence was wrong by omission rather than by
+  // arithmetic — there is a third and it runs the other way:
+  //
+  //   1. `endedAtMs` is read when the beat is FOUND to be over, so it is never
+  //      early.                                              -> `setAtMs` LATER
+  //   2. `beatMsForLine` resolves the bomb-risk line, which cannot say whether
+  //      the attempt was also a PR, DOWNWARDS.               -> `setAtMs` LATER
+  //   3. `beatMsForLine` assumes the PR line means a THIRD attempt and adds
+  //      `THIRD_ATTEMPT_EXTRA_RESTATED` to it. `WalkoutView` prints that line
+  //      on any attempt above the lifter's best, so a first- or second-attempt
+  //      PR runs 900 ms SHORTER than the restatement.       -> `setAtMs` EARLIER
+  //
+  // (3) is the unsafe direction: an over-estimated beat puts the boundary
+  // inside the choreography and lets a change made by a man still walking
+  // backwards be counted as a change made by the tail.
+  //
+  // WHAT KEEPS IT OUT OF REACH IS THE EYEBROW, AND THAT IS NOW ASSERTED RATHER
+  // THAN RELIED ON. `sampleTheTailIfThisIsAThird` only starts a timeline when
+  // the eyebrow says `THIRD_OF_THREE`, so the attempt number the restatement
+  // assumes is the attempt number on screen. That was incidental to the
+  // sampler's own gate; the check below re-reads the eyebrow at grading time,
+  // so the argument is load-bearing where the reasoning is written down.
+  check(
+    (seen.eyebrow ?? '').includes(MEET_TAIL_SAYS.THIRD_OF_THREE),
+    'the restated beat length is safe because the beat graded is a THIRD attempt — asserted, not assumed',
+    `eyebrow ${JSON.stringify((seen.eyebrow ?? '').trim())}; beatMsForLine adds THIRD_ATTEMPT_EXTRA (${THIRD_ATTEMPT_EXTRA_RESTATED}ms) unconditionally, which over-estimates a 1st- or 2nd-attempt PR and would push the boundary into the choreography`,
+  );
   const beatMs = beatMsForLine(seen.line);
   const tailMs = beatMs - P.MOTION_MS;
   const setAtMs = endedAtMs - tailMs;
@@ -1938,18 +1970,35 @@ async function probeWalkoutTail() {
       : `${tailChanges.length} change(s) in the ${tailMs}ms tail after ${Math.round(setAtMs)}ms: ${tailChanges.map(describeSample).join('; ')}`,
   );
 
-  // (3) THE TWO FRAMES, NAMED. The gap this section closes asks for two frames
-  // inside the tail proven to differ; these are the two the run actually took,
-  // with their instants and their magnitude, so the evidence is readable rather
-  // than implied by a count.
+  // (3) THE TWO FRAMES, NAMED — AND HALF OF THIS LINE IS A REPORT RATHER THAN A
+  // CHECK, WHICH IS SAID HERE BECAUSE IT WAS NOT SAID BEFORE.
+  //
+  // The version this replaces asserted `biggest.differing > SAME_PICTURE_MAX_PX`
+  // over a `biggest` drawn from `tailChanges`, whose every member already
+  // satisfies exactly that predicate — `changed` IS `differing >
+  // SAME_PICTURE_MAX_PX`. It could only go red when (2) had already gone red,
+  // so as a discriminator it was decoration. Its magnitude half still is, and
+  // is kept because the numbers it prints are the evidence a reader wants.
+  //
+  // WHAT DISCRIMINATES IS THE BOUNDARY, NOT THE MAGNITUDE. The line claims two
+  // frames INSIDE the tail; `biggest.atMs > setAtMs` holds by construction, but
+  // its PREDECESSOR's does not. Exactly one sample in a run can be a tail change
+  // whose predecessor was taken before he is set — the first one — so if the
+  // loudest moment of the tail is that first change, this line was naming a pair
+  // that straddles the boundary and calling both of them tail frames. That is
+  // reachable without (2) failing: three or more tail changes with the largest
+  // at the boundary passes (2) and fails here. Measured on the committed run,
+  // the pair is 2401ms/2520ms against a boundary at 1969ms, so it holds with
+  // room; a build whose crowd finished its last row on the boundary would not.
   const biggest = [...tailChanges].sort((a, b) => b.differing - a.differing)[0] ?? null;
   const beforeBiggest = biggest === null ? null : (samples[biggest.index - 1] ?? null);
+  const pairIsInside = beforeBiggest !== null && beforeBiggest.atMs > setAtMs;
   check(
-    biggest !== null && beforeBiggest !== null && biggest.differing > P.SAME_PICTURE_MAX_PX,
-    'two frames INSIDE the tail window differ in pixels',
+    biggest !== null && pairIsInside && biggest.differing > P.SAME_PICTURE_MAX_PX,
+    'the two frames this line NAMES are both inside the tail window, and they differ',
     biggest === null || beforeBiggest === null
       ? 'no two consecutive samples inside the tail were compared'
-      : `${beforeBiggest.atMs}ms vs ${biggest.atMs}ms: ${biggest.differing} of ${biggest.total} px, max channel delta ${biggest.maxChannelDelta}`,
+      : `${beforeBiggest.atMs}ms vs ${biggest.atMs}ms: ${biggest.differing} of ${biggest.total} px, max channel delta ${biggest.maxChannelDelta} — he is set at ${Math.round(setAtMs)}ms, so the earlier of the two is ${Math.round(beforeBiggest.atMs - setAtMs)}ms ${beforeBiggest.atMs > setAtMs ? 'inside' : 'OUTSIDE'} it`,
   );
 
   // (4) THE POSITIVE HALF OF THE CONTROL: the same instrument, on the same
