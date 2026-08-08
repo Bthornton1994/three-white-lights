@@ -1619,7 +1619,13 @@ Per attempt:
    on close calls
 5. Depth cue or bar-speed replay clip as feedback
 
-**A BEAT MAY ONLY BE LENGTHENED WHERE SOMETHING IS PLAYING IN IT — RULED.**
+**A BEAT MAY ONLY BE LENGTHENED WHERE SOMETHING IS PLAYING IN IT — PROPOSED BY
+A BUILDER, AWAITING A HUMAN.** The measurement below is fact and the three rules
+are the builder's reading of it. They are written here rather than in a module
+header because they bind future work, and they are followed by the code today.
+But a bar and a design rule are the human's to set — the first version of this
+heading said "RULED", which claimed an authority no agent in this run has. If
+the human disagrees with any of the three, the code moves, not the document.
 Steps 1 and 4 both escalate on the attempts the meet turns on: a third, a PR, or
 one with a bomb on it is held longer than an opener (`walkoutMs` and
 `deliberationMs` in `src/game/meetDay.ts`). That is only worth anything if the
