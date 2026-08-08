@@ -275,7 +275,17 @@ export function MeetScreen({
           />
         ) : null}
 
-        {state.phase === 'lift' ? <AttemptView state={state} onResolved={onResolved} /> : null}
+        {state.phase === 'lift' && state.live !== null ? (
+          <AttemptView
+            state={state}
+            // THE SAME EXPRESSION THE WALK-OUT ABOVE IS HANDED, and it is here
+            // rather than inside `AttemptView` because this file is the one that
+            // reads `meetLoadingRules`. The attempt needs it to find out what the
+            // walk-out left the hall at (see `settledCrowdRisePx`).
+            barAndCollarsKg={meetLoadingRules(state.meet).barAndCollarsWeight[state.live.lift]}
+            onResolved={onResolved}
+          />
+        ) : null}
 
         {(state.phase === 'deliberation' || state.phase === 'verdict') && judged !== null ? (
           <VerdictView

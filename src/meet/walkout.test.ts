@@ -74,6 +74,8 @@ import {
   barLoadMs,
   braceCueDelayMs,
   bracePhaseAt,
+  settledCrowdRisePx,
+  walkoutRequestFor,
   walkoutTailPlan,
   buildHold,
   buildWalkout,
@@ -87,6 +89,7 @@ import {
   walkoutMotionMs,
   walkoutStageAt,
   walkoutStageStartMs,
+  type WalkoutAttempt,
   type WalkoutFrame,
 } from './walkout';
 
@@ -3109,6 +3112,166 @@ describe('the walk-out tail is a beat, not a held frame (GDD §12.2)', () => {
     );
     expect(braceShots.length, 'the man never leaves the rest drawing during the brace')
       .toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ...and the rep is lifted in the hall the walk-out left standing
+// ---------------------------------------------------------------------------
+
+describe('the hall the walk-out leaves standing is the hall the rep is lifted in', () => {
+  /**
+   * The attempt a `MeetDayState` would carry, for each of `ATTEMPT_SHAPES`.
+   * `LiveAttempt` satisfies `WalkoutAttempt` structurally; these are the four
+   * fields of it the walk-out reads.
+   */
+  const attemptFor = (
+    attemptNumber: 1 | 2 | 3,
+    previousBestKg: number | null,
+    bombRisk: boolean,
+  ): WalkoutAttempt => ({
+    attemptNumber,
+    isPrAttempt: previousBestKg !== null && HEAVY_KG > previousBestKg,
+    bombRisk,
+    weightKg: HEAVY_KG,
+    walkoutMs: walkoutMs(attemptNumber, HEAVY_KG, previousBestKg, bombRisk),
+  });
+
+  it('hands the rep the rise the sheet’s own last drawn frame ends on', () => {
+    // THE DEFECT THIS CLOSES. `AttemptView` handed `LiftStage` no rise,
+    // `gymScene.ts` reads `spec.crowdRisePx ?? 0`, and `MeetScreen` swaps the
+    // two views in one frame — so the hall rose for the whole walk-out and sat
+    // back down on the frame the bar started moving.
+    //
+    // MEASURED AGAINST THE SHEET RATHER THAN AGAINST A CONSTANT. The claim is
+    // not "the rep is at HUSH_CROWD_RISE_PX", it is "the rep is at whatever the
+    // walk-out ended at", and the two are different sentences the moment a tail
+    // is too short to brace in.
+    let urgentShapes = 0;
+    for (const [attemptNumber, best, bomb] of ATTEMPT_SHAPES) {
+      const attempt = attemptFor(attemptNumber, best, bomb);
+      const request = walkoutRequestFor(attempt, BAR_AND_COLLARS_KG, LOAD);
+      const sheet = buildWalkout(request);
+      const ended = walkoutFrameAt(sheet, sheet.beatMs).crowdRisePx;
+      expect(
+        settledCrowdRisePx(request),
+        `a${attemptNumber} best=${String(best)} bomb=${bomb}: the walk-out ends at rise ${ended}`,
+      ).toBe(ended);
+      if (request.urgent) urgentShapes += 1;
+    }
+    // NON-VACUITY, AS COUNTS. A sweep in which nothing was urgent would compare
+    // 0 to 0 six times and pass.
+    expect([urgentShapes, ATTEMPT_SHAPES.length - urgentShapes], 'urgent shapes, and calm')
+      .toEqual([4, 2]);
+  });
+
+  it('reads the rise off the BRACE, so a tail too short to brace in ends lower', () => {
+    // WHY `settledCrowdRisePx` BUILDS THE SHEET INSTEAD OF RETURNING
+    // `urgent ? HUSH_CROWD_RISE_PX : 0`. At the shipped tuning the two agree on
+    // all six shapes above, so a restated constant would look correct — and the
+    // margin is 20 ms wide. `crowdRiseAt` only travels past
+    // `CROWD.WALKOUT_RISE_PX` across a brace window, and the shortest urgent
+    // tail the game can produce offers 620 ms against a floor of 600.
+    //
+    // This is the case one tuning pass away, built directly rather than waited
+    // for: an urgent beat one tick under the floor. It is the assertion that
+    // makes the test above non-vacuous — against a restated constant it reads 8
+    // where the sheet draws 5.
+    const tooShortMs =
+      walkoutMotionMs(PLATES) + TAIL.HUSH_MS + TAIL.MIN_BRACE_WINDOW_MS - MOTION.TICK_MS;
+    const unbraced = { loadRatio: LOAD, plateCount: PLATES, urgent: true, beatMs: tooShortMs };
+    expect(buildWalkout(unbraced).tail.braceMs, 'the fixture braces after all').toBe(0);
+    expect(
+      settledCrowdRisePx(unbraced),
+      'an urgent beat with no brace window still ends at the top of the tail’s ramp',
+    ).toBe(MEET_TUNING.CROWD.WALKOUT_RISE_PX);
+    expect(MEET_TUNING.CROWD.WALKOUT_RISE_PX).not.toBe(TAIL.HUSH_CROWD_RISE_PX);
+
+    // ...and one tick more of beat puts it on the other side of the floor, so
+    // the fixture is at the boundary rather than somewhere arbitrary below it.
+    const justBraced = { ...unbraced, beatMs: tooShortMs + MOTION.TICK_MS };
+    expect(buildWalkout(justBraced).tail.cycles).toBe(1);
+    expect(settledCrowdRisePx(justBraced)).toBe(TAIL.HUSH_CROWD_RISE_PX);
+  });
+
+  it('draws the rep in the same room the walk-out’s last frame draws, on pixels', () => {
+    // THE CROSS-SCREEN CLAIM, on rendered grids rather than on two numbers.
+    // `MeetHallView` draws `hallScene(rise)`; `LiftStage` draws
+    // `{ ...SCENES['meet-platform'], crowdRisePx: rise }`. Those are two
+    // expressions in two files and this is what says they are one room.
+    //
+    // The WIRING — that the screens pass what they say they pass — is
+    // `meetStage.test.ts`'s, and the running app is
+    // `tools/verify-shell-route.mjs`'s. Neither can be checked here.
+    for (const [attemptNumber, best, bomb] of ATTEMPT_SHAPES) {
+      const attempt = attemptFor(attemptNumber, best, bomb);
+      const request = walkoutRequestFor(attempt, BAR_AND_COLLARS_KG, LOAD);
+      const rise = settledCrowdRisePx(request);
+      const walkoutRoom = renderGymScene(hallScene(rise));
+      const repRoom = renderGymScene({ ...MEET_HALL_SCENE, crowdRisePx: rise });
+      expect(
+        differingPixels(walkoutRoom, repRoom),
+        `a${attemptNumber} best=${String(best)} bomb=${bomb} at rise ${rise}`,
+      ).toBe(0);
+    }
+    // ...and the two rooms the cut is BETWEEN are not the same room, which is
+    // what stops every line above passing on a hall that never moved.
+    const seated = renderGymScene(hallScene(0));
+    const standing = renderGymScene(hallScene(TAIL.HUSH_CROWD_RISE_PX));
+    expect(
+      differingPixels(seated, standing),
+      'the rise the rep now carries changes no pixel, so nothing above is a claim',
+    ).toBe(1633);
+  });
+
+  it('reads nothing about the LIFTER, at any load (GDD §3.4, §12.3)', () => {
+    // §12.3 refuses a visible fatigue meter, and a hall whose height tracked
+    // readiness would be one — a player would learn to read "how full the room
+    // is" as a readiness bar before the bar moved.
+    //
+    // THE LIFTER REACHES THIS FUNCTION THROUGH EXACTLY ONE FIELD, `loadRatio`,
+    // and that is the axis swept. The rest of the request is the ATTEMPT: which
+    // one it is, what is on the bar, how long the beat runs — all of it printed
+    // on the screen the player just left. There is no fatigue, readiness or
+    // seed input to sweep, which is the property, not a gap in the sweep.
+    const loads = [
+      LOAD_PRESETS.LIGHT,
+      LOAD_PRESETS.MODERATE,
+      LOAD_PRESETS.HEAVY,
+      LOAD_PRESETS.MAXIMAL,
+    ];
+    let sheetsThatDiffer = 0;
+    for (const [attemptNumber, best, bomb] of ATTEMPT_SHAPES) {
+      const attempt = attemptFor(attemptNumber, best, bomb);
+      const rises = new Set(
+        loads.map((load) => settledCrowdRisePx(walkoutRequestFor(attempt, BAR_AND_COLLARS_KG, load))),
+      );
+      expect(
+        rises.size,
+        `a${attemptNumber} best=${String(best)} bomb=${bomb}: the hall's height moves with the load — ${[...rises].join('/')}`,
+      ).toBe(1);
+    }
+    // NON-VACUITY. The sweep is worth nothing unless those load ratios really
+    // do reach the sheet — if they changed nothing at all, the equality above
+    // would be an equality between four copies of one computation. They change
+    // the DRAWING and leave the room alone, which is exactly the split §12.3
+    // asks for.
+    const attempt = attemptFor(3, null, true);
+    const drawings = new Set(
+      loads.map((load) =>
+        JSON.stringify(
+          buildWalkout(walkoutRequestFor(attempt, BAR_AND_COLLARS_KG, load)).frames.map((f) => [
+            f.strainLevel,
+            f.barBendPx,
+            f.chalkMotes,
+          ]),
+        ),
+      ),
+    );
+    sheetsThatDiffer = drawings.size;
+    expect(sheetsThatDiffer, 'the load ratios swept do not reach the sheet at all').toBe(
+      loads.length,
+    );
   });
 });
 

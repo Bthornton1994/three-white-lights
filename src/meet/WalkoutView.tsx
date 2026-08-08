@@ -144,8 +144,10 @@ import {
   buildWalkout,
   walkoutFrameAt,
   walkoutFrameIndexAt,
+  walkoutRequestFor,
   type WalkoutFrame,
 } from './walkout';
+import { isUrgentAttempt } from '../game/meetDay';
 
 const L = MEET_LAYOUT;
 
@@ -180,7 +182,11 @@ export function WalkoutView({
       : attempt.attemptNumber === ATTEMPTS_PER_LIFT
         ? MEET_COPY.WALKOUT_THIRD
         : MEET_COPY.WALKOUT_PROMPT;
-  const urgent = attempt.bombRisk || attempt.isPrAttempt || attempt.attemptNumber === ATTEMPTS_PER_LIFT;
+  // `meetDay.ts`'s word, not a fourth copy of its three conditions. This line
+  // used to spell them out, which is game logic in a `.tsx` and — more to the
+  // point — a second definition of the flag that decides both this screen's
+  // crowd and the room `AttemptView` draws the rep in.
+  const urgent = isUrgentAttempt(attempt);
 
   // GDD §7.2's first firing moment, OFFERED not fired. The beat is facts —
   // which attempt, of how many, and whether this lift can still bomb — and
@@ -250,9 +256,12 @@ export function WalkoutView({
   // THE WALK-OUT ITSELF. A sheet of held drawings from `walkout.ts` — the same
   // shape `squatAnimation.ts` produces for the rep — and a clock that walks it.
   // Neither the choreography nor the timing is decided here.
+  // THROUGH `walkoutRequestFor`, WHICH IS ALSO WHAT `AttemptView` ASKS. The two
+  // screens are either side of one cut; a request assembled twice is two beats
+  // that can disagree about which one they are.
   const sequence = React.useMemo(
-    () => buildWalkout({ loadRatio, plateCount, urgent, beatMs: attempt.walkoutMs }),
-    [loadRatio, plateCount, urgent, attempt.walkoutMs],
+    () => buildWalkout(walkoutRequestFor(attempt, barAndCollarsKg, loadRatio)),
+    [attempt, barAndCollarsKg, loadRatio],
   );
   const sampleFrame = React.useCallback(
     (elapsedMs: number) => walkoutFrameIndexAt(sequence, elapsedMs),

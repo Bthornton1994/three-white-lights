@@ -20,6 +20,36 @@
  *      gym a Sim set is drawn in. Every other screen omits the prop and gets
  *      the gym. This is one prop and it is the difference between a competition
  *      attempt and a heavy single in your own gym.
+ *   4. AND WHETHER THAT BUILDING IS ON ITS FEET.
+ *
+ * ---------------------------------------------------------------------------
+ * (4) IS NEW, AND IT IS THE ESCALATION THIS SCREEN USED TO THROW AWAY
+ * ---------------------------------------------------------------------------
+ * `crowdRiseAt` takes the hall from 0 to `CROWD.WALKOUT_RISE_PX` through the
+ * walk-out and on to `WALKOUT_TAIL.HUSH_CROWD_RISE_PX` across the BRACE window,
+ * and holds it there for the hush. That ramp is the only channel by which GDD
+ * §6.2's escalation reaches the picture at all — the other two are sound and
+ * haptics, which nobody in this environment can check.
+ *
+ * This screen handed `LiftStage` no rise, `gymScene.ts` reads
+ * `spec.crowdRisePx ?? 0`, and `MeetScreen` swaps the two views in one frame
+ * with no crossfade. So on the attempts §12.2 names the hall rose, rose
+ * further, held still for the hush — and then sat back down on the frame the
+ * bar started moving. Measured on the shipped band: 1,633 of the composite's
+ * 22,490 scene pixels changed at that cut, 1,306 of them outside the bar-path
+ * panel and therefore visible.
+ *
+ * WHERE THE NUMBER COMES FROM. `settledCrowdRisePx` reads it off the walk-out
+ * sheet's last drawn frame, through the same `walkoutRequestFor` the walk-out
+ * itself is built from, so the rep cannot be drawn in a hall the walk-out never
+ * reached. Nothing about the rise is computed here.
+ *
+ * IT SAYS NOTHING ABOUT THE LIFTER (GDD §3.4, §12.3). The rise is a function of
+ * `isUrgentAttempt` — a third, a PR, or one with a bomb on it — which are facts
+ * printed on the screen the player just left. It does not read readiness,
+ * fatigue, load or the seed, and it is one number for the whole rep rather than
+ * a channel that moves while the bar does, so there is nothing in it to read as
+ * live feedback. `walkout.test.ts` sweeps that rather than promising it.
  *
  * ---------------------------------------------------------------------------
  * ONE REP, AND NO SECOND CHANCE
@@ -44,16 +74,31 @@ import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import { attemptConfigFor, liveAttemptWeightText, type MeetDayState } from '../game/meetDay';
+import { settledCrowdRisePx, walkoutRequestFor } from './walkout';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
 
 export interface AttemptViewProps {
   readonly state: MeetDayState;
+  /**
+   * What the bar and collars weigh on their own, kg — the meet's own number.
+   *
+   * SUPPLIED BY THE ROUTER, exactly as it is to `WalkoutView` and `VerdictView`,
+   * and from the same `meetLoadingRules(state.meet)` call. It is here so the
+   * hall this rep is drawn in can be derived from the same walk-out request the
+   * beat before it was built from; deriving it in this file would put
+   * `meetLoadingRules` and a plate count inside a `.tsx`.
+   */
+  readonly barAndCollarsKg: number;
   readonly onResolved: (resolution: LiftResolution) => void;
 }
 
-export function AttemptView({ state, onResolved }: AttemptViewProps): React.ReactElement {
+export function AttemptView({
+  state,
+  barAndCollarsKg,
+  onResolved,
+}: AttemptViewProps): React.ReactElement {
   const live = state.live;
   // The config is a function of WHICH ATTEMPT THIS IS and nothing else.
   // Depending on the whole meet state would hand the loop a new object mid-rep
@@ -67,6 +112,17 @@ export function AttemptView({ state, onResolved }: AttemptViewProps): React.Reac
   );
   const loop = useLiftLoop(config);
   const { onPressIn, onPressOut } = loop;
+
+  // WHAT THE WALK-OUT LEFT THE HALL AT. One number for the whole rep, read off
+  // the walk-out's own sheet rather than restated, and memoised on the attempt
+  // so the room is rastered once and not once per tick.
+  const crowdRisePx = useMemo(
+    () =>
+      live === null
+        ? 0
+        : settledCrowdRisePx(walkoutRequestFor(live, barAndCollarsKg, live.loadRatio)),
+    [live, barAndCollarsKg],
+  );
 
   const resolution = loop.state.resolution;
   const resolved = loop.state.phase === 'RESOLVED';
@@ -122,6 +178,7 @@ export function AttemptView({ state, onResolved }: AttemptViewProps): React.Reac
           history={loop.history}
           totalKg={live.weightKg}
           venue={MEET_TUNING.VENUE}
+          crowdRisePx={crowdRisePx}
         />
       </Pressable>
     </View>

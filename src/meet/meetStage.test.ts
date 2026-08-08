@@ -61,8 +61,13 @@ import { GYM, lumaOfIndex } from '../art/gymPalette';
 import { LOAD_PRESETS } from '../art/spriteTuning';
 import { buildSquatRep } from '../art/squatAnimation';
 import { frameSpecFrom, isBodyIndex, renderLifterFrame } from '../art/lifterSprite';
-import { GYM_CROWD, GYM_LIFT_STAGE } from '../art/gymTuning';
-import { blitOver, crowdFrontRow } from '../art/gymScene';
+import { GYM_CONTACT_SHADOW, GYM_CROWD, GYM_LIFT_STAGE } from '../art/gymTuning';
+import {
+  blitOver,
+  contactShadowPatch,
+  crowdFrontRow,
+  liftContactShadow,
+} from '../art/gymScene';
 import { BAR_AND_COLLARS_KG } from '../art/plates';
 import { GYM_VENUE, GYM_VENUE_PROPS, type GymVenue } from '../art/gymTuning';
 import { liftStageScene, renderGymScene } from '../art/gymScene';
@@ -206,12 +211,28 @@ describe('the source parser this file depends on', () => {
     // `SCENES[DEFAULT_VENUE]` anyway would satisfy every one of those
     // assertions and put the meet back in the training gym — which is a
     // one-word edit away from the code as written.
-    const source = liftStage;
-    expect(source, 'LiftStage no longer looks the room up by venue').toContain('SCENES[venue]');
+    //
+    // READ OFF `codeOnly` AND PINNED AS A COUNT, which the first version was
+    // not. It scanned the raw file, and `LiftStage.tsx`'s own header now
+    // discusses `SCENES[venue]` in prose — so a `toContain` on the raw source
+    // would have a second witness in a comment and would survive the mutation
+    // outright. This is the shape CLAUDE.md records as "a textual pin whose
+    // pattern has more than one witness in the file".
+    const source = codeOnly(liftStage);
+    expect(
+      source.split('SCENES[venue]').length - 1,
+      'LiftStage no longer looks the room up by venue, exactly once',
+    ).toBe(1);
     expect(source, 'LiftStage draws a fixed room again').not.toContain('SCENES[DEFAULT_VENUE]');
     // ...and the room it looks up is the one it draws.
-    expect(source).toMatch(/const scene = SCENES\[venue\];/);
+    expect(source).toMatch(/const seated = SCENES\[venue\];/);
     expect(source).toContain('<GymSceneLayer spec={scene} />');
+    // ...and `scene` IS that room, with the crowd's rise composed onto it and
+    // nothing else. Without this the prop could be accepted, memoised and
+    // dropped, which is the same failure one field in.
+    expect(source, 'LiftStage takes a crowd rise and draws a seated hall anyway').toMatch(
+      /crowdRisePx <= 0 \? seated : \{ \.\.\.seated, crowdRisePx \}/,
+    );
   });
 });
 
@@ -587,14 +608,165 @@ describe('every beat of meet day happens somewhere (GDD §12.2)', () => {
     expect(view, 'the walk-out clock stops at the end of the motion again').toMatch(
       /useHallStep\(\s*sampleFrame,\s*sequence\.beatMs\s*,/,
     );
-    expect(view, 'the sheet is built without the beat it has to fill').toMatch(
-      /beatMs:\s*attempt\.walkoutMs/,
+    // THE BEAT LENGTH MOVED BEHIND `walkoutRequestFor`, and the claim followed
+    // it rather than being dropped: the screen has to route through the shared
+    // constructor, and the constructor has to put the attempt's own beat in it.
+    // Split in two because the two halves fail for different reasons — a screen
+    // that stops asking, and a constructor that stops carrying.
+    expect(view, 'the walk-out builds its sheet from something other than the attempt').toMatch(
+      /buildWalkout\(walkoutRequestFor\(attempt,\s*barAndCollarsKg,\s*loadRatio\)\)/,
+    );
+    const sheetModule = codeOnly(read('meet/walkout.ts'));
+    expect(sheetModule, 'the sheet is built without the beat it has to fill').toMatch(
+      /beatMs:\s*attempt\.walkoutMs,/,
     );
     // ...and `useHallStep` really does stop at `runForMs`, which is what makes
     // the argument load-bearing rather than decorative.
     const clock = codeOnly(read('meet/useHallStep.ts'));
     expect(clock, 'the hall clock ignores runForMs, so the argument means nothing')
       .toContain('elapsed < runForMs');
+  });
+
+  it('carries the hall the walk-out left standing into the rep, rather than reseating it', () => {
+    // THE DEFECT THIS CLOSES, AND IT LIVED ENTIRELY IN THE WIRING. Every pure
+    // assertion in `walkout.test.ts` about the tail's crowd ramp was green while
+    // `AttemptView` handed `LiftStage` no rise at all — `gymScene.ts` reads
+    // `spec.crowdRisePx ?? 0`, so the rep drew a seated hall and 1,633 scene
+    // pixels of the escalation vanished on the frame the bar started moving.
+    // Nothing in a node environment could see it, because the two rooms are
+    // built by two components neither of which this suite can mount.
+    //
+    // READ OFF THE `<LiftStage>` ELEMENT rather than off the file, for the
+    // reason the plate-count check records: a `toContain` on the source is
+    // satisfied by the `const crowdRisePx =` line on its own.
+    const element = liftStageElementIn(read(MEET_ATTEMPT));
+    expect(element, 'AttemptView draws no LiftStage').not.toBeNull();
+    expect(element ?? '', 'the attempt hands the stage no crowd rise').toContain(
+      'crowdRisePx={crowdRisePx}',
+    );
+
+    // ...AND THE NUMBER IS THE WALK-OUT'S OWN, not a constant this screen picked.
+    // `settledCrowdRisePx` reads the sheet's last drawn frame; a screen that
+    // reached for `HUSH_CROWD_RISE_PX` directly would be right at the shipped
+    // tuning and wrong the moment a tail falls under `MIN_BRACE_WINDOW_MS`.
+    const attempt = codeOnly(read(MEET_ATTEMPT));
+    expect(attempt, 'the attempt derives the hall’s height itself').toMatch(
+      /settledCrowdRisePx\(walkoutRequestFor\(live,\s*barAndCollarsKg,\s*live\.loadRatio\)\)/,
+    );
+    expect(attempt, 'the attempt reaches for a tuning constant instead of the sheet').not.toContain(
+      'HUSH_CROWD_RISE_PX',
+    );
+
+    // ...AND BOTH SCREENS ASK THE SAME CONSTRUCTOR. Two requests assembled
+    // separately are two beats that can disagree about which one they are either
+    // side of, which is this defect one level in.
+    const walkout = codeOnly(read('meet/WalkoutView.tsx'));
+    for (const [name, source] of [
+      ['AttemptView', attempt],
+      ['WalkoutView', walkout],
+    ] as const) {
+      expect(
+        source.split('walkoutRequestFor(').length - 1,
+        `${name} does not build its beat through walkoutRequestFor, exactly once`,
+      ).toBe(1);
+    }
+    // ...and neither of them spells out what `urgent` MEANS. `meetDay.ts` owns
+    // that word. `WalkoutView` used to carry its own copy of the disjunction —
+    // which decides its copy, its haptic, its crowd AND, now, the room the rep
+    // after it is drawn in, so a drifting second definition would put the two
+    // sides of the cut in two different halls.
+    //
+    // ASSERTED ON THE `urgent` BINDING SPECIFICALLY, not by banning the words:
+    // `WalkoutView` legitimately still tests `attemptNumber === ATTEMPTS_PER_LIFT`
+    // one line above, to pick between "LAST ONE" and "WALK IT OUT". A ban on the
+    // phrase would fire on that and be deleted.
+    expect(walkout, 'WalkoutView keeps its own definition of an urgent attempt').toMatch(
+      /const urgent = isUrgentAttempt\(attempt\);/,
+    );
+    const sheetSource = codeOnly(read('meet/walkout.ts'));
+    expect(
+      sheetSource.split('urgent: isUrgentAttempt(attempt)').length - 1,
+      'walkoutRequestFor decides urgency itself instead of asking meetDay.ts',
+    ).toBe(1);
+
+    // AND THE ROUTER SUPPLIES THE BAR WEIGHT, from the same expression the
+    // walk-out beside it gets. Without it `AttemptView` would have to call
+    // `meetLoadingRules` itself, which is meet-rule arithmetic in a `.tsx`.
+    const screen = codeOnly(read('meet/MeetScreen.tsx'));
+    expect(
+      screen.split('meetLoadingRules(state.meet).barAndCollarsWeight[state.live.lift]').length - 1,
+      'the router hands the walk-out and the attempt two different bar weights',
+    ).toBe(2);
+  });
+
+  it('does not let the crowd’s rise reach the contact shadow, and measures that rather than assuming it', () => {
+    // THE SIBLING-MEMO SHAPE, CAUGHT BEFORE IT BIT. `GymSceneView.tsx` holds two
+    // `useMemo`s over the same `GymSceneSpec`, twenty lines apart:
+    // `GymSceneLayer`'s room lists `spec.crowdRisePx` in its deps and
+    // `ContactShadowLayer`'s does not. Until this round nothing ever handed
+    // `LiftStage` a spec whose rise varied, so the asymmetry cost nothing; the
+    // rep now does.
+    //
+    // THE OMISSION IS KEPT AND THE FACT THAT MAKES IT SAFE IS MEASURED. Adding
+    // the dep would re-raster 22,490 pixels to produce a byte-identical patch.
+    // What is asserted instead is the reason: the shadow lands on the floor and
+    // the seating stops far above it, so no rise the piece can produce moves a
+    // single pixel of the patch. If the crowd ever reaches the floor this goes
+    // red and the missing dep becomes a caught bug rather than a latent one.
+    const layers = codeOnly(read('art/GymSceneView.tsx'));
+    // The two lists name the spec by different local names (`spec` and `scene`),
+    // so the prefix is normalised before they are compared — otherwise this
+    // would be a diff of two variable names rather than of two dependency sets.
+    const depLists = [...layers.matchAll(/\[\s*(?:spec|scene)\.venue[\s\S]*?\]/g)].map((m) =>
+      m[0].replace(/\s+/g, ' ').replace(/\bscene\./g, 'spec.'),
+    );
+    expect(depLists.length, 'GymSceneView no longer has two scene memos to compare').toBe(2);
+    const [room, shadow] = depLists;
+    expect(room, 'the room memo stopped listing the crowd’s rise').toContain('spec.crowdRisePx');
+    expect(shadow, 'the shadow memo started listing it, so this test is stale').not.toContain(
+      'spec.crowdRisePx',
+    );
+    // ...and the ONLY difference between the two lists is that field, so a third
+    // spec field that the shadow silently ignores cannot arrive unnoticed.
+    expect(
+      (room ?? '').replace(', spec.crowdRisePx', ''),
+      'the two scene memos differ by more than the crowd’s rise',
+    ).toBe(shadow);
+
+    // THE MEASURED FACT. Every frame of a maximal rep, at rise 0 and at the top
+    // of the tail's ramp.
+    const rep = buildSquatRep(LOAD_PRESETS.MAXIMAL);
+    const room0 = renderGymScene({ ...MEET_HALL_SCENE, crowdRisePx: 0 });
+    const roomUp = renderGymScene({
+      ...MEET_HALL_SCENE,
+      crowdRisePx: MEET_TUNING.WALKOUT_TAIL.HUSH_CROWD_RISE_PX,
+    });
+    let compared = 0;
+    let lowestPatchRow = 0;
+    for (const frame of rep.frames) {
+      const spec = frameSpecFrom(frame, DEMO_TOTAL_KG, BAR_AND_COLLARS_KG);
+      const mask = liftContactShadow(spec);
+      const a = contactShadowPatch(room0, mask, GYM_LIFT_STAGE.SPRITE_X, GYM_LIFT_STAGE.SPRITE_Y, GYM_CONTACT_SHADOW.STEPS);
+      const b = contactShadowPatch(roomUp, mask, GYM_LIFT_STAGE.SPRITE_X, GYM_LIFT_STAGE.SPRITE_Y, GYM_CONTACT_SHADOW.STEPS);
+      expect(a, `frame ${compared} casts no shadow at all`).not.toBeNull();
+      expect(b).not.toBeNull();
+      if (a === null || b === null) continue;
+      expect([a.x, a.y], `frame ${compared}: the shadow moved with the crowd`).toEqual([b.x, b.y]);
+      expect(
+        [...a.grid.data],
+        `frame ${compared}: the shadow's pixels moved with the crowd`,
+      ).toEqual([...b.grid.data]);
+      lowestPatchRow = Math.max(lowestPatchRow, a.y);
+      compared += 1;
+    }
+    expect(compared, 'no frame of the rep was compared').toBe(rep.frames.length);
+    // ...and the two bands really are far apart, which is WHY. A crowd whose
+    // seating reached the shadow's rows would make everything above a
+    // coincidence rather than a consequence.
+    expect(
+      crowdFrontRow(MEET_HALL_SCENE),
+      `the seating reaches row ${crowdFrontRow(MEET_HALL_SCENE)} and the shadow starts at ${lowestPatchRow}`,
+    ).toBeLessThan(lowestPatchRow);
   });
 
   it('runs a clock through the wait for the lights, and stops it when the lamps may come up', () => {

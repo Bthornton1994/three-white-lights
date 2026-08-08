@@ -73,13 +73,19 @@ const L = LIFT_TUNING.LAYOUT;
 const F = LIFT_TUNING.FEEDBACK;
 
 /**
- * The rooms, built once at module load — one per venue.
+ * The SEATED rooms, built once at module load — one per venue.
  *
  * They are constants because they are: `renderGymScene` is pure and neither
  * spec changes while a rep is running — no camera pan, nothing about the
  * player. Rebuilding one per render would raster 22,490 pixels a frame to
  * produce the same bytes. Building BOTH up front costs one extra grid and means
  * switching rooms between screens is a lookup rather than a re-raster.
+ *
+ * `crowdRisePx` IS COMPOSED ON TOP OF ONE OF THESE RATHER THAN STORED HERE, and
+ * that is what keeps the sentence above true: a meet attempt's hall is one of
+ * nine rises (`MEET_TUNING.CROWD`), it does not change during the rep, and a
+ * table of eighteen rooms built at module load to serve one of them would be
+ * eighteen rasters for a screen most players never open.
  *
  * Typed as a total `Record<GymVenue, …>`, so a third venue added to
  * `gymTuning.ts` is a compile error here rather than a silently missing room.
@@ -115,6 +121,31 @@ export interface LiftStageProps {
    * gym. `AttemptView` passes `MEET_TUNING.VENUE`.
    */
   readonly venue?: GymVenue | undefined;
+  /**
+   * Scene rows the seating has come up by. Omitted or 0, the hall is seated and
+   * the room is `SCENES[venue]` itself — the identical object every Sim set
+   * draws, so a screen with no opinion cannot cost a second raster.
+   *
+   * ---------------------------------------------------------------------------
+   * WHY A REP TAKES ONE AT ALL
+   * ---------------------------------------------------------------------------
+   * The walk-out spends the whole of GDD §6.2's escalation bringing the hall to
+   * its feet (`MEET_TUNING.CROWD`, `WALKOUT_TAIL.HUSH_CROWD_RISE_PX`), and this
+   * screen is the frame straight after it. Without the prop the rep drew
+   * `spec.crowdRisePx ?? 0` — a seated hall — so the crowd sat back down on the
+   * frame the bar started moving, which is the one moment of the beat a
+   * broadcast has them standing.
+   *
+   * SAME NAME, SAME DEFAULT, SAME MEANING AS `MeetHallView`'s. The two are the
+   * rooms either side of one cut and a reader should not have to check that
+   * they agree about units.
+   *
+   * IT IS NOT A CHANNEL THIS SCREEN ANIMATES. `AttemptView` hands over one
+   * number for the whole rep — what the walk-out left the hall at — and nothing
+   * here moves it. A hall that reacted DURING the rep would be feedback about
+   * the lift in progress, which is a different design and not this one.
+   */
+  readonly crowdRisePx?: number | undefined;
 }
 
 /**
@@ -158,9 +189,19 @@ export function LiftStage({
   history,
   totalKg,
   venue = DEFAULT_VENUE,
+  crowdRisePx = 0,
 }: LiftStageProps): React.ReactElement {
   const image = useSpriteImage(state, totalKg);
-  const scene = SCENES[venue];
+  const seated = SCENES[venue];
+  // THE SAME SHAPE `meetHall.ts`'s `hallScene` USES, and for the same reason: at
+  // rise 0 this is the module constant itself rather than an equal copy, so
+  // every screen that has no opinion about the crowd keeps the one-raster
+  // property `SCENES` exists for. A risen hall costs one extra room per row,
+  // and the rise is constant for a whole rep, so that is one per attempt.
+  const scene = useMemo(
+    () => (crowdRisePx <= 0 ? seated : { ...seated, crowdRisePx }),
+    [seated, crowdRisePx],
+  );
   const ring = cueRing(cueProgress(state));
   const shake = stageShake(state);
   const flash = hitFlash(state);
