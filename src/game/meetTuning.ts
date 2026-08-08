@@ -701,6 +701,22 @@ export const MEET_TUNING = Object.freeze({
      * a lift is a settle rather than dead air. This is the line between the
      * two, and it is the reason the escalation extras are what buy the live
      * channel — which is the property the defect above was about.
+     *
+     * IT ALSO GOVERNS THE WAIT FOR THE LIGHTS, WHICH NOTHING HAD MEASURED.
+     * `buildHold` runs the same tail plan on `deliberationMs`, and a CLEAR call
+     * on an opener or a second attempt is `VERDICT_SILENCE_MS +
+     * CLEAR_CALL_DELIBERATION_MS` = 880 ms, offering 520 ms after the hush —
+     * under this floor. So two of the sixteen deliberation shapes are ONE HELD
+     * DRAWING IN SILENCE for 880 ms, 2.4x the 360 ms budget the walk-out's own
+     * tail is held to. Swept and pinned in `walkout.test.ts`'s
+     * `HOLD_STILLNESS`, which fails with the new numbers if a tuning pass moves
+     * any of the three constants involved.
+     *
+     * NOT TUNED AWAY HERE, deliberately: closing it means deciding either that
+     * 520 ms is long enough to brace in or that a non-close call deserves a
+     * longer beat, and both are feel judgements nobody in this environment has
+     * watched (GDD §12.1). This paragraph is where a tuner turns the first of
+     * them, and `CLEAR_CALL_DELIBERATION_MS` is where they turn the second.
      */
     MIN_BRACE_WINDOW_MS: 600,
 

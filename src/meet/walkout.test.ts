@@ -149,6 +149,69 @@ const ATTEMPT_SHAPES: readonly (readonly [1 | 2 | 3, number | null, boolean])[] 
 ];
 
 /**
+ * Every shape `deliberationMs` can be asked for: (close call, attempt, PR, bomb
+ * risk).
+ *
+ * THE SIBLING OF `ATTEMPT_SHAPES` AND IT DID NOT EXIST. The walk-out is swept
+ * across every beat length it can be asked for; the wait for the lights was
+ * measured on one hand-picked pair, which is how the longest held frame left in
+ * the piece went unnoticed — see `HOLD_STILLNESS`.
+ *
+ * Written out rather than generated for the same two reasons the list above is:
+ * the counts pinned against it name a list a reader can see, and a shape cannot
+ * silently vanish from the sweep. `bombRisk` appears only on a third attempt
+ * because that is the only place `meetDay.ts` can produce it — a bomb risk IS
+ * "the last attempt of a lift with nothing banked".
+ */
+const DELIBERATION_SHAPES: readonly (readonly [boolean, 1 | 2 | 3, boolean, boolean])[] = [
+  [false, 1, false, false],
+  [false, 1, true, false],
+  [false, 2, false, false],
+  [false, 2, true, false],
+  [false, 3, false, false],
+  [false, 3, false, true],
+  [false, 3, true, false],
+  [false, 3, true, true],
+  [true, 1, false, false],
+  [true, 1, true, false],
+  [true, 2, false, false],
+  [true, 2, true, false],
+  [true, 3, false, false],
+  [true, 3, false, true],
+  [true, 3, true, false],
+  [true, 3, true, true],
+];
+
+/**
+ * WHAT THE SWEEP OVER `DELIBERATION_SHAPES` ACTUALLY FOUND, pinned as counts
+ * and as the exact worst value rather than as a bound.
+ *
+ * The walk-out is held to "never ends any attempt on more held frame than the
+ * hush it schedules" — `WALKOUT_TAIL.HUSH_MS`, 360 ms. Two of the sixteen
+ * deliberation shapes miss that by a factor of 2.4: a CLEAR call on an opener or
+ * a second attempt is `VERDICT_SILENCE_MS + CLEAR_CALL_DELIBERATION_MS` = 880 ms,
+ * which offers 520 ms after the hush, which is under `MIN_BRACE_WINDOW_MS` of
+ * 600 — so the whole beat is one drawing in silence.
+ *
+ * IT IS RECORDED HERE RATHER THAN TUNED AWAY, and the distinction is the point.
+ * Closing it means moving `MIN_BRACE_WINDOW_MS` (which decides what is a settle
+ * and what is dead air) or `CLEAR_CALL_DELIBERATION_MS` (which decides how much
+ * of a beat a non-close call gets), and both are feel values nobody in this
+ * environment has watched (GDD §12.1). What was wrong was that nothing NOTICED;
+ * these three numbers are what makes it noticed. A tuning pass that fixes it
+ * fails here with the new numbers in the message, and so does one that lets a
+ * third shape go quiet.
+ */
+const HOLD_STILLNESS = {
+  /** Shapes whose whole beat is one held drawing. */
+  OVER_BUDGET: 2,
+  /** ...and shapes that end on exactly the hush they schedule. */
+  WITHIN_BUDGET: 14,
+  /** The longest held drawing in the piece, in ms. */
+  WORST_MS: 880,
+} as const;
+
+/**
  * How much of the room the tail's own crowd ramp has to move, in scene pixels of
  * the composite's 22,490.
  *
@@ -3104,6 +3167,65 @@ describe('buildHold — the brace with no walk-out in front of it', () => {
     expect(long.frames.length, 'the longer wait is the same sheet held longer')
       .toBeGreaterThan(short.frames.length);
     expect(long.tail.cycles).toBeGreaterThan(short.tail.cycles);
+  });
+
+  it('is swept for held frame across every deliberation shape, not just the two above', () => {
+    // THE GAP THIS CLOSES, AND IT IS THE SIBLING-GUARD SHAPE AGAIN. The walk-out
+    // has `never ends any attempt on more held frame than the hush it schedules`
+    // over every shape `walkoutMs` can be asked for. The hold had no such sweep:
+    // the test directly above compares `deliberationMs(false, opener)` only
+    // against a LONGER beat, so it is green whatever the shorter one is doing —
+    // and what the shorter one is doing is holding ONE drawing in silence for
+    // 880 ms, 2.4x the budget its sibling is held to.
+    //
+    // MEASURED, NOT BOUNDED, and it does not fail today: the counts and the
+    // worst value are pinned in `HOLD_STILLNESS` above, with the argument for
+    // recording rather than tuning it. A pin at zero here would be a pin on a
+    // feel decision this environment cannot take (GDD §12.1).
+    const budgetMs = TAIL.HUSH_MS;
+    let overBudget = 0;
+    let withinBudget = 0;
+    let worstMs = 0;
+    const offenders: string[] = [];
+    for (const [deliberated, attemptNumber, isPrAttempt, bombRisk] of DELIBERATION_SHAPES) {
+      const beatMs = deliberationMs(deliberated, { attemptNumber, isPrAttempt, bombRisk });
+      const sheet = buildHold(LOAD, beatMs);
+      const still = longestStillMs(sheet);
+      worstMs = Math.max(worstMs, still);
+      if (still > budgetMs) {
+        overBudget += 1;
+        offenders.push(
+          `${deliberated ? 'close' : 'clear'} call, attempt ${attemptNumber}${isPrAttempt ? ', PR' : ''}${bombRisk ? ', bomb risk' : ''}: ${beatMs}ms beat held as ${sheet.frames.length} drawing(s), longest still ${still}ms`,
+        );
+      } else {
+        withinBudget += 1;
+      }
+    }
+    expect(
+      [overBudget, withinBudget],
+      `shapes over the ${budgetMs}ms hush budget, and within it — ${offenders.join(' | ')}`,
+    ).toEqual([HOLD_STILLNESS.OVER_BUDGET, HOLD_STILLNESS.WITHIN_BUDGET]);
+    expect(overBudget + withinBudget, 'deliberation shapes swept').toBe(
+      DELIBERATION_SHAPES.length,
+    );
+    expect(worstMs, 'the longest held drawing the wait for the lights can produce').toBe(
+      HOLD_STILLNESS.WORST_MS,
+    );
+    // ...and the two that are over budget are over it because the tail they are
+    // offered is under `MIN_BRACE_WINDOW_MS`, which is the number a tuning pass
+    // would turn. Named here so the failure message points at the constant
+    // rather than at a symptom.
+    const clearOpener = deliberationMs(false, {
+      attemptNumber: 1,
+      isPrAttempt: false,
+      bombRisk: false,
+    });
+    expect(
+      clearOpener - TAIL.HUSH_MS,
+      `a clear call on an opener offers ${clearOpener - TAIL.HUSH_MS}ms of brace window`,
+    ).toBeLessThan(TAIL.MIN_BRACE_WINDOW_MS);
+    expect(buildHold(LOAD, clearOpener).tail.braceMs).toBe(0);
+    expect(buildHold(LOAD, clearOpener).frames.length, 'the whole beat is one drawing').toBe(1);
   });
 
   it('ends on the rest drawing, so the lamps come up over the settled figure', () => {
