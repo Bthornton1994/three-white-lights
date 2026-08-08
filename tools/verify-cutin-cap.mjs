@@ -88,7 +88,12 @@
  * recorder that never ran, and by three legs that were three different
  * sittings. Each of those has a guard, and each guard pins a COUNT:
  *
- *   - the recorder polled at all                    (polls > 0)
+ *   - the recorder polled, AND never stalled longer  (worst gap < one beat)
+ *     than one whole cut-in. `polls > 0` alone was a
+ *     BOUND that pinned nothing: a recorder that ran
+ *     9000 times and stalled once for two seconds
+ *     reports a healthy count and a LOW fire count,
+ *     and low is the direction that looks like a pass.
  *   - legs 2 and 3 both REACHED the bomb-out screen (exactly 2)
  *   - the host really went away between legs        (exactly 2 teardowns)
  *   - the local calendar day did not change         (one sitting id)
@@ -321,6 +326,8 @@ const sessionTuningText = await readFile(path.join(srcRoot, 'src', 'game', 'sess
 const bombOutAllowance = numberInBlock(tuningText, 'SESSION_ALLOWANCE', 'bomb-out');
 const enterMs = numberInSource(tuningText, 'ENTER_MS');
 const holdMs = numberInSource(tuningText, 'HOLD_MS');
+/** Enter plus hold: how long a cut-in is on screen if nobody taps it. */
+const wholeBeatMs = enterMs === null || holdMs === null ? Number.POSITIVE_INFINITY : enterMs + holdMs;
 const latencyMs = numberInSource(sessionTuningText, 'LOCAL_SERVER_LATENCY_MS');
 const feedbackHigh = stringInSource(meetTuningText, 'FEEDBACK_DEPTH_HIGH');
 const feedbackBuried = stringInSource(meetTuningText, 'FEEDBACK_BURIED');
@@ -342,6 +349,28 @@ const bombOutLastRowMs =
   bombOutSilenceMs === null || bombOutStaggerMs === null || bombOutFadeMs === null || bombOutRowOrderAction === null
     ? null
     : bombOutSilenceMs + bombOutRowOrderAction * bombOutStaggerMs + bombOutFadeMs;
+/**
+ * AND THE SAME ARITHMETIC FOR THE RECAP, because the arm below needed it and
+ * did not have it. `RecapView` staggers rows inside `Block`; the exit
+ * (`RECAP_ROW_ORDER.CARD`) is the last one, so the screen has finished
+ * assembling at `CARD * STAGGER + FADE`. Read, not typed, for the reason the
+ * block above gives.
+ */
+const recapStaggerMs = numberInSource(meetTuningText, 'RECAP_ROW_STAGGER_MS');
+const recapFadeMs = numberInSource(meetTuningText, 'RECAP_ROW_FADE_MS');
+const recapRowOrderCard = numberInBlock(meetTuningText, 'RECAP_ROW_ORDER', 'CARD');
+const recapLastRowMs =
+  recapStaggerMs === null || recapFadeMs === null || recapRowOrderCard === null
+    ? null
+    : recapRowOrderCard * recapStaggerMs + recapFadeMs;
+check(
+  recapLastRowMs !== null,
+  "CONTROL: the recap screen's own arrival arithmetic was READ, not guessed",
+  recapLastRowMs === null
+    ? 'COULD NOT READ one of RECAP_ROW_STAGGER_MS / RECAP_ROW_FADE_MS / RECAP_ROW_ORDER.CARD out of meetTuning.ts'
+    : `${recapRowOrderCard} x ${recapStaggerMs} + ${recapFadeMs} = ${recapLastRowMs}ms`,
+);
+
 check(
   bombOutLastRowMs !== null,
   "CONTROL: the bomb-out screen's own arrival arithmetic was READ, not guessed — a blank photograph is what a failed read used to look like",
@@ -408,13 +437,34 @@ page.on('console', (m) => {
  */
 await page.addInitScript(
   ({ pollMs, beats }) => {
-    window.__cutInCap = { log: [], polls: 0, up: false, leg: 0, startedDay: new Date().toDateString() };
+    window.__cutInCap = {
+      log: [],
+      polls: 0,
+      // THE WORST GAP BETWEEN TWO POLLS, which is the only quantity that
+      // decides whether a cut-in can be missed. `polls > 0` is a BOUND and
+      // pins nothing: a recorder that ran 9000 times and stalled once for two
+      // seconds reports a healthy count and a low fire count, and low is the
+      // direction that looks like a pass. setInterval does not promise its
+      // period — on the run that prompted this, 9398 polls over 203s averaged
+      // ~23ms against a nominal 16, so ~28% of the schedule was already lost.
+      worstGapMs: 0,
+      lastAt: null,
+      up: false,
+      leg: 0,
+      startedDay: new Date().toDateString(),
+    };
     window.__cutInCapLeg = (n) => {
       window.__cutInCap.leg = n;
     };
     setInterval(() => {
       const s = window.__cutInCap;
       s.polls += 1;
+      const now = performance.now();
+      if (s.lastAt !== null) {
+        const gap = now - s.lastAt;
+        if (gap > s.worstGapMs) s.worstGapMs = gap;
+      }
+      s.lastAt = now;
       const node = document.querySelector('[data-testid="cut-in"]');
       const up = node !== null;
       if (up && !s.up) {
@@ -743,26 +793,49 @@ if (booted.ok) {
      * read from source rather than transcribed, and the check reads EFFECTIVE
      * OPACITY rather than presence — the distinction the blank frame is
      * entirely made of.
+     *
+     * AND THEN THE FIX WENT INTO ONE ARM AND NOT ITS SIBLING, IN THIS BLOCK,
+     * WHICH IS THE FOURTH INSTANCE OF THAT PATTERN IN THIS REPOSITORY. The
+     * bombed arm above was correct. The recap arm below waited on presence and
+     * probed `meet-recap` — the plain `ScrollView` container, whose opacity
+     * NOTHING ANIMATES. `RecapView` staggers its rows inside `Block`, so the
+     * container reads 1.000 for every state in which the recap is on screen at
+     * all, and the branch only runs once the node is present. **No edit to the
+     * subject could redden it.** `leg-1-recap.png` was filed at t≈50ms of a
+     * 1240ms assembly — `MEET COMPLETE` at full weight because it is the one
+     * `Text` outside a `Block`, the hero total a near-black smear, the attempt
+     * board absent — beside a green line reading "effective opacity 1.000".
+     *
+     * A container is the wrong probe when the animation is on the children.
+     * Probe the LAST staggered row, and wait its own arithmetic out.
      */
     let arrivedMs = 0;
     let drawn = 1;
+    let drawnProbe = '(none)';
     if (drive.ended === 'bombed') {
       arrivedMs = bombOutLastRowMs === null ? CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS : bombOutLastRowMs;
       await until((s) => s.bombExit, CAP_DRIVE.BOMB_OUT_EXIT_TIMEOUT_MS);
       await page.waitForTimeout(arrivedMs);
-      drawn = await effectiveOpacity('bomb-out-action');
+      drawnProbe = 'bomb-out-action';
+      drawn = await effectiveOpacity(drawnProbe);
     } else if (drive.ended === 'recap') {
-      const seen = await until((s) => s.leaveMeet, CAP_DRIVE.BEAT_TIMEOUT_MS);
-      arrivedMs = seen.ms;
-      drawn = await effectiveOpacity('meet-recap');
+      // THE SIBLING, WHICH THE FIRST VERSION OF THIS BLOCK DID NOT GET. See the
+      // second half of the comment above.
+      arrivedMs = recapLastRowMs === null ? CAP_DRIVE.BEAT_TIMEOUT_MS : recapLastRowMs;
+      await until((s) => s.leaveMeet, CAP_DRIVE.BEAT_TIMEOUT_MS);
+      await page.waitForTimeout(arrivedMs);
+      drawnProbe = 'recap-action';
+      drawn = await effectiveOpacity(drawnProbe);
     }
     check(
       drawn >= CAP_DRIVE.DRAWN_MIN_OPACITY,
       `leg ${leg.n}: the '${drive.ended}' screen is DRAWN, not merely mounted, before the shutter`,
-      `effective opacity ${drawn.toFixed(3)} after ${arrivedMs}ms` +
+      `probed ${drawnProbe}: effective opacity ${drawn.toFixed(3)} after ${arrivedMs}ms` +
         (drive.ended === 'bombed'
           ? ` (BOMB_OUT_SILENCE_MS + ${bombOutRowOrderAction} x BOMB_OUT_ROW_STAGGER_MS + BOMB_OUT_ROW_FADE_MS, read from meetTuning.ts)`
-          : ''),
+          : drive.ended === 'recap'
+            ? ` (${recapRowOrderCard} x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)`
+            : ''),
     );
     await page.screenshot({ path: path.join(outDir, `leg-${leg.n}-${drive.ended}.png`) });
 
@@ -802,9 +875,10 @@ const recorder = await page.evaluate(() => ({
 // ---------------------------------------------------------------------------
 
 check(
-  recorder.polls > 0,
+  recorder.polls > 0 && recorder.worstGapMs < wholeBeatMs,
   'CONTROL: the in-page recorder ran at all',
-  `${recorder.polls} polls at ${CAP_DRIVE.RECORDER_POLL_MS}ms; without this, "no second cut-in" is what a dead instrument reports`,
+  `${recorder.polls} polls at a nominal ${CAP_DRIVE.RECORDER_POLL_MS}ms, worst gap ${Math.round(recorder.worstGapMs)}ms against a whole beat of ${wholeBeatMs}ms`
+    + '; without this, "no second cut-in" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green',
 );
 check(
   recorder.startedDay === recorder.endedDay,
@@ -820,7 +894,14 @@ const bombedLegs = legRecords.filter((l) => l.intent === 'miss' && l.ended === '
 const wantBombed = LEGS.filter((l) => l.intent === 'miss').length;
 check(
   bombedLegs === wantBombed,
-  `CONTROL: the ${wantBombed} deliberately-bombed legs each reached GDD §6.3's bomb-out screen and OFFERED the beat`,
+  // NAMED FOR WHAT IT MEASURES. This computes `intent === 'miss' && ended ===
+  // 'bombed'` — it observes the SCREEN, and never an offer. The earlier wording
+  // said "and OFFERED the beat", which the check has no way to see: a leg whose
+  // BombOutView stopped asking for a cut-in looks identical here. On a day when
+  // leg 1 fires nothing the two-sided `fired === THE_CAP` pin rescues it, since
+  // a view that stopped offering would take leg 2's fire with it and give 0.
+  // On a day when leg 1 DOES fire, it would not.
+  `CONTROL: the ${wantBombed} deliberately-bombed legs each REACHED GDD §6.3's bomb-out screen (this sees the screen, not the offer)`,
   `${bombedLegs} of ${wantBombed}; endings were ${JSON.stringify(legRecords.map((l) => `${l.n}:${l.ended}`))}. ` +
     'Without this, "exactly one cut-in" is also what a run that never offered a second qualifying beat reports.',
 );
@@ -857,10 +938,11 @@ async function writeRecord(rec, legs) {
       {
         capturedFrom,
         theCap: THE_CAP,
-        premise: { bombOutAllowance, enterMs, holdMs, wholeBeatMs: enterMs === null || holdMs === null ? null : enterMs + holdMs },
+        premise: { bombOutAllowance, enterMs, holdMs, wholeBeatMs: Number.isFinite(wholeBeatMs) ? wholeBeatMs : null },
         legs,
         cutIns: rec === null ? [] : rec.log,
         recorderPolls: rec === null ? 0 : rec.polls,
+        recorderWorstGapMs: rec === null ? null : Math.round(rec.worstGapMs),
         checks,
         /**
          * THE RED LINES. Required, not decorative: `tools/evidence.mjs` refuses
