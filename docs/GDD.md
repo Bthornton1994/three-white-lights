@@ -1619,13 +1619,11 @@ Per attempt:
    on close calls
 5. Depth cue or bar-speed replay clip as feedback
 
-**A BEAT MAY ONLY BE LENGTHENED WHERE SOMETHING IS PLAYING IN IT — PROPOSED BY
-A BUILDER, AWAITING A HUMAN.** The measurement below is fact and the three rules
-are the builder's reading of it. They are written here rather than in a module
-header because they bind future work, and they are followed by the code today.
-But a bar and a design rule are the human's to set — the first version of this
-heading said "RULED", which claimed an authority no agent in this run has. If
-the human disagrees with any of the three, the code moves, not the document.
+**A BEAT MAY ONLY BE LENGTHENED WHERE SOMETHING IS PLAYING IN IT — THE FIRST TWO
+RULES ARE SETTLED; THE THIRD IS PENDING PLAYTEST.** The measurement below is
+fact. The three rules under it began as a builder's reading of that fact, headed
+"RULED", which claimed an authority no agent in this run has. A human has since
+ruled on them, and the outcome splits.
 Steps 1 and 4 both escalate on the attempts the meet turns on: a third, a PR, or
 one with a bomb on it is held longer than an opener (`walkoutMs` and
 `deliberationMs` in `src/game/meetDay.ts`). That is only worth anything if the
@@ -1636,8 +1634,9 @@ static raster over a decayed sound cue** — 48% of a third-attempt beat with
 nothing banked, 56% at a PR. The lever `meetTuning.ts` told a future tuner to
 turn only made the frozen frame longer.
 
-Three rules follow, and the third is the one a later pass will be tempted to
-break:
+Three rules follow. **The first two are SETTLED** — ruled sound, and kept because
+reverting either reopens a real defect. **The third is DEFERRED TO PLAYTEST**, and
+the distinction matters, so it is spelled out under the rule itself:
 
 - **The walk-out's tail is two named windows**, not a remainder: a BRACE, where
   the loaded bar works under a braced lifter and the hall's standing wave
@@ -1648,16 +1647,33 @@ break:
   constants: not readiness, not load, not the attempt number. A brace that
   varied with fatigue is §3.4's meter with the numerals filed off, and §12.3
   refuses one.
-- **Anticipation escalates in DURATION; news escalates in INTENSITY.** The
+- **Anticipation escalates in DURATION; news escalates in INTENSITY.**
+  **— PENDING PLAYTEST. NOT RULED, AND NOT RULEABLE FROM A DESCRIPTION.** The
   walk-out and the wait for the lights are waiting, and waiting is the content,
   so they get longer. The hold AFTER the call is not: the player already knows,
   and every millisecond added there is a frame they are waiting to leave — the
   same defect one screen later. `verdictMs()` therefore takes no attempt
-  information and must not. What a reaction may escalate is loudness, and it
-  does: `CROWD.URGENT_CHEER_RISE_PX` takes the hall further up on a lift the
-  meet turned on.
+  information. What a reaction may escalate is loudness, and it does:
+  `CROWD.URGENT_CHEER_RISE_PX` takes the hall further up on a lift the meet
+  turned on.
 
-None of the numbers has been played (§12.1). What is ruled here is the shape.
+  **Why this one is deferred rather than decided, and why the deferral names
+  PLAYTEST rather than a person.** Whether a meet-deciding third deserves a
+  longer look at three white lights is a question about how the beat *feels* in
+  the hand. It is not measurable from the artifact and it is not settleable by
+  reading a description of it — not by a builder, not by a critic, and not by
+  the lead agent reasoning carefully. The builder's own doubt was correct and is
+  recorded rather than resolved. Real broadcasts do linger on a big third, which
+  is the strongest argument against the rule as written.
+
+  So the code follows this rule today and the tests pin it, but **it is the one
+  entry in this section a playtest is expected to overturn**, and overturning it
+  is a normal outcome rather than a defect. Do not treat the pins as evidence
+  the question is closed; they hold a placeholder shape steady so a tuner has
+  something definite to react against.
+
+None of the numbers has been played (§12.1). What is settled here is the shape
+of the first two rules; the third is a placeholder held steady for a tuner.
 
 ### 6.3 Attempt Selection — The Real Tension
 
