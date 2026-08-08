@@ -1,12 +1,15 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-07T07:45:44.177Z",
+    "capturedAt": "2026-08-08T14:35:30.245Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "3f74b72",
+    "commit": "2f17dc3",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
-    "dirtyPaths": [],
+    "dirtyPaths": [
+      "M .gauntlet/shots/cutin/frames.json",
+      " M .gauntlet/shots/cutin/live-after-auto-dismiss.png"
+    ],
     "instrument": {
       "verify-shell-route.mjs": "08efb4eda48c977b",
       "sessionDrive.mjs": "2a63eac7a653d32b"
@@ -20,7 +23,7 @@
       "width": 350,
       "height": 48
     },
-    "wallClockMs": 78221,
+    "wallClockMs": 78296,
     "landedOn": "already-trained",
     "finalDepthHoldMs": 1000,
     "reps": [
@@ -135,13 +138,13 @@
     "attemptedSecond": true,
     "first": {
       "ended": "recap",
-      "ms": 103793,
+      "ms": 105240,
       "attempts": 9,
       "holdMs": 1000
     },
     "second": {
       "ended": "placeholder",
-      "ms": 108589,
+      "ms": 104912,
       "attempts": 9,
       "holdMs": 1000
     }
@@ -162,20 +165,20 @@
     "  ok    and the walk-out ELAPSES on its own into the attempt — clocks running, not a screenshot",
     "  ok    NO CONTROL IS DRAWN OVER THE ATTEMPT ITSELF",
     "  ok    CONTROL: the deadline the recap’s round trip is given is derived from SESSION_BOUNDARY.LOCAL_SERVER_LATENCY_MS — 550ms of stand-in latency + 2600ms settle = 3150ms",
-    "  ok    THE MEET THE PLAYER OPENED IS PLAYED TO ITS END — nine attempts on the real mechanic, through to GDD §6.5’s recap — 9 attempts in 103793ms, hold settled at 1000ms; ended on 'recap'",
+    "  ok    THE MEET THE PLAYER OPENED IS PLAYED TO ITS END — nine attempts on the real mechanic, through to GDD §6.5’s recap — 9 attempts in 105240ms, hold settled at 1000ms; ended on 'recap'",
     "  ok    CONTROL: and it is the meet the PLAYER opened — the address bar carries no query string, so no debug frame is being read — at the recap the page is on \"http://localhost:8081/\"",
     "  ok    GDD §6.5’s recap renders on the app’s OWN connection, not the preview’s — opacity 1.000",
     "  ok    and GDD §6.1’s second-meet placeholder is NOT drawn over it — this player’s result is their own",
     "  ok    the way back is on screen on a recap a player lifted for (shell-leave-meet) — opacity 1.000",
     "  ok    and it is what a thumb would hit there — elementFromPoint -> self",
-    "  ok    and the recap's last block arrives within 3040ms, the deadline its own stagger implies — opacity 0.944 after 1184ms",
+    "  ok    and the recap's last block arrives within 3040ms, the deadline its own stagger implies — opacity 0.995 after 1204ms",
     "  ok    and 04a-live-recap-with-way-back.png really is a photograph of the 'recap' beat, which is what its name says — the screen says \"SEE YOUR CARD\"",
     "  ok    PRESSING IT RETURNS TO THE DAILY SESSION — on a meet the player opened, played and finished",
     "  ok    and that meet is no longer on screen",
     "  ok    and 05a-check-in-after-a-played-meet.png really is a photograph of the 'check-in' beat, which is what its name says — the screen says \"HOW ARE YOU TODAY?\"",
     "  ok    PRESSING MEET DAY AGAIN OPENS A SECOND MEET in the same app run — the path §6.1’s scaffolding exists for",
     "  ok    and the second meet opens on its own weigh-in, live, rather than on the first one’s ending — opacity 1.000",
-    "  ok    THE SECOND MEET IS REFUSED AS ALREADY RECORDED, and GDD §6.1’s placeholder is what stands where §6.5’s recap was — 9 attempts in 108589ms, hold settled at 1000ms; ended on 'placeholder'",
+    "  ok    THE SECOND MEET IS REFUSED AS ALREADY RECORDED, and GDD §6.1’s placeholder is what stands where §6.5’s recap was — 9 attempts in 104912ms, hold settled at 1000ms; ended on 'placeholder'",
     "  ok    the placeholder is DRAWN — the positive half, which nothing had ever rendered — opacity 1.000",
     "  ok    and the bare in-flight eyebrow is gone too, so this is the settled screen and not a frame of the round trip",
     "  ok    and it says the sentence a human ruled for it, word for word (GDD §6.1)",
@@ -212,11 +215,11 @@
     "  ok    CONTROL: the block parser reads the block it was asked for, not the decoy above it, and reads the last entry of an inline one — fixture -> REAL_FRACTION.squat 0.9 (want 0.9; DECOY_FRACTION.squat is 0.11 and must not be the answer), NESTED_SEED.squat 180 (want 180, through a nested freeze), NESTED_SEED.deadlift 220 (want 220, and it has NO trailing comma — the shape STARTING_E1RM is written in, and the one this parser first got wrong), ABSENT_BLOCK null (want null)",
     "  ok    CONTROL: the binding parser reads `export const NAME = n`, typed or not, and refuses a property of the same name — fixture -> REAL_GRID 2.5 (want 2.5), TYPED_GRID 5 (want 5), DECOY_GRID null (want null — it is a property, not a binding)",
     "  ok    CONTROL: every number the opener crossing is judged against was found in the module that owns it — fraction {\"squat\":0.9,\"bench\":0.9,\"deadlift\":0.9}, seed {\"squat\":180,\"bench\":120,\"deadlift\":220}kg, grid 2.5kg, count-up 900ms after 220ms",
-    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1422ms from the first tap",
-    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 65611ms, 15 of them past a DRIVE cue",
+    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1437ms from the first tap",
+    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 65670ms, 15 of them past a DRIVE cue",
     "  ok    CONTROL: the close-out has a certainty tag for that wait to watch — e1rm, streak in the DOM",
-    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 569ms",
-    "  ok    CONTROL: the close-out prints an e1RM, and says which lift it is for — deadlift 228.9kg",
+    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 556ms",
+    "  ok    CONTROL: the close-out prints an e1RM, and says which lift it is for — squat 188.3kg",
     "  ok    PRESSING DONE LANDS ON THE ALREADY-TRAINED SURFACE (GDD §3.2: one session a day)",
     "  ok    the already-trained surface renders — the last screen of the daily loop — opacity 1.000",
     "  ok    THE WAY TO MEET DAY IS ON IT, and it is the only thing on it to press — opacity 1.000",
@@ -233,9 +236,9 @@
     "  ok    AND PRESSING IT REACHES MEET DAY — the daily loop does not end on a dead end",
     "  ok    landing on the weigh-in, from a session that was actually played — opacity 1.000",
     "  ok    the weigh-in confirms, so GDD §6.1’s pre-filled openers are on screen",
-    "  ok    CONTROL: the openers screen draws a number for the deadlift — 205kg",
-    "  ok    CONTROL: the session moved the e1RM off the signup seed, so the two answers below are different numbers — trained 228.9kg -> opener 205kg; seed 220kg -> opener 197.5kg",
-    "  ok    THE OPENER FOLLOWS THE SESSION THAT WAS JUST PLAYED — meet day and training are one lifter (GDD §6.1) — deadlift: close-out said 228.9kg, so the opener must be 205kg; the screen drew 205kg",
+    "  ok    CONTROL: the openers screen draws a number for the squat — 167.5kg",
+    "  ok    CONTROL: the session moved the e1RM off the signup seed, so the two answers below are different numbers — trained 188.3kg -> opener 167.5kg; seed 180kg -> opener 160kg",
+    "  ok    THE OPENER FOLLOWS THE SESSION THAT WAS JUST PLAYED — meet day and training are one lifter (GDD §6.1) — squat: close-out said 188.3kg, so the opener must be 167.5kg; the screen drew 167.5kg",
     "  ok    a live set renders — opacity 1.000",
     "  ok    and 08-set-has-no-nav.png really is a photograph of the 'set' beat, which is what its name says — the screen says \"TAP AND HOLD TO DESCEND\"",
     "  ok    NO CONTROL IS DRAWN OVER a live set (beat 'set') — photographed in 08-set-has-no-nav.png",
@@ -247,7 +250,7 @@
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.2 step 4’s deliberation — the judges taking a beat (beat 'deliberation')",
     "  ok    NO CONTROL IS DRAWN OVER the judges’ verdict (beat 'verdict')",
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.3’s attempt choice (beat 'attempt-select')",
-    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.903 after 3689ms",
+    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.975 after 3846ms",
     "  ok    and the shell does not add a second one to it (GDD §6.3: leave that beat somber)",
     "  ok    and pressing it returns to the daily session",
     "  ok    CONTROL: with no cut-in up, the pill is on the same screen the probe looks at — opacity 1.000",
@@ -289,10 +292,10 @@
     "  ok    CAREER_CALENDAR_PLACEHOLDER_COPY.LINE is the sentence this tool holds the second meet’s screen to, word for word — looked for LINE: 'Meet complete — results saved to your last recorded meet. Career calendar coming soon.' in careerCalendarPlaceholder.ts"
   ],
   "notes": [
-    "  note  meet 1: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"The bar won that one.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"You hit depth by a hair.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\"",
-    "  note  meet 2: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"The bar won that one.\"",
+    "  note  meet 1: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"You hit depth by a hair.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\"",
+    "  note  meet 2: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"The bar won that one.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"The bar won that one.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\"",
     "  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day, which the server then refuses",
-    "  note  the played-session section cost 78221ms of wall clock"
+    "  note  the played-session section cost 78296ms of wall clock"
   ],
   "failures": [],
   "pageErrors": []

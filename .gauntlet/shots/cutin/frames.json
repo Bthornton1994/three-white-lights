@@ -1,14 +1,14 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-07T07:55:12.780Z",
+    "capturedAt": "2026-08-08T14:34:54.522Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "28fd9ca",
+    "commit": "2f17dc3",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [],
     "instrument": {
-      "capture-cutin.mjs": "645ae099011f133b",
+      "capture-cutin.mjs": "48935fabb9ef3aa6",
       "png.mjs": "6356a0d0b0dcb696"
     }
   },
@@ -58,7 +58,8 @@
         "blended": 58892,
         "opaqueBackdrop": 16254,
         "untouched": 862834
-      }
+      },
+      "pixelHash": 3627325843
     },
     {
       "moment": "personal-record",
@@ -105,7 +106,8 @@
         "blended": 13095,
         "opaqueBackdrop": 16314,
         "untouched": 850695
-      }
+      },
+      "pixelHash": 3462249653
     },
     {
       "moment": "bomb-out",
@@ -152,7 +154,8 @@
         "blended": 47920,
         "opaqueBackdrop": 16254,
         "untouched": 862782
-      }
+      },
+      "pixelHash": 345416966
     },
     {
       "moment": "coach-heavy-set",
@@ -199,7 +202,8 @@
         "blended": 55148,
         "opaqueBackdrop": 16254,
         "untouched": 862782
-      }
+      },
+      "pixelHash": 509932265
     }
   ],
   "artDiffs": [
@@ -228,13 +232,16 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1570,
+    "goneAt": 1576,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 16,
+    "tappedAt": 17,
     "goneAt": 27,
-    "wellInsideTheHold": true
+    "dismissTookMs": 10,
+    "exitAnimationYardstickMs": 100,
+    "wellInsideTheHold": true,
+    "holdReadFromSourceMs": 1720
   },
   "playedPath": {
     "onWalkout": null,
