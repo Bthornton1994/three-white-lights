@@ -118,11 +118,28 @@
  * beat. That is the line, and it is deliberate: the escalation extras are what
  * BUY the live channel, which is the thing that was untrue before.
  *
- * THE BRACE IS A FUNCTION OF TIME AND OF NOTHING ELSE (GDD §3.4, §12.3). Not of
- * fatigue, not of load, not of the attempt number, not of the seed. A brace cue
- * that varied with readiness is a fatigue meter with the numerals filed off, and
- * §12.3 refuses one; `walkout.test.ts` measures the deltas identical across load
- * ratios and across urgency rather than promising it here.
+ * THE BRACE'S AMPLITUDE READS NOTHING ABOUT THE LIFTER (GDD §3.4, §12.3). Not
+ * fatigue, not readiness, not load, not the seed. A brace cue that varied with
+ * readiness is a fatigue meter with the numerals filed off and §12.3 refuses
+ * one; `walkout.test.ts` measures the DRAWN deltas identical across load ratios
+ * and across urgency rather than promising it here.
+ *
+ * ITS TEMPO IS NOT CONSTANT, AND AN EARLIER VERSION OF THIS PARAGRAPH SAID IT
+ * WAS. The sentence read "not of the attempt number" — false when written, and
+ * contradicted by this file's OWN TABLE 255 lines below, which tabulates 410 ms
+ * on a third, 387 at a PR with a bomb, and 620 on a first attempt above a PR.
+ * The period is `braceMs / round(braceMs / BRACE_CYCLE_MS)` and `braceMs`
+ * derives from `walkoutMs(attemptNumber, …)`, so the attempt reaches the tempo
+ * by construction. The test cited as evidence could not have caught it: every
+ * arm of that sweep is built at the same `beatMs`, so the one axis along which
+ * the attempt reaches the brace was held constant — an empty domain inside the
+ * evidence for a §12.3 claim.
+ *
+ * The distinction that matters is STAKES versus READINESS. Tempo tracks the
+ * attempt's stakes, which are printed on the screen the player just left. It
+ * does not track the lifter: this module imports nothing from `fatigue.ts` and
+ * `bracePhaseAt(ms, plan)` has no path to a readiness value. So this is a
+ * corrected sentence rather than a corrected mechanism.
  *
  * ===========================================================================
  * PURITY AND PROVENANCE

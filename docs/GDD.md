@@ -1643,10 +1643,28 @@ the distinction matters, so it is spelled out under the rule itself:
   carries further back through the building, and a HUSH, where nothing moves and
   the room is quiet before the bar does. `MEET_TUNING.WALKOUT_TAIL` owns both.
   A tail too short to brace in is all hush, which is what an opener is.
-- **The brace reads nothing about the lifter.** Its amplitude and tempo are
-  constants: not readiness, not load, not the attempt number. A brace that
-  varied with fatigue is §3.4's meter with the numerals filed off, and §12.3
-  refuses one.
+- **The brace reads nothing about the LIFTER.** Its amplitude is constant: not
+  readiness, not fatigue, not load, not the seed. A brace that varied with
+  readiness is §3.4's meter with the numerals filed off, and §12.3 refuses one.
+
+  **Corrected after a critic measured it: the first wording of this rule said
+  "amplitude and tempo are constants: not readiness, not load, NOT THE ATTEMPT
+  NUMBER", and the tempo half was false when it was written.** The brace period
+  is `braceMs / round(braceMs / BRACE_CYCLE_MS)` and `braceMs` derives from
+  `walkoutMs(attemptNumber, …)`, so `walkout.ts` tabulates 410 ms on a third,
+  405 with a bomb on it, 387 at a PR with a bomb, and **620 ms on a first
+  attempt above a PR** — a 60% swing, keyed to the attempt. The file asserted
+  the guarantee 255 lines above its own contradicting table, and the test cited
+  as evidence built every arm at the same `beatMs`, so the one axis that reaches
+  the brace was held constant by construction: an empty domain inside the
+  evidence for a §12.3 claim.
+
+  **This is not a §12.3 violation and the rule survives in substance.** Tempo
+  tracks the attempt's *stakes* — a number printed on the screen the player just
+  left — and not the lifter's readiness; `walkout.ts` imports nothing from
+  `fatigue.ts` and `bracePhaseAt(ms, plan)` has no path to a readiness value.
+  What was wrong was the sentence, not the code. The rule now claims only what
+  §12.3 actually requires and what the tests can redden.
 - **Anticipation escalates in DURATION; news escalates in INTENSITY.**
   **— PENDING PLAYTEST. NOT RULED, AND NOT RULEABLE FROM A DESCRIPTION.** The
   walk-out and the wait for the lights are waiting, and waiting is the content,

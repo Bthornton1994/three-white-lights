@@ -659,15 +659,22 @@ export const MEET_TUNING = Object.freeze({
    *           left over.
    *
    * ---------------------------------------------------------------------------
-   * WHY THE BRACE IS A FUNCTION OF TIME AND OF NOTHING ELSE (GDD §3.4, §12.3)
+   * WHY THE BRACE'S AMPLITUDE READS NOTHING ABOUT THE LIFTER (GDD §3.4, §12.3)
    * ---------------------------------------------------------------------------
    * §12.3 refuses a visible fatigue meter, and a brace cue that varied with
    * readiness would be one with the numerals filed off — a player would learn to
-   * read "how tight he looks" as a readiness bar. So the oscillation's amplitude
-   * and tempo are CONSTANTS: they do not read fatigue, load, attempt number,
-   * weight or seed. `walkout.test.ts` measures that rather than promising it —
-   * the brace deltas are asserted identical across load ratios and across
-   * urgency. What urgency changes in this block is the CROWD and nothing else.
+   * read "how tight he looks" as a readiness bar. So the oscillation's AMPLITUDE
+   * is a constant: it does not read fatigue, readiness, load, weight or seed.
+   * `walkout.test.ts` measures that rather than promising it — the DRAWN deltas
+   * are asserted identical across load ratios and across urgency.
+   *
+   * THE TEMPO IS NOT A CONSTANT, and this paragraph used to say it was. The
+   * brace period derives from the beat, and the beat derives from the attempt
+   * number, so `walkout.ts` tabulates 410ms on a third against 620ms on a first
+   * above a PR. See that file's header for the full correction; the short
+   * version is that tempo tracks the attempt's STAKES, which are printed on the
+   * screen the player just left, and not the LIFTER. The rule the amplitude has
+   * to meet is §12.3's, and it meets it.
    *
    * NOBODY HAS WATCHED ANY OF IT (GDD §12.1). These are a structurally sane
    * starting shape, exactly like every other number in this file.
