@@ -1805,6 +1805,8 @@ describe('the record applyMeetResult writes is sealed, deeply', () => {
     expect(Object.isFrozen(record), 'the preview record itself').toBe(true);
     expect(Object.isFrozen(record.bestE1rmKg), 'bestE1rmKg').toBe(true);
     expect(Object.isFrozen(record.streak), 'streak').toBe(true);
+    expect(Object.isFrozen(record.wallet), 'wallet').toBe(true);
+    expect(Object.isFrozen(record.fatigue), 'fatigue').toBe(true);
     expect(Object.isFrozen(record.meets), 'the meets array').toBe(true);
     expect(Object.isFrozen(stored), 'the stored meet row').toBe(true);
     expect(Object.isFrozen(stored.bestByLift), 'and its per-lift bests').toBe(true);

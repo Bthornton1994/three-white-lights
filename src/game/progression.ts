@@ -943,7 +943,20 @@
  *   | record  | src/session/sessionPreview.ts | recordBeforeSession           | 1 |
  *   | record  | src/session/sessionPreview.ts | recordAfterServer             | 1 |
  *   | wire    | src/game/sessionServer.ts     | snapshotWireFor               | 1 |
+ *   | facts   | src/game/progression.ts       | receiveProgressionSnapshot    | 1 |
  *   | receive | src/game/sessionClient.ts     | receiveSnapshot               | 1 |
+ *
+ * THE `facts` ROW IS THE ONE THIS TABLE WAS ABOUT ALL ALONG AND DID NOT HOLD.
+ * §7.1's claim is about every number that reaches a `ConfirmedFacts` mass field;
+ * the mint that assembles one sat outside every instrument here for the same
+ * reason the seventh route did — not because the table was wrong, but because
+ * the scan could not see the species. `ConfirmedFacts` was not one of the two
+ * target types, and the mint's freeze was spelled `deepFreeze` rather than
+ * `sealServerValue`, so neither the literal nor the call was a scan target. It
+ * is a row now, sealed by name, and witnessed at runtime like every other.
+ * That is a THIRD species added to a scan whose previous six failures were all
+ * "the enumeration was too narrow"; the honest reading is that this is the
+ * seventh instance of that shape rather than a new kind of fix.
  *
  * THE CLIENT DOOR IS DOWN TO ONE CALLER, and that is the visible half of a
  * larger change. `useMeetDay` used to hold two of these rows — a boot seed and a
@@ -1030,20 +1043,52 @@
  * implied the rest was covered.
  *
  * SO THE SEAL IS ALSO OBSERVED AT RUNTIME, ONE WITNESS PER ROW ABOVE.
- * `progression.test.ts`'s `SEAL_RUNTIME_WITNESSES` names the test that actually
- * calls each producer and asserts `Object.isFrozen` on the SHELL AND THE NESTED
- * OBJECTS, pinned against this table in both directions — an unwitnessed row is
- * red, and so is a witness for a row that is gone. Deep and not shallow because
- * `Object.freeze` is shallow and every number §12.2's bar is about lives one or
- * two levels down; a mutant that sealed a shallow spread and returned the
- * original has already fooled this repository once.
+ * `progression.test.ts`'s `SEAL_RUNTIME_WITNESSES` names, for each row, a test
+ * that reaches that row's producer and asserts `Object.isFrozen` on the shell
+ * and on every OBJECT-VALUED PROPERTY of the produced type. The table is pinned
+ * against §7.5 in both directions — an unwitnessed row is red, and so is a
+ * witness for a row that is gone. Deep and not shallow because `Object.freeze`
+ * is shallow and every number §12.2's bar is about lives one or two levels
+ * down; a mutant that sealed a shallow spread and returned the original has
+ * already fooled this repository once.
  * `@guarantee every-shipped-route-observes-its-seal`
+ *
+ * THE THREE CLAUSES IN THAT SENTENCE ARE NOW CHECKED, AND FOR A ROUND THEY WERE
+ * NOT. `title` had one reader: a regular expression asserting that a test of
+ * that name was declared exactly once. "Reaches the producer" and "asserts
+ * `Object.isFrozen`" were prose. Measured rather than argued — emptying the body
+ * of the `recordAfterServer` witness and keeping its title left `tsc --noEmit`
+ * at exit 0 and the suite at 63 files / 2687 tests, with that row's runtime
+ * evidence gone and this paragraph still describing it. The sibling guard was
+ * one file away the whole time: `guaranteeTags.test.ts` already scoped a
+ * mutation witness's red assertion to the body of the test its tag names. The
+ * scoping is now `src/tuning/audit.ts`'s, called by both.
+ *
+ * AND THE DEPTH CLAIM WAS TRUE OF ONE ROW IN SEVEN WHEN IT WAS WRITTEN.
+ * `applyMeetResult` asserted all five of a `ServerRecord`'s nested objects;
+ * `newServerRecord`, `applyTrainingSession` and `recordAfterServer` asserted
+ * `bestE1rmKg` alone, and `previewServerRecord` left `wallet` and `fatigue`
+ * unasserted. The four thin witnesses have been deepened, and the required set
+ * is no longer a sentence: `progression.test.ts` derives it from the boundary
+ * type's own properties, so adding a nested object to `ServerRecord` makes
+ * every `record` witness owe an assertion about it.
+ *
+ * WHAT THE LEDGER STILL DOES NOT REACH, as a limit rather than an omission.
+ * ONE ARRAY ELEMENT DOWN — `meets[0]`, where a stored meet's Total lives — is
+ * asserted by two of the eight rows, not eight. It cannot be required of all of
+ * them: `newServerRecord` produces an empty `meets`, so there is no element to
+ * freeze and a universal requirement would be a demand no fixture can meet. The
+ * two that do reach it are pinned as a named set rather than described, so
+ * deleting one is red and adding a third is a deliberate line.
+ *
  * FOUR OF THE SEVEN ROWS HAD NO RUNTIME EVIDENCE AT ALL before that ledger,
  * `applyMeetResult` — the sole writer of `totalKg` — among them. The ledger is a
  * POINTER, and a pointer to a test that cannot fail is the same defect one level
  * out, so all seven were mutation-tested by hand when it was declared: the seal
  * deleted, and the seal replaced by a shallow `Object.freeze`. All fourteen went
  * red, and each shallow one reddened on a nested object rather than the shell.
+ * That was true and it was not enough — none of those fourteen mutants touched
+ * the ledger's own reader, which is why a fifteenth walked through it.
  *
  * TEST FILES ARE OUT, DELIBERATELY, and the exclusion is worth the sentence.
  * `meetServer.test.ts` and `sessionClient.test.ts` build a dozen records between
@@ -3459,13 +3504,25 @@ export function receiveProgressionSnapshot(
     return fail('INVALID_SNAPSHOT', 'progression: acknowledgedProposalId must be a non-blank id or null');
   }
 
-  const facts: ConfirmedFacts = {
+  // THE MINT GOES THROUGH THE SEAL, BY ITS NAME, and the spelling is the whole
+  // of it. This assembly used to call `deepFreeze` directly. Same function —
+  // `sealServerValue` is one line long and calls it — and the same runtime
+  // behaviour, so nothing about the value changed. What changed is that the
+  // literal is now the argument of a call §7.5's scan recognises, which is what
+  // makes this a ROW: enumerated in the table, required to be sealed, and
+  // required to carry a runtime freeze witness. Neither `deepFreeze` nor
+  // `ConfirmedFacts` was a scan target, so the door every confirmed number in
+  // the app comes through sat outside every instrument in §7.5 while the
+  // section's own header said the enumeration was derived. Measured at the
+  // commit before this one: swapping this line for a shallow `Object.freeze`
+  // left every §7.5 assertion green and reddened one test in 2687.
+  const facts: ConfirmedFacts = sealServerValue({
     totalKg: wire.totalKg === null ? null : (confirm(wire.totalKg) as ConfirmedTotalKg),
     bestE1rmKg: bests.value,
     streak: streak.value,
     meets,
     wallet: wallet as ConfirmedWallet,
-  };
+  });
   const snapshot: ProgressionSnapshot = {
     [SNAPSHOT_CONTENTS]: {
       revision: asServerRevision(wire.revision),
@@ -3474,7 +3531,7 @@ export function receiveProgressionSnapshot(
         wire.acknowledgedProposalId === null ? null : asProposalId(wire.acknowledgedProposalId),
     },
   };
-  return ok(deepFreeze(snapshot));
+  return ok(sealServerValue(snapshot));
 }
 
 // ---------------------------------------------------------------------------

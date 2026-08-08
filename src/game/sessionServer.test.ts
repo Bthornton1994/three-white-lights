@@ -1414,9 +1414,20 @@ describe('what leaves the server is sealed in flight', () => {
     // §7.5's `record` rows for this module. A write into a STORED ROW before
     // `snapshotWireFor` reads it would be copied onto the wire faithfully and
     // sealed there, so sealing the wire alone leaves this door open.
+    // EVERY NESTED OBJECT, NOT JUST `bestE1rmKg`. `Object.freeze` is shallow, so
+    // a seal that reached the shell and one field leaves `streak`, `wallet`,
+    // `meets` and `fatigue` writable — and this row's witness ledger claimed
+    // "the shell and the nested objects" while one of the five was asserted.
+    // `progression.test.ts` now derives the required set from `ServerRecord`
+    // itself, so a sixth nested object on the interface makes this test owe an
+    // assertion about it rather than quietly not covering it.
     const fresh = newServerRecord(SIGNUP_DAY);
     expect(Object.isFrozen(fresh), 'newServerRecord').toBe(true);
     expect(Object.isFrozen(fresh.bestE1rmKg), 'and its e1RMs').toBe(true);
+    expect(Object.isFrozen(fresh.streak), 'and its streak').toBe(true);
+    expect(Object.isFrozen(fresh.wallet), 'and its wallet').toBe(true);
+    expect(Object.isFrozen(fresh.meets), 'and its meets array').toBe(true);
+    expect(Object.isFrozen(fresh.fatigue), 'and its fatigue').toBe(true);
     const freshBests: Record<LiftKind, number | null> = fresh.bestE1rmKg;
     expect(() => {
       freshBests.squat = (fresh.bestE1rmKg.squat ?? 0) / KILOGRAMS_PER_POUND;
@@ -1435,6 +1446,10 @@ describe('what leaves the server is sealed in flight', () => {
     if (!applied.ok) return;
     expect(Object.isFrozen(applied.value.record), 'applyTrainingSession').toBe(true);
     expect(Object.isFrozen(applied.value.record.bestE1rmKg), 'and its e1RMs').toBe(true);
+    expect(Object.isFrozen(applied.value.record.streak), 'and its streak').toBe(true);
+    expect(Object.isFrozen(applied.value.record.wallet), 'and its wallet').toBe(true);
+    expect(Object.isFrozen(applied.value.record.meets), 'and its meets array').toBe(true);
+    expect(Object.isFrozen(applied.value.record.fatigue), 'and its fatigue').toBe(true);
     const settledBests: Record<LiftKind, number | null> = applied.value.record.bestE1rmKg;
     expect(() => {
       settledBests[played.lift] = 0;

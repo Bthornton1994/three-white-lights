@@ -358,8 +358,22 @@ const GUARANTEE_COVERAGE = {
    * happened to stack and the arithmetic would have been right; this time it
    * would have been wrong by two. Neither outcome is a reason to trust the
    * next one — run it.
+   *
+   * 215 -> 216 when the §7.5 seal ledger stopped proving a test existed and
+   * started reading its body. Measured per file by restoring each touched file
+   * to its pre-change text: the one new triggering paragraph is in
+   * `sessionPreview.test.ts`, four lines of heading above the four assertions
+   * it describes. `progression.ts` (a new table row, a new species of route,
+   * and forty lines about the mint that sat outside every instrument),
+   * `progression.test.ts` (a whole new syntax-tree audit and its pins),
+   * `audit.ts` (the shared scoper), `guaranteeTags.test.ts`,
+   * `sessionServer.test.ts` and `meetServer.test.ts` contribute ZERO between
+   * them. That is the declared blind spot measured again and it is the sharpest
+   * instance yet: the round's actual new guarantees are all in the six files
+   * that moved this number by nothing, and the one paragraph it noticed is a
+   * heading over assertions a reader can see from the same screen.
    */
-  TREE_WIDE: 215,
+  TREE_WIDE: 216,
 } as const;
 
 // ---------------------------------------------------------------------------
