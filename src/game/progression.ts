@@ -941,7 +941,7 @@
  *   | record  | src/game/meetServer.ts        | applyMeetResult               | 1 |
  *   | record  | src/game/meetPreview.ts       | previewServerRecord           | 1 |
  *   | record  | src/session/sessionPreview.ts | recordBeforeSession           | 1 |
- *   | record  | src/session/sessionPreview.ts | cacheAfterServer              | 1 |
+ *   | record  | src/session/sessionPreview.ts | recordAfterServer             | 1 |
  *   | wire    | src/game/sessionServer.ts     | snapshotWireFor               | 1 |
  *   | receive | src/game/sessionClient.ts     | receiveSnapshot               | 1 |
  *

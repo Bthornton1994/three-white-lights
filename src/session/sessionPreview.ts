@@ -175,8 +175,14 @@ const PREVIEW_WALL_CLOCK: LocalWallClock = {
  *
  * Built on `newServerRecord()` so every field is one the server would have
  * written, with only the two the preview pins overridden.
+ *
+ * EXPORTED FOR ITS SEAL, and the symmetry is the argument rather than the
+ * convenience: `meetPreview.ts`'s twin row, `previewServerRecord`, is exported
+ * and is therefore observable, and this one was not. §7.5 pins both as `record`
+ * rows and `progression.test.ts` reads both as sealed off the source; only one
+ * of them could be executed. `sessionPreview.test.ts` now freezes-checks it.
  */
-function recordBeforeSession(): ServerRecord {
+export function recordBeforeSession(): ServerRecord {
   const fresh = newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
   // SEALED, like every other `record` row in `progression.ts` 7.5.
   return sealServerValue({
@@ -264,12 +270,40 @@ function cacheWhileSaving(closeOut: SessionCloseOut): ProgressionCache {
 }
 
 /**
+ * The row the server answers with, once `driftKg` has been added to the e1RM it
+ * actually computed. That drift is how `close-out-server-wins` is built: a
+ * response the client's projection did not predict.
+ *
+ * A NAMED FUNCTION RATHER THAN A TERNARY INSIDE `cacheAfterServer`, so §7.5's
+ * `record` row for it can be OBSERVED rather than read off the source. The
+ * literal was previously assembled inside a function whose only output was a
+ * `ProgressionCache`, which put the sealed row past every public door in this
+ * module: nothing could ask whether the seal had run.
+ *
+ * `settled` arrives already sealed — `applyTrainingSession` seals what it
+ * returns — so the left arm is a pass-through and the seal below does its work
+ * only down the drift arm.
+ */
+export function recordAfterServer(
+  settled: ServerRecord,
+  lift: SessionCloseOut['lift'],
+  driftKg: number,
+): ServerRecord {
+  const best = settled.bestE1rmKg[lift];
+  if (driftKg === 0 || best === null) return settled;
+  // SEALED, like every other `record` row in `progression.ts` 7.5.
+  return sealServerValue({
+    ...settled,
+    bestE1rmKg: { ...settled.bestE1rmKg, [lift]: best + driftKg },
+  });
+}
+
+/**
  * The cache after the real server body has answered.
  *
- * `driftKg` is added to the e1RM the server actually computed, which is how
- * `close-out-server-wins` is built: a response the client's projection did not
- * predict. It is zero for the ordinary settled beats, where the two agree
- * because `sessionServer.ts` and the client run the same `nextBestE1rm`.
+ * `driftKg` is zero for the ordinary settled beats, where the client's
+ * projection and the server agree because `sessionServer.ts` and the client run
+ * the same `nextBestE1rm`.
  */
 function cacheAfterServer(closeOut: SessionCloseOut, driftKg: number): ProgressionCache {
   const submission = submissionFor(closeOut);
@@ -281,18 +315,7 @@ function cacheAfterServer(closeOut: SessionCloseOut, driftKg: number): Progressi
     PREVIEW_PROPOSAL_ID,
   );
   if (!applied.ok) return submission.cache;
-  const settled = applied.value.record;
-  const best = settled.bestE1rmKg[closeOut.lift];
-  // SEALED, like every other `record` row in `progression.ts` 7.5. `settled`
-  // already is — `applyTrainingSession` seals what it returns — so the seal is a
-  // no-op down the left arm and does the work down the drift arm.
-  const answered: ServerRecord =
-    driftKg === 0 || best === null
-      ? settled
-      : sealServerValue({
-          ...settled,
-          bestE1rmKg: { ...settled.bestE1rmKg, [closeOut.lift]: best + driftKg },
-        });
+  const answered = recordAfterServer(applied.value.record, closeOut.lift, driftKg);
   return receiveSnapshot(submission.cache, snapshotWireFor(answered, PREVIEW_PROPOSAL_ID));
 }
 
