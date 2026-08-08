@@ -6910,7 +6910,12 @@ describe('daily engagement is never worse than skipping — where that holds, an
     // `recordTrainingDay` cannot take a Recovery Day for anything except the
     // absence it is closing, and cannot take one at all when nothing was missed.
     // What changed is the amount for a DOOMED absence: it used to be zero, and
-    // it is now whatever was armed against it (§5 of `streak.ts`).
+    // it is now whatever the absence had armed against — see §5 of `streak.ts`.
+    // (Reworded so the section reference no longer follows the word "it": the
+    // witness scoper in `guaranteeTags.test.ts` splits test bodies on that
+    // two-character sequence, and the old phrasing silently truncated this
+    // test's body. Harmless here — this test carries a tag but no witness, and
+    // truncation fails closed — but the count is pinned there now.)
     let doomedCasesSeen = 0;
     let savedCasesSeen = 0;
 

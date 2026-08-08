@@ -967,6 +967,49 @@ describe('the guarantee-tag convention', () => {
       ).toBe(true);
     }
 
+    // THE SCOPER'S OWN PREMISE, PINNED AS A COUNT RATHER THAN TRUSTED.
+    //
+    // `bodyOfTestDeclaring` slices on `/\bit\s*\(/` over raw text, so it
+    // assumes every occurrence of those characters IS a test declaration. Two
+    // ways that breaks, and they fail in opposite directions:
+    //
+    //   - A SPURIOUS match — the sequence inside a string or a comment — cuts a
+    //     real body short. That fails CLOSED: the red assertion drops out of
+    //     the slice and the witness stops resolving. Found live in
+    //     `streak.test.ts`, where a comment read "armed against it (§5"; it
+    //     truncated a test that carries a tag but no witness, so nothing broke,
+    //     and the phrase has been reworded.
+    //   - A MISSING match — `it.each(`, `it.skip(`, `it.only(`, none of which
+    //     this pattern matches — merges two tests into one slice. That fails
+    //     OPEN, and it is the dangerous one: a witness would resolve against an
+    //     assertion living in a DIFFERENT test, which is precisely the failure
+    //     the "inside the test the tag names" check above exists to prevent.
+    //
+    // Neither is hypothetical enough to leave unmeasured, and neither is
+    // visible in a green suite. So: for every file a witness names, the number
+    // of split points must equal the number of line-anchored `it(`
+    // declarations. A bound would not do — the whole point is that the two
+    // numbers agree exactly.
+    for (const file of [...new Set(MUTATION_WITNESSES.map((w) => w.testFile))]) {
+      const text = readFileSync(path.join(REPO_ROOT, file), 'utf8');
+      const splitPoints = [...text.matchAll(/\bit\s*\(/g)].length;
+      // EVERY DECLARATION FORM, not just the one the scoper can see — which is
+      // the whole point. Counting declarations with the scoper's own pattern
+      // makes `it.skip(` drop BOTH numbers together and the check agree with
+      // itself; that version was written, mutation-tested, and found blind to
+      // exactly the direction it claimed to catch.
+      const declarations = [...text.matchAll(/^\s*it\s*(?:\.\w+)?\s*[(`]/gm)].length;
+      expect(
+        splitPoints,
+        `${file}: the witness scoper splits on ${splitPoints} occurrences of \`it(\` but the file `
+          + `declares ${declarations} tests. A spurious match truncates a body (fails closed); a `
+          + `variant the pattern misses — it.each, it.skip, it.only — merges two bodies and lets a `
+          + `witness bind to another test's assertion (fails open).`,
+      ).toBe(declarations);
+      expect(declarations, `${file}: no test declarations found — the scoper has nothing to scope`)
+        .toBeGreaterThan(0);
+    }
+
     // NON-VACUITY. An empty witness table satisfies every loop above. The real
     // guard is the pair of set equalities — an empty table would force every tag
     // onto the legacy list, which is an explicit diff with a comment next to it —
