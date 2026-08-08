@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { bodyOfTestContaining, testScopeFault } from '../tuning/audit';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../..');
 
@@ -750,18 +752,15 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
  * The source of the test whose title declares `id`, from `\`it(\`` to the next
  * `\`it(\`` — enough to say whether an assertion is inside it rather than
  * somewhere else in a six-thousand-line file.
+ *
+ * THE SLICING ITSELF IS `src/tuning/audit.ts`'S, and that is the point rather
+ * than tidiness. `progression.test.ts`'s seal ledger does the same job for a
+ * different marker and used to do it with a weaker check; one implementation
+ * with two callers is what stops the two drifting apart again. This wrapper is
+ * only the choice of marker.
  */
 function bodyOfTestDeclaring(text: string, id: string): string | null {
-  const marker = declarationOf(id);
-  const starts: number[] = [];
-  for (const match of text.matchAll(/\bit\s*\(/g)) starts.push(match.index ?? 0);
-  for (let i = 0; i < starts.length; i += 1) {
-    const from = starts[i] as number;
-    const to = i + 1 < starts.length ? (starts[i + 1] as number) : text.length;
-    const body = text.slice(from, to);
-    if (body.includes(marker)) return body;
-  }
-  return null;
+  return bodyOfTestContaining(text, declarationOf(id));
 }
 
 // ---------------------------------------------------------------------------
@@ -1045,25 +1044,34 @@ describe('the guarantee-tag convention', () => {
     // of split points must equal the number of line-anchored `it(`
     // declarations. A bound would not do — the whole point is that the two
     // numbers agree exactly.
-    for (const file of [...new Set(MUTATION_WITNESSES.map((w) => w.testFile))]) {
+    //
+    // THE COUNTING AND THE WORDING ARE `audit.ts`'S, shared with the seal
+    // ledger in `progression.test.ts`, which scopes into three test files this
+    // table never names. Two lists, one guard: neither ledger can strengthen or
+    // weaken the premise check without the other moving with it.
+    const censused: string[] = [];
+    for (const file of [...new Set(MUTATION_WITNESSES.map((w) => w.testFile))].sort()) {
       const text = readFileSync(path.join(REPO_ROOT, file), 'utf8');
-      const splitPoints = [...text.matchAll(/\bit\s*\(/g)].length;
-      // EVERY DECLARATION FORM, not just the one the scoper can see — which is
-      // the whole point. Counting declarations with the scoper's own pattern
-      // makes `it.skip(` drop BOTH numbers together and the check agree with
-      // itself; that version was written, mutation-tested, and found blind to
-      // exactly the direction it claimed to catch.
-      const declarations = [...text.matchAll(/^\s*it\s*(?:\.\w+)?\s*[(`]/gm)].length;
-      expect(
-        splitPoints,
-        `${file}: the witness scoper splits on ${splitPoints} occurrences of \`it(\` but the file `
-          + `declares ${declarations} tests. A spurious match truncates a body (fails closed); a `
-          + `variant the pattern misses — it.each, it.skip, it.only — merges two bodies and lets a `
-          + `witness bind to another test's assertion (fails open).`,
-      ).toBe(declarations);
-      expect(declarations, `${file}: no test declarations found — the scoper has nothing to scope`)
-        .toBeGreaterThan(0);
+      expect(testScopeFault(text, file), 'the witness scoper cannot slice this file').toBe(null);
+      censused.push(file);
     }
+    // NON-VACUITY AS A NAMED SET RATHER THAN A BOUND. A witness table that
+    // emptied, or a `testFile` column that stopped resolving, censuses nothing
+    // and the loop above is a green no-op. Counting the loop's own iterations
+    // could not catch that — it would restate the set it walked — so the set
+    // itself is written down. Adding a witness in a new file is a one-line
+    // diff here, on purpose.
+    expect(censused, 'the files the witness table scopes into').toEqual([
+      'src/cutin/cutInWiring.test.ts',
+      'src/game/meetClient.test.ts',
+      'src/game/progression.test.ts',
+      'src/game/sessionServer.test.ts',
+      'src/game/streak.test.ts',
+      'src/meet/careerCalendarPlaceholder.test.ts',
+      'src/meet/meetStage.test.ts',
+      'src/shell/shellRoute.test.ts',
+      'src/shell/shellWiring.test.ts',
+    ]);
 
     // NON-VACUITY. An empty witness table satisfies every loop above. The real
     // guard is the pair of set equalities — an empty table would force every tag
