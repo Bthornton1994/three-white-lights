@@ -180,6 +180,15 @@ Shapes this has actually taken here:
   *and* forcing both to render. The tell is that the two things being held apart
   cannot co-occur regardless of what the code does; move the claim to a screen
   where they compete.
+- **A textual pin whose pattern has more than one witness in the file.** The
+  cut-in cap was held by three regexes over `CutInHost.tsx`'s source, one of
+  them **byte-exact including the argument object**. All three survive the
+  mutation that breaks the cap, because the same call appears a second time
+  twenty lines below at a site the mutation does not touch. A byte-exact regex
+  *feels* stronger than a loose one and is not, when the byte-exact text is
+  duplicated. The tell is that the pattern's **match count** is never asserted —
+  pinning counts rather than presence is the fix this file already demands of
+  sweeps, and it applies to source scans identically.
 - **An empty domain reproduced across every harness.** The sharpest one so far:
   a client mapping was missing a `DayOpening` kind, and the fixture that would
   have caught it set `lastTrainedDay` to yesterday — in the unit tests, in
@@ -277,6 +286,38 @@ be the hard part and was not — 9/9 attempts on each across ~11 runs. A miss do
 not end a meet, only three on one lift do, so meet day tolerates a robot far
 better than a session does. The reachability was assumed impossible without
 anyone having tried it.
+
+### Presence is not visibility, and a harness that polls for a testID measures the wrong one
+
+A committed screenshot came out a **flat dark rectangle** — 7KB of nothing —
+filed beside a record saying that leg had reached GDD §6.3's bomb-out screen and
+offered its beat. The record was detailed and internally consistent: three squat
+misses, their feedback lines, thirty-six seconds. None of that is worth anything
+against a blank frame, and it was found by **opening the file**, which is the
+only way this class is ever found.
+
+Then it was misdiagnosed twice, and both wrong answers are worth keeping because
+each looked sufficient:
+
+1. *"The shutter fires before the view mounts."* It does not — the exit control
+   is in the DOM 2ms after the drive returns. That "fix" shipped a
+   **byte-identical blank PNG with a green check claiming the photograph was of
+   something.** An assertion that cannot fail is bad; one that asserts a
+   falsehood is worse, and it is worse *because* it reads as coverage.
+2. *"The screen renders nothing on a repeat leg."* Also wrong — and that one
+   would have been a real app defect, so it was the more tempting answer.
+
+**The app was correct and the instrument was naive.** `BombOutView` opens with
+`BOMB_OUT_SILENCE_MS` of a deliberately almost-empty screen — its own header
+says so and §6.3 asks for it — then fades four rows in staggered, the exit last.
+The element was present, transparent, and the photograph was of a real screen at
+a real moment: the silence.
+
+So: **wait on the thing being drawn, not on the thing being mounted.** Read
+effective opacity up the whole parent chain, and compute the wait from the app's
+own stagger arithmetic *read from source* rather than transcribed, so a
+playtester who lengthens a beat gets a tool that still waits rather than one
+that quietly starts photographing the silence again.
 
 ### `MUTATION_WITNESSES` cannot hold a browser check, and that is a hole in the rule above
 
