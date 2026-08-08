@@ -300,6 +300,15 @@ const MEET_TAIL_SAYS = Object.freeze({
   LAST_ONE: 'LAST ONE',
   /** src/game/meetTuning.ts — MEET_COPY.WALKOUT_PR. */
   A_PR: 'NOBODY HAS SEEN YOU DO THIS',
+  /**
+   * src/game/meetTuning.ts — MEET_COPY.WALKOUT_PROMPT.
+   *
+   * THE ONE LINE `WalkoutView` PRINTS WHEN `isUrgentAttempt` IS FALSE, which is
+   * what makes it usable as the flag `REP_HALL_SEEN` sorts its shots by: the
+   * other three are the bomb-risk, PR and third-attempt lines and every one of
+   * them is an urgent beat.
+   */
+  WALK_IT_OUT: 'WALK IT OUT',
 });
 
 /**
@@ -1876,6 +1885,69 @@ function describeSample(sample) {
   return `sample ${sample.index} at ${sample.atMs}ms: ${sample.differing} of ${sample.total} px moved (max channel delta ${sample.maxChannelDelta})`;
 }
 
+/**
+ * Does the hall the walk-out stood up survive the cut into the rep?
+ *
+ * Graded on two shots the played meet took of ITS OWN attempt screen, with a
+ * third as the negative control. Nothing here opens a URL.
+ */
+async function probeTheHallUnderTheRep() {
+  const P = REP_HALL_PROBE;
+  const seen = REP_HALL_SEEN;
+
+  // (0) THE SUBJECT. Both arms have to have been reached, and a run that only
+  // ever saw one kind of attempt has nothing to compare — reported as a named
+  // SKIPPED check rather than as a quiet pass.
+  if (seen.calm === null || seen.urgent === null) {
+    check(
+      false,
+      'SKIPPED: the hall-under-the-rep probe needs one CALM and one URGENT attempt in the played meet',
+      `calm ${seen.calm === null ? 'never seen' : JSON.stringify(seen.calmLabel)}, urgent ${seen.urgent === null ? 'never seen' : JSON.stringify(seen.urgentLabel)} across ${seen.shots} shot(s)`,
+    );
+    return;
+  }
+  const region = { x: 0, y: 0, w: seen.calm.width, h: seen.calm.height };
+  check(
+    true,
+    'the hall-under-the-rep probe ran on two PLAYED attempts, reached with a mouse and no query string',
+    `calm ${JSON.stringify(seen.calmLabel)} vs urgent ${JSON.stringify(seen.urgentLabel)} (line ${JSON.stringify((seen.urgentLine ?? '').trim())}), band ${region.w}x${region.h} CSS px above the sprite cell`,
+  );
+
+  // (1) THE DECISIVE ONE. On the build this closes, the two rooms are the same
+  // seated hall and this reports ZERO.
+  const moved = diffPixels(seen.calm, seen.urgent, region, {
+    tolerance: P.SAME_PICTURE_TOLERANCE,
+  });
+  check(
+    moved.differing >= P.MIN_STANDING_CHANGE_PX,
+    'THE HALL THE WALK-OUT STOOD UP IS STILL STANDING WHEN THE BAR MOVES — the rep is not drawn in a seated room',
+    `${moved.differing} of ${moved.total} px in the band differ between the calm rep and the urgent one (max channel delta ${moved.maxChannelDelta}); the floor is ${P.MIN_STANDING_CHANGE_PX}`,
+  );
+
+  // (2) THE NEGATIVE CONTROL, AND IT IS THE HALF THAT MAKES (1) MEAN ANYTHING.
+  // The same comparison, on the same band, between two CALM reps — two
+  // different attempts at two different weights. It must report IDENTICAL, so
+  // an instrument that had started answering "differs" to everything fails here
+  // rather than certifying the crowd. It is also what says the band excludes the
+  // plates and the figure: those really are different between the two shots.
+  if (seen.calmAgain === null) {
+    check(
+      false,
+      'SKIPPED: the hall-under-the-rep control needs a SECOND calm attempt, and the drive reached only one',
+      `${seen.shots} shot(s) taken`,
+    );
+    return;
+  }
+  const control = diffPixels(seen.calm, seen.calmAgain, region, {
+    tolerance: P.SAME_PICTURE_TOLERANCE,
+  });
+  check(
+    control.differing <= P.SAME_PICTURE_MAX_PX,
+    'CONTROL: and it says IDENTICAL for two CALM reps at two different weights — so the band holds the room and nothing else',
+    `${JSON.stringify(seen.calmLabel)} vs ${JSON.stringify(seen.calmAgainLabel)}: ${control.differing} of ${control.total} px moved (max channel delta ${control.maxChannelDelta})`,
+  );
+}
+
 async function probeWalkoutTail() {
   const P = WALKOUT_TAIL_PROBE;
   const seen = WALKOUT_TAIL_SEEN;
@@ -2014,6 +2086,11 @@ async function probeWalkoutTail() {
       ? `no samples landed inside the choreography, which ended at ${Math.round(setAtMs)}ms on this clock`
       : `${whileWalking.filter((s) => s.changed).length} of ${whileWalking.length} samples before he is set moved: ${whileWalking.filter((s) => s.changed).map(describeSample).join('; ')}`,
   );
+
+  // (6) AND THE ESCALATION SURVIVES THE CUT. See `REP_HALL_SEEN`: the tail's
+  // whole job is to bring the hall up, and until this round the rep drew a
+  // seated one, so the crowd sat back down on the frame the bar started moving.
+  await probeTheHallUnderTheRep();
 
   // REPORTED, NOT ASSERTED. On the shipped build the last change lands exactly
   // `WALKOUT_TAIL.HUSH_MS` before the beat is seen to end, which is the design
@@ -2157,6 +2234,39 @@ async function checkMeetRestatementsMatchTuning() {
       'the hush the tail probe holds the beat’s ending to is WALKOUT_TAIL.HUSH_MS',
       `meetTuning.ts ${hushMs}ms vs this tool ${WALKOUT_TAIL_PROBE.HUSH_MS}ms`,
     );
+
+    // THE LINE THE HALL-UNDER-THE-REP PROBE SORTS ITS SHOTS BY. It is the whole
+    // discriminator between the two arms of that comparison, so a copy edit that
+    // reworded the calm walk-out would silently file every rep as urgent and the
+    // check would compare a hall against itself.
+    check(
+      meetText.includes(`WALKOUT_PROMPT: '${MEET_TAIL_SAYS.WALK_IT_OUT}'`),
+      'MEET_COPY.WALKOUT_PROMPT is the line the hall-under-the-rep probe reads a CALM attempt off',
+      `looked for WALKOUT_PROMPT: '${MEET_TAIL_SAYS.WALK_IT_OUT}' in meetTuning.ts`,
+    );
+  }
+
+  // THE STAGE GEOMETRY THE HALL-UNDER-THE-REP BAND IS CUT FROM. Same
+  // arrangement as `MOTION_MS` above: three numbers this tool restates, read
+  // back out of the module that owns them, so a re-tune moves the band instead
+  // of silently moving what it is looking at.
+  const gymWhere = path.join(srcRoot, 'src', 'art', 'gymTuning.ts');
+  const gymText = await readFile(gymWhere, 'utf8').catch(() => null);
+  if (gymText === null) {
+    check(false, 'this tool’s stage geometry is cross-checked against gymTuning.ts', `could not read ${gymWhere}`);
+  } else {
+    for (const [name, mine] of [
+      ['ORIGIN_Y', STAGE_ORIGIN_Y_RESTATED],
+      ['SCALE', STAGE_SCALE_RESTATED],
+      ['SPRITE_Y', SPRITE_TOP_ROW_RESTATED],
+    ]) {
+      const theirs = numberInBlock(gymText, 'GYM_LIFT_STAGE', name);
+      check(
+        theirs === mine,
+        `the hall-under-the-rep band is cut from GYM_LIFT_STAGE.${name}, and this tool restates it`,
+        `gymTuning.ts ${theirs} vs this tool ${mine}`,
+      );
+    }
   }
 
   const placeholderWhere = path.join(srcRoot, 'src', 'meet', 'careerCalendarPlaceholder.ts');
@@ -2411,6 +2521,136 @@ async function readMeetLoop() {
 const WALKOUT_TAIL_SEEN = { timeline: null, eyebrow: null, line: null, attempts: 0 };
 
 /**
+ * ---------------------------------------------------------------------------
+ * THE HALL UNDER THE REP: does the escalation survive the cut into the lift?
+ * ---------------------------------------------------------------------------
+ * THE DEFECT THIS SECTION IS FOR, AND IT LIVED WHERE THIS TOOL IS THE ONLY
+ * INSTRUMENT. `crowdRiseAt` takes the hall to `WALKOUT_TAIL.HUSH_CROWD_RISE_PX`
+ * across the brace and holds it for the hush; `AttemptView` handed `LiftStage`
+ * no rise at all, `gymScene.ts` reads `spec.crowdRisePx ?? 0`, and `MeetScreen`
+ * hard-swaps the two views. So the hall stood up for the whole walk-out and sat
+ * back down on the frame the bar started moving. Every pure assertion about the
+ * tail's crowd ramp stayed green through it, because the two rooms are built by
+ * two components a node suite cannot mount — which is the gap CLAUDE.md records
+ * three defects living in.
+ *
+ * WHAT IS COMPARED, AND WHY IT IS NOT THE WALK-OUT AGAINST THE REP. The obvious
+ * comparison is the last frame of the walk-out against the first frame of the
+ * rep, and it cannot be made on pixels: `MeetHallView` draws the hall under
+ * `HALL.WALKOUT_SCRIM` and `LiftStage` draws it with no scrim at all, so the
+ * two are different pictures of the same room by design. What IS comparable is
+ * one rep against another: the room under an URGENT attempt's rep against the
+ * room under a CALM one's. On the defective build both are the seated hall and
+ * the two are identical; on a build that carries the rise they differ by the
+ * whole standing wave.
+ *
+ * WHICH ATTEMPT WAS WHICH IS READ OFF THE WALK-OUT'S OWN LINE, not off a count.
+ * `WalkoutView` prints `MEET_COPY.WALKOUT_PROMPT` exactly when `isUrgentAttempt`
+ * is false and one of three other lines when it is true, so the line the beat
+ * before the rep was showing IS the flag — read from the screen rather than
+ * re-derived here.
+ */
+const REP_HALL_SEEN = {
+  /** The first calm rep's hall, its second, and the first urgent one's. */
+  calm: null,
+  calmAgain: null,
+  urgent: null,
+  calmLabel: null,
+  calmAgainLabel: null,
+  urgentLabel: null,
+  urgentLine: null,
+  shots: 0,
+};
+
+/**
+ * The rows of the lift stage that hold the room and NOTHING ELSE.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THE BAND STOPS AT `SPRITE_Y` RATHER THAN AT THE SEATING'S OWN EDGE
+ * ---------------------------------------------------------------------------
+ * The two shots being compared are two different attempts, so the bar carries
+ * different plates and the figure is drawn with different strain. Everything
+ * that can differ for a reason other than the crowd is BELOW the sprite cell's
+ * top row, so the band is the stage from its top edge down to there: wall,
+ * lights, banner, the seating, and the top of the bar-path panel — all of which
+ * are identical between any two reps in the same venue unless the hall moved.
+ *
+ * IT CONTAINS THE WHOLE CHANGE, measured on the renderer rather than assumed:
+ * a hall at `HUSH_CROWD_RISE_PX` differs from a seated one in 1,633 of the
+ * composite's 22,490 scene pixels, and every one of them is in scene rows 76 to
+ * 95. The sprite cell starts at row 97.
+ *
+ * Both numbers are `GYM_LIFT_STAGE`'s and are cross-checked against
+ * `src/art/gymTuning.ts` by `checkGymRestatementsMatchTuning`, the same
+ * arrangement `MOTION_MS` has with `meetTuning.ts`.
+ */
+const STAGE_ORIGIN_Y_RESTATED = 1;
+const STAGE_SCALE_RESTATED = 3;
+const SPRITE_TOP_ROW_RESTATED = 97;
+
+const REP_HALL_PROBE = Object.freeze({
+  /** CSS pixels from the top of the stage box to the top of the sprite cell. */
+  BAND_H: STAGE_ORIGIN_Y_RESTATED + SPRITE_TOP_ROW_RESTATED * STAGE_SCALE_RESTATED,
+  /**
+   * The same two numbers `WALKOUT_TAIL_PROBE` uses, and for the same reason: a
+   * software-rasterised canvas is not bit-reproducible, and this must stay far
+   * below what one row of seating moves.
+   */
+  SAME_PICTURE_TOLERANCE: 12,
+  SAME_PICTURE_MAX_PX: 40,
+  /**
+   * How much of the band one standing hall has to move.
+   *
+   * A FLOOR, NOT A PIN, because it is a function of `HUSH_CROWD_RISE_PX`, which
+   * a playtest pass will turn. Derived from the renderer rather than guessed:
+   * `MEET_TUNING.CROWD`'s own table puts rise 6 at 1,373 changed scene pixels
+   * and rise 8 at 1,633, and the shot is at CSS scale where one scene pixel is
+   * `SCALE` x `SCALE` = 9 CSS pixels. The floor is set at rise 6's figure with
+   * the panel's share removed (275 of the 1,373 sit behind the bar-path board,
+   * measured), so losing two rows of travel does not fail the run:
+   * (1373 - 275) x 9 = 9,882.
+   */
+  MIN_STANDING_CHANGE_PX: 9882,
+});
+
+/**
+ * Photograph the room the rep is drawn in, before anything is pressed.
+ *
+ * Three shots at most per run: the first calm rep, the SECOND calm rep — which
+ * is the negative control, two rooms that must be identical — and the first
+ * urgent one.
+ */
+async function photographTheHallUnderTheRep(box, walkoutLine, attemptLabel) {
+  const said = walkoutLine ?? '';
+  if (said === '') return;
+  const calm = said.includes(MEET_TAIL_SAYS.WALK_IT_OUT);
+  if (calm && REP_HALL_SEEN.calmAgain !== null) return;
+  if (!calm && REP_HALL_SEEN.urgent !== null) return;
+  const clip = {
+    x: Math.round(box.x),
+    y: Math.round(box.y),
+    width: Math.round(box.width),
+    height: Math.min(REP_HALL_PROBE.BAND_H, Math.round(box.height)),
+  };
+  const png = await page.screenshot({ clip, scale: 'css' }).catch(() => null);
+  if (png === null) return;
+  REP_HALL_SEEN.shots += 1;
+  if (!calm) {
+    REP_HALL_SEEN.urgent = decodePng(png);
+    REP_HALL_SEEN.urgentLabel = attemptLabel;
+    REP_HALL_SEEN.urgentLine = said;
+    return;
+  }
+  if (REP_HALL_SEEN.calm === null) {
+    REP_HALL_SEEN.calm = decodePng(png);
+    REP_HALL_SEEN.calmLabel = attemptLabel;
+    return;
+  }
+  REP_HALL_SEEN.calmAgain = decodePng(png);
+  REP_HALL_SEEN.calmAgainLabel = attemptLabel;
+}
+
+/**
  * If the walk-out on screen is a THIRD attempt, photograph the hall through it.
  *
  * ON THE PLAYED MEET AND NOT ON A DEBUG URL, and it was the other way round
@@ -2495,7 +2735,7 @@ const meetIsOver = (state) => state.recap || state.waiting || state.placeholder 
  * legal thing for the app to do, and a harness that crashed on one would be
  * reporting its own opinion.
  */
-async function playOneMeetAttempt(holdMs) {
+async function playOneMeetAttempt(holdMs, walkoutLine = null, attemptLabel = null) {
   const braced = await untilMeet(
     (s) => meetSaying(s, SESSION_PROMPTS.BRACE) || !s.attempt,
     MEET_DRIVE.BRACE_TIMEOUT_MS,
@@ -2506,6 +2746,9 @@ async function playOneMeetAttempt(holdMs) {
 
   const box = await page.getByTestId('attempt-touch').boundingBox().catch(() => null);
   if (box === null) return { played: false, why: 'the attempt has no touch stage' };
+  // BEFORE THE FIRST PRESS, so the rep is at the pose it mounted in and the two
+  // shots this collects are comparable. See `REP_HALL_SEEN`.
+  await photographTheHallUnderTheRep(box, walkoutLine, attemptLabel);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 
   await page.mouse.down();
@@ -2583,6 +2826,8 @@ async function driveMeetToItsEnd(tag, searchIn) {
   const startedAt = Date.now();
   const attempts = [];
   let search = searchIn;
+  /** The line the walk-out just before the current rep was showing. */
+  let lastWalkoutLine = null;
   for (;;) {
     const state = await readMeetLoop();
 
@@ -2684,6 +2929,11 @@ async function driveMeetToItsEnd(tag, searchIn) {
       if (state.walkout && WALKOUT_TAIL_SEEN.timeline === null) {
         await sampleTheTailIfThisIsAThird(state);
       }
+      // WHICH BEAT THE REP AFTER THIS ONE IS THE FAR SIDE OF. The walk-out's
+      // line is the only thing on screen that says whether the attempt is one
+      // the meet turns on, and it is gone by the time the rep is drawn — so it
+      // is remembered here. See `REP_HALL_SEEN`.
+      if (state.walkout) lastWalkoutLine = state.walkoutLine;
       // Three TIMED beats that run themselves out. Nothing to press on any of
       // them, and that is a design claim section 7 checks rather than an
       // assumption this makes: a pill drawn here would be a mis-tap that costs
@@ -2697,7 +2947,7 @@ async function driveMeetToItsEnd(tag, searchIn) {
 
     if (state.attempt) {
       const label = state.attemptLabel;
-      const rep = await playOneMeetAttempt(search.holdMs);
+      const rep = await playOneMeetAttempt(search.holdMs, lastWalkoutLine, label);
       attempts.push({ attempt: label, ...rep });
       if (!rep.played) {
         return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: rep.why };

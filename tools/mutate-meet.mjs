@@ -328,8 +328,69 @@ const MUTATIONS = [
       'draw the default anyway — the failure a source scan of the CALLER ' +
       'cannot see, and a one-word edit from the code as written.',
     file: 'src/lift/LiftStage.tsx',
-    from: '  const scene = SCENES[venue];',
-    to: '  const scene = SCENES[DEFAULT_VENUE];',
+    from: '  const seated = SCENES[venue];',
+    to: '  const seated = SCENES[DEFAULT_VENUE];',
+  },
+  // -------------------------------------------------------------------------
+  // S2 rework: the hall the walk-out leaves standing is the hall the rep is
+  // lifted in
+  // -------------------------------------------------------------------------
+  {
+    id: 'the-crowd-sits-back-down-at-the-cut',
+    claim:
+      'GDD §6.2: the walk-out\u2019s only escalating channel that reaches the ' +
+      'picture is spent, not thrown away. Mutation: stop handing the rise to ' +
+      'LiftStage, so the crowd sits back down on the frame the bar starts ' +
+      'moving \u2014 which is exactly the state the piece shipped in last round.',
+    file: 'src/meet/AttemptView.tsx',
+    from: '\n          crowdRisePx={crowdRisePx}',
+    to: '',
+  },
+  {
+    id: 'liftstage-accepts-the-rise-and-draws-a-seated-hall',
+    claim:
+      'LiftStage DRAWS the rise it is given, not just takes it. Mutation: ' +
+      'memoise the prop and compose nothing onto the room \u2014 the failure a ' +
+      'source scan of the CALLER cannot see, the same shape the venue mutant ' +
+      'above covers one field over.',
+    file: 'src/lift/LiftStage.tsx',
+    from: '    () => (crowdRisePx <= 0 ? seated : { ...seated, crowdRisePx }),',
+    to: '    () => (crowdRisePx <= 0 ? seated : { ...seated }),',
+  },
+  {
+    id: 'the-rep-restates-the-tail-constant-instead-of-reading-the-sheet',
+    claim:
+      'The rise the rep holds is the rise the walk-out\u2019s last drawn frame ' +
+      'ends on, not a constant. Mutation: return urgent ? HUSH_CROWD_RISE_PX : 0 ' +
+      '\u2014 which agrees with the sheet on all six attempt shapes the shipped ' +
+      'tuning can produce, and is wrong for any urgent tail under ' +
+      'MIN_BRACE_WINDOW_MS.',
+    file: 'src/meet/walkout.ts',
+    from:
+      '  const sequence = buildWalkout(request);\n' +
+      '  return walkoutFrameAt(sequence, sequence.beatMs).crowdRisePx;',
+    to: '  return request.urgent ? T.HUSH_CROWD_RISE_PX : 0;',
+  },
+  {
+    id: 'the-two-screens-build-two-different-beats',
+    claim:
+      'Both sides of the cut ask ONE request constructor. Mutation: give the ' +
+      'walk-out its own inline request, so the beat the sheet plays and the ' +
+      'beat the rep reads its hall off can drift apart.',
+    file: 'src/meet/WalkoutView.tsx',
+    from: '    () => buildWalkout(walkoutRequestFor(attempt, barAndCollarsKg, loadRatio)),',
+    to: '    () => buildWalkout({ loadRatio, plateCount, urgent, beatMs: attempt.walkoutMs }),',
+  },
+  {
+    id: 'the-hold-goes-quiet-and-nothing-notices',
+    claim:
+      'The wait for the lights is swept for held frame across every shape ' +
+      'deliberationMs can be asked for. Mutation: lower MIN_BRACE_WINDOW_MS so ' +
+      'two more shapes brace \u2014 a change no test in the tree noticed before ' +
+      'the sweep existed.',
+    file: 'src/game/meetTuning.ts',
+    from: '    MIN_BRACE_WINDOW_MS: 600,',
+    to: '    MIN_BRACE_WINDOW_MS: 500,',
   },
   {
     id: 'verdict-screen-fires-no-light-beat',
