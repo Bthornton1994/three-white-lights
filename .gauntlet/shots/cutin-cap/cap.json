@@ -1,8 +1,8 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-07T16:53:27.249Z",
+    "capturedAt": "2026-08-08T15:17:55.731Z",
     "url": "http://localhost:8081",
-    "commit": "69d909d",
+    "commit": "f44097a",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
@@ -12,7 +12,7 @@
       " D .gauntlet/shots/cutin-cap/leg-3-bombed.png"
     ],
     "instrument": {
-      "verify-cutin-cap.mjs": "e3d708eb884dcb79",
+      "verify-cutin-cap.mjs": "748b33ecfeab48c4",
       "sessionDrive.mjs": "2a63eac7a653d32b",
       "readTuning.mjs": "cabc19d450689962"
     }
@@ -50,21 +50,21 @@
           "played": true,
           "intent": "make",
           "holdMs": 1000,
-          "feedback": "You hit depth by a hair."
+          "feedback": "The bar won that one."
         },
         {
           "attempt": "BENCH · ATTEMPT 1 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1000,
-          "feedback": "High. The hips never got under."
+          "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "BENCH · ATTEMPT 2 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "holdMs": 1000,
+          "feedback": "High. The hips never got under."
         },
         {
           "attempt": "BENCH · ATTEMPT 3 OF 3",
@@ -85,7 +85,7 @@
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "DEADLIFT · ATTEMPT 3 OF 3",
@@ -95,7 +95,7 @@
           "feedback": "You hit depth by a hair."
         }
       ],
-      "ms": 101509,
+      "ms": 95677,
       "stuckBecause": null
     },
     {
@@ -126,7 +126,7 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 55816,
+      "ms": 55287,
       "stuckBecause": null
     },
     {
@@ -154,32 +154,38 @@
           "played": true,
           "intent": "miss",
           "holdMs": 80,
-          "feedback": "High. The hips never got under."
+          "feedback": "Too deep to recover."
         }
       ],
-      "ms": 45737,
+      "ms": 55380,
       "stuckBecause": null
     }
   ],
   "cutIns": [
     {
-      "leg": 2,
-      "at": 160624,
-      "line": "THAT IS THE MEET",
+      "leg": 1,
+      "at": 23255,
+      "line": "LAST ONE",
       "hint": "TAP TO SKIP",
       "over": [
-        "meet-bombed"
+        "meet-walkout"
       ],
       "search": "",
-      "goneAt": 162362
+      "goneAt": 24998
     }
   ],
-  "recorderPolls": 9398,
+  "recorderPolls": 10296,
+  "recorderWorstGapMs": 339,
   "checks": [
     {
       "ok": true,
       "what": "CONTROL: the source readers still read their own fixture",
       "detail": "readTuning.mjs parses the shapes it claims to"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the recap screen's own arrival arithmetic was READ, not guessed",
+      "detail": "4 x 240 + 280 = 1240ms"
     },
     {
       "ok": true,
@@ -199,7 +205,7 @@
     {
       "ok": true,
       "what": "the app opens on GDD §3.2's daily session with no query string",
-      "detail": "search=\"\" after 1542ms"
+      "detail": "search=\"\" after 896ms"
     },
     {
       "ok": true,
@@ -214,12 +220,12 @@
     {
       "ok": true,
       "what": "leg 1: the 'recap' screen is DRAWN, not merely mounted, before the shutter",
-      "detail": "effective opacity 1.000 after 2ms"
+      "detail": "probed recap-action: effective opacity 0.995 after 1240ms (4 x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)"
     },
     {
       "ok": true,
       "what": "leg 1: the meet surface really went away — CutInHost un-mounted",
-      "detail": "back on the check-in after 3ms, meet-screen present: false"
+      "detail": "back on the check-in after 2ms, meet-screen present: false"
     },
     {
       "ok": true,
@@ -229,7 +235,7 @@
     {
       "ok": true,
       "what": "leg 2: the 'bombed' screen is DRAWN, not merely mounted, before the shutter",
-      "detail": "effective opacity 1.000 after 4220ms (BOMB_OUT_SILENCE_MS + 3 x BOMB_OUT_ROW_STAGGER_MS + BOMB_OUT_ROW_FADE_MS, read from meetTuning.ts)"
+      "detail": "probed bomb-out-action: effective opacity 1.000 after 4220ms (BOMB_OUT_SILENCE_MS + 3 x BOMB_OUT_ROW_STAGGER_MS + BOMB_OUT_ROW_FADE_MS, read from meetTuning.ts)"
     },
     {
       "ok": true,
@@ -244,17 +250,17 @@
     {
       "ok": true,
       "what": "leg 3: the 'bombed' screen is DRAWN, not merely mounted, before the shutter",
-      "detail": "effective opacity 1.000 after 4220ms (BOMB_OUT_SILENCE_MS + 3 x BOMB_OUT_ROW_STAGGER_MS + BOMB_OUT_ROW_FADE_MS, read from meetTuning.ts)"
+      "detail": "probed bomb-out-action: effective opacity 1.000 after 4220ms (BOMB_OUT_SILENCE_MS + 3 x BOMB_OUT_ROW_STAGGER_MS + BOMB_OUT_ROW_FADE_MS, read from meetTuning.ts)"
     },
     {
       "ok": true,
       "what": "CONTROL: the in-page recorder ran at all",
-      "detail": "9398 polls at 16ms; without this, \"no second cut-in\" is what a dead instrument reports"
+      "detail": "10296 polls at a nominal 16ms, worst gap 339ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
     },
     {
       "ok": true,
       "what": "CONTROL: the local calendar day did not turn over mid-run, so all three legs are ONE sitting",
-      "detail": "Fri Aug 07 2026 -> Fri Aug 07 2026; cutInSessionId('meet', day) is a function of this"
+      "detail": "Sat Aug 08 2026 -> Sat Aug 08 2026; cutInSessionId('meet', day) is a function of this"
     },
     {
       "ok": true,
@@ -263,7 +269,7 @@
     },
     {
       "ok": true,
-      "what": "CONTROL: the 2 deliberately-bombed legs each reached GDD §6.3's bomb-out screen and OFFERED the beat",
+      "what": "CONTROL: the 2 deliberately-bombed legs each REACHED GDD §6.3's bomb-out screen (this sees the screen, not the offer)",
       "detail": "2 of 2; endings were [\"1:recap\",\"2:bombed\",\"3:bombed\"]. Without this, \"exactly one cut-in\" is also what a run that never offered a second qualifying beat reports."
     },
     {
@@ -274,7 +280,7 @@
     {
       "ok": true,
       "what": "GDD §7.2 / §12.3: ONE SITTING, ONE CUT-IN — 3 legs of one meet-day sitting fired exactly 1",
-      "detail": "leg 2 @160624ms \"THAT IS THE MEET\" over meet-bombed gone at 162362ms after 1738ms"
+      "detail": "leg 1 @23255ms \"LAST ONE\" over meet-walkout gone at 24998ms after 1743ms"
     }
   ],
   "failures": [],

@@ -246,11 +246,30 @@ the document calls "The Real Tension" — was dead code in the shipped app.
 
 Three things follow, each of which had already failed once:
 
-- **A guard written for one hook — or one FIXTURE — must be applied to its
-  sibling, mechanically.**
+- **A guard written for one hook — or one FIXTURE, or one ARM OF ONE `if` — must
+  be applied to its sibling, mechanically.**
   `sessionWiring.test.ts` banned the six names "the bypass was made of" from
   `useSession.ts`, and `useMeetDay.ts` contained five of them, one directory
   over, for six waves. A twin guard must *read* the sibling's list, not copy it.
+
+  **The distance keeps shrinking, and that is the finding.** Instance two was a
+  directory away. Instance three was `progression.test.ts`'s seal check, which
+  matched its callee by identifier *text* while the `receive` check **twelve
+  lines below in the same `visit` function** resolved symbols through the
+  checker and followed aliases — so a local shim spelled `sealServerValue`
+  type-checked clean and left 202 guard tests green. Instance four was
+  `verify-cutin-cap.mjs`'s "is it drawn" check, where the bombed arm waited out
+  the app's own stagger and probed the last row, and the recap arm — **the
+  `else if` directly beneath it** — waited on presence and probed the
+  container, whose opacity nothing animates. It could not have reddened, and
+  the frame filed beside its green line was a recap at t≈50ms of a 1240ms
+  assembly.
+
+  So: proximity is not protection, it is the *risk*. Two arms of one
+  conditional read as one decision and get written as two, and the second one
+  is written while the first is still fresh enough to feel already-solved. When
+  you fix a check, the next thing to look at is the branch immediately below
+  it.
 - **`vitest.config.ts` is `environment: node`, so no cross-screen state is
   checked by the suite.** Three defects have now lived entirely in that gap. Any
   claim that a value survives a navigation needs a browser check that reads the
