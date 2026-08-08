@@ -5,6 +5,8 @@ import {
   cacheBeforeSession,
   isSessionMoment,
   previewFrameFor,
+  recordAfterServer,
+  recordBeforeSession,
   sessionPreviewFrom,
 } from './sessionPreview';
 import {
@@ -260,5 +262,82 @@ describe('a preview frame carries the cache its numbers are read out of', () => 
     expect(accessory.newBestE1rmKg).toBeNull();
     expect(accessory.sessionE1rmKg).toBeNull();
     expect(accessory.prGainKg).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE TWO §7.5 `record` ROWS THIS MODULE OWNS ARE SEALED, AND THAT IS EXECUTED
+// ---------------------------------------------------------------------------
+
+/**
+ * `progression.test.ts` reads both of these as sealed off the SOURCE: it finds
+ * the object literal, checks its parent call resolves to `progression.ts`'s
+ * `sealServerValue`, and stops. That is a scan over syntax and cannot run the
+ * site. These two blocks run it.
+ *
+ * `Object.freeze` IS SHALLOW, so the shell alone is not the check — every number
+ * §12.2's bar is about lives one or two levels below the record, and a mutant
+ * that sealed a shallow spread and returned the original has already fooled this
+ * codebase once.
+ */
+describe('the debug preview seals the rows it builds', () => {
+  it('freezes the row the scripted session starts from, and its nested objects', () => {
+    const record = recordBeforeSession();
+
+    expect(Object.isFrozen(record), 'the record itself').toBe(true);
+    expect(Object.isFrozen(record.bestE1rmKg), 'bestE1rmKg').toBe(true);
+    expect(Object.isFrozen(record.streak), 'streak').toBe(true);
+    expect(Object.isFrozen(record.wallet), 'wallet').toBe(true);
+    expect(Object.isFrozen(record.meets), 'the meets array').toBe(true);
+
+    // NON-VACUITY AS A VALUE, NOT A SHAPE. The preview pins one e1RM and one
+    // streak; if the fixture stopped setting them these checks would be
+    // freezing-checking a record with nothing in it worth protecting.
+    const lift = liftForDay(SESSION_PREVIEW.DAY);
+    expect(record.bestE1rmKg[lift], 'the e1RM the preview pins').toBe(SESSION_PREVIEW.BEST_E1RM_KG);
+    expect(record.streak.currentStreak, 'the streak it pins').toBe(SESSION_PREVIEW.STREAK_BEFORE);
+
+    const bests: Record<string, number | null> = record.bestE1rmKg;
+    expect(() => {
+      bests[lift] = SESSION_PREVIEW.BEST_E1RM_KG * 2;
+    }).toThrow(TypeError);
+    expect(record.bestE1rmKg[lift], 'the e1RM did not move').toBe(SESSION_PREVIEW.BEST_E1RM_KG);
+
+    const streak: { currentStreak: number } = record.streak;
+    expect(() => {
+      streak.currentStreak = SESSION_PREVIEW.STREAK_BEFORE + 100;
+    }).toThrow(TypeError);
+  });
+
+  it('freezes the drifted row the server answers with', () => {
+    // THE DRIFT ARM IS THE ONE THAT BUILDS A LITERAL. Down the other arm
+    // `recordAfterServer` hands back what `applyTrainingSession` sealed, so a
+    // fixture at zero drift would be grading the wrong function — the empty
+    // domain, one branch over. The assertions below therefore run on a non-zero
+    // drift and the pass-through arm is checked separately, by identity.
+    const drift = SESSION_BOUNDARY_PREVIEW.SERVER_DRIFT_KG;
+    expect(drift, 'the preview drift is what makes this arm reachable').not.toBe(0);
+
+    const lift = liftForDay(SESSION_PREVIEW.DAY);
+    const settled = recordBeforeSession();
+    const base = settled.bestE1rmKg[lift];
+    expect(base, 'a starting e1RM for the drift to move').not.toBeNull();
+
+    const answered = recordAfterServer(settled, lift, drift);
+    expect(answered, 'the drift arm built a new row').not.toBe(settled);
+    expect(answered.bestE1rmKg[lift], 'and moved the e1RM by the drift').toBe((base ?? 0) + drift);
+
+    expect(Object.isFrozen(answered), 'the answered record').toBe(true);
+    expect(Object.isFrozen(answered.bestE1rmKg), 'and its e1RMs').toBe(true);
+
+    const bests: Record<string, number | null> = answered.bestE1rmKg;
+    expect(() => {
+      bests[lift] = (base ?? 0) * 2;
+    }).toThrow(TypeError);
+    expect(answered.bestE1rmKg[lift], 'the answered e1RM did not move').toBe((base ?? 0) + drift);
+
+    // AND THE PASS-THROUGH ARM HANDS BACK WHAT IT WAS GIVEN, unchanged and
+    // still sealed by its own producer. Stated because the docstring says so.
+    expect(recordAfterServer(settled, lift, 0), 'zero drift is a pass-through').toBe(settled);
   });
 });

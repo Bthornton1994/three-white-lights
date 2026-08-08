@@ -287,8 +287,37 @@ const GUARANTEE_COVERAGE = {
    * arithmetic on two independently-correct counts is a guess until something
    * executes it. This scan exists because sentences that sounded true were not,
    * and "1 + 1 = 2" is a sentence.
+   *
+   * 208 -> 211 when the seal scan stopped matching its callee by spelling and
+   * started resolving it, and the seven routes got runtime freeze witnesses.
+   * Measured per file, the way the two notes above were, by restoring each of
+   * the six touched files to its pre-fix text in turn and re-reading this count:
+   * `meetServer.test.ts`, `sessionPreview.ts`, `sessionPreview.test.ts` and this
+   * file contribute NOTHING between them; `progression.ts` contributes one
+   * paragraph and `progression.test.ts` two. The three are then named
+   * individually by a throwaway re-implementation of the scanner, cross-checked
+   * against it on the same two files (18 -> 21) so the per-paragraph attribution
+   * is not a guess laid over a correct total.
+   *
+   * NOT QUOTED HERE, for the reason both notes above give: a quoted capitalised
+   * run makes this paragraph trigger too and the count would go to 212. In lower
+   * case they are: in `progression.ts`, the list of what the seal scan still
+   * cannot see; in `progression.test.ts`, the paragraph saying what the runtime
+   * ledger adds that the scan cannot, and the one conceding that a ledger is a
+   * pointer and a pointer to a test that cannot fail is the same defect one
+   * level out.
+   *
+   * ALL THREE STATE A LIMIT RATHER THAN A GUARANTEE, which is the 206 -> 207
+   * observation repeating: a tag on any of them would have nothing to bite. And
+   * the round's actual new guarantee — the one that IS tagged,
+   * `every-shipped-route-observes-its-seal` — does not appear in this delta at
+   * all, because its paragraph happens to use none of the four trigger words. It
+   * was tagged because the author chose to, not because anything demanded it.
+   * That is the declared blind spot measured rather than restated: on this round
+   * the scan flagged three sentences that state a limit and demanded nothing of
+   * the one sentence that states a guarantee.
    */
-  TREE_WIDE: 208,
+  TREE_WIDE: 211,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -434,6 +463,56 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "      'a record or wire is built in shipped code and not sealed — pass it to sealServerValue',",
     observed:
       'AssertionError: a record or wire is built in shipped code and not sealed — pass it to sealServerValue: expected [ Array(1) ] to deeply equal [] — received [ "record src/game/meetPreview.ts previewServerRecord" ]',
+  },
+  {
+    // A SECOND WITNESS FOR THE SAME TAG, AND THE ONE THAT MATTERS. The entry
+    // above mutates by DELETING the seal wrapper, which is name-ABSENCE — the
+    // check it reddens is the one that was already known to work. SUBSTITUTION
+    // was never mutated and, on the tree before this run, could not have
+    // reddened anything: `isSealedAt` matched the callee by identifier TEXT, so
+    // an aliased real import plus a local no-op shim spelled the same name left
+    // `tsc --noEmit` at exit 0 and progression.test.ts + sessionServer.test.ts
+    // + guaranteeTags.test.ts green at 202 tests. The mutant below is that,
+    // verbatim, re-run after the callee was resolved through the checker.
+    //
+    // The whole mutant is two lines, of which the anchor is the first:
+    //
+    //   import { sealServerValue as realSealServerValue } from './progression';
+    //   const sealServerValue = <T,>(value: T): T => { void realSealServerValue; return value; };
+    //
+    // WORTH RECORDING BESIDE IT: `scan.sealCalleeSources` also reddens on this
+    // mutant, and it does so even with `isSealedAt`'s declaring-file filter
+    // deleted as well — measured, `expected [ 'src/game/meetPreview.ts', …(1) ]
+    // to deeply equal [ 'src/game/progression.ts' ]`. Two oracles that do not
+    // share a blind spot, which is the thing CLAUDE.md's seventh instance says
+    // to check for rather than counting harnesses.
+    guarantee: 'every-shipped-route-is-sealed',
+    mutatedFile: 'src/game/meetPreview.ts',
+    mutated: "import { sealServerValue } from './progression';",
+    testFile: 'src/game/progression.test.ts',
+    redAssertion:
+      "      'a record or wire is built in shipped code and not sealed — pass it to sealServerValue',",
+    observed:
+      'AssertionError: a record or wire is built in shipped code and not sealed — pass it to ' +
+      'sealServerValue: expected [ Array(1) ] to deeply equal [] — received [ "record ' +
+      'src/game/meetPreview.ts previewServerRecord" ]',
+  },
+  {
+    // The mutant SKIPPED one of the seven runtime freeze checks the ledger
+    // names. That is the shape the gap actually had — four of the seven routes
+    // had no runtime evidence at all and nothing said so — rather than a
+    // deletion, which a reader would notice. It also exercises the ledger's own
+    // claim that `it.skip('…')` fails the check rather than satisfying it.
+    guarantee: 'every-shipped-route-observes-its-seal',
+    mutatedFile: 'src/game/meetServer.test.ts',
+    mutated: "  it('freezes the debug preview record too, one meet deep', () => {",
+    testFile: 'src/game/progression.test.ts',
+    redAssertion:
+      '        `${witness.route}: ${witness.testFile} does not declare exactly one running test called "${witness.title}"`,',
+    observed:
+      'AssertionError: record src/game/meetPreview.ts previewServerRecord: ' +
+      'src/game/meetServer.test.ts does not declare exactly one running test called ' +
+      '"freezes the debug preview record too, one meet deep": expected +0 to be 1',
   },
   {
     // RETAKEN. The previous witness anchored on
