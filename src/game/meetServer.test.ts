@@ -1706,3 +1706,115 @@ describe('the unit rides in from the entry rather than being stamped on the way 
     expect(context.entry.bodyweight.unit).toBe('lb');
   });
 });
+
+// ---------------------------------------------------------------------------
+// THE RECORD THAT LEAVES THIS MODULE IS SEALED, AND THAT IS EXECUTED HERE
+// RATHER THAN READ OFF THE SOURCE
+// ---------------------------------------------------------------------------
+
+/**
+ * `applyMeetResult` is §7.5's `record` row for this module and the SOLE WRITER
+ * of `totalKg` — the most protected number in the game. Until this block
+ * existed, the only evidence it was sealed at all was `progression.test.ts`
+ * seeing the text `sealServerValue(` in front of its object literal. That is a
+ * scan over syntax; it cannot run the site, and a measured mutant (an aliased
+ * real import plus a local no-op shim spelled `sealServerValue`) landed exactly
+ * here with `tsc` at exit 0 and the suite green. The scan now resolves its
+ * callee through the checker, and this is the other half: the freeze is
+ * OBSERVED, so a seal that resolves correctly and does nothing is red too.
+ *
+ * `Object.freeze` IS SHALLOW and every number this bar is about lives one or two
+ * levels down, so the shell alone is not the check — this repository has already
+ * been fooled once by a mutant that sealed a shallow spread and returned the
+ * original. `meets[i].bestByLift.squat` is two levels below the record and is
+ * asserted by hand.
+ */
+describe('the record applyMeetResult writes is sealed, deeply', () => {
+  it('freezes the record, its meets array, and the meet row that carries totalKg', () => {
+    const applied = applyClean();
+    if (!applied.ok) throw new Error(applied.error.message);
+    const record = applied.value.record;
+
+    // NON-VACUITY FIRST, AS COUNTS. Freezing checks on an empty array or a
+    // missing row pass while measuring nothing, which is the empty-domain shape
+    // CLAUDE.md names. One meet went on, and it carries a real total.
+    expect(record.meets.length, 'the meet this fixture just lifted').toBe(1);
+    expect(record.totalKg, 'and the record took a total from it').toBeGreaterThan(0);
+    const stored = record.meets[0];
+    if (stored === undefined) throw new Error('unreachable');
+    expect(stored.totalKg, 'the stored meet row carries the same total').toBe(record.totalKg);
+
+    expect(Object.isFrozen(record), 'the record itself').toBe(true);
+    expect(Object.isFrozen(record.bestE1rmKg), 'bestE1rmKg').toBe(true);
+    expect(Object.isFrozen(record.streak), 'streak').toBe(true);
+    expect(Object.isFrozen(record.wallet), 'wallet').toBe(true);
+    expect(Object.isFrozen(record.fatigue), 'fatigue').toBe(true);
+    expect(Object.isFrozen(record.meets), 'the meets array').toBe(true);
+    expect(Object.isFrozen(stored), 'the stored meet row').toBe(true);
+    expect(Object.isFrozen(stored.bestByLift), 'and its per-lift bests').toBe(true);
+  });
+
+  it('throws on the writes the bar is about, rather than dropping them', () => {
+    // A FROZEN OBJECT REFUSES IN SILENCE UNDER SLOPPY MODE, so `isFrozen` alone
+    // is not the whole guarantee — the write has to throw where it runs. ES
+    // modules are strict by definition, which is what makes this a TypeError
+    // and not a no-op that leaves the caller believing the write took.
+    const applied = applyClean();
+    if (!applied.ok) throw new Error(applied.error.message);
+    const record = applied.value.record;
+    const trueTotal = record.totalKg;
+    expect(trueTotal, 'a total to poison').not.toBeNull();
+
+    // §12.2's bar in its plainest form: a pound number into a kilogram field.
+    const loose: { totalKg: number | null } = record;
+    expect(() => {
+      loose.totalKg = (trueTotal ?? 0) / KILOGRAMS_PER_POUND;
+    }).toThrow(TypeError);
+    expect(record.totalKg, 'the Total did not move').toBe(trueTotal);
+
+    // ...and the same number one level down, on the stored meet row.
+    const storedRow: { totalKg: number | null } = record.meets[0] as { totalKg: number | null };
+    expect(() => {
+      storedRow.totalKg = (trueTotal ?? 0) / KILOGRAMS_PER_POUND;
+    }).toThrow(TypeError);
+    expect(record.meets[0]?.totalKg, 'the stored Total did not move').toBe(trueTotal);
+
+    // ...and two levels down, on the per-lift bests inside it.
+    const byLift: Record<string, number | null> = record.meets[0]?.bestByLift as Record<
+      string,
+      number | null
+    >;
+    const trueSquat = byLift['squat'];
+    expect(trueSquat, 'a squat best to poison').not.toBeNull();
+    expect(() => {
+      byLift['squat'] = (trueSquat ?? 0) / KILOGRAMS_PER_POUND;
+    }).toThrow(TypeError);
+    expect(record.meets[0]?.bestByLift.squat, 'the stored squat did not move').toBe(trueSquat);
+  });
+
+  it('freezes the debug preview record too, one meet deep', () => {
+    // §7.5's `record` row for `meetPreview.ts`, and the site the measured
+    // substitution mutant actually landed on. A debug preview is not a shortcut
+    // past the boundary's rules — `previewServerRecord`'s own comment says so,
+    // and until now nothing executed it.
+    const record = previewServerRecord();
+    expect(record.meets.length, 'the previous meet the preview pretends to hold').toBe(1);
+    const stored = record.meets[0];
+    if (stored === undefined) throw new Error('unreachable');
+
+    expect(Object.isFrozen(record), 'the preview record itself').toBe(true);
+    expect(Object.isFrozen(record.bestE1rmKg), 'bestE1rmKg').toBe(true);
+    expect(Object.isFrozen(record.streak), 'streak').toBe(true);
+    expect(Object.isFrozen(record.meets), 'the meets array').toBe(true);
+    expect(Object.isFrozen(stored), 'the stored meet row').toBe(true);
+    expect(Object.isFrozen(stored.bestByLift), 'and its per-lift bests').toBe(true);
+
+    const trueTotal = record.totalKg;
+    expect(trueTotal, 'a total to poison').not.toBeNull();
+    const loose: { totalKg: number | null } = record;
+    expect(() => {
+      loose.totalKg = (trueTotal ?? 0) / KILOGRAMS_PER_POUND;
+    }).toThrow(TypeError);
+    expect(record.totalKg, 'the preview Total did not move').toBe(trueTotal);
+  });
+});
