@@ -998,8 +998,52 @@
  * added anywhere the project compiles must be sealed or that goes red, and
  * nobody maintains a list of seal sites.
  * `@guarantee every-shipped-route-is-sealed`
- * What that check cannot see is in the residual list below: a literal sealed and
- * then replaced, and any assembly with no object literal in it at all.
+ *
+ * WHAT "HANDED TO THE SEAL" MEANS IS NOW THE CHECKER'S ANSWER, NOT THE
+ * CALLEE'S SPELLING, and the correction is worth the paragraph because the old
+ * version was DEFEATABLE rather than merely narrow. `isSealedAt` compared
+ * `callee.text` against the string `sealServerValue` — while the `receive`
+ * check twelve lines below it in the same loop resolved its callee through
+ * `SymbolFlags.Alias` and required the declaring file. Measured: replacing
+ * `meetPreview.ts`'s import with an aliased real import plus a local no-op shim
+ * spelled the same name left `tsc --noEmit` at exit 0 and the seal's own tests
+ * green at 202. One import line, no cast, no `any`, and none of residual 1's
+ * four string patterns look for it. Both checks now read one
+ * `declaringFileOf`, so there is nothing left to copy and nothing to diverge.
+ *
+ * WHAT THAT CHECK STILL CANNOT SEE, as a list and not a closure — the first two
+ * are residual 1 below and are not made smaller by any of this:
+ *   (i)   a literal sealed and then REPLACED;
+ *   (ii)  any assembly with no object literal in it at all;
+ *   (iii) a callee that RESOLVES to the seal and does not freeze. The scan
+ *         proves identity, never behaviour: a `sealServerValue` whose body
+ *         returned its argument untouched leaves every assertion in
+ *         `every-shipped-route-is-sealed` green. That is what the runtime
+ *         witnesses below are for, and it is a genuinely different instrument
+ *         rather than more of the same one;
+ *   (iv)  a literal handed to a wrapper that seals INSIDE itself —
+ *         `sealServerValue(build())` reads as unsealed here and is not. Narrow
+ *         in the safe direction, and a site written that way should move its
+ *         call rather than widen this.
+ * Item (iii) was not on this list until it was written down, and neither was
+ * the defeat above; the sentence that used to sit here named two residuals and
+ * implied the rest was covered.
+ *
+ * SO THE SEAL IS ALSO OBSERVED AT RUNTIME, ONE WITNESS PER ROW ABOVE.
+ * `progression.test.ts`'s `SEAL_RUNTIME_WITNESSES` names the test that actually
+ * calls each producer and asserts `Object.isFrozen` on the SHELL AND THE NESTED
+ * OBJECTS, pinned against this table in both directions — an unwitnessed row is
+ * red, and so is a witness for a row that is gone. Deep and not shallow because
+ * `Object.freeze` is shallow and every number §12.2's bar is about lives one or
+ * two levels down; a mutant that sealed a shallow spread and returned the
+ * original has already fooled this repository once.
+ * `@guarantee every-shipped-route-observes-its-seal`
+ * FOUR OF THE SEVEN ROWS HAD NO RUNTIME EVIDENCE AT ALL before that ledger,
+ * `applyMeetResult` — the sole writer of `totalKg` — among them. The ledger is a
+ * POINTER, and a pointer to a test that cannot fail is the same defect one level
+ * out, so all seven were mutation-tested by hand when it was declared: the seal
+ * deleted, and the seal replaced by a shallow `Object.freeze`. All fourteen went
+ * red, and each shallow one reddened on a nested object rather than the shell.
  *
  * TEST FILES ARE OUT, DELIBERATELY, and the exclusion is worth the sentence.
  * `meetServer.test.ts` and `sessionClient.test.ts` build a dozen records between

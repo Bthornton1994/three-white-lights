@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -835,6 +835,66 @@ function declaredRoutes(): readonly RouteSite[] {
 }
 
 /**
+ * WHICH TEST ACTUALLY RUNS EACH §7.5 SEAL, as opposed to reading it off the
+ * source.
+ *
+ * The scan resolves each seal callee through the checker, so it can say the
+ * function being called IS `progression.ts`'s `sealServerValue`. It cannot say
+ * that function froze anything — it never executes the site. These are the
+ * checks that do, one per `record`/`wire` row, pinned against the table in both
+ * directions by `every-shipped-route-observes-its-seal`.
+ *
+ * `route` is `kind file site`, matching §7.5's columns without the count: the
+ * count is what the row pin is for, and repeating it here would make this table
+ * churn every time a frame gained a second literal.
+ *
+ * Two rows share a title on purpose — `sessionServer.ts`'s test covers both of
+ * its `record` producers in one body, and splitting it to satisfy a table would
+ * be the table deciding how the tests are written.
+ */
+const SEAL_RUNTIME_WITNESSES: readonly {
+  readonly route: string;
+  readonly testFile: string;
+  readonly title: string;
+}[] = [
+  {
+    route: 'record src/game/sessionServer.ts newServerRecord',
+    testFile: 'src/game/sessionServer.test.ts',
+    title: 'seals the record this file produces, at both of its producers',
+  },
+  {
+    route: 'record src/game/sessionServer.ts applyTrainingSession',
+    testFile: 'src/game/sessionServer.test.ts',
+    title: 'seals the record this file produces, at both of its producers',
+  },
+  {
+    route: 'wire src/game/sessionServer.ts snapshotWireFor',
+    testFile: 'src/game/sessionServer.test.ts',
+    title: 'seals every level of the wire, not only its shell',
+  },
+  {
+    route: 'record src/game/meetServer.ts applyMeetResult',
+    testFile: 'src/game/meetServer.test.ts',
+    title: 'freezes the record, its meets array, and the meet row that carries totalKg',
+  },
+  {
+    route: 'record src/game/meetPreview.ts previewServerRecord',
+    testFile: 'src/game/meetServer.test.ts',
+    title: 'freezes the debug preview record too, one meet deep',
+  },
+  {
+    route: 'record src/session/sessionPreview.ts recordBeforeSession',
+    testFile: 'src/session/sessionPreview.test.ts',
+    title: 'freezes the row the scripted session starts from, and its nested objects',
+  },
+  {
+    route: 'record src/session/sessionPreview.ts recordAfterServer',
+    testFile: 'src/session/sessionPreview.test.ts',
+    title: 'freezes the drifted row the server answers with',
+  },
+];
+
+/**
  * The scan, run once and shared.
  *
  * MEMOISED RATHER THAN RUN AT IMPORT. Building a `ts.Program` over the whole
@@ -1285,6 +1345,74 @@ describe('purity', () => {
         found.has(routeKey(row)),
         `progression.ts §7.5 names ${row.kind} ${row.file} ${row.site} x${row.n}, and the scan does not find it — delete the row or fix the count`,
       ).toBe(true);
+    }
+  });
+
+  it('names a runtime freeze witness for every §7.5 route [every-shipped-route-observes-its-seal]', () => {
+    // WHAT THIS ADDS THAT THE SCAN CANNOT. The scan above resolves each seal
+    // callee to `progression.ts`'s export. It still cannot execute the site, so
+    // it proves IDENTITY and not BEHAVIOUR: a `sealServerValue` that returned
+    // its argument untouched would leave every assertion up there green.
+    //
+    // FOUR OF THE SEVEN ROWS HAD NO RUNTIME EVIDENCE AT ALL when this ledger was
+    // written — `applyMeetResult`, the sole writer of `totalKg`, among them, and
+    // a grep for `isFrozen` across `src/` returned nothing in
+    // `meetServer.test.ts`. That is the gap this closes, and the ledger rather
+    // than four loose tests is the point: without it the same four rows can go
+    // back to syntax-only evidence one deletion at a time, and a NEW row arrives
+    // with no runtime evidence and nothing says so.
+    //
+    // IT IS A POINTER, AND CLAUDE.md IS RIGHT THAT A POINTER TO A TEST THAT
+    // CANNOT FAIL IS THE SAME DEFECT ONE LEVEL OUT. So all seven were
+    // mutation-tested by hand on the run that declared this, in both directions
+    // that matter — the seal deleted, and the seal replaced by a SHALLOW
+    // `Object.freeze` — and every one went red. The four shallow mutants each
+    // reddened on a NESTED object (`the meets array`, `bestE1rmKg`, `and its
+    // e1RMs`), which is the half a shell-only check would have missed.
+    const scan = routeScan();
+    const rows = scan.shipped.filter((row) => row.kind !== 'receive');
+
+    // NON-VACUITY AS A COUNT, so an empty scan cannot satisfy the loop below.
+    expect(rows.length, 'shipped record/wire rows to find witnesses for').toBe(7);
+    expect(SEAL_RUNTIME_WITNESSES.length, 'ledger rows').toBe(7);
+
+    // BOTH DIRECTIONS. An unwitnessed row is the defect this closes; a witness
+    // for a row that no longer exists is bookkeeping about deleted code, and
+    // §12.2's own restatement of the bar calls out that a table which only ever
+    // grows fills with rulings nobody can skim.
+    const found = new Set(rows.map((row) => `${row.kind} ${row.file} ${row.site}`));
+    const listed = new Set(SEAL_RUNTIME_WITNESSES.map((w) => w.route));
+    expect(
+      [...found].filter((route) => !listed.has(route)).sort(),
+      'a §7.5 route with no runtime freeze witness — write one and list it here',
+    ).toEqual([]);
+    expect(
+      [...listed].filter((route) => !found.has(route)).sort(),
+      'a runtime freeze witness for a §7.5 route that no longer exists',
+    ).toEqual([]);
+
+    // AND EACH NAMED TEST EXISTS AND RUNS. The pattern requires the bare `it`
+    // form, so `it.skip` / `it.todo` / `it.fails` fail this rather than
+    // satisfying it — a witness that is declared and not executed is the same
+    // nothing as a witness that was never written.
+    //
+    // BUILT AS A REGEXP RATHER THAN A STRING, and the reason is a real one
+    // rather than taste: spelling the needle as a plain template literal plants
+    // a verbatim test-declaration opener in this file, which then truncates this
+    // very test's body in `guaranteeTags.test.ts`'s witness scoper — so the
+    // assertion below could not be witnessed at all — and registers a phantom
+    // title in that file's tree-wide title sweep. Found by writing it the
+    // obvious way and watching the witness fail to resolve.
+    for (const witness of SEAL_RUNTIME_WITNESSES) {
+      const full = path.join(REPO_ROOT, witness.testFile);
+      expect(existsSync(full), `${witness.route}: ${witness.testFile} is gone`).toBe(true);
+      const text = readFileSync(full, 'utf8');
+      const escaped = witness.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const declaration = new RegExp(String.raw`\bit\s*\(\s*'${escaped}'`, 'g');
+      expect(
+        [...text.matchAll(declaration)].length,
+        `${witness.route}: ${witness.testFile} does not declare exactly one running test called "${witness.title}"`,
+      ).toBe(1);
     }
   });
 
