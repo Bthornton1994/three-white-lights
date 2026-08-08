@@ -253,7 +253,7 @@ const THE_GATE_ITSELF = 'cutin/';
  * would become a convention.
  */
 const GATE_ENTRY_POINTS =
-  /\b(?:useCutIn|useOfferCutIn|openCutInSession|resumeCutInSession|requestCutIn|rememberCutInSession|forgetAllCutInSessions)\b/;
+  /\b(?:useCutIn|useOfferCutIn|openCutInSession|resumeCutInSession|requestCutIn|rememberCutInSession|forgetAllCutInSessions|observeCutInDecision|forgetCutInObservations)\b/;
 
 /** Files outside `src/cutin/` whose code matches `pattern`. */
 function filesNaming(pattern: RegExp): readonly string[] {
@@ -279,6 +279,12 @@ const GATE_BINDINGS: readonly (readonly [string, readonly string[]])[] = [
     'src/cutin/cutInLedger.ts',
     ['resumeCutInSession', 'rememberCutInSession', 'forgetAllCutInSessions'],
   ],
+  // THE SIBLING, ADDED WITH THE MODULE RATHER THAN A ROUND LATER. The ledger row
+  // above bans a screen from clearing the COUNT; this one bans it from clearing
+  // the RECORD OF WHAT THE GATE ANSWERED. A screen that could erase an
+  // observation could erase the evidence that it was refused, which is the same
+  // hole one level out from the one the ledger row closes.
+  ['src/cutin/cutInObserver.ts', ['observeCutInDecision', 'forgetCutInObservations']],
 ];
 
 /** The one binding whose LOCAL SPELLINGS the priority-order loop has to read. */
@@ -1859,6 +1865,11 @@ describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
       expect(text, `${moment} (${file})`).not.toMatch(/\bresumeCutInSession\b/);
       expect(text, `${moment} (${file})`).not.toMatch(/\brememberCutInSession\b/);
       expect(text, `${moment} (${file})`).not.toMatch(/\bforgetAllCutInSessions\b/);
+      // ...nor the observer. A screen that could erase what the gate answered
+      // could erase the evidence that it was refused, and that record is what
+      // `tools/verify-cutin-cap.mjs` now reads instead of counting pixels.
+      expect(text, `${moment} (${file})`).not.toMatch(/\bobserveCutInDecision\b/);
+      expect(text, `${moment} (${file})`).not.toMatch(/\bforgetCutInObservations\b/);
     }
   });
 
@@ -1892,6 +1903,31 @@ describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
     // could forget a sitting could hand it a second slot.
     expect(HOST).not.toMatch(/forgetAllCutInSessions/);
     expect(VIEW).not.toMatch(/cutInLedger/);
+  });
+
+  it('EVERY DECISION IS OBSERVED — the host quotes the gate on refusals too', () => {
+    // The browser tool counts OVERLAYS, and a refusal and an offer nobody made
+    // are the same picture. `cutInObserver.ts` is what tells them apart, and it
+    // only tells them apart if the host calls it on EVERY decision rather than
+    // inside the `fire` branch.
+    //
+    // The `fire` branch is `if (decision.outcome.kind === 'fire')`, so the
+    // assertion is that the observe call comes BEFORE it in the source — a call
+    // underneath that line is a call only fires reach, which would leave the
+    // record with no refusals in it and the tool unable to see the thing it was
+    // built to see.
+    const observedAt = HOST.indexOf('observeCutInDecision(asked, beats, decision)');
+    const fireBranchAt = HOST.indexOf("decision.outcome.kind === 'fire'");
+    expect(observedAt, 'the host does not observe its decisions').toBeGreaterThan(-1);
+    expect(fireBranchAt, 'the fire branch moved and this check is reading nothing').toBeGreaterThan(
+      -1,
+    );
+    expect(observedAt, 'the observe call sits inside the fire branch').toBeLessThan(fireBranchAt);
+    // ...and it is handed the state the gate was ASKED with, not the one it
+    // handed back. `firedCountBefore === firedCountAfter` is the log's signature
+    // of a refusal and it collapses if both sides are the same object.
+    expect(HOST).toMatch(/const asked = session\.current;/);
+    expect(HOST).toMatch(/requestCutIn\(asked, beats\)/);
   });
 
   it('THE DEBUG ROUTE IS NOT REACHABLE IN PLAY', () => {
