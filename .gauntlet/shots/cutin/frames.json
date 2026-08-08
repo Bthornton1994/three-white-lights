@@ -1,12 +1,17 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-08T14:34:54.522Z",
+    "capturedAt": "2026-08-08T17:20:45.887Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "2f17dc3",
+    "commit": "ab3929e",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
-    "dirtyPaths": [],
+    "dirtyPaths": [
+      "M .gauntlet/evidence/A4.txt",
+      " M .gauntlet/evidence/S2.txt",
+      " M .gauntlet/evidence/X1.txt",
+      " M .gauntlet/evidence/suite.txt"
+    ],
     "instrument": {
       "capture-cutin.mjs": "48935fabb9ef3aa6",
       "png.mjs": "6356a0d0b0dcb696"
@@ -230,15 +235,15 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 701,
+    "stillUpAt": 700,
     "stillUp": true,
-    "goneAt": 1576,
+    "goneAt": 1575,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 17,
-    "goneAt": 27,
-    "dismissTookMs": 10,
+    "tappedAt": 14,
+    "goneAt": 16,
+    "dismissTookMs": 2,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
