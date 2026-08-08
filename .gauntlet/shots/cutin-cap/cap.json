@@ -1,15 +1,15 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-08T15:17:55.731Z",
+    "capturedAt": "2026-08-08T16:32:24.095Z",
     "url": "http://localhost:8081",
-    "commit": "f44097a",
+    "commit": "82ff1a0",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
-      "D .gauntlet/shots/cutin-cap/cap.json",
-      " D .gauntlet/shots/cutin-cap/leg-1-recap.png",
-      " D .gauntlet/shots/cutin-cap/leg-2-bombed.png",
-      " D .gauntlet/shots/cutin-cap/leg-3-bombed.png"
+      "M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+      " M .gauntlet/shots/shell/route.json",
+      "?? .gauntlet/shots/shell/12-walkout-tail-settled.png"
     ],
     "instrument": {
       "verify-cutin-cap.mjs": "748b33ecfeab48c4",
@@ -50,21 +50,21 @@
           "played": true,
           "intent": "make",
           "holdMs": 1000,
-          "feedback": "The bar won that one."
+          "feedback": "High. The hips never got under."
         },
         {
           "attempt": "BENCH · ATTEMPT 1 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1000,
-          "feedback": "You hit depth by a hair."
+          "holdMs": 1180,
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "BENCH · ATTEMPT 2 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1000,
-          "feedback": "High. The hips never got under."
+          "holdMs": 1180,
+          "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "BENCH · ATTEMPT 3 OF 3",
@@ -78,7 +78,7 @@
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "Depth was never in question."
+          "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "DEADLIFT · ATTEMPT 2 OF 3",
@@ -92,10 +92,10 @@
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "feedback": "Depth was never in question."
         }
       ],
-      "ms": 95677,
+      "ms": 97621,
       "stuckBecause": null
     },
     {
@@ -126,7 +126,7 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 55287,
+      "ms": 55969,
       "stuckBecause": null
     },
     {
@@ -157,25 +157,25 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 55380,
+      "ms": 56019,
       "stuckBecause": null
     }
   ],
   "cutIns": [
     {
       "leg": 1,
-      "at": 23255,
+      "at": 22330,
       "line": "LAST ONE",
       "hint": "TAP TO SKIP",
       "over": [
         "meet-walkout"
       ],
       "search": "",
-      "goneAt": 24998
+      "goneAt": 24061
     }
   ],
-  "recorderPolls": 10296,
-  "recorderWorstGapMs": 339,
+  "recorderPolls": 12106,
+  "recorderWorstGapMs": 256,
   "checks": [
     {
       "ok": true,
@@ -205,7 +205,7 @@
     {
       "ok": true,
       "what": "the app opens on GDD §3.2's daily session with no query string",
-      "detail": "search=\"\" after 896ms"
+      "detail": "search=\"\" after 698ms"
     },
     {
       "ok": true,
@@ -220,7 +220,7 @@
     {
       "ok": true,
       "what": "leg 1: the 'recap' screen is DRAWN, not merely mounted, before the shutter",
-      "detail": "probed recap-action: effective opacity 0.995 after 1240ms (4 x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)"
+      "detail": "probed recap-action: effective opacity 1.000 after 1240ms (4 x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)"
     },
     {
       "ok": true,
@@ -240,7 +240,7 @@
     {
       "ok": true,
       "what": "leg 2: the meet surface really went away — CutInHost un-mounted",
-      "detail": "back on the check-in after 2ms, meet-screen present: false"
+      "detail": "back on the check-in after 1ms, meet-screen present: false"
     },
     {
       "ok": true,
@@ -255,7 +255,7 @@
     {
       "ok": true,
       "what": "CONTROL: the in-page recorder ran at all",
-      "detail": "10296 polls at a nominal 16ms, worst gap 339ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
+      "detail": "12106 polls at a nominal 16ms, worst gap 256ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
     },
     {
       "ok": true,
@@ -280,7 +280,7 @@
     {
       "ok": true,
       "what": "GDD §7.2 / §12.3: ONE SITTING, ONE CUT-IN — 3 legs of one meet-day sitting fired exactly 1",
-      "detail": "leg 1 @23255ms \"LAST ONE\" over meet-walkout gone at 24998ms after 1743ms"
+      "detail": "leg 1 @22330ms \"LAST ONE\" over meet-walkout gone at 24061ms after 1731ms"
     }
   ],
   "failures": [],
