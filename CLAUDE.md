@@ -599,6 +599,30 @@ physiology.
   fragile, and they are not specially safe either — the whole machine reverted
   together, so in-flight agents died with it. Merge and push each builder's
   result as it lands instead of accumulating several and merging at the end.
+- **A DEAD AGENT AND A WORKING ONE LOOK THE SAME, AND THE TASK LIST LIES IN THE
+  REASSURING DIRECTION.** Five agents have now been killed mid-flight by a
+  container going away. Each left its task list frozen at whatever step it had
+  reached — *"Run mutants M1-M3"*, *"Wait for the mutation batch to finish"* —
+  in-progress forever, because nothing survived to mark it done. Read from
+  outside, that is indistinguishable from slow work, and the natural diagnosis
+  is a hang: on the fifth occurrence it was reported as *"an infinite loop or
+  deadlock in the test harness"* when **no process was running at all** and the
+  container was sixteen minutes old.
+
+  So do not reason about whether an agent is stuck. Measure it:
+  `node tools/watchdog.mjs --branches` lists every unmerged `claude/*` branch by
+  the age of its last commit and exits 1 on anything stale. **Commit age is the
+  one signal that outlives the agent, the container and the notification.** Run
+  it before concluding anything about a quiet agent, and run it before deciding
+  a wave is finished — a finished-but-unmerged branch and a dead one look
+  identical too, and both show up here.
+
+  `node tools/watchdog.mjs --budget <seconds> -- <command>` is the other half: a
+  hard wall-clock cap that SIGKILLs the whole process group. `vitest` has a
+  per-test timeout and no global run cap. That guard is worth having, and it is
+  worth being clear that it would **not** have caught any of the five — there
+  was no process to time out. Guard both; do not let the loud one make you think
+  the quiet one is covered.
 - For human-paced follow-up sessions after the run: one vertical slice at a time,
   working state at the end of each.
 
