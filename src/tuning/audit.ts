@@ -1026,6 +1026,102 @@ export function onlyComments(source: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Scoping a claim to the body of the test that is supposed to carry it
+// ---------------------------------------------------------------------------
+
+/*
+ * WHY THIS LIVES HERE AND NOT IN THE FILE THAT FIRST NEEDED IT.
+ *
+ * Two ledgers in this tree bind a written claim to a named test:
+ * `guaranteeTags.test.ts`'s `MUTATION_WITNESSES`, which requires a witness's
+ * `redAssertion` to sit inside the body of the test its `@guarantee` names, and
+ * `progression.test.ts`'s `SEAL_RUNTIME_WITNESSES`, which requires the test
+ * named for a §7.5 route to actually run the seal. They are the same job. They
+ * were not the same strength: the first scoped to a body, the second checked
+ * only that a test with that title existed, so emptying the named test's body
+ * and keeping its title left the whole suite green with a route's runtime
+ * evidence gone. CLAUDE.md's rule about a guard written for one hook being
+ * applied to its sibling mechanically is what this file is the answer to — the
+ * scoper is one implementation with two callers, so there is nothing to copy
+ * and nothing to diverge.
+ *
+ * WHAT THE SCOPE IS. A slice of raw source from one `it(` to the next. That is
+ * enough to say whether a piece of text is inside a given test rather than
+ * somewhere else in a six-thousand-line file, and it is deliberately not a
+ * parse: the callers that need types build a `ts.Program` and ask the checker,
+ * and the callers that need a freshness anchor want raw text including comments.
+ *
+ * THE PREMISE, WHICH IS WHY `testScopeFault` EXISTS. Slicing on `/\bit\s*\(/`
+ * assumes every occurrence of those characters is a test declaration, and it
+ * breaks in two directions that fail opposite ways. A spurious match — the
+ * sequence inside a string or a comment — cuts a real body short, which fails
+ * closed: the anchor drops out of the slice and stops resolving. A missing
+ * match — `it.each(`, `it.skip(`, `it.only(` — merges two tests into one slice,
+ * which fails open and is the dangerous one, because an anchor would then bind
+ * to an assertion living in a different test. Neither is visible in a green
+ * suite, so every file either ledger scopes into is censused: the number of
+ * split points must equal the number of line-anchored declarations counted with
+ * a pattern that sees every form. Found live once, in `streak.test.ts`, where a
+ * comment reading "armed against it (§5" truncated a real body.
+ */
+
+/** Where the scoper starts each test body in `text`. */
+function testBodyStarts(text: string): readonly number[] {
+  const starts: number[] = [];
+  for (const match of text.matchAll(/\bit\s*\(/g)) starts.push(match.index ?? 0);
+  return starts;
+}
+
+/**
+ * The source of the test whose declaration carries `marker`, from its `it(` to
+ * the next one, or `null` if no body holds the marker.
+ *
+ * `marker` is whatever identifies the test to the caller: a `[tag-id]` for
+ * `MUTATION_WITNESSES`, a quoted title for `SEAL_RUNTIME_WITNESSES`. The first
+ * body containing it wins, which is why both callers separately pin that the
+ * marker occurs exactly once in the file.
+ */
+export function bodyOfTestContaining(text: string, marker: string): string | null {
+  const starts = testBodyStarts(text);
+  for (let i = 0; i < starts.length; i += 1) {
+    const from = starts[i] as number;
+    const to = i + 1 < starts.length ? (starts[i + 1] as number) : text.length;
+    const body = text.slice(from, to);
+    if (body.includes(marker)) return body;
+  }
+  return null;
+}
+
+/**
+ * The census failure for one file the scoper is asked to slice, or `null` when
+ * its premise holds.
+ *
+ * A MESSAGE RATHER THAN A BOOLEAN, and the assertion left to the caller: both
+ * ledgers need `expect`, which this module must not import, and returning the
+ * message keeps the wording in one place too. Copying the wording is how the
+ * two ledgers diverged the first time.
+ */
+export function testScopeFault(text: string, file: string): string | null {
+  const splitPoints = testBodyStarts(text).length;
+  // Every declaration form, not just the one the scoper can see — which is the
+  // whole point. Counting with the scoper's own pattern makes `it.skip(` drop
+  // both numbers together and the check agree with itself.
+  const declarations = [...text.matchAll(/^\s*it\s*(?:\.\w+)?\s*[(`]/gm)].length;
+  if (declarations === 0) {
+    return `${file}: no test declarations found — the scoper has nothing to scope`;
+  }
+  if (splitPoints !== declarations) {
+    return (
+      `${file}: the witness scoper splits on ${splitPoints} occurrences of \`it(\` but the file `
+      + `declares ${declarations} tests. A spurious match truncates a body (fails closed); a `
+      + `variant the pattern misses — it.each, it.skip, it.only — merges two bodies and lets a `
+      + `witness bind to another test's assertion (fails open).`
+    );
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // The audit
 // ---------------------------------------------------------------------------
 

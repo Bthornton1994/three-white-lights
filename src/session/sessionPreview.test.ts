@@ -289,6 +289,7 @@ describe('the debug preview seals the rows it builds', () => {
     expect(Object.isFrozen(record.streak), 'streak').toBe(true);
     expect(Object.isFrozen(record.wallet), 'wallet').toBe(true);
     expect(Object.isFrozen(record.meets), 'the meets array').toBe(true);
+    expect(Object.isFrozen(record.fatigue), 'fatigue').toBe(true);
 
     // NON-VACUITY AS A VALUE, NOT A SHAPE. The preview pins one e1RM and one
     // streak; if the fixture stopped setting them these checks would be
@@ -327,8 +328,17 @@ describe('the debug preview seals the rows it builds', () => {
     expect(answered, 'the drift arm built a new row').not.toBe(settled);
     expect(answered.bestE1rmKg[lift], 'and moved the e1RM by the drift').toBe((base ?? 0) + drift);
 
+    // THE WHOLE ROW, NOT ONLY THE FIELD THE DRIFT MOVED. This arm builds a
+    // fresh literal, so every nested object in it is this function's to seal —
+    // `bestE1rmKg` alone was what the row carried while the ledger said "the
+    // shell and the nested objects", and it is the row a body-emptying mutant
+    // walked through with the whole suite green.
     expect(Object.isFrozen(answered), 'the answered record').toBe(true);
     expect(Object.isFrozen(answered.bestE1rmKg), 'and its e1RMs').toBe(true);
+    expect(Object.isFrozen(answered.streak), 'and its streak').toBe(true);
+    expect(Object.isFrozen(answered.wallet), 'and its wallet').toBe(true);
+    expect(Object.isFrozen(answered.meets), 'and its meets array').toBe(true);
+    expect(Object.isFrozen(answered.fatigue), 'and its fatigue').toBe(true);
 
     const bests: Record<string, number | null> = answered.bestE1rmKg;
     expect(() => {

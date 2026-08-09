@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
+
+import { testScopeFault } from '../tuning/audit';
 import { createVitest } from 'vitest/node';
 
 import { dotsScore, officialTotalKg, type BodyweightReading, type OfficialTotalKg } from './dots';
@@ -164,9 +166,23 @@ function codeOnly(source: string): string {
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
-/** One row of §7.5: a place a record, a wire, or a snapshot read comes from. */
+/*
+ * The species of boundary value §7.5 enumerates construction sites of.
+ *
+ * `facts` IS THIS ROUND'S ADDITION AND IT IS THE DOOR EVERY CONFIRMED NUMBER
+ * COMES THROUGH. `receiveProgressionSnapshot` assembles a `ConfirmedFacts`
+ * holding `totalKg`, `bestE1rmKg` and `meets`, and froze it with a call spelled
+ * `deepFreeze` — neither the type nor that spelling was a scan target, so the
+ * mint was not a row, was not required to be sealed, and had no runtime
+ * witness. Measured before it was fixed: replacing that call with a shallow
+ * `Object.freeze` left every §7.5 assertion green and reddened exactly one test
+ * in the whole suite, which no ledger named.
+ */
+type RouteKind = 'record' | 'wire' | 'facts' | 'receive';
+
+/** One row of §7.5: a place a record, a wire, a facts set or a read comes from. */
 interface RouteSite {
-  readonly kind: 'record' | 'wire' | 'receive';
+  readonly kind: RouteKind;
   /** Repo-relative, posix. */
   readonly file: string;
   /**
@@ -423,7 +439,44 @@ function sweptFiles(scan: RouteScan): readonly string[] {
   return scan.scannedFiles.filter((file) => !IS_TEST_FILE.test(file));
 }
 
-function scanRoutes(): RouteScan {
+/** One of the boundary types §7.5 enumerates construction sites of. */
+interface RouteTarget {
+  readonly kind: RouteKind;
+  readonly name: string;
+  readonly from: string;
+  readonly type: ts.Type;
+  readonly symbol: ts.Symbol;
+}
+
+/**
+ * The program, the checker, and the boundary types — built once and shared.
+ *
+ * HOISTED OUT OF `scanRoutes` BECAUSE A SECOND INSTRUMENT NEEDS THE SAME
+ * CHECKER. The route scan asks the checker which object literals are boundary
+ * values; `auditSealWitnesses` asks the same checker what each named test
+ * actually calls and actually freezes. Building a second `ts.Program` for the
+ * second question is a few seconds of duplicated work and — worse — two
+ * resolutions of the same types that could disagree.
+ */
+interface BoundaryProgram {
+  readonly program: ts.Program;
+  readonly checker: ts.TypeChecker;
+  readonly targets: readonly RouteTarget[];
+  /** Repo-relative posix path, or `null` for anything outside the repo. */
+  repoPathOf(fileName: string): string | null;
+  /** The identifier a callee is spelled with — `f()` and `o.f()`, nothing else. */
+  calleeIdentifier(call: ts.CallExpression): ts.Identifier | undefined;
+  /** Where that identifier is DECLARED, through import aliases and re-exports. */
+  declaringFileOf(identifier: ts.Identifier): string | undefined;
+  /** The symbol it resolves to, past any import alias. `declaringFileOf`'s input. */
+  resolvedSymbolOf(identifier: ts.Identifier): ts.Symbol | undefined;
+}
+
+let boundaryProgramMemo: BoundaryProgram | null = null;
+
+function boundaryProgram(): BoundaryProgram {
+  if (boundaryProgramMemo !== null) return boundaryProgramMemo;
+
   // THE ROOT SET. `parsed.fileNames` is what `tsconfig.json`'s own
   // `include`/`exclude` resolve to — `App.tsx`, `index.ts`, `vitest.config.ts`
   // and all of `src/` — and it is the same list `tsc --noEmit` compiles. The
@@ -443,7 +496,6 @@ function scanRoutes(): RouteScan {
   });
   const checker = program.getTypeChecker();
 
-  /** Repo-relative posix path, or `null` for anything outside the repo. */
   const repoPathOf = (fileName: string): string | null => {
     const rel = path.relative(REPO_ROOT, fileName).split(path.sep).join('/');
     if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return null;
@@ -451,65 +503,51 @@ function scanRoutes(): RouteScan {
     return rel;
   };
 
-  // The two interfaces the pin is about, resolved from their declarations so a
+  // The interfaces the pin is about, resolved from their declarations so a
   // same-named type in another module cannot be mistaken for one of them.
-  const targets: {
-    readonly kind: 'record' | 'wire';
-    readonly name: string;
-    readonly from: string;
-    type?: ts.Type;
-    symbol?: ts.Symbol;
-  }[] = [
+  const wanted: { readonly kind: RouteKind; readonly name: string; readonly from: string }[] = [
     { kind: 'record', name: 'ServerRecord', from: 'src/game/sessionServer.ts' },
     { kind: 'wire', name: 'ProgressionSnapshotWire', from: 'src/game/progression.ts' },
+    { kind: 'facts', name: 'ConfirmedFacts', from: 'src/game/progression.ts' },
   ];
-  for (const target of targets) {
+  const targets: RouteTarget[] = [];
+  for (const target of wanted) {
     const declaring = program.getSourceFile(path.join(REPO_ROOT, target.from));
     if (declaring === undefined) throw new Error(`${target.from} is not in the program`);
+    let type: ts.Type | undefined;
+    let symbol: ts.Symbol | undefined;
     declaring.forEachChild((node) => {
       if (ts.isInterfaceDeclaration(node) && node.name.text === target.name) {
-        target.type = checker.getTypeAtLocation(node.name);
-        target.symbol = checker.getSymbolAtLocation(node.name);
+        type = checker.getTypeAtLocation(node.name);
+        symbol = checker.getSymbolAtLocation(node.name);
       }
     });
-    if (target.type === undefined || target.symbol === undefined) {
+    if (type === undefined || symbol === undefined) {
       throw new Error(`no interface ${target.name} in ${target.from}`);
     }
+    targets.push({ ...target, type, symbol });
   }
 
-  const receiverName = 'receiveProgressionSnapshot';
-  const receiverFile = path.join(REPO_ROOT, 'src/game/progression.ts');
-  // The seal. `sealServerValue` is asserted to be a real export of this module
-  // below, so a rename cannot leave this string matching nothing — which is how
-  // a scan becomes vacuous without anybody editing it. THE NAME IS A PREFILTER
-  // AND NOT THE TEST; `declaringFileOf` below is the test.
-  const SEAL_NAME = 'sealServerValue';
-  const sealFile = path.join(REPO_ROOT, 'src/game/progression.ts');
-
-  /**
-   * The identifier a callee is spelled with — `f()` and `o.f()`, and nothing
-   * else. Split out because the two name-driven checks below both need it and
-   * one of them used to inline its own copy.
-   */
   const calleeIdentifier = (call: ts.CallExpression): ts.Identifier | undefined => {
     const callee = call.expression;
     if (ts.isIdentifier(callee)) return callee;
     // `o.#f()` is a `PrivateIdentifier`, which cannot be an import and cannot
-    // name either of the two functions this scan asks about, so it is not one.
+    // name any of the functions these scans ask about, so it is not one.
     if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.name)) return callee.name;
     return undefined;
   };
 
-  /**
+  /*
    * WHERE A CALLEE IS DECLARED, ASKED OF THE CHECKER RATHER THAN OF ITS SPELLING.
    *
-   * ONE IMPLEMENTATION WITH TWO CALLERS, WHICH IS THE POINT OF THE FUNCTION AND
-   * NOT A TIDINESS PREFERENCE. Both `isSealedAt` and the `receive` tally are
-   * name-driven checks in this one `visit`. The `receive` half resolved through
-   * the checker; the seal half compared `callee.text` to a string twelve lines
-   * up and stopped there. CLAUDE.md's "a guard written for one hook must be
-   * applied to its sibling, mechanically" failed inside a single function body,
-   * and a MEASURED consequence followed — replacing `meetPreview.ts`'s
+   * ONE IMPLEMENTATION WITH THREE CALLERS, WHICH IS THE POINT OF THE FUNCTION
+   * AND NOT A TIDINESS PREFERENCE. `isSealedAt`, the `receive` tally and the
+   * seal-witness producer walk are all name-driven checks. The `receive` half
+   * resolved through the checker; the seal half compared `callee.text` to a
+   * string twelve lines up and stopped there. CLAUDE.md's "a guard written for
+   * one hook must be applied to its sibling, mechanically" failed inside a
+   * single function body, and a MEASURED consequence followed — replacing
+   * `meetPreview.ts`'s
    *
    *     import { sealServerValue } from './progression';
    *
@@ -530,14 +568,40 @@ function scanRoutes(): RouteScan {
    * exported function". `getAliasedSymbol` follows a whole re-export chain, so a
    * barrel between the caller and the declaration resolves the same way.
    */
-  const declaringFileOf = (identifier: ts.Identifier): string | undefined => {
+  const resolvedSymbolOf = (identifier: ts.Identifier): ts.Symbol | undefined => {
     const symbol = checker.getSymbolAtLocation(identifier);
-    const resolved =
-      symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
-        ? checker.getAliasedSymbol(symbol)
-        : symbol;
-    return resolved?.declarations?.[0]?.getSourceFile().fileName;
+    return symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+      ? checker.getAliasedSymbol(symbol)
+      : symbol;
   };
+
+  const declaringFileOf = (identifier: ts.Identifier): string | undefined =>
+    resolvedSymbolOf(identifier)?.declarations?.[0]?.getSourceFile().fileName;
+
+  boundaryProgramMemo = {
+    program,
+    checker,
+    targets,
+    repoPathOf,
+    calleeIdentifier,
+    declaringFileOf,
+    resolvedSymbolOf,
+  };
+  return boundaryProgramMemo;
+}
+
+function scanRoutes(): RouteScan {
+  const { program, checker, targets, repoPathOf, calleeIdentifier, declaringFileOf } =
+    boundaryProgram();
+
+  const receiverName = 'receiveProgressionSnapshot';
+  const receiverFile = path.join(REPO_ROOT, 'src/game/progression.ts');
+  // The seal. `sealServerValue` is asserted to be a real export of this module
+  // below, so a rename cannot leave this string matching nothing — which is how
+  // a scan becomes vacuous without anybody editing it. THE NAME IS A PREFILTER
+  // AND NOT THE TEST; `declaringFileOf` below is the test.
+  const SEAL_NAME = 'sealServerValue';
+  const sealFile = path.join(REPO_ROOT, 'src/game/progression.ts');
 
   /**
    * One frame, named, or `null` for a node that is not one.
@@ -827,7 +891,7 @@ function declaredRoutes(): readonly RouteSite[] {
   const rows = [...section.matchAll(/^\s*\*\s*\|\s*(\w+)\s*\|\s*(\S+)\s*\|\s*(\S+)\s*\|\s*(\d+)\s*\|/gm)];
   return rows.map((match) => {
     const kind = match[1];
-    if (kind !== 'record' && kind !== 'wire' && kind !== 'receive') {
+    if (kind !== 'record' && kind !== 'wire' && kind !== 'facts' && kind !== 'receive') {
       throw new Error(`§7.5 has a row of unknown kind "${kind}"`);
     }
     return { kind, file: match[2] ?? '', site: match[3] ?? '', n: Number(match[4]) };
@@ -841,8 +905,8 @@ function declaredRoutes(): readonly RouteSite[] {
  * The scan resolves each seal callee through the checker, so it can say the
  * function being called IS `progression.ts`'s `sealServerValue`. It cannot say
  * that function froze anything — it never executes the site. These are the
- * checks that do, one per `record`/`wire` row, pinned against the table in both
- * directions by `every-shipped-route-observes-its-seal`.
+ * checks that do, one per `record`/`wire`/`facts` row, pinned against the table
+ * in both directions by `every-shipped-route-observes-its-seal`.
  *
  * `route` is `kind file site`, matching §7.5's columns without the count: the
  * count is what the row pin is for, and repeating it here would make this table
@@ -851,6 +915,28 @@ function declaredRoutes(): readonly RouteSite[] {
  * Two rows share a title on purpose — `sessionServer.ts`'s test covers both of
  * its `record` producers in one body, and splitting it to satisfy a table would
  * be the table deciding how the tests are written.
+ *
+ * ---------------------------------------------------------------------------
+ * A NAMED TEST WAS ALL THIS TABLE EVER CHECKED, AND THAT WAS MEASURED FALSE
+ * ---------------------------------------------------------------------------
+ *
+ * `title` had exactly one reader: a regular expression counting declarations
+ * spelled with that title, and requiring the count to be one. So the table proved a test
+ * EXISTED and never that it ASSERTED anything, while the paragraph in
+ * `progression.ts` that declares this ledger said it "names the test that
+ * actually calls each producer and asserts `Object.isFrozen` on the shell and
+ * the nested objects". Neither clause was checked. Measured, not suspected:
+ * emptying the body of the test titled 'freezes the drifted row the server
+ * answers with' and keeping only that title left `tsc --noEmit` at exit 0 and the whole suite
+ * at 63 files / 2687 tests, with one route's runtime evidence gone and the
+ * ledger built to make that impossible reporting itself complete.
+ *
+ * The sibling guard existed one file over the entire time.
+ * `guaranteeTags.test.ts` already required a `MutationWitness`'s `redAssertion`
+ * to be verbatim text inside the named test's body. Two ledgers, same job,
+ * different strength, nothing saying so. `auditSealWitnesses` below asks the
+ * three questions the paragraph claimed, and the body scoping and its premise
+ * census are now `src/tuning/audit.ts`'s, shared with that sibling.
  */
 const SEAL_RUNTIME_WITNESSES: readonly {
   readonly route: string;
@@ -892,6 +978,11 @@ const SEAL_RUNTIME_WITNESSES: readonly {
     testFile: 'src/session/sessionPreview.test.ts',
     title: 'freezes the drifted row the server answers with',
   },
+  {
+    route: 'facts src/game/progression.ts receiveProgressionSnapshot',
+    testFile: 'src/game/progression.test.ts',
+    title: 'freezes what it hands back, symbol payload included',
+  },
 ];
 
 /**
@@ -906,6 +997,233 @@ let routeScanMemo: RouteScan | null = null;
 function routeScan(): RouteScan {
   routeScanMemo ??= scanRoutes();
   return routeScanMemo;
+}
+
+// ---------------------------------------------------------------------------
+// What each named witness actually does, read off the syntax tree
+// ---------------------------------------------------------------------------
+
+/** What one row of `SEAL_RUNTIME_WITNESSES` is measured to do. */
+interface SealWitnessAudit {
+  readonly route: string;
+  /** The producer the route names: the outermost frame of its `site` column. */
+  readonly producer: string;
+  /** How many declarations of `title` the test file holds for this row. */
+  readonly declarations: number;
+  /**
+   * Whether the body reaches the producer — directly, or through a helper
+   * declared in the same test file.
+   */
+  readonly callsProducer: boolean;
+  /** Whether it asserts `Object.isFrozen` on a value of the produced type. */
+  readonly freezesShell: boolean;
+  /** Which of the produced type's object-valued properties it asserts frozen. */
+  readonly freezesNested: readonly string[];
+  /** Whether it also asserts one array element of the produced type frozen. */
+  readonly freezesElement: boolean;
+  /** Every `Object.isFrozen(…)` argument in the body, as written. */
+  readonly frozenArguments: readonly string[];
+}
+
+/**
+ * The object-valued properties of a boundary type, sorted.
+ *
+ * DERIVED FROM THE TYPE RATHER THAN LISTED, which is the only version of this
+ * check worth having: adding a nested object to `ServerRecord` makes every
+ * `record` witness owe an assertion about it, with nobody maintaining a list of
+ * what "the nested objects" means. A union — `number | null` — is not an object
+ * type and drops out, so scalars are not demanded.
+ */
+function objectValuedProperties(target: RouteTarget, checker: ts.TypeChecker): readonly string[] {
+  const names: string[] = [];
+  for (const property of target.type.getProperties()) {
+    const declaration = property.declarations?.[0];
+    if (declaration === undefined) continue;
+    const type = checker.getTypeOfSymbolAtLocation(property, declaration);
+    if ((type.flags & ts.TypeFlags.Object) !== 0) names.push(property.name);
+  }
+  return names.sort();
+}
+
+/** The element types of a boundary type's array-valued properties. */
+function arrayElementTypes(target: RouteTarget, checker: ts.TypeChecker): readonly ts.Type[] {
+  const elements: ts.Type[] = [];
+  for (const property of target.type.getProperties()) {
+    const declaration = property.declarations?.[0];
+    if (declaration === undefined) continue;
+    const type = checker.getTypeOfSymbolAtLocation(property, declaration);
+    const element = checker.getIndexTypeOfType(type, ts.IndexKind.Number);
+    if (element !== undefined) elements.push(element);
+  }
+  return elements;
+}
+
+/*
+ * WHAT THE THREE QUESTIONS ARE, AND WHY EACH IS ASKED OF THE CHECKER.
+ *
+ * (1) DOES THE BODY REACH THE PRODUCER. Six of the rows call it by name; the
+ *     `applyMeetResult` row calls a fixture helper, `applyClean()`, that calls
+ *     it. So this is reachability and not a name match: every call in the body
+ *     is resolved past its import alias, and a callee declared IN THE SAME TEST
+ *     FILE is followed into. One hop is not enough and unbounded is not needed
+ *     — the walk is a queue over local declarations with a visited set, so it
+ *     terminates on any depth of fixture helper. A callee declared anywhere
+ *     else is not followed, deliberately: a helper in another module is a
+ *     second thing to read, and this ledger's whole point is that the evidence
+ *     is where the reader is looking.
+ *
+ * (2) DOES IT FREEZE THE SHELL. Every `Object.isFrozen(x)` in the body has
+ *     `x`'s type asked of the checker; the shell is satisfied by any `x` whose
+ *     type is assignable to the row's produced type. Assignability rather than
+ *     symbol identity because a narrowed local, a destructured field and a
+ *     `result.value.record` are all the produced type and none of them is the
+ *     same node as the declaration.
+ *
+ * (3) DOES IT FREEZE THE NESTED OBJECTS. `Object.isFrozen(rec.streak)` counts
+ *     for `streak` when `rec`'s own type is the produced type. That is what
+ *     makes `Object.isFrozen(stored.bestByLift)` — where `stored` is a meet row
+ *     and not a record — correctly NOT count as a record property, and it is
+ *     what makes the requirement survive a rename of the local.
+ *
+ * WHAT IT DOES NOT ASK: whether the assertion PASSES. It cannot; it is a scan.
+ * What closes that gap is that the file is one vitest runs — pinned by the
+ * `filesVitestRuns()` check below — and the declaration is the bare declarator
+ * rather than a `.skip` or `.only` variant, so if the assertion is written and
+ * the suite is green then it ran and passed.
+ * The failure this catches is the one that was live: an assertion that is not
+ * written at all.
+ */
+function auditSealWitnesses(): readonly SealWitnessAudit[] {
+  const { program, checker, targets, calleeIdentifier, resolvedSymbolOf } = boundaryProgram();
+
+  return SEAL_RUNTIME_WITNESSES.map((witness) => {
+    const [kind, file, site] = witness.route.split(' ');
+    const target = targets.find((candidate) => candidate.kind === kind);
+    if (target === undefined || file === undefined || site === undefined) {
+      throw new Error(`${witness.route}: no boundary type for kind "${String(kind)}"`);
+    }
+    const producer = (site.split('/')[0] ?? '') as string;
+    const producerFile = path.join(REPO_ROOT, file);
+    const testPath = path.join(REPO_ROOT, witness.testFile);
+    const source = program.getSourceFile(testPath);
+    if (source === undefined) {
+      throw new Error(`${witness.route}: ${witness.testFile} is not in the program`);
+    }
+
+    // The declarations of `witness.title`, as nodes. Counted here so the test
+    // can insist there is exactly one before it reads the one it found.
+    const bodies: ts.Node[] = [];
+    const findDeclarations = (node: ts.Node): void => {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === 'it'
+      ) {
+        const [titleNode, callback] = node.arguments;
+        if (
+          titleNode !== undefined &&
+          ts.isStringLiteralLike(titleNode) &&
+          titleNode.text === witness.title &&
+          callback !== undefined &&
+          (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))
+        ) {
+          bodies.push(callback);
+        }
+      }
+      ts.forEachChild(node, findDeclarations);
+    };
+    findDeclarations(source);
+
+    const audit = {
+      route: witness.route,
+      producer,
+      declarations: bodies.length,
+      callsProducer: false,
+      freezesNested: [] as string[],
+      freezesShell: false,
+      freezesElement: false,
+      frozenArguments: [] as string[],
+    };
+    const body = bodies[0];
+    if (body === undefined) return audit;
+
+    const elements = arrayElementTypes(target, checker);
+    const isProduced = (node: ts.Node): boolean =>
+      checker.isTypeAssignableTo(checker.getTypeAtLocation(node), target.type);
+
+    const visited = new Set<ts.Node>();
+    const queue: ts.Node[] = [body];
+    while (queue.length > 0) {
+      const frame = queue.shift();
+      if (frame === undefined || visited.has(frame)) continue;
+      visited.add(frame);
+
+      const walk = (node: ts.Node): void => {
+        if (ts.isCallExpression(node)) {
+          const identifier = calleeIdentifier(node);
+          if (identifier !== undefined) {
+            const declaration = resolvedSymbolOf(identifier)?.declarations?.[0];
+            const declaringFile = declaration?.getSourceFile().fileName;
+            if (identifier.text === producer && declaringFile === producerFile) {
+              audit.callsProducer = true;
+            } else if (declaration !== undefined && declaringFile === testPath) {
+              // A fixture helper in the same file. Follow it.
+              if (ts.isFunctionDeclaration(declaration) && declaration.body !== undefined) {
+                queue.push(declaration.body);
+              } else if (
+                ts.isVariableDeclaration(declaration) &&
+                declaration.initializer !== undefined &&
+                (ts.isArrowFunction(declaration.initializer) ||
+                  ts.isFunctionExpression(declaration.initializer))
+              ) {
+                queue.push(declaration.initializer);
+              }
+            }
+          }
+
+          // `Object.isFrozen(x)` — only inside the test's own body, never
+          // inside a helper. An assertion is evidence where a reader can see
+          // it, and a helper's assertions belong to whoever calls it.
+          if (
+            frame === body &&
+            ts.isPropertyAccessExpression(node.expression) &&
+            ts.isIdentifier(node.expression.expression) &&
+            node.expression.expression.text === 'Object' &&
+            node.expression.name.text === 'isFrozen'
+          ) {
+            const argument = node.arguments[0];
+            if (argument !== undefined) {
+              audit.frozenArguments.push(argument.getText());
+              if (isProduced(argument)) audit.freezesShell = true;
+              if (
+                ts.isPropertyAccessExpression(argument) &&
+                isProduced(argument.expression) &&
+                !audit.freezesNested.includes(argument.name.text)
+              ) {
+                audit.freezesNested.push(argument.name.text);
+              }
+              const argumentType = checker.getTypeAtLocation(argument);
+              if (elements.some((element) => checker.isTypeAssignableTo(argumentType, element))) {
+                audit.freezesElement = true;
+              }
+            }
+          }
+        }
+        ts.forEachChild(node, walk);
+      };
+      walk(frame);
+    }
+
+    audit.freezesNested.sort();
+    audit.frozenArguments.sort();
+    return audit;
+  });
+}
+
+let sealWitnessAuditMemo: readonly SealWitnessAudit[] | null = null;
+function sealWitnessAudits(): readonly SealWitnessAudit[] {
+  sealWitnessAuditMemo ??= auditSealWitnesses();
+  return sealWitnessAuditMemo;
 }
 
 // ---------------------------------------------------------------------------
@@ -1315,7 +1633,15 @@ describe('purity', () => {
     // Non-vacuity first, so a scan that resolved nothing cannot pass by finding
     // nothing: the shipped set has to contain the two server functions the whole
     // boundary is built around, and the scanned set has to reach past `src/`.
-    expect(routeScan().shipped.length).toBeGreaterThan(4);
+    //
+    // A COUNT AND NOT A BOUND, because the count was available. `> 4` is
+    // satisfied by a scan that lost three of the nine rows, and the row-by-row
+    // loop below only fails on a row the TABLE does not name — a route the scan
+    // stopped finding is invisible to it and is caught by the reverse pin one
+    // test down, which had the same bound. Nine is §7.5's eight producer rows
+    // plus its one `receive` row. It moves when a route is added or deleted,
+    // which is a diff somebody writes on purpose.
+    expect(routeScan().shipped.length, 'shipped rows the scan resolves').toBe(9);
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/sessionServer.ts newServerRecord x1');
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/meetServer.ts applyMeetResult x1');
     // The anchor that would have caught round seven's defect. A route pin whose
@@ -1338,7 +1664,13 @@ describe('purity', () => {
     // uses: a table that may only grow is a table that fills up with rulings
     // about code somebody deleted, and every stale row makes the real ones
     // cheaper to skim past. Deleting a builder means deleting its row.
-    expect(declaredRoutes().length).toBeGreaterThan(4);
+    //
+    // A COUNT AND NOT A BOUND. `> 4` passed on a table that had lost four of
+    // its nine rows, and the loop below cannot see a missing row either — it
+    // walks the table, so a deleted row is simply not walked. This is the pin
+    // that catches the table shrinking, and it was the one number in the pair
+    // that could be stated exactly.
+    expect(declaredRoutes().length, '§7.5 rows parsed out of the header').toBe(9);
     const found = new Set(sortedKeys(routeScan().shipped));
     for (const row of declaredRoutes()) {
       expect(
@@ -1369,12 +1701,22 @@ describe('purity', () => {
     // `Object.freeze` — and every one went red. The four shallow mutants each
     // reddened on a NESTED object (`the meets array`, `bestE1rmKg`, `and its
     // e1RMs`), which is the half a shell-only check would have missed.
+    //
+    // AND THAT WAS NOT ENOUGH, WHICH IS WHY THIS TEST IS TWICE THE LENGTH IT
+    // WAS. Everything above describes a mutation somebody ran by hand once. The
+    // ledger's own mechanical content was `existsSync` plus a regexp counting
+    // declarations, so it survived every one of those mutants for the same
+    // reason it survived EMPTYING A NAMED TEST'S BODY AND KEEPING ITS TITLE:
+    // it never read the body at all. That mutant was run at the commit before
+    // this one and left `tsc` at exit 0 and the suite at 63 files / 2687 tests.
+    // The three clauses below are the ones the ledger's paragraph in
+    // `progression.ts` had been claiming all along.
     const scan = routeScan();
     const rows = scan.shipped.filter((row) => row.kind !== 'receive');
 
     // NON-VACUITY AS A COUNT, so an empty scan cannot satisfy the loop below.
-    expect(rows.length, 'shipped record/wire rows to find witnesses for').toBe(7);
-    expect(SEAL_RUNTIME_WITNESSES.length, 'ledger rows').toBe(7);
+    expect(rows.length, 'shipped record/wire/facts rows to find witnesses for').toBe(8);
+    expect(SEAL_RUNTIME_WITNESSES.length, 'ledger rows').toBe(8);
 
     // BOTH DIRECTIONS. An unwitnessed row is the defect this closes; a witness
     // for a row that no longer exists is bookkeeping about deleted code, and
@@ -1413,7 +1755,109 @@ describe('purity', () => {
         [...text.matchAll(declaration)].length,
         `${witness.route}: ${witness.testFile} does not declare exactly one running test called "${witness.title}"`,
       ).toBe(1);
+
+      // AND THE SCOPER CAN SLICE THE FILE, on `audit.ts`'s census, which is the
+      // same call `guaranteeTags.test.ts` makes about its own witness files.
+      // Two ledgers scoping into two different lists of test files, one guard:
+      // the premise cannot be strengthened for one and left weak for the other,
+      // which is exactly how these two ledgers came to differ in the first
+      // place. The census fails on a spurious declarator opener inside a string
+      // or a comment (which truncates a body, fails closed) and on the `.each` /
+      // `.skip` / `.only` variants (which merge two bodies, fails open).
+      // Measured while this was being written: seven of the sentences in this
+      // very file tripped it, which is the guard biting on its own author.
+      expect(
+        testScopeFault(text, witness.testFile),
+        `${witness.route}: the witness scoper cannot slice ${witness.testFile}`,
+      ).toBe(null);
     }
+
+    // -----------------------------------------------------------------------
+    // WHAT THE NAMED TEST ACTUALLY DOES, WHICH IS WHAT `title` NOW HAS A READER
+    // FOR. Everything above this line is satisfied by a test that declares a
+    // title and asserts nothing.
+    // -----------------------------------------------------------------------
+    const audits = sealWitnessAudits();
+    const { targets, checker } = boundaryProgram();
+    expect(audits.length, 'audited witnesses').toBe(SEAL_RUNTIME_WITNESSES.length);
+
+    // THE REQUIRED DEPTH IS DERIVED FROM THE BOUNDARY TYPES, NOT LISTED, and
+    // these three sets are pinned exactly because the requirement below is a
+    // superset check: a derivation that returned nothing would make it pass on
+    // every row at once. `totalKg` is absent from all three on purpose — it is
+    // `number | null`, not an object, and there is nothing to freeze.
+    const requiredByKind = Object.fromEntries(
+      targets.map((target) => [target.kind, objectValuedProperties(target, checker)]),
+    );
+    expect(requiredByKind, 'the nested objects each boundary type carries').toEqual({
+      record: ['bestE1rmKg', 'fatigue', 'meets', 'streak', 'wallet'],
+      wire: ['bestE1rmKg', 'meets', 'streak', 'wallet'],
+      facts: ['bestE1rmKg', 'meets', 'streak', 'wallet'],
+    });
+
+    for (const audit of audits) {
+      const kind = audit.route.split(' ')[0] ?? '';
+      const required = requiredByKind[kind] ?? [];
+
+      // (1) EXACTLY ONE DECLARATION, READ OFF THE SYNTAX TREE. The regexp check
+      //     above reads raw text and would count an occurrence inside a string
+      //     or a comment; this counts call expressions whose callee is the
+      //     declarator, whose first argument is the title, and whose second is a
+      //     real callback. Two instruments, and the tree is the one the
+      //     body scoping then uses, so this is its precondition rather than a
+      //     duplicate.
+      expect(
+        audit.declarations,
+        `${audit.route}: ${audit.producer}'s witness is not exactly one \`it\` with a callback`,
+      ).toBe(1);
+
+      // (2) THE BODY REACHES THE PRODUCER. Six rows call it by name; the
+      //     `applyMeetResult` row reaches it through `applyClean()`, a fixture
+      //     helper in the same file, which is why this is resolved reachability
+      //     rather than a name match.
+      expect(
+        audit.callsProducer,
+        `${audit.route}: the named test never reaches ${audit.producer} — it is a witness for a producer it does not run`,
+      ).toBe(true);
+
+      // (3) IT FREEZES THE SHELL AND EVERY NESTED OBJECT. This is the clause
+      //     the ledger's paragraph claimed and nothing checked, and four of the
+      //     seven rows did not meet it: `newServerRecord`, `applyTrainingSession`
+      //     and `recordAfterServer` asserted `bestE1rmKg` alone, and
+      //     `previewServerRecord` left `wallet` and `fatigue` unasserted.
+      expect(
+        audit.freezesShell,
+        `${audit.route}: the named test asserts Object.isFrozen on nothing of the produced type`,
+      ).toBe(true);
+      expect(
+        required.filter((property) => !audit.freezesNested.includes(property)),
+        `${audit.route}: nested objects the named test does not assert frozen. Object.freeze is shallow and every number §12.2's bar is about lives one level down`,
+      ).toEqual([]);
+    }
+
+    // NON-VACUITY FOR THE WALK ITSELF, AS A COUNT. Every assertion in the loop
+    // above is satisfiable by an audit that found the right things; none of
+    // them is red if the walk silently found NO `Object.isFrozen` calls and the
+    // required sets were empty. This is the number of arguments the walk read.
+    const frozen = audits.reduce((total, audit) => total + audit.frozenArguments.length, 0);
+    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(63);
+
+    // AND THE DEPTH THE LEDGER DOES NOT REACH, TABULATED RATHER THAN CLAIMED.
+    // One array element down — `meets[0]`, where a stored meet's Total lives —
+    // cannot be required of every row: `newServerRecord` produces an empty
+    // `meets`, so there is no element to freeze and a universal requirement
+    // would be a demand no fixture can meet. Two rows do reach it. That is
+    // written down as the set rather than left to a sentence, so deleting one
+    // is red and adding a third is a deliberate line. `sessionServer.test.ts`
+    // covers the wire's element in a separate test ('seals a meet inside the
+    // wire, one array element down') which this ledger does not name.
+    expect(
+      audits.filter((audit) => audit.freezesElement).map((audit) => audit.route).sort(),
+      'the rows whose witness reaches one array element down',
+    ).toEqual([
+      'record src/game/meetPreview.ts previewServerRecord',
+      'record src/game/meetServer.ts applyMeetResult',
+    ]);
   });
 
   it('seals every record and wire §7.5 finds in shipped code [every-shipped-route-is-sealed]', () => {
@@ -1432,8 +1876,10 @@ describe('purity', () => {
     // NON-VACUITY, AS A COUNT AND NOT A BOUND. An empty domain passes the line
     // above perfectly: a scan that found nothing, or one whose `SEAL_NAME` no
     // longer matches any callee, reports zero unsealed sites and looks green.
-    // Seven is the six `record` rows plus the one `wire` row of §7.5.
-    expect(scan.sealedLiterals, 'shipped record/wire literals seen sealed').toBe(7);
+    // Eight is §7.5's six `record` rows, its one `wire` row, and the `facts`
+    // row — the snapshot mint, which reached this count by having its
+    // `deepFreeze` call respelled as the seal it already was.
+    expect(scan.sealedLiterals, 'shipped record/wire/facts literals seen sealed').toBe(8);
 
     // AND THE CALLEE IS THE SEAL, NOT A FUNCTION SPELLED LIKE IT.
     //
@@ -1458,7 +1904,14 @@ describe('purity', () => {
       scan.sealCalleeSources,
       'a shipped call to sealServerValue resolves somewhere other than the seal',
     ).toEqual(['src/game/progression.ts']);
-    expect(scan.sealCallSites.length, 'shipped sealServerValue call sites').toBe(7);
+    // NINE AND NOT EIGHT: the mint calls the seal twice, once on the
+    // `ConfirmedFacts` literal — the row above — and once on the opaque
+    // `ProgressionSnapshot` that carries it. The snapshot is not a scan target
+    // and never can be: its only property is a module-private symbol, so no
+    // test can name what is under it and no `Object.isFrozen` assertion can
+    // reach one level down. It is sealed by name and counted here, and that is
+    // the whole of the evidence for it.
+    expect(scan.sealCallSites.length, 'shipped sealServerValue call sites').toBe(9);
 
     // AND THE NAME THE SCAN MATCHES ON IS A REAL EXPORT. Without this, renaming
     // the seal turns the whole check into "no literal is sealed, and none is
@@ -1476,7 +1929,16 @@ describe('purity', () => {
     //
     // What this asserts is that the scan SEES them, so the exclusion is a
     // decision about a set that exists.
-    expect(routeScan().fixtures.length).toBeGreaterThan(5);
+    //
+    // A COUNT AND NOT A BOUND, AND THE COST IS NAMED RATHER THAN DODGED. §7.5's
+    // header argues that pinning fixtures would make the table churn on work
+    // that has nothing to do with it, and that is true OF A TABLE OF ROWS,
+    // where the churn is a merge conflict on a nine-column list. This is one
+    // integer. What the bound could not do is notice the scan collapsing from
+    // twenty-one fixtures to six — every assertion in this test would still
+    // pass, because they all ask about fixtures the scan already found. Adding
+    // a fixture record moves this number and the diff is one character.
+    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(21);
     expect(routeScan().fixtures.map((row) => row.file)).toContain('src/game/meetServer.test.ts');
     // ...and no fixture leaked into the pinned table.
     expect(declaredRoutes().filter((row) => IS_TEST_FILE.test(row.file))).toEqual([]);
@@ -1765,8 +2227,22 @@ describe('purity', () => {
     // count of MENTIONS: a header paragraph that named the key inflated it and
     // failed this test, and — the direction that matters — deleting a real write
     // could have been masked by adding a sentence about it.
-    const writes = codeOnly(MODULE_SOURCE).match(/\[SNAPSHOT_CONTENTS\]:/g) ?? [];
+    const code = codeOnly(MODULE_SOURCE);
+    const writes = code.match(/\[SNAPSHOT_CONTENTS\]:/g) ?? [];
     expect(writes).toHaveLength(2);
+
+    // AND WHICH LINES, NOT ONLY HOW MANY. The count is exact about how many and
+    // blind to which: deleting the mint and writing the key somewhere else in
+    // this 4000-line module holds the total at 2 and stays green, which defeats
+    // the whole point of pinning the number of doors. §7.5's
+    // `REFLECTIVE_ASSEMBLY_EXEMPTIONS` had this exact defect and closed it by
+    // pinning the matched LINE beside the count; this is that fix carried to
+    // its two siblings, which is where it should have gone at the time. Both
+    // lines are named, so a swap has to rewrite one of them in the diff.
+    expect(
+      code.split('\n').filter((line) => /\[SNAPSHOT_CONTENTS\]:/.test(line)).map(normalizedLine),
+      'the lines that write the snapshot key — a swap holds the count and moves the door',
+    ).toEqual(['readonly [SNAPSHOT_CONTENTS]: SnapshotContents;', '[SNAPSHOT_CONTENTS]: {']);
   });
 
   it('mints the in-flight pairing in exactly one place', () => {
@@ -1783,11 +2259,24 @@ describe('purity', () => {
     //
     // Expected: the interface declaration, and the one construction inside
     // `proposeChange`.
-    const writes = codeOnly(MODULE_SOURCE).match(/\[PAIRING_CHECKED\]:/g) ?? [];
+    const code = codeOnly(MODULE_SOURCE);
+    const writes = code.match(/\[PAIRING_CHECKED\]:/g) ?? [];
     expect(writes).toHaveLength(2);
+
+    // AND WHICH LINES, for the reason the snapshot key's sibling pin above
+    // gives: a count of 2 survives deleting this mint and adding the key
+    // anywhere else in the module.
+    expect(
+      code.split('\n').filter((line) => /\[PAIRING_CHECKED\]:/.test(line)).map(normalizedLine),
+      'the lines that write the pairing key — a swap holds the count and moves the door',
+    ).toEqual([
+      'readonly [PAIRING_CHECKED]: CheckedPairing;',
+      'inFlight: { [PAIRING_CHECKED]: { proposalId, proposal, projection } },',
+    ]);
+
     // And it is a real `unique symbol`, not a string key a caller could guess.
-    expect(codeOnly(MODULE_SOURCE)).toMatch(/const PAIRING_CHECKED: unique symbol = Symbol\(/);
-    expect(codeOnly(MODULE_SOURCE)).not.toMatch(/export const PAIRING_CHECKED/);
+    expect(code).toMatch(/const PAIRING_CHECKED: unique symbol = Symbol\(/);
+    expect(code).not.toMatch(/export const PAIRING_CHECKED/);
   });
 
   it('keeps the in-flight pairing opaque, not branded', () => {
@@ -2718,10 +3207,19 @@ describe('receiveProgressionSnapshot', () => {
   });
 
   it('freezes what it hands back, symbol payload included', () => {
+    // §7.5'S `facts` ROW, AND THE ONE THAT WAS OUTSIDE EVERY INSTRUMENT. This
+    // test predates the row: the mint used to freeze through a call spelled
+    // `deepFreeze`, which no scan looked for, and `ConfirmedFacts` was not a
+    // target type, so nothing required this test to exist or to reach past the
+    // two fields it happened to name. Measured on the commit before the row:
+    // swapping the mint's `deepFreeze` for a shallow `Object.freeze` left every
+    // §7.5 assertion green and reddened this test alone, out of 2687.
     const snap = snapshot();
     const facts = snapshotFacts(snap);
     expect(Object.isFrozen(snap)).toBe(true);
     expect(Object.isFrozen(facts)).toBe(true);
+    expect(Object.isFrozen(facts.bestE1rmKg)).toBe(true);
+    expect(Object.isFrozen(facts.streak)).toBe(true);
     expect(Object.isFrozen(facts.wallet)).toBe(true);
     expect(Object.isFrozen(facts.meets)).toBe(true);
     expect(() => {
