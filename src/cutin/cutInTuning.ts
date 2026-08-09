@@ -245,6 +245,23 @@ export const CUT_IN_TUNING = Object.freeze({
    * which is correct: a moment that can never fire has no picture to take.
    */
   PREVIEW_SEED_LIMIT: 5000,
+
+  /**
+   * HOW MANY GATE DECISIONS `cutInObserver.ts` KEEPS. NOT A KNOB EITHER.
+   *
+   * A bound on an instrument's buffer, not a feel value, and it is here rather
+   * than in `cutInObserver.ts` because `src/tuning/audit.ts` registers this file
+   * as the cut-in piece's one constants home and no other file in `src/cutin/`.
+   *
+   * Every offer the app makes costs one entry, and a whole meet makes on the
+   * order of a dozen (nine walk-outs, a recap's two record beats, and a bomb-out
+   * if there is one). `tools/verify-cutin-cap.mjs` drives THREE meets in one
+   * process and reads the log at the end, so the bound has to hold a run of that
+   * size with room to spare or the tool's first grant falls off the front. The
+   * observer reports `dropped` for exactly that reason and the tool pins it at
+   * zero, so overflowing is a RED rather than a silently shortened record.
+   */
+  OBSERVED_DECISIONS: 512,
 });
 
 /**

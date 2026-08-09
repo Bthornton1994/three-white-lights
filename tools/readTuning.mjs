@@ -91,11 +91,31 @@ export function stringInSource(source, name) {
 }
 
 /**
+ * The single-quoted string a TOP-LEVEL `const NAME = '<text>'` DECLARATION is
+ * given, or `null`.
+ *
+ * `stringInSource` above reads a PROPERTY, which is the shape every tuning block
+ * is written in, and it answers `null` for a declaration. A module-level id —
+ * the name a diagnostic channel takes on `globalThis`, say — is a declaration.
+ * Here rather than inline in one tool, per this file's own header: a fourth copy
+ * of a reader is how the third one stops matching without anybody noticing.
+ */
+export function constStringInSource(source, name) {
+  const found = new RegExp(
+    `(?:^|[^A-Za-z0-9_$])const\\s+${name}\\s*(?::[^=]*)?=\\s*'((?:[^'\\\\]|\\\\.)*)'`,
+  ).exec(source);
+  return found === null ? null : found[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+}
+
+/**
  * A source text the readers are KNOWN to handle, with the traps in it.
  *
  * `SUB_HOLD_MS` must not answer a question about `HOLD_MS`; `deadlift` has no
  * trailing comma; `'bomb-out'` is quoted and hyphenated, which is the shape the
- * cut-in allowance table is written in.
+ * cut-in allowance table is written in. `A_CHANNEL` is a DECLARATION and
+ * `A_LINE` is a PROPERTY, so each string reader is also pointed at the shape it
+ * must NOT answer — a reader that matched both would let a tool read a tuning
+ * property when it asked for a channel name and never know.
  */
 export const SELF_TEST_FIXTURE = `
   SUB_HOLD_MS: 99,
@@ -106,6 +126,7 @@ export const SELF_TEST_FIXTURE = `
   }),
   STARTING: Object.freeze({ squat: 180, deadlift: 220 }),
   A_LINE: 'High. The hips never got under.',
+  export const A_CHANNEL = '__someGlobal';
 `;
 
 /**
@@ -126,8 +147,16 @@ export function parserSelfTest() {
     ['numberInBlock ALLOWANCE walkout', numberInBlock(f, 'ALLOWANCE', 'third-attempt-walkout'), 0.5],
     ['numberInBlock STARTING deadlift (no trailing comma)', numberInBlock(f, 'STARTING', 'deadlift'), 220],
     ['stringInSource A_LINE', stringInSource(f, 'A_LINE'), 'High. The hips never got under.'],
+    ['constStringInSource A_CHANNEL', constStringInSource(f, 'A_CHANNEL'), '__someGlobal'],
     ['numberInSource on a name that is not there', numberInSource(f, 'NOT_PRESENT_MS'), null],
     ['stringInSource on a name that is not there', stringInSource(f, 'NOT_PRESENT'), null],
+    ['constStringInSource on a name that is not there', constStringInSource(f, 'NOT_PRESENT'), null],
+    // ...AND EACH STRING READER REFUSES THE OTHER'S SHAPE. Without these two the
+    // pair could collapse into one regex that answered both questions with
+    // whichever it found first, and a tool asking for a channel name would be
+    // handed a line of meet copy.
+    ['stringInSource must not read a declaration', stringInSource(f, 'A_CHANNEL'), null],
+    ['constStringInSource must not read a property', constStringInSource(f, 'A_LINE'), null],
   ];
   return want
     .filter(([, got, expected]) => got !== expected)

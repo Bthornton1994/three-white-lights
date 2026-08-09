@@ -48,6 +48,16 @@
  * — see the comment on it, and the bug a browser found.
  *
  * ---------------------------------------------------------------------------
+ * EVERY DECISION IS SAID OUT LOUD
+ * ---------------------------------------------------------------------------
+ * `offer` hands each decision to `cutInObserver.ts` — fires AND refusals. From
+ * outside this component a refusal and an offer nobody made are the same
+ * picture: no overlay. The browser tool that executes §12.3's refusal condition
+ * counted overlays and could not tell them apart, so a build where a screen
+ * stopped offering read as a build where the gate refused. The observer decides
+ * nothing and re-derives nothing; it quotes.
+ *
+ * ---------------------------------------------------------------------------
  * IT IS A REF, NOT STATE, AND THAT IS DELIBERATE
  * ---------------------------------------------------------------------------
  * The gate session is in a `useRef`; only the LIVE cut-in is React state. Two
@@ -96,6 +106,7 @@ import {
   type LiveCutIn,
 } from './cutInGate';
 import { rememberCutInSession, resumeCutInSession } from './cutInLedger';
+import { observeCutInDecision } from './cutInObserver';
 import { cutInPreviewFrom, cutInPreviewSessionFor, type CutInPreviewSession } from './cutInPreview';
 
 /** What a leaf view can do: describe a beat. It cannot fire anything. */
@@ -222,8 +233,19 @@ export function CutInHost({
   const shownAt = React.useRef<number>(0);
 
   const offer = React.useCallback((beats: readonly CutInBeat[]) => {
-    const decision = requestCutIn(session.current, beats);
+    const asked = session.current;
+    const decision = requestCutIn(asked, beats);
     session.current = decision.state;
+    // SAY OUT LOUD WHAT WAS ASKED AND WHAT CAME BACK.
+    //
+    // A refusal and an offer that was never made look identical from outside
+    // this component: both leave the screen with no overlay on it. That is not
+    // a hypothetical — `tools/verify-cutin-cap.mjs` counted overlays and its own
+    // guard said "this sees the screen, not the offer", so a build where
+    // `BombOutView` stopped offering produced a byte-identical green record.
+    // `cutInObserver.ts` records the decision the gate ALREADY made; it decides
+    // nothing and re-derives nothing.
+    observeCutInDecision(asked, beats, decision);
     // Written back on EVERY decision, not only on a fire, so a sitting that has
     // spent its slot is remembered as having spent it even if the host goes
     // away between the fire and the next beat.
