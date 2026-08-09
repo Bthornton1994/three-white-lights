@@ -384,8 +384,16 @@ const GUARANTEE_COVERAGE = {
    * that discharges it, with the trigger word doing no work — the same shape as
    * this round's other increment. Recorded rather than reworded, because
    * rewording to duck the scan is how a count stops meaning anything.
+   *
+   * AND 217 -> 220 ON THE MERGE OF THE CUT-IN OBSERVER. Measured, not added:
+   * A4's branch was built before the seal round landed, so its three new
+   * triggering paragraphs — in `cutInObserver.ts`, its test, and the tightened
+   * `cutInWiring.test.ts` — arrived together at merge time. This is the third
+   * merge in a row to conflict on this constant and the third time re-running
+   * beat arithmetic; twice the increments happened to stack and once they did
+   * not, which is the whole argument for running it.
    */
-  TREE_WIDE: 217,
+  TREE_WIDE: 220,
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -374,6 +374,22 @@ const REFLECTIVE_ASSEMBLY_EXEMPTIONS: readonly {
       'the sprite rig imports nothing from this boundary, which is context rather ' +
       'than the reason — the reason is that the line was read.',
   },
+  {
+    file: 'src/cutin/cutInObserver.ts',
+    idiom: 'as unknown as',
+    n: 1,
+    lines: ['const scope = globalThis as unknown as Record<string, unknown>;'],
+    why:
+      'publishCutInObservations() puts a getter on globalThis so the browser tool can ' +
+      'read what the cut-in gate was ASKED and what it ANSWERED. globalThis is typed as ' +
+      'its own declared globals and this key is not one of them, so the widening is to ' +
+      'Record<string, unknown> rather than to any, which CLAUDE.md bans. IT ASSEMBLES NO ' +
+      'PROGRESSION VALUE: the thing published is a function returning an observation log ' +
+      'of moments and refusal reasons, and this module imports nothing from the boundary. ' +
+      'Added on the merge of two branches rather than by its author — A4 was built before ' +
+      'this scan was tightened, so the line is new to the scan and not new to the tree, ' +
+      'and it was read before it was excused.',
+  },
 ];
 
 /** The form a matched line is pinned in: trimmed, whitespace runs collapsed. */
