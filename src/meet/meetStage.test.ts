@@ -57,6 +57,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { previewStateFor } from '../game/meetPreview';
+import { isUrgentAttempt, lastAttempt } from '../game/meetDay';
+import { cheerCrowdRise } from './walkout';
+
 import { GYM, lumaOfIndex } from '../art/gymPalette';
 import { LOAD_PRESETS } from '../art/spriteTuning';
 import { buildSquatRep } from '../art/squatAnimation';
@@ -999,5 +1003,60 @@ describe('the lifter against the crowd — MEASURED BEFORE AND AFTER', () => {
     const before = crossingsOnto(lowered);
     expect(before.againstCrowd, 'lowering the seating changed nothing').toBeGreaterThan(0);
     expect(before.subPerceptual).toBeGreaterThan(crossingsAgainst('meet-platform').subPerceptual);
+  });
+});
+
+describe("the urgent cheer has a moment that draws it — GDD §6.2's deferred rule", () => {
+  // WHY THIS EXISTS. `CROWD.URGENT_CHEER_RISE_PX` had zero test callers, zero
+  // photographs, and no preview that could reach it: every judging moment was a
+  // FIRST attempt, and `isUrgentAttempt` is false there. So the one visible
+  // channel GDD §6.2's deferred rule points at — "what a reaction may escalate
+  // is loudness, and it does" — had never been drawn in the graded artifact.
+  //
+  // THIS RULES ON NOTHING. §6.2 marks that rule PENDING PLAYTEST and it stays
+  // pending; these tests only make the claim it rests on observable, so a
+  // playtest has something to react to instead of a constant nobody has seen.
+
+  it('verdict-good-urgent is an urgent attempt, and the old verdict moments are not', () => {
+    const urgent = previewStateFor({ moment: 'verdict-good-urgent' });
+    expect(urgent.live, 'the urgent verdict moment has a live attempt').not.toBeNull();
+    expect(
+      isUrgentAttempt(urgent.live!),
+      'verdict-good-urgent reaches isUrgentAttempt — this is the whole point of the moment',
+    ).toBe(true);
+
+    // THE CONTROL, AND IT IS THE HALF THAT MAKES THE LINE ABOVE MEAN ANYTHING.
+    // If every verdict moment were urgent, the new one would prove nothing.
+    for (const moment of ['verdict-good', 'verdict-split', 'verdict-no-lift', 'verdict-split-red'] as const) {
+      const frozen = previewStateFor({ moment });
+      expect(frozen.live, `${moment} has a live attempt`).not.toBeNull();
+      expect(
+        isUrgentAttempt(frozen.live!),
+        `${moment} is NOT urgent — it is a first attempt, which is why the urgent cheer had never been drawn`,
+      ).toBe(false);
+    }
+  });
+
+  it('and it is a GOOD lift, because the urgent cheer only rises on a make', () => {
+    const urgent = previewStateFor({ moment: 'verdict-good-urgent' });
+    // The cheer arm in `VerdictView` is `revealed && good`, so an urgent
+    // attempt that MISSED would draw the empty hall and prove nothing about
+    // loudness. Read off the judged attempt the beat is holding.
+    // `MeetScreen` reads the beat's attempt through `lastAttempt(state)`, so
+    // this reads the same thing the screen does rather than a second path.
+    const judged = lastAttempt(urgent);
+    expect(judged, 'the verdict beat is holding a judged attempt').not.toBeNull();
+    expect(judged?.good, 'the attempt was judged good').toBe(true);
+  });
+
+  it('the urgent ramp really is higher than the calm one, read off the ramps the view uses', () => {
+    const calm = cheerCrowdRise(false);
+    const loud = cheerCrowdRise(true);
+    // A COUNT AND NOT A BOUND: the two ceilings are pinned to the constants, so
+    // a change to either reddens here naming which. `toBeGreaterThan` alone
+    // would survive both moving together.
+    expect(calm.toPx, 'the calm cheer ceiling').toBe(MEET_TUNING.CROWD.CHEER_RISE_PX);
+    expect(loud.toPx, 'the urgent cheer ceiling').toBe(MEET_TUNING.CROWD.URGENT_CHEER_RISE_PX);
+    expect(loud.toPx > calm.toPx, 'urgent stands further than calm').toBe(true);
   });
 });

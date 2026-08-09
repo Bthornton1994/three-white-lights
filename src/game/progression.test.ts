@@ -1856,7 +1856,12 @@ describe('purity', () => {
     // them is red if the walk silently found NO `Object.isFrozen` calls and the
     // required sets were empty. This is the number of arguments the walk read.
     const frozen = audits.reduce((total, audit) => total + audit.frozenArguments.length, 0);
-    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(63);
+    // 63 -> 64 when the `facts` row's body finally read the symbol payload its
+    // own TITLE had promised since it was written. That row is the reason this
+    // count moved and the reason it is a count: the audit reads the clauses
+    // COMMON to all eight rows, so a claim unique to one row lives in its title
+    // and had no reader. The number is measured, not adjusted to fit.
+    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(64);
 
     // AND THE DEPTH THE LEDGER DOES NOT REACH, TABULATED RATHER THAN CLAIMED.
     // One array element down — `meets[0]`, where a stored meet's Total lives —
@@ -1923,10 +1928,18 @@ describe('purity', () => {
     // NINE AND NOT EIGHT: the mint calls the seal twice, once on the
     // `ConfirmedFacts` literal — the row above — and once on the opaque
     // `ProgressionSnapshot` that carries it. The snapshot is not a scan target
-    // and never can be: its only property is a module-private symbol, so no
-    // test can name what is under it and no `Object.isFrozen` assertion can
-    // reach one level down. It is sealed by name and counted here, and that is
-    // the whole of the evidence for it.
+    // and never can be, its only property being a module-private symbol.
+    //
+    // THE EXCUSE THAT USED TO SIT HERE IS DELETED BECAUSE IT WAS FALSE. It read
+    // "no test can name what is under it and no `Object.isFrozen` assertion can
+    // reach one level down", and this file disproves it about 900 lines below:
+    // the `PAIRING_CHECKED` test walks `getOwnPropertySymbols` and asserts on
+    // the payload underneath, and `progression.ts` calls that "the
+    // SNAPSHOT_CONTENTS idiom". A guard written for the copy and not for the
+    // original — the two module-private symbols of one module, in one test
+    // file. The `facts` witness now does the same thing to the snapshot, so
+    // "sealed by name and counted here" is no longer the whole of the evidence:
+    // a string-only walk in `deepFreeze` reddens it.
     expect(scan.sealCallSites.length, 'shipped sealServerValue call sites').toBe(9);
 
     // AND THE NAME THE SCAN MATCHES ON IS A REAL EXPORT. Without this, renaming
@@ -3242,6 +3255,29 @@ describe('receiveProgressionSnapshot', () => {
       (facts as { totalKg: number | null }).totalKg = 900;
     }).toThrow(TypeError);
     expect(snapshotFacts(snap).totalKg).toBe(630);
+
+    // THE SYMBOL PAYLOAD THE TITLE PROMISES, WHICH THIS BODY DID NOT READ.
+    //
+    // Everything above reaches the facts through `snapshotFacts`, and the facts
+    // were sealed independently one statement before the snapshot was. So a
+    // `deepFreeze` that walked string keys only left `snap[SNAPSHOT_CONTENTS]`
+    // writable and every assertion above still green — the contents record
+    // could be swapped wholesale for hand-built numbers with no unit tag, and
+    // handed back as confirmed truth.
+    //
+    // The ledger excused this: "no test can name what is under it and no
+    // Object.isFrozen assertion can reach one level down." That was false when
+    // written, and the counterexample is in THIS FILE — the `PAIRING_CHECKED`
+    // test above does exactly this to the sibling symbol, which `progression.ts`
+    // itself calls "the SNAPSHOT_CONTENTS idiom". A guard written for the copy
+    // and not for the original, two module-private symbols of one module, one
+    // test file apart.
+    expect(Object.keys(snap)).toEqual([]);
+    const snapSymbols = Object.getOwnPropertySymbols(snap);
+    expect(snapSymbols).toHaveLength(1);
+    const contents = (snap as unknown as Record<symbol, Record<string, unknown>>)[snapSymbols[0]!];
+    expect(contents, 'the snapshot carries its payload under that symbol').not.toBeUndefined();
+    expect(Object.isFrozen(contents), 'the payload one level under the symbol').toBe(true);
   });
 });
 

@@ -88,6 +88,19 @@ export type MeetMomentId =
    * that the deliberation beat is not a tell: it precedes this too.
    */
   | 'verdict-split-red'
+  /**
+   * A GOOD LIFT ON AN URGENT ATTEMPT — the only moment that draws
+   * `CROWD.URGENT_CHEER_RISE_PX`.
+   *
+   * Every other judging preview is a FIRST attempt, so `cheerCrowdRise`'s
+   * urgent arm had never been drawn to a screen in the graded artifact and
+   * `URGENT_CHEER_CROWD_RISE` had no photograph and no test caller. GDD §6.2's
+   * deferred rule rests on "what a reaction may escalate is loudness, and it
+   * does" — this is the moment that claim is about, and it now exists to be
+   * looked at. NOT A RULING ON THE RULE: §6.2 marks it pending playtest and
+   * this only makes it playtestable.
+   */
+  | 'verdict-good-urgent'
   /** GDD §6.3's choice after a make: a small increase vs a big one. */
   | 'select-after-make'
   /** GDD §6.3's choice after a miss: repeat vs go past it. THE BITE. */
@@ -109,6 +122,7 @@ export const MEET_MOMENTS = Object.freeze([
   'lift',
   'deliberation',
   'verdict-good',
+  'verdict-good-urgent',
   'verdict-split',
   'verdict-no-lift',
   'verdict-split-red',
@@ -418,6 +432,16 @@ export function previewStateFor(request: MeetPreviewRequest): MeetDayState {
       return takeAttempt(openedMeet(), 'marginal', 'deliberation');
     case 'verdict-good':
       return takeAttempt(openedMeet(), 'perfect', 'verdict');
+    case 'verdict-good-urgent': {
+      // Two missed squats, so the third is urgent by `isUrgentAttempt`'s own
+      // test — last attempt, nothing banked — and then MADE, which is the one
+      // combination that reaches the urgent cheer. Built from the same
+      // `takeAttempt` ladder as `walkout-third` rather than a hand-made state,
+      // so it is the app's own arithmetic deciding this is urgent.
+      const first = takeAttempt(openedMeet(), 'dumped');
+      const second = takeAttempt(chooseOption(first, 'repeat'), 'dumped');
+      return takeAttempt(chooseOption(second, 'repeat'), 'perfect', 'verdict');
+    }
     case 'verdict-split':
       return takeAttempt(openedMeet(), 'marginal', 'verdict');
     case 'verdict-no-lift':

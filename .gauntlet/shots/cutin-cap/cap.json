@@ -1,17 +1,23 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-09T20:39:39.422Z",
+    "capturedAt": "2026-08-09T23:41:15.108Z",
     "url": "http://localhost:8081",
-    "commit": "d370a92",
+    "commit": "fc5fc76",
     "branch": "claude/agent-config-setup-m2r6ny",
-    "workingTree": "clean",
+    "workingTree": "DIRTY — this run is not against a commit",
     "dirtyPaths": [
-      "M .gauntlet/shots/shell/03-meet-played-walkout.png",
-      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/route.json"
+      "M src/game/meetDay.test.ts",
+      " M src/game/meetPreview.ts",
+      " M src/game/meetTuning.ts",
+      " M src/game/progression.test.ts",
+      " M src/meet/meetSound.test.ts",
+      " M src/meet/meetSound.ts",
+      " M src/meet/meetStage.test.ts",
+      " M tools/verify-cutin-cap.mjs",
+      " M tools/verify-meet-sound.mjs"
     ],
     "instrument": {
-      "verify-cutin-cap.mjs": "3d40a33b3612f51d",
+      "verify-cutin-cap.mjs": "5f29ecbef2a7e30d",
       "sessionDrive.mjs": "2a63eac7a653d32b",
       "readTuning.mjs": "f55c95f408d53959"
     }
@@ -35,21 +41,21 @@
           "played": true,
           "intent": "make",
           "holdMs": 1000,
-          "feedback": "High. The hips never got under."
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "SQUAT · ATTEMPT 2 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1180,
+          "holdMs": 1000,
           "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "SQUAT · ATTEMPT 3 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1180,
-          "feedback": "Depth was never in question."
+          "holdMs": 1000,
+          "feedback": "High. The hips never got under."
         },
         {
           "attempt": "BENCH · ATTEMPT 1 OF 3",
@@ -63,7 +69,7 @@
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "Depth was never in question."
+          "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "BENCH · ATTEMPT 3 OF 3",
@@ -84,17 +90,17 @@
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "DEADLIFT · ATTEMPT 3 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "feedback": "Depth was never in question."
         }
       ],
-      "ms": 96562,
+      "ms": 95618,
       "stuckBecause": null
     },
     {
@@ -125,7 +131,7 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 56039,
+      "ms": 56042,
       "stuckBecause": null
     },
     {
@@ -156,28 +162,28 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 56108,
+      "ms": 56128,
       "stuckBecause": null
     }
   ],
   "cutIns": [
     {
       "leg": 1,
-      "at": 22868,
+      "at": 22326,
       "line": "LAST ONE",
       "hint": "TAP TO SKIP",
       "over": [
         "meet-walkout"
       ],
       "search": "",
-      "goneAt": 24602
+      "goneAt": 24066
     }
   ],
   "gateDecisions": [
     {
       "seq": 0,
       "leg": 1,
-      "at": 1430,
+      "at": 2551,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -192,7 +198,7 @@
     {
       "seq": 1,
       "leg": 1,
-      "at": 11956,
+      "at": 11491,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -207,7 +213,7 @@
     {
       "seq": 2,
       "leg": 1,
-      "at": 22868,
+      "at": 22326,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -222,7 +228,7 @@
     {
       "seq": 3,
       "leg": 1,
-      "at": 33603,
+      "at": 34445,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -237,7 +243,7 @@
     {
       "seq": 4,
       "leg": 1,
-      "at": 44719,
+      "at": 45804,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -252,7 +258,7 @@
     {
       "seq": 5,
       "leg": 1,
-      "at": 53968,
+      "at": 57068,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -267,7 +273,7 @@
     {
       "seq": 6,
       "leg": 1,
-      "at": 64720,
+      "at": 67846,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -282,7 +288,7 @@
     {
       "seq": 7,
       "leg": 1,
-      "at": 73969,
+      "at": 77241,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -297,7 +303,7 @@
     {
       "seq": 8,
       "leg": 1,
-      "at": 85111,
+      "at": 86571,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -312,7 +318,7 @@
     {
       "seq": 9,
       "leg": 1,
-      "at": 97735,
+      "at": 97767,
       "sessionId": "meet-20674",
       "beatKinds": [
         "record",
@@ -328,7 +334,7 @@
     {
       "seq": 10,
       "leg": 2,
-      "at": 100543,
+      "at": 100599,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -343,7 +349,7 @@
     {
       "seq": 11,
       "leg": 2,
-      "at": 118316,
+      "at": 118415,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -358,7 +364,7 @@
     {
       "seq": 12,
       "leg": 2,
-      "at": 136062,
+      "at": 136149,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -373,7 +379,7 @@
     {
       "seq": 13,
       "leg": 2,
-      "at": 156370,
+      "at": 156440,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-over"
@@ -388,7 +394,7 @@
     {
       "seq": 14,
       "leg": 3,
-      "at": 162201,
+      "at": 162245,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -403,7 +409,7 @@
     {
       "seq": 15,
       "leg": 3,
-      "at": 179981,
+      "at": 180031,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -418,7 +424,7 @@
     {
       "seq": 16,
       "leg": 3,
-      "at": 197786,
+      "at": 197838,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-walkout"
@@ -433,7 +439,7 @@
     {
       "seq": 17,
       "leg": 3,
-      "at": 218085,
+      "at": 218142,
       "sessionId": "meet-20674",
       "beatKinds": [
         "meet-over"
@@ -460,16 +466,17 @@
       "afterEnterMs": 120
     }
   ],
-  "recorderPolls": 11608,
-  "recorderWorstGapMs": 261,
+  "recorderPolls": 11542,
+  "recorderWorstGapMs": 296,
   "browserMutationWitnesses": [
     {
       "subject": "src/meet/BombOutView.tsx",
       "mutant": "useOfferCutIn([{ kind: 'meet-over', bombedOut: true }]);  ->  useOfferCutIn([]);",
       "wasRedBefore": false,
       "wasRed": true,
-      "redCheck": "FILLED IN BY THE RUN BELOW",
-      "note": "THE DEFECT THIS ROUND EXISTS FOR."
+      "redCheck": "GDD §7.2: THE ASK — the 2 deliberately-bombed legs each OFFERED GDD §6.3's bomb-out beat TO THE GATE",
+      "alsoRed": "GDD §12.3: THE REFUSAL — every bomb-out beat that did not take the slot was refused for 'session-cap-reached'",
+      "note": "THE DEFECT THIS ROUND EXISTS FOR. The row shipped once with redCheck reading \"FILLED IN BY THE RUN BELOW\" — a placeholder published verbatim into cap.json, under a header claiming every row was run with the verbatim text of what reddened. A critic found it there. RESOLVED BY RUNNING THE MUTANT RATHER THAN BY EDITING THE STRING: wasRed was TRUE, so the header was right and the field was the lie. The run reddened TWO checks, both recorded — the ASK is the one that names the hole, the REFUSAL follows from it because a beat nobody offers is a beat nothing can refuse."
     }
   ],
   "checks": [
@@ -516,7 +523,7 @@
     {
       "ok": true,
       "what": "the app opens on GDD §3.2's daily session with no query string",
-      "detail": "search=\"\" after 863ms"
+      "detail": "search=\"\" after 1511ms"
     },
     {
       "ok": true,
@@ -536,7 +543,7 @@
     {
       "ok": true,
       "what": "leg 1: the meet surface really went away — CutInHost un-mounted",
-      "detail": "back on the check-in after 2ms, meet-screen present: false"
+      "detail": "back on the check-in after 1ms, meet-screen present: false"
     },
     {
       "ok": true,
@@ -566,7 +573,7 @@
     {
       "ok": true,
       "what": "CONTROL: the in-page recorder ran at all",
-      "detail": "11608 polls at a nominal 16ms, worst gap 261ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
+      "detail": "11542 polls at a nominal 16ms, worst gap 296ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
     },
     {
       "ok": true,
@@ -600,6 +607,16 @@
     },
     {
       "ok": true,
+      "what": "GDD §7.2: THE ASK, LEG 1 — every attempt the player lifted OFFERED its walk-out beat to the gate",
+      "detail": "9 walk-out offer(s) against 9 attempt(s) played on leg 1. This is the beat §12.2 grades meet day on. Deleting useOfferCutIn from WalkoutView, or letting bombRisk arrive always-true so the gate reads every walk-out as no qualifying moment, reddens here — and used to redden nothing in this file."
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2: THE ASK, LEG 1 — the recap OFFERED both PR sub-moments the app can reach",
+      "detail": "1 record offer(s) carrying 2 record beat(s); want 1 carrying 2. §7.2 names three PR sub-moments and only two are reachable by any screen — 'tier' by none, which cutInGate.ts §5 discloses. So two is the whole of what the app can ask for, and a drop to one means a screen stopped asking rather than that the third arrived."
+    },
+    {
+      "ok": true,
       "what": "GDD §7.2: THE ASK — the 2 deliberately-bombed legs each OFFERED GDD §6.3's bomb-out beat TO THE GATE",
       "detail": "2 of 2, on legs [2,3] (expected [2,3]). This is the line the screen check above cannot say. A build where BombOutView stopped offering — the `useOfferCutIn` line gone, or `bombedOut` arriving false so the gate reads the beat as no moment at all — leaves every other check in this file green and reddens here."
     },
@@ -616,7 +633,7 @@
     {
       "ok": true,
       "what": "GDD §7.2 / §12.3: ONE SITTING, ONE CUT-IN — 3 legs of one meet-day sitting fired exactly 1",
-      "detail": "leg 1 @22868ms \"LAST ONE\" over meet-walkout gone at 24602ms after 1734ms"
+      "detail": "leg 1 @22326ms \"LAST ONE\" over meet-walkout gone at 24066ms after 1740ms"
     },
     {
       "ok": true,
@@ -626,7 +643,7 @@
     {
       "ok": true,
       "what": "GDD §7.2: every overlay was up for ONE whole beat — not two reconciled into one, and none left on screen",
-      "detail": "spans [1734]ms against ENTER_MS + HOLD_MS = 1720ms (+400ms slack, so the threshold is 2120ms against a merged pair's ~3440ms); 0 over the threshold, 0 still up when the run ended"
+      "detail": "spans [1740]ms against ENTER_MS + HOLD_MS = 1720ms (+400ms slack, so the threshold is 2120ms against a merged pair's ~3440ms); 0 over the threshold, 0 still up when the run ended"
     },
     {
       "ok": true,

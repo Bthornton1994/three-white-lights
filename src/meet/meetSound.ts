@@ -45,7 +45,7 @@
 
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 
-import { MEET_SOUND_IDS, type MeetSoundId } from '../game/meetTuning';
+import { MEET_SOUND, MEET_SOUND_IDS, type MeetSoundId } from '../game/meetTuning';
 
 import barRattle from '../../assets/sound/bar-rattle.wav';
 import bombTone from '../../assets/sound/bomb-tone.wav';
@@ -97,23 +97,64 @@ function ensureAudioMode(): void {
  * bar load. Keeping them means a cue retriggers by seeking to zero, which is
  * also what makes the rattle able to fire faster than it decays.
  */
-const players = new Map<MeetSoundId, AudioPlayer | null>();
+/**
+ * VOICES PER CUE, AND WHY ONE WAS NOT ENOUGH.
+ *
+ * One `AudioPlayer` per id meant a retrigger did `seekTo(0)` on the player that
+ * was still sounding — so the second firing did not layer over the first, it
+ * KILLED AND RESTARTED IT. Two cues in the shipped tuning retrigger inside
+ * their own length:
+ *
+ *   - `CROWD_SWELL_BIG` is 2100ms and the walk-out plays it twice: once under
+ *     the call and once scheduled backwards from the hush. On the plain third
+ *     attempt the second lands 840ms in — 420ms into a 620ms attack — so the
+ *     room swelled, snapped to silence and started over as the bar came off the
+ *     hooks. Exactly the beat GDD §12.2 grades this game on.
+ *   - `BAR_RATTLE` is 180ms fired every 90ms per plate, so `meetSound.test.ts`'s
+ *     "lands the bar rattle instantly and LETS IT RING OUT" was true of the last
+ *     plate only.
+ *
+ * A round-robin pool rather than a busy-check: `expo-audio`'s idea of "playing"
+ * is not the same on every platform and this file must never take a screen down
+ * for a sound. Round-robin is deterministic, needs no API introspection, and
+ * degrades the right way — past the pool the OLDEST voice is the one cut, which
+ * is what you would choose anyway.
+ *
+ * The number is bounded rather than tuned: `meetSound.test.ts` derives the worst
+ * overlap any cue's schedule can produce and fails if it exceeds this.
+ */
+// Lives in `meetTuning.ts` so a node test can read it: this module imports
+// `expo-audio`, which cannot load under `vitest`'s node environment.
+const VOICES_PER_CUE = MEET_SOUND.VOICES_PER_CUE;
 
-function playerFor(id: MeetSoundId): AudioPlayer | null {
+const players = new Map<MeetSoundId, readonly (AudioPlayer | null)[]>();
+const nextVoice = new Map<MeetSoundId, number>();
+
+function voicesFor(id: MeetSoundId): readonly (AudioPlayer | null)[] {
   const existing = players.get(id);
   if (existing !== undefined) return existing;
-  let player: AudioPlayer | null = null;
-  try {
-    ensureAudioMode();
-    player = createAudioPlayer(ASSETS[id]);
-  } catch {
-    // A device with no audio route, a web tab that has not been touched yet, a
-    // platform that refuses. Sound is not load-bearing for play; losing it must
-    // never take a screen down with it.
-    player = null;
+  const pool: (AudioPlayer | null)[] = [];
+  for (let i = 0; i < VOICES_PER_CUE; i += 1) {
+    try {
+      ensureAudioMode();
+      pool.push(createAudioPlayer(ASSETS[id]));
+    } catch {
+      // A device with no audio route, a web tab that has not been touched yet,
+      // a platform that refuses. Sound is not load-bearing for play; losing it
+      // must never take a screen down with it.
+      pool.push(null);
+    }
   }
-  players.set(id, player);
-  return player;
+  const frozen = Object.freeze(pool);
+  players.set(id, frozen);
+  return frozen;
+}
+
+function playerFor(id: MeetSoundId): AudioPlayer | null {
+  const pool = voicesFor(id);
+  const at = nextVoice.get(id) ?? 0;
+  nextVoice.set(id, (at + 1) % pool.length);
+  return pool[at] ?? null;
 }
 
 /**

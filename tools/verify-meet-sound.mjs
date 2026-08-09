@@ -24,8 +24,11 @@
  *   node tools/verify-meet-sound.mjs [--url URL] [--out DIR]
  */
 import { chromium } from 'playwright';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { numberInBlock } from './readTuning.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -36,6 +39,20 @@ const flag = (name, dflt) => {
 const url = flag('url', 'http://localhost:8081');
 const outDir = path.resolve(flag('out', '.gauntlet/shots/meet'));
 const settleMs = Number(flag('settle', '5200'));
+
+/**
+ * READ, NOT TYPED. `MEET_SOUND.VOICES_PER_CUE` is how many copies of one cue
+ * may sound at once; a run that stacks deeper than that is back to the defect
+ * where a retrigger cuts the sound still playing. Reading it from source means
+ * a playtester who changes it gets a tool that moves with them.
+ */
+const srcRoot = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
+const meetTuningText = await readFile(path.join(srcRoot, 'src', 'game', 'meetTuning.ts'), 'utf8');
+const voicesPerCue = numberInBlock(meetTuningText, 'MEET_SOUND', 'VOICES_PER_CUE');
+if (voicesPerCue === null) {
+  console.error('!! could not read MEET_SOUND.VOICES_PER_CUE out of meetTuning.ts — refusing to guess');
+  process.exit(2);
+}
 
 /**
  * Which cue each beat MUST have played, by file name.
@@ -210,10 +227,52 @@ for (const check of EXPECTED) {
   const forbidden = check.mustNot.filter((f) => files.has(f));
   // A cue that was asked to play but never decoded is silence with extra steps.
   const undecoded = decoded.filter((d) => files.has(d.file) && d.durationSec === null).map((d) => d.file);
-  const ok = missing.length === 0 && forbidden.length === 0 && undecoded.length === 0;
+
+  /**
+   * HOW DEEP EACH CUE STACKS ON ITSELF, WHICH A SET OF FILE NAMES CANNOT SEE.
+   *
+   * `files` above is a Set, so a cue that fired twice inside its own length is
+   * indistinguishable from one that fired once — presence, not count, which is
+   * the shape this repository has now been bitten by three times. That blindness
+   * hid a real defect: the walk-out plays CROWD_SWELL_BIG twice, and with one
+   * player per cue the second `seekTo(0)` KILLED the first instead of layering.
+   * Nothing here could see it and a human had to read timestamps by hand.
+   *
+   * The oracle is the file's OWN DECODED LENGTH, not a restated constant: two
+   * starts overlap when the second lands before the first has finished. Depth
+   * is the most that are sounding at any one instant.
+   */
+  const durationMsOf = (file) => {
+    const hit = decoded.find((d) => d.file === file && typeof d.durationSec === 'number');
+    return hit === undefined ? null : hit.durationSec * 1000;
+  };
+  const overlaps = [...files]
+    .map((file) => {
+      const ms = durationMsOf(file);
+      const starts = played.filter((p) => p.file === file).map((p) => p.atMs).sort((a, b) => a - b);
+      if (ms === null) return { file, plays: starts.length, durationMs: null, depth: null, starts };
+      let depth = 0;
+      for (const start of starts) {
+        const live = starts.filter((other) => other <= start && other + ms > start).length;
+        if (live > depth) depth = live;
+      }
+      return { file, plays: starts.length, durationMs: Math.round(ms), depth, starts };
+    })
+    .sort((a, b) => (b.depth ?? 0) - (a.depth ?? 0));
+  const tooDeep = overlaps.filter((o) => o.depth !== null && o.depth > voicesPerCue);
+  const undated = overlaps.filter((o) => o.depth === null).map((o) => o.file);
+
+  const ok =
+    missing.length === 0 &&
+    forbidden.length === 0 &&
+    undecoded.length === 0 &&
+    tooDeep.length === 0 &&
+    undated.length === 0;
   if (!ok) failures += 1;
 
   report.push({
+    overlaps,
+    tooDeep,
     moment: check.moment ?? '(session)',
     screen: check.screen,
     played,

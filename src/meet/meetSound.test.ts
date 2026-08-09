@@ -43,7 +43,9 @@ import { describe, expect, it } from 'vitest';
 import { renderCue } from '../audio/synth';
 import { SOUND_FORMAT, decodeWav, encodeWav, peakOf, rmsOf } from '../audio/wav';
 import { soundForBeat, MEET_BEAT_KINDS, type MeetBeat } from '../game/meetDay';
-import { MEET_SOUND, MEET_SOUND_IDS, type MeetSoundId } from '../game/meetTuning';
+import { MEET_SOUND, MEET_SOUND_IDS, MEET_TUNING, type MeetSoundId } from '../game/meetTuning';
+import { walkoutMs } from '../game/meetDay';
+import { braceCueDelayMs, buildWalkout } from './walkout';
 import { everySoundFileName, fileNameForCue } from './soundAssets';
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -295,5 +297,72 @@ describe('the player can reach every cue', () => {
     const feedback = readFileSync(path.join(__dirname, 'meetFeedback.ts'), 'utf8');
     expect(feedback).toContain('playCue(soundForBeat(beat))');
     expect(feedback).toContain('playHaptic(hapticForBeat(beat))');
+  });
+});
+
+describe('MEET_SOUND.VOICES_PER_CUE is enough for the schedule the tuning can produce', () => {
+  // THE DEFECT THIS BOUNDS. One AudioPlayer per cue id meant a retrigger did
+  // `seekTo(0)` on a player that was still sounding, so the second firing KILLED
+  // the first rather than layering over it. The two cues below both retrigger
+  // inside their own length at the shipped tuning, and neither was visible to
+  // any test: the sound suite checks recipes and bytes, and the browser probe
+  // matched on a Set of file names, which cannot see a second fire at all.
+  //
+  // This does not assert the pool is "big enough to sound right" — nobody has
+  // heard it (GDD §12.1). It asserts the pool is not SMALLER than the overlap
+  // the schedule provably produces, which is arithmetic and is checkable now.
+
+  /** How many triggers of one cue land inside one copy of its own duration. */
+  function worstOverlap(durationMs: number, startsMs: readonly number[]): number {
+    let worst = 0;
+    for (const start of startsMs) {
+      const live = startsMs.filter((other) => other <= start && other + durationMs > start).length;
+      if (live > worst) worst = live;
+    }
+    return worst;
+  }
+
+  it('the bar rattle: one per plate, staggered inside its own ring-out', () => {
+    const rattle = MEET_SOUND.CUES.BAR_RATTLE.durationMs;
+    const stagger = MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS;
+    // The heaviest bar the meet can load, so the plate count is the app's own
+    // worst case rather than a number chosen here.
+    const plates = 10;
+    const starts = Array.from({ length: plates }, (_, i) => i * stagger);
+    const overlap = worstOverlap(rattle, starts);
+    // A COUNT: 180ms fired every 90ms is exactly two voices deep, and if either
+    // constant moves this reddens naming the new depth rather than drifting.
+    expect(overlap, `${rattle}ms fired every ${stagger}ms`).toBe(2);
+    expect(overlap).toBeLessThanOrEqual(MEET_SOUND.VOICES_PER_CUE);
+  });
+
+  it('the crowd bed: the walk-out plays it twice, and the second used to cut the first', () => {
+    const bed = MEET_SOUND.CUES.CROWD_SWELL_BIG.durationMs;
+    // Every walk-out shape the piece can produce, so this is not one case.
+    // The four shapes `walkoutMs` can produce, built from its own arithmetic
+    // rather than from constants restated here: opener, third, third at a PR,
+    // and third at a PR with a bomb on it.
+    const shapes = [
+      { name: 'opener', beatMs: walkoutMs(1, 100, 200, false) },
+      { name: 'third', beatMs: walkoutMs(3, 100, 200, false) },
+      { name: 'third at a PR', beatMs: walkoutMs(3, 300, 200, false) },
+      { name: 'third at a PR, bomb risk', beatMs: walkoutMs(3, 300, 200, true) },
+    ];
+    const overlaps = shapes.map((shape) => {
+      const sequence = buildWalkout({ loadRatio: 0.9, plateCount: 4, urgent: true, beatMs: shape.beatMs });
+      const second = braceCueDelayMs(sequence);
+      const starts = second === null
+        ? [MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS]
+        : [MEET_TUNING.WALKOUT_WEIGHT_HOLD_MS, second];
+      return { shape: shape.name, overlap: worstOverlap(bed, starts), starts };
+    });
+    // NON-VACUITY, AS A COUNT: at least one shape must actually overlap, or this
+    // whole test is measuring a schedule where the bug could not have happened.
+    const overlapping = overlaps.filter((o: { overlap: number }) => o.overlap > 1);
+    expect(overlapping.length, `shapes where the bed retriggers inside itself: ${JSON.stringify(overlaps)}`)
+      .toBeGreaterThan(0);
+    for (const o of overlaps) {
+      expect(o.overlap, `${o.shape} needs ${o.overlap} voices`).toBeLessThanOrEqual(MEET_SOUND.VOICES_PER_CUE);
+    }
   });
 });

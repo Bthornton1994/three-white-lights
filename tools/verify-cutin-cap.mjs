@@ -94,7 +94,17 @@
  * firing, so the committed record is exactly that case. "A gate that happens to
  * fire once because no caller asks twice has not met the bar."
  *
- * `src/cutin/cutInObserver.ts` closes it. `CutInHost.offer` hands EVERY
+ * `src/cutin/cutInObserver.ts` closes it FOR LEGS 2 AND 3, AND THE FIRST
+ * VERSION OF THIS SENTENCE SAID "closes it" FLAT. That was wrong and a critic
+ * caught it one round later: the ASK and REFUSAL checks below filter the gate
+ * log to `moment === 'bomb-out'` on the missed legs, so LEG 1 — the played
+ * meet, which is where §7.2's FIRST firing moment (the third-attempt walk-out
+ * §12.2 grades this game on) and BOTH PR sub-moments are reported — had no
+ * offer assertion at all. Deleting `useOfferCutIn` from `WalkoutView` or
+ * `RecapView` left every check in this file green.
+ *
+ * Leg 1 is now asserted too, below. What each half covers is stated where it is
+ * asserted rather than summarised here, because a summary is what went stale. `CutInHost.offer` hands EVERY
  * decision — fires and refusals — to a bounded in-app log, published as a
  * read-only getter on `globalThis` under a name this tool READS FROM SOURCE
  * rather than types. The in-page recorder drains it on the same 16 ms poll it
@@ -237,8 +247,18 @@ const BROWSER_MUTATION_WITNESSES = Object.freeze([
     mutant: "useOfferCutIn([{ kind: 'meet-over', bombedOut: true }]);  ->  useOfferCutIn([]);",
     wasRedBefore: false,
     wasRed: true,
-    redCheck: 'FILLED IN BY THE RUN BELOW',
-    note: 'THE DEFECT THIS ROUND EXISTS FOR.',
+    redCheck:
+      "GDD §7.2: THE ASK — the 2 deliberately-bombed legs each OFFERED GDD §6.3's bomb-out beat TO THE GATE",
+    alsoRed:
+      "GDD §12.3: THE REFUSAL — every bomb-out beat that did not take the slot was refused for 'session-cap-reached'",
+    note:
+      'THE DEFECT THIS ROUND EXISTS FOR. The row shipped once with redCheck reading ' +
+      '"FILLED IN BY THE RUN BELOW" — a placeholder published verbatim into cap.json, under a ' +
+      'header claiming every row was run with the verbatim text of what reddened. A critic found ' +
+      'it there. RESOLVED BY RUNNING THE MUTANT RATHER THAN BY EDITING THE STRING: wasRed was ' +
+      'TRUE, so the header was right and the field was the lie. The run reddened TWO checks, both ' +
+      'recorded — the ASK is the one that names the hole, the REFUSAL follows from it because a ' +
+      'beat nobody offers is a beat nothing can refuse.',
   }),
 ]);
 
@@ -1340,6 +1360,54 @@ check(
   'CONTROL: every DECISION observed was on the played arm too — no query string in the address bar',
   `${offersWithQueryString.length} of ${offers.length} carried one. ` +
     'The sibling of the cut-in check above, applied mechanically rather than left to whoever reads this: `?cutin=` stages a beat through the same `offer`, so a decision taken down the debug arm would otherwise count here.',
+);
+
+/**
+ * LEG 1'S OFFERS — THE HALF THE FIRST VERSION OF THIS SECTION DID NOT ASSERT.
+ *
+ * Legs 2 and 3 lean on the bomb-out because it is allowed in every sitting. Leg
+ * 1 is the PLAYED meet, and it is where GDD §7.2's other three firing moments
+ * are reported: the third-attempt walk-out, which is the beat §12.2 grades this
+ * game on, and both PR sub-moments at the recap. None of them was checked, so
+ * deleting `useOfferCutIn` from `WalkoutView` or `RecapView` left this whole
+ * file green — the same "a build where a screen stopped offering produces a
+ * byte-identical record" the block at the top of this file describes, still
+ * true of four screens one round after being closed for the fifth.
+ *
+ * COUNTS, NOT PRESENCE, and derived rather than typed: one walk-out offer per
+ * attempt the driver actually played on leg 1, read from that leg's own record.
+ * A build that offered on some attempts and not others holds `> 0` and reddens
+ * here.
+ */
+const legOne = legRecords.find((l) => l.n === 1) ?? null;
+const legOneAttempts = legOne === null ? 0 : legOne.attempts.length;
+const walkoutOffers = offers.filter((o) => o.leg === 1 && o.beatKinds.includes('meet-walkout'));
+check(
+  legOneAttempts > 0 && walkoutOffers.length === legOneAttempts,
+  "GDD §7.2: THE ASK, LEG 1 — every attempt the player lifted OFFERED its walk-out beat to the gate",
+  `${walkoutOffers.length} walk-out offer(s) against ${legOneAttempts} attempt(s) played on leg 1. ` +
+    'This is the beat §12.2 grades meet day on. Deleting useOfferCutIn from WalkoutView, or letting ' +
+    'bombRisk arrive always-true so the gate reads every walk-out as no qualifying moment, reddens ' +
+    'here — and used to redden nothing in this file.',
+);
+
+/**
+ * And the recap's PR ask. `RecapView` offers ONE decision carrying both record
+ * sub-kinds, so this pins one offer and both kinds inside it rather than two
+ * offers — the shape is read off the observation, not assumed.
+ */
+const recordOffers = offers.filter((o) => o.leg === 1 && o.beatKinds.includes('record'));
+const recordKindCount = recordOffers.reduce(
+  (n, o) => n + o.beatKinds.filter((k) => k === 'record').length,
+  0,
+);
+check(
+  recordOffers.length === 1 && recordKindCount === 2,
+  "GDD §7.2: THE ASK, LEG 1 — the recap OFFERED both PR sub-moments the app can reach",
+  `${recordOffers.length} record offer(s) carrying ${recordKindCount} record beat(s); want 1 carrying 2. ` +
+    "§7.2 names three PR sub-moments and only two are reachable by any screen — 'tier' by none, which " +
+    'cutInGate.ts §5 discloses. So two is the whole of what the app can ask for, and a drop to one ' +
+    'means a screen stopped asking rather than that the third arrived.',
 );
 
 /** Offers the gate recognised as GDD §6.3's bomb-out. */

@@ -1151,6 +1151,11 @@ describe('the ?meet= preview beats', () => {
       lift: 'lift',
       deliberation: 'deliberation',
       'verdict-good': 'verdict',
+      // A GOOD LIFT ON AN URGENT ATTEMPT — the only moment that reaches
+      // CROWD.URGENT_CHEER_RISE_PX, which had no preview and so had never been
+      // drawn to a screen. Same phase as the calm one on purpose: what differs
+      // is the attempt's stakes, not the beat.
+      'verdict-good-urgent': 'verdict',
       'verdict-split': 'verdict',
       'verdict-no-lift': 'verdict',
       'verdict-split-red': 'verdict',

@@ -1169,6 +1169,20 @@ export const MEET_TUNING = Object.freeze({
  */
 export const MEET_SOUND = Object.freeze({
   /**
+   * VOICES PER CUE — how many copies of one sound may sound at once.
+   *
+   * One player per cue id meant a retrigger did `seekTo(0)` on a player that
+   * was still sounding, so the second firing KILLED the first instead of
+   * layering. Two cues retrigger inside their own length at this tuning:
+   * `CROWD_SWELL_BIG` (2100ms, played twice by the walk-out, the second landing
+   * mid-attack) and `BAR_RATTLE` (180ms, fired every 90ms per plate).
+   *
+   * Bounded rather than tuned: `meetSound.test.ts` derives the worst overlap
+   * the schedule can produce and reddens if it exceeds this. NOBODY HAS HEARD
+   * IT (GDD §12.1) — this is a resource floor, not a mix decision.
+   */
+  VOICES_PER_CUE: 3,
+  /**
    * THE ONE VOLUME KNOB. Applied to every cue after its own gain.
    *
    * Set to 0 and the game is silent; `meetSound.test.ts` uses exactly that as
