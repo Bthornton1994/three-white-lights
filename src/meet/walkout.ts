@@ -162,8 +162,9 @@
 import type { LifterFrameSpec } from '../art/lifterSprite';
 import type { SquatFrame } from '../art/squatAnimation';
 import { PITCH, QUANTISE, STRAIN } from '../art/spriteTuning';
+import { isUrgentAttempt, type AttemptStakes } from '../game/meetDay';
 import { MEET_SOUND, MEET_TUNING } from '../game/meetTuning';
-import { hallBraceFrame } from './meetHall';
+import { hallBraceFrame, hallPlateCount } from './meetHall';
 
 const M = MEET_TUNING.WALKOUT_MOTION;
 const C = MEET_TUNING.CROWD;
@@ -252,6 +253,74 @@ export interface WalkoutRequest {
    * and can only ever choreograph the first 2,120.
    */
   readonly beatMs: number;
+}
+
+/**
+ * What a screen knows about the attempt on the platform, in the fields the
+ * walk-out needs. `LiveAttempt` satisfies it structurally.
+ */
+export interface WalkoutAttempt extends AttemptStakes {
+  /** Everything on the bar, including bar and collars, kg. */
+  readonly weightKg: number;
+  /** How long GDD §6.2 step 1 runs for this attempt (`meetDay.ts`'s `walkoutMs`). */
+  readonly walkoutMs: number;
+}
+
+/**
+ * The walk-out for one attempt, from the three things a meet-day screen holds.
+ *
+ * ---------------------------------------------------------------------------
+ * ONE CONSTRUCTION SITE, AND THAT IS THE WHOLE REASON IT EXISTS
+ * ---------------------------------------------------------------------------
+ * Two screens are either side of the cut into the rep. `WalkoutView` builds the
+ * sheet and plays it; `AttemptView` reads `settledCrowdRisePx` off it to find
+ * out what room the rep happens in. If each assembled its own request, the two
+ * could disagree about which beat they are either side of — and the hall would
+ * change at the cut, which is exactly the defect this function was added to
+ * close. `meetStage.test.ts` scans both screens for this call.
+ *
+ * `urgent` COMES FROM `isUrgentAttempt` RATHER THAN FROM A THIRD COPY OF ITS
+ * THREE CONDITIONS. `WalkoutView` used to spell out `bombRisk || isPrAttempt ||
+ * attemptNumber === ATTEMPTS_PER_LIFT` inline, which is game logic in a `.tsx`
+ * and a second definition of a word `meetDay.ts` already owns.
+ */
+export function walkoutRequestFor(
+  attempt: WalkoutAttempt,
+  barAndCollarsKg: number,
+  loadRatio: number,
+): WalkoutRequest {
+  return {
+    loadRatio,
+    plateCount: hallPlateCount(attempt.weightKg, barAndCollarsKg),
+    urgent: isUrgentAttempt(attempt),
+    beatMs: attempt.walkoutMs,
+  };
+}
+
+/**
+ * How far up the hall is at the instant the bar starts moving.
+ *
+ * ---------------------------------------------------------------------------
+ * READ OFF THE SHEET'S LAST DRAWN FRAME, NOT RESTATED FROM A CONSTANT
+ * ---------------------------------------------------------------------------
+ * The obvious implementation is `urgent ? HUSH_CROWD_RISE_PX : 0`, and at the
+ * shipped tuning it happens to give the same six answers. It is still wrong,
+ * and the reason is 20 ms wide: `crowdRiseAt` only reaches
+ * `HUSH_CROWD_RISE_PX` across a BRACE window, and a tail under
+ * `MIN_BRACE_WINDOW_MS` has none — such a beat ends at `CROWD.WALKOUT_RISE_PX`
+ * instead. The shortest urgent tail the game can currently produce (a first
+ * attempt above a PR) offers 620 ms against a floor of 600, so one tuning pass
+ * on `WALKOUT_MS`, `MIN_BRACE_WINDOW_MS` or the choreography puts an urgent
+ * attempt on the other side of that line — and a restated constant would then
+ * draw the rep in a hall the walk-out never reached.
+ *
+ * Building the sheet costs ~0.5 ms and both screens memoise it per attempt.
+ * `walkout.test.ts` sweeps both sides of the floor rather than only the shapes
+ * the shipped tuning happens to produce.
+ */
+export function settledCrowdRisePx(request: WalkoutRequest): number {
+  const sequence = buildWalkout(request);
+  return walkoutFrameAt(sequence, sequence.beatMs).crowdRisePx;
 }
 
 /**
