@@ -580,6 +580,36 @@ physiology.
 
 ## Working Style
 
+- **EVERY WAVE STARTS WITH `node tools/wave-start.mjs`, BEFORE ANY AGENT IS
+  DISPATCHED.** Not a suggestion and not a tool to reach for when something
+  looks wrong — the first command of the wave, every time.
+
+  It asks three questions, each of which has already cost this run a round when
+  it was noticed late: is `HEAD` behind or diverged from **the remote** (asked
+  with `ls-remote`, because a rewind can take the tracking ref with it); is any
+  unmerged `claude/*` branch stale; does the committed browser evidence still
+  describe this tree.
+
+  **The reason it is automatic rather than invoked on suspicion is the whole
+  point.** The near-miss that produced it was caught because work looked stuck
+  for long enough that a human noticed and asked. That is not a mechanism — it
+  is a person watching a clock, and it only fires when the delay is long enough
+  to be obvious. Six rewinds and five killed agents have each announced
+  themselves the same way: not at all. A check that runs on schedule catches the
+  next one on the next wave; a check that runs on suspicion catches it whenever
+  someone happens to look.
+
+  A non-zero exit means "look at this", not "the wave cannot start". Two of the
+  three questions have legitimate non-zero answers — an in-flight agent is
+  unmerged and young, evidence is stale immediately after a code change — so the
+  output names which one and the reader decides.
+
+  It is a start-of-wave snapshot, not a monitor: it cannot see a rewind that
+  lands mid-wave. **Before any push that carries work worth keeping, probe the
+  path with an empty commit first** and verify it round-trips with `ls-remote`.
+  That habit caught the sixth rewind while holding three builder branches, at a
+  cost of one throwaway commit.
+
 - Prefer editing existing files over creating new ones.
 - Do not create documentation files unless asked.
 - Commit early, commit often, small scopes.

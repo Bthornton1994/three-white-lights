@@ -1,20 +1,17 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-08T16:32:24.095Z",
+    "capturedAt": "2026-08-09T20:10:23.278Z",
     "url": "http://localhost:8081",
-    "commit": "82ff1a0",
+    "commit": "f140473",
     "branch": "claude/agent-config-setup-m2r6ny",
-    "workingTree": "clean",
+    "workingTree": "DIRTY — this run is not against a commit",
     "dirtyPaths": [
-      "M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
-      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/route.json",
-      "?? .gauntlet/shots/shell/12-walkout-tail-settled.png"
+      "?? tools/wave-start.mjs"
     ],
     "instrument": {
-      "verify-cutin-cap.mjs": "748b33ecfeab48c4",
+      "verify-cutin-cap.mjs": "3d40a33b3612f51d",
       "sessionDrive.mjs": "2a63eac7a653d32b",
-      "readTuning.mjs": "cabc19d450689962"
+      "readTuning.mjs": "f55c95f408d53959"
     }
   },
   "theCap": 1,
@@ -36,42 +33,42 @@
           "played": true,
           "intent": "make",
           "holdMs": 1000,
-          "feedback": "You hit depth by a hair."
+          "feedback": "High. The hips never got under."
         },
         {
           "attempt": "SQUAT · ATTEMPT 2 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1000,
+          "holdMs": 1180,
           "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "SQUAT · ATTEMPT 3 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1000,
-          "feedback": "High. The hips never got under."
+          "holdMs": 1180,
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "BENCH · ATTEMPT 1 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "Depth was never in question."
+          "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "BENCH · ATTEMPT 2 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "BENCH · ATTEMPT 3 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "DEADLIFT · ATTEMPT 1 OF 3",
@@ -85,7 +82,7 @@
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "Depth was never in question."
+          "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "DEADLIFT · ATTEMPT 3 OF 3",
@@ -95,7 +92,7 @@
           "feedback": "Depth was never in question."
         }
       ],
-      "ms": 97621,
+      "ms": 96827,
       "stuckBecause": null
     },
     {
@@ -126,7 +123,7 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 55969,
+      "ms": 56063,
       "stuckBecause": null
     },
     {
@@ -157,25 +154,322 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 56019,
+      "ms": 56064,
       "stuckBecause": null
     }
   ],
   "cutIns": [
     {
       "leg": 1,
-      "at": 22330,
+      "at": 23180,
       "line": "LAST ONE",
       "hint": "TAP TO SKIP",
       "over": [
         "meet-walkout"
       ],
       "search": "",
-      "goneAt": 24061
+      "goneAt": 24916
     }
   ],
-  "recorderPolls": 12106,
-  "recorderWorstGapMs": 256,
+  "gateDecisions": [
+    {
+      "seq": 0,
+      "leg": 1,
+      "at": 1593,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 0,
+      "firedCountAfter": 0,
+      "search": ""
+    },
+    {
+      "seq": 1,
+      "leg": 1,
+      "at": 12104,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 0,
+      "firedCountAfter": 0,
+      "search": ""
+    },
+    {
+      "seq": 2,
+      "leg": 1,
+      "at": 23181,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "fire",
+      "moment": "third-attempt-walkout",
+      "refusal": null,
+      "firedCountBefore": 0,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 3,
+      "leg": 1,
+      "at": 33783,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 4,
+      "leg": 1,
+      "at": 44910,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 5,
+      "leg": 1,
+      "at": 54219,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": "third-attempt-walkout",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 6,
+      "leg": 1,
+      "at": 64948,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 7,
+      "leg": 1,
+      "at": 76019,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 8,
+      "leg": 1,
+      "at": 86778,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": "third-attempt-walkout",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 9,
+      "leg": 1,
+      "at": 98059,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "record",
+        "record"
+      ],
+      "outcome": "refused",
+      "moment": "personal-record",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 10,
+      "leg": 2,
+      "at": 100888,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 11,
+      "leg": 2,
+      "at": 118678,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 12,
+      "leg": 2,
+      "at": 136340,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 13,
+      "leg": 2,
+      "at": 156746,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-over"
+      ],
+      "outcome": "refused",
+      "moment": "bomb-out",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 14,
+      "leg": 3,
+      "at": 162589,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 15,
+      "leg": 3,
+      "at": 180355,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 16,
+      "leg": 3,
+      "at": 197988,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 17,
+      "leg": 3,
+      "at": 218397,
+      "sessionId": "meet-20674",
+      "beatKinds": [
+        "meet-over"
+      ],
+      "outcome": "refused",
+      "moment": "bomb-out",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    }
+  ],
+  "gateChannel": {
+    "name": "__cutInGateLog",
+    "seen": true,
+    "dropped": 0
+  },
+  "cutInFrames": [
+    {
+      "file": "cut-in-leg-1.png",
+      "leg": 1,
+      "artOpacity": 1,
+      "lineOpacity": 1,
+      "afterEnterMs": 120
+    }
+  ],
+  "recorderPolls": 11461,
+  "recorderWorstGapMs": 277,
+  "browserMutationWitnesses": [
+    {
+      "subject": "src/meet/BombOutView.tsx",
+      "mutant": "useOfferCutIn([{ kind: 'meet-over', bombedOut: true }]);  ->  useOfferCutIn([]);",
+      "wasRedBefore": false,
+      "wasRed": true,
+      "redCheck": "FILLED IN BY THE RUN BELOW",
+      "note": "THE DEFECT THIS ROUND EXISTS FOR."
+    }
+  ],
   "checks": [
     {
       "ok": true,
@@ -204,8 +498,23 @@
     },
     {
       "ok": true,
+      "what": "CONTROL: the gate's own decision log has a name, and it was READ from src/cutin/cutInObserver.ts",
+      "detail": "\"__cutInGateLog\"; the in-page recorder drains this on the same poll it watches the DOM on"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: the placeholder ending really has no staggered assembly, so ITS container is the thing drawn — and the scan can see one that does",
+      "detail": "CareerCalendarPlaceholderView.tsx animates: false (must be false — add a fade there and this probe is a container again, which is the defect); BombOutView.tsx animates: true (must be true, or the pattern has stopped matching and the line above means nothing)"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: every one of the 7 endings driveMeet can return has a row in ENDING_PROBE",
+      "detail": "declared [\"bombed\",\"overrun\",\"placeholder\",\"recap\",\"stuck\",\"timeout\",\"waiting\"]; probed [\"bombed\",\"overrun\",\"placeholder\",\"recap\",\"stuck\",\"timeout\",\"waiting\"]. A new ending with no row is the shape that emitted \"the 'placeholder' screen is DRAWN … probed (none)\"."
+    },
+    {
+      "ok": true,
       "what": "the app opens on GDD §3.2's daily session with no query string",
-      "detail": "search=\"\" after 698ms"
+      "detail": "search=\"\" after 843ms"
     },
     {
       "ok": true,
@@ -220,12 +529,12 @@
     {
       "ok": true,
       "what": "leg 1: the 'recap' screen is DRAWN, not merely mounted, before the shutter",
-      "detail": "probed recap-action: effective opacity 1.000 after 1240ms (4 x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)"
+      "detail": "probed recap-action: effective opacity 0.995 after 1240ms (4 x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)"
     },
     {
       "ok": true,
       "what": "leg 1: the meet surface really went away — CutInHost un-mounted",
-      "detail": "back on the check-in after 2ms, meet-screen present: false"
+      "detail": "back on the check-in after 1ms, meet-screen present: false"
     },
     {
       "ok": true,
@@ -255,12 +564,12 @@
     {
       "ok": true,
       "what": "CONTROL: the in-page recorder ran at all",
-      "detail": "12106 polls at a nominal 16ms, worst gap 256ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
+      "detail": "11461 polls at a nominal 16ms, worst gap 277ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
     },
     {
       "ok": true,
       "what": "CONTROL: the local calendar day did not turn over mid-run, so all three legs are ONE sitting",
-      "detail": "Sat Aug 08 2026 -> Sat Aug 08 2026; cutInSessionId('meet', day) is a function of this"
+      "detail": "Sun Aug 09 2026 -> Sun Aug 09 2026; cutInSessionId('meet', day) is a function of this"
     },
     {
       "ok": true,
@@ -279,8 +588,48 @@
     },
     {
       "ok": true,
+      "what": "CONTROL: the gate's own decision channel was open, and its log did not overflow",
+      "detail": "channel \"__cutInGateLog\" seen: true; dropped 0 (CUT_IN_TUNING.OBSERVED_DECISIONS is the bound; anything above 0 means the earliest offers of this run are gone and every count below is over a truncated log); 18 decisions drained"
+    },
+    {
+      "ok": true,
+      "what": "CONTROL: every DECISION observed was on the played arm too — no query string in the address bar",
+      "detail": "0 of 18 carried one. The sibling of the cut-in check above, applied mechanically rather than left to whoever reads this: `?cutin=` stages a beat through the same `offer`, so a decision taken down the debug arm would otherwise count here."
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2: THE ASK — the 2 deliberately-bombed legs each OFFERED GDD §6.3's bomb-out beat TO THE GATE",
+      "detail": "2 of 2, on legs [2,3] (expected [2,3]). This is the line the screen check above cannot say. A build where BombOutView stopped offering — the `useOfferCutIn` line gone, or `bombedOut` arriving false so the gate reads the beat as no moment at all — leaves every other check in this file green and reddens here."
+    },
+    {
+      "ok": true,
+      "what": "GDD §12.3: THE REFUSAL — every bomb-out beat that did not take the slot was refused for 'session-cap-reached'",
+      "detail": "2 refused by the CAP, 0 fired, against 2 asked. Reasons in order: [\"session-cap-reached\",\"session-cap-reached\"]. Not 'held-back-for-scarcity' — that is §7.2's soft rate and SESSION_ALLOWANCE['bomb-out'] is 1 — and not 'no-qualifying-moment', which would mean the beat never qualified. Nothing asked at all gives 0 against a want of 2, which is red."
+    },
+    {
+      "ok": true,
+      "what": "GDD §12.3: THE GRANT — the gate granted exactly 1 cut-in across the whole sitting",
+      "detail": "1 grant(s): [\"leg 1 third-attempt-walkout (count 0->1)\"]. Every other decision was a refusal: [\"no-qualifying-moment\",\"session-cap-reached\"] over 17 of them."
+    },
+    {
+      "ok": true,
       "what": "GDD §7.2 / §12.3: ONE SITTING, ONE CUT-IN — 3 legs of one meet-day sitting fired exactly 1",
-      "detail": "leg 1 @22330ms \"LAST ONE\" over meet-walkout gone at 24061ms after 1731ms"
+      "detail": "leg 1 @23180ms \"LAST ONE\" over meet-walkout gone at 24916ms after 1736ms"
+    },
+    {
+      "ok": true,
+      "what": "GDD §12.3: the gate’s grant count and the overlay count are the SAME NUMBER",
+      "detail": "gate granted 1, 1 overlay(s) reached the screen. They come apart in two ways and both matter: a grant that never drew (the view stopped rendering), and two grants counted as one overlay (`live` A->B reconciled in place, which a DOM transition watcher cannot see)."
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2: every overlay was up for ONE whole beat — not two reconciled into one, and none left on screen",
+      "detail": "spans [1736]ms against ENTER_MS + HOLD_MS = 1720ms (+400ms slack, so the threshold is 2120ms against a merged pair's ~3440ms); 0 over the threshold, 0 still up when the run ended"
+    },
+    {
+      "ok": true,
+      "what": "GDD §7.2: the cut-in was PHOTOGRAPHED — 1 frame, with its art drawn rather than merely mounted",
+      "detail": "cut-in-leg-1.png (leg 1): cut-in-art effective opacity 1.000, cut-in-line 1.000, taken 120ms after the overlay appeared (ENTER_MS, read from cutInTuning.ts)"
     }
   ],
   "failures": [],
