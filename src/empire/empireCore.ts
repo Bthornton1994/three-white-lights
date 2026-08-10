@@ -768,7 +768,15 @@ export function outputReach(output: EmpireOutput): OutputReach {
   return SINK_REACH[OUTPUT_SINK[output]];
 }
 
-/** An accelerant's licence, by the same two-hop lookup as the type. */
+/**
+ * An accelerant's licence, by the same two-hop lookup as the type.
+ *
+ * NOT TOTAL, and said so rather than left for a caller to find: for a value
+ * that is not an accelerant this indexes twice and returns undefined, which its
+ * signature denies. It is a lookup for callers the compiler has checked.
+ * `mayAccelerate` below is the one that takes untyped input, and it narrows
+ * before it reaches this.
+ */
 export function accelerantLicence(accelerant: EmpireAccelerant): readonly OutputReach[] {
   return ARRIVAL_LICENCE[ACCELERANT_ARRIVAL[accelerant]];
 }
@@ -779,8 +787,17 @@ export function accelerantLicence(accelerant: EmpireAccelerant): readonly Output
  * The compiler already refuses the illegal pairing at every call site written
  * in TypeScript. This is for the call sites that are not: a settled order
  * decoded from an Edge Function response is JSON, and JSON has no types.
+ *
+ * That sentence was the whole point of the function and was false for a round.
+ * It went straight to `accelerantLicence(...).includes(...)`, so a decoded
+ * accelerant the tables have never heard of threw a `TypeError` out of it —
+ * out of `empireStateFaults`, whose contract is to COLLECT faults, and
+ * therefore out of `assertEmpireState` as the wrong error. Unknown vocabulary
+ * is refused here, which is the answer a licence question has for a word it
+ * does not know.
  */
 export function mayAccelerate(accelerant: EmpireAccelerant, output: EmpireOutput): boolean {
+  if (!isEmpireAccelerant(accelerant) || !isEmpireOutput(output)) return false;
   return accelerantLicence(accelerant).includes(outputReach(output));
 }
 
