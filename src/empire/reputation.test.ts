@@ -347,13 +347,52 @@ describe('reputation accrues from check-ins and from roster tenure', () => {
   });
 
   it('counts only lifters who are on the roster at the reading', () => {
-    // Reddening edit: drop the `if (lifter.joinedAt > now) continue;` filter.
+    // Reddening edit: drop the `if (lifter.settledAt > now) continue;` filter.
     const later = roster(2, EMPIRE_TUNING.SECONDS_PER_DAY);
     expect(reputationRates(gym({ roster: later }), clockAt(0)).contributingLifters).toBe(0);
     expect(
       reputationRates(gym({ roster: later }), clockAt(EMPIRE_TUNING.SECONDS_PER_DAY))
         .contributingLifters,
     ).toBe(2);
+  });
+
+  it('counts a lifter from when they SETTLED, not from when they joined', () => {
+    // THE SECOND HALF OF CHAIN B, and this assertion is here because mutation
+    // testing found the file had no fixture that could redden it. `roster()`
+    // builds every lifter with `joinedAt === settledAt`, so swapping
+    // `lifter.settledAt` for `lifter.joinedAt` in `reputationRates` left all 37
+    // tests in this file green — the empty domain reproduced across every
+    // fixture that CLAUDE.md names, in one file rather than three.
+    //
+    // The fixture that can reach it is the one a purchased skip produces: on the
+    // roster now, settled later. Reddening edit: read `joinedAt` here.
+    const day = EMPIRE_TUNING.SECONDS_PER_DAY;
+    const bought = [lifterAt('lifter-0', 0, day * 2), lifterAt('lifter-1', 0, day * 2)];
+    expect(bought[0]?.joinedAt).not.toBe(bought[0]?.settledAt);
+    expect(reputationRates(gym({ roster: bought }), clockAt(day)).contributingLifters).toBe(0);
+    expect(reputationRates(gym({ roster: bought }), clockAt(day)).perDay).toBe(0);
+    // And once the recruitment has settled on the wall clock they do count, so
+    // the zero above is not a zero about a roster that never pays.
+    expect(reputationRates(gym({ roster: bought }), clockAt(day * 2)).contributingLifters).toBe(2);
+    expect(reputationRates(gym({ roster: bought }), clockAt(day * 2)).perDay).toBe(
+      EMPIRE_TUNING.REPUTATION_PER_NPC_TENURE_DAY * 2,
+    );
+    // The same fact through `accrueReputation`, which is what a caller reaches:
+    // an unsettled roster earns the check-in term and no tenure term at all.
+    const unsettled = accrueReputation(
+      gym({ roster: bought, elapsedSeconds: day }),
+      clockAt(0),
+      1,
+    );
+    expect(unsettled.fromTenure).toBe(0);
+    expect(unsettled.fromCheckIns).toBe(EMPIRE_TUNING.REPUTATION_PER_CHECK_IN);
+    const settledRoster = [lifterAt('lifter-0', 0, 0), lifterAt('lifter-1', 0, 0)];
+    const settled = accrueReputation(
+      gym({ roster: settledRoster, elapsedSeconds: day }),
+      clockAt(0),
+      1,
+    );
+    expect(settled.fromTenure).toBeGreaterThan(0);
   });
 
   it('conserves what it earned against what it paid and what it refused', () => {
