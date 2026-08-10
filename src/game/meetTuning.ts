@@ -764,6 +764,34 @@ export const MEET_TUNING = Object.freeze({
      *
      * The rise is spread over the WHOLE brace window, so a longer beat is a
      * slower hall rather than a hall that gets up sooner and then waits.
+     *
+     * ---------------------------------------------------------------------
+     * IT IS ALSO THE ROOM THE REP IS LIFTED IN, WHICH IT WAS NOT
+     * ---------------------------------------------------------------------
+     * `AttemptView` handed `LiftStage` no rise, so the hall the whole tail had
+     * spent itself standing up sat back down on the frame the bar started
+     * moving — 1,633 scene pixels, 1,306 of them outside the bar-path panel.
+     * `settledCrowdRisePx` now carries this number across that cut. A tuning
+     * pass that turns it therefore moves two beats, not one.
+     *
+     * ---------------------------------------------------------------------
+     * AND THE LADDER IT SITS ON IS NOT MONOTONE, WHICH IS AN OPEN QUESTION
+     * ---------------------------------------------------------------------
+     * A whole attempt is meant to climb: seated, then `WALKOUT_RISE_PX` when he
+     * is set, then here when the bar moves, then `CROWD.CHEER_RISE_PX` or
+     * `CROWD.URGENT_CHEER_RISE_PX` when the lights come up. At the shipped
+     * values that reads 0 / 5 / 8 / 7 or 8 — flat at the top on an urgent
+     * attempt and DOWN on a calm cheer, because this constant is already at the
+     * band's ceiling before the lift.
+     *
+     * It does not show today only because the hall is reseated between the rep
+     * and the wait for the lights (`buildHold` emits 0 on every frame), so the
+     * cheer ramps from a seated room and reads as a full rise. Carrying the rise
+     * through the deliberation as well — the obvious next step, and the same
+     * defect one cut later — would make the meet's biggest make move ZERO
+     * pixels. Recorded in GDD §11 rather than resolved here: it is a judgement
+     * about how the whole beat feels, and nobody has watched any of it
+     * (GDD §12.1).
      */
     HUSH_CROWD_RISE_PX: 8,
   }),

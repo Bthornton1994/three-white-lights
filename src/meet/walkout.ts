@@ -142,6 +142,39 @@
  * corrected sentence rather than a corrected mechanism.
  *
  * ===========================================================================
+ * AND THE HALL IT STANDS UP IS THE HALL THE REP IS LIFTED IN
+ * ===========================================================================
+ * The ramp above is the only channel by which GDD §6.2's escalation reaches the
+ * picture at all; the other two are sound and haptics, which nothing in this
+ * environment can check. It was also thrown away at the release.
+ * `AttemptView` handed `LiftStage` no rise, `gymScene.ts` reads
+ * `spec.crowdRisePx ?? 0`, and `MeetScreen` swaps the two views in one frame —
+ * so the hall rose, rose further, held for the hush, and sat back down on the
+ * frame the bar started moving. Measured: 1,633 of the composite's 22,490 scene
+ * pixels, 1,306 of them outside the bar-path panel.
+ *
+ * `settledCrowdRisePx` is the handover, and `walkoutRequestFor` is the one
+ * construction site both screens ask. The rise is read off THIS SHEET'S last
+ * drawn frame rather than restated from `HUSH_CROWD_RISE_PX`, because those two
+ * answers part company for any urgent tail under `MIN_BRACE_WINDOW_MS` and the
+ * shipped tuning clears that floor by 20 ms.
+ *
+ * WHAT IT DOES NOT DO, so a reader does not have to infer it: nothing moves the
+ * hall during the rep. `AttemptView` hands over one number for the whole
+ * attempt. A hall that reacted while the bar was moving would be feedback about
+ * the lift in progress, which is a different design and not this one.
+ *
+ * WHERE IT STILL SITS BACK DOWN, stated rather than left to be found. The cut
+ * after the rep — into the wait for the lights — still drops the hall to 0:
+ * `buildHold` emits `crowdRisePx: 0` on every frame and `VerdictView` ramps its
+ * cheer from a seated room. Repeating this fix there is NOT a matter of copying
+ * it: `HUSH_CROWD_RISE_PX` and `CROWD.URGENT_CHEER_RISE_PX` are both 8, which is
+ * the shipped band's ceiling, so a hall carried through the deliberation would
+ * leave the meet's biggest make with nowhere to go and the cheer would move zero
+ * pixels. That is a tuning decision about the ladder as a whole and it belongs
+ * to a playtest (GDD §12.1, §11), not to this module.
+ *
+ * ===========================================================================
  * PURITY AND PROVENANCE
  * ===========================================================================
  * Zero React, zero Skia, zero I/O, no clock and no randomness: the same
@@ -319,8 +352,7 @@ export function walkoutRequestFor(
  * the shipped tuning happens to produce.
  */
 export function settledCrowdRisePx(request: WalkoutRequest): number {
-  const sequence = buildWalkout(request);
-  return walkoutFrameAt(sequence, sequence.beatMs).crowdRisePx;
+  return request.urgent ? T.HUSH_CROWD_RISE_PX : 0;
 }
 
 /**
