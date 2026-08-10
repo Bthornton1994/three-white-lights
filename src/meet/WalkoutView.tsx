@@ -119,13 +119,17 @@
  * "ONE SCHEDULE" IS A CLAIM ABOUT DELIVERY, NOT ABOUT INTENT, AND IT WAS FALSE
  * FOR A ROUND. The discs were scheduled on one `setTimeout` each; the browser
  * coalesces those through the meet transition and drains them together, so
- * `tools/verify-meet-sound.mjs` recorded FIVE 180 ms rattles inside 139 ms while
+ * `tools/verify-meet-sound.mjs` recorded FIVE 180 ms rattles inside 149 ms while
  * React batched the same five updates into ONE paint. The load is level-triggered
- * off the clock now (`platesLandedAt`), so discs that arrive together arrive as
- * one step and are heard as one hit. The honest form of the promise: a hit never
- * happens without discs landing, and discs never land without a hit — but a
- * catch-up that carries four discs carries one hit, which is what the eye was
- * already being shown.
+ * off the clock now (`platesLandedAt`) and the hits are merged in wall time
+ * (`barLoadRattleSounds`), because the animation clock catches up after jank too
+ * — a second measured run crossed three disc boundaries inside 83 ms.
+ *
+ * SO THE PROMISE IS ONE-WAY NOW, AND IT IS WRITTEN IN THE DIRECTION THAT IS
+ * TRUE: a rattle never fires without discs landing. The converse does not hold —
+ * discs that arrive inside one clatter of each other share a hit — and saying it
+ * both ways is what made the old sentence false. `meetFeel.test.ts` pins the
+ * pairing structurally and `meetSound.test.ts` measures the merge.
  *
  * NONE OF IT HAS BEEN HEARD OR FELT BY ANYBODY. Web has no haptic engine, and
  * no capture in this repository records audio, so no critic in this environment
@@ -228,25 +232,27 @@ export function WalkoutView({
 
   // THE BAR LOADS, OFF THE CLOCK RATHER THAN OFF A QUEUE OF TIMERS.
   //
-  // One disc per side per `BAR_LOAD_PLATE_STAGGER_MS`, and the same step fires
-  // the thud and the rattle — one schedule, so what is seen and what is heard
-  // cannot drift apart. The mirrored sleeve is drawn by the same sprite and
-  // deliberately fires nothing of its own: a six-plate bar that buzzed twelve
-  // times would feel like a twelve-plate one.
+  // One disc per side per `BAR_LOAD_PLATE_STAGGER_MS`. The mirrored sleeve is
+  // drawn by the same sprite and deliberately fires nothing of its own: a
+  // six-plate bar that buzzed twelve times would feel like a twelve-plate one.
   //
-  // THE PREVIOUS VERSION OF THIS PROMISE WAS UNTRUE ON A REAL BROWSER, and this
-  // is what fixed it. It scheduled one `setTimeout` per disc, which is correct
-  // and is not what gets delivered: the main thread is busy through the meet
-  // transition and the whole expired queue drains at once when it frees.
+  // THE PREVIOUS SHAPE WAS UNTRUE ON A REAL BROWSER, and this is what fixed it.
+  // It scheduled one `setTimeout` per disc, which is correct and is not what
+  // gets delivered: the main thread is busy through the meet transition and the
+  // whole expired queue drains at once when it frees.
   // `tools/verify-meet-sound.mjs` measured five rattles of a 180 ms cue starting
   // at [2771, 2805, 2805, 2822, 2903] ms, two byte-identical — while React
   // batched the five state updates into ONE paint, so the eye saw a single jump
   // and the ear got five hits. `platesLandedAt` asks the clock how loaded the
   // bar should be, so a late look SKIPS instead of replaying every tick it
-  // missed, and the hit count matches the paint count again.
-  // `barLoadRattleSounds` is the other half: two arrivals inside
-  // `BAR_LOAD_RATTLE_MERGE_MS` of each other are one clatter, so a catch-up that
-  // stops a millisecond short of the next disc does not hit twice.
+  // missed.
+  //
+  // AND THAT WAS MEASURED AND WAS NOT ENOUGH. `requestAnimationFrame`
+  // timestamps catch up after jank, so the second measured run crossed three
+  // disc boundaries inside 83 ms of wall time and fired three hits.
+  // `barLoadRattleSounds` merges arrivals closer together than
+  // `BAR_LOAD_RATTLE_MERGE_MS` — in WALL time, which is why `Date.now()` is read
+  // here rather than the elapsed the hook reports.
   //
   // NO ARITHMETIC HERE: both rules are `walkout.ts`'s, which is pure and tested.
   // The ref is a clock reading, not a decision.

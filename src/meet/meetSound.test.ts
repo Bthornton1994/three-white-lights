@@ -316,7 +316,7 @@ describe('MEET_SOUND.VOICES_PER_CUE is enough for the schedule the tuning can pr
   // matched on a Set of file names, which cannot see a second fire at all.
   //
   // This does not assert the pool is "big enough to sound right" — nobody has
-  // heard it (GDD §12.1). It asserts the pool is not SMALLER than the overlap
+  // heard any of it, GDD §12.1. It asserts the pool is not SMALLER than the overlap
   // the schedule provably produces, which is arithmetic and is checkable now.
   //
   // ===========================================================================
@@ -529,7 +529,7 @@ describe('MEET_SOUND.VOICES_PER_CUE is enough for the schedule the tuning can pr
     expect(worstOverlap(rattle, hits)).toBeLessThanOrEqual(MEET_SOUND.VOICES_PER_CUE);
   });
 
-  it('the merge window is DERIVED from the pool, and that is what bounds the depth', () => {
+  it('the merge window is DERIVED from the pool, and that is what bounds the depth [no-rattle-is-cut-by-another-rattle]', () => {
     const rattle = MEET_SOUND.CUES.BAR_RATTLE.durationMs;
     const merge = MEET_TUNING.BAR_LOAD_RATTLE_MERGE_MS;
     const stagger = MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS;

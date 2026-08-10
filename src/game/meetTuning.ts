@@ -504,6 +504,8 @@ export const MEET_TUNING = Object.freeze({
    * `meetSound.test.ts` holds that relation and measures the bound on
    * adversarial deliveries rather than on a model of a well-behaved one.
    *
+   *    @guarantee no-rattle-is-cut-by-another-rattle
+   *
    * The other side is the floor: it must stay under
    * `BAR_LOAD_PLATE_STAGGER_MS` minus a display frame, or an on-schedule disc
    * whose frame lands early is silently swallowed. 60 < 90 - 16.7. That is the

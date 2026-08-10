@@ -37,9 +37,12 @@
  *
  *   IT DOES NOT PROVE THE PLAYED ARM MAKES A SOUND. Nothing here has ever
  *   pressed a control. `tools/verify-shell-route.mjs` drives whole meets with a
- *   mouse and could carry this probe; that it does not is recorded below as a
- *   named SKIPPED check rather than left implicit, so the section cannot read as
- *   complete.
+ *   mouse and could carry this probe; that it does not is printed on every run
+ *   and written into `sound.json` as `scopeLimits`, so the section cannot read
+ *   as complete. It is a NOTE rather than a red check, and the argument for
+ *   that is at the line itself: this tool never ATTEMPTS the played arm, so a
+ *   permanent failure there would stop the exit code meaning "the sound is
+ *   wrong".
  *
  * Usage:
  *   node tools/verify-meet-sound.mjs [--url URL] [--out DIR]

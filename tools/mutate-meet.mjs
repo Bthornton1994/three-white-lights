@@ -422,12 +422,17 @@ const MUTATIONS = [
     file: 'src/meet/WalkoutView.tsx',
     from:
       '  const platesLoaded = useHallStep(plateStep, barLoadMs(plateCount), holdAtMs ?? null);\n' +
+      '  const lastRattleAtMs = React.useRef<number | null>(null);\n' +
       '  React.useEffect(() => {\n' +
       '    if (platesLoaded <= 0) return;\n' +
+      '    const now = Date.now();\n' +
+      '    if (!barLoadRattleSounds(now, lastRattleAtMs.current)) return;\n' +
+      '    lastRattleAtMs.current = now;\n' +
       "    playBeat({ kind: 'bar-plate' });\n" +
       '  }, [platesLoaded]);',
     to:
       '  void plateStep;\n' +
+      '  void barLoadRattleSounds;\n' +
       '  const [platesLoaded, setPlatesLoaded] = React.useState(0);\n' +
       '  React.useEffect(() => {\n' +
       '    const timers: ReturnType<typeof setTimeout>[] = [];\n' +
@@ -451,8 +456,39 @@ const MUTATIONS = [
       'clatter. Mutation: set the merge window to zero, so a catch-up that ' +
       'stops a millisecond short of the next disc hits again a millisecond later.',
     file: 'src/game/meetTuning.ts',
-    from: '  BAR_LOAD_RATTLE_MERGE_MS: 24,',
+    from: '  BAR_LOAD_RATTLE_MERGE_MS: 60,',
     to: '  BAR_LOAD_RATTLE_MERGE_MS: 0,',
+  },
+  {
+    id: 'the-pool-is-raised-to-cover-the-pile-up',
+    claim:
+      'A VOICE POOL DECIDES WHETHER COPIES CUT EACH OTHER, NOT HOW MANY THERE ' +
+      'ARE. The measured pile-up was five rattles inside 149ms; raising the pool ' +
+      'to five silences every depth check and changes nothing a player hears. ' +
+      'Mutation: do exactly that, which is the fix this wave was told not to make.',
+    file: 'src/game/meetTuning.ts',
+    from: '  VOICES_PER_CUE: 3,',
+    to: '  VOICES_PER_CUE: 5,',
+  },
+  {
+    id: 'the-bar-load-runs-off-one-clock',
+    claim:
+      'The bar load reads the ANIMATION clock and the merge reads the WALL ' +
+      'clock, because they diverge — rAF timestamps catch up after jank. ' +
+      'Mutation: merge on the animation clock instead, which is the one-clock ' +
+      'model that made a level-triggered load look sufficient.',
+    file: 'src/meet/walkout.ts',
+    from: '    if (!barLoadRattleSounds(look.wallMs, lastHeardAtMs)) continue;\n    lastHeardAtMs = look.wallMs;',
+    to: '    if (!barLoadRattleSounds(look.elapsedMs, lastHeardAtMs)) continue;\n    lastHeardAtMs = look.elapsedMs;',
+  },
+  {
+    id: 'the-bar-can-load-more-discs-than-it-has',
+    claim:
+      'The disc count is capped at the discs on the sleeve. Mutation: drop the ' +
+      'cap, so a long beat keeps landing plates that are not there.',
+    file: 'src/meet/walkout.ts',
+    from: '  return Math.min(total, landed);',
+    to: '  return landed;',
   },
   {
     id: 'sound-muted',

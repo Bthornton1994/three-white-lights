@@ -780,6 +780,29 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'qualification — delete this test and the paragraphs it points at in cutInGate.ts §5 and ' +
       "RecapView.tsx: expected 'e1rm, tier, total' to be 'e1rm, total'",
   },
+  {
+    // The mutant turned the bar load's merge window off, which is the state the
+    // tree was in the round `tools/verify-meet-sound.mjs` measured FIVE 180ms
+    // rattles inside 149ms of one walk-out. The tag's claim is arithmetic —
+    // hits at least `merge` apart cannot stack more than `duration / merge`
+    // deep — so a zero window makes the product zero and the guarantee false.
+    //
+    // WORTH RECORDING BESIDE IT: the same mutant reddens three other assertions
+    // in that file, one of them on the recorded Chromium trace. The one named
+    // here is the only one that is the GUARANTEE rather than a consequence of
+    // it — a sweep can be widened until it stops finding the case, and this
+    // product cannot.
+    guarantee: 'no-rattle-is-cut-by-another-rattle',
+    mutatedFile: 'src/game/meetTuning.ts',
+    mutated: '  BAR_LOAD_RATTLE_MERGE_MS: 60,',
+    testFile: 'src/meet/meetSound.test.ts',
+    redAssertion:
+      'expect(voices * merge, `${voices} voices x ${merge}ms against a ${rattle}ms cue`)\n' +
+      '      .toBeGreaterThanOrEqual(rattle);',
+    observed:
+      'AssertionError: 3 voices x 0ms against a 180ms cue: expected 0 to be greater than or ' +
+      'equal to 180 — src/meet/meetSound.test.ts:542',
+  },
 ];
 
 /**
@@ -1102,6 +1125,7 @@ describe('the guarantee-tag convention', () => {
       'src/game/sessionServer.test.ts',
       'src/game/streak.test.ts',
       'src/meet/careerCalendarPlaceholder.test.ts',
+      'src/meet/meetSound.test.ts',
       'src/meet/meetStage.test.ts',
       'src/shell/shellRoute.test.ts',
       'src/shell/shellWiring.test.ts',
