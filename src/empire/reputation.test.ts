@@ -29,17 +29,24 @@
  * while a test file is deliberately not scanned.
  *
  * ===========================================================================
- * One pin in this file is a measurement of an OPEN hazard, not an approval
+ * Chain B was measured open here and is now measured closed, with the reading
+ * it used to take kept beside it as the control
  * ===========================================================================
  *
- * 'measures the open chain a purchased skip opens into the tier gate' pins a
- * NON-ZERO count. §4 of `reputation.ts`'s header names the chain: a bought timer
- * skip moves the idle clock, reputation accrues against the idle clock because
- * its own sink is `'gym-economy'`, and the wall-clock day a tier's milestone is
- * met therefore moves with a purchase. That is measured here rather than
- * described, and a fix that closes it makes the count zero and turns the pin
- * red. Read a red there as "the chain was closed, update the pin", not as a
- * regression.
+ * This file used to pin a NON-ZERO count under the title 'measures the open
+ * chain a purchased skip opens into the tier gate', because reputation accrued
+ * on the idle clock — its own sink is `'gym-economy'` — while the thing it gates
+ * is a recruit, and a recruit pays Training IQ. §4 of `reputation.ts`'s header
+ * has the whole chain.
+ *
+ * Piece E6 closed it: `empireCore.ts` now asks reach as a GATE rather than as a
+ * PAYOUT, `gateElapsedFor(at, 'reputation')` is the wall clock, and the roster
+ * filter reads `settledAt` rather than `joinedAt`. So the pin is zero, and the
+ * old reading is kept runnable beside it — the same shipped `accrueReputation`,
+ * handed a clock whose wall reading is the idle one — with piece E4's numbers
+ * pinned on it: 2 of 3 lists and 7 of 15 entries moved. A zero with nothing
+ * beside it is the empty-domain vacuity CLAUDE.md names; this is what the zero
+ * is zero against.
  */
 
 import { readFileSync } from 'node:fs';
@@ -832,7 +839,7 @@ describe('sponsor money follows the reputation tier and nothing else', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The open chain, measured
+// Chain B, closed — and the reading it used to take, kept as the control
 // ---------------------------------------------------------------------------
 
 /**
@@ -870,13 +877,57 @@ function unlockDayList(grantsPerCheckIn: number): readonly number[] {
   return Object.freeze(days);
 }
 
-describe('the chain a purchased skip opens into the tier gate', () => {
-  it('measures the open chain a purchased skip opens into the tier gate', () => {
-    // NOT AN APPROVAL. See the header of this file and §4 of `reputation.ts`'s.
-    // The count below is non-zero because the chain is open: reputation runs on
-    // the idle clock, a purchased skip lengthens the idle gap, and the wall-clock
-    // day a milestone is met therefore moves. A fix — a wall-clock reading of
-    // reputation handed to the gate — makes this zero and turns the pin red.
+/**
+ * The same simulation against the reading this module took while chain B was
+ * open: reputation measured on the ACCELERATED clock.
+ *
+ * It does not reimplement `accrueReputation` — an oracle that restates its
+ * subject cannot disagree with it. It hands the shipped function a clock whose
+ * wall reading IS the idle reading, which is byte-for-byte the arithmetic the
+ * pre-fix `elapsedFor(at, 'reputation')` performed, and records the day on the
+ * real wall clock exactly as the shipped simulation above does.
+ *
+ * This is the negative control GDD §4.4 asks for beside a zero. Its counts are
+ * the ones piece E4 measured on the shipped path — 2 of 3 lists, 7 of 15
+ * entries — so the zero above is a zero against a number that was really there.
+ */
+function unlockDayListOnTheIdleClock(grantsPerCheckIn: number): readonly number[] {
+  const gap = REPUTATION_SWEEP.CHAIN_CHECK_IN_GAP_SECONDS;
+  const grantSeconds = grantsPerCheckIn * EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT;
+  const lifters = roster(REPUTATION_SWEEP.CHAIN_ROSTER);
+  const days = EMPIRE_TUNING.NPC_TIERS.map(() => -1);
+  let reputation = 0;
+  let mark = clockAt(0, 0);
+  for (let checkIn = 1; checkIn <= REPUTATION_SWEEP.CHAIN_MAX_CHECK_INS; checkIn += 1) {
+    const idleSeconds = checkIn * gap + checkIn * grantSeconds;
+    const state = gym({
+      reputation,
+      roster: lifters,
+      elapsedSeconds: idleSeconds,
+      skippedSeconds: 0,
+    });
+    reputation = accrueReputation(state, mark, 1).reputation;
+    mark = clockAt(idleSeconds, 0);
+    const day = Math.floor((checkIn * gap) / EMPIRE_TUNING.SECONDS_PER_DAY);
+    EMPIRE_TUNING.NPC_TIERS.forEach((tier, index) => {
+      if (days[index] !== -1) return;
+      if (reputation >= recruitReputationThreshold(tier)) days[index] = day;
+    });
+  }
+  return Object.freeze(days);
+}
+
+describe('the chain a purchased skip opened into the tier gate', () => {
+  it('is closed: the unlock-day list is byte-identical under every skip size', () => {
+    // Chain B, as piece E4 measured it and left it open, and as piece E6 closed
+    // it. `gateElapsedFor(at, 'reputation')` is the wall clock, and the roster
+    // filter reads `settledAt` — so neither half of the accrual moves with a
+    // purchase and the wall-clock day a milestone is met does not either.
+    //
+    // Reddening edits, both of which put the numbers back on the control's row:
+    // swap `gateElapsedFor` for `elapsedFor` in `reputationRates` and
+    // `accrueReputation`, or swap `lifter.settledAt` for `lifter.joinedAt` in
+    // `reputationRates`.
     const baseline = unlockDayList(0);
     // Non-vacuity: every tier really opened inside the simulation, so the lists
     // being compared are lists of days rather than lists of `-1`.
@@ -886,62 +937,102 @@ describe('the chain a purchased skip opens into the tier gate', () => {
     let compared = 0;
     let movedLists = 0;
     let movedEntries = 0;
+    let entriesCompared = 0;
     for (const grants of REPUTATION_SWEEP.CHAIN_GRANTS_PER_CHECK_IN) {
       const list = unlockDayList(grants);
       expect(list.filter((day) => day === -1).length).toBe(0);
       if (JSON.stringify(list) !== JSON.stringify(baseline)) movedLists += 1;
       list.forEach((day, index) => {
         if (day !== baseline[index]) movedEntries += 1;
+        entriesCompared += 1;
       });
       compared += 1;
     }
     expect(compared).toBe(3);
-    // The zero-skip row compares equal to itself, which is what says the
-    // comparator can report equality at all.
+    expect(entriesCompared).toBe(15);
+    expect(movedLists).toBe(0);
+    expect(movedEntries).toBe(0);
+  });
+
+  it('is open on the reading it used to take, which is the control the zero is against', () => {
+    // The same simulation, the same shipped `accrueReputation`, handed a clock
+    // whose wall reading is the idle one. These are E4's numbers.
+    const baseline = unlockDayListOnTheIdleClock(0);
+    expect(baseline.filter((day) => day === -1).length).toBe(0);
+    // The zero-skip row is the same list on both paths, which is what says the
+    // control differs from the subject only where a skip is applied.
+    expect(baseline).toEqual([0, 4, 15, 46, 115]);
+    expect(baseline).toEqual(unlockDayList(0));
+
+    let compared = 0;
+    let movedLists = 0;
+    let movedEntries = 0;
+    let entriesCompared = 0;
+    let later = 0;
+    for (const grants of REPUTATION_SWEEP.CHAIN_GRANTS_PER_CHECK_IN) {
+      const list = unlockDayListOnTheIdleClock(grants);
+      expect(list.filter((day) => day === -1).length).toBe(0);
+      if (JSON.stringify(list) !== JSON.stringify(baseline)) movedLists += 1;
+      list.forEach((day, index) => {
+        if (day !== baseline[index]) movedEntries += 1;
+        if (day > (baseline[index] as number)) later += 1;
+        entriesCompared += 1;
+      });
+      compared += 1;
+    }
+    expect(compared).toBe(3);
+    expect(entriesCompared).toBe(15);
     expect(movedLists).toBe(2);
     expect(movedEntries).toBe(7);
     // And the movement is in the direction the chain predicts: a purchase never
-    // makes a milestone arrive LATER.
-    let later = 0;
-    for (const grants of REPUTATION_SWEEP.CHAIN_GRANTS_PER_CHECK_IN) {
-      unlockDayList(grants).forEach((day, index) => {
-        if (day > (baseline[index] as number)) later += 1;
-      });
-    }
+    // made a milestone arrive LATER.
     expect(later).toBe(0);
   });
 
-  it('shows the offline cap bounding each application of that chain', () => {
-    // The half of the chain the GDD §5.1 cap does close: a skip applied to a gap
-    // that is already past the horizon adds nothing, because the gap is
-    // truncated before it is paid. Reddening edit: stop calling
-    // `bankableOfflineSeconds` in `accrueReputation`.
-    const longGap = EMPIRE_TUNING.SECONDS_PER_DAY * 2;
-    const withoutSkip = accrueReputation(
-      gym({ elapsedSeconds: longGap, roster: roster(2) }),
-      clockAt(0),
-      0,
-    ).gained;
-    const withSkip = accrueReputation(
-      gym({ elapsedSeconds: longGap, roster: roster(2), skippedSeconds: 3600 }),
-      clockAt(0, 0),
-      0,
-    ).gained;
-    expect(withSkip).toBe(withoutSkip);
-    // And inside the horizon it does not, which is why the sweep above is not
-    // zero. Same skip, a gap the cap does not reach.
-    const shortGap = REPUTATION_SWEEP.CHAIN_CHECK_IN_GAP_SECONDS;
-    const shortWithout = accrueReputation(
-      gym({ elapsedSeconds: shortGap, roster: roster(2) }),
-      clockAt(0),
-      0,
-    ).gained;
-    const shortWith = accrueReputation(
-      gym({ elapsedSeconds: shortGap, roster: roster(2), skippedSeconds: 3600 }),
-      clockAt(0, 0),
-      0,
-    ).gained;
-    expect(shortWith).toBeGreaterThan(shortWithout);
+  it('accrues on the wall clock at every gap, and on the idle clock in the control', () => {
+    // The single-gap statement of the same thing, so a reader can see the whole
+    // closure without running a 1200-step simulation. Counts, not bounds.
+    const horizon =
+      Math.max(
+        EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS,
+        EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS,
+      ) * EMPIRE_TUNING.SECONDS_PER_HOUR;
+    const skip = EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT;
+    let gaps = 0;
+    let movedOnTheShippedPath = 0;
+    let movedOnTheControl = 0;
+    let controlGapsInsideTheHorizon = 0;
+    for (const gap of REPUTATION_SWEEP.GAP_SECONDS) {
+      const without = accrueReputation(
+        gym({ elapsedSeconds: gap, roster: roster(2) }),
+        clockAt(0),
+        0,
+      ).gained;
+      const withSkip = accrueReputation(
+        gym({ elapsedSeconds: gap, roster: roster(2), skippedSeconds: skip }),
+        clockAt(0, 0),
+        0,
+      ).gained;
+      // The control: the same skip folded into the wall reading, which is what
+      // measuring reputation on the accelerated clock amounts to.
+      const onTheIdleClock = accrueReputation(
+        gym({ elapsedSeconds: gap + skip, roster: roster(2) }),
+        clockAt(0),
+        0,
+      ).gained;
+      if (withSkip !== without) movedOnTheShippedPath += 1;
+      if (onTheIdleClock !== without) movedOnTheControl += 1;
+      if (gap + skip <= horizon) controlGapsInsideTheHorizon += 1;
+      gaps += 1;
+    }
+    expect(gaps).toBe(REPUTATION_SWEEP.GAP_SECONDS.length);
+    expect(gaps).toBe(11);
+    expect(movedOnTheShippedPath).toBe(0);
+    // Non-zero, and exactly the gaps the GDD §5.1 cap does not already absorb:
+    // past the horizon the control moves nothing either, because the gap is
+    // truncated before it is paid.
+    expect(movedOnTheControl).toBe(6);
+    expect(controlGapsInsideTheHorizon).toBe(6);
   });
 });
 
@@ -1043,7 +1134,7 @@ describe('this module is pure, numerically clean and names nobody', () => {
     // Counts before contents, so an empty domain reports itself.
     expect(singleQuoted.size).toBe(17);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(13);
+    expect(templateChunks.size).toBe(14);
     // The template collector really reaches this module's messages, by match
     // count rather than by presence.
     const chunks = [...templateChunks];
@@ -1079,7 +1170,7 @@ describe('this module is pure, numerically clean and names nobody', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(30);
+    expect(stringsChecked).toBe(31);
 
     // The pattern is not a dead letter, and the probe is DERIVED from this
     // module's own vocabulary rather than written beside the pattern.

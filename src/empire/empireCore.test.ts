@@ -1193,6 +1193,11 @@ describe('the producer census, scoped by return type and resolved through the ch
       'createEmpireState',
       'createNpcLifter',
       'elapsedFor',
+      // Piece E6's gate clock. It returns `UnacceleratedSeconds` as a
+      // consequence of `GATE_TARGET` being typed against
+      // `ProgressionReachingOutput`, so it is a wall-clock producer and belongs
+      // inside this rule rather than outside it.
+      'gateElapsedFor',
       'idleLedger',
       'physioDaysSavedFor',
       'progressionLedger',
@@ -1217,8 +1222,8 @@ describe('the producer census, scoped by return type and resolved through the ch
     // were actually driven. A wall-clock producer that lost its parameters, or
     // a WALL_CLOCK list that stopped matching any brand the module declares,
     // would make the zero above a zero over an empty domain.
-    expect(wallClockProducers.length).toBe(12);
-    expect(checked).toBe(44);
+    expect(wallClockProducers.length).toBe(13);
+    expect(checked).toBe(48);
     // And the brand names this test routes on are real brands, resolved by the
     // census rather than spelled here and hoped for. `ElapsedFor<O>` is a
     // conditional and is excluded from that check by construction, so it is

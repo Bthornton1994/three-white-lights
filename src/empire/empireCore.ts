@@ -920,6 +920,29 @@ export function empireVocabularyFaults(): readonly string[] {
     }
   }
 
+  // The gate table, walked the same way. Read through a widened alias for the
+  // reason the licence rows above are: the literal tuple type makes
+  // `.length === 0` a comparison TypeScript rejects as impossible, which would
+  // leave the empty case unchecked for the state where it stops being one.
+  const gating: readonly string[] = GATING_OUTPUTS;
+  if (gating.length === 0) {
+    faults.push('nothing gates a progression-reaching output, so the gate clock guards nothing');
+  }
+  for (const output of GATING_OUTPUTS) {
+    if (!(EMPIRE_OUTPUTS as readonly string[]).includes(output)) {
+      faults.push(`${output} is named as a gate and is not an empire output`);
+      continue;
+    }
+    const target = gateTarget(output);
+    if (!(EMPIRE_OUTPUTS as readonly string[]).includes(target)) {
+      faults.push(`${output} gates ${target}, which is not an empire output`);
+      continue;
+    }
+    if (outputReach(target) !== 'progression-reaching') {
+      faults.push(`${output} gates ${target}, which does not reach progression`);
+    }
+  }
+
   return faults;
 }
 
@@ -1169,6 +1192,63 @@ export function elapsedFor<O extends EmpireOutput>(clock: EmpireClock, output: O
   const seconds =
     outputReach(output) === 'progression-reaching' ? clock.unaccelerated : clock.accelerated;
   return seconds as ElapsedFor<O>;
+}
+
+// ---------------------------------------------------------------------------
+// Gates — a reach as a PAYOUT and a reach as a GATE are two different questions
+// ---------------------------------------------------------------------------
+
+/**
+ * Outputs whose READING decides when something progression-reaching arrives.
+ *
+ * `elapsedFor` hands an output the clock its own reach entitles it to, and that
+ * is the right answer for a PAYOUT. It is the wrong answer for a GATE, and the
+ * difference is what piece E4 measured and left open. Reputation is paid into
+ * the gym economy — `OUTPUT_SINK` sends it to `'gym-economy'` and `SINK_REACH`
+ * calls that `'idle-only'` — so `elapsedFor(clock, 'reputation')` is the
+ * accelerated reading, which is correct for a number a screen shows and for a
+ * sponsor line denominated in Gym Bucks. It is also the number
+ * `NPC_RECRUIT_REPUTATION_THRESHOLD` gates a recruit on, and a recruited lifter
+ * pays Training IQ. So a purchased skip lengthened the idle gap, reputation
+ * accrued against the longer gap, a higher tier's milestone was met on an
+ * earlier WALL-CLOCK day, and `NpcLifter.settledAt` landed earlier with a larger
+ * `NPC_TIER_OUTPUT_MULTIPLIER` behind it.
+ *
+ * Every type on that chain was correct, which is the point: reach was being
+ * asked about the payout when the question was about the gate.
+ *
+ * A new entry costs a row in `GATE_TARGET`, which is exhaustive by `satisfies`
+ * and typed against `ProgressionReachingOutput` — so a gate declared on
+ * something that does not reach progression does not compile, and
+ * `gateElapsedFor` cannot be re-pointed at the accelerated clock without that
+ * row changing first.
+ */
+export const GATING_OUTPUTS = ['reputation'] as const satisfies readonly EmpireOutput[];
+
+export type GatingOutput = (typeof GATING_OUTPUTS)[number];
+
+/** What each gating output gates. Exhaustive by `satisfies`. */
+export const GATE_TARGET = {
+  reputation: 'training-iq',
+} as const satisfies Readonly<Record<GatingOutput, ProgressionReachingOutput>>;
+
+/** The progression-reaching output a gating reading decides the arrival of. */
+export function gateTarget(output: GatingOutput): ProgressionReachingOutput {
+  return GATE_TARGET[output];
+}
+
+/**
+ * The clock a gating reading runs on.
+ *
+ * Derived rather than chosen: it is `elapsedFor` asked about the thing the gate
+ * OPENS rather than about the thing the gate is paid into, and `GATE_TARGET` is
+ * typed so the thing it opens always reaches progression. The wall-clock brand
+ * on the return type is therefore a consequence of the table rather than a cast
+ * — there is no state of `GATE_TARGET` that compiles and makes this return an
+ * accelerated reading.
+ */
+export function gateElapsedFor(clock: EmpireClock, output: GatingOutput): UnacceleratedSeconds {
+  return elapsedFor(clock, gateTarget(output));
 }
 
 // ---------------------------------------------------------------------------
