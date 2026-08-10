@@ -290,13 +290,34 @@ describe('the four meet screens fire the beats they own', () => {
     // THIS USED TO BE ENFORCED BY A `felt={false}` FLAG on the mirrored sleeve,
     // because the walkout drew each sleeve as its own stack of `<View>`s. It no
     // longer draws a bar at all — the sprite does, both sleeves in one image
-    // (GDD §7.1) — so the property is now structural: one loop, over the discs
-    // on ONE side, with one `playBeat` in it.
+    // (GDD §7.1) — so the property is structural: the discs on ONE side, sampled
+    // once, with one `playBeat` behind the number.
+    //
+    // AND THE STRUCTURE IT PINS CHANGED, because the old one — a `for` loop of
+    // `setTimeout`s — is exactly what a coalescing browser turned into five hits
+    // for one paint. The count now comes off the clock (`platesLandedAt`) and the
+    // hit comes off the count, so what is pinned here is that pairing.
     const source = read(WALKOUT);
     expect(source).toContain('const plateCount = hallPlateCount(');
-    expect(source).toMatch(/for \(let i = 0; i < plateCount; i \+= 1\)/);
+    // COUNTS, NOT PRESENCE. A second sampling site, or a second thud, is the
+    // twelve-rattle bar this test is named after; `toContain` cannot see one.
+    const samples = source.split('platesLandedAt(elapsedMs, plateCount)').length - 1;
+    expect(samples, 'the walkout samples the bar load somewhere other than once').toBe(1);
     const thuds = source.split("playBeat({ kind: 'bar-plate' })").length - 1;
     expect(thuds, 'more than one place fires the plate thud').toBe(1);
+    // ...and the thud hangs off the disc COUNT rather than off a timer of its
+    // own, which is the join that makes one paint one hit. Pinned as a count for
+    // the same reason as above.
+    const joins = source.split('    if (platesLoaded <= 0) return;\n').length - 1;
+    expect(joins, 'the plate thud is not fired from the disc count').toBe(1);
+    // ...through the merge rule, so a catch-up that straddles a boundary is one
+    // clatter rather than two hits a millisecond apart.
+    const merges = source.split('barLoadRattleSounds(now, lastRattleAtMs.current)').length - 1;
+    expect(merges, 'the walkout hits without asking whether it just hit').toBe(1);
+    expect(
+      /setTimeout\(\s*\(\) =>\s*\{?\s*[\s\S]{0,80}?bar-plate/.test(source),
+      'the plate thud is back on a setTimeout, which is what the browser coalesced',
+    ).toBe(false);
 
     // ...and `hallPlateCount` really is per side rather than per disc on the
     // bar, which is the thing the old flag was protecting.

@@ -84,3 +84,15 @@ public/canvaskit.wasm
 # must be gradeable rather than regenerable — and it is the record that dates
 # WHICH build was played, which no amount of re-running recovers after the fact.
 !.gauntlet/shots/cutin-cap/
+
+# And the meet SOUND run, which is the only record of the half of GDD §12.2's
+# bar — "pacing AND sound" — that no screenshot can hold. `sound.json` carries
+# the wall-clock instant every cue reached the audio layer, per beat, with each
+# file's own decoded length, so it is the only artifact that can show a cue
+# firing again while the last copy is still sounding.
+#
+# It was untracked for the round in which it found exactly that: five 180ms
+# rattles inside 149ms, from a bar-load loop asking for one every 90. A finding
+# that lives only in a console someone happened to read is the same failure mode
+# as an undatable screenshot, one channel over.
+!.gauntlet/shots/meet/

@@ -191,6 +191,13 @@ const REQUIRED_SHOT_RECORDS = [
   '.gauntlet/shots/shell/route.json',
   '.gauntlet/shots/cutin/frames.json',
   '.gauntlet/shots/cutin-cap/cap.json',
+  // The fourth, added in the same commit as its `.gitignore` negation — this
+  // list is what the paragraph above means. `sound.json` is the only record of
+  // the sound half of GDD §12.2's bar: it holds the wall-clock instant every cue
+  // reached the audio layer, per beat, against each file's own decoded length,
+  // which is the only way a cue firing over its own still-sounding copy is
+  // visible at all. No screenshot can carry it.
+  '.gauntlet/shots/meet/sound.json',
 ];
 
 const checkCommittedShots = () => {
