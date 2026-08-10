@@ -2287,7 +2287,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
   it('has shipped modules to scan, so the scans below are not empty', () => {
     // Counts, not bounds. Every check in this block walks this list, and a
     // list that had gone empty would make all of them pass.
-    expect(shipped).toEqual(['empireCore.ts', 'empireTuning.ts']);
+    expect(shipped).toEqual(['empireCore.ts', 'empireTuning.ts', 'production.ts']);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -2342,9 +2342,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // move. What it was reaching for is the product, and the product has a
     // SUBJECT in it: a module added to this directory, or one that stopped
     // being read, moves 36 as surely as a shortened ban list does.
-    expect(scanned).toBe(2);
+    expect(scanned).toBe(shipped.length);
     expect(checks).toBe(shipped.length * banned.length);
-    expect(checks).toBe(36);
     // And the patterns are not all dead letters: each one is driven against a
     // string that should trip it, derived from the pattern's own purpose, so a
     // regex that stopped matching anything is red rather than quietly green.
@@ -2643,12 +2642,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       }
       filesRead += 1;
     }
-    expect(filesRead).toBe(2);
+    expect(filesRead).toBe(shipped.length);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(singleQuoted.size).toBe(68);
+    expect(singleQuoted.size).toBe(71);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(37);
+    expect(templateChunks.size).toBe(47);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -2660,6 +2659,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
 
     const spaceFree = [...singleQuoted].filter((literal) => !literal.includes(' ')).sort();
     expect(spaceFree).toEqual([
+      './empireCore',
       './empireTuning',
       'accelerated-seconds',
       'acceleratedSeconds',
@@ -2729,7 +2729,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(105);
+    expect(stringsChecked).toBe(118);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -2756,7 +2756,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(57);
+    expect(probes).toBe(58);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -2795,7 +2795,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     const sources = new Map<string, string>(
       shipped.map((name) => [`src/empire/${name}`, readFileSync(path.join(HERE, name), 'utf8')]),
     );
-    expect([...sources.keys()]).toEqual(['src/empire/empireCore.ts', 'src/empire/empireTuning.ts']);
+    expect([...sources.keys()]).toEqual(shipped.map((name) => `src/empire/${name}`));
 
     // What the audit says about the directory as it really sits, per file.
     const findings = new Map(
@@ -2812,7 +2812,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(findings.get(relPath)?.length, `${relPath}${report(relPath)}`).toBe(0);
       renderers += 1;
     }
-    expect(renderers).toBe(1);
+    expect(renderers).toBe(shipped.length - 1);
 
     if (registered) {
       // The row landed. Nothing in `src/empire/` may report anything at all,
