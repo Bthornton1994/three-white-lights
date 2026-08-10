@@ -136,7 +136,19 @@ function silentWorktrees(git, head, now) {
     } catch {
       ageMin = null; // directory gone — the rewind does this
     }
-    rows.push({ ...w, ageMin });
+    // DIRTY IS THE DISCRIMINATOR AGE IS NOT, and it was learned the hard way:
+    // 27 of these were about to be swept as litter, and four held uncommitted
+    // SOURCE edits from agents killed mid-flight — work that is in no commit,
+    // on no branch, and on no remote. Age said nothing about which four; two of
+    // them were the same age as neighbours that held nothing.
+    let dirty = null;
+    try {
+      const status = execFileSync('git', ['-C', w.path, 'status', '--porcelain'], { encoding: 'utf8' });
+      dirty = status.trim() === '' ? 0 : status.trim().split('\n').length;
+    } catch {
+      dirty = null; // unreadable — say so rather than reporting 0
+    }
+    rows.push({ ...w, ageMin, dirty });
   }
   return rows.sort((a, b) => (a.ageMin ?? Infinity) - (b.ageMin ?? Infinity));
 }
@@ -148,14 +160,20 @@ function reportSilentWorktrees(rows, unmergedCount) {
     console.log('    scan above already covers all of them.');
     return;
   }
+  const carrying = rows.filter((r) => (r.dirty ?? 0) > 0);
   for (const r of rows) {
     const age = r.ageMin === null ? '   gone' : `${String(Math.round(r.ageMin)).padStart(6)} min`;
-    console.log(`    ${age}  ${r.branch ?? '(detached)'}  ${r.path}`);
+    const mark = r.dirty === null ? ' ?dirty' : r.dirty > 0 ? ` !${r.dirty} UNCOMMITTED` : '  clean';
+    console.log(`    ${age} ${mark}  ${r.branch ?? '(detached)'}  ${r.path}`);
   }
   console.log('    A worktree here is EITHER an agent that has not committed yet OR a merged');
-  console.log('    one nobody pruned. This cannot tell them apart — age is your discriminator.');
-  console.log('    Young: probably working. Old and empty: probably a builder that died before');
-  console.log('    its first commit, which the branch scan above cannot see at all.');
+  console.log('    one nobody pruned, and the refs cannot tell them apart. THE DIRTY COLUMN');
+  console.log('    CAN, which is the column age could not supply: a clean one has nothing in');
+  console.log('    it that is not already in HEAD, and an UNCOMMITTED one holds work that is');
+  console.log('    in no commit, on no branch and on no remote — the only copy there is.');
+  if (carrying.length > 0) {
+    console.log(`    !! ${carrying.length} worktree(s) are carrying uncommitted work. Look before removing any.`);
+  }
   console.log('    Each is a FULL CHECKOUT and costs real disk — this run has carried 4.5G of');
   console.log('    them against a 20G allowance, and writable disk here is a fixed budget, not');
   console.log('    a filesystem. `git worktree remove <path>` clears a merged one (its work is');
