@@ -62,6 +62,7 @@
  *     a second forever and finishes inside the budget passes.
  */
 import { spawn, execFileSync } from 'node:child_process';
+import { statSync } from 'node:fs';
 
 const argv = process.argv.slice(2);
 const has = (flag) => argv.includes(flag);
@@ -72,6 +73,98 @@ const valueOf = (flag, dflt) => {
 
 /** Minutes after which a branch with no new commit is reported. */
 const DEFAULT_STALE_MINUTES = 45;
+
+/**
+ * THE BRANCH SCAN ABOVE CANNOT SEE A BUILDER THAT HAS NOT COMMITTED YET, AND
+ * THAT IS THE DEAD-AGENT PROBLEM INVERTED.
+ *
+ * `--branches` ages a branch by its last commit, which is the right signal once
+ * a commit exists. It has nothing to age when none does. A builder dispatched
+ * and killed in its first minutes leaves a branch sitting exactly at the base
+ * commit — an ancestor of HEAD, so `isMerged` filters it out — and the tool
+ * prints "0 unmerged branches" and its own vacuous-pass note. Which was
+ * literally true and completely uninformative with two builders live.
+ *
+ * A WORKTREE IS THE TRACE THAT SURVIVES. It is created at dispatch, before any
+ * work happens, and it outlives the agent, the container's notification and the
+ * task list. So it is available exactly in the window the commit is not.
+ *
+ * WHAT THIS DELIBERATELY CANNOT TELL YOU, declared rather than implied: a
+ * worktree whose branch adds nothing to HEAD is EITHER a dispatched agent that
+ * has produced nothing yet OR a finished one whose work was merged and whose
+ * directory nobody pruned. Those two are indistinguishable from the refs alone,
+ * and this run has ~25 of the second kind lying around. The age is the reader's
+ * discriminator, not the tool's: a young one is probably an agent working, an
+ * hour-old one with nothing in it is probably dead, and a six-day-old one is
+ * almost certainly just litter. It reports the set and says which is which is
+ * not its call.
+ */
+function silentWorktrees(git, head, now) {
+  let raw;
+  try {
+    raw = git(['worktree', 'list', '--porcelain']);
+  } catch {
+    return []; // not fatal; the branch scan is the primary signal
+  }
+  const out = [];
+  let cur = null;
+  for (const line of `${raw}\n`.split('\n')) {
+    if (line.startsWith('worktree ')) cur = { path: line.slice('worktree '.length), branch: null, sha: null };
+    else if (line.startsWith('HEAD ') && cur) cur.sha = line.slice('HEAD '.length);
+    else if (line.startsWith('branch ') && cur) cur.branch = line.slice('branch '.length).replace('refs/heads/', '');
+    else if (line === '' && cur) {
+      out.push(cur);
+      cur = null;
+    }
+  }
+  const main = out[0]?.path ?? null;
+  const rows = [];
+  for (const w of out) {
+    if (w.path === main || w.sha === null) continue;
+    // Adds nothing to HEAD => the branch scan above already ignored it.
+    let addsNothing = false;
+    try {
+      execFileSync('git', ['merge-base', '--is-ancestor', w.sha, head], { stdio: 'ignore' });
+      addsNothing = true;
+    } catch (error) {
+      if (!error || error.status !== 1) throw new Error(`--is-ancestor ${w.sha} HEAD failed: ${String(error)}`);
+    }
+    if (!addsNothing) continue;
+    let ageMin = null;
+    try {
+      ageMin = (now - Math.floor(statSync(w.path).mtimeMs / 1000)) / 60;
+    } catch {
+      ageMin = null; // directory gone — the rewind does this
+    }
+    rows.push({ ...w, ageMin });
+  }
+  return rows.sort((a, b) => (a.ageMin ?? Infinity) - (b.ageMin ?? Infinity));
+}
+
+function reportSilentWorktrees(rows, unmergedCount) {
+  console.log(`\n[worktrees] ${rows.length} attached worktree(s) whose branch adds nothing to HEAD`);
+  if (rows.length === 0) {
+    console.log('    none — every attached worktree carries unmerged commits, so the branch');
+    console.log('    scan above already covers all of them.');
+    return;
+  }
+  for (const r of rows) {
+    const age = r.ageMin === null ? '   gone' : `${String(Math.round(r.ageMin)).padStart(6)} min`;
+    console.log(`    ${age}  ${r.branch ?? '(detached)'}  ${r.path}`);
+  }
+  console.log('    A worktree here is EITHER an agent that has not committed yet OR a merged');
+  console.log('    one nobody pruned. This cannot tell them apart — age is your discriminator.');
+  console.log('    Young: probably working. Old and empty: probably a builder that died before');
+  console.log('    its first commit, which the branch scan above cannot see at all.');
+  console.log('    Each is a FULL CHECKOUT and costs real disk — this run has carried 4.5G of');
+  console.log('    them against a 20G allowance, and writable disk here is a fixed budget, not');
+  console.log('    a filesystem. `git worktree remove <path>` clears a merged one (its work is');
+  console.log('    in HEAD by definition of appearing here); `git worktree prune` only clears');
+  console.log('    entries whose directory has already vanished, which is not these.');
+  if (unmergedCount === 0) {
+    console.log('    Do not remove one while its agent is live — check the age column first.');
+  }
+}
 
 function branches() {
   const staleMinutes = Number(valueOf('--stale-minutes', String(DEFAULT_STALE_MINUTES)));
@@ -135,13 +228,17 @@ function branches() {
     console.log(`                       ${r.subject}`);
   }
 
+  const silent = silentWorktrees(git, head, now);
+  reportSilentWorktrees(silent, withAge.length);
+
   // NON-VACUITY. An empty branch list satisfies "nothing is stale" and would
   // report success on a repository where every branch had been pruned — the
   // emptiest possible pass. Say so rather than printing a green line.
   if (withAge.length === 0) {
-    console.log('\nNo unmerged claude/* branches exist, so this run checked NOTHING. That is a');
-    console.log('vacuous pass, not a clean one, and it is reported as such.');
-    return 0;
+    console.log('\nNo unmerged claude/* branches exist, so this run checked NOTHING against');
+    console.log('COMMIT AGE. That is a vacuous pass, not a clean one, and it is reported as');
+    console.log('such — see [worktrees] above for the part that is not vacuous.');
+    return silent.length > 0 ? 1 : 0;
   }
 
   if (stale.length > 0) {
