@@ -707,6 +707,32 @@ physiology.
   That habit caught the sixth rewind while holding three builder branches, at a
   cost of one throwaway commit.
 
+- **PUSH BEFORE YOU CLEAN UP, BECAUSE CLEANUP IS WHAT MAKES A REWIND
+  UNRECOVERABLE.** Rewinds are survivable because origin is ahead. Tidying is
+  survivable because the tree is in git. Doing them in the wrong order is
+  neither, and it is the one combination that loses work permanently.
+
+  The near-miss: a worktree sweep found four holding uncommitted source edits
+  from agents killed mid-flight — in no commit, on no branch, on no remote. They
+  were committed to their own branches and pushed, and only then were the
+  worktrees removed. **The next rewind landed minutes later**, took the whole
+  checkout back, and those four branches on origin were the only surviving copy.
+  Remove-then-push would have destroyed them with nothing to recover from.
+
+  So: anything you are about to delete, move, or prune goes to origin first,
+  even when it is somebody else's half-finished work and especially when you
+  think it is litter. The verification that it is litter is itself a thing that
+  can be wrong.
+
+- **THE RATE IS NOT STABLE — THREE REWINDS LANDED IN ONE SESSION, ROUGHLY
+  HOURLY.** Nine total. Plan for the next one inside the hour rather than at
+  some point: keep uncommitted work to minutes, and do not let a long unpushed
+  stretch accumulate because the last few hours happened to be quiet.
+
+  **The task list reverts with everything else.** It came back showing
+  pre-wave state with finished items pending again, so it is a working aid and
+  never a record of what happened. The durable record is commits on origin.
+
 - **A SUBAGENT'S REPORT OF THE TREE IS REWIND TELEMETRY, NOT ONLY A GRADING.**
   This is how the seventh rewind was caught, and it is the only new thing about
   it. `wave-start.mjs` had run clean ninety minutes earlier; the limit it hit is
