@@ -319,7 +319,7 @@ type Branded<T, B extends string> = T & { readonly [EMPIRE_BRAND]: B };
  * is deliberate in a way a re-brand is not, and E6's element-wise ledger
  * comparison is what catches it.
  */
-type Unbranded<T> = T extends { readonly [EMPIRE_BRAND]: string }
+export type Unbranded<T> = T extends { readonly [EMPIRE_BRAND]: string }
   ? {
       /** Named so the compiler's message says what is wrong. See `OneAccelerant`. */
       readonly PASS_A_VALUE_THAT_CARRIES_NO_BRAND: 'this value is already branded; re-branding it is how an accelerated clock reached a wall-clock argument';
