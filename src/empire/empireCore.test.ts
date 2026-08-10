@@ -2698,9 +2698,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(filesRead).toBe(shipped.length);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(singleQuoted.size).toBe(137);
+    expect(singleQuoted.size).toBe(145);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(108);
+    expect(templateChunks.size).toBe(112);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -2721,6 +2721,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './reputation',
       './social',
       'Placeholder',
+      'accelerated',
       'accelerated-seconds',
       'acceleratedSeconds',
       'accepted',
@@ -2728,6 +2729,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'already-building',
       'already-visited-today',
       'at-ceiling',
+      'axes',
       'bare-bar',
       'behind',
       'budget',
@@ -2759,6 +2761,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym-empire-timer-skip',
       'gym-progress',
       'gymBucks',
+      'idle-clock',
       'idle-only',
       'idle-tenure-days',
       'idleTenureDays',
@@ -2773,6 +2776,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'not-a-friend-gym',
       'not-enough-gym-bucks',
       'not-enough-reputation',
+      'not-enough-wall-clock-earnings',
       'novice',
       'npc-id',
       'own-gym',
@@ -2795,6 +2799,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'roster-slot',
       'settled-level',
       'settled-tenure-days',
+      'settledAxes',
       'settledTenureDays',
       'skippedSeconds',
       'space',
@@ -2811,6 +2816,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'unaccelerated-seconds',
       'unacceleratedSeconds',
       'visited',
+      'wall-clock',
+      'wall-clock-earned',
     ]);
 
     // The half the pin does not reach: a multi-word name inside a message. Run
@@ -2823,7 +2830,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(245);
+    expect(stringsChecked).toBe(257);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -2850,7 +2857,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(99);
+    expect(probes).toBe(106);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
