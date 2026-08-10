@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { codeOnly } from '../tuning/audit';
 import { LIFT_TUNING } from '../game/liftTuning';
+import { MEET_TUNING } from '../game/meetTuning';
 import { CENTER_X, RESOLUTION } from './spriteTuning';
 import { BANK_SIZE, PAL, isTransparentIndex } from './palette';
 import {
@@ -93,16 +94,22 @@ import { frameSpecFrom, isBodyIndex, renderLifterFrame } from './lifterSprite';
  * the panel widens — which under the old measurement they could not.
  *
  * ===========================================================================
- * EVERY BOUND HAS A PLANT THAT FAILS IT — EXCEPT THREE, WHICH ARE NAMED
+ * EVERY BOUND HAS A PLANT THAT FAILS IT — EXCEPT TWO, WHICH ARE NAMED
  * ===========================================================================
  * This heading used to read "EVERY BOUND IS BRACKETED AT BOTH ENDS", and three
  * ceilings had nothing behind them at the time. It is now the weaker, true
  * claim, and `describe('what this file can and cannot make fail')` at the bottom
  * of the file ENFORCES it rather than promising it: a ledger of every bound any
  * grid here has actually been measured against and failed, asserted against
- * `Object.keys(BOUNDS)`, with `RIM_P25_MIN`, `RIM_P50_MIN` and
- * `FIGURE_OVER_ROOM_P90_MIN` declared as having no plant and the reasons written
- * down. A new bound cannot arrive without landing in one of the two lists.
+ * `Object.keys(BOUNDS)`, with `RIM_P25_MIN` and `RIM_P50_MIN` declared as having
+ * no plant and the reasons written down. A new bound cannot arrive without
+ * landing in one of the two lists.
+ *
+ * It read THREE until the risen hall was brought into this file.
+ * `FIGURE_OVER_ROOM_P90_MIN` now has one — a crowd band repainted in the room's
+ * brightest paint — and its old excuse ("the room would have to be a wall of
+ * filaments") turned out to have been an argument about the lamps that never
+ * considered the seating.
  *
  * The failure this run keeps finding is a check that a WORSE artifact satisfies
  * more easily. Most readability quantities here have that shape available, and
@@ -332,7 +339,15 @@ const BOUNDS = {
    * away — see `describe('readability at phone scale')`.
    */
   RIM_DEAD_SHARE_MAX: 0,
-  /** The figure keeps the top of the range outright. */
+  /**
+   * The figure keeps the top of the range outright.
+   *
+   * The shipped rooms clear it by a distance — the figure's p90 is 174.9 and the
+   * background's tops out around 71.8 — and the thing that can take it away is
+   * the CROWD, not the lamps: the seating is 3,120 of the room's 22,490 pixels,
+   * enough that repainting it bright drops this to 38.7. That is the plant, in
+   * `it('WOULD catch a crowd that out-values the lifter')`.
+   */
   FIGURE_OVER_ROOM_P90_MIN: 60,
 } as const;
 
@@ -395,8 +410,15 @@ function violations(grid: IndexGrid, occluders: readonly SceneRect[] = OCCLUDERS
   check('RIM_FILL_P05', r.rimFill.p05, BOUNDS.RIM_FILL_P05_MIN, noCeiling);
   check('RIM_FILL_P10', r.rimFill.p10, BOUNDS.RIM_FILL_P10_MIN, noCeiling);
   check('RIM_DEAD_SHARE', r.rimDeadShare, 0, BOUNDS.RIM_DEAD_SHARE_MAX);
+  // NAMED FOR ITS BOUND, and that is a fix rather than a style choice: the
+  // coverage ledger at the bottom of this file derives the fired-bound name from
+  // the CONSTANT's name by stripping `_MIN`/`_MAX`, so a check called
+  // `FIGURE_OVER_ROOM` could never be accounted for against
+  // `FIGURE_OVER_ROOM_P90_MIN` however hard it fired. That went unnoticed for as
+  // long as the bound was declared unplanted; the moment a plant existed the
+  // ledger said it did not.
   check(
-    'FIGURE_OVER_ROOM',
+    'FIGURE_OVER_ROOM_P90',
     r.figureLuma.p90 - r.backgroundLuma.p90,
     BOUNDS.FIGURE_OVER_ROOM_P90_MIN,
     noCeiling,
@@ -413,6 +435,77 @@ const SPEC = liftStageScene();
 const MEET_SPEC: GymSceneSpec = { ...SPEC, venue: 'meet-platform' };
 const DEMO_TOTAL_KG = 250;
 const OCCLUDERS = liftStageOccluders();
+
+/**
+ * THE MEET ROOMS THE GAME ACTUALLY DRAWS — including the risen ones.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS EXISTS, AND WHAT IT ADMITS ABOUT THE FILE BEFORE IT
+ * ---------------------------------------------------------------------------
+ * Every measurement in this file used to render `{ ...liftStageScene(), venue }`
+ * and nothing else, so `crowdRisePx` was `undefined` — 0 — in all of them. The
+ * word did not appear in this file at any point. But meet day brings the seating
+ * up on exactly the two beats GDD §12.2 judges: an urgent walk-out and three
+ * white lights. So the room the two highest-value moments in the game are drawn
+ * in had never been through a single bound here, and a crowd that rose until it
+ * out-valued the lifter would have passed this suite untouched.
+ *
+ * The rises are read from `MEET_TUNING.CROWD` rather than restated, so a tuning
+ * pass that turns them up drags them through these bounds automatically. That is
+ * the whole point: the constants are meant to be turned by hand later (GDD
+ * §12.1), and a bound that only ever sees today's value is not protecting the
+ * ones tomorrow's playtester will try.
+ */
+const MEET_RISES: readonly (readonly [string, number])[] = [
+  ['seated', 0],
+  ['risen for a walk-out', MEET_TUNING.CROWD.WALKOUT_RISE_PX],
+  ['on its feet for three whites', MEET_TUNING.CROWD.CHEER_RISE_PX],
+];
+
+/** The meet hall with its seating `rise` rows into the standing wave. */
+function meetSpecAt(rise: number): GymSceneSpec {
+  return rise <= 0 ? MEET_SPEC : { ...MEET_SPEC, crowdRisePx: rise };
+}
+
+/** The top row of the seating band, from the venue's own row count. */
+function crowdBandTop(): number {
+  return Math.max(0, crowdFrontRow(MEET_SPEC) - GYM_VENUE[MEET_SPEC.venue].CROWD_ROWS);
+}
+
+/** Every palette index drawn inside the seating band's rows. */
+function bandIndices(room: IndexGrid): ReadonlySet<number> {
+  const out = new Set<number>();
+  for (let y = crowdBandTop(); y < crowdFrontRow(MEET_SPEC); y += 1) {
+    for (let x = 0; x < room.w; x += 1) out.add(getPx(room, x, y));
+  }
+  return out;
+}
+
+/**
+ * The brightest colour the ROOM can draw.
+ *
+ * `roleOf(index) === 'background'` is load-bearing rather than tidy. Painted in
+ * one of the FIGURE's colours the plant below would be counted as figure by
+ * `measureSceneReadability`, the background statistics would never see it, and
+ * it would fire three floors about the room being EMPTY instead of a ceiling
+ * about it being loud — a mutation that goes red for the wrong reason, which is
+ * the failure this whole round is about. It was written that way first, and this
+ * comment is here because the numbers caught it.
+ */
+function brightestRoomIndex(): number {
+  let best = 0;
+  let bestLuma = -1;
+  for (let index = 0; index < SCENE_INDEX_COUNT * BANK_SIZE; index += 1) {
+    if (sceneColorAt(index) === undefined) continue;
+    if (roleOf(index) !== 'background') continue;
+    const luma = lumaOfIndex(index) ?? 0;
+    if (luma > bestLuma) {
+      bestLuma = luma;
+      best = index;
+    }
+  }
+  return best;
+}
 
 const REP = buildSquatRep(LOAD_PRESETS.MAXIMAL);
 const LIGHT_REP = buildSquatRep(LOAD_PRESETS.LIGHT);
@@ -822,11 +915,99 @@ describe('readability at phone scale', () => {
     }
   });
 
+  it('AND FAILS NOTHING WITH THE HALL ON ITS FEET — the room the beat draws', () => {
+    // THE GAP THIS CLOSES. Every bound above was measured on a SEATED hall,
+    // because `liftStageScene()` leaves `crowdRisePx` undefined and nothing here
+    // ever set it. Meet day brings the seating up on an urgent walk-out and on
+    // three white lights — the two beats §12.2 actually judges — so the room
+    // those frames draw had never been measured at all.
+    //
+    // Every rise the game ships, every moment of the rep, every bound.
+    for (const [state, rise] of MEET_RISES) {
+      for (const [name, frac] of MOMENTS) {
+        const grid = composite(frac, meetSpecAt(rise));
+        expect(violations(grid), `meet ${name}, ${state}:\n${report(grid)}`).toEqual([]);
+        const r = measureSceneReadability(grid, { occluders: OCCLUDERS });
+        expect(r.rimDeadShare, `meet ${name}, ${state}, dead contact`).toBe(0);
+        expect(r.rimWorst, `meet ${name}, ${state}`).toBeGreaterThan(
+          GYM_READABILITY.DEAD_CONTACT_LUMA,
+        );
+      }
+    }
+    // NON-VACUITY: the risen rooms really are different rooms. Without this the
+    // loop above could be three copies of the seated frame and still pass.
+    const pixelsOf = (rise: number): Uint8Array => renderGymScene(meetSpecAt(rise)).data;
+    const seen = new Set(MEET_RISES.map(([, rise]) => pixelsOf(rise).join(',')));
+    expect(seen.size, 'the shipped rises draw the same room').toBe(MEET_RISES.length);
+    expect(MEET_RISES.length).toBeGreaterThan(2);
+  });
+
+  it('never lets a RISEN hall out-value the lifter, at any rise the game ships', () => {
+    // The bound `describe('the room is a pure renderer')` holds over the
+    // training gym, held over the room that actually competes with the three
+    // lamps. The seating is the largest mass in the lower two thirds of a meet
+    // frame, and `gymTuning.ts` says it is "held to the bottom of the value
+    // range so the busiest area of the screen is also the quietest one" — so the
+    // thing to check is that STANDING UP does not spend brighter paint.
+    const figureTop = lumaOfIndex(PAL.SKIN_HI) ?? 0;
+    const seatedBand = bandIndices(renderGymScene(MEET_SPEC));
+    for (const [state, rise] of MEET_RISES) {
+      const room = renderGymScene(meetSpecAt(rise));
+      const roomTop = Math.max(
+        ...[...new Set<number>(room.data)].map((index) => lumaOfIndex(index) ?? 0),
+      );
+      expect(roomTop, `${state}: the room out-values the lifter`).toBeLessThan(figureTop);
+      // The band draws no colour a seated hall does not. A subset rather than a
+      // luma comparison, because it also catches a rise that reached for a
+      // DARKER new value — either way the band stopped being the two-colour mass
+      // the venue's palette note says it is.
+      for (const index of bandIndices(room)) {
+        expect(seatedBand.has(index), `${state}: the band grew index ${index}`).toBe(true);
+      }
+    }
+  });
+
+  it('WOULD catch a crowd that out-values the lifter — the plant', () => {
+    // The other half of the check above, and the reason it is worth anything:
+    // a band repainted in the room's own brightest paint, at the rise the cheer
+    // ships, and the bounds this file already has catch it.
+    const bright = brightestRoomIndex();
+    const plant = renderGymScene(meetSpecAt(MEET_TUNING.CROWD.CHEER_RISE_PX));
+    for (let y = crowdBandTop(); y < crowdFrontRow(MEET_SPEC); y += 1) {
+      for (let x = 0; x < plant.w; x += 1) {
+        if (getPx(plant, x, y) === GYM.CROWD_DARK) continue;
+        setPx(plant, x, y, bright);
+      }
+    }
+    // The subset check goes first, because it is the one that is specific to
+    // this defect rather than to overall busyness.
+    expect(bandIndices(plant).has(bright)).toBe(true);
+    expect(bandIndices(renderGymScene(MEET_SPEC)).has(bright)).toBe(false);
+    // ...and the composited frame fails the file's own bounds, BY NAME, and one
+    // of them is `FIGURE_OVER_ROOM` — the bound that says the lifter keeps the
+    // top of the value range outright. Its note in the ledger used to read "the
+    // room would have to be a wall of filaments"; the seating is 3,120 of the
+    // room's 22,490 pixels and the crowd turns out to be enough on its own.
+    // Equality rather than `.some(...)`, so this cannot quietly stop firing the
+    // one that matters.
+    const grid = compositeOnto(plant, 0, false);
+    expect(violations(grid), `the bright band passed:\n${report(grid)}`).toEqual([
+      'P90_LUMA_HIGH(136.1670>90)',
+      'BRIGHT_SHARE_HIGH(0.0794>0.01)',
+      'FIGURE_OVER_ROOM_P90_LOW(38.6960<60)',
+    ]);
+  });
+
   it('keeps the seating clear of the figure by GEOMETRY, checked on the silhouette', () => {
     // The bound above is a statistic. This is the thing the statistic is about,
     // and it is checked against the figure's REAL rendered crown rather than
     // against `RISER_ROWS` — so shrinking the riser back toward the junction
     // fails here by name even if the luma numbers happened to survive.
+    //
+    // AT EVERY RISE THE GAME SHIPS. A hall that rose DOWNWARD, or one whose
+    // keyline spilled past the front rail, would put seating back behind his
+    // head — the exact defect `RISER_ROWS` exists to have fixed — and until this
+    // loop existed no measurement here had ever seen a risen room.
     const { grid: sprite } = renderLifterFrame(frameSpecFrom(frameAt(0), DEMO_TOTAL_KG));
     let crown = Number.POSITIVE_INFINITY;
     for (let y = 0; y < sprite.h; y += 1) {
@@ -835,32 +1016,44 @@ describe('readability at phone scale', () => {
         crown = Math.min(crown, y + GYM_LIFT_STAGE.SPRITE_Y);
       }
     }
-    const room = renderGymScene(MEET_SPEC);
-    // Rows the seating BAND is drawn in, told apart from the judges' table by
-    // width: the table seats its officials in the same two colours and stands on
-    // the floor in front of the lifter, 28 columns of 130, while the band runs
-    // the whole width of the hall. Both counts are asserted below, so the
-    // discriminator cannot quietly start matching nothing.
-    const bandRows: number[] = [];
-    let tableRows = 0;
-    for (let y = 0; y < room.h; y += 1) {
-      let n = 0;
-      for (let x = 0; x < room.w; x += 1) {
-        const v = getPx(room, x, y);
-        if (v === GYM.CROWD_DARK || v === GYM.CROWD_MID) n += 1;
+    for (const [state, rise] of MEET_RISES) {
+      const room = renderGymScene(meetSpecAt(rise));
+      // Rows the seating BAND is drawn in, told apart from the judges' table by
+      // width: the table seats its officials in the same two colours and stands
+      // on the floor in front of the lifter, 28 columns of 130, while the band
+      // runs the whole width of the hall. Both counts are asserted below, so the
+      // discriminator cannot quietly start matching nothing.
+      const bandRows: number[] = [];
+      let tableRows = 0;
+      for (let y = 0; y < room.h; y += 1) {
+        let n = 0;
+        for (let x = 0; x < room.w; x += 1) {
+          const v = getPx(room, x, y);
+          if (v === GYM.CROWD_DARK || v === GYM.CROWD_MID) n += 1;
+        }
+        if (n > room.w / 2) bandRows.push(y);
+        else if (n > 0) tableRows += 1;
       }
-      if (n > room.w / 2) bandRows.push(y);
-      else if (n > 0) tableRows += 1;
+      // Non-vacuity: there IS a figure, there IS a band, and there IS a table
+      // the discriminator is separating from it.
+      expect(crown).toBeLessThan(room.h);
+      expect(bandRows.length, state).toBeGreaterThan(
+        GYM_VENUE[MEET_SPEC.venue].CROWD_ROWS / 2,
+      );
+      expect(tableRows, state).toBeGreaterThan(0);
+      // The band's front rail is where `crowdFrontRow` says it is...
+      expect(crowdFrontRow(MEET_SPEC)).toBe(junctionRow(MEET_SPEC) - GYM_CROWD.RISER_ROWS);
+      // ...and every row of it is above his crown, standing or seated.
+      expect(
+        Math.max(...bandRows),
+        `${state}: the seating reaches the lifter crown`,
+      ).toBeLessThan(crown);
+      // ...and it never reaches BELOW the rail either, which is what puts the
+      // hall behind the platform rather than on it.
+      expect(Math.max(...bandRows), `${state}: seating past the front rail`).toBeLessThan(
+        crowdFrontRow(MEET_SPEC),
+      );
     }
-    // Non-vacuity: there IS a figure, there IS a band, and there IS a table the
-    // discriminator is separating from it.
-    expect(crown).toBeLessThan(room.h);
-    expect(bandRows.length).toBeGreaterThan(GYM_VENUE[MEET_SPEC.venue].CROWD_ROWS / 2);
-    expect(tableRows).toBeGreaterThan(0);
-    // The band's front rail is where `crowdFrontRow` says it is...
-    expect(crowdFrontRow(MEET_SPEC)).toBe(junctionRow(MEET_SPEC) - GYM_CROWD.RISER_ROWS);
-    // ...and every row of it is above his crown.
-    expect(Math.max(...bandRows), 'the seating reaches the lifter crown').toBeLessThan(crown);
   });
 
   it('and the training gym — the shipped daily screen — fails none', () => {
@@ -2243,16 +2436,23 @@ describe('what this file can and cannot make fail', () => {
    *     principle; no ROOM built out of this palette produces one, and inventing
    *     a synthetic luma histogram to trip them would be measuring the checker
    *     rather than the art.
-   *   FIGURE_OVER_ROOM_P90_MIN — the figure's own p90 is 174.9 on every frame,
-   *     so this fires only once the background's p90 passes 114.9. The brightest
-   *     plant here tops out at LAMP_GLOW (106): the room would have to be a wall
-   *     of filaments, which is a plant that already exists for BRIGHT_SHARE and
-   *     which is kept deliberately small so it stays specific to that bound.
    *
-   * All three are REPORTED on every frame and would catch a regression on the
-   * shipped room. What they do not have is a plant, and this says so.
+   * Both are REPORTED on every frame and would catch a regression on the shipped
+   * room. What they do not have is a plant, and this says so.
+   *
+   * ---------------------------------------------------------------------------
+   * ONE NAME LEFT THIS LIST, AND THE REASON IT WAS ON IT WAS WRONG
+   * ---------------------------------------------------------------------------
+   * `FIGURE_OVER_ROOM_P90_MIN` was declared unplanted here, on the grounds that
+   * "the figure's own p90 is 174.9, so this fires only once the background's p90
+   * passes 114.9 — the room would have to be a wall of filaments". That was an
+   * argument about the LAMPS, and it never considered the crowd: the seating is
+   * 3,120 of the room's 22,490 pixels, and repainting it in the room's brightest
+   * paint takes the background's p90 to 136.2 on its own. The plant is
+   * `it('WOULD catch a crowd that out-values the lifter')`, and it exists
+   * because the risen hall was brought into this file at all.
    */
-  const UNPLANTED = ['RIM_P25_MIN', 'RIM_P50_MIN', 'FIGURE_OVER_ROOM_P90_MIN'] as const;
+  const UNPLANTED = ['RIM_P25_MIN', 'RIM_P50_MIN'] as const;
 
   it('accounts for every bound in BOUNDS, as planted or as declared unplanted', () => {
     // A new bound cannot arrive without landing in one of the two lists.
