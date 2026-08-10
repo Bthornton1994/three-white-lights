@@ -402,13 +402,29 @@ const GUARANTEE_COVERAGE = {
    *
    * The blind spot again, and pointing the usual way: the round's actual new
    * guarantee — that the scan can no longer be confined to one directory, tagged
-   * `the-purchased-day-scan-reads-the-whole-tree` — is written in the source
+   * `the-covered-day-scan-reads-the-whole-tree` — is written in the source
    * file that moved this number by nothing, because its capitalised absolutes
    * happen to contain none of the four trigger words. The tag was added because
    * the author chose to, not because anything demanded it, which is now the
    * third round in a row where that has been true.
+   *
+   * 221 -> 222 when that same scan widened again, from the word "purchase" to
+   * the covered day itself. ATTRIBUTED THE USUAL WAY, one file at a time
+   * against base, and the usual way is what it found: `streakEntitlement.ts`,
+   * `streakEntitlement.test.ts` and `streak.ts` contribute **ZERO between
+   * them** — a rewritten allowlist header, 31 new entries, a fourth candidate
+   * predicate and two new tests — and the whole increment is one heading in
+   * THIS file, over the fourth mutation witness. So the round's real guarantee
+   * moved this number by nothing again, and the thing it noticed was a comment
+   * about a comment. Fourth round running.
+   *
+   * It was also measured going back to 221 by lower-casing that one heading,
+   * which is the declared scoping limit demonstrating itself on a live example
+   * rather than in the abstract. Restored to capitals and pinned at 222 instead,
+   * for the reason the 216 -> 217 note gives: rewording to duck the scan is how
+   * a count stops meaning anything.
    */
-  TREE_WIDE: 221,
+  TREE_WIDE: 222,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -894,17 +910,89 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // violation of the rule it exists to enforce. `npx tsc --noEmit` was also
     // clean with the mutant in place, so nothing else in the toolchain would
     // have stopped it either. This is a defect that would have shipped.
-    guarantee: 'the-purchased-day-scan-reads-the-whole-tree',
+    // RE-TAKEN WHEN THE PREDICATE WIDENED TO COVERAGE, not merely re-pointed at
+    // the renamed constant. The old `observed` said `…(57)` against `…(56)`; the
+    // allowlist is 88 long now, so leaving the message and only fixing the
+    // identifier would have produced a witness that RESOLVES and lies — which is
+    // the exact defect this table exists to make impossible. The mutation was
+    // re-run and the message below is from that run.
+    guarantee: 'the-covered-day-scan-reads-the-whole-tree',
     mutatedFile: 'src/shell/appServer.ts',
     mutated: 'export function appMeetPort(): MeetServerPort {\n  return appConnection();\n}',
     testFile: 'src/game/streakEntitlement.test.ts',
     redAssertion:
-      'expect(found.names, drift).toEqual([...PURCHASED_DAY_TOUCHING_FUNCTIONS].sort());',
+      'expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());',
     observed:
-      'AssertionError: declarations naming a purchase that PURCHASED_DAY_TOUCHING_FUNCTIONS does ' +
-      'not list: shell/appServer.ts::awardCoveredDayForTenSessions: expected ' +
-      "[ 'ACCELERANT_ARRIVAL', …(57) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(56) ] — " +
-      'src/game/streakEntitlement.test.ts:1212',
+      'AssertionError: declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS ' +
+      'does not list: shell/appServer.ts::awardCoveredDayForTenSessions: expected ' +
+      "[ 'ACCELERANT_ARRIVAL', …(88) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
+  },
+  {
+    // THE WITNESS FOR THIS ROUND'S ACTUAL FIX, and the one the other two could
+    // not have produced. Both of those grant through the `'purchase'` source, so
+    // both were caught by the word `purchas` alone — they say nothing about the
+    // FREE side of `COVERAGE_SOURCES`, which is where the hole was.
+    //
+    // The mutant grants coverage every ten sessions through
+    // `'window-entitlement'`, appended to `appServer.ts`:
+    //
+    //   export function widenWindowForTenSessions(
+    //     state: EntitlementState,
+    //     windowNow: number,
+    //     sessionsDone: number,
+    //   ): EntitlementState {
+    //     const earned = Math.floor(sessionsDone / 10);
+    //     if (earned < 1) return state;
+    //     return creditCoveredDays(RECOVERY_ENTITLEMENT, state, windowNow, earned, 'window-entitlement').state;
+    //   }
+    //
+    // THE COUNTERFACTUAL WAS RUN, TWICE, AND IT IS WHY THIS IS EVIDENCE RATHER
+    // THAN A CLAIM. Against the tree-wide scan keyed on `/purchas/i` — the scan
+    // the PREVIOUS round had just fixed and witnessed — this file ran
+    // **43 tests, 43 passed, exit 0**, with `npx tsc --noEmit` clean beside it.
+    // A covered day awarded for training, which CLAUDE.md measures at 1156
+    // violating pairs, was invisible to the guard that exists to forbid it.
+    //
+    // `mutated` anchors the insertion point, the same declaration the two
+    // witnesses either side of it anchor on, because all three mutations APPEND
+    // and there is nothing else to point at. That is a real weakness of the
+    // anchor — it expires when `appMeetPort` is edited, not when the mutant's
+    // own subject moves — and it is recorded rather than papered over.
+    guarantee: 'the-covered-day-scan-reads-the-whole-tree',
+    mutatedFile: 'src/shell/appServer.ts',
+    mutated: 'export function appMeetPort(): MeetServerPort {\n  return appConnection();\n}',
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion:
+      'expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());',
+    observed:
+      'AssertionError: declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS ' +
+      'does not list: shell/appServer.ts::widenWindowForTenSessions: expected ' +
+      "[ 'ACCELERANT_ARRIVAL', …(88) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
+  },
+  {
+    // A FOURTH WITNESS, AND THE ONLY ONE WHOSE MUTANT IS THE GUARD ITSELF. The
+    // three above all add or rename a DECLARATION. This one narrows the
+    // PREDICATE back to `/purchas/i` — the single edit that would undo this
+    // round — and it is the one a future reader is most likely to make, because
+    // 31 of the 88 entries look like noise until you know why they are there.
+    //
+    // It reddens through the staleness half with all 31 named:
+    // `AbsenceOutcome, CoveredDayCreditOutcome, …, tenderGating`. Recorded
+    // because a witness for "somebody added a granter" says nothing about
+    // "somebody deleted the reason the granter is visible".
+    guarantee: 'the-covered-day-scan-reads-the-whole-tree',
+    mutatedFile: 'src/game/streakEntitlement.test.ts',
+    mutated:
+      '  NAMES_A_COVERED_DAY_OR_A_PURCHASE: /purchas|covered.?day|window-entitlement/i,',
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion:
+      'expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());',
+    observed:
+      'AssertionError: allowlist entries no declaration matches any more: AbsenceOutcome, ' +
+      'CoveredDayCreditOutcome, CoveredDayTender, DOOMED_SALE_REFUSAL_MESSAGE, DOOMED_SALE_SWEEP, ' +
+      'DayOpening, EMPIRE_FORBIDDEN_OUTPUTS, EntitlementTuning, GatingOfTender, ' +
+      'LONGEST_REPAIRABLE_ABSENCE_DAYS, MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW, … 31 in all: ' +
+      "expected [ 'ACCELERANT_ARRIVAL', …(56) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
   },
   {
     // A SECOND WITNESS FOR THE SAME TAG, IN THE OTHER DIRECTION, because the
@@ -919,17 +1007,20 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // branch of that same `toEqual` untested, and CLAUDE.md's point about
     // `MUTATION_WITNESSES` is exactly that one witness proves one assertion
     // bites and says nothing about anything else in the same test.
-    guarantee: 'the-purchased-day-scan-reads-the-whole-tree',
+    //
+    // RE-TAKEN ON THE WIDENED PREDICATE, same reason as the first: the counts in
+    // the old message were from a 57-entry allowlist.
+    guarantee: 'the-covered-day-scan-reads-the-whole-tree',
     mutatedFile: 'src/game/streakEntitlement.ts',
     mutated: "  'coveredDayPurchaseDays',\n  'purchaseArrivalOf',",
     testFile: 'src/game/streakEntitlement.test.ts',
     redAssertion:
-      'expect(found.names, drift).toEqual([...PURCHASED_DAY_TOUCHING_FUNCTIONS].sort());',
+      'expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());',
     observed:
-      'AssertionError: declarations naming a purchase that PURCHASED_DAY_TOUCHING_FUNCTIONS does ' +
-      'not list: game/streakSweep.ts::purchaseArrivalOf | allowlist entries no declaration ' +
-      "matches any more: purchaseArrivalOfX: expected [ 'ACCELERANT_ARRIVAL', …(56) ] to deeply " +
-      "equal [ 'ACCELERANT_ARRIVAL', …(56) ] — src/game/streakEntitlement.test.ts:1212",
+      'AssertionError: declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS ' +
+      'does not list: game/streakSweep.ts::purchaseArrivalOf | allowlist entries no declaration ' +
+      "matches any more: purchaseArrivalOfX: expected [ 'ACCELERANT_ARRIVAL', …(87) ] to deeply " +
+      "equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
   },
 ];
 
