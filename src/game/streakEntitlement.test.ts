@@ -16,6 +16,8 @@
  * (`ENTITLEMENT_VERIFICATION`), so every number here is re-derivable from the
  * repository and from nothing else.
  */
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import * as entitlementModule from './streakEntitlement';
 import {
@@ -969,14 +971,178 @@ describe('a purchased covered day has a provenance, and the provenance is on the
 // GDD §8.3E CONDITION 3 — never grantable, earnable or awarded. ENFORCED.
 // ---------------------------------------------------------------------------
 
+/**
+ * THE SCAN'S PARAMETERS, IN ONE PLACE — CLAUDE.md's "keep every such value as a
+ * named constant in one place", applied to a guard's knobs. The root, the
+ * predicate, the predicate that was weighed against it and the two figures the
+ * scan pins are named here rather than written inline in the tests below.
+ *
+ * The counts are MEASURED, at the commit that derived the file set. They are
+ * pinned where a stale one would make a test blind and left unpinned where a
+ * pin would only churn — each field says which, and why.
+ */
+const PURCHASED_DAY_SCAN = {
+  /**
+   * `src/`, the whole tree — and that is the change this constant exists to
+   * record.
+   *
+   * The scan used to read a HARDCODED LIST OF THREE FILENAMES joined against
+   * `__dirname`, which is `src/game/`. Two things followed, and the second is
+   * the one that made the guard weaker than it read:
+   *
+   *   - a module in any other directory was unreachable BY CONSTRUCTION, not by
+   *     omission — no edit to the list could have reached `src/shell/`, because
+   *     the reader could not leave `src/game/`; and
+   *   - the list's own comment argued that a THIRD file had to be added because
+   *     the laundered path was invisible to the other two. That argument
+   *     generalises to a fourth file and nothing derived it, so the set that
+   *     was scanned and the set that mattered had already come apart: at the
+   *     commit this was written on, `progression.ts` named the purchased
+   *     counter and was NOT scanned, while `currencyProvenance.ts` was scanned
+   *     and named neither the counter nor the source.
+   *
+   * Deriving the set from the tree is what makes "whatever it is called" in
+   * `PURCHASED_DAY_TOUCHING_FUNCTIONS`'s header also mean "wherever it is
+   * written".
+   */
+  ROOT: path.join(__dirname, '..'),
+
+  /**
+   * WHAT MAKES A DECLARATION INTERESTING: the WORD, not the two identifiers
+   * that actually carry a purchased day.
+   *
+   * CHOSEN BY MEASUREMENT, and the losing option is pinned in a test below so
+   * the choice is re-runnable rather than a claim in prose. The narrow
+   * predicate — `purchasedDaysLeft`, or the `'purchase'` coverage source — is a
+   * strict subset of this one and finds 18 declarations in 3 files against this
+   * one's 57 in 7. It was rejected for a specific hole rather than for taste:
+   * `applySettledCoveredDayPurchase` is the shipped entry point money arrives
+   * on, and its NAME contains neither narrow token, so a new declaration
+   * elsewhere in the tree that simply CALLS it would name neither. That is
+   * exactly the mutant GDD §8.3E condition 3 exists to catch. The narrow
+   * predicate would also have dropped `currencyProvenance.ts` — which the scan
+   * covers today — out of coverage entirely.
+   *
+   * WHAT IT COSTS, said plainly: the allowlist carries 32 more entries than the
+   * three-file scan did, and most of them are unrelated to covered days
+   * (`empireCore.ts`'s purchasable-accelerant vocabulary, `progression.ts`'s
+   * proposal origins, one `SOURCE_RULES` row whose prose says "purchasable").
+   * That is the deliberate trade: a larger honest allowlist over a narrower one
+   * with a known hole in it.
+   */
+  MENTIONS_A_PURCHASE: /purchas/i,
+
+  /**
+   * The narrower predicate the one above was weighed against. Kept as a live
+   * value, not a sentence, so `THE PREDICATE WAS CHOSEN BY MEASUREMENT` can
+   * re-derive the comparison instead of quoting it.
+   */
+  NAMES_THE_COUNTER_OR_THE_SOURCE: /purchasedDaysLeft|'purchase'/,
+
+  /**
+   * Immediate subdirectories of `src/`. PINNED, and pinned on purpose despite
+   * the churn: a new top-level directory is the one tree change that can
+   * introduce a whole region the walk has never been shown to reach, and the
+   * cheapest way to make somebody look at it is to make it a red line here.
+   *
+   * It is also the anti-vacuity floor for the reach test. Without it, a
+   * `readdirSync` that returned nothing would leave that test comparing two
+   * empty sets — CLAUDE.md's "an empty domain" shape, exactly.
+   */
+  SOURCE_DIRECTORIES: 12,
+
+  /**
+   * The files that currently contain at least one matching declaration, as
+   * paths relative to `src/`.
+   *
+   * THIS IS THE OLD HARDCODED LIST, INVERTED FROM AN INPUT INTO AN OUTPUT, and
+   * the inversion is the whole point. As an input it SCOPED the scan, so a file
+   * missing from it was invisible. As an output it is ASSERTED, so a file
+   * missing from it is a red test naming the file — and a reviewer still gets
+   * the file-level signal that the wider allowlist would otherwise dilute.
+   *
+   * NOT pinned as a bare count: the set is what carries the information, and a
+   * count would pass while two files swapped places.
+   */
+  FILES_THAT_NAME_A_PURCHASE: [
+    'empire/empireCore.ts',
+    'game/currencyProvenance.ts',
+    'game/progression.ts',
+    'game/streak.ts',
+    'game/streakEntitlement.ts',
+    'game/streakSweep.ts',
+    'tuning/audit.ts',
+  ] as readonly string[],
+
+  /**
+   * What the wide and narrow predicates each found when the choice was made, as
+   * `[declarations, files]`. Pinned so that narrowing the predicate on the
+   * belief that it is equivalent fails with the numbers next to it.
+   */
+  WIDE_FOUND: [57, 7] as readonly [number, number],
+  NARROW_FOUND: [18, 3] as readonly [number, number],
+} as const;
+
+/**
+ * Files the scan reads: every non-test `.ts`/`.tsx` under `dir`, recursively.
+ *
+ * THE THIRD COPY OF THIS WALKER IN THE TREE, said rather than hidden — the
+ * other two are in `guaranteeTags.test.ts` and `spriteMarks.test.ts` and are
+ * byte-identical to each other. It is not extracted to a shared home because
+ * that home would have to be a new fs-touching module and `src/game/` is
+ * pure-logic-only; the honest consequence is that a future exclusion added to
+ * one copy does not reach this one. That direction is the safe one — this copy
+ * would scan MORE files, which fails loud, never silent — but it is a real
+ * drift surface and it is recorded here rather than left for a reader to find.
+ *
+ * Test files are excluded because they discuss the counter constantly and
+ * cannot award anything: nothing a test declares ships.
+ */
+function scannedFilesUnder(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+      out.push(...scannedFilesUnder(full));
+    } else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+      out.push(full);
+    }
+  }
+  return out.sort();
+}
+
 describe('nothing can award a purchased covered day, and that is enforced rather than absent', () => {
-  const read = (file: string): string => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const source: string = require('node:fs').readFileSync(
-      require('node:path').join(__dirname, file),
-      'utf8',
+  const stripComments = (source: string): string =>
+    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  const read = (absolutePath: string): string => stripComments(readFileSync(absolutePath, 'utf8'));
+
+  /** Every scanned file as `[pathRelativeToSrc, commentStrippedSource]`. */
+  const scannedSources = (): readonly (readonly [string, string])[] =>
+    scannedFilesUnder(PURCHASED_DAY_SCAN.ROOT).map(
+      (file) =>
+        [path.relative(PURCHASED_DAY_SCAN.ROOT, file).split(path.sep).join('/'), read(file)] as const,
     );
-    return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  /**
+   * Every declaration in the tree matching `predicate`, as `file::name`. The
+   * two predicates share this so a change to the scan cannot move one and leave
+   * the other measuring something else.
+   */
+  const matchesIn = (predicate: RegExp): { qualified: string[]; names: string[]; files: string[] } => {
+    const qualified: string[] = [];
+    const names = new Set<string>();
+    const files = new Set<string>();
+    for (const [rel, source] of scannedSources()) {
+      for (const [name, body] of declarations(source)) {
+        if (!predicate.test(body)) continue;
+        qualified.push(`${rel}::${name}`);
+        names.add(name);
+        files.add(rel);
+      }
+    }
+    return { qualified, names: [...names].sort(), files: [...files].sort() };
   };
 
   /**
@@ -996,7 +1162,7 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     });
   };
 
-  it('THE ALLOWLIST IS EXACT: every declaration that can name a purchased day is listed', () => {
+  it('[the-purchased-day-scan-reads-the-whole-tree] THE ALLOWLIST IS EXACT: every declaration that can name a purchased day is listed, from anywhere under src/', () => {
     // THE GUARD THAT DOES NOT DEPEND ON WHAT A FUNCTION IS CALLED. The obvious
     // version of this test is a blocklist on `grant`, `credit`, `buy`, `award` —
     // and `streak.test.ts` carried exactly that until this round. It cannot
@@ -1009,19 +1175,128 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     // can only grow is one nobody prunes and eventually one that permits
     // everything.
     //
-    // THE SCAN READS THREE FILES NOW. `currencyProvenance.ts` decides who may
-    // buy a covered day, which is where the laundered path went — an
-    // achievement pays Chalk, Chalk buys a covered day, and neither of the
-    // other two files ever sees an achievement. Leaving it unscanned would
-    // leave the exact edit this allowlist exists to surface — a new tender —
-    // invisible to it.
-    const found: string[] = [];
-    for (const file of ['streakEntitlement.ts', 'streak.ts', 'currencyProvenance.ts']) {
-      for (const [name, body] of declarations(read(file))) {
-        if (/purchas/i.test(body)) found.push(name);
-      }
-    }
-    expect(found.sort()).toEqual([...PURCHASED_DAY_TOUCHING_FUNCTIONS].sort());
+    // THE SCAN READS THE WHOLE TREE NOW, AND THAT REPLACED A HARDCODED LIST OF
+    // THREE FILENAMES. The reason the third file was added generalises: it was
+    // added because the laundered path — an achievement pays Chalk, Chalk buys
+    // a covered day — was invisible to the other two. The identical argument
+    // reaches a fourth file, and nothing derived it. Worse, the reader it used
+    // joined its argument against `__dirname`, so `src/game/` was a hard
+    // ceiling: no entry could have named a module in another directory.
+    //
+    // The set had already come apart from the set that matters. At the commit
+    // this was rewritten on, `progression.ts` named the purchased counter in
+    // six declarations and was not scanned, while `currencyProvenance.ts` was
+    // scanned and named neither the counter nor the source.
+    //
+    // The list of files is now an OUTPUT — see `FILES_THAT_NAME_A_PURCHASE`,
+    // asserted in the test below — instead of the input that scoped the search.
+    const found = matchesIn(PURCHASED_DAY_SCAN.MENTIONS_A_PURCHASE);
+    const allowed = new Set(PURCHASED_DAY_TOUCHING_FUNCTIONS);
+    const seen = new Set(found.names);
+
+    // A USEFUL RED, not just a red. CLAUDE.md: "a check that bites but fails
+    // uselessly is half a check" — a bare set diff over 57 strings makes a
+    // reader go and find which file grew a declaration, so the message carries
+    // the qualified name and the allowlist carries only the bare one.
+    const unlisted = found.qualified.filter((q) => !allowed.has(q.split('::')[1] as string));
+    const stale = [...allowed].filter((name) => !seen.has(name)).sort();
+    const drift = [
+      unlisted.length > 0
+        ? `declarations naming a purchase that PURCHASED_DAY_TOUCHING_FUNCTIONS does not list: ${unlisted.join(', ')}`
+        : '',
+      stale.length > 0 ? `allowlist entries no declaration matches any more: ${stale.join(', ')}` : '',
+    ]
+      .filter((line) => line !== '')
+      .join(' | ');
+
+    expect(found.names, drift).toEqual([...PURCHASED_DAY_TOUCHING_FUNCTIONS].sort());
+    // THE ALLOWLIST ITSELF HAS NO DUPLICATES. `found.names` is deduplicated —
+    // it has to be, because the list is of bare names and two files may legally
+    // declare the same one — so without this a doubled entry would be a
+    // permanent red nobody could satisfy, and a reader would reach for a
+    // `Set` on both sides and lose the staleness half.
+    expect([...new Set(PURCHASED_DAY_TOUCHING_FUNCTIONS)].length).toBe(
+      PURCHASED_DAY_TOUCHING_FUNCTIONS.length,
+    );
+  });
+
+  it('AND THE SCAN LEAVES src/game/ — every directory under src/ is reached, and the matching files are pinned', () => {
+    // THE HALF THE ALLOWLIST EQUALITY CANNOT COVER, and the reason this is a
+    // separate test rather than two more lines in the one above.
+    //
+    // The equality above bites hard when the walk breaks in a way that LOSES a
+    // match: an empty walk, a skipped `src/empire`, a dead predicate all shrink
+    // `found.names` below a 57-entry allowlist. What it cannot see is a walk
+    // that never descends into a directory holding ZERO matches today —
+    // `src/shell/`, `src/meet/`, `src/session/`. Those contribute nothing to
+    // the set equality, so the equality is green whether they were read or not,
+    // and the day one of them grows a declaration that awards a purchased day
+    // the guard is silently blind. That is precisely the failure the old
+    // `__dirname`-bound reader had, so shipping the fix without a check on it
+    // would be replacing a structural hole with an unmeasured one.
+    const files = scannedFilesUnder(PURCHASED_DAY_SCAN.ROOT).map((file) =>
+      path.relative(PURCHASED_DAY_SCAN.ROOT, file).split(path.sep).join('/'),
+    );
+    const reached = new Set(files.map((rel) => rel.split('/')[0] as string));
+
+    // The oracle is a ONE-LEVEL `readdirSync`, deliberately a different shape
+    // from the recursive walk it grades, so a bug in the recursion does not
+    // also produce the expectation. Both read the same disk — that is the fact
+    // they are supposed to share.
+    const onDisk = readdirSync(PURCHASED_DAY_SCAN.ROOT, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+      .map((entry) => entry.name)
+      .sort();
+
+    // NON-VACUITY FIRST: two empty sets compare equal. This is the pinned count
+    // that makes the comparison below mean something, and it is the line a new
+    // top-level directory has to come and edit.
+    expect(onDisk.length, `top-level directories under src/: ${onDisk.join(', ')}`).toBe(
+      PURCHASED_DAY_SCAN.SOURCE_DIRECTORIES,
+    );
+    expect([...reached].sort(), 'a directory under src/ that the scan never read').toEqual(onDisk);
+
+    // AND THE FILE SET IS PINNED, which is what makes a new module naming a
+    // purchase a VISIBLE diff at file granularity and not only a bare name
+    // appended to a 57-entry list.
+    expect(matchesIn(PURCHASED_DAY_SCAN.MENTIONS_A_PURCHASE).files).toEqual([
+      ...PURCHASED_DAY_SCAN.FILES_THAT_NAME_A_PURCHASE,
+    ]);
+  });
+
+  it('THE PREDICATE WAS CHOSEN BY MEASUREMENT: the narrower one drops four files, one of them already covered', () => {
+    // BOTH OPTIONS, MEASURED AND PINNED, because the choice between them is the
+    // load-bearing decision in this scan and prose would not survive somebody
+    // deciding the narrow one is obviously equivalent. It is not: the narrow
+    // predicate is a strict subset, so every file it loses is a coverage
+    // regression rather than a tightening.
+    const wide = matchesIn(PURCHASED_DAY_SCAN.MENTIONS_A_PURCHASE);
+    const narrow = matchesIn(PURCHASED_DAY_SCAN.NAMES_THE_COUNTER_OR_THE_SOURCE);
+
+    expect([wide.names.length, wide.files.length]).toEqual([...PURCHASED_DAY_SCAN.WIDE_FOUND]);
+    expect([narrow.names.length, narrow.files.length]).toEqual([...PURCHASED_DAY_SCAN.NARROW_FOUND]);
+
+    // THE NAMED COST. `currencyProvenance.ts` is the file the three-file scan
+    // was widened to reach, and the narrow predicate does not match a single
+    // declaration in it — so narrowing would silently undo the previous round's
+    // fix. The other three are files the tree-wide scan gained.
+    const lostFiles = wide.files.filter((file) => !narrow.files.includes(file));
+    expect(lostFiles).toEqual([
+      'empire/empireCore.ts',
+      'game/currencyProvenance.ts',
+      'game/streakSweep.ts',
+      'tuning/audit.ts',
+    ]);
+
+    // AND THE HOLE THAT DECIDED IT. The shipped entry point money arrives on
+    // contains neither narrow token in its name, so a declaration elsewhere in
+    // the tree that only CALLS it matches the wide predicate and not the narrow
+    // one. This is the §8.3E condition-3 mutant, and it is the reason the noisy
+    // predicate won.
+    expect(PURCHASED_DAY_SCAN.MENTIONS_A_PURCHASE.test('applySettledCoveredDayPurchase')).toBe(true);
+    expect(PURCHASED_DAY_SCAN.NAMES_THE_COUNTER_OR_THE_SOURCE.test('applySettledCoveredDayPurchase')).toBe(
+      false,
+    );
   });
 
   it('AND THE SCAN CAN SEE A NEW ONE: it is not matching nothing', () => {
@@ -1037,8 +1312,15 @@ describe('nothing can award a purchased covered day, and that is enforced rather
       '  return { ...state, purchasedDaysLeft: state.purchasedDaysLeft + 1 };',
       '}',
     ].join('\n');
+    //
+    // IT READS THE SHARED PREDICATE RATHER THAN A COPY OF IT. This line used to
+    // spell `/purchas/i` inline, one screen below the scan that spelled the
+    // same regex — CLAUDE.md's "a twin guard must READ the sibling's list, not
+    // copy it". Narrowing the scan's predicate while this one kept the old
+    // literal would leave the anti-vacuity check green about a predicate the
+    // scan no longer uses, which is the exact shape of a check that cannot fail.
     const names = declarations(mutant)
-      .filter(([, body]) => /purchas/i.test(body))
+      .filter(([, body]) => PURCHASED_DAY_SCAN.MENTIONS_A_PURCHASE.test(body))
       .map(([name]) => name);
     expect(names).toEqual(['markStreakMilestone']);
     expect(PURCHASED_DAY_TOUCHING_FUNCTIONS).not.toContain('markStreakMilestone');

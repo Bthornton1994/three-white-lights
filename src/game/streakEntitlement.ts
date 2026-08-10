@@ -452,10 +452,21 @@ export const SOURCES_THAT_CREDIT_A_PURCHASED_DAY: readonly CoverageSource[] = CO
 );
 
 /**
- * EVERY TOP-LEVEL DECLARATION IN `streakEntitlement.ts`, `streak.ts` AND
- * `currencyProvenance.ts` ALLOWED TO NAME A PURCHASED COVERED DAY — the
- * enforcement half of GDD §8.3E's condition 3, that a purchased day is never
- * grantable, earnable or awarded.
+ * EVERY TOP-LEVEL DECLARATION ANYWHERE UNDER `src/` ALLOWED TO NAME A PURCHASED
+ * COVERED DAY — the enforcement half of GDD §8.3E's condition 3, that a
+ * purchased day is never grantable, earnable or awarded.
+ *
+ * THE FILE SET IS DERIVED FROM THE TREE, NOT LISTED HERE, and that replaced a
+ * hardcoded three-filename list. The old list's own comment argued that a THIRD
+ * file had to be scanned because the laundered path — an achievement pays
+ * Chalk, Chalk buys a covered day — was invisible to the other two. That
+ * argument reaches a fourth file and nothing derived it; and the reader it used
+ * resolved names against `src/game/`, so a module in any other directory was
+ * unreachable BY CONSTRUCTION rather than by omission. The scanned set had
+ * already come apart from the set that matters: `progression.ts` named the
+ * purchased counter and was not scanned, while `currencyProvenance.ts` was
+ * scanned and named neither the counter nor the `'purchase'` source.
+ * `@guarantee the-purchased-day-scan-reads-the-whole-tree`
  *
  * WHY A LIST OF DECLARATION NAMES AND NOT A RULE ABOUT NAMING. The obvious
  * guard is a blocklist on words like `grant`, `credit`, `buy`, `award` — and
@@ -480,6 +491,16 @@ export const SOURCES_THAT_CREDIT_A_PURCHASED_DAY: readonly CoverageSource[] = CO
  * and is caught by the behavioural drive in `streak.test.ts` — which runs every
  * other entry point over a long fuzzed history and asserts the field never
  * moves. Two guards, because neither one covers the other's blind spot.
+ *
+ * MOST OF THIS LIST IS NOT ABOUT COVERED DAYS, and that is the deliberate cost
+ * of keying on the word `purchas` instead of on the two identifiers that carry
+ * a purchased day. The narrow predicate was measured — 18 declarations in 3
+ * files against 57 in 7 — and rejected, because `applySettledCoveredDayPurchase`
+ * is the entry point money arrives on and its name contains neither narrow
+ * token, so a new declaration that merely CALLS it would match neither. The
+ * per-file sections below say which entries are load-bearing and which are
+ * unrelated vocabulary that the scan is honest about picking up.
+ * `streakEntitlement.test.ts` pins both measurements.
  */
 export const PURCHASED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
   // ---- streakEntitlement.ts -----------------------------------------------
@@ -516,15 +537,84 @@ export const PURCHASED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
   'COVERED_DAY_PURCHASE_OUTCOME_IS_COVERAGE_ONLY',
   'applySettledCoveredDayPurchase',
   // ---- currencyProvenance.ts ----------------------------------------------
-  // THE SCAN REACHES A THIRD FILE NOW, and it had to. The two modules above
-  // decide what a purchased covered day DOES; that one decides WHO MAY BUY ONE,
-  // which is where the laundered path went — an achievement pays Chalk, Chalk
-  // buys a covered day, and neither of the two files below ever sees an
-  // achievement. A new tender is exactly the edit this allowlist exists to make
-  // visible, so the file that holds the tenders is scanned like the others.
+  // WHO MAY BUY ONE, which is where the laundered path went — an achievement
+  // pays Chalk, Chalk buys a covered day, and neither of the two files above
+  // ever sees an achievement. A new tender is exactly the edit this allowlist
+  // exists to make visible.
+  //
+  // NOTE FOR ANYONE TEMPTED TO NARROW THE PREDICATE: not one declaration in
+  // this file names `purchasedDaysLeft` or the `'purchase'` source. All three
+  // entries below are here because the scan keys on the WORD. Narrowing it
+  // drops this file out of coverage entirely and undoes the round that added
+  // it; `THE PREDICATE WAS CHOSEN BY MEASUREMENT` fails if anyone does.
   'COVERED_DAY_TENDERS',
   'TENDER_CURRENCY',
   'TENDER_ARRIVAL',
+
+  // ---- progression.ts ------------------------------------------------------
+  // THE FILE THE OLD THREE-FILE SCAN WAS ALREADY MISSING, and the reason the
+  // set had to be derived rather than extended by hand. It names the purchased
+  // counter in six declarations — the wire shape and its decoder carry
+  // `purchasedDaysLeft` across the server boundary — and no edit to the old
+  // hardcoded list would have been prompted by anything.
+  'StreakStateWire',
+  'decodeStreak',
+  // The §8.1 no-pay-to-win reach model. About what a purchase may TOUCH rather
+  // than about covered days, but it is the module that answers that question,
+  // so a new purchasable concern showing up here should be looked at.
+  'OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH',
+  'PROPOSAL_ORIGIN_KINDS',
+  'PROPOSAL_ORIGIN_BY_KIND',
+  'PurchasableProposalKind',
+  'isPurchaseOriginated',
+  'PURCHASABLE_PROPOSAL_KINDS',
+  'PURCHASE_EVIDENCE_KEYS',
+  'PurchaseEvidenceKey',
+  'MoneyCarryingProposalKind',
+  'MONEY_ON_THE_WIRE_IS_DECLARED_A_PURCHASE',
+  'AnyPurchaseReach',
+  'PURCHASES_CANNOT_REACH_PROTECTED_CONCERNS',
+  'PURCHASE_REACH_IS_NOT_VACUOUS',
+  'PURCHASABLE_KINDS_ARE_NOT_VACUOUS',
+
+  // ---- streakSweep.ts ------------------------------------------------------
+  // THE PURCHASE-DAY GENERATOR ITSELF, which the three-file scan never saw.
+  // `coveredDayPurchaseDays` and `purchaseArrivalOf` DECIDE WHICH DAYS A
+  // COVERED DAY LANDS ON in the §8.3E measurement — the exact quantity GDD
+  // §8.3E's day-list assertion is about — so they belong under this guard more
+  // obviously than most of the entries above.
+  'MONOTONICITY_SWEEP',
+  'ENTITLEMENT_VERIFICATION',
+  'COVERED_DAY_PURCHASE_SWEEP',
+  'coveredDayPurchaseDays',
+  'purchaseArrivalOf',
+
+  // ---- empire/empireCore.ts ------------------------------------------------
+  // NOT ABOUT COVERED DAYS. `src/empire/` is GDD §5's idle layer, built by a
+  // parallel session, and it carries its own purchasable-versus-earned
+  // partition for accelerants. These entries are DATA in this allowlist, not a
+  // claim about that module and not a change to it: the scan reads the whole
+  // tree, these declarations say `purchas`, so they are listed. The value of
+  // listing them is that the day an empire declaration starts handing out
+  // coverage rather than an accelerant, this list is where it surfaces.
+  'ACCELERANT_ARRIVALS',
+  'ACCELERANT_ARRIVAL',
+  'ARRIVAL_LICENCE',
+  'PurchasableAccelerant',
+  'EarnedAccelerant',
+  'AccelerantsArePartitioned',
+  'isPurchasableAccelerant',
+  'PURCHASABLE_ACCELERANTS',
+  'EARNED_ACCELERANTS',
+  'empireVocabularyFaults',
+
+  // ---- tuning/audit.ts -----------------------------------------------------
+  // NOT ABOUT COVERED DAYS EITHER, and the clearest illustration of what the
+  // wide predicate costs: `SOURCE_RULES` is the magic-number audit's file
+  // table, and it matches because one row's PROSE says "purchasable". Listing
+  // one name for a whole frozen record is the honest price of a predicate that
+  // cannot be talked out of looking.
+  'SOURCE_RULES',
 ];
 
 /** What a credit of covered days did. Reported, never silent. */

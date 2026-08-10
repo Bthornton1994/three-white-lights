@@ -392,8 +392,23 @@ const GUARANTEE_COVERAGE = {
    * merge in a row to conflict on this constant and the third time re-running
    * beat arithmetic; twice the increments happened to stack and once they did
    * not, which is the whole argument for running it.
+   *
+   * 220 -> 221 when the §8.3E purchased-day scan stopped reading a hardcoded
+   * list of three filenames and started walking the tree. Measured per file the
+   * usual way, by restoring each of the two touched files to its pre-change
+   * text and re-reading this count: `streakEntitlement.ts` contributes ZERO
+   * despite gaining roughly a hundred lines of header and allowlist commentary,
+   * and the single new paragraph is in `streakEntitlement.test.ts`.
+   *
+   * The blind spot again, and pointing the usual way: the round's actual new
+   * guarantee — that the scan can no longer be confined to one directory, tagged
+   * `the-purchased-day-scan-reads-the-whole-tree` — is written in the source
+   * file that moved this number by nothing, because its capitalised absolutes
+   * happen to contain none of the four trigger words. The tag was added because
+   * the author chose to, not because anything demanded it, which is now the
+   * third round in a row where that has been true.
    */
-  TREE_WIDE: 220,
+  TREE_WIDE: 221,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -853,6 +868,69 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: 3 voices x 0ms against a 180ms cue: expected 0 to be greater than or ' +
       'equal to 180 — src/meet/meetSound.test.ts:542',
   },
+  {
+    // THE MUTANT IS A PLANTED VIOLATION RATHER THAN A BROKEN GUARD, because the
+    // guarantee is about REACH: the claim is that a declaration awarding a
+    // purchased covered day is found wherever under `src` it is written, and the
+    // only way to test reach is to write one somewhere the old scan could not
+    // look. It was appended to `appServer.ts` — one directory outside
+    // `src/game/`, which is where the previous scan's reader was nailed down:
+    //
+    //   export function awardCoveredDayForTenSessions(
+    //     entitlement: EntitlementState,
+    //     windowNow: number,
+    //     amount: number,
+    //   ): EntitlementState {
+    //     return creditCoveredDays(RECOVERY_ENTITLEMENT, entitlement, windowNow, amount, 'purchase').state;
+    //   }
+    //
+    // `mutated` anchors the insertion point — the declaration it was appended
+    // after — because the mutation adds text rather than replacing any.
+    //
+    // WHAT MAKES THIS WITNESS WORTH THE TWO COPY-PASTES: the counterfactual was
+    // run, not assumed. The scan as it stood — three hardcoded filenames joined
+    // against `__dirname` — was executed against the MUTATED tree and returned
+    // the same 25 names it returns against a clean one, so it was green on a
+    // violation of the rule it exists to enforce. `npx tsc --noEmit` was also
+    // clean with the mutant in place, so nothing else in the toolchain would
+    // have stopped it either. This is a defect that would have shipped.
+    guarantee: 'the-purchased-day-scan-reads-the-whole-tree',
+    mutatedFile: 'src/shell/appServer.ts',
+    mutated: 'export function appMeetPort(): MeetServerPort {\n  return appConnection();\n}',
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion:
+      'expect(found.names, drift).toEqual([...PURCHASED_DAY_TOUCHING_FUNCTIONS].sort());',
+    observed:
+      'AssertionError: declarations naming a purchase that PURCHASED_DAY_TOUCHING_FUNCTIONS does ' +
+      'not list: shell/appServer.ts::awardCoveredDayForTenSessions: expected ' +
+      "[ 'ACCELERANT_ARRIVAL', …(57) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(56) ] — " +
+      'src/game/streakEntitlement.test.ts:1212',
+  },
+  {
+    // A SECOND WITNESS FOR THE SAME TAG, IN THE OTHER DIRECTION, because the
+    // assertion is a set equality and the staleness half is the half that rots
+    // quietly: an allowlist that can only grow is one nobody prunes.
+    //
+    // The mutant misspells one live entry — `'purchaseArrivalOf'` ->
+    // `'purchaseArrivalOfX'` — which trips BOTH directions at once from a single
+    // edit, and the message says both: the real declaration becomes unlisted and
+    // the invented name becomes stale. Recorded separately from the witness
+    // above because a mutant that only ADDS a declaration leaves the staleness
+    // branch of that same `toEqual` untested, and CLAUDE.md's point about
+    // `MUTATION_WITNESSES` is exactly that one witness proves one assertion
+    // bites and says nothing about anything else in the same test.
+    guarantee: 'the-purchased-day-scan-reads-the-whole-tree',
+    mutatedFile: 'src/game/streakEntitlement.ts',
+    mutated: "  'coveredDayPurchaseDays',\n  'purchaseArrivalOf',",
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion:
+      'expect(found.names, drift).toEqual([...PURCHASED_DAY_TOUCHING_FUNCTIONS].sort());',
+    observed:
+      'AssertionError: declarations naming a purchase that PURCHASED_DAY_TOUCHING_FUNCTIONS does ' +
+      'not list: game/streakSweep.ts::purchaseArrivalOf | allowlist entries no declaration ' +
+      "matches any more: purchaseArrivalOfX: expected [ 'ACCELERANT_ARRIVAL', …(56) ] to deeply " +
+      "equal [ 'ACCELERANT_ARRIVAL', …(56) ] — src/game/streakEntitlement.test.ts:1212",
+  },
 ];
 
 /**
@@ -1174,6 +1252,7 @@ describe('the guarantee-tag convention', () => {
       'src/game/progression.test.ts',
       'src/game/sessionServer.test.ts',
       'src/game/streak.test.ts',
+      'src/game/streakEntitlement.test.ts',
       'src/meet/careerCalendarPlaceholder.test.ts',
       'src/meet/meetSound.test.ts',
       'src/meet/meetStage.test.ts',
