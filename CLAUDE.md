@@ -707,6 +707,37 @@ physiology.
   That habit caught the sixth rewind while holding three builder branches, at a
   cost of one throwaway commit.
 
+- **A SUBAGENT'S REPORT OF THE TREE IS REWIND TELEMETRY, NOT ONLY A GRADING.**
+  This is how the seventh rewind was caught, and it is the only new thing about
+  it. `wave-start.mjs` had run clean ninety minutes earlier; the limit it hit is
+  the one its own header already declares, so the check was not at fault. Local
+  git was internally consistent at the old commit — log, reflog and status all
+  agreed — which is what makes this class silent every single time.
+
+  Two things disagreed with it. A push was rejected as non-fast-forward when
+  there was every reason to be a descendant. And **a critic reported facts about
+  the tree that contradicted mine** — it read `.git/refs/heads` directly, named
+  an older commit, and reported that files merged an hour earlier did not exist.
+  I was one step from reading that report as a grading of current code.
+
+  So when an agent describes source that does not match what you believe is
+  there, **the first hypothesis is that one of you is on a different tree**, not
+  that it misread. Settle it with `git cat-file -t <sha>` on a commit you believe
+  in: after a rewind your own recent SHA is *not a valid object name*, which is
+  unambiguous in a way `git log` is not, because `git log` will happily show you
+  a coherent older history.
+
+  It cuts the other way too, and worse: **an in-flight builder in a worktree is
+  pinned to whatever base it started on.** Its `git log` looks fine, it will read
+  reverted code as current, and it will build a fix against a defect that is
+  already fixed. After any recovery, tell every live agent the real base
+  explicitly and have it rebase — an agent cannot detect this about itself.
+
+  Recovery is `git fetch origin <branch>` then `git reset --hard <origin sha>`.
+  Check whether the rewound commit is an *ancestor* of origin's tip before
+  assuming loss: three of these have been truncations rather than divergences,
+  and nothing was lost in any of them because origin was ahead.
+
 - **`tools/evidence.mjs` is what wave-start's question [3] is asking, and it is
   how a critic sees a test result at all.** A critic's tool allowlist is
   read-only with no Bash, so it cannot run the suite — it reads a bundle this
