@@ -356,8 +356,35 @@ const GUARANTEE_COVERAGE = {
    * happened to stack and the arithmetic would have been right; this time it
    * would have been wrong by two. Neither outcome is a reason to trust the
    * next one — run it.
+   *
+   * 215 -> 219 WHEN THE CUT-IN GATE STARTED SAYING WHAT IT REFUSED. Three of
+   * the four are in `cutin/cutInObserver.ts`; the fourth is this comment, which
+   * quotes one of them — the constant counts this file's own prose, as the note
+   * above it says, and that is correct rather than an artefact. The observer was
+   * deliberately NOT added to `GUARANTEE_PROSE_FILES`, so this is the ratio
+   * moving the wrong way again, and this is where that is said rather than left
+   * for a reader to find. Measured with the file temporarily in scope, so the
+   * three are NAMED rather than estimated, and each one's backing is stated:
+   *
+   *   :12  "COUNTING OVERLAYS CANNOT TELL THE TWO INTERESTING BUILDS APART" —
+   *        a claim about the browser instrument, and it is MEASURED rather than
+   *        asserted: deleting `BombOutView`'s offer left all 21 checks of
+   *        `verify-cutin-cap.mjs` green before this module existed and reddens
+   *        that tool's "THE ASK" line after it. The before/after is recorded in
+   *        its `BROWSER_MUTATION_WITNESSES`, which is where a browser witness
+   *        has to live because this file's schema cannot hold one (CLAUDE.md).
+   *   :60  and
+   *   :187 "FOR TESTS ONLY", twice, about `forgetCutInObservations` — backed by
+   *        `cutInWiring.test.ts`'s ban, which fails if any screen names it, and
+   *        which was extended in the same commit that added the function rather
+   *        than a round later.
+   *
+   * So all three have something behind them and none carries a
+   * machine-resolvable tag. That is this mechanism's declared partiality rather
+   * than an oversight, and CLAUDE.md's distinction applies in both directions:
+   * an unverified claim is not evidence, and it is also not a known defect.
    */
-  TREE_WIDE: 215,
+  TREE_WIDE: 219,
 } as const;
 
 // ---------------------------------------------------------------------------

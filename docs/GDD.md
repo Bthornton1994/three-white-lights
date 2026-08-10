@@ -1789,6 +1789,21 @@ precedent; this is a proven pairing, not a novel gamble.
 - Bombing out — the somber counterpart
 - Coach reactions on a heavy set (ties to the coach voice-pack cosmetic)
 
+**The third PR sub-moment is reached by no screen, and this is where a reader
+starting from the source of truth has to be told.** "New e1RM" fires from the
+daily close-out and from the recap; "new total" fires from the recap. **"Qualifying
+for a higher tier" fires from nowhere** — `cutInGate.ts` accepts the beat and
+would fire on it, and no screen in the app can offer it, because tier
+qualification is a fact about a lifter's standing across meets and that needs
+§6.1's Career calendar, which a human has explicitly deferred. So the moment is
+**unbuilt rather than missing**. The disclosure already lives in `cutInGate.ts`
+§5 and `RecapView.tsx`, and `cutInWiring.test.ts`'s "THE THIRD PR SUB-MOMENT IS
+REACHED BY NO SCREEN" goes red the day one of them starts offering it. Listing
+the three flat here, with §11 recording every *other* cut-in residual, left this
+one the single gap a reader could not find from the document. **Do not build tier
+qualification to close it** — it is downstream of the Career calendar, not of
+this section.
+
 **Cut-ins are Tier 3 surfaces.** See §7.3 — this is where a licensed portrait or
 wordmark would live, never on the base sprite.
 

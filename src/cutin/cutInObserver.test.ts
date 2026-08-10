@@ -121,11 +121,10 @@ describe('the log cannot be written to from outside', () => {
     const state = aSitting();
     offer(state, BOMB_OUT);
 
-    const scope = globalThis as unknown as Record<string, unknown>;
-    const published = scope[CUT_IN_OBSERVER_GLOBAL];
-    expect(typeof published, `${CUT_IN_OBSERVER_GLOBAL} is not published`).toBe('function');
+    const read = globalThis[CUT_IN_OBSERVER_GLOBAL];
+    expect(typeof read, `${CUT_IN_OBSERVER_GLOBAL} is not published`).toBe('function');
+    if (read === undefined) throw new Error('unreachable — the expectation above is red');
 
-    const read = published as () => ReturnType<typeof cutInGateObservations>;
     const taken = read();
     expect(taken.observations).toHaveLength(1);
 

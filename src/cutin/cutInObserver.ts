@@ -84,8 +84,24 @@ import type {
 } from './cutInGate';
 import { CUT_IN_TUNING } from './cutInTuning';
 
-/** The name the published getter takes on `globalThis`. */
+/**
+ * The name the published getter takes on `globalThis`.
+ *
+ * DECLARED TO THE COMPILER RATHER THAN CAST PAST IT, and that is not tidiness:
+ * `progression.test.ts` sweeps every non-test file the project compiles for
+ * reflective assembly — `as unknown as`, `Object.assign`, `structuredClone` —
+ * because that is how a forged `ServerRecord` got into the cache with `tsc`
+ * clean and 2437 tests green. A diagnostic channel is not worth an exemption
+ * row in that table. The index below is the constant itself, so renaming it
+ * without renaming the declaration is a type error rather than a channel the
+ * instrument can no longer find.
+ */
 export const CUT_IN_OBSERVER_GLOBAL = '__cutInGateLog';
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __cutInGateLog: (() => CutInObservationLog) | undefined;
+}
 
 /**
  * ONE TRIP THROUGH THE GATE, QUOTED.
@@ -181,21 +197,12 @@ export function forgetCutInObservations(): void {
 }
 
 /**
- * PUT THE GETTER ON `globalThis`, ONCE.
- *
- * The cast is the one this file has. `globalThis` is typed as its own set of
- * declared globals and this key is not one of them; `as unknown as` is the way
- * to say "an object with string keys" without reaching for `any`, which
- * CLAUDE.md bans. It is confined to this function.
- *
- * Idempotent, and it publishes a FUNCTION rather than the array — see the
- * header for the three properties that buys.
+ * Put the getter on `globalThis`, once. Idempotent, and it publishes a FUNCTION
+ * rather than the array — see the header for the three properties that buys.
  */
 function publishCutInObservations(): void {
-  if (typeof globalThis === 'undefined') return;
-  const scope = globalThis as unknown as Record<string, unknown>;
-  if (typeof scope[CUT_IN_OBSERVER_GLOBAL] === 'function') return;
-  scope[CUT_IN_OBSERVER_GLOBAL] = (): CutInObservationLog => cutInGateObservations();
+  if (globalThis[CUT_IN_OBSERVER_GLOBAL] !== undefined) return;
+  globalThis[CUT_IN_OBSERVER_GLOBAL] = (): CutInObservationLog => cutInGateObservations();
 }
 
 /**
