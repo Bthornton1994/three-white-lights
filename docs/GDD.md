@@ -1641,12 +1641,31 @@ with a gate where the currency usually is. The ban is enforced **by reach, namin
 no axis**, so an axis that later acquires a progression-reaching output is caught
 by the same rule rather than needing a new one.
 
-*Still unmeasured, and named rather than assumed benign:* the earned path —
-check-ins → reputation → sponsor Gym Bucks → the wall-clock day a physio level
-arrives. It is not purchasable, so it is not §8.1, and "more engagement only ever
-helps" is the argument §4.4 records as a reason to measure rather than a
-substitute for measuring. The composed sweep varies the purchase and never the
-training schedule, so it is no evidence either way.
+**The earned path is measured too, and this paragraph said the opposite for
+several waves after it stopped being true.** The chain is check-ins → reputation
+→ sponsor Gym Bucks → the wall-clock day a physio level arrives. It is not
+purchasable, so it is not §8.1, but "more engagement only ever helps" is the
+argument §4.4 records as a reason to measure rather than a substitute for
+measuring — so it was measured, by varying the **training schedule** and holding
+the purchase fixed, which is the opposite independent variable to every sweep
+above.
+
+Result, on the gym the player actually has: the physio half is **0 later
+arrivals of 24576** exhaustively enumerated pairs, worst deficit 0 days, and the
+extra-trained-day comparison is byte-identical at **0 of 1800** elements. The
+Training IQ half was **not** zero — 2954 of 24576, worst deficit 0.451 IQ/day —
+and that measurement is what forced the third-book ruling above; it is 0 now.
+Beside them, non-zero on purpose: re-connecting the chain by funding the ladder
+from the accelerated purse gives **263 later physio arrivals**, so the zeros are
+zeros against something.
+
+*Kept as a correction rather than a silent edit, because the failure is the
+interesting part.* This paragraph read "still unmeasured … no evidence either
+way" while the sweep that closed it was already in the tree and pinned, and the
+same §5.4 section contradicted itself thirty lines apart. CLAUDE.md's opening
+rule is that a sentence written while the code was true keeps its confident tone
+after the code moves; the sentence here was written one wave before the
+measurement existed and was not revisited when it arrived.
 
 ### 5.5 Social Layer
 
