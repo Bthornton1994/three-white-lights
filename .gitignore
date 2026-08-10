@@ -95,4 +95,18 @@ public/canvaskit.wasm
 # rattles inside 149ms, from a bar-load loop asking for one every 90. A finding
 # that lives only in a console someone happened to read is the same failure mode
 # as an undatable screenshot, one channel over.
+#
+# THE RECORD, AND NOT THE DIRECTORY — which is where this one differs from the
+# three above, on their own stated reason rather than on their form. Each of
+# those tracks a dated record plus the pictures that record describes. This
+# directory is shared by two tools: `sound.json` is the dated record
+# (`capturedFrom`, per-check `failures`, a `REQUIRED_SHOT_RECORDS` row), and
+# `capture-meet.mjs`'s 21 PNGs and `frames.json` are the other tool's raw dump —
+# no `capturedFrom`, no checks, in no required list, checked by nothing. A
+# directory-wide negation here tracked the record and un-ignored the dump, so
+# `git status` was never empty again and every evidence bundle from then on
+# stamped DIRTY. That is the staleness instrument grading itself unusable, which
+# costs more than the 900K it saves.
 !.gauntlet/shots/meet/
+.gauntlet/shots/meet/*
+!.gauntlet/shots/meet/sound.json
