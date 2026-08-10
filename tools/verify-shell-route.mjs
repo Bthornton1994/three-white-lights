@@ -3447,6 +3447,7 @@ const returnLeg = {
   meetEnded: null,
   meetAttempts: 0,
   meetMs: null,
+  meetScreenReady: false,
   pressed: false,
   landedDrawn: false,
 };
@@ -3831,11 +3832,28 @@ const playedOut = { attempted: true };
       // ALREADY-TRAINED SURFACE all the way to its ending, and presses the same
       // control §6.5 gives every other meet.
       //
-      // It is the third meet of the run, so `meetIdFor` reports an id the row
-      // already carries, the server refuses it with `MEET_ALREADY_RECORDED`, and
-      // §6.1's placeholder stands where §6.5's recap would — on the `recap`
-      // BEAT, which is why the pill is over it. Same ending as 4b's, reached
-      // from a different screen and, crucially, on a lifter who has trained.
+      // ===================================================================
+      // AND IT ENDS ON §6.5'S RECAP, NOT ON 4b'S PLACEHOLDER — MEASURED
+      // ===================================================================
+      // This is the third meet a MOUSE has played in this process, and the first
+      // guess was that the server would refuse it as `MEET_ALREADY_RECORDED` the
+      // way it refuses 4b's. IT DOES NOT, and the reason is worth writing down
+      // because it is the same fact this section is about, seen from the other
+      // side: `appServer.ts` holds the connection in MODULE SCOPE, and its own
+      // header says "NOTHING IS PERSISTED. A reload still starts a fresh lifter.
+      // What survives is navigation within one run of the app."
+      //
+      // Sections 4c, 5 and 5b each call `open()`, which is a `page.goto`, and
+      // section 6 opens its session with another one. Every one of those ends
+      // the app run and starts a new one on a fresh row. So the meet below is
+      // the FIRST meet of ITS run, it is recorded rather than refused, and
+      // §6.5's recap is what stands at the end of it.
+      //
+      // That makes the section's subject exactly right rather than accidentally
+      // so. The property under test is "navigation within one run", and this leg
+      // is a whole run: `/` -> session played -> DONE -> meet -> back, with no
+      // `goto` anywhere inside it. The run boundary is what makes an
+      // `alreadyTrainedToday` that survives here mean something.
       //
       // ===================================================================
       // NO QUERY STRING, ASSERTED AT EVERY MOMENT SOMETHING IS READ
@@ -3860,23 +3878,32 @@ const playedOut = { attempted: true };
       const third = await checkDrivenMeet(
         'meet 3',
         lastMeetDepthSearch ?? freshDepthSearch(),
-        'placeholder',
+        'recap',
         'THE MEET OPENED FROM THE ALREADY-TRAINED SURFACE IS PLAYED TO ITS END, so its way back is on screen (GDD §6.5)',
       );
       returnLeg.meetEnded = third.ended;
       returnLeg.meetAttempts = third.attempts.length;
       returnLeg.meetMs = third.ms;
 
-      if (third.ended !== 'placeholder') {
-        // NAMED, not silent. `SHELL_NAV.MEET_PHASES` draws no pill on a
-        // bomb-out or on the bare in-flight eyebrow, so there is no control to
-        // press and the return leg cannot be measured — which is a different
-        // statement from "it was measured and passed", and the output has to
-        // say which.
+      // WHICH ENDINGS CARRY A PILL, AND THEREFORE WHICH ONES THIS LEG CAN BE
+      // MEASURED FROM. `MeetScreen` draws §6.5's recap and §6.1's placeholder on
+      // the SAME beat — `recap` — and `SHELL_NAV.MEET_PHASES` is that beat and
+      // nothing else, so both of them carry the way back and a bomb-out or a
+      // stalled round trip does not. Stated as a list of endings rather than as
+      // `=== 'recap'` because the claim here is "there is a control to press",
+      // which is the property the leg needs; WHICH of the two screens this route
+      // produces is the check above, and it is separate on purpose so a change
+      // there reddens one line instead of silently skipping a dozen.
+      const ENDINGS_ON_THE_PILL_BEAT = ['recap', 'placeholder'];
+      if (!ENDINGS_ON_THE_PILL_BEAT.includes(third.ended)) {
+        // NAMED, not silent. There is no control to press and the return leg
+        // cannot be measured — which is a different statement from "it was
+        // measured and passed", and the output has to say which.
         check(
           false,
           'SKIPPED: the return leg needs a meet that ended on a beat SHELL_NAV puts the pill on',
-          `meet 3 ended on '${third.ended}', and SHELL_NAV.MEET_PHASES is ${JSON.stringify(SHELL_NAV_EXPECTED.MEET_PHASES)}`,
+          `meet 3 ended on '${third.ended}'; the endings drawn on SHELL_NAV.MEET_PHASES` +
+            ` (${JSON.stringify(SHELL_NAV_EXPECTED.MEET_PHASES)}) are ${JSON.stringify(ENDINGS_ON_THE_PILL_BEAT)}`,
         );
       } else {
         const urlAtTheEnding = page.url();
@@ -3927,11 +3954,38 @@ const playedOut = { attempted: true };
           'and the point a thumb would land on belongs to it',
           `elementFromPoint -> ${legHit.why}`,
         );
-        await shootBeat(
-          '13-recap-beat-before-the-return-leg.png',
-          'recap',
-          BEAT_SAYS.SECOND_MEET,
-        );
+        sawPillOn('recap', legPill.drawn, legHit.hit);
+
+        // ...AND THE SCREEN HAS FINISHED ARRIVING BEFORE IT IS PHOTOGRAPHED.
+        //
+        // BOTH ARMS, WRITTEN AS TWO, BECAUSE THEY ARE TWO. §6.5's recap
+        // staggers five blocks in and SEE YOUR CARD is the last of them — which
+        // is also the line its shutter identifies it by, so photographing it
+        // early files a mid-assembly frame under a name saying it is the recap,
+        // and that frame has been committed once already (see the block above
+        // `RECAP_LAST_ROW_DRAWN_AT_MS`). §6.1's placeholder animates nothing at
+        // all and says a different sentence. Writing one arm and letting it
+        // stand for the other is this file's own recorded failure — the arm
+        // immediately below the one you just wrote is where it lands — so each
+        // names its own wait and its own line.
+        let legScreenReady;
+        if (third.ended === 'recap') {
+          const arrived = await waitUntilDrawn(page, 'recap-action', RECAP_SETTLE_MS);
+          legScreenReady = arrived.drawn;
+          check(
+            arrived.drawn,
+            `and this recap’s last block arrives within ${RECAP_SETTLE_MS}ms too, so the frame below is of a finished screen`,
+            arrived.why,
+          );
+          await shootBeat('13-recap-before-the-return-leg.png', 'recap', BEAT_SAYS.RECAP);
+        } else {
+          legScreenReady = await checkOnScreen(
+            'meet-recap-placeholder',
+            'and §6.1’s placeholder — which animates nothing, so it has no stagger to wait out — is drawn before the frame below',
+          );
+          await shootBeat('13-recap-before-the-return-leg.png', 'recap', BEAT_SAYS.SECOND_MEET);
+        }
+        returnLeg.meetScreenReady = legScreenReady;
 
         if (!legPill.drawn) {
           check(false, 'SKIPPED: the return leg needs a drawn control to press');
