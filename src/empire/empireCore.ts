@@ -197,6 +197,32 @@
  * un-accelerated clock so a skip cannot move a timestamp either, and
  * `PURCHASABLE_ACCELERANTS` as the derived list the sweep iterates so it cannot
  * miss one that was added later.
+ *
+ * There is a third path E6 has to sweep and this file does not close, named
+ * here so it is an obligation handed forward rather than an omission. It is not
+ * a §8.1 breach — nothing on it is purchasable — but it is §4.4's shape one hop
+ * out:
+ *
+ *   `REPUTATION_PER_CHECK_IN` -> reputation ->
+ *   `SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER` -> Gym Bucks ->
+ *   `STAFF_LEVEL_COST_GYM_BUCKS.physio` -> the day the physio arrives.
+ *
+ * So the physio's ARRIVAL DAY moves with the player's check-in schedule, and
+ * `physioDaysSaved` is a Sim quantity. §4.4's rule about a covered day does not
+ * bind here, because coverage is a windowed entitlement a lifter can be made
+ * rich in at the wrong moment while physio only ever shortens a setback — an
+ * earned path that only helps the diligent lifter has no monotonicity inversion
+ * available. That argument is a reason to measure it rather than a substitute
+ * for measuring it, and E0 does not measure it: the sweep it needs is the
+ * `physioDaysSavedFor` series against a lifter who trains more, at every
+ * horizon, with the counts pinned.
+ *
+ * The same chain acquires a §8.1 edge the day a named partner is attached to a
+ * reputation tier — sponsor money then buys a shorter Sim setback, which is
+ * CLAUDE.md's "a sponsor does not buy a stat" one hop out. The sponsor payout
+ * is anonymous and denominated in Gym Bucks today, and `empireTuning.ts` says
+ * why it may not be denominated in Chalk; attaching a partner to it is a
+ * decision that has to come back through this note.
  */
 
 import { EMPIRE_TUNING } from './empireTuning';
