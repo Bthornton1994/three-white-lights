@@ -44,6 +44,23 @@
  * NO ARITHMETIC HERE. Every weight, every delta and every label comes off
  * `attemptDecisionFor`, and every one of them has already been checked against
  * `isCallableWeightNow` — the same predicate `declareAttempt` will apply.
+ *
+ * ---------------------------------------------------------------------------
+ * THE GOLD EDGE AND THE PR SENTENCE ARE THE SAME DECISION
+ * ---------------------------------------------------------------------------
+ * `styles.cardPr` paints `MEET_PALETTE.CARD_PR_EDGE` off `option.isPrAttempt`,
+ * and the sentence beside it is `option.prNote`, which `meetDay.ts` fills from
+ * that same expression. So a card cannot say "A PR on the line" without the
+ * border, or wear the border in silence.
+ *
+ * That is what this screen used to do. `MEET_COPY.OPTION_BIG_WHY` was a static
+ * string reading "A PR on the line. Higher risk.", printed on the big card
+ * whatever the flag said, and on a lifter's first meet the flag is false for
+ * every card — so a played first meet drew six gold-less cards claiming a
+ * record, in the same sitting whose recap called all three lifts a PR.
+ * `AttemptSelectView.test.ts` holds the counts, and
+ * `tools/verify-shell-route.mjs` reads the pair off the played arm in a browser
+ * because a node suite cannot render a border.
  */
 
 import React from 'react';
@@ -94,10 +111,17 @@ function OptionCard({
         <Text style={styles.cardWeight} testID={`attempt-option-weight-${option.id}`}>
           {formatWeight(option.weightKg)}
         </Text>
-        <Text style={styles.cardDelta}>
+        <Text style={styles.cardDelta} testID={`attempt-option-delta-${option.id}`}>
           {option.deltaKg === 0 ? MEET_COPY.OPTION_SAME_WEIGHT : `+${formatWeight(option.deltaKg)}`}
         </Text>
-        <Text style={styles.cardWhy}>{option.why}</Text>
+        {option.prNote === null ? null : (
+          <Text style={styles.cardPrNote} testID={`attempt-option-pr-note-${option.id}`}>
+            {option.prNote}
+          </Text>
+        )}
+        <Text style={styles.cardWhy} testID={`attempt-option-why-${option.id}`}>
+          {option.why}
+        </Text>
       </Pressable>
     </Animated.View>
   );
@@ -279,6 +303,14 @@ const styles = StyleSheet.create({
   },
   cardPr: {
     borderColor: MEET_PALETTE.CARD_PR_EDGE,
+  },
+  // The sentence and the border are the same colour because they are the same
+  // decision — see `AttemptOption.prNote`.
+  cardPrNote: {
+    color: MEET_PALETTE.CARD_PR_EDGE,
+    fontSize: L.HINT_FONT,
+    fontWeight: '700',
+    letterSpacing: L.LETTER_SPACING,
   },
   cardLabel: {
     color: MEET_PALETTE.TEXT_DIM,

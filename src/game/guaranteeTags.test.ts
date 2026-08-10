@@ -448,8 +448,27 @@ const GUARANTEE_COVERAGE = {
    * file, which is not in `GUARANTEE_PROSE_FILES`, so the scan demanded no tag
    * of it either. It counted a sentence it would never have required anything
    * from, and required nothing of the sentence that states the guarantee.
+   *
+   * 223 -> 224 when GDD §6.3's PR call-out stopped being a static string.
+   * Measured the usual way, by removing the round's new file and re-reading
+   * this count: `meetDay.ts`, `meetTuning.ts` and `AttemptSelectView.tsx`
+   * contribute ZERO between them, and the whole increment is one paragraph in
+   * the new `AttemptSelectView.test.ts`. It is not quoted here for the reason
+   * the five notes above give; in lower case it is the heading over that file's
+   * statement of what a node-environment test can and cannot say about a
+   * border, and the two numbered claims under it.
+   *
+   * SIXTH ROUND RUNNING, and the same shape as the fifth. The round's actual
+   * guarantee — `pr-sentence-and-pr-border-are-one-decision`, that the PR
+   * sentence and the gold edge are one flag rendered twice — is written in
+   * `meetDay.ts`, which moved this number by nothing, because its capitalised
+   * run ("ONE FLAG, TWO RENDERINGS, AND NEITHER MAY OUTRUN THE OTHER") contains
+   * none of the four trigger words. The paragraph the scan did notice states a
+   * limit, in a file the ban does not scope into. That is now five instances
+   * out of six of the same asymmetry, which is worth more than the number it is
+   * attached to.
    */
-  TREE_WIDE: 223,
+  TREE_WIDE: 224,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -560,6 +579,21 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
  * it fail, read the message, restore, confirm green.
  */
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  {
+    // The mutant handed every option GDD §6.3's PR sentence, which is the
+    // defect the tag is about seen from the engine side rather than the copy
+    // side: the gold border still reads `isPrAttempt`, so the two renderings of
+    // one flag come apart. It reddened on the FIRST card of the played arm's
+    // first meet — `small @212.5`, a card no version of the app has ever
+    // flagged — and took the first-meet count from 0 to 12.
+    guarantee: 'pr-sentence-and-pr-border-are-one-decision',
+    mutatedFile: 'src/game/meetDay.ts',
+    mutated: '    prNote: isPrAttempt ? MEET_COPY.OPTION_PR_NOTE : null,',
+    testFile: 'src/meet/AttemptSelectView.test.ts',
+    redAssertion: '`${JSON.stringify(MEET_COPY.OPTION_PR_NOTE)}=${says} with isPrAttempt=${option.isPrAttempt}`,',
+    observed:
+      'AssertionError: first meet, safest cards (the played arm): squat #2 small @212.5 says "A PR on the line."=true with isPrAttempt=false: expected true to be false',
+  },
   {
     // THE ALIASED-IMPORT HOLE, EXECUTED BEFORE IT WAS CLOSED. The covered-day
     // scan matched declaration BODIES textually; an import sits above the first
@@ -1409,6 +1443,7 @@ describe('the guarantee-tag convention', () => {
       'src/game/sessionServer.test.ts',
       'src/game/streak.test.ts',
       'src/game/streakEntitlement.test.ts',
+      'src/meet/AttemptSelectView.test.ts',
       'src/meet/careerCalendarPlaceholder.test.ts',
       'src/meet/meetSound.test.ts',
       'src/meet/meetStage.test.ts',
