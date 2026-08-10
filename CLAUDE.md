@@ -127,9 +127,7 @@ piece there. If either session needs to cross the line, the crossing is written
 into this section **before** the work starts — not into a commit message, not
 into a conversation the other session cannot read.
 
-### WHAT ACTUALLY HAPPENED, AND THE ONE CROSSING
-
-Session B's §5 work merged into this branch as PR #2 while an unrelated merge
+### WHAT ACTUALLY HAPPENED, AND THE ONE CROSSINGSession B's §5 work merged into this branch as PR #2 while an unrelated merge
 was in flight locally. **It stayed exactly in its lane** — 4,760 lines, every
 one under `src/empire/`, nothing outside. The split held.
 
@@ -157,6 +155,38 @@ one knob takes it to 88 and reddens; the registered audit stays clean.
 
 **A guard can be broken by a change that is itself correct**, and the repair
 that restores green is not always the repair that restores the guard.
+
+### A SECOND SHARED SURFACE NOW EXISTS, AND WHOEVER OWNS §5 NEXT DID NOT AGREE TO IT
+
+Written here because it is a cost the other side pays and cannot otherwise
+discover. `src/tuning/` was the only overlap when this section was drafted. There
+are two now.
+
+GDD §8.3E's condition-3 guard — a covered day may never be funded by
+training-gated currency — used to scan three hardcoded filenames under
+`src/game/`, and could not leave that directory. It now **walks `src/` whole**,
+because a planted function awarding a covered day every ten sessions was
+invisible to the old scan and `tsc` was clean beside it. That defect would have
+shipped.
+
+The consequence for §5: **ten `src/empire/**` declaration names now sit in
+`PURCHASED_DAY_TOUCHING_FUNCTIONS`, an allowlist in `src/game/streakEntitlement.ts`.**
+The list is a set equality in both directions, so from now on:
+
+- Adding an `src/empire/` declaration whose body mentions purchasing reddens
+  `streakEntitlement.test.ts` — **a test in a file §5's owner does not own** —
+  until the name is added to that allowlist.
+- Renaming or deleting one reddens it the other way, as a stale entry.
+
+That is the guard working exactly as designed: the whole point is that a new way
+to hand out a covered day forces a visible edit where a reviewer sees it. It is
+also friction landing on somebody who did not choose it, in a file they were told
+to stay out of. Both are true.
+
+**So the allowlist entry is data, not a restructure, and adding one is not a
+boundary crossing.** Whoever owns §5 may edit `PURCHASED_DAY_TOUCHING_FUNCTIONS`
+directly for that purpose without asking. If a §5 change needs more than an
+allowlist row there, that is a real crossing and belongs in this section first.
 
 ## Subagent Roles
 
