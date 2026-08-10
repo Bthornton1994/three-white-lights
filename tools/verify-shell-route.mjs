@@ -130,13 +130,32 @@ import path from 'node:path';
 import {
   SESSION_DRIVE,
   SESSION_PROMPTS,
-  adaptDepthSearch,
   freshDepthSearch,
   openSessionToFirstSet,
   playSessionToCloseOut,
   pressCloseOutAction,
   waitForCloseOutSettled,
 } from './sessionDrive.mjs';
+/**
+ * THE MEET DRIVER LIVES IN ITS OWN MODULE NOW, and every line of it used to be
+ * in this file. `tools/verify-meet-sound.mjs` needs the same drive to hear the
+ * walk-out on the arm a player reaches, and CLAUDE.md has four instances of what
+ * a second copy of a guard costs — each one at a shorter distance than the last.
+ * So it moved rather than being duplicated, and what stayed here is what only
+ * this tool does with it: the hall timeline through the tail, the room the rep
+ * is drawn in, and the checks.
+ *
+ * `MEET_WALKOUT_SAYS` is aliased to the name this file already called it, so the
+ * table has one home and this tool's twenty existing uses are byte-identical.
+ */
+import {
+  MEET_DRIVE,
+  MEET_WALKOUT_SAYS as MEET_TAIL_SAYS,
+  ON_SCREEN_MIN_OPACITY,
+  driveMeetToItsEnd,
+  effectiveOpacity,
+  waitUntilDrawn,
+} from './meetDrive.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -281,35 +300,14 @@ const RECAP_SETTLE_MS = RECAP_LAST_ROW_DRAWN_AT_MS + FADE_GRACE_MS;
  * IDENTICAL.
  */
 /**
- * The two lines that identify the beat the tail probe runs on, restated here
- * for the reason every other copy in this file is restated: a check that reads
- * its expectation out of the module under test agrees with a broken module.
- * Both are cross-checked against `src/game/meetTuning.ts` by
- * `checkMeetRestatementsMatchTuning`.
+ * The lines that identify the beat the tail probe runs on are
+ * `MEET_WALKOUT_SAYS` in `meetDrive.mjs`, imported at the top of this file under
+ * the name `MEET_TAIL_SAYS` that its twenty uses below already spell. They are
+ * restated from `src/game/meetTuning.ts` rather than imported from it, for the
+ * reason every other copy in this file is restated — a check that reads its
+ * expectation out of the module under test agrees with a broken module — and
+ * this tool cross-checks the ones IT uses in `checkMeetRestatementsMatchTuning`.
  */
-const MEET_TAIL_SAYS = Object.freeze({
-  /** src/game/meetTuning.ts — MEET_COPY.WALKOUT_BOMB_RISK. */
-  NOTHING_BANKED: 'NOTHING BANKED. THIS IS THE LIFT.',
-  /**
-   * Not one constant but the eyebrow `WalkoutView` assembles out of
-   * `MEET_COPY.ATTEMPT_LABEL`, `ATTEMPT_OF` and `ATTEMPTS_PER_LIFT`. Written out
-   * as the player reads it, because that is what the probe is checking.
-   */
-  THIRD_OF_THREE: 'ATTEMPT 3 OF 3',
-  /** src/game/meetTuning.ts — MEET_COPY.WALKOUT_THIRD. */
-  LAST_ONE: 'LAST ONE',
-  /** src/game/meetTuning.ts — MEET_COPY.WALKOUT_PR. */
-  A_PR: 'NOBODY HAS SEEN YOU DO THIS',
-  /**
-   * src/game/meetTuning.ts — MEET_COPY.WALKOUT_PROMPT.
-   *
-   * THE ONE LINE `WalkoutView` PRINTS WHEN `isUrgentAttempt` IS FALSE, which is
-   * what makes it usable as the flag `REP_HALL_SEEN` sorts its shots by: the
-   * other three are the bomb-risk, PR and third-attempt lines and every one of
-   * them is an urgent beat.
-   */
-  WALK_IT_OUT: 'WALK IT OUT',
-});
 
 /**
  * `MEET_TUNING.BAR_LOAD_MS`, restated and cross-checked.
@@ -414,15 +412,10 @@ const WALKOUT_TAIL_PROBE = Object.freeze({
   SETTLED_GAP_MS: 600,
 });
 
-/**
- * Below this, a control is reported ABSENT however happily the DOM says it is
- * visible. Not a style threshold: a fade that has not finished is a control a
- * thumb cannot find.
- */
-const ON_SCREEN_MIN_OPACITY = 0.9;
-
-/** How often `waitUntilDrawn` re-reads an opacity while a fade is running. */
-const DRAWN_POLL_MS = 100;
+// `ON_SCREEN_MIN_OPACITY` and `DRAWN_POLL_MS` moved to `meetDrive.mjs` with
+// `effectiveOpacity` and `waitUntilDrawn`, which are the only things that read
+// them. The driver's three presses wait on that threshold too, and two
+// thresholds would be two answers to "is it drawn".
 
 const NAV_OPEN_MEET = 'shell-open-meet';
 const NAV_LEAVE_MEET = 'shell-leave-meet';
@@ -1017,35 +1010,17 @@ const visible = (id) => page.getByTestId(id).isVisible().catch(() => false);
  *      is computed from the same constants the screen animates on, and
  *      `waitUntilDrawn` waits for the fade the app actually plays instead of a
  *      fixed settle that predates it.
+ *
+ * `effectiveOpacity` and `waitUntilDrawn` are `meetDrive.mjs`'s now, because the
+ * meet driver's three presses wait on the same threshold and two copies of the
+ * threshold would be two answers to "is it drawn". They take `page` as their
+ * first argument; nothing else about them changed.
  */
-async function effectiveOpacity(id) {
-  const handle = await page
-    .getByTestId(id)
-    .elementHandle({ timeout: 2000 })
-    .catch(() => null);
-  if (handle === null) return 0;
-  const value = await page
-    .evaluate((node) => {
-      let el = node;
-      let acc = 1;
-      while (el !== null && el.nodeType === 1) {
-        const cs = window.getComputedStyle(el);
-        if (cs.display === 'none' || cs.visibility === 'hidden') return 0;
-        const own = Number.parseFloat(cs.opacity);
-        acc *= Number.isFinite(own) ? own : 1;
-        el = el.parentElement;
-      }
-      return acc;
-    }, handle)
-    .catch(() => 0);
-  await handle.dispose().catch(() => {});
-  return value;
-}
 
 /** In the DOM, and actually drawn. The measured opacity comes back either way. */
 async function onScreen(id) {
   if (!(await visible(id))) return { on: false, why: 'not rendered at all' };
-  const o = await effectiveOpacity(id);
+  const o = await effectiveOpacity(page, id);
   return { on: o >= ON_SCREEN_MIN_OPACITY, why: `opacity ${o.toFixed(3)}` };
 }
 
@@ -1054,28 +1029,6 @@ async function checkOnScreen(id, what) {
   const { on, why } = await onScreen(id);
   check(on, what, why);
   return on;
-}
-
-/**
- * Wait for a control to finish arriving, up to `timeout`, and report what it
- * was at when the clock ran out.
- *
- * A BOUNDED wait, not an unbounded one: "the exit arrives within the time its
- * own animation says it should" is a falsifiable claim, and an unbounded wait
- * would not be one.
- */
-async function waitUntilDrawn(id, timeout) {
-  const started = Date.now();
-  for (;;) {
-    const o = await effectiveOpacity(id);
-    if (o >= ON_SCREEN_MIN_OPACITY) {
-      return { drawn: true, why: `opacity ${o.toFixed(3)} after ${Date.now() - started}ms` };
-    }
-    if (Date.now() - started >= timeout) {
-      return { drawn: false, why: `opacity ${o.toFixed(3)}, still, after ${timeout}ms` };
-    }
-    await page.waitForTimeout(DRAWN_POLL_MS);
-  }
 }
 
 /**
@@ -2295,7 +2248,7 @@ async function checkMeetRestatementsMatchTuning() {
  * would otherwise be no evidence at all that a player could have made it.
  */
 async function press(id, expect, what, drawWithin = settleMs) {
-  const arrived = await waitUntilDrawn(id, drawWithin);
+  const arrived = await waitUntilDrawn(page, id, drawWithin);
   if (!arrived.drawn) {
     check(false, what, `the control ${id} was not drawn to press — ${arrived.why}`);
     return false;
@@ -2359,76 +2312,11 @@ async function press(id, expect, what, drawWithin = settleMs) {
 // That is the same trade section 6 already took and for the same reason: the
 // screen at the end of the loop is the one that had never been photographed.
 
-/**
- * Everything the meet driver moves on, in one place.
- *
- * NONE OF THESE ARE GAME FEEL. The game's feel values live in
- * `src/game/meetTuning.ts` and `src/game/liftTuning.ts`; these are A ROBOT'S
- * REACTION TIMES, and they are here rather than inline for the reason
- * `SESSION_DRIVE` gives about its own: somebody re-tuning meet day needs one
- * place to look when the robot stops keeping up with it.
- *
- * THE TWO COPY LINES ARE NOT REACTION TIMES and are the load-bearing entries.
- * They are how the driver learns WHICH WAY it mistimed a release, and they are
- * cross-checked against `meetTuning.ts` at the end of the run
- * (`checkMeetCopyMatchesTuning`). Without that check a copy edit would stop the
- * driver adapting, every meet would start bombing out, and the failure would
- * read as "the app broke" rather than "this tool stopped recognising it".
- */
-const MEET_DRIVE = Object.freeze({
-  /**
-   * WHICH OPTION GDD §6.3'S CHOICE IS ANSWERED WITH, in preference order.
-   *
-   * The lightest legal call every time: `repeat` exists only after a miss and
-   * is the same weight again; `small` is the modest increase after a make;
-   * `big` is the last resort when the engine offered neither. This is the
-   * driver being a coward on purpose — reaching `recap` needs one good lift on
-   * EACH of squat, bench and deadlift (three misses on any one of them is a
-   * bomb-out, and a bomb-out is a different screen), so the robot takes the
-   * lightest thing on offer and does not play §6.3's actual dilemma. It is not
-   * a claim about what a player should do.
-   */
-  SAFEST_OPTIONS: Object.freeze(['repeat', 'small', 'big']),
-
-  /** How often the driver re-reads which beat the meet is on. */
-  POLL_MS: 25,
-
-  /** How long the finger stays down after the drive press, through lockout. */
-  DRIVE_HOLD_EXTRA_MS: SESSION_DRIVE.DRIVE_HOLD_EXTRA_MS,
-
-  /**
-   * Deadlines. Generous on purpose: every one of these means "the meet has
-   * stopped advancing", not "the meet was slow". A meet beat that runs longer
-   * than its own tuning says is the app's business, not the harness's.
-   */
-  BRACE_TIMEOUT_MS: 15000,
-  DESCENT_TIMEOUT_MS: 15000,
-  ASCENT_TIMEOUT_MS: 20000,
-  /** One whole beat-to-beat transition: bar load, walk-out, judges, cards. */
-  BEAT_TIMEOUT_MS: 40000,
-  /** The whole meet. Nine attempts measured at ~112 s, so this is ~3x. */
-  MEET_TIMEOUT_MS: 360000,
-  /**
-   * A hard stop on the attempt loop. GDD §6.2 is three lifts x
-   * `ATTEMPTS_PER_LIFT` (3), so nine is the most a meet can contain and
-   * anything past it means the loop is not advancing.
-   */
-  MAX_ATTEMPTS: 9,
-
-  /**
-   * MEET_COPY.FEEDBACK_DEPTH_HIGH — the judges' line for a release above depth.
-   * The driver holds LONGER after this one.
-   *
-   * Read off the VERDICT screen rather than off the attempt screen, and that is
-   * not a preference: `AttemptView` hands the resolution to the judges in the
-   * effect that fires the moment the rep resolves, so `attempt-detail` exists
-   * for about one commit and a poll can miss it entirely. `verdict-feedback` is
-   * held for `MEET_TUNING.VERDICT_HOLD_MS`, which is a beat a robot can read.
-   */
-  FEEDBACK_HIGH: 'High. The hips never got under.',
-  /** MEET_COPY.FEEDBACK_BURIED. The driver holds SHORTER after this one. */
-  FEEDBACK_BURIED: 'Too deep to recover.',
-});
+// `MEET_DRIVE` — the robot's reaction times, the two judges' lines it steers by,
+// and the safest-option order — is `meetDrive.mjs`'s, imported at the top of
+// this file. It moved with the driver it belongs to. This tool still
+// cross-checks the two copy lines against `meetTuning.ts` in
+// `checkMeetRestatementsMatchTuning`, which is where they were always checked.
 
 /**
  * How long the recap gets to stop saying `MEET COMPLETE` and become a screen.
@@ -2467,47 +2355,8 @@ async function deriveRecapSettleMs() {
   );
 }
 
-/** Which beat of the meet is on screen, and what the mechanic is saying. */
-async function readMeetLoop() {
-  return page.evaluate(() => {
-    const has = (id) => document.querySelector(`[data-testid="${id}"]`) !== null;
-    const text = (id) => {
-      const node = document.querySelector(`[data-testid="${id}"]`);
-      return node === null ? null : node.textContent;
-    };
-    return {
-      weighIn: has('meet-weigh-in'),
-      openers: has('meet-openers'),
-      walkout: has('meet-walkout'),
-      attempt: has('meet-attempt'),
-      deliberation: has('meet-deliberation'),
-      verdict: has('meet-verdict'),
-      select: has('meet-attempt-select'),
-      /** GDD §6.5's recap, built. */
-      recap: has('meet-recap'),
-      /** The bare eyebrow while the server's answer is in flight. */
-      waiting: has('meet-recap-waiting'),
-      /** GDD §6.1's scaffolding, drawn INSTEAD of the recap on a second meet. */
-      placeholder: has('meet-recap-placeholder'),
-      bombed: has('meet-bombed'),
-      prompt: text('attempt-prompt'),
-      attemptLabel: text('attempt-label'),
-      /** GDD §6.2 step 1's eyebrow and its line — which attempt, and what it is worth. */
-      walkoutEyebrow: text('walkout-attempt'),
-      walkoutLine: text('walkout-line'),
-      /** The judges' one line. See MEET_DRIVE.FEEDBACK_HIGH for why not `attempt-detail`. */
-      feedback: text('verdict-feedback'),
-      /**
-       * The option cards on offer, as whole testIDs. Filtered to the three
-       * `AttemptOptionId`s so `attempt-option-weight-<id>` — a Text INSIDE each
-       * card — is not mistaken for a card.
-       */
-      options: [...document.querySelectorAll('[data-testid]')]
-        .map((node) => node.getAttribute('data-testid'))
-        .filter((id) => /^attempt-option-(repeat|small|big)$/.test(id)),
-    };
-  });
-}
+// `readMeetLoop` is `meetDrive.mjs`'s. It is the driver's eyes and the driver
+// moved; this file reads the meet through the hooks it passes in instead.
 
 /**
  * What the tail probe saw, filled in ONCE by the meet driver and read by
@@ -2707,258 +2556,10 @@ function beatMsForLine(line) {
   return total;
 }
 
-/** Poll `readMeetLoop` until `done(state)`, or the deadline passes. */
-async function untilMeet(done, timeoutMs) {
-  const started = Date.now();
-  for (;;) {
-    const state = await readMeetLoop();
-    if (done(state)) return { ok: true, state, ms: Date.now() - started };
-    if (Date.now() - started >= timeoutMs) return { ok: false, state, ms: Date.now() - started };
-    await page.waitForTimeout(MEET_DRIVE.POLL_MS);
-  }
-}
-
-const meetSaying = (state, phrase) => state.prompt !== null && state.prompt.includes(phrase);
-/** The meet is over, whichever of the four ways it ended. */
-const meetIsOver = (state) => state.recap || state.waiting || state.placeholder || state.bombed;
-
-/**
- * Play ONE attempt on the platform: brace, descend, release, drive.
- *
- * The same mechanic and the same prompts as a training rep — `AttemptView`
- * mounts the same `useLiftLoop` `SetView` does — so `SESSION_PROMPTS` is what
- * it reads. What differs is the testIDs (`attempt-touch` rather than
- * `session-touch`) and that THERE IS NO SECOND CHANCE: a meet attempt resolves
- * once and goes to the judges. See `src/meet/AttemptView.tsx`.
- *
- * Returns what happened. Nothing here throws on a missed rep: a no-lift is a
- * legal thing for the app to do, and a harness that crashed on one would be
- * reporting its own opinion.
- */
-async function playOneMeetAttempt(holdMs, walkoutLine = null, attemptLabel = null) {
-  const braced = await untilMeet(
-    (s) => meetSaying(s, SESSION_PROMPTS.BRACE) || !s.attempt,
-    MEET_DRIVE.BRACE_TIMEOUT_MS,
-  );
-  if (!braced.ok || !meetSaying(braced.state, SESSION_PROMPTS.BRACE)) {
-    return { played: false, why: `no brace to press — prompt was ${JSON.stringify(braced.state.prompt)}` };
-  }
-
-  const box = await page.getByTestId('attempt-touch').boundingBox().catch(() => null);
-  if (box === null) return { played: false, why: 'the attempt has no touch stage' };
-  // BEFORE THE FIRST PRESS, so the rep is at the pose it mounted in and the two
-  // shots this collects are comparable. See `REP_HALL_SEEN`.
-  await photographTheHallUnderTheRep(box, walkoutLine, attemptLabel);
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-
-  await page.mouse.down();
-  const descending = await untilMeet(
-    (s) => meetSaying(s, SESSION_PROMPTS.DESCENT) || !s.attempt,
-    MEET_DRIVE.DESCENT_TIMEOUT_MS,
-  );
-  if (!meetSaying(descending.state, SESSION_PROMPTS.DESCENT)) {
-    await page.mouse.up();
-    return {
-      played: false,
-      why: `holding never started a descent — prompt was ${JSON.stringify(descending.state.prompt)}`,
-    };
-  }
-
-  await page.waitForTimeout(holdMs);
-  await page.mouse.up();
-
-  const drive = await untilMeet(
-    (s) => meetSaying(s, SESSION_PROMPTS.DRIVE) || !s.attempt,
-    MEET_DRIVE.ASCENT_TIMEOUT_MS,
-  );
-  let drove = false;
-  if (meetSaying(drive.state, SESSION_PROMPTS.DRIVE)) {
-    drove = true;
-    await page.mouse.down();
-    await untilMeet((s) => !s.attempt, MEET_DRIVE.ASCENT_TIMEOUT_MS);
-    await page.waitForTimeout(MEET_DRIVE.DRIVE_HOLD_EXTRA_MS);
-    await page.mouse.up();
-  }
-
-  // The judges' line is what says whether the release was high or buried, so
-  // the attempt is not finished being READ until the verdict is up.
-  const judged = await untilMeet(
-    (s) => s.feedback !== null || s.select || meetIsOver(s),
-    MEET_DRIVE.BEAT_TIMEOUT_MS,
-  );
-  return { played: true, holdMs, drove, feedback: judged.state.feedback };
-}
-
-/**
- * The depth search after one attempt, given the judges' feedback.
- *
- * THE ARITHMETIC IS `sessionDrive.mjs`'S AND IS NOT COPIED. `adaptDepthSearch`
- * is the bisection that halves its step on a reversal, and duplicating it here
- * is exactly the drift that module's header exists to refuse. What this adds is
- * the TRANSLATION: meet day says the same two things about a mistimed release
- * in `MEET_COPY`'s words rather than `LIFT_COPY`'s, so the direction is read
- * off the meet's line and handed over in the shape the shared function reads.
- * Anything else the judges say — a stall, a grind, a clean lift — says nothing
- * about the release and must not move the hold.
- */
-function adaptFromMeetFeedback(search, feedbackText) {
-  const said = feedbackText ?? '';
-  const detail = said.includes(MEET_DRIVE.FEEDBACK_HIGH)
-    ? SESSION_PROMPTS.MISS_TOO_HIGH
-    : said.includes(MEET_DRIVE.FEEDBACK_BURIED)
-      ? SESSION_PROMPTS.MISS_BURIED
-      : '';
-  return adaptDepthSearch(search, { detail });
-}
-
-/**
- * Drive whatever meet is currently on screen from wherever it is to whatever it
- * ends on, and report which of the four endings that was.
- *
- * IT NEVER TOUCHES THE URL. That is the whole point of the thing — see the
- * banner above — so this function takes no search string, does no `goto`, and
- * works on the meet the caller already navigated to with a press.
- *
- * `search` is the depth search carried IN and OUT, so a second meet starts from
- * the hold the first one converged on instead of re-learning the mechanic.
- */
-async function driveMeetToItsEnd(tag, searchIn) {
-  const startedAt = Date.now();
-  const attempts = [];
-  let search = searchIn;
-  /** The line the walk-out just before the current rep was showing. */
-  let lastWalkoutLine = null;
-  for (;;) {
-    const state = await readMeetLoop();
-
-    if (meetIsOver(state)) {
-      // `'recap'` the PHASE arrives before the server's answer does, so the
-      // ending is not known until the screen stops being the bare eyebrow.
-      const settled =
-        recapSettleMs === null
-          ? { ok: false, state }
-          : await untilMeet((s) => s.recap || s.placeholder || s.bombed, recapSettleMs);
-      const end = settled.state;
-      return {
-        ended: end.bombed
-          ? 'bombed'
-          : end.recap
-            ? 'recap'
-            : end.placeholder
-              ? 'placeholder'
-              : 'waiting',
-        attempts,
-        search,
-        ms: Date.now() - startedAt,
-        why:
-          recapSettleMs === null
-            ? 'the recap deadline could not be derived from sessionTuning.ts, so the round trip was never waited for'
-            : `settled after ${settled.ms ?? 0}ms`,
-      };
-    }
-
-    if (Date.now() - startedAt >= MEET_DRIVE.MEET_TIMEOUT_MS) {
-      return { ended: 'timeout', attempts, search, ms: Date.now() - startedAt, why: 'the meet ran past its deadline' };
-    }
-    if (attempts.length > MEET_DRIVE.MAX_ATTEMPTS) {
-      return {
-        ended: 'overrun',
-        attempts,
-        search,
-        ms: Date.now() - startedAt,
-        why: `played ${attempts.length} attempts, and GDD §6.2 has ${MEET_DRIVE.MAX_ATTEMPTS}`,
-      };
-    }
-
-    if (state.weighIn) {
-      const pressed = await waitUntilDrawn('weigh-in-action', MEET_DRIVE.BEAT_TIMEOUT_MS);
-      if (!pressed.drawn) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: `the weigh-in never drew its action — ${pressed.why}` };
-      }
-      await page.getByTestId('weigh-in-action').click({ timeout: 20000 }).catch(() => {});
-      await untilMeet((s) => !s.weighIn, MEET_DRIVE.BEAT_TIMEOUT_MS);
-      continue;
-    }
-
-    if (state.openers) {
-      // The openers are taken AS SUGGESTED (GDD §6.1's pre-filled safe opener).
-      // The driver does not override them: the suggestion is derived from the
-      // lifter's own e1RM and is the load the rest of the meet ratchets up from.
-      const pressed = await waitUntilDrawn('openers-action', MEET_DRIVE.BEAT_TIMEOUT_MS);
-      if (!pressed.drawn) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: `the openers never drew an action — ${pressed.why}` };
-      }
-      await page.getByTestId('openers-action').click({ timeout: 20000 }).catch(() => {});
-      await untilMeet((s) => !s.openers, MEET_DRIVE.BEAT_TIMEOUT_MS);
-      continue;
-    }
-
-    if (state.select) {
-      // The cards stagger in, so the screen exists for a frame or two before
-      // they do. Waiting for a card rather than for the screen.
-      const offered = await untilMeet((s) => !s.select || s.options.length > 0, MEET_DRIVE.BEAT_TIMEOUT_MS);
-      if (!offered.state.select) continue;
-      const want = MEET_DRIVE.SAFEST_OPTIONS.find((id) =>
-        offered.state.options.includes(`attempt-option-${id}`),
-      );
-      if (want === undefined) {
-        return {
-          ended: 'stuck',
-          attempts,
-          search,
-          ms: Date.now() - startedAt,
-          why: `GDD §6.3's choice offered none of ${MEET_DRIVE.SAFEST_OPTIONS.join('/')} — on screen: ${JSON.stringify(offered.state.options)}`,
-        };
-      }
-      const drawn = await waitUntilDrawn(`attempt-option-${want}`, MEET_DRIVE.BEAT_TIMEOUT_MS);
-      if (!drawn.drawn) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: `the ${want} option never finished fading in — ${drawn.why}` };
-      }
-      await page.getByTestId(`attempt-option-${want}`).click({ timeout: 20000 }).catch(() => {});
-      await untilMeet((s) => !s.select, MEET_DRIVE.BEAT_TIMEOUT_MS);
-      continue;
-    }
-
-    if (state.walkout || state.deliberation || state.verdict) {
-      // THE ONE BEAT THIS LOOP DOES MORE THAN WAIT THROUGH. See the block above
-      // `WALKOUT_TAIL_PROBE`: the walk-out's tail is where every millisecond of
-      // §12.2's escalation lands, no unit test can watch a clock run, and the
-      // tail only exists on a third attempt — which the played meet reaches
-      // three times and a page load reaches only by freezing the meet. The
-      // sampler runs on the FIRST of them, and only once.
-      if (state.walkout && WALKOUT_TAIL_SEEN.timeline === null) {
-        await sampleTheTailIfThisIsAThird(state);
-      }
-      // WHICH BEAT THE REP AFTER THIS ONE IS THE FAR SIDE OF. The walk-out's
-      // line is the only thing on screen that says whether the attempt is one
-      // the meet turns on, and it is gone by the time the rep is drawn — so it
-      // is remembered here. See `REP_HALL_SEEN`.
-      if (state.walkout) lastWalkoutLine = state.walkoutLine;
-      // Three TIMED beats that run themselves out. Nothing to press on any of
-      // them, and that is a design claim section 7 checks rather than an
-      // assumption this makes: a pill drawn here would be a mis-tap that costs
-      // the attempt.
-      const moved = await untilMeet((s) => s.attempt || s.select || meetIsOver(s), MEET_DRIVE.BEAT_TIMEOUT_MS);
-      if (!moved.ok) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: 'a timed beat never handed on' };
-      }
-      continue;
-    }
-
-    if (state.attempt) {
-      const label = state.attemptLabel;
-      const rep = await playOneMeetAttempt(search.holdMs, lastWalkoutLine, label);
-      attempts.push({ attempt: label, ...rep });
-      if (!rep.played) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: rep.why };
-      }
-      search = adaptFromMeetFeedback(search, rep.feedback);
-      continue;
-    }
-
-    await page.waitForTimeout(MEET_DRIVE.POLL_MS);
-  }
-}
+// `untilMeet`, `meetSaying`, `meetIsOver`, `playOneMeetAttempt`,
+// `adaptFromMeetFeedback` and `driveMeetToItsEnd` are `meetDrive.mjs`'s. Their
+// bodies are unchanged; they take `page` as their first argument, and what this
+// file used to do inline during the drive it now passes in as hooks.
 
 /**
  * The whole of a driven meet, reported as checks.
@@ -2971,7 +2572,20 @@ async function driveMeetToItsEnd(tag, searchIn) {
  * claim, not an observation to be accommodated.
  */
 async function checkDrivenMeet(tag, searchIn, expected, whatEnding) {
-  const drive = await driveMeetToItsEnd(tag, searchIn);
+  const drive = await driveMeetToItsEnd(page, {
+    search: searchIn,
+    recapSettleMs,
+    // THE ONE BEAT THIS TOOL DOES MORE THAN WAIT THROUGH. See the block above
+    // `WALKOUT_TAIL_PROBE`: the walk-out's tail is where every millisecond of
+    // §12.2's escalation lands, no unit test can watch a clock run, and the tail
+    // only exists on a third attempt — which the played meet reaches three times
+    // and a page load reaches only by freezing the meet. The sampler runs on the
+    // FIRST of them, and only once, which is what the guard here says.
+    onWalkoutSeen: async (state) => {
+      if (WALKOUT_TAIL_SEEN.timeline === null) await sampleTheTailIfThisIsAThird(state);
+    },
+    beforeFirstPress: photographTheHallUnderTheRep,
+  });
   check(
     drive.ended === expected,
     whatEnding,
@@ -3197,7 +2811,7 @@ if (!reachedMeet) {
   // line `shootBeat` identifies this beat by — so without this the shutter
   // reads a phrase out of the DOM that is not yet on the pixels. See the block
   // above `RECAP_LAST_ROW_DRAWN_AT_MS` for the photograph that made the point.
-  const recapArrived = await waitUntilDrawn('recap-action', RECAP_SETTLE_MS);
+  const recapArrived = await waitUntilDrawn(page, 'recap-action', RECAP_SETTLE_MS);
   check(
     recapArrived.drawn,
     `and the recap's last block arrives within ${RECAP_SETTLE_MS}ms, the deadline its own stagger implies`,
@@ -4004,7 +3618,7 @@ for (const [search, phase, what] of [
 // ---------------------------------------------------------------------------
 await open('/?meet=bombed', 'meet-bombed', 0);
 beatsProbedInTheBrowser.add('bombed');
-const bombExit = await waitUntilDrawn('bomb-out-action', BOMB_OUT_SETTLE_MS);
+const bombExit = await waitUntilDrawn(page, 'bomb-out-action', BOMB_OUT_SETTLE_MS);
 await page.screenshot({ path: path.join(outDir, '09-bombed-keeps-its-own-exit.png') });
 check(
   bombExit.drawn,
