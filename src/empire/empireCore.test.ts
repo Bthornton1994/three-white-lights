@@ -150,6 +150,7 @@ import {
   type AppliedAccelerant,
   type EmpireAccelerant,
   type EmpireLedgerEntry,
+  type EmpireOutput,
   type EmpireState,
   type EquipmentTier,
   type GymAxes,
@@ -189,8 +190,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
  *     declaration — to the `EMPIRE_BRAND` symbol declared in `empireCore.ts`.
  *     The return type is walked into unions, arrays, conditionals (through
  *     their constraint) and object properties, so a brand nested inside an
- *     `EmpireClock`, an `NpcLifter` or an `EmpireState` counts. Nothing here
- *     reads a function's name.
+ *     `EmpireClock`, an `NpcLifter` or an `EmpireState` counts. No part of that
+ *     determination reads a function's name.
  *   - WHICH PARAMETERS WOULD ADMIT A BRANDED VALUE is asked of the compiler by
  *     COMPILING A CALL. A generated probe module calls every exported function
  *     once per parameter slot per candidate argument — two bare primitives and
@@ -1523,12 +1524,33 @@ describe('the runtime predicates refuse what the types refuse', () => {
       ['gym-bucks'],
       'GYM-BUCKS',
     ];
+    let refusals = 0;
     for (const value of garbage) {
       expect(isEmpireOutput(value), `${String(value)} is not an output`).toBe(false);
       expect(isEmpireAccelerant(value), `${String(value)} is not an accelerant`).toBe(false);
       expect(isPurchasableAccelerant(value), `${String(value)} is not purchasable`).toBe(false);
       expect(isProgressionReachingOutput(value), `${String(value)} reaches nothing`).toBe(false);
+      // `mayAccelerate` on the same garbage, on BOTH arguments, because its own
+      // docstring says it is the one for callers the compiler never saw and it
+      // went straight to two table lookups: an unknown accelerant made
+      // `accelerantLicence` return undefined and the `.includes` beneath it
+      // threw a TypeError. It answers rather than throwing now, and the answer
+      // is no.
+      expect(
+        () => mayAccelerate(value as EmpireAccelerant, 'gym-bucks'),
+        `${String(value)} threw instead of answering`,
+      ).not.toThrow();
+      expect(mayAccelerate(value as EmpireAccelerant, 'gym-bucks')).toBe(false);
+      expect(mayAccelerate('coach-staff-level', value as EmpireOutput)).toBe(false);
+      refusals += 1;
     }
+    // Counts, not bounds. And the refusals above are refusals of the VALUE
+    // rather than of everything: the same earned accelerant on a real output is
+    // allowed, including on the progression-reaching one §5.2 asks for.
+    expect(refusals).toBe(garbage.length);
+    expect(refusals).toBe(12);
+    expect(mayAccelerate('coach-staff-level', 'training-iq')).toBe(true);
+    expect(mayAccelerate('coach-staff-level', 'gym-bucks')).toBe(true);
   });
 
   it('derives its published lists rather than re-listing them', () => {
