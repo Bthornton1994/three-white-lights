@@ -2,13 +2,19 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 42,
-    "waveName": "Wave 42 - three dead builders recovered, and the checks that would have said so run on a schedule now",
+    "wave": 43,
+    "waveName": "Wave 43 - five findings closed, and the new sound probe finds what its own unit test could not",
     "startedIso": "2026-07-31T03:10:00Z",
     "publishedAt": "https://claude.ai/code/artifact/eef0d0ae-c6fd-4e27-9200-69e60a23e38a",
     "publishNote": "tools/progress.mjs output, published as a private Artifact so the page is openable on a phone. .gauntlet/progress.html is gitignored, so this URL is the only way anyone sees it — republish the same file path to keep the URL."
   },
   "blockers": [
+    {
+      "severity": "open",
+      "title": "The bar rattle stacks 5 deep in a browser, and my \"derived\" bound was derived from the wrong model",
+      "body": "The sound probe was extended this wave to measure per-cue DEPTH — how many copies of one cue are sounding at once — using each file's own decoded length, because a Set of file names cannot see a second fire. ITS FIRST RUN FOUND SOMETHING THE UNIT TEST STRUCTURALLY COULD NOT. bar-rattle.wav stacks 5 deep on the walk-out and 4 on walkout-third, with starts at 2771, 2805, 2805, 2822, 2903 — two of them IDENTICAL and none near the nominal 90ms stagger. crowd-swell-big.wav measures depth 2, exactly as designed. || IT IS NOT A DUPLICATE-FIRE BUG. WalkoutView schedules one timer per plate at i * BAR_LOAD_PLATE_STAGGER_MS, which is correct. What the browser delivers is timer COALESCING: the main thread is blocked through the meet transition and the whole queue drains at once afterwards. The intended schedule is right; the delivered one is much denser, and a real device will do the same thing. || THE PART THAT IS MINE: I wrote the unit-test bound on VOICES_PER_CUE as \"derived rather than tuned\", and it derives depth 2 from the nominal stagger. That models the TUNING, not the APP. A derived bound is only as good as the model it derives from, and mine assumed timers fire when they are asked to. The browser disagreed on the first run — which is the argument for the browser probe, made against my own work.",
+      "consequence": "verify-meet-sound.mjs is RED on a legitimate build, which is honest rather than wrong: five 180ms rattles inside 130ms is not the sound the tuning describes, whatever the pool size. Raising VOICES_PER_CUE to 5 would silence the tool without changing what a player hears, so it is not the fix. Dispatched to a builder with the measurement. sound.json is still untracked, so this is not yet in the graded artifact - tracking it while it is red would fail the evidence gate, so the order is fix, then track."
+    },
     {
       "severity": "resolved",
       "title": "The 24-hour \"hang\" was 24.5 hours with no container, and the checks now run on a schedule",
