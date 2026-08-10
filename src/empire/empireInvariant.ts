@@ -249,14 +249,17 @@ import {
   axisLevel,
   axisOutput,
   expansionContext,
+  expansionVerdict,
   idleAxesAt,
   physioDaysSavedAt,
   settledAxesAt,
   settledAxisLevel,
   skipExpansion,
   startExpansion,
+  type AxisFunding,
   type ExpansionAxis,
   type ExpansionBuild,
+  type ExpansionContext,
 } from './expansion';
 import { npcGymBucksPerHour, npcTrainingIqPerDay, rosterTrainingIqPerDay } from './npc';
 import {
@@ -323,6 +326,218 @@ export interface EmpirePolicy {
   readonly axisOrder: readonly ExpansionAxis[];
   /** Which §5.5 metric the rival comparison ranks on. */
   readonly leaderboardMetric: LeaderboardMetric;
+}
+
+// ---------------------------------------------------------------------------
+// The simulated player's spending policy
+// ---------------------------------------------------------------------------
+
+/**
+ * When the simulated player spends what the gym has earned, and in what order.
+ *
+ * GDD §5 fixes prices, ceilings, timers, gates and outputs. It says nothing
+ * about the moment a player chooses to spend or the order they work down their
+ * ladders — so a spending order is a MODEL OF A PLAYER rather than a rule of the
+ * design, and a count measured under one of them is a fact about that model
+ * until the others have been run beside it. Piece E7 measured a
+ * punish-engagement count under the first row of this list alone and said so in
+ * its own report; this list is what lets the same comparator be re-taken under
+ * the rest, driven through `stepGym` itself rather than through a second loop
+ * that could drift from it.
+ *
+ *   - `'rotate-greedy-per-check-in'` — the shipped model. Every check-in is a
+ *     spending moment, and each funding family is offered
+ *     `EmpirePolicy.axisOrder` rotated by `EmpireGym.nextAxis`, which advances
+ *     one step per spending moment. Greedy: the first rung that the verdict
+ *     allows takes the money.
+ *   - `'fixed-order-no-rotation'` — the same greedy spend at the same moments,
+ *     against a priority that does not move with the check-in count. This is
+ *     the rotation PHASE removed and nothing else.
+ *   - `'cheapest-affordable-first'` — in each family, the allowed rung with the
+ *     lowest price goes first.
+ *   - `'costliest-affordable-first'` — the other end of the same ordering, so
+ *     the ordering term is bracketed from both sides rather than sampled once.
+ *   - `'save-for-physio-first'` — while the only thing standing between the gym
+ *     and its next physio rung is money, nothing else on the wall-clock book is
+ *     bought and no recruit is paid for.
+ *   - `'spend-once-per-calendar-day'` — money accrues across the day and is
+ *     spent at the last check-in the player takes in that calendar day. This is
+ *     the spending GRANULARITY removed and nothing else.
+ */
+export const EMPIRE_SPENDING_POLICIES = [
+  'rotate-greedy-per-check-in',
+  'fixed-order-no-rotation',
+  'cheapest-affordable-first',
+  'costliest-affordable-first',
+  'save-for-physio-first',
+  'spend-once-per-calendar-day',
+] as const;
+
+export type EmpireSpendingPolicy = (typeof EMPIRE_SPENDING_POLICIES)[number];
+
+/** The policy the shipped engine runs on. */
+export const SHIPPED_SPENDING_POLICY: EmpireSpendingPolicy = 'rotate-greedy-per-check-in';
+
+/** The axis whose ladder `'save-for-physio-first'` holds its money for. */
+const PHYSIO_AXIS: ExpansionAxis = 'physio';
+
+/**
+ * One check-in as a spending policy sees it.
+ *
+ * `lastCheckInOfDay` is the caller's fact, not a derived one: under a partial
+ * attendance schedule the last check-in a player takes in a day is not the last
+ * slot of the grid, and a policy that spends "at the day boundary" means the
+ * former. Deriving it from `wallSeconds` here would have been the latter.
+ */
+export interface SpendingMoment {
+  readonly policy: EmpireSpendingPolicy;
+  readonly lastCheckInOfDay: boolean;
+}
+
+/** A spending moment. Frozen, so a policy cannot be edited under a running gym. */
+export function spendingMoment(
+  policy: EmpireSpendingPolicy,
+  lastCheckInOfDay: boolean,
+): SpendingMoment {
+  return Object.freeze({ policy, lastCheckInOfDay });
+}
+
+/**
+ * The moment `stepGym` assumes when a caller names none.
+ *
+ * `lastCheckInOfDay` is `true` because the shipped policy does not read it —
+ * which is asserted rather than asserted-in-prose: `empireInvariant.test.ts`
+ * drives one check-in both ways and compares the whole gym.
+ */
+export const SHIPPED_SPENDING_MOMENT: SpendingMoment = spendingMoment(
+  SHIPPED_SPENDING_POLICY,
+  true,
+);
+
+/** Whether this check-in spends anything at all. */
+export function spendsAtMoment(moment: SpendingMoment): boolean {
+  if (moment.policy === 'spend-once-per-calendar-day') return moment.lastCheckInOfDay;
+  return true;
+}
+
+/**
+ * Whether `EmpireGym.nextAxis` advances at this moment — and, on the same
+ * answer, whether the offer this moment makes is rotated by it.
+ *
+ * One predicate for the two because they are one decision: a policy whose offer
+ * ignores the rotation and whose rotation still advanced would carry a counter
+ * that decides nothing, and the phase term this is here to switch off would be
+ * off in the offer and on in the state.
+ */
+export function rotatesAtMoment(moment: SpendingMoment): boolean {
+  return (
+    moment.policy === 'rotate-greedy-per-check-in' ||
+    moment.policy === 'spend-once-per-calendar-day'
+  );
+}
+
+/**
+ * True while the only thing between this gym and its next physio rung is money.
+ *
+ * Keyed on the shipped verdict's own refusal vocabulary rather than on a second
+ * reading of the ladder: a gym that is at the physio ceiling, already building
+ * one, or held back by a gate it cannot spend past is not saving, it is done —
+ * so the policy stops holding its money and spends normally.
+ */
+export function savingForPhysio(
+  order: readonly ExpansionAxis[],
+  context: ExpansionContext,
+): boolean {
+  if (!order.includes(PHYSIO_AXIS)) return false;
+  const verdict = expansionVerdict(context, PHYSIO_AXIS);
+  if (verdict.allowed) return true;
+  return verdict.refusal === 'not-enough-wall-clock-earnings';
+}
+
+/** The price of the rung this axis would start right now, or `null` if none would. */
+function offeredCost(context: ExpansionContext, axis: ExpansionAxis): number | null {
+  const verdict = expansionVerdict(context, axis);
+  return verdict.allowed ? verdict.quote.cost : null;
+}
+
+/**
+ * The axes of one funding family, in the order this moment's policy wants them
+ * tried. The caller stops at the first one that starts.
+ *
+ * Every ordering here is a permutation of the family's slice of
+ * `EmpirePolicy.axisOrder`, and nothing here decides whether a rung is
+ * affordable — `startExpansion` still takes every verdict. A price is read only
+ * to sort by, through `expansionVerdict`, so the ordering cannot hold a second
+ * opinion about what a rung costs or whether it is allowed.
+ */
+export function axisSpendingOrder(
+  moment: SpendingMoment,
+  order: readonly ExpansionAxis[],
+  nextAxis: number,
+  family: AxisFunding,
+  context: ExpansionContext,
+): readonly ExpansionAxis[] {
+  const length = order.length;
+  if (length === 0) return Object.freeze([]);
+  const offset = rotatesAtMoment(moment) ? nextAxis : 0;
+  const inFamily: ExpansionAxis[] = [];
+  for (let step = 0; step < length; step += 1) {
+    const axis = order[(offset + step) % length];
+    if (axis === undefined) continue;
+    if (axisFunding(axis) !== family) continue;
+    inFamily.push(axis);
+  }
+
+  if (
+    moment.policy === 'save-for-physio-first' &&
+    inFamily.includes(PHYSIO_AXIS) &&
+    savingForPhysio(order, context)
+  ) {
+    // Only the physio rung is offered out of the book the physio rung is bought
+    // from. The other family is untouched: it spends a different book.
+    return Object.freeze([PHYSIO_AXIS]);
+  }
+
+  const cheapestFirst = moment.policy === 'cheapest-affordable-first';
+  if (cheapestFirst || moment.policy === 'costliest-affordable-first') {
+    const priced = inFamily.map((axis, index) =>
+      Object.freeze({ axis, index, cost: offeredCost(context, axis) }),
+    );
+    const sorted = [...priced].sort((left, right) => {
+      if (left.cost === null || right.cost === null) {
+        // An axis with no startable rung sorts last, and two of them keep the
+        // order they came in. They are offered anyway, so the verdict — not
+        // this comparator — is what refuses them.
+        if (left.cost === right.cost) return left.index - right.index;
+        return left.cost === null ? 1 : 0 - 1;
+      }
+      if (left.cost !== right.cost) {
+        return cheapestFirst ? left.cost - right.cost : right.cost - left.cost;
+      }
+      return left.index - right.index;
+    });
+    return Object.freeze(sorted.map((row) => row.axis));
+  }
+
+  return Object.freeze(inFamily);
+}
+
+/**
+ * Whether a recruit may be paid for at this moment.
+ *
+ * A recruit is bought out of the wall-clock book, the same book a physio rung
+ * is, so a policy that is holding that book has to hold it here too — otherwise
+ * "saving" would mean saving from one of the two spenders and the money would
+ * leave by the other.
+ */
+export function maySpendOnRoster(
+  moment: SpendingMoment,
+  order: readonly ExpansionAxis[],
+  context: ExpansionContext,
+): boolean {
+  if (!spendsAtMoment(moment)) return false;
+  if (moment.policy === 'save-for-physio-first') return !savingForPhysio(order, context);
+  return true;
 }
 
 /**
@@ -642,6 +857,7 @@ export function stepGym(
   accelerant: PurchasableAccelerant | null,
   grantSeconds: number,
   funding: EmpireFunding = SHIPPED_FUNDING,
+  moment: SpendingMoment = SHIPPED_SPENDING_MOMENT,
 ): EmpireGym {
   if (!Number.isFinite(wallSeconds) || wallSeconds < 0) {
     throw new RangeError(`a wall-clock reading must be finite and at or above zero, received ${wallSeconds}.`);
@@ -731,14 +947,23 @@ export function stepGym(
   //    accelerated book, and the day a wall-clock-funded rung starts would be
   //    back under the purchase through the competition rather than through the
   //    price.
+  //    Which axis is offered first, and whether this check-in offers anything at
+  //    all, is `moment` — the simulated player's spending policy. Under
+  //    `SHIPPED_SPENDING_MOMENT` both questions answer the way this loop always
+  //    answered them, which `empireInvariant.test.ts` holds by comparing whole
+  //    gyms rather than by this sentence.
   let expansions = gym.expansions;
   let nextAxis = gym.nextAxis;
-  if (policy.axisOrder.length > 0) {
+  if (policy.axisOrder.length > 0 && spendsAtMoment(moment)) {
     for (const family of AXIS_FUNDINGS) {
-      for (let offset = 0; offset < policy.axisOrder.length; offset += 1) {
-        const axis = policy.axisOrder[(nextAxis + offset) % policy.axisOrder.length];
-        if (axis === undefined) continue;
-        if (axisFunding(axis) !== family) continue;
+      const offers = axisSpendingOrder(
+        moment,
+        policy.axisOrder,
+        nextAxis,
+        family,
+        expansionContext(offeredTo(state, funding), builds),
+      );
+      for (const axis of offers) {
         const started = startExpansion(expansionContext(offeredTo(state, funding), builds), axis);
         if (!started.started) continue;
         builds = Object.freeze([...builds, started.build]);
@@ -755,7 +980,9 @@ export function stepGym(
         break;
       }
     }
-    nextAxis = (nextAxis + 1) % policy.axisOrder.length;
+    if (rotatesAtMoment(moment)) {
+      nextAxis = (nextAxis + 1) % policy.axisOrder.length;
+    }
   }
 
   // 5. Spend on the roster. The board is a catalogue and this reads the top of
@@ -764,7 +991,12 @@ export function stepGym(
   //    fills it and that lifter pays Training IQ.
   const offered = offeredTo(state, funding);
   const capacity = rosterCapacity(offered.settledAxes);
-  if (state.roster.length + stillPending.length < capacity) {
+  const rosterAllowed = maySpendOnRoster(
+    moment,
+    policy.axisOrder,
+    expansionContext(offered, builds),
+  );
+  if (rosterAllowed && state.roster.length + stillPending.length < capacity) {
     const tier = bestRecruitableTier(offered);
     if (tier !== null) {
       const decision = beginRecruitment(offered, tier);
@@ -890,7 +1122,18 @@ export function runEmpire(
         grantedCheckIns += 1;
         grantedSeconds += granted;
       }
-      gym = stepGym(gym, policy, wallSeconds, plan.accelerant, granted, funding);
+      // The moment is stated rather than defaulted, so `lastCheckInOfDay` is
+      // true of this loop's own cadence instead of being a field nobody keeps
+      // honest because the shipped policy happens not to read it.
+      gym = stepGym(
+        gym,
+        policy,
+        wallSeconds,
+        plan.accelerant,
+        granted,
+        funding,
+        spendingMoment(SHIPPED_SPENDING_POLICY, tick === policy.checkInsPerDay - 1),
+      );
     }
 
     // §5.5's calendar-keyed income: an encouragement is paid per distinct

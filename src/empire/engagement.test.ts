@@ -37,17 +37,69 @@
  *   - one axis per funding family (no phase): 238 violating pairs, 2153 days
  *   - no roster-slot axes (no lifter term):     0 violating pairs,    0 days
  *
- * So the rotation phase is a bit under half of it and the roster-slot axes are
- * all of it: with no space and no spotter ladder the roster cannot grow past
- * `ROSTER_SLOTS_BASE` and no schedule can move a lifter's arrival at all. The
- * residue in the middle arm is the same shape without the rotation — a recruit
- * bought at one check-in is money a space level does not get at the next.
+ * The roster-slot axes are all of it: with no space and no spotter ladder the
+ * roster cannot grow past `ROSTER_SLOTS_BASE` and no schedule can move a
+ * lifter's arrival at all.
+ *
+ * THE MIDDLE ARM IS NOT THE ROTATION PHASE ON ITS OWN, and the sentence that
+ * used to say it was is deleted rather than softened. `ONE_PER_FUNDING_FAMILY`
+ * drops three of the five axes as well as the phase, so its 238 is two terms
+ * removed and reads as one. The phase alone is
+ * `'fixed-order-no-rotation'` in the policy table below, and on the headline
+ * domain it is 2954 -> 2751: a fourteenth of the count, not half of it.
  *
  * That is GDD §12.3's "a setback that punishes daily engagement" in §4.4's
  * shape — a quantity the player's own activity moves deciding when something
  * that reaches Sim training pace arrives. It is reported rather than clamped:
  * the fix is a design decision about how §5.1's check-in loop spends, and this
  * piece was asked to measure, not to choose.
+ *
+ * ===========================================================================
+ * The count survives every spending policy measured, which is what makes it §5's
+ * ===========================================================================
+ *
+ * The paragraph above describes a SPENDING POLICY — greedy, rotating, once per
+ * check-in — and GDD §5 does not specify one. It fixes prices, ceilings, timers,
+ * gates and outputs and says nothing about when a player spends, so a count
+ * taken under one spending order is a fact about that order until the others
+ * have been run beside it. `EMPIRE_SPENDING_POLICIES` is that list and the whole
+ * comparator is re-taken under each, on this file's own exhaustive domain:
+ *
+ *   policy                        violating pairs   days lower   worst deficit
+ *   rotate-greedy-per-check-in            2954         25772       0.451337
+ *   fixed-order-no-rotation               2751         22580       0.451337
+ *   cheapest-affordable-first             2751         22580       0.451337
+ *   costliest-affordable-first            3427         28880       0.436267
+ *   save-for-physio-first                    0             0       0
+ *   spend-once-per-calendar-day          10122         43482       0.650459
+ *
+ * all on 24576 pairs and 589824 compared elements, with `pairsWherePhysioArrived`
+ * at 24576 on every row. Two things follow and neither is the tidy answer:
+ *
+ *   - `'cheapest-affordable-first'` and `'fixed-order-no-rotation'` are the same
+ *     numbers because on `EMPIRE_TUNING`'s ladders `AXIS_ORDER` is already
+ *     price-ascending inside each funding family, so the two policies pick the
+ *     same axis every time. They are five distinct policies, not six, and the
+ *     table says so rather than counting the row twice.
+ *   - `'save-for-physio-first'` is zero HERE and 15 at twenty seeded days and
+ *     138 at forty. A zero on one domain is not a fix, and this file pins the
+ *     second domain beside it so the zero cannot be read as one.
+ *
+ * So no policy measured is zero everywhere, and the punish-engagement property
+ * is a property of §5's composition rather than of one simulated player: a
+ * single wall-clock purse is contested by §5.4's roster-slot ladders and §5.3's
+ * recruits, both of which gate a §5.2 Training IQ payer, and a check-in moves
+ * where in that contest the money lands whatever order the player spends in.
+ *
+ * The one place E7's diagnosis is measurably backwards is worth stating plainly:
+ * it named the per-check-in granularity as the term, and
+ * `'spend-once-per-calendar-day'` — which removes exactly that — is the WORST
+ * row, three and a half times the shipped count, the only row on this domain in
+ * which the more-engaged gym's physio arrives LATER (5484 pairs, up to two
+ * days), and the only policy under which E7's own whole-day reading stops being
+ * zero (600 of 24576). Coarser spending does not help; it lets a whole day's
+ * accrual land on one decision, which is a bigger lever for the schedule to
+ * move, not a smaller one.
  *
  * ===========================================================================
  * Why the exhaustive sweep is over a window rather than every calendar
@@ -97,9 +149,12 @@ import {
 } from './empireSweep.test';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
+  EMPIRE_SPENDING_POLICIES,
+  SHIPPED_SPENDING_POLICY,
   rosterRatesAt,
   runEmpire,
   type EmpirePolicy,
+  type EmpireSpendingPolicy,
   type SocialInputs,
 } from './empireInvariant';
 import {
@@ -596,6 +651,7 @@ function runFor(
   key: EngagementWiringKey = 'shipped',
   axisOrder: readonly ExpansionAxis[] = ENGAGEMENT_SWEEP.AXIS_ORDER,
   checkInsPerDay: number = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY,
+  spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
 ): EngagementRun {
   const wiring =
     key === 'shipped' || key === 'accelerated-purse'
@@ -609,6 +665,7 @@ function runFor(
     history,
     socialFor(history),
     wiring,
+    spending,
   );
 }
 
@@ -622,6 +679,7 @@ function windowedSweep(
   windowSlots: number,
   key: EngagementWiringKey = 'shipped',
   axisOrder: readonly ExpansionAxis[] = ENGAGEMENT_SWEEP.AXIS_ORDER,
+  spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
 ): EngagementTally {
   const slots = days * ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
   const cache = new Map<number, EngagementRun>();
@@ -636,7 +694,7 @@ function windowedSweep(
           : (mask & (1 << (slot - windowFrom))) !== 0,
       BASE_TRAINED_DAYS,
     );
-    const made = runFor(days, history, key, axisOrder);
+    const made = runFor(days, history, key, axisOrder, ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY, spending);
     cache.set(mask, made);
     return made;
   };
@@ -673,7 +731,10 @@ function fullyExhaustiveSweep(days: number, checkInsPerDay: number): EngagementT
 }
 
 /** Every calendar of whole attended DAYS, each compared against one more day. */
-function wholeDaySweep(days: number): EngagementTally {
+function wholeDaySweep(
+  days: number,
+  spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
+): EngagementTally {
   const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
   const slots = days * cadence;
   const cache = new Map<number, EngagementRun>();
@@ -685,7 +746,7 @@ function wholeDaySweep(days: number): EngagementTally {
       (slot) => (mask & (1 << Math.floor(slot / cadence))) !== 0,
       BASE_TRAINED_DAYS,
     );
-    const made = runFor(days, history);
+    const made = runFor(days, history, 'shipped', ENGAGEMENT_SWEEP.AXIS_ORDER, cadence, spending);
     cache.set(mask, made);
     return made;
   };
@@ -706,8 +767,10 @@ function seededSweep(
   seed: number,
   key: EngagementWiringKey = 'shipped',
   axisOrder: readonly ExpansionAxis[] = ENGAGEMENT_SWEEP.AXIS_ORDER,
+  spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
 ): EngagementTally {
-  const slots = days * ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
+  const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
+  const slots = days * cadence;
   let tally = emptyEngagementTally();
   const next = lcg(seed);
   for (let trial = 0; trial < trials; trial += 1) {
@@ -716,14 +779,14 @@ function seededSweep(
       draws.push(next() < ENGAGEMENT_SWEEP.ATTENDANCE_DENSITY);
     }
     const history = historyFrom(slots, (slot) => draws[slot] === true, BASE_TRAINED_DAYS);
-    const baseline = runFor(days, history, key, axisOrder);
+    const baseline = runFor(days, history, key, axisOrder, cadence, spending);
     for (let slot = 0; slot < slots; slot += 1) {
       if (draws[slot] === true) continue;
       tally = addEngagement(
         tally,
         compareEngagement(
           baseline,
-          runFor(days, moreEngagedBy(history, slot), key, axisOrder),
+          runFor(days, moreEngagedBy(history, slot), key, axisOrder, cadence, spending),
         ),
       );
     }
@@ -1006,6 +1069,420 @@ describe('the term is the spending order on the wall-clock book', () => {
     expect(
       windowedSweep(days, 0, slots, 'shipped', ENGAGEMENT_SWEEP.NO_ROSTER_SLOT_AXES),
     ).toEqual(MEASURED.DIAG_NO_ROSTER_SLOT_AXES);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The same comparator under every spending policy
+// ---------------------------------------------------------------------------
+
+/**
+ * What each spending policy produced, pinned whole.
+ *
+ * These six tallies are the answer to "is the count above a property of GDD §5
+ * or of one simulated player", and the shipped row is the reproduction check:
+ * it is asserted against `MEASURED.WINDOWED_SHIPPED` itself rather than against
+ * a copy of its numbers, so the two harnesses cannot quietly disagree.
+ */
+const MEASURED_POLICY = Object.freeze({
+  WINDOWED: Object.freeze({
+    'fixed-order-no-rotation': {
+      pairs: 24576,
+      comparedElements: 589824,
+      movedPairs: 17580,
+      movedElements: 184963,
+      violatingPairs: 2751,
+      trainingIqLower: 22580,
+      trainingIqHigher: 161347,
+      physioLower: 0,
+      physioHigher: 1036,
+      physioArrivalLater: 0,
+      physioArrivalEarlier: 1036,
+      pairsWherePhysioArrived: 24576,
+      worstTrainingIqDeficit: 0.4513370000000001,
+      worstPhysioDeficit: 0,
+      worstArrivalDeficitDays: 0,
+      lengthMismatches: 0,
+    },
+    'costliest-affordable-first': {
+      pairs: 24576,
+      comparedElements: 589824,
+      movedPairs: 17479,
+      movedElements: 182777,
+      violatingPairs: 3427,
+      trainingIqLower: 28880,
+      trainingIqHigher: 152861,
+      physioLower: 0,
+      physioHigher: 1036,
+      physioArrivalLater: 0,
+      physioArrivalEarlier: 1036,
+      pairsWherePhysioArrived: 24576,
+      worstTrainingIqDeficit: 0.43626699999999996,
+      worstPhysioDeficit: 0,
+      worstArrivalDeficitDays: 0,
+      lengthMismatches: 0,
+    },
+    'save-for-physio-first': {
+      pairs: 24576,
+      comparedElements: 589824,
+      movedPairs: 10752,
+      movedElements: 83506,
+      violatingPairs: 0,
+      trainingIqLower: 0,
+      trainingIqHigher: 82470,
+      physioLower: 0,
+      physioHigher: 1036,
+      physioArrivalLater: 0,
+      physioArrivalEarlier: 1036,
+      pairsWherePhysioArrived: 24576,
+      worstTrainingIqDeficit: 0,
+      worstPhysioDeficit: 0,
+      worstArrivalDeficitDays: 0,
+      lengthMismatches: 0,
+    },
+    'spend-once-per-calendar-day': {
+      pairs: 24576,
+      comparedElements: 589824,
+      movedPairs: 13027,
+      movedElements: 132845,
+      violatingPairs: 10122,
+      trainingIqLower: 43482,
+      trainingIqHigher: 79507,
+      physioLower: 5504,
+      physioHigher: 4352,
+      physioArrivalLater: 5484,
+      physioArrivalEarlier: 3883,
+      pairsWherePhysioArrived: 24576,
+      worstTrainingIqDeficit: 0.6504590000000001,
+      worstPhysioDeficit: 1,
+      worstArrivalDeficitDays: 2,
+      lengthMismatches: 0,
+    },
+  }),
+
+  /**
+   * The same six on a SECOND domain, and the reason this block exists: on the
+   * windowed domain `'save-for-physio-first'` is zero, and a zero on one domain
+   * read as a fix is exactly the empty-domain mistake CLAUDE.md keeps recording.
+   * At 40 seeded days the same policy gives 138.
+   *
+   * Only `violatingPairs`, `trainingIqLower`, `worstTrainingIqDeficit`,
+   * `physioArrivalLater` and the two non-vacuity counts are pinned here, because
+   * this domain is a check on the windowed one rather than a headline of its own.
+   */
+  SEEDED_20: Object.freeze({
+    'rotate-greedy-per-check-in': { pairs: 644, movedPairs: 102, violatingPairs: 4, trainingIqLower: 21, physioArrivalLater: 0, worstTrainingIqDeficit: 0.0061029999999999696 },
+    'fixed-order-no-rotation': { pairs: 644, movedPairs: 102, violatingPairs: 4, trainingIqLower: 21, physioArrivalLater: 0, worstTrainingIqDeficit: 0.0061029999999999696 },
+    'cheapest-affordable-first': { pairs: 644, movedPairs: 102, violatingPairs: 4, trainingIqLower: 21, physioArrivalLater: 0, worstTrainingIqDeficit: 0.0061029999999999696 },
+    'costliest-affordable-first': { pairs: 644, movedPairs: 97, violatingPairs: 8, trainingIqLower: 111, physioArrivalLater: 0, worstTrainingIqDeficit: 0.419489 },
+    'save-for-physio-first': { pairs: 644, movedPairs: 123, violatingPairs: 15, trainingIqLower: 41, physioArrivalLater: 0, worstTrainingIqDeficit: 0.19864499999999996 },
+    'spend-once-per-calendar-day': { pairs: 644, movedPairs: 71, violatingPairs: 61, trainingIqLower: 789, physioArrivalLater: 14, worstTrainingIqDeficit: 0.26323399999999997 },
+  }),
+  SEEDED_40: Object.freeze({
+    'rotate-greedy-per-check-in': { pairs: 623, movedPairs: 331, violatingPairs: 5, trainingIqLower: 116, physioArrivalLater: 0, worstTrainingIqDeficit: 0.419489 },
+    'fixed-order-no-rotation': { pairs: 623, movedPairs: 331, violatingPairs: 10, trainingIqLower: 251, physioArrivalLater: 0, worstTrainingIqDeficit: 0.419489 },
+    'cheapest-affordable-first': { pairs: 623, movedPairs: 331, violatingPairs: 10, trainingIqLower: 251, physioArrivalLater: 0, worstTrainingIqDeficit: 0.419489 },
+    'costliest-affordable-first': { pairs: 623, movedPairs: 331, violatingPairs: 6, trainingIqLower: 143, physioArrivalLater: 0, worstTrainingIqDeficit: 0.419489 },
+    'save-for-physio-first': { pairs: 623, movedPairs: 413, violatingPairs: 138, trainingIqLower: 1345, physioArrivalLater: 0, worstTrainingIqDeficit: 0.25634900000000016 },
+    'spend-once-per-calendar-day': { pairs: 623, movedPairs: 201, violatingPairs: 182, trainingIqLower: 1994, physioArrivalLater: 4, worstTrainingIqDeficit: 0.26990099999999995 },
+  }),
+
+  /**
+   * Adding a WHOLE DAY rather than one check-in, under every policy.
+   *
+   * E7 reported this reading as zero and called it the sharpest discriminator
+   * between the day and the check-in. It is zero under five of the six — and it
+   * is 600 under `'spend-once-per-calendar-day'`, the policy that removes the
+   * per-check-in granularity E7 named as the term. Removing that term makes this
+   * reading worse rather than zero, which is why the term cannot have been it.
+   */
+  WHOLE_DAY_VIOLATING_PAIRS: Object.freeze({
+    'rotate-greedy-per-check-in': 0,
+    'fixed-order-no-rotation': 0,
+    'cheapest-affordable-first': 0,
+    'costliest-affordable-first': 0,
+    'save-for-physio-first': 0,
+    'spend-once-per-calendar-day': 600,
+  }),
+
+  /**
+   * One full-attendance run per policy, so a tally taken under a policy that
+   * bought nothing would report itself instead of being a quiet zero.
+   * `spendingMoments` is the count that separates a day-granularity policy from
+   * one that never reached a spending moment at all.
+   */
+  FULL_ATTENDANCE_CENSUS: Object.freeze({
+    'rotate-greedy-per-check-in': { spendingMoments: 72, recruits: 5, expansions: 5, physioArrivalDay: 7 },
+    'fixed-order-no-rotation': { spendingMoments: 72, recruits: 5, expansions: 5, physioArrivalDay: 7 },
+    'cheapest-affordable-first': { spendingMoments: 72, recruits: 5, expansions: 5, physioArrivalDay: 7 },
+    'costliest-affordable-first': { spendingMoments: 72, recruits: 5, expansions: 5, physioArrivalDay: 7 },
+    'save-for-physio-first': { spendingMoments: 72, recruits: 5, expansions: 5, physioArrivalDay: 4 },
+    'spend-once-per-calendar-day': { spendingMoments: 12, recruits: 5, expansions: 5, physioArrivalDay: 9 },
+  }),
+} as const);
+
+/** The windowed sweep E7 took, under one policy. Same domain, same comparator. */
+function policyWindowed(spending: EmpireSpendingPolicy): EngagementTally {
+  return windowedSweep(
+    ENGAGEMENT_SWEEP.WINDOW_HORIZON_DAYS,
+    0,
+    ENGAGEMENT_SWEEP.WINDOW_SLOTS,
+    'shipped',
+    ENGAGEMENT_SWEEP.AXIS_ORDER,
+    spending,
+  );
+}
+
+/** The five counts the second-domain table pins, out of a whole tally. */
+function policyDigest(tally: EngagementTally): Record<string, number> {
+  return {
+    pairs: tally.pairs,
+    movedPairs: tally.movedPairs,
+    violatingPairs: tally.violatingPairs,
+    trainingIqLower: tally.trainingIqLower,
+    physioArrivalLater: tally.physioArrivalLater,
+    worstTrainingIqDeficit: tally.worstTrainingIqDeficit,
+  };
+}
+
+describe('the spending policy is the second independent variable, and it is swept', () => {
+  it('drives the shipped policy through the same code path as the default', () => {
+    // The drift guard the table needs. Naming the shipped policy explicitly and
+    // letting `runEngagement` default to it are two call sites, and if they had
+    // produced different ledgers every number in the table would be about a
+    // seventh policy nobody listed. Byte-identical, entry by entry, on a
+    // partial schedule — a full one would not exercise `lastCheckInOfDay`.
+    const days = ENGAGEMENT_SWEEP.WINDOW_HORIZON_DAYS;
+    const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
+    const history = historyFrom(days * cadence, (slot) => slot % 3 !== 1, BASE_TRAINED_DAYS);
+    const defaulted = runFor(days, history);
+    const named = runFor(days, history, 'shipped', ENGAGEMENT_SWEEP.AXIS_ORDER, cadence, SHIPPED_SPENDING_POLICY);
+    expect(named.ledger.length).toBe(days * 4);
+    expect(named.ledger).toEqual(defaulted.ledger);
+    expect(named.census).toEqual(defaulted.census);
+    // And the schedule really was partial, so the equality is not about a run
+    // in which every check-in is a day boundary anyway.
+    expect(named.census.checkIns).toBeLessThan(named.census.slots);
+  });
+
+  it('pins which policy runEmpire could be swapped to without anything noticing', () => {
+    // The drift guard's blind spot, measured instead of left implicit, and it
+    // was found by mutation rather than by reading. `runEmpire` drives FULL
+    // attendance and names `SHIPPED_SPENDING_POLICY` at one call site; the guard
+    // above compares its ledger with this file's. Swapping that call site to
+    // `'fixed-order-no-rotation'` was run against the whole directory and
+    // reddened NOTHING — because under full attendance four of the six policies
+    // produce a byte-identical ledger and only two separate from it.
+    //
+    // So the list below is the size of the hole: a swap to one of the four is
+    // invisible to every check here, and a swap to either of the two is caught.
+    // Pinning it makes the hole a fact a reader can see rather than an absence
+    // they have to notice, and it moves the day the policies stop coinciding.
+    const days = ENGAGEMENT_SWEEP.WINDOW_HORIZON_DAYS;
+    const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
+    const history = fullAttendance(days, cadence);
+    const shipped = runFor(days, history, 'shipped', ENGAGEMENT_SWEEP.AXIS_ORDER, cadence, SHIPPED_SPENDING_POLICY);
+    const indistinguishable: EmpireSpendingPolicy[] = [];
+    const separated: EmpireSpendingPolicy[] = [];
+    for (const spending of EMPIRE_SPENDING_POLICIES) {
+      const run = runFor(days, history, 'shipped', ENGAGEMENT_SWEEP.AXIS_ORDER, cadence, spending);
+      if (JSON.stringify(run.ledger) === JSON.stringify(shipped.ledger)) {
+        indistinguishable.push(spending);
+      } else {
+        separated.push(spending);
+      }
+    }
+    expect(indistinguishable).toEqual([
+      'rotate-greedy-per-check-in',
+      'fixed-order-no-rotation',
+      'cheapest-affordable-first',
+      'costliest-affordable-first',
+    ]);
+    expect(separated).toEqual(['save-for-physio-first', 'spend-once-per-calendar-day']);
+    expect(indistinguishable.length + separated.length).toBe(6);
+    // And the ledger the two lists are sorted around is the one `runEmpire`
+    // actually produces, so this is about the shipped composition and not about
+    // a run assembled here.
+    expect(runEmpire(days, policyAt(cadence), BASELINE_PLAN, socialInputs()).ledger).toEqual(
+      shipped.ledger,
+    );
+  });
+
+  it('reports what each policy actually bought, so no tally is a zero about nothing', () => {
+    const days = ENGAGEMENT_SWEEP.WINDOW_HORIZON_DAYS;
+    const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
+    const history = fullAttendance(days, cadence);
+    let policiesRun = 0;
+    for (const spending of EMPIRE_SPENDING_POLICIES) {
+      const run = runFor(days, history, 'shipped', ENGAGEMENT_SWEEP.AXIS_ORDER, cadence, spending);
+      expect(engagementRunFaults(run), spending).toEqual([]);
+      expect(run.spending).toBe(spending);
+      expect(run.census.checkIns).toBe(days * cadence);
+      expect(
+        {
+          spendingMoments: run.census.spendingMoments,
+          recruits: run.census.recruits,
+          expansions: run.census.expansions,
+          physioArrivalDay: run.census.physioArrivalDay,
+        },
+        spending,
+      ).toEqual(MEASURED_POLICY.FULL_ATTENDANCE_CENSUS[spending]);
+      policiesRun += 1;
+    }
+    expect(policiesRun).toBe(EMPIRE_SPENDING_POLICIES.length);
+    expect(policiesRun).toBe(6);
+  });
+
+  it('reproduces E7 exactly under the shipped policy', () => {
+    // The first thing that has to hold: if this arm did not land on
+    // `MEASURED.WINDOWED_SHIPPED` byte for byte, the two harnesses would
+    // disagree and nothing else in this section would be worth reading. It is
+    // asserted against that object rather than against a transcription of it.
+    expect(policyWindowed(SHIPPED_SPENDING_POLICY)).toEqual(MEASURED.WINDOWED_SHIPPED);
+    expect(MEASURED.WINDOWED_SHIPPED.violatingPairs).toBe(2954);
+  });
+
+  it('measures the rotation phase removed: fixed order, and cheapest-first with it', () => {
+    // Two arms, and they come out IDENTICAL — measured, not arranged. On
+    // `EMPIRE_TUNING`'s shipped ladders `AXIS_ORDER` is already price-ascending
+    // inside each funding family at every rung this domain reaches, so
+    // "cheapest affordable first" and "the declared order" pick the same axis
+    // every time. They are two different functions of the state and one policy
+    // on this cost table, and the equality below is what says so — if a price
+    // moves, they separate and this line goes red rather than the two arms
+    // silently continuing to be counted as independent evidence.
+    const fixed = policyWindowed('fixed-order-no-rotation');
+    const cheapest = policyWindowed('cheapest-affordable-first');
+    expect(fixed).toEqual(MEASURED_POLICY.WINDOWED['fixed-order-no-rotation']);
+    expect(cheapest).toEqual(fixed);
+    // The phase term is a fourteenth of the shipped count, not the whole of it.
+    // Measured the other way round as well: put the rotation back on this policy
+    // and the arm lands on 2954 / 25772 exactly, which is what says the two arms
+    // differ in the rotation and in nothing else.
+    expect(fixed.violatingPairs).toBe(2751);
+    expect(MEASURED.WINDOWED_SHIPPED.violatingPairs - fixed.violatingPairs).toBe(203);
+  });
+
+  it('measures the ordering reversed: costliest affordable first', () => {
+    const tally = policyWindowed('costliest-affordable-first');
+    expect(tally).toEqual(MEASURED_POLICY.WINDOWED['costliest-affordable-first']);
+    // Worse than the shipped model, not better, so the ordering term does not
+    // point in a helpful direction either.
+    expect(tally.violatingPairs).toBeGreaterThan(MEASURED.WINDOWED_SHIPPED.violatingPairs);
+  });
+
+  it('measures the purse held for the one rung that reaches Sim progression', () => {
+    const tally = policyWindowed('save-for-physio-first');
+    expect(tally).toEqual(MEASURED_POLICY.WINDOWED['save-for-physio-first']);
+    // Zero — and it is a zero against a live comparator, not an empty domain:
+    // the same 24576 pairs, 10752 of which moved, and 82470 day-elements in
+    // which the more-engaged gym paid MORE. The seeded reading below is what
+    // stops this zero being read as a fix.
+    expect(tally.violatingPairs).toBe(0);
+    expect(tally.movedPairs).toBeGreaterThan(0);
+    expect(tally.trainingIqHigher).toBeGreaterThan(0);
+  });
+
+  it('measures the per-check-in granularity removed: spend once a calendar day', () => {
+    const tally = policyWindowed('spend-once-per-calendar-day');
+    expect(tally).toEqual(MEASURED_POLICY.WINDOWED['spend-once-per-calendar-day']);
+    // Three and a half times the shipped count, and the only arm on this domain
+    // in which the more-engaged gym's PHYSIO arrives later at all. E7 named this
+    // granularity as the term; removing it makes both halves worse.
+    expect(tally.violatingPairs).toBeGreaterThan(MEASURED.WINDOWED_SHIPPED.violatingPairs);
+    expect(MEASURED.WINDOWED_SHIPPED.physioArrivalLater).toBe(0);
+    expect(tally.physioArrivalLater).toBe(5484);
+  });
+
+  // The two readings below are each split in half, and the split is only about
+  // wall time: `vitest.config.ts`'s budget is per test and its own header says
+  // the margin is the thing worth writing down rather than widening. The halves
+  // are named from `EMPIRE_SPENDING_POLICIES` itself and reassembled in a check
+  // of their own, so a policy cannot fall down the crack between them.
+  const FIRST_HALF = EMPIRE_SPENDING_POLICIES.slice(0, 3);
+  const SECOND_HALF = EMPIRE_SPENDING_POLICIES.slice(3);
+
+  it('splits the two long readings without dropping a policy between the halves', () => {
+    expect([...FIRST_HALF, ...SECOND_HALF]).toEqual([...EMPIRE_SPENDING_POLICIES]);
+    expect(FIRST_HALF.length + SECOND_HALF.length).toBe(6);
+    expect(FIRST_HALF.length).toBeGreaterThan(0);
+    expect(SECOND_HALF.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * One seeded horizon under every policy, and the policies that came out zero.
+   *
+   * The claim this section turns on: `'save-for-physio-first'` is the only arm
+   * that was zero on the windowed domain, and it is 15 at twenty days and 138 at
+   * forty — so its zero is a fact about one window and not a property of the
+   * policy.
+   */
+  function seededArm(
+    days: number,
+    trials: number,
+    seed: number,
+    pinned: Readonly<Record<string, Record<string, number>>>,
+  ): readonly EmpireSpendingPolicy[] {
+    const zeros: EmpireSpendingPolicy[] = [];
+    let measured = 0;
+    for (const spending of EMPIRE_SPENDING_POLICIES) {
+      const tally = seededSweep(
+        days,
+        trials,
+        seed,
+        'shipped',
+        ENGAGEMENT_SWEEP.AXIS_ORDER,
+        spending,
+      );
+      expect(policyDigest(tally), `${spending} at ${days} days`).toEqual(pinned[spending]);
+      if (tally.violatingPairs === 0) zeros.push(spending);
+      measured += 1;
+    }
+    // A count, so a policy list that had gone empty is red here rather than
+    // making the emptiness of `zeros` read as evidence.
+    expect(measured).toBe(6);
+    return Object.freeze(zeros);
+  }
+
+  it('finds no policy that is zero at 20 seeded days', () => {
+    expect(seededArm(20, 12, ENGAGEMENT_SWEEP.SEEDS[0], MEASURED_POLICY.SEEDED_20)).toEqual([]);
+  });
+
+  it('finds no policy that is zero at 40 seeded days', () => {
+    expect(seededArm(40, 6, ENGAGEMENT_SWEEP.SEEDS[1], MEASURED_POLICY.SEEDED_40)).toEqual([]);
+  });
+
+  /**
+   * E7's sharpest discriminator, re-taken under a policy at a time.
+   *
+   * Under the shipped model adding a whole day of check-ins never hurt; under
+   * the policy that spends once a day it hurts in 600 of 24576 pairs, which is
+   * the reading that decides the per-check-in granularity was not the mechanism.
+   */
+  function wholeDayArm(policies: readonly EmpireSpendingPolicy[]): number {
+    let measured = 0;
+    for (const spending of policies) {
+      const tally = wholeDaySweep(ENGAGEMENT_SWEEP.WHOLE_DAY_HORIZON_DAYS, spending);
+      expect(tally.pairs, spending).toBe(24576);
+      expect(tally.pairsWherePhysioArrived, spending).toBeGreaterThan(0);
+      expect(tally.violatingPairs, spending).toBe(
+        MEASURED_POLICY.WHOLE_DAY_VIOLATING_PAIRS[spending],
+      );
+      measured += 1;
+    }
+    return measured;
+  }
+
+  it('takes the whole-day reading under the first three policies', () => {
+    expect(wholeDayArm(FIRST_HALF)).toBe(3);
+  });
+
+  it('takes the whole-day reading under the last three, one of which is not zero', () => {
+    expect(wholeDayArm(SECOND_HALF)).toBe(3);
+    // Named here rather than left in the table: the only non-zero whole-day
+    // reading is the policy that removed the granularity E7 blamed.
+    expect(MEASURED_POLICY.WHOLE_DAY_VIOLATING_PAIRS['spend-once-per-calendar-day']).toBe(600);
+    expect(MEASURED_POLICY.WHOLE_DAY_VIOLATING_PAIRS['rotate-greedy-per-check-in']).toBe(0);
   });
 });
 

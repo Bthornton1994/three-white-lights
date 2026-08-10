@@ -86,22 +86,42 @@ import {
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   EMPIRE_FUNDINGS,
+  EMPIRE_SPENDING_POLICIES,
   SHIPPED_FUNDING,
+  SHIPPED_SPENDING_MOMENT,
+  SHIPPED_SPENDING_POLICY,
   arrivalDays,
+  axisSpendingOrder,
   compareDayLists,
   compareLedgers,
   composeTrainingIqRate,
+  createEmpireGym,
   empireRunFaults,
   grantSecondsAt,
   idleDayLedger,
+  maySpendOnRoster,
   outputSeries,
   progressionDayLedger,
+  rotatesAtMoment,
   runEmpire,
+  savingForPhysio,
+  spendingMoment,
+  spendsAtMoment,
+  stepGym,
   type AccelerantPlan,
   type EmpireDayEntry,
   type EmpireFunding,
   type EmpireRun,
+  type EmpireSpendingPolicy,
 } from './empireInvariant';
+import {
+  expansionContext,
+  expansionVerdict,
+  startExpansion,
+  type ExpansionAxis,
+  type ExpansionBuild,
+  type ExpansionContext,
+} from './expansion';
 import { EMPIRE_SWEEP, accelerantPlans, policyAt, socialInputs } from './empireSweep.test';
 import { rosterTrainingIqPerDay } from './npc';
 
@@ -887,6 +907,312 @@ describe('a run refuses what it should refuse', () => {
 });
 
 // ---------------------------------------------------------------------------
+// The simulated player's spending policy
+// ---------------------------------------------------------------------------
+
+/**
+ * The parameters of the spending-policy unit tests, written down for the reason
+ * `empireSweep.test.ts`'s header gives.
+ *
+ * `PURSE` is far above every level-1 rung so an ordering test is about ORDER and
+ * not about affordability; `THIN_PURSE` sits above the cheapest wall-clock rung
+ * and below the physio one, which is the exact state
+ * `'save-for-physio-first'` is defined by.
+ */
+const POLICY_FIXTURE = Object.freeze({
+  PURSE: 1_000_000,
+  THIN_PURSE: 900,
+  ORDER: EMPIRE_SWEEP.AXIS_ORDER,
+  /** The wall-clock family's slice of `ORDER`, in `ORDER`'s own order. */
+  WALL_CLOCK_SLICE: Object.freeze(['space', 'spotter', 'physio'] as const),
+  /** The idle family's slice, likewise. */
+  IDLE_SLICE: Object.freeze(['coach', 'equipment'] as const),
+  /** Level-1 prices, from `EMPIRE_TUNING`, as the ordering arms sort on. */
+  LEVEL_ONE_COSTS: Object.freeze({ space: 800, spotter: 1000, physio: 6000 } as const),
+} as const);
+
+function contextWith(purse: number, builds: readonly ExpansionBuild[] = []): ExpansionContext {
+  return expansionContext(
+    Object.freeze({
+      ...createEmpireState(),
+      clock: createEmpireClock(0, 0),
+      gymBucks: asGymBucks(purse),
+      settledGymBucks: asGymBucks(purse),
+      reputation: asReputation(0),
+    }),
+    builds,
+  );
+}
+
+function orderUnderContext(
+  policy: EmpireSpendingPolicy,
+  family: 'wall-clock' | 'idle-clock',
+  context: ExpansionContext,
+  nextAxis = 0,
+): readonly ExpansionAxis[] {
+  return axisSpendingOrder(
+    spendingMoment(policy, true),
+    [...POLICY_FIXTURE.ORDER],
+    nextAxis,
+    family,
+    context,
+  );
+}
+
+function orderUnder(
+  policy: EmpireSpendingPolicy,
+  nextAxis: number,
+  family: 'wall-clock' | 'idle-clock',
+  purse: number,
+): readonly ExpansionAxis[] {
+  return orderUnderContext(policy, family, contextWith(purse), nextAxis);
+}
+
+describe('the spending policy is a parameter, and the shipped one is the loop that was there', () => {
+  it('leaves the shipped policy blind to which check-in of the day it is', () => {
+    // The claim `SHIPPED_SPENDING_MOMENT`'s docstring makes, driven rather than
+    // written down. The default moment carries `lastCheckInOfDay: true`, and it
+    // is only safe to default that way because the shipped policy does not read
+    // it. Whole gyms are compared, not one field, over enough check-ins for a
+    // rung and a recruit to have been bought.
+    const policy = policyAt(EMPIRE_SWEEP.CHECK_INS_PER_DAY);
+    const gap = EMPIRE_TUNING.SECONDS_PER_DAY / EMPIRE_SWEEP.CHECK_INS_PER_DAY;
+    let told = createEmpireGym();
+    let untold = createEmpireGym();
+    for (let checkIn = 1; checkIn <= EMPIRE_SWEEP.CHECK_INS_PER_DAY * 9; checkIn += 1) {
+      told = stepGym(told, policy, checkIn * gap, null, 0, SHIPPED_FUNDING, SHIPPED_SPENDING_MOMENT);
+      untold = stepGym(
+        untold,
+        policy,
+        checkIn * gap,
+        null,
+        0,
+        SHIPPED_FUNDING,
+        spendingMoment(SHIPPED_SPENDING_POLICY, checkIn % 2 === 0),
+      );
+    }
+    // The gyms are not empty, so the equality below is not two fresh gyms.
+    expect(told.expansions).toBeGreaterThan(0);
+    expect(told.recruits + told.pending.length).toBeGreaterThan(0);
+    expect(untold).toEqual(told);
+  });
+
+  it('answers both moment questions for every policy, with no policy unlisted', () => {
+    // An exhaustive truth table rather than a spot check, so a policy added to
+    // `EMPIRE_SPENDING_POLICIES` without an answer here is red on the counts.
+    const spendsOnALaterCheckIn: EmpireSpendingPolicy[] = [];
+    const rotates: EmpireSpendingPolicy[] = [];
+    let asked = 0;
+    for (const policy of EMPIRE_SPENDING_POLICIES) {
+      expect(spendsAtMoment(spendingMoment(policy, true)), policy).toBe(true);
+      if (spendsAtMoment(spendingMoment(policy, false))) spendsOnALaterCheckIn.push(policy);
+      if (rotatesAtMoment(spendingMoment(policy, true))) rotates.push(policy);
+      asked += 1;
+    }
+    expect(asked).toBe(EMPIRE_SPENDING_POLICIES.length);
+    expect(asked).toBe(6);
+    expect(spendsOnALaterCheckIn).toEqual([
+      'rotate-greedy-per-check-in',
+      'fixed-order-no-rotation',
+      'cheapest-affordable-first',
+      'costliest-affordable-first',
+      'save-for-physio-first',
+    ]);
+    expect(rotates).toEqual(['rotate-greedy-per-check-in', 'spend-once-per-calendar-day']);
+  });
+
+  it('rotates the offer under the shipped policy and holds it still under the fixed one', () => {
+    // The phase term, isolated. `nextAxis` is the only thing that differs
+    // between the two readings on each line.
+    expect(orderUnder(SHIPPED_SPENDING_POLICY, 0, 'wall-clock', POLICY_FIXTURE.PURSE)).toEqual([
+      'space',
+      'spotter',
+      'physio',
+    ]);
+    expect(orderUnder(SHIPPED_SPENDING_POLICY, 1, 'wall-clock', POLICY_FIXTURE.PURSE)).toEqual([
+      'spotter',
+      'physio',
+      'space',
+    ]);
+    expect(orderUnder(SHIPPED_SPENDING_POLICY, 4, 'wall-clock', POLICY_FIXTURE.PURSE)).toEqual([
+      'physio',
+      'space',
+      'spotter',
+    ]);
+    for (const nextAxis of [0, 1, 2, 3, 4]) {
+      expect(
+        orderUnder('fixed-order-no-rotation', nextAxis, 'wall-clock', POLICY_FIXTURE.PURSE),
+        `nextAxis ${nextAxis}`,
+      ).toEqual([...POLICY_FIXTURE.WALL_CLOCK_SLICE]);
+      expect(
+        orderUnder('fixed-order-no-rotation', nextAxis, 'idle-clock', POLICY_FIXTURE.PURSE),
+        `nextAxis ${nextAxis}`,
+      ).toEqual([...POLICY_FIXTURE.IDLE_SLICE]);
+    }
+  });
+
+  it('advances the gym rotation counter exactly when the offer reads it', () => {
+    // The other half of `rotatesAtMoment`, and it was written because the
+    // mutation that removes the guard on `EmpireGym.nextAxis` in `stepGym` left
+    // the whole directory green: under a non-rotating policy the counter is not
+    // read, so a counter that kept advancing was invisible in every ledger. The
+    // guard is the thing that keeps "the offer ignores the rotation" and "the
+    // rotation stands still" one decision instead of two, and this is what says
+    // so.
+    const policy = policyAt(EMPIRE_SWEEP.CHECK_INS_PER_DAY);
+    const gap = EMPIRE_TUNING.SECONDS_PER_DAY / EMPIRE_SWEEP.CHECK_INS_PER_DAY;
+    const advanced: EmpireSpendingPolicy[] = [];
+    for (const spending of EMPIRE_SPENDING_POLICIES) {
+      let gym = createEmpireGym();
+      for (let checkIn = 1; checkIn <= EMPIRE_SWEEP.CHECK_INS_PER_DAY; checkIn += 1) {
+        gym = stepGym(
+          gym,
+          policy,
+          checkIn * gap,
+          null,
+          0,
+          SHIPPED_FUNDING,
+          // Never a day boundary, so the day-granularity policy takes no
+          // spending moment here and its counter must stand still too.
+          spendingMoment(spending, false),
+        );
+      }
+      if (gym.nextAxis !== 0) advanced.push(spending);
+    }
+    expect(advanced).toEqual(['rotate-greedy-per-check-in']);
+    // And the same policy on a day boundary does advance, so the zero above is
+    // not a gym that never stepped.
+    let boundary = createEmpireGym();
+    boundary = stepGym(
+      boundary,
+      policy,
+      gap,
+      null,
+      0,
+      SHIPPED_FUNDING,
+      spendingMoment('spend-once-per-calendar-day', true),
+    );
+    expect(boundary.nextAxis).toBe(1);
+  });
+
+  it('sorts by price in both directions, on prices read from the tuning block', () => {
+    // The two ordering arms are each other's control: on one purse they are
+    // exact reverses, which no single-direction check could say.
+    const cheapest = orderUnder('cheapest-affordable-first', 0, 'wall-clock', POLICY_FIXTURE.PURSE);
+    const costliest = orderUnder(
+      'costliest-affordable-first',
+      0,
+      'wall-clock',
+      POLICY_FIXTURE.PURSE,
+    );
+    expect(cheapest).toEqual(['space', 'spotter', 'physio']);
+    expect(costliest).toEqual(['physio', 'spotter', 'space']);
+    expect([...costliest].reverse()).toEqual([...cheapest]);
+    // And the sort really is on the tuning block's prices, ascending, rather
+    // than on the order they were declared in.
+    const costs: Readonly<Record<string, number>> = POLICY_FIXTURE.LEVEL_ONE_COSTS;
+    const prices = cheapest.map((axis) => costs[axis] as number);
+    expect(prices).toEqual([800, 1000, 6000]);
+    expect([...prices].sort((left, right) => left - right)).toEqual(prices);
+    // An axis with no rung this gym could start sorts last under both arms, and
+    // is still offered, so the verdict and not the comparator refuses it.
+    const thin = orderUnder('costliest-affordable-first', 0, 'wall-clock', POLICY_FIXTURE.THIN_PURSE);
+    expect(thin).toEqual(['space', 'spotter', 'physio']);
+    expect(thin.length).toBe(POLICY_FIXTURE.WALL_CLOCK_SLICE.length);
+  });
+
+  it('offers physio alone out of the wall-clock book while money is the only obstacle', () => {
+    const thin = contextWith(POLICY_FIXTURE.THIN_PURSE);
+    expect(savingForPhysio([...POLICY_FIXTURE.ORDER], thin)).toBe(true);
+    expect(orderUnder('save-for-physio-first', 0, 'wall-clock', POLICY_FIXTURE.THIN_PURSE)).toEqual([
+      'physio',
+    ]);
+    // The other family spends a different book and is untouched, which is what
+    // makes this a hold on the wall-clock purse rather than a general freeze.
+    expect(orderUnder('save-for-physio-first', 0, 'idle-clock', POLICY_FIXTURE.THIN_PURSE)).toEqual([
+      ...POLICY_FIXTURE.IDLE_SLICE,
+    ]);
+    // A gym that could pay for physio right now is still saving — it is about to
+    // spend, and physio still goes first.
+    expect(savingForPhysio([...POLICY_FIXTURE.ORDER], contextWith(POLICY_FIXTURE.PURSE))).toBe(true);
+    // A gym that has ALREADY paid for its physio rung and is waiting on the
+    // build has stopped saving, and this arm was a hole until a mutant found
+    // it: replacing the refusal test with "anything but the ceiling" left every
+    // sweep in the directory green, because no domain here reaches this state
+    // at a moment the answer changes anything. It is a unit fact, so it is
+    // checked as one.
+    const started = startExpansion(contextWith(POLICY_FIXTURE.PURSE), 'physio');
+    expect(started.started).toBe(true);
+    const building = contextWith(
+      POLICY_FIXTURE.PURSE,
+      started.started ? [started.build] : [],
+    );
+    expect(expansionVerdict(building, 'physio').allowed).toBe(false);
+    expect(savingForPhysio([...POLICY_FIXTURE.ORDER], building)).toBe(false);
+    expect(orderUnderContext('save-for-physio-first', 'wall-clock', building)).toEqual([
+      ...POLICY_FIXTURE.WALL_CLOCK_SLICE,
+    ]);
+    expect(maySpendOnRoster(spendingMoment('save-for-physio-first', true), [...POLICY_FIXTURE.ORDER], building)).toBe(
+      true,
+    );
+    // A gym with no physio rung on its ladder is not saving for one, and gets
+    // the whole family back.
+    const withoutPhysio: ExpansionAxis[] = ['space', 'spotter', 'coach', 'equipment'];
+    expect(savingForPhysio(withoutPhysio, thin)).toBe(false);
+    expect(
+      axisSpendingOrder(
+        spendingMoment('save-for-physio-first', true),
+        withoutPhysio,
+        0,
+        'wall-clock',
+        thin,
+      ),
+    ).toEqual(['space', 'spotter']);
+  });
+
+  it('holds the roster back exactly when the wall-clock book is being held', () => {
+    // A recruit is bought out of the same book a physio rung is, so a policy
+    // that holds one and not the other holds nothing.
+    const order = [...POLICY_FIXTURE.ORDER];
+    const thin = contextWith(POLICY_FIXTURE.THIN_PURSE);
+    expect(maySpendOnRoster(spendingMoment('save-for-physio-first', true), order, thin)).toBe(false);
+    expect(
+      maySpendOnRoster(spendingMoment('spend-once-per-calendar-day', false), order, thin),
+    ).toBe(false);
+    expect(maySpendOnRoster(spendingMoment('spend-once-per-calendar-day', true), order, thin)).toBe(
+      true,
+    );
+    let allowed = 0;
+    for (const policy of EMPIRE_SPENDING_POLICIES) {
+      if (maySpendOnRoster(spendingMoment(policy, true), order, thin)) allowed += 1;
+    }
+    // Five of the six allow a recruit at a day's last check-in; the saver does
+    // not. A count, so a policy that stopped answering is red here.
+    expect(allowed).toBe(5);
+    expect(allowed).toBe(EMPIRE_SPENDING_POLICIES.length - 1);
+  });
+
+  it('offers nothing at all from an empty axis order, under every policy', () => {
+    let empties = 0;
+    for (const policy of EMPIRE_SPENDING_POLICIES) {
+      for (const family of ['wall-clock', 'idle-clock'] as const) {
+        expect(
+          axisSpendingOrder(
+            spendingMoment(policy, true),
+            [],
+            0,
+            family,
+            contextWith(POLICY_FIXTURE.PURSE),
+          ),
+        ).toEqual([]);
+        empties += 1;
+      }
+    }
+    expect(empties).toBe(EMPIRE_SPENDING_POLICIES.length * 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Purity, real-identity exposure and the magic-number audit
 // ---------------------------------------------------------------------------
 
@@ -963,7 +1289,7 @@ describe('this module is pure, numerically clean and names nobody', () => {
     // one — that is the human, name-by-name pass. What this does is make a name
     // ARRIVING visible.
     const { singleQuoted, doubleQuoted, templateChunks } = stringLiteralsIn(code);
-    expect(singleQuoted.size).toBe(27);
+    expect(singleQuoted.size).toBe(34);
     expect(doubleQuoted.size).toBe(0);
     expect(templateChunks.size).toBe(14);
     // The template collector really reaches this module's messages, by match
@@ -984,14 +1310,21 @@ describe('this module is pure, numerically clean and names nobody', () => {
       'Placeholder',
       'accelerated',
       'accepted',
+      'cheapest-affordable-first',
       'composed-gym',
+      'costliest-affordable-first',
+      'fixed-order-no-rotation',
       'gym-bucks',
       'gym-empire-timer-skip',
+      'not-enough-wall-clock-earnings',
       'physio',
       'physio-days-saved',
       'rewarded-ad-timer-skip',
       'rival-period-close',
       'roster-slot',
+      'rotate-greedy-per-check-in',
+      'save-for-physio-first',
+      'spend-once-per-calendar-day',
       'training-iq',
       'wall-clock-earned',
     ]);
@@ -1003,7 +1336,7 @@ describe('this module is pure, numerically clean and names nobody', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(41);
+    expect(stringsChecked).toBe(48);
   });
 
   it('would catch a person-shaped name arriving in this module', () => {

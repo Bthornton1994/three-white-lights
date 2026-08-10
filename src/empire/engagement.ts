@@ -132,6 +132,24 @@
  *     upkeep magnitude live in `engagement.test.ts`, for the reason
  *     `src/game/streakSweep.ts` exists and with the file suffix
  *     `src/tuning/audit.ts` forces — see `empireSweep.test.ts`'s header.
+ *
+ * ===========================================================================
+ * 6. The spending policy is a parameter, because GDD §5 does not fix one
+ * ===========================================================================
+ *
+ * The first version of this measurement had one independent variable — the
+ * check-in schedule — and one thing it held fixed without saying so: the
+ * simulated player's spending order. `stepGym` rotated `EmpireGym.nextAxis`
+ * once per check-in and spent greedily at whatever moment a check-in landed, so
+ * the schedule set the PHASE of which rung took the money, and a count taken
+ * that way is a fact about that model of a player rather than about §5.
+ *
+ * §5 fixes prices, ceilings, timers, gates and outputs and says nothing at all
+ * about when a player spends. So `EMPIRE_SPENDING_POLICIES` is the second
+ * independent variable, `runEngagement` takes it, and the same comparator runs
+ * over the same domain under each — which is the only way "the property is in
+ * the design" and "the property is in one simulated player" can be told apart.
+ * `engagement.test.ts` carries the table.
  */
 
 import {
@@ -146,15 +164,19 @@ import { EMPIRE_TUNING } from './empireTuning';
 import {
   NO_ACCELERANT,
   SHIPPED_FUNDING,
+  SHIPPED_SPENDING_POLICY,
   composeTrainingIqRate,
   createEmpireGym,
   gymProgressionEntries,
   gymSnapshot,
+  spendingMoment,
+  spendsAtMoment,
   stepGym,
   type EmpireDayEntry,
   type EmpireFunding,
   type EmpireGym,
   type EmpirePolicy,
+  type EmpireSpendingPolicy,
   type SocialInputs,
 } from './empireInvariant';
 import {
@@ -317,6 +339,15 @@ export interface EngagementCensus {
   /** Slots the player attended. Zero makes every reading below the empty gym. */
   readonly checkIns: number;
   readonly trainedDays: number;
+  /**
+   * Check-ins at which the spending policy allowed anything to be bought.
+   *
+   * The non-vacuity guard for a policy that spends less often than the shipped
+   * one: a policy that never reached a spending moment would produce a gym
+   * nothing was ever bought for, and every zero taken off it would be a zero
+   * about an empty domain rather than about engagement.
+   */
+  readonly spendingMoments: number;
   readonly recruits: number;
   readonly expansions: number;
   /** Gym Bucks a control took off the wall-clock book. Zero on the shipped wiring. */
@@ -334,6 +365,8 @@ export interface EngagementCensus {
 export interface EngagementRun {
   readonly days: number;
   readonly wiring: EngagementWiring;
+  /** The simulated player's spending policy this run was driven under. */
+  readonly spending: EmpireSpendingPolicy;
   /** Every entry, in day order then in output order, as `EmpireDayEntry`. */
   readonly ledger: readonly EmpireDayEntry[];
   readonly census: EngagementCensus;
@@ -381,8 +414,13 @@ function credit(gym: EmpireGym, amount: number): EmpireGym {
  * The same day loop `runEmpire` runs, with two differences and no others: a
  * check-in happens only on an attended slot, and the day's readings are taken
  * at the day's own wall clock rather than at the last check-in (§3 of the
- * header). Under full attendance the two produce identical ledgers, which
- * `engagement.test.ts` asserts entry by entry.
+ * header). Under full attendance and the shipped spending policy the two
+ * produce identical ledgers, which `engagement.test.ts` asserts entry by entry.
+ *
+ * `spending` is §6 of the header: which model of a player's spending the run is
+ * driven under. It changes nothing about the schedule, the wiring, the readings
+ * or the comparator — only which rung the money that was already earned goes
+ * to, and at which of the player's own check-ins it goes anywhere at all.
  */
 export function runEngagement(
   days: number,
@@ -390,6 +428,7 @@ export function runEngagement(
   history: EngagementHistory,
   social: SocialInputs,
   wiring: EngagementWiring = shippedEngagementWiring(),
+  spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
 ): EngagementRun {
   if (!Number.isInteger(days) || days < 1) {
     throw new RangeError(`a horizon must be a whole number of days at or above one, received ${days}.`);
@@ -417,6 +456,7 @@ export function runEngagement(
   let gym: EmpireGym = createEmpireGym();
   const ledger: EmpireDayEntry[] = [];
   let checkIns = 0;
+  let spendingMoments = 0;
   let upkeepCharged = 0;
   let upkeepEvents = 0;
   let ceilingBoundDays = 0;
@@ -424,10 +464,21 @@ export function runEngagement(
   let physioArrivalDay: number | null = null;
 
   for (let day = 0; day < days; day += 1) {
+    // The last check-in the player actually takes in this calendar day, which is
+    // the moment a day-granularity policy spends at. It is the last ATTENDED
+    // slot rather than the last slot of the grid: a player who stops checking in
+    // at noon has their day end at noon.
+    let lastAttendedTick: number | null = null;
+    for (let tick = 0; tick < policy.checkInsPerDay; tick += 1) {
+      if (history.attended[day * policy.checkInsPerDay + tick] === true) lastAttendedTick = tick;
+    }
+
     for (let tick = 0; tick < policy.checkInsPerDay; tick += 1) {
       const slot = day * policy.checkInsPerDay + tick;
       if (history.attended[slot] !== true) continue;
       checkIns += 1;
+      const moment = spendingMoment(spending, tick === lastAttendedTick);
+      if (spendsAtMoment(moment)) spendingMoments += 1;
       gym = stepGym(
         gym,
         policy,
@@ -435,6 +486,7 @@ export function runEngagement(
         NO_ACCELERANT,
         0,
         funding,
+        moment,
       );
       if (wiring.key === 'check-in-upkeep') {
         const before = gym.state.settledGymBucks;
@@ -503,12 +555,14 @@ export function runEngagement(
   return Object.freeze({
     days,
     wiring,
+    spending,
     ledger: Object.freeze(ledger),
     census: Object.freeze({
       days,
       slots,
       checkIns,
       trainedDays: history.trainedDays.length,
+      spendingMoments,
       recruits: gym.recruits,
       expansions: gym.expansions,
       upkeepCharged,
@@ -765,6 +819,19 @@ export function engagementRunFaults(run: EngagementRun): readonly string[] {
   }
   if (run.census.checkIns > run.census.slots) {
     faults.push(`${run.census.checkIns} check-ins were taken on a grid of ${run.census.slots} slots`);
+  }
+  if (run.census.spendingMoments > run.census.checkIns) {
+    faults.push(
+      `${run.census.spendingMoments} spending moments were taken across ${run.census.checkIns} check-ins`,
+    );
+  }
+  if (run.spending === SHIPPED_SPENDING_POLICY && run.census.spendingMoments !== run.census.checkIns) {
+    faults.push(
+      `the shipped policy spent at ${run.census.spendingMoments} of ${run.census.checkIns} check-ins`,
+    );
+  }
+  if (run.census.checkIns > 0 && run.census.spendingMoments === 0) {
+    faults.push(`${run.census.checkIns} check-ins produced no spending moment at all`);
   }
   if (!chargesUpkeep(run.wiring.key) && run.census.upkeepEvents !== 0) {
     faults.push(`the ${run.wiring.key} wiring charged upkeep on ${run.census.upkeepEvents} events`);
