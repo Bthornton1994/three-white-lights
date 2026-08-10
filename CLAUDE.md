@@ -127,6 +127,37 @@ piece there. If either session needs to cross the line, the crossing is written
 into this section **before** the work starts — not into a commit message, not
 into a conversation the other session cannot read.
 
+### WHAT ACTUALLY HAPPENED, AND THE ONE CROSSING
+
+Session B's §5 work merged into this branch as PR #2 while an unrelated merge
+was in flight locally. **It stayed exactly in its lane** — 4,760 lines, every
+one under `src/empire/`, nothing outside. The split held.
+
+**The predicted collision happened precisely as written**, which is the useful
+part. `empireTuning.ts` arrived unregistered, and the merged suite went red with
+**87 findings** — all in that one file, all inside a properly named frozen
+block. `empireCore.ts` had zero: Session B kept its math free of bare numbers
+and simply could not register the file, because registration lives in three
+files this section had told it not to touch. The three rows are now in.
+
+**The crossing: Session A edited `src/empire/empireCore.test.ts`.** Recorded
+here rather than only in the commit, because that is what the paragraph above
+asks for. It was not new work in Session B's scope — it was repairing a guard
+that *my own registration broke*, and it could not be left red.
+
+That guard is worth reading before touching this area. It pinned the audit's
+finding count for `empireTuning.ts` at 87 — the violations the file produced
+*while unregistered*. Registering it dropped that to 0, so the pin went red
+immediately and its own message named this as one of two causes. **The obvious
+repair — re-pinning at 0 — would have swapped a real guard for a vacuous one**,
+because a registered file reports 0 findings whatever it contains. The count is
+now taken under an unregistered synthetic path, where it is a census of the
+tuned values themselves and moves only when a knob is added or removed. Adding
+one knob takes it to 88 and reddens; the registered audit stays clean.
+
+**A guard can be broken by a change that is itself correct**, and the repair
+that restores green is not always the repair that restores the guard.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise

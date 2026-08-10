@@ -1822,31 +1822,41 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     const coreFindings = auditSource('src/empire/empireCore.ts', core);
     expect(coreFindings.length, `\n${formatFindings(coreFindings)}\n`).toBe(0);
 
-    // `empireTuning.ts` has no `SOURCE_RULES` row yet — that row is the one
-    // registry line this piece needs and it lands in another session's file.
-    // Auditing it under a path that already carries the rule it is asking for
-    // says the same thing the row would: every literal sits inside a frozen,
-    // named, top-level constant block.
+    // `empireTuning.ts` is registered in `SOURCE_RULES` now — the one registry
+    // line this piece needed, which landed in the other session's file when
+    // §5 merged. Audited under its real path it is clean, and that is the
+    // tree-wide pass this block used to be waiting for.
     const tuning = readFileSync(path.join(HERE, 'empireTuning.ts'), 'utf8');
-    const asRegistered = auditSource('src/game/sessionTuning.ts', tuning);
-    expect(asRegistered.length, `\n${formatFindings(asRegistered)}\n`).toBe(0);
-
-    // And the instrument is not blind: audited under its real path it reports
-    // its literals, which is the tree-wide failure this piece expects until
-    // the row lands.
-    //
-    // Pinned rather than bounded, which is this block's own house rule and was
-    // broken on exactly this line. `toBeGreaterThan(0)` against a file carrying
-    // roughly ninety literals is satisfied by two orders of magnitude, so every
-    // mutation short of emptying the tuning block left it green — while the
-    // probe on the next line, its own sibling, already pinned an exact count.
     const asShipped = auditSource('src/empire/empireTuning.ts', tuning);
+    expect(asShipped.length, `\n${formatFindings(asShipped)}\n`).toBe(0);
+
+    // THE COUNT IS MEASURED UNDER AN UNREGISTERED PATH ON PURPOSE, and this is
+    // the line the registration would otherwise have quietly gutted.
+    //
+    // It was `auditSource('src/empire/empireTuning.ts', …)` pinned at 87 — the
+    // findings the audit reported while this file had no row. That pin did its
+    // job the moment the row landed: it went red, and its own message named
+    // this as one of the two possibilities ("or the instrument stopped
+    // reporting"). But the obvious repair — re-pinning it at 0 — swaps a real
+    // guard for a vacuous one, because a registered file reports 0 findings
+    // whatever it contains, so every future edit would leave it green.
+    //
+    // Under a path with no `SOURCE_RULES` row, the audit reports one finding
+    // per bare literal, so the number is a census of the tuned values
+    // THEMSELVES and moves only when a knob is added or removed. That is what
+    // the 87 was always measuring; it was reading it through an instrument
+    // that also happened to be reporting the missing row.
+    const asCensus = auditSource('src/empire/unregistered-census.ts', tuning);
     expect(
-      asShipped.length,
-      'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
-        'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
-        `pass. First finding: ${formatFindings(asShipped.slice(0, 1)).trim()}`,
+      asCensus.length,
+      'the number of tuned values in empireTuning.ts moved: an entry was added or removed. ' +
+        'That is a decision about the idle economy, not a tuning pass, so it is acknowledged ' +
+        `here rather than absorbed. First: ${formatFindings(asCensus.slice(0, 1)).trim()}`,
     ).toBe(87);
+
+    // And the instrument is not blind: an unregistered path with one bare
+    // literal reports exactly one. Without this, the census above would be
+    // satisfied by an audit that had stopped working entirely.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });
 });

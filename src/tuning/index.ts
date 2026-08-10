@@ -129,6 +129,7 @@ import { SHEET, SHEET_BANK } from '../card/sheetPalette';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { SESSION_PALETTE } from '../session/sessionPalette';
 import { MEET_PALETTE } from '../meet/meetPalette';
+import { EMPIRE_TUNING, EMPIRE_TUNING_CLASSIFICATION } from '../empire/empireTuning';
 
 /**
  * Every hand-tuned block in the game, grouped by the thing it tunes.
@@ -352,6 +353,26 @@ export const TUNING = Object.freeze({
     CARD_LABELS: CARD_TUNING.CARD_LABELS,
     CARD_SCREEN: CARD_TUNING.CARD_SCREEN,
   }),
+
+  /**
+   * THE IDLE LAYER (GDD §5), from the parallel session's build.
+   *
+   * An idle economy is nothing but rates: passive Gym Bucks and Training IQ,
+   * the offline-earnings cap, NPC output by tier and tenure, and the expansion
+   * cost curves. §5.1 asks for a 30-to-60-second check-in that "rewards
+   * check-ins without punishing a 10-hour gap", and where that balance sits is
+   * settled by playing rather than derived — so it belongs here with the other
+   * things the 30 passes move.
+   *
+   * `EMPIRE_TUNING_CLASSIFICATION` comes with it and is the more interesting
+   * half: the block labels its own entries `knob` / `budget` / `refusal` /
+   * `structural`, so a tuner can see which numbers are theirs to turn and which
+   * are GDD §12.3 refusal conditions wearing the same shape. Exposed here
+   * deliberately — the invitation of this file is "turn these", and the
+   * classification is what stops that invitation reaching a value that is not
+   * a knob.
+   */
+  empire: Object.freeze({ EMPIRE_TUNING, EMPIRE_TUNING_CLASSIFICATION }),
 });
 
 /**
@@ -391,6 +412,7 @@ export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Obj
   licensing: 'src/licensing/licensingTuning.ts',
   cutIn: 'src/cutin/cutInTuning.ts',
   shell: 'src/shell/shellTuning.ts',
+  empire: 'src/empire/empireTuning.ts',
 });
 
 /** Where each palette physically lives. Same cross-check as above. */

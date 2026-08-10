@@ -223,6 +223,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'feel',
     why: 'GYM_* — the environment layer: room proportions, lighting, parallax, prop placement.',
   }),
+  'src/empire/empireTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'EMPIRE_TUNING — GDD §5, the idle layer: passive Gym Bucks and Training IQ rates, the offline-earnings cap, NPC output by tier and tenure, and the expansion cost curves. An idle economy is nothing BUT rates, and §5.1 asks for a 30-to-60-second check-in that rewards showing up without punishing a ten-hour gap — which is a balance point somebody settles by playing, not by deriving. Registered when Session B\'s §5 work merged: it is the file this run predicted could not pass the audit unregistered, and it arrived with 87 findings that were all this one row.',
+  }),
   'src/shell/shellTuning.ts': Object.freeze({
     role: 'constants',
     kind: 'feel',
