@@ -57,6 +57,7 @@ import {
   outputReach,
   physioDaysSavedFor,
   rosterCapacity,
+  WALL_CLOCK_FUNDED_OUTPUTS,
   settledLevel,
   spaceLevelCost,
   staffLevelCost,
@@ -66,15 +67,22 @@ import {
   type EmpireOutput,
   type EquipmentTier,
   type GymAxes,
+  type GymBucks,
   type StaffRole,
   type UnacceleratedSeconds,
+  type WallClockBooks,
+  type WallClockFundedOutput,
 } from './empireCore';
 import { EMPIRE_TUNING as T } from './empireTuning';
 import {
+  ACCELERATED_BOOK,
   AXIS_FUNDINGS,
   AXIS_OUTPUT,
+  EMPIRE_BOOKS,
   EXPANSION_AXES,
   EXPANSION_REFUSALS,
+  POOLED_WALL_CLOCK_BOOK,
+  axisBook,
   axisBuildSeconds,
   axisCeiling,
   axisFunding,
@@ -99,6 +107,7 @@ import {
   startExpansion,
   type ExpansionAxis,
   type ExpansionBuild,
+  type EmpireBook,
   type ExpansionContext,
   type ExpansionStart,
 } from './expansion';
@@ -190,7 +199,7 @@ function contextAt(options: {
   readonly elapsed?: number;
   readonly skipped?: number;
   readonly gymBucks?: number;
-  /** The wall-clock book. Mirrors the accelerated one unless a case parts them. */
+  /** Every wall-clock purse. Mirrors the accelerated one unless a case parts them. */
   readonly settledGymBucks?: number;
   readonly reputation?: number;
   readonly builds?: readonly ExpansionBuild[];
@@ -199,22 +208,51 @@ function contextAt(options: {
   return Object.freeze({
     clock: createEmpireClock(options.elapsed ?? 0, options.skipped ?? 0),
     gymBucks: asGymBucks(gymBucks),
-    settledGymBucks: asGymBucks(options.settledGymBucks ?? gymBucks),
+    settledBooks: booksAt(options.settledGymBucks ?? gymBucks),
     reputation: asReputation(options.reputation ?? T.REPUTATION_MAX),
     builds: options.builds ?? [],
   });
 }
 
-/** The book this axis is bought from, after a start. See `axisFunding`. */
-function fundedBalance(result: ExpansionStart, axis: ExpansionAxis): number {
-  if (!result.started) throw new Error('a refused start has no balance');
-  return axisFunding(axis) === 'wall-clock' ? result.settledGymBucks : result.gymBucks;
+/** Every wall-clock purse at one balance, the way a gym that has only accrued holds them. */
+function booksAt(balance: number): WallClockBooks {
+  const books: Partial<Record<WallClockFundedOutput, GymBucks>> = {};
+  for (const output of WALL_CLOCK_FUNDED_OUTPUTS) books[output] = asGymBucks(balance);
+  return Object.freeze(books as Record<WallClockFundedOutput, GymBucks>);
 }
 
-/** The other book — the one this axis does not touch. */
+/** The purse this axis is bought from, after a start. See `axisBook`. */
+function fundedBalance(result: ExpansionStart, axis: ExpansionAxis): number {
+  if (!result.started) throw new Error('a refused start has no balance');
+  const book = axisBook(axis);
+  return book === ACCELERATED_BOOK ? result.gymBucks : result.settledBooks[book];
+}
+
+/**
+ * A purse this axis does NOT touch — the accelerated book for a wall-clock rung,
+ * and a wall-clock purse for an accelerated one.
+ *
+ * Under GDD §5.4's third-book ruling there are several of those rather than one,
+ * and `untouchedBalances` below is the check that walks all of them. This picks
+ * the one the pre-ruling engine called "the other book" so the assertions that
+ * named it still read the same way.
+ */
 function otherBalance(result: ExpansionStart, axis: ExpansionAxis): number {
   if (!result.started) throw new Error('a refused start has no balance');
-  return axisFunding(axis) === 'wall-clock' ? result.gymBucks : result.settledGymBucks;
+  const book = axisBook(axis);
+  return book === ACCELERATED_BOOK ? result.settledBooks[POOLED_WALL_CLOCK_BOOK] : result.gymBucks;
+}
+
+/** Every purse the rung did not pay out of, so "one purse paid" is a count. */
+function untouchedBalances(result: ExpansionStart, axis: ExpansionAxis): readonly number[] {
+  if (!result.started) throw new Error('a refused start has no balance');
+  const paid = axisBook(axis);
+  const balances: number[] = [];
+  if (paid !== ACCELERATED_BOOK) balances.push(result.gymBucks);
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
+    if (book !== paid) balances.push(result.settledBooks[book]);
+  }
+  return balances;
 }
 
 /** A finished build on `axis` at `toLevel`, completed on both clocks at zero. */
@@ -853,7 +891,7 @@ describe('§5.4 starting a build', () => {
     const context = expansionContext(state, [completedBuild('coach', 1)]);
     expect(context.clock).toBe(state.clock);
     expect(context.gymBucks).toBe(state.gymBucks);
-    expect(context.settledGymBucks).toBe(state.settledGymBucks);
+    expect(context.settledBooks).toBe(state.settledBooks);
     expect(context.reputation).toBe(state.reputation);
     expect(context.builds.length).toBe(1);
     // A gym on the day it opens cannot afford anything, which is what a zero
@@ -1331,6 +1369,7 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
     const names = [...code.matchAll(/export function (\w+)/g)].map((match) => match[1] as string);
     expect(names.length).toBe(new Set(names).size);
     expect([...names].sort()).toEqual([
+      'axisBook',
       'axisBuildSeconds',
       'axisCeiling',
       'axisFunding',
@@ -1339,6 +1378,7 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
       'axisOutput',
       'axisReputationRequirement',
       'axisReputationRule',
+      'bookBalance',
       'buildInFlight',
       'expansionContext',
       'expansionVerdict',
@@ -1354,7 +1394,7 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
       'skipExpansion',
       'startExpansion',
     ]);
-    expect(names.length).toBe(22);
+    expect(names.length).toBe(24);
   });
 
   it('takes no bare number on any function that produces a clock quantity', () => {
@@ -1371,7 +1411,7 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
       const at = match.index as number;
       declarations.set(match[1] as string, code.slice(at, code.indexOf('{', at)));
     }
-    expect(declarations.size).toBe(22);
+    expect(declarations.size).toBe(24);
 
     const producesAClockQuantity =
       /:\s*(UnacceleratedSeconds|AcceleratedSeconds|SettledLevel|InjuryDaysSaved|ExpansionBuild|ExpansionStart)\b/;

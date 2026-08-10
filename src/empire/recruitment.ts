@@ -75,12 +75,28 @@
  * clock and finishes a space build sooner, so the gym could afford a recruit —
  * and have a slot for one — on an earlier wall-clock day, and `settlesAt` is
  * stamped from that day. So the verdict is taken against the wall-clock side of
- * both: `EmpireState.settledGymBucks`, which `accrueProduction` accrues at the
+ * both: `EmpireState.settledBooks`, which `accrueProduction` accrues at the
  * baseline line over the un-accelerated gap, and `EmpireState.settledAxes`,
  * which is the ladder as the wall clock reads it. `empireCore.ts`'s
  * `WALL_CLOCK_FUNDED_OUTPUTS` is where that side is derived: a recruit pays
  * `'training-iq'`, which reaches Sim progression, and fills a `'roster-slot'`,
  * which `GATE_TARGET` says gates it.
+ *
+ * ===========================================================================
+ * 2a. A recruit has a purse of its own, and it is not a §5.4 rung's purse
+ * ===========================================================================
+ *
+ * One wall-clock balance closed the PURCHASE chain and left an engagement one
+ * open, measured rather than argued: while a recruit and §5.4's space, spotter
+ * and physio rungs all drew on the same money, the order they were offered in
+ * decided which of them got it, and that order moves with the player's check-in
+ * schedule. A player who opened the app more often could end on a lower §5.2
+ * Training IQ series than one who opened it less.
+ *
+ * GDD §5.4's third-book ruling is the fix and `RECRUIT_BOOK` is this module's
+ * whole share of it: a recruit is priced against the `'training-iq'` purse,
+ * which nothing on §5.4's ladders can spend. Nothing else here changes — the
+ * quote, the board, the refusal order and the two clocks are what they were.
  *
  * ===========================================================================
  * 3. Charging, and why the sale is re-validated at completion
@@ -117,8 +133,24 @@ import {
   type NpcTier,
   type ReputationPoints,
   type UnacceleratedSeconds,
+  type WallClockFundedOutput,
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
+
+/**
+ * The output a recruit pays, and therefore the purse a recruit is bought from.
+ *
+ * §5.3's lifter pays GDD §5.2's Training IQ trickle. `WALL_CLOCK_FUNDED_OUTPUTS`
+ * puts `'training-iq'` on the wall-clock side because it reaches Sim
+ * progression, and GDD §5.4's third-book ruling gives it a purse of its own —
+ * so a recruit is not competing with a §5.4 rung for one balance, which is what
+ * let a check-in schedule decide which of them the money reached first.
+ *
+ * The type is the fence rather than the name: a value here that is not on
+ * `WALL_CLOCK_FUNDED_OUTPUTS` does not compile, so this cannot quietly become
+ * an idle-only purse.
+ */
+export const RECRUIT_BOOK: WallClockFundedOutput = 'training-iq';
 
 // ---------------------------------------------------------------------------
 // Refusals
@@ -186,13 +218,15 @@ export function recruitmentRefusals(
   if (state.reputation < quote.reputationThreshold) {
     refusals.push('reputation-below-threshold');
   }
-  // The WALL-CLOCK book, and the WALL-CLOCK view of the slots. A recruit pays
-  // Training IQ, so `'training-iq'` is on `WALL_CLOCK_FUNDED_OUTPUTS` and this
-  // purchase is on the wall-clock side of the split; `'roster-slot'` is on it
-  // too, because `GATE_TARGET` says a slot gates the lifter who fills it. See
-  // §2 of the header: the clock split alone left the DAY this decision is taken
-  // moving with a purchase, and the day is what `settlesAt` is stamped from.
-  if (state.settledGymBucks < quote.costGymBucks) {
+  // The recruit's own WALL-CLOCK book, and the WALL-CLOCK view of the slots. A
+  // recruit pays Training IQ, so `'training-iq'` is on
+  // `WALL_CLOCK_FUNDED_OUTPUTS` and this purchase is on the wall-clock side of
+  // the split; `'roster-slot'` is on it too, because `GATE_TARGET` says a slot
+  // gates the lifter who fills it. See §2 of the header: the clock split alone
+  // left the DAY this decision is taken moving with a purchase, and the day is
+  // what `settlesAt` is stamped from. The book is `RECRUIT_BOOK` rather than a
+  // shared wall-clock balance, which is §4 of the header.
+  if (state.settledBooks[RECRUIT_BOOK] < quote.costGymBucks) {
     refusals.push('gym-bucks-below-cost');
   }
   if (state.roster.length >= rosterCapacity(state.settledAxes)) {
@@ -296,13 +330,18 @@ export function beginRecruitment(state: EmpireState, tier: NpcTier): Recruitment
   if (refusals.length > 0) {
     return Object.freeze({ kind: 'refused', refusals });
   }
-  // The wall-clock book pays, because that is the book the verdict above was
-  // taken against. Debiting the accelerated one instead would make the price
-  // real and the gate ornamental.
-  const remaining: number = state.settledGymBucks - recruitmentQuote(tier).costGymBucks;
+  // `RECRUIT_BOOK` pays, because that is the book the verdict above was taken
+  // against. Debiting the accelerated one instead would make the price real and
+  // the gate ornamental; debiting a different wall-clock purse would put a §5.4
+  // rung's money back inside a §5.3 decision, which is the contention GDD
+  // §5.4's third-book ruling removed.
+  const remaining: number = state.settledBooks[RECRUIT_BOOK] - recruitmentQuote(tier).costGymBucks;
   return Object.freeze({
     kind: 'accepted',
-    state: Object.freeze({ ...state, settledGymBucks: asGymBucks(remaining) }),
+    state: Object.freeze({
+      ...state,
+      settledBooks: Object.freeze({ ...state.settledBooks, [RECRUIT_BOOK]: asGymBucks(remaining) }),
+    }),
     schedule: recruitmentSchedule(tier, state.clock),
   });
 }

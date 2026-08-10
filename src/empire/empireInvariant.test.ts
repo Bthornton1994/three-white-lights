@@ -73,6 +73,7 @@ import {
   IDLE_ONLY_OUTPUTS,
   PROGRESSION_REACHING_OUTPUTS,
   PURCHASABLE_ACCELERANTS,
+  WALL_CLOCK_FUNDED_OUTPUTS,
   asGymBucks,
   asReputation,
   asUnacceleratedSeconds,
@@ -80,8 +81,10 @@ import {
   createEmpireState,
   createNpcLifter,
   type EmpireState,
+  type GymBucks,
   type NpcLifter,
   type UnacceleratedSeconds,
+  type WallClockFundedOutput,
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
@@ -115,9 +118,14 @@ import {
   type EmpireSpendingPolicy,
 } from './empireInvariant';
 import {
+  ACCELERATED_BOOK,
+  EMPIRE_BOOKS,
+  POOLED_WALL_CLOCK_BOOK,
+  axisBook,
   expansionContext,
   expansionVerdict,
   startExpansion,
+  type EmpireBook,
   type ExpansionAxis,
   type ExpansionBuild,
   type ExpansionContext,
@@ -468,8 +476,7 @@ describe('the Training IQ daily budget is applied where the two terms are added'
         if (run.census.ceilingBoundDays > 0) runsThatBound += 1;
       }
     }
-    expect(boundDays).toBe(455);
-    expect(runsThatBound).toBe(13);
+    expect({ boundDays, runsThatBound }).toEqual({ boundDays: 468, runsThatBound: 13 });
   });
 });
 
@@ -510,24 +517,40 @@ describe('the composed run is a run at all', () => {
     const longest = GRID[EMPIRE_SWEEP.HORIZON_DAYS.length - 1];
     expect(longest?.days).toBe(100);
     const baseline = longest?.runs[0] as EmpireRun;
-    expect(baseline.census.recruits).toBe(11);
-    expect(baseline.census.expansions).toBe(13);
-    expect(baseline.census.settledPhysioLevel).toBe(1);
-    expect(baseline.census.socialRewardDays).toBe(14);
+    expect({
+      recruits: baseline.census.recruits,
+      expansions: baseline.census.expansions,
+      settledPhysioLevel: baseline.census.settledPhysioLevel,
+      socialRewardDays: baseline.census.socialRewardDays,
+    }).toEqual({ recruits: 11, expansions: 13, settledPhysioLevel: 1, socialRewardDays: 14 });
     expect(baseline.gym.state.roster.length).toBeGreaterThan(0);
-    // The physio rung is reached inside the sweep and is NOT reached at the
-    // shortest horizon, so the physio series has a step in it to compare rather
-    // than a constant. Counts, not bounds, on both.
+    // The physio rung is reached inside the sweep, and the series it produces
+    // has a STEP in it rather than being constant — which is what makes an
+    // element-wise comparison of it worth taking. Counted per run rather than
+    // per horizon: under GDD §5.4's third-book ruling the physio purse fills at
+    // the baseline line with nothing else drawing on it, so the rung is reached
+    // at every horizon here including the shortest, and the sentence that used
+    // to say the shortest horizon never reached it is deleted rather than
+    // softened. What matters is the step, so the step is what is counted.
     let runsWithPhysio = 0;
     let runsWithoutPhysio = 0;
+    let steppedSeries = 0;
+    let constantSeries = 0;
     for (const cell of GRID) {
       for (const run of cell.runs) {
         if (run.census.settledPhysioLevel > 0) runsWithPhysio += 1;
         else runsWithoutPhysio += 1;
+        const series = outputSeries(run.ledger, 'physio-days-saved').map((entry) => entry.amount);
+        if (new Set(series).size > 1) steppedSeries += 1;
+        else constantSeries += 1;
       }
     }
-    expect(runsWithPhysio).toBe(52);
-    expect(runsWithoutPhysio).toBe(26);
+    expect({ runsWithPhysio, runsWithoutPhysio, steppedSeries, constantSeries }).toEqual({
+      runsWithPhysio: 78,
+      runsWithoutPhysio: 0,
+      steppedSeries: 78,
+      constantSeries: 0,
+    });
   });
 
   it('spends every grant on exactly one of the two §8.3B mechanisms', () => {
@@ -639,7 +662,7 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
     expect(totals.moved).toBe(0);
     expect(totals.movedLists).toBe(0);
     // The day-valued half, which is where chain C shows up at all.
-    expect(totals.dayElements).toBe(120);
+    expect(totals.dayElements).toBe(144);
     expect(totals.dayMoved).toBe(0);
     expect(totals.dayLengthDiffers).toBe(0);
   });
@@ -659,7 +682,7 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
     expect(totals.elements).toBe(2616);
     expect(totals.moved).toBe(0);
     expect(totals.movedLists).toBe(0);
-    expect(totals.dayElements).toBe(1896);
+    expect(totals.dayElements).toBe(1884);
     expect(totals.dayMoved).toBe(0);
     expect(totals.dayLengthDiffers).toBe(0);
   });
@@ -694,21 +717,54 @@ describe('the zeros are zeros against measured numbers', () => {
     expect(movedLists).toBe(72);
   });
 
-  it('POSITIVE control: the purchase moves the gym the player looks at', () => {
-    // The other half of the sale, on the census rather than on the ledger: a
-    // plan that grants enough finishes builds the baseline has not finished and
-    // puts more lifters on the floor. Counts, not bounds.
+  it('the purchase moves the ledger the player reads and no census COUNT, both pinned', () => {
+    // The other half of the sale, on the census rather than on the ledger.
+    //
+    // WHAT MOVED HERE AND WHAT STOPPED MOVING, because one of these counts went
+    // to zero under GDD §5.4's third-book ruling and a positive control that
+    // has gone quiet is worth naming rather than re-pinning. Before the ruling
+    // a skip changed the NUMBER of rungs a horizon finished in 12 of 72 pairs,
+    // because the accelerated book was the only purse with any slack in it.
+    // With a purse per funded output each ladder is bought as soon as its own
+    // fund can afford the next rung, and at every horizon here both runs finish
+    // the same rungs — so the skip moves WHEN, not HOW MANY, and the counter
+    // that reads a count reads zero.
+    //
+    // `idlePhysioLevel` is the census reading that still moves, and it is the
+    // one the field's own docstring nominates: a skip that advances the idle
+    // clock lands a finished physio build on the player's gym sooner. The idle
+    // LEDGER control above is the primary one — 2592 elements on 72 of 72
+    // comparisons — and this is its census twin.
     let movedExpansions = 0;
     let movedRecruits = 0;
+    let movedIdlePhysio = 0;
+    let movedSettledPhysio = 0;
     let compared = 0;
     for (const pair of PAIRS) {
       compared += 1;
       if (pair.candidate.census.expansions !== pair.baseline.census.expansions) movedExpansions += 1;
       if (pair.candidate.census.recruits !== pair.baseline.census.recruits) movedRecruits += 1;
+      if (pair.candidate.census.idlePhysioLevel !== pair.baseline.census.idlePhysioLevel) {
+        movedIdlePhysio += 1;
+      }
+      if (pair.candidate.census.settledPhysioLevel !== pair.baseline.census.settledPhysioLevel) {
+        movedSettledPhysio += 1;
+      }
     }
     expect(compared).toBe(72);
-    expect(movedExpansions).toBe(12);
-    expect(movedRecruits).toBe(0);
+    expect([movedExpansions, movedRecruits, movedIdlePhysio, movedSettledPhysio]).toEqual([
+      0, 0, 0, 0,
+    ]);
+    // Zeros need the accelerant to have been applied, or they are zeros about a
+    // plan that granted nothing. These two say it was, off the same census.
+    let grantedRuns = 0;
+    let spentGrants = 0;
+    for (const pair of PAIRS) {
+      if (pair.candidate.census.grantedCheckIns > 0) grantedRuns += 1;
+      spentGrants += pair.candidate.census.buildSkips + pair.candidate.census.clockSkips;
+    }
+    expect(grantedRuns).toBe(72);
+    expect(spentGrants).toBe(22998);
   });
 
   it('NEGATIVE control: the same engine funded from the accelerated book DOES move', () => {
@@ -798,8 +854,8 @@ describe('the zeros are zeros against measured numbers', () => {
     expect(plansCompared).toBe(78);
     // Counts, not bounds: the funding rule really changes what the gym bought,
     // on most runs and not on all of them.
-    expect(censusesThatDiffer).toBe(39);
-    expect(EMPIRE_FUNDINGS.length).toBe(2);
+    expect(censusesThatDiffer).toBe(26);
+    expect(EMPIRE_FUNDINGS.length).toBe(3);
   });
 });
 
@@ -923,21 +979,41 @@ const POLICY_FIXTURE = Object.freeze({
   PURSE: 1_000_000,
   THIN_PURSE: 900,
   ORDER: EMPIRE_SWEEP.AXIS_ORDER,
-  /** The wall-clock family's slice of `ORDER`, in `ORDER`'s own order. */
-  WALL_CLOCK_SLICE: Object.freeze(['space', 'spotter', 'physio'] as const),
-  /** The idle family's slice, likewise. */
+  /**
+   * The slice of `ORDER` bought out of each purse, in `ORDER`'s own order.
+   *
+   * Three slices rather than two families, which is GDD §5.4's third-book
+   * ruling reaching the offer: the roster-slot ladders and the physio ladder
+   * were one family and are now two purses, and nothing offered out of one is
+   * offered out of the other.
+   */
+  ROSTER_SLICE: Object.freeze(['space', 'spotter'] as const),
+  PHYSIO_SLICE: Object.freeze(['physio'] as const),
   IDLE_SLICE: Object.freeze(['coach', 'equipment'] as const),
   /** Level-1 prices, from `EMPIRE_TUNING`, as the ordering arms sort on. */
-  LEVEL_ONE_COSTS: Object.freeze({ space: 800, spotter: 1000, physio: 6000 } as const),
+  LEVEL_ONE_COSTS: Object.freeze({
+    space: 800,
+    spotter: 1000,
+    physio: 6000,
+    coach: 1200,
+    equipment: 1500,
+  } as const),
 } as const);
 
+/** The purse each of the three slices is bought out of, read from `axisBook`. */
+const ROSTER_BOOK: EmpireBook = axisBook('space');
+const PHYSIO_BOOK: EmpireBook = axisBook('physio');
+
 function contextWith(purse: number, builds: readonly ExpansionBuild[] = []): ExpansionContext {
+  const base = createEmpireState();
+  const books: Partial<Record<WallClockFundedOutput, GymBucks>> = {};
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) books[book] = asGymBucks(purse);
   return expansionContext(
     Object.freeze({
-      ...createEmpireState(),
+      ...base,
       clock: createEmpireClock(0, 0),
       gymBucks: asGymBucks(purse),
-      settledGymBucks: asGymBucks(purse),
+      settledBooks: Object.freeze({ ...base.settledBooks, ...books }),
       reputation: asReputation(0),
     }),
     builds,
@@ -946,26 +1022,28 @@ function contextWith(purse: number, builds: readonly ExpansionBuild[] = []): Exp
 
 function orderUnderContext(
   policy: EmpireSpendingPolicy,
-  family: 'wall-clock' | 'idle-clock',
+  book: EmpireBook,
   context: ExpansionContext,
   nextAxis = 0,
+  funding: EmpireFunding = SHIPPED_FUNDING,
 ): readonly ExpansionAxis[] {
   return axisSpendingOrder(
     spendingMoment(policy, true),
     [...POLICY_FIXTURE.ORDER],
     nextAxis,
-    family,
+    book,
     context,
+    funding,
   );
 }
 
 function orderUnder(
   policy: EmpireSpendingPolicy,
   nextAxis: number,
-  family: 'wall-clock' | 'idle-clock',
+  book: EmpireBook,
   purse: number,
 ): readonly ExpansionAxis[] {
-  return orderUnderContext(policy, family, contextWith(purse), nextAxis);
+  return orderUnderContext(policy, book, contextWith(purse), nextAxis);
 }
 
 describe('the spending policy is a parameter, and the shipped one is the loop that was there', () => {
@@ -1023,32 +1101,43 @@ describe('the spending policy is a parameter, and the shipped one is the loop th
 
   it('rotates the offer under the shipped policy and holds it still under the fixed one', () => {
     // The phase term, isolated. `nextAxis` is the only thing that differs
-    // between the two readings on each line.
-    expect(orderUnder(SHIPPED_SPENDING_POLICY, 0, 'wall-clock', POLICY_FIXTURE.PURSE)).toEqual([
+    // between the two readings on each line, and the purse is the one that
+    // still holds two ladders after the third-book ruling — the physio purse
+    // holds one, so a rotation test taken there could not fail.
+    expect(orderUnder(SHIPPED_SPENDING_POLICY, 0, ROSTER_BOOK, POLICY_FIXTURE.PURSE)).toEqual([
       'space',
       'spotter',
-      'physio',
     ]);
-    expect(orderUnder(SHIPPED_SPENDING_POLICY, 1, 'wall-clock', POLICY_FIXTURE.PURSE)).toEqual([
+    expect(orderUnder(SHIPPED_SPENDING_POLICY, 1, ROSTER_BOOK, POLICY_FIXTURE.PURSE)).toEqual([
       'spotter',
-      'physio',
       'space',
     ]);
-    expect(orderUnder(SHIPPED_SPENDING_POLICY, 4, 'wall-clock', POLICY_FIXTURE.PURSE)).toEqual([
-      'physio',
-      'space',
-      'spotter',
+    expect(orderUnder(SHIPPED_SPENDING_POLICY, 3, ACCELERATED_BOOK, POLICY_FIXTURE.PURSE)).toEqual([
+      'equipment',
+      'coach',
     ]);
     for (const nextAxis of [0, 1, 2, 3, 4]) {
       expect(
-        orderUnder('fixed-order-no-rotation', nextAxis, 'wall-clock', POLICY_FIXTURE.PURSE),
+        orderUnder('fixed-order-no-rotation', nextAxis, ROSTER_BOOK, POLICY_FIXTURE.PURSE),
         `nextAxis ${nextAxis}`,
-      ).toEqual([...POLICY_FIXTURE.WALL_CLOCK_SLICE]);
+      ).toEqual([...POLICY_FIXTURE.ROSTER_SLICE]);
       expect(
-        orderUnder('fixed-order-no-rotation', nextAxis, 'idle-clock', POLICY_FIXTURE.PURSE),
+        orderUnder('fixed-order-no-rotation', nextAxis, PHYSIO_BOOK, POLICY_FIXTURE.PURSE),
+        `nextAxis ${nextAxis}`,
+      ).toEqual([...POLICY_FIXTURE.PHYSIO_SLICE]);
+      expect(
+        orderUnder('fixed-order-no-rotation', nextAxis, ACCELERATED_BOOK, POLICY_FIXTURE.PURSE),
         `nextAxis ${nextAxis}`,
       ).toEqual([...POLICY_FIXTURE.IDLE_SLICE]);
     }
+    // Every axis is offered out of exactly one purse, and the three slices
+    // account for all of them — a count, so an axis that fell between two
+    // purses is red here rather than silently never offered.
+    const offered = EMPIRE_BOOKS.flatMap((book) =>
+      orderUnder('fixed-order-no-rotation', 0, book, POLICY_FIXTURE.PURSE),
+    );
+    expect([...offered].sort()).toEqual([...POLICY_FIXTURE.ORDER].sort());
+    expect(offered.length).toBe(POLICY_FIXTURE.ORDER.length);
   });
 
   it('advances the gym rotation counter exactly when the offer reads it', () => {
@@ -1098,40 +1187,84 @@ describe('the spending policy is a parameter, and the shipped one is the loop th
   it('sorts by price in both directions, on prices read from the tuning block', () => {
     // The two ordering arms are each other's control: on one purse they are
     // exact reverses, which no single-direction check could say.
-    const cheapest = orderUnder('cheapest-affordable-first', 0, 'wall-clock', POLICY_FIXTURE.PURSE);
-    const costliest = orderUnder(
-      'costliest-affordable-first',
+    // Two purses rather than one, because the third-book ruling left each
+    // wall-clock purse with at most two ladders and a one-ladder purse cannot
+    // discriminate an ordering at all.
+    const cheapest = orderUnder('cheapest-affordable-first', 0, ROSTER_BOOK, POLICY_FIXTURE.PURSE);
+    const costliest = orderUnder('costliest-affordable-first', 0, ROSTER_BOOK, POLICY_FIXTURE.PURSE);
+    expect(cheapest).toEqual(['space', 'spotter']);
+    expect(costliest).toEqual(['spotter', 'space']);
+    expect([...costliest].reverse()).toEqual([...cheapest]);
+    const idleCheapest = orderUnder(
+      'cheapest-affordable-first',
       0,
-      'wall-clock',
+      ACCELERATED_BOOK,
       POLICY_FIXTURE.PURSE,
     );
-    expect(cheapest).toEqual(['space', 'spotter', 'physio']);
-    expect(costliest).toEqual(['physio', 'spotter', 'space']);
-    expect([...costliest].reverse()).toEqual([...cheapest]);
+    const idleCostliest = orderUnder(
+      'costliest-affordable-first',
+      0,
+      ACCELERATED_BOOK,
+      POLICY_FIXTURE.PURSE,
+    );
+    expect(idleCheapest).toEqual(['coach', 'equipment']);
+    expect(idleCostliest).toEqual(['equipment', 'coach']);
     // And the sort really is on the tuning block's prices, ascending, rather
     // than on the order they were declared in.
     const costs: Readonly<Record<string, number>> = POLICY_FIXTURE.LEVEL_ONE_COSTS;
-    const prices = cheapest.map((axis) => costs[axis] as number);
-    expect(prices).toEqual([800, 1000, 6000]);
+    const prices = [...cheapest, ...idleCheapest].map((axis) => costs[axis] as number);
+    expect(prices).toEqual([800, 1000, 1200, 1500]);
     expect([...prices].sort((left, right) => left - right)).toEqual(prices);
     // An axis with no rung this gym could start sorts last under both arms, and
     // is still offered, so the verdict and not the comparator refuses it.
-    const thin = orderUnder('costliest-affordable-first', 0, 'wall-clock', POLICY_FIXTURE.THIN_PURSE);
-    expect(thin).toEqual(['space', 'spotter', 'physio']);
-    expect(thin.length).toBe(POLICY_FIXTURE.WALL_CLOCK_SLICE.length);
+    const thin = orderUnder('costliest-affordable-first', 0, ROSTER_BOOK, POLICY_FIXTURE.THIN_PURSE);
+    expect(thin).toEqual(['space', 'spotter']);
+    expect(thin.length).toBe(POLICY_FIXTURE.ROSTER_SLICE.length);
   });
 
-  it('offers physio alone out of the wall-clock book while money is the only obstacle', () => {
+  it('holds only the purse the physio rung is bought from, and the whole wall-clock side under a pooled control', () => {
     const thin = contextWith(POLICY_FIXTURE.THIN_PURSE);
     expect(savingForPhysio([...POLICY_FIXTURE.ORDER], thin)).toBe(true);
-    expect(orderUnder('save-for-physio-first', 0, 'wall-clock', POLICY_FIXTURE.THIN_PURSE)).toEqual([
+    expect(orderUnder('save-for-physio-first', 0, PHYSIO_BOOK, POLICY_FIXTURE.THIN_PURSE)).toEqual([
       'physio',
     ]);
-    // The other family spends a different book and is untouched, which is what
-    // makes this a hold on the wall-clock purse rather than a general freeze.
-    expect(orderUnder('save-for-physio-first', 0, 'idle-clock', POLICY_FIXTURE.THIN_PURSE)).toEqual([
-      ...POLICY_FIXTURE.IDLE_SLICE,
+    // The arm that matters, and why the one above cannot fail. After GDD §5.4's
+    // third-book ruling the physio purse holds one ladder, so "physio alone is
+    // offered out of it" is true of every policy and is not evidence about this
+    // one. What the hold does is decided at the OTHER purses, and the two
+    // readings below are what say the ruling is doing the work rather than the
+    // policy:
+    //
+    //   - under the shipped funding the roster purse is untouched while the
+    //     saver saves, because a rung bought out of it cannot spend a penny the
+    //     physio rung could have had;
+    //   - under `'single-wall-clock-purse'`, where the wall-clock side is one
+    //     balance again, the same call offers NOTHING out of the same purse.
+    //
+    // Widening `physioHolds` to every wall-clock purse under the shipped
+    // funding reddens the first; narrowing it to the physio purse under the
+    // control reddens the second.
+    expect(orderUnder('save-for-physio-first', 0, ROSTER_BOOK, POLICY_FIXTURE.THIN_PURSE)).toEqual([
+      ...POLICY_FIXTURE.ROSTER_SLICE,
     ]);
+    expect(
+      orderUnderContext(
+        'save-for-physio-first',
+        POOLED_WALL_CLOCK_BOOK,
+        thin,
+        0,
+        'single-wall-clock-purse',
+      ),
+    ).toEqual(['physio']);
+    expect(
+      orderUnderContext('save-for-physio-first', ROSTER_BOOK, thin, 0, 'single-wall-clock-purse'),
+    ).toEqual([]);
+    // The accelerated book spends different money under every funding and is
+    // untouched, which is what makes this a hold on a purse rather than a
+    // general freeze.
+    expect(
+      orderUnder('save-for-physio-first', 0, ACCELERATED_BOOK, POLICY_FIXTURE.THIN_PURSE),
+    ).toEqual([...POLICY_FIXTURE.IDLE_SLICE]);
     // A gym that could pay for physio right now is still saving — it is about to
     // spend, and physio still goes first.
     expect(savingForPhysio([...POLICY_FIXTURE.ORDER], contextWith(POLICY_FIXTURE.PURSE))).toBe(true);
@@ -1149,14 +1282,20 @@ describe('the spending policy is a parameter, and the shipped one is the loop th
     );
     expect(expansionVerdict(building, 'physio').allowed).toBe(false);
     expect(savingForPhysio([...POLICY_FIXTURE.ORDER], building)).toBe(false);
-    expect(orderUnderContext('save-for-physio-first', 'wall-clock', building)).toEqual([
-      ...POLICY_FIXTURE.WALL_CLOCK_SLICE,
-    ]);
+    expect(
+      orderUnderContext(
+        'save-for-physio-first',
+        POOLED_WALL_CLOCK_BOOK,
+        building,
+        0,
+        'single-wall-clock-purse',
+      ),
+    ).toEqual(['space', 'spotter', 'physio']);
     expect(maySpendOnRoster(spendingMoment('save-for-physio-first', true), [...POLICY_FIXTURE.ORDER], building)).toBe(
       true,
     );
     // A gym with no physio rung on its ladder is not saving for one, and gets
-    // the whole family back.
+    // the whole purse back.
     const withoutPhysio: ExpansionAxis[] = ['space', 'spotter', 'coach', 'equipment'];
     expect(savingForPhysio(withoutPhysio, thin)).toBe(false);
     expect(
@@ -1164,18 +1303,31 @@ describe('the spending policy is a parameter, and the shipped one is the loop th
         spendingMoment('save-for-physio-first', true),
         withoutPhysio,
         0,
-        'wall-clock',
+        ROSTER_BOOK,
         thin,
       ),
     ).toEqual(['space', 'spotter']);
   });
 
-  it('holds the roster back exactly when the wall-clock book is being held', () => {
-    // A recruit is bought out of the same book a physio rung is, so a policy
-    // that holds one and not the other holds nothing.
+  it('lets the roster spend while the physio purse is held, and holds it under a pooled control', () => {
+    // Before the third-book ruling a recruit was bought out of the same balance
+    // a physio rung was, so a policy that held one and not the other held
+    // nothing — and `maySpendOnRoster` refused. `RECRUIT_BOOK` is its own purse
+    // now, so under the shipped funding the refusal is gone and every policy
+    // allows a recruit; under either pooled control it comes back. Both
+    // directions are counted, so a `physioHolds` that stopped discriminating is
+    // red on one of them whichever way it broke.
     const order = [...POLICY_FIXTURE.ORDER];
     const thin = contextWith(POLICY_FIXTURE.THIN_PURSE);
-    expect(maySpendOnRoster(spendingMoment('save-for-physio-first', true), order, thin)).toBe(false);
+    expect(maySpendOnRoster(spendingMoment('save-for-physio-first', true), order, thin)).toBe(true);
+    expect(
+      maySpendOnRoster(
+        spendingMoment('save-for-physio-first', true),
+        order,
+        thin,
+        'single-wall-clock-purse',
+      ),
+    ).toBe(false);
     expect(
       maySpendOnRoster(spendingMoment('spend-once-per-calendar-day', false), order, thin),
     ).toBe(false);
@@ -1183,32 +1335,41 @@ describe('the spending policy is a parameter, and the shipped one is the loop th
       true,
     );
     let allowed = 0;
+    let allowedPooled = 0;
     for (const policy of EMPIRE_SPENDING_POLICIES) {
       if (maySpendOnRoster(spendingMoment(policy, true), order, thin)) allowed += 1;
+      if (
+        maySpendOnRoster(spendingMoment(policy, true), order, thin, 'single-wall-clock-purse')
+      ) {
+        allowedPooled += 1;
+      }
     }
-    // Five of the six allow a recruit at a day's last check-in; the saver does
-    // not. A count, so a policy that stopped answering is red here.
-    expect(allowed).toBe(5);
-    expect(allowed).toBe(EMPIRE_SPENDING_POLICIES.length - 1);
+    // All six allow a recruit at a day's last check-in under the shipped
+    // funding; five do under the pooled control. Counts, so a policy that
+    // stopped answering is red here.
+    expect(allowed).toBe(6);
+    expect(allowed).toBe(EMPIRE_SPENDING_POLICIES.length);
+    expect(allowedPooled).toBe(EMPIRE_SPENDING_POLICIES.length - 1);
   });
 
   it('offers nothing at all from an empty axis order, under every policy', () => {
     let empties = 0;
     for (const policy of EMPIRE_SPENDING_POLICIES) {
-      for (const family of ['wall-clock', 'idle-clock'] as const) {
+      for (const book of EMPIRE_BOOKS) {
         expect(
           axisSpendingOrder(
             spendingMoment(policy, true),
             [],
             0,
-            family,
+            book,
             contextWith(POLICY_FIXTURE.PURSE),
           ),
         ).toEqual([]);
         empties += 1;
       }
     }
-    expect(empties).toBe(EMPIRE_SPENDING_POLICIES.length * 2);
+    expect(empties).toBe(EMPIRE_SPENDING_POLICIES.length * EMPIRE_BOOKS.length);
+    expect(EMPIRE_BOOKS.length).toBe(WALL_CLOCK_FUNDED_OUTPUTS.length + 1);
   });
 });
 
@@ -1289,7 +1450,7 @@ describe('this module is pure, numerically clean and names nobody', () => {
     // one — that is the human, name-by-name pass. What this does is make a name
     // ARRIVING visible.
     const { singleQuoted, doubleQuoted, templateChunks } = stringLiteralsIn(code);
-    expect(singleQuoted.size).toBe(34);
+    expect(singleQuoted.size).toBe(35);
     expect(doubleQuoted.size).toBe(0);
     expect(templateChunks.size).toBe(14);
     // The template collector really reaches this module's messages, by match
@@ -1324,6 +1485,7 @@ describe('this module is pure, numerically clean and names nobody', () => {
       'roster-slot',
       'rotate-greedy-per-check-in',
       'save-for-physio-first',
+      'single-wall-clock-purse',
       'spend-once-per-calendar-day',
       'training-iq',
       'wall-clock-earned',
@@ -1336,7 +1498,7 @@ describe('this module is pure, numerically clean and names nobody', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(48);
+    expect(stringsChecked).toBe(49);
   });
 
   it('would catch a person-shaped name arriving in this module', () => {

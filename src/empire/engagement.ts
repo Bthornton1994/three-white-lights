@@ -53,12 +53,14 @@
  * differ in engagement by exactly one is a throw rather than a quietly
  * uninteresting row.
  *
- * The grid matters because of a measured fact rather than a preference. Adding
- * a whole DAY of six check-ins never produced a violation at any horizon
- * measured here; adding ONE check-in does. A sweep at day granularity would
- * have reported zero and been an empty domain for the mechanism, which is the
- * vacuity shape CLAUDE.md names. `engagement.test.ts` keeps the day-granularity
- * reading beside the slot-granularity one and pins both.
+ * The grid matters because of a measured fact rather than a preference. On the
+ * engine this file was written against, adding a whole DAY of six check-ins
+ * never produced a violation at any horizon measured; adding ONE check-in did.
+ * A sweep at day granularity would have reported zero and been an empty domain
+ * for the mechanism, which is the vacuity shape CLAUDE.md names. Both readings
+ * are still taken and both are pinned, and the finer one is still the one that
+ * bites: the day-granularity reading is zero on every spending policy now,
+ * while the slot-granularity reading separates the one policy that is not.
  *
  * ===========================================================================
  * 3. Both progression readings are taken at the DAY'S OWN WALL CLOCK
@@ -87,16 +89,24 @@
  * books at a check-in. Those are `stepGym`'s, not this file's.
  *
  * ===========================================================================
- * 4. The wirings, and why three of the four are controls
+ * 4. The wirings, and why four of the five are controls
  * ===========================================================================
  *
- * A zero has to be a zero against something, so the same loop runs under four
+ * A zero has to be a zero against something, so the same loop runs under five
  * wirings and one parameter chooses:
  *
  *   - `'shipped'` — the engine as it stands. Physio, space, spotter and every
- *     recruit come out of `EmpireState.settledGymBucks`, the wall-clock book,
- *     which `settledGymBucksRatePerHour` accrues at the baseline line and which
- *     no sponsor money reaches.
+ *     recruit come out of `EmpireState.settledBooks` — a wall-clock purse per
+ *     funded output, each of which `settledGymBucksRatePerHour` accrues at the
+ *     baseline line and none of which any sponsor money reaches.
+ *
+ *   - `'single-purse'` — `stepGym`'s own `funding: 'single-wall-clock-purse'`:
+ *     the clock split and the wall-clock money kept, and every wall-clock
+ *     spender put back on ONE balance. This is the engine between GDD §5.4's
+ *     two-books ruling and its third-book ruling, and it is the control the
+ *     shipped zeros below are zeros against — it is where a check-in schedule
+ *     decided which of §5.4's ladders and §5.3's recruits reached the money
+ *     first, and its counts are pinned non-zero on every spending policy.
  *
  *   - `'accelerated-purse'` — `stepGym`'s own `funding: 'accelerated'`, which
  *     offers the gym its accelerated book where the wall-clock one belongs.
@@ -106,17 +116,17 @@
  *     physio rung is bought with. It is chain A itself, re-connected, and its
  *     counts are pinned non-zero.
  *
- *   - `'check-in-upkeep'` — the wall-clock book is charged `upkeepGymBucks` per
- *     check-in, an income term keyed directly to the player's own activity with
- *     the punishing sign. The magnitude is a parameter rather than a constant
- *     here, because it is a control's dial and not a game-feel value; its value
- *     lives with the rest of the sweep's parameters.
+ *   - `'check-in-upkeep'` — every wall-clock purse is charged `upkeepGymBucks`
+ *     per check-in, an income term keyed directly to the player's own activity
+ *     with the punishing sign. The magnitude is a parameter rather than a
+ *     constant here, because it is a control's dial and not a game-feel value;
+ *     its value lives with the rest of the sweep's parameters.
  *
  *   - `'trained-day-upkeep'` — the same charge keyed to a TRAINED DAY instead
  *     of a check-in, so the extra-trained-day half of the property has a
  *     control of its own rather than borrowing the check-in one.
  *
- * Nothing in the game reads the last three. They exist so the shipped wiring's
+ * Nothing in the game reads the last four. They exist so the shipped wiring's
  * numbers are numbers against something.
  *
  * ===========================================================================
@@ -150,15 +160,26 @@
  * over the same domain under each — which is the only way "the property is in
  * the design" and "the property is in one simulated player" can be told apart.
  * `engagement.test.ts` carries the table.
+ *
+ * That distinction is what the table now reports rather than what it was
+ * written to hope for. Five of the six policies are zero on every domain
+ * measured; the sixth spends a whole day's takings at the last check-in the
+ * player happens to take, so an extra evening check-in moves the purchase to
+ * the evening. `engagement.test.ts` splits its count by exactly that and finds
+ * 7240 of 7245 on the moving side — a fact about that model of a player, which
+ * no arrangement of §5's purses reaches.
  */
 
 import {
+  WALL_CLOCK_FUNDED_OUTPUTS,
   asGymBucks,
   createEmpireClock,
   elapsedFor,
   type EmpireClock,
   type EmpireOutput,
+  type GymBucks,
   type UnacceleratedSeconds,
+  type WallClockFundedOutput,
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
@@ -191,9 +212,10 @@ import {
 // The wirings
 // ---------------------------------------------------------------------------
 
-/** The engine under test, and the three controls its zeros are zeros against. */
+/** The engine under test, and the four controls its zeros are zeros against. */
 export const ENGAGEMENT_WIRINGS = [
   'shipped',
+  'single-purse',
   'accelerated-purse',
   'check-in-upkeep',
   'trained-day-upkeep',
@@ -206,6 +228,7 @@ export const SHIPPED_ENGAGEMENT_WIRING: EngagementWiringKey = 'shipped';
 
 /**
  * A wiring and the one magnitude a control needs.
+ *
  *
  * `upkeepGymBucks` is a control's dial, so it arrives as a parameter and is
  * required to be zero on every wiring that does not spend it — a control whose
@@ -222,9 +245,11 @@ export function chargesUpkeep(key: EngagementWiringKey): boolean {
   return key === 'check-in-upkeep' || key === 'trained-day-upkeep';
 }
 
-/** Which of `stepGym`'s two funding rules a wiring runs on. */
+/** Which of `stepGym`'s funding rules a wiring runs on. */
 export function wiringFunding(key: EngagementWiringKey): EmpireFunding {
-  return key === 'accelerated-purse' ? 'accelerated' : SHIPPED_FUNDING;
+  if (key === 'accelerated-purse') return 'accelerated';
+  if (key === 'single-purse') return 'single-wall-clock-purse';
+  return SHIPPED_FUNDING;
 }
 
 /** Build a wiring, refusing a dial on a wiring that has nothing to turn. */
@@ -388,15 +413,35 @@ export function slotWallSeconds(slot: number, checkInsPerDay: number): number {
   return day * EMPIRE_TUNING.SECONDS_PER_DAY + (tick + 1) * secondsPerCheckIn;
 }
 
-/** Take an upkeep charge off the wall-clock book, floored at zero. */
+/**
+ * Take an upkeep charge off EVERY wall-clock purse, floored at zero.
+ *
+ * Every purse rather than one, because this control's whole content is "an
+ * income term keyed to the player's own activity, with the punishing sign", and
+ * a charge on one of four purses would be a quarter of the control it is
+ * documented as. `upkeepCharged` counts what it actually took, summed across the
+ * purses, so a control that stopped biting reports a smaller number rather than
+ * a green zero.
+ */
 function chargeUpkeep(gym: EmpireGym, amount: number): EmpireGym {
+  const charged: Partial<Record<WallClockFundedOutput, GymBucks>> = {};
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
+    charged[book] = asGymBucks(Math.max(0, gym.state.settledBooks[book] - amount));
+  }
   return Object.freeze({
     ...gym,
     state: Object.freeze({
       ...gym.state,
-      settledGymBucks: asGymBucks(Math.max(0, gym.state.settledGymBucks - amount)),
+      settledBooks: Object.freeze({ ...gym.state.settledBooks, ...charged }),
     }),
   });
+}
+
+/** Everything the wall-clock purses hold together. The upkeep control's meter. */
+function wallClockTotal(gym: EmpireGym): number {
+  let total = 0;
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) total += gym.state.settledBooks[book];
+  return total;
 }
 
 /** Add Gym Bucks to the accelerated book, the way `runEmpire` credits §5.5 income. */
@@ -489,17 +534,17 @@ export function runEngagement(
         moment,
       );
       if (wiring.key === 'check-in-upkeep') {
-        const before = gym.state.settledGymBucks;
+        const before = wallClockTotal(gym);
         gym = chargeUpkeep(gym, wiring.upkeepGymBucks);
-        upkeepCharged += before - gym.state.settledGymBucks;
+        upkeepCharged += before - wallClockTotal(gym);
         upkeepEvents += 1;
       }
     }
 
     if (wiring.key === 'trained-day-upkeep' && trained.has(day)) {
-      const before = gym.state.settledGymBucks;
+      const before = wallClockTotal(gym);
       gym = chargeUpkeep(gym, wiring.upkeepGymBucks);
-      upkeepCharged += before - gym.state.settledGymBucks;
+      upkeepCharged += before - wallClockTotal(gym);
       upkeepEvents += 1;
     }
 

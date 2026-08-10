@@ -2024,11 +2024,18 @@ describe('the state constructor and its invariants', () => {
       /settledAxes: physio level 1 is ahead of the idle view's 0/,
     ],
     [
-      // The wall-clock book, which is the money §5.4's physio rung and §5.3's
+      // A wall-clock book, which is the money §5.4's physio rung and §5.3's
       // recruits are bought out of. Its sibling below is the accelerated book.
+      // The physio purse rather than the record, because GDD §5.4's third-book
+      // ruling makes this a purse per funded output and the walk has to reach
+      // every one of them — a check on the record's shape would pass on a
+      // record whose physio entry was NaN.
       'a wall-clock book that is not a balance',
-      { ...base, settledGymBucks: Number.NaN as GymBucks },
-      /settledGymBucks: NaN is not a balance/,
+      {
+        ...base,
+        settledBooks: { ...base.settledBooks, 'physio-days-saved': Number.NaN as GymBucks },
+      },
+      /the physio-days-saved book: NaN is not a balance/,
     ],
     [
       'an equipment tier off the ladder',

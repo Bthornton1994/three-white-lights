@@ -57,6 +57,7 @@ import { describe, expect, it } from 'vitest';
 
 import { auditSource, formatFindings } from '../tuning/audit';
 import {
+  WALL_CLOCK_FUNDED_OUTPUTS,
   asGymBucks,
   asReputation,
   createEmpireClock,
@@ -69,12 +70,16 @@ import {
   type EmpireClock,
   type EmpireState,
   type GymAxes,
+  type GymBucks,
   type NpcLifter,
   type NpcTier,
+  type WallClockBooks,
+  type WallClockFundedOutput,
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
 import { npcTrainingIqPerDay } from './npc';
 import {
+  RECRUIT_BOOK,
   RECRUITMENT_REFUSALS,
   beginRecruitment,
   completeRecruitment,
@@ -123,7 +128,7 @@ const OUR_MODULES = Object.freeze(['npc.ts', 'recruitment.ts'] as const);
 interface StateOverrides {
   readonly reputation?: number;
   readonly gymBucks?: number;
-  /** The wall-clock book. Mirrors the accelerated one unless a case parts them. */
+  /** Every wall-clock purse. Mirrors the accelerated book unless a case parts them. */
   readonly settledGymBucks?: number;
   /** The wall-clock view of the slots. Mirrors the idle one unless parted. */
   readonly settledSpaceLevel?: number;
@@ -132,6 +137,13 @@ interface StateOverrides {
   readonly rosterSize?: number;
   readonly elapsed?: number;
   readonly skipped?: number;
+}
+
+/** Every wall-clock purse at one balance. See `WallClockBooks`. */
+function booksAt(balance: number): WallClockBooks {
+  const books: Partial<Record<WallClockFundedOutput, GymBucks>> = {};
+  for (const output of WALL_CLOCK_FUNDED_OUTPUTS) books[output] = asGymBucks(balance);
+  return Object.freeze(books as Record<WallClockFundedOutput, GymBucks>);
 }
 
 function stateWith(over: StateOverrides): EmpireState {
@@ -160,7 +172,7 @@ function stateWith(over: StateOverrides): EmpireState {
     roster: Object.freeze(roster),
     reputation: asReputation(over.reputation ?? 0),
     gymBucks: asGymBucks(over.gymBucks ?? 0),
-    settledGymBucks: asGymBucks(over.settledGymBucks ?? over.gymBucks ?? 0),
+    settledBooks: booksAt(over.settledGymBucks ?? over.gymBucks ?? 0),
   });
 }
 
@@ -588,15 +600,27 @@ describe('starting a recruitment', () => {
       const decision = beginRecruitment(before, tier);
       expect(decision.kind).toBe('accepted');
       if (decision.kind !== 'accepted') throw new Error('unreachable');
-      // The WALL-CLOCK book pays, and the accelerated one is untouched. See §2
+      // `RECRUIT_BOOK` pays, and every other purse is untouched. See §2 and §2a
       // of the module header: a recruit pays Training IQ, so the day this
       // decision can be taken has to be a day no purchase moved, and a price
-      // taken out of the accelerated book would make the gate ornamental.
-      expect(before.settledGymBucks - decision.state.settledGymBucks).toBe(
-        recruitmentQuote(tier).costGymBucks,
-      );
-      expect(decision.state.settledGymBucks).toBe(0);
+      // taken out of the accelerated book would make the gate ornamental — and
+      // a price taken out of a §5.4 ladder's purse would put the two back in
+      // the contest GDD §5.4's third-book ruling separated.
+      expect(
+        before.settledBooks[RECRUIT_BOOK] - decision.state.settledBooks[RECRUIT_BOOK],
+      ).toBe(recruitmentQuote(tier).costGymBucks);
+      expect(decision.state.settledBooks[RECRUIT_BOOK]).toBe(0);
       expect(decision.state.gymBucks).toBe(before.gymBucks);
+      // Counts rather than one named sibling: every other purse holds exactly
+      // what it held, so "one purse paid" is measured across the whole record.
+      let untouched = 0;
+      for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
+        if (book === RECRUIT_BOOK) continue;
+        expect(decision.state.settledBooks[book]).toBe(before.settledBooks[book]);
+        untouched += 1;
+      }
+      expect(untouched).toBe(WALL_CLOCK_FUNDED_OUTPUTS.length - 1);
+      expect(untouched).toBeGreaterThan(0);
       expect(decision.schedule.tier).toBe(tier);
       started += 1;
     }
@@ -1029,6 +1053,7 @@ describe('the exported surface is pinned, so a new producer of a tier is a signe
     ]);
     expect(exportsOf('recruitment.ts')).toEqual([
       'RECRUITMENT_REFUSALS',
+      'RECRUIT_BOOK',
       'RecruitmentDecision',
       'RecruitmentOffer',
       'RecruitmentQuote',

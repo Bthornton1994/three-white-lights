@@ -41,14 +41,21 @@
  * `clock.accelerated` or `clock.unaccelerated` by name.
  *
  * The split has a third quantity since piece E6: `ProductionAccrual.
- * settledGymBucks`, the WALL-CLOCK book. Gym Bucks are idle-only as a PAYOUT
+ * settledGymBucks`, the WALL-CLOCK line. Gym Bucks are idle-only as a PAYOUT
  * and a purchase may move them, which is what §8.3B sells — but the same money
  * buys the physio rung and the recruits, and those reach Sim progression. So
- * the gym keeps two books, and this file accrues the second one at
- * `settledGymBucksRatePerHour` over the un-accelerated gap. See that function
- * for why the line it accrues on carries no roster term and no axis multiplier,
- * and `empireCore.ts`'s `WALL_CLOCK_FUNDED_OUTPUTS` for which purchases may
- * draw on it.
+ * the gym keeps its wall-clock money apart from its accelerated money, and this
+ * file accrues the wall-clock line at `settledGymBucksRatePerHour` over the
+ * un-accelerated gap. See that function for why the line it accrues on carries
+ * no roster term and no axis multiplier, and `empireCore.ts`'s
+ * `WALL_CLOCK_FUNDED_OUTPUTS` for which purchases may draw on it.
+ *
+ * Since GDD §5.4's third-book ruling the wall-clock side is a purse per funded
+ * output rather than one balance, and this number is what ONE gap pays into
+ * EACH of them — the rate reads no state, so there is one number rather than a
+ * record, and `stepGym` is where it is credited to every purse. What the split
+ * changes is where the money may go, not how fast it arrives, which is why
+ * nothing in this file had to learn about it.
  *
  * ===========================================================================
  * 3. The roster filter, which is the part the types do not give you
@@ -386,7 +393,7 @@ export function trainingIqRatePerDay(
  * That is the same argument `trainingIqRatePerDay` makes for taking no axis
  * multiplier, applied to the money that buys the rungs rather than to the
  * trickle they would have multiplied. What is left is a function of wall time
- * and one tuning constant, which is what makes `EmpireState.settledGymBucks`
+ * and one tuning constant, which is what makes every purse in `settledBooks`
  * a quantity no purchase can move — and it is why this takes no state at all.
  */
 export function settledGymBucksRatePerHour(): number {
@@ -419,7 +426,7 @@ export function productionRates(
 export interface ProductionAccrual {
   readonly gymBucks: GymBucks;
   /**
-   * What the gap paid into the WALL-CLOCK book: the baseline line, over the
+   * What the gap paid into EACH wall-clock book: the baseline line, over the
    * wall-clock part of the gap, under the same offline model.
    *
    * Both halves are the wall clock on purpose. The rate is

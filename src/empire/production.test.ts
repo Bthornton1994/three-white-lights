@@ -32,6 +32,7 @@ import {
   asReputation,
   assertEmpireState,
   createEmpireClock,
+  createEmpireState,
   createNpcLifter,
   idleLedger,
   progressionLedger,
@@ -149,7 +150,7 @@ function stateFrom(fixture: GymFixture, elapsedSeconds: number, skippedSeconds: 
     roster: Object.freeze(fixture.roster.map(lifterFrom)),
     reputation: asReputation(0),
     gymBucks: asGymBucks(0),
-    settledGymBucks: asGymBucks(0),
+    settledBooks: createEmpireState().settledBooks,
     ledger: Object.freeze([]),
     accelerants: Object.freeze([]),
   });

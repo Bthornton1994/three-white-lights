@@ -263,8 +263,10 @@
  * `WALL_CLOCK_FUNDED_OUTPUTS` below is what makes the contract keepable rather
  * than hoped for: the purse a rung is bought from is derived from the reach of
  * the output it feeds, the same way `elapsedFor` derives a clock, so the physio
- * rung is bought out of `EmpireState.settledGymBucks` — money the baseline line
- * delivers on the wall clock and no purchase moves.
+ * rung is bought out of the physio entry of `EmpireState.settledBooks` — money
+ * the baseline line delivers on the wall clock and no purchase moves. `WallClockBooks`
+ * is the second half of that ruling: one purse per funded output, so the
+ * schedule cannot decide which spender reaches a shared balance first either.
  *
  * WHAT IS ACTUALLY MEASURED, because this note asked for a measurement for
  * several waves before one existed, and a header that names a check nobody ran
@@ -1311,19 +1313,70 @@ export function gateElapsedFor(clock: EmpireClock, output: GatingOutput): Unacce
  * `EmpireState.settledGymBucks` is the money on that side of the split.
  *
  * The cost of this is a design decision rather than a transcription, and it is
- * stated where a reader meets it: the gym keeps two books. `gymBucks` is the
- * accelerated book, and it buys everything §8.3A and §8.3B sell — decor,
- * cosmetics, the equipment ladder, the coach ladder. `settledGymBucks` is the
- * wall-clock book and it is the only money §5.4's capability rungs and §5.3's
- * recruits may be bought with. A player who buys skips still gets what §8.3B
- * sells — the build finishes now, the lifter is on the floor now — and does not
- * get to buy the NEXT rung of a progression-reaching ladder any sooner.
+ * stated where a reader meets it: the gym keeps an accelerated book and a
+ * wall-clock book PER FUNDED OUTPUT. `gymBucks` is the accelerated book, and it
+ * buys everything §8.3A and §8.3B sell — decor, cosmetics, the equipment
+ * ladder, the coach ladder. `settledBooks` holds the rest, and it is the only
+ * money §5.4's capability rungs and §5.3's recruits may be bought with. A
+ * player who buys skips still gets what §8.3B sells — the build finishes now,
+ * the lifter is on the floor now — and does not get to buy the NEXT rung of a
+ * progression-reaching ladder any sooner.
  */
-export const WALL_CLOCK_FUNDED_OUTPUTS: readonly EmpireOutput[] = EMPIRE_OUTPUTS.filter(
-  (output) =>
+export type WallClockFundedOutput = ProgressionReachingOutput | GatingOutput;
+
+export const WALL_CLOCK_FUNDED_OUTPUTS: readonly WallClockFundedOutput[] = EMPIRE_OUTPUTS.filter(
+  (output): output is WallClockFundedOutput =>
     outputReach(output) === 'progression-reaching' ||
     (GATING_OUTPUTS as readonly EmpireOutput[]).includes(output),
 );
+
+/**
+ * The gym's wall-clock BOOKS: one purse per wall-clock-funded output, and the
+ * money in one may not be spent on another.
+ *
+ * GDD §5.4's third-book ruling, and the shape of it is a consequence of the
+ * list above rather than a list of its own. One purse was measurably not
+ * enough: the outputs on that list have four distinct spenders between them —
+ * §5.4's space and spotter ladders, §5.4's physio ladder and §5.3's recruits —
+ * and while they drew on one balance, the CHECK-IN SCHEDULE decided which of
+ * them the money reached first. A player who opened the app more often bought a
+ * different rung at a different moment and could end on a LOWER §5.2 Training
+ * IQ series than a player who opened it less, which is CLAUDE.md's "never
+ * punish daily engagement" broken by the composition rather than by any one
+ * table.
+ *
+ * Non-fungible is the whole mechanism. A purse with one spender is spent in
+ * ladder order at the first moment it can afford the next rung, so the day that
+ * rung lands is a function of wall time and the cost table — monotone in the
+ * player's own attendance, because attending more can only move accrual earlier
+ * and never later. A purse with two spenders has an ORDER, and an order is
+ * something a schedule can move.
+ *
+ * `'reputation'` keeps a purse here and nothing spends it: reputation is earned
+ * per check-in rather than bought, so no axis feeds it and no recruit is priced
+ * in it. It is derived rather than special-cased because a later §5.4 axis that
+ * did feed it would need exactly this purse; `empireInvariant.test.ts` pins that
+ * the fund is never debited across the whole sweep, so "no spender" is a
+ * measured fact rather than a sentence.
+ */
+export type WallClockBooks = Readonly<Record<WallClockFundedOutput, GymBucks>>;
+
+/**
+ * Every wall-clock book at one balance.
+ *
+ * Deliberately NOT exported, and that is a census decision rather than a taste
+ * one: this returns a record of `GymBucks` and takes a bare number, which is
+ * exactly the producer shape `empireCore.test.ts`'s brand census refuses
+ * without an `Unbranded` guard — and the guard would refuse the accrual, which
+ * arrives already branded. Consumers assemble a book record from the one they
+ * were handed instead, so nothing outside this file mints a balance from a
+ * primitive.
+ */
+function wallClockBooksAt(balance: number): WallClockBooks {
+  const books: Partial<Record<WallClockFundedOutput, GymBucks>> = {};
+  for (const output of WALL_CLOCK_FUNDED_OUTPUTS) books[output] = asGymBucks(balance);
+  return Object.freeze(books as Record<WallClockFundedOutput, GymBucks>);
+}
 
 // ---------------------------------------------------------------------------
 // Roster
@@ -1641,15 +1694,17 @@ export interface EmpireState {
   /** The accelerated book. Decor, cosmetics, and the two idle-only ladders. */
   readonly gymBucks: GymBucks;
   /**
-   * The wall-clock book: money the gym's baseline takings have delivered by the
-   * un-accelerated reading, less what has been spent out of it.
+   * The wall-clock books: one purse per wall-clock-funded output, each holding
+   * money the gym's baseline takings have delivered by the un-accelerated
+   * reading, less what has been spent out of that purse.
    *
-   * The only money a `WALL_CLOCK_FUNDED_OUTPUTS` rung may be bought with. See
-   * that constant for why the purse is chosen from the reach of the thing being
-   * bought, and `accrueProduction` for why the line it accrues on carries no
-   * roster term and no axis multiplier.
+   * The only money a `WALL_CLOCK_FUNDED_OUTPUTS` rung may be bought with, and a
+   * rung may only be bought from the purse its own output names. See
+   * `WallClockBooks` for why one purse was not enough, and `accrueProduction`
+   * for why the line each accrues on carries no roster term and no axis
+   * multiplier.
    */
-  readonly settledGymBucks: GymBucks;
+  readonly settledBooks: WallClockBooks;
   readonly ledger: readonly EmpireLedgerEntry[];
   readonly accelerants: readonly AppliedAccelerant[];
 }
@@ -1669,7 +1724,7 @@ export function createEmpireState(): EmpireState {
     roster: Object.freeze([]),
     reputation: asReputation(0),
     gymBucks: asGymBucks(0),
-    settledGymBucks: asGymBucks(0),
+    settledBooks: wallClockBooksAt(0),
     ledger: Object.freeze([]),
     accelerants: Object.freeze([]),
   });
@@ -1770,11 +1825,17 @@ export function empireStateFaults(state: EmpireState): readonly string[] {
   }
 
   // The branch immediately below the one above, written the same way on
-  // purpose: the wall-clock book is the money a progression-reaching rung is
+  // purpose: a wall-clock book is the money a progression-reaching rung is
   // bought with, so a decoded payload that carries a negative or non-finite one
-  // is the more load-bearing of the two.
-  if (!Number.isFinite(state.settledGymBucks) || state.settledGymBucks < 0) {
-    faults.push(`settledGymBucks: ${state.settledGymBucks} is not a balance`);
+  // is the more load-bearing of the two. Every book is walked rather than one,
+  // because a record with a missing key reads as `undefined` and
+  // `undefined < 0` is false — the shape that let a malformed clock through
+  // twelve lines above.
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
+    const balance: number | undefined = state.settledBooks[book];
+    if (balance === undefined || !Number.isFinite(balance) || balance < 0) {
+      faults.push(`the ${book} book: ${balance} is not a balance`);
+    }
   }
 
   // The capacity itself is checked before it is compared against, for the

@@ -66,14 +66,28 @@
  * `WALL_CLOCK_FUNDED_OUTPUTS` in `empireCore.ts` is the closure and it is
  * derived from the tables that were already there: an output is on it when it
  * reaches Sim progression, or when `GATE_TARGET` says it gates something that
- * does. `axisFunding` in `expansion.ts` reads it through `AXIS_OUTPUT`, so the
- * physio, space and spotter rungs are bought out of `settledGymBucks` — the
- * gym's wall-clock book — and the equipment and coach rungs out of the
- * accelerated one. `recruitmentRefusals` is on the same side of the split,
- * because a recruit pays Training IQ.
+ * does. `axisBook` in `expansion.ts` reads it through `AXIS_OUTPUT`, so the
+ * physio, space and spotter rungs are bought out of `settledBooks` — the gym's
+ * wall-clock purses — and the equipment and coach rungs out of the accelerated
+ * one. `recruitmentRefusals` is on the same side of the split, because a
+ * recruit pays Training IQ.
  *
- * The wall-clock book accrues at `settledGymBucksRatePerHour`, which reads no
- * state at all: it is the baseline line over the un-accelerated part of a gap.
+ * GDD §5.4's third-book ruling is the second half of the same derivation and it
+ * closes a chain the first half left open. One wall-clock balance was contested
+ * by four spenders — the space ladder, the spotter ladder, the physio ladder
+ * and a recruit — and a contested balance has a spending ORDER that the
+ * player's CHECK-IN SCHEDULE moves. Measured on this engine, a player who
+ * checked in more often ended on a lower §5.2 Training IQ series in 2954 of
+ * 24576 exhaustively enumerated pairs. So each funded output keeps a purse of
+ * its own (`WallClockBooks`) and each purse gets its own slot in step 4 below,
+ * and `'single-wall-clock-purse'` is the control that still measures the 2954.
+ *
+ * Every wall-clock purse accrues at `settledGymBucksRatePerHour`, which reads
+ * no state at all: it is the baseline line over the un-accelerated part of a
+ * gap. Each purse gets that line in full rather than a share of it, so the
+ * split changes where money may go and not how fast it arrives — the cost a
+ * player pays is that they cannot pour a saved-up balance into one ladder, not
+ * that any ladder fills more slowly than it did.
  * So the day a wall-clock-funded rung becomes affordable is a function of wall
  * time, the cost tables and the gym's own earlier wall-clock-funded purchases —
  * and of nothing a purchase moves. The rungs' levels and their in-flight builds
@@ -223,6 +237,7 @@
 
 import {
   IDLE_ONLY_OUTPUTS,
+  WALL_CLOCK_FUNDED_OUTPUTS,
   asGymBucks,
   asUnacceleratedSeconds,
   elapsedFor,
@@ -236,16 +251,21 @@ import {
   type EmpireClock,
   type EmpireOutput,
   type EmpireState,
+  type GymBucks,
   type IdleOnlyOutput,
   type NpcLifter,
   type NpcTier,
   type PurchasableAccelerant,
   type UnacceleratedSeconds,
+  type WallClockBooks,
+  type WallClockFundedOutput,
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
-  AXIS_FUNDINGS,
-  axisFunding,
+  ACCELERATED_BOOK,
+  EMPIRE_BOOKS,
+  POOLED_WALL_CLOCK_BOOK,
+  axisBook,
   axisLevel,
   axisOutput,
   expansionContext,
@@ -256,7 +276,7 @@ import {
   settledAxisLevel,
   skipExpansion,
   startExpansion,
-  type AxisFunding,
+  type EmpireBook,
   type ExpansionAxis,
   type ExpansionBuild,
   type ExpansionContext,
@@ -269,6 +289,7 @@ import {
   type RosterRateSource,
 } from './production';
 import {
+  RECRUIT_BOOK,
   beginRecruitment,
   completeRecruitment,
   mayRecruit,
@@ -301,22 +322,52 @@ const OWN_GYM_ID = 'composed-gym';
 export const NO_ACCELERANT: null = null;
 
 /**
- * Which book a composed run funds its progression-reaching purchases from.
+ * Which books a composed run funds its progression-reaching purchases from.
  *
- * `'wall-clock-earned'` is the shipped rule and the closure §3 of the header
- * describes. `'accelerated'` is the NEGATIVE CONTROL and nothing the game ships
- * reads it: it offers the gym its accelerated book and its idle axis view where
- * the wall-clock ones belong, which is the engine as it stood before §3 and the
- * wiring mistake a later piece would make. It is one parameter through the same
- * loop rather than a second loop, because a control assembled separately can
- * drift from the thing it is a control for.
+ * `'wall-clock-earned'` is the shipped rule: the closure §3 of the header
+ * describes, with GDD §5.4's third-book ruling on top of it, so each
+ * wall-clock-funded output keeps a purse nothing else may spend.
+ *
+ * The other two are NEGATIVE CONTROLS and nothing the game ships reads either.
+ * Both are the engine as it stood at an earlier ruling rather than a synthetic
+ * variant, and both are one parameter through the same loop rather than a
+ * second loop, because a control assembled separately drifts from the thing it
+ * is a control for:
+ *
+ *   - `'accelerated'` offers the gym its accelerated book and its idle axis
+ *     view where the wall-clock ones belong — the engine before the two-books
+ *     ruling, and the wiring mistake a later piece would make.
+ *   - `'single-wall-clock-purse'` keeps the clock split and the wall-clock
+ *     money, and puts every wall-clock spender back on ONE balance — the engine
+ *     between the two rulings. Every debit is taken from every purse, which
+ *     leaves the purses in lockstep and is therefore arithmetically the single
+ *     book it replaces. This is the control the engagement zeros are zeros
+ *     against: it is where 2954 of 24576 exhaustively enumerated pairs punished
+ *     the more-engaged player.
  */
-export const EMPIRE_FUNDINGS = ['wall-clock-earned', 'accelerated'] as const;
+export const EMPIRE_FUNDINGS = [
+  'wall-clock-earned',
+  'accelerated',
+  'single-wall-clock-purse',
+] as const;
 
 export type EmpireFunding = (typeof EMPIRE_FUNDINGS)[number];
 
 /** The rule the shipped engine runs on. */
 export const SHIPPED_FUNDING: EmpireFunding = 'wall-clock-earned';
+
+/**
+ * True for a funding rule under which every wall-clock purse is one balance, so
+ * a purchase from any of them is a purchase from all of them.
+ *
+ * The two controls answer yes for different reasons — one pools onto the
+ * accelerated book, one pools onto the wall-clock line — and every place that
+ * has to know "can this money leave by another door" asks this rather than
+ * naming a funding, so a third control added later is one row here.
+ */
+export function poolsWallClockBooks(funding: EmpireFunding): boolean {
+  return funding !== SHIPPED_FUNDING;
+}
 
 /** How the simulated player spends, per check-in. No magnitude lives here. */
 export interface EmpirePolicy {
@@ -454,6 +505,36 @@ export function savingForPhysio(
   return verdict.refusal === 'not-enough-wall-clock-earnings';
 }
 
+/**
+ * Whether money in `book` could otherwise leave by a door the physio rung
+ * cannot use — i.e. whether a policy saving for physio has to hold this purse.
+ *
+ * Under the shipped funding the answer is "only the physio purse", and that is
+ * not a weakening of the policy: GDD §5.4's third-book ruling means there is no
+ * other door. Under either control the wall-clock purses are one balance, so
+ * the hold is the whole wall-clock side — which is what the policy did before
+ * the ruling and is what makes the control reproduce its own numbers.
+ */
+function physioHolds(book: EmpireBook, funding: EmpireFunding): boolean {
+  if (poolsWallClockBooks(funding)) return book !== ACCELERATED_BOOK;
+  return book === axisBook(PHYSIO_AXIS);
+}
+
+/**
+ * The purse an axis is OFFERED out of under a funding rule.
+ *
+ * Under the shipped rule it is the purse that pays, full stop. Under a control
+ * every wall-clock ladder is offered out of one slot again, because a control
+ * has to reproduce the engine it is a control for — a pooled balance with four
+ * separate offers would buy four rungs a check-in where the engine it stands in
+ * for bought one, and its counts would then be about neither engine.
+ */
+function offeredBookOf(axis: ExpansionAxis, funding: EmpireFunding): EmpireBook {
+  const book = axisBook(axis);
+  if (book === ACCELERATED_BOOK) return book;
+  return poolsWallClockBooks(funding) ? POOLED_WALL_CLOCK_BOOK : book;
+}
+
 /** The price of the rung this axis would start right now, or `null` if none would. */
 function offeredCost(context: ExpansionContext, axis: ExpansionAxis): number | null {
   const verdict = expansionVerdict(context, axis);
@@ -461,10 +542,16 @@ function offeredCost(context: ExpansionContext, axis: ExpansionAxis): number | n
 }
 
 /**
- * The axes of one funding family, in the order this moment's policy wants them
- * tried. The caller stops at the first one that starts.
+ * The axes bought out of one PURSE, in the order this moment's policy wants
+ * them tried. The caller stops at the first one that starts.
  *
- * Every ordering here is a permutation of the family's slice of
+ * The unit is the purse rather than the funding family, and that is GDD §5.4's
+ * third-book ruling reaching the spending loop. While every wall-clock ladder
+ * shared one balance they also shared one slot per check-in, so which of them
+ * took it was a second thing the check-in schedule decided — the money was
+ * separated and the OFFER was not, which is the same defect one layer out.
+ *
+ * Every ordering here is a permutation of the purse's slice of
  * `EmpirePolicy.axisOrder`, and nothing here decides whether a rung is
  * affordable — `startExpansion` still takes every verdict. A price is read only
  * to sort by, through `expansionVerdict`, so the ordering cannot hold a second
@@ -474,8 +561,9 @@ export function axisSpendingOrder(
   moment: SpendingMoment,
   order: readonly ExpansionAxis[],
   nextAxis: number,
-  family: AxisFunding,
+  book: EmpireBook,
   context: ExpansionContext,
+  funding: EmpireFunding = SHIPPED_FUNDING,
 ): readonly ExpansionAxis[] {
   const length = order.length;
   if (length === 0) return Object.freeze([]);
@@ -484,18 +572,20 @@ export function axisSpendingOrder(
   for (let step = 0; step < length; step += 1) {
     const axis = order[(offset + step) % length];
     if (axis === undefined) continue;
-    if (axisFunding(axis) !== family) continue;
+    if (offeredBookOf(axis, funding) !== book) continue;
     inFamily.push(axis);
   }
 
   if (
     moment.policy === 'save-for-physio-first' &&
-    inFamily.includes(PHYSIO_AXIS) &&
+    physioHolds(book, funding) &&
     savingForPhysio(order, context)
   ) {
-    // Only the physio rung is offered out of the book the physio rung is bought
-    // from. The other family is untouched: it spends a different book.
-    return Object.freeze([PHYSIO_AXIS]);
+    // Nothing is bought out of a purse the physio rung's money could otherwise
+    // leave by. Under the shipped funding that is the physio purse alone and
+    // this offers the physio rung; under a control the whole wall-clock side is
+    // one balance, so a purse that holds no physio ladder offers nothing at all.
+    return Object.freeze(inFamily.includes(PHYSIO_AXIS) ? [PHYSIO_AXIS] : []);
   }
 
   const cheapestFirst = moment.policy === 'cheapest-affordable-first';
@@ -525,19 +615,29 @@ export function axisSpendingOrder(
 /**
  * Whether a recruit may be paid for at this moment.
  *
- * A recruit is bought out of the wall-clock book, the same book a physio rung
- * is, so a policy that is holding that book has to hold it here too — otherwise
- * "saving" would mean saving from one of the two spenders and the money would
- * leave by the other.
+ * Asked through `physioHolds` rather than by naming a book: before GDD §5.4's
+ * third-book ruling a recruit was bought out of the same balance a physio rung
+ * was, so a policy holding that balance had to hold it here too or "saving"
+ * would have meant saving from one spender while the money left by the other.
+ * Under the shipped funding `RECRUIT_BOOK` is a purse of its own, so a recruit
+ * cannot spend a physio rung's money and this stops refusing — which is the
+ * ruling doing its work rather than the policy being weakened.
  */
 export function maySpendOnRoster(
   moment: SpendingMoment,
   order: readonly ExpansionAxis[],
   context: ExpansionContext,
+  funding: EmpireFunding = SHIPPED_FUNDING,
 ): boolean {
   if (!spendsAtMoment(moment)) return false;
-  if (moment.policy === 'save-for-physio-first') return !savingForPhysio(order, context);
-  return true;
+  if (moment.policy !== 'save-for-physio-first') return true;
+  if (!physioHolds(recruitOfferedBook(funding), funding)) return true;
+  return !savingForPhysio(order, context);
+}
+
+/** The purse a recruit is offered out of, pooled the way an axis's is. */
+function recruitOfferedBook(funding: EmpireFunding): EmpireBook {
+  return poolsWallClockBooks(funding) ? POOLED_WALL_CLOCK_BOOK : RECRUIT_BOOK;
 }
 
 /**
@@ -816,16 +916,45 @@ function bestRecruitableTier(state: EmpireState): NpcTier | null {
  */
 function offeredTo(state: EmpireState, funding: EmpireFunding): EmpireState {
   if (funding === SHIPPED_FUNDING) return state;
-  return Object.freeze({ ...state, settledGymBucks: state.gymBucks, settledAxes: state.axes });
+  if (funding === 'single-wall-clock-purse') {
+    // Nothing to substitute. Every wall-clock purse already holds the same
+    // balance under this control, because `withBooks` takes every debit off
+    // every one of them — so the state the decision is offered is the gym's.
+    return state;
+  }
+  return Object.freeze({
+    ...state,
+    settledBooks: booksAt(state.settledBooks, state.gymBucks),
+    settledAxes: state.axes,
+  });
+}
+
+/** The same book record with every purse holding one balance. */
+function booksAt(books: WallClockBooks, balance: number): WallClockBooks {
+  const next: Partial<Record<WallClockFundedOutput, GymBucks>> = {};
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) next[book] = asGymBucks(balance);
+  return Object.freeze({ ...books, ...next });
+}
+
+/** The most any one purse was reduced by between two book records. */
+function debitedFrom(before: WallClockBooks, after: WallClockBooks): number {
+  let taken = 0;
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
+    taken = Math.max(taken, before[book] - after[book]);
+  }
+  return taken;
 }
 
 /**
- * Put a decision's two books back on the gym's own state.
+ * Put a decision's books back on the gym's own state.
  *
- * Under the shipped rule the two numbers are the gym's two books. Under the
- * control the gym was offered one book twice, so exactly one of the two came
- * back reduced and the smaller one is the accelerated balance the price was
- * taken from; the untouched wall-clock book carries on accruing beside it.
+ * Under the shipped rule the record is the gym's own purses and comes back as
+ * it is. Under `'accelerated'` the gym was offered its accelerated balance in
+ * every purse, so whichever one came back reduced is the accelerated balance
+ * the price was taken from; the untouched wall-clock purses carry on accruing
+ * beside it. Under `'single-wall-clock-purse'` exactly one purse was debited
+ * and the other three have to follow it down, which is what makes four purses
+ * arithmetically one.
  */
 function withBooks(
   gymState: EmpireState,
@@ -833,11 +962,22 @@ function withBooks(
   funding: EmpireFunding,
 ): EmpireState {
   if (funding === SHIPPED_FUNDING) return decided;
-  const paid: number = Math.min(decided.gymBucks, decided.settledGymBucks);
+  if (funding === 'single-wall-clock-purse') {
+    const taken = debitedFrom(gymState.settledBooks, decided.settledBooks);
+    return Object.freeze({
+      ...decided,
+      settledBooks: booksAt(
+        decided.settledBooks,
+        gymState.settledBooks[POOLED_WALL_CLOCK_BOOK] - taken,
+      ),
+    });
+  }
+  let paid: number = decided.gymBucks;
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) paid = Math.min(paid, decided.settledBooks[book]);
   return Object.freeze({
     ...decided,
     gymBucks: asGymBucks(paid),
-    settledGymBucks: gymState.settledGymBucks,
+    settledBooks: gymState.settledBooks,
     settledAxes: gymState.settledAxes,
   });
 }
@@ -932,21 +1072,29 @@ export function stepGym(
   const production = accrueProduction(state, gym.collectedAt, rates);
   const reputation = accrueReputation(state, gym.collectedAt, 1);
   const sponsor = accrueSponsorship(state, gym.collectedAt);
+  // Every wall-clock purse is credited the same line, because
+  // `settledGymBucksRatePerHour` reads no state — the split is about where the
+  // money may GO, not about how fast it arrives.
+  const credited: Partial<Record<WallClockFundedOutput, GymBucks>> = {};
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
+    credited[book] = asGymBucks(
+      scrubPrecision(state.settledBooks[book] + production.settledGymBucks),
+    );
+  }
   state = Object.freeze({
     ...state,
     gymBucks: asGymBucks(scrubPrecision(state.gymBucks + production.gymBucks + sponsor.gymBucks)),
-    settledGymBucks: asGymBucks(
-      scrubPrecision(state.settledGymBucks + production.settledGymBucks),
-    ),
+    settledBooks: Object.freeze({ ...state.settledBooks, ...credited }),
     reputation: reputation.reputation,
   });
 
-  // 4. Spend on the axes, rotating so no axis starves. The two funding families
-  //    are offered separate slots rather than one: if they competed for a
-  //    single slot, whether an equipment rung took it would depend on the
-  //    accelerated book, and the day a wall-clock-funded rung starts would be
-  //    back under the purchase through the competition rather than through the
-  //    price.
+  // 4. Spend on the axes, rotating so no axis starves. Every PURSE is offered a
+  //    slot of its own rather than every funding family: if two ladders
+  //    competed for a single slot, whether an equipment rung took it would
+  //    depend on the accelerated book, and the day a wall-clock-funded rung
+  //    starts would be back under the purchase through the competition rather
+  //    than through the price — and, since GDD §5.4's third-book ruling, back
+  //    under the CHECK-IN SCHEDULE for the same reason.
   //    Which axis is offered first, and whether this check-in offers anything at
   //    all, is `moment` — the simulated player's spending policy. Under
   //    `SHIPPED_SPENDING_MOMENT` both questions answer the way this loop always
@@ -955,13 +1103,14 @@ export function stepGym(
   let expansions = gym.expansions;
   let nextAxis = gym.nextAxis;
   if (policy.axisOrder.length > 0 && spendsAtMoment(moment)) {
-    for (const family of AXIS_FUNDINGS) {
+    for (const book of EMPIRE_BOOKS) {
       const offers = axisSpendingOrder(
         moment,
         policy.axisOrder,
         nextAxis,
-        family,
+        book,
         expansionContext(offeredTo(state, funding), builds),
+        funding,
       );
       for (const axis of offers) {
         const started = startExpansion(expansionContext(offeredTo(state, funding), builds), axis);
@@ -972,7 +1121,7 @@ export function stepGym(
           Object.freeze({
             ...state,
             gymBucks: started.gymBucks,
-            settledGymBucks: started.settledGymBucks,
+            settledBooks: started.settledBooks,
           }),
           funding,
         );
@@ -995,6 +1144,7 @@ export function stepGym(
     moment,
     policy.axisOrder,
     expansionContext(offered, builds),
+    funding,
   );
   if (rosterAllowed && state.roster.length + stillPending.length < capacity) {
     const tier = bestRecruitableTier(offered);

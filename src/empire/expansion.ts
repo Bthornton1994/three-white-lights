@@ -67,17 +67,20 @@
  * moved with the purchase was a value, and GDD §4.4 is explicit that no type
  * gives you that.
  *
- * What closes it is `axisFunding` below: the purse a rung is bought from is
+ * What closes it is `axisBook` below: the purse a rung is bought from is
  * chosen the same way `elapsedFor` chooses a clock — from the reach of the
  * output the axis feeds, through `AXIS_OUTPUT` and
- * `WALL_CLOCK_FUNDED_OUTPUTS`. The physio rung is bought out of
- * `EmpireState.settledGymBucks`, which `accrueProduction` accrues at the
- * baseline line over the un-accelerated gap and which therefore no purchase
- * moves; the space and spotter rungs are on the same side because they feed
- * `'roster-slot'`, which `GATE_TARGET` says gates Training IQ. A
- * wall-clock-funded rung is also READ on the wall clock — `settledAxesAt` for
- * its level and `settledBuildInFlight` for the rung it is building — because a
- * skip that cleared level N early would otherwise let level N+1 start early.
+ * `WALL_CLOCK_FUNDED_OUTPUTS`. The physio rung is bought out of the
+ * `'physio-days-saved'` entry of `EmpireState.settledBooks`, which
+ * `accrueProduction` accrues at the baseline line over the un-accelerated gap
+ * and which therefore no purchase moves; the space and spotter rungs are on the
+ * wall-clock side too because they feed `'roster-slot'`, which `GATE_TARGET`
+ * says gates Training IQ — but in a purse of their own, which is GDD §5.4's
+ * third-book ruling and is what stops the schedule deciding which of the two
+ * ladders a shared balance reaches first. A wall-clock-funded rung is also READ
+ * on the wall clock — `settledAxesAt` for its level and `settledBuildInFlight`
+ * for the rung it is building — because a skip that cleared level N early would
+ * otherwise let level N+1 start early.
  *
  * What is measured, and where, stated exactly rather than as a promise:
  *
@@ -144,6 +147,8 @@ import {
   type SettledLevel,
   type StaffRole,
   type UnacceleratedSeconds,
+  type WallClockBooks,
+  type WallClockFundedOutput,
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
 
@@ -208,23 +213,81 @@ export function axisOutput(axis: ExpansionAxis): EmpireOutput {
   return AXIS_OUTPUT[axis];
 }
 
-/** Which of the gym's two books pays for a rung, and which clock reads it. */
+/** Which of the gym's two clocks a rung is read on. */
 export const AXIS_FUNDINGS = ['wall-clock', 'idle-clock'] as const;
 
 export type AxisFunding = (typeof AXIS_FUNDINGS)[number];
 
+/** The accelerated book, named so a book is always something a switch can take. */
+export const ACCELERATED_BOOK = 'accelerated';
+
 /**
- * Which book buys the next level of an axis — the answer to §2 of the header's
+ * One of the gym's purses: the accelerated book, or the wall-clock book of one
+ * funded output.
+ *
+ * Derived from `WALL_CLOCK_FUNDED_OUTPUTS`, so a new funded output is a new
+ * purse without a list here being edited.
+ */
+export type EmpireBook = typeof ACCELERATED_BOOK | WallClockFundedOutput;
+
+/**
+ * Every purse, in the order §5.4's ladders are offered one rung out of each.
+ *
+ * The wall-clock purses come first and the accelerated one last, which is the
+ * order the two funding FAMILIES were offered in before the third-book ruling.
+ * Under the shipped funding the order decides nothing — no two purses share a
+ * balance, so a rung bought out of one cannot make another unaffordable — but
+ * `empireInvariant.ts`'s pooled controls put the wall-clock side back on one
+ * balance, and there the order is the one they had.
+ */
+export const EMPIRE_BOOKS: readonly EmpireBook[] = Object.freeze([
+  ...WALL_CLOCK_FUNDED_OUTPUTS,
+  ACCELERATED_BOOK,
+]);
+
+/**
+ * The purse every wall-clock rung is offered out of when a control pools them.
+ *
+ * The first wall-clock book rather than a new name, so a pooled run walks
+ * `EMPIRE_BOOKS` in the same order a split run does and reaches its one
+ * wall-clock slot before its accelerated one.
+ */
+export const POOLED_WALL_CLOCK_BOOK: WallClockFundedOutput = firstWallClockBook();
+
+/** The first wall-clock book, refusing an empty table rather than casting past it. */
+function firstWallClockBook(): WallClockFundedOutput {
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) return book;
+  throw new RangeError('no empire output is wall-clock funded, so no purse can be pooled');
+}
+
+/**
+ * The wall-clock book an output is bought from, or `null` when the accelerated
+ * book buys it.
+ *
+ * Written as a walk rather than as `includes` plus a cast, so the narrowing is
+ * the loop's own and no assertion stands between the table and the type.
+ */
+function wallClockBookFor(output: EmpireOutput): WallClockFundedOutput | null {
+  for (const funded of WALL_CLOCK_FUNDED_OUTPUTS) {
+    if (funded === output) return funded;
+  }
+  return null;
+}
+
+/**
+ * Which purse buys the next level of an axis — the answer to §2 of the header's
  * outstanding obligation, and it is derived rather than declared.
  *
  * `AXIS_OUTPUT` says what an axis feeds; `WALL_CLOCK_FUNDED_OUTPUTS` says which
- * outputs may only be bought with money a purchase cannot have moved. So the
- * physio row is wall-clock funded because it feeds `'physio-days-saved'`, and
- * the space and spotter rows are because they feed `'roster-slot'`, which
- * `GATE_TARGET` says gates Training IQ. There is no list of axes here to fall
- * out of step with the list of outputs: re-pointing `AXIS_OUTPUT.physio` at
- * `'gym-bucks'` moves the physio row to the idle book AND is the edit
- * `expansionVocabularyFaults` already reports.
+ * outputs may only be bought with money a purchase cannot have moved, and
+ * GDD §5.4's third-book ruling says each of those keeps a purse of its own. So
+ * the physio row is bought from the `'physio-days-saved'` purse because that is
+ * what it feeds, and the space and spotter rows from the `'roster-slot'` purse
+ * because that is what they feed — and a §5.3 recruit, which feeds
+ * `'training-iq'`, is bought from a third purse neither of them can reach.
+ * There is no list of axes here to fall out of step with the list of outputs:
+ * re-pointing `AXIS_OUTPUT.physio` at `'gym-bucks'` moves the physio row to the
+ * accelerated book AND is the edit `expansionVocabularyFaults` already reports.
  *
  * A wall-clock-funded axis is read on the wall clock too — its current level
  * comes from `settledAxesAt` and its in-flight build from
@@ -234,8 +297,13 @@ export type AxisFunding = (typeof AXIS_FUNDINGS)[number];
  * day the next rung lands on even though the purse it is bought from did not
  * move.
  */
+export function axisBook(axis: ExpansionAxis): EmpireBook {
+  return wallClockBookFor(axisOutput(axis)) ?? ACCELERATED_BOOK;
+}
+
+/** Which clock an axis is read on. Derived from the purse that buys it. */
 export function axisFunding(axis: ExpansionAxis): AxisFunding {
-  return WALL_CLOCK_FUNDED_OUTPUTS.includes(axisOutput(axis)) ? 'wall-clock' : 'idle-clock';
+  return axisBook(axis) === ACCELERATED_BOOK ? 'idle-clock' : 'wall-clock';
 }
 
 // ---------------------------------------------------------------------------
@@ -412,10 +480,15 @@ export interface ExpansionBuild {
 export interface ExpansionContext {
   readonly clock: EmpireClock;
   readonly gymBucks: GymBucks;
-  /** The wall-clock book. The only money a wall-clock-funded rung may cost. */
-  readonly settledGymBucks: GymBucks;
+  /** The wall-clock books. A rung may only cost the purse its own output names. */
+  readonly settledBooks: WallClockBooks;
   readonly reputation: ReputationPoints;
   readonly builds: readonly ExpansionBuild[];
+}
+
+/** What one purse holds, in the one place a purse is read. */
+export function bookBalance(context: ExpansionContext, book: EmpireBook): GymBucks {
+  return book === ACCELERATED_BOOK ? context.gymBucks : context.settledBooks[book];
 }
 
 /** An `ExpansionContext` from an `EmpireState` and the builds it has started. */
@@ -426,7 +499,7 @@ export function expansionContext(
   return Object.freeze({
     clock: state.clock,
     gymBucks: state.gymBucks,
-    settledGymBucks: state.settledGymBucks,
+    settledBooks: state.settledBooks,
     reputation: state.reputation,
     builds,
   });
@@ -581,9 +654,10 @@ export function expansionVerdict(
   context: ExpansionContext,
   axis: ExpansionAxis,
 ): ExpansionVerdict {
-  // Which clock this axis is read on, and which book pays, are one decision and
-  // it is taken here once. See `axisFunding`.
-  const onWallClock = axisFunding(axis) === 'wall-clock';
+  // Which clock this axis is read on, and which purse pays, are one decision and
+  // it is taken here once. See `axisBook`.
+  const book = axisBook(axis);
+  const onWallClock = book !== ACCELERATED_BOOK;
   const axes = onWallClock
     ? settledAxesAt(context.builds, context.clock.unaccelerated)
     : idleAxesAt(context.builds, context.clock.accelerated);
@@ -598,12 +672,11 @@ export function expansionVerdict(
   if (context.reputation < quote.reputationRequired) {
     return Object.freeze({ allowed: false, refusal: 'not-enough-reputation' });
   }
-  if (onWallClock) {
-    if (context.settledGymBucks < quote.cost) {
-      return Object.freeze({ allowed: false, refusal: 'not-enough-wall-clock-earnings' });
-    }
-  } else if (context.gymBucks < quote.cost) {
-    return Object.freeze({ allowed: false, refusal: 'not-enough-gym-bucks' });
+  if (bookBalance(context, book) < quote.cost) {
+    return Object.freeze({
+      allowed: false,
+      refusal: onWallClock ? 'not-enough-wall-clock-earnings' : 'not-enough-gym-bucks',
+    });
   }
   return Object.freeze({ allowed: true, quote });
 }
@@ -614,8 +687,8 @@ export type ExpansionStart =
       readonly build: ExpansionBuild;
       /** The accelerated book after the price has been taken, if it paid. */
       readonly gymBucks: GymBucks;
-      /** The wall-clock book after the price has been taken, if it paid. */
-      readonly settledGymBucks: GymBucks;
+      /** The wall-clock books after the price has been taken out of one of them. */
+      readonly settledBooks: WallClockBooks;
     }
   | { readonly started: false; readonly refusal: ExpansionRefusal };
 
@@ -654,17 +727,22 @@ export function startExpansion(context: ExpansionContext, axis: ExpansionAxis): 
     settledCompletion: asUnacceleratedSeconds(context.clock.unaccelerated + quote.seconds),
     idleCompletion: asAcceleratedSeconds(context.clock.accelerated + quote.seconds),
   });
-  // One book pays, and which one is the same decision the verdict took. The
-  // other is handed back untouched rather than left out, so a caller assigns
-  // both and cannot quietly keep a stale one.
-  const onWallClock = axisFunding(axis) === 'wall-clock';
+  // One purse pays, and which one is the same decision the verdict took. The
+  // rest are handed back untouched rather than left out, so a caller assigns
+  // both fields and cannot quietly keep a stale one.
+  const book = axisBook(axis);
   return Object.freeze({
     started: true,
     build,
-    gymBucks: onWallClock ? context.gymBucks : asGymBucks(context.gymBucks - quote.cost),
-    settledGymBucks: onWallClock
-      ? asGymBucks(context.settledGymBucks - quote.cost)
-      : context.settledGymBucks,
+    gymBucks:
+      book === ACCELERATED_BOOK ? asGymBucks(context.gymBucks - quote.cost) : context.gymBucks,
+    settledBooks:
+      book === ACCELERATED_BOOK
+        ? context.settledBooks
+        : Object.freeze({
+            ...context.settledBooks,
+            [book]: asGymBucks(context.settledBooks[book] - quote.cost),
+          }),
   });
 }
 
@@ -800,6 +878,28 @@ export function expansionVocabularyFaults(): readonly string[] {
   }
   if (wallClockFunded.length === EXPANSION_AXES.length) {
     faults.push('every axis is bought out of the wall-clock book, so the split separates nothing');
+  }
+
+  // GDD §5.4's third-book ruling, as a runtime statement rather than as prose in
+  // `axisBook`. The physio ladder and the roster-slot ladders may not share a
+  // purse, because a shared purse has a spending ORDER and a check-in schedule
+  // moves it. Reddened by re-pointing `AXIS_OUTPUT.physio` at `'roster-slot'`,
+  // and by collapsing `EMPIRE_BOOKS` back onto one wall-clock entry.
+  const physioBook = axisBook('physio');
+  for (const axis of EXPANSION_AXES) {
+    if (axis === 'physio') continue;
+    if (axisBook(axis) === physioBook) {
+      faults.push(`${axis} is bought out of the same purse as the physio ladder`);
+    }
+  }
+  const spentBooks = new Set<EmpireBook>(EXPANSION_AXES.map((axis) => axisBook(axis)));
+  if (spentBooks.size < 2) {
+    faults.push(`§5.4's ladders are bought out of ${spentBooks.size} purse, so nothing is separated`);
+  }
+  for (const book of spentBooks) {
+    if (!(EMPIRE_BOOKS as readonly string[]).includes(book)) {
+      faults.push(`${String(book)} buys a rung and is not one of the gym's books`);
+    }
   }
 
   return faults;
