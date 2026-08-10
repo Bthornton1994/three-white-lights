@@ -1,12 +1,13 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-10T16:01:22.598Z",
+    "capturedAt": "2026-08-10T18:09:02.149Z",
     "url": "http://localhost:8081",
-    "commit": "cd9297b",
+    "commit": "8a85ea3",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+      "M .gauntlet/shots/shell/03-meet-played-walkout.png",
+      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
       " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
       " M .gauntlet/shots/shell/route.json"
     ],
@@ -35,49 +36,49 @@
           "played": true,
           "intent": "make",
           "holdMs": 1000,
-          "feedback": "High. The hips never got under."
+          "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "SQUAT · ATTEMPT 2 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1180,
+          "holdMs": 1000,
           "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "SQUAT · ATTEMPT 3 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "holdMs": 1000,
+          "feedback": "High. The hips never got under."
         },
         {
           "attempt": "BENCH · ATTEMPT 1 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "It stopped, and you kept driving."
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "BENCH · ATTEMPT 2 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "BENCH · ATTEMPT 3 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "feedback": "It stopped, and you kept driving."
         },
         {
           "attempt": "DEADLIFT · ATTEMPT 1 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "Depth was never in question."
+          "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "DEADLIFT · ATTEMPT 2 OF 3",
@@ -94,7 +95,7 @@
           "feedback": "You hit depth by a hair."
         }
       ],
-      "ms": 101777,
+      "ms": 100301,
       "stuckBecause": null
     },
     {
@@ -125,7 +126,7 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 56479,
+      "ms": 56434,
       "stuckBecause": null
     },
     {
@@ -156,28 +157,28 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 56452,
+      "ms": 56604,
       "stuckBecause": null
     }
   ],
   "cutIns": [
     {
       "leg": 1,
-      "at": 103235,
+      "at": 101491,
       "line": "NOBODY HAS SEEN YOU DO THIS",
       "hint": "TAP TO SKIP",
       "over": [
         "meet-recap"
       ],
       "search": "",
-      "goneAt": 104933
+      "goneAt": 103232
     }
   ],
   "gateDecisions": [
     {
       "seq": 0,
       "leg": 1,
-      "at": 1750,
+      "at": 1914,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -192,7 +193,7 @@
     {
       "seq": 1,
       "leg": 1,
-      "at": 12504,
+      "at": 12608,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -207,7 +208,7 @@
     {
       "seq": 2,
       "leg": 1,
-      "at": 23636,
+      "at": 23459,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -222,7 +223,7 @@
     {
       "seq": 3,
       "leg": 1,
-      "at": 36172,
+      "at": 35672,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -237,7 +238,7 @@
     {
       "seq": 4,
       "leg": 1,
-      "at": 47981,
+      "at": 45240,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -252,7 +253,7 @@
     {
       "seq": 5,
       "leg": 1,
-      "at": 59271,
+      "at": 54771,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -267,7 +268,7 @@
     {
       "seq": 6,
       "leg": 1,
-      "at": 71594,
+      "at": 67861,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -282,7 +283,7 @@
     {
       "seq": 7,
       "leg": 1,
-      "at": 80990,
+      "at": 79125,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -297,7 +298,7 @@
     {
       "seq": 8,
       "leg": 1,
-      "at": 90461,
+      "at": 88668,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -312,7 +313,7 @@
     {
       "seq": 9,
       "leg": 1,
-      "at": 103172,
+      "at": 101475,
       "sessionId": "meet-20675",
       "beatKinds": [
         "record",
@@ -328,7 +329,7 @@
     {
       "seq": 10,
       "leg": 2,
-      "at": 107887,
+      "at": 106229,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -343,7 +344,7 @@
     {
       "seq": 11,
       "leg": 2,
-      "at": 125822,
+      "at": 124043,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -358,7 +359,7 @@
     {
       "seq": 12,
       "leg": 2,
-      "at": 143684,
+      "at": 141940,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -373,7 +374,7 @@
     {
       "seq": 13,
       "leg": 2,
-      "at": 164064,
+      "at": 162343,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-over"
@@ -388,7 +389,7 @@
     {
       "seq": 14,
       "leg": 3,
-      "at": 169926,
+      "at": 168214,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -403,7 +404,7 @@
     {
       "seq": 15,
       "leg": 3,
-      "at": 187818,
+      "at": 186182,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -418,7 +419,7 @@
     {
       "seq": 16,
       "leg": 3,
-      "at": 205710,
+      "at": 204205,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-walkout"
@@ -433,7 +434,7 @@
     {
       "seq": 17,
       "leg": 3,
-      "at": 226124,
+      "at": 224566,
       "sessionId": "meet-20675",
       "beatKinds": [
         "meet-over"
@@ -455,13 +456,13 @@
     {
       "file": "cut-in-leg-1.png",
       "leg": 1,
-      "artOpacity": 0.999994,
-      "lineOpacity": 0.999994,
+      "artOpacity": 0.910394,
+      "lineOpacity": 0.910394,
       "afterEnterMs": 120
     }
   ],
-  "recorderPolls": 10566,
-  "recorderWorstGapMs": 331,
+  "recorderPolls": 10366,
+  "recorderWorstGapMs": 329,
   "browserMutationWitnesses": [
     {
       "subject": "src/meet/BombOutView.tsx",
@@ -517,7 +518,7 @@
     {
       "ok": true,
       "what": "the app opens on GDD §3.2's daily session with no query string",
-      "detail": "search=\"\" after 1012ms"
+      "detail": "search=\"\" after 1008ms"
     },
     {
       "ok": true,
@@ -567,7 +568,7 @@
     {
       "ok": true,
       "what": "CONTROL: the in-page recorder ran at all",
-      "detail": "10566 polls at a nominal 16ms, worst gap 331ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
+      "detail": "10366 polls at a nominal 16ms, worst gap 329ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
     },
     {
       "ok": true,
@@ -627,7 +628,7 @@
     {
       "ok": true,
       "what": "GDD §7.2 / §12.3: ONE SITTING, ONE CUT-IN — 3 legs of one meet-day sitting fired exactly 1",
-      "detail": "leg 1 @103235ms \"NOBODY HAS SEEN YOU DO THIS\" over meet-recap gone at 104933ms after 1698ms"
+      "detail": "leg 1 @101491ms \"NOBODY HAS SEEN YOU DO THIS\" over meet-recap gone at 103232ms after 1741ms"
     },
     {
       "ok": true,
@@ -637,12 +638,12 @@
     {
       "ok": true,
       "what": "GDD §7.2: every overlay was up for ONE whole beat — not two reconciled into one, and none left on screen",
-      "detail": "spans [1698]ms against ENTER_MS + HOLD_MS = 1720ms (+400ms slack, so the threshold is 2120ms against a merged pair's ~3440ms); 0 over the threshold, 0 still up when the run ended"
+      "detail": "spans [1741]ms against ENTER_MS + HOLD_MS = 1720ms (+400ms slack, so the threshold is 2120ms against a merged pair's ~3440ms); 0 over the threshold, 0 still up when the run ended"
     },
     {
       "ok": true,
       "what": "GDD §7.2: the cut-in was PHOTOGRAPHED — 1 frame, with its art drawn rather than merely mounted",
-      "detail": "cut-in-leg-1.png (leg 1): cut-in-art effective opacity 1.000, cut-in-line 1.000, taken 120ms after the overlay appeared (ENTER_MS, read from cutInTuning.ts)"
+      "detail": "cut-in-leg-1.png (leg 1): cut-in-art effective opacity 0.910, cut-in-line 0.910, taken 120ms after the overlay appeared (ENTER_MS, read from cutInTuning.ts)"
     }
   ],
   "failures": [],
