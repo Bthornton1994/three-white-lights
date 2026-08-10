@@ -961,7 +961,7 @@ const SEAL_RUNTIME_WITNESSES: readonly {
   {
     route: 'record src/game/meetServer.ts applyMeetResult',
     testFile: 'src/game/meetServer.test.ts',
-    title: 'freezes the record, its meets array, and the meet row that carries totalKg',
+    title: 'freezes the debug preview record too, one meet deep',
   },
   {
     route: 'record src/game/meetPreview.ts previewServerRecord',
