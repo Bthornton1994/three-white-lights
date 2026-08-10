@@ -2,13 +2,31 @@
   "run": {
     "title": "Three White Lights",
     "subtitle": "Gauntlet Loop build run",
-    "wave": 45,
-    "waveName": "Wave 45 - a check that was neither red nor green, sound on a meet a player opened, and three rewinds in one session",
+    "wave": 46,
+    "waveName": "Wave 46 - the §12.3 guard could not see the breach it exists to stop, twice, and a parallel session shipped a fence around an empty room",
     "startedIso": "2026-07-31T03:10:00Z",
     "publishedAt": "https://claude.ai/code/artifact/eef0d0ae-c6fd-4e27-9200-69e60a23e38a",
     "publishNote": "tools/progress.mjs output, published as a private Artifact so the page is openable on a phone. .gauntlet/progress.html is gitignored, so this URL is the only way anyone sees it — republish the same file path to keep the URL."
   },
   "blockers": [
+    {
+      "severity": "method",
+      "title": "The §12.3 guard could not see the breach it exists to stop - twice, at two different widths",
+      "body": "CLAUDE.md's hardest rule is that no grant of covered days may be keyed to anything the lifter does. The guard enforcing it scanned a HARDCODED LIST OF THREE FILENAMES, and its read() joined against __dirname, so it could not leave src/game/ BY CONSTRUCTION. Its own comment said \"THE SCAN READS THREE FILES NOW\" and explained the third was added because a laundered path was invisible to the other two - the identical argument applied to a fourth and nothing derived it. || FIRST WIDENING: the scan now walks src/ whole, and the old filename list is INVERTED from an input into an output - asserted rather than consulted, so a new module reddens a test that names the file. The counterfactual was executed rather than assumed: a function awarding a covered day every ten sessions, planted in src/shell/appServer.ts, left the old scan reporting its usual 25 names with tsc clean beside it. That defect would have shipped. || THEN THE SAME DEFECT AT A SECOND WIDTH. The predicate was /purchas/i, but COVERAGE_SOURCES has TWO members, so a grant through window-entitlement contains the word nowhere. I planted a faithful probe - coverage credited for Math.floor(sessionsDone / 10) through the real credit path - and 43 tests passed, exit 0. CLAUDE.md measured that exact shape at 1156 violating pairs. || AND MY OWN SUGGESTED FIX WAS MEASURED INSUFFICIENT, which is the best part of the round. Keying on the credit path catches that probe and is blind to its sibling: a widener fabricating an EntitlementTuning with COVERED_DAYS_PER_WINDOW keyed to a session count never calls the credit path, never names the source, never touches the counter. With that planted, the credit-token predicate returned the SAME 58 declarations in the SAME 7 files as on a clean tree.",
+      "consequence": "Predicate is now /purchas|covered.?day|window-entitlement/i - 88 declarations across 7 files, against narrow 18/3, purchase-word 57/7 and credit-path 58/7. Only the last catches both mutants. THE FILE SET NEVER GREW: the hole was entirely inside modules already being read, so the pinned file set was green throughout and could never have found it - the first widening was necessary and not sufficient. Renamed to COVERED_DAY_TOUCHING_FUNCTIONS, because 31 of 88 entries name a covered day and never a purchase and the old name was a false claim about its own scope. The rename FORCES THE WITNESSES TO EXPIRE, which is the schema doing its job: keeping the name would have left both witnesses resolving perfectly against messages whose counts were stale by 31. Known limit pinned rather than papered over: an aliased import defeats every textual predicate, because the import sits above the first declaration and is in no body."
+    },
+    {
+      "severity": "awaiting a human",
+      "title": "RULED: \"monolift\" stays, and the reasoning is in the GDD rather than in a commit",
+      "body": "A critic raised the term as a possible §12.3 real-mark exposure and DECLINED TO RULE ON IT, which was the right call - §12.3's bar there is a legal judgement, not a measurable pattern, and that is the class of question this run sends to a human. || Ruled: it stays. It is generic across federation rulebooks, naming a piece of equipment rather than a maker; the word did originate as a product name and is still claimed as a mark by at least one manufacturer, which is the genuine ambiguity and exactly why it is recorded; and no manufacturer is attached to it anywhere in the code - the shipped value is a bare equipment noun in a tier ladder, no logo, no wordmark, no maker, no licensing slot. §12.3's hazard is shipping a real IDENTITY and nothing here does, so it is not the licensing system's business and does not go through §7.3's partner unlock.",
+      "consequence": "Written beside the term in GDD §5.4 rather than in a commit message, because a scan cannot see what was weighed and the next brand sweep would raise it again. The note says plainly that if a lawyer disagrees the fix is one string in one tier table and one cell of this table, and that a scan must NOT revert it on its own initiative."
+    },
+    {
+      "severity": "standing rule",
+      "title": "A second shared surface appeared, and the other session did not agree to it",
+      "body": "src/tuning/ was the only overlap when the split was drafted. There are two now. Making the §8.3E guard genuinely tree-wide put ten src/empire/** declaration names into an allowlist in src/game/streakEntitlement.ts, enforced as a set equality in BOTH directions - so adding an empire declaration whose body mentions a covered day reddens a test in a file that session does not own, and renaming or deleting one reddens it the other way as a stale entry. || That is the guard working exactly as designed: the point is that a new way to hand out a covered day forces a visible edit where a reviewer sees it. It is ALSO friction landing on somebody who did not choose it, in a file they were told to stay out of. Both are true, and the second is invisible from their side unless it is written down.",
+      "consequence": "Ruled in CLAUDE.md so nobody is stuck: an allowlist entry is DATA, not a restructure, and adding one is not a boundary crossing. The other session may edit that list directly; anything more than a row there is a real crossing and goes in the coordination section first. The general lesson is worth more than the ruling - A SPLIT VERIFIED ONCE STAYS VERIFIED ONLY UNTIL SOMETHING TREE-WIDE IS MADE GENUINELY TREE-WIDE."
+    },
     {
       "severity": "method",
       "title": "A check that was neither red nor green, and I reported its green as a measurement",
@@ -383,7 +401,7 @@
   "report": {
     "eyebrow": "status report · recounted from the repo, not from the run log",
     "title": "Where this actually is",
-    "lede": "Recounted from the repo at HEAD, not from the run log. Suite **2714 across 64 files**, typecheck clean, browser **162 of 162** on the shell, **34 of 34** on the cut-in cap, **23 of 23** on meet-day sound and 8 cut-in frames — all four records captured at one commit from a clean tree. The shell number changed meaning rather than moving: it was 159/1 five runs in six and 159/0 once, and the once was what had been committed. Sound is now measured on a meet a player opened with a mouse, not only on a debug URL. The checkout rewound three more times during this work, roughly hourly, and origin was the only surviving copy each time. **Ten of 22 pieces have won their bar outright and five more won the half of it that is gradeable here.** Three are in grading. One is blocked on a human, and three are not started because GDD 10 gates them on playtesting that has not happened.",
+    "lede": "Recounted from the repo at HEAD, not from the run log. Suite **2809 across 66 files**, typecheck clean, browser **181 of 181** on the shell, **34 of 34** on the cut-in cap, **23 of 23** on meet-day sound and 8 cut-in frames - all four captured at one commit from a clean tree. A parallel session's GDD §5 work merged in and stayed exactly in its lane, 4,760 lines with nothing outside src/empire/; the collision the coordination doc predicted in writing happened precisely as written, 87 findings in one unregistered file. The §12.3 covered-day guard was found blind to the breach it exists to stop, twice at two different widths, both caught by planting the breach and watching the guard pass. **Ten of 23 pieces have won their bar outright and five more won the half of it that is gradeable here.** Four are in grading, one is blocked on a human, and two are not started because GDD 10 gates them on playtesting that has not happened.",
     "wonCount": 13,
     "definedCount": 22,
     "rows": [
@@ -530,9 +548,9 @@
       {
         "id": "C3",
         "name": "Gym Empire — idle layer (§2.4, §5)",
-        "state": "notstarted",
-        "stateLabel": "Not started",
-        "note": "Zero files. Production, NPC roster, expansion axes and the social layer are all unbuilt. Its currencies exist only as wallet fields."
+        "state": "grading",
+        "stateLabel": "Sent back",
+        "note": "Built by the PARALLEL SESSION and graded by a fresh critic: sent back, and not on quality. The type fences are strong work and the no-gacha ban wins its bar outright - 18 regexes over comment-stripped source, every one driven against a tripwire, scanned and banned.length both pinned. It was sent back because THE LOOP IS NOT BUILT: ~90 exported symbols and no state transition, no tick / accrue / collect / recruit / buy / expand, an EmpireLedgerEntry with two consumers and zero producers, and settledLevel taking a completionTimes array nothing computes. The piece's own AWAITING_CONSUMER pins 30 of EMPIRE_TUNING's 54 entries as read by no shipped code. || THE CONSEQUENCE IS THAT AN INVARIANT WENT UNSUBJECTED. \"Never punish daily engagement\" is stood in for by 12 >= 10 - two literals in a file with no consumer - and no edit to any BEHAVIOUR can redden it. Vacuous in the strict sense: its subject does not exist. Meanwhile OFFLINE_EARNINGS_FRACTION 0.5 against a 12-hour cap is exactly the shape that yields \"checked in more, ended up worse\", and which way it falls is decided by arithmetic nobody has written. || Ruled by the human: the parallel session builds the loop, since it owns the subsystem end to end, and the scope is written into CLAUDE.md before the work starts."
       },
       {
         "id": "N1",
