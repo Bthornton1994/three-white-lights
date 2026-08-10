@@ -169,22 +169,40 @@ because a planted function awarding a covered day every ten sessions was
 invisible to the old scan and `tsc` was clean beside it. That defect would have
 shipped.
 
-The consequence for §5: **ten `src/empire/**` declaration names now sit in
-`PURCHASED_DAY_TOUCHING_FUNCTIONS`, an allowlist in `src/game/streakEntitlement.ts`.**
+**AND ITS SCOPE WAS WRONG A SECOND TIME, IN THE OTHER DIMENSION.** Widening the
+reach to the whole tree left the predicate keyed on the single word `purchase`,
+while the rule above says *covered* days and `COVERAGE_SOURCES` has two members.
+The same ten-sessions granter, rewritten to credit through
+`'window-entitlement'` instead of `'purchase'`, was invisible again: 43 tests,
+43 passed, exit 0, `tsc` clean. **Reach and predicate are two axes and fixing
+one says nothing about the other** — which is this file's "the branch
+immediately below the one you just fixed" lesson, one dimension out. The
+predicate is now `/purchas|covered.?day|window-entitlement/i`.
+
+The consequence for §5: **eleven `src/empire/**` declaration names now sit in
+`COVERED_DAY_TOUCHING_FUNCTIONS`, an allowlist in `src/game/streakEntitlement.ts`**
+(renamed from `PURCHASED_DAY_TOUCHING_FUNCTIONS`, because 31 of its 88 entries
+name a covered day and never a purchase, so the old name asserted a false scope).
 The list is a set equality in both directions, so from now on:
 
-- Adding an `src/empire/` declaration whose body mentions purchasing reddens
-  `streakEntitlement.test.ts` — **a test in a file §5's owner does not own** —
-  until the name is added to that allowlist.
+- Adding an `src/empire/` declaration whose body mentions purchasing **or names
+  a covered day** reddens `streakEntitlement.test.ts` — **a test in a file §5's
+  owner does not own** — until the name is added to that allowlist.
 - Renaming or deleting one reddens it the other way, as a stale entry.
+
+The eleventh is `EMPIRE_FORBIDDEN_OUTPUTS`, which the purchase-word predicate
+never matched: it names `'covered-day'` as a thing the idle layer must not be
+able to produce. That row and this allowlist are the same rule seen from two
+directions, and §5 wrote its half without being asked to.
 
 That is the guard working exactly as designed: the whole point is that a new way
 to hand out a covered day forces a visible edit where a reviewer sees it. It is
 also friction landing on somebody who did not choose it, in a file they were told
-to stay out of. Both are true.
+to stay out of. Both are true — and the widening made it wider, which is a real
+cost to §5 and is why it is written here rather than only in a commit.
 
 **So the allowlist entry is data, not a restructure, and adding one is not a
-boundary crossing.** Whoever owns §5 may edit `PURCHASED_DAY_TOUCHING_FUNCTIONS`
+boundary crossing.** Whoever owns §5 may edit `COVERED_DAY_TOUCHING_FUNCTIONS`
 directly for that purpose without asking. If a §5 change needs more than an
 allowlist row there, that is a real crossing and belongs in this section first.
 

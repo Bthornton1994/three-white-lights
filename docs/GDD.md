@@ -2409,18 +2409,60 @@ refused rather than clamped.
 #### How condition 3 is enforced
 
 "Nothing awards a purchased day" is held by **four** guards, because
-mutation-testing each one found a hole the others left:
+mutation-testing each one found a hole the others left. Note that guard 1 is
+deliberately **wider than this heading**: it polices grants of *coverage*, of
+which a purchase is one source and the free rolling window is the other — see
+its own paragraph for why the narrower scope was a measured defect.
 
 1. **A declaration allowlist keyed to the field, not the vocabulary**
-   (`PURCHASED_DAY_TOUCHING_FUNCTIONS`). Every top-level declaration in the
-   **three** modules that touch the purchase — the two streak modules and
-   `currencyProvenance.ts` — that so much as names a purchased day has to be on
-   it, exact in both directions. The blocklist it replaces — banning names
-   containing *grant*, *credit*, *buy* — could not catch `markStreakMilestone`
-   handing one out, because that mutant uses none of those words. This one does.
+   (`COVERED_DAY_TOUCHING_FUNCTIONS`). Every top-level declaration **anywhere
+   under `src/`** that so much as names a covered day has to be on it, exact in
+   both directions — 88 entries across 7 files. The blocklist it replaces —
+   banning names containing *grant*, *credit*, *buy* — could not catch
+   `markStreakMilestone` handing one out, because that mutant uses none of those
+   words. This one does.
+
+   **Its scope has been wrong twice, and both times the fix was measured rather
+   than argued.** It first read a hardcoded list of three filenames joined
+   against `src/game/`, so a module in any other directory was unreachable by
+   construction; a granter planted in `src/shell/appServer.ts` was invisible.
+   Widening the *reach* to the whole tree left the *predicate* keyed on the
+   single word `purchase` — and this section is about condition 3, but
+   §12.3's actual rule is that no grant of **covered** days may be keyed to
+   training. `COVERAGE_SOURCES` has two members. A function crediting coverage
+   through `'window-entitlement'` every ten sessions contains no form of the
+   word "purchase", and with it in the tree `streakEntitlement.test.ts` ran
+   **43 tests, 43 passed, exit 0** with `tsc --noEmit` clean. That is the shape
+   §4.4 measures at **1156 violating pairs**.
+
+   The predicate is now `/purchas|covered.?day|window-entitlement/i`. Four
+   candidates were measured on the tree and all four are pinned in the test:
+   narrow (the counter or the source literal) 18 declarations / 3 files;
+   purchase-word-only 57 / 7; credit-path tokens 58 / 7; shipped 88 / 7.
+
+   **The credit-path option is the one worth knowing about**, because it catches
+   the planted granter and therefore looks like the fix. It is blind to the
+   sibling — a widener that keys `COVERED_DAYS_PER_WINDOW` to a session count
+   calls nothing on the credit path — which is the rejected narrow predicate's
+   failure repeating one level out: a list of tokens somebody thought of, walked
+   around by a mutant using a token they did not.
+
+   **What the file-level pin could not have found, recorded because it is the
+   uncomfortable part:** widening from the purchase word to the covered day
+   added 31 declarations and **not one file**. The hole was entirely inside
+   modules the scan was already reading, so the pinned file set was green
+   throughout. A pin is only as wide as the axis it is taken on.
+
    *`currencyProvenance.ts` joined the scan with the tender fix:* it decides who
-   may buy, which is where the laundered path went, and the other two modules
-   never see an achievement.
+   may buy, which is where the laundered path went, and the streak modules never
+   see an achievement.
+
+   **The known residual, stated rather than left for a reader to find:** every
+   predicate here is a *textual* match on a declaration body, so an aliased
+   import (`import { creditCoveredDays as credit }`) defeats all four — the
+   import sits above the first declaration and is in no declaration's body.
+   Closing that needs a type-aware pass, which this scan is not. It is pinned as
+   a red line so nobody concludes otherwise by accident.
 2. **A behavioural sweep of the whole export surface.** Every exported function,
    called every way it can be called, starting from a state that *holds*
    purchased days, must never return one more than it was given.

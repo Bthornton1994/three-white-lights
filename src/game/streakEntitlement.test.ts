@@ -25,7 +25,7 @@ import {
   COVERAGE_SOURCE_COUNTER,
   ENTITLEMENT_FACT_KEYS,
   MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW,
-  PURCHASED_DAY_TOUCHING_FUNCTIONS,
+  COVERED_DAY_TOUCHING_FUNCTIONS,
   RECOVERY_ENTITLEMENT,
   SOURCES_THAT_CREDIT_A_PURCHASED_DAY,
   afterSession,
@@ -1002,40 +1002,82 @@ const PURCHASED_DAY_SCAN = {
    *     and named neither the counter nor the source.
    *
    * Deriving the set from the tree is what makes "whatever it is called" in
-   * `PURCHASED_DAY_TOUCHING_FUNCTIONS`'s header also mean "wherever it is
+   * `COVERED_DAY_TOUCHING_FUNCTIONS`'s header also mean "wherever it is
    * written".
    */
   ROOT: path.join(__dirname, '..'),
 
   /**
-   * WHAT MAKES A DECLARATION INTERESTING: the WORD, not the two identifiers
-   * that actually carry a purchased day.
+   * WHAT MAKES A DECLARATION INTERESTING: two WORDS — a purchase, or a covered
+   * day — rather than the identifiers that carry either.
    *
-   * CHOSEN BY MEASUREMENT, and the losing option is pinned in a test below so
-   * the choice is re-runnable rather than a claim in prose. The narrow
-   * predicate is a strict subset of this one and finds 18 declarations in 3
-   * files against this one's 57 in 7. It was rejected for a specific hole
-   * rather than for taste:
-   * `applySettledCoveredDayPurchase` is the shipped entry point money arrives
-   * on, and its NAME contains neither narrow token, so a new declaration
-   * elsewhere in the tree that simply CALLS it would name neither. That is
-   * exactly the mutant GDD §8.3E condition 3 exists to catch. The narrow
-   * predicate would also have dropped `currencyProvenance.ts` — which the scan
-   * covers today — out of coverage entirely.
+   * THE SECOND ALTERNATIVE IS THIS ROUND'S FIX, AND THE FIRST ALONE WAS A
+   * MEASURED HOLE. `/purchas/i` was what shipped, and the rule it stands in
+   * front of is not about purchases: CLAUDE.md says *"no grant of COVERED days
+   * may be keyed to anything the lifter does"*, and `COVERAGE_SOURCES` declares
+   * two sources of which `'window-entitlement'` is the free side. A declaration
+   * that grants coverage through that source contains no form of the word
+   * "purchase", so the guard could not see it — the same shape as the
+   * `__dirname` ceiling the previous round removed, one axis over.
    *
-   * WHAT IT COSTS, said plainly: the allowlist carries 32 more entries than the
-   * three-file scan did, and most of them are unrelated to covered days
-   * (`empireCore.ts`'s purchasable-accelerant vocabulary, `progression.ts`'s
-   * proposal origins, one `SOURCE_RULES` row whose prose says "purchasable").
-   * That is the deliberate trade: a larger honest allowlist over a narrower one
-   * with a known hole in it.
+   * CHOSEN BY MEASUREMENT, and every losing option is pinned as a live value
+   * below so the choice is re-runnable rather than a claim in prose. On this
+   * tree: narrow 18/3, purchase-word-only 57/7, credit-token 58/7, this one
+   * 88/7. THE FILE SET DOES NOT GROW — the widening costs 31 allowlist entries
+   * and reaches no new module, so `FILES_THAT_NAME_A_COVERED_DAY` keeps every
+   * bit of the signal it had.
+   *
+   * WHAT IT COSTS, said plainly: 31 more names, and most of them cannot grant
+   * anything — `openDay`, `settleBrokenStreak` and `resolveEntitlement` are
+   * spend-side, `currencyProvenance.ts`'s ten are the tender partition, and
+   * `RECOVERY_ENTITLEMENT` is a frozen tuning block. The allowlist is now
+   * mostly things that merely SAY "covered day". That is the deliberate trade
+   * this codebase has already made once in the same place: a larger honest
+   * allowlist over a narrower one with a known hole in it.
+   *
+   * THE THIRD ALTERNATIVE COSTS NOTHING AND IS NOT REDUNDANT. `covered.?day`
+   * does NOT match the bare source literal `'window-entitlement'` — measured,
+   * after an earlier draft of this file asserted it did and went red. Adding
+   * the literal admits 0 further declarations on this tree and 0 further
+   * files, and it is what makes `CREDIT_PATH_TOKENS` a subset of this by
+   * CONSTRUCTION rather than by tree-accident: every token in that predicate
+   * (`purchas`, `creditCoveredDays`, `window-entitlement`, `coveredDaysLeft`)
+   * is matched here. A free alternative that closes a real token gap.
    */
-  MENTIONS_A_PURCHASE: /purchas/i,
+  NAMES_A_COVERED_DAY_OR_A_PURCHASE: /purchas|covered.?day|window-entitlement/i,
 
   /**
-   * The narrower predicate the one above was weighed against. Kept as a live
-   * value, not a sentence, so `THE PREDICATE WAS CHOSEN BY MEASUREMENT` can
-   * re-derive the comparison instead of quoting it.
+   * THE PREDICATE THAT SHIPPED BEFORE THIS ROUND, kept as a live value rather
+   * than described, because it is what makes the widening demonstrably
+   * non-vacuous: `AND THE SCAN CAN SEE A NEW ONE` drives a synthetic
+   * covered-day granter through BOTH and asserts this one misses it. Without
+   * that, nothing would distinguish the new alternative from decoration.
+   */
+  PURCHASE_WORD_ONLY: /purchas/i,
+
+  /**
+   * THE TEMPTING FIX, AND IT IS HERE BECAUSE IT IS MEASURABLY NOT ENOUGH.
+   *
+   * The obvious way to close the `'window-entitlement'` hole is to add the
+   * tokens on the credit path — the one credit function, the free source, the
+   * free counter. It does catch the probe. It is BLIND TO THE SIBLING MUTANT:
+   * a widener that fabricates an `EntitlementTuning` with
+   * `COVERED_DAYS_PER_WINDOW` keyed to a session count never calls
+   * `creditCoveredDays`, never names the source and never touches
+   * `coveredDaysLeft`. Measured: with that mutant in the tree this predicate
+   * reports the same 58 declarations in the same 7 files it reports on a clean
+   * one, while `NAMES_A_COVERED_DAY_OR_A_PURCHASE` goes to 89 in 8.
+   *
+   * That is the rejected narrow predicate's failure repeating one level out —
+   * a list of tokens somebody thought of, walked around by a mutant using a
+   * token they did not. It is pinned so the argument is re-runnable.
+   */
+  CREDIT_PATH_TOKENS: /purchas|creditCoveredDays|window-entitlement|coveredDaysLeft/i,
+
+  /**
+   * The narrowest predicate, weighed and rejected a round before this one. Kept
+   * as a live value, not a sentence, so `THE PREDICATE WAS CHOSEN BY
+   * MEASUREMENT` can re-derive the comparison instead of quoting it.
    *
    * ITS SECOND ALTERNATIVE IS A TEXTUAL MATCH, NOT A TYPE, and that is not a
    * detail: `'purchase'` is the `CoverageSource` this module cares about AND a
@@ -1074,7 +1116,7 @@ const PURCHASED_DAY_SCAN = {
    * NOT pinned as a bare count: the set is what carries the information, and a
    * count would pass while two files swapped places.
    */
-  FILES_THAT_NAME_A_PURCHASE: [
+  FILES_THAT_NAME_A_COVERED_DAY: [
     'empire/empireCore.ts',
     'game/currencyProvenance.ts',
     'game/progression.ts',
@@ -1085,11 +1127,18 @@ const PURCHASED_DAY_SCAN = {
   ] as readonly string[],
 
   /**
-   * What the wide and narrow predicates each found when the choice was made, as
+   * What each candidate predicate found when the choice was made, as
    * `[declarations, files]`. Pinned so that narrowing the predicate on the
    * belief that it is equivalent fails with the numbers next to it.
+   *
+   * READ THE FILE COLUMN. Widening from the purchase word to the covered day
+   * costs 31 declarations and reaches NO new file — the hole it closed was
+   * inside modules the scan was already reading, which is why nothing about the
+   * file-level pin caught it.
    */
-  WIDE_FOUND: [57, 7] as readonly [number, number],
+  COVERAGE_FOUND: [88, 7] as readonly [number, number],
+  PURCHASE_WORD_FOUND: [57, 7] as readonly [number, number],
+  CREDIT_PATH_FOUND: [58, 7] as readonly [number, number],
   NARROW_FOUND: [18, 3] as readonly [number, number],
 } as const;
 
@@ -1172,20 +1221,27 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     });
   };
 
-  it('[the-purchased-day-scan-reads-the-whole-tree] THE ALLOWLIST IS EXACT: every declaration that can name a purchased day is listed, from anywhere under src/', () => {
+  it('[the-covered-day-scan-reads-the-whole-tree] THE ALLOWLIST IS EXACT: every declaration that can name a covered day is listed, from anywhere under src/', () => {
     // THE GUARD THAT DOES NOT DEPEND ON WHAT A FUNCTION IS CALLED. The obvious
     // version of this test is a blocklist on `grant`, `credit`, `buy`, `award` —
     // and `streak.test.ts` carried exactly that until this round. It cannot
     // catch `markStreakMilestone` handing out a purchased day, because the
     // mutant uses none of those words.
     //
-    // WHAT IT KEYS ON IS THE WORD `purchas`, and this sentence used to say
-    // "the purchased counter or the `'purchase'` source" — which describes the
-    // NARROWER predicate, the one measured and rejected in the test below. The
-    // two are not the same set (57 declarations against 18) and the difference
-    // is the whole of the choice, so the loose wording is corrected rather than
-    // kept: any declaration whose body says `purchas`, under any name and in
-    // any directory, has to appear in `PURCHASED_DAY_TOUCHING_FUNCTIONS`.
+    // WHAT IT KEYS ON IS TWO WORDS — `purchas` OR a covered day — and the
+    // second one is this round's fix. The predicate was `/purchas/i` alone,
+    // which is not the rule: CLAUDE.md forbids a grant of COVERED days keyed to
+    // training, and `COVERAGE_SOURCES` has TWO members. A function granting
+    // coverage through `'window-entitlement'` says nothing resembling
+    // "purchase", so it was invisible here — verified by planting one in
+    // `src/shell/appServer.ts` and watching this file run 43 green tests over
+    // it with `tsc --noEmit` clean. Any declaration whose body says `purchas`
+    // or names a covered day, under any name and in any directory, has to
+    // appear in `COVERED_DAY_TOUCHING_FUNCTIONS`.
+    //
+    // THE COUNTS ARE PINNED IN `THE PREDICATE WAS CHOSEN BY MEASUREMENT` below
+    // rather than asserted in prose here: 18 / 57 / 58 / 88 declarations for
+    // the narrow, purchase-word, credit-token and shipped predicates.
     //
     // EXACT IN BOTH DIRECTIONS, so a stale entry fails too — an allowlist that
     // can only grow is one nobody prunes and eventually one that permits
@@ -1204,35 +1260,35 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     // six declarations and was not scanned, while `currencyProvenance.ts` was
     // scanned and named neither the counter nor the source.
     //
-    // The list of files is now an OUTPUT — see `FILES_THAT_NAME_A_PURCHASE`,
+    // The list of files is now an OUTPUT — see `FILES_THAT_NAME_A_COVERED_DAY`,
     // asserted in the test below — instead of the input that scoped the search.
-    const found = matchesIn(PURCHASED_DAY_SCAN.MENTIONS_A_PURCHASE);
-    const allowed = new Set(PURCHASED_DAY_TOUCHING_FUNCTIONS);
+    const found = matchesIn(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE);
+    const allowed = new Set(COVERED_DAY_TOUCHING_FUNCTIONS);
     const seen = new Set(found.names);
 
     // A USEFUL RED, not just a red. CLAUDE.md: "a check that bites but fails
-    // uselessly is half a check" — a bare set diff over 57 strings makes a
+    // uselessly is half a check" — a bare set diff over 88 strings makes a
     // reader go and find which file grew a declaration, so the message carries
     // the qualified name and the allowlist carries only the bare one.
     const unlisted = found.qualified.filter((q) => !allowed.has(q.split('::')[1] as string));
     const stale = [...allowed].filter((name) => !seen.has(name)).sort();
     const drift = [
       unlisted.length > 0
-        ? `declarations naming a purchase that PURCHASED_DAY_TOUCHING_FUNCTIONS does not list: ${unlisted.join(', ')}`
+        ? `declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS does not list: ${unlisted.join(', ')}`
         : '',
       stale.length > 0 ? `allowlist entries no declaration matches any more: ${stale.join(', ')}` : '',
     ]
       .filter((line) => line !== '')
       .join(' | ');
 
-    expect(found.names, drift).toEqual([...PURCHASED_DAY_TOUCHING_FUNCTIONS].sort());
+    expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());
     // THE ALLOWLIST ITSELF HAS NO DUPLICATES. `found.names` is deduplicated —
     // it has to be, because the list is of bare names and two files may legally
     // declare the same one — so without this a doubled entry would be a
     // permanent red nobody could satisfy, and a reader would reach for a
     // `Set` on both sides and lose the staleness half.
-    expect([...new Set(PURCHASED_DAY_TOUCHING_FUNCTIONS)].length).toBe(
-      PURCHASED_DAY_TOUCHING_FUNCTIONS.length,
+    expect([...new Set(COVERED_DAY_TOUCHING_FUNCTIONS)].length).toBe(
+      COVERED_DAY_TOUCHING_FUNCTIONS.length,
     );
   });
 
@@ -1273,30 +1329,62 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     expect([...reached].sort(), 'a directory under src/ that the scan never read').toEqual(onDisk);
 
     // AND THE FILE SET IS PINNED, which is what makes a new module naming a
-    // purchase a VISIBLE diff at file granularity and not only a bare name
-    // appended to a 57-entry list.
-    expect(matchesIn(PURCHASED_DAY_SCAN.MENTIONS_A_PURCHASE).files).toEqual([
-      ...PURCHASED_DAY_SCAN.FILES_THAT_NAME_A_PURCHASE,
+    // covered day a VISIBLE diff at file granularity and not only a bare name
+    // appended to an 88-entry list.
+    //
+    // WORTH KNOWING WHAT THIS PIN DID NOT CATCH: widening the predicate from
+    // the purchase word to the covered day added 31 declarations and NOT ONE
+    // FILE. The hole was entirely inside modules already being read, so a
+    // file-level pin was green throughout and could never have been the thing
+    // that found it. Recorded because it is the same lesson as the directory
+    // ceiling — a pin is only as wide as the axis it is taken on.
+    expect(matchesIn(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE).files).toEqual([
+      ...PURCHASED_DAY_SCAN.FILES_THAT_NAME_A_COVERED_DAY,
     ]);
   });
 
-  it('THE PREDICATE WAS CHOSEN BY MEASUREMENT: the narrower one drops four files, one of them already covered', () => {
-    // BOTH OPTIONS, MEASURED AND PINNED, because the choice between them is the
-    // load-bearing decision in this scan and prose would not survive somebody
-    // deciding the narrow one is obviously equivalent. It is not: the narrow
-    // predicate is a strict subset, so every file it loses is a coverage
-    // regression rather than a tightening.
-    const wide = matchesIn(PURCHASED_DAY_SCAN.MENTIONS_A_PURCHASE);
+  it('THE PREDICATE WAS CHOSEN BY MEASUREMENT: four candidates, and the two that look sufficient are not', () => {
+    // ALL FOUR OPTIONS, MEASURED AND PINNED, because the choice between them is
+    // the load-bearing decision in this scan and prose would not survive
+    // somebody deciding a narrower one is obviously equivalent. Each is a
+    // strict subset of the one below it, so every declaration a narrowing loses
+    // is a coverage regression rather than a tightening.
+    const coverage = matchesIn(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE);
+    const purchaseWord = matchesIn(PURCHASED_DAY_SCAN.PURCHASE_WORD_ONLY);
+    const creditPath = matchesIn(PURCHASED_DAY_SCAN.CREDIT_PATH_TOKENS);
     const narrow = matchesIn(PURCHASED_DAY_SCAN.NAMES_THE_COUNTER_OR_THE_SOURCE);
 
-    expect([wide.names.length, wide.files.length]).toEqual([...PURCHASED_DAY_SCAN.WIDE_FOUND]);
+    expect([coverage.names.length, coverage.files.length]).toEqual([
+      ...PURCHASED_DAY_SCAN.COVERAGE_FOUND,
+    ]);
+    expect([purchaseWord.names.length, purchaseWord.files.length]).toEqual([
+      ...PURCHASED_DAY_SCAN.PURCHASE_WORD_FOUND,
+    ]);
+    expect([creditPath.names.length, creditPath.files.length]).toEqual([
+      ...PURCHASED_DAY_SCAN.CREDIT_PATH_FOUND,
+    ]);
     expect([narrow.names.length, narrow.files.length]).toEqual([...PURCHASED_DAY_SCAN.NARROW_FOUND]);
 
-    // THE NAMED COST. `currencyProvenance.ts` is the file the three-file scan
-    // was widened to reach, and the narrow predicate does not match a single
-    // declaration in it — so narrowing would silently undo the previous round's
-    // fix. The other three are files the tree-wide scan gained.
-    const lostFiles = wide.files.filter((file) => !narrow.files.includes(file));
+    // THEY REALLY ARE NESTED, asserted rather than asserted-about. If a future
+    // edit makes one of these merely DIFFERENT from its neighbour rather than
+    // wider, the counts above could still be satisfied while the "every
+    // narrowing is a regression" argument silently stopped being true. The
+    // outermost containment is by construction — every token in
+    // `CREDIT_PATH_TOKENS` is an alternative in the shipped predicate — and it
+    // only became so once `'window-entitlement'` was added there; before that
+    // it held on this tree by accident, which is exactly the kind of green this
+    // codebase has been burned by.
+    const subset = (inner: typeof narrow, outer: typeof coverage): string[] =>
+      inner.qualified.filter((q) => !outer.qualified.includes(q));
+    expect(subset(narrow, creditPath), 'narrow is not inside credit-path').toEqual([]);
+    expect(subset(purchaseWord, creditPath), 'purchase-word is not inside credit-path').toEqual([]);
+    expect(subset(creditPath, coverage), 'credit-path is not inside coverage').toEqual([]);
+
+    // THE FILES THE NARROW PREDICATE LOSES. `currencyProvenance.ts` is the file
+    // the three-file scan was widened to reach, and the narrow predicate does
+    // not match a single declaration in it — so narrowing would silently undo
+    // that round's fix. The other three are files the tree-wide scan gained.
+    const lostFiles = coverage.files.filter((file) => !narrow.files.includes(file));
     expect(lostFiles).toEqual([
       'empire/empireCore.ts',
       'game/currencyProvenance.ts',
@@ -1304,28 +1392,109 @@ describe('nothing can award a purchased covered day, and that is enforced rather
       'tuning/audit.ts',
     ]);
 
-    // AND THE HOLE THAT DECIDED IT. The shipped entry point money arrives on
-    // contains neither narrow token in its name, so a declaration elsewhere in
-    // the tree that only CALLS it matches the wide predicate and not the narrow
-    // one. This is the §8.3E condition-3 mutant, and it is the reason the noisy
-    // predicate won.
-    expect(PURCHASED_DAY_SCAN.MENTIONS_A_PURCHASE.test('applySettledCoveredDayPurchase')).toBe(true);
-    expect(PURCHASED_DAY_SCAN.NAMES_THE_COUNTER_OR_THE_SOURCE.test('applySettledCoveredDayPurchase')).toBe(
-      false,
-    );
+    // THE HOLE THAT DECIDED THE PREVIOUS ROUND. The shipped entry point money
+    // arrives on contains neither narrow token in its name, so a declaration
+    // elsewhere in the tree that only CALLS it matches on the word and not on
+    // the identifiers.
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test('applySettledCoveredDayPurchase'),
+    ).toBe(true);
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_THE_COUNTER_OR_THE_SOURCE.test('applySettledCoveredDayPurchase'),
+    ).toBe(false);
+
+    // AND THE HOLE THAT DECIDED THIS ONE. `'window-entitlement'` is the other
+    // half of `COVERAGE_SOURCES`, and a credit through it is a grant of covered
+    // days with no purchase anywhere in it. The purchase-word predicate cannot
+    // see the call, the source, or the counter it lands in. This is the §12.3
+    // mutant — coverage granted for training — and it is why the purchase-only
+    // scope had to go.
+    //
+    // THE THREE TOKENS ARE ASSERTED INDIVIDUALLY, and one of them corrected a
+    // false claim in this test's own first draft: `covered.?day` does NOT match
+    // `'window-entitlement'`, which is why that literal is a separate
+    // alternative in the shipped predicate rather than assumed to be covered.
+    for (const token of ['creditCoveredDays', "'window-entitlement'", 'coveredDaysLeft']) {
+      expect(
+        PURCHASED_DAY_SCAN.PURCHASE_WORD_ONLY.test(token),
+        `the purchase-word predicate should have been blind to ${token}`,
+      ).toBe(false);
+      expect(
+        PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(token),
+        `the shipped predicate must see ${token}`,
+      ).toBe(true);
+    }
+
+    // WHAT NONE OF THEM SEE, RECORDED RATHER THAN GLOSSED. Every predicate here
+    // is a TEXTUAL match on a declaration body, so an aliased import defeats
+    // all four: `import { creditCoveredDays as credit }` sits above the first
+    // declaration and is therefore in no declaration's body at all. This is the
+    // "floor and not a ceiling" limit the allowlist's header states, and it is
+    // the same class as `progression.test.ts`'s seal check matching a callee by
+    // identifier text while its sibling twelve lines down resolved symbols
+    // through the checker. Closing it needs a type-aware pass, which this scan
+    // is not. Pinned so the limit is a red line if somebody believes otherwise.
+    const aliasedEvasion = [
+      'export function widen(s: EntitlementState, w: number, n: number): EntitlementState {',
+      '  return credit(RECOVERY_ENTITLEMENT, s, w, Math.floor(n / 10), SRC).state;',
+      '}',
+    ].join('\n');
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(aliasedEvasion),
+      'an aliased import still defeats every textual predicate here — see the comment above',
+    ).toBe(false);
+
+    // AND WHY THE CREDIT-TOKEN OPTION WAS NOT ENOUGH EITHER, which is the part
+    // that would have been easy to get wrong: it catches the probe, so it looks
+    // like the fix. The SIBLING mutant fabricates a tuning instead —
+    // `COVERED_DAYS_PER_WINDOW` keyed to a session count — and calls nothing on
+    // the credit path. CLAUDE.md: "when you fix a check, the next thing to look
+    // at is the branch immediately below it."
+    const tuningWidener = [
+      'export function tuningForTenSessions(sessionsDone: number): EntitlementTuning {',
+      '  return {',
+      '    ...RECOVERY_ENTITLEMENT,',
+      '    COVERED_DAYS_PER_WINDOW:',
+      '      RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + Math.floor(sessionsDone / 10),',
+      '  };',
+      '}',
+    ].join('\n');
+    expect(
+      PURCHASED_DAY_SCAN.CREDIT_PATH_TOKENS.test(tuningWidener),
+      'the credit-token predicate is blind to a tuning-keyed widener',
+    ).toBe(false);
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(tuningWidener),
+      'the shipped predicate must catch a tuning-keyed widener',
+    ).toBe(true);
   });
 
-  it('AND THE SCAN CAN SEE A NEW ONE: it is not matching nothing', () => {
+  it('AND THE SCAN CAN SEE A NEW ONE: it is not matching nothing, on BOTH halves of the predicate', () => {
     // ANTI-VACUITY FOR THE SCANNER ITSELF. The test above is a set equality, and
     // a `declarations` that returned an empty list would satisfy it against an
-    // empty allowlist while proving nothing. This drives the same scanner over a
-    // synthetic module containing exactly the mutant condition 3 forbids.
+    // empty allowlist while proving nothing. This drives the same scanner over
+    // synthetic modules containing exactly the mutants §12.3 forbids.
+    //
+    // THREE DECLARATIONS, NOT ONE, AND THAT IS THIS ROUND'S REPAIR. The version
+    // before this had a single synthetic that awarded a `purchasedDaysLeft`, so
+    // it exercised the `purchas` half only. Adding `covered.?day` to the
+    // predicate while this test kept probing a purchase would have left the new
+    // alternative UNEXERCISED HERE — matched by nothing the test writes, and so
+    // decoration by CLAUDE.md's own definition. `grantsCoverageForTraining`
+    // below is the probe that motivated the widening, reduced to its shape.
     const mutant = [
       'export function ordinaryHelper(a: number): number {',
       '  return a + 1;',
       '}',
       'export function markStreakMilestone(state: EntitlementState): EntitlementState {',
       '  return { ...state, purchasedDaysLeft: state.purchasedDaysLeft + 1 };',
+      '}',
+      'export function grantsCoverageForTraining(',
+      '  state: EntitlementState,',
+      '  windowNow: number,',
+      '  sessionsDone: number,',
+      '): EntitlementState {',
+      "  return creditCoveredDays(RECOVERY_ENTITLEMENT, state, windowNow, Math.floor(sessionsDone / 10), 'window-entitlement').state;",
       '}',
     ].join('\n');
     //
@@ -1335,13 +1504,33 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     // copy it". Narrowing the scan's predicate while this one kept the old
     // literal would leave the anti-vacuity check green about a predicate the
     // scan no longer uses, which is the exact shape of a check that cannot fail.
-    const names = declarations(mutant)
-      .filter(([, body]) => PURCHASED_DAY_SCAN.MENTIONS_A_PURCHASE.test(body))
-      .map(([name]) => name);
-    expect(names).toEqual(['markStreakMilestone']);
-    expect(PURCHASED_DAY_TOUCHING_FUNCTIONS).not.toContain('markStreakMilestone');
+    const foundBy = (predicate: RegExp): string[] =>
+      declarations(mutant)
+        .filter(([, body]) => predicate.test(body))
+        .map(([name]) => name);
+
+    // BOTH GRANTERS ARE SEEN AND THE INNOCENT HELPER IS NOT. `ordinaryHelper`
+    // is what stops this being satisfied by a predicate that matches
+    // everything — without it, `/(?:)/` would pass.
+    expect(foundBy(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE)).toEqual([
+      'markStreakMilestone',
+      'grantsCoverageForTraining',
+    ]);
+
+    // AND THE PREDICATE THAT SHIPPED BEFORE THIS ROUND MISSES THE SECOND ONE.
+    // This is the assertion that makes the widening non-vacuous rather than
+    // merely present: it pins that the coverage half does work the purchase
+    // half provably could not, on the exact mutant that was planted in
+    // `src/shell/appServer.ts` and ran 43 green tests.
+    expect(
+      foundBy(PURCHASED_DAY_SCAN.PURCHASE_WORD_ONLY),
+      'the purchase-word predicate must be blind to a window-entitlement grant',
+    ).toEqual(['markStreakMilestone']);
+
+    expect(COVERED_DAY_TOUCHING_FUNCTIONS).not.toContain('markStreakMilestone');
+    expect(COVERED_DAY_TOUCHING_FUNCTIONS).not.toContain('grantsCoverageForTraining');
     // The allowlist is non-empty, so the equality above is not two empty sets.
-    expect(PURCHASED_DAY_TOUCHING_FUNCTIONS.length).toBeGreaterThan(0);
+    expect(COVERED_DAY_TOUCHING_FUNCTIONS.length).toBeGreaterThan(0);
   });
 
   it('the entitlement module exports no way to earn one — the only credit needs a source', () => {
