@@ -1354,10 +1354,18 @@ export const WALL_CLOCK_FUNDED_OUTPUTS: readonly WallClockFundedOutput[] = EMPIR
  *
  * `'reputation'` keeps a purse here and nothing spends it: reputation is earned
  * per check-in rather than bought, so no axis feeds it and no recruit is priced
- * in it. It is derived rather than special-cased because a later §5.4 axis that
- * did feed it would need exactly this purse — and GDD §5.4's table names
- * Reputation as one of four axes while `ExpansionAxis` implements three, so that
- * axis is unbuilt rather than hypothetical.
+ * in it. It is derived rather than special-cased: `WALL_CLOCK_FUNDED_OUTPUTS`
+ * is computed from reach, `'reputation'` is a `GATING_OUTPUTS` member, and a
+ * purse falls out. That is the whole reason, and it is a better one than any
+ * forecast about future mechanics.
+ *
+ * Do not read the empty purse as §5.4's Reputation row being unbuilt — it is
+ * not. `reputation.ts` implements that row in full: the tier thresholds, the
+ * sponsor payouts and the NPC unlocks §5.4 lists under "attracts higher-tier
+ * NPCs, sponsorships". What §5.4 does NOT describe is buying levels of
+ * reputation, so no axis feeds this purse and none is expected to. An earlier
+ * draft of this paragraph said the axis was "unbuilt", which was true of
+ * `ExpansionAxis` and false of the mechanic.
  *
  * "No spender" is a measured fact rather than a sentence, and this paragraph
  * used to say so while the check did not exist. It does now:
