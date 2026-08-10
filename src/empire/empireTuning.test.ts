@@ -590,7 +590,6 @@ describe('§5.5 social', () => {
 const AWAITING_CONSUMER: readonly string[] = [
   'CHECK_IN_TARGET_SECONDS_MAX',
   'CHECK_IN_TARGET_SECONDS_MIN',
-  'TIMER_SKIP_SECONDS_PER_GRANT',
 ];
 
 /**

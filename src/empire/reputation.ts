@@ -95,44 +95,61 @@
  * only ever helped, so there is no monotonicity inversion available — is a reason
  * to measure it rather than a substitute for measuring it.
  *
- * Chain B is purchasable, and this file is where it becomes reachable, so it is
- * stated here in full rather than left for somebody to find:
+ * Chain B was purchasable, this file is where it was reachable, and piece E6
+ * closed it. It is stated here in full because the shape is what matters and
+ * because the measurement that found it is still runnable:
  *
  *   `'gym-empire-timer-skip'` -> `EmpireClock.accelerated` -> reputation accrues
- *   against a longer gap (this module reads the idle clock, because reputation's
+ *   against a longer gap (this module read the IDLE clock, because reputation's
  *   own sink is `'gym-economy'`) -> `NPC_RECRUIT_REPUTATION_THRESHOLD` for a
  *   higher tier is met on an EARLIER WALL-CLOCK DAY -> that lifter is recruited
  *   earlier and at a larger `NPC_TIER_OUTPUT_MULTIPLIER` ->
  *   `NpcLifter.settledAt` lands earlier and the Training IQ trickle is larger
  *   sooner.
  *
- * Every type on that chain is correct, including the wall-clock brand on
- * `settledAt`. What moves with the purchase is a VALUE, and GDD §4.4 is explicit
- * that no type gives you that — it is the same shape as the fourth sweep in
- * `empireCore.ts`'s header, one subsystem over. Three things about it, stated
- * exactly:
+ * Every type on that chain was correct, including the wall-clock brand on
+ * `settledAt`. What moved with the purchase was a VALUE, and GDD §4.4 is
+ * explicit that no type gives you that.
  *
- *   - It is latent rather than live. Nothing writes `EmpireState.reputation`
- *     today; this module returns accruals and the wiring piece decides what
- *     lands in the state.
- *   - The GDD §5.1 offline cap bounds each application of it. A skip lengthens
- *     one gap, and `bankableOfflineSeconds` truncates a gap at the horizon, so a
- *     skip applied to a gap already past the horizon adds nothing at all. What
- *     it does not bound is a skip applied at every short check-in.
- *   - `reputation.test.ts` measures it rather than describing it: the wall-clock
- *     day each tier first unlocks, as a list, compared element-wise against the
- *     same list with no skip applied, with the count of moved lists pinned. That
- *     count is NOT zero at the shipped tuning, and the pin is a measurement of an
- *     open chain rather than an approval of it. A fix that closes the chain makes
- *     it zero and turns that pin red, which is the intended way to find out.
+ * What closed it: reach as a PAYOUT and reach as a GATE are two different
+ * questions, and this module was asking the first one. `empireCore.ts` now
+ * carries a `GATE_TARGET` table typed against `ProgressionReachingOutput`, and
+ * `gateElapsedFor(at, 'reputation')` is `elapsedFor` asked about the thing the
+ * gate OPENS — Training IQ — rather than about the pot it is paid into. So both
+ * halves of the accrual moved onto the wall clock: the gap it is measured over,
+ * and the filter that decides which roster lifters contribute (`settledAt`, not
+ * `joinedAt` — the second half, and the one that would have been left behind if
+ * only the clock reading had been changed).
  *
- * The resolution that would close it structurally is the one `empireCore.ts`
- * already uses for tenure: a second reading of reputation on the wall clock, with
- * its own brand and no exported constructor, handed to the gate while the idle
- * reading feeds sponsorship and the screen. That is a change to
- * `EmpireState.reputation`'s shape and to `recruitment.ts`'s gate, both outside
- * this piece, so it is a request in this piece's report rather than an edit made
- * here.
+ * The cost, stated rather than buried: a purchased skip no longer accelerates
+ * reputation accrual. GDD §8.3B sells "build and recruit timer skips", and every
+ * timer it names still shortens — `idleCompletion`, `NpcLifter.joinedAt`, the
+ * Gym Bucks economy, the sponsor line and roster tenure for Bucks all still run
+ * on the accelerated clock. What a skip no longer does is act as a general time
+ * machine on a passive accrual that gates a progression-reaching output. A human
+ * may prefer the heavier resolution instead — a second reputation reading with
+ * its own brand, the idle one feeding the screen and the sponsor line — which
+ * costs a field on `EmpireState`; this one costs no shape change and is the more
+ * conservative of the two.
+ *
+ * Two further things about it, stated exactly:
+ *
+ *   - The GDD §5.1 offline cap bounded each application of it, and still does.
+ *     `bankableOfflineSeconds` truncates a gap at the horizon, so a skip applied
+ *     to a gap already past the horizon added nothing even before the fix.
+ *   - `reputation.test.ts` measures the closure rather than describing it: the
+ *     wall-clock day each tier first unlocks, as a list, compared element-wise
+ *     against the same list with no skip applied. That count is now ZERO, and
+ *     the reading this module used to take is kept beside it as a runnable
+ *     negative control whose count is pinned non-zero — 2 of 3 lists and 7 of 15
+ *     entries, which is what piece E4 measured on the shipped path.
+ *
+ * What this does NOT close is the money chain: a skip pays Gym Bucks sooner, so
+ * a gym can AFFORD a recruit or a physio level on an earlier wall-clock day.
+ * That one is not answerable inside a rate function — it is a property of the
+ * composition — and `empireInvariant.ts` is where it is answered, by keeping the
+ * progression-reaching half of the empire on a settled lane that no accelerant
+ * ever reaches.
  *
  * ===========================================================================
  * 5. A milestone marks and pays nothing
@@ -154,10 +171,10 @@ import {
   asGymBucks,
   asReputation,
   elapsedFor,
+  gateElapsedFor,
   outputReach,
   recruitReputationThreshold,
   reputationTierIndex,
-  type AcceleratedSeconds,
   type EmpireClock,
   type EmpireLedgerEntry,
   type EmpireOutput,
@@ -469,22 +486,28 @@ export interface ReputationRates {
 /**
  * The gym's reputation rates at a clock reading.
  *
- * The reading comes from `elapsedFor(at, 'reputation')`, so which of the two
- * clocks this half runs on is decided by `empireCore.ts`'s reach tables under
- * reputation's own name rather than chosen here. The annotation on `now` is the
- * fence: re-tagging reputation's sink as progression-reaching makes `elapsedFor`
- * return the wall-clock brand and this line a type error, so the two cannot
- * drift apart quietly.
+ * The reading comes from `gateElapsedFor(at, 'reputation')` — the WALL clock,
+ * because reputation gates a recruit and a recruit pays Training IQ. See §4 of
+ * the header and `empireCore.ts`'s gate table for why this is not
+ * `elapsedFor(at, 'reputation')`: that call answers about reputation as a
+ * PAYOUT, which is idle-only and therefore accelerated, and it is the reading
+ * this function used while chain B was open.
  *
- * A lifter contributes from the moment they are on the roster, which is the
- * accelerated reading — the same filter `gymBucksRatePerHour` applies, written
- * the same way on purpose.
+ * The annotation on `now` is the fence: `gateElapsedFor` returns the wall-clock
+ * brand as a consequence of `GATE_TARGET` being typed against
+ * `ProgressionReachingOutput`, so the two cannot drift apart quietly.
+ *
+ * A lifter contributes from the moment their recruitment SETTLED, on the wall
+ * clock — the same filter `trainingIqRatePerDay` applies, written the same way
+ * on purpose. Reading `joinedAt` here instead is the second half of the same
+ * chain: a purchased skip lands a lifter on the roster sooner, and a lifter who
+ * pays reputation sooner opens the next tier's milestone sooner.
  */
 export function reputationRates(state: EmpireState, at: EmpireClock): ReputationRates {
-  const now: AcceleratedSeconds = elapsedFor(at, 'reputation');
+  const now: UnacceleratedSeconds = gateElapsedFor(at, 'reputation');
   let contributingLifters = 0;
   for (const lifter of state.roster) {
-    if (lifter.joinedAt > now) continue;
+    if (lifter.settledAt > now) continue;
     contributingLifters += 1;
   }
   return Object.freeze({
@@ -532,6 +555,10 @@ function requireCheckIns(checkIns: number): void {
  * line uses, because a second uncapped earner beside a capped one is GDD §5.1's
  * cap walked around by a sibling.
  *
+ * The gap is measured on the WALL clock, through `gateElapsedFor`. See §4 of the
+ * header: reputation gates a recruit, a recruit pays Training IQ, and a gap
+ * measured on the accelerated clock is chain B.
+ *
  * The rates are read at `collectedAt` rather than at now, for the reason
  * `production.ts` §5 gives: a rate read at now keeps growing past the horizon
  * and the cap stops flattening anything.
@@ -547,10 +574,11 @@ export function accrueReputation(
   policy: OfflineBankingPolicy = SHIPPED_OFFLINE_BANKING_POLICY,
 ): ReputationAccrual {
   requireCheckIns(checkIns);
-  const gap = elapsedFor(state.clock, 'reputation') - elapsedFor(collectedAt, 'reputation');
+  const gap =
+    gateElapsedFor(state.clock, 'reputation') - gateElapsedFor(collectedAt, 'reputation');
   if (!Number.isFinite(gap) || gap < 0) {
     throw new RangeError(
-      `the collection mark is ${-gap} seconds ahead of the gym's own idle clock`,
+      `the collection mark is ${-gap} seconds ahead of the gym's own wall clock`,
     );
   }
 

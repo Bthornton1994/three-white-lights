@@ -1038,12 +1038,12 @@ describe('the producer census, scoped by return type and resolved through the ch
     // wrong rather than the subject.
     expect(census.controlFailures).toEqual([]);
     expect(census.coreDiagnostics).toEqual([]);
-    expect(census.probes).toBe(663);
+    expect(census.probes).toBe(701);
     // Counts, not bounds, on both verdicts. All-accepted and all-refused are
     // the two degenerate states, and each is a number away rather than a bound
     // away.
-    expect(census.refusedProbes).toBe(552);
-    expect(census.probes - census.refusedProbes).toBe(111);
+    expect(census.refusedProbes).toBe(588);
+    expect(census.probes - census.refusedProbes).toBe(113);
 
     // The brands, from the declarations rather than from a list written here.
     expect(census.brands).toEqual([
@@ -1059,8 +1059,8 @@ describe('the producer census, scoped by return type and resolved through the ch
       'UnacceleratedSeconds',
     ]);
 
-    expect(census.functions.length).toBe(39);
-    expect(census.slots.length).toBe(52);
+    expect(census.functions.length).toBe(41);
+    expect(census.slots.length).toBe(55);
 
     // The producers, by name. `createEmpireClock` and `createNpcLifter` are on
     // this list and are not spelled `as*`, which is the whole difference
@@ -1080,6 +1080,7 @@ describe('the producer census, scoped by return type and resolved through the ch
       'createNpcLifter',
       'elapsedFor',
       'equipmentTierCost',
+      'gateElapsedFor',
       'idleLedger',
       'idleTenureDays',
       'physioDaysSavedFor',
@@ -1116,7 +1117,7 @@ describe('the producer census, scoped by return type and resolved through the ch
     for (const slot of census.slots) tally.set(slot.kind, (tally.get(slot.kind) ?? 0) + 1);
     expect(tally.get('raw-only')).toBe(18);
     expect(tally.get('brand-only')).toBe(6);
-    expect(tally.get('neither')).toBe(24);
+    expect(tally.get('neither')).toBe(27);
     expect(tally.get('both')).toBe(4);
     expect([...tally.values()].reduce((total, n) => total + n, 0)).toBe(census.slots.length);
   });
@@ -1193,6 +1194,11 @@ describe('the producer census, scoped by return type and resolved through the ch
       'createEmpireState',
       'createNpcLifter',
       'elapsedFor',
+      // Piece E6's gate clock. It returns `UnacceleratedSeconds` as a
+      // consequence of `GATE_TARGET` being typed against
+      // `ProgressionReachingOutput`, so it is a wall-clock producer and belongs
+      // inside this rule rather than outside it.
+      'gateElapsedFor',
       'idleLedger',
       'physioDaysSavedFor',
       'progressionLedger',
@@ -1217,8 +1223,8 @@ describe('the producer census, scoped by return type and resolved through the ch
     // were actually driven. A wall-clock producer that lost its parameters, or
     // a WALL_CLOCK list that stopped matching any brand the module declares,
     // would make the zero above a zero over an empty domain.
-    expect(wallClockProducers.length).toBe(12);
-    expect(checked).toBe(44);
+    expect(wallClockProducers.length).toBe(13);
+    expect(checked).toBe(48);
     // And the brand names this test routes on are real brands, resolved by the
     // census rather than spelled here and hoped for. `ElapsedFor<O>` is a
     // conditional and is excluded from that check by construction, so it is
@@ -2289,6 +2295,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // list that had gone empty would make all of them pass.
     expect(shipped).toEqual([
       'empireCore.ts',
+      'empireInvariant.ts',
       'empireTuning.ts',
       'expansion.ts',
       'npc.ts',
@@ -2654,9 +2661,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(filesRead).toBe(shipped.length);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(singleQuoted.size).toBe(122);
+    expect(singleQuoted.size).toBe(137);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(90);
+    expect(templateChunks.size).toBe(108);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -2671,7 +2678,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './empireCore',
       './empireTuning',
       './expansion',
+      './npc',
       './production',
+      './recruitment',
+      './reputation',
+      './social',
+      'Placeholder',
       'accelerated-seconds',
       'acceleratedSeconds',
       'accepted',
@@ -2691,6 +2703,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'combined-total',
       'comp-plates',
       'competition-total',
+      'composed-gym',
       'cosmetic-unlock',
       'cosmetics',
       'covered-day',
@@ -2773,7 +2786,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(212);
+    expect(stringsChecked).toBe(245);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -2800,7 +2813,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(93);
+    expect(probes).toBe(99);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
