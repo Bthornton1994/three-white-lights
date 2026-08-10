@@ -220,30 +220,83 @@ function branches() {
    * the real option, and the catch now distinguishes its documented exit codes
    * (0 merged, 1 not merged) from a genuine failure, which throws.
    */
-  const isMerged = (branch) => {
+  // ONE ancestor test, used by both questions below. It was two for about ten
+  // minutes — the triage check below was written with a second, differently
+  // shaped copy, which referenced a binding this file does not import and would
+  // have thrown the first time a genuinely unmerged branch appeared. That is
+  // this repository's most-recorded defect committed inside the guard that
+  // exists to report on it, and it was caught only by constructing the case
+  // rather than reading the code.
+  const ancestorOf = (a, b) => {
     try {
-      execFileSync('git', ['merge-base', '--is-ancestor', branch, head], { stdio: 'ignore' });
+      execFileSync('git', ['merge-base', '--is-ancestor', a, b], { stdio: 'ignore' });
       return true;
     } catch (error) {
       if (error && error.status === 1) return false;
-      throw new Error(`git merge-base --is-ancestor ${branch} HEAD failed: ${String(error)}`);
+      throw new Error(`git merge-base --is-ancestor ${a} ${b} failed: ${String(error)}`);
     }
   };
+
+  const isMerged = (branch) => ancestorOf(branch, head);
+
+  /**
+   * TRIAGED WORK IS NOT STALE WORK, AND A PERMANENT FALSE ALARM IS THE REAL COST.
+   *
+   * Four branches hold the working trees of agents killed mid-flight. They were
+   * read, decided on — two salvaged, two rejected as regressions with the reason
+   * recorded — and they cannot be deleted: this environment's GitHub App has no
+   * permission to remove a ref (`HTTP 403` on any delete). So they would sit in
+   * this report as STALE forever.
+   *
+   * That is worse than it sounds. A check that always reports the same finding
+   * trains its reader to skip the section, and the next REAL stale branch lands
+   * in a list that everyone has learned to ignore. This run has already paid for
+   * one instrument quietly reporting a permanent false alarm.
+   *
+   * DERIVED, NOT LISTED. A branch counts as triaged when some ref under
+   * `refs/heads/archive/` CONTAINS it — the archive is the durable copy, pushed
+   * before the original was abandoned. Deliberately containment rather than SHA
+   * equality: a rewind reverts local branch refs, so the local `claude/*` name is
+   * routinely BEHIND the archive it was copied from, and an equality test would
+   * call a genuinely archived branch untriaged. Containment survives that.
+   *
+   * A hand-maintained list of triaged names was the alternative and is the
+   * failure mode this file has already recorded twice: a list nobody prunes.
+   * Move the branch's work into an archive ref and this answers itself; if the
+   * branch later grows a commit the archive does not contain, it correctly
+   * becomes untriaged again.
+   */
+  const archives = git([
+    'for-each-ref',
+    '--format=%(objectname)',
+    'refs/heads/archive/',
+  ]).split('\n').filter((s) => s !== '');
+  const isTriaged = (branch) => archives.some((a) => ancestorOf(branch, a));
 
   const unmerged = rows.filter((r) => r.name !== current && !isMerged(r.name));
 
   const now = Math.floor(Date.now() / 1000);
   const withAge = unmerged
-    .map((r) => ({ ...r, ageMin: (now - r.unix) / 60 }))
+    .map((r) => ({ ...r, ageMin: (now - r.unix) / 60, triaged: isTriaged(r.name) }))
     .sort((a, b) => b.ageMin - a.ageMin);
 
-  const stale = withAge.filter((r) => r.ageMin > staleMinutes);
+  const stale = withAge.filter((r) => r.ageMin > staleMinutes && !r.triaged);
+  const triagedCount = withAge.filter((r) => r.triaged).length;
 
-  console.log(`${withAge.length} unmerged claude/* branch(es); stale threshold ${staleMinutes} min\n`);
+  console.log(
+    `${withAge.length} unmerged claude/* branch(es); stale threshold ${staleMinutes} min` +
+      `${triagedCount > 0 ? `; ${triagedCount} archived and therefore not counted stale` : ''}\n`,
+  );
   for (const r of withAge) {
-    const mark = r.ageMin > staleMinutes ? 'STALE' : 'ok   ';
+    const mark = r.triaged ? 'archived' : r.ageMin > staleMinutes ? 'STALE   ' : 'ok      ';
     console.log(`${mark}  ${String(Math.round(r.ageMin)).padStart(6)} min  ${r.sha}  ${r.name}`);
-    console.log(`                       ${r.subject}`);
+    console.log(`                          ${r.subject}`);
+  }
+  if (triagedCount > 0) {
+    console.log(`\n  "archived" means a ref under refs/heads/archive/ CONTAINS that branch, so its`);
+    console.log('  work is triaged and durable. It is still listed, because this environment');
+    console.log('  cannot delete a ref (HTTP 403) and a row silently dropped is a row nobody can');
+    console.log('  audit — but it is not counted stale, so the section keeps meaning something.');
   }
 
   const silent = silentWorktrees(git, head, now);
