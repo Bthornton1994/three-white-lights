@@ -34,6 +34,39 @@
  * so the shutter can land. `?cutin=<moment>&live=1` is the same preview with
  * the clock running, which is how the two timing claims below are checked.
  *
+ * ===========================================================================
+ * EVERY SCREEN THIS TOOL OPENS IS OPENED BY URL, INCLUDING THE MEET ONES
+ * ===========================================================================
+ * TWO QUERY STRINGS, AND THE SECOND ONE USED TO BE DISCLOSED EIGHT HUNDRED
+ * LINES DOWN. This header described `?cutin=` and stopped, so a reader who got
+ * as far as the usage line had been told about half the tool. The other half
+ * drives `?meet=walkout-third` and `?meet=bombed`, and those are named here
+ * now, with what they are and what they are not.
+ *
+ * `?meet=<moment>` RESOLVES TO `{ surface: 'meet', source: 'debug' }` — pinned
+ * by `src/shell/shellRoute.test.ts` — and carries a SCRIPTED meet state plus a
+ * stand-in lifter, because `frozenMeetFor` branches on exactly that `source`.
+ * So the debug arm and the arm a player walks down are literally different
+ * code, and this tool only ever runs the first.
+ *
+ * WHAT IS REAL ABOUT THOSE TWO SHOTS, because it is not nothing: `WalkoutView`
+ * and `BombOutView` are the shipped components, they mount inside
+ * `MeetScreen`'s own `CutInHost`, they offer their own beats, and the gate
+ * decides with no arrangement. What is fabricated is the MEET the beats are
+ * about — which attempt it is, what is banked, whose lifter it is.
+ *
+ * SO THE VARIABLE IS NOT CALLED `playedPath` ANY MORE. It was, and the name was
+ * the whole defect: a record field, a console line and a `frames.json` key all
+ * said "played" about the debug arm. `debugMeetPath` is what it is, the record
+ * carries a `scope` field saying so in a sentence, and the two page loads assert
+ * that the address bar really does carry the query string this header claims —
+ * so the disclosure is pinned to a fact rather than to a comment somebody has to
+ * keep true.
+ *
+ * WHERE THE PLAYED ARM IS CHECKED: `tools/verify-shell-route.mjs`, which reaches
+ * meet day with a mouse and asserts an empty address bar at the moment it reads
+ * the screen. Not here, and this tool does not pretend otherwise.
+ *
  * Usage:
  *   node tools/capture-cutin.mjs [--url URL] [--out DIR]
  */
@@ -815,13 +848,23 @@ try {
 }
 
 // ---------------------------------------------------------------------------
-// THE PLAYED PATH: DOES THE BOMB-OUT FIX ACTUALLY REACH MEET DAY?
+// THE MEET SCREENS, ON THE DEBUG ARM: DOES THE BOMB-OUT FIX REACH THEM?
 // ---------------------------------------------------------------------------
 //
+// THIS SECTION USED TO BE HEADED "THE PLAYED PATH" AND ITS VARIABLE WAS CALLED
+// `playedPath`. It is not the played path. `?meet=<moment>` resolves to
+// `{ surface: 'meet', source: 'debug' }` and `frozenMeetFor` branches on that
+// `source`, so this is the debug arm wearing the played arm's name — in a
+// console line, in a `frames.json` key and in the one sentence a reader of this
+// file would have taken it from. The header now discloses it and the two loads
+// below assert the address bar to prove the disclosure.
+//
 // Everything above is the cut-in's own debug route. This is the same question
-// asked of the REAL meet screens, through `?meet=<beat>` — `WalkoutView` and
+// asked of the SHIPPED meet screens, through `?meet=<beat>` — `WalkoutView` and
 // `BombOutView` mounting inside `MeetScreen`'s own `CutInHost`, offering their
-// own beats, with nothing arranged.
+// own beats, with the GATE arranged in no way at all. The MEET is arranged: the
+// attempt, what is banked and whose lifter it is are all scripted, and that is
+// the difference between this and a meet somebody lifted.
 //
 //   ?meet=walkout-third   a third attempt with NOTHING BANKED. `meetDay.ts`
 //                         sets `bombRisk` on exactly this attempt, so the gate
@@ -869,32 +912,83 @@ async function sawACutInWithin(ms) {
 /** Long enough to cover the whole beat: enter + hold + exit, with slack. */
 const WATCH_FOR_A_CUT_IN_MS = 3000;
 
-let playedPath = null;
+/**
+ * The one sentence that says what these two shots are, carried in the record
+ * rather than only in this file's header.
+ *
+ * A reader who opens `frames.json` is holding the artifact and not the source,
+ * and the field this replaces was called `playedPath` — so the artifact itself
+ * asserted the thing that was false. Written down once, here, so the console
+ * line, the record and the header cannot drift apart.
+ */
+const DEBUG_MEET_SCOPE =
+  'DEBUG ARM. ?meet=<moment> resolves to { surface: "meet", source: "debug" } and frozenMeetFor ' +
+  'branches on that source, so the meet, the attempt and the lifter are all scripted. The ' +
+  'SCREENS and the GATE are the shipped ones with nothing arranged. A meet a player lifted for ' +
+  'is checked by tools/verify-shell-route.mjs, not here.';
+
+/**
+ * Read the address bar at the moment a shot is taken, and say what it carried.
+ *
+ * THE MIRROR OF THE RULE `verify-shell-route.mjs` FOLLOWS. That tool asserts the
+ * query string is EMPTY when it reads a screen, so a quiet fallback to a debug
+ * URL cannot make its section look complete. This tool is on the other side of
+ * the same line: it asserts the query string is PRESENT and is the one it asked
+ * for, so the disclosure above is pinned to something that executes rather than
+ * to a comment somebody has to keep true. If these two loads ever become a real
+ * drive, this goes red and the header has to be rewritten with it.
+ */
+function queryStringFault(pageUrl, expected) {
+  if (!pageUrl.includes(`?${expected}`)) {
+    return `expected the address bar to carry ?${expected} while the shot was taken, got ${JSON.stringify(pageUrl)}`;
+  }
+  return null;
+}
+
+let debugMeetPath = null;
 let bombOutMissingOnMeetDay = 0;
 let walkoutSpentTheSlot = 0;
+let debugScopeUndisclosed = 0;
 try {
   await page.goto(`${url}?meet=walkout-third`, { waitUntil: 'load' });
   await page.getByTestId('meet-walkout').waitFor({ state: 'visible', timeout: 120000 });
+  // Read at the moment the screen is read, not after the navigation call, so
+  // the record says where the shutter actually was.
+  const walkoutAddressBar = page.url();
   const onWalkout = await sawACutInWithin(WATCH_FOR_A_CUT_IN_MS);
-  await page.screenshot({ path: path.join(outDir, 'played-walkout-third.png') });
+  await page.screenshot({ path: path.join(outDir, 'debug-meet-walkout-third.png') });
 
   await page.goto(`${url}?meet=bombed`, { waitUntil: 'load' });
   await page.getByTestId('meet-bombed').waitFor({ state: 'visible', timeout: 120000 });
+  const bombedAddressBar = page.url();
   const onBombOut = await sawACutInWithin(WATCH_FOR_A_CUT_IN_MS);
-  await page.screenshot({ path: path.join(outDir, 'played-bombed.png') });
+  await page.screenshot({ path: path.join(outDir, 'debug-meet-bombed.png') });
 
-  playedPath = { onWalkout, onBombOut };
+  const urlFaults = [
+    queryStringFault(walkoutAddressBar, 'meet=walkout-third'),
+    queryStringFault(bombedAddressBar, 'meet=bombed'),
+  ].filter((fault) => fault !== null);
+  debugScopeUndisclosed += urlFaults.length;
+  debugMeetPath = {
+    scope: DEBUG_MEET_SCOPE,
+    onWalkout,
+    onBombOut,
+    addressBar: { walkout: walkoutAddressBar, bombed: bombedAddressBar },
+    urlFaults,
+  };
   if (onWalkout !== null) walkoutSpentTheSlot += 1;
   if (onBombOut === null) bombOutMissingOnMeetDay += 1;
+  for (const fault of urlFaults) console.log(`!! ${fault}`);
   console.log(
-    `played ?meet=walkout-third  cut-in: ${onWalkout === null ? 'none — the bomb is still live, so it is refused' : `!! ${JSON.stringify(onWalkout)} — A WALK-OUT THAT CAN STILL BOMB SPENT THE SLOT`}`,
+    `debug ?meet=walkout-third   cut-in: ${onWalkout === null ? 'none — the bomb is still live, so it is refused' : `!! ${JSON.stringify(onWalkout)} — A WALK-OUT THAT CAN STILL BOMB SPENT THE SLOT`}`,
   );
   console.log(
-    `played ?meet=bombed         cut-in: ${onBombOut === null ? '!! NONE — the somber counterpart got nothing' : `${JSON.stringify(onBombOut)}`}`,
+    `debug ?meet=bombed          cut-in: ${onBombOut === null ? '!! NONE — the somber counterpart got nothing' : `${JSON.stringify(onBombOut)}`}`,
   );
+  console.log(`                     scope: ${DEBUG_MEET_SCOPE}`);
 } catch (e) {
   walkoutSpentTheSlot += 1;
-  console.log(`!! COULD NOT DRIVE THE PLAYED MEET PATH: ${String(e).split('\n')[0]}`);
+  console.log(`!! COULD NOT DRIVE THE DEBUG MEET PATH: ${String(e).split('\n')[0]}`);
 }
 
 /**
@@ -925,8 +1019,12 @@ const failures = [
   [notOnTop, 'frame(s) had the screen behind still taking taps'],
   [scrimDead, 'frame(s) had an opaque scrim'],
   [timing, 'timing check(s) failed'],
-  [walkoutSpentTheSlot, "played walk-out(s) spent the bomb-out's slot"],
+  [walkoutSpentTheSlot, "debug-arm walk-out(s) spent the bomb-out's slot"],
   [shellNavOverTheInterrupt, 'frame(s) had the shell pill on top of the cut-in (GDD §7.2)'],
+  [
+    debugScopeUndisclosed,
+    'meet shot(s) whose address bar did not carry the debug query string this file’s header discloses',
+  ],
 ]
   .filter(([count]) => count > 0)
   .map(([count, what]) => `${count} ${what}`);
@@ -940,7 +1038,10 @@ await writeFile(
       artDiffs,
       leavesOnItsOwn,
       tapDismissed,
-      playedPath,
+      // RENAMED FROM `playedPath`, which is the finding this round closed: the
+      // key said "played" about the debug arm, in the artifact a reader opens
+      // instead of the source. It carries its own `scope` sentence now.
+      debugMeetPath,
       failures,
       pageErrors: errors,
     },

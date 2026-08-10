@@ -1,27 +1,28 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-10T02:51:57.239Z",
-    "url": "http://localhost:8081",
-    "sourceRoot": "/home/user/three-white-lights",
-    "commit": "e91fe0f",
-    "branch": "claude/agent-config-setup-m2r6ny",
-    "workingTree": "clean",
+    "capturedAt": "2026-08-10T05:15:40.129Z",
+    "url": "http://localhost:8083",
+    "sourceRoot": "/home/user/three-white-lights/.claude/worktrees/agent-af754a18d26fdf39f",
+    "commit": "1759da7",
+    "branch": "claude/x2-vacuous-triple",
+    "workingTree": "DIRTY — this run is not against a commit",
     "dirtyPaths": [
-      "M .gauntlet/shots/cutin-cap/cap.json",
-      " M .gauntlet/shots/cutin-cap/cut-in-leg-1.png",
-      " M .gauntlet/shots/cutin-cap/leg-1-recap.png",
-      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/route.json"
+      "M .gauntlet/shots/cutin/frames.json",
+      " D .gauntlet/shots/cutin/played-bombed.png",
+      " D .gauntlet/shots/cutin/played-walkout-third.png",
+      " M tools/capture-cutin.mjs",
+      "?? .gauntlet/shots/cutin/debug-meet-bombed.png",
+      "?? .gauntlet/shots/cutin/debug-meet-walkout-third.png"
     ],
     "instrument": {
-      "capture-cutin.mjs": "48935fabb9ef3aa6",
+      "capture-cutin.mjs": "6ebe3eaed8447c87",
       "png.mjs": "6356a0d0b0dcb696"
     }
   },
   "frames": [
     {
       "moment": "third-attempt-walkout",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/third-attempt-walkout.png",
+      "file": "/home/user/three-white-lights/.claude/worktrees/agent-af754a18d26fdf39f/.gauntlet/shots/cutin/third-attempt-walkout.png",
       "name": "third-attempt-walkout.png",
       "expectedLine": "LAST ONE",
       "seen": {
@@ -69,7 +70,7 @@
     },
     {
       "moment": "personal-record",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/personal-record.png",
+      "file": "/home/user/three-white-lights/.claude/worktrees/agent-af754a18d26fdf39f/.gauntlet/shots/cutin/personal-record.png",
       "name": "personal-record.png",
       "expectedLine": "NOBODY HAS SEEN YOU DO THIS",
       "seen": {
@@ -117,7 +118,7 @@
     },
     {
       "moment": "bomb-out",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/bomb-out.png",
+      "file": "/home/user/three-white-lights/.claude/worktrees/agent-af754a18d26fdf39f/.gauntlet/shots/cutin/bomb-out.png",
       "name": "bomb-out.png",
       "expectedLine": "THAT IS THE MEET",
       "seen": {
@@ -165,7 +166,7 @@
     },
     {
       "moment": "coach-heavy-set",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/coach-heavy-set.png",
+      "file": "/home/user/three-white-lights/.claude/worktrees/agent-af754a18d26fdf39f/.gauntlet/shots/cutin/coach-heavy-set.png",
       "name": "coach-heavy-set.png",
       "expectedLine": "THAT MOVED",
       "seen": {
@@ -236,22 +237,28 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 702,
+    "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1566,
+    "goneAt": 1575,
     "behind": true
   },
   "tapDismissed": {
     "tappedAt": 12,
-    "goneAt": 21,
-    "dismissTookMs": 9,
+    "goneAt": 14,
+    "dismissTookMs": 2,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
   },
-  "playedPath": {
+  "debugMeetPath": {
+    "scope": "DEBUG ARM. ?meet=<moment> resolves to { surface: \"meet\", source: \"debug\" } and frozenMeetFor branches on that source, so the meet, the attempt and the lifter are all scripted. The SCREENS and the GATE are the shipped ones with nothing arranged. A meet a player lifted for is checked by tools/verify-shell-route.mjs, not here.",
     "onWalkout": null,
-    "onBombOut": "THAT IS THE MEET"
+    "onBombOut": "THAT IS THE MEET",
+    "addressBar": {
+      "walkout": "http://localhost:8083/?meet=walkout-third",
+      "bombed": "http://localhost:8083/?meet=bombed"
+    },
+    "urlFaults": []
   },
   "failures": [],
   "pageErrors": []
