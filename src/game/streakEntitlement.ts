@@ -553,13 +553,22 @@ export const PURCHASED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
 
   // ---- progression.ts ------------------------------------------------------
   // THE FILE THE OLD THREE-FILE SCAN WAS ALREADY MISSING, and the reason the
-  // set had to be derived rather than extended by hand. It names the purchased
-  // counter in six declarations — the wire shape and its decoder carry
-  // `purchasedDaysLeft` across the server boundary — and no edit to the old
-  // hardcoded list would have been prompted by anything.
+  // set had to be derived rather than extended by hand: nothing about a
+  // hardcoded list of three names would ever have prompted somebody to add it.
+  //
+  // EXACTLY TWO OF THE ENTRIES BELOW NAME `purchasedDaysLeft`, and they are
+  // these two — the wire shape and its decoder, which carry the counter across
+  // the server boundary. Counted rather than estimated, because the first draft
+  // of this comment said six and six is the number of declarations here that
+  // match the NARROW predicate, which is a different thing: the other four match
+  // on the string `'purchase'`, and in this module that is a PROPOSAL ORIGIN
+  // KIND rather than the `CoverageSource` of the same spelling. A token
+  // collision, and worth naming as one so a reader does not take those four for
+  // covered-day code.
   'StreakStateWire',
   'decodeStreak',
-  // The §8.1 no-pay-to-win reach model. About what a purchase may TOUCH rather
+  // The §8.1 no-pay-to-win reach model — the four collisions above, plus the
+  // declarations that only say the word. About what a purchase may TOUCH rather
   // than about covered days, but it is the module that answers that question,
   // so a new purchasable concern showing up here should be looked at.
   'OPEN_FACTS_ARE_EXACTLY_WHAT_A_PURCHASE_MAY_REACH',

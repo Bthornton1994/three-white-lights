@@ -1013,9 +1013,9 @@ const PURCHASED_DAY_SCAN = {
    *
    * CHOSEN BY MEASUREMENT, and the losing option is pinned in a test below so
    * the choice is re-runnable rather than a claim in prose. The narrow
-   * predicate — `purchasedDaysLeft`, or the `'purchase'` coverage source — is a
-   * strict subset of this one and finds 18 declarations in 3 files against this
-   * one's 57 in 7. It was rejected for a specific hole rather than for taste:
+   * predicate is a strict subset of this one and finds 18 declarations in 3
+   * files against this one's 57 in 7. It was rejected for a specific hole
+   * rather than for taste:
    * `applySettledCoveredDayPurchase` is the shipped entry point money arrives
    * on, and its NAME contains neither narrow token, so a new declaration
    * elsewhere in the tree that simply CALLS it would name neither. That is
@@ -1036,6 +1036,16 @@ const PURCHASED_DAY_SCAN = {
    * The narrower predicate the one above was weighed against. Kept as a live
    * value, not a sentence, so `THE PREDICATE WAS CHOSEN BY MEASUREMENT` can
    * re-derive the comparison instead of quoting it.
+   *
+   * ITS SECOND ALTERNATIVE IS A TEXTUAL MATCH, NOT A TYPE, and that is not a
+   * detail: `'purchase'` is the `CoverageSource` this module cares about AND a
+   * `ProposalOriginKind` in `progression.ts`, spelled identically. Four of the
+   * six declarations the narrow predicate finds in that file are the origin
+   * kind, not the coverage source. So even the "narrow" option is looser than
+   * its name suggests, which is a further reason not to trust it as the
+   * precise-looking alternative — measured, because the first draft of the
+   * comment on the allowlist's `progression.ts` section read those four as
+   * covered-day code and said so.
    */
   NAMES_THE_COUNTER_OR_THE_SOURCE: /purchasedDaysLeft|'purchase'/,
 
@@ -1167,9 +1177,15 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     // version of this test is a blocklist on `grant`, `credit`, `buy`, `award` —
     // and `streak.test.ts` carried exactly that until this round. It cannot
     // catch `markStreakMilestone` handing out a purchased day, because the
-    // mutant uses none of those words. This keys on the FIELD: any declaration
-    // that so much as names the purchased counter or the `'purchase'` source has
-    // to appear in `PURCHASED_DAY_TOUCHING_FUNCTIONS`, whatever it is called.
+    // mutant uses none of those words.
+    //
+    // WHAT IT KEYS ON IS THE WORD `purchas`, and this sentence used to say
+    // "the purchased counter or the `'purchase'` source" — which describes the
+    // NARROWER predicate, the one measured and rejected in the test below. The
+    // two are not the same set (57 declarations against 18) and the difference
+    // is the whole of the choice, so the loose wording is corrected rather than
+    // kept: any declaration whose body says `purchas`, under any name and in
+    // any directory, has to appear in `PURCHASED_DAY_TOUCHING_FUNCTIONS`.
     //
     // EXACT IN BOTH DIRECTIONS, so a stale entry fails too — an allowlist that
     // can only grow is one nobody prunes and eventually one that permits
