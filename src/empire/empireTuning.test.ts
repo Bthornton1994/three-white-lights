@@ -479,19 +479,51 @@ describe('§5.5 social', () => {
     // session would satisfy this, and the thing that catches THAT is E6's
     // measurement. What this catches is the copy-paste — a new cadence added
     // in sessions or streak days because it was easier to compute that way.
-    const banned = /PER_SESSION|SESSION_COUNT|PER_STREAK|STREAK_DAY|PER_TIER_UNLOCK/;
+    // ONE PATTERN WITH FIVE ALTERNATIVES WAS FOUR DEAD LETTERS. It read
+    // `/PER_SESSION|SESSION_COUNT|PER_STREAK|STREAK_DAY|PER_TIER_UNLOCK/` and
+    // the derived probe below exercised the first alternative only, so deleting
+    // any of the other four from the pattern reddened nothing at all. The
+    // sibling scan in `empireCore.test.ts` had already been given an
+    // index-aligned tripwire per pattern and an explicit
+    // `tripwires.length === banned.length` pin; that fix stopped at the file
+    // boundary and this one, in the same directory, kept the hole.
+    //
+    // One entry per unit, so a unit is a row somebody deletes rather than four
+    // characters inside a regex. The membership pin is what makes deleting one
+    // red — deriving the pattern from the list alone would move both sides
+    // together, which is the oracle-mirrors-its-subject shape.
+    const bannedUnits = [
+      'PER_SESSION',
+      'SESSION_COUNT',
+      'PER_STREAK',
+      'STREAK_DAY',
+      'PER_TIER_UNLOCK',
+    ] as const;
+    expect([...bannedUnits]).toEqual([
+      'PER_SESSION',
+      'SESSION_COUNT',
+      'PER_STREAK',
+      'STREAK_DAY',
+      'PER_TIER_UNLOCK',
+    ]);
+    expect(bannedUnits.length).toBe(5);
+    const banned = bannedUnits.map((unit) => new RegExp(unit));
+
     let examined = 0;
+    let probed = 0;
     for (const key of Object.keys(EMPIRE_TUNING)) {
-      expect(banned.test(key), `${key} is counted in something training moves`).toBe(false);
-      // The probe, derived from the subject rather than written beside the
-      // pattern. This is the same entry re-keyed to session count, which is
-      // GDD §4.4's defect in its exact shape, and it is built from a real key —
-      // so renaming `RIVAL_COMPARISON_PERIOD_DAYS` to
-      // `RIVAL_COMPARISON_PER_SESSION` reddens the line above, and weakening
-      // the pattern reddens this one. The two probes that used to sit below
-      // this loop tested the pattern against two string literals written four
-      // lines from it: no edit to `empireTuning.ts` could redden either.
-      expect(banned.test(`${key}_PER_SESSION`), `${key}_PER_SESSION slips past`).toBe(true);
+      for (const [index, pattern] of banned.entries()) {
+        expect(pattern.test(key), `${key} is counted in something training moves`).toBe(false);
+        // The probe, derived from the subject rather than written beside the
+        // pattern: a real key re-suffixed with the real unit. This is GDD
+        // §4.4's defect in its exact shape, so renaming
+        // `RIVAL_COMPARISON_PERIOD_DAYS` to `RIVAL_COMPARISON_PER_SESSION`
+        // reddens the line above, and a unit whose pattern stopped matching
+        // reddens this one — for every unit now, not only the first.
+        const unit = bannedUnits[index] as string;
+        expect(pattern.test(`${key}_${unit}`), `${key}_${unit} slips past`).toBe(true);
+        probed += 1;
+      }
       examined += 1;
     }
     // The non-vacuity guard the two probes were standing in for, and it is the
@@ -499,6 +531,10 @@ describe('§5.5 social', () => {
     // or truncated key set would have made every assertion above pass.
     expect(examined).toBe(Object.keys(EMPIRE_TUNING).length);
     expect(examined).toBe(54);
+    // And how many (key, unit) pairs were actually driven, so a shortened unit
+    // list is red on a count as well as on the membership pin above.
+    expect(probed).toBe(examined * bannedUnits.length);
+    expect(probed).toBe(270);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

@@ -77,13 +77,23 @@
  *
  *     That sentence was prose with nothing behind it for a round. It now has
  *     two scans behind it, in `empireCore.test.ts`, and they are honest about
- *     what they are: one pins every space-free string literal in this directory
- *     exactly, so a new vocabulary token is a decision somebody signs; the
- *     other bans a `Capitalised Capitalised` pair anywhere, which is the shape
- *     a person's name takes inside a message. NEITHER CAN TELL A REAL NAME
- *     FROM AN INVENTED ONE — that is the human, name-by-name pass §12.3 asks
- *     for on every piece. What they do is make a name arriving visible instead
- *     of quiet.
+ *     what they are: one pins every space-free single-quoted literal in this
+ *     directory exactly, so a new vocabulary token is a decision somebody
+ *     signs; the other bans a `Capitalised Capitalised` pair anywhere, which is
+ *     the shape a person's name takes inside a message. NEITHER CAN TELL A REAL
+ *     NAME FROM AN INVENTED ONE — that is the human, name-by-name pass §12.3
+ *     asks for on every piece. What they do is make a name arriving visible
+ *     instead of quiet.
+ *
+ *     Read "inside a message" as a claim that had to be earned. For a round the
+ *     second scan looked only at single-quoted literals, and every runtime
+ *     message `empireCore.ts` writes is a TEMPLATE literal — so it read no
+ *     message at all, and a real name appended to a fault string was invisible
+ *     to both halves and moved neither count. It now collects single-quoted,
+ *     double-quoted and template text, counts each group separately, and pins
+ *     that the fault messages really are in the domain. What it still cannot
+ *     see: a name assembled at runtime from parts, and any string in a file
+ *     outside this directory.
  *
  *     One term here is worth a human ruling and is flagged rather than
  *     defended: `'monolift'`, in `EQUIPMENT_TIERS`, is transcribed verbatim

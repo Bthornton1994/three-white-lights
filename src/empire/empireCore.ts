@@ -148,6 +148,23 @@
  * the IQ half reads is measured from `NpcLifter.settledAt`, the moment the
  * recruit would have completed unaided.
  *
+ * THE SPLIT HAS TO SURVIVE THE DERIVED QUANTITY, not only the clock reading,
+ * and that is where it first failed. Tenure is what §5.2 actually names as the
+ * IQ input, and it shipped as one brand for both clocks — so
+ * `idleTenureDays(lifter, clock.accelerated)` produced a value assignable
+ * wherever the IQ rate wanted tenure, with no cast, using only exported API,
+ * carrying the purchased skip through the argument AND through
+ * `NpcLifter.joinedAt`. Hazard 2's derived quantity had the fence: `SettledLevel`
+ * is its own brand and `physioDaysSavedFor` takes nothing else. Hazard 1's did
+ * not, in the adjacent function.
+ *
+ * So there are two tenure brands, `IdleTenureDays` and `SettledTenureDays`, and
+ * the second has no exported constructor — `settledTenureDays` is the only
+ * exported route to one, exactly as `settledLevel` is the only exported route to
+ * a `SettledLevel`. Both spellings are asserted with `@ts-expect-error` in
+ * `empireCore.test.ts`, in both directions, beside the signature scan that gives
+ * each directive a line vitest can also redden.
+ *
  * This is a design decision rather than a transcription, and it is reported as
  * one. A human may prefer a different resolution — a flat calendar-keyed
  * trickle with no roster term, or narrowing §8.3B so recruit timers are not
@@ -198,10 +215,11 @@
  * `PURCHASABLE_ACCELERANTS` as the derived list the sweep iterates so it cannot
  * miss one that was added later.
  *
- * There is a third path E6 has to sweep and this file does not close, named
- * here so it is an obligation handed forward rather than an omission. It is not
- * a §8.1 breach — nothing on it is purchasable — but it is §4.4's shape one hop
- * out:
+ * There are two further paths E6 has to sweep and this file does not close,
+ * named here so they are obligations handed forward rather than omissions.
+ *
+ * The third sweep — an earned chain, not a §8.1 breach, but §4.4's shape one
+ * hop out:
  *
  *   `REPUTATION_PER_CHECK_IN` -> reputation ->
  *   `SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER` -> Gym Bucks ->
@@ -216,6 +234,33 @@
  * for measuring it, and E0 does not measure it: the sweep it needs is the
  * `physioDaysSavedFor` series against a lifter who trains more, at every
  * horizon, with the counts pinned.
+ *
+ * The fourth sweep IS purchasable, and it is the one this header did not name
+ * while §4 above put "the expansion axes" on the accelerated clock and "the
+ * physio hook" on the un-accelerated one. Physio is an expansion axis whose only
+ * effect is the hook, so the two sentences meet on this chain:
+ *
+ *   `'gym-empire-timer-skip'` -> the accelerated clock -> Gym Bucks sooner
+ *   (a legal pairing, and asserted legal) -> `STAFF_LEVEL_COST_GYM_BUCKS.physio`
+ *   affordable sooner -> the WALL-CLOCK DAY the physio level is bought.
+ *
+ * Every type on that chain is correct. The purchase day is a perfectly
+ * brand-correct `UnacceleratedSeconds`; what moved with the purchase is its
+ * VALUE, and §4.4 is explicit that no type gives you that — "a perfectly legal
+ * tender could acquire a training sensitivity without a single type changing".
+ * The only thing standing between the two sentences in §4 today is a phrase in
+ * `settledLevel`'s docstring: that `completionTimes` is "when each level of that
+ * axis would have finished with no accelerant applied". That is a contract E1-E5
+ * have to keep when they compute the list, not a property E0 enforces — nothing
+ * checks where a `readonly UnacceleratedSeconds[]` came from.
+ *
+ * E6's assertion, in the same element-wise shape as the ledger one: for every
+ * purchasable accelerant, on every application schedule, at every horizon, the
+ * list of `physioDaysSavedFor` readings by wall-clock day is byte-identical to
+ * the list with no accelerant applied — with the negative control beside it,
+ * wired so the skip does move the purchase day, and its non-zero count pinned.
+ * An aggregate will not do: §4.4 records a legal input that moved 2362 of 34338
+ * purchase-day lists and left every aggregate identical.
  *
  * The same chain acquires a §8.1 edge the day a named partner is attached to a
  * reputation tier — sponsor money then buys a shorter Sim setback, which is
@@ -258,8 +303,14 @@ type Branded<T, B extends string> = T & { readonly [EMPIRE_BRAND]: B };
  * This exists because every brand here IS its primitive at the type level, so
  * `asUnacceleratedSeconds(clock.accelerated)` type-checked: `AcceleratedSeconds`
  * is a `number`, and the constructor took a `number`. That is hazard 2's fence
- * walked around by the plainest spelling there is, and it is closed on all nine
- * constructors at once rather than on the one that was noticed.
+ * walked around by the plainest spelling there is, and it is closed on every
+ * `as*` constructor at once rather than on the one that was noticed.
+ *
+ * How many that is, is not written here. A sentence that counts them was wrong
+ * by one for a round and nothing could redden it, so the count is taken by a
+ * scan instead: `empireCore.test.ts` reads the constructor list out of this
+ * file, pins the names and the count, and asserts the guard on each — so
+ * dropping it from one is red rather than left to a reader's arithmetic.
  *
  * Its limit, stated because no type reaches past it: `accelerated + 0` is a
  * plain `number` and this cannot see where it came from. Arithmetic laundering
@@ -320,8 +371,41 @@ export type UnacceleratedSeconds = Branded<number, 'unaccelerated-seconds'>;
  */
 export type AcceleratedSeconds = Branded<number, 'accelerated-seconds'>;
 
-/** Tenure in whole and fractional days, on whichever clock produced it. */
-export type TenureDays = Branded<number, 'tenure-days'>;
+/**
+ * Tenure on the idle clock, in whole and fractional days: time since the lifter
+ * appeared on the roster, which a purchased skip moves forward.
+ *
+ * The Gym Bucks half reads this. `asIdleTenureDays` mints one.
+ */
+export type IdleTenureDays = Branded<number, 'idle-tenure-days'>;
+
+/**
+ * Tenure on the wall clock, in whole and fractional days: time since the
+ * recruitment would have completed unaided.
+ *
+ * This is hazard 1's derived quantity and it is branded apart from its sibling
+ * for the same reason `SettledLevel` is branded apart from a bare number. §5.2
+ * pays Training IQ "based on tier and tenure", so the rate piece E1 writes takes
+ * a `SettledTenureDays`, and `settledTenureDays` — whose `now` is an
+ * `UnacceleratedSeconds` and whose origin is `NpcLifter.settledAt` — is the only
+ * exported route to one. (`mintSettledTenureDays` is its private callee and is
+ * not exported; the constructor pin in `empireCore.test.ts` reads the export
+ * list out of this file, so an `as*` sibling appearing here is red.) A caller
+ * holding a tenure measured on the accelerated clock therefore has nothing to
+ * pass.
+ *
+ * One brand for both clocks was the state this shipped in, and it left hazard 1
+ * with no fence while hazard 2's `SettledLevel` had one twelve lines away —
+ * CLAUDE.md's "the next thing to look at is the branch immediately below it" in
+ * its literal form, since `idleTenureDays` and `settledTenureDays` are two arms
+ * of one decision in adjacent functions.
+ *
+ * There is no exported constructor, deliberately, and that is the difference
+ * between this and `IdleTenureDays`. An `asSettledTenureDays` would hand a
+ * caller holding an accelerated reading a one-call route to the wall-clock
+ * brand, which is the walk-around `Unbranded` exists to close on the raw clocks.
+ */
+export type SettledTenureDays = Branded<number, 'settled-tenure-days'>;
 
 /** A roster lifter's identity. Opaque so it is not confused with a display name. */
 export type NpcId = Branded<string, 'npc-id'>;
@@ -906,9 +990,22 @@ export function asAcceleratedSeconds<N extends number>(
   return mintNumber(value);
 }
 
-/** Tenure in days. */
-export function asTenureDays<N extends number>(value: N & Unbranded<N>): TenureDays {
-  requireFiniteAtLeastZero(value, 'tenureDays');
+/** Tenure on the idle clock, in days. */
+export function asIdleTenureDays<N extends number>(value: N & Unbranded<N>): IdleTenureDays {
+  requireFiniteAtLeastZero(value, 'idleTenureDays');
+  return mintNumber(value);
+}
+
+/**
+ * The one producer of `SettledTenureDays`, and it is not exported.
+ *
+ * Same shape as `SettledLevel`, which only `settledLevel` mints: the brand is
+ * reachable through a function that takes the wall clock, and through nothing
+ * else. See the type's own note for why an exported sibling of
+ * `asIdleTenureDays` would be the hole rather than the symmetry.
+ */
+function mintSettledTenureDays(value: number): SettledTenureDays {
+  requireFiniteAtLeastZero(value, 'settledTenureDays');
   return mintNumber(value);
 }
 
@@ -935,6 +1032,14 @@ export function asNpcId<S extends string>(value: S & Unbranded<S>): NpcId {
  * reading has had anything done to it, it is a plain number and no signature can
  * tell. E6's element-wise comparison is what covers that, not this argument
  * list.
+ *
+ * Read the phrase "with no accelerant applied" as a contract on the CALLER,
+ * because that is all it is. Nothing here checks where a
+ * `readonly UnacceleratedSeconds[]` came from, and the chain that makes the
+ * distinction load-bearing — a bought skip paying Gym Bucks sooner, which buys
+ * the physio level on an earlier wall-clock day — is §6's fourth sweep in the
+ * header above. It is a measurement E6 owns; this argument list does not make it
+ * true.
  */
 export function settledLevel(
   completionTimes: readonly UnacceleratedSeconds[],
@@ -1057,10 +1162,17 @@ export function createNpcLifter(
   });
 }
 
-/** Tenure on the idle clock — what the Gym Bucks half reads. */
-export function idleTenureDays(lifter: NpcLifter, now: AcceleratedSeconds): TenureDays {
+/**
+ * Tenure on the idle clock — what the Gym Bucks half reads.
+ *
+ * Both the argument and the origin carry the purchased skip: `now` is an
+ * `AcceleratedSeconds` and `NpcLifter.joinedAt` is one too. The return brand
+ * says so, which is the point — a quantity that moved twice with a purchase is
+ * not interchangeable with one that moved not at all.
+ */
+export function idleTenureDays(lifter: NpcLifter, now: AcceleratedSeconds): IdleTenureDays {
   const seconds = Math.max(0, now - lifter.joinedAt);
-  return asTenureDays(seconds / EMPIRE_TUNING.SECONDS_PER_DAY);
+  return asIdleTenureDays(seconds / EMPIRE_TUNING.SECONDS_PER_DAY);
 }
 
 /**
@@ -1068,11 +1180,16 @@ export function idleTenureDays(lifter: NpcLifter, now: AcceleratedSeconds): Tenu
  *
  * Takes `UnacceleratedSeconds`, so a caller holding an accelerated clock has
  * nothing to pass. Measured from `settledAt`, so a purchased skip moves neither
- * the argument nor the origin.
+ * the argument nor the origin. And it returns its own brand, so the result of
+ * the sibling above is not assignable where this one is required — the fence
+ * that was missing while the two returned one type.
  */
-export function settledTenureDays(lifter: NpcLifter, now: UnacceleratedSeconds): TenureDays {
+export function settledTenureDays(
+  lifter: NpcLifter,
+  now: UnacceleratedSeconds,
+): SettledTenureDays {
   const seconds = Math.max(0, now - lifter.settledAt);
-  return asTenureDays(seconds / EMPIRE_TUNING.SECONDS_PER_DAY);
+  return mintSettledTenureDays(seconds / EMPIRE_TUNING.SECONDS_PER_DAY);
 }
 
 // ---------------------------------------------------------------------------

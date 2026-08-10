@@ -21,13 +21,35 @@
  * compiler's verdict rather than a claim about it.
  *
  * EVERY DIRECTIVE IN THIS FILE NEEDS A LINE VITEST CAN ALSO REDDEN, and that is
- * a rule this file broke. The first two hazard tests ended
+ * a rule this file broke twice, in two different ways, and the second time it
+ * broke it in the sentence written to fix the first.
+ *
+ * The first break was on the licence directives: the hazard tests ended
  * `expect(bought.accelerant).toBe('gym-empire-timer-skip')` — reading back the
  * argument that had just been passed in, from a constructor that validated
  * nothing. Under vitest they were two green ticks for hazard 1 and hazard 2
  * that were ticks for nothing at all. Both constructors now ask
- * `mayAccelerate` and throw, so each directive sits beside a `toThrow` whose
- * message names the arrival, the output and the reach.
+ * `mayAccelerate` and throw, so each of those directives sits beside a
+ * `toThrow` whose message names the arrival, the output and the reach.
+ *
+ * The second break was on the BRAND directives, and the rule above was already
+ * written when they shipped without one. Five of them sat over
+ * `expect(typeof wrong).toBe('number')` — twice — and over three assertions
+ * that the constructors still mint the same value. A brand is erased at
+ * runtime, so those were not weak lines, they were lines no state of
+ * `empireCore.ts` could redden: the subject returns a number and mints the same
+ * value whether the parameter says `SettledLevel` or `number`.
+ *
+ * A brand's reddenable line is therefore the DECLARATION, and that is what
+ * 'fences every branded quantity in its own declaration' pins — the constructor
+ * list read out of the source with `Unbranded<N>` asserted on each, and one row
+ * per branded parameter and return type, so widening any of them to a primitive
+ * is red in vitest at the same moment it makes a directive unused in `tsc`.
+ * 'gives every type-only directive in this file a covering test, by census'
+ * counts the directives and pins which tests carry them. Be exact about what
+ * that census is worth: it stops a directive arriving with no signed-for home,
+ * and it does not prove the covering assertions bite. That evidence is the
+ * mutation run in the report.
  *
  * A DIRECTIVE'S DOMAIN IS THE SPELLING IT WAS WRITTEN IN. Both original
  * directives passed the accelerant as a bare string literal, which is the one
@@ -85,10 +107,10 @@ import {
   SINK_REACH,
   asAcceleratedSeconds,
   asGymBucks,
+  asIdleTenureDays,
   asInjuryDaysSaved,
   asNpcId,
   asReputation,
-  asTenureDays,
   asTrainingIq,
   asUnacceleratedSeconds,
   accelerantLicence,
@@ -129,7 +151,9 @@ import {
   type EmpireState,
   type EquipmentTier,
   type GymAxes,
+  type IdleTenureDays,
   type NpcTier,
+  type SettledTenureDays,
   type StaffRole,
   type UnacceleratedSeconds,
 } from './empireCore';
@@ -298,8 +322,28 @@ describe('a purchased accelerant does not typecheck onto a progression-reaching 
     // here as well as in the typecheck.
     expect(mayAccelerate(boughtIq.accelerant, boughtIq.output)).toBe(false);
     expect(mayAccelerate(widenedIq.accelerant, widenedIq.output)).toBe(false);
-    expect(legal.every((pairing) => mayAccelerate(pairing.accelerant, pairing.output))).toBe(true);
-    expect(legal.length).toBe(3);
+    let evaluated = 0;
+    for (const pairing of legal) {
+      expect(
+        mayAccelerate(pairing.accelerant, pairing.output),
+        `${pairing.accelerant} -> ${pairing.output}`,
+      ).toBe(true);
+      evaluated += 1;
+    }
+    // The line here was `expect(legal.length).toBe(3)`, guarding the `.every`
+    // above against an empty list — but `legal` is three object literals eight
+    // lines up, so no state of `empireCore.ts` moved it. It guarded the test
+    // against being edited, which is not the same thing.
+    //
+    // What the list is for is two REASONS, so the reasons are what is counted,
+    // read through the tables: two of these pairings are legal because the
+    // output is idle-only, one because the accelerant is earned. Re-tagging the
+    // sold skip as `'gym-progress'` — how §12.3's first refusal condition would
+    // ship — moves those counts to 0 and 3.
+    expect(evaluated).toBe(legal.length);
+    expect(legal.filter((pairing) => isPurchasableAccelerant(pairing.accelerant)).length).toBe(2);
+    expect(legal.filter((pairing) => !isPurchasableAccelerant(pairing.accelerant)).length).toBe(1);
+    expect(legal.filter((pairing) => isProgressionReachingOutput(pairing.output)).length).toBe(1);
   });
 
   it('lets an earned accelerant reach the trickle, because §5.2 asks for that', () => {
@@ -312,20 +356,128 @@ describe('a purchased accelerant does not typecheck onto a progression-reaching 
       acceleratedOutput('space-level', 'physio-days-saved'),
       acceleratedOutput('reputation-tier', 'gym-bucks'),
     ];
-    expect(earned.length).toBe(3);
+    // The branch immediately below the one above, and its `expect(earned.length)
+    // .toBe(3)` was the same guard against editing the test. Derived instead:
+    // the list covers every earned accelerant, and it reaches both hazards. An
+    // accelerant added to `EMPIRE_ACCELERANTS` on the `'gym-progress'` row
+    // reddens the first line; re-tagging `'training-pace'` as `'idle-only'`,
+    // the one-word edit that opens both hazards, reddens the second.
+    expect(earned.map((pairing) => pairing.accelerant).sort()).toEqual(
+      [...EARNED_ACCELERANTS].sort(),
+    );
+    expect(earned.filter((pairing) => isProgressionReachingOutput(pairing.output)).length).toBe(2);
+    expect(earned.filter((pairing) => isPurchasableAccelerant(pairing.accelerant)).length).toBe(0);
   });
 
-  it('refuses an accelerated clock where a wall clock is required', () => {
+  it('refuses an accelerated clock where a wall clock is required, on every arm', () => {
     const clock = createEmpireClock(1000, 500);
     const lifter = createNpcLifter('a', 'novice', 'Placeholder', 0, 0);
     // @ts-expect-error — `settledTenureDays` takes UnacceleratedSeconds. The
     // physio and Training IQ halves run on the wall clock, so handing them the
     // accelerated one is a type error rather than a silent two-hop sale.
     const wrong = settledTenureDays(lifter, clock.accelerated);
-    expect(typeof wrong).toBe('number');
-    // The two readings differ, so the refusal above is about a brand rather
+    // @ts-expect-error — the sibling arm, written because the arm above was:
+    // the idle half takes AcceleratedSeconds and the wall clock is not one.
+    // This direction carried no directive for a round.
+    const alsoWrong = idleTenureDays(lifter, clock.unaccelerated);
+    // @ts-expect-error — and the level counter, whose `now` is the same seam.
+    const wrongLevel = settledLevel([], clock.accelerated);
+    // @ts-expect-error — including its first argument, which is the parameter
+    // immediately beside the one above and had no directive either.
+    const alsoWrongLevel = settledLevel([clock.accelerated], clock.unaccelerated);
+
+    // The vitest half, and it is a quantity rather than a `typeof`. The line
+    // here used to be `expect(typeof wrong).toBe('number')`, which is true of
+    // every version of the subject — `settledTenureDays` returns a division
+    // whatever it is declared to take, so no edit to `empireCore.ts` could
+    // redden it. What the directives are worth is a NUMBER: routing the
+    // accelerated clock into the settled tenure adds the whole purchased skip
+    // to the term §5.2 pays Training IQ on, and this measures exactly that gap.
+    const honest = settledTenureDays(lifter, clock.unaccelerated);
+    expect(Number(wrong) - Number(honest)).toBeCloseTo(500 / EMPIRE_TUNING.SECONDS_PER_DAY, 9);
+    expect(Number(wrong)).toBeGreaterThan(Number(honest));
+    // And the sibling arm's gap, measured the same way rather than assumed.
+    const idleHonest = idleTenureDays(lifter, clock.accelerated);
+    expect(Number(idleHonest) - Number(alsoWrong)).toBeCloseTo(
+      500 / EMPIRE_TUNING.SECONDS_PER_DAY,
+      9,
+    );
+    // The level counter's two arms, driven so the directives above are about
+    // values the subject really computes.
+    expect(Number(wrongLevel)).toBe(0);
+    expect(Number(alsoWrongLevel)).toBe(0);
+    expect(settledLevel([asUnacceleratedSeconds(1000)], clock.unaccelerated)).toBe(1);
+    // The two readings differ, so the refusals above are about a brand rather
     // than about two names for one number.
     expect(Number(clock.accelerated)).not.toBe(Number(clock.unaccelerated));
+    // The directives themselves are graded by `tsc --noEmit`. What vitest can
+    // redden for them is the DECLARATION, and that is the signature scan in
+    // 'fences every branded quantity in its own declaration' below — it pins
+    // `now: UnacceleratedSeconds` and the return brand for each function named
+    // here, so widening either to `number` is red in vitest as well as in tsc.
+  });
+
+  it('refuses one tenure brand where the other is required — hazard 1’s derived quantity', () => {
+    // The fence that was missing, and the one §5.2 actually needs. Tenure is
+    // the word §5.2 uses for the Training IQ input, and it shipped as ONE brand
+    // for both clocks — so the expression below compiled, with no cast, no `as`
+    // and only exported API, carrying the purchased skip twice over: through
+    // `now` and through `NpcLifter.joinedAt`. Hazard 2's derived quantity had
+    // its own brand (`SettledLevel`) twelve lines away in the same file.
+    //
+    // The fixture is a lifter whose recruitment was skipped by a day: three
+    // days of wall time, one day of purchased skip, so the lifter has been on
+    // the roster four days and would have settled after one.
+    const day = EMPIRE_TUNING.SECONDS_PER_DAY;
+    const clock = createEmpireClock(day * 3, day);
+    const lifter = createNpcLifter('a', 'novice', 'Placeholder', 0, day);
+
+    // @ts-expect-error — an idle tenure is not what the trickle reads.
+    const iqInput: SettledTenureDays = idleTenureDays(lifter, clock.accelerated);
+    // @ts-expect-error — the sibling direction, applied mechanically.
+    const bucksInput: IdleTenureDays = settledTenureDays(lifter, clock.unaccelerated);
+    // @ts-expect-error — and the re-brand, which is how the raw-clock fence was
+    // walked around before `Unbranded` landed. There is no `asSettledTenureDays`
+    // to write the other direction with, which the constructor pin below
+    // enforces by naming every `as*` this module exports.
+    const rebranded = asIdleTenureDays(settledTenureDays(lifter, clock.unaccelerated));
+
+    // The vitest half, and it is the decomposition rather than an inequality:
+    // the gap between the two tenures is TWO days on a one-day purchase, one
+    // from the clock the argument came off and one from the origin it was
+    // measured against. That is what "carries the purchased skip twice" means,
+    // in a number, and an engine that measured both from `joinedAt` or both on
+    // one clock collapses it to one day or to zero.
+    expect(Number(iqInput)).toBeCloseTo(4, 9);
+    expect(Number(bucksInput)).toBeCloseTo(2, 9);
+    const fromTheClock = Number(idleTenureDays(lifter, clock.accelerated)) -
+      Number(idleTenureDays(lifter, asAcceleratedSeconds(day * 3)));
+    const fromTheOrigin = Number(idleTenureDays(lifter, asAcceleratedSeconds(day * 3))) -
+      Number(bucksInput);
+    expect(fromTheClock).toBeCloseTo(1, 9);
+    expect(fromTheOrigin).toBeCloseTo(1, 9);
+    expect(fromTheClock + fromTheOrigin).toBeCloseTo(Number(iqInput) - Number(bucksInput), 9);
+    expect(Number(rebranded)).toBe(Number(bucksInput));
+
+    // And the seam itself, written out. E0 exports no Training IQ rate — that
+    // is E1's — so the consumer is declared here in the shape E1 has to write
+    // it, and the question the bar asks is put to the compiler directly: can a
+    // legal expression built only from exported API let a purchasable
+    // accelerant change Training IQ? The two lines below are the two ways it
+    // could, and both are type errors.
+    const trainingIqFor = (tenure: SettledTenureDays): number =>
+      Number(tenure) * EMPIRE_TUNING.NPC_TRAINING_IQ_PER_DAY_BASE;
+    // @ts-expect-error — the accelerated clock into the trickle, in one call.
+    trainingIqFor(idleTenureDays(lifter, clock.accelerated));
+    // @ts-expect-error — and a bare number, so the fence is not one spelling
+    // wide.
+    trainingIqFor(day * 4);
+    // The legal call, so the refusals above are about the brand rather than
+    // about the function refusing everything.
+    expect(trainingIqFor(settledTenureDays(lifter, clock.unaccelerated))).toBeCloseTo(
+      2 * EMPIRE_TUNING.NPC_TRAINING_IQ_PER_DAY_BASE,
+      9,
+    );
   });
 
   it('refuses a re-brand, which is how the argument list above was walked around', () => {
@@ -337,8 +489,17 @@ describe('a purchased accelerant does not typecheck onto a progression-reaching 
     //
     // compiled clean and fed the purchase-moved clock straight into the
     // Training IQ tenure term. It is a type error now, and so is every sibling
-    // of it — the guard is one `Unbranded<N>` applied to all nine constructors
-    // rather than to the one that was noticed.
+    // of it — the guard is one `Unbranded<N>` applied to every `as*`
+    // constructor rather than to the one that was noticed.
+    //
+    // How many that is, is not asserted in a sentence here either. It was
+    // asserted in one, in this comment and in `empireCore.ts`, and the sentence
+    // said nine when there were eight. The constructor list is read out of the
+    // source and pinned by name in 'fences every branded quantity in its own
+    // declaration' below, which is also the line vitest reddens when
+    // `Unbranded<N>` is dropped from one of them — the three assertions at the
+    // bottom of this test are NOT that line. They state that the constructors
+    // still mint the same value, which is true with the guard and without it.
     const clock = createEmpireClock(1000, 500);
     const lifter = createNpcLifter('a', 'novice', 'Placeholder', 0, 0);
 
@@ -353,7 +514,9 @@ describe('a purchased accelerant does not typecheck onto a progression-reaching 
     // Runtime: the constructors still mint, so these are the same numbers. The
     // refusal is entirely at the argument list, which is what makes it worth
     // asserting that they ARE the same numbers — a reader should not think the
-    // ban is doing arithmetic.
+    // ban is doing arithmetic. Read these three as documentation of what the
+    // ban is not; the guard's own reddenable line is the constructor pin named
+    // above.
     expect(Number(laundered)).toBe(Number(clock.accelerated));
     expect(Number(alsoLaundered)).toBe(Number(clock.unaccelerated));
     expect(String(reIded)).toBe(String(lifter.id));
@@ -367,10 +530,39 @@ describe('a purchased accelerant does not typecheck onto a progression-reaching 
   });
 
   it('refuses a bare number where a settled level is required', () => {
+    // Whole days, because `asInjuryDaysSaved` refuses a fraction at the seam —
+    // the sibling probe below really is evaluated rather than short-circuited
+    // by a throw.
+    const day = EMPIRE_TUNING.SECONDS_PER_DAY;
+    const clock = createEmpireClock(day * 2, day);
+    const lifter = createNpcLifter('a', 'novice', 'Placeholder', 0, 0);
     // @ts-expect-error — `physioDaysSavedFor` takes a SettledLevel, which only
     // `settledLevel` produces and which only UnacceleratedSeconds reach.
     const wrong = physioDaysSavedFor(1);
-    expect(typeof wrong).toBe('number');
+    // @ts-expect-error — the sibling quantity, checked rather than trusted to
+    // follow: the two derived brands are not interchangeable with each other
+    // either, so an idle tenure cannot stand in for a settled level.
+    const alsoWrong = physioDaysSavedFor(idleTenureDays(lifter, clock.accelerated));
+
+    // This line used to be `expect(typeof wrong).toBe('number')`, which is true
+    // of every version of `physioDaysSavedFor` — it returns a number whether it
+    // is declared to take a `SettledLevel` or a `number`, so the named subject
+    // edit could not redden it. What vitest can grade here is the VALUE the
+    // brand carries: a level of 1 buys exactly the table's per-level saving,
+    // capped, and that is a fact about the tuning the fence protects.
+    const oneLevel = settledLevel([asUnacceleratedSeconds(0)], asUnacceleratedSeconds(1));
+    expect(Number(wrong)).toBe(
+      Math.min(
+        EMPIRE_TUNING.PHYSIO_MAX_DAYS_SAVED,
+        EMPIRE_TUNING.PHYSIO_DAYS_SAVED_PER_STAFF_LEVEL,
+      ),
+    );
+    expect(Number(wrong)).toBe(Number(physioDaysSavedFor(oneLevel)));
+    expect(Number(alsoWrong)).toBe(EMPIRE_TUNING.PHYSIO_MAX_DAYS_SAVED);
+    // The declaration itself — `level: SettledLevel`, not `level: number` — is
+    // pinned by the signature scan in 'fences every branded quantity in its own
+    // declaration', which is the line vitest reddens when this directive stops
+    // being a directive.
   });
 });
 
@@ -615,18 +807,43 @@ describe('the reach and licence tables are exhaustive and cannot disagree', () =
 
 describe('the runtime predicates refuse what the types refuse', () => {
   it('agrees with the tables on every member', () => {
+    // The oracles here were `outputReach(output) === 'progression-reaching'`
+    // and `ACCELERANT_ARRIVAL[accelerant] === 'store-purchase'` — which are the
+    // two predicates' own bodies, character for character. No edit to any of
+    // the four tables could make either side disagree with the other, because
+    // both sides performed the identical lookup. That is the defect
+    // `empireCore.ts` says was removed from the cross product, left standing in
+    // the describe block immediately below it.
+    //
+    // The oracle is the PIN instead — the same two membership lists the four
+    // tables are pinned against above, restated as a predicate. Re-tagging
+    // `'training-pace'` as `'idle-only'`, or the sold skip as
+    // `'gym-progress'`, now makes the two sides disagree instead of moving
+    // them together.
+    let outputsWalked = 0;
+    let reaching = 0;
     for (const output of EMPIRE_OUTPUTS) {
       expect(isEmpireOutput(output)).toBe(true);
-      expect(isProgressionReachingOutput(output)).toBe(
-        outputReach(output) === 'progression-reaching',
-      );
+      const pinned = output === 'training-iq' || output === 'physio-days-saved';
+      expect(isProgressionReachingOutput(output), output).toBe(pinned);
+      if (pinned) reaching += 1;
+      outputsWalked += 1;
     }
+    let accelerantsWalked = 0;
+    let purchasable = 0;
     for (const accelerant of EMPIRE_ACCELERANTS) {
       expect(isEmpireAccelerant(accelerant)).toBe(true);
-      expect(isPurchasableAccelerant(accelerant)).toBe(
-        ACCELERANT_ARRIVAL[accelerant] === 'store-purchase',
-      );
+      const pinned =
+        accelerant === 'gym-empire-timer-skip' || accelerant === 'rewarded-ad-timer-skip';
+      expect(isPurchasableAccelerant(accelerant), accelerant).toBe(pinned);
+      if (pinned) purchasable += 1;
+      accelerantsWalked += 1;
     }
+    // Counts, not bounds, on both halves of the domain and on both verdicts.
+    expect(outputsWalked).toBe(6);
+    expect(reaching).toBe(2);
+    expect(accelerantsWalked).toBe(5);
+    expect(purchasable).toBe(2);
   });
 
   it('refuses wire garbage, including the words the empire may not pay in', () => {
@@ -653,16 +870,39 @@ describe('the runtime predicates refuse what the types refuse', () => {
   });
 
   it('derives its published lists rather than re-listing them', () => {
-    for (const output of IDLE_ONLY_OUTPUTS) expect(isProgressionReachingOutput(output)).toBe(false);
+    // Four loops with no count of their own: if all four lists went empty,
+    // every loop below would walk nothing and this test would pass. The counts
+    // are pinned in a different `it(` two describes up, which is exactly the
+    // "a witness proves one assertion, not the others in the same test" gap —
+    // so each loop counts what it actually walked, here, beside itself.
+    let idle = 0;
+    let reaching = 0;
+    let purchasable = 0;
+    let earned = 0;
+    for (const output of IDLE_ONLY_OUTPUTS) {
+      expect(isProgressionReachingOutput(output), output).toBe(false);
+      idle += 1;
+    }
     for (const output of PROGRESSION_REACHING_OUTPUTS) {
-      expect(isProgressionReachingOutput(output)).toBe(true);
+      expect(isProgressionReachingOutput(output), output).toBe(true);
+      reaching += 1;
     }
     for (const accelerant of PURCHASABLE_ACCELERANTS) {
-      expect(isPurchasableAccelerant(accelerant)).toBe(true);
+      expect(isPurchasableAccelerant(accelerant), accelerant).toBe(true);
+      purchasable += 1;
     }
     for (const accelerant of EARNED_ACCELERANTS) {
-      expect(isPurchasableAccelerant(accelerant)).toBe(false);
+      expect(isPurchasableAccelerant(accelerant), accelerant).toBe(false);
+      earned += 1;
     }
+    expect(idle).toBe(4);
+    expect(reaching).toBe(2);
+    expect(purchasable).toBe(2);
+    expect(earned).toBe(3);
+    // And the two axes are covered exactly once each, so a list that had gone
+    // empty is red on the count above and on the total here.
+    expect(idle + reaching).toBe(EMPIRE_OUTPUTS.length);
+    expect(purchasable + earned).toBe(EMPIRE_ACCELERANTS.length);
   });
 });
 
@@ -752,7 +992,7 @@ describe('the branded constructors', () => {
     expect(asGymBucks(1234.5)).toBe(1234.5);
     expect(asReputation(EMPIRE_TUNING.REPUTATION_MAX)).toBe(EMPIRE_TUNING.REPUTATION_MAX);
     expect(asTrainingIq(3)).toBe(3);
-    expect(asTenureDays(0.5)).toBe(0.5);
+    expect(asIdleTenureDays(0.5)).toBe(0.5);
     expect(asUnacceleratedSeconds(0)).toBe(0);
     expect(asAcceleratedSeconds(7)).toBe(7);
     expect(asNpcId('lifter-1')).toBe('lifter-1');
@@ -765,7 +1005,7 @@ describe('the branded constructors', () => {
       expect(() => asTrainingIq(bad), `trainingIq ${bad}`).toThrow(RangeError);
       expect(() => asUnacceleratedSeconds(bad), `seconds ${bad}`).toThrow(RangeError);
       expect(() => asAcceleratedSeconds(bad), `seconds ${bad}`).toThrow(RangeError);
-      expect(() => asTenureDays(bad), `tenure ${bad}`).toThrow(RangeError);
+      expect(() => asIdleTenureDays(bad), `tenure ${bad}`).toThrow(RangeError);
     }
     expect(() => asReputation(EMPIRE_TUNING.REPUTATION_MAX + 1)).toThrow(/REPUTATION_MAX/);
     expect(() => asNpcId('')).toThrow(RangeError);
@@ -1218,6 +1458,182 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     }
   });
 
+  it('fences every branded quantity in its own declaration', () => {
+    // The vitest half of the `@ts-expect-error` directives at the top of this
+    // file, and the thing five of them did not have. A brand is erased at
+    // runtime, so no value this module produces can tell whether a parameter
+    // was declared `UnacceleratedSeconds` or `number` — which is exactly why
+    // `expect(typeof wrong).toBe('number')` sat under three directives and
+    // could not have gone red under any of them. What vitest CAN read is the
+    // declaration, so the declaration is what is pinned here.
+    //
+    // Plainly: this is a companion, not the grader. `tsc --noEmit` grades the
+    // directives. This reddens on the same edits that make them unused —
+    // widening a branded parameter or return type to its primitive — so the two
+    // go red together instead of one going quiet while the other stays green.
+    const code = readFileSync(path.join(HERE, 'empireCore.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    expect(code.length, 'empireCore.ts stripped to nothing').toBeGreaterThan(0);
+    expect(code).toMatch(/export function /);
+
+    // Part 1 — `Unbranded<N>`, enumerated from the source rather than counted
+    // in a sentence. `empireCore.ts` said "all nine constructors" when there
+    // were eight, and a sentence that counts cannot be reddened. Dropping the
+    // guard from any one of them is red on the loop; adding a constructor
+    // without it, or adding an `asSettledTenureDays` that would hand a caller a
+    // one-call route into the wall-clock brand, is red on the name pin.
+    const constructors = [...code.matchAll(/export function (as[A-Z]\w*)<[^{]*\{/g)];
+    const names = constructors.map((match) => match[1] as string).sort();
+    expect(names).toEqual([
+      'asAcceleratedSeconds',
+      'asGymBucks',
+      'asIdleTenureDays',
+      'asInjuryDaysSaved',
+      'asNpcId',
+      'asReputation',
+      'asTrainingIq',
+      'asUnacceleratedSeconds',
+    ]);
+    let guarded = 0;
+    for (const match of constructors) {
+      expect(match[0], `${String(match[1])} takes a bare primitive`).toMatch(/&\s*Unbranded</);
+      guarded += 1;
+    }
+    expect(guarded).toBe(names.length);
+    expect(guarded).toBe(8);
+
+    // Part 2 — the derived quantities. One row per function whose argument list
+    // or return type IS the fence, including both arms of the tenure pair,
+    // which shipped returning one brand between them.
+    const fences: readonly {
+      readonly symbol: string;
+      readonly parameters: readonly string[];
+      readonly returns: string;
+      readonly brands: readonly string[];
+    }[] = [
+      {
+        symbol: 'idleTenureDays',
+        parameters: ['lifter: NpcLifter', 'now: AcceleratedSeconds'],
+        returns: 'IdleTenureDays',
+        brands: ['AcceleratedSeconds', 'IdleTenureDays'],
+      },
+      {
+        symbol: 'settledTenureDays',
+        parameters: ['lifter: NpcLifter', 'now: UnacceleratedSeconds'],
+        returns: 'SettledTenureDays',
+        brands: ['UnacceleratedSeconds', 'SettledTenureDays'],
+      },
+      {
+        symbol: 'settledLevel',
+        parameters: [
+          'completionTimes: readonly UnacceleratedSeconds[]',
+          'now: UnacceleratedSeconds',
+        ],
+        returns: 'SettledLevel',
+        brands: ['UnacceleratedSeconds', 'SettledLevel'],
+      },
+      {
+        symbol: 'physioDaysSavedFor',
+        parameters: ['level: SettledLevel'],
+        returns: 'InjuryDaysSaved',
+        brands: ['SettledLevel', 'InjuryDaysSaved'],
+      },
+    ];
+    let fenced = 0;
+    let parametersPinned = 0;
+    for (const fence of fences) {
+      const found = [
+        ...code.matchAll(new RegExp(`export function ${fence.symbol}\\(([^)]*)\\):\\s*(\\w+)`, 'g')),
+      ];
+      // Counts, not presence: a pattern with a second witness in the file is
+      // the textual pin that survives its own mutation.
+      expect(found.length, `${fence.symbol} is declared ${found.length} times, not once`).toBe(1);
+      const declaration = found[0] as RegExpMatchArray;
+      for (const parameter of fence.parameters) {
+        expect(
+          declaration[1] ?? '',
+          `${fence.symbol} no longer takes \`${parameter}\` — the brand fence widened`,
+        ).toContain(parameter);
+        parametersPinned += 1;
+      }
+      expect(
+        declaration[2] ?? '',
+        `${fence.symbol} no longer returns ${fence.returns}`,
+      ).toBe(fence.returns);
+      // A row may not name a type that is not a brand in this module, so a
+      // fence written against a widened or invented alias is red rather than
+      // trivially satisfied by whatever text happens to be there.
+      for (const brand of fence.brands) {
+        expect(code, `${brand} is not a branded type in this module`).toMatch(
+          new RegExp(`export type ${brand} = Branded<`),
+        );
+      }
+      fenced += 1;
+    }
+    expect(fenced).toBe(4);
+    expect(parametersPinned).toBe(7);
+    // The two tenure arms return DIFFERENT brands. One brand between them is
+    // the state this shipped in, and it is the state this line refuses.
+    expect(new Set(fences.map((fence) => fence.returns)).size).toBe(fences.length);
+  });
+
+  it('gives every type-only directive in this file a covering test, by census', () => {
+    // The header of this file makes a behavioural claim about the file, and it
+    // was false five times over: directives sat above
+    // `expect(typeof x).toBe('number')` twice and above three assertions that
+    // the constructors still mint the same number, none of which any state of
+    // `empireCore.ts` could have reddened.
+    //
+    // What this check is, exactly. It is a CENSUS: it counts the directives,
+    // attributes each to the test it sits in, and pins both. It cannot prove
+    // the covering test bites — CLAUDE.md's own note is that a pointer to a
+    // test that cannot fail is the same defect one level out, and the mutation
+    // evidence for these lives in the report rather than here. What it does
+    // stop is a directive arriving in a test nobody signed for, which is how
+    // the five got in.
+    //
+    // The token is built rather than written: a pattern containing it matches
+    // itself, which is the self-referential vacuity shape this file's own
+    // header warns about.
+    const token = ['@ts', 'expect', 'error'].join('-');
+    const source = readFileSync(fileURLToPath(import.meta.url), 'utf8');
+    const directiveLine = new RegExp(`^\\s*//\\s*${token}`);
+    const itLine = /^\s+it\((['"`])(.*?)\1,\s/;
+
+    let current: string | null = null;
+    let directives = 0;
+    const carriers = new Map<string, number>();
+    for (const line of source.split('\n')) {
+      const title = itLine.exec(line);
+      if (title !== null) current = title[2] as string;
+      if (!directiveLine.test(line)) continue;
+      directives += 1;
+      expect(current, `a directive outside any it() block: ${line.trim()}`).not.toBeNull();
+      const key = current as string;
+      carriers.set(key, (carriers.get(key) ?? 0) + 1);
+    }
+
+    expect(directives).toBe(23);
+    expect(carriers.size).toBe(9);
+    expect([...carriers.values()].reduce((total, n) => total + n, 0)).toBe(directives);
+    // The tests that carry them, pinned by title. A directive added to a test
+    // not on this list is red, and a title edited without touching the list is
+    // red too — which is the point, because the title is what a reader uses to
+    // find the covering assertions.
+    expect([...carriers.keys()].sort()).toEqual([
+      'refuses a bare number where a settled level is required',
+      'refuses a re-brand, which is how the argument list above was walked around',
+      'refuses an accelerant whose type has widened to the union, in all three spellings',
+      'refuses an accelerated clock where a wall clock is required, on every arm',
+      'refuses one tenure brand where the other is required — hazard 1’s derived quantity',
+      'refuses the Training IQ path, in both graders — GDD §8.3B into §5.2, hazard 1',
+      'refuses the illegal pairing as an object literal — the fence inference cannot move',
+      'refuses the physio path, in both graders — GDD §5.4 into §3.5, hazard 2',
+      'refuses the same two on `applyAccelerant`, which is the branch below',
+    ]);
+  });
+
   it('ships no string a real name could be hiding in, and pins the ones it does ship', () => {
     // GDD §12.3 refuses a real, named athlete, brand or company in any string
     // or code path, and `empireTuning.ts` claims in prose that no lifter, gym,
@@ -1234,20 +1650,54 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // which is the shape a person's name takes inside a message, where the
     // first half does not look. Neither half adjudicates. Both make the
     // adjudication happen.
-    const literals = new Set<string>();
+    // THE SECOND HALF READ NO MESSAGE THIS MODULE WRITES. `literals` was built
+    // from `/'...'/` alone, so it held vocabulary tokens and nothing else —
+    // every runtime message in `empireCore.ts` is a TEMPLATE literal, and every
+    // one of them was invisible. Appending `, already used by Placeholder
+    // Lifter` to the duplicate-id fault — a person-shaped name, invented, of
+    // exactly the shape a real one would take — left both halves green and left
+    // the count pin at 64, so the sentence claiming this half "looks inside a
+    // message, where the first half does not look" was describing a scan of an
+    // empty domain. The three collectors below are the domain, and the counts
+    // are pinned per collector so one going quiet is red on its own line.
+    //
+    // The name used to run that mutation is invented, and that is not a style
+    // choice: a real lifter's name written into a comment here is GDD §12.3's
+    // last refusal condition in a code path, which `src/licensing/realIp.ts`
+    // scans the whole tree for. It caught one on the way in.
+    const singleQuoted = new Set<string>();
+    const doubleQuoted = new Set<string>();
+    const templateChunks = new Set<string>();
     let filesRead = 0;
     for (const name of shipped) {
       const source = readFileSync(path.join(HERE, name), 'utf8');
       const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-      for (const match of code.matchAll(/'([^'\\\n]*)'/g)) literals.add(match[1] as string);
+      for (const match of code.matchAll(/'([^'\\\n]*)'/g)) singleQuoted.add(match[1] as string);
+      for (const match of code.matchAll(/"([^"\\\n]*)"/g)) doubleQuoted.add(match[1] as string);
+      // The static text of a template, with each `${...}` replaced by a space
+      // so two words either side of a substitution are not run together into a
+      // false match.
+      for (const match of code.matchAll(/`((?:[^`\\]|\\[\s\S])*)`/g)) {
+        templateChunks.add((match[1] as string).replace(/\$\{[^}]*\}/g, ' '));
+      }
       filesRead += 1;
     }
     expect(filesRead).toBe(2);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(literals.size).toBe(64);
+    expect(singleQuoted.size).toBe(66);
+    expect(doubleQuoted.size).toBe(0);
+    expect(templateChunks.size).toBe(28);
+    // And the template collector really reaches the messages, named from the
+    // real source in both directions: these counts drop to zero if the
+    // collector stops reading templates AND if the module stops writing the
+    // message. Match counts rather than presence, because a pattern with more
+    // than one witness is the textual pin this codebase has been bitten by.
+    const chunks = [...templateChunks];
+    expect(chunks.filter((chunk) => chunk.includes('may not accelerate')).length).toBe(2);
+    expect(chunks.filter((chunk) => chunk.includes('duplicate lifter id')).length).toBe(1);
 
-    const spaceFree = [...literals].filter((literal) => !literal.includes(' ')).sort();
+    const spaceFree = [...singleQuoted].filter((literal) => !literal.includes(' ')).sort();
     expect(spaceFree).toEqual([
       './empireTuning',
       'accelerated-seconds',
@@ -1272,6 +1722,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym-progress',
       'gymBucks',
       'idle-only',
+      'idle-tenure-days',
+      'idleTenureDays',
       'injury-days-saved',
       'injuryDaysSaved',
       'knob',
@@ -1290,14 +1742,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'rewarded-ad-timer-skip',
       'roster-slot',
       'settled-level',
+      'settled-tenure-days',
+      'settledTenureDays',
       'skippedSeconds',
       'space-level',
       'specialty-bars',
       'spotter',
       'store-purchase',
       'structural',
-      'tenure-days',
-      'tenureDays',
       'training-iq',
       'training-pace',
       'trainingIq',
@@ -1305,19 +1757,47 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'unacceleratedSeconds',
     ]);
 
-    // The half the pin does not reach: a multi-word name inside a message.
+    // The half the pin does not reach: a multi-word name inside a message. Run
+    // over all three collectors, not just the one it used to see.
     const personShaped = /\b[A-Z][a-z]+ [A-Z][a-z]+\b/;
-    let messagesChecked = 0;
-    for (const literal of literals) {
-      expect(personShaped.test(literal), `${literal} is shaped like a person's name`).toBe(false);
-      messagesChecked += 1;
+    const everyString = [...singleQuoted, ...doubleQuoted, ...templateChunks];
+    let stringsChecked = 0;
+    for (const value of everyString) {
+      expect(personShaped.test(value), `${value} is shaped like a person's name`).toBe(false);
+      stringsChecked += 1;
     }
-    expect(messagesChecked).toBe(literals.size);
-    // The pattern is not a dead letter. The probe is a plainly invented name,
-    // which is what §12.3 asks the licensing system to carry until a human
-    // unlocks a real partner.
-    expect(personShaped.test('lifted by Placeholder Lifter')).toBe(true);
-    expect(personShaped.test('bare-bar')).toBe(false);
+    expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
+    expect(stringsChecked).toBe(94);
+
+    // The pattern is not a dead letter, and the probe is DERIVED from the
+    // shipped vocabulary. The two lines here were
+    // `personShaped.test('lifted by Placeholder Lifter')` and
+    // `personShaped.test('bare-bar')` — both operands string literals written
+    // four lines from the pattern, so nothing kept them in step with the file
+    // they claimed to be about. That is verbatim the shape the sibling scan in
+    // `empireTuning.test.ts` says it removed, kept here in the same directory.
+    // Every shipped token, title-cased and doubled, is a person-shaped name.
+    //
+    // What this reddens on, said exactly rather than implied: a weakening of
+    // `personShaped` itself — it is a tripwire against the CHECK going quiet,
+    // which is the same job the sibling's `${key}_PER_SESSION` probe does, and
+    // it is not a second bite on `empireCore.ts`. The subject-edit bites in
+    // this test are the three count pins, the exact `spaceFree` pin, and the
+    // loop over all 94 strings above. What the derivation buys is that the
+    // probes cannot go stale: rename the vocabulary and the probes rename with
+    // it, instead of two literals still passing about tokens that are gone.
+    let probes = 0;
+    for (const literal of spaceFree) {
+      const word = literal.replace(/[^A-Za-z]/g, '');
+      if (word.length < 2) continue;
+      const titled = `${word.slice(0, 1).toUpperCase()}${word.slice(1).toLowerCase()}`;
+      expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
+      probes += 1;
+    }
+    expect(probes).toBe(56);
+    // Nothing was silently skipped by the `< 2` guard above — a one-letter
+    // token would leave a shipped literal unprobed and this is what says so.
+    expect(probes).toBe(spaceFree.length);
   });
 
   it('imports nothing outside this directory', () => {
