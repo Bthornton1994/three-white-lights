@@ -632,8 +632,8 @@ export const COVERED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
   'settleBrokenStreak',
   'setRecoveryDayProtection',
   'migrateFromRecoveryDayBalance',
-  // ---- REACHED ONLY BY THE SYMBOL-RESOLVED PASS ----------------------------
-  // NINE DECLARATIONS THAT SAY NOTHING A REGEX CAN MATCH. Not one of these
+  // ---- reached by the symbol-resolved pass, and not by the textual one -----
+  // Nine declarations that say nothing a regex can match. Not one of these
   // contains `purchas`, `covered day` or `window-entitlement` anywhere in its
   // body; each reaches the entitlement through an IDENTIFIER instead, and the
   // textual scan is blind to every one of them. They are here because
