@@ -59,6 +59,22 @@
  *      it, every day — and it draws two lines of text and NO CONTROL OF ITS
  *      OWN, so the shell's pill is the only thing on it a thumb can press. If
  *      the pill fails there the core loop of the game ends on a dead end.
+ *   6c. AND THE WAY BACK FROM THAT MEET, WHICH IS THE ONE LEG THAT WAS NEVER
+ *      MEASURED. This tool presses BACK TO TRAINING four times above and every
+ *      one of them lands on a day the player has NOT trained — sections 4 and 4c
+ *      both run before section 6 is the one that plays a session — so all four
+ *      correctly expect GDD §3.2's check-in. `src/shell/appServer.ts` exists for
+ *      the OTHER case, in its own words: "a player could train, open meet day,
+ *      come back, and be offered a SECOND session of the same day". Section 6c
+ *      is that case. The meet section 6 opened from the already-trained surface
+ *      is played to its end (the pill lives on the `recap` beat and nowhere
+ *      else, so there is no shorter way home), BACK TO TRAINING is pressed, and
+ *      the landing is asserted to be the already-trained surface AND asserted
+ *      NOT to be the check-in. The address bar is read at all three moments:
+ *      `frozenMeetFor` branches on `source === 'debug'`, so a query string here
+ *      would swap the app's own connection for a scripted lifter who has never
+ *      trained — which is this section's failure mode, and a fallback to a debug
+ *      URL would manufacture it rather than detect it.
  *   7. NO CONTROL IS DRAWN OVER A LIVE SET, or over a walk-out, an attempt, a
  *      verdict, or a GDD §7.2 CUT-IN. A pill over the mechanic is a mis-tap
  *      that costs a rep; a pill over a cut-in eats the tap that was meant to
@@ -454,6 +470,17 @@ const BEAT_SAYS = Object.freeze({
   /** src/game/sessionTuning.ts — SESSION_COPY.CHECK_IN_TITLE. */
   CHECK_IN: 'HOW ARE YOU TODAY?',
   /**
+   * src/game/sessionTuning.ts — SESSION_COPY.ALREADY_TRAINED_HEADLINE.
+   *
+   * THE HEADLINE AND NOT THE SUBHEAD. 'TRAINED TODAY' is drawn by
+   * `AlreadyTrained` and by nothing else in the app, so a screen saying it is
+   * GDD §3.2's one-session-a-day surface; the subhead is prose and a copy pass
+   * is likelier to rewrite it. Section 6c reads this as the SAME-MOMENT control
+   * on its negative — the probe that fails to find the check-in has to be shown
+   * finding something.
+   */
+  ALREADY_TRAINED: 'TRAINED TODAY',
+  /**
    * src/meet/careerCalendarPlaceholder.ts — CAREER_CALENDAR_PLACEHOLDER_COPY.LINE.
    *
    * The WHOLE ruled sentence, not a fragment of it. A human ruled this copy
@@ -462,6 +489,60 @@ const BEAT_SAYS = Object.freeze({
    * "Meet complete" would be green on the sentence that was withdrawn.
    */
   SECOND_MEET: 'Meet complete — results saved to your last recorded meet. Career calendar coming soon.',
+});
+
+/**
+ * How many drawn screens this run has read each `BEAT_SAYS` line off.
+ *
+ * A COUNT AND NOT A FLAG, on this file's standing rule that a non-vacuity guard
+ * pins what it actually saw. Filled by `shootBeat` and read by section 6c, whose
+ * central claim is a NEGATIVE — that `BEAT_SAYS.CHECK_IN` is not on the screen
+ * the return leg lands on. `!said.includes(x)` is trivially true for any `x` no
+ * screen ever says, so that check is only evidence once this map has counted the
+ * string it is looking for. See the block above `shootBeat`.
+ */
+const SAYS_SEEN_ON_A_REAL_SCREEN = new Map();
+
+/**
+ * SECTION 6c'S TWO TUNABLE NUMBERS, in one named place.
+ *
+ * CLAUDE.md, "Game Feel Values Must Be Tunable": a timing window is a thing a
+ * playtester moves by hand, and it may not be buried at the site that reads it.
+ * Neither of these has been played; both are starting points.
+ */
+const RETURN_LEG_PROBE = Object.freeze({
+  /**
+   * How long the already-trained surface gets to be DRAWN after BACK TO
+   * TRAINING is pressed.
+   *
+   * NOT AN ANIMATION DEADLINE, and that is why it is not derived from a fade the
+   * way the pill's and the recap's are: `SessionScreen` renders `AlreadyTrained`
+   * outside `CutInHost`, as two `<Text>` nodes in a `<View>` with no
+   * `useAnimatedStyle` anywhere on the path, so there is no stagger to compute
+   * and the only thing being waited for is a commit and a frame. `FADE_GRACE_MS`
+   * is this file's standing slack for a software-rendered browser that drops
+   * them, which is the right size of number for that and is already named.
+   *
+   * IT IS A BOUND, NOT A SLEEP. On a build where the surface never draws this
+   * waits the whole window and then reddens — it does not wait until it passes.
+   */
+  SURFACE_DRAWN_WITHIN_MS: FADE_GRACE_MS,
+
+  /**
+   * How many drawn screens this run reads `BEAT_SAYS.CHECK_IN` off BEFORE the
+   * return leg, and therefore what its non-vacuity control expects.
+   *
+   * Two, and they are named rather than counted loosely: `05a` after the played
+   * meet and `05b` after the second one. Both are return legs on a day the
+   * player has NOT trained, which is the case that made the check-in the right
+   * expectation everywhere above and the wrong one here.
+   *
+   * Pinned as an equality rather than a floor, on this file's rule about counts:
+   * a floor is satisfied by a run that lost one of the two sightings for a
+   * reason nobody looked into. Add or remove a check-in shutter above and this
+   * number moves with it, in one place.
+   */
+  CHECK_IN_SIGHTINGS_BEFORE_THE_LEG: 2,
 });
 
 /**
@@ -1083,10 +1164,23 @@ const bodyText = () => page.evaluate(() => (document.body.textContent ?? '').sli
  *
  * `says` is the beat's own line, restated in `BEAT_SAYS` and cross-checked
  * against the app's copy at the end of the run.
+ *
+ * IT ALSO RECORDS WHAT IT SAW, into `SAYS_SEEN_ON_A_REAL_SCREEN`, and that is
+ * not bookkeeping. Section 6c asserts a line is ABSENT from a screen, and an
+ * absence assertion is worth nothing unless the same probe has read that exact
+ * string as PRESENT somewhere in the same sitting: a renamed constant, a broken
+ * `bodyText`, or a typo in `BEAT_SAYS` all make "not on screen" true forever and
+ * for the wrong reason. This is the runtime half of that guard; the source pin
+ * in `checkSessionLayoutMatchesTuning` is the other half, and the two read
+ * different facts (the rendered DOM, and the copy module's literal) so a change
+ * that fools one still has to get past the other.
  */
 async function shootBeat(shot, phase, says) {
   await page.screenshot({ path: path.join(outDir, shot) });
   const said = (await bodyText()).replace(/\s+/g, ' ').trim();
+  if (said.includes(says)) {
+    SAYS_SEEN_ON_A_REAL_SCREEN.set(says, (SAYS_SEEN_ON_A_REAL_SCREEN.get(says) ?? 0) + 1);
+  }
   check(
     shot.includes(phase) && said.includes(says),
     `and ${shot} really is a photograph of the '${phase}' beat, which is what its name says`,
@@ -1392,6 +1486,29 @@ async function checkSessionLayoutMatchesTuning() {
     text.includes(`REST_PROMPT: '${BEAT_SAYS.REST}'`),
     'SESSION_COPY.REST_PROMPT is the line this tool identifies the rest beat’s photograph by',
     `looked for REST_PROMPT: '${BEAT_SAYS.REST}' in sessionTuning.ts`,
+  );
+
+  // THE CHECK-IN'S TITLE, AND IT HAD NO PIN AT ALL UNTIL SECTION 6c NEEDED ONE.
+  //
+  // `BEAT_SAYS.CHECK_IN` had been used only POSITIVELY — `shootBeat` asserting a
+  // screen says it — and a positive use carries its own control: if the copy
+  // moved, the shot check goes red. Section 6c uses it NEGATIVELY, and
+  // `!said.includes(x)` is true of every string no screen says, so a copy edit
+  // to `CHECK_IN_TITLE` would have turned the one check that names the defect
+  // into a check of nothing, silently and while staying green. That is the
+  // "input silently absent" shape, and this is the pin that closes it.
+  check(
+    text.includes(`CHECK_IN_TITLE: '${BEAT_SAYS.CHECK_IN}'`),
+    'SESSION_COPY.CHECK_IN_TITLE is the line section 6c asserts is ABSENT from the return leg’s screen',
+    `looked for CHECK_IN_TITLE: '${BEAT_SAYS.CHECK_IN}' in sessionTuning.ts`,
+  );
+  // ...and the line it asserts is PRESENT there, which is the same-moment
+  // control on the negative above and the line `14-return-leg-already-trained`
+  // is identified by.
+  check(
+    text.includes(`ALREADY_TRAINED_HEADLINE: '${BEAT_SAYS.ALREADY_TRAINED}'`),
+    'SESSION_COPY.ALREADY_TRAINED_HEADLINE is the line section 6c identifies GDD §3.2’s one-session-a-day surface by',
+    `looked for ALREADY_TRAINED_HEADLINE: '${BEAT_SAYS.ALREADY_TRAINED}' in sessionTuning.ts`,
   );
 }
 
@@ -2355,6 +2472,103 @@ async function deriveRecapSettleMs() {
   );
 }
 
+/**
+ * ===========================================================================
+ * THE TWO WINDOWS THAT STAND BETWEEN A MEET ENDING AND ITS PILL BEING READABLE
+ * ===========================================================================
+ * Both are the app doing what it is supposed to do, and reading into either one
+ * produces a false failure that looks exactly like a real one:
+ *
+ *   1. A GDD §7.2 cut-in. `AppShell` draws NO chrome while one is live — the
+ *      whole screen is the dismiss target — so the pill is genuinely absent for
+ *      `ENTER_MS + HOLD_MS`. There is no EXIT_MS; `cutInTuning.ts` records that
+ *      it was deleted because `CutInHost` un-mounts synchronously.
+ *   2. The pill's own arrival. `ShellNav` fades in over
+ *      `FADE_IN_DELAY_MS + FADE_IN_MS`, and it remounts (its `key` is the
+ *      affordance) whenever the intent changes.
+ *
+ * ONE DERIVATION, TWO READERS, AND THAT IS THE POINT. The recap section found
+ * these two windows the hard way — fixing the outer one and reading straight
+ * into the inner one, which is this file's own recorded pattern — and section 6c
+ * crosses the identical pair on a different meet. CLAUDE.md: a guard written for
+ * one arm must be applied to its sibling MECHANICALLY, and a twin guard must
+ * READ the sibling's numbers rather than copy them. So the arithmetic lives here
+ * once and both sections read it; a re-tune moves both or neither.
+ *
+ * READ FROM SOURCE, never transcribed, so a playtester who lengthens a beat gets
+ * a tool that still waits rather than one that quietly starts reading into the
+ * silence. `null` for a constant that could not be found is deliberate: it is
+ * what the CONTROL checks below report, and the fallbacks are only there so a
+ * failed parse degrades to the shipped tuning instead of `NaN`.
+ */
+function deriveChromeWindows() {
+  const cutInText = readFileSync(path.join(srcRoot, 'src', 'cutin', 'cutInTuning.ts'), 'utf8');
+  const cutInEnterMs = numberInBlock(cutInText, 'CUT_IN_TUNING', 'ENTER_MS');
+  const cutInHoldMs = numberInBlock(cutInText, 'CUT_IN_TUNING', 'HOLD_MS');
+  const shellNavText = readFileSync(path.join(srcRoot, 'src', 'shell', 'shellTuning.ts'), 'utf8');
+  const pillDelayMs = numberInBlock(shellNavText, 'SHELL_NAV', 'FADE_IN_DELAY_MS');
+  const pillFadeMs = numberInBlock(shellNavText, 'SHELL_NAV', 'FADE_IN_MS');
+  return Object.freeze({
+    cutInEnterMs,
+    cutInHoldMs,
+    cutInWindowMs: (cutInEnterMs ?? 120) + (cutInHoldMs ?? 1600) + FADE_GRACE_MS,
+    pillDelayMs,
+    pillFadeMs,
+    pillArrivalMs: (pillDelayMs ?? 320) + (pillFadeMs ?? 220) + FADE_GRACE_MS,
+    readable:
+      typeof cutInEnterMs === 'number' &&
+      typeof cutInHoldMs === 'number' &&
+      typeof pillDelayMs === 'number' &&
+      typeof pillFadeMs === 'number',
+  });
+}
+
+const CHROME_WINDOWS = deriveChromeWindows();
+
+/**
+ * Wait out any §7.2 cut-in that is on screen, bounded by its own window.
+ *
+ * WHY THIS IS NOT QUESTION-BEGGING, which is the obvious objection: the wait is
+ * for `cut-in` to be GONE, and every assertion the callers make afterwards is
+ * still "the pill is drawn". A build where the pill never renders at all waits
+ * the same bounded window and then reddens exactly as before — only the cut-in's
+ * own window is excluded.
+ *
+ * ===========================================================================
+ * `stillUp` IS THE OBSERVATION THE LOOP EXITED ON, NOT A FRESH READ, AND THAT
+ * IS THE WHOLE DIFFERENCE BETWEEN THIS AND THE VERSION THAT WAS FLAKY
+ * ===========================================================================
+ * The shape this replaces read the DOM twice — `wasUp` at the top, and then a
+ * SECOND `visible('cut-in')` inside the `check` at the bottom — with the `if`
+ * skipped in between when nothing was up. Two awaited round trips with a gap
+ * between them, and a cut-in that mounts in that gap makes the two disagree:
+ * MEASURED, on a mutation run, as a red check whose own detail line said "no
+ * cut-in was up at this ending". A check that contradicts itself in its failure
+ * message is worse than either answer, and this file has been here before — the
+ * recap pill check reported PASSED 159 once and 159/1 on four other runs at the
+ * same commit, off exactly this kind of race.
+ *
+ * So there is ONE observation per instant and the loop's last one is the answer.
+ * A cut-in that mounts after this returns is a different moment and is covered
+ * by the caller's own bounded `waitUntilDrawn` on the pill, which polls.
+ *
+ * `wasUp` is "was one EVER seen during the wait" rather than "was one up at the
+ * first read", for the same reason: the first read is one sample of a window,
+ * and the message is about the window.
+ */
+async function waitOutAnyCutIn() {
+  const startedAt = Date.now();
+  let wasUp = false;
+  let up = await visible('cut-in');
+  while (up && Date.now() - startedAt < CHROME_WINDOWS.cutInWindowMs) {
+    wasUp = true;
+    await page.waitForTimeout(25);
+    up = await visible('cut-in');
+  }
+  if (up) wasUp = true;
+  return { wasUp, clearedMs: Date.now() - startedAt, stillUp: up };
+}
+
 // `readMeetLoop` is `meetDrive.mjs`'s. It is the driver's eyes and the driver
 // moved; this file reads the meet through the hooks it passes in instead.
 
@@ -2562,14 +2776,27 @@ function beatMsForLine(line) {
 // file used to do inline during the drive it now passes in as hooks.
 
 /**
+ * The hold the last driven meet converged on, carried to the next one.
+ *
+ * `driveMeetToItsEnd` already threads a depth search in and out so a second meet
+ * starts from the mechanic the first one learned. Sections 4 and 4b hand it
+ * along by hand because they are adjacent; section 6c is three sections and a
+ * whole session away from 4b's `second`, so the handoff lives here instead of
+ * being re-derived or restarted from scratch — a meet restarted on
+ * `freshDepthSearch()` spends its first attempts re-learning a hold this machine
+ * has already measured, and a bombed meet draws no pill at all.
+ */
+let lastMeetDepthSearch = null;
+
+/**
  * The whole of a driven meet, reported as checks.
  *
- * SHARED BY THE TWO MEETS ON PURPOSE, so the second one is measured with the
- * same instrument as the first and a difference between them is a difference in
- * the APP. `expected` is which ending the caller says GDD requires — `'recap'`
- * for the first meet, `'placeholder'` for the second — and it is stated by the
- * caller rather than derived here, because "the second meet is refused" is the
- * claim, not an observation to be accommodated.
+ * SHARED BY THE THREE MEETS ON PURPOSE, so each is measured with the same
+ * instrument as the first and a difference between them is a difference in the
+ * APP. `expected` is which ending the caller says GDD requires — `'recap'` for
+ * the first meet, `'placeholder'` for the second and third — and it is stated by
+ * the caller rather than derived here, because "the second meet is refused" is
+ * the claim, not an observation to be accommodated.
  */
 async function checkDrivenMeet(tag, searchIn, expected, whatEnding) {
   const drive = await driveMeetToItsEnd(page, {
@@ -2616,6 +2843,7 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding) {
       .map((a) => `${a.attempt ?? '?'} @${a.holdMs ?? '?'}ms -> ${JSON.stringify(a.feedback ?? a.why ?? null)}`)
       .join(' | ')}`,
   );
+  lastMeetDepthSearch = drive.search;
   return drive;
 }
 
@@ -2823,33 +3051,23 @@ if (!reachedMeet) {
   // still "the pill is drawn". A build where the pill never renders at all
   // waits the same bounded window and then reddens exactly as before — only
   // the cut-in's own window is excluded, and the mutation below proves it.
-  const cutInText = readFileSync(path.join(srcRoot, 'src', 'cutin', 'cutInTuning.ts'), 'utf8');
-  const cutInEnterMs = numberInBlock(cutInText, 'CUT_IN_TUNING', 'ENTER_MS');
-  const cutInHoldMs = numberInBlock(cutInText, 'CUT_IN_TUNING', 'HOLD_MS');
+  //
+  // THE ARITHMETIC MOVED TO `deriveChromeWindows` and is READ here rather than
+  // repeated, because section 6c crosses the identical pair of windows on a
+  // different meet and a second copy is the drift CLAUDE.md keeps catching.
+  const { cutInEnterMs, cutInHoldMs, cutInWindowMs } = CHROME_WINDOWS;
   check(
     typeof cutInEnterMs === 'number' && typeof cutInHoldMs === 'number',
     'CONTROL: the cut-in window this section waits out is read from cutInTuning.ts, not transcribed',
     `ENTER_MS ${JSON.stringify(cutInEnterMs)}, HOLD_MS ${JSON.stringify(cutInHoldMs)} — null means the` +
       ' constant moved or was renamed, and the wait below would silently become a guess',
   );
-  // There is no EXIT_MS: `cutInTuning.ts` records that it was deleted because
-  // nothing animated a departure — `CutInHost` un-mounts synchronously. So the
-  // whole occupancy is ENTER + HOLD, plus slack for a busy main thread.
-  const cutInWindowMs = (cutInEnterMs ?? 120) + (cutInHoldMs ?? 1600) + FADE_GRACE_MS;
-  const cutInAtRecap = await visible('cut-in');
-  let cutInClearedMs = 0;
-  if (cutInAtRecap) {
-    const startedAt = Date.now();
-    while (Date.now() - startedAt < cutInWindowMs && (await visible('cut-in'))) {
-      await page.waitForTimeout(25);
-    }
-    cutInClearedMs = Date.now() - startedAt;
-  }
+  const recapCutIn = await waitOutAnyCutIn();
   check(
-    !(await visible('cut-in')),
+    !recapCutIn.stillUp,
     'CONTROL: any §7.2 cut-in over the recap has left before the pill is read — the app hides chrome under one BY DESIGN',
-    cutInAtRecap
-      ? `a cut-in WAS up when the recap drew; it left after ${cutInClearedMs}ms against a` +
+    recapCutIn.wasUp
+      ? `a cut-in WAS up when the recap drew; it left after ${recapCutIn.clearedMs}ms against a` +
         ` ${cutInWindowMs}ms bound (ENTER_MS ${cutInEnterMs} + HOLD_MS ${cutInHoldMs} + ${FADE_GRACE_MS}ms grace).` +
         ' Still up at the bound means it is not the cut-in that is hiding the pill.'
       : 'no cut-in was up at the recap on this run — the gate spent its one slot earlier in the sitting.' +
@@ -2868,15 +3086,12 @@ if (!reachedMeet) {
   // Bounded wait, then assert — the pattern `recap-action` already uses below.
   // Not question-begging: a build where the pill never draws waits the full
   // bound and reddens with the same message it does today.
-  const shellNavText = readFileSync(path.join(srcRoot, 'src', 'shell', 'shellTuning.ts'), 'utf8');
-  const pillDelayMs = numberInBlock(shellNavText, 'SHELL_NAV', 'FADE_IN_DELAY_MS');
-  const pillFadeMs = numberInBlock(shellNavText, 'SHELL_NAV', 'FADE_IN_MS');
+  const { pillDelayMs, pillFadeMs, pillArrivalMs } = CHROME_WINDOWS;
   check(
     typeof pillDelayMs === 'number' && typeof pillFadeMs === 'number',
     'CONTROL: the pill-arrival window this section waits out is read from shellTuning.ts, not transcribed',
     `FADE_IN_DELAY_MS ${JSON.stringify(pillDelayMs)}, FADE_IN_MS ${JSON.stringify(pillFadeMs)}`,
   );
-  const pillArrivalMs = (pillDelayMs ?? 320) + (pillFadeMs ?? 220) + FADE_GRACE_MS;
   const liveLeave = await waitUntilDrawn(page, NAV_LEAVE_MEET, pillArrivalMs);
   const liveLeaveDrawn = liveLeave.drawn;
   check(
@@ -3241,6 +3456,24 @@ sawPillOn('briefing', briefingDrawn && briefingPillDrawn, briefingHit.hit);
  */
 const crossing = { inputs: await readCrossingInputs(), e1rmKg: null, lift: null };
 
+/**
+ * What section 6c's return leg did, for `route.json`.
+ *
+ * NOT AN ASSERTION — the checks are in the section. This is the evidence a
+ * reader needs to tell a leg that was measured from one that never ran: which
+ * ending the third meet reached, how many attempts it took, whether the control
+ * was pressed, and whether the surface came up drawn.
+ */
+const returnLeg = {
+  attempted: false,
+  meetEnded: null,
+  meetAttempts: 0,
+  meetMs: null,
+  meetScreenReady: false,
+  pressed: false,
+  landedDrawn: false,
+};
+
 const playedOut = { attempted: true };
 {
   const startedAt = Date.now();
@@ -3579,6 +3812,314 @@ const playedOut = { attempted: true };
           crossing.inputs === null ? 'the tuning inputs were not readable' : 'no e1RM was read off the close-out',
         );
       }
+
+      // =====================================================================
+      // 6c. THE RETURN LEG, ON A DAY THE PLAYER HAS ACTUALLY TRAINED
+      // =====================================================================
+      //
+      // ===================================================================
+      // THE PROPERTY `src/shell/appServer.ts` EXISTS FOR, MEASURED AT LAST
+      // ===================================================================
+      // That module's own header states one consequence and states it as the
+      // reason it exists:
+      //
+      //     "a player could train, open meet day, come back, and be offered a
+      //      SECOND session of the same day — which GDD §3.2 does not allow"
+      //
+      // Until this section, NO BROWSER HAD EVER EXERCISED IT. This tool presses
+      // BACK TO TRAINING four times above — 05a, 05b, and the two on §4c's
+      // scripted frames — and every one of them lands on a day the player has
+      // NOT trained, because sections 4 and 4c both run before section 6 is the
+      // one that plays a session. So the four return legs land on the check-in,
+      // and `BEAT_SAYS.CHECK_IN` is the right expectation for all four.
+      //
+      // On the leg that matters it is the WRONG answer, and that is the whole
+      // point. `SessionScreen` renders `session-already-trained` when
+      // `loop.alreadyTrainedToday && phase === 'check-in' && preview ===
+      // undefined`; that surface says TRAINED TODAY and contains no check-in
+      // title at all. A build where `appMeetPort()`/`appSessionPort()` hand back
+      // a fresh `localSessionServer()` — one port per mount, which is exactly
+      // what `appServer.ts` was written to stop — comes back to a server that has
+      // never heard of today's session, and the player is offered a second one.
+      // On that build every check above stays green.
+      //
+      // ===================================================================
+      // WHY THE MEET HAS TO BE PLAYED OUT TO GET BACK
+      // ===================================================================
+      // `SHELL_NAV.MEET_PHASES` is `['recap']` and nothing else, so the pill
+      // simply does not exist on the weigh-in or the openers. There is no
+      // shorter way home that a player has: §6.3's bomb-out draws its own exit,
+      // and taking it would mean deliberately missing three attempts and reading
+      // a different control. So this drives the meet section 6 opened FROM THE
+      // ALREADY-TRAINED SURFACE all the way to its ending, and presses the same
+      // control §6.5 gives every other meet.
+      //
+      // ===================================================================
+      // AND IT ENDS ON §6.5'S RECAP, NOT ON 4b'S PLACEHOLDER — MEASURED
+      // ===================================================================
+      // This is the third meet a MOUSE has played in this process, and the first
+      // guess was that the server would refuse it as `MEET_ALREADY_RECORDED` the
+      // way it refuses 4b's. IT DOES NOT, and the reason is worth writing down
+      // because it is the same fact this section is about, seen from the other
+      // side: `appServer.ts` holds the connection in MODULE SCOPE, and its own
+      // header says "NOTHING IS PERSISTED. A reload still starts a fresh lifter.
+      // What survives is navigation within one run of the app."
+      //
+      // Sections 4c, 5 and 5b each call `open()`, which is a `page.goto`, and
+      // section 6 opens its session with another one. Every one of those ends
+      // the app run and starts a new one on a fresh row. So the meet below is
+      // the FIRST meet of ITS run, it is recorded rather than refused, and
+      // §6.5's recap is what stands at the end of it.
+      //
+      // That makes the section's subject exactly right rather than accidentally
+      // so. The property under test is "navigation within one run", and this leg
+      // is a whole run: `/` -> session played -> DONE -> meet -> back, with no
+      // `goto` anywhere inside it. The run boundary is what makes an
+      // `alreadyTrainedToday` that survives here mean something.
+      //
+      // ===================================================================
+      // NO QUERY STRING, ASSERTED AT EVERY MOMENT SOMETHING IS READ
+      // ===================================================================
+      // CLAUDE.md: a screen a player reaches needs a check that reaches it the
+      // way a player does, and the address bar is what stops a debug frame
+      // re-entering quietly. `frozenMeetFor` branches on `source === 'debug'`,
+      // so a query string here would silently swap the app's own connection for
+      // `previewMeetPort()`'s scripted lifter — a lifter who has never trained,
+      // which is the exact defect condition this section is written to detect.
+      // A fallback to `?meet=recap` would therefore not merely weaken this
+      // section, it would FABRICATE ITS FAILURE MODE. Read three times: before
+      // the drive, at the meet's ending, and at the landing.
+      returnLeg.attempted = true;
+      const urlBeforeTheDrive = page.url();
+      check(
+        !urlBeforeTheDrive.includes('?'),
+        'CONTROL: the meet this return leg is driven from was opened by a PRESS — the address bar carries no query string',
+        `before the drive the page is on ${JSON.stringify(urlBeforeTheDrive)}`,
+      );
+
+      const third = await checkDrivenMeet(
+        'meet 3',
+        lastMeetDepthSearch ?? freshDepthSearch(),
+        'recap',
+        'THE MEET OPENED FROM THE ALREADY-TRAINED SURFACE IS PLAYED TO ITS END, so its way back is on screen (GDD §6.5)',
+      );
+      returnLeg.meetEnded = third.ended;
+      returnLeg.meetAttempts = third.attempts.length;
+      returnLeg.meetMs = third.ms;
+
+      // WHICH ENDINGS CARRY A PILL, AND THEREFORE WHICH ONES THIS LEG CAN BE
+      // MEASURED FROM. `MeetScreen` draws §6.5's recap and §6.1's placeholder on
+      // the SAME beat — `recap` — and `SHELL_NAV.MEET_PHASES` is that beat and
+      // nothing else, so both of them carry the way back and a bomb-out or a
+      // stalled round trip does not. Stated as a list of endings rather than as
+      // `=== 'recap'` because the claim here is "there is a control to press",
+      // which is the property the leg needs; WHICH of the two screens this route
+      // produces is the check above, and it is separate on purpose so a change
+      // there reddens one line instead of silently skipping a dozen.
+      const ENDINGS_ON_THE_PILL_BEAT = ['recap', 'placeholder'];
+      if (!ENDINGS_ON_THE_PILL_BEAT.includes(third.ended)) {
+        // NAMED, not silent. There is no control to press and the return leg
+        // cannot be measured — which is a different statement from "it was
+        // measured and passed", and the output has to say which.
+        check(
+          false,
+          'SKIPPED: the return leg needs a meet that ended on a beat SHELL_NAV puts the pill on',
+          `meet 3 ended on '${third.ended}'; the endings drawn on SHELL_NAV.MEET_PHASES` +
+            ` (${JSON.stringify(SHELL_NAV_EXPECTED.MEET_PHASES)}) are ${JSON.stringify(ENDINGS_ON_THE_PILL_BEAT)}`,
+        );
+      } else {
+        const urlAtTheEnding = page.url();
+        check(
+          !urlAtTheEnding.includes('?'),
+          'CONTROL: and it is still the player’s own meet at its ending — no query string, so no debug frame is being read',
+          `at the ending the page is on ${JSON.stringify(urlAtTheEnding)}`,
+        );
+
+        // ---- the two windows between an ending and a readable pill --------
+        //
+        // BOTH OF THEM, AND FROM THE ONE DERIVATION. The recap section above
+        // found this pair the hard way — waiting out the §7.2 cut-in and then
+        // reading straight into the pill's own fade, which is this file's
+        // recorded "the next thing to look at is the branch immediately below
+        // the one you just fixed". `CHROME_WINDOWS` and `waitOutAnyCutIn` are
+        // that section's, read rather than copied, so a re-tune moves both
+        // sections or neither.
+        check(
+          CHROME_WINDOWS.readable,
+          'CONTROL: this leg’s cut-in and pill windows are the same source-read numbers the recap section waits out',
+          `cutInWindowMs ${CHROME_WINDOWS.cutInWindowMs} (ENTER_MS ${JSON.stringify(CHROME_WINDOWS.cutInEnterMs)}` +
+            ` + HOLD_MS ${JSON.stringify(CHROME_WINDOWS.cutInHoldMs)} + ${FADE_GRACE_MS}ms grace),` +
+            ` pillArrivalMs ${CHROME_WINDOWS.pillArrivalMs} (FADE_IN_DELAY_MS ${JSON.stringify(CHROME_WINDOWS.pillDelayMs)}` +
+            ` + FADE_IN_MS ${JSON.stringify(CHROME_WINDOWS.pillFadeMs)} + ${FADE_GRACE_MS}ms grace)` +
+            ' — a null means a constant moved and one of these waits became a guess',
+        );
+        const legCutIn = await waitOutAnyCutIn();
+        check(
+          !legCutIn.stillUp,
+          'CONTROL: any §7.2 cut-in has left before this leg’s pill is read — the app hides chrome under one BY DESIGN',
+          legCutIn.wasUp
+            ? `a cut-in WAS up at the ending; it left after ${legCutIn.clearedMs}ms against a ${CHROME_WINDOWS.cutInWindowMs}ms bound`
+            : 'no cut-in was up at this ending — the gate spent its one slot earlier in the sitting',
+        );
+
+        // Bounded wait, then assert. A build where the pill never draws waits
+        // the full bound and reddens; it does not wait until it passes.
+        const legPill = await waitUntilDrawn(page, NAV_LEAVE_MEET, CHROME_WINDOWS.pillArrivalMs);
+        check(
+          legPill.drawn,
+          `the way back is on screen at the end of a meet a TRAINED lifter played (${NAV_LEAVE_MEET})`,
+          `${legPill.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms, measured from after any cut-in had left`,
+        );
+        const legHit = await hitTest(NAV_LEAVE_MEET);
+        check(
+          legHit.hit,
+          'and the point a thumb would land on belongs to it',
+          `elementFromPoint -> ${legHit.why}`,
+        );
+        sawPillOn('recap', legPill.drawn, legHit.hit);
+
+        // ...AND THE SCREEN HAS FINISHED ARRIVING BEFORE IT IS PHOTOGRAPHED.
+        //
+        // BOTH ARMS, WRITTEN AS TWO, BECAUSE THEY ARE TWO. §6.5's recap
+        // staggers five blocks in and SEE YOUR CARD is the last of them — which
+        // is also the line its shutter identifies it by, so photographing it
+        // early files a mid-assembly frame under a name saying it is the recap,
+        // and that frame has been committed once already (see the block above
+        // `RECAP_LAST_ROW_DRAWN_AT_MS`). §6.1's placeholder animates nothing at
+        // all and says a different sentence. Writing one arm and letting it
+        // stand for the other is this file's own recorded failure — the arm
+        // immediately below the one you just wrote is where it lands — so each
+        // names its own wait and its own line.
+        let legScreenReady;
+        if (third.ended === 'recap') {
+          const arrived = await waitUntilDrawn(page, 'recap-action', RECAP_SETTLE_MS);
+          legScreenReady = arrived.drawn;
+          check(
+            arrived.drawn,
+            `and this recap’s last block arrives within ${RECAP_SETTLE_MS}ms too, so the frame below is of a finished screen`,
+            arrived.why,
+          );
+          await shootBeat('13-recap-before-the-return-leg.png', 'recap', BEAT_SAYS.RECAP);
+        } else {
+          legScreenReady = await checkOnScreen(
+            'meet-recap-placeholder',
+            'and §6.1’s placeholder — which animates nothing, so it has no stagger to wait out — is drawn before the frame below',
+          );
+          await shootBeat('13-recap-before-the-return-leg.png', 'recap', BEAT_SAYS.SECOND_MEET);
+        }
+        returnLeg.meetScreenReady = legScreenReady;
+
+        if (!legPill.drawn) {
+          check(false, 'SKIPPED: the return leg needs a drawn control to press');
+        } else {
+          // ---- AND BACK ------------------------------------------------------
+          const cameBack = await press(
+            NAV_LEAVE_MEET,
+            'session-screen',
+            'PRESSING BACK TO TRAINING RETURNS TO THE DAILY LOOP, on a day the player has already trained',
+          );
+          returnLeg.pressed = cameBack;
+
+          // Bounded, and bounded by a named constant rather than a sleep the
+          // author liked. Nothing animates this surface — `AlreadyTrained` is
+          // two `<Text>` nodes in a `<View>`, outside `CutInHost` — so the only
+          // thing being waited for is a frame, and the bound is this file's
+          // standing slack for a software-rendered browser. On the defective
+          // build the check-in draws here instead, this waits the whole bound,
+          // and the check below reddens with the opacity it measured.
+          const surface = await waitUntilDrawn(
+            page,
+            'session-already-trained',
+            RETURN_LEG_PROBE.SURFACE_DRAWN_WITHIN_MS,
+          );
+          // EVERYTHING BELOW IS READ AT THIS ONE MOMENT, off this one screen,
+          // so the positive, the negative and the address bar cannot be
+          // describing three different instants.
+          const landedSays = (await bodyText()).replace(/\s+/g, ' ').trim();
+          const urlAtTheLanding = page.url();
+          const checkInMounted = await visible('session-check-in');
+          returnLeg.landedDrawn = surface.drawn;
+
+          check(
+            !urlAtTheLanding.includes('?'),
+            'CONTROL: and the landing is read with no query string in the address bar either',
+            `at the landing the page is on ${JSON.stringify(urlAtTheLanding)}`,
+          );
+
+          // THE POSITIVE.
+          check(
+            surface.drawn,
+            'THE RETURN LEG LANDS ON THE ALREADY-TRAINED SURFACE — the app’s one connection survived the navigation (GDD §3.2)',
+            `${surface.why} — bound ${RETURN_LEG_PROBE.SURFACE_DRAWN_WITHIN_MS}ms.` +
+              ' Not drawn here means `alreadyTrainedToday` came back false after the round trip, which is a port built per mount',
+          );
+
+          // ---- and now the negative, with its two controls first -----------
+          //
+          // WHY A NEGATIVE NEEDS CONTROLS AT ALL. `!said.includes(x)` is true of
+          // every string no screen anywhere says, so on its own it is evidence
+          // about `x` and not about the app. Two independent things could make
+          // it vacuous and each has its own guard:
+          //
+          //   * the string is not the app's any more — pinned in
+          //     `checkSessionLayoutMatchesTuning` against
+          //     `SESSION_COPY.CHECK_IN_TITLE`'s literal, at the end of the run;
+          //   * the PROBE is not reading the screen — guarded twice, by the
+          //     positive sighting count below (this same `bodyText` probe read
+          //     this exact string off the check-in at 05a and 05b) and by the
+          //     same-moment control that this screen's OWN headline is found by
+          //     the same call.
+          //
+          // The two read different facts on purpose: one reads the copy module's
+          // source, the other reads a rendered DOM. A change that fools one
+          // still has to get past the other.
+          const sightings = SAYS_SEEN_ON_A_REAL_SCREEN.get(BEAT_SAYS.CHECK_IN) ?? 0;
+          check(
+            sightings === RETURN_LEG_PROBE.CHECK_IN_SIGHTINGS_BEFORE_THE_LEG,
+            'CONTROL: this run has already read that exact check-in line OFF A DRAWN SCREEN, so its absence below is a fact about this screen',
+            `${JSON.stringify(BEAT_SAYS.CHECK_IN)} seen on ${sightings} screen(s) by this same probe,` +
+              ` expected ${RETURN_LEG_PROBE.CHECK_IN_SIGHTINGS_BEFORE_THE_LEG}` +
+              ' (05a, after the played meet; 05b, after the second one — both return legs on a day NOT trained).' +
+              ' Zero would mean the negative below is true of a string nothing renders',
+          );
+          check(
+            landedSays.includes(BEAT_SAYS.ALREADY_TRAINED),
+            'CONTROL: and the same call reads this screen’s own headline, so the probe is looking at the landing',
+            landedSays.includes(BEAT_SAYS.ALREADY_TRAINED)
+              ? `the screen says ${JSON.stringify(BEAT_SAYS.ALREADY_TRAINED)}`
+              : `expected ${JSON.stringify(BEAT_SAYS.ALREADY_TRAINED)}; the screen says ${JSON.stringify(landedSays.slice(0, 120))}`,
+          );
+
+          // THE NEGATIVE — the defect condition, in the app's own words.
+          check(
+            !landedSays.includes(BEAT_SAYS.CHECK_IN),
+            'AND IT IS NOT OFFERED A SECOND SESSION OF THE SAME DAY — GDD §3.2 allows one, and the check-in is not on this screen',
+            landedSays.includes(BEAT_SAYS.CHECK_IN)
+              ? `the screen says ${JSON.stringify(BEAT_SAYS.CHECK_IN)} — the player trained, went to meet day, came back,` +
+                ' and the loop offered them today all over again. That is a session server built per mount' +
+                ' (src/shell/appServer.ts exists to stop exactly this)'
+              : `${JSON.stringify(BEAT_SAYS.CHECK_IN)} is nowhere on the screen`,
+          );
+          // THE SAME CLAIM BY testID, which a copy edit cannot move. Kept
+          // alongside the copy check rather than instead of it: the copy is what
+          // a player reads and the testID is what survives a re-word, and this
+          // file's own rule is that a landing is distinguished by testID so an
+          // edit cannot turn a wrong screen into a right one.
+          check(
+            !checkInMounted,
+            'and GDD §3.2’s check-in is not even mounted underneath it (session-check-in)',
+            checkInMounted
+              ? 'session-check-in is in the DOM on the screen the return leg landed on'
+              : 'session-check-in is not in the DOM',
+          );
+
+          await shootBeat(
+            '14-return-leg-already-trained.png',
+            'already-trained',
+            BEAT_SAYS.ALREADY_TRAINED,
+          );
+        }
+      }
     } else {
       check(false, 'SKIPPED: no drawn control on the already-trained surface to press');
     }
@@ -3845,6 +4386,11 @@ await writeFile(
       // session, and the thing that says whether the drive converged or got
       // lucky. `attemptedSecond` is false on a run that never got that far.
       playerOpenedMeets: playerOpenedMeet,
+      // Section 6c: the one return leg in this run taken on a day the player
+      // HAS trained, which is the case `src/shell/appServer.ts` exists for.
+      // `attempted: false` is a leg that never ran, and is not the same thing as
+      // a leg that ran and passed.
+      returnLegOnATrainedDay: returnLeg,
       checks,
       notes: observations,
       failures,
