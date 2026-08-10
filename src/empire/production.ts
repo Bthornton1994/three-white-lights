@@ -40,6 +40,16 @@
  * brand the output's reach entitles it to. Nothing in this file reaches into
  * `clock.accelerated` or `clock.unaccelerated` by name.
  *
+ * The split has a third quantity since piece E6: `ProductionAccrual.
+ * settledGymBucks`, the WALL-CLOCK book. Gym Bucks are idle-only as a PAYOUT
+ * and a purchase may move them, which is what §8.3B sells — but the same money
+ * buys the physio rung and the recruits, and those reach Sim progression. So
+ * the gym keeps two books, and this file accrues the second one at
+ * `settledGymBucksRatePerHour` over the un-accelerated gap. See that function
+ * for why the line it accrues on carries no roster term and no axis multiplier,
+ * and `empireCore.ts`'s `WALL_CLOCK_FUNDED_OUTPUTS` for which purchases may
+ * draw on it.
+ *
  * ===========================================================================
  * 3. The roster filter, which is the part the types do not give you
  * ===========================================================================
@@ -360,6 +370,29 @@ export function trainingIqRatePerDay(
   return scrubPrecision(Math.min(EMPIRE_TUNING.TRAINING_IQ_DAILY_CEILING, raw));
 }
 
+/**
+ * The gym's baseline takings, per hour — the line the WALL-CLOCK book accrues
+ * on.
+ *
+ * It is `GYM_BUCKS_BASE_PER_HOUR` and nothing else, and every term the rate
+ * above adds to it is left out for a stated reason rather than an oversight:
+ *
+ *   - the roster term, because `NpcLifter.joinedAt` moves with a purchased
+ *     recruit skip, so a rate that read it would carry the purchase;
+ *   - the equipment, space and coach multipliers, because each of those rungs
+ *     is bought and each of their build timers is skippable, so a rate that
+ *     read them would carry the purchase one rung further out.
+ *
+ * That is the same argument `trainingIqRatePerDay` makes for taking no axis
+ * multiplier, applied to the money that buys the rungs rather than to the
+ * trickle they would have multiplied. What is left is a function of wall time
+ * and one tuning constant, which is what makes `EmpireState.settledGymBucks`
+ * a quantity no purchase can move — and it is why this takes no state at all.
+ */
+export function settledGymBucksRatePerHour(): number {
+  return EMPIRE_TUNING.GYM_BUCKS_BASE_PER_HOUR;
+}
+
 /** Both rates at one clock reading. */
 export function productionRates(
   state: EmpireState,
@@ -385,6 +418,16 @@ export function productionRates(
  */
 export interface ProductionAccrual {
   readonly gymBucks: GymBucks;
+  /**
+   * What the gap paid into the WALL-CLOCK book: the baseline line, over the
+   * wall-clock part of the gap, under the same offline model.
+   *
+   * Both halves are the wall clock on purpose. The rate is
+   * `settledGymBucksRatePerHour`, which reads no state; the span is the
+   * un-accelerated gap, which a skip does not lengthen. A skip lengthens the
+   * accelerated gap only, so it moves the line above and not this one.
+   */
+  readonly settledGymBucks: GymBucks;
   readonly trainingIq: TrainingIqPoints;
   /** Whole ticks of accelerated time between the mark and now. */
   readonly offlineSecondsElapsed: number;
@@ -439,6 +482,13 @@ export function accrueProduction(
       (offlineSecondsBanked / EMPIRE_TUNING.SECONDS_PER_HOUR),
   );
 
+  const settledSecondsBanked = bankableOfflineSeconds(wallGap, policy);
+  const settledGymBucks = scrubPrecision(
+    settledGymBucksRatePerHour() *
+      EMPIRE_TUNING.OFFLINE_EARNINGS_FRACTION *
+      (settledSecondsBanked / EMPIRE_TUNING.SECONDS_PER_HOUR),
+  );
+
   const trainingIqSecondsElapsed = quantiseElapsedSeconds(wallGap);
   const trainingIq = scrubPrecision(
     rates.trainingIqPerDay * (trainingIqSecondsElapsed / EMPIRE_TUNING.SECONDS_PER_DAY),
@@ -458,6 +508,7 @@ export function accrueProduction(
 
   return Object.freeze({
     gymBucks: asGymBucks(gymBucks),
+    settledGymBucks: asGymBucks(settledGymBucks),
     trainingIq: asTrainingIq(trainingIq),
     offlineSecondsElapsed,
     offlineSecondsBanked,

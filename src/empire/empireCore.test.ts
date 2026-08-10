@@ -154,6 +154,7 @@ import {
   type EmpireState,
   type EquipmentTier,
   type GymAxes,
+  type GymBucks,
   type IdleTenureDays,
   type NpcTier,
   type SettledTenureDays,
@@ -1994,6 +1995,42 @@ describe('the state constructor and its invariants', () => {
       /accelerated reading is behind/,
     ],
     [
+      // The wall-clock view of the ladders, ahead of the idle one on each of
+      // the three rungs. That ordering is what says no accelerant reached the
+      // settled side: `skipExpansion` moves `idleCompletion` and copies
+      // `settledCompletion` across, so the idle view is never behind. Three
+      // rows rather than one because the three rungs are three branches.
+      'a wall-clock equipment tier ahead of the idle one',
+      {
+        ...base,
+        settledAxes: { ...base.settledAxes, equipment: 'monolift' as EquipmentTier },
+      },
+      /settledAxes: equipment monolift is ahead of the idle view's bare-bar/,
+    ],
+    [
+      'a wall-clock space level ahead of the idle one',
+      { ...base, settledAxes: { ...base.settledAxes, spaceLevel: 1 } },
+      /settledAxes: space level 1 is ahead of the idle view's 0/,
+    ],
+    [
+      'a wall-clock staff level ahead of the idle one',
+      {
+        ...base,
+        settledAxes: {
+          ...base.settledAxes,
+          staffLevel: { ...base.settledAxes.staffLevel, physio: 1 },
+        },
+      },
+      /settledAxes: physio level 1 is ahead of the idle view's 0/,
+    ],
+    [
+      // The wall-clock book, which is the money §5.4's physio rung and §5.3's
+      // recruits are bought out of. Its sibling below is the accelerated book.
+      'a wall-clock book that is not a balance',
+      { ...base, settledGymBucks: Number.NaN as GymBucks },
+      /settledGymBucks: NaN is not a balance/,
+    ],
+    [
       'an equipment tier off the ladder',
       { ...base, axes: { ...base.axes, equipment: 'gold-bar' as EquipmentTier } },
       /is not an equipment tier/,
@@ -2233,7 +2270,7 @@ describe('the state constructor and its invariants', () => {
     // reverting any of this piece's decode fixes looks like — is red both here
     // and on the row that stops producing a fault.
     const sites = faultPushSkeletons();
-    expect(sites.length, 'the faults.push parse found nothing to check').toBe(24);
+    expect(sites.length, 'the faults.push parse found nothing to check').toBe(28);
     const uncovered = sites
       .filter((site) => !produced.some((fault) => site.pattern.test(fault)))
       .map((site) => site.text);
@@ -2242,7 +2279,7 @@ describe('the state constructor and its invariants', () => {
     // the table actually produced. A table whose rows all went quiet would make
     // `uncovered` a filter over an empty list of messages — which is caught
     // above, and is caught here too, in the number rather than in the shape.
-    expect(produced.length).toBe(32);
+    expect(produced.length).toBe(37);
   });
 
   it('refuses a purchased accelerant that arrived past the compiler', () => {

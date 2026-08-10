@@ -59,16 +59,38 @@
  *     the exemption would be a check on a single level whose answer is 0 with
  *     the exemption and 0 without it — an assertion that cannot fail.
  *
- * What this file does NOT close, stated as an obligation handed to piece E6
- * rather than as an omission. A purchased skip pays Gym Bucks sooner on the
- * accelerated clock, so the player can AFFORD the physio level on an earlier
- * wall-clock day, and `startExpansion` stamps `settledCompletion` from whatever
+ * The chain that used to be an outstanding obligation here, and how it is
+ * closed now. A purchased skip pays Gym Bucks sooner on the accelerated clock,
+ * so the player could AFFORD the physio level on an earlier wall-clock day, and
+ * `startExpansion` stamps `settledCompletion` from whatever
  * `clock.unaccelerated` it is handed. Every type on that chain is correct; what
- * moves with the purchase is a value, and GDD §4.4 is explicit that no type
- * gives you that. The measurement that covers it is E6's element-wise sweep of
- * the `physioDaysSavedAt` series by wall-clock day. `expansion.test.ts` runs the
- * half that is in this file's gift — the skip itself moving nothing on the
- * settled clock, with a negative control beside it — and says so.
+ * moved with the purchase was a value, and GDD §4.4 is explicit that no type
+ * gives you that.
+ *
+ * What closes it is `axisFunding` below: the purse a rung is bought from is
+ * chosen the same way `elapsedFor` chooses a clock — from the reach of the
+ * output the axis feeds, through `AXIS_OUTPUT` and
+ * `WALL_CLOCK_FUNDED_OUTPUTS`. The physio rung is bought out of
+ * `EmpireState.settledGymBucks`, which `accrueProduction` accrues at the
+ * baseline line over the un-accelerated gap and which therefore no purchase
+ * moves; the space and spotter rungs are on the same side because they feed
+ * `'roster-slot'`, which `GATE_TARGET` says gates Training IQ. A
+ * wall-clock-funded rung is also READ on the wall clock — `settledAxesAt` for
+ * its level and `settledBuildInFlight` for the rung it is building — because a
+ * skip that cleared level N early would otherwise let level N+1 start early.
+ *
+ * What is measured, and where, stated exactly rather than as a promise:
+ *
+ *   - `expansion.test.ts` measures the half in this file's gift — the skip
+ *     moving nothing on the settled clock, the physio series byte-identical
+ *     under every accelerant that can reach it, and the wall-clock ladder held
+ *     to the wall clock while it is building — each with a control beside it.
+ *   - `empireInvariant.test.ts` measures the composition: for every purchasable
+ *     accelerant, on every application schedule, at every horizon, the
+ *     `physioDaysSavedAt` series and its arrival-day list, element by element,
+ *     on the gym the accelerant landed on, against the same grid funded from
+ *     the accelerated book as the control. That file's header records which
+ *     mutants it kills and which two it does not.
  *
  * ===========================================================================
  * 3. Two exported functions take a bare level, and why the house guard is not
@@ -93,7 +115,9 @@
 
 import {
   EARNED_ACCELERANTS,
+  GATING_OUTPUTS,
   PURCHASABLE_ACCELERANTS,
+  WALL_CLOCK_FUNDED_OUTPUTS,
   asAcceleratedSeconds,
   asGymBucks,
   asReputation,
@@ -182,6 +206,36 @@ export const AXIS_OUTPUT = {
 /** The output an axis feeds. */
 export function axisOutput(axis: ExpansionAxis): EmpireOutput {
   return AXIS_OUTPUT[axis];
+}
+
+/** Which of the gym's two books pays for a rung, and which clock reads it. */
+export const AXIS_FUNDINGS = ['wall-clock', 'idle-clock'] as const;
+
+export type AxisFunding = (typeof AXIS_FUNDINGS)[number];
+
+/**
+ * Which book buys the next level of an axis — the answer to §2 of the header's
+ * outstanding obligation, and it is derived rather than declared.
+ *
+ * `AXIS_OUTPUT` says what an axis feeds; `WALL_CLOCK_FUNDED_OUTPUTS` says which
+ * outputs may only be bought with money a purchase cannot have moved. So the
+ * physio row is wall-clock funded because it feeds `'physio-days-saved'`, and
+ * the space and spotter rows are because they feed `'roster-slot'`, which
+ * `GATE_TARGET` says gates Training IQ. There is no list of axes here to fall
+ * out of step with the list of outputs: re-pointing `AXIS_OUTPUT.physio` at
+ * `'gym-bucks'` moves the physio row to the idle book AND is the edit
+ * `expansionVocabularyFaults` already reports.
+ *
+ * A wall-clock-funded axis is read on the wall clock too — its current level
+ * comes from `settledAxesAt` and its in-flight build from
+ * `settledBuildInFlight`. Both halves are load-bearing and the second one is
+ * the one that is easy to leave out: a purchased skip that finished level N
+ * early would otherwise let level N+1 START early, which moves the wall-clock
+ * day the next rung lands on even though the purse it is bought from did not
+ * move.
+ */
+export function axisFunding(axis: ExpansionAxis): AxisFunding {
+  return WALL_CLOCK_FUNDED_OUTPUTS.includes(axisOutput(axis)) ? 'wall-clock' : 'idle-clock';
 }
 
 // ---------------------------------------------------------------------------
@@ -314,6 +368,17 @@ export const EXPANSION_REFUSALS = [
   'not-enough-reputation',
   /** The price is above the balance. */
   'not-enough-gym-bucks',
+  /**
+   * The price is above the WALL-CLOCK book, on an axis that may only be bought
+   * out of it.
+   *
+   * Its own row rather than a second use of the one above, because the two are
+   * true of different screens: a gym refused here may be holding ten times the
+   * price in Gym Bucks. The refusal a player reads has to be true of the gym
+   * they are looking at — CLAUDE.md's rule about `renderedOffer`, one subsystem
+   * over.
+   */
+  'not-enough-wall-clock-earnings',
 ] as const;
 
 export type ExpansionRefusal = (typeof EXPANSION_REFUSALS)[number];
@@ -347,6 +412,8 @@ export interface ExpansionBuild {
 export interface ExpansionContext {
   readonly clock: EmpireClock;
   readonly gymBucks: GymBucks;
+  /** The wall-clock book. The only money a wall-clock-funded rung may cost. */
+  readonly settledGymBucks: GymBucks;
   readonly reputation: ReputationPoints;
   readonly builds: readonly ExpansionBuild[];
 }
@@ -359,6 +426,7 @@ export function expansionContext(
   return Object.freeze({
     clock: state.clock,
     gymBucks: state.gymBucks,
+    settledGymBucks: state.settledGymBucks,
     reputation: state.reputation,
     builds,
   });
@@ -377,6 +445,28 @@ export function buildInFlight(
 }
 
 /**
+ * The same question on the wall clock: the build on this axis that would not
+ * have finished yet with no accelerant applied.
+ *
+ * The sibling of the function above, and it exists because that one is the
+ * wrong question for a wall-clock-funded axis. `skipExpansion` moves
+ * `idleCompletion`, so a purchase clears `buildInFlight` early and the next rung
+ * of the same ladder becomes startable on an earlier wall-clock day. Reading
+ * `settledCompletion` here is what keeps a wall-clock-funded ladder's rungs on
+ * the wall clock end to end.
+ */
+export function settledBuildInFlight(
+  builds: readonly ExpansionBuild[],
+  axis: ExpansionAxis,
+  now: UnacceleratedSeconds,
+): ExpansionBuild | null {
+  for (const build of builds) {
+    if (build.axis === axis && build.settledCompletion > now) return build;
+  }
+  return null;
+}
+
+/**
  * The axis levels as the player's gym reads them: every build whose
  * `idleCompletion` has passed, on the accelerated clock.
  *
@@ -386,11 +476,40 @@ export function buildInFlight(
  * ladder.
  */
 export function idleAxesAt(builds: readonly ExpansionBuild[], now: AcceleratedSeconds): GymAxes {
+  return axesWhere(builds, (build) => build.idleCompletion <= now);
+}
+
+/**
+ * The same ladders as the wall clock reads them: every build whose
+ * `settledCompletion` has passed.
+ *
+ * One implementation, two predicates — `idleAxesAt` is the same call with the
+ * other completion time. Written that way deliberately: this codebase keeps
+ * finding its next defect in the sibling of a function that was just fixed, and
+ * a clamp or an ordering rule added to one of these two would otherwise have to
+ * be remembered into the other.
+ *
+ * This is the view `rosterCapacity` is asked about when the question is when a
+ * Training IQ payer may start arriving, and the view a wall-clock-funded axis
+ * reads its own current level from.
+ */
+export function settledAxesAt(
+  builds: readonly ExpansionBuild[],
+  now: UnacceleratedSeconds,
+): GymAxes {
+  return axesWhere(builds, (build) => build.settledCompletion <= now);
+}
+
+/** The shared body of the two functions above. `finished` picks the clock. */
+function axesWhere(
+  builds: readonly ExpansionBuild[],
+  finished: (build: ExpansionBuild) => boolean,
+): GymAxes {
   const reached = (axis: ExpansionAxis): number => {
     let level = 0;
     for (const build of builds) {
       if (build.axis !== axis) continue;
-      if (build.idleCompletion > now) continue;
+      if (!finished(build)) continue;
       if (build.toLevel > level) level = build.toLevel;
     }
     return Math.min(Math.max(0, level), axisCeiling(axis));
@@ -462,16 +581,28 @@ export function expansionVerdict(
   context: ExpansionContext,
   axis: ExpansionAxis,
 ): ExpansionVerdict {
-  const axes = idleAxesAt(context.builds, context.clock.accelerated);
+  // Which clock this axis is read on, and which book pays, are one decision and
+  // it is taken here once. See `axisFunding`.
+  const onWallClock = axisFunding(axis) === 'wall-clock';
+  const axes = onWallClock
+    ? settledAxesAt(context.builds, context.clock.unaccelerated)
+    : idleAxesAt(context.builds, context.clock.accelerated);
   const quote = quoteExpansion(axes, axis);
   if (quote === null) return Object.freeze({ allowed: false, refusal: 'at-ceiling' });
-  if (buildInFlight(context.builds, axis, context.clock.accelerated) !== null) {
+  const inFlight = onWallClock
+    ? settledBuildInFlight(context.builds, axis, context.clock.unaccelerated)
+    : buildInFlight(context.builds, axis, context.clock.accelerated);
+  if (inFlight !== null) {
     return Object.freeze({ allowed: false, refusal: 'already-building' });
   }
   if (context.reputation < quote.reputationRequired) {
     return Object.freeze({ allowed: false, refusal: 'not-enough-reputation' });
   }
-  if (context.gymBucks < quote.cost) {
+  if (onWallClock) {
+    if (context.settledGymBucks < quote.cost) {
+      return Object.freeze({ allowed: false, refusal: 'not-enough-wall-clock-earnings' });
+    }
+  } else if (context.gymBucks < quote.cost) {
     return Object.freeze({ allowed: false, refusal: 'not-enough-gym-bucks' });
   }
   return Object.freeze({ allowed: true, quote });
@@ -481,8 +612,10 @@ export type ExpansionStart =
   | {
       readonly started: true;
       readonly build: ExpansionBuild;
-      /** The balance after the price has been taken. */
+      /** The accelerated book after the price has been taken, if it paid. */
       readonly gymBucks: GymBucks;
+      /** The wall-clock book after the price has been taken, if it paid. */
+      readonly settledGymBucks: GymBucks;
     }
   | { readonly started: false; readonly refusal: ExpansionRefusal };
 
@@ -521,10 +654,17 @@ export function startExpansion(context: ExpansionContext, axis: ExpansionAxis): 
     settledCompletion: asUnacceleratedSeconds(context.clock.unaccelerated + quote.seconds),
     idleCompletion: asAcceleratedSeconds(context.clock.accelerated + quote.seconds),
   });
+  // One book pays, and which one is the same decision the verdict took. The
+  // other is handed back untouched rather than left out, so a caller assigns
+  // both and cannot quietly keep a stale one.
+  const onWallClock = axisFunding(axis) === 'wall-clock';
   return Object.freeze({
     started: true,
     build,
-    gymBucks: asGymBucks(context.gymBucks - quote.cost),
+    gymBucks: onWallClock ? context.gymBucks : asGymBucks(context.gymBucks - quote.cost),
+    settledGymBucks: onWallClock
+      ? asGymBucks(context.settledGymBucks - quote.cost)
+      : context.settledGymBucks,
   });
 }
 
@@ -637,6 +777,29 @@ export function expansionVocabularyFaults(): readonly string[] {
     if (outputReach(axisOutput(axis)) !== 'idle-only') {
       faults.push(`${axis} feeds ${String(axisOutput(axis))}, which reaches Sim progression`);
     }
+  }
+
+  // Which book buys which rung, reported rather than described. Each of these
+  // is reddened by an edit to a different table: the physio row by
+  // `AXIS_OUTPUT` or `SINK_REACH`, the gating rows by `GATING_OUTPUTS`, and the
+  // two counts by anything that empties either side of the split.
+  if (axisFunding('physio') !== 'wall-clock') {
+    faults.push('the physio axis is bought out of the accelerated book');
+  }
+  for (const axis of EXPANSION_AXES) {
+    const gates = (GATING_OUTPUTS as readonly EmpireOutput[]).includes(axisOutput(axis));
+    if (gates && axisFunding(axis) !== 'wall-clock') {
+      faults.push(
+        `${axis} feeds ${String(axisOutput(axis))}, which gates Sim progression, and is bought out of the accelerated book`,
+      );
+    }
+  }
+  const wallClockFunded = EXPANSION_AXES.filter((axis) => axisFunding(axis) === 'wall-clock');
+  if (wallClockFunded.length === 0) {
+    faults.push('no axis is bought out of the wall-clock book, so the split gates nothing');
+  }
+  if (wallClockFunded.length === EXPANSION_AXES.length) {
+    faults.push('every axis is bought out of the wall-clock book, so the split separates nothing');
   }
 
   return faults;

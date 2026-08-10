@@ -70,6 +70,18 @@
  * horizon in `RECRUITMENT_SWEEP`, with a negative control wired so the skip
  * does move it, and pins both counts.
  *
+ * The clock split alone was not enough, and the half it left open is the DAY
+ * this decision is taken on. A skip pays Gym Bucks sooner on the accelerated
+ * clock and finishes a space build sooner, so the gym could afford a recruit —
+ * and have a slot for one — on an earlier wall-clock day, and `settlesAt` is
+ * stamped from that day. So the verdict is taken against the wall-clock side of
+ * both: `EmpireState.settledGymBucks`, which `accrueProduction` accrues at the
+ * baseline line over the un-accelerated gap, and `EmpireState.settledAxes`,
+ * which is the ladder as the wall clock reads it. `empireCore.ts`'s
+ * `WALL_CLOCK_FUNDED_OUTPUTS` is where that side is derived: a recruit pays
+ * `'training-iq'`, which reaches Sim progression, and fills a `'roster-slot'`,
+ * which `GATE_TARGET` says gates it.
+ *
  * ===========================================================================
  * 3. Charging, and why the sale is re-validated at completion
  * ===========================================================================
@@ -174,10 +186,16 @@ export function recruitmentRefusals(
   if (state.reputation < quote.reputationThreshold) {
     refusals.push('reputation-below-threshold');
   }
-  if (state.gymBucks < quote.costGymBucks) {
+  // The WALL-CLOCK book, and the WALL-CLOCK view of the slots. A recruit pays
+  // Training IQ, so `'training-iq'` is on `WALL_CLOCK_FUNDED_OUTPUTS` and this
+  // purchase is on the wall-clock side of the split; `'roster-slot'` is on it
+  // too, because `GATE_TARGET` says a slot gates the lifter who fills it. See
+  // §2 of the header: the clock split alone left the DAY this decision is taken
+  // moving with a purchase, and the day is what `settlesAt` is stamped from.
+  if (state.settledGymBucks < quote.costGymBucks) {
     refusals.push('gym-bucks-below-cost');
   }
-  if (state.roster.length >= rosterCapacity(state.axes)) {
+  if (state.roster.length >= rosterCapacity(state.settledAxes)) {
     refusals.push('roster-at-capacity');
   }
   return Object.freeze(refusals);
@@ -278,10 +296,13 @@ export function beginRecruitment(state: EmpireState, tier: NpcTier): Recruitment
   if (refusals.length > 0) {
     return Object.freeze({ kind: 'refused', refusals });
   }
-  const remaining: number = state.gymBucks - recruitmentQuote(tier).costGymBucks;
+  // The wall-clock book pays, because that is the book the verdict above was
+  // taken against. Debiting the accelerated one instead would make the price
+  // real and the gate ornamental.
+  const remaining: number = state.settledGymBucks - recruitmentQuote(tier).costGymBucks;
   return Object.freeze({
     kind: 'accepted',
-    state: Object.freeze({ ...state, gymBucks: asGymBucks(remaining) }),
+    state: Object.freeze({ ...state, settledGymBucks: asGymBucks(remaining) }),
     schedule: recruitmentSchedule(tier, state.clock),
   });
 }
@@ -305,7 +326,11 @@ export function completeRecruitment(
   id: string,
   displayName: string,
 ): EmpireState {
-  const capacity = rosterCapacity(state.axes);
+  // The same view of the slots the verdict was taken against, rather than the
+  // idle one. The idle view is never behind the settled view, so reading it
+  // here would make this re-check strictly weaker than the gate it re-checks —
+  // which is the shape of a guard applied to one arm and not to its sibling.
+  const capacity = rosterCapacity(state.settledAxes);
   if (state.roster.length >= capacity) {
     throw new RangeError(
       `roster holds ${state.roster.length} of ${capacity} slots, so a ${schedule.tier} recruit cannot join`,

@@ -176,6 +176,7 @@ function gym(options: GymOptions = {}): EmpireState {
     clock: createEmpireClock(options.elapsedSeconds ?? 0, options.skippedSeconds ?? 0),
     reputation: asReputation(options.reputation ?? 0),
     gymBucks: asGymBucks(options.gymBucks ?? 0),
+    settledGymBucks: asGymBucks(options.gymBucks ?? 0),
     roster: options.roster ?? base.roster,
   });
 }

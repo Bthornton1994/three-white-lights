@@ -1,6 +1,6 @@
 /**
  * empireInvariant.test.ts — the second reading of "structurally unable",
- * measured.
+ * measured on the gym the player has.
  *
  * ===========================================================================
  * What is asserted, and what shape the assertion has to have
@@ -14,17 +14,30 @@
  * in the comparison identical".
  *
  * So every measurement below is on a LIST, element by element, and never on a
- * sum, a bound or a hash. Two lists, because they fail differently:
+ * sum, a bound or a hash. Three lists, because they fail differently:
  *
  *   - the progression ledger — a Training IQ amount and a physio amount per
  *     calendar day, stamped on the wall clock;
- *   - the ARRIVAL-DAY lists derived from it, because the ledger's own `day` is
+ *   - the same two series taken APART, so a zero cannot be a zero about one of
+ *     them while the other moves;
+ *   - the ARRIVAL-DAY lists derived from each, because the ledger's own `day` is
  *     the composition loop's counter and therefore cannot move. That is stated
  *     in `arrivalDays`'s own docstring as a measured hole rather than left for a
  *     reader: `misaligned` is zero across this whole sweep, on the control as
  *     well as on the subject, so the day half of `compareLedgers` is an empty
  *     domain here. It is exercised by the unit tests on `compareLedgers` and by
- *     the arrival-day lists, which do move.
+ *     the arrival-day lists, which do move under the control.
+ *
+ * ===========================================================================
+ * The subject is the gym, and that is the correction this file exists for
+ * ===========================================================================
+ *
+ * The previous version of this file compared a ledger read off a SECOND gym
+ * that was stepped with no accelerant ever. That comparison was `g(x)` against
+ * `g(x)`: it returned zero for any implementation of every module in
+ * `src/empire/`, and it stayed green with chain B reverted inside
+ * `empireCore.ts`. Every run here is one gym — the gym the accelerant lands on
+ * — and both progression readings come off it through the shipped accessors.
  *
  * ===========================================================================
  * Every zero has something beside it
@@ -33,13 +46,12 @@
  *   - the POSITIVE control is the idle half of the same ledger. If a purchase
  *     did not move the Gym Bucks balance and the roster size, the sweep would be
  *     reporting a zero about an accelerant that was never applied. Pinned at 72
- *     of 72 lists moved.
- *   - the NEGATIVE control is `EmpireRun.counterfactualIdleReadings` — the same
- *     two readings, on the same days, through the same functions, taken off the
- *     idle lane. It is the wiring mistake a later piece would make, and it is
- *     produced by the run itself rather than reassembled here so it cannot drift
- *     from the thing it is a control for. Pinned at 72 of 72 lists moved, 1572
- *     of 5232 elements, and 32 of 144 arrival-day lists.
+ *     of 72 lists moved, 2592 of 5232 elements.
+ *   - the NEGATIVE control is the same grid at `funding: 'accelerated'` — the
+ *     gym offered its accelerated book and its idle axis view where the
+ *     wall-clock ones belong, which is the engine as it stood before the split.
+ *     Pinned at 1572 of 5232 elements, and 32 of 144 arrival-day elements, every
+ *     one of them EARLIER.
  *
  * ===========================================================================
  * The sweep's parameters are somewhere else on purpose
@@ -73,6 +85,8 @@ import {
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
+  EMPIRE_FUNDINGS,
+  SHIPPED_FUNDING,
   arrivalDays,
   compareDayLists,
   compareLedgers,
@@ -80,10 +94,12 @@ import {
   empireRunFaults,
   grantSecondsAt,
   idleDayLedger,
+  outputSeries,
   progressionDayLedger,
   runEmpire,
   type AccelerantPlan,
   type EmpireDayEntry,
+  type EmpireFunding,
   type EmpireRun,
 } from './empireInvariant';
 import { EMPIRE_SWEEP, accelerantPlans, policyAt, socialInputs } from './empireSweep.test';
@@ -92,7 +108,7 @@ import { rosterTrainingIqPerDay } from './npc';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 // ---------------------------------------------------------------------------
-// The grid, materialised once
+// The grid, materialised once per funding rule
 // ---------------------------------------------------------------------------
 
 const SOCIAL = socialInputs();
@@ -105,14 +121,14 @@ interface SweepCell {
   readonly runs: readonly EmpireRun[];
 }
 
-const GRID: readonly SweepCell[] = (() => {
+function gridAt(funding: EmpireFunding): readonly SweepCell[] {
   const cells: SweepCell[] = [];
   for (const days of EMPIRE_SWEEP.HORIZON_DAYS) {
     const policy = policyAt(EMPIRE_SWEEP.CHECK_INS_PER_DAY);
     cells.push({
       cadence: EMPIRE_SWEEP.CHECK_INS_PER_DAY,
       days,
-      runs: PLANS.map((plan) => runEmpire(days, policy, plan, SOCIAL)),
+      runs: PLANS.map((plan) => runEmpire(days, policy, plan, SOCIAL, funding)),
     });
   }
   for (const days of EMPIRE_SWEEP.DENSE_HORIZON_DAYS) {
@@ -120,16 +136,27 @@ const GRID: readonly SweepCell[] = (() => {
     cells.push({
       cadence: EMPIRE_SWEEP.DENSE_CHECK_INS_PER_DAY,
       days,
-      runs: PLANS.map((plan) => runEmpire(days, policy, plan, SOCIAL)),
+      runs: PLANS.map((plan) => runEmpire(days, policy, plan, SOCIAL, funding)),
     });
   }
   return Object.freeze(cells);
-})();
+}
 
-/** Every (baseline, candidate) pair the sweep compares. */
-function pairs(): readonly { readonly baseline: EmpireRun; readonly candidate: EmpireRun }[] {
-  const out: { baseline: EmpireRun; candidate: EmpireRun }[] = [];
-  for (const cell of GRID) {
+/** The shipped engine. Every zero below is about this grid. */
+const GRID = gridAt(SHIPPED_FUNDING);
+
+/** The deliberately-wired variant. Every non-zero control is about this one. */
+const CONTROL_GRID = gridAt('accelerated');
+
+interface Pair {
+  readonly baseline: EmpireRun;
+  readonly candidate: EmpireRun;
+}
+
+/** Every (baseline, candidate) pair a grid compares. */
+function pairs(grid: readonly SweepCell[]): readonly Pair[] {
+  const out: Pair[] = [];
+  for (const cell of grid) {
     const baseline = cell.runs[0];
     if (baseline === undefined) continue;
     for (const candidate of cell.runs) {
@@ -140,8 +167,74 @@ function pairs(): readonly { readonly baseline: EmpireRun; readonly candidate: E
   return out;
 }
 
-const PAIRS = pairs();
+const PAIRS = pairs(GRID);
+const CONTROL_PAIRS = pairs(CONTROL_GRID);
 const PROGRESSION_OUTPUTS = ['training-iq', 'physio-days-saved'] as const;
+
+/** The element-wise totals over one grid's pairs, for one progression output. */
+interface SeriesTotals {
+  readonly lists: number;
+  readonly elements: number;
+  readonly moved: number;
+  readonly movedLists: number;
+  readonly dayElements: number;
+  readonly dayMoved: number;
+  readonly dayEarlier: number;
+  readonly dayMovedLists: number;
+  readonly dayLengthDiffers: number;
+}
+
+/**
+ * The commissioned measurement, taken once and read by the subject and by the
+ * control.
+ *
+ * `empireCore.ts`'s §6 and `expansion.ts`'s §2 both ask for the same thing in
+ * the same words: for every purchasable accelerant, on every application
+ * schedule, at every horizon, the list of readings BY WALL-CLOCK DAY, compared
+ * element-wise, with a negative control beside it. This walks the pairs once and
+ * both sides read the same walker, so the subject and its control cannot be
+ * measuring differently-shaped things.
+ */
+function seriesTotals(source: readonly Pair[], output: (typeof PROGRESSION_OUTPUTS)[number]): SeriesTotals {
+  let lists = 0;
+  let elements = 0;
+  let moved = 0;
+  let movedLists = 0;
+  let dayElements = 0;
+  let dayMoved = 0;
+  let dayEarlier = 0;
+  let dayMovedLists = 0;
+  let dayLengthDiffers = 0;
+  for (const pair of source) {
+    const baseline = outputSeries(progressionDayLedger(pair.baseline.ledger), output);
+    const candidate = outputSeries(progressionDayLedger(pair.candidate.ledger), output);
+    const byElement = compareLedgers(baseline, candidate);
+    lists += 1;
+    elements += byElement.compared;
+    moved += byElement.moved;
+    if (byElement.moved > 0) movedLists += 1;
+    const byDay = compareDayLists(
+      arrivalDays(baseline, output),
+      arrivalDays(candidate, output),
+    );
+    dayElements += byDay.compared;
+    dayMoved += byDay.moved;
+    dayEarlier += byDay.earlier;
+    if (byDay.moved > 0) dayMovedLists += 1;
+    if (byDay.lengthDiffers) dayLengthDiffers += 1;
+  }
+  return {
+    lists,
+    elements,
+    moved,
+    movedLists,
+    dayElements,
+    dayMoved,
+    dayEarlier,
+    dayMovedLists,
+    dayLengthDiffers,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // The comparator itself
@@ -242,6 +335,10 @@ describe('the comparator can report every kind of divergence there is', () => {
     // The output filter is live: a series of another output yields nothing.
     expect(arrivalDays(series, 'physio-days-saved')).toEqual([]);
     expect(arrivalDays([...series, entry(5, 'gym-bucks', 9)], 'gym-bucks')).toEqual([5]);
+    // And `outputSeries` splits one ledger into the two the sweep compares
+    // apart, keeping day order.
+    expect(outputSeries([...series, entry(5, 'gym-bucks', 9)], 'gym-bucks').length).toBe(1);
+    expect(outputSeries(series, 'training-iq').map((one) => one.day)).toEqual([0, 1, 2, 3, 4]);
   });
 });
 
@@ -265,6 +362,7 @@ function gymWith(roster: readonly NpcLifter[], elapsedSeconds: number): EmpireSt
     roster,
     reputation: asReputation(EMPIRE_TUNING.REPUTATION_MAX),
     gymBucks: asGymBucks(0),
+    settledGymBucks: asGymBucks(0),
   });
 }
 
@@ -350,8 +448,8 @@ describe('the Training IQ daily budget is applied where the two terms are added'
         if (run.census.ceilingBoundDays > 0) runsThatBound += 1;
       }
     }
-    expect(boundDays).toBe(481);
-    expect(runsThatBound).toBe(26);
+    expect(boundDays).toBe(455);
+    expect(runsThatBound).toBe(13);
   });
 });
 
@@ -372,6 +470,7 @@ describe('the composed run is a run at all', () => {
       expect(cell.runs.length).toBe(PLANS.length);
       for (const run of cell.runs) {
         runs += 1;
+        expect(run.funding).toBe(SHIPPED_FUNDING);
         ledgerEntries += run.ledger.length;
         faults += empireRunFaults(run).length;
       }
@@ -380,6 +479,9 @@ describe('the composed run is a run at all', () => {
     expect(PAIRS.length).toBe(72);
     expect(ledgerEntries).toBe(11336);
     expect(faults).toBe(0);
+    // The control grid is the same shape, so the non-zeros below are taken over
+    // the same number of comparisons as the zeros.
+    expect(CONTROL_PAIRS.length).toBe(PAIRS.length);
   });
 
   it('really recruits, expands, pays a physio and closes a rival period', () => {
@@ -388,50 +490,71 @@ describe('the composed run is a run at all', () => {
     const longest = GRID[EMPIRE_SWEEP.HORIZON_DAYS.length - 1];
     expect(longest?.days).toBe(100);
     const baseline = longest?.runs[0] as EmpireRun;
-    expect(baseline.census.idleRecruits).toBe(11);
-    expect(baseline.census.settledRecruits).toBe(11);
-    expect(baseline.census.idleExpansions).toBe(13);
-    expect(baseline.census.settledExpansions).toBe(13);
+    expect(baseline.census.recruits).toBe(11);
+    expect(baseline.census.expansions).toBe(13);
     expect(baseline.census.settledPhysioLevel).toBe(1);
     expect(baseline.census.socialRewardDays).toBe(14);
-    expect(baseline.settled.state.roster.length).toBeGreaterThan(0);
-    // Both §8.3B mechanisms fire somewhere in the sweep. `skipExpansion` is
-    // only reachable at the dense cadence, which is why that row exists.
-    let buildSkips = 0;
-    let clockSkips = 0;
+    expect(baseline.gym.state.roster.length).toBeGreaterThan(0);
+    // The physio rung is reached inside the sweep and is NOT reached at the
+    // shortest horizon, so the physio series has a step in it to compare rather
+    // than a constant. Counts, not bounds, on both.
+    let runsWithPhysio = 0;
+    let runsWithoutPhysio = 0;
     for (const cell of GRID) {
       for (const run of cell.runs) {
-        buildSkips += run.census.idleBuildSkips;
-        clockSkips += run.census.idleClockSkips;
+        if (run.census.settledPhysioLevel > 0) runsWithPhysio += 1;
+        else runsWithoutPhysio += 1;
       }
     }
-    expect(buildSkips).toBe(24);
-    expect(clockSkips).toBe(22974);
+    expect(runsWithPhysio).toBe(52);
+    expect(runsWithoutPhysio).toBe(26);
   });
 
-  it('hands the settled lane nothing, on every step of every run', () => {
-    // The one line §3 of the module header calls the whole closure, pinned.
-    // Reddening edit: step the settled lane with `plan.accelerant, granted`.
-    let checked = 0;
+  it('spends every grant on exactly one of the two §8.3B mechanisms', () => {
+    // The claim §6 of the module header makes about the two mechanisms, pinned
+    // rather than described: a grant advances the idle clock or shortens a
+    // running build, never both and never neither. Reddening edit: drop the
+    // `else` in `stepGym`'s grant arm so a build skip also banks the seconds.
+    let granted = 0;
+    let buildSkips = 0;
+    let clockSkips = 0;
+    let grantedSeconds = 0;
     for (const cell of GRID) {
       for (const run of cell.runs) {
-        expect(run.census.settledSkippedSeconds).toBe(0);
-        expect(run.settled.buildSkips).toBe(0);
-        expect(run.settled.clockSkips).toBe(0);
-        const idleReading: number = run.settled.state.clock.accelerated;
-        const wallReading: number = run.settled.state.clock.unaccelerated;
-        expect(idleReading).toBe(wallReading);
-        checked += 1;
+        granted += run.census.grantedCheckIns;
+        buildSkips += run.census.buildSkips;
+        clockSkips += run.census.clockSkips;
+        grantedSeconds += run.census.grantedSeconds;
       }
     }
-    expect(checked).toBe(78);
-    // And the idle lane WAS handed something, or the line above holds because
-    // nothing was ever granted.
-    let granted = 0;
-    for (const cell of GRID) {
-      for (const run of cell.runs) granted += run.census.grantedSeconds;
+    expect(buildSkips + clockSkips).toBe(granted);
+    // Counts, not bounds, and both mechanisms fire. `skipExpansion` is only
+    // reachable at the dense cadence, which is why that row exists in the sweep.
+    expect(granted).toBe(22998);
+    expect(buildSkips).toBe(6);
+    expect(clockSkips).toBe(22992);
+    expect(grantedSeconds).toBe(193183200);
+  });
+
+  it('holds both halves of the ledger, partitioned by empireCore.ts own predicates', () => {
+    // Which outputs land in which half is `SINK_REACH` and `OUTPUT_SINK`'s
+    // answer, not this file's. Reddening edit: re-tag `'training-pace'` as
+    // `'idle-only'` in `SINK_REACH` — the progression half empties, both counts
+    // below move, and `empireRunFaults` reports it too.
+    const run = GRID[0]?.runs[0] as EmpireRun;
+    const progression = progressionDayLedger(run.ledger);
+    const idle = idleDayLedger(run.ledger);
+    expect(progression.length + idle.length).toBe(run.ledger.length);
+    expect(progression.length).toBe(run.days * PROGRESSION_REACHING_OUTPUTS.length);
+    expect(progression.length).toBe(14);
+    expect(idle.length).toBe(14);
+    for (const output of PROGRESSION_REACHING_OUTPUTS) {
+      expect(outputSeries(progression, output).length).toBe(run.days);
     }
-    expect(granted).toBe(193183200);
+    for (const output of idle) {
+      expect(IDLE_ONLY_OUTPUTS as readonly string[]).toContain(output.output);
+    }
+    expect(new Set(idle.map((one) => one.output)).size).toBe(2);
   });
 });
 
@@ -439,7 +562,8 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
   it('compares the progression ledger position by position and finds nothing moved', () => {
     // THE INVARIANT. Not a sum, not a bound: day, output and amount, at every
     // position of every list, for every purchasable accelerant, on every
-    // schedule, at every horizon, at both cadences.
+    // schedule, at every horizon, at both cadences — on the gym the accelerant
+    // landed on.
     let comparisons = 0;
     let elements = 0;
     let moved = 0;
@@ -466,32 +590,6 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
     expect(lengthDiffers).toBe(0);
   });
 
-  it('compares the arrival-day lists position by position and finds nothing moved', () => {
-    // The day-valued subject. `EmpireDayEntry.day` is the loop counter and so
-    // cannot move; the day a Training IQ step or a physio level first LANDS can,
-    // and chain B and chain C both move exactly that.
-    let lists = 0;
-    let elements = 0;
-    let moved = 0;
-    let lengthDiffers = 0;
-    for (const pair of PAIRS) {
-      for (const output of PROGRESSION_OUTPUTS) {
-        const result = compareDayLists(
-          arrivalDays(progressionDayLedger(pair.baseline.ledger), output),
-          arrivalDays(progressionDayLedger(pair.candidate.ledger), output),
-        );
-        lists += 1;
-        elements += result.compared;
-        moved += result.moved;
-        if (result.lengthDiffers) lengthDiffers += 1;
-      }
-    }
-    expect(lists).toBe(144);
-    expect(elements).toBe(2028);
-    expect(moved).toBe(0);
-    expect(lengthDiffers).toBe(0);
-  });
-
   it('drove every purchasable accelerant, so the zeros are not about one of them', () => {
     const driven = new Set<string>();
     for (const plan of PLANS) {
@@ -499,11 +597,51 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
     }
     expect([...driven].sort()).toEqual([...PURCHASABLE_ACCELERANTS].sort());
     expect(driven.size).toBe(2);
-    // And both halves of `empireCore.ts`'s partition are really in the ledger.
-    const outputs = new Set(GRID[0]?.runs[0]?.ledger.map((one) => one.output) ?? []);
-    for (const output of PROGRESSION_REACHING_OUTPUTS) expect(outputs).toContain(output);
-    expect([...outputs].filter((one) => (IDLE_ONLY_OUTPUTS as readonly string[]).includes(one)).length).toBe(2);
-    expect(outputs.size).toBe(4);
+    // And each one is driven on the same number of pairs, so a zero cannot be
+    // an average over one accelerant that was swept and one that was not.
+    for (const accelerant of PURCHASABLE_ACCELERANTS) {
+      expect(PAIRS.filter((pair) => pair.candidate.plan.accelerant === accelerant).length).toBe(36);
+    }
+  });
+
+  it('compares the PHYSIO series by wall-clock day, and finds nothing moved', () => {
+    // The measurement `expansion.ts`'s §2 and `empireCore.ts`'s §6 both
+    // commissioned, in the words they commissioned it in: the list of
+    // `physioDaysSavedAt` readings by wall-clock day, byte-identical to the
+    // list with no accelerant applied, element-wise.
+    //
+    // Reddening edits, each measured: `skipExpansion` moving
+    // `settledCompletion`; `expansionVerdict` reading `context.gymBucks` for a
+    // wall-clock-funded axis; `settledAxisLevel` reading `idleCompletion`.
+    const totals = seriesTotals(PAIRS, 'physio-days-saved');
+    expect(totals.lists).toBe(72);
+    expect(totals.elements).toBe(2616);
+    expect(totals.moved).toBe(0);
+    expect(totals.movedLists).toBe(0);
+    // The day-valued half, which is where chain C shows up at all.
+    expect(totals.dayElements).toBe(120);
+    expect(totals.dayMoved).toBe(0);
+    expect(totals.dayLengthDiffers).toBe(0);
+  });
+
+  it('compares the TRAINING IQ series by wall-clock day, and finds nothing moved', () => {
+    // The sibling of the check above, on §5.2's trickle. Written as its own
+    // measurement rather than folded into the ledger comparison, because a zero
+    // over both series together can hide one series moving while the other
+    // does not exist.
+    //
+    // Reddening edits, each measured: `recruitmentSchedule` stamping
+    // `settlesAt` from `clock.accelerated`; `recruitmentRefusals` reading
+    // `state.gymBucks` or `state.axes`; `reputationRates` reading
+    // `elapsedFor(at, 'reputation')` — which is chain B, one module over.
+    const totals = seriesTotals(PAIRS, 'training-iq');
+    expect(totals.lists).toBe(72);
+    expect(totals.elements).toBe(2616);
+    expect(totals.moved).toBe(0);
+    expect(totals.movedLists).toBe(0);
+    expect(totals.dayElements).toBe(1896);
+    expect(totals.dayMoved).toBe(0);
+    expect(totals.dayLengthDiffers).toBe(0);
   });
 });
 
@@ -531,25 +669,42 @@ describe('the zeros are zeros against measured numbers', () => {
     }
     expect(comparisons).toBe(72);
     expect(elements).toBe(5232);
-    expect(moved).toBe(2714);
+    expect(moved).toBe(2592);
     // Every single comparison moved, not merely the aggregate.
     expect(movedLists).toBe(72);
   });
 
-  it('NEGATIVE control: the same readings off the idle lane DO move', () => {
-    // `EmpireRun.counterfactualIdleReadings` is the deliberately-wired variant:
-    // the progression ledger read off the lane the purchase reaches. It is
-    // chain C — a skip pays Gym Bucks sooner, so the gym affords a physio level
-    // and a higher-tier recruit on an earlier wall-clock day — and it is the
-    // number the zero above is a zero against.
+  it('POSITIVE control: the purchase moves the gym the player looks at', () => {
+    // The other half of the sale, on the census rather than on the ledger: a
+    // plan that grants enough finishes builds the baseline has not finished and
+    // puts more lifters on the floor. Counts, not bounds.
+    let movedExpansions = 0;
+    let movedRecruits = 0;
+    let compared = 0;
+    for (const pair of PAIRS) {
+      compared += 1;
+      if (pair.candidate.census.expansions !== pair.baseline.census.expansions) movedExpansions += 1;
+      if (pair.candidate.census.recruits !== pair.baseline.census.recruits) movedRecruits += 1;
+    }
+    expect(compared).toBe(72);
+    expect(movedExpansions).toBe(12);
+    expect(movedRecruits).toBe(0);
+  });
+
+  it('NEGATIVE control: the same engine funded from the accelerated book DOES move', () => {
+    // `EmpireFunding` is the deliberately-wired variant GDD §4.4 asks for: the
+    // gym offered its accelerated book and its idle axis view where the
+    // wall-clock ones belong. It is chain C — a skip pays Gym Bucks sooner, so
+    // the gym affords a physio level and a recruit on an earlier wall-clock day
+    // — and it is the number the zero above is a zero against.
     let comparisons = 0;
     let elements = 0;
     let moved = 0;
     let movedLists = 0;
-    for (const pair of PAIRS) {
+    for (const pair of CONTROL_PAIRS) {
       const result = compareLedgers(
-        pair.baseline.counterfactualIdleReadings,
-        pair.candidate.counterfactualIdleReadings,
+        progressionDayLedger(pair.baseline.ledger),
+        progressionDayLedger(pair.candidate.ledger),
       );
       comparisons += 1;
       elements += result.compared;
@@ -562,64 +717,69 @@ describe('the zeros are zeros against measured numbers', () => {
     expect(movedLists).toBe(72);
   });
 
-  it('NEGATIVE control: the arrival DAYS off the idle lane move, and move earlier', () => {
-    // The day-valued half of the same control. Every moved element arrives
-    // EARLIER, which is the direction a purchase pushes and is what says this is
-    // the hazard rather than noise.
-    let lists = 0;
-    let elements = 0;
-    let moved = 0;
-    let earlier = 0;
-    let movedLists = 0;
-    let lengthDiffers = 0;
-    for (const pair of PAIRS) {
-      for (const output of PROGRESSION_OUTPUTS) {
-        const result = compareDayLists(
-          arrivalDays(pair.baseline.counterfactualIdleReadings, output),
-          arrivalDays(pair.candidate.counterfactualIdleReadings, output),
-        );
-        lists += 1;
-        elements += result.compared;
-        moved += result.moved;
-        earlier += result.earlier;
-        if (result.moved > 0) movedLists += 1;
-        if (result.lengthDiffers) lengthDiffers += 1;
-      }
-    }
-    expect(lists).toBe(144);
-    expect(elements).toBe(1930);
-    expect(moved).toBe(32);
-    expect(earlier).toBe(32);
-    expect(movedLists).toBe(32);
-    // The lists are not even the same length on 34 of them, which is the same
-    // hazard reported by a different fact: the idle lane reaches a Training IQ
-    // step the settled lane has not reached yet.
-    expect(lengthDiffers).toBe(34);
+  it('NEGATIVE control: both series move, and the physio days arrive EARLIER', () => {
+    // Per series, so the control is a control for both of the subject's two
+    // zeros rather than for their sum. The physio half is the one that moves a
+    // DAY: every moved element arrives earlier, which is the direction a
+    // purchase pushes and is what says this is the hazard rather than noise.
+    const physio = seriesTotals(CONTROL_PAIRS, 'physio-days-saved');
+    expect(physio.elements).toBe(2616);
+    expect(physio.moved).toBe(84);
+    expect(physio.movedLists).toBe(48);
+    expect(physio.dayElements).toBe(128);
+    expect(physio.dayMoved).toBe(32);
+    expect(physio.dayEarlier).toBe(32);
+    expect(physio.dayMovedLists).toBe(32);
+    // The lists are not even the same length on 16 of them, which is the same
+    // hazard reported by a different fact.
+    expect(physio.dayLengthDiffers).toBe(16);
+
+    const trainingIq = seriesTotals(CONTROL_PAIRS, 'training-iq');
+    expect(trainingIq.elements).toBe(2616);
+    expect(trainingIq.moved).toBe(1488);
+    expect(trainingIq.movedLists).toBe(72);
+    // The trickle's arrival-day list does not move under the control; it gets
+    // LONGER, because the accelerated gym reaches steps the wall clock has not.
+    // Recorded as measured rather than assumed: the day-valued subject is the
+    // physio one, and this is the fact that says so.
+    expect(trainingIq.dayMoved).toBe(0);
+    expect(trainingIq.dayLengthDiffers).toBe(20);
   });
 
-  it('the two controls are about the same runs as the subject', () => {
-    // The trap CLAUDE.md names: a control assembled by a second loop can be a
-    // control for a different simulation. These come off the same `EmpireRun`.
-    for (const cell of GRID) {
-      for (const run of cell.runs) {
-        expect(run.counterfactualIdleReadings.length).toBe(progressionDayLedger(run.ledger).length);
-        expect(run.counterfactualIdleReadings.map((one) => one.day)).toEqual(
-          progressionDayLedger(run.ledger).map((one) => one.day),
-        );
-        expect(run.counterfactualIdleReadings.map((one) => one.output)).toEqual(
-          progressionDayLedger(run.ledger).map((one) => one.output),
-        );
+  it('the control differs from the subject only in the funding rule', () => {
+    // What makes the two grids comparable, and what makes the control a control
+    // rather than a second simulation: same plans, same horizons, same social
+    // inputs, one parameter apart. Reddening edit: make `offeredTo` return its
+    // argument unconditionally — the control stops differing from the subject
+    // and `censusesThatDiffer` goes to zero.
+    let censusesThatDiffer = 0;
+    let plansCompared = 0;
+    for (let cell = 0; cell < GRID.length; cell += 1) {
+      const subject = GRID[cell] as SweepCell;
+      const control = CONTROL_GRID[cell] as SweepCell;
+      expect(control.days).toBe(subject.days);
+      expect(control.cadence).toBe(subject.cadence);
+      for (let at = 0; at < subject.runs.length; at += 1) {
+        const left = subject.runs[at] as EmpireRun;
+        const right = control.runs[at] as EmpireRun;
+        expect(right.plan).toBe(left.plan);
+        expect(left.funding).toBe(SHIPPED_FUNDING);
+        expect(right.funding).toBe('accelerated');
+        plansCompared += 1;
+        if (
+          right.census.recruits !== left.census.recruits ||
+          right.census.expansions !== left.census.expansions ||
+          right.census.settledPhysioLevel !== left.census.settledPhysioLevel
+        ) {
+          censusesThatDiffer += 1;
+        }
       }
     }
-    // And on the baseline plan the two are byte-identical, because with no
-    // accelerant the two lanes are the same gym. That is what says the control
-    // differs from the subject only where a purchase lands.
-    for (const cell of GRID) {
-      const baseline = cell.runs[0] as EmpireRun;
-      expect(
-        compareLedgers(baseline.counterfactualIdleReadings, progressionDayLedger(baseline.ledger)),
-      ).toEqual({ compared: baseline.counterfactualIdleReadings.length, moved: 0, misaligned: 0, movedAmounts: 0, lengthDiffers: false });
-    }
+    expect(plansCompared).toBe(78);
+    // Counts, not bounds: the funding rule really changes what the gym bought,
+    // on most runs and not on all of them.
+    expect(censusesThatDiffer).toBe(39);
+    expect(EMPIRE_FUNDINGS.length).toBe(2);
   });
 });
 
@@ -628,21 +788,31 @@ describe('the zeros are zeros against measured numbers', () => {
 // ---------------------------------------------------------------------------
 
 describe('a run refuses what it should refuse', () => {
-  it('reports a settled lane that carries an accelerant', () => {
-    // `empireRunFaults` is the runtime shadow of §3 of the module header, and a
+  it('reports a grant that was spent twice or spent nowhere', () => {
+    // `empireRunFaults` is the runtime shadow of §6 of the module header, and a
     // fault list that found nothing and one that looked at nothing read the
-    // same. This drives the faults it exists for.
+    // same. This drives the fault it exists for.
     const run = GRID[0]?.runs[1] as EmpireRun;
     expect(empireRunFaults(run)).toEqual([]);
-    const doctored: EmpireRun = {
+    const doubleSpent: EmpireRun = {
       ...run,
-      census: { ...run.census, settledSkippedSeconds: 1 },
-      settled: { ...run.settled, buildSkips: 1 },
+      census: { ...run.census, buildSkips: run.census.buildSkips + 1 },
     };
-    const faults = empireRunFaults(doctored);
-    expect(faults.length).toBe(2);
-    expect(faults[0]).toContain('seconds of accelerant');
-    expect(faults[1]).toContain('grants');
+    const faults = empireRunFaults(doubleSpent);
+    expect(faults.length).toBe(1);
+    expect(faults[0]).toContain('grants were spent');
+  });
+
+  it('reports a wall-clock ladder that has run ahead of the player own gym', () => {
+    const run = GRID[EMPIRE_SWEEP.HORIZON_DAYS.length - 1]?.runs[0] as EmpireRun;
+    expect(run.census.settledPhysioLevel).toBe(run.census.idlePhysioLevel);
+    const ahead: EmpireRun = {
+      ...run,
+      census: { ...run.census, idlePhysioLevel: run.census.settledPhysioLevel - 1 },
+    };
+    expect(empireRunFaults(ahead).some((fault) => fault.includes('the wall clock has reached'))).toBe(
+      true,
+    );
   });
 
   it('reports a disagreement with production.ts and an empty comparison', () => {
@@ -665,10 +835,6 @@ describe('a run refuses what it should refuse', () => {
         ...run.ledger,
         entry(0, 'training-iq', EMPIRE_TUNING.TRAINING_IQ_DAILY_CEILING + 1),
       ],
-      counterfactualIdleReadings: [
-        ...run.counterfactualIdleReadings,
-        entry(0, 'training-iq', 0),
-      ],
     };
     expect(empireRunFaults(overIq).some((fault) => fault.includes('above the daily budget'))).toBe(
       true,
@@ -677,18 +843,17 @@ describe('a run refuses what it should refuse', () => {
 
   it('reports a ledger with no progression half and one with no idle half', () => {
     const run = GRID[0]?.runs[0] as EmpireRun;
-    const idleOnly: EmpireRun = {
-      ...run,
-      ledger: idleDayLedger(run.ledger),
-      counterfactualIdleReadings: [],
-    };
-    const faults = empireRunFaults(idleOnly);
-    expect(faults.some((fault) => fault.includes('no entry reaches progression'))).toBe(true);
-    expect(faults.some((fault) => fault.includes('no counterfactual'))).toBe(true);
+    const idleOnly: EmpireRun = { ...run, ledger: idleDayLedger(run.ledger) };
+    expect(
+      empireRunFaults(idleOnly).some((fault) => fault.includes('no entry reaches progression')),
+    ).toBe(true);
     const progressionOnly: EmpireRun = { ...run, ledger: progressionDayLedger(run.ledger) };
     expect(
       empireRunFaults(progressionOnly).some((fault) => fault.includes('no entry is idle-only')),
     ).toBe(true);
+    expect(empireRunFaults({ ...run, ledger: [] }).some((fault) => fault.includes('no ledger at all'))).toBe(
+      true,
+    );
   });
 
   it('refuses a horizon or a cadence that is not a whole number at or above one', () => {
@@ -725,6 +890,29 @@ describe('a run refuses what it should refuse', () => {
 // Purity, real-identity exposure and the magic-number audit
 // ---------------------------------------------------------------------------
 
+/**
+ * Every string literal a source text ships, by kind.
+ *
+ * One collector, run over the real module and over a deliberately doctored copy
+ * of it, so the probe below tests the INSTRUMENT rather than the regex it is
+ * written beside.
+ */
+function stringLiteralsIn(code: string): {
+  readonly singleQuoted: ReadonlySet<string>;
+  readonly doubleQuoted: ReadonlySet<string>;
+  readonly templateChunks: ReadonlySet<string>;
+} {
+  const singleQuoted = new Set<string>();
+  const doubleQuoted = new Set<string>();
+  const templateChunks = new Set<string>();
+  for (const match of code.matchAll(/'([^'\\\n]*)'/g)) singleQuoted.add(match[1] as string);
+  for (const match of code.matchAll(/"([^"\\\n]*)"/g)) doubleQuoted.add(match[1] as string);
+  for (const match of code.matchAll(/`((?:[^`\\]|\\[\s\S])*)`/g)) {
+    templateChunks.add((match[1] as string).replace(/\$\{[^}]*\}/g, ' '));
+  }
+  return { singleQuoted, doubleQuoted, templateChunks };
+}
+
 describe('this module is pure, numerically clean and names nobody', () => {
   const source = readFileSync(path.join(HERE, 'empireInvariant.ts'), 'utf8');
   const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
@@ -735,60 +923,13 @@ describe('this module is pure, numerically clean and names nobody', () => {
     expect(code).toMatch(/export function /);
   });
 
-  it('reads no clock, rolls no dice and touches no host API', () => {
-    // The directory-wide version of this lives in `empireCore.test.ts`. This is
-    // the same ban applied here, so it bites before that file's list is signed.
-    const banned: readonly RegExp[] = [
-      /\bDate\b/,
-      /\bperformance\s*\./,
-      /Math\s*\.\s*random/,
-      /\brandom\b/i,
-      /\bshuffle\b/i,
-      /\bweight/i,
-      /\bseed\b/i,
-      /\bdistribution\b/i,
-      /\bprobability\b/i,
-      /\brarity\b/i,
-      /\bgacha\b/i,
-      /\bfetch\s*\(/,
-      /\bprocess\b/,
-      /\bwindow\b/,
-      /\bdocument\b/,
-      /\blocalStorage\b/,
-      /from ['"]react/,
-    ];
-    const tripwires: readonly string[] = [
-      'const now = Date.now();',
-      'performance . now()',
-      'Math.random()',
-      'const r = random();',
-      'shuffle(list)',
-      'const w = weights[0];',
-      'const seed = 7;',
-      'const distribution = [];',
-      'const probability = 0.5;',
-      'const rarity = 3;',
-      'gacha()',
-      'fetch (url)',
-      'process.env',
-      'window.alert',
-      'document.body',
-      'localStorage.getItem',
-      "import x from 'react';",
-    ];
-    let checks = 0;
-    for (const pattern of banned) {
-      expect(code, `empireInvariant.ts must not reach ${String(pattern)}`).not.toMatch(pattern);
-      checks += 1;
-    }
-    expect(checks).toBe(banned.length);
-    expect(checks).toBe(17);
-    // Every pattern is driven against a string it should trip, so a regex that
-    // stopped matching anything is red rather than quietly green.
-    for (const [index, pattern] of banned.entries()) {
-      expect(tripwires[index], `pattern ${String(pattern)} matches nothing`).toMatch(pattern);
-    }
-  });
+  // The clock-and-dice ban that used to sit here was a COPY of the list in
+  // `empireCore.test.ts`, ending in `expect(checks).toBe(banned.length)` — a
+  // count of an array declared three lines above it, which no state of
+  // `empireInvariant.ts` could move. `empireCore.test.ts`'s own scan takes its
+  // file list from `readdirSync` and therefore already covers this module by
+  // name; the copy is deleted rather than re-pinned, because a twin guard that
+  // is a copy is the failure CLAUDE.md records rather than the fix for it.
 
   it('imports only from this directory', () => {
     const imports = [...code.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1] as string);
@@ -821,21 +962,14 @@ describe('this module is pure, numerically clean and names nobody', () => {
     // in any string or code path. No scan can tell a real name from an invented
     // one — that is the human, name-by-name pass. What this does is make a name
     // ARRIVING visible.
-    const singleQuoted = new Set<string>();
-    const doubleQuoted = new Set<string>();
-    const templateChunks = new Set<string>();
-    for (const match of code.matchAll(/'([^'\\\n]*)'/g)) singleQuoted.add(match[1] as string);
-    for (const match of code.matchAll(/"([^"\\\n]*)"/g)) doubleQuoted.add(match[1] as string);
-    for (const match of code.matchAll(/`((?:[^`\\]|\\[\s\S])*)`/g)) {
-      templateChunks.add((match[1] as string).replace(/\$\{[^}]*\}/g, ' '));
-    }
-    expect(singleQuoted.size).toBe(28);
+    const { singleQuoted, doubleQuoted, templateChunks } = stringLiteralsIn(code);
+    expect(singleQuoted.size).toBe(27);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(15);
+    expect(templateChunks.size).toBe(14);
     // The template collector really reaches this module's messages, by match
     // count rather than by presence.
     const chunks = [...templateChunks];
-    expect(chunks.filter((chunk) => chunk.includes('the counterfactual holds')).length).toBe(1);
+    expect(chunks.filter((chunk) => chunk.includes('grants were spent')).length).toBe(1);
     expect(chunks.filter((chunk) => chunk.includes('recruit-')).length).toBe(1);
 
     expect([...singleQuoted].filter((literal) => !literal.includes(' ')).sort()).toEqual([
@@ -848,8 +982,8 @@ describe('this module is pure, numerically clean and names nobody', () => {
       './reputation',
       './social',
       'Placeholder',
+      'accelerated',
       'accepted',
-      'coach-staff-level',
       'composed-gym',
       'gym-bucks',
       'gym-empire-timer-skip',
@@ -859,6 +993,7 @@ describe('this module is pure, numerically clean and names nobody', () => {
       'rival-period-close',
       'roster-slot',
       'training-iq',
+      'wall-clock-earned',
     ]);
 
     const personShaped = /\b[A-Z][a-z]+ [A-Z][a-z]+\b/;
@@ -868,20 +1003,40 @@ describe('this module is pure, numerically clean and names nobody', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(43);
+    expect(stringsChecked).toBe(41);
+  });
 
-    // The pattern is not a dead letter, and the probe is DERIVED from this
-    // module's own vocabulary rather than written beside the pattern.
-    let probes = 0;
-    for (const literal of [...singleQuoted].filter((value) => !value.includes(' '))) {
-      const word = literal.replace(/[^A-Za-z]/g, '');
-      if (word.length < 2) continue;
-      const titled = `${word.slice(0, 1).toUpperCase()}${word.slice(1).toLowerCase()}`;
-      expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
-      probes += 1;
+  it('would catch a person-shaped name arriving in this module', () => {
+    // The non-vacuity probe for the scan above, and it is a probe of the
+    // INSTRUMENT rather than of the pattern. The version this replaces built
+    // `${titled} ${titled}` out of any two-letter token and asserted the
+    // pattern matched it — which is true for every possible input, so it tested
+    // the regex literal and nothing else.
+    //
+    // This doctors the module's own source, runs the SAME collector over it,
+    // and asserts the scan reports exactly one person-shaped string. It reddens
+    // if the collector stops reading a literal kind, and it reddens if the
+    // pattern stops discriminating.
+    const personShaped = /\b[A-Z][a-z]+ [A-Z][a-z]+\b/;
+    const real = stringLiteralsIn(code);
+    expect(
+      [...real.singleQuoted, ...real.doubleQuoted, ...real.templateChunks].filter((value) =>
+        personShaped.test(value),
+      ).length,
+    ).toBe(0);
+
+    for (const doctored of [
+      code.replace("const RECRUIT_DISPLAY_NAME = 'Placeholder';", "const RECRUIT_DISPLAY_NAME = 'Fictional Placeholder';"),
+      code.replace('`recruit-${recruits + stillPending.length}`', '`Fictional Placeholder ${recruits}`'),
+    ]) {
+      // The doctoring landed, or the probe is about a string that is not there.
+      expect(doctored).not.toBe(code);
+      const found = stringLiteralsIn(doctored);
+      const caught = [...found.singleQuoted, ...found.doubleQuoted, ...found.templateChunks].filter(
+        (value) => personShaped.test(value),
+      );
+      expect(caught.length).toBe(1);
     }
-    expect(probes).toBe(20);
-    expect(probes).toBe([...singleQuoted].filter((value) => !value.includes(' ')).length);
   });
 
   it('names every lifter it creates from a placeholder and a kebab id', () => {
@@ -889,16 +1044,16 @@ describe('this module is pure, numerically clean and names nobody', () => {
     // source. GDD §12.3 is about what ships, and a run is what ships.
     const run = GRID[EMPIRE_SWEEP.HORIZON_DAYS.length - 1]?.runs[0] as EmpireRun;
     expect(run.days).toBe(100);
-    expect(run.settled.state.roster.length).toBeGreaterThan(0);
+    expect(run.gym.state.roster.length).toBeGreaterThan(0);
     const personShaped = /\b[A-Z][a-z]+ [A-Z][a-z]+\b/;
     let checked = 0;
-    for (const lifter of run.settled.state.roster) {
+    for (const lifter of run.gym.state.roster) {
       expect(lifter.displayName).toBe('Placeholder');
       expect(lifter.id).toMatch(/^recruit-\d+$/);
       expect(personShaped.test(`${lifter.displayName} ${String(lifter.id)}`)).toBe(false);
       checked += 1;
     }
-    expect(checked).toBe(run.settled.state.roster.length);
+    expect(checked).toBe(run.gym.state.roster.length);
     expect(checked).toBe(11);
   });
 });

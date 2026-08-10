@@ -123,6 +123,10 @@ const OUR_MODULES = Object.freeze(['npc.ts', 'recruitment.ts'] as const);
 interface StateOverrides {
   readonly reputation?: number;
   readonly gymBucks?: number;
+  /** The wall-clock book. Mirrors the accelerated one unless a case parts them. */
+  readonly settledGymBucks?: number;
+  /** The wall-clock view of the slots. Mirrors the idle one unless parted. */
+  readonly settledSpaceLevel?: number;
   readonly spaceLevel?: number;
   readonly spotter?: number;
   readonly rosterSize?: number;
@@ -144,9 +148,19 @@ function stateWith(over: StateOverrides): EmpireState {
     ...base,
     clock: createEmpireClock(over.elapsed ?? 0, over.skipped ?? 0),
     axes: Object.freeze(axes),
+    // Both books and both views of the ladders, mirrored, because this file
+    // sweeps the GATE rather than the split: a fixture whose wall-clock book
+    // was empty would refuse every tier for one reason and measure nothing
+    // about the other three. The two cases in "a recruit is bought out of the
+    // wall-clock book" are where they are deliberately parted.
+    settledAxes: Object.freeze({
+      ...axes,
+      spaceLevel: over.settledSpaceLevel ?? axes.spaceLevel,
+    }),
     roster: Object.freeze(roster),
     reputation: asReputation(over.reputation ?? 0),
     gymBucks: asGymBucks(over.gymBucks ?? 0),
+    settledGymBucks: asGymBucks(over.settledGymBucks ?? over.gymBucks ?? 0),
   });
 }
 
@@ -489,6 +503,73 @@ describe('a purchasable skip moves when a recruit joins and not when they settle
 // Starting and completing
 // ---------------------------------------------------------------------------
 
+describe('a recruit is bought out of the wall-clock book and gated on the wall-clock slots', () => {
+  // The two halves of §2 of the module header, driven where the two views of a
+  // gym disagree. Every other fixture in this file mirrors them, so without
+  // these two cases the split would be a rule nothing in this file could tell
+  // apart from the rule it replaced.
+  const tier: NpcTier = 'novice';
+  const price = recruitmentQuote(tier).costGymBucks;
+
+  it('refuses a gym holding the price a hundred times over in the ACCELERATED book', () => {
+    // Reddening edit: read `state.gymBucks` in `recruitmentRefusals`.
+    const rich = stateWith({
+      reputation: EMPIRE_TUNING.REPUTATION_MAX,
+      gymBucks: price * 100,
+      settledGymBucks: price - 1,
+      spaceLevel: 5,
+      spotter: 4,
+    });
+    expect(recruitmentRefusals(rich, tier)).toEqual(['gym-bucks-below-cost']);
+    expect(mayRecruit(rich, tier)).toBe(false);
+    // One buck of wall-clock earnings later the same gym may recruit, so the
+    // refusal above is about which book and not about the tier, the reputation
+    // or the slots.
+    const earned = stateWith({
+      reputation: EMPIRE_TUNING.REPUTATION_MAX,
+      gymBucks: price * 100,
+      settledGymBucks: price,
+      spaceLevel: 5,
+      spotter: 4,
+    });
+    expect(recruitmentRefusals(earned, tier)).toEqual([]);
+    expect(mayRecruit(earned, tier)).toBe(true);
+  });
+
+  it('counts the slots on the wall clock, so a skipped space build opens none early', () => {
+    // The player's gym shows a full space ladder because a purchased skip
+    // finished those builds; the wall clock has not reached them. Reddening
+    // edit: read `state.axes` in `recruitmentRefusals`.
+    const ahead = stateWith({
+      reputation: EMPIRE_TUNING.REPUTATION_MAX,
+      gymBucks: price * 100,
+      settledGymBucks: price * 100,
+      spaceLevel: 5,
+      settledSpaceLevel: 0,
+      rosterSize: 2,
+    });
+    // The two views really do disagree, or the refusal below is about a gym
+    // that was full on both readings.
+    expect(rosterCapacity(ahead.axes)).toBe(12);
+    expect(rosterCapacity(ahead.settledAxes)).toBe(EMPIRE_TUNING.ROSTER_SLOTS_BASE);
+    expect(recruitmentRefusals(ahead, tier)).toEqual(['roster-at-capacity']);
+    const caughtUp = stateWith({
+      reputation: EMPIRE_TUNING.REPUTATION_MAX,
+      gymBucks: price * 100,
+      settledGymBucks: price * 100,
+      spaceLevel: 5,
+      settledSpaceLevel: 5,
+      rosterSize: 2,
+    });
+    expect(recruitmentRefusals(caughtUp, tier)).toEqual([]);
+    // And completing a sale asks the same view the verdict asked, rather than
+    // the more permissive one beside it.
+    expect(() =>
+      completeRecruitment(ahead, recruitmentSchedule(tier, ahead.clock), 'late-arrival', 'Placeholder'),
+    ).toThrow(RangeError);
+  });
+});
+
 describe('starting a recruitment', () => {
   const affordable = (tier: NpcTier): EmpireState =>
     stateWith({
@@ -507,8 +588,15 @@ describe('starting a recruitment', () => {
       const decision = beginRecruitment(before, tier);
       expect(decision.kind).toBe('accepted');
       if (decision.kind !== 'accepted') throw new Error('unreachable');
-      expect(before.gymBucks - decision.state.gymBucks).toBe(recruitmentQuote(tier).costGymBucks);
-      expect(decision.state.gymBucks).toBe(0);
+      // The WALL-CLOCK book pays, and the accelerated one is untouched. See §2
+      // of the module header: a recruit pays Training IQ, so the day this
+      // decision can be taken has to be a day no purchase moved, and a price
+      // taken out of the accelerated book would make the gate ornamental.
+      expect(before.settledGymBucks - decision.state.settledGymBucks).toBe(
+        recruitmentQuote(tier).costGymBucks,
+      );
+      expect(decision.state.settledGymBucks).toBe(0);
+      expect(decision.state.gymBucks).toBe(before.gymBucks);
       expect(decision.schedule.tier).toBe(tier);
       started += 1;
     }

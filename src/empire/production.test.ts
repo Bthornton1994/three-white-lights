@@ -46,6 +46,7 @@ import {
   accrueProduction,
   bankableOfflineSeconds,
   gymBucksRatePerHour,
+  settledGymBucksRatePerHour,
   offlineBankingHorizonSeconds,
   productionRates,
   quantiseElapsedSeconds,
@@ -133,16 +134,22 @@ function stateFrom(fixture: GymFixture, elapsedSeconds: number, skippedSeconds: 
     spotter: fixture.spotterLevel,
     physio: fixture.physioLevel,
   };
+  const axes = Object.freeze({
+    equipment: fixture.equipment,
+    spaceLevel: fixture.spaceLevel,
+    staffLevel: Object.freeze(staffLevel),
+  });
   const state: EmpireState = Object.freeze({
     clock: createEmpireClock(elapsedSeconds, skippedSeconds),
-    axes: Object.freeze({
-      equipment: fixture.equipment,
-      spaceLevel: fixture.spaceLevel,
-      staffLevel: Object.freeze(staffLevel),
-    }),
+    axes,
+    // The fixture describes one gym, so both views of the ladders are the same
+    // ladders. What this file measures is the two RATES, and the wall-clock
+    // book's rate reads no axes at all.
+    settledAxes: axes,
     roster: Object.freeze(fixture.roster.map(lifterFrom)),
     reputation: asReputation(0),
     gymBucks: asGymBucks(0),
+    settledGymBucks: asGymBucks(0),
     ledger: Object.freeze([]),
     accelerants: Object.freeze([]),
   });
@@ -684,6 +691,58 @@ describe('a purchased timer skip moves Gym Bucks and does not move Training IQ',
     // Counts, not bounds: 25 skip sizes compared, 24 of which moved the idle
     // half. A run where nothing moved would be an equality over one state.
     expect(compared).toBe(25);
+    expect(bucksDiffered).toBe(24);
+  });
+
+  it('pays byte-identical money into the WALL-CLOCK book, at the baseline line', () => {
+    // The book §5.4's physio rung and §5.3's recruits are bought out of, so
+    // this equality is the one `empireInvariant.ts` composes chain C's closure
+    // on top of. Reddens on: `accrueProduction` banking this half over the idle
+    // gap, or paying it at `rates.gymBucksPerHour` rather than at
+    // `settledGymBucksRatePerHour`.
+    const withSkip = accrueProduction(skipped, MARK, STAND_IN_RATES);
+    const without = accrueProduction(unskipped, MARK, STAND_IN_RATES);
+    expect(withSkip.settledGymBucks).toBe(without.settledGymBucks);
+
+    // The equality is not an equality between two identical rates: this gym's
+    // own rate is far above the baseline line, and its roster and its ladders
+    // are what make it so.
+    expect(withSkip.rates.gymBucksPerHour).toBeGreaterThan(settledGymBucksRatePerHour());
+    expect(settledGymBucksRatePerHour()).toBe(EMPIRE_TUNING.GYM_BUCKS_BASE_PER_HOUR);
+    expect(settledGymBucksRatePerHour()).toBe(120);
+
+    // And a gym with nothing at all pays the same into that book over the same
+    // wall-clock gap, which is what "reads no state" means. Reddens on any
+    // roster term or axis multiplier appearing on this line.
+    const empty = accrueProduction(stateFrom(EMPTY_GYM, ELAPSED, 0), MARK, STAND_IN_RATES);
+    expect(empty.settledGymBucks).toBe(withSkip.settledGymBucks);
+    expect(empty.gymBucks as number).toBeLessThan(withSkip.gymBucks as number);
+  });
+
+  it('holds that equality across every skip size, with the counts pinned', () => {
+    // The sibling of the Training IQ sweep above, on the other quantity the
+    // wall clock owns. Same shape deliberately: this codebase keeps finding its
+    // next gap in the branch beside a fixed one.
+    let compared = 0;
+    let settledDiffered = 0;
+    let bucksDiffered = 0;
+    const baseline = accrueProduction(unskipped, MARK, STAND_IN_RATES);
+    for (let grants = 0; grants <= 24; grants += 1) {
+      const accrual = accrueProduction(
+        stateFrom(BUILT_GYM, ELAPSED, grants * EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT),
+        MARK,
+        STAND_IN_RATES,
+      );
+      if ((accrual.settledGymBucks as number) !== (baseline.settledGymBucks as number)) {
+        settledDiffered += 1;
+      }
+      if ((accrual.gymBucks as number) !== (baseline.gymBucks as number)) bucksDiffered += 1;
+      compared += 1;
+    }
+    expect(compared).toBe(25);
+    expect(settledDiffered).toBe(0);
+    // The zero above is a zero against this: the same 25 states moved the
+    // accelerated book 24 times.
     expect(bucksDiffered).toBe(24);
   });
 });

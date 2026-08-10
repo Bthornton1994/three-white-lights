@@ -71,11 +71,13 @@ import {
 } from './empireCore';
 import { EMPIRE_TUNING as T } from './empireTuning';
 import {
+  AXIS_FUNDINGS,
   AXIS_OUTPUT,
   EXPANSION_AXES,
   EXPANSION_REFUSALS,
   axisBuildSeconds,
   axisCeiling,
+  axisFunding,
   axisLevel,
   axisLevelCost,
   axisOutput,
@@ -90,12 +92,15 @@ import {
   isStaffAxis,
   physioDaysSavedAt,
   quoteExpansion,
+  settledAxesAt,
   settledAxisLevel,
+  settledBuildInFlight,
   skipExpansion,
   startExpansion,
   type ExpansionAxis,
   type ExpansionBuild,
   type ExpansionContext,
+  type ExpansionStart,
 } from './expansion';
 import { EMPTY_FATIGUE_STATE, FATIGUE_TUNING, recordSession } from '../game/fatigue';
 
@@ -185,15 +190,31 @@ function contextAt(options: {
   readonly elapsed?: number;
   readonly skipped?: number;
   readonly gymBucks?: number;
+  /** The wall-clock book. Mirrors the accelerated one unless a case parts them. */
+  readonly settledGymBucks?: number;
   readonly reputation?: number;
   readonly builds?: readonly ExpansionBuild[];
 }): ExpansionContext {
+  const gymBucks = options.gymBucks ?? EXPANSION_SWEEP.PURSE_GYM_BUCKS;
   return Object.freeze({
     clock: createEmpireClock(options.elapsed ?? 0, options.skipped ?? 0),
-    gymBucks: asGymBucks(options.gymBucks ?? EXPANSION_SWEEP.PURSE_GYM_BUCKS),
+    gymBucks: asGymBucks(gymBucks),
+    settledGymBucks: asGymBucks(options.settledGymBucks ?? gymBucks),
     reputation: asReputation(options.reputation ?? T.REPUTATION_MAX),
     builds: options.builds ?? [],
   });
+}
+
+/** The book this axis is bought from, after a start. See `axisFunding`. */
+function fundedBalance(result: ExpansionStart, axis: ExpansionAxis): number {
+  if (!result.started) throw new Error('a refused start has no balance');
+  return axisFunding(axis) === 'wall-clock' ? result.settledGymBucks : result.gymBucks;
+}
+
+/** The other book — the one this axis does not touch. */
+function otherBalance(result: ExpansionStart, axis: ExpansionAxis): number {
+  if (!result.started) throw new Error('a refused start has no balance');
+  return axisFunding(axis) === 'wall-clock' ? result.gymBucks : result.settledGymBucks;
 }
 
 /** A finished build on `axis` at `toLevel`, completed on both clocks at zero. */
@@ -564,8 +585,28 @@ describe('§5.4 starting a build', () => {
     });
     seen.add('not-enough-gym-bucks');
 
+    // The fifth refusal, and the context that reaches it is the one the split
+    // exists for: a gym holding the price ten times over in the ACCELERATED
+    // book and nothing in the wall-clock one. The same context started an
+    // equipment build two lines below, so this is the split rather than an
+    // empty purse.
+    const richButNotOnTheWallClock = contextAt({
+      gymBucks: EXPANSION_SWEEP.PURSE_GYM_BUCKS,
+      settledGymBucks: 0,
+    });
+    expect(expansionVerdict(richButNotOnTheWallClock, 'physio')).toEqual({
+      allowed: false,
+      refusal: 'not-enough-wall-clock-earnings',
+    });
+    expect(expansionVerdict(richButNotOnTheWallClock, 'space')).toEqual({
+      allowed: false,
+      refusal: 'not-enough-wall-clock-earnings',
+    });
+    expect(expansionVerdict(richButNotOnTheWallClock, 'equipment').allowed).toBe(true);
+    seen.add('not-enough-wall-clock-earnings');
+
     expect([...seen].sort()).toEqual([...EXPANSION_REFUSALS].sort());
-    expect(seen.size).toBe(4);
+    expect(seen.size).toBe(5);
 
     // The order, checked where two refusals compete. Each of these three
     // contexts satisfies a later refusal as well as the one it reports, so a
@@ -609,8 +650,13 @@ describe('§5.4 starting a build', () => {
         if (!result.started) continue;
         const price = axisLevelCost(axis, 1) as number;
         // The consumption. Not a bound: the balance moves by the price and by
-        // nothing else, so a rounding or a double charge reddens.
-        expect(result.gymBucks).toBe(EXPANSION_SWEEP.PURSE_GYM_BUCKS - price);
+        // nothing else, so a rounding or a double charge reddens. Which of the
+        // two books moves is `axisFunding`'s answer, and the OTHER one is
+        // asserted untouched — a price taken out of both would be the split
+        // charging twice, and a price taken out of neither would make the gate
+        // ornamental.
+        expect(fundedBalance(result, axis)).toBe(EXPANSION_SWEEP.PURSE_GYM_BUCKS - price);
+        expect(otherBalance(result, axis)).toBe(EXPANSION_SWEEP.PURSE_GYM_BUCKS);
         expect(result.build.paid).toBe(price);
         expect(result.build.toLevel).toBe(1);
         // The two stamps come off the two readings of the same clock. The
@@ -634,7 +680,7 @@ describe('§5.4 starting a build', () => {
       expect(startExpansion(contextAt({ gymBucks: price - 1 }), axis).started).toBe(false);
       const exact = startExpansion(contextAt({ gymBucks: price }), axis);
       expect(exact.started, `${axis} refused an exact balance`).toBe(true);
-      if (exact.started) expect(exact.gymBucks).toBe(0);
+      if (exact.started) expect(fundedBalance(exact, axis)).toBe(0);
     }
   });
 
@@ -656,7 +702,7 @@ describe('§5.4 starting a build', () => {
         if (!result.started) break;
         expect(result.build.toLevel, `${axis} skipped a level`).toBe(level);
         spent += result.build.paid;
-        purse = result.gymBucks;
+        purse = fundedBalance(result, axis);
         builds = [...builds, result.build];
         // Wait the build out on the wall clock, which with no skip applied is
         // also the idle clock.
@@ -678,6 +724,106 @@ describe('§5.4 starting a build', () => {
       spotter: 4,
       physio: 1,
     });
+  });
+
+  it('funds each axis from the book the tables put it on, and reads it there', () => {
+    // `axisFunding` is derived from `AXIS_OUTPUT` and
+    // `WALL_CLOCK_FUNDED_OUTPUTS`, so this pins the DERIVATION's result rather
+    // than restating it: physio because it feeds a progression-reaching output,
+    // space and spotter because they feed one `GATE_TARGET` says gates
+    // Training IQ, and the other two because they feed neither.
+    //
+    // Reddening edits: re-point `AXIS_OUTPUT.physio` at `'gym-bucks'`; drop
+    // `'roster-slot'` from `GATING_OUTPUTS`; re-tag `'training-pace'` in
+    // `SINK_REACH`.
+    expect(Object.fromEntries(EXPANSION_AXES.map((axis) => [axis, axisFunding(axis)]))).toEqual({
+      equipment: 'idle-clock',
+      space: 'wall-clock',
+      coach: 'idle-clock',
+      spotter: 'wall-clock',
+      physio: 'wall-clock',
+    });
+    // Both sides are populated, so the split separates something. Counts, not
+    // bounds, and derived from the same call rather than from the table above.
+    const wallClock = EXPANSION_AXES.filter((axis) => axisFunding(axis) === 'wall-clock');
+    expect(wallClock.length).toBe(3);
+    expect(EXPANSION_AXES.length - wallClock.length).toBe(2);
+    expect([...AXIS_FUNDINGS].sort()).toEqual(['idle-clock', 'wall-clock']);
+    expect(expansionVocabularyFaults()).toEqual([]);
+  });
+
+  it('reads the ladders on both clocks, and the wall clock is never ahead', () => {
+    // `settledAxesAt` is `idleAxesAt`'s twin through one shared body. The state
+    // that tells them apart is the one a purchased skip produces: an idle
+    // completion that has passed and a settled one that has not.
+    //
+    // Reddening edit: have `settledAxesAt` read `idleCompletion`.
+    const skipped: ExpansionBuild = Object.freeze({
+      axis: 'space',
+      toLevel: 2,
+      paid: asGymBucks(T.SPACE_LEVEL_COST_GYM_BUCKS[1]),
+      startedAt: asUnacceleratedSeconds(0),
+      settledCompletion: asUnacceleratedSeconds(900),
+      idleCompletion: asAcceleratedSeconds(100),
+    });
+    const builds = [completedBuild('space', 1), skipped];
+    const now = 300;
+    expect(idleAxesAt(builds, asAcceleratedSeconds(now)).spaceLevel).toBe(2);
+    expect(settledAxesAt(builds, asUnacceleratedSeconds(now)).spaceLevel).toBe(1);
+    // The capacity the two views hand `rosterCapacity` differs, which is the
+    // whole reason the wall-clock view exists.
+    expect(rosterCapacity(idleAxesAt(builds, asAcceleratedSeconds(now)))).toBeGreaterThan(
+      rosterCapacity(settledAxesAt(builds, asUnacceleratedSeconds(now))),
+    );
+    // And once the wall clock has passed the build the two agree, so the line
+    // above is a clock and not a permanent gap.
+    expect(settledAxesAt(builds, asUnacceleratedSeconds(900)).spaceLevel).toBe(2);
+    // The same clamps hold on both, because there is one body: a build above
+    // the ceiling does not push either view off its ladder.
+    expect(settledAxesAt([completedBuild('space', 99)], asUnacceleratedSeconds(0)).spaceLevel).toBe(
+      T.SPACE_LEVEL_MAX,
+    );
+  });
+
+  it('holds a wall-clock-funded ladder to the wall clock while it is building', () => {
+    // The state a purchased skip produces: a space build that has finished on
+    // the player's idle clock and has not finished on the wall clock. Space is
+    // a wall-clock-funded axis, so the rung above it is not startable until the
+    // WALL clock has passed the build — otherwise a skip that cleared level N
+    // early would let level N+1 start early, and the day a roster slot opens
+    // is the day a Training IQ payer can start arriving.
+    //
+    // Reddening edit: read `buildInFlight` rather than `settledBuildInFlight`
+    // for a wall-clock-funded axis in `expansionVerdict`.
+    const skippedFlat: ExpansionBuild = Object.freeze({
+      axis: 'space',
+      toLevel: 1,
+      paid: asGymBucks(T.SPACE_LEVEL_COST_GYM_BUCKS[0]),
+      startedAt: asUnacceleratedSeconds(0),
+      settledCompletion: asUnacceleratedSeconds(600),
+      idleCompletion: asAcceleratedSeconds(100),
+    });
+    // The two clocks really disagree at this moment, or the verdict below is
+    // about a build both readings call finished.
+    expect(buildInFlight([skippedFlat], 'space', asAcceleratedSeconds(300))).toBeNull();
+    expect(settledBuildInFlight([skippedFlat], 'space', asUnacceleratedSeconds(300))).toEqual(
+      skippedFlat,
+    );
+    expect(expansionVerdict(contextAt({ elapsed: 300, builds: [skippedFlat] }), 'space')).toEqual({
+      allowed: false,
+      refusal: 'already-building',
+    });
+    // And once the wall clock has passed it, the next rung is startable — so
+    // the refusal above is the clock and not a permanent block.
+    expect(
+      expansionVerdict(contextAt({ elapsed: 600, builds: [skippedFlat] }), 'space').allowed,
+    ).toBe(true);
+    // The idle-funded sibling is read on the idle clock, which is the other
+    // half of the same decision.
+    const idleFunded: ExpansionBuild = Object.freeze({ ...skippedFlat, axis: 'coach' });
+    expect(expansionVerdict(contextAt({ elapsed: 300, builds: [idleFunded] }), 'coach').allowed).toBe(
+      true,
+    );
   });
 
   it('reads a level off the highest completed build, not off a count of them', () => {
@@ -707,11 +853,17 @@ describe('§5.4 starting a build', () => {
     const context = expansionContext(state, [completedBuild('coach', 1)]);
     expect(context.clock).toBe(state.clock);
     expect(context.gymBucks).toBe(state.gymBucks);
+    expect(context.settledGymBucks).toBe(state.settledGymBucks);
     expect(context.reputation).toBe(state.reputation);
     expect(context.builds.length).toBe(1);
     // A gym on the day it opens cannot afford anything, which is what a zero
-    // balance means and is worth one line rather than an assumption.
+    // balance means and is worth one line rather than an assumption. Which
+    // refusal it gets is which book the axis is bought from.
     expect(expansionVerdict(context, 'space')).toEqual({
+      allowed: false,
+      refusal: 'not-enough-wall-clock-earnings',
+    });
+    expect(expansionVerdict(context, 'equipment')).toEqual({
       allowed: false,
       refusal: 'not-enough-gym-bucks',
     });
@@ -1181,6 +1333,7 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
     expect([...names].sort()).toEqual([
       'axisBuildSeconds',
       'axisCeiling',
+      'axisFunding',
       'axisLevel',
       'axisLevelCost',
       'axisOutput',
@@ -1195,11 +1348,13 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
       'isStaffAxis',
       'physioDaysSavedAt',
       'quoteExpansion',
+      'settledAxesAt',
       'settledAxisLevel',
+      'settledBuildInFlight',
       'skipExpansion',
       'startExpansion',
     ]);
-    expect(names.length).toBe(19);
+    expect(names.length).toBe(22);
   });
 
   it('takes no bare number on any function that produces a clock quantity', () => {
@@ -1216,7 +1371,7 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
       const at = match.index as number;
       declarations.set(match[1] as string, code.slice(at, code.indexOf('{', at)));
     }
-    expect(declarations.size).toBe(19);
+    expect(declarations.size).toBe(22);
 
     const producesAClockQuantity =
       /:\s*(UnacceleratedSeconds|AcceleratedSeconds|SettledLevel|InjuryDaysSaved|ExpansionBuild|ExpansionStart)\b/;
@@ -1238,6 +1393,7 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
       'buildInFlight',
       'physioDaysSavedAt',
       'settledAxisLevel',
+      'settledBuildInFlight',
       'skipExpansion',
       'startExpansion',
     ]);
@@ -1247,7 +1403,7 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
       'axisReputationRequirement',
       'axisReputationRule',
     ]);
-    expect(producers.length).toBe(5);
+    expect(producers.length).toBe(6);
     expect(bareNumberTakers.length).toBe(4);
     // The claim itself: the two sets are disjoint.
     expect(producers.filter((name) => bareNumberTakers.includes(name))).toEqual([]);

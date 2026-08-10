@@ -30,106 +30,139 @@
  * modules rather than inside one.
  *
  * ===========================================================================
- * 2. The three leaks the leaves could not close, and which ones this closes
+ * 2. The three chains, and where each one is closed
  * ===========================================================================
  *
  * Chain A — earned, not purchased. Check-ins pay reputation, reputation pays a
  * sponsor line, the sponsor line pays Gym Bucks, Gym Bucks buy the physio level,
  * and `physioDaysSaved` is a Sim quantity. Not a §8.1 breach, because it is not
- * purchasable; named here because it is §4.4's shape one hop out and because the
- * argument that it is safe (a diligent lifter is only ever helped) is a reason to
- * measure it rather than a substitute for measuring it. This file does not
- * measure it; that is stated as an obligation still outstanding.
+ * purchasable. It is narrower than it was — the sponsor line is paid into the
+ * accelerated book, and the physio ladder is not bought out of that book any
+ * more — but the check-in still pays reputation, and reputation still gates a
+ * recruit. What this file does NOT measure is the chain against a lifter who
+ * TRAINS more, at every horizon, which is a sweep with a different independent
+ * variable. That obligation is still outstanding and is stated as one.
  *
- * Chain B — purchasable, found and MEASURED by piece E4, closed by piece E6 in
+ * Chain B — purchasable, found and measured by piece E4, closed in
  * `empireCore.ts` and `reputation.ts` rather than here. A skip lengthened the
  * idle gap, reputation accrued against the longer gap because reputation is paid
  * into the gym economy, so a tier's milestone was met on an earlier WALL-CLOCK
  * day and the lifter behind it settled earlier at a larger tier multiplier. The
  * fix is that reach as a PAYOUT and reach as a GATE are two different questions:
- * `GATE_TARGET` and `gateElapsedFor` ask the second one. `reputation.test.ts`
- * measures the closure at zero with the old reading kept beside it as the
- * control at piece E4's own numbers.
+ * `GATE_TARGET` and `gateElapsedFor` ask the second one.
  *
- * Chain C — purchasable, and the one no rate function can answer. A skip pays
- * Gym Bucks sooner, so the gym can AFFORD a recruit or a physio level on an
- * earlier wall-clock day. `startExpansion` stamps `settledCompletion` from
- * whatever `clock.unaccelerated` it is handed, and `recruitmentSchedule` stamps
- * `settlesAt` the same way; both are correct, and both are stamped on a day the
- * purchase chose. `settledLevel`'s docstring in `empireCore.ts` states the
- * contract — `completionTimes` is "when each level of that axis would have
- * finished with no accelerant applied" — and says plainly that it is a contract
- * on the CALLER, because nothing checks where a `readonly UnacceleratedSeconds[]`
- * came from. This file is that caller, and §3 is how it keeps the contract.
+ * Chain C — purchasable, and the one no rate function can answer, and the one
+ * this piece was handed by `empireCore.ts`'s §6 and `expansion.ts`'s §2. A skip
+ * pays Gym Bucks sooner on the accelerated clock, so the gym can AFFORD a
+ * recruit or a physio level on an earlier wall-clock day. `startExpansion`
+ * stamps `settledCompletion` from whatever `clock.unaccelerated` it is handed
+ * and `recruitmentSchedule` stamps `settlesAt` the same way; both are correct,
+ * and both are stamped on a day the purchase chose.
  *
  * ===========================================================================
- * 3. Two lanes, and the one line that is the whole closure
+ * 3. How chain C is closed: the purse is chosen the way the clock is
  * ===========================================================================
  *
- * An `EmpireRun` steps TWO lanes over the same calendar, with the same policy:
+ * `WALL_CLOCK_FUNDED_OUTPUTS` in `empireCore.ts` is the closure and it is
+ * derived from the tables that were already there: an output is on it when it
+ * reaches Sim progression, or when `GATE_TARGET` says it gates something that
+ * does. `axisFunding` in `expansion.ts` reads it through `AXIS_OUTPUT`, so the
+ * physio, space and spotter rungs are bought out of `settledGymBucks` — the
+ * gym's wall-clock book — and the equipment and coach rungs out of the
+ * accelerated one. `recruitmentRefusals` is on the same side of the split,
+ * because a recruit pays Training IQ.
  *
- *   - the IDLE lane is the gym the player has. Every accelerant lands on it, so
- *     a bought skip does what GDD §8.3B sells — the build finishes now, the
- *     lifter is on the roster now, the economy pays now.
- *   - the SETTLED lane is the same gym with no accelerant ever applied. It makes
- *     its own decisions with its own money on the wall clock.
- *
- * Everything that reaches Sim progression is read off the SETTLED lane; the Gym
- * Bucks balance, the roster size and everything else a screen shows are read off
- * the IDLE one. `stepLane` is one function and both lanes go through it; the
- * settled lane is stepped with `NO_ACCELERANT` and a zero grant, always, and
- * that call is the whole closure. It is one line, it is named, and
- * `empireInvariant.test.ts` drives the variant where it is not — the settled
- * lane stepped with the plan — and pins that variant's divergence count non-zero.
+ * The wall-clock book accrues at `settledGymBucksRatePerHour`, which reads no
+ * state at all: it is the baseline line over the un-accelerated part of a gap.
+ * So the day a wall-clock-funded rung becomes affordable is a function of wall
+ * time, the cost tables and the gym's own earlier wall-clock-funded purchases —
+ * and of nothing a purchase moves. The rungs' levels and their in-flight builds
+ * are read on the same clock, which is the half that is easy to leave out: a
+ * skip that finished level N early would otherwise let level N+1 start early.
  *
  * Say plainly what this costs, because it is a design decision a human may
- * overturn rather than a transcription. A player who buys skips watches their
- * empire race ahead while their Training IQ trickle behaves as though they had
- * bought nothing. That is the pay-to-win rule taken literally: the purchase buys
- * the gym, the collection, the cosmetics and the convenience, and it does not buy
- * a single point of a stat GDD §2 says decides growth rate and long-term ceiling.
- * `empireCore.ts`'s header names the two alternatives — a flat calendar-keyed
- * trickle with no roster term at all, or narrowing §8.3B so recruit and build
- * timers are not for sale — and both cost more of §5 than this does.
+ * overturn rather than a transcription. A player who buys skips gets what GDD
+ * §8.3B sells — the build finishes now, the lifter is on the floor now, the
+ * accelerated economy pays now — and does not get to buy the next rung of a
+ * ladder that reaches Sim progression any sooner than the wall clock allows.
+ * The surplus the accelerated book carries buys §8.3A's decor, the equipment
+ * ladder and the coach ladder. `empireCore.ts`'s header names two alternatives —
+ * a flat calendar-keyed trickle with no roster term at all, or narrowing §8.3B
+ * so recruit and build timers are not for sale — and both cost more of §5 than
+ * this does.
  *
- * And say plainly what the shape of the check is. With the settled lane wired
- * this way the invariant is true by construction, which is the point rather than
- * a weakness: the thing worth checking is that the construction is the one that
- * shipped. Every mutant `empireInvariant.test.ts` runs is a wiring mistake a
- * later piece could actually make — the progression ledger read off the idle
- * lane, the settled lane handed the plan, the physio series read off
- * `idleAxesAt` — and each one is pinned at a measured non-zero count. The
- * positive control is the other half: the idle ledger MUST move under every plan
- * that grants anything, or the whole sweep is an empty domain reporting a zero
+ * ===========================================================================
+ * 4. What is measured, on which gym, and what the zero is a zero against
+ * ===========================================================================
+ *
+ * There is ONE gym here, and it is the gym the player has: every accelerant
+ * lands on it, its Gym Bucks balance is the accelerated one, its roster fills as
+ * fast as the skips it was bought. The two progression-reaching readings —
+ * GDD §5.2's Training IQ trickle and §5.4's `physioDaysSaved` hook — are read
+ * off that same gym through the shipped accessors, and it is those two series,
+ * element by element and by wall-clock day, that `empireInvariant.test.ts`
+ * asserts unmoved.
+ *
+ * A previous version of this file ran a SECOND gym beside it, stepped with no
+ * accelerant, and read the progression ledger off that one. The invariant was
+ * then true by construction — `g(x)` compared with `g(x)` — and it was: it
+ * stayed green with chain B reverted in `empireCore.ts`, which is a leak in a
+ * module it imports. That is recorded here rather than deleted, because the
+ * shape is the one CLAUDE.md's vacuity section is about: the comparison was
+ * carefully written, ran, passed, and no state of the modules under it could
+ * have reddened it.
+ *
+ * `EmpireFunding` is the negative control GDD §4.4 asks for, and it is one
+ * parameter rather than a second loop: `'accelerated'` hands the gym its
+ * accelerated book and its idle axis view in place of the wall-clock ones, which
+ * is the engine as it stood before §3 and is exactly the wiring mistake a later
+ * piece would make. Its divergence counts are pinned non-zero. The positive
+ * control is the idle half of the same ledger: if a purchase did not move the
+ * Gym Bucks balance and the roster size, the sweep would be reporting a zero
  * about an accelerant that was never applied.
  *
  * ===========================================================================
- * 3a. What this sweep is blind to, measured rather than argued
+ * 4a. What this sweep kills, and what it is blind to — measured, not argued
  * ===========================================================================
  *
- * The two-lane design has a consequence worth stating plainly, because CLAUDE.md
- * asks whether harnesses are independent or merely numerous: **a leak inside the
- * accelerant path itself cannot reach the settled lane, so this sweep cannot
- * see one.** Two mutants were run to find out rather than reasoned about:
+ * CLAUDE.md asks whether harnesses are independent or merely numerous, so every
+ * mutant below was actually run against `empireInvariant.test.ts` rather than
+ * reasoned about. Killed here, each on the element-wise subject rather than on
+ * a count:
  *
- *   - reverting chain B in `reputation.ts` — the accrual back onto
- *     `elapsedFor(at, 'reputation')` and the roster filter back onto `joinedAt`
- *     — leaves all 39 checks in `empireInvariant.test.ts` green on the
- *     invariant, and reddens four exact COUNT pins and the whole of
- *     `reputation.test.ts`'s chain block;
- *   - letting `skipExpansion` move `settledCompletion` as well as
- *     `idleCompletion` leaves this file's suite entirely green, and reddens
- *     three checks in `expansion.test.ts`.
+ *   - `gateElapsedFor` reverted to `elapsedFor(clock, output)` — chain B, and
+ *     the mutation that survived the version of this file that read its ledger
+ *     off a second gym: 1266 of 2616 Training IQ elements move;
+ *   - `elapsedFor` returning `clock.accelerated` unconditionally: 2592 and 2592;
+ *   - `recruitmentSchedule` stamping `settlesAt` from `clock.accelerated`: 2190;
+ *   - recruitment gated and debited on the accelerated book: 1036 and 132;
+ *   - a wall-clock-funded axis gated and debited on the accelerated book: 204
+ *     Training IQ elements and 68 physio elements;
+ *   - `settledAxisLevel` reading `idleCompletion`: 84 physio elements;
+ *   - `accrueProduction` banking the wall-clock book over the idle gap: 1992
+ *     and 260;
+ *   - `'roster-slot'` dropped from `GATING_OUTPUTS`: 204 and 132.
  *
- * Neither is a weak test here. Both are outside this sweep's subject: this file
- * asserts that the COMPOSITION keeps a progression-reaching output off the
- * purchase, and each leaf module asserts that its own arithmetic does. The two
- * layers are independent for a structural reason rather than by luck, and the
- * honest statement is that a green run of this file alone is not evidence about
- * the leaves.
+ * Two mutants live here and are killed one layer down, and that is a property
+ * of the composition rather than a weakness in either file:
+ *
+ *   - `skipExpansion` moving `settledCompletion` as well as `idleCompletion`
+ *     leaves this file's 43 checks green. The reason is measurable: across the
+ *     whole grid a grant lands on a build that is still running six times, and
+ *     every one of those builds is on the coach ladder, whose settled level no
+ *     progression-reaching reading consults. Three checks in `expansion.test.ts`
+ *     redden on it.
+ *   - `recruitmentRefusals` counting slots off `state.axes` instead of
+ *     `state.settledAxes` also leaves this file green, because in this sweep the
+ *     wall-clock book binds a recruit before the slots do. One check in
+ *     `recruitment.test.ts` reddens on it, and one in `expansion.test.ts`
+ *     reddens on the matching read of `buildInFlight`.
+ *
+ * So a green run of this file alone is not evidence about the leaves, and the
+ * two layers are independent for a structural reason rather than by luck.
  *
  * ===========================================================================
- * 4. The Training IQ ceiling is applied HERE, and that is not an accident
+ * 5. The Training IQ ceiling is applied HERE, and that is not an accident
  * ===========================================================================
  *
  * `TRAINING_IQ_DAILY_CEILING` is a budget on what one calendar day of idle may
@@ -151,8 +184,7 @@
  * moves that counter.
  *
  * ===========================================================================
- * 5. How an accelerant is modelled, since two mechanisms exist and neither may
- *    be applied to the same second twice
+ * 6. How an accelerant is modelled, since two mechanisms exist
  * ===========================================================================
  *
  * GDD §8.3B sells "Gym Empire build and recruit timer skips" and
@@ -166,14 +198,16 @@
  *     `createEmpireClock`'s `skippedSeconds`, which is the only route the shipped
  *     modules give to a shortened RECRUIT timer and is the model piece E4 used.
  *
- * Never both, so a second is never skipped twice. A physio build is never
- * skipped, because `mayAccelerate` refuses every purchasable accelerant against
- * `'physio-days-saved'` and `applyAccelerant` will not build the pairing — that
- * is `empireCore.ts`'s first reading doing its job inside this loop rather than
- * a rule restated here.
+ * A grant is spent on one of the two and not on both, so a second is not skipped
+ * twice; `EmpireRunCensus` counts each mechanism and the suite pins that the two
+ * counts add up to the number of check-ins the plan granted on. A physio build
+ * is never skipped, because `mayAccelerate` refuses every purchasable accelerant
+ * against `'physio-days-saved'` and `applyAccelerant` will not build the pairing
+ * — that is `empireCore.ts`'s first reading doing its job inside this loop
+ * rather than a rule restated here.
  *
  * ===========================================================================
- * 6. What is deliberately not here
+ * 7. What is deliberately not here
  * ===========================================================================
  *
  *   - No wallet write. Currency and progression are server-authoritative
@@ -210,10 +244,14 @@ import {
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
+  AXIS_FUNDINGS,
+  axisFunding,
+  axisLevel,
   axisOutput,
   expansionContext,
   idleAxesAt,
   physioDaysSavedAt,
+  settledAxesAt,
   settledAxisLevel,
   skipExpansion,
   startExpansion,
@@ -250,19 +288,32 @@ import {
 // Vocabulary
 // ---------------------------------------------------------------------------
 
-/** The placeholder every recruited lifter is named with. See §6 of the header. */
+/** The placeholder every recruited lifter is named with. See §7 of the header. */
 const RECRUIT_DISPLAY_NAME = 'Placeholder';
 
 /** The gym id the composed run reports itself under, for the §5.5 comparison. */
 const OWN_GYM_ID = 'composed-gym';
 
-/**
- * The plan for a lane that is handed no accelerant, ever.
- *
- * `stepLane` takes an accelerant and a grant size; this is the pair the settled
- * lane is always stepped with, and it is the whole of the closure §3 describes.
- */
+/** A plan may carry no accelerant at all. This is that plan's accelerant. */
 export const NO_ACCELERANT: null = null;
+
+/**
+ * Which book a composed run funds its progression-reaching purchases from.
+ *
+ * `'wall-clock-earned'` is the shipped rule and the closure §3 of the header
+ * describes. `'accelerated'` is the NEGATIVE CONTROL and nothing the game ships
+ * reads it: it offers the gym its accelerated book and its idle axis view where
+ * the wall-clock ones belong, which is the engine as it stood before §3 and the
+ * wiring mistake a later piece would make. It is one parameter through the same
+ * loop rather than a second loop, because a control assembled separately can
+ * drift from the thing it is a control for.
+ */
+export const EMPIRE_FUNDINGS = ['wall-clock-earned', 'accelerated'] as const;
+
+export type EmpireFunding = (typeof EMPIRE_FUNDINGS)[number];
+
+/** The rule the shipped engine runs on. */
+export const SHIPPED_FUNDING: EmpireFunding = 'wall-clock-earned';
 
 /** How the simulated player spends, per check-in. No magnitude lives here. */
 export interface EmpirePolicy {
@@ -303,14 +354,14 @@ export interface PendingRecruit {
   readonly id: string;
 }
 
-/** One lane of the simulation: a gym, its builds, and what it is waiting on. */
-export interface EmpireLane {
+/** The gym the player has: its state, its builds, and what it is waiting on. */
+export interface EmpireGym {
   readonly state: EmpireState;
   readonly builds: readonly ExpansionBuild[];
   readonly pending: readonly PendingRecruit[];
-  /** The clock as it read when this lane last collected. */
+  /** The clock as it read when this gym last collected. */
   readonly collectedAt: EmpireClock;
-  /** Seconds of accelerant folded into this lane's idle clock so far. */
+  /** Seconds of accelerant folded into this gym's idle clock so far. */
   readonly skippedSeconds: number;
   /** Where the axis rotation is. */
   readonly nextAxis: number;
@@ -343,22 +394,30 @@ export interface EmpireRunCensus {
   readonly checkIns: number;
   /** Check-ins on which the plan granted anything at all. */
   readonly grantedCheckIns: number;
-  /** Seconds of accelerant the plan handed the idle lane in total. */
+  /** Seconds of accelerant the plan handed the gym in total. */
   readonly grantedSeconds: number;
-  readonly idleRecruits: number;
-  readonly settledRecruits: number;
-  readonly idleExpansions: number;
-  readonly settledExpansions: number;
-  readonly idleBuildSkips: number;
-  readonly idleClockSkips: number;
-  /** Seconds the settled lane was ever handed. Zero, or the closure is gone. */
-  readonly settledSkippedSeconds: number;
+  readonly recruits: number;
+  readonly expansions: number;
+  /** Grants spent through `skipExpansion`. Adds up with the next one. */
+  readonly buildSkips: number;
+  /** Grants spent by advancing the idle clock. */
+  readonly clockSkips: number;
   /** Days on which `TRAINING_IQ_DAILY_CEILING` bit. */
   readonly ceilingBoundDays: number;
   /** Days the composed rate was compared with `production.ts`'s own. */
   readonly rateComparisons: number;
   readonly rateDisagreements: number;
+  /** The physio level the wall clock has reached — what the Sim hook reads. */
   readonly settledPhysioLevel: number;
+  /**
+   * The physio level the player's own gym shows, on the accelerated clock.
+   *
+   * The positive control for chain C: a purchased skip on a running physio
+   * build is refused, but a skip that advances the idle clock still lands the
+   * finished build on the player's gym sooner, so this reading MUST move under
+   * a plan that grants enough. If it did not, the zero beside it would be a zero
+   * about an axis the accelerant never reached.
+   */
   readonly idlePhysioLevel: number;
   readonly socialRewardDays: number;
 }
@@ -366,33 +425,11 @@ export interface EmpireRunCensus {
 /** Everything one composed calendar produced. */
 export interface EmpireRun {
   readonly plan: AccelerantPlan;
+  readonly funding: EmpireFunding;
   readonly days: number;
   /** Every entry, both halves, in day order then in output order. */
   readonly ledger: readonly EmpireDayEntry[];
-  /**
-   * THE NEGATIVE CONTROL, and nothing the game ships reads it.
-   *
-   * The same two progression-reaching readings, on the same days, through the
-   * same `composeTrainingIqRate` and `physioDaysSavedAt` calls — taken off the
-   * IDLE lane instead of the settled one. It is the deliberately-wired variant
-   * GDD §4.4 asks for beside a zero: a run whose progression ledger DOES move
-   * with the purchase, with its divergence count pinned non-zero in
-   * `empireInvariant.test.ts`.
-   *
-   * It is produced here rather than reconstructed in a test on purpose. A
-   * control assembled by a second loop can drift from the loop it is a control
-   * for, and then the zero and the non-zero are about two different simulations.
-   * Swapping one identifier — `settled` for `idle` — is exactly the wiring
-   * mistake a later piece would make, and it is exactly what this field is.
-   *
-   * It also covers the mutant "the settled lane is stepped with the plan",
-   * because a lane stepped with the plan under this policy and these social
-   * inputs IS the idle lane. Two names, one variant; said here rather than
-   * shipped twice.
-   */
-  readonly counterfactualIdleReadings: readonly EmpireDayEntry[];
-  readonly idle: EmpireLane;
-  readonly settled: EmpireLane;
+  readonly gym: EmpireGym;
   readonly census: EmpireRunCensus;
 }
 
@@ -415,7 +452,7 @@ export interface ComposedTrainingIq {
 /**
  * GDD §5.2's Training IQ trickle for a whole gym, at a clock reading.
  *
- * The composition point §4 of the header is about. Three things happen here and
+ * The composition point §5 of the header is about. Three things happen here and
  * nowhere else in this piece: the base trickle and the roster subtotal are
  * added, the roster is filtered to lifters whose recruitment has SETTLED on the
  * wall clock, and `TRAINING_IQ_DAILY_CEILING` is applied to the sum.
@@ -511,11 +548,11 @@ export function grantSecondsAt(plan: AccelerantPlan, checkIn: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// A lane
+// The gym
 // ---------------------------------------------------------------------------
 
-/** A lane on the day the gym opens. */
-export function createEmpireLane(): EmpireLane {
+/** A gym on the day it opens. */
+export function createEmpireGym(): EmpireGym {
   return Object.freeze({
     state: createEmpireState(),
     builds: Object.freeze([]),
@@ -530,12 +567,12 @@ export function createEmpireLane(): EmpireLane {
   });
 }
 
-/** The gym as §5.5 compares it: this lane's own reputation and nothing private. */
-export function laneSnapshot(lane: EmpireLane): GymSnapshot {
+/** The gym as §5.5 compares it: its own reputation and nothing private. */
+export function gymSnapshot(gym: EmpireGym): GymSnapshot {
   return Object.freeze({
     gymId: OWN_GYM_ID,
     displayName: RECRUIT_DISPLAY_NAME,
-    reputation: lane.state.reputation,
+    reputation: gym.state.reputation,
     combinedTotalKg: 0,
   });
 }
@@ -552,20 +589,60 @@ function bestRecruitableTier(state: EmpireState): NpcTier | null {
 }
 
 /**
- * Advance one lane by one check-in.
+ * The state a spending decision is offered, under a funding rule.
  *
- * `accelerant` and `grantSeconds` are what §3 of the header is about: the
- * settled lane is stepped with `NO_ACCELERANT` and zero, on every step, and that
- * is what keeps every progression-reaching quantity read off it free of the
- * purchase. Nothing else in this function branches on which lane it is stepping.
+ * Under the shipped rule it is the gym's own state. Under the control the
+ * wall-clock book and the wall-clock axis view are replaced by the accelerated
+ * ones, so every consumer that reads `settledGymBucks` or `settledAxes` — the
+ * expansion verdict and the recruitment verdict alike — takes its decision
+ * against money and slots a purchase moved. One substitution covers both
+ * consumers, which is the point: a control written per consumer is two
+ * judgements about one shape.
  */
-export function stepLane(
-  lane: EmpireLane,
+function offeredTo(state: EmpireState, funding: EmpireFunding): EmpireState {
+  if (funding === SHIPPED_FUNDING) return state;
+  return Object.freeze({ ...state, settledGymBucks: state.gymBucks, settledAxes: state.axes });
+}
+
+/**
+ * Put a decision's two books back on the gym's own state.
+ *
+ * Under the shipped rule the two numbers are the gym's two books. Under the
+ * control the gym was offered one book twice, so exactly one of the two came
+ * back reduced and the smaller one is the accelerated balance the price was
+ * taken from; the untouched wall-clock book carries on accruing beside it.
+ */
+function withBooks(
+  gymState: EmpireState,
+  decided: EmpireState,
+  funding: EmpireFunding,
+): EmpireState {
+  if (funding === SHIPPED_FUNDING) return decided;
+  const paid: number = Math.min(decided.gymBucks, decided.settledGymBucks);
+  return Object.freeze({
+    ...decided,
+    gymBucks: asGymBucks(paid),
+    settledGymBucks: gymState.settledGymBucks,
+    settledAxes: gymState.settledAxes,
+  });
+}
+
+/**
+ * Advance the gym by one check-in.
+ *
+ * `accelerant` and `grantSeconds` are the plan landing on the gym: this is the
+ * gym the player has, so a grant does what §8.3B sells. What it does not do is
+ * move any purchase onto the wall-clock book — that is `funding`, and §3 of the
+ * header is what it means.
+ */
+export function stepGym(
+  gym: EmpireGym,
   policy: EmpirePolicy,
   wallSeconds: number,
   accelerant: PurchasableAccelerant | null,
   grantSeconds: number,
-): EmpireLane {
+  funding: EmpireFunding = SHIPPED_FUNDING,
+): EmpireGym {
   if (!Number.isFinite(wallSeconds) || wallSeconds < 0) {
     throw new RangeError(`a wall-clock reading must be finite and at or above zero, received ${wallSeconds}.`);
   }
@@ -573,41 +650,54 @@ export function stepLane(
     throw new RangeError(`a grant must be finite and at or above zero, received ${grantSeconds}.`);
   }
 
-  // 1. The grant is spent on exactly one mechanism. See §5 of the header.
+  // 1. The grant is spent on exactly one mechanism. See §6 of the header.
   const at: UnacceleratedSeconds = asUnacceleratedSeconds(wallSeconds);
-  const runningNow = (build: ExpansionBuild, idleNow: number): boolean =>
-    build.idleCompletion > idleNow && mayAccelerate(accelerant ?? 'coach-staff-level', axisOutput(build.axis));
-  const provisionalIdle = wallSeconds + lane.skippedSeconds;
-  const skippable =
-    accelerant === NO_ACCELERANT || grantSeconds === 0
-      ? null
-      : (lane.builds.find((build) => runningNow(build, provisionalIdle)) ?? null);
-
-  let builds: readonly ExpansionBuild[] = lane.builds;
-  let buildSkips = lane.buildSkips;
-  let clockSkips = lane.clockSkips;
-  let skippedSeconds = lane.skippedSeconds;
-  if (skippable !== null && accelerant !== NO_ACCELERANT) {
-    const output = axisOutput(skippable.axis);
-    const applied = applyPurchasableGrant(accelerant, output as IdleOnlyOutput, at, grantSeconds);
-    builds = lane.builds.map((build) => (build === skippable ? skipExpansion(build, applied) : build));
-    buildSkips += 1;
-  } else if (grantSeconds > 0) {
-    skippedSeconds += grantSeconds;
-    clockSkips += 1;
+  const provisionalIdle = wallSeconds + gym.skippedSeconds;
+  let builds: readonly ExpansionBuild[] = gym.builds;
+  let buildSkips = gym.buildSkips;
+  let clockSkips = gym.clockSkips;
+  let skippedSeconds = gym.skippedSeconds;
+  if (accelerant !== NO_ACCELERANT && grantSeconds > 0) {
+    // The licence is asked about the real accelerant, through `mayAccelerate`.
+    // There is no stand-in for a missing one — this arm is the only place a
+    // grant is spent and it is only reached when there is an accelerant to ask
+    // about — and there is no second opinion about the licence either: asking
+    // "is this output idle-only" here instead would be a rule this file holds
+    // beside the one `empireCore.ts` holds.
+    const skippable =
+      gym.builds.find(
+        (build) =>
+          build.idleCompletion > provisionalIdle &&
+          mayAccelerate(accelerant, axisOutput(build.axis)),
+      ) ?? null;
+    if (skippable !== null) {
+      const applied = applyPurchasableGrant(
+        accelerant,
+        axisOutput(skippable.axis) as IdleOnlyOutput,
+        at,
+        grantSeconds,
+      );
+      builds = gym.builds.map((build) => (build === skippable ? skipExpansion(build, applied) : build));
+      buildSkips += 1;
+    } else {
+      skippedSeconds += grantSeconds;
+      clockSkips += 1;
+    }
   }
 
   const clock = createEmpireClock(wallSeconds, skippedSeconds);
 
-  // 2. Recruits that have landed on this lane's own idle clock join the roster.
+  // 2. Both views of the axes, and the recruits that have landed on the idle
+  //    clock join the roster.
   let state: EmpireState = Object.freeze({
-    ...lane.state,
+    ...gym.state,
     clock,
     axes: idleAxesAt(builds, clock.accelerated),
+    settledAxes: settledAxesAt(builds, clock.unaccelerated),
   });
   const stillPending: PendingRecruit[] = [];
-  let recruits = lane.recruits;
-  for (const waiting of lane.pending) {
+  let recruits = gym.recruits;
+  for (const waiting of gym.pending) {
     if (waiting.schedule.joinsAt > clock.accelerated) {
       stillPending.push(waiting);
       continue;
@@ -618,43 +708,68 @@ export function stepLane(
 
   // 3. Collect. Every accrual is read at the mark, which is where the shipped
   //    modules read their rates, and each one is the shipped function rather
-  //    than arithmetic restated here.
-  const rates = rosterRatesAt(lane.collectedAt);
-  const production = accrueProduction(state, lane.collectedAt, rates);
-  const reputation = accrueReputation(state, lane.collectedAt, 1);
-  const sponsor = accrueSponsorship(state, lane.collectedAt);
+  //    than arithmetic restated here. The sponsor line is paid into the
+  //    accelerated book only: it is denominated off reputation, which is a
+  //    §5.4 axis the gym earns, and the wall-clock book takes the baseline line
+  //    and nothing else.
+  const rates = rosterRatesAt(gym.collectedAt);
+  const production = accrueProduction(state, gym.collectedAt, rates);
+  const reputation = accrueReputation(state, gym.collectedAt, 1);
+  const sponsor = accrueSponsorship(state, gym.collectedAt);
   state = Object.freeze({
     ...state,
     gymBucks: asGymBucks(scrubPrecision(state.gymBucks + production.gymBucks + sponsor.gymBucks)),
+    settledGymBucks: asGymBucks(
+      scrubPrecision(state.settledGymBucks + production.settledGymBucks),
+    ),
     reputation: reputation.reputation,
   });
 
-  // 4. Spend on the axes, one attempt per check-in, rotating so no axis starves.
-  let expansions = lane.expansions;
-  let nextAxis = lane.nextAxis;
+  // 4. Spend on the axes, rotating so no axis starves. The two funding families
+  //    are offered separate slots rather than one: if they competed for a
+  //    single slot, whether an equipment rung took it would depend on the
+  //    accelerated book, and the day a wall-clock-funded rung starts would be
+  //    back under the purchase through the competition rather than through the
+  //    price.
+  let expansions = gym.expansions;
+  let nextAxis = gym.nextAxis;
   if (policy.axisOrder.length > 0) {
-    for (let offset = 0; offset < policy.axisOrder.length; offset += 1) {
-      const axis = policy.axisOrder[(nextAxis + offset) % policy.axisOrder.length];
-      if (axis === undefined) continue;
-      const started = startExpansion(expansionContext(state, builds), axis);
-      if (!started.started) continue;
-      builds = Object.freeze([...builds, started.build]);
-      state = Object.freeze({ ...state, gymBucks: started.gymBucks });
-      expansions += 1;
-      break;
+    for (const family of AXIS_FUNDINGS) {
+      for (let offset = 0; offset < policy.axisOrder.length; offset += 1) {
+        const axis = policy.axisOrder[(nextAxis + offset) % policy.axisOrder.length];
+        if (axis === undefined) continue;
+        if (axisFunding(axis) !== family) continue;
+        const started = startExpansion(expansionContext(offeredTo(state, funding), builds), axis);
+        if (!started.started) continue;
+        builds = Object.freeze([...builds, started.build]);
+        state = withBooks(
+          state,
+          Object.freeze({
+            ...state,
+            gymBucks: started.gymBucks,
+            settledGymBucks: started.settledGymBucks,
+          }),
+          funding,
+        );
+        expansions += 1;
+        break;
+      }
     }
     nextAxis = (nextAxis + 1) % policy.axisOrder.length;
   }
 
   // 5. Spend on the roster. The board is a catalogue and this reads the top of
-  //    it downwards; nothing here selects, and there is no outcome set.
-  const capacity = rosterCapacity(state.axes);
+  //    it downwards; nothing here selects, and there is no outcome set. The
+  //    slots are counted on the wall clock, because a slot gates the lifter who
+  //    fills it and that lifter pays Training IQ.
+  const offered = offeredTo(state, funding);
+  const capacity = rosterCapacity(offered.settledAxes);
   if (state.roster.length + stillPending.length < capacity) {
-    const tier = bestRecruitableTier(state);
+    const tier = bestRecruitableTier(offered);
     if (tier !== null) {
-      const decision = beginRecruitment(state, tier);
+      const decision = beginRecruitment(offered, tier);
       if (decision.kind === 'accepted') {
-        state = decision.state;
+        state = withBooks(state, decision.state, funding);
         stillPending.push({ schedule: decision.schedule, id: `recruit-${recruits + stillPending.length}` });
       }
     }
@@ -674,14 +789,19 @@ export function stepLane(
   });
 }
 
-/** Add Gym Bucks to a lane without going through an accrual. Social income. */
-function credit(lane: EmpireLane, amount: number): EmpireLane {
-  if (amount === 0) return lane;
+/** True for an output a purchasable accelerant may be aimed at. */
+function isIdleOnly(output: EmpireOutput): boolean {
+  return (IDLE_ONLY_OUTPUTS as readonly string[]).includes(output);
+}
+
+/** Add Gym Bucks to the accelerated book without going through an accrual. */
+function credit(gym: EmpireGym, amount: number): EmpireGym {
+  if (amount === 0) return gym;
   return Object.freeze({
-    ...lane,
+    ...gym,
     state: Object.freeze({
-      ...lane.state,
-      gymBucks: asGymBucks(scrubPrecision(lane.state.gymBucks + amount)),
+      ...gym.state,
+      gymBucks: asGymBucks(scrubPrecision(gym.state.gymBucks + amount)),
     }),
   });
 }
@@ -691,15 +811,15 @@ function credit(lane: EmpireLane, amount: number): EmpireLane {
 // ---------------------------------------------------------------------------
 
 /**
- * One day's two progression-reaching readings, off whichever lane it is given.
+ * One day's two progression-reaching readings, off the gym the player has.
  *
- * One function, called twice: once with the settled lane, whose answer is the
- * shipped ledger, and once with the idle lane, whose answer is the negative
- * control. Writing the control's arithmetic a second time would let the two
- * drift, and then the zero and the non-zero would be about different runs.
+ * Both go through the shipped accessors — `composeTrainingIqRate` for §5.2's
+ * trickle and `physioDaysSavedAt` for §5.4's hook — rather than through a
+ * reading assembled here, so what the sweep compares is what a consumer would
+ * get.
  */
-export function laneProgressionEntries(
-  lane: EmpireLane,
+export function gymProgressionEntries(
+  gym: EmpireGym,
   day: number,
   at: UnacceleratedSeconds,
 ): readonly EmpireDayEntry[] {
@@ -708,13 +828,13 @@ export function laneProgressionEntries(
       day,
       at,
       output: 'training-iq' as EmpireOutput,
-      amount: composeTrainingIqRate(lane.state, lane.state.clock).perDay,
+      amount: composeTrainingIqRate(gym.state, gym.state.clock).perDay,
     }),
     Object.freeze({
       day,
       at,
       output: 'physio-days-saved' as EmpireOutput,
-      amount: physioDaysSavedAt(lane.builds, at),
+      amount: physioDaysSavedAt(gym.builds, at),
     }),
   ]);
 }
@@ -726,18 +846,19 @@ function requireWholeAtLeastOne(value: number, what: string): void {
 }
 
 /**
- * Compose GDD §5 over `days` calendar days and report both ledgers.
+ * Compose GDD §5 over `days` calendar days and report the ledger.
  *
- * The progression-reaching half of the ledger is read off the settled lane and
- * the idle half off the idle one. That split is §3 of the header, and it is the
- * only place in this file where the two lanes are treated differently after they
- * are stepped.
+ * One gym, and both halves of the ledger come off it: the progression-reaching
+ * half through the shipped accessors, and the idle half — the Gym Bucks balance
+ * and the roster size — off the same state. `funding` is §4 of the header: the
+ * shipped rule, or the control.
  */
 export function runEmpire(
   days: number,
   policy: EmpirePolicy,
   plan: AccelerantPlan,
   social: SocialInputs,
+  funding: EmpireFunding = SHIPPED_FUNDING,
 ): EmpireRun {
   requireWholeAtLeastOne(days, 'a horizon');
   requireWholeAtLeastOne(policy.checkInsPerDay, 'a check-in cadence');
@@ -748,10 +869,8 @@ export function runEmpire(
       .map((entry) => entry.day),
   );
 
-  let idle = createEmpireLane();
-  let settled = createEmpireLane();
+  let gym = createEmpireGym();
   const ledger: EmpireDayEntry[] = [];
-  const counterfactual: EmpireDayEntry[] = [];
   const secondsPerCheckIn = EMPIRE_TUNING.SECONDS_PER_DAY / policy.checkInsPerDay;
 
   let checkIns = 0;
@@ -771,89 +890,72 @@ export function runEmpire(
         grantedCheckIns += 1;
         grantedSeconds += granted;
       }
-      idle = stepLane(idle, policy, wallSeconds, plan.accelerant, granted);
-      // THE CLOSURE. The settled lane is stepped with no accelerant and no
-      // grant, on every step, whatever the plan says.
-      settled = stepLane(settled, policy, wallSeconds, NO_ACCELERANT, 0);
+      gym = stepGym(gym, policy, wallSeconds, plan.accelerant, granted, funding);
     }
 
-    // §5.5's calendar-keyed income, identical on both lanes by construction: an
-    // encouragement is paid per distinct sender per CALENDAR day, and a rival
-    // period closes on a fixed calendar day.
+    // §5.5's calendar-keyed income: an encouragement is paid per distinct
+    // sender per CALENDAR day, and a rival period closes on a fixed calendar
+    // day. Both are paid into the accelerated book, like every other §5.5 and
+    // §5.2 line that is not the baseline one.
     const calendarDay: CalendarDay = asCalendarDay(social.calendar.anchorDay + day);
-    const encouraged = encouragementGymBucksOn(social.encouragementsReceived, calendarDay);
-    let idleSocial: number = encouraged;
-    let settledSocial: number = encouraged;
+    let income: number = encouragementGymBucksOn(social.encouragementsReceived, calendarDay);
     if (social.rival !== null && closeDays.has(calendarDay)) {
       socialRewardDays += 1;
-      idleSocial += compareWithRival(
-        laneSnapshot(idle),
-        social.rival,
-        policy.leaderboardMetric,
-        social.calendar.anchorDay,
-        calendarDay,
-      ).gymBucksOwed;
-      settledSocial += compareWithRival(
-        laneSnapshot(settled),
+      income += compareWithRival(
+        gymSnapshot(gym),
         social.rival,
         policy.leaderboardMetric,
         social.calendar.anchorDay,
         calendarDay,
       ).gymBucksOwed;
     }
-    idle = credit(idle, idleSocial);
-    settled = credit(settled, settledSocial);
+    gym = credit(gym, income);
 
-    // The day's two progression-reaching readings, both off the settled lane.
-    const wallNow: UnacceleratedSeconds = elapsedFor(settled.state.clock, 'training-iq');
-    const trickle = composeTrainingIqRate(settled.state, settled.state.clock);
+    // The day's two progression-reaching readings, off the gym the player has.
+    const wallNow: UnacceleratedSeconds = elapsedFor(gym.state.clock, 'training-iq');
+    const trickle = composeTrainingIqRate(gym.state, gym.state.clock);
     if (trickle.ceilingBound) ceilingBoundDays += 1;
     // The agreement pin between this composition point and `production.ts`'s own
     // ceiling. Dropping the `Math.min` on either side moves this counter.
     const viaProduction = trainingIqRatePerDay(
-      settled.state,
-      settled.state.clock,
-      rosterRatesAt(settled.state.clock),
+      gym.state,
+      gym.state.clock,
+      rosterRatesAt(gym.state.clock),
     );
     if (viaProduction !== trickle.perDay) rateDisagreements += 1;
     rateComparisons += 1;
 
     ledger.push(
-      ...laneProgressionEntries(settled, day, wallNow),
-      // The idle half, read off the lane the purchase does move. It is the
-      // positive control: if these do not move under a plan that grants
-      // anything, the sweep is measuring an accelerant that was never applied.
-      Object.freeze({ day, at: wallNow, output: 'gym-bucks', amount: idle.state.gymBucks }),
-      Object.freeze({ day, at: wallNow, output: 'roster-slot', amount: idle.state.roster.length }),
+      ...gymProgressionEntries(gym, day, wallNow),
+      // The idle half. It is the positive control: if these do not move under a
+      // plan that grants anything, the sweep is measuring an accelerant that was
+      // never applied.
+      Object.freeze({ day, at: wallNow, output: 'gym-bucks', amount: gym.state.gymBucks }),
+      Object.freeze({ day, at: wallNow, output: 'roster-slot', amount: gym.state.roster.length }),
     );
-    counterfactual.push(...laneProgressionEntries(idle, day, wallNow));
   }
 
-  const lastWall: UnacceleratedSeconds = elapsedFor(settled.state.clock, 'training-iq');
+  const lastWall: UnacceleratedSeconds = elapsedFor(gym.state.clock, 'training-iq');
   return Object.freeze({
     plan,
+    funding,
     days,
     ledger: Object.freeze(ledger),
-    counterfactualIdleReadings: Object.freeze(counterfactual),
-    idle,
-    settled,
+    gym,
     census: Object.freeze({
       days,
       checkIns,
       grantedCheckIns,
       grantedSeconds,
-      idleRecruits: idle.recruits,
-      settledRecruits: settled.recruits,
-      idleExpansions: idle.expansions,
-      settledExpansions: settled.expansions,
-      idleBuildSkips: idle.buildSkips,
-      idleClockSkips: idle.clockSkips,
-      settledSkippedSeconds: settled.skippedSeconds,
+      recruits: gym.recruits,
+      expansions: gym.expansions,
+      buildSkips: gym.buildSkips,
+      clockSkips: gym.clockSkips,
       ceilingBoundDays,
       rateComparisons,
       rateDisagreements,
-      settledPhysioLevel: settledAxisLevel(settled.builds, 'physio', lastWall),
-      idlePhysioLevel: settledAxisLevel(idle.builds, 'physio', lastWall),
+      settledPhysioLevel: settledAxisLevel(gym.builds, 'physio', lastWall),
+      idlePhysioLevel: axisLevel(idleAxesAt(gym.builds, gym.state.clock.accelerated), 'physio'),
       socialRewardDays,
     }),
   });
@@ -879,7 +981,15 @@ export function progressionDayLedger(
 
 /** The other half, through `empireCore.ts`'s derived list of idle-only outputs. */
 export function idleDayLedger(entries: readonly EmpireDayEntry[]): readonly EmpireDayEntry[] {
-  return entries.filter((entry) => (IDLE_ONLY_OUTPUTS as readonly string[]).includes(entry.output));
+  return entries.filter((entry) => isIdleOnly(entry.output));
+}
+
+/** One output's series out of a ledger, in day order. */
+export function outputSeries(
+  entries: readonly EmpireDayEntry[],
+  output: EmpireOutput,
+): readonly EmpireDayEntry[] {
+  return entries.filter((entry) => entry.output === output);
 }
 
 // ---------------------------------------------------------------------------
@@ -944,18 +1054,18 @@ export function compareLedgers(
  *
  * This exists because of a measured hole in the comparison above, and the hole
  * is worth stating rather than leaving for a reader to find. `EmpireDayEntry.day`
- * is the composition loop's own counter, so it is the same number on both lanes
+ * is the composition loop's own counter, so it is the same number on both sides
  * by construction — which means `LedgerDivergence.misaligned` is ZERO across the
- * whole sweep, including on the counterfactual, and the day half of
- * `compareLedgers` is an empty domain there however carefully it is written.
- * That is the vacuity shape CLAUDE.md names: a check that runs, passes, and had
- * no version of its subject that could redden it.
+ * whole sweep, including on the control, and the day half of `compareLedgers` is
+ * an empty domain there however carefully it is written. That is the vacuity
+ * shape CLAUDE.md names: a check that runs, passes, and had no version of its
+ * subject that could redden it.
  *
- * A list of ARRIVAL DAYS is the subject that fixes it. Chain B moved days and
- * left the amounts a lifter eventually paid alone, and chain C moves the day a
- * physio level lands; both show up here as a moved element and in nothing above.
- * It is the same shape `reputation.test.ts` uses for the tier-unlock list, one
- * subsystem over.
+ * A list of ARRIVAL DAYS is the subject that fixes it, and it is the list both
+ * upstream headers commissioned: the wall-clock day each new `physioDaysSaved`
+ * reading and each new Training IQ rate first lands. Chain B moved days and left
+ * the amounts a lifter eventually paid alone; chain C moves the day a physio
+ * level lands. Both show up here and in nothing above.
  */
 export function arrivalDays(
   entries: readonly EmpireDayEntry[],
@@ -1019,23 +1129,14 @@ export function compareDayLists(
 export function empireRunFaults(run: EmpireRun): readonly string[] {
   const faults: string[] = [];
 
-  if (run.census.settledSkippedSeconds !== 0) {
+  // Every grant landed on exactly one mechanism. Two mechanisms exist and §6 of
+  // the header says a grant is spent on one of them, so the two counts have to
+  // add up to the number of check-ins that granted anything — a grant spent
+  // twice, or spent nowhere, moves this.
+  if (run.census.buildSkips + run.census.clockSkips !== run.census.grantedCheckIns) {
     faults.push(
-      `the settled lane carries ${run.census.settledSkippedSeconds} seconds of accelerant, so nothing on it is a counterfactual`,
+      `the plan granted on ${run.census.grantedCheckIns} check-ins and ${run.census.buildSkips + run.census.clockSkips} grants were spent`,
     );
-  }
-  if (run.settled.buildSkips !== 0 || run.settled.clockSkips !== 0) {
-    faults.push(
-      `the settled lane spent ${run.settled.buildSkips + run.settled.clockSkips} grants, so a purchase reached it`,
-    );
-  }
-  // Widened to bare numbers before comparison: the two brands do not overlap, so
-  // TypeScript rejects the comparison as impossible and would leave the check
-  // absent at runtime — where a decoded payload is exactly what it is for.
-  const settledIdleReading: number = run.settled.state.clock.accelerated;
-  const settledWallReading: number = run.settled.state.clock.unaccelerated;
-  if (settledIdleReading !== settledWallReading) {
-    faults.push('the settled lane two clock readings differ, so an accelerant moved one of them');
   }
   if (run.census.rateDisagreements !== 0) {
     faults.push(
@@ -1048,16 +1149,16 @@ export function empireRunFaults(run: EmpireRun): readonly string[] {
   if (run.ledger.length === 0) {
     faults.push('the run produced no ledger at all');
   }
-  const progression = progressionDayLedger(run.ledger);
-  const idle = idleDayLedger(run.ledger);
-  if (run.counterfactualIdleReadings.length === 0) {
-    faults.push('the run produced no counterfactual, so the zero has nothing beside it');
-  }
-  if (run.counterfactualIdleReadings.length !== progression.length) {
+  // The wall-clock view of a ladder is never ahead of the idle one, on the gym
+  // as it actually ran. `empireStateFaults` says the same thing about a decoded
+  // payload; this says it about a composed calendar.
+  if (run.census.settledPhysioLevel > run.census.idlePhysioLevel) {
     faults.push(
-      `the counterfactual holds ${run.counterfactualIdleReadings.length} readings against ${progression.length} shipped ones, so they cannot be compared element-wise`,
+      `the wall clock has reached physio level ${run.census.settledPhysioLevel} and the player's gym shows ${run.census.idlePhysioLevel}`,
     );
   }
+  const progression = progressionDayLedger(run.ledger);
+  const idle = idleDayLedger(run.ledger);
   if (progression.length + idle.length !== run.ledger.length) {
     faults.push(
       `the ledger holds ${run.ledger.length} entries and the two halves account for ${progression.length + idle.length}`,
@@ -1077,9 +1178,9 @@ export function empireRunFaults(run: EmpireRun): readonly string[] {
       faults.push(`day ${entry.day} saved ${entry.amount} days, which is above the physio budget`);
     }
   }
-  for (const applied of run.idle.state.accelerants) {
+  for (const applied of run.gym.state.accelerants) {
     if (!mayAccelerate(applied.accelerant, applied.output)) {
-      faults.push(`${applied.accelerant} was applied to ${applied.output} on the idle lane`);
+      faults.push(`${applied.accelerant} was applied to ${applied.output} on the player's gym`);
     }
   }
 
