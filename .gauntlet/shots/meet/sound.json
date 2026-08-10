@@ -1,8 +1,8 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-10T02:18:01.738Z",
+    "capturedAt": "2026-08-10T02:33:11.691Z",
     "url": "http://localhost:8091",
-    "commit": "41efa4f",
+    "commit": "da4cd37",
     "branch": "claude/s2-rattle-coalescing",
     "workingTree": "clean",
     "dirtyPaths": [],
@@ -25,10 +25,10 @@
           "durationMs": 180,
           "depth": 3,
           "starts": [
-            11458,
-            11653,
-            11745,
-            11828
+            12096,
+            12292,
+            12381,
+            12465
           ]
         },
         {
@@ -37,7 +37,7 @@
           "durationMs": 1400,
           "depth": 1,
           "starts": [
-            11879
+            12518
           ]
         }
       ],
@@ -47,23 +47,23 @@
       "played": [
         {
           "file": "bar-rattle.wav",
-          "atMs": 11458
+          "atMs": 12096
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 11653
+          "atMs": 12292
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 11745
+          "atMs": 12381
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 11828
+          "atMs": 12465
         },
         {
           "file": "crowd-swell.wav",
-          "atMs": 11879
+          "atMs": 12518
         }
       ],
       "decoded": [
@@ -190,15 +190,14 @@
       "overlaps": [
         {
           "file": "bar-rattle.wav",
-          "plays": 5,
+          "plays": 4,
           "durationMs": 180,
-          "depth": 3,
+          "depth": 2,
           "starts": [
-            566,
-            714,
-            791,
-            892,
-            974
+            799,
+            925,
+            1081,
+            1165
           ]
         },
         {
@@ -207,8 +206,8 @@
           "durationMs": 2100,
           "depth": 2,
           "starts": [
-            987,
-            2207
+            1220,
+            2440
           ]
         }
       ],
@@ -218,31 +217,27 @@
       "played": [
         {
           "file": "bar-rattle.wav",
-          "atMs": 566
+          "atMs": 799
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 714
+          "atMs": 925
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 791
+          "atMs": 1081
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 892
-        },
-        {
-          "file": "bar-rattle.wav",
-          "atMs": 974
+          "atMs": 1165
         },
         {
           "file": "crowd-swell-big.wav",
-          "atMs": 987
+          "atMs": 1220
         },
         {
           "file": "crowd-swell-big.wav",
-          "atMs": 2207
+          "atMs": 2440
         }
       ],
       "decoded": [
@@ -373,9 +368,9 @@
           "durationMs": 120,
           "depth": 1,
           "starts": [
-            766,
-            1086,
-            1407
+            882,
+            1203,
+            1523
           ]
         },
         {
@@ -384,7 +379,7 @@
           "durationMs": 1700,
           "depth": 1,
           "starts": [
-            1827
+            1944
           ]
         }
       ],
@@ -394,19 +389,19 @@
       "played": [
         {
           "file": "light-clack-white.wav",
-          "atMs": 766
+          "atMs": 882
         },
         {
           "file": "light-clack-white.wav",
-          "atMs": 1086
+          "atMs": 1203
         },
         {
           "file": "light-clack-white.wav",
-          "atMs": 1407
+          "atMs": 1523
         },
         {
           "file": "crowd-cheer.wav",
-          "atMs": 1827
+          "atMs": 1944
         }
       ],
       "decoded": [
@@ -537,9 +532,9 @@
           "durationMs": 150,
           "depth": 1,
           "starts": [
-            826,
-            1146,
-            1467
+            876,
+            1197,
+            1517
           ]
         }
       ],
@@ -549,15 +544,15 @@
       "played": [
         {
           "file": "light-clack-red.wav",
-          "atMs": 826
+          "atMs": 876
         },
         {
           "file": "light-clack-red.wav",
-          "atMs": 1146
+          "atMs": 1197
         },
         {
           "file": "light-clack-red.wav",
-          "atMs": 1467
+          "atMs": 1517
         }
       ],
       "decoded": [
@@ -688,8 +683,8 @@
           "durationMs": 120,
           "depth": 1,
           "starts": [
-            805,
-            1125
+            839,
+            1160
           ]
         },
         {
@@ -698,7 +693,7 @@
           "durationMs": 150,
           "depth": 1,
           "starts": [
-            1446
+            1480
           ]
         },
         {
@@ -707,7 +702,7 @@
           "durationMs": 1700,
           "depth": 1,
           "starts": [
-            1867
+            1901
           ]
         }
       ],
@@ -717,19 +712,19 @@
       "played": [
         {
           "file": "light-clack-white.wav",
-          "atMs": 805
+          "atMs": 839
         },
         {
           "file": "light-clack-white.wav",
-          "atMs": 1125
+          "atMs": 1160
         },
         {
           "file": "light-clack-red.wav",
-          "atMs": 1446
+          "atMs": 1480
         },
         {
           "file": "crowd-cheer.wav",
-          "atMs": 1867
+          "atMs": 1901
         }
       ],
       "decoded": [
@@ -984,7 +979,7 @@
           "durationMs": 2400,
           "depth": 1,
           "starts": [
-            2028
+            2067
           ]
         }
       ],
@@ -994,7 +989,7 @@
       "played": [
         {
           "file": "bomb-tone.wav",
-          "atMs": 2028
+          "atMs": 2067
         }
       ],
       "decoded": [
@@ -1139,7 +1134,7 @@
     }
   ],
   "totals": {
-    "plays": 24,
+    "plays": 23,
     "beatsWrong": 0,
     "retriggeringPairs": 6,
     "stackingPairs": 3,
@@ -1154,27 +1149,27 @@
     {
       "ok": true,
       "what": "walkout — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "bar-rattle.wav@11458ms bar-rattle.wav@11653ms bar-rattle.wav@11745ms bar-rattle.wav@11828ms crowd-swell.wav@11879ms; retriggers: bar-rattle.wav x4 depth 3"
+      "detail": "bar-rattle.wav@12096ms bar-rattle.wav@12292ms bar-rattle.wav@12381ms bar-rattle.wav@12465ms crowd-swell.wav@12518ms; retriggers: bar-rattle.wav x4 depth 3"
     },
     {
       "ok": true,
       "what": "walkout-third — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "bar-rattle.wav@566ms bar-rattle.wav@714ms bar-rattle.wav@791ms bar-rattle.wav@892ms bar-rattle.wav@974ms crowd-swell-big.wav@987ms crowd-swell-big.wav@2207ms; retriggers: bar-rattle.wav x5 depth 3, crowd-swell-big.wav x2 depth 2"
+      "detail": "bar-rattle.wav@799ms bar-rattle.wav@925ms bar-rattle.wav@1081ms bar-rattle.wav@1165ms crowd-swell-big.wav@1220ms crowd-swell-big.wav@2440ms; retriggers: bar-rattle.wav x4 depth 2, crowd-swell-big.wav x2 depth 2"
     },
     {
       "ok": true,
       "what": "verdict-good — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "light-clack-white.wav@766ms light-clack-white.wav@1086ms light-clack-white.wav@1407ms crowd-cheer.wav@1827ms; retriggers: light-clack-white.wav x3 depth 1"
+      "detail": "light-clack-white.wav@882ms light-clack-white.wav@1203ms light-clack-white.wav@1523ms crowd-cheer.wav@1944ms; retriggers: light-clack-white.wav x3 depth 1"
     },
     {
       "ok": true,
       "what": "verdict-no-lift — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "light-clack-red.wav@826ms light-clack-red.wav@1146ms light-clack-red.wav@1467ms; retriggers: light-clack-red.wav x3 depth 1"
+      "detail": "light-clack-red.wav@876ms light-clack-red.wav@1197ms light-clack-red.wav@1517ms; retriggers: light-clack-red.wav x3 depth 1"
     },
     {
       "ok": true,
       "what": "verdict-split — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "light-clack-white.wav@805ms light-clack-white.wav@1125ms light-clack-red.wav@1446ms crowd-cheer.wav@1867ms; retriggers: light-clack-white.wav x2 depth 1"
+      "detail": "light-clack-white.wav@839ms light-clack-white.wav@1160ms light-clack-red.wav@1480ms crowd-cheer.wav@1901ms; retriggers: light-clack-white.wav x2 depth 1"
     },
     {
       "ok": true,
@@ -1184,7 +1179,7 @@
     {
       "ok": true,
       "what": "bombed — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "bomb-tone.wav@2028ms"
+      "detail": "bomb-tone.wav@2067ms"
     },
     {
       "ok": true,
@@ -1194,7 +1189,7 @@
     {
       "ok": true,
       "what": "NON-VACUITY: some cue fired more than once, so the depth measurement had a subject",
-      "detail": "6 cue/beat pair(s) retriggered: bar-rattle.wav x4, bar-rattle.wav x5, crowd-swell-big.wav x2, light-clack-white.wav x3, light-clack-red.wav x3, light-clack-white.wav x2"
+      "detail": "6 cue/beat pair(s) retriggered: bar-rattle.wav x4, bar-rattle.wav x4, crowd-swell-big.wav x2, light-clack-white.wav x3, light-clack-red.wav x3, light-clack-white.wav x2"
     },
     {
       "ok": true,
@@ -1204,7 +1199,7 @@
     {
       "ok": true,
       "what": "the run heard anything at all",
-      "detail": "24 cue play(s) across 8 beat(s), 0 beat(s) wrong"
+      "detail": "23 cue play(s) across 8 beat(s), 0 beat(s) wrong"
     }
   ],
   "failures": [],
