@@ -2794,9 +2794,96 @@ if (!reachedMeet) {
     !(await visible('meet-recap-placeholder')),
     'and GDD §6.1’s second-meet placeholder is NOT drawn over it — this player’s result is their own',
   );
-  const liveLeaveDrawn = await checkOnScreen(
-    NAV_LEAVE_MEET,
+  // ---------------------------------------------------------------------
+  // A CUT-IN CAN STILL BE UP HERE, AND THE APP HIDES THE CHROME UNDER IT ON
+  // PURPOSE. Wait it out before reading the pill — but wait for the CUT-IN to
+  // leave, never for the pill to arrive.
+  //
+  // This check was FLAKY, not failing, which is worse than either: on the same
+  // commit and an untouched tree it reported PASSED 159 once and 159/1 on four
+  // other runs. A green record was committed off the lucky sample, and a re-run
+  // "confirms" a racy check about half the time, so re-running is not a test of
+  // it.
+  //
+  // The cause is not a defect. A §7.2 cut-in fires on the DEADLIFT ATTEMPT 3
+  // walk-out and can still be on screen when §6.5's recap draws underneath it;
+  // `AppShell` deliberately draws no navigation chrome under a cut-in (§7.2's
+  // whole argument is that a cut-in interrupts, and a pill over it would eat
+  // the dismiss tap). So `shell-leave-meet` is genuinely not mounted, correctly,
+  // for `ENTER_MS + HOLD_MS`. The check simply read during that window.
+  //
+  // CLAUDE.md's "wait on the thing being drawn, not the thing being mounted",
+  // one turn out: here the thing is deliberately ABSENT for a computable
+  // window, and the wait is derived from the app's own constants READ FROM
+  // SOURCE rather than transcribed, so a playtester who lengthens `HOLD_MS`
+  // gets a tool that still waits instead of one that starts racing again.
+  //
+  // WHY THIS DOES NOT MAKE THE CHECK VACUOUS, which is the obvious objection:
+  // the wait is for `cut-in` to be GONE, and the assertion that follows is
+  // still "the pill is drawn". A build where the pill never renders at all
+  // waits the same bounded window and then reddens exactly as before — only
+  // the cut-in's own window is excluded, and the mutation below proves it.
+  const cutInText = readFileSync(path.join(srcRoot, 'src', 'cutin', 'cutInTuning.ts'), 'utf8');
+  const cutInEnterMs = numberInBlock(cutInText, 'CUT_IN_TUNING', 'ENTER_MS');
+  const cutInHoldMs = numberInBlock(cutInText, 'CUT_IN_TUNING', 'HOLD_MS');
+  check(
+    typeof cutInEnterMs === 'number' && typeof cutInHoldMs === 'number',
+    'CONTROL: the cut-in window this section waits out is read from cutInTuning.ts, not transcribed',
+    `ENTER_MS ${JSON.stringify(cutInEnterMs)}, HOLD_MS ${JSON.stringify(cutInHoldMs)} — null means the` +
+      ' constant moved or was renamed, and the wait below would silently become a guess',
+  );
+  // There is no EXIT_MS: `cutInTuning.ts` records that it was deleted because
+  // nothing animated a departure — `CutInHost` un-mounts synchronously. So the
+  // whole occupancy is ENTER + HOLD, plus slack for a busy main thread.
+  const cutInWindowMs = (cutInEnterMs ?? 120) + (cutInHoldMs ?? 1600) + FADE_GRACE_MS;
+  const cutInAtRecap = await visible('cut-in');
+  let cutInClearedMs = 0;
+  if (cutInAtRecap) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < cutInWindowMs && (await visible('cut-in'))) {
+      await page.waitForTimeout(25);
+    }
+    cutInClearedMs = Date.now() - startedAt;
+  }
+  check(
+    !(await visible('cut-in')),
+    'CONTROL: any §7.2 cut-in over the recap has left before the pill is read — the app hides chrome under one BY DESIGN',
+    cutInAtRecap
+      ? `a cut-in WAS up when the recap drew; it left after ${cutInClearedMs}ms against a` +
+        ` ${cutInWindowMs}ms bound (ENTER_MS ${cutInEnterMs} + HOLD_MS ${cutInHoldMs} + ${FADE_GRACE_MS}ms grace).` +
+        ' Still up at the bound means it is not the cut-in that is hiding the pill.'
+      : 'no cut-in was up at the recap on this run — the gate spent its one slot earlier in the sitting.' +
+        ' This branch is why the pill check used to pass sometimes and fail otherwise.',
+  );
+
+  // AND THEN THE PILL'S OWN ARRIVAL, which is a SECOND window and I read
+  // straight into it after closing the first. Waiting the cut-in out moved this
+  // check's message from "not rendered at all" to "opacity 0.000" — the element
+  // mounts the instant the cut-in unmounts and then fades in over
+  // `FADE_IN_DELAY_MS + FADE_IN_MS`. Two stacked windows, and fixing the outer
+  // one while reading into the inner one is this file's own recorded pattern:
+  // the next thing to look at is the branch immediately below the one you just
+  // fixed. It was mine, one edit later.
+  //
+  // Bounded wait, then assert — the pattern `recap-action` already uses below.
+  // Not question-begging: a build where the pill never draws waits the full
+  // bound and reddens with the same message it does today.
+  const shellNavText = readFileSync(path.join(srcRoot, 'src', 'shell', 'shellTuning.ts'), 'utf8');
+  const pillDelayMs = numberInBlock(shellNavText, 'SHELL_NAV', 'FADE_IN_DELAY_MS');
+  const pillFadeMs = numberInBlock(shellNavText, 'SHELL_NAV', 'FADE_IN_MS');
+  check(
+    typeof pillDelayMs === 'number' && typeof pillFadeMs === 'number',
+    'CONTROL: the pill-arrival window this section waits out is read from shellTuning.ts, not transcribed',
+    `FADE_IN_DELAY_MS ${JSON.stringify(pillDelayMs)}, FADE_IN_MS ${JSON.stringify(pillFadeMs)}`,
+  );
+  const pillArrivalMs = (pillDelayMs ?? 320) + (pillFadeMs ?? 220) + FADE_GRACE_MS;
+  const liveLeave = await waitUntilDrawn(page, NAV_LEAVE_MEET, pillArrivalMs);
+  const liveLeaveDrawn = liveLeave.drawn;
+  check(
+    liveLeaveDrawn,
     `the way back is on screen on a recap a player lifted for (${NAV_LEAVE_MEET})`,
+    `${liveLeave.why} — bound ${pillArrivalMs}ms (FADE_IN_DELAY_MS ${pillDelayMs} + FADE_IN_MS ${pillFadeMs}` +
+      ` + ${FADE_GRACE_MS}ms grace), measured from after any cut-in had left`,
   );
   const liveLeaveHit = await hitTest(NAV_LEAVE_MEET);
   check(
