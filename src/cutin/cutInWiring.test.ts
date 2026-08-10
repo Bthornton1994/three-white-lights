@@ -74,6 +74,76 @@ const VIEW = code('cutin/CutInView.tsx');
 const HOST = code('cutin/CutInHost.tsx');
 
 /**
+ * How many times a pattern matches — the number, not "at least one".
+ *
+ * WHY EVERY SOURCE PIN BELOW GOES THROUGH THIS. `expect(HOST).toMatch(/x/)` is
+ * satisfied by ONE witness, and `CutInHost.tsx` has more than one of most of the
+ * things this file pins. Three regexes over this module used to hold the §7.2
+ * cap — one of them byte-exact including the argument object — and the mutation
+ * that deletes the call they were written about left all three green, because
+ * the same call appears a second time twenty lines below at a site the mutation
+ * does not touch. A byte-exact regex FEELS stronger than a loose one and is not,
+ * when the byte-exact text is duplicated. The tell was that the match count was
+ * never asserted, which is the fix this file already demands of its sweeps.
+ *
+ * A fresh `RegExp` per call, because `lastIndex` on a shared global pattern
+ * makes the answer depend on who asked first.
+ */
+function occurrences(text: string, pattern: RegExp): number {
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  return (text.match(new RegExp(pattern.source, flags)) ?? []).length;
+}
+
+/**
+ * HOW MANY TIMES EACH LOAD-BEARING CALL APPEARS IN `CutInHost.tsx` — one table,
+ * so a pin cannot be weakened by editing the assertion that reads it.
+ *
+ * Read off the COMMENT-STRIPPED source (`code()`), so naming one of these in
+ * prose does not count. That is deliberate: the claim is about what the module
+ * DOES, and a comment that mentions `resumeCutInSession` was one of the four
+ * witnesses that made the old loose pin unfalsifiable.
+ *
+ * Each `_TOTAL` counts the import line as well as the calls, because the import
+ * is a real occurrence and pretending otherwise would mean a second pattern to
+ * keep in step. The per-site rows underneath are what say WHERE they are, and
+ * every one of them is pinned at exactly 1 — a site that gained a duplicate
+ * would be a site a mutation could delete for free, which is the whole finding.
+ *
+ * A number here moving is a diff somebody writes on purpose. That is the point:
+ * §12.3's refusal condition is that a sitting gets one cut-in, and a fourth
+ * write to the ledger or a third resume arriving quietly is exactly how that
+ * stops being true.
+ */
+const HOST_SITES = {
+  /** `import { … resumeCutInSession }`, the `useRef` initialiser, the effect. */
+  RESUME_TOTAL: 3,
+  /** The `useRef` initialiser — the mount that must NOT spend a second slot. */
+  RESUME_AT_THE_REF: 1,
+  /** The effect body — the re-open a NEW sitting id is allowed. */
+  RESUME_IN_THE_EFFECT: 1,
+  /** The id guard above that re-open. Deleting it hands a mount a second slot. */
+  SESSION_ID_GUARD: 1,
+  /** `import { requestCutIn … }` and the one call inside `offer`. */
+  REQUEST_TOTAL: 2,
+  /** The single call: every beat this app offers goes through this line. */
+  REQUEST_AT_THE_OFFER: 1,
+  /** The import, plus `decision.state`, `session.current` and `next`. */
+  REMEMBER_TOTAL: 4,
+  /** Written back on EVERY decision, which is what makes a refusal stick. */
+  REMEMBER_AFTER_A_DECISION: 1,
+  /** ...and on the auto-dismiss route. */
+  REMEMBER_AFTER_A_DISMISS: 1,
+  /** ...and on the tap route, which answers to a different constant. */
+  REMEMBER_AFTER_A_TAP: 1,
+  /** One import of the ledger. Two would be two modules' worth of state. */
+  LEDGER_IMPORT: 1,
+  /** The one observe call, which an `indexOf` ordering check depends on. */
+  OBSERVE_AT_THE_OFFER: 1,
+  /** ...and the branch it has to sit above. */
+  FIRE_BRANCH: 1,
+} as const;
+
+/**
  * THE FOUR FIRING MOMENTS OF GDD §7.2, AND THE SCREEN THAT REPORTS EACH.
  *
  * Spelled out here rather than derived, so deleting a `useOfferCutIn` call from
@@ -1850,8 +1920,25 @@ describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
   });
 
   it('the host is the only file that opens a session or requests a cut-in', () => {
-    expect(HOST).toMatch(/resumeCutInSession/);
-    expect(HOST).toMatch(/requestCutIn/);
+    // COUNTS, NOT PRESENCE, on both halves of the sentence. `toMatch` here was
+    // satisfied by three witnesses for the first name and two for the second, so
+    // it said "somebody in this file mentions the ledger" and not "the host is
+    // the file that reaches it". See `HOST_SITES`.
+    expect(
+      occurrences(HOST, /\bresumeCutInSession\b/),
+      'CutInHost.tsx does not reach the ledger the expected number of times',
+    ).toBe(HOST_SITES.RESUME_TOTAL);
+    expect(
+      occurrences(HOST, /\brequestCutIn\b/),
+      'CutInHost.tsx does not reach the gate the expected number of times',
+    ).toBe(HOST_SITES.REQUEST_TOTAL);
+    // ...and the one that is a CALL is the one inside `offer`. Every beat this
+    // app offers goes through that line; a second call site would be a second
+    // route to a slot, which is §12.3's refusal condition.
+    expect(
+      occurrences(HOST, /const decision = requestCutIn\(asked, beats\);/),
+      'the single call into the gate is not there exactly once',
+    ).toBe(HOST_SITES.REQUEST_AT_THE_OFFER);
     for (const [moment, file] of CALLERS) {
       const text = code(file);
       // A screen that could call these could give itself a second slot, and
@@ -1862,6 +1949,14 @@ describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
       expect(text, `${moment} (${file})`).not.toMatch(/\bCutInView\b/);
       // ...nor reach the ledger, which is where the count lives now. A screen
       // that could forget a sitting could refund its slot.
+      //
+      // THESE STAY `not.toMatch`, AND THAT IS A RULING RATHER THAN AN OVERSIGHT.
+      // The pins above became counts because "at least one witness" is weaker
+      // than it reads. A NEGATIVE is the other end of the same scale: it is the
+      // count zero, asserted over every occurrence at once, so a second witness
+      // makes it MORE likely to fire rather than less. There is nothing to
+      // strengthen here, and rewriting them as `occurrences(...) === 0` would
+      // say the same thing in more characters.
       expect(text, `${moment} (${file})`).not.toMatch(/\bresumeCutInSession\b/);
       expect(text, `${moment} (${file})`).not.toMatch(/\brememberCutInSession\b/);
       expect(text, `${moment} (${file})`).not.toMatch(/\bforgetAllCutInSessions\b/);
@@ -1873,7 +1968,7 @@ describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
     }
   });
 
-  it('ONE GATE SESSION PER SITTING, GUARDED ON ITS ID', () => {
+  it('ONE GATE SESSION PER SITTING, GUARDED ON ITS ID [a-remount-resumes-rather-than-opens]', () => {
     // The one hole `cutInGate.ts` §5 names: a caller that re-opens mid-sitting
     // hands itself a second slot — or, as this file actually did before a
     // browser caught it, throws away a cut-in that had just been granted,
@@ -1881,8 +1976,35 @@ describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
     //
     // The GUARD is what closes both, not the dependency list, so the guard is
     // what this reads.
-    expect(HOST).toMatch(/if \(session\.current\.sessionId === activeSessionId\) return;/);
-    expect(HOST).toMatch(/resumeCutInSession\(\{ sessionId: activeSessionId, seed: activeSeed \}\)/);
+    expect(
+      occurrences(HOST, /if \(session\.current\.sessionId === activeSessionId\) return;/),
+      'the id guard above the re-open is not there exactly once',
+    ).toBe(HOST_SITES.SESSION_ID_GUARD);
+
+    // THE TWO RESUME SITES, PINNED SEPARATELY, and this is the finding this
+    // test was sent back for. The byte-exact regex below — argument object and
+    // all — matched TWICE, because `CutInHost.tsx` resumes in the `useRef`
+    // initialiser AND in the effect with the identical argument. So the mutant
+    // that deletes either one left this line green off the survivor, and the
+    // pin that read hardest was the one that could not fail.
+    //
+    // Each site is now matched by the code AROUND it, which is what makes the
+    // two distinguishable at all, and each is pinned at exactly 1.
+    expect(
+      occurrences(
+        HOST,
+        /React\.useRef<CutInSessionState>\(\s*resumeCutInSession\(\{ sessionId: activeSessionId, seed: activeSeed \}\),\s*\)/,
+      ),
+      'the mount does not resume the sitting it is already in — a re-mount inside one sitting would get a fresh slot',
+    ).toBe(HOST_SITES.RESUME_AT_THE_REF);
+    expect(
+      occurrences(
+        HOST,
+        /session\.current = resumeCutInSession\(\{ sessionId: activeSessionId, seed: activeSeed \}\);/,
+      ),
+      'a NEW sitting id does not open a new gate session — the second sitting would inherit the first’s spent slot',
+    ).toBe(HOST_SITES.RESUME_IN_THE_EFFECT);
+
     // ...and the count is never touched anywhere else.
     expect(HOST).not.toMatch(/firedCount/);
   });
@@ -1896,9 +2018,36 @@ describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
     // THE BEHAVIOUR IS TESTED FOR REAL IN `cutInLedger.test.ts` — this only
     // checks that the host is the thing wired to it, which is the half a node
     // environment cannot execute.
-    expect(HOST).toMatch(/from '\.\/cutInLedger'/);
-    expect(HOST).toMatch(/rememberCutInSession\(decision\.state\)/);
-    expect(HOST).toMatch(/rememberCutInSession\(session\.current\)/);
+    //
+    // COUNTS HERE TOO, AND THE REASON IS THIS TEST'S POSITION RATHER THAN ITS
+    // CONTENT. It is the branch directly beneath the one above, which is where
+    // this codebase's guard defects keep turning up: two neighbouring tests read
+    // as one decision, get written as two, and the second is written while the
+    // first still feels solved. Each of these three has exactly one witness
+    // TODAY, so a presence pin happens to bite — but nothing said so, and
+    // "happens to" is what the resume pin above was, twenty lines up, for a
+    // round. The count is the thing that keeps it true when a second call site
+    // arrives.
+    expect(
+      occurrences(HOST, /from '\.\/cutInLedger'/),
+      'the host does not import the ledger exactly once',
+    ).toBe(HOST_SITES.LEDGER_IMPORT);
+    expect(
+      occurrences(HOST, /\brememberCutInSession\b/),
+      'CutInHost.tsx writes the ledger a different number of times than this file expects',
+    ).toBe(HOST_SITES.REMEMBER_TOTAL);
+    expect(
+      occurrences(HOST, /rememberCutInSession\(decision\.state\);/),
+      'the write-back after EVERY decision is gone, so a spent slot stops being remembered as spent',
+    ).toBe(HOST_SITES.REMEMBER_AFTER_A_DECISION);
+    expect(
+      occurrences(HOST, /rememberCutInSession\(session\.current\);/),
+      'the write-back on the auto-dismiss route is gone',
+    ).toBe(HOST_SITES.REMEMBER_AFTER_A_DISMISS);
+    expect(
+      occurrences(HOST, /rememberCutInSession\(next\);/),
+      'the write-back on the tap route is gone',
+    ).toBe(HOST_SITES.REMEMBER_AFTER_A_TAP);
     // The ledger is not cleared by anything that renders. A component that
     // could forget a sitting could hand it a second slot.
     expect(HOST).not.toMatch(/forgetAllCutInSessions/);
@@ -1916,6 +2065,22 @@ describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
     // underneath that line is a call only fires reach, which would leave the
     // record with no refusals in it and the tool unable to see the thing it was
     // built to see.
+    //
+    // BOTH ENDPOINTS ARE PINNED AT ONE FIRST, and that is not decoration: the
+    // ordering below is read with `indexOf`, which answers about the FIRST
+    // occurrence. A second observe call added inside the fire branch would leave
+    // `observedAt` pointing at the one above it and this comparison green, while
+    // fires got logged twice and the record the browser tool reads went wrong.
+    // Same defect as the resume pin two tests up, wearing an index instead of a
+    // regex.
+    expect(
+      occurrences(HOST, /observeCutInDecision\(asked, beats, decision\)/),
+      'the observe call is not there exactly once, so the ordering check below is reading one of several',
+    ).toBe(HOST_SITES.OBSERVE_AT_THE_OFFER);
+    expect(
+      occurrences(HOST, /decision\.outcome\.kind === 'fire'/),
+      'the fire branch is not there exactly once, so the ordering check below is reading one of several',
+    ).toBe(HOST_SITES.FIRE_BRANCH);
     const observedAt = HOST.indexOf('observeCutInDecision(asked, beats, decision)');
     const fireBranchAt = HOST.indexOf("decision.outcome.kind === 'fire'");
     expect(observedAt, 'the host does not observe its decisions').toBeGreaterThan(-1);

@@ -788,6 +788,32 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: ?meet=live: state absent, serverPort present: expected false to be true',
   },
   {
+    // The mutant swapped the `useRef` initialiser's resume for a fresh
+    // `openCutInSession`, which is the §12.3 refusal condition reached by a
+    // component lifetime: `AppShell` un-mounts this host in ordinary play, so
+    // every re-mount inside one sitting would come back with a new slot.
+    //
+    // WORTH RECORDING BESIDE IT, because it is the finding this round was sent
+    // back for. The two pins that used to hold this line — `toMatch(
+    // /resumeCutInSession/)` and a BYTE-EXACT `toMatch` including the argument
+    // object — were both GREEN on this mutant, measured, because the identical
+    // call appears a second time in the effect below at a site the mutant does
+    // not touch. Both are now match COUNTS, and the two sites are matched by the
+    // code around them so they are distinguishable at all.
+    guarantee: 'a-remount-resumes-rather-than-opens',
+    mutatedFile: 'src/cutin/CutInHost.tsx',
+    mutated:
+      '  const session = React.useRef<CutInSessionState>(\n' +
+      '    resumeCutInSession({ sessionId: activeSessionId, seed: activeSeed }),\n' +
+      '  );',
+    testFile: 'src/cutin/cutInWiring.test.ts',
+    redAssertion:
+      "'the mount does not resume the sitting it is already in — a re-mount inside one sitting would get a fresh slot',",
+    observed:
+      'AssertionError: the mount does not resume the sitting it is already in — a re-mount' +
+      ' inside one sitting would get a fresh slot: expected +0 to be 1',
+  },
+  {
     // The mutant taught the ONE screen that already reports a PR in the daily
     // loop to report the tier kind instead. That is precisely the change the
     // claim says has not happened — and it is the change the check that used to
