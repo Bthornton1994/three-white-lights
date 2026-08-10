@@ -308,9 +308,11 @@ type Branded<T, B extends string> = T & { readonly [EMPIRE_BRAND]: B };
  *
  * How many that is, is not written here. A sentence that counts them was wrong
  * by one for a round and nothing could redden it, so the count is taken by a
- * scan instead: `empireCore.test.ts` reads the constructor list out of this
- * file, pins the names and the count, and asserts the guard on each — so
- * dropping it from one is red rather than left to a reader's arithmetic.
+ * scan instead — and the scan is no longer a scan for the NAME `as*`, which is
+ * how the two producers below it were missed. `brandCensus` in
+ * `empireCore.test.ts` asks the compiler which exported functions produce a
+ * brand and which of their parameters would accept one, so dropping this guard
+ * from any of them is red rather than left to a reader's arithmetic.
  *
  * Its limit, stated because no type reaches past it: `accelerated + 0` is a
  * plain `number` and this cannot see where it came from. Arithmetic laundering
@@ -1098,13 +1100,21 @@ export interface EmpireClock {
  * `UnacceleratedSeconds`, sat a hundred lines below the guarded set and were
  * missed because the guard was applied to everything spelled `as*`.
  *
- * The census in `empireCore.test.ts` that was supposed to catch that is still
- * scoped by NAME — `/export function (as[A-Z]\w*)<[^{]*\{/g` — so it did not,
- * and it still would not. Re-scoping it by return type, resolved through the
- * compiler rather than matched as text, is open work and is tracked as such.
- * Stated here rather than left implicit: this comment described that re-scoping
- * as done for one round while the regex was untouched, which is the failure
- * CLAUDE.md's "a comment that asserts a guarantee" section is about.
+ * The census in `empireCore.test.ts` that was supposed to catch that was scoped
+ * by NAME — `/export function (as[A-Z]\w*)<[^{]*\{/g` — so it did not, and for a
+ * round this comment described a re-scoping that had not happened, which is the
+ * failure CLAUDE.md's "a comment that asserts a guarantee" section is about.
+ *
+ * It is scoped by RETURN TYPE now, and resolved through the TypeScript checker
+ * rather than matched as text: `brandCensus` in `empireCore.test.ts` builds a
+ * `ts.Program` over this file, finds every exported function whose return type
+ * carries the `EMPIRE_BRAND` symbol anywhere inside it — nested in an
+ * `EmpireClock`, an `NpcLifter` or an `EmpireState` included — and then probes
+ * every parameter slot of every one of them by compiling real call
+ * expressions. A slot that admits both a bare primitive and an already-branded
+ * value is a fault. Neither of the two functions this note is about is spelled
+ * `as*`, and both are in that census; so is anything a future piece adds,
+ * whatever it is called and whether or not it is generic.
  */
 export function createEmpireClock<E extends number, S extends number>(
   elapsedSeconds: E & Unbranded<E>,
@@ -1478,6 +1488,23 @@ export function createEmpireState(): EmpireState {
 export function empireStateFaults(state: EmpireState): readonly string[] {
   const faults: string[] = [];
 
+  // Each reading is validated before the two are compared, which is the order
+  // this shipped in the wrong way round. An ordering test alone accepts
+  // `{ unaccelerated: -1, accelerated: -1 }` — a payload `createEmpireClock`
+  // refuses on both arguments — so the runtime shadow was weaker than the
+  // constructor whose absent callers it exists for. Same for a missing reading:
+  // `undefined < undefined` is false, so the ordering test passed on a clock
+  // with no numbers in it at all.
+  if (!Number.isFinite(state.clock.unaccelerated) || state.clock.unaccelerated < 0) {
+    faults.push(
+      `clock: the un-accelerated reading ${state.clock.unaccelerated} is not a wall-clock time`,
+    );
+  }
+  if (!Number.isFinite(state.clock.accelerated) || state.clock.accelerated < 0) {
+    faults.push(
+      `clock: the accelerated reading ${state.clock.accelerated} is not an idle-clock time`,
+    );
+  }
   if (state.clock.accelerated < state.clock.unaccelerated) {
     faults.push('clock: the accelerated reading is behind the un-accelerated one');
   }
@@ -1512,21 +1539,59 @@ export function empireStateFaults(state: EmpireState): readonly string[] {
     faults.push(`gymBucks: ${state.gymBucks} is not a balance`);
   }
 
+  // The capacity itself is checked before it is compared against, for the
+  // reason the clock readings are: an axis that decoded as something other than
+  // a number makes `rosterCapacity` return NaN, and `length > NaN` is false, so
+  // the comparison below silently allowed any roster at all.
   const capacity = rosterCapacity(state.axes);
-  if (state.roster.length > capacity) {
+  if (!Number.isFinite(capacity)) {
+    faults.push(`roster: ${capacity} is not a capacity`);
+  } else if (state.roster.length > capacity) {
     faults.push(`roster: ${state.roster.length} lifters in ${capacity} slots`);
   }
 
+  // Every field a constructor validates is validated again here. The loop
+  // checked ids for duplication and tiers for membership and nothing else, so a
+  // decoded lifter with an empty id, no display name, or a negative
+  // `settledAt` was accepted — and `settledAt` is the origin `settledTenureDays`
+  // measures from, so a negative one inflates the tenure GDD §5.2 pays Training
+  // IQ on. That is the hazard reached through the decode boundary rather than
+  // through an argument list.
   const seen = new Set<string>();
   for (const lifter of state.roster) {
     if (seen.has(lifter.id)) faults.push(`roster: duplicate lifter id ${lifter.id}`);
     seen.add(lifter.id);
+    if (typeof lifter.id !== 'string' || lifter.id.length === 0) {
+      faults.push('roster: a lifter arrived with no id');
+    }
+    if (typeof lifter.displayName !== 'string' || lifter.displayName.length === 0) {
+      faults.push(`roster: ${String(lifter.id)} arrived with no display name`);
+    }
     if (!(EMPIRE_TUNING.NPC_TIERS as readonly string[]).includes(lifter.tier)) {
       faults.push(`roster: ${lifter.id} is on tier ${lifter.tier}, which is not a tier`);
+    }
+    if (!Number.isFinite(lifter.joinedAt) || lifter.joinedAt < 0) {
+      faults.push(
+        `roster: ${String(lifter.id)} joined at ${lifter.joinedAt}, which is not an idle-clock time`,
+      );
+    }
+    if (!Number.isFinite(lifter.settledAt) || lifter.settledAt < 0) {
+      faults.push(
+        `roster: ${String(lifter.id)} settled at ${lifter.settledAt}, which is not a wall-clock time`,
+      );
     }
   }
 
   for (const entry of state.ledger) {
+    // The stamp, checked because the amount beside it was — the branch
+    // immediately below a fixed one is where this codebase keeps finding the
+    // next gap, and `EmpireLedgerEntry.at` is what piece E6 aligns two ledgers
+    // on before comparing them element-wise.
+    if (!Number.isFinite(entry.at) || entry.at < 0) {
+      faults.push(
+        `ledger: ${String(entry.output)} was stamped at ${entry.at}, which is not a wall-clock time`,
+      );
+    }
     if (!Number.isFinite(entry.amount)) {
       faults.push(`ledger: ${entry.output} paid a non-finite amount`);
     }
@@ -1536,8 +1601,25 @@ export function empireStateFaults(state: EmpireState): readonly string[] {
   }
 
   for (const applied of state.accelerants) {
+    if (!Number.isFinite(applied.at) || applied.at < 0) {
+      faults.push(
+        `accelerants: ${String(applied.accelerant)} was stamped at ${applied.at}, which is not a wall-clock time`,
+      );
+    }
     if (!Number.isFinite(applied.seconds) || applied.seconds < 0) {
       faults.push(`accelerants: ${applied.accelerant} applied for ${applied.seconds} seconds`);
+    }
+    // The vocabulary is checked before it is looked up. `mayAccelerate` indexes
+    // two tables, so an unknown accelerant made `accelerantLicence` return
+    // undefined and the `.includes` beneath it throw a TypeError — which turns
+    // a function whose whole contract is to COLLECT faults into one that throws
+    // the wrong error out of `assertEmpireState`. A pairing this module has no
+    // verdict for is a fault, not an exception.
+    if (!isEmpireAccelerant(applied.accelerant) || !isEmpireOutput(applied.output)) {
+      faults.push(
+        `accelerants: ${String(applied.accelerant)} on ${String(applied.output)} is not a pairing this module has a verdict for`,
+      );
+      continue;
     }
     // The second line, for payloads the compiler never saw. GDD §8.1: a
     // purchased accelerant on a progression-reaching output is the refusal
