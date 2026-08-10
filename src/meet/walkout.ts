@@ -504,10 +504,24 @@ export function platesLandedAt(elapsedMs: number, plateCount: number): number {
 /**
  * Does an arrival seen at `nowMs` sound, given when the last one did?
  *
- * The second half of the rattle rule, and the half that needs a memory. Discs
- * that arrive closer together than `BAR_LOAD_RATTLE_MERGE_MS` are one clatter:
- * a catch-up that lands a millisecond before the next boundary should not be
- * followed by a second hit a millisecond later.
+ * ===========================================================================
+ * THE HALF OF THE RULE THAT NEEDS A MEMORY, AND THE HALF THAT BOUNDS THE DEPTH
+ * ===========================================================================
+ * `platesLandedAt` fixes coalesced TIMERS and cannot fix a coalesced CLOCK.
+ * `requestAnimationFrame` timestamps catch up after jank: measured in Chromium
+ * at [994, 1192, 1230, 1275, 1358] ms of wall time, the animation clock crossed
+ * three 90 ms disc boundaries inside 83 ms. The discs really did land — the
+ * schedule is not wrong — but three rattles in 83 ms is a pile-up.
+ *
+ * So arrivals closer together than `BAR_LOAD_RATTLE_MERGE_MS` are one clatter,
+ * and the window is derived rather than chosen: hits that far apart cannot stack
+ * more than `duration / window` deep, so
+ * `VOICES_PER_CUE * MERGE_MS >= BAR_RATTLE.durationMs` is exactly the condition
+ * that no rattle is ever cut off by another, under ANY delivery.
+ * `meetSound.test.ts` holds the relation and measures the bound.
+ *
+ * WALL TIME, NOT THE ANIMATION CLOCK, and that is the whole point: the animation
+ * clock is the thing that lied. `nowMs` is a `Date.now()` reading.
  *
  * @param lastHeardAtMs `null` before the first arrival of this bar.
  */
@@ -517,36 +531,50 @@ export function barLoadRattleSounds(nowMs: number, lastHeardAtMs: number | null)
 }
 
 /**
- * The instants a bar load is HEARD at, given the instants it is LOOKED AT.
+ * One look at the bar load: what each clock said at that moment.
+ *
+ * TWO CLOCKS, BECAUSE THEY DIVERGE AND THE DIVERGENCE IS THE DEFECT.
+ * `useHallStep` measures `elapsedMs` from `requestAnimationFrame` timestamps,
+ * which catch up in bursts after jank; the ear hears in `wallMs`. Modelling them
+ * as one number is the mistake that made a level-triggered load look sufficient.
+ */
+export interface BarLoadLook {
+  /** What the animation clock said, which decides how loaded the bar is. */
+  readonly elapsedMs: number;
+  /** What the wall clock said, which decides whether it is a separate sound. */
+  readonly wallMs: number;
+}
+
+/**
+ * The wall-clock instants a bar load is HEARD at, given the looks it was seen
+ * at.
  *
  * This is `WalkoutView`'s rattle rule written as arithmetic so it can be
  * measured: the view samples `platesLandedAt` on the animation clock, the hook
  * re-renders only when that number changes, one rattle fires per change, and
- * `barLoadRattleSounds` merges the ones too close together to be two sounds. So
- * a hit happens when an observation reports more discs than the previous one
- * did AND the last hit is far enough behind.
+ * `barLoadRattleSounds` merges the arrivals too close together in WALL time to
+ * be two sounds.
  *
  * It is an UPPER BOUND on what the view fires, not an exact twin, and the
  * direction is the safe one: React may coalesce two changes in one batch into a
  * single effect run, which can only remove hits.
  *
- * @param observationsMs when the frame loop looked, in order. Real frames are
- * roughly 16 ms apart and arbitrarily far apart across a blocked thread.
+ * @param looks when the frame loop looked, in wall order.
  */
 export function barLoadHitsAt(
-  observationsMs: readonly number[],
+  looks: readonly BarLoadLook[],
   plateCount: number,
 ): readonly number[] {
   const hits: number[] = [];
   let shown = 0;
   let lastHeardAtMs: number | null = null;
-  for (const at of observationsMs) {
-    const landed = platesLandedAt(at, plateCount);
+  for (const look of looks) {
+    const landed = platesLandedAt(look.elapsedMs, plateCount);
     if (landed <= shown) continue;
     shown = landed;
-    if (!barLoadRattleSounds(at, lastHeardAtMs)) continue;
-    lastHeardAtMs = at;
-    hits.push(at);
+    if (!barLoadRattleSounds(look.wallMs, lastHeardAtMs)) continue;
+    lastHeardAtMs = look.wallMs;
+    hits.push(look.wallMs);
   }
   return hits;
 }

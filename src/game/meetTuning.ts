@@ -471,10 +471,10 @@ export const MEET_TUNING = Object.freeze({
 
   /**
    * BAR_LOAD_RATTLE_MERGE_MS — two arrivals closer together than this are one
-   * clatter, and are heard once.
+   * clatter, and are heard once. It is what BOUNDS how deep the rattle stacks.
    *
    * ---------------------------------------------------------------------------
-   * WHY THERE IS A CONSTANT HERE AT ALL: THE BROWSER DOES NOT DELIVER A SCHEDULE
+   * WHY THERE IS A CONSTANT HERE AT ALL: NOTHING DELIVERS THE SCHEDULE
    * ---------------------------------------------------------------------------
    * The bar used to load on one `setTimeout` per disc at
    * `BAR_LOAD_PLATE_STAGGER_MS`. The loop was correct and the delivery was not:
@@ -482,34 +482,43 @@ export const MEET_TUNING = Object.freeze({
    * drains at once when it frees, and `tools/verify-meet-sound.mjs` measured the
    * result in Chromium — five 180 ms rattles starting at
    * [2771, 2805, 2805, 2822, 2903] ms, two of them byte-identical, for a load
-   * that asked for one every 90. A phone will coalesce timers the same way.
+   * that asked for one every 90.
    *
-   * The load is level-triggered off the clock now (`platesLandedAt` in
-   * `walkout.ts`), so a late look SKIPS to where the bar should be instead of
-   * replaying every tick it missed. THAT is the fix, and it does almost all of
-   * the work. This number covers the remainder: a catch-up that lands a
-   * millisecond before the next disc's boundary would otherwise be followed by a
-   * second hit a millisecond later.
+   * Moving the load onto the animation clock (`platesLandedAt` in `walkout.ts`)
+   * fixes the TIMER half: a late look skips to where the bar should be instead
+   * of replaying every tick it missed. It does not fix the whole thing, and the
+   * measurement of the half-fix is why this number is what it is —
+   * `requestAnimationFrame` timestamps CATCH UP after jank, so a run measured at
+   * [994, 1192, 1230, 1275, 1358] ms of wall time crossed three 90 ms boundaries
+   * inside 83 ms and fired a hit for each. Level-triggering cannot see that: the
+   * boundaries really were crossed, and the discs really did land. The clock is
+   * simply not the ear's clock.
    *
    * ---------------------------------------------------------------------------
-   * WHAT IT IS AND IS NOT WORTH — STATED, BECAUSE THE LAST CLAIM HERE WAS WRONG
+   * SO IT IS DERIVED FROM THE POOL, NOT CHOSEN
    * ---------------------------------------------------------------------------
-   * It does NOT lower the worst-case depth. A 180 ms cue every 90 ms is exactly
-   * two deep with ZERO margin, so any observation jitter that shortens one
-   * interval makes it three, and no merge window narrower than the stagger can
-   * prevent that. Three is what `MEET_SOUND.VOICES_PER_CUE` is sized for, and it
-   * is sized off that delivered figure rather than off the nominal one.
+   * Hits at least this far apart cannot stack more than `duration / this` deep,
+   * so `MEET_SOUND.VOICES_PER_CUE * this >= BAR_RATTLE.durationMs` is exactly
+   * the condition that no rattle is ever cut off by another rattle, for ANY
+   * delivery whatsoever — janked, coalesced, or caught up. 3 x 60 >= 180.
+   * `meetSound.test.ts` holds that relation and measures the bound on
+   * adversarial deliveries rather than on a model of a well-behaved one.
    *
-   * What it removes is the sub-frame double hit. It is deliberately NOT applied
-   * to the schedule — an earlier attempt pulled every disc boundary this much
-   * earlier, which shortened the FIRST interval from 90 ms to 66 and made the
-   * common, unblocked load stack deeper than the design asks for.
+   * The other side is the floor: it must stay under
+   * `BAR_LOAD_PLATE_STAGGER_MS` minus a display frame, or an on-schedule disc
+   * whose frame lands early is silently swallowed. 60 < 90 - 16.7. That is the
+   * whole legal range — 60 to 73 at this tuning — and it exists only because the
+   * rattle is exactly twice the stagger. Shorten the cue and the range widens.
    *
-   * A little over one 60 Hz frame. Larger and it starts eating arrivals a
-   * listener could separate; at zero the double hit comes back. Nobody has heard
-   * it (GDD §12.1): a delivery constant, not a mix decision.
+   * NOT APPLIED TO THE SCHEDULE, deliberately. An earlier attempt pulled every
+   * disc boundary this much earlier instead, which shortened the FIRST interval
+   * from 90 ms to 66 and made the ordinary unblocked load stack deeper.
+   *
+   * Nobody has heard it (GDD §12.1): a delivery constant, not a mix decision.
+   * What a listener would be judging is whether a merged arrival reads as one
+   * plate or as a missing one.
    */
-  BAR_LOAD_RATTLE_MERGE_MS: 24,
+  BAR_LOAD_RATTLE_MERGE_MS: 60,
 
   /**
    * GDD §6.2 step 1, second half: "brief walk-out beat". The lifter is under
