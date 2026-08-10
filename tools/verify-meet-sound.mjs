@@ -525,10 +525,27 @@ let failures = 0;
 for (const beat of EXPECTED) {
   const route = beat.moment === null ? (beat.route ?? '') : `?meet=${beat.moment}`;
   await page.goto(`${url}${route}`, { waitUntil: 'load' });
+  // WHETHER THE SCREEN ARRIVED IS THE WHOLE DIFFERENCE ON A SILENT BEAT, and
+  // for a round this `catch` swallowed it under a comment claiming otherwise.
+  //
+  // Two rows here are silent BY DESIGN and carry `must: []` — `deliberation`,
+  // where a cue would be a metronome telling the lifter to wait, and the Sim
+  // session, where no meet cue belongs at all. For those rows every component
+  // of `ok` is a filter over an empty list the moment nothing plays:
+  // `missing` is `must` filtered, `forbidden` and `undecoded` need a play to
+  // find, and `overlaps` needs two. So a screen that NEVER RENDERED produced
+  // `ok: true`, indistinguishable from the silence being correct — CLAUDE.md's
+  // empty domain, on the two rows that consist of nothing but an empty domain.
+  //
+  // The old comment here read "recorded below as a missing screen". Nothing
+  // below recorded it: the pushed row had no screen field of any kind. That is
+  // the first rule in CLAUDE.md — a comment asserting a guarantee with nothing
+  // that can redden — sitting inside the instrument written to close a gap.
+  let screenDrew = true;
   try {
     await page.getByTestId(beat.screen).waitFor({ state: 'visible', timeout: COLD_LOAD_TIMEOUT_MS });
   } catch {
-    /* recorded below as a missing screen */
+    screenDrew = false;
   }
   await page.waitForTimeout(settleMs);
 
@@ -545,6 +562,7 @@ for (const beat of EXPECTED) {
   const undated = overlaps.filter((o) => o.depth === null).map((o) => o.file);
 
   const ok =
+    screenDrew &&
     missing.length === 0 &&
     forbidden.length === 0 &&
     undecoded.length === 0 &&
@@ -555,6 +573,10 @@ for (const beat of EXPECTED) {
   report.push({
     overlaps,
     tooDeep,
+    // Recorded, not merely consulted: a reader of the JSON can now tell a beat
+    // that was correctly silent from one whose screen never arrived, which is
+    // the distinction the row could not previously express at all.
+    screenDrew,
     moment: beat.moment ?? '(session)',
     screen: beat.screen,
     played,
@@ -568,7 +590,11 @@ for (const beat of EXPECTED) {
     ok,
   });
   const label = (beat.moment ?? '(session)').padEnd(18);
-  const heard = played.length === 0 ? 'silence' : played.map((p) => `${p.file}@${p.atMs}ms`).join(' ');
+  const heard = !screenDrew
+    ? `THE SCREEN NEVER DREW — ${beat.screen} was not visible within ${COLD_LOAD_TIMEOUT_MS}ms, so this beat measured nothing`
+    : played.length === 0
+      ? 'silence'
+      : played.map((p) => `${p.file}@${p.atMs}ms`).join(' ');
   const depths = overlaps
     .filter((o) => o.plays > 1)
     .map((o) => `${o.file} x${o.plays} depth ${o.depth ?? '?'}`)
