@@ -1084,14 +1084,42 @@ export interface EmpireClock {
  *
  * `elapsedSeconds` becomes `unaccelerated` untouched, whatever `skippedSeconds`
  * is. That is the property `empireCore.test.ts` sweeps: the un-accelerated
- * reading is a function of wall time alone.
+ * reading is the elapsed argument it was handed.
+ *
+ * Both arguments are `Unbranded`, and that is the fix for the hole this
+ * function WAS. It took two bare `number`s while returning two brands, so
+ *
+ *     createEmpireClock(clock.accelerated, 0).unaccelerated
+ *
+ * type-checked and handed back a purchase-moved reading wearing the wall-clock
+ * brand — hazard 1 and hazard 2 both reopened, with no cast and only exported
+ * API. `asUnacceleratedSeconds` had the guard; this function and
+ * `createNpcLifter`, the module's other two producers of an
+ * `UnacceleratedSeconds`, sat a hundred lines below the guarded set and were
+ * missed because the guard was applied to everything spelled `as*`.
+ *
+ * The census in `empireCore.test.ts` that was supposed to catch that is still
+ * scoped by NAME — `/export function (as[A-Z]\w*)<[^{]*\{/g` — so it did not,
+ * and it still would not. Re-scoping it by return type, resolved through the
+ * compiler rather than matched as text, is open work and is tracked as such.
+ * Stated here rather than left implicit: this comment described that re-scoping
+ * as done for one round while the regex was untouched, which is the failure
+ * CLAUDE.md's "a comment that asserts a guarantee" section is about.
  */
-export function createEmpireClock(elapsedSeconds: number, skippedSeconds: number): EmpireClock {
-  requireFiniteAtLeastZero(elapsedSeconds, 'elapsedSeconds');
-  requireFiniteAtLeastZero(skippedSeconds, 'skippedSeconds');
+export function createEmpireClock<E extends number, S extends number>(
+  elapsedSeconds: E & Unbranded<E>,
+  skippedSeconds: S & Unbranded<S>,
+): EmpireClock {
+  // Widened to the primitive before use: `E & Unbranded<E>` is a deferred
+  // conditional inside this body, and the guarded constructors below cannot
+  // infer through one.
+  const elapsed: number = elapsedSeconds;
+  const skipped: number = skippedSeconds;
+  requireFiniteAtLeastZero(elapsed, 'elapsedSeconds');
+  requireFiniteAtLeastZero(skipped, 'skippedSeconds');
   return Object.freeze({
-    unaccelerated: asUnacceleratedSeconds(elapsedSeconds),
-    accelerated: asAcceleratedSeconds(elapsedSeconds + skippedSeconds),
+    unaccelerated: asUnacceleratedSeconds(elapsed),
+    accelerated: asAcceleratedSeconds(elapsed + skipped),
   });
 }
 
@@ -1142,23 +1170,44 @@ export interface NpcLifter {
   readonly settledAt: UnacceleratedSeconds;
 }
 
-/** Build a roster lifter. Every argument is validated by its own constructor. */
-export function createNpcLifter(
-  id: string,
+/**
+ * Build a roster lifter. Every argument is validated by its own constructor.
+ *
+ * Four `Unbranded` arguments, for the same reason `createEmpireClock` has two:
+ * this function returns three brands and took four bare primitives, so
+ * `createNpcLifter('b', 'novice', 'Y', clock.unaccelerated, clock.accelerated)`
+ * compiled — the settled time, which is what the Training IQ half measures
+ * tenure from, taking the purchase-moved reading straight off the clock. The
+ * string arguments are guarded on the same rule rather than because a laundered
+ * `NpcId` is dangerous: the rule the census enforces is that a parameter which
+ * accepts a raw primitive accepts no branded one, and applying it to the
+ * numbers only is how the last two producers got missed.
+ */
+export function createNpcLifter<
+  I extends string,
+  D extends string,
+  J extends number,
+  S extends number,
+>(
+  id: I & Unbranded<I>,
   tier: NpcTier,
-  displayName: string,
-  joinedAt: number,
-  settledAt: number,
+  displayName: D & Unbranded<D>,
+  joinedAt: J & Unbranded<J>,
+  settledAt: S & Unbranded<S>,
 ): NpcLifter {
-  if (displayName.length === 0) {
+  const rawId: string = id;
+  const rawDisplayName: string = displayName;
+  const rawJoinedAt: number = joinedAt;
+  const rawSettledAt: number = settledAt;
+  if (rawDisplayName.length === 0) {
     throw new RangeError('displayName must not be empty.');
   }
   return Object.freeze({
-    id: asNpcId(id),
+    id: asNpcId(rawId),
     tier,
-    displayName,
-    joinedAt: asAcceleratedSeconds(joinedAt),
-    settledAt: asUnacceleratedSeconds(settledAt),
+    displayName: rawDisplayName,
+    joinedAt: asAcceleratedSeconds(rawJoinedAt),
+    settledAt: asUnacceleratedSeconds(rawSettledAt),
   });
 }
 
@@ -1234,23 +1283,42 @@ export function equipmentTierCost(tier: EquipmentTier): GymBucks {
   return asGymBucks(EMPIRE_TUNING.EQUIPMENT_TIER_COST_GYM_BUCKS[tier]);
 }
 
-/** Price of a space level, or `null` if the level is off the ladder. */
-export function spaceLevelCost(level: number): GymBucks | null {
-  const price = EMPIRE_TUNING.SPACE_LEVEL_COST_GYM_BUCKS[level - 1];
+/**
+ * Price of a space level, or `null` if the level is off the ladder.
+ *
+ * `Unbranded` because this returns a `GymBucks` and took a bare `number`: a
+ * clock reading is not a level, and the census refuses a raw-accepting
+ * parameter that also accepts a brand whatever the function is called.
+ */
+export function spaceLevelCost<L extends number>(level: L & Unbranded<L>): GymBucks | null {
+  const rawLevel: number = level;
+  const price = EMPIRE_TUNING.SPACE_LEVEL_COST_GYM_BUCKS[rawLevel - 1];
   return price === undefined ? null : asGymBucks(price);
 }
 
 /** Price of a staff level for a role, or `null` if the level is off that ladder. */
-export function staffLevelCost(role: StaffRole, level: number): GymBucks | null {
-  const price = EMPIRE_TUNING.STAFF_LEVEL_COST_GYM_BUCKS[role][level - 1];
+export function staffLevelCost<L extends number>(
+  role: StaffRole,
+  level: L & Unbranded<L>,
+): GymBucks | null {
+  const rawLevel: number = level;
+  const price = EMPIRE_TUNING.STAFF_LEVEL_COST_GYM_BUCKS[role][rawLevel - 1];
   return price === undefined ? null : asGymBucks(price);
 }
 
-/** Seconds one build of the given level takes, capped by `BUILD_SECONDS_MAX`. */
-export function buildSeconds(level: number): number {
+/**
+ * Seconds one build of the given level takes, capped by `BUILD_SECONDS_MAX`.
+ *
+ * Guarded although it returns a bare `number` and is therefore not a producer.
+ * The census's rule is about the ARGUMENT rather than the return, so stopping
+ * at the producers would be the same "applied by naming convention" mistake one
+ * axis over.
+ */
+export function buildSeconds<L extends number>(level: L & Unbranded<L>): number {
+  const rawLevel: number = level;
   const raw =
     EMPIRE_TUNING.BUILD_SECONDS_BASE *
-    EMPIRE_TUNING.BUILD_SECONDS_GROWTH_PER_LEVEL ** (level - 1);
+    EMPIRE_TUNING.BUILD_SECONDS_GROWTH_PER_LEVEL ** (rawLevel - 1);
   return Math.min(EMPIRE_TUNING.BUILD_SECONDS_MAX, raw);
 }
 
@@ -1345,18 +1413,25 @@ export function acceleratedOutput<A extends EmpireAccelerant>(
   return checkedPairing(accelerant, output);
 }
 
-/** The same pairing, stamped and sized. Guarded identically, through one callee. */
-export function applyAccelerant<A extends EmpireAccelerant>(
+/**
+ * The same pairing, stamped and sized. Guarded identically, through one callee.
+ *
+ * `seconds` carries `Unbranded` for the census's reason rather than for a
+ * hazard of its own: this returns an `AppliedAccelerant`, whose `at` is a
+ * brand, and a raw-accepting parameter on a producer may not also accept one.
+ */
+export function applyAccelerant<A extends EmpireAccelerant, S extends number>(
   accelerant: A & OneAccelerant<A>,
   output: AccelerableOutput<A>,
   at: UnacceleratedSeconds,
-  seconds: number,
+  seconds: S & Unbranded<S>,
 ): AppliedAccelerant {
-  requireFiniteAtLeastZero(seconds, 'accelerant seconds');
+  const rawSeconds: number = seconds;
+  requireFiniteAtLeastZero(rawSeconds, 'accelerant seconds');
   return Object.freeze({
     ...checkedPairing(accelerant, output),
     at,
-    seconds,
+    seconds: rawSeconds,
   }) as AppliedAccelerant;
 }
 
