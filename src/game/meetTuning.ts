@@ -470,6 +470,48 @@ export const MEET_TUNING = Object.freeze({
   BAR_LOAD_PLATE_STAGGER_MS: 90,
 
   /**
+   * BAR_LOAD_RATTLE_MERGE_MS — two arrivals closer together than this are one
+   * clatter, and are heard once.
+   *
+   * ---------------------------------------------------------------------------
+   * WHY THERE IS A CONSTANT HERE AT ALL: THE BROWSER DOES NOT DELIVER A SCHEDULE
+   * ---------------------------------------------------------------------------
+   * The bar used to load on one `setTimeout` per disc at
+   * `BAR_LOAD_PLATE_STAGGER_MS`. The loop was correct and the delivery was not:
+   * the main thread is busy through the meet transition, every expired timer
+   * drains at once when it frees, and `tools/verify-meet-sound.mjs` measured the
+   * result in Chromium — five 180 ms rattles starting at
+   * [2771, 2805, 2805, 2822, 2903] ms, two of them byte-identical, for a load
+   * that asked for one every 90. A phone will coalesce timers the same way.
+   *
+   * The load is level-triggered off the clock now (`platesLandedAt` in
+   * `walkout.ts`), so a late look SKIPS to where the bar should be instead of
+   * replaying every tick it missed. THAT is the fix, and it does almost all of
+   * the work. This number covers the remainder: a catch-up that lands a
+   * millisecond before the next disc's boundary would otherwise be followed by a
+   * second hit a millisecond later.
+   *
+   * ---------------------------------------------------------------------------
+   * WHAT IT IS AND IS NOT WORTH — STATED, BECAUSE THE LAST CLAIM HERE WAS WRONG
+   * ---------------------------------------------------------------------------
+   * It does NOT lower the worst-case depth. A 180 ms cue every 90 ms is exactly
+   * two deep with ZERO margin, so any observation jitter that shortens one
+   * interval makes it three, and no merge window narrower than the stagger can
+   * prevent that. Three is what `MEET_SOUND.VOICES_PER_CUE` is sized for, and it
+   * is sized off that delivered figure rather than off the nominal one.
+   *
+   * What it removes is the sub-frame double hit. It is deliberately NOT applied
+   * to the schedule — an earlier attempt pulled every disc boundary this much
+   * earlier, which shortened the FIRST interval from 90 ms to 66 and made the
+   * common, unblocked load stack deeper than the design asks for.
+   *
+   * A little over one 60 Hz frame. Larger and it starts eating arrivals a
+   * listener could separate; at zero the double hit comes back. Nobody has heard
+   * it (GDD §12.1): a delivery constant, not a mix decision.
+   */
+  BAR_LOAD_RATTLE_MERGE_MS: 24,
+
+  /**
    * GDD §6.2 step 1, second half: "brief walk-out beat". The lifter is under
    * the bar and has not started yet. This is the dread beat and it is the
    * single most important number in this file.
@@ -1177,9 +1219,27 @@ export const MEET_SOUND = Object.freeze({
    * `CROWD_SWELL_BIG` (2100ms, played twice by the walk-out, the second landing
    * mid-attack) and `BAR_RATTLE` (180ms, fired every 90ms per plate).
    *
-   * Bounded rather than tuned: `meetSound.test.ts` derives the worst overlap
-   * the schedule can produce and reddens if it exceeds this. NOBODY HAS HEARD
-   * IT (GDD §12.1) — this is a resource floor, not a mix decision.
+   * SIZED OFF WHAT THE BROWSER DELIVERS, NOT OFF WHAT THE SCHEDULE ASKS FOR,
+   * AND THE DIFFERENCE IS THE WHOLE STORY OF THIS NUMBER. The first version of
+   * this comment said "`meetSound.test.ts` derives the worst overlap the
+   * schedule can produce" — a correct derivation of 2 from a schedule the
+   * browser does not deliver. `tools/verify-meet-sound.mjs` measured 5.
+   *
+   * Two facts set it at 3:
+   *
+   *   - `BAR_RATTLE` is 180 ms every 90 ms, which is two deep with ZERO margin.
+   *     Frames arrive on a ~16.7 ms grid, so the observed interval between one
+   *     disc and the one after next can be 163 ms rather than 180, and the third
+   *     copy is still sounding. `meetSound.test.ts` measures that on 117 of 1890
+   *     swept deliveries with the thread never blocked at all.
+   *   - `CROWD_SWELL_BIG` is 2100 ms and the walk-out plays it twice, the second
+   *     landing mid-attack. That one is two by design.
+   *
+   * A tuner who wants the design's two-deep rattle back shortens the cue below
+   * twice the stagger; raising this number instead would only decide whether the
+   * extra copies pile up or cut each other, which is not the same question.
+   * NOBODY HAS HEARD IT (GDD §12.1) — this is a resource floor, not a mix
+   * decision.
    */
   VOICES_PER_CUE: 3,
   /**

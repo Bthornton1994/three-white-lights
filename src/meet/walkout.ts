@@ -452,6 +452,122 @@ export function barLoadMs(plateCount: number): number {
   );
 }
 
+// ---------------------------------------------------------------------------
+// The bar loading, as a function of the clock rather than of a queue of timers
+// ---------------------------------------------------------------------------
+
+/**
+ * How many discs are on the sleeve at `elapsedMs`.
+ *
+ * ===========================================================================
+ * LEVEL-TRIGGERED, AND THAT IS THE WHOLE POINT OF IT
+ * ===========================================================================
+ * `WalkoutView` used to schedule one `setTimeout` per disc at
+ * `BAR_LOAD_PLATE_STAGGER_MS`. The loop was right; the delivery was not. The
+ * main thread is busy through the meet transition, the browser drains every
+ * expired timer at once when it frees, and each drained callback fired its own
+ * rattle. Measured in Chromium by `tools/verify-meet-sound.mjs`: five 180 ms
+ * rattles starting at [2771, 2805, 2805, 2822, 2903] ms on one walk-out, two of
+ * them byte-identical. A device will coalesce timers the same way.
+ *
+ * The DISCS were already right, because React batches those five updates into
+ * one paint — so the picture jumped straight to five plates while the speaker
+ * played five separate hits. What the old comment called "one schedule, so what
+ * is seen and what is heard cannot drift apart" had already drifted.
+ *
+ * Asking the clock instead means a late observation SKIPS to where the bar
+ * should be: one step, one hit, however long the thread was blocked. It also
+ * makes the count a pure function of elapsed time, so a frozen capture
+ * (`holdAtMs`) photographs a definite bar instead of whatever the wall clock had
+ * reached since mount.
+ *
+ * NOTHING IS NUDGED IN HERE, and an earlier version of this function did nudge.
+ * It read `elapsedMs + BAR_LOAD_RATTLE_MERGE_MS`, which pulls every boundary
+ * earlier — including the second one, so the first interval of every load became
+ * 66 ms instead of 90 and the ordinary unblocked bar stacked deeper than the
+ * design asks for. The merge belongs on the OBSERVATION, which is
+ * `barLoadRattleSounds` below.
+ *
+ * @param elapsedMs since the beat began. Negative reads as the start.
+ * @param plateCount discs on ONE sleeve — `hallPlateCount`'s count, never
+ * doubled: a six-plate bar that rattled twelve times would feel like a
+ * twelve-plate one.
+ */
+export function platesLandedAt(elapsedMs: number, plateCount: number): number {
+  const total = Math.max(0, Math.floor(plateCount));
+  if (total === 0) return 0;
+  const at = Math.max(0, elapsedMs);
+  const landed = Math.floor(at / MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS) + 1;
+  return Math.min(total, landed);
+}
+
+/**
+ * Does an arrival seen at `nowMs` sound, given when the last one did?
+ *
+ * The second half of the rattle rule, and the half that needs a memory. Discs
+ * that arrive closer together than `BAR_LOAD_RATTLE_MERGE_MS` are one clatter:
+ * a catch-up that lands a millisecond before the next boundary should not be
+ * followed by a second hit a millisecond later.
+ *
+ * @param lastHeardAtMs `null` before the first arrival of this bar.
+ */
+export function barLoadRattleSounds(nowMs: number, lastHeardAtMs: number | null): boolean {
+  if (lastHeardAtMs === null) return true;
+  return nowMs - lastHeardAtMs >= MEET_TUNING.BAR_LOAD_RATTLE_MERGE_MS;
+}
+
+/**
+ * The instants a bar load is HEARD at, given the instants it is LOOKED AT.
+ *
+ * This is `WalkoutView`'s rattle rule written as arithmetic so it can be
+ * measured: the view samples `platesLandedAt` on the animation clock, the hook
+ * re-renders only when that number changes, one rattle fires per change, and
+ * `barLoadRattleSounds` merges the ones too close together to be two sounds. So
+ * a hit happens when an observation reports more discs than the previous one
+ * did AND the last hit is far enough behind.
+ *
+ * It is an UPPER BOUND on what the view fires, not an exact twin, and the
+ * direction is the safe one: React may coalesce two changes in one batch into a
+ * single effect run, which can only remove hits.
+ *
+ * @param observationsMs when the frame loop looked, in order. Real frames are
+ * roughly 16 ms apart and arbitrarily far apart across a blocked thread.
+ */
+export function barLoadHitsAt(
+  observationsMs: readonly number[],
+  plateCount: number,
+): readonly number[] {
+  const hits: number[] = [];
+  let shown = 0;
+  let lastHeardAtMs: number | null = null;
+  for (const at of observationsMs) {
+    const landed = platesLandedAt(at, plateCount);
+    if (landed <= shown) continue;
+    shown = landed;
+    if (!barLoadRattleSounds(at, lastHeardAtMs)) continue;
+    lastHeardAtMs = at;
+    hits.push(at);
+  }
+  return hits;
+}
+
+/**
+ * The most copies of a cue `durationMs` long that are sounding at once, given
+ * the instants it was started at.
+ *
+ * The same arithmetic `tools/verify-meet-sound.mjs` runs on the real browser
+ * log, kept here so the suite and the probe grade depth the same way. A start
+ * is live from its own instant until exactly `durationMs` later.
+ */
+export function cueDepth(durationMs: number, startsMs: readonly number[]): number {
+  let worst = 0;
+  for (const start of startsMs) {
+    const live = startsMs.filter((other) => other <= start && other + durationMs > start).length;
+    if (live > worst) worst = live;
+  }
+  return worst;
+}
+
 /**
  * How the tail between `startMs` and `beatMs` is spent.
  *

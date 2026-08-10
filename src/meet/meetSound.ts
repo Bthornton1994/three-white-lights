@@ -120,8 +120,19 @@ function ensureAudioMode(): void {
  * degrades the right way — past the pool the OLDEST voice is the one cut, which
  * is what you would choose anyway.
  *
- * The number is bounded rather than tuned: `meetSound.test.ts` derives the worst
- * overlap any cue's schedule can produce and fails if it exceeds this.
+ * THE NUMBER IS SIZED OFF A MEASUREMENT, NOT OFF THE SCHEDULE, and this sentence
+ * used to say the opposite. "`meetSound.test.ts` derives the worst overlap any
+ * cue's schedule can produce" was a correct derivation of 2 from a schedule the
+ * browser does not deliver — `tools/verify-meet-sound.mjs` recorded five copies
+ * of the rattle inside 149ms, because the main thread is blocked through the
+ * meet transition and every expired timer drains at once. The bar load is
+ * level-triggered off the clock now (`platesLandedAt`), and the pool is sized
+ * for the depth the delivered schedule reaches rather than the asked-for one.
+ * See `MEET_SOUND.VOICES_PER_CUE` for the arithmetic.
+ *
+ * A POOL IS NOT A MIX. It decides whether copies pile up or cut each other; it
+ * does not decide how many there are. Raising it to cover a pile-up is the fix
+ * that changes nothing a player hears.
  */
 // Lives in `meetTuning.ts` so a node test can read it: this module imports
 // `expo-audio`, which cannot load under `vitest`'s node environment.

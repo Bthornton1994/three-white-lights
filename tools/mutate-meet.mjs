@@ -406,11 +406,53 @@ const MUTATIONS = [
   {
     id: 'walkout-screen-fires-no-plate-beat',
     claim:
-      'The bar LOADS: one thud and one rattle per plate. Mutation: stop the ' +
+      'The bar LOADS: one thud and one rattle per landing. Mutation: stop the ' +
       'walkout screen firing them.',
     file: 'src/meet/WalkoutView.tsx',
-    from: "    const timer = setTimeout(() => playBeat({ kind: 'bar-plate' }), at);",
-    to: '    const timer = setTimeout(() => undefined, at);',
+    from: "    playBeat({ kind: 'bar-plate' });",
+    to: '    return;',
+  },
+  {
+    id: 'the-bar-load-goes-back-on-a-queue-of-timers',
+    claim:
+      'The bar load is a function of the CLOCK, so a blocked main thread makes ' +
+      'it skip rather than replay every tick it missed. Mutation: put it back ' +
+      'on one setTimeout per disc — the exact shape Chromium delivered as five ' +
+      '180ms rattles inside 139ms for a single paint.',
+    file: 'src/meet/WalkoutView.tsx',
+    from:
+      '  const platesLoaded = useHallStep(plateStep, barLoadMs(plateCount), holdAtMs ?? null);\n' +
+      '  React.useEffect(() => {\n' +
+      '    if (platesLoaded <= 0) return;\n' +
+      "    playBeat({ kind: 'bar-plate' });\n" +
+      '  }, [platesLoaded]);',
+    to:
+      '  void plateStep;\n' +
+      '  const [platesLoaded, setPlatesLoaded] = React.useState(0);\n' +
+      '  React.useEffect(() => {\n' +
+      '    const timers: ReturnType<typeof setTimeout>[] = [];\n' +
+      '    for (let i = 0; i < plateCount; i += 1) {\n' +
+      '      timers.push(\n' +
+      '        setTimeout(() => {\n' +
+      '          setPlatesLoaded(i + 1);\n' +
+      "          playBeat({ kind: 'bar-plate' });\n" +
+      '        }, i * MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS),\n' +
+      '      );\n' +
+      '    }\n' +
+      '    return () => {\n' +
+      '      for (const timer of timers) clearTimeout(timer);\n' +
+      '    };\n' +
+      '  }, [plateCount, attempt.lift, attempt.attemptNumber]);',
+  },
+  {
+    id: 'two-arrivals-in-one-frame-are-heard-twice',
+    claim:
+      'Discs arriving closer together than the ear separates them are ONE ' +
+      'clatter. Mutation: set the merge window to zero, so a catch-up that ' +
+      'stops a millisecond short of the next disc hits again a millisecond later.',
+    file: 'src/game/meetTuning.ts',
+    from: '  BAR_LOAD_RATTLE_MERGE_MS: 24,',
+    to: '  BAR_LOAD_RATTLE_MERGE_MS: 0,',
   },
   {
     id: 'sound-muted',

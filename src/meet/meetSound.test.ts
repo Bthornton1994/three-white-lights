@@ -45,7 +45,7 @@ import { SOUND_FORMAT, decodeWav, encodeWav, peakOf, rmsOf } from '../audio/wav'
 import { soundForBeat, MEET_BEAT_KINDS, type MeetBeat } from '../game/meetDay';
 import { MEET_SOUND, MEET_SOUND_IDS, MEET_TUNING, type MeetSoundId } from '../game/meetTuning';
 import { walkoutMs } from '../game/meetDay';
-import { braceCueDelayMs, buildWalkout } from './walkout';
+import { barLoadHitsAt, braceCueDelayMs, buildWalkout, cueDepth, platesLandedAt } from './walkout';
 import { everySoundFileName, fileNameForCue } from './soundAssets';
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -311,18 +311,99 @@ describe('MEET_SOUND.VOICES_PER_CUE is enough for the schedule the tuning can pr
   // This does not assert the pool is "big enough to sound right" — nobody has
   // heard it (GDD §12.1). It asserts the pool is not SMALLER than the overlap
   // the schedule provably produces, which is arithmetic and is checkable now.
+  //
+  // ===========================================================================
+  // WHAT "THE SCHEDULE THE TUNING CAN PRODUCE" DOES AND DOES NOT COVER
+  // ===========================================================================
+  // AN EARLIER VERSION OF THIS BLOCK CALLED ITSELF "DERIVED RATHER THAN TUNED"
+  // AND THAT WAS THE WHOLE MISTAKE. It derived the worst overlap from
+  // `BAR_LOAD_PLATE_STAGGER_MS` and the cue lengths, got 2, and was green while
+  // `tools/verify-meet-sound.mjs` measured 5 in Chromium. The derivation was
+  // arithmetically correct about a schedule the browser does not deliver: it
+  // assumed timers fire when they are asked to, and the main thread is blocked
+  // through the meet transition, so the whole expired queue drains at once.
+  //
+  // So the coverage, stated rather than implied:
+  //
+  //   COVERED HERE, exactly. (a) The nominal schedule's own arithmetic, which is
+  //   what a tuner turning a constant is changing. (b) The measured Chromium
+  //   trace, replayed as data, so the delivered depth is a fact in this file
+  //   rather than a number in a tool's output. (c) The DELIVERED depth of the
+  //   shipped level-triggered load, over a sweep of blocked-thread and
+  //   frame-phase shapes.
+  //
+  //   NOT COVERED HERE. Whether a real browser's frame delivery is inside the
+  //   sweep's shapes. (c) is a model of `requestAnimationFrame`, and a model is
+  //   what got this wrong the first time. `tools/verify-meet-sound.mjs` is the
+  //   only thing that reads the real one, and it is the check that has to stay
+  //   green — this file cannot stand in for it.
+  //
+  //   NOT COVERED BY ANYTHING. Whether any of it sounds right (GDD §12.1).
 
   /** How many triggers of one cue land inside one copy of its own duration. */
-  function worstOverlap(durationMs: number, startsMs: readonly number[]): number {
-    let worst = 0;
-    for (const start of startsMs) {
-      const live = startsMs.filter((other) => other <= start && other + durationMs > start).length;
-      if (live > worst) worst = live;
+  const worstOverlap = cueDepth;
+
+  /**
+   * THE MEASUREMENT THAT CONTRADICTED THE DERIVATION, kept as data.
+   *
+   * Read out of `.gauntlet/shots/meet/sound.json` on the run that first measured
+   * per-cue depth: `bar-rattle.wav` on the `?meet=walkout` beat, in headless
+   * Chromium at 390x844, against the shipped Expo web build. Five starts of a
+   * 180 ms cue inside 149 ms, two of them byte-identical, from a loop that asked
+   * for one every 90 ms.
+   *
+   * It is transcribed rather than re-derived on purpose: a derivation is exactly
+   * what was wrong, and this is the observation that has to keep being true of
+   * the code being replaced rather than of the code that replaced it.
+   */
+  const MEASURED_COALESCED_STARTS_MS: readonly number[] = Object.freeze([
+    16864, 16889, 16889, 16933, 17013,
+  ]);
+
+  /**
+   * The parameters of the delivery sweep, in one place and named, the way
+   * `src/game/streakSweep.ts` holds the streak sweep's. A measurement whose
+   * inputs are not written down is an anecdote.
+   *
+   * NOT GAME FEEL. Nothing here is a knob a playtester turns; these describe the
+   * hostile browser the schedule has to survive. The one game-feel value in
+   * play is `MEET_TUNING.BAR_LOAD_CATCH_UP_LOOKAHEAD_MS`, which lives in the
+   * tuning file with the rest.
+   */
+  const DELIVERY_SWEEP = Object.freeze({
+    /** Discs on one sleeve: an empty bar, a light opener, and the heaviest. */
+    PLATE_COUNTS: Object.freeze([0, 1, 3, 5, 8, 10]),
+    /** 60 Hz. The grid the frame loop runs on when nothing is in its way. */
+    FRAME_MS: 1000 / 60,
+    /** Where the grid sits relative to the top of the beat. */
+    FRAME_PHASE_MS: Object.freeze([0, 3.1, 7.4, 11.9, 15.6]),
+    /** When the thread seizes, relative to the top of the beat. */
+    BLOCK_START_MS: Object.freeze([0, 17, 45, 89, 91, 178, 200, 359, 361]),
+    /** For how long. 0 is the unblocked control. */
+    BLOCK_MS: Object.freeze([0, 20, 55, 130, 271, 400, 900]),
+    /** How far past the last disc the sweep keeps looking. */
+    TAIL_MS: 400,
+  });
+
+  /**
+   * The instants the frame loop looked, on a thread that seized once.
+   *
+   * `useHallStep` runs one `requestAnimationFrame` chain, and a blocked thread
+   * does not queue those up: the callbacks that would have run are simply never
+   * delivered, and one fires when the thread frees. That is the whole reason the
+   * bar load was moved onto it, so the model has to have that property.
+   */
+  function framesUnder(blockStartMs: number, blockMs: number, phaseMs: number, untilMs: number): number[] {
+    const frames: number[] = [];
+    for (let at = phaseMs; at <= untilMs; at += DELIVERY_SWEEP.FRAME_MS) {
+      if (blockMs > 0 && at >= blockStartMs && at < blockStartMs + blockMs) continue;
+      frames.push(at);
     }
-    return worst;
+    if (blockMs > 0) frames.push(blockStartMs + blockMs);
+    return frames.sort((a, b) => a - b);
   }
 
-  it('the bar rattle: one per plate, staggered inside its own ring-out', () => {
+  it('the nominal schedule: one per plate, staggered inside its own ring-out', () => {
     const rattle = MEET_SOUND.CUES.BAR_RATTLE.durationMs;
     const stagger = MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS;
     // The heaviest bar the meet can load, so the plate count is the app's own
@@ -332,8 +413,157 @@ describe('MEET_SOUND.VOICES_PER_CUE is enough for the schedule the tuning can pr
     const overlap = worstOverlap(rattle, starts);
     // A COUNT: 180ms fired every 90ms is exactly two voices deep, and if either
     // constant moves this reddens naming the new depth rather than drifting.
+    //
+    // THIS IS THE ASKED-FOR SCHEDULE AND NOT THE DELIVERED ONE. It is what a
+    // tuner is choosing when they move either constant, and it is worth pinning
+    // for that reason alone — but on its own it is the claim that measured 2
+    // while the browser played 5, so it does not license the pool size. The two
+    // tests below are what do that.
     expect(overlap, `${rattle}ms fired every ${stagger}ms`).toBe(2);
     expect(overlap).toBeLessThanOrEqual(MEET_SOUND.VOICES_PER_CUE);
+  });
+
+  it('the delivery that contradicted it: one timer per disc, replayed from Chromium', () => {
+    const rattle = MEET_SOUND.CUES.BAR_RATTLE.durationMs;
+    // Non-vacuity first: the trace has to be a trace of the thing that broke.
+    // Five starts of a 180ms cue inside 149ms is not a schedule anybody wrote.
+    expect(MEASURED_COALESCED_STARTS_MS.length, 'the recorded trace').toBe(5);
+    const span =
+      MEASURED_COALESCED_STARTS_MS[MEASURED_COALESCED_STARTS_MS.length - 1]! -
+      MEASURED_COALESCED_STARTS_MS[0]!;
+    expect(span, 'the recorded burst spanned').toBe(149);
+    expect(span, 'a burst inside one cue length is what made it a pile-up').toBeLessThan(rattle);
+
+    const measured = worstOverlap(rattle, MEASURED_COALESCED_STARTS_MS);
+    expect(measured, 'depth Chromium delivered from a per-disc timer loop').toBe(5);
+    // AND IT EXCEEDED THE POOL, which is the sentence the old block could not
+    // say. Raising `VOICES_PER_CUE` to 5 would silence this line and change
+    // nothing a player hears, which is why the schedule moved instead.
+    expect(measured).toBeGreaterThan(MEET_SOUND.VOICES_PER_CUE);
+  });
+
+  it('the same block, level-triggered: four missed landings are one arrival', () => {
+    // The shape the browser trace above came from, run through the shipped
+    // schedule: the thread seizes from the top of the beat until 360 ms — past
+    // four of the five discs — and the frame loop resumes at 60 Hz.
+    const rattle = MEET_SOUND.CUES.BAR_RATTLE.durationMs;
+    const frames: number[] = [];
+    for (let at = 360; at <= 900; at += DELIVERY_SWEEP.FRAME_MS) frames.push(at);
+    const hits = barLoadHitsAt(frames, 5);
+
+    // Non-vacuity: the block really did cover four landings, so the old scheme
+    // had four queued callbacks to drain here.
+    expect(platesLandedAt(360, 5), 'discs owed at the instant the thread freed').toBe(5);
+    // ONE hit for the whole catch-up, against five in the recorded trace, and
+    // the picture had already been showing one jump.
+    expect(hits.length, `heard: ${JSON.stringify(hits.map((h) => Math.round(h)))}`).toBe(1);
+    expect(worstOverlap(rattle, hits)).toBe(1);
+  });
+
+  it('the delivery the level-triggered load produces, swept over a thread that seizes', () => {
+    const rattle = MEET_SOUND.CUES.BAR_RATTLE.durationMs;
+    const worst: { depth: number; hits: number; case: string }[] = [];
+    let cases = 0;
+    let casesWithACatchUp = 0;
+    let casesWhereTheMergeBit = 0;
+    let hitsNeverExceedDiscs = 0;
+    let casesAtMaxDepth = 0;
+    let unblockedCasesAtMaxDepth = 0;
+    let maxDepth = 0;
+
+    for (const plateCount of DELIVERY_SWEEP.PLATE_COUNTS) {
+      const untilMs =
+        plateCount * MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS + DELIVERY_SWEEP.TAIL_MS;
+      for (const phaseMs of DELIVERY_SWEEP.FRAME_PHASE_MS) {
+        for (const blockStartMs of DELIVERY_SWEEP.BLOCK_START_MS) {
+          for (const blockMs of DELIVERY_SWEEP.BLOCK_MS) {
+            cases += 1;
+            const frames = framesUnder(blockStartMs, blockMs, phaseMs, untilMs);
+            const hits = barLoadHitsAt(frames, plateCount);
+            const depth = worstOverlap(rattle, hits);
+            // How many times the drawn count changed, which is how many times
+            // the eye saw discs arrive. Hits below this is the merge biting.
+            let shown = 0;
+            let steps = 0;
+            for (const at of frames) {
+              const landed = platesLandedAt(at, plateCount);
+              if (landed > shown) {
+                steps += 1;
+                shown = landed;
+              }
+            }
+            if (steps > hits.length) casesWhereTheMergeBit += 1;
+            if (hits.length > 0 && hits.length < plateCount) casesWithACatchUp += 1;
+            if (hits.length <= plateCount) hitsNeverExceedDiscs += 1;
+            if (depth > maxDepth) maxDepth = depth;
+            if (depth === 3) {
+              casesAtMaxDepth += 1;
+              if (blockMs === 0) unblockedCasesAtMaxDepth += 1;
+            }
+            worst.push({
+              depth,
+              hits: hits.length,
+              case: `${plateCount} discs, block ${blockMs}ms at ${blockStartMs}ms, phase ${phaseMs}ms`,
+            });
+          }
+        }
+      }
+    }
+
+    // NON-VACUITY, AS COUNTS. The sweep has to have run, and it has to have
+    // contained the two cases it exists for — a catch-up that carried more than
+    // one disc, and an arrival close enough behind another to be merged. A
+    // generator that produced neither would pass every line below while
+    // measuring nothing.
+    expect(cases, 'sweep size').toBe(1890);
+    expect(casesWithACatchUp, 'cases where a catch-up carried more than one disc').toBe(558);
+    expect(casesWhereTheMergeBit, 'cases where two arrivals were merged into one hit').toBe(40);
+    expect(hitsNeverExceedDiscs, 'cases where the hits never outnumbered the discs').toBe(cases);
+
+    // THE DELIVERED DEPTH, PINNED AS A COUNT. Not a bound: a bound lets the
+    // number creep back up quietly, and this is the number that was wrong.
+    expect(maxDepth, 'deepest the rattle stacks anywhere in the sweep').toBe(3);
+    expect(casesAtMaxDepth, 'cases that reach that depth').toBe(624);
+
+    // AND THREE IS NOT THE BLOCK'S FAULT, WHICH IS THE FINDING THIS PIN CARRIES.
+    // A 180ms cue every 90ms is two deep with ZERO margin, so an observation
+    // grid 16.7ms coarse is enough on its own: 117 of these reach three with the
+    // thread never blocked at all — e.g. 3 discs, phase 0, a 20ms block, heard
+    // at [20, 100, 183.3]. That is why `VOICES_PER_CUE` is 3 rather than the 2
+    // the nominal schedule reports, and why getting the design's two-deep sound
+    // back is a TUNING change (a rattle shorter than twice the stagger), not a
+    // scheduling one. Nobody has heard either (GDD §12.1).
+    expect(unblockedCasesAtMaxDepth, 'cases at that depth with no block at all').toBe(117);
+    expect(maxDepth).toBeLessThanOrEqual(MEET_SOUND.VOICES_PER_CUE);
+
+    const over = worst.filter((w) => w.depth > MEET_SOUND.VOICES_PER_CUE);
+    expect(over.length, `cases over the pool: ${JSON.stringify(over.slice(0, 3))}`).toBe(0);
+  });
+
+  it('two arrivals inside the merge window are one clatter', () => {
+    const stagger = MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS;
+    const merge = MEET_TUNING.BAR_LOAD_RATTLE_MERGE_MS;
+    // The window has to be inside one disc of the schedule, or it would start
+    // eating arrivals the design wants heard separately.
+    expect(merge, 'the merge window is off').toBeGreaterThan(0);
+    expect(merge).toBeLessThan(stagger);
+
+    // The schedule itself is untouched by it — an earlier version folded the
+    // window into `platesLandedAt`, which pulled the SECOND disc 24ms early and
+    // made the ordinary unblocked bar stack deeper. These three reads are what
+    // went wrong then.
+    expect(platesLandedAt(0, 4), 'the first look lands exactly one disc').toBe(1);
+    expect(platesLandedAt(stagger - 1, 4), 'a disc landed before its own boundary').toBe(1);
+    expect(platesLandedAt(stagger, 4)).toBe(2);
+
+    // A catch-up stopping a millisecond short of a boundary, and the very next
+    // frame crossing it: one hit. With the window at zero this is two.
+    const straddling = barLoadHitsAt([stagger - 1, stagger + 1], 4);
+    expect(straddling, 'a drain and the frame after it were heard twice').toEqual([stagger - 1]);
+    // ...and an arrival the window does NOT cover is still heard, so the merge
+    // is a merge and not a mute.
+    const separated = barLoadHitsAt([stagger - 1, stagger + merge], 4);
+    expect(separated).toEqual([stagger - 1, stagger + merge]);
   });
 
   it('the crowd bed: the walk-out plays it twice, and the second used to cut the first', () => {

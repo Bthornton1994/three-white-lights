@@ -116,6 +116,17 @@
  * so what is seen and what is heard are one schedule. The call arrives with a
  * crowd swell under it, bigger when the attempt is a third, a PR or a bomb risk.
  *
+ * "ONE SCHEDULE" IS A CLAIM ABOUT DELIVERY, NOT ABOUT INTENT, AND IT WAS FALSE
+ * FOR A ROUND. The discs were scheduled on one `setTimeout` each; the browser
+ * coalesces those through the meet transition and drains them together, so
+ * `tools/verify-meet-sound.mjs` recorded FIVE 180 ms rattles inside 139 ms while
+ * React batched the same five updates into ONE paint. The load is level-triggered
+ * off the clock now (`platesLandedAt`), so discs that arrive together arrive as
+ * one step and are heard as one hit. The honest form of the promise: a hit never
+ * happens without discs landing, and discs never land without a hit — but a
+ * catch-up that carries four discs carries one hit, which is what the eye was
+ * already being shown.
+ *
  * NONE OF IT HAS BEEN HEARD OR FELT BY ANYBODY. Web has no haptic engine, and
  * no capture in this repository records audio, so no critic in this environment
  * can check either half (GDD §12.1).
@@ -140,8 +151,11 @@ import { MeetHallView } from './MeetHallView';
 import { MEET_PALETTE } from './meetPalette';
 import { useHallStep } from './useHallStep';
 import {
+  barLoadMs,
+  barLoadRattleSounds,
   braceCueDelayMs,
   buildWalkout,
+  platesLandedAt,
   walkoutFrameAt,
   walkoutFrameIndexAt,
   walkoutRequestFor,
@@ -212,28 +226,46 @@ export function WalkoutView({
     },
   ]);
 
-  // THE BAR LOADS. One disc per side per `BAR_LOAD_PLATE_STAGGER_MS`, and the
-  // same tick fires the thud and the rattle — one schedule, so what is seen and
-  // what is felt cannot drift apart. The mirrored sleeve is drawn by the same
-  // sprite and deliberately fires nothing of its own: a six-plate bar that
-  // buzzed twelve times would feel like a twelve-plate one.
-  const [platesLoaded, setPlatesLoaded] = React.useState(0);
+  // THE BAR LOADS, OFF THE CLOCK RATHER THAN OFF A QUEUE OF TIMERS.
+  //
+  // One disc per side per `BAR_LOAD_PLATE_STAGGER_MS`, and the same step fires
+  // the thud and the rattle — one schedule, so what is seen and what is heard
+  // cannot drift apart. The mirrored sleeve is drawn by the same sprite and
+  // deliberately fires nothing of its own: a six-plate bar that buzzed twelve
+  // times would feel like a twelve-plate one.
+  //
+  // THE PREVIOUS VERSION OF THIS PROMISE WAS UNTRUE ON A REAL BROWSER, and this
+  // is what fixed it. It scheduled one `setTimeout` per disc, which is correct
+  // and is not what gets delivered: the main thread is busy through the meet
+  // transition and the whole expired queue drains at once when it frees.
+  // `tools/verify-meet-sound.mjs` measured five rattles of a 180 ms cue starting
+  // at [2771, 2805, 2805, 2822, 2903] ms, two byte-identical — while React
+  // batched the five state updates into ONE paint, so the eye saw a single jump
+  // and the ear got five hits. `platesLandedAt` asks the clock how loaded the
+  // bar should be, so a late look SKIPS instead of replaying every tick it
+  // missed, and the hit count matches the paint count again.
+  // `barLoadRattleSounds` is the other half: two arrivals inside
+  // `BAR_LOAD_RATTLE_MERGE_MS` of each other are one clatter, so a catch-up that
+  // stops a millisecond short of the next disc does not hit twice.
+  //
+  // NO ARITHMETIC HERE: both rules are `walkout.ts`'s, which is pure and tested.
+  // The ref is a clock reading, not a decision.
+  const plateStep = React.useCallback(
+    (elapsedMs: number) => platesLandedAt(elapsedMs, plateCount),
+    // The attempt is in the deps on purpose, and the hook's contract is why:
+    // a new `sampleAt` restarts its clock, which is what a new bar must do.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [plateCount, attempt.lift, attempt.attemptNumber],
+  );
+  const platesLoaded = useHallStep(plateStep, barLoadMs(plateCount), holdAtMs ?? null);
+  const lastRattleAtMs = React.useRef<number | null>(null);
   React.useEffect(() => {
-    setPlatesLoaded(0);
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 0; i < plateCount; i += 1) {
-      const at = i * MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS;
-      timers.push(
-        setTimeout(() => {
-          setPlatesLoaded(i + 1);
-          playBeat({ kind: 'bar-plate' });
-        }, at),
-      );
-    }
-    return () => {
-      for (const timer of timers) clearTimeout(timer);
-    };
-  }, [plateCount, attempt.lift, attempt.attemptNumber]);
+    if (platesLoaded <= 0) return;
+    const now = Date.now();
+    if (!barLoadRattleSounds(now, lastRattleAtMs.current)) return;
+    lastRattleAtMs.current = now;
+    playBeat({ kind: 'bar-plate' });
+  }, [platesLoaded]);
 
   const revealed = useSharedValue(0);
   React.useEffect(() => {
