@@ -18,6 +18,7 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import * as entitlementModule from './streakEntitlement';
 import {
@@ -1143,6 +1144,151 @@ const PURCHASED_DAY_SCAN = {
 } as const;
 
 /**
+ * THE SYMBOL-RESOLVED PASS'S PARAMETERS, IN ONE PLACE — the same discipline
+ * `PURCHASED_DAY_SCAN` above applies to the textual scan, applied to the pass
+ * that stands beside it.
+ *
+ * WHY THERE ARE TWO PASSES AND NOT ONE REPLACING THE OTHER. The textual scan
+ * finds 88 declarations in 7 files; this one finds 32 in 2. Neither is a subset
+ * of the other and each is blind exactly where the other looks:
+ *
+ *   - The textual scan reads WORDS, so it sees `EMPIRE_FORBIDDEN_OUTPUTS`
+ *     naming `'covered-day'` as a forbidden idle-layer output, the tender
+ *     partition in `currencyProvenance.ts`, and `RECOVERY_ENTITLEMENT`'s frozen
+ *     tuning block — none of which CALL anything. A checker pass keyed on
+ *     "reaches the credit path" resolves no identifier in any of them and would
+ *     drop all 88 down to 32, which is why replacing was rejected.
+ *   - This pass reads SYMBOLS, so an identifier that reaches the covered-day
+ *     machinery under any spelling is seen. That is the hole the textual scan's
+ *     own comment pinned as unclosable by any predicate it could carry.
+ *
+ * THE HOLE WAS EXECUTED, NOT REASONED ABOUT, and the executed version is not
+ * the one that was written down. The limit as recorded read
+ * `import { creditCoveredDays as credit }` alone — but a body that still spells
+ * the source `'window-entitlement'` is caught by the shipped predicate's third
+ * alternative, and planting exactly that mutant reddened three tests. The
+ * evasion needs BOTH ends aliased: the function AND the source. Appended to
+ * `src/shell/appServer.ts`:
+ *
+ *     import {
+ *       creditCoveredDays as credit,
+ *       COVERAGE_SOURCES as SOURCES,
+ *       RECOVERY_ENTITLEMENT,
+ *       type EntitlementState,
+ *     } from '../game/streakEntitlement';
+ *
+ *     export function widenForTenSessions(
+ *       state: EntitlementState, w: number, sessions: number,
+ *     ): EntitlementState {
+ *       return credit(RECOVERY_ENTITLEMENT, state, w, sessions, SOURCES[0]).state;
+ *     }
+ *
+ * That grants a covered day per training session — CLAUDE.md measures the
+ * every-N-sessions shape at **1156 violating pairs** against 0 on a fixed
+ * calendar day. With it in the tree `streakEntitlement.test.ts`,
+ * `tuning/audit.test.ts` and `guaranteeTags.test.ts` ran **105 tests, all
+ * green**, and `tsc --noEmit` exited 0. It would have shipped.
+ *
+ * A LOCALLY DECLARED SOURCE DOES NOT EVADE, and that is why the mutant imports
+ * `COVERAGE_SOURCES` rather than writing `const SRC = 'window-entitlement'`:
+ * such a const is itself a top-level declaration whose own body carries the
+ * literal, so the textual scan reddens on `SRC`. The literal has to come from
+ * somewhere else entirely, which is precisely what an import is.
+ */
+const COVERED_DAY_SYMBOL_SCAN = {
+  /**
+   * The module whose exports are the covered-day machinery. Every export of it
+   * is guarded — the set is asked of the CHECKER via `getExportsOfModule`, not
+   * listed here, because a hand-list is "the tokens somebody thought of" and
+   * that is the failure mode `CREDIT_PATH_TOKENS` above is pinned to record.
+   * Adding an export to `streakEntitlement.ts` widens this pass automatically.
+   */
+  GUARDED_MODULE: 'game/streakEntitlement.ts',
+
+  /**
+   * How many symbols that module exports. PINNED as the anti-vacuity floor for
+   * the whole pass: if `getExportsOfModule` ever returns an empty set — a
+   * mis-resolved path, a program built with no root files — every declaration
+   * would resolve to nothing, the pass would find nothing, and its set equality
+   * would pass against an empty expectation. This is the line that reddens
+   * instead.
+   */
+  GUARDED_EXPORTS: 21,
+
+  /**
+   * `[declarations, files]` this pass finds on a clean tree. Counts, not
+   * bounds. The file column is the one that moves when a granter appears in a
+   * module that has never touched the entitlement before — which is exactly
+   * what the aliased mutant does, taking it to 3.
+   */
+  SYMBOL_FOUND: [32, 2] as readonly [number, number],
+
+  /**
+   * The declarations THIS PASS FINDS AND THE TEXTUAL SCAN CANNOT — the measured
+   * value of adding it, pinned as names rather than as a count so a swap is
+   * visible. Nine, and none of them says `purchas`, `covered day` or
+   * `window-entitlement` anywhere in its body; each reaches the entitlement
+   * through an identifier instead.
+   *
+   * NON-EMPTY IS THE POINT. If this list were empty the pass would be
+   * decoration: everything it found would already be found by a regex.
+   */
+  SYMBOL_ONLY_NAMES: [
+    'CoverageSource',
+    'ENTITLEMENT_REACH_IS_COVERAGE_ONLY',
+    'EntitlementFactKey',
+    'EntitlementOutcome',
+    'StreakState',
+    'createStreakState',
+    'entitlementWindowFor',
+    'windowIndexOf',
+    'windowStartDay',
+  ] as readonly string[],
+
+  /**
+   * Declarations reached ONLY by following an import alias — i.e. the resolved
+   * symbol's own file is not the file the identifier is written in. PINNED
+   * NON-ZERO because this is the single line that reddens if
+   * `getAliasedSymbol` stops being called: without alias-following every
+   * cross-module reference resolves to the local import binding instead of the
+   * export, `streak.ts` drops out entirely, and the pass silently shrinks to
+   * "declarations inside streakEntitlement.ts itself".
+   *
+   * `cutInWiring.test.ts` records a builder having broken exactly that call by
+   * hand and reverted it. This is the same failure, made loud here.
+   */
+  CROSS_MODULE_FOUND: 11,
+
+  /**
+   * The union of both passes, which is what `COVERED_DAY_TOUCHING_FUNCTIONS` is
+   * asserted equal to. 88 textual + 9 symbol-only = 97.
+   */
+  UNION_FOUND: 97,
+
+  /**
+   * WHAT THIS PASS STILL DOES NOT SEE, pinned as a red line rather than implied
+   * away, the way the textual scan's own limit was.
+   *
+   * A declaration that reaches the entitlement through a value the checker
+   * cannot follow to an export — `const f: unknown = mod['creditCoveredDays']`,
+   * a dynamic `await import()`, a `Function` constructor — resolves to no
+   * guarded symbol and is invisible here. So is a granter written INSIDE a
+   * declaration that is already on the allowlist, which is the floor-not-ceiling
+   * limit the allowlist header already states and which `streak.test.ts`'s
+   * behavioural drive is what actually covers.
+   *
+   * WHAT IT DOES SEE, ALSO MEASURED: the re-alias shape
+   * `import * as E from '...'; E.creditCoveredDays(...)`. The property name in
+   * a `PropertyAccessExpression` is an identifier the checker resolves straight
+   * to the export, so the namespace spelling is caught by this pass — and it is
+   * additionally caught by the TEXTUAL scan, because `E.creditCoveredDays`
+   * contains the substring `CoveredDay`. Both are asserted below rather than
+   * assumed.
+   */
+  DYNAMIC_ACCESS_IS_NOT_COVERED: true,
+} as const;
+
+/**
  * Files the scan reads: every non-test `.ts`/`.tsx` under `dir`, recursively.
  *
  * THE THIRD COPY OF THIS WALKER IN THE TREE, said rather than hidden — the
@@ -1221,6 +1367,149 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     });
   };
 
+  /**
+   * THE SYMBOL-RESOLVED PASS. Every top-level declaration under `src/` that
+   * mentions an identifier resolving — THROUGH IMPORT ALIASES AND RE-EXPORTS —
+   * to an export of `streakEntitlement.ts`.
+   *
+   * BUILT ONCE AND MEMOISED. A `ts.Program` over `tsconfig.json`'s 185 files
+   * costs ~3.6s and the walk ~1.5s; three tests read it, and building three
+   * programs would be three resolutions of the same types that could disagree.
+   */
+  interface SymbolPass {
+    readonly qualified: readonly string[];
+    readonly names: readonly string[];
+    readonly files: readonly string[];
+    readonly guardedExports: readonly string[];
+    /** Qualified names reached only by following an import alias out of the file. */
+    readonly crossModule: readonly string[];
+  }
+  let symbolPassMemo: SymbolPass | null = null;
+
+  const symbolPass = (): SymbolPass => {
+    if (symbolPassMemo !== null) return symbolPassMemo;
+
+    const repoRoot = path.join(PURCHASED_DAY_SCAN.ROOT, '..');
+    const configPath = path.join(repoRoot, 'tsconfig.json');
+    const config = ts.readConfigFile(configPath, ts.sys.readFile).config as unknown;
+    const parsed = ts.parseJsonConfigFileContent(config, ts.sys, repoRoot);
+    if (parsed.fileNames.length === 0) {
+      throw new Error('tsconfig.json resolved to no files — the symbol pass would find nothing');
+    }
+    const program = ts.createProgram([...parsed.fileNames], {
+      ...parsed.options,
+      noEmit: true,
+      skipLibCheck: true,
+    });
+    const checker = program.getTypeChecker();
+
+    const guardedFile = path.join(PURCHASED_DAY_SCAN.ROOT, COVERED_DAY_SYMBOL_SCAN.GUARDED_MODULE);
+    const guardedSource = program.getSourceFile(guardedFile);
+    if (guardedSource === undefined) {
+      throw new Error(`${COVERED_DAY_SYMBOL_SCAN.GUARDED_MODULE} is not in the program`);
+    }
+    const guardedModuleSymbol = checker.getSymbolAtLocation(guardedSource);
+    if (guardedModuleSymbol === undefined) {
+      throw new Error(`${COVERED_DAY_SYMBOL_SCAN.GUARDED_MODULE} has no module symbol`);
+    }
+    const guardedSymbols = checker.getExportsOfModule(guardedModuleSymbol);
+    const guarded = new Set(guardedSymbols);
+
+    /*
+     * WHERE AN IDENTIFIER IS DECLARED, ASKED OF THE CHECKER RATHER THAN OF ITS
+     * SPELLING. `SymbolFlags.Alias` is what an imported binding is, so following
+     * it turns "a local thing spelled `credit`" into "streakEntitlement.ts's
+     * exported `creditCoveredDays`". `getAliasedSymbol` follows a whole
+     * re-export chain, so a barrel between caller and declaration resolves the
+     * same way.
+     *
+     * THIS IS THE THIRD COPY OF THESE FOUR LINES IN THE TREE, SAID PLAINLY
+     * RATHER THAN LEFT FOR A READER TO FIND. The others are
+     * `progression.test.ts`'s `resolvedSymbolOf` and `cutInWiring.test.ts`'s
+     * two. CLAUDE.md's "a twin guard must READ the sibling's list, not copy it"
+     * is about LISTS, and this pass does read its list from the checker rather
+     * than copying one — but the RESOLVER is duplicated, and that is the same
+     * drift surface one level down. It is not extracted because the only home
+     * both a `src/game/` test and a `src/cutin/` test could import is a new
+     * non-test module under `src/`, which would itself be scanned by the pass
+     * above and by `guaranteeTags.test.ts`, and `src/game/` is pure-logic-only.
+     * `THE THREE RESOLVERS DO NOT DRIFT` below is what stands in for extraction:
+     * it pins the idiom's occurrence count in all three files, so deleting the
+     * alias step from any one of them is red.
+     */
+    const resolvedSymbolOf = (identifier: ts.Identifier): ts.Symbol | undefined => {
+      const symbol = checker.getSymbolAtLocation(identifier);
+      return symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+        ? checker.getAliasedSymbol(symbol)
+        : symbol;
+    };
+
+    const qualified: string[] = [];
+    const crossModule: string[] = [];
+    const names = new Set<string>();
+    const files = new Set<string>();
+
+    for (const source of program.getSourceFiles()) {
+      if (source.isDeclarationFile) continue;
+      const rel = path
+        .relative(PURCHASED_DAY_SCAN.ROOT, source.fileName)
+        .split(path.sep)
+        .join('/');
+      // Same exclusions as the textual scan: inside `src/`, and not a test.
+      if (rel.startsWith('..') || path.isAbsolute(rel)) continue;
+      if (/\.test\.tsx?$/.test(rel)) continue;
+
+      source.forEachChild((node) => {
+        // The same declaration kinds the textual scan's regex matches.
+        const declared: string[] = [];
+        if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) && node.name) {
+          declared.push(node.name.text);
+        } else if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
+          declared.push(node.name.text);
+        } else if (ts.isVariableStatement(node)) {
+          for (const one of node.declarationList.declarations) {
+            if (ts.isIdentifier(one.name)) declared.push(one.name.text);
+          }
+        }
+        if (declared.length === 0) return;
+
+        let hit = false;
+        let viaAlias = false;
+        const visit = (child: ts.Node): void => {
+          if (ts.isIdentifier(child)) {
+            const resolved = resolvedSymbolOf(child);
+            if (resolved !== undefined && guarded.has(resolved)) {
+              hit = true;
+              // Declared elsewhere than where it is written: only an alias got
+              // us here. This is what makes `getAliasedSymbol` load-bearing.
+              const declaringFile = resolved.declarations?.[0]?.getSourceFile().fileName;
+              if (declaringFile !== undefined && declaringFile !== source.fileName) viaAlias = true;
+            }
+          }
+          child.forEachChild(visit);
+        };
+        visit(node);
+        if (!hit) return;
+
+        files.add(rel);
+        for (const name of declared) {
+          names.add(name);
+          qualified.push(`${rel}::${name}`);
+          if (viaAlias) crossModule.push(`${rel}::${name}`);
+        }
+      });
+    }
+
+    symbolPassMemo = {
+      qualified,
+      names: [...names].sort(),
+      files: [...files].sort(),
+      guardedExports: guardedSymbols.map((symbol) => symbol.getName()).sort(),
+      crossModule,
+    };
+    return symbolPassMemo;
+  };
+
   it('[the-covered-day-scan-reads-the-whole-tree] THE ALLOWLIST IS EXACT: every declaration that can name a covered day is listed, from anywhere under src/', () => {
     // THE GUARD THAT DOES NOT DEPEND ON WHAT A FUNCTION IS CALLED. The obvious
     // version of this test is a blocklist on `grant`, `credit`, `buy`, `award` —
@@ -1262,12 +1551,27 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     //
     // The list of files is now an OUTPUT — see `FILES_THAT_NAME_A_COVERED_DAY`,
     // asserted in the test below — instead of the input that scoped the search.
-    const found = matchesIn(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE);
+    // BOTH PASSES, UNIONED INTO THE ONE ALLOWLIST. The textual scan below is
+    // unchanged and its counts are still pinned; the symbol-resolved pass is
+    // added beside it rather than replacing it, because neither is a subset of
+    // the other — see `COVERED_DAY_SYMBOL_SCAN`'s header for the measurement
+    // (88 textual / 32 symbol / 97 union) and for why replacing loses 65
+    // declarations that merely SAY "covered day" and call nothing.
+    //
+    // ONE ALLOWLIST AND NOT TWO, deliberately: a second list is a second thing
+    // to go stale, and the both-directions equality is what makes a removed
+    // declaration red. A name is on this list if EITHER pass finds it.
+    const textual = matchesIn(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE);
+    const symbols = symbolPass();
+    const found = {
+      qualified: [...textual.qualified, ...symbols.qualified],
+      names: [...new Set([...textual.names, ...symbols.names])].sort(),
+    };
     const allowed = new Set(COVERED_DAY_TOUCHING_FUNCTIONS);
     const seen = new Set(found.names);
 
     // A USEFUL RED, not just a red. CLAUDE.md: "a check that bites but fails
-    // uselessly is half a check" — a bare set diff over 88 strings makes a
+    // uselessly is half a check" — a bare set diff over 97 strings makes a
     // reader go and find which file grew a declaration, so the message carries
     // the qualified name and the allowlist carries only the bare one.
     const unlisted = found.qualified.filter((q) => !allowed.has(q.split('::')[1] as string));
@@ -1290,6 +1594,151 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     expect([...new Set(COVERED_DAY_TOUCHING_FUNCTIONS)].length).toBe(
       COVERED_DAY_TOUCHING_FUNCTIONS.length,
     );
+  });
+
+  it('[the-covered-day-scan-follows-aliases] AN ALIASED IMPORT NO LONGER HIDES A GRANTER: identifiers are resolved through the checker', () => {
+    const symbols = symbolPass();
+
+    // NON-VACUITY FIRST, AND IN THE ORDER THAT MATTERS. Everything below is a
+    // statement about a set the checker produced; if the checker produced an
+    // empty set, every one of them would pass while measuring nothing. This is
+    // the line that reddens on a mis-resolved path or a program with no roots.
+    expect(
+      symbols.guardedExports.length,
+      `guarded exports of ${COVERED_DAY_SYMBOL_SCAN.GUARDED_MODULE}: ${symbols.guardedExports.join(', ')}`,
+    ).toBe(COVERED_DAY_SYMBOL_SCAN.GUARDED_EXPORTS);
+
+    // AND THE ALIAS STEP IS LOAD-BEARING, PINNED NON-ZERO. Delete
+    // `getAliasedSymbol` from the resolver and every cross-module reference
+    // resolves to the local import binding instead of the export: `streak.ts`
+    // drops out of the pass entirely and this count goes to 0. A builder has
+    // already broken that exact call by hand once — `cutInWiring.test.ts`
+    // records it — so it is measured here rather than trusted.
+    expect(
+      symbols.crossModule.length,
+      'no declaration was reached by following an import alias — getAliasedSymbol is not doing anything',
+    ).toBe(COVERED_DAY_SYMBOL_SCAN.CROSS_MODULE_FOUND);
+
+    // COUNTS, NOT BOUNDS. The file column moves to 3 the moment a granter
+    // appears in a module that has never touched the entitlement, which is
+    // exactly what the aliased mutant in this block's header does.
+    expect([symbols.names.length, symbols.files.length]).toEqual([
+      ...COVERED_DAY_SYMBOL_SCAN.SYMBOL_FOUND,
+    ]);
+
+    // THE MEASURED VALUE OF THE PASS, and the assertion that stops it being
+    // decoration: nine declarations it finds that the textual predicate
+    // provably cannot, pinned as names so a swap is visible. If this ever went
+    // empty, every symbol match would already be a textual match and the pass
+    // would be costing 5s to duplicate a regex.
+    const textualNames = new Set(matchesIn(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE).names);
+    const symbolOnly = symbols.names.filter((name) => !textualNames.has(name)).sort();
+    expect(symbolOnly).toEqual([...COVERED_DAY_SYMBOL_SCAN.SYMBOL_ONLY_NAMES]);
+    expect(COVERED_DAY_SYMBOL_SCAN.SYMBOL_ONLY_NAMES.length).toBeGreaterThan(0);
+    expect(textualNames.size + symbolOnly.length).toBe(COVERED_DAY_SYMBOL_SCAN.UNION_FOUND);
+
+    // THE BAR THIS TEST EXISTS FOR. A declaration that reaches the covered-day
+    // machinery through an ALIASED identifier says nothing the textual scan can
+    // match, so before this pass it was invisible in both directions: not on
+    // the allowlist, and not found by anything that would notice. The mutant in
+    // the header ran 105 green tests with `tsc --noEmit` clean.
+    //
+    // The message carries the QUALIFIED name so the red names the file and the
+    // declaration rather than a bare count.
+    const allowed = new Set(COVERED_DAY_TOUCHING_FUNCTIONS);
+    const unlisted = symbols.qualified
+      .filter((q) => !allowed.has(q.split('::')[1] as string))
+      .sort();
+    expect(
+      unlisted,
+      'a declaration reaches the covered-day machinery through an identifier the textual scan cannot see, and is not on COVERED_DAY_TOUCHING_FUNCTIONS',
+    ).toEqual([]);
+  });
+
+  it('THE RE-ALIAS SHAPE IS CAUGHT TOO, and the shape that is NOT is a declared limit', () => {
+    // `import * as E from '...'; E.creditCoveredDays(...)` is the second
+    // spelling of the same evasion, and the brief that asked for this fix left
+    // open whether it was covered. Measured, both ways:
+    //
+    //   - THE TEXTUAL SCAN ALREADY CATCHES IT, because the property access
+    //     writes the real export name in the body and `covered.?day` matches
+    //     the `CoveredDay` inside `creditCoveredDays`. That is luck rather than
+    //     design — it holds for this export's NAME, not for the shape — so it
+    //     is asserted rather than relied on quietly.
+    const reAlias = [
+      'export function widenByNamespace(s: EntitlementState, w: number, n: number): EntitlementState {',
+      '  return E.creditCoveredDays(RECOVERY_ENTITLEMENT, s, w, n, E.COVERAGE_SOURCES[0]).state;',
+      '}',
+    ].join('\n');
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(reAlias),
+      'the textual scan should see the namespace spelling, which writes the export name out in full',
+    ).toBe(true);
+
+    //   - AND THE SYMBOL PASS CATCHES IT INDEPENDENTLY, because the property
+    //     name in a `PropertyAccessExpression` is an identifier that resolves
+    //     straight to the export. That is the half that does NOT depend on what
+    //     the export happens to be called: rename `creditCoveredDays` to
+    //     `bump` and the textual assertion above stops holding while this one
+    //     does not. Asserted on the real tree — `streak.ts` reaches the
+    //     entitlement across a module boundary — rather than on a string.
+    expect(symbolPass().crossModule.length).toBeGreaterThan(0);
+
+    // THE LIMIT, PINNED AS A RED LINE THE WAY THE TEXTUAL SCAN'S WAS. An
+    // identifier the checker cannot follow to an export resolves to no guarded
+    // symbol and is invisible to this pass: an index signature read off a
+    // namespace object, a dynamic `await import()`, a `Function` constructor.
+    // The textual scan is what covers the first of those, and only when the
+    // string it indexes with is written out.
+    expect(COVERED_DAY_SYMBOL_SCAN.DYNAMIC_ACCESS_IS_NOT_COVERED).toBe(true);
+    const dynamicEvasion = [
+      'export function widenDynamically(s: EntitlementState, w: number, n: number): EntitlementState {',
+      '  const f = lookup(KEY) as (...a: never[]) => { state: EntitlementState };',
+      '  return f(RECOVERY_ENTITLEMENT, s, w, n, SOURCE).state;',
+      '}',
+    ].join('\n');
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(dynamicEvasion),
+      'the dynamic shape is outside BOTH passes — this is the declared limit, not a claim of completeness',
+    ).toBe(false);
+  });
+
+  it('THE THREE RESOLVERS DO NOT DRIFT: the alias step is present in every file that resolves a symbol', () => {
+    // WHAT STANDS IN FOR EXTRACTING THE RESOLVER, and it is second best. The
+    // four lines that follow an import alias are written out in three test
+    // files — `symbolPass` above, `progression.test.ts`'s `resolvedSymbolOf`,
+    // and `cutInWiring.test.ts`'s two. They cannot share a home: the only one
+    // both `src/game/` and `src/cutin/` could import is a new non-test module
+    // under `src/`, which the pass above would then scan.
+    //
+    // CLAUDE.md's finding is that duplicated guards diverge, and that the
+    // distance keeps shrinking — instance three was twelve lines inside ONE
+    // function, where the seal check matched a callee by identifier text while
+    // its sibling resolved through the checker. So the copies are counted here:
+    // deleting the alias step from any one of the three is red, which is the
+    // property extraction would have given for free.
+    //
+    // OCCURRENCE COUNTS, NOT PRESENCE. CLAUDE.md: "a textual pin whose pattern
+    // has more than one witness in the file" survives the mutation that breaks
+    // one of them. `cutInWiring.test.ts` genuinely resolves symbols twice, so
+    // presence alone would stay green after one of its two was gutted.
+    const repoRoot = path.join(PURCHASED_DAY_SCAN.ROOT, '..');
+    const ALIAS_STEP = /checker\.getAliasedSymbol\(\s*symbol\s*\)/g;
+    const RESOLVER_FILES: readonly (readonly [string, number])[] = [
+      ['src/game/streakEntitlement.test.ts', 1],
+      ['src/game/progression.test.ts', 1],
+      ['src/cutin/cutInWiring.test.ts', 2],
+    ];
+    for (const [file, expected] of RESOLVER_FILES) {
+      const source = readFileSync(path.join(repoRoot, file), 'utf8');
+      expect(
+        [...source.matchAll(ALIAS_STEP)].length,
+        `${file} no longer follows import aliases exactly ${expected} time(s)`,
+      ).toBe(expected);
+    }
+    // The list is not empty and names this file among them, so the check cannot
+    // pass by looking at nothing.
+    expect(RESOLVER_FILES.length).toBe(3);
   });
 
   it('AND THE SCAN LEAVES src/game/ — every directory under src/ is reached, and the matching files are pinned', () => {

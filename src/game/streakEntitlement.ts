@@ -507,11 +507,43 @@ export const SOURCES_THAT_CREDIT_A_PURCHASED_DAY: readonly CoverageSource[] = CO
  * holding an arrow function is a function, and a guard that only looked for the
  * `function` keyword would be walked around by one line of syntax.
  *
+ * AN ALIASED IMPORT USED TO DEFEAT ALL OF IT, AND NO LONGER DOES.
+ * `@guarantee the-covered-day-scan-follows-aliases`
+ * Every predicate above is a textual match on a declaration BODY, and an import
+ * sits above the first declaration — so it is in no body at all. A granter
+ * written as
+ *
+ *     import { creditCoveredDays as credit, COVERAGE_SOURCES as SOURCES } from './streakEntitlement';
+ *     export function widenForTenSessions(state, w, sessions) {
+ *       return credit(RECOVERY_ENTITLEMENT, state, w, sessions, SOURCES[0]).state;
+ *     }
+ *
+ * grants a covered day PER TRAINING SESSION — the shape CLAUDE.md measures at
+ * 1156 violating pairs — and contains no matchable word. Planted in
+ * `src/shell/appServer.ts` it ran **105 green tests** across this file,
+ * `tuning/audit.test.ts` and `guaranteeTags.test.ts` with `tsc --noEmit` at
+ * exit 0.
+ *
+ * BOTH ENDS HAVE TO BE ALIASED, which the limit as previously recorded did not
+ * say: a body still spelling `'window-entitlement'` is caught by the third
+ * alternative, and planting that version reddened three tests. Nor does a local
+ * `const SRC = 'window-entitlement'` help a mutant — that const is itself a
+ * declaration carrying the literal in its own body.
+ *
+ * `streakEntitlement.test.ts` now runs a SECOND, SYMBOL-RESOLVED pass beside the
+ * textual one, asking the TypeScript checker what each identifier resolves to
+ * and following import aliases and re-export chains. The allowlist is the UNION
+ * of both, because neither contains the other: 88 textual, 32 symbol, 97 union.
+ * The nine the symbol pass adds are marked in their own section below.
+ *
  * IT IS A FLOOR AND NOT A CEILING, stated rather than glossed: a mutant that
  * awards a covered day from INSIDE a declaration already listed passes this,
  * and is caught by the behavioural drive in `streak.test.ts` — which runs every
  * other entry point over a long fuzzed history and asserts the field never
- * moves. Two guards, because neither one covers the other's blind spot.
+ * moves. Two guards, because neither one covers the other's blind spot. The
+ * symbol pass has its own declared limit, pinned in its test: an identifier the
+ * checker cannot follow to an export — a dynamic `import()`, an index read off
+ * a namespace object — resolves to nothing and is invisible to it.
  *
  * MOST OF THIS LIST IS NOT ABOUT GRANTING A COVERED DAY, and that is the
  * deliberate cost of keying on two WORDS instead of on the identifiers that
@@ -600,6 +632,26 @@ export const COVERED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
   'settleBrokenStreak',
   'setRecoveryDayProtection',
   'migrateFromRecoveryDayBalance',
+  // ---- REACHED ONLY BY THE SYMBOL-RESOLVED PASS ----------------------------
+  // NINE DECLARATIONS THAT SAY NOTHING A REGEX CAN MATCH. Not one of these
+  // contains `purchas`, `covered day` or `window-entitlement` anywhere in its
+  // body; each reaches the entitlement through an IDENTIFIER instead, and the
+  // textual scan is blind to every one of them. They are here because
+  // `streakEntitlement.test.ts` now resolves identifiers through the TypeScript
+  // checker as well as matching words, and the allowlist is the union.
+  //
+  // The first five are this module's own exports; the last four are `streak.ts`
+  // reaching them across a module boundary, which is the direction that only
+  // resolves because `getAliasedSymbol` follows the import.
+  'CoverageSource',
+  'EntitlementFactKey',
+  'EntitlementOutcome',
+  'ENTITLEMENT_REACH_IS_COVERAGE_ONLY',
+  'windowIndexOf',
+  'windowStartDay',
+  'StreakState',
+  'createStreakState',
+  'entitlementWindowFor',
   // ---- currencyProvenance.ts ----------------------------------------------
   // WHO MAY BUY ONE, which is where the laundered path went — an achievement
   // pays Chalk, Chalk buys a covered day, and neither of the two files above
