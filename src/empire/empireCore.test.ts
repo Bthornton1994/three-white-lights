@@ -2287,7 +2287,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
   it('has shipped modules to scan, so the scans below are not empty', () => {
     // Counts, not bounds. Every check in this block walks this list, and a
     // list that had gone empty would make all of them pass.
-    expect(shipped).toEqual(['empireCore.ts', 'empireTuning.ts', 'production.ts']);
+    expect(shipped).toEqual([
+      'empireCore.ts',
+      'empireTuning.ts',
+      'expansion.ts',
+      'npc.ts',
+      'production.ts',
+      'recruitment.ts',
+    ]);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -2645,16 +2652,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(filesRead).toBe(shipped.length);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(singleQuoted.size).toBe(71);
+    expect(singleQuoted.size).toBe(85);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(47);
+    expect(templateChunks.size).toBe(59);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
     // message. Match counts rather than presence, because a pattern with more
     // than one witness is the textual pin this codebase has been bitten by.
     const chunks = [...templateChunks];
-    expect(chunks.filter((chunk) => chunk.includes('may not accelerate')).length).toBe(2);
+    expect(chunks.filter((chunk) => chunk.includes('may not accelerate')).length).toBe(3);
     expect(chunks.filter((chunk) => chunk.includes('duplicate lifter id')).length).toBe(1);
 
     const spaceFree = [...singleQuoted].filter((literal) => !literal.includes(' ')).sort();
@@ -2663,6 +2670,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './empireTuning',
       'accelerated-seconds',
       'acceleratedSeconds',
+      'accepted',
+      'already-building',
+      'at-ceiling',
       'bare-bar',
       'budget',
       'chalk',
@@ -2676,8 +2686,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'covered-day',
       'e1rm',
       'elapsedSeconds',
+      'equipment',
       'global',
       'gym-bucks',
+      'gym-bucks-below-cost',
       'gym-economy',
       'gym-empire-timer-skip',
       'gym-progress',
@@ -2691,21 +2703,27 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'legendary',
       'monolift',
       'national',
+      'not-enough-gym-bucks',
+      'not-enough-reputation',
       'novice',
       'npc-id',
       'physio',
       'physio-days-saved',
       'progression-reaching',
       'refusal',
+      'refused',
       'regional',
       'reputation',
+      'reputation-below-threshold',
       'reputation-tier',
       'rewarded-ad-timer-skip',
+      'roster-at-capacity',
       'roster-slot',
       'settled-level',
       'settled-tenure-days',
       'settledTenureDays',
       'skippedSeconds',
+      'space',
       'space-level',
       'specialty-bars',
       'spotter',
@@ -2729,7 +2747,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(118);
+    expect(stringsChecked).toBe(144);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -2756,7 +2774,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(58);
+    expect(probes).toBe(69);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
