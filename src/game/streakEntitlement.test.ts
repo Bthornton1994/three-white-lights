@@ -1386,9 +1386,20 @@ describe('nothing can award a purchased covered day, and that is enforced rather
   }
   let symbolPassMemo: SymbolPass | null = null;
 
-  const symbolPass = (): SymbolPass => {
-    if (symbolPassMemo !== null) return symbolPassMemo;
-
+  /**
+   * The pass, over a program that may carry ONE SYNTHETIC MODULE that is not on
+   * disk.
+   *
+   * THE SYNTHETIC ARM IS WHY THIS TAKES A PARAMETER, and it is what gives this
+   * pass the tripwire the textual scan already has in `AND THE SCAN CAN SEE A
+   * NEW ONE`. Without it the pass's every assertion is a statement about a tree
+   * that contains no granter, so a pass that had quietly stopped resolving
+   * anything would satisfy all of them — CLAUDE.md's "an empty domain",
+   * exactly. The probe below plants the two evasions in a module the checker
+   * compiles for real, so the resolution being asserted is the same resolution
+   * the shipped arm runs.
+   */
+  const runPass = (synthetic?: { readonly rel: string; readonly text: string }): SymbolPass => {
     const repoRoot = path.join(PURCHASED_DAY_SCAN.ROOT, '..');
     const configPath = path.join(repoRoot, 'tsconfig.json');
     const config = ts.readConfigFile(configPath, ts.sys.readFile).config as unknown;
@@ -1396,11 +1407,33 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     if (parsed.fileNames.length === 0) {
       throw new Error('tsconfig.json resolved to no files — the symbol pass would find nothing');
     }
-    const program = ts.createProgram([...parsed.fileNames], {
-      ...parsed.options,
-      noEmit: true,
-      skipLibCheck: true,
-    });
+    const options = { ...parsed.options, noEmit: true, skipLibCheck: true };
+    const roots = [...parsed.fileNames];
+
+    let host: ts.CompilerHost | undefined;
+    if (synthetic !== undefined) {
+      const syntheticPath = path.join(PURCHASED_DAY_SCAN.ROOT, synthetic.rel);
+      if (roots.includes(syntheticPath)) {
+        throw new Error(`${synthetic.rel} exists on disk — the probe would grade a real file`);
+      }
+      roots.push(syntheticPath);
+      const base = ts.createCompilerHost(options);
+      const readFileBase = base.readFile.bind(base);
+      const getSourceFileBase = base.getSourceFile.bind(base);
+      const fileExistsBase = base.fileExists.bind(base);
+      host = {
+        ...base,
+        fileExists: (fileName) => fileName === syntheticPath || fileExistsBase(fileName),
+        readFile: (fileName) =>
+          fileName === syntheticPath ? synthetic.text : readFileBase(fileName),
+        getSourceFile: (fileName, languageVersion, onError, shouldCreate) =>
+          fileName === syntheticPath
+            ? ts.createSourceFile(syntheticPath, synthetic.text, languageVersion, true)
+            : getSourceFileBase(fileName, languageVersion, onError, shouldCreate),
+      };
+    }
+
+    const program = ts.createProgram(roots, options, host);
     const checker = program.getTypeChecker();
 
     const guardedFile = path.join(PURCHASED_DAY_SCAN.ROOT, COVERED_DAY_SYMBOL_SCAN.GUARDED_MODULE);
@@ -1500,15 +1533,50 @@ describe('nothing can award a purchased covered day, and that is enforced rather
       });
     }
 
-    symbolPassMemo = {
+    return {
       qualified,
       names: [...names].sort(),
       files: [...files].sort(),
       guardedExports: guardedSymbols.map((symbol) => symbol.getName()).sort(),
       crossModule,
     };
+  };
+
+  /** The shipped arm: the real tree, nothing planted. Memoised; three tests read it. */
+  const symbolPass = (): SymbolPass => {
+    if (symbolPassMemo === null) symbolPassMemo = runPass();
     return symbolPassMemo;
   };
+
+  /**
+   * THE TRIPWIRE, and it is the sibling of `AND THE SCAN CAN SEE A NEW ONE`.
+   * Both evasions in one synthetic module the checker compiles for real:
+   * `widenByAlias` renames the function AND imports the source so no literal
+   * appears, and `widenByNamespace` reaches the same two through a namespace
+   * import. `ordinaryHelper` is what stops a pass that matched EVERYTHING from
+   * satisfying this.
+   */
+  const ALIAS_PROBE = {
+    rel: 'game/__aliasProbe.ts',
+    text: [
+      "import { creditCoveredDays as credit, COVERAGE_SOURCES as SOURCES } from './streakEntitlement';",
+      "import { RECOVERY_ENTITLEMENT, type EntitlementState } from './streakEntitlement';",
+      "import * as E from './streakEntitlement';",
+      '',
+      'export function ordinaryHelper(a: number): number {',
+      '  return a + 1;',
+      '}',
+      '',
+      'export function widenByAlias(s: EntitlementState, w: number, n: number): EntitlementState {',
+      '  return credit(RECOVERY_ENTITLEMENT, s, w, n, SOURCES[0]).state;',
+      '}',
+      '',
+      'export function widenByNamespace(s: E.EntitlementState, w: number, n: number): E.EntitlementState {',
+      '  return E.creditCoveredDays(E.RECOVERY_ENTITLEMENT, s, w, n, E.COVERAGE_SOURCES[0]).state;',
+      '}',
+      '',
+    ].join('\n'),
+  } as const;
 
   it('[the-covered-day-scan-reads-the-whole-tree] THE ALLOWLIST IS EXACT: every declaration that can name a covered day is listed, from anywhere under src/', () => {
     // THE GUARD THAT DOES NOT DEPEND ON WHAT A FUNCTION IS CALLED. The obvious
@@ -1678,11 +1746,37 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     //   - AND THE SYMBOL PASS CATCHES IT INDEPENDENTLY, because the property
     //     name in a `PropertyAccessExpression` is an identifier that resolves
     //     straight to the export. That is the half that does NOT depend on what
-    //     the export happens to be called: rename `creditCoveredDays` to
-    //     `bump` and the textual assertion above stops holding while this one
-    //     does not. Asserted on the real tree — `streak.ts` reaches the
-    //     entitlement across a module boundary — rather than on a string.
-    expect(symbolPass().crossModule.length).toBeGreaterThan(0);
+    //     the export happens to be called: rename `creditCoveredDays` to `bump`
+    //     and the textual assertion above stops holding while this one does not.
+    //
+    // DRIVEN THROUGH THE REAL CHECKER, NOT ASSERTED ABOUT. An earlier draft of
+    // this test discharged the sentence above with
+    // `expect(symbolPass().crossModule.length).toBeGreaterThan(0)` — true on
+    // the tree, and about the wrong thing: it says some cross-module alias
+    // resolves somewhere, and no version of the NAMESPACE handling would have
+    // made it red. That is a prose guarantee with nothing behind it, which is
+    // the failure CLAUDE.md opens with. The probe is compiled instead.
+    const probe = runPass(ALIAS_PROBE);
+    const probeFound = probe.qualified
+      .filter((q) => q.startsWith(`${ALIAS_PROBE.rel}::`))
+      .map((q) => q.split('::')[1] as string)
+      .sort();
+    expect(
+      probeFound,
+      'the symbol pass must see BOTH evasions in the probe and leave the innocent helper alone',
+    ).toEqual(['widenByAlias', 'widenByNamespace']);
+
+    // AND THE TEXTUAL SCAN IS BLIND TO THE ALIASED ONE, which is what makes the
+    // symbol pass load-bearing rather than a second opinion. Same probe text,
+    // same declaration splitter, the shipped predicate.
+    const textualOnProbe = declarations(stripComments(ALIAS_PROBE.text))
+      .filter(([, body]) => PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(body))
+      .map(([name]) => name)
+      .sort();
+    expect(
+      textualOnProbe,
+      'the textual scan should see only the namespace spelling, which writes the export name out in full',
+    ).toEqual(['widenByNamespace']);
 
     // THE LIMIT, PINNED AS A RED LINE THE WAY THE TEXTUAL SCAN'S WAS. An
     // identifier the checker cannot follow to an export resolves to no guarded
