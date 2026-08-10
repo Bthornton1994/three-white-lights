@@ -423,8 +423,33 @@ const GUARANTEE_COVERAGE = {
    * rather than in the abstract. Restored to capitals and pinned at 222 instead,
    * for the reason the 216 -> 217 note gives: rewording to duck the scan is how
    * a count stops meaning anything.
+   *
+   * 222 -> 223 when that same scan stopped matching declaration bodies by TEXT
+   * ONLY and grew a symbol-resolved pass beside it, closing the aliased-import
+   * hole its own comment had pinned as unclosable. ATTRIBUTED THE USUAL WAY,
+   * one file at a time against base, and the usual way is what it found again:
+   * `streakEntitlement.ts` contributes ZERO — a rewritten allowlist header,
+   * nine new entries and the round's actual `@guarantee` — and so does this
+   * file, despite gaining a fifth witness. The whole increment is one paragraph
+   * in `streakEntitlement.test.ts`.
+   *
+   * NOT QUOTED HERE, for the reason the four notes above give: a quoted
+   * capitalised run makes this paragraph trigger too. In lower case it is the
+   * doc comment on `SYMBOL_ONLY_NAMES`, saying which declarations the new pass
+   * finds that the textual predicate cannot — and it sits directly above both
+   * the pinned list of the nine and the assertion that discharges it.
+   *
+   * FIFTH ROUND RUNNING THAT THE GUARANTEE MOVED THIS NUMBER BY NOTHING. The
+   * round's real claim — that an aliased import no longer hides a granter,
+   * tagged `the-covered-day-scan-follows-aliases` — is written in the source
+   * file that contributes zero, because its capitalised absolutes happen to
+   * contain none of the four trigger words. Worth adding to the pattern the
+   * notes above record: the one paragraph the scan DID notice is in a test
+   * file, which is not in `GUARANTEE_PROSE_FILES`, so the scan demanded no tag
+   * of it either. It counted a sentence it would never have required anything
+   * from, and required nothing of the sentence that states the guarantee.
    */
-  TREE_WIDE: 222,
+  TREE_WIDE: 223,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -535,6 +560,46 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
  * it fail, read the message, restore, confirm green.
  */
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  {
+    // THE ALIASED-IMPORT HOLE, EXECUTED BEFORE IT WAS CLOSED. The covered-day
+    // scan matched declaration BODIES textually; an import sits above the first
+    // declaration and is in no body, so aliasing both ends hid a granter
+    // outright. Appended to `appServer.ts` beside the anchored import line:
+    //
+    //     import {
+    //       creditCoveredDays as credit,
+    //       COVERAGE_SOURCES as SOURCES,
+    //       RECOVERY_ENTITLEMENT,
+    //       type EntitlementState,
+    //     } from '../game/streakEntitlement';
+    //
+    //     export function widenForTenSessions(
+    //       state: EntitlementState, w: number, sessions: number,
+    //     ): EntitlementState {
+    //       return credit(RECOVERY_ENTITLEMENT, state, w, sessions, SOURCES[0]).state;
+    //     }
+    //
+    // That grants a covered day PER SESSION — CLAUDE.md's 1156-violating-pair
+    // shape. Before the symbol pass it ran 105 GREEN TESTS across
+    // `streakEntitlement.test.ts`, `tuning/audit.test.ts` and this file, with
+    // `tsc --noEmit` at exit 0.
+    //
+    // BOTH ENDS HAVE TO BE ALIASED, and that correction is the reason this
+    // entry exists rather than a narrower one. The version that keeps the
+    // literal `'window-entitlement'` in the body IS caught by the shipped
+    // predicate's third alternative — planting it reddened three tests — and so
+    // is a local `const SRC = 'window-entitlement'`, because that const is a
+    // declaration carrying the literal in its own body. The source has to be
+    // imported.
+    guarantee: 'the-covered-day-scan-follows-aliases',
+    mutatedFile: 'src/shell/appServer.ts',
+    mutated: "import type { SessionServerPort } from '../game/sessionClient';",
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion:
+      "      'a declaration reaches the covered-day machinery through an identifier the textual scan cannot see, and is not on COVERED_DAY_TOUCHING_FUNCTIONS',\n    ).toEqual([]);",
+    observed:
+      'AssertionError: a declaration reaches the covered-day machinery through an identifier the textual scan cannot see, and is not on COVERED_DAY_TOUCHING_FUNCTIONS: expected [ Array(1) ] to deeply equal [] — received [ "shell/appServer.ts::widenForTenSessions" ]',
+  },
   {
     // The mutant unwrapped the seal at the ONE producer of a wire, which is the
     // state the tree was in when a pound e1RM was written into `response.wire`
