@@ -1585,6 +1585,53 @@ finishes now, the lifter is on the floor now, and the accelerated economy pays
 now. What it cannot buy is the next rung of a ladder that reaches Sim
 progression sooner.
 
+**And the wall-clock book is itself a purse per capability, because two books
+were not enough — RULED.** Every empire output that reaches Sim progression or
+gates something that does — the Training IQ trickle, the physio hook, roster
+slots, reputation — has a fund of its own, and a purchase may only be made from
+the fund its own output names: §5.4's space and spotter rungs from the
+roster-slot fund, §5.4's physio rung from the physio fund, §5.3's recruits from
+the Training IQ fund. Each fund fills at the gym's baseline wall-clock line, so
+nothing fills more slowly than it did. What a player gives up is the ability to
+**concentrate**: you cannot save your recruiting money and pour it into physio,
+and you cannot skip a physio level to buy a lifter sooner. Each ladder advances
+on its own takings, on the wall clock, at the price the table publishes.
+
+*Why a third book, since two had just been ruled in.* While those four purchases
+shared one balance, the order they were offered in decided which of them got the
+money — and that order moved with how often the player opened the app. A player
+who checked in **more** could end with a **lower** Training IQ trickle than one
+who checked in less: **2954 of 24576** exhaustively enumerated pairs, 25772 days
+paid less, worst deficit 0.451 IQ/day. That is §12.3's "punishes a player for
+showing up", reached through the economy rather than through the streak.
+
+*It is a property of the composition, not of one imagined player, and that was
+the measurement that forced this ruling rather than a smaller one.* §5 specifies
+costs, ceilings and outputs and never says when a player spends, so the count was
+re-taken under five distinct spending models. Every one was non-zero on at least
+one domain — 2954 / 2751 / 3427 rotating, fixed-order and costliest-first;
+10122 spending once a day. With a fund each, all of those are **0**, on every
+domain measured: the 24576-pair window, a 114688-pair enumerated grid, seeded
+20/40/60/100-day sweeps, and the extra-trained-day comparison. The single-purse
+engine is kept runnable beside them and pinned at its 2954, so the zeros are
+zeros against something.
+
+*Two things this does NOT fix, recorded rather than rounded off.* Spending once
+per calendar day still measures **7245**, and the split cannot reach it: 7240 of
+those are an evening check-in moving the day's *decision moment* rather than its
+money, so a build started later finishes later whatever purse paid for it. The
+remaining **5** are the recruit price ladder — cost per unit of output rises
+strictly across the tiers (500 / 1250 / 3200 / 7500 / 13846), so a gym holding
+more money at one decision buys strictly *less* Training IQ per Buck. That is a
+pricing question for a tuning pass, not a funding one.
+
+*And a tuning consequence a human should rule on separately:* because each fund
+fills at the full baseline line, total wall-clock income is roughly **three times**
+what it was, and physio now arrives on day 4 rather than day 7 at full
+attendance. Splitting the line into shares instead was tried and pushed physio
+past the measured window entirely. The safety property holds either way; which
+one *plays* better is a playtest question this document cannot settle.
+
 **The physio gate is exempt from the reputation gate, and that is the same rule
 rather than an exception to it.** No expansion axis whose output reaches Sim
 progression may be gated on reputation, because `REPUTATION_PER_CHECK_IN` makes
