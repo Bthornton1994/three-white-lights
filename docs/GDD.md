@@ -1562,6 +1562,45 @@ exactly the community whose word-of-mouth the game depends on.
 | Staff | Coaches, spotters, physio | Physio reduces Sim injury duration |
 | Reputation | Attracts higher-tier NPCs, sponsorships | Sponsor money feeds Career economy |
 
+**The gym keeps two books, and which one a rung is bought from is decided by what
+that rung reaches — RULED.** A rung whose output reaches Sim progression, or gates
+something that does — physio, space, spotter — and NPC recruitment are bought out
+of **wall-clock-earned** Gym Bucks. Equipment, coaches and cosmetics are bought
+out of the balance §8.3B's timer skips accelerate. This is §8.2's "Extra Covered
+Days from non-training-gated Chalk only" applied to this section: §5.4 says staff
+levels cost Gym Bucks and does not say *which* Gym Bucks, and the difference is
+the whole of §8.1 here.
+
+*It is a measurement, not a preference.* Composed over a calendar and compared
+element-wise by wall-clock day — an aggregate will not do, per §4.4 — a single
+book gives **84 of 2616** physio readings moved and **32 of 128** physio arrival
+days moved, every one of them EARLIER, plus **1488 of 2616** Training IQ readings
+moved. Two books give **0** on all three, with the single-book engine kept
+runnable beside them as the control so the zeros are zeros against something.
+Earlier physio is a shorter setback is restored training pace, which is exactly
+what §8.3B calls the credibility line.
+
+*What a skip still buys, so the ruling is not read as wider than it is:* the build
+finishes now, the lifter is on the floor now, and the accelerated economy pays
+now. What it cannot buy is the next rung of a ladder that reaches Sim
+progression sooner.
+
+**The physio gate is exempt from the reputation gate, and that is the same rule
+rather than an exception to it.** No expansion axis whose output reaches Sim
+progression may be gated on reputation, because `REPUTATION_PER_CHECK_IN` makes
+reputation player-keyed — so a reputation gate on physio would put the wall-clock
+day a Sim setback shortens under the player's own schedule, which is §4.4's shape
+with a gate where the currency usually is. The ban is enforced **by reach, naming
+no axis**, so an axis that later acquires a progression-reaching output is caught
+by the same rule rather than needing a new one.
+
+*Still unmeasured, and named rather than assumed benign:* the earned path —
+check-ins → reputation → sponsor Gym Bucks → the wall-clock day a physio level
+arrives. It is not purchasable, so it is not §8.1, and "more engagement only ever
+helps" is the argument §4.4 records as a reason to measure rather than a
+substitute for measuring. The composed sweep varies the purchase and never the
+training schedule, so it is no evidence either way.
+
 ### 5.5 Social Layer
 
 - Gym leaderboards (regional / global) by reputation or combined lifter totals
