@@ -208,6 +208,74 @@ boundary crossing.** Whoever owns §5 may edit `COVERED_DAY_TOUCHING_FUNCTIONS`
 directly for that purpose without asking. If a §5 change needs more than an
 allowlist row there, that is a real crossing and belongs in this section first.
 
+### §5's NEXT ROUND IS SESSION B'S, AND HERE IS EXACTLY WHAT IT IS
+
+Ruled by a human: **Session B builds the §5 loop**, because it owns the
+subsystem's context end to end. This is the scope, written here before the work
+starts, as this section requires.
+
+**A fresh critic graded the merged §5 and sent it back.** Not on quality — the
+type fences are genuinely strong work, and the no-gacha ban (18 regexes, every
+one driven against a tripwire, `scanned` and `banned.length` both pinned) wins
+its bar outright. It was sent back because **the loop is not built**:
+
+- `empireCore.ts` exports ~90 symbols and **no state transition**. There is no
+  `tick`, `accrue`, `collect`, `recruit`, `buy` or `expand`. A gym from
+  `createEmpireState()` cannot be advanced by anything in the repository.
+- `EmpireLedgerEntry` has two consumers and **zero producers**.
+- `settledLevel` takes `completionTimes`, which nothing computes — so
+  `physioDaysSavedFor`, §5.4's one cross-mode hook, has no input path.
+- The piece's own `AWAITING_CONSUMER` in `empireTuning.test.ts` **pins 30 of
+  `EMPIRE_TUNING`'s 54 entries as read by no shipped code**, set-equal in both
+  directions. That list is the spec for this round: it is §5.1's offline cap,
+  all of §5.2's production, all of §5.4's multiplier effects, and all of §5.5.
+  **The round is done when that list is empty, or when what remains on it is
+  argued for one entry at a time.**
+
+**THIS IS NOT UI WIRING, AND THAT IS THE POINT.** Several invariants this
+codebase already enforces are currently checking nothing, because the behaviour
+they are written about does not exist yet:
+
+- **"Never punish daily engagement" (§12.3) has no subject.** What stands in for
+  it today is `expect(OFFLINE_EARNINGS_CAP_HOURS).toBeGreaterThanOrEqual(
+  OFFLINE_EARNINGS_NO_PUNISH_HOURS)` — 12 ≥ 10, two literals in a file with no
+  consumer. **No edit to any behaviour can redden it**, which makes it vacuous in
+  the strict sense of the section above: its subject does not exist. Meanwhile
+  `OFFLINE_EARNINGS_FRACTION: 0.5` against a 12-hour cap is precisely the shape
+  that yields "checked in more, ended up worse", and which way it falls is
+  decided by arithmetic nobody has written.
+- **The house standard of proof is not "we swept and found none".** It is
+  `src/game/streak.test.ts` plus `src/game/streakSweep.ts`: counts pinned at
+  **zero**, the unfixed variant's non-zero numbers kept in the file as the thing
+  the zeros are zero against, and the seeds, lengths and attendance distribution
+  as named constants in their own module. An accrual function that takes a
+  check-in schedule needs a sweep beside it in that shape. Nothing less transfers.
+- **`src/empire/**` has 23 declared guarantees and zero `MUTATION_WITNESSES`
+  entries.** Unlike the browser class, these are `it(` bodies in `src/` and are
+  schema-eligible, so the witness bar applies in full.
+- The §5.4 reputation chain — check-ins → reputation → sponsor Gym Bucks → physio
+  staff cost → the day physio arrives — is named in `empireCore.ts` and
+  explicitly left unmeasured, because none of the three functions on it exists.
+  When they do, that chain is a training-keyed path to a cross-mode effect and it
+  needs the sweep above pointed at it.
+
+**The seams that are already frozen and must stay that way:** `src/empire/`
+imports only `./empireTuning`, and `empireCore.test.ts` pins that exactly. It
+cannot reach `currencyProvenance.ts`, `streak.ts` or `streakEntitlement.ts`, and
+that is what currently makes §8.3E's "cannot be constructed" reading hold —
+trivially, by the module having no wallet. **The first piece that pays empire
+income into `progression.ts`'s pooled wallet inherits the §8.3E concession**
+(GDD §8.3E: the tender constrains what a purchase *declares*, not where the money
+came from), so that wiring is a separate, later, deliberately serialised piece —
+not part of this round.
+
+**Session A stays out of `src/empire/**` for this round**, as before. The one
+thing Session B may edit outside it without asking is
+`COVERED_DAY_TOUCHING_FUNCTIONS` in `src/game/streakEntitlement.ts` — allowlist
+rows are data, per the ruling above. Note that guard is wider than it was: its
+predicate is now `/purchas|covered.?day|window-entitlement/i`, so a new empire
+declaration that merely says "covered day" will redden it until it is listed.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise

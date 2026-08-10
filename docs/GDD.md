@@ -1562,6 +1562,32 @@ exactly the community whose word-of-mouth the game depends on.
 | Staff | Coaches, spotters, physio | Physio reduces Sim injury duration |
 | Reputation | Attracts higher-tier NPCs, sponsorships | Sponsor money feeds Career economy |
 
+**"Monolift" stays, and this is the ruling rather than an oversight.** A critic
+raised it as a possible §12.3 real-mark exposure and correctly declined to decide
+it, because §12.3's bar there is a legal judgement and not a measurable pattern —
+which is exactly the class of question this document sends to a human. Ruled by a
+human, on this reasoning:
+
+- It is **generic across federation rulebooks**, where it names a piece of
+  equipment rather than a maker, in the same way "power rack" or "deadlift bar"
+  does.
+- The word originated as a product name and is still claimed as a mark by at
+  least one manufacturer. That is the genuine ambiguity, and it is why the term
+  is **recorded here rather than left to be re-litigated** the next time somebody
+  greps for brand risk.
+- **No manufacturer is attached to it anywhere in the code.** The shipped value is
+  a bare equipment noun in a tier ladder — no logo, no wordmark, no maker, no
+  licensing slot. The §12.3 hazard the document is actually built around is
+  shipping a real *identity*: a name, logo, likeness or wordmark presented as a
+  real party's. Nothing here does that.
+
+So this is not the licensing system's business and it does not go through §7.3's
+partner unlock. If a lawyer later disagrees, the fix is a rename of one string in
+one tier table and this table's cell — cheap, and much cheaper than the
+alternative of the term drifting into copy where it would read as an endorsement.
+**Do not "fix" it back to a generic on the initiative of a scan; the scan cannot
+see what was weighed here.**
+
 ### 5.5 Social Layer
 
 - Gym leaderboards (regional / global) by reputation or combined lifter totals
