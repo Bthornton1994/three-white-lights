@@ -85,6 +85,15 @@ export function appSessionPort(): SessionServerPort {
  *
  * @guarantee one-row-behind-one-port
  *
+ * The consequence a player meets, stated separately because it is a separate
+ * claim and needed a separate test: a total banked through `recordMeetResult`
+ * on this port comes back out of the snapshot `appSessionPort()` opens on. The
+ * identity above is structural and could hold over a server that kept two rows;
+ * this one is driven — a meet is played and recorded through these accessors and
+ * the total read back through the other half.
+ *
+ * @guarantee a-meet-total-reaches-the-session-half
+ *
  * Before this, `AppShell` handed `SessionScreen` a port and handed `MeetScreen`
  * nothing, and `useMeetDay` called `newServerRecord(...)` on mount to have
  * something to read. So the lifter who trained and the lifter who competed were

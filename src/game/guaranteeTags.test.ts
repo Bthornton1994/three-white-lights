@@ -739,6 +739,30 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       ' so they are two different lifters: expected false to be true',
   },
   {
+    // THE SAME MUTANT, A SECOND TEST, and the pair is the point rather than a
+    // duplicate. The witness above records that the mutant reddens the
+    // STRUCTURAL claim — two accessors, one object. This one records that it
+    // also reddens the BEHAVIOURAL one, which is a separate guarantee: object
+    // identity would still hold over a server that kept a second row, and the
+    // test that used to carry this claim recorded no meet at all. It read the
+    // total once, named it `before`, asserted it was null and stopped — so this
+    // exact mutant left it green while the sentence above it said "this is the
+    // consequence, measured".
+    //
+    // The `mutated` anchor is deliberately the same text: it is the one edit
+    // that breaks both claims, so both witnesses expire together if that
+    // function is rewritten, which is the correct coupling.
+    guarantee: 'a-meet-total-reaches-the-session-half',
+    mutatedFile: 'src/shell/appServer.ts',
+    mutated: 'export function appMeetPort(): MeetServerPort {\n  return appConnection();\n}',
+    testFile: 'src/shell/shellWiring.test.ts',
+    redAssertion:
+      "'the session half cannot see the total the meet endpoint banked, so meet day and the daily loop are two lifters',",
+    observed:
+      'AssertionError: the session half cannot see the total the meet endpoint banked, so meet' +
+      ' day and the daily loop are two lifters: expected null to be 490',
+  },
+  {
     // The mutant stopped the crossing reading the lifter's trained e1RM, so
     // every opener fell back to the signup seed — which is exactly what the
     // browser measured on the tree before the fix (107.5 kg drawn against
