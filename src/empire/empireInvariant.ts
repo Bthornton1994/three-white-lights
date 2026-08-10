@@ -719,6 +719,18 @@ export interface EmpireRunCensus {
   readonly clockSkips: number;
   /** Days on which `TRAINING_IQ_DAILY_CEILING` bit. */
   readonly ceilingBoundDays: number;
+  /**
+   * Total taken out of each wall-clock purse over the run.
+   *
+   * Here so that "`'reputation'` has no spender" is a measured fact rather than
+   * a sentence. Reputation is earned per check-in, not bought, so no axis feeds
+   * it and no recruit is priced in it — but the purse is DERIVED from
+   * `WALL_CLOCK_FUNDED_OUTPUTS` rather than special-cased, and a derivation
+   * nobody checks is a claim. A later §5.4 axis that fed `'reputation'` would
+   * need exactly this purse; until one exists the fund must stay untouched, and
+   * the row beside it must not, or the counter is measuring nothing.
+   */
+  readonly bookDebits: Readonly<Record<WallClockFundedOutput, number>>;
   /** Days the composed rate was compared with `production.ts`'s own. */
   readonly rateComparisons: number;
   readonly rateDisagreements: number;
@@ -1257,6 +1269,9 @@ export function runEmpire(
 
   let checkIns = 0;
   let grantedCheckIns = 0;
+  const bookDebits: Record<WallClockFundedOutput, number> = Object.fromEntries(
+    WALL_CLOCK_FUNDED_OUTPUTS.map((book) => [book, 0]),
+  ) as Record<WallClockFundedOutput, number>;
   let grantedSeconds = 0;
   let ceilingBoundDays = 0;
   let rateComparisons = 0;
@@ -1267,6 +1282,7 @@ export function runEmpire(
     for (let tick = 0; tick < policy.checkInsPerDay; tick += 1) {
       checkIns += 1;
       const wallSeconds = day * EMPIRE_TUNING.SECONDS_PER_DAY + (tick + 1) * secondsPerCheckIn;
+      const booksBefore = gym.state.settledBooks;
       const granted = grantSecondsAt(plan, checkIns);
       if (granted > 0) {
         grantedCheckIns += 1;
@@ -1284,6 +1300,10 @@ export function runEmpire(
         funding,
         spendingMoment(SHIPPED_SPENDING_POLICY, tick === policy.checkInsPerDay - 1),
       );
+      for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
+        const taken = booksBefore[book] - gym.state.settledBooks[book];
+        if (taken > 0) bookDebits[book] += taken;
+      }
     }
 
     // §5.5's calendar-keyed income: an encouragement is paid per distinct
@@ -1338,6 +1358,7 @@ export function runEmpire(
     census: Object.freeze({
       days,
       checkIns,
+      bookDebits: Object.freeze({ ...bookDebits }),
       grantedCheckIns,
       grantedSeconds,
       recruits: gym.recruits,

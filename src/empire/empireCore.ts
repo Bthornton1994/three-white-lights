@@ -1355,9 +1355,20 @@ export const WALL_CLOCK_FUNDED_OUTPUTS: readonly WallClockFundedOutput[] = EMPIR
  * `'reputation'` keeps a purse here and nothing spends it: reputation is earned
  * per check-in rather than bought, so no axis feeds it and no recruit is priced
  * in it. It is derived rather than special-cased because a later §5.4 axis that
- * did feed it would need exactly this purse; `empireInvariant.test.ts` pins that
- * the fund is never debited across the whole sweep, so "no spender" is a
- * measured fact rather than a sentence.
+ * did feed it would need exactly this purse — and GDD §5.4's table names
+ * Reputation as one of four axes while `ExpansionAxis` implements three, so that
+ * axis is unbuilt rather than hypothetical.
+ *
+ * "No spender" is a measured fact rather than a sentence, and this paragraph
+ * used to say so while the check did not exist. It does now:
+ * `empireInvariant.test.ts`'s `spends every wall-clock purse that has a spender,
+ * and never the one that has none` sums `EmpireRunCensus.bookDebits` over every
+ * run in the grid and pins `reputation` at 0. Both halves were mutation-tested
+ * when the check was written: pricing recruits in this purse
+ * (`RECRUIT_BOOK = 'reputation'`) reddens it with `expected 1795040 to be +0`,
+ * and neutering the counter reddens the non-vacuity half with
+ * `expected [] to deeply equal [ 'physio-days-saved', …(2) ]` — so a zero here
+ * cannot be the zero of an instrument that stopped counting.
  */
 export type WallClockBooks = Readonly<Record<WallClockFundedOutput, GymBucks>>;
 

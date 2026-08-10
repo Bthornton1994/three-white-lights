@@ -485,6 +485,48 @@ describe('the Training IQ daily budget is applied where the two terms are added'
 // ---------------------------------------------------------------------------
 
 describe('the composed run is a run at all', () => {
+  it("spends every wall-clock purse that has a spender, and never the one that has none", () => {
+    // THE CHECK `empireCore.ts`'s WallClockBooks header names. It used to name a
+    // pin that was not in this file — the claim was true and the evidence was a
+    // sentence, which is the defect class CLAUDE.md opens with.
+    //
+    // `'reputation'` is on WALL_CLOCK_FUNDED_OUTPUTS because it is a GATING
+    // output, so it gets a purse by derivation. Nothing prices anything in it:
+    // reputation is earned per check-in, not bought. That is the thing measured
+    // here rather than described.
+    let reputationTaken = 0;
+    const spentAtLeastOnce = new Set<string>();
+    let runs = 0;
+    for (const cell of GRID) {
+      for (const run of cell.runs) {
+        runs += 1;
+        for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
+          const taken = run.census.bookDebits[book];
+          expect(taken, `${book} went negative`).toBeGreaterThanOrEqual(0);
+          if (taken > 0) spentAtLeastOnce.add(book);
+        }
+        reputationTaken += run.census.bookDebits.reputation;
+      }
+    }
+
+    // The subject: the fund with no spender is never touched.
+    expect(reputationTaken).toBe(0);
+
+    // NON-VACUITY, and it is the half that matters. A counter that never
+    // incremented would report zero for every purse, so the zero above would be
+    // a zero about a broken instrument. Counts, not bounds: the three purses
+    // that DO have spenders — §5.4's roster-slot ladders, §5.4's physio ladder
+    // and §5.3's recruits, priced in RECRUIT_BOOK — must each show a debit.
+    expect(runs).toBe(GRID.length * PLANS.length);
+    expect([...spentAtLeastOnce].sort()).toEqual(
+      WALL_CLOCK_FUNDED_OUTPUTS.filter((book) => book !== 'reputation')
+        .slice()
+        .sort(),
+    );
+    expect(spentAtLeastOnce.size).toBe(WALL_CLOCK_FUNDED_OUTPUTS.length - 1);
+    expect(spentAtLeastOnce.size).toBe(3);
+  });
+
   it('drove the grid it says it drove, and every run is fault-free', () => {
     // Counts before verdicts. A grid that had gone empty, or runs that produced
     // no ledger, would make every zero below a zero about nothing.
