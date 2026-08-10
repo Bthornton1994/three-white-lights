@@ -30,6 +30,103 @@ Under this mode:
 If switching to human-paced phased building instead, replace this section with
 the phase gates in GDD §10.
 
+## Session Coordination — TWO SESSIONS ARE RUNNING ON THIS REPO
+
+**Read this before claiming any piece. There is more than one Claude Code
+session working in this repository, and neither can see the other's
+conversation.** Coordination lives here, in the tree, because that is the only
+channel both sessions actually share. If you are a session that has just started
+and has no history, this section tells you which half of the repo is yours.
+
+### The split
+
+| | Session A — the main loop | Session B — the parallel scope |
+|---|---|---|
+| Owns | everything not listed to the right | **GDD §5 — Gym Empire, the idle layer** |
+| Branch | `claude/agent-config-setup-m2r6ny` | its own `claude/*` branch, in its own worktree |
+| Files | `src/game`, `src/meet`, `src/cutin`, `src/session`, `src/shell`, `src/lift`, `src/art`, `src/card`, `src/licensing`, `src/audio`, `tools/` | `src/empire/**` (new), plus the three registry rows named below |
+
+**Neither session pushes to `main`, ever.** Both push only to their own
+`claude/*` branch. Merging into `main` is a human's call, not a session's.
+
+### Session B's scope, stated exactly
+
+**GDD §5 in full — §5.1 Loop, §5.2 Production, §5.3 NPC Lifters, §5.4 Expansion
+Axes, §5.5 Social Layer — built pure-logic-first into a new `src/empire/`
+directory**, the way M1–M6 were built before V1 wired them: production curves,
+the offline-earnings cap, NPC output by tier and tenure, deterministic
+recruitment cost, expansion cost tables, reputation. Zero React imports, zero
+side effects, unit tests per exported function (the "Pure logic is separate from
+UI" rule below applies unchanged).
+
+**Explicitly OUT of Session B's scope, because these are the collision:**
+
+- **`src/game/progression.ts`.** The Gym Empire loop eventually has to write a
+  wallet, and that write is a progression intent. Do not add one. That file is
+  the single hottest file in the repository — 38 of the last 60 commits — and
+  Session A has open work inside it right now. Build the empire math against a
+  local type and leave the wiring to a later, serialised piece.
+- **`src/game/fatigue.ts`.** §5.4's physio hook is already stubbed there
+  (`physioDaysSaved`) and is a Session A file. Read the constant; do not edit it.
+- **A screen or route.** `src/shell/shellRoute.ts` and `AppShell.tsx` are Session
+  A's, and A has a shell grading pass queued. A render-only view under
+  `src/empire/` is fine; wiring it into the shell is not.
+
+### Why §5 is the disjoint piece, and not merely the unstarted one
+
+"Unstarted" is cheap — most of the GDD is unstarted. What makes §5 safe to run in
+parallel is that its **seams into Session A's territory were cut and frozen
+before this split existed**, so Session B reads contracts instead of editing
+them:
+
+- `WALLET_CURRENCIES = ['gymBucks', 'chalk']` is already sealed in
+  `progression.ts`, and `CONVENIENCE_GRANTS` already carries
+  `'gym-empire-timer-skip'`. The currency Session B generates already has a name
+  and a home on Session A's side.
+- `FATIGUE_TUNING`'s physio floor and `physioDaysSaved` already exist as inputs.
+- `src/art/gymScene.ts` is **scenery, not the idle layer** — its own header says
+  "No currency, no ad path, no game math, no player state." The name collides;
+  the subsystem does not.
+- Every other candidate fails on a real import edge, not a hunch: Arcade (§2.3)
+  needs `src/lift/` and `fatigue.ts`, and GDD §2.3 leaves its own contribution an
+  open question needing a human ruling. `src/card/` and `src/licensing/` are both
+  imported by `src/cutin/`, which has a grading pass queued. `src/audio/` is
+  under an in-flight builder.
+
+### The one place the two sessions genuinely touch
+
+**`src/tuning/`.** `audit.ts`'s `SOURCE_RULES` is a closed allowlist and
+`audit.test.ts` pins it exactly — *"widening it is an edit to this test"* — so a
+new `src/empire/empireTuning.ts` **cannot** pass the magic-number audit without
+appending a row to all three of:
+
+1. `src/tuning/audit.ts` — the `SOURCE_RULES` entry
+2. `src/tuning/audit.test.ts` — the pinned allowlist
+3. `src/tuning/index.ts` — the re-export, if the block is classified `feel`
+
+One row each, and source order is free on both sides — `SOURCE_RULES` is grouped
+by classification and the test's pinned literal is `.sort()`ed before comparison
+— so put each row beside the comment that explains it, not at the bottom. That is
+the whole shared surface, and it is named here so a conflict is expected rather
+than surprising. Session A does not edit those three files while Session B is
+running unless it says so here first.
+
+Two other tree-wide registries scan `CLAUDE.md` and `docs/GDD.md` themselves and
+will see anything either session writes there: `REVIEWABLE_CITATIONS` in
+`src/licensing/realIp.ts` pins **exact occurrence counts** of every real name
+appearing in prose, and `tools/evidence.mjs` lists them among the files whose
+change makes a bundle stale. Editing prose in those two documents is therefore a
+code change with a test behind it — `src/tuning/audit.test.ts` and
+`src/licensing/realIp.test.ts` (104 tests) are the pair to run after touching
+either.
+
+### If scope shifts
+
+Session A treats `src/empire/**` as off-limits from now on and will not open a
+piece there. If either session needs to cross the line, the crossing is written
+into this section **before** the work starts — not into a commit message, not
+into a conversation the other session cannot read.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise
@@ -610,6 +707,28 @@ physiology.
   That habit caught the sixth rewind while holding three builder branches, at a
   cost of one throwaway commit.
 
+- **`tools/evidence.mjs` is what wave-start's question [3] is asking, and it is
+  how a critic sees a test result at all.** A critic's tool allowlist is
+  read-only with no Bash, so it cannot run the suite — it reads a bundle this
+  script produced by running the real commands and capturing their raw output
+  verbatim, unsummarised, so a failing run looks failing.
+
+  - `node tools/evidence.mjs <piece-id> [testPathPattern]` writes
+    `.gauntlet/evidence/<piece-id>.txt`. Regenerate the piece's bundle *and*
+    `suite` before dispatching a critic at it.
+  - `node tools/evidence.mjs suite --verify` checks the committed bundles and the
+    tracked browser records in `.gauntlet/shots/**/*.json` against the current
+    tree, and reports which are stale and against which commit. This is the mode
+    wave-start runs.
+  - Every bundle stamps the `HEAD` it came from **and whether the tree was
+    dirty**, because a bundle produced from an uncommitted tree describes code
+    that is in no commit. A stale bundle has reached a critic once already; it
+    was caught by luck.
+  - A new tracked browser record must be added to `REQUIRED_SHOT_RECORDS` in
+    that file, or it is checked by nothing. Do not commit a browser record while
+    its check is red — a red record tracked as evidence is worse than an absent
+    one.
+
 - Prefer editing existing files over creating new ones.
 - Do not create documentation files unless asked.
 - Commit early, commit often, small scopes.
@@ -624,6 +743,19 @@ physiology.
   because origin happened to be ahead, and both times that was luck rather than
   design. Batching a wave's commits and pushing at the end is the habit that
   makes the next rewind expensive.
+
+  Push with `git push -u origin <branch>`. On a network failure retry up to four
+  times, backing off 2s / 4s / 8s / 16s. Never push to a branch other than the
+  one this session was given, and never to `main`.
+- **VERIFICATION BEFORE A PUSH IS ITS OWN COMMAND WITH ITS OWN EXIT CODE. Do not
+  chain it onto the push.** A branch went to origin with two failing tests
+  because the push was written as `<grep> && git push` — the grep found what it
+  was looking for, so the `&&` fired, and the grep's success was never evidence
+  about the suite. `&&` chains the *shell's* notion of success, which is only the
+  same as yours when the left-hand command is literally the check you mean. Run
+  the suite, read its exit code and its summary line, then push as a separate
+  command. The two-step costs one extra round-trip and is the difference between
+  a green branch and a red one on origin.
 - Use git worktrees for parallel builders so concurrent work does not collide.
   Note what the fourth rewind showed about them: worktrees are **not** specially
   fragile, and they are not specially safe either — the whole machine reverted
