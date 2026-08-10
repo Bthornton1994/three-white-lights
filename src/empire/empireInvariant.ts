@@ -104,6 +104,31 @@
  * about an accelerant that was never applied.
  *
  * ===========================================================================
+ * 3a. What this sweep is blind to, measured rather than argued
+ * ===========================================================================
+ *
+ * The two-lane design has a consequence worth stating plainly, because CLAUDE.md
+ * asks whether harnesses are independent or merely numerous: **a leak inside the
+ * accelerant path itself cannot reach the settled lane, so this sweep cannot
+ * see one.** Two mutants were run to find out rather than reasoned about:
+ *
+ *   - reverting chain B in `reputation.ts` — the accrual back onto
+ *     `elapsedFor(at, 'reputation')` and the roster filter back onto `joinedAt`
+ *     — leaves all 39 checks in `empireInvariant.test.ts` green on the
+ *     invariant, and reddens four exact COUNT pins and the whole of
+ *     `reputation.test.ts`'s chain block;
+ *   - letting `skipExpansion` move `settledCompletion` as well as
+ *     `idleCompletion` leaves this file's suite entirely green, and reddens
+ *     three checks in `expansion.test.ts`.
+ *
+ * Neither is a weak test here. Both are outside this sweep's subject: this file
+ * asserts that the COMPOSITION keeps a progression-reaching output off the
+ * purchase, and each leaf module asserts that its own arithmetic does. The two
+ * layers are independent for a structural reason rather than by luck, and the
+ * honest statement is that a green run of this file alone is not evidence about
+ * the leaves.
+ *
+ * ===========================================================================
  * 4. The Training IQ ceiling is applied HERE, and that is not an accident
  * ===========================================================================
  *
