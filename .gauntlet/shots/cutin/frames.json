@@ -1,19 +1,12 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-10T05:15:40.129Z",
+    "capturedAt": "2026-08-10T05:19:39.666Z",
     "url": "http://localhost:8083",
     "sourceRoot": "/home/user/three-white-lights/.claude/worktrees/agent-af754a18d26fdf39f",
-    "commit": "1759da7",
+    "commit": "bf9325e",
     "branch": "claude/x2-vacuous-triple",
-    "workingTree": "DIRTY — this run is not against a commit",
-    "dirtyPaths": [
-      "M .gauntlet/shots/cutin/frames.json",
-      " D .gauntlet/shots/cutin/played-bombed.png",
-      " D .gauntlet/shots/cutin/played-walkout-third.png",
-      " M tools/capture-cutin.mjs",
-      "?? .gauntlet/shots/cutin/debug-meet-bombed.png",
-      "?? .gauntlet/shots/cutin/debug-meet-walkout-third.png"
-    ],
+    "workingTree": "clean",
+    "dirtyPaths": [],
     "instrument": {
       "capture-cutin.mjs": "6ebe3eaed8447c87",
       "png.mjs": "6356a0d0b0dcb696"
@@ -237,15 +230,15 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 701,
+    "stillUpAt": 702,
     "stillUp": true,
-    "goneAt": 1575,
+    "goneAt": 1598,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 12,
-    "goneAt": 14,
-    "dismissTookMs": 2,
+    "tappedAt": 13,
+    "goneAt": 23,
+    "dismissTookMs": 10,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
