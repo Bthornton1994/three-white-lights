@@ -88,6 +88,18 @@ const settleMs = Number(flag('settle', '5200'));
 const srcRoot = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
 
 /**
+ * How long a COLD page load gets to draw the screen it was asked for.
+ *
+ * Deliberately generous and deliberately named: on a first hit Metro is still
+ * bundling, and this deadline means "the app never drew it", not "the app was
+ * slow". It was a bare 120000 at one call site; the played arm needs the same
+ * number and CLAUDE.md's rule about a guard and its sibling applies to a
+ * literal as much as to a check. Not game feel — the game's own values are in
+ * `src/game/meetTuning.ts`, and the driver's patience is `MEET_DRIVE`.
+ */
+const COLD_LOAD_TIMEOUT_MS = 120000;
+
+/**
  * Every named check this run made, so the record says what was asked as well as
  * what was heard. `reds()` is the single source for both the `failures` array
  * and the exit code, so the file cannot report green beside a process exiting 1.
@@ -514,7 +526,7 @@ for (const beat of EXPECTED) {
   const route = beat.moment === null ? (beat.route ?? '') : `?meet=${beat.moment}`;
   await page.goto(`${url}${route}`, { waitUntil: 'load' });
   try {
-    await page.getByTestId(beat.screen).waitFor({ state: 'visible', timeout: 120000 });
+    await page.getByTestId(beat.screen).waitFor({ state: 'visible', timeout: COLD_LOAD_TIMEOUT_MS });
   } catch {
     /* recorded below as a missing screen */
   }
@@ -656,7 +668,9 @@ const ruleForLine = (line) =>
 await page.goto(url, { waitUntil: 'load' });
 let openedOnSession = true;
 try {
-  await page.getByTestId('session-screen').waitFor({ state: 'visible', timeout: 120000 });
+  // The same cold-start deadline every beat in section 1 waits on. A first load
+  // has to bundle before it can draw anything.
+  await page.getByTestId('session-screen').waitFor({ state: 'visible', timeout: COLD_LOAD_TIMEOUT_MS });
 } catch {
   openedOnSession = false;
 }
@@ -667,9 +681,18 @@ const entryDrawn = openedOnSession
   ? await waitUntilDrawn(page, 'shell-open-meet', MEET_DRIVE.BEAT_TIMEOUT_MS)
   : { drawn: false, why: 'the app never drew the daily session' };
 if (entryDrawn.drawn) {
-  await page.getByTestId('shell-open-meet').click({ timeout: 20000 }).catch(() => {});
+  // `MEET_DRIVE.BEAT_TIMEOUT_MS` for both, so this section introduces no
+  // deadline of its own: the driver's own three presses use the same one, and a
+  // second number here would be a second answer to "the app has stopped
+  // advancing". It is a robot's patience, not game feel — see `MEET_DRIVE`.
+  await page
+    .getByTestId('shell-open-meet')
+    .click({ timeout: MEET_DRIVE.BEAT_TIMEOUT_MS })
+    .catch(() => {});
   try {
-    await page.getByTestId('meet-screen').waitFor({ state: 'visible', timeout: 60000 });
+    await page
+      .getByTestId('meet-screen')
+      .waitFor({ state: 'visible', timeout: MEET_DRIVE.BEAT_TIMEOUT_MS });
     PLAYED.reachedMeet = true;
   } catch {
     PLAYED.reachedMeet = false;
