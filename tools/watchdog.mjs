@@ -62,7 +62,8 @@
  *     a second forever and finishes inside the budget passes.
  */
 import { spawn, execFileSync } from 'node:child_process';
-import { statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
 
 const argv = process.argv.slice(2);
 const has = (flag) => argv.includes(flag);
@@ -99,7 +100,7 @@ const DEFAULT_STALE_MINUTES = 45;
  * almost certainly just litter. It reports the set and says which is which is
  * not its call.
  */
-function silentWorktrees(git, head, now) {
+function silentWorktrees(git, head, now, archiveShas) {
   let raw;
   try {
     raw = git(['worktree', 'list', '--porcelain']);
@@ -142,13 +143,61 @@ function silentWorktrees(git, head, now) {
     // on no branch, and on no remote. Age said nothing about which four; two of
     // them were the same age as neighbours that held nothing.
     let dirty = null;
+    let dirtyPaths = [];
     try {
       const status = execFileSync('git', ['-C', w.path, 'status', '--porcelain'], { encoding: 'utf8' });
-      dirty = status.trim() === '' ? 0 : status.trim().split('\n').length;
+      const lines = status.trim() === '' ? [] : status.trim().split('\n');
+      dirty = lines.length;
+      dirtyPaths = lines.map((l) => l.replace(/^\s*\S+\s+/, '').replace(/^.*? -> /, ''));
     } catch {
       dirty = null; // unreadable — say so rather than reporting 0
     }
-    rows.push({ ...w, ageMin, dirty });
+    /**
+     * IS THIS UNCOMMITTED WORK ALREADY THE ONLY COPY, OR IS IT ARCHIVED?
+     *
+     * The dirty column says "this is in no commit, on no branch, on no remote —
+     * the only copy there is", which is what makes it worth stopping for. Once
+     * that work has been read, committed to an `archive/rescued-*` ref and
+     * pushed, the sentence is false and the row becomes the third permanent
+     * false alarm this instrument has grown.
+     *
+     * DERIVED, BY CONTENT, because there is no ref to compare against — the
+     * whole point is that the work is uncommitted. Every dirty path's bytes on
+     * disk are compared with the same path inside each archive commit. If some
+     * one archive holds all of them identically, this working tree has a
+     * durable copy and is labelled ARCHIVED rather than counted.
+     *
+     * It self-expires: touch the worktree again and the bytes stop matching, so
+     * the row goes back to being a warning without anybody maintaining a list.
+     */
+    let archived = false;
+    if ((dirty ?? 0) > 0 && dirtyPaths.length > 0) {
+      archived = archiveShas.some((sha) =>
+        dirtyPaths.every((rel) => {
+          let inArchive;
+          try {
+            inArchive = execFileSync('git', ['show', `${sha}:${rel}`]);
+          } catch (error) {
+            // ONLY a git failure means "that archive does not hold this path".
+            // The first draft of this block caught everything and returned
+            // false, which turned a ReferenceError — it named a binding this
+            // file does not define — into a confident "not archived". That is
+            // the catch-all defect recorded in `isMerged`'s own header above,
+            // committed into the same file by the same hand hours after
+            // quoting it. A programming error must reach the surface.
+            if (error && typeof error.status === 'number') return false;
+            throw error;
+          }
+          try {
+            return inArchive.equals(readFileSync(path.join(w.path, rel)));
+          } catch (error) {
+            if (error && error.code === 'ENOENT') return false; // deleted on disk
+            throw error;
+          }
+        }),
+      );
+    }
+    rows.push({ ...w, ageMin, dirty, archived });
   }
   return rows.sort((a, b) => (a.ageMin ?? Infinity) - (b.ageMin ?? Infinity));
 }
@@ -160,10 +209,17 @@ function reportSilentWorktrees(rows, unmergedCount) {
     console.log('    scan above already covers all of them.');
     return;
   }
-  const carrying = rows.filter((r) => (r.dirty ?? 0) > 0);
+  const carrying = rows.filter((r) => (r.dirty ?? 0) > 0 && !r.archived);
   for (const r of rows) {
     const age = r.ageMin === null ? '   gone' : `${String(Math.round(r.ageMin)).padStart(6)} min`;
-    const mark = r.dirty === null ? ' ?dirty' : r.dirty > 0 ? ` !${r.dirty} UNCOMMITTED` : '  clean';
+    const mark =
+      r.dirty === null
+        ? ' ?dirty'
+        : r.archived
+          ? ` ${r.dirty} archived`
+          : r.dirty > 0
+            ? ` !${r.dirty} UNCOMMITTED`
+            : '  clean';
     console.log(`    ${age} ${mark}  ${r.branch ?? '(detached)'}  ${r.path}`);
   }
   console.log('    A worktree here is EITHER an agent that has not committed yet OR a merged');
@@ -299,7 +355,7 @@ function branches() {
     console.log('  audit — but it is not counted stale, so the section keeps meaning something.');
   }
 
-  const silent = silentWorktrees(git, head, now);
+  const silent = silentWorktrees(git, head, now, archives);
   reportSilentWorktrees(silent, withAge.length);
 
   // NON-VACUITY. An empty branch list satisfies "nothing is stale" and would
@@ -309,7 +365,13 @@ function branches() {
     console.log('\nNo unmerged claude/* branches exist, so this run checked NOTHING against');
     console.log('COMMIT AGE. That is a vacuous pass, not a clean one, and it is reported as');
     console.log('such — see [worktrees] above for the part that is not vacuous.');
-    return silent.length > 0 ? 1 : 0;
+    // Exit on what is ACTIONABLE, not on what is merely listed. 25 worktrees
+    // exist because nothing prunes them; that is litter, not a finding, and
+    // exiting 1 on it makes the whole check a permanent non-zero nobody reads.
+    // A worktree carrying uncommitted work no archive holds IS actionable: it
+    // is the only copy of something.
+    const unarchived = silent.filter((r) => (r.dirty ?? 0) > 0 && !r.archived).length;
+    return unarchived > 0 ? 1 : 0;
   }
 
   if (stale.length > 0) {
