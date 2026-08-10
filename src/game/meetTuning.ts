@@ -480,17 +480,17 @@ export const MEET_TUNING = Object.freeze({
    * `BAR_LOAD_PLATE_STAGGER_MS`. The loop was correct and the delivery was not:
    * the main thread is busy through the meet transition, every expired timer
    * drains at once when it frees, and `tools/verify-meet-sound.mjs` measured the
-   * result in Chromium — five 180 ms rattles starting at
-   * [2771, 2805, 2805, 2822, 2903] ms, two of them byte-identical, for a load
-   * that asked for one every 90.
+   * result in Chromium — five 180 ms rattles inside 149 ms, two of them
+   * byte-identical, for a load that asked for one every 90. The trace is pinned
+   * in `meetSound.test.ts`; it is not retyped here.
    *
    * Moving the load onto the animation clock (`platesLandedAt` in `walkout.ts`)
    * fixes the TIMER half: a late look skips to where the bar should be instead
    * of replaying every tick it missed. It does not fix the whole thing, and the
    * measurement of the half-fix is why this number is what it is —
-   * `requestAnimationFrame` timestamps CATCH UP after jank, so a run measured at
-   * [994, 1192, 1230, 1275, 1358] ms of wall time crossed three 90 ms boundaries
-   * inside 83 ms and fired a hit for each. Level-triggering cannot see that: the
+   * `requestAnimationFrame` timestamps CATCH UP after jank, so a run measured in
+   * Chromium crossed three 90 ms disc boundaries inside 83 ms of WALL time and
+   * fired a hit for each. That trace is pinned in `meetSound.test.ts` too. Level-triggering cannot see that: the
    * boundaries really were crossed, and the discs really did land. The clock is
    * simply not the ear's clock.
    *

@@ -467,8 +467,8 @@ export function barLoadMs(plateCount: number): number {
  * main thread is busy through the meet transition, the browser drains every
  * expired timer at once when it frees, and each drained callback fired its own
  * rattle. Measured in Chromium by `tools/verify-meet-sound.mjs`: five 180 ms
- * rattles starting at [2771, 2805, 2805, 2822, 2903] ms on one walk-out, two of
- * them byte-identical. A device will coalesce timers the same way.
+ * rattles inside 149 ms on one walk-out, two of them byte-identical. A device
+ * will coalesce timers the same way. The trace is pinned in `meetSound.test.ts`.
  *
  * The DISCS were already right, because React batches those five updates into
  * one paint — so the picture jumped straight to five plates while the speaker
@@ -508,9 +508,9 @@ export function platesLandedAt(elapsedMs: number, plateCount: number): number {
  * THE HALF OF THE RULE THAT NEEDS A MEMORY, AND THE HALF THAT BOUNDS THE DEPTH
  * ===========================================================================
  * `platesLandedAt` fixes coalesced TIMERS and cannot fix a coalesced CLOCK.
- * `requestAnimationFrame` timestamps catch up after jank: measured in Chromium
- * at [994, 1192, 1230, 1275, 1358] ms of wall time, the animation clock crossed
- * three 90 ms disc boundaries inside 83 ms. The discs really did land — the
+ * `requestAnimationFrame` timestamps catch up after jank: measured in Chromium,
+ * the animation clock crossed three 90 ms disc boundaries inside 83 ms of wall
+ * time (the trace is pinned in `meetSound.test.ts`). The discs really did land — the
  * schedule is not wrong — but three rattles in 83 ms is a pile-up.
  *
  * So arrivals closer together than `BAR_LOAD_RATTLE_MERGE_MS` are one clatter,

@@ -240,10 +240,11 @@ export function WalkoutView({
   // It scheduled one `setTimeout` per disc, which is correct and is not what
   // gets delivered: the main thread is busy through the meet transition and the
   // whole expired queue drains at once when it frees.
-  // `tools/verify-meet-sound.mjs` measured five rattles of a 180 ms cue starting
-  // at [2771, 2805, 2805, 2822, 2903] ms, two byte-identical — while React
-  // batched the five state updates into ONE paint, so the eye saw a single jump
-  // and the ear got five hits. `platesLandedAt` asks the clock how loaded the
+  // `tools/verify-meet-sound.mjs` measured five rattles of a 180 ms cue inside
+  // 149 ms, two of them byte-identical — while React batched the five state
+  // updates into ONE paint, so the eye saw a single jump and the ear got five
+  // hits. The trace itself is pinned in `meetSound.test.ts` rather than retyped
+  // here, so there is one copy of it to go stale. `platesLandedAt` asks the clock how loaded the
   // bar should be, so a late look SKIPS instead of replaying every tick it
   // missed.
   //
