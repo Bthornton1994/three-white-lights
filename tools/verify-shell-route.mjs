@@ -2533,18 +2533,40 @@ const CHROME_WINDOWS = deriveChromeWindows();
  * still "the pill is drawn". A build where the pill never renders at all waits
  * the same bounded window and then reddens exactly as before — only the cut-in's
  * own window is excluded.
+ *
+ * ===========================================================================
+ * `stillUp` IS THE OBSERVATION THE LOOP EXITED ON, NOT A FRESH READ, AND THAT
+ * IS THE WHOLE DIFFERENCE BETWEEN THIS AND THE VERSION THAT WAS FLAKY
+ * ===========================================================================
+ * The shape this replaces read the DOM twice — `wasUp` at the top, and then a
+ * SECOND `visible('cut-in')` inside the `check` at the bottom — with the `if`
+ * skipped in between when nothing was up. Two awaited round trips with a gap
+ * between them, and a cut-in that mounts in that gap makes the two disagree:
+ * MEASURED, on a mutation run, as a red check whose own detail line said "no
+ * cut-in was up at this ending". A check that contradicts itself in its failure
+ * message is worse than either answer, and this file has been here before — the
+ * recap pill check reported PASSED 159 once and 159/1 on four other runs at the
+ * same commit, off exactly this kind of race.
+ *
+ * So there is ONE observation per instant and the loop's last one is the answer.
+ * A cut-in that mounts after this returns is a different moment and is covered
+ * by the caller's own bounded `waitUntilDrawn` on the pill, which polls.
+ *
+ * `wasUp` is "was one EVER seen during the wait" rather than "was one up at the
+ * first read", for the same reason: the first read is one sample of a window,
+ * and the message is about the window.
  */
 async function waitOutAnyCutIn() {
-  const wasUp = await visible('cut-in');
-  let clearedMs = 0;
-  if (wasUp) {
-    const startedAt = Date.now();
-    while (Date.now() - startedAt < CHROME_WINDOWS.cutInWindowMs && (await visible('cut-in'))) {
-      await page.waitForTimeout(25);
-    }
-    clearedMs = Date.now() - startedAt;
+  const startedAt = Date.now();
+  let wasUp = false;
+  let up = await visible('cut-in');
+  while (up && Date.now() - startedAt < CHROME_WINDOWS.cutInWindowMs) {
+    wasUp = true;
+    await page.waitForTimeout(25);
+    up = await visible('cut-in');
   }
-  return { wasUp, clearedMs, stillUp: await visible('cut-in') };
+  if (up) wasUp = true;
+  return { wasUp, clearedMs: Date.now() - startedAt, stillUp: up };
 }
 
 // `readMeetLoop` is `meetDrive.mjs`'s. It is the driver's eyes and the driver
