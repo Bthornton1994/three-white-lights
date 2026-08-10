@@ -935,6 +935,25 @@ physiology.
     its check is red — a red record tracked as evidence is worse than an absent
     one.
 
+- **MEASURED WALL-CLOCK COSTS, so a `--budget` is not guessed.** A budget set
+  below a tool's real runtime SIGKILLs a passing run, and the output is
+  indistinguishable from a failure — it cost a builder a round when a brief of
+  mine said `--budget 500` for a tool that needs ~556s. Budget generously; the
+  guard exists to catch a hang, not to enforce a deadline.
+
+  | command | typical |
+  |---|---|
+  | `npx vitest run` (whole suite) | ~130s |
+  | `npx tsc --noEmit` | ~30s |
+  | `tools/verify-shell-route.mjs` | **~560s** — three whole meets and a played session |
+  | `tools/verify-cutin-cap.mjs` | ~250s |
+  | `tools/verify-meet-sound.mjs` | ~90s |
+  | `tools/capture-cutin.mjs` | ~25s |
+
+  These move as the tools grow — `verify-shell-route.mjs` was ~430s before the
+  return leg was added. Re-measure rather than trusting this table if a run comes
+  in near its budget.
+
 - Prefer editing existing files over creating new ones.
 - Do not create documentation files unless asked.
 - Commit early, commit often, small scopes.
