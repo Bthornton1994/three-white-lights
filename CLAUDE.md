@@ -127,7 +127,9 @@ piece there. If either session needs to cross the line, the crossing is written
 into this section **before** the work starts — not into a commit message, not
 into a conversation the other session cannot read.
 
-### WHAT ACTUALLY HAPPENED, AND THE ONE CROSSINGSession B's §5 work merged into this branch as PR #2 while an unrelated merge
+### WHAT ACTUALLY HAPPENED, AND THE ONE CROSSING
+
+Session B's §5 work merged into this branch as PR #2 while an unrelated merge
 was in flight locally. **It stayed exactly in its lane** — 4,760 lines, every
 one under `src/empire/`, nothing outside. The split held.
 
