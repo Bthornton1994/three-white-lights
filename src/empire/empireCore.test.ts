@@ -2294,6 +2294,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npc.ts',
       'production.ts',
       'recruitment.ts',
+      'reputation.ts',
     ]);
   });
 
@@ -2652,9 +2653,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(filesRead).toBe(shipped.length);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(singleQuoted.size).toBe(85);
+    expect(singleQuoted.size).toBe(96);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(59);
+    expect(templateChunks.size).toBe(71);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -2668,6 +2669,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(spaceFree).toEqual([
       './empireCore',
       './empireTuning',
+      './expansion',
+      './production',
       'accelerated-seconds',
       'acceleratedSeconds',
       'accepted',
@@ -2676,6 +2679,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'bare-bar',
       'budget',
       'chalk',
+      'chance-draw',
       'club',
       'coach',
       'coach-staff-level',
@@ -2684,6 +2688,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'cosmetic-unlock',
       'cosmetics',
       'covered-day',
+      'currency-purchase',
       'e1rm',
       'elapsedSeconds',
       'equipment',
@@ -2707,6 +2712,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'not-enough-reputation',
       'novice',
       'npc-id',
+      'paid-pull',
       'physio',
       'physio-days-saved',
       'progression-reaching',
@@ -2715,6 +2721,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'regional',
       'reputation',
       'reputation-below-threshold',
+      'reputation-milestone',
       'reputation-tier',
       'rewarded-ad-timer-skip',
       'roster-at-capacity',
@@ -2726,6 +2733,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'space',
       'space-level',
       'specialty-bars',
+      'sponsorship',
       'spotter',
       'store-purchase',
       'string',
@@ -2747,7 +2755,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(144);
+    expect(stringsChecked).toBe(167);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -2774,7 +2782,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(69);
+    expect(probes).toBe(76);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
