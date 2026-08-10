@@ -75,6 +75,24 @@
  *     or code path, and the licensing system carries fictional placeholders
  *     until a human unlocks a specific real partner.
  *
+ *     That sentence was prose with nothing behind it for a round. It now has
+ *     two scans behind it, in `empireCore.test.ts`, and they are honest about
+ *     what they are: one pins every space-free string literal in this directory
+ *     exactly, so a new vocabulary token is a decision somebody signs; the
+ *     other bans a `Capitalised Capitalised` pair anywhere, which is the shape
+ *     a person's name takes inside a message. NEITHER CAN TELL A REAL NAME
+ *     FROM AN INVENTED ONE — that is the human, name-by-name pass §12.3 asks
+ *     for on every piece. What they do is make a name arriving visible instead
+ *     of quiet.
+ *
+ *     One term here is worth a human ruling and is flagged rather than
+ *     defended: `'monolift'`, in `EQUIPMENT_TIERS`, is transcribed verbatim
+ *     from GDD §5.4's own table and is the standard generic term for the rack
+ *     type across federation rulebooks — but it originates as a specific
+ *     inventor's product name and is claimed as a mark by at least one
+ *     manufacturer. It is a pre-existing document decision, not an exposure
+ *     this file created, and no manufacturer is attached to it here.
+ *
  * Purity: zero React, zero side effects, zero I/O, no clock, no randomness,
  * no imports at all. It is a leaf so that every later piece can read it without
  * any of them having to import each other.
@@ -233,7 +251,11 @@ export const EMPIRE_TUNING = Object.freeze({
   // is no seed, no weight and no distribution anywhere in this file.
   // Random-chance recruitment of any kind is a GDD §12.3 refusal condition;
   // `empireCore.test.ts` bans the language of randomness from the whole
-  // directory rather than trusting this paragraph.
+  // directory rather than trusting this paragraph. When that sentence was
+  // written the scan banned `weightedPick` and not the bare words `seed`,
+  // `weight` or `distribution`, so two thirds of it was unbacked; all three are
+  // banned now, and every pattern in that list is driven against a string it
+  // should trip so a dead regex reports itself.
   // -------------------------------------------------------------------------
 
   /**

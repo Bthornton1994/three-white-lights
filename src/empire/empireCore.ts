@@ -66,21 +66,57 @@
  * output without a human writing a verdict next to it.
  *
  * ===========================================================================
- * 3. The type is the enforcement
+ * 3. The type is the enforcement, and a mapped type alone was not enough
  * ===========================================================================
  *
  * `AccelerableOutput<A>` is DERIVED from the two tables by a mapped filter, the
  * way `NonTrainingGatedTender` is derived, so it is not a second hand-written
  * list that can drift from the first. `AppliedAccelerant` — the thing an
  * `EmpireState` actually holds — is a mapped union over accelerants whose
- * `output` field is that filter, so:
+ * `output` field is that filter.
  *
- *     { accelerant: 'gym-empire-timer-skip', output: 'training-iq', ... }
+ * That much shipped, and it did not hold. The reason is invisible from the
+ * mapped type and is worth writing down: `LicenceOfAccelerant<A>` is an indexed
+ * access, and an indexed access over a union key DISTRIBUTES. So when `A` was
+ * inferred as the whole `EmpireAccelerant` union rather than as one member of
+ * it, the licence resolved to every licence there is and `AccelerableOutput<A>`
+ * to every output there is. Two ordinary spellings did that, with no cast and
+ * only exported API:
  *
- * does not typecheck. Making it compile requires editing a verdict in a table
- * that has this header printed above it. `mayAccelerate` is the runtime
- * shadow, for the callers TypeScript never sees: a settled order arrives from
- * an Edge Function as JSON, and JSON has no types.
+ *     for (const accelerant of EMPIRE_ACCELERANTS) {   // element type: the union
+ *       applyAccelerant(accelerant, 'physio-days-saved', at, seconds);
+ *     }
+ *
+ *     if (isEmpireAccelerant(wire)) {                  // narrows to the union
+ *       applyAccelerant(wire, 'training-iq', at, seconds);
+ *     }
+ *
+ * Both compiled. Neither does now: the accelerant parameter is
+ * `A & OneAccelerant<A>`, which is `never` for a union `A`, so an accelerant
+ * that is not one literal is refused at the first argument before the output
+ * filter is consulted. Both spellings are asserted with `@ts-expect-error` in
+ * `empireCore.test.ts`, so reopening either is an unused directive — a build
+ * failure — rather than a silent pass.
+ *
+ * There are therefore three fences here and they fail differently, which is why
+ * all three are kept:
+ *
+ *   - the union `AcceleratedOutput`, which an object literal is checked
+ *     against. This one does not depend on inference at all, because the
+ *     accelerant is a property of the value rather than a parameter the call
+ *     site chooses. It was the strongest fence in the file and it was the one
+ *     with no test.
+ *   - the two constructors, whose accelerant argument refuses a union and whose
+ *     output argument is filtered from it.
+ *   - `mayAccelerate`, the runtime shadow, which both constructors now CALL and
+ *     throw on. That is for the callers TypeScript never sees: a settled order
+ *     arrives from an Edge Function as JSON, and JSON has no types. It is also
+ *     the only one of the three that survives a caller writing `as`.
+ *
+ * `empireStateFaults` is the fourth line, for a payload assembled without going
+ * through a constructor at all, and piece E6's element-wise ledger comparison
+ * is the fifth. None of the five stops arithmetic laundering of a clock
+ * reading; §4 says what does.
  *
  * ===========================================================================
  * 4. The clock split, which is what makes the ban survivable
@@ -188,6 +224,39 @@ declare const EMPIRE_BRAND: unique symbol;
  */
 type Branded<T, B extends string> = T & { readonly [EMPIRE_BRAND]: B };
 
+/**
+ * `unknown` for a primitive carrying no brand, `never` for one that already
+ * carries one — so `value: N & Unbranded<N>` accepts a raw number and refuses a
+ * re-brand.
+ *
+ * This exists because every brand here IS its primitive at the type level, so
+ * `asUnacceleratedSeconds(clock.accelerated)` type-checked: `AcceleratedSeconds`
+ * is a `number`, and the constructor took a `number`. That is hazard 2's fence
+ * walked around by the plainest spelling there is, and it is closed on all nine
+ * constructors at once rather than on the one that was noticed.
+ *
+ * Its limit, stated because no type reaches past it: `accelerated + 0` is a
+ * plain `number` and this cannot see where it came from. Arithmetic laundering
+ * is deliberate in a way a re-brand is not, and E6's element-wise ledger
+ * comparison is what catches it.
+ */
+type Unbranded<T> = T extends { readonly [EMPIRE_BRAND]: string }
+  ? {
+      /** Named so the compiler's message says what is wrong. See `OneAccelerant`. */
+      readonly PASS_A_VALUE_THAT_CARRIES_NO_BRAND: 'this value is already branded; re-branding it is how an accelerated clock reached a wall-clock argument';
+    }
+  : unknown;
+
+/** The one place a raw number acquires a brand. */
+function mintNumber<B extends Branded<number, string>>(value: number): B {
+  return value as B;
+}
+
+/** The one place a raw string acquires a brand. Sibling of `mintNumber`. */
+function mintString<B extends Branded<string, string>>(value: string): B {
+  return value as B;
+}
+
 /** Soft currency. GDD §8.2 lists it as earned from idle, check-ins, achievements. */
 export type GymBucks = Branded<number, 'gym-bucks'>;
 
@@ -205,8 +274,17 @@ export type TrainingIqPoints = Branded<number, 'training-iq'>;
 export type InjuryDaysSaved = Branded<number, 'injury-days-saved'>;
 
 /**
- * Seconds of wall time since the gym opened. No accelerant writes this, which
- * is what makes it the right input to a progression-reaching rate.
+ * Seconds of wall time since the gym opened — the right input to a
+ * progression-reaching rate.
+ *
+ * Two things hold it that way and neither is the sentence you are reading.
+ * `createEmpireClock` derives it from elapsed seconds alone whatever it is told
+ * was skipped, which `empireCore.test.ts` sweeps; and `asUnacceleratedSeconds`
+ * refuses a value already branded `AcceleratedSeconds`, which the same file
+ * asserts with `@ts-expect-error`. Nothing in E0 produces one any other way,
+ * and E0 is also the whole domain — the rates that will read this arrive in
+ * E1-E6, so treat this as a contract those pieces have to keep rather than as
+ * a property already measured across them.
  */
 export type UnacceleratedSeconds = Branded<number, 'unaccelerated-seconds'>;
 
@@ -311,20 +389,44 @@ export type IdleOnlyOutput = {
 /** The complement, derived rather than written, so the two cannot overlap. */
 export type ProgressionReachingOutput = Exclude<EmpireOutput, IdleOnlyOutput>;
 
+/** `true` when two types are mutually assignable, `false` otherwise. */
+type Same<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
+
 /**
- * Compile-time proof that the two halves partition the whole.
+ * Compile-time assertion that the two halves partition the whole AND that the
+ * progression-reaching half is the two outputs §12.3 is about.
  *
- * As written it is a tautology, because the second half is an `Exclude`. That
- * is the point of writing it down: if a later edit replaces either type with a
- * hand-maintained list, this stops being a tautology and starts being a test.
+ * The partition half is a tautology and was shipped as one: with
+ * `ProgressionReachingOutput` defined as an `Exclude`, no state of `SINK_REACH`
+ * makes either `extends [never]` branch fail, so re-tagging `'training-pace'`
+ * as `'idle-only'` — the single edit that opens both hazards — left this
+ * resolving to `true`. The membership line is what bites: that edit empties
+ * `ProgressionReachingOutput`, `Same<never, 'training-iq' | ...>` is `false`,
+ * and this type becomes `never` so the declaration below no longer compiles.
+ *
+ * The named union is a PIN, not a second source of truth: `IdleOnlyOutput` is
+ * still the mapped filter and nothing reads this. It is "counts, not bounds"
+ * at the type level — the derivation's result written down so a change to it
+ * is a decision somebody signs rather than a silent widening.
+ *
+ * `tsc --noEmit` grades this and vitest cannot: the value is the literal
+ * `true`, so no state of the tables changes what a runtime assertion would read
+ * from it. `empireVocabularyFaults` and the membership pins in
+ * `empireCore.test.ts` are the runtime twin.
  */
-export type OutputsArePartitioned = [
-  Exclude<EmpireOutput, IdleOnlyOutput | ProgressionReachingOutput>,
-] extends [never]
-  ? [Extract<IdleOnlyOutput, ProgressionReachingOutput>] extends [never]
-    ? true
-    : never
-  : never;
+export type OutputsArePartitioned =
+  Same<Exclude<EmpireOutput, IdleOnlyOutput | ProgressionReachingOutput>, never> extends true
+    ? Same<Extract<IdleOnlyOutput, ProgressionReachingOutput>, never> extends true
+      ? Same<ProgressionReachingOutput, 'training-iq' | 'physio-days-saved'> extends true
+        ? Same<
+            IdleOnlyOutput,
+            'gym-bucks' | 'reputation' | 'roster-slot' | 'cosmetic-unlock'
+          > extends true
+          ? true
+          : never
+        : never
+      : never
+    : never;
 
 export const EMPIRE_OUTPUT_REACH_IS_A_PARTITION: OutputsArePartitioned = true;
 
@@ -349,7 +451,17 @@ export const EMPIRE_FORBIDDEN_OUTPUTS = [
 
 export type EmpireForbiddenOutput = (typeof EMPIRE_FORBIDDEN_OUTPUTS)[number];
 
-/** Compile-time proof that no forbidden output is also a payable one. */
+/**
+ * Compile-time assertion that no forbidden output is also a payable one.
+ *
+ * Adding `'chalk'` to `EMPIRE_OUTPUTS` — with the sink `satisfies` forces you
+ * to write — makes this `never` and the declaration below stops compiling.
+ *
+ * Graded by `tsc --noEmit` and by nothing else: the value is a literal, so
+ * `expect(EMPIRE_PAYS_NO_FORBIDDEN_OUTPUT).toBe(true)` is a line no state of
+ * the tables can redden. That assertion was in the suite and is gone;
+ * `empireVocabularyFaults` is the runtime statement of the same claim.
+ */
 export type ForbiddenOutputsAreDisjoint = [
   Extract<EmpireOutput, EmpireForbiddenOutput>,
 ] extends [never]
@@ -419,9 +531,47 @@ export const ARRIVAL_LICENCE = {
   'gym-progress': ['idle-only', 'progression-reaching'],
 } as const satisfies Readonly<Record<AccelerantArrival, readonly OutputReach[]>>;
 
-/** What an accelerant is licensed to touch, at the type level. */
+/**
+ * What an accelerant is licensed to touch, at the type level.
+ *
+ * Note what this does when `A` is not one literal: an indexed access over a
+ * union key distributes, so `LicenceOfAccelerant<EmpireAccelerant>` is
+ * `'idle-only' | 'progression-reaching'` — every licence there is. That is the
+ * hole `OneAccelerant` below exists to close, and it is why the licence filter
+ * on its own was not enforcement.
+ */
 export type LicenceOfAccelerant<A extends EmpireAccelerant> =
   (typeof ARRIVAL_LICENCE)[(typeof ACCELERANT_ARRIVAL)[A]][number];
+
+/** `true` for a union of two or more members, `false` for a single one. */
+type IsUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : never;
+
+/**
+ * `unknown` for a single accelerant, `never` for a union of them — so
+ * `accelerant: A & OneAccelerant<A>` refuses anything but one literal.
+ *
+ * Every fence built out of `AccelerableOutput<A>` is only as narrow as `A` is,
+ * and `A` is inferred at the CALL SITE. Two ordinary spellings widened it to
+ * the declared union and dissolved the ban with no cast and only exported API:
+ * a `for...of` over `EMPIRE_ACCELERANTS`, whose element type is the union, and
+ * an `isEmpireAccelerant` narrowing of a decoded wire value, which narrows to
+ * the union and no further. Both are asserted with `@ts-expect-error` in
+ * `empireCore.test.ts`.
+ *
+ * The cost is real and is the right trade: a caller iterating accelerants has
+ * to route through `mayAccelerate` or through the runtime constructor, which
+ * throws. A caller that knows which accelerant it holds writes the literal.
+ */
+type OneAccelerant<A extends EmpireAccelerant> = IsUnion<A> extends true
+  ? {
+      /**
+       * Carried only so the compiler's message names the problem. A bare
+       * `never` here reads as "not assignable to parameter of type 'never'",
+       * which is true and tells a reader nothing about what to do.
+       */
+      readonly PASS_ONE_ACCELERANT_LITERAL: 'a union widens the licence to every output';
+    }
+  : unknown;
 
 /**
  * The outputs one accelerant may be applied to.
@@ -442,6 +592,14 @@ export type AccelerableOutput<A extends EmpireAccelerant> = {
  * member: the skip's member types `output` as the idle-only subset, and every
  * other member requires its own accelerant literal. So hazard 1 is a compile
  * error rather than a runtime branch.
+ *
+ * This is the fence that does not depend on inference — the accelerant is a
+ * property of the value being checked rather than a parameter a call site
+ * chooses — and it holds even when the accelerant field is typed as the whole
+ * union, because TypeScript checks a union-discriminated source against every
+ * member. It had no test; `empireCore.test.ts` now checks four object literals
+ * against it directly, two legal and two not, one of each with a union-typed
+ * accelerant.
  */
 export type AcceleratedOutput = {
   [A in EmpireAccelerant]: {
@@ -458,14 +616,34 @@ export type PurchasableAccelerant = {
 /** The complement, derived, so the two cannot overlap. */
 export type EarnedAccelerant = Exclude<EmpireAccelerant, PurchasableAccelerant>;
 
-/** Compile-time proof that the accelerants partition too. See `OutputsArePartitioned`. */
-export type AccelerantsArePartitioned = [
-  Exclude<EmpireAccelerant, PurchasableAccelerant | EarnedAccelerant>,
-] extends [never]
-  ? [Extract<PurchasableAccelerant, EarnedAccelerant>] extends [never]
-    ? true
-    : never
-  : never;
+/**
+ * The same assertion for the accelerants, written the same way — including the
+ * membership pin, because the branch immediately below a fixed check is where
+ * this codebase keeps finding the next one.
+ *
+ * The partition half is the same tautology. The pin is what catches the edit
+ * that matters here: re-tagging `'gym-empire-timer-skip'` as `'gym-progress'`
+ * moves the sold skip out of `PurchasableAccelerant`, which is exactly how
+ * §12.3's first refusal condition would ship, and which the partition alone was
+ * indifferent to. Graded by `tsc --noEmit`; the runtime twin is the pinned
+ * `PURCHASABLE_ACCELERANTS` membership in `empireCore.test.ts`.
+ */
+export type AccelerantsArePartitioned =
+  Same<Exclude<EmpireAccelerant, PurchasableAccelerant | EarnedAccelerant>, never> extends true
+    ? Same<Extract<PurchasableAccelerant, EarnedAccelerant>, never> extends true
+      ? Same<
+          PurchasableAccelerant,
+          'gym-empire-timer-skip' | 'rewarded-ad-timer-skip'
+        > extends true
+        ? Same<
+            EarnedAccelerant,
+            'coach-staff-level' | 'space-level' | 'reputation-tier'
+          > extends true
+          ? true
+          : never
+        : never
+      : never
+    : never;
 
 export const EMPIRE_ACCELERANT_ARRIVAL_IS_A_PARTITION: AccelerantsArePartitioned = true;
 
@@ -536,6 +714,86 @@ export const IDLE_ONLY_OUTPUTS: readonly IdleOnlyOutput[] = EMPIRE_OUTPUTS.filte
 export const PROGRESSION_REACHING_OUTPUTS: readonly ProgressionReachingOutput[] =
   EMPIRE_OUTPUTS.filter(isProgressionReachingOutput);
 
+/**
+ * The runtime statement of what `OutputsArePartitioned`,
+ * `AccelerantsArePartitioned` and `ForbiddenOutputsAreDisjoint` say at the type
+ * level — walked from the tables rather than read off a literal.
+ *
+ * It exists because those three are `const x: T = true`, and a value that is a
+ * literal cannot be reddened by any edit to the code it is about. Three
+ * assertions on them were in the suite reading as independent checks and were
+ * decoration. This is the half vitest can grade; `tsc --noEmit` grades the
+ * other half, and the two catch different edits — see the note on each type.
+ *
+ * What it does NOT do is re-derive `mayAccelerate`. An oracle that recomputes
+ * its subject's own lookup cannot disagree with it, which is how the cross
+ * product in `empireCore.test.ts` was passing without checking anything.
+ */
+export function empireVocabularyFaults(): readonly string[] {
+  const faults: string[] = [];
+
+  for (const output of EMPIRE_OUTPUTS) {
+    if (!(OUTPUT_SINKS as readonly string[]).includes(OUTPUT_SINK[output])) {
+      faults.push(`${output} declares a sink that is not a sink`);
+    }
+  }
+  for (const sink of OUTPUT_SINKS) {
+    if (!(OUTPUT_REACHES as readonly string[]).includes(SINK_REACH[sink])) {
+      faults.push(`${sink} declares a reach that is not a reach`);
+    }
+  }
+  for (const accelerant of EMPIRE_ACCELERANTS) {
+    if (!(ACCELERANT_ARRIVALS as readonly string[]).includes(ACCELERANT_ARRIVAL[accelerant])) {
+      faults.push(`${accelerant} declares an arrival that is not an arrival`);
+    }
+  }
+  for (const arrival of ACCELERANT_ARRIVALS) {
+    // Read through the widened alias rather than off `ARRIVAL_LICENCE`
+    // directly: the table's literal tuple types make `.length === 0` a
+    // comparison TypeScript rejects as impossible, which would leave the row
+    // unchecked at runtime for the state where it stops being impossible.
+    const licence: readonly OutputReach[] = ARRIVAL_LICENCE[arrival];
+    if (licence.length === 0) faults.push(`${arrival} licenses nothing`);
+    for (const reach of licence) {
+      if (!(OUTPUT_REACHES as readonly string[]).includes(reach)) {
+        faults.push(`${arrival} licenses ${reach}, which is not a reach`);
+      }
+    }
+  }
+
+  if (PROGRESSION_REACHING_OUTPUTS.length === 0) {
+    faults.push('no output reaches progression, so the ban protects nothing');
+  }
+  if (IDLE_ONLY_OUTPUTS.length === 0) {
+    faults.push('no output is idle-only, so a purchase may touch nothing at all');
+  }
+  if (PURCHASABLE_ACCELERANTS.length === 0) {
+    faults.push('nothing is purchasable, so the ban gates nothing');
+  }
+  if (EARNED_ACCELERANTS.length === 0) {
+    faults.push('nothing is earned, so §5.2 pays no trickle at all');
+  }
+
+  for (const output of EMPIRE_OUTPUTS) {
+    const idle = (IDLE_ONLY_OUTPUTS as readonly string[]).includes(output);
+    const reaching = (PROGRESSION_REACHING_OUTPUTS as readonly string[]).includes(output);
+    if (idle === reaching) faults.push(`${output} is in both halves or in neither`);
+  }
+  for (const accelerant of EMPIRE_ACCELERANTS) {
+    const purchasable = (PURCHASABLE_ACCELERANTS as readonly string[]).includes(accelerant);
+    const earned = (EARNED_ACCELERANTS as readonly string[]).includes(accelerant);
+    if (purchasable === earned) faults.push(`${accelerant} is in both halves or in neither`);
+  }
+
+  for (const forbidden of EMPIRE_FORBIDDEN_OUTPUTS) {
+    if ((EMPIRE_OUTPUTS as readonly string[]).includes(forbidden)) {
+      faults.push(`${forbidden} is named as forbidden and is also payable`);
+    }
+  }
+
+  return faults;
+}
+
 // ---------------------------------------------------------------------------
 // Constructors for the branded scalars
 // ---------------------------------------------------------------------------
@@ -546,27 +804,34 @@ function requireFiniteAtLeastZero(value: number, what: string): void {
   }
 }
 
+/**
+ * Every constructor below takes `N & Unbranded<N>` rather than a bare
+ * primitive, so a value that already carries one of this file's brands is
+ * refused at the argument list. See `Unbranded` for the spelling that made this
+ * necessary and for what it still cannot see.
+ */
+
 /** Gym Bucks. Refuses a negative or non-finite balance. */
-export function asGymBucks(value: number): GymBucks {
+export function asGymBucks<N extends number>(value: N & Unbranded<N>): GymBucks {
   requireFiniteAtLeastZero(value, 'gymBucks');
-  return value as GymBucks;
+  return mintNumber(value);
 }
 
 /** Reputation, bounded by `EMPIRE_TUNING.REPUTATION_MAX`. */
-export function asReputation(value: number): ReputationPoints {
+export function asReputation<N extends number>(value: N & Unbranded<N>): ReputationPoints {
   requireFiniteAtLeastZero(value, 'reputation');
   if (value > EMPIRE_TUNING.REPUTATION_MAX) {
     throw new RangeError(
       `reputation must be at or below REPUTATION_MAX (${EMPIRE_TUNING.REPUTATION_MAX}), received ${value}.`,
     );
   }
-  return value as ReputationPoints;
+  return mintNumber(value);
 }
 
 /** Training IQ points. */
-export function asTrainingIq(value: number): TrainingIqPoints {
+export function asTrainingIq<N extends number>(value: N & Unbranded<N>): TrainingIqPoints {
   requireFiniteAtLeastZero(value, 'trainingIq');
-  return value as TrainingIqPoints;
+  return mintNumber(value);
 }
 
 /**
@@ -579,7 +844,7 @@ export function asTrainingIq(value: number): TrainingIqPoints {
  * `PHYSIO_MAX_DAYS_SAVED`, which `empireTuning.test.ts` in turn bounds against
  * the real `FATIGUE_TUNING` so a setback keeps at least its floor.
  */
-export function asInjuryDaysSaved(value: number): InjuryDaysSaved {
+export function asInjuryDaysSaved<N extends number>(value: N & Unbranded<N>): InjuryDaysSaved {
   requireFiniteAtLeastZero(value, 'injuryDaysSaved');
   if (!Number.isInteger(value)) {
     throw new RangeError(`injuryDaysSaved must be a whole number, received ${value}.`);
@@ -589,33 +854,44 @@ export function asInjuryDaysSaved(value: number): InjuryDaysSaved {
       `injuryDaysSaved must be at or below PHYSIO_MAX_DAYS_SAVED (${EMPIRE_TUNING.PHYSIO_MAX_DAYS_SAVED}), received ${value}.`,
     );
   }
-  return value as InjuryDaysSaved;
+  return mintNumber(value);
 }
 
-/** Wall-clock seconds since the gym opened. Nothing purchasable writes one. */
-export function asUnacceleratedSeconds(value: number): UnacceleratedSeconds {
+/**
+ * Wall-clock seconds since the gym opened.
+ *
+ * The `Unbranded` guard is load-bearing here rather than tidy: this is the
+ * constructor `asUnacceleratedSeconds(clock.accelerated)` went through, which is
+ * hazard 2 in one expression. `empireCore.test.ts` asserts that spelling with
+ * `@ts-expect-error`, in both directions.
+ */
+export function asUnacceleratedSeconds<N extends number>(
+  value: N & Unbranded<N>,
+): UnacceleratedSeconds {
   requireFiniteAtLeastZero(value, 'unacceleratedSeconds');
-  return value as UnacceleratedSeconds;
+  return mintNumber(value);
 }
 
-/** Wall-clock seconds plus every applied skip. */
-export function asAcceleratedSeconds(value: number): AcceleratedSeconds {
+/** Wall-clock seconds plus every applied skip. Guarded like its sibling above. */
+export function asAcceleratedSeconds<N extends number>(
+  value: N & Unbranded<N>,
+): AcceleratedSeconds {
   requireFiniteAtLeastZero(value, 'acceleratedSeconds');
-  return value as AcceleratedSeconds;
+  return mintNumber(value);
 }
 
 /** Tenure in days. */
-export function asTenureDays(value: number): TenureDays {
+export function asTenureDays<N extends number>(value: N & Unbranded<N>): TenureDays {
   requireFiniteAtLeastZero(value, 'tenureDays');
-  return value as TenureDays;
+  return mintNumber(value);
 }
 
 /** A roster lifter's id. Refuses the empty string so a missing id is loud. */
-export function asNpcId(value: string): NpcId {
+export function asNpcId<S extends string>(value: S & Unbranded<S>): NpcId {
   if (value.length === 0) {
     throw new RangeError('npcId must not be empty.');
   }
-  return value as NpcId;
+  return mintString(value);
 }
 
 /**
@@ -623,9 +899,16 @@ export function asNpcId(value: string): NpcId {
  *
  * `completionTimes` is when each level of that axis would have finished with no
  * accelerant applied; `now` is the un-accelerated moment being asked about. The
- * level is how many of those have passed. Because both arguments are
- * `UnacceleratedSeconds`, a caller holding an accelerated clock has nothing to
- * pass, which is hazard 2 closed at the argument list.
+ * level is how many of those have passed.
+ *
+ * Both arguments are `UnacceleratedSeconds`, and — since the fence in
+ * `Unbranded` landed — the only constructor that mints one refuses a value that
+ * already carries the accelerated brand. So `asUnacceleratedSeconds(
+ * clock.accelerated)`, which compiled and was hazard 2 in one expression, is a
+ * type error. What that does not close is arithmetic: by the time an accelerated
+ * reading has had anything done to it, it is a plain number and no signature can
+ * tell. E6's element-wise comparison is what covers that, not this argument
+ * list.
  */
 export function settledLevel(
   completionTimes: readonly UnacceleratedSeconds[],
@@ -635,7 +918,7 @@ export function settledLevel(
   for (const completion of completionTimes) {
     if (completion <= now) level += 1;
   }
-  return level as SettledLevel;
+  return mintNumber(level);
 }
 
 /**
@@ -877,35 +1160,58 @@ export type AppliedAccelerant = AcceleratedOutput & {
 };
 
 /**
- * Build an accelerant/output pairing.
+ * The one place a pairing is built and the one place the union is re-formed.
  *
- * The generic argument is what puts the refusal on the OUTPUT rather than on
- * the whole object: `AccelerableOutput<A>` is resolved from the accelerant
- * passed in, so a purchased skip aimed at Training IQ fails on the second
- * argument and says so by name. A call site that gets the accelerant wrong
- * fails separately instead of being swallowed by one broad suppression, which
- * matters where the refusal is asserted with `@ts-expect-error`.
+ * Not exported, and non-generic on purpose: both public constructors funnel
+ * through it, so the runtime refusal cannot be present on one and absent on the
+ * other. It asks `mayAccelerate` and throws, which is what makes the cast below
+ * sound rather than asserted — by the time it runs, the pairing has been
+ * checked against the same two tables the type reads.
  *
- * The cast is the one place the union is re-formed; the two fields it is built
- * from are the same two the union's member declares.
+ * This is the third fence and it is the one that survives `as`. The first two
+ * are types and a caller can always write a cast past a type; §12.3's first
+ * refusal condition is worth a throw.
  */
-export function acceleratedOutput<A extends EmpireAccelerant>(
-  accelerant: A,
-  output: AccelerableOutput<A>,
-): AcceleratedOutput {
+function checkedPairing(accelerant: EmpireAccelerant, output: EmpireOutput): AcceleratedOutput {
+  if (!mayAccelerate(accelerant, output)) {
+    throw new RangeError(
+      `${accelerant} arrives by ${ACCELERANT_ARRIVAL[accelerant]} and may not accelerate ` +
+        `${output}, which reaches ${outputReach(output)}`,
+    );
+  }
   return Object.freeze({ accelerant, output }) as AcceleratedOutput;
 }
 
-/** The same pairing, stamped and sized. See `acceleratedOutput` for the fence. */
+/**
+ * Build an accelerant/output pairing.
+ *
+ * Two arguments rather than one object, because that puts the refusal on the
+ * OUTPUT: `AccelerableOutput<A>` is resolved from the accelerant passed in, so
+ * a purchased skip aimed at Training IQ fails on the second argument and says
+ * so by name, and a call site that gets the accelerant wrong fails separately
+ * instead of being swallowed by one broad suppression — which matters where the
+ * refusal is asserted with `@ts-expect-error`.
+ *
+ * `A & OneAccelerant<A>` is the fence that closes the widening: `A` is inferred
+ * here, and a union `A` made `AccelerableOutput<A>` every output there is.
+ */
+export function acceleratedOutput<A extends EmpireAccelerant>(
+  accelerant: A & OneAccelerant<A>,
+  output: AccelerableOutput<A>,
+): AcceleratedOutput {
+  return checkedPairing(accelerant, output);
+}
+
+/** The same pairing, stamped and sized. Guarded identically, through one callee. */
 export function applyAccelerant<A extends EmpireAccelerant>(
-  accelerant: A,
+  accelerant: A & OneAccelerant<A>,
   output: AccelerableOutput<A>,
   at: UnacceleratedSeconds,
   seconds: number,
 ): AppliedAccelerant {
   requireFiniteAtLeastZero(seconds, 'accelerant seconds');
   return Object.freeze({
-    ...acceleratedOutput(accelerant, output),
+    ...checkedPairing(accelerant, output),
     at,
     seconds,
   }) as AppliedAccelerant;

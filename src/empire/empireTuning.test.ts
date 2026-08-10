@@ -366,19 +366,41 @@ describe('§5.4 the physio hook, against the real fatigue model', () => {
     const shortest = FATIGUE_TUNING.INJURY_DURATION_DAYS_MIN;
     const floor = FATIGUE_TUNING.INJURY_MIN_DURATION_DAYS_AFTER_PHYSIO;
     expect(shortest - T.PHYSIO_MAX_DAYS_SAVED).toBeGreaterThanOrEqual(floor);
-    // And it shortens every roll it is applied to, so the hook is felt.
+
+    // The per-roll half. The line that used to be here was
+    // `expect(roll - PHYSIO_MAX_DAYS_SAVED).toBeLessThan(roll)`, which is
+    // `PHYSIO_MAX_DAYS_SAVED > 0` — already asserted directly in the test
+    // immediately above — restated inside a loop that gave it the appearance of
+    // a sweep. It is replaced by the claim the loop is actually for: the
+    // fatigue model's clamp never bites, so the WHOLE saving lands on every
+    // roll rather than being absorbed by `Math.max`. Raising
+    // PHYSIO_MAX_DAYS_SAVED to 2 turns this red at the shortest roll — 2 - 2 is
+    // 0, clamped up to the floor of 1, so the saving delivered is 1 and not 2.
+    let rollsWalked = 0;
     for (
       let roll = FATIGUE_TUNING.INJURY_DURATION_DAYS_MIN;
       roll <= FATIGUE_TUNING.INJURY_DURATION_DAYS_MAX;
       roll += 1
     ) {
-      expect(roll - T.PHYSIO_MAX_DAYS_SAVED, `roll of ${roll} days`).toBeLessThan(roll);
-      expect(roll - T.PHYSIO_MAX_DAYS_SAVED, `roll of ${roll} days`).toBeGreaterThanOrEqual(floor);
+      // The same arithmetic `fatigue.ts` performs, with its clamp in place.
+      const shortened = Math.max(floor, roll - T.PHYSIO_MAX_DAYS_SAVED);
+      expect(shortened, `roll of ${roll} days: the clamp absorbed part of the saving`).toBe(
+        roll - T.PHYSIO_MAX_DAYS_SAVED,
+      );
+      expect(roll - shortened, `roll of ${roll} days: days actually saved`).toBe(
+        T.PHYSIO_MAX_DAYS_SAVED,
+      );
+      // And a setback stays a setback: the sibling assertion, kept, because it
+      // is the one that bites in the other direction.
+      expect(shortened, `roll of ${roll} days`).toBeGreaterThanOrEqual(floor);
+      rollsWalked += 1;
     }
-    // Not an empty domain: the fatigue model really does roll a range.
-    expect(FATIGUE_TUNING.INJURY_DURATION_DAYS_MAX).toBeGreaterThanOrEqual(
-      FATIGUE_TUNING.INJURY_DURATION_DAYS_MIN,
+    // Not an empty domain, and counted rather than bounded: the fatigue model
+    // really does roll a range, and this is how many rolls it has.
+    expect(rollsWalked).toBe(
+      FATIGUE_TUNING.INJURY_DURATION_DAYS_MAX - FATIGUE_TUNING.INJURY_DURATION_DAYS_MIN + 1,
     );
+    expect(rollsWalked).toBe(2);
   });
 });
 
@@ -458,12 +480,25 @@ describe('§5.5 social', () => {
     // measurement. What this catches is the copy-paste — a new cadence added
     // in sessions or streak days because it was easier to compute that way.
     const banned = /PER_SESSION|SESSION_COUNT|PER_STREAK|STREAK_DAY|PER_TIER_UNLOCK/;
+    let examined = 0;
     for (const key of Object.keys(EMPIRE_TUNING)) {
       expect(banned.test(key), `${key} is counted in something training moves`).toBe(false);
+      // The probe, derived from the subject rather than written beside the
+      // pattern. This is the same entry re-keyed to session count, which is
+      // GDD §4.4's defect in its exact shape, and it is built from a real key —
+      // so renaming `RIVAL_COMPARISON_PERIOD_DAYS` to
+      // `RIVAL_COMPARISON_PER_SESSION` reddens the line above, and weakening
+      // the pattern reddens this one. The two probes that used to sit below
+      // this loop tested the pattern against two string literals written four
+      // lines from it: no edit to `empireTuning.ts` could redden either.
+      expect(banned.test(`${key}_PER_SESSION`), `${key}_PER_SESSION slips past`).toBe(true);
+      examined += 1;
     }
-    // Not vacuous: the pattern really does match the shape it is looking for.
-    expect(banned.test('RIVAL_REWARD_PER_SESSION_COUNT')).toBe(true);
-    expect(banned.test('RIVAL_COMPARISON_PERIOD_DAYS')).toBe(false);
+    // The non-vacuity guard the two probes were standing in for, and it is the
+    // one that was missing: how many keys the loop actually looked at. An empty
+    // or truncated key set would have made every assertion above pass.
+    expect(examined).toBe(Object.keys(EMPIRE_TUNING).length);
+    expect(examined).toBe(54);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
@@ -523,6 +558,28 @@ const AWAITING_CONSUMER: readonly string[] = [
   'TRAINING_IQ_DAILY_CEILING',
 ];
 
+/**
+ * Comments removed, the way the sibling scans in `empireCore.test.ts` remove
+ * them.
+ *
+ * This scan did not, and its sibling forty lines away in the same directory
+ * did — which is CLAUDE.md's "proximity is not protection" in miniature. A key
+ * mentioned only inside a comment as `EMPIRE_TUNING.FOO` counted as consumed
+ * and would have silently left `AWAITING_CONSUMER`. Harmless on the day it was
+ * found, because the one comment mention in `empireCore.ts` is also a genuine
+ * read twelve lines down — which is exactly the kind of luck this file is not
+ * supposed to run on.
+ */
+function withoutComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+}
+
+/** Which `EMPIRE_TUNING` entries a body of shipped source actually reads. */
+function consumedKeys(source: string): readonly string[] {
+  const code = withoutComments(source);
+  return Object.keys(EMPIRE_TUNING).filter((key) => code.includes(`EMPIRE_TUNING.${key}`));
+}
+
 describe('every entry is reachable from a consumer, or is listed as not yet reached', () => {
   const shipped = readdirSync(HERE)
     .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
@@ -530,7 +587,7 @@ describe('every entry is reachable from a consumer, or is listed as not yet reac
     .map((name) => readFileSync(path.join(HERE, name), 'utf8'))
     .join('\n');
 
-  const read = Object.keys(EMPIRE_TUNING).filter((key) => shipped.includes(`EMPIRE_TUNING.${key}`));
+  const read = consumedKeys(shipped);
   const unread = Object.keys(EMPIRE_TUNING)
     .filter((key) => !read.includes(key))
     .sort();
@@ -543,6 +600,22 @@ describe('every entry is reachable from a consumer, or is listed as not yet reac
     expect(read.length, 'no entry is read by any shipped module').toBeGreaterThan(0);
     // Counts rather than bounds, so an empty domain reports itself.
     expect(read.length + unread.length).toBe(Object.keys(EMPIRE_TUNING).length);
+  });
+
+  it('does not count a mention inside a comment as a consumer', () => {
+    // The divergence driven rather than described. Deleting either half of
+    // `withoutComments` turns one of the first two lines red; deleting the
+    // whole strip turns both red. The third line is the positive control, so a
+    // strip that had started eating code instead of comments — which would make
+    // the first two pass for the wrong reason — is red as well.
+    const realKey = Object.keys(EMPIRE_TUNING)[0] as string;
+    const otherKey = Object.keys(EMPIRE_TUNING)[1] as string;
+    expect(consumedKeys(`// EMPIRE_TUNING.${realKey}\n`)).toEqual([]);
+    expect(consumedKeys(`/* EMPIRE_TUNING.${realKey} */\n`)).toEqual([]);
+    expect(consumedKeys(`const x = EMPIRE_TUNING.${otherKey};\n`)).toEqual([otherKey]);
+    // And the two keys are distinct, so the third line is not reading the
+    // residue of the first two.
+    expect(realKey).not.toBe(otherKey);
   });
 
   it('pins the not-yet-consumed list exactly, in both directions', () => {

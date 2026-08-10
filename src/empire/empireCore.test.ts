@@ -20,16 +20,44 @@
  * "Unused '@ts-expect-error' directive" and the build fails. That is the
  * compiler's verdict rather than a claim about it.
  *
- * To check the directives still bite — a type-level test that has gone vacuous
- * looks exactly like one that passes — change `ARRIVAL_LICENCE['store-purchase']`
+ * EVERY DIRECTIVE IN THIS FILE NEEDS A LINE VITEST CAN ALSO REDDEN, and that is
+ * a rule this file broke. The first two hazard tests ended
+ * `expect(bought.accelerant).toBe('gym-empire-timer-skip')` — reading back the
+ * argument that had just been passed in, from a constructor that validated
+ * nothing. Under vitest they were two green ticks for hazard 1 and hazard 2
+ * that were ticks for nothing at all. Both constructors now ask
+ * `mayAccelerate` and throw, so each directive sits beside a `toThrow` whose
+ * message names the arrival, the output and the reach.
+ *
+ * A DIRECTIVE'S DOMAIN IS THE SPELLING IT WAS WRITTEN IN. Both original
+ * directives passed the accelerant as a bare string literal, which is the one
+ * shape where `A` infers as a singleton and the licence filter bites. The
+ * spellings that widen `A` to the declared union — a parameter, a `for...of`
+ * over `EMPIRE_ACCELERANTS`, an `isEmpireAccelerant` narrowing — compiled, and
+ * a green `tsc` said nothing about them because nothing asked. They are asked
+ * now, all three, on both constructors.
+ *
+ * To check the directives still bite, change `ARRIVAL_LICENCE['store-purchase']`
  * in `empireCore.ts` to `['idle-only', 'progression-reaching']`. `tsc --noEmit`
- * then reports TS2578 on both directives below, and `vitest run src/empire`
+ * then reports TS2578 on the directives below, and `vitest run src/empire`
  * fails the licence tests in this file. Both were run; see the report for the
  * verbatim output.
  *
  * The second reading — that the output does not MOVE with the purchase — is not
  * in this file and is not claimed by it. It belongs to piece E6 and §6 of
  * `empireCore.ts`'s header states what it has to assert.
+ *
+ * ===========================================================================
+ * Three exported constants this file deliberately does not assert on
+ * ===========================================================================
+ *
+ * `EMPIRE_OUTPUT_REACH_IS_A_PARTITION`, `EMPIRE_ACCELERANT_ARRIVAL_IS_A_PARTITION`
+ * and `EMPIRE_PAYS_NO_FORBIDDEN_OUTPUT` are each `const x: T = true`. Their
+ * value is a literal, so `expect(x).toBe(true)` is a line no state of the
+ * tables can redden — and all three of those assertions were in this file,
+ * reading as independent checks. They are graded by `tsc --noEmit`; the runtime
+ * statement of the same three claims is `empireVocabularyFaults`, and the
+ * membership of the four derived lists is pinned by name below.
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -46,11 +74,8 @@ import {
   ARRIVAL_LICENCE,
   EARNED_ACCELERANTS,
   EMPIRE_ACCELERANTS,
-  EMPIRE_ACCELERANT_ARRIVAL_IS_A_PARTITION,
   EMPIRE_FORBIDDEN_OUTPUTS,
   EMPIRE_OUTPUTS,
-  EMPIRE_OUTPUT_REACH_IS_A_PARTITION,
-  EMPIRE_PAYS_NO_FORBIDDEN_OUTPUT,
   IDLE_ONLY_OUTPUTS,
   OUTPUT_REACHES,
   OUTPUT_SINK,
@@ -76,6 +101,7 @@ import {
   createNpcLifter,
   elapsedFor,
   empireStateFaults,
+  empireVocabularyFaults,
   equipmentTierCost,
   idleLedger,
   idleTenureDays,
@@ -98,6 +124,7 @@ import {
   staffLevelCost,
   type AcceleratedOutput,
   type AppliedAccelerant,
+  type EmpireAccelerant,
   type EmpireLedgerEntry,
   type EmpireState,
   type EquipmentTier,
@@ -130,30 +157,149 @@ describe('a purchased accelerant does not typecheck onto a progression-reaching 
     expect(legal.map((pairing) => pairing.output).sort()).toEqual([...IDLE_ONLY_OUTPUTS].sort());
   });
 
-  it('refuses the Training IQ path at compile time — GDD §8.3B into §5.2, hazard 1', () => {
-    const bought = acceleratedOutput(
-      'gym-empire-timer-skip',
-      // @ts-expect-error — 'training-iq' feeds 'training-pace', which is
-      // progression-reaching; a store-purchase accelerant is licensed for
-      // 'idle-only' and nothing else. GDD §8.1, §8.3B, §12.3.
-      'training-iq',
+  it('refuses the Training IQ path, in both graders — GDD §8.3B into §5.2, hazard 1', () => {
+    // Two graders on one call, and it needed both. The directive is `tsc`'s: a
+    // widened `AccelerableOutput` makes it unused and the build fails. The
+    // `toThrow` is vitest's, and it is what this test did not have — the line
+    // here used to be `expect(bought.accelerant).toBe('gym-empire-timer-skip')`,
+    // which reads back the argument that was just passed in and which no state
+    // of the licence tables could change.
+    expect(() =>
+      acceleratedOutput(
+        'gym-empire-timer-skip',
+        // @ts-expect-error — 'training-iq' feeds 'training-pace', which is
+        // progression-reaching; a store-purchase accelerant is licensed for
+        // 'idle-only' and nothing else. GDD §8.1, §8.3B, §12.3.
+        'training-iq',
+      ),
+    ).toThrow(
+      /gym-empire-timer-skip arrives by store-purchase and may not accelerate training-iq, which reaches progression-reaching/,
     );
-    expect(bought.accelerant).toBe('gym-empire-timer-skip');
   });
 
-  it('refuses the physio path at compile time — GDD §5.4 into §3.5, hazard 2', () => {
+  it('refuses the physio path, in both graders — GDD §5.4 into §3.5, hazard 2', () => {
     // The second path, closed by the same edit rather than by a second check.
     // 'training-iq' and 'physio-days-saved' both declare the 'training-pace'
     // sink, so they are one row in `SINK_REACH`. There is no configuration in
     // which one compiles and the other does not, which is the property the
     // currencyProvenance precedent exists to deliver.
-    const bought = acceleratedOutput(
-      'rewarded-ad-timer-skip',
-      // @ts-expect-error — a shorter setback is training pace by another name,
-      // and a rewarded ad is the same arrival row as a purchase.
-      'physio-days-saved',
+    expect(() =>
+      acceleratedOutput(
+        'rewarded-ad-timer-skip',
+        // @ts-expect-error — a shorter setback is training pace by another name,
+        // and a rewarded ad is the same arrival row as a purchase.
+        'physio-days-saved',
+      ),
+    ).toThrow(
+      /rewarded-ad-timer-skip arrives by store-purchase and may not accelerate physio-days-saved, which reaches progression-reaching/,
     );
-    expect(bought.accelerant).toBe('rewarded-ad-timer-skip');
+  });
+
+  it('refuses the same two on `applyAccelerant`, which is the branch below', () => {
+    // `acceleratedOutput` and `applyAccelerant` are two arms of one decision
+    // and were written as two. Both now funnel through one non-generic callee
+    // so the runtime refusal cannot be present on one and absent on the other,
+    // and both are driven here rather than one being trusted to imply the
+    // other.
+    expect(() =>
+      applyAccelerant(
+        'gym-empire-timer-skip',
+        // @ts-expect-error — hazard 1 through the stamped constructor.
+        'training-iq',
+        asUnacceleratedSeconds(0),
+        EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+      ),
+    ).toThrow(/may not accelerate training-iq/);
+    expect(() =>
+      applyAccelerant(
+        'rewarded-ad-timer-skip',
+        // @ts-expect-error — hazard 2 through the stamped constructor.
+        'physio-days-saved',
+        asUnacceleratedSeconds(0),
+        EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+      ),
+    ).toThrow(/may not accelerate physio-days-saved/);
+  });
+
+  it('refuses an accelerant whose type has widened to the union, in all three spellings', () => {
+    // The defect the two directives above could not see. `AccelerableOutput<A>`
+    // is only as narrow as `A`, `A` is inferred at the CALL SITE, and
+    // `LicenceOfAccelerant<A>` is an indexed access that DISTRIBUTES over a
+    // union key — so for `A = EmpireAccelerant` the licence is every licence
+    // and the accelerable set is every output. All three spellings below
+    // compiled, with no cast and only exported API. Their domain is exactly
+    // the one the bare-literal directives never produce.
+    const viaAParameter = (accelerant: EmpireAccelerant): AppliedAccelerant =>
+      // @ts-expect-error — a union accelerant widens the licence to every
+      // output; `OneAccelerant` refuses it at the first argument.
+      applyAccelerant(accelerant, 'training-iq', asUnacceleratedSeconds(0), 1);
+
+    const viaTheModulesOwnList = (): void => {
+      for (const accelerant of EMPIRE_ACCELERANTS) {
+        // @ts-expect-error — the element type of the exported list IS the union.
+        applyAccelerant(accelerant, 'physio-days-saved', asUnacceleratedSeconds(0), 1);
+      }
+    };
+
+    const viaTheDecodePath = (wire: unknown): void => {
+      if (isEmpireAccelerant(wire)) {
+        // @ts-expect-error — the narrowing lands on the union and goes no
+        // further, and this is the exact path the runtime shadow exists for.
+        acceleratedOutput(wire, 'training-iq');
+      }
+    };
+
+    // And the runtime half, so vitest reports something for each spelling
+    // rather than three comments.
+    expect(() => viaAParameter('gym-empire-timer-skip')).toThrow(
+      /gym-empire-timer-skip arrives by store-purchase and may not accelerate training-iq/,
+    );
+    expect(viaTheModulesOwnList).toThrow(/may not accelerate physio-days-saved/);
+    expect(() => viaTheDecodePath('rewarded-ad-timer-skip')).toThrow(
+      /rewarded-ad-timer-skip arrives by store-purchase and may not accelerate training-iq/,
+    );
+
+    // Discriminating rather than firing on everything: the same widened
+    // parameter with an EARNED accelerant is legal and does not throw, and a
+    // wire value that is not an accelerant never reaches the constructor.
+    expect(() => viaAParameter('coach-staff-level')).not.toThrow();
+    expect(() => viaTheDecodePath('not-an-accelerant')).not.toThrow();
+  });
+
+  it('refuses the illegal pairing as an object literal — the fence inference cannot move', () => {
+    // `AcceleratedOutput` is the union `AppliedAccelerant` is built on. It is
+    // checked against a VALUE rather than resolved from a call site's
+    // inference, so union widening never reached it — it was the strongest
+    // fence in `empireCore.ts` and the one thing with no test at all.
+    const anyAccelerant = (index: number): EmpireAccelerant =>
+      EMPIRE_ACCELERANTS[index % EMPIRE_ACCELERANTS.length] ?? 'coach-staff-level';
+
+    // @ts-expect-error — the skip's member of the union types `output` as the
+    // idle-only subset, and no other member accepts this accelerant.
+    const boughtIq: AcceleratedOutput = {
+      accelerant: 'gym-empire-timer-skip',
+      output: 'training-iq',
+    };
+    // @ts-expect-error — and with the accelerant field typed as the whole
+    // union: TypeScript checks a union-discriminated source against every
+    // member, and the sold skip's member refuses this output.
+    const widenedIq: AcceleratedOutput = { accelerant: anyAccelerant(0), output: 'training-iq' };
+
+    // Two positive controls, so the refusals above are about the OUTPUT
+    // reaching progression rather than about object literals or unions being
+    // refused generally. Both of these compile.
+    const legal: readonly AcceleratedOutput[] = [
+      { accelerant: 'gym-empire-timer-skip', output: 'gym-bucks' },
+      { accelerant: 'coach-staff-level', output: 'training-iq' },
+      { accelerant: anyAccelerant(0), output: 'gym-bucks' },
+    ];
+
+    // The runtime half of the same three claims, so a licence widening is red
+    // here as well as in the typecheck.
+    expect(mayAccelerate(boughtIq.accelerant, boughtIq.output)).toBe(false);
+    expect(mayAccelerate(widenedIq.accelerant, widenedIq.output)).toBe(false);
+    expect(legal.every((pairing) => mayAccelerate(pairing.accelerant, pairing.output))).toBe(true);
+    expect(legal.length).toBe(3);
   });
 
   it('lets an earned accelerant reach the trickle, because §5.2 asks for that', () => {
@@ -177,6 +323,47 @@ describe('a purchased accelerant does not typecheck onto a progression-reaching 
     // accelerated one is a type error rather than a silent two-hop sale.
     const wrong = settledTenureDays(lifter, clock.accelerated);
     expect(typeof wrong).toBe('number');
+    // The two readings differ, so the refusal above is about a brand rather
+    // than about two names for one number.
+    expect(Number(clock.accelerated)).not.toBe(Number(clock.unaccelerated));
+  });
+
+  it('refuses a re-brand, which is how the argument list above was walked around', () => {
+    // Every brand here IS its primitive, so `AcceleratedSeconds` is a `number`
+    // and `asUnacceleratedSeconds` took a `number`. That made the fence in the
+    // test above one call wide:
+    //
+    //     settledTenureDays(lifter, asUnacceleratedSeconds(clock.accelerated))
+    //
+    // compiled clean and fed the purchase-moved clock straight into the
+    // Training IQ tenure term. It is a type error now, and so is every sibling
+    // of it — the guard is one `Unbranded<N>` applied to all nine constructors
+    // rather than to the one that was noticed.
+    const clock = createEmpireClock(1000, 500);
+    const lifter = createNpcLifter('a', 'novice', 'Placeholder', 0, 0);
+
+    // @ts-expect-error — hazard 2 in one expression: an accelerated reading
+    // re-branded as wall time.
+    const laundered = asUnacceleratedSeconds(clock.accelerated);
+    // @ts-expect-error — the sibling direction, applied mechanically.
+    const alsoLaundered = asAcceleratedSeconds(clock.unaccelerated);
+    // @ts-expect-error — and the string brand, so the ban is not numeric-only.
+    const reIded = asNpcId(lifter.id);
+
+    // Runtime: the constructors still mint, so these are the same numbers. The
+    // refusal is entirely at the argument list, which is what makes it worth
+    // asserting that they ARE the same numbers — a reader should not think the
+    // ban is doing arithmetic.
+    expect(Number(laundered)).toBe(Number(clock.accelerated));
+    expect(Number(alsoLaundered)).toBe(Number(clock.unaccelerated));
+    expect(String(reIded)).toBe(String(lifter.id));
+
+    // The stated limit, driven rather than described: arithmetic launders, and
+    // no signature can see it. This compiles, deliberately, and E6's
+    // element-wise ledger comparison is what covers it.
+    const throughArithmetic = asUnacceleratedSeconds(Number(clock.accelerated) + 0);
+    expect(Number(throughArithmetic)).toBe(Number(clock.accelerated));
+    expect(Number(throughArithmetic)).not.toBe(Number(clock.unaccelerated));
   });
 
   it('refuses a bare number where a settled level is required', () => {
@@ -201,7 +388,28 @@ describe('the reach and licence tables are exhaustive and cannot disagree', () =
     for (const sink of OUTPUT_SINKS) {
       expect(OUTPUT_REACHES).toContain(SINK_REACH[sink]);
     }
-    expect(EMPIRE_OUTPUT_REACH_IS_A_PARTITION).toBe(true);
+    // This line was `expect(EMPIRE_OUTPUT_REACH_IS_A_PARTITION).toBe(true)`.
+    // That constant is the literal `true` and its type is a tautology by
+    // construction — `ProgressionReachingOutput` is defined as an `Exclude`, so
+    // both `extends [never]` branches resolve whatever the tables say. Flipping
+    // `SINK_REACH['training-pace']` to `'idle-only'`, the single edit
+    // `empireCore.ts` itself calls out as the one that opens both hazards, left
+    // it green in vitest AND in tsc.
+    //
+    // What reddens on that edit is membership, so membership is what is pinned.
+    // It is the derived lists that are pinned, not a second source of truth:
+    // `IdleOnlyOutput` is still the mapped filter and nothing reads these.
+    expect([...PROGRESSION_REACHING_OUTPUTS].sort()).toEqual([
+      'physio-days-saved',
+      'training-iq',
+    ]);
+    expect([...IDLE_ONLY_OUTPUTS].sort()).toEqual([
+      'cosmetic-unlock',
+      'gym-bucks',
+      'reputation',
+      'roster-slot',
+    ]);
+    expect(empireVocabularyFaults()).toEqual([]);
   });
 
   it('gives every accelerant an arrival and every arrival a licence', () => {
@@ -215,7 +423,33 @@ describe('the reach and licence tables are exhaustive and cannot disagree', () =
       expect(licence.length, `${arrival} licenses nothing`).toBeGreaterThan(0);
       for (const reach of licence) expect(OUTPUT_REACHES).toContain(reach);
     }
-    expect(EMPIRE_ACCELERANT_ARRIVAL_IS_A_PARTITION).toBe(true);
+    // The branch immediately below the one above, and it was written the same
+    // way and was vacuous for the same reason. `EarnedAccelerant` is an
+    // `Exclude`, so re-tagging the sold skip as `'gym-progress'` — which is
+    // precisely how §12.3's first refusal condition would ship — moved a member
+    // from one half to the other and left the partition, and the assertion that
+    // used to be here, perfectly green.
+    expect([...PURCHASABLE_ACCELERANTS].sort()).toEqual([
+      'gym-empire-timer-skip',
+      'rewarded-ad-timer-skip',
+    ]);
+    expect([...EARNED_ACCELERANTS].sort()).toEqual([
+      'coach-staff-level',
+      'reputation-tier',
+      'space-level',
+    ]);
+  });
+
+  it('publishes what each arrival is licensed to touch, by name', () => {
+    // The licence table read through the helper the runtime uses. Adding
+    // `'progression-reaching'` to the `'store-purchase'` row — the one-word
+    // edit `empireCore.ts` is arranged around — reddens the first two lines.
+    expect([...accelerantLicence('gym-empire-timer-skip')]).toEqual(['idle-only']);
+    expect([...accelerantLicence('rewarded-ad-timer-skip')]).toEqual(['idle-only']);
+    expect([...accelerantLicence('coach-staff-level')].sort()).toEqual([
+      'idle-only',
+      'progression-reaching',
+    ]);
   });
 
   it('makes hazard 1 and hazard 2 one row, not two', () => {
@@ -227,15 +461,17 @@ describe('the reach and licence tables are exhaustive and cannot disagree', () =
     const onTrainingPace = EMPIRE_OUTPUTS.filter(
       (output) => OUTPUT_SINK[output] === 'training-pace',
     );
-    // Not vacuous: "closing one closes both" is about two things.
-    expect(onTrainingPace.length).toBeGreaterThanOrEqual(2);
+    // Counts, not bounds — this file's own rule, applied to the two lines that
+    // were written as bounds. "Closing one closes both" is about exactly two
+    // things on each axis, and a third arriving is a decision somebody signs.
+    expect(onTrainingPace.length).toBe(2);
     expect(onTrainingPace).toContain('training-iq');
     expect(onTrainingPace).toContain('physio-days-saved');
     // And the same for the two purchased accelerants.
     expect(ACCELERANT_ARRIVAL['gym-empire-timer-skip']).toBe(
       ACCELERANT_ARRIVAL['rewarded-ad-timer-skip'],
     );
-    expect(PURCHASABLE_ACCELERANTS.length).toBeGreaterThanOrEqual(2);
+    expect(PURCHASABLE_ACCELERANTS.length).toBe(2);
   });
 
   it('partitions both axes, and no half is empty', () => {
@@ -261,18 +497,34 @@ describe('the reach and licence tables are exhaustive and cannot disagree', () =
   });
 
   it('walks the whole cross product rather than the pairs somebody thought of', () => {
-    // The guard written for one arm applied to its sibling mechanically: every
-    // accelerant against every output, derived from the tables rather than
-    // listed. `mayAccelerate` and the two derived lists have to agree on all
-    // of them.
+    // The oracle here used to be
+    //
+    //     accelerantLicence(accelerant).includes(outputReach(output))
+    //
+    // which is `mayAccelerate`'s body character for character. No edit to any
+    // of the four tables could make the two sides disagree, because both sides
+    // were the same two lookups; only an edit to `mayAccelerate` itself
+    // reddened it, and `mayAccelerate` is not the subject the §12.3 guarantee
+    // is about. The whole test was carried by the count pins at the bottom.
+    //
+    // The oracle below states the RULE instead: a purchase may not touch
+    // anything that reaches Sim progression. It reads `ACCELERANT_ARRIVAL` and
+    // the sink tables and does NOT read `ARRIVAL_LICENCE`, so widening the
+    // store-purchase licence — the §12.3 edit — makes the two sides disagree
+    // on four pairs and this goes red.
+    //
+    // What it is blind to, stated rather than left for the next reader: an
+    // edit to `SINK_REACH` moves both sides together, because both ask what an
+    // output reaches. That edit is caught by the membership pin two tests
+    // above, and by nothing here.
     let refused = 0;
     let allowed = 0;
     for (const accelerant of EMPIRE_ACCELERANTS) {
       for (const output of EMPIRE_OUTPUTS) {
-        const expected = accelerantLicence(accelerant).includes(outputReach(output));
-        expect(mayAccelerate(accelerant, output), `${accelerant} -> ${output}`).toBe(expected);
-        if (expected) allowed += 1;
-        else refused += 1;
+        const banned = isPurchasableAccelerant(accelerant) && isProgressionReachingOutput(output);
+        expect(mayAccelerate(accelerant, output), `${accelerant} -> ${output}`).toBe(!banned);
+        if (banned) refused += 1;
+        else allowed += 1;
       }
     }
     // Counts, not bounds, so an empty domain reports itself. Five accelerants
@@ -284,30 +536,56 @@ describe('the reach and licence tables are exhaustive and cannot disagree', () =
   });
 
   it('refuses every purchased accelerant on every progression-reaching output', () => {
+    // The branch immediately below the one whose oracle was just rewritten,
+    // and it had the same shape of hole: two nested loops with no count on
+    // either, so emptying `PROGRESSION_REACHING_OUTPUTS` would have made the
+    // inner one walk nothing and pass.
+    let bannedPairs = 0;
+    let stillSellable = 0;
     for (const accelerant of PURCHASABLE_ACCELERANTS) {
       for (const output of PROGRESSION_REACHING_OUTPUTS) {
         expect(mayAccelerate(accelerant, output), `${accelerant} -> ${output}`).toBe(false);
+        bannedPairs += 1;
       }
       // And it may still touch the idle economy, so the sale is a real sale.
       expect(
         IDLE_ONLY_OUTPUTS.every((output) => mayAccelerate(accelerant, output)),
         `${accelerant} may accelerate nothing at all`,
       ).toBe(true);
+      stillSellable += 1;
     }
+    expect(bannedPairs).toBe(4);
+    expect(stillSellable).toBe(2);
   });
 
   it('names no forbidden output among the payable ones', () => {
-    expect(EMPIRE_PAYS_NO_FORBIDDEN_OUTPUT).toBe(true);
+    // This line was `expect(EMPIRE_PAYS_NO_FORBIDDEN_OUTPUT).toBe(true)`. That
+    // constant is declared FROM the literal `true`, so under vitest no state of
+    // the tables changed what it read — it does bite under `tsc --noEmit`, and
+    // it reads here as a fourth independent runtime check that it never was.
+    // `empireVocabularyFaults` walks the same claim off the tables, and the
+    // loop below is the other honest half.
+    expect(empireVocabularyFaults()).toEqual([]);
     // Named rather than absent: GDD §8.3E's condition 3 rules out "true by the
     // current absence of a code path", and §8.2's own history is that a tender
     // list kept achievement Chalk out by having no word for it.
     expect(EMPIRE_FORBIDDEN_OUTPUTS).toContain('covered-day');
     expect(EMPIRE_FORBIDDEN_OUTPUTS).toContain('chalk');
-    expect(EMPIRE_FORBIDDEN_OUTPUTS.length).toBeGreaterThan(0);
+    // Counts, not bounds — the sibling correction, applied to the line that
+    // guarded this loop's domain with `toBeGreaterThan(0)`.
+    expect([...EMPIRE_FORBIDDEN_OUTPUTS].sort()).toEqual([
+      'chalk',
+      'competition-total',
+      'covered-day',
+      'e1rm',
+    ]);
+    let walked = 0;
     for (const forbidden of EMPIRE_FORBIDDEN_OUTPUTS) {
       expect(EMPIRE_OUTPUTS as readonly string[], forbidden).not.toContain(forbidden);
       expect(isEmpireOutput(forbidden), `${forbidden} decoded as a payable output`).toBe(false);
+      walked += 1;
     }
+    expect(walked).toBe(4);
   });
 
   it('lets a name mislead nobody — the sink is what decides it', () => {
@@ -870,6 +1148,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // Randomness in particular is GDD §12.3's second refusal condition: §5.3's
     // recruitment is deterministic, so the language of chance is banned from
     // the whole directory rather than reviewed per function.
+    //
+    // `seed`, `weight` and `distribution` are here because `empireTuning.ts`
+    // says in prose that "there is no seed, no weight and no distribution
+    // anywhere in this file" and only `weightedPick` was banned — two thirds of
+    // that sentence had nothing behind it.
     const banned: readonly RegExp[] = [
       /\bDate\b/,
       /\bperformance\s*\./,
@@ -877,6 +1160,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       /\brandom\b/i,
       /\bshuffle\b/i,
       /\bweightedPick\b/i,
+      /\bweight/i,
+      /\bseed\b/i,
+      /\bdistribution\b/i,
+      /\bprobability\b/i,
+      /\brarity\b/i,
       /\bgacha\b/i,
       /\bfetch\s*\(/,
       /\bprocess\b/,
@@ -885,6 +1173,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       /\blocalStorage\b/,
       /from ['"]react/,
     ];
+    let scanned = 0;
     for (const name of shipped) {
       const source = readFileSync(path.join(HERE, name), 'utf8');
       const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
@@ -895,7 +1184,140 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       for (const pattern of banned) {
         expect(code, `${name} must not reach ${String(pattern)}`).not.toMatch(pattern);
       }
+      scanned += 1;
     }
+    // Counts, not bounds: how many files and how many patterns actually ran.
+    expect(scanned).toBe(2);
+    expect(banned.length).toBe(18);
+    // And the patterns are not all dead letters: each one is driven against a
+    // string that should trip it, derived from the pattern's own purpose, so a
+    // regex that stopped matching anything is red rather than quietly green.
+    const tripwires: readonly string[] = [
+      'const now = Date.now();',
+      'performance . now()',
+      'Math.random()',
+      'const r = random();',
+      'shuffle(list)',
+      'weightedPick(list)',
+      'const w = weights[0];',
+      'const seed = 7;',
+      'const distribution = [];',
+      'const probability = 0.5;',
+      'const rarity = 3;',
+      'gacha()',
+      'fetch (url)',
+      'process.env',
+      'window.alert',
+      'document.body',
+      'localStorage.getItem',
+      "import x from 'react';",
+    ];
+    expect(tripwires.length).toBe(banned.length);
+    for (const [index, pattern] of banned.entries()) {
+      expect(tripwires[index], `pattern ${String(pattern)} matches nothing`).toMatch(pattern);
+    }
+  });
+
+  it('ships no string a real name could be hiding in, and pins the ones it does ship', () => {
+    // GDD §12.3 refuses a real, named athlete, brand or company in any string
+    // or code path, and `empireTuning.ts` claims in prose that no lifter, gym,
+    // sponsor, federation or equipment-brand name appears in it. That sentence
+    // had no scan behind it, which is the condition CLAUDE.md says produces the
+    // next defect.
+    //
+    // What this catches, and what it does not. No scan can tell a real name from
+    // an invented one — that is the human, name-by-name pass §12.3 asks for on
+    // every piece. What these two halves do is make a name ARRIVING visible:
+    // the first pins every space-free literal in the shipped modules exactly,
+    // so a new vocabulary token is a decision somebody signs rather than a diff
+    // nobody reads; the second bans a `Capitalised Capitalised` pair anywhere,
+    // which is the shape a person's name takes inside a message, where the
+    // first half does not look. Neither half adjudicates. Both make the
+    // adjudication happen.
+    const literals = new Set<string>();
+    let filesRead = 0;
+    for (const name of shipped) {
+      const source = readFileSync(path.join(HERE, name), 'utf8');
+      const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+      for (const match of code.matchAll(/'([^'\\\n]*)'/g)) literals.add(match[1] as string);
+      filesRead += 1;
+    }
+    expect(filesRead).toBe(2);
+    // Counts before contents, so an empty domain reports itself rather than
+    // making the pin below a comparison of two empty lists.
+    expect(literals.size).toBe(64);
+
+    const spaceFree = [...literals].filter((literal) => !literal.includes(' ')).sort();
+    expect(spaceFree).toEqual([
+      './empireTuning',
+      'accelerated-seconds',
+      'acceleratedSeconds',
+      'bare-bar',
+      'budget',
+      'chalk',
+      'club',
+      'coach',
+      'coach-staff-level',
+      'comp-plates',
+      'competition-total',
+      'cosmetic-unlock',
+      'cosmetics',
+      'covered-day',
+      'e1rm',
+      'elapsedSeconds',
+      'global',
+      'gym-bucks',
+      'gym-economy',
+      'gym-empire-timer-skip',
+      'gym-progress',
+      'gymBucks',
+      'idle-only',
+      'injury-days-saved',
+      'injuryDaysSaved',
+      'knob',
+      'legendary',
+      'monolift',
+      'national',
+      'novice',
+      'npc-id',
+      'physio',
+      'physio-days-saved',
+      'progression-reaching',
+      'refusal',
+      'regional',
+      'reputation',
+      'reputation-tier',
+      'rewarded-ad-timer-skip',
+      'roster-slot',
+      'settled-level',
+      'skippedSeconds',
+      'space-level',
+      'specialty-bars',
+      'spotter',
+      'store-purchase',
+      'structural',
+      'tenure-days',
+      'tenureDays',
+      'training-iq',
+      'training-pace',
+      'trainingIq',
+      'unaccelerated-seconds',
+      'unacceleratedSeconds',
+    ]);
+
+    // The half the pin does not reach: a multi-word name inside a message.
+    const personShaped = /\b[A-Z][a-z]+ [A-Z][a-z]+\b/;
+    let messagesChecked = 0;
+    for (const literal of literals) {
+      expect(personShaped.test(literal), `${literal} is shaped like a person's name`).toBe(false);
+      messagesChecked += 1;
+    }
+    expect(messagesChecked).toBe(literals.size);
+    // The pattern is not a dead letter. The probe is a plainly invented name,
+    // which is what §12.3 asks the licensing system to carry until a human
+    // unlocks a real partner.
+    expect(personShaped.test('lifted by Placeholder Lifter')).toBe(true);
+    expect(personShaped.test('bare-bar')).toBe(false);
   });
 
   it('imports nothing outside this directory', () => {
@@ -932,9 +1354,19 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // And the instrument is not blind: audited under its real path it reports
     // its literals, which is the tree-wide failure this piece expects until
     // the row lands.
+    //
+    // Pinned rather than bounded, which is this block's own house rule and was
+    // broken on exactly this line. `toBeGreaterThan(0)` against a file carrying
+    // roughly ninety literals is satisfied by two orders of magnitude, so every
+    // mutation short of emptying the tuning block left it green — while the
+    // probe on the next line, its own sibling, already pinned an exact count.
     const asShipped = auditSource('src/empire/empireTuning.ts', tuning);
-    expect(asShipped.length, 'the audit reports nothing, so the two checks above prove nothing')
-      .toBeGreaterThan(0);
+    expect(
+      asShipped.length,
+      'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
+        'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
+        `pass. First finding: ${formatFindings(asShipped.slice(0, 1)).trim()}`,
+    ).toBe(87);
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });
 });
