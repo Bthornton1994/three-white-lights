@@ -220,6 +220,12 @@ function main(argv) {
     console.log(`${finding.kind.padEnd(11)} ${row.file} > ${row.title.slice(0, 60)} — ${detail}`);
   }
   console.log(`[budgets] ${findings.length} finding(s)`);
+  console.log(
+    '[budgets] a THIN or UNDECLARED row read from a SHARED box is partly a reading of\n' +
+      '          the sharing: durations here inflate about twofold at load average 8 on\n' +
+      '          four cores. The basis a call site records is the work, and the factor is\n' +
+      '          what covers the load — so re-take on an idle box before raising one.',
+  );
   return 1;
 }
 

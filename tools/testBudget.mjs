@@ -153,6 +153,31 @@
  * A sweep is never shrunk to fit a clock. Every one of them carries a GDD §12.3
  * measurement, and trading that for a timeout would be trading evidence for
  * speed.
+ *
+ * ===========================================================================
+ * WHAT THIS WAS VERIFIED AGAINST, AND HOW CLOSE IT CAME
+ * ===========================================================================
+ * Three whole-suite runs at `4d7686b`, 78 files / 3205 tests, all green, zero
+ * timeouts. The percentages are of the UNSCALED budget — what the rule gives
+ * with the contention scale pinned at 1 — so they are the margin the fixed
+ * factor holds on its own, and the scale is on top of that:
+ *
+ *   idle, load avg 1.4          430s wall   worst test 26% of its budget
+ *   one other session, avg 3.8  503s wall   worst test 43%
+ *   two burners + a rolling
+ *   suite, load avg 9.5         714s wall   worst test 66%
+ *
+ * The two closest under load are `streakEntitlement`'s window-boundary sweep
+ * (52493 ms of 80000) and its every-fundable-tender sweep (45826 of 70000).
+ * The largest test in the tree, `engagement`'s rotation-phase sweep, went
+ * 35698 -> 90510 ms across those three runs, which is the 2.5x this is for.
+ *
+ * The wall-time cost of all this is nothing: 430s idle against 440s before it.
+ * The other repair that was considered — serialising the suite so durations
+ * stop depending on neighbours — costs the difference between the wall clock
+ * and the sum of the test times, which those runs measure at 430s versus 740s
+ * idle and 714s versus 1462s loaded. It also does not touch the between-session
+ * case, because the load that matters then is not this suite's.
  */
 
 export const SWEEP_BUDGET = Object.freeze({
