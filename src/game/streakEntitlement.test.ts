@@ -1102,7 +1102,7 @@ const PURCHASED_DAY_SCAN = {
    * `readdirSync` that returned nothing would leave that test comparing two
    * empty sets — CLAUDE.md's "an empty domain" shape, exactly.
    */
-  SOURCE_DIRECTORIES: 12,
+  SOURCE_DIRECTORIES: 13,
 
   /**
    * The files that currently contain at least one matching declaration, as

@@ -1525,8 +1525,8 @@ export const MEET_SOUND_IDS = Object.freeze(
  */
 export const MEET_LOCAL: MeetDefinition = Object.freeze({
   id: 'local-open-2026',
-  federation: 'Northern Barbell Federation',
-  name: 'Northern Open',
+  federation: 'Cragmoor Barbell Federation',
+  name: 'Cragmoor Open',
   dateIso: '2026-08-15',
   town: 'Sheffield',
   state: '',

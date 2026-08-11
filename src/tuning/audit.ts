@@ -276,6 +276,16 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     why: 'Screen chrome for meet day, built on LIFT_PALETTE. It carries no plate colours any more: the walkout draws the SPRITE\u2019s bar (src/meet/meetHall.ts), so a competition disc is coloured once, in src/art/palette.ts, rather than in two colour spaces that could drift.',
   }),
 
+  // The Career calendar (GDD §2.1, §6.1). A `feel` home: the tier ladder's
+  // cadence and how far ahead a meet is visible are judgements that need a
+  // thumb on a phone. QUALIFYING_TOTAL_KG_BY_TIER is classified `design-table`
+  // in place and disclaimed there — it is a difficulty threshold, not published
+  // domain data, and src/game/dots.ts holds the real coefficients.
+  'src/career/careerTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'CAREER_TUNING / CAREER_TUNING_CLASSIFICATION — GDD §6.1\'s local -> regional -> nationals -> worlds ladder, the qualifying-total table, the federation catalogue and the calendar cadence. Every entry carries a machine-checked class.',
+  }),
   // --- feel blocks that live with their mechanic ---------------------------
   // Registered rather than moved: each is already a single named, frozen,
   // documented block, and `src/tuning/index.ts` re-exports it, so it is

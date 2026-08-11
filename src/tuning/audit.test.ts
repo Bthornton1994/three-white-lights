@@ -960,6 +960,7 @@ describe('the registered allowlist', () => {
         // home: an idle economy is nothing but rates, and §5.1's "rewards
         // check-ins without punishing a 10-hour gap" is a balance point
         // somebody settles by playing.
+        'src/career/careerTuning.ts',
         'src/empire/empireTuning.ts',
         'src/art/lifterSprite.ts',
         'src/art/palette.ts',

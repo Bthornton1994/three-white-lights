@@ -382,7 +382,7 @@ describe('nothing this directory ships names anybody real', () => {
     //
     // Reddens on: adding, removing or renaming a federation or a meet title.
     expect(CAREER_FEDERATIONS.map((federation) => federation.name)).toEqual([
-      'Northern Barbell Federation',
+      'Cragmoor Barbell Federation',
       'Tarnwick Powerlifting Union',
       'Sablecoast Strength Alliance',
       'Brackwater Barbell League',
@@ -495,10 +495,10 @@ describe('the seams into src/game/', () => {
     // failure is the useful part — a rename there should be a rename here, and
     // this is the only thing that says so, since nothing imports across.
     const meetTuning = readFileSync(MEET_TUNING_PATH, 'utf8');
-    expect([...meetTuning.matchAll(/federation: 'Northern Barbell Federation'/g)].length).toBe(1);
-    expect([...meetTuning.matchAll(/name: 'Northern Open'/g)].length).toBe(1);
-    expect(FED_A.name).toBe('Northern Barbell Federation');
-    expect(careerMeetName(FED_A.id, 'local')).toBe('Northern Open');
+    expect([...meetTuning.matchAll(/federation: 'Cragmoor Barbell Federation'/g)].length).toBe(1);
+    expect([...meetTuning.matchAll(/name: 'Cragmoor Open'/g)].length).toBe(1);
+    expect(FED_A.name).toBe('Cragmoor Barbell Federation');
+    expect(careerMeetName(FED_A.id, 'local')).toBe('Cragmoor Open');
   });
 
   it('keeps the lifter free of anything a player does daily', () => {

@@ -251,7 +251,7 @@ describe('the real-IP audit has something to audit', () => {
     // The invented federation from the meet tuning block — the exact field
     // `meetTuning.test.ts` checks by hand against five names, reached here
     // through the whole registry and checked against the whole watchlist.
-    expect(values).toContain('Northern Barbell Federation');
+    expect(values).toContain('Cragmoor Barbell Federation');
     // A Tier 2 name tag.
     expect(values).toContain('Ninebar Athletic');
     // A Tier 3 caption, which lives BEHIND THE SYMBOL and is only reachable

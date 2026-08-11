@@ -340,7 +340,7 @@ export function careerFederation(id: string): CareerFederation | null {
  * What a meet at this tier under this federation is called.
  *
  * The federation's `meetPrefix` and the tier's title, so the first federation
- * at `local` is "Northern Open" — the name `MEET_LOCAL` already ships.
+ * at `local` is "Cragmoor Open" — the name `MEET_LOCAL` already ships.
  */
 export function careerMeetName(federationId: string, tier: CareerTier): string {
   const federation = careerFederation(federationId);

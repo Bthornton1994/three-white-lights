@@ -169,14 +169,14 @@ export const CAREER_TUNING = Object.freeze({
    * counting to four here.
    *
    * `meetPrefix` is the word a meet's name is built from, so
-   * "Northern Barbell Federation" runs the "Northern Open". It is a separate
+   * "Cragmoor Barbell Federation" runs the "Cragmoor Open". It is a separate
    * field rather than the first word of `name` because a federation whose
    * meets are named after something other than its first word is an ordinary
    * thing and splitting it later would be a data migration.
    *
    * On the first row specifically: `MEET_LOCAL` in `src/game/meetTuning.ts`
-   * already ships `federation: 'Northern Barbell Federation'` and
-   * `name: 'Northern Open'`, invented there on purpose — its own comment cites
+   * already ships `federation: 'Cragmoor Barbell Federation'` and
+   * `name: 'Cragmoor Open'`, invented there on purpose — its own comment cites
    * GDD §11 leaving real-federation licensing open. This row is the same two
    * strings so the one meet the prototype ships has a home on the ladder
    * rather than belonging to a federation the Career screen has never heard
@@ -186,9 +186,9 @@ export const CAREER_TUNING = Object.freeze({
    */
   FEDERATIONS: Object.freeze([
     {
-      id: 'northern-barbell-federation',
-      name: 'Northern Barbell Federation',
-      meetPrefix: 'Northern',
+      id: 'cragmoor-barbell-federation',
+      name: 'Cragmoor Barbell Federation',
+      meetPrefix: 'Cragmoor',
       equipment: 'raw',
       testing: 'tested',
     },
@@ -221,7 +221,7 @@ export const CAREER_TUNING = Object.freeze({
    * Generic competition descriptors, deliberately: "Open" and "National
    * Championships" are what the events are, not what anybody has named them.
    * The `local` entry is `'Open'` so that the first row of `FEDERATIONS`
-   * produces "Northern Open", which is the name `MEET_LOCAL` already ships.
+   * produces "Cragmoor Open", which is the name `MEET_LOCAL` already ships.
    */
   MEET_TITLE_BY_TIER: Object.freeze({
     local: 'Open',

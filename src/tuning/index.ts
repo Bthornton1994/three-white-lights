@@ -129,6 +129,7 @@ import { SHEET, SHEET_BANK } from '../card/sheetPalette';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { SESSION_PALETTE } from '../session/sessionPalette';
 import { MEET_PALETTE } from '../meet/meetPalette';
+import { CAREER_TUNING, CAREER_TUNING_CLASSIFICATION } from '../career/careerTuning';
 import { EMPIRE_TUNING, EMPIRE_TUNING_CLASSIFICATION } from '../empire/empireTuning';
 
 /**
@@ -372,6 +373,15 @@ export const TUNING = Object.freeze({
    * classification is what stops that invitation reaching a value that is not
    * a knob.
    */
+  /**
+   * THE CAREER CALENDAR (GDD §2.1, §6.1). The tier ladder's cadence, how far
+   * ahead a meet is visible, and the gap between entries.
+   *
+   * `CAREER_TUNING_CLASSIFICATION` says which entries are knobs. The qualifying
+   * totals are `design-table` — a difficulty threshold rather than published
+   * data — and are disclaimed in place.
+   */
+  career: Object.freeze({ CAREER_TUNING, CAREER_TUNING_CLASSIFICATION }),
   empire: Object.freeze({ EMPIRE_TUNING, EMPIRE_TUNING_CLASSIFICATION }),
 });
 
@@ -412,6 +422,7 @@ export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Obj
   licensing: 'src/licensing/licensingTuning.ts',
   cutIn: 'src/cutin/cutInTuning.ts',
   shell: 'src/shell/shellTuning.ts',
+  career: 'src/career/careerTuning.ts',
   empire: 'src/empire/empireTuning.ts',
 });
 
