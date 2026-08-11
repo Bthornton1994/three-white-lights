@@ -1038,6 +1038,30 @@
  *         `sealServerValue(build())` reads as unsealed here and is not. Narrow
  *         in the safe direction, and a site written that way should move its
  *         call rather than widen this.
+ *   (v)   THE NODE SUITE CANNOT OBSERVE THE SEAL WORKING AT ALL, measured
+ *         rather than argued. The historical defect was replanted verbatim —
+ *         a mutable alias taken off `response.wire.bestE1rmKg` in
+ *         `useSession.ts` and written through, which needs NO cast because
+ *         property `readonly` is not part of assignability, and which left
+ *         `tsc --noEmit` at exit 0. THE WHOLE SUITE STAYED GREEN AT 2812/2812.
+ *         Not because the seal failed — because `vitest.config.ts` is
+ *         `environment: node`, nothing renders the hook, and that `.then` never
+ *         runs in a test.
+ *
+ *         THE SEAL ITSELF HELD, and that is the good news: the write THREW on
+ *         a frozen object instead of landing, so the 485.0-against-220 kg
+ *         outcome recorded above is no longer reachable. The capability is
+ *         genuinely removed rather than merely watched.
+ *
+ *         What the browser saw is the part worth keeping. `verify-shell-route`
+ *         went to 3 of 147 — and none of the three names a seal. They read
+ *         `still e1rm="SAVING", streak="SAVING" after 15000ms` and
+ *         `it offered a SECOND SESSION of the same day — the server's answer
+ *         never landed`, because the throw killed the promise handler. So a
+ *         future instance of this defect presents as a MYSTERIOUS HANG in a
+ *         browser tool, with the node suite silent, and nothing anywhere says
+ *         "someone wrote into a sealed wire". Diagnosis is left to whoever
+ *         reads this paragraph.
  * Item (iii) was not on this list until it was written down, and neither was
  * the defeat above; the sentence that used to sit here named two residuals and
  * implied the rest was covered.

@@ -84,3 +84,29 @@ public/canvaskit.wasm
 # must be gradeable rather than regenerable — and it is the record that dates
 # WHICH build was played, which no amount of re-running recovers after the fact.
 !.gauntlet/shots/cutin-cap/
+
+# And the meet SOUND run, which is the only record of the half of GDD §12.2's
+# bar — "pacing AND sound" — that no screenshot can hold. `sound.json` carries
+# the wall-clock instant every cue reached the audio layer, per beat, with each
+# file's own decoded length, so it is the only artifact that can show a cue
+# firing again while the last copy is still sounding.
+#
+# It was untracked for the round in which it found exactly that: five 180ms
+# rattles inside 149ms, from a bar-load loop asking for one every 90. A finding
+# that lives only in a console someone happened to read is the same failure mode
+# as an undatable screenshot, one channel over.
+#
+# THE RECORD, AND NOT THE DIRECTORY — which is where this one differs from the
+# three above, on their own stated reason rather than on their form. Each of
+# those tracks a dated record plus the pictures that record describes. This
+# directory is shared by two tools: `sound.json` is the dated record
+# (`capturedFrom`, per-check `failures`, a `REQUIRED_SHOT_RECORDS` row), and
+# `capture-meet.mjs`'s 21 PNGs and `frames.json` are the other tool's raw dump —
+# no `capturedFrom`, no checks, in no required list, checked by nothing. A
+# directory-wide negation here tracked the record and un-ignored the dump, so
+# `git status` was never empty again and every evidence bundle from then on
+# stamped DIRTY. That is the staleness instrument grading itself unusable, which
+# costs more than the 900K it saves.
+!.gauntlet/shots/meet/
+.gauntlet/shots/meet/*
+!.gauntlet/shots/meet/sound.json

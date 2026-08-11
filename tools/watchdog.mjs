@@ -62,6 +62,8 @@
  *     a second forever and finishes inside the budget passes.
  */
 import { spawn, execFileSync } from 'node:child_process';
+import { readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
 
 const argv = process.argv.slice(2);
 const has = (flag) => argv.includes(flag);
@@ -72,6 +74,171 @@ const valueOf = (flag, dflt) => {
 
 /** Minutes after which a branch with no new commit is reported. */
 const DEFAULT_STALE_MINUTES = 45;
+
+/**
+ * THE BRANCH SCAN ABOVE CANNOT SEE A BUILDER THAT HAS NOT COMMITTED YET, AND
+ * THAT IS THE DEAD-AGENT PROBLEM INVERTED.
+ *
+ * `--branches` ages a branch by its last commit, which is the right signal once
+ * a commit exists. It has nothing to age when none does. A builder dispatched
+ * and killed in its first minutes leaves a branch sitting exactly at the base
+ * commit — an ancestor of HEAD, so `isMerged` filters it out — and the tool
+ * prints "0 unmerged branches" and its own vacuous-pass note. Which was
+ * literally true and completely uninformative with two builders live.
+ *
+ * A WORKTREE IS THE TRACE THAT SURVIVES. It is created at dispatch, before any
+ * work happens, and it outlives the agent, the container's notification and the
+ * task list. So it is available exactly in the window the commit is not.
+ *
+ * WHAT THIS DELIBERATELY CANNOT TELL YOU, declared rather than implied: a
+ * worktree whose branch adds nothing to HEAD is EITHER a dispatched agent that
+ * has produced nothing yet OR a finished one whose work was merged and whose
+ * directory nobody pruned. Those two are indistinguishable from the refs alone,
+ * and this run has ~25 of the second kind lying around. The age is the reader's
+ * discriminator, not the tool's: a young one is probably an agent working, an
+ * hour-old one with nothing in it is probably dead, and a six-day-old one is
+ * almost certainly just litter. It reports the set and says which is which is
+ * not its call.
+ */
+function silentWorktrees(git, head, now, archiveShas) {
+  let raw;
+  try {
+    raw = git(['worktree', 'list', '--porcelain']);
+  } catch {
+    return []; // not fatal; the branch scan is the primary signal
+  }
+  const out = [];
+  let cur = null;
+  for (const line of `${raw}\n`.split('\n')) {
+    if (line.startsWith('worktree ')) cur = { path: line.slice('worktree '.length), branch: null, sha: null };
+    else if (line.startsWith('HEAD ') && cur) cur.sha = line.slice('HEAD '.length);
+    else if (line.startsWith('branch ') && cur) cur.branch = line.slice('branch '.length).replace('refs/heads/', '');
+    else if (line === '' && cur) {
+      out.push(cur);
+      cur = null;
+    }
+  }
+  const main = out[0]?.path ?? null;
+  const rows = [];
+  for (const w of out) {
+    if (w.path === main || w.sha === null) continue;
+    // Adds nothing to HEAD => the branch scan above already ignored it.
+    let addsNothing = false;
+    try {
+      execFileSync('git', ['merge-base', '--is-ancestor', w.sha, head], { stdio: 'ignore' });
+      addsNothing = true;
+    } catch (error) {
+      if (!error || error.status !== 1) throw new Error(`--is-ancestor ${w.sha} HEAD failed: ${String(error)}`);
+    }
+    if (!addsNothing) continue;
+    let ageMin = null;
+    try {
+      ageMin = (now - Math.floor(statSync(w.path).mtimeMs / 1000)) / 60;
+    } catch {
+      ageMin = null; // directory gone — the rewind does this
+    }
+    // DIRTY IS THE DISCRIMINATOR AGE IS NOT, and it was learned the hard way:
+    // 27 of these were about to be swept as litter, and four held uncommitted
+    // SOURCE edits from agents killed mid-flight — work that is in no commit,
+    // on no branch, and on no remote. Age said nothing about which four; two of
+    // them were the same age as neighbours that held nothing.
+    let dirty = null;
+    let dirtyPaths = [];
+    try {
+      const status = execFileSync('git', ['-C', w.path, 'status', '--porcelain'], { encoding: 'utf8' });
+      const lines = status.trim() === '' ? [] : status.trim().split('\n');
+      dirty = lines.length;
+      dirtyPaths = lines.map((l) => l.replace(/^\s*\S+\s+/, '').replace(/^.*? -> /, ''));
+    } catch {
+      dirty = null; // unreadable — say so rather than reporting 0
+    }
+    /**
+     * IS THIS UNCOMMITTED WORK ALREADY THE ONLY COPY, OR IS IT ARCHIVED?
+     *
+     * The dirty column says "this is in no commit, on no branch, on no remote —
+     * the only copy there is", which is what makes it worth stopping for. Once
+     * that work has been read, committed to an `archive/rescued-*` ref and
+     * pushed, the sentence is false and the row becomes the third permanent
+     * false alarm this instrument has grown.
+     *
+     * DERIVED, BY CONTENT, because there is no ref to compare against — the
+     * whole point is that the work is uncommitted. Every dirty path's bytes on
+     * disk are compared with the same path inside each archive commit. If some
+     * one archive holds all of them identically, this working tree has a
+     * durable copy and is labelled ARCHIVED rather than counted.
+     *
+     * It self-expires: touch the worktree again and the bytes stop matching, so
+     * the row goes back to being a warning without anybody maintaining a list.
+     */
+    let archived = false;
+    if ((dirty ?? 0) > 0 && dirtyPaths.length > 0) {
+      archived = archiveShas.some((sha) =>
+        dirtyPaths.every((rel) => {
+          let inArchive;
+          try {
+            inArchive = execFileSync('git', ['show', `${sha}:${rel}`]);
+          } catch (error) {
+            // ONLY a git failure means "that archive does not hold this path".
+            // The first draft of this block caught everything and returned
+            // false, which turned a ReferenceError — it named a binding this
+            // file does not define — into a confident "not archived". That is
+            // the catch-all defect recorded in `isMerged`'s own header above,
+            // committed into the same file by the same hand hours after
+            // quoting it. A programming error must reach the surface.
+            if (error && typeof error.status === 'number') return false;
+            throw error;
+          }
+          try {
+            return inArchive.equals(readFileSync(path.join(w.path, rel)));
+          } catch (error) {
+            if (error && error.code === 'ENOENT') return false; // deleted on disk
+            throw error;
+          }
+        }),
+      );
+    }
+    rows.push({ ...w, ageMin, dirty, archived });
+  }
+  return rows.sort((a, b) => (a.ageMin ?? Infinity) - (b.ageMin ?? Infinity));
+}
+
+function reportSilentWorktrees(rows, unmergedCount) {
+  console.log(`\n[worktrees] ${rows.length} attached worktree(s) whose branch adds nothing to HEAD`);
+  if (rows.length === 0) {
+    console.log('    none — every attached worktree carries unmerged commits, so the branch');
+    console.log('    scan above already covers all of them.');
+    return;
+  }
+  const carrying = rows.filter((r) => (r.dirty ?? 0) > 0 && !r.archived);
+  for (const r of rows) {
+    const age = r.ageMin === null ? '   gone' : `${String(Math.round(r.ageMin)).padStart(6)} min`;
+    const mark =
+      r.dirty === null
+        ? ' ?dirty'
+        : r.archived
+          ? ` ${r.dirty} archived`
+          : r.dirty > 0
+            ? ` !${r.dirty} UNCOMMITTED`
+            : '  clean';
+    console.log(`    ${age} ${mark}  ${r.branch ?? '(detached)'}  ${r.path}`);
+  }
+  console.log('    A worktree here is EITHER an agent that has not committed yet OR a merged');
+  console.log('    one nobody pruned, and the refs cannot tell them apart. THE DIRTY COLUMN');
+  console.log('    CAN, which is the column age could not supply: a clean one has nothing in');
+  console.log('    it that is not already in HEAD, and an UNCOMMITTED one holds work that is');
+  console.log('    in no commit, on no branch and on no remote — the only copy there is.');
+  if (carrying.length > 0) {
+    console.log(`    !! ${carrying.length} worktree(s) are carrying uncommitted work. Look before removing any.`);
+  }
+  console.log('    Each is a FULL CHECKOUT and costs real disk — this run has carried 4.5G of');
+  console.log('    them against a 20G allowance, and writable disk here is a fixed budget, not');
+  console.log('    a filesystem. `git worktree remove <path>` clears a merged one (its work is');
+  console.log('    in HEAD by definition of appearing here); `git worktree prune` only clears');
+  console.log('    entries whose directory has already vanished, which is not these.');
+  if (unmergedCount === 0) {
+    console.log('    Do not remove one while its agent is live — check the age column first.');
+  }
+}
 
 function branches() {
   const staleMinutes = Number(valueOf('--stale-minutes', String(DEFAULT_STALE_MINUTES)));
@@ -109,39 +276,108 @@ function branches() {
    * the real option, and the catch now distinguishes its documented exit codes
    * (0 merged, 1 not merged) from a genuine failure, which throws.
    */
-  const isMerged = (branch) => {
+  // ONE ancestor test, used by both questions below. It was two for about ten
+  // minutes — the triage check below was written with a second, differently
+  // shaped copy, which referenced a binding this file does not import and would
+  // have thrown the first time a genuinely unmerged branch appeared. That is
+  // this repository's most-recorded defect committed inside the guard that
+  // exists to report on it, and it was caught only by constructing the case
+  // rather than reading the code.
+  const ancestorOf = (a, b) => {
     try {
-      execFileSync('git', ['merge-base', '--is-ancestor', branch, head], { stdio: 'ignore' });
+      execFileSync('git', ['merge-base', '--is-ancestor', a, b], { stdio: 'ignore' });
       return true;
     } catch (error) {
       if (error && error.status === 1) return false;
-      throw new Error(`git merge-base --is-ancestor ${branch} HEAD failed: ${String(error)}`);
+      throw new Error(`git merge-base --is-ancestor ${a} ${b} failed: ${String(error)}`);
     }
   };
+
+  const isMerged = (branch) => ancestorOf(branch, head);
+
+  /**
+   * TRIAGED WORK IS NOT STALE WORK, AND A PERMANENT FALSE ALARM IS THE REAL COST.
+   *
+   * Four branches hold the working trees of agents killed mid-flight. They were
+   * read, decided on — two salvaged, two rejected as regressions with the reason
+   * recorded — and they cannot be deleted: this environment's GitHub App has no
+   * permission to remove a ref (`HTTP 403` on any delete). So they would sit in
+   * this report as STALE forever.
+   *
+   * That is worse than it sounds. A check that always reports the same finding
+   * trains its reader to skip the section, and the next REAL stale branch lands
+   * in a list that everyone has learned to ignore. This run has already paid for
+   * one instrument quietly reporting a permanent false alarm.
+   *
+   * DERIVED, NOT LISTED. A branch counts as triaged when some ref under
+   * `refs/heads/archive/` CONTAINS it — the archive is the durable copy, pushed
+   * before the original was abandoned. Deliberately containment rather than SHA
+   * equality: a rewind reverts local branch refs, so the local `claude/*` name is
+   * routinely BEHIND the archive it was copied from, and an equality test would
+   * call a genuinely archived branch untriaged. Containment survives that.
+   *
+   * A hand-maintained list of triaged names was the alternative and is the
+   * failure mode this file has already recorded twice: a list nobody prunes.
+   * Move the branch's work into an archive ref and this answers itself; if the
+   * branch later grows a commit the archive does not contain, it correctly
+   * becomes untriaged again.
+   */
+  // BOTH local and origin-tracking archive refs. A rewind drops the local ones —
+  // it did, an hour after this triage landed, and the four archived rows came
+  // back reading UNCOMMITTED with the archives still safe on origin. Reading the
+  // remote-tracking copies too means an ordinary `git fetch` restores the signal
+  // instead of it needing a hand-typed refspec nobody will remember.
+  const archives = git([
+    'for-each-ref',
+    '--format=%(objectname)',
+    'refs/heads/archive/',
+    'refs/remotes/origin/archive/',
+  ]).split('\n').filter((s) => s !== '');
+  const isTriaged = (branch) => archives.some((a) => ancestorOf(branch, a));
 
   const unmerged = rows.filter((r) => r.name !== current && !isMerged(r.name));
 
   const now = Math.floor(Date.now() / 1000);
   const withAge = unmerged
-    .map((r) => ({ ...r, ageMin: (now - r.unix) / 60 }))
+    .map((r) => ({ ...r, ageMin: (now - r.unix) / 60, triaged: isTriaged(r.name) }))
     .sort((a, b) => b.ageMin - a.ageMin);
 
-  const stale = withAge.filter((r) => r.ageMin > staleMinutes);
+  const stale = withAge.filter((r) => r.ageMin > staleMinutes && !r.triaged);
+  const triagedCount = withAge.filter((r) => r.triaged).length;
 
-  console.log(`${withAge.length} unmerged claude/* branch(es); stale threshold ${staleMinutes} min\n`);
+  console.log(
+    `${withAge.length} unmerged claude/* branch(es); stale threshold ${staleMinutes} min` +
+      `${triagedCount > 0 ? `; ${triagedCount} archived and therefore not counted stale` : ''}\n`,
+  );
   for (const r of withAge) {
-    const mark = r.ageMin > staleMinutes ? 'STALE' : 'ok   ';
+    const mark = r.triaged ? 'archived' : r.ageMin > staleMinutes ? 'STALE   ' : 'ok      ';
     console.log(`${mark}  ${String(Math.round(r.ageMin)).padStart(6)} min  ${r.sha}  ${r.name}`);
-    console.log(`                       ${r.subject}`);
+    console.log(`                          ${r.subject}`);
   }
+  if (triagedCount > 0) {
+    console.log(`\n  "archived" means a ref under refs/heads/archive/ CONTAINS that branch, so its`);
+    console.log('  work is triaged and durable. It is still listed, because this environment');
+    console.log('  cannot delete a ref (HTTP 403) and a row silently dropped is a row nobody can');
+    console.log('  audit — but it is not counted stale, so the section keeps meaning something.');
+  }
+
+  const silent = silentWorktrees(git, head, now, archives);
+  reportSilentWorktrees(silent, withAge.length);
 
   // NON-VACUITY. An empty branch list satisfies "nothing is stale" and would
   // report success on a repository where every branch had been pruned — the
   // emptiest possible pass. Say so rather than printing a green line.
   if (withAge.length === 0) {
-    console.log('\nNo unmerged claude/* branches exist, so this run checked NOTHING. That is a');
-    console.log('vacuous pass, not a clean one, and it is reported as such.');
-    return 0;
+    console.log('\nNo unmerged claude/* branches exist, so this run checked NOTHING against');
+    console.log('COMMIT AGE. That is a vacuous pass, not a clean one, and it is reported as');
+    console.log('such — see [worktrees] above for the part that is not vacuous.');
+    // Exit on what is ACTIONABLE, not on what is merely listed. 25 worktrees
+    // exist because nothing prunes them; that is litter, not a finding, and
+    // exiting 1 on it makes the whole check a permanent non-zero nobody reads.
+    // A worktree carrying uncommitted work no archive holds IS actionable: it
+    // is the only copy of something.
+    const unarchived = silent.filter((r) => (r.dirty ?? 0) > 0 && !r.archived).length;
+    return unarchived > 0 ? 1 : 0;
   }
 
   if (stale.length > 0) {

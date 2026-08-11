@@ -406,11 +406,89 @@ const MUTATIONS = [
   {
     id: 'walkout-screen-fires-no-plate-beat',
     claim:
-      'The bar LOADS: one thud and one rattle per plate. Mutation: stop the ' +
+      'The bar LOADS: one thud and one rattle per landing. Mutation: stop the ' +
       'walkout screen firing them.',
     file: 'src/meet/WalkoutView.tsx',
-    from: "    const timer = setTimeout(() => playBeat({ kind: 'bar-plate' }), at);",
-    to: '    const timer = setTimeout(() => undefined, at);',
+    from: "    playBeat({ kind: 'bar-plate' });",
+    to: '    return;',
+  },
+  {
+    id: 'the-bar-load-goes-back-on-a-queue-of-timers',
+    claim:
+      'The bar load is a function of the CLOCK, so a blocked main thread makes ' +
+      'it skip rather than replay every tick it missed. Mutation: put it back ' +
+      'on one setTimeout per disc — the exact shape Chromium delivered as five ' +
+      '180ms rattles inside 139ms for a single paint.',
+    file: 'src/meet/WalkoutView.tsx',
+    from:
+      '  const platesLoaded = useHallStep(plateStep, barLoadMs(plateCount), holdAtMs ?? null);\n' +
+      '  const lastRattleAtMs = React.useRef<number | null>(null);\n' +
+      '  React.useEffect(() => {\n' +
+      '    if (platesLoaded <= 0) return;\n' +
+      '    const now = Date.now();\n' +
+      '    if (!barLoadRattleSounds(now, lastRattleAtMs.current)) return;\n' +
+      '    lastRattleAtMs.current = now;\n' +
+      "    playBeat({ kind: 'bar-plate' });\n" +
+      '  }, [platesLoaded]);',
+    to:
+      '  void plateStep;\n' +
+      '  void barLoadRattleSounds;\n' +
+      '  const [platesLoaded, setPlatesLoaded] = React.useState(0);\n' +
+      '  React.useEffect(() => {\n' +
+      '    const timers: ReturnType<typeof setTimeout>[] = [];\n' +
+      '    for (let i = 0; i < plateCount; i += 1) {\n' +
+      '      timers.push(\n' +
+      '        setTimeout(() => {\n' +
+      '          setPlatesLoaded(i + 1);\n' +
+      "          playBeat({ kind: 'bar-plate' });\n" +
+      '        }, i * MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS),\n' +
+      '      );\n' +
+      '    }\n' +
+      '    return () => {\n' +
+      '      for (const timer of timers) clearTimeout(timer);\n' +
+      '    };\n' +
+      '  }, [plateCount, attempt.lift, attempt.attemptNumber]);',
+  },
+  {
+    id: 'two-arrivals-in-one-frame-are-heard-twice',
+    claim:
+      'Discs arriving closer together than the ear separates them are ONE ' +
+      'clatter. Mutation: set the merge window to zero, so a catch-up that ' +
+      'stops a millisecond short of the next disc hits again a millisecond later.',
+    file: 'src/game/meetTuning.ts',
+    from: '  BAR_LOAD_RATTLE_MERGE_MS: 60,',
+    to: '  BAR_LOAD_RATTLE_MERGE_MS: 0,',
+  },
+  {
+    id: 'the-pool-is-raised-to-cover-the-pile-up',
+    claim:
+      'A VOICE POOL DECIDES WHETHER COPIES CUT EACH OTHER, NOT HOW MANY THERE ' +
+      'ARE. The measured pile-up was five rattles inside 149ms; raising the pool ' +
+      'to five silences every depth check and changes nothing a player hears. ' +
+      'Mutation: do exactly that, which is the fix this wave was told not to make.',
+    file: 'src/game/meetTuning.ts',
+    from: '  VOICES_PER_CUE: 3,',
+    to: '  VOICES_PER_CUE: 5,',
+  },
+  {
+    id: 'the-bar-load-runs-off-one-clock',
+    claim:
+      'The bar load reads the ANIMATION clock and the merge reads the WALL ' +
+      'clock, because they diverge — rAF timestamps catch up after jank. ' +
+      'Mutation: merge on the animation clock instead, which is the one-clock ' +
+      'model that made a level-triggered load look sufficient.',
+    file: 'src/meet/walkout.ts',
+    from: '    if (!barLoadRattleSounds(look.wallMs, lastHeardAtMs)) continue;\n    lastHeardAtMs = look.wallMs;',
+    to: '    if (!barLoadRattleSounds(look.elapsedMs, lastHeardAtMs)) continue;\n    lastHeardAtMs = look.elapsedMs;',
+  },
+  {
+    id: 'the-bar-can-load-more-discs-than-it-has',
+    claim:
+      'The disc count is capped at the discs on the sleeve. Mutation: drop the ' +
+      'cap, so a long beat keeps landing plates that are not there.',
+    file: 'src/meet/walkout.ts',
+    from: '  return Math.min(total, landed);',
+    to: '  return landed;',
   },
   {
     id: 'sound-muted',

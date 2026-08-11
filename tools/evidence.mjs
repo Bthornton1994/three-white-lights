@@ -191,6 +191,13 @@ const REQUIRED_SHOT_RECORDS = [
   '.gauntlet/shots/shell/route.json',
   '.gauntlet/shots/cutin/frames.json',
   '.gauntlet/shots/cutin-cap/cap.json',
+  // The fourth, added in the same commit as its `.gitignore` negation — this
+  // list is what the paragraph above means. `sound.json` is the only record of
+  // the sound half of GDD §12.2's bar: it holds the wall-clock instant every cue
+  // reached the audio layer, per beat, against each file's own decoded length,
+  // which is the only way a cue firing over its own still-sounding copy is
+  // visible at all. No screenshot can carry it.
+  '.gauntlet/shots/meet/sound.json',
 ];
 
 const checkCommittedShots = () => {
@@ -228,7 +235,27 @@ const checkCommittedShots = () => {
     if (stamped === '(unavailable)') {
       problems.push(`${rel}: stamps ${from.commit}, which is not a commit in this repo`);
     } else if (stamped !== head) {
-      const changed = codeChangedBetween(stamped, head);
+      // WHY A SHOT RECORD IGNORES `tools/` FILES IT DOES NOT NAME.
+      //
+      // `codeChangedBetween` is a blunt "did any code move", which is right for
+      // the suite bundle and wrong here, because a shot record already carries
+      // something sharper: `capturedFrom.instrument`, the digest of every tool
+      // that actually measured it, re-hashed a few lines below. A `tools/` file
+      // outside that list cannot have changed what the browser drew.
+      //
+      // Left blunt, this reported every browser record stale after an edit to
+      // `watchdog.mjs` — a process supervisor that renders nothing — and the
+      // remedy was ~25 minutes of re-capture that could not come back different.
+      // A check whose remedy is expensive and whose finding is impossible is one
+      // people learn to skip, and then it is not there for the stale record that
+      // matters. Same argument the branch scan's archive handling just made.
+      //
+      // `src/` is still blunt on purpose: the app's code is what the pixels are
+      // made of, and no digest here tracks it.
+      const instrumented = new Set(Object.keys(from.instrument ?? {}));
+      const changed = codeChangedBetween(stamped, head).filter(
+        (p) => !p.startsWith('tools/') || instrumented.has(p.slice('tools/'.length)),
+      );
       if (changed.length > 0) {
         problems.push(
           `${rel}: stamps ${from.commit}, and code changed since: ${changed.slice(0, 6).join(', ')}${changed.length > 6 ? ` (+${changed.length - 6} more)` : ''}`,

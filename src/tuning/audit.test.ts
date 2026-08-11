@@ -956,6 +956,11 @@ describe('the registered allowlist', () => {
         'src/art/gymPalette.ts',
         'src/art/gymProps.ts',
         'src/art/gymTuning.ts',
+        // GDD §5's idle layer, arriving from the parallel session. A `feel`
+        // home: an idle economy is nothing but rates, and §5.1's "rewards
+        // check-ins without punishing a 10-hour gap" is a balance point
+        // somebody settles by playing.
+        'src/empire/empireTuning.ts',
         'src/art/lifterSprite.ts',
         'src/art/palette.ts',
         'src/art/plates.ts',

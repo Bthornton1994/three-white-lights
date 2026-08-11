@@ -116,6 +116,21 @@
  * so what is seen and what is heard are one schedule. The call arrives with a
  * crowd swell under it, bigger when the attempt is a third, a PR or a bomb risk.
  *
+ * "ONE SCHEDULE" IS A CLAIM ABOUT DELIVERY, NOT ABOUT INTENT, AND IT WAS FALSE
+ * FOR A ROUND. The discs were scheduled on one `setTimeout` each; the browser
+ * coalesces those through the meet transition and drains them together, so
+ * `tools/verify-meet-sound.mjs` recorded FIVE 180 ms rattles inside 149 ms while
+ * React batched the same five updates into ONE paint. The load is level-triggered
+ * off the clock now (`platesLandedAt`) and the hits are merged in wall time
+ * (`barLoadRattleSounds`), because the animation clock catches up after jank too
+ * — a second measured run crossed three disc boundaries inside 83 ms.
+ *
+ * SO THE PROMISE IS ONE-WAY NOW, AND IT IS WRITTEN IN THE DIRECTION THAT IS
+ * TRUE: a rattle never fires without discs landing. The converse does not hold —
+ * discs that arrive inside one clatter of each other share a hit — and saying it
+ * both ways is what made the old sentence false. `meetFeel.test.ts` pins the
+ * pairing structurally and `meetSound.test.ts` measures the merge.
+ *
  * NONE OF IT HAS BEEN HEARD OR FELT BY ANYBODY. Web has no haptic engine, and
  * no capture in this repository records audio, so no critic in this environment
  * can check either half (GDD §12.1).
@@ -140,8 +155,11 @@ import { MeetHallView } from './MeetHallView';
 import { MEET_PALETTE } from './meetPalette';
 import { useHallStep } from './useHallStep';
 import {
+  barLoadMs,
+  barLoadRattleSounds,
   braceCueDelayMs,
   buildWalkout,
+  platesLandedAt,
   walkoutFrameAt,
   walkoutFrameIndexAt,
   walkoutRequestFor,
@@ -212,28 +230,49 @@ export function WalkoutView({
     },
   ]);
 
-  // THE BAR LOADS. One disc per side per `BAR_LOAD_PLATE_STAGGER_MS`, and the
-  // same tick fires the thud and the rattle — one schedule, so what is seen and
-  // what is felt cannot drift apart. The mirrored sleeve is drawn by the same
-  // sprite and deliberately fires nothing of its own: a six-plate bar that
-  // buzzed twelve times would feel like a twelve-plate one.
-  const [platesLoaded, setPlatesLoaded] = React.useState(0);
+  // THE BAR LOADS, OFF THE CLOCK RATHER THAN OFF A QUEUE OF TIMERS.
+  //
+  // One disc per side per `BAR_LOAD_PLATE_STAGGER_MS`. The mirrored sleeve is
+  // drawn by the same sprite and deliberately fires nothing of its own: a
+  // six-plate bar that buzzed twelve times would feel like a twelve-plate one.
+  //
+  // THE PREVIOUS SHAPE WAS UNTRUE ON A REAL BROWSER, and this is what fixed it.
+  // It scheduled one `setTimeout` per disc, which is correct and is not what
+  // gets delivered: the main thread is busy through the meet transition and the
+  // whole expired queue drains at once when it frees.
+  // `tools/verify-meet-sound.mjs` measured five rattles of a 180 ms cue inside
+  // 149 ms, two of them byte-identical — while React batched the five state
+  // updates into ONE paint, so the eye saw a single jump and the ear got five
+  // hits. The trace itself is pinned in `meetSound.test.ts` rather than retyped
+  // here, so there is one copy of it to go stale. `platesLandedAt` asks the clock how loaded the
+  // bar should be, so a late look SKIPS instead of replaying every tick it
+  // missed.
+  //
+  // AND THAT WAS MEASURED AND WAS NOT ENOUGH. `requestAnimationFrame`
+  // timestamps catch up after jank, so the second measured run crossed three
+  // disc boundaries inside 83 ms of wall time and fired three hits.
+  // `barLoadRattleSounds` merges arrivals closer together than
+  // `BAR_LOAD_RATTLE_MERGE_MS` — in WALL time, which is why `Date.now()` is read
+  // here rather than the elapsed the hook reports.
+  //
+  // NO ARITHMETIC HERE: both rules are `walkout.ts`'s, which is pure and tested.
+  // The ref is a clock reading, not a decision.
+  const plateStep = React.useCallback(
+    (elapsedMs: number) => platesLandedAt(elapsedMs, plateCount),
+    // The attempt is in the deps on purpose, and the hook's contract is why:
+    // a new `sampleAt` restarts its clock, which is what a new bar must do.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [plateCount, attempt.lift, attempt.attemptNumber],
+  );
+  const platesLoaded = useHallStep(plateStep, barLoadMs(plateCount), holdAtMs ?? null);
+  const lastRattleAtMs = React.useRef<number | null>(null);
   React.useEffect(() => {
-    setPlatesLoaded(0);
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 0; i < plateCount; i += 1) {
-      const at = i * MEET_TUNING.BAR_LOAD_PLATE_STAGGER_MS;
-      timers.push(
-        setTimeout(() => {
-          setPlatesLoaded(i + 1);
-          playBeat({ kind: 'bar-plate' });
-        }, at),
-      );
-    }
-    return () => {
-      for (const timer of timers) clearTimeout(timer);
-    };
-  }, [plateCount, attempt.lift, attempt.attemptNumber]);
+    if (platesLoaded <= 0) return;
+    const now = Date.now();
+    if (!barLoadRattleSounds(now, lastRattleAtMs.current)) return;
+    lastRattleAtMs.current = now;
+    playBeat({ kind: 'bar-plate' });
+  }, [platesLoaded]);
 
   const revealed = useSharedValue(0);
   React.useEffect(() => {

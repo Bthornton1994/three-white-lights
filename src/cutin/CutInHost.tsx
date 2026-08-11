@@ -199,6 +199,14 @@ export function CutInHost({
   // un-mounted and re-mounted inside one sitting resumes the state that already
   // spent the slot. `resumeCutInSession` is idempotent, which is what makes it
   // safe in a `useRef` argument — that expression is evaluated on every render.
+  //
+  // Swapping this line for `openCutInSession` gives every re-mount a fresh slot,
+  // which is GDD §12.3's refusal condition reached by a component lifetime. It
+  // is a separate site from the resume in the effect below, and for one round
+  // both were held by regexes that matched either one — so deleting this line
+  // left them green off the other.
+  //
+  // @guarantee a-remount-resumes-rather-than-opens
   const session = React.useRef<CutInSessionState>(
     resumeCutInSession({ sessionId: activeSessionId, seed: activeSeed }),
   );

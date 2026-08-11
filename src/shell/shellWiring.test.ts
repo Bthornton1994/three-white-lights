@@ -30,8 +30,13 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { appMeetPort, appSessionPort } from './appServer';
+import { meetDayFactsFromCache } from '../game/meetClient';
+import { meetResultProposal } from '../game/meetDay';
+import { playMeet } from '../game/meetPreview';
+import { MEET_ENTRY, MEET_LOCAL } from '../game/meetTuning';
 import { openingCache } from '../game/sessionClient';
-import { readTotalKg, readingValue } from '../game/progression';
+import { SESSION_BOUNDARY, SESSION_TUNING } from '../game/sessionTuning';
+import { asProposalId, readTotalKg, readingValue } from '../game/progression';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -718,6 +723,24 @@ describe('the browser’s URL actually reaches the route graph', () => {
 // THE ALREADY-TRAINED-TODAY CASE SURVIVES NAVIGATION
 // ---------------------------------------------------------------------------
 
+/**
+ * The one meet this file drives through the app's module-scoped port.
+ *
+ * ONE PLACE, because `appServer.ts` exports no reset: the singleton this file
+ * writes to is the same object every test below it reads, so the day and the
+ * proposal id are properties of the file rather than of a test. A second meet
+ * recorded on this row is refused as `MEET_ALREADY_RECORDED`, which is why the
+ * id is written down here rather than typed at a call site where a duplicate
+ * would look like a typo instead of a collision.
+ *
+ * `DAY` is past `SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY`, which is where the
+ * un-configured `localSessionServer()` behind the accessors starts its lifter.
+ */
+const APP_PORT_MEET_FIXTURE = {
+  DAY: SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY + 301,
+  PROPOSAL_ID: asProposalId('shell-wiring-app-port-meet'),
+} as const;
+
 describe('navigating away and back cannot buy a second session of the day', () => {
   it('the app has ONE session-server connection, and asking twice returns it', () => {
     // The behavioural half, and it needs no renderer: the guarantee IS object
@@ -780,16 +803,93 @@ describe('navigating away and back cannot buy a second session of the day', () =
     expect(typeof port.recordMeetResult).toBe('function');
   });
 
-  it('a meet recorded through it is visible to the session half, on one row', () => {
-    // The identity above is structural; this is the consequence, measured. A
-    // total banked through the meet endpoint has to be readable from the
-    // snapshot the SESSION half opens on, or the two halves are one object
-    // holding two truths.
+  it('a meet recorded through it is visible to the session half, on one row [a-meet-total-reaches-the-session-half]', async () => {
+    // The identity above is structural; this is the consequence, and this test
+    // is where it is actually driven. A total banked through the MEET endpoint
+    // has to come back out of the snapshot the SESSION half opens on, or the
+    // two halves are one object holding two truths.
+    //
+    // WHAT THIS USED TO BE, recorded because it is the thing the file was sent
+    // back for: it read `readTotalKg` once, named the result `before`, asserted
+    // it was null, and stopped. No meet was recorded, `recordMeetResult` was
+    // never called, and there was no `after`. Pointing `appMeetPort()` at a
+    // second `localSessionServer()` — the defect this whole module exists to
+    // prevent, and the mutant the witness below records — left it green.
+    //
+    // THE SUBJECT IS THE MODULE-SCOPED SINGLETON, which is what makes this a
+    // different test from `localSessionServer.test.ts`'s "A MEET BANKS A TOTAL
+    // THAT THE SESSION SIDE CAN THEN READ". That one constructs its port with
+    // `localSessionServer({ record, sleep })` and proves the SERVER joins the
+    // two endpoints. This one asks the same question of `appServer.ts`'s
+    // accessors, which is the join the shipped app actually goes through: a
+    // correct server reached by two connections is the bug wearing a passing
+    // test one level out. The drive below is deliberately a copy of that file's
+    // `playAMeet` rather than a shared helper — it is a fixture, not a guard,
+    // and sharing it would make one subject's setup the other's.
     //
     // Read through `readTotalKg` rather than off any row, because the row has no
     // accessor — which is the other half of the discipline.
+    //
+    // NO `before`-IS-NULL PIN. The singleton has no reset, so this test runs
+    // against whatever the file has already done to it; the claim is that the
+    // reading MOVED to the number the meet endpoint reported, which is true
+    // wherever it started from.
+    const meetPort = appMeetPort();
+    const day = APP_PORT_MEET_FIXTURE.DAY;
+    const facts = meetDayFactsFromCache(
+      openingCache(meetPort),
+      day,
+      SESSION_TUNING.STARTING_E1RM,
+    );
+    const played = playMeet(
+      () => 'perfect',
+      () => 'small',
+      {
+        day,
+        meet: MEET_LOCAL,
+        entry: MEET_ENTRY,
+        bestE1rmKg: facts.bestE1rmKg,
+        previousBestTotalKg: facts.previousBestTotalKg,
+        previousBestByLiftKg: facts.previousBestByLiftKg,
+        fatigue: meetPort.meetBrief(day).fatigue,
+      },
+    );
+    const proposal = meetResultProposal(played);
+    expect(proposal, 'the played meet produced no proposal, so nothing was submitted').not.toBeNull();
+    if (proposal === null) throw new Error('unreachable');
+
     const before = readingValue(readTotalKg(openingCache(appSessionPort())));
-    expect(before).toBeNull();
+    const response = await meetPort.recordMeetResult(
+      day,
+      MEET_LOCAL,
+      proposal,
+      APP_PORT_MEET_FIXTURE.PROPOSAL_ID,
+    );
+    // NON-VACUITY, AND IT IS THE FIRST THING ASKED. A refused write leaves every
+    // assertion below comparing two numbers that never moved for a reason that
+    // has nothing to do with the port. `MEET_ALREADY_RECORDED` is the live
+    // version of that hazard: a second recording of the same meet on this
+    // singleton is refused, so if anything upstream in this file starts banking
+    // one, this line names it rather than the claim failing sideways.
+    expect(
+      response.kind === 'recorded' ? 'recorded' : `refused: ${JSON.stringify(response)}`,
+      'the meet endpoint refused the write, so nothing below is about the port',
+    ).toBe('recorded');
+    if (response.kind !== 'recorded') throw new Error('unreachable');
+    expect(response.result.totalKg, 'the meet banked no total to look for').toBeGreaterThan(0);
+    expect(
+      response.result.isTotalPr,
+      'this meet did not move the row, so reading the row back proves nothing — something earlier in this file banked a bigger total',
+    ).toBe(true);
+
+    const after = readingValue(readTotalKg(openingCache(appSessionPort())));
+    // THE CLAIM. The message is carried by hand for the reason the identity
+    // check above gives: a bare `toBe` on two numbers names neither half.
+    expect(
+      after,
+      'the session half cannot see the total the meet endpoint banked, so meet day and the daily loop are two lifters',
+    ).toBe(response.result.totalKg);
+    expect(after, 'the reading did not move at all').not.toBe(before);
   });
 
   it('the port is memoised at module scope, not in a component', () => {

@@ -127,14 +127,19 @@ piece there. If either session needs to cross the line, the crossing is written
 into this section **before** the work starts — not into a commit message, not
 into a conversation the other session cannot read.
 
-### Crossings Session B needs and has NOT made — GDD §5 is otherwise complete
+### Crossings Session B needed — one is DONE, one is still open
 
-Both are drafted rather than committed, per the rule above. Session B did not
-edit any of the four files named here. A human has approved both as requests;
-whoever applies them is making the crossing.
+Session B did not edit any of the four files named here. A human approved both
+as requests. **Crossing 1 has since been made by Session A, independently and
+before this merge** — the three rows are in `audit.ts:226`, `audit.test.ts:963`
+and `index.ts:132/375/415`, with their own `why:` text. That is recorded here
+rather than left reading as outstanding, because a coordination entry that
+under-describes the shared surface is the same defect as prose that
+over-describes it.
 
-**1. Three rows registering `src/empire/empireTuning.ts`, in the three reserved
-files.** Without them `audit.test.ts` reports 87 bare literals — every one in
+**1. Three rows registering `src/empire/empireTuning.ts` — DONE, by Session A.**
+The paragraph below is kept because it is the measurement, and because the
+prediction it records came true exactly. Without the rows `audit.test.ts` reports 87 bare literals — every one in
 that file, no other `src/empire/` module — which is the single failing test on
 `claude/empire-s5-build-h9rvca`. **Verified rather than drafted:** applied in a
 throwaway worktree at that branch's head, the whole suite goes to 75 files /
@@ -180,6 +185,184 @@ numbers appear somewhere in the directory's tests needs no Session A file — an
 would have caught **one of the two** real defects. A mechanism with a measured
 50% hit rate that reads like coverage is what this document warns about hardest,
 so it was not built.
+
+### WHAT ACTUALLY HAPPENED, AND THE ONE CROSSING
+
+Session B's §5 work merged into this branch as PR #2 while an unrelated merge
+was in flight locally. **It stayed exactly in its lane** — 4,760 lines, every
+one under `src/empire/`, nothing outside. The split held.
+
+**The predicted collision happened precisely as written**, which is the useful
+part. `empireTuning.ts` arrived unregistered, and the merged suite went red with
+**87 findings** — all in that one file, all inside a properly named frozen
+block. `empireCore.ts` had zero: Session B kept its math free of bare numbers
+and simply could not register the file, because registration lives in three
+files this section had told it not to touch. The three rows are now in.
+
+**The crossing: Session A edited `src/empire/empireCore.test.ts`.** Recorded
+here rather than only in the commit, because that is what the paragraph above
+asks for. It was not new work in Session B's scope — it was repairing a guard
+that *my own registration broke*, and it could not be left red.
+
+That guard is worth reading before touching this area. It pinned the audit's
+finding count for `empireTuning.ts` at 87 — the violations the file produced
+*while unregistered*. Registering it dropped that to 0, so the pin went red
+immediately and its own message named this as one of two causes. **The obvious
+repair — re-pinning at 0 — would have swapped a real guard for a vacuous one**,
+because a registered file reports 0 findings whatever it contains. The count is
+now taken under an unregistered synthetic path, where it is a census of the
+tuned values themselves and moves only when a knob is added or removed. Adding
+one knob takes it to 88 and reddens; the registered audit stays clean.
+
+**A guard can be broken by a change that is itself correct**, and the repair
+that restores green is not always the repair that restores the guard.
+
+### A SECOND SHARED SURFACE NOW EXISTS, AND WHOEVER OWNS §5 NEXT DID NOT AGREE TO IT
+
+Written here because it is a cost the other side pays and cannot otherwise
+discover. `src/tuning/` was the only overlap when this section was drafted. There
+are two now.
+
+GDD §8.3E's condition-3 guard — a covered day may never be funded by
+training-gated currency — used to scan three hardcoded filenames under
+`src/game/`, and could not leave that directory. It now **walks `src/` whole**,
+because a planted function awarding a covered day every ten sessions was
+invisible to the old scan and `tsc` was clean beside it. That defect would have
+shipped.
+
+**AND ITS SCOPE WAS WRONG A SECOND TIME, IN THE OTHER DIMENSION.** Widening the
+reach to the whole tree left the predicate keyed on the single word `purchase`,
+while the rule above says *covered* days and `COVERAGE_SOURCES` has two members.
+The same ten-sessions granter, rewritten to credit through
+`'window-entitlement'` instead of `'purchase'`, was invisible again: 43 tests,
+43 passed, exit 0, `tsc` clean. **Reach and predicate are two axes and fixing
+one says nothing about the other** — which is this file's "the branch
+immediately below the one you just fixed" lesson, one dimension out. The
+predicate is now `/purchas|covered.?day|window-entitlement/i`.
+
+The consequence for §5: **eleven `src/empire/**` declaration names now sit in
+`COVERED_DAY_TOUCHING_FUNCTIONS`, an allowlist in `src/game/streakEntitlement.ts`**
+(renamed from `PURCHASED_DAY_TOUCHING_FUNCTIONS`, because 31 of its 88 entries
+name a covered day and never a purchase, so the old name asserted a false scope).
+The list is a set equality in both directions, so from now on:
+
+- Adding an `src/empire/` declaration whose body mentions purchasing **or names
+  a covered day** reddens `streakEntitlement.test.ts` — **a test in a file §5's
+  owner does not own** — until the name is added to that allowlist.
+- Renaming or deleting one reddens it the other way, as a stale entry.
+
+The eleventh is `EMPIRE_FORBIDDEN_OUTPUTS`, which the purchase-word predicate
+never matched: it names `'covered-day'` as a thing the idle layer must not be
+able to produce. That row and this allowlist are the same rule seen from two
+directions, and §5 wrote its half without being asked to.
+
+That is the guard working exactly as designed: the whole point is that a new way
+to hand out a covered day forces a visible edit where a reviewer sees it. It is
+also friction landing on somebody who did not choose it, in a file they were told
+to stay out of. Both are true — and the widening made it wider, which is a real
+cost to §5 and is why it is written here rather than only in a commit.
+
+**So the allowlist entry is data, not a restructure, and adding one is not a
+boundary crossing.** Whoever owns §5 may edit `COVERED_DAY_TOUCHING_FUNCTIONS`
+directly for that purpose without asking. If a §5 change needs more than an
+allowlist row there, that is a real crossing and belongs in this section first.
+
+### §5's NEXT ROUND IS SESSION B'S, AND HERE IS EXACTLY WHAT IT IS
+
+Ruled by a human: **Session B builds the §5 loop**, because it owns the
+subsystem's context end to end. This is the scope, written here before the work
+starts, as this section requires.
+
+**A fresh critic graded the merged §5 and sent it back.** Not on quality — the
+type fences are genuinely strong work, and the no-gacha ban (18 regexes, every
+one driven against a tripwire, `scanned` and `banned.length` both pinned) wins
+its bar outright. It was sent back because **the loop is not built**:
+
+- `empireCore.ts` exports ~90 symbols and **no state transition**. There is no
+  `tick`, `accrue`, `collect`, `recruit`, `buy` or `expand`. A gym from
+  `createEmpireState()` cannot be advanced by anything in the repository.
+- `EmpireLedgerEntry` has two consumers and **zero producers**.
+- `settledLevel` takes `completionTimes`, which nothing computes — so
+  `physioDaysSavedFor`, §5.4's one cross-mode hook, has no input path.
+- The piece's own `AWAITING_CONSUMER` in `empireTuning.test.ts` **pins 30 of
+  `EMPIRE_TUNING`'s 54 entries as read by no shipped code**, set-equal in both
+  directions. That list is the spec for this round: it is §5.1's offline cap,
+  all of §5.2's production, all of §5.4's multiplier effects, and all of §5.5.
+  **The round is done when that list is empty, or when what remains on it is
+  argued for one entry at a time.**
+
+**THIS IS NOT UI WIRING, AND THAT IS THE POINT.** Several invariants this
+codebase already enforces are currently checking nothing, because the behaviour
+they are written about does not exist yet:
+
+- **"Never punish daily engagement" (§12.3) has no subject.** What stands in for
+  it today is `expect(OFFLINE_EARNINGS_CAP_HOURS).toBeGreaterThanOrEqual(
+  OFFLINE_EARNINGS_NO_PUNISH_HOURS)` — 12 ≥ 10, two literals in a file with no
+  consumer. **No edit to any behaviour can redden it**, which makes it vacuous in
+  the strict sense of the section above: its subject does not exist. Meanwhile
+  `OFFLINE_EARNINGS_FRACTION: 0.5` against a 12-hour cap is precisely the shape
+  that yields "checked in more, ended up worse", and which way it falls is
+  decided by arithmetic nobody has written.
+- **The house standard of proof is not "we swept and found none".** It is
+  `src/game/streak.test.ts` plus `src/game/streakSweep.ts`: counts pinned at
+  **zero**, the unfixed variant's non-zero numbers kept in the file as the thing
+  the zeros are zero against, and the seeds, lengths and attendance distribution
+  as named constants in their own module. An accrual function that takes a
+  check-in schedule needs a sweep beside it in that shape. Nothing less transfers.
+- **`src/empire/**` has 23 declared guarantees and zero `MUTATION_WITNESSES`
+  entries.** Unlike the browser class, these are `it(` bodies in `src/` and are
+  schema-eligible, so the witness bar applies in full.
+- The §5.4 reputation chain — check-ins → reputation → sponsor Gym Bucks → physio
+  staff cost → the day physio arrives — is named in `empireCore.ts` and
+  explicitly left unmeasured, because none of the three functions on it exists.
+  When they do, that chain is a training-keyed path to a cross-mode effect and it
+  needs the sweep above pointed at it.
+
+**The seams that are already frozen and must stay that way:** `src/empire/`
+imports only `./empireTuning`, and `empireCore.test.ts` pins that exactly. It
+cannot reach `currencyProvenance.ts`, `streak.ts` or `streakEntitlement.ts`, and
+that is what currently makes §8.3E's "cannot be constructed" reading hold —
+trivially, by the module having no wallet. **The first piece that pays empire
+income into `progression.ts`'s pooled wallet inherits the §8.3E concession**
+(GDD §8.3E: the tender constrains what a purchase *declares*, not where the money
+came from), so that wiring is a separate, later, deliberately serialised piece —
+not part of this round.
+
+**Session A stays out of `src/empire/**` for this round**, as before. The one
+thing Session B may edit outside it without asking is
+`COVERED_DAY_TOUCHING_FUNCTIONS` in `src/game/streakEntitlement.ts` — allowlist
+rows are data, per the ruling above. Note that guard is wider than it was: its
+predicate is now `/purchas|covered.?day|window-entitlement/i`, so a new empire
+declaration that merely says "covered day" will redden it until it is listed.
+
+### Session B's reply to the round above, with the evidence — READ BEFORE ACTING ON IT
+
+The round specified above was graded against **the §5 that PR #2 merged**, which
+is `d2eda81` — Session B's E0, partway through, and 33 commits behind the branch
+this text arrives on. It is an accurate reading of what Session A could see and a
+stale one of what exists. Seven of its eight items are already built here, and
+each is checkable rather than asserted:
+
+| The round says | On this branch |
+|---|---|
+| "no state transition — no `tick`, `accrue`, `collect`, `recruit`, `buy` or `expand`" | `stepGym`, `runEmpire`, `accrueProduction`, `accrueReputation`, `accrueSponsorship`, `beginRecruitment`, `startExpansion`, `skipExpansion` |
+| "`EmpireLedgerEntry` has zero producers" | three: `empireCore.ts`, `production.ts`, `reputation.ts` |
+| "`settledLevel` takes `completionTimes`, which nothing computes" | `expansion.ts:667` computes them |
+| "`AWAITING_CONSUMER` pins 30 of 54" | **2**, and both are argued in place |
+| "'never punish daily engagement' has no subject… no edit to any behaviour can redden it" | `engagement.ts` measures it: 2954 of 24576 violating pairs before a human's third-book ruling, **0** after, on five of six spending models |
+| "an accrual function that takes a check-in schedule needs a sweep in `streakSweep.ts`'s shape" | `ENGAGEMENT_SWEEP`, `REPUTATION_SWEEP`, `EMPIRE_SWEEP` — named seeds, lengths, generators, counts pinned, non-zero controls kept runnable |
+| "the §5.4 reputation chain… explicitly left unmeasured" | measured, and **closed**: chain B 2-of-3 lists → 0, chain C 84/2616 → 0, chain A 2954 → 0 |
+
+**The eighth is true and is still open:** `src/empire/**` has declared guarantees
+and **zero `MUTATION_WITNESSES` entries**. `grep -c src/empire
+src/game/guaranteeTags.test.ts` returns 0. That file is Session A's, which is why
+it is crossing 2 above rather than work already done — and the two are the same
+request seen from both sides, which is the useful thing this merge surfaced.
+
+None of that is a disagreement with the grading. It is the same finding both
+sessions reached from opposite ends: **§5's loop had to exist before its
+invariants had a subject.** It now does.
+
 
 ## Subagent Roles
 
@@ -761,6 +944,63 @@ physiology.
   That habit caught the sixth rewind while holding three builder branches, at a
   cost of one throwaway commit.
 
+- **PUSH BEFORE YOU CLEAN UP, BECAUSE CLEANUP IS WHAT MAKES A REWIND
+  UNRECOVERABLE.** Rewinds are survivable because origin is ahead. Tidying is
+  survivable because the tree is in git. Doing them in the wrong order is
+  neither, and it is the one combination that loses work permanently.
+
+  The near-miss: a worktree sweep found four holding uncommitted source edits
+  from agents killed mid-flight — in no commit, on no branch, on no remote. They
+  were committed to their own branches and pushed, and only then were the
+  worktrees removed. **The next rewind landed minutes later**, took the whole
+  checkout back, and those four branches on origin were the only surviving copy.
+  Remove-then-push would have destroyed them with nothing to recover from.
+
+  So: anything you are about to delete, move, or prune goes to origin first,
+  even when it is somebody else's half-finished work and especially when you
+  think it is litter. The verification that it is litter is itself a thing that
+  can be wrong.
+
+- **THE RATE IS NOT STABLE — THREE REWINDS LANDED IN ONE SESSION, ROUGHLY
+  HOURLY.** Nine total. Plan for the next one inside the hour rather than at
+  some point: keep uncommitted work to minutes, and do not let a long unpushed
+  stretch accumulate because the last few hours happened to be quiet.
+
+  **The task list reverts with everything else.** It came back showing
+  pre-wave state with finished items pending again, so it is a working aid and
+  never a record of what happened. The durable record is commits on origin.
+
+- **A SUBAGENT'S REPORT OF THE TREE IS REWIND TELEMETRY, NOT ONLY A GRADING.**
+  This is how the seventh rewind was caught, and it is the only new thing about
+  it. `wave-start.mjs` had run clean ninety minutes earlier; the limit it hit is
+  the one its own header already declares, so the check was not at fault. Local
+  git was internally consistent at the old commit — log, reflog and status all
+  agreed — which is what makes this class silent every single time.
+
+  Two things disagreed with it. A push was rejected as non-fast-forward when
+  there was every reason to be a descendant. And **a critic reported facts about
+  the tree that contradicted mine** — it read `.git/refs/heads` directly, named
+  an older commit, and reported that files merged an hour earlier did not exist.
+  I was one step from reading that report as a grading of current code.
+
+  So when an agent describes source that does not match what you believe is
+  there, **the first hypothesis is that one of you is on a different tree**, not
+  that it misread. Settle it with `git cat-file -t <sha>` on a commit you believe
+  in: after a rewind your own recent SHA is *not a valid object name*, which is
+  unambiguous in a way `git log` is not, because `git log` will happily show you
+  a coherent older history.
+
+  It cuts the other way too, and worse: **an in-flight builder in a worktree is
+  pinned to whatever base it started on.** Its `git log` looks fine, it will read
+  reverted code as current, and it will build a fix against a defect that is
+  already fixed. After any recovery, tell every live agent the real base
+  explicitly and have it rebase — an agent cannot detect this about itself.
+
+  Recovery is `git fetch origin <branch>` then `git reset --hard <origin sha>`.
+  Check whether the rewound commit is an *ancestor* of origin's tip before
+  assuming loss: three of these have been truncations rather than divergences,
+  and nothing was lost in any of them because origin was ahead.
+
 - **`tools/evidence.mjs` is what wave-start's question [3] is asking, and it is
   how a critic sees a test result at all.** A critic's tool allowlist is
   read-only with no Bash, so it cannot run the suite — it reads a bundle this
@@ -782,6 +1022,25 @@ physiology.
     that file, or it is checked by nothing. Do not commit a browser record while
     its check is red — a red record tracked as evidence is worse than an absent
     one.
+
+- **MEASURED WALL-CLOCK COSTS, so a `--budget` is not guessed.** A budget set
+  below a tool's real runtime SIGKILLs a passing run, and the output is
+  indistinguishable from a failure — it cost a builder a round when a brief of
+  mine said `--budget 500` for a tool that needs ~556s. Budget generously; the
+  guard exists to catch a hang, not to enforce a deadline.
+
+  | command | typical |
+  |---|---|
+  | `npx vitest run` (whole suite) | ~130s |
+  | `npx tsc --noEmit` | ~30s |
+  | `tools/verify-shell-route.mjs` | **~560s** — three whole meets and a played session |
+  | `tools/verify-cutin-cap.mjs` | ~250s |
+  | `tools/verify-meet-sound.mjs` | ~90s |
+  | `tools/capture-cutin.mjs` | ~25s |
+
+  These move as the tools grow — `verify-shell-route.mjs` was ~430s before the
+  return leg was added. Re-measure rather than trusting this table if a run comes
+  in near its budget.
 
 - Prefer editing existing files over creating new ones.
 - Do not create documentation files unless asked.

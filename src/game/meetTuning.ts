@@ -470,6 +470,59 @@ export const MEET_TUNING = Object.freeze({
   BAR_LOAD_PLATE_STAGGER_MS: 90,
 
   /**
+   * BAR_LOAD_RATTLE_MERGE_MS — two arrivals closer together than this are one
+   * clatter, and are heard once. It is what BOUNDS how deep the rattle stacks.
+   *
+   * ---------------------------------------------------------------------------
+   * WHY THERE IS A CONSTANT HERE AT ALL: NOTHING DELIVERS THE SCHEDULE
+   * ---------------------------------------------------------------------------
+   * The bar used to load on one `setTimeout` per disc at
+   * `BAR_LOAD_PLATE_STAGGER_MS`. The loop was correct and the delivery was not:
+   * the main thread is busy through the meet transition, every expired timer
+   * drains at once when it frees, and `tools/verify-meet-sound.mjs` measured the
+   * result in Chromium — five 180 ms rattles inside 149 ms, two of them
+   * byte-identical, for a load that asked for one every 90. The trace is pinned
+   * in `meetSound.test.ts`; it is not retyped here.
+   *
+   * Moving the load onto the animation clock (`platesLandedAt` in `walkout.ts`)
+   * fixes the TIMER half: a late look skips to where the bar should be instead
+   * of replaying every tick it missed. It does not fix the whole thing, and the
+   * measurement of the half-fix is why this number is what it is —
+   * `requestAnimationFrame` timestamps CATCH UP after jank, so a run measured in
+   * Chromium crossed three 90 ms disc boundaries inside 83 ms of WALL time and
+   * fired a hit for each. That trace is pinned in `meetSound.test.ts` too. Level-triggering cannot see that: the
+   * boundaries really were crossed, and the discs really did land. The clock is
+   * simply not the ear's clock.
+   *
+   * ---------------------------------------------------------------------------
+   * SO IT IS DERIVED FROM THE POOL, NOT CHOSEN
+   * ---------------------------------------------------------------------------
+   * Hits at least this far apart cannot stack more than `duration / this` deep,
+   * so `MEET_SOUND.VOICES_PER_CUE * this >= BAR_RATTLE.durationMs` is exactly
+   * the condition that no rattle is ever cut off by another rattle, for ANY
+   * delivery whatsoever — janked, coalesced, or caught up. 3 x 60 >= 180.
+   * `meetSound.test.ts` holds that relation and measures the bound on
+   * adversarial deliveries rather than on a model of a well-behaved one.
+   *
+   *    @guarantee no-rattle-is-cut-by-another-rattle
+   *
+   * The other side is the floor: it must stay under
+   * `BAR_LOAD_PLATE_STAGGER_MS` minus a display frame, or an on-schedule disc
+   * whose frame lands early is silently swallowed. 60 < 90 - 16.7. That is the
+   * whole legal range — 60 to 73 at this tuning — and it exists only because the
+   * rattle is exactly twice the stagger. Shorten the cue and the range widens.
+   *
+   * NOT APPLIED TO THE SCHEDULE, deliberately. An earlier attempt pulled every
+   * disc boundary this much earlier instead, which shortened the FIRST interval
+   * from 90 ms to 66 and made the ordinary unblocked load stack deeper.
+   *
+   * Nobody has heard it (GDD §12.1): a delivery constant, not a mix decision.
+   * What a listener would be judging is whether a merged arrival reads as one
+   * plate or as a missing one.
+   */
+  BAR_LOAD_RATTLE_MERGE_MS: 60,
+
+  /**
    * GDD §6.2 step 1, second half: "brief walk-out beat". The lifter is under
    * the bar and has not started yet. This is the dread beat and it is the
    * single most important number in this file.
@@ -1177,9 +1230,27 @@ export const MEET_SOUND = Object.freeze({
    * `CROWD_SWELL_BIG` (2100ms, played twice by the walk-out, the second landing
    * mid-attack) and `BAR_RATTLE` (180ms, fired every 90ms per plate).
    *
-   * Bounded rather than tuned: `meetSound.test.ts` derives the worst overlap
-   * the schedule can produce and reddens if it exceeds this. NOBODY HAS HEARD
-   * IT (GDD §12.1) — this is a resource floor, not a mix decision.
+   * SIZED OFF WHAT THE BROWSER DELIVERS, NOT OFF WHAT THE SCHEDULE ASKS FOR,
+   * AND THE DIFFERENCE IS THE WHOLE STORY OF THIS NUMBER. The first version of
+   * this comment said "`meetSound.test.ts` derives the worst overlap the
+   * schedule can produce" — a correct derivation of 2 from a schedule the
+   * browser does not deliver. `tools/verify-meet-sound.mjs` measured 5.
+   *
+   * Two facts set it at 3:
+   *
+   *   - `BAR_RATTLE` is 180 ms every 90 ms, which is two deep with ZERO margin.
+   *     Frames arrive on a ~16.7 ms grid, so the observed interval between one
+   *     disc and the one after next can be 163 ms rather than 180, and the third
+   *     copy is still sounding. `meetSound.test.ts` measures that on 117 of 1890
+   *     swept deliveries with the thread never blocked at all.
+   *   - `CROWD_SWELL_BIG` is 2100 ms and the walk-out plays it twice, the second
+   *     landing mid-attack. That one is two by design.
+   *
+   * A tuner who wants the design's two-deep rattle back shortens the cue below
+   * twice the stagger; raising this number instead would only decide whether the
+   * extra copies pile up or cut each other, which is not the same question.
+   * NOBODY HAS HEARD IT (GDD §12.1) — this is a resource floor, not a mix
+   * decision.
    */
   VOICES_PER_CUE: 3,
   /**
@@ -1648,7 +1719,33 @@ export const MEET_COPY = Object.freeze({
   OPTION_SMALL: 'SMALL JUMP',
   OPTION_SMALL_WHY: 'Lock in a bigger total. Low risk.',
   OPTION_BIG: 'BIG JUMP',
-  OPTION_BIG_WHY: 'A PR on the line. Higher risk.',
+  /**
+   * Why you would take the big jump — and no longer a claim about a record.
+   *
+   * It used to read 'A PR on the line. Higher risk.' and it was printed
+   * unconditionally, while `AttemptOption.isPrAttempt` — the flag the gold
+   * border reads — is `previousBestKg !== null && weightKg > previousBestKg`.
+   * On a lifter's first meet `previousBestByLift` returns all-null, so every
+   * big card on that meet said "A PR on the line" over a card the app had
+   * decided was not a PR attempt: 6 of 6 on a played first meet, measured in
+   * `AttemptSelectView.test.ts`. It was false on later meets too, on every
+   * opener and second attempt under the lifter's best, which is most of them.
+   *
+   * The PR claim now lives in `OPTION_PR_NOTE`, which the engine attaches to
+   * whichever option actually crosses the lifter's best.
+   */
+  OPTION_BIG_WHY: 'The biggest jump on offer. Higher risk.',
+  /**
+   * GDD §6.3's "a PR on the line", printed on the card it is true of.
+   *
+   * `attemptDecisionFor` puts this on an option exactly when that option's
+   * `isPrAttempt` is true, which is the same field `AttemptSelectView` paints
+   * `MEET_PALETTE.CARD_PR_EDGE` from — so the sentence and the gold border are
+   * one decision rendered twice rather than two that can disagree.
+   *
+   * `@guarantee pr-sentence-and-pr-border-are-one-decision`
+   */
+  OPTION_PR_NOTE: 'A PR on the line.',
   OPTION_PUSH_PAST: 'GO PAST IT',
   OPTION_PUSH_PAST_WHY: 'Concede the miss and reach past it. Rescues the lift or spends the last attempt for nothing.',
   OPTION_BOMB_WARNING: 'Miss this and the meet is over with nothing on this lift.',

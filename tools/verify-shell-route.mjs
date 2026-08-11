@@ -59,6 +59,22 @@
  *      it, every day — and it draws two lines of text and NO CONTROL OF ITS
  *      OWN, so the shell's pill is the only thing on it a thumb can press. If
  *      the pill fails there the core loop of the game ends on a dead end.
+ *   6c. AND THE WAY BACK FROM THAT MEET, WHICH IS THE ONE LEG THAT WAS NEVER
+ *      MEASURED. This tool presses BACK TO TRAINING four times above and every
+ *      one of them lands on a day the player has NOT trained — sections 4 and 4c
+ *      both run before section 6 is the one that plays a session — so all four
+ *      correctly expect GDD §3.2's check-in. `src/shell/appServer.ts` exists for
+ *      the OTHER case, in its own words: "a player could train, open meet day,
+ *      come back, and be offered a SECOND session of the same day". Section 6c
+ *      is that case. The meet section 6 opened from the already-trained surface
+ *      is played to its end (the pill lives on the `recap` beat and nowhere
+ *      else, so there is no shorter way home), BACK TO TRAINING is pressed, and
+ *      the landing is asserted to be the already-trained surface AND asserted
+ *      NOT to be the check-in. The address bar is read at all three moments:
+ *      `frozenMeetFor` branches on `source === 'debug'`, so a query string here
+ *      would swap the app's own connection for a scripted lifter who has never
+ *      trained — which is this section's failure mode, and a fallback to a debug
+ *      URL would manufacture it rather than detect it.
  *   7. NO CONTROL IS DRAWN OVER A LIVE SET, or over a walk-out, an attempt, a
  *      verdict, or a GDD §7.2 CUT-IN. A pill over the mechanic is a mis-tap
  *      that costs a rep; a pill over a cut-in eats the tap that was meant to
@@ -130,13 +146,32 @@ import path from 'node:path';
 import {
   SESSION_DRIVE,
   SESSION_PROMPTS,
-  adaptDepthSearch,
   freshDepthSearch,
   openSessionToFirstSet,
   playSessionToCloseOut,
   pressCloseOutAction,
   waitForCloseOutSettled,
 } from './sessionDrive.mjs';
+/**
+ * THE MEET DRIVER LIVES IN ITS OWN MODULE NOW, and every line of it used to be
+ * in this file. `tools/verify-meet-sound.mjs` needs the same drive to hear the
+ * walk-out on the arm a player reaches, and CLAUDE.md has four instances of what
+ * a second copy of a guard costs — each one at a shorter distance than the last.
+ * So it moved rather than being duplicated, and what stayed here is what only
+ * this tool does with it: the hall timeline through the tail, the room the rep
+ * is drawn in, and the checks.
+ *
+ * `MEET_WALKOUT_SAYS` is aliased to the name this file already called it, so the
+ * table has one home and this tool's twenty existing uses are byte-identical.
+ */
+import {
+  MEET_DRIVE,
+  MEET_WALKOUT_SAYS as MEET_TAIL_SAYS,
+  ON_SCREEN_MIN_OPACITY,
+  driveMeetToItsEnd,
+  effectiveOpacity,
+  waitUntilDrawn,
+} from './meetDrive.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -281,35 +316,14 @@ const RECAP_SETTLE_MS = RECAP_LAST_ROW_DRAWN_AT_MS + FADE_GRACE_MS;
  * IDENTICAL.
  */
 /**
- * The two lines that identify the beat the tail probe runs on, restated here
- * for the reason every other copy in this file is restated: a check that reads
- * its expectation out of the module under test agrees with a broken module.
- * Both are cross-checked against `src/game/meetTuning.ts` by
- * `checkMeetRestatementsMatchTuning`.
+ * The lines that identify the beat the tail probe runs on are
+ * `MEET_WALKOUT_SAYS` in `meetDrive.mjs`, imported at the top of this file under
+ * the name `MEET_TAIL_SAYS` that its twenty uses below already spell. They are
+ * restated from `src/game/meetTuning.ts` rather than imported from it, for the
+ * reason every other copy in this file is restated — a check that reads its
+ * expectation out of the module under test agrees with a broken module — and
+ * this tool cross-checks the ones IT uses in `checkMeetRestatementsMatchTuning`.
  */
-const MEET_TAIL_SAYS = Object.freeze({
-  /** src/game/meetTuning.ts — MEET_COPY.WALKOUT_BOMB_RISK. */
-  NOTHING_BANKED: 'NOTHING BANKED. THIS IS THE LIFT.',
-  /**
-   * Not one constant but the eyebrow `WalkoutView` assembles out of
-   * `MEET_COPY.ATTEMPT_LABEL`, `ATTEMPT_OF` and `ATTEMPTS_PER_LIFT`. Written out
-   * as the player reads it, because that is what the probe is checking.
-   */
-  THIRD_OF_THREE: 'ATTEMPT 3 OF 3',
-  /** src/game/meetTuning.ts — MEET_COPY.WALKOUT_THIRD. */
-  LAST_ONE: 'LAST ONE',
-  /** src/game/meetTuning.ts — MEET_COPY.WALKOUT_PR. */
-  A_PR: 'NOBODY HAS SEEN YOU DO THIS',
-  /**
-   * src/game/meetTuning.ts — MEET_COPY.WALKOUT_PROMPT.
-   *
-   * THE ONE LINE `WalkoutView` PRINTS WHEN `isUrgentAttempt` IS FALSE, which is
-   * what makes it usable as the flag `REP_HALL_SEEN` sorts its shots by: the
-   * other three are the bomb-risk, PR and third-attempt lines and every one of
-   * them is an urgent beat.
-   */
-  WALK_IT_OUT: 'WALK IT OUT',
-});
 
 /**
  * `MEET_TUNING.BAR_LOAD_MS`, restated and cross-checked.
@@ -414,15 +428,10 @@ const WALKOUT_TAIL_PROBE = Object.freeze({
   SETTLED_GAP_MS: 600,
 });
 
-/**
- * Below this, a control is reported ABSENT however happily the DOM says it is
- * visible. Not a style threshold: a fade that has not finished is a control a
- * thumb cannot find.
- */
-const ON_SCREEN_MIN_OPACITY = 0.9;
-
-/** How often `waitUntilDrawn` re-reads an opacity while a fade is running. */
-const DRAWN_POLL_MS = 100;
+// `ON_SCREEN_MIN_OPACITY` and `DRAWN_POLL_MS` moved to `meetDrive.mjs` with
+// `effectiveOpacity` and `waitUntilDrawn`, which are the only things that read
+// them. The driver's three presses wait on that threshold too, and two
+// thresholds would be two answers to "is it drawn".
 
 const NAV_OPEN_MEET = 'shell-open-meet';
 const NAV_LEAVE_MEET = 'shell-leave-meet';
@@ -461,6 +470,17 @@ const BEAT_SAYS = Object.freeze({
   /** src/game/sessionTuning.ts — SESSION_COPY.CHECK_IN_TITLE. */
   CHECK_IN: 'HOW ARE YOU TODAY?',
   /**
+   * src/game/sessionTuning.ts — SESSION_COPY.ALREADY_TRAINED_HEADLINE.
+   *
+   * THE HEADLINE AND NOT THE SUBHEAD. 'TRAINED TODAY' is drawn by
+   * `AlreadyTrained` and by nothing else in the app, so a screen saying it is
+   * GDD §3.2's one-session-a-day surface; the subhead is prose and a copy pass
+   * is likelier to rewrite it. Section 6c reads this as the SAME-MOMENT control
+   * on its negative — the probe that fails to find the check-in has to be shown
+   * finding something.
+   */
+  ALREADY_TRAINED: 'TRAINED TODAY',
+  /**
    * src/meet/careerCalendarPlaceholder.ts — CAREER_CALENDAR_PLACEHOLDER_COPY.LINE.
    *
    * The WHOLE ruled sentence, not a fragment of it. A human ruled this copy
@@ -469,6 +489,233 @@ const BEAT_SAYS = Object.freeze({
    * "Meet complete" would be green on the sentence that was withdrawn.
    */
   SECOND_MEET: 'Meet complete — results saved to your last recorded meet. Career calendar coming soon.',
+});
+
+// ###########################################################################
+// ###  GDD §6.3 — "THE REAL TENSION", ON THE ARM A PLAYER REACHES          #
+// ###########################################################################
+//
+// ===========================================================================
+// WHY THIS EXISTS, AND WHAT IT REPLACES
+// ===========================================================================
+// `attempt-select` appeared in this file's 181 checks exactly once, on a
+// negative about the nav pill, taken at `/?meet=select-after-miss` — down
+// `frozenMeetFor`'s `source === 'debug'` arm. Nothing had ever read §6.3's
+// floor weight, its floor sentence, its option weights, its deltas or its PR
+// styling on a screen a player pressed their way to, and `MEET_DRIVE`'s option
+// preference put `big` last, so `attempt-option-big` was a control no played
+// run had ever touched.
+//
+// The driver already stands on that screen six times per meet. What was
+// missing was a reader, so this is one: it runs inside the drive, before the
+// press, on every §6.3 screen of every meet this tool plays.
+//
+// ===========================================================================
+// THE PAIR IT IS REALLY HERE FOR
+// ===========================================================================
+// `AttemptOption.isPrAttempt` drives two renderings — the gold
+// `MEET_PALETTE.CARD_PR_EDGE` border, and `AttemptOption.prNote`'s sentence.
+// A node suite cannot see a border, so the claim that those two agree is
+// checkable in a browser and nowhere else. It is read here on both meets a
+// player opened, and the two meets are not the same subject:
+//
+//   - THE FIRST MEET OF AN APP RUN has no meets on record, so
+//     `previousBestByLift` answers all-null, no card is a PR attempt, and the
+//     right reading is ZERO gold borders and ZERO PR sentences over twelve
+//     cards. That is where the copy defect lived.
+//   - THE SECOND MEET reads the first one's bests, so a PR attempt is
+//     reachable — and it is the ONLY place in the shipped app where one is,
+//     because there is no career calendar and nothing persists a reload. The
+//     gold border had never been drawn to a screen in this tool's evidence.
+//
+// Both are needed. The first meet alone would let a build that never paints
+// the border pass; the second alone would let a build that always paints it.
+const MEET_SELECT_SAYS = Object.freeze({
+  /** src/game/meetTuning.ts — MEET_COPY.SELECT_FLOOR_RAISED. §6.3's bite. */
+  FLOOR_RAISED:
+    'A miss does not lower the bar. The lightest thing left is the weight that just beat you.',
+  /** src/game/meetTuning.ts — MEET_COPY.SELECT_FLOOR_AFTER_MAKE. */
+  FLOOR_AFTER_MAKE: 'Banked. From here the bar only goes up.',
+  /** src/game/meetTuning.ts — MEET_COPY.OPTION_PR_NOTE. */
+  PR_NOTE: 'A PR on the line.',
+  /** src/game/meetTuning.ts — MEET_COPY.SELECT_NOTHING_BANKED. */
+  NOTHING_BANKED: 'NOTHING BANKED',
+});
+
+/**
+ * src/meet/meetPalette.ts — MEET_PALETTE.CARD_PR_EDGE, and the rgb() a browser
+ * reports it as.
+ *
+ * Restated here and cross-checked against the palette at the end of the run,
+ * like every other constant this file compares pixels to. The conversion is
+ * done rather than transcribed so a re-tune of the hex moves what is looked
+ * for instead of silently un-matching.
+ */
+const CARD_PR_EDGE_RESTATED = '#ffd75e';
+
+/** '#rrggbb' as the `rgb(r, g, b)` a computed style comes back as. */
+function rgbOf(hex) {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (m === null) return null;
+  return `rgb(${Number.parseInt(m[1], 16)}, ${Number.parseInt(m[2], 16)}, ${Number.parseInt(m[3], 16)})`;
+}
+
+/**
+ * How many times §6.3's screen comes up in a meet played to its end.
+ *
+ * Openers are declared at weigh-in (GDD §6.1), so every lift produces one
+ * selection per attempt after the first: three lifts x two. Restated here and
+ * cross-checked against `ATTEMPTS_PER_LIFT` in `src/game/meet.ts`.
+ */
+const SELECTIONS_PER_MEET_RESTATED = 3 * (3 - 1);
+
+/** Two cards, never three — `AttemptSelectView`'s own header and §6.3's shape. */
+const CARDS_PER_SELECTION_RESTATED = 2;
+
+/**
+ * Every §6.3 screen this run read, in the order they were on the platform.
+ *
+ * Filled by `readAttemptSelect` from inside the drive and asserted afterwards,
+ * because the screen is gone the instant the press lands and a check written
+ * after the meet has nothing left to look at.
+ */
+const SELECT_SCREENS_SEEN = [];
+
+/**
+ * How many times this run has loaded the app, which is how many lifters it has
+ * had. Incremented by `open()`; see the block there.
+ */
+const APP_RUNS = { serial: 0 };
+
+/**
+ * WHAT ONE §6.3 SCREEN LOOKS LIKE, READ OFF THE PIXELS.
+ *
+ * Border colours come from `getComputedStyle`, not from the source: the whole
+ * point is that the gold is DRAWN. `borderTopColor` because React Native Web
+ * expands `borderColor` into the four sides and the top is the one that always
+ * survives that expansion.
+ */
+async function readAttemptSelect(page) {
+  return page.evaluate(() => {
+    const node = (id) => document.querySelector(`[data-testid="${id}"]`);
+    const text = (id) => {
+      const found = node(id);
+      return found === null ? null : found.textContent;
+    };
+    const cards = [];
+    for (const id of ['repeat', 'small', 'big']) {
+      const card = node(`attempt-option-${id}`);
+      if (card === null) continue;
+      const style = window.getComputedStyle(card);
+      cards.push({
+        id,
+        weight: text(`attempt-option-weight-${id}`),
+        delta: text(`attempt-option-delta-${id}`),
+        why: text(`attempt-option-why-${id}`),
+        prNote: text(`attempt-option-pr-note-${id}`),
+        borderColor: style.borderTopColor,
+      });
+    }
+    return {
+      // Read INSIDE the same evaluate as the pixels, so the address bar and the
+      // screen are the same instant rather than two reads with a press between.
+      href: window.location.href,
+      search: window.location.search,
+      title: text('attempt-select-title'),
+      banked: text('attempt-select-banked'),
+      floorWeight: text('attempt-select-floor-weight'),
+      floorText: text('attempt-select-floor-text'),
+      cards,
+    };
+  });
+}
+
+/** A weight as `formatWeight` prints it — a bare number, no unit — or null. */
+function weightNumber(printed) {
+  if (typeof printed !== 'string') return null;
+  const value = Number(printed.trim());
+  return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * WHICH CARD THE ROBOT TAKES ON THE SECOND MEET, and why it is not the safest.
+ *
+ * `MEET_DRIVE.SAFEST_OPTIONS` never reaches `big` after a make, so the bold arm
+ * of §6.3's dilemma had never been pressed in a played run. This policy presses
+ * it — but ONLY when the screen says a weight is already banked on this lift,
+ * because a lift with something banked cannot bomb out however the attempt
+ * goes (GDD §6.3's bomb-out is three misses on one lift). So the meet's ENDING
+ * is not put at risk to press a button, which would have traded one check for
+ * another.
+ *
+ * It is deliberately not applied to the FIRST meet. The second meet's PR
+ * attempts exist because its weights climb past the first meet's bests; driving
+ * the first meet bigger raises that bar by more than it raises the second's,
+ * and measurement says it removes the PR cards entirely.
+ */
+function takeTheBigJumpWhenSomethingIsBanked(ids, state) {
+  if (!ids.includes('big')) return null;
+  const banked = state.banked;
+  // AN UNREADABLE LINE IS A DECLINE, not a dare. If the banked line is missing
+  // the policy cannot know whether this lift can still bomb, and the safe
+  // answer is the one the driver had before this hook existed.
+  if (typeof banked !== 'string' || banked.trim() === '') return null;
+  if (banked.includes(MEET_SELECT_SAYS.NOTHING_BANKED)) return null;
+  return 'big';
+}
+
+/**
+ * How many drawn screens this run has read each `BEAT_SAYS` line off.
+ *
+ * A COUNT AND NOT A FLAG, on this file's standing rule that a non-vacuity guard
+ * pins what it actually saw. Filled by `shootBeat` and read by section 6c, whose
+ * central claim is a NEGATIVE — that `BEAT_SAYS.CHECK_IN` is not on the screen
+ * the return leg lands on. `!said.includes(x)` is trivially true for any `x` no
+ * screen ever says, so that check is only evidence once this map has counted the
+ * string it is looking for. See the block above `shootBeat`.
+ */
+const SAYS_SEEN_ON_A_REAL_SCREEN = new Map();
+
+/**
+ * SECTION 6c'S TWO TUNABLE NUMBERS, in one named place.
+ *
+ * CLAUDE.md, "Game Feel Values Must Be Tunable": a timing window is a thing a
+ * playtester moves by hand, and it may not be buried at the site that reads it.
+ * Neither of these has been played; both are starting points.
+ */
+const RETURN_LEG_PROBE = Object.freeze({
+  /**
+   * How long the already-trained surface gets to be DRAWN after BACK TO
+   * TRAINING is pressed.
+   *
+   * NOT AN ANIMATION DEADLINE, and that is why it is not derived from a fade the
+   * way the pill's and the recap's are: `SessionScreen` renders `AlreadyTrained`
+   * outside `CutInHost`, as two `<Text>` nodes in a `<View>` with no
+   * `useAnimatedStyle` anywhere on the path, so there is no stagger to compute
+   * and the only thing being waited for is a commit and a frame. `FADE_GRACE_MS`
+   * is this file's standing slack for a software-rendered browser that drops
+   * them, which is the right size of number for that and is already named.
+   *
+   * IT IS A BOUND, NOT A SLEEP. On a build where the surface never draws this
+   * waits the whole window and then reddens — it does not wait until it passes.
+   */
+  SURFACE_DRAWN_WITHIN_MS: FADE_GRACE_MS,
+
+  /**
+   * How many drawn screens this run reads `BEAT_SAYS.CHECK_IN` off BEFORE the
+   * return leg, and therefore what its non-vacuity control expects.
+   *
+   * Two, and they are named rather than counted loosely: `05a` after the played
+   * meet and `05b` after the second one. Both are return legs on a day the
+   * player has NOT trained, which is the case that made the check-in the right
+   * expectation everywhere above and the wrong one here.
+   *
+   * Pinned as an equality rather than a floor, on this file's rule about counts:
+   * a floor is satisfied by a run that lost one of the two sightings for a
+   * reason nobody looked into. Add or remove a check-in shutter above and this
+   * number moves with it, in one place.
+   */
+  CHECK_IN_SIGHTINGS_BEFORE_THE_LEG: 2,
 });
 
 /**
@@ -898,12 +1145,21 @@ function provenance() {
    * is now attributed to a device that no longer exists. A critic found that
    * the harness could certify such a record as current.
    *
-   * So the record carries a digest of this file and the driver it plays the
-   * session with. A reader comparing them against the tree can tell a stale
-   * instrument from a stale app, which the SHA alone cannot distinguish.
+   * So the record carries a digest of this file and the drivers it plays the
+   * session and the meets with. A reader comparing them against the tree can
+   * tell a stale instrument from a stale app, which the SHA alone cannot
+   * distinguish.
+   *
+   * `meetDrive.mjs` WAS MISSING FROM THIS LIST, and it is the driver every meet
+   * in this record was played by. Its `SAFEST_OPTIONS` decides which arm of GDD
+   * §6.3 is ever pressed and its `ON_SCREEN_MIN_OPACITY` decides what "drawn"
+   * means for every card — both exactly the kind of edit the paragraph above
+   * says a SHA cannot see, in a file the SHA-and-two-digests header implied was
+   * covered. It is the sibling of `sessionDrive.mjs`, one line below it in the
+   * import block, which is where this file keeps finding these.
    */
   record.instrument = Object.fromEntries(
-    ['verify-shell-route.mjs', 'sessionDrive.mjs'].map((name) => {
+    ['verify-shell-route.mjs', 'sessionDrive.mjs', 'meetDrive.mjs'].map((name) => {
       const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
       try {
         return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
@@ -965,6 +1221,21 @@ page.on('pageerror', (e) => pageErrors.push(String(e.message)));
 await mkdir(outDir, { recursive: true });
 
 async function open(search, waitFor, settle = settleMs) {
+  // A `goto` IS A NEW APP RUN, AND SOMETHING HAS TO COUNT THEM.
+  //
+  // `appServer.ts` holds the app's one connection in module scope and
+  // `localSessionServer.ts` persists nothing, so a page load is a brand-new
+  // lifter: no meets on record, seed e1RM, FIRST TOTAL. Every `open()` in this
+  // file is therefore a boundary, and a check that compares two driven meets
+  // has to know whether they were the same lifter.
+  //
+  // Section 8a needed exactly that and would have got it wrong without this:
+  // meet 3 is opened after four `open()` calls, so it is the FIRST meet of its
+  // own app run and draws no PR attempt at all — correctly. Read as "the third
+  // meet, which should have a history", its six PR-less screens look like a
+  // defect. They are the harness reloading, and the number below is what says
+  // so.
+  APP_RUNS.serial += 1;
   await page.goto(`${url}${search}`, { waitUntil: 'load' });
   if (waitFor !== undefined) {
     await page.getByTestId(waitFor).waitFor({ state: 'visible', timeout: 120000 });
@@ -1017,35 +1288,17 @@ const visible = (id) => page.getByTestId(id).isVisible().catch(() => false);
  *      is computed from the same constants the screen animates on, and
  *      `waitUntilDrawn` waits for the fade the app actually plays instead of a
  *      fixed settle that predates it.
+ *
+ * `effectiveOpacity` and `waitUntilDrawn` are `meetDrive.mjs`'s now, because the
+ * meet driver's three presses wait on the same threshold and two copies of the
+ * threshold would be two answers to "is it drawn". They take `page` as their
+ * first argument; nothing else about them changed.
  */
-async function effectiveOpacity(id) {
-  const handle = await page
-    .getByTestId(id)
-    .elementHandle({ timeout: 2000 })
-    .catch(() => null);
-  if (handle === null) return 0;
-  const value = await page
-    .evaluate((node) => {
-      let el = node;
-      let acc = 1;
-      while (el !== null && el.nodeType === 1) {
-        const cs = window.getComputedStyle(el);
-        if (cs.display === 'none' || cs.visibility === 'hidden') return 0;
-        const own = Number.parseFloat(cs.opacity);
-        acc *= Number.isFinite(own) ? own : 1;
-        el = el.parentElement;
-      }
-      return acc;
-    }, handle)
-    .catch(() => 0);
-  await handle.dispose().catch(() => {});
-  return value;
-}
 
 /** In the DOM, and actually drawn. The measured opacity comes back either way. */
 async function onScreen(id) {
   if (!(await visible(id))) return { on: false, why: 'not rendered at all' };
-  const o = await effectiveOpacity(id);
+  const o = await effectiveOpacity(page, id);
   return { on: o >= ON_SCREEN_MIN_OPACITY, why: `opacity ${o.toFixed(3)}` };
 }
 
@@ -1054,28 +1307,6 @@ async function checkOnScreen(id, what) {
   const { on, why } = await onScreen(id);
   check(on, what, why);
   return on;
-}
-
-/**
- * Wait for a control to finish arriving, up to `timeout`, and report what it
- * was at when the clock ran out.
- *
- * A BOUNDED wait, not an unbounded one: "the exit arrives within the time its
- * own animation says it should" is a falsifiable claim, and an unbounded wait
- * would not be one.
- */
-async function waitUntilDrawn(id, timeout) {
-  const started = Date.now();
-  for (;;) {
-    const o = await effectiveOpacity(id);
-    if (o >= ON_SCREEN_MIN_OPACITY) {
-      return { drawn: true, why: `opacity ${o.toFixed(3)} after ${Date.now() - started}ms` };
-    }
-    if (Date.now() - started >= timeout) {
-      return { drawn: false, why: `opacity ${o.toFixed(3)}, still, after ${timeout}ms` };
-    }
-    await page.waitForTimeout(DRAWN_POLL_MS);
-  }
 }
 
 /**
@@ -1130,10 +1361,23 @@ const bodyText = () => page.evaluate(() => (document.body.textContent ?? '').sli
  *
  * `says` is the beat's own line, restated in `BEAT_SAYS` and cross-checked
  * against the app's copy at the end of the run.
+ *
+ * IT ALSO RECORDS WHAT IT SAW, into `SAYS_SEEN_ON_A_REAL_SCREEN`, and that is
+ * not bookkeeping. Section 6c asserts a line is ABSENT from a screen, and an
+ * absence assertion is worth nothing unless the same probe has read that exact
+ * string as PRESENT somewhere in the same sitting: a renamed constant, a broken
+ * `bodyText`, or a typo in `BEAT_SAYS` all make "not on screen" true forever and
+ * for the wrong reason. This is the runtime half of that guard; the source pin
+ * in `checkSessionLayoutMatchesTuning` is the other half, and the two read
+ * different facts (the rendered DOM, and the copy module's literal) so a change
+ * that fools one still has to get past the other.
  */
 async function shootBeat(shot, phase, says) {
   await page.screenshot({ path: path.join(outDir, shot) });
   const said = (await bodyText()).replace(/\s+/g, ' ').trim();
+  if (said.includes(says)) {
+    SAYS_SEEN_ON_A_REAL_SCREEN.set(says, (SAYS_SEEN_ON_A_REAL_SCREEN.get(says) ?? 0) + 1);
+  }
   check(
     shot.includes(phase) && said.includes(says),
     `and ${shot} really is a photograph of the '${phase}' beat, which is what its name says`,
@@ -1354,6 +1598,36 @@ function numberInBlock(source, blockName, key) {
   return null;
 }
 
+/**
+ * The single-quoted members of a bare `export const NAME = ['a', 'b'] …`.
+ *
+ * A THIRD list parser, and deliberately not a widening of `phaseListInSource`.
+ * That one requires `Object.freeze([`, which is how the tuning blocks and the
+ * phase unions are written; `meet.ts`'s `LIFT_ORDER` is a plain literal with
+ * `as const satisfies` after it. Widening the first to accept both shapes would
+ * make it stop being a statement about either — the pattern CLAUDE.md keeps
+ * catching one directory over. The fixture below carries both shapes so this
+ * one is shown to read its own and REFUSE the other's.
+ */
+function stringListInSource(source, name) {
+  const found = new RegExp(`export const ${name}\\s*(?::[^=]*)?=\\s*\\[([^\\]]*)\\]`).exec(source);
+  if (found === null) return null;
+  return [...found[1].matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
+}
+
+/**
+ * What `stringListInSource` must read, and what it must not.
+ *
+ * The refusal half is the load-bearing one: a frozen list is `phaseListInSource`'s
+ * subject, and a parser that answered for both would let a check written about
+ * one silently start reading the other.
+ */
+const LIST_FIXTURE = `
+  export const REAL_ORDER = ['squat', 'bench', 'deadlift'] as const satisfies readonly LiftKind[];
+  export const TYPED_ORDER: readonly string[] = ['one', 'two'];
+  export const FROZEN_ORDER = Object.freeze(['alpha', 'beta'] as const);
+`;
+
 /** The number a top-level `export const NAME = <number>;` is given, or null. */
 function constInSource(source, name) {
   const found = new RegExp(`export const ${name}\\s*(?::[^=]*)?=\\s*(-?[0-9]+(?:\\.[0-9]+)?)\\s*;`).exec(
@@ -1439,6 +1713,29 @@ async function checkSessionLayoutMatchesTuning() {
     text.includes(`REST_PROMPT: '${BEAT_SAYS.REST}'`),
     'SESSION_COPY.REST_PROMPT is the line this tool identifies the rest beat’s photograph by',
     `looked for REST_PROMPT: '${BEAT_SAYS.REST}' in sessionTuning.ts`,
+  );
+
+  // THE CHECK-IN'S TITLE, AND IT HAD NO PIN AT ALL UNTIL SECTION 6c NEEDED ONE.
+  //
+  // `BEAT_SAYS.CHECK_IN` had been used only POSITIVELY — `shootBeat` asserting a
+  // screen says it — and a positive use carries its own control: if the copy
+  // moved, the shot check goes red. Section 6c uses it NEGATIVELY, and
+  // `!said.includes(x)` is true of every string no screen says, so a copy edit
+  // to `CHECK_IN_TITLE` would have turned the one check that names the defect
+  // into a check of nothing, silently and while staying green. That is the
+  // "input silently absent" shape, and this is the pin that closes it.
+  check(
+    text.includes(`CHECK_IN_TITLE: '${BEAT_SAYS.CHECK_IN}'`),
+    'SESSION_COPY.CHECK_IN_TITLE is the line section 6c asserts is ABSENT from the return leg’s screen',
+    `looked for CHECK_IN_TITLE: '${BEAT_SAYS.CHECK_IN}' in sessionTuning.ts`,
+  );
+  // ...and the line it asserts is PRESENT there, which is the same-moment
+  // control on the negative above and the line `14-return-leg-already-trained`
+  // is identified by.
+  check(
+    text.includes(`ALREADY_TRAINED_HEADLINE: '${BEAT_SAYS.ALREADY_TRAINED}'`),
+    'SESSION_COPY.ALREADY_TRAINED_HEADLINE is the line section 6c identifies GDD §3.2’s one-session-a-day surface by',
+    `looked for ALREADY_TRAINED_HEADLINE: '${BEAT_SAYS.ALREADY_TRAINED}' in sessionTuning.ts`,
   );
 }
 
@@ -2244,7 +2541,92 @@ async function checkMeetRestatementsMatchTuning() {
       'MEET_COPY.WALKOUT_PROMPT is the line the hall-under-the-rep probe reads a CALM attempt off',
       `looked for WALKOUT_PROMPT: '${MEET_TAIL_SAYS.WALK_IT_OUT}' in meetTuning.ts`,
     );
+
+    // GDD §6.3'S FOUR LINES. Every one of them is a discriminator in section
+    // 8a: two sort the floor sentence into the miss branch or the banked one,
+    // one is the sentence the gold border is checked against, and one is what
+    // the big-jump policy reads to know a miss cannot bomb the lift. A copy
+    // edit to any of them would leave those checks comparing against a string
+    // no screen says — which is green, and measures nothing.
+    for (const [name, mine] of [
+      ['SELECT_FLOOR_RAISED', MEET_SELECT_SAYS.FLOOR_RAISED],
+      ['SELECT_FLOOR_AFTER_MAKE', MEET_SELECT_SAYS.FLOOR_AFTER_MAKE],
+      ['OPTION_PR_NOTE', MEET_SELECT_SAYS.PR_NOTE],
+      ['SELECT_NOTHING_BANKED', MEET_SELECT_SAYS.NOTHING_BANKED],
+    ]) {
+      check(
+        meetText.includes(`${name}: '${mine}'`),
+        `MEET_COPY.${name} is a line section 8a reads GDD §6.3’s screen by`,
+        `looked for ${name}: '${mine}' in meetTuning.ts`,
+      );
+    }
+    // AND THE SENTENCE IS IN ONE ENTRY, COUNTED. A pin that only asks whether
+    // the string is present passes just as happily when it is present TWICE —
+    // which is exactly the defect: the PR claim living in `OPTION_BIG_WHY` as
+    // well as in `OPTION_PR_NOTE`. Counting is the difference.
+    //
+    // COMMENTS STRIPPED FIRST, and finding that out cost this check its first
+    // run. `OPTION_BIG_WHY`'s doc comment quotes the withdrawn string verbatim,
+    // as the account of what it used to say — so the raw count is 2 and the
+    // check reddened over prose. A scan that counts its own documentation is
+    // measuring the wrong thing, and it happened twice on this piece: the unit
+    // suite's palette counter had the identical bug one file over.
+    const meetCode = meetText.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const prClaims = meetCode.split(MEET_SELECT_SAYS.PR_NOTE).length - 1;
+    check(
+      prClaims === 1,
+      'and the PR sentence occurs ONCE in meetTuning.ts’s code — putting it back into a card’s reason takes this to two',
+      `${prClaims} occurrence(s) of ${JSON.stringify(MEET_SELECT_SAYS.PR_NOTE)} in meetTuning.ts outside comments` +
+        ` (${meetText.split(MEET_SELECT_SAYS.PR_NOTE).length - 1} including them — the doc comment on OPTION_BIG_WHY` +
+        ' quotes the sentence it no longer prints)',
+    );
   }
+
+  // THE GOLD ITSELF, read back out of the palette that owns it. Section 8a
+  // compares a computed border colour against `CARD_PR_EDGE_RESTATED`; a
+  // re-tune of the hex with this pin absent would make every card read as
+  // "not a PR" and the agreement check would pass on all-false.
+  const paletteWhere = path.join(srcRoot, 'src', 'meet', 'meetPalette.ts');
+  const paletteText = await readFile(paletteWhere, 'utf8').catch(() => null);
+  check(
+    paletteText !== null && paletteText.includes(`CARD_PR_EDGE: '${CARD_PR_EDGE_RESTATED}'`),
+    'MEET_PALETTE.CARD_PR_EDGE is the gold section 8a looks for on a drawn card',
+    paletteText === null
+      ? `could not read ${paletteWhere}`
+      : `looked for CARD_PR_EDGE: '${CARD_PR_EDGE_RESTATED}' in meetPalette.ts, which section 8a reads as ${JSON.stringify(rgbOf(CARD_PR_EDGE_RESTATED))}`,
+  );
+
+  // AND HOW MANY TIMES §6.3'S SCREEN COMES UP, which is section 8a's domain
+  // size and therefore its whole non-vacuity guard.
+  check(
+    JSON.stringify(stringListInSource(LIST_FIXTURE, 'REAL_ORDER')) ===
+      JSON.stringify(['bench', 'deadlift', 'squat']) &&
+      JSON.stringify(stringListInSource(LIST_FIXTURE, 'TYPED_ORDER')) ===
+        JSON.stringify(['one', 'two']) &&
+      stringListInSource(LIST_FIXTURE, 'FROZEN_ORDER') === null &&
+      stringListInSource(LIST_FIXTURE, 'ABSENT_ORDER') === null,
+    'the bare-list parser reads a plain literal, reads a typed one, and refuses a frozen one and a missing one',
+    `fixture -> REAL_ORDER ${JSON.stringify(stringListInSource(LIST_FIXTURE, 'REAL_ORDER'))},` +
+      ` TYPED_ORDER ${JSON.stringify(stringListInSource(LIST_FIXTURE, 'TYPED_ORDER'))},` +
+      ` FROZEN_ORDER ${JSON.stringify(stringListInSource(LIST_FIXTURE, 'FROZEN_ORDER'))} (want null,` +
+      ` because that shape is phaseListInSource's subject),` +
+      ` ABSENT_ORDER ${JSON.stringify(stringListInSource(LIST_FIXTURE, 'ABSENT_ORDER'))} (want null)`,
+  );
+  const meetWhereRules = path.join(srcRoot, 'src', 'game', 'meet.ts');
+  const rulesText = await readFile(meetWhereRules, 'utf8').catch(() => null);
+  const attemptsPerLift = rulesText === null ? null : constInSource(rulesText, 'ATTEMPTS_PER_LIFT');
+  const liftOrder = rulesText === null ? null : stringListInSource(rulesText, 'LIFT_ORDER');
+  const theirSelections =
+    typeof attemptsPerLift === 'number' && liftOrder !== null
+      ? liftOrder.length * (attemptsPerLift - 1)
+      : null;
+  check(
+    theirSelections === SELECTIONS_PER_MEET_RESTATED,
+    'the number of §6.3 screens a whole meet contains is meet.ts’s own shape, not this tool’s guess',
+    theirSelections === null
+      ? `ATTEMPTS_PER_LIFT (${attemptsPerLift}) or LIFT_ORDER (${JSON.stringify(liftOrder)}) was not found in meet.ts`
+      : `meet.ts ${liftOrder?.length} lifts x (${attemptsPerLift} - 1) = ${theirSelections} vs this tool ${SELECTIONS_PER_MEET_RESTATED}`,
+  );
 
   // THE STAGE GEOMETRY THE HALL-UNDER-THE-REP BAND IS CUT FROM. Same
   // arrangement as `MOTION_MS` above: three numbers this tool restates, read
@@ -2295,7 +2677,7 @@ async function checkMeetRestatementsMatchTuning() {
  * would otherwise be no evidence at all that a player could have made it.
  */
 async function press(id, expect, what, drawWithin = settleMs) {
-  const arrived = await waitUntilDrawn(id, drawWithin);
+  const arrived = await waitUntilDrawn(page, id, drawWithin);
   if (!arrived.drawn) {
     check(false, what, `the control ${id} was not drawn to press — ${arrived.why}`);
     return false;
@@ -2359,76 +2741,11 @@ async function press(id, expect, what, drawWithin = settleMs) {
 // That is the same trade section 6 already took and for the same reason: the
 // screen at the end of the loop is the one that had never been photographed.
 
-/**
- * Everything the meet driver moves on, in one place.
- *
- * NONE OF THESE ARE GAME FEEL. The game's feel values live in
- * `src/game/meetTuning.ts` and `src/game/liftTuning.ts`; these are A ROBOT'S
- * REACTION TIMES, and they are here rather than inline for the reason
- * `SESSION_DRIVE` gives about its own: somebody re-tuning meet day needs one
- * place to look when the robot stops keeping up with it.
- *
- * THE TWO COPY LINES ARE NOT REACTION TIMES and are the load-bearing entries.
- * They are how the driver learns WHICH WAY it mistimed a release, and they are
- * cross-checked against `meetTuning.ts` at the end of the run
- * (`checkMeetCopyMatchesTuning`). Without that check a copy edit would stop the
- * driver adapting, every meet would start bombing out, and the failure would
- * read as "the app broke" rather than "this tool stopped recognising it".
- */
-const MEET_DRIVE = Object.freeze({
-  /**
-   * WHICH OPTION GDD §6.3'S CHOICE IS ANSWERED WITH, in preference order.
-   *
-   * The lightest legal call every time: `repeat` exists only after a miss and
-   * is the same weight again; `small` is the modest increase after a make;
-   * `big` is the last resort when the engine offered neither. This is the
-   * driver being a coward on purpose — reaching `recap` needs one good lift on
-   * EACH of squat, bench and deadlift (three misses on any one of them is a
-   * bomb-out, and a bomb-out is a different screen), so the robot takes the
-   * lightest thing on offer and does not play §6.3's actual dilemma. It is not
-   * a claim about what a player should do.
-   */
-  SAFEST_OPTIONS: Object.freeze(['repeat', 'small', 'big']),
-
-  /** How often the driver re-reads which beat the meet is on. */
-  POLL_MS: 25,
-
-  /** How long the finger stays down after the drive press, through lockout. */
-  DRIVE_HOLD_EXTRA_MS: SESSION_DRIVE.DRIVE_HOLD_EXTRA_MS,
-
-  /**
-   * Deadlines. Generous on purpose: every one of these means "the meet has
-   * stopped advancing", not "the meet was slow". A meet beat that runs longer
-   * than its own tuning says is the app's business, not the harness's.
-   */
-  BRACE_TIMEOUT_MS: 15000,
-  DESCENT_TIMEOUT_MS: 15000,
-  ASCENT_TIMEOUT_MS: 20000,
-  /** One whole beat-to-beat transition: bar load, walk-out, judges, cards. */
-  BEAT_TIMEOUT_MS: 40000,
-  /** The whole meet. Nine attempts measured at ~112 s, so this is ~3x. */
-  MEET_TIMEOUT_MS: 360000,
-  /**
-   * A hard stop on the attempt loop. GDD §6.2 is three lifts x
-   * `ATTEMPTS_PER_LIFT` (3), so nine is the most a meet can contain and
-   * anything past it means the loop is not advancing.
-   */
-  MAX_ATTEMPTS: 9,
-
-  /**
-   * MEET_COPY.FEEDBACK_DEPTH_HIGH — the judges' line for a release above depth.
-   * The driver holds LONGER after this one.
-   *
-   * Read off the VERDICT screen rather than off the attempt screen, and that is
-   * not a preference: `AttemptView` hands the resolution to the judges in the
-   * effect that fires the moment the rep resolves, so `attempt-detail` exists
-   * for about one commit and a poll can miss it entirely. `verdict-feedback` is
-   * held for `MEET_TUNING.VERDICT_HOLD_MS`, which is a beat a robot can read.
-   */
-  FEEDBACK_HIGH: 'High. The hips never got under.',
-  /** MEET_COPY.FEEDBACK_BURIED. The driver holds SHORTER after this one. */
-  FEEDBACK_BURIED: 'Too deep to recover.',
-});
+// `MEET_DRIVE` — the robot's reaction times, the two judges' lines it steers by,
+// and the safest-option order — is `meetDrive.mjs`'s, imported at the top of
+// this file. It moved with the driver it belongs to. This tool still
+// cross-checks the two copy lines against `meetTuning.ts` in
+// `checkMeetRestatementsMatchTuning`, which is where they were always checked.
 
 /**
  * How long the recap gets to stop saying `MEET COMPLETE` and become a screen.
@@ -2467,47 +2784,105 @@ async function deriveRecapSettleMs() {
   );
 }
 
-/** Which beat of the meet is on screen, and what the mechanic is saying. */
-async function readMeetLoop() {
-  return page.evaluate(() => {
-    const has = (id) => document.querySelector(`[data-testid="${id}"]`) !== null;
-    const text = (id) => {
-      const node = document.querySelector(`[data-testid="${id}"]`);
-      return node === null ? null : node.textContent;
-    };
-    return {
-      weighIn: has('meet-weigh-in'),
-      openers: has('meet-openers'),
-      walkout: has('meet-walkout'),
-      attempt: has('meet-attempt'),
-      deliberation: has('meet-deliberation'),
-      verdict: has('meet-verdict'),
-      select: has('meet-attempt-select'),
-      /** GDD §6.5's recap, built. */
-      recap: has('meet-recap'),
-      /** The bare eyebrow while the server's answer is in flight. */
-      waiting: has('meet-recap-waiting'),
-      /** GDD §6.1's scaffolding, drawn INSTEAD of the recap on a second meet. */
-      placeholder: has('meet-recap-placeholder'),
-      bombed: has('meet-bombed'),
-      prompt: text('attempt-prompt'),
-      attemptLabel: text('attempt-label'),
-      /** GDD §6.2 step 1's eyebrow and its line — which attempt, and what it is worth. */
-      walkoutEyebrow: text('walkout-attempt'),
-      walkoutLine: text('walkout-line'),
-      /** The judges' one line. See MEET_DRIVE.FEEDBACK_HIGH for why not `attempt-detail`. */
-      feedback: text('verdict-feedback'),
-      /**
-       * The option cards on offer, as whole testIDs. Filtered to the three
-       * `AttemptOptionId`s so `attempt-option-weight-<id>` — a Text INSIDE each
-       * card — is not mistaken for a card.
-       */
-      options: [...document.querySelectorAll('[data-testid]')]
-        .map((node) => node.getAttribute('data-testid'))
-        .filter((id) => /^attempt-option-(repeat|small|big)$/.test(id)),
-    };
+/**
+ * ===========================================================================
+ * THE TWO WINDOWS THAT STAND BETWEEN A MEET ENDING AND ITS PILL BEING READABLE
+ * ===========================================================================
+ * Both are the app doing what it is supposed to do, and reading into either one
+ * produces a false failure that looks exactly like a real one:
+ *
+ *   1. A GDD §7.2 cut-in. `AppShell` draws NO chrome while one is live — the
+ *      whole screen is the dismiss target — so the pill is genuinely absent for
+ *      `ENTER_MS + HOLD_MS`. There is no EXIT_MS; `cutInTuning.ts` records that
+ *      it was deleted because `CutInHost` un-mounts synchronously.
+ *   2. The pill's own arrival. `ShellNav` fades in over
+ *      `FADE_IN_DELAY_MS + FADE_IN_MS`, and it remounts (its `key` is the
+ *      affordance) whenever the intent changes.
+ *
+ * ONE DERIVATION, TWO READERS, AND THAT IS THE POINT. The recap section found
+ * these two windows the hard way — fixing the outer one and reading straight
+ * into the inner one, which is this file's own recorded pattern — and section 6c
+ * crosses the identical pair on a different meet. CLAUDE.md: a guard written for
+ * one arm must be applied to its sibling MECHANICALLY, and a twin guard must
+ * READ the sibling's numbers rather than copy them. So the arithmetic lives here
+ * once and both sections read it; a re-tune moves both or neither.
+ *
+ * READ FROM SOURCE, never transcribed, so a playtester who lengthens a beat gets
+ * a tool that still waits rather than one that quietly starts reading into the
+ * silence. `null` for a constant that could not be found is deliberate: it is
+ * what the CONTROL checks below report, and the fallbacks are only there so a
+ * failed parse degrades to the shipped tuning instead of `NaN`.
+ */
+function deriveChromeWindows() {
+  const cutInText = readFileSync(path.join(srcRoot, 'src', 'cutin', 'cutInTuning.ts'), 'utf8');
+  const cutInEnterMs = numberInBlock(cutInText, 'CUT_IN_TUNING', 'ENTER_MS');
+  const cutInHoldMs = numberInBlock(cutInText, 'CUT_IN_TUNING', 'HOLD_MS');
+  const shellNavText = readFileSync(path.join(srcRoot, 'src', 'shell', 'shellTuning.ts'), 'utf8');
+  const pillDelayMs = numberInBlock(shellNavText, 'SHELL_NAV', 'FADE_IN_DELAY_MS');
+  const pillFadeMs = numberInBlock(shellNavText, 'SHELL_NAV', 'FADE_IN_MS');
+  return Object.freeze({
+    cutInEnterMs,
+    cutInHoldMs,
+    cutInWindowMs: (cutInEnterMs ?? 120) + (cutInHoldMs ?? 1600) + FADE_GRACE_MS,
+    pillDelayMs,
+    pillFadeMs,
+    pillArrivalMs: (pillDelayMs ?? 320) + (pillFadeMs ?? 220) + FADE_GRACE_MS,
+    readable:
+      typeof cutInEnterMs === 'number' &&
+      typeof cutInHoldMs === 'number' &&
+      typeof pillDelayMs === 'number' &&
+      typeof pillFadeMs === 'number',
   });
 }
+
+const CHROME_WINDOWS = deriveChromeWindows();
+
+/**
+ * Wait out any §7.2 cut-in that is on screen, bounded by its own window.
+ *
+ * WHY THIS IS NOT QUESTION-BEGGING, which is the obvious objection: the wait is
+ * for `cut-in` to be GONE, and every assertion the callers make afterwards is
+ * still "the pill is drawn". A build where the pill never renders at all waits
+ * the same bounded window and then reddens exactly as before — only the cut-in's
+ * own window is excluded.
+ *
+ * ===========================================================================
+ * `stillUp` IS THE OBSERVATION THE LOOP EXITED ON, NOT A FRESH READ, AND THAT
+ * IS THE WHOLE DIFFERENCE BETWEEN THIS AND THE VERSION THAT WAS FLAKY
+ * ===========================================================================
+ * The shape this replaces read the DOM twice — `wasUp` at the top, and then a
+ * SECOND `visible('cut-in')` inside the `check` at the bottom — with the `if`
+ * skipped in between when nothing was up. Two awaited round trips with a gap
+ * between them, and a cut-in that mounts in that gap makes the two disagree:
+ * MEASURED, on a mutation run, as a red check whose own detail line said "no
+ * cut-in was up at this ending". A check that contradicts itself in its failure
+ * message is worse than either answer, and this file has been here before — the
+ * recap pill check reported PASSED 159 once and 159/1 on four other runs at the
+ * same commit, off exactly this kind of race.
+ *
+ * So there is ONE observation per instant and the loop's last one is the answer.
+ * A cut-in that mounts after this returns is a different moment and is covered
+ * by the caller's own bounded `waitUntilDrawn` on the pill, which polls.
+ *
+ * `wasUp` is "was one EVER seen during the wait" rather than "was one up at the
+ * first read", for the same reason: the first read is one sample of a window,
+ * and the message is about the window.
+ */
+async function waitOutAnyCutIn() {
+  const startedAt = Date.now();
+  let wasUp = false;
+  let up = await visible('cut-in');
+  while (up && Date.now() - startedAt < CHROME_WINDOWS.cutInWindowMs) {
+    wasUp = true;
+    await page.waitForTimeout(25);
+    up = await visible('cut-in');
+  }
+  if (up) wasUp = true;
+  return { wasUp, clearedMs: Date.now() - startedAt, stillUp: up };
+}
+
+// `readMeetLoop` is `meetDrive.mjs`'s. It is the driver's eyes and the driver
+// moved; this file reads the meet through the hooks it passes in instead.
 
 /**
  * What the tail probe saw, filled in ONCE by the meet driver and read by
@@ -2707,271 +3082,75 @@ function beatMsForLine(line) {
   return total;
 }
 
-/** Poll `readMeetLoop` until `done(state)`, or the deadline passes. */
-async function untilMeet(done, timeoutMs) {
-  const started = Date.now();
-  for (;;) {
-    const state = await readMeetLoop();
-    if (done(state)) return { ok: true, state, ms: Date.now() - started };
-    if (Date.now() - started >= timeoutMs) return { ok: false, state, ms: Date.now() - started };
-    await page.waitForTimeout(MEET_DRIVE.POLL_MS);
-  }
-}
-
-const meetSaying = (state, phrase) => state.prompt !== null && state.prompt.includes(phrase);
-/** The meet is over, whichever of the four ways it ended. */
-const meetIsOver = (state) => state.recap || state.waiting || state.placeholder || state.bombed;
+// `untilMeet`, `meetSaying`, `meetIsOver`, `playOneMeetAttempt`,
+// `adaptFromMeetFeedback` and `driveMeetToItsEnd` are `meetDrive.mjs`'s. Their
+// bodies are unchanged; they take `page` as their first argument, and what this
+// file used to do inline during the drive it now passes in as hooks.
 
 /**
- * Play ONE attempt on the platform: brace, descend, release, drive.
+ * The hold the last driven meet converged on, carried to the next one.
  *
- * The same mechanic and the same prompts as a training rep — `AttemptView`
- * mounts the same `useLiftLoop` `SetView` does — so `SESSION_PROMPTS` is what
- * it reads. What differs is the testIDs (`attempt-touch` rather than
- * `session-touch`) and that THERE IS NO SECOND CHANCE: a meet attempt resolves
- * once and goes to the judges. See `src/meet/AttemptView.tsx`.
- *
- * Returns what happened. Nothing here throws on a missed rep: a no-lift is a
- * legal thing for the app to do, and a harness that crashed on one would be
- * reporting its own opinion.
+ * `driveMeetToItsEnd` already threads a depth search in and out so a second meet
+ * starts from the mechanic the first one learned. Sections 4 and 4b hand it
+ * along by hand because they are adjacent; section 6c is three sections and a
+ * whole session away from 4b's `second`, so the handoff lives here instead of
+ * being re-derived or restarted from scratch — a meet restarted on
+ * `freshDepthSearch()` spends its first attempts re-learning a hold this machine
+ * has already measured, and a bombed meet draws no pill at all.
  */
-async function playOneMeetAttempt(holdMs, walkoutLine = null, attemptLabel = null) {
-  const braced = await untilMeet(
-    (s) => meetSaying(s, SESSION_PROMPTS.BRACE) || !s.attempt,
-    MEET_DRIVE.BRACE_TIMEOUT_MS,
-  );
-  if (!braced.ok || !meetSaying(braced.state, SESSION_PROMPTS.BRACE)) {
-    return { played: false, why: `no brace to press — prompt was ${JSON.stringify(braced.state.prompt)}` };
-  }
-
-  const box = await page.getByTestId('attempt-touch').boundingBox().catch(() => null);
-  if (box === null) return { played: false, why: 'the attempt has no touch stage' };
-  // BEFORE THE FIRST PRESS, so the rep is at the pose it mounted in and the two
-  // shots this collects are comparable. See `REP_HALL_SEEN`.
-  await photographTheHallUnderTheRep(box, walkoutLine, attemptLabel);
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-
-  await page.mouse.down();
-  const descending = await untilMeet(
-    (s) => meetSaying(s, SESSION_PROMPTS.DESCENT) || !s.attempt,
-    MEET_DRIVE.DESCENT_TIMEOUT_MS,
-  );
-  if (!meetSaying(descending.state, SESSION_PROMPTS.DESCENT)) {
-    await page.mouse.up();
-    return {
-      played: false,
-      why: `holding never started a descent — prompt was ${JSON.stringify(descending.state.prompt)}`,
-    };
-  }
-
-  await page.waitForTimeout(holdMs);
-  await page.mouse.up();
-
-  const drive = await untilMeet(
-    (s) => meetSaying(s, SESSION_PROMPTS.DRIVE) || !s.attempt,
-    MEET_DRIVE.ASCENT_TIMEOUT_MS,
-  );
-  let drove = false;
-  if (meetSaying(drive.state, SESSION_PROMPTS.DRIVE)) {
-    drove = true;
-    await page.mouse.down();
-    await untilMeet((s) => !s.attempt, MEET_DRIVE.ASCENT_TIMEOUT_MS);
-    await page.waitForTimeout(MEET_DRIVE.DRIVE_HOLD_EXTRA_MS);
-    await page.mouse.up();
-  }
-
-  // The judges' line is what says whether the release was high or buried, so
-  // the attempt is not finished being READ until the verdict is up.
-  const judged = await untilMeet(
-    (s) => s.feedback !== null || s.select || meetIsOver(s),
-    MEET_DRIVE.BEAT_TIMEOUT_MS,
-  );
-  return { played: true, holdMs, drove, feedback: judged.state.feedback };
-}
+let lastMeetDepthSearch = null;
 
 /**
- * The depth search after one attempt, given the judges' feedback.
- *
- * THE ARITHMETIC IS `sessionDrive.mjs`'S AND IS NOT COPIED. `adaptDepthSearch`
- * is the bisection that halves its step on a reversal, and duplicating it here
- * is exactly the drift that module's header exists to refuse. What this adds is
- * the TRANSLATION: meet day says the same two things about a mistimed release
- * in `MEET_COPY`'s words rather than `LIFT_COPY`'s, so the direction is read
- * off the meet's line and handed over in the shape the shared function reads.
- * Anything else the judges say — a stall, a grind, a clean lift — says nothing
- * about the release and must not move the hold.
+ * Which meets this run actually drove, in order, by the tag they were driven
+ * under. The §6.3 section's domain, so a meet that never ran cannot be counted
+ * as one that ran and passed.
  */
-function adaptFromMeetFeedback(search, feedbackText) {
-  const said = feedbackText ?? '';
-  const detail = said.includes(MEET_DRIVE.FEEDBACK_HIGH)
-    ? SESSION_PROMPTS.MISS_TOO_HIGH
-    : said.includes(MEET_DRIVE.FEEDBACK_BURIED)
-      ? SESSION_PROMPTS.MISS_BURIED
-      : '';
-  return adaptDepthSearch(search, { detail });
-}
-
-/**
- * Drive whatever meet is currently on screen from wherever it is to whatever it
- * ends on, and report which of the four endings that was.
- *
- * IT NEVER TOUCHES THE URL. That is the whole point of the thing — see the
- * banner above — so this function takes no search string, does no `goto`, and
- * works on the meet the caller already navigated to with a press.
- *
- * `search` is the depth search carried IN and OUT, so a second meet starts from
- * the hold the first one converged on instead of re-learning the mechanic.
- */
-async function driveMeetToItsEnd(tag, searchIn) {
-  const startedAt = Date.now();
-  const attempts = [];
-  let search = searchIn;
-  /** The line the walk-out just before the current rep was showing. */
-  let lastWalkoutLine = null;
-  for (;;) {
-    const state = await readMeetLoop();
-
-    if (meetIsOver(state)) {
-      // `'recap'` the PHASE arrives before the server's answer does, so the
-      // ending is not known until the screen stops being the bare eyebrow.
-      const settled =
-        recapSettleMs === null
-          ? { ok: false, state }
-          : await untilMeet((s) => s.recap || s.placeholder || s.bombed, recapSettleMs);
-      const end = settled.state;
-      return {
-        ended: end.bombed
-          ? 'bombed'
-          : end.recap
-            ? 'recap'
-            : end.placeholder
-              ? 'placeholder'
-              : 'waiting',
-        attempts,
-        search,
-        ms: Date.now() - startedAt,
-        why:
-          recapSettleMs === null
-            ? 'the recap deadline could not be derived from sessionTuning.ts, so the round trip was never waited for'
-            : `settled after ${settled.ms ?? 0}ms`,
-      };
-    }
-
-    if (Date.now() - startedAt >= MEET_DRIVE.MEET_TIMEOUT_MS) {
-      return { ended: 'timeout', attempts, search, ms: Date.now() - startedAt, why: 'the meet ran past its deadline' };
-    }
-    if (attempts.length > MEET_DRIVE.MAX_ATTEMPTS) {
-      return {
-        ended: 'overrun',
-        attempts,
-        search,
-        ms: Date.now() - startedAt,
-        why: `played ${attempts.length} attempts, and GDD §6.2 has ${MEET_DRIVE.MAX_ATTEMPTS}`,
-      };
-    }
-
-    if (state.weighIn) {
-      const pressed = await waitUntilDrawn('weigh-in-action', MEET_DRIVE.BEAT_TIMEOUT_MS);
-      if (!pressed.drawn) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: `the weigh-in never drew its action — ${pressed.why}` };
-      }
-      await page.getByTestId('weigh-in-action').click({ timeout: 20000 }).catch(() => {});
-      await untilMeet((s) => !s.weighIn, MEET_DRIVE.BEAT_TIMEOUT_MS);
-      continue;
-    }
-
-    if (state.openers) {
-      // The openers are taken AS SUGGESTED (GDD §6.1's pre-filled safe opener).
-      // The driver does not override them: the suggestion is derived from the
-      // lifter's own e1RM and is the load the rest of the meet ratchets up from.
-      const pressed = await waitUntilDrawn('openers-action', MEET_DRIVE.BEAT_TIMEOUT_MS);
-      if (!pressed.drawn) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: `the openers never drew an action — ${pressed.why}` };
-      }
-      await page.getByTestId('openers-action').click({ timeout: 20000 }).catch(() => {});
-      await untilMeet((s) => !s.openers, MEET_DRIVE.BEAT_TIMEOUT_MS);
-      continue;
-    }
-
-    if (state.select) {
-      // The cards stagger in, so the screen exists for a frame or two before
-      // they do. Waiting for a card rather than for the screen.
-      const offered = await untilMeet((s) => !s.select || s.options.length > 0, MEET_DRIVE.BEAT_TIMEOUT_MS);
-      if (!offered.state.select) continue;
-      const want = MEET_DRIVE.SAFEST_OPTIONS.find((id) =>
-        offered.state.options.includes(`attempt-option-${id}`),
-      );
-      if (want === undefined) {
-        return {
-          ended: 'stuck',
-          attempts,
-          search,
-          ms: Date.now() - startedAt,
-          why: `GDD §6.3's choice offered none of ${MEET_DRIVE.SAFEST_OPTIONS.join('/')} — on screen: ${JSON.stringify(offered.state.options)}`,
-        };
-      }
-      const drawn = await waitUntilDrawn(`attempt-option-${want}`, MEET_DRIVE.BEAT_TIMEOUT_MS);
-      if (!drawn.drawn) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: `the ${want} option never finished fading in — ${drawn.why}` };
-      }
-      await page.getByTestId(`attempt-option-${want}`).click({ timeout: 20000 }).catch(() => {});
-      await untilMeet((s) => !s.select, MEET_DRIVE.BEAT_TIMEOUT_MS);
-      continue;
-    }
-
-    if (state.walkout || state.deliberation || state.verdict) {
-      // THE ONE BEAT THIS LOOP DOES MORE THAN WAIT THROUGH. See the block above
-      // `WALKOUT_TAIL_PROBE`: the walk-out's tail is where every millisecond of
-      // §12.2's escalation lands, no unit test can watch a clock run, and the
-      // tail only exists on a third attempt — which the played meet reaches
-      // three times and a page load reaches only by freezing the meet. The
-      // sampler runs on the FIRST of them, and only once.
-      if (state.walkout && WALKOUT_TAIL_SEEN.timeline === null) {
-        await sampleTheTailIfThisIsAThird(state);
-      }
-      // WHICH BEAT THE REP AFTER THIS ONE IS THE FAR SIDE OF. The walk-out's
-      // line is the only thing on screen that says whether the attempt is one
-      // the meet turns on, and it is gone by the time the rep is drawn — so it
-      // is remembered here. See `REP_HALL_SEEN`.
-      if (state.walkout) lastWalkoutLine = state.walkoutLine;
-      // Three TIMED beats that run themselves out. Nothing to press on any of
-      // them, and that is a design claim section 7 checks rather than an
-      // assumption this makes: a pill drawn here would be a mis-tap that costs
-      // the attempt.
-      const moved = await untilMeet((s) => s.attempt || s.select || meetIsOver(s), MEET_DRIVE.BEAT_TIMEOUT_MS);
-      if (!moved.ok) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: 'a timed beat never handed on' };
-      }
-      continue;
-    }
-
-    if (state.attempt) {
-      const label = state.attemptLabel;
-      const rep = await playOneMeetAttempt(search.holdMs, lastWalkoutLine, label);
-      attempts.push({ attempt: label, ...rep });
-      if (!rep.played) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: rep.why };
-      }
-      search = adaptFromMeetFeedback(search, rep.feedback);
-      continue;
-    }
-
-    await page.waitForTimeout(MEET_DRIVE.POLL_MS);
-  }
-}
+const MEETS_DRIVEN = [];
 
 /**
  * The whole of a driven meet, reported as checks.
  *
- * SHARED BY THE TWO MEETS ON PURPOSE, so the second one is measured with the
- * same instrument as the first and a difference between them is a difference in
- * the APP. `expected` is which ending the caller says GDD requires — `'recap'`
- * for the first meet, `'placeholder'` for the second — and it is stated by the
- * caller rather than derived here, because "the second meet is refused" is the
- * claim, not an observation to be accommodated.
+ * SHARED BY THE THREE MEETS ON PURPOSE, so each is measured with the same
+ * instrument as the first and a difference between them is a difference in the
+ * APP. `expected` is which ending the caller says GDD requires — `'recap'` for
+ * the first meet, `'placeholder'` for the second and third — and it is stated by
+ * the caller rather than derived here, because "the second meet is refused" is
+ * the claim, not an observation to be accommodated.
  */
-async function checkDrivenMeet(tag, searchIn, expected, whatEnding) {
-  const drive = await driveMeetToItsEnd(tag, searchIn);
+async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption) {
+  // Stamped with the app run it was played in, BEFORE it is played, so section
+  // 8a can tell "the second meet of one lifter" from "the first meet of the
+  // next one". See the block in `open()`.
+  const record = { tag, appRun: APP_RUNS.serial, ended: null };
+  MEETS_DRIVEN.push(record);
+  const drive = await driveMeetToItsEnd(page, {
+    search: searchIn,
+    recapSettleMs,
+    // THE ONE BEAT THIS TOOL DOES MORE THAN WAIT THROUGH. See the block above
+    // `WALKOUT_TAIL_PROBE`: the walk-out's tail is where every millisecond of
+    // §12.2's escalation lands, no unit test can watch a clock run, and the tail
+    // only exists on a third attempt — which the played meet reaches three times
+    // and a page load reaches only by freezing the meet. The sampler runs on the
+    // FIRST of them, and only once, which is what the guard here says.
+    onWalkoutSeen: async (state) => {
+      if (WALKOUT_TAIL_SEEN.timeline === null) await sampleTheTailIfThisIsAThird(state);
+    },
+    beforeFirstPress: photographTheHallUnderTheRep,
+    // THE SECOND BEAT THIS TOOL DOES MORE THAN WAIT THROUGH, and the one GDD
+    // §12.2 calls "The Real Tension". Runs with every card drawn and before the
+    // press, on every §6.3 screen of every meet. See the block above
+    // `MEET_SELECT_SAYS`.
+    onSelectSeen: async (state) => {
+      const screen = await readAttemptSelect(page);
+      SELECT_SCREENS_SEEN.push({
+        meet: tag,
+        choosing: state.choosing,
+        undrawn: state.undrawn,
+        ...screen,
+      });
+    },
+    chooseOption,
+  });
   check(
     drive.ended === expected,
     whatEnding,
@@ -3002,7 +3181,323 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding) {
       .map((a) => `${a.attempt ?? '?'} @${a.holdMs ?? '?'}ms -> ${JSON.stringify(a.feedback ?? a.why ?? null)}`)
       .join(' | ')}`,
   );
+  // ALSO NOT AN ASSERTION. Which card §6.3's choice was answered with, in order,
+  // so a reader can see whether the run played the dilemma or ducked it.
+  note(`${tag}: §6.3 answered with ${JSON.stringify(drive.pressedOptions ?? [])}`);
+  record.ended = drive.ended;
+  lastMeetDepthSearch = drive.search;
   return drive;
+}
+
+/**
+ * GDD §6.3, GRADED ON WHAT THE PLAYED MEETS ACTUALLY DREW.
+ *
+ * Called once, after both meets a player opened, over `SELECT_SCREENS_SEEN`.
+ * Every number below is a count of screens or cards this run really read; a
+ * drive that never reached §6.3 reports zeroes and reddens rather than passing
+ * an empty loop.
+ */
+function checkAttemptSelectOnThePlayedArm(meetsDriven) {
+  const seen = SELECT_SCREENS_SEEN;
+  const gold = rgbOf(CARD_PR_EDGE_RESTATED);
+  const expectedScreens = meetsDriven.length * SELECTIONS_PER_MEET_RESTATED;
+
+  // WHICH MEETS HAD A COMPETITION HISTORY BEHIND THEM, DERIVED RATHER THAN
+  // ASSUMED. A meet can flag a PR attempt only if an EARLIER meet IN THE SAME
+  // APP RUN recorded a result — a page load is a new lifter (see `open()`), and
+  // a meet that ended on the placeholder was refused and recorded nothing.
+  // Written as a derivation because the naive reading ("meet 1 is the first,
+  // the rest are seconds") is false of this run: meet 3 is the first meet of
+  // its own app run and has no more history than meet 1 does.
+  const historyBehind = new Map();
+  const recordedIn = new Set();
+  for (const meet of meetsDriven) {
+    historyBehind.set(meet.tag, recordedIn.has(meet.appRun));
+    if (meet.ended === 'recap') recordedIn.add(meet.appRun);
+  }
+  const withHistory = meetsDriven.filter((meet) => historyBehind.get(meet.tag) === true);
+  const withoutHistory = meetsDriven.filter((meet) => historyBehind.get(meet.tag) !== true);
+  note(
+    `§6.3 domain: ${meetsDriven
+      .map((m) => `${m.tag} (app run ${m.appRun}, ended '${m.ended}', history ${historyBehind.get(m.tag) === true ? 'yes' : 'no'})`)
+      .join('; ')}`,
+  );
+
+  // ---- the domain itself, before anything is said about it ----------------
+  check(
+    seen.length === expectedScreens,
+    `GDD §6.3’s screen was READ on the played arm, on every attempt that has one — ${expectedScreens} of them`,
+    `${meetsDriven.length} meet(s) driven (${meetsDriven.map((m) => m.tag).join(', ')}) x ${SELECTIONS_PER_MEET_RESTATED}` +
+      ` selections; read ${seen.length}` +
+      (seen.length === expectedScreens
+        ? ''
+        : ' — a short count means a meet ended early, and every count below is measured over a smaller domain than it claims'),
+  );
+  if (seen.length === 0) {
+    check(
+      false,
+      'SKIPPED: every §6.3 check below needs a played selection screen, and none was read',
+    );
+    return;
+  }
+
+  // ---- it is the player's meet, not a frozen frame ------------------------
+  const withQuery = seen.filter((screen) => screen.search !== '');
+  check(
+    withQuery.length === 0,
+    'CONTROL: and every one of them was read with NO QUERY STRING in the address bar, so none is a debug frame',
+    withQuery.length === 0
+      ? `${seen.length} screens read, all on ${JSON.stringify(seen[0]?.href ?? '')}`
+      : `${withQuery.length} of ${seen.length} carried one, first ${JSON.stringify(withQuery[0]?.href ?? '')}`,
+  );
+
+  const cards = seen.flatMap((screen) => screen.cards.map((card) => ({ screen, card })));
+  const wrongCardCount = seen.filter(
+    (screen) => screen.cards.length !== CARDS_PER_SELECTION_RESTATED,
+  );
+  check(
+    wrongCardCount.length === 0 && cards.length === seen.length * CARDS_PER_SELECTION_RESTATED,
+    `and every one offered exactly ${CARDS_PER_SELECTION_RESTATED} cards — §6.3 is a choice between two things`,
+    `${cards.length} cards over ${seen.length} screens` +
+      (wrongCardCount.length === 0
+        ? ''
+        : `; ${wrongCardCount.length} screen(s) offered a different number, first ${JSON.stringify(
+            wrongCardCount[0]?.cards.map((c) => c.id) ?? [],
+          )}`),
+  );
+
+  const stillFading = seen.filter((screen) => (screen.undrawn ?? []).length > 0);
+  check(
+    stillFading.length === 0,
+    'CONTROL: and both cards had finished fading in before they were read — presence is not visibility',
+    stillFading.length === 0
+      ? `${seen.length} screens, every card at opacity >= the drive's own threshold`
+      : `${stillFading.length} screen(s) read mid-fade, first ${JSON.stringify(stillFading[0]?.undrawn ?? [])}`,
+  );
+
+  // ---- THE FLOOR, WHICH IS §6.3'S ARGUMENT --------------------------------
+  const floorSentences = new Map([
+    [MEET_SELECT_SAYS.FLOOR_RAISED, 0],
+    [MEET_SELECT_SAYS.FLOOR_AFTER_MAKE, 0],
+  ]);
+  const unrecognisedFloorText = [];
+  const floorless = [];
+  for (const screen of seen) {
+    const said = (screen.floorText ?? '').trim();
+    if (floorSentences.has(said)) floorSentences.set(said, (floorSentences.get(said) ?? 0) + 1);
+    else unrecognisedFloorText.push(said.slice(0, 60));
+    if (weightNumber(screen.floorWeight) === null) floorless.push(screen.title);
+  }
+  check(
+    floorless.length === 0,
+    'THE FLOOR IS A NUMBER ON THE SCREEN — §6.3’s headline, read off every played selection',
+    floorless.length === 0
+      ? `${seen.length} floors read, first ${JSON.stringify(seen[0]?.floorWeight ?? null)} on ${JSON.stringify(seen[0]?.title ?? null)}`
+      : `${floorless.length} screen(s) drew no readable floor weight, first on ${JSON.stringify(floorless[0] ?? null)}`,
+  );
+  const raised = floorSentences.get(MEET_SELECT_SAYS.FLOOR_RAISED) ?? 0;
+  const afterMake = floorSentences.get(MEET_SELECT_SAYS.FLOOR_AFTER_MAKE) ?? 0;
+  check(
+    unrecognisedFloorText.length === 0 && raised + afterMake === seen.length,
+    'and the sentence under it is one of MEET_COPY’s two, on every one of them',
+    `${afterMake} said the banked line, ${raised} said the miss line, ${unrecognisedFloorText.length} said something else` +
+      (unrecognisedFloorText.length === 0 ? '' : `, first ${JSON.stringify(unrecognisedFloorText[0])}`),
+  );
+  // WHICH BRANCH THIS RUN DID NOT REACH, SAID OUT LOUD RATHER THAN LEFT AS A
+  // ZERO NOBODY LOOKS AT. §6.3's bite is the MISS branch, and whether the played
+  // arm reaches it is decided by the robot's depth search rather than by the
+  // app: a run where every attempt stood never draws that sentence at all. It
+  // is not a failure — a robot that lifts well is not a defect — but a section
+  // that printed nothing here would read as though the branch had been checked.
+  // The miss branch's own check runs on the DEBUG arm, and says so in its name.
+  if (raised === 0) {
+    note(
+      "§6.3's MISS branch was NOT reached on the played arm this run: all" +
+        ` ${afterMake} selections followed a good lift, so the floor was never the weight that just beat the` +
+        ' lifter. The two checks named "DEBUG ARM" earlier in this log are the only witnesses for that' +
+        ' sentence in this run, and they are on a different subject — the preview lifter, off ?meet=.',
+    );
+  }
+
+  // NO CARD MAY BE LIGHTER THAN THE FLOOR. The one-way ratchet, read off the
+  // drawn numbers rather than off the engine that produced them.
+  const belowTheFloor = [];
+  for (const { screen, card } of cards) {
+    const floor = weightNumber(screen.floorWeight);
+    const weight = weightNumber(card.weight);
+    if (floor === null || weight === null || weight < floor) {
+      belowTheFloor.push(`${screen.title} ${card.id} @${card.weight} vs floor ${screen.floorWeight}`);
+    }
+  }
+  check(
+    belowTheFloor.length === 0,
+    'NO CARD IS LIGHTER THAN THE FLOOR — the attempt cannot come back down (GDD §6.3)',
+    `${cards.length} cards checked against their screen's floor` +
+      (belowTheFloor.length === 0 ? '' : `; ${belowTheFloor.length} below it, first ${belowTheFloor[0]}`),
+  );
+
+  // AND A MISS RAISES IT. On a screen that says the miss line, the floor is the
+  // weight that was just on the bar — which is the card the drive pressed on the
+  // previous selection for this lift. Only comparable where there IS a previous
+  // selection for that lift, which is the third attempt; the second attempt's
+  // predecessor is the opener, declared at weigh-in and off this screen.
+  const declaredOn = new Map();
+  let comparable = 0;
+  const floorDisagreed = [];
+  for (const screen of seen) {
+    const lift = (screen.title ?? '').split('·')[0]?.trim() ?? '?';
+    const key = `${screen.meet}/${lift}`;
+    const previous = declaredOn.get(key);
+    const floor = weightNumber(screen.floorWeight);
+    const said = (screen.floorText ?? '').trim();
+    if (previous !== undefined && floor !== null) {
+      comparable += 1;
+      const missed = said === MEET_SELECT_SAYS.FLOOR_RAISED;
+      const holds = missed ? floor === previous : floor > previous;
+      if (!holds) {
+        floorDisagreed.push(
+          `${screen.meet} ${screen.title}: floor ${floor} after declaring ${previous}, saying ${JSON.stringify(said.slice(0, 32))}`,
+        );
+      }
+    }
+    const chosen = screen.cards.find((card) => card.id === screen.choosing);
+    const chosenWeight = weightNumber(chosen?.weight);
+    if (chosenWeight !== null) declaredOn.set(key, chosenWeight);
+  }
+  check(
+    floorDisagreed.length === 0 && comparable === meetsDriven.length * 3,
+    'AND A MISS RAISES IT: after a no-lift the floor IS the weight that just beat the lifter, and after a make it is above it',
+    `${comparable} selections had a previous declaration on the same lift to compare against` +
+      ` (expected ${meetsDriven.length * 3}, one per lift per meet)` +
+      (floorDisagreed.length === 0 ? '' : `; ${floorDisagreed.length} disagreed, first ${floorDisagreed[0]}`),
+  );
+
+  // ---- THE PAIR: the gold border and the PR sentence ----------------------
+  const goldCards = cards.filter(({ card }) => card.borderColor === gold);
+  const noteCards = cards.filter(({ card }) => card.prNote !== null);
+  const disagreed = cards.filter(
+    ({ card }) => (card.borderColor === gold) !== (card.prNote !== null),
+  );
+  check(
+    gold !== null,
+    'CONTROL: the gold this check looks for is a colour, converted from the palette’s hex rather than typed',
+    `MEET_PALETTE.CARD_PR_EDGE ${CARD_PR_EDGE_RESTATED} -> ${JSON.stringify(gold)}`,
+  );
+  check(
+    disagreed.length === 0,
+    'THE PR BORDER AND THE PR SENTENCE ARE ONE DECISION — every card wears both or neither',
+    `${cards.length} cards: ${goldCards.length} gold-edged, ${noteCards.length} carrying the sentence` +
+      (disagreed.length === 0
+        ? ''
+        : `; ${disagreed.length} disagreed, first ${disagreed[0]?.screen.meet} ${disagreed[0]?.screen.title}` +
+          ` ${disagreed[0]?.card.id} border ${JSON.stringify(disagreed[0]?.card.borderColor)}` +
+          ` note ${JSON.stringify(disagreed[0]?.card.prNote)}`),
+  );
+  const wrongNote = noteCards.filter(
+    ({ card }) => (card.prNote ?? '').trim() !== MEET_SELECT_SAYS.PR_NOTE,
+  );
+  check(
+    wrongNote.length === 0,
+    'and the sentence is MEET_COPY’s, word for word',
+    wrongNote.length === 0
+      ? `${noteCards.length} card(s) said ${JSON.stringify(MEET_SELECT_SAYS.PR_NOTE)}`
+      : `first mismatch ${JSON.stringify(wrongNote[0]?.card.prNote ?? null)}`,
+  );
+  const reasonClaimsPr = cards.filter(({ card }) =>
+    (card.why ?? '').includes(MEET_SELECT_SAYS.PR_NOTE),
+  );
+  check(
+    reasonClaimsPr.length === 0,
+    'and NO card’s reason claims a PR — the sentence that used to be printed unconditionally is gone from that line',
+    `${cards.length} reasons read` +
+      (reasonClaimsPr.length === 0
+        ? ''
+        : `; ${reasonClaimsPr.length} still claim one, first ${reasonClaimsPr[0]?.screen.meet}` +
+          ` ${reasonClaimsPr[0]?.screen.title} ${reasonClaimsPr[0]?.card.id}: ${JSON.stringify(reasonClaimsPr[0]?.card.why)}`),
+  );
+
+  // ---- NON-VACUITY, IN BOTH DIRECTIONS, ON THE PLAYED ARM -----------------
+  //
+  // The agreement above is satisfied by a build that never paints the border
+  // AND never prints the sentence, and by one that always does both. So the two
+  // meets are read separately, because they are different subjects.
+  const freshTags = new Set(withoutHistory.map((meet) => meet.tag));
+  const freshScreens = seen.filter((screen) => freshTags.has(screen.meet));
+  const freshCards = freshScreens.flatMap((screen) => screen.cards);
+  const freshGold = freshCards.filter((card) => card.borderColor === gold).length;
+  const freshNotes = freshCards.filter((card) => card.prNote !== null).length;
+  check(
+    withoutHistory.length > 0 &&
+      freshScreens.length === withoutHistory.length * SELECTIONS_PER_MEET_RESTATED &&
+      freshGold === 0 &&
+      freshNotes === 0,
+    'ON A MEET WITH NO COMPETITION HISTORY NOTHING CLAIMS A RECORD — no gold edge and no PR sentence, because there is no best to beat',
+    `${withoutHistory.length} such meet(s) (${withoutHistory.map((m) => m.tag).join(', ')}):` +
+      ` ${freshScreens.length} selections, ${freshCards.length} cards, ${freshGold} gold-edged,` +
+      ` ${freshNotes} carrying the sentence.` +
+      ' Before the copy fix this arm drew one card per selection reading "A PR on the line." with no border on any of them.',
+  );
+
+  const historyTags = new Set(withHistory.map((meet) => meet.tag));
+  const laterCards = cards.filter(({ screen }) => historyTags.has(screen.meet));
+  const laterGold = laterCards.filter(({ card }) => card.borderColor === gold);
+  // A SCREEN WHERE THE TWO COMPETE. CLAUDE.md: a negative whose two subjects
+  // cannot co-occur is decoration, so the count that matters is selections that
+  // drew a gold card AND a plain one side by side. Fragile in a way worth
+  // stating: which cards cross the previous best depends on the 2.5 kg
+  // declaration grid, and at the opener weights this lifter starts from the
+  // small jump and the previous best land on the SAME rung on two lifts out of
+  // three. The deadlift's larger jumps are what separates them. A run that
+  // reports zero here has not found a defect in the app — it has lost the
+  // separation, and the count is printed so a reader can see which.
+  const discriminating = seen.filter(
+    (screen) =>
+      screen.cards.some((card) => card.borderColor === gold) &&
+      screen.cards.some((card) => card.borderColor !== gold),
+  );
+  check(
+    withHistory.length > 0 && laterGold.length > 0,
+    'AND ON A MEET THAT READS AN EARLIER ONE’S BESTS IT IS DRAWN — the gold edge and its sentence, on the played arm',
+    `${withHistory.length} such meet(s) (${withHistory.map((m) => m.tag).join(', ') || 'none'}),` +
+      ` ${laterCards.length} cards, ${laterGold.length} gold-edged` +
+      (laterGold.length === 0
+        ? ' — no PR attempt was drawn at all, so the agreement above was measured on all-false'
+        : `, first ${laterGold[0]?.screen.title} ${laterGold[0]?.card.id} @${laterGold[0]?.card.weight}` +
+          ` saying ${JSON.stringify(laterGold[0]?.card.prNote)}`),
+  );
+  check(
+    discriminating.length > 0,
+    'and on a screen where the two COMPETE — one card gold, the other plain, at the same moment',
+    `${discriminating.length} of ${seen.length} selections drew both` +
+      (discriminating.length === 0
+        ? ' — every screen was all-gold or all-plain, so nothing here separates the two renderings'
+        : `, first ${discriminating[0]?.title}: ` +
+          (discriminating[0]?.cards ?? [])
+            .map((card) => `${card.id} @${card.weight} ${card.borderColor === gold ? 'GOLD' : 'plain'}`)
+            .join(' vs ')),
+  );
+
+  // ---- THE BOLD ARM, WHICH NO PLAYED RUN HAD EVER PRESSED -----------------
+  const pressed = seen.map((screen) => screen.choosing);
+  const bigPresses = pressed.filter((id) => id === 'big').length;
+  check(
+    bigPresses > 0,
+    'GDD §6.3’s BIG JUMP is PRESSED on the played arm — the bold arm of the dilemma, not just the safest card',
+    `§6.3 was answered ${JSON.stringify(pressed)}; ${bigPresses} of them took the big jump` +
+      (bigPresses === 0
+        ? ' — every selection of both meets said NOTHING BANKED when the policy looked, so it never armed'
+        : ''),
+  );
+
+  // Every card's delta is on the screen too, and it is the ratchet in words.
+  const deltaless = cards.filter(({ card }) => (card.delta ?? '').trim() === '');
+  check(
+    deltaless.length === 0,
+    'and every card prints what it adds to the bar',
+    deltaless.length === 0
+      ? `${cards.length} deltas read, e.g. ${JSON.stringify(cards[0]?.card.delta ?? null)}`
+      : `${deltaless.length} card(s) printed no delta`,
+  );
 }
 
 // ###########################################################################
@@ -3180,9 +3675,83 @@ if (!reachedMeet) {
     !(await visible('meet-recap-placeholder')),
     'and GDD §6.1’s second-meet placeholder is NOT drawn over it — this player’s result is their own',
   );
-  const liveLeaveDrawn = await checkOnScreen(
-    NAV_LEAVE_MEET,
+  // ---------------------------------------------------------------------
+  // A CUT-IN CAN STILL BE UP HERE, AND THE APP HIDES THE CHROME UNDER IT ON
+  // PURPOSE. Wait it out before reading the pill — but wait for the CUT-IN to
+  // leave, never for the pill to arrive.
+  //
+  // This check was FLAKY, not failing, which is worse than either: on the same
+  // commit and an untouched tree it reported PASSED 159 once and 159/1 on four
+  // other runs. A green record was committed off the lucky sample, and a re-run
+  // "confirms" a racy check about half the time, so re-running is not a test of
+  // it.
+  //
+  // The cause is not a defect. A §7.2 cut-in fires on the DEADLIFT ATTEMPT 3
+  // walk-out and can still be on screen when §6.5's recap draws underneath it;
+  // `AppShell` deliberately draws no navigation chrome under a cut-in (§7.2's
+  // whole argument is that a cut-in interrupts, and a pill over it would eat
+  // the dismiss tap). So `shell-leave-meet` is genuinely not mounted, correctly,
+  // for `ENTER_MS + HOLD_MS`. The check simply read during that window.
+  //
+  // CLAUDE.md's "wait on the thing being drawn, not the thing being mounted",
+  // one turn out: here the thing is deliberately ABSENT for a computable
+  // window, and the wait is derived from the app's own constants READ FROM
+  // SOURCE rather than transcribed, so a playtester who lengthens `HOLD_MS`
+  // gets a tool that still waits instead of one that starts racing again.
+  //
+  // WHY THIS DOES NOT MAKE THE CHECK VACUOUS, which is the obvious objection:
+  // the wait is for `cut-in` to be GONE, and the assertion that follows is
+  // still "the pill is drawn". A build where the pill never renders at all
+  // waits the same bounded window and then reddens exactly as before — only
+  // the cut-in's own window is excluded, and the mutation below proves it.
+  //
+  // THE ARITHMETIC MOVED TO `deriveChromeWindows` and is READ here rather than
+  // repeated, because section 6c crosses the identical pair of windows on a
+  // different meet and a second copy is the drift CLAUDE.md keeps catching.
+  const { cutInEnterMs, cutInHoldMs, cutInWindowMs } = CHROME_WINDOWS;
+  check(
+    typeof cutInEnterMs === 'number' && typeof cutInHoldMs === 'number',
+    'CONTROL: the cut-in window this section waits out is read from cutInTuning.ts, not transcribed',
+    `ENTER_MS ${JSON.stringify(cutInEnterMs)}, HOLD_MS ${JSON.stringify(cutInHoldMs)} — null means the` +
+      ' constant moved or was renamed, and the wait below would silently become a guess',
+  );
+  const recapCutIn = await waitOutAnyCutIn();
+  check(
+    !recapCutIn.stillUp,
+    'CONTROL: any §7.2 cut-in over the recap has left before the pill is read — the app hides chrome under one BY DESIGN',
+    recapCutIn.wasUp
+      ? `a cut-in WAS up when the recap drew; it left after ${recapCutIn.clearedMs}ms against a` +
+        ` ${cutInWindowMs}ms bound (ENTER_MS ${cutInEnterMs} + HOLD_MS ${cutInHoldMs} + ${FADE_GRACE_MS}ms grace).` +
+        ' Still up at the bound means it is not the cut-in that is hiding the pill.'
+      : 'no cut-in was up at the recap on this run — the gate spent its one slot earlier in the sitting.' +
+        ' This branch is why the pill check used to pass sometimes and fail otherwise.',
+  );
+
+  // AND THEN THE PILL'S OWN ARRIVAL, which is a SECOND window and I read
+  // straight into it after closing the first. Waiting the cut-in out moved this
+  // check's message from "not rendered at all" to "opacity 0.000" — the element
+  // mounts the instant the cut-in unmounts and then fades in over
+  // `FADE_IN_DELAY_MS + FADE_IN_MS`. Two stacked windows, and fixing the outer
+  // one while reading into the inner one is this file's own recorded pattern:
+  // the next thing to look at is the branch immediately below the one you just
+  // fixed. It was mine, one edit later.
+  //
+  // Bounded wait, then assert — the pattern `recap-action` already uses below.
+  // Not question-begging: a build where the pill never draws waits the full
+  // bound and reddens with the same message it does today.
+  const { pillDelayMs, pillFadeMs, pillArrivalMs } = CHROME_WINDOWS;
+  check(
+    typeof pillDelayMs === 'number' && typeof pillFadeMs === 'number',
+    'CONTROL: the pill-arrival window this section waits out is read from shellTuning.ts, not transcribed',
+    `FADE_IN_DELAY_MS ${JSON.stringify(pillDelayMs)}, FADE_IN_MS ${JSON.stringify(pillFadeMs)}`,
+  );
+  const liveLeave = await waitUntilDrawn(page, NAV_LEAVE_MEET, pillArrivalMs);
+  const liveLeaveDrawn = liveLeave.drawn;
+  check(
+    liveLeaveDrawn,
     `the way back is on screen on a recap a player lifted for (${NAV_LEAVE_MEET})`,
+    `${liveLeave.why} — bound ${pillArrivalMs}ms (FADE_IN_DELAY_MS ${pillDelayMs} + FADE_IN_MS ${pillFadeMs}` +
+      ` + ${FADE_GRACE_MS}ms grace), measured from after any cut-in had left`,
   );
   const liveLeaveHit = await hitTest(NAV_LEAVE_MEET);
   check(
@@ -3197,7 +3766,7 @@ if (!reachedMeet) {
   // line `shootBeat` identifies this beat by — so without this the shutter
   // reads a phrase out of the DOM that is not yet on the pixels. See the block
   // above `RECAP_LAST_ROW_DRAWN_AT_MS` for the photograph that made the point.
-  const recapArrived = await waitUntilDrawn('recap-action', RECAP_SETTLE_MS);
+  const recapArrived = await waitUntilDrawn(page, 'recap-action', RECAP_SETTLE_MS);
   check(
     recapArrived.drawn,
     `and the recap's last block arrives within ${RECAP_SETTLE_MS}ms, the deadline its own stagger implies`,
@@ -3248,6 +3817,10 @@ if (!reachedMeet) {
         first.search,
         'placeholder',
         'THE SECOND MEET IS REFUSED AS ALREADY RECORDED, and GDD §6.1’s placeholder is what stands where §6.5’s recap was',
+        // FROM HERE THE ROBOT PLAYS §6.3'S DILEMMA. See the block above
+        // `takeTheBigJumpWhenSomethingIsBanked` for why it is armed on the
+        // second meet and not the first.
+        takeTheBigJumpWhenSomethingIsBanked,
       );
       playerOpenedMeet.second = {
         ended: second.ended,
@@ -3539,6 +4112,24 @@ sawPillOn('briefing', briefingDrawn && briefingPillDrawn, briefingHit.hit);
  * different screens and the whole question is whether they describe one lifter.
  */
 const crossing = { inputs: await readCrossingInputs(), e1rmKg: null, lift: null };
+
+/**
+ * What section 6c's return leg did, for `route.json`.
+ *
+ * NOT AN ASSERTION — the checks are in the section. This is the evidence a
+ * reader needs to tell a leg that was measured from one that never ran: which
+ * ending the third meet reached, how many attempts it took, whether the control
+ * was pressed, and whether the surface came up drawn.
+ */
+const returnLeg = {
+  attempted: false,
+  meetEnded: null,
+  meetAttempts: 0,
+  meetMs: null,
+  meetScreenReady: false,
+  pressed: false,
+  landedDrawn: false,
+};
 
 const playedOut = { attempted: true };
 {
@@ -3878,6 +4469,315 @@ const playedOut = { attempted: true };
           crossing.inputs === null ? 'the tuning inputs were not readable' : 'no e1RM was read off the close-out',
         );
       }
+
+      // =====================================================================
+      // 6c. THE RETURN LEG, ON A DAY THE PLAYER HAS ACTUALLY TRAINED
+      // =====================================================================
+      //
+      // ===================================================================
+      // THE PROPERTY `src/shell/appServer.ts` EXISTS FOR, MEASURED AT LAST
+      // ===================================================================
+      // That module's own header states one consequence and states it as the
+      // reason it exists:
+      //
+      //     "a player could train, open meet day, come back, and be offered a
+      //      SECOND session of the same day — which GDD §3.2 does not allow"
+      //
+      // Until this section, NO BROWSER HAD EVER EXERCISED IT. This tool presses
+      // BACK TO TRAINING four times above — 05a, 05b, and the two on §4c's
+      // scripted frames — and every one of them lands on a day the player has
+      // NOT trained, because sections 4 and 4c both run before section 6 is the
+      // one that plays a session. So the four return legs land on the check-in,
+      // and `BEAT_SAYS.CHECK_IN` is the right expectation for all four.
+      //
+      // On the leg that matters it is the WRONG answer, and that is the whole
+      // point. `SessionScreen` renders `session-already-trained` when
+      // `loop.alreadyTrainedToday && phase === 'check-in' && preview ===
+      // undefined`; that surface says TRAINED TODAY and contains no check-in
+      // title at all. A build where `appMeetPort()`/`appSessionPort()` hand back
+      // a fresh `localSessionServer()` — one port per mount, which is exactly
+      // what `appServer.ts` was written to stop — comes back to a server that has
+      // never heard of today's session, and the player is offered a second one.
+      // On that build every check above stays green.
+      //
+      // ===================================================================
+      // WHY THE MEET HAS TO BE PLAYED OUT TO GET BACK
+      // ===================================================================
+      // `SHELL_NAV.MEET_PHASES` is `['recap']` and nothing else, so the pill
+      // simply does not exist on the weigh-in or the openers. There is no
+      // shorter way home that a player has: §6.3's bomb-out draws its own exit,
+      // and taking it would mean deliberately missing three attempts and reading
+      // a different control. So this drives the meet section 6 opened FROM THE
+      // ALREADY-TRAINED SURFACE all the way to its ending, and presses the same
+      // control §6.5 gives every other meet.
+      //
+      // ===================================================================
+      // AND IT ENDS ON §6.5'S RECAP, NOT ON 4b'S PLACEHOLDER — MEASURED
+      // ===================================================================
+      // This is the third meet a MOUSE has played in this process, and the first
+      // guess was that the server would refuse it as `MEET_ALREADY_RECORDED` the
+      // way it refuses 4b's. IT DOES NOT, and the reason is worth writing down
+      // because it is the same fact this section is about, seen from the other
+      // side: `appServer.ts` holds the connection in MODULE SCOPE, and its own
+      // header says "NOTHING IS PERSISTED. A reload still starts a fresh lifter.
+      // What survives is navigation within one run of the app."
+      //
+      // Sections 4c, 5 and 5b each call `open()`, which is a `page.goto`, and
+      // section 6 opens its session with another one. Every one of those ends
+      // the app run and starts a new one on a fresh row. So the meet below is
+      // the FIRST meet of ITS run, it is recorded rather than refused, and
+      // §6.5's recap is what stands at the end of it.
+      //
+      // That makes the section's subject exactly right rather than accidentally
+      // so. The property under test is "navigation within one run", and this leg
+      // is a whole run: `/` -> session played -> DONE -> meet -> back, with no
+      // `goto` anywhere inside it. The run boundary is what makes an
+      // `alreadyTrainedToday` that survives here mean something.
+      //
+      // ===================================================================
+      // NO QUERY STRING, ASSERTED AT EVERY MOMENT SOMETHING IS READ
+      // ===================================================================
+      // CLAUDE.md: a screen a player reaches needs a check that reaches it the
+      // way a player does, and the address bar is what stops a debug frame
+      // re-entering quietly. `frozenMeetFor` branches on `source === 'debug'`,
+      // so a query string here would silently swap the app's own connection for
+      // `previewMeetPort()`'s scripted lifter — a lifter who has never trained,
+      // which is the exact defect condition this section is written to detect.
+      // A fallback to `?meet=recap` would therefore not merely weaken this
+      // section, it would FABRICATE ITS FAILURE MODE. Read three times: before
+      // the drive, at the meet's ending, and at the landing.
+      returnLeg.attempted = true;
+      const urlBeforeTheDrive = page.url();
+      check(
+        !urlBeforeTheDrive.includes('?'),
+        'CONTROL: the meet this return leg is driven from was opened by a PRESS — the address bar carries no query string',
+        `before the drive the page is on ${JSON.stringify(urlBeforeTheDrive)}`,
+      );
+
+      const third = await checkDrivenMeet(
+        'meet 3',
+        lastMeetDepthSearch ?? freshDepthSearch(),
+        'recap',
+        'THE MEET OPENED FROM THE ALREADY-TRAINED SURFACE IS PLAYED TO ITS END, so its way back is on screen (GDD §6.5)',
+        takeTheBigJumpWhenSomethingIsBanked,
+      );
+      returnLeg.meetEnded = third.ended;
+      returnLeg.meetAttempts = third.attempts.length;
+      returnLeg.meetMs = third.ms;
+
+      // WHICH ENDINGS CARRY A PILL, AND THEREFORE WHICH ONES THIS LEG CAN BE
+      // MEASURED FROM. `MeetScreen` draws §6.5's recap and §6.1's placeholder on
+      // the SAME beat — `recap` — and `SHELL_NAV.MEET_PHASES` is that beat and
+      // nothing else, so both of them carry the way back and a bomb-out or a
+      // stalled round trip does not. Stated as a list of endings rather than as
+      // `=== 'recap'` because the claim here is "there is a control to press",
+      // which is the property the leg needs; WHICH of the two screens this route
+      // produces is the check above, and it is separate on purpose so a change
+      // there reddens one line instead of silently skipping a dozen.
+      const ENDINGS_ON_THE_PILL_BEAT = ['recap', 'placeholder'];
+      if (!ENDINGS_ON_THE_PILL_BEAT.includes(third.ended)) {
+        // NAMED, not silent. There is no control to press and the return leg
+        // cannot be measured — which is a different statement from "it was
+        // measured and passed", and the output has to say which.
+        check(
+          false,
+          'SKIPPED: the return leg needs a meet that ended on a beat SHELL_NAV puts the pill on',
+          `meet 3 ended on '${third.ended}'; the endings drawn on SHELL_NAV.MEET_PHASES` +
+            ` (${JSON.stringify(SHELL_NAV_EXPECTED.MEET_PHASES)}) are ${JSON.stringify(ENDINGS_ON_THE_PILL_BEAT)}`,
+        );
+      } else {
+        const urlAtTheEnding = page.url();
+        check(
+          !urlAtTheEnding.includes('?'),
+          'CONTROL: and it is still the player’s own meet at its ending — no query string, so no debug frame is being read',
+          `at the ending the page is on ${JSON.stringify(urlAtTheEnding)}`,
+        );
+
+        // ---- the two windows between an ending and a readable pill --------
+        //
+        // BOTH OF THEM, AND FROM THE ONE DERIVATION. The recap section above
+        // found this pair the hard way — waiting out the §7.2 cut-in and then
+        // reading straight into the pill's own fade, which is this file's
+        // recorded "the next thing to look at is the branch immediately below
+        // the one you just fixed". `CHROME_WINDOWS` and `waitOutAnyCutIn` are
+        // that section's, read rather than copied, so a re-tune moves both
+        // sections or neither.
+        check(
+          CHROME_WINDOWS.readable,
+          'CONTROL: this leg’s cut-in and pill windows are the same source-read numbers the recap section waits out',
+          `cutInWindowMs ${CHROME_WINDOWS.cutInWindowMs} (ENTER_MS ${JSON.stringify(CHROME_WINDOWS.cutInEnterMs)}` +
+            ` + HOLD_MS ${JSON.stringify(CHROME_WINDOWS.cutInHoldMs)} + ${FADE_GRACE_MS}ms grace),` +
+            ` pillArrivalMs ${CHROME_WINDOWS.pillArrivalMs} (FADE_IN_DELAY_MS ${JSON.stringify(CHROME_WINDOWS.pillDelayMs)}` +
+            ` + FADE_IN_MS ${JSON.stringify(CHROME_WINDOWS.pillFadeMs)} + ${FADE_GRACE_MS}ms grace)` +
+            ' — a null means a constant moved and one of these waits became a guess',
+        );
+        const legCutIn = await waitOutAnyCutIn();
+        check(
+          !legCutIn.stillUp,
+          'CONTROL: any §7.2 cut-in has left before this leg’s pill is read — the app hides chrome under one BY DESIGN',
+          legCutIn.wasUp
+            ? `a cut-in WAS up at the ending; it left after ${legCutIn.clearedMs}ms against a ${CHROME_WINDOWS.cutInWindowMs}ms bound`
+            : 'no cut-in was up at this ending — the gate spent its one slot earlier in the sitting',
+        );
+
+        // Bounded wait, then assert. A build where the pill never draws waits
+        // the full bound and reddens; it does not wait until it passes.
+        const legPill = await waitUntilDrawn(page, NAV_LEAVE_MEET, CHROME_WINDOWS.pillArrivalMs);
+        check(
+          legPill.drawn,
+          `the way back is on screen at the end of a meet a TRAINED lifter played (${NAV_LEAVE_MEET})`,
+          `${legPill.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms, measured from after any cut-in had left`,
+        );
+        const legHit = await hitTest(NAV_LEAVE_MEET);
+        check(
+          legHit.hit,
+          'and the point a thumb would land on belongs to it',
+          `elementFromPoint -> ${legHit.why}`,
+        );
+        sawPillOn('recap', legPill.drawn, legHit.hit);
+
+        // ...AND THE SCREEN HAS FINISHED ARRIVING BEFORE IT IS PHOTOGRAPHED.
+        //
+        // BOTH ARMS, WRITTEN AS TWO, BECAUSE THEY ARE TWO. §6.5's recap
+        // staggers five blocks in and SEE YOUR CARD is the last of them — which
+        // is also the line its shutter identifies it by, so photographing it
+        // early files a mid-assembly frame under a name saying it is the recap,
+        // and that frame has been committed once already (see the block above
+        // `RECAP_LAST_ROW_DRAWN_AT_MS`). §6.1's placeholder animates nothing at
+        // all and says a different sentence. Writing one arm and letting it
+        // stand for the other is this file's own recorded failure — the arm
+        // immediately below the one you just wrote is where it lands — so each
+        // names its own wait and its own line.
+        let legScreenReady;
+        if (third.ended === 'recap') {
+          const arrived = await waitUntilDrawn(page, 'recap-action', RECAP_SETTLE_MS);
+          legScreenReady = arrived.drawn;
+          check(
+            arrived.drawn,
+            `and this recap’s last block arrives within ${RECAP_SETTLE_MS}ms too, so the frame below is of a finished screen`,
+            arrived.why,
+          );
+          await shootBeat('13-recap-before-the-return-leg.png', 'recap', BEAT_SAYS.RECAP);
+        } else {
+          legScreenReady = await checkOnScreen(
+            'meet-recap-placeholder',
+            'and §6.1’s placeholder — which animates nothing, so it has no stagger to wait out — is drawn before the frame below',
+          );
+          await shootBeat('13-recap-before-the-return-leg.png', 'recap', BEAT_SAYS.SECOND_MEET);
+        }
+        returnLeg.meetScreenReady = legScreenReady;
+
+        if (!legPill.drawn) {
+          check(false, 'SKIPPED: the return leg needs a drawn control to press');
+        } else {
+          // ---- AND BACK ------------------------------------------------------
+          const cameBack = await press(
+            NAV_LEAVE_MEET,
+            'session-screen',
+            'PRESSING BACK TO TRAINING RETURNS TO THE DAILY LOOP, on a day the player has already trained',
+          );
+          returnLeg.pressed = cameBack;
+
+          // Bounded, and bounded by a named constant rather than a sleep the
+          // author liked. Nothing animates this surface — `AlreadyTrained` is
+          // two `<Text>` nodes in a `<View>`, outside `CutInHost` — so the only
+          // thing being waited for is a frame, and the bound is this file's
+          // standing slack for a software-rendered browser. On the defective
+          // build the check-in draws here instead, this waits the whole bound,
+          // and the check below reddens with the opacity it measured.
+          const surface = await waitUntilDrawn(
+            page,
+            'session-already-trained',
+            RETURN_LEG_PROBE.SURFACE_DRAWN_WITHIN_MS,
+          );
+          // EVERYTHING BELOW IS READ AT THIS ONE MOMENT, off this one screen,
+          // so the positive, the negative and the address bar cannot be
+          // describing three different instants.
+          const landedSays = (await bodyText()).replace(/\s+/g, ' ').trim();
+          const urlAtTheLanding = page.url();
+          const checkInMounted = await visible('session-check-in');
+          returnLeg.landedDrawn = surface.drawn;
+
+          check(
+            !urlAtTheLanding.includes('?'),
+            'CONTROL: and the landing is read with no query string in the address bar either',
+            `at the landing the page is on ${JSON.stringify(urlAtTheLanding)}`,
+          );
+
+          // THE POSITIVE.
+          check(
+            surface.drawn,
+            'THE RETURN LEG LANDS ON THE ALREADY-TRAINED SURFACE — the app’s one connection survived the navigation (GDD §3.2)',
+            `${surface.why} — bound ${RETURN_LEG_PROBE.SURFACE_DRAWN_WITHIN_MS}ms.` +
+              ' Not drawn here means `alreadyTrainedToday` came back false after the round trip, which is a port built per mount',
+          );
+
+          // ---- and now the negative, with its two controls first -----------
+          //
+          // WHY A NEGATIVE NEEDS CONTROLS AT ALL. `!said.includes(x)` is true of
+          // every string no screen anywhere says, so on its own it is evidence
+          // about `x` and not about the app. Two independent things could make
+          // it vacuous and each has its own guard:
+          //
+          //   * the string is not the app's any more — pinned in
+          //     `checkSessionLayoutMatchesTuning` against
+          //     `SESSION_COPY.CHECK_IN_TITLE`'s literal, at the end of the run;
+          //   * the PROBE is not reading the screen — guarded twice, by the
+          //     positive sighting count below (this same `bodyText` probe read
+          //     this exact string off the check-in at 05a and 05b) and by the
+          //     same-moment control that this screen's OWN headline is found by
+          //     the same call.
+          //
+          // The two read different facts on purpose: one reads the copy module's
+          // source, the other reads a rendered DOM. A change that fools one
+          // still has to get past the other.
+          const sightings = SAYS_SEEN_ON_A_REAL_SCREEN.get(BEAT_SAYS.CHECK_IN) ?? 0;
+          check(
+            sightings === RETURN_LEG_PROBE.CHECK_IN_SIGHTINGS_BEFORE_THE_LEG,
+            'CONTROL: this run has already read that exact check-in line OFF A DRAWN SCREEN, so its absence below is a fact about this screen',
+            `${JSON.stringify(BEAT_SAYS.CHECK_IN)} seen on ${sightings} screen(s) by this same probe,` +
+              ` expected ${RETURN_LEG_PROBE.CHECK_IN_SIGHTINGS_BEFORE_THE_LEG}` +
+              ' (05a, after the played meet; 05b, after the second one — both return legs on a day NOT trained).' +
+              ' Zero would mean the negative below is true of a string nothing renders',
+          );
+          check(
+            landedSays.includes(BEAT_SAYS.ALREADY_TRAINED),
+            'CONTROL: and the same call reads this screen’s own headline, so the probe is looking at the landing',
+            landedSays.includes(BEAT_SAYS.ALREADY_TRAINED)
+              ? `the screen says ${JSON.stringify(BEAT_SAYS.ALREADY_TRAINED)}`
+              : `expected ${JSON.stringify(BEAT_SAYS.ALREADY_TRAINED)}; the screen says ${JSON.stringify(landedSays.slice(0, 120))}`,
+          );
+
+          // THE NEGATIVE — the defect condition, in the app's own words.
+          check(
+            !landedSays.includes(BEAT_SAYS.CHECK_IN),
+            'AND IT IS NOT OFFERED A SECOND SESSION OF THE SAME DAY — GDD §3.2 allows one, and the check-in is not on this screen',
+            landedSays.includes(BEAT_SAYS.CHECK_IN)
+              ? `the screen says ${JSON.stringify(BEAT_SAYS.CHECK_IN)} — the player trained, went to meet day, came back,` +
+                ' and the loop offered them today all over again. That is a session server built per mount' +
+                ' (src/shell/appServer.ts exists to stop exactly this)'
+              : `${JSON.stringify(BEAT_SAYS.CHECK_IN)} is nowhere on the screen`,
+          );
+          // THE SAME CLAIM BY testID, which a copy edit cannot move. Kept
+          // alongside the copy check rather than instead of it: the copy is what
+          // a player reads and the testID is what survives a re-word, and this
+          // file's own rule is that a landing is distinguished by testID so an
+          // edit cannot turn a wrong screen into a right one.
+          check(
+            !checkInMounted,
+            'and GDD §3.2’s check-in is not even mounted underneath it (session-check-in)',
+            checkInMounted
+              ? 'session-check-in is in the DOM on the screen the return leg landed on'
+              : 'session-check-in is not in the DOM',
+          );
+
+          await shootBeat(
+            '14-return-leg-already-trained.png',
+            'already-trained',
+            BEAT_SAYS.ALREADY_TRAINED,
+          );
+        }
+      }
     } else {
       check(false, 'SKIPPED: no drawn control on the already-trained surface to press');
     }
@@ -3990,6 +4890,39 @@ for (const [search, phase, what] of [
 }
 
 // ---------------------------------------------------------------------------
+// §6.3's MISS BRANCH, ON THE DEBUG ARM, AND LABELLED AS THE DEBUG ARM
+// ---------------------------------------------------------------------------
+//
+// The page is still on `/?meet=select-after-miss` from the loop above, which is
+// `frozenMeetFor`'s `source === 'debug'` branch and therefore a DIFFERENT
+// SUBJECT from section 8a's — `previewMeetPort()`'s scripted lifter, not the
+// app's own connection. It is here because §6.3's bite is the miss branch and
+// the played arm reaches it only when the robot misses: on a run where every
+// attempt stands, section 8a reads eighteen make-branch screens and zero miss
+// ones, and its own note says so.
+//
+// So this is a witness for a sentence, not a substitute for the played arm.
+// The header of the section 8a block is where the played arm's claim lives; do
+// not read this check as covering it.
+{
+  const missed = await readAttemptSelect(page);
+  const floor = weightNumber(missed.floorWeight);
+  const repeat = missed.cards.find((card) => card.id === 'repeat');
+  const repeatWeight = weightNumber(repeat?.weight);
+  check(
+    (missed.floorText ?? '').trim() === MEET_SELECT_SAYS.FLOOR_RAISED,
+    'DEBUG ARM: after a miss GDD §6.3’s floor says the miss line — "a miss does not lower the floor, it RAISES it"',
+    `?meet=select-after-miss says ${JSON.stringify((missed.floorText ?? '').slice(0, 80))}`,
+  );
+  check(
+    floor !== null && repeatWeight !== null && floor === repeatWeight,
+    'DEBUG ARM: and the lightest thing on offer IS that floor — the weight that just beat the lifter, offered again',
+    `floor ${JSON.stringify(missed.floorWeight)}, repeat card ${JSON.stringify(repeat?.weight ?? null)}` +
+      `, cards ${JSON.stringify(missed.cards.map((card) => `${card.id}@${card.weight}`))}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // GDD §6.3's bomb-out draws its OWN way out, and the shell stays off it.
 //
 // THE SLOWEST SCREEN IN THE GAME, AND THE ONE THIS TOOL GOT WRONG. Its exit is
@@ -4004,7 +4937,7 @@ for (const [search, phase, what] of [
 // ---------------------------------------------------------------------------
 await open('/?meet=bombed', 'meet-bombed', 0);
 beatsProbedInTheBrowser.add('bombed');
-const bombExit = await waitUntilDrawn('bomb-out-action', BOMB_OUT_SETTLE_MS);
+const bombExit = await waitUntilDrawn(page, 'bomb-out-action', BOMB_OUT_SETTLE_MS);
 await page.screenshot({ path: path.join(outDir, '09-bombed-keeps-its-own-exit.png') });
 check(
   bombExit.drawn,
@@ -4110,6 +5043,15 @@ await checkOnScreen(
 );
 
 // ###########################################################################
+// ###  8a. GDD §6.3 — "THE REAL TENSION", ON EVERY MEET A PLAYER OPENED     #
+// ###########################################################################
+//
+// Read during the drives above and graded here, after the last of them, so one
+// section covers every played meet rather than one section per meet drifting
+// apart. See the block above `MEET_SELECT_SAYS`.
+checkAttemptSelectOnThePlayedArm(MEETS_DRIVEN);
+
+// ###########################################################################
 // ###  8b. THE WALK-OUT'S TAIL IS ALIVE, ON A RUNNING CLOCK                 #
 // ###########################################################################
 //
@@ -4144,6 +5086,16 @@ await writeFile(
       // session, and the thing that says whether the drive converged or got
       // lucky. `attemptedSecond` is false on a run that never got that far.
       playerOpenedMeets: playerOpenedMeet,
+      // Section 8a's raw material: every GDD §6.3 screen this run stood on, as
+      // it was drawn, with the address bar it was read under. The checks above
+      // are assertions over this list, and a reader who disagrees with one of
+      // them can re-derive it from here rather than from the check's wording.
+      attemptSelectScreens: SELECT_SCREENS_SEEN,
+      // Section 6c: the one return leg in this run taken on a day the player
+      // HAS trained, which is the case `src/shell/appServer.ts` exists for.
+      // `attempted: false` is a leg that never ran, and is not the same thing as
+      // a leg that ran and passed.
+      returnLegOnATrainedDay: returnLeg,
       checks,
       notes: observations,
       failures,

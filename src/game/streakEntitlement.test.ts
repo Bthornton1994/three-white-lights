@@ -16,6 +16,9 @@
  * (`ENTITLEMENT_VERIFICATION`), so every number here is re-derivable from the
  * repository and from nothing else.
  */
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import * as entitlementModule from './streakEntitlement';
 import {
@@ -23,7 +26,7 @@ import {
   COVERAGE_SOURCE_COUNTER,
   ENTITLEMENT_FACT_KEYS,
   MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW,
-  PURCHASED_DAY_TOUCHING_FUNCTIONS,
+  COVERED_DAY_TOUCHING_FUNCTIONS,
   RECOVERY_ENTITLEMENT,
   SOURCES_THAT_CREDIT_A_PURCHASED_DAY,
   afterSession,
@@ -969,14 +972,385 @@ describe('a purchased covered day has a provenance, and the provenance is on the
 // GDD §8.3E CONDITION 3 — never grantable, earnable or awarded. ENFORCED.
 // ---------------------------------------------------------------------------
 
+/**
+ * THE SCAN'S PARAMETERS, IN ONE PLACE — CLAUDE.md's "keep every such value as a
+ * named constant in one place", applied to a guard's knobs. The root, the
+ * predicate, the predicate that was weighed against it and the two figures the
+ * scan pins are named here rather than written inline in the tests below.
+ *
+ * The counts are MEASURED, at the commit that derived the file set. They are
+ * pinned where a stale one would make a test blind and left unpinned where a
+ * pin would only churn — each field says which, and why.
+ */
+const PURCHASED_DAY_SCAN = {
+  /**
+   * `src/`, the whole tree — and that is the change this constant exists to
+   * record.
+   *
+   * The scan used to read a HARDCODED LIST OF THREE FILENAMES joined against
+   * `__dirname`, which is `src/game/`. Two things followed, and the second is
+   * the one that made the guard weaker than it read:
+   *
+   *   - a module in any other directory was unreachable BY CONSTRUCTION, not by
+   *     omission — no edit to the list could have reached `src/shell/`, because
+   *     the reader could not leave `src/game/`; and
+   *   - the list's own comment argued that a THIRD file had to be added because
+   *     the laundered path was invisible to the other two. That argument
+   *     generalises to a fourth file and nothing derived it, so the set that
+   *     was scanned and the set that mattered had already come apart: at the
+   *     commit this was written on, `progression.ts` named the purchased
+   *     counter and was NOT scanned, while `currencyProvenance.ts` was scanned
+   *     and named neither the counter nor the source.
+   *
+   * Deriving the set from the tree is what makes "whatever it is called" in
+   * `COVERED_DAY_TOUCHING_FUNCTIONS`'s header also mean "wherever it is
+   * written".
+   */
+  ROOT: path.join(__dirname, '..'),
+
+  /**
+   * WHAT MAKES A DECLARATION INTERESTING: two WORDS — a purchase, or a covered
+   * day — rather than the identifiers that carry either.
+   *
+   * THE SECOND ALTERNATIVE IS THIS ROUND'S FIX, AND THE FIRST ALONE WAS A
+   * MEASURED HOLE. `/purchas/i` was what shipped, and the rule it stands in
+   * front of is not about purchases: CLAUDE.md says *"no grant of COVERED days
+   * may be keyed to anything the lifter does"*, and `COVERAGE_SOURCES` declares
+   * two sources of which `'window-entitlement'` is the free side. A declaration
+   * that grants coverage through that source contains no form of the word
+   * "purchase", so the guard could not see it — the same shape as the
+   * `__dirname` ceiling the previous round removed, one axis over.
+   *
+   * CHOSEN BY MEASUREMENT, and every losing option is pinned as a live value
+   * below so the choice is re-runnable rather than a claim in prose. On this
+   * tree: narrow 18/3, purchase-word-only 57/7, credit-token 58/7, this one
+   * 88/7. THE FILE SET DOES NOT GROW — the widening costs 31 allowlist entries
+   * and reaches no new module, so `FILES_THAT_NAME_A_COVERED_DAY` keeps every
+   * bit of the signal it had.
+   *
+   * WHAT IT COSTS, said plainly: 31 more names, and most of them cannot grant
+   * anything — `openDay`, `settleBrokenStreak` and `resolveEntitlement` are
+   * spend-side, `currencyProvenance.ts`'s ten are the tender partition, and
+   * `RECOVERY_ENTITLEMENT` is a frozen tuning block. The allowlist is now
+   * mostly things that merely SAY "covered day". That is the deliberate trade
+   * this codebase has already made once in the same place: a larger honest
+   * allowlist over a narrower one with a known hole in it.
+   *
+   * THE THIRD ALTERNATIVE COSTS NOTHING AND IS NOT REDUNDANT. `covered.?day`
+   * does NOT match the bare source literal `'window-entitlement'` — measured,
+   * after an earlier draft of this file asserted it did and went red. Adding
+   * the literal admits 0 further declarations on this tree and 0 further
+   * files, and it is what makes `CREDIT_PATH_TOKENS` a subset of this by
+   * CONSTRUCTION rather than by tree-accident: every token in that predicate
+   * (`purchas`, `creditCoveredDays`, `window-entitlement`, `coveredDaysLeft`)
+   * is matched here. A free alternative that closes a real token gap.
+   */
+  NAMES_A_COVERED_DAY_OR_A_PURCHASE: /purchas|covered.?day|window-entitlement/i,
+
+  /**
+   * THE PREDICATE THAT SHIPPED BEFORE THIS ROUND, kept as a live value rather
+   * than described, because it is what makes the widening demonstrably
+   * non-vacuous: `AND THE SCAN CAN SEE A NEW ONE` drives a synthetic
+   * covered-day granter through BOTH and asserts this one misses it. Without
+   * that, nothing would distinguish the new alternative from decoration.
+   */
+  PURCHASE_WORD_ONLY: /purchas/i,
+
+  /**
+   * THE TEMPTING FIX, AND IT IS HERE BECAUSE IT IS MEASURABLY NOT ENOUGH.
+   *
+   * The obvious way to close the `'window-entitlement'` hole is to add the
+   * tokens on the credit path — the one credit function, the free source, the
+   * free counter. It does catch the probe. It is BLIND TO THE SIBLING MUTANT:
+   * a widener that fabricates an `EntitlementTuning` with
+   * `COVERED_DAYS_PER_WINDOW` keyed to a session count never calls
+   * `creditCoveredDays`, never names the source and never touches
+   * `coveredDaysLeft`. Measured: with that mutant in the tree this predicate
+   * reports the same 58 declarations in the same 7 files it reports on a clean
+   * one, while `NAMES_A_COVERED_DAY_OR_A_PURCHASE` goes to 89 in 8.
+   *
+   * That is the rejected narrow predicate's failure repeating one level out —
+   * a list of tokens somebody thought of, walked around by a mutant using a
+   * token they did not. It is pinned so the argument is re-runnable.
+   */
+  CREDIT_PATH_TOKENS: /purchas|creditCoveredDays|window-entitlement|coveredDaysLeft/i,
+
+  /**
+   * The narrowest predicate, weighed and rejected a round before this one. Kept
+   * as a live value, not a sentence, so `THE PREDICATE WAS CHOSEN BY
+   * MEASUREMENT` can re-derive the comparison instead of quoting it.
+   *
+   * ITS SECOND ALTERNATIVE IS A TEXTUAL MATCH, NOT A TYPE, and that is not a
+   * detail: `'purchase'` is the `CoverageSource` this module cares about AND a
+   * `ProposalOriginKind` in `progression.ts`, spelled identically. Four of the
+   * six declarations the narrow predicate finds in that file are the origin
+   * kind, not the coverage source. So even the "narrow" option is looser than
+   * its name suggests, which is a further reason not to trust it as the
+   * precise-looking alternative — measured, because the first draft of the
+   * comment on the allowlist's `progression.ts` section read those four as
+   * covered-day code and said so.
+   */
+  NAMES_THE_COUNTER_OR_THE_SOURCE: /purchasedDaysLeft|'purchase'/,
+
+  /**
+   * Immediate subdirectories of `src/`. PINNED, and pinned on purpose despite
+   * the churn: a new top-level directory is the one tree change that can
+   * introduce a whole region the walk has never been shown to reach, and the
+   * cheapest way to make somebody look at it is to make it a red line here.
+   *
+   * It is also the anti-vacuity floor for the reach test. Without it, a
+   * `readdirSync` that returned nothing would leave that test comparing two
+   * empty sets — CLAUDE.md's "an empty domain" shape, exactly.
+   */
+  SOURCE_DIRECTORIES: 12,
+
+  /**
+   * The files that currently contain at least one matching declaration, as
+   * paths relative to `src/`.
+   *
+   * THIS IS THE OLD HARDCODED LIST, INVERTED FROM AN INPUT INTO AN OUTPUT, and
+   * the inversion is the whole point. As an input it SCOPED the scan, so a file
+   * missing from it was invisible. As an output it is ASSERTED, so a file
+   * missing from it is a red test naming the file — and a reviewer still gets
+   * the file-level signal that the wider allowlist would otherwise dilute.
+   *
+   * NOT pinned as a bare count: the set is what carries the information, and a
+   * count would pass while two files swapped places.
+   */
+  FILES_THAT_NAME_A_COVERED_DAY: [
+    'empire/empireCore.ts',
+    'empire/empireInvariant.ts',
+    'empire/expansion.ts',
+    'empire/reputation.ts',
+    'game/currencyProvenance.ts',
+    'game/progression.ts',
+    'game/streak.ts',
+    'game/streakEntitlement.ts',
+    'game/streakSweep.ts',
+    'tuning/audit.ts',
+  ] as readonly string[],
+
+  /**
+   * What each candidate predicate found when the choice was made, as
+   * `[declarations, files]`. Pinned so that narrowing the predicate on the
+   * belief that it is equivalent fails with the numbers next to it.
+   *
+   * READ THE FILE COLUMN. Widening from the purchase word to the covered day
+   * costs 31 declarations and reaches NO new file — the hole it closed was
+   * inside modules the scan was already reading, which is why nothing about the
+   * file-level pin caught it.
+   */
+  COVERAGE_FOUND: [94, 10] as readonly [number, number],
+  PURCHASE_WORD_FOUND: [63, 10] as readonly [number, number],
+  CREDIT_PATH_FOUND: [64, 10] as readonly [number, number],
+  NARROW_FOUND: [18, 3] as readonly [number, number],
+} as const;
+
+/**
+ * THE SYMBOL-RESOLVED PASS'S PARAMETERS, IN ONE PLACE — the same discipline
+ * `PURCHASED_DAY_SCAN` above applies to the textual scan, applied to the pass
+ * that stands beside it.
+ *
+ * WHY THERE ARE TWO PASSES AND NOT ONE REPLACING THE OTHER. The textual scan
+ * finds 94 declarations in 10 files; this one finds 32 in 2. Neither is a subset
+ * of the other and each is blind exactly where the other looks:
+ *
+ *   - The textual scan reads WORDS, so it sees `EMPIRE_FORBIDDEN_OUTPUTS`
+ *     naming `'covered-day'` as a forbidden idle-layer output, the tender
+ *     partition in `currencyProvenance.ts`, and `RECOVERY_ENTITLEMENT`'s frozen
+ *     tuning block — none of which CALL anything. A checker pass keyed on
+ *     "reaches the credit path" resolves no identifier in any of them and would
+ *     drop all 88 down to 32, which is why replacing was rejected.
+ *   - This pass reads SYMBOLS, so an identifier that reaches the covered-day
+ *     machinery under any spelling is seen. That is the hole the textual scan's
+ *     own comment pinned as unclosable by any predicate it could carry.
+ *
+ * THE HOLE WAS EXECUTED, NOT REASONED ABOUT, and the executed version is not
+ * the one that was written down. The limit as recorded read
+ * `import { creditCoveredDays as credit }` alone — but a body that still spells
+ * the source `'window-entitlement'` is caught by the shipped predicate's third
+ * alternative, and planting exactly that mutant reddened three tests. The
+ * evasion needs BOTH ends aliased: the function AND the source. Appended to
+ * `src/shell/appServer.ts`:
+ *
+ *     import {
+ *       creditCoveredDays as credit,
+ *       COVERAGE_SOURCES as SOURCES,
+ *       RECOVERY_ENTITLEMENT,
+ *       type EntitlementState,
+ *     } from '../game/streakEntitlement';
+ *
+ *     export function widenForTenSessions(
+ *       state: EntitlementState, w: number, sessions: number,
+ *     ): EntitlementState {
+ *       return credit(RECOVERY_ENTITLEMENT, state, w, sessions, SOURCES[0]).state;
+ *     }
+ *
+ * That grants a covered day per training session — CLAUDE.md measures the
+ * every-N-sessions shape at **1156 violating pairs** against 0 on a fixed
+ * calendar day. With it in the tree `streakEntitlement.test.ts`,
+ * `tuning/audit.test.ts` and `guaranteeTags.test.ts` ran **105 tests, all
+ * green**, and `tsc --noEmit` exited 0. It would have shipped.
+ *
+ * A LOCALLY DECLARED SOURCE DOES NOT EVADE, and that is why the mutant imports
+ * `COVERAGE_SOURCES` rather than writing `const SRC = 'window-entitlement'`:
+ * such a const is itself a top-level declaration whose own body carries the
+ * literal, so the textual scan reddens on `SRC`. The literal has to come from
+ * somewhere else entirely, which is precisely what an import is.
+ */
+const COVERED_DAY_SYMBOL_SCAN = {
+  /**
+   * The module whose exports are the covered-day machinery. Every export of it
+   * is guarded — the set is asked of the CHECKER via `getExportsOfModule`, not
+   * listed here, because a hand-list is "the tokens somebody thought of" and
+   * that is the failure mode `CREDIT_PATH_TOKENS` above is pinned to record.
+   * Adding an export to `streakEntitlement.ts` widens this pass automatically.
+   */
+  GUARDED_MODULE: 'game/streakEntitlement.ts',
+
+  /**
+   * How many symbols that module exports. PINNED as the anti-vacuity floor for
+   * the whole pass: if `getExportsOfModule` ever returns an empty set — a
+   * mis-resolved path, a program built with no root files — every declaration
+   * would resolve to nothing, the pass would find nothing, and its set equality
+   * would pass against an empty expectation. This is the line that reddens
+   * instead.
+   */
+  GUARDED_EXPORTS: 21,
+
+  /**
+   * `[declarations, files]` this pass finds on a clean tree. Counts, not
+   * bounds. The file column is the one that moves when a granter appears in a
+   * module that has never touched the entitlement before — which is exactly
+   * what the aliased mutant does, taking it to 3.
+   */
+  SYMBOL_FOUND: [32, 2] as readonly [number, number],
+
+  /**
+   * The declarations THIS PASS FINDS AND THE TEXTUAL SCAN CANNOT — the measured
+   * value of adding it, pinned as names rather than as a count so a swap is
+   * visible. Nine, and none of them says `purchas`, `covered day` or
+   * `window-entitlement` anywhere in its body; each reaches the entitlement
+   * through an identifier instead.
+   *
+   * NON-EMPTY IS THE POINT. If this list were empty the pass would be
+   * decoration: everything it found would already be found by a regex.
+   */
+  SYMBOL_ONLY_NAMES: [
+    'CoverageSource',
+    'ENTITLEMENT_REACH_IS_COVERAGE_ONLY',
+    'EntitlementFactKey',
+    'EntitlementOutcome',
+    'StreakState',
+    'createStreakState',
+    'entitlementWindowFor',
+    'windowIndexOf',
+    'windowStartDay',
+  ] as readonly string[],
+
+  /**
+   * Declarations reached ONLY by following an import alias — i.e. the resolved
+   * symbol's own file is not the file the identifier is written in. PINNED
+   * NON-ZERO because this is the single line that reddens if
+   * `getAliasedSymbol` stops being called: without alias-following every
+   * cross-module reference resolves to the local import binding instead of the
+   * export, `streak.ts` drops out entirely, and the pass silently shrinks to
+   * "declarations inside streakEntitlement.ts itself".
+   *
+   * `cutInWiring.test.ts` records a builder having broken exactly that call by
+   * hand and reverted it. This is the same failure, made loud here.
+   */
+  CROSS_MODULE_FOUND: 11,
+
+  /**
+   * The union of both passes, which is what `COVERED_DAY_TOUCHING_FUNCTIONS` is
+   * asserted equal to. 88 textual + 9 symbol-only = 97.
+   */
+  UNION_FOUND: 103,
+
+  /**
+   * WHAT THIS PASS STILL DOES NOT SEE, pinned as a red line rather than implied
+   * away, the way the textual scan's own limit was.
+   *
+   * A declaration that reaches the entitlement through a value the checker
+   * cannot follow to an export — `const f: unknown = mod['creditCoveredDays']`,
+   * a dynamic `await import()`, a `Function` constructor — resolves to no
+   * guarded symbol and is invisible here. So is a granter written INSIDE a
+   * declaration that is already on the allowlist, which is the floor-not-ceiling
+   * limit the allowlist header already states and which `streak.test.ts`'s
+   * behavioural drive is what actually covers.
+   *
+   * WHAT IT DOES SEE, ALSO MEASURED: the re-alias shape
+   * `import * as E from '...'; E.creditCoveredDays(...)`. The property name in
+   * a `PropertyAccessExpression` is an identifier the checker resolves straight
+   * to the export, so the namespace spelling is caught by this pass — and it is
+   * additionally caught by the TEXTUAL scan, because `E.creditCoveredDays`
+   * contains the substring `CoveredDay`. Both are asserted below rather than
+   * assumed.
+   */
+  DYNAMIC_ACCESS_IS_NOT_COVERED: true,
+} as const;
+
+/**
+ * Files the scan reads: every non-test `.ts`/`.tsx` under `dir`, recursively.
+ *
+ * THE THIRD COPY OF THIS WALKER IN THE TREE, said rather than hidden — the
+ * other two are in `guaranteeTags.test.ts` and `spriteMarks.test.ts` and are
+ * byte-identical to each other. It is not extracted to a shared home because
+ * that home would have to be a new fs-touching module and `src/game/` is
+ * pure-logic-only; the honest consequence is that a future exclusion added to
+ * one copy does not reach this one. That direction is the safe one — this copy
+ * would scan MORE files, which fails loud, never silent — but it is a real
+ * drift surface and it is recorded here rather than left for a reader to find.
+ *
+ * Test files are excluded because they discuss the counter constantly and
+ * cannot award anything: nothing a test declares ships.
+ */
+function scannedFilesUnder(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+      out.push(...scannedFilesUnder(full));
+    } else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+      out.push(full);
+    }
+  }
+  return out.sort();
+}
+
 describe('nothing can award a purchased covered day, and that is enforced rather than absent', () => {
-  const read = (file: string): string => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const source: string = require('node:fs').readFileSync(
-      require('node:path').join(__dirname, file),
-      'utf8',
+  const stripComments = (source: string): string =>
+    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  const read = (absolutePath: string): string => stripComments(readFileSync(absolutePath, 'utf8'));
+
+  /** Every scanned file as `[pathRelativeToSrc, commentStrippedSource]`. */
+  const scannedSources = (): readonly (readonly [string, string])[] =>
+    scannedFilesUnder(PURCHASED_DAY_SCAN.ROOT).map(
+      (file) =>
+        [path.relative(PURCHASED_DAY_SCAN.ROOT, file).split(path.sep).join('/'), read(file)] as const,
     );
-    return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  /**
+   * Every declaration in the tree matching `predicate`, as `file::name`. The
+   * two predicates share this so a change to the scan cannot move one and leave
+   * the other measuring something else.
+   */
+  const matchesIn = (predicate: RegExp): { qualified: string[]; names: string[]; files: string[] } => {
+    const qualified: string[] = [];
+    const names = new Set<string>();
+    const files = new Set<string>();
+    for (const [rel, source] of scannedSources()) {
+      for (const [name, body] of declarations(source)) {
+        if (!predicate.test(body)) continue;
+        qualified.push(`${rel}::${name}`);
+        names.add(name);
+        files.add(rel);
+      }
+    }
+    return { qualified, names: [...names].sort(), files: [...files].sort() };
   };
 
   /**
@@ -996,39 +1370,667 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     });
   };
 
-  it('THE ALLOWLIST IS EXACT: every declaration that can name a purchased day is listed', () => {
+  /**
+   * THE SYMBOL-RESOLVED PASS. Every top-level declaration under `src/` that
+   * mentions an identifier resolving — THROUGH IMPORT ALIASES AND RE-EXPORTS —
+   * to an export of `streakEntitlement.ts`.
+   *
+   * BUILT ONCE AND MEMOISED. A `ts.Program` over `tsconfig.json`'s 185 files
+   * costs ~3.6s and the walk ~1.5s; three tests read it, and building three
+   * programs would be three resolutions of the same types that could disagree.
+   */
+  interface SymbolPass {
+    readonly qualified: readonly string[];
+    readonly names: readonly string[];
+    readonly files: readonly string[];
+    readonly guardedExports: readonly string[];
+    /** Qualified names reached only by following an import alias out of the file. */
+    readonly crossModule: readonly string[];
+  }
+  let symbolPassMemo: SymbolPass | null = null;
+
+  /**
+   * The pass, over a program that may carry ONE SYNTHETIC MODULE that is not on
+   * disk.
+   *
+   * THE SYNTHETIC ARM IS WHY THIS TAKES A PARAMETER, and it is what gives this
+   * pass the tripwire the textual scan already has in `AND THE SCAN CAN SEE A
+   * NEW ONE`. Without it the pass's every assertion is a statement about a tree
+   * that contains no granter, so a pass that had quietly stopped resolving
+   * anything would satisfy all of them — CLAUDE.md's "an empty domain",
+   * exactly. The probe below plants the two evasions in a module the checker
+   * compiles for real, so the resolution being asserted is the same resolution
+   * the shipped arm runs.
+   */
+  const runPass = (synthetic?: { readonly rel: string; readonly text: string }): SymbolPass => {
+    const repoRoot = path.join(PURCHASED_DAY_SCAN.ROOT, '..');
+    const configPath = path.join(repoRoot, 'tsconfig.json');
+    const config = ts.readConfigFile(configPath, ts.sys.readFile).config as unknown;
+    const parsed = ts.parseJsonConfigFileContent(config, ts.sys, repoRoot);
+    if (parsed.fileNames.length === 0) {
+      throw new Error('tsconfig.json resolved to no files — the symbol pass would find nothing');
+    }
+    const options = { ...parsed.options, noEmit: true, skipLibCheck: true };
+    const roots = [...parsed.fileNames];
+
+    let host: ts.CompilerHost | undefined;
+    if (synthetic !== undefined) {
+      const syntheticPath = path.join(PURCHASED_DAY_SCAN.ROOT, synthetic.rel);
+      if (roots.includes(syntheticPath)) {
+        throw new Error(`${synthetic.rel} exists on disk — the probe would grade a real file`);
+      }
+      roots.push(syntheticPath);
+      const base = ts.createCompilerHost(options);
+      const readFileBase = base.readFile.bind(base);
+      const getSourceFileBase = base.getSourceFile.bind(base);
+      const fileExistsBase = base.fileExists.bind(base);
+      host = {
+        ...base,
+        fileExists: (fileName) => fileName === syntheticPath || fileExistsBase(fileName),
+        readFile: (fileName) =>
+          fileName === syntheticPath ? synthetic.text : readFileBase(fileName),
+        getSourceFile: (fileName, languageVersion, onError, shouldCreate) =>
+          fileName === syntheticPath
+            ? ts.createSourceFile(syntheticPath, synthetic.text, languageVersion, true)
+            : getSourceFileBase(fileName, languageVersion, onError, shouldCreate),
+      };
+    }
+
+    const program = ts.createProgram(roots, options, host);
+    const checker = program.getTypeChecker();
+
+    const guardedFile = path.join(PURCHASED_DAY_SCAN.ROOT, COVERED_DAY_SYMBOL_SCAN.GUARDED_MODULE);
+    const guardedSource = program.getSourceFile(guardedFile);
+    if (guardedSource === undefined) {
+      throw new Error(`${COVERED_DAY_SYMBOL_SCAN.GUARDED_MODULE} is not in the program`);
+    }
+    const guardedModuleSymbol = checker.getSymbolAtLocation(guardedSource);
+    if (guardedModuleSymbol === undefined) {
+      throw new Error(`${COVERED_DAY_SYMBOL_SCAN.GUARDED_MODULE} has no module symbol`);
+    }
+    const guardedSymbols = checker.getExportsOfModule(guardedModuleSymbol);
+    const guarded = new Set(guardedSymbols);
+
+    /*
+     * WHERE AN IDENTIFIER IS DECLARED, ASKED OF THE CHECKER RATHER THAN OF ITS
+     * SPELLING. `SymbolFlags.Alias` is what an imported binding is, so following
+     * it turns "a local thing spelled `credit`" into "streakEntitlement.ts's
+     * exported `creditCoveredDays`". `getAliasedSymbol` follows a whole
+     * re-export chain, so a barrel between caller and declaration resolves the
+     * same way.
+     *
+     * THIS IS THE THIRD COPY OF THESE FOUR LINES IN THE TREE, SAID PLAINLY
+     * RATHER THAN LEFT FOR A READER TO FIND. The others are
+     * `progression.test.ts`'s `resolvedSymbolOf` and `cutInWiring.test.ts`'s
+     * two. CLAUDE.md's "a twin guard must READ the sibling's list, not copy it"
+     * is about LISTS, and this pass does read its list from the checker rather
+     * than copying one — but the RESOLVER is duplicated, and that is the same
+     * drift surface one level down. It is not extracted because the only home
+     * both a `src/game/` test and a `src/cutin/` test could import is a new
+     * non-test module under `src/`, which would itself be scanned by the pass
+     * above and by `guaranteeTags.test.ts`, and `src/game/` is pure-logic-only.
+     * `THE THREE RESOLVERS DO NOT DRIFT` below is what stands in for extraction:
+     * it pins the idiom's occurrence count in all three files, so deleting the
+     * alias step from any one of them is red.
+     */
+    const resolvedSymbolOf = (identifier: ts.Identifier): ts.Symbol | undefined => {
+      const symbol = checker.getSymbolAtLocation(identifier);
+      return symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+        ? checker.getAliasedSymbol(symbol)
+        : symbol;
+    };
+
+    const qualified: string[] = [];
+    const crossModule: string[] = [];
+    const names = new Set<string>();
+    const files = new Set<string>();
+
+    for (const source of program.getSourceFiles()) {
+      if (source.isDeclarationFile) continue;
+      const rel = path
+        .relative(PURCHASED_DAY_SCAN.ROOT, source.fileName)
+        .split(path.sep)
+        .join('/');
+      // Same exclusions as the textual scan: inside `src/`, and not a test.
+      if (rel.startsWith('..') || path.isAbsolute(rel)) continue;
+      if (/\.test\.tsx?$/.test(rel)) continue;
+
+      source.forEachChild((node) => {
+        // The same declaration kinds the textual scan's regex matches.
+        const declared: string[] = [];
+        if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) && node.name) {
+          declared.push(node.name.text);
+        } else if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
+          declared.push(node.name.text);
+        } else if (ts.isVariableStatement(node)) {
+          for (const one of node.declarationList.declarations) {
+            if (ts.isIdentifier(one.name)) declared.push(one.name.text);
+          }
+        }
+        if (declared.length === 0) return;
+
+        let hit = false;
+        let viaAlias = false;
+        const visit = (child: ts.Node): void => {
+          if (ts.isIdentifier(child)) {
+            const resolved = resolvedSymbolOf(child);
+            if (resolved !== undefined && guarded.has(resolved)) {
+              hit = true;
+              // Declared elsewhere than where it is written: only an alias got
+              // us here. This is what makes `getAliasedSymbol` load-bearing.
+              const declaringFile = resolved.declarations?.[0]?.getSourceFile().fileName;
+              if (declaringFile !== undefined && declaringFile !== source.fileName) viaAlias = true;
+            }
+          }
+          child.forEachChild(visit);
+        };
+        visit(node);
+        if (!hit) return;
+
+        files.add(rel);
+        for (const name of declared) {
+          names.add(name);
+          qualified.push(`${rel}::${name}`);
+          if (viaAlias) crossModule.push(`${rel}::${name}`);
+        }
+      });
+    }
+
+    return {
+      qualified,
+      names: [...names].sort(),
+      files: [...files].sort(),
+      guardedExports: guardedSymbols.map((symbol) => symbol.getName()).sort(),
+      crossModule,
+    };
+  };
+
+  /** The shipped arm: the real tree, nothing planted. Memoised; three tests read it. */
+  const symbolPass = (): SymbolPass => {
+    if (symbolPassMemo === null) symbolPassMemo = runPass();
+    return symbolPassMemo;
+  };
+
+  /**
+   * THE TRIPWIRE, and it is the sibling of `AND THE SCAN CAN SEE A NEW ONE`.
+   * Both evasions in one synthetic module the checker compiles for real:
+   * `widenByAlias` renames the function AND imports the source so no literal
+   * appears, and `widenByNamespace` reaches the same two through a namespace
+   * import. `ordinaryHelper` is what stops a pass that matched EVERYTHING from
+   * satisfying this.
+   */
+  const ALIAS_PROBE = {
+    rel: 'game/__aliasProbe.ts',
+    text: [
+      "import { creditCoveredDays as credit, COVERAGE_SOURCES as SOURCES } from './streakEntitlement';",
+      "import { RECOVERY_ENTITLEMENT, type EntitlementState } from './streakEntitlement';",
+      "import * as E from './streakEntitlement';",
+      '',
+      'export function ordinaryHelper(a: number): number {',
+      '  return a + 1;',
+      '}',
+      '',
+      'export function widenByAlias(s: EntitlementState, w: number, n: number): EntitlementState {',
+      '  return credit(RECOVERY_ENTITLEMENT, s, w, n, SOURCES[0]).state;',
+      '}',
+      '',
+      'export function widenByNamespace(s: E.EntitlementState, w: number, n: number): E.EntitlementState {',
+      '  return E.creditCoveredDays(E.RECOVERY_ENTITLEMENT, s, w, n, E.COVERAGE_SOURCES[0]).state;',
+      '}',
+      '',
+    ].join('\n'),
+  } as const;
+
+  it('[the-covered-day-scan-reads-the-whole-tree] THE ALLOWLIST IS EXACT: every declaration that can name a covered day is listed, from anywhere under src/', () => {
     // THE GUARD THAT DOES NOT DEPEND ON WHAT A FUNCTION IS CALLED. The obvious
     // version of this test is a blocklist on `grant`, `credit`, `buy`, `award` —
     // and `streak.test.ts` carried exactly that until this round. It cannot
     // catch `markStreakMilestone` handing out a purchased day, because the
-    // mutant uses none of those words. This keys on the FIELD: any declaration
-    // that so much as names the purchased counter or the `'purchase'` source has
-    // to appear in `PURCHASED_DAY_TOUCHING_FUNCTIONS`, whatever it is called.
+    // mutant uses none of those words.
+    //
+    // WHAT IT KEYS ON IS TWO WORDS — `purchas` OR a covered day — and the
+    // second one is this round's fix. The predicate was `/purchas/i` alone,
+    // which is not the rule: CLAUDE.md forbids a grant of COVERED days keyed to
+    // training, and `COVERAGE_SOURCES` has TWO members. A function granting
+    // coverage through `'window-entitlement'` says nothing resembling
+    // "purchase", so it was invisible here — verified by planting one in
+    // `src/shell/appServer.ts` and watching this file run 43 green tests over
+    // it with `tsc --noEmit` clean. Any declaration whose body says `purchas`
+    // or names a covered day, under any name and in any directory, has to
+    // appear in `COVERED_DAY_TOUCHING_FUNCTIONS`.
+    //
+    // THE COUNTS ARE PINNED IN `THE PREDICATE WAS CHOSEN BY MEASUREMENT` below
+    // rather than asserted in prose here: 18 / 57 / 58 / 88 declarations for
+    // the narrow, purchase-word, credit-token and shipped predicates.
     //
     // EXACT IN BOTH DIRECTIONS, so a stale entry fails too — an allowlist that
     // can only grow is one nobody prunes and eventually one that permits
     // everything.
     //
-    // THE SCAN READS THREE FILES NOW. `currencyProvenance.ts` decides who may
-    // buy a covered day, which is where the laundered path went — an
-    // achievement pays Chalk, Chalk buys a covered day, and neither of the
-    // other two files ever sees an achievement. Leaving it unscanned would
-    // leave the exact edit this allowlist exists to surface — a new tender —
-    // invisible to it.
-    const found: string[] = [];
-    for (const file of ['streakEntitlement.ts', 'streak.ts', 'currencyProvenance.ts']) {
-      for (const [name, body] of declarations(read(file))) {
-        if (/purchas/i.test(body)) found.push(name);
-      }
-    }
-    expect(found.sort()).toEqual([...PURCHASED_DAY_TOUCHING_FUNCTIONS].sort());
+    // THE SCAN READS THE WHOLE TREE NOW, AND THAT REPLACED A HARDCODED LIST OF
+    // THREE FILENAMES. The reason the third file was added generalises: it was
+    // added because the laundered path — an achievement pays Chalk, Chalk buys
+    // a covered day — was invisible to the other two. The identical argument
+    // reaches a fourth file, and nothing derived it. Worse, the reader it used
+    // joined its argument against `__dirname`, so `src/game/` was a hard
+    // ceiling: no entry could have named a module in another directory.
+    //
+    // The set had already come apart from the set that matters. At the commit
+    // this was rewritten on, `progression.ts` named the purchased counter in
+    // six declarations and was not scanned, while `currencyProvenance.ts` was
+    // scanned and named neither the counter nor the source.
+    //
+    // The list of files is now an OUTPUT — see `FILES_THAT_NAME_A_COVERED_DAY`,
+    // asserted in the test below — instead of the input that scoped the search.
+    // BOTH PASSES, UNIONED INTO THE ONE ALLOWLIST. The textual scan below is
+    // unchanged and its counts are still pinned; the symbol-resolved pass is
+    // added beside it rather than replacing it, because neither is a subset of
+    // the other — see `COVERED_DAY_SYMBOL_SCAN`'s header for the measurement
+    // (88 textual / 32 symbol / 97 union) and for why replacing loses 65
+    // declarations that merely SAY "covered day" and call nothing.
+    //
+    // ONE ALLOWLIST AND NOT TWO, deliberately: a second list is a second thing
+    // to go stale, and the both-directions equality is what makes a removed
+    // declaration red. A name is on this list if EITHER pass finds it.
+    const textual = matchesIn(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE);
+    const symbols = symbolPass();
+    const found = {
+      qualified: [...textual.qualified, ...symbols.qualified],
+      names: [...new Set([...textual.names, ...symbols.names])].sort(),
+    };
+    const allowed = new Set(COVERED_DAY_TOUCHING_FUNCTIONS);
+    const seen = new Set(found.names);
+
+    // A USEFUL RED, not just a red. CLAUDE.md: "a check that bites but fails
+    // uselessly is half a check" — a bare set diff over 97 strings makes a
+    // reader go and find which file grew a declaration, so the message carries
+    // the qualified name and the allowlist carries only the bare one.
+    const unlisted = found.qualified.filter((q) => !allowed.has(q.split('::')[1] as string));
+    const stale = [...allowed].filter((name) => !seen.has(name)).sort();
+    const drift = [
+      unlisted.length > 0
+        ? `declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS does not list: ${unlisted.join(', ')}`
+        : '',
+      stale.length > 0 ? `allowlist entries no declaration matches any more: ${stale.join(', ')}` : '',
+    ]
+      .filter((line) => line !== '')
+      .join(' | ');
+
+    expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());
+    // THE ALLOWLIST ITSELF HAS NO DUPLICATES. `found.names` is deduplicated —
+    // it has to be, because the list is of bare names and two files may legally
+    // declare the same one — so without this a doubled entry would be a
+    // permanent red nobody could satisfy, and a reader would reach for a
+    // `Set` on both sides and lose the staleness half.
+    expect([...new Set(COVERED_DAY_TOUCHING_FUNCTIONS)].length).toBe(
+      COVERED_DAY_TOUCHING_FUNCTIONS.length,
+    );
   });
 
-  it('AND THE SCAN CAN SEE A NEW ONE: it is not matching nothing', () => {
+  it('[the-covered-day-scan-follows-aliases] AN ALIASED IMPORT NO LONGER HIDES A GRANTER: identifiers are resolved through the checker', () => {
+    const symbols = symbolPass();
+
+    // NON-VACUITY FIRST, AND IN THE ORDER THAT MATTERS. Everything below is a
+    // statement about a set the checker produced; if the checker produced an
+    // empty set, every one of them would pass while measuring nothing. This is
+    // the line that reddens on a mis-resolved path or a program with no roots.
+    expect(
+      symbols.guardedExports.length,
+      `guarded exports of ${COVERED_DAY_SYMBOL_SCAN.GUARDED_MODULE}: ${symbols.guardedExports.join(', ')}`,
+    ).toBe(COVERED_DAY_SYMBOL_SCAN.GUARDED_EXPORTS);
+
+    // AND THE ALIAS STEP IS LOAD-BEARING, PINNED NON-ZERO. Delete
+    // `getAliasedSymbol` from the resolver and every cross-module reference
+    // resolves to the local import binding instead of the export: `streak.ts`
+    // drops out of the pass entirely and this count goes to 0. A builder has
+    // already broken that exact call by hand once — `cutInWiring.test.ts`
+    // records it — so it is measured here rather than trusted.
+    expect(
+      symbols.crossModule.length,
+      'no declaration was reached by following an import alias — getAliasedSymbol is not doing anything',
+    ).toBe(COVERED_DAY_SYMBOL_SCAN.CROSS_MODULE_FOUND);
+
+    // COUNTS, NOT BOUNDS. The file column moves to 3 the moment a granter
+    // appears in a module that has never touched the entitlement, which is
+    // exactly what the aliased mutant in this block's header does.
+    expect([symbols.names.length, symbols.files.length]).toEqual([
+      ...COVERED_DAY_SYMBOL_SCAN.SYMBOL_FOUND,
+    ]);
+
+    // THE MEASURED VALUE OF THE PASS, and the assertion that stops it being
+    // decoration: nine declarations it finds that the textual predicate
+    // provably cannot, pinned as names so a swap is visible. If this ever went
+    // empty, every symbol match would already be a textual match and the pass
+    // would be costing 5s to duplicate a regex.
+    const textualNames = new Set(matchesIn(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE).names);
+    const symbolOnly = symbols.names.filter((name) => !textualNames.has(name)).sort();
+    expect(symbolOnly).toEqual([...COVERED_DAY_SYMBOL_SCAN.SYMBOL_ONLY_NAMES]);
+    expect(COVERED_DAY_SYMBOL_SCAN.SYMBOL_ONLY_NAMES.length).toBeGreaterThan(0);
+    expect(textualNames.size + symbolOnly.length).toBe(COVERED_DAY_SYMBOL_SCAN.UNION_FOUND);
+
+    // THE BAR THIS TEST EXISTS FOR. A declaration that reaches the covered-day
+    // machinery through an ALIASED identifier says nothing the textual scan can
+    // match, so before this pass it was invisible in both directions: not on
+    // the allowlist, and not found by anything that would notice. The mutant in
+    // the header ran 105 green tests with `tsc --noEmit` clean.
+    //
+    // The message carries the QUALIFIED name so the red names the file and the
+    // declaration rather than a bare count.
+    const allowed = new Set(COVERED_DAY_TOUCHING_FUNCTIONS);
+    const unlisted = symbols.qualified
+      .filter((q) => !allowed.has(q.split('::')[1] as string))
+      .sort();
+    expect(
+      unlisted,
+      'a declaration reaches the covered-day machinery through an identifier the textual scan cannot see, and is not on COVERED_DAY_TOUCHING_FUNCTIONS',
+    ).toEqual([]);
+  });
+
+  it('THE RE-ALIAS SHAPE IS CAUGHT TOO, and the shape that is NOT is a declared limit', () => {
+    // `import * as E from '...'; E.creditCoveredDays(...)` is the second
+    // spelling of the same evasion, and the brief that asked for this fix left
+    // open whether it was covered. Measured, both ways:
+    //
+    //   - THE TEXTUAL SCAN ALREADY CATCHES IT, because the property access
+    //     writes the real export name in the body and `covered.?day` matches
+    //     the `CoveredDay` inside `creditCoveredDays`. That is luck rather than
+    //     design — it holds for this export's NAME, not for the shape — so it
+    //     is asserted rather than relied on quietly.
+    const reAlias = [
+      'export function widenByNamespace(s: EntitlementState, w: number, n: number): EntitlementState {',
+      '  return E.creditCoveredDays(RECOVERY_ENTITLEMENT, s, w, n, E.COVERAGE_SOURCES[0]).state;',
+      '}',
+    ].join('\n');
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(reAlias),
+      'the textual scan should see the namespace spelling, which writes the export name out in full',
+    ).toBe(true);
+
+    //   - AND THE SYMBOL PASS CATCHES IT INDEPENDENTLY, because the property
+    //     name in a `PropertyAccessExpression` is an identifier that resolves
+    //     straight to the export. That is the half that does NOT depend on what
+    //     the export happens to be called: rename `creditCoveredDays` to `bump`
+    //     and the textual assertion above stops holding while this one does not.
+    //
+    // DRIVEN THROUGH THE REAL CHECKER, NOT ASSERTED ABOUT. An earlier draft of
+    // this test discharged the sentence above with
+    // `expect(symbolPass().crossModule.length).toBeGreaterThan(0)` — true on
+    // the tree, and about the wrong thing: it says some cross-module alias
+    // resolves somewhere, and no version of the NAMESPACE handling would have
+    // made it red. That is a prose guarantee with nothing behind it, which is
+    // the failure CLAUDE.md opens with. The probe is compiled instead.
+    const probe = runPass(ALIAS_PROBE);
+    const probeFound = probe.qualified
+      .filter((q) => q.startsWith(`${ALIAS_PROBE.rel}::`))
+      .map((q) => q.split('::')[1] as string)
+      .sort();
+    expect(
+      probeFound,
+      'the symbol pass must see BOTH evasions in the probe and leave the innocent helper alone',
+    ).toEqual(['widenByAlias', 'widenByNamespace']);
+
+    // AND THE TEXTUAL SCAN IS BLIND TO THE ALIASED ONE, which is what makes the
+    // symbol pass load-bearing rather than a second opinion. Same probe text,
+    // same declaration splitter, the shipped predicate.
+    const textualOnProbe = declarations(stripComments(ALIAS_PROBE.text))
+      .filter(([, body]) => PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(body))
+      .map(([name]) => name)
+      .sort();
+    expect(
+      textualOnProbe,
+      'the textual scan should see only the namespace spelling, which writes the export name out in full',
+    ).toEqual(['widenByNamespace']);
+
+    // THE LIMIT, PINNED AS A RED LINE THE WAY THE TEXTUAL SCAN'S WAS. An
+    // identifier the checker cannot follow to an export resolves to no guarded
+    // symbol and is invisible to this pass: an index signature read off a
+    // namespace object, a dynamic `await import()`, a `Function` constructor.
+    // The textual scan is what covers the first of those, and only when the
+    // string it indexes with is written out.
+    expect(COVERED_DAY_SYMBOL_SCAN.DYNAMIC_ACCESS_IS_NOT_COVERED).toBe(true);
+    const dynamicEvasion = [
+      'export function widenDynamically(s: EntitlementState, w: number, n: number): EntitlementState {',
+      '  const f = lookup(KEY) as (...a: never[]) => { state: EntitlementState };',
+      '  return f(RECOVERY_ENTITLEMENT, s, w, n, SOURCE).state;',
+      '}',
+    ].join('\n');
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(dynamicEvasion),
+      'the dynamic shape is outside BOTH passes — this is the declared limit, not a claim of completeness',
+    ).toBe(false);
+  });
+
+  it('THE THREE RESOLVERS DO NOT DRIFT: the alias step is present in every file that resolves a symbol', () => {
+    // WHAT STANDS IN FOR EXTRACTING THE RESOLVER, and it is second best. The
+    // four lines that follow an import alias are written out in three test
+    // files — `symbolPass` above, `progression.test.ts`'s `resolvedSymbolOf`,
+    // and `cutInWiring.test.ts`'s two. They cannot share a home: the only one
+    // both `src/game/` and `src/cutin/` could import is a new non-test module
+    // under `src/`, which the pass above would then scan.
+    //
+    // CLAUDE.md's finding is that duplicated guards diverge, and that the
+    // distance keeps shrinking — instance three was twelve lines inside ONE
+    // function, where the seal check matched a callee by identifier text while
+    // its sibling resolved through the checker. So the copies are counted here:
+    // deleting the alias step from any one of the three is red, which is the
+    // property extraction would have given for free.
+    //
+    // OCCURRENCE COUNTS, NOT PRESENCE. CLAUDE.md: "a textual pin whose pattern
+    // has more than one witness in the file" survives the mutation that breaks
+    // one of them. `cutInWiring.test.ts` genuinely resolves symbols twice, so
+    // presence alone would stay green after one of its two was gutted.
+    const repoRoot = path.join(PURCHASED_DAY_SCAN.ROOT, '..');
+    const ALIAS_STEP = /checker\.getAliasedSymbol\(\s*symbol\s*\)/g;
+    const RESOLVER_FILES: readonly (readonly [string, number])[] = [
+      ['src/game/streakEntitlement.test.ts', 1],
+      ['src/game/progression.test.ts', 1],
+      ['src/cutin/cutInWiring.test.ts', 2],
+    ];
+    for (const [file, expected] of RESOLVER_FILES) {
+      const source = readFileSync(path.join(repoRoot, file), 'utf8');
+      expect(
+        [...source.matchAll(ALIAS_STEP)].length,
+        `${file} no longer follows import aliases exactly ${expected} time(s)`,
+      ).toBe(expected);
+    }
+    // The list is not empty and names this file among them, so the check cannot
+    // pass by looking at nothing.
+    expect(RESOLVER_FILES.length).toBe(3);
+  });
+
+  it('AND THE SCAN LEAVES src/game/ — every directory under src/ is reached, and the matching files are pinned', () => {
+    // THE HALF THE ALLOWLIST EQUALITY CANNOT COVER, and the reason this is a
+    // separate test rather than two more lines in the one above.
+    //
+    // The equality above bites hard when the walk breaks in a way that LOSES a
+    // match: an empty walk, a skipped `src/empire`, a dead predicate all shrink
+    // `found.names` below a 57-entry allowlist. What it cannot see is a walk
+    // that never descends into a directory holding ZERO matches today —
+    // `src/shell/`, `src/meet/`, `src/session/`. Those contribute nothing to
+    // the set equality, so the equality is green whether they were read or not,
+    // and the day one of them grows a declaration that awards a purchased day
+    // the guard is silently blind. That is precisely the failure the old
+    // `__dirname`-bound reader had, so shipping the fix without a check on it
+    // would be replacing a structural hole with an unmeasured one.
+    const files = scannedFilesUnder(PURCHASED_DAY_SCAN.ROOT).map((file) =>
+      path.relative(PURCHASED_DAY_SCAN.ROOT, file).split(path.sep).join('/'),
+    );
+    const reached = new Set(files.map((rel) => rel.split('/')[0] as string));
+
+    // The oracle is a ONE-LEVEL `readdirSync`, deliberately a different shape
+    // from the recursive walk it grades, so a bug in the recursion does not
+    // also produce the expectation. Both read the same disk — that is the fact
+    // they are supposed to share.
+    const onDisk = readdirSync(PURCHASED_DAY_SCAN.ROOT, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+      .map((entry) => entry.name)
+      .sort();
+
+    // NON-VACUITY FIRST: two empty sets compare equal. This is the pinned count
+    // that makes the comparison below mean something, and it is the line a new
+    // top-level directory has to come and edit.
+    expect(onDisk.length, `top-level directories under src/: ${onDisk.join(', ')}`).toBe(
+      PURCHASED_DAY_SCAN.SOURCE_DIRECTORIES,
+    );
+    expect([...reached].sort(), 'a directory under src/ that the scan never read').toEqual(onDisk);
+
+    // AND THE FILE SET IS PINNED, which is what makes a new module naming a
+    // covered day a VISIBLE diff at file granularity and not only a bare name
+    // appended to an 88-entry list.
+    //
+    // WORTH KNOWING WHAT THIS PIN DID NOT CATCH: widening the predicate from
+    // the purchase word to the covered day added 31 declarations and NOT ONE
+    // FILE. The hole was entirely inside modules already being read, so a
+    // file-level pin was green throughout and could never have been the thing
+    // that found it. Recorded because it is the same lesson as the directory
+    // ceiling — a pin is only as wide as the axis it is taken on.
+    expect(matchesIn(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE).files).toEqual([
+      ...PURCHASED_DAY_SCAN.FILES_THAT_NAME_A_COVERED_DAY,
+    ]);
+  });
+
+  it('THE PREDICATE WAS CHOSEN BY MEASUREMENT: four candidates, and the two that look sufficient are not', () => {
+    // ALL FOUR OPTIONS, MEASURED AND PINNED, because the choice between them is
+    // the load-bearing decision in this scan and prose would not survive
+    // somebody deciding a narrower one is obviously equivalent. Each is a
+    // strict subset of the one below it, so every declaration a narrowing loses
+    // is a coverage regression rather than a tightening.
+    const coverage = matchesIn(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE);
+    const purchaseWord = matchesIn(PURCHASED_DAY_SCAN.PURCHASE_WORD_ONLY);
+    const creditPath = matchesIn(PURCHASED_DAY_SCAN.CREDIT_PATH_TOKENS);
+    const narrow = matchesIn(PURCHASED_DAY_SCAN.NAMES_THE_COUNTER_OR_THE_SOURCE);
+
+    expect([coverage.names.length, coverage.files.length]).toEqual([
+      ...PURCHASED_DAY_SCAN.COVERAGE_FOUND,
+    ]);
+    expect([purchaseWord.names.length, purchaseWord.files.length]).toEqual([
+      ...PURCHASED_DAY_SCAN.PURCHASE_WORD_FOUND,
+    ]);
+    expect([creditPath.names.length, creditPath.files.length]).toEqual([
+      ...PURCHASED_DAY_SCAN.CREDIT_PATH_FOUND,
+    ]);
+    expect([narrow.names.length, narrow.files.length]).toEqual([...PURCHASED_DAY_SCAN.NARROW_FOUND]);
+
+    // THEY REALLY ARE NESTED, asserted rather than asserted-about. If a future
+    // edit makes one of these merely DIFFERENT from its neighbour rather than
+    // wider, the counts above could still be satisfied while the "every
+    // narrowing is a regression" argument silently stopped being true. The
+    // outermost containment is by construction — every token in
+    // `CREDIT_PATH_TOKENS` is an alternative in the shipped predicate — and it
+    // only became so once `'window-entitlement'` was added there; before that
+    // it held on this tree by accident, which is exactly the kind of green this
+    // codebase has been burned by.
+    const subset = (inner: typeof narrow, outer: typeof coverage): string[] =>
+      inner.qualified.filter((q) => !outer.qualified.includes(q));
+    expect(subset(narrow, creditPath), 'narrow is not inside credit-path').toEqual([]);
+    expect(subset(purchaseWord, creditPath), 'purchase-word is not inside credit-path').toEqual([]);
+    expect(subset(creditPath, coverage), 'credit-path is not inside coverage').toEqual([]);
+
+    // THE FILES THE NARROW PREDICATE LOSES. `currencyProvenance.ts` is the file
+    // the three-file scan was widened to reach, and the narrow predicate does
+    // not match a single declaration in it — so narrowing would silently undo
+    // that round's fix. The other three are files the tree-wide scan gained.
+    const lostFiles = coverage.files.filter((file) => !narrow.files.includes(file));
+    expect(lostFiles).toEqual([
+      'empire/empireCore.ts',
+      'empire/empireInvariant.ts',
+      'empire/expansion.ts',
+      'empire/reputation.ts',
+      'game/currencyProvenance.ts',
+      'game/streakSweep.ts',
+      'tuning/audit.ts',
+    ]);
+
+    // THE HOLE THAT DECIDED THE PREVIOUS ROUND. The shipped entry point money
+    // arrives on contains neither narrow token in its name, so a declaration
+    // elsewhere in the tree that only CALLS it matches on the word and not on
+    // the identifiers.
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test('applySettledCoveredDayPurchase'),
+    ).toBe(true);
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_THE_COUNTER_OR_THE_SOURCE.test('applySettledCoveredDayPurchase'),
+    ).toBe(false);
+
+    // AND THE HOLE THAT DECIDED THIS ONE. `'window-entitlement'` is the other
+    // half of `COVERAGE_SOURCES`, and a credit through it is a grant of covered
+    // days with no purchase anywhere in it. The purchase-word predicate cannot
+    // see the call, the source, or the counter it lands in. This is the §12.3
+    // mutant — coverage granted for training — and it is why the purchase-only
+    // scope had to go.
+    //
+    // THE THREE TOKENS ARE ASSERTED INDIVIDUALLY, and one of them corrected a
+    // false claim in this test's own first draft: `covered.?day` does NOT match
+    // `'window-entitlement'`, which is why that literal is a separate
+    // alternative in the shipped predicate rather than assumed to be covered.
+    for (const token of ['creditCoveredDays', "'window-entitlement'", 'coveredDaysLeft']) {
+      expect(
+        PURCHASED_DAY_SCAN.PURCHASE_WORD_ONLY.test(token),
+        `the purchase-word predicate should have been blind to ${token}`,
+      ).toBe(false);
+      expect(
+        PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(token),
+        `the shipped predicate must see ${token}`,
+      ).toBe(true);
+    }
+
+    // WHAT NONE OF THEM SEE, RECORDED RATHER THAN GLOSSED. Every predicate here
+    // is a TEXTUAL match on a declaration body, so an aliased import defeats
+    // all four: `import { creditCoveredDays as credit }` sits above the first
+    // declaration and is therefore in no declaration's body at all. This is the
+    // "floor and not a ceiling" limit the allowlist's header states, and it is
+    // the same class as `progression.test.ts`'s seal check matching a callee by
+    // identifier text while its sibling twelve lines down resolved symbols
+    // through the checker. Closing it needs a type-aware pass, which this scan
+    // is not. Pinned so the limit is a red line if somebody believes otherwise.
+    const aliasedEvasion = [
+      'export function widen(s: EntitlementState, w: number, n: number): EntitlementState {',
+      '  return credit(RECOVERY_ENTITLEMENT, s, w, Math.floor(n / 10), SRC).state;',
+      '}',
+    ].join('\n');
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(aliasedEvasion),
+      'an aliased import still defeats every textual predicate here — see the comment above',
+    ).toBe(false);
+
+    // AND WHY THE CREDIT-TOKEN OPTION WAS NOT ENOUGH EITHER, which is the part
+    // that would have been easy to get wrong: it catches the probe, so it looks
+    // like the fix. The SIBLING mutant fabricates a tuning instead —
+    // `COVERED_DAYS_PER_WINDOW` keyed to a session count — and calls nothing on
+    // the credit path. CLAUDE.md: "when you fix a check, the next thing to look
+    // at is the branch immediately below it."
+    const tuningWidener = [
+      'export function tuningForTenSessions(sessionsDone: number): EntitlementTuning {',
+      '  return {',
+      '    ...RECOVERY_ENTITLEMENT,',
+      '    COVERED_DAYS_PER_WINDOW:',
+      '      RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW + Math.floor(sessionsDone / 10),',
+      '  };',
+      '}',
+    ].join('\n');
+    expect(
+      PURCHASED_DAY_SCAN.CREDIT_PATH_TOKENS.test(tuningWidener),
+      'the credit-token predicate is blind to a tuning-keyed widener',
+    ).toBe(false);
+    expect(
+      PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE.test(tuningWidener),
+      'the shipped predicate must catch a tuning-keyed widener',
+    ).toBe(true);
+  });
+
+  it('AND THE SCAN CAN SEE A NEW ONE: it is not matching nothing, on BOTH halves of the predicate', () => {
     // ANTI-VACUITY FOR THE SCANNER ITSELF. The test above is a set equality, and
     // a `declarations` that returned an empty list would satisfy it against an
-    // empty allowlist while proving nothing. This drives the same scanner over a
-    // synthetic module containing exactly the mutant condition 3 forbids.
+    // empty allowlist while proving nothing. This drives the same scanner over
+    // synthetic modules containing exactly the mutants §12.3 forbids.
+    //
+    // THREE DECLARATIONS, NOT ONE, AND THAT IS THIS ROUND'S REPAIR. The version
+    // before this had a single synthetic that awarded a `purchasedDaysLeft`, so
+    // it exercised the `purchas` half only. Adding `covered.?day` to the
+    // predicate while this test kept probing a purchase would have left the new
+    // alternative UNEXERCISED HERE — matched by nothing the test writes, and so
+    // decoration by CLAUDE.md's own definition. `grantsCoverageForTraining`
+    // below is the probe that motivated the widening, reduced to its shape.
     const mutant = [
       'export function ordinaryHelper(a: number): number {',
       '  return a + 1;',
@@ -1036,14 +2038,48 @@ describe('nothing can award a purchased covered day, and that is enforced rather
       'export function markStreakMilestone(state: EntitlementState): EntitlementState {',
       '  return { ...state, purchasedDaysLeft: state.purchasedDaysLeft + 1 };',
       '}',
+      'export function grantsCoverageForTraining(',
+      '  state: EntitlementState,',
+      '  windowNow: number,',
+      '  sessionsDone: number,',
+      '): EntitlementState {',
+      "  return creditCoveredDays(RECOVERY_ENTITLEMENT, state, windowNow, Math.floor(sessionsDone / 10), 'window-entitlement').state;",
+      '}',
     ].join('\n');
-    const names = declarations(mutant)
-      .filter(([, body]) => /purchas/i.test(body))
-      .map(([name]) => name);
-    expect(names).toEqual(['markStreakMilestone']);
-    expect(PURCHASED_DAY_TOUCHING_FUNCTIONS).not.toContain('markStreakMilestone');
+    //
+    // IT READS THE SHARED PREDICATE RATHER THAN A COPY OF IT. This line used to
+    // spell `/purchas/i` inline, one screen below the scan that spelled the
+    // same regex — CLAUDE.md's "a twin guard must READ the sibling's list, not
+    // copy it". Narrowing the scan's predicate while this one kept the old
+    // literal would leave the anti-vacuity check green about a predicate the
+    // scan no longer uses, which is the exact shape of a check that cannot fail.
+    const foundBy = (predicate: RegExp): string[] =>
+      declarations(mutant)
+        .filter(([, body]) => predicate.test(body))
+        .map(([name]) => name);
+
+    // BOTH GRANTERS ARE SEEN AND THE INNOCENT HELPER IS NOT. `ordinaryHelper`
+    // is what stops this being satisfied by a predicate that matches
+    // everything — without it, `/(?:)/` would pass.
+    expect(foundBy(PURCHASED_DAY_SCAN.NAMES_A_COVERED_DAY_OR_A_PURCHASE)).toEqual([
+      'markStreakMilestone',
+      'grantsCoverageForTraining',
+    ]);
+
+    // AND THE PREDICATE THAT SHIPPED BEFORE THIS ROUND MISSES THE SECOND ONE.
+    // This is the assertion that makes the widening non-vacuous rather than
+    // merely present: it pins that the coverage half does work the purchase
+    // half provably could not, on the exact mutant that was planted in
+    // `src/shell/appServer.ts` and ran 43 green tests.
+    expect(
+      foundBy(PURCHASED_DAY_SCAN.PURCHASE_WORD_ONLY),
+      'the purchase-word predicate must be blind to a window-entitlement grant',
+    ).toEqual(['markStreakMilestone']);
+
+    expect(COVERED_DAY_TOUCHING_FUNCTIONS).not.toContain('markStreakMilestone');
+    expect(COVERED_DAY_TOUCHING_FUNCTIONS).not.toContain('grantsCoverageForTraining');
     // The allowlist is non-empty, so the equality above is not two empty sets.
-    expect(PURCHASED_DAY_TOUCHING_FUNCTIONS.length).toBeGreaterThan(0);
+    expect(COVERED_DAY_TOUCHING_FUNCTIONS.length).toBeGreaterThan(0);
   });
 
   it('the entitlement module exports no way to earn one — the only credit needs a source', () => {

@@ -254,7 +254,9 @@
  *      because with no provenance there was no such thing as a purchased day to
  *      forbid awarding. That is GDD §8.3E's condition 3 and it needs the split
  *      to exist. See §3b of `streakEntitlement.ts`, and
- *      `PURCHASED_DAY_TOUCHING_FUNCTIONS` for the enforcement.
+ *      `COVERED_DAY_TOUCHING_FUNCTIONS` for the enforcement — which is scoped
+ *      to COVERAGE, not to purchases, because `'window-entitlement'` grants are
+ *      equally capable of being keyed to training.
  *
  *      AND THERE IS NOW A PROVENANCE ON THE TENDER TOO, one hop further out
  *      again: `currencyProvenance.NonTrainingGatedTender`. Forbidding an
@@ -2546,11 +2548,14 @@ function saleAuthorisedOn(state: StreakState, day: StreakDay): boolean {
  * Applies a settled Extra Covered Day purchase (GDD §8.3E) to `state`, widening
  * the entitlement of the window `day` falls in.
  *
- * THE ONLY FUNCTION IN THIS MODULE THAT CAN RAISE `purchasedDaysLeft`, and the
- * only one that names a purchase at all.
- * `streakEntitlement.PURCHASED_DAY_TOUCHING_FUNCTIONS` lists it, and the test
+ * THE ONLY FUNCTION IN THIS MODULE THAT CAN RAISE `purchasedDaysLeft`. It is
+ * NOT the only declaration here that names a purchase — that clause used to sit
+ * in this sentence and was never true; the scan finds thirteen in this file —
+ * and the distinction matters because the guard is a set equality, so a false
+ * "only" invites somebody to prune the other twelve out of the allowlist.
+ * `streakEntitlement.COVERED_DAY_TOUCHING_FUNCTIONS` lists it, and the test
  * that reads that list is exact in both directions — so an in-game action that
- * awards a purchased day is a red test rather than a design change nobody
+ * awards a covered day is a red test rather than a design change nobody
  * noticed. `streak.test.ts` proves that by mutation rather than claiming it.
  * `@guarantee nothing-in-game-awards-a-purchased-day`
  *

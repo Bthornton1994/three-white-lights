@@ -1562,6 +1562,32 @@ exactly the community whose word-of-mouth the game depends on.
 | Staff | Coaches, spotters, physio | Physio reduces Sim injury duration |
 | Reputation | Attracts higher-tier NPCs, sponsorships | Sponsor money feeds Career economy |
 
+**"Monolift" stays, and this is the ruling rather than an oversight.** A critic
+raised it as a possible §12.3 real-mark exposure and correctly declined to decide
+it, because §12.3's bar there is a legal judgement and not a measurable pattern —
+which is exactly the class of question this document sends to a human. Ruled by a
+human, on this reasoning:
+
+- It is **generic across federation rulebooks**, where it names a piece of
+  equipment rather than a maker, in the same way "power rack" or "deadlift bar"
+  does.
+- The word originated as a product name and is still claimed as a mark by at
+  least one manufacturer. That is the genuine ambiguity, and it is why the term
+  is **recorded here rather than left to be re-litigated** the next time somebody
+  greps for brand risk.
+- **No manufacturer is attached to it anywhere in the code.** The shipped value is
+  a bare equipment noun in a tier ladder — no logo, no wordmark, no maker, no
+  licensing slot. The §12.3 hazard the document is actually built around is
+  shipping a real *identity*: a name, logo, likeness or wordmark presented as a
+  real party's. Nothing here does that.
+
+So this is not the licensing system's business and it does not go through §7.3's
+partner unlock. If a lawyer later disagrees, the fix is a rename of one string in
+one tier table and this table's cell — cheap, and much cheaper than the
+alternative of the term drifting into copy where it would read as an endorsement.
+**Do not "fix" it back to a generic on the initiative of a scan; the scan cannot
+see what was weighed here.**
+
 **The gym keeps two books, and which one a rung is bought from is decided by what
 that rung reaches — RULED.** A rung whose output reaches Sim progression, or gates
 something that does — physio, space, spotter — and NPC recruitment are bought out
@@ -1806,8 +1832,57 @@ repeats it or goes up. There is no dropping down, so every attempt decision is
 a one-way ratchet — which is exactly where the tension comes from.
 
 After a **make**: a small increase (lock in a bigger total, low miss risk) vs. a
-big one (a PR on the line, higher miss risk). The floor is already banked; the
-question is how much of the remaining attempt to spend.
+big one (higher miss risk). The floor is already banked; the question is how much
+of the remaining attempt to spend.
+
+**"A PR on the line" is a property of a WEIGHT, not of the big card, and the
+screen now says it where it is true.** The sentence above used to be attached to
+the big option unconditionally, and the code followed: `MEET_COPY.OPTION_BIG_WHY`
+was the static string "A PR on the line. Higher risk.", printed on every big card
+whatever the lifter's record was. `AttemptOption.isPrAttempt` — the flag the gold
+`CARD_PR_EDGE` border is painted from — is `weightKg > previousBestKg` with a
+non-null best, and `meetServer.ts`'s `previousBestByLift` answers all-null while
+the lifter has no meets on record. So **on a player's first meet the flag was
+false on every card and the sentence printed on six of the twelve**, in the same
+sitting whose recap calls all three lifts a competition PR (a first-ever lift
+beats a null best, so `liftPrs` is true where `isPrAttempt` is false). The app
+said a lift both was and was not a PR, one screen apart. It was not only a
+first-meet defect either: an opener or a second attempt below the lifter's best
+is a non-PR big card too, and most of them are.
+
+The claim is now `MEET_COPY.OPTION_PR_NOTE`, carried on
+`AttemptOption.prNote`, which `attemptDecisionFor` fills from the same expression
+`isPrAttempt` is read from. It can therefore land on **whichever** option crosses
+the best — the small jump, or the repeat of a weight that just beat the lifter —
+and the sentence and the border are one decision rendered twice rather than two
+that can disagree. `src/meet/AttemptSelectView.test.ts` pins the agreement over
+whole meets on both arms; `tools/verify-shell-route.mjs` reads the pair off both
+meets a player opened, in a browser, because a node suite cannot see a border.
+
+**The gold border was, until this was written, drawn by nothing a player could
+reach.** The app has one meet, no career calendar (§6.1's TODO) and no persistence
+across a reload, so a lifter's first meet is the only meet with a fresh record —
+and a PR attempt needs a record to beat. The second meet of an app run is where
+one first appears, which is why the browser check drives both.
+
+**WHICH WORDS CARRY IT IS PENDING PLAYTEST, AND BOTH OPTIONS STAY LIVE.** What
+is settled above is *structural* — the sentence and the border are one decision,
+so the screen cannot say "PR" while the border disagrees in either direction.
+That does not settle the copy, and the shipped strings are a placeholder rather
+than a ruling. Deferred for the same reason as §6.2's crowd-reaction rule: this
+is a felt question about what makes an attempt choice tense, and no agent —
+builder, critic, or lead reasoning from a description — can resolve it validly.
+
+- **Option A, shipped.** `OPTION_BIG_WHY` describes the jump; a separate
+  `OPTION_PR_NOTE` lands on whichever card actually crosses the best. The PR
+  call-out goes where the PR is, and the big card stays honest on a first meet.
+- **Option B, not built.** One conditional `why` on the big card, worded
+  differently when a PR is and is not on the line, with no separate note. One
+  sentence per card, and the big card keeps the strongest line when it earns it.
+
+Neither is a defect. The defect was the sentence being unconditional, and that
+is fixed either way. A playtester picks between these two by feel, and is
+expected to — overturning Option A is a normal outcome, not a regression.
 
 After a **miss**: **repeat vs. increase**. Repeating is the safe play — the same
 weight, a second chance at banking it, nothing gained beyond what was already
@@ -1834,6 +1909,23 @@ moment — narratively honest, not a generic game-over screen, and not punitive.
 
 Recap screen: attempt-by-attempt breakdown, PR call-outs, DOTS score, placing in
 field.
+
+**"PR" MEANS TWO DIFFERENT THINGS ONE SCREEN APART. RULED: RECONCILE IT AS ITS
+OWN PIECE, NOT AS A PATCH.** `meetServer.ts`'s `liftPrs` treats a null previous
+best as beaten, so a first-ever lift *is* a competition PR. §6.3's `isPrAttempt`
+requires a non-null best to exceed, so with no record there is no PR to attempt.
+Both readings are defensible alone — your first competition squat is your best
+competition squat, and it is also not a weight that beat anything — but shipped
+together a first meet selects attempts with no PR call-out anywhere and then
+prints **PR** against all three lifts on the recap that follows.
+
+The §6.3 work above deliberately did **not** touch this. Which meaning wins is a
+decision about what the word promises a player; it lands on the recap, the
+shareable result card and the selection screen at once, and changing one of them
+inside a change about another is how this document's own history says a *third*
+meaning gets created. So the divergence is recorded here and in the tests' own
+headers — visible to the next reader rather than rediscovered — and the
+reconciliation is scheduled as a piece of its own.
 
 **Shareable result card** formatted like a real federation result sheet. Real
 lifters already post meet results on social media as a habit — if the card looks
@@ -1893,6 +1985,21 @@ precedent; this is a proven pairing, not a novel gamble.
 - PR moments (new e1RM, new total, qualifying for a higher tier)
 - Bombing out — the somber counterpart
 - Coach reactions on a heavy set (ties to the coach voice-pack cosmetic)
+
+**The third PR sub-moment is reached by no screen, and this is where a reader
+starting from the source of truth has to be told.** "New e1RM" fires from the
+daily close-out and from the recap; "new total" fires from the recap. **"Qualifying
+for a higher tier" fires from nowhere** — `cutInGate.ts` accepts the beat and
+would fire on it, and no screen in the app can offer it, because tier
+qualification is a fact about a lifter's standing across meets and that needs
+§6.1's Career calendar, which a human has explicitly deferred. So the moment is
+**unbuilt rather than missing**. The disclosure already lives in `cutInGate.ts`
+§5 and `RecapView.tsx`, and `cutInWiring.test.ts`'s "THE THIRD PR SUB-MOMENT IS
+REACHED BY NO SCREEN" goes red the day one of them starts offering it. Listing
+the three flat here, with §11 recording every *other* cut-in residual, left this
+one the single gap a reader could not find from the document. **Do not build tier
+qualification to close it** — it is downstream of the Career calendar, not of
+this section.
 
 **Cut-ins are Tier 3 surfaces.** See §7.3 — this is where a licensed portrait or
 wordmark would live, never on the base sprite.
@@ -2499,18 +2606,60 @@ refused rather than clamped.
 #### How condition 3 is enforced
 
 "Nothing awards a purchased day" is held by **four** guards, because
-mutation-testing each one found a hole the others left:
+mutation-testing each one found a hole the others left. Note that guard 1 is
+deliberately **wider than this heading**: it polices grants of *coverage*, of
+which a purchase is one source and the free rolling window is the other — see
+its own paragraph for why the narrower scope was a measured defect.
 
 1. **A declaration allowlist keyed to the field, not the vocabulary**
-   (`PURCHASED_DAY_TOUCHING_FUNCTIONS`). Every top-level declaration in the
-   **three** modules that touch the purchase — the two streak modules and
-   `currencyProvenance.ts` — that so much as names a purchased day has to be on
-   it, exact in both directions. The blocklist it replaces — banning names
-   containing *grant*, *credit*, *buy* — could not catch `markStreakMilestone`
-   handing one out, because that mutant uses none of those words. This one does.
+   (`COVERED_DAY_TOUCHING_FUNCTIONS`). Every top-level declaration **anywhere
+   under `src/`** that so much as names a covered day has to be on it, exact in
+   both directions — 88 entries across 7 files. The blocklist it replaces —
+   banning names containing *grant*, *credit*, *buy* — could not catch
+   `markStreakMilestone` handing one out, because that mutant uses none of those
+   words. This one does.
+
+   **Its scope has been wrong twice, and both times the fix was measured rather
+   than argued.** It first read a hardcoded list of three filenames joined
+   against `src/game/`, so a module in any other directory was unreachable by
+   construction; a granter planted in `src/shell/appServer.ts` was invisible.
+   Widening the *reach* to the whole tree left the *predicate* keyed on the
+   single word `purchase` — and this section is about condition 3, but
+   §12.3's actual rule is that no grant of **covered** days may be keyed to
+   training. `COVERAGE_SOURCES` has two members. A function crediting coverage
+   through `'window-entitlement'` every ten sessions contains no form of the
+   word "purchase", and with it in the tree `streakEntitlement.test.ts` ran
+   **43 tests, 43 passed, exit 0** with `tsc --noEmit` clean. That is the shape
+   §4.4 measures at **1156 violating pairs**.
+
+   The predicate is now `/purchas|covered.?day|window-entitlement/i`. Four
+   candidates were measured on the tree and all four are pinned in the test:
+   narrow (the counter or the source literal) 18 declarations / 3 files;
+   purchase-word-only 57 / 7; credit-path tokens 58 / 7; shipped 88 / 7.
+
+   **The credit-path option is the one worth knowing about**, because it catches
+   the planted granter and therefore looks like the fix. It is blind to the
+   sibling — a widener that keys `COVERED_DAYS_PER_WINDOW` to a session count
+   calls nothing on the credit path — which is the rejected narrow predicate's
+   failure repeating one level out: a list of tokens somebody thought of, walked
+   around by a mutant using a token they did not.
+
+   **What the file-level pin could not have found, recorded because it is the
+   uncomfortable part:** widening from the purchase word to the covered day
+   added 31 declarations and **not one file**. The hole was entirely inside
+   modules the scan was already reading, so the pinned file set was green
+   throughout. A pin is only as wide as the axis it is taken on.
+
    *`currencyProvenance.ts` joined the scan with the tender fix:* it decides who
-   may buy, which is where the laundered path went, and the other two modules
-   never see an achievement.
+   may buy, which is where the laundered path went, and the streak modules never
+   see an achievement.
+
+   **The known residual, stated rather than left for a reader to find:** every
+   predicate here is a *textual* match on a declaration body, so an aliased
+   import (`import { creditCoveredDays as credit }`) defeats all four — the
+   import sits above the first declaration and is in no declaration's body.
+   Closing that needs a type-aware pass, which this scan is not. It is pinned as
+   a red line so nobody concludes otherwise by accident.
 2. **A behavioural sweep of the whole export surface.** Every exported function,
    called every way it can be called, starting from a state that *holds*
    purchased days, must never return one more than it was given.

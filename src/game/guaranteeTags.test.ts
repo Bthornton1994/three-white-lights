@@ -392,8 +392,83 @@ const GUARANTEE_COVERAGE = {
    * merge in a row to conflict on this constant and the third time re-running
    * beat arithmetic; twice the increments happened to stack and once they did
    * not, which is the whole argument for running it.
+   *
+   * 220 -> 221 when the §8.3E purchased-day scan stopped reading a hardcoded
+   * list of three filenames and started walking the tree. Measured per file the
+   * usual way, by restoring each of the two touched files to its pre-change
+   * text and re-reading this count: `streakEntitlement.ts` contributes ZERO
+   * despite gaining roughly a hundred lines of header and allowlist commentary,
+   * and the single new paragraph is in `streakEntitlement.test.ts`.
+   *
+   * The blind spot again, and pointing the usual way: the round's actual new
+   * guarantee — that the scan can no longer be confined to one directory, tagged
+   * `the-covered-day-scan-reads-the-whole-tree` — is written in the source
+   * file that moved this number by nothing, because its capitalised absolutes
+   * happen to contain none of the four trigger words. The tag was added because
+   * the author chose to, not because anything demanded it, which is now the
+   * third round in a row where that has been true.
+   *
+   * 221 -> 222 when that same scan widened again, from the word "purchase" to
+   * the covered day itself. ATTRIBUTED THE USUAL WAY, one file at a time
+   * against base, and the usual way is what it found: `streakEntitlement.ts`,
+   * `streakEntitlement.test.ts` and `streak.ts` contribute **ZERO between
+   * them** — a rewritten allowlist header, 31 new entries, a fourth candidate
+   * predicate and two new tests — and the whole increment is one heading in
+   * THIS file, over the fourth mutation witness. So the round's real guarantee
+   * moved this number by nothing again, and the thing it noticed was a comment
+   * about a comment. Fourth round running.
+   *
+   * It was also measured going back to 221 by lower-casing that one heading,
+   * which is the declared scoping limit demonstrating itself on a live example
+   * rather than in the abstract. Restored to capitals and pinned at 222 instead,
+   * for the reason the 216 -> 217 note gives: rewording to duck the scan is how
+   * a count stops meaning anything.
+   *
+   * 222 -> 223 when that same scan stopped matching declaration bodies by TEXT
+   * ONLY and grew a symbol-resolved pass beside it, closing the aliased-import
+   * hole its own comment had pinned as unclosable. ATTRIBUTED THE USUAL WAY,
+   * one file at a time against base, and the usual way is what it found again:
+   * `streakEntitlement.ts` contributes ZERO — a rewritten allowlist header,
+   * nine new entries and the round's actual `@guarantee` — and so does this
+   * file, despite gaining a fifth witness. The whole increment is one paragraph
+   * in `streakEntitlement.test.ts`.
+   *
+   * NOT QUOTED HERE, for the reason the four notes above give: a quoted
+   * capitalised run makes this paragraph trigger too. In lower case it is the
+   * doc comment on `SYMBOL_ONLY_NAMES`, saying which declarations the new pass
+   * finds that the textual predicate cannot — and it sits directly above both
+   * the pinned list of the nine and the assertion that discharges it.
+   *
+   * FIFTH ROUND RUNNING THAT THE GUARANTEE MOVED THIS NUMBER BY NOTHING. The
+   * round's real claim — that an aliased import no longer hides a granter,
+   * tagged `the-covered-day-scan-follows-aliases` — is written in the source
+   * file that contributes zero, because its capitalised absolutes happen to
+   * contain none of the four trigger words. Worth adding to the pattern the
+   * notes above record: the one paragraph the scan DID notice is in a test
+   * file, which is not in `GUARANTEE_PROSE_FILES`, so the scan demanded no tag
+   * of it either. It counted a sentence it would never have required anything
+   * from, and required nothing of the sentence that states the guarantee.
+   *
+   * 223 -> 224 when GDD §6.3's PR call-out stopped being a static string.
+   * Measured the usual way, by removing the round's new file and re-reading
+   * this count: `meetDay.ts`, `meetTuning.ts` and `AttemptSelectView.tsx`
+   * contribute ZERO between them, and the whole increment is one paragraph in
+   * the new `AttemptSelectView.test.ts`. It is not quoted here for the reason
+   * the five notes above give; in lower case it is the heading over that file's
+   * statement of what a node-environment test can and cannot say about a
+   * border, and the two numbered claims under it.
+   *
+   * SIXTH ROUND RUNNING, and the same shape as the fifth. The round's actual
+   * guarantee — `pr-sentence-and-pr-border-are-one-decision`, that the PR
+   * sentence and the gold edge are one flag rendered twice — is written in
+   * `meetDay.ts`, which moved this number by nothing, because its capitalised
+   * run ("ONE FLAG, TWO RENDERINGS, AND NEITHER MAY OUTRUN THE OTHER") contains
+   * none of the four trigger words. The paragraph the scan did notice states a
+   * limit, in a file the ban does not scope into. That is now five instances
+   * out of six of the same asymmetry, which is worth more than the number it is
+   * attached to.
    */
-  TREE_WIDE: 220,
+  TREE_WIDE: 224,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -504,6 +579,61 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
  * it fail, read the message, restore, confirm green.
  */
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  {
+    // The mutant handed every option GDD §6.3's PR sentence, which is the
+    // defect the tag is about seen from the engine side rather than the copy
+    // side: the gold border still reads `isPrAttempt`, so the two renderings of
+    // one flag come apart. It reddened on the FIRST card of the played arm's
+    // first meet — `small @212.5`, a card no version of the app has ever
+    // flagged — and took the first-meet count from 0 to 12.
+    guarantee: 'pr-sentence-and-pr-border-are-one-decision',
+    mutatedFile: 'src/game/meetDay.ts',
+    mutated: '    prNote: isPrAttempt ? MEET_COPY.OPTION_PR_NOTE : null,',
+    testFile: 'src/meet/AttemptSelectView.test.ts',
+    redAssertion: '`${JSON.stringify(MEET_COPY.OPTION_PR_NOTE)}=${says} with isPrAttempt=${option.isPrAttempt}`,',
+    observed:
+      'AssertionError: first meet, safest cards (the played arm): squat #2 small @212.5 says "A PR on the line."=true with isPrAttempt=false: expected true to be false',
+  },
+  {
+    // THE ALIASED-IMPORT HOLE, EXECUTED BEFORE IT WAS CLOSED. The covered-day
+    // scan matched declaration BODIES textually; an import sits above the first
+    // declaration and is in no body, so aliasing both ends hid a granter
+    // outright. Appended to `appServer.ts` beside the anchored import line:
+    //
+    //     import {
+    //       creditCoveredDays as credit,
+    //       COVERAGE_SOURCES as SOURCES,
+    //       RECOVERY_ENTITLEMENT,
+    //       type EntitlementState,
+    //     } from '../game/streakEntitlement';
+    //
+    //     export function widenForTenSessions(
+    //       state: EntitlementState, w: number, sessions: number,
+    //     ): EntitlementState {
+    //       return credit(RECOVERY_ENTITLEMENT, state, w, sessions, SOURCES[0]).state;
+    //     }
+    //
+    // That grants a covered day PER SESSION — CLAUDE.md's 1156-violating-pair
+    // shape. Before the symbol pass it ran 105 GREEN TESTS across
+    // `streakEntitlement.test.ts`, `tuning/audit.test.ts` and this file, with
+    // `tsc --noEmit` at exit 0.
+    //
+    // BOTH ENDS HAVE TO BE ALIASED, and that correction is the reason this
+    // entry exists rather than a narrower one. The version that keeps the
+    // literal `'window-entitlement'` in the body IS caught by the shipped
+    // predicate's third alternative — planting it reddened three tests — and so
+    // is a local `const SRC = 'window-entitlement'`, because that const is a
+    // declaration carrying the literal in its own body. The source has to be
+    // imported.
+    guarantee: 'the-covered-day-scan-follows-aliases',
+    mutatedFile: 'src/shell/appServer.ts',
+    mutated: "import type { SessionServerPort } from '../game/sessionClient';",
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion:
+      "      'a declaration reaches the covered-day machinery through an identifier the textual scan cannot see, and is not on COVERED_DAY_TOUCHING_FUNCTIONS',\n    ).toEqual([]);",
+    observed:
+      'AssertionError: a declaration reaches the covered-day machinery through an identifier the textual scan cannot see, and is not on COVERED_DAY_TOUCHING_FUNCTIONS: expected [ Array(1) ] to deeply equal [] — received [ "shell/appServer.ts::widenForTenSessions" ]',
+  },
   {
     // The mutant unwrapped the seal at the ONE producer of a wire, which is the
     // state the tree was in when a pound e1RM was written into `response.wire`
@@ -739,6 +869,30 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       ' so they are two different lifters: expected false to be true',
   },
   {
+    // THE SAME MUTANT, A SECOND TEST, and the pair is the point rather than a
+    // duplicate. The witness above records that the mutant reddens the
+    // STRUCTURAL claim — two accessors, one object. This one records that it
+    // also reddens the BEHAVIOURAL one, which is a separate guarantee: object
+    // identity would still hold over a server that kept a second row, and the
+    // test that used to carry this claim recorded no meet at all. It read the
+    // total once, named it `before`, asserted it was null and stopped — so this
+    // exact mutant left it green while the sentence above it said "this is the
+    // consequence, measured".
+    //
+    // The `mutated` anchor is deliberately the same text: it is the one edit
+    // that breaks both claims, so both witnesses expire together if that
+    // function is rewritten, which is the correct coupling.
+    guarantee: 'a-meet-total-reaches-the-session-half',
+    mutatedFile: 'src/shell/appServer.ts',
+    mutated: 'export function appMeetPort(): MeetServerPort {\n  return appConnection();\n}',
+    testFile: 'src/shell/shellWiring.test.ts',
+    redAssertion:
+      "'the session half cannot see the total the meet endpoint banked, so meet day and the daily loop are two lifters',",
+    observed:
+      'AssertionError: the session half cannot see the total the meet endpoint banked, so meet' +
+      ' day and the daily loop are two lifters: expected null to be 490',
+  },
+  {
     // The mutant stopped the crossing reading the lifter's trained e1RM, so
     // every opener fell back to the signup seed — which is exactly what the
     // browser measured on the tree before the fix (107.5 kg drawn against
@@ -764,6 +918,32 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: ?meet=live: state absent, serverPort present: expected false to be true',
   },
   {
+    // The mutant swapped the `useRef` initialiser's resume for a fresh
+    // `openCutInSession`, which is the §12.3 refusal condition reached by a
+    // component lifetime: `AppShell` un-mounts this host in ordinary play, so
+    // every re-mount inside one sitting would come back with a new slot.
+    //
+    // WORTH RECORDING BESIDE IT, because it is the finding this round was sent
+    // back for. The two pins that used to hold this line — `toMatch(
+    // /resumeCutInSession/)` and a BYTE-EXACT `toMatch` including the argument
+    // object — were both GREEN on this mutant, measured, because the identical
+    // call appears a second time in the effect below at a site the mutant does
+    // not touch. Both are now match COUNTS, and the two sites are matched by the
+    // code around them so they are distinguishable at all.
+    guarantee: 'a-remount-resumes-rather-than-opens',
+    mutatedFile: 'src/cutin/CutInHost.tsx',
+    mutated:
+      '  const session = React.useRef<CutInSessionState>(\n' +
+      '    resumeCutInSession({ sessionId: activeSessionId, seed: activeSeed }),\n' +
+      '  );',
+    testFile: 'src/cutin/cutInWiring.test.ts',
+    redAssertion:
+      "'the mount does not resume the sitting it is already in — a re-mount inside one sitting would get a fresh slot',",
+    observed:
+      'AssertionError: the mount does not resume the sitting it is already in — a re-mount' +
+      ' inside one sitting would get a fresh slot: expected +0 to be 1',
+  },
+  {
     // The mutant taught the ONE screen that already reports a PR in the daily
     // loop to report the tier kind instead. That is precisely the change the
     // claim says has not happened — and it is the change the check that used to
@@ -779,6 +959,167 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "AssertionError: if 'tier' has arrived here, a screen has learnt to report tier " +
       'qualification — delete this test and the paragraphs it points at in cutInGate.ts §5 and ' +
       "RecapView.tsx: expected 'e1rm, tier, total' to be 'e1rm, total'",
+  },
+  {
+    // The mutant turned the bar load's merge window off, which is the state the
+    // tree was in the round `tools/verify-meet-sound.mjs` measured FIVE 180ms
+    // rattles inside 149ms of one walk-out. The tag's claim is arithmetic —
+    // hits at least `merge` apart cannot stack more than `duration / merge`
+    // deep — so a zero window makes the product zero and the guarantee false.
+    //
+    // WORTH RECORDING BESIDE IT: the same mutant reddens three other assertions
+    // in that file, one of them on the recorded Chromium trace. The one named
+    // here is the only one that is the GUARANTEE rather than a consequence of
+    // it — a sweep can be widened until it stops finding the case, and this
+    // product cannot.
+    guarantee: 'no-rattle-is-cut-by-another-rattle',
+    mutatedFile: 'src/game/meetTuning.ts',
+    mutated: '  BAR_LOAD_RATTLE_MERGE_MS: 60,',
+    testFile: 'src/meet/meetSound.test.ts',
+    redAssertion:
+      'expect(voices * merge, `${voices} voices x ${merge}ms against a ${rattle}ms cue`)\n' +
+      '      .toBeGreaterThanOrEqual(rattle);',
+    observed:
+      'AssertionError: 3 voices x 0ms against a 180ms cue: expected 0 to be greater than or ' +
+      'equal to 180 — src/meet/meetSound.test.ts:542',
+  },
+  {
+    // THE MUTANT IS A PLANTED VIOLATION RATHER THAN A BROKEN GUARD, because the
+    // guarantee is about REACH: the claim is that a declaration awarding a
+    // purchased covered day is found wherever under `src` it is written, and the
+    // only way to test reach is to write one somewhere the old scan could not
+    // look. It was appended to `appServer.ts` — one directory outside
+    // `src/game/`, which is where the previous scan's reader was nailed down:
+    //
+    //   export function awardCoveredDayForTenSessions(
+    //     entitlement: EntitlementState,
+    //     windowNow: number,
+    //     amount: number,
+    //   ): EntitlementState {
+    //     return creditCoveredDays(RECOVERY_ENTITLEMENT, entitlement, windowNow, amount, 'purchase').state;
+    //   }
+    //
+    // `mutated` anchors the insertion point — the declaration it was appended
+    // after — because the mutation adds text rather than replacing any.
+    //
+    // WHAT MAKES THIS WITNESS WORTH THE TWO COPY-PASTES: the counterfactual was
+    // run, not assumed. The scan as it stood — three hardcoded filenames joined
+    // against `__dirname` — was executed against the MUTATED tree and returned
+    // the same 25 names it returns against a clean one, so it was green on a
+    // violation of the rule it exists to enforce. `npx tsc --noEmit` was also
+    // clean with the mutant in place, so nothing else in the toolchain would
+    // have stopped it either. This is a defect that would have shipped.
+    // RE-TAKEN WHEN THE PREDICATE WIDENED TO COVERAGE, not merely re-pointed at
+    // the renamed constant. The old `observed` said `…(57)` against `…(56)`; the
+    // allowlist is 88 long now, so leaving the message and only fixing the
+    // identifier would have produced a witness that RESOLVES and lies — which is
+    // the exact defect this table exists to make impossible. The mutation was
+    // re-run and the message below is from that run.
+    guarantee: 'the-covered-day-scan-reads-the-whole-tree',
+    mutatedFile: 'src/shell/appServer.ts',
+    mutated: 'export function appMeetPort(): MeetServerPort {\n  return appConnection();\n}',
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion:
+      'expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());',
+    observed:
+      'AssertionError: declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS ' +
+      'does not list: shell/appServer.ts::awardCoveredDayForTenSessions: expected ' +
+      "[ 'ACCELERANT_ARRIVAL', …(88) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
+  },
+  {
+    // THE WITNESS FOR THIS ROUND'S ACTUAL FIX, and the one the other two could
+    // not have produced. Both of those grant through the `'purchase'` source, so
+    // both were caught by the word `purchas` alone — they say nothing about the
+    // FREE side of `COVERAGE_SOURCES`, which is where the hole was.
+    //
+    // The mutant grants coverage every ten sessions through
+    // `'window-entitlement'`, appended to `appServer.ts`:
+    //
+    //   export function widenWindowForTenSessions(
+    //     state: EntitlementState,
+    //     windowNow: number,
+    //     sessionsDone: number,
+    //   ): EntitlementState {
+    //     const earned = Math.floor(sessionsDone / 10);
+    //     if (earned < 1) return state;
+    //     return creditCoveredDays(RECOVERY_ENTITLEMENT, state, windowNow, earned, 'window-entitlement').state;
+    //   }
+    //
+    // THE COUNTERFACTUAL WAS RUN, TWICE, AND IT IS WHY THIS IS EVIDENCE RATHER
+    // THAN A CLAIM. Against the tree-wide scan keyed on `/purchas/i` — the scan
+    // the PREVIOUS round had just fixed and witnessed — this file ran
+    // **43 tests, 43 passed, exit 0**, with `npx tsc --noEmit` clean beside it.
+    // A covered day awarded for training, which CLAUDE.md measures at 1156
+    // violating pairs, was invisible to the guard that exists to forbid it.
+    //
+    // `mutated` anchors the insertion point, the same declaration the two
+    // witnesses either side of it anchor on, because all three mutations APPEND
+    // and there is nothing else to point at. That is a real weakness of the
+    // anchor — it expires when `appMeetPort` is edited, not when the mutant's
+    // own subject moves — and it is recorded rather than papered over.
+    guarantee: 'the-covered-day-scan-reads-the-whole-tree',
+    mutatedFile: 'src/shell/appServer.ts',
+    mutated: 'export function appMeetPort(): MeetServerPort {\n  return appConnection();\n}',
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion:
+      'expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());',
+    observed:
+      'AssertionError: declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS ' +
+      'does not list: shell/appServer.ts::widenWindowForTenSessions: expected ' +
+      "[ 'ACCELERANT_ARRIVAL', …(88) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
+  },
+  {
+    // A FOURTH WITNESS, AND THE ONLY ONE WHOSE MUTANT IS THE GUARD ITSELF. The
+    // three above all add or rename a DECLARATION. This one narrows the
+    // PREDICATE back to `/purchas/i` — the single edit that would undo this
+    // round — and it is the one a future reader is most likely to make, because
+    // 31 of the 88 entries look like noise until you know why they are there.
+    //
+    // It reddens through the staleness half with all 31 named:
+    // `AbsenceOutcome, CoveredDayCreditOutcome, …, tenderGating`. Recorded
+    // because a witness for "somebody added a granter" says nothing about
+    // "somebody deleted the reason the granter is visible".
+    guarantee: 'the-covered-day-scan-reads-the-whole-tree',
+    mutatedFile: 'src/game/streakEntitlement.test.ts',
+    mutated:
+      '  NAMES_A_COVERED_DAY_OR_A_PURCHASE: /purchas|covered.?day|window-entitlement/i,',
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion:
+      'expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());',
+    observed:
+      'AssertionError: allowlist entries no declaration matches any more: AbsenceOutcome, ' +
+      'CoveredDayCreditOutcome, CoveredDayTender, DOOMED_SALE_REFUSAL_MESSAGE, DOOMED_SALE_SWEEP, ' +
+      'DayOpening, EMPIRE_FORBIDDEN_OUTPUTS, EntitlementTuning, GatingOfTender, ' +
+      'LONGEST_REPAIRABLE_ABSENCE_DAYS, MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW, … 31 in all: ' +
+      "expected [ 'ACCELERANT_ARRIVAL', …(56) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
+  },
+  {
+    // A SECOND WITNESS FOR THE SAME TAG, IN THE OTHER DIRECTION, because the
+    // assertion is a set equality and the staleness half is the half that rots
+    // quietly: an allowlist that can only grow is one nobody prunes.
+    //
+    // The mutant misspells one live entry — `'purchaseArrivalOf'` ->
+    // `'purchaseArrivalOfX'` — which trips BOTH directions at once from a single
+    // edit, and the message says both: the real declaration becomes unlisted and
+    // the invented name becomes stale. Recorded separately from the witness
+    // above because a mutant that only ADDS a declaration leaves the staleness
+    // branch of that same `toEqual` untested, and CLAUDE.md's point about
+    // `MUTATION_WITNESSES` is exactly that one witness proves one assertion
+    // bites and says nothing about anything else in the same test.
+    //
+    // RE-TAKEN ON THE WIDENED PREDICATE, same reason as the first: the counts in
+    // the old message were from a 57-entry allowlist.
+    guarantee: 'the-covered-day-scan-reads-the-whole-tree',
+    mutatedFile: 'src/game/streakEntitlement.ts',
+    mutated: "  'coveredDayPurchaseDays',\n  'purchaseArrivalOf',",
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion:
+      'expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());',
+    observed:
+      'AssertionError: declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS ' +
+      'does not list: game/streakSweep.ts::purchaseArrivalOf | allowlist entries no declaration ' +
+      "matches any more: purchaseArrivalOfX: expected [ 'ACCELERANT_ARRIVAL', …(87) ] to deeply " +
+      "equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
   },
 ];
 
@@ -1101,7 +1442,10 @@ describe('the guarantee-tag convention', () => {
       'src/game/progression.test.ts',
       'src/game/sessionServer.test.ts',
       'src/game/streak.test.ts',
+      'src/game/streakEntitlement.test.ts',
+      'src/meet/AttemptSelectView.test.ts',
       'src/meet/careerCalendarPlaceholder.test.ts',
+      'src/meet/meetSound.test.ts',
       'src/meet/meetStage.test.ts',
       'src/shell/shellRoute.test.ts',
       'src/shell/shellWiring.test.ts',
