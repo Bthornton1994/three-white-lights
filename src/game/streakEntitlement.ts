@@ -39,7 +39,11 @@
  * hold). It is tempting to drop it — the rule reads as harsh and it is the rule
  * whose wealth-dependence caused the defect — and dropping it is measurably
  * much worse than the design it replaces: **673 violating pairs at 100 days
- * against 0**, and 1051 at 60 days.
+ * against 0**, and 1051 at 60 days. Both are cells of
+ * `streakSweep.DOOMED_BURN_COUNTERFACTUAL`, re-derived on every run by
+ * `[dropping-the-doomed-burn-measures-worse]`; the 100-day half used to be
+ * restated in four places and asserted in none, and it was re-taken rather than
+ * trusted when that was noticed.
  *
  * The reason is the same subadditivity argument GDD §4.2 makes and is worth
  * restating in the new terms. Adding a trained day SPLITS one absence into two
@@ -326,8 +330,13 @@ export interface EntitlementOutcome {
    * Covered days this absence consumes: the chargeable days when it holds, and
    * EVERYTHING LEFT IN THE WINDOW when it does not. See §2 of the header for
    * why the doomed branch takes the lot — it is the idempotence that makes
-   * splitting a doomed absence free, and it is measured at 673 violating pairs
-   * if it takes anything less.
+   * splitting a doomed absence free.
+   *
+   * THE FIGURE THAT USED TO SIT HERE SAID "673 VIOLATING PAIRS IF IT TAKES
+   * ANYTHING LESS", AND THAT OVERSTATED WHAT WAS MEASURED. The counterfactual
+   * behind it is the doomed branch taking NOTHING, which is one point, not the
+   * whole family of smaller consumptions; no intermediate rule has ever been
+   * run. The measured row is in `streakSweep.DOOMED_BURN_COUNTERFACTUAL`.
    */
   readonly consumed: number;
   /** What is left in the window afterwards. */

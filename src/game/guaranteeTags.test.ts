@@ -516,7 +516,26 @@ const GUARANTEE_COVERAGE = {
    * does not scope into; the claim it demanded nothing of is the one that now
    * carries both a tag and two witnesses.
    */
-  TREE_WIDE: 229,
+  /**
+   * 229 -> 230 when the doomed-burn counterfactual was re-taken and written
+   * down. MEASURED PER FILE the usual way: the whole increment is ONE paragraph
+   * in `streakSweep.ts`, and every other file the round touched moved by zero —
+   * `streak.ts` (unchanged), `streakEntitlement.ts` (unchanged),
+   * `streak.test.ts` (16), `streakEntitlement.test.ts` (4), this file (5).
+   *
+   * Not quoted as written, for the reason the notes above give. In lower case
+   * it says the counterfactual's row is not monotone in calendar length and
+   * that reading only its first cells would say the opposite of the truth. It
+   * uses the fourth trigger word and it is a warning about how to read a table,
+   * not a guarantee — one more of the majority this number exists to be honest
+   * about.
+   *
+   * NINTH ROUND RUNNING that the round's actual claim moved this number by
+   * nothing. The claim is that dropping the doomed burn measures worse, it now
+   * carries a tag and two witnesses, and its own paragraph does not trip the
+   * trigger — `WORSE THAN THE DESIGN IT REPLACES` carries no trigger word.
+   */
+  TREE_WIDE: 230,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -687,31 +706,26 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
       + 'test that measures what it is now. NOTE ALSO that src/empire/** belongs to '
       + 'the other session, so this entry is the only move available here.',
   },
-  {
-    guarantee: 'doomed-absence-takes-what-is-left',
-    phrase: 'the half that survived the Option 1 rework',
-    kind: 'document-coordinate',
-    why:
-      "GDD §4.2's Option 1 — a pointer into the design document, spelt without the "
-      + 'section mark, so the `section-coordinate` exclusion does not see it. Worth '
-      + 'recording rather than generalising into a vocabulary: the SAME REFERENCE in '
-      + "`mid-absence-arrival-cannot-arm`'s paragraph resolves and needs no entry, "
-      + 'because a bare `1` happens to appear in that test body for its own reasons. '
-      + 'Two identical claims, one listed and one not, is what '
-      + 'NAMED_BODIES_HOLDING_ONE looks like in the wild.',
-  },
-  {
-    guarantee: 'doomed-absence-takes-what-is-left',
-    phrase: 'and 673 at 100, against 0 with it',
-    kind: 'unpinned-measurement',
-    why:
-      'THE ONE ENTRY HERE THAT IS A REAL GAP RATHER THAN A CATEGORY ERROR. The '
-      + 'named test carries the 60-day half of this counterfactual in its own '
-      + 'comment and not the 100-day half; 673 is pinned by no assertion anywhere '
-      + 'in src, only re-stated in streakEntitlement.ts, streakEntitlement.test.ts '
-      + 'and GDD §4.4. Listed rather than fixed because re-taking a counterfactual '
-      + 'sweep is not this piece, and marked so it reads as debt.',
-  },
+  /*
+   * TWO ENTRIES WERE DELETED HERE, AND THE REASON IS THE ONE THIS LIST WANTS.
+   *
+   * `doomed-absence-takes-what-is-left` carried an `unpinned-measurement` for
+   * "and 673 at 100, against 0 with it" — the only entry on this list that was
+   * a real evidence gap rather than a category error. The counterfactual was
+   * re-taken at `streakSweep.ts`'s declared parameters and REPRODUCED: 1051 at
+   * 60 and 673 at 100, on the shipped engine's composition. It is now measured
+   * by `[dropping-the-doomed-burn-measures-worse]`, whose tag was added to the
+   * same paragraph, so the numerals resolve against the body that produces
+   * them instead of against a comment.
+   *
+   * Its `document-coordinate` sibling — "the half that survived the Option 1
+   * rework" — went with it, and NOT because anybody decided it was fine. That
+   * entry existed because a bare `1` had nowhere to resolve; the new named body
+   * contains one for its own reasons, exactly as that entry's own `why` said
+   * happens elsewhere. The excuse stopped excusing anything, and an entry that
+   * excuses nothing is stale by this list's own rule. It is a weak resolution
+   * and it is recorded as one rather than counted as a second fix.
+   */
   {
     guarantee: 'milestones-pay-nothing',
     phrase: 'the 60-day sweep goes to 0',
@@ -763,17 +777,37 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
  * subset claim about two overlapping populations — this rule's own defect
  * class, in the comment introducing it, caught by taking the measurement.
  *
- * What they say together, then: 229 paragraphs trip the trigger, 59 carry a
- * tag, 25 do both, 9 of the tagged ones state a number in prose, and 31
- * numerals are checked at all. A few per cent of the prose this file can see,
- * and none of the prose it cannot.
+ * What they say together, then: the trigger scan and the tag scan are different
+ * populations, `TAGGED_AND_TRIGGERING` is their overlap, and the numerals the
+ * rule demands anything of are a few per cent of the prose this file can see
+ * and none of the prose it cannot. Every figure is pinned below rather than
+ * written into this sentence, because this paragraph has now been wrong twice
+ * about its own numbers.
  *
- * The paragraph that took 58 to 59 is §4a of `empireInvariant.ts`, whose eight
- * prose mutant summaries became the witness rows below. It states one number,
- * the element count both series checks are stated over, and that is the only
- * figure of the old summaries kept as prose — because it is the only one an
- * assertion in a named body pins. The counts those summaries carried are in the
- * `observed` column instead, quoted from the runs that produced them.
+ * TWO ROUNDS LANDED ON THIS CENSUS AT ONCE AND THE MERGE IS WHY THESE NUMBERS
+ * ARE MEASURED RATHER THAN CHOSEN. Both re-took it, each against a tree without
+ * the other's work, and the two answers conflicted textually in five places
+ * while being individually correct. Picking either side would have pinned a
+ * census that describes neither tree. They were re-run on the merged tree
+ * instead — which is the only thing that could have been right, and is worth
+ * recording because the conflict LOOKED like a wording clash and was not.
+ *
+ * What each round did, since the directions matter more than the totals:
+ *
+ *   - §4a of `empireInvariant.ts` added a tagged paragraph, whose eight prose
+ *     mutant summaries became the witness rows below. It keeps ONE figure as
+ *     prose — the element count both series checks are stated over — because
+ *     that is the only one an assertion in a named body pins. The counts those
+ *     summaries carried live in the `observed` column now, quoted from the runs
+ *     that produced them.
+ *   - The doomed-burn round moved numerals WITHOUT adding any. Three
+ *     occurrences crossed from `EXCUSED` to `RESOLVING` — `673` and the `0`
+ *     beside it, which were the only real evidence gap on the excuse list, and
+ *     the bare `1` of "Option 1", whose excuse then stopped excusing anything —
+ *     and figures that had resolved against a COMMENT now resolve against an
+ *     assertion. That second move narrows `RESOLVING` minus
+ *     `RESOLVING_IN_CODE`, which is the declared weakness, and it is the first
+ *     round to narrow it rather than widen it.
  */
 const NUMBER_COVERAGE = {
   /** Comment paragraphs under `src` carrying at least one tag. */
@@ -783,24 +817,24 @@ const NUMBER_COVERAGE = {
   /** Numerals the rule actually demands something of. */
   CLAIMED: 31,
   /** ...of which this many are found in the named test's body. */
-  RESOLVING: 19,
+  RESOLVING: 22,
   /**
    * ...and this many survive blanking the body's COMMENTS, which is the
    * stronger reading. The gap is the weakness declared above, as a number.
    */
-  RESOLVING_IN_CODE: 13,
+  RESOLVING_IN_CODE: 18,
   /** ...and this many are excused by name, in `UNPINNED_PROSE_NUMBERS`. */
-  EXCUSED: 12,
+  EXCUSED: 9,
   /** The entries doing that excusing. Fewer than the occurrences: a phrase may span two. */
-  EXCUSE_ENTRIES: 7,
+  EXCUSE_ENTRIES: 5,
   /**
    * The bodies a tag names, and how many of them hold a bare `0` or a bare `1`
    * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
    * one: it says how little a small number resolving is worth.
    */
-  NAMED_BODIES: 49,
-  NAMED_BODIES_HOLDING_ZERO: 39,
-  NAMED_BODIES_HOLDING_ONE: 41,
+  NAMED_BODIES: 50,
+  NAMED_BODIES_HOLDING_ZERO: 40,
+  NAMED_BODIES_HOLDING_ONE: 42,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1936,6 +1970,54 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "matches any more: purchaseArrivalOfX: expected [ 'ACCELERANT_ARRIVAL', …(87) ] to deeply " +
       "equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
   },
+  {
+    // THE COUNTERFACTUAL'S OWN WITNESS: the pinned row really is measured off
+    // the entitlement module and is not a constant compared with itself.
+    //
+    // The mutant is an off-by-one in the coverage rule — `<=` to `<` — which is
+    // the classic shape for that line and is the edit a reader is most likely
+    // to make by accident. It moves every cell of the row at once.
+    //
+    // A DIFFERENT MUTANT WAS TRIED FIRST AND STAYED GREEN, recorded because a
+    // green mutant is evidence about the mutant and not about the test:
+    // dropping the `Math.min` from `drawableByThisAbsence` is a NO-OP at the
+    // shipped tuning, since `COVERED_DAYS_PER_WINDOW` and
+    // `MAX_COVERED_DAYS_PER_ABSENCE` are both 2 and this sweep buys nothing, so
+    // the ceiling never binds. It looked like the obvious coverage mutation.
+    guarantee: 'dropping-the-doomed-burn-measures-worse',
+    mutatedFile: 'src/game/streakEntitlement.ts',
+    mutated: '  const covers = chargeableDays <= drawableByThisAbsence;',
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion: ').toEqual([...DOOMED_BURN_COUNTERFACTUAL.VIOLATING_PAIRS_BY_LENGTH]);',
+    observed:
+      'AssertionError: GDD §4.4 doomed-burn control row, currentStreak inversions: ' +
+      'expected [ 290, 517, 472, 375 ] to deeply equal [ 561, 1051, 710, 673 ]',
+  },
+  {
+    // A SECOND WITNESS FOR THE SAME TAG, ON THE OTHER ASSERTION, because the
+    // two halves of that test fail on disjoint edits and neither says anything
+    // about the other — CLAUDE.md's point that a witness proves ONE assertion
+    // bites, applied deliberately rather than discovered later.
+    //
+    // The measurement pin above catches an ENGINE change. This one catches the
+    // drift that produced the whole piece: somebody re-takes the measurement,
+    // edits the shared constant, and leaves the sentences quoting the old
+    // figure. The mutant is one digit of the published row.
+    //
+    // IT IS THE WEAKER OF THE TWO AND IS LABELLED SO. The assertion it
+    // witnesses cannot fail without an edit to `streakSweep.ts` — it is a link
+    // between a constant and the prose quoting it, not a measurement — and it
+    // sits FIRST in the test body so this mutant reddens there rather than
+    // being masked by the measurement pin below it.
+    guarantee: 'dropping-the-doomed-burn-measures-worse',
+    mutatedFile: 'src/game/streakSweep.ts',
+    mutated: '  VIOLATING_PAIRS_BY_LENGTH: Object.freeze([561, 1051, 710, 673]),',
+    testFile: 'src/game/streakEntitlement.test.ts',
+    redAssertion: ').toEqual([561, 1051, 710, 673]);',
+    observed:
+      'AssertionError: the sentence in streak.ts, streakEntitlement.ts and GDD §4.4 says 1051 at ' +
+      '60 and 673 at 100: expected [ 561, 1051, 710, 674 ] to deeply equal [ 561, 1051, 710, 673 ]',
+  },
 ];
 
 /**
@@ -2845,6 +2927,7 @@ describe('the guarantee-tag convention', () => {
       'src/empire/empireInvariant.test.ts',
       'src/empire/engagement.test.ts',
       'src/game/streak.test.ts',
+      'src/game/streakEntitlement.test.ts',
     ]);
   });
 

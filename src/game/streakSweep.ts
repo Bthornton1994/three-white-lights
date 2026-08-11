@@ -350,6 +350,100 @@ export const ENTITLEMENT_VERIFICATION = Object.freeze({
 });
 
 /**
+ * THE DOOMED-BURN COUNTERFACTUAL, RE-TAKEN AND WRITTEN DOWN — what GDD §4.2
+ * RULE 2 costs to drop, at every length the battery runs.
+ *
+ * WHY THIS BLOCK EXISTS. The sentence "dropping the burn measures 1051
+ * violating pairs at 60 days and 673 at 100" was restated in four places —
+ * `streak.ts`, `streakEntitlement.ts`, `streakEntitlement.test.ts` and GDD §4.4
+ * — and the 100-day half was pinned by no assertion anywhere in `src`. The
+ * 60-day half was carried in a test's own COMMENT, which the numeric half of
+ * the `@guarantee` rule accepts and which that rule's own header calls a soft
+ * floor. Four confident restatements of one unverified figure is the shape this
+ * repository has already been bitten by; the figures are here now, and
+ * `streakEntitlement.test.ts` re-derives them on every run.
+ *
+ * IT REPRODUCED. Re-taken at the parameters below, 60 days gives 1051 and 100
+ * days gives 673, so the published sentence is confirmed rather than corrected.
+ * The worst deficit at 100 is 20, which is also what GDD §4.4's control table
+ * already printed.
+ *
+ * THE PARAMETERS ARE NOT NEW, WHICH IS THE POINT. This block declares no seed,
+ * no length and no attendance rate of its own: it runs on
+ * `MONOTONICITY_SWEEP.SEEDS`, `MONOTONICITY_SWEEP.SCHEDULES_PER_SEED`, the
+ * attendance distribution documented in this file's header, and
+ * `ENTITLEMENT_VERIFICATION.LENGTHS`. What it adds is the OBSERVATION, in the
+ * same shape `ONE_MAPPING_SWEEP.OPENINGS_SEEN` and `STORE_VERDICT_DIVERGENCE`
+ * already use.
+ *
+ * THE COUNT IS NOT MONOTONE IN CALENDAR LENGTH, AND READING ONLY THE FIRST ROW
+ * WOULD SAY THE OPPOSITE OF THE TRUTH. `currentStreak` inversions go 561 /
+ * 1051 / 710 / 673 — so 100 days is LOWER than 60, and a reader taking that row
+ * alone would conclude the broken variant heals as the calendar grows. It does
+ * not. `longestStreak` inversions rise at every step, 495 / 628 / 716 / 943,
+ * and that is the half CLAUDE.md calls the one that does not heal; the worst
+ * `currentStreak` deficit sits at 14 / 20 / 17 / 20 and does not shrink either.
+ * A live run can recover a broken streak later in a long calendar, which is why
+ * the frequency row wobbles; a lifetime best cannot be un-lost.
+ *
+ * The row is taken through `drive`, and that is a caveat this block cannot
+ * remove. `streak.ts` reads the burn rule directly rather than off a flag, so a
+ * variant without it is expressible in `streakEntitlement.test.ts`'s reference
+ * composition and nowhere else. What makes these numbers statements about the
+ * shipped program is the byte-identity pin between that composition and
+ * `streak.ts` at the shipped tuning — see 'the shipped engine is the
+ * composition this battery graded'. Without that pin these are numbers about a
+ * program nobody ships.
+ */
+export const DOOMED_BURN_COUNTERFACTUAL = Object.freeze({
+  /**
+   * Lengths the counterfactual is taken at, in the order every row below is
+   * written. Named rather than re-listed: it IS
+   * `ENTITLEMENT_VERIFICATION.LENGTHS`, so a length added there moves the rows
+   * rather than leaving them describing a grid that no longer exists.
+   */
+  LENGTHS: ENTITLEMENT_VERIFICATION.LENGTHS,
+
+  /**
+   * Pairs where the lifter who trained MORE ended on a LOWER `currentStreak`,
+   * with the burn dropped. The shipped rule is 0 at every one of these lengths
+   * and `streakEntitlement.test.ts`'s SAMPLED test pins that beside this.
+   */
+  VIOLATING_PAIRS_BY_LENGTH: Object.freeze([561, 1051, 710, 673]),
+
+  /** The same on `longestStreak` — the half that does not heal. Rises throughout. */
+  LONGEST_INVERSIONS_BY_LENGTH: Object.freeze([495, 628, 716, 943]),
+
+  /** Largest `currentStreak` deficit seen. MAGNITUDE, not frequency. */
+  WORST_DEFICIT_BY_LENGTH: Object.freeze([14, 20, 17, 20]),
+
+  /**
+   * Pairs actually compared at each length — the ANTI-VACUITY denominator.
+   *
+   * Without it "561 violating pairs" is unreadable and a generator that quietly
+   * stopped producing supersets would report a smaller, cleaner-looking number
+   * rather than failing. These are the same denominators the clean arm runs on,
+   * so the two rows are counts out of the same domain.
+   */
+  PAIRS_CHECKED_BY_LENGTH: Object.freeze([36_820, 53_872, 72_680, 91_091]),
+
+  /**
+   * Covered days the broken variant consumed, summed over the lazy members.
+   *
+   * THE SECOND ANTI-VACUITY, and it is the one that matters here: a variant
+   * that consumed NOTHING would not be "the burn dropped", it would be a
+   * lifter who never had coverage at all, and it would produce violations for
+   * an unrelated reason. It is strictly below `CONSUMED_WITH_THE_BURN_BY_LENGTH`
+   * at every length by construction — dropping the burn can only remove
+   * consumption — and the test asserts that rather than assuming it.
+   */
+  CONSUMED_BY_LENGTH: Object.freeze([58_261, 119_889, 222_372, 346_099]),
+
+  /** The same total with the burn kept, i.e. on the shipped rule. */
+  CONSUMED_WITH_THE_BURN_BY_LENGTH: Object.freeze([95_291, 166_553, 329_435, 520_921]),
+});
+
+/**
  * THE FOURTH MEASUREMENT'S PARAMETERS: GDD §8.3E's Extra Covered Day purchase,
  * and specifically the question the by-week rule in §8.3C does NOT answer.
  *

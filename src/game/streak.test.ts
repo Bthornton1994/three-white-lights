@@ -1884,9 +1884,18 @@ describe('the window entitlement', () => {
   });
 
   it('[doomed-absence-takes-what-is-left] A DOOMED ABSENCE TAKES WHAT IS LEFT, AND NO MORE THAN A WINDOW HOLDS', () => {
-    // GDD §4.2 RULE 2, carried over. Dropping the burn measures 1051 violating
-    // pairs at 60 days — worse than the stock it replaced — because it is the
-    // only consumption idempotent under splitting an absence.
+    // GDD §4.2 RULE 2, carried over: the burn is the only consumption that is
+    // idempotent under splitting an absence, and dropping it is worse than the
+    // stock it replaced.
+    //
+    // WHAT DROPPING IT COSTS IS NOT RESTATED HERE ANY MORE. This comment used
+    // to carry "1051 violating pairs at 60 days", which satisfied the numeric
+    // half of the tag rule by sitting in a named body as PROSE — the soft floor
+    // that rule's own header declares — while the 100-day half of the same
+    // sentence was pinned by nothing in `src` at all. The row is measured and
+    // pinned by `[dropping-the-doomed-burn-measures-worse]` in
+    // `streakEntitlement.test.ts`, against
+    // `streakSweep.DOOMED_BURN_COUNTERFACTUAL`.
     const full = stateWithRun(9, DAY_ZERO, RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW);
     const doomed = addDays(DAY_ZERO, LONGEST_REPAIRABLE_ABSENCE_DAYS + 2);
     const outcome = unwrap(recordTrainingDay(full, doomed));
@@ -6086,12 +6095,14 @@ describe('daily engagement is never worse than skipping — where that holds, an
           worstConfiscationGap = Math.max(worstConfiscationGap, Math.abs(lazy.confiscated - diligent.confiscated));
 
           // (1) THE BLAST RADIUS IS ONE WINDOW. A doomed absence still takes
-          //     everything — RULE 2 survives, and dropping it measures 1051
-          //     violating pairs at this very length — but "everything" is now
-          //     bounded by what a window holds rather than by what a lifter has
-          //     hoarded. That is the difference between the two designs stated
-          //     as a number, and it is what makes the debit stop being
-          //     increasing in wealth: there is no wealth.
+          //     everything — RULE 2 survives, and what dropping it costs at
+          //     this very length is measured by
+          //     `[dropping-the-doomed-burn-measures-worse]` rather than
+          //     restated here — but "everything" is now bounded by what a
+          //     window holds rather than by what a lifter has hoarded. That is
+          //     the difference between the two designs stated as a number, and
+          //     it is what makes the debit stop being increasing in wealth:
+          //     there is no wealth.
           if (lazy.worst > RECOVERY_ENTITLEMENT.COVERED_DAYS_PER_WINDOW) {
             throw new Error(`${renderSchedule(schedule)} confiscated ${lazy.worst} in one absence`);
           }
