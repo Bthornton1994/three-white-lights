@@ -49,7 +49,9 @@
  * that can move a filled roster slot up spends differently, so this control is
  * now the pre-third-book FUNDING rule on the post-repair roster rather than
  * E8's whole engine. It is still a control: same domain, one parameter apart
- * from the subject, non-zero on five of six policies. It is no longer a
+ * from the subject, non-zero on five of six policies — and non-zero on the
+ * sixth too under every one of its four day anchors, 2887 to 3908. It is no
+ * longer a
  * historical reproduction, and `'one-way-door'` is the parameter that
  * reproduces the roster as it was.
  *
@@ -1345,11 +1347,13 @@ const MEASURED_POLICY = Object.freeze({
   /**
    * Every spending policy on the headline domain, under the shipped engine.
    *
-   * Five of the six are zero. `'cheapest-affordable-first'` is not listed
-   * because it is byte-identical to `'fixed-order-no-rotation'` here — see the
-   * check that pins the coincidence rather than counting the row twice — and
-   * the shipped row is asserted against `MEASURED.WINDOWED_SHIPPED` itself so
-   * the two harnesses cannot quietly disagree.
+   * All six are zero. `'cheapest-affordable-first'` is not listed because it is
+   * byte-identical to `'fixed-order-no-rotation'` here — see the check that
+   * pins the coincidence rather than counting the row twice — and the shipped
+   * row is asserted against `MEASURED.WINDOWED_SHIPPED` itself so the two
+   * harnesses cannot quietly disagree. The day-granularity row is zero at
+   * `SHIPPED_DAY_SPENDING_ANCHOR` and 6459 at the anchor it replaced;
+   * `MEASURED_ANCHOR` below carries all four readings.
    */
   WINDOWED: Object.freeze({
     'fixed-order-no-rotation': {
@@ -1530,8 +1534,11 @@ const MEASURED_POLICY = Object.freeze({
   }),
 
   /**
-   * The same six on a SECOND domain. Every arm is zero except the day-granularity
-   * one, which is 60 here and 34 at forty days.
+   * The same six on a SECOND domain. Every arm is zero, including the
+   * day-granularity one — which read 60 here and 34 at forty days under the
+   * anchor `SHIPPED_DAY_SPENDING_ANCHOR` replaced, and those two numbers are
+   * kept in `MEASURED_ANCHOR.SEEDED_20_VIOLATING` and `SEEDED_40_VIOLATING` as
+   * the thing these zeros are zeros against on this domain.
    */
   SEEDED_20: Object.freeze({
     'rotate-greedy-per-check-in': { pairs: 644, movedPairs: 187, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },

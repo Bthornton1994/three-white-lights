@@ -539,6 +539,19 @@ function credit(gym: EmpireGym, amount: number): EmpireGym {
  * driven under. It changes nothing about the schedule, the wiring, the readings
  * or the comparator — only which rung the money that was already earned goes
  * to, and at which of the player's own check-ins it goes anywhere at all.
+ *
+ * `anchor` is §7: WHICH check-in of a calendar day a day-granularity policy
+ * shops at. Every other policy ignores it.
+ *
+ * `spendsOn` says whose attendance decides that check-in, and its reach is
+ * narrower than it was — said here rather than left for a reader to discover.
+ * Under the two attendance-derived anchors it decides the whole day's spending
+ * moment, which is what the counterfactual in `engagement.test.ts` uses it for.
+ * Under `'first-affordable-check-in'` it decides nothing, because that anchor
+ * reads the gym's own purchases. Under the shipped per-purse anchor it decides
+ * only the day's ROTATION TICK — the check-in at which `EmpireGym.nextAxis`
+ * advances — because that is the one fact about the day the per-purse anchor
+ * still takes from attendance rather than from a purse's balance.
  */
 export function runEngagement(
   days: number,
