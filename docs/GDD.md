@@ -1727,8 +1727,38 @@ repeats it or goes up. There is no dropping down, so every attempt decision is
 a one-way ratchet — which is exactly where the tension comes from.
 
 After a **make**: a small increase (lock in a bigger total, low miss risk) vs. a
-big one (a PR on the line, higher miss risk). The floor is already banked; the
-question is how much of the remaining attempt to spend.
+big one (higher miss risk). The floor is already banked; the question is how much
+of the remaining attempt to spend.
+
+**"A PR on the line" is a property of a WEIGHT, not of the big card, and the
+screen now says it where it is true.** The sentence above used to be attached to
+the big option unconditionally, and the code followed: `MEET_COPY.OPTION_BIG_WHY`
+was the static string "A PR on the line. Higher risk.", printed on every big card
+whatever the lifter's record was. `AttemptOption.isPrAttempt` — the flag the gold
+`CARD_PR_EDGE` border is painted from — is `weightKg > previousBestKg` with a
+non-null best, and `meetServer.ts`'s `previousBestByLift` answers all-null while
+the lifter has no meets on record. So **on a player's first meet the flag was
+false on every card and the sentence printed on six of the twelve**, in the same
+sitting whose recap calls all three lifts a competition PR (a first-ever lift
+beats a null best, so `liftPrs` is true where `isPrAttempt` is false). The app
+said a lift both was and was not a PR, one screen apart. It was not only a
+first-meet defect either: an opener or a second attempt below the lifter's best
+is a non-PR big card too, and most of them are.
+
+The claim is now `MEET_COPY.OPTION_PR_NOTE`, carried on
+`AttemptOption.prNote`, which `attemptDecisionFor` fills from the same expression
+`isPrAttempt` is read from. It can therefore land on **whichever** option crosses
+the best — the small jump, or the repeat of a weight that just beat the lifter —
+and the sentence and the border are one decision rendered twice rather than two
+that can disagree. `src/meet/AttemptSelectView.test.ts` pins the agreement over
+whole meets on both arms; `tools/verify-shell-route.mjs` reads the pair off both
+meets a player opened, in a browser, because a node suite cannot see a border.
+
+**The gold border was, until this was written, drawn by nothing a player could
+reach.** The app has one meet, no career calendar (§6.1's TODO) and no persistence
+across a reload, so a lifter's first meet is the only meet with a fresh record —
+and a PR attempt needs a record to beat. The second meet of an app run is where
+one first appears, which is why the browser check drives both.
 
 After a **miss**: **repeat vs. increase**. Repeating is the safe play — the same
 weight, a second chance at banking it, nothing gained beyond what was already
