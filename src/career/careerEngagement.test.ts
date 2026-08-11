@@ -995,6 +995,52 @@ describe('the two runs', () => {
     expect(SHIPPED_CAREER_ENTRY_MODEL).toBe('shipped');
   });
 
+  it('changes nothing but the entry gap when it runs the control', () => {
+    // THE BRANCH IMMEDIATELY BELOW THE ONE ABOVE, which is where CLAUDE.md says
+    // to look next. The test above establishes that the control DIFFERS from the
+    // shipped model. `asAsked`'s docstring makes a second, opposite claim —
+    // "changes nothing else: the federation, the entered list, the category and
+    // the qualifying total are the same value" — and nothing was checking it.
+    //
+    // That matters because the whole attribution rests on it. Every "the entry
+    // gap is all of it" count in this file is a difference between two runs, and
+    // if the control also cleared, say, `bestTotal`, the difference would be two
+    // things and the attribution would be wrong while still reading as a control.
+    //
+    // The plan below picks only meets already at least
+    // `MIN_DAYS_BETWEEN_ENTERED_MEETS` apart, so the gap rule refuses nothing
+    // under either model and the ONE documented difference is switched off. Any
+    // other difference then shows up as two unequal records.
+    //
+    // BY OFFER INDEX, NOT BY DAY, and the first draft got that wrong in a way
+    // worth keeping: this fixture puts three offers on day 21, 35 and 49 each,
+    // so selecting `dayIndex` picked several meets on one day, the gap rule
+    // refused the second of each pair under the shipped model only, and the two
+    // records differed by design. The test failed for the right reason about the
+    // wrong plan.
+    //
+    // Reddens on: `asAsked` writing any field but `lastEntryDayIndex` — e.g.
+    // `{ ...lifter, lastEntryDayIndex: null, bestTotal: null }`, which refuses
+    // the nationals meet on day 49 under the control and leaves the two records
+    // three results and four results long.
+    const spacedOffers = [0, 2, 5, 10];
+    const spacedDays = [7, 21, 35, 49];
+    const spaced = WINDOW_OFFERS.map((_offer, index) => spacedOffers.includes(index));
+    const shipped = runEntryPlan(WINDOW_INPUTS, spaced);
+    const noGap = runEntryPlan(WINDOW_INPUTS, spaced, shippedCareerStandingWiring(), 'no-gap');
+
+    expect(noGap.record).toEqual(shipped.record);
+    expect(noGap.readings).toEqual(shipped.readings);
+    // Counts, not bounds: the domain is not empty and the gap rule really did
+    // refuse nothing, so the equality above is an equality between two runs that
+    // each did something rather than between two empty records.
+    expect(shipped.census.entered).toBe(spacedOffers.length);
+    expect(noGap.census.entered).toBe(spacedOffers.length);
+    expect(shipped.census.refusedEntries).toBe(0);
+    expect(noGap.census.refusedEntries).toBe(0);
+    expect(shipped.record.results.map((result) => result.dayIndex)).toEqual(spacedDays);
+  });
+
   it('carries the standing forward into the next meet’s gate', () => {
     // The loop, not two loops: a total posted at meet one is what admits the
     // lifter to a gated meet later. Without it a plan could never reach a

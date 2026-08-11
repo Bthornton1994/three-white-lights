@@ -229,6 +229,10 @@ export interface CareerEngagementInputs<Total> {
  * an extra meet" — held by the constructor rather than by a caller
  * remembering, so a pair that does not differ in engagement cannot be counted
  * as evidence about engagement.
+ *
+ * MUTATION WITNESS. Mutant: the `if (current) { throw ... }` guard deleted.
+ * Reddened: `expect(() => withExtraMeet(attendance, 1)).toThrow(/already
+ * contested/)` inside `refuses to build a pair that differs in nothing`.
  */
 export function withExtraMeet(
   attendance: readonly boolean[],
@@ -432,6 +436,18 @@ export const SHIPPED_CAREER_ENTRY_MODEL: CareerEntryModel = 'shipped';
  * `too-soon-after-last-meet` refusal, and changes nothing else: the federation,
  * the entered list, the category and the qualifying total are the same value.
  * It is a control, and nothing the game ships runs on it.
+ *
+ * "CHANGES NOTHING ELSE" IS THE HALF THAT WAS ENFORCED BY NOTHING, and it is the
+ * half every attribution in this file rests on: if the control also cleared, say,
+ * `bestTotal`, then every "the entry gap is all of it" count would be a
+ * difference of two things while still reading as a control.
+ *
+ * MUTATION WITNESS. Mutant: `return Object.freeze({ ...lifter,
+ * lastEntryDayIndex: null, bestTotal: null });`. Reddened:
+ * `expect(noGap.record).toEqual(shipped.record)` inside `changes nothing but the
+ * entry gap when it runs the control`, which drives a plan the gap rule refuses
+ * nothing on, so the ONE documented difference is switched off and any second
+ * one shows up as two unequal records.
  */
 function asAsked<Total>(lifter: CareerLifter<Total>, model: CareerEntryModel): CareerLifter<Total> {
   if (model === SHIPPED_CAREER_ENTRY_MODEL) return lifter;

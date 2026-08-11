@@ -689,9 +689,32 @@ describe('lifterWithStanding feeds the next meet’s gate', () => {
   it('writes the qualifying total and nothing else', () => {
     // Reddens on: `lifterWithStanding` touching `enteredSlotIds` or
     // `lastEntryDayIndex`, which are `enterMeet`'s and not this function's.
-    const slots = [slotOf('local', 7)];
+    //
+    // THE FIXTURE BELOW IS THE CHECK, AND THE FIRST ONE WAS BLIND TO EXACTLY THE
+    // FIELD THE LINE ABOVE NAMES. It was `const slots = [slotOf('local', 7)]`
+    // with the record holding that one result, so `lifter.lastEntryDayIndex` and
+    // `standing.lastResultDayIndex` were BOTH 7. Planting
+    // `lastEntryDayIndex: standing.lastResultDayIndex` into `lifterWithStanding`
+    // wrote 7 over 7 and the whole suite stayed green — 132 of 132, exit 0. The
+    // assertion was real, the comment was accurate, and the two numbers being
+    // compared were the same number by construction.
+    //
+    // So the lifter has entered TWO meets and competed at one: `entrant` takes
+    // `lastEntryDayIndex` to 35 while the record's last result is on day 7, and
+    // `enteredSlotIds` has two members while `competedSlotIds` would have one.
+    // Both fields the comment names now differ from the value a mutant would
+    // reach for.
+    const slots = [slotOf('local', 7), slotOf('local', 35)];
     const lifter = entrant(slots);
     const standing = careerStanding(historyOf([[slots[0] as CareerMeetSlot, NATIONALS_KG]]), 'mens', GATE);
+    // The gap between the two facts, asserted rather than assumed: if these ever
+    // coincide again this check is blind again, and it should say so here rather
+    // than pass quietly.
+    expect(lifter.lastEntryDayIndex).toBe(35);
+    expect(standing.lastResultDayIndex).toBe(7);
+    expect(lifter.enteredSlotIds.length).toBe(2);
+    expect(standing.meetsCompleted).toBe(1);
+
     const after = lifterWithStanding(lifter, standing);
     expect(after.bestTotal).toEqual(kg(NATIONALS_KG));
     expect({ ...after, bestTotal: null }).toEqual({ ...lifter, bestTotal: null });

@@ -50,6 +50,11 @@
  * reddens it. That test reads the file and does not import it, so it does not
  * put an import edge where this header just said there is none.
  *
+ * MUTATION WITNESS. Mutant: `readonly platformCount: number;` added as the first
+ * field of `CareerMeetDraft`. Reddened:
+ * `expect([...ours].sort()).toEqual([...theirs].sort())` inside `mirrors
+ * MeetDefinition field for field`.
+ *
  * `rules` is a type parameter rather than `MeetLoadingRules`, because
  * `MeetLoadingRules` lives in `src/game/meet.ts` and importing it would be the
  * edge this whole arrangement exists to avoid. The wiring piece binds it. The
@@ -64,6 +69,11 @@
  * Every time in this module is an integer day index counted from the career's
  * day zero. There is no `Date`, no epoch and no timezone here, and
  * `careerCore.test.ts` bans the identifier from the whole directory.
+ *
+ * MUTATION WITNESS. Mutant: `const at = new Date(); void at;` at the top of
+ * `buildCareerCalendar`. Reddened:
+ * `expect(pattern.test(code), `${name} matches ${pattern}`).toBe(false)` inside
+ * `reads no clock and rolls no dice`. No behavioural test moved.
  *
  * `MeetDefinition.dateIso` is an ISO `YYYY-MM-DD` string and something has to
  * produce it. That something is the caller: `careerMeetDraft` takes the ISO
@@ -94,15 +104,63 @@
  * What that buys, and it is more than tidiness: the wiring piece instantiates
  * `Total` as `ConfirmedTotalKg` and passes `meetsQualifyingTotal` itself, so
  * the confirmed-total fence is enforced at the wiring site by the real
- * function rather than re-implemented here by a weaker one. Nothing in this
- * directory can compare a total to a number — there is no `>=` on a `Total`
- * anywhere in this file, because `Total` is opaque and such a comparison would
- * not compile. A module that cannot compare cannot accidentally admit a
- * projected total.
+ * function rather than re-implemented here by a weaker one.
+ *
+ * THE SENTENCE THAT USED TO BE HERE WAS FALSE, AND IT IS WORTH READING BEFORE
+ * THE ONE THAT REPLACED IT. It said:
+ *
+ *     Nothing in this directory can compare a total to a number — there is no
+ *     `>=` on a `Total` anywhere in this file, because `Total` is opaque and
+ *     such a comparison would not compile. A module that cannot compare cannot
+ *     accidentally admit a projected total.
+ *
+ * Only the narrowest reading of that was true. `Total` is opaque, so the direct
+ * `total >= requiredKg` does not compile — but a LAUNDERED comparison does, and
+ * it was measured rather than argued. Planting
+ * `if (requiredKg !== null && Number(lifter.bestTotal) >= requiredKg) return
+ * { kind: 'eligible' };` here gave `tsc --noEmit` exit 0 and turned exactly one
+ * test red: the directory's string census, on one extra `'eligible'` literal.
+ * Rewriting the same line so it added no string turned NOTHING red — 118 of 118
+ * passing, exit 0. So the claim rested on nobody having written one, which is
+ * the thing the sentence promised was impossible.
+ *
+ * What is true now, and by what:
+ *
+ *   - THE DIRECT FORM does not compile, and `tsc --noEmit` is what refuses it.
+ *     That is A SEPARATE COMMAND FROM THE SUITE: vitest strips types without
+ *     checking them, so a reader who runs only `npx vitest run` has not checked
+ *     this at all. It is in the source ban below as well for that reason.
+ *   - EVERY OTHER ROUTE from a `Total` to a number is refused by
+ *     `careerOpacity.test.ts`, on two axes. A behavioural probe binds `Total` to
+ *     `number` — which `careerCore.test.ts` cannot, because its wrapped
+ *     `TestTotal` makes `Number(total)` `NaN` and every laundered comparison
+ *     silently false — and asserts a refusing gate still refuses a total of a
+ *     million kilograms. A 34-pattern source ban then catches a coercion that is
+ *     present but unreachable, which the probe cannot see.
+ *   - WHAT IS STILL NOT ENFORCED: the ban reads text, so it keys on this
+ *     directory's naming convention for a total, and a total renamed to `t`
+ *     walks past its subject-keyed half. The subject-independent half —
+ *     `Number(`, `parseFloat`, `valueOf`, `as number`, `JSON.parse` and the
+ *     rest — has no such hole, and the behavioural probe has none at all for a
+ *     path it can reach.
+ *
+ * MUTATION WITNESS. Mutant, planted at the qualifying check in
+ * `meetEligibility`: `if (requiredKg !== null && Number(lifter.bestTotal) >=
+ * requiredKg) return { kind: 'eligible' };`. Reddened, in
+ * `careerOpacity.test.ts`: `expect(verdict.kind, ...).toBe('below-qualifying-total')`
+ * inside `refuses every gated meet to an enormous numeric total when the gate
+ * says no`, and `expect(findings.join('\n')).toBe('')` inside `finds nothing in
+ * any shipped module`.
  *
  * There is deliberately no default gate. A default is the thing that lets a
  * caller forget to inject, and a defaulted `(a, b) => a >= b` would be exactly
- * the locally-summed comparison the fence exists to refuse.
+ * the locally-summed comparison the fence exists to refuse. That sentence also
+ * had nothing behind it and now has the `default-gate` row of the same ban.
+ *
+ * MUTATION WITNESS. Mutant, on `meetEligibility`'s signature:
+ * `gate: CareerQualifyingGate<Total> = (a, b) => (a as unknown as number) >= b,`.
+ * Reddened: `expect(findings.join('\n')).toBe('')` inside `finds nothing in any
+ * shipped module`.
  *
  * `careerCore.test.ts`'s "imports nothing outside this directory" pins the
  * import list at `['./careerTuning']` and the tuning module's at `[]`.
@@ -249,8 +307,16 @@ export interface CareerMeetDraft<Rules> {
  * `lastEntryDayIndex` and nothing else, and the pinned field list is what
  * makes that structural instead of observed.
  *
- * `bestTotal` is opaque here — see the header, section 3. This module never
- * compares it to anything; the injected gate does.
+ * MUTATION WITNESS. Mutant: `readonly sessionsThisWeek: number;` added as the
+ * first field of this interface. Reddened:
+ * `expect(interfaceFieldNames(source('careerCore.ts'), 'CareerLifter')).toEqual([...])`
+ * inside `keeps the lifter free of anything a player does daily`. Nothing else
+ * in the suite moved, which is the point — a training field can be added to this
+ * type without breaking a single behaviour.
+ *
+ * `bestTotal` is opaque here — see the header, section 3, for what enforces
+ * that and what does not. This module never compares it to anything; the
+ * injected gate does.
  */
 export interface CareerLifter<Total> {
   readonly federationId: CareerFederationId;
@@ -395,7 +461,17 @@ function slotCountFor(tier: CareerTier, throughDayIndex: number): number {
  * Every meet slot a federation runs from day zero through `throughDayIndex`.
  *
  * Deterministic and total: the same spec gives the same list, byte for byte,
- * on every call and on every device. There is no seed here and no clock.
+ * on every call. There is no seed here and no clock.
+ *
+ * "AND ON EVERY DEVICE" USED TO BE ON THE END OF THAT SENTENCE AND HAS BEEN
+ * REMOVED, because nothing here can check it and nothing ever will: `is
+ * deterministic` in `careerCore.test.ts` calls this twice in one process on one
+ * machine. What that check does establish is the part that can go wrong from
+ * inside this file — a clock, a seed, an insertion order, a shared mutable
+ * accumulator — and the clock and seed halves have their own ban in `reads no
+ * clock and rolls no dice`. Cross-device equality is an inference from those,
+ * not a measurement, and a sentence that outruns its own measurement is the
+ * defect CLAUDE.md's guarantee-prose section is about.
  *
  * Sorted by day, then by tier rank, then by id, so two tiers landing on the
  * same day have a settled order rather than an insertion-order one.
@@ -405,6 +481,20 @@ function slotCountFor(tier: CareerTier, throughDayIndex: number): number {
  * number, or a horizon long enough to exceed `CALENDAR_MAX_SLOTS`. The count
  * is computed before the loop runs, so an absurd horizon fails immediately
  * instead of building for a long time first.
+ *
+ * THAT LAST CLAUSE WAS ENFORCED BY NOTHING, and the test that looked like it
+ * enforced it is a good example of an assertion that cannot fail. `refuses a
+ * horizon longer than CALENDAR_MAX_SLOTS before it builds it` asserts the
+ * throw — but moving the cap check BELOW the build loop still throws, on the
+ * same input, with the same message. The word "before" in its own name was
+ * about nothing. It now carries a source-order assertion beside it.
+ *
+ * MUTATION WITNESS. Mutant: the `planned > CAREER_TUNING.CALENDAR_MAX_SLOTS`
+ * block moved to sit after the `slots.sort(...)` call. Reddened:
+ * `expect(capAt, 'the CALENDAR_MAX_SLOTS check moved below the build loop')
+ * .toBeLessThan(pushAt)` inside `refuses a horizon longer than
+ * CALENDAR_MAX_SLOTS before it builds it`. The throw assertion in that same
+ * test stayed GREEN under the mutant, which is the point.
  */
 export function buildCareerCalendar(spec: CareerCalendarSpec): readonly CareerMeetSlot[] {
   if (careerFederation(spec.federationId) === null) {
@@ -492,6 +582,22 @@ export function careerMeetDraft<Rules>(
  * `meetEligibility` both route through here rather than each doing the sum,
  * because two arms of one decision written twice is how the second one ends up
  * subtly different from the first.
+ *
+ * That was a sentence about the shape of this file with nothing checking the
+ * shape of this file, so `keeps the visibility window in one place` in
+ * `careerCore.test.ts` now pins the number of sites the sum appears at — a
+ * COUNT rather than a presence, because a textual pin with more than one
+ * witness survives the mutation that breaks it. `meetEligibility` reads
+ * `CALENDAR_VISIBLE_DAYS_AHEAD` a second time to report `opensOnDayIndex`, and
+ * that is a subtraction for a screen rather than the window decision; the pin
+ * is on the comparison, not on the constant.
+ *
+ * MUTATION WITNESS. Mutant, in `visibleMeets`:
+ * `return calendar.filter((slot) => slot.dayIndex >= todayDayIndex && slot.dayIndex <= todayDayIndex + CAREER_TUNING.CALENDAR_VISIBLE_DAYS_AHEAD);`.
+ * Reddened: `expect(windowSites, 'the visibility window is computed in more
+ * than one place').toBe(1)`. Every behavioural test stayed green, because the
+ * duplicate agreed with the original — which is exactly the state the sentence
+ * is warning about.
  */
 export function meetVisibilityOn(slot: CareerMeetSlot, todayDayIndex: number): CareerMeetVisibility {
   if (slot.dayIndex < todayDayIndex) return 'passed';
@@ -538,6 +644,11 @@ export function earliestNextEntryDay<Total>(lifter: CareerLifter<Total>): number
  * The gate is not consulted at all for an open tier — `local` asks for no
  * total — so a lifter with no recorded total is `eligible` there rather than
  * refused for a requirement that does not exist.
+ *
+ * MUTATION WITNESS. Mutant, in the open-tier arm: `if (requiredKg === null) {
+ * gate(lifter.bestTotal as Total, 0); return { kind: 'eligible' }; }`.
+ * Reddened: `expect(asked).toEqual([])` inside `lets a lifter with no total into
+ * an open tier without asking the gate`.
  */
 export function meetEligibility<Total>(
   slot: CareerMeetSlot,
@@ -633,6 +744,13 @@ export function createCareerLifter<Total>(
  * slot against every prior entry day and asserts that an accepted entry always
  * moves the day forward, with both the accepted and refused counts pinned.
  * Removing the gap check reddens that; nothing reddened the `max`.
+ *
+ * MUTATION WITNESS for the first half of that last sentence. Mutant, in
+ * `meetEligibility`: the `too-soon-after-last-meet` branch replaced with
+ * `void earliest;`. Reddened: `expect(backwards).toBe(0)` inside `never moves
+ * the last entry day backwards, over every slot and every prior entry`, plus
+ * twelve other tests. The second half — that nothing reddened the `max` — is
+ * pinned history and is not re-runnable, because the `max` is gone.
  */
 export function enterMeet<Total>(
   lifter: CareerLifter<Total>,

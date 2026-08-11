@@ -12,6 +12,16 @@
  *   - no string this directory ships is a real federation, athlete or brand,
  *     checked against `src/licensing/realIp.ts`'s own watchlist.
  *
+ * A fourth directory-level property lives in `careerOpacity.test.ts` rather than
+ * here, and is named because a reader counting three blocks would otherwise miss
+ * it: no shipped module can turn an opaque `Total` into a number. It is separate
+ * because of the fixture. Every check in this file binds `Total` to the wrapped
+ * `TestTotal` below, which makes `Number(total)` `NaN` and every laundered
+ * comparison silently false — so no check here can see one, whatever it asserts.
+ * A second binding, `Total` as `number`, could have been declared in this file
+ * instead; it is in its own one so that the two bindings are not five lines apart
+ * and easily confused for each other.
+ *
  * Every check names, in place, the edit to a SUBJECT module that reddens it.
  * Where a check cannot be reddened by any edit to its subject it has been
  * deleted rather than kept as decoration; where the compiler gets there first,
@@ -770,12 +780,32 @@ describe('buildCareerCalendar', () => {
     // The count is computed analytically first, so an absurd horizon fails at
     // once rather than after allocating for a long time.
     //
-    // Reddens on: removing the cap, or computing it after the loop.
+    // THE COMMENT HERE USED TO SAY "Reddens on: removing the cap, OR COMPUTING
+    // IT AFTER THE LOOP", and the second half was false. Moving the cap check
+    // below the build loop throws the same `RangeError`, with the same message,
+    // on the same input — so the throw assertion below could not tell the two
+    // apart and the word "before" in this test's own name was about nothing.
+    // MEASURED: with the check moved under `slots.sort(...)`, this test was
+    // green.
     const week = CAREER_TUNING.MEET_INTERVAL_DAYS_BY_TIER.local;
     const tooFar = CAREER_TUNING.CALENDAR_MAX_SLOTS * week;
     expect(() =>
       buildCareerCalendar({ federationId: FED_A.id, throughDayIndex: tooFar }),
     ).toThrow(/CALENDAR_MAX_SLOTS/);
+
+    // What the word "before" needs, since no input can observe it: the order of
+    // the two in the source. A source-order pin is a weak instrument and is the
+    // only one available — the alternative is timing, which is not a check.
+    //
+    // Reddens on: moving the cap block below the build loop. Both indices are
+    // asserted to exist first, so a rename that made either `-1` fails loudly
+    // rather than passing on `-1 < 12345`.
+    const body = codeOf('careerCore.ts');
+    const capAt = body.indexOf('planned > CAREER_TUNING.CALENDAR_MAX_SLOTS');
+    const pushAt = body.indexOf('slots.push(');
+    expect(capAt, 'the CALENDAR_MAX_SLOTS comparison is not in careerCore.ts').toBeGreaterThan(-1);
+    expect(pushAt, 'the calendar build loop is not in careerCore.ts').toBeGreaterThan(-1);
+    expect(capAt, 'the CALENDAR_MAX_SLOTS check moved below the build loop').toBeLessThan(pushAt);
     // The domain is not empty on the other side either: a horizon just under
     // the cap builds, so the cap is a boundary rather than a blanket refusal.
     const justUnder = buildCareerCalendar({
@@ -809,6 +839,52 @@ describe('visibility', () => {
     expect(meetVisibilityOn(slot, slot.dayIndex)).toBe('open');
     expect(meetVisibilityOn(slot, slot.dayIndex - ahead)).toBe('open');
     expect(meetVisibilityOn(slot, slot.dayIndex - ahead - 1)).toBe('not-yet-visible');
+  });
+
+  it('keeps the visibility window in one place', () => {
+    // `meetVisibilityOn`'s docstring: "The one place the visibility window is
+    // arithmetic. `visibleMeets` and `meetEligibility` both route through here
+    // rather than each doing the sum, because two arms of one decision written
+    // twice is how the second one ends up subtly different from the first."
+    // That was a claim about the SHAPE of the file with nothing checking the
+    // shape of the file — a second copy that agreed with the first would be
+    // invisible to every behavioural test here, and a second copy is only
+    // dangerous once it stops agreeing.
+    //
+    // Pinned as a COUNT rather than as a presence, because CLAUDE.md's sharpest
+    // vacuity case is a textual pin with more than one witness in the file: a
+    // check that the sum appears AT ALL survives a duplicate being added.
+    //
+    // Reddens on: inlining the window comparison into `visibleMeets`, which
+    // takes this to 2.
+    const body = codeOf('careerCore.ts');
+    const windowSites = [
+      ...body.matchAll(/todayDayIndex\s*\+\s*CAREER_TUNING\.CALENDAR_VISIBLE_DAYS_AHEAD/g),
+    ].length;
+    expect(windowSites, 'the visibility window is computed in more than one place').toBe(1);
+
+    // And both readers really do route through the one site, so the count above
+    // is a fact about a live arrangement rather than about a dead function.
+    // `meetEligibility` reads the constant a second time to report
+    // `opensOnDayIndex` — a subtraction for a screen, not the window decision —
+    // which is why the pin is on the comparison and not on the constant.
+    const bodyOf = (name: string): string => {
+      const at = body.indexOf(`export function ${name}`);
+      expect(at, `${name} is not declared in careerCore.ts`).toBeGreaterThan(-1);
+      const next = body.indexOf('\nexport ', at + 1);
+      return body.slice(at, next < 0 ? body.length : next);
+    };
+    let routed = 0;
+    for (const reader of ['visibleMeets', 'meetEligibility']) {
+      expect(bodyOf(reader), `${reader} does not route through meetVisibilityOn`).toContain(
+        'meetVisibilityOn(',
+      );
+      routed += 1;
+    }
+    expect(routed).toBe(2);
+    // The extractor can come back with a body that does NOT contain the call,
+    // so the two above are an answer rather than a substring that is everywhere.
+    expect(bodyOf('careerTierRank')).not.toContain('meetVisibilityOn(');
   });
 
   it('shows the calendar as a window, not the whole horizon', () => {

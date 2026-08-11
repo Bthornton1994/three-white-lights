@@ -65,7 +65,22 @@
  *   INJECTED GATE admits it at, and the standing's qualifying total is the
  *   first total on the record that reached the highest such tier.
  *
- * No `>` on a `Total` appears here and none would compile. What that costs is
+ * No `>` on a `Total` appears here and none would compile — and that sentence
+ * used to be the whole of the claim, which was not enough. The direct form is
+ * refused by `tsc --noEmit`, WHICH IS A SEPARATE COMMAND FROM THE SUITE; a
+ * laundered one such as `Number(total) >= requiredKg` compiles, and was measured
+ * to turn nothing red. `careerOpacity.test.ts` is what closes it, on both a
+ * behavioural axis and a syntactic one; see `careerCore.ts`'s header, section 3,
+ * for the measurement and for what is still not enforced.
+ *
+ * MUTATION WITNESS. Mutant, planted above the gate call in `qualifiedTierFor`:
+ * `if (Number(total) >= requiredKg) return tier;`. Reddened:
+ * `expect(qualifiedTierFor(HUGE_TOTAL_KG, 'mens', REFUSING_GATE)).toBe('local')`
+ * inside `reads no number out of a numeric total when it walks the ladder`, and
+ * `expect(findings.join('\n')).toBe('')` inside `finds nothing in any shipped
+ * module`.
+ *
+ * What that costs is
  * stated rather than hidden: two totals that qualify for the same tier are
  * interchangeable to this file, and it picks the earlier. That is not an
  * approximation for the use this fact is put to — `meetEligibility` only ever
@@ -141,6 +156,11 @@ import { CAREER_TUNING } from './careerTuning';
  * The four calendar fields are copied off the slot by `recordMeetResult` rather
  * than supplied, so a result cannot claim a tier, a federation or a day its
  * slot disagrees with.
+ *
+ * MUTATION WITNESS. Mutant, in `recordMeetResult`:
+ * `tier: 'local' as typeof slot.tier,`. Reddened, inside `takes the four
+ * calendar fields off the slot, so they cannot disagree`, the four-field
+ * equality whose expected side reads `tier: slot.tier,` — plus nine other tests.
  */
 export interface CareerMeetResult<Total> {
   readonly slotId: string;
@@ -487,6 +507,17 @@ export function tierUnlockBetween<Total>(
  * `enterMeet`'s and are not this function's to move. See the header, section 3,
  * for why the qualifying total is the right value to carry and what it is not
  * (it is not "their biggest total to print on a card").
+ *
+ * MUTATION WITNESS. Mutant: `return Object.freeze({ ...lifter, bestTotal:
+ * standing.qualifyingTotal, lastEntryDayIndex: standing.lastResultDayIndex });`.
+ * Reddened: `expect({ ...after, bestTotal: null }).toEqual({ ...lifter,
+ * bestTotal: null })` inside `writes the qualifying total and nothing else`.
+ *
+ * That mutant survived the FIRST time it was run, and the reason is recorded in
+ * that test: its fixture gave the lifter one entered meet and one result on the
+ * same day, so `lastEntryDayIndex` and `lastResultDayIndex` were the same number
+ * and writing one over the other changed nothing. The claim was accurate, the
+ * assertion was real, and the domain could not reach the failing case.
  */
 export function lifterWithStanding<Total>(
   lifter: CareerLifter<Total>,
@@ -507,6 +538,14 @@ export function lifterWithStanding<Total>(
  * `total >= requiredKg`; not true of, say, a band. A total is named by its
  * index rather than by its value, because a `Total` is opaque here and
  * stringifying one would be this module looking inside it.
+ *
+ * MUTATION WITNESS for that last sentence, which used to be enforced by nothing.
+ * Mutant, on the fault message below: `career: the injected gate admits total
+ * ${total} at ${tiers[high]} but refuses it at `. Reddened, in
+ * `careerOpacity.test.ts`: `expect(faults.join('\n')).not.toMatch(new
+ * RegExp(String(HUGE_TOTAL_KG)))` inside `asks the gate about a numeric total
+ * rather than ordering totals itself`, and `expect(findings.join('\n')).toBe('')`
+ * inside `finds nothing in any shipped module`.
  */
 export function careerGateFaults<Total>(
   gate: CareerQualifyingGate<Total>,
