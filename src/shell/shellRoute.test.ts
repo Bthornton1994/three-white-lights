@@ -33,6 +33,7 @@ import {
   resolveEntry,
   sessionEntryFrom,
   shellAffordanceFor,
+  shellEmpireAffordanceFor,
   type ShellIntent,
   type ShellRoute,
   type ShellSurface,
@@ -183,6 +184,24 @@ describe('a player can get from the daily session to a meet, and back', () => {
     }
     expect(sources).toEqual(['player', 'player', 'player']);
   });
+
+  it('THE SESSION -> EMPIRE ROUTE EXISTS AND IS A PATH, NOT A COMPONENT', () => {
+    const path = pathBetween('session', 'empire');
+    expect(path, 'a player cannot reach Gym Empire at all').not.toBeNull();
+    expect(path).toEqual(['open-empire']);
+  });
+
+  it('and the way back from Empire exists too', () => {
+    expect(pathBetween('empire', 'session')).toEqual(['leave-empire']);
+  });
+
+  it('Empire round-trips to the daily session without a debug URL', () => {
+    let route = DEFAULT_ROUTE;
+    for (const intent of pathBetween('session', 'empire') ?? []) route = navigate(route, intent);
+    expect(route.surface).toBe('empire');
+    for (const intent of pathBetween('empire', 'session') ?? []) route = navigate(route, intent);
+    expect(route).toEqual({ surface: 'session', source: 'player' });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -202,10 +221,20 @@ describe('the route graph', () => {
     expect(edges).toEqual({
       'session --open-meet-->': 'meet',
       'session --leave-meet-->': 'session',
+      'session --open-empire-->': 'empire',
+      'session --leave-empire-->': 'session',
       'meet --open-meet-->': 'meet',
       'meet --leave-meet-->': 'session',
+      'meet --open-empire-->': 'meet',
+      'meet --leave-empire-->': 'meet',
       'replay --open-meet-->': 'replay',
       'replay --leave-meet-->': 'replay',
+      'replay --open-empire-->': 'replay',
+      'replay --leave-empire-->': 'replay',
+      'empire --open-meet-->': 'empire',
+      'empire --leave-meet-->': 'empire',
+      'empire --open-empire-->': 'empire',
+      'empire --leave-empire-->': 'session',
     });
   });
 
@@ -219,8 +248,15 @@ describe('the route graph', () => {
     // it would be reaching a screenshot rig.
     expect(playerReachableFrom('session')).not.toContain('replay');
     expect(playerReachableFrom('meet')).not.toContain('replay');
+    expect(playerReachableFrom('empire')).not.toContain('replay');
     expect(pathBetween('session', 'replay')).toBeNull();
     expect(pathBetween('meet', 'replay')).toBeNull();
+    expect(pathBetween('empire', 'replay')).toBeNull();
+  });
+
+  it('a player on the daily session can reach Empire without a URL', () => {
+    expect(playerReachableFrom('session')).toContain('empire');
+    expect(playerReachableFrom('empire')).toContain('session');
   });
 
   it('playerReachableFrom is the closure of navigate, not a second list', () => {
@@ -334,6 +370,27 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
     expect(shellAffordanceFor(AS_PLAYER('replay'), null)).toBe(null);
     expect(shellAffordanceFor(AS_PLAYER('replay'), 'check-in')).toBe(null);
     expect(shellAffordanceFor(AS_PLAYER('replay'), 'recap')).toBe(null);
+  });
+
+  it('THE WAY TO EMPIRE IS ON THE SAME SESSION BEATS AS MEET DAY', () => {
+    expect(shellEmpireAffordanceFor(SESSION, 'check-in')).toBe('open-empire');
+    expect(shellEmpireAffordanceFor(SESSION, 'briefing')).toBe('open-empire');
+    expect(shellEmpireAffordanceFor(SESSION, 'close-out')).toBe('open-empire');
+    expect(shellEmpireAffordanceFor(SESSION, 'set')).toBe(null);
+    expect(shellEmpireAffordanceFor(SESSION, 'rest')).toBe(null);
+  });
+
+  it('THE WAY BACK FROM EMPIRE IS ON THE FLOOR BEAT', () => {
+    expect(shellEmpireAffordanceFor(AS_PLAYER('empire'), 'floor')).toBe('leave-empire');
+    expect(shellEmpireAffordanceFor(AS_PLAYER('empire'), null)).toBe(null);
+    expect(shellEmpireAffordanceFor(MEET, 'recap')).toBe(null);
+    expect(shellEmpireAffordanceFor(SESSION, 'recap')).toBe(null);
+  });
+
+  it('a live cut-in takes the Empire chrome off too', () => {
+    expect(shellEmpireAffordanceFor(SESSION, 'check-in', 'live')).toBe(null);
+    expect(shellEmpireAffordanceFor(AS_PLAYER('empire'), 'floor', 'live')).toBe(null);
+    expect(shellEmpireAffordanceFor(SESSION, 'check-in', 'none')).toBe('open-empire');
   });
 
   it('every beat of the game is in the answer sheet, and answers as written', () => {

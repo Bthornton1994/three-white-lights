@@ -4,19 +4,22 @@
  * ```
  *   launch (no URL)
  *     -> SESSION      GDD §3.2's daily loop, straight onto the check-in
- *          [MEET DAY] -> MEET   GDD §6, weigh-in through recap and result card
- *                          [BACK TO TRAINING] -> SESSION
+ *          [MEET DAY]    -> MEET     GDD §6, weigh-in through recap and result card
+ *                              [BACK TO TRAINING] -> SESSION
+ *          [GYM EMPIRE]  -> EMPIRE   GDD §5 floor (Session C shell slice)
+ *                              [BACK TO TRAINING] -> SESSION
  * ```
  *
  * ---------------------------------------------------------------------------
  * WHAT THIS FILE IS AND IS NOT
  * ---------------------------------------------------------------------------
  * It is a ROUTER and a piece of CHROME, and nothing else. It holds which
- * surface is up, draws exactly one affordance over it, and hands frozen debug
- * frames to the screens that were given them. It computes no game state, reads
- * no progression fact, and writes none — every number in the app still comes
- * back through `progression.ts`'s read accessors from a server body, and the
- * shell never sees one.
+ * surface is up, draws the affordances that move between them, and hands frozen
+ * debug frames to the screens that were given them. It computes no game state,
+ * reads no progression fact, and writes none — every number in the app still
+ * comes back through `progression.ts`'s read accessors from a server body, and
+ * the shell never sees one. The Empire surface reads idle-local state only; it
+ * does not pay into the pooled wallet.
  *
  * In particular THE SHELL SHOWS NO TOTAL and no e1RM. GDD §3.2 and §6.4 put
  * Total on meet day and no other day; a Total in persistent chrome would be on
@@ -31,7 +34,8 @@
  * mode is a ROUTE", and put `onLeave` here rather than inside `MeetScreen`. The
  * way IN is the same kind of thing. Keeping both here means `SessionScreen` and
  * `MeetScreen` stay renderers that know nothing about each other — which is
- * also why neither had to learn about the other to make this work.
+ * also why neither had to learn about the other to make this work. Empire is
+ * the same shape.
  *
  * The screens report which BEAT they are on, and the shell draws nothing
  * outside the beats `SHELL_NAV` lists. That gate is the whole reason a
@@ -44,22 +48,25 @@
  * top of the interrupt and takes the tap that was meant to dismiss it. §7.2
  * says a cut-in is always skippable and the whole screen is the target. The
  * hosts therefore report whether one is live, exactly as the screens report
- * their beat, and no chrome is drawn while one is.
+ * their beat, and no chrome is drawn while one is. Empire has no cut-in host in
+ * this slice; session and meet still do.
  *
  * ---------------------------------------------------------------------------
  * WHAT IS DELIBERATELY MISSING: THE CAREER CALENDAR (GDD §6.1)
  * ---------------------------------------------------------------------------
  * §6.1 enters a meet by selecting one from a Career calendar — local, regional,
  * nationals, worlds — GATED BY QUALIFYING TOTALS, after a weigh-in beat. Career
- * mode is zero files, and inventing a fake calendar here would be inventing the
- * gate too. So this is ONE UNGATED DOOR to the ONE local meet that exists.
+ * mode is zero files on this branch, and inventing a fake calendar here would
+ * be inventing the gate too. So meet day remains ONE UNGATED DOOR to the ONE
+ * local meet that exists. Session C's claim is Empire shell wiring, not Career.
  *
  * When Career lands, three things change and all three are in this file or the
  * module beside it: `open-meet` points at the calendar instead of `MeetScreen`;
  * the calendar reads the qualifying-total gate off the server (a Total is a
  * server fact, so the gate is a server decision, not a client `if`); and the
  * meet the player picks is passed to `MeetScreen` as context instead of it
- * building `MEET_LOCAL` itself. Nothing about the route graph changes.
+ * building `MEET_LOCAL` itself. Nothing about the route graph's Empire edges
+ * changes for that piece.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -71,6 +78,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { EmpireScreen } from './EmpireScreen';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen } from '../meet/MeetScreen';
@@ -82,9 +90,10 @@ import {
   navigate,
   resolveEntry,
   shellAffordanceFor,
+  shellEmpireAffordanceFor,
   type ShellIntent,
 } from './shellRoute';
-import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV } from './shellTuning';
+import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV, type EmpirePhase } from './shellTuning';
 import type { MeetDayPhaseId } from '../game/meetDay';
 import type { SessionPhase } from '../game/session';
 
@@ -100,6 +109,14 @@ const INTENT_COPY: Readonly<Record<ShellIntent, { readonly label: string; readon
     'leave-meet': Object.freeze({
       label: SHELL_COPY.LEAVE_MEET_LABEL,
       hint: SHELL_COPY.LEAVE_MEET_HINT,
+    }),
+    'open-empire': Object.freeze({
+      label: SHELL_COPY.EMPIRE_NAV_LABEL,
+      hint: SHELL_COPY.EMPIRE_NAV_HINT,
+    }),
+    'leave-empire': Object.freeze({
+      label: SHELL_COPY.LEAVE_EMPIRE_LABEL,
+      hint: SHELL_COPY.LEAVE_EMPIRE_HINT,
     }),
   });
 
@@ -129,7 +146,7 @@ function ShellNav({
   const style = useAnimatedStyle(() => ({ opacity: shown.value }));
   const copy = INTENT_COPY[intent];
   return (
-    <Animated.View style={[styles.navSlot, style]} pointerEvents="box-none">
+    <Animated.View style={style} pointerEvents="box-none">
       <Pressable
         style={styles.nav}
         accessibilityRole="button"
@@ -185,6 +202,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // what CLAUDE.md forbids.
   const [sessionPhase, setSessionPhase] = useState<SessionPhase | null>(null);
   const [meetPhase, setMeetPhase] = useState<MeetDayPhaseId | null>(null);
+  const [empirePhase, setEmpirePhase] = useState<EmpirePhase | null>(null);
 
   // WHETHER A GDD §7.2 CUT-IN IS UP, reported by whichever `CutInHost` is
   // mounted. The shell draws NO chrome while one is — see `shellAffordanceFor`
@@ -216,13 +234,42 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
     setCutInLive(false);
     setRoute((current) => navigate(current, 'leave-meet'));
   }, []);
+  const openEmpire = useCallback(() => {
+    setEmpirePhase(null);
+    setCutInLive(false);
+    setRoute((current) => navigate(current, 'open-empire'));
+  }, []);
+  const leaveEmpire = useCallback(() => {
+    setSessionPhase(null);
+    setCutInLive(false);
+    setRoute((current) => navigate(current, 'leave-empire'));
+  }, []);
 
-  const affordance = shellAffordanceFor(
-    route,
-    route.surface === 'meet' ? meetPhase : route.surface === 'session' ? sessionPhase : null,
-    cutInLive ? 'live' : 'none',
-  );
+  const surfacePhase =
+    route.surface === 'meet'
+      ? meetPhase
+      : route.surface === 'session'
+        ? sessionPhase
+        : route.surface === 'empire'
+          ? empirePhase
+          : null;
+  const cutIn: 'live' | 'none' = cutInLive ? 'live' : 'none';
+  const affordance = shellAffordanceFor(route, surfacePhase, cutIn);
+  const empireAffordance = shellEmpireAffordanceFor(route, surfacePhase, cutIn);
   const meetFrame = frozenMeetFor(entry, route);
+
+  const pressFor = (intent: ShellIntent): (() => void) => {
+    switch (intent) {
+      case 'open-meet':
+        return openMeet;
+      case 'leave-meet':
+        return leaveMeet;
+      case 'open-empire':
+        return openEmpire;
+      case 'leave-empire':
+        return leaveEmpire;
+    }
+  };
 
   return (
     <View style={styles.root} testID="app-shell">
@@ -251,6 +298,8 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           onCutIn={setCutInLive}
           cutInSearch={search}
         />
+      ) : route.surface === 'empire' ? (
+        <EmpireScreen onPhase={setEmpirePhase} />
       ) : route.surface === 'replay' && entry.replay !== undefined ? (
         <LiftScreen replay={entry.replay} />
       ) : (
@@ -263,14 +312,19 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
         />
       )}
 
-      {affordance === null ? null : (
-        <ShellNav
-          // Remounts when the intent changes, so the fade plays for each
-          // affordance rather than only for the first one of the app's life.
-          key={affordance}
-          intent={affordance}
-          onPress={affordance === 'open-meet' ? openMeet : leaveMeet}
-        />
+      {affordance === null && empireAffordance === null ? null : (
+        <View style={styles.navSlot} pointerEvents="box-none">
+          {affordance === null ? null : (
+            <ShellNav key={affordance} intent={affordance} onPress={pressFor(affordance)} />
+          )}
+          {empireAffordance === null ? null : (
+            <ShellNav
+              key={empireAffordance}
+              intent={empireAffordance}
+              onPress={pressFor(empireAffordance)}
+            />
+          )}
+        </View>
       )}
     </View>
   );
@@ -285,7 +339,8 @@ const styles = StyleSheet.create({
    * A full-width strip pinned to the bottom, so the pill centres itself without
    * needing to know how wide it is. `box-none` on the strip: only the pill
    * itself takes touches, and the rest of the band stays transparent to the
-   * screen underneath.
+   * screen underneath. When both meet and Empire are offered, the strip is a
+   * row.
    */
   navSlot: {
     position: 'absolute',
@@ -293,6 +348,9 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: L.NAV_BOTTOM_INSET,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: L.NAV_GAP,
   },
   nav: {
     height: L.NAV_HEIGHT,

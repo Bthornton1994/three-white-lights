@@ -47,6 +47,16 @@ import type { SessionPhase } from '../game/session';
  * a second button on it would clutter the one screen the GDD asks to be left
  * alone.
  */
+/**
+ * The one beat the Empire surface reports today.
+ *
+ * Empire has no choreography yet — Session C's first shell slice is a floor
+ * view over `createEmpireState()`, not a multi-beat mode. The shell still asks
+ * for a beat so the leave control uses the same gate as meet/session rather
+ * than a special case, and so a stale beat cannot flash on the way in.
+ */
+export type EmpirePhase = 'floor';
+
 export const SHELL_NAV = Object.freeze({
   SESSION_PHASES: Object.freeze([
     'check-in',
@@ -55,6 +65,8 @@ export const SHELL_NAV = Object.freeze({
   ] as const satisfies readonly SessionPhase[]),
 
   MEET_PHASES: Object.freeze(['recap'] as const satisfies readonly MeetDayPhaseId[]),
+
+  EMPIRE_PHASES: Object.freeze(['floor'] as const satisfies readonly EmpirePhase[]),
 
   /**
    * How long the pill takes to arrive.
@@ -86,8 +98,21 @@ export const SHELL_LAYOUT = Object.freeze({
   NAV_BORDER: 1,
   NAV_FONT: 11,
   NAV_LETTER_SPACING: 2,
+  /** Gap between two pills when the session offers both meet day and Empire. */
+  NAV_GAP: 10,
   /** Widens the touch target past the drawn pill, for a thumb. */
   NAV_HIT_SLOP: 14,
+
+  /** Empire floor — padding and type. Feel starting points, not playtested. */
+  EMPIRE_PAD_H: 28,
+  EMPIRE_PAD_TOP: 72,
+  EMPIRE_TITLE_FONT: 22,
+  EMPIRE_TITLE_TRACK: 3,
+  EMPIRE_BODY_FONT: 14,
+  EMPIRE_BODY_LINE: 22,
+  EMPIRE_STAT_GAP: 14,
+  EMPIRE_STAT_LABEL_FONT: 11,
+  EMPIRE_STAT_VALUE_FONT: 20,
 });
 
 /**
@@ -110,4 +135,21 @@ export const SHELL_COPY = Object.freeze({
   /** Meet surface -> back to the daily loop. */
   LEAVE_MEET_LABEL: 'BACK TO TRAINING',
   LEAVE_MEET_HINT: 'Returns to the daily session.',
+
+  /** Session surface -> Gym Empire floor (GDD §5). */
+  EMPIRE_NAV_LABEL: 'GYM EMPIRE',
+  EMPIRE_NAV_HINT: 'Opens the gym empire floor.',
+
+  /** Empire surface -> back to the daily loop. */
+  LEAVE_EMPIRE_LABEL: 'BACK TO TRAINING',
+  LEAVE_EMPIRE_HINT: 'Returns to the daily session.',
+
+  /** Empire floor copy — no federation, brand, or athlete names (§7.3 / §12.3). */
+  EMPIRE_TITLE: 'GYM EMPIRE',
+  EMPIRE_LEAD:
+    'Your gym on opening day. Idle production is live in code; this screen reads it.',
+  EMPIRE_STAT_BUCKS: 'GYM BUCKS',
+  EMPIRE_STAT_REP: 'REPUTATION',
+  EMPIRE_STAT_ROSTER: 'ROSTER',
+  EMPIRE_STAT_EQUIPMENT: 'EQUIPMENT',
 });

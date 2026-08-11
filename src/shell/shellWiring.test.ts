@@ -87,12 +87,14 @@ describe('the scans can see what they are looking for', () => {
 // ---------------------------------------------------------------------------
 
 describe('the shell is the join, and it is the only one', () => {
-  it('renders both surfaces — the two halves of the loop are in one file', () => {
+  it('renders the session, meet, and Empire surfaces — the join is in one file', () => {
     expect(SHELL).toMatch(/\bSessionScreen\b/);
     expect(SHELL).toMatch(/\bMeetScreen\b/);
+    expect(SHELL).toMatch(/\bEmpireScreen\b/);
     expect(SHELL).toMatch(/from ''/); // imports survived the stripper
     expect(source('src/shell/AppShell.tsx')).toMatch(/from '\.\.\/meet\/MeetScreen'/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/from '\.\.\/session\/SessionScreen'/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/from '\.\/EmpireScreen'/);
   });
 
   it('the two screens still know nothing about each other', () => {
@@ -114,6 +116,8 @@ describe('the shell is the join, and it is the only one', () => {
     expect(SHELL).toMatch(/\bopen-meet\b|''/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'open-meet'\)/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'leave-meet'\)/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'open-empire'\)/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'leave-empire'\)/);
     expect(SHELL).not.toMatch(/setRoute\(\{/);
   });
 
@@ -122,7 +126,7 @@ describe('the shell is the join, and it is the only one', () => {
     // Without these, a meet opened after a previous one ended shows the recap's
     // "way back" over its weigh-in for a frame.
     //
-    // The cut-in flag is cleared in the same two places and for the same
+    // The cut-in flag is cleared in the same places and for the same
     // reason — the host on the surface being left un-mounts — so the pattern
     // now allows anything BETWEEN the phase reset and the navigate, and the
     // test above pins that what is in there is `setCutInLive(false)`.
@@ -131,6 +135,9 @@ describe('the shell is the join, and it is the only one', () => {
     );
     expect(SHELL).toMatch(
       /setSessionPhase\(null\);[\s\S]{0,80}?setRoute\(\(current\) => navigate\(current, ''\)\)/,
+    );
+    expect(SHELL).toMatch(
+      /setEmpirePhase\(null\);[\s\S]{0,80}?setRoute\(\(current\) => navigate\(current, ''\)\)/,
     );
     // ...and the reset still has to be there: a `setRoute` with no phase reset
     // before it does not match, which is the failure this exists for.
@@ -176,9 +183,10 @@ describe('the shell is the join, and it is the only one', () => {
 
   it('asks `shellAffordanceFor` when to draw a control, and draws only that', () => {
     expect(SHELL).toMatch(/shellAffordanceFor\(/);
+    expect(SHELL).toMatch(/shellEmpireAffordanceFor\(/);
     // The gate must be the thing that decides, so the pill cannot be rendered
     // unconditionally next to it.
-    expect(SHELL).toMatch(/affordance === null \? null :/);
+    expect(SHELL).toMatch(/affordance === null && empireAffordance === null \? null :/);
   });
 
   it('tells the gate whether a GDD §7.2 cut-in is up, and is told by the hosts', () => {
@@ -203,7 +211,7 @@ describe('the shell is the join, and it is the only one', () => {
     expect(HOST).toMatch(/onLive\?\.\(false\)/);
     // And the flag is cleared on the way between surfaces, like the phases, so
     // a host that un-mounted mid-cut-in cannot leave the next screen bare.
-    expect(source('src/shell/AppShell.tsx').match(/setCutInLive\(false\)/g)?.length).toBe(2);
+    expect(source('src/shell/AppShell.tsx').match(/setCutInLive\(false\)/g)?.length).toBe(4);
     // The scans can see what they are looking for, and can see it change.
     expect(codeOnly("const a = x ? 'live' : 'none';")).toMatch(/x \? '' : ''/);
     expect(codeOnly('onLive?.(true);')).not.toMatch(/onLive\?\.\(live !== null\)/);
