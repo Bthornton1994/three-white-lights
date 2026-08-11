@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
 import path from 'node:path';
 
+import { contentionScale } from './tools/testBudget.mjs';
+
 // Pure game-math modules only. These have zero React imports and zero I/O
 // (see CLAUDE.md "Pure logic is separate from UI"), so a plain node
 // environment is correct and keeps the suite fast.
@@ -69,6 +71,33 @@ import path from 'node:path';
  */
 const TEST_TIMEOUT_MS = 30_000;
 
+/**
+ * THE GLOBAL IS MULTIPLIED BY THE SAME MEASURED SCALE THE DECLARED BUDGETS USE,
+ * AND THAT IS NOT THE RAISE THE PARAGRAPHS ABOVE REFUSE.
+ *
+ * The refusal is of a STATIC raise: 90 s handed to three thousand millisecond
+ * tests on every run, idle or not, so the next genuine hang sits there for a
+ * minute and a half. This multiplies by `contentionScale()`, which is 1.00 on
+ * an unshared box — measured, not hoped: the probe reads a share of exactly
+ * 1.000 idle. So the idle behaviour of this file is byte-for-byte what it was,
+ * and the number only moves when the machine is measurably slower.
+ *
+ * WHAT FORCED IT, because it was not in the first version of this repair.
+ * A full suite run at `a4fd5c0` while another session held these four cores at
+ * load average 10-12.6 took 1969 s against 414 s idle — 4.75x — and failed
+ * three tests. Every test with a DECLARED budget passed, including one at
+ * 275 s. All three failures were here, against this number, and all three are
+ * tests whose idle duration is below `DECLARE_ABOVE_MS` and which therefore
+ * correctly have no declaration: 4.75x is simply more than the 4x of margin
+ * this number represents for them.
+ *
+ * Sampled once, in the main process, before the workers exist — so a load that
+ * arrives after the config is read is not seen here. That is the same hole
+ * `tools/testBudget.mjs` declares for the per-test scale, one level up, and it
+ * is the reason this is a multiplier on a measurement rather than a promise.
+ */
+const CONTENTION_SCALE = contentionScale();
+
 export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
@@ -91,7 +120,7 @@ export default defineConfig({
      */
     include: ['src/**/*.test.ts', 'tools/**/*.test.ts'],
     exclude: ['node_modules/**', '.expo/**', 'dist/**'],
-    testTimeout: TEST_TIMEOUT_MS,
+    testTimeout: Math.round(TEST_TIMEOUT_MS * CONTENTION_SCALE),
     coverage: {
       provider: 'v8',
       include: ['src/game/**/*.ts', 'src/tuning/**/*.ts'],

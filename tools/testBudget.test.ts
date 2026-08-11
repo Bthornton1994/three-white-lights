@@ -54,8 +54,67 @@ function filesDeclaringBudgets(): readonly string[] {
   return found.sort();
 }
 
+/**
+ * Source with comments and string literals blanked, every offset and newline
+ * kept, so a pattern can be counted in code without its own documentation
+ * answering for it.
+ *
+ * WRITTEN AS A SCANNER RATHER THAN AS REGEXES, because two regex orderings were
+ * tried and both were wrong on this very file. Comments-first opens a block at
+ * the `/*` inside `'node_modules/**'` and blanks everything after it.
+ * Strings-first pairs a backtick in one prose sentence with a backtick in
+ * another and eats the `* /` between them, which blanks the two `const`
+ * declarations this test reads. Both failures LOOKED like the mutation working:
+ * the count went to zero and the test went red for a reason that had nothing to
+ * do with the subject.
+ *
+ * What it does not handle: a regex literal, which this config has none of. If
+ * one appears, `/` inside it will read as a comment and this will blank code.
+ */
+function codeOnly(source: string): string {
+  let out = '';
+  let state: 'code' | 'line' | 'block' | "'" | '"' | '`' = 'code';
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index] as string;
+    const next = source[index + 1] ?? '';
+    const keep = (): void => {
+      out += char === '\n' ? '\n' : state === 'code' ? char : ' ';
+    };
+    if (state === 'code') {
+      if (char === '/' && next === '/') state = 'line';
+      else if (char === '/' && next === '*') state = 'block';
+      else if (char === "'" || char === '"' || char === '`') state = char;
+      if (state !== 'code') {
+        out += ' ';
+        continue;
+      }
+      keep();
+    } else if (state === 'line') {
+      if (char === '\n') state = 'code';
+      keep();
+    } else if (state === 'block') {
+      if (char === '*' && next === '/') {
+        out += '  ';
+        index += 1;
+        state = 'code';
+        continue;
+      }
+      keep();
+    } else {
+      if (char === '\\') {
+        out += '  ';
+        index += 1;
+        continue;
+      }
+      if (char === state) state = 'code';
+      keep();
+    }
+  }
+  return out;
+}
+
 describe('the rule that derives a per-test budget', () => {
-  it('mirrors the global budget in vitest.config.ts, read from its source', () => {
+  it('mirrors the global budget in vitest.config.ts, and that global is scaled too', () => {
     // Red if either number moves without the other. That matters because
     // `budgetFrom` floors at the global: raise the global there alone and every
     // derived budget here silently becomes a floor it no longer is.
@@ -63,6 +122,27 @@ describe('the rule that derives a per-test budget', () => {
     const declared = /const TEST_TIMEOUT_MS = ([0-9_]+);/.exec(config);
     expect(declared, 'vitest.config.ts declares TEST_TIMEOUT_MS').not.toBeNull();
     expect(Number((declared?.[1] ?? '').replace(/_/g, ''))).toBe(SWEEP_BUDGET.GLOBAL_MS);
+
+    // And the global is multiplied by the same measured scale the declared
+    // budgets use. Three tests timed out against the UNSCALED global while
+    // every declared budget in the same run held, so this line is the repair
+    // for that and not decoration.
+    //
+    // COUNTED, NOT MATCHED. A source pin whose pattern has a second witness in
+    // the file passes on a mutation that only touches the first, which this
+    // repository has been bitten by; `testTimeout` appears in this file's prose
+    // as well as in its code, so what is asserted is that exactly one line
+    // assigns it and that that line carries the scale.
+    // Over CODE ONLY, because this file's own prose names `contentionScale()`
+    // and a count over the raw source read 2 — the check finding a second
+    // witness in its own subject before it had a chance to find one anywhere
+    // else.
+    const code = codeOnly(config);
+    const assignments = [...code.matchAll(/^\s*testTimeout:.*$/gm)].map((row) => row[0].trim());
+    expect(assignments.length, `testTimeout assignments: ${assignments.join(' | ')}`).toBe(1);
+    expect(assignments[0]).toContain('TEST_TIMEOUT_MS');
+    expect(assignments[0]).toContain('CONTENTION_SCALE');
+    expect([...code.matchAll(/contentionScale\(\)/g)].length, 'scale read once').toBe(1);
   });
 
   it('multiplies, rounds up, and never returns a budget tighter than the global', () => {
