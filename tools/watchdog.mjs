@@ -28,9 +28,9 @@
  * a notification."* Prose is not a check. This is the check.
  *
  * ===========================================================================
- * TWO MODES, FOR TWO DIFFERENT FAILURES
+ * THREE MODES, FOR THREE DIFFERENT FAILURES
  * ===========================================================================
- *   --budget <seconds> -- <command...>
+ *   --budget <seconds> [--label <name>] -- <command...>
  *       Runs the command under a hard wall-clock cap. On breach it kills the
  *       whole process group and exits 2 with a message naming the budget, the
  *       command and the elapsed time. This is the guard that was ASKED for. It
@@ -40,13 +40,28 @@
  *       under load — but note that it would NOT have caught the failure above,
  *       because there was no process to time out.
  *
+ *       IT ALSO WRITES AN INCOMPLETE MARKER BEFORE THE COMMAND STARTS, and
+ *       replaces it with a verdict only when one exists. See
+ *       `verifyMarker.mjs`, which holds the ruling and the reasoning; the two
+ *       sentences that matter here are that the write happens BEFORE the spawn
+ *       and that a timeout, a signal or a spawn failure leaves the marker
+ *       standing. A run that stops existing is the failure this pair is about
+ *       from two directions: the loud one kills a hang, the quiet one makes an
+ *       interrupted run visible after everything that could report it is dead.
+ *
  *   --branches [--stale-minutes N]
  *       Lists every `claude/*` branch not merged into HEAD, with the age of its
  *       last commit, and exits 1 if any exceeds the threshold. THIS is the mode
  *       aimed at what actually happened: a branch with commits and no progress
  *       is either a dead agent or a finished one nobody merged, and both need a
  *       human's eye. It reads commit age because that is the one signal that
- *       survives the agent, the container and the notification.
+ *       survives the agent, the container and the notification. It ALSO reports
+ *       the marker scan below, because that is the command a wave already runs.
+ *
+ *   --markers [--clear-stale]
+ *       Reports every verification marker and exits 1 if any is a finding — an
+ *       interrupted run, or one this machine cannot resolve. Same scan as the
+ *       section inside `--branches`, from the same function, not a second copy.
  *
  * ===========================================================================
  * WHAT THIS CANNOT DO — stated, because a partial mechanism that declares its
@@ -60,10 +75,25 @@
  *     commit early, which is a brief-writing habit and not a tool.
  *   - `--budget` bounds WALL CLOCK, not progress. A command that prints a line
  *     a second forever and finishes inside the budget passes.
+ *   - THE MARKER SCAN ONLY SEES VERIFICATIONS THAT WERE WRAPPED. A suite run
+ *     started by hand writes no marker, so its interruption is as silent as it
+ *     ever was. That is a coverage limit of the discipline, not of the scan.
  */
 import { spawn, execFileSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  VERIFY_MARKER,
+  beginMarker,
+  clearStale,
+  finishMarker,
+  formatMarkerReport,
+  scanMarkers,
+} from './verifyMarker.mjs';
+
+/** This tool is run from anywhere; the marker directory is the repo's. */
+const ROOT = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
 
 const argv = process.argv.slice(2);
 const has = (flag) => argv.includes(flag);
@@ -364,6 +394,12 @@ function branches() {
   const silent = silentWorktrees(git, head, now, archives);
   reportSilentWorktrees(silent, withAge.length);
 
+  // THE THIRD QUESTION A WAVE ASKS, ANSWERED BY THE SAME COMMAND. A verification
+  // that stopped existing is the same class of failure as an agent that stopped
+  // existing, one layer down, and this is the command the lead already runs at
+  // the end of a wave.
+  const markerFindings = markerSection().findings.length;
+
   // NON-VACUITY. An empty branch list satisfies "nothing is stale" and would
   // report success on a repository where every branch had been pruned — the
   // emptiest possible pass. Say so rather than printing a green line.
@@ -371,23 +407,64 @@ function branches() {
     console.log('\nNo unmerged claude/* branches exist, so this run checked NOTHING against');
     console.log('COMMIT AGE. That is a vacuous pass, not a clean one, and it is reported as');
     console.log('such — see [worktrees] above for the part that is not vacuous.');
-    // Exit on what is ACTIONABLE, not on what is merely listed. 25 worktrees
-    // exist because nothing prunes them; that is litter, not a finding, and
-    // exiting 1 on it makes the whole check a permanent non-zero nobody reads.
-    // A worktree carrying uncommitted work no archive holds IS actionable: it
-    // is the only copy of something.
-    const unarchived = silent.filter((r) => (r.dirty ?? 0) > 0 && !r.archived).length;
-    return unarchived > 0 ? 1 : 0;
-  }
-
-  if (stale.length > 0) {
+  } else if (stale.length > 0) {
     console.log(`\n!! ${stale.length} branch(es) have not moved in over ${staleMinutes} minutes.`);
     console.log('   A branch with commits and no progress is a dead agent or a finished one');
     console.log('   nobody merged. Both need a look; neither announces itself.');
-    return 1;
+  } else {
+    console.log(`\nAll ${withAge.length} moved within ${staleMinutes} minutes.`);
   }
-  console.log(`\nAll ${withAge.length} moved within ${staleMinutes} minutes.`);
-  return 0;
+
+  // ONE EXIT COMPUTATION FOR THREE FINDINGS, deliberately not three returns.
+  // This WAS three returns, and adding a fourth finding to that shape means
+  // remembering it on each — the arm that gets forgotten is always the quiet
+  // one, which here is the vacuous-pass arm a repository with no unmerged
+  // branches takes. Both markers and branches are now decided in one place.
+  //
+  // Exit on what is ACTIONABLE, not on what is merely listed. 25 worktrees exist
+  // because nothing prunes them; that is litter, not a finding, and exiting 1 on
+  // it makes the whole check a permanent non-zero nobody reads. A worktree
+  // carrying uncommitted work no archive holds IS actionable: it is the only
+  // copy of something. So is an interrupted verification.
+  //
+  // THE `withAge.length === 0` GUARD ON `unarchived` IS THE ORIGINAL BEHAVIOUR
+  // AND IS PRESERVED RATHER THAN FIXED. As written, uncommitted-only-copy work
+  // is actionable when no branch is unmerged and silently is not when one is,
+  // which reads like an asymmetry nobody chose. Changing it is a change to the
+  // worktree guard, not to the marker one, and it would turn somebody else's
+  // litter into a permanent non-zero on this wave's runs. Noted here rather
+  // than altered underneath the piece that noticed it.
+  const unarchived = silent.filter((r) => (r.dirty ?? 0) > 0 && !r.archived).length;
+  const worktreeFinding = withAge.length === 0 && unarchived > 0;
+  return stale.length > 0 || worktreeFinding || markerFindings > 0 ? 1 : 0;
+}
+
+/**
+ * THE MARKER SCAN, IN ONE FUNCTION WITH TWO CALLERS.
+ *
+ * `--markers` and the section inside `--branches` are the same question and are
+ * therefore the same code. Writing the second one as a copy of the first is the
+ * defect this repository has recorded four times — a guard written for one arm
+ * and not applied to the sibling immediately below it — and the distance keeps
+ * shrinking, so the two callers here read this rather than resembling it.
+ */
+function markerSection({ clear = false, nowMs = Date.now() } = {}) {
+  const scan = scanMarkers({ root: ROOT, nowMs });
+  console.log(formatMarkerReport(scan));
+  if (clear) {
+    const removed = clearStale(scan);
+    for (const p of removed) console.log(`     cleared ${p}`);
+    // CLEARING IS NOT RESOLVING, and the exit code says so: the findings were
+    // real, they were read, and the record of them is now gone. The next run
+    // starts clean; this one still reports what it found.
+    console.log(`     ${removed.length} record(s) removed. A LIVE marker is never among them.`);
+  }
+  return scan;
+}
+
+async function markers() {
+  const scan = markerSection({ clear: has('--clear-stale') });
+  return scan.findings.length > 0 ? 1 : 0;
 }
 
 async function budget() {
@@ -395,11 +472,26 @@ async function budget() {
   const sep = argv.indexOf('--');
   const command = sep === -1 ? [] : argv.slice(sep + 1);
   if (!Number.isFinite(seconds) || seconds <= 0 || command.length === 0) {
-    console.error('usage: node tools/watchdog.mjs --budget <seconds> -- <command...>');
+    console.error('usage: node tools/watchdog.mjs --budget <seconds> [--label <name>] -- <command...>');
     return 2;
   }
 
   const startedAt = Date.now();
+  // ---------------------------------------------------------------------
+  // BEFORE THE SPAWN. Nothing may go between this and the `spawn` below: a
+  // marker written after the command returns is exactly the artifact that
+  // vanishes when the container does, which is incident 1 in
+  // `verifyMarker.mjs`'s header. `tools/verifyMarker.test.ts` proves the
+  // ordering by having the WRAPPED COMMAND read the marker directory.
+  // ---------------------------------------------------------------------
+  const { markerPath } = beginMarker({
+    root: ROOT,
+    command,
+    budgetSeconds: seconds,
+    label: valueOf('--label', null),
+    nowMs: startedAt,
+  });
+
   // `detached` so the kill reaches the whole group: vitest and playwright both
   // fork, and killing only the parent leaves the children holding the terminal,
   // which is the silent version of the failure this file is about.
@@ -415,32 +507,67 @@ async function budget() {
     }
   }, seconds * 1000);
 
-  const code = await new Promise((resolve) => {
-    child.on('exit', (c, signal) => resolve(signal !== null && timedOut ? 124 : (c ?? 1)));
-    child.on('error', (error) => {
-      console.error(`watchdog: could not start ${command[0]} — ${String(error)}`);
-      resolve(2);
-    });
+  const outcome = await new Promise((resolve) => {
+    child.on('exit', (code, signal) => resolve({ code, signal, spawnError: null }));
+    child.on('error', (error) => resolve({ code: null, signal: null, spawnError: error }));
   });
   clearTimeout(timer);
 
   const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
-  if (timedOut) {
+
+  /**
+   * FOUR OUTCOMES, ONE WRITER.
+   *
+   * Two of them are verdicts and two are interruptions, and the split is the
+   * ruling's: a FAILING run is a completed verification and clears the marker,
+   * because a red suite is loud and gets read. A run that was killed — by the
+   * budget, by somebody else's signal, or by never starting at all — leaves the
+   * status INCOMPLETE, because its result is UNKNOWN and an unknown result must
+   * never read as a pass.
+   *
+   * They are computed as one table and written once rather than as four
+   * `finishMarker` calls, so a fifth outcome cannot be added with the write
+   * forgotten on its arm.
+   */
+  const patch = outcome.spawnError !== null
+    ? { status: VERIFY_MARKER.STATUS.INCOMPLETE, interruption: VERIFY_MARKER.INTERRUPTION.COULD_NOT_START, detail: String(outcome.spawnError).slice(0, 200) }
+    : timedOut && outcome.signal !== null
+      ? { status: VERIFY_MARKER.STATUS.INCOMPLETE, interruption: VERIFY_MARKER.INTERRUPTION.BUDGET_EXCEEDED, detail: `SIGKILLed after ${elapsed}s against a ${seconds}s budget` }
+      : outcome.signal !== null
+        ? { status: VERIFY_MARKER.STATUS.INCOMPLETE, interruption: VERIFY_MARKER.INTERRUPTION.SIGNAL, detail: `killed by ${outcome.signal}` }
+        : { status: outcome.code === 0 ? VERIFY_MARKER.STATUS.PASS : VERIFY_MARKER.STATUS.FAIL, exitCode: outcome.code };
+  finishMarker(markerPath, patch);
+
+  if (outcome.spawnError !== null) {
+    console.error(`watchdog: could not start ${command[0]} — ${String(outcome.spawnError)}`);
+    console.error(`   the verification did not run; its marker stays INCOMPLETE: ${markerPath}`);
+    return 2;
+  }
+  if (timedOut && outcome.signal !== null) {
     console.error(`\n!! WATCHDOG: killed after ${elapsed}s, budget was ${seconds}s`);
     console.error(`   command: ${command.join(' ')}`);
     console.error('   The process group was SIGKILLed. This is a loud failure on purpose:');
     console.error('   a run that stops producing must not look like a run that is still going.');
+    console.error(`   marker left INCOMPLETE: ${markerPath}`);
     return 124;
   }
+  if (outcome.signal !== null) {
+    console.error(`\n!! WATCHDOG: ${command.join(' ')} was killed by ${outcome.signal} after ${elapsed}s`);
+    console.error('   That is not this budget — something else killed it. No verdict exists,');
+    console.error(`   so the marker stays INCOMPLETE: ${markerPath}`);
+    return outcome.code ?? 1;
+  }
   console.error(`watchdog: ${command.join(' ')} finished in ${elapsed}s (budget ${seconds}s)`);
-  return code;
+  console.error(`watchdog: marker ${patch.status} — ${markerPath}`);
+  return outcome.code ?? 1;
 }
 
-const mode = has('--branches') ? branches : has('--budget') ? budget : null;
+const mode = has('--branches') ? branches : has('--markers') ? markers : has('--budget') ? budget : null;
 if (mode === null) {
   console.error('usage:');
   console.error('  node tools/watchdog.mjs --branches [--stale-minutes N]');
-  console.error('  node tools/watchdog.mjs --budget <seconds> -- <command...>');
+  console.error('  node tools/watchdog.mjs --markers [--clear-stale]');
+  console.error('  node tools/watchdog.mjs --budget <seconds> [--label <name>] -- <command...>');
   process.exit(2);
 }
 process.exit(await mode());

@@ -111,6 +111,21 @@ public/canvaskit.wasm
 .gauntlet/shots/meet/*
 !.gauntlet/shots/meet/sound.json
 
+# Verification MARKERS, written inside the repo for the same reason and by the
+# same incident. `tools/watchdog.mjs --budget` writes one BEFORE it spawns the
+# command and replaces it with a verdict only when a verdict exists, so an
+# interrupted run leaves an INCOMPLETE record instead of the silent absence that
+# reads as a pass. See `tools/verifyMarker.mjs` for the ruling and the two
+# incidents.
+#
+# The directory's CONTENTS, not the directory — the reason is three paragraphs
+# below, under `.gauntlet/shots/`: git does not descend into an ignored
+# DIRECTORY, so anything that ever needs re-including from in here is
+# unreachable if the rule names the directory. Nothing needs re-including today;
+# writing it this way now costs one character and stops the next person
+# discovering the rule the way the shots one was discovered.
+.gauntlet/verify/*
+
 # Verification logs written INSIDE the repo, on purpose.
 #
 # The scratchpad under /tmp does not survive a rewind. The thirteenth one took
