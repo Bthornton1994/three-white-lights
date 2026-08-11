@@ -1760,6 +1760,25 @@ across a reload, so a lifter's first meet is the only meet with a fresh record �
 and a PR attempt needs a record to beat. The second meet of an app run is where
 one first appears, which is why the browser check drives both.
 
+**WHICH WORDS CARRY IT IS PENDING PLAYTEST, AND BOTH OPTIONS STAY LIVE.** What
+is settled above is *structural* — the sentence and the border are one decision,
+so the screen cannot say "PR" while the border disagrees in either direction.
+That does not settle the copy, and the shipped strings are a placeholder rather
+than a ruling. Deferred for the same reason as §6.2's crowd-reaction rule: this
+is a felt question about what makes an attempt choice tense, and no agent —
+builder, critic, or lead reasoning from a description — can resolve it validly.
+
+- **Option A, shipped.** `OPTION_BIG_WHY` describes the jump; a separate
+  `OPTION_PR_NOTE` lands on whichever card actually crosses the best. The PR
+  call-out goes where the PR is, and the big card stays honest on a first meet.
+- **Option B, not built.** One conditional `why` on the big card, worded
+  differently when a PR is and is not on the line, with no separate note. One
+  sentence per card, and the big card keeps the strongest line when it earns it.
+
+Neither is a defect. The defect was the sentence being unconditional, and that
+is fixed either way. A playtester picks between these two by feel, and is
+expected to — overturning Option A is a normal outcome, not a regression.
+
 After a **miss**: **repeat vs. increase**. Repeating is the safe play — the same
 weight, a second chance at banking it, nothing gained beyond what was already
 on the bar. Increasing after a miss is the aggressive one: it concedes the
@@ -1785,6 +1804,23 @@ moment — narratively honest, not a generic game-over screen, and not punitive.
 
 Recap screen: attempt-by-attempt breakdown, PR call-outs, DOTS score, placing in
 field.
+
+**"PR" MEANS TWO DIFFERENT THINGS ONE SCREEN APART. RULED: RECONCILE IT AS ITS
+OWN PIECE, NOT AS A PATCH.** `meetServer.ts`'s `liftPrs` treats a null previous
+best as beaten, so a first-ever lift *is* a competition PR. §6.3's `isPrAttempt`
+requires a non-null best to exceed, so with no record there is no PR to attempt.
+Both readings are defensible alone — your first competition squat is your best
+competition squat, and it is also not a weight that beat anything — but shipped
+together a first meet selects attempts with no PR call-out anywhere and then
+prints **PR** against all three lifts on the recap that follows.
+
+The §6.3 work above deliberately did **not** touch this. Which meaning wins is a
+decision about what the word promises a player; it lands on the recap, the
+shareable result card and the selection screen at once, and changing one of them
+inside a change about another is how this document's own history says a *third*
+meaning gets created. So the divergence is recorded here and in the tests' own
+headers — visible to the next reader rather than rediscovered — and the
+reconciliation is scheduled as a piece of its own.
 
 **Shareable result card** formatted like a real federation result sheet. Real
 lifters already post meet results on social media as a habit — if the card looks
