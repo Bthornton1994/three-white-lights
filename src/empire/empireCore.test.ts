@@ -2767,9 +2767,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // single-quoted tokens are `'not-a-higher-tier'` and the two
     // `ROSTER_UPGRADE_RULES` members, and the three new templates are the two
     // promotion refusals' messages and the spending anchor's.
-    expect(singleQuoted.size).toBe(162);
+    // 162 -> 166 and 140 -> 145 with the day anchors. The four new tokens are
+    // `EMPIRE_DAY_SPENDING_ANCHORS`' members. The five new templates are two
+    // refusals in `empireInvariant.ts` — a purse the gym does not keep, and
+    // asking the per-purse anchor to name one spending moment — and three
+    // faults in `engagement.ts`: a one-trip anchor that bought on more
+    // check-ins than it had buying days, a purse that bought twice in a day,
+    // and more buying days than buying check-ins.
+    expect(singleQuoted.size).toBe(166);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(140);
+    expect(templateChunks.size).toBe(145);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -2825,6 +2832,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'e1rm',
       'elapsedSeconds',
       'equipment',
+      'first-affordable-check-in',
+      'first-affordable-check-in-per-purse',
+      'first-attended-check-in',
       'fixed-order-no-rotation',
       'friend',
       'friend-encouragement',
@@ -2843,6 +2853,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'injury-days-saved',
       'injuryDaysSaved',
       'knob',
+      'last-attended-check-in',
       'leaderboard-placement',
       'legendary',
       'level',
@@ -2915,7 +2926,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(302);
+    // 302 -> 311: the four day-anchor tokens and the five templates above.
+    expect(stringsChecked).toBe(311);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -2944,7 +2956,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(122);
+    // 122 -> 126: the four day-anchor tokens, which are the four new
+    // space-free literals this probe walks.
+    expect(probes).toBe(126);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
