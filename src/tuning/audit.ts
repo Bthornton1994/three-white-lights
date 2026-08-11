@@ -1086,16 +1086,15 @@ export function onlyComments(source: string): string {
  * closing the other, and the direction left open is the one that fails open.
  */
 
+/** Keyed by the exact source text, so an edited file is simply a different key. */
+const TEST_BODY_STARTS = new Map<string, readonly number[]>();
+
 /**
  * Where the scoper starts each test body in `text`.
  *
  * Memoised because both ledgers slice the same handful of large test files
- * repeatedly and `codeOnly` walks the source character by character. The map is
- * keyed by the exact text, so it cannot return a stale answer for an edited
- * file — a different string is a different key.
+ * repeatedly and `codeOnly` walks the source character by character.
  */
-const TEST_BODY_STARTS = new Map<string, readonly number[]>();
-
 function testBodyStarts(text: string): readonly number[] {
   const memo = TEST_BODY_STARTS.get(text);
   if (memo !== undefined) return memo;
