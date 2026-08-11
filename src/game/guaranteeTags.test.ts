@@ -571,12 +571,15 @@ const GUARANTEE_COVERAGE = {
  *     including every counterfactual this codebase records in a test's own
  *     header, and a ban that fires on honest prose is a ban somebody deletes.
  *   - A SMALL NUMBER, in practice. Measured over the tag-named bodies in this
- *     tree, `0` occurs in 78% of them and `1` in 87%, so those two resolve
- *     almost wherever they are pointed. The rule still requires them — "0
- *     violating pairs" is the most load-bearing number in this repository and
- *     exempting it would gut the check — but a small numeral passing is weak
- *     evidence and one of the entries in `UNPINNED_PROSE_NUMBERS` records a
- *     sentence whose twin passes for exactly that reason.
+ *     tree and pinned in the check below, a bare `0` occurs in
+ *     `NAMED_BODIES_HOLDING_ZERO` of `NAMED_BODIES` and a bare `1` in
+ *     `NAMED_BODIES_HOLDING_ONE`, so those two resolve almost wherever they are
+ *     pointed. The rule still requires them — "0 violating pairs" is the most
+ *     load-bearing number in this repository and exempting it would gut the
+ *     check — but a small numeral passing is weak evidence, and one entry in
+ *     `UNPINNED_PROSE_NUMBERS` records a sentence whose twin passes for exactly
+ *     that reason. The figures are named rather than written out because a
+ *     percentage in a comment is the thing this file distrusts.
  *   - A NUMBER WRITTEN INTO A QUOTED CODE SPAN. Backticks are how this codebase
  *     quotes an expression, and a numeral inside one is being shown rather than
  *     claimed. A span holding nothing but a numeral is NOT excused, so the
@@ -767,6 +770,14 @@ const NUMBER_COVERAGE = {
   EXCUSED: 12,
   /** The entries doing that excusing. Fewer than the occurrences: a phrase may span two. */
   EXCUSE_ENTRIES: 7,
+  /**
+   * The bodies a tag names, and how many of them hold a bare `0` or a bare `1`
+   * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
+   * one: it says how little a small number resolving is worth.
+   */
+  NAMED_BODIES: 47,
+  NAMED_BODIES_HOLDING_ZERO: 37,
+  NAMED_BODIES_HOLDING_ONE: 41,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1849,6 +1860,11 @@ function claimedNumbersIn(paragraph: string): {
     'quoted-code': 0,
     'list-ordinal': 0,
   };
+  // Reset for the reason `taggedParagraphsIn` resets: a shared /g regex carries
+  // its `lastIndex` into `matchAll`, and that cost this scan 19 paragraphs once
+  // already. Nothing calls `.test()` on this one today, which is exactly the
+  // condition under which the next person adds one.
+  PROSE_NUMERAL.lastIndex = 0;
   for (const match of flat.matchAll(PROSE_NUMERAL)) {
     const numeral = match[0];
     const index = match.index ?? 0;
@@ -2475,19 +2491,38 @@ describe('the guarantee-tag convention', () => {
       NUMBER_COVERAGE.EXCUSE_ENTRIES,
     );
     expect(audit.excluded, 'what each of the four exclusions removed').toEqual(NUMBER_EXCLUSIONS);
-    // Nothing falls between the two: a number is in a body or it is on the list.
-    expect(audit.resolving + audit.excusedOccurrences, 'every claimed number is accounted for').toBe(
-      audit.claimed,
-    );
 
-    // NON-VACUITY, AS A COUNT OF WHAT WAS ACTUALLY SEEN. A scan that found no
-    // tagged paragraph, or found them and read no numeral out of them, passes
-    // every assertion above by having nothing to disagree with.
+    // NON-VACUITY, AND IT IS NOT THE PIN ABOVE RESTATED. `resolving +
+    // excusedOccurrences === claimed` holds by construction once `unpinned` is
+    // empty, so writing it would have been an assertion nothing could redden;
+    // it was written, noticed and deleted. What these two catch is the OTHER
+    // repair — the one `empireCore.test.ts` had to be rescued from, where a
+    // guard goes red and somebody re-pins it at whatever it reports now. A scan
+    // that stopped seeing paragraphs reports zero, and zero is a number a
+    // constant can be edited to.
     expect(
       audit.claimed,
       'no tagged paragraph states a number, so this whole check measured nothing',
     ).toBeGreaterThan(20);
     expect(paragraphs.length, 'no paragraph carries a tag').toBeGreaterThan(20);
+
+    // THE DECLARED WEAKNESS, TAKEN RATHER THAN ASSERTED. A one-digit numeral
+    // resolves against almost any body of this size, so a small number PASSING
+    // this rule is weak evidence — which is a sentence on the doc comment above
+    // and would otherwise be exactly the kind of unpinned figure this whole
+    // file exists to distrust. Pinned here so it is re-derivable.
+    const named = [...new Set(paragraphs.flatMap((paragraph) => paragraph.guarantees))]
+      .map((id) => bodyOfDeclaredTest(id, titles))
+      .filter((body): body is string => body !== null);
+    expect(named.length, 'tag-named bodies').toBe(NUMBER_COVERAGE.NAMED_BODIES);
+    expect(
+      named.filter((body) => numeralOccursIn(body, '0')).length,
+      'bodies holding a bare 0 — if this moved, the sentence about it moved too',
+    ).toBe(NUMBER_COVERAGE.NAMED_BODIES_HOLDING_ZERO);
+    expect(
+      named.filter((body) => numeralOccursIn(body, '1')).length,
+      'bodies holding a bare 1 — if this moved, the sentence about it moved too',
+    ).toBe(NUMBER_COVERAGE.NAMED_BODIES_HOLDING_ONE);
 
     // THE SCOPER'S PREMISE, ON THE FILES THIS LEDGER SLICES — the sibling of the
     // census the witness table runs, and NOT a copy of its list: this ledger
@@ -2589,6 +2624,18 @@ describe('the guarantee-tag convention', () => {
     const stale = auditClaimedNumbers([conforming], bodyOf, [excuse]);
     expect(stale.staleExcuses.length, 'an excuse whose sentence no longer exists is stale').toBe(1);
     expect(stale.staleExcuses[0]).toContain('occurs 0 times');
+
+    // AND THE ARM DIRECTLY BESIDE IT, which is the one this codebase keeps
+    // finding written and undriven: the same guard fails for an AMBIGUOUS
+    // anchor as for a missing one, and only one of the two had been exercised.
+    const twice = auditClaimedNumbers([violating, { ...violating, where: 'planted.ts:20' }], bodyOf, [
+      excuse,
+    ]);
+    expect(twice.staleExcuses.length, 'an excuse that could be about either of two sentences').toBe(
+      1,
+    );
+    expect(twice.staleExcuses[0]).toContain('occurs 2 times');
+    expect(twice.unpinned.length, 'and while it is ambiguous it excuses neither').toBe(2);
 
     const tooShort = auditClaimedNumbers([violating], bodyOf, [{ ...excuse, phrase: 'MEASURES 144' }]);
     expect(tooShort.staleExcuses.length, 'an anchor too short to be a sentence').toBe(1);
