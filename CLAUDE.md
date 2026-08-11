@@ -1350,6 +1350,31 @@ physiology.
   worth being clear that it would **not** have caught any of the five — there
   was no process to time out. Guard both; do not let the loud one make you think
   the quiet one is covered.
+
+- **RUN VERIFICATIONS UNDER `--budget`, BECAUSE THAT IS WHAT WRITES THE
+  INCOMPLETE MARKER.** Ruled by a human: *"An interrupted verification must
+  write an INCOMPLETE marker, never leave silent absence that reads as a pass."*
+  Two incidents earned it. A container restart killed a running suite and took
+  its output file with it, and a missing output file reads exactly like a run
+  that has not started, one still going, and one that passed. And a merged tree
+  was pushed while its verification was in flight; the suite came back red
+  twenty minutes later. **The failure mode is not a run that fails — a failure
+  is loud and gets read. It is a verification that stops existing.**
+
+  `--budget` writes `.gauntlet/verify/<id>.verify.json` **before** it spawns the
+  command and replaces it with `PASS` or `FAIL` only when a verdict exists. A
+  timeout, a signal, a spawn failure or a container kill leaves it INCOMPLETE.
+  `node tools/watchdog.mjs --markers` reports them and exits 1 on any finding;
+  `--branches` runs the same scan, so a wave already asks. The suite asks too —
+  `tools/verifyMarker.test.ts` goes red on an interrupted record in the tree.
+  Read the record, re-run what it names, then `--markers --clear-stale`.
+
+  **What it cannot cover, so nobody reads it as more:** a verification nobody
+  wrapped writes no marker and is exactly as silent as before. LIVE versus
+  interrupted is decided by the recorded boot identity and the runner's
+  pid/start-tick/cmdline, not by age — so it cannot tell a live process making
+  progress from one making none, and off Linux it reports UNRESOLVED rather than
+  guessing.
 - For human-paced follow-up sessions after the run: one vertical slice at a time,
   working state at the end of each.
 

@@ -81,7 +81,21 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    /**
+     * `tools/` IS HERE BECAUSE ONE TOOL IS NOW GRADED BY THE SUITE.
+     * `tools/verifyMarker.test.ts` drives `watchdog.mjs` as a subprocess, so the
+     * interrupted-verification marker is checked by the same command that
+     * checks everything else instead of by a script somebody remembers to run.
+     *
+     * IT IS NOT COSMETIC. `progression.test.ts`'s "drops from the sweep exactly
+     * the files vitest runs" asserts that the set of files the project compiles
+     * but the reflective sweep skips EQUALS the set vitest executes, and it
+     * asks vitest for the right-hand side rather than restating these globs. A
+     * `.test.ts` outside `src/` without this line is compiled, skipped by every
+     * scan, and run by nothing — which is the exact hole that pin exists to
+     * close, and it would go red here rather than quietly.
+     */
+    include: ['src/**/*.test.ts', 'tools/**/*.test.ts'],
     exclude: ['node_modules/**', '.expo/**', 'dist/**'],
     testTimeout: TEST_TIMEOUT_MS,
     coverage: {
