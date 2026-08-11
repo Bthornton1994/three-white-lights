@@ -126,7 +126,12 @@ describe('the directory is pure, closed and numerically clean', () => {
   it('has the modules the scans below walk', () => {
     // Counts, not bounds. Every check in this block iterates this list, and a
     // list that had gone empty would make all of them pass.
-    expect(SHIPPED).toEqual(['careerCore.ts', 'careerTuning.ts']);
+    expect(SHIPPED).toEqual([
+      'careerCore.ts',
+      'careerEngagement.ts',
+      'careerRecord.ts',
+      'careerTuning.ts',
+    ]);
     expect(SOURCE_OF.size).toBe(SHIPPED.length);
   });
 
@@ -148,8 +153,38 @@ describe('the directory is pure, closed and numerically clean', () => {
     const SPECIFIER = /(?:\bfrom|\bimport)\s*\(?\s*'([^']+)'/g;
     const imports = (text: string): readonly string[] =>
       [...text.matchAll(SPECIFIER)].map((match) => match[1] as string);
-    expect(imports(codeOf('careerTuning.ts'))).toEqual([]);
-    expect(imports(codeOf('careerCore.ts'))).toEqual(['./careerTuning']);
+
+    // Pinned per file, and pinned rather than merely constrained: a module
+    // reaching a sibling it did not reach before is a change to this
+    // directory's shape and it should be read, not inferred.
+    const EXPECTED: Readonly<Record<string, readonly string[]>> = {
+      'careerTuning.ts': [],
+      'careerCore.ts': ['./careerTuning'],
+      'careerRecord.ts': ['./careerCore', './careerTuning'],
+      'careerEngagement.ts': ['./careerCore', './careerRecord'],
+    };
+    let fenced = 0;
+    for (const name of SHIPPED) {
+      expect(imports(codeOf(name)), name).toEqual(EXPECTED[name] ?? ['NO EXPECTATION PINNED']);
+      fenced += 1;
+    }
+    // Counts, not bounds: every shipped module was fenced, and a module added
+    // without a row above fails on the sentinel rather than passing unchecked.
+    expect(fenced).toBe(SHIPPED.length);
+    expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED].sort());
+
+    // And the fence is a property, not just a list: every specifier anywhere in
+    // the directory resolves to a module that is in this directory.
+    let specifiers = 0;
+    for (const name of SHIPPED) {
+      for (const specifier of imports(codeOf(name))) {
+        expect(SHIPPED, `${name} imports ${specifier}`).toContain(
+          `${specifier.replace('./', '')}.ts`,
+        );
+        specifiers += 1;
+      }
+    }
+    expect(specifiers).toBe(5);
 
     // Non-vacuity, three ways. The finder works on a file that does have
     // edges, and it catches each of the three spellings on a synthetic source
@@ -292,10 +327,16 @@ describe('the directory is pure, closed and numerically clean', () => {
     // same reason: a knob nothing reads is a knob a playtester turns to no
     // effect, and it is indistinguishable from a live one by looking.
     //
-    // Reddens on: adding an entry to `CAREER_TUNING` that `careerCore.ts` does
-    // not read, or deleting the last read of an existing one.
+    // Reddens on: adding an entry to `CAREER_TUNING` that no shipped module
+    // reads, or deleting the last read of an existing one.
+    //
+    // Every shipped module rather than `careerCore.ts` alone: a key read only
+    // by `careerRecord.ts` is read, and a scan that looked at one file would
+    // have reported it as awaiting a consumer.
     const AWAITING_CONSUMER: readonly string[] = [];
-    const code = codeOf('careerCore.ts');
+    const code = SHIPPED.filter((name) => name !== 'careerTuning.ts')
+      .map((name) => codeOf(name))
+      .join('\n');
     const isRead = (key: string): boolean => code.includes(`CAREER_TUNING.${key}`);
 
     const unread = Object.keys(CAREER_TUNING).filter((key) => !isRead(key)).sort();
@@ -342,7 +383,7 @@ describe('nothing this directory ships names anybody real', () => {
       }
     }
     // Counts, not bounds: the collectors really found the directory's strings.
-    expect(strings).toBe(115);
+    expect(strings).toBe(185);
 
     // Non-vacuity, and the probe is DERIVED from the watchlist rather than
     // transcribed, so this file adds no citation of its own and the probe
