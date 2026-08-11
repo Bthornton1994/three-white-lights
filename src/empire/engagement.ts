@@ -199,6 +199,9 @@ import {
   SHIPPED_ROSTER_UPGRADE,
   SHIPPED_SPENDING_POLICY,
   anchorConsumesDayOnlyOnPurchase,
+  anchorHasOneTripPerDay,
+  booksSpentBy,
+  booksUnspentToday,
   composeTrainingIqRate,
   createEmpireGym,
   gymProgressionEntries,
@@ -206,9 +209,11 @@ import {
   isDaySpendingMoment,
   purchasesMade,
   spendingMoment,
+  spendingMomentForBooks,
   spendsAtMoment,
   spendsOncePerDay,
   stepGym,
+  type EmpireBook,
   type EmpireDayEntry,
   type EmpireDaySpendingAnchor,
   type EmpireFunding,
@@ -243,6 +248,9 @@ export type EngagementWiringKey = (typeof ENGAGEMENT_WIRINGS)[number];
 
 /** The one wiring the game ships. See §4 of the header for the other three. */
 export const SHIPPED_ENGAGEMENT_WIRING: EngagementWiringKey = 'shipped';
+
+/** A calendar day that has spent no purse yet. */
+const NO_BOOKS_SPENT: readonly EmpireBook[] = Object.freeze([]);
 
 /**
  * A wiring and the one magnitude a control needs.
@@ -400,6 +408,21 @@ export interface EngagementCensus {
    * per day at which nothing was ever bought.
    */
   readonly spendingMoments: number;
+  /** Check-ins at which the gym actually bought something. */
+  readonly purchaseCheckIns: number;
+  /** Calendar days on which the gym bought something at least once. */
+  readonly purchaseDays: number;
+  /**
+   * Times a purse bought twice on one calendar day.
+   *
+   * The arithmetic shadow of "each purse shops once a day", and the only place
+   * the per-purse anchor's own rule is visible from outside the loop. Non-zero
+   * by construction for the per-check-in policies, which is why
+   * `engagementRunFaults` reads it only for a day-granularity run — the number
+   * is reported for every run so a reader can see the two families differ
+   * rather than take it on trust.
+   */
+  readonly repeatPurseSpends: number;
   readonly recruits: number;
   /**
    * Rungs a lifter was moved up over the run.
@@ -550,6 +573,10 @@ export function runEngagement(
   const ledger: EmpireDayEntry[] = [];
   let checkIns = 0;
   let spendingMoments = 0;
+  let purchaseCheckIns = 0;
+  let purchaseDays = 0;
+  let lastPurchaseDay = -1;
+  let repeatPurseSpends = 0;
   let upkeepCharged = 0;
   let upkeepEvents = 0;
   let ceilingBoundDays = 0;
@@ -572,19 +599,37 @@ export function runEngagement(
     // `'first-affordable-check-in'` reads it, and only a trip that actually
     // bought something sets it — see `anchorConsumesDayOnlyOnPurchase`.
     let boughtEarlierToday = false;
+    // The purses this calendar day has already spent. Only the per-purse anchor
+    // reads it, and it is the whole of that anchor: a purse drops out of the
+    // day when it buys, and every other purse is still offered every check-in.
+    let spentBooksToday: readonly EmpireBook[] = NO_BOOKS_SPENT;
 
     for (let tick = 0; tick < policy.checkInsPerDay; tick += 1) {
       const slot = day * policy.checkInsPerDay + tick;
       if (history.attended[slot] !== true) continue;
       checkIns += 1;
-      const moment = spendingMoment(
-        spending,
-        isDaySpendingMoment(anchor, {
-          firstAttendedOfDay: tick === firstAttendedTick,
-          lastAttendedOfDay: tick === lastAttendedTick,
-          boughtEarlierToday,
-        }),
-      );
+      const dayGranular = spendsOncePerDay(spending);
+      const perPurse = dayGranular && !anchorHasOneTripPerDay(anchor);
+      const moment = perPurse
+        ? spendingMomentForBooks(
+            spending,
+            booksUnspentToday(spentBooksToday),
+            // The day's rotation tick is its first attended check-in. Once per
+            // attended calendar day, which is what every other anchor's single
+            // spending moment already gave — so the rotation term is the same
+            // function of the schedule under all four and does not confound the
+            // comparison between them.
+            tick === firstAttendedTick,
+          )
+        : spendingMoment(
+            spending,
+            !dayGranular ||
+              isDaySpendingMoment(anchor, {
+                firstAttendedOfDay: tick === firstAttendedTick,
+                lastAttendedOfDay: tick === lastAttendedTick,
+                boughtEarlierToday,
+              }),
+          );
       const before = gym;
       gym = stepGym(
         gym,
@@ -599,11 +644,7 @@ export function runEngagement(
       if (spendsAtMoment(moment)) {
         const bought = purchasesMade(gym) > purchasesMade(before);
         if (bought) boughtEarlierToday = true;
-        if (
-          !bought &&
-          spendsOncePerDay(spending) &&
-          anchorConsumesDayOnlyOnPurchase(anchor)
-        ) {
+        if (!bought && dayGranular && anchorConsumesDayOnlyOnPurchase(anchor)) {
           // The trip bought nothing, so under this anchor it did not happen and
           // must leave no trace — not even the axis rotation a spending moment
           // carries. Re-taken from the same gym with the offer withdrawn, which
@@ -621,6 +662,18 @@ export function runEngagement(
           );
         } else {
           spendingMoments += 1;
+          if (bought) {
+            purchaseCheckIns += 1;
+            if (day !== lastPurchaseDay) {
+              purchaseDays += 1;
+              lastPurchaseDay = day;
+            }
+            const spentNow = booksSpentBy(before, gym, funding);
+            for (const book of spentNow) {
+              if (spentBooksToday.includes(book)) repeatPurseSpends += 1;
+            }
+            spentBooksToday = Object.freeze([...spentBooksToday, ...spentNow]);
+          }
         }
       }
       if (wiring.key === 'check-in-upkeep') {
@@ -700,6 +753,9 @@ export function runEngagement(
       checkIns,
       trainedDays: history.trainedDays.length,
       spendingMoments,
+      purchaseCheckIns,
+      purchaseDays,
+      repeatPurseSpends,
       recruits: gym.recruits,
       promotions: gym.promotions,
       expansions: gym.expansions,
@@ -971,15 +1027,29 @@ export function engagementRunFaults(run: EngagementRun): readonly string[] {
   if (run.census.checkIns > 0 && run.census.spendingMoments === 0) {
     faults.push(`${run.census.checkIns} check-ins produced no spending moment at all`);
   }
-  // A day-granularity policy shops at most once a calendar day, whichever
-  // anchor decides which check-in that is. This is the arithmetic shadow of
-  // that sentence: an anchor that let a second trip through would report more
-  // trips than the run has days. It is the check the retry arm needs — that arm
-  // re-takes a step, and a re-take that forgot to withdraw the offer would buy
-  // twice on one day and be invisible in the ledger.
-  if (spendsOncePerDay(run.spending) && run.census.spendingMoments > run.days) {
+  // A day-granularity policy shops at most once a calendar day. Under an anchor
+  // that names one trip for the whole gym, that is one BUYING CHECK-IN per day;
+  // under the per-purse anchor it is one buying check-in per PURSE per day, and
+  // `repeatPurseSpends` is the same sentence counted the other way. Both arms
+  // are stated, because the sibling rule CLAUDE.md records is that a guard
+  // written for one arm gets written for the branch immediately below it.
+  //
+  // This is the check the retry arm needs: that arm re-takes a step, and a
+  // re-take that forgot to withdraw the offer would buy twice on one day and be
+  // invisible in the ledger.
+  if (spendsOncePerDay(run.spending)) {
+    if (anchorHasOneTripPerDay(run.anchor) && run.census.purchaseCheckIns !== run.census.purchaseDays) {
+      faults.push(
+        `${run.anchor} bought at ${run.census.purchaseCheckIns} check-ins across ${run.census.purchaseDays} buying days`,
+      );
+    }
+    if (run.census.repeatPurseSpends > 0) {
+      faults.push(`a purse bought twice in one calendar day ${run.census.repeatPurseSpends} times`);
+    }
+  }
+  if (run.census.purchaseDays > run.census.purchaseCheckIns) {
     faults.push(
-      `${run.census.spendingMoments} shopping trips were taken across ${run.days} calendar days`,
+      `${run.census.purchaseDays} buying days were counted over ${run.census.purchaseCheckIns} buying check-ins`,
     );
   }
   if (!chargesUpkeep(run.wiring.key) && run.census.upkeepEvents !== 0) {
