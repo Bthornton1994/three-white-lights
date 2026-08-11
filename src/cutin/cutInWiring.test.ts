@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import { budgetFrom } from '../../tools/testBudget.mjs';
 import ts from 'typescript';
 
 import { onlyComments, withoutComments } from '../tuning/audit';
@@ -1858,7 +1859,7 @@ describe('the cut-in is dismissed by tapping it — GDD §7.2', () => {
 // ---------------------------------------------------------------------------
 
 describe('only the host talks to the gate — GDD §7.2, §12.3', () => {
-  it('THE SET OF FILES THAT TALK TO THE GATE IS THIS SET — derived, not restated', () => {
+  it('THE SET OF FILES THAT TALK TO THE GATE IS THIS SET — derived, not restated', { timeout: budgetFrom(17_784) }, () => {
     // WHY THIS EXISTS. `CALLERS` is a hand-written list of five paths and every
     // other scan in this file reads only those five. Nothing asserted that the
     // list was COMPLETE, so:

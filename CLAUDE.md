@@ -178,6 +178,30 @@ number — if a number turns out to be wrong, that is a finding to report, not t
 fix from this side. Session B should expect a conflict in §4a's comment block and
 nowhere else.
 
+**CROSSING FILED BY SESSION A, BEFORE THE WORK, 2026-08-11 — `src/empire/engagement.test.ts`,
+the per-test timeout declarations only.** Filed here first, as this section
+requires, and flagged to a human rather than assumed: this is the second Session
+A crossing into `src/empire/**` and it is process work rather than §5 scope.
+
+*What and why.* The branch head is red on a timeout, not on a measurement. The
+rule that turns a measured duration into a declared budget lives inside
+`engagement.test.ts` as a private `budgetFrom`, and the durations it was given
+were taken by running a test alone. Tests run under `availableParallelism() - 1`
+worker processes, where the same sweep can take **2.33x** longer than it does by
+itself — measured both ways on every heavy test in the tree at `0155150`. So the
+margin was calibrated against conditions the tests do not run in, and the rule
+lives in a file five other sweeps in `src/game`, `src/cutin` and `src/art` now
+need. The work is: move `budgetFrom` and its constants to `tools/testBudget.mjs`,
+import it back, and re-take this file's recorded durations from a full-suite run.
+
+*Scope, kept as narrow as it can be.* The `budgetFrom` declaration, the numbers
+inside `{ timeout: ... }` options, `AnchorDomain.measuredMs`, and the one test
+that pins the rule's arithmetic. **No sweep shrinks, no domain moves, no measured
+engagement count changes** — GDD §12.3's measurements are what the budgets exist
+to protect, and trading one for a clock would be the wrong direction. Session B
+should expect a conflict in the budget header and in the timeout literals, and
+nowhere else.
+
 ### Crossings Session B needed — one is DONE, one is still open
 
 Session B did not edit any of the four files named here. A human approved both

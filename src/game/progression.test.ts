@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
+import { budgetFrom } from '../../tools/testBudget.mjs';
 
 import { testScopeFault } from '../tuning/audit';
 import { createVitest } from 'vitest/node';
@@ -1536,7 +1537,7 @@ describe('purity', () => {
     expect(sweep).not.toContain('simSessionsPerDay');
   });
 
-  it('scans the whole project, not just src/', () => {
+  it('scans the whole project, not just src/', { timeout: budgetFrom(15_300) }, () => {
     // THE ROUND-SEVEN DEFECT, PINNED BY NAME. The scan was rooted at
     // `walk(REPO_ROOT + '/src')`. `App.tsx` and `index.ts` are at the repo root
     // and every import points INTO `src/` and never out, so neither was reached

@@ -8,70 +8,64 @@ import path from 'node:path';
  * Raised from vitest's 5000 ms default because several suites here are
  * genuinely compute-heavy rather than slow by accident.
  *
- * THIS LIST HAS NOW BEEN STALE TWICE, and the second time it was worse than the
- * first: it named six `streakEntitlement` cases topping out at 16866 ms while
- * `src/empire/engagement.test.ts` alone was taking 435 of the suite's 479
- * seconds, held eight tests above 20 s, and contained the suite's only red — a
- * test at 34557 ms against this 30000 ms budget, failing ALONE IN ITS OWN FILE
- * on an idle machine. A stale list of "the heavy ones" sends the next reader to
- * the wrong file, which is what it did.
+ * THE LIST OF "THE HEAVY ONES" THAT USED TO LIVE HERE IS GONE, AND ITS ABSENCE
+ * IS THE POINT. It went stale twice; each time it sent the next reader to the
+ * wrong file, and the second time it named six `streakEntitlement` cases while
+ * `engagement.test.ts` was taking 435 of the suite's 479 seconds. A transcribed
+ * list of durations is a measurement with nobody responsible for re-taking it.
+ * It is taken by a command now instead:
  *
- * The first diagnosis of that red was also wrong and is worth keeping: it was
- * called a contention artefact — "passes idle, fails under load" — on a
- * duration list whose grep pattern matched only the passing `✓` rows and
- * silently dropped the failing `×` one, which was the slowest in the file. A
- * measurement that excludes its own subject, with a confident causal claim on
- * top. It was not racy; it was over budget outright.
+ *   npx vitest run --reporter=json --outputFile.json=/tmp/suite.json
+ *   node tools/test-budgets.mjs /tmp/suite.json
  *
- * MEASURED, four cores, `engagement.test.ts` run alone, after the caches and
- * the memo below landed. Every test over 8 s, slowest first:
+ * That prints every test's real duration against its declared budget, names any
+ * test slow enough to need a declared budget and having none, and exits
+ * non-zero on a finding. Run it on an idle box; on a shared one it measures the
+ * sharing too.
  *
- *   30766 ms  engagement > pins every day anchor on the single-purse control
- *   30211 ms  engagement > measures the rotation phase removed
- *   25683 ms  engagement > measures the day anchor on seeded histories at 100 days
- *   24429 ms  engagement > measures the ordering reversed: costliest first
- *   23039 ms  engagement > measures the per-check-in granularity removed
- *   21317 ms  engagement > explains the save-for-physio zero
- *   18305 ms  engagement > measures the day anchor on seeded histories at 60 days
- *   17221 ms  engagement > takes the whole-day reading under the last three
- *   16303 ms  engagement > pins the four anchors on a seeded domain, 20 and 40
- *   15553 ms  engagement > holds the decision moment
- *   14651 ms  engagement > finds all six policies zero at 40 seeded days
- *   12714 ms  engagement > pins every day anchor on the shipped wiring
- *   12275 ms  engagement > takes the whole-day reading under the first three
- *   12097 ms  engagement > SAMPLED: seeded histories at 60 and 100 days
- *   10857 ms  engagement > measures chain A re-connected
- *    8627 ms  engagement > measures the shipped engine, and BOTH halves are zero
- *    8613 ms  engagement > splits the shipped anchor by WHEN a purse can afford
- *    8368 ms  engagement > measures the SINGLE-PURSE engine on the same domain
- *    8297 ms  engagement > keeps §5.3's promotion path load-bearing: 824
+ * The diagnosis kept from the last round, because it was wrong in an
+ * instructive way: a red here was called a contention artefact — "passes idle,
+ * fails under load" — on a duration list whose grep matched only the passing
+ * rows and silently dropped the failing one, which was the slowest in the file.
+ * That particular test was over budget outright. The NEXT three reds really
+ * were contention, which is why the sentence above is now a tool rather than a
+ * transcription.
  *
- * `streakEntitlement.test.ts`'s cases are no longer at the top and are not
- * re-listed; re-take them if that file is the one you are working on.
- *
- * TWO THINGS CHANGED RATHER THAN THE BUDGET, and no sweep shrank. Three
- * hand-rolled 4096-mask enumerations in `engagement.test.ts` rebuilt the same
- * twelve-day runs seven times over because `moreEngagedBy(history(mask), bit)`
- * IS `history(mask | 1 << bit)` and only `windowedSweep` was exploiting it;
- * they now cache by mask like it does. And the sweep helpers are memoised on
- * their arguments, because five of the file's windowed sweeps were the same
- * seven arguments written twice. The suite's only red went from 34557 ms to
- * under 7000 ms on the first of those alone.
+ * TWO THINGS CHANGED RATHER THAN THE BUDGET back then, and no sweep shrank.
+ * Three hand-rolled 4096-mask enumerations in `engagement.test.ts` rebuilt the
+ * same twelve-day runs seven times over because `moreEngagedBy(history(mask),
+ * bit)` IS `history(mask | 1 << bit)` and only `windowedSweep` was exploiting
+ * it; they now cache by mask like it does. And the sweep helpers are memoised
+ * on their arguments. The suite's only red then went from 34557 ms to under
+ * 7000 ms on the first of those alone.
  *
  * WHAT THIS GLOBAL IS FOR, and where it deliberately stops. It is the budget for
  * the roughly three thousand tests that finish in milliseconds, and it stays
- * tight so a genuinely hung one is heard about quickly. The dozen sweeps that
- * legitimately need longer declare their own budget at their own `it(`, derived
- * from that test's measured duration by `budgetFrom` in
- * `src/empire/engagement.test.ts` — two times measured, rounded up to five
- * seconds, floored at this number. `SWEEP_BUDGET.GLOBAL_MS` mirrors this
- * constant and a test there reads this file's source, so the two cannot drift.
+ * tight so a genuinely hung one is heard about quickly. The three dozen sweeps
+ * that legitimately need longer declare their own budget at their own `it(`,
+ * derived from that test's measured duration by `budgetFrom` in
+ * `tools/testBudget.mjs`, which holds the rule, the factor, the evidence for
+ * the factor and a contention scale measured at run time.
+ * `SWEEP_BUDGET.GLOBAL_MS` mirrors this constant and
+ * `tools/testBudget.test.ts` reads this file's source, so the two cannot drift.
  *
  * That is the "budget that fits the work" this comment used to ask for, made
  * per test rather than per suite. The alternative — raising this number to 90 s
  * — hides a hang behind a minute and a half for every test in the repository,
  * and the alternative to THAT, shrinking a sweep, trades a §12.3 measurement
  * for a clock.
+ *
+ * WHY RAISING IT WOULD NOT HAVE FIXED THE LAST FAILURE EITHER, which had to be
+ * measured before it could be said. Six tests timed out on an integrated tree
+ * while three agents' suites shared these four cores, four of them against this
+ * number — and the same suite took 427 s and 453 s when it was less crowded and
+ * 655 s then. Per test, on an otherwise idle box, one sweep measured 2.33x
+ * longer inside a whole-suite run than it did alone, which is more than the
+ * entire margin the derived budgets used to carry. A number here big enough to
+ * cover that would have to cover an unknown number of concurrent sessions. What
+ * covers it instead is per test, and half of it is measured at run time: see
+ * `tools/testBudget.mjs`, which states what each half reaches and what it does
+ * not.
  */
 const TEST_TIMEOUT_MS = 30_000;
 
