@@ -71,6 +71,11 @@ public/canvaskit.wasm
 # instead of trust.
 !.gauntlet/shots/shell/
 
+# Session C post-merge smoke of the Empire shell path (PR #4 / cbef6e9). Not a
+# full verify-shell-route suite and not a bar claim — attached so A/B can see
+# what landed without review, rather than discover it only in conversation.
+!.gauntlet/shots/empire-shell-flow/
+
 # Same argument for the cut-in run: `frames.json` records eight checks a critic
 # is asked to read, and `CutInView.tsx` cites this directory by name — the
 # sentence that was false until the pictures were committed.

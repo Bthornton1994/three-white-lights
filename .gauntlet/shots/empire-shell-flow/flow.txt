@@ -1,0 +1,9 @@
+goto  http://localhost:8081 (post-merge tip capture)
+session pills: open-meet=true open-empire=true
+shot  01-session-both-pills.png
+empire floor: title=true stats=true leave=true
+stats text: bucks="GYM BUCKS 0" rep="REPUTATION 0" roster="ROSTER 0"
+shot  02-empire-floor.png
+after leave: empire-screen=false open-meet=true open-empire=true
+shot  03-session-after-leave.png
+RESULT  ok — session → open-empire → floor → leave-empire → session
