@@ -478,7 +478,7 @@ describe('nothing this directory ships names anybody real', () => {
       'Cragmoor Barbell Federation',
       'Tarnwick Powerlifting Union',
       'Sablecoast Strength Alliance',
-      'Brackwater Barbell League',
+      'Orrenford Barbell League',
     ]);
     expect(Object.values(CAREER_TUNING.MEET_TITLE_BY_TIER)).toEqual([
       'Open',

@@ -490,11 +490,16 @@ Union`, `Sablecoast Strength Alliance` and `Brackwater Barbell League` shipped i
   a games-sector collision is a nearer neighbour to this product than a
   weightlifting club is.
 
-*The critic that found this got two of the four wrong in the reassuring
-direction* — it reported Sablecoast and Brackwater as clean. Both were checked
-here rather than accepted, which is the reason CLAUDE.md says not to take an
-agent's report at face value; it applies to a critic that is right about the
-class it found.
+*The critic that found this reported Sablecoast and Brackwater as clean, and was
+wrong about Brackwater in the reassuring direction* — three live game properties
+is not clean by any reading. Both were re-searched here rather than accepted,
+which is the reason this file says not to take an agent's report at face value;
+it applies to a critic that is right about the class it found. It cuts the other
+way too: the draft of this section written from the critic's report described
+Sablecoast as a rejection-grade hit, and searching it directly showed a private
+individual's social handle. **An agent's report was wrong in both directions in
+the same paragraph**, which is the argument for re-running the search rather
+than for trusting or distrusting the reporter.
 
 **THE REAL FINDING IS THE METHOD, NOT THE FOUR NAMES.** Invent-then-search has
 now produced seven rejections and five acceptances, and **every one of the five
@@ -506,9 +511,86 @@ can pass gets applied at whatever strictness the searcher happens to have that
 day, which is exactly what happened: strict enough to reject Varlow, loose
 enough to accept Cragmoor, and skipped entirely for three names.
 
-So the bar itself needs stating, and that is a human's call rather than a
-builder's. It is **pending a ruling** and the names are unchanged until then;
-what is fixed here is the false claim, not the strings. See the entry below.
+**THE BAR — RULED BY A HUMAN, and it is a risk calibration rather than a legal
+certification.** Stated as a rule so it can be applied by whoever names the next
+thing, instead of at whatever strictness that person happens to have that day:
+
+> **Refuse** a hit in a confusable sector: strength sports, fitness,
+> **supplements, athletic apparel, coaching or training apps**, or games and
+> interactive entertainment. Those are grouped because a lifter could plausibly
+> mistake one for the other even where it is not literally a competing
+> federation.
+>
+> **Refuse absolutely, regardless of sector**, a famous mark, or a distinctive
+> coined name from a creative work.
+>
+> **Accept**, with every hit recorded by name, a name whose only referents are
+> small entities in sectors outside that list.
+
+The reasoning. Trademark is sector-scoped in law, so a capital advisory LLC has
+no plausible claim against a fictional powerlifting federation in a game, while a
+Wizards of the Coast card name is a near neighbour of this product — and a
+supplement or apparel brand is nearer still, which is why the ruling widened the
+list beyond what was first proposed.
+
+**A REAL TRADEMARK/IP ATTORNEY PASS IS RECOMMENDED BEFORE ANY STORE BUILD, over
+the full set of invented names at once rather than name-by-name.** Ruled, and
+recorded here because it is the sentence this whole section most needs. Nothing
+above is a legal clearance: it is a search-and-judgement screen run by an agent,
+it has already been wrong five times out of five acceptances, and §12.3 calls
+this the category of mistake that "cannot be walked back by a patch once it is
+in a store build". Name-by-name is also the wrong unit — a set of four
+federations reads as a family and a professional would look at the family, the
+marks, and the classes together.
+
+**Varlow and Thornbeck would also have passed under this standard. Recorded for
+future reference only — no retroactive change, and they are not to be
+reinstated.** The rejections above were made at a strictness this bar does not
+sustain, and that inconsistency was real; the fix is to state a bar going
+forward, not to reopen settled names or to pretend the old one was met.
+
+**Applied name by name, with the searches this session actually ran:**
+
+- **Cragmoor** — KEPT. Cragmoor Capital Advisors LLC (New York, finance),
+  Cragmoor Publications Ltd (UK, dissolved 2015), and a 1947 cargo vessel.
+  Finance, publishing, shipping: none of them on the refused list, none of them
+  a famous mark. This is also the name already shipped into
+  `src/game/meetTuning.ts` under the approved crossing, so keeping it costs no
+  second crossing — which is a reason to be suspicious of the verdict and is why
+  the hits are written out in full.
+- **Tarnwick** — KEPT. Tarnwick Partners LLLP, a Florida limited partnership
+  filed 2004, active, at a Tampa address with a law firm as registered agent —
+  a private holding partnership, not on the refused list. Also a city in a
+  Minecraft community server's fan wiki: player-made fiction on a fan wiki, not
+  a commercial game property, which is the line this bar draws.
+- **Sablecoast** — KEPT, and the earlier draft of this section overstated it.
+  Verified directly: one private individual's social handle, used on a pinboard
+  site and as a cover artist's name on a music-sharing site. Deliberately not
+  named here — a private person's name has no business in a repository document,
+  and the verdict does not need it. The weakest of the four hits: unregistered,
+  out of sector, one person. Calling it "a creative identity belonging to a real
+  person" was true but implied a refusal this bar does not make.
+- **Brackwater** — **REPLACED, by `Orrenford`.** Magic: The Gathering's
+  *Brackwater Elemental* (Wizards of the Coast, *Conflux*), World of Warcraft's
+  Brackwater Cloak / Vest / Shield (Blizzard), and a Guild Wars 2 village
+  (ArenaNet). Three live commercial properties in the games sector. This one
+  fails on any reading of the bar.
+
+**`Orrenford` was searched before adoption, not after, and four more candidates
+were rejected getting there** — which is the ninth through twelfth rejections
+this method has produced: Kelvarn (a Final Fantasy XIV character, and "Kelvar"
+is Tolkien's word for living creatures), Denholt (a Star Wars character, a
+Ninjago character, a UK steel fabricator), Tellworth (Tellworth Investments LLP,
+a UK equity house with publicly listed funds — unrelated sector but far too
+established to be a small entity), Sarrenford (a merchant-prince in a published
+fantasy novel). `Orrenford` returns **no exact match** on a bare search, on one
+narrowed to company, LLC, game and barbell, or on one narrowed to the sectors the
+ruling added — supplement, apparel, clothing, fitness, coaching, app. The near
+misses are Orrefors, Orford and Otford, all distinct strings. *Residual risk,
+stated rather than hidden:* no search proves a negative, and this bar accepts
+out-of-sector hits, so a small Orrenford somewhere is possible and would not by
+itself be a defect under the rule above. The attorney pass is what closes this,
+not another search.
 
 **2. `src/career/careerTuning.ts` needs the same three `SOURCE_RULES` rows
 `empireTuning.ts` needed** — 17 findings unregistered, every one in that file and

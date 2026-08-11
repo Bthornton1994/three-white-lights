@@ -207,9 +207,9 @@ export const CAREER_TUNING = Object.freeze({
       testing: 'tested',
     },
     {
-      id: 'brackwater-barbell-league',
-      name: 'Brackwater Barbell League',
-      meetPrefix: 'Brackwater',
+      id: 'orrenford-barbell-league',
+      name: 'Orrenford Barbell League',
+      meetPrefix: 'Orrenford',
       equipment: 'equipped',
       testing: 'untested',
     },
