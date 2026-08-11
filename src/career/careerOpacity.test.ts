@@ -1267,12 +1267,14 @@ function tabulated(
  * site, and the reasoning for each is beside the pass itself.
  */
 /**
- * A wall-clock budget for the substitution block, applied per BLOCK.
+ * The wall-clock cost of the dense passes, measured, and why there is no
+ * per-block budget in this file.
  *
- * `src/empire/engagement.test.ts` sets the house pattern and states the
- * threshold for earning one: a block gets it if its slowest test exceeds a
+ * `src/empire/engagement.test.ts` sets the house pattern for one and states the
+ * threshold for earning it: a block gets a budget if its slowest test exceeds a
  * third of `vitest.config.ts`'s global 30 s, because load has been observed to
- * stretch a file 2-3x. Applied here rather than skipped, with the numbers.
+ * stretch that file 2-3x. Applied here rather than skipped, and the answer came
+ * out "no" on every axis that was actually measured.
  *
  * MEASURED solo on an unloaded machine, this file's tests over 100 ms, slowest
  * first, at the domain sizes shipped:
@@ -1283,39 +1285,41 @@ function tabulated(
  *    189 ms  matches the gate total by total and slot by slot
  *    185 ms  asks the gate once per gated verdict
  *
- * The file was 0.73 s before this round and is 7.4 s after, all of it in the
- * five above. On the passing numbers alone this block does NOT qualify: 4.9 s
- * against a 10 s threshold.
+ * MEASURED AGAIN INSIDE A WHOLE-SUITE RUN, 82 files and 3304 tests in 280 s,
+ * because the 2-3x stretch is the premise the threshold rests on and it is a
+ * measurement about a different file. Under that load the dense pass is
+ * 5322 ms and the entry sweep 1083 ms — a stretch of about 1.1x, not 3x. So the
+ * margin against the global 30 s is roughly 6x and a budget would be a guard
+ * with nothing to catch.
  *
- * IT QUALIFIES ON THE FAILING ONES, WHICH THE HOUSE THRESHOLD DOES NOT ASK
- * ABOUT AND SHOULD. With a `Set`-membership window planted in `standingOver`,
- * the same test took 23613 ms — nearly 5x its passing time, because a sweep
- * whose observations agree compares mostly identical strings and one whose
- * observations differ does not. Under the 2-3x load this file will see in a
- * whole-suite run, a genuine failure at 23.6 s becomes a 30 s timeout, and a
- * timeout is the failure mode that reads as "the harness hung" rather than
- * "the total was read". A budget that only fits the green path turns a red into
- * a mystery.
+ * A 90 s BLOCK BUDGET WAS WRITTEN, VERIFIED TO PROPAGATE, AND THEN REMOVED
+ * BECAUSE ITS STATED REASON WAS MEASURED FALSE. The reason was: a failing run
+ * costs much more than a passing one — the same test takes 23613 ms with a
+ * `Set`-membership window planted in `standingOver`, because a sweep whose
+ * observations agree compares mostly identical strings and one whose
+ * observations differ does not — so a genuine failure would come back as a
+ * timeout, which reads as "the harness hung" rather than "the total was read".
  *
- * The value is the same 90 s the empire file uses: ~3.8x the slowest failing
- * measurement, generous on purpose, because the guard exists to catch a hang
- * and not to enforce a deadline. Re-measure rather than trusting this list; a
- * stale table of "the heavy ones" is the mistake `vitest.config.ts`'s own
- * comment records having made.
+ * That last step is the false one. With the fourth bypass planted, three tests
+ * in the block ABOVE this one ran 36528 ms, 36834 ms and 27627 ms against the
+ * global 30 s budget and every one of them reported its own AssertionError.
+ * vitest cannot interrupt a synchronous body, so it checks the budget after the
+ * body returns and an assertion that has already failed wins. The masking this
+ * budget was written to prevent does not happen for a sweep like these.
  *
- * VERIFIED TO PROPAGATE, BOTH DIRECTIONS, rather than assumed — a budget vitest
- * quietly ignored would be a decoration reading as a fix:
+ * WHAT IS STILL TRUE, AND IS THE REASON THE MEASUREMENTS STAY: a PASSING run
+ * that grew past 30 s would be killed and reported as a timeout, and the green
+ * path here has about 6x of headroom rather than a lot. Whoever widens the grid
+ * or the cross should re-take these numbers and reconsider — the empire file's
+ * comment is the template, and its threshold is the one to apply.
  *
- *   - Set to `1_000`, the dense test reddens with the BLOCK's number rather
- *     than the global one: `Error: Test timed out in 1000ms.`
- *   - Under that same `1_000`, `selects and enters exactly the slots the gate
- *     admits` (1057 ms, a different block) still passes, which it can only do
- *     on the global 30 s. So the value is scoped to its own block.
- *
- * One direction alone proves nothing: a value that reached everything would
- * pass the first check and fail the second.
+ * The propagation check is kept because it is what a future budget here should
+ * be verified with: set to `1_000`, the dense test reddens with the BLOCK's
+ * number, `Error: Test timed out in 1000ms.`; under that same `1_000`, `selects
+ * and enters exactly the slots the gate admits` (1057 ms, a different block)
+ * still passes, so the value is scoped to its own block rather than leaking
+ * file-wide. One direction alone proves nothing.
  */
-const DENSE_BLOCK_TIMEOUT_MS = 90_000;
 
 /**
  * WHAT THE COST BOUGHT, so the trade is legible: the total axis went from 50
@@ -1734,7 +1738,7 @@ describe('substituting the total behind a fixed gate changes nothing', () => {
     //   expected '[careerStanding/refuses-everything] 5…' to be ''
     //   + [careerStanding/refuses-everything] 584kg -> 0kg
     // That run also took 23613 ms against this test's 4853 ms passing time,
-    // which is what earned the block budget above.
+    // and the block-timing note above is what came of chasing that number.
     const faults: string[] = [];
     const subjectsDisagreeing = new Set<string>();
     const substituted = new Map<string, string>();
@@ -1898,7 +1902,7 @@ describe('substituting the total behind a fixed gate changes nothing', () => {
         .sort(),
     ).toEqual(['careerGateFaults', 'lifterWithStanding']);
   });
-}, DENSE_BLOCK_TIMEOUT_MS);
+});
 
 describe('the one loop in this directory that chooses between two totals', () => {
   it('picks the result that reached the tier, not the first and not the last', () => {
