@@ -762,12 +762,22 @@ export function isDaySpendingMoment(
  * earliest, the gym shops there, the roster purse cannot yet afford its next
  * lifter, and the day is over for it because some OTHER purse could afford its
  * rung.
- *
  * The zero on the right is a measurement of this comparison rather than a proof
  * that the anchor is safe. §4c of this file's header carries what the
  * construction argument does and does not reach, and why a purse holding two
  * ladders leaves a decision this anchor never touches.
  * `@guarantee the-day-shops-purse-by-purse`
+ *
+ * THE BLANK LINE THAT USED TO SIT ABOVE THIS SENTENCE IS DELIBERATELY GONE, and
+ * it is worth a note because removing it is not a formatting preference. The
+ * numeric rule's unit is the PARAGRAPH, so a blank comment line between a claim
+ * and its tag takes the claim's numbers out of the tag's reach — which is the
+ * weakness `guaranteeTags.test.ts` declares in its own header. This is that
+ * weakness caught in the wild, on the first merge after the rule shipped: the
+ * paragraph break was added here by unrelated prose work, `31` and `0` silently
+ * stopped being checked, and the only thing that noticed was the pinned census
+ * moving 8 to 7. Keep the tag in the same paragraph as the numbers it answers
+ * for.
  */
 export function booksUnspentToday(spentToday: readonly EmpireBook[]): readonly EmpireBook[] {
   return Object.freeze(EMPIRE_BOOKS.filter((book) => !spentToday.includes(book)));
