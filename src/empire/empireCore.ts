@@ -1563,6 +1563,20 @@ export function recruitCost(tier: NpcTier): GymBucks {
   return asGymBucks(EMPIRE_TUNING.NPC_RECRUIT_COST_GYM_BUCKS[tier]);
 }
 
+/**
+ * Where a tier sits on `NPC_TIERS`, counted from zero.
+ *
+ * A LOOKUP, NOT AN ENUMERATION, and it lives here for that distinction. It
+ * takes a tier and returns a number; it cannot yield a tier it was not given,
+ * so it is not a place an outcome could be selected from. `recruitment.ts`
+ * keeps its single reading of the ladder — the one inside `recruitmentBoard` —
+ * which is the source half of §5.3's no-gacha argument and is pinned by count
+ * in `recruitment.test.ts`.
+ */
+export function tierRung(tier: NpcTier): number {
+  return EMPIRE_TUNING.NPC_TIERS.indexOf(tier);
+}
+
 /** Reputation a tier is gated behind. §5.3's alternative to a price. */
 export function recruitReputationThreshold(tier: NpcTier): ReputationPoints {
   return asReputation(EMPIRE_TUNING.NPC_RECRUIT_REPUTATION_THRESHOLD[tier]);

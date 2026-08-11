@@ -283,6 +283,7 @@ import {
   createEmpireState,
   mayAccelerate,
   rosterCapacity,
+  tierRung,
   type AppliedAccelerant,
   type EmpireClock,
   type EmpireOutput,
@@ -327,8 +328,8 @@ import {
 import {
   RECRUIT_BOOK,
   beginRecruitment,
-  bestPromotion,
   completeRecruitment,
+  mayPromote,
   mayRecruit,
   promoteLifter,
   type RecruitmentSchedule,
@@ -988,6 +989,40 @@ function bestRecruitableTier(state: EmpireState): NpcTier | null {
     const tier = tiers[at];
     if (tier === undefined) continue;
     if (mayRecruit(state, tier)) return tier;
+  }
+  return null;
+}
+
+/**
+ * The promotion a gym would take if it took one: the lowest-tier lifter on the
+ * roster, moved to the highest tier the gym may move them to.
+ *
+ * IT LIVES HERE, BESIDE `bestRecruitableTier`, AND NOT IN `recruitment.ts`.
+ * §5.3's module publishes a catalogue and takes a tier it was given; choosing
+ * one is a MODEL OF A PLAYER, and `recruitment.test.ts` pins by count that the
+ * ladder is enumerated in exactly one place in that module — the board — which
+ * is the source half of the no-gacha argument. A selector over tiers written
+ * there would have been a second place a tier is produced from something that
+ * is not a tier, which is the shape §5.3 refuses.
+ *
+ * Deliberately the same shape of greedy rule as its sibling — the composed loop models a player who spends
+ * what they have on the best thing in front of them, and the §12.3 property has
+ * to hold for that player rather than for a player chosen to make it hold.
+ *
+ * Ties are broken by roster order, which is join order, so the answer is a
+ * function of the state and nothing else.
+ */
+function bestPromotion(state: EmpireState): { lifterId: string; tier: NpcTier } | null {
+  let chosen: NpcLifter | null = null;
+  for (const lifter of state.roster) {
+    if (chosen === null || tierRung(lifter.tier) < tierRung(chosen.tier)) chosen = lifter;
+  }
+  if (chosen === null) return null;
+  const tiers = EMPIRE_TUNING.NPC_TIERS;
+  for (let index = tiers.length - 1; index >= 0; index -= 1) {
+    const tier = tiers[index];
+    if (tier === undefined) continue;
+    if (mayPromote(state, chosen, tier)) return Object.freeze({ lifterId: chosen.id, tier });
   }
   return null;
 }

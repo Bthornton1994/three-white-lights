@@ -1039,12 +1039,15 @@ describe('the producer census, scoped by return type and resolved through the ch
     // wrong rather than the subject.
     expect(census.controlFailures).toEqual([]);
     expect(census.coreDiagnostics).toEqual([]);
-    expect(census.probes).toBe(701);
+    // 701 -> 714 when GDD §5.3's promotion path landed: four new exported
+    // producers in `recruitment.ts` and `tierRung` here, each probed across the
+    // brands this census walks.
+    expect(census.probes).toBe(714);
     // Counts, not bounds, on both verdicts. All-accepted and all-refused are
     // the two degenerate states, and each is a number away rather than a bound
     // away.
-    expect(census.refusedProbes).toBe(588);
-    expect(census.probes - census.refusedProbes).toBe(113);
+    expect(census.refusedProbes).toBe(600);
+    expect(census.probes - census.refusedProbes).toBe(114);
 
     // The brands, from the declarations rather than from a list written here.
     expect(census.brands).toEqual([
@@ -1060,8 +1063,8 @@ describe('the producer census, scoped by return type and resolved through the ch
       'UnacceleratedSeconds',
     ]);
 
-    expect(census.functions.length).toBe(41);
-    expect(census.slots.length).toBe(55);
+    expect(census.functions.length).toBe(42);
+    expect(census.slots.length).toBe(56);
 
     // The producers, by name. `createEmpireClock` and `createNpcLifter` are on
     // this list and are not spelled `as*`, which is the whole difference
@@ -1118,7 +1121,7 @@ describe('the producer census, scoped by return type and resolved through the ch
     for (const slot of census.slots) tally.set(slot.kind, (tally.get(slot.kind) ?? 0) + 1);
     expect(tally.get('raw-only')).toBe(18);
     expect(tally.get('brand-only')).toBe(6);
-    expect(tally.get('neither')).toBe(27);
+    expect(tally.get('neither')).toBe(28);
     expect(tally.get('both')).toBe(4);
     expect([...tally.values()].reduce((total, n) => total + n, 0)).toBe(census.slots.length);
   });
@@ -2394,7 +2397,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // the map really has edges in it. Pinned exactly, so a directory whose
     // cross-references thinned out is a decision somebody signs.
     expect(bodies.size).toBe(shipped.length);
-    expect(pairs).toBe(45);
+    // 45 -> 47 with the promotion path: `recruitment.ts` names `./empireCore`
+    // for `tierRung` and `empireInvariant.ts` names `./recruitment` for the
+    // promotion sale, so two modules gained a mentioner.
+    expect(pairs).toBe(47);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2757,9 +2763,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(filesRead).toBe(shipped.length);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(singleQuoted.size).toBe(159);
+    // 159 -> 162 and 137 -> 140 with the promotion path: the three new
+    // single-quoted tokens are `'not-a-higher-tier'` and the two
+    // `ROSTER_UPGRADE_RULES` members, and the three new templates are the two
+    // promotion refusals' messages and the spending anchor's.
+    expect(singleQuoted.size).toBe(162);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(137);
+    expect(templateChunks.size).toBe(140);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -2839,16 +2849,19 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'monolift',
       'national',
       'not-a-friend-gym',
+      'not-a-higher-tier',
       'not-enough-gym-bucks',
       'not-enough-reputation',
       'not-enough-wall-clock-earnings',
       'novice',
       'npc-id',
+      'one-way-door',
       'own-gym',
       'paid-pull',
       'physio',
       'physio-days-saved',
       'progression-reaching',
+      'promote-in-place',
       'refusal',
       'refused',
       'regional',
@@ -2902,7 +2915,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(296);
+    expect(stringsChecked).toBe(302);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -2931,7 +2944,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(119);
+    expect(probes).toBe(122);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);

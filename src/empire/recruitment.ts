@@ -125,6 +125,7 @@ import {
   recruitReputationThreshold,
   recruitSeconds,
   rosterCapacity,
+  tierRung,
   type AcceleratedSeconds,
   type EmpireClock,
   type EmpireState,
@@ -445,11 +446,6 @@ export interface PromotionQuote {
   readonly addedSeconds: number;
 }
 
-/** Where a tier sits on `NPC_TIERS`. The ladder's order is the ladder. */
-function tierIndex(tier: NpcTier): number {
-  return EMPIRE_TUNING.NPC_TIERS.indexOf(tier);
-}
-
 /**
  * The quote for moving a lifter up to `to`.
  *
@@ -458,7 +454,7 @@ function tierIndex(tier: NpcTier): number {
  * `promotionRefusals` rather than a gym that cannot afford something.
  */
 export function promotionQuote(from: NpcTier, to: NpcTier): PromotionQuote {
-  if (tierIndex(to) <= tierIndex(from)) {
+  if (tierRung(to) <= tierRung(from)) {
     throw new RangeError(`${to} is not above ${from} on the recruitment ladder`);
   }
   const difference: number = recruitCost(to) - recruitCost(from);
@@ -480,7 +476,7 @@ export function promotionRefusals(
   lifter: NpcLifter,
   to: NpcTier,
 ): readonly PromotionRefusal[] {
-  if (tierIndex(to) <= tierIndex(lifter.tier)) {
+  if (tierRung(to) <= tierRung(lifter.tier)) {
     return Object.freeze(['not-a-higher-tier' as PromotionRefusal]);
   }
   const quote = promotionQuote(lifter.tier, to);
@@ -559,33 +555,6 @@ export function promoteLifter(
   });
   assertEmpireState(next);
   return Object.freeze({ kind: 'accepted', state: next, quote });
-}
-
-/**
- * The promotion a gym would take if it took one: the lowest-tier lifter on the
- * roster, moved to the highest tier the gym may move them to.
- *
- * The mirror of `bestRecruitableTier` in `empireInvariant.ts`, and deliberately
- * the same shape of greedy rule — the composed loop models a player who spends
- * what they have on the best thing in front of them, and the §12.3 property has
- * to hold for that player rather than for a player chosen to make it hold.
- *
- * Ties are broken by roster order, which is join order, so the answer is a
- * function of the state and nothing else.
- */
-export function bestPromotion(state: EmpireState): { lifterId: string; tier: NpcTier } | null {
-  let chosen: NpcLifter | null = null;
-  for (const lifter of state.roster) {
-    if (chosen === null || tierIndex(lifter.tier) < tierIndex(chosen.tier)) chosen = lifter;
-  }
-  if (chosen === null) return null;
-  const tiers = EMPIRE_TUNING.NPC_TIERS;
-  for (let index = tiers.length - 1; index >= 0; index -= 1) {
-    const tier = tiers[index];
-    if (tier === undefined) continue;
-    if (mayPromote(state, chosen, tier)) return Object.freeze({ lifterId: chosen.id, tier });
-  }
-  return null;
 }
 
 /**

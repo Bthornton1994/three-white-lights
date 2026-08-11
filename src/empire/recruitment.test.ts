@@ -338,7 +338,7 @@ describe('no rarity tier is reachable by spending currency', () => {
       countOf(recruitment, /export function recruitmentBoard[\s\S]*?NPC_TIERS\.map\(/g),
     ).toBe(1);
     // And the scan is live: it sees the declarations it is scoped over.
-    expect(countOf(recruitment, /export function /g)).toBe(8);
+    expect(countOf(recruitment, /export function /g)).toBe(12);
     expect(countOf(npc, /export function /g)).toBe(9);
   });
 });
@@ -964,13 +964,21 @@ describe('no source of entropy is reachable from these two modules', () => {
       filesRead += 1;
     }
     expect(filesRead).toBe(2);
-    expect(singleQuoted.size).toBe(9);
+    expect(singleQuoted.size).toBe(10);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(1);
+    expect(templateChunks.size).toBe(3);
     // The template collector really reaches this module's one runtime message,
     // named from the real source in both directions.
     expect(
       [...templateChunks].filter((chunk) => chunk.includes('roster holds')).length,
+    ).toBe(1);
+    // And the two the promotion path added, by match count rather than by
+    // presence, so a duplicated message is red instead of invisible.
+    expect(
+      [...templateChunks].filter((chunk) => chunk.includes('is not above')).length,
+    ).toBe(1);
+    expect(
+      [...templateChunks].filter((chunk) => chunk.includes('no lifter on this roster')).length,
     ).toBe(1);
 
     expect([...singleQuoted].filter((literal) => !literal.includes(' ')).sort()).toEqual([
@@ -979,6 +987,7 @@ describe('no source of entropy is reachable from these two modules', () => {
       'accepted',
       'gym-bucks',
       'gym-bucks-below-cost',
+      'not-a-higher-tier',
       'refused',
       'reputation-below-threshold',
       'roster-at-capacity',
@@ -991,7 +1000,7 @@ describe('no source of entropy is reachable from these two modules', () => {
       expect(personShaped.test(value), `${value} is shaped like a person's name`).toBe(false);
       stringsChecked += 1;
     }
-    expect(stringsChecked).toBe(10);
+    expect(stringsChecked).toBe(13);
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
@@ -1006,7 +1015,7 @@ describe('no source of entropy is reachable from these two modules', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(9);
+    expect(probes).toBe(10);
     expect(probes).toBe(singleQuoted.size);
   });
 
@@ -1051,7 +1060,16 @@ describe('the exported surface is pinned, so a new producer of a tier is a signe
       'rosterTrainingIqPerDay',
       'settledLoyaltyMultiplier',
     ]);
+    // The four promotion rows are §5.3's ladder losing its one-way door — see
+    // that module's promotion section. Every one of them takes the tier it is
+    // given and returns it, exactly as the recruitment rows do, so the
+    // no-gacha argument above is unchanged in shape: the GREEDY CHOICE over
+    // tiers is `empireInvariant.ts`'s `bestPromotion`, deliberately not here.
     expect(exportsOf('recruitment.ts')).toEqual([
+      'PROMOTION_REFUSALS',
+      'PromotionDecision',
+      'PromotionQuote',
+      'PromotionRefusal',
       'RECRUITMENT_REFUSALS',
       'RECRUIT_BOOK',
       'RecruitmentDecision',
@@ -1061,7 +1079,11 @@ describe('the exported surface is pinned, so a new producer of a tier is a signe
       'RecruitmentSchedule',
       'beginRecruitment',
       'completeRecruitment',
+      'mayPromote',
       'mayRecruit',
+      'promoteLifter',
+      'promotionQuote',
+      'promotionRefusals',
       'recruitmentBoard',
       'recruitmentOffer',
       'recruitmentQuote',
