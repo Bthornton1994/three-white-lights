@@ -912,6 +912,57 @@ sincere its message. And give every sweep a non-vacuity guard that pins what it
 actually saw — counts, not bounds — so an empty domain reports itself instead of
 passing.
 
+## A Domain That Samples Only Extremes Is Empty Where It Matters
+
+**A separate principle from the two above, and it needs saying separately
+because it survives both of their checks.** The guarantee rule asks whether
+prose has a test. The vacuity rule asks whether a test can fail. This one asks
+a question neither of them reaches: *the test can fail, and its domain is
+provably non-empty — but is it non-empty in the region where the subject is
+actually used?*
+
+**A sweep over the extremes passes every non-vacuity guard there is.** It has
+inputs, it has counts to pin, its assertions bite on the values it samples, and
+a reviewer reading it sees a real domain. It is still blind to any behaviour
+that only differs in the middle — and the middle is where every real value
+lives.
+
+**Measured here, and the sharpest part is where it happened.** `src/career/`'s
+opacity probe was written to close an empty domain: the existing fixtures bound
+`Total` to `{ kg: number }`, so `Number({kg:600})` was `NaN`, every laundered
+comparison was false, and no behavioural test in the directory could catch one.
+The probe's answer was to bind `Total` to a real `number` and read the outcome
+rather than the syntax, and its own header claimed it therefore *"catches ANY
+route from a `Total` to a number, including routes nobody has thought of"*.
+
+It sampled two points: `0` and `1_000_000`. Every qualifying threshold in the
+game is between **260 and 680**. So a bypass was planted that stringifies the
+total and branches on the **width of the digits** — three digits admits, anything
+else falls through to the real gate. `tsc --noEmit` exit 0; the whole directory
+**132 passed, exit 0**. Under the binding the wiring piece will actually use, a
+**200 kg** lifter came back `eligible` at a meet requiring **680**, with the
+injected gate never consulted.
+
+**The instrument written to close an empty domain had an empty domain, one level
+out.** Both endpoints were outside the band, so the two-point sweep could not
+express the property at all — and every count it pinned was honest.
+
+**What to do instead.** Derive the domain from the subject's own numbers rather
+than from what looks extreme: for each threshold the code contains, sample
+below, just below, exactly at, just above, above, and far away, plus the values
+that change an input's *shape* rather than its magnitude — digit width, sign,
+integer versus fractional, empty versus one versus many. Then pin the band's own
+size and its shape census, so a truncated or reshaped domain reports itself. The
+repaired probe sweeps 50 totals derived from `QUALIFYING_TOTAL_KG_BY_TIER` and
+pins a digit-shape census specifically because the bypass keyed on digit width;
+truncating it back to `[0, 1_000_000]` reddens eight tests.
+
+**The tell to look for in review:** a sweep whose inputs are round numbers,
+zeroes, maxima, or names like `HUGE` and `TINY`. Those are chosen for being
+memorable at the boundary of a type, not for being near a decision the code
+makes. Ask what number the *code* branches on, and whether the sweep straddles
+it.
+
 ## Architecture Rules
 
 ### Pure logic is separate from UI
