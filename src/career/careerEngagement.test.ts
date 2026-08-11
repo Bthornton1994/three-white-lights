@@ -627,6 +627,19 @@ describe('an extra meet entered through the calendar CAN lower standing', () => 
       // than the shipped arm, because it enters the meets the gap refuses.
       expect(noGap.total.movedElements).toBe(2768015);
       expect(noGap.total.movedElements).toBeGreaterThan(shipped.total.movedElements);
+      // WHAT THIS ZERO IS AND IS NOT, so a later reader does not promote it.
+      // It ATTRIBUTES: every one of the 5124 above is this rule, because the
+      // only difference between the two arms is that rule. It is NOT a second
+      // independent measurement of the standing math, and it cannot become one
+      // — with the gap switched off an extra meet can only ADD a result, and
+      // `careerStanding` is monotone in the record, so the zero is entailed by
+      // construction for any edit to the ENTRY MODEL this is a control over.
+      //
+      // It is still reddenable, which is why it is a control and not
+      // decoration, but only from the other direction: an edit to
+      // `careerStanding` breaks it, and the `latest-result-only` wiring is the
+      // worked example — non-zero on this same domain. Two different subjects,
+      // and only one of them is the one this control is pointed at.
     },
     SWEEP_TIMEOUT_MS,
   );

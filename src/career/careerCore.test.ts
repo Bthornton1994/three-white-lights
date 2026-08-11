@@ -866,6 +866,23 @@ describe('eligibility', () => {
     // A tagged union whose tags are not all reachable is a union with dead
     // arms in it. Each case below is constructed to produce exactly one kind,
     // and the set of kinds observed is asserted to be the whole declared set.
+    //
+    // ONE OF THE EIGHT IS REACHED ONLY BY A SYNTHETIC SLOT, AND THIS TEST READS
+    // STRONGER THAN IT IS BECAUSE OF IT. `'other-federation'` needs a slot
+    // whose `federationId` differs from the lifter's, and `buildCareerCalendar`
+    // stamps every slot it makes with `spec.federationId` — so **no calendar
+    // this module can build contains one**. The case below reaches it by
+    // spreading `{ ...slotOf('local', 7), federationId: FED_B.id }`, which is a
+    // shape only a caller can produce.
+    //
+    // That is not dead code: a slot arriving from persistence or from a
+    // server's JSON is exactly the caller in question, and refusing it is the
+    // right behaviour. But the arm's domain is EMPTY for every value this
+    // module's own constructors emit, so "reaches every refusal it declares"
+    // is, for one of the eight, a statement about a hand-built input rather
+    // than about anything the calendar can produce. Said here because the
+    // alternative is a reader counting eight arms and inferring eight reachable
+    // states.
     const entered: CareerLifter<TestTotal> = {
       ...NOVICE,
       bestTotal: kg(600),
@@ -1133,6 +1150,42 @@ describe('careerCalendarFaults', () => {
       covered += 1;
     }
     expect(covered).toBe(7);
+  });
+
+  it('does not let a day it rejected become the baseline the next slot is ordered against', () => {
+    // THE DEFECT THIS PINS, and why the block above could not catch it. Every
+    // case there is ONE wrong slot, so no case has a wrong slot followed by a
+    // slot whose ordering depends on it. `previousDay` used to advance on any
+    // integer — including a negative one rejected on the line above — so a
+    // rejected day became the ordering baseline and swallowed a real fault
+    // downstream. A single-fault case cannot see that.
+    //
+    // Reddens on: restoring `if (Number.isInteger(slot.dayIndex)) previousDay =
+    // slot.dayIndex;`. Measured with that line in place, this input gave ONE
+    // fault instead of two — the ordering complaint about day 0 was gone.
+    const at = (id: string, dayIndex: number): CareerMeetSlot => ({
+      ...slotOf('local', 7),
+      slotId: id,
+      dayIndex,
+    });
+    const faults = careerCalendarFaults([at('a', 3), at('b', -5), at('c', 0)]);
+    expect(faults).toEqual([
+      'career: slot b sits on day -5, which is not a whole number of days from day zero',
+      'career: slot c sits on day 0, before the slot ahead of it on day 3',
+    ]);
+
+    // AND THE REASON IT IS PINNED AS AN EQUALITY RATHER THAN A COUNT: the two
+    // near-identical walkers in this directory must agree. `careerRecordFaults`
+    // in `careerRecord.ts` already behaved this way, and the disagreement was
+    // invisible because nothing drove both on the same shape. This asserts the
+    // shapes match, so the next edit to either one has to move both.
+    //
+    // It reads the sibling's SOURCE rather than calling it, because the two
+    // take different payload types and a translation layer here would be a
+    // third implementation of the thing being compared.
+    const siblingSource = readFileSync(path.join(HERE, 'careerRecord.ts'), 'utf8');
+    expect(siblingSource).toContain('previousDay = result.dayIndex;');
+    expect(siblingSource).not.toContain('if (Number.isInteger(result.dayIndex)) previousDay');
   });
 });
 

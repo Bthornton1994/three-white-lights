@@ -684,16 +684,30 @@ export function careerCalendarFaults(calendar: readonly CareerMeetSlot[]): reado
     if (careerFederation(slot.federationId) === null) {
       faults.push(`career: slot ${slot.slotId} names federation ${slot.federationId}, which does not exist`);
     }
+    // `previousDay` advances only on a day this walker ACCEPTED. It used to
+    // advance on `Number.isInteger(slot.dayIndex)` — any integer, including a
+    // negative one it had just rejected on the line above — so a rejected day
+    // became the baseline the next slot was ordered against, and a real
+    // ordering fault downstream of it was silently lost.
+    //
+    // MEASURED on days [3, -5, 0]: this walker reported ONE fault (the negative
+    // day) where `careerRecordFaults`, its sibling in `careerRecord.ts`,
+    // reported TWO — the negative day and "result c sits on day 0, before the
+    // result ahead of it on day 3". Two near-identical walkers written twice,
+    // disagreeing on the one line where they differ, with the copy that got it
+    // right being the one written second again.
     if (!Number.isInteger(slot.dayIndex) || slot.dayIndex < 0) {
       faults.push(
         `career: slot ${slot.slotId} sits on day ${slot.dayIndex}, which is not a whole number of days from day zero`,
       );
-    } else if (previousDay !== null && slot.dayIndex < previousDay) {
-      faults.push(
-        `career: slot ${slot.slotId} sits on day ${slot.dayIndex}, before the slot ahead of it on day ${previousDay}`,
-      );
+    } else {
+      if (previousDay !== null && slot.dayIndex < previousDay) {
+        faults.push(
+          `career: slot ${slot.slotId} sits on day ${slot.dayIndex}, before the slot ahead of it on day ${previousDay}`,
+        );
+      }
+      previousDay = slot.dayIndex;
     }
-    if (Number.isInteger(slot.dayIndex)) previousDay = slot.dayIndex;
 
     const expected = requirementFor(slot.tier);
     for (const category of CAREER_TUNING.QUALIFYING_CATEGORIES) {

@@ -467,8 +467,29 @@ const GUARANTEE_COVERAGE = {
    * limit, in a file the ban does not scope into. That is now five instances
    * out of six of the same asymmetry, which is worth more than the number it is
    * attached to.
+   *
+   * 224 -> 225 when `src/career/` closed a critic's findings — an import fence
+   * that was blind to a double-quoted specifier, and two near-identical fault
+   * walkers disagreeing on the one line where they differ. **Written by the
+   * OTHER SESSION**, which does not own this file; see CLAUDE.md's coordination
+   * section, where this is recorded as a crossing of the same data class as
+   * `COVERED_DAY_TOUCHING_FUNCTIONS`. Measured per file the way every note above
+   * was, by restoring each of the three touched files to its pre-change text in
+   * turn and re-reading this count: `careerCore.ts` and `careerEngagement.ts`'s
+   * test contribute ZERO between them, and the whole increment is one paragraph
+   * in `careerCore.test.ts`.
+   *
+   * SEVENTH ROUND RUNNING, and it is the asymmetry again — but read the
+   * direction, because it is the sharpest instance yet. The round's real work
+   * was a fault walker corrected against a measured disagreement, and its
+   * paragraph moved this number by nothing. What the scan noticed instead is
+   * the paragraph disclosing that one of eight eligibility arms is reachable
+   * only by a hand-built input — a LIMIT, not a guarantee, and one whose whole
+   * purpose is to stop a reader over-reading the test above it. Six of seven
+   * rounds now: the scan demands nothing of the sentence that claims something
+   * and flags the sentence that admits something.
    */
-  TREE_WIDE: 224,
+  TREE_WIDE: 225,
 } as const;
 
 // ---------------------------------------------------------------------------
