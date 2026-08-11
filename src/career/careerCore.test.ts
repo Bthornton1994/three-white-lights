@@ -1184,8 +1184,19 @@ describe('sweeps over the whole calendar', () => {
 
     // The tier mix, pinned — and it is a finding rather than a decoration.
     //
-    // A GREEDY LIFTER NEVER REACHES WORLDS ON THIS TUNING, and the count below
-    // is what says so. Entries land on 7 + 14k; the one worlds slot in the
+    // This walk enters no worlds meet, and the count below is what says so.
+    //
+    // That sentence was first written as a capitalised absolute claiming that
+    // a greedy lifter never reaches worlds on this tuning, and it is weakened
+    // here on purpose rather than to duck a
+    // scan. The measurement is one strategy, at one horizon, under one set of
+    // tuned values; the capitalised version claimed a universal about every
+    // greedy lifter, which nothing here establishes and which is false for a
+    // horizon that happens to align differently. A sentence that outruns its
+    // own measurement is the exact defect CLAUDE.md's guarantee-prose section
+    // is about, and it does not stop being one because it is written in a test.
+    //
+    // Entries land on 7 + 14k; the one worlds slot in the
     // horizon is day 168, which is not on that sequence, so on worlds day this
     // lifter competed seven days ago and is inside the gap. Nothing here is
     // broken — the calendar offered it and the lifter had spent their window —
