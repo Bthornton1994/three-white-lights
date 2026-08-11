@@ -1142,13 +1142,18 @@ function fullyExhaustiveSweep(days: number, checkInsPerDay: number): EngagementT
 function wholeDaySweep(
   days: number,
   spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
+  anchor: EmpireDaySpendingAnchor = SHIPPED_DAY_SPENDING_ANCHOR,
 ): EngagementTally {
-  return memoised(['whole-day', days, spending].join('|'), () =>
-    wholeDaySweepUncached(days, spending),
+  return memoised(['whole-day', days, spending, anchor].join('|'), () =>
+    wholeDaySweepUncached(days, spending, anchor),
   );
 }
 
-function wholeDaySweepUncached(days: number, spending: EmpireSpendingPolicy): EngagementTally {
+function wholeDaySweepUncached(
+  days: number,
+  spending: EmpireSpendingPolicy,
+  anchor: EmpireDaySpendingAnchor,
+): EngagementTally {
   const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
   const slots = days * cadence;
   const cache = new Map<number, EngagementRun>();
@@ -1160,7 +1165,15 @@ function wholeDaySweepUncached(days: number, spending: EmpireSpendingPolicy): En
       (slot) => (mask & (1 << Math.floor(slot / cadence))) !== 0,
       BASE_TRAINED_DAYS,
     );
-    const made = runFor(days, history, 'shipped', ENGAGEMENT_SWEEP.AXIS_ORDER, cadence, spending);
+    const made = runFor(
+      days,
+      history,
+      'shipped',
+      ENGAGEMENT_SWEEP.AXIS_ORDER,
+      cadence,
+      spending,
+      anchor,
+    );
     cache.set(mask, made);
     return made;
   };
@@ -1951,8 +1964,15 @@ const MEASURED_ANCHOR = Object.freeze({
 
   /**
    * The shipped anchor split by whether the extra check-in becomes the day's
-   * EARLIEST one — which is the only thing this anchor lets an extra check-in
-   * change about a decision, and therefore the arm a violation would live on.
+   * EARLIEST one — the only thing this anchor lets an extra check-in change
+   * about the TIMING of a decision, and therefore the arm a timing violation
+   * would live on.
+   *
+   * It is not the only thing it can change about the decision itself, and that
+   * distinction is what `RUNG_SWAP` below measures: WHICH ladder of a
+   * two-ladder purse the money goes to moves with the rotation phase, which
+   * moves with the number of attended days. This split says nothing about that
+   * half and used to be described as if it did.
    *
    * Both arms are zero and both arms MOVE, in counts rather than bounds. An arm
    * that stopped moving would be an empty domain reporting a zero.
@@ -3495,7 +3515,12 @@ const ANCHOR_DOMAINS: readonly AnchorDomain[] = Object.freeze([
   {
     name: 'the whole-day reading',
     anchors: SHIPPED_ANCHOR_ONLY,
-    sweep: () => wholeDaySweep(ENGAGEMENT_SWEEP.WHOLE_DAY_HORIZON_DAYS, 'spend-once-per-calendar-day'),
+    sweep: (anchor) =>
+      wholeDaySweep(
+        ENGAGEMENT_SWEEP.WHOLE_DAY_HORIZON_DAYS,
+        'spend-once-per-calendar-day',
+        anchor,
+      ),
     pairs: 24576,
     runs: 4096,
     anchorDecisions: 258713,

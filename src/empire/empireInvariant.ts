@@ -762,6 +762,11 @@ export function isDaySpendingMoment(
  * earliest, the gym shops there, the roster purse cannot yet afford its next
  * lifter, and the day is over for it because some OTHER purse could afford its
  * rung.
+ *
+ * The zero on the right is a measurement of this comparison rather than a proof
+ * that the anchor is safe. §4c of this file's header carries what the
+ * construction argument does and does not reach, and why a purse holding two
+ * ladders leaves a decision this anchor never touches.
  * `@guarantee the-day-shops-purse-by-purse`
  */
 export function booksUnspentToday(spentToday: readonly EmpireBook[]): readonly EmpireBook[] {
