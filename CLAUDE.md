@@ -127,6 +127,60 @@ piece there. If either session needs to cross the line, the crossing is written
 into this section **before** the work starts — not into a commit message, not
 into a conversation the other session cannot read.
 
+### Crossings Session B needs and has NOT made — GDD §5 is otherwise complete
+
+Both are drafted rather than committed, per the rule above. Session B did not
+edit any of the four files named here. A human has approved both as requests;
+whoever applies them is making the crossing.
+
+**1. Three rows registering `src/empire/empireTuning.ts`, in the three reserved
+files.** Without them `audit.test.ts` reports 87 bare literals — every one in
+that file, no other `src/empire/` module — which is the single failing test on
+`claude/empire-s5-build-h9rvca`. **Verified rather than drafted:** applied in a
+throwaway worktree at that branch's head, the whole suite goes to 75 files /
+3119 tests, exit 0, so the three rows are necessary *and* sufficient. Row text
+is in Session B's report. Classification is `feel`, which is what forces the
+third row: `audit.test.ts`'s `reaches every feel home and every palette` pins
+`TUNING_MODULES` against `SOURCE_RULES` in both directions.
+
+*An earlier verification of the same rows found them necessary but NOT
+sufficient*, because a guard pinned the audit at exactly 87 findings and
+registering the file drops that to 0. That guard now reads `SOURCE_RULES` and is
+correct in both worlds, so the extra edit no longer exists. Do not act on the
+older warning.
+
+**2. One extension to `@guarantee` in `src/game/guaranteeTags.test.ts`, so a
+tagged claim's NUMBERS resolve as well as its test.** This is a Session A file
+and Session B did not touch it.
+
+*The defect it closes, measured twice in `src/empire/`.* A comment read "zero of
+120 physio arrival days" while its named check pinned **144**; another read "32
+of 144" while its own body pinned **128**. Both numbers moved when a ruling
+landed and both sentences kept their confident tone. The existing tag caught
+neither, because it resolves *that a test exists* and says nothing about what
+the surrounding prose claims the test measured.
+
+*The proposed rule, which adds no new tag and no per-number annotation:* **every
+numeric literal in a `@guarantee`-tagged comment paragraph must appear in the
+named test's body.** It reuses machinery already there — `MUTATION_WITNESSES`
+already resolves `redAssertion` against a specific `it(` body — and body scoping
+is what makes it bite: `144` does exist in the right *file*, as a different
+check's pin, and would have passed a file-scoped version while being wrong for
+the control it was cited about.
+
+*What it does not cover, stated so nobody reads it as more:* only tagged
+paragraphs. Untagged numeric prose stays unchecked, and no scan can decide which
+sentence is a claim about a measurement. Session B audited all 12 numeric claims
+in its shipped prose by hand at `70f7b92` and all 12 resolve; that is a
+point-in-time measurement with nothing keeping it true, which is the argument
+for the extension rather than against it.
+
+*A weaker local version was considered and refused.* Checking only that both
+numbers appear somewhere in the directory's tests needs no Session A file — and
+would have caught **one of the two** real defects. A mechanism with a measured
+50% hit rate that reads like coverage is what this document warns about hardest,
+so it was not built.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise
