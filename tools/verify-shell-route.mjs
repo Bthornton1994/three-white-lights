@@ -573,6 +573,15 @@ const SELECTIONS_PER_MEET_RESTATED = 3 * (3 - 1);
 const CARDS_PER_SELECTION_RESTATED = 2;
 
 /**
+ * `src/game/meet.ts` — LIFT_ORDER, the order a recap draws its boards in.
+ *
+ * Restated and cross-checked against `meet.ts` at the end of the run, like the
+ * selection count above. Section 8c walks it, so a fourth lift arriving without
+ * this moving would leave that board ungraded and the section still green.
+ */
+const LIFT_ORDER_RESTATED = Object.freeze(['squat', 'bench', 'deadlift']);
+
+/**
  * Every §6.3 screen this run read, in the order they were on the platform.
  *
  * Filled by `readAttemptSelect` from inside the drive and asserted afterwards,
@@ -628,6 +637,161 @@ async function readAttemptSelect(page) {
       cards,
     };
   });
+}
+
+// ###########################################################################
+// ###  GDD §6.5 — THE WORD BESIDE A LIFT ON THE RECAP                      #
+// ###########################################################################
+//
+// ===========================================================================
+// WHY THIS IS A BROWSER CHECK AND NOT A UNIT ONE
+// ===========================================================================
+// `vitest.config.ts` is `environment: node`, so the suite can assert what
+// `RecapLiftRow.callOut` CONTAINS and nothing whatever about what the board
+// PRINTS. The two came apart before on this exact pair of screens — GDD §6.5's
+// recap called all three lifts a PR while §6.3's screen, one beat earlier, had
+// flagged none — and the half that was invisible to the suite was the drawn one.
+//
+// ===========================================================================
+// TWO ARMS, AND THEY ARE DIFFERENT SUBJECTS. THE SPLIT IS THE APP'S, NOT A
+// CONVENIENCE
+// ===========================================================================
+// §6.1's Career calendar does not exist, so the SECOND meet of an app run is
+// refused as already recorded and `MeetScreen` draws the placeholder instead of
+// a recap (section 4b measures exactly that). A page load is a new lifter. So:
+//
+//   - THE PLAYED ARM can only ever reach a FIRST meet's recap — no meets on
+//     record, `previousBestByLift` all-null, every lift a first. That is the
+//     screen the defect lived on, and it is read here with no query string in
+//     the address bar.
+//   - THE PR STATE IS NOT REACHABLE BY PLAY AT ALL. It needs a lifter with a
+//     competition history and a recap in the same app run, which the shipped
+//     route graph cannot produce. It is read on `?meet=recap`'s scripted lifter
+//     and labelled `DEBUG ARM`, the same way §6.3's miss branch already is.
+//
+// Both are needed and neither substitutes for the other: the played arm alone
+// would pass a build that prints FIRST unconditionally, and the debug arm alone
+// would pass one that prints PR unconditionally.
+//
+// ===========================================================================
+// THE ORACLE IS THE SAME ON BOTH ARMS
+// ===========================================================================
+// Which word is right is computed from two numbers, neither of them the flag
+// being graded: the best GOOD lift on the drawn attempt board, and the best the
+// lifter held before the meet. The second is all-null on a first meet (derived
+// from `MEETS_DRIVEN` by the same function section 8a uses, not asserted here)
+// and `MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG` read from source on the debug arm.
+const RECAP_CALL_OUTS_SEEN = [];
+
+/**
+ * The three words §6.5's recap can print, restated from the app's copy the way
+ * every other string in this file is, and cross-checked against `meetTuning.ts`
+ * at the end of the run so the restatement cannot rot into a comparison against
+ * a string no screen says.
+ */
+const RECAP_SAYS = Object.freeze({
+  /** src/game/meetTuning.ts — MEET_COPY.RECAP_PR_LIFT. A record beaten. */
+  PR_LIFT: 'PR',
+  /**
+   * src/game/meetTuning.ts — MEET_COPY.RECAP_FIRST_LIFT. A record set from
+   * nothing. PENDING PLAYTEST (GDD §6.5), so this restatement is expected to
+   * move with the copy rather than to be argued about.
+   */
+  FIRST_LIFT: 'FIRST',
+  /** src/game/meetTuning.ts — MEET_COPY.RECAP_FIRST_TOTAL. The precedent. */
+  FIRST_TOTAL: 'FIRST TOTAL',
+});
+
+/**
+ * src/game/meetTuning.ts — MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG.
+ *
+ * What the scripted lifter behind `?meet=recap` walks in holding, and therefore
+ * what the debug arm's oracle measures that meet's board against. Restated and
+ * cross-checked, like the copy above; a re-tune that moved these numbers with
+ * this pin absent would make the arm grade against the wrong record and still
+ * be green.
+ */
+const PREVIEW_PREVIOUS_BEST_RESTATED = Object.freeze({ squat: 215, bench: 145, deadlift: 245 });
+
+/**
+ * WHAT ONE RECAP SAYS ABOUT ITS THREE LIFTS, READ OFF THE PIXELS.
+ *
+ * The attempt cells are read as well as the call-outs, because the call-out is
+ * only checkable against something: the best good lift on the board is what a
+ * PR would have had to beat. `textDecorationLine` is how a missed attempt is
+ * drawn (`AttemptBoard`'s `cellStruck`), read from `getComputedStyle` rather
+ * than inferred from a count, so a board with a miss on it reads correctly.
+ *
+ * `opacity` is the EFFECTIVE one, multiplied up the parent chain, because
+ * §6.5's blocks fade in on a stagger and a call-out that is present at zero
+ * opacity is not a call-out a player has been shown.
+ */
+async function readRecapCallOuts(page, lifts) {
+  return page.evaluate((wantedLifts) => {
+    const node = (id) => document.querySelector(`[data-testid="${id}"]`);
+    const text = (id) => {
+      const found = node(id);
+      return found === null ? null : (found.textContent ?? '').trim();
+    };
+    const upChain = (el) => {
+      let o = 1;
+      let n = el;
+      while (n !== null && n instanceof Element) {
+        const v = Number.parseFloat(window.getComputedStyle(n).opacity);
+        o *= Number.isFinite(v) ? v : 1;
+        n = n.parentElement;
+      }
+      return o;
+    };
+    const boards = {};
+    for (const lift of wantedLifts) {
+      const cells = [];
+      for (const attemptNumber of [1, 2, 3]) {
+        const cell = node(`attempt-cell-${lift}-${attemptNumber}`);
+        if (cell === null) continue;
+        const inner = cell.querySelector('*') ?? cell;
+        const printed = (cell.textContent ?? '').trim();
+        cells.push({
+          attemptNumber,
+          printed,
+          struck: window.getComputedStyle(inner).textDecorationLine.includes('line-through'),
+        });
+      }
+      const callOutNode = node(`attempt-board-callout-${lift}`);
+      boards[lift] = {
+        cells,
+        callOut: callOutNode === null ? null : (callOutNode.textContent ?? '').trim(),
+        callOutOpacity: callOutNode === null ? 0 : upChain(callOutNode),
+      };
+    }
+    return {
+      // Read INSIDE the same evaluate as the pixels, so the address bar and the
+      // screen are the same instant rather than two reads with a press between.
+      href: window.location.href,
+      search: window.location.search,
+      totalCallOut: text('recap-pr'),
+      total: text('recap-total'),
+      boards,
+    };
+  }, lifts);
+}
+
+/**
+ * The heaviest attempt that STOOD on one board, or null when none did.
+ *
+ * Off the drawn cells rather than off any field the app computed, so the number
+ * the call-out is graded against is the one a reader can see in the screenshot
+ * beside it.
+ */
+function bestOnBoard(board) {
+  let best = null;
+  for (const cell of board?.cells ?? []) {
+    if (cell.struck) continue;
+    const kg = weightNumber(cell.printed);
+    if (kg === null) continue;
+    if (best === null || kg > best) best = kg;
+  }
+  return best;
 }
 
 /** A weight as `formatWeight` prints it — a bare number, no unit — or null. */
@@ -2560,6 +2724,37 @@ async function checkMeetRestatementsMatchTuning() {
         `looked for ${name}: '${mine}' in meetTuning.ts`,
       );
     }
+
+    // GDD §6.5'S THREE WORDS, the same arrangement one section over. Section 8c
+    // tells a beaten record from a first one by comparing against these exact
+    // strings, so a copy pass that reworded either — and both are marked pending
+    // playtest, so one is expected — would leave that section comparing screens
+    // against a phrase nothing prints, which is green and measures nothing.
+    for (const [name, mine] of [
+      ['RECAP_PR_LIFT', RECAP_SAYS.PR_LIFT],
+      ['RECAP_FIRST_LIFT', RECAP_SAYS.FIRST_LIFT],
+      ['RECAP_FIRST_TOTAL', RECAP_SAYS.FIRST_TOTAL],
+    ]) {
+      check(
+        meetText.includes(`${name}: '${mine}'`),
+        `MEET_COPY.${name} is a word section 8c reads GDD §6.5’s recap by`,
+        `looked for ${name}: '${mine}' in meetTuning.ts`,
+      );
+    }
+    // AND THE RECORD THE DEBUG ARM'S ORACLE MEASURES AGAINST. Section 8c asks
+    // whether the scripted lifter's board BEAT what they walked in holding; if
+    // these numbers moved with this pin absent, that arm would grade against the
+    // wrong record and stay green either way.
+    const previewHeld = {
+      squat: numberInBlock(meetText, 'PREVIOUS_BEST_BY_LIFT_KG', 'squat'),
+      bench: numberInBlock(meetText, 'PREVIOUS_BEST_BY_LIFT_KG', 'bench'),
+      deadlift: numberInBlock(meetText, 'PREVIOUS_BEST_BY_LIFT_KG', 'deadlift'),
+    };
+    check(
+      JSON.stringify(previewHeld) === JSON.stringify(PREVIEW_PREVIOUS_BEST_RESTATED),
+      'the record the scripted lifter walks in holding is MEET_PREVIEW’s own, not this tool’s guess',
+      `meetTuning.ts ${JSON.stringify(previewHeld)} vs this tool ${JSON.stringify(PREVIEW_PREVIOUS_BEST_RESTATED)}`,
+    );
     // AND THE SENTENCE IS IN ONE ENTRY, COUNTED. A pin that only asks whether
     // the string is present passes just as happily when it is present TWICE —
     // which is exactly the defect: the PR claim living in `OPTION_BIG_WHY` as
@@ -2626,6 +2821,24 @@ async function checkMeetRestatementsMatchTuning() {
     theirSelections === null
       ? `ATTEMPTS_PER_LIFT (${attemptsPerLift}) or LIFT_ORDER (${JSON.stringify(liftOrder)}) was not found in meet.ts`
       : `meet.ts ${liftOrder?.length} lifts x (${attemptsPerLift} - 1) = ${theirSelections} vs this tool ${SELECTIONS_PER_MEET_RESTATED}`,
+  );
+  // AND THE NAMES THEMSELVES, not only how many there are, because section 8c
+  // walks this list to find each recap board by testID. A lift renamed or a
+  // fourth one added would leave a board ungraded and that section would report
+  // a smaller domain as if it were the whole one.
+  //
+  // A SET AND NOT AN ORDER, said here rather than left to be discovered:
+  // `stringListInSource` SORTS what it reads, so it cannot answer an order
+  // question at all, and a check written as if it could would be a false claim
+  // about what had been verified. (It was, for one run — this check reddened on
+  // the first browser run that carried it, comparing a sorted parse against an
+  // unsorted restatement.) Order does not matter to 8c, which looks each lift up
+  // by testID rather than by index; the SET does, and that is what this asks.
+  check(
+    liftOrder !== null &&
+      JSON.stringify(liftOrder) === JSON.stringify([...LIFT_ORDER_RESTATED].sort()),
+    'the lifts section 8c walks a recap by are meet.ts’s LIFT_ORDER, as a set (the parser sorts, so this cannot speak to order)',
+    `meet.ts ${JSON.stringify(liftOrder)} vs this tool ${JSON.stringify([...LIFT_ORDER_RESTATED].sort())}`,
   );
 
   // THE STAGE GEOMETRY THE HALL-UNDER-THE-REP BAND IS CUT FROM. Same
@@ -3197,24 +3410,38 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption
  * drive that never reached §6.3 reports zeroes and reddens rather than passing
  * an empty loop.
  */
-function checkAttemptSelectOnThePlayedArm(meetsDriven) {
-  const seen = SELECT_SCREENS_SEEN;
-  const gold = rgbOf(CARD_PR_EDGE_RESTATED);
-  const expectedScreens = meetsDriven.length * SELECTIONS_PER_MEET_RESTATED;
-
-  // WHICH MEETS HAD A COMPETITION HISTORY BEHIND THEM, DERIVED RATHER THAN
-  // ASSUMED. A meet can flag a PR attempt only if an EARLIER meet IN THE SAME
-  // APP RUN recorded a result — a page load is a new lifter (see `open()`), and
-  // a meet that ended on the placeholder was refused and recorded nothing.
-  // Written as a derivation because the naive reading ("meet 1 is the first,
-  // the rest are seconds") is false of this run: meet 3 is the first meet of
-  // its own app run and has no more history than meet 1 does.
+/**
+ * WHICH MEETS HAD A COMPETITION HISTORY BEHIND THEM, DERIVED RATHER THAN
+ * ASSUMED. A meet can flag a PR attempt — or print a PR on its recap — only if
+ * an EARLIER meet IN THE SAME APP RUN recorded a result. A page load is a new
+ * lifter (see `open()`), and a meet that ended on the placeholder was refused
+ * and recorded nothing.
+ *
+ * Written as a derivation because the naive reading ("meet 1 is the first, the
+ * rest are seconds") is false of this run: meet 3 is the first meet of its own
+ * app run and has no more history than meet 1 does.
+ *
+ * A FUNCTION RATHER THAN A BLOCK INSIDE SECTION 8a, because section 8c asks the
+ * identical question about the same list and CLAUDE.md's rule is that a twin
+ * guard READS its sibling's derivation instead of copying it — four defects in
+ * this repository have been a second copy drifting from the first.
+ */
+function historyBehindEachMeet(meetsDriven) {
   const historyBehind = new Map();
   const recordedIn = new Set();
   for (const meet of meetsDriven) {
     historyBehind.set(meet.tag, recordedIn.has(meet.appRun));
     if (meet.ended === 'recap') recordedIn.add(meet.appRun);
   }
+  return historyBehind;
+}
+
+function checkAttemptSelectOnThePlayedArm(meetsDriven) {
+  const seen = SELECT_SCREENS_SEEN;
+  const gold = rgbOf(CARD_PR_EDGE_RESTATED);
+  const expectedScreens = meetsDriven.length * SELECTIONS_PER_MEET_RESTATED;
+
+  const historyBehind = historyBehindEachMeet(meetsDriven);
   const withHistory = meetsDriven.filter((meet) => historyBehind.get(meet.tag) === true);
   const withoutHistory = meetsDriven.filter((meet) => historyBehind.get(meet.tag) !== true);
   note(
@@ -3500,6 +3727,159 @@ function checkAttemptSelectOnThePlayedArm(meetsDriven) {
   );
 }
 
+/**
+ * GDD §6.5, GRADED ON WHAT THE RECAPS THIS RUN OPENED ACTUALLY DREW.
+ *
+ * Called once, after both arms, over `RECAP_CALL_OUTS_SEEN`. Every number below
+ * is a count of boards this run really read; a run that reached no recap reports
+ * zeroes and reddens rather than passing an empty loop.
+ */
+function checkRecapCallOutsOnBothArms(meetsDriven) {
+  const seen = RECAP_CALL_OUTS_SEEN;
+  const historyBehind = historyBehindEachMeet(meetsDriven);
+  note(
+    `§6.5 domain: ${
+      seen.map((r) => `${r.tag} (${r.arm} arm, search ${JSON.stringify(r.search)})`).join('; ') || 'none'
+    }`,
+  );
+
+  if (seen.length === 0) {
+    check(false, 'SKIPPED: GDD §6.5’s per-lift call-out needs a recap, and none was read');
+    return;
+  }
+
+  // ---- the domain, before anything is said about it -----------------------
+  const boardsRead = seen.reduce((n, r) => n + Object.keys(r.boards).length, 0);
+  check(
+    seen.length === 2 && boardsRead === seen.length * LIFT_ORDER_RESTATED.length,
+    `GDD §6.5’s recap was read on BOTH arms — ${LIFT_ORDER_RESTATED.length} boards each`,
+    `${seen.length} recap(s): ${seen.map((r) => `${r.tag}=${Object.keys(r.boards).length} boards`).join(', ')}` +
+      (seen.length === 2 ? '' : ' — one arm did not run, and every count below is over a smaller domain than it claims'),
+  );
+  // WORD FOR WORD FROM THE APP, AND DIFFERENT FROM EACH OTHER. If the two
+  // strings were ever the same, every discriminator below would be comparing a
+  // value against itself and could not fail in either direction.
+  check(
+    RECAP_SAYS.PR_LIFT !== RECAP_SAYS.FIRST_LIFT,
+    'CONTROL: the two words this section tells apart are different words',
+    `PR ${JSON.stringify(RECAP_SAYS.PR_LIFT)} vs FIRST ${JSON.stringify(RECAP_SAYS.FIRST_LIFT)}`,
+  );
+
+  let graded = 0;
+  let prSeen = 0;
+  let firstSeen = 0;
+  let silentSeen = 0;
+  const wrong = [];
+  for (const recap of seen) {
+    for (const lift of LIFT_ORDER_RESTATED) {
+      const board = recap.boards[lift];
+      if (board === undefined) continue;
+      const best = bestOnBoard(board);
+      const held = recap.heldByLift[lift] ?? null;
+      // THE ORACLE, IN ONE PLACE, FOR BOTH ARMS. Neither input is the thing
+      // being graded: `best` is read off the drawn cells and `held` is the
+      // record the lifter walked in with.
+      const expected =
+        best === null
+          ? null
+          : held === null
+            ? RECAP_SAYS.FIRST_LIFT
+            : best > held
+              ? RECAP_SAYS.PR_LIFT
+              : null;
+      graded += 1;
+      if (board.callOut === RECAP_SAYS.PR_LIFT) prSeen += 1;
+      else if (board.callOut === RECAP_SAYS.FIRST_LIFT) firstSeen += 1;
+      else if (board.callOut === null) silentSeen += 1;
+      if (board.callOut !== expected) {
+        wrong.push(
+          `${recap.tag} ${lift}: board best ${String(best)} against a held ${String(held)} wants` +
+            ` ${JSON.stringify(expected)}, screen says ${JSON.stringify(board.callOut)}`,
+        );
+      }
+      // PRESENCE IS NOT VISIBILITY. A call-out at zero opacity is one no player
+      // was shown, and §6.5's blocks fade in on a stagger.
+      if (board.callOut !== null && board.callOutOpacity < ON_SCREEN_MIN_OPACITY) {
+        wrong.push(
+          `${recap.tag} ${lift}: said ${JSON.stringify(board.callOut)} at effective opacity` +
+            ` ${board.callOutOpacity.toFixed(3)}, which is not drawn`,
+        );
+      }
+    }
+  }
+  check(
+    wrong.length === 0 && graded === boardsRead,
+    'EVERY WORD BESIDE A LIFT IS TRUE OF THAT LIFT — PR only where the board beat a record the lifter held, FIRST only where they held none',
+    `${graded} board(s) graded: ${prSeen} said ${JSON.stringify(RECAP_SAYS.PR_LIFT)},` +
+      ` ${firstSeen} said ${JSON.stringify(RECAP_SAYS.FIRST_LIFT)}, ${silentSeen} said nothing` +
+      (wrong.length === 0 ? '' : `. ${wrong.length} wrong: ${wrong.join(' | ')}`),
+  );
+
+  // ---- NON-VACUITY, IN BOTH DIRECTIONS, AND ON DIFFERENT ARMS -------------
+  //
+  // The oracle above is satisfied by a build that prints FIRST unconditionally
+  // (every played board is a first) and by one that prints PR unconditionally
+  // (if the debug arm's boards all beat). So the two states are counted
+  // separately, and the arm each is reachable on is named.
+  const played = seen.filter((recap) => recap.arm === 'played');
+  const playedFirsts = played.reduce(
+    (n, recap) =>
+      n +
+      LIFT_ORDER_RESTATED.filter((lift) => recap.boards[lift]?.callOut === RECAP_SAYS.FIRST_LIFT).length,
+    0,
+  );
+  const playedPrs = played.reduce(
+    (n, recap) =>
+      n + LIFT_ORDER_RESTATED.filter((lift) => recap.boards[lift]?.callOut === RECAP_SAYS.PR_LIFT).length,
+    0,
+  );
+  const playedHadHistory = played.filter((recap) => historyBehind.get(recap.tag) === true);
+  check(
+    played.length > 0 &&
+      playedHadHistory.length === 0 &&
+      playedFirsts === played.length * LIFT_ORDER_RESTATED.length &&
+      playedPrs === 0,
+    'ON THE MEET A PLAYER OPENED, ALL THREE LIFTS SAY FIRST AND NONE SAYS PR — this lifter had no competition record, and §6.3 had just told them so',
+    `${played.length} played recap(s) (${played.map((r) => r.tag).join(', ') || 'none'}),` +
+      ` ${playedHadHistory.length} of them with a history behind them (derived, want 0),` +
+      ` ${playedFirsts} lifts said ${JSON.stringify(RECAP_SAYS.FIRST_LIFT)}, ${playedPrs} said ${JSON.stringify(RECAP_SAYS.PR_LIFT)}.` +
+      ' Before this piece every one of them said PR.',
+  );
+  // AND THE TOTAL AGREES WITH ITS OWN LIFTS ON THE SAME SCREEN. This is the
+  // precedent the per-lift split was built from, and it is the one place the
+  // two can be compared at the same instant.
+  const totalsWrong = played.filter((recap) => recap.totalCallOut !== RECAP_SAYS.FIRST_TOTAL);
+  check(
+    played.length > 0 && totalsWrong.length === 0,
+    'and the TOTAL on that same screen says FIRST TOTAL — one screen, one story about what this lifter had done before',
+    `${played.length} played recap(s); totals said ${JSON.stringify(played.map((r) => r.totalCallOut))}`,
+  );
+
+  const debug = seen.filter((recap) => recap.arm === 'debug');
+  const debugPrs = debug.reduce(
+    (n, recap) =>
+      n + LIFT_ORDER_RESTATED.filter((lift) => recap.boards[lift]?.callOut === RECAP_SAYS.PR_LIFT).length,
+    0,
+  );
+  const debugFirsts = debug.reduce(
+    (n, recap) =>
+      n +
+      LIFT_ORDER_RESTATED.filter((lift) => recap.boards[lift]?.callOut === RECAP_SAYS.FIRST_LIFT).length,
+    0,
+  );
+  check(
+    debug.length > 0 && debugPrs > 0 && debugFirsts === 0,
+    'DEBUG ARM: and on a lifter who walked in HOLDING numbers the word is PR, and no lift is called their first',
+    `${debug.length} scripted recap(s): ${debugPrs} said ${JSON.stringify(RECAP_SAYS.PR_LIFT)},` +
+      ` ${debugFirsts} said ${JSON.stringify(RECAP_SAYS.FIRST_LIFT)}` +
+      (debugPrs === 0
+        ? ' — the PR state was never drawn, so the check above was measured on an all-FIRST screen'
+        : '') +
+      '. THE PLAYED ARM CANNOT REACH THIS: §6.1 has no career calendar, so a second meet in one app run is' +
+      ' refused and draws the placeholder rather than a recap (section 4b), and a page load is a new lifter.',
+  );
+}
+
 // ###########################################################################
 // ###  END OF THE MEET DRIVER                                              #
 // ###########################################################################
@@ -3774,6 +4154,24 @@ if (!reachedMeet) {
   );
   await shootBeat('04a-live-recap-with-way-back.png', 'recap', BEAT_SAYS.RECAP);
 
+  // GDD §6.5's PER-LIFT CALL-OUT, ON THE ARM A PLAYER REACHES. Read here rather
+  // than graded here, so section 8c covers both arms with one oracle — see the
+  // block above `RECAP_CALL_OUTS_SEEN`. It is read AFTER `recapArrived`, because
+  // the lift boards are an earlier block of the same stagger and the call-out is
+  // a `Text` inside them: waiting for the last block is waiting for this one.
+  //
+  // `heldByLift` IS NOT ASSERTED HERE. What this lifter walked in holding is
+  // section 8c's to derive from `MEETS_DRIVEN`; all-null is passed because this
+  // meet is the first of its app run, and 8c re-derives that and reddens if it
+  // is not so — a read site that decided its own oracle would be grading itself.
+  RECAP_CALL_OUTS_SEEN.push({
+    tag: 'meet 1',
+    arm: 'played',
+    appRun: APP_RUNS.serial,
+    heldByLift: { squat: null, bench: null, deadlift: null },
+    ...(await readRecapCallOuts(page, LIFT_ORDER_RESTATED)),
+  });
+
   const leftLiveMeet = await press(
     NAV_LEAVE_MEET,
     'session-screen',
@@ -3954,6 +4352,27 @@ const scriptedLeaveDrawn = await checkOnScreen(
   NAV_LEAVE_MEET,
   `the way back is on screen (${NAV_LEAVE_MEET})`,
 );
+
+// GDD §6.5's PR STATE, WHICH IS ONLY REACHABLE HERE. This scripted lifter holds
+// `MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG` from an earlier meet, so their recap
+// has records to beat; the played arm above cannot, because a second meet in one
+// app run is refused (section 4b) and a page load is a new lifter. Section 8c
+// grades this with the same oracle it grades the played arm with, and labels it.
+{
+  const scriptedRecapArrived = await waitUntilDrawn(page, 'recap-action', RECAP_SETTLE_MS);
+  check(
+    scriptedRecapArrived.drawn,
+    `DEBUG ARM: the scripted recap's last block arrives within ${RECAP_SETTLE_MS}ms, so its lift boards are drawn`,
+    scriptedRecapArrived.why,
+  );
+  RECAP_CALL_OUTS_SEEN.push({
+    tag: 'scripted ?meet=recap',
+    arm: 'debug',
+    appRun: APP_RUNS.serial,
+    heldByLift: PREVIEW_PREVIOUS_BEST_RESTATED,
+    ...(await readRecapCallOuts(page, LIFT_ORDER_RESTATED)),
+  });
+}
 
 // THE SECOND-MEET PLACEHOLDER MUST NOT LEAK ONTO A RECAP THAT BUILT.
 //
@@ -5052,6 +5471,15 @@ await checkOnScreen(
 checkAttemptSelectOnThePlayedArm(MEETS_DRIVEN);
 
 // ###########################################################################
+// ###  8c. GDD §6.5 — THE WORD BESIDE A LIFT, ON EVERY RECAP THIS RUN READ  #
+// ###########################################################################
+//
+// The sibling of 8a and graded here for the same reason: one section over every
+// recap rather than one per arm drifting apart. See the block above
+// `RECAP_CALL_OUTS_SEEN` for what it measures and which arm reaches which state.
+checkRecapCallOutsOnBothArms(MEETS_DRIVEN);
+
+// ###########################################################################
 // ###  8b. THE WALK-OUT'S TAIL IS ALIVE, ON A RUNNING CLOCK                 #
 // ###########################################################################
 //
@@ -5091,6 +5519,11 @@ await writeFile(
       // are assertions over this list, and a reader who disagrees with one of
       // them can re-derive it from here rather than from the check's wording.
       attemptSelectScreens: SELECT_SCREENS_SEEN,
+      // Section 8c's raw material: every GDD §6.5 recap this run stood on, with
+      // the attempt cells its call-outs were graded against and the address bar
+      // each was read under. A reader who disagrees with 8c's verdict can
+      // re-derive it from here rather than from the check's wording.
+      recapCallOuts: RECAP_CALL_OUTS_SEEN,
       // Section 6c: the one return leg in this run taken on a day the player
       // HAS trained, which is the case `src/shell/appServer.ts` exists for.
       // `attempted: false` is a leg that never ran, and is not the same thing as
