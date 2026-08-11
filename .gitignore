@@ -110,3 +110,14 @@ public/canvaskit.wasm
 !.gauntlet/shots/meet/
 .gauntlet/shots/meet/*
 !.gauntlet/shots/meet/sound.json
+
+# Verification logs written INSIDE the repo, on purpose.
+#
+# The scratchpad under /tmp does not survive a rewind. The thirteenth one took
+# a running vitest process and its output file together, so a suite run that
+# was in flight came back as neither a pass nor a failure — and a missing
+# output file reads exactly like a green one to anyone who does not check the
+# clock. Writing the log here means it survives the container; ignoring it
+# means it never dirties a tree that an evidence stamp is about to describe.
+*.verify.log
+.suite-verify.log
