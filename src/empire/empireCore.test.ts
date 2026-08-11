@@ -2944,7 +2944,22 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     const imports = (name: string): readonly string[] => {
       const source = readFileSync(path.join(HERE, name), 'utf8');
       const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-      return [...code.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1] as string);
+      // THREE FORMS, NOT ONE. This scanned `from '...'` only, and a side-effect
+      // import has no `from` in it — `import '../game/progression';` was
+      // INVISIBLE to this check. Verified by planting exactly that line: the
+      // named guard stayed green and the directory's string census caught it
+      // instead, on the path counting as one more literal. That is a different
+      // check noticing by accident, not this one working.
+      //
+      // Found by the builder of `src/career/`, which copied this scanner and
+      // then fixed the copy. CLAUDE.md's rule about a guard written for one
+      // hook being applied to its sibling runs in this direction too: the
+      // sibling was written second and was the better one.
+      const paths: string[] = [];
+      for (const match of code.matchAll(/from\s+'([^']+)'/g)) paths.push(match[1] as string);
+      for (const match of code.matchAll(/(?:^|\n)\s*import\s+'([^']+)'/g)) paths.push(match[1] as string);
+      for (const match of code.matchAll(/\bimport\s*\(\s*'([^']+)'\s*\)/g)) paths.push(match[1] as string);
+      return paths;
     };
     expect(imports('empireTuning.ts')).toEqual([]);
     expect(imports('empireCore.ts')).toEqual(['./empireTuning']);
