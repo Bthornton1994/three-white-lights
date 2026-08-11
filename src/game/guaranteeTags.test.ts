@@ -612,8 +612,11 @@ type ExclusionCensus = Record<NumberExclusion, number>;
  * list with no number beside it is where a rule like this quietly stops meaning
  * anything, so the census is pinned and moving any of it is a red test.
  *
- * Taken over the tagged paragraphs in `src`, where the raw numeral scan finds
- * forty-nine occurrences and thirty survive these four:
+ * Taken over the tagged paragraphs in `src`. The survivors are
+ * `NUMBER_COVERAGE.CLAIMED`; the four counts below are what was dropped; and
+ * the raw occurrence count is their sum, deliberately not restated as a third
+ * figure — it was, it read forty-nine against a sum of fifty, and it was the
+ * one of the three that no test could redden:
  *
  *   - `section-coordinate` — a numeral directly after `§`. A pointer into the
  *     GDD or CLAUDE.md, never a measurement. The largest class by far, and the
@@ -760,25 +763,32 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
  * subset claim about two overlapping populations — this rule's own defect
  * class, in the comment introducing it, caught by taking the measurement.
  *
- * What they say together, then: 229 paragraphs trip the trigger, 58 carry a
- * tag, 25 do both, 8 of the tagged ones state a number in prose, and 30
+ * What they say together, then: 229 paragraphs trip the trigger, 59 carry a
+ * tag, 25 do both, 9 of the tagged ones state a number in prose, and 31
  * numerals are checked at all. A few per cent of the prose this file can see,
  * and none of the prose it cannot.
+ *
+ * The paragraph that took 58 to 59 is §4a of `empireInvariant.ts`, whose eight
+ * prose mutant summaries became the witness rows below. It states one number,
+ * the element count both series checks are stated over, and that is the only
+ * figure of the old summaries kept as prose — because it is the only one an
+ * assertion in a named body pins. The counts those summaries carried are in the
+ * `observed` column instead, quoted from the runs that produced them.
  */
 const NUMBER_COVERAGE = {
   /** Comment paragraphs under `src` carrying at least one tag. */
-  TAGGED_PARAGRAPHS: 58,
+  TAGGED_PARAGRAPHS: 59,
   /** ...of which this many state a number as prose. */
-  PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 8,
+  PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 9,
   /** Numerals the rule actually demands something of. */
-  CLAIMED: 30,
+  CLAIMED: 31,
   /** ...of which this many are found in the named test's body. */
-  RESOLVING: 18,
+  RESOLVING: 19,
   /**
    * ...and this many survive blanking the body's COMMENTS, which is the
    * stronger reading. The gap is the weakness declared above, as a number.
    */
-  RESOLVING_IN_CODE: 12,
+  RESOLVING_IN_CODE: 13,
   /** ...and this many are excused by name, in `UNPINNED_PROSE_NUMBERS`. */
   EXCUSED: 12,
   /** The entries doing that excusing. Fewer than the occurrences: a phrase may span two. */
@@ -788,8 +798,8 @@ const NUMBER_COVERAGE = {
    * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
    * one: it says how little a small number resolving is worth.
    */
-  NAMED_BODIES: 47,
-  NAMED_BODIES_HOLDING_ZERO: 37,
+  NAMED_BODIES: 49,
+  NAMED_BODIES_HOLDING_ZERO: 39,
   NAMED_BODIES_HOLDING_ONE: 41,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
@@ -911,6 +921,33 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
  * than one restated. A claim that spans two modules is not witnessed by a
  * mutant in one of them.
  */
+/**
+ * §4a's kill list, as a pair of counts rather than as a sentence.
+ *
+ * The list was eight prose summaries. Converting it to witnesses closes the
+ * half a reader could not re-derive and leaves a different half open: nothing
+ * stops a NINTH bullet arriving with no mutant behind it, because the witness
+ * bar only asks that a tag have at least one row. These two numbers are what
+ * the check below compares the bullets against.
+ *
+ * It also catches the paragraph-break defect this repository has already paid
+ * for once — a blank comment line inserted between a claim and its tag, which
+ * silently takes the claim out of the numeric rule's reach. The check reads the
+ * paragraph that carries BOTH tags and counts the bullets inside it, so a break
+ * between the bullets and the tags reports zero bullets rather than passing.
+ */
+const SECTION_4A_TAGS: readonly string[] = [
+  'no-accelerant-moves-a-training-iq-element',
+  'no-accelerant-moves-a-physio-element',
+];
+
+const SECTION_4A_KILL_LIST = {
+  /** Bullets in §4a's "killed here" list. */
+  MUTANTS: 8,
+  /** Rows below carrying one of the two tags — three mutants move both series. */
+  ROWS: 11,
+} as const;
+
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // -------------------------------------------------------------------------
   // The numeric half of the tag, witnessed from BOTH sides of its set equality,
@@ -1086,6 +1123,195 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "§4a's denominator is this file's own check count" +
       ' [section-4a-denominator-is-measured]\n' +
       'AssertionError: expected 43 to be 50 // Object.is equality',
+  },
+  // -------------------------------------------------------------------------
+  // GDD §5 — §4a's KILL LIST, which was eight prose summaries with element
+  // counts and is now eleven rows here.
+  //
+  // WHY ELEVEN ROWS FOR EIGHT MUTANTS. §4a's list is stated over two checks —
+  // the Training IQ series and the physio series — and three of the eight redden
+  // both. A row binds ONE assertion in ONE test body, so a mutant that moves
+  // both series is recorded from each side, the way the numeric tag above is
+  // witnessed from both halves of its set equality. The two arms are not the
+  // same claim: `settledAxisLevel` reading `idleCompletion` moves the physio
+  // series and leaves the Training IQ one untouched, and `'roster-slot'` off
+  // `GATING_OUTPUTS` does the reverse.
+  //
+  // EVERY ROW BELOW WAS TAKEN BY RUNNING THE MUTANT, not by transcribing §4a.
+  // That matters, because the prose counts did not survive it: seven of the
+  // eight cited at least one figure the engine no longer produces — 1266 read
+  // 282, 2190 read 1272, 1036 / 132 read 732 / nothing, 84 read 188, 1992 / 260
+  // read 1020 / 136, and both 204s read 180 — and only `elapsedFor` returning
+  // the accelerated clock came back at its published 2592 and 2592, which
+  // saturates. The old figures are NOT re-pinned in §4a: they are superseded by
+  // the `observed` column here, which is quoted from the run that produced it
+  // and expires with its anchors.
+  //
+  // The reddened assertion is the same line in both bodies — the element-wise
+  // `moved` counter each check is stated on — so the rows differ in `mutated`
+  // and in `observed` rather than in `redAssertion`. That is what a list of
+  // mutants against one check looks like; the body scoping is what keeps the
+  // two tags apart.
+  // -------------------------------------------------------------------------
+  {
+    // (1) CHAIN B, the mutation that survived the version of `empireInvariant.ts`
+    // that read its ledger off a second gym. A gate asked about the thing it is
+    // paid into rather than the thing it opens.
+    guarantee: 'no-accelerant-moves-a-training-iq-element',
+    mutatedFile: 'src/empire/empireCore.ts',
+    mutated: '  return elapsedFor(clock, gateTarget(output));',
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 282 to be +0 // Object.is equality',
+  },
+  {
+    // (2) The clock split itself, removed. The only mutant of the eight whose
+    // published figures still reproduce, and the reason is that it saturates:
+    // 2592 of 2616 elements on each series is very nearly every element there
+    // is, so no repair to the grid moves it.
+    guarantee: 'no-accelerant-moves-a-training-iq-element',
+    mutatedFile: 'src/empire/empireCore.ts',
+    mutated:
+      '  const seconds =\n' +
+      "    outputReach(output) === 'progression-reaching' ? clock.unaccelerated : clock.accelerated;",
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 2592 to be +0 // Object.is equality',
+  },
+  {
+    // (2b) ...and the same run's physio arm, which is a different assertion in a
+    // different body and would not have been shown by the row above.
+    guarantee: 'no-accelerant-moves-a-physio-element',
+    mutatedFile: 'src/empire/empireCore.ts',
+    mutated:
+      '  const seconds =\n' +
+      "    outputReach(output) === 'progression-reaching' ? clock.unaccelerated : clock.accelerated;",
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the PHYSIO series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 2592 to be +0 // Object.is equality',
+  },
+  {
+    // (3) The origin the Training IQ trickle measures tenure from, stamped off
+    // the clock a purchase moves.
+    guarantee: 'no-accelerant-moves-a-training-iq-element',
+    mutatedFile: 'src/empire/recruitment.ts',
+    mutated: '  const settlesAt: number = clock.unaccelerated + duration;',
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 1272 to be +0 // Object.is equality',
+  },
+  {
+    // (4) A recruit gated AND debited on the accelerated book. TWO EDITS, and
+    // the anchor is the debit half; the gate half is
+    //
+    //   if (state.settledBooks[RECRUIT_BOOK] < quote.costGymBucks) {
+    //
+    // in `recruitmentRefusals`, rewritten to read `state.gymBucks`. Recorded as
+    // one mutant rather than two because NEITHER HALF ALONE REACHES AN
+    // ASSERTION: with the gate on one purse and the debit on the other the run
+    // throws `RangeError: gymBucks must be a finite number at or above zero,
+    // received -40` inside `beginRecruitment`, and the whole file collects zero
+    // tests. That is a kill by `empireCore.ts`'s constructors rather than by a
+    // check here, which is worth knowing about the pair and is why the witness
+    // is on the coherent version.
+    //
+    // Its physio arm is NOT recorded, for the same reason row (8)'s is not: the
+    // physio check stays green under it, where §4a's prose said it moved 132
+    // elements. Two bullets lost their physio half and both say so here rather
+    // than one of them saying so and the other reading as an omission.
+    guarantee: 'no-accelerant-moves-a-training-iq-element',
+    mutatedFile: 'src/empire/recruitment.ts',
+    mutated:
+      '  const remaining: number = state.settledBooks[RECRUIT_BOOK] - recruitmentQuote(tier).costGymBucks;',
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 732 to be +0 // Object.is equality',
+  },
+  {
+    // (5) Every axis bought and read on the accelerated book — one line, because
+    // `axisBook` is where the purse and the clock are chosen together.
+    guarantee: 'no-accelerant-moves-a-training-iq-element',
+    mutatedFile: 'src/empire/expansion.ts',
+    mutated: '  return wallClockBookFor(axisOutput(axis)) ?? ACCELERATED_BOOK;',
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 180 to be +0 // Object.is equality',
+  },
+  {
+    // (5b) The physio arm of the same run.
+    guarantee: 'no-accelerant-moves-a-physio-element',
+    mutatedFile: 'src/empire/expansion.ts',
+    mutated: '  return wallClockBookFor(axisOutput(axis)) ?? ACCELERATED_BOOK;',
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the PHYSIO series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 68 to be +0 // Object.is equality',
+  },
+  {
+    // (6) GDD §5.4's cross-mode hook read off the clock a skip moves. The one
+    // mutant of the eight that reddens the physio check and leaves the Training
+    // IQ check green, which is why that check is its own test and its own tag.
+    guarantee: 'no-accelerant-moves-a-physio-element',
+    mutatedFile: 'src/empire/expansion.ts',
+    mutated: '    if (build.axis === axis) completions.push(build.settledCompletion);',
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the PHYSIO series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 188 to be +0 // Object.is equality',
+  },
+  {
+    // (7) The wall-clock purse banked over the idle gap, so a skip pays it.
+    guarantee: 'no-accelerant-moves-a-training-iq-element',
+    mutatedFile: 'src/empire/production.ts',
+    mutated: '  const settledSecondsBanked = bankableOfflineSeconds(wallGap, policy);',
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 1020 to be +0 // Object.is equality',
+  },
+  {
+    // (7b) The physio arm of the same run.
+    guarantee: 'no-accelerant-moves-a-physio-element',
+    mutatedFile: 'src/empire/production.ts',
+    mutated: '  const settledSecondsBanked = bankableOfflineSeconds(wallGap, policy);',
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the PHYSIO series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 136 to be +0 // Object.is equality',
+  },
+  {
+    // (8) The second `GATE_TARGET` row deleted, so a slot is read on the clock
+    // it is paid into again. Its physio arm is NOT recorded, and that is a
+    // measurement rather than an omission: the physio check stays green under
+    // this mutant, where §4a's prose said it moved 132 elements.
+    guarantee: 'no-accelerant-moves-a-training-iq-element',
+    mutatedFile: 'src/empire/empireCore.ts',
+    mutated:
+      'export const GATING_OUTPUTS = [\n' +
+      "  'reputation',\n" +
+      "  'roster-slot',\n" +
+      '] as const satisfies readonly EmpireOutput[];',
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(totals.moved).toBe(0);',
+    observed:
+      'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
+      'AssertionError: expected 180 to be +0 // Object.is equality',
   },
   // -------------------------------------------------------------------------
   // GDD §6.5 — "PR" means one thing. FOUR MUTANTS FOR ONE TAG, deliberately.
@@ -2334,6 +2560,50 @@ describe('the guarantee-tag convention', () => {
     // since it existed, which is a minority, and says so.
     expect(witnessed.size + legacy.size).toBe(tags.size);
     expect(titles.length, 'the tree has tests to point at').toBeGreaterThan(100);
+  });
+
+  it("counts §4a's kill-list bullets against the mutants witnessed for it", () => {
+    // WHAT THIS CATCHES THAT THE WITNESS LOOP ABOVE DOES NOT. That loop asks
+    // whether each row still resolves. It never asks whether the LIST is whole,
+    // so a ninth bullet added to §4a with no mutant behind it — which is exactly
+    // how the first eight came to be prose with a stale count each — passes
+    // everything above. This is the same self-counting shape as §4a's own
+    // denominator pin: read the claim's own list, count it, compare with the
+    // thing it is a claim about.
+    const source = readFileSync(
+      path.join(REPO_ROOT, 'src/empire/empireInvariant.ts'),
+      'utf8',
+    );
+    const carrying = commentParagraphs(source).filter((paragraph) =>
+      SECTION_4A_TAGS.every((id) => paragraph.text.includes(`@guarantee ${id}`)),
+    );
+    // MATCH COUNT, NOT PRESENCE — and this is the assertion that also catches a
+    // blank comment line inserted between the bullets and the tags, because the
+    // paragraph carrying both tags would then be the tag lines alone and the
+    // bullet count below would read zero.
+    expect(carrying.length, 'paragraphs carrying both of §4a tags').toBe(1);
+    const bullets = (carrying[0] as CommentParagraph).text
+      .split('\n')
+      .filter((line) => line.startsWith('- '));
+    expect(bullets.length, "§4a's killed-here bullets").toBe(SECTION_4A_KILL_LIST.MUTANTS);
+
+    const rows = MUTATION_WITNESSES.filter((witness) =>
+      SECTION_4A_TAGS.includes(witness.guarantee),
+    );
+    expect(rows.length, 'witness rows under those two tags').toBe(SECTION_4A_KILL_LIST.ROWS);
+    // ONE ROW PER MUTANT PER SERIES, so the distinct anchors are the mutants and
+    // the rows are the arms. A bullet with no mutant, or a mutant with no
+    // bullet, moves one side of this and not the other.
+    const mutants = new Set(rows.map((witness) => `${witness.mutatedFile}::${witness.mutated}`));
+    expect(mutants.size, 'distinct mutants witnessed under those tags').toBe(bullets.length);
+    // AND BOTH ARMS ARE STOCKED. A tag with no row of its own would leave the
+    // set equality above satisfied by the other tag alone, which is the failure
+    // shape CLAUDE.md records for a guard written for one arm and not its
+    // sibling. Counts, because a bound would let one arm empty out to one row.
+    const perTag = SECTION_4A_TAGS.map(
+      (id) => rows.filter((witness) => witness.guarantee === id).length,
+    );
+    expect(perTag, 'rows per tag, Training IQ then physio').toEqual([7, 4]);
   });
 
   it('expires a witness whose anchor has moved, on a planted one', () => {
