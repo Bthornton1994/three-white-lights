@@ -208,7 +208,9 @@ describe('the marker is written before the command starts', () => {
     const status = git(['status', '--porcelain']);
     expect(marker.commit).toBe(git(['rev-parse', 'HEAD']));
     expect(marker.branch).toBe(git(['rev-parse', '--abbrev-ref', 'HEAD']));
-    expect(marker.dirty).toBe(status === '' ? 0 : status.split('\n').length);
+    expect(marker.dirty, 'the marker must record the tree it actually ran against').toBe(
+      status === '' ? 0 : status.split('\n').length,
+    );
     expect(marker.command).toEqual(['node', '-e', 'process.exit(0)']);
     expect(marker.budgetSeconds).toBe(MARKER_TEST_TIMING.LONG_BUDGET_S);
     expect(Number.isFinite(Date.parse(marker.startedAtIso))).toBe(true);
@@ -492,6 +494,70 @@ describe('live versus stale', () => {
     plantIncomplete(inside, { ...runner, bootEpochSeconds: (runner.bootEpochSeconds ?? 0) - tolerance + 1 });
     const insideScan = watchdog(['--markers'], inside);
     expect(insideScan.status, `a clock correction inside the tolerance is not a reboot:\n${insideScan.stdout}`).toBe(0);
+  });
+
+  it('calls a live wrapper that has outrun its own budget overdue, not live', () => {
+    // THE OTHER SIDE OF THE LIMIT THE MODULE'S HEADER DECLARES. It cannot tell a
+    // live process making progress from one making none — but it does not stay
+    // quiet about it forever. Past the marker's own budget plus the grace, a
+    // process that is still alive means the wrapper's SIGKILL did not fire,
+    // which is a defect in the guard rather than a slow command.
+    //
+    // Without this check that state is reachable and reported by nothing, which
+    // is a branch of the classifier no test would have entered.
+    const grace = Number(
+      /OVERDUE_GRACE_SECONDS:\s*(\d+)/.exec(readFileSync(MARKER_MODULE, 'utf8'))?.[1] ?? 'NaN',
+    );
+    expect(Number.isFinite(grace), 'the grace could not be read from the module').toBe(true);
+    const runner = runnerOfThisProcess();
+
+    const dir = tempDir('verify-marker-overdue-');
+    plantIncomplete(dir, runner, { budgetSeconds: 1, startedAtMs: Date.now() - (grace + 2) * 1000 });
+    const scan = watchdog(['--markers'], dir);
+    expect(scan.status, `an overdue live wrapper must be a finding, and this scan said:\n${scan.stdout}`).toBe(1);
+    expect(scan.stdout).toContain('LIVE_OVERDUE');
+    expect(scan.stdout).toContain("the wrapper's own kill did not fire");
+
+    // The control: the same live process, inside budget plus grace.
+    const inside = tempDir('verify-marker-overdue-control-');
+    plantIncomplete(inside, runner, { budgetSeconds: 1, startedAtMs: Date.now() - (grace - 1) * 1000 });
+    const insideScan = watchdog(['--markers'], inside);
+    expect(insideScan.status, `a long run inside its budget is not a finding:\n${insideScan.stdout}`).toBe(0);
+    expect(insideScan.stdout).toContain('LIVE');
+  });
+
+  it('refuses to answer on a machine with no /proc rather than passing the marker', () => {
+    // macOS and Windows have no `/proc`, so liveness is undecidable there and
+    // every INCOMPLETE marker is a finding. `kill(pid, 0)` was refused as a
+    // fallback because it cannot see pid reuse, so it answers "live" for a
+    // stranger's process — "I cannot tell" becoming green is the failure mode
+    // this whole discipline exists to remove.
+    //
+    // DRIVEN, NOT REASONED ABOUT. The scan takes `procRoot`, so pointing it at
+    // an empty directory is what this machine looks like without `/proc`. The
+    // CLI does not expose it, so a real run cannot reach this arm by accident,
+    // which is why this one case calls the module instead of the tool.
+    const dir = tempDir('verify-marker-noproc-');
+    plantIncomplete(dir, runnerOfThisProcess());
+    const emptyProc = tempDir('verify-marker-fakeproc-');
+    const script = `
+      import { scanMarkers, formatMarkerReport } from ${JSON.stringify(MARKER_MODULE)};
+      const scan = scanMarkers({
+        root: ${JSON.stringify(REPO_ROOT)},
+        env: { VERIFY_MARKER_DIR: ${JSON.stringify(dir)} },
+        procRoot: ${JSON.stringify(emptyProc)},
+      });
+      console.log(formatMarkerReport(scan));
+      console.log('FINDINGS ' + scan.findings.length);
+    `;
+    const result = spawnSync('node', ['--input-type=module', '-e', script], { encoding: 'utf8' });
+    const out = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+    expect(out, out).toContain('UNRESOLVED_NO_PROC');
+    expect(out, 'the marker must be counted, not merely described').toContain('FINDINGS 1');
+
+    // The control: the same record, this machine's real /proc, is LIVE.
+    const withProc = spawnSync('node', ['--input-type=module', '-e', script.replace(JSON.stringify(emptyProc), JSON.stringify('/proc'))], { encoding: 'utf8' });
+    expect(`${withProc.stdout ?? ''}`, 'the control must be green or the case above proves nothing').toContain('FINDINGS 0');
   });
 
   it('calls a marker from another machine unresolved rather than passing it', () => {
