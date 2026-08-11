@@ -144,15 +144,53 @@ describe('the directory is pure, closed and numerically clean', () => {
     // `./careerTuning`. Adding `import { meetsQualifyingTotal } from
     // '../game/progression'` is the exact edit this exists for.
     //
-    // THREE SPELLINGS, not one. A `from '...'` scan — which is what this was
-    // first written as, and what `src/empire/empireCore.test.ts` uses — misses
+    // THREE SPELLINGS AND THREE QUOTE STYLES, and they are two axes.
+    //
+    // The FORM axis: a `from '...'` scan — which is what this was first
+    // written as, and what `src/empire/empireCore.test.ts` used — misses
     // `import '../game/progression';` entirely, because a side-effect import
-    // has no `from` in it. It also misses `await import('...')`. All three
-    // create the edge; the check that only knew about one of them would have
-    // been an import fence with a door in it.
-    const SPECIFIER = /(?:\bfrom|\bimport)\s*\(?\s*'([^']+)'/g;
+    // has no `from` in it. It also misses `await import('...')`.
+    //
+    // The QUOTE axis, and this one was missed here after the form axis was
+    // fixed. The pattern was `'([^']+)'` — single quotes only — so
+    // `import { meetsQualifyingTotal } from "../game/progression";` was
+    // invisible to it. MEASURED, not reasoned: with that line in
+    // `careerCore.ts`, the `EXPECTED` equality below still held, `specifiers`
+    // was still 5, and **this test stayed green**. What went red was
+    // `has no watchlist name in any string a screen could draw`, on
+    // `expected 186 to be 185` — the directory's string census counting the
+    // specifier as one more double-quoted literal. That is verbatim what
+    // CLAUDE.md records about the empire fence one axis over: *"A different
+    // check noticing by accident is not that check working."*
+    //
+    // Prettier writes single quotes here, so the double-quoted mutant is not
+    // something the repo produces by habit — which is exactly why a fence must
+    // catch it. A fence that holds only while everyone follows the style guide
+    // is a style guide, not a fence.
+    //
+    // The lesson this file was built on and then repeated: fixing the reach of
+    // a scan says nothing about its predicate, and fixing its predicate says
+    // nothing about its reach. Both axes, every time.
+    //
+    // MUTANTS RUN AGAINST THE FIXED PATTERN, and what each produced:
+    //
+    //   from "../game/progression"   -> RED here, "expected [ './careerTuning',
+    //                                   …(1) ] to deeply equal [ './careerTuning' ]"
+    //   await import(`../game/…`)    -> RED here, same assertion
+    //   from `../game/progression`   -> not runnable: a template literal is not
+    //                                   a legal specifier for a STATIC import,
+    //                                   so this mutant is a syntax error rather
+    //                                   than a bypass. Recorded as untestable
+    //                                   rather than left looking covered — the
+    //                                   backtick axis is real only on the
+    //                                   dynamic form, and that one is red above.
+    //
+    // The probe grid below still drives all nine (form x quote) pairs, because
+    // it feeds the regex synthetic TEXT rather than compiling it, and the point
+    // there is that the pattern generalises rather than that the code is legal.
+    const SPECIFIER = /(?:\bfrom|\bimport)\s*\(?\s*(['"`])([^'"`]+)\1/g;
     const imports = (text: string): readonly string[] =>
-      [...text.matchAll(SPECIFIER)].map((match) => match[1] as string);
+      [...text.matchAll(SPECIFIER)].map((match) => match[2] as string);
 
     // Pinned per file, and pinned rather than merely constrained: a module
     // reaching a sibling it did not reach before is a change to this
@@ -186,17 +224,31 @@ describe('the directory is pure, closed and numerically clean', () => {
     }
     expect(specifiers).toBe(5);
 
-    // Non-vacuity, three ways. The finder works on a file that does have
-    // edges, and it catches each of the three spellings on a synthetic source
-    // — so an empty answer above is an answer rather than a dead regex.
+    // Non-vacuity, over BOTH axes rather than one. The finder works on a file
+    // that does have edges, and it catches every (form x quote) pair on a
+    // synthetic source — so an empty answer above is an answer rather than a
+    // dead regex. Nine cases, driven from the two axes rather than listed, so
+    // adding a form or a quote style to the pattern without adding its probes
+    // is not possible: the counts below are pinned.
     expect(imports(readFileSync(MEET_TUNING_PATH, 'utf8')).length).toBeGreaterThan(0);
-    expect(imports("import { meetsQualifyingTotal } from '../game/progression';")).toEqual([
-      '../game/progression',
-    ]);
-    expect(imports("import '../game/progression';")).toEqual(['../game/progression']);
-    expect(imports("const m = await import('../game/progression');")).toEqual([
-      '../game/progression',
-    ]);
+    const FORMS: readonly ((quoted: string) => string)[] = [
+      (quoted) => `import { meetsQualifyingTotal } from ${quoted};`,
+      (quoted) => `import ${quoted};`,
+      (quoted) => `const m = await import(${quoted});`,
+    ];
+    const QUOTES: readonly string[] = ["'", '"', '`'];
+    let probes = 0;
+    for (const form of FORMS) {
+      for (const quote of QUOTES) {
+        expect(imports(form(`${quote}../game/progression${quote}`)), form(quote)).toEqual([
+          '../game/progression',
+        ]);
+        probes += 1;
+      }
+    }
+    // Counts, not bounds, on the probe grid itself.
+    expect(probes).toBe(FORMS.length * QUOTES.length);
+    expect(probes).toBe(9);
   });
 
   it('reads no clock and rolls no dice', () => {

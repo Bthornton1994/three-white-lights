@@ -1356,13 +1356,28 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
     expect(code).toMatch(/export function /);
   });
 
-  it('imports nothing outside this directory', () => {
-    // The sibling of the check `empireCore.test.ts` runs over the two modules
-    // it knows about. That one names its files, so it could not have covered
-    // this one; this is the same claim applied to the file it was written for.
-    const imports = [...code.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1] as string);
-    expect(imports.sort()).toEqual(['./empireCore', './empireTuning']);
-    expect(imports.length).toBe(2);
+  it('is covered by the directory-wide import fence rather than a copy of it', () => {
+    // THIS USED TO BE ITS OWN WALKER AND THAT WAS THE DEFECT. It scanned
+    // `from '...'` — form-only and single-quote-only — because it was copied
+    // from `empireCore.test.ts` back when that one named two files and could
+    // not reach this one. `social.test.ts` grew a third copy for the same
+    // reason. Each copy inherited both of the original's holes, and the six
+    // modules nobody wrote a copy for had no fence at all.
+    //
+    // CLAUDE.md: "A twin guard must READ the sibling's list, not copy it."
+    // So the fence is now one walker over `readdirSync(HERE)` in
+    // `empireCore.test.ts`, and this file's job is to make that coverage a
+    // fact rather than an assumption: if the walker ever stops covering this
+    // module, this goes red where somebody reading expansion.ts will see it.
+    //
+    // Reddens on: deleting `'expansion.ts'` from that file's `EXPECTED` map
+    // (its set equality against `readdirSync` fails), or on this module
+    // acquiring an edge — both of which are the point.
+    const fenceSource = readFileSync(path.join(HERE, 'empireCore.test.ts'), 'utf8');
+    expect(fenceSource).toContain("'expansion.ts': ['./empireCore', './empireTuning']");
+    // And the fence's own file really is the one that walks the directory, so
+    // this is not pinned against a comment that happens to quote the shape.
+    expect(fenceSource).toContain('const SHIPPED_MODULES = readdirSync(HERE)');
   });
 
   it('exports exactly these functions', () => {

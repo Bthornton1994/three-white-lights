@@ -2938,31 +2938,142 @@ describe('the directory is pure, numerically clean and free of dice', () => {
   });
 
   it('imports nothing outside this directory', () => {
-    // The tuning module is a leaf and the core imports it and nothing else.
     // An import edge into another session's territory is how a pure module
-    // acquires a side effect it did not ask for.
+    // acquires a side effect it did not ask for. This is the ONE fence for the
+    // directory, and it walks the directory.
+    //
+    // THIS CHECK HAS NOW BEEN WRONG ON BOTH OF ITS AXES, AND PARTIALLY FIXED
+    // TWICE. Recorded in full because the sequence is the lesson.
+    //
+    //   REACH, first miss: it scanned `from '...'` only, so
+    //   `import '../game/progression';` — a side-effect import, which has no
+    //   `from` — was invisible. Verified by planting exactly that line: this
+    //   guard stayed GREEN and the directory's string census caught it
+    //   instead, on the path counting as one more literal. A different check
+    //   noticing by accident is not this check working. Found by the builder
+    //   of `src/career/`, which copied this scanner and fixed the copy.
+    //
+    //   PREDICATE, missed until a critic read the fixed version: the pattern
+    //   was `'([^']+)'` — single quotes only — so
+    //   `from "../game/progression"` walked straight past all three forms.
+    //   Verified in `src/career/`, where the same hole existed: with that line
+    //   planted, the named fence stayed green at `expected 186 to be 185` on a
+    //   different test entirely. Prettier writes single quotes here, so this
+    //   is not a mutant the repo produces by habit — which is the reason a
+    //   fence must catch it. A fence that holds only while everyone follows
+    //   the style guide is a style guide.
+    //
+    //   REACH, second miss, and the one this rewrite is really about: it named
+    //   TWO FILES. `src/empire/` ships ten. `expansion.test.ts` and
+    //   `social.test.ts` each grew their own copy for the file they were about
+    //   — both on the original form-only, single-quote-only pattern — and six
+    //   modules had no fence at all. Three partial hand-written walkers is
+    //   exactly what CLAUDE.md means by "a twin guard must READ the sibling's
+    //   list, not copy it": each copy inherited the defect and none of them
+    //   covered the gap between them.
+    //
+    // So: one walker, over every shipped module `readdirSync` finds, with the
+    // edges pinned per file rather than constrained. Deleting a module or
+    // adding one is a change to this directory's shape and should be read.
+    //
+    // MUTANTS RUN AGAINST THIS VERSION, all three planted in `production.ts` —
+    // a module the two-file fence could not reach at all, so each covers both
+    // the reach fix and its own axis:
+    //
+    //   import { FATIGUE_TUNING } from '../game/fatigue';   -> RED
+    //   import { FATIGUE_TUNING } from "../game/fatigue";   -> RED
+    //   import '../game/fatigue';                           -> RED
+    //
+    // each with "production.ts: expected [ '../game/fatigue', …(2) ] to deeply
+    // equal [ './empireCore', './empireTuning' ]". The message names the file
+    // and the offending specifier, which is the other half of the bar: a check
+    // that bites but fails uselessly is half a check.
+    //
+    // A static `from \`...\`` mutant is NOT listed because it is a syntax
+    // error rather than a bypass — a template literal is not a legal specifier
+    // for a static import. The backtick axis is real only on the dynamic form,
+    // and the probe grid below covers it.
+    const SHIPPED_MODULES = readdirSync(HERE)
+      .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+      .sort();
+    const SPECIFIER = /(?:\bfrom|\bimport)\s*\(?\s*(['"`])([^'"`]+)\1/g;
     const imports = (name: string): readonly string[] => {
       const source = readFileSync(path.join(HERE, name), 'utf8');
       const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-      // THREE FORMS, NOT ONE. This scanned `from '...'` only, and a side-effect
-      // import has no `from` in it — `import '../game/progression';` was
-      // INVISIBLE to this check. Verified by planting exactly that line: the
-      // named guard stayed green and the directory's string census caught it
-      // instead, on the path counting as one more literal. That is a different
-      // check noticing by accident, not this one working.
-      //
-      // Found by the builder of `src/career/`, which copied this scanner and
-      // then fixed the copy. CLAUDE.md's rule about a guard written for one
-      // hook being applied to its sibling runs in this direction too: the
-      // sibling was written second and was the better one.
-      const paths: string[] = [];
-      for (const match of code.matchAll(/from\s+'([^']+)'/g)) paths.push(match[1] as string);
-      for (const match of code.matchAll(/(?:^|\n)\s*import\s+'([^']+)'/g)) paths.push(match[1] as string);
-      for (const match of code.matchAll(/\bimport\s*\(\s*'([^']+)'\s*\)/g)) paths.push(match[1] as string);
-      return paths;
+      return [...code.matchAll(SPECIFIER)].map((match) => match[2] as string);
     };
-    expect(imports('empireTuning.ts')).toEqual([]);
-    expect(imports('empireCore.ts')).toEqual(['./empireTuning']);
+    const EXPECTED: Readonly<Record<string, readonly string[]>> = {
+      'empireCore.ts': ['./empireTuning'],
+      'empireInvariant.ts': [
+        './empireCore',
+        './empireTuning',
+        './expansion',
+        './npc',
+        './production',
+        './recruitment',
+        './reputation',
+        './social',
+      ],
+      'empireTuning.ts': [],
+      'engagement.ts': ['./empireCore', './empireTuning', './empireInvariant', './social'],
+      'expansion.ts': ['./empireCore', './empireTuning'],
+      'npc.ts': ['./empireCore', './empireTuning'],
+      'production.ts': ['./empireCore', './empireTuning'],
+      'recruitment.ts': ['./empireCore', './empireTuning'],
+      'reputation.ts': ['./empireCore', './empireTuning', './expansion', './production'],
+      'social.ts': ['./empireCore', './empireTuning'],
+    };
+    let fenced = 0;
+    for (const name of SHIPPED_MODULES) {
+      expect([...imports(name)].sort(), name).toEqual(
+        [...(EXPECTED[name] ?? ['NO EXPECTATION PINNED'])].sort(),
+      );
+      fenced += 1;
+    }
+    // Counts, not bounds. A module added without a row above fails on the
+    // sentinel rather than passing unchecked, and the set equality catches a
+    // row left behind by a deleted module.
+    expect(fenced).toBe(SHIPPED_MODULES.length);
+    expect(fenced).toBe(10);
+    expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
+
+    // And the fence is a property, not just a list: every specifier anywhere
+    // in the directory resolves to a module in this directory.
+    let specifiers = 0;
+    for (const name of SHIPPED_MODULES) {
+      for (const specifier of imports(name)) {
+        expect(SHIPPED_MODULES, `${name} imports ${specifier}`).toContain(
+          `${specifier.replace('./', '')}.ts`,
+        );
+        specifiers += 1;
+      }
+    }
+    expect(specifiers).toBe(27);
+
+    // Non-vacuity over BOTH axes: every (form x quote) pair is caught on a
+    // synthetic source, so an empty answer above is an answer rather than a
+    // dead regex. Driven from the two axes rather than listed, with the grid
+    // size pinned, so widening the pattern without widening the probes is not
+    // possible.
+    const FORMS: readonly ((quoted: string) => string)[] = [
+      (quoted) => `import { meetsQualifyingTotal } from ${quoted};`,
+      (quoted) => `import ${quoted};`,
+      (quoted) => `const m = await import(${quoted});`,
+    ];
+    const QUOTES: readonly string[] = ["'", '"', '`'];
+    let probes = 0;
+    for (const form of FORMS) {
+      for (const quote of QUOTES) {
+        const text = form(`${quote}../game/progression${quote}`);
+        expect(
+          [...text.matchAll(SPECIFIER)].map((match) => match[2] as string),
+          text,
+        ).toEqual(['../game/progression']);
+        probes += 1;
+      }
+    }
+    expect(probes).toBe(FORMS.length * QUOTES.length);
+    expect(probes).toBe(9);
   });
 
   it('holds every number in the tuning module and none anywhere else', () => {

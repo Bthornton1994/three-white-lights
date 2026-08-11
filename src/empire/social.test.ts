@@ -1124,12 +1124,19 @@ describe('a supplied context is validated rather than trusted', () => {
 // ---------------------------------------------------------------------------
 
 describe('the module is pure and imports nothing outside this directory', () => {
-  it('imports only its two siblings', () => {
-    const source = readModule('social.ts');
-    expect([...source.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1])).toEqual([
-      './empireCore',
-      './empireTuning',
-    ]);
+  it('is covered by the directory-wide import fence rather than a copy of it', () => {
+    // This was the third hand-written copy of a scanner that was wrong on both
+    // of its axes — form-only (`from '...'` misses a side-effect import) and
+    // single-quote-only (`"..."` walks past all three forms). See the fence in
+    // `empireCore.test.ts` for the full sequence. It is one walker over
+    // `readdirSync(HERE)` now, and this asserts that the walker covers this
+    // module rather than assuming it.
+    //
+    // Reddens on: dropping `'social.ts'` from that map, or on this module
+    // acquiring an edge.
+    const fenceSource = readFileSync(path.join(HERE, 'empireCore.test.ts'), 'utf8');
+    expect(fenceSource).toContain("'social.ts': ['./empireCore', './empireTuning']");
+    expect(fenceSource).toContain('const SHIPPED_MODULES = readdirSync(HERE)');
   });
 
   it('names every event and every surface exactly once in its own list', () => {

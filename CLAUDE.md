@@ -463,6 +463,53 @@ rather than hidden:* it is a real place name. That is a weaker collision than a
 company and a much weaker one than the club this replaces, and no search can
 prove a negative.
 
+**THE SENTENCE ABOVE IS FALSE, AND IT IS LEFT STANDING BECAUSE THE CORRECTION IS
+WORTH MORE THAN THE DELETION.** A fresh critic searched the name and found
+**Cragmoor Capital Advisors LLC** (a New York domestic LLC, filed 4 September
+2015, active) and **Cragmoor Publications Ltd** (UK company 08260219,
+incorporated 2012, dissolved 2015). Verified independently rather than taken on
+the critic's word. So Cragmoor has exactly the commercial referent the sentence
+denies — and it is the *same evidence class* the paragraph above uses to reject
+Varlow, one line earlier: "an LLC in California and a Pty Ltd in Australia".
+Measured against the screen this paragraph wrote for itself, Cragmoor fails it.
+
+**And the screen was applied to one name in four.** `Tarnwick Powerlifting
+Union`, `Sablecoast Strength Alliance` and `Brackwater Barbell League` shipped in
+`careerTuning.ts` with no recorded search anywhere. Searched now:
+
+- **Tarnwick** — Tarnwick Partners LLLP, an active Florida limited partnership.
+  Varlow's evidence class again.
+- **Sablecoast** — a working musician's project name (SoundCloud, Pinterest). A
+  creative identity belonging to a real person.
+- **Brackwater** — and this is the worst of the four, in the sector that matters
+  most. **Brackwater Elemental** is a Magic: The Gathering card (Wizards of the
+  Coast, *Conflux*); **Brackwater Cloak / Vest / Shield** are World of Warcraft
+  items (Blizzard); **Brackwater** is a village in Guild Wars 2 (ArenaNet).
+  Three live commercial game properties. The precedent that rejected Fenmarch
+  for Tolkien and Dunmarrow for a Traveller RPG world rejects this outright, and
+  a games-sector collision is a nearer neighbour to this product than a
+  weightlifting club is.
+
+*The critic that found this got two of the four wrong in the reassuring
+direction* — it reported Sablecoast and Brackwater as clean. Both were checked
+here rather than accepted, which is the reason CLAUDE.md says not to take an
+agent's report at face value; it applies to a critic that is right about the
+class it found.
+
+**THE REAL FINDING IS THE METHOD, NOT THE FOUR NAMES.** Invent-then-search has
+now produced seven rejections and five acceptances, and **every one of the five
+acceptances was wrong**. That is not a run of carelessness — it is evidence that
+the screen as written ("no commercial or creative referent") is close to
+unsatisfiable, because almost any pronounceable English-ish compound has some
+small LLC, some indie artist, or some game item attached to it. A screen nobody
+can pass gets applied at whatever strictness the searcher happens to have that
+day, which is exactly what happened: strict enough to reject Varlow, loose
+enough to accept Cragmoor, and skipped entirely for three names.
+
+So the bar itself needs stating, and that is a human's call rather than a
+builder's. It is **pending a ruling** and the names are unchanged until then;
+what is fixed here is the false claim, not the strings. See the entry below.
+
 **2. `src/career/careerTuning.ts` needs the same three `SOURCE_RULES` rows
 `empireTuning.ts` needed** — 17 findings unregistered, every one in that file and
 none anywhere else under `src/career/`. Classification `feel`, which forces the
