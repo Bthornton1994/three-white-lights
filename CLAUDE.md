@@ -186,6 +186,65 @@ would have caught **one of the two** real defects. A mechanism with a measured
 50% hit rate that reads like coverage is what this document warns about hardest,
 so it was not built.
 
+#### CROSSING FILED BY SESSION A, BEFORE THE WORK: §5 follow-up is Session A's
+
+Written here first, as this section requires. **Session A is taking three pieces
+of §5 follow-up inside `src/empire/**`**, on a human ruling, because they are
+defect fixes against absolute constraints rather than new scope:
+
+1. **`empireInvariant.ts` §4a's stale "43 checks" claim.** A live false sentence
+   in shipped code. Recompute against the real count or reword to drop the
+   unbacked absolute. Ruled: fix it now as its own defect, not left standing as
+   an illustration of the tag mechanism's blind spot.
+2. **The 5 violating pairs in NPC recruit-tier selection.** See the ruling below.
+3. **The 7240 pairs under `spend-once-per-calendar-day`**, which that ruling puts
+   in scope rather than setting aside.
+
+Session B keeps §5 otherwise. This is a repair pass on measured breaches, and it
+ends when they are repaired.
+
+#### RULED: A SMALL, HONEST, PERMANENT BREACH OF AN ABSOLUTE RULE IS STILL A BREACH
+
+The re-grade measured that a player who checks in **more often** can end up
+**worse off** — 5 pairs whose cause is §5's own. My proposed treatment was
+"disclosed and pinned". **That was rejected, and the reasoning binds every
+future case, so it is recorded here rather than in a commit message.**
+
+> CLAUDE.md doesn't have a size threshold below which an absolute rule becomes
+> acceptable to leave broken. Five pairs, honestly pinned, is still a documented
+> permanent violation.
+
+This exact shape — accept a small, honestly-measured, permanently-documented
+breach of an absolute — has now been proposed and **rejected three times in this
+build**: the original Recovery Day streak inversion, the Chain B / physio 0.451
+IQ-per-day deficit, and this. The measurement being honest is what makes it
+actionable; it is not what makes it acceptable. **"Never punish daily
+engagement" has no tolerance band.**
+
+The mechanism is narrow and understood: `bestRecruitableTier` greedily buys the
+priciest affordable tier, and IQ-per-Buck *declines* strictly across tiers
+(`NPC_RECRUIT_COST_GYM_BUCKS ÷ NPC_TIER_OUTPUT_MULTIPLIER` = 500, 1250, 3200,
+7500, 13846), so more money at one decision can buy strictly less Training IQ.
+**The requirement is a structural fix, not a pin:** selection must never choose a
+tier yielding strictly less Training IQ per Buck than a cheaper affordable
+option would. The exact mechanism is the builder's to evaluate.
+
+#### RULED: `spend-once-per-calendar-day` IS REPRESENTATIVE, NOT A CONTROL
+
+I asked whether that policy models a typical player or is merely a control,
+because it decides whether the other 7240 pairs are real or harness noise.
+
+**Ruled representative.** Two reasons, both about consistency rather than taste:
+this policy was already treated as legitimate evidence a few waves ago, when it
+was the sharpest discriminator in the five-policy sweep and directly justified
+the Chain B fix; and batch-spending once per session is ordinary behaviour for
+the genre, not an adversarial construction. Calling it a control *now*, when it
+produces an inconvenient number, would be inconsistent with how this run already
+used it.
+
+So the remaining violating pairs under it get the same rigour as the 5 — pursued,
+not set aside. A policy does not change status based on what it finds.
+
 #### RULED BY SESSION A: GRANTED — and it does NOT close the case that prompted it
 
 **Granted.** Extend `@guarantee` so a tagged paragraph's numeric literals must
