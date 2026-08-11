@@ -1,8 +1,8 @@
 EVIDENCE BUNDLE — piece meet-tension-6-3
-generated 2026-08-11T00:53:13.384Z
+generated 2026-08-11T01:30:48.970Z
 repo /home/user/three-white-lights/.claude/worktrees/agent-a228ffaf0e77756d9
-commit 2655f0d73dbc0b56f77264e4a341d17bd89aaa69
-working tree clean (ignoring only this script's own output and .gauntlet/state.json)
+commit dd3ef47799421bafbc8c55d89e7e6fb49f8f2b0f
+working tree DIRTY — 7 uncommitted file(s): .gauntlet/shots/cutin-cap/cap.json, .gauntlet/shots/cutin-cap/cut-in-leg-1.png, .gauntlet/shots/cutin/frames.json, .gauntlet/shots/meet/sound.json, .gauntlet/shots/shell/04a-live-recap-with-way-back.png, .gauntlet/shots/shell/13-recap-before-the-return-leg.png, .gauntlet/shots/shell/route.json
 
 This file is raw, unedited output of the commands shown. It is produced by
 the run harness, not by the agent that wrote the code under test.
@@ -60,8 +60,8 @@ $ npx vitest run
 
  Test Files  67 passed (67)
       Tests  2820 passed (2820)
-   Start at  00:53:15
-   Duration  131.00s (transform 5.51s, setup 0ms, import 24.69s, tests 282.90s, environment 9ms)
+   Start at  01:30:50
+   Duration  141.02s (transform 7.81s, setup 0ms, import 28.67s, tests 302.87s, environment 9ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
