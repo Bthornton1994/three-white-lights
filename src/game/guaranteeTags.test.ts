@@ -527,11 +527,13 @@ const GUARANTEE_COVERAGE = {
  * A TAG THAT RESOLVES SAYS NOTHING ABOUT THE NUMBERS IN THE SENTENCE AROUND IT,
  * and that is a third way a true-sounding claim survives a green suite.
  *
- * MEASURED TWICE IN `src/empire/`, both on prose that carried a tag: a comment
- * read "zero of 120 physio arrival days" while its named check pinned a
- * different denominator, and another read "32 of 144" while its own body pinned
- * something else again. Both tags resolved. Both sentences kept their confident
- * tone after the number moved, which is this file's whole subject one level in.
+ * MEASURED TWICE IN `src/empire/`: a comment read "zero of 120 physio arrival
+ * days" while its named check pinned a different denominator, and another read
+ * "32 of 144" while its own body pinned something else again. The tag as it
+ * stood caught neither, because it resolves that a TEST EXISTS and says nothing
+ * about what the prose around it claims that test measured. Both sentences kept
+ * their confident tone after the number moved, which is this file's whole
+ * subject one level in.
  *
  * THE RULE: every numeral a tagged paragraph states as prose must occur in the
  * body of the test the tag names, and it is the BODY and not the file.
@@ -675,9 +677,10 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
     phrase: "It read 49 before §4c's day-anchor block added a check",
     kind: 'history',
     why:
-      'The superseded denominator. The live one (50) resolves three times in the '
-      + 'named body; this is the value it moved FROM, recorded so the drift is '
-      + 'legible. A sentence about what a number used to be cannot be pinned by a '
+      'The superseded denominator. The live one is 50, and all three of its '
+      + 'occurrences in that paragraph resolve; this is the value it moved FROM, '
+      + 'recorded so the drift is legible. A sentence about what a number used to '
+      + 'be cannot be pinned by a '
       + 'test that measures what it is now. NOTE ALSO that src/empire/** belongs to '
       + 'the other session, so this entry is the only move available here.',
   },
@@ -688,10 +691,11 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
     why:
       "GDD §4.2's Option 1 — a pointer into the design document, spelt without the "
       + 'section mark, so the `section-coordinate` exclusion does not see it. Worth '
-      + 'recording rather than generalising into a vocabulary: the SAME phrase in '
+      + 'recording rather than generalising into a vocabulary: the SAME REFERENCE in '
       + "`mid-absence-arrival-cannot-arm`'s paragraph resolves and needs no entry, "
-      + 'because a `1` happens to appear in that test body. Two identical claims, '
-      + 'one listed and one not, is what the 87% figure above looks like in the wild.',
+      + 'because a bare `1` happens to appear in that test body for its own reasons. '
+      + 'Two identical claims, one listed and one not, is what '
+      + 'NAMED_BODIES_HOLDING_ONE looks like in the wild.',
   },
   {
     guarantee: 'doomed-absence-takes-what-is-left',
