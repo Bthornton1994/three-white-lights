@@ -26,6 +26,7 @@ import { WEIGHT_CLASSES_KG, formatWeight } from './resultCard';
 import {
   attemptConfigFor,
   attemptDecisionFor,
+  beatsPreviousBest,
   buildMeetRecap,
   countedTotalText,
   createMeetDay,
@@ -36,6 +37,7 @@ import {
   judgePanelFor,
   judgeSeedFor,
   judgingMargin,
+  liftCallOutFor,
   liveAttemptWeightText,
   meetAttemptReports,
   meetResultCard,
@@ -44,9 +46,13 @@ import {
   suggestedOpeners,
   weighInFor,
   type AttemptDecision,
+  type AttemptOption,
   type MeetDayContext,
   type MeetDayState,
+  type MeetRecap,
 } from './meetDay';
+import { applyMeetResult, type AppliedMeetResult } from './meetServer';
+import { newServerRecord, type ServerRecord } from './sessionServer';
 import {
   MEET_COPY,
   MEET_ENTRY,
@@ -871,14 +877,32 @@ describe('the meet-day machine', () => {
 // GDD §6.5 — the recap
 // ---------------------------------------------------------------------------
 
+/**
+ * A stand-in for the server's answer about a finished meet.
+ *
+ * `bestByLiftKg` IS READ OFF THE MEET rather than typed in, because it is the
+ * one field here a wrong constant could make a whole call-out test vacuous: a
+ * fabricated best that happens to sit under the fabricated previous best would
+ * report FIRST for a lift that really did beat one, on every path, silently.
+ * The two `previousBest*` defaults are the preview lifter's history, so a test
+ * that wants a lifter with NO history has to say so — which is the case GDD
+ * §6.5's defect lived in, and it is spelt out at the call site rather than being
+ * the default nobody notices.
+ */
 function confirmedFor(meet: MeetState, overrides: Partial<{
   previousBestTotalKg: number | null;
+  previousBestByLiftKg: Record<LiftKind, number | null>;
   isTotalPr: boolean;
   liftPrs: Record<LiftKind, boolean>;
   place: number | null;
   fieldSize: number;
 }> = {}) {
   const totalKg = finalMeetTotal(meet);
+  const bestByLiftKg: Record<LiftKind, number | null> = {
+    squat: meet.lifts.squat.best,
+    bench: meet.lifts.bench.best,
+    deadlift: meet.lifts.deadlift.best,
+  };
   return {
     totalKg,
     previousBestTotalKg:
@@ -887,9 +911,19 @@ function confirmedFor(meet: MeetState, overrides: Partial<{
         : MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG,
     isTotalPr: overrides.isTotalPr ?? false,
     liftPrs: overrides.liftPrs ?? { squat: false, bench: false, deadlift: false },
+    bestByLiftKg,
+    previousBestByLiftKg:
+      overrides.previousBestByLiftKg ?? { ...MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG },
     placing: { place: overrides.place ?? 4, fieldSize: overrides.fieldSize ?? 16 },
   };
 }
+
+/** A lifter with no competition history at all: their first meet. */
+const NO_HISTORY_BY_LIFT: Record<LiftKind, number | null> = {
+  squat: null,
+  bench: null,
+  deadlift: null,
+};
 
 describe('the recap (GDD §6.5)', () => {
   it('shows every attempt, with the ones that stood and the ones that did not', () => {
@@ -1032,6 +1066,8 @@ describe('the recap (GDD §6.5)', () => {
       previousBestTotalKg: MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG,
       isTotalPr: false,
       liftPrs: { squat: false, bench: false, deadlift: false },
+      bestByLiftKg: { squat: null, bench: state.meet.lifts.bench.best, deadlift: null },
+      previousBestByLiftKg: { ...MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG },
       placing: { place: null, fieldSize: MEET_LOCAL.ghostTotalsKg.length + 1 },
     });
     if (!built.ok) throw new Error(built.error.message);
@@ -1049,6 +1085,8 @@ describe('the recap (GDD §6.5)', () => {
       previousBestTotalKg: MEET_PREVIEW.PREVIOUS_BEST_TOTAL_KG,
       isTotalPr: false,
       liftPrs: { squat: false, bench: false, deadlift: false },
+      bestByLiftKg: { squat: null, bench: state.meet.lifts.bench.best, deadlift: null },
+      previousBestByLiftKg: { ...MEET_PREVIEW.PREVIOUS_BEST_BY_LIFT_KG },
       // A bombed lifter does not place, and this is what `meetServer.ts`
       // actually returns for one.
       placing: { place: null, fieldSize: MEET_LOCAL.ghostTotalsKg.length + 1 },
@@ -1061,6 +1099,303 @@ describe('the recap (GDD §6.5)', () => {
     expect(built.recap.bombedLift).toBe('squat');
     expect(built.recap.rows[0]?.bombed).toBe(true);
     expect(built.recap.rows[0]?.bestKg).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GDD §6.5 — "PR" means one thing, across §6.3's screen and the recap
+// ---------------------------------------------------------------------------
+//
+// WHAT THE DEFECT WAS, so a reader can tell what these tests are for. A first
+// meet chose nine attempts with no PR call-out anywhere — `isPrAttempt` needs a
+// record to beat and a fresh lifter has none — and then printed "PR" against all
+// three lifts on the recap that followed, because `liftPrs` reads a null
+// previous best as beaten. Both computations were right; one word carried two
+// facts. GDD §6.5 ruled the split lands on the DISPLAY, not on the arithmetic.
+//
+// THE MEETS BELOW ARE PLAYED AND THEN RECORDED THROUGH THE REAL SERVER. Nothing
+// here hands `buildMeetRecap` a hand-written `liftPrs`: `applyMeetResult` is
+// asked, so a change to ITS null handling reaches these assertions rather than
+// stopping at `meetServer.test.ts`. That is why this block is not written
+// against `confirmedFor`, which is a fixture and would absorb exactly that.
+
+/** One meet, played to its ending, with every §6.3 option it offered on the way. */
+function playWatchingSelection(
+  context: MeetDayContext,
+  choose: (lift: LiftKind, attemptNumber: number) => 'repeat' | 'small' | 'big' = () => 'small',
+): { options: AttemptOption[]; state: MeetDayState } {
+  const options: AttemptOption[] = [];
+  let state = openedMeet(context);
+  let guard = 0;
+  while (state.phase !== 'recap' && state.phase !== 'bombed' && guard < 64) {
+    guard += 1;
+    if (state.phase === 'attempt-select') {
+      const decision = decisionOf(state);
+      options.push(...decision.options);
+      state = chooseOrFallBack(state, choose(decision.lift, decision.attemptNumber));
+      continue;
+    }
+    const live = state.live;
+    if (live === null) break;
+    state = take(state, 'perfect');
+  }
+  return { options, state };
+}
+
+/** The lifter the preview describes, with their competition history removed. */
+function firstMeetContext(meetId?: string): MeetDayContext {
+  const base = previewContext();
+  return {
+    ...base,
+    ...(meetId === undefined ? {} : { meet: { ...base.meet, id: meetId } }),
+    previousBestTotalKg: null,
+    previousBestByLiftKg: NO_HISTORY_BY_LIFT,
+  };
+}
+
+/**
+ * Record a played meet through the real server and build the recap for it.
+ *
+ * The meet DEFINITION is the one the state was played under, so the id on the
+ * proposal and the id the server checks are the same object rather than two
+ * that could drift — `applyMeetResult` refuses a mismatch, and a test that hit
+ * that refusal would look like a call-out failure.
+ */
+function recapThroughTheServer(
+  state: MeetDayState,
+  record: ServerRecord,
+  proposalId: string,
+): { recap: MeetRecap; applied: AppliedMeetResult } {
+  const proposal = meetResultProposal(state);
+  if (proposal === null) throw new Error('the played meet produced no proposal');
+  const applied = applyMeetResult(record, state.context.day, state.context.meet, proposal, proposalId);
+  if (!applied.ok) throw new Error(applied.error.message);
+  const built = buildMeetRecap(state, applied.value);
+  if (!built.ok) throw new Error(built.error.message);
+  return { recap: built.recap, applied: applied.value };
+}
+
+/** A stored meet, so a lifter can walk onto the platform holding numbers. */
+function recordHolding(bestByLift: Record<LiftKind, number | null>, totalKg: number): ServerRecord {
+  return {
+    ...newServerRecord(0),
+    totalKg,
+    meets: [
+      {
+        meetId: 'an-earlier-meet',
+        meetDayIndex: 1,
+        totalKg,
+        bestByLift,
+        bodyweightKg: MEET_ENTRY.bodyweight.kilograms,
+      },
+    ],
+  };
+}
+
+const CALL_OUT_TEXT = { pr: MEET_COPY.RECAP_PR_LIFT, first: MEET_COPY.RECAP_FIRST_LIFT } as const;
+
+describe('the per-lift call-out on the recap (GDD §6.5)', () => {
+  it('[the-pr-word-needs-a-record-to-beat] says FIRST with no record to beat, and PR only where one was beaten', () => {
+    // ---- the lifter's first meet, played and recorded for real ------------
+    const played = playWatchingSelection(firstMeetContext());
+    expect(played.state.phase, 'the first meet reached its recap').toBe('recap');
+    const first = recapThroughTheServer(played.state, newServerRecord(0), 'callout-first');
+
+    // THE WORDS THE BOARD PRINTS, FIRST, because they are what the player reads
+    // and because the two mutants this test is witnessed against land here from
+    // opposite directions: a single-state call-out prints three PRs, and a
+    // `liftPrs` that refuses a null previous best prints three nothings.
+    const firstWords = first.recap.rows.map((row) => row.callOut?.text ?? null);
+    expect(firstWords, 'the three words a first meet prints beside its lifts').toEqual([
+      CALL_OUT_TEXT.first,
+      CALL_OUT_TEXT.first,
+      CALL_OUT_TEXT.first,
+    ]);
+    expect(
+      firstWords.filter((word) => word === CALL_OUT_TEXT.pr).length,
+      'lifts a first meet calls a PR — the defect called three',
+    ).toBe(0);
+    expect(first.recap.rows.map((row) => row.callOut?.kind ?? null)).toEqual([
+      'first',
+      'first',
+      'first',
+    ]);
+
+    // The SERVER's answer is unchanged and stays unchanged: a first-ever
+    // competition lift IS the best on record. That is the retrospective half,
+    // this piece did not touch it, and GDD §7.2's cut-in still reads it.
+    expect(first.applied.liftPrs).toEqual({ squat: true, bench: true, deadlift: true });
+    expect(first.recap.rows.map((row) => row.isPr)).toEqual([true, true, true]);
+
+    // THE CROSS-SCREEN HALF, ON THE SAME PLAYED MEET. §6.3's screen flagged no
+    // option as a PR attempt, because this lifter had nothing to beat. The two
+    // screens now say the same thing about the same meet, and the count of
+    // options scanned says the sweep had something to look at.
+    expect(played.options.length, 'options §6.3 offered across the first meet').toBe(12);
+    expect(
+      played.options.filter((option) => option.isPrAttempt).length,
+      'PR-flagged cards on a first meet',
+    ).toBe(0);
+    expect(
+      played.options.filter((option) => option.prNote !== null).length,
+      'cards carrying §6.3’s PR sentence on a first meet',
+    ).toBe(0);
+
+    // ---- the same meet, by a lifter who walked in holding numbers ---------
+    // One below, one exactly equal, one above — so the three lifts take all
+    // three answers and no branch is reached three times.
+    const made = first.applied.bestByLiftKg;
+    const squatKg = made.squat ?? 0;
+    const benchKg = made.bench ?? 0;
+    const deadliftKg = made.deadlift ?? 0;
+    const held: Record<LiftKind, number | null> = {
+      squat: squatKg - 5,
+      bench: benchKg,
+      deadlift: deadliftKg + 5,
+    };
+    const again = playWatchingSelection(firstMeetContext('local-open-second'));
+    const second = recapThroughTheServer(
+      again.state,
+      recordHolding(held, (held.squat ?? 0) + (held.bench ?? 0) + (held.deadlift ?? 0)),
+      'callout-second',
+    );
+    // The meet replayed identically, so `held` really is one below, one level
+    // with and one above what this lifter put on the board.
+    expect(second.applied.bestByLiftKg).toEqual(made);
+    const secondWords = second.recap.rows.map((row) => row.callOut?.text ?? null);
+    expect(secondWords, `made ${JSON.stringify(made)} against held ${JSON.stringify(held)}`).toEqual([
+      CALL_OUT_TEXT.pr,
+      null,
+      null,
+    ]);
+    expect(
+      secondWords.filter((word) => word === CALL_OUT_TEXT.first).length,
+      'lifts a lifter with a record is told are their first',
+    ).toBe(0);
+    // EQUALLING A RECORD IS NOT BEATING IT, spelt out rather than left inside
+    // the array above: the bench matched to the kilo and got no call-out.
+    expect(held.bench).toBe(made.bench);
+    expect(second.recap.rows[1]?.isPr).toBe(false);
+    expect(second.recap.rows[1]?.callOut).toBeNull();
+  });
+
+  it('draws a call-out exactly when the server calls the lift a best', () => {
+    // The invariant that keeps `isPr` and `callOut` from drifting apart: GDD
+    // §7.2's cut-in beat reads the first, the board prints the second, and a
+    // state where one fires without the other is a screen celebrating a record
+    // it does not name, or naming one it does not celebrate.
+    let rows = 0;
+    let agreed = 0;
+    const legs: { record: ServerRecord; id: string }[] = [
+      { record: newServerRecord(0), id: 'agree-fresh' },
+      { record: recordHolding({ squat: 500, bench: 500, deadlift: 500 }, 1500), id: 'agree-unbeatable' },
+      { record: recordHolding({ squat: 1, bench: null, deadlift: 1 }, 300), id: 'agree-mixed' },
+    ];
+    for (const leg of legs) {
+      const played = playWatchingSelection(firstMeetContext(leg.id));
+      const { recap } = recapThroughTheServer(played.state, leg.record, leg.id);
+      for (const row of recap.rows) {
+        rows += 1;
+        if ((row.callOut !== null) === row.isPr) agreed += 1;
+        expect(row.callOut !== null, `${leg.id} ${row.lift}: callOut against isPr`).toBe(row.isPr);
+      }
+    }
+    expect(rows, 'recap rows compared').toBe(9);
+    expect(agreed, 'rows where the call-out and the server agreed').toBe(9);
+  });
+
+  it('prints nothing beside a lift with no good attempt on it', () => {
+    // A lift with no good attempt is not a first and not a PR, whatever the
+    // lifter holds — the empty case neither branch above reaches. A bomb-out
+    // ENDS THE MEET, so all three rows are that case here: the squat has three
+    // misses and the other two were never contested at all.
+    const state = playMeet((lift) => (lift === 'squat' ? 'dumped' : 'perfect'), () => 'repeat');
+    expect(state.phase).toBe('bombed');
+    const bombed = recapThroughTheServer(state, newServerRecord(0), 'callout-bombed');
+    expect(bombed.applied.bombedLift).toBe('squat');
+    expect(bombed.applied.bestByLiftKg).toEqual({ squat: null, bench: null, deadlift: null });
+    expect(bombed.recap.rows.map((row) => row.callOut)).toEqual([null, null, null]);
+    expect(bombed.recap.rows.map((row) => row.isPr)).toEqual([false, false, false]);
+
+    // THE POSITIVE CONTROL, on the same fresh record, because "no call-outs"
+    // read on its own is also what a build with the feature deleted returns.
+    // The same lifter who totals gets three.
+    const totalled = playWatchingSelection(firstMeetContext('local-open-control'));
+    const control = recapThroughTheServer(totalled.state, newServerRecord(0), 'callout-control');
+    expect(control.recap.rows.filter((row) => row.callOut !== null).length).toBe(3);
+  });
+
+  it('is the same predicate §6.3 paints its gold border from', () => {
+    // `beatsPreviousBest` over the grid of (weight, previous best) the surfaces
+    // can present it with, including the null column that is this piece's whole
+    // subject. The oracle is in words rather than a second copy of the
+    // expression: a PR needs a number to beat, and has to exceed it.
+    const weights = [0, 100, 199.5, 200, 200.5, 300];
+    const bests: (number | null)[] = [null, 0, 200];
+    let asked = 0;
+    let trues = 0;
+    for (const weight of weights) {
+      for (const best of bests) {
+        asked += 1;
+        const expected = best !== null && weight > best;
+        if (expected) trues += 1;
+        expect(beatsPreviousBest(weight, best), `${weight} vs ${String(best)}`).toBe(expected);
+      }
+    }
+    expect(asked, 'pairs swept').toBe(18);
+    // 5 of the 6 weights beat a held 0 (a bar-weight 0 does not beat itself),
+    // 2 of the 6 beat a held 200, and none of the 6 beats a null.
+    expect(trues, 'pairs the predicate calls a PR').toBe(7);
+    expect(beatsPreviousBest(200, 200)).toBe(false);
+    expect(beatsPreviousBest(200.5, 200)).toBe(true);
+    // The null column is uniformly false — the half `liftPrs` reads the other
+    // way round, and the disagreement this piece is about.
+    expect(weights.every((weight) => !beatsPreviousBest(weight, null))).toBe(true);
+  });
+
+  it('takes the server’s answer instead of re-deriving it', () => {
+    // CLIENT IS A RENDERER. `liftCallOutFor` is handed `isPr` and does not
+    // recompute it: a caller that says "not a best" gets no call-out even where
+    // the kilograms would say otherwise, and a caller that says "a best" gets
+    // one even where they would not. Both directions, because a helper that
+    // quietly second-guessed the server is the shape a THIRD meaning arrives in.
+    expect(liftCallOutFor(false, 300, 200)).toBeNull();
+    expect(liftCallOutFor(true, 100, 200)?.kind).toBe('first');
+    expect(liftCallOutFor(true, 300, 200)?.kind).toBe('pr');
+    expect(liftCallOutFor(true, 300, null)?.kind).toBe('first');
+    expect(liftCallOutFor(true, null, null)?.kind).toBe('first');
+    expect(liftCallOutFor(true, null, 200)?.kind).toBe('first');
+    // And the words are the tuning module's, not this test's.
+    expect(liftCallOutFor(true, 300, 200)?.text).toBe(MEET_COPY.RECAP_PR_LIFT);
+    expect(liftCallOutFor(true, 300, null)?.text).toBe(MEET_COPY.RECAP_FIRST_LIFT);
+    expect(MEET_COPY.RECAP_PR_LIFT).not.toBe(MEET_COPY.RECAP_FIRST_LIFT);
+  });
+
+  it('does not put a call-out on the shareable card, which is a federation sheet', () => {
+    // GDD §6.5: the card is "formatted like a real federation result sheet",
+    // and a result sheet records weights rather than editorial. So the third
+    // surface the §6.5 ruling names carries NO per-lift PR fact at all, which
+    // is why reconciling the word did not have to reach it.
+    //
+    // Pinned so that adding one becomes a deliberate edit that comes back to
+    // this ruling rather than a fourth place the word appears. Measured on a
+    // card built for a lifter with no history — the case that used to print PR
+    // three times on the recap beside it.
+    const played = playWatchingSelection(firstMeetContext());
+    const { recap } = recapThroughTheServer(played.state, newServerRecord(0), 'callout-card');
+    const card = recap.card;
+    const cardText = [
+      ...card.rows.flatMap((row) => [row.label, row.bestText, ...row.attempts.map((cell) => cell.text)]),
+      ...card.summary.flatMap((cell) => [cell.label, cell.value]),
+    ];
+    expect(cardText.length, 'card cells scanned').toBe(21);
+    expect(
+      cardText.filter((cell) => cell === CALL_OUT_TEXT.pr || cell === CALL_OUT_TEXT.first),
+      'card cells carrying a PR or FIRST call-out',
+    ).toEqual([]);
+    // ...and the recap beside it does carry them, so the scan above is not
+    // measuring a card that had nothing on it in the first place.
+    expect(recap.rows.filter((row) => row.callOut !== null).length).toBe(3);
   });
 });
 

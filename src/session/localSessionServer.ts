@@ -197,6 +197,11 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
           liftPrs: applied.value.liftPrs,
           placing: applied.value.placing,
           bestByLiftKg: applied.value.bestByLiftKg,
+          // WITHOUT THIS THE RECAP CANNOT TELL A BEATEN RECORD FROM A FIRST ONE
+          // and prints "PR" for both, which is GDD §6.5's defect. Three numbers
+          // about the lifter's own past meets, not a stored row.
+          // `@guarantee the-pr-word-needs-a-record-to-beat`
+          previousBestByLiftKg: applied.value.previousBestByLiftKg,
           bombedLift: applied.value.bombedLift,
         },
       };

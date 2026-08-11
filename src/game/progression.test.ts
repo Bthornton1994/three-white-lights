@@ -1967,7 +1967,12 @@ describe('purity', () => {
     // twenty-one fixtures to six — every assertion in this test would still
     // pass, because they all ask about fixtures the scan already found. Adding
     // a fixture record moves this number and the diff is one character.
-    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(21);
+    //
+    // 21 -> 22 with `meetDay.test.ts`'s `recordHolding`, the fixture GDD §6.5's
+    // per-lift call-out needed: a lifter who walks onto the platform already
+    // holding numbers, so a recap has a record to beat and not only a first one
+    // to set.
+    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(22);
     expect(routeScan().fixtures.map((row) => row.file)).toContain('src/game/meetServer.test.ts');
     // ...and no fixture leaked into the pinned table.
     expect(declaredRoutes().filter((row) => IS_TEST_FILE.test(row.file))).toEqual([]);

@@ -56,6 +56,20 @@
  *
  * A BOMB-OUT DOES NOT REACH THIS SCREEN — `MeetScreen` routes it to
  * `BombOutView`, which offers §7.2's third moment itself.
+ *
+ * ---------------------------------------------------------------------------
+ * WHICH WORD GOES BESIDE A LIFT IS NOT DECIDED HERE
+ * ---------------------------------------------------------------------------
+ * `RecapLiftRow.callOut` arrives already chosen by `meetDay.ts`'s
+ * `liftCallOutFor`, and this file picks nothing: it used to read `row.isPr` and
+ * hand `AttemptBoard` the string `MEET_COPY.RECAP_PR_LIFT`, which printed "PR"
+ * against all three lifts of a first meet — the meet §6.3's screen, one beat
+ * earlier, had just told the same player carried no PR at all. GDD §6.5 records
+ * that defect and the ruling. The cut-in beat below still reads `row.isPr`,
+ * deliberately: a first-ever lift is a moment, the same way a first total is,
+ * and the total's beat has always fired on one.
+ *
+ * `@guarantee the-pr-word-needs-a-record-to-beat`
  */
 
 import React from 'react';
@@ -168,7 +182,7 @@ export function RecapView({ recap, attempts, onSeeCard }: RecapViewProps): React
               key={lift}
               lift={lift}
               attempts={attempts}
-              prLabel={recap.rows[index]?.isPr === true ? MEET_COPY.RECAP_PR_LIFT : undefined}
+              callOut={recap.rows[index]?.callOut ?? undefined}
             />
           ))}
         </View>

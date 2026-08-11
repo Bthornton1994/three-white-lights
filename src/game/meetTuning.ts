@@ -1773,7 +1773,27 @@ export const MEET_COPY = Object.freeze({
   RECAP_PLACE_LABEL: 'PLACE',
   RECAP_OF_FIELD: 'of',
   RECAP_PR_TOTAL: 'COMPETITION PR',
+  /**
+   * The word beside a lift that went past a number the lifter already held.
+   *
+   * `liftCallOutFor` prints it exactly when `beatsPreviousBest` is true of that
+   * lift, which is the same predicate GDD §6.3's gold border and PR sentence are
+   * painted from. A lift the lifter had no record on gets `RECAP_FIRST_LIFT`
+   * instead — the recap used to print this one for both.
+   */
   RECAP_PR_LIFT: 'PR',
+  /**
+   * The word beside a lift the lifter had no competition record on at all.
+   *
+   * PENDING PLAYTEST, like every string in this block and like §6.3's two
+   * wording options. What is settled is that a first-ever lift gets a DIFFERENT
+   * word from a beaten record, following the precedent `RECAP_FIRST_TOTAL`
+   * already set for the total. Which word is a feel question a playtester
+   * answers; 'FIRST' is a placeholder chosen to sit under `RECAP_FIRST_TOTAL`
+   * without repeating the lift's own name, which is already on the row.
+   * GDD §6.5 records it as pending.
+   */
+  RECAP_FIRST_LIFT: 'FIRST',
   RECAP_FIRST_TOTAL: 'FIRST TOTAL',
   RECAP_NO_PR: 'Short of your best. The board keeps it either way.',
   RECAP_ATTEMPTS_LABEL: 'ATTEMPTS',

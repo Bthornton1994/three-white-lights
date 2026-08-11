@@ -155,9 +155,14 @@ export const A_MEET_BRIEF_IS_EXACTLY_ITS_ALLOWLIST: MeetBriefIsExactlyItsAllowli
  * client's card.
  */
 export interface RecordedMeet extends ConfirmedMeetFacts {
-  /** Best good lift per lift in THIS meet; `null` where a lift was bombed. */
-  readonly bestByLiftKg: Readonly<Record<LiftKind, number | null>>;
-  /** Which lift ended the meet, or `null` when it did not end in one. */
+  /**
+   * Which lift ended the meet, or `null` when it did not end in one.
+   *
+   * `bestByLiftKg` and `previousBestByLiftKg` used to be declared here and are
+   * now inherited: `buildMeetRecap` needs both to tell a beaten record from a
+   * first one, so they belong to the facts the recap is built from rather than
+   * to this narrowing of them.
+   */
   readonly bombedLift: LiftKind | null;
 }
 
