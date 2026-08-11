@@ -278,6 +278,12 @@ import {
   type CareerEngagementInputs,
   type CareerMeetOffer,
 } from './careerEngagement';
+import {
+  flightPlacingFaults,
+  placeFlight,
+  type FlightResultEntry,
+  type TotalOrder,
+} from './flight';
 
 // ===========================================================================
 // 1. The probe's parameters, in one block
@@ -381,6 +387,27 @@ const OPAQUE_PROBE = Object.freeze({
 
   /** The plan `runEntryPlan` is driven with. */
   ENTRY_PLAN: Object.freeze([true, true, true, true, true]),
+
+  /**
+   * The lots the GDD §6.6 flight subjects are driven over.
+   *
+   * Out of ascending order on purpose. Lot number is the last step of the
+   * bar-loading chain and the listing order for a pair the placing chain leaves
+   * tied, so a flight whose lots happened to arrive sorted would agree with a
+   * module that ignored them entirely.
+   */
+  FLIGHT_LOTS: Object.freeze([3, 1, 4, 2]),
+
+  /**
+   * Which entrant in that flight has no total.
+   *
+   * One, and not zero: `placeFlight`'s unplaced branch reads `total === null`,
+   * which is the one thing this directory is allowed to ask about a total, and
+   * a flight where nobody bombed leaves that branch undriven under the opaque
+   * binding. Not the first entrant either, so the branch is reached from inside
+   * the walk rather than on its first step.
+   */
+  FLIGHT_BOMB_INDEX: 2,
 });
 
 const FED = CAREER_FEDERATIONS[0] as CareerFederation;
@@ -564,6 +591,76 @@ function blindGate<Total>(
   standsForKg: number,
 ): CareerQualifyingGate<Total> {
   return (_total, requiredKg) => shape(standsForKg, requiredKg);
+}
+
+/**
+ * A blind ORDER over totals, the comparator half of the same idea.
+ *
+ * `blindGate` answers a yes/no about a kilogram value closed over from the
+ * harness. A comparator has two operands and no requirement outside them, so a
+ * blind one is easier still: it reads neither, and answers from a shape.
+ *
+ * The shape is allowed to be STATEFUL, and that is the useful part rather than
+ * a shortcut. A comparator that answers off its own call count still reads
+ * nothing about a total, and it makes the SEQUENCE of calls observable: if
+ * `placeFlight` asked its order a different number of questions, or in a
+ * different arrangement, under the numeric binding than under the opaque one,
+ * the two readouts stop matching. That is the property a constant comparator
+ * cannot express, because a constant answers the same however many times it is
+ * asked.
+ */
+interface OrderShape {
+  readonly id: string;
+  /** A FRESH comparator per call, since two of the three carry a counter. */
+  readonly make: <Total>() => TotalOrder<Total>;
+}
+
+const ORDER_SHAPES: readonly OrderShape[] = [
+  // Every pair equal, so the whole published tie-break chain below the total is
+  // the thing being driven.
+  { id: 'all-equal', make: () => () => 0 },
+  // Left always wins, and right always wins. Neither is a lawful comparator —
+  // `flightPlacingFaults` is supposed to say so — and a result sheet built from
+  // either must still be the same sheet under both bindings. Both are here
+  // rather than one because they produce MIRRORED sheets, which is what makes
+  // the sheet census below able to reach three.
+  { id: 'left-first', make: () => () => -1 },
+  { id: 'right-first', make: () => () => 1 },
+  {
+    id: 'cycling',
+    make: () => {
+      const answers = [-1, 0, 1];
+      let asked = 0;
+      return () => {
+        const given = answers[asked % answers.length] ?? 0;
+        asked += 1;
+        return given;
+      };
+    },
+  },
+];
+
+/**
+ * The flight the §6.6 subjects are driven over.
+ *
+ * Both fixture totals appear, which is legal here and is not legal in the
+ * readout: `placeFlight` returns rows that carry no total at all, so
+ * `<other-total>` cannot reach a readout by any route and the leak check keeps
+ * its meaning. One entrant carries `null` — see `FLIGHT_BOMB_INDEX`.
+ */
+function flightEntriesFor<Total>(fixtures: Fixtures<Total>): readonly FlightResultEntry<Total>[] {
+  return OPAQUE_PROBE.FLIGHT_LOTS.map((lotNumber, index) => {
+    const bombed = index === OPAQUE_PROBE.FLIGHT_BOMB_INDEX;
+    return {
+      lifterId: `lifter-${index}`,
+      lotNumber,
+      bodyweightKg: OPAQUE_PROBE.BODYWEIGHTS_KG[
+        index % OPAQUE_PROBE.BODYWEIGHTS_KG.length
+      ] as number,
+      total: bombed ? null : index % 2 === 0 ? fixtures.total : fixtures.otherTotal,
+      totalReachedAtPosition: bombed ? null : index,
+    };
+  });
 }
 
 interface GateShape {
@@ -878,6 +975,32 @@ const SUBJECTS: readonly OpaqueSubject[] = [
         runRecordHistory(inputs, OPAQUE_PROBE.ATTENDANCE_MORE),
       );
     },
+  },
+
+  // ---- flight.ts ----
+  // These two take an ORDER rather than a gate, which is why they build their
+  // own rather than using the `gate` parameter. A comparator is strictly more
+  // power over a total than a gate is — it ranks two of them against each other
+  // — so they are the two subjects in this file with the most to hide.
+  {
+    id: 'placeFlight',
+    module: 'flight.ts',
+    takesATotal: true,
+    run: (fixtures) =>
+      ORDER_SHAPES.map((shape) => ({
+        shape: shape.id,
+        sheet: placeFlight(flightEntriesFor(fixtures), shape.make()),
+      })),
+  },
+  {
+    id: 'flightPlacingFaults',
+    module: 'flight.ts',
+    takesATotal: true,
+    run: (fixtures) =>
+      ORDER_SHAPES.map((shape) => ({
+        shape: shape.id,
+        faults: flightPlacingFaults(flightEntriesFor(fixtures), shape.make()),
+      })),
   },
 ];
 
@@ -1261,6 +1384,7 @@ describe('no shipped function reads anything out of a total', () => {
       'careerEngagement.ts',
       'careerRecord.ts',
       'careerTuning.ts',
+      'flight.ts',
     ]);
 
     const exported = new Map<string, string>();
@@ -1273,8 +1397,8 @@ describe('no shipped function reads anything out of a total', () => {
     const driven = new Set(SUBJECTS.map((subject) => subject.id));
     expect([...driven].sort()).toEqual([...exported.keys()].sort());
     // Counts, not bounds, on both sides, so an empty scan reports itself.
-    expect(exported.size).toBe(26);
-    expect(driven.size).toBe(26);
+    expect(exported.size).toBe(28);
+    expect(driven.size).toBe(28);
     // Every subject names the module it actually came from.
     const misfiled = SUBJECTS.filter((subject) => exported.get(subject.id) !== subject.module);
     expect(misfiled.map((subject) => subject.id).join(', ')).toBe('');
@@ -1367,7 +1491,7 @@ describe('no shipped function reads anything out of a total', () => {
     expect(leaked.length).toBe(0);
     // The domain, pinned as counts.
     expect(runs).toBe(SUBJECTS.length * GATE_SHAPES.length * OPAQUE_PROBE.STAND_IN_KG.length);
-    expect(runs).toBe(780);
+    expect(runs).toBe(840);
   });
 
   it('catches a lifter that keeps its own total instead of the standing’s', () => {
@@ -1459,6 +1583,8 @@ describe('no shipped function reads anything out of a total', () => {
       runEntryPlan: 5,
       admitsOffer: 4,
       compareCareerEngagement: 1,
+      placeFlight: 1,
+      flightPlacingFaults: 1,
     });
     // THE FLAT ONES, NAMED, because an aggregate would hide them and because
     // fourteen of twenty-six is not a footnote. For each of these the sweep above
@@ -1479,6 +1605,14 @@ describe('no shipped function reads anything out of a total', () => {
     //     changed to add a meet at a HIGHER tier and it is 1 after; the change was
     //     kept because it makes the two runs differ in rank as well as in count,
     //     which the earlier pair did not.
+    //   - THE TWO FLIGHT SUBJECTS TAKE NO GATE AND THIS CENSUS IS THE WRONG
+    //     INSTRUMENT FOR THEM, which is said here rather than left to be read
+    //     off a 1. `placeFlight` and `flightPlacingFaults` take an ORDER, and
+    //     this sweep varies gate shape and stand-in kilograms, neither of which
+    //     reaches one. Their answers do vary — across `ORDER_SHAPES`, inside a
+    //     single run — and that is pinned in the assertion below rather than
+    //     folded in here, because folding it in would make their 1 read as the
+    //     same kind of flatness as `createCareerRecord`'s and it is not.
     const flat = Object.keys(spread)
       .filter((id) => spread[id] === 1)
       .sort();
@@ -1491,13 +1625,63 @@ describe('no shipped function reads anything out of a total', () => {
       'createCareerLifter',
       'createCareerRecord',
       'earliestNextEntryDay',
+      'flightPlacingFaults',
       'hasCompetedAt',
       'lastResultDay',
       'lifterWithStanding',
+      'placeFlight',
       'recordMeetResult',
       'resultFor',
       'resultsUnder',
     ]);
-    expect(flat.length).toBe(14);
+    expect(flat.length).toBe(16);
+  });
+
+  it('reaches more than one answer across the order shapes, in both flight subjects', () => {
+    // The non-vacuity guard the census above cannot be. Those two subjects sit
+    // at 1 there because the sweep varies a gate and they do not take one; what
+    // varies them is `ORDER_SHAPES`, and without a check on that a comparator
+    // subject that ignored its order entirely would look exactly like a
+    // well-behaved one.
+    //
+    // Reddens on: `placeFlight` returning a sheet that does not depend on the
+    // injected order, or `flightPlacingFaults` never consulting it — either of
+    // which collapses one of these counts to 1.
+    const probe = opaqueTotal();
+    const spare = opaqueTotal();
+    const fixtures = buildFixtures<OpaqueTotal>(probe.total, spare.total);
+    const entries = flightEntriesFor(fixtures);
+
+    const sheets = new Set(
+      ORDER_SHAPES.map((shape) =>
+        readout(placeFlight(entries, shape.make()), labelsOf(fixtures)),
+      ),
+    );
+    const faults = new Set(
+      ORDER_SHAPES.map((shape) =>
+        readout(flightPlacingFaults(entries, shape.make()), labelsOf(fixtures)),
+      ),
+    );
+    // COUNTS, NOT BOUNDS, ON BOTH SIDES — AND THEY ARE 3 OUT OF 4, WITH BOTH
+    // COLLISIONS NAMED. Four shapes produce three distinct sheets and three
+    // distinct fault lists, and rounding either up to 4 would be a false
+    // number:
+    //
+    //   - `left-first` and `cycling` produce the SAME sheet. Both leave this
+    //     engine's sort with the same arrangement of three placed entries; the
+    //     shapes still differ, which is what the fault census shows.
+    //   - `left-first` and `right-first` produce the same FAULT LIST. Their
+    //     sheets are mirror images, and an antisymmetry fault names an
+    //     unordered pair, so the sentences come out identical.
+    //
+    // Reddens on: a shape dropped from `ORDER_SHAPES`, or a subject that stops
+    // consulting its order — which collapses one of these to 1.
+    expect(ORDER_SHAPES.length).toBe(4);
+    expect(sheets.size).toBe(3);
+    expect(faults.size).toBe(3);
+    // And the whole exercise ran without a single read, which is what makes
+    // "the order changed the answer" a statement about the order rather than
+    // about the total.
+    expect([...probe.reads(), ...spare.reads()]).toEqual([]);
   });
 });

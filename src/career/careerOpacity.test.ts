@@ -490,6 +490,13 @@ import {
   type CareerEngagementInputs,
   type CareerMeetOffer,
 } from './careerEngagement';
+import {
+  flightPlacingFaults,
+  placeFlight,
+  type FlightPlacing,
+  type FlightResultEntry,
+  type TotalOrder,
+} from './flight';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 
@@ -2941,8 +2948,9 @@ describe('no shipped module can strip an opaque total', () => {
       'careerEngagement.ts',
       'careerRecord.ts',
       'careerTuning.ts',
+      'flight.ts',
     ]);
-    expect(SOURCE_OF.size).toBe(4);
+    expect(SOURCE_OF.size).toBe(5);
   });
 
   it('joins a wrapped call back into one line before it scans', () => {
@@ -2979,9 +2987,9 @@ describe('no shipped module can strip an opaque total', () => {
       joined += 1;
     }
     expect(degenerate).toBe(0);
-    expect(joined).toBe(4);
+    expect(joined).toBe(5);
     // Counts, not bounds, on what the joiner actually produced.
-    expect(scanned).toBe(1012);
+    expect(scanned).toBe(1406);
   });
 
   it('catches a wrapped coercion a line-anchored scan walks past', () => {
@@ -3062,9 +3070,9 @@ describe('no shipped module can strip an opaque total', () => {
     // Counts, not bounds, and the one with a SUBJECT is the product: a module
     // added to this directory or one that stopped being read moves 180 as
     // surely as a shortened ban list does.
-    expect(scanned).toBe(4);
+    expect(scanned).toBe(5);
     expect(checks).toBe(SHIPPED.length * BANNED.length);
-    expect(checks).toBe(180);
+    expect(checks).toBe(225);
     // `BANNED.length` on its own is a fact about THIS FILE and no state of
     // `src/career/` can move it — it is pinned because a shortened list should
     // be a signed edit, not because it is evidence about the subject.
@@ -3224,5 +3232,373 @@ describe('no shipped module can strip an opaque total', () => {
     // removed, so the strip did something rather than nothing.
     expect(source('careerCore.ts')).toContain("'below-qualifying-total'");
     expect(scannableCode(source('careerCore.ts'))).not.toContain("'below-qualifying-total'");
+  });
+});
+
+// ===========================================================================
+// 9. GDD §6.6's placing, under the same domain
+// ===========================================================================
+
+/**
+ * The parameters of the flight sweeps, in one block, for `OPACITY_SWEEP`'s
+ * reason: a measurement whose inputs are not written down is an anecdote.
+ *
+ * Placing is the first thing in this directory that ORDERS two totals against
+ * each other rather than asking a yes/no about one, so it gets the domain the
+ * gate got and the substitution question the gate got, both restated for a
+ * comparator.
+ */
+const FLIGHT_PROBE = Object.freeze({
+  /**
+   * Lot numbers, deliberately not ascending and deliberately not matching the
+   * entry order. Lot is the last step of the bar-loading chain and the listing
+   * order for a pair the placing chain leaves tied; a flight whose lots arrived
+   * sorted would agree with a module that ignored them.
+   */
+  LOTS: Object.freeze([4, 1, 3, 2]),
+
+  /**
+   * A bodyweight each, with the first and third EQUAL.
+   *
+   * Step 2 of the published chain separates two lifters on bodyweight. With
+   * four distinct bodyweights the chain would stop at step 2 every time and
+   * step 3 would be undriven at every point of the domain — the empty-region
+   * defect one level down from the one this file was rewritten for.
+   */
+  BODYWEIGHTS_KG: Object.freeze([92.5, 83.25, 92.5, 105.75]),
+
+  /** Where each entrant's total was reached, in the flight's running order. */
+  REACHED_AT: Object.freeze([2, 0, 5, 7]),
+
+  /**
+   * The relabelling constant. Larger than the domain's top, so `C - t` stays
+   * positive for every point and the reversed labels are still plausible
+   * kilogram values rather than an obviously special case.
+   */
+  REVERSAL_KG: 4000,
+
+  /** The scale and shift the width-changing relabelling uses. */
+  WIDEN_FACTOR: 1000,
+  WIDEN_SHIFT_KG: 7,
+});
+
+/**
+ * How the four entrants' totals are derived from one point of the domain.
+ *
+ * Three shapes rather than one, so the published chain is driven to a different
+ * depth at every point of the sweep instead of at a handful of them:
+ *
+ *   - `all-distinct` stops at step 1 for every pair.
+ *   - `two-tied` ties the first and third exactly, so the pair that shares a
+ *     bodyweight also shares a total and the chain runs to step 3.
+ *   - `all-tied` gives every entrant the same total, so step 1 decides nothing
+ *     anywhere and steps 2 and 3 carry the whole sheet.
+ *
+ * The offsets are whole pairs of the smallest competition disc, so a shape's
+ * totals stay on the lattice the domain argument is about.
+ */
+interface FlightShape {
+  readonly id: string;
+  readonly offsetsKg: readonly number[];
+}
+
+const FLIGHT_SHAPES: readonly FlightShape[] = [
+  {
+    id: 'all-distinct',
+    offsetsKg: [
+      0,
+      REAL_TOTAL_RESOLUTION_KG,
+      REAL_TOTAL_RESOLUTION_KG * 2,
+      REAL_TOTAL_RESOLUTION_KG * 3,
+    ],
+  },
+  { id: 'two-tied', offsetsKg: [0, REAL_TOTAL_RESOLUTION_KG, 0, REAL_TOTAL_RESOLUTION_KG * 2] },
+  { id: 'all-tied', offsetsKg: [0, 0, 0, 0] },
+];
+
+/** One flight of four, with an entrant carrying no total when asked. */
+function flightAt(
+  kg: NumericTotal,
+  shape: FlightShape,
+  bombedIndex: number | null,
+): readonly FlightResultEntry<NumericTotal>[] {
+  return FLIGHT_PROBE.LOTS.map((lotNumber, index) => {
+    const bombed = index === bombedIndex;
+    return {
+      lifterId: `lifter-${index}`,
+      lotNumber,
+      bodyweightKg: FLIGHT_PROBE.BODYWEIGHTS_KG[index] as number,
+      total: bombed ? null : kg + (shape.offsetsKg[index] as number),
+      totalReachedAtPosition: bombed ? null : (FLIGHT_PROBE.REACHED_AT[index] as number),
+    };
+  });
+}
+
+/**
+ * A placing computed by COUNTING rather than by sorting.
+ *
+ * The oracle for the sweep below, and it is a different procedure rather than a
+ * restatement of the shipped one — CLAUDE.md's "an oracle that mirrors its
+ * subject" is the failure this avoids. `placeFlight` sorts and then walks
+ * adjacent pairs; this asks, for each entrant, how many entrants rank strictly
+ * ahead of them, which needs no sort and no notion of adjacency.
+ *
+ * It applies the same three PUBLISHED steps, because those are the thing being
+ * checked rather than the thing being varied, and it deliberately does not
+ * model `decidedBy` — a second implementation of that would be a mirror. That
+ * field is pinned by hand in `flight.test.ts` instead.
+ *
+ * Valid only for a lawful comparator. An inconsistent order makes "strictly
+ * ahead" and "sorted" legitimately different questions, so the sweep drives
+ * lawful orders and `flightPlacingFaults` is what covers the rest.
+ */
+function countedPlacing(
+  entries: readonly FlightResultEntry<NumericTotal>[],
+  order: TotalOrder<NumericTotal>,
+): string {
+  const placed = entries.filter((entry) => entry.total !== null);
+  const ahead = (
+    left: FlightResultEntry<NumericTotal>,
+    right: FlightResultEntry<NumericTotal>,
+  ): boolean => {
+    const ranked = order(left.total as number, right.total as number);
+    if (ranked !== 0) return ranked > 0;
+    if (left.bodyweightKg !== right.bodyweightKg) {
+      return left.bodyweightKg < right.bodyweightKg;
+    }
+    const leftAt = left.totalReachedAtPosition;
+    const rightAt = right.totalReachedAtPosition;
+    if (leftAt !== null && rightAt !== null && leftAt !== rightAt) return leftAt < rightAt;
+    return false;
+  };
+
+  const rows = placed
+    .map((entry) => ({
+      lifterId: entry.lifterId,
+      lotNumber: entry.lotNumber,
+      place: 1 + placed.filter((other) => ahead(other, entry)).length,
+    }))
+    .sort((left, right) =>
+      left.place !== right.place ? left.place - right.place : left.lotNumber - right.lotNumber,
+    )
+    .map((row) => `${row.lifterId}@${row.place}`);
+
+  const bombed = entries
+    .filter((entry) => entry.total === null)
+    .slice()
+    .sort((left, right) => left.lotNumber - right.lotNumber)
+    .map((entry) => `${entry.lifterId}@none`);
+
+  return [...rows, ...bombed].join(' ');
+}
+
+/** A shipped sheet in the same shape the oracle prints. */
+function shippedPlacing(sheet: readonly FlightPlacing[]): string {
+  return sheet.map((row) => `${row.lifterId}@${row.place ?? 'none'}`).join(' ');
+}
+
+/**
+ * The relabellings the substitution probe applies, with their inverses.
+ *
+ * The property: for an injective `relabel` and the comparator that undoes it
+ * before answering, the sheet must be byte-identical to the sheet the original
+ * totals and the original comparator produced. A module that reads a total's
+ * magnitude, its sign, or its printed width instead of asking the comparator
+ * disagrees on at least one of these.
+ *
+ * `reverse` is the sharpest of the three: it maps the domain onto itself
+ * backwards, so raw magnitude ranks the flight the wrong way round while the
+ * comparator ranks it the right way round. `widen` changes the number of digits
+ * without changing the order, which is the axis the third recorded bypass keyed
+ * on. `negate` changes the sign, which no realistic total has and which a
+ * `Math.abs` or a `<= 0` guard would key on.
+ */
+interface Relabelling {
+  readonly id: string;
+  readonly relabel: (kg: number) => number;
+  readonly restore: (kg: number) => number;
+}
+
+const RELABELLINGS: readonly Relabelling[] = [
+  {
+    id: 'reverse',
+    relabel: (kg) => FLIGHT_PROBE.REVERSAL_KG - kg,
+    restore: (kg) => FLIGHT_PROBE.REVERSAL_KG - kg,
+  },
+  {
+    id: 'widen',
+    relabel: (kg) => kg * FLIGHT_PROBE.WIDEN_FACTOR + FLIGHT_PROBE.WIDEN_SHIFT_KG,
+    restore: (kg) => (kg - FLIGHT_PROBE.WIDEN_SHIFT_KG) / FLIGHT_PROBE.WIDEN_FACTOR,
+  },
+  { id: 'negate', relabel: (kg) => -kg, restore: (kg) => -kg },
+];
+
+/** The lawful comparator every flight sweep is driven under. */
+const ASCENDING: TotalOrder<NumericTotal> = (left, right) => left - right;
+
+describe('placing reads a total only through the injected order', () => {
+  it('matches a placing counted from the order alone, across the whole domain', () => {
+    // THE DOMAIN SWEEP, pointed at the comparator instead of at the gate. The
+    // grid's argument is section "THE FOURTH BYPASS" above and it transfers
+    // unchanged: a predicate that agrees with the injected answer at every
+    // point of a domain containing every loadable total agrees at every real
+    // total.
+    //
+    // Reddens on: any read of a total's magnitude that changes the sheet. The
+    // shape it would take here is a sort keyed on the number rather than on the
+    // order — which is invisible under an ASCENDING comparator and is caught by
+    // the substitution test below, and which is why the two are a pair rather
+    // than one check written twice.
+    const disagreements: string[] = [];
+    let walked = 0;
+    const sheets = new Set<string>();
+
+    for (const kg of PROBE_TOTALS_KG) {
+      for (const shape of FLIGHT_SHAPES) {
+        const entries = flightAt(kg, shape, null);
+        const shipped = shippedPlacing(placeFlight(entries, ASCENDING));
+        const counted = countedPlacing(entries, ASCENDING);
+        if (shipped !== counted) {
+          disagreements.push(`${kg}kg/${shape.id}\n  shipped: ${shipped}\n  counted: ${counted}`);
+        }
+        sheets.add(`${shape.id}:${shipped}`);
+        walked += 1;
+      }
+    }
+
+    expect(disagreements.slice(0, 3).join('\n')).toBe('');
+    expect(disagreements.length).toBe(0);
+    // Counts, not bounds, on the domain and on what it produced. A truncated
+    // grid reports itself here as well as in `is a plate-resolution grid`.
+    expect(PROBE_TOTALS_KG.length).toBe(8003);
+    expect(walked).toBe(PROBE_TOTALS_KG.length * FLIGHT_SHAPES.length);
+    expect(walked).toBe(24009);
+    // And the three shapes really do produce three different sheets, so the
+    // agreement above is about three arrangements rather than one repeated.
+    expect(sheets.size).toBe(3);
+  });
+
+  it('places a bombed-out lifter last and out of the placings, at every point', () => {
+    // The one branch that reads a total at all — `total === null`, which
+    // `careerOpacity.test.ts`'s `literal-equality` row explicitly leaves legal
+    // — driven across the domain rather than at one fixture.
+    //
+    // Reddens on: dropping the unplaced lifter from the sheet, giving them a
+    // number, or ordering them among the placed.
+    let walked = 0;
+    let unplaced = 0;
+    for (const kg of PROBE_TOTALS_KG) {
+      for (let bombed = 0; bombed < FLIGHT_PROBE.LOTS.length; bombed += 1) {
+        const entries = flightAt(kg, FLIGHT_SHAPES[0] as FlightShape, bombed);
+        const sheet = placeFlight(entries, ASCENDING);
+        expect(sheet.length, `${kg}kg`).toBe(FLIGHT_PROBE.LOTS.length);
+        const last = sheet[sheet.length - 1] as FlightPlacing;
+        expect(last.lifterId, `${kg}kg`).toBe(`lifter-${bombed}`);
+        expect(last.place, `${kg}kg`).toBeNull();
+        expect(sheet.filter((row) => row.place === null).length).toBe(1);
+        expect(shippedPlacing(sheet)).toBe(countedPlacing(entries, ASCENDING));
+        unplaced += 1;
+        walked += 1;
+      }
+    }
+    expect(walked).toBe(PROBE_TOTALS_KG.length * FLIGHT_PROBE.LOTS.length);
+    expect(walked).toBe(32012);
+    expect(unplaced).toBe(walked);
+  });
+
+  it('gives the same sheet when the totals are relabelled and the order undoes it', () => {
+    // THE SUBSTITUTION PROBE, restated for a comparator. The gate's version
+    // holds the gate's ANSWERS fixed while the total moves; this holds the
+    // ORDER's answers fixed the same way, by composing the comparator with the
+    // inverse of the relabelling.
+    //
+    // What it buys over the sweep above: the sweep drives an ascending
+    // comparator, so a module that sorted on raw magnitude would agree with it
+    // at every one of 24009 points. Under `reverse` the raw magnitudes rank the
+    // flight backwards and the comparator ranks it forwards, so the two come
+    // apart.
+    //
+    // Reddens on: any route from a total to a number that decides an order.
+    // MEASURED rather than argued — see this piece's build report for the
+    // mutant and the verbatim failure.
+    const faults: string[] = [];
+    let checked = 0;
+    let moved = 0;
+
+    for (const kg of PROBE_TOTALS_KG) {
+      for (const shape of FLIGHT_SHAPES) {
+        const original = flightAt(kg, shape, null);
+        const expected = shippedPlacing(placeFlight(original, ASCENDING));
+        for (const relabelling of RELABELLINGS) {
+          const relabelled = original.map((entry) => ({
+            ...entry,
+            total: entry.total === null ? null : relabelling.relabel(entry.total),
+          }));
+          const replayed: TotalOrder<NumericTotal> = (left, right) =>
+            ASCENDING(relabelling.restore(left), relabelling.restore(right));
+          const actual = shippedPlacing(placeFlight(relabelled, replayed));
+          if (actual !== expected) {
+            faults.push(
+              `${kg}kg/${shape.id}/${relabelling.id}\n  expected: ${expected}\n  actual:   ${actual}`,
+            );
+          }
+          // The relabelling really moved the numbers, so a no-op disguised as a
+          // substitution cannot pass this.
+          const first = original[0] as FlightResultEntry<NumericTotal>;
+          if (relabelling.relabel(first.total as number) !== first.total) moved += 1;
+          checked += 1;
+        }
+      }
+    }
+
+    expect(faults.slice(0, 3).join('\n')).toBe('');
+    expect(faults.length).toBe(0);
+    // Counts, not bounds, on the cross and on the non-degeneracy.
+    expect(RELABELLINGS.length).toBe(3);
+    expect(checked).toBe(PROBE_TOTALS_KG.length * FLIGHT_SHAPES.length * RELABELLINGS.length);
+    expect(checked).toBe(72027);
+    // `reverse` has a fixed point at half the reversal constant (2000 kg, the
+    // top of the grid) and `negate` has one at 0 kg; `widen` has none inside
+    // the domain. The first entrant's offset is zero in all three shapes, so
+    // those two values leave the relabelling standing still once per shape.
+    //
+    // Written as an arithmetic prediction that was WRONG the first time and is
+    // kept as the corrected one rather than fitted to the output: the draft
+    // said three fixed points and the run said two, at `expected 6 to be 9`.
+    // A count pinned by fitting it to whatever came back is a count that
+    // measures nothing.
+    expect(checked - moved).toBe(2 * FLIGHT_SHAPES.length);
+    expect(checked - moved).toBe(6);
+  });
+
+  it('reports an unlawful order and stays quiet about a lawful one', () => {
+    // The non-vacuity guard for `flightPlacingFaults`, and the reason the sweep
+    // above may assume a lawful comparator: something has to notice when one is
+    // not.
+    //
+    // Reddens on: the antisymmetry check going away, or the transitivity check
+    // going away, or the fault list being built from an empty domain.
+    const entries = flightAt(500, FLIGHT_SHAPES[0] as FlightShape, null);
+    expect(flightPlacingFaults(entries, ASCENDING)).toEqual([]);
+
+    const alwaysLeft: TotalOrder<NumericTotal> = () => -1;
+    const notFinite: TotalOrder<NumericTotal> = () => Number.NaN;
+    const intransitive: TotalOrder<NumericTotal> = (left, right) => {
+      if (left === right) return 0;
+      return (left + right) % 3 === 0 ? left - right : right - left;
+    };
+
+    const unlawful = flightPlacingFaults(entries, alwaysLeft);
+    expect(unlawful.length).toBeGreaterThan(0);
+    expect(unlawful.join('\n')).toContain('the same way round both ways');
+    expect(flightPlacingFaults(entries, notFinite).join('\n')).toContain('not a comparison');
+    expect(flightPlacingFaults(entries, intransitive).length).toBeGreaterThan(0);
+
+    // And a lawful order over a flight with a real fault in the ENTRIES is
+    // still reported, so the two halves of this function are independent.
+    const doubled = [...entries, entries[0] as FlightResultEntry<NumericTotal>];
+    expect(flightPlacingFaults(doubled, ASCENDING).join('\n')).toContain(
+      'holds two results in one flight',
+    );
   });
 });

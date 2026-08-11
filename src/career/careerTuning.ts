@@ -67,6 +67,32 @@
  *                      check that. What that check can do is notice the
  *                      sentence being deleted; it cannot notice the sentence
  *                      becoming untrue, and no scan can.
+ *   - `published-rule` — THE MIRROR OF `design-table`, and it is a sixth class
+ *                      rather than a use of `structural` for one reason:
+ *                      `design-table` marks "looks published, is not", and the
+ *                      obligation it carries is a disclaimer. This marks "is
+ *                      published, here is where from", and the obligation it
+ *                      carries is a citation. `structural` covers "do not turn
+ *                      this" and says nothing about provenance, so a rulebook
+ *                      value filed as `structural` loses exactly the fact that
+ *                      makes it checkable — a real powerlifter can look it up,
+ *                      which is the property CLAUDE.md's "Domain Correctness"
+ *                      section is about.
+ *                      Every `published-rule` entry carries the phrase
+ *                      "transcribed from the published technical rules" in the
+ *                      docstring above it, and `careerTuning.test.ts` checks
+ *                      that the same way it checks `design-table`'s. The same
+ *                      honesty limit applies and is worth repeating rather
+ *                      than inheriting: the scan notices the sentence being
+ *                      deleted and cannot notice it becoming wrong. A wrong
+ *                      transcription of a real rule reads exactly like a right
+ *                      one, which is why the rules are quoted at the point of
+ *                      use in `flight.ts` rather than summarised.
+ *                      What is deliberately NOT here is the publishing body's
+ *                      name: `src/licensing/realIp.ts` watches it and pins a
+ *                      tree-wide mention count, so naming it is a change to a
+ *                      file outside this piece. `flight.ts`'s header, section
+ *                      1, states that gap at length.
  *
  * ---------------------------------------------------------------------------
  * What is deliberately not here
@@ -102,13 +128,21 @@
  * without any of them importing each other.
  */
 
-/** The five classes an entry can carry. There is no sixth and no "probably". */
+/**
+ * The classes an entry can carry. There is no "probably" and no "mostly".
+ *
+ * This list was five long and is six. The sixth, `published-rule`, arrived with
+ * GDD §6.6's flight structure and its argument is in the header above; the
+ * count is not pinned anywhere as a target, because a class earning its place
+ * is a decision and not a budget.
+ */
 export const CAREER_TUNING_CLASSES = [
   'knob',
   'budget',
   'refusal',
   'structural',
   'design-table',
+  'published-rule',
 ] as const;
 
 export type CareerTuningClass = (typeof CAREER_TUNING_CLASSES)[number];
@@ -346,6 +380,113 @@ export const CAREER_TUNING = Object.freeze({
    */
   MIN_DAYS_BETWEEN_ENTERED_MEETS: 14,
 
+  // -------------------------------------------------------------------------
+  // Flights — GDD §6.6
+  //
+  // "Real flight structure: lifters grouped into flights of ~10-15, attempts
+  // resolve in turn order, live leaderboard feed."
+  //
+  // Four of the six entries below are transcribed from a published rulebook and
+  // two are this project's own. Which is which is the whole point of the
+  // classification column, and `flight.ts`'s header carries the quoted wording
+  // and the note about why the publishing body is not named in this tree.
+  // -------------------------------------------------------------------------
+
+  /**
+   * The most lifters one flight may hold.
+   *
+   * TRANSCRIBED FROM THE PUBLISHED TECHNICAL RULES: "Lifters will be divided
+   * into flights of no more than 14 lifters in each flight."
+   *
+   * Not a knob. A playtester who raises this is not making the game easier or
+   * harder, they are running a meet no federation would sanction, and the
+   * number is checkable by anybody who has competed.
+   */
+  MAX_LIFTERS_PER_FLIGHT: 14,
+
+  /**
+   * What decides who takes the bar next inside one round, in order.
+   *
+   * TRANSCRIBED FROM THE PUBLISHED TECHNICAL RULES, both steps and their
+   * order: "In each flight, the lifter with the lightest attempt will lift
+   * first, and the weight loaded onto the bar will progressively be increased
+   * until everyone in the flight has lifted", and the lot drawn at weigh-in
+   * "sets the lifting order when two lifters choose the same weight", the lower
+   * lot lifting first.
+   *
+   * Order is load-bearing rather than cosmetic, the way `MEET_TIERS` is:
+   * `flight.test.ts` drives `barLoadingOrder` against this array's positions
+   * instead of restating "weight then lot" in a second place.
+   */
+  BAR_LOADING_TIE_BREAKS: Object.freeze(['declared-weight', 'lot-number'] as const),
+
+  /**
+   * What separates two lifters on the result sheet, in order.
+   *
+   * TRANSCRIBED FROM THE PUBLISHED TECHNICAL RULES, three steps:
+   *   1. the total — the bigger one places higher;
+   *   2. "If two or more lifters achieve the same total, the lighter lifter
+   *      ranks above the heavier lifter";
+   *   3. "If two lifters register the same bodyweight at the weigh in and
+   *      eventually achieve the same total at the end of the competition, the
+   *      lifter making the total first will take precedence over the other
+   *      lifter."
+   *
+   * The chain stops there in the published text, which is why the fallback
+   * below is a separate entry with a different classification rather than a
+   * fourth element of this array. Rolling it in would put an invented step
+   * inside a transcription, which is the exact confusion `design-table` exists
+   * to prevent one direction over.
+   */
+  PLACING_TIE_BREAKS: Object.freeze([
+    'total',
+    'bodyweight',
+    'reached-total-first',
+  ] as const),
+
+  /**
+   * How a pair the published chain leaves tied is LISTED — not placed.
+   *
+   * NOT A PUBLISHED RULE, and the distinction is the reason this is its own
+   * entry. Two lifters with the same total, the same bodyweight and the same
+   * moment of reaching it are tied under the rulebook, and `placeFlight` gives
+   * them the same `place` for that reason. A list still has to come out in some
+   * order, and lot number is the only remaining fact that is already unique per
+   * lifter by construction — which is what makes it deterministic rather than
+   * fair. It decides nothing about who won.
+   *
+   * Classified `structural` because it is a label in a vocabulary: the value is
+   * what `FlightPlacing.decidedBy` reports when the rulebook ran out, and a
+   * screen reading it should say "tied", not "placed on lot".
+   */
+  PLACING_UNRESOLVED_ORDER: 'lot-number',
+
+  /**
+   * GDD §6.6's stated flight size, as a band.
+   *
+   * "lifters grouped into flights of ~10-15". A design budget the document
+   * states in prose, so `budget` rather than `knob`: moving it changes what
+   * §6.6 promises a synchronous meet feels like.
+   *
+   * THE TOP OF THIS BAND IS ONE LIFTER ABOVE WHAT A FLIGHT MAY LEGALLY HOLD.
+   * §6.6 says 15 and `MAX_LIFTERS_PER_FLIGHT` says 14, and the rule wins:
+   * `composeFlights` will not build a flight of 15. `flight.test.ts` pins the
+   * one-lifter gap so it stays a recorded tension rather than becoming a
+   * rounding somebody does quietly. The band is used only by
+   * `flightsOutsideSizeBudget`, which reports and refuses nothing.
+   */
+  FLIGHT_SIZE_BUDGET: Object.freeze({ min: 10, max: 15 }),
+
+  /**
+   * The largest field one call to `composeFlights` may divide.
+   *
+   * Not a knob and not a design budget — a guard on a loop whose length is an
+   * argument, the same shape and for the same reason as `CALENDAR_MAX_SLOTS`
+   * below. A caller that asks for a hundred-thousand-lifter session gets a
+   * `RangeError` naming this constant rather than an array nothing can draw.
+   */
+  FLIGHT_MAX_FIELD_SIZE: 512,
+
   /**
    * The most slots one call to `buildCareerCalendar` may produce.
    *
@@ -379,4 +520,11 @@ export const CAREER_TUNING_CLASSIFICATION = Object.freeze({
   CALENDAR_VISIBLE_DAYS_AHEAD: 'knob',
   MIN_DAYS_BETWEEN_ENTERED_MEETS: 'budget',
   CALENDAR_MAX_SLOTS: 'structural',
+
+  MAX_LIFTERS_PER_FLIGHT: 'published-rule',
+  BAR_LOADING_TIE_BREAKS: 'published-rule',
+  PLACING_TIE_BREAKS: 'published-rule',
+  PLACING_UNRESOLVED_ORDER: 'structural',
+  FLIGHT_SIZE_BUDGET: 'budget',
+  FLIGHT_MAX_FIELD_SIZE: 'structural',
 } as const satisfies Readonly<Record<keyof typeof CAREER_TUNING, CareerTuningClass>>);
