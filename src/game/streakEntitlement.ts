@@ -754,6 +754,27 @@ export const COVERED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
   'EARNED_ACCELERANTS',
   'empireVocabularyFaults',
 
+  // ---- empire/empireInvariant.ts, expansion.ts, reputation.ts -------------
+  // The rest of GDD §5, arriving with the merge that brought its loop. Same
+  // ruling as the block above: DATA in this allowlist, not a change to those
+  // modules, and added by §5's owner under the standing permission in the
+  // Session Coordination section.
+  //
+  // Four of the six match on `purchas` — they are the composed engine's
+  // purchasable-accelerant path, which is the §8.1 hazard §5 spent nine pieces
+  // measuring and closing. The remaining two match on the COVERED-DAY half of
+  // the widened predicate and neither hands one out:
+  // `expansionVocabularyFaults` states the ban it enforces, and
+  // `FORBIDDEN_UNLOCK_KEYS` names `'currency-purchase'` as an unlock §5.3
+  // refuses. Both are the guard describing itself, which is exactly the shape
+  // the widening was built to stop hiding.
+  'AccelerantPlan',
+  'applyPurchasableGrant',
+  'stepGym',
+  'empireRunFaults',
+  'expansionVocabularyFaults',
+  'FORBIDDEN_UNLOCK_KEYS',
+
   // ---- tuning/audit.ts -----------------------------------------------------
   // NOT ABOUT COVERED DAYS EITHER, and the clearest illustration of what the
   // wide predicate costs: `SOURCE_RULES` is the magic-number audit's file

@@ -190,36 +190,43 @@
  * arrival is back under the player's own training with a currency in between.
  *
  * ===========================================================================
- * 6. What piece E6 has to assert, and what this file hands it
+ * 6. What the composition asserts, and what this file hands it
  * ===========================================================================
  *
  * The second reading of "structurally unable" is that the output does not move,
  * and GDD §4.4 records a builder who believed a check covered it when mutation
  * testing found a legal input that moved 2362 of 34338 purchase-day lists,
- * produced zero violations and left every aggregate identical. So E6's
+ * produced zero violations and left every aggregate identical. So the
  * assertion is on the list itself, element by element:
  *
  *   For every purchasable accelerant, at every horizon, applied on every
- *   schedule, `progressionLedger(state.ledger)` is byte-identical to the same
- *   ledger with no accelerant applied — compared element-wise, not by a sum,
- *   not by a bound.
+ *   schedule, the progression-reaching half of a composed run's ledger is
+ *   byte-identical to the same half with no accelerant applied — compared
+ *   element-wise, not by a sum, not by a bound.
  *
  * And it needs a negative control beside it: the same sweep against a variant
- * wired so the skip does move the un-accelerated clock, with its non-zero count
+ * wired so the purchase does reach the wall-clock side, with its non-zero count
  * pinned. A zero with nothing beside it is the empty-domain vacuity this
  * codebase has been bitten by repeatedly.
  *
- * What this file provides for that: `progressionLedger` and `idleLedger` as the
- * two halves of one partition, `EmpireLedgerEntry.at` stamped on the
- * un-accelerated clock so a skip cannot move a timestamp either, and
- * `PURCHASABLE_ACCELERANTS` as the derived list the sweep iterates so it cannot
- * miss one that was added later.
+ * What this file provides for that: `PURCHASABLE_ACCELERANTS` as the derived
+ * list the sweep iterates so it cannot miss one that was added later, and
+ * `WALL_CLOCK_FUNDED_OUTPUTS` as the derived list that decides which purse a
+ * rung is bought from.
  *
- * There are two further paths E6 has to sweep and this file does not close,
- * named here so they are obligations handed forward rather than omissions.
+ * `progressionLedger`, `idleLedger` and `EmpireLedgerEntry` are NOT that list,
+ * and this note said they were for several waves. They partition an ACCRUAL's
+ * own ledger — the flow one call to `accrueProduction`, `accrueReputation` or
+ * `accrueSponsorship` paid — and `production.test.ts` is where they are asserted
+ * on. The composition asserts on a different quantity: a day-stamped STOCK
+ * series, `EmpireDayEntry`, partitioned by `progressionDayLedger` /
+ * `idleDayLedger` and compared by `compareLedgers`, all four of them in
+ * `empireInvariant.ts`. Two shapes because they answer two questions, and
+ * `EmpireState.ledger` below says which of the two it is.
  *
- * The third sweep — an earned chain, not a §8.1 breach, but §4.4's shape one
- * hop out:
+ * The third chain is measured now, and by a file this note did not name:
+ * `engagement.ts` and `engagement.test.ts`. It is an earned chain, not a §8.1
+ * breach, but §4.4's shape one hop out:
  *
  *   `REPUTATION_PER_CHECK_IN` -> reputation ->
  *   `SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER` -> Gym Bucks ->
@@ -231,11 +238,19 @@
  * rich in at the wrong moment while physio only ever shortens a setback — an
  * earned path that only helps the diligent lifter has no monotonicity inversion
  * available. That argument is a reason to measure it rather than a substitute
- * for measuring it, and E0 does not measure it: the sweep it needs is the
- * `physioDaysSavedFor` series against a lifter who trains more, at every
- * horizon, with the counts pinned.
+ * for measuring it, and the measurement it asked for is `engagement.ts`: the
+ * physio arrival day and the `physioDaysSavedAt` series against a gym that
+ * CHECKS IN more and a lifter who TRAINS more, at every horizon, with the
+ * counts pinned. The composed sweep in `empireInvariant.ts` varies the purchase
+ * and holds the check-in schedule fixed, so it is a sweep over a different
+ * variable and is no evidence at all about this one; `engagement.ts` moves that
+ * variable and holds the purchase at none. Its numbers are in §6's measured
+ * list below. What has changed in the chain itself is its width rather than its
+ * existence: the physio rung is no longer bought out of the book the sponsor
+ * line is paid into, so the last hop now runs through the reputation GATE on a
+ * recruit rather than through the price of the rung.
  *
- * The fourth sweep IS purchasable, and it is the one this header did not name
+ * The fourth chain IS purchasable, and it is the one this header did not name
  * while §4 above put "the expansion axes" on the accelerated clock and "the
  * physio hook" on the un-accelerated one. Physio is an expansion axis whose only
  * effect is the hook, so the two sentences meet on this chain:
@@ -248,19 +263,51 @@
  * brand-correct `UnacceleratedSeconds`; what moved with the purchase is its
  * VALUE, and §4.4 is explicit that no type gives you that — "a perfectly legal
  * tender could acquire a training sensitivity without a single type changing".
- * The only thing standing between the two sentences in §4 today is a phrase in
- * `settledLevel`'s docstring: that `completionTimes` is "when each level of that
- * axis would have finished with no accelerant applied". That is a contract E1-E5
- * have to keep when they compute the list, not a property E0 enforces — nothing
- * checks where a `readonly UnacceleratedSeconds[]` came from.
+ * `settledLevel`'s docstring says `completionTimes` is "when each level of that
+ * axis would have finished with no accelerant applied", and that is a contract
+ * on the CALLER: nothing here checks where a `readonly UnacceleratedSeconds[]`
+ * came from.
  *
- * E6's assertion, in the same element-wise shape as the ledger one: for every
- * purchasable accelerant, on every application schedule, at every horizon, the
- * list of `physioDaysSavedFor` readings by wall-clock day is byte-identical to
- * the list with no accelerant applied — with the negative control beside it,
- * wired so the skip does move the purchase day, and its non-zero count pinned.
- * An aggregate will not do: §4.4 records a legal input that moved 2362 of 34338
- * purchase-day lists and left every aggregate identical.
+ * `WALL_CLOCK_FUNDED_OUTPUTS` below is what makes the contract keepable rather
+ * than hoped for: the purse a rung is bought from is derived from the reach of
+ * the output it feeds, the same way `elapsedFor` derives a clock, so the physio
+ * rung is bought out of the physio entry of `EmpireState.settledBooks` — money
+ * the baseline line delivers on the wall clock and no purchase moves. `WallClockBooks`
+ * is the second half of that ruling: one purse per funded output, so the
+ * schedule cannot decide which spender reaches a shared balance first either.
+ *
+ * WHAT IS ACTUALLY MEASURED, because this note asked for a measurement for
+ * several waves before one existed, and a header that names a check nobody ran
+ * is worse than one that names a gap:
+ *
+ *   - THE PURCHASE AS THE VARIABLE. `empireInvariant.test.ts` composes §5 over
+ *     a calendar and compares, for every purchasable accelerant, on every
+ *     application schedule, at every horizon and at both cadences, the
+ *     `physioDaysSavedAt` series AND the Training IQ series element by element
+ *     and by wall-clock arrival day — on the gym the accelerant landed on, not
+ *     on a second gym stepped without one. Zero of 2616 elements and zero of
+ *     144 physio arrival days move; the same grid funded from the accelerated
+ *     book moves 84 of 2616 elements and 32 of 128 arrival days, every one of
+ *     the 32 EARLIER.
+ *   - `empireInvariant.ts`'s own header — §4a, not the test file's — lists the
+ *     mutants that sweep kills, this function's gate revert among them, and the
+ *     two it does not, which are killed in `expansion.test.ts` and
+ *     `recruitment.test.ts` instead.
+ *   - THE PLAYER'S ENGAGEMENT AS THE VARIABLE, which is the third chain above
+ *     and which nothing measured for several waves while this note said so.
+ *     `engagement.ts` and `engagement.test.ts` hold the check-in schedule as
+ *     the independent variable and apply no accelerant at all — the opposite
+ *     assignment to every other sweep in this directory — over 33 checks.
+ *     Exhaustively over every calendar of a window of check-in slots: 0
+ *     violating pairs of 24576, 0 physio arrivals later, against a comparator
+ *     that moved 19778 of those pairs. Its physio zero is a zero against chain
+ *     A RE-CONNECTED — the `'accelerated-purse'` wiring, which is this
+ *     directory as it stood before GDD §5.4's two-books ruling and in which the
+ *     sponsor line is money the physio rung is bought with — pinned at 263 of
+ *     24576 pairs where checking in MORE moved the physio arrival a day later.
+ *
+ * An aggregate would not have done: §4.4 records a legal input that moved 2362
+ * of 34338 purchase-day lists and left every aggregate identical.
  *
  * The same chain acquires a §8.1 edge the day a named partner is attached to a
  * reputation tier — sponsor money then buys a shorter Sim setback, which is
@@ -308,16 +355,18 @@ type Branded<T, B extends string> = T & { readonly [EMPIRE_BRAND]: B };
  *
  * How many that is, is not written here. A sentence that counts them was wrong
  * by one for a round and nothing could redden it, so the count is taken by a
- * scan instead: `empireCore.test.ts` reads the constructor list out of this
- * file, pins the names and the count, and asserts the guard on each — so
- * dropping it from one is red rather than left to a reader's arithmetic.
+ * scan instead — and the scan is no longer a scan for the NAME `as*`, which is
+ * how the two producers below it were missed. `brandCensus` in
+ * `empireCore.test.ts` asks the compiler which exported functions produce a
+ * brand and which of their parameters would accept one, so dropping this guard
+ * from any of them is red rather than left to a reader's arithmetic.
  *
  * Its limit, stated because no type reaches past it: `accelerated + 0` is a
  * plain `number` and this cannot see where it came from. Arithmetic laundering
  * is deliberate in a way a re-brand is not, and E6's element-wise ledger
  * comparison is what catches it.
  */
-type Unbranded<T> = T extends { readonly [EMPIRE_BRAND]: string }
+export type Unbranded<T> = T extends { readonly [EMPIRE_BRAND]: string }
   ? {
       /** Named so the compiler's message says what is wrong. See `OneAccelerant`. */
       readonly PASS_A_VALUE_THAT_CARRIES_NO_BRAND: 'this value is already branded; re-branding it is how an accelerated clock reached a wall-clock argument';
@@ -766,7 +815,15 @@ export function outputReach(output: EmpireOutput): OutputReach {
   return SINK_REACH[OUTPUT_SINK[output]];
 }
 
-/** An accelerant's licence, by the same two-hop lookup as the type. */
+/**
+ * An accelerant's licence, by the same two-hop lookup as the type.
+ *
+ * NOT TOTAL, and said so rather than left for a caller to find: for a value
+ * that is not an accelerant this indexes twice and returns undefined, which its
+ * signature denies. It is a lookup for callers the compiler has checked.
+ * `mayAccelerate` below is the one that takes untyped input, and it narrows
+ * before it reaches this.
+ */
 export function accelerantLicence(accelerant: EmpireAccelerant): readonly OutputReach[] {
   return ARRIVAL_LICENCE[ACCELERANT_ARRIVAL[accelerant]];
 }
@@ -777,8 +834,17 @@ export function accelerantLicence(accelerant: EmpireAccelerant): readonly Output
  * The compiler already refuses the illegal pairing at every call site written
  * in TypeScript. This is for the call sites that are not: a settled order
  * decoded from an Edge Function response is JSON, and JSON has no types.
+ *
+ * That sentence was the whole point of the function and was false for a round.
+ * It went straight to `accelerantLicence(...).includes(...)`, so a decoded
+ * accelerant the tables have never heard of threw a `TypeError` out of it —
+ * out of `empireStateFaults`, whose contract is to COLLECT faults, and
+ * therefore out of `assertEmpireState` as the wrong error. Unknown vocabulary
+ * is refused here, which is the answer a licence question has for a word it
+ * does not know.
  */
 export function mayAccelerate(accelerant: EmpireAccelerant, output: EmpireOutput): boolean {
+  if (!isEmpireAccelerant(accelerant) || !isEmpireOutput(output)) return false;
   return accelerantLicence(accelerant).includes(outputReach(output));
 }
 
@@ -898,6 +964,29 @@ export function empireVocabularyFaults(): readonly string[] {
   for (const forbidden of EMPIRE_FORBIDDEN_OUTPUTS) {
     if ((EMPIRE_OUTPUTS as readonly string[]).includes(forbidden)) {
       faults.push(`${forbidden} is named as forbidden and is also payable`);
+    }
+  }
+
+  // The gate table, walked the same way. Read through a widened alias for the
+  // reason the licence rows above are: the literal tuple type makes
+  // `.length === 0` a comparison TypeScript rejects as impossible, which would
+  // leave the empty case unchecked for the state where it stops being one.
+  const gating: readonly string[] = GATING_OUTPUTS;
+  if (gating.length === 0) {
+    faults.push('nothing gates a progression-reaching output, so the gate clock guards nothing');
+  }
+  for (const output of GATING_OUTPUTS) {
+    if (!(EMPIRE_OUTPUTS as readonly string[]).includes(output)) {
+      faults.push(`${output} is named as a gate and is not an empire output`);
+      continue;
+    }
+    const target = gateTarget(output);
+    if (!(EMPIRE_OUTPUTS as readonly string[]).includes(target)) {
+      faults.push(`${output} gates ${target}, which is not an empire output`);
+      continue;
+    }
+    if (outputReach(target) !== 'progression-reaching') {
+      faults.push(`${output} gates ${target}, which does not reach progression`);
     }
   }
 
@@ -1098,13 +1187,21 @@ export interface EmpireClock {
  * `UnacceleratedSeconds`, sat a hundred lines below the guarded set and were
  * missed because the guard was applied to everything spelled `as*`.
  *
- * The census in `empireCore.test.ts` that was supposed to catch that is still
- * scoped by NAME — `/export function (as[A-Z]\w*)<[^{]*\{/g` — so it did not,
- * and it still would not. Re-scoping it by return type, resolved through the
- * compiler rather than matched as text, is open work and is tracked as such.
- * Stated here rather than left implicit: this comment described that re-scoping
- * as done for one round while the regex was untouched, which is the failure
- * CLAUDE.md's "a comment that asserts a guarantee" section is about.
+ * The census in `empireCore.test.ts` that was supposed to catch that was scoped
+ * by NAME — `/export function (as[A-Z]\w*)<[^{]*\{/g` — so it did not, and for a
+ * round this comment described a re-scoping that had not happened, which is the
+ * failure CLAUDE.md's "a comment that asserts a guarantee" section is about.
+ *
+ * It is scoped by RETURN TYPE now, and resolved through the TypeScript checker
+ * rather than matched as text: `brandCensus` in `empireCore.test.ts` builds a
+ * `ts.Program` over this file, finds every exported function whose return type
+ * carries the `EMPIRE_BRAND` symbol anywhere inside it — nested in an
+ * `EmpireClock`, an `NpcLifter` or an `EmpireState` included — and then probes
+ * every parameter slot of every one of them by compiling real call
+ * expressions. A slot that admits both a bare primitive and an already-branded
+ * value is a fault. Neither of the two functions this note is about is spelled
+ * `as*`, and both are in that census; so is anything a future piece adds,
+ * whatever it is called and whether or not it is generic.
  */
 export function createEmpireClock<E extends number, S extends number>(
   elapsedSeconds: E & Unbranded<E>,
@@ -1142,6 +1239,204 @@ export function elapsedFor<O extends EmpireOutput>(clock: EmpireClock, output: O
   const seconds =
     outputReach(output) === 'progression-reaching' ? clock.unaccelerated : clock.accelerated;
   return seconds as ElapsedFor<O>;
+}
+
+// ---------------------------------------------------------------------------
+// Gates — a reach as a PAYOUT and a reach as a GATE are two different questions
+// ---------------------------------------------------------------------------
+
+/**
+ * Outputs whose READING decides when something progression-reaching arrives.
+ *
+ * `elapsedFor` hands an output the clock its own reach entitles it to, and that
+ * is the right answer for a PAYOUT. It is the wrong answer for a GATE, and the
+ * difference is what piece E4 measured and left open. Reputation is paid into
+ * the gym economy — `OUTPUT_SINK` sends it to `'gym-economy'` and `SINK_REACH`
+ * calls that `'idle-only'` — so `elapsedFor(clock, 'reputation')` is the
+ * accelerated reading, which is correct for a number a screen shows and for a
+ * sponsor line denominated in Gym Bucks. It is also the number
+ * `NPC_RECRUIT_REPUTATION_THRESHOLD` gates a recruit on, and a recruited lifter
+ * pays Training IQ. So a purchased skip lengthened the idle gap, reputation
+ * accrued against the longer gap, a higher tier's milestone was met on an
+ * earlier WALL-CLOCK day, and `NpcLifter.settledAt` landed earlier with a larger
+ * `NPC_TIER_OUTPUT_MULTIPLIER` behind it.
+ *
+ * Every type on that chain was correct, which is the point: reach was being
+ * asked about the payout when the question was about the gate.
+ *
+ * A new entry costs a row in `GATE_TARGET`, which is exhaustive by `satisfies`
+ * and typed against `ProgressionReachingOutput` — so a gate declared on
+ * something that does not reach progression does not compile, and
+ * `gateElapsedFor` cannot be re-pointed at the accelerated clock without that
+ * row changing first.
+ *
+ * `'roster-slot'` is the second row and it arrived by the same argument one
+ * subsystem over. A slot is paid into the gym economy — §5.4's "more racks,
+ * platforms, NPC slots" — so `elapsedFor(clock, 'roster-slot')` is the
+ * accelerated reading and that is right for a number a screen shows. It is also
+ * what `recruitmentRefusals` compares the roster against, and the lifter who
+ * fills the slot pays Training IQ. So a purchased skip that finished a space
+ * build early opened a slot on an earlier WALL-CLOCK day, a recruit started on
+ * that day, and `NpcLifter.settledAt` — the origin the trickle measures tenure
+ * from — moved with the purchase. Same shape as the reputation row: reach was
+ * being asked about the payout when the question was about the gate.
+ */
+export const GATING_OUTPUTS = [
+  'reputation',
+  'roster-slot',
+] as const satisfies readonly EmpireOutput[];
+
+export type GatingOutput = (typeof GATING_OUTPUTS)[number];
+
+/** What each gating output gates. Exhaustive by `satisfies`. */
+export const GATE_TARGET = {
+  reputation: 'training-iq',
+  'roster-slot': 'training-iq',
+} as const satisfies Readonly<Record<GatingOutput, ProgressionReachingOutput>>;
+
+/** The progression-reaching output a gating reading decides the arrival of. */
+export function gateTarget(output: GatingOutput): ProgressionReachingOutput {
+  return GATE_TARGET[output];
+}
+
+/**
+ * The clock a gating reading runs on.
+ *
+ * Derived rather than chosen: it is `elapsedFor` asked about the thing the gate
+ * OPENS rather than about the thing the gate is paid into, and `GATE_TARGET` is
+ * typed so the thing it opens always reaches progression. The wall-clock brand
+ * on the return type is therefore a consequence of the table rather than a cast
+ * — there is no state of `GATE_TARGET` that compiles and makes this return an
+ * accelerated reading.
+ */
+export function gateElapsedFor(clock: EmpireClock, output: GatingOutput): UnacceleratedSeconds {
+  return elapsedFor(clock, gateTarget(output));
+}
+
+// ---------------------------------------------------------------------------
+// Which money buys a thing — the same question as which clock reads it
+// ---------------------------------------------------------------------------
+
+/**
+ * The outputs whose next level may only be bought with wall-clock-earned money.
+ *
+ * Derived from the two tables above rather than written: an output is on this
+ * list when it reaches Sim progression, or when it GATES something that does.
+ * Re-tagging `'training-pace'` in `SINK_REACH`, or deleting a row from
+ * `GATING_OUTPUTS`, empties rows out of this list; nothing else can.
+ *
+ * Why a list of outputs decides which purse pays. `elapsedFor` answers "which
+ * clock may READ this", and the clock split alone was measured insufficient:
+ * an accelerated purse buys the physio level on an earlier WALL-CLOCK day, and
+ * `startExpansion` then stamps a perfectly brand-correct `settledCompletion`
+ * from that earlier day. Every type on the chain is right and the VALUE moved,
+ * which GDD §4.4 says no type gives you. So the purse is chosen the same way
+ * the clock is — from the reach of the thing being bought — and
+ * `EmpireState.settledBooks` is the money on that side of the split. (A single
+ * `settledGymBucks` field is what this sentence used to name, and it is the
+ * engine GDD §5.4's third-book ruling replaced; the next paragraph is the one
+ * that was already right.)
+ *
+ * The cost of this is a design decision rather than a transcription, and it is
+ * stated where a reader meets it: the gym keeps an accelerated book and a
+ * wall-clock book PER FUNDED OUTPUT. `gymBucks` is the accelerated book, and it
+ * buys everything §8.3A and §8.3B sell — decor, cosmetics, the equipment
+ * ladder, the coach ladder. `settledBooks` holds the rest, and it is the only
+ * money §5.4's capability rungs and §5.3's recruits may be bought with. A
+ * player who buys skips still gets what §8.3B sells — the build finishes now,
+ * the lifter is on the floor now — and does not get to buy the NEXT rung of a
+ * progression-reaching ladder any sooner.
+ */
+export type WallClockFundedOutput = ProgressionReachingOutput | GatingOutput;
+
+export const WALL_CLOCK_FUNDED_OUTPUTS: readonly WallClockFundedOutput[] = EMPIRE_OUTPUTS.filter(
+  (output): output is WallClockFundedOutput =>
+    outputReach(output) === 'progression-reaching' ||
+    (GATING_OUTPUTS as readonly EmpireOutput[]).includes(output),
+);
+
+/**
+ * The gym's wall-clock BOOKS: one purse per wall-clock-funded output, and the
+ * money in one may not be spent on another.
+ *
+ * GDD §5.4's third-book ruling, and the shape of it is a consequence of the
+ * list above rather than a list of its own. One purse was measurably not
+ * enough: the outputs on that list have four distinct spenders between them —
+ * §5.4's space and spotter ladders, §5.4's physio ladder and §5.3's recruits —
+ * and while they drew on one balance, the CHECK-IN SCHEDULE decided which of
+ * them the money reached first. A player who opened the app more often bought a
+ * different rung at a different moment and could end on a LOWER §5.2 Training
+ * IQ series than a player who opened it less, which is CLAUDE.md's "never
+ * punish daily engagement" broken by the composition rather than by any one
+ * table.
+ *
+ * Non-fungible is the whole mechanism. A purse with one spender is spent in
+ * ladder order at the first moment it can afford the next rung, so the day that
+ * rung lands is a function of wall time and the cost table — monotone in the
+ * player's own attendance, because attending more can only move accrual earlier
+ * and never later. A purse with two spenders has an ORDER, and an order is
+ * something a schedule can move.
+ *
+ * `'reputation'` keeps a purse here and nothing spends it: reputation is earned
+ * per check-in rather than bought, so no axis feeds it and no recruit is priced
+ * in it. It is derived rather than special-cased: `WALL_CLOCK_FUNDED_OUTPUTS`
+ * is computed from reach, `'reputation'` is a `GATING_OUTPUTS` member, and a
+ * purse falls out. That is the whole reason, and it is a better one than any
+ * forecast about future mechanics.
+ *
+ * Do not read the empty purse as §5.4's Reputation row being unbuilt — it is
+ * not. `reputation.ts` implements that row in full: the tier thresholds, the
+ * sponsor payouts and the NPC unlocks §5.4 lists under "attracts higher-tier
+ * NPCs, sponsorships". What §5.4 does NOT describe is buying levels of
+ * reputation, so no axis feeds this purse and none is expected to. An earlier
+ * draft of this paragraph said the axis was "unbuilt", which was true of
+ * `ExpansionAxis` and false of the mechanic.
+ *
+ * "No spender" is a measured fact rather than a sentence, and this paragraph
+ * used to say so while the check did not exist. It does now:
+ * `empireInvariant.test.ts`'s `spends every wall-clock purse that has a spender,
+ * and never the one that has none` sums `EmpireRunCensus.bookDebits` over every
+ * run in the grid and pins `reputation` at 0. Both halves were mutation-tested
+ * when the check was written: pricing recruits in this purse
+ * (`RECRUIT_BOOK = 'reputation'`) reddens it with `expected 1795040 to be +0`,
+ * and neutering the counter reddens the non-vacuity half with
+ * `expected [] to deeply equal [ 'physio-days-saved', …(2) ]` — so a zero here
+ * cannot be the zero of an instrument that stopped counting.
+ *
+ * THE WORD FOR THIS THING, ruled once here because five were in use and a
+ * coherence pass found them competing inside one spending loop:
+ *
+ *   - in CODE it is a BOOK. `settledBooks`, `WallClockBooks`, `EmpireBook`,
+ *     `EMPIRE_BOOKS`, `axisBook`, `bookBalance`, `bookDebits`, `RECRUIT_BOOK`.
+ *     One identifier stem, and it is the one the shipped types already carry.
+ *   - in PROSE it is a PURSE, because "book" reads as a ledger to anyone who
+ *     has not met the type and this directory has a real ledger in it.
+ *   - BALANCE is the NUMBER a book holds, never the book. "one balance" is the
+ *     pooled control, "one purse" is the shipped split, and those are different
+ *     claims.
+ *   - FUND and LANE are not used. "Lane" in particular is the deleted two-gym
+ *     model's word and is gone from the shipped modules.
+ *
+ * The rule binds prose, so no scan enforces it; what a scan does cover is the
+ * identifier stem, which `expansion.test.ts` pins as an exported-name list.
+ */
+export type WallClockBooks = Readonly<Record<WallClockFundedOutput, GymBucks>>;
+
+/**
+ * Every wall-clock book at one balance.
+ *
+ * Deliberately NOT exported, and that is a census decision rather than a taste
+ * one: this returns a record of `GymBucks` and takes a bare number, which is
+ * exactly the producer shape `empireCore.test.ts`'s brand census refuses
+ * without an `Unbranded` guard — and the guard would refuse the accrual, which
+ * arrives already branded. Consumers assemble a book record from the one they
+ * were handed instead, so nothing outside this file mints a balance from a
+ * primitive.
+ */
+function wallClockBooksAt(balance: number): WallClockBooks {
+  const books: Partial<Record<WallClockFundedOutput, GymBucks>> = {};
+  for (const output of WALL_CLOCK_FUNDED_OUTPUTS) books[output] = asGymBucks(balance);
+  return Object.freeze(books as Record<WallClockFundedOutput, GymBucks>);
 }
 
 // ---------------------------------------------------------------------------
@@ -1336,12 +1631,21 @@ export function reputationTierIndex(reputation: ReputationPoints): number {
 // ---------------------------------------------------------------------------
 
 /**
- * One payout, stamped on the un-accelerated clock.
+ * One payout an ACCRUAL made, stamped on the un-accelerated clock.
  *
  * The stamp is deliberately the wall clock even for an idle-only payout, so a
  * purchased skip moves what a ledger contains and never when a ledger says it
- * happened. That is what lets piece E6 compare two ledgers element-wise
- * without first having to agree on a time base.
+ * happened — two of these lists can therefore be compared element-wise without
+ * first agreeing on a time base.
+ *
+ * Which list is compared that way, said exactly, because this docstring named
+ * the wrong one for several waves. `accrueProduction`, `accrueReputation` and
+ * `accrueSponsorship` each return a ledger of these, and `production.test.ts`
+ * and `reputation.test.ts` are where they are asserted on, per accrual. The
+ * COMPOSITION does not build one: `empireInvariant.ts` reads a day-stamped
+ * stock series of its own, `EmpireDayEntry`, and compares that through
+ * `progressionDayLedger` and `compareLedgers`. A flow and a stock answer
+ * different questions and both are kept.
  */
 export interface EmpireLedgerEntry {
   readonly at: UnacceleratedSeconds;
@@ -1350,8 +1654,12 @@ export interface EmpireLedgerEntry {
 }
 
 /**
- * The half of a ledger that reaches Sim progression — the list piece E6
- * compares byte-for-byte across every purchasable accelerant.
+ * The half of an accrual's ledger that reaches Sim progression.
+ *
+ * Its consumer is `production.test.ts`, which pins that a skip moves the idle
+ * half of a `ProductionAccrual`'s ledger and leaves this half byte-identical.
+ * The composed sweep uses `progressionDayLedger` on its own entry type; see
+ * `EmpireLedgerEntry` for why there are two.
  */
 export function progressionLedger(
   ledger: readonly EmpireLedgerEntry[],
@@ -1442,27 +1750,75 @@ export function applyAccelerant<A extends EmpireAccelerant, S extends number>(
 /** Everything GDD §5 holds about one gym. */
 export interface EmpireState {
   readonly clock: EmpireClock;
+  /** The axes as the player's gym reads them, on the accelerated clock. */
   readonly axes: GymAxes;
+  /**
+   * The same axes as the wall clock reads them — every level whose build would
+   * have finished with no accelerant applied.
+   *
+   * Never above `axes` on any rung, because an accelerant moves an idle
+   * completion forward and nothing moves a settled one at all;
+   * `empireStateFaults` reports the reverse rather than leaving it to a reader.
+   * This is what `rosterCapacity` is asked about when the question is whether a
+   * Training IQ payer may start arriving — see `WALL_CLOCK_FUNDED_OUTPUTS`.
+   */
+  readonly settledAxes: GymAxes;
   readonly roster: readonly NpcLifter[];
   readonly reputation: ReputationPoints;
+  /** The accelerated book. Decor, cosmetics, and the two idle-only ladders. */
   readonly gymBucks: GymBucks;
+  /**
+   * The wall-clock books: one purse per wall-clock-funded output, each holding
+   * money the gym's baseline takings have delivered by the un-accelerated
+   * reading, less what has been spent out of that purse.
+   *
+   * The only money a `WALL_CLOCK_FUNDED_OUTPUTS` rung may be bought with, and a
+   * rung may only be bought from the purse its own output names. See
+   * `WallClockBooks` for why one purse was not enough, and `accrueProduction`
+   * for why the line each accrues on carries no roster term and no axis
+   * multiplier.
+   */
+  readonly settledBooks: WallClockBooks;
+  /**
+   * The accrual ledger as it would arrive on the wire, and nothing in
+   * `src/empire/` populates it — stated here rather than left to be discovered,
+   * because a header advertising a handoff nobody takes is what this field was
+   * for a while. `stepGym` calls the three accrual functions and keeps their
+   * balances rather than their ledgers; the composed sweep asserts on
+   * `EmpireDayEntry`, a stock series it builds itself. What reads this field is
+   * `empireStateFaults`, on a payload an Edge Function decoded.
+   */
   readonly ledger: readonly EmpireLedgerEntry[];
+  /**
+   * Every accelerant this gym has actually had applied to it, in the order they
+   * landed.
+   *
+   * Written by `stepGym` on the build-skip mechanism, which is the one of GDD
+   * §8.3B's two that has an output to name; a grant spent by advancing the
+   * clock names no output and is counted in `EmpireRunCensus.clockSkips`
+   * instead. `empireRunFaults` re-asks `mayAccelerate` about every entry here
+   * and ties the count to `EmpireRunCensus.buildSkips`, so this list going
+   * empty is a fault rather than a quiet pass.
+   */
   readonly accelerants: readonly AppliedAccelerant[];
 }
 
 /** A gym on the day it opens: first equipment tier, no space, no staff, no roster. */
 export function createEmpireState(): EmpireState {
   const staffLevel: Record<StaffRole, number> = { coach: 0, spotter: 0, physio: 0 };
+  const opening: GymAxes = Object.freeze({
+    equipment: EMPIRE_TUNING.EQUIPMENT_TIERS[0],
+    spaceLevel: 0,
+    staffLevel: Object.freeze(staffLevel),
+  });
   return Object.freeze({
     clock: createEmpireClock(0, 0),
-    axes: Object.freeze({
-      equipment: EMPIRE_TUNING.EQUIPMENT_TIERS[0],
-      spaceLevel: 0,
-      staffLevel: Object.freeze(staffLevel),
-    }),
+    axes: opening,
+    settledAxes: opening,
     roster: Object.freeze([]),
     reputation: asReputation(0),
     gymBucks: asGymBucks(0),
+    settledBooks: wallClockBooksAt(0),
     ledger: Object.freeze([]),
     accelerants: Object.freeze([]),
   });
@@ -1478,26 +1834,76 @@ export function createEmpireState(): EmpireState {
 export function empireStateFaults(state: EmpireState): readonly string[] {
   const faults: string[] = [];
 
+  // Each reading is validated before the two are compared, which is the order
+  // this shipped in the wrong way round. An ordering test alone accepts
+  // `{ unaccelerated: -1, accelerated: -1 }` — a payload `createEmpireClock`
+  // refuses on both arguments — so the runtime shadow was weaker than the
+  // constructor whose absent callers it exists for. Same for a missing reading:
+  // `undefined < undefined` is false, so the ordering test passed on a clock
+  // with no numbers in it at all.
+  if (!Number.isFinite(state.clock.unaccelerated) || state.clock.unaccelerated < 0) {
+    faults.push(
+      `clock: the un-accelerated reading ${state.clock.unaccelerated} is not a wall-clock time`,
+    );
+  }
+  if (!Number.isFinite(state.clock.accelerated) || state.clock.accelerated < 0) {
+    faults.push(
+      `clock: the accelerated reading ${state.clock.accelerated} is not an idle-clock time`,
+    );
+  }
   if (state.clock.accelerated < state.clock.unaccelerated) {
     faults.push('clock: the accelerated reading is behind the un-accelerated one');
   }
 
-  if (!(EMPIRE_TUNING.EQUIPMENT_TIERS as readonly string[]).includes(state.axes.equipment)) {
-    faults.push(`axes: ${state.axes.equipment} is not an equipment tier`);
+  // Both views of the ladders, checked by the same three rules. The idle view
+  // keeps its own message prefix so a caller reading a fault list still reads
+  // the sentence it read before the wall-clock view existed.
+  const views: readonly (readonly [string, GymAxes])[] = [
+    ['axes', state.axes],
+    ['settledAxes', state.settledAxes],
+  ];
+  for (const [label, axes] of views) {
+    if (!(EMPIRE_TUNING.EQUIPMENT_TIERS as readonly string[]).includes(axes.equipment)) {
+      faults.push(`${label}: ${axes.equipment} is not an equipment tier`);
+    }
+
+    if (
+      !Number.isInteger(axes.spaceLevel) ||
+      axes.spaceLevel < 0 ||
+      axes.spaceLevel > EMPIRE_TUNING.SPACE_LEVEL_MAX
+    ) {
+      faults.push(`${label}: space level ${axes.spaceLevel} is off the ladder`);
+    }
+
+    for (const role of EMPIRE_TUNING.STAFF_ROLES) {
+      const level = axes.staffLevel[role];
+      if (!Number.isInteger(level) || level < 0 || level > EMPIRE_TUNING.STAFF_LEVEL_MAX[role]) {
+        faults.push(`${label}: ${role} level ${level} is off the ladder`);
+      }
+    }
   }
 
-  if (
-    !Number.isInteger(state.axes.spaceLevel) ||
-    state.axes.spaceLevel < 0 ||
-    state.axes.spaceLevel > EMPIRE_TUNING.SPACE_LEVEL_MAX
-  ) {
-    faults.push(`axes: space level ${state.axes.spaceLevel} is off the ladder`);
+  // A wall-clock view ahead of the idle one is an accelerant that reached the
+  // settled side. `skipExpansion` moves `idleCompletion` and copies
+  // `settledCompletion` across, so the idle view is at or above the settled one
+  // on every rung; a payload that says otherwise is the hazard arriving through
+  // the decode boundary.
+  const tiers = EMPIRE_TUNING.EQUIPMENT_TIERS as readonly string[];
+  if (tiers.indexOf(state.settledAxes.equipment) > tiers.indexOf(state.axes.equipment)) {
+    faults.push(
+      `settledAxes: equipment ${state.settledAxes.equipment} is ahead of the idle view's ${state.axes.equipment}`,
+    );
   }
-
+  if (state.settledAxes.spaceLevel > state.axes.spaceLevel) {
+    faults.push(
+      `settledAxes: space level ${state.settledAxes.spaceLevel} is ahead of the idle view's ${state.axes.spaceLevel}`,
+    );
+  }
   for (const role of EMPIRE_TUNING.STAFF_ROLES) {
-    const level = state.axes.staffLevel[role];
-    if (!Number.isInteger(level) || level < 0 || level > EMPIRE_TUNING.STAFF_LEVEL_MAX[role]) {
-      faults.push(`axes: ${role} level ${level} is off the ladder`);
+    if (state.settledAxes.staffLevel[role] > state.axes.staffLevel[role]) {
+      faults.push(
+        `settledAxes: ${role} level ${state.settledAxes.staffLevel[role]} is ahead of the idle view's ${state.axes.staffLevel[role]}`,
+      );
     }
   }
 
@@ -1512,21 +1918,76 @@ export function empireStateFaults(state: EmpireState): readonly string[] {
     faults.push(`gymBucks: ${state.gymBucks} is not a balance`);
   }
 
+  // The branch immediately below the one above, written the same way on
+  // purpose: a wall-clock book is the money a progression-reaching rung is
+  // bought with, so a decoded payload that carries a negative or non-finite one
+  // is the more load-bearing of the two. Every book is walked rather than one,
+  // because a record with a missing key reads as `undefined` and
+  // `undefined < 0` is false — the shape that let a malformed clock through
+  // twelve lines above.
+  for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
+    const balance: number | undefined = state.settledBooks[book];
+    if (balance === undefined || !Number.isFinite(balance) || balance < 0) {
+      faults.push(`the ${book} book: ${balance} is not a balance`);
+    }
+  }
+
+  // The capacity itself is checked before it is compared against, for the
+  // reason the clock readings are: an axis that decoded as something other than
+  // a number makes `rosterCapacity` return NaN, and `length > NaN` is false, so
+  // the comparison below silently allowed any roster at all.
   const capacity = rosterCapacity(state.axes);
-  if (state.roster.length > capacity) {
+  if (!Number.isFinite(capacity)) {
+    faults.push(`roster: ${capacity} is not a capacity`);
+  } else if (state.roster.length > capacity) {
     faults.push(`roster: ${state.roster.length} lifters in ${capacity} slots`);
   }
 
+  // Every field a constructor validates is validated again here. The loop
+  // checked ids for duplication and tiers for membership and nothing else, so a
+  // decoded lifter with an empty id, no display name, or a negative
+  // `settledAt` was accepted — and `settledAt` is the origin `settledTenureDays`
+  // measures from, so a negative one inflates the tenure GDD §5.2 pays Training
+  // IQ on. That is the hazard reached through the decode boundary rather than
+  // through an argument list.
   const seen = new Set<string>();
   for (const lifter of state.roster) {
     if (seen.has(lifter.id)) faults.push(`roster: duplicate lifter id ${lifter.id}`);
     seen.add(lifter.id);
+    if (typeof lifter.id !== 'string' || lifter.id.length === 0) {
+      faults.push('roster: a lifter arrived with no id');
+    }
+    if (typeof lifter.displayName !== 'string' || lifter.displayName.length === 0) {
+      faults.push(`roster: ${String(lifter.id)} arrived with no display name`);
+    }
     if (!(EMPIRE_TUNING.NPC_TIERS as readonly string[]).includes(lifter.tier)) {
       faults.push(`roster: ${lifter.id} is on tier ${lifter.tier}, which is not a tier`);
+    }
+    if (!Number.isFinite(lifter.joinedAt) || lifter.joinedAt < 0) {
+      faults.push(
+        `roster: ${String(lifter.id)} joined at ${lifter.joinedAt}, which is not an idle-clock time`,
+      );
+    }
+    if (!Number.isFinite(lifter.settledAt) || lifter.settledAt < 0) {
+      faults.push(
+        `roster: ${String(lifter.id)} settled at ${lifter.settledAt}, which is not a wall-clock time`,
+      );
     }
   }
 
   for (const entry of state.ledger) {
+    // The stamp, checked because the amount beside it was — the branch
+    // immediately below a fixed one is where this codebase keeps finding the
+    // next gap. Note what this loop's domain is: `EmpireState.ledger` is the
+    // wire field, and the composition in `empireInvariant.ts` never writes it,
+    // so on a composed gym this loop walks zero entries. Its subject is a
+    // decoded payload, and `empireCore.test.ts` drives it from hand-built
+    // states for exactly that reason.
+    if (!Number.isFinite(entry.at) || entry.at < 0) {
+      faults.push(
+        `ledger: ${String(entry.output)} was stamped at ${entry.at}, which is not a wall-clock time`,
+      );
+    }
     if (!Number.isFinite(entry.amount)) {
       faults.push(`ledger: ${entry.output} paid a non-finite amount`);
     }
@@ -1536,8 +1997,25 @@ export function empireStateFaults(state: EmpireState): readonly string[] {
   }
 
   for (const applied of state.accelerants) {
+    if (!Number.isFinite(applied.at) || applied.at < 0) {
+      faults.push(
+        `accelerants: ${String(applied.accelerant)} was stamped at ${applied.at}, which is not a wall-clock time`,
+      );
+    }
     if (!Number.isFinite(applied.seconds) || applied.seconds < 0) {
       faults.push(`accelerants: ${applied.accelerant} applied for ${applied.seconds} seconds`);
+    }
+    // The vocabulary is checked before it is looked up. `mayAccelerate` indexes
+    // two tables, so an unknown accelerant made `accelerantLicence` return
+    // undefined and the `.includes` beneath it throw a TypeError — which turns
+    // a function whose whole contract is to COLLECT faults into one that throws
+    // the wrong error out of `assertEmpireState`. A pairing this module has no
+    // verdict for is a fault, not an exception.
+    if (!isEmpireAccelerant(applied.accelerant) || !isEmpireOutput(applied.output)) {
+      faults.push(
+        `accelerants: ${String(applied.accelerant)} on ${String(applied.output)} is not a pairing this module has a verdict for`,
+      );
+      continue;
     }
     // The second line, for payloads the compiler never saw. GDD §8.1: a
     // purchased accelerant on a progression-reaching output is the refusal

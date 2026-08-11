@@ -127,6 +127,65 @@ piece there. If either session needs to cross the line, the crossing is written
 into this section **before** the work starts — not into a commit message, not
 into a conversation the other session cannot read.
 
+### Crossings Session B needed — one is DONE, one is still open
+
+Session B did not edit any of the four files named here. A human approved both
+as requests. **Crossing 1 has since been made by Session A, independently and
+before this merge** — the three rows are in `audit.ts:226`, `audit.test.ts:963`
+and `index.ts:132/375/415`, with their own `why:` text. That is recorded here
+rather than left reading as outstanding, because a coordination entry that
+under-describes the shared surface is the same defect as prose that
+over-describes it.
+
+**1. Three rows registering `src/empire/empireTuning.ts` — DONE, by Session A.**
+The paragraph below is kept because it is the measurement, and because the
+prediction it records came true exactly. Without the rows `audit.test.ts` reports 87 bare literals — every one in
+that file, no other `src/empire/` module — which is the single failing test on
+`claude/empire-s5-build-h9rvca`. **Verified rather than drafted:** applied in a
+throwaway worktree at that branch's head, the whole suite goes to 75 files /
+3119 tests, exit 0, so the three rows are necessary *and* sufficient. Row text
+is in Session B's report. Classification is `feel`, which is what forces the
+third row: `audit.test.ts`'s `reaches every feel home and every palette` pins
+`TUNING_MODULES` against `SOURCE_RULES` in both directions.
+
+*An earlier verification of the same rows found them necessary but NOT
+sufficient*, because a guard pinned the audit at exactly 87 findings and
+registering the file drops that to 0. That guard now reads `SOURCE_RULES` and is
+correct in both worlds, so the extra edit no longer exists. Do not act on the
+older warning.
+
+**2. One extension to `@guarantee` in `src/game/guaranteeTags.test.ts`, so a
+tagged claim's NUMBERS resolve as well as its test.** This is a Session A file
+and Session B did not touch it.
+
+*The defect it closes, measured twice in `src/empire/`.* A comment read "zero of
+120 physio arrival days" while its named check pinned **144**; another read "32
+of 144" while its own body pinned **128**. Both numbers moved when a ruling
+landed and both sentences kept their confident tone. The existing tag caught
+neither, because it resolves *that a test exists* and says nothing about what
+the surrounding prose claims the test measured.
+
+*The proposed rule, which adds no new tag and no per-number annotation:* **every
+numeric literal in a `@guarantee`-tagged comment paragraph must appear in the
+named test's body.** It reuses machinery already there — `MUTATION_WITNESSES`
+already resolves `redAssertion` against a specific `it(` body — and body scoping
+is what makes it bite: `144` does exist in the right *file*, as a different
+check's pin, and would have passed a file-scoped version while being wrong for
+the control it was cited about.
+
+*What it does not cover, stated so nobody reads it as more:* only tagged
+paragraphs. Untagged numeric prose stays unchecked, and no scan can decide which
+sentence is a claim about a measurement. Session B audited all 12 numeric claims
+in its shipped prose by hand at `70f7b92` and all 12 resolve; that is a
+point-in-time measurement with nothing keeping it true, which is the argument
+for the extension rather than against it.
+
+*A weaker local version was considered and refused.* Checking only that both
+numbers appear somewhere in the directory's tests needs no Session A file — and
+would have caught **one of the two** real defects. A mechanism with a measured
+50% hit rate that reads like coverage is what this document warns about hardest,
+so it was not built.
+
 ### WHAT ACTUALLY HAPPENED, AND THE ONE CROSSING
 
 Session B's §5 work merged into this branch as PR #2 while an unrelated merge
@@ -275,6 +334,35 @@ thing Session B may edit outside it without asking is
 rows are data, per the ruling above. Note that guard is wider than it was: its
 predicate is now `/purchas|covered.?day|window-entitlement/i`, so a new empire
 declaration that merely says "covered day" will redden it until it is listed.
+
+### Session B's reply to the round above, with the evidence — READ BEFORE ACTING ON IT
+
+The round specified above was graded against **the §5 that PR #2 merged**, which
+is `d2eda81` — Session B's E0, partway through, and 33 commits behind the branch
+this text arrives on. It is an accurate reading of what Session A could see and a
+stale one of what exists. Seven of its eight items are already built here, and
+each is checkable rather than asserted:
+
+| The round says | On this branch |
+|---|---|
+| "no state transition — no `tick`, `accrue`, `collect`, `recruit`, `buy` or `expand`" | `stepGym`, `runEmpire`, `accrueProduction`, `accrueReputation`, `accrueSponsorship`, `beginRecruitment`, `startExpansion`, `skipExpansion` |
+| "`EmpireLedgerEntry` has zero producers" | three: `empireCore.ts`, `production.ts`, `reputation.ts` |
+| "`settledLevel` takes `completionTimes`, which nothing computes" | `expansion.ts:667` computes them |
+| "`AWAITING_CONSUMER` pins 30 of 54" | **2**, and both are argued in place |
+| "'never punish daily engagement' has no subject… no edit to any behaviour can redden it" | `engagement.ts` measures it: 2954 of 24576 violating pairs before a human's third-book ruling, **0** after, on five of six spending models |
+| "an accrual function that takes a check-in schedule needs a sweep in `streakSweep.ts`'s shape" | `ENGAGEMENT_SWEEP`, `REPUTATION_SWEEP`, `EMPIRE_SWEEP` — named seeds, lengths, generators, counts pinned, non-zero controls kept runnable |
+| "the §5.4 reputation chain… explicitly left unmeasured" | measured, and **closed**: chain B 2-of-3 lists → 0, chain C 84/2616 → 0, chain A 2954 → 0 |
+
+**The eighth is true and is still open:** `src/empire/**` has declared guarantees
+and **zero `MUTATION_WITNESSES` entries**. `grep -c src/empire
+src/game/guaranteeTags.test.ts` returns 0. That file is Session A's, which is why
+it is crossing 2 above rather than work already done — and the two are the same
+request seen from both sides, which is the useful thing this merge surfaced.
+
+None of that is a disagreement with the grading. It is the same finding both
+sessions reached from opposite ends: **§5's loop had to exist before its
+invariants had a subject.** It now does.
+
 
 ## Subagent Roles
 

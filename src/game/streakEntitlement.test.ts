@@ -1119,6 +1119,9 @@ const PURCHASED_DAY_SCAN = {
    */
   FILES_THAT_NAME_A_COVERED_DAY: [
     'empire/empireCore.ts',
+    'empire/empireInvariant.ts',
+    'empire/expansion.ts',
+    'empire/reputation.ts',
     'game/currencyProvenance.ts',
     'game/progression.ts',
     'game/streak.ts',
@@ -1137,9 +1140,9 @@ const PURCHASED_DAY_SCAN = {
    * inside modules the scan was already reading, which is why nothing about the
    * file-level pin caught it.
    */
-  COVERAGE_FOUND: [88, 7] as readonly [number, number],
-  PURCHASE_WORD_FOUND: [57, 7] as readonly [number, number],
-  CREDIT_PATH_FOUND: [58, 7] as readonly [number, number],
+  COVERAGE_FOUND: [94, 10] as readonly [number, number],
+  PURCHASE_WORD_FOUND: [63, 10] as readonly [number, number],
+  CREDIT_PATH_FOUND: [64, 10] as readonly [number, number],
   NARROW_FOUND: [18, 3] as readonly [number, number],
 } as const;
 
@@ -1149,7 +1152,7 @@ const PURCHASED_DAY_SCAN = {
  * that stands beside it.
  *
  * WHY THERE ARE TWO PASSES AND NOT ONE REPLACING THE OTHER. The textual scan
- * finds 88 declarations in 7 files; this one finds 32 in 2. Neither is a subset
+ * finds 94 declarations in 10 files; this one finds 32 in 2. Neither is a subset
  * of the other and each is blind exactly where the other looks:
  *
  *   - The textual scan reads WORDS, so it sees `EMPIRE_FORBIDDEN_OUTPUTS`
@@ -1263,7 +1266,7 @@ const COVERED_DAY_SYMBOL_SCAN = {
    * The union of both passes, which is what `COVERED_DAY_TOUCHING_FUNCTIONS` is
    * asserted equal to. 88 textual + 9 symbol-only = 97.
    */
-  UNION_FOUND: 97,
+  UNION_FOUND: 103,
 
   /**
    * WHAT THIS PASS STILL DOES NOT SEE, pinned as a red line rather than implied
@@ -1930,6 +1933,9 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     const lostFiles = coverage.files.filter((file) => !narrow.files.includes(file));
     expect(lostFiles).toEqual([
       'empire/empireCore.ts',
+      'empire/empireInvariant.ts',
+      'empire/expansion.ts',
+      'empire/reputation.ts',
       'game/currencyProvenance.ts',
       'game/streakSweep.ts',
       'tuning/audit.ts',

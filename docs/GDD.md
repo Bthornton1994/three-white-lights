@@ -1588,6 +1588,111 @@ alternative of the term drifting into copy where it would read as an endorsement
 **Do not "fix" it back to a generic on the initiative of a scan; the scan cannot
 see what was weighed here.**
 
+**The gym keeps two books, and which one a rung is bought from is decided by what
+that rung reaches — RULED.** A rung whose output reaches Sim progression, or gates
+something that does — physio, space, spotter — and NPC recruitment are bought out
+of **wall-clock-earned** Gym Bucks. Equipment, coaches and cosmetics are bought
+out of the balance §8.3B's timer skips accelerate. This is §8.2's "Extra Covered
+Days from non-training-gated Chalk only" applied to this section: §5.4 says staff
+levels cost Gym Bucks and does not say *which* Gym Bucks, and the difference is
+the whole of §8.1 here.
+
+*It is a measurement, not a preference.* Composed over a calendar and compared
+element-wise by wall-clock day — an aggregate will not do, per §4.4 — a single
+book gives **84 of 2616** physio readings moved and **32 of 128** physio arrival
+days moved, every one of them EARLIER, plus **1488 of 2616** Training IQ readings
+moved. Two books give **0** on all three, with the single-book engine kept
+runnable beside them as the control so the zeros are zeros against something.
+Earlier physio is a shorter setback is restored training pace, which is exactly
+what §8.3B calls the credibility line.
+
+*What a skip still buys, so the ruling is not read as wider than it is:* the build
+finishes now, the lifter is on the floor now, and the accelerated economy pays
+now. What it cannot buy is the next rung of a ladder that reaches Sim
+progression sooner.
+
+**And the wall-clock book is itself a purse per capability, because two books
+were not enough — RULED.** Every empire output that reaches Sim progression or
+gates something that does — the Training IQ trickle, the physio hook, roster
+slots, reputation — has a fund of its own, and a purchase may only be made from
+the fund its own output names: §5.4's space and spotter rungs from the
+roster-slot fund, §5.4's physio rung from the physio fund, §5.3's recruits from
+the Training IQ fund. Each fund fills at the gym's baseline wall-clock line, so
+nothing fills more slowly than it did. What a player gives up is the ability to
+**concentrate**: you cannot save your recruiting money and pour it into physio,
+and you cannot skip a physio level to buy a lifter sooner. Each ladder advances
+on its own takings, on the wall clock, at the price the table publishes.
+
+*Why a third book, since two had just been ruled in.* While those four purchases
+shared one balance, the order they were offered in decided which of them got the
+money — and that order moved with how often the player opened the app. A player
+who checked in **more** could end with a **lower** Training IQ trickle than one
+who checked in less: **2954 of 24576** exhaustively enumerated pairs, 25772 days
+paid less, worst deficit 0.451 IQ/day. That is §12.3's "punishes a player for
+showing up", reached through the economy rather than through the streak.
+
+*It is a property of the composition, not of one imagined player, and that was
+the measurement that forced this ruling rather than a smaller one.* §5 specifies
+costs, ceilings and outputs and never says when a player spends, so the count was
+re-taken under five distinct spending models. Every one was non-zero on at least
+one domain — 2954 / 2751 / 3427 rotating, fixed-order and costliest-first;
+10122 spending once a day. With a fund each, all of those are **0**, on every
+domain measured: the 24576-pair window, a 114688-pair enumerated grid, seeded
+20/40/60/100-day sweeps, and the extra-trained-day comparison. The single-purse
+engine is kept runnable beside them and pinned at its 2954, so the zeros are
+zeros against something.
+
+*Two things this does NOT fix, recorded rather than rounded off.* Spending once
+per calendar day still measures **7245**, and the split cannot reach it: 7240 of
+those are an evening check-in moving the day's *decision moment* rather than its
+money, so a build started later finishes later whatever purse paid for it. The
+remaining **5** are the recruit price ladder — cost per unit of output rises
+strictly across the tiers (500 / 1250 / 3200 / 7500 / 13846), so a gym holding
+more money at one decision buys strictly *less* Training IQ per Buck. That is a
+pricing question for a tuning pass, not a funding one.
+
+*And a tuning consequence a human should rule on separately:* because each fund
+fills at the full baseline line, total wall-clock income is roughly **three times**
+what it was, and physio now arrives on day 4 rather than day 7 at full
+attendance. Splitting the line into shares instead was tried and pushed physio
+past the measured window entirely. The safety property holds either way; which
+one *plays* better is a playtest question this document cannot settle.
+
+**The physio gate is exempt from the reputation gate, and that is the same rule
+rather than an exception to it.** No expansion axis whose output reaches Sim
+progression may be gated on reputation, because `REPUTATION_PER_CHECK_IN` makes
+reputation player-keyed — so a reputation gate on physio would put the wall-clock
+day a Sim setback shortens under the player's own schedule, which is §4.4's shape
+with a gate where the currency usually is. The ban is enforced **by reach, naming
+no axis**, so an axis that later acquires a progression-reaching output is caught
+by the same rule rather than needing a new one.
+
+**The earned path is measured too, and this paragraph said the opposite for
+several waves after it stopped being true.** The chain is check-ins → reputation
+→ sponsor Gym Bucks → the wall-clock day a physio level arrives. It is not
+purchasable, so it is not §8.1, but "more engagement only ever helps" is the
+argument §4.4 records as a reason to measure rather than a substitute for
+measuring — so it was measured, by varying the **training schedule** and holding
+the purchase fixed, which is the opposite independent variable to every sweep
+above.
+
+Result, on the gym the player actually has: the physio half is **0 later
+arrivals of 24576** exhaustively enumerated pairs, worst deficit 0 days, and the
+extra-trained-day comparison is byte-identical at **0 of 1800** elements. The
+Training IQ half was **not** zero — 2954 of 24576, worst deficit 0.451 IQ/day —
+and that measurement is what forced the third-book ruling above; it is 0 now.
+Beside them, non-zero on purpose: re-connecting the chain by funding the ladder
+from the accelerated purse gives **263 later physio arrivals**, so the zeros are
+zeros against something.
+
+*Kept as a correction rather than a silent edit, because the failure is the
+interesting part.* This paragraph read "still unmeasured … no evidence either
+way" while the sweep that closed it was already in the tree and pinned, and the
+same §5.4 section contradicted itself thirty lines apart. CLAUDE.md's opening
+rule is that a sentence written while the code was true keeps its confident tone
+after the code moves; the sentence here was written one wave before the
+measurement existed and was not revisited when it arrived.
+
 ### 5.5 Social Layer
 
 - Gym leaderboards (regional / global) by reputation or combined lifter totals

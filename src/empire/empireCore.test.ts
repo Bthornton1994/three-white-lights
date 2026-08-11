@@ -86,9 +86,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { auditSource, formatFindings } from '../tuning/audit';
+import { SOURCE_RULES, auditSource, formatFindings } from '../tuning/audit';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   ACCELERANT_ARRIVAL,
@@ -145,12 +146,15 @@ import {
   spaceLevelCost,
   staffLevelCost,
   type AcceleratedOutput,
+  type AcceleratedSeconds,
   type AppliedAccelerant,
   type EmpireAccelerant,
   type EmpireLedgerEntry,
+  type EmpireOutput,
   type EmpireState,
   type EquipmentTier,
   type GymAxes,
+  type GymBucks,
   type IdleTenureDays,
   type NpcTier,
   type SettledTenureDays,
@@ -159,6 +163,388 @@ import {
 } from './empireCore';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+// ---------------------------------------------------------------------------
+// The producer census, resolved through the TypeScript checker
+// ---------------------------------------------------------------------------
+
+/**
+ * WHAT THIS REPLACED, AND WHY THE REPLACEMENT IS A DIFFERENT KIND OF THING.
+ *
+ * The guard that was supposed to catch a producer taking a bare primitive was
+ *
+ *     [...code.matchAll(/export function (as[A-Z]\w*)<[^{]*\{/g)]
+ *
+ * — scoped by NAME. `createEmpireClock` and `createNpcLifter` both return
+ * branded quantities and both took bare `number`s, and neither is spelled
+ * `as*`, so the check that existed for exactly this defect could not see it.
+ * CLAUDE.md records the same shape one file over: `progression.test.ts`'s seal
+ * check matched a callee by identifier TEXT while the `receive` check twelve
+ * lines below resolved symbols through the checker, and a local shim spelled
+ * `sealServerValue` type-checked clean past 202 green guard tests.
+ *
+ * So this resolves through the compiler, in both directions:
+ *
+ *   - WHICH FUNCTIONS PRODUCE A BRAND is asked of the checker. A type is
+ *     branded when it carries a property whose computed key resolves — through
+ *     `getAliasedSymbol`, so an alias or a re-export lands on the same
+ *     declaration — to the `EMPIRE_BRAND` symbol declared in `empireCore.ts`.
+ *     The return type is walked into unions, arrays, conditionals (through
+ *     their constraint) and object properties, so a brand nested inside an
+ *     `EmpireClock`, an `NpcLifter` or an `EmpireState` counts. No part of that
+ *     determination reads a function's name.
+ *   - WHICH PARAMETERS WOULD ADMIT A BRANDED VALUE is asked of the compiler by
+ *     COMPILING A CALL. A generated probe module calls every exported function
+ *     once per parameter slot per candidate argument — two bare primitives and
+ *     one value of every brand this module declares — filling the other slots
+ *     with `never`, which is assignable to anything. A slot "admits" a
+ *     candidate when the resulting call produces no diagnostic.
+ *
+ * Compiling the call rather than testing assignability against the declared
+ * parameter type is the load-bearing choice and it is not a stylistic one.
+ * Every guarded constructor here is generic — `value: N & Unbranded<N>` — and
+ * `number` is not assignable to an uninstantiated `N`, so an assignability
+ * probe reports EVERY generic slot as admitting nothing, and reports the
+ * unguarded mutant `<N extends number>(value: N)` exactly the same way. That
+ * check would have been green on the defect it was written for. A real call
+ * site infers `N`, which is where the guard actually bites.
+ *
+ * What it cannot see, stated because no census reaches past it: arithmetic.
+ * `Number(clock.accelerated) + 0` is a plain number and no signature can tell
+ * where it came from. Piece E6's element-wise ledger comparison covers that.
+ */
+
+const CORE_PATH = path.join(HERE, 'empireCore.ts');
+
+/** Served from memory and never written to disk. */
+const PROBE_PATH = path.join(HERE, '__brandCensusProbe.ts');
+
+const REPO_ROOT = path.resolve(HERE, '..', '..');
+
+/** The two bare primitives a brand in this module is made of. */
+const RAW_CANDIDATES = ['RAW_NUMBER', 'RAW_STRING'] as const;
+
+type SlotKind = 'both' | 'raw-only' | 'brand-only' | 'neither';
+
+interface CensusSlot {
+  readonly fn: string;
+  readonly index: number;
+  readonly parameter: string;
+  readonly acceptsRaw: boolean;
+  readonly acceptsBrands: readonly string[];
+  readonly kind: SlotKind;
+}
+
+interface CensusFunction {
+  readonly name: string;
+  /** The brands reachable from the return type. Empty for a non-producer. */
+  readonly produces: readonly string[];
+  readonly slots: readonly CensusSlot[];
+}
+
+interface BrandCensus {
+  readonly brands: readonly string[];
+  readonly functions: readonly CensusFunction[];
+  readonly slots: readonly CensusSlot[];
+  readonly probes: number;
+  readonly refusedProbes: number;
+  /** Functions whose all-`never` control call did not compile. Must be empty. */
+  readonly controlFailures: readonly string[];
+  /** Diagnostics from `empireCore.ts` itself. Must be empty. */
+  readonly coreDiagnostics: readonly string[];
+}
+
+function compilerOptions(): ts.CompilerOptions {
+  const configPath = path.join(REPO_ROOT, 'tsconfig.json');
+  const config = ts.readConfigFile(configPath, ts.sys.readFile).config as unknown;
+  const parsed = ts.parseJsonConfigFileContent(config, ts.sys, REPO_ROOT);
+  return { ...parsed.options, noEmit: true, skipLibCheck: true };
+}
+
+function programWithProbe(options: ts.CompilerOptions, probeText: string): ts.Program {
+  const host = ts.createCompilerHost(options, true);
+  const readSource = host.getSourceFile.bind(host);
+  host.getSourceFile = (fileName, languageVersion, onError, shouldCreate) =>
+    path.normalize(fileName) === PROBE_PATH
+      ? ts.createSourceFile(fileName, probeText, languageVersion, true, ts.ScriptKind.TS)
+      : readSource(fileName, languageVersion, onError, shouldCreate);
+  const exists = host.fileExists.bind(host);
+  host.fileExists = (fileName) =>
+    path.normalize(fileName) === PROBE_PATH ? true : exists(fileName);
+  const read = host.readFile.bind(host);
+  host.readFile = (fileName) =>
+    path.normalize(fileName) === PROBE_PATH ? probeText : read(fileName);
+  return ts.createProgram([CORE_PATH, PROBE_PATH], options, host);
+}
+
+let censusMemo: BrandCensus | null = null;
+
+function brandCensus(): BrandCensus {
+  if (censusMemo !== null) return censusMemo;
+
+  const options = compilerOptions();
+  const program = programWithProbe(options, 'export {};\n');
+  const checker = program.getTypeChecker();
+  const core = program.getSourceFile(CORE_PATH);
+  if (core === undefined) throw new Error(`${CORE_PATH} is not in the program`);
+  const moduleSymbol = checker.getSymbolAtLocation(core);
+  if (moduleSymbol === undefined) throw new Error('empireCore.ts resolved to no module symbol');
+
+  // The brand symbol, taken from its declaration rather than from its
+  // spelling. Every `isBranded` verdict below is symbol identity against this.
+  let brandSymbol: ts.Symbol | undefined;
+  core.forEachChild((node) => {
+    if (!ts.isVariableStatement(node)) return;
+    for (const declaration of node.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === 'EMPIRE_BRAND') {
+        brandSymbol = checker.getSymbolAtLocation(declaration.name);
+      }
+    }
+  });
+  if (brandSymbol === undefined) throw new Error('no EMPIRE_BRAND declaration in empireCore.ts');
+
+  const resolved = (symbol: ts.Symbol | undefined): ts.Symbol | undefined =>
+    symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+      ? checker.getAliasedSymbol(symbol)
+      : symbol;
+
+  const isBranded = (type: ts.Type): boolean =>
+    type.getProperties().some((property) => {
+      const declaration = property.valueDeclaration ?? property.declarations?.[0];
+      const name = declaration === undefined ? undefined : (declaration as ts.NamedDeclaration).name;
+      if (name === undefined || !ts.isComputedPropertyName(name)) return false;
+      return resolved(checker.getSymbolAtLocation(name.expression)) === brandSymbol;
+    });
+
+  const exportedSymbols = checker.getExportsOfModule(moduleSymbol);
+
+  const brands: string[] = [];
+  for (const symbol of exportedSymbols) {
+    const declaration = symbol.declarations?.[0];
+    if (declaration === undefined || !ts.isTypeAliasDeclaration(declaration)) continue;
+    if (declaration.typeParameters !== undefined) continue;
+    if (isBranded(checker.getTypeAtLocation(declaration.name))) brands.push(symbol.getName());
+  }
+  brands.sort();
+
+  /** Every brand reachable from a type, through unions, arrays and properties. */
+  const brandsIn = (type: ts.Type): readonly string[] => {
+    const found = new Set<string>();
+    const seen = new Set<ts.Type>();
+    const walk = (current: ts.Type, depth: number): void => {
+      if (depth > 4 || seen.has(current)) return;
+      seen.add(current);
+      if (isBranded(current)) {
+        found.add(checker.typeToString(current));
+        return;
+      }
+      if (current.isUnionOrIntersection()) {
+        for (const constituent of current.types) walk(constituent, depth + 1);
+        return;
+      }
+      if ((current.flags & (ts.TypeFlags.Conditional | ts.TypeFlags.TypeParameter)) !== 0) {
+        const constraint = checker.getBaseConstraintOfType(current);
+        if (constraint !== undefined && constraint !== current) walk(constraint, depth + 1);
+        return;
+      }
+      if (checker.isArrayType(current) || checker.isTupleType(current)) {
+        for (const argument of checker.getTypeArguments(current as ts.TypeReference)) {
+          walk(argument, depth + 1);
+        }
+        return;
+      }
+      if ((current.flags & ts.TypeFlags.Object) !== 0) {
+        for (const property of current.getProperties()) {
+          walk(checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration ?? core), depth + 1);
+        }
+      }
+    };
+    walk(type, 0);
+    return [...found].sort();
+  };
+
+  interface Declared {
+    readonly name: string;
+    readonly produces: readonly string[];
+    readonly parameters: readonly string[];
+  }
+  const declared: Declared[] = [];
+  for (const symbol of exportedSymbols) {
+    const declaration = symbol.declarations?.[0];
+    if (declaration === undefined || !ts.isFunctionDeclaration(declaration)) continue;
+    const signature = checker.getSignatureFromDeclaration(declaration);
+    if (signature === undefined) throw new Error(`no signature for ${symbol.getName()}`);
+    declared.push({
+      name: symbol.getName(),
+      produces: brandsIn(checker.getReturnTypeOfSignature(signature)),
+      parameters: declaration.parameters.map((parameter) => {
+        if (parameter.dotDotDotToken !== undefined || parameter.questionToken !== undefined) {
+          // No rest or optional parameter exists in this module today. One
+          // arriving changes what "fill the other slots with `never`" means, so
+          // it is a refusal rather than a silently mis-probed slot.
+          throw new Error(`${symbol.getName()} has an optional or rest parameter; the probe cannot fill it`);
+        }
+        return parameter.name.getText();
+      }),
+    });
+  }
+  declared.sort((left, right) => (left.name < right.name ? -1 : 1));
+
+  // The probe module: one call per (function, slot, candidate), each on its own
+  // line so a diagnostic maps back to exactly one probe.
+  const lines: string[] = [
+    "import * as M from './empireCore';",
+    'declare const NOTHING: never;',
+    'declare const RAW_NUMBER: number;',
+    'declare const RAW_STRING: string;',
+    ...brands.map((brand) => `declare const BRAND_${brand}: M.${brand};`),
+  ];
+  interface Probe {
+    readonly fn: string;
+    readonly slot: number;
+    readonly candidate: string;
+    readonly branded: boolean;
+    readonly control: boolean;
+    readonly line: number;
+  }
+  const probes: Probe[] = [];
+  const call = (fn: Declared, slot: number, candidate: string, branded: boolean): void => {
+    const args = fn.parameters.map((_, index) => (index === slot ? candidate : 'NOTHING'));
+    lines.push(`M.${fn.name}(${args.join(', ')});`);
+    probes.push({ fn: fn.name, slot, candidate, branded, control: slot < 0, line: lines.length });
+  };
+  for (const fn of declared) {
+    call(fn, -1, 'NOTHING', false);
+    for (let slot = 0; slot < fn.parameters.length; slot += 1) {
+      for (const raw of RAW_CANDIDATES) call(fn, slot, raw, false);
+      for (const brand of brands) call(fn, slot, `BRAND_${brand}`, true);
+    }
+  }
+
+  const probed = programWithProbe(options, `${lines.join('\n')}\n`);
+  const probeFile = probed.getSourceFile(PROBE_PATH);
+  if (probeFile === undefined) throw new Error('the probe module is not in the program');
+  const coreInProbe = probed.getSourceFile(CORE_PATH);
+  if (coreInProbe === undefined) throw new Error(`${CORE_PATH} is not in the probe program`);
+
+  const refusedLines = new Set<number>();
+  for (const diagnostic of [
+    ...probed.getSyntacticDiagnostics(probeFile),
+    ...probed.getSemanticDiagnostics(probeFile),
+  ]) {
+    if (diagnostic.start === undefined) continue;
+    refusedLines.add(probeFile.getLineAndCharacterOfPosition(diagnostic.start).line + 1);
+  }
+  const coreDiagnostics = [
+    ...probed.getSyntacticDiagnostics(coreInProbe),
+    ...probed.getSemanticDiagnostics(coreInProbe),
+  ].map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, ' '));
+
+  const accepted = (probe: Probe): boolean => !refusedLines.has(probe.line);
+
+  const slots: CensusSlot[] = [];
+  const functions: CensusFunction[] = declared.map((fn) => {
+    const own: CensusSlot[] = [];
+    for (let index = 0; index < fn.parameters.length; index += 1) {
+      const mine = probes.filter((probe) => probe.fn === fn.name && probe.slot === index);
+      const acceptsRaw = mine.some((probe) => !probe.branded && accepted(probe));
+      const acceptsBrands = mine
+        .filter((probe) => probe.branded && accepted(probe))
+        .map((probe) => probe.candidate.replace('BRAND_', ''))
+        .sort();
+      const kind: SlotKind = acceptsRaw
+        ? acceptsBrands.length > 0
+          ? 'both'
+          : 'raw-only'
+        : acceptsBrands.length > 0
+          ? 'brand-only'
+          : 'neither';
+      const slot: CensusSlot = {
+        fn: fn.name,
+        index,
+        parameter: fn.parameters[index] as string,
+        acceptsRaw,
+        acceptsBrands,
+        kind,
+      };
+      own.push(slot);
+      slots.push(slot);
+    }
+    return { name: fn.name, produces: fn.produces, slots: own };
+  });
+
+  censusMemo = {
+    brands,
+    functions,
+    slots,
+    probes: probes.length,
+    refusedProbes: probes.filter((probe) => !accepted(probe)).length,
+    controlFailures: probes.filter((probe) => probe.control && !accepted(probe)).map((p) => p.fn),
+    coreDiagnostics,
+  };
+  return censusMemo;
+}
+
+/** The producers, as the census found them. */
+const producers = (census: BrandCensus): readonly CensusFunction[] =>
+  census.functions.filter((fn) => fn.produces.length > 0);
+
+interface FaultSite {
+  /** The message with its substitutions left in, for a failure to name. */
+  readonly text: string;
+  /** The same message as a pattern, with each `${...}` widened to `.*`. */
+  readonly pattern: RegExp;
+}
+
+/**
+ * Every `faults.push` site in `empireStateFaults`, as the message it pushes.
+ *
+ * Read out of the SUBJECT, which is the whole point: the invariant table in
+ * this file used to be guarded by `expect(broken.length).toBe(15)` — a count of
+ * an array declared in the same test, which no state of `empireCore.ts` could
+ * move. This is what that line was reaching for: a fault branch added to the
+ * decode boundary with no row exercising it is red, and one deleted is red too.
+ *
+ * The parse is deliberately narrow and pins its own result: a balanced-paren
+ * slice from `faults.push(`, then the string and template chunks of the
+ * argument concatenated in order, then `${...}` widened to `.*`. A message with
+ * an unbalanced parenthesis inside a literal would merge two sites into one,
+ * and the count pinned at the call site is what says so.
+ */
+function faultPushSkeletons(): readonly FaultSite[] {
+  const source = readFileSync(path.join(HERE, 'empireCore.ts'), 'utf8');
+  const start = source.indexOf('export function empireStateFaults');
+  if (start < 0) throw new Error('no empireStateFaults declaration in empireCore.ts');
+  const after = source.indexOf('\nexport ', start + 1);
+  const body = source.slice(start, after < 0 ? source.length : after);
+
+  const marker = 'faults.push(';
+  const sites: FaultSite[] = [];
+  for (let at = body.indexOf(marker); at >= 0; at = body.indexOf(marker, at + 1)) {
+    let depth = 0;
+    let index = at + marker.length - 1;
+    for (; index < body.length; index += 1) {
+      const character = body[index];
+      if (character === '(') depth += 1;
+      else if (character === ')') {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    const argument = body.slice(at + marker.length, index);
+    let text = '';
+    for (const chunk of argument.matchAll(/`((?:[^`\\]|\\[\s\S])*)`|'((?:[^'\\\n]|\\.)*)'/g)) {
+      text += chunk[1] ?? chunk[2] ?? '';
+    }
+    if (text.length === 0) throw new Error(`a faults.push with no message: ${argument}`);
+    const pattern = text
+      .split(/\$\{[^}]*\}/)
+      .map((literal) => literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.*');
+    sites.push({ text, pattern: new RegExp(`^${pattern}$`) });
+  }
+  return sites;
+}
 
 // ---------------------------------------------------------------------------
 // The structural half — graded by `tsc --noEmit`, not by vitest
@@ -529,6 +915,75 @@ describe('a purchased accelerant does not typecheck onto a progression-reaching 
     expect(Number(throughArithmetic)).not.toBe(Number(clock.unaccelerated));
   });
 
+  it('refuses every route the exploit reproduction took — the laundering regression', () => {
+    // THE REPRODUCTION, KEPT. A working exploit lived in the tree as a scratch
+    // file called `__exploitProbe.ts`, compiled clean, and was deleted when it
+    // was fixed. A deleted reproduction protects nothing; this is it, moved
+    // inside the suite so removing the `Unbranded` guard reddens something.
+    //
+    // It had three claims. Two are here as directives. The third was
+    //
+    //     physioDaysSavedFor(settledLevel([laundered], laundered))
+    //
+    // and it does NOT error any more — correctly, because `laundered` is
+    // unobtainable now, so what closed is the SOURCE rather than the consumer.
+    // Writing a bogus directive to make that line red would be an assertion
+    // about nothing; the true statement is 'no exported function that produces
+    // a wall-clock brand accepts an accelerated one', and it is measured over
+    // the whole module by 'closes the laundering SOURCE' below.
+    const day = EMPIRE_TUNING.SECONDS_PER_DAY;
+    const clock = createEmpireClock(day * 3, day);
+
+    // @ts-expect-error — route 1: the clock's own accelerated reading fed back
+    // into the clock constructor, which handed it straight back wearing the
+    // wall-clock brand. Hazard 1 and hazard 2 both, in one expression, with no
+    // cast and only exported API.
+    const launderedClock = createEmpireClock(clock.accelerated, 0);
+
+    // ONE FAILED CALL REPORTS ONE ARGUMENT ERROR, so the two roster slots get
+    // one call each. Written as a single five-argument call with a directive on
+    // each of the last two, the second directive is UNUSED and `tsc` fails with
+    // TS2578 — which is the right answer to the wrong question, and would have
+    // been tempting to fix by deleting the sibling directive rather than by
+    // giving the sibling its own call. That is the same "one arm of one
+    // decision" shape this file keeps finding.
+    // @ts-expect-error — route 2, the reproduction's own spelling: `joinedAt`
+    // taking the wall reading. Semantically it is the harmless direction —
+    // `NpcLifter.joinedAt` IS an `AcceleratedSeconds` — and it is refused
+    // anyway, because the rule is about the parameter and not about which
+    // laundering somebody has thought of.
+    const launderedJoin = createNpcLifter('b', 'novice', 'Placeholder', clock.unaccelerated, day * 3);
+    // @ts-expect-error — route 3, and the one that sells training pace:
+    // `settledAt` taking the purchase-moved reading. That is the origin
+    // `settledTenureDays` measures the Training IQ tenure from.
+    const launderedLifter = createNpcLifter('c', 'novice', 'Placeholder', day * 4, clock.accelerated);
+
+    // The vitest half, and it is the size of the sale rather than a `typeof`.
+    // Types are erased, so all three calls still RUN — which is what makes the
+    // numbers below the honest statement of what each route was worth.
+    //
+    // Route 1: the wall clock came back a whole day of purchased skip ahead of
+    // the wall clock it was derived from.
+    expect(Number(launderedClock.unaccelerated)).toBe(Number(clock.accelerated));
+    expect(Number(launderedClock.unaccelerated) - Number(clock.unaccelerated)).toBe(day);
+
+    // Routes 2 and 3, each against an honest twin built from the same two
+    // moments: the recruit landed on day four and would have landed unaided on
+    // day three.
+    const honestLifter = createNpcLifter('d', 'novice', 'Placeholder', day * 4, day * 3);
+    expect(
+      Number(idleTenureDays(launderedJoin, clock.accelerated)) -
+        Number(idleTenureDays(honestLifter, clock.accelerated)),
+    ).toBeCloseTo(1, 9);
+    const now = asUnacceleratedSeconds(day * 5);
+    expect(
+      Number(settledTenureDays(honestLifter, now)) -
+        Number(settledTenureDays(launderedLifter, now)),
+    ).toBeCloseTo(1, 9);
+    expect(Number(settledTenureDays(honestLifter, now))).toBeCloseTo(2, 9);
+    expect(Number(settledTenureDays(launderedLifter, now))).toBeCloseTo(1, 9);
+  });
+
   it('refuses a bare number where a settled level is required', () => {
     // Whole days, because `asInjuryDaysSaved` refuses a fraction at the seam —
     // the sibling probe below really is evaluated rather than short-circuited
@@ -563,6 +1018,221 @@ describe('a purchased accelerant does not typecheck onto a progression-reaching 
     // pinned by the signature scan in 'fences every branded quantity in its own
     // declaration', which is the line vitest reddens when this directive stops
     // being a directive.
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The census, run against the shipped module
+// ---------------------------------------------------------------------------
+
+describe('the producer census, scoped by return type and resolved through the checker', () => {
+  it('finds every exported producer of a brand, and says how much it looked at', () => {
+    const census = brandCensus();
+
+    // Non-vacuity first, and it is the whole reason this test can be trusted:
+    // if the probe module stopped compiling for a reason unrelated to a brand —
+    // a wrong argument count, a renamed export, a broken host — every probe
+    // would be refused and every slot would read "admits nothing", which is the
+    // shape a laundering route hides in. The all-`never` control call proves
+    // each function is callable at all, and `never` is assignable to every
+    // parameter type there is, so a control that fails means the harness is
+    // wrong rather than the subject.
+    expect(census.controlFailures).toEqual([]);
+    expect(census.coreDiagnostics).toEqual([]);
+    expect(census.probes).toBe(701);
+    // Counts, not bounds, on both verdicts. All-accepted and all-refused are
+    // the two degenerate states, and each is a number away rather than a bound
+    // away.
+    expect(census.refusedProbes).toBe(588);
+    expect(census.probes - census.refusedProbes).toBe(113);
+
+    // The brands, from the declarations rather than from a list written here.
+    expect(census.brands).toEqual([
+      'AcceleratedSeconds',
+      'GymBucks',
+      'IdleTenureDays',
+      'InjuryDaysSaved',
+      'NpcId',
+      'ReputationPoints',
+      'SettledLevel',
+      'SettledTenureDays',
+      'TrainingIqPoints',
+      'UnacceleratedSeconds',
+    ]);
+
+    expect(census.functions.length).toBe(41);
+    expect(census.slots.length).toBe(55);
+
+    // The producers, by name. `createEmpireClock` and `createNpcLifter` are on
+    // this list and are not spelled `as*`, which is the whole difference
+    // between this census and the one it replaced.
+    expect(producers(census).map((fn) => fn.name)).toEqual([
+      'applyAccelerant',
+      'asAcceleratedSeconds',
+      'asGymBucks',
+      'asIdleTenureDays',
+      'asInjuryDaysSaved',
+      'asNpcId',
+      'asReputation',
+      'asTrainingIq',
+      'asUnacceleratedSeconds',
+      'createEmpireClock',
+      'createEmpireState',
+      'createNpcLifter',
+      'elapsedFor',
+      'equipmentTierCost',
+      'gateElapsedFor',
+      'idleLedger',
+      'idleTenureDays',
+      'physioDaysSavedFor',
+      'progressionLedger',
+      'recruitCost',
+      'recruitReputationThreshold',
+      'settledLevel',
+      'settledTenureDays',
+      'spaceLevelCost',
+      'staffLevelCost',
+    ]);
+
+    // Every `as*` export is a producer and the list is closed. This is the
+    // clause `SettledTenureDays`'s own docstring depends on: there is no
+    // `asSettledTenureDays`, so a caller holding a tenure measured on the
+    // accelerated clock has no one-call route to the wall-clock brand.
+    expect(
+      census.functions.filter((fn) => /^as[A-Z]/.test(fn.name)).map((fn) => fn.name),
+    ).toEqual([
+      'asAcceleratedSeconds',
+      'asGymBucks',
+      'asIdleTenureDays',
+      'asInjuryDaysSaved',
+      'asNpcId',
+      'asReputation',
+      'asTrainingIq',
+      'asUnacceleratedSeconds',
+    ]);
+
+    // How the slots landed, counted per class. `raw-only` is the guarded set —
+    // dropping `Unbranded<N>` from any one of them moves it to `both`, which is
+    // red twice: here and on the fault list in the next test.
+    const tally = new Map<SlotKind, number>();
+    for (const slot of census.slots) tally.set(slot.kind, (tally.get(slot.kind) ?? 0) + 1);
+    expect(tally.get('raw-only')).toBe(18);
+    expect(tally.get('brand-only')).toBe(6);
+    expect(tally.get('neither')).toBe(27);
+    expect(tally.get('both')).toBe(4);
+    expect([...tally.values()].reduce((total, n) => total + n, 0)).toBe(census.slots.length);
+  });
+
+  it('lets no producer take a parameter that also admits an already-branded value', () => {
+    // THE RULE, and it is about the parameter rather than the name: a function
+    // that produces a branded quantity may not have a parameter that accepts a
+    // bare primitive AND a value that already carries a brand. That is the
+    // shape `createEmpireClock(clock.accelerated, 0).unaccelerated` was — a
+    // wall-clock brand handed back over a purchase-moved reading, with no cast
+    // and only exported API.
+    const census = brandCensus();
+    const faults = producers(census)
+      .flatMap((fn) => fn.slots)
+      .filter((slot) => slot.kind === 'both')
+      .map((slot) => `${slot.fn}(${slot.parameter}) admits ${slot.acceptsBrands.join(', ')}`);
+    expect(faults).toEqual([]);
+
+    // The complement, pinned so the zero above is zero against something. Four
+    // slots in the module do admit both, and every one of them is a decode
+    // predicate that takes `unknown` on purpose — the wire has no types, and a
+    // narrowing function that refused a branded value would refuse the values
+    // this module's own constructors hand back.
+    expect(
+      census.slots
+        .filter((slot) => slot.kind === 'both')
+        .map((slot) => `${slot.fn}(${slot.parameter})`),
+    ).toEqual([
+      'isEmpireAccelerant(value)',
+      'isEmpireOutput(value)',
+      'isProgressionReachingOutput(value)',
+      'isPurchasableAccelerant(value)',
+    ]);
+    // And none of those four is a producer, so the exemption is a fact about
+    // the census rather than a hole punched in it.
+    expect(
+      producers(census).filter((fn) => /^is[A-Z]/.test(fn.name)).length,
+    ).toBe(0);
+  });
+
+  it('closes the laundering SOURCE: no wall-clock producer accepts an accelerated reading', () => {
+    // The third claim of the salvaged exploit probe, stated the way it is now
+    // true. `physioDaysSavedFor(settledLevel([laundered], laundered))` does not
+    // error any more, and that is correct rather than a regression: its input
+    // is unobtainable, so the source is closed instead of the consumer. The
+    // honest assertion is therefore about the source.
+    //
+    // WALL_CLOCK is the progression-reaching side of the split — the raw wall
+    // clock and the three quantities derived from it — and ACCELERATED is the
+    // side a purchase moves. A function that emits one of the first while
+    // accepting one of the second is the two-hop sale in one signature,
+    // whatever it is called and whatever it does inside.
+    const WALL_CLOCK: readonly string[] = [
+      'UnacceleratedSeconds',
+      'SettledTenureDays',
+      'SettledLevel',
+      'InjuryDaysSaved',
+      // `elapsedFor`'s return is a conditional over its output parameter, and
+      // one arm of it is the wall clock. Named here so the function is inside
+      // the rule rather than outside it on a technicality of spelling.
+      'ElapsedFor<O>',
+    ];
+    const ACCELERATED: readonly string[] = ['AcceleratedSeconds', 'IdleTenureDays'];
+
+    const census = brandCensus();
+    const wallClockProducers = census.functions.filter((fn) =>
+      fn.produces.some((brand) => WALL_CLOCK.includes(brand)),
+    );
+    expect(wallClockProducers.map((fn) => fn.name)).toEqual([
+      'applyAccelerant',
+      'asInjuryDaysSaved',
+      'asUnacceleratedSeconds',
+      'createEmpireClock',
+      'createEmpireState',
+      'createNpcLifter',
+      'elapsedFor',
+      // Piece E6's gate clock. It returns `UnacceleratedSeconds` as a
+      // consequence of `GATE_TARGET` being typed against
+      // `ProgressionReachingOutput`, so it is a wall-clock producer and belongs
+      // inside this rule rather than outside it.
+      'gateElapsedFor',
+      'idleLedger',
+      'physioDaysSavedFor',
+      'progressionLedger',
+      'settledLevel',
+      'settledTenureDays',
+    ]);
+
+    let checked = 0;
+    const routes: string[] = [];
+    for (const fn of wallClockProducers) {
+      for (const slot of fn.slots) {
+        for (const accelerated of ACCELERATED) {
+          checked += 1;
+          if (slot.acceptsBrands.includes(accelerated)) {
+            routes.push(`${fn.name}(${slot.parameter}) accepts ${accelerated}`);
+          }
+        }
+      }
+    }
+    expect(routes).toEqual([]);
+    // Counts, not bounds: how many (producer, slot, accelerated brand) triples
+    // were actually driven. A wall-clock producer that lost its parameters, or
+    // a WALL_CLOCK list that stopped matching any brand the module declares,
+    // would make the zero above a zero over an empty domain.
+    expect(wallClockProducers.length).toBe(13);
+    expect(checked).toBe(48);
+    // And the brand names this test routes on are real brands, resolved by the
+    // census rather than spelled here and hoped for. `ElapsedFor<O>` is a
+    // conditional and is excluded from that check by construction, so it is
+    // held by the producer pin above instead.
+    for (const brand of [...WALL_CLOCK.filter((name) => !name.includes('<')), ...ACCELERATED]) {
+      expect(census.brands, `${brand} is not a brand this module declares`).toContain(brand);
+    }
   });
 });
 
@@ -861,12 +1531,33 @@ describe('the runtime predicates refuse what the types refuse', () => {
       ['gym-bucks'],
       'GYM-BUCKS',
     ];
+    let refusals = 0;
     for (const value of garbage) {
       expect(isEmpireOutput(value), `${String(value)} is not an output`).toBe(false);
       expect(isEmpireAccelerant(value), `${String(value)} is not an accelerant`).toBe(false);
       expect(isPurchasableAccelerant(value), `${String(value)} is not purchasable`).toBe(false);
       expect(isProgressionReachingOutput(value), `${String(value)} reaches nothing`).toBe(false);
+      // `mayAccelerate` on the same garbage, on BOTH arguments, because its own
+      // docstring says it is the one for callers the compiler never saw and it
+      // went straight to two table lookups: an unknown accelerant made
+      // `accelerantLicence` return undefined and the `.includes` beneath it
+      // threw a TypeError. It answers rather than throwing now, and the answer
+      // is no.
+      expect(
+        () => mayAccelerate(value as EmpireAccelerant, 'gym-bucks'),
+        `${String(value)} threw instead of answering`,
+      ).not.toThrow();
+      expect(mayAccelerate(value as EmpireAccelerant, 'gym-bucks')).toBe(false);
+      expect(mayAccelerate('coach-staff-level', value as EmpireOutput)).toBe(false);
+      refusals += 1;
     }
+    // Counts, not bounds. And the refusals above are refusals of the VALUE
+    // rather than of everything: the same earned accelerant on a real output is
+    // allowed, including on the progression-reaching one §5.2 asks for.
+    expect(refusals).toBe(garbage.length);
+    expect(refusals).toBe(12);
+    expect(mayAccelerate('coach-staff-level', 'training-iq')).toBe(true);
+    expect(mayAccelerate('coach-staff-level', 'gym-bucks')).toBe(true);
   });
 
   it('derives its published lists rather than re-listing them', () => {
@@ -915,23 +1606,51 @@ describe('the clock split', () => {
     // The property piece E6's sweep is the horizon-wide version of. Here it is
     // the local statement: whatever is skipped, the un-accelerated reading is
     // the elapsed seconds it was given.
-    let pairsWithASkip = 0;
+    //
+    // WHAT THIS SWEEP'S DOMAIN IS, because it was overstated. The generator
+    // emits raw numeric literals, so the only laundering it can express is
+    // "pass a bigger number" — it cannot produce `createEmpireClock(
+    // clock.accelerated, 0)`, which is the route that actually reopened the
+    // hazard, because that route is a TYPE error and cannot appear in a passing
+    // test at all. It is asserted where it can be: with a directive, in
+    // 'refuses every route the exploit reproduction took' above.
+    //
+    // Of the two counters that used to sit at the bottom, `pairsWithASkip`
+    // counted the literals in the generator — no state of `empireCore.ts` moved
+    // it — and reported the sweep as full while the case it was standing guard
+    // over was outside the domain entirely. It is replaced by a count of what
+    // the SUBJECT produced.
+    const readingsByElapsed = new Map<number, Set<number>>();
+    let pairs = 0;
     let pairsWhereTheClocksDiffer = 0;
     for (const elapsed of [0, 1, 60, 3600, 86400, 604800]) {
       for (const skipped of [0, 1, 3600, 86400]) {
         const clock = createEmpireClock(elapsed, skipped);
         expect(clock.unaccelerated, `elapsed ${elapsed}, skipped ${skipped}`).toBe(elapsed);
         expect(clock.accelerated).toBe(elapsed + skipped);
-        if (skipped > 0) pairsWithASkip += 1;
+        const readings = readingsByElapsed.get(elapsed) ?? new Set<number>();
+        readings.add(Number(clock.unaccelerated));
+        readingsByElapsed.set(elapsed, readings);
+        pairs += 1;
         if (Number(clock.accelerated) !== Number(clock.unaccelerated)) {
           pairsWhereTheClocksDiffer += 1;
         }
       }
     }
-    // Counts rather than bounds. A generator that produced no skip at all
-    // would leave every assertion above trivially true, which is the empty
-    // domain this file's header is about.
-    expect(pairsWithASkip).toBe(18);
+    // The claim in the title, as a fact about the OUTPUT: across every skip
+    // offered for one wall time, the wall clock took exactly one value. An
+    // implementation that let any of the skip into it — `elapsed + skipped`,
+    // `elapsed + skipped / 2`, a clamp — gives four readings for one elapsed
+    // and this goes red without depending on the equality above.
+    for (const [elapsed, readings] of readingsByElapsed) {
+      expect(readings.size, `wall time ${elapsed} produced ${readings.size} wall clocks`).toBe(1);
+    }
+    // Counts rather than bounds, and both of these move with the subject. The
+    // second in particular is what says the domain is not degenerate: an engine
+    // that ignored `skippedSeconds` outright would satisfy every assertion
+    // above and drop this to zero.
+    expect(readingsByElapsed.size).toBe(6);
+    expect(pairs).toBe(24);
     expect(pairsWhereTheClocksDiffer).toBe(18);
   });
 
@@ -1218,7 +1937,52 @@ describe('the state constructor and its invariants', () => {
   const lifter = (id: string, tier: NpcTier = 'novice'): ReturnType<typeof createNpcLifter> =>
     createNpcLifter(id, tier, 'Placeholder', 0, 0);
 
+  /**
+   * A roster lifter as a DECODED PAYLOAD rather than a constructed value.
+   *
+   * `createNpcLifter` cannot build any of the rows below it, which is exactly
+   * why they need building: `empireStateFaults` is the shadow for the caller
+   * TypeScript never sees, and a payload from an Edge Function arrives as JSON
+   * with whatever is in it.
+   */
+  const wireLifter = (
+    overrides: Readonly<Record<string, unknown>>,
+  ): ReturnType<typeof createNpcLifter> =>
+    ({
+      id: 'a',
+      tier: 'novice',
+      displayName: 'Placeholder',
+      joinedAt: 0,
+      settledAt: 0,
+      ...overrides,
+    }) as unknown as ReturnType<typeof createNpcLifter>;
+
   const broken: readonly (readonly [string, EmpireState, RegExp])[] = [
+    [
+      'a clock with no numbers in it',
+      {
+        ...base,
+        clock: {
+          unaccelerated: undefined as unknown as UnacceleratedSeconds,
+          accelerated: undefined as unknown as AcceleratedSeconds,
+        },
+      },
+      /the un-accelerated reading undefined is not a wall-clock time/,
+    ],
+    [
+      // The payload the ordering test accepted: both readings negative, so
+      // `accelerated < unaccelerated` is false and the only check there was
+      // passed. `createEmpireClock` refuses it on both arguments.
+      'a clock at a negative time, which the ordering check alone accepted',
+      {
+        ...base,
+        clock: {
+          unaccelerated: -1 as unknown as UnacceleratedSeconds,
+          accelerated: -1 as unknown as AcceleratedSeconds,
+        },
+      },
+      /the accelerated reading -1 is not an idle-clock time/,
+    ],
     [
       'a clock running backwards',
       {
@@ -1229,6 +1993,49 @@ describe('the state constructor and its invariants', () => {
         },
       },
       /accelerated reading is behind/,
+    ],
+    [
+      // The wall-clock view of the ladders, ahead of the idle one on each of
+      // the three rungs. That ordering is what says no accelerant reached the
+      // settled side: `skipExpansion` moves `idleCompletion` and copies
+      // `settledCompletion` across, so the idle view is never behind. Three
+      // rows rather than one because the three rungs are three branches.
+      'a wall-clock equipment tier ahead of the idle one',
+      {
+        ...base,
+        settledAxes: { ...base.settledAxes, equipment: 'monolift' as EquipmentTier },
+      },
+      /settledAxes: equipment monolift is ahead of the idle view's bare-bar/,
+    ],
+    [
+      'a wall-clock space level ahead of the idle one',
+      { ...base, settledAxes: { ...base.settledAxes, spaceLevel: 1 } },
+      /settledAxes: space level 1 is ahead of the idle view's 0/,
+    ],
+    [
+      'a wall-clock staff level ahead of the idle one',
+      {
+        ...base,
+        settledAxes: {
+          ...base.settledAxes,
+          staffLevel: { ...base.settledAxes.staffLevel, physio: 1 },
+        },
+      },
+      /settledAxes: physio level 1 is ahead of the idle view's 0/,
+    ],
+    [
+      // A wall-clock book, which is the money §5.4's physio rung and §5.3's
+      // recruits are bought out of. Its sibling below is the accelerated book.
+      // The physio purse rather than the record, because GDD §5.4's third-book
+      // ruling makes this a purse per funded output and the walk has to reach
+      // every one of them — a check on the record's shape would pass on a
+      // record whose physio entry was NaN.
+      'a wall-clock book that is not a balance',
+      {
+        ...base,
+        settledBooks: { ...base.settledBooks, 'physio-days-saved': Number.NaN as GymBucks },
+      },
+      /the physio-days-saved book: NaN is not a balance/,
     ],
     [
       'an equipment tier off the ladder',
@@ -1254,6 +2061,22 @@ describe('the state constructor and its invariants', () => {
       /coach level .* is off the ladder/,
     ],
     [
+      // The branch below the axis checks. `rosterCapacity` reads the spotter
+      // level, so an axis that decoded as something other than a number makes
+      // the capacity NaN — and `length > NaN` is false, which let any roster at
+      // all through the check beneath it.
+      'a spotter level that is not a number, which makes the capacity NaN',
+      {
+        ...base,
+        axes: {
+          ...base.axes,
+          staffLevel: { coach: 0, spotter: Number.NaN, physio: 0 },
+        },
+        roster: [lifter('a'), lifter('b'), lifter('c')],
+      },
+      /roster: NaN is not a capacity/,
+    ],
+    [
       'reputation above the scale',
       { ...base, reputation: (EMPIRE_TUNING.REPUTATION_MAX + 1) as never },
       /above REPUTATION_MAX/,
@@ -1270,6 +2093,52 @@ describe('the state constructor and its invariants', () => {
       'a lifter on a tier that is not a tier',
       { ...base, roster: [createNpcLifter('a', 'olympian' as NpcTier, 'Placeholder', 0, 0)] },
       /which is not a tier/,
+    ],
+    // The five rows below are the decode boundary catching up with the
+    // constructors. `createNpcLifter` refuses every one of these payloads; the
+    // roster loop checked ids for duplication and tiers for membership and
+    // accepted the rest, which is the same guard-on-one-arm shape as the clock.
+    [
+      'a lifter with no id',
+      { ...base, roster: [wireLifter({ id: '' })] },
+      /a lifter arrived with no id/,
+    ],
+    [
+      'a lifter with no display name',
+      { ...base, roster: [wireLifter({ displayName: '' })] },
+      /arrived with no display name/,
+    ],
+    [
+      'a lifter with no arrival times at all',
+      { ...base, roster: [wireLifter({ joinedAt: undefined, settledAt: undefined })] },
+      /joined at undefined, which is not an idle-clock time/,
+    ],
+    [
+      'a lifter that joined before the gym opened',
+      { ...base, roster: [wireLifter({ joinedAt: -1 })] },
+      /joined at -1, which is not an idle-clock time/,
+    ],
+    [
+      // The hazard-adjacent one. `settledTenureDays` measures from `settledAt`,
+      // so a negative settled time inflates the tenure GDD §5.2 pays Training
+      // IQ on — reached through a decoded payload rather than an argument list.
+      'a lifter that settled before the gym opened',
+      { ...base, roster: [wireLifter({ settledAt: -1 })] },
+      /settled at -1, which is not a wall-clock time/,
+    ],
+    [
+      'a ledger entry stamped at no time',
+      {
+        ...base,
+        ledger: [
+          {
+            at: undefined as unknown as UnacceleratedSeconds,
+            output: 'gym-bucks',
+            amount: 1,
+          },
+        ],
+      },
+      /gym-bucks was stamped at undefined, which is not a wall-clock time/,
     ],
     [
       'a ledger entry with no number in it',
@@ -1290,6 +2159,21 @@ describe('the state constructor and its invariants', () => {
       /is not an empire output/,
     ],
     [
+      'an accelerant stamped at no time',
+      {
+        ...base,
+        accelerants: [
+          {
+            accelerant: 'gym-empire-timer-skip',
+            output: 'gym-bucks',
+            at: undefined as unknown as UnacceleratedSeconds,
+            seconds: 1,
+          },
+        ],
+      },
+      /gym-empire-timer-skip was stamped at undefined, which is not a wall-clock time/,
+    ],
+    [
       'an accelerant applied for a negative time',
       {
         ...base,
@@ -1303,6 +2187,56 @@ describe('the state constructor and its invariants', () => {
         ],
       },
       /applied for -1 seconds/,
+    ],
+    [
+      // The fault that used to be a `TypeError`. `mayAccelerate` indexes
+      // `ACCELERANT_ARRIVAL` and then calls `.includes` on the result, so an
+      // accelerant the tables have never heard of made `accelerantLicence`
+      // return undefined and threw out of a function whose whole contract is to
+      // COLLECT faults — which meant `assertEmpireState` reported the wrong
+      // error for a decoded payload, which is the one caller it exists for.
+      'an accelerant the tables have no verdict for',
+      {
+        ...base,
+        accelerants: [
+          {
+            accelerant: 'free-training-iq',
+            output: 'training-iq',
+            at: asUnacceleratedSeconds(0),
+            seconds: 1,
+          } as unknown as AppliedAccelerant,
+        ],
+      },
+      /free-training-iq on training-iq is not a pairing this module has a verdict for/,
+    ],
+    [
+      'an accelerant with no accelerant on it at all',
+      {
+        ...base,
+        accelerants: [
+          {
+            output: 'gym-bucks',
+            at: asUnacceleratedSeconds(0),
+            seconds: 1,
+          } as unknown as AppliedAccelerant,
+        ],
+      },
+      /undefined on gym-bucks is not a pairing this module has a verdict for/,
+    ],
+    [
+      'an accelerant aimed at an output the tables have no verdict for',
+      {
+        ...base,
+        accelerants: [
+          {
+            accelerant: 'gym-empire-timer-skip',
+            output: 'covered-day',
+            at: asUnacceleratedSeconds(0),
+            seconds: 1,
+          } as unknown as AppliedAccelerant,
+        ],
+      },
+      /gym-empire-timer-skip on covered-day is not a pairing this module has a verdict for/,
     ],
     [
       'a purchased accelerant on a progression-reaching output, cast past the type',
@@ -1322,15 +2256,37 @@ describe('the state constructor and its invariants', () => {
   ];
 
   it('catches every invariant it claims to catch', () => {
+    const produced: string[] = [];
     for (const [what, state, message] of broken) {
       const faults = empireStateFaults(state);
       expect(faults.length, `${what} produced no fault`).toBeGreaterThan(0);
       expect(faults.join('\n'), what).toMatch(message);
       expect(() => assertEmpireState(state), what).toThrow(RangeError);
+      produced.push(...faults);
     }
-    // Counts, not bounds: the table really does cover this many distinct
-    // failures, so shrinking it is visible rather than quiet.
-    expect(broken.length).toBe(15);
+
+    // The line here was `expect(broken.length).toBe(15)`, described as "counts,
+    // not bounds" — and it was a count of an array declared in this same test,
+    // which no state of `empireCore.ts` could move. It guarded the table
+    // against being edited, which is not what the table is for.
+    //
+    // What it is for is the fault branches in `empireStateFaults`, so those are
+    // what is counted, read out of the subject. Every `faults.push` site has to
+    // be produced by a row above: a branch added to the decode boundary with no
+    // row exercising it is red here, and a branch deleted — which is what
+    // reverting any of this piece's decode fixes looks like — is red both here
+    // and on the row that stops producing a fault.
+    const sites = faultPushSkeletons();
+    expect(sites.length, 'the faults.push parse found nothing to check').toBe(28);
+    const uncovered = sites
+      .filter((site) => !produced.some((fault) => site.pattern.test(fault)))
+      .map((site) => site.text);
+    expect(uncovered).toEqual([]);
+    // Counts, not bounds, on the other side of the same claim: how many faults
+    // the table actually produced. A table whose rows all went quiet would make
+    // `uncovered` a filter over an empty list of messages — which is caught
+    // above, and is caught here too, in the number rather than in the shape.
+    expect(produced.length).toBe(37);
   });
 
   it('refuses a purchased accelerant that arrived past the compiler', () => {
@@ -1381,7 +2337,69 @@ describe('the directory is pure, numerically clean and free of dice', () => {
   it('has shipped modules to scan, so the scans below are not empty', () => {
     // Counts, not bounds. Every check in this block walks this list, and a
     // list that had gone empty would make all of them pass.
-    expect(shipped).toEqual(['empireCore.ts', 'empireTuning.ts']);
+    expect(shipped).toEqual([
+      'empireCore.ts',
+      'empireInvariant.ts',
+      'empireTuning.ts',
+      'engagement.ts',
+      'expansion.ts',
+      'npc.ts',
+      'production.ts',
+      'recruitment.ts',
+      'reputation.ts',
+      'social.ts',
+    ]);
+  });
+
+  it('leaves no shipped module invisible to the rest of the directory', () => {
+    // The structural half of a coherence finding. `engagement.ts` and
+    // `engagement.test.ts` measure the earned chain three other headers were
+    // still calling unmeasured, and NO OTHER SHIPPED MODULE NAMED THEM — the
+    // only occurrence of either name outside themselves was the file list
+    // pinned in the test above. Eleven modules, and the last one was invisible
+    // to the other ten, so a reader following the directory's own account of
+    // itself could not arrive at the file that discharged the obligation.
+    //
+    // What this measures: for each shipped module, how many OTHER shipped
+    // modules name it — as an import specifier `'./name'`, or in prose as
+    // `name.ts` or `name.test.ts`. Prose counts deliberately; `engagement.ts`
+    // is a leaf that nothing imports, so an import-only scan would report it
+    // orphaned forever and be deleted.
+    //
+    // What it cannot do, said rather than implied: it cannot tell a mention
+    // that orients a reader from one that does not, and a module could satisfy
+    // it with one stale sentence. It catches ARRIVAL — a new module nobody
+    // wrote into the map — which is the case that actually happened.
+    const bodies = new Map(
+      shipped.map((name) => [name, readFileSync(path.join(HERE, name), 'utf8')]),
+    );
+    const mentionersOf = (name: string): readonly string[] => {
+      const base = name.replace(/\.ts$/, '');
+      const keys = [`./${base}`, `${base}.ts`, `${base}.test.ts`];
+      return shipped.filter(
+        (other) => other !== name && keys.some((key) => (bodies.get(other) as string).includes(key)),
+      );
+    };
+
+    const orphans: string[] = [];
+    let pairs = 0;
+    for (const name of shipped) {
+      const mentioners = mentionersOf(name);
+      pairs += mentioners.length;
+      if (mentioners.length === 0) orphans.push(name);
+    }
+    // The claim, with the offenders in the message rather than a length.
+    expect(orphans.join(', ')).toBe('');
+    // Non-vacuity, as counts rather than bounds: every module was examined, and
+    // the map really has edges in it. Pinned exactly, so a directory whose
+    // cross-references thinned out is a decision somebody signs.
+    expect(bodies.size).toBe(shipped.length);
+    expect(pairs).toBe(45);
+    // And the finder can report: a name no module contains comes back with no
+    // mentioners, so the empty `orphans` above is an empty answer to a question
+    // that has a non-empty one available.
+    expect(mentionersOf('empireNotAModule.ts')).toEqual([]);
+    expect(mentionersOf('empireCore.ts').length).toBe(9);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -1414,6 +2432,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       /from ['"]react/,
     ];
     let scanned = 0;
+    let checks = 0;
     for (const name of shipped) {
       const source = readFileSync(path.join(HERE, name), 'utf8');
       const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
@@ -1423,12 +2442,20 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(code, `${name} lost its declarations to the comment strip`).toMatch(/export /);
       for (const pattern of banned) {
         expect(code, `${name} must not reach ${String(pattern)}`).not.toMatch(pattern);
+        checks += 1;
       }
       scanned += 1;
     }
-    // Counts, not bounds: how many files and how many patterns actually ran.
-    expect(scanned).toBe(2);
-    expect(banned.length).toBe(18);
+    // Counts, not bounds: how many files and how many (file, pattern) pairs
+    // actually ran.
+    //
+    // The line here was `expect(banned.length).toBe(18)` — a count of an array
+    // literal declared twenty lines above, which no state of `src/empire/` could
+    // move. What it was reaching for is the product, and the product has a
+    // SUBJECT in it: a module added to this directory, or one that stopped
+    // being read, moves 36 as surely as a shortened ban list does.
+    expect(scanned).toBe(shipped.length);
+    expect(checks).toBe(shipped.length * banned.length);
     // And the patterns are not all dead letters: each one is driven against a
     // string that should trip it, derived from the pattern's own purpose, so a
     // regex that stopped matching anything is red rather than quietly green.
@@ -1452,7 +2479,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'localStorage.getItem',
       "import x from 'react';",
     ];
-    expect(tripwires.length).toBe(banned.length);
+    // `expect(tripwires.length).toBe(banned.length)` was here and is gone: two
+    // arrays declared eight lines apart in this test, compared with each other.
+    // The loop below is what the pairing needs — a short `tripwires` makes
+    // `tripwires[index]` undefined and `toMatch` throws — and a long one is
+    // extra strings nothing reads. Neither direction is a fact about
+    // `src/empire/`, which is what the deleted line read as. The loop's own
+    // domain is pinned by `checks` above, through `shipped.length`.
     for (const [index, pattern] of banned.entries()) {
       expect(tripwires[index], `pattern ${String(pattern)} matches nothing`).toMatch(pattern);
     }
@@ -1477,31 +2510,69 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(code.length, 'empireCore.ts stripped to nothing').toBeGreaterThan(0);
     expect(code).toMatch(/export function /);
 
-    // Part 1 — `Unbranded<N>`, enumerated from the source rather than counted
-    // in a sentence. `empireCore.ts` said "all nine constructors" when there
-    // were eight, and a sentence that counts cannot be reddened. Dropping the
-    // guard from any one of them is red on the loop; adding a constructor
-    // without it, or adding an `asSettledTenureDays` that would hand a caller a
-    // one-call route into the wall-clock brand, is red on the name pin.
-    const constructors = [...code.matchAll(/export function (as[A-Z]\w*)<[^{]*\{/g)];
-    const names = constructors.map((match) => match[1] as string).sort();
-    expect(names).toEqual([
-      'asAcceleratedSeconds',
-      'asGymBucks',
-      'asIdleTenureDays',
-      'asInjuryDaysSaved',
-      'asNpcId',
-      'asReputation',
-      'asTrainingIq',
-      'asUnacceleratedSeconds',
-    ]);
+    // Part 1 — `Unbranded<N>`, on every parameter the CENSUS says needs it,
+    // rather than on everything spelled `as*`.
+    //
+    // The enumeration here was `/export function (as[A-Z]\w*)<[^{]*\{/g`, and
+    // that regex is why this check could not see the defect it was written for:
+    // `createEmpireClock` and `createNpcLifter` return brands, took bare
+    // numbers, and are not spelled `as*`. The producer list now comes from
+    // `brandCensus`, which asks the compiler what a function RETURNS, so the
+    // set this loop walks cannot go stale against a name.
+    //
+    // What this adds on top of the census's own fault list is the SPELLING: the
+    // census says the slot refuses a brand, this says it refuses it by carrying
+    // `Unbranded<...>` rather than by some other accident of inference. The two
+    // go red together, which is the point — one is the compiler's verdict and
+    // one is a line a reader can find.
+    const census = brandCensus();
+    const rawSlots = producers(census).flatMap((fn) =>
+      fn.slots.filter((slot) => slot.kind === 'raw-only').map((slot) => ({ fn: fn.name, slot })),
+    );
+    const declarationOf = (name: string): string => {
+      const found = [...code.matchAll(new RegExp(`export function ${name}(<[^{]*)?\\(`, 'g'))];
+      expect(found.length, `${name} is declared ${found.length} times, not once`).toBe(1);
+      const at = (found[0] as RegExpMatchArray).index as number;
+      return code.slice(at, code.indexOf('{', at));
+    };
     let guarded = 0;
-    for (const match of constructors) {
-      expect(match[0], `${String(match[1])} takes a bare primitive`).toMatch(/&\s*Unbranded</);
+    for (const { fn, slot } of rawSlots) {
+      expect(
+        declarationOf(fn),
+        `${fn}(${slot.parameter}) accepts a bare primitive without an Unbranded guard`,
+      ).toMatch(new RegExp(`${slot.parameter}:[^,)]*&\\s*Unbranded<`));
       guarded += 1;
     }
-    expect(guarded).toBe(names.length);
-    expect(guarded).toBe(8);
+    // Counts, not bounds: how many producing slots take a raw primitive at all.
+    // A census that found no producers, or producers with no raw slots, would
+    // walk nothing here.
+    expect(guarded).toBe(17);
+    expect(rawSlots.map(({ fn, slot }) => `${fn}(${slot.parameter})`).sort()).toEqual([
+      'applyAccelerant(seconds)',
+      'asAcceleratedSeconds(value)',
+      'asGymBucks(value)',
+      'asIdleTenureDays(value)',
+      'asInjuryDaysSaved(value)',
+      'asNpcId(value)',
+      'asReputation(value)',
+      'asTrainingIq(value)',
+      'asUnacceleratedSeconds(value)',
+      'createEmpireClock(elapsedSeconds)',
+      'createEmpireClock(skippedSeconds)',
+      'createNpcLifter(displayName)',
+      'createNpcLifter(id)',
+      'createNpcLifter(joinedAt)',
+      'createNpcLifter(settledAt)',
+      'spaceLevelCost(level)',
+      'staffLevelCost(level)',
+    ]);
+    // `buildSeconds` is guarded too and is NOT on that list, because it returns
+    // a bare `number` and is therefore not a producer. Kept as its own line
+    // rather than left out: the census's rule is about producers, and applying
+    // the guard more widely than the rule requires is a decision somebody made
+    // on purpose — see the note on `buildSeconds` itself.
+    expect(declarationOf('buildSeconds')).toMatch(/level:[^,)]*&\s*Unbranded</);
+    expect(producers(census).map((fn) => fn.name)).not.toContain('buildSeconds');
 
     // Part 2 — the derived quantities. One row per function whose argument list
     // or return type IS the fence, including both arms of the tenure pair,
@@ -1614,8 +2685,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       carriers.set(key, (carriers.get(key) ?? 0) + 1);
     }
 
-    expect(directives).toBe(23);
-    expect(carriers.size).toBe(9);
+    expect(directives).toBe(26);
+    expect(carriers.size).toBe(10);
     expect([...carriers.values()].reduce((total, n) => total + n, 0)).toBe(directives);
     // The tests that carry them, pinned by title. A directive added to a test
     // not on this list is red, and a title edited without touching the list is
@@ -1626,6 +2697,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'refuses a re-brand, which is how the argument list above was walked around',
       'refuses an accelerant whose type has widened to the union, in all three spellings',
       'refuses an accelerated clock where a wall clock is required, on every arm',
+      'refuses every route the exploit reproduction took — the laundering regression',
       'refuses one tenure brand where the other is required — hazard 1’s derived quantity',
       'refuses the Training IQ path, in both graders — GDD §8.3B into §5.2, hazard 1',
       'refuses the illegal pairing as an object literal — the fence inference cannot move',
@@ -1682,79 +2754,142 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       }
       filesRead += 1;
     }
-    expect(filesRead).toBe(2);
+    expect(filesRead).toBe(shipped.length);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(singleQuoted.size).toBe(66);
+    expect(singleQuoted.size).toBe(159);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(28);
+    expect(templateChunks.size).toBe(137);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
     // message. Match counts rather than presence, because a pattern with more
     // than one witness is the textual pin this codebase has been bitten by.
     const chunks = [...templateChunks];
-    expect(chunks.filter((chunk) => chunk.includes('may not accelerate')).length).toBe(2);
+    expect(chunks.filter((chunk) => chunk.includes('may not accelerate')).length).toBe(3);
     expect(chunks.filter((chunk) => chunk.includes('duplicate lifter id')).length).toBe(1);
 
     const spaceFree = [...singleQuoted].filter((literal) => !literal.includes(' ')).sort();
     expect(spaceFree).toEqual([
+      './empireCore',
+      './empireInvariant',
       './empireTuning',
+      './expansion',
+      './npc',
+      './production',
+      './recruitment',
+      './reputation',
+      './social',
+      'Placeholder',
+      'accelerated',
+      'accelerated-purse',
       'accelerated-seconds',
       'acceleratedSeconds',
+      'accepted',
+      'ahead',
+      'already-building',
+      'already-visited-today',
+      'at-ceiling',
+      'axes',
       'bare-bar',
+      'behind',
       'budget',
+      'calendar-day',
       'chalk',
+      'chance-draw',
+      'cheapest-affordable-first',
+      'check-in-upkeep',
       'club',
       'coach',
       'coach-staff-level',
+      'combined-total',
       'comp-plates',
       'competition-total',
+      'composed-gym',
       'cosmetic-unlock',
       'cosmetics',
+      'costliest-affordable-first',
       'covered-day',
+      'currency-purchase',
+      'daily-allowance-spent',
       'e1rm',
       'elapsedSeconds',
+      'equipment',
+      'fixed-order-no-rotation',
+      'friend',
+      'friend-encouragement',
+      'friend-visit-allowance-reset',
       'global',
       'gym-bucks',
+      'gym-bucks-below-cost',
       'gym-economy',
       'gym-empire-timer-skip',
       'gym-progress',
       'gymBucks',
+      'idle-clock',
       'idle-only',
       'idle-tenure-days',
       'idleTenureDays',
       'injury-days-saved',
       'injuryDaysSaved',
       'knob',
+      'leaderboard-placement',
       'legendary',
+      'level',
       'monolift',
       'national',
+      'not-a-friend-gym',
+      'not-enough-gym-bucks',
+      'not-enough-reputation',
+      'not-enough-wall-clock-earnings',
       'novice',
       'npc-id',
+      'own-gym',
+      'paid-pull',
       'physio',
       'physio-days-saved',
       'progression-reaching',
       'refusal',
+      'refused',
       'regional',
       'reputation',
+      'reputation-below-threshold',
+      'reputation-milestone',
       'reputation-tier',
       'rewarded-ad-timer-skip',
+      'rival',
+      'rival-period-close',
+      'rival-week',
+      'roster-at-capacity',
       'roster-slot',
+      'rotate-greedy-per-check-in',
+      'save-for-physio-first',
       'settled-level',
       'settled-tenure-days',
+      'settledAxes',
       'settledTenureDays',
+      'shipped',
+      'single-purse',
+      'single-wall-clock-purse',
       'skippedSeconds',
+      'space',
       'space-level',
       'specialty-bars',
+      'spend-once-per-calendar-day',
+      'sponsorship',
       'spotter',
       'store-purchase',
+      'string',
       'structural',
+      'trained-day-upkeep',
       'training-iq',
       'training-pace',
       'trainingIq',
       'unaccelerated-seconds',
       'unacceleratedSeconds',
+      'visited',
+      'wall-clock',
+      'wall-clock-earned',
     ]);
 
     // The half the pin does not reach: a multi-word name inside a message. Run
@@ -1767,7 +2902,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(94);
+    expect(stringsChecked).toBe(296);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -1783,7 +2918,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // which is the same job the sibling's `${key}_PER_SESSION` probe does, and
     // it is not a second bite on `empireCore.ts`. The subject-edit bites in
     // this test are the three count pins, the exact `spaceFree` pin, and the
-    // loop over all 94 strings above. What the derivation buys is that the
+    // loop over every string the three collectors found, whose count is pinned
+    // two lines above this comment and is 295 rather than the 94 this sentence
+    // said while the collector read single-quoted literals only. What the derivation buys is that the
     // probes cannot go stale: rename the vocabulary and the probes rename with
     // it, instead of two literals still passing about tokens that are gone.
     let probes = 0;
@@ -1794,7 +2931,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(56);
+    expect(probes).toBe(119);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -1816,47 +2953,81 @@ describe('the directory is pure, numerically clean and free of dice', () => {
   it('holds every number in the tuning module and none anywhere else', () => {
     // The repository's own audit, run from inside this piece rather than only
     // in the tree-wide pass, so a bare literal here is red before it is red
-    // there. `empireCore.ts` is audited under its real path and therefore
-    // under the default `renderer` rule: zero bare numbers.
-    const core = readFileSync(path.join(HERE, 'empireCore.ts'), 'utf8');
-    const coreFindings = auditSource('src/empire/empireCore.ts', core);
-    expect(coreFindings.length, `\n${formatFindings(coreFindings)}\n`).toBe(0);
-
-    // `empireTuning.ts` is registered in `SOURCE_RULES` now — the one registry
-    // line this piece needed, which landed in the other session's file when
-    // §5 merged. Audited under its real path it is clean, and that is the
-    // tree-wide pass this block used to be waiting for.
-    const tuning = readFileSync(path.join(HERE, 'empireTuning.ts'), 'utf8');
-    const asShipped = auditSource('src/empire/empireTuning.ts', tuning);
-    expect(asShipped.length, `\n${formatFindings(asShipped)}\n`).toBe(0);
-
-    // THE COUNT IS MEASURED UNDER AN UNREGISTERED PATH ON PURPOSE, and this is
-    // the line the registration would otherwise have quietly gutted.
+    // there.
     //
-    // It was `auditSource('src/empire/empireTuning.ts', …)` pinned at 87 — the
-    // findings the audit reported while this file had no row. That pin did its
-    // job the moment the row landed: it went red, and its own message named
-    // this as one of the two possibilities ("or the instrument stopped
-    // reporting"). But the obvious repair — re-pinning it at 0 — swaps a real
-    // guard for a vacuous one, because a registered file reports 0 findings
-    // whatever it contains, so every future edit would leave it green.
+    // THIS GUARD HAS TO BE RIGHT IN TWO WORLDS AND WAS RIGHT IN ONE. It pinned
+    // the audit at 87 findings in `empireTuning.ts` — true only while that file
+    // is ABSENT from `SOURCE_RULES`. The row that registers it is drafted and
+    // lands in another session's file; the moment it does, the correct number
+    // is zero and a guard pinned at 87 goes red on a correct change, which is
+    // the worst kind of red because the fix looks like weakening the check.
     //
-    // Under a path with no `SOURCE_RULES` row, the audit reports one finding
-    // per bare literal, so the number is a census of the tuned values
-    // THEMSELVES and moves only when a knob is added or removed. That is what
-    // the 87 was always measuring; it was reading it through an instrument
-    // that also happened to be reporting the missing row.
-    const asCensus = auditSource('src/empire/unregistered-census.ts', tuning);
+    // So it reads `SOURCE_RULES` and asserts the right thing on each side. The
+    // registration is a fact about the tree, not a flag this test sets.
+    const REGISTERED_PATH = 'src/empire/empireTuning.ts';
+    const registered = Object.prototype.hasOwnProperty.call(SOURCE_RULES, REGISTERED_PATH);
+
+    const sources = new Map<string, string>(
+      shipped.map((name) => [`src/empire/${name}`, readFileSync(path.join(HERE, name), 'utf8')]),
+    );
+    expect([...sources.keys()]).toEqual(shipped.map((name) => `src/empire/${name}`));
+
+    // What the audit says about the directory as it really sits, per file.
+    const findings = new Map(
+      [...sources].map(([relPath, source]) => [relPath, auditSource(relPath, source)]),
+    );
+    const report = (relPath: string): string =>
+      `\n${formatFindings(findings.get(relPath) ?? [])}\n`;
+
+    // Every file except the tuning module is a `renderer` in both worlds and
+    // must be numerically clean. This half does not branch.
+    let renderers = 0;
+    for (const relPath of sources.keys()) {
+      if (relPath === REGISTERED_PATH) continue;
+      expect(findings.get(relPath)?.length, `${relPath}${report(relPath)}`).toBe(0);
+      renderers += 1;
+    }
+    expect(renderers).toBe(shipped.length - 1);
+
+    if (registered) {
+      // The row landed. Nothing in `src/empire/` may report anything at all,
+      // and the row has to be a constants row — a `renderer` row would be the
+      // default and would leave the count at 87 while looking like a fix.
+      expect(SOURCE_RULES[REGISTERED_PATH]?.role).toBe('constants');
+      expect(findings.get(REGISTERED_PATH)?.length, report(REGISTERED_PATH)).toBe(0);
+    } else {
+      // The row has not landed. Every finding in the directory is in the tuning
+      // module and there are exactly this many of them — the one tree-wide
+      // failure this piece expects, pinned rather than bounded so a literal
+      // arriving in it is a decision somebody signs.
+      expect(findings.get(REGISTERED_PATH)?.length, report(REGISTERED_PATH)).toBe(87);
+      // And the row would fix it rather than hide it: audited under a path that
+      // already carries the rule it is asking for, the same bytes report
+      // nothing, because every literal sits inside a frozen, named, top-level
+      // constant block.
+      const asRegistered = auditSource(
+        'src/game/sessionTuning.ts',
+        sources.get(REGISTERED_PATH) ?? '',
+      );
+      expect(asRegistered.length, `\n${formatFindings(asRegistered)}\n`).toBe(0);
+    }
+
+    // The content pin, taken under a path that is unregistered in BOTH worlds,
+    // so the number survives the row landing. This is the line that says the
+    // instrument still sees the tuning block at all: it is 87 today, it is 87
+    // after registration, and it is 0 only if the block empties or the audit
+    // stops reporting.
+    const asRenderer = auditSource(
+      'src/empire/__unregistered.ts',
+      sources.get(REGISTERED_PATH) ?? '',
+    );
     expect(
-      asCensus.length,
-      'the number of tuned values in empireTuning.ts moved: an entry was added or removed. ' +
-        'That is a decision about the idle economy, not a tuning pass, so it is acknowledged ' +
-        `here rather than absorbed. First: ${formatFindings(asCensus.slice(0, 1)).trim()}`,
+      asRenderer.length,
+      'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
+        'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
+        `pass. First finding: ${formatFindings(asRenderer.slice(0, 1)).trim()}`,
     ).toBe(87);
-
-    // And the instrument is not blind: an unregistered path with one bare
-    // literal reports exactly one. Without this, the census above would be
-    // satisfied by an audit that had stopped working entirely.
+    // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });
 });

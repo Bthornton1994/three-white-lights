@@ -69,11 +69,37 @@ describe('the block is frozen and every entry is classified', () => {
     expect(Object.isFrozen(EMPIRE_TUNING)).toBe(true);
     expect(Object.isFrozen(EMPIRE_TUNING_CLASSIFICATION)).toBe(true);
     const nested = Object.entries(EMPIRE_TUNING).filter(([, value]) => typeof value === 'object');
-    // Not vacuous: there really are nested tables to freeze.
-    expect(nested.length).toBeGreaterThan(0);
+    // Counts, not bounds — this file's own rule, and this line broke it. The
+    // loop below walks whatever `nested` holds, so `toBeGreaterThan(0)` was
+    // satisfied by one table out of eleven and every table that stopped being
+    // an object walked past it. The names are pinned instead, so a table that
+    // was flattened into a scalar, or a new one that arrived unfrozen, is a
+    // decision somebody signs rather than a shrinking loop nobody sees.
+    expect(nested.map(([key]) => key).sort()).toEqual([
+      'EQUIPMENT_TIERS',
+      'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
+      'EQUIPMENT_TIER_COST_GYM_BUCKS',
+      'LEADERBOARD_BRACKET_SIZE',
+      'LEADERBOARD_SCOPES',
+      'NPC_RECRUIT_COST_GYM_BUCKS',
+      'NPC_RECRUIT_REPUTATION_THRESHOLD',
+      'NPC_RECRUIT_SECONDS',
+      'NPC_TIERS',
+      'NPC_TIER_OUTPUT_MULTIPLIER',
+      'REPUTATION_TIER_THRESHOLDS',
+      'SPACE_LEVEL_COST_GYM_BUCKS',
+      'SPACE_PASSIVE_CEILING_MULTIPLIER',
+      'SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER',
+      'STAFF_LEVEL_COST_GYM_BUCKS',
+      'STAFF_LEVEL_MAX',
+      'STAFF_ROLES',
+    ]);
+    let frozen = 0;
     for (const [key, value] of nested) {
       expect(Object.isFrozen(value), `${key} is not frozen`).toBe(true);
+      frozen += 1;
     }
+    expect(frozen).toBe(nested.length);
     // And one level deeper, where the per-role cost ladders live.
     for (const role of T.STAFF_ROLES) {
       expect(Object.isFrozen(T.STAFF_LEVEL_COST_GYM_BUCKS[role]), role).toBe(true);
@@ -492,6 +518,14 @@ describe('§5.5 social', () => {
     // characters inside a regex. The membership pin is what makes deleting one
     // red — deriving the pattern from the list alone would move both sides
     // together, which is the oracle-mirrors-its-subject shape.
+    // THE MEMBERSHIP PIN THAT USED TO BE HERE COMPARED THIS LIST WITH A COPY OF
+    // ITSELF, five lines below the declaration — two literals in one test,
+    // which no state of `empireTuning.ts` could make disagree. It read as the
+    // thing keeping a unit from being quietly deleted, and the thing that
+    // actually does that is `probed`, at the bottom: the count of (key, unit)
+    // pairs driven is pinned exactly, so a shortened list moves 270 and a
+    // shortened key set moves it too. One of those two numbers has the subject
+    // in it; the deleted comparison had neither.
     const bannedUnits = [
       'PER_SESSION',
       'SESSION_COUNT',
@@ -499,14 +533,6 @@ describe('§5.5 social', () => {
       'STREAK_DAY',
       'PER_TIER_UNLOCK',
     ] as const;
-    expect([...bannedUnits]).toEqual([
-      'PER_SESSION',
-      'SESSION_COUNT',
-      'PER_STREAK',
-      'STREAK_DAY',
-      'PER_TIER_UNLOCK',
-    ]);
-    expect(bannedUnits.length).toBe(5);
     const banned = bannedUnits.map((unit) => new RegExp(unit));
 
     let examined = 0;
@@ -564,34 +590,6 @@ describe('§5.5 social', () => {
 const AWAITING_CONSUMER: readonly string[] = [
   'CHECK_IN_TARGET_SECONDS_MAX',
   'CHECK_IN_TARGET_SECONDS_MIN',
-  'ENCOURAGEMENT_REWARD_GYM_BUCKS',
-  'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
-  'FRIEND_VISITS_PER_DAY',
-  'GYM_BUCKS_BASE_PER_HOUR',
-  'LEADERBOARD_BRACKET_SIZE',
-  'NPC_GYM_BUCKS_PER_HOUR_BASE',
-  'NPC_LOYALTY_CURVE_EXPONENT',
-  'NPC_LOYALTY_MAX_MULTIPLIER',
-  'NPC_LOYALTY_MIN_MULTIPLIER',
-  'NPC_TENURE_DAYS_TO_FULL_LOYALTY',
-  'NPC_TIER_OUTPUT_MULTIPLIER',
-  'NPC_TRAINING_IQ_PER_DAY_BASE',
-  'OFFLINE_EARNINGS_CAP_HOURS',
-  'OFFLINE_EARNINGS_FRACTION',
-  'OFFLINE_EARNINGS_NO_PUNISH_HOURS',
-  'PRECISION_DECIMALS',
-  'REPUTATION_PER_CHECK_IN',
-  'REPUTATION_PER_NPC_TENURE_DAY',
-  'RIVAL_COMPARISON_PERIOD_DAYS',
-  'RIVAL_REWARD_GYM_BUCKS',
-  'SECONDS_PER_HOUR',
-  'SPACE_PASSIVE_CEILING_MULTIPLIER',
-  'SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER',
-  'STAFF_COACH_BUCKS_MULTIPLIER_PER_LEVEL',
-  'TICK_SECONDS',
-  'TIMER_SKIP_SECONDS_PER_GRANT',
-  'TRAINING_IQ_BASE_PER_DAY',
-  'TRAINING_IQ_DAILY_CEILING',
 ];
 
 /**
