@@ -716,7 +716,7 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
     }
   });
 
-  it('compares the PHYSIO series by wall-clock day, and finds nothing moved', () => {
+  it('compares the PHYSIO series by wall-clock day, and finds nothing moved [no-accelerant-moves-a-physio-element]', () => {
     // The measurement `expansion.ts`'s §2 and `empireCore.ts`'s §6 both
     // commissioned, in the words they commissioned it in: the list of
     // `physioDaysSavedAt` readings by wall-clock day, byte-identical to the
@@ -736,7 +736,7 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
     expect(totals.dayLengthDiffers).toBe(0);
   });
 
-  it('compares the TRAINING IQ series by wall-clock day, and finds nothing moved', () => {
+  it('compares the TRAINING IQ series by wall-clock day, and finds nothing moved [no-accelerant-moves-a-training-iq-element]', () => {
     // The sibling of the check above, on §5.2's trickle. Written as its own
     // measurement rather than folded into the ledger comparison, because a zero
     // over both series together can hide one series moving while the other

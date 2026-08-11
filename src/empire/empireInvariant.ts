@@ -155,21 +155,45 @@
  *
  * CLAUDE.md asks whether harnesses are independent or merely numerous, so every
  * mutant below was actually run against `empireInvariant.test.ts` rather than
- * reasoned about. Killed here, each on the element-wise subject rather than on
- * a count:
- *
+ * reasoned about, and re-run against it when this list stopped being prose.
+ * Killed here, each on the element-wise subject rather than on a count — the two
+ * series checks, 2616 elements apiece:
  *   - `gateElapsedFor` reverted to `elapsedFor(clock, output)` — chain B, and
  *     the mutation that survived the version of this file that read its ledger
- *     off a second gym: 1266 of 2616 Training IQ elements move;
- *   - `elapsedFor` returning `clock.accelerated` unconditionally: 2592 and 2592;
- *   - `recruitmentSchedule` stamping `settlesAt` from `clock.accelerated`: 2190;
- *   - recruitment gated and debited on the accelerated book: 1036 and 132;
- *   - a wall-clock-funded axis gated and debited on the accelerated book: 204
- *     Training IQ elements and 68 physio elements;
- *   - `settledAxisLevel` reading `idleCompletion`: 84 physio elements;
- *   - `accrueProduction` banking the wall-clock book over the idle gap: 1992
- *     and 260;
- *   - `'roster-slot'` dropped from `GATING_OUTPUTS`: 204 and 132.
+ *     off a second gym;
+ *   - `elapsedFor` returning `clock.accelerated` unconditionally, the one mutant
+ *     here that saturates both series at once;
+ *   - `recruitmentSchedule` stamping `settlesAt` from `clock.accelerated`;
+ *   - recruitment gated and debited on the accelerated book — two edits rather
+ *     than one, because either half alone leaves the gate reading one purse and
+ *     the debit taking from another, and `asGymBucks` throws on the negative
+ *     balance that follows before any assertion here is reached. That is a kill
+ *     by `empireCore.ts`'s branded constructors rather than by a check in this
+ *     file, and the witness records it rather than leaving it a surprise;
+ *   - a wall-clock-funded axis gated and debited on the accelerated book;
+ *   - `settledAxisLevel` reading `idleCompletion`;
+ *   - `accrueProduction` banking the wall-clock book over the idle gap;
+ *   - `'roster-slot'` dropped from `GATING_OUTPUTS`.
+ *   Each one is a row of `MUTATION_WITNESSES` in `src/game/guaranteeTags.test.ts`
+ *   holding the text the mutant replaced and the assertion that reddened, under
+ *   `@guarantee no-accelerant-moves-a-training-iq-element` and
+ *   `@guarantee no-accelerant-moves-a-physio-element` — so a mutant whose
+ *   subject has been edited away expires there instead of reading true here.
+ *   A mutant that moves both series is recorded twice, once per series, because
+ *   the two assertions are different subjects and one says nothing about the
+ *   other; that is why there are more rows there than bullets here.
+ *
+ * THE COUNTS THIS LIST USED TO CARRY DID NOT SURVIVE BEING RE-TAKEN, and that is
+ * the argument for the conversion rather than an aside. They were measured
+ * before §4b's promotion path and §4c's day anchor moved this file's grid, and
+ * nothing re-ran them: at conversion time one of the eight came back the same
+ * number and the rest did not, two of them by having stopped moving the physio
+ * series at all. They are not restated here, because a count that only prose
+ * carries is exactly what this list was — each mutant's live reading is the
+ * verbatim failure message in its witness, beside two anchors that expire when
+ * either side is edited. What did not move is which layer kills them: every
+ * bullet above still reddens an element-wise check in this file, and the two
+ * bullets below still leave every check in it green.
  *
  * Two mutants live here and are killed one layer down, and that is a property
  * of the composition rather than a weakness in either file:
