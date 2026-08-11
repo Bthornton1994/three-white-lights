@@ -516,18 +516,20 @@ async function budget() {
   const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
 
   /**
-   * FOUR OUTCOMES, ONE WRITER.
+   * FOUR ARMS, ONE WRITER.
    *
-   * Two of them are verdicts and two are interruptions, and the split is the
-   * ruling's: a FAILING run is a completed verification and clears the marker,
-   * because a red suite is loud and gets read. A run that was killed — by the
-   * budget, by somebody else's signal, or by never starting at all — leaves the
-   * status INCOMPLETE, because its result is UNKNOWN and an unknown result must
-   * never read as a pass.
+   * One arm is a verdict and three are interruptions, and the split is the
+   * ruling's: a FAILING run is a completed verification and its FAIL is written
+   * into the marker, because a red suite is loud and gets read. A run that was
+   * killed — by the budget, by somebody else's signal, or by never starting at
+   * all — leaves the status INCOMPLETE, because its result is UNKNOWN and an
+   * unknown result must never read as a pass.
    *
    * They are computed as one table and written once rather than as four
-   * `finishMarker` calls, so a fifth outcome cannot be added with the write
-   * forgotten on its arm.
+   * `finishMarker` calls, so a fifth arm cannot be added with the write
+   * forgotten on it. That is this repository's most-repeated defect — a guard
+   * written for one arm and not for the sibling immediately below it — removed
+   * by construction rather than by remembering.
    */
   const patch = outcome.spawnError !== null
     ? { status: VERIFY_MARKER.STATUS.INCOMPLETE, interruption: VERIFY_MARKER.INTERRUPTION.COULD_NOT_START, detail: String(outcome.spawnError).slice(0, 200) }
