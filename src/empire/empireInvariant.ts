@@ -203,6 +203,59 @@
  * two layers are independent for a structural reason rather than by luck.
  *
  * ===========================================================================
+ * 4b. The roster's one-way door — a §12.3 breach, and the diagnosis it had
+ * ===========================================================================
+ *
+ * `engagement.test.ts` measured five pairs of 24576 in which the gym that
+ * checked in MORE ended on a LOWER Training IQ series, under the
+ * `'spend-once-per-calendar-day'` policy and in the arm where the extra
+ * check-in did NOT move the day the simulated player spends at. Five is a
+ * §12.3 breach; CLAUDE.md has no size below which "never punish daily
+ * engagement" stops applying.
+ *
+ * THE DIAGNOSIS ON RECORD WAS WRONG, AND IT WAS WRONG IN THREE PLACES AT ONCE
+ * — GDD §5.4, `engagement.test.ts`'s own section header, and the ruling in
+ * CLAUDE.md that acted on them. All three said the cause was the recruit price
+ * ladder: `NPC_RECRUIT_COST_GYM_BUCKS / NPC_TIER_OUTPUT_MULTIPLIER` rises
+ * strictly across the tiers, `bestRecruitableTier` takes the priciest
+ * affordable rung, so more money at a decision buys less Training IQ per Buck.
+ *
+ * Traced on the shipped engine, all five come from one baseline and not one of
+ * them is that:
+ *
+ *   the diligent gym fills its fifth and last roster slot at check-in 30, at
+ *     reputation 48.8 — `club` opens at 50 — and takes a `novice`;
+ *   the idle gym fills the same slot six check-ins later at reputation 59.2,
+ *     and takes a `club`.
+ *
+ * The diligent gym bought the CHEAPER and MORE efficient rung and lost, because
+ * the scarce resource at that decision is the SLOT and not the Buck. The price
+ * curve is real and is not what these five are. Applying the recorded
+ * requirement literally — never take a rung worth less per Buck than a cheaper
+ * affordable one — makes every gym buy novices forever, empties §5.3's ladder
+ * out of the sweep, and closes these five by accident rather than by mechanism.
+ *
+ * THE MECHANISM: a filled slot was filled forever, and the ladder unlocks on
+ * reputation, which rises with time. Reaching your last slot earlier means
+ * committing it at a lower unlocked rung and holding that lifter for the rest
+ * of the run. Being early is the trap, and no arrangement of purses or prices
+ * reaches it because neither is what moved.
+ *
+ * THE REPAIR is `recruitment.ts`'s promotion section and `stepGym`'s step 6,
+ * and both differences telescope — price and timer — so a slot holding tier T
+ * has paid `recruitCost(T)` and carries `recruitSeconds(T)` from its first
+ * commitment, by every route. `'one-way-door'` is the engine without it, kept
+ * runnable, and it reproduces the five exactly.
+ *
+ * AN UNPLAYED BALANCE CONSEQUENCE, written here rather than left in a diff. A
+ * gym that can move a filled slot up reaches a larger roster subtotal sooner,
+ * so `TRAINING_IQ_DAILY_CEILING` binds on 1573 days of this file's grid where
+ * it bound on 468, over 39 runs where it bound on 13. The safety property holds
+ * either way and this file pins both. Whether an idle layer that spends more of
+ * its time at the budget PLAYS better is a question no measurement here can
+ * answer, and it is the kind of question GDD §5.4 already sends to a human.
+ *
+ * ===========================================================================
  * 5. The Training IQ ceiling is applied HERE, and that is not an accident
  * ===========================================================================
  *

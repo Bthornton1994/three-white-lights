@@ -221,13 +221,45 @@ IQ-per-day deficit, and this. The measurement being honest is what makes it
 actionable; it is not what makes it acceptable. **"Never punish daily
 engagement" has no tolerance band.**
 
-The mechanism is narrow and understood: `bestRecruitableTier` greedily buys the
-priciest affordable tier, and IQ-per-Buck *declines* strictly across tiers
+The requirement was a structural fix rather than a pin, and the exact mechanism
+was left to the builder. It is repaired on
+`claude/empire-engagement-repair-k7x3`.
+
+**THE MECHANISM NAMED HERE WAS WRONG, AND IT WAS WRONG IN THREE PLACES AT
+ONCE.** This paragraph, GDD §5.4 and `engagement.test.ts`'s own section header
+all said the five were the recruit price ladder: `bestRecruitableTier` greedily
+buys the priciest affordable tier, IQ-per-Buck declines strictly across tiers
 (`NPC_RECRUIT_COST_GYM_BUCKS ÷ NPC_TIER_OUTPUT_MULTIPLIER` = 500, 1250, 3200,
-7500, 13846), so more money at one decision can buy strictly less Training IQ.
-**The requirement is a structural fix, not a pin:** selection must never choose a
-tier yielding strictly less Training IQ per Buck than a cheaper affordable
-option would. The exact mechanism is the builder's to evaluate.
+7500, 13846), so more money buys strictly less Training IQ. The trace says
+otherwise. All five come from one baseline, and in every one **the diligent gym
+takes a `novice` at 500 per unit and the idle gym takes a `club` at 1250** — the
+diligent gym buys the *cheaper and more efficient* rung and loses anyway.
+
+The scarce resource at that decision is the roster **slot**, not the Buck. A
+filled slot was filled forever while §5.3's ladder unlocks on reputation, which
+rises with time, so reaching your last slot earlier means committing it at a
+lower unlocked rung and holding that lifter for the rest of the run. Being early
+was the trap. Applying this paragraph's stated requirement literally — never
+take a rung worth less per Buck than a cheaper affordable one — makes every gym
+buy novices forever, empties §5.3's ladder out of the sweep, and closes the five
+*by accident rather than by mechanism*.
+
+The repair is a promotion path: a slot's occupant moves up to a tier the gym has
+since unlocked for the price difference, at capacity only, out of the recruit's
+own wall-clock purse, instantly. Price and recruit-timer both telescope, so a
+slot holding tier T has paid `recruitCost(T)` and carries `recruitSeconds(T)`
+from its first commitment by every route. Keeping only the price left 2318
+violating pairs at a worst deficit of 0.000032 IQ/day — a slot that reached
+`club` by promotion carried the `novice` timer and so held 240 seconds more
+permanent tenure than one that recruited `club` outright.
+
+**The lesson worth keeping is not the arithmetic, it is that a confidently
+written mechanism propagated into three files and a ruling without anyone
+driving it.** The false sentence was measurable in about twenty minutes by
+tracing five named pairs. Nothing in the tree could have caught it: the check
+that "named the second mechanism" pinned the price curve's shape, which is TRUE
+and is not the cause, so it was green and it was evidence about nothing. A pin
+on a fact adjacent to the claim reads exactly like a pin on the claim.
 
 #### RULED: `spend-once-per-calendar-day` IS REPRESENTATIVE, NOT A CONTROL
 
@@ -244,6 +276,20 @@ used it.
 
 So the remaining violating pairs under it get the same rigour as the 5 — pursued,
 not set aside. A policy does not change status based on what it finds.
+
+**PURSUED, AND THE ANSWER IS THAT THEY ARE THE DECISION MOMENT — MEASURED, NOT
+ASSERTED.** `runEngagement` now takes `spendsOn`: whose attendance decides which
+check-in of each day a day-granularity policy spends at. Re-run with the extra
+check-in still taken — still collecting, still accruing into every purse, still
+earning reputation — but the day's anchor held at the less-engaged player's own,
+all 24576 pairs give **0** violating while 7263 of the 8064 moving-moment pairs
+still MOVE. Same engine, same money, same schedule; the only thing removed is the
+extra check-in's power to defer that day's purchase.
+
+That is the shape this file asks for whenever a cause is attributed to the
+harness rather than to the game: vary the one thing you are blaming, hold
+everything else, and pin both the zero and a non-vacuity count beside it. The
+promotion repair independently took this arm from 7240 to 6459.
 
 #### RULED BY SESSION A: GRANTED — and it does NOT close the case that prompted it
 

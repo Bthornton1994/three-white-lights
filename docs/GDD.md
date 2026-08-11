@@ -1599,10 +1599,13 @@ the whole of §8.1 here.
 
 *It is a measurement, not a preference.* Composed over a calendar and compared
 element-wise by wall-clock day — an aggregate will not do, per §4.4 — a single
-book gives **84 of 2616** physio readings moved and **32 of 128** physio arrival
-days moved, every one of them EARLIER, plus **1488 of 2616** Training IQ readings
+book gives **104 of 2616** physio readings moved and **36 of 132** physio arrival
+days moved, every one of them EARLIER, plus **822 of 2616** Training IQ readings
 moved. Two books give **0** on all three, with the single-book engine kept
 runnable beside them as the control so the zeros are zeros against something.
+(Those three were 84 / 2616, 32 / 128 and 1488 / 2616 before §5.3's promotion
+path landed; the control moved with the engine and is still non-zero on all
+three, which is what it is there for.)
 Earlier physio is a shorter setback is restored training pace, which is exactly
 what §8.3B calls the credibility line.
 
@@ -1642,14 +1645,63 @@ domain measured: the 24576-pair window, a 114688-pair enumerated grid, seeded
 engine is kept runnable beside them and pinned at its 2954, so the zeros are
 zeros against something.
 
-*Two things this does NOT fix, recorded rather than rounded off.* Spending once
-per calendar day still measures **7245**, and the split cannot reach it: 7240 of
-those are an evening check-in moving the day's *decision moment* rather than its
-money, so a build started later finishes later whatever purse paid for it. The
-remaining **5** are the recruit price ladder — cost per unit of output rises
-strictly across the tiers (500 / 1250 / 3200 / 7500 / 13846), so a gym holding
-more money at one decision buys strictly *less* Training IQ per Buck. That is a
-pricing question for a tuning pass, not a funding one.
+*What the split does not fix, and what turned out to be a different defect
+entirely.* Spending once per calendar day measured **7245** after the third-book
+ruling, split **7240** where an extra check-in moved the day's *decision moment*
+and **5** where it did not.
+
+**The 5 were §5.3's, and the diagnosis this document carried for several waves
+was wrong — RULED and repaired.** It said they were the recruit price ladder:
+cost per unit of output rises strictly across the tiers (500 / 1250 / 3200 /
+7500 / 13846), so a gym holding more money buys strictly less Training IQ per
+Buck. Traced on the shipped engine, all five come from one baseline and none of
+them is that. In every one the diligent gym takes a `novice` at 500 Bucks per
+unit and the idle gym takes a `club` at 1250 — *the diligent gym buys the
+cheaper, more efficient rung and still loses*, because the scarce thing at that
+decision is the roster **slot**, not the Buck.
+
+What they were: **a filled roster slot was filled forever, while §5.3's ladder
+unlocks on reputation, which rises with time.** The diligent gym reaches its last
+free slot at reputation 48.8 — `club` opens at 50 — and commits it to a
+`novice`; the idle gym reaches the same slot six check-ins later at 59.2 and
+commits it to a `club`. Being early was the trap, and no arrangement of purses or
+prices reaches it, because neither is what moved.
+
+**The repair: a slot's occupant may be moved up to a tier the gym has since
+unlocked, for the price difference** — at capacity only, out of the recruit's own
+wall-clock purse, instantly, keeping the lifter's identity. Two quantities
+telescope, and the second was found by measurement after the first alone left
+2318 violating pairs at a worst deficit of 0.000032 IQ/day: the price
+(`recruitCost(to) − recruitCost(from)`) and the timer
+(`recruitSeconds(to) − recruitSeconds(from)`, added to both clock stamps). So a
+slot holding tier T has paid `recruitCost(T)` and carries `recruitSeconds(T)`
+from the moment it was first committed, **by every route and in any number of
+steps** — 60 + 240 + 1500 is `regional`'s 1800 and 500 + 1500 + 6000 is its 8000.
+There is no promotion timer to sell: a promotion raises the Training IQ trickle,
+so a timer on it would be a third §8.3B-sellable timer sitting on a
+progression-reaching output.
+
+Measured on the same 24576-pair window, `'one-way-door'` being the engine without
+the repair and kept runnable beside it:
+
+| arm | one-way-door | shipped |
+|---|---|---|
+| extra check-in moves the day's decision moment (8064 pairs) | 7240 | **6459** |
+| extra check-in does not (16512 pairs) | 5 | **0** |
+
+*And the 6459 are the simulated player's decision moment, proved rather than
+asserted.* The counterfactual varies the decision rule and nothing else: the
+extra check-in is still taken — it collects, it accrues into every purse, it
+earns reputation — but the day's spending anchor is held at the less-engaged
+player's own. All 24576 pairs give **0** violating while 4632 of the 8064 still
+*move*. Same engine, same money, same schedule; the only thing removed is the
+extra check-in's power to defer that day's purchase.
+
+*An unplayed balance consequence.* A gym that can move a filled slot up reaches a
+larger roster subtotal sooner, so `TRAINING_IQ_DAILY_CEILING` binds on 1573 days
+of the composed grid where it bound on 468. The safety property holds either way.
+Whether an idle layer that spends more of its time at the budget *plays* better
+is a playtest question this document cannot settle.
 
 *And a tuning consequence a human should rule on separately:* because each fund
 fills at the full baseline line, total wall-clock income is roughly **three times**

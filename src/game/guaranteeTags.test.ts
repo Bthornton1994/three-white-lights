@@ -485,7 +485,20 @@ const GUARANTEE_COVERAGE = {
    * seven now. All three restatements carry the tag anyway, so they expire with
    * the declaration rather than with this number.
    */
-  TREE_WIDE: 226,
+  /**
+   * 226 -> 227 with GDD §5.3's promotion path. The one paragraph the scan
+   * noticed is `stepGym`'s capitalised "at capacity only" heading — quoted in
+   * lower case here on purpose, because quoting it as written would add a
+   * triggering paragraph to this file and move the number it documents;
+   * it states WHEN the arm fires, it is untagged, and it is one more of the
+   * majority this number exists to be honest about. Both of that round's
+   * load-bearing claims — that a slot holding a tier has paid the same price
+   * and carried the same timer by every route, and that the residue left under
+   * one spending policy is the simulated player's decision moment — are
+   * trigger-free and walk straight past this rule, which is the hole the
+   * paragraph above already names.
+   */
+  TREE_WIDE: 227,
 } as const;
 
 // ---------------------------------------------------------------------------
