@@ -121,6 +121,32 @@
  *      file sees that. `asks the gate once per gated verdict, with the lifter's
  *      own total` in `careerOpacity.test.ts` is what stands against it, and that
  *      check covers `meetEligibility` and no other function.
+ *
+ *      MEASURED AFTER THAT PARAGRAPH WAS WRITTEN, and it is less open than it
+ *      says — but the correction is a measurement of two attempts, not a proof
+ *      of closure, and it is written that way on purpose.
+ *
+ *      Attempt 1, the binary search this bullet describes, planted in
+ *      `qualifiedTierFor` (a function the named check does NOT cover): 90
+ *      probes narrowing `lo`/`hi` through the gate, then a decision off `lo`
+ *      alone, never touching the proxy. `tsc` exit 0 and FIVE tests red,
+ *      including `asks the injected gate and never compares a total itself` and
+ *      `walks the ladder by the gate's answers alone, across the band`. So the
+ *      per-function checks are broader than "meetEligibility and no other".
+ *
+ *      Attempt 2, subtler, because attempt 1 is loud in its call COUNT: the
+ *      honest three probes kept exactly, with the gate asked the WRONG QUESTION
+ *      — `requiredKg - MIN_DAYS_BETWEEN_ENTERED_MEETS` instead of `requiredKg`.
+ *      Same channel, same count, a 14 kg shift in every threshold. `tsc` exit 0
+ *      and EIGHT tests red, reaching the engagement sweeps.
+ *
+ *      What that does and does not license. It kills the specific worry that
+ *      one function carried the whole defence. It does not close the channel:
+ *      an attack that spends its probes at the honest values and extracts
+ *      information from the ORDER or the timing of them would be a third shape
+ *      neither attempt tried. Two failed attacks are evidence about the
+ *      attacker, and the three bypasses this directory has already shipped were
+ *      each invisible until somebody wrote the right one.
  *   4. A read in a function this file does not drive. Closed by construction
  *      rather than by promise: `drives every exported function that is generic
  *      over Total` reads the export list out of the shipped sources and asserts
