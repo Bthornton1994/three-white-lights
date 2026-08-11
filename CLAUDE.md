@@ -364,6 +364,72 @@ sessions reached from opposite ends: **§5's loop had to exist before its
 invariants had a subject.** It now does.
 
 
+### SESSION B'S NEXT SCOPE: GDD §2.1 CAREER — RULED, WITH THE GATE OVERRIDDEN
+
+Written here before the work starts, as this section requires. GDD §5 is merged
+(PR #3) and Session B's §5 round is closed.
+
+**The override, stated as an override rather than a lifting.** GDD §11's first
+open question gates Career on human playtesting that has not happened. A human
+has overridden it for §2.1, the same way §5 was authorised — *not* by evidence
+that the lift mechanic is proven fun, because there is none. §11 has been
+corrected to record that Gym Empire is built and to keep that distinction; the
+same applies here. Career, like §5, is built **pure-logic-first with nothing a
+player can reach**, which is the shape the gate's intent survives.
+
+**The scope: a Career meet calendar, pure logic, in a new `src/career/`.**
+§6.1's sentence is the spec — *"select a meet from the Career calendar (local →
+regional → nationals → worlds), gated by qualifying totals"*. So: the meet list,
+the tier ladder, qualification, scheduling over a calendar, and which meets a
+lifter has already entered.
+
+**Why this piece and not the six alternatives.** Seven candidates were
+investigated on real import edges, real `git log` counts and their own open
+questions. Career won on the §5 test — *seams cut and frozen before the split*:
+
+- **`MeetDefinition` (`src/game/meetTuning.ts:120-132`) is a contract written FOR
+  this builder, before this split existed.** Its own header says *"NOT A CAREER
+  CALENDAR… Whoever builds the calendar produces a list of these and gates it."*
+  Read it; do not edit it — that file was touched 3 hours ago.
+- **`meetsQualifyingTotal` (`src/game/progression.ts:4434`) is the gate
+  predicate, and it is in the hottest file in the repository.** `src/career/`
+  **must not import it.** Take the gate as an injected predicate over a local
+  type, exactly as §5 built its wallet math against a local type. The wiring is
+  a later, serialised piece.
+
+**What is actually inert and waiting, corrected from the ruling's own wording.**
+The ruling named three pieces. One is right and two are not, and the difference
+matters because it changes what this piece can claim to unblock:
+
+- **The meet-recorded placeholder is genuinely calendar-blocked.**
+  `src/meet/careerCalendarPlaceholder.ts` ships `CAREER_CALENDAR_GATE` and the
+  line *"Career calendar coming soon"*.
+- **The PR-border wording and §6.2's crowd-reaction rule are NOT.** `docs/GDD.md`
+  defers both because *"this is a felt question about what makes an attempt
+  choice tense, and no agent — builder, critic, or lead reasoning from a
+  description — can resolve it validly."* That is pending **playtest**, and a
+  calendar does not move it. Building one will not unblock either.
+- **The real inert set is larger than three and better evidence than three**:
+  eleven sites across five directories name this calendar as their blocker —
+  `src/cutin/cutInGate.ts:184` (cut-in qualification needs *"standing across
+  meets"*), `src/shell/shellRoute.ts:32`, `shellTuning.ts:100`, `AppShell.tsx:52`,
+  `src/meet/MeetScreen.tsx:125`, `useMeetDay.ts:272`, `RecapView.tsx:47`,
+  `meetStage.test.ts:360`, `src/session/localSessionServer.test.ts:286`.
+
+**Out of Session B's scope, same as §5 and for the same reasons:**
+`src/game/progression.ts`, `fatigue.ts`, `streak.ts`, `streakEntitlement.ts`,
+`currencyProvenance.ts`, `src/game/meetTuning.ts`, any `src/shell/` route or
+component, and every file in the inert list above. `src/career/` imports nothing
+outside itself except its own tuning module — the property `src/empire/` kept and
+`empireCore.test.ts` pins, and the one that makes a parallel session safe.
+
+**Crossing 3, declared up front rather than discovered.** A new
+`src/career/careerTuning.ts` will need the same three `SOURCE_RULES` rows
+`empireTuning.ts` needed, in the same three reserved files. §5 drafted them and
+Session A applied them independently; the precedent is set and the row text will
+be reported the same way rather than committed. Session B will not edit
+`src/tuning/`.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise
