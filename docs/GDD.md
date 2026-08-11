@@ -2814,10 +2814,35 @@ work.
       early prototypes... until meet day is proven to land") is the same shape
       of question one level down: §12.2 defines a critic bar for cut-ins, which
       argues for attempting them; §7.2 argues against building the art at all
-      yet. Recorded rather than silently resolved either way. Until ruled,
-      the working assumption this run is applying: Gym Empire, Career, Arcade
-      and cut-in *art* stay unbuilt; grading and closing what already exists
-      continues without waiting on this answer.
+      yet. Recorded rather than silently resolved either way.
+
+      **GYM EMPIRE IS NOW BUILT, AND THIS ENTRY SAID IT WAS NOT FOR THE WHOLE OF
+      THAT BUILD.** §5.1–§5.5 shipped as `src/empire/` — ten modules, merged.
+      The sentence that stood here read "the working assumption this run is
+      applying: Gym Empire, Career, Arcade and cut-in *art* stay unbuilt", and
+      it went on reading that way while eleven pieces of §5 were written against
+      it. Corrected here rather than deleted, because the failure is the same one
+      §5 spent a wave fixing inside its own modules: a sentence written while it
+      was true keeps its confident tone after the code moves, and this one sat
+      in the document CLAUDE.md makes authoritative.
+
+      **The gate was not lifted by evidence. It was overridden by a human**, who
+      instructed the parallel session to build §5 and recorded the assignment in
+      CLAUDE.md's Session Coordination section. That distinction is the whole of
+      what this entry should now say: nothing here demonstrates the lift mechanic
+      is proven fun, and no critic on this run has claimed otherwise.
+
+      **What was built is the shape the gate's intent survives.** §5 is pure
+      logic — zero React, no shell route, no component, nothing a player can
+      reach. "Do not build Gym Empire before the lift is proven fun" is a rule
+      about shipping an idle layer that competes with the lift for attention; a
+      tested pure-math library that no screen imports does not do that. Whether
+      that reading is the right one is still a human's call, and it is written
+      down so the call can be made on what happened rather than on a summary.
+
+      **Career, Arcade and cut-in *art* remain unbuilt**, and the playtesting
+      question above remains genuinely open for all three. Grading and closing
+      what already exists continues without waiting on this answer.
 
 - [x] **The licensing screen is not a "mode", so the shell does not have to
       reach it — lead scoping call, overrulable.** A critic grading N1 flagged
