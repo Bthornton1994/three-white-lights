@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { bodyOfTestContaining, testScopeFault } from '../tuning/audit';
+import { bodyOfTestContaining, testScopeFault, withoutComments } from '../tuning/audit';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../..');
@@ -498,7 +498,304 @@ const GUARANTEE_COVERAGE = {
    * trigger-free and walk straight past this rule, which is the hole the
    * paragraph above already names.
    */
-  TREE_WIDE: 227,
+  /**
+   * 227 -> 229 when the tag grew a numeric half. MEASURED PER FILE the usual
+   * way, by counting against the base checkout rather than apportioning by eye,
+   * and the usual answer: `guaranteeTags.test.ts` contributes ZERO — several
+   * hundred words of new prose, a new tag, a new excuse table and two new
+   * witnesses — and the whole increment is two paragraphs in `audit.ts`.
+   *
+   * Not quoted here, for the reason the notes above give. In lower case they
+   * are the two halves of the scoper's premise: the one saying the spurious
+   * direction is now closed at the source rather than merely reported, and the
+   * one saying the other direction is not, and that closing one is not closing
+   * the other. Both use the fourth trigger word and neither is a guarantee.
+   *
+   * EIGHTH ROUND RUNNING that the round's actual claim moved this number by
+   * nothing. The paragraphs the scan noticed state a limit, in a file the ban
+   * does not scope into; the claim it demanded nothing of is the one that now
+   * carries both a tag and two witnesses.
+   */
+  TREE_WIDE: 229,
+} as const;
+
+// ---------------------------------------------------------------------------
+// The NUMBERS a tagged claim cites
+// ---------------------------------------------------------------------------
+
+/**
+ * A TAG THAT RESOLVES SAYS NOTHING ABOUT THE NUMBERS IN THE SENTENCE AROUND IT,
+ * and that is a third way a true-sounding claim survives a green suite.
+ *
+ * MEASURED TWICE IN `src/empire/`: a comment read "zero of 120 physio arrival
+ * days" while its named check pinned a different denominator, and another read
+ * "32 of 144" while its own body pinned something else again. The tag as it
+ * stood caught neither, because it resolves that a TEST EXISTS and says nothing
+ * about what the prose around it claims that test measured. Both sentences kept
+ * their confident tone after the number moved, which is this file's whole
+ * subject one level in.
+ *
+ * THE RULE: every numeral a tagged paragraph states as prose must occur in the
+ * body of the test the tag names, and it is the BODY and not the file.
+ * `@guarantee a-cited-number-resolves-in-the-named-test`
+ *
+ * Why the body is the load-bearing half, and it was measured rather than
+ * reasoned: the number in the second of those two defects did exist in the
+ * right file — as a different check's pin — so a file-scoped version of this
+ * rule is satisfied while the sentence citing it is still false about the
+ * control it is about. The planted check below builds exactly that arrangement,
+ * a number in one test and the claim citing it on another twenty lines up, and
+ * asserts that the file-scoped reading would have passed it.
+ *
+ * THIS PARAGRAPH IS WHERE THE RULE MEETS ITSELF, and the meeting is recorded
+ * rather than tidied. The sentence above deliberately does not name the number,
+ * because naming it here would oblige the test this tag points at to carry a
+ * figure that belongs to a planted sample two checks below. That is a legal
+ * move and it is also the rule's escape hatch: THE PARAGRAPH IS THE UNIT, so a
+ * number one blank comment line away is out of reach. The same limit the
+ * trigger scan above already declares, one rule further in.
+ *
+ * WHAT COUNTS AS "STATED AS PROSE" is `claimedNumbersIn`, and its four
+ * exclusions are counted rather than described — see `NUMBER_EXCLUSIONS`.
+ *
+ * WHAT THIS DOES NOT CATCH, stated at the same length as what it does:
+ *
+ *   - UNTAGGED PROSE, which is most of it. The scan reads tagged paragraphs
+ *     only. `GUARANTEE_COVERAGE` already measures how small that scope is; this
+ *     rule sits inside it and `NUMBER_COVERAGE` measures how much smaller again
+ *     the numeric part is.
+ *   - A NUMBER THAT RESOLVES AGAINST A COMMENT INSIDE THE BODY rather than
+ *     against anything executable. That is a real weakness and it is the
+ *     majority case in places: `NUMBER_COVERAGE.RESOLVING_IN_CODE` counts how
+ *     many resolve with the body's comments blanked, and the gap between it and
+ *     `NUMBER_COVERAGE.RESOLVING` is the size of the hole. Requiring code was
+ *     tried and measured first: it takes the failures from twelve to eighteen,
+ *     including every counterfactual this codebase records in a test's own
+ *     header, and a ban that fires on honest prose is a ban somebody deletes.
+ *   - A SMALL NUMBER, in practice. Measured over the tag-named bodies in this
+ *     tree and pinned in the check below, a bare `0` occurs in
+ *     `NAMED_BODIES_HOLDING_ZERO` of `NAMED_BODIES` and a bare `1` in
+ *     `NAMED_BODIES_HOLDING_ONE`, so those two resolve almost wherever they are
+ *     pointed. The rule still requires them — "0 violating pairs" is the most
+ *     load-bearing number in this repository and exempting it would gut the
+ *     check — but a small numeral passing is weak evidence, and one entry in
+ *     `UNPINNED_PROSE_NUMBERS` records a sentence whose twin passes for exactly
+ *     that reason. The figures are named rather than written out because a
+ *     percentage in a comment is the thing this file distrusts.
+ *   - A NUMBER WRITTEN INTO A QUOTED CODE SPAN. Backticks are how this codebase
+ *     quotes an expression, and a numeral inside one is being shown rather than
+ *     claimed. A span holding nothing but a numeral is NOT excused, so the
+ *     obvious duck — wrapping the number in backticks — does not work.
+ *   - WHETHER THE NUMBER MEANS THE SAME THING ON BOTH SIDES. `50` in a sentence
+ *     about checks and `50` in an unrelated `toBe` are indistinguishable here.
+ *     This is a link check, not a semantic one, and it is the same limit the
+ *     tag itself has.
+ */
+interface ClaimedNumber {
+  readonly numeral: string;
+  /** Offset in the paragraph flattened to one line, which is what is scanned. */
+  readonly index: number;
+  readonly context: string;
+}
+
+/** The four ways a numeral in a tagged paragraph is not a claim about a number. */
+type NumberExclusion =
+  | 'section-coordinate'
+  | 'inside-an-identifier'
+  | 'quoted-code'
+  | 'list-ordinal';
+
+type ExclusionCensus = Record<NumberExclusion, number>;
+
+/**
+ * WHAT EACH EXCLUSION REMOVES, AS A COUNT AND NOT AN ADJECTIVE. An exclusion
+ * list with no number beside it is where a rule like this quietly stops meaning
+ * anything, so the census is pinned and moving any of it is a red test.
+ *
+ * Taken over the tagged paragraphs in `src`, where the raw numeral scan finds
+ * forty-nine occurrences and thirty survive these four:
+ *
+ *   - `section-coordinate` — a numeral directly after `§`. A pointer into the
+ *     GDD or CLAUDE.md, never a measurement. The largest class by far, and the
+ *     one whose removal matters most: `§4.2` and `§7.5` were both RESOLVING
+ *     before, against unrelated numbers in the named bodies, which is a green
+ *     that means nothing.
+ *   - `inside-an-identifier` — a letter or underscore on either side: `e1RM`,
+ *     `4a`, `§4c`. A unit suffix from `UNIT_SUFFIXES` does not count as a
+ *     letter, so `180ms` is a claim and `e1RM` is not.
+ *   - `quoted-code` — inside a backticked span that holds more than the numeral
+ *     itself, e.g. `max(0, len - grace)`.
+ *   - `list-ordinal` — `N. ` opening a line, which is this codebase's numbered
+ *     section style and not a quantity.
+ */
+const NUMBER_EXCLUSIONS: Readonly<ExclusionCensus> = {
+  'section-coordinate': 14,
+  'inside-an-identifier': 3,
+  'quoted-code': 1,
+  'list-ordinal': 1,
+};
+
+/**
+ * Suffixes that are a unit rather than the rest of an identifier. Deliberately
+ * short: this list is the difference between "180ms is a claim" and "e1RM is
+ * not", and every entry widens what the rule demands rather than narrowing it.
+ */
+const UNIT_SUFFIXES: readonly string[] = ['ms', 's', 'kg', 'lb', 'x'];
+
+/**
+ * A numeral in a tagged paragraph that is NOT in the named test's body, with
+ * the reason it is allowed to stay that way.
+ *
+ * THE SAME SHAPE AS `UNWITNESSED_LEGACY_TAGS` AND FOR THE SAME REASON: a named
+ * list means the exception is a diff somebody wrote on purpose, next to the
+ * sentence explaining it. It differs in that this one is checked in BOTH
+ * directions — an entry that stops excusing anything is stale and fails, so
+ * pinning the number later deletes the entry rather than leaving it behind.
+ *
+ * `phrase` is a freshness anchor, exactly like `MutationWitness.mutated`: it
+ * must occur exactly once across the paragraphs carrying that tag, so editing
+ * the sentence expires the excuse instead of silently widening it.
+ *
+ * ON THE FIRST RUN THIS LIST WAS THE WHOLE RESULT — twelve numerals in five
+ * paragraphs, none of them fixed by this piece, and that is worth saying
+ * plainly rather than presenting seven exemptions as a clean bill. One of them
+ * (`673 at 100`) is a real unpinned measurement and is marked as such.
+ */
+interface UnpinnedProseNumber {
+  /** The tag whose paragraph carries the sentence. */
+  readonly guarantee: string;
+  /** Verbatim from the paragraph flattened to one line. Must occur once. */
+  readonly phrase: string;
+  /** What kind of number it is, so the list can be read at a glance. */
+  readonly kind: 'history' | 'document-coordinate' | 'illustration' | 'unpinned-measurement';
+  readonly why: string;
+}
+
+const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
+  {
+    guarantee: 'section-4a-denominator-is-measured',
+    phrase: "It read 49 before §4c's day-anchor block added a check",
+    kind: 'history',
+    why:
+      'The superseded denominator. The live one is 50, and all three of its '
+      + 'occurrences in that paragraph resolve; this is the value it moved FROM, '
+      + 'recorded so the drift is legible. A sentence about what a number used to '
+      + 'be cannot be pinned by a '
+      + 'test that measures what it is now. NOTE ALSO that src/empire/** belongs to '
+      + 'the other session, so this entry is the only move available here.',
+  },
+  {
+    guarantee: 'doomed-absence-takes-what-is-left',
+    phrase: 'the half that survived the Option 1 rework',
+    kind: 'document-coordinate',
+    why:
+      "GDD §4.2's Option 1 — a pointer into the design document, spelt without the "
+      + 'section mark, so the `section-coordinate` exclusion does not see it. Worth '
+      + 'recording rather than generalising into a vocabulary: the SAME REFERENCE in '
+      + "`mid-absence-arrival-cannot-arm`'s paragraph resolves and needs no entry, "
+      + 'because a bare `1` happens to appear in that test body for its own reasons. '
+      + 'Two identical claims, one listed and one not, is what '
+      + 'NAMED_BODIES_HOLDING_ONE looks like in the wild.',
+  },
+  {
+    guarantee: 'doomed-absence-takes-what-is-left',
+    phrase: 'and 673 at 100, against 0 with it',
+    kind: 'unpinned-measurement',
+    why:
+      'THE ONE ENTRY HERE THAT IS A REAL GAP RATHER THAN A CATEGORY ERROR. The '
+      + 'named test carries the 60-day half of this counterfactual in its own '
+      + 'comment and not the 100-day half; 673 is pinned by no assertion anywhere '
+      + 'in src, only re-stated in streakEntitlement.ts, streakEntitlement.test.ts '
+      + 'and GDD §4.4. Listed rather than fixed because re-taking a counterfactual '
+      + 'sweep is not this piece, and marked so it reads as debt.',
+  },
+  {
+    guarantee: 'milestones-pay-nothing',
+    phrase: 'the 60-day sweep goes to 0',
+    kind: 'history',
+    why:
+      'A retracted diagnosis, kept as history: the counterfactual that emptied '
+      + 'STREAK_MILESTONE_DAYS. The paragraph says in its own next sentence that the '
+      + 'conclusion did not follow, and streak.test.ts keeps the results in '
+      + 'RESIDUE_MEASUREMENT and in a test that exists to say the arms can no longer '
+      + 'be run. A number the engine can no longer produce cannot be in a body.',
+  },
+  {
+    guarantee: 'milestones-pay-nothing',
+    phrase: 'still gave 81 violating pairs at 60 days',
+    kind: 'history',
+    why: 'The second retracted counterfactual, same reason as the entry above.',
+  },
+  {
+    guarantee: 'milestones-pay-nothing',
+    phrase: 'gave 194, MORE than the 122 the shipped economy gave',
+    kind: 'history',
+    why: 'The third retracted counterfactual, same reason as the entry above.',
+  },
+  {
+    guarantee: 'every-refusal-sentence-is-true-of-its-screen',
+    phrase:
+      'reads DOOMED on day 29 and COVERED on day 30, and a client that renders on day 30',
+    kind: 'illustration',
+    why:
+      'An illustration of a window boundary, keyed to RECOVERY_ENTITLEMENT.'
+      + 'WINDOW_DAYS = 30 rather than measured; the named test sweeps ten-day '
+      + 'calendars and reaches the boundary by construction, so these two day '
+      + 'numbers appear nowhere in it. Pinning them would mean writing the window '
+      + 'length into the test as a literal, which is worse than this entry.',
+  },
+];
+
+/**
+ * WHAT FRACTION OF THIS FILE'S OWN SCOPE THE NUMERIC RULE REACHES — pinned, for
+ * the same reason `GUARANTEE_COVERAGE` is pinned: so the honest reading is a
+ * fact in the repository rather than a sentence in a report.
+ *
+ * THE TWO SCOPES ARE NOT NESTED, and the first draft of this paragraph said
+ * they were. `GUARANTEE_COVERAGE.TREE_WIDE` counts paragraphs that trip the
+ * capitalised-absolute trigger; this one counts paragraphs that carry a TAG,
+ * and a paragraph can do either without the other. Measured and pinned below:
+ * only `TAGGED_AND_TRIGGERING` of the tagged paragraphs trip the trigger too,
+ * which is well under half of them. Writing "58 of the 229" would have been a
+ * subset claim about two overlapping populations — this rule's own defect
+ * class, in the comment introducing it, caught by taking the measurement.
+ *
+ * What they say together, then: 229 paragraphs trip the trigger, 58 carry a
+ * tag, 25 do both, 8 of the tagged ones state a number in prose, and 30
+ * numerals are checked at all. A few per cent of the prose this file can see,
+ * and none of the prose it cannot.
+ */
+const NUMBER_COVERAGE = {
+  /** Comment paragraphs under `src` carrying at least one tag. */
+  TAGGED_PARAGRAPHS: 58,
+  /** ...of which this many state a number as prose. */
+  PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 8,
+  /** Numerals the rule actually demands something of. */
+  CLAIMED: 30,
+  /** ...of which this many are found in the named test's body. */
+  RESOLVING: 18,
+  /**
+   * ...and this many survive blanking the body's COMMENTS, which is the
+   * stronger reading. The gap is the weakness declared above, as a number.
+   */
+  RESOLVING_IN_CODE: 12,
+  /** ...and this many are excused by name, in `UNPINNED_PROSE_NUMBERS`. */
+  EXCUSED: 12,
+  /** The entries doing that excusing. Fewer than the occurrences: a phrase may span two. */
+  EXCUSE_ENTRIES: 7,
+  /**
+   * The bodies a tag names, and how many of them hold a bare `0` or a bare `1`
+   * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
+   * one: it says how little a small number resolving is worth.
+   */
+  NAMED_BODIES: 47,
+  NAMED_BODIES_HOLDING_ZERO: 37,
+  NAMED_BODIES_HOLDING_ONE: 41,
+  /**
+   * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
+   * scopes, pinned because the sentence above about them was wrong once.
+   */
+  TAGGED_AND_TRIGGERING: 25,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -615,6 +912,57 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
  * mutant in one of them.
  */
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  // -------------------------------------------------------------------------
+  // The numeric half of the tag, witnessed from BOTH sides of its set equality,
+  // because the two halves fail on opposite edits and one says nothing about
+  // the other.
+  {
+    // (1) THE FILE-SCOPED READING, WHICH IS THE VERSION THE GRANT REFUSED. The
+    // mutant hands the whole test FILE back where the shared scoper hands back
+    // the body of the named test. It is not a hypothetical weakening: six of
+    // the seven excuses immediately go stale, meaning six numbers this rule
+    // holds unpinned would have been accepted by a file-scoped version because
+    // the figure exists in that file for some other check's reasons.
+    //
+    // THE MUTANT IS IN `audit.ts` AND NOT AT THIS FILE'S OWN CALL SITE, and
+    // that is forced rather than chosen: `mutated` must resolve exactly once in
+    // `mutatedFile`, so a mutant inside THIS file can never be witnessed here —
+    // quoting the anchor puts a second copy of it in the same file. Same shape
+    // as CLAUDE.md's note that the schema cannot hold a browser check. The
+    // scoper is the honest subject anyway; this file only chooses the marker.
+    guarantee: 'a-cited-number-resolves-in-the-named-test',
+    mutatedFile: 'src/tuning/audit.ts',
+    mutated: '    if (body.includes(marker)) return body;',
+    testFile: 'src/game/guaranteeTags.test.ts',
+    redAssertion:
+      "      audit.staleExcuses,\n      'an entry on UNPINNED_PROSE_NUMBERS anchors nowhere or excuses nothing',\n    ).toEqual([]);",
+    observed:
+      'AssertionError: an entry on UNPINNED_PROSE_NUMBERS anchors nowhere or excuses nothing: '
+      + 'expected [ …(6) ] to deeply equal [] — received "section-4a-denominator-is-measured: '
+      + '\\"It read 49 before §4c\'s day-anchor block added a check\\" excuses nothing any more", '
+      + 'and five more naming the Option 1 rework, both milestone counterfactuals and the '
+      + 'window-boundary illustration',
+  },
+  {
+    // (2) THE DEFECT ITSELF, PUT INTO PROSE. The mutant moves one digit of a
+    // measurement in a tagged paragraph — `785` to `786` — which is exactly how
+    // the two `src/empire/` instances happened: the sentence stayed confident
+    // and the number stopped being the one the check pins. The anchor is the
+    // prose line, so this witness expires when that sentence is rewritten,
+    // which is the correct coupling for a claim about a sentence.
+    guarantee: 'a-cited-number-resolves-in-the-named-test',
+    mutatedFile: 'src/game/streak.ts',
+    mutated: " * lifter's training moved — measured at 105 / 305 / 733 / 785 violating pairs",
+    testFile: 'src/game/guaranteeTags.test.ts',
+    redAssertion:
+      "      audit.unpinned,\n      'a tagged claim states a number that the test it names does not carry — pin it in that '",
+    observed:
+      'AssertionError: a tagged claim states a number that the test it names does not carry — '
+      + 'pin it in that test, or say why it cannot be, on UNPINNED_PROSE_NUMBERS: expected '
+      + '[ Array(1) ] to deeply equal [] — received [ "src/game/streak.ts:2567 '
+      + '[no-tender-arrives-by-training] cites 786, which is not in the body of the test the tag '
+      + 'names — \\"…measured at 105 / 305 / 733 / [786] violating pairs against 0 for…\\"" ]',
+  },
   // -------------------------------------------------------------------------
   // GDD §5.3 — the roster's one-way door, which was a §12.3 breach.
   //
@@ -1463,6 +1811,268 @@ function triggeringRuns(paragraph: string): string[] {
   return runs;
 }
 
+// ---------------------------------------------------------------------------
+// Reading the numbers out of a tagged paragraph
+// ---------------------------------------------------------------------------
+
+/**
+ * A numeral in prose. Decimals and thousands separators included, because both
+ * appear in this codebase's measurements and neither is an identifier.
+ */
+const PROSE_NUMERAL = /\d+(?:,\d{3})*(?:\.\d+)?/g;
+
+/** A numeral in a paragraph is a claim about a number unless it is one of these. */
+function excludedAs(
+  flat: string,
+  index: number,
+  numeral: string,
+  codeSpans: readonly (readonly [number, number])[],
+  lineStarts: ReadonlySet<number>,
+): NumberExclusion | null {
+  const before = index > 0 ? flat.charAt(index - 1) : '';
+  const after = flat.slice(index + numeral.length);
+  if (before === '§') return 'section-coordinate';
+  if (/[A-Za-z_]/.test(before)) return 'inside-an-identifier';
+  const suffix = /^[A-Za-z_]+/.exec(after)?.[0] ?? '';
+  if (suffix !== '' && !UNIT_SUFFIXES.includes(suffix)) return 'inside-an-identifier';
+  // A span holding NOTHING BUT the numeral is not quoted code — otherwise
+  // wrapping a number in backticks would be a one-character way out of the rule.
+  const quoting = codeSpans.find(([from, to]) => index >= from && index < to);
+  if (quoting !== undefined) {
+    const inner = flat.slice(quoting[0] + 1, quoting[1] - 1).trim();
+    if (inner !== numeral) return 'quoted-code';
+  }
+  if (lineStarts.has(index) && /^\.\s/.test(after)) return 'list-ordinal';
+  return null;
+}
+
+/**
+ * The numbers a paragraph states as prose, and a census of what was dropped.
+ *
+ * THE PARAGRAPH IS FLATTENED TO ONE LINE FIRST, the same way `triggeringRuns`
+ * flattens it, because these comments are hard-wrapped and a measurement runs
+ * across the break as often as not.
+ */
+function claimedNumbersIn(paragraph: string): {
+  readonly claimed: readonly ClaimedNumber[];
+  readonly excluded: ExclusionCensus;
+} {
+  const lines = paragraph.split('\n');
+  const flat = lines.join(' ');
+  const codeSpans: (readonly [number, number])[] = [];
+  for (const span of flat.matchAll(/`[^`]*`/g)) {
+    const at = span.index ?? 0;
+    codeSpans.push([at, at + span[0].length]);
+  }
+  const lineStarts = new Set<number>();
+  let offset = 0;
+  for (const line of lines) {
+    lineStarts.add(offset);
+    offset += line.length + 1;
+  }
+
+  const claimed: ClaimedNumber[] = [];
+  const excluded: ExclusionCensus = {
+    'section-coordinate': 0,
+    'inside-an-identifier': 0,
+    'quoted-code': 0,
+    'list-ordinal': 0,
+  };
+  // Reset for the reason `taggedParagraphsIn` resets: a shared /g regex carries
+  // its `lastIndex` into `matchAll`, and that cost this scan 19 paragraphs once
+  // already. Nothing calls `.test()` on this one today, which is exactly the
+  // condition under which the next person adds one.
+  PROSE_NUMERAL.lastIndex = 0;
+  for (const match of flat.matchAll(PROSE_NUMERAL)) {
+    const numeral = match[0];
+    const index = match.index ?? 0;
+    const kind = excludedAs(flat, index, numeral, codeSpans, lineStarts);
+    if (kind !== null) {
+      excluded[kind] += 1;
+      continue;
+    }
+    claimed.push({
+      numeral,
+      index,
+      context: `${flat.slice(Math.max(0, index - 30), index)}[${numeral}]${flat.slice(index + numeral.length, index + numeral.length + 30)}`,
+    });
+  }
+  return { claimed, excluded };
+}
+
+/** Whether `body` states `numeral` as a number rather than as part of one. */
+function numeralOccursIn(body: string, numeral: string): boolean {
+  const bare = numeral.replace(/,/g, '');
+  return new RegExp(`(?<![\\d.])${bare.replace('.', '\\.')}(?![\\d.])`).test(body);
+}
+
+interface TaggedParagraph {
+  /** `file:line`, for the failure message. */
+  readonly where: string;
+  readonly guarantees: readonly string[];
+  /**
+   * The paragraph AS WRITTEN, hard wraps and all.
+   *
+   * Not pre-flattened, which was a live defect for one run of this code: every
+   * index below is in flattened coordinates, so storing the flat form threw
+   * away the line boundaries and the `list-ordinal` exclusion could only ever
+   * fire on the first character of a paragraph. It went green on the tree and
+   * silently reclassified a numbered section heading as a claim.
+   */
+  readonly text: string;
+}
+
+/** Flattened the same way `triggeringRuns` flattens: hard wraps become spaces. */
+function flattenParagraph(text: string): string {
+  return text.split('\n').join(' ');
+}
+
+function taggedParagraphsIn(rel: string, text: string): TaggedParagraph[] {
+  const found: TaggedParagraph[] = [];
+  for (const paragraph of commentParagraphs(text)) {
+    const guarantees: string[] = [];
+    // `GUARANTEE_TAG` is a /g regex shared with a `.test()` caller, and
+    // `matchAll` STARTS FROM ITS `lastIndex`. Without this reset the scan found
+    // 38 of the 57 tagged paragraphs and reported a coverage number that was
+    // wrong in the flattering direction. Measured, not guessed.
+    GUARANTEE_TAG.lastIndex = 0;
+    for (const match of paragraph.text.matchAll(GUARANTEE_TAG)) guarantees.push(match[1] ?? '');
+    if (guarantees.length === 0) continue;
+    found.push({ where: `${rel}:${paragraph.startLine}`, guarantees, text: paragraph.text });
+  }
+  return found;
+}
+
+interface NumberClaimAudit {
+  readonly claimed: number;
+  readonly paragraphsWithNumbers: number;
+  readonly resolving: number;
+  readonly resolvingInCode: number;
+  readonly excusedOccurrences: number;
+  readonly excluded: ExclusionCensus;
+  /** A cited number that is in no named body and on no excuse. */
+  readonly unpinned: readonly string[];
+  /** An excuse that anchors nowhere, or excuses nothing any more. */
+  readonly staleExcuses: readonly string[];
+}
+
+/**
+ * THE WHOLE CHECK AS ONE FUNCTION, taking its resolver and its excuse list as
+ * arguments so the planted sample below drives THE SAME CODE the tree does.
+ * Two implementations is how the sibling guards in this repository diverged.
+ */
+function auditClaimedNumbers(
+  paragraphs: readonly TaggedParagraph[],
+  bodyOf: (id: string) => string | null,
+  excuses: readonly UnpinnedProseNumber[],
+): NumberClaimAudit {
+  const excluded: ExclusionCensus = {
+    'section-coordinate': 0,
+    'inside-an-identifier': 0,
+    'quoted-code': 0,
+    'list-ordinal': 0,
+  };
+
+  // Where each excuse anchors: exactly one site, or it is stale.
+  const staleExcuses: string[] = [];
+  const sites = new Map<UnpinnedProseNumber, { paragraph: number; from: number; to: number }>();
+  const used = new Map<UnpinnedProseNumber, number>();
+  for (const excuse of excuses) {
+    used.set(excuse, 0);
+    if (excuse.phrase.length < MIN_ANCHOR_LENGTH) {
+      staleExcuses.push(`${excuse.guarantee}: "${excuse.phrase}" is too short to anchor a sentence`);
+      continue;
+    }
+    const hits: { paragraph: number; from: number; to: number }[] = [];
+    paragraphs.forEach((paragraph, i) => {
+      if (!paragraph.guarantees.includes(excuse.guarantee)) return;
+      const flat = flattenParagraph(paragraph.text);
+      let at = flat.indexOf(excuse.phrase);
+      while (at !== -1) {
+        hits.push({ paragraph: i, from: at, to: at + excuse.phrase.length });
+        at = flat.indexOf(excuse.phrase, at + 1);
+      }
+    });
+    if (hits.length !== 1) {
+      staleExcuses.push(
+        `${excuse.guarantee}: "${excuse.phrase}" occurs ${hits.length} times in the paragraphs `
+        + 'that tag it, and an excuse anchors exactly once',
+      );
+      continue;
+    }
+    sites.set(excuse, hits[0] as { paragraph: number; from: number; to: number });
+  }
+
+  let claimed = 0;
+  let paragraphsWithNumbers = 0;
+  let resolving = 0;
+  let resolvingInCode = 0;
+  let excusedOccurrences = 0;
+  const unpinned: string[] = [];
+
+  paragraphs.forEach((paragraph, i) => {
+    const numbers = claimedNumbersIn(paragraph.text);
+    for (const kind of Object.keys(excluded) as NumberExclusion[]) {
+      excluded[kind] += numbers.excluded[kind];
+    }
+    if (numbers.claimed.length > 0) paragraphsWithNumbers += 1;
+    claimed += numbers.claimed.length;
+
+    const bodies = paragraph.guarantees.map((id) => bodyOf(id));
+    for (const number of numbers.claimed) {
+      const inBody = bodies.some((body) => body !== null && numeralOccursIn(body, number.numeral));
+      const inCode = bodies.some(
+        (body) => body !== null && numeralOccursIn(withoutComments(body), number.numeral),
+      );
+      if (inBody) resolving += 1;
+      if (inCode) resolvingInCode += 1;
+      if (inBody) continue;
+
+      let excusedBy: UnpinnedProseNumber | null = null;
+      for (const excuse of excuses) {
+        const site = sites.get(excuse);
+        if (site === undefined) continue;
+        if (site.paragraph !== i) continue;
+        if (number.index < site.from || number.index >= site.to) continue;
+        excusedBy = excuse;
+        break;
+      }
+      if (excusedBy !== null) {
+        excusedOccurrences += 1;
+        used.set(excusedBy, (used.get(excusedBy) ?? 0) + 1);
+        continue;
+      }
+      unpinned.push(
+        `${paragraph.where} [${paragraph.guarantees.join('][')}] cites ${number.numeral}, which is `
+        + `not in the body of the test the tag names — "…${number.context}…"`,
+      );
+    }
+  });
+
+  // AN EXCUSE THAT EXCUSES NOTHING IS STALE, which is the direction an
+  // allowlist rots in: somebody pins the number, and the entry saying it is
+  // unpinnable stays behind reading like a live exception.
+  for (const excuse of excuses) {
+    if (sites.has(excuse) && (used.get(excuse) ?? 0) === 0) {
+      staleExcuses.push(
+        `${excuse.guarantee}: "${excuse.phrase}" excuses nothing any more — either the number is `
+        + 'pinned now, or the sentence moved. Delete the entry.',
+      );
+    }
+  }
+
+  return {
+    claimed,
+    paragraphsWithNumbers,
+    resolving,
+    resolvingInCode,
+    excusedOccurrences,
+    excluded,
+    unpinned,
+    staleExcuses,
+  };
+}
+
 /**
  * Every paragraph in `text` that asserts a guarantee and carries no tag.
  *
@@ -1508,6 +2118,21 @@ interface TestTitle {
   readonly title: string;
   readonly file: string;
   readonly skipped: boolean;
+}
+
+/**
+ * The body of the test declaring `id`, found anywhere in the tree.
+ *
+ * THE SINGLE LINE BELOW IS THE WHOLE OF THE BODY SCOPING, and it is the
+ * mutation site the witness for this rule anchors on: returning `text` instead
+ * is the file-scoped reading, which passes a number that is in the right file
+ * for a different check's reasons.
+ */
+function bodyOfDeclaredTest(id: string, titles: readonly TestTitle[]): string | null {
+  const declaring = titles.find((title) => title.title.includes(declarationOf(id)));
+  if (declaring === undefined) return null;
+  const text = readFileSync(path.join(REPO_ROOT, declaring.file), 'utf8');
+  return bodyOfTestDeclaring(text, id);
 }
 
 function testTitlesUnder(dir: string): TestTitle[] {
@@ -1683,6 +2308,9 @@ describe('the guarantee-tag convention', () => {
       // guarantees and no witnesses at all until these.
       'src/empire/empireInvariant.test.ts',
       'src/empire/engagement.test.ts',
+      // The numeric half of the tag witnesses itself: the mutant is in this
+      // file, and so is the test it reddens.
+      'src/game/guaranteeTags.test.ts',
       'src/game/meetClient.test.ts',
       'src/game/meetDay.test.ts',
       'src/game/progression.test.ts',
@@ -1832,5 +2460,238 @@ describe('the guarantee-tag convention', () => {
     // minority of what it can see, and a minority of what it cannot see at all.
     expect(GUARANTEE_COVERAGE.IN_SCOPE / GUARANTEE_COVERAGE.TREE_WIDE).toBeLessThan(0.2);
     expect(GUARANTEE_COVERAGE.IN_SCOPE).toBeLessThan(GUARANTEE_COVERAGE.TREE_WIDE);
+  });
+
+  it('[a-cited-number-resolves-in-the-named-test] resolves the NUMBERS in a tagged claim against the body of the test it names, with the excuse list exact in both directions', () => {
+    const titles = testTitlesUnder(path.join(REPO_ROOT, 'src'));
+    const paragraphs: TaggedParagraph[] = [];
+    for (const file of sourceFilesUnder(path.join(REPO_ROOT, 'src'))) {
+      paragraphs.push(
+        ...taggedParagraphsIn(path.relative(REPO_ROOT, file), readFileSync(file, 'utf8')),
+      );
+    }
+    const audit = auditClaimedNumbers(
+      paragraphs,
+      (id) => bodyOfDeclaredTest(id, titles),
+      UNPINNED_PROSE_NUMBERS,
+    );
+
+    // THE RULE.
+    expect(
+      audit.unpinned,
+      'a tagged claim states a number that the test it names does not carry — pin it in that '
+      + 'test, or say why it cannot be, on UNPINNED_PROSE_NUMBERS',
+    ).toEqual([]);
+    // AND THE OTHER DIRECTION, which is the one an allowlist rots in.
+    expect(
+      audit.staleExcuses,
+      'an entry on UNPINNED_PROSE_NUMBERS anchors nowhere or excuses nothing',
+    ).toEqual([]);
+
+    // THE CENSUS, PINNED AS COUNTS AND NOT BOUNDS. Every one of these moves the
+    // moment somebody writes a number into a tagged paragraph, which is the
+    // point: the coverage claim in `NUMBER_COVERAGE` stays true or goes red.
+    expect(paragraphs.length, 'tagged paragraphs under src').toBe(
+      NUMBER_COVERAGE.TAGGED_PARAGRAPHS,
+    );
+    expect(audit.paragraphsWithNumbers, 'tagged paragraphs stating a number').toBe(
+      NUMBER_COVERAGE.PARAGRAPHS_WITH_A_CLAIMED_NUMBER,
+    );
+    expect(audit.claimed, 'numbers this rule demands something of').toBe(NUMBER_COVERAGE.CLAIMED);
+    expect(audit.resolving, 'numbers found in the named body').toBe(NUMBER_COVERAGE.RESOLVING);
+    expect(
+      audit.resolvingInCode,
+      'numbers found in the named body with its comments blanked — the stronger reading, and '
+      + 'the gap to RESOLVING is the declared weakness',
+    ).toBe(NUMBER_COVERAGE.RESOLVING_IN_CODE);
+    expect(audit.excusedOccurrences, 'numbers excused by name').toBe(NUMBER_COVERAGE.EXCUSED);
+    expect(UNPINNED_PROSE_NUMBERS.length, 'entries doing that excusing').toBe(
+      NUMBER_COVERAGE.EXCUSE_ENTRIES,
+    );
+    expect(audit.excluded, 'what each of the four exclusions removed').toEqual(NUMBER_EXCLUSIONS);
+
+    // NON-VACUITY, AND IT IS NOT THE PIN ABOVE RESTATED. `resolving +
+    // excusedOccurrences === claimed` holds by construction once `unpinned` is
+    // empty, so writing it would have been an assertion nothing could redden;
+    // it was written, noticed and deleted. What these two catch is the OTHER
+    // repair — the one `empireCore.test.ts` had to be rescued from, where a
+    // guard goes red and somebody re-pins it at whatever it reports now. A scan
+    // that stopped seeing paragraphs reports zero, and zero is a number a
+    // constant can be edited to.
+    expect(
+      audit.claimed,
+      'no tagged paragraph states a number, so this whole check measured nothing',
+    ).toBeGreaterThan(20);
+    expect(paragraphs.length, 'no paragraph carries a tag').toBeGreaterThan(20);
+
+    // THE DECLARED WEAKNESS, TAKEN RATHER THAN ASSERTED. A one-digit numeral
+    // resolves against almost any body of this size, so a small number PASSING
+    // this rule is weak evidence — which is a sentence on the doc comment above
+    // and would otherwise be exactly the kind of unpinned figure this whole
+    // file exists to distrust. Pinned here so it is re-derivable.
+    const named = [...new Set(paragraphs.flatMap((paragraph) => paragraph.guarantees))]
+      .map((id) => bodyOfDeclaredTest(id, titles))
+      .filter((body): body is string => body !== null);
+    expect(named.length, 'tag-named bodies').toBe(NUMBER_COVERAGE.NAMED_BODIES);
+    expect(
+      named.filter((body) => numeralOccursIn(body, '0')).length,
+      'bodies holding a bare 0 — if this moved, the sentence about it moved too',
+    ).toBe(NUMBER_COVERAGE.NAMED_BODIES_HOLDING_ZERO);
+    expect(
+      named.filter((body) => numeralOccursIn(body, '1')).length,
+      'bodies holding a bare 1 — if this moved, the sentence about it moved too',
+    ).toBe(NUMBER_COVERAGE.NAMED_BODIES_HOLDING_ONE);
+
+    // AND THE OVERLAP OF THE TWO SCOPES, for the same reason: the doc comment
+    // above used to describe the tagged paragraphs as a subset of the
+    // triggering ones, which they are not.
+    expect(
+      paragraphs.filter((paragraph) => triggeringRuns(paragraph.text).length > 0).length,
+      'tagged paragraphs that also trip the trigger scan',
+    ).toBe(NUMBER_COVERAGE.TAGGED_AND_TRIGGERING);
+
+    // THE SCOPER'S PREMISE, ON THE FILES THIS LEDGER SLICES — the sibling of the
+    // census the witness table runs, and NOT a copy of its list: this ledger
+    // reaches whatever file happens to declare a numbered tag, which is a
+    // different set. Same shared `testScopeFault`, so neither can be weakened
+    // without the other moving.
+    const sliced = new Set<string>();
+    for (const paragraph of paragraphs) {
+      if (claimedNumbersIn(paragraph.text).claimed.length === 0) continue;
+      for (const id of paragraph.guarantees) {
+        const declaring = titles.find((title) => title.title.includes(declarationOf(id)));
+        if (declaring !== undefined) sliced.add(declaring.file);
+      }
+    }
+    for (const file of [...sliced].sort()) {
+      const text = readFileSync(path.join(REPO_ROOT, file), 'utf8');
+      expect(testScopeFault(text, file), 'the number ledger cannot slice this file').toBe(null);
+    }
+    // NON-VACUITY AS A NAMED SET RATHER THAN A BOUND, for the reason the witness
+    // census gives: counting the loop's own iterations would restate the set it
+    // walked. Writing a number into a tagged paragraph in a new file is a
+    // one-line diff here, on purpose.
+    expect([...sliced].sort(), 'the test files the number ledger slices').toEqual([
+      'src/empire/empireInvariant.test.ts',
+      'src/empire/engagement.test.ts',
+      'src/game/streak.test.ts',
+    ]);
+  });
+
+  it('fires when a cited number is only elsewhere in the named test FILE, and stays silent when it is in the body', () => {
+    // BOTH DIRECTIONS ON PLANTED DATA, through the same function the tree runs
+    // through. The arrangement is the one the grant was argued from: the number
+    // exists in the right file, as a DIFFERENT check's pin, twenty lines below.
+    //
+    // The tag is assembled rather than spelt, because the tree-wide scan reads
+    // this file's whole text and a spelt id here would have to name a real test.
+    const tag = `@${'guarantee'} planted-claim`;
+    const violating: TaggedParagraph = {
+      where: 'planted.ts:1',
+      guarantees: ['planted-claim'],
+      text: `THE CONTROL THIS IS ABOUT MEASURES 144 ARRIVALS. ${tag}`,
+    };
+    const conforming: TaggedParagraph = {
+      where: 'planted.ts:9',
+      guarantees: ['planted-claim'],
+      text: `THE CONTROL THIS IS ABOUT MEASURES 128 ARRIVALS. ${tag}`,
+    };
+    // The declaration is COMPOSED rather than spelt, for the same reason the tag
+    // is: three scans in this file read raw source, and a spelt declaration
+    // inside a string literal is a test that does not exist as far as vitest is
+    // concerned and does exist as far as they are. That is the spurious match
+    // `testScopeFault` was written for, and writing it out here reddened the
+    // tree-wide id equality on the first run.
+    const declare = (title: string): string => `  ${'it'}('${title}', () => {`;
+    const planted = [
+      declare('[planted-claim] the claim the tag names'),
+      '    expect(measured).toBe(128);',
+      '  });',
+      '',
+      declare('a different check entirely, twenty lines below'),
+      '    expect(somethingElse).toBe(144);',
+      '  });',
+    ].join('\n');
+    const bodyOf = (id: string): string | null => bodyOfTestDeclaring(planted, id);
+
+    // THE FILE-SCOPED READING WOULD HAVE PASSED THIS, asserted rather than
+    // described: 144 is in the file and is not in the body.
+    expect(numeralOccursIn(planted, '144'), 'the planted file does hold 144').toBe(true);
+    expect(
+      numeralOccursIn(bodyOf('planted-claim') ?? '', '144'),
+      'the planted body does not hold 144',
+    ).toBe(false);
+
+    const fired = auditClaimedNumbers([violating], bodyOf, []);
+    expect(fired.claimed, 'the violating paragraph states one number').toBe(1);
+    expect(fired.unpinned.length, 'and it fires exactly once — a count, not a presence').toBe(1);
+    expect(fired.unpinned[0]).toContain('cites 144');
+    expect(fired.resolving, 'nothing resolved').toBe(0);
+
+    const silent = auditClaimedNumbers([conforming], bodyOf, []);
+    expect(silent.unpinned, 'the conforming paragraph does not fire').toEqual([]);
+    expect(silent.claimed, 'and it is silent by resolving, not by finding nothing').toBe(1);
+    expect(silent.resolving).toBe(1);
+    expect(silent.resolvingInCode, 'it resolves against an assertion rather than a comment').toBe(1);
+
+    // AND THE EXCUSE LIST IS NOT A BLANKET. An entry excuses the sentence it
+    // quotes and nothing else, and an entry whose sentence is gone is stale.
+    const excuse: UnpinnedProseNumber = {
+      guarantee: 'planted-claim',
+      phrase: 'THE CONTROL THIS IS ABOUT MEASURES 144 ARRIVALS',
+      kind: 'history',
+      why: 'planted',
+    };
+    const excused = auditClaimedNumbers([violating], bodyOf, [excuse]);
+    expect(excused.unpinned, 'the quoted sentence is excused').toEqual([]);
+    expect(excused.excusedOccurrences).toBe(1);
+    expect(excused.staleExcuses).toEqual([]);
+
+    const stale = auditClaimedNumbers([conforming], bodyOf, [excuse]);
+    expect(stale.staleExcuses.length, 'an excuse whose sentence no longer exists is stale').toBe(1);
+    expect(stale.staleExcuses[0]).toContain('occurs 0 times');
+
+    // AND THE ARM DIRECTLY BESIDE IT, which is the one this codebase keeps
+    // finding written and undriven: the same guard fails for an AMBIGUOUS
+    // anchor as for a missing one, and only one of the two had been exercised.
+    const twice = auditClaimedNumbers([violating, { ...violating, where: 'planted.ts:20' }], bodyOf, [
+      excuse,
+    ]);
+    expect(twice.staleExcuses.length, 'an excuse that could be about either of two sentences').toBe(
+      1,
+    );
+    expect(twice.staleExcuses[0]).toContain('occurs 2 times');
+    expect(twice.unpinned.length, 'and while it is ambiguous it excuses neither').toBe(2);
+
+    const tooShort = auditClaimedNumbers([violating], bodyOf, [{ ...excuse, phrase: 'MEASURES 144' }]);
+    expect(tooShort.staleExcuses.length, 'an anchor too short to be a sentence').toBe(1);
+    expect(tooShort.unpinned.length, 'and it excuses nothing while it is short').toBe(1);
+  });
+
+  it('counts a number stated as prose, and not one in a section coordinate, an identifier, quoted code or a list ordinal', () => {
+    // THE EXCLUSIONS, DRIVEN. Each of the four is written into one sample line
+    // beside a number that must survive it, so an exclusion that widened to
+    // swallow real prose shows up as a missing entry rather than as a quieter
+    // tree-wide count.
+    const sample = [
+      '3. GDD §12.3 says an e1RM of 4a is not a thing.',
+      'It waits 180ms and charges `max(0, len - grace)`, which is 1 thing.',
+      'The span `673` holds a number and not code.',
+    ].join('\n');
+    const numbers = claimedNumbersIn(sample);
+    expect(numbers.claimed.map((claim) => claim.numeral)).toEqual(['180', '1', '673']);
+    expect(numbers.excluded).toEqual({
+      'section-coordinate': 1,
+      'inside-an-identifier': 2,
+      'quoted-code': 1,
+      'list-ordinal': 1,
+    });
+
+    // A NUMBER IS NOT A SUBSTRING OF ANOTHER NUMBER, which is how a loose
+    // `includes` would report a claim as pinned by an unrelated decimal.
+    expect(numeralOccursIn('expect(kg).toBe(212.5);', '212')).toBe(false);
+    expect(numeralOccursIn('expect(kg).toBe(212.5);', '212.5')).toBe(true);
+    expect(numeralOccursIn('expect(pairs).toBe(24576);', '24,576')).toBe(true);
+    expect(numeralOccursIn('expect(pairs).toBe(1051);', '105')).toBe(false);
   });
 });
