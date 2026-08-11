@@ -312,10 +312,45 @@
  * spend; the day anchor was declared one grain coarser than the thing it
  * anchors, and that was the defect. Each purse now buys at most once a calendar
  * day, at the first check-in of that day it can afford its next rung, and a
- * purse that can afford nothing waits. Adding a check-in can only make a
- * purse's first affordable moment earlier or leave it — money and reputation
- * accrue on the wall clock and a check-in only reads them sooner — so the day a
- * rung lands is monotone in attendance, purse by purse.
+ * purse that can afford nothing waits.
+ *
+ * WHAT THAT ESTABLISHES BY CONSTRUCTION, AND WHAT IT DOES NOT — stated in two
+ * parts because the sentence that used to sit here ran them together and the
+ * join was false. This paragraph asserted: adding a check-in can only make a
+ * purse's first affordable moment earlier or leave it, since money and
+ * reputation accrue on the wall clock and a check-in only reads them sooner, SO
+ * the day a rung lands is monotone in attendance, purse by purse. The premise
+ * is true. The conclusion does not follow from it, and both halves of that were
+ * measured rather than argued:
+ *
+ *   - THE PREMISE IS TRUE IN A VIOLATING ENGINE, so it cannot be what makes the
+ *     shipped one safe. It talks about the anchor, the per-purse split and
+ *     wall-clock accrual. `RosterUpgradeRule` touches none of the three, and
+ *     `'one-way-door'` — the same anchor, the same purses, the same accrual,
+ *     one parameter different — measures 824 violating pairs of 24576 on this
+ *     file's own window. Every word of the premise is true of that engine.
+ *
+ *   - THE ARGUMENT IS ABOUT WHEN A RUNG LANDS AND SAYS NOTHING ABOUT WHICH ONE,
+ *     and the gap is live rather than theoretical. `AXIS_OUTPUT` puts `space`
+ *     and `spotter` on one purse and `coach` and `equipment` on another, so two
+ *     of the four purses hold two ladders; step 4 below takes the first
+ *     startable offer and breaks; and `EmpireGym.nextAxis` advances once per
+ *     attended calendar day under this anchor, so an extra check-in on an
+ *     otherwise-empty day permanently shifts which ladder a two-ladder purse is
+ *     offered first. Measured on the 24576-pair window: in 3334 pairs the
+ *     more-engaged gym starts a DIFFERENT axis at the same position in its rung
+ *     order, and the traced shape is the dearer 1000 spotter rung where the
+ *     less-engaged gym took the cheaper 800 space rung. That is the mechanism
+ *     `'first-attended-check-in'` was rejected for at 1951 pairs, confined to
+ *     the purses that hold two ladders rather than removed by the anchor.
+ *
+ * SO THE ZERO IS A MEASUREMENT AND NOT A CONSTRUCTION, and it is worth exactly
+ * the domains it was taken on. Those are `engagement.test.ts`'s `ANCHOR_DOMAINS`
+ * — the 24576-pair window, the coarse grid enumerated whole, the same window
+ * moved to day 4, the whole-day reading, and seeded histories at 20, 40, 60 and
+ * 100 days — each of which is asserted to have actually consulted the anchor,
+ * because a run driven at a per-check-in policy carries an anchor nothing asks.
+ * No argument here rules out a longer horizon or a different axis order.
  *
  * WHAT THE ANCHOR IS NOT: the safety property on its own. Under the
  * `'single-wall-clock-purse'` control every one of the four anchors is

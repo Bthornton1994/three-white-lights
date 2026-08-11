@@ -186,6 +186,26 @@
  * one level in. All six policies are zero on every domain measured now. The
  * three anchors the game does not ship stay runnable as controls at 31, 1951
  * and 6459, and `empireInvariant.ts` §4c is the trace that chose between them.
+ *
+ * ===========================================================================
+ * 8. Which domains the anchor is measured on, and which merely carry its name
+ * ===========================================================================
+ *
+ * `anchor` is read by `spendsOncePerDay(spending)` policies and by no other, so
+ * every run this file produces carries an anchor and most of them never ask it
+ * anything. A tally taken on such a run is evidence about the spending policy
+ * and about nothing whatever about the anchor, and the two are indistinguishable
+ * from outside — which is how GDD §5.4 came to credit the shipped anchor with a
+ * zero on two domains that never consulted it.
+ *
+ * `EngagementCensus.anchorDecisions` is the count of questions a run actually
+ * put to the anchor, observed at the three call sites. `engagementRunFaults`
+ * refuses a run whose count disagrees with its policy, and
+ * `engagement.test.ts`'s `ANCHOR_DOMAINS` is the list of domains the anchor
+ * claim is made on, with each domain's decision count pinned beside its
+ * violating count. A domain added to the claim without a row there is not
+ * measured, and a row whose sweep goes anchor-inert reports zero decisions and
+ * reddens rather than passing.
  */
 
 import {
@@ -448,6 +468,24 @@ export interface EngagementCensus {
   readonly upkeepCharged: number;
   /** Events a control charged on. Zero on the shipped wiring. */
   readonly upkeepEvents: number;
+  /**
+   * Times this run actually asked the day anchor a question.
+   *
+   * Observed at the three call sites rather than derived from `spending`, and
+   * that is the whole point of the field. A day anchor is a parameter every run
+   * carries and a per-check-in policy never consults, so a sweep driven at the
+   * default spending policy runs the shipped anchor's *name* through the whole
+   * comparison while `EMPIRE_DAY_SPENDING_ANCHORS` decides nothing — and a
+   * tally taken there looks exactly like a tally taken on a domain that did
+   * exercise it. Two domains were described in GDD §5.4 as anchor measurements
+   * on precisely that mistake.
+   *
+   * Zero is therefore a REPORT rather than a default: `engagementRunFaults`
+   * refuses a run whose count disagrees with `spendsOncePerDay(spending)`, and
+   * `engagement.test.ts`'s `ANCHOR_DOMAINS` pins the count per domain so a
+   * sweep that quietly stopped consulting the anchor is red rather than green.
+   */
+  readonly anchorDecisions: number;
   /** Days on which `TRAINING_IQ_DAILY_CEILING` bit. */
   readonly ceilingBoundDays: number;
   /** The first day the physio hook paid anything, or `null` inside this horizon. */
@@ -467,6 +505,22 @@ export interface EngagementRun {
   readonly upgrades: RosterUpgradeRule;
   /** Every entry, in day order then in output order, as `EmpireDayEntry`. */
   readonly ledger: readonly EmpireDayEntry[];
+  /**
+   * Every expansion rung this run STARTED, as `axis@level`, in start order.
+   *
+   * WHICH rung rather than WHEN it landed, and that is the whole reason it
+   * exists. The ledger answers "when", so a comparator reading it alone cannot
+   * see two runs that bought the same number of rungs in the same days off
+   * different ladders. `AXIS_OUTPUT` puts `space` and `spotter` on one purse and
+   * `coach` and `equipment` on another, so a purse can hold two ladders and the
+   * rotation phase decides which of them a purse's one daily purchase goes to —
+   * see `engagement.test.ts`'s rung-swap reading, which is the non-vacuity
+   * denominator for the anchor's zero.
+   *
+   * Read off `EmpireGym.builds`, which `stepGym` appends to in start order, so
+   * this is the loop's own record rather than a second opinion about it.
+   */
+  readonly rungOrder: readonly string[];
   readonly census: EngagementCensus;
 }
 
@@ -605,6 +659,14 @@ export function runEngagement(
   let ceilingBoundDays = 0;
   let socialRewardDays = 0;
   let physioArrivalDay: number | null = null;
+  let anchorDecisions = 0;
+  // Every question this loop puts to `anchor` goes through here, so the census
+  // records consultations that happened rather than consultations a reader
+  // would infer from `spending`. See `EngagementCensus.anchorDecisions`.
+  const askedTheAnchor = (answer: boolean): boolean => {
+    anchorDecisions += 1;
+    return answer;
+  };
 
   for (let day = 0; day < days; day += 1) {
     // The first and last check-ins the player actually takes in this calendar
@@ -632,7 +694,7 @@ export function runEngagement(
       if (history.attended[slot] !== true) continue;
       checkIns += 1;
       const dayGranular = spendsOncePerDay(spending);
-      const perPurse = dayGranular && !anchorHasOneTripPerDay(anchor);
+      const perPurse = dayGranular && !askedTheAnchor(anchorHasOneTripPerDay(anchor));
       const moment = perPurse
         ? spendingMomentForBooks(
             spending,
@@ -647,11 +709,13 @@ export function runEngagement(
         : spendingMoment(
             spending,
             !dayGranular ||
-              isDaySpendingMoment(anchor, {
-                firstAttendedOfDay: tick === firstAttendedTick,
-                lastAttendedOfDay: tick === lastAttendedTick,
-                boughtEarlierToday,
-              }),
+              askedTheAnchor(
+                isDaySpendingMoment(anchor, {
+                  firstAttendedOfDay: tick === firstAttendedTick,
+                  lastAttendedOfDay: tick === lastAttendedTick,
+                  boughtEarlierToday,
+                }),
+              ),
           );
       const before = gym;
       gym = stepGym(
@@ -667,7 +731,7 @@ export function runEngagement(
       if (spendsAtMoment(moment)) {
         const bought = purchasesMade(gym) > purchasesMade(before);
         if (bought) boughtEarlierToday = true;
-        if (!bought && dayGranular && anchorConsumesDayOnlyOnPurchase(anchor)) {
+        if (!bought && dayGranular && askedTheAnchor(anchorConsumesDayOnlyOnPurchase(anchor))) {
           // The trip bought nothing, so under this anchor it did not happen and
           // must leave no trace — not even the axis rotation a spending moment
           // carries. Re-taken from the same gym with the offer withdrawn, which
@@ -770,6 +834,7 @@ export function runEngagement(
     anchor,
     upgrades,
     ledger: Object.freeze(ledger),
+    rungOrder: Object.freeze(gym.builds.map((build) => `${build.axis}@${build.toLevel}`)),
     census: Object.freeze({
       days,
       slots,
@@ -784,6 +849,7 @@ export function runEngagement(
       expansions: gym.expansions,
       upkeepCharged,
       upkeepEvents,
+      anchorDecisions,
       ceilingBoundDays,
       physioArrivalDay,
       socialRewardDays,
@@ -1069,6 +1135,20 @@ export function engagementRunFaults(run: EngagementRun): readonly string[] {
     if (run.census.repeatPurseSpends > 0) {
       faults.push(`a purse bought twice in one calendar day ${run.census.repeatPurseSpends} times`);
     }
+  }
+  // The anchor is either consulted or it is decoration, and which one is a fact
+  // about `spending` rather than about the anchor that was passed. A run driven
+  // at a per-check-in policy carries an anchor nothing asks — so its tally is
+  // evidence about the policy and about nothing at all about the anchor, and
+  // this is what makes that visible from outside the loop instead of leaving it
+  // for a reader to derive. `ANCHOR_DOMAINS` in `engagement.test.ts` is the
+  // consumer.
+  const anchorWasRead = run.census.anchorDecisions > 0;
+  const anchorShouldBeRead = spendsOncePerDay(run.spending) && run.census.checkIns > 0;
+  if (anchorWasRead !== anchorShouldBeRead) {
+    faults.push(
+      `the ${run.spending} policy put ${run.census.anchorDecisions} questions to the ${run.anchor} anchor over ${run.census.checkIns} check-ins`,
+    );
   }
   if (run.census.purchaseDays > run.census.purchaseCheckIns) {
     faults.push(

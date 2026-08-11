@@ -222,7 +222,7 @@ import {
   type EngagementTally,
   type EngagementWiringKey,
 } from './engagement';
-import type { ExpansionAxis } from './expansion';
+import { axisBook, type ExpansionAxis } from './expansion';
 import { accrueProduction } from './production';
 import { accrueSponsorship } from './reputation';
 import { asCalendarDay, type SocialCalendarContext } from './social';
@@ -824,6 +824,71 @@ function socialFor(history: EngagementHistory): SocialInputs {
   return Object.freeze({ ...BASE_SOCIAL, calendar });
 }
 
+// ---------------------------------------------------------------------------
+// What a sweep actually ran, so an anchor-inert domain reports itself
+// ---------------------------------------------------------------------------
+
+/**
+ * The record every sweep leaves behind: how many runs it built, and how many
+ * questions those runs put to `EMPIRE_DAY_SPENDING_ANCHORS`.
+ *
+ * THE DEFECT THIS EXISTS FOR, stated so the field is not read as bookkeeping.
+ * `runEngagement` takes an anchor whatever policy it is driven at, and only a
+ * `spendsOncePerDay` policy ever asks it anything. `windowedSweep` and
+ * `seededSweep` both default `spending` to `SHIPPED_SPENDING_POLICY`, which is
+ * per-check-in — so a sweep called with no spending argument runs the shipped
+ * anchor's NAME through the whole comparison while the anchor decides nothing,
+ * and the tally it returns is indistinguishable from one taken on a domain that
+ * did exercise it. GDD §5.4 credited the shipped anchor with a zero on two such
+ * domains for a wave, and the sentence read exactly as true as the three that
+ * were.
+ *
+ * `EngagementCensus.anchorDecisions` is the run's own observed count, taken at
+ * the three call sites in `runEngagement` rather than derived from `spending`.
+ * This sums it over a whole sweep, `ANCHOR_DOMAINS` pins the sum per domain,
+ * and `engagementRunFaults` refuses any single run whose count disagrees with
+ * its policy. So a domain that stops reading the anchor reddens with two
+ * integers rather than continuing to look like evidence about it.
+ */
+interface SweepRecord {
+  readonly runs: number;
+  readonly anchorDecisions: number;
+}
+
+let sweepRuns = 0;
+let sweepAnchorDecisions = 0;
+
+/** Start a fresh record. Every sweep helper below opens with this. */
+function beginSweep(): void {
+  sweepRuns = 0;
+  sweepAnchorDecisions = 0;
+}
+
+/** The record of the sweep that just returned. */
+function sweepRecord(): SweepRecord {
+  return Object.freeze({ runs: sweepRuns, anchorDecisions: sweepAnchorDecisions });
+}
+
+/** Restore a record off a memo hit, so a cached sweep reports what it measured. */
+function resumeSweep(record: SweepRecord): void {
+  sweepRuns = record.runs;
+  sweepAnchorDecisions = record.anchorDecisions;
+}
+
+/**
+ * Fold one run into the current record.
+ *
+ * Every run this file builds goes through here, which is what makes the record
+ * complete rather than a count somebody remembered to increment: `runFor`,
+ * `upgradeRun` and `anchoredRun` are the only three constructors, and all three
+ * return through this.
+ */
+function noteRun(run: EngagementRun): EngagementRun {
+  sweepRuns += 1;
+  sweepAnchorDecisions += run.census.anchorDecisions;
+  return run;
+}
+
 function runFor(
   days: number,
   history: EngagementHistory,
@@ -846,17 +911,51 @@ function runFor(
     : key === 'shipped'
       ? shippedEngagementWiring()
       : engagementWiring(key, 0);
-  return runEngagement(
-    days,
-    policyFor(checkInsPerDay, axisOrder),
-    history,
-    socialFor(history),
-    wiring,
-    spending,
-    SHIPPED_ROSTER_UPGRADE,
-    history,
-    anchor,
+  return noteRun(
+    runEngagement(
+      days,
+      policyFor(checkInsPerDay, axisOrder),
+      history,
+      socialFor(history),
+      wiring,
+      spending,
+      SHIPPED_ROSTER_UPGRADE,
+      history,
+      anchor,
+    ),
   );
+}
+
+/**
+ * Sweeps already taken, keyed on every argument that decides their result.
+ *
+ * NOT AN OPTIMISATION THAT CHANGES WHAT IS CHECKED, and the distinction is
+ * worth stating because a memo can quietly turn two independent readings into
+ * one. `windowedSweep` and `seededSweep` are pure functions of their arguments,
+ * and the call sites that share a key are calling them with argument lists that
+ * are equal element by element — the headline sweep and the policy table's
+ * shipped row, for instance, are the same seven arguments written two ways.
+ * Every assertion in this file compares a sweep against a pinned literal in
+ * `MEASURED*`, never against another sweep's return value, so a memo hit cannot
+ * make an assertion agree with itself. What it removes is the second
+ * computation of an identical domain, which is five of the file's twenty-odd
+ * windowed sweeps.
+ *
+ * `SweepRecord` is cached with the tally, so a memo hit still reports the runs
+ * and the anchor decisions its domain actually made rather than zero.
+ */
+const SWEEP_MEMO = new Map<string, { tally: EngagementTally; record: SweepRecord }>();
+
+function memoised(key: string, take: () => EngagementTally): EngagementTally {
+  const hit = SWEEP_MEMO.get(key);
+  if (hit !== undefined) {
+    resumeSweep(hit.record);
+    return hit.tally;
+  }
+  beginSweep();
+  const tally = take();
+  SWEEP_MEMO.set(key, { tally, record: sweepRecord() });
+  return tally;
 }
 
 /**
@@ -871,6 +970,23 @@ function windowedSweep(
   axisOrder: readonly ExpansionAxis[] = ENGAGEMENT_SWEEP.AXIS_ORDER,
   spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
   anchor: EmpireDaySpendingAnchor = SHIPPED_DAY_SPENDING_ANCHOR,
+): EngagementTally {
+  return memoised(
+    ['windowed', days, windowFrom, windowSlots, key, axisOrder.join('+'), spending, anchor].join(
+      '|',
+    ),
+    () => windowedSweepUncached(days, windowFrom, windowSlots, key, axisOrder, spending, anchor),
+  );
+}
+
+function windowedSweepUncached(
+  days: number,
+  windowFrom: number,
+  windowSlots: number,
+  key: EngagementWiringKey,
+  axisOrder: readonly ExpansionAxis[],
+  spending: EmpireSpendingPolicy,
+  anchor: EmpireDaySpendingAnchor,
 ): EngagementTally {
   const slots = days * ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
   const cache = new Map<number, EngagementRun>();
@@ -909,6 +1025,7 @@ function windowedSweep(
 
 /** Every calendar of a whole grid, at a cadence coarse enough to enumerate. */
 function fullyExhaustiveSweep(days: number, checkInsPerDay: number): EngagementTally {
+  beginSweep();
   const slots = days * checkInsPerDay;
   const cache = new Map<number, EngagementRun>();
   const at = (mask: number): EngagementRun => {
@@ -934,6 +1051,12 @@ function wholeDaySweep(
   days: number,
   spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
 ): EngagementTally {
+  return memoised(['whole-day', days, spending].join('|'), () =>
+    wholeDaySweepUncached(days, spending),
+  );
+}
+
+function wholeDaySweepUncached(days: number, spending: EmpireSpendingPolicy): EngagementTally {
   const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
   const slots = days * cadence;
   const cache = new Map<number, EngagementRun>();
@@ -969,6 +1092,21 @@ function seededSweep(
   spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
   anchor: EmpireDaySpendingAnchor = SHIPPED_DAY_SPENDING_ANCHOR,
 ): EngagementTally {
+  return memoised(
+    ['seeded', days, trials, seed, key, axisOrder.join('+'), spending, anchor].join('|'),
+    () => seededSweepUncached(days, trials, seed, key, axisOrder, spending, anchor),
+  );
+}
+
+function seededSweepUncached(
+  days: number,
+  trials: number,
+  seed: number,
+  key: EngagementWiringKey,
+  axisOrder: readonly ExpansionAxis[],
+  spending: EmpireSpendingPolicy,
+  anchor: EmpireDaySpendingAnchor,
+): EngagementTally {
   const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
   const slots = days * cadence;
   let tally = emptyEngagementTally();
@@ -1001,6 +1139,7 @@ function trainedDaySweep(
   seed: number,
   key: EngagementWiringKey = 'shipped',
 ): EngagementTally {
+  beginSweep();
   const slots = days * ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
   let tally = emptyEngagementTally();
   const next = lcg(seed);
@@ -1767,6 +1906,130 @@ const MEASURED_ANCHOR = Object.freeze({
     worstArrivalDeficitDays: 0,
     lengthMismatches: 0,
   }),
+
+  /**
+   * The four anchors on the SAME WINDOW MOVED TO DAY 4, under the day policy.
+   *
+   * This domain was in GDD §5.4's list of anchor measurements and was not one:
+   * `windowedSweep`'s default `spending` is per-check-in, so the day-4 test
+   * above runs the shipped anchor's name past an engine that never asks it
+   * anything. This row is the reading the document claimed, taken. The old
+   * anchor is 456 here, so the domain separates the four rather than being a
+   * second place they all come out zero.
+   */
+  /**
+   * The headline window's four violating counts on their own, so
+   * `ANCHOR_DOMAINS` can name the same numbers the whole-tally table carries.
+   * Asserted equal to `WINDOWED`'s own `violatingPairs` in both directions by
+   * the table-shape check, so the two cannot drift apart.
+   */
+  WINDOWED_VIOLATING: Object.freeze({
+    'first-affordable-check-in-per-purse': 0,
+    'first-affordable-check-in': 31,
+    'first-attended-check-in': 1951,
+    'last-attended-check-in': 6459,
+  }),
+
+  LATE_WINDOW_VIOLATING: Object.freeze({
+    'first-affordable-check-in-per-purse': 0,
+    'first-affordable-check-in': 0,
+    'first-attended-check-in': 0,
+    'last-attended-check-in': 456,
+  }),
+
+  /**
+   * The four anchors at 60 and at 100 seeded days, under the day policy.
+   *
+   * ALSO CLAIMED AND NOT TAKEN. `seededSweep` defaults `spending` the same way,
+   * so the 60/100-day test above is a per-check-in reading; before this row the
+   * longest horizon the shipped day anchor had ever been measured at was 40
+   * days, on 623 pairs from 6 seeded histories. Both horizons are zero at the
+   * shipped anchor and non-zero at the old one, and the two anchors between
+   * them are small rather than zero — which is what a rare shape looks like
+   * when a sampled domain is long enough to reach it.
+   */
+  SEEDED_60_VIOLATING: Object.freeze({
+    'first-affordable-check-in-per-purse': 0,
+    'first-affordable-check-in': 1,
+    'first-attended-check-in': 3,
+    'last-attended-check-in': 64,
+  }),
+  SEEDED_100_VIOLATING: Object.freeze({
+    'first-affordable-check-in-per-purse': 0,
+    'first-affordable-check-in': 0,
+    'first-attended-check-in': 2,
+    'last-attended-check-in': 4,
+  }),
+
+  /**
+   * The shipped anchor's whole tally at 60 and at 100 seeded days, so the zeros
+   * above sit beside the domain they were taken on rather than alone.
+   */
+  SEEDED_60_SHIPPED: Object.freeze({
+    pairs: 650,
+    comparedElements: 78000,
+    movedPairs: 329,
+    movedElements: 1600,
+    violatingPairs: 0,
+    trainingIqLower: 0,
+    trainingIqHigher: 1589,
+    physioLower: 0,
+    physioHigher: 11,
+    physioArrivalLater: 0,
+    physioArrivalEarlier: 11,
+    pairsWherePhysioArrived: 650,
+    worstTrainingIqDeficit: 0,
+    worstPhysioDeficit: 0,
+    worstArrivalDeficitDays: 0,
+    lengthMismatches: 0,
+  }),
+  SEEDED_100_SHIPPED: Object.freeze({
+    pairs: 556,
+    comparedElements: 111200,
+    movedPairs: 125,
+    movedElements: 609,
+    violatingPairs: 0,
+    trainingIqLower: 0,
+    trainingIqHigher: 609,
+    physioLower: 0,
+    physioHigher: 0,
+    physioArrivalLater: 0,
+    physioArrivalEarlier: 0,
+    pairsWherePhysioArrived: 556,
+    worstTrainingIqDeficit: 0,
+    worstPhysioDeficit: 0,
+    worstArrivalDeficitDays: 0,
+    lengthMismatches: 0,
+  }),
+
+  /**
+   * WHICH RUNG LANDED, NOT WHEN — the reading the construction argument for
+   * this anchor does not cover, and the non-vacuity denominator for its zero.
+   *
+   * `empireInvariant.ts` §4c used to close with "so the day a rung lands is
+   * monotone in attendance, purse by purse". The premise it drew that from is
+   * about WHEN a purse can first afford its next rung. `AXIS_OUTPUT` puts
+   * `space` and `spotter` on one purse and `coach` and `equipment` on another,
+   * `stepGym` step 4 takes the first startable offer and breaks, and
+   * `EmpireGym.nextAxis` advances once per attended calendar day under this
+   * anchor — so an extra check-in on an otherwise-empty day permanently shifts
+   * which ladder of a two-ladder purse is offered first.
+   *
+   * `swapped` counts the pairs where the more-engaged gym STARTS A DIFFERENT
+   * AXIS at the same position in its rung order. It is 3334 of 24576, so the
+   * mechanism is live and the zero beside it is a measurement over a domain
+   * that reaches it rather than a zero about something unreachable.
+   *
+   * `sameAxisDifferentLevel` is 0, which is a fact about the shape rather than
+   * a target: every first divergence is between two axes, never the same
+   * ladder at two rungs.
+   */
+  RUNG_SWAP: Object.freeze({
+    pairs: 24576,
+    diverged: 3334,
+    swapped: 3334,
+    sameAxisDifferentLevel: 0,
+  }),
 } as const);
 
 /** The headline windowed sweep under one policy and one wiring. Same domain, same comparator. */
@@ -1778,16 +2041,18 @@ function upgradeRun(
   upgrades: RosterUpgradeRule,
   anchor: EmpireDaySpendingAnchor = SHIPPED_DAY_SPENDING_ANCHOR,
 ): EngagementRun {
-  return runEngagement(
-    days,
-    policyFor(cadence),
-    history,
-    socialFor(history),
-    shippedEngagementWiring(),
-    'spend-once-per-calendar-day',
-    upgrades,
-    history,
-    anchor,
+  return noteRun(
+    runEngagement(
+      days,
+      policyFor(cadence),
+      history,
+      socialFor(history),
+      shippedEngagementWiring(),
+      'spend-once-per-calendar-day',
+      upgrades,
+      history,
+      anchor,
+    ),
   );
 }
 
@@ -1808,16 +2073,18 @@ function anchoredRun(
   spendsOn: EngagementHistory,
   anchor: EmpireDaySpendingAnchor = 'last-attended-check-in',
 ): EngagementRun {
-  return runEngagement(
-    days,
-    policyFor(cadence),
-    history,
-    socialFor(history),
-    shippedEngagementWiring(),
-    'spend-once-per-calendar-day',
-    SHIPPED_ROSTER_UPGRADE,
-    spendsOn,
-    anchor,
+  return noteRun(
+    runEngagement(
+      days,
+      policyFor(cadence),
+      history,
+      socialFor(history),
+      shippedEngagementWiring(),
+      'spend-once-per-calendar-day',
+      SHIPPED_ROSTER_UPGRADE,
+      spendsOn,
+      anchor,
+    ),
   );
 }
 
@@ -1870,6 +2137,77 @@ function anchorWindowed(
   key: EngagementWiringKey = 'shipped',
 ): EngagementTally {
   return policyWindowed('spend-once-per-calendar-day', key, anchor);
+}
+
+/** The day-4 window under one DAY ANCHOR, under the day-granularity policy. */
+function lateAnchorWindowed(anchor: EmpireDaySpendingAnchor): EngagementTally {
+  return windowedSweep(
+    ENGAGEMENT_SWEEP.WINDOW_HORIZON_DAYS,
+    ENGAGEMENT_SWEEP.LATE_WINDOW_FROM_SLOT,
+    ENGAGEMENT_SWEEP.LATE_WINDOW_SLOTS,
+    'shipped',
+    ENGAGEMENT_SWEEP.AXIS_ORDER,
+    'spend-once-per-calendar-day',
+    anchor,
+  );
+}
+
+/** A seeded horizon under one DAY ANCHOR, under the day-granularity policy. */
+function seededAnchorSweep(
+  days: number,
+  trials: number,
+  seed: number,
+  anchor: EmpireDaySpendingAnchor,
+): EngagementTally {
+  return seededSweep(
+    days,
+    trials,
+    seed,
+    'shipped',
+    ENGAGEMENT_SWEEP.AXIS_ORDER,
+    'spend-once-per-calendar-day',
+    anchor,
+  );
+}
+
+/**
+ * Every calendar of the coarse grid, whole, under the day policy at one anchor.
+ *
+ * Extracted from the test that used to inline it so `ANCHOR_DOMAINS` can name
+ * the same computation rather than a second one shaped like it; memoised, so
+ * naming it twice costs one enumeration.
+ */
+function coarseDaySweep(anchor: EmpireDaySpendingAnchor): EngagementTally {
+  return memoised(['coarse-day', anchor].join('|'), () => {
+    const days = ENGAGEMENT_SWEEP.COARSE_HORIZON_DAYS;
+    const cadence = ENGAGEMENT_SWEEP.COARSE_CHECK_INS_PER_DAY;
+    const slots = days * cadence;
+    const cache = new Map<number, EngagementRun>();
+    const at = (mask: number): EngagementRun => {
+      const hit = cache.get(mask);
+      if (hit !== undefined) return hit;
+      const history = historyFrom(slots, (slot) => (mask & (1 << slot)) !== 0, BASE_TRAINED_DAYS);
+      const made = runFor(
+        days,
+        history,
+        'shipped',
+        ENGAGEMENT_SWEEP.AXIS_ORDER,
+        cadence,
+        'spend-once-per-calendar-day',
+        anchor,
+      );
+      cache.set(mask, made);
+      return made;
+    };
+    let tally = emptyEngagementTally();
+    for (let mask = 0; mask < 1 << slots; mask += 1) {
+      for (let bit = 0; bit < slots; bit += 1) {
+        if ((mask & (1 << bit)) !== 0) continue;
+        tally = addEngagement(tally, compareEngagement(at(mask), at(mask | (1 << bit))));
+      }
+    }
+    return tally;
+  });
 }
 
 /** The five counts the second-domain table pins, out of a whole tally. */
@@ -2237,19 +2575,32 @@ describe('the spending policy is the second independent variable, and it is swep
     let keepsMoment = 0;
     let keepsMomentViolating = 0;
     let promotedBaselines = 0;
-    for (let mask = 0; mask < 1 << window; mask += 1) {
-      const attended = (slot: number): boolean =>
-        slot >= window ? true : (mask & (1 << slot)) !== 0;
-      const history = historyFrom(slots, attended, BASE_TRAINED_DAYS);
-      const baseline = runFor(
+    // MASK-KEYED, because `moreEngagedBy(history(mask), bit)` IS `history(mask |
+    // 1 << bit)` — the same attendance grid and the same trained days — so the
+    // uncached form built 28672 runs where 4096 exist. It was the slowest test
+    // in the repository at 34.5 s against a 30 s budget, and it was slow by
+    // rebuilding the same twelve-day runs seven times over rather than by
+    // measuring anything extra. `windowedSweep` has always cached this way; this
+    // loop and the two below simply had not.
+    const cache = new Map<number, EngagementRun>();
+    const at = (mask: number): EngagementRun => {
+      const hit = cache.get(mask);
+      if (hit !== undefined) return hit;
+      const made = runFor(
         days,
-        history,
+        historyFrom(slots, maskAttendance(mask, window), BASE_TRAINED_DAYS),
         'shipped',
         ENGAGEMENT_SWEEP.AXIS_ORDER,
         cadence,
         'spend-once-per-calendar-day',
         anchor,
       );
+      cache.set(mask, made);
+      return made;
+    };
+    for (let mask = 0; mask < 1 << window; mask += 1) {
+      const attended = maskAttendance(mask, window);
+      const baseline = at(mask);
       if (baseline.census.promotions > 0) promotedBaselines += 1;
       for (let bit = 0; bit < window; bit += 1) {
         if ((mask & (1 << bit)) !== 0) continue;
@@ -2258,18 +2609,7 @@ describe('the spending policy is the second independent variable, and it is swep
         for (let tick = 0; tick < cadence; tick += 1) {
           if (attended(day * cadence + tick)) lastAttended = tick;
         }
-        const divergence = compareEngagement(
-          baseline,
-          runFor(
-            days,
-            moreEngagedBy(history, bit),
-            'shipped',
-            ENGAGEMENT_SWEEP.AXIS_ORDER,
-            cadence,
-            'spend-once-per-calendar-day',
-            anchor,
-          ),
-        );
+        const divergence = compareEngagement(baseline, at(mask | (1 << bit)));
         if (bit - day * cadence > lastAttended) {
           movesMoment += 1;
           if (divergence.violating) movesMomentViolating += 1;
@@ -2326,11 +2666,28 @@ describe('the spending policy is the second independent variable, and it is swep
     let oneWayDoorViolating = 0;
     let maskCount = 0;
     let controlPromotions = 0;
+    // Mask-keyed for the reason the check above gives, and the two loops are
+    // written the same way on purpose: they enumerate the same masks over the
+    // same window, and a cache added to one arm and not to its sibling is the
+    // shape CLAUDE.md records as "the branch immediately below the one you just
+    // fixed".
+    const cache = new Map<number, EngagementRun>();
+    const at = (mask: number): EngagementRun => {
+      const hit = cache.get(mask);
+      if (hit !== undefined) return hit;
+      const made = upgradeRun(
+        days,
+        historyFrom(slots, maskAttendance(mask, window), BASE_TRAINED_DAYS),
+        cadence,
+        'one-way-door',
+        anchor,
+      );
+      cache.set(mask, made);
+      return made;
+    };
     for (let mask = 0; mask < 1 << window; mask += 1) {
-      const attended = (slot: number): boolean =>
-        slot >= window ? true : (mask & (1 << slot)) !== 0;
-      const history = historyFrom(slots, attended, BASE_TRAINED_DAYS);
-      const doorBase = upgradeRun(days, history, cadence, 'one-way-door', anchor);
+      const attended = maskAttendance(mask, window);
+      const doorBase = at(mask);
       controlPromotions += doorBase.census.promotions;
       maskCount += 1;
       for (let bit = 0; bit < window; bit += 1) {
@@ -2342,11 +2699,7 @@ describe('the spending policy is the second independent variable, and it is swep
         }
         if (bit - day * cadence > lastAttended) continue;
         keepsMoment += 1;
-        const more = moreEngagedBy(history, bit);
-        if (
-          compareEngagement(doorBase, upgradeRun(days, more, cadence, 'one-way-door', anchor))
-            .violating
-        ) {
+        if (compareEngagement(doorBase, at(mask | (1 << bit))).violating) {
           oneWayDoorViolating += 1;
         }
       }
@@ -2389,11 +2742,26 @@ describe('the spending policy is the second independent variable, and it is swep
     let freeAnchorViolating = 0;
     let heldAnchorViolating = 0;
     let heldAnchorMoved = 0;
+    // The FREE arm is mask-keyed like the two loops above — a run whose
+    // `spendsOn` is its own history is a function of the mask alone. The HELD
+    // arm deliberately is not cached: its `spendsOn` is the BASELINE's history
+    // while its own attendance is the more-engaged one, so it is a function of
+    // the pair rather than of the mask, and a cache keyed on the mask would
+    // silently hand back the free arm's run and collapse the counterfactual
+    // this whole check is.
+    const freeCache = new Map<number, EngagementRun>();
+    const free = (mask: number): EngagementRun => {
+      const hit = freeCache.get(mask);
+      if (hit !== undefined) return hit;
+      const history = historyFrom(slots, maskAttendance(mask, window), BASE_TRAINED_DAYS);
+      const made = anchoredRun(days, history, cadence, history);
+      freeCache.set(mask, made);
+      return made;
+    };
     for (let mask = 0; mask < 1 << window; mask += 1) {
-      const attended = (slot: number): boolean =>
-        slot >= window ? true : (mask & (1 << slot)) !== 0;
+      const attended = maskAttendance(mask, window);
       const history = historyFrom(slots, attended, BASE_TRAINED_DAYS);
-      const baseline = anchoredRun(days, history, cadence, history);
+      const baseline = free(mask);
       for (let bit = 0; bit < window; bit += 1) {
         if ((mask & (1 << bit)) !== 0) continue;
         const day = Math.floor(bit / cadence);
@@ -2404,7 +2772,7 @@ describe('the spending policy is the second independent variable, and it is swep
         if (bit - day * cadence <= lastAttended) continue;
         movesMoment += 1;
         const more = moreEngagedBy(history, bit);
-        if (compareEngagement(baseline, anchoredRun(days, more, cadence, more)).violating) {
+        if (compareEngagement(baseline, free(mask | (1 << bit))).violating) {
           freeAnchorViolating += 1;
         }
         const held = compareEngagement(baseline, anchoredRun(days, more, cadence, history));
@@ -2505,11 +2873,25 @@ describe('the spending policy is the second independent variable, and it is swep
     );
   });
 
-  it('splits the shipped anchor by the one thing an extra check-in can move about it', () => {
-    // THE ARM A VIOLATION WOULD LIVE ON. Under this anchor each purse shops at
-    // the first check-in of the day it can afford its next rung, so the only
-    // thing an extra check-in can change about a decision is to become the
-    // day's EARLIEST one. Both arms are zero; both arms MOVE, in counts.
+  it('splits the shipped anchor by WHEN a purse can first afford, and counts what that misses', () => {
+    // THE ARM A VIOLATION WOULD LIVE ON, AND THE HALF THE SPLIT DOES NOT SEE.
+    // Under this anchor each purse shops at the first check-in of the day it
+    // can afford its next rung, so the only thing an extra check-in changes
+    // about WHEN a purse decides is whether it becomes the day's EARLIEST one.
+    // Both arms are zero; both arms MOVE, in counts.
+    //
+    // The title used to say "the one thing an extra check-in can move about
+    // it", and that was false in a way this loop can measure. It is the one
+    // thing an extra check-in can move about the TIMING. It is not the one
+    // thing it can move about the DECISION: two of the four purses hold two
+    // ladders (`AXIS_OUTPUT` puts `space` and `spotter` on the roster purse and
+    // `coach` and `equipment` on the Bucks purse), the spending loop takes the
+    // first startable offer and breaks, and `EmpireGym.nextAxis` advances once
+    // per attended calendar day — so an extra check-in on an otherwise-empty
+    // day permanently shifts WHICH ladder a two-ladder purse is offered first.
+    // The rung-order reading below counts that, and it is 3334 of 24576 rather
+    // than nothing, which is what makes the two zeros above a measurement over
+    // a live mechanism instead of a zero about an unreachable one.
     const days = ENGAGEMENT_SWEEP.WINDOW_HORIZON_DAYS;
     const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
     const window = ENGAGEMENT_SWEEP.SPEND_ONCE_WINDOW_SLOTS;
@@ -2535,6 +2917,11 @@ describe('the spending policy is the second independent variable, and it is swep
     let keepsEarliest = 0;
     let keepsEarliestViolating = 0;
     let keepsEarliestMoved = 0;
+    let rungPairs = 0;
+    let rungDiverged = 0;
+    let rungSwapped = 0;
+    let rungSameAxis = 0;
+    const swappedPurses = new Set<string>();
     for (let mask = 0; mask < 1 << window; mask += 1) {
       for (let bit = 0; bit < window; bit += 1) {
         if ((mask & (1 << bit)) !== 0) continue;
@@ -2547,6 +2934,34 @@ describe('the spending policy is the second independent variable, and it is swep
           keepsEarliest += 1;
           if (divergence.violating) keepsEarliestViolating += 1;
           if (divergence.movedElements > 0) keepsEarliestMoved += 1;
+        }
+        // WHICH RUNG, at the same ordinal position in each gym's own start
+        // order. Read off `EngagementRun.rungOrder`, which is `EmpireGym.builds`
+        // — the spending loop's own record — rather than a second reading of
+        // what it ought to have bought.
+        rungPairs += 1;
+        const left = at(mask).rungOrder;
+        const right = at(mask | (1 << bit)).rungOrder;
+        const shared = Math.min(left.length, right.length);
+        for (let index = 0; index < shared; index += 1) {
+          const before = left[index];
+          const after = right[index];
+          if (before === after) continue;
+          rungDiverged += 1;
+          const beforeAxis = String(before).split('@')[0] ?? '';
+          const afterAxis = String(after).split('@')[0] ?? '';
+          if (beforeAxis === afterAxis) {
+            rungSameAxis += 1;
+          } else {
+            rungSwapped += 1;
+            swappedPurses.add(
+              [
+                axisBook(beforeAxis as ExpansionAxis),
+                axisBook(afterAxis as ExpansionAxis),
+              ].join(' vs '),
+            );
+          }
+          break;
         }
       }
     }
@@ -2566,6 +2981,30 @@ describe('the spending policy is the second independent variable, and it is swep
     // The two halves are the headline domain, so neither is a different one.
     expect(movesEarliest + keepsEarliest).toBe(
       MEASURED_ANCHOR.WINDOWED[SHIPPED_DAY_SPENDING_ANCHOR].pairs,
+    );
+    // THE RUNG-SWAP READING, and the scalar first for the same reason. 3334
+    // pairs in which the more-engaged gym starts a different axis at the same
+    // position — so "adding a check-in only moves a purse's first affordable
+    // moment earlier" is true and is not the safety property, because the
+    // decision it leaves free is which of a purse's two ladders takes the money.
+    expect(rungSwapped).toBe(3334);
+    expect({
+      pairs: rungPairs,
+      diverged: rungDiverged,
+      swapped: rungSwapped,
+      sameAxisDifferentLevel: rungSameAxis,
+    }).toEqual(MEASURED_ANCHOR.RUNG_SWAP);
+    expect(rungPairs).toBe(MEASURED_ANCHOR.WINDOWED[SHIPPED_DAY_SPENDING_ANCHOR].pairs);
+    // AND EVERY SWAP IS INSIDE ONE PURSE, which is the mechanism rather than a
+    // coincidence: a purse holding one ladder has nothing to swap. Asserted as
+    // a set so a swap that crossed two purses fails with both names visible.
+    expect([...swappedPurses]).toEqual(['roster-slot vs roster-slot']);
+    // The two axes really are on one purse and really are priced apart, read
+    // from the shipped tables rather than transcribed — the 800 space rung and
+    // the 1000 spotter rung, which is which rung the phase decides between.
+    expect(axisBook('space')).toBe(axisBook('spotter'));
+    expect(EMPIRE_TUNING.SPACE_LEVEL_COST_GYM_BUCKS[0]).toBeLessThan(
+      EMPIRE_TUNING.STAFF_LEVEL_COST_GYM_BUCKS.spotter[0] as number,
     );
   });
 
@@ -2624,32 +3063,7 @@ describe('the spending policy is the second independent variable, and it is swep
     // different shape of day from six check-ins at twelve days: two check-ins
     // means the day's earliest opportunity is one of two moments rather than
     // one of six, which is where a per-purse anchor has the least room.
-    const days = ENGAGEMENT_SWEEP.COARSE_HORIZON_DAYS;
-    const cadence = ENGAGEMENT_SWEEP.COARSE_CHECK_INS_PER_DAY;
-    const slots = days * cadence;
-    const cache = new Map<number, EngagementRun>();
-    const at = (mask: number): EngagementRun => {
-      const hit = cache.get(mask);
-      if (hit !== undefined) return hit;
-      const history = historyFrom(slots, (slot) => (mask & (1 << slot)) !== 0, BASE_TRAINED_DAYS);
-      const made = runFor(
-        days,
-        history,
-        'shipped',
-        ENGAGEMENT_SWEEP.AXIS_ORDER,
-        cadence,
-        'spend-once-per-calendar-day',
-      );
-      cache.set(mask, made);
-      return made;
-    };
-    let tally = emptyEngagementTally();
-    for (let mask = 0; mask < 1 << slots; mask += 1) {
-      for (let bit = 0; bit < slots; bit += 1) {
-        if ((mask & (1 << bit)) !== 0) continue;
-        tally = addEngagement(tally, compareEngagement(at(mask), at(mask | (1 << bit))));
-      }
-    }
+    const tally = coarseDaySweep(SHIPPED_DAY_SPENDING_ANCHOR);
     expect(tally.violatingPairs).toBe(0);
     expect(tally).toEqual(MEASURED_ANCHOR.COARSE_FULL);
     // The physio half is live on this grid rather than an empty domain, and the
@@ -2844,6 +3258,282 @@ describe('the spending policy is the second independent variable, and it is swep
     // before the ruling is the day-granularity policy, and it is zero now.
     expect(MEASURED_POLICY.WHOLE_DAY_VIOLATING_PAIRS['spend-once-per-calendar-day']).toBe(0);
     expect(MEASURED_POLICY.WHOLE_DAY_VIOLATING_PAIRS['rotate-greedy-per-check-in']).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WHICH DOMAINS THE ANCHOR CLAIM IS ACTUALLY MADE ON
+// ---------------------------------------------------------------------------
+
+/**
+ * One domain the day-anchor claim covers, and the evidence it carries.
+ *
+ * THE DEFECT THIS TABLE EXISTS FOR. GDD §5.4 credited the shipped anchor with
+ * "0 violating pairs on every domain measured" and listed five domains. Two of
+ * the five never consulted the anchor: `windowedSweep` and `seededSweep` both
+ * default `spending` to `SHIPPED_SPENDING_POLICY`, which is per-check-in, and
+ * the day-4 test and the 60/100-day test call them with no spending argument.
+ * `runEngagement` never reads `anchor` under a per-check-in policy, so those two
+ * tallies are evidence about the policy and about nothing at all about the
+ * anchor — and they read, in a sentence, exactly like the three that were.
+ * Before this table the longest horizon the shipped day anchor had ever been
+ * measured at was 40 days, on 623 pairs from 6 seeded histories.
+ *
+ * So the claim is this list rather than a sentence, and every row is a test
+ * generated from the row. A domain named in the claim without a row here is not
+ * measured; a row whose sweep goes anchor-inert reports `anchorDecisions: 0`
+ * and reddens with two integers rather than passing.
+ *
+ * `runs` and `anchorDecisions` are the sweeps' own record, summed across the
+ * anchors the row runs, taken through `noteRun` at the three constructors —
+ * observed rather than derived from `spending`, which is what stops the guard
+ * being a restatement of the parameter it is checking.
+ */
+interface AnchorDomain {
+  /** What GDD §5.4 and this file's header call this domain. */
+  readonly name: string;
+  /** The anchors this row runs. Four where the cost allows; one where it does not. */
+  readonly anchors: readonly EmpireDaySpendingAnchor[];
+  readonly sweep: (anchor: EmpireDaySpendingAnchor) => EngagementTally;
+  /** Pairs one anchor's sweep compares, so a domain that shrank is red. */
+  readonly pairs: number;
+  /** Runs the row's sweeps built, summed. */
+  readonly runs: number;
+  /** Questions those runs put to the day anchor, summed. Zero means inert. */
+  readonly anchorDecisions: number;
+  /** Violating pairs per anchor, for the anchors this row runs. */
+  readonly violating: Readonly<Record<string, number>>;
+  /**
+   * Wall-clock budget, measured on this machine and doubled. See
+   * `SWEEP_BUDGET_MS` for why these are declared per test rather than by
+   * raising `vitest.config.ts`'s global one.
+   */
+  readonly budgetMs: number;
+}
+
+/**
+ * Per-test wall-clock budgets for the sweeps that do not fit `vitest.config.ts`'s
+ * 30 s global one.
+ *
+ * EVERY VALUE IS A MEASURED DURATION, DOUBLED, ROUNDED UP TO THE NEXT 5 s. The
+ * measurement is a COLD run of the named test — cold because the memo above
+ * makes a warm run of several of these nearly free, and a budget taken warm
+ * would be a budget for whichever test happened to run second. The durations are
+ * listed in `vitest.config.ts` beside the rest of the suite's, re-taken there
+ * rather than transcribed here.
+ *
+ * WHY PER TEST RATHER THAN A GLOBAL RAISE, since `vitest.config.ts` argues
+ * against raising the budget in its own header and the argument is right. Its
+ * complaint is that a suite which fails on load and passes on a retry teaches
+ * everyone to re-run instead of reading the failure. A global raise hands 90 s
+ * to three thousand tests that finish in milliseconds, so the next genuinely
+ * hung one sits there for a minute and a half before anybody hears about it. A
+ * declared budget on the handful of sweeps that need one leaves the tight global
+ * in place for everything else and puts the measured number beside the test it
+ * belongs to.
+ *
+ * THE DOUBLING IS THE HEADROOM, and it is the number to move if this file starts
+ * failing under load rather than the sweeps themselves. It is a declared margin
+ * rather than a hoped-for one, which is what was missing: the suite's only
+ * failing test was at 115% of the global budget and had no budget of its own to
+ * be over.
+ */
+const SWEEP_BUDGET_MS = Object.freeze({
+  /** Four anchors over 4096 twelve-day calendars each. Measured 25.6 s cold. */
+  WINDOW_FOUR_ANCHORS: 55_000,
+  /** Four anchors over 512 twelve-day calendars each. Measured 3.3 s cold. */
+  LATE_WINDOW_FOUR_ANCHORS: 10_000,
+  /** One anchor over 16384 seven-day calendars. Measured 4.7 s cold. */
+  COARSE_ONE_ANCHOR: 10_000,
+  /** Four anchors over seeded histories. Measured 5.1 s at 20 days and 10.6 s at 40. */
+  SEEDED_FOUR_ANCHORS_SHORT: 25_000,
+  /** Measured 17.7 s cold. */
+  SEEDED_FOUR_ANCHORS_60: 40_000,
+  /** Measured 25.2 s cold — the longest horizon this anchor has been measured at. */
+  SEEDED_FOUR_ANCHORS_100: 55_000,
+  /** One anchor over 4096 whole-day calendars. Measured 4.5 s cold. */
+  WHOLE_DAY_ONE_ANCHOR: 10_000,
+  /**
+   * The hand-rolled 4096-mask enumerations that are not `windowedSweep` calls.
+   *
+   * These are the three loops that had no run cache until this round and
+   * rebuilt the same twelve-day runs seven times over; the slowest was the
+   * suite's only failing test, at 34.6 s against a 30 s budget. Measured after
+   * the caches went in.
+   */
+  MASK_ENUMERATION: 30_000,
+} as const);
+
+const FOUR_ANCHORS = EMPIRE_DAY_SPENDING_ANCHORS;
+const SHIPPED_ANCHOR_ONLY: readonly EmpireDaySpendingAnchor[] = [SHIPPED_DAY_SPENDING_ANCHOR];
+
+const ANCHOR_DOMAINS: readonly AnchorDomain[] = Object.freeze([
+  {
+    name: 'the 24576-pair window',
+    anchors: FOUR_ANCHORS,
+    sweep: (anchor) => anchorWindowed(anchor),
+    pairs: 24576,
+    runs: 16384,
+    anchorDecisions: 2187754,
+    violating: MEASURED_ANCHOR.WINDOWED_VIOLATING,
+    budgetMs: SWEEP_BUDGET_MS.WINDOW_FOUR_ANCHORS,
+  },
+  {
+    name: 'the same window moved to day 4',
+    anchors: FOUR_ANCHORS,
+    sweep: lateAnchorWindowed,
+    pairs: 2304,
+    runs: 2048,
+    anchorDecisions: 284608,
+    violating: MEASURED_ANCHOR.LATE_WINDOW_VIOLATING,
+    budgetMs: SWEEP_BUDGET_MS.LATE_WINDOW_FOUR_ANCHORS,
+  },
+  {
+    name: 'every calendar of the coarse grid, whole',
+    anchors: SHIPPED_ANCHOR_ONLY,
+    sweep: coarseDaySweep,
+    pairs: 114688,
+    runs: 16384,
+    anchorDecisions: 139842,
+    violating: { 'first-affordable-check-in-per-purse': 0 },
+    budgetMs: SWEEP_BUDGET_MS.COARSE_ONE_ANCHOR,
+  },
+  {
+    name: 'seeded histories at 20 days',
+    anchors: FOUR_ANCHORS,
+    sweep: (anchor) => seededAnchorSweep(20, 12, ENGAGEMENT_SWEEP.SEEDS[0], anchor),
+    pairs: 644,
+    runs: 2624,
+    anchorDecisions: 378211,
+    violating: MEASURED_ANCHOR.SEEDED_20_VIOLATING,
+    budgetMs: SWEEP_BUDGET_MS.SEEDED_FOUR_ANCHORS_SHORT,
+  },
+  {
+    name: 'seeded histories at 40 days',
+    anchors: FOUR_ANCHORS,
+    sweep: (anchor) => seededAnchorSweep(40, 6, ENGAGEMENT_SWEEP.SEEDS[1], anchor),
+    pairs: 623,
+    runs: 2516,
+    anchorDecisions: 744027,
+    violating: MEASURED_ANCHOR.SEEDED_40_VIOLATING,
+    budgetMs: SWEEP_BUDGET_MS.SEEDED_FOUR_ANCHORS_SHORT,
+  },
+  {
+    name: 'seeded histories at 60 days',
+    anchors: FOUR_ANCHORS,
+    sweep: (anchor) => seededAnchorSweep(60, 4, ENGAGEMENT_SWEEP.SEEDS[2], anchor),
+    pairs: 650,
+    runs: 2616,
+    anchorDecisions: 1150954,
+    violating: MEASURED_ANCHOR.SEEDED_60_VIOLATING,
+    budgetMs: SWEEP_BUDGET_MS.SEEDED_FOUR_ANCHORS_60,
+  },
+  {
+    name: 'seeded histories at 100 days',
+    anchors: FOUR_ANCHORS,
+    sweep: (anchor) => seededAnchorSweep(100, 2, ENGAGEMENT_SWEEP.SEEDS[3], anchor),
+    pairs: 556,
+    runs: 2232,
+    anchorDecisions: 1644681,
+    violating: MEASURED_ANCHOR.SEEDED_100_VIOLATING,
+    budgetMs: SWEEP_BUDGET_MS.SEEDED_FOUR_ANCHORS_100,
+  },
+  {
+    name: 'the whole-day reading',
+    anchors: SHIPPED_ANCHOR_ONLY,
+    sweep: () => wholeDaySweep(ENGAGEMENT_SWEEP.WHOLE_DAY_HORIZON_DAYS, 'spend-once-per-calendar-day'),
+    pairs: 24576,
+    runs: 4096,
+    anchorDecisions: 258713,
+    violating: { 'first-affordable-check-in-per-purse': 0 },
+    budgetMs: SWEEP_BUDGET_MS.WHOLE_DAY_ONE_ANCHOR,
+  },
+]);
+
+describe('the domains the day anchor is measured on, one test per domain', () => {
+  for (const domain of ANCHOR_DOMAINS) {
+    it(`measures the day anchor on ${domain.name}`, { timeout: domain.budgetMs }, () => {
+      let runs = 0;
+      let anchorDecisions = 0;
+      const violating: Record<string, number> = {};
+      for (const anchor of domain.anchors) {
+        const tally = domain.sweep(anchor);
+        const record = sweepRecord();
+        runs += record.runs;
+        anchorDecisions += record.anchorDecisions;
+        // The domain, per arm, before any count taken off it is read.
+        expect(tally.pairs, `${domain.name} @ ${anchor}`).toBe(domain.pairs);
+        violating[anchor] = tally.violatingPairs;
+      }
+      // THE ANCHOR-INERTNESS GUARD, and the scalar first so an inert domain
+      // fails with "expected 0 to be <n>" naming the domain rather than with
+      // two elided objects. This is the assertion the two mis-credited domains
+      // would have failed: a per-check-in sweep builds its runs and puts ZERO
+      // questions to `EMPIRE_DAY_SPENDING_ANCHORS`.
+      expect(anchorDecisions, `${domain.name}: anchor decisions`).toBeGreaterThan(0);
+      expect({ runs, anchorDecisions }, domain.name).toEqual({
+        runs: domain.runs,
+        anchorDecisions: domain.anchorDecisions,
+      });
+      expect(violating, domain.name).toEqual(domain.violating);
+      expect(violating[SHIPPED_DAY_SPENDING_ANCHOR], domain.name).toBe(0);
+    });
+  }
+
+  it('has a row for every domain the anchor claim names, and no other', () => {
+    // The table is the claim, so its shape is pinned rather than left to
+    // whoever reads the list. Eight rows, four of which run all four anchors —
+    // and the two single-anchor rows say so in `anchors` rather than in a
+    // sentence, because "measured on the coarse grid" reads identically whether
+    // it means one anchor or four.
+    expect(ANCHOR_DOMAINS.length).toBe(8);
+    expect(new Set(ANCHOR_DOMAINS.map((domain) => domain.name)).size).toBe(8);
+    const fourAnchorRows = ANCHOR_DOMAINS.filter(
+      (domain) => domain.anchors.length === EMPIRE_DAY_SPENDING_ANCHORS.length,
+    );
+    expect(fourAnchorRows.length).toBe(6);
+    // Every row runs the shipped anchor, or its zero is about something else.
+    for (const domain of ANCHOR_DOMAINS) {
+      expect(domain.anchors.includes(SHIPPED_DAY_SPENDING_ANCHOR), domain.name).toBe(true);
+      expect(Object.keys(domain.violating).sort(), domain.name).toEqual([...domain.anchors].sort());
+    }
+    // The headline row's counts and the whole-tally table's are one set of
+    // numbers written twice, so they are tied in both directions rather than
+    // left to agree by inspection.
+    let tied = 0;
+    for (const anchor of EMPIRE_DAY_SPENDING_ANCHORS) {
+      expect(MEASURED_ANCHOR.WINDOWED_VIOLATING[anchor], anchor).toBe(
+        MEASURED_ANCHOR.WINDOWED[anchor].violatingPairs,
+      );
+      tied += 1;
+    }
+    expect(tied).toBe(4);
+    expect(Object.keys(MEASURED_ANCHOR.WINDOWED_VIOLATING).sort()).toEqual(
+      [...EMPIRE_DAY_SPENDING_ANCHORS].sort(),
+    );
+    // AND THE TWO DOMAINS THAT ARE NOT ANCHOR MEASUREMENTS ARE NOT ON THIS
+    // LIST, which is the other half of the correction. `windowedSweep` and
+    // `seededSweep` at the DEFAULT spending policy build real runs that ask the
+    // anchor nothing, and this is that stated as a measurement rather than as a
+    // caveat: both report zero decisions over thousands of runs.
+    beginSweep();
+    windowedSweep(
+      ENGAGEMENT_SWEEP.WINDOW_HORIZON_DAYS,
+      ENGAGEMENT_SWEEP.LATE_WINDOW_FROM_SLOT,
+      ENGAGEMENT_SWEEP.LATE_WINDOW_SLOTS,
+    );
+    const inertLate = sweepRecord();
+    expect(inertLate.runs).toBeGreaterThan(0);
+    expect(inertLate.anchorDecisions).toBe(0);
+    beginSweep();
+    seededSweep(20, 12, ENGAGEMENT_SWEEP.SEEDS[0]);
+    const inertSeeded = sweepRecord();
+    expect(inertSeeded.runs).toBeGreaterThan(0);
+    expect(inertSeeded.anchorDecisions).toBe(0);
+    expect({ inertLateRuns: inertLate.runs, inertSeededRuns: inertSeeded.runs }).toEqual({
+      inertLateRuns: 512,
+      inertSeededRuns: 656,
+    });
   });
 });
 
