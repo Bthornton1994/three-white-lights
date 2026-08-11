@@ -322,10 +322,16 @@ function branches() {
    * branch later grows a commit the archive does not contain, it correctly
    * becomes untriaged again.
    */
+  // BOTH local and origin-tracking archive refs. A rewind drops the local ones —
+  // it did, an hour after this triage landed, and the four archived rows came
+  // back reading UNCOMMITTED with the archives still safe on origin. Reading the
+  // remote-tracking copies too means an ordinary `git fetch` restores the signal
+  // instead of it needing a hand-typed refspec nobody will remember.
   const archives = git([
     'for-each-ref',
     '--format=%(objectname)',
     'refs/heads/archive/',
+    'refs/remotes/origin/archive/',
   ]).split('\n').filter((s) => s !== '');
   const isTriaged = (branch) => archives.some((a) => ancestorOf(branch, a));
 
