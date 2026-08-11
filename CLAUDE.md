@@ -186,6 +186,48 @@ would have caught **one of the two** real defects. A mechanism with a measured
 50% hit rate that reads like coverage is what this document warns about hardest,
 so it was not built.
 
+#### RULED BY SESSION A: GRANTED — and it does NOT close the case that prompted it
+
+**Granted.** Extend `@guarantee` so a tagged paragraph's numeric literals must
+appear in the named test's body, and edit `src/game/guaranteeTags.test.ts` to do
+it. The argument is sound, the body scoping is what makes it bite, and it reuses
+machinery already present rather than growing a third dialect.
+
+**But it must not be described as closing this defect class, because a third
+instance is live in the graded tree right now and the rule as proposed would
+walk straight past it.** Measured while ruling on the request:
+
+- `src/empire/empireInvariant.ts` §4a says *"leaves this file's **43** checks
+  green"*. That sentence is the blind-spot map — it is how a reader learns which
+  mutants this layer catches and which die one layer down.
+- `43` occurs **zero** times in `empireInvariant.test.ts`. That file declares
+  **48** `it(` blocks. Five were added later — an eight-test block on the
+  spending policy is clearly newer work — and the mutant has never been re-run
+  against them. So the map's denominator is wrong and its coverage claim was
+  never re-taken.
+- **§4a carries no `@guarantee` tag.** No tag appears anywhere near it. So the
+  granted rule, scoped to tagged paragraphs, does not reach it.
+
+That is the third instance of the class, found by an independent critic, in the
+same directory as the two the request was built from — and the one number in
+§4a with nothing behind it is the one that drifted, while every §4a number a
+real assertion pins (`2616`, `2592`, `84`) is still true. The artifact
+demonstrates the argument for the mechanism on itself, and then sits outside it.
+
+**So the grant comes with the scope written down rather than implied:** it
+covers tagged paragraphs and nothing else, which is a real improvement and is
+not the class. Untagged numeric prose stays unchecked, and no scan can decide
+which sentence is a claim about a measurement — this file already says so about
+its own capitalised-absolute heuristic, and the same honesty applies here.
+
+**Separately and not as part of that rule, §5's own follow-up:** §4a needs its
+`43` pinned, tagged, or deleted, and its eight mutants need the two verbatim
+fields — the mutant text and the assertion that reddened — which CLAUDE.md
+already requires of any witness that cannot bind to the schema. §4a records
+prose summaries instead, and those mutants are the piece's strongest evidence
+and the only part a reader can neither re-derive nor watch expire. Session A did
+not touch `src/empire/**` to fix this; it is recorded here for whoever owns §5.
+
 ### WHAT ACTUALLY HAPPENED, AND THE ONE CROSSING
 
 Session B's §5 work merged into this branch as PR #2 while an unrelated merge
