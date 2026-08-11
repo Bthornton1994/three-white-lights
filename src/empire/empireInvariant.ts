@@ -212,10 +212,13 @@
  *
  * `engagement.test.ts` measured five pairs of 24576 in which the gym that
  * checked in MORE ended on a LOWER Training IQ series, under the
- * `'spend-once-per-calendar-day'` policy and in the arm where the extra
- * check-in did NOT move the day the simulated player spends at. Five is a
- * §12.3 breach; CLAUDE.md has no size below which "never punish daily
- * engagement" stops applying.
+ * `'spend-once-per-calendar-day'` policy at the `'last-attended-check-in'` day
+ * anchor, and in the arm where the extra check-in did NOT move the day the
+ * simulated player spends at. Five is a §12.3 breach; CLAUDE.md has no size
+ * below which "never punish daily engagement" stops applying. (That anchor is a
+ * control now — §4c — and the two checks about this repair stay on it, because
+ * it is where they were measured. The shipped anchor's own reading of the same
+ * repair is 824 of 24576, pinned beside them.)
  *
  * THE DIAGNOSIS ON RECORD WAS WRONG, AND IT WAS WRONG IN THREE PLACES AT ONCE
  * — GDD §5.4, `engagement.test.ts`'s own section header, and the ruling in
@@ -258,6 +261,70 @@
  * either way and this file pins both. Whether an idle layer that spends more of
  * its time at the budget PLAYS better is a question no measurement here can
  * answer, and it is the kind of question GDD §5.4 already sends to a human.
+ *
+ * ===========================================================================
+ * 4c. The day anchor — the half of "spends once a day" nobody had written down
+ * ===========================================================================
+ *
+ * §4b closed 5 pairs. The other 6459 lived on the arm where the extra check-in
+ * moved the day's DECISION MOMENT, and `engagement.test.ts` proved by
+ * counterfactual that they were the decision moment rather than anything §5
+ * prices, funds or times. That was a diagnosis and it was read as a boundary
+ * for a wave: a fact about one simulated player, disclosed and pinned.
+ *
+ * IT WAS NOT A BOUNDARY. A decision moment is a thing this directory WRITES,
+ * and the moment that was written was anti-monotone in engagement by
+ * construction. `'spend-once-per-calendar-day'` said "the last check-in the
+ * player takes"; adding a check-in can only move a day's last one LATER or
+ * leave it; money accrues on the wall clock and a purchase converts money into
+ * a wall-clock timer, so a later purchase starts a later build and finishes
+ * later. The extra check-in's only effect on the decision was to defer it.
+ *
+ * `EMPIRE_DAY_SPENDING_ANCHORS` writes the missing half down. Four readings,
+ * one domain — `engagement.test.ts`'s 24576-pair window — one comparator, one
+ * parameter apart:
+ *
+ *   anchor                                 shipped   single purse
+ *   first-affordable-check-in-per-purse          0           2887
+ *   first-affordable-check-in                   31           2878
+ *   first-attended-check-in                   1951           3104
+ *   last-attended-check-in                    6459           3908
+ *
+ * THE OBVIOUS REPAIR IS THE WRONG ONE AND IT WAS MEASURED RATHER THAN REASONED
+ * PAST. Moving the anchor to the day's first ATTENDED check-in makes it move
+ * earlier or not at all, which is the monotone direction — and it is worse in
+ * the other one: the gym shops with less money accrued and commits to a rung it
+ * would otherwise have skipped, or to nothing at all. 1951 pairs, worst deficit
+ * 0.263 Training IQ per day, twenty-six times the deferring anchor's worst
+ * deficit. Offering the trip again when it could buy nothing repairs that half
+ * and reaches 31.
+ *
+ * THE LAST 31 WERE ONE PURSE CLOSING EVERY PURSE'S DAY, and they were traced
+ * rather than argued. All 31 are one baseline shape: the extra check-in becomes
+ * the day's earliest, the gym shops there, the roster purse holds 460 Gym Bucks
+ * against a 500 `novice` and buys nothing, and the day is over for it because
+ * the roster-slot purse could afford its 800 space rung at that same moment.
+ *
+ * So the shipped anchor is declared at the grain the money already has. GDD
+ * §5.4's third-book ruling gave each funded output a purse nothing else may
+ * spend; the day anchor was declared one grain coarser than the thing it
+ * anchors, and that was the defect. Each purse now buys at most once a calendar
+ * day, at the first check-in of that day it can afford its next rung, and a
+ * purse that can afford nothing waits. Adding a check-in can only make a
+ * purse's first affordable moment earlier or leave it — money and reputation
+ * accrue on the wall clock and a check-in only reads them sooner — so the day a
+ * rung lands is monotone in attendance, purse by purse.
+ *
+ * WHAT THE ANCHOR IS NOT: the safety property on its own. Under the
+ * `'single-wall-clock-purse'` control every one of the four anchors is
+ * non-zero, 2887 to 3908. The purses removed the residue and the anchor is what
+ * makes them reachable in order; either alone is a violating engine, and the
+ * right-hand column above is the measurement of that rather than a claim.
+ *
+ * AND §4b's REPAIR SURVIVES THE RESPECIFICATION, which is worth pinning because
+ * a respecification can quietly remove a repair's subject and leave it looking
+ * ruled-in. `'one-way-door'` measures 824 violating pairs of 24576 at the
+ * shipped anchor, against the 5 the ruling was taken on.
  *
  * ===========================================================================
  * 5. The Training IQ ceiling is applied HERE, and that is not an accident
@@ -543,9 +610,12 @@ export interface EmpirePolicy {
  *   - `'save-for-physio-first'` — while the only thing standing between the gym
  *     and its next physio rung is money, nothing else on the wall-clock book is
  *     bought and no recruit is paid for.
- *   - `'spend-once-per-calendar-day'` — money accrues across the day and is
- *     spent at the last check-in the player takes in that calendar day. This is
- *     the spending GRANULARITY removed and nothing else.
+ *   - `'spend-once-per-calendar-day'` — money accrues across the day and each
+ *     purse is spent once in it, at the first check-in of that day the purse
+ *     can afford its next rung. This is the spending GRANULARITY removed and
+ *     nothing else. WHICH check-in that is was left unstated for several waves
+ *     and was carrying a §12.3 breach; `EMPIRE_DAY_SPENDING_ANCHORS` states it,
+ *     and §4c of the header is the measurement that chose between the readings.
  */
 export const EMPIRE_SPENDING_POLICIES = [
   'rotate-greedy-per-check-in',

@@ -169,15 +169,23 @@
  * what it loses is the power to defer that day's purchase, and the residue goes
  * with it. `@guarantee the-day-granularity-residue-is-the-decision-moment`
  *
- * That distinction is what the table now reports rather than what it was
- * written to hope for. Five of the six policies are zero on every domain
- * measured; the sixth spends a whole day's takings at the last check-in the
- * player happens to take, so an extra evening check-in moves the purchase to
- * the evening. `engagement.test.ts` splits its count by exactly that and finds
- * 6459 of 6459 on the moving side — every one of them, after §5.3's promotion
- * path closed the five that were on the other side. A fact about that model of
- * a player, which no arrangement of §5's purses or prices reaches, and which
- * `spendsOn` is the counterfactual for.
+ * ===========================================================================
+ * 7. The day ANCHOR is the third independent variable, and it was the defect
+ * ===========================================================================
+ *
+ * The measurement above closed with "a fact about that model of a player, which
+ * no arrangement of §5's purses or prices reaches". That was true and it was
+ * read as a boundary. It is not one: a decision moment is a thing this
+ * directory writes, and the one it wrote — the day's LAST attended check-in —
+ * was anti-monotone in engagement by construction, because adding a check-in
+ * can only move a day's last one later or leave it.
+ *
+ * `EMPIRE_DAY_SPENDING_ANCHORS` is which check-in of the day the shopping
+ * happens at, `runEngagement` takes it, and the same comparator runs over the
+ * same domain under each — the same treatment the spending policy got in §6,
+ * one level in. All six policies are zero on every domain measured now. The
+ * three anchors the game does not ship stay runnable as controls at 31, 1951
+ * and 6459, and `empireInvariant.ts` §4c is the trace that chose between them.
  */
 
 import {
