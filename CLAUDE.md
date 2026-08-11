@@ -364,7 +364,55 @@ sessions reached from opposite ends: **§5's loop had to exist before its
 invariants had a subject.** It now does.
 
 
-### SESSION B'S NEXT SCOPE: GDD §2.1 CAREER — RULED, WITH THE GATE OVERRIDDEN
+### SESSION B'S SCOPE AFTER CAREER: GDD §6.6 FLIGHTS, AND THE SEAM IS AGAIN A DECLARED NON-GOAL
+
+Written here before the work starts, as this section requires. GDD §2.1/§6.1's
+sentence is built — calendar, tier ladder, federations, qualification, entry
+history, standing — and five rounds of opacity hardening are merged.
+
+**The scope: GDD §6.6's multi-lifter structure, pure logic.** *"lifters grouped
+into flights of ~10-15, attempts resolve in turn order, live leaderboard feed"*,
+plus the placing that follows from it. So: flight composition, bar-loading order
+within a round, and placing across a flight.
+
+**Why this piece passes the §5 test — the seam was cut and frozen before the
+split, in Session A's own file.** `src/game/meet.ts:303` lists under DELIBERATE
+NON-GOALS: *"Multi-lifter flights, attempt (bar-loading) order within a flight,
+and live placing — GDD §6.6. This engine is one lifter's card."* That is the same
+shape as `MeetDefinition`'s *"Whoever builds the calendar produces a list of
+these and gates it"*, which is what made Career safe. Read it; do not edit it.
+Session A's recent commits on that territory are all single-lifter card work —
+the PR pair, depth, bar load, meet sound — and none of them approach a flight.
+
+**It is downstream of what Session B just built**, which is the second reason:
+§6.6's *"Entry gated by qualifying total earned in async meets"* is
+`careerCore.ts`'s calendar and injected gate exactly.
+
+**It lands in `src/career/`, as `flight.ts`, and NOT in a new top-level
+directory.** Two reasons, and the second is the stronger one:
+
+1. A new top-level directory reddens `SOURCE_DIRECTORIES` in
+   `src/game/streakEntitlement.test.ts` by construction — that was crossing 3
+   for `src/career/`. Reusing the directory costs no crossing.
+2. **Placing requires comparing totals, which is more power than the qualifying
+   gate's boolean**, so the new module needs the opacity discipline more than
+   anything built so far. `src/career/`'s four instruments already enforce it,
+   and C5's coverage census — a set equality over every export generic over
+   `Total`, pinned at 26 — will **redden until the new functions are driven
+   through the throwing-`Total` sweep**. That is the guard conscripting the new
+   module rather than the builder remembering to.
+
+**Domain correctness is the live risk here, not IP.** Bar-loading order is a
+real, precise rule a powerlifter will check: within a round the bar never goes
+down, lifters take their attempt in ascending declared weight, and ties break by
+lot number. CLAUDE.md's Domain Correctness section already lists meet structure
+as checkable-and-must-be-correct. The builder searches the real rule and cites
+it rather than inventing a plausible one.
+
+**Out of scope, same as every round:** `src/game/**`, `src/meet/**`,
+`src/shell/**`, `src/tuning/**`, and anything a player can reach. No wiring.
+
+### SESSION B'S PREVIOUS SCOPE: GDD §2.1 CAREER — RULED, WITH THE GATE OVERRIDDEN
 
 Written here before the work starts, as this section requires. GDD §5 is merged
 (PR #3) and Session B's §5 round is closed.
