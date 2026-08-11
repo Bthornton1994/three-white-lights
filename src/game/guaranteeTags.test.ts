@@ -615,6 +615,66 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
  * mutant in one of them.
  */
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  // -------------------------------------------------------------------------
+  // GDD §5.3 — the roster's one-way door, which was a §12.3 breach.
+  //
+  // FOUR MUTANTS ACROSS THREE FILES for three tags, because the repair is three
+  // separate claims and a mutant in one of them witnesses none of the others:
+  // that a filled slot can move at all, that reaching a tier costs the same by
+  // every route (price AND timer, which are two mutants because the timer half
+  // was found only after the price half was already in), and that what the
+  // repair does not remove is the simulated player's decision moment.
+  {
+    guarantee: 'a-filled-slot-is-not-a-one-way-door',
+    mutatedFile: 'src/empire/empireInvariant.ts',
+    mutated: '  if (upgrades === SHIPPED_ROSTER_UPGRADE && rosterAllowed && !recruitedNow) {',
+    testFile: 'src/empire/engagement.test.ts',
+    redAssertion: 'expect(keepsMomentViolating).toBe(0);',
+    observed:
+      'splits that arm by whether the extra check-in moved the day it spends at\n' +
+      'AssertionError: expected 5 to be +0 // Object.is equality',
+  },
+  {
+    // The timer half. Price telescoping alone left a slot that reached `club`
+    // by promotion carrying the `novice` timer, so it held 240 seconds more
+    // permanent tenure than one that recruited `club` outright — 2318 violating
+    // pairs of 16512 at a worst deficit of 0.000032 Training IQ per day.
+    guarantee: 'a-slot-costs-the-same-by-every-route',
+    mutatedFile: 'src/empire/recruitment.ts',
+    mutated: '    addedSeconds: recruitSeconds(to) - recruitSeconds(from),',
+    testFile: 'src/empire/engagement.test.ts',
+    redAssertion: 'expect(keepsMomentViolating).toBe(0);',
+    observed:
+      'splits that arm by whether the extra check-in moved the day it spends at\n' +
+      'AssertionError: expected 2318 to be +0 // Object.is equality',
+  },
+  {
+    // The price half, charged in full rather than as the difference — which is
+    // the version where an early cheap lifter really is a sunk cost.
+    guarantee: 'a-slot-costs-the-same-by-every-route',
+    mutatedFile: 'src/empire/recruitment.ts',
+    mutated: '  const difference: number = recruitCost(to) - recruitCost(from);',
+    testFile: 'src/empire/engagement.test.ts',
+    redAssertion: 'expect(keepsMomentViolating).toBe(0);',
+    observed:
+      'splits that arm by whether the extra check-in moved the day it spends at\n' +
+      'AssertionError: expected 6 to be +0 // Object.is equality',
+  },
+  {
+    // The counterfactual's own knob. With `spendsOn` ignored, the held-anchor
+    // reading collapses into the free-anchor one and reports the residue it was
+    // written to explain — which is what says the zero beside it is a fact
+    // about the decision moment rather than a comparison of identical runs.
+    guarantee: 'the-day-granularity-residue-is-the-decision-moment',
+    mutatedFile: 'src/empire/engagement.ts',
+    mutated:
+      '      if (spendsOn.attended[day * policy.checkInsPerDay + tick] === true) lastAttendedTick = tick;',
+    testFile: 'src/empire/engagement.test.ts',
+    redAssertion: 'expect(heldAnchorViolating).toBe(0);',
+    observed:
+      'holds the decision moment and the other arm goes to zero too\n' +
+      'AssertionError: expected 6459 to be +0 // Object.is equality',
+  },
   {
     // GDD §5 — the first `src/empire/**` entry in this table, which until now
     // held 23 declared guarantees and no witnesses at all.
@@ -1576,9 +1636,10 @@ describe('the guarantee-tag convention', () => {
     // diff here, on purpose.
     expect(censused, 'the files the witness table scopes into').toEqual([
       'src/cutin/cutInWiring.test.ts',
-      // The first `src/empire/**` row. GDD §5's directory carried 23 declared
-      // guarantees and no witnesses at all until this one.
+      // The first `src/empire/**` rows. GDD §5's directory carried 23 declared
+      // guarantees and no witnesses at all until these.
       'src/empire/empireInvariant.test.ts',
+      'src/empire/engagement.test.ts',
       'src/game/meetClient.test.ts',
       'src/game/meetDay.test.ts',
       'src/game/progression.test.ts',

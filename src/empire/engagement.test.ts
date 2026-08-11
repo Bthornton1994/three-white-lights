@@ -1889,7 +1889,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(tally.pairsWherePhysioArrived).toBe(24576);
   });
 
-  it('splits that arm by whether the extra check-in moved the day it spends at', () => {
+  it('splits that arm by whether the extra check-in moved the day it spends at [a-filled-slot-is-not-a-one-way-door] [a-slot-costs-the-same-by-every-route]', () => {
     // The diagnosis, on the same twelve slots the headline enumerates, so the
     // two halves add up to the count above rather than describing another
     // domain. A pair is on the left when the extra check-in is later in its day
@@ -1944,6 +1944,11 @@ describe('the spending policy is the second independent variable, and it is swep
         }
       }
     }
+    // THE HEADLINE NUMBER FIRST, so a mutant that brings §5.3's one-way door
+    // back fails with "expected 5 to be 0" rather than with two elided objects
+    // — CLAUDE.md's "a check that bites but fails uselessly is half a check".
+    // Measured: without it, this exact mutant reddened on the elided form.
+    expect(keepsMomentViolating).toBe(0);
     expect({ movesMoment, movesMomentViolating, keepsMoment, keepsMomentViolating }).toEqual({
       movesMoment: 8064,
       movesMomentViolating: 6459,
@@ -2014,7 +2019,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(oneWayDoorViolating).toBe(5);
   });
 
-  it('holds the decision moment and the other arm goes to zero too', () => {
+  it('holds the decision moment and the other arm goes to zero too [the-day-granularity-residue-is-the-decision-moment]', () => {
     // THE PROOF THAT THE REST IS THE SIMULATED PLAYER'S DECISION MOMENT rather
     // than anything §5 prices, funds or times, and it is a counterfactual on
     // the decision rule alone.

@@ -398,6 +398,8 @@ export function beginRecruitment(state: EmpireState, tier: NpcTier): Recruitment
  *     short-term LOSS, and a gym that promoted sooner would read lower for a
  *     week — the same punishment one level down.
  *
+ * `@guarantee a-filled-slot-is-not-a-one-way-door`
+ *
  * NO TIMER, AND THAT IS A REFUSAL RATHER THAN A SIMPLIFICATION. GDD §8.3B sells
  * skips for the build timer and the recruit timer, and §8.1 refuses anything
  * bought that moves Sim progression. A promotion raises the Training IQ trickle,
@@ -442,6 +444,8 @@ export interface PromotionQuote {
    * route and in any number of steps — `60 + 240 + 1500` is `regional`'s 1800,
    * and `500 + 1500 + 6000` is its 8000. Path-independence is the property; the
    * two differences are how it is obtained.
+   *
+   * `@guarantee a-slot-costs-the-same-by-every-route`
    */
   readonly addedSeconds: number;
 }

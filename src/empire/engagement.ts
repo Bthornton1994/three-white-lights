@@ -161,6 +161,14 @@
  * the design" and "the property is in one simulated player" can be told apart.
  * `engagement.test.ts` carries the table.
  *
+ * `spendsOn` is the counterfactual knob on that second variable, and nothing
+ * but the measurement below passes anything other than the run's own history:
+ * it says WHOSE attendance decides which check-in of each day a day-granularity
+ * policy spends at. Held at a less-engaged history's anchor, the extra check-in
+ * still collects, still accrues into every purse and still earns reputation —
+ * what it loses is the power to defer that day's purchase, and the residue goes
+ * with it. `@guarantee the-day-granularity-residue-is-the-decision-moment`
+ *
  * That distinction is what the table now reports rather than what it was
  * written to hope for. Five of the six policies are zero on every domain
  * measured; the sixth spends a whole day's takings at the last check-in the
