@@ -140,32 +140,65 @@
  * `eligible` at worlds under it. So the same defect, one level out: an empty
  * domain inside the instrument written to close an empty domain.
  *
+ * AND THE SECOND FIX WAS BYPASSED TOO, WHICH IS THE FINDING THAT MATTERS MORE
+ * THAN ANY OF THE THREE. The replacement swept a 50-point band crossed with 5
+ * substitute totals. One physical line replacing the qualifying check:
+ *
+ *     if (([lifter.bestTotal, CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER.nationals.mens
+ *       + CAREER_TUNING.FIRST_MEET_DAY_BY_TIER.nationals].sort()[0] === lifter.bestTotal
+ *       || [lifter.bestTotal, CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER.worlds.mens
+ *       - CAREER_TUNING.MIN_DAYS_BETWEEN_ENTERED_MEETS].sort()[0] !== lifter.bestTotal)
+ *       && !gate(lifter.bestTotal, requiredKg)) {
+ *
+ * `Array.prototype.sort` with no comparator is a STRING sort, so this coerces
+ * the total fully and needs no cast. Measured: `tsc --noEmit` exit 0, 5 files
+ * and 144 tests passing, exit 0 — invisible to all 45 ban rows, to the band, to
+ * the substitution probe, to the extremes, to the string census and to the
+ * magic-number audit. At 632.5 kg it returns `eligible` for a meet requiring
+ * 680 with the gate asked ZERO times, and 632.5 is not an invented number: it
+ * is the top of `MEET_LOCAL.ghostTotalsKg`, the only distribution of totals the
+ * game currently produces.
+ *
+ * Three rounds, three bypasses, and the same shape each time — the instrument
+ * quantified over a set, and the next bypass was written after reading the set.
+ * That is why the answer this time is not a wider band or another row.
+ *
  * What is true now, and by what:
  *
  *   - THE DIRECT FORM does not compile, and `tsc --noEmit` is what refuses it.
  *     That is A SEPARATE COMMAND FROM THE SUITE: vitest strips types without
  *     checking them, so a reader who runs only `npx vitest run` has not checked
  *     this at all. It is in the source ban below as well for that reason.
- *   - A ROUTE FROM A `Total` TO A NUMBER SHOWS UP AS A DIFFERENT ANSWER, and
- *     that is what `careerOpacity.test.ts` measures. It binds `Total` to
- *     `number` — which `careerCore.test.ts` cannot, because its wrapped
- *     `TestTotal` makes `Number(total)` `NaN` and every laundered comparison
- *     silently false — sweeps a band across every threshold in both categories
- *     under six gates, and asserts the verdict equals what the gate alone
- *     decided. Its general instrument is a SUBSTITUTION: the answer computed
- *     from total `x` under gate `g` must equal the answer computed from any
- *     other total `y` under the gate that replays `g`'s answers about `x`. A
- *     module that reads nothing out of a total cannot tell those apart; one
- *     that reads anything is separated by some pair, without the test naming
- *     which read it was. A 45-pattern source ban then catches a coercion that
- *     is present but unreachable, which no probe can see.
+ *   - A READ OF THE TOTAL THROWS, and that is what `careerOpaqueTotal.test.ts`
+ *     measures. It binds `Total` to a `Proxy` whose every trap records the read
+ *     and then throws, and drives every exported function in this directory that
+ *     is generic over `Total`, under six gate shapes. The value has no readable
+ *     state, so there is no domain to sample and none to be empty: a coercion is
+ *     caught at every total rather than at the fifty a band happened to hold.
+ *     The record-then-throw order is deliberate — a module that catches its own
+ *     violation still leaves the read in the log.
+ *   - THE VERDICT AGREES WITH THE GATE ACROSS A BAND, which is a different
+ *     question and is `careerOpacity.test.ts`'s. It binds `Total` to `number` —
+ *     which `careerCore.test.ts` cannot, because its wrapped `TestTotal` makes
+ *     `Number(total)` `NaN` and every laundered comparison silently false —
+ *     sweeps a band across every threshold in both categories under six gates,
+ *     and asserts the verdict equals what the gate alone decided. The opaque
+ *     probe cannot ask this, because a blind gate has no right answer to agree
+ *     with. A 45-pattern source ban then catches a coercion that is present but
+ *     unreachable, which no probe can see.
  *   - WHAT IS STILL NOT ENFORCED: the ban reads text, so it keys on this
  *     directory's naming convention for a total. `alias-total` closes the
  *     one-line rename that produced the second bypass; a rename at a FUNCTION
  *     PARAMETER is still open. And the subject-independent half of the ban is a
- *     list of the routes somebody has thought of — `join` was missing from it
- *     while the file claimed it was closed — so the ban is defence in depth and
- *     the substitution probe is the closure.
+ *     list of the routes somebody has thought of.
+ *
+ *     THE SENTENCE THAT USED TO END THIS BULLET SAID THE SUBSTITUTION PROBE WAS
+ *     THE CLOSURE, and round three walked past it: its quantifier runs over 50
+ *     band points crossed with 5 substitutes, and a read that answers the same
+ *     on all 55 is invisible to it. Recorded here rather than quietly replaced,
+ *     because it is the third time a sentence in this header has promised more
+ *     than its instrument delivered, and the opaque probe's header carries its
+ *     own list of what it in turn cannot see.
  *
  * MUTATION WITNESS. Mutant, planted at the qualifying check in
  * `meetEligibility`: `if (requiredKg !== null && Number(lifter.bestTotal) >=

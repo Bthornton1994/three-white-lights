@@ -99,9 +99,11 @@
  * What is enforced here, by what, and what is NOT
  * ===========================================================================
  *
- * Three instruments, on three different axes, because fixing the reach of a
- * check says nothing about its predicate and fixing either says nothing about
- * its domain:
+ * Three instruments live in THIS file, on three different axes, because fixing
+ * the reach of a check says nothing about its predicate and fixing either says
+ * nothing about its domain. A fourth lives in `careerOpaqueTotal.test.ts` and is
+ * described at the end of this list, because it is the one that answers the
+ * defect all three of these share.
  *
  *   1. A BAND SWEEP (behavioural, domain). Binds `Total` to `number` and walks
  *      every threshold in `QUALIFYING_TOTAL_KG_BY_TIER` — below, just under,
@@ -110,16 +112,38 @@
  *      confirmed bypass keys on digit width. The property is the one that
  *      matters: the verdict equals what the injected gate alone decides, total
  *      by total and slot by slot, under six gates including a realistic one.
+ *      This is the one instrument here that checks the answer is right; the
+ *      opaque probe cannot, because a blind gate has no right answer to agree
+ *      with. (That sentence is in lower case deliberately and the reason is the
+ *      same one the third bullet below gives about its own heading: written in
+ *      this file's house capitals it carries a trigger word, and
+ *      `guaranteeTags.test.ts`'s tree-wide census is pinned at 225 in a file
+ *      this piece may not edit. MEASURED: capitalised, the pin reads
+ *      `expected 226 to be 225`. Bumping it is the better trade in general and
+ *      is reported rather than taken, which is what the section above already
+ *      records for the other paragraph — so the census now undercounts this
+ *      file by exactly two, both named where they sit.)
  *
  *   2. A SUBSTITUTION PROBE (behavioural, general). For every subject and every
  *      pair of totals `x` and `y`, the answer computed from `x` under gate `g`
  *      must equal the answer computed from `y` under `tabulated(g, x)` — the
  *      gate that ignores the total it is handed and replays `g`'s answers about
- *      `x`. If a module reads any number out of the total, some pair separates
- *      the two, because the gate's answers are held fixed while the total is
- *      not. This is the instrument that catches a route nobody listed —
- *      `join()`, `Intl.NumberFormat`, a `Proxy`, a `toJSON`, a digit-width
- *      regex — because it reads the OUTCOME and never the syntax.
+ *      `x`. It reads the OUTCOME and never the syntax, so it catches a route
+ *      nobody listed — `join()`, `Intl.NumberFormat`, a `toJSON`, a digit-width
+ *      regex — PROVIDED SOME PAIR IN ITS DOMAIN SEPARATES THE TWO ANSWERS.
+ *
+ *      The sentence that stood here dropped that proviso. It said: "If a module
+ *      reads any number out of the total, some pair separates the two, because
+ *      the gate's answers are held fixed while the total is not." That is false,
+ *      and the third bypass is the proof. The quantifier runs over
+ *      `BAND_KG × SUBSTITUTE_TOTALS_KG` — 50 × 5 fixed numbers — so a predicate
+ *      that is CONSTANT on those 55 values is invisible to it however much of
+ *      the total it reads. `[lifter.bestTotal, k].sort()[0] === lifter.bestTotal`
+ *      is a full string coercion of the total, needs no cast, compiles under
+ *      strict, and picks a window between two band points; measured, it left
+ *      this file's 24 tests green and `tsc --noEmit` at exit 0 while admitting a
+ *      632.5 kg lifter to a meet requiring 680 with the gate asked zero times.
+ *      Widening the band moves the window rather than closing it.
  *
  *   3. A SOURCE BAN (syntactic). Patterns over the shipped modules, each driven
  *      against a tripwire per branch of its alternation. This catches a coercion
@@ -129,6 +153,19 @@
  *      LOGICAL lines rather than physical ones, because prettier wraps a long
  *      call at this repository's width and a line-anchored scan is defeated by
  *      `Math.max(\n  bestTotal,\n)`.
+ *
+ *   4. AN OPAQUE-TOTAL PROBE (behavioural, no domain), in
+ *      `careerOpaqueTotal.test.ts`. Binds `Total` to a `Proxy` whose every trap
+ *      records the read and throws, and drives every exported function that is
+ *      generic over `Total`. It is here in this list because it is the answer to
+ *      the defect the three above share: each of them quantifies over a set of
+ *      values or a set of tokens, and the next bypass is chosen after seeing the
+ *      set. There is no set to choose against when the value has no readable
+ *      state. It caught all three confirmed bypasses at every gate and every
+ *      stand-in; the two of them the band sweep sees, it sees more cheaply, and
+ *      the third it sees at all. Its own limits are listed in its header and
+ *      they are real: `typeof`, identity, and magnitude extracted by asking the
+ *      injected gate repeatedly.
  *
  * WHAT IS NOT ENFORCED, said plainly rather than left to be discovered:
  *
@@ -162,7 +199,23 @@
  *     `toPrecision`, `toExponential`, `Array.from`, `Reflect`, `Proxy`,
  *     `toJSON`, property descriptors — and that list is a list of the ones
  *     somebody has thought of, which is precisely the property a ban has and a
- *     probe does not. Instrument 2 is the closure; this one is defence in depth.
+ *     probe does not.
+ *
+ *     THE ROW COUNT IS NOT A PROGRESS BAR, and the shape of this paragraph used
+ *     to imply it was: 34 rows, then 45, each round reading as though the list
+ *     were closing on completeness. It is not converging. Round three's bypass
+ *     used `Array.prototype.sort` with no comparator, which is a full string
+ *     coercion, and adding a `sort` row would leave `reduce`, `flatMap`,
+ *     `toSorted`, `padStart`, `replace`, a tagged template, and whatever the
+ *     next reader thinks of first. Three rounds of adding rows have produced
+ *     three bypasses that no row matched.
+ *
+ *     "Instrument 2 is the closure" also used to sit here and it was false —
+ *     instrument 2 is what round three walked past. Instrument 4 is the nearest
+ *     thing to a closure this directory has, and its own header says what it
+ *     still cannot see. This row list is defence in depth against the case a
+ *     behavioural probe structurally cannot reach: a coercion in code no fixture
+ *     executes.
  *   - Neither instrument covers `src/career/`'s TEST files, and that is
  *     deliberate: a test constructs a gate, and a gate's whole job is to compare
  *     a total to a number. `careerCore.test.ts`'s `GATE` is the reference
@@ -811,9 +864,19 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
  * cannot tell `(x, g)` from `(y, tabulated(g, x))`, because the only channel
  * from the total to the answer is the gate and the gate has been made to answer
  * identically. A module that reads the number is separated by any `y` the read
- * treats differently — a different magnitude, a different digit width, a
- * decimal point, a different type of `Proxy` — without this file having to name
- * which read it was.
+ * TREATS DIFFERENTLY FROM `x` — a different magnitude, a different digit width,
+ * a decimal point — without this file having to name which read it was.
+ *
+ * THE CAPITALISED CLAUSE IS THE ONE THIS PROBE WAS BYPASSED THROUGH, and it used
+ * to read "any `y` the read treats differently", which quietly quantified over
+ * every real number instead of over the 5 substitutes and 50 band points this
+ * sweep actually runs. A read that answers the same for all 55 is invisible
+ * here, and the third bypass is one: it admits totals inside a window that
+ * contains no band point, so `x` and every `y` land on the same side of it.
+ *
+ * That is a property of the DOMAIN and not of the idea, so it cannot be repaired
+ * by adding substitutes — the next window is chosen after reading the list. It
+ * is repaired by not having a domain, which is `careerOpaqueTotal.test.ts`.
  */
 function tabulated(
   inner: CareerQualifyingGate<NumericTotal>,
@@ -837,6 +900,32 @@ function observation(value: unknown): string {
   );
 }
 
+/**
+ * A record carrying ONE total at every slot, which is a requirement rather than
+ * a shortcut.
+ *
+ * A critic read this as a hole — `standingOver`'s selection loop is the one
+ * place in the directory that chooses between totals, and with the same number
+ * at all three results it chooses with nothing to choose between. That reading
+ * is right about the loop and wrong about the fix. `tabulated(g, x)` replays one
+ * gate's answers about ONE total; a record holding three different totals is
+ * three questions and the tabulated gate can only answer one of them, so the
+ * substituted side collapses to "whatever the gate said about x" while the base
+ * side varies per result.
+ *
+ * MEASURED, not argued. With `total + 40` per result and nothing else changed:
+ *
+ *   [careerStanding/at-or-above] 339kg -> 0kg
+ *     … "qualifiedTier":"regional" … "qualifiedOnDayIndex":49 …
+ *     … "qualifiedTier":"local"    … "qualifiedOnDayIndex":21 …
+ *
+ * That is the probe reporting a difference the module is entitled to, which
+ * would have to be suppressed on the day it landed. So the selection loop is
+ * exercised by `picks the result that reached the tier` below — a dedicated
+ * check with three distinct totals and three distinct bodyweights, where the
+ * winner is neither the first nor the last — and this fixture stays at one
+ * total, on purpose.
+ */
 function recordOf(
   total: NumericTotal,
   slots: readonly CareerMeetSlot[],
@@ -1080,16 +1169,111 @@ describe('substituting the total behind a fixed gate changes nothing', () => {
       runEntryPlan: 4,
       runRecordHistory: 4,
     });
-    // Two subjects are flat by construction and are kept for what they DO check
-    // rather than pretended to be more: `lifterWithStanding` returns the lifter
-    // with the total masked, so its observation cannot vary, and
-    // `careerGateFaults` returns an empty list for every downward-closed gate.
-    // Both carry the substitution property anyway — a fault list that started
-    // printing the total, or a lifter that gained a derived number, would break
-    // it — and both are non-flat under a gate that is not downward closed, which
-    // is asserted here rather than assumed.
+    // TWO SUBJECTS ARE FLAT, AND THE SENTENCE THAT USED TO BE HERE CLAIMED MORE
+    // THAN THE LINE BELOW DELIVERS. It read:
+    //
+    //     Both carry the substitution property anyway … and both are non-flat
+    //     under a gate that is not downward closed, which is asserted here
+    //     rather than assumed.
+    //
+    // One of them is asserted. `careerGateFaults` is genuinely non-flat under
+    // the band gate and the assertion below is about it. `lifterWithStanding`
+    // is flat under EVERY gate and no arrangement of this subject changes that:
+    // it returns `{ ...lifter, bestTotal: standing.qualifyingTotal }`, the
+    // lifter is a constant, and `observation()` masks `bestTotal` by field name
+    // — so the one field that moves is the one field that is blanked.
+    //
+    // MEASURED rather than reasoned. `return Object.freeze({ ...lifter,
+    // bestTotal: lifter.bestTotal });` — the mutant that writes no standing at
+    // all — leaves this whole FILE green, all 24 tests. It is not invisible to
+    // the directory: it reddens eight tests, and the one that names it is
+    // `expect(after.bestTotal).toEqual(kg(NATIONALS_KG))` inside `writes the
+    // qualifying total and nothing else` in `careerRecord.test.ts`. So the gap
+    // was in this file's claim about itself, not in the directory's coverage.
+    //
+    // What closes it as a claim of THIS instrument's kind — at the value rather
+    // than at a fixture's number — is `catches a lifter that keeps its own total
+    // instead of the standing's` in `careerOpaqueTotal.test.ts`, which hands the
+    // function two distinguishable totals and reads which one came back.
+    //
+    // Looked up BY ID rather than by index. `SUBJECTS[8]` was positional while
+    // the comment beside it named a function, so a reorder would have regraded a
+    // different subject, and `?.` turned an out-of-range index into a `Set` of
+    // size 1 that only fails by luck.
     const band = PROBE_GATES.find((probe) => probe.id === 'band') as ProbeGate;
-    expect(new Set(BAND_KG.map((kg) => SUBJECTS[8]?.observe(kg, band.gate))).size).toBe(2);
+    const gateFaults = SUBJECTS.find((subject) => subject.id === 'careerGateFaults');
+    expect(gateFaults, 'no subject named careerGateFaults').toBeDefined();
+    expect(
+      new Set(BAND_KG.map((kg) => (gateFaults as SubstitutionSubject).observe(kg, band.gate))).size,
+    ).toBe(2);
+    // And the flat pair is named here rather than left to be read off the table
+    // above, so a third flat subject is a visible edit.
+    expect(
+      Object.keys(spread)
+        .filter((id) => spread[id] === 1)
+        .sort(),
+    ).toEqual(['careerGateFaults', 'lifterWithStanding']);
+  });
+});
+
+describe('the one loop in this directory that chooses between two totals', () => {
+  it('picks the result that reached the tier, not the first and not the last', () => {
+    // `standingOver` walks the results and keeps the one whose qualified tier
+    // outranks everything before it. Every other check in this file runs it with
+    // ONE total repeated, for the reason `recordOf`'s docstring gives, so the
+    // choice it makes is between three identical candidates and the loop could
+    // return any of them and still pass. This is the check with a real choice in
+    // it.
+    //
+    // The totals are chosen so the winner is the MIDDLE result and so the third
+    // ties the second's tier: 300 qualifies for the open tier only, 700 and 720
+    // both reach worlds. A loop that took the last, or that used `>=` where the
+    // shipped one uses `>`, returns the third; one that took the first returns
+    // the third-of-a-tier below. The bodyweights are distinct so an UNMASKED
+    // field reports which result was taken, which is what the field-name mask
+    // makes impossible for the total itself.
+    //
+    // Reddens on: `standingRank(tier) > standingRank(qualifiedTier)` becoming
+    // `>=`, on the loop keeping the last match, or on `qualifyingBodyweightKg`
+    // and `qualifiedOnDayIndex` ceasing to come off the same result as
+    // `qualifyingTotal`.
+    const totals: readonly NumericTotal[] = [300, 700, 720];
+    const bodyweights: readonly number[] = [92.5, 83.25, 105.75];
+    const lifter: CareerLifter<NumericTotal> = {
+      ...NUMERIC_LIFTER,
+      enteredSlotIds: STANDING_SLOTS.map((slot) => slot.slotId),
+      lastEntryDayIndex: (STANDING_SLOTS[STANDING_SLOTS.length - 1] as CareerMeetSlot).dayIndex,
+    };
+    let record = createCareerRecord<NumericTotal>();
+    for (let index = 0; index < STANDING_SLOTS.length; index += 1) {
+      const outcome = recordMeetResult(
+        record,
+        lifter,
+        STANDING_SLOTS[index] as CareerMeetSlot,
+        { total: totals[index] as NumericTotal, bodyweightKg: bodyweights[index] as number },
+      );
+      expect(outcome.kind, `result ${index} was refused`).toBe('recorded');
+      if (outcome.kind !== 'recorded') return;
+      record = outcome.record;
+    }
+
+    // The domain guard: three distinct totals really are on the record, and the
+    // tiers they qualify for are not all the same. Without this the check below
+    // could pass over three identical candidates again.
+    expect(record.results.map((result) => result.total)).toEqual([300, 700, 720]);
+    const real = PROBE_GATES.find((probe) => probe.id === 'at-or-above') as ProbeGate;
+    expect(totals.map((kg) => qualifiedTierFor(kg, 'mens', real.gate))).toEqual([
+      'local',
+      'worlds',
+      'worlds',
+    ]);
+
+    const standing = careerStanding(record, 'mens', real.gate);
+    expect(standing.qualifiedTier).toBe('worlds');
+    expect(standing.qualifyingTotal).toBe(700);
+    expect(standing.qualifyingBodyweightKg).toBe(83.25);
+    expect(standing.qualifiedOnDayIndex).toBe((STANDING_SLOTS[1] as CareerMeetSlot).dayIndex);
+    expect(standing.totalsPosted).toBe(3);
   });
 });
 

@@ -82,6 +82,24 @@
  * `careerGateFaults` each have to give the same answer when the total is
  * swapped and the gate's answers are held fixed.
  *
+ * AND THAT WAS BYPASSED IN TURN, by a one-line `sort()` with no comparator,
+ * which is a string coercion that needs no cast. A band is a set of points and
+ * a bypass can sit between two of them. `careerOpaqueTotal.test.ts` is the
+ * answer to that shape: it binds `Total` to a value with no readable state, so
+ * a read throws instead of being compared. Every exported function here is
+ * driven by it — the six named above plus `createCareerRecord`, `hasCompetedAt`,
+ * `resultFor`, `competedSlotIds`, `lastResultDay`, `recordMeetResult`,
+ * `careerRecordFaults` and `careerHistoryFaults`, which the substitution probe
+ * never called at all.
+ *
+ * The selection this file's own sentence describes — "the FIRST total on the
+ * record that reached the highest such tier" — is checked by `picks the result
+ * that reached the tier, not the first and not the last`, which is the only
+ * place `standingOver`'s loop runs with three different totals on the record.
+ * Everywhere else posts one total three times, for a reason that fixture's
+ * docstring gives, and a loop choosing between three identical candidates
+ * cannot be seen to choose wrongly.
+ *
  * MUTATION WITNESS. Mutant, planted above the gate call in `qualifiedTierFor`:
  * `if (Number(total) >= requiredKg) return tier;`. Reddened:
  * `expect(qualifiedTierFor(HUGE_TOTAL_KG, 'mens', REFUSING_GATE)).toBe('local')`
