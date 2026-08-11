@@ -6,42 +6,72 @@ import path from 'node:path';
 // environment is correct and keeps the suite fast.
 /**
  * Raised from vitest's 5000 ms default because several suites here are
- * genuinely compute-heavy rather than slow by accident, and they time out ONLY
- * when run in parallel under load.
+ * genuinely compute-heavy rather than slow by accident.
  *
- * THE THREE TESTS THIS COMMENT USED TO NAME ARE NOT THE SLOW ONES ANY MORE, and
- * that mattered: a builder hit a red run, reproduced it under CPU load, and
- * found the timeouts were in a file BYTE-IDENTICAL to its base — then confirmed
- * the base commit's own source reproduces it under the same load. Different
- * tests time out per run, and none of the three named here were among them. A
- * stale list of "the heavy ones" is worse than none, because it sends the next
- * reader to the wrong file.
+ * THIS LIST HAS NOW BEEN STALE TWICE, and the second time it was worse than the
+ * first: it named six `streakEntitlement` cases topping out at 16866 ms while
+ * `src/empire/engagement.test.ts` alone was taking 435 of the suite's 479
+ * seconds, held eight tests above 20 s, and contained the suite's only red — a
+ * test at 34557 ms against this 30000 ms budget, failing ALONE IN ITS OWN FILE
+ * on an idle machine. A stale list of "the heavy ones" sends the next reader to
+ * the wrong file, which is what it did.
  *
- * MEASURED on an unloaded machine, every test over 4 s, slowest first:
+ * The first diagnosis of that red was also wrong and is worth keeping: it was
+ * called a contention artefact — "passes idle, fails under load" — on a
+ * duration list whose grep pattern matched only the passing `✓` rows and
+ * silently dropped the failing `×` one, which was the slowest in the file. A
+ * measurement that excludes its own subject, with a confident causal claim on
+ * top. It was not racy; it was over budget outright.
  *
- *   16866 ms  streakEntitlement > EXHAUSTIVE, ACROSS A WINDOW BOUNDARY
- *   16254 ms  streakEntitlement > MAGNITUDE AT LONG HORIZONS: 200 and 400 days
- *    9930 ms  streakEntitlement > THE FREE GRANT PATH cannot create a violation
- *    6906 ms  streakEntitlement > EXHAUSTIVE: every calendar of 8 to 16 days
- *    6132 ms  streakEntitlement > SAMPLED: 40, 60, 80 and 100 days
- *    4014 ms  streakEntitlement > NEGATIVE CONTROLS
- *    3954 ms  tuning/audit > A REAL PARSER AGREES ABOUT WHERE THE COMMENTS ARE
+ * MEASURED, four cores, `engagement.test.ts` run alone, after the caches and
+ * the memo below landed. Every test over 8 s, slowest first:
  *
- * Every one of the top six is in `streakEntitlement.test.ts`, which is why that
- * one file sets the whole suite's wall time.
+ *   30766 ms  engagement > pins every day anchor on the single-purse control
+ *   30211 ms  engagement > measures the rotation phase removed
+ *   25683 ms  engagement > measures the day anchor on seeded histories at 100 days
+ *   24429 ms  engagement > measures the ordering reversed: costliest first
+ *   23039 ms  engagement > measures the per-check-in granularity removed
+ *   21317 ms  engagement > explains the save-for-physio zero
+ *   18305 ms  engagement > measures the day anchor on seeded histories at 60 days
+ *   17221 ms  engagement > takes the whole-day reading under the last three
+ *   16303 ms  engagement > pins the four anchors on a seeded domain, 20 and 40
+ *   15553 ms  engagement > holds the decision moment
+ *   14651 ms  engagement > finds all six policies zero at 40 seeded days
+ *   12714 ms  engagement > pins every day anchor on the shipped wiring
+ *   12275 ms  engagement > takes the whole-day reading under the first three
+ *   12097 ms  engagement > SAMPLED: seeded histories at 60 and 100 days
+ *   10857 ms  engagement > measures chain A re-connected
+ *    8627 ms  engagement > measures the shipped engine, and BOTH halves are zero
+ *    8613 ms  engagement > splits the shipped anchor by WHEN a purse can afford
+ *    8368 ms  engagement > measures the SINGLE-PURSE engine on the same domain
+ *    8297 ms  engagement > keeps §5.3's promotion path load-bearing: 824
  *
- * THE MARGIN IS THIN AND THAT IS THE POINT OF WRITING THE NUMBERS DOWN. The two
- * slowest sit at 56% of this budget with nothing else competing for a core.
- * Raising the timeout would hide that rather than fix it; the real fix is
- * splitting that file or shrinking a sweep, and whoever does it should re-take
- * these measurements rather than trusting this list — which is exactly the
- * mistake the list above replaced.
+ * `streakEntitlement.test.ts`'s cases are no longer at the top and are not
+ * re-listed; re-take them if that file is the one you are working on.
  *
- * Worth fixing rather than tolerating: a suite that fails on machine load and
- * passes on a retry teaches everyone to re-run instead of reading the failure,
- * which is exactly how a real red gets waved through. Those tests earn their
- * time — they rasterise real frames and enumerate whole calendars — so the
- * honest fix is a budget that fits the work, not a smaller sweep.
+ * TWO THINGS CHANGED RATHER THAN THE BUDGET, and no sweep shrank. Three
+ * hand-rolled 4096-mask enumerations in `engagement.test.ts` rebuilt the same
+ * twelve-day runs seven times over because `moreEngagedBy(history(mask), bit)`
+ * IS `history(mask | 1 << bit)` and only `windowedSweep` was exploiting it;
+ * they now cache by mask like it does. And the sweep helpers are memoised on
+ * their arguments, because five of the file's windowed sweeps were the same
+ * seven arguments written twice. The suite's only red went from 34557 ms to
+ * under 7000 ms on the first of those alone.
+ *
+ * WHAT THIS GLOBAL IS FOR, and where it deliberately stops. It is the budget for
+ * the roughly three thousand tests that finish in milliseconds, and it stays
+ * tight so a genuinely hung one is heard about quickly. The dozen sweeps that
+ * legitimately need longer declare their own budget at their own `it(`, derived
+ * from that test's measured duration by `budgetFrom` in
+ * `src/empire/engagement.test.ts` — two times measured, rounded up to five
+ * seconds, floored at this number. `SWEEP_BUDGET.GLOBAL_MS` mirrors this
+ * constant and a test there reads this file's source, so the two cannot drift.
+ *
+ * That is the "budget that fits the work" this comment used to ask for, made
+ * per test rather than per suite. The alternative — raising this number to 90 s
+ * — hides a hang behind a minute and a half for every test in the repository,
+ * and the alternative to THAT, shrinking a sweep, trades a §12.3 measurement
+ * for a clock.
  */
 const TEST_TIMEOUT_MS = 30_000;
 

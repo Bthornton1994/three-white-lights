@@ -15,6 +15,15 @@
  * (114688 pairs), 0 at 20, 40, 60 and 100 seeded days, and 0 for an extra
  * TRAINED day at every element.
  *
+ * A DOMAIN IS A DOMAIN FOR THE POLICY IT WAS RUN AT, and for the sixth policy
+ * that is a separate list. `runEngagement` reads `EMPIRE_DAY_SPENDING_ANCHORS`
+ * under `'spend-once-per-calendar-day'` and under nothing else, while
+ * `windowedSweep` and `seededSweep` both DEFAULT `spending` to the per-check-in
+ * policy — so a sweep called without one carries the shipped anchor's name and
+ * asks it nothing. The domains that actually exercise the anchor are the rows
+ * of `ANCHOR_DOMAINS` near the foot of this file, each with the count of
+ * questions its runs put to the anchor pinned beside its violating count.
+ *
  * THE SIXTH USED TO BE 6459 AND THE SPECIFICATION IS WHAT CHANGED, not the
  * count. `'spend-once-per-calendar-day'` said "the day's takings are spent at
  * the last check-in the player takes"; it now says "each purse buys at most
@@ -120,10 +129,33 @@
  * funded output a purse nothing else may spend, and the day anchor is now
  * declared at that same grain. A purse buys once a calendar day, at the first
  * check-in of that day it can afford its next rung, and a purse that can afford
- * nothing waits. Adding a check-in can only make a purse's first affordable
- * moment EARLIER or leave it — money and reputation accrue on the wall clock
- * and a check-in only reads them sooner — so the day a rung lands is monotone
- * in attendance, purse by purse. 0 on every domain measured here.
+ * nothing waits.
+ *
+ * WHAT THAT ESTABLISHES BY CONSTRUCTION IS ONE STEP AND NOT THE PROPERTY, and
+ * the paragraph here used to run the two together. The step: adding a check-in
+ * can only make a purse's next rung affordable EARLIER or leave it, because
+ * money and reputation accrue on the wall clock and a check-in reads them
+ * sooner. It used to close "so the day a rung lands is monotone in attendance,
+ * purse by purse". Two measurements say the join does not hold:
+ *
+ *   - THE PREMISE IS TRUE IN A VIOLATING ENGINE. It is about the anchor, the
+ *     per-purse split and wall-clock accrual; `RosterUpgradeRule` touches none
+ *     of them, and `'one-way-door'` at this same anchor is 824 violating pairs
+ *     of 24576, pinned below.
+ *   - IT IS ABOUT WHEN A RUNG LANDS AND NOT WHICH ONE. `AXIS_OUTPUT` puts
+ *     `space` and `spotter` on one purse and `coach` and `equipment` on
+ *     another, the spending loop takes the first startable offer and breaks,
+ *     and `EmpireGym.nextAxis` advances once per attended calendar day — so an
+ *     extra check-in on an otherwise-empty day permanently shifts which ladder
+ *     a two-ladder purse is offered first. Measured at 3334 of 24576 pairs,
+ *     every one inside the roster purse, the dearer spotter rung where the
+ *     less-engaged gym took the cheaper space one. That is the mechanism
+ *     `'first-attended-check-in'` was rejected for at 1951, confined rather
+ *     than removed.
+ *
+ * So the zero is a MEASUREMENT and it is worth the domains it was taken on:
+ * `ANCHOR_DOMAINS`, each of which is asserted to have consulted the anchor. The
+ * longest is 100 seeded days.
  *
  * WHAT THE ANCHOR IS NOT: it is not what makes the engine safe on its own.
  * Under the `'single-purse'` control every one of the four anchors is non-zero,
@@ -177,6 +209,9 @@
  * `src/empire/*.ts` as a renderer and a renderer may hold no bare numeric
  * literal at all.
  */
+
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -362,6 +397,63 @@ export const ENGAGEMENT_SWEEP = Object.freeze({
   TRAINED_DAY_HORIZON_DAYS: 20,
   TRAINED_DAY_TRIALS: 3,
 } as const);
+
+// ---------------------------------------------------------------------------
+// Per-test wall-clock budgets, derived from measured durations by ONE rule
+// ---------------------------------------------------------------------------
+
+/**
+ * The rule that turns a measured duration into a declared budget, and the
+ * global this file mirrors.
+ *
+ * WHY THIS FILE DECLARES BUDGETS AT ALL, since `vitest.config.ts` argues against
+ * raising the budget in its own header and that argument is right. Its complaint
+ * is that a suite which fails on load and passes on a retry teaches everyone to
+ * re-run instead of reading the failure. This file's problem is a different one
+ * and the config's own text names the fix for it: a single sweep here exceeds
+ * the global budget OUTRIGHT, alone in its file, on an idle machine — one test
+ * measured 34.6 s against 30 s and was the suite's only red. That is not a load
+ * artefact and no retry fixes it.
+ *
+ * A global raise is the wrong repair because it hands the same 90 s to three
+ * thousand tests that finish in milliseconds, so the next genuinely hung one
+ * sits there for a minute and a half. What is declared instead is a budget per
+ * heavy test, computed from that test's own MEASURED duration by the one rule
+ * below, with the measurement written at the call site. So the numbers in this
+ * file are facts about how long the work takes rather than a ceiling somebody
+ * picked, and re-taking them is re-running the test and reading the reporter.
+ *
+ * THE FACTOR IS THE MARGIN AND IT IS DECLARED RATHER THAN HOPED FOR. Two times
+ * measured, rounded up to five seconds, floored at the global — floored because
+ * a derived budget must never be TIGHTER than the one it replaces, which is the
+ * arithmetic accident that would otherwise make a fast test's declaration a
+ * regression. If this file starts failing under contention, this factor is the
+ * thing to move, not the sweeps: every sweep here is carrying a §12.3
+ * measurement and shrinking one to fit a clock would trade evidence for speed.
+ */
+const SWEEP_BUDGET = Object.freeze({
+  /**
+   * `TEST_TIMEOUT_MS` in `vitest.config.ts`, mirrored.
+   *
+   * Mirrored rather than imported: importing a vite config into a node test
+   * drags the whole config loader in. `pins the global budget it mirrors`
+   * below reads that file's source and fails if the two ever disagree, so this
+   * is a copy that cannot go stale silently.
+   */
+  GLOBAL_MS: 30_000,
+  HEADROOM_FACTOR: 2,
+  ROUND_UP_TO_MS: 5_000,
+} as const);
+
+/** A declared budget from a measured duration. See `SWEEP_BUDGET`. */
+function budgetFrom(measuredMs: number): number {
+  if (!Number.isFinite(measuredMs) || measuredMs <= 0) {
+    throw new RangeError(`a budget must come from a real measurement, received ${measuredMs}`);
+  }
+  const padded = measuredMs * SWEEP_BUDGET.HEADROOM_FACTOR;
+  const rounded = Math.ceil(padded / SWEEP_BUDGET.ROUND_UP_TO_MS) * SWEEP_BUDGET.ROUND_UP_TO_MS;
+  return Math.max(SWEEP_BUDGET.GLOBAL_MS, rounded);
+}
 
 // ---------------------------------------------------------------------------
 // What each sweep produced, pinned
@@ -1334,7 +1426,7 @@ describe('EXHAUSTIVE: every calendar of a window of check-in slots', () => {
     expect(tally.comparedElements).toBe(MEASURED.WINDOWED_SHIPPED.comparedElements);
   });
 
-  it('measures chain A re-connected, as the control the physio zero is zero against', () => {
+  it('measures chain A re-connected, as the control the physio zero is zero against', { timeout: budgetFrom(10_857) }, () => {
     // `'accelerated-purse'` is `stepGym`'s own `funding: 'accelerated'`: the gym
     // is offered its accelerated book where the wall-clock one belongs, which is
     // the engine as it stood before GDD §5.4's two-books ruling. Under it the
@@ -2392,7 +2484,10 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(policiesRun).toBe(6);
   });
 
-  it('reproduces the headline exactly under the shipped policy', () => {
+  it('reproduces the headline exactly under the shipped policy', { timeout: budgetFrom(22_000) }, () => {
+    // Two full 24576-pair sweeps. 22 s is the COLD cost — both are memo hits
+    // when the exhaustive section above has already run, and a budget taken
+    // warm would be a budget for the order rather than for the work.
     // The first thing that has to hold: if this arm did not land on
     // `MEASURED.WINDOWED_SHIPPED` byte for byte, the two harnesses would
     // disagree and nothing else in this section would be worth reading. It is
@@ -2406,7 +2501,12 @@ describe('the spending policy is the second independent variable, and it is swep
     );
   });
 
-  it('measures the rotation phase removed: fixed order, and cheapest-first with it', () => {
+  it('measures the rotation phase removed: fixed order, and cheapest-first with it', { timeout: budgetFrom(38_823) }, () => {
+    // THREE full 24576-pair sweeps, and this was one of the two tests that blew
+    // the global budget outright. It is not split into three because the three
+    // are one argument: the two shipped arms have to be compared to each other
+    // in the same body, and the pre-ruling arm is what makes their equality a
+    // decomposition rather than two blank readings.
     // Two arms, and they come out IDENTICAL — measured, not arranged. On
     // `EMPIRE_TUNING`'s shipped ladders `AXIS_ORDER` is already price-ascending
     // inside each purse at every rung this domain reaches, so "cheapest
@@ -2428,7 +2528,9 @@ describe('the spending policy is the second independent variable, and it is swep
     ).toBe(2800);
   });
 
-  it('measures the ordering reversed: costliest affordable first', () => {
+  it('measures the ordering reversed: costliest affordable first', { timeout: budgetFrom(32_503) }, () => {
+    // Two full sweeps, subject and its pre-ruling control. The other test that
+    // blew the global budget.
     const tally = policyWindowed('costliest-affordable-first');
     expect(tally).toEqual(MEASURED_POLICY.WINDOWED['costliest-affordable-first']);
     expect(tally.violatingPairs).toBe(0);
@@ -2438,7 +2540,7 @@ describe('the spending policy is the second independent variable, and it is swep
     );
   });
 
-  it('explains the save-for-physio zero instead of repeating it', () => {
+  it('explains the save-for-physio zero instead of repeating it', { timeout: budgetFrom(21_317) }, () => {
     // THE HOLE THIS CLOSES. Piece E8 measured `'save-for-physio-first'` at zero
     // on this window under the single-purse engine and could not say why, while
     // the same policy gave 15 at twenty seeded days and 138 at forty. An
@@ -2513,7 +2615,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(lateShipped.pairs).toBe(lateSingle.pairs);
   });
 
-  it('measures the per-check-in granularity removed, and that arm is zero too now', () => {
+  it('measures the per-check-in granularity removed, and that arm is zero too now', { timeout: budgetFrom(23_039) }, () => {
     // THE ARM THAT USED TO BE 6459. It is 0, and the specification is what
     // changed: `SHIPPED_DAY_SPENDING_ANCHOR` says which check-in of the day a
     // player who shops once a day shops at, and the anchor block below is the
@@ -2551,7 +2653,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(tally.pairsWherePhysioArrived).toBe(24576);
   });
 
-  it('splits that arm by whether the extra check-in moved the day it spends at [a-filled-slot-is-not-a-one-way-door] [a-slot-costs-the-same-by-every-route]', () => {
+  it('splits that arm by whether the extra check-in moved the day it spends at [a-filled-slot-is-not-a-one-way-door] [a-slot-costs-the-same-by-every-route]', { timeout: budgetFrom(7_000) }, () => {
     // TAKEN AT THE `'last-attended-check-in'` CONTROL ANCHOR, ON PURPOSE. This
     // check is a claim about §5.3's roster and not about the day anchor, and
     // the roster claim was measured on that anchor — so it stays there rather
@@ -2714,7 +2816,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(oneWayDoorViolating).toBe(5);
   });
 
-  it('holds the decision moment and the other arm goes to zero too [the-day-granularity-residue-is-the-decision-moment]', () => {
+  it('holds the decision moment and the other arm goes to zero too [the-day-granularity-residue-is-the-decision-moment]', { timeout: budgetFrom(15_553) }, () => {
     // TAKEN AT THE `'last-attended-check-in'` CONTROL ANCHOR — `anchoredRun`'s
     // own default, and its docstring says why: `spendsOn` holds a moment that
     // attendance decides, and only an anchor that derives its moment from
@@ -2796,7 +2898,10 @@ describe('the spending policy is the second independent variable, and it is swep
   // The day ANCHOR is the third independent variable, and it is swept too
   // -------------------------------------------------------------------------
 
-  it('pins every day anchor on the shipped wiring, and only one of the four is zero [the-day-shops-purse-by-purse]', () => {
+  it('pins every day anchor on the shipped wiring, and only one of the four is zero [the-day-shops-purse-by-purse]', { timeout: budgetFrom(44_000) }, () => {
+    // Four full sweeps. 44 s is the COLD cost — two of the four are memo hits
+    // when the checks above have already taken them, and this test must not
+    // depend on that to fit.
     // THE MEASUREMENT THAT CHOSE THE SPECIFICATION. "Spends once a calendar
     // day" does not say which check-in, and the unstated half was carrying the
     // whole residue. Four readings, one domain, one comparator, one parameter
@@ -2848,7 +2953,7 @@ describe('the spending policy is the second independent variable, and it is swep
     );
   });
 
-  it('pins every day anchor on the single-purse control, where all four are non-zero', () => {
+  it('pins every day anchor on the single-purse control, where all four are non-zero', { timeout: budgetFrom(30_766) }, () => {
     // THE ANCHOR IS NOT WHAT MAKES THE ENGINE SAFE, and this is the arm that
     // says so. Put every wall-clock ladder back on one balance and the schedule
     // decides which ladder reaches it first again, whichever check-in the
@@ -3072,7 +3177,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(tally.movedPairs).toBe(105225);
   });
 
-  it('pins the four anchors on a seeded domain too, at 20 and 40 days', () => {
+  it('pins the four anchors on a seeded domain too, at 20 and 40 days', { timeout: budgetFrom(16_303) }, () => {
     // A SECOND DOMAIN FOR THE ANCHOR TABLE, so the choice above is not one
     // enumeration's opinion. Seeded rather than exhaustive, at the sweep's own
     // seeds and density.
@@ -3220,7 +3325,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(ZERO_AT_EVERY_SEEDED_HORIZON.length).toBe(6);
   });
 
-  it('finds all six policies zero at 40 seeded days', () => {
+  it('finds all six policies zero at 40 seeded days', { timeout: budgetFrom(14_651) }, () => {
     expect(seededArm(40, 6, ENGAGEMENT_SWEEP.SEEDS[1], MEASURED_POLICY.SEEDED_40)).toEqual([
       ...ZERO_AT_EVERY_SEEDED_HORIZON,
     ]);
@@ -3248,11 +3353,11 @@ describe('the spending policy is the second independent variable, and it is swep
     return measured;
   }
 
-  it('takes the whole-day reading under the first three policies', () => {
+  it('takes the whole-day reading under the first three policies', { timeout: budgetFrom(12_275) }, () => {
     expect(wholeDayArm(FIRST_HALF)).toBe(3);
   });
 
-  it('takes the whole-day reading under the last three, and all six are zero', () => {
+  it('takes the whole-day reading under the last three, and all six are zero', { timeout: budgetFrom(17_221) }, () => {
     expect(wholeDayArm(SECOND_HALF)).toBe(3);
     // Named here rather than left in the table: the arm that measured 600
     // before the ruling is the day-granularity policy, and it is zero now.
@@ -3304,65 +3409,14 @@ interface AnchorDomain {
   /** Violating pairs per anchor, for the anchors this row runs. */
   readonly violating: Readonly<Record<string, number>>;
   /**
-   * Wall-clock budget, measured on this machine and doubled. See
-   * `SWEEP_BUDGET_MS` for why these are declared per test rather than by
-   * raising `vitest.config.ts`'s global one.
+   * This row's own COLD wall-clock duration, in milliseconds, measured by
+   * running its generated test alone. Cold because the memo makes a warm run of
+   * several of these nearly free, and a budget taken warm would be a budget for
+   * whichever row happened to run second. `budgetFrom` turns it into the test's
+   * declared timeout.
    */
-  readonly budgetMs: number;
+  readonly measuredMs: number;
 }
-
-/**
- * Per-test wall-clock budgets for the sweeps that do not fit `vitest.config.ts`'s
- * 30 s global one.
- *
- * EVERY VALUE IS A MEASURED DURATION, DOUBLED, ROUNDED UP TO THE NEXT 5 s. The
- * measurement is a COLD run of the named test — cold because the memo above
- * makes a warm run of several of these nearly free, and a budget taken warm
- * would be a budget for whichever test happened to run second. The durations are
- * listed in `vitest.config.ts` beside the rest of the suite's, re-taken there
- * rather than transcribed here.
- *
- * WHY PER TEST RATHER THAN A GLOBAL RAISE, since `vitest.config.ts` argues
- * against raising the budget in its own header and the argument is right. Its
- * complaint is that a suite which fails on load and passes on a retry teaches
- * everyone to re-run instead of reading the failure. A global raise hands 90 s
- * to three thousand tests that finish in milliseconds, so the next genuinely
- * hung one sits there for a minute and a half before anybody hears about it. A
- * declared budget on the handful of sweeps that need one leaves the tight global
- * in place for everything else and puts the measured number beside the test it
- * belongs to.
- *
- * THE DOUBLING IS THE HEADROOM, and it is the number to move if this file starts
- * failing under load rather than the sweeps themselves. It is a declared margin
- * rather than a hoped-for one, which is what was missing: the suite's only
- * failing test was at 115% of the global budget and had no budget of its own to
- * be over.
- */
-const SWEEP_BUDGET_MS = Object.freeze({
-  /** Four anchors over 4096 twelve-day calendars each. Measured 25.6 s cold. */
-  WINDOW_FOUR_ANCHORS: 55_000,
-  /** Four anchors over 512 twelve-day calendars each. Measured 3.3 s cold. */
-  LATE_WINDOW_FOUR_ANCHORS: 10_000,
-  /** One anchor over 16384 seven-day calendars. Measured 4.7 s cold. */
-  COARSE_ONE_ANCHOR: 10_000,
-  /** Four anchors over seeded histories. Measured 5.1 s at 20 days and 10.6 s at 40. */
-  SEEDED_FOUR_ANCHORS_SHORT: 25_000,
-  /** Measured 17.7 s cold. */
-  SEEDED_FOUR_ANCHORS_60: 40_000,
-  /** Measured 25.2 s cold — the longest horizon this anchor has been measured at. */
-  SEEDED_FOUR_ANCHORS_100: 55_000,
-  /** One anchor over 4096 whole-day calendars. Measured 4.5 s cold. */
-  WHOLE_DAY_ONE_ANCHOR: 10_000,
-  /**
-   * The hand-rolled 4096-mask enumerations that are not `windowedSweep` calls.
-   *
-   * These are the three loops that had no run cache until this round and
-   * rebuilt the same twelve-day runs seven times over; the slowest was the
-   * suite's only failing test, at 34.6 s against a 30 s budget. Measured after
-   * the caches went in.
-   */
-  MASK_ENUMERATION: 30_000,
-} as const);
 
 const FOUR_ANCHORS = EMPIRE_DAY_SPENDING_ANCHORS;
 const SHIPPED_ANCHOR_ONLY: readonly EmpireDaySpendingAnchor[] = [SHIPPED_DAY_SPENDING_ANCHOR];
@@ -3376,7 +3430,7 @@ const ANCHOR_DOMAINS: readonly AnchorDomain[] = Object.freeze([
     runs: 16384,
     anchorDecisions: 2187754,
     violating: MEASURED_ANCHOR.WINDOWED_VIOLATING,
-    budgetMs: SWEEP_BUDGET_MS.WINDOW_FOUR_ANCHORS,
+    measuredMs: 25_589,
   },
   {
     name: 'the same window moved to day 4',
@@ -3386,7 +3440,7 @@ const ANCHOR_DOMAINS: readonly AnchorDomain[] = Object.freeze([
     runs: 2048,
     anchorDecisions: 284608,
     violating: MEASURED_ANCHOR.LATE_WINDOW_VIOLATING,
-    budgetMs: SWEEP_BUDGET_MS.LATE_WINDOW_FOUR_ANCHORS,
+    measuredMs: 3_307,
   },
   {
     name: 'every calendar of the coarse grid, whole',
@@ -3396,7 +3450,7 @@ const ANCHOR_DOMAINS: readonly AnchorDomain[] = Object.freeze([
     runs: 16384,
     anchorDecisions: 139842,
     violating: { 'first-affordable-check-in-per-purse': 0 },
-    budgetMs: SWEEP_BUDGET_MS.COARSE_ONE_ANCHOR,
+    measuredMs: 4_738,
   },
   {
     name: 'seeded histories at 20 days',
@@ -3406,7 +3460,7 @@ const ANCHOR_DOMAINS: readonly AnchorDomain[] = Object.freeze([
     runs: 2624,
     anchorDecisions: 378211,
     violating: MEASURED_ANCHOR.SEEDED_20_VIOLATING,
-    budgetMs: SWEEP_BUDGET_MS.SEEDED_FOUR_ANCHORS_SHORT,
+    measuredMs: 5_142,
   },
   {
     name: 'seeded histories at 40 days',
@@ -3416,7 +3470,7 @@ const ANCHOR_DOMAINS: readonly AnchorDomain[] = Object.freeze([
     runs: 2516,
     anchorDecisions: 744027,
     violating: MEASURED_ANCHOR.SEEDED_40_VIOLATING,
-    budgetMs: SWEEP_BUDGET_MS.SEEDED_FOUR_ANCHORS_SHORT,
+    measuredMs: 10_553,
   },
   {
     name: 'seeded histories at 60 days',
@@ -3426,7 +3480,7 @@ const ANCHOR_DOMAINS: readonly AnchorDomain[] = Object.freeze([
     runs: 2616,
     anchorDecisions: 1150954,
     violating: MEASURED_ANCHOR.SEEDED_60_VIOLATING,
-    budgetMs: SWEEP_BUDGET_MS.SEEDED_FOUR_ANCHORS_60,
+    measuredMs: 17_731,
   },
   {
     name: 'seeded histories at 100 days',
@@ -3436,7 +3490,7 @@ const ANCHOR_DOMAINS: readonly AnchorDomain[] = Object.freeze([
     runs: 2232,
     anchorDecisions: 1644681,
     violating: MEASURED_ANCHOR.SEEDED_100_VIOLATING,
-    budgetMs: SWEEP_BUDGET_MS.SEEDED_FOUR_ANCHORS_100,
+    measuredMs: 25_235,
   },
   {
     name: 'the whole-day reading',
@@ -3446,13 +3500,13 @@ const ANCHOR_DOMAINS: readonly AnchorDomain[] = Object.freeze([
     runs: 4096,
     anchorDecisions: 258713,
     violating: { 'first-affordable-check-in-per-purse': 0 },
-    budgetMs: SWEEP_BUDGET_MS.WHOLE_DAY_ONE_ANCHOR,
+    measuredMs: 4_466,
   },
 ]);
 
 describe('the domains the day anchor is measured on, one test per domain', () => {
   for (const domain of ANCHOR_DOMAINS) {
-    it(`measures the day anchor on ${domain.name}`, { timeout: domain.budgetMs }, () => {
+    it(`measures the day anchor on ${domain.name}`, { timeout: budgetFrom(domain.measuredMs) }, () => {
       let runs = 0;
       let anchorDecisions = 0;
       const violating: Record<string, number> = {};
@@ -3479,6 +3533,35 @@ describe('the domains the day anchor is measured on, one test per domain', () =>
       expect(violating[SHIPPED_DAY_SPENDING_ANCHOR], domain.name).toBe(0);
     });
   }
+
+  it('pins the global budget it mirrors, and the rule that derives from it', () => {
+    // `SWEEP_BUDGET.GLOBAL_MS` is a copy of `vitest.config.ts`'s
+    // `TEST_TIMEOUT_MS`, and a copy that cannot go stale is the only kind worth
+    // having. Read from that file's source, so raising the global there without
+    // touching this one is red rather than silently making every derived budget
+    // here a floor it no longer is.
+    const config = readFileSync(path.join(process.cwd(), 'vitest.config.ts'), 'utf8');
+    const declared = /const TEST_TIMEOUT_MS = ([0-9_]+);/.exec(config);
+    expect(declared, 'vitest.config.ts declares TEST_TIMEOUT_MS').not.toBeNull();
+    expect(Number((declared?.[1] ?? '').replace(/_/g, ''))).toBe(SWEEP_BUDGET.GLOBAL_MS);
+    // The rule, at the three places it can go wrong: it doubles, it rounds up
+    // to five seconds, and it never returns a budget TIGHTER than the global —
+    // which is the arithmetic accident that would turn a fast test's own
+    // declaration into a regression.
+    expect(budgetFrom(38_823)).toBe(80_000);
+    expect(budgetFrom(21_317)).toBe(45_000);
+    expect(budgetFrom(1_000)).toBe(SWEEP_BUDGET.GLOBAL_MS);
+    expect(() => budgetFrom(0)).toThrow(/real measurement/);
+    // And every declared row's budget really is above its own measurement, so a
+    // row whose sweep grew past its budget is caught here as well as by the
+    // clock. Counted rather than bounded, so an empty table reports itself.
+    let checked = 0;
+    for (const domain of ANCHOR_DOMAINS) {
+      expect(budgetFrom(domain.measuredMs), domain.name).toBeGreaterThan(domain.measuredMs);
+      checked += 1;
+    }
+    expect(checked).toBe(ANCHOR_DOMAINS.length);
+  });
 
   it('has a row for every domain the anchor claim names, and no other', () => {
     // The table is the claim, so its shape is pinned rather than left to
