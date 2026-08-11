@@ -705,6 +705,39 @@ default session surface to Empire and back; the Empire screen renders real
 `src/empire/` state (not a placeholder string); nothing in this slice writes
 Total / e1RM / streak / pooled wallet; Session C does not call the bar met.
 
+#### MERGED WITHOUT THE REVIEW STEP THIS SECTION REQUIRES — 2026-08-11
+
+**Read this before treating PR #4 / `cbef6e9` as reviewed work.**
+
+Session C opened draft PR #4 (`cursor/session-c-empire-shell-8f47` →
+`claude/agent-config-setup-m2r6ny`) labeled **ready for review, not bar-met**,
+and was under an explicit hold for human confirmation before any merge. That
+hold was not optional.
+
+**What landed anyway.** Merge commit `cbef6e9` on
+`claude/agent-config-setup-m2r6ny` at 2026-08-11T19:27:30Z — GitHub records
+`merged_by: Bthornton1994` after a `ready_for_review` event from the same
+account. Session C's own tool log shows only draft PR creation, not a merge
+API call. The effect for A and B is the same either way: **Empire shell wiring
+is on the integration tip without the normal review pass this document asks
+for.**
+
+**Standing order, binding on Session C until further notice:** do not merge,
+and do not push to any shared branch (`main`, `claude/agent-config-setup-m2r6ny`,
+or another session's branch), without explicit go-ahead in the Session C
+conversation. Open the PR, report it, wait. Applies to every future piece.
+
+**Post-merge render check (Session C, same day, against `cbef6e9` locally):**
+player path session → open-empire → Empire floor → leave-empire → session
+worked in a real browser; both pills visible on check-in; floor shows
+opening-day `createEmpireState()` fields; leave returns to session with both
+pills. Shots: `.gauntlet/shots/empire-shell-flow/`. That is a smoke capture,
+not a critic pass and not a bar claim.
+
+Sessions A and B: expect `src/shell/{shellRoute,shellTuning,AppShell,EmpireScreen}*`
+and the Session C claim above to already be on the tip you pull. Do not assume
+they were graded.
+
 
 ## Subagent Roles
 
