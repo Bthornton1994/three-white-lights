@@ -676,10 +676,10 @@ merge is confirmed complete; Session C is not scoping them now.
   not simulate A/B's critic isolation)
 - Session B's Career crossings and trademark renames
 
-**Where the view lives.** A render-only `.tsx` under `src/empire/` (the pure
-`.ts` fence in `empireCore.test.ts` walks shipped `.ts` only). Shell join stays
-in `src/shell/`. No new magic numbers in `.tsx` — chrome copy/layout go in
-`shellTuning.ts`.
+**Where the view lives.** `src/shell/EmpireScreen.tsx` — shell owns the
+renderer and imports pure state from `src/empire/empireCore` (shell → empire,
+not the reverse). The pure `.ts` fence under `src/empire/` is untouched. No new
+magic numbers in `.tsx` — chrome copy/layout go in `shellTuning.ts`.
 
 #### CROSSINGS FILED BY SESSION C, BEFORE THE WORK, 2026-08-11
 

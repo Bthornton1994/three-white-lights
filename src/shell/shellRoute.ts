@@ -64,24 +64,29 @@ import type { ReplayRequest } from '../lift/liftReplay';
 import type { SessionPhase } from '../game/session';
 import type { SessionPreviewFrame } from '../session/useSession';
 import { SHELL_NAV } from './shellTuning';
+import type { EmpirePhase } from './shellTuning';
 
 // ---------------------------------------------------------------------------
 // Surfaces
 // ---------------------------------------------------------------------------
 
 /**
- * The three things the shell can put on screen.
+ * The surfaces the shell can put on screen.
  *
  * `replay` is the scripted single rep the lift-mechanic harness photographs. It
  * is deliberately NOT player-reachable — it is a debug surface and appears in
  * `playerReachableFrom` nowhere.
+ *
+ * `empire` is GDD §5's Gym Empire floor. Player-reachable from the daily
+ * session; it does not pay into `progression.ts`'s pooled wallet in this slice.
  */
-export type ShellSurface = 'session' | 'meet' | 'replay';
+export type ShellSurface = 'session' | 'meet' | 'replay' | 'empire';
 
 export const SHELL_SURFACES = Object.freeze([
   'session',
   'meet',
   'replay',
+  'empire',
 ] as const satisfies readonly ShellSurface[]);
 
 /** Why the shell is on this surface. */
@@ -114,25 +119,18 @@ export const DEFAULT_ROUTE: ShellRoute = Object.freeze({ surface: 'session', sou
 /**
  * Everything a player can ask the shell to do.
  *
- * Two, and that is the honest size of the shell's ROUTE GRAPH right now: the
- * daily session and meet day are the surfaces this module moves between.
- *
- * THIS IS NOT THE CLAIM THAT NOTHING ELSE RENDERS. `LicensingScreen`
- * (`src/licensing/LicensedPanelView.tsx`) is a GDD §7.3 identity-tier shop that
- * renders, has tests, and is reachable at `licensing.html?panel=shop` through
- * its own entry point (`src/licensing/licensingEntry.tsx`) — it is simply not
- * wired to this shell, so no `ShellIntent` reaches it and `ShellSurface` does
- * not name it. Whether that screen counts as one of GDD §2's four modes for the
- * purpose of "a player can reach every mode" is a scoping call, and this file
- * is not the place it gets made. What this comment states is only what is true
- * here: two intents, two player-reachable surfaces, and a third surface that
- * exists behind a separate entry point rather than behind nothing.
+ * Four intents: the daily session ↔ meet day round trip, and the daily session
+ * ↔ Gym Empire round trip. `LicensingScreen` stays on its own entry point (see
+ * the comment that used to claim only two intents — that count is stale; the
+ * licensing carve-out is not).
  */
-export type ShellIntent = 'open-meet' | 'leave-meet';
+export type ShellIntent = 'open-meet' | 'leave-meet' | 'open-empire' | 'leave-empire';
 
 export const SHELL_INTENTS = Object.freeze([
   'open-meet',
   'leave-meet',
+  'open-empire',
+  'leave-empire',
 ] as const satisfies readonly ShellIntent[]);
 
 /**
@@ -143,12 +141,20 @@ export const SHELL_INTENTS = Object.freeze([
  * `meet --leave-meet--> session` is the way back, which GDD §6.5's recap and
  * §6.3's bomb-out both need and which used to be `window.location.search = ''`
  * — a full page reload, on web only, doing nothing at all on a phone.
+ * `session --open-empire--> empire` / `empire --leave-empire--> session` are
+ * Session C's first Gym Empire shell slice (GDD §5).
  */
 export function navigate(route: ShellRoute, intent: ShellIntent): ShellRoute {
   if (intent === 'open-meet' && route.surface === 'session') {
     return { surface: 'meet', source: 'player' };
   }
   if (intent === 'leave-meet' && route.surface === 'meet') {
+    return { surface: 'session', source: 'player' };
+  }
+  if (intent === 'open-empire' && route.surface === 'session') {
+    return { surface: 'empire', source: 'player' };
+  }
+  if (intent === 'leave-empire' && route.surface === 'empire') {
     return { surface: 'session', source: 'player' };
   }
   return route;
@@ -249,7 +255,7 @@ export type CutInPresence = 'live' | 'none';
  */
 export function shellAffordanceFor(
   route: ShellRoute,
-  phase: SessionPhase | MeetDayPhaseId | null,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | null,
   cutIn: CutInPresence = 'none',
 ): ShellIntent | null {
   if (cutIn === 'live') return null;
@@ -259,6 +265,30 @@ export function shellAffordanceFor(
   }
   if (route.surface === 'meet') {
     return (SHELL_NAV.MEET_PHASES as readonly string[]).includes(phase) ? 'leave-meet' : null;
+  }
+  return null;
+}
+
+/**
+ * The Gym Empire affordance, parallel to `shellAffordanceFor`.
+ *
+ * Kept as a second function rather than widening the meet/session return into
+ * a list, so the existing meet-day gate stays a single typed answer and the
+ * Empire pill is an additive edge. Same cut-in rule, same "no phase, no
+ * chrome" rule, same SESSION_PHASES list for the way in.
+ */
+export function shellEmpireAffordanceFor(
+  route: ShellRoute,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | null,
+  cutIn: CutInPresence = 'none',
+): ShellIntent | null {
+  if (cutIn === 'live') return null;
+  if (phase === null) return null;
+  if (route.surface === 'session') {
+    return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-empire' : null;
+  }
+  if (route.surface === 'empire') {
+    return (SHELL_NAV.EMPIRE_PHASES as readonly string[]).includes(phase) ? 'leave-empire' : null;
   }
   return null;
 }
