@@ -154,6 +154,30 @@ piece there. If either session needs to cross the line, the crossing is written
 into this section **before** the work starts — not into a commit message, not
 into a conversation the other session cannot read.
 
+**CROSSING FILED BY SESSION A, BEFORE THE WORK, 2026-08-11 — `src/empire/empireInvariant.ts`
+§4a and `src/empire/empireInvariant.test.ts`.** Filed in the correct order this
+time, which is the point of writing it here at all: the previous Session A
+crossing was filed *after* the merge and is recorded below as a breach.
+
+*What and why.* §4a records eight mutants as prose summaries with element counts
+— "1266 of 2616 Training IQ elements move", "2592 and 2592", "84 physio
+elements". Those are the section's strongest evidence and the only part a reader
+can neither re-derive nor watch expire. Unlike the browser class, they bind to
+`it(` bodies in `src/`, so they are `MUTATION_WITNESSES`-eligible and there is no
+reason for them to stay prose. The work is converting them to witness entries
+with the two verbatim fields.
+
+*Why it has to be Session A.* The witness schema, the `@guarantee` scoper and the
+numeric rule these entries must satisfy all live in `src/game/guaranteeTags.test.ts`,
+which is Session A's file and which changed twice this wave. Doing this from the
+§5 side means editing that file blind.
+
+*Scope, kept as narrow as it can be.* §4a's comment block and witness entries
+only. No change to `stepGym`, the anchor, the purses, the roster or any measured
+number — if a number turns out to be wrong, that is a finding to report, not to
+fix from this side. Session B should expect a conflict in §4a's comment block and
+nowhere else.
+
 ### Crossings Session B needed — one is DONE, one is still open
 
 Session B did not edit any of the four files named here. A human approved both
@@ -1375,6 +1399,26 @@ physiology.
   pid/start-tick/cmdline, not by age — so it cannot tell a live process making
   progress from one making none, and off Linux it reports UNRESOLVED rather than
   guessing.
+
+  **THE SUITE-LEVEL CHECK STAYS, BITING ON EVERY RUN UNTIL CLEARED. Ruled by a
+  human**, on the explicit question of whether that much friction is
+  proportionate. The builder flagged it and Session A recommended keeping it;
+  both were ratified. The reasoning is the part to keep: **both incidents that
+  earned this rule were cases where nobody was specifically looking**, so a check
+  that fires only where someone already looks would have caught neither. That is
+  the whole argument, and it decides the general case — a signal placed where
+  attention already is cannot catch an absence of attention.
+
+  **The crying-wolf risk is real and is managed at `--clear-stale`, not by
+  narrowing where the check applies.** In an environment that has rewound
+  fourteen times, stranded markers will be common, and a reflexive
+  `--markers --clear-stale` turns the whole mechanism into decoration — the same
+  failure already recorded for three other instruments here. So the discipline
+  is: **read the record before clearing it.** The command prints the full record
+  — command, age, commit, branch, dirt — before it removes anything, and that
+  output is there to be read rather than scrolled past. If you clear a marker
+  without knowing what verification it belonged to, you have performed the
+  ritual and skipped the check.
 - For human-paced follow-up sessions after the run: one vertical slice at a time,
   working state at the end of each.
 
