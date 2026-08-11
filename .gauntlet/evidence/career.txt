@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece career
-generated 2026-08-11T17:31:31.376Z
+generated 2026-08-11T18:59:25.540Z
 repo /home/user/three-white-lights
-commit e1ff657b267db22ffe24d4d4508a46153806b4b9
+commit 47d89f75fdffb86c65ab8c6c238844e1fe93bd38
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -41,25 +41,19 @@ $ npx vitest run src/career --reporter=verbose
 
  RUN  v4.1.10 /home/user/three-white-lights
 
- ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > has a gated domain and an open one, so neither sweep below is empty 2ms
- ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > refuses every gated meet to an enormous numeric total when the gate says no 7ms
- ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > admits every gated meet to a zero numeric total when the gate says yes 4ms
- ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > reads no number out of a numeric total when it walks the ladder 1ms
- ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > reads no number out of a numeric total when it computes standing 7ms
- ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > asks the gate about a numeric total rather than ordering totals itself 2ms
- ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > has the modules the ban walks 1ms
- ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > finds nothing in any shipped module 33ms
- ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > drives every banned pattern against a string it must catch 2ms
- ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > leaves this directory’s real idioms alone 1ms
- ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > reads the subject vocabulary the way its docstring says 1ms
- ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > strips comments and quoted strings but not template holes 1ms
- ✓ src/career/careerCore.test.ts > the directory is pure, closed and numerically clean > has the modules the scans below walk 3ms
- ✓ src/career/careerCore.test.ts > the directory is pure, closed and numerically clean > imports nothing outside this directory 6ms
- ✓ src/career/careerCore.test.ts > the directory is pure, closed and numerically clean > reads no clock and rolls no dice 4ms
- ✓ src/career/careerCore.test.ts > the directory is pure, closed and numerically clean > holds every number in the tuning module and none anywhere else 68ms
- ✓ src/career/careerCore.test.ts > the directory is pure, closed and numerically clean > leaves no tuned value without a reader 1ms
- ✓ src/career/careerCore.test.ts > nothing this directory ships names anybody real > has no watchlist name in any string a screen could draw 39ms
- ✓ src/career/careerCore.test.ts > nothing this directory ships names anybody real > has no watchlist name in its prose either 10ms
+ ✓ src/career/careerOpacity.test.ts > the band the numeric probe walks > crosses every qualifying threshold in both categories 14ms
+ ✓ src/career/careerOpacity.test.ts > the band the numeric probe walks > spans the printed widths a width-keyed bypass hides on 1ms
+ ✓ src/career/careerOpacity.test.ts > a numeric total is decided by the injected gate and by nothing else > has a gated domain and an open one, so neither sweep below is empty 1ms
+ ✓ src/career/careerOpacity.test.ts > a numeric total is decided by the injected gate and by nothing else > matches the gate total by total and slot by slot, across the whole band 13ms
+ ✓ src/career/careerOpacity.test.ts > a numeric total is decided by the injected gate and by nothing else > asks the gate once per gated verdict, with the lifter’s own total 45ms
+ ✓ src/career/careerOpacity.test.ts > a numeric total is decided by the injected gate and by nothing else > selects and enters exactly the slots the gate admits, across the band 25ms
+ ✓ src/career/careerCore.test.ts > the directory is pure, closed and numerically clean > has the modules the scans below walk 4ms
+ ✓ src/career/careerCore.test.ts > the directory is pure, closed and numerically clean > imports nothing outside this directory 12ms
+ ✓ src/career/careerCore.test.ts > the directory is pure, closed and numerically clean > reads no clock and rolls no dice 10ms
+ ✓ src/career/careerCore.test.ts > the directory is pure, closed and numerically clean > holds every number in the tuning module and none anywhere else 170ms
+ ✓ src/career/careerCore.test.ts > the directory is pure, closed and numerically clean > leaves no tuned value without a reader 4ms
+ ✓ src/career/careerCore.test.ts > nothing this directory ships names anybody real > has no watchlist name in any string a screen could draw 53ms
+ ✓ src/career/careerCore.test.ts > nothing this directory ships names anybody real > has no watchlist name in its prose either 11ms
  ✓ src/career/careerCore.test.ts > nothing this directory ships names anybody real > pins every invented proper noun, so a fifth is a signed decision 0ms
  ✓ src/career/careerCore.test.ts > the seams into src/game/ > mirrors MeetDefinition field for field 2ms
  ✓ src/career/careerCore.test.ts > the seams into src/game/ > splits those nine into three the calendar owns and six it passes through 1ms
@@ -67,63 +61,81 @@ $ npx vitest run src/career --reporter=verbose
  ✓ src/career/careerCore.test.ts > the seams into src/game/ > keeps the lifter free of anything a player does daily 0ms
  ✓ src/career/careerCore.test.ts > tier and federation lookups > recognises the four tiers and nothing else 0ms
  ✓ src/career/careerCore.test.ts > tier and federation lookups > ranks the ladder in the tuning block’s own order 0ms
- ✓ src/career/careerCore.test.ts > tier and federation lookups > finds a federation by id and refuses one that does not exist 1ms
- ✓ src/career/careerCore.test.ts > tier and federation lookups > names a meet after the federation and the tier 1ms
+ ✓ src/career/careerCore.test.ts > tier and federation lookups > finds a federation by id and refuses one that does not exist 0ms
+ ✓ src/career/careerCore.test.ts > tier and federation lookups > names a meet after the federation and the tier 0ms
  ✓ src/career/careerCore.test.ts > tier and federation lookups > reads the qualifying table, including its one open tier 1ms
  ✓ src/career/careerCore.test.ts > buildCareerCalendar > produces every tier’s meets on its own cadence 1ms
- ✓ src/career/careerCore.test.ts > buildCareerCalendar > sorts by day, then by tier rank, then by id 4ms
+ ✓ src/career/careerCore.test.ts > buildCareerCalendar > sorts by day, then by tier rank, then by id 2ms
  ✓ src/career/careerCore.test.ts > buildCareerCalendar > gives every slot a distinct id built from federation, tier and day 0ms
  ✓ src/career/careerCore.test.ts > buildCareerCalendar > copies the tier’s qualifying requirement onto every slot 5ms
- ✓ src/career/careerCore.test.ts > buildCareerCalendar > is deterministic 2ms
+ ✓ src/career/careerCore.test.ts > buildCareerCalendar > is deterministic 1ms
  ✓ src/career/careerCore.test.ts > buildCareerCalendar > refuses a spec it cannot build 0ms
  ✓ src/career/careerCore.test.ts > buildCareerCalendar > refuses a horizon longer than CALENDAR_MAX_SLOTS before it builds it 1ms
  ✓ src/career/careerCore.test.ts > buildCareerCalendar > builds an empty calendar for a horizon before the first meet 0ms
  ✓ src/career/careerCore.test.ts > visibility > calls a slot passed, open or not-yet-visible against today 0ms
  ✓ src/career/careerCore.test.ts > visibility > keeps the visibility window in one place 1ms
- ✓ src/career/careerCore.test.ts > visibility > shows the calendar as a window, not the whole horizon 3ms
- ✓ src/career/careerCore.test.ts > eligibility > lets a lifter with no total into an open tier without asking the gate 1ms
- ✓ src/career/careerCore.test.ts > eligibility > asks the injected gate, and only the injected gate, on a gated tier 1ms
- ✓ src/career/careerCore.test.ts > eligibility > reaches every refusal it declares 1ms
+ ✓ src/career/careerCore.test.ts > visibility > shows the calendar as a window, not the whole horizon 1ms
+ ✓ src/career/careerCore.test.ts > eligibility > lets a lifter with no total into an open tier without asking the gate 0ms
+ ✓ src/career/careerCore.test.ts > eligibility > asks the injected gate, and only the injected gate, on a gated tier 0ms
+ ✓ src/career/careerCore.test.ts > eligibility > reaches every refusal it declares 0ms
  ✓ src/career/careerCore.test.ts > eligibility > carries the number a screen would need with each refusal 0ms
  ✓ src/career/careerCore.test.ts > eligibility > holds the refusal precedence it documents 0ms
  ✓ src/career/careerCore.test.ts > eligibility > measures the gap from the last meet and from nothing else 0ms
- ✓ src/career/careerCore.test.ts > eligibility > selects the subset of the visible window the lifter may actually enter 3ms
+ ✓ src/career/careerCore.test.ts > eligibility > selects the subset of the visible window the lifter may actually enter 5ms
  ✓ src/career/careerCore.test.ts > enterMeet > starts a lifter with nothing entered 0ms
- ✓ src/career/careerCore.test.ts > enterMeet > records the entry and leaves the lifter it was given alone 0ms
+ ✓ src/career/careerCore.test.ts > enterMeet > records the entry and leaves the lifter it was given alone 1ms
  ✓ src/career/careerCore.test.ts > enterMeet > refuses with the same verdict the screen would have rendered 0ms
- ✓ src/career/careerCore.test.ts > enterMeet > never moves the last entry day backwards, over every slot and every prior entry 17ms
+ ✓ src/career/careerCore.test.ts > enterMeet > never moves the last entry day backwards, over every slot and every prior entry 34ms
  ✓ src/career/careerCore.test.ts > enterMeet > holds a lifter to the gap between meets 1ms
- ✓ src/career/careerCore.test.ts > careerCalendarFaults > says nothing about a calendar this module built 1ms
+ ✓ src/career/careerCore.test.ts > careerCalendarFaults > says nothing about a calendar this module built 3ms
  ✓ src/career/careerCore.test.ts > careerCalendarFaults > catches every way a calendar can arrive wrong 1ms
  ✓ src/career/careerCore.test.ts > careerCalendarFaults > does not let a day it rejected become the baseline the next slot is ordered against 1ms
  ✓ src/career/careerCore.test.ts > careerLifterFaults > says nothing about a lifter this module built 0ms
  ✓ src/career/careerCore.test.ts > careerLifterFaults > catches every way a lifter can arrive wrong 0ms
- ✓ src/career/careerCore.test.ts > sweeps over the whole calendar > never shows a player an empty calendar 3ms
- ✓ src/career/careerCore.test.ts > sweeps over the whole calendar > offers a brand-new lifter a meet on every day of the sweep 7ms
- ✓ src/career/careerCore.test.ts > sweeps over the whole calendar > walks a qualified lifter up the ladder, one meet at a time 14ms
+ ✓ src/career/careerCore.test.ts > sweeps over the whole calendar > never shows a player an empty calendar 4ms
+ ✓ src/career/careerCore.test.ts > sweeps over the whole calendar > offers a brand-new lifter a meet on every day of the sweep 8ms
+ ✓ src/career/careerCore.test.ts > sweeps over the whole calendar > walks a qualified lifter up the ladder, one meet at a time 19ms
  ✓ src/career/careerCore.test.ts > sweeps over the whole calendar > leaves the top of the ladder reachable by a lifter who saves themselves 0ms
- ✓ src/career/careerCore.test.ts > sweeps over the whole calendar > never lets an unqualified lifter past a gated tier, on any day 8ms
+ ✓ src/career/careerCore.test.ts > sweeps over the whole calendar > never lets an unqualified lifter past a gated tier, on any day 10ms
+ ✓ src/career/careerOpacity.test.ts > a numeric total is decided by the injected gate and by nothing else > walks the ladder by the gate’s answers alone, across the band 4ms
+ ✓ src/career/careerOpacity.test.ts > substituting the total behind a fixed gate changes nothing > holds for every subject, every gate and every pair in the band 714ms
+ ✓ src/career/careerOpacity.test.ts > substituting the total behind a fixed gate changes nothing > reaches a different answer for a different total, subject by subject 17ms
+ ✓ src/career/careerOpacity.test.ts > the functions with no total in them, and why they are not swept > keeps careerMeetDraft generic over the rules and not over the total 1ms
+ ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > refuses every gated meet to an enormous numeric total when the gate says no 2ms
+ ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > admits every gated meet to a zero numeric total when the gate says yes 1ms
+ ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > reads no number out of a numeric total when it walks the ladder 0ms
+ ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > reads no number out of a numeric total when it computes standing 0ms
+ ✓ src/career/careerOpacity.test.ts > a numeric total cannot get past the injected gate > asks the gate about a numeric total rather than ordering totals itself 1ms
+ ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > has the modules the ban walks 0ms
+ ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > joins a wrapped call back into one line before it scans 4ms
+ ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > catches a wrapped coercion a line-anchored scan walks past 2ms
+ ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > finds nothing in any shipped module 29ms
+ ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > drives every branch of every banned pattern against a string it must catch 4ms
+ ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > gives all but one row a tripwire no other row matches 9ms
+ ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > leaves this directory’s real idioms alone 1ms
+ ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > reads the subject vocabulary the way its docstring says 1ms
+ ✓ src/career/careerOpacity.test.ts > no shipped module can strip an opaque total > strips comments and quoted strings but not template holes 1ms
  ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > starts empty and answers the already-competed question 4ms
  ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > carries the day and the total back for a meet already competed at 1ms
  ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > takes the four calendar fields off the slot, so they cannot disagree 0ms
- ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > leaves the record it was given alone 1ms
+ ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > leaves the record it was given alone 0ms
  ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > counts a bomb-out as a meet competed at, with no total 1ms
  ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > reaches every refusal it declares 1ms
- ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > carries the number a screen would need with each refusal 1ms
- ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > holds the refusal precedence it documents 0ms
+ ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > carries the number a screen would need with each refusal 0ms
+ ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > holds the refusal precedence it documents 1ms
  ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > refuses a result for a meet the lifter never entered 1ms
  ✓ src/career/careerRecord.test.ts > the record of meets a lifter has competed at > composes with enterMeet: enter, compete, and the record follows 1ms
- ✓ src/career/careerRecord.test.ts > standing across meets > reads the highest tier a posted total qualifies for 0ms
+ ✓ src/career/careerRecord.test.ts > standing across meets > reads the highest tier a posted total qualifies for 1ms
  ✓ src/career/careerRecord.test.ts > standing across meets > asks the injected gate and never compares a total itself 0ms
  ✓ src/career/careerRecord.test.ts > standing across meets > reports null for a lifter who has posted nothing 0ms
  ✓ src/career/careerRecord.test.ts > standing across meets > keeps the best tier ever reached, not the most recent 0ms
  ✓ src/career/careerRecord.test.ts > standing across meets > keeps the earliest total that reached the top tier 0ms
  ✓ src/career/careerRecord.test.ts > standing across meets > carries the inputs a DOTS score needs and computes none 0ms
- ✓ src/career/careerRecord.test.ts > standing across meets > separates the tier competed at from the tier qualified for 1ms
+ ✓ src/career/careerRecord.test.ts > standing across meets > separates the tier competed at from the tier qualified for 0ms
  ✓ src/career/careerRecord.test.ts > standing across meets > reads the same history differently for a different category 0ms
  ✓ src/career/careerRecord.test.ts > standing across meets > reads standing as of a day, not only at the end 0ms
  ✓ src/career/careerRecord.test.ts > standing across meets > ranks a missing tier below the bottom of the ladder 0ms
- ✓ src/career/careerRecord.test.ts > tierUnlockBetween — GDD §7.2’s third PR sub-moment > fires when standing crosses onto a higher tier, and not otherwise 1ms
+ ✓ src/career/careerRecord.test.ts > tierUnlockBetween — GDD §7.2’s third PR sub-moment > fires when standing crosses onto a higher tier, and not otherwise 3ms
  ✓ src/career/careerRecord.test.ts > tierUnlockBetween — GDD §7.2’s third PR sub-moment > fires once per crossing across a whole career, not once per meet 0ms
  ✓ src/career/careerRecord.test.ts > careerGateFaults > says nothing about a gate that reads a total as a threshold 0ms
  ✓ src/career/careerRecord.test.ts > careerGateFaults > catches a gate whose pass-set is not a ladder 0ms
@@ -134,10 +146,10 @@ $ npx vitest run src/career --reporter=verbose
  ✓ src/career/careerRecord.test.ts > careerHistoryFaults > catches a record assembled from somebody else’s meets 0ms
  ✓ src/career/careerRecord.test.ts > lifterWithStanding feeds the next meet’s gate > writes the qualifying total and nothing else 0ms
  ✓ src/career/careerRecord.test.ts > lifterWithStanding feeds the next meet’s gate > turns a total posted at a local meet into entry to a gated one 0ms
- ✓ src/career/careerTuning.test.ts > every entry is classified > classifies exactly the keys that exist, and only with known classes 5ms
- ✓ src/career/careerTuning.test.ts > every entry is classified > keeps the compile-time totality clause that makes the check above bite 0ms
- ✓ src/career/careerTuning.test.ts > every entry is classified > marks the one table that looks published and is not 2ms
- ✓ src/career/careerTuning.test.ts > the tier ladder > is GDD §6.1’s four tiers in GDD §6.1’s order 0ms
+ ✓ src/career/careerTuning.test.ts > every entry is classified > classifies exactly the keys that exist, and only with known classes 9ms
+ ✓ src/career/careerTuning.test.ts > every entry is classified > keeps the compile-time totality clause that makes the check above bite 1ms
+ ✓ src/career/careerTuning.test.ts > every entry is classified > marks the one table that looks published and is not 4ms
+ ✓ src/career/careerTuning.test.ts > the tier ladder > is GDD §6.1’s four tiers in GDD §6.1’s order 1ms
  ✓ src/career/careerTuning.test.ts > the tier ladder > gives every tier a row in every per-tier table, and no extra rows 0ms
  ✓ src/career/careerTuning.test.ts > the tier ladder > asks more of every tier than of the one below it 1ms
  ✓ src/career/careerTuning.test.ts > the tier ladder > comes round less often the higher up the ladder it is 1ms
@@ -146,20 +158,20 @@ $ npx vitest run src/career --reporter=verbose
  ✓ src/career/careerTuning.test.ts > the tier ladder > keeps at least one entry-tier meet inside the visible window 0ms
  ✓ src/career/careerTuning.test.ts > the federation catalogue > covers GDD §2.1’s two axes exactly once each way round 0ms
  ✓ src/career/careerTuning.test.ts > the federation catalogue > keeps ids, names and meet prefixes distinct and derivable 1ms
- ✓ src/career/careerTuning.test.ts > the federation catalogue > carries no abbreviation field, and the omission is the point 2ms
+ ✓ src/career/careerTuning.test.ts > the federation catalogue > carries no abbreviation field, and the omission is the point 3ms
  ✓ src/career/careerTuning.test.ts > the federation catalogue > names every meet after what the event is, not after anybody 0ms
  ✓ src/career/careerEngagement.test.ts > the domain the counts below are out of > offers twelve real meets across three tiers, with a bomb-out among them 3ms
  ✓ src/career/careerEngagement.test.ts > the domain the counts below are out of > spans the tiers, so a standing can move in both directions 2ms
- ✓ src/career/careerEngagement.test.ts > the domain the counts below are out of > has a seeded domain that actually records meets 10ms
- ✓ src/career/careerEngagement.test.ts > an extra meet on the record never lowers standing > is zero on the exhaustive window, against two non-zero controls 4560ms
- ✓ src/career/careerEngagement.test.ts > an extra meet on the record never lowers standing > is zero on the seeded sweep too, at twice the horizon 621ms
- ✓ src/career/careerEngagement.test.ts > an extra meet entered through the calendar CAN lower standing > is 5124 of 24576 pairs, and the entry gap is all of it 3432ms
- ✓ src/career/careerEngagement.test.ts > an extra meet entered through the calendar CAN lower standing > is 258 of 1769 seeded pairs, with the same control at zero 492ms
- ✓ src/career/careerEngagement.test.ts > an extra meet entered through the calendar CAN lower standing > shows the mechanism on one pair, in full 2ms
+ ✓ src/career/careerEngagement.test.ts > the domain the counts below are out of > has a seeded domain that actually records meets 5ms
+ ✓ src/career/careerEngagement.test.ts > an extra meet on the record never lowers standing > is zero on the exhaustive window, against two non-zero controls 4502ms
+ ✓ src/career/careerEngagement.test.ts > an extra meet on the record never lowers standing > is zero on the seeded sweep too, at twice the horizon 586ms
+ ✓ src/career/careerEngagement.test.ts > an extra meet entered through the calendar CAN lower standing > is 5124 of 24576 pairs, and the entry gap is all of it 3269ms
+ ✓ src/career/careerEngagement.test.ts > an extra meet entered through the calendar CAN lower standing > is 258 of 1769 seeded pairs, with the same control at zero 455ms
+ ✓ src/career/careerEngagement.test.ts > an extra meet entered through the calendar CAN lower standing > shows the mechanism on one pair, in full 1ms
  ✓ src/career/careerEngagement.test.ts > the standing models > names one shipped model and two controls 1ms
  ✓ src/career/careerEngagement.test.ts > the standing models > refuses a dial on a model with nothing to turn, and a model with nothing set 2ms
  ✓ src/career/careerEngagement.test.ts > the standing models > counts the results each model looks at 1ms
- ✓ src/career/careerEngagement.test.ts > the standing models > reads a day’s standing the same way the fast path does 8ms
+ ✓ src/career/careerEngagement.test.ts > the standing models > reads a day’s standing the same way the fast path does 7ms
  ✓ src/career/careerEngagement.test.ts > a pair differs in exactly one meet > refuses to build a pair that differs in nothing 1ms
  ✓ src/career/careerEngagement.test.ts > the comparator > counts an element where the more-engaged lifter is lower, and only that 0ms
  ✓ src/career/careerEngagement.test.ts > the comparator > measures lateness as the longest unbroken run of days ranked below 0ms
@@ -175,9 +187,9 @@ $ npx vitest run src/career --reporter=verbose
  ✓ src/career/careerEngagement.test.ts > the two runs > answers whether the calendar would admit one offer 0ms
 
  Test Files  5 passed (5)
-      Tests  132 passed (132)
-   Start at  17:31:32
-   Duration  9.93s (transform 942ms, setup 0ms, import 1.22s, tests 9.47s, environment 3ms)
+      Tests  144 passed (144)
+   Start at  18:59:26
+   Duration  9.59s (transform 1.23s, setup 0ms, import 1.71s, tests 10.17s, environment 1ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -192,9 +204,9 @@ $ npx vitest run
 
 
  Test Files  81 passed (81)
-      Tests  3276 passed (3276)
-   Start at  17:31:43
-   Duration  283.78s (transform 6.98s, setup 0ms, import 30.65s, tests 579.64s, environment 12ms)
+      Tests  3288 passed (3288)
+   Start at  18:59:36
+   Duration  283.92s (transform 6.73s, setup 0ms, import 31.28s, tests 598.82s, environment 11ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
