@@ -1683,6 +1683,47 @@ There is no promotion timer to sell: a promotion raises the Training IQ trickle,
 so a timer on it would be a third §8.3B-sellable timer sitting on a
 progression-reaching output.
 
+**RULED PERMANENT §5.3 DESIGN, by a human, on 2026-08-11.** Promotion entered
+this document on a repair brief, and a mechanic that arrives as a bug fix
+deserves to be either ratified or replaced rather than left looking incidental.
+It is ratified: a slot's occupant rising to a tier the gym has since unlocked is
+how §5.3's roster works, not a patch on how it works. Three alternatives were on
+the table and all three are rejected, with the reason recorded because the reason
+is the useful part:
+
+- **A refundable slot** — sell the occupant back, re-hire at the higher tier.
+  Rejected because it prices a *reversal* rather than an *upgrade*, and a refund
+  rate is a tuning dial that decides how much being early costs. Any rate below
+  full makes early commitment a penalty again at a smaller magnitude, and full
+  refund makes the slot free to churn, which deletes the commitment §5.3's
+  scarcity is built on. Promotion's price difference has neither degree of
+  freedom: it telescopes, so the total is the same by every route.
+- **A wider roster** — more slots, so committing one is not scarce. Rejected
+  because it does not close the defect, it dilutes it. With N slots the same trap
+  fires on the last one, and the measurement is a monotonicity property, not a
+  magnitude: one violating pair is a §12.3 breach at any roster size. It also
+  spends the scarcity that makes recruitment a decision at all.
+- **A reputation gate that does not move** — unlock tiers on something other than
+  elapsed time. Rejected because the gate rising with time is not the bug; it is
+  the §5.2 progression the game is about. Keying the ladder to anything the
+  lifter *does* runs straight into CLAUDE.md's rule that no grant may be keyed to
+  the player's own activity, and keying it to nothing makes tier a purchase,
+  which is the pay-to-win line.
+
+A fourth was raised and is **not** a live alternative: accepting the one-way door
+and re-pricing the ladder. The existing measurement already refutes it — in all
+five original pairs the diligent gym buys the **cheaper** `novice` at 500 and
+loses to a `club` at 1250, so the scarce thing at that decision is provably the
+slot and not the Buck. No price schedule reaches a defect that price is not the
+lever for.
+
+**What ratification costs, stated so it is not discovered later.** Promotion is
+now load-bearing in two places rather than one: the 5 pairs the ruling was
+originally taken on, and **824** violating pairs of 24576 at the day anchor
+specified afterwards (§5.4's anchor section). A future change that removes
+promotion must re-measure both, and `'one-way-door'` is kept runnable beside the
+shipped engine precisely so that stays cheap.
+
 Measured on the same 24576-pair window, `'one-way-door'` being the engine without
 the repair and kept runnable beside it:
 

@@ -111,6 +111,33 @@ the whole shared surface, and it is named here so a conflict is expected rather
 than surprising. Session A does not edit those three files while Session B is
 running unless it says so here first.
 
+**THE SURFACE IS THE THREE WHOLE FILES, NOT THE `SOURCE_RULES` ALLOWLIST INSIDE
+THEM. Ruled by a human on 2026-08-11**, settling the question Session A left open
+after breaching it — and settling it *against* the narrower reading Session A had
+argued was defensible.
+
+The argument for narrowing was that an edit outside the allowlist "cannot
+collide", so requiring a filed crossing for it is ceremony that trains people to
+skip the filing. **That argument is refuted by a collision this same wave
+produced, and the refutation is worth more than the rule.** Two branches were
+each green alone and red together with **no textual conflict anywhere**: one
+shipped a rule counting numerals inside `@guarantee` paragraphs, the other — doing
+unrelated prose work in a different directory — inserted a *blank comment line*
+between a claim and its tag. That paragraph break took `31 violating pairs
+against 0 here` out of the rule's reach. Nothing failed at the claim. The only
+thing that noticed was a pinned census moving 8 to 7, in a third file.
+
+So "cannot collide" is not a judgement anyone can make about an edit in advance.
+The colliding edit was whitespace inside a comment, in a file the other session
+had no reason to think about, and it silently removed a check. A textual-conflict
+heuristic would have cleared it instantly. **Whether two edits interact is a fact
+about the code's semantics, not about the bytes**, and the coordination rule
+cannot be keyed to something a diff can see.
+
+The cost of the wide reading is a crossing filed for an edit that turns out to be
+harmless. The cost of the narrow one is a defect that no merge, no typecheck and
+no textual review would catch. Pay the first.
+
 Two other tree-wide registries scan `CLAUDE.md` and `docs/GDD.md` themselves and
 will see anything either session writes there: `REVIEWABLE_CITATIONS` in
 `src/licensing/realIp.ts` pins **exact occurrence counts** of every real name
@@ -352,14 +379,22 @@ wrong.
 `testBodyStarts`, not `SOURCE_RULES`, so a textual conflict with Session B is
 unlikely — but "unlikely to conflict" is not the test the rule states, and
 rewriting the rule to fit the edit I have already merged is exactly the move
-this file refuses elsewhere. The granularity question is real and is left
+this file refuses elsewhere. The granularity question is real and was left
 **open** rather than settled by the party that breached it: the shared surface
 is described as `SOURCE_RULES` and its two pinned mirrors, while the rule reads
 on the whole file, and a rule that produces crossings for edits which cannot
 collide will be crossed routinely until it stops being read. That is the same
-crying-wolf argument already applied to three instruments here. **A human, or
-Session B, should settle whether the rule is about the files or about the
-allowlist.** Until then it is about the files, and this was a crossing.
+crying-wolf argument already applied to three instruments here.
+
+**SETTLED, AND THE ARGUMENT ABOVE LOST.** A human ruled on 2026-08-11 that the
+surface is the three whole files — see the ruling in "The one place the two
+sessions genuinely touch". The reasoning kept here is left standing rather than
+deleted because *it was refuted by evidence produced in the same wave that made
+it*: the "cannot collide" premise died on a merge where two green branches went
+red with no textual conflict, over a blank comment line. Whether two edits
+interact is a fact about semantics, not bytes, so the exemption this paragraph
+asks for is one nobody can evaluate in advance. This was a crossing, and it stays
+recorded as one.
 
 #### RULED BY SESSION A: GRANTED — and it does NOT close the case that prompted it
 
