@@ -430,6 +430,64 @@ Session A applied them independently; the precedent is set and the row text will
 be reported the same way rather than committed. Session B will not edit
 `src/tuning/`.
 
+### THREE APPROVED CROSSINGS FOR THE CAREER PIECE — one is a trademark fix
+
+Written here before the edits, as this section requires. All three are approved
+by a human. The first is urgent and is not Session B's own mess.
+
+**1. A TRADEMARK COLLISION IN A SESSION A FILE.
+`'Northern Barbell Federation'` → `'Cragmoor Barbell Federation'`, and
+`'Northern Open'` → `'Cragmoor Open'`, in `src/game/meetTuning.ts` and the
+citation that pins it in `src/licensing/realIp.test.ts`.**
+
+Found by the `src/career/` builder, which searched the name before adopting it
+rather than after. **"Northern Barbell" is a real Olympic weightlifting club** in
+Sycamore, Illinois, with an active Instagram, and several "Northern … Barbell"
+gyms exist. The string has shipped since `meetTuning.ts` was written.
+
+This is exactly the case `realIp.ts` says its own machinery cannot catch — *"IT
+CANNOT SEE INTENT. A fictional name that happens to be a small real company's is
+exactly as invisible to this as it was to the person who typed it"* — and §12.3
+calls it legal exposure that "cannot be walked back by a patch once it is in a
+store build". `REVIEWABLE_CITATIONS` pinning the string proves only that somebody
+reviewed it, not that anybody searched it.
+
+The replacement was searched the same way, and **six candidates were rejected on
+hits before one passed**: Thornbeck (two real design firms, UK + Minnesota),
+Varlow (an LLC in California and a Pty Ltd in Australia), Ashvault (a live
+backpack product line), Fenmarch (Tolkien), Dunmarrow (a Traveller RPG world),
+Wrenfell (a published novel's town). **Cragmoor** has no commercial or creative
+referent — it is a residential neighbourhood in Colorado Springs, which is none
+of §12.3's categories (athlete, brand, company, wordmark). *Residual risk stated
+rather than hidden:* it is a real place name. That is a weaker collision than a
+company and a much weaker one than the club this replaces, and no search can
+prove a negative.
+
+**2. `src/career/careerTuning.ts` needs the same three `SOURCE_RULES` rows
+`empireTuning.ts` needed** — 17 findings unregistered, every one in that file and
+none anywhere else under `src/career/`. Classification `feel`, which forces the
+`src/tuning/index.ts` row.
+
+**3. `SOURCE_DIRECTORIES: 12 → 13` in `src/game/streakEntitlement.test.ts`, and
+this one was NOT predicted.** GDD §8.3E's covered-day guard pins the count of
+top-level directories under `src/`, and creating `src/career/` reddens it *by
+construction*. Its own comment says that is the point: *"a new top-level
+directory is the one tree change that can introduce a whole region the walk has
+never been shown to reach, and the cheapest way to make somebody look at it is to
+make it a red line here."* The guard worked. `FILES_THAT_NAME_A_COVERED_DAY`
+gains no row and `COVERED_DAY_TOUCHING_FUNCTIONS` needs no entry — `src/career/`
+names no covered day and no purchase path.
+
+**A hole in `src/empire/`'s own guard, found by the piece that copied it, and
+already fixed.** `imports nothing outside this directory` scanned
+`/from\s+'([^']+)'/` only, so a side-effect import — which has no `from` — was
+invisible. Verified by planting `import '../game/progression';` into
+`empireCore.ts`: the named guard stayed **green** and the directory's string
+census caught it instead, on the path counting as one more literal. A different
+check noticing by accident is not that check working. It now scans all three
+forms and both mutants redden the named guard. Recorded because the sibling rule
+ran backwards here — the copy was written second and was the better one.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise
