@@ -863,6 +863,37 @@ physiology.
   player who trained more must never end on a lower streak.** Do not weaken the
   pins below into bounds — a bound lets the defect grow back quietly.
 
+  **THE SUBJECT IS ATTENDANCE, NOT SCHEDULING — RULED, and recorded here because
+  a measurement was correctly taken and then correctly declined.** This rule
+  covers *showing up*: a trained day, a check-in, opening the app. It does not
+  cover a **competitive scheduling decision** — which meet a lifter enters, and
+  what entering it costs them at the next one. A rule that makes entering a small
+  meet spend a window a bigger meet needed is a trade-off the player **chooses**,
+  and a design in which no choice ever costs anything has no choices in it.
+
+  *The measurement that forced the distinction, kept because it is the evidence
+  and because re-taking it would cost a wave.* `src/career/careerEngagement.ts`
+  sweeps the whole GDD §6.1 loop element-wise. The standing math alone is **0**
+  violating pairs on both domains. The whole loop is **5124 of 24576** on the
+  exhaustive window and **258** seeded. A `'no-gap'` control — the identical loop
+  with `MIN_DAYS_BETWEEN_ENTERED_MEETS` switched off and nothing else changed — is
+  **0** on both. So every one of the 5124 is that one rule, attributed by a
+  control rather than by an argument, and the control is itself mutation-tested:
+  making it stop differing from the shipped model turns its zero into
+  `expected 5124 to be +0`.
+
+  **That is intended design, not a defect, and it should not be re-flagged.** The
+  tell that it is out of scope is structural rather than a matter of taste:
+  `CareerLifter` carries no training field at all, so the quantity that moves is a
+  meet-entry decision and there is no attendance in it for this rule to be about.
+  A later piece that measures the same number should read this paragraph and stop,
+  or bring an argument that the scope itself is wrong.
+
+  *What stays in scope, so this is not read wider than it is:* anything keyed to a
+  trained day, a check-in, a streak, a session count or opening the app is covered
+  exactly as before. GDD §4.4's laundered covered-day path and §5's three purchase
+  chains were all in scope, and all of them were measured to zero.
+
   `src/game/streak.test.ts` measures it exhaustively over
   every calendar of 8–16 days *and* on seeded 40 / 60 / 80 / 100-day sweeps, on
   `currentStreak`, on `longestStreak` and on the worst deficit, and pins the

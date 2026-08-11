@@ -2001,6 +2001,14 @@ one the single gap a reader could not find from the document. **Do not build tie
 qualification to close it** — it is downstream of the Career calendar, not of
 this section.
 
+**The calendar's standing math now exists and this paragraph still holds, which
+is worth saying rather than leaving a reader to check.** `src/career/` computes
+standing across meets and reports a tier crossing as `tierUnlockBetween`, but it
+is pure logic imported by no screen, so the moment is still offered by nothing
+and the pinned check is still green. What the calendar did change is that the
+beat now has a definite first firing, and it lands on a lifter's first ever
+total — logged in §11 as a playtest question, next to §6.3's PR-border wording.
+
 **Cut-ins are Tier 3 surfaces.** See §7.3 — this is where a licensed portrait or
 wordmark would live, never on the base sprite.
 
@@ -2981,6 +2989,52 @@ for three entries; corrected here rather than left as decoration.)
       answer** (§12.1). If the answer is the walkout, the fix is to delete the
       disqualifier, not to move a rate — a rate cannot buy back a slot that has
       already been spent.
+
+- [ ] **A lifter's FIRST EVER TOTAL unlocks a tier, so §7.2's third PR
+      sub-moment may be the first cut-in a player ever sees. PENDING PLAYTEST,
+      alongside §6.3's PR-border wording and §6.2's crowd-reaction rule** — the
+      same class of question as those two, deferred for the same reason: it is
+      about what a beat *feels* like arriving first, and no builder, critic or
+      lead reasoning from a description can settle it.
+
+      **The mechanism, which is not a defect and should not be re-flagged as
+      one.** `careerTuning.ts`'s `QUALIFYING_TOTAL_KG_BY_TIER.local` is
+      `{ mens: null, womens: null }`, because a local meet is the sport's entry
+      point and gates nothing — that part is domain-correct and stays. The
+      consequence is that `careerStanding` returns `qualifiedTier: 'local'` for
+      any lifter with a single posted result, so `tierUnlockBetween(nothing,
+      local)` returns `{ kind: 'tier-unlocked', from: null, to: 'local' }`. On a
+      first meet that beat is true in the same sitting as "new e1RM" and "new
+      total", which are also both true for the first time — and under the
+      first-come cap directly above, whichever is offered first takes the slot.
+
+      **Why it is logged rather than fixed.** The C1 builder flagged it in its
+      own report — *"may be exactly the wrong first cut-in, and it is a design
+      call I made by construction rather than by ruling"* — which is the right
+      call: qualifying for the tier everyone starts at is the weakest of the
+      three PR sub-moments, and spending a player's first cut-in on it is a
+      choice nobody made deliberately.
+
+      **It is not live, and that is what makes this cheap to decide later.**
+      `src/career/` is wired to no screen, so §7.2's "the third PR sub-moment is
+      reached by no screen" still holds and `cutInWiring.test.ts`'s check on it
+      is still green. The three options, so the ruling is a pick rather than a
+      design round:
+
+      1. **Floor the unlock at `regional`** — treat qualifying for `local` as
+         the starting state rather than an unlock. One arm of
+         `tierUnlockBetween`, or one `careerTuning.ts` entry naming the floor.
+      2. **Keep it**, and let the first total carry the loudest beat the game
+         has. Defensible: a first total *is* the biggest moment in a new
+         lifter's career, whatever the tier is called.
+      3. **Rank it below "new total"** in `CUT_IN_MOMENT_PRIORITY`, so a first
+         meet's recap fires the total-PR and the tier unlock waits for
+         `regional`. Note this only helps if the priority order is consulted —
+         see the entry directly above, where the cap is first-come and the
+         priority order selects nothing in production.
+
+      Whoever wires `src/career/` to a screen inherits this; the wiring piece
+      should not pick by default the way this one did.
 
 - [x] **`CUT_IN_MOMENT_PRIORITY` selects nothing in production, and is kept
       anyway — RULED.** §7.2 declares a ranking for moments that are true at the

@@ -1515,6 +1515,38 @@ function policyDigest(tally: EngagementTally): Record<string, number> {
   };
 }
 
+/**
+ * Two tests in this block need more than `vitest.config.ts`'s 30 s, and they are
+ * given a budget rather than a smaller sweep.
+ *
+ * That config's own comment sets the standard: *"those tests earn their time —
+ * they rasterise real frames and enumerate whole calendars — so the honest fix
+ * is a budget that fits the work, not a smaller sweep"*, and equally that
+ * raising the GLOBAL timeout would hide how thin the margin is elsewhere. So
+ * this is local: the global budget is untouched and every other test in the
+ * repository still fails at 30 s.
+ *
+ * MEASURED here, solo on an unloaded machine, the four slowest in this file:
+ *
+ *   40736 ms  splits that arm by whether the extra check-in moved the day…
+ *   38670 ms  measures the rotation phase removed: fixed order, and cheapest…
+ *   24436 ms  measures the ordering reversed: costliest affordable first
+ *   22282 ms  explains the save-for-physio zero instead of repeating it
+ *
+ * The gap between the top two and the rest is not mysterious: the sibling arms
+ * run two full windowed sweeps and these run three, because each also takes the
+ * pre-ruling single-purse reading the zero is zero against. Deleting that would
+ * turn a decomposition back into two blank readings, which is the trade this
+ * file was written to refuse.
+ *
+ * The number is not a round guess — it is roughly 2.2× the slowest measurement,
+ * because the suite runs these in parallel under load and the failure that
+ * produced this comment was a 39 s test in a 30 s budget on a run whose whole
+ * file took 287 s. Re-measure rather than trusting these four lines if a run
+ * comes in near it; that is the mistake the config's own stale list records.
+ */
+const SLOW_SWEEP_TIMEOUT_MS = 90_000;
+
 describe('the spending policy is the second independent variable, and it is swept', () => {
   it('drives the shipped policy through the same code path as the default', () => {
     // The drift guard the table needs. Naming the shipped policy explicitly and
@@ -1705,7 +1737,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(
       MEASURED_POLICY.WINDOWED_SINGLE_PURSE['fixed-order-no-rotation'].violatingPairs,
     ).toBe(2751);
-  });
+  }, SLOW_SWEEP_TIMEOUT_MS);
 
   it('measures the ordering reversed: costliest affordable first', () => {
     const tally = policyWindowed('costliest-affordable-first');
@@ -1875,7 +1907,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(movesMomentViolating + keepsMomentViolating).toBe(
       MEASURED_POLICY.WINDOWED['spend-once-per-calendar-day'].violatingPairs,
     );
-  });
+  }, SLOW_SWEEP_TIMEOUT_MS);
 
   it('names the second mechanism behind the five that remain: the recruit price curve', () => {
     // The five keeps-moment violators are not the spending moment, so they are
