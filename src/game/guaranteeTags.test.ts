@@ -751,10 +751,19 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
  * the same reason `GUARANTEE_COVERAGE` is pinned: so the honest reading is a
  * fact in the repository rather than a sentence in a report.
  *
- * Read together they say: the tag scan sees 227 triggering paragraphs, 58 of
- * them carry a tag, 8 of those state a number in prose, and 30 numerals are
- * therefore checked at all. That is about 3% of the prose this file can see and
- * none of the prose it cannot.
+ * THE TWO SCOPES ARE NOT NESTED, and the first draft of this paragraph said
+ * they were. `GUARANTEE_COVERAGE.TREE_WIDE` counts paragraphs that trip the
+ * capitalised-absolute trigger; this one counts paragraphs that carry a TAG,
+ * and a paragraph can do either without the other. Measured and pinned below:
+ * only `TAGGED_AND_TRIGGERING` of the tagged paragraphs trip the trigger too,
+ * which is well under half of them. Writing "58 of the 229" would have been a
+ * subset claim about two overlapping populations — this rule's own defect
+ * class, in the comment introducing it, caught by taking the measurement.
+ *
+ * What they say together, then: 229 paragraphs trip the trigger, 58 carry a
+ * tag, 25 do both, 8 of the tagged ones state a number in prose, and 30
+ * numerals are checked at all. A few per cent of the prose this file can see,
+ * and none of the prose it cannot.
  */
 const NUMBER_COVERAGE = {
   /** Comment paragraphs under `src` carrying at least one tag. */
@@ -782,6 +791,11 @@ const NUMBER_COVERAGE = {
   NAMED_BODIES: 47,
   NAMED_BODIES_HOLDING_ZERO: 37,
   NAMED_BODIES_HOLDING_ONE: 41,
+  /**
+   * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
+   * scopes, pinned because the sentence above about them was wrong once.
+   */
+  TAGGED_AND_TRIGGERING: 25,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -2527,6 +2541,14 @@ describe('the guarantee-tag convention', () => {
       named.filter((body) => numeralOccursIn(body, '1')).length,
       'bodies holding a bare 1 — if this moved, the sentence about it moved too',
     ).toBe(NUMBER_COVERAGE.NAMED_BODIES_HOLDING_ONE);
+
+    // AND THE OVERLAP OF THE TWO SCOPES, for the same reason: the doc comment
+    // above used to describe the tagged paragraphs as a subset of the
+    // triggering ones, which they are not.
+    expect(
+      paragraphs.filter((paragraph) => triggeringRuns(paragraph.text).length > 0).length,
+      'tagged paragraphs that also trip the trigger scan',
+    ).toBe(NUMBER_COVERAGE.TAGGED_AND_TRIGGERING);
 
     // THE SCOPER'S PREMISE, ON THE FILES THIS LEDGER SLICES — the sibling of the
     // census the witness table runs, and NOT a copy of its list: this ledger
