@@ -327,8 +327,10 @@ import {
 import {
   RECRUIT_BOOK,
   beginRecruitment,
+  bestPromotion,
   completeRecruitment,
   mayRecruit,
+  promoteLifter,
   type RecruitmentSchedule,
 } from './recruitment';
 import { accrueReputation, accrueSponsorship } from './reputation';
@@ -412,6 +414,27 @@ export const SHIPPED_FUNDING: EmpireFunding = 'wall-clock-earned';
 export function poolsWallClockBooks(funding: EmpireFunding): boolean {
   return funding !== SHIPPED_FUNDING;
 }
+
+// ---------------------------------------------------------------------------
+// Whether a filled roster slot can still move
+// ---------------------------------------------------------------------------
+
+/**
+ * The two engines the roster runs under. See §4b of the header.
+ *
+ * `'promote-in-place'` is what ships: a gym at capacity may move its
+ * lowest-tier lifter up to a tier its reputation has since unlocked, for the
+ * price difference. `'one-way-door'` is the engine as it stood before that — a
+ * slot, once filled, is filled forever — and it is a CONTROL rather than an
+ * option, kept runnable so the zeros this repair produces are zeros against the
+ * numbers it removes.
+ */
+export const ROSTER_UPGRADE_RULES = ['promote-in-place', 'one-way-door'] as const;
+
+export type RosterUpgradeRule = (typeof ROSTER_UPGRADE_RULES)[number];
+
+/** The rule the shipped engine runs on. */
+export const SHIPPED_ROSTER_UPGRADE: RosterUpgradeRule = 'promote-in-place';
 
 /** How the simulated player spends, per check-in. No magnitude lives here. */
 export interface EmpirePolicy {
@@ -726,6 +749,12 @@ export interface EmpireGym {
   /** Where the axis rotation is. */
   readonly nextAxis: number;
   readonly recruits: number;
+  /**
+   * Rungs this gym has moved a lifter up. The non-vacuity denominator for every
+   * zero the promotion path is meant to produce: a sweep that never promoted
+   * anything reports zeros about a mechanism that never fired.
+   */
+  readonly promotions: number;
   readonly expansions: number;
   /** Grants spent through `skipExpansion` rather than through the clock. */
   readonly buildSkips: number;
@@ -757,6 +786,8 @@ export interface EmpireRunCensus {
   /** Seconds of accelerant the plan handed the gym in total. */
   readonly grantedSeconds: number;
   readonly recruits: number;
+  /** Rungs a lifter was moved up. Zero under the `'one-way-door'` control. */
+  readonly promotions: number;
   readonly expansions: number;
   /** Grants spent through `skipExpansion`. Adds up with the next one. */
   readonly buildSkips: number;
@@ -933,6 +964,7 @@ export function createEmpireGym(): EmpireGym {
     skippedSeconds: 0,
     nextAxis: 0,
     recruits: 0,
+    promotions: 0,
     expansions: 0,
     buildSkips: 0,
     clockSkips: 0,
@@ -1055,6 +1087,7 @@ export function stepGym(
   grantSeconds: number,
   funding: EmpireFunding = SHIPPED_FUNDING,
   moment: SpendingMoment = SHIPPED_SPENDING_MOMENT,
+  upgrades: RosterUpgradeRule = SHIPPED_ROSTER_UPGRADE,
 ): EmpireGym {
   if (!Number.isFinite(wallSeconds) || wallSeconds < 0) {
     throw new RangeError(`a wall-clock reading must be finite and at or above zero, received ${wallSeconds}.`);
@@ -1215,6 +1248,7 @@ export function stepGym(
     expansionContext(offered, builds),
     funding,
   );
+  let recruitedNow = false;
   if (rosterAllowed && state.roster.length + stillPending.length < capacity) {
     const tier = bestRecruitableTier(offered);
     if (tier !== null) {
@@ -1222,6 +1256,36 @@ export function stepGym(
       if (decision.kind === 'accepted') {
         state = withBooks(state, decision.state, funding);
         stillPending.push({ schedule: decision.schedule, id: `recruit-${recruits + stillPending.length}` });
+        recruitedNow = true;
+      }
+    }
+  }
+
+  // 6. Move a lifter up a rung, when there is no free slot to put a new one in.
+  //    §4b of the header is why this arm exists and what it measured; the price
+  //    is the difference, so the total a slot pays to hold a tier does not
+  //    depend on when the gym committed to it.
+  //
+  //    AT CAPACITY ONLY, and that is the narrow trigger rather than a general
+  //    one: while a slot is free, a new lifter is what the money buys, and the
+  //    trap this closes is specifically the money a gym CANNOT spend on a new
+  //    lifter. `recruitedNow` keeps a check-in to one roster purchase, so a
+  //    promotion never spends beside a recruitment in the same moment.
+  //
+  //    The state is re-offered rather than reused. `offered` was taken before
+  //    the recruitment above, and a promotion decided against a stale purse
+  //    would be the guard-written-for-one-arm shape CLAUDE.md records.
+  let promotions = gym.promotions;
+  if (upgrades === SHIPPED_ROSTER_UPGRADE && rosterAllowed && !recruitedNow) {
+    const promotable = offeredTo(state, funding);
+    if (promotable.roster.length + stillPending.length >= rosterCapacity(promotable.settledAxes)) {
+      const plan = bestPromotion(promotable);
+      if (plan !== null) {
+        const decision = promoteLifter(promotable, plan.lifterId, plan.tier);
+        if (decision.kind === 'accepted') {
+          state = withBooks(state, decision.state, funding);
+          promotions += 1;
+        }
       }
     }
   }
@@ -1234,6 +1298,7 @@ export function stepGym(
     skippedSeconds,
     nextAxis,
     recruits,
+    promotions,
     expansions,
     buildSkips,
     clockSkips,
@@ -1310,6 +1375,7 @@ export function runEmpire(
   plan: AccelerantPlan,
   social: SocialInputs,
   funding: EmpireFunding = SHIPPED_FUNDING,
+  upgrades: RosterUpgradeRule = SHIPPED_ROSTER_UPGRADE,
 ): EmpireRun {
   requireWholeAtLeastOne(days, 'a horizon');
   requireWholeAtLeastOne(policy.checkInsPerDay, 'a check-in cadence');
@@ -1356,6 +1422,7 @@ export function runEmpire(
         granted,
         funding,
         spendingMoment(SHIPPED_SPENDING_POLICY, tick === policy.checkInsPerDay - 1),
+        upgrades,
       );
       for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
         const taken = booksBefore[book] - gym.state.settledBooks[book];
@@ -1419,6 +1486,7 @@ export function runEmpire(
       grantedCheckIns,
       grantedSeconds,
       recruits: gym.recruits,
+      promotions: gym.promotions,
       expansions: gym.expansions,
       buildSkips: gym.buildSkips,
       clockSkips: gym.clockSkips,
