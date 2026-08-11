@@ -194,17 +194,23 @@ import {
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   NO_ACCELERANT,
+  SHIPPED_DAY_SPENDING_ANCHOR,
   SHIPPED_FUNDING,
   SHIPPED_ROSTER_UPGRADE,
   SHIPPED_SPENDING_POLICY,
+  anchorConsumesDayOnlyOnPurchase,
   composeTrainingIqRate,
   createEmpireGym,
   gymProgressionEntries,
   gymSnapshot,
+  isDaySpendingMoment,
+  purchasesMade,
   spendingMoment,
   spendsAtMoment,
+  spendsOncePerDay,
   stepGym,
   type EmpireDayEntry,
+  type EmpireDaySpendingAnchor,
   type EmpireFunding,
   type EmpireGym,
   type EmpirePolicy,
@@ -377,12 +383,21 @@ export interface EngagementCensus {
   readonly checkIns: number;
   readonly trainedDays: number;
   /**
-   * Check-ins at which the spending policy allowed anything to be bought.
+   * Shopping trips this run actually took — check-ins at which the policy
+   * offered to spend AND the offer stood.
    *
    * The non-vacuity guard for a policy that spends less often than the shipped
    * one: a policy that never reached a spending moment would produce a gym
    * nothing was ever bought for, and every zero taken off it would be a zero
    * about an empty domain rather than about engagement.
+   *
+   * Under `'first-affordable-check-in'` an offer that bought nothing is not a
+   * trip and is not counted, because that anchor's whole content is that such
+   * an offer did not happen. So this is the number of calendar days the gym
+   * bought something on, rather than the number of days it was offered the
+   * chance — which is the reading that makes the guard above bite: a run that
+   * could never afford anything reports zero here instead of reporting one trip
+   * per day at which nothing was ever bought.
    */
   readonly spendingMoments: number;
   readonly recruits: number;
@@ -413,6 +428,8 @@ export interface EngagementRun {
   readonly wiring: EngagementWiring;
   /** The simulated player's spending policy this run was driven under. */
   readonly spending: EmpireSpendingPolicy;
+  /** Which check-in of a day a day-granularity policy did its shopping at. */
+  readonly anchor: EmpireDaySpendingAnchor;
   /** Whether a filled roster slot could still move. See `empireInvariant.ts` §4b. */
   readonly upgrades: RosterUpgradeRule;
   /** Every entry, in day order then in output order, as `EmpireDayEntry`. */
@@ -499,6 +516,7 @@ export function runEngagement(
   spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
   upgrades: RosterUpgradeRule = SHIPPED_ROSTER_UPGRADE,
   spendsOn: EngagementHistory = history,
+  anchor: EmpireDaySpendingAnchor = SHIPPED_DAY_SPENDING_ANCHOR,
 ): EngagementRun {
   if (!Number.isInteger(days) || days < 1) {
     throw new RangeError(`a horizon must be a whole number of days at or above one, received ${days}.`);
@@ -539,21 +557,35 @@ export function runEngagement(
   let physioArrivalDay: number | null = null;
 
   for (let day = 0; day < days; day += 1) {
-    // The last check-in the player actually takes in this calendar day, which is
-    // the moment a day-granularity policy spends at. It is the last ATTENDED
-    // slot rather than the last slot of the grid: a player who stops checking in
-    // at noon has their day end at noon.
+    // The first and last check-ins the player actually takes in this calendar
+    // day. Both are ATTENDED slots rather than slots of the grid: a player who
+    // stops checking in at noon has their day end at noon, and one who does not
+    // open the app until noon has their day start at noon.
+    let firstAttendedTick: number | null = null;
     let lastAttendedTick: number | null = null;
     for (let tick = 0; tick < policy.checkInsPerDay; tick += 1) {
-      if (spendsOn.attended[day * policy.checkInsPerDay + tick] === true) lastAttendedTick = tick;
+      if (spendsOn.attended[day * policy.checkInsPerDay + tick] !== true) continue;
+      if (firstAttendedTick === null) firstAttendedTick = tick;
+      lastAttendedTick = tick;
     }
+    // Whether this calendar day's one shopping trip has already happened. Only
+    // `'first-affordable-check-in'` reads it, and only a trip that actually
+    // bought something sets it — see `anchorConsumesDayOnlyOnPurchase`.
+    let boughtEarlierToday = false;
 
     for (let tick = 0; tick < policy.checkInsPerDay; tick += 1) {
       const slot = day * policy.checkInsPerDay + tick;
       if (history.attended[slot] !== true) continue;
       checkIns += 1;
-      const moment = spendingMoment(spending, tick === lastAttendedTick);
-      if (spendsAtMoment(moment)) spendingMoments += 1;
+      const moment = spendingMoment(
+        spending,
+        isDaySpendingMoment(anchor, {
+          firstAttendedOfDay: tick === firstAttendedTick,
+          lastAttendedOfDay: tick === lastAttendedTick,
+          boughtEarlierToday,
+        }),
+      );
+      const before = gym;
       gym = stepGym(
         gym,
         policy,
@@ -564,6 +596,33 @@ export function runEngagement(
         moment,
         upgrades,
       );
+      if (spendsAtMoment(moment)) {
+        const bought = purchasesMade(gym) > purchasesMade(before);
+        if (bought) boughtEarlierToday = true;
+        if (
+          !bought &&
+          spendsOncePerDay(spending) &&
+          anchorConsumesDayOnlyOnPurchase(anchor)
+        ) {
+          // The trip bought nothing, so under this anchor it did not happen and
+          // must leave no trace — not even the axis rotation a spending moment
+          // carries. Re-taken from the same gym with the offer withdrawn, which
+          // is the shipped `stepGym` deciding it rather than a second opinion
+          // about what a spending moment does.
+          gym = stepGym(
+            before,
+            policy,
+            slotWallSeconds(slot, policy.checkInsPerDay),
+            NO_ACCELERANT,
+            0,
+            funding,
+            spendingMoment(spending, false),
+            upgrades,
+          );
+        } else {
+          spendingMoments += 1;
+        }
+      }
       if (wiring.key === 'check-in-upkeep') {
         const before = wallClockTotal(gym);
         gym = chargeUpkeep(gym, wiring.upkeepGymBucks);
@@ -632,6 +691,7 @@ export function runEngagement(
     days,
     wiring,
     spending,
+    anchor,
     upgrades,
     ledger: Object.freeze(ledger),
     census: Object.freeze({
@@ -910,6 +970,17 @@ export function engagementRunFaults(run: EngagementRun): readonly string[] {
   }
   if (run.census.checkIns > 0 && run.census.spendingMoments === 0) {
     faults.push(`${run.census.checkIns} check-ins produced no spending moment at all`);
+  }
+  // A day-granularity policy shops at most once a calendar day, whichever
+  // anchor decides which check-in that is. This is the arithmetic shadow of
+  // that sentence: an anchor that let a second trip through would report more
+  // trips than the run has days. It is the check the retry arm needs — that arm
+  // re-takes a step, and a re-take that forgot to withdraw the offer would buy
+  // twice on one day and be invisible in the ledger.
+  if (spendsOncePerDay(run.spending) && run.census.spendingMoments > run.days) {
+    faults.push(
+      `${run.census.spendingMoments} shopping trips were taken across ${run.days} calendar days`,
+    );
   }
   if (!chargesUpkeep(run.wiring.key) && run.census.upkeepEvents !== 0) {
     faults.push(`the ${run.wiring.key} wiring charged upkeep on ${run.census.upkeepEvents} events`);

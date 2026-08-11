@@ -559,31 +559,128 @@ export const SHIPPED_SPENDING_POLICY: EmpireSpendingPolicy = 'rotate-greedy-per-
 /** The axis whose ladder `'save-for-physio-first'` holds its money for. */
 const PHYSIO_AXIS: ExpansionAxis = 'physio';
 
+/** True for a policy that makes at most one spending trip per calendar day. */
+export function spendsOncePerDay(policy: EmpireSpendingPolicy): boolean {
+  return policy === 'spend-once-per-calendar-day';
+}
+
+// ---------------------------------------------------------------------------
+// WHICH check-in of the day a day-granularity policy spends at
+// ---------------------------------------------------------------------------
+
+/**
+ * The three DAY ANCHORS — the moment in a calendar day at which a player who
+ * shops once a day does their shopping. See §4c of the header for the
+ * measurement that chose between them and for the numbers each one produced.
+ *
+ *   - `'first-affordable-check-in'` — SHIPPED. The player opens the app, and if
+ *     anything is affordable they buy it and are done for the day; if nothing
+ *     is, the day's trip has not happened yet and the next check-in is offered
+ *     it. One purchase moment per calendar day, taken at the earliest moment
+ *     one is possible.
+ *   - `'first-attended-check-in'` — CONTROL. The day's trip is the first
+ *     check-in the player takes, whether or not it can buy anything. A day
+ *     whose first check-in is broke buys nothing at all that day.
+ *   - `'last-attended-check-in'` — CONTROL, and the specification this policy
+ *     shipped with until this piece. The day's takings are banked and spent at
+ *     the last check-in the player happens to take.
+ *
+ * The two controls are not options. Nothing in the game reads either; they are
+ * runnable so the shipped anchor's zero is a zero against numbers.
+ */
+export const EMPIRE_DAY_SPENDING_ANCHORS = [
+  'first-affordable-check-in',
+  'first-attended-check-in',
+  'last-attended-check-in',
+] as const;
+
+export type EmpireDaySpendingAnchor = (typeof EMPIRE_DAY_SPENDING_ANCHORS)[number];
+
+/** The anchor the shipped engine runs a day-granularity policy at. */
+export const SHIPPED_DAY_SPENDING_ANCHOR: EmpireDaySpendingAnchor = 'first-affordable-check-in';
+
+/**
+ * What a day anchor has to know about this check-in.
+ *
+ * All three are the caller's facts rather than derived ones, for the reason the
+ * old single field carried: under a partial attendance schedule the first and
+ * last check-ins a player takes in a day are not the first and last slots of
+ * the grid, and a policy that spends "at the day boundary" means the former.
+ * Deriving either from `wallSeconds` here would have been the latter.
+ */
+export interface DayCheckInFacts {
+  readonly firstAttendedOfDay: boolean;
+  readonly lastAttendedOfDay: boolean;
+  /** Whether this calendar day's trip has already bought something. */
+  readonly boughtEarlierToday: boolean;
+}
+
+/** Whether this check-in is the day's one spending trip, under `anchor`. */
+export function isDaySpendingMoment(
+  anchor: EmpireDaySpendingAnchor,
+  facts: DayCheckInFacts,
+): boolean {
+  if (anchor === 'last-attended-check-in') return facts.lastAttendedOfDay;
+  if (anchor === 'first-attended-check-in') return facts.firstAttendedOfDay;
+  return !facts.boughtEarlierToday;
+}
+
+/**
+ * Whether an offered trip that bought NOTHING leaves the day still to spend.
+ *
+ * True for `'first-affordable-check-in'` alone, and it is the whole content of
+ * that anchor rather than a detail: an offer that bought nothing has to leave no
+ * trace at all, including no rotation of `EmpireGym.nextAxis`, or the number of
+ * broke check-ins a player takes would set the phase of which axis is offered
+ * first — which is the term GDD §5.4's third-book ruling was about, arriving
+ * back by another door.
+ */
+export function anchorConsumesDayOnlyOnPurchase(anchor: EmpireDaySpendingAnchor): boolean {
+  return anchor === 'first-affordable-check-in';
+}
+
+/**
+ * Purchases this gym has ever made — expansions, promotions, and recruitments
+ * BEGUN rather than landed.
+ *
+ * The meter `'first-affordable-check-in'` reads to decide whether a trip
+ * happened, and it counts a recruitment at the moment it is paid for:
+ * `EmpireGym.recruits` counts lifters who have JOINED, so it does not move on
+ * the day the money leaves. `recruits + pending.length` is the number ever
+ * begun, and a lifter moving from `pending` to the roster leaves it unchanged.
+ */
+export function purchasesMade(gym: EmpireGym): number {
+  return gym.expansions + gym.promotions + gym.recruits + gym.pending.length;
+}
+
 /**
  * One check-in as a spending policy sees it.
  *
- * `lastCheckInOfDay` is the caller's fact, not a derived one: under a partial
- * attendance schedule the last check-in a player takes in a day is not the last
- * slot of the grid, and a policy that spends "at the day boundary" means the
- * former. Deriving it from `wallSeconds` here would have been the latter.
+ * `daySpendingMoment` is the caller's fact — whether this check-in is the one a
+ * day-granularity policy does its shopping at. Which check-in that is is
+ * `isDaySpendingMoment`'s answer under an `EmpireDaySpendingAnchor`, and the
+ * field is named for what it means rather than for the anchor that used to
+ * decide it: it read `lastCheckInOfDay` while `'last-attended-check-in'` was
+ * the only anchor, and a name that survives its own specification is the
+ * confident-sentence shape CLAUDE.md opens with.
  */
 export interface SpendingMoment {
   readonly policy: EmpireSpendingPolicy;
-  readonly lastCheckInOfDay: boolean;
+  readonly daySpendingMoment: boolean;
 }
 
 /** A spending moment. Frozen, so a policy cannot be edited under a running gym. */
 export function spendingMoment(
   policy: EmpireSpendingPolicy,
-  lastCheckInOfDay: boolean,
+  daySpendingMoment: boolean,
 ): SpendingMoment {
-  return Object.freeze({ policy, lastCheckInOfDay });
+  return Object.freeze({ policy, daySpendingMoment });
 }
 
 /**
  * The moment `stepGym` assumes when a caller names none.
  *
- * `lastCheckInOfDay` is `true` because the shipped policy does not read it —
+ * `daySpendingMoment` is `true` because the shipped policy does not read it —
  * which is asserted rather than asserted-in-prose: `empireInvariant.test.ts`
  * drives one check-in both ways and compares the whole gym.
  */
@@ -594,7 +691,7 @@ export const SHIPPED_SPENDING_MOMENT: SpendingMoment = spendingMoment(
 
 /** Whether this check-in spends anything at all. */
 export function spendsAtMoment(moment: SpendingMoment): boolean {
-  if (moment.policy === 'spend-once-per-calendar-day') return moment.lastCheckInOfDay;
+  if (spendsOncePerDay(moment.policy)) return moment.daySpendingMoment;
   return true;
 }
 
@@ -608,10 +705,7 @@ export function spendsAtMoment(moment: SpendingMoment): boolean {
  * off in the offer and on in the state.
  */
 export function rotatesAtMoment(moment: SpendingMoment): boolean {
-  return (
-    moment.policy === 'rotate-greedy-per-check-in' ||
-    moment.policy === 'spend-once-per-calendar-day'
-  );
+  return moment.policy === 'rotate-greedy-per-check-in' || spendsOncePerDay(moment.policy);
 }
 
 /**
@@ -1504,9 +1598,11 @@ export function runEmpire(
         grantedCheckIns += 1;
         grantedSeconds += granted;
       }
-      // The moment is stated rather than defaulted, so `lastCheckInOfDay` is
+      // The moment is stated rather than defaulted, so `daySpendingMoment` is
       // true of this loop's own cadence instead of being a field nobody keeps
-      // honest because the shipped policy happens not to read it.
+      // honest because the shipped policy happens not to read it. This loop is
+      // full attendance, so its last slot IS the day's last attended check-in
+      // and the three anchors agree here; `runEngagement` is where they differ.
       gym = stepGym(
         gym,
         policy,
