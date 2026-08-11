@@ -383,6 +383,88 @@ export function lightsTextFor(call: JudgingCall): string {
 }
 
 // ---------------------------------------------------------------------------
+// The word "PR", decided in one place (GDD §6.3, §6.5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Would putting `weightKg` on the bar take this lifter past the best
+ * competition lift they already hold on that lift?
+ *
+ * ONE PREDICATE, READ BY EVERY SURFACE THAT PRINTS THE WORD. It was three
+ * copies of `previousBestKg !== null && weightKg > previousBestKg`, one per call
+ * site, and the recap consulted none of them — which is how GDD §6.5's defect
+ * got in. There is nothing subtle about the expression; what is load-bearing is
+ * that the selection card's gold border, its PR sentence, the walk-out's extra
+ * hold and the recap's per-lift call-out all ask THIS function, so a change to
+ * what "PR" means moves all four or none.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY A NULL PREVIOUS BEST IS FALSE HERE AND TRUE IN `liftPrs`
+ * ---------------------------------------------------------------------------
+ * The two are about different moments and both are right. This one is
+ * PROSPECTIVE — "will this weight beat your record?" — and a weight that beat no
+ * number beat no record. `meetServer.ts`'s `liftPrs` is RETROSPECTIVE — "is this
+ * now your best?" — and a first-ever competition squat is, trivially, the best
+ * competition squat on record.
+ *
+ * Shipped together and rendered with one word, they contradicted: a first meet
+ * chose nine attempts with no PR call-out anywhere and then printed "PR" against
+ * all three lifts on the recap that followed. GDD §6.5 ruled the fix is to split
+ * the DISPLAY rather than the semantics, following the precedent the total
+ * already set — `MEET_COPY.RECAP_FIRST_TOTAL` calls a first-ever total a FIRST,
+ * not a PR. `liftCallOutFor` below is the per-lift half of that.
+ *
+ * `@guarantee the-pr-word-needs-a-record-to-beat`
+ */
+export function beatsPreviousBest(weightKg: number, previousBestKg: number | null): boolean {
+  return previousBestKg !== null && weightKg > previousBestKg;
+}
+
+/**
+ * Which of GDD §6.5's two per-lift call-outs a recap row prints.
+ *
+ * `'pr'` — this meet's best on the lift went past a number the lifter already
+ * held. `'first'` — the lifter held no number on this lift and now holds one.
+ */
+export type LiftCallOutKind = 'pr' | 'first';
+
+/** The call-out itself: which kind it is, and the word the board prints. */
+export interface LiftCallOut {
+  readonly kind: LiftCallOutKind;
+  readonly text: string;
+}
+
+/**
+ * The per-lift call-out for one row of the recap, or `null` for neither.
+ *
+ * @param isPr the SERVER's answer — `AppliedMeetResult.liftPrs[lift]`, meaning
+ * "this meet's best on this lift is the best on record now". Taken, never
+ * re-derived: the client is a renderer, and a second implementation of that
+ * comparison is precisely how a third meaning of "PR" gets created.
+ * @param bestKg this meet's best good lift on that lift, kg, or `null`.
+ * @param previousBestKg the best on record BEFORE this meet, kg, or `null`.
+ *
+ * The kind is `beatsPreviousBest`'s answer, so the word on the recap and the
+ * gold border on §6.3's card are one predicate seen from two sides. When the
+ * server says a lift is the best on record and nothing was beaten to get there,
+ * the lifter held no record on that lift — that is the FIRST case, and it is the
+ * case the recap used to call a PR.
+ *
+ * `@guarantee the-pr-word-needs-a-record-to-beat`
+ */
+export function liftCallOutFor(
+  isPr: boolean,
+  bestKg: number | null,
+  previousBestKg: number | null,
+): LiftCallOut | null {
+  if (!isPr) return null;
+  if (bestKg !== null && beatsPreviousBest(bestKg, previousBestKg)) {
+    return { kind: 'pr', text: MEET_COPY.RECAP_PR_LIFT };
+  }
+  return { kind: 'first', text: MEET_COPY.RECAP_FIRST_LIFT };
+}
+
+// ---------------------------------------------------------------------------
 // One attempt, as the recap and the board remember it
 // ---------------------------------------------------------------------------
 
@@ -507,8 +589,9 @@ function optionFor(
   // Every weight offered is re-checked against the engine that will be asked to
   // accept it. An option the engine would refuse is dropped rather than shown.
   if (!isCallableWeightNow(state, weightKg)) return null;
-  // Read once, rendered twice. See `AttemptOption.prNote`.
-  const isPrAttempt = previousBestKg !== null && weightKg > previousBestKg;
+  // Read once, rendered twice. See `AttemptOption.prNote` — and `beatsPreviousBest`
+  // for why the recap's per-lift call-out reads the same predicate.
+  const isPrAttempt = beatsPreviousBest(weightKg, previousBestKg);
   return {
     id,
     weightKg,
@@ -706,7 +789,7 @@ export function walkoutMs(
 ): number {
   let total = MEET_TUNING.BAR_LOAD_MS + MEET_TUNING.WALKOUT_MS;
   if (attemptNumber === ATTEMPTS_PER_LIFT) total += MEET_TUNING.THIRD_ATTEMPT_WALKOUT_EXTRA_MS;
-  if (previousBestKg !== null && weightKg > previousBestKg) {
+  if (beatsPreviousBest(weightKg, previousBestKg)) {
     total += MEET_TUNING.PR_ATTEMPT_WALKOUT_EXTRA_MS;
   }
   if (bombRisk) total += MEET_TUNING.BOMB_RISK_WALKOUT_EXTRA_MS;
@@ -1051,7 +1134,7 @@ function liveAttemptFor(
     loadRatio: scrub(weightKg / e1rmKg),
     seed: attemptSeedFor(meetSeedFor(context), lift, attemptNumber),
     bombRisk,
-    isPrAttempt: previousBestKg !== null && weightKg > previousBestKg,
+    isPrAttempt: beatsPreviousBest(weightKg, previousBestKg),
     walkoutMs: walkoutMs(attemptNumber, weightKg, previousBestKg, bombRisk),
   };
 }
@@ -1396,8 +1479,21 @@ export interface RecapLiftRow {
   readonly attempts: readonly (MeetDayAttempt | null)[];
   readonly bestKg: number | null;
   readonly bestText: string;
-  /** True when this meet beat the lifter's best competition lift on record. */
+  /**
+   * The server's `liftPrs` answer: this meet's best on this lift is the best on
+   * record now. TRUE OF A FIRST-EVER LIFT TOO, which is why it is not the thing
+   * the board prints a word off — see `callOut`. `RecapView` reports it to GDD
+   * §7.2's cut-in gate, where a first-ever lift is a moment exactly as a beaten
+   * record is, and where the total's own beat has always behaved the same way.
+   */
   readonly isPr: boolean;
+  /**
+   * Which word the board prints beside the row, or `null` for none.
+   *
+   * `liftCallOutFor`'s answer. Non-null exactly when `isPr`; `'pr'` only when
+   * there was a record to beat.
+   */
+  readonly callOut: LiftCallOut | null;
   readonly bombed: boolean;
 }
 
@@ -1411,6 +1507,19 @@ export interface ConfirmedMeetFacts {
   readonly previousBestTotalKg: number | null;
   readonly isTotalPr: boolean;
   readonly liftPrs: Readonly<Record<LiftKind, boolean>>;
+  /** Best good lift per lift in THIS meet, kg; `null` where a lift was bombed. */
+  readonly bestByLiftKg: Readonly<Record<LiftKind, number | null>>;
+  /**
+   * Best competition lift per lift BEFORE this meet, kg; `null` where the lifter
+   * held none.
+   *
+   * The per-lift twin of `previousBestTotalKg`, and it arrived for the same
+   * reason: the total could already tell a FIRST from a PR because it had the
+   * number it was measured against, and the lifts could not. Without it the
+   * recap can only ask "is this the best on record", which is true of a
+   * first-ever lift, and the board printed PR for both.
+   */
+  readonly previousBestByLiftKg: Readonly<Record<LiftKind, number | null>>;
   readonly placing: { readonly place: number | null; readonly fieldSize: number };
 }
 
@@ -1453,14 +1562,24 @@ export type MeetRecapResult =
   | { readonly ok: true; readonly recap: MeetRecap }
   | { readonly ok: false; readonly error: MeetRecapError };
 
+/**
+ * THE ROW'S `bestKg` IS THE CARD'S AND THE CALL-OUT'S IS THE SERVER'S, and the
+ * two are deliberately not the same read. `bestText` is what the shareable card
+ * prints, so it comes off the card; the call-out is a claim about this lifter's
+ * history, so it is measured against the number the SERVER compared. Feeding the
+ * card's cell into the comparison would let a formatting change decide whether a
+ * lift is called a record. `buildMeetRecap` already refuses outright when the
+ * card and the server disagree about the total.
+ */
 function recapRowsFor(
   state: MeetDayState,
   card: ResultCard,
-  liftPrs: Readonly<Record<LiftKind, boolean>>,
+  confirmed: ConfirmedMeetFacts,
 ): readonly RecapLiftRow[] {
   return LIFT_ORDER.map((lift, index) => {
     const cardRow = card.rows[index];
     const taken = attemptsOnLift(state, lift);
+    const isPr = confirmed.liftPrs[lift];
     return {
       lift,
       label: MEET_COPY.LIFT_LABEL[lift],
@@ -1469,7 +1588,8 @@ function recapRowsFor(
       ),
       bestKg: cardRow?.bestKg ?? null,
       bestText: cardRow?.bestText ?? NO_VALUE_DISPLAY,
-      isPr: liftPrs[lift],
+      isPr,
+      callOut: liftCallOutFor(isPr, confirmed.bestByLiftKg[lift], confirmed.previousBestByLiftKg[lift]),
       bombed: cardRow?.bombed ?? false,
     };
   });
@@ -1597,7 +1717,7 @@ export function buildMeetRecap(state: MeetDayState, confirmed: ConfirmedMeetFact
       dotsText: card.summary[1].value,
       placeText: card.summary[2].value,
       fieldSize: confirmed.placing.fieldSize,
-      rows: recapRowsFor(state, card, confirmed.liftPrs),
+      rows: recapRowsFor(state, card, confirmed),
       bombedLift: card.bombedLift,
     },
   };

@@ -694,8 +694,35 @@ export interface AppliedMeetResult {
   readonly previousBestTotalKg: number | null;
   /** True when this meet raised the best total on record. */
   readonly isTotalPr: boolean;
+  /** Best good lift per lift in THIS meet, kg, or null where a lift was bombed. */
   readonly bestByLiftKg: Readonly<Record<LiftKind, number | null>>;
-  /** Per lift: true when this meet beat the best competition lift on record. */
+  /**
+   * Best competition lift per lift BEFORE this meet, kg, or null where the
+   * lifter held none. `previousBestByLift(record)`, handed out rather than kept.
+   *
+   * IT IS ON THE RESULT BECAUSE `liftPrs` ALONE CANNOT TELL A RECAP WHICH WORD
+   * TO PRINT. A `true` there covers two different things — a record beaten and a
+   * record set from nothing — and for a while the recap printed "PR" for both
+   * while §6.3's selection screen, one screen earlier, called neither one a PR
+   * attempt. See `liftPrs` below and `meetDay.ts`'s `liftCallOutFor`.
+   *
+   * `@guarantee the-pr-word-needs-a-record-to-beat`
+   */
+  readonly previousBestByLiftKg: Readonly<Record<LiftKind, number | null>>;
+  /**
+   * Per lift: true when this meet's best on that lift is the best on record NOW.
+   *
+   * RETROSPECTIVE, AND TRUE OF A FIRST-EVER LIFT. A lifter's first competition
+   * squat beats nothing and is nonetheless the best competition squat they hold,
+   * which is what this field says and is why `held === null` counts as beaten
+   * below. It is the same reading `isTotalPr` takes of a first total.
+   *
+   * WHAT IT IS NOT is "a PR was attempted and made". That question is
+   * `meetDay.ts`'s `beatsPreviousBest`, it is prospective, and it answers false
+   * with no record to beat. Both readings ship, both are right, and GDD §6.5
+   * rules that what separates them is the WORD printed — not the arithmetic.
+   * `previousBestByLiftKg` above is what lets a screen tell them apart.
+   */
   readonly liftPrs: Readonly<Record<LiftKind, boolean>>;
   readonly placing: MeetPlacing;
   readonly bombedLift: LiftKind | null;
@@ -1022,6 +1049,7 @@ export function applyMeetResult(
       previousBestTotalKg,
       isTotalPr,
       bestByLiftKg,
+      previousBestByLiftKg: heldByLift,
       liftPrs,
       placing: placingFor(totalKg, meet.ghostTotalsKg),
       bombedLift,

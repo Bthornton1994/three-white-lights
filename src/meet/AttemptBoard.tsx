@@ -25,7 +25,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ATTEMPT_NUMBERS, type LiftKind } from '../game/meet';
 import { MEET_COPY, MEET_LAYOUT } from '../game/meetTuning';
-import type { MeetDayAttempt } from '../game/meetDay';
+import type { LiftCallOut, MeetDayAttempt } from '../game/meetDay';
 import { formatWeight } from '../game/resultCard';
 import { MEET_PALETTE } from './meetPalette';
 
@@ -35,11 +35,17 @@ export interface AttemptBoardProps {
   readonly lift: LiftKind;
   /** Every attempt in the meet; this filters to the lift itself. */
   readonly attempts: readonly MeetDayAttempt[];
-  /** Shown to the right of the row when the lift set a competition PR. */
-  readonly prLabel?: string | undefined;
+  /**
+   * GDD §6.5's per-lift call-out, shown to the right of the row, or nothing.
+   *
+   * It used to be a `prLabel: string`, and the name was the defect: the board
+   * printed one word for a beaten record and for a first-ever lift alike. The
+   * word is `meetDay.ts`'s to choose — `liftCallOutFor` — and this draws it.
+   */
+  readonly callOut?: LiftCallOut | undefined;
 }
 
-export function AttemptBoard({ lift, attempts, prLabel }: AttemptBoardProps): React.ReactElement {
+export function AttemptBoard({ lift, attempts, callOut }: AttemptBoardProps): React.ReactElement {
   const onLift = attempts.filter((attempt) => attempt.lift === lift);
   return (
     <View style={styles.row} testID={`attempt-board-${lift}`}>
@@ -67,9 +73,9 @@ export function AttemptBoard({ lift, attempts, prLabel }: AttemptBoardProps): Re
           </View>
         );
       })}
-      {prLabel === undefined ? null : (
-        <Text style={styles.pr} testID={`attempt-board-pr-${lift}`}>
-          {prLabel}
+      {callOut === undefined ? null : (
+        <Text style={styles.callOut} testID={`attempt-board-callout-${lift}`}>
+          {callOut.text}
         </Text>
       )}
     </View>
@@ -117,7 +123,14 @@ const styles = StyleSheet.create({
     color: MEET_PALETTE.TEXT_DIM,
     textDecorationLine: 'line-through',
   },
-  pr: {
+  /**
+   * ONE TREATMENT FOR BOTH CALL-OUTS, WHICH IS THE TOTAL'S OWN PRECEDENT.
+   * `RecapView` paints FIRST TOTAL and COMPETITION PR with the same
+   * `prTextHot`, so the two are told apart by the word rather than by the
+   * colour. Splitting them visually is a feel question a playtester answers;
+   * GDD §6.5 records it as pending alongside the wording.
+   */
+  callOut: {
     color: MEET_PALETTE.PR,
     fontSize: L.LABEL_FONT,
     fontWeight: '700',

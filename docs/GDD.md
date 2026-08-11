@@ -1927,6 +1927,59 @@ meaning gets created. So the divergence is recorded here and in the tests' own
 headers — visible to the next reader rather than rediscovered — and the
 reconciliation is scheduled as a piece of its own.
 
+**RECONCILED: THE SPLIT IS ON THE DISPLAY, NOT ON THE ARITHMETIC.** Neither
+computation was wrong, so neither moved. `liftPrs` is *retrospective* — is this
+the best on record now — and answers yes for a first-ever lift. `isPrAttempt` is
+*prospective* — will this weight beat your record — and answers no when there is
+no record. Both facts are true of the same lift at the same moment, and printing
+one word for both is what made the app contradict itself.
+
+The per-lift call-out therefore gains a second state, which is the shape the
+**total** has had all along: `MEET_COPY.RECAP_FIRST_TOTAL` has never called a
+first-ever total a PR, it calls it a FIRST. Per lift there is now
+`MEET_COPY.RECAP_PR_LIFT` for a record beaten and `MEET_COPY.RECAP_FIRST_LIFT`
+for a record set from nothing.
+
+- **`meetDay.ts`'s `beatsPreviousBest` is the one predicate the word is printed
+  from.** §6.3's gold border, its PR sentence, the walk-out's extra hold and the
+  recap's call-out all read it, so the meaning of "PR" cannot move on one screen
+  without moving on the others. It replaces three inline copies of the same
+  expression, none of which the recap consulted.
+- **`AppliedMeetResult` now hands out `previousBestByLiftKg`**, the per-lift twin
+  of `previousBestTotalKg`. The total could already tell a FIRST from a PR
+  because it had the number it was measured against; the lifts could not, and
+  that absence *is* the defect rather than a consequence of it.
+- **Nothing about attempt selection changed.** `isPrAttempt` was never wrong.
+
+**WHICH WORD IS PENDING PLAYTEST, exactly as §6.3's two wording options above
+are.** What is settled is structural: a lift with no record behind it does not
+get called a PR. `RECAP_FIRST_LIFT` ships as `'FIRST'`, chosen to sit under
+`RECAP_FIRST_TOTAL` without repeating the lift's own name, which is already on
+the row — a placeholder, not a ruling. The two states also share one visual
+treatment, which is what the total already does for FIRST TOTAL and COMPETITION
+PR; splitting them by colour as well as by word is the same felt question and is
+deferred with it. Overturning either is a normal outcome, not a regression.
+
+**THE SHAREABLE CARD CARRIES NO PR FACT AT ALL, AND THAT IS THE RIGHT ANSWER
+RATHER THAN AN OVERSIGHT.** The third surface this ruling named turned out not
+to be a surface: `resultCard.ts`'s `LiftRow` has no PR field and `src/card/`
+prints no such word, because a federation result sheet records weights and does
+not editorialise — which is exactly what the paragraph below asks the card to
+look like. So there was no third meaning to reconcile there. It is now pinned
+rather than left as a happy accident: a card is built for a lifter with no
+history, its cells are counted and scanned, and none may carry either call-out
+while the recap beside it carries three. **A future PR mark on the card is a
+deliberate edit that comes back to this ruling** and uses these two states, not
+a third word.
+
+**WHAT A PLAYER CAN ACTUALLY REACH, WHICH SHARPENS WHY THIS MATTERED.** §6.1's
+Career calendar does not exist, so the second meet of an app run is refused as
+already recorded and draws the placeholder rather than a recap. **The only recap
+a player reaches today is the first meet's** — which is precisely the meet that
+was printing PR against all three lifts. The browser check therefore reads the
+FIRST state on the played arm and the PR state on the scripted lifter behind
+`?meet=recap`, and labels which arm each came from.
+
 **Shareable result card** formatted like a real federation result sheet. Real
 lifters already post meet results on social media as a habit — if the card looks
 legitimate, this is the strongest organic growth lever in the game. Treat it as a

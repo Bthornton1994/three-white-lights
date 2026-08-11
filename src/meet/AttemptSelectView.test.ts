@@ -98,8 +98,14 @@ const CARDS_PER_SELECTION = 2;
 
 const CARDS_IN_A_WHOLE_MEET = SELECTIONS_IN_A_WHOLE_MEET * CARDS_PER_SELECTION;
 
-/** Plain-string entries in `MEET_COPY`. Pinned so the scan below cannot empty. */
-const MEET_COPY_STRINGS = 68;
+/**
+ * Plain-string entries in `MEET_COPY`. Pinned so the scan below cannot empty.
+ *
+ * 68 -> 69 when GDD §6.5's per-lift call-out gained its FIRST state:
+ * `RECAP_FIRST_LIFT`, the word the recap prints beside a lift the lifter held
+ * no record on. It is the only entry that piece added.
+ */
+const MEET_COPY_STRINGS = 69;
 
 /**
  * WHAT THE ZEROES BELOW ARE ZERO AGAINST.

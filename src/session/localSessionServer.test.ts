@@ -258,12 +258,18 @@ describe('the meet half writes the row the session half reads', () => {
     if (response.kind !== 'recorded') throw new Error('unreachable');
     const body: Record<string, unknown> = { ...response.result };
     expect(body.record).toBeUndefined();
+    // `previousBestByLiftKg` joined this list with GDD §6.5's per-lift call-out:
+    // the recap cannot tell a beaten record from a first one without the number
+    // that was beaten, and it printed "PR" for both while it could not. Three
+    // kilogram readings about the lifter's own past meets — not a stored row,
+    // which is what this list is here to keep out.
     expect(Object.keys(body).sort()).toEqual([
       'bestByLiftKg',
       'bombedLift',
       'isTotalPr',
       'liftPrs',
       'placing',
+      'previousBestByLiftKg',
       'previousBestTotalKg',
       'totalKg',
     ]);

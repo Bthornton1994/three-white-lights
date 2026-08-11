@@ -467,8 +467,25 @@ const GUARANTEE_COVERAGE = {
    * limit, in a file the ban does not scope into. That is now five instances
    * out of six of the same asymmetry, which is worth more than the number it is
    * attached to.
+   *
+   * 224 -> 226 when GDD §6.5's per-lift call-out gained its FIRST state.
+   * Measured per file the usual way, by re-running the scan against the base
+   * checkout: `meetServer.ts` 7 -> 8 and `localSessionServer.ts` 1 -> 2, and
+   * every other file the round touched moved by ZERO —
+   * `meetDay.ts` (3), `meetTuning.ts` (3), `RecapView.tsx` (1),
+   * `AttemptBoard.tsx` (0), `meetDay.test.ts` (0).
+   *
+   * SEVENTH ROUND RUNNING, AND SHARPER THAN THE SIXTH. The round's actual
+   * guarantee — `the-pr-word-needs-a-record-to-beat` — is declared on
+   * `beatsPreviousBest` and `liftCallOutFor` in `meetDay.ts`, and that file's
+   * count did not move: the capitalised run over the declaration is "ONE
+   * PREDICATE, READ BY EVERY SURFACE THAT PRINTS THE WORD", which carries none
+   * of the four trigger words. What the scan DID notice is the two
+   * RESTATEMENTS, in files the ban does not scope into. Six instances out of
+   * seven now. All three restatements carry the tag anyway, so they expire with
+   * the declaration rather than with this number.
    */
-  TREE_WIDE: 224,
+  TREE_WIDE: 226,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -575,10 +592,97 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
 /**
  * The witnesses. Every tag not in the list above must have one.
  *
- * All four below were taken by hand on the run that added them: break it, watch
- * it fail, read the message, restore, confirm green.
+ * Each was taken by hand on the run that added it: break it, watch it fail,
+ * read the message, restore, confirm green.
+ *
+ * ONE TAG MAY HAVE SEVERAL, and the §6.5 block below is the first to use it.
+ * The checks are per-entry — anchors resolve, the assertion sits in the test
+ * that declares the tag — so four entries are four independent expiries rather
+ * than one restated. A claim that spans two modules is not witnessed by a
+ * mutant in one of them.
  */
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  // -------------------------------------------------------------------------
+  // GDD §6.5 — "PR" means one thing. FOUR MUTANTS FOR ONE TAG, deliberately.
+  //
+  // The claim spans two modules and a rendering decision, so a single mutant
+  // would witness only one third of it. Each of the four below removes a
+  // different limb, and each was run against `src/game/meetDay.test.ts` alone,
+  // restored, and confirmed green afterwards. Their failure messages are kept
+  // verbatim because they differ from each other — three PRs, three nothings,
+  // and a FIRST where a record was beaten — which is the evidence that they are
+  // reaching different parts of the same sentence rather than one shared guard.
+  // -------------------------------------------------------------------------
+  {
+    // (1) THE SINGLE-STATE CALL-OUT, RESTORED — the shipped defect exactly.
+    // Every lift the server calls a best gets the word "PR", so a first meet
+    // prints it three times over a §6.3 screen that flagged nothing.
+    guarantee: 'the-pr-word-needs-a-record-to-beat',
+    mutatedFile: 'src/game/meetDay.ts',
+    mutated:
+      "  if (bestKg !== null && beatsPreviousBest(bestKg, previousBestKg)) {\n" +
+      "    return { kind: 'pr', text: MEET_COPY.RECAP_PR_LIFT };\n" +
+      '  }\n' +
+      "  return { kind: 'first', text: MEET_COPY.RECAP_FIRST_LIFT };",
+    testFile: 'src/game/meetDay.test.ts',
+    redAssertion:
+      "expect(firstWords, 'the three words a first meet prints beside its lifts').toEqual([",
+    observed:
+      "AssertionError: the three words a first meet prints beside its lifts: expected [ 'PR', 'PR', 'PR' ]" +
+      " to deeply equal [ 'FIRST', 'FIRST', 'FIRST' ]",
+  },
+  {
+    // (2) `liftPrs` REFUSES A NULL PREVIOUS BEST — the other candidate fix,
+    // executed rather than argued about. It makes the two readings agree by
+    // deleting one of them, and a lifter's first competition squat stops being
+    // the best competition squat they hold. The recap then says nothing at all
+    // beside three lifts that were all records, which is why this arm is a
+    // separate witness: it reddens the SAME assertion from the opposite side.
+    guarantee: 'the-pr-word-needs-a-record-to-beat',
+    mutatedFile: 'src/game/meetServer.ts',
+    mutated: '    liftPrs[lift] = made !== null && (held === null || made > held);',
+    testFile: 'src/game/meetDay.test.ts',
+    redAssertion:
+      "expect(firstWords, 'the three words a first meet prints beside its lifts').toEqual([",
+    observed:
+      'AssertionError: the three words a first meet prints beside its lifts: expected [ null, null, null ]' +
+      " to deeply equal [ 'FIRST', 'FIRST', 'FIRST' ]",
+  },
+  {
+    // (3) THE PREDICATE ITSELF, INVERTED ON THE NULL. `beatsPreviousBest` is
+    // what §6.3's gold border, its PR sentence, the walk-out's extra hold and
+    // the recap's call-out all read; counting a null as beaten is the shape of
+    // the disagreement this piece removed. It reddens the recap's words AND the
+    // predicate's own sweep, which is the link being witnessed.
+    guarantee: 'the-pr-word-needs-a-record-to-beat',
+    mutatedFile: 'src/game/meetDay.ts',
+    mutated: '  return previousBestKg !== null && weightKg > previousBestKg;',
+    testFile: 'src/game/meetDay.test.ts',
+    redAssertion:
+      "expect(firstWords, 'the three words a first meet prints beside its lifts').toEqual([",
+    observed:
+      "AssertionError: the three words a first meet prints beside its lifts: expected [ 'PR', 'PR', 'PR' ]" +
+      " to deeply equal [ 'FIRST', 'FIRST', 'FIRST' ] (and, in the same run, 'AssertionError: 0 vs null:" +
+      " expected true to be false' on the predicate's own sweep)",
+    },
+  {
+    // (4) THE RECAP IGNORES THE HISTORY IT IS HANDED, comparing this meet's
+    // best against itself. Nothing ever beats anything, so every record a
+    // lifter DOES beat is announced as their first. This is the arm the other
+    // three miss: they all move the first-meet case, and this one is only
+    // visible on a lifter who walked in holding numbers.
+    guarantee: 'the-pr-word-needs-a-record-to-beat',
+    mutatedFile: 'src/game/meetDay.ts',
+    mutated:
+      '      callOut: liftCallOutFor(isPr, confirmed.bestByLiftKg[lift], confirmed.previousBestByLiftKg[lift]),',
+    testFile: 'src/game/meetDay.test.ts',
+    redAssertion:
+      'expect(secondWords, `made ${JSON.stringify(made)} against held ${JSON.stringify(held)}`).toEqual([',
+    observed:
+      'AssertionError: made {"squat":217.5,"bench":140,"deadlift":255} against held' +
+      ' {"squat":212.5,"bench":140,"deadlift":260}: expected [ \'FIRST\', null, null ] to deeply equal' +
+      " [ 'PR', null, null ]",
+  },
   {
     // The mutant handed every option GDD §6.3's PR sentence, which is the
     // defect the tag is about seen from the engine side rather than the copy
@@ -1439,6 +1543,7 @@ describe('the guarantee-tag convention', () => {
     expect(censused, 'the files the witness table scopes into').toEqual([
       'src/cutin/cutInWiring.test.ts',
       'src/game/meetClient.test.ts',
+      'src/game/meetDay.test.ts',
       'src/game/progression.test.ts',
       'src/game/sessionServer.test.ts',
       'src/game/streak.test.ts',
