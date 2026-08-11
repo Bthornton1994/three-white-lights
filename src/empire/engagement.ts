@@ -174,8 +174,10 @@
  * measured; the sixth spends a whole day's takings at the last check-in the
  * player happens to take, so an extra evening check-in moves the purchase to
  * the evening. `engagement.test.ts` splits its count by exactly that and finds
- * 7240 of 7245 on the moving side — a fact about that model of a player, which
- * no arrangement of §5's purses reaches.
+ * 6459 of 6459 on the moving side — every one of them, after §5.3's promotion
+ * path closed the five that were on the other side. A fact about that model of
+ * a player, which no arrangement of §5's purses or prices reaches, and which
+ * `spendsOn` is the counterfactual for.
  */
 
 import {

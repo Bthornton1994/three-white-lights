@@ -297,10 +297,10 @@
  *     and which nothing measured for several waves while this note said so.
  *     `engagement.ts` and `engagement.test.ts` hold the check-in schedule as
  *     the independent variable and apply no accelerant at all — the opposite
- *     assignment to every other sweep in this directory — over 33 checks.
+ *     assignment to every other sweep in this directory — over 39 checks.
  *     Exhaustively over every calendar of a window of check-in slots: 0
  *     violating pairs of 24576, 0 physio arrivals later, against a comparator
- *     that moved 19778 of those pairs. Its physio zero is a zero against chain
+ *     that moved 21109 of those pairs. Its physio zero is a zero against chain
  *     A RE-CONNECTED — the `'accelerated-purse'` wiring, which is this
  *     directory as it stood before GDD §5.4's two-books ruling and in which the
  *     sponsor line is money the physio rung is bought with — pinned at 263 of

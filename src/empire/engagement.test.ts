@@ -336,8 +336,8 @@ export const ENGAGEMENT_SWEEP = Object.freeze({
 const MEASURED = Object.freeze({
   /**
    * The headline. Every calendar of the first two days, on a 12-day horizon.
-   * Zero violating pairs, against a comparator that moved 19778 of 24576 pairs
-   * and paid the more-engaged gym MORE on 205848 day-elements.
+   * Zero violating pairs, against a comparator that moved 21109 of 24576 pairs
+   * and paid the more-engaged gym MORE on 208396 day-elements.
    */
   WINDOWED_SHIPPED: {
     pairs: 24576,
@@ -1111,8 +1111,8 @@ describe('EXHAUSTIVE: every calendar of a window of check-in slots', () => {
     expect(tally.physioArrivalLater).toBe(0);
     expect(tally).toEqual(MEASURED.WINDOWED_SHIPPED);
     // The comparator is live on this domain, which is what stops the zero being
-    // a zero about a sweep that compared nothing: 19778 of 24576 pairs moved,
-    // and the more-engaged gym was paid MORE on 205848 day-elements.
+    // a zero about a sweep that compared nothing: 21109 of 24576 pairs moved,
+    // and the more-engaged gym was paid MORE on 208396 day-elements.
     expect(tally.movedPairs).toBeGreaterThan(0);
     expect(tally.trainingIqHigher).toBeGreaterThan(0);
   });
@@ -1455,19 +1455,28 @@ const MEASURED_POLICY = Object.freeze({
     },
   }),
 
-  /** The pre-ruling violating-pair counts alone, as the table the report quotes. */
+  /**
+   * The single-purse violating-pair counts alone, as the table the report quotes.
+   *
+   * These are the LIVE control's numbers, re-taken after §5.3's promotion path.
+   * Piece E8's own were 2954 / 2751 / 2751 / 3427 / 0 / 10122, and this table
+   * reproduced them exactly for several waves — which is what said the control
+   * was the old engine rather than an approximation of it. It is not that any
+   * more, and `engagement.test.ts`'s header says so rather than leaving the
+   * resemblance to be assumed.
+   */
   SINGLE_PURSE_VIOLATING_PAIRS: Object.freeze({
-    'rotate-greedy-per-check-in': 2954,
-    'fixed-order-no-rotation': 2751,
-    'cheapest-affordable-first': 2751,
-    'costliest-affordable-first': 3427,
+    'rotate-greedy-per-check-in': 3003,
+    'fixed-order-no-rotation': 2800,
+    'cheapest-affordable-first': 2800,
+    'costliest-affordable-first': 3503,
     'save-for-physio-first': 0,
-    'spend-once-per-calendar-day': 10122,
+    'spend-once-per-calendar-day': 3908,
   }),
 
   /**
    * The same six on a SECOND domain. Every arm is zero except the day-granularity
-   * one, which is 60 here and 44 at forty days.
+   * one, which is 60 here and 34 at forty days.
    */
   SEEDED_20: Object.freeze({
     'rotate-greedy-per-check-in': { pairs: 644, movedPairs: 187, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
@@ -1856,8 +1865,8 @@ describe('the spending policy is the second independent variable, and it is swep
   });
 
   it('measures the per-check-in granularity removed, and splits the arm that is not zero', () => {
-    // THE ONE ARM THAT IS NOT ZERO. 7245 of 24576, and the split below says
-    // 7240 of them are one mechanism that no purse arrangement reaches.
+    // THE ONE ARM THAT IS NOT ZERO. 6459 of 24576, and the split below says
+    // every one of them is the decision moment rather than anything §5 owns.
     const tally = policyWindowed('spend-once-per-calendar-day');
     expect(tally.violatingPairs).toBe(6459);
     expect(tally).toEqual(MEASURED_POLICY.WINDOWED['spend-once-per-calendar-day']);
@@ -2082,6 +2091,37 @@ describe('the spending policy is the second independent variable, and it is swep
   const SECOND_HALF = EMPIRE_SPENDING_POLICIES.slice(3);
 
   it('splits the two long readings without dropping a policy between the halves', () => {
+    // `SINGLE_PURSE_VIOLATING_PAIRS` is the header's right-hand column, and it
+    // was DECLARED AND READ BY NOTHING for as long as it has existed — a table
+    // a report quotes with no check behind it, which is the shape CLAUDE.md
+    // opens with. It is derived from the whole tallies here, in both
+    // directions, so the column and the measurement cannot come apart.
+    // Only four of the six carry a whole tally — `WINDOWED_SINGLE_PURSE` holds
+    // the ones a check drives — so the derivation is over those four and the
+    // count of them is pinned, rather than over a loop that would silently
+    // walk two keys that are not there.
+    let columns = 0;
+    for (const [spending, tally] of Object.entries(MEASURED_POLICY.WINDOWED_SINGLE_PURSE)) {
+      expect(
+        MEASURED_POLICY.SINGLE_PURSE_VIOLATING_PAIRS[spending as EmpireSpendingPolicy],
+        spending,
+      ).toBe(tally.violatingPairs);
+      columns += 1;
+    }
+    expect(columns).toBe(4);
+    expect(Object.keys(MEASURED_POLICY.SINGLE_PURSE_VIOLATING_PAIRS).sort()).toEqual(
+      [...EMPIRE_SPENDING_POLICIES].sort(),
+    );
+    // The two the tally table does not carry are measured by the sweep beside
+    // it — `windowedSweep(..., 'single-purse')` under each — so they are pinned
+    // here directly rather than left as the only two rows nothing checks.
+    expect(MEASURED_POLICY.SINGLE_PURSE_VIOLATING_PAIRS['rotate-greedy-per-check-in']).toBe(
+      MEASURED.WINDOWED_SINGLE_PURSE.violatingPairs,
+    );
+    expect(MEASURED_POLICY.SINGLE_PURSE_VIOLATING_PAIRS['cheapest-affordable-first']).toBe(
+      MEASURED_POLICY.SINGLE_PURSE_VIOLATING_PAIRS['fixed-order-no-rotation'],
+    );
+
     expect([...FIRST_HALF, ...SECOND_HALF]).toEqual([...EMPIRE_SPENDING_POLICIES]);
     expect(FIRST_HALF.length + SECOND_HALF.length).toBe(6);
     expect(FIRST_HALF.length).toBeGreaterThan(0);

@@ -90,7 +90,11 @@
  * checked in more often ended on a lower §5.2 Training IQ series in 2954 of
  * 24576 exhaustively enumerated pairs. So each funded output keeps a purse of
  * its own (`WallClockBooks`) and each purse gets its own slot in step 4 below,
- * and `'single-wall-clock-purse'` is the control that still measures the 2954.
+ * and `'single-wall-clock-purse'` is the control that still measures it. Its
+ * count is 3003 rather than 2954 now: §4b's promotion path changed how the
+ * pooled balance is spent, so the control is the pre-ruling FUNDING rule on the
+ * post-repair roster rather than a reproduction of the engine that measured
+ * 2954. Non-zero on the same domain either way, which is what it is for.
  *
  * Every wall-clock purse accrues at `settledGymBucksRatePerHour`, which reads
  * no state at all: it is the baseline line over the un-accelerated part of a
@@ -443,7 +447,8 @@ export const NO_ACCELERANT: null = null;
  *     leaves the purses in lockstep and is therefore arithmetically the single
  *     book it replaces. This is the control the engagement zeros are zeros
  *     against: it is where 2954 of 24576 exhaustively enumerated pairs punished
- *     the more-engaged player.
+ *     the more-engaged player. It measures 3003 today, for the reason §3 of
+ *     this header gives.
  */
 export const EMPIRE_FUNDINGS = [
   'wall-clock-earned',
