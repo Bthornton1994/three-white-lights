@@ -162,10 +162,12 @@
  *
  * WHAT SURVIVES, stated precisely rather than as a caveat:
  *
- *   - A window above 1500 kg. The grid stops there. 1500 is more than double
- *     the top rung of the ladder and above the heaviest total posted in
- *     competition — but that last clause is an assumption about human strength
- *     rather than something this file measures.
+ *   - A window above 2000 kg. The grid stops there. That ceiling used to be
+ *     1500 and used to rest on an assumption; it is now 1.42x the heaviest
+ *     total ever posted in competition, which was searched rather than assumed
+ *     — 1407.5 kg, in the most permissive equipped division any federation
+ *     runs. The residual is real but the headroom behind it is measured, and
+ *     the constant's own comment carries the number.
  *
  *     MEASURED, not predicted. The same `Set` membership shape, over the two
  *     totals `worlds.mens + nationals.mens + worlds.womens` (1665 kg) and that
@@ -210,7 +212,7 @@
  * defect all three of these share.
  *
  *   1. A DOMAIN SWEEP (behavioural, domain). Binds `Total` to `number` and
- *      walks a 0.25 kg grid from 0 to 1500 kg — 6001 points — unioned with the
+ *      walks a 0.25 kg grid from 0 to 2000 kg — 8001 points — unioned with the
  *      fifty-point band it replaced: every threshold in
  *      `QUALIFYING_TOTAL_KG_BY_TIER` below, just under, exactly at, just over
  *      and well above, in both categories, plus values chosen for their printed
@@ -694,12 +696,29 @@ const PLATE_GRID = Object.freeze({
    *
    * More than double the top rung of the shipped ladder (680 kg) and more than
    * double the top of `ghostTotalsKg` (632.5 kg), and above the heaviest total
-   * posted in competition by any lifter in any federation. That last clause is
-   * an assumption about the sport rather than something this file measures —
-   * see the residual in the header, which says what a window above this line
-   * would mean.
+   * posted in competition by any lifter in any federation.
+   *
+   * THAT LAST CLAUSE WAS AN ASSUMPTION AND IS NOW A MEASUREMENT, and the
+   * measurement moved the number. This constant read 1500, chosen as "more than
+   * double the ladder" — and the builder flagged it as the softest number in the
+   * piece precisely because nothing had been checked. Searched: the heaviest
+   * total ever posted in competition, in the most permissive equipped division
+   * any federation runs, is **1407.5 kg**, set in 2019. Against 1500 that is
+   * 92.5 kg of headroom — about 6%, on a record that has moved within living
+   * memory and on a division whose supportive equipment keeps improving. A
+   * mutant window above the grid is invisible (measured), so the headroom is
+   * the whole defence at the top end.
+   *
+   * 2000 kg is 1.42x the standing record. The cost is the grid going 6001 ->
+   * 8001 points, measured at roughly a third more work in a sweep that runs in
+   * about five seconds.
+   *
+   * The lifter is deliberately not named and neither is the federation. GDD
+   * §12.3 refuses a real, named athlete or federation in any string or code
+   * path, and a citation in a comment is a string. The number is a sporting
+   * fact and carries the argument by itself.
    */
-  MAX_KG: 1500,
+  MAX_KG: 2000,
 });
 
 /**
@@ -891,10 +910,10 @@ describe('the domain the numeric probe walks', () => {
     // by multiplication, which drifts off the lattice.
     expect(REAL_TOTAL_RESOLUTION_KG).toBe(0.5);
     expect(REAL_TOTAL_RESOLUTION_KG / PLATE_GRID.STEP_KG).toBe(2);
-    expect(PLATE_GRID_KG.length).toBe(6001);
+    expect(PLATE_GRID_KG.length).toBe(8001);
     expect(PLATE_GRID_KG[0]).toBe(0);
-    expect(PLATE_GRID_KG[PLATE_GRID_KG.length - 1]).toBe(1500);
-    expect(PROBE_TOTALS_KG.length).toBe(6003);
+    expect(PLATE_GRID_KG[PLATE_GRID_KG.length - 1]).toBe(2000);
+    expect(PROBE_TOTALS_KG.length).toBe(8003);
 
     // Every point sits exactly on the lattice, and the widest gap inside the
     // range is one step. Both are walked rather than reasoned about, because
@@ -924,7 +943,7 @@ describe('the domain the numeric probe walks', () => {
     ]);
     expect(widestGapKg).toBe(PLATE_GRID.STEP_KG);
     expect(widestGapKg).toBeLessThanOrEqual(REAL_TOTAL_RESOLUTION_KG);
-    expect(walked).toBe(6001);
+    expect(walked).toBe(8001);
   });
 
   it('contains every total the game actually produces', () => {
@@ -1064,9 +1083,9 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     // below every threshold would send one of them to zero and leave the sweep
     // reading as coverage.
     expect(triples).toBe(PROBE_GATES.length * PROBE_TOTALS_KG.length * GATED_SLOT_COUNT);
-    expect(triples).toBe(1_188_594);
-    expect(expectedEligible).toBe(700_113);
-    expect(expectedRefused).toBe(488_481);
+    expect(triples).toBe(1_584_594);
+    expect(expectedEligible).toBe(954_113);
+    expect(expectedRefused).toBe(630_481);
     expect([...kinds].sort()).toEqual(['below-qualifying-total', 'eligible']);
   });
 
@@ -1102,7 +1121,7 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     }
     expect(faults.slice(0, 5).join('\n')).toBe('');
     expect(faults.length).toBe(0);
-    expect(asked).toBe(1_188_594);
+    expect(asked).toBe(1_584_594);
 
     // Non-vacuity in the other direction: an OPEN tier asks the gate zero
     // times, so "exactly once" above is a property of the gated path rather
@@ -1169,11 +1188,11 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     expect(faults.slice(0, 5).join('\n')).toBe('');
     expect(faults.length).toBe(0);
     expect(selections).toBe(PROBE_GATES.length * PROBE_TOTALS_KG.length);
-    expect(selections).toBe(36_018);
-    expect(entries).toBe(180_090);
+    expect(selections).toBe(48_018);
+    expect(entries).toBe(240_090);
     // Both outcomes really occur, so neither arm above is an empty domain.
-    expect(entered).toBe(104_573);
-    expect(refused).toBe(75_517);
+    expect(entered).toBe(142_573);
+    expect(refused).toBe(97_517);
   });
 
   it('walks the ladder by the gate’s answers alone, across the domain', () => {
@@ -1212,7 +1231,7 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     expect(faults.slice(0, 5).join('\n')).toBe('');
     expect(faults.length).toBe(0);
     expect(readings).toBe(PROBE_GATES.length * OPACITY_SWEEP.CATEGORIES.length * PROBE_TOTALS_KG.length);
-    expect(readings).toBe(72_036);
+    expect(readings).toBe(96_036);
     // Non-vacuity: the sweep really does span the ladder rather than answering
     // `local` six hundred times, which is what a constant-gate-only probe saw.
     expect([...tiersSeen].sort()).toEqual(['local', 'nationals', 'regional', 'worlds']);
@@ -1248,7 +1267,7 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
  * HAVING A DOMAIN, AND NAMED `careerOpaqueTotal.test.ts`. Round four went
  * through that file, so the repair is not the absence of a domain — it is a
  * domain nobody can choose a gap in, which is what the plate-resolution grid is
- * for. A window has to avoid every quarter-kilogram between 0 and 1500 kg, and
+ * for. A window has to avoid every quarter-kilogram between 0 and 2000 kg, and
  * a set of totals with that property holds nothing a bar can be loaded to. The
  * argument, and what it still leaves open, are in this file's header.
  */
@@ -1323,8 +1342,8 @@ function tabulated(
 
 /**
  * WHAT THE COST BOUGHT, so the trade is legible: the total axis went from 50
- * points to 6003, and the dense pass's gate-by-substitute cross went from 30
- * cells to 6. 396,198 pairs are checked in 198,297 observations, because a
+ * points to 8003, and the dense pass's gate-by-substitute cross went from 30
+ * cells to 6. 528,198 pairs are checked in 264,297 observations, because a
  * substituted observation depends on the tabulated gate and the tabulated gate
  * depends on the total through six bits — which is asserted by the two checks
  * above the dense pass rather than assumed.
@@ -1790,8 +1809,8 @@ describe('substituting the total behind a fixed gate changes nothing', () => {
         PROBE_TOTALS_KG.length *
         DENSE_SUBSTITUTION.SUBSTITUTES_KG.length,
     );
-    expect(pairs).toBe(396_198);
-    expect(observations).toBe(198_297);
+    expect(pairs).toBe(528_198);
+    expect(observations).toBe(264_297);
     expect(substituted.size).toBe(198);
 
     // The non-vacuity guard, dense this time. A subject whose observation is
