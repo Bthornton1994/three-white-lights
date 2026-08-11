@@ -733,9 +733,19 @@ made the number agree with a proxy that cannot tell `NO SET OF ROWS CAN CLOSE
 IT` from `NO SET OF ROWS CANNOT BE ESCAPED`, and the two paragraphs at issue
 are method notes rather than guarantees — the same limit-not-guarantee
 asymmetry that has now shown up in six of seven rounds of that constant's own
-history. The undercount is exactly one, it is written down at the site, and a
-declared undercount against a known-imperfect proxy is worth more than an
-accurate count that implies the proxy is sound.
+history. A declared undercount against a known-imperfect proxy is worth more
+than an accurate count that implies the proxy is sound.
+
+**The undercount is now TWO, and this sentence used to say "exactly one".** A
+later round hit the same pin with *"this is the one instrument here that checks
+the answer is right"*, measured the capitalised form at `expected 226 to be
+225`, wrote it in lower case and disclosed the swap at the site — the same
+ruling applied consistently, by a builder that had read this paragraph. Both are
+named where they sit. The number is corrected here rather than the sentence
+being deleted, because a running count in a document that says confident
+sentences go stale is exactly the kind of sentence that goes stale, and the
+correction is worth more than the tidiness. **Whoever adds a third should update
+this number too, or say why the paragraph is a guarantee and take the bump.**
 
 ## Subagent Roles
 
