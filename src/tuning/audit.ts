@@ -1068,12 +1068,40 @@ export function onlyComments(source: string): string {
  * split points must equal the number of line-anchored declarations counted with
  * a pattern that sees every form. Found live once, in `streak.test.ts`, where a
  * comment reading "armed against it (§5" truncated a real body.
+ *
+ * THE SPURIOUS HALF IS NOW CLOSED RATHER THAN ONLY REPORTED, and the reason it
+ * had to be is that one file could not be fixed at the call site.
+ * `guaranteeTags.test.ts` holds a mutation witness whose verbatim anchor is the
+ * declaration line of a test in another file, so a string in it necessarily
+ * contains the declaration sequence — rewording it would falsify the witness.
+ * That file measured 15 split points against 9 declarations and could not be
+ * censused at all, which meant a witness could not name it as the file its red
+ * assertion lives in. So the split points are taken over `codeOnly`, with
+ * strings and comments blanked and every offset preserved. A declaration is
+ * code, so this loses nothing; a mention of one in prose is not.
+ *
+ * THE MISSING HALF IS UNCHANGED AND IS STILL ONLY REPORTED. `it.each(`,
+ * `it.skip(` and `it.only(` are still invisible to the pattern, still merge two
+ * bodies, and are still what the census is for. Closing one direction is not
+ * closing the other, and the direction left open is the one that fails open.
  */
 
-/** Where the scoper starts each test body in `text`. */
+/**
+ * Where the scoper starts each test body in `text`.
+ *
+ * Memoised because both ledgers slice the same handful of large test files
+ * repeatedly and `codeOnly` walks the source character by character. The map is
+ * keyed by the exact text, so it cannot return a stale answer for an edited
+ * file — a different string is a different key.
+ */
+const TEST_BODY_STARTS = new Map<string, readonly number[]>();
+
 function testBodyStarts(text: string): readonly number[] {
+  const memo = TEST_BODY_STARTS.get(text);
+  if (memo !== undefined) return memo;
   const starts: number[] = [];
-  for (const match of text.matchAll(/\bit\s*\(/g)) starts.push(match.index ?? 0);
+  for (const match of codeOnly(text).matchAll(/\bit\s*\(/g)) starts.push(match.index ?? 0);
+  TEST_BODY_STARTS.set(text, starts);
   return starts;
 }
 
