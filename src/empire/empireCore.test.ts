@@ -2759,7 +2759,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // making the pin below a comparison of two empty lists.
     expect(singleQuoted.size).toBe(159);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(136);
+    expect(templateChunks.size).toBe(137);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -2902,7 +2902,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(295);
+    expect(stringsChecked).toBe(296);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
