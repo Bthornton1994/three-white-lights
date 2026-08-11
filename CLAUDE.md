@@ -711,6 +711,32 @@ and Session B will route the next one that way.** The judgement was that a
 one-number census update is data; the judgement could be wrong, and it is
 cheaper to disagree about it in this file than to discover it in a merge.
 
+**AND THE NEXT ROUND DECLINED TO TAKE THE SAME CROSSING, WHICH IS WORTH MORE
+THAN THE PIN.** The `src/career/` opacity builder hit the identical pin twice
+and both times rewrote its own prose instead — once turning `RATHER THAN ONLY
+ON THIS CORPUS` into `NOT JUST ON THIS CORPUS`. It disclosed that at the site,
+named it as the evasion this file warns about, and said bumping was the better
+trade but out of scope for a builder. The disclosure was right; the conclusion
+is being overruled here, and not in the direction the precedent points.
+
+**The census's blind spot is sharper than this document has been recording
+it.** CLAUDE.md already says a *lower-case* guarantee walks past the scan, and
+calls catching one luck. What these two rephrasings show is stronger: the
+sentence stayed **fully capitalised, in the same place, making the same claim
+at the same volume** — and became invisible because one word was swapped for a
+synonym off a four-word list. The scan is not measuring "is this a load-bearing
+sentence"; it is measuring "does this sentence use one of four words". Those
+come apart under a thesaurus, without anyone intending an evasion.
+
+So the pin is **left at 225** and no crossing was taken. Bumping it would have
+made the number agree with a proxy that cannot tell `NO SET OF ROWS CAN CLOSE
+IT` from `NO SET OF ROWS CANNOT BE ESCAPED`, and the two paragraphs at issue
+are method notes rather than guarantees — the same limit-not-guarantee
+asymmetry that has now shown up in six of seven rounds of that constant's own
+history. The undercount is exactly one, it is written down at the site, and a
+declared undercount against a known-imperfect proxy is worth more than an
+accurate count that implies the proxy is sound.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise
