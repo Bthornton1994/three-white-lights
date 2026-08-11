@@ -665,15 +665,58 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // reading collapses into the free-anchor one and reports the residue it was
     // written to explain — which is what says the zero beside it is a fact
     // about the decision moment rather than a comparison of identical runs.
+    //
+    // RE-TAKEN, because the line this pinned no longer exists: the day loop
+    // reads `spendsOn` once for the day's first AND last attended check-in now
+    // that `EMPIRE_DAY_SPENDING_ANCHORS` has more than one anchor in it. The
+    // witness expired exactly as the schema intends, the mutant was re-run
+    // against the current source, and this is the new anchor and the new
+    // message. The count did not move: the check is taken at the
+    // `'last-attended-check-in'` control anchor, which is where it was measured.
     guarantee: 'the-day-granularity-residue-is-the-decision-moment',
     mutatedFile: 'src/empire/engagement.ts',
     mutated:
-      '      if (spendsOn.attended[day * policy.checkInsPerDay + tick] === true) lastAttendedTick = tick;',
+      '      if (spendsOn.attended[day * policy.checkInsPerDay + tick] !== true) continue;',
     testFile: 'src/empire/engagement.test.ts',
     redAssertion: 'expect(heldAnchorViolating).toBe(0);',
     observed:
       'holds the decision moment and the other arm goes to zero too\n' +
       'AssertionError: expected 6459 to be +0 // Object.is equality',
+  },
+  // -------------------------------------------------------------------------
+  // GDD §5 — the day anchor, which is the half of "spends once a calendar day"
+  // that was never written down and was carrying the whole residue.
+  //
+  // TWO MUTANTS FOR TWO CLAIMS, because "which check-in" and "how many times"
+  // are different sentences and a mutant on one witnesses nothing about the
+  // other. The second is the one that shows the pair are not the same claim:
+  // opening every purse at every check-in leaves the anchor table at 0 —
+  // measured, the day policy then behaves like the per-check-in one — and only
+  // the census check reddens.
+  {
+    guarantee: 'the-day-shops-purse-by-purse',
+    mutatedFile: 'src/empire/empireInvariant.ts',
+    mutated:
+      '  return Object.freeze(EMPIRE_BOOKS.filter((book) => !spentToday.includes(book)));',
+    testFile: 'src/empire/engagement.test.ts',
+    redAssertion:
+      'expect(tally.violatingPairs, anchor).toBe(MEASURED_ANCHOR.WINDOWED[anchor].violatingPairs);',
+    observed:
+      'pins every day anchor on the shipped wiring, and only one of the four is zero\n' +
+      'AssertionError: first-affordable-check-in-per-purse: expected 31 to be +0' +
+      ' // Object.is equality',
+  },
+  {
+    guarantee: 'a-purse-shops-once-a-calendar-day',
+    mutatedFile: 'src/empire/engagement.ts',
+    mutated: '            booksUnspentToday(spentBooksToday),',
+    testFile: 'src/empire/engagement.test.ts',
+    redAssertion: "expect(engagementRunFaults(run).join(' | '), spending).toBe('');",
+    observed:
+      'reports what each policy actually bought, so no tally is a zero about nothing\n' +
+      "AssertionError: spend-once-per-calendar-day: expected 'a purse bought twice in one calendar …'" +
+      " to be '' // Object.is equality\n" +
+      '+ a purse bought twice in one calendar day 4 times',
   },
   {
     // GDD §5 — the first `src/empire/**` entry in this table, which until now

@@ -643,7 +643,20 @@ export function isDaySpendingMoment(
   );
 }
 
-/** The purses a per-purse day still has to spend, given what it has spent. */
+/**
+ * The purses a per-purse day still has to spend, given what it has spent.
+ *
+ * THE DAY IS SPENT PURSE BY PURSE AND NOT ALL AT ONCE, and the difference is
+ * the whole of this anchor rather than a refinement of it. Closing every purse
+ * on the first purchase any one of them makes is a runnable anchor of its own —
+ * `'first-affordable-check-in'` — and it measures 31 violating pairs on the
+ * window `engagement.test.ts` enumerates, against 0 here. The shape behind
+ * those 31, traced rather than argued: the extra check-in becomes the day's
+ * earliest, the gym shops there, the roster purse cannot yet afford its next
+ * lifter, and the day is over for it because some OTHER purse could afford its
+ * rung.
+ * `@guarantee the-day-shops-purse-by-purse`
+ */
 export function booksUnspentToday(spentToday: readonly EmpireBook[]): readonly EmpireBook[] {
   return Object.freeze(EMPIRE_BOOKS.filter((book) => !spentToday.includes(book)));
 }

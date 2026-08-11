@@ -2008,16 +2008,28 @@ describe('the spending policy is the second independent variable, and it is swep
     expect([spaceOne, spotterOne, coachOne, equipmentOne]).toEqual([800, 1000, 1200, 1500]);
   });
 
-  it('reports what each policy actually bought, so no tally is a zero about nothing', () => {
+  it('reports what each policy actually bought, so no tally is a zero about nothing [a-purse-shops-once-a-calendar-day]', () => {
     const days = ENGAGEMENT_SWEEP.WINDOW_HORIZON_DAYS;
     const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
     const history = fullAttendance(days, cadence);
     let policiesRun = 0;
     for (const spending of EMPIRE_SPENDING_POLICIES) {
       const run = runFor(days, history, 'shipped', ENGAGEMENT_SWEEP.AXIS_ORDER, cadence, spending);
-      expect(engagementRunFaults(run), spending).toEqual([]);
+      // Joined rather than compared as an array, so a fault fails with its own
+      // sentence instead of `[ Array(1) ] to deeply equal []`.
+      expect(engagementRunFaults(run).join(' | '), spending).toBe('');
       expect(run.spending).toBe(spending);
       expect(run.census.checkIns).toBe(days * cadence);
+      // THE DAY-GRANULARITY RULE FIRST, read off the run rather than off its
+      // own parameter: no purse bought twice in one calendar day, and the
+      // per-check-in policies did — so this zero is a zero against a number the
+      // same census reports, and a mutant fails with two integers and a policy
+      // name rather than with two elided objects.
+      if (spending === 'spend-once-per-calendar-day') {
+        expect(run.census.repeatPurseSpends, spending).toBe(0);
+      } else {
+        expect(run.census.repeatPurseSpends, spending).toBeGreaterThan(0);
+      }
       expect(
         {
           purchaseCheckIns: run.census.purchaseCheckIns,
@@ -2029,15 +2041,6 @@ describe('the spending policy is the second independent variable, and it is swep
         },
         spending,
       ).toEqual(MEASURED_POLICY.FULL_ATTENDANCE_CENSUS[spending]);
-      // The day-granularity rule, read off the run rather than off its own
-      // parameter: no purse bought twice in one calendar day, and the
-      // per-check-in policies did — so the zero above is a zero against a
-      // number this same census reports.
-      if (spending === 'spend-once-per-calendar-day') {
-        expect(run.census.repeatPurseSpends, spending).toBe(0);
-      } else {
-        expect(run.census.repeatPurseSpends, spending).toBeGreaterThan(0);
-      }
       policiesRun += 1;
     }
     expect(policiesRun).toBe(EMPIRE_SPENDING_POLICIES.length);
@@ -2418,7 +2421,7 @@ describe('the spending policy is the second independent variable, and it is swep
   // The day ANCHOR is the third independent variable, and it is swept too
   // -------------------------------------------------------------------------
 
-  it('pins every day anchor on the shipped wiring, and only one of the four is zero', () => {
+  it('pins every day anchor on the shipped wiring, and only one of the four is zero [the-day-shops-purse-by-purse]', () => {
     // THE MEASUREMENT THAT CHOSE THE SPECIFICATION. "Spends once a calendar
     // day" does not say which check-in, and the unstated half was carrying the
     // whole residue. Four readings, one domain, one comparator, one parameter
@@ -2427,6 +2430,9 @@ describe('the spending policy is the second independent variable, and it is swep
     const violating: Record<string, number> = {};
     for (const anchor of EMPIRE_DAY_SPENDING_ANCHORS) {
       const tally = anchorWindowed(anchor);
+      // The scalar first, so a mutant fails with two integers and the anchor's
+      // name rather than with two elided sixteen-field objects.
+      expect(tally.violatingPairs, anchor).toBe(MEASURED_ANCHOR.WINDOWED[anchor].violatingPairs);
       expect(tally, anchor).toEqual(MEASURED_ANCHOR.WINDOWED[anchor]);
       // NON-VACUITY PER ARM, in counts rather than bounds: every anchor was run
       // over the whole window, every one of them moved the ledger, and every

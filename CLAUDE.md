@@ -198,7 +198,8 @@ defect fixes against absolute constraints rather than new scope:
    an illustration of the tag mechanism's blind spot.
 2. **The 5 violating pairs in NPC recruit-tier selection.** See the ruling below.
 3. **The 7240 pairs under `spend-once-per-calendar-day`**, which that ruling puts
-   in scope rather than setting aside.
+   in scope rather than setting aside. **Done — 6459 after the promotion repair,
+   0 after the day anchor was written down. See the ruling below.**
 
 Session B keeps §5 otherwise. This is a repair pass on measured breaches, and it
 ends when they are repaired.
@@ -290,6 +291,39 @@ That is the shape this file asks for whenever a cause is attributed to the
 harness rather than to the game: vary the one thing you are blaming, hold
 everything else, and pin both the zero and a non-vacuity count beside it. The
 promotion repair independently took this arm from 7240 to 6459.
+
+**AND THE DIAGNOSIS WAS NOT THE FIX. THE 6459 ARE CLOSED, AND WHAT WAS WRONG WAS
+THE SPECIFICATION.** Recorded here because the shape generalises past §5: the
+counterfactual above proved the residue lived in the decision moment, and a
+decision moment is a thing this repository WRITES. "Spends once a calendar day"
+never said which check-in of the day, and that unstated half was anti-monotone
+in engagement **by construction** — adding a check-in can only move the day's
+LAST one later, money accrues on the wall clock, and a purchase converts money
+into a wall-clock timer, so the extra check-in's only effect was to defer.
+
+`EMPIRE_DAY_SPENDING_ANCHORS` writes the half down, and the four readings of it
+measure 0 / 31 / 1951 / 6459 on the same 24576-pair window. One ships and three
+are runnable controls. Three things about it are worth keeping:
+
+- **Moving the anchor earlier is the obvious next guess and it is worse.** At the
+  day's first ATTENDED check-in the gym shops with less money and commits to a
+  rung it would have skipped: 1951 pairs at a worst deficit of 0.263 IQ/day,
+  twenty-six times the deferring anchor's. Violations in the other direction are
+  real and were measured rather than reasoned past.
+- **The last 31 were one purse closing every purse's day**, traced to a roster
+  purse holding 460 Gym Bucks against a 500 lifter while another purse could
+  afford its rung. The shipped anchor is per PURSE, which is the grain GDD
+  §5.4's third-book ruling had already chosen for the money — the anchor was
+  declared at a coarser grain than the thing it anchors, and that was the defect.
+- **The anchor alone is not the safety property.** Under the single-purse control
+  all four anchors are non-zero, 2887 to 3908. Purses and anchor are one repair
+  in two parts, and the control column is what says so.
+
+`spend-once-per-calendar-day` is 0 on every domain the file measures now, so
+this loop's "all six policies" is six of six rather than five. The old anchor
+stays runnable and pinned at 6459, labelled a control for "a player who defers",
+because two claims about §5.3's roster were measured on it and belong where they
+were taken.
 
 #### RULED BY SESSION A: GRANTED — and it does NOT close the case that prompted it
 

@@ -1643,12 +1643,14 @@ one domain — 2954 / 2751 / 3427 rotating, fixed-order and costliest-first;
 domain measured: the 24576-pair window, a 114688-pair enumerated grid, seeded
 20/40/60/100-day sweeps, and the extra-trained-day comparison. The single-purse
 engine is kept runnable beside them and pinned at its 2954, so the zeros are
-zeros against something.
+zeros against something. (Spending once a day took a second ruling of its own —
+the anchor below — and is 0 on all six now.)
 
-*What the split does not fix, and what turned out to be a different defect
+*What the split does not fix, and what turned out to be TWO different defects
 entirely.* Spending once per calendar day measured **7245** after the third-book
 ruling, split **7240** where an extra check-in moved the day's *decision moment*
-and **5** where it did not.
+and **5** where it did not. The 5 were §5.3's roster; the rest were the
+specification of the policy itself, and both are repaired below.
 
 **The 5 were §5.3's, and the diagnosis this document carried for several waves
 was wrong — RULED and repaired.** It said they were the recruit price ladder:
@@ -1689,13 +1691,66 @@ the repair and kept runnable beside it:
 | extra check-in moves the day's decision moment (8064 pairs) | 7240 | **6459** |
 | extra check-in does not (16512 pairs) | 5 | **0** |
 
-*And the 6459 are the simulated player's decision moment, proved rather than
+*And the 6459 were the simulated player's decision moment, proved rather than
 asserted.* The counterfactual varies the decision rule and nothing else: the
 extra check-in is still taken — it collects, it accrues into every purse, it
 earns reputation — but the day's spending anchor is held at the less-engaged
-player's own. All 24576 pairs give **0** violating while 4632 of the 8064 still
+player's own. All 24576 pairs give **0** violating while 7263 of the 8064 still
 *move*. Same engine, same money, same schedule; the only thing removed is the
 extra check-in's power to defer that day's purchase.
+
+**AND THAT WAS THE DIAGNOSIS, NOT THE FIX — RULED AND REPAIRED. A specification
+that is anti-monotone in engagement by construction is a §12.3 breach however
+honestly its count is pinned.** "Spends once a calendar day" never said WHICH
+check-in of the day, and the unstated half was carrying all 6459. Written down
+as `EMPIRE_DAY_SPENDING_ANCHORS`, the readings of that sentence measure, on the
+identical 24576-pair window and the shipped engine:
+
+| day anchor | shipped | single purse |
+|---|---|---|
+| **first affordable check-in, per purse** — shipped | **0** | 2887 |
+| first affordable check-in, one trip for the whole gym | 31 | 2878 |
+| first attended check-in | 1951 | 3104 |
+| last attended check-in — the old specification | 6459 | 3908 |
+
+*Why the old one could not be zero, and it is structural rather than a tuning
+accident.* Adding a check-in can only move the day's **last** one later or leave
+it. Money accrues on the wall clock and a purchase converts money into a
+wall-clock timer, so a later purchase starts a later build and finishes later.
+The extra check-in's only effect on the decision was to defer it.
+
+*Why moving the anchor earlier is not enough on its own, measured because it is
+the obvious next guess and it is wrong.* At the first **attended** check-in the
+gym shops with less money accrued and commits to a rung it would otherwise have
+skipped, or to nothing at all: **1951** violating pairs at a worst deficit of
+0.263 IQ/day, twenty-six times the deferring anchor's worst deficit. Offering
+the trip again when it could buy nothing repairs that and reaches **31**. All 31
+are one shape: the extra check-in becomes the day's earliest, the gym shops
+there, the roster purse holds 460 Gym Bucks against a 500 `novice` and buys
+nothing, and the day is over for it because some *other* purse could afford its
+rung. **One purse's affordability closed every purse's day.**
+
+*What ships is the same sentence at the grain the third-book ruling already
+chose.* Each purse buys at most once a calendar day, at the first check-in of
+that day it can afford its next rung; a purse that can afford nothing waits.
+Adding a check-in can only make a purse's first affordable moment **earlier** or
+leave it, because money and reputation accrue on the wall clock and a check-in
+only reads them sooner — so the day a rung lands is monotone in attendance,
+purse by purse. **0** violating pairs on every domain measured: the 24576-pair
+window, the same window moved to day 4, every calendar of a coarse grid
+enumerated whole (114688 pairs), seeded 20 / 40 / 60 / 100-day sweeps, and the
+whole-day reading.
+
+*The anchor is not what makes the engine safe on its own, and the right-hand
+column above is the measurement of that rather than a claim.* Under one pooled
+wall-clock balance every one of the four anchors is non-zero, 2887 to 3908. The
+purses removed the residue and the anchor is what makes them reachable in order;
+either alone is a violating engine.
+
+*And §5.3's promotion path is load-bearing at the new anchor too*, which is
+worth writing down because a respecification can quietly remove a repair's
+subject. `'one-way-door'` — a filled slot filled forever — is **824** violating
+pairs of 24576 at the shipped anchor, against the 5 the ruling was taken on.
 
 *An unplayed balance consequence.* A gym that can move a filled slot up reaches a
 larger roster subtotal sooner, so `TRAINING_IQ_DAILY_CEILING` binds on 1573 days

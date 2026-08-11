@@ -416,11 +416,13 @@ export interface EngagementCensus {
    * Times a purse bought twice on one calendar day.
    *
    * The arithmetic shadow of "each purse shops once a day", and the only place
-   * the per-purse anchor's own rule is visible from outside the loop. Non-zero
-   * by construction for the per-check-in policies, which is why
-   * `engagementRunFaults` reads it only for a day-granularity run — the number
-   * is reported for every run so a reader can see the two families differ
-   * rather than take it on trust.
+   * the per-purse anchor's own rule is visible from outside the loop. NO PURSE
+   * BUYS TWICE IN A CALENDAR DAY under a day-granularity policy, at any anchor,
+   * and `engagementRunFaults` refuses a run where one did. Non-zero by
+   * construction for the per-check-in policies, which is why the fault reads it
+   * only for a day-granularity run — the number is reported for every run so a
+   * reader can see the two families differ rather than take it on trust.
+   * `@guarantee a-purse-shops-once-a-calendar-day`
    */
   readonly repeatPurseSpends: number;
   readonly recruits: number;
