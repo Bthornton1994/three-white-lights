@@ -59,6 +59,7 @@ import { auditSource, formatFindings } from '../tuning/audit';
 import {
   EMPIRE_FORBIDDEN_OUTPUTS,
   EMPIRE_OUTPUTS,
+  WALL_CLOCK_FUNDED_OUTPUTS,
   asGymBucks,
   asReputation,
   createEmpireClock,
@@ -70,7 +71,10 @@ import {
   type EmpireClock,
   type EmpireOutput,
   type EmpireState,
+  type GymBucks,
   type NpcLifter,
+  type WallClockBooks,
+  type WallClockFundedOutput,
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
 import { axisOutput, axisReputationRule, EXPANSION_AXES } from './expansion';
@@ -161,9 +165,28 @@ function roster(size: number, joinedAt = 0): readonly NpcLifter[] {
   return lifters;
 }
 
+/** Every wall-clock purse at one balance, the way `recruitment.test.ts` builds them. */
+function booksAt(balance: number): WallClockBooks {
+  const books: Partial<Record<WallClockFundedOutput, GymBucks>> = {};
+  for (const output of WALL_CLOCK_FUNDED_OUTPUTS) books[output] = asGymBucks(balance);
+  return Object.freeze(books as Record<WallClockFundedOutput, GymBucks>);
+}
+
 interface GymOptions {
   readonly reputation?: number;
+  /** The ACCELERATED book. What the sponsor line is paid into. */
   readonly gymBucks?: number;
+  /**
+   * Every wall-clock purse, which is what a recruit is actually bought with.
+   *
+   * Separate from `gymBucks`, and it defaults to nothing rather than to it. The
+   * fixture used to write `settledGymBucks: asGymBucks(options.gymBucks ?? 0)`
+   * — a field `EmpireState` has not had since GDD §5.4's third-book ruling — so
+   * `options.gymBucks` was being routed into a property nothing reads, and the
+   * gym the "leaves the recruitment gate refusing a RICH gym" check below calls
+   * rich was broke in the only purse `recruitmentRefusals` looks at.
+   */
+  readonly settledBookBalance?: number;
   readonly roster?: readonly NpcLifter[];
   readonly elapsedSeconds?: number;
   readonly skippedSeconds?: number;
@@ -176,7 +199,7 @@ function gym(options: GymOptions = {}): EmpireState {
     clock: createEmpireClock(options.elapsedSeconds ?? 0, options.skippedSeconds ?? 0),
     reputation: asReputation(options.reputation ?? 0),
     gymBucks: asGymBucks(options.gymBucks ?? 0),
-    settledGymBucks: asGymBucks(options.gymBucks ?? 0),
+    settledBooks: booksAt(options.settledBookBalance ?? 0),
     roster: options.roster ?? base.roster,
   });
 }
@@ -735,6 +758,15 @@ describe('no amount of currency opens a tier', () => {
     // The claim where it actually bites: `recruitment.ts`'s own refusal list.
     // Reddening edit: make `recruitmentRefusals` compare a purse-adjusted
     // reputation against the threshold.
+    //
+    // The purse is put in BOTH books, and that is the correction this check
+    // needed. It used to fund `gymBucks` alone, which `recruitmentRefusals` does
+    // not read — a recruit is bought out of `settledBooks`, since it pays
+    // Training IQ — so "rich" described a gym with nothing in the only purse the
+    // subject looks at, and the check would have passed against a gate that read
+    // the wall-clock balance as well as the reputation. `richestPurse` below is
+    // what says the money is real: at the top purse the funds refusal is gone
+    // and the reputation refusal is the only one left.
     let checked = 0;
     let refused = 0;
     for (const tier of EMPIRE_TUNING.NPC_TIERS) {
@@ -744,6 +776,7 @@ describe('no amount of currency opens a tier', () => {
         const state = gym({
           reputation: threshold - 1,
           gymBucks: purse,
+          settledBookBalance: purse,
           roster: [],
         });
         if (recruitmentRefusals(state, tier).includes('reputation-below-threshold')) refused += 1;
@@ -752,6 +785,24 @@ describe('no amount of currency opens a tier', () => {
     }
     expect(checked).toBe(24);
     expect(refused).toBe(checked);
+    // The money is live: at the richest purse in the sweep the only refusal
+    // left on every gated tier is the reputation one. Without this line the
+    // count above is a count over gyms that were refused for their empty
+    // wallet and happened to be refused for their reputation too.
+    const richestPurse = Math.max(...REPUTATION_SWEEP.PURSES);
+    let onlyReputationRefused = 0;
+    for (const tier of EMPIRE_TUNING.NPC_TIERS) {
+      const threshold = recruitReputationThreshold(tier);
+      if (threshold === 0) continue;
+      const rich = gym({
+        reputation: threshold - 1,
+        settledBookBalance: richestPurse,
+        roster: [],
+      });
+      expect([...recruitmentRefusals(rich, tier)]).toEqual(['reputation-below-threshold']);
+      onlyReputationRefused += 1;
+    }
+    expect(onlyReputationRefused).toBe(4);
     // And the refusal does clear on reputation alone, at the same purses — so
     // the count above is about the gate rather than about a list that always
     // holds that string.

@@ -39,9 +39,19 @@
  * purchasable. It is narrower than it was — the sponsor line is paid into the
  * accelerated book, and the physio ladder is not bought out of that book any
  * more — but the check-in still pays reputation, and reputation still gates a
- * recruit. What this file does NOT measure is the chain against a lifter who
- * TRAINS more, at every horizon, which is a sweep with a different independent
- * variable. That obligation is still outstanding and is stated as one.
+ * recruit. What this file does not measure is the chain against a gym that
+ * CHECKS IN more or a lifter who TRAINS more, at every horizon, because that is
+ * a sweep with a different independent variable.
+ *
+ * That obligation is discharged, and by another file rather than by this one:
+ * `engagement.ts` and `engagement.test.ts` hold the check-in schedule as the
+ * variable and apply no accelerant. Their shipped reading is 0 violating pairs
+ * of 24576 on every calendar of a window of check-in slots, and the zero has
+ * chain A re-connected beside it — the `'accelerated-purse'` wiring, this
+ * directory as it stood before GDD §5.4's two-books ruling, pinned at 263 pairs
+ * where checking in more moved the physio arrival a day LATER. Read that file
+ * before concluding anything from this one about engagement: a green run here
+ * is evidence about a purchase and about nothing else.
  *
  * Chain B — purchasable, found and measured by piece E4, closed in
  * `empireCore.ts` and `reputation.ts` rather than here. A skip lengthened the
@@ -220,6 +230,15 @@
  * — that is `empireCore.ts`'s first reading doing its job inside this loop
  * rather than a rule restated here.
  *
+ * Only the first mechanism leaves a record on `EmpireState.accelerants`, and
+ * the asymmetry is deliberate rather than an oversight: a build skip names the
+ * OUTPUT it was aimed at, which is what `mayAccelerate` takes, while a clock
+ * skip advances the whole idle clock and names nothing. Inventing an output for
+ * the second would be a pairing the type system never checked, dressed as one
+ * it had. `empireRunFaults` therefore re-asks the licence about the recorded
+ * ones and pins the recorded count against `EmpireRunCensus.buildSkips`; the
+ * clock arm is covered by `clockSkips` and by the adding-up check above.
+ *
  * ===========================================================================
  * 7. What is deliberately not here
  * ===========================================================================
@@ -322,7 +341,15 @@ const OWN_GYM_ID = 'composed-gym';
 export const NO_ACCELERANT: null = null;
 
 /**
- * Which books a composed run funds its progression-reaching purchases from.
+ * The FUNDING RULE a composed run is wired with — which books it buys its
+ * progression-reaching rungs out of.
+ *
+ * One of two things "funding" used to mean in this directory, and the other has
+ * been renamed: `expansion.ts`'s `axisClockFamily` (was `axisFunding`) answers
+ * "which clock is this rung read on", a per-axis fact about the shipped engine.
+ * This answers "which of three wirings is this whole run under", a sweep
+ * parameter with two of its three values shipped by nothing. They met in the
+ * same spending loop under one word.
  *
  * `'wall-clock-earned'` is the shipped rule: the closure §3 of the header
  * describes, with GDD §5.4's third-book ruling on top of it, so each
@@ -397,10 +424,11 @@ export interface EmpirePolicy {
  * that could drift from it.
  *
  *   - `'rotate-greedy-per-check-in'` — the shipped model. Every check-in is a
- *     spending moment, and each funding family is offered
- *     `EmpirePolicy.axisOrder` rotated by `EmpireGym.nextAxis`, which advances
- *     one step per spending moment. Greedy: the first rung that the verdict
- *     allows takes the money.
+ *     spending moment, and each PURSE is offered `EmpirePolicy.axisOrder`
+ *     rotated by `EmpireGym.nextAxis`, which advances one step per spending
+ *     moment. Greedy: the first rung that the verdict allows takes the money.
+ *     (One offer per purse, not one per clock family — that is GDD §5.4's
+ *     third-book ruling, and this sentence described the engine before it.)
  *   - `'fixed-order-no-rotation'` — the same greedy spend at the same moments,
  *     against a priority that does not move with the check-in count. This is
  *     the rotation PHASE removed and nothing else.
@@ -545,7 +573,7 @@ function offeredCost(context: ExpansionContext, axis: ExpansionAxis): number | n
  * The axes bought out of one PURSE, in the order this moment's policy wants
  * them tried. The caller stops at the first one that starts.
  *
- * The unit is the purse rather than the funding family, and that is GDD §5.4's
+ * The unit is the purse rather than the clock family, and that is GDD §5.4's
  * third-book ruling reaching the spending loop. While every wall-clock ladder
  * shared one balance they also shared one slot per check-in, so which of them
  * took it was a second thing the check-in schedule decided — the money was
@@ -568,12 +596,12 @@ export function axisSpendingOrder(
   const length = order.length;
   if (length === 0) return Object.freeze([]);
   const offset = rotatesAtMoment(moment) ? nextAxis : 0;
-  const inFamily: ExpansionAxis[] = [];
+  const inPurse: ExpansionAxis[] = [];
   for (let step = 0; step < length; step += 1) {
     const axis = order[(offset + step) % length];
     if (axis === undefined) continue;
     if (offeredBookOf(axis, funding) !== book) continue;
-    inFamily.push(axis);
+    inPurse.push(axis);
   }
 
   if (
@@ -585,12 +613,12 @@ export function axisSpendingOrder(
     // leave by. Under the shipped funding that is the physio purse alone and
     // this offers the physio rung; under a control the whole wall-clock side is
     // one balance, so a purse that holds no physio ladder offers nothing at all.
-    return Object.freeze(inFamily.includes(PHYSIO_AXIS) ? [PHYSIO_AXIS] : []);
+    return Object.freeze(inPurse.includes(PHYSIO_AXIS) ? [PHYSIO_AXIS] : []);
   }
 
   const cheapestFirst = moment.policy === 'cheapest-affordable-first';
   if (cheapestFirst || moment.policy === 'costliest-affordable-first') {
-    const priced = inFamily.map((axis, index) =>
+    const priced = inPurse.map((axis, index) =>
       Object.freeze({ axis, index, cost: offeredCost(context, axis) }),
     );
     const sorted = [...priced].sort((left, right) => {
@@ -609,7 +637,7 @@ export function axisSpendingOrder(
     return Object.freeze(sorted.map((row) => row.axis));
   }
 
-  return Object.freeze(inFamily);
+  return Object.freeze(inPurse);
 }
 
 /**
@@ -727,7 +755,7 @@ export interface EmpireRunCensus {
    * it and no recruit is priced in it — but the purse is DERIVED from
    * `WALL_CLOCK_FUNDED_OUTPUTS` rather than special-cased, and a derivation
    * nobody checks is a claim. A later §5.4 axis that fed `'reputation'` would
-   * need exactly this purse; until one exists the fund must stay untouched, and
+   * need exactly this purse; until one exists the purse must stay untouched, and
    * the row beside it must not, or the counter is measuring nothing.
    */
   readonly bookDebits: Readonly<Record<WallClockFundedOutput, number>>;
@@ -920,7 +948,7 @@ function bestRecruitableTier(state: EmpireState): NpcTier | null {
  *
  * Under the shipped rule it is the gym's own state. Under the control the
  * wall-clock book and the wall-clock axis view are replaced by the accelerated
- * ones, so every consumer that reads `settledGymBucks` or `settledAxes` — the
+ * ones, so every consumer that reads `settledBooks` or `settledAxes` — the
  * expansion verdict and the recruitment verdict alike — takes its decision
  * against money and slots a purchase moved. One substitution covers both
  * consumers, which is the point: a control written per consumer is two
@@ -1025,6 +1053,13 @@ export function stepGym(
   let buildSkips = gym.buildSkips;
   let clockSkips = gym.clockSkips;
   let skippedSeconds = gym.skippedSeconds;
+  // What the build-skip arm below records on the gym. `EmpireState.accelerants`
+  // was seeded empty by `createEmpireState` and written by nothing, so
+  // `empireRunFaults`' §8.1 re-check walked zero elements on every run it has
+  // ever taken — the empty-domain shape CLAUDE.md names. The grant is already
+  // constructed here as a checked pairing; keeping it is what gives that check
+  // a subject.
+  let applied: AppliedAccelerant | null = null;
   if (accelerant !== NO_ACCELERANT && grantSeconds > 0) {
     // The licence is asked about the real accelerant, through `mayAccelerate`.
     // There is no stand-in for a missing one — this arm is the only place a
@@ -1039,14 +1074,15 @@ export function stepGym(
           mayAccelerate(accelerant, axisOutput(build.axis)),
       ) ?? null;
     if (skippable !== null) {
-      const applied = applyPurchasableGrant(
+      const grant = applyPurchasableGrant(
         accelerant,
         axisOutput(skippable.axis) as IdleOnlyOutput,
         at,
         grantSeconds,
       );
-      builds = gym.builds.map((build) => (build === skippable ? skipExpansion(build, applied) : build));
+      builds = gym.builds.map((build) => (build === skippable ? skipExpansion(build, grant) : build));
       buildSkips += 1;
+      applied = grant;
     } else {
       skippedSeconds += grantSeconds;
       clockSkips += 1;
@@ -1062,6 +1098,10 @@ export function stepGym(
     clock,
     axes: idleAxesAt(builds, clock.accelerated),
     settledAxes: settledAxesAt(builds, clock.unaccelerated),
+    accelerants:
+      applied === null
+        ? gym.state.accelerants
+        : Object.freeze([...gym.state.accelerants, applied]),
   });
   const stillPending: PendingRecruit[] = [];
   let recruits = gym.recruits;
@@ -1101,7 +1141,7 @@ export function stepGym(
   });
 
   // 4. Spend on the axes, rotating so no axis starves. Every PURSE is offered a
-  //    slot of its own rather than every funding family: if two ladders
+  //    slot of its own rather than every clock family: if two ladders
   //    competed for a single slot, whether an equipment rung took it would
   //    depend on the accelerated book, and the day a wall-clock-funded rung
   //    starts would be back under the purchase through the competition rather
@@ -1592,10 +1632,28 @@ export function empireRunFaults(run: EmpireRun): readonly string[] {
       faults.push(`day ${entry.day} saved ${entry.amount} days, which is above the physio budget`);
     }
   }
+  // GDD §8.1's refusal condition, re-asked on the composed gym rather than on a
+  // hand-built payload — and asked over a domain that is now populated. Until
+  // `stepGym` recorded the grant it spent, this walk had zero elements on every
+  // shipped and every control run, which is a check that reads as the refusal
+  // condition and is decoration.
+  //
+  // The counter below is what says so out loud. `EmpireState.accelerants` holds
+  // one entry per BUILD skip — the clock-skip mechanism names no output and so
+  // has nothing to pair — and `EmpireRunCensus.buildSkips` counts the same
+  // events from the other side, so a recording that stopped happening is a
+  // fault instead of an empty loop.
+  let pairingsChecked = 0;
   for (const applied of run.gym.state.accelerants) {
+    pairingsChecked += 1;
     if (!mayAccelerate(applied.accelerant, applied.output)) {
       faults.push(`${applied.accelerant} was applied to ${applied.output} on the player's gym`);
     }
+  }
+  if (pairingsChecked !== run.census.buildSkips) {
+    faults.push(
+      `the gym recorded ${pairingsChecked} applied accelerants and ${run.census.buildSkips} builds were skipped`,
+    );
   }
 
   return faults;

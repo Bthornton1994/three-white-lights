@@ -2351,6 +2351,57 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     ]);
   });
 
+  it('leaves no shipped module invisible to the rest of the directory', () => {
+    // The structural half of a coherence finding. `engagement.ts` and
+    // `engagement.test.ts` measure the earned chain three other headers were
+    // still calling unmeasured, and NO OTHER SHIPPED MODULE NAMED THEM — the
+    // only occurrence of either name outside themselves was the file list
+    // pinned in the test above. Eleven modules, and the last one was invisible
+    // to the other ten, so a reader following the directory's own account of
+    // itself could not arrive at the file that discharged the obligation.
+    //
+    // What this measures: for each shipped module, how many OTHER shipped
+    // modules name it — as an import specifier `'./name'`, or in prose as
+    // `name.ts` or `name.test.ts`. Prose counts deliberately; `engagement.ts`
+    // is a leaf that nothing imports, so an import-only scan would report it
+    // orphaned forever and be deleted.
+    //
+    // What it cannot do, said rather than implied: it cannot tell a mention
+    // that orients a reader from one that does not, and a module could satisfy
+    // it with one stale sentence. It catches ARRIVAL — a new module nobody
+    // wrote into the map — which is the case that actually happened.
+    const bodies = new Map(
+      shipped.map((name) => [name, readFileSync(path.join(HERE, name), 'utf8')]),
+    );
+    const mentionersOf = (name: string): readonly string[] => {
+      const base = name.replace(/\.ts$/, '');
+      const keys = [`./${base}`, `${base}.ts`, `${base}.test.ts`];
+      return shipped.filter(
+        (other) => other !== name && keys.some((key) => (bodies.get(other) as string).includes(key)),
+      );
+    };
+
+    const orphans: string[] = [];
+    let pairs = 0;
+    for (const name of shipped) {
+      const mentioners = mentionersOf(name);
+      pairs += mentioners.length;
+      if (mentioners.length === 0) orphans.push(name);
+    }
+    // The claim, with the offenders in the message rather than a length.
+    expect(orphans.join(', ')).toBe('');
+    // Non-vacuity, as counts rather than bounds: every module was examined, and
+    // the map really has edges in it. Pinned exactly, so a directory whose
+    // cross-references thinned out is a decision somebody signs.
+    expect(bodies.size).toBe(shipped.length);
+    expect(pairs).toBe(45);
+    // And the finder can report: a name no module contains comes back with no
+    // mentioners, so the empty `orphans` above is an empty answer to a question
+    // that has a non-empty one available.
+    expect(mentionersOf('empireNotAModule.ts')).toEqual([]);
+    expect(mentionersOf('empireCore.ts').length).toBe(9);
+  });
+
   it('reads no clock, rolls no dice and touches no host API', () => {
     // Randomness in particular is GDD §12.3's second refusal condition: §5.3's
     // recruitment is deterministic, so the language of chance is banned from
@@ -2867,7 +2918,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // which is the same job the sibling's `${key}_PER_SESSION` probe does, and
     // it is not a second bite on `empireCore.ts`. The subject-edit bites in
     // this test are the three count pins, the exact `spaceFree` pin, and the
-    // loop over all 94 strings above. What the derivation buys is that the
+    // loop over every string the three collectors found, whose count is pinned
+    // two lines above this comment and is 295 rather than the 94 this sentence
+    // said while the collector read single-quoted literals only. What the derivation buys is that the
     // probes cannot go stale: rename the vocabulary and the probes rename with
     // it, instead of two literals still passing about tokens that are gone.
     let probes = 0;

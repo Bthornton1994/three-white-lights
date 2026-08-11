@@ -159,8 +159,19 @@ export const EMPIRE_TUNING = Object.freeze({
    * range in prose, so these two are that sentence as a value.
    *
    * A budget rather than a knob: this is the piece's equivalent of the session
-   * loop's 60-90 s window, and it is what a later piece measures a scripted
-   * check-in against. Widening it is a design change, not a tuning pass.
+   * loop's 60-90 s window. Widening it is a design change, not a tuning pass.
+   *
+   * UNCONSUMED, said plainly rather than deferred. This docstring used to say
+   * "it is what a later piece measures a scripted check-in against"; eleven
+   * modules landed and none does, because nothing in `src/empire/` models how
+   * long a check-in takes — the composition steps a gym at a check-in and never
+   * asks what the check-in cost the player in seconds. So these two are a
+   * design budget with no reader, they are the only two entries on
+   * `AWAITING_CONSUMER` in `empireTuning.test.ts`, and that list pins the fact
+   * in both directions: an unconsumed entry missing from it fails, and a listed
+   * entry that has since been wired fails too. Giving them a consumer means
+   * building the scripted check-in §5.1 describes, which is a piece rather than
+   * a line.
    */
   CHECK_IN_TARGET_SECONDS_MIN: 30,
   CHECK_IN_TARGET_SECONDS_MAX: 60,

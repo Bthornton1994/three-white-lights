@@ -76,7 +76,7 @@ import {
 import { EMPIRE_TUNING as T } from './empireTuning';
 import {
   ACCELERATED_BOOK,
-  AXIS_FUNDINGS,
+  AXIS_CLOCK_FAMILIES,
   AXIS_OUTPUT,
   EMPIRE_BOOKS,
   EXPANSION_AXES,
@@ -85,7 +85,7 @@ import {
   axisBook,
   axisBuildSeconds,
   axisCeiling,
-  axisFunding,
+  axisClockFamily,
   axisLevel,
   axisLevelCost,
   axisOutput,
@@ -689,7 +689,7 @@ describe('§5.4 starting a build', () => {
         const price = axisLevelCost(axis, 1) as number;
         // The consumption. Not a bound: the balance moves by the price and by
         // nothing else, so a rounding or a double charge reddens. Which of the
-        // two books moves is `axisFunding`'s answer, and the OTHER one is
+        // two books moves is `axisClockFamily`'s answer, and the OTHER one is
         // asserted untouched — a price taken out of both would be the split
         // charging twice, and a price taken out of neither would make the gate
         // ornamental.
@@ -765,7 +765,7 @@ describe('§5.4 starting a build', () => {
   });
 
   it('funds each axis from the book the tables put it on, and reads it there', () => {
-    // `axisFunding` is derived from `AXIS_OUTPUT` and
+    // `axisClockFamily` is derived from `AXIS_OUTPUT` and
     // `WALL_CLOCK_FUNDED_OUTPUTS`, so this pins the DERIVATION's result rather
     // than restating it: physio because it feeds a progression-reaching output,
     // space and spotter because they feed one `GATE_TARGET` says gates
@@ -774,7 +774,7 @@ describe('§5.4 starting a build', () => {
     // Reddening edits: re-point `AXIS_OUTPUT.physio` at `'gym-bucks'`; drop
     // `'roster-slot'` from `GATING_OUTPUTS`; re-tag `'training-pace'` in
     // `SINK_REACH`.
-    expect(Object.fromEntries(EXPANSION_AXES.map((axis) => [axis, axisFunding(axis)]))).toEqual({
+    expect(Object.fromEntries(EXPANSION_AXES.map((axis) => [axis, axisClockFamily(axis)]))).toEqual({
       equipment: 'idle-clock',
       space: 'wall-clock',
       coach: 'idle-clock',
@@ -783,10 +783,10 @@ describe('§5.4 starting a build', () => {
     });
     // Both sides are populated, so the split separates something. Counts, not
     // bounds, and derived from the same call rather than from the table above.
-    const wallClock = EXPANSION_AXES.filter((axis) => axisFunding(axis) === 'wall-clock');
+    const wallClock = EXPANSION_AXES.filter((axis) => axisClockFamily(axis) === 'wall-clock');
     expect(wallClock.length).toBe(3);
     expect(EXPANSION_AXES.length - wallClock.length).toBe(2);
-    expect([...AXIS_FUNDINGS].sort()).toEqual(['idle-clock', 'wall-clock']);
+    expect([...AXIS_CLOCK_FAMILIES].sort()).toEqual(['idle-clock', 'wall-clock']);
     expect(expansionVocabularyFaults()).toEqual([]);
   });
 
@@ -1372,7 +1372,7 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
       'axisBook',
       'axisBuildSeconds',
       'axisCeiling',
-      'axisFunding',
+      'axisClockFamily',
       'axisLevel',
       'axisLevelCost',
       'axisOutput',
@@ -1397,15 +1397,20 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
     expect(names.length).toBe(24);
   });
 
-  it('takes no bare number on any function that produces a clock quantity', () => {
-    // `empireCore.ts` guards this with `Unbranded<N>`, which it does not
-    // export, so the guard cannot be written in this file — see its header.
-    // What CAN be checked is the property the guard exists for: nothing that
-    // produces or returns a wall-clock quantity, an idle-clock quantity or a
-    // build accepts a raw `number` it could mint one from.
+  it('takes no bare number anywhere, and carries the house guard on all four level-takers', () => {
+    // This check used to be a compensating one, documented with a falsehood:
+    // "`Unbranded` is not exported, so the guard cannot be written in this
+    // file". It was exported, and `social.ts` was already importing it. Now the
+    // guard IS written here, so this pins the guard itself rather than standing
+    // in for it.
     //
-    // The edit that reddens this, named before it was written: adding
-    // `export function settledCompletionAt(seconds: number): UnacceleratedSeconds`.
+    // Two subject-edits redden it, each named before it was run: dropping
+    // `Unbranded` from any one of the four level-takers moves that name out of
+    // `guarded` and into `bareNumberTakers`, violating both pins (measured on
+    // `axisReputationRule`; the run stops at the first, the guarded list); and
+    // adding
+    // `export function settledCompletionAt(seconds: number): UnacceleratedSeconds`
+    // adds a bare-number taker that is also a producer.
     const declarations = new Map<string, string>();
     for (const match of code.matchAll(/export function (\w+)/g)) {
       const at = match.index as number;
@@ -1415,20 +1420,24 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
 
     const producesAClockQuantity =
       /:\s*(UnacceleratedSeconds|AcceleratedSeconds|SettledLevel|InjuryDaysSaved|ExpansionBuild|ExpansionStart)\b/;
-    const takesABareNumber = /\(\s*[\s\S]*?\)\s*:/;
+    const hasAParseableSignature = /\(\s*[\s\S]*?\)\s*:/;
     const producers: string[] = [];
     const bareNumberTakers: string[] = [];
+    const guarded: string[] = [];
     for (const [name, declaration] of declarations) {
       const parameters = declaration.slice(
         declaration.indexOf('('),
         declaration.lastIndexOf(')') + 1,
       );
       const returns = declaration.slice(declaration.lastIndexOf(')') + 1);
-      expect(takesABareNumber.test(declaration), `${name} has no parseable signature`).toBe(true);
+      expect(hasAParseableSignature.test(declaration), `${name} has no parseable signature`).toBe(
+        true,
+      );
       if (producesAClockQuantity.test(returns)) producers.push(name);
       if (/:\s*number\b/.test(parameters)) bareNumberTakers.push(name);
+      if (/Unbranded</.test(parameters)) guarded.push(name);
     }
-    // Both sets pinned exactly, so neither can go quiet by emptying.
+    // The producers, pinned exactly so the set cannot go quiet by emptying.
     expect(producers.sort()).toEqual([
       'buildInFlight',
       'physioDaysSavedAt',
@@ -1437,15 +1446,23 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
       'skipExpansion',
       'startExpansion',
     ]);
-    expect(bareNumberTakers.sort()).toEqual([
+    expect(producers.length).toBe(6);
+    // The guarded set, pinned by NAME rather than by count, because a count
+    // alone would let the guard move from one function to another and stay
+    // green. These four are the file's level-takers.
+    expect(guarded.sort()).toEqual([
       'axisBuildSeconds',
       'axisLevelCost',
       'axisReputationRequirement',
       'axisReputationRule',
     ]);
-    expect(producers.length).toBe(6);
-    expect(bareNumberTakers.length).toBe(4);
-    // The claim itself: the two sets are disjoint.
-    expect(producers.filter((name) => bareNumberTakers.includes(name))).toEqual([]);
+    expect(guarded.length).toBe(4);
+    // And the claim: no exported function here takes a raw `number` at all.
+    // Asserted with the list in the message, so a regression names the
+    // function rather than reporting a length. This is not vacuous by being
+    // empty — the pin above says the four that WOULD be in it are guarded, and
+    // both lines move together when one guard is dropped.
+    expect(bareNumberTakers.sort().join(', ')).toBe('');
+    expect(guarded.length + bareNumberTakers.length).toBe(4);
   });
 });

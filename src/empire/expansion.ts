@@ -92,28 +92,40 @@
  *     accelerant, on every application schedule, at every horizon, the
  *     `physioDaysSavedAt` series and its arrival-day list, element by element,
  *     on the gym the accelerant landed on, against the same grid funded from
- *     the accelerated book as the control. That file's header records which
- *     mutants it kills and which two it does not.
+ *     the accelerated book as the control. `empireInvariant.ts`'s own header —
+ *     §4a of the MODULE, not of the test file — records which mutants that
+ *     sweep kills and which two it does not, one of which is killed here.
+ *   - `engagement.test.ts` measures the other independent variable: the same
+ *     composition with no accelerant at all and the player's check-in schedule
+ *     moving instead, which is the sweep this file's §2 chain does not cover
+ *     and which is the only evidence about the earned path through these
+ *     ladders.
  *
  * ===========================================================================
- * 3. Two exported functions take a bare level, and why the house guard is not
- *    on them
+ * 3. Where the house brand guard sits on this file's ladder functions
  * ===========================================================================
  *
  * `empireCore.ts` puts `Unbranded<N>` on every parameter of a brand-producing
  * function that accepts a raw primitive, so an accelerated clock reading cannot
- * be laundered into a wall-clock argument. `Unbranded` is not exported from
- * that module, so the guard cannot be written here.
+ * be laundered into a wall-clock argument.
  *
- * The two slots it would cover are `axisLevelCost(level)` and
- * `axisReputationRule(level)`, both of which take a ladder level and produce
- * `GymBucks` / `ReputationPoints`. Neither brand is a clock quantity, and
- * nothing on the physio path reaches them. Every function here that produces or
- * consumes a clock brand takes a brand rather than a number, which is the
- * property that matters and which `expansion.test.ts` pins by scanning this
- * file's own signatures. Exporting `Unbranded` from `empireCore.ts` would let
- * the two remaining slots be guarded the same way as their siblings; that is a
- * request in this piece's report, not an edit made here.
+ * This section used to say `Unbranded` was not exported and that the guard
+ * therefore could not be written here. That was false by the time it was read:
+ * `empireCore.ts` exports it and `social.ts` already imports it. The request
+ * was granted and the sentence outlived its premise, which is the exact defect
+ * CLAUDE.md's guarantee section describes.
+ *
+ * So all four functions that take a ladder LEVEL now carry it —
+ * `axisLevelCost`, `axisReputationRule`, `axisReputationRequirement` and
+ * `axisBuildSeconds`. Four rather than the two that were named, because a guard
+ * written for one slot and not its sibling is this codebase's most repeated
+ * finding, and the two that were not named are pass-throughs to the two that
+ * were: guarding only the callee leaves the caller as an unguarded front door.
+ * `expansion.test.ts` pins the guarded set by name and pins that no exported
+ * function here takes a bare `number`. Dropping the guard from any one of them
+ * violates both pins; the run reports the first, which was measured on
+ * `axisReputationRule` and reads `expected [ 'axisBuildSeconds', …(2) ] to
+ * deeply equal [ 'axisBuildSeconds', …(3) ]`.
  */
 
 import {
@@ -147,6 +159,7 @@ import {
   type SettledLevel,
   type StaffRole,
   type UnacceleratedSeconds,
+  type Unbranded,
   type WallClockBooks,
   type WallClockFundedOutput,
 } from './empireCore';
@@ -213,10 +226,24 @@ export function axisOutput(axis: ExpansionAxis): EmpireOutput {
   return AXIS_OUTPUT[axis];
 }
 
-/** Which of the gym's two clocks a rung is read on. */
-export const AXIS_FUNDINGS = ['wall-clock', 'idle-clock'] as const;
+/**
+ * Which of the gym's two clocks a rung is read on.
+ *
+ * Named a CLOCK FAMILY rather than a "funding", which is what it was called
+ * until a coherence pass found the word carrying two meanings in one spending
+ * loop: this answers "which clock reads this rung", and `EmpireFunding` in
+ * `empireInvariant.ts` answers "which funding RULE is this run wired with —
+ * shipped, accelerated, or pooled". One name for two questions is how a reader
+ * gets the wrong one.
+ *
+ * Its only shipped consumer is `expansionVocabularyFaults` at the foot of this
+ * file, which is a small enough surface to say out loud rather than imply: the
+ * list exists so that "every gating axis is on the wall clock" is a walk over a
+ * named vocabulary instead of a sentence. `expansion.test.ts` drives it.
+ */
+export const AXIS_CLOCK_FAMILIES = ['wall-clock', 'idle-clock'] as const;
 
-export type AxisFunding = (typeof AXIS_FUNDINGS)[number];
+export type AxisClockFamily = (typeof AXIS_CLOCK_FAMILIES)[number];
 
 /** The accelerated book, named so a book is always something a switch can take. */
 export const ACCELERATED_BOOK = 'accelerated';
@@ -234,8 +261,8 @@ export type EmpireBook = typeof ACCELERATED_BOOK | WallClockFundedOutput;
  * Every purse, in the order §5.4's ladders are offered one rung out of each.
  *
  * The wall-clock purses come first and the accelerated one last, which is the
- * order the two funding FAMILIES were offered in before the third-book ruling.
- * Under the shipped funding the order decides nothing — no two purses share a
+ * order the two CLOCK FAMILIES were offered in before the third-book ruling.
+ * Under the shipped funding rule the order decides nothing — no two purses share a
  * balance, so a rung bought out of one cannot make another unaffordable — but
  * `empireInvariant.ts`'s pooled controls put the wall-clock side back on one
  * balance, and there the order is the one they had.
@@ -302,7 +329,7 @@ export function axisBook(axis: ExpansionAxis): EmpireBook {
 }
 
 /** Which clock an axis is read on. Derived from the purse that buys it. */
-export function axisFunding(axis: ExpansionAxis): AxisFunding {
+export function axisClockFamily(axis: ExpansionAxis): AxisClockFamily {
   return axisBook(axis) === ACCELERATED_BOOK ? 'idle-clock' : 'wall-clock';
 }
 
@@ -338,8 +365,15 @@ export function axisLevel(axes: GymAxes, axis: ExpansionAxis): number {
  * purchase, so it prices at `null` rather than at zero. That keeps "is this a
  * step somebody can buy" and "what does it cost" one question instead of two,
  * and it is the single predicate the timer and the gate below are derived from.
+ *
+ * `Unbranded<N>` on `level` is `empireCore.ts`'s house guard; §3 of the header
+ * says why it is here and why it is on all four level-takers rather than on the
+ * two that were once named.
  */
-export function axisLevelCost(axis: ExpansionAxis, level: number): GymBucks | null {
+export function axisLevelCost<N extends number>(
+  axis: ExpansionAxis,
+  level: N & Unbranded<N>,
+): GymBucks | null {
   if (!Number.isInteger(level) || level < 1 || level > axisCeiling(axis)) return null;
   if (axis === 'equipment') {
     const tier: EquipmentTier | undefined = EMPIRE_TUNING.EQUIPMENT_TIERS[level];
@@ -368,7 +402,10 @@ export function axisLevelCost(axis: ExpansionAxis, level: number): GymBucks | nu
  * identically with the exemption deleted. `axisReputationRequirement` is the
  * ladder-aware wrapper for callers.
  */
-export function axisReputationRule(axis: ExpansionAxis, level: number): ReputationPoints {
+export function axisReputationRule<N extends number>(
+  axis: ExpansionAxis,
+  level: N & Unbranded<N>,
+): ReputationPoints {
   if (axis === 'physio') return asReputation(0);
   const thresholds = EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS;
   const highest = thresholds.length - 1;
@@ -377,10 +414,15 @@ export function axisReputationRule(axis: ExpansionAxis, level: number): Reputati
   return asReputation(threshold === undefined ? 0 : threshold);
 }
 
-/** The gate for a level that is actually on the ladder, or `null` if it is not. */
-export function axisReputationRequirement(
+/**
+ * The gate for a level that is actually on the ladder, or `null` if it is not.
+ *
+ * Guarded like its callee. A pass-through that took a bare number would be an
+ * unguarded front door onto a guarded room.
+ */
+export function axisReputationRequirement<N extends number>(
   axis: ExpansionAxis,
-  level: number,
+  level: N & Unbranded<N>,
 ): ReputationPoints | null {
   if (axisLevelCost(axis, level) === null) return null;
   return axisReputationRule(axis, level);
@@ -388,9 +430,13 @@ export function axisReputationRequirement(
 
 /**
  * How long the build for `level` takes, or `null` when the level is off the
- * ladder. Derived from `axisLevelCost` so "buildable" has one definition.
+ * ladder. Derived from `axisLevelCost` so "buildable" has one definition, and
+ * guarded like it for the reason `axisReputationRequirement` gives.
  */
-export function axisBuildSeconds(axis: ExpansionAxis, level: number): number | null {
+export function axisBuildSeconds<N extends number>(
+  axis: ExpansionAxis,
+  level: N & Unbranded<N>,
+): number | null {
   if (axisLevelCost(axis, level) === null) return null;
   return buildSeconds(level);
 }
@@ -861,18 +907,18 @@ export function expansionVocabularyFaults(): readonly string[] {
   // is reddened by an edit to a different table: the physio row by
   // `AXIS_OUTPUT` or `SINK_REACH`, the gating rows by `GATING_OUTPUTS`, and the
   // two counts by anything that empties either side of the split.
-  if (axisFunding('physio') !== 'wall-clock') {
+  if (axisClockFamily('physio') !== 'wall-clock') {
     faults.push('the physio axis is bought out of the accelerated book');
   }
   for (const axis of EXPANSION_AXES) {
     const gates = (GATING_OUTPUTS as readonly EmpireOutput[]).includes(axisOutput(axis));
-    if (gates && axisFunding(axis) !== 'wall-clock') {
+    if (gates && axisClockFamily(axis) !== 'wall-clock') {
       faults.push(
         `${axis} feeds ${String(axisOutput(axis))}, which gates Sim progression, and is bought out of the accelerated book`,
       );
     }
   }
-  const wallClockFunded = EXPANSION_AXES.filter((axis) => axisFunding(axis) === 'wall-clock');
+  const wallClockFunded = EXPANSION_AXES.filter((axis) => axisClockFamily(axis) === 'wall-clock');
   if (wallClockFunded.length === 0) {
     faults.push('no axis is bought out of the wall-clock book, so the split gates nothing');
   }

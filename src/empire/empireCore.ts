@@ -209,18 +209,24 @@
  * pinned. A zero with nothing beside it is the empty-domain vacuity this
  * codebase has been bitten by repeatedly.
  *
- * What this file provides for that: `progressionLedger` and `idleLedger` as the
- * two halves of one partition, `EmpireLedgerEntry.at` stamped on the
- * un-accelerated clock so a skip cannot move a timestamp either,
- * `PURCHASABLE_ACCELERANTS` as the derived list the sweep iterates so it cannot
- * miss one that was added later, and `WALL_CLOCK_FUNDED_OUTPUTS` as the derived
- * list that decides which purse a rung is bought from.
+ * What this file provides for that: `PURCHASABLE_ACCELERANTS` as the derived
+ * list the sweep iterates so it cannot miss one that was added later, and
+ * `WALL_CLOCK_FUNDED_OUTPUTS` as the derived list that decides which purse a
+ * rung is bought from.
  *
- * One further path is swept by nothing, named here as an obligation rather than
- * an omission.
+ * `progressionLedger`, `idleLedger` and `EmpireLedgerEntry` are NOT that list,
+ * and this note said they were for several waves. They partition an ACCRUAL's
+ * own ledger — the flow one call to `accrueProduction`, `accrueReputation` or
+ * `accrueSponsorship` paid — and `production.test.ts` is where they are asserted
+ * on. The composition asserts on a different quantity: a day-stamped STOCK
+ * series, `EmpireDayEntry`, partitioned by `progressionDayLedger` /
+ * `idleDayLedger` and compared by `compareLedgers`, all four of them in
+ * `empireInvariant.ts`. Two shapes because they answer two questions, and
+ * `EmpireState.ledger` below says which of the two it is.
  *
- * The third chain — an earned chain, not a §8.1 breach, but §4.4's shape one
- * hop out:
+ * The third chain is measured now, and by a file this note did not name:
+ * `engagement.ts` and `engagement.test.ts`. It is an earned chain, not a §8.1
+ * breach, but §4.4's shape one hop out:
  *
  *   `REPUTATION_PER_CHECK_IN` -> reputation ->
  *   `SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER` -> Gym Bucks ->
@@ -232,15 +238,17 @@
  * rich in at the wrong moment while physio only ever shortens a setback — an
  * earned path that only helps the diligent lifter has no monotonicity inversion
  * available. That argument is a reason to measure it rather than a substitute
- * for measuring it, and nothing measures it: the sweep it needs is the
- * `physioDaysSavedFor` series against a lifter who TRAINS more, at every
- * horizon, with the counts pinned. The composed sweep varies the purchase and
- * holds the check-in schedule fixed, so it is a sweep over a different
- * variable and is no evidence at all about this one. What has changed is the
- * chain's width rather than its existence: the physio rung is no longer bought
- * out of the book the sponsor line is paid into, so the last hop now runs
- * through the reputation GATE on a recruit rather than through the price of the
- * rung.
+ * for measuring it, and the measurement it asked for is `engagement.ts`: the
+ * physio arrival day and the `physioDaysSavedAt` series against a gym that
+ * CHECKS IN more and a lifter who TRAINS more, at every horizon, with the
+ * counts pinned. The composed sweep in `empireInvariant.ts` varies the purchase
+ * and holds the check-in schedule fixed, so it is a sweep over a different
+ * variable and is no evidence at all about this one; `engagement.ts` moves that
+ * variable and holds the purchase at none. Its numbers are in §6's measured
+ * list below. What has changed in the chain itself is its width rather than its
+ * existence: the physio rung is no longer bought out of the book the sponsor
+ * line is paid into, so the last hop now runs through the reputation GATE on a
+ * recruit rather than through the price of the rung.
  *
  * The fourth chain IS purchasable, and it is the one this header did not name
  * while §4 above put "the expansion axes" on the accelerated clock and "the
@@ -272,17 +280,31 @@
  * several waves before one existed, and a header that names a check nobody ran
  * is worse than one that names a gap:
  *
- *   - `empireInvariant.test.ts` composes §5 over a calendar and compares, for
- *     every purchasable accelerant, on every application schedule, at every
- *     horizon and at both cadences, the `physioDaysSavedAt` series AND the
- *     Training IQ series element by element and by wall-clock arrival day — on
- *     the gym the accelerant landed on, not on a second gym stepped without
- *     one. Zero of 2616 elements and zero of 120 physio arrival days move; the
- *     same grid funded from the accelerated book moves 84 and 32, every one of
+ *   - THE PURCHASE AS THE VARIABLE. `empireInvariant.test.ts` composes §5 over
+ *     a calendar and compares, for every purchasable accelerant, on every
+ *     application schedule, at every horizon and at both cadences, the
+ *     `physioDaysSavedAt` series AND the Training IQ series element by element
+ *     and by wall-clock arrival day — on the gym the accelerant landed on, not
+ *     on a second gym stepped without one. Zero of 2616 elements and zero of
+ *     144 physio arrival days move; the same grid funded from the accelerated
+ *     book moves 84 of 2616 elements and 32 of 128 arrival days, every one of
  *     the 32 EARLIER.
- *   - That file's header lists the mutants the composed sweep kills — this
- *     function's own gate revert among them — and the two it does not, which
- *     are killed in `expansion.test.ts` and `recruitment.test.ts` instead.
+ *   - `empireInvariant.ts`'s own header — §4a, not the test file's — lists the
+ *     mutants that sweep kills, this function's gate revert among them, and the
+ *     two it does not, which are killed in `expansion.test.ts` and
+ *     `recruitment.test.ts` instead.
+ *   - THE PLAYER'S ENGAGEMENT AS THE VARIABLE, which is the third chain above
+ *     and which nothing measured for several waves while this note said so.
+ *     `engagement.ts` and `engagement.test.ts` hold the check-in schedule as
+ *     the independent variable and apply no accelerant at all — the opposite
+ *     assignment to every other sweep in this directory — over 33 checks.
+ *     Exhaustively over every calendar of a window of check-in slots: 0
+ *     violating pairs of 24576, 0 physio arrivals later, against a comparator
+ *     that moved 19778 of those pairs. Its physio zero is a zero against chain
+ *     A RE-CONNECTED — the `'accelerated-purse'` wiring, which is this
+ *     directory as it stood before GDD §5.4's two-books ruling and in which the
+ *     sponsor line is money the physio rung is bought with — pinned at 263 of
+ *     24576 pairs where checking in MORE moved the physio arrival a day later.
  *
  * An aggregate would not have done: §4.4 records a legal input that moved 2362
  * of 34338 purchase-day lists and left every aggregate identical.
@@ -1310,7 +1332,10 @@ export function gateElapsedFor(clock: EmpireClock, output: GatingOutput): Unacce
  * from that earlier day. Every type on the chain is right and the VALUE moved,
  * which GDD §4.4 says no type gives you. So the purse is chosen the same way
  * the clock is — from the reach of the thing being bought — and
- * `EmpireState.settledGymBucks` is the money on that side of the split.
+ * `EmpireState.settledBooks` is the money on that side of the split. (A single
+ * `settledGymBucks` field is what this sentence used to name, and it is the
+ * engine GDD §5.4's third-book ruling replaced; the next paragraph is the one
+ * that was already right.)
  *
  * The cost of this is a design decision rather than a transcription, and it is
  * stated where a reader meets it: the gym keeps an accelerated book and a
@@ -1377,6 +1402,23 @@ export const WALL_CLOCK_FUNDED_OUTPUTS: readonly WallClockFundedOutput[] = EMPIR
  * and neutering the counter reddens the non-vacuity half with
  * `expected [] to deeply equal [ 'physio-days-saved', …(2) ]` — so a zero here
  * cannot be the zero of an instrument that stopped counting.
+ *
+ * THE WORD FOR THIS THING, ruled once here because five were in use and a
+ * coherence pass found them competing inside one spending loop:
+ *
+ *   - in CODE it is a BOOK. `settledBooks`, `WallClockBooks`, `EmpireBook`,
+ *     `EMPIRE_BOOKS`, `axisBook`, `bookBalance`, `bookDebits`, `RECRUIT_BOOK`.
+ *     One identifier stem, and it is the one the shipped types already carry.
+ *   - in PROSE it is a PURSE, because "book" reads as a ledger to anyone who
+ *     has not met the type and this directory has a real ledger in it.
+ *   - BALANCE is the NUMBER a book holds, never the book. "one balance" is the
+ *     pooled control, "one purse" is the shipped split, and those are different
+ *     claims.
+ *   - FUND and LANE are not used. "Lane" in particular is the deleted two-gym
+ *     model's word and is gone from the shipped modules.
+ *
+ * The rule binds prose, so no scan enforces it; what a scan does cover is the
+ * identifier stem, which `expansion.test.ts` pins as an exported-name list.
  */
 export type WallClockBooks = Readonly<Record<WallClockFundedOutput, GymBucks>>;
 
@@ -1589,12 +1631,21 @@ export function reputationTierIndex(reputation: ReputationPoints): number {
 // ---------------------------------------------------------------------------
 
 /**
- * One payout, stamped on the un-accelerated clock.
+ * One payout an ACCRUAL made, stamped on the un-accelerated clock.
  *
  * The stamp is deliberately the wall clock even for an idle-only payout, so a
  * purchased skip moves what a ledger contains and never when a ledger says it
- * happened. That is what lets piece E6 compare two ledgers element-wise
- * without first having to agree on a time base.
+ * happened — two of these lists can therefore be compared element-wise without
+ * first agreeing on a time base.
+ *
+ * Which list is compared that way, said exactly, because this docstring named
+ * the wrong one for several waves. `accrueProduction`, `accrueReputation` and
+ * `accrueSponsorship` each return a ledger of these, and `production.test.ts`
+ * and `reputation.test.ts` are where they are asserted on, per accrual. The
+ * COMPOSITION does not build one: `empireInvariant.ts` reads a day-stamped
+ * stock series of its own, `EmpireDayEntry`, and compares that through
+ * `progressionDayLedger` and `compareLedgers`. A flow and a stock answer
+ * different questions and both are kept.
  */
 export interface EmpireLedgerEntry {
   readonly at: UnacceleratedSeconds;
@@ -1603,8 +1654,12 @@ export interface EmpireLedgerEntry {
 }
 
 /**
- * The half of a ledger that reaches Sim progression — the list piece E6
- * compares byte-for-byte across every purchasable accelerant.
+ * The half of an accrual's ledger that reaches Sim progression.
+ *
+ * Its consumer is `production.test.ts`, which pins that a skip moves the idle
+ * half of a `ProductionAccrual`'s ledger and leaves this half byte-identical.
+ * The composed sweep uses `progressionDayLedger` on its own entry type; see
+ * `EmpireLedgerEntry` for why there are two.
  */
 export function progressionLedger(
   ledger: readonly EmpireLedgerEntry[],
@@ -1724,7 +1779,27 @@ export interface EmpireState {
    * multiplier.
    */
   readonly settledBooks: WallClockBooks;
+  /**
+   * The accrual ledger as it would arrive on the wire, and nothing in
+   * `src/empire/` populates it — stated here rather than left to be discovered,
+   * because a header advertising a handoff nobody takes is what this field was
+   * for a while. `stepGym` calls the three accrual functions and keeps their
+   * balances rather than their ledgers; the composed sweep asserts on
+   * `EmpireDayEntry`, a stock series it builds itself. What reads this field is
+   * `empireStateFaults`, on a payload an Edge Function decoded.
+   */
   readonly ledger: readonly EmpireLedgerEntry[];
+  /**
+   * Every accelerant this gym has actually had applied to it, in the order they
+   * landed.
+   *
+   * Written by `stepGym` on the build-skip mechanism, which is the one of GDD
+   * §8.3B's two that has an output to name; a grant spent by advancing the
+   * clock names no output and is counted in `EmpireRunCensus.clockSkips`
+   * instead. `empireRunFaults` re-asks `mayAccelerate` about every entry here
+   * and ties the count to `EmpireRunCensus.buildSkips`, so this list going
+   * empty is a fault rather than a quiet pass.
+   */
   readonly accelerants: readonly AppliedAccelerant[];
 }
 
@@ -1903,8 +1978,11 @@ export function empireStateFaults(state: EmpireState): readonly string[] {
   for (const entry of state.ledger) {
     // The stamp, checked because the amount beside it was — the branch
     // immediately below a fixed one is where this codebase keeps finding the
-    // next gap, and `EmpireLedgerEntry.at` is what piece E6 aligns two ledgers
-    // on before comparing them element-wise.
+    // next gap. Note what this loop's domain is: `EmpireState.ledger` is the
+    // wire field, and the composition in `empireInvariant.ts` never writes it,
+    // so on a composed gym this loop walks zero entries. Its subject is a
+    // decoded payload, and `empireCore.test.ts` drives it from hand-built
+    // states for exactly that reason.
     if (!Number.isFinite(entry.at) || entry.at < 0) {
       faults.push(
         `ledger: ${String(entry.output)} was stamped at ${entry.at}, which is not a wall-clock time`,

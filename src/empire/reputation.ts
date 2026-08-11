@@ -82,9 +82,8 @@
  * 4. Two chains this file does not close, named rather than omitted
  * ===========================================================================
  *
- * Chain A is already written down in `empireCore.ts`'s header as the third sweep
- * it hands to piece E6, and this module is what makes it real rather than
- * hypothetical:
+ * Chain A starts in this module, and this module is what makes it real rather
+ * than hypothetical:
  *
  *   `REPUTATION_PER_CHECK_IN` -> reputation ->
  *   `SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER` -> Gym Bucks ->
@@ -94,6 +93,18 @@
  * shape one hop out, and the argument that it is safe — a diligent lifter is
  * only ever helped, so there is no monotonicity inversion available — is a reason
  * to measure it rather than a substitute for measuring it.
+ *
+ * Who measures it, corrected: this header said the chain was "handed to piece
+ * E6", and E6 never took it — its sweep varies the PURCHASE and holds the
+ * check-in schedule fixed, which is a different independent variable and no
+ * evidence at all about this one. The file that took it is `engagement.ts`,
+ * eleventh in this directory and the only one that moves the schedule. On the
+ * shipped wiring it finds 0 violating pairs of 24576 and 0 physio arrivals
+ * later, and its zero has this chain RE-CONNECTED beside it as a control: the
+ * `'accelerated-purse'` wiring restores the pre-two-books engine in which the
+ * sponsor line above is money the physio rung is bought with, and there
+ * checking in more moves the physio arrival a day later on 263 of the same
+ * 24576 pairs.
  *
  * Chain B was purchasable, this file is where it was reachable, and piece E6
  * closed it. It is stated here in full because the shape is what matters and
@@ -147,9 +158,14 @@
  * What this does NOT close is the money chain: a skip pays Gym Bucks sooner, so
  * a gym can AFFORD a recruit or a physio level on an earlier wall-clock day.
  * That one is not answerable inside a rate function — it is a property of the
- * composition — and `empireInvariant.ts` is where it is answered, by keeping the
- * progression-reaching half of the empire on a settled lane that no accelerant
- * ever reaches.
+ * composition — and `empireInvariant.ts` is where it is answered. Not by a
+ * second lane: "a settled lane no accelerant reaches" is how this sentence read
+ * while that file ran a SECOND gym, and comparing a gym with a gym stepped
+ * without accelerants is `g(x)` against `g(x)`, which is why the second gym was
+ * deleted. There is one gym, it is the gym the player has, every accelerant
+ * lands on it, and what is held apart is the MONEY and the CLOCK a
+ * progression-reaching rung is bought and read on — `WALL_CLOCK_FUNDED_OUTPUTS`
+ * and `EmpireState.settledBooks`, not a lane.
  *
  * ===========================================================================
  * 5. A milestone marks and pays nothing

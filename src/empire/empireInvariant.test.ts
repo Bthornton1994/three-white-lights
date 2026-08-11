@@ -50,8 +50,16 @@
  *   - the NEGATIVE control is the same grid at `funding: 'accelerated'` — the
  *     gym offered its accelerated book and its idle axis view where the
  *     wall-clock ones belong, which is the engine as it stood before the split.
- *     Pinned at 1572 of 5232 elements, and 32 of 144 arrival-day elements, every
- *     one of them EARLIER.
+ *     Pinned at 1572 of 5232 elements, and 32 of 128 physio arrival-day
+ *     elements, every one of them EARLIER.
+ *
+ *     Why 128 here and 144 on the subject, since both grids run the same 72
+ *     pairs: `compareDayLists` compares the MINIMUM of the two list lengths, and
+ *     on the control 16 of the 72 pairs come out at different lengths — the
+ *     `dayLengthDiffers: 16` pinned below — so 16 elements fall outside the
+ *     comparison and 144 becomes 128. The subject's 16 is 0. Both numbers are
+ *     pinned in the checks, and this sentence said "32 of 144" for a wave,
+ *     which is the arithmetic of neither.
  *
  * ===========================================================================
  * The sweep's parameters are somewhere else on purpose
@@ -80,6 +88,7 @@ import {
   createEmpireClock,
   createEmpireState,
   createNpcLifter,
+  type AppliedAccelerant,
   type EmpireState,
   type GymBucks,
   type NpcLifter,
@@ -390,7 +399,6 @@ function gymWith(roster: readonly NpcLifter[], elapsedSeconds: number): EmpireSt
     roster,
     reputation: asReputation(EMPIRE_TUNING.REPUTATION_MAX),
     gymBucks: asGymBucks(0),
-    settledGymBucks: asGymBucks(0),
   });
 }
 
@@ -917,8 +925,84 @@ describe('a run refuses what it should refuse', () => {
       census: { ...run.census, buildSkips: run.census.buildSkips + 1 },
     };
     const faults = empireRunFaults(doubleSpent);
-    expect(faults.length).toBe(1);
+    // TWO faults, not one, and the second is the point of the change that made
+    // it two: `EmpireState.accelerants` now holds one entry per build skip, so
+    // a census that claims a skip the gym did not record is caught from both
+    // sides. Pinned as an exact list rather than a length, so a third fault
+    // arriving is red rather than absorbed.
+    expect(faults.length).toBe(2);
     expect(faults[0]).toContain('grants were spent');
+    expect(faults[1]).toContain('applied accelerants');
+  });
+
+  it('re-asks the licence about accelerants the gym actually recorded', () => {
+    // The domain, first. `EmpireState.accelerants` was seeded empty by
+    // `createEmpireState` and written by nothing, so the `mayAccelerate` walk
+    // at the foot of `empireRunFaults` ran over zero elements on all 78 shipped
+    // and all 78 control runs — a loop that reads as GDD §8.1's refusal
+    // condition checked on the composed gym and was decoration. `stepGym` now
+    // keeps the grant it already constructed.
+    let recorded = 0;
+    let buildSkips = 0;
+    let runsWithAnAccelerant = 0;
+    for (const cell of GRID) {
+      for (const run of cell.runs) {
+        recorded += run.gym.state.accelerants.length;
+        buildSkips += run.census.buildSkips;
+        if (run.gym.state.accelerants.length > 0) runsWithAnAccelerant += 1;
+      }
+    }
+    // Counts, not bounds. The domain is small and that is the point of writing
+    // it down: a grant lands on a still-running build 6 times across the whole
+    // grid, on 6 of the 78 runs — one apiece — and every one is a legal pairing.
+    expect(recorded).toBe(6);
+    expect(recorded).toBe(buildSkips);
+    expect(runsWithAnAccelerant).toBe(6);
+    expect(recorded).toBeGreaterThan(0);
+    // And the check bites on the thing it is about. The carrier is FOUND
+    // rather than indexed: a run picked by position might have no build skip in
+    // it, and then the count half below would be asserting about an empty list
+    // by accident. The illegal pairing is built by a cast, because that is the
+    // only way one exists — `applyAccelerant` refuses it at compile time and
+    // throws at run time, which is `empireCore.ts`'s first reading. This is the
+    // payload that gets past both.
+    const carrier = GRID.flatMap((cell) => cell.runs).find(
+      (run) => run.census.buildSkips > 0,
+    ) as EmpireRun;
+    expect(carrier).toBeDefined();
+    expect(carrier.census.buildSkips).toBeGreaterThan(0);
+    expect(empireRunFaults(carrier)).toEqual([]);
+    const illegal = {
+      accelerant: 'gym-empire-timer-skip',
+      output: 'training-iq',
+      at: asUnacceleratedSeconds(0),
+      seconds: EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+    } as unknown as AppliedAccelerant;
+    const smuggled: EmpireRun = {
+      ...carrier,
+      gym: {
+        ...carrier.gym,
+        state: {
+          ...carrier.gym.state,
+          accelerants: [...carrier.gym.state.accelerants, illegal],
+        },
+      },
+    };
+    const faults = empireRunFaults(smuggled);
+    expect(faults.some((fault) => fault.includes('was applied to training-iq'))).toBe(true);
+    // The non-vacuity counter is the other half, and it is what makes the loop
+    // above unable to go quiet by emptying: drop the recording from `stepGym`
+    // and the count stops matching `buildSkips`. Driven from both directions.
+    expect(faults.some((fault) => fault.includes('applied accelerants'))).toBe(true);
+    const unrecorded: EmpireRun = {
+      ...carrier,
+      gym: { ...carrier.gym, state: { ...carrier.gym.state, accelerants: [] } },
+    };
+    expect(
+      empireRunFaults(unrecorded).some((fault) =>
+        fault.includes('recorded 0 applied accelerants'),
+      ),
+    ).toBe(true);
   });
 
   it('reports a wall-clock ladder that has run ahead of the player own gym', () => {
@@ -1494,12 +1578,15 @@ describe('this module is pure, numerically clean and names nobody', () => {
     const { singleQuoted, doubleQuoted, templateChunks } = stringLiteralsIn(code);
     expect(singleQuoted.size).toBe(35);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(14);
+    // 15 rather than the 14 this pinned before `empireRunFaults` grew the
+    // accelerant-count message; the chunk it added is asserted by count below.
+    expect(templateChunks.size).toBe(15);
     // The template collector really reaches this module's messages, by match
     // count rather than by presence.
     const chunks = [...templateChunks];
     expect(chunks.filter((chunk) => chunk.includes('grants were spent')).length).toBe(1);
     expect(chunks.filter((chunk) => chunk.includes('recruit-')).length).toBe(1);
+    expect(chunks.filter((chunk) => chunk.includes('applied accelerants')).length).toBe(1);
 
     expect([...singleQuoted].filter((literal) => !literal.includes(' ')).sort()).toEqual([
       './empireCore',
@@ -1540,7 +1627,9 @@ describe('this module is pure, numerically clean and names nobody', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(49);
+    // 50 rather than 49, for the one template chunk `empireRunFaults`' new
+    // accelerant-count message added.
+    expect(stringsChecked).toBe(50);
   });
 
   it('would catch a person-shaped name arriving in this module', () => {
