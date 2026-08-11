@@ -30,13 +30,20 @@ Under this mode:
 If switching to human-paced phased building instead, replace this section with
 the phase gates in GDD §10.
 
-## Session Coordination — TWO SESSIONS ARE RUNNING ON THIS REPO
+## Session Coordination — THREE SESSIONS ARE RUNNING ON THIS REPO
 
-**Read this before claiming any piece. There is more than one Claude Code
-session working in this repository, and neither can see the other's
-conversation.** Coordination lives here, in the tree, because that is the only
-channel both sessions actually share. If you are a session that has just started
-and has no history, this section tells you which half of the repo is yours.
+**Read this before claiming any piece. There is more than one agent session
+working in this repository, and none can see the others' conversations.**
+Coordination lives here, in the tree, because that is the only channel the
+sessions actually share. If you are a session that has just started and has no
+history, this section tells you which half of the repo is yours.
+
+**Session C is a Cursor cloud agent.** Sessions A and B are Claude Code
+sessions. C cannot see A or B except through this section and git history; A and
+B cannot see C the same way. C's harness does **not** support the isolated
+builder-then-fresh-critic pattern A and B use. C therefore does not claim a bar
+is met the way they do — C's increments are **ready for review** until a human
+or an A/B critic has actually looked. Do not treat C's own pass as verification.
 
 ### The split
 
@@ -638,6 +645,65 @@ request seen from both sides, which is the useful thing this merge surfaced.
 None of that is a disagreement with the grading. It is the same finding both
 sessions reached from opposite ends: **§5's loop had to exist before its
 invariants had a subject.** It now does.
+
+### SESSION C — GYM EMPIRE SHELL UI (NOT CAREER)
+
+Written here **before** the work starts, as this section requires. Human-approved
+2026-08-11. Branch: `cursor/session-c-empire-shell-8f47`, based on Session A's
+integration tip (`claude/agent-config-setup-m2r6ny`). Session C never pushes to
+`main`, to Session A's branch, or to Session B's branch.
+
+**Active claim (unambiguous): Gym Empire shell wiring — GDD §5 → a
+player-reachable screen.** Connect already-merged `src/empire/` pure logic to
+the app shell. First vertical slice only: a render-only Empire surface driven by
+existing `createEmpireState` / idle-local step APIs, plus the shell route edges
+that let a player open and leave it without a debug URL.
+
+**This claim is Empire. It is not Career.** Career calendar UI, the
+`CareerCalendarPlaceholderView` replacement, and any `src/career/**` consumer
+are **out of this claim**. They stay queued only after Session B's relevant
+merge is confirmed complete; Session C is not scoping them now.
+
+**Explicitly OUT of Session C's scope for this slice:**
+
+- `src/career/**` and every Career placeholder / meet-calendar consumer
+- `src/game/progression.ts` wallet writes (empire income → pooled wallet stays
+  the deferred serialised seam this section already named)
+- Empire math / repair files Session A has been crossing into:
+  `empireInvariant.ts`, `engagement.ts`, `guaranteeTags.test.ts`, and related
+  witness / census work
+- New game logic, adversarial suites, and mutation-witness authorship (C does
+  not simulate A/B's critic isolation)
+- Session B's Career crossings and trademark renames
+
+**Where the view lives.** A render-only `.tsx` under `src/empire/` (the pure
+`.ts` fence in `empireCore.test.ts` walks shipped `.ts` only). Shell join stays
+in `src/shell/`. No new magic numbers in `.tsx` — chrome copy/layout go in
+`shellTuning.ts`.
+
+#### CROSSINGS FILED BY SESSION C, BEFORE THE WORK, 2026-08-11
+
+Session C owns none of these files; they are Session A's shell surface. Filed
+here first, in the order the work will touch them:
+
+1. **`src/shell/shellRoute.ts`** — add player-reachable `'empire'` surface and
+   `open-empire` / `leave-empire` intents; extend `navigate`,
+   `playerReachableFrom`, `pathBetween`, and `shellAffordanceFor` so a player on
+   the daily session can reach Empire and return without a debug URL. Replay
+   stays non-player-reachable.
+2. **`src/shell/shellTuning.ts`** — Empire chrome copy / phase gate / any layout
+   knobs the new affordance needs (registered feel home; no bare literals in
+   `.tsx`).
+3. **`src/shell/AppShell.tsx`** — mount the Empire screen on the new surface and
+   drive the new intents through `navigate` (same shape as meet). Shell tests
+   that pin the route graph and the join (`shellRoute.test.ts`,
+   `shellWiring.test.ts`) will move with these three files; that is part of the
+   crossing, not a fourth undeclared one.
+
+**Done when the slice is ready for review:** a player path exists from the
+default session surface to Empire and back; the Empire screen renders real
+`src/empire/` state (not a placeholder string); nothing in this slice writes
+Total / e1RM / streak / pooled wallet; Session C does not call the bar met.
 
 
 ## Subagent Roles
