@@ -938,12 +938,16 @@ because the income that refilled it was paid once per lifetime.
 **RULE 2 IS KEPT, AND THAT IS THE FINDING THAT MATTERS MOST HERE.** It is
 tempting to drop the burn along with the stock: it is the rule whose
 wealth-dependence caused the defect, and it reads as harsh. Measured, dropping it
-is **worse than the design it replaces** — 1051 violating pairs at 60 days and
-673 at 100, against 0 with it. The doomed branch has no subadditive arithmetic to
-lean on, so its consumption must be *idempotent under splitting* instead, and
-"take everything left in the window" is the only thing that is. What changed is
-the blast radius: everything left is bounded by one window's entitlement and is
-restored at the boundary regardless of what happened.
+is **worse than the design it replaces** — 561 / 1051 / 710 / 673 violating pairs
+at 40 / 60 / 80 / 100 days, against 0 with it. The doomed branch has no
+subadditive arithmetic to lean on, so its consumption must be *idempotent under
+splitting* instead, and "take everything left in the window" is the only thing
+that is. What changed is the blast radius: everything left is bounded by one
+window's entitlement and is restored at the boundary regardless of what happened.
+
+The row was re-taken when it turned out nothing in the repository re-derived it;
+it reproduced, and §4.4 records both that and why publishing only its 60- and
+100-day cells was misleading.
 
 **What a lifter sees.** Two covered days a month, the same for everyone, no
 balance to hoard and nothing to lose by using them. The ceiling §4.2 already
@@ -1412,11 +1416,31 @@ a harness that is not looking:
 
 | control | violating pairs | worst deficit |
 |---|---|---|
-| a doomed absence consumes nothing (RULE 2 dropped) | 1051 at 60 days, 673 at 100 | 20 |
+| a doomed absence consumes nothing (RULE 2 dropped) | **561 / 1051 / 710 / 673 at 40 / 60 / 80 / 100** | 20 |
 | a covered day granted at a streak length | 54 at 100 days | 19 |
 | a covered day granted every N sessions | 1156 at 100 days | 54 |
 | **a covered day BOUGHT with a currency training earns** | **105 / 305 / 733 / 785 at 40 / 60 / 80 / 100** | **54** |
 | the adversarial search, pointed at the broken variant | finds one | — |
+
+**The first row was re-taken, because it was the one figure in this document
+that nothing in the repository re-derived.** It had been published as "1051 at
+60 days and 673 at 100" and restated in three source files; the 60-day half was
+carried by a comment inside a test and the 100-day half was pinned by no
+assertion anywhere in `src`. Re-run at the parameters
+`src/game/streakSweep.ts` already declared — same seeds, same schedule count,
+same attendance distribution — **it reproduced exactly**. It is now
+`DOOMED_BURN_COUNTERFACTUAL` in that file and every cell is re-derived on each
+run by `[dropping-the-doomed-burn-measures-worse]`.
+
+**Two cells were the wrong two to publish, and that is the finding worth
+keeping.** The row is not monotone in calendar length — 100 days reads *lower*
+than 60 — so quoting those two alone suggests the broken variant heals as the
+calendar grows. It does not. Its lifetime-best inversions rise at every step,
+495 / 628 / 716 / 943, and its worst deficit does not shrink. A live run can
+recover a broken streak later in a long calendar, which is what makes the
+frequency row wobble; a lifetime best cannot be un-lost, which is why CLAUDE.md
+calls that the half that does not heal. The whole row is published here now for
+that reason.
 
 **The fourth control is new, and it is the one §8.3E is conditional on.** It is
 matched against the frozen row above: same purse, same price, same rule, same

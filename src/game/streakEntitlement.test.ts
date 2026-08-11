@@ -2219,13 +2219,29 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     expect(kept.map((verdict) => verdict.currentInversions)).toEqual([0, 0, 0, 0]);
     expect(kept.map((verdict) => verdict.longestInversions)).toEqual([0, 0, 0, 0]);
 
-    // (4) THE DIRECTION SURVIVES INDEPENDENTLY OF THE MAGNITUDES. Every length
-    //     is worse without the burn, on both fields, and this is asserted as an
-    //     inequality on the measured verdicts rather than read off the pinned
-    //     table — so it stays true if a retune moves all four figures.
+    // (4) THE DIRECTION SURVIVES INDEPENDENTLY OF THE MAGNITUDES, AND IT IS
+    //     THE HALF THAT MATTERS FOR §12.3. Every length is worse without the
+    //     burn on all three fields — frequency, lifetime best, and the size of
+    //     the worst deficit — asserted as inequalities on the MEASURED
+    //     verdicts rather than read off the pinned table, so it stays true if a
+    //     retune moves all four figures. If the counts above ever have to be
+    //     re-pinned, this is the claim that should still hold, and re-pinning
+    //     the counts must not be allowed to quietly weaken it.
     for (let i = 0; i < lengths.length; i += 1) {
-      const worse = (dropped[i] as Verdict).currentInversions > (kept[i] as Verdict).currentInversions;
-      expect(worse, `L=${lengths[i]}: dropping the burn was not worse here`).toBe(true);
+      const without = dropped[i] as Verdict;
+      const with_ = kept[i] as Verdict;
+      expect(
+        without.currentInversions > with_.currentInversions,
+        `L=${lengths[i]}: dropping the burn was not worse on currentStreak`,
+      ).toBe(true);
+      expect(
+        without.longestInversions > with_.longestInversions,
+        `L=${lengths[i]}: dropping the burn was not worse on the lifetime best`,
+      ).toBe(true);
+      expect(
+        without.worstCurrentDeficit > with_.worstCurrentDeficit,
+        `L=${lengths[i]}: dropping the burn cost no streak days here`,
+      ).toBe(true);
     }
 
     // (5) ANTI-VACUITY, PINNED AS COUNTS. The domain is the same on both arms

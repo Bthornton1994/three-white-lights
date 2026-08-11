@@ -386,13 +386,14 @@ export const ENTITLEMENT_VERIFICATION = Object.freeze({
  * A live run can recover a broken streak later in a long calendar, which is why
  * the frequency row wobbles; a lifetime best cannot be un-lost.
  *
- * IT IS `drive`-ONLY, AND THAT IS NOT A CAVEAT THIS BLOCK CAN REMOVE. The
- * shipped `streak.ts` has no switch for the burn, so the counterfactual can
- * only be run through `streakEntitlement.test.ts`'s reference composition. What
- * makes these numbers statements about the shipped program is the byte-identity
- * pin between that composition and `streak.ts` at the shipped tuning — see
- * 'the shipped engine is the composition this battery graded'. Without that
- * pin these are numbers about a program nobody ships.
+ * The row is taken through `drive`, and that is a caveat this block cannot
+ * remove. `streak.ts` reads the burn rule directly rather than off a flag, so a
+ * variant without it is expressible in `streakEntitlement.test.ts`'s reference
+ * composition and nowhere else. What makes these numbers statements about the
+ * shipped program is the byte-identity pin between that composition and
+ * `streak.ts` at the shipped tuning — see 'the shipped engine is the
+ * composition this battery graded'. Without that pin these are numbers about a
+ * program nobody ships.
  */
 export const DOOMED_BURN_COUNTERFACTUAL = Object.freeze({
   /**
