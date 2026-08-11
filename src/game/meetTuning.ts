@@ -1742,6 +1742,8 @@ export const MEET_COPY = Object.freeze({
    * `isPrAttempt` is true, which is the same field `AttemptSelectView` paints
    * `MEET_PALETTE.CARD_PR_EDGE` from — so the sentence and the gold border are
    * one decision rendered twice rather than two that can disagree.
+   *
+   * `@guarantee pr-sentence-and-pr-border-are-one-decision`
    */
   OPTION_PR_NOTE: 'A PR on the line.',
   OPTION_PUSH_PAST: 'GO PAST IT',

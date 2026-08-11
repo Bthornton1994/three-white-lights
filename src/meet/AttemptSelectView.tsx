@@ -53,6 +53,8 @@
  * that same expression. So a card cannot say "A PR on the line" without the
  * border, or wear the border in silence.
  *
+ * `@guarantee pr-sentence-and-pr-border-are-one-decision`
+ *
  * That is what this screen used to do. `MEET_COPY.OPTION_BIG_WHY` was a static
  * string reading "A PR on the line. Higher risk.", printed on the big card
  * whatever the flag said, and on a lifter's first meet the flag is false for
