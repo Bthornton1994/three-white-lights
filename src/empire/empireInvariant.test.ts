@@ -1544,6 +1544,65 @@ describe('this module is pure, numerically clean and names nobody', () => {
   // name; the copy is deleted rather than re-pinned, because a twin guard that
   // is a copy is the failure CLAUDE.md records rather than the fix for it.
 
+  /**
+   * §4a's blind-spot map is the one thing in this module a reader cannot
+   * re-derive: it says which mutants die here and which die one layer down, and
+   * "leaves this file's N checks green" is the denominator that claim is over.
+   *
+   * That number drifted. It read 43 while `empireInvariant.test.ts` declared 48
+   * checks, because five were added and the mutant was never re-run against
+   * them — so the map's coverage claim was about a file that no longer existed.
+   * `43` never appeared in the test file, so nothing could have caught it.
+   *
+   * WHAT THIS PINS AND WHAT IT DOES NOT. It resolves ONE number in ONE sentence
+   * against a count taken from the test file's own source. It says nothing about
+   * whether the mutant was actually re-run — no scan can — and nothing about the
+   * other numbers in §4a, which are element counts pinned by the checks that
+   * measured them. What it makes impossible is the specific drift that happened:
+   * a check added here while that sentence keeps its old denominator.
+   *
+   * `@guarantee section-4a-denominator-is-measured`
+   */
+  it("§4a's denominator is this file's own check count [section-4a-denominator-is-measured]", () => {
+    const testSource = readFileSync(path.join(HERE, 'empireInvariant.test.ts'), 'utf8');
+    // Match COUNT, not presence: CLAUDE.md records a textual pin whose pattern
+    // had three witnesses in one file and could not fail because the mutation
+    // moved only one of them. One sentence carries this claim, so one match.
+    const claims = [...source.matchAll(/leaves this file's (\d+) checks green/g)];
+    expect(claims.length).toBe(1);
+    const declared = Number((claims[0] as RegExpMatchArray)[1]);
+    const declarations = [...testSource.matchAll(/^\s*it\(/gm)];
+    // Non-vacuity in both directions: a regex that stopped matching would make
+    // `declarations` empty and this comparison a zero against a zero.
+    expect(declarations.length).toBeGreaterThan(40);
+    expect(declared).toBe(declarations.length);
+    expect(declared).toBe(49);
+
+    // And the comparison bites from both sides, shown rather than claimed. The
+    // module's digit moving and the test file growing a check are the two ways
+    // this sentence goes stale, and each is doctored here and caught.
+    const staleDigit = source.replace(
+      "leaves this file's 49 checks green",
+      "leaves this file's 43 checks green",
+    );
+    expect(staleDigit).not.toBe(source);
+    expect(
+      Number(
+        ([...staleDigit.matchAll(/leaves this file's (\d+) checks green/g)][0] as RegExpMatchArray)[1],
+      ),
+    ).not.toBe(declarations.length);
+    // Assembled rather than written out, and that is not fussiness.
+    // `guaranteeTags.test.ts`'s witness scoper slices this file on the
+    // declaration prefix and pins that its split count equals the
+    // line-anchored declaration count; the prefix written out inside a string
+    // — or inside this comment, which is how the first draft of it failed — is
+    // a split point with no declaration behind it. It cuts a real test body
+    // short and silently expires a witness. So the prefix is concatenated.
+    const grownFile = `${testSource}\n  ${'it'}${'('}'a check nobody re-took the mutant against', () => {});\n`;
+    expect([...grownFile.matchAll(/^\s*it\(/gm)].length).toBe(declarations.length + 1);
+    expect(declared).not.toBe([...grownFile.matchAll(/^\s*it\(/gm)].length);
+  });
+
   it('imports only from this directory', () => {
     const imports = [...code.matchAll(/from\s+'([^']+)'/g)].map((match) => match[1] as string);
     expect(imports.sort()).toEqual([

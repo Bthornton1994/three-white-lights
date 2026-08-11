@@ -602,6 +602,27 @@ const UNWITNESSED_LEGACY_TAGS: readonly string[] = [
  * mutant in one of them.
  */
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  {
+    // GDD §5 — the first `src/empire/**` entry in this table, which until now
+    // held 23 declared guarantees and no witnesses at all.
+    //
+    // The claim is not about the empire's arithmetic: it is about §4a's
+    // BLIND-SPOT MAP, the paragraph that tells a reader which mutants
+    // `empireInvariant.test.ts` kills and which die one layer down. That map is
+    // stated over a denominator — "leaves this file's N checks green" — and the
+    // denominator is the one number in §4a that no assertion pinned. It read 43
+    // while the file declared 48, for the waves in which five checks were added
+    // and the mutant was not re-run. The mutant below is that drift replayed.
+    guarantee: 'section-4a-denominator-is-measured',
+    mutatedFile: 'src/empire/empireInvariant.ts',
+    mutated: "leaves this file's 49 checks green",
+    testFile: 'src/empire/empireInvariant.test.ts',
+    redAssertion: 'expect(declared).toBe(declarations.length);',
+    observed:
+      "§4a's denominator is this file's own check count" +
+      ' [section-4a-denominator-is-measured]\n' +
+      'AssertionError: expected 43 to be 49 // Object.is equality',
+  },
   // -------------------------------------------------------------------------
   // GDD §6.5 — "PR" means one thing. FOUR MUTANTS FOR ONE TAG, deliberately.
   //
@@ -1542,6 +1563,9 @@ describe('the guarantee-tag convention', () => {
     // diff here, on purpose.
     expect(censused, 'the files the witness table scopes into').toEqual([
       'src/cutin/cutInWiring.test.ts',
+      // The first `src/empire/**` row. GDD §5's directory carried 23 declared
+      // guarantees and no witnesses at all until this one.
+      'src/empire/empireInvariant.test.ts',
       'src/game/meetClient.test.ts',
       'src/game/meetDay.test.ts',
       'src/game/progression.test.ts',

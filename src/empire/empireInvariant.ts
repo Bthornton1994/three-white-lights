@@ -171,11 +171,28 @@
  * of the composition rather than a weakness in either file:
  *
  *   - `skipExpansion` moving `settledCompletion` as well as `idleCompletion`
- *     leaves this file's 43 checks green. The reason is measurable: across the
+ *     leaves this file's 49 checks green. The reason is measurable: across the
  *     whole grid a grant lands on a build that is still running six times, and
  *     every one of those builds is on the coach ladder, whose settled level no
  *     progression-reaching reading consults. Three checks in `expansion.test.ts`
  *     redden on it.
+ *
+ *     THAT DENOMINATOR IS PINNED, AND IT DRIFTED ONCE BECAUSE IT WAS NOT. It
+ *     read 43 for the waves in which five checks were added to
+ *     `empireInvariant.test.ts` and the mutant was never re-run against them, so
+ *     this map published a coverage claim over a file that was no longer the one
+ *     measured. `'§4a's denominator is this file's own check count'` is the pin:
+ *     it reads the number out of THIS sentence and compares it with the `it(`
+ *     declarations in `empireInvariant.test.ts`'s own source, in both
+ *     directions, so adding a check without re-taking the mutant is red rather
+ *     than silent.
+ *
+ *     The count is `it(` declarations in that file's SOURCE. Vitest reports more
+ *     for the same file — importing `empireSweep.test.ts` for the sweep
+ *     parameters registers that module's own five checks under this one — and
+ *     the source count is the honest reading of "this file's checks".
+ *     Re-taken at 49 on this branch: 49 of 49 green under the mutant.
+ *     `@guarantee section-4a-denominator-is-measured`
  *   - `recruitmentRefusals` counting slots off `state.axes` instead of
  *     `state.settledAxes` also leaves this file green, because in this sweep the
  *     wall-clock book binds a recruit before the slots do. One check in
