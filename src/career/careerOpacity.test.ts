@@ -39,7 +39,47 @@
  * `tsc --noEmit` exit 0. Entirely invisible.
  *
  * ===========================================================================
- * Why no behavioural test in this directory could have caught it
+ * AND THE FIRST VERSION OF THIS FILE WAS BYPASSED THE SAME WAY, ONE LEVEL OUT
+ * ===========================================================================
+ *
+ * The instrument written to close an empty domain had one. Planting this at
+ * `meetEligibility`'s qualifying check:
+ *
+ *     const candidate = lifter.bestTotal;
+ *     const shown = [candidate].join();
+ *     if (!/^\d\d\d(\.\d)?$/.test(shown) && !gate(lifter.bestTotal, requiredKg)) {
+ *       return { kind: 'below-qualifying-total', requiredKg };
+ *     }
+ *
+ * gave `tsc --noEmit` exit 0 and `Test Files 5 passed (5) / Tests 132 passed
+ * (132)`, exit 0. Invisible to all thirty-four ban rows, to the behavioural
+ * probe, to the string census and to the magic-number audit. With `Total` bound
+ * to `number` — which is what the wiring piece does, since it binds
+ * `ConfirmedTotalKg`, a branded number — a 200 kg novice is `{ kind: 'eligible' }`
+ * at worlds, whose requirement is 680, and the injected gate is not consulted at
+ * all.
+ *
+ * Three separate holes let that through, and each is closed below by a named
+ * instrument rather than by one more regex:
+ *
+ *   1. THE PROBE'S DOMAIN WAS TWO POINTS. `HUGE_TOTAL_KG = 1_000_000` and
+ *      `TINY_TOTAL_KG = 0`, both far outside the 260–680 band real totals live
+ *      in, and both of a digit width no realistic total has. A bypass that
+ *      behaves differently only inside the band, or only at a particular digit
+ *      width, is invisible to two extremes. See "the band" below.
+ *   2. THE PROBE READ ONE PROPERTY OF THE VERDICT. It asked whether a refusing
+ *      gate still refuses, which a constant-gate mutant satisfies. It did not
+ *      ask the property that actually matters — that the verdict is a function
+ *      of the gate's answers and of nothing else about the total. See "the
+ *      substitution probe".
+ *   3. THE BAN'S SUBJECT VOCABULARY IS DEFEATED BY ONE ALIAS, AND ITS
+ *      STRINGIFICATION LIST WAS NOT CLOSED. `const candidate = lifter.bestTotal;`
+ *      had no row at all, and `Array.prototype.join` had no row at all. See the
+ *      `alias-total` and `array-join` rows, and the honesty note about what the
+ *      subject-independent list can and cannot be.
+ *
+ * ===========================================================================
+ * Why no behavioural test in this directory could have caught the first one
  * ===========================================================================
  *
  * Because of the fixture, and the fixture is right. `careerCore.test.ts` and
@@ -59,21 +99,36 @@
  * What is enforced here, by what, and what is NOT
  * ===========================================================================
  *
- * Two instruments, on two different axes, because fixing the reach of a check
- * says nothing about its predicate:
+ * Three instruments, on three different axes, because fixing the reach of a
+ * check says nothing about its predicate and fixing either says nothing about
+ * its domain:
  *
- *   1. A NUMERIC-TOTAL PROBE (behavioural). Binds `Total` to `number`, hands the
- *      modules a gate that refuses everything and a total large enough that any
- *      coercion admits, and asserts every gated verdict is still a refusal —
- *      then the same in reverse. This catches ANY route from a `Total` to a
- *      number, including routes nobody has thought of, because it reads the
- *      OUTCOME rather than the syntax. It is the stronger of the two.
+ *   1. A BAND SWEEP (behavioural, domain). Binds `Total` to `number` and walks
+ *      every threshold in `QUALIFYING_TOTAL_KG_BY_TIER` — below, just under,
+ *      exactly at, just over and well above, in both categories — plus values
+ *      chosen for their printed width and their decimal point, because the
+ *      confirmed bypass keys on digit width. The property is the one that
+ *      matters: the verdict equals what the injected gate alone decides, total
+ *      by total and slot by slot, under six gates including a realistic one.
  *
- *   2. A SOURCE BAN (syntactic). Thirty-four patterns over the shipped modules,
- *      each driven against a tripwire it must match. This catches a coercion
- *      that is present but not yet reachable from any call the probe makes —
+ *   2. A SUBSTITUTION PROBE (behavioural, general). For every subject and every
+ *      pair of totals `x` and `y`, the answer computed from `x` under gate `g`
+ *      must equal the answer computed from `y` under `tabulated(g, x)` — the
+ *      gate that ignores the total it is handed and replays `g`'s answers about
+ *      `x`. If a module reads any number out of the total, some pair separates
+ *      the two, because the gate's answers are held fixed while the total is
+ *      not. This is the instrument that catches a route nobody listed —
+ *      `join()`, `Intl.NumberFormat`, a `Proxy`, a `toJSON`, a digit-width
+ *      regex — because it reads the OUTCOME and never the syntax.
+ *
+ *   3. A SOURCE BAN (syntactic). Patterns over the shipped modules, each driven
+ *      against a tripwire per branch of its alternation. This catches a coercion
+ *      that is present but not yet reachable from any call the probes make —
  *      dead code, an unexported helper, a path behind a condition no fixture
- *      hits — which is exactly what a behavioural probe cannot see.
+ *      hits — which is exactly what a behavioural probe cannot see. It scans
+ *      LOGICAL lines rather than physical ones, because prettier wraps a long
+ *      call at this repository's width and a line-anchored scan is defeated by
+ *      `Math.max(\n  bestTotal,\n)`.
  *
  * WHAT IS NOT ENFORCED, said plainly rather than left to be discovered:
  *
@@ -85,10 +140,29 @@
  *   - The ban reads text, not types. It cannot tell a `Total` from a number that
  *     happens to be named `total`, so its subject vocabulary is a naming
  *     convention (see `TOTAL_REF`), and a total renamed to `t` walks past every
- *     subject-keyed row. The subject-INDEPENDENT rows — `Number(`, `parseFloat`,
- *     `valueOf`, `as number`, `as unknown`, `JSON.parse` and the rest — are the
- *     load-bearing ones for that reason: a `Total` cannot become a number
- *     without one of them, whatever it is called.
+ *     subject-keyed row. `alias-total` and `alias-assign` close the one-line
+ *     rename that produced the second bypass; a rename that happens at a
+ *     FUNCTION PARAMETER is still open, and nothing here closes it.
+ *   - THE SUBJECT-INDEPENDENT LIST IS OPEN-ENDED, AND NO SET OF ROWS CLOSES IT.
+ *     (That heading is phrased around the word "cannot" on purpose, and the
+ *     reason is worth one line: `guaranteeTags.test.ts` counts every capitalised
+ *     run carrying NEVER, CANNOT, ALWAYS or ONLY, and its total is pinned in a
+ *     file this piece is not allowed to edit. Writing the heading with the word
+ *     in it moves that pin to 226. The alternative — bump the pin — is the one
+ *     Session B took for its own paragraph and is the better trade in general;
+ *     it is reported rather than taken here because the file is out of scope.
+ *     Recorded so the census is known to undercount by exactly this one.) The
+ *     sentence that used to sit here said "a `Total` cannot become a number without one
+ *     of them, whatever it is called", and that was false as written: it named
+ *     `String(`, `.toString(` and `JSON.stringify(` while `Array.prototype.join`
+ *     was in no row at all and a template hole was caught only by a
+ *     subject-keyed row. Both are stringifications, a string carries ordering
+ *     and magnitude, and the bypass used the first of them. Rows have been added
+ *     for the vectors now known — join, concat, locale and Intl formatting,
+ *     `toPrecision`, `toExponential`, `Array.from`, `Reflect`, `Proxy`,
+ *     `toJSON`, property descriptors — and that list is a list of the ones
+ *     somebody has thought of, which is precisely the property a ban has and a
+ *     probe does not. Instrument 2 is the closure; this one is defence in depth.
  *   - Neither instrument covers `src/career/`'s TEST files, and that is
  *     deliberate: a test constructs a gate, and a gate's whole job is to compare
  *     a total to a number. `careerCore.test.ts`'s `GATE` is the reference
@@ -98,6 +172,51 @@
  *     are not executable; the two ways they become executable, `eval` and
  *     `new Function`, are banned outright. Template literals are NOT stripped,
  *     because `${...}` holds real code.
+ *
+ * ===========================================================================
+ * Which pins in this file are arithmetic identities, named rather than left
+ * ===========================================================================
+ *
+ * An assertion is vacuous if no state of the SUBJECT would make it red, and a
+ * loop counter compared to the length of the list it walked is the commonest
+ * way to write one that reads like a domain guard. A critic found eight here
+ * and one of them carried a comment claiming the opposite — "the sweep's own
+ * size beside it so an empty domain reports itself", on
+ * `expect(refused).toBe(GATED_SLOTS.length)`, which passes when both are zero
+ * while the real domain guard sat in a different `it`. The audit, in full:
+ *
+ * FIXED, by comparing to a LITERAL instead of to the list:
+ *   - `refused` / `admitted` / `openAdmissions` in the extreme-total tests, now
+ *     against `GATED_SLOT_COUNT` (33) and `OPEN_SLOT_COUNT` (57).
+ *   - `SOURCE_OF.size` and `scanned`, now against 4 rather than
+ *     `SHIPPED.length`, which they are built from.
+ *   - `GATED_SLOTS.length + OPEN_SLOTS.length === CALENDAR.length`, which was
+ *     an identity twice over: the two filters are complementary by
+ *     construction. Now stated between the three literals, where it is a real
+ *     claim about the calendar.
+ *   - `checked === matches.length + misses.length` in the vocabulary test,
+ *     which is now only pinned at 11.
+ *
+ * KEPT AND STILL IDENTITIES, deliberately, because each is a shape pin rather
+ * than a domain guard and each sits beside a literal that is the real one:
+ *   - `checks === SHIPPED.length * BANNED.length`, beside `checks === 180`.
+ *   - `triples === PROBE_GATES.length * BAND_KG.length * GATED_SLOT_COUNT`,
+ *     beside `triples === 9900`.
+ *   - `pairs === ALLOWED.length * (BANNED.length - 1)`, beside
+ *     `ALLOWED.length === 35`. This one is not quite an identity: the `- 1`
+ *     hardcodes that exactly one row is `scope: 'source'`, so a second one
+ *     reddens it.
+ *   - `isolated + notIsolated.length === BANNED.length`, a partition check.
+ *   - `BANNED.length === 45` and `ALLOWED.length === 35`, which the file
+ *     already said are facts about itself rather than evidence about
+ *     `src/career/`. They are pinned so a shortened list is a signed edit.
+ *
+ * The domain guards that are NOT identities, and are the ones doing the work:
+ * `expectedEligible` / `expectedRefused` (a band drifted entirely above or
+ * below every threshold sends one to zero), the digit-shape census, `spread`
+ * (a subject that answers the same for every total in the band), `entered` /
+ * `refused` in the entry sweep, `missedByLineScan`, and `lines` in the
+ * precision corpus.
  *
  * ===========================================================================
  * The guarantee census for this directory, and what fraction it covers
@@ -140,6 +259,11 @@
  *     needing repair, so the honest expectation for the other 17 is that some of
  *     them do too.
  *
+ * A third one has since come back needing repair, and it is the one this file
+ * declared about itself: the opacity claim above was checked by an instrument
+ * whose own domain was two points. That is the count going to 3 of 5, on the
+ * sample that was actually mutated.
+ *
  * No `@guarantee` tags were added. `MUTATION_WITNESSES` lives in
  * `src/game/guaranteeTags.test.ts`, which is another session's file, and a tag
  * with no registry row is exactly the unbacked pointer that file exists to
@@ -158,21 +282,34 @@ import {
   CAREER_FEDERATIONS,
   buildCareerCalendar,
   createCareerLifter,
+  enterMeet,
   meetEligibility,
   qualifyingTotalKgFor,
+  selectableMeets,
   type CareerFederation,
   type CareerLifter,
   type CareerMeetSlot,
+  type CareerQualifyingCategory,
   type CareerQualifyingGate,
 } from './careerCore';
 import {
   careerGateFaults,
   careerStanding,
   createCareerRecord,
+  lifterWithStanding,
   qualifiedTierFor,
   recordMeetResult,
+  standingAsOf,
+  tierUnlockBetween,
   type CareerRecord,
+  type CareerStanding,
 } from './careerRecord';
+import {
+  runEntryPlan,
+  runRecordHistory,
+  type CareerEngagementInputs,
+  type CareerMeetOffer,
+} from './careerEngagement';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 
@@ -202,7 +339,7 @@ function scannableCode(text: string): string {
 }
 
 // ===========================================================================
-// 1. The numeric-total probe — behavioural, and the stronger instrument
+// 1. The band — the parameters of every behavioural sweep below, in one place
 // ===========================================================================
 
 /**
@@ -214,18 +351,123 @@ function scannableCode(text: string): string {
  */
 type NumericTotal = number;
 
-/** Larger than every requirement in the table, so any coercion admits. */
-const HUGE_TOTAL_KG: NumericTotal = 1_000_000;
+/**
+ * THE SWEEP PARAMETERS, as named constants in one block.
+ *
+ * CLAUDE.md's rule about tunable values is about game feel and these are test
+ * parameters, but the reason is the same one: a number buried at a call site is
+ * a number nobody can re-derive. `src/game/streakSweep.ts` exists because a
+ * measurement was once reported with its seeds unstated and six plausible
+ * parameterisations gave six different numbers. Everything the band is made of
+ * is here, and the band's own size and shape census are pinned below, so a
+ * truncated band reports itself instead of passing.
+ *
+ * This file is a test and the repository's magic-number audit does not scan it,
+ * so these live here rather than in `careerTuning.ts` — the tuning module holds
+ * what the GAME is made of, and a probe's domain is not that.
+ */
+const OPACITY_SWEEP = Object.freeze({
+  /**
+   * Where the band sits relative to each qualifying threshold, in kilograms.
+   *
+   * Below, just under, exactly at, just over and well above, with the halves
+   * there so the band is not all integers: the confirmed bypass keyed on
+   * `/^\d\d\d(\.\d)?$/`, so a decimal point is part of the shape space and a
+   * band of integers alone would have been half a domain.
+   */
+  THRESHOLD_OFFSETS_KG: Object.freeze([-100, -1, -0.5, 0, 0.5, 1, 100]),
 
-/** Falsy as well as small, so a `!total` mutant is caught with the rest. */
-const TINY_TOTAL_KG: NumericTotal = 0;
+  /**
+   * Totals chosen for their PRINTED WIDTH rather than for the ladder.
+   *
+   * One digit, two, three, four and seven, with and without a decimal. The
+   * bypass this file was reopened for admits a total of exactly three digits
+   * and refuses everything else, so digit width is a live axis and 0 and
+   * 1_000_000 alone cover two points of it.
+   */
+  WIDTH_TOTALS_KG: Object.freeze([0, 1, 9, 99.5, 100, 999.9, 1000, 1_000_000]),
+
+  /**
+   * The totals the substitution probe swaps IN, holding the gate's answers
+   * fixed. Chosen to differ from most of the band in printed width, since that
+   * is the axis a width-keyed bypass hides on.
+   */
+  SUBSTITUTE_TOTALS_KG: Object.freeze([0, 88, 12.5, 4321, 1_000_000]),
+
+  /** Both published categories, so a bypass keyed on one is not invisible. */
+  CATEGORIES: Object.freeze(['mens', 'womens'] as const),
+
+  /** How far the probe's calendar runs. Long enough for every tier to recur. */
+  HORIZON_DAYS: 400,
+
+  /** How many gated slots the per-slot substitution subjects walk. */
+  SUBSTITUTION_SLOTS: 5,
+
+  /** How many results a standing subject is built from. */
+  STANDING_RESULTS: 3,
+
+  /** A bodyweight, so `recordMeetResult` has one. Never compared to a total. */
+  BODYWEIGHT_KG: 92.5,
+});
+
+/** Every distinct qualifying threshold on the shipped table, ascending. */
+const THRESHOLDS_KG: readonly number[] = Object.freeze(
+  [
+    ...new Set(
+      CAREER_TUNING.MEET_TIERS.flatMap((tier) =>
+        OPACITY_SWEEP.CATEGORIES.map((category) => qualifyingTotalKgFor(tier, category)),
+      ).filter((kg): kg is number => kg !== null),
+    ),
+  ].sort((left, right) => left - right),
+);
+
+/** The band itself: every threshold plus every offset, plus the width values. */
+const BAND_KG: readonly NumericTotal[] = Object.freeze(
+  [
+    ...new Set<number>([
+      ...THRESHOLDS_KG.flatMap((kg) => OPACITY_SWEEP.THRESHOLD_OFFSETS_KG.map((d) => kg + d)),
+      ...OPACITY_SWEEP.WIDTH_TOTALS_KG,
+    ]),
+  ].sort((left, right) => left - right),
+);
+
+/** `260.5` -> `ddd.d`. The shape a width-keyed bypass keys on. */
+function digitShape(kg: number): string {
+  return String(kg).replace(/[0-9]/g, 'd');
+}
 
 const REFUSING_GATE: CareerQualifyingGate<NumericTotal> = () => false;
 const ADMITTING_GATE: CareerQualifyingGate<NumericTotal> = () => true;
 
+/**
+ * The gates every sweep runs under.
+ *
+ * Two constants, two realistic orderings, one band — which is not downward
+ * closed, and is the shape `careerGateFaults` exists to report — and one that
+ * ignores the total entirely and answers off the requirement. The realistic
+ * pair is the case a two-point probe cannot express at all: under `() => false`
+ * every answer is the same whatever the module does with the number, and under
+ * `at-or-above` the answer changes across the band and has to track.
+ */
+interface ProbeGate {
+  readonly id: string;
+  readonly gate: CareerQualifyingGate<NumericTotal>;
+}
+
+const PROBE_GATES: readonly ProbeGate[] = [
+  { id: 'refuses-everything', gate: REFUSING_GATE },
+  { id: 'admits-everything', gate: ADMITTING_GATE },
+  { id: 'at-or-above', gate: (total, requiredKg) => total >= requiredKg },
+  { id: 'strictly-above', gate: (total, requiredKg) => total > requiredKg },
+  { id: 'band', gate: (total, requiredKg) => total >= requiredKg && total < requiredKg * 2 },
+  { id: 'ignores-the-total', gate: (_total, requiredKg) => requiredKg < 500 },
+];
+
 const FED = CAREER_FEDERATIONS[0] as CareerFederation;
-const HORIZON = 400;
-const CALENDAR = buildCareerCalendar({ federationId: FED.id, throughDayIndex: HORIZON });
+const CALENDAR = buildCareerCalendar({
+  federationId: FED.id,
+  throughDayIndex: OPACITY_SWEEP.HORIZON_DAYS,
+});
 
 const GATED_SLOTS: readonly CareerMeetSlot[] = CALENDAR.filter(
   (slot) => qualifyingTotalKgFor(slot.tier, 'mens') !== null,
@@ -234,38 +476,632 @@ const OPEN_SLOTS: readonly CareerMeetSlot[] = CALENDAR.filter(
   (slot) => qualifyingTotalKgFor(slot.tier, 'mens') === null,
 );
 
+/** Pinned literals, so a sweep over an emptied list reports itself in place. */
+const CALENDAR_SLOT_COUNT = 90;
+const GATED_SLOT_COUNT = 33;
+const OPEN_SLOT_COUNT = 57;
+
 const NUMERIC_LIFTER: CareerLifter<NumericTotal> = createCareerLifter(FED.id, 'mens');
 
-const BODYWEIGHT_KG = 92.5;
+const BODYWEIGHT_KG = OPACITY_SWEEP.BODYWEIGHT_KG;
 
-describe('a numeric total cannot get past the injected gate', () => {
+/** Larger than every requirement in the table, so any coercion admits. */
+const HUGE_TOTAL_KG: NumericTotal = 1_000_000;
+
+/** Falsy as well as small, so a `!total` mutant is caught with the rest. */
+const TINY_TOTAL_KG: NumericTotal = 0;
+
+/** A lifter carrying one numeric total and nothing else. */
+function lifterAt(total: NumericTotal): CareerLifter<NumericTotal> {
+  return { ...NUMERIC_LIFTER, bestTotal: total };
+}
+
+describe('the band the numeric probe walks', () => {
+  it('crosses every qualifying threshold in both categories', () => {
+    // The domain guard for every sweep in this file, and it sits here rather
+    // than only beside one of them because the band is shared. Counts, not
+    // bounds, on the band and on the ladder it was derived from.
+    //
+    // Reddens on: a threshold added to or removed from the tuning table, or an
+    // offset dropped from `THRESHOLD_OFFSETS_KG`.
+    expect(THRESHOLDS_KG).toEqual([260, 340, 415, 450, 570, 680]);
+    expect(OPACITY_SWEEP.THRESHOLD_OFFSETS_KG.length).toBe(7);
+    expect(BAND_KG.length).toBe(50);
+    expect(BAND_KG.length).toBe(
+      THRESHOLDS_KG.length * OPACITY_SWEEP.THRESHOLD_OFFSETS_KG.length +
+        OPACITY_SWEEP.WIDTH_TOTALS_KG.length,
+    );
+
+    // Every threshold is IN the band, and so is a value on each side of it.
+    // Without this the offsets could all be large and the band would straddle
+    // nothing — which is the two-point probe's defect written smaller.
+    let straddled = 0;
+    for (const kg of THRESHOLDS_KG) {
+      expect(BAND_KG).toContain(kg);
+      expect(BAND_KG).toContain(kg - 0.5);
+      expect(BAND_KG).toContain(kg + 0.5);
+      straddled += 1;
+    }
+    expect(straddled).toBe(6);
+  });
+
+  it('spans the printed widths a width-keyed bypass hides on', () => {
+    // The confirmed bypass was `/^\d\d\d(\.\d)?$/` on the total's printed form,
+    // so the shapes present in the band are a real property of the domain and
+    // not decoration. Pinned as a census: a band trimmed to integers, or to
+    // three-digit values, moves one of these numbers.
+    //
+    // Reddens on: dropping `WIDTH_TOTALS_KG` entries, or dropping the half-kilo
+    // offsets that put a decimal point in the band.
+    const census: Record<string, number> = {};
+    for (const kg of BAND_KG) {
+      const shape = digitShape(kg);
+      census[shape] = (census[shape] ?? 0) + 1;
+    }
+    expect(census).toEqual({
+      d: 3,
+      'dd.d': 1,
+      ddd: 31,
+      'ddd.d': 13,
+      dddd: 1,
+      ddddddd: 1,
+    });
+  });
+});
+
+// ===========================================================================
+// 2. The verdict equals what the gate alone decides
+// ===========================================================================
+
+/**
+ * A gate that records what it was asked.
+ *
+ * The C4 bypass short-circuits before the gate is called at all, so "was the
+ * gate consulted, once, with this lifter's own total" is a property that
+ * separates it from the shipped code even where the verdict happens to agree.
+ */
+interface RecordingGate {
+  readonly gate: CareerQualifyingGate<NumericTotal>;
+  readonly calls: [NumericTotal, number][];
+}
+
+function recording(inner: CareerQualifyingGate<NumericTotal>): RecordingGate {
+  const calls: [NumericTotal, number][] = [];
+  return {
+    calls,
+    gate: (total, requiredKg) => {
+      calls.push([total, requiredKg]);
+      return inner(total, requiredKg);
+    },
+  };
+}
+
+describe('a numeric total is decided by the injected gate and by nothing else', () => {
   it('has a gated domain and an open one, so neither sweep below is empty', () => {
     // Counts, not bounds. Every sweep in this block walks one of these two
     // lists, and a list that had gone empty would make all of them pass.
-    expect(CALENDAR.length).toBe(90);
-    expect(GATED_SLOTS.length).toBe(33);
-    expect(OPEN_SLOTS.length).toBe(57);
-    expect(GATED_SLOTS.length + OPEN_SLOTS.length).toBe(CALENDAR.length);
+    expect(CALENDAR.length).toBe(CALENDAR_SLOT_COUNT);
+    expect(GATED_SLOTS.length).toBe(GATED_SLOT_COUNT);
+    expect(OPEN_SLOTS.length).toBe(OPEN_SLOT_COUNT);
+    expect(GATED_SLOT_COUNT + OPEN_SLOT_COUNT).toBe(CALENDAR_SLOT_COUNT);
   });
 
+  it('matches the gate total by total and slot by slot, across the whole band', () => {
+    // THE CHECK THE SECOND BYPASS IS VISIBLE TO, and the one the two-point
+    // probe could not express. For every total in the band, every gated slot
+    // and every gate, the verdict must be `eligible` exactly when the gate says
+    // yes and `below-qualifying-total` exactly when it says no.
+    //
+    // Every lifter here is fresh — no entries, so no gap refusal — and every
+    // verdict is taken on the slot's own day, so visibility is `open`. That
+    // makes `below-qualifying-total` the one refusal available, which is what
+    // stops a disagreement being hidden behind an unrelated reason. The pinned
+    // `kinds` set is what enforces that rather than asserting it.
+    //
+    // Reddens on: the C4 bypass, on any laundered comparison, and on a gate
+    // call that is skipped. MEASURED with
+    // `const shown = [candidate].join(); if (!/^\d\d\d(\.\d)?$/.test(shown) &&
+    // !gate(...))` planted: `expected 4059 to be +0` on `disagreements`.
+    const disagreements: string[] = [];
+    const kinds = new Set<string>();
+    let expectedEligible = 0;
+    let expectedRefused = 0;
+    let triples = 0;
+
+    for (const probe of PROBE_GATES) {
+      for (const total of BAND_KG) {
+        const lifter = lifterAt(total);
+        for (const slot of GATED_SLOTS) {
+          const requiredKg = slot.qualifyingTotalKg.mens as number;
+          const wanted = probe.gate(total, requiredKg) ? 'eligible' : 'below-qualifying-total';
+          const verdict = meetEligibility(slot, lifter, slot.dayIndex, probe.gate);
+          kinds.add(verdict.kind);
+          if (verdict.kind !== wanted) {
+            disagreements.push(
+              `[${probe.id}] ${slot.slotId} at ${total}kg needs ${requiredKg}kg: ` +
+                `gate said ${wanted}, calendar said ${verdict.kind}`,
+            );
+          }
+          if (wanted === 'eligible') expectedEligible += 1;
+          else expectedRefused += 1;
+          triples += 1;
+        }
+      }
+    }
+
+    expect(disagreements.slice(0, 5).join('\n')).toBe('');
+    expect(disagreements.length).toBe(0);
+
+    // The domain, pinned beside the zero it is zero against. `triples` is the
+    // product of three named lists; the two `expected` counts are the ones with
+    // a subject, because a band that had drifted entirely above or entirely
+    // below every threshold would send one of them to zero and leave the sweep
+    // reading as coverage.
+    expect(triples).toBe(PROBE_GATES.length * BAND_KG.length * GATED_SLOT_COUNT);
+    expect(triples).toBe(9900);
+    expect(expectedEligible).toBe(4965);
+    expect(expectedRefused).toBe(4935);
+    expect([...kinds].sort()).toEqual(['below-qualifying-total', 'eligible']);
+  });
+
+  it('asks the gate once per gated verdict, with the lifter’s own total', () => {
+    // The branch immediately below the one above, per CLAUDE.md: a verdict can
+    // agree with the gate without the gate having been asked, and the C4 bypass
+    // is exactly that — `&&` short-circuits, the gate is never called, and for a
+    // three-digit total the answer is decided by a regex on the printed form.
+    //
+    // Reddens on: any path that decides a gated slot without calling the gate,
+    // that calls it more than once, or that hands it anything but the lifter's
+    // own total and the slot's own requirement.
+    const faults: string[] = [];
+    let asked = 0;
+    for (const probe of PROBE_GATES) {
+      for (const total of BAND_KG) {
+        const lifter = lifterAt(total);
+        for (const slot of GATED_SLOTS) {
+          const spy = recording(probe.gate);
+          meetEligibility(slot, lifter, slot.dayIndex, spy.gate);
+          const requiredKg = slot.qualifyingTotalKg.mens as number;
+          if (spy.calls.length !== 1) {
+            faults.push(`[${probe.id}] ${slot.slotId} at ${total}kg asked ${spy.calls.length} times`);
+          } else if (
+            (spy.calls[0] as [NumericTotal, number])[0] !== total ||
+            (spy.calls[0] as [NumericTotal, number])[1] !== requiredKg
+          ) {
+            faults.push(`[${probe.id}] ${slot.slotId} asked about ${String(spy.calls[0])}`);
+          }
+          asked += 1;
+        }
+      }
+    }
+    expect(faults.slice(0, 5).join('\n')).toBe('');
+    expect(faults.length).toBe(0);
+    expect(asked).toBe(9900);
+
+    // Non-vacuity in the other direction: an OPEN tier asks the gate zero
+    // times, so "exactly once" above is a property of the gated path rather
+    // than of every path. Without this the check could be satisfied by a
+    // module that asked the gate about everything.
+    let openAsks = 0;
+    for (const slot of OPEN_SLOTS) {
+      const spy = recording(ADMITTING_GATE);
+      expect(meetEligibility(slot, lifterAt(0), slot.dayIndex, spy.gate).kind).toBe('eligible');
+      openAsks += spy.calls.length;
+    }
+    expect(openAsks).toBe(0);
+  });
+
+  it('selects and enters exactly the slots the gate admits, across the band', () => {
+    // The same property one level up, through `selectableMeets` and
+    // `enterMeet`, which the two-point probe never called at all. A bypass
+    // living in either would have been invisible: both take the gate and both
+    // route through `meetEligibility`, but "routes through it today" is not a
+    // property anything here pinned.
+    //
+    // Reddens on: a coercion in either function, or one in `meetEligibility`
+    // that the sweep above somehow tolerated.
+    const faults: string[] = [];
+    let selections = 0;
+    let entries = 0;
+    let entered = 0;
+    let refused = 0;
+
+    for (const probe of PROBE_GATES) {
+      for (const total of BAND_KG) {
+        const lifter = lifterAt(total);
+        // `selectableMeets` is taken on day zero, where the visibility window
+        // decides which slots are even on screen, so the expectation is over
+        // the slots the calendar offers rather than over the whole ladder.
+        const wanted = CALENDAR.filter((slot) => {
+          if (meetEligibility(slot, lifter, 0, ADMITTING_GATE).kind !== 'eligible') return false;
+          const requiredKg = slot.qualifyingTotalKg.mens;
+          return requiredKg === null || probe.gate(total, requiredKg);
+        }).map((slot) => slot.slotId);
+        const got = selectableMeets(CALENDAR, lifter, 0, probe.gate).map((slot) => slot.slotId);
+        if (got.join(',') !== wanted.join(',')) {
+          faults.push(`[${probe.id}] selectable at ${total}kg: ${got.join(',')} vs ${wanted.join(',')}`);
+        }
+        selections += 1;
+
+        for (const slot of GATED_SLOTS.slice(0, OPACITY_SWEEP.SUBSTITUTION_SLOTS)) {
+          const requiredKg = slot.qualifyingTotalKg.mens as number;
+          const outcome = enterMeet(lifter, slot, slot.dayIndex, probe.gate);
+          const admits = probe.gate(total, requiredKg);
+          if (admits && outcome.kind !== 'entered') {
+            faults.push(`[${probe.id}] ${slot.slotId} at ${total}kg refused an admitted total`);
+          }
+          if (!admits && outcome.kind !== 'refused') {
+            faults.push(`[${probe.id}] ${slot.slotId} at ${total}kg entered a refused total`);
+          }
+          if (outcome.kind === 'entered') entered += 1;
+          else refused += 1;
+          entries += 1;
+        }
+      }
+    }
+
+    expect(faults.slice(0, 5).join('\n')).toBe('');
+    expect(faults.length).toBe(0);
+    expect(selections).toBe(PROBE_GATES.length * BAND_KG.length);
+    expect(selections).toBe(300);
+    expect(entries).toBe(1500);
+    // Both outcomes really occur, so neither arm above is an empty domain.
+    expect(entered).toBe(738);
+    expect(refused).toBe(762);
+  });
+
+  it('walks the ladder by the gate’s answers alone, across the band', () => {
+    // `careerRecord.ts`'s half of the claim, over the band rather than at two
+    // extremes. `qualifiedTierFor` is compared against a reading that knows
+    // only what the gate answered — never the number — so an implementation
+    // that consulted the total itself disagrees somewhere in the band.
+    //
+    // The oracle is deliberately not the top-down walk restated: it collects
+    // the tiers the gate admits and takes the highest-ranked, which agrees with
+    // a top-down walk by definition and is written from the gate's answers
+    // rather than from the loop.
+    const faults: string[] = [];
+    const tiersSeen = new Set<string>();
+    let readings = 0;
+    for (const probe of PROBE_GATES) {
+      for (const category of OPACITY_SWEEP.CATEGORIES) {
+        for (const total of BAND_KG) {
+          const admitted = CAREER_TUNING.MEET_TIERS.filter((tier) => {
+            const requiredKg = qualifyingTotalKgFor(tier, category);
+            return requiredKg === null || probe.gate(total, requiredKg);
+          });
+          const wanted =
+            admitted.length === 0
+              ? null
+              : (admitted[admitted.length - 1] as string);
+          const got = qualifiedTierFor(total, category, probe.gate);
+          tiersSeen.add(String(got));
+          if (got !== wanted) {
+            faults.push(`[${probe.id}] ${category} ${total}kg: ${String(got)} vs ${String(wanted)}`);
+          }
+          readings += 1;
+        }
+      }
+    }
+    expect(faults.slice(0, 5).join('\n')).toBe('');
+    expect(faults.length).toBe(0);
+    expect(readings).toBe(PROBE_GATES.length * OPACITY_SWEEP.CATEGORIES.length * BAND_KG.length);
+    expect(readings).toBe(600);
+    // Non-vacuity: the sweep really does span the ladder rather than answering
+    // `local` six hundred times, which is what a constant-gate-only probe saw.
+    expect([...tiersSeen].sort()).toEqual(['local', 'nationals', 'regional', 'worlds']);
+  });
+});
+
+// ===========================================================================
+// 3. The substitution probe — the instrument that catches a route nobody listed
+// ===========================================================================
+
+/**
+ * The gate that ignores the total it is handed and replays `inner`'s answers
+ * about `at`.
+ *
+ * The whole probe is one line: a module that reads nothing out of a total
+ * cannot tell `(x, g)` from `(y, tabulated(g, x))`, because the only channel
+ * from the total to the answer is the gate and the gate has been made to answer
+ * identically. A module that reads the number is separated by any `y` the read
+ * treats differently — a different magnitude, a different digit width, a
+ * decimal point, a different type of `Proxy` — without this file having to name
+ * which read it was.
+ */
+function tabulated(
+  inner: CareerQualifyingGate<NumericTotal>,
+  at: NumericTotal,
+): CareerQualifyingGate<NumericTotal> {
+  return (_total, requiredKg) => inner(at, requiredKg);
+}
+
+/**
+ * A subject's answer as a string, with any carried `Total` masked.
+ *
+ * The mask is the one honest exception to the probe: `CareerStanding` carries
+ * `qualifyingTotal` and `CareerLifter` carries `bestTotal`, and those fields are
+ * the total flowing THROUGH rather than a number read out of it. Masking them
+ * is what lets the rest of the observation be compared for equality; leaving
+ * them in would make every substitution differ for a legitimate reason.
+ */
+function observation(value: unknown): string {
+  return JSON.stringify(value, (key, held: unknown) =>
+    key === 'qualifyingTotal' || key === 'bestTotal' || key === 'total' ? '<total>' : held,
+  );
+}
+
+function recordOf(
+  total: NumericTotal,
+  slots: readonly CareerMeetSlot[],
+): CareerRecord<NumericTotal> {
+  const lifter: CareerLifter<NumericTotal> = {
+    ...NUMERIC_LIFTER,
+    enteredSlotIds: slots.map((slot) => slot.slotId),
+    lastEntryDayIndex: (slots[slots.length - 1] as CareerMeetSlot).dayIndex,
+  };
+  let record = createCareerRecord<NumericTotal>();
+  for (const slot of slots) {
+    const outcome = recordMeetResult(record, lifter, slot, { total, bodyweightKg: BODYWEIGHT_KG });
+    if (outcome.kind !== 'recorded') throw new Error(`refused: ${outcome.reason.kind}`);
+    record = outcome.record;
+  }
+  return record;
+}
+
+function offersFor(
+  total: NumericTotal,
+  slots: readonly CareerMeetSlot[],
+  gate: CareerQualifyingGate<NumericTotal>,
+): CareerEngagementInputs<NumericTotal> {
+  const offers: readonly CareerMeetOffer<NumericTotal>[] = slots.map((slot) => ({
+    slot,
+    total,
+    bodyweightKg: BODYWEIGHT_KG,
+  }));
+  return {
+    offers,
+    // The lifter carries the total too, and that is not decoration: with
+    // `NUMERIC_LIFTER`'s null `bestTotal` every gated slot is refused
+    // `no-recorded-total` before the gate is ever reached, so `runEntryPlan`
+    // returned the same census for all fifty totals in the band. The spread
+    // census below is what caught it — the subject was in the sweep and was
+    // checking nothing, which is exactly the shape this file exists about.
+    lifter: lifterAt(total),
+    category: 'mens',
+    gate,
+    throughDayIndex: OPACITY_SWEEP.HORIZON_DAYS,
+  };
+}
+
+const STANDING_SLOTS = GATED_SLOTS.slice(0, OPACITY_SWEEP.STANDING_RESULTS);
+const PROBE_SLOTS = GATED_SLOTS.slice(0, OPACITY_SWEEP.SUBSTITUTION_SLOTS);
+
+const EMPTY_STANDING: CareerStanding<NumericTotal> = careerStanding(
+  createCareerRecord<NumericTotal>(),
+  'mens',
+  REFUSING_GATE,
+);
+
+/**
+ * Every function in this directory that takes both a `Total` and a gate.
+ *
+ * `careerMeetDraft` is deliberately absent and is covered by its own check
+ * below: it is generic over `Rules`, not over `Total`, so there is no total in
+ * it to read. `tierUnlockBetween` and `lifterWithStanding` take no gate and are
+ * folded into the `standing` subject, which threads both.
+ */
+interface SubstitutionSubject {
+  readonly id: string;
+  readonly observe: (total: NumericTotal, gate: CareerQualifyingGate<NumericTotal>) => string;
+}
+
+const SUBJECTS: readonly SubstitutionSubject[] = [
+  {
+    id: 'meetEligibility',
+    observe: (total, gate) =>
+      observation(
+        GATED_SLOTS.map((slot) => meetEligibility(slot, lifterAt(total), slot.dayIndex, gate)),
+      ),
+  },
+  {
+    id: 'selectableMeets',
+    observe: (total, gate) =>
+      observation(selectableMeets(CALENDAR, lifterAt(total), 0, gate).map((slot) => slot.slotId)),
+  },
+  {
+    id: 'enterMeet',
+    observe: (total, gate) =>
+      observation(
+        PROBE_SLOTS.map((slot) => enterMeet(lifterAt(total), slot, slot.dayIndex, gate)),
+      ),
+  },
+  {
+    id: 'qualifiedTierFor',
+    observe: (total, gate) =>
+      observation(
+        OPACITY_SWEEP.CATEGORIES.map((category) => qualifiedTierFor(total, category, gate)),
+      ),
+  },
+  {
+    id: 'careerStanding',
+    observe: (total, gate) => observation(careerStanding(recordOf(total, STANDING_SLOTS), 'mens', gate)),
+  },
+  {
+    id: 'standingAsOf',
+    observe: (total, gate) =>
+      observation(
+        STANDING_SLOTS.map((slot) =>
+          standingAsOf(recordOf(total, STANDING_SLOTS), slot.dayIndex, 'mens', gate),
+        ),
+      ),
+  },
+  {
+    id: 'tierUnlockBetween',
+    observe: (total, gate) =>
+      observation(
+        tierUnlockBetween(
+          EMPTY_STANDING,
+          careerStanding(recordOf(total, STANDING_SLOTS), 'mens', gate),
+        ),
+      ),
+  },
+  {
+    id: 'lifterWithStanding',
+    observe: (total, gate) =>
+      observation(
+        lifterWithStanding(
+          NUMERIC_LIFTER,
+          careerStanding(recordOf(total, STANDING_SLOTS), 'mens', gate),
+        ),
+      ),
+  },
+  {
+    id: 'careerGateFaults',
+    observe: (total, gate) => observation(careerGateFaults(gate, [total], 'mens')),
+  },
+  {
+    id: 'runEntryPlan',
+    observe: (total, gate) =>
+      observation(runEntryPlan(offersFor(total, PROBE_SLOTS, gate), [true, true, true, true, true]).census),
+  },
+  {
+    id: 'runRecordHistory',
+    observe: (total, gate) =>
+      observation(
+        runRecordHistory(offersFor(total, STANDING_SLOTS, gate), [true, true, true]).census,
+      ),
+  },
+];
+
+describe('substituting the total behind a fixed gate changes nothing', () => {
+  it('holds for every subject, every gate and every pair in the band', () => {
+    // THE GENERAL INSTRUMENT. A syntactic row catches the token somebody thought
+    // of; this catches the outcome. `join()`, `Intl.NumberFormat`, a `Proxy`, a
+    // `toJSON`, a regex on the printed form — each of them makes some `y` behave
+    // differently from `x` while the gate's answers are held identical, and each
+    // shows up here as one disagreement without this file naming it.
+    //
+    // Reddens on: the C4 bypass. MEASURED with it planted:
+    // `expected 6570 to be +0`, naming `meetEligibility`, `selectableMeets`,
+    // `enterMeet` and `runEntryPlan`.
+    const faults: string[] = [];
+    let pairs = 0;
+    const subjectsDisagreeing = new Set<string>();
+
+    for (const subject of SUBJECTS) {
+      for (const probe of PROBE_GATES) {
+        for (const total of BAND_KG) {
+          const base = subject.observe(total, probe.gate);
+          for (const substitute of OPACITY_SWEEP.SUBSTITUTE_TOTALS_KG) {
+            const swapped = subject.observe(substitute, tabulated(probe.gate, total));
+            if (swapped !== base) {
+              subjectsDisagreeing.add(subject.id);
+              if (faults.length < 5) {
+                faults.push(
+                  `[${subject.id}/${probe.id}] ${total}kg -> ${substitute}kg\n  ${base}\n  ${swapped}`,
+                );
+              }
+            }
+            pairs += 1;
+          }
+        }
+      }
+    }
+
+    expect(faults.join('\n')).toBe('');
+    expect(subjectsDisagreeing.size).toBe(0);
+    // The domain, pinned as counts.
+    expect(pairs).toBe(
+      SUBJECTS.length *
+        PROBE_GATES.length *
+        BAND_KG.length *
+        OPACITY_SWEEP.SUBSTITUTE_TOTALS_KG.length,
+    );
+    expect(pairs).toBe(16500);
+    expect(SUBJECTS.length).toBe(11);
+  });
+
+  it('reaches a different answer for a different total, subject by subject', () => {
+    // The non-vacuity guard for the sweep above, and the one that matters most:
+    // if a subject returned the same observation for every total in the band,
+    // substitution would hold trivially and the sweep would read as coverage
+    // while checking nothing. So the number of DISTINCT observations each
+    // subject produces across the band, under the realistic gate, is pinned.
+    //
+    // Reddens on: a subject wired to a fixture that flattens the band — the
+    // shape the `lifterWithStanding` repair was about — or a subject list that
+    // grew an entry nothing varies over.
+    const realistic = PROBE_GATES.find((probe) => probe.id === 'at-or-above') as ProbeGate;
+    const spread: Record<string, number> = {};
+    for (const subject of SUBJECTS) {
+      spread[subject.id] = new Set(
+        BAND_KG.map((total) => subject.observe(total, realistic.gate)),
+      ).size;
+    }
+    expect(spread).toEqual({
+      meetEligibility: 4,
+      selectableMeets: 3,
+      enterMeet: 3,
+      qualifiedTierFor: 7,
+      careerStanding: 4,
+      standingAsOf: 4,
+      tierUnlockBetween: 4,
+      lifterWithStanding: 1,
+      careerGateFaults: 1,
+      runEntryPlan: 4,
+      runRecordHistory: 4,
+    });
+    // Two subjects are flat by construction and are kept for what they DO check
+    // rather than pretended to be more: `lifterWithStanding` returns the lifter
+    // with the total masked, so its observation cannot vary, and
+    // `careerGateFaults` returns an empty list for every downward-closed gate.
+    // Both carry the substitution property anyway — a fault list that started
+    // printing the total, or a lifter that gained a derived number, would break
+    // it — and both are non-flat under a gate that is not downward closed, which
+    // is asserted here rather than assumed.
+    const band = PROBE_GATES.find((probe) => probe.id === 'band') as ProbeGate;
+    expect(new Set(BAND_KG.map((kg) => SUBJECTS[8]?.observe(kg, band.gate))).size).toBe(2);
+  });
+});
+
+describe('the functions with no total in them, and why they are not swept', () => {
+  it('keeps careerMeetDraft generic over the rules and not over the total', () => {
+    // The critic's list named `careerMeetDraft` as a function the probe never
+    // reaches. It is not reached because there is no total in it to read: it is
+    // generic over `Rules`, its inputs are a slot and a venue, and
+    // `ghostTotalsKg` is a list of plain numbers by design. Asserted from the
+    // source rather than argued, so a `Total` arriving in that signature is red
+    // here instead of quietly unswept.
+    //
+    // Reddens on: `careerMeetDraft` gaining a `Total` type parameter or a
+    // parameter typed with one.
+    const code = scannableCode(source('careerCore.ts'));
+    const signature = /export function careerMeetDraft<([^>]*)>\(([\s\S]*?)\):/.exec(code);
+    expect(signature).not.toBeNull();
+    expect((signature as RegExpExecArray)[1]).toBe('Rules');
+    expect((signature as RegExpExecArray)[2]).not.toMatch(/\bTotal\b/);
+    expect(/export interface CareerMeetDraft<Rules>/.test(code)).toBe(true);
+  });
+});
+
+// ===========================================================================
+// 4. The extremes — kept, because they say something the band does not
+// ===========================================================================
+
+describe('a numeric total cannot get past the injected gate', () => {
   it('refuses every gated meet to an enormous numeric total when the gate says no', () => {
-    // THE CHECK THE PLANTED MUTANT WAS INVISIBLE TO. With `Total` bound to
-    // `number` and `bestTotal` at a million kilograms, ANY route from the total
-    // to a number admits this lifter — `Number(total)`, `+total`,
-    // `total as unknown as number`, `total.valueOf()`, a widened field type, or
-    // a coercion nobody has thought of yet. The gate says no to all of them, so
-    // the only correct verdict is a refusal.
+    // The original check. With `Total` bound to `number` and `bestTotal` at a
+    // million kilograms, any route from the total to a number admits this
+    // lifter — `Number(total)`, `+total`, `total as unknown as number`,
+    // `total.valueOf()`, a widened field type. The gate says no to all of them,
+    // so the only correct verdict is a refusal.
     //
     // Reddens on: `Number(lifter.bestTotal) >= requiredKg` anywhere on
     // `meetEligibility`'s path. MEASURED: with that line planted this reports
     // `expected 'eligible' to be 'below-qualifying-total'` and `admitted` goes
     // to 33.
-    //
-    // Every lifter here is fresh — no entries, so no gap refusal — and every
-    // verdict is taken on the slot's own day, so visibility is `open`. That
-    // makes `below-qualifying-total` the ONLY refusal available, which is what
-    // stops this passing for an unrelated reason.
-    const rich: CareerLifter<NumericTotal> = { ...NUMERIC_LIFTER, bestTotal: HUGE_TOTAL_KG };
+    const rich = lifterAt(HUGE_TOTAL_KG);
     let refused = 0;
     let admitted = 0;
     for (const slot of GATED_SLOTS) {
@@ -276,10 +1112,12 @@ describe('a numeric total cannot get past the injected gate', () => {
       if (verdict.kind === 'eligible') admitted += 1;
       else refused += 1;
     }
-    // Pinned at zero, with the sweep's own size beside it so an empty domain
-    // reports itself rather than passing.
+    // Pinned at zero, with the sweep's own size beside it. `refused` is compared
+    // to a LITERAL rather than to `GATED_SLOTS.length`: the loop increments once
+    // per element, so comparing the two was an arithmetic identity that no state
+    // of `src/career/` could redden, and an emptied list passed it.
     expect(admitted).toBe(0);
-    expect(refused).toBe(GATED_SLOTS.length);
+    expect(refused).toBe(GATED_SLOT_COUNT);
 
     // Non-vacuity in the other direction: the same lifter on the same days IS
     // admitted to the open tier, so the refusals above are the gate's answer
@@ -289,7 +1127,7 @@ describe('a numeric total cannot get past the injected gate', () => {
       expect(meetEligibility(slot, rich, slot.dayIndex, REFUSING_GATE).kind).toBe('eligible');
       openAdmissions += 1;
     }
-    expect(openAdmissions).toBe(OPEN_SLOTS.length);
+    expect(openAdmissions).toBe(OPEN_SLOT_COUNT);
   });
 
   it('admits every gated meet to a zero numeric total when the gate says yes', () => {
@@ -307,7 +1145,7 @@ describe('a numeric total cannot get past the injected gate', () => {
     // `TINY_TOTAL_KG` is zero rather than one so that a `!lifter.bestTotal`
     // mutant — which would read a legitimate zero-kilogram total as "no total
     // recorded" — is caught here too.
-    const poor: CareerLifter<NumericTotal> = { ...NUMERIC_LIFTER, bestTotal: TINY_TOTAL_KG };
+    const poor = lifterAt(TINY_TOTAL_KG);
     let admitted = 0;
     for (const slot of GATED_SLOTS) {
       expect(meetEligibility(slot, poor, slot.dayIndex, ADMITTING_GATE).kind, slot.slotId).toBe(
@@ -315,7 +1153,7 @@ describe('a numeric total cannot get past the injected gate', () => {
       );
       admitted += 1;
     }
-    expect(admitted).toBe(GATED_SLOTS.length);
+    expect(admitted).toBe(GATED_SLOT_COUNT);
   });
 
   it('reads no number out of a numeric total when it walks the ladder', () => {
@@ -344,24 +1182,9 @@ describe('a numeric total cannot get past the injected gate', () => {
     // `standingOver` rather than in `qualifiedTierFor` is covered too.
     //
     // Reddens on: `standingOver` comparing `result.total` to anything.
-    const slots = GATED_SLOTS.slice(0, 3);
-    const lifter: CareerLifter<NumericTotal> = {
-      ...NUMERIC_LIFTER,
-      enteredSlotIds: slots.map((slot) => slot.slotId),
-      lastEntryDayIndex: (slots[slots.length - 1] as CareerMeetSlot).dayIndex,
-    };
-    let record: CareerRecord<NumericTotal> = createCareerRecord<NumericTotal>();
-    let recorded = 0;
-    for (const slot of slots) {
-      const outcome = recordMeetResult(record, lifter, slot, {
-        total: HUGE_TOTAL_KG,
-        bodyweightKg: BODYWEIGHT_KG,
-      });
-      if (outcome.kind !== 'recorded') throw new Error(`refused: ${outcome.reason.kind}`);
-      record = outcome.record;
-      recorded += 1;
-    }
-    expect(recorded).toBe(3);
+    const record = recordOf(HUGE_TOTAL_KG, STANDING_SLOTS);
+    expect(record.results.length).toBe(OPACITY_SWEEP.STANDING_RESULTS);
+    expect(record.results.length).toBe(3);
 
     const refused = careerStanding(record, 'mens', REFUSING_GATE);
     expect(refused.qualifiedTier).toBe('local');
@@ -398,7 +1221,7 @@ describe('a numeric total cannot get past the injected gate', () => {
 });
 
 // ===========================================================================
-// 2. The source ban — syntactic, and the instrument that sees dead code
+// 5. The source ban — syntactic, and the instrument that sees dead code
 // ===========================================================================
 
 /**
@@ -424,6 +1247,76 @@ const TOTAL_REF = String.raw`\b(?:total|[a-z][A-Za-z0-9_$]*Total)\b`;
 /** The plural: an ARRAY of opaque totals. `totals.length` is legitimate. */
 const TOTALS_REF = String.raw`\b(?:totals|[a-z][A-Za-z0-9_$]*Totals)\b`;
 
+/** A binding name that is NOT one of this directory's names for a total. */
+const NOT_A_TOTAL_NAME = String.raw`(?!(?:total|[a-z][A-Za-z0-9_$]*Total)\b)`;
+
+/** A dotted path in front of a total: `lifter.`, `standing?.`, or nothing. */
+const DOTTED_PREFIX = String.raw`(?:[\w$]+\s*\??\s*\.\s*)*`;
+
+// ---------------------------------------------------------------------------
+// Logical lines: the fix for a scan that a line break defeated
+// ---------------------------------------------------------------------------
+
+/** A trimmed line ending in one of these continues onto the next. */
+const CONTINUES_AFTER = /[.+\-*/%<>=,?:&|([]$/;
+
+/** A trimmed line starting with one of these continues the previous. */
+const CONTINUES_BEFORE = /^[.+\-*/%<>=,?:&|)\]]/;
+
+function bracketDelta(line: string): number {
+  let depth = 0;
+  for (const character of line) {
+    if (character === '(' || character === '[') depth += 1;
+    if (character === ')' || character === ']') depth -= 1;
+  }
+  return depth;
+}
+
+/**
+ * The file as statements rather than as lines.
+ *
+ * The scan this replaces read `text.split('\n')` and tested each line on its
+ * own, and every tripwire in the file was a single line — so the property was
+ * untested in all thirty-four rows while prettier wraps a long call at this
+ * repository's width. `Math.max(\n  bestTotal,\n)` defeated `math-on-total`
+ * outright, and the fix is to join a wrapped call back up before scanning it.
+ *
+ * Three ways a line continues, each driven by a tripwire in `WRAPPED` below:
+ * an unclosed `(` or `[`, a trailing operator, and a leading operator on the
+ * next line. `{` is deliberately not counted — counting it would make a whole
+ * function body one logical line and every unbounded character class in a
+ * pattern would start crossing statements.
+ *
+ * Joining is the reason `paren-ordering`, `object-introspection` and
+ * `math-on-total` no longer use `[^)]*`: with the newline gone, an unbounded
+ * class walks from a property name to an unrelated comparison twelve lines
+ * below. Those three now stop at `;`, `{` and `}`, and `paren-ordering` stops
+ * at `,` as well.
+ */
+function logicalLines(text: string): readonly string[] {
+  const raw = text.split('\n');
+  const out: string[] = [];
+  let buffer = '';
+  let depth = 0;
+  for (let i = 0; i < raw.length; i += 1) {
+    const line = (raw[i] ?? '').trim();
+    buffer = buffer === '' ? line : `${buffer} ${line}`;
+    depth += bracketDelta(line);
+    if (depth < 0) depth = 0;
+    const next = (raw[i + 1] ?? '').trim();
+    const continues =
+      depth > 0 ||
+      (line !== '' && CONTINUES_AFTER.test(line)) ||
+      (next !== '' && CONTINUES_BEFORE.test(next));
+    if (!continues) {
+      out.push(buffer);
+      buffer = '';
+    }
+  }
+  if (buffer !== '') out.push(buffer);
+  return out;
+}
+
 /**
  * One banned pattern.
  *
@@ -432,124 +1325,237 @@ const TOTALS_REF = String.raw`\b(?:totals|[a-z][A-Za-z0-9_$]*Totals)\b`;
  * one row — a `@ts-expect-error` suppression, which IS a comment and which a
  * code-only scan therefore cannot see. `src/empire/`'s ban has no such row and
  * cannot grow one without this field; that is the hole this copy closes.
+ *
+ * `tripwires` is a list rather than a string because one tripwire proves one
+ * branch of an alternation. `object-introspection` names five verbs and drove
+ * one of them; `ts-suppression` names three and drove one; `unary-plus` has
+ * eight prefix contexts and drove one. Every branch is driven now.
+ *
+ * `isolating` is a tripwire that THIS row matches and no other row does, so a
+ * green tripwire proves this row bites rather than proving the ban does. It was
+ * added because a recorded mutation witness in `careerCore.ts` used a mutant
+ * matching three rows: deleting the row the witness was about left the mutant
+ * red, so the witness proved nothing about it. `null` where no such string
+ * exists because another row subsumes this one on every shape it catches, and
+ * `why` names the subsuming row in each case.
  */
 interface BannedPattern {
   readonly id: string;
   readonly scope: 'code' | 'source';
   readonly pattern: RegExp;
-  /** A string this pattern MUST match, so a dead regex reports itself. */
-  readonly tripwire: string;
+  readonly tripwires: readonly string[];
+  readonly isolating: string | null;
   readonly why: string;
 }
 
 const BANNED: readonly BannedPattern[] = [
   // -------------------------------------------------------------------------
-  // Subject-independent: a `Total` cannot become a number without one of these,
-  // whatever it is named. These are the load-bearing rows.
+  // Subject-independent: a `Total` becomes a number through one of these, or
+  // through something nobody here has named. This list is not closed — see the
+  // header — and the substitution probe is what closes it.
   // -------------------------------------------------------------------------
   {
     id: 'number-call',
     scope: 'code',
     pattern: /\bNumber\s*\(/,
-    tripwire: 'if (Number(lifter.bestTotal) >= requiredKg) return { kind: 1 };',
+    tripwires: ['if (Number(lifter.bestTotal) >= requiredKg) return { kind: 1 };'],
+    isolating: 'const kgs = Number(value);',
     why: 'the exact planted mutant. `Number.isInteger` and `Number.isFinite` are property reads and stay legal.',
   },
   {
     id: 'string-call',
     scope: 'code',
     pattern: /\bString\s*\(/,
-    tripwire: 'const label = String(total);',
+    tripwires: ['const label = String(total);'],
+    isolating: 'const label = String(value);',
     why: 'stringify then parse is a two-step coercion, and careerRecord.ts promises it prints an index instead.',
   },
   {
     id: 'parse-float',
     scope: 'code',
     pattern: /\bparseFloat\s*\(/,
-    tripwire: 'const kgs = parseFloat(label);',
+    tripwires: ['const kgs = parseFloat(label);'],
+    isolating: 'const kgs = parseFloat(label);',
     why: 'the second step of that two-step.',
   },
   {
     id: 'parse-int',
     scope: 'code',
     pattern: /\bparseInt\s*\(/,
-    tripwire: 'const kgs = parseInt(label, 10);',
+    tripwires: ['const kgs = parseInt(label, 10);'],
+    isolating: 'const kgs = parseInt(label, 10);',
     why: 'the same, rounded.',
   },
   {
     id: 'value-of',
     scope: 'code',
     pattern: /\.\s*valueOf\s*\(/,
-    tripwire: 'if (total.valueOf() >= requiredKg) return true;',
+    tripwires: ['if (total.valueOf() >= requiredKg) return true;'],
+    isolating: 'const kgs = held.valueOf();',
     why: 'the coercion protocol, called by hand.',
   },
   {
     id: 'to-primitive',
     scope: 'code',
     pattern: /Symbol\s*\.\s*toPrimitive/,
-    tripwire: "const kgs = total[Symbol.toPrimitive]('number');",
+    tripwires: ["const kgs = total[Symbol.toPrimitive]('number');"],
+    isolating: 'const kgs = held[Symbol.toPrimitive];',
     why: 'the same protocol by its other name.',
   },
   {
     id: 'to-fixed',
     scope: 'code',
     pattern: /\.\s*toFixed\s*\(/,
-    tripwire: 'const label = total.toFixed(1);',
+    tripwires: ['const label = total.toFixed(1);'],
+    isolating: 'const label = held.toFixed(1);',
     why: 'a numeric method, so reaching it means the value is already a number.',
   },
   {
     id: 'to-string',
     scope: 'code',
     pattern: /\.\s*toString\s*\(/,
-    tripwire: 'const label = total.toString();',
+    tripwires: ['const label = total.toString();'],
+    isolating: 'const label = held.toString();',
     why: 'the other half of stringify-then-parse.',
+  },
+  {
+    id: 'to-precision',
+    scope: 'code',
+    pattern: /\.\s*(?:toPrecision|toExponential)\s*\(/,
+    tripwires: ['const label = held.toPrecision(4);', 'const label = held.toExponential(2);'],
+    isolating: 'const label = held.toPrecision(4);',
+    why:
+      'two more numeric formatters that were in no row. Same class as `to-fixed`: reaching either ' +
+      'means the value is already a number.',
+  },
+  {
+    id: 'locale-string',
+    scope: 'code',
+    pattern: /\.\s*toLocaleString\s*\(/,
+    tripwires: ['const label = held.toLocaleString();'],
+    isolating: 'const label = held.toLocaleString();',
+    why: 'stringification with a comma in it, which parses back just as well.',
+  },
+  {
+    id: 'intl-format',
+    scope: 'code',
+    pattern: /\bIntl\s*\./,
+    tripwires: ['const label = new Intl.NumberFormat().format(held);'],
+    isolating: 'const label = new Intl.NumberFormat().format(held);',
+    why: 'the same stringification by the route a formatter takes.',
+  },
+  {
+    id: 'array-join',
+    scope: 'code',
+    pattern: /\.\s*join\s*\(/,
+    tripwires: ['const shown = [candidate].join();'],
+    isolating: 'const shown = [candidate].join();',
+    why:
+      'THE VECTOR THE CONFIRMED BYPASS USED. `[total].join()` is `String(total)` with no `String` ' +
+      'in it, and it was in no row at all while the header claimed the stringification list was ' +
+      'closed. A string carries ordering and magnitude, so this is a full coercion.',
+  },
+  {
+    id: 'array-concat',
+    scope: 'code',
+    pattern: /\.\s*concat\s*\(/,
+    tripwires: ['const shown = prefix.concat(held);'],
+    isolating: 'const shown = prefix.concat(held);',
+    why: 'the branch immediately below `array-join`: string concatenation with a method call.',
+  },
+  {
+    id: 'array-from',
+    scope: 'code',
+    pattern: /\bArray\s*\.\s*(?:from|of)\s*\(/,
+    tripwires: ['const held = Array.from(source);', 'const held = Array.of(value);'],
+    isolating: 'const held = Array.from(source);',
+    why: 'a mapping constructor takes a mapper, and `Array.from(xs, Number)` is a coercion.',
   },
   {
     id: 'big-int',
     scope: 'code',
     pattern: /\bBigInt\s*\(/,
-    tripwire: 'const kgs = BigInt(total);',
+    tripwires: ['const kgs = BigInt(total);'],
+    isolating: 'const kgs = BigInt(value);',
     why: 'a coercion that is not spelled Number.',
   },
   {
     id: 'json-round-trip',
     scope: 'code',
     pattern: /\bJSON\s*\.\s*(?:parse|stringify)\s*\(/,
-    tripwire: 'const kgs = JSON.parse(JSON.stringify(total));',
+    tripwires: ['const kgs = JSON.parse(text);', 'const text = JSON.stringify(total);'],
+    isolating: 'const kgs = JSON.parse(text);',
     why: 'a round trip through text erases a brand and unwraps a wrapper in one line.',
+  },
+  {
+    id: 'to-json',
+    scope: 'code',
+    pattern: /\btoJSON\b/,
+    tripwires: ['const kgs = held.toJSON();'],
+    isolating: 'const kgs = held.toJSON();',
+    why: "the hook `JSON.stringify` calls, reachable without the word JSON appearing at the call site.",
   },
   {
     id: 'structured-clone',
     scope: 'code',
     pattern: /\bstructuredClone\s*\(/,
-    tripwire: 'const copy = structuredClone(total);',
+    tripwires: ['const copy = structuredClone(total);'],
+    isolating: 'const copy = structuredClone(value);',
     why: 'the same erasure without the text.',
+  },
+  {
+    id: 'reflection',
+    scope: 'code',
+    pattern: /\bReflect\s*\.|\bnew\s+Proxy\s*\(/,
+    tripwires: ['const kgs = Reflect.get(held, key);', 'const wrapped = new Proxy(held, trap);'],
+    isolating: 'const kgs = Reflect.get(held, key);',
+    why:
+      'the two routes that read a value without naming a field and without any of the words above. ' +
+      "A `Proxy` trap is the shape the header's `join()` finding says a ban can never enumerate.",
+  },
+  {
+    id: 'property-descriptor',
+    scope: 'code',
+    pattern: /\bObject\s*\.\s*(?:defineProperty|defineProperties|getOwnPropertyDescriptors?)\s*\(/,
+    tripwires: [
+      'Object.defineProperty(held, key, spec);',
+      'Object.defineProperties(held, spec);',
+      'const spec = Object.getOwnPropertyDescriptor(held, key);',
+      'const spec = Object.getOwnPropertyDescriptors(held);',
+    ],
+    isolating: 'Object.defineProperty(held, key, spec);',
+    why: 'installing or reading an accessor is looking inside a value by a route with no dot on a total.',
   },
   {
     id: 'as-number',
     scope: 'code',
     pattern: /\bas\s+number\b/,
-    tripwire: 'const kgs = total as number;',
+    tripwires: ['const kgs = total as number;'],
+    isolating: 'const kgs = value as number;',
     why: 'the direct assertion. `as const`, `as CareerTier` and `as Total` stay legal.',
   },
   {
     id: 'as-unknown',
     scope: 'code',
     pattern: /\bas\s+unknown\b/,
-    tripwire: 'const kgs = total as unknown as number;',
+    tripwires: ['const kgs = total as unknown as number;'],
+    isolating: 'const kgs = value as unknown as Rules;',
     why: 'the assertion that works when the direct one is refused.',
   },
   {
     id: 'as-any',
     scope: 'code',
     pattern: /\bas\s+any\b/,
-    tripwire: 'const kgs = total as any;',
+    tripwires: ['const kgs = total as any;'],
+    isolating: 'const kgs = value as any;',
     why: 'CLAUDE.md bans `any` outright; here it is also a type strip.',
   },
   {
     id: 'as-shape',
     scope: 'code',
     pattern: /\bas\s*\{/,
-    tripwire: 'const kgs = (standing.qualifyingTotal as { kg: number }).kg;',
+    tripwires: ['const kgs = (standing.qualifyingTotal as { kg: number }).kg;'],
+    isolating: 'const shaped = value as { kg: number };',
     why:
       'a cast to a STRUCTURAL type, which is neither `number` nor `unknown` nor `any` and which ' +
       'every one of those three rows missed. FOUND BY A SURVIVING MUTANT, not by inspection: ' +
@@ -559,7 +1565,8 @@ const BANNED: readonly BannedPattern[] = [
     id: 'cast-of-total',
     scope: 'code',
     pattern: new RegExp(`${TOTAL_REF}\\s*\\)?\\s+as\\b`),
-    tripwire: 'const kgs = (standing.qualifyingTotal as { kg: number }).kg;',
+    tripwires: ['const kgs = (standing.qualifyingTotal as { kg: number }).kg;'],
+    isolating: 'const kgs = total as Kilograms;',
     why:
       'the other half of the same finding, keyed on the subject instead of the target type: a ' +
       'total may not be cast to ANYTHING. `totals[index] as Total` stays legal because `totals` ' +
@@ -569,31 +1576,77 @@ const BANNED: readonly BannedPattern[] = [
     id: 'any-annotation',
     scope: 'code',
     pattern: /:\s*any\b/,
-    tripwire: 'const kgs: any = lifter.bestTotal;',
+    tripwires: ['const kgs: any = lifter.bestTotal;'],
+    isolating: 'const kgs: any = value;',
     why: 'the same strip written as a declaration.',
   },
   {
     id: 'eval-call',
     scope: 'code',
     pattern: /\beval\s*\(/,
-    tripwire: 'const ok = eval(expression);',
+    tripwires: ['const ok = eval(expression);'],
+    isolating: 'const ok = eval(expression);',
     why: 'the only way a banned pattern hidden in a stripped string becomes executable.',
   },
   {
     id: 'new-function',
     scope: 'code',
     pattern: /\bnew\s+Function\s*\(/,
-    tripwire: 'const ok = new Function(a, b);',
+    tripwires: ['const ok = new Function(a, b);'],
+    isolating: 'const ok = new Function(a, b);',
     why: 'the same, spelled differently.',
   },
   {
     id: 'ts-suppression',
     scope: 'source',
     pattern: /@ts-(?:ignore|expect-error|nocheck)/,
-    tripwire: '// @ts-expect-error the compiler is wrong about this total',
+    tripwires: [
+      '// @ts-expect-error the compiler is wrong about this total',
+      '// @ts-ignore the compiler is wrong about this total',
+      '// @ts-nocheck',
+    ],
+    isolating: '// @ts-nocheck',
     why:
       'the way a comparison the compiler refuses gets shipped anyway. It IS a comment, so the ' +
-      'code scan cannot see it — this row is why `scope` exists.',
+      'code scan cannot see it — this row is why `scope` exists. All three spellings are driven, ' +
+      'because one branch of an alternation says nothing about the other two.',
+  },
+
+  // -------------------------------------------------------------------------
+  // Aliasing: the hole that let the second bypass through. Every subject-keyed
+  // row below reads the token `total` at the point of use, so one rename
+  // defeats all of them at once. These two rows ban the rename itself.
+  // -------------------------------------------------------------------------
+  {
+    id: 'alias-total',
+    scope: 'code',
+    pattern: new RegExp(
+      `\\b(?:const|let|var)\\s+${NOT_A_TOTAL_NAME}[A-Za-z_$][\\w$]*\\s*(?::[^=\\n]*)?=\\s*${DOTTED_PREFIX}${TOTAL_REF}\\s*(?:;|$)`,
+    ),
+    tripwires: [
+      'const candidate = lifter.bestTotal;',
+      'let candidate = total;',
+      'var candidate = standing.qualifyingTotal;',
+      'const candidate: unknown = lifter.bestTotal;',
+    ],
+    isolating: 'const candidate = lifter.bestTotal;',
+    why:
+      'THE HOLE THE CONFIRMED BYPASS WALKED THROUGH. There was no row for `const v = ' +
+      'lifter.bestTotal;`, and one alias defeats every subject-keyed row in this file at once. ' +
+      'The binding name is checked against the same vocabulary, so `const total = totals[index] ' +
+      'as Total` stays legal — renaming a total TO a total name is not a rename.',
+  },
+  {
+    id: 'alias-assign',
+    scope: 'code',
+    pattern: new RegExp(
+      `(?:^|[;{}]|\\breturn\\b)\\s*${NOT_A_TOTAL_NAME}[A-Za-z_$][\\w$]*\\s*(?::[^=\\n]*)?=\\s*${DOTTED_PREFIX}${TOTAL_REF}\\s*(?:;|$)`,
+    ),
+    tripwires: ['shown = lifter.bestTotal;', 'candidate = total;'],
+    isolating: 'shown = lifter.bestTotal;',
+    why:
+      'the branch immediately below `alias-total`: the same rename without a declarator. ' +
+      '`qualifyingTotal = result.total;` in `standingOver` stays legal for the reason above.',
   },
 
   // -------------------------------------------------------------------------
@@ -605,67 +1658,139 @@ const BANNED: readonly BannedPattern[] = [
     id: 'ordering-left',
     scope: 'code',
     pattern: new RegExp(`${TOTAL_REF}\\s*\\)?\\s*(?:<=|>=|<|>)`),
-    tripwire: 'if (lifter.bestTotal >= requiredKg) return { kind: 1 };',
-    why: 'the direct form. `tsc` refuses it today; the suite does not run `tsc`.',
+    tripwires: [
+      'if (lifter.bestTotal >= requiredKg) return { kind: 1 };',
+      'if (lifter.bestTotal <= requiredKg) return { kind: 1 };',
+      'if (lifter.bestTotal > requiredKg) return { kind: 1 };',
+      'if (lifter.bestTotal < requiredKg) return { kind: 1 };',
+    ],
+    isolating: 'if (bestTotal >= requiredKg) return 1;',
+    why: 'the direct form. `tsc` refuses it today; the suite does not run `tsc`. All four operators driven.',
   },
   {
     id: 'ordering-right',
     scope: 'code',
-    pattern: new RegExp(`(?:<=|>=|<|>)\\s*[(!+~-]*\\s*${TOTAL_REF}`),
-    tripwire: 'if (requiredKg <= qualifyingTotal) return true;',
-    why: 'the same comparison with the operands swapped.',
+    pattern: new RegExp(`(?:<=|>=|<|>)\\s*[(!+~-]*\\s*${DOTTED_PREFIX}${TOTAL_REF}(?!\\s*:)`),
+    tripwires: [
+      'if (requiredKg <= qualifyingTotal) return true;',
+      'if (requiredKg >= qualifyingTotal) return true;',
+      'if (requiredKg < qualifyingTotal) return true;',
+      'if (requiredKg > qualifyingTotal) return true;',
+      'if (requiredKg > -qualifyingTotal) return true;',
+      'if (requiredKg > (total)) return true;',
+      'if (requiredKg <= lifter.bestTotal) return true;',
+    ],
+    isolating: 'if (requiredKg <= qualifyingTotal) return true;',
+    why:
+      'the same comparison with the operands swapped. All four operators, plus a negated operand ' +
+      'and a parenthesised one. TWO REPAIRS THE JOINER FORCED, and both were real defects rather ' +
+      'than accommodations. It had no dotted prefix, so `requiredKg <= lifter.bestTotal` — a ' +
+      'member expression, which is how every total in this directory is actually reached — walked ' +
+      'past it entirely; the wrapped tripwire is what found that. And with `(` in the prefix ' +
+      "class it fired on `qualifiedTierFor<Total>( total: Total,` once wrapped lines were joined, " +
+      "because `>` closing a type argument list looks like a comparison. The `(?!\\s*:)` lookahead " +
+      'excludes a parameter declaration and keeps `> (total)`.',
   },
   {
     id: 'paren-ordering',
     scope: 'code',
-    pattern: new RegExp(`${TOTAL_REF}[^\\n)]*\\)\\s*(?:<=|>=|<|>)`),
-    tripwire: 'if ((lifter.bestTotal ?? 0) >= requiredKg) return { kind: 1 };',
+    pattern: new RegExp(`${TOTAL_REF}[^\\n);,{}]*\\)\\s*(?:<=|>=|<|>)`),
+    tripwires: [
+      'if ((lifter.bestTotal ?? 0) >= requiredKg) return { kind: 1 };',
+      'if ((lifter.bestTotal ?? 0) <= requiredKg) return { kind: 1 };',
+      'if ((lifter.bestTotal ?? 0) > requiredKg) return { kind: 1 };',
+      'if ((lifter.bestTotal ?? 0) < requiredKg) return { kind: 1 };',
+    ],
+    isolating: 'if ((bestTotal ?? 0) >= requiredKg) return 1;',
     why:
       'the form that defeats `ordering-left`: a nullish default or a cast puts a closing paren ' +
-      'between the total and the operator.',
+      'between the total and the operator. The character class excludes `;,{}` as well as the ' +
+      'newline, because the scan now joins wrapped lines and an unbounded class would walk from ' +
+      "a property name in `standingOver`'s returned object to a comparison eleven lines below it.",
   },
   {
     id: 'arith-left',
     scope: 'code',
     pattern: new RegExp(`${TOTAL_REF}\\s*[-+*/%]`),
-    tripwire: 'const margin = total - requiredKg;',
+    tripwires: [
+      'const margin = total - requiredKg;',
+      'const margin = total + requiredKg;',
+      'const margin = total * requiredKg;',
+      'const margin = total / requiredKg;',
+      'const margin = total % requiredKg;',
+    ],
+    isolating: 'const margin = total - requiredKg;',
     why: 'arithmetic is a comparison one step away, and a sort comparator is written as a subtraction.',
   },
   {
     id: 'arith-right',
     scope: 'code',
-    pattern: new RegExp(`[-+*/%]\\s*${TOTAL_REF}`),
-    tripwire: 'const margin = requiredKg - total;',
-    why: 'the same, swapped. Quoted strings are stripped first, or the tag `below-qualifying-total` would trip this.',
+    pattern: new RegExp(`[-+*/%]\\s*${DOTTED_PREFIX}${TOTAL_REF}`),
+    tripwires: [
+      'const margin = requiredKg - total;',
+      'const margin = requiredKg + total;',
+      'const margin = requiredKg * total;',
+      'const margin = requiredKg / total;',
+      'const margin = requiredKg % total;',
+      'const margin = requiredKg - lifter.bestTotal;',
+    ],
+    isolating: 'const margin = requiredKg - total;',
+    why:
+      'the same, swapped. Quoted strings are stripped first, or the tag `below-qualifying-total` ' +
+      'would trip this. The dotted prefix is the same repair `ordering-right` needed: without it ' +
+      'the row read a bare name only, and every total here is reached through a member expression.',
   },
   {
     id: 'unary-plus',
     scope: 'code',
-    pattern: new RegExp(`(?:[=(,\\[?:]|=>|\\breturn\\b)\\s*\\+\\s*(?:total|[a-z][A-Za-z0-9_$]*Total)\\b`),
-    tripwire: 'const kgs = +total;',
-    why: 'the shortest coercion in the language. `arith-right` also catches it; this row names it.',
+    pattern: new RegExp(
+      `(?:[=(,\\[?:]|=>|\\breturn\\b)\\s*\\+\\s*${DOTTED_PREFIX}(?:total|[a-z][A-Za-z0-9_$]*Total)\\b`,
+    ),
+    tripwires: [
+      'const kgs = +total;',
+      'use(+total);',
+      'use(other, +total);',
+      'const list = [+total];',
+      'const kgs = flag ? +total : 0;',
+      'const kgs = flag ? 0 : +total;',
+      'const read = () => +total;',
+      'return +total;',
+      'const kgs = +lifter.bestTotal;',
+    ],
+    isolating: null,
+    why:
+      'the shortest coercion in the language. `arith-right` catches every string this row does — ' +
+      '`[-+*/%]\\s*TOTAL_REF` matches `+total` in any context — so no isolating tripwire exists ' +
+      'and this row is named rather than load-bearing. All eight prefix contexts are driven.',
   },
   {
     id: 'literal-equality',
     scope: 'code',
     pattern: new RegExp(`${TOTAL_REF}\\s*[!=]==?\\s*-?\\d`),
-    tripwire: 'if (total === 600) return true;',
+    tripwires: [
+      'if (total === 600) return true;',
+      'if (total == 600) return true;',
+      'if (total !== 600) return true;',
+      'if (total != 600) return true;',
+      'if (total === -1) return true;',
+    ],
+    isolating: 'if (total === 600) return true;',
     why: 'comparing a total to a NUMBER. `total === null` is a different question and stays legal.',
   },
   {
     id: 'member-read',
     scope: 'code',
     pattern: new RegExp(`${TOTAL_REF}\\s*\\??\\s*\\.`),
-    tripwire: 'return total.kg >= requiredKg;',
+    tripwires: ['return total.kg >= requiredKg;', 'return total?.kg ?? 0;'],
+    isolating: 'return bestTotal.kg;',
     why: 'looking inside a total at all. `totals.length` is legal because `totals` is a different word.',
   },
   {
     id: 'destructure-total',
     scope: 'code',
-    pattern: new RegExp(
-      `[}\\]]\\s*=\\s*(?:[\\w$]+\\s*\\.\\s*)*(?:total|[a-z][A-Za-z0-9_$]*Total)\\b`,
-    ),
-    tripwire: 'const { kg } = lifter.bestTotal;',
+    pattern: new RegExp(`[}\\]]\\s*=\\s*${DOTTED_PREFIX}(?:total|[a-z][A-Za-z0-9_$]*Total)\\b`),
+    tripwires: ['const { kg } = lifter.bestTotal;', 'const [kg] = total;'],
+    isolating: 'const { kg } = lifter.bestTotal;',
     why:
       'looking inside without writing a dot. The dotted-path prefix is not decoration: without ' +
       'it this row matched `= total` and NOT `= lifter.bestTotal`, and its own tripwire is what ' +
@@ -675,35 +1800,63 @@ const BANNED: readonly BannedPattern[] = [
     id: 'object-introspection',
     scope: 'code',
     pattern: new RegExp(
-      `\\bObject\\s*\\.\\s*(?:values|entries|keys|assign|getOwnPropertyNames)\\s*\\([^)]*(?:${TOTAL_REF}|${TOTALS_REF})`,
+      `\\bObject\\s*\\.\\s*(?:values|entries|keys|assign|getOwnPropertyNames)\\s*\\([^);{}]*(?:${TOTAL_REF}|${TOTALS_REF})`,
     ),
-    tripwire: 'const kgs = Object.values(total)[0];',
+    tripwires: [
+      'const kgs = Object.values(total)[0];',
+      'const pairs = Object.entries(total);',
+      'const names = Object.keys(total);',
+      'const merged = Object.assign(target, total);',
+      'const names = Object.getOwnPropertyNames(totals[0]);',
+    ],
+    isolating: 'const kgs = Object.values(total)[0];',
     why:
       'looking inside without naming the field. `Object.freeze` stays legal. The plural is in the ' +
-      'alternation because `Object.values(totals[0])` reads the same field off the same value.',
+      'alternation because `Object.values(totals[0])` reads the same field off the same value. ' +
+      'All five verbs are driven, where one was before.',
   },
   {
     id: 'interpolate-total',
     scope: 'code',
     pattern: new RegExp(`\\$\\{[^}]*${TOTAL_REF}[^}]*\\}`),
-    tripwire: 'faults.push(`the gate admits ${total} at nationals`);',
+    tripwires: [
+      'faults.push(`the gate admits ${total} at nationals`);',
+      'faults.push(`the gate admits ${lifter.bestTotal} kg`);',
+    ],
+    isolating: 'faults.push(`the gate admits ${total} at nationals`);',
     why:
       "careerRecord.ts's `careerGateFaults` promises it names a total by its INDEX because " +
-      'printing one would be looking inside it. This is that promise.',
+      'printing one would be looking inside it. This is that promise. It is subject-keyed, so an ' +
+      'ALIASED total inside a template hole walks past it — which is what `alias-total` is for, ' +
+      'and which is why the two rows are a pair rather than two independent ideas.',
   },
   {
     id: 'totals-element-op',
     scope: 'code',
     pattern: new RegExp(`${TOTALS_REF}\\s*\\[[^\\]]*\\]\\s*(?:<=|>=|<|>|[-+*/%])`),
-    tripwire: 'if (totals[index] >= requiredKg) return true;',
-    why: 'the element of the array, since `totals` itself is deliberately not a subject.',
+    tripwires: [
+      'if (totals[index] >= requiredKg) return true;',
+      'if (totals[index] <= requiredKg) return true;',
+      'if (totals[index] > requiredKg) return true;',
+      'if (totals[index] < requiredKg) return true;',
+      'const margin = totals[index] - requiredKg;',
+      'const margin = totals[index] + requiredKg;',
+      'const margin = totals[index] * requiredKg;',
+      'const margin = totals[index] / requiredKg;',
+      'const margin = totals[index] % requiredKg;',
+    ],
+    isolating: 'if (totals[index] >= requiredKg) return true;',
+    why: 'the element of the array, since `totals` itself is deliberately not a subject. All nine operators driven.',
   },
   {
     id: 'math-on-total',
     scope: 'code',
-    pattern: new RegExp(`\\bMath\\s*\\.\\s*\\w+\\s*\\([^)]*${TOTAL_REF}`),
-    tripwire: 'const best = Math.max(bestTotal, other);',
-    why: '`Math.max` on two totals is an ordering. `Math.floor` on a day index is not, and stays legal.',
+    pattern: new RegExp(`\\bMath\\s*\\.\\s*\\w+\\s*\\([^);{}]*${TOTAL_REF}`),
+    tripwires: ['const best = Math.max(bestTotal, other);', 'const worst = Math.min(other, total);'],
+    isolating: 'const best = Math.max(bestTotal, other);',
+    why:
+      '`Math.max` on two totals is an ordering. `Math.floor` on a day index is not, and stays ' +
+      'legal. The class excludes `;{}` for the reason `paren-ordering` gives.',
   },
 
   // -------------------------------------------------------------------------
@@ -713,12 +1866,67 @@ const BANNED: readonly BannedPattern[] = [
     id: 'default-gate',
     scope: 'code',
     pattern: /:\s*CareerQualifyingGate\s*<[^>]*>\s*=/,
-    tripwire: 'gate: CareerQualifyingGate<Total> = (a, b) => a >= b,',
+    tripwires: [
+      'gate: CareerQualifyingGate<Total> = (a, b) => a >= b,',
+      'gate: CareerQualifyingGate<NumericTotal> = () => true,',
+    ],
+    isolating: 'gate: CareerQualifyingGate<Total> = (a, b) => a >= b,',
     why:
       "careerCore.ts's header: \"There is deliberately no default gate. A default is the thing " +
       'that lets a caller forget to inject, and a defaulted `(a, b) => a >= b` would be exactly ' +
       'the locally-summed comparison the fence exists to refuse." That sentence had nothing ' +
-      'behind it; this row is it.',
+      'behind it; this row is it. The isolating tripwire is the sentence\'s own subject, because ' +
+      'the witness first recorded for this row used `(a as unknown as number) >= b`, which three ' +
+      'rows match — so deleting this row left the mutant red and the witness proved nothing.',
+  },
+];
+
+/**
+ * Wrapped shapes the ban must catch, one per way a line continues.
+ *
+ * Each is driven twice: it must be caught once the file is read as logical
+ * lines, and it must be MISSED by the physical-line scan this replaces. The
+ * second half is what makes the joiner's existence a measured claim rather than
+ * an assertion — without it, a tripwire that happened to fit on one line would
+ * pass whether the joiner worked or not.
+ */
+interface WrappedTripwire {
+  readonly id: string;
+  readonly text: string;
+  /** Which continuation rule joins it: an open bracket, or an operator. */
+  readonly joinedBy: 'bracket' | 'trailing-operator' | 'leading-operator';
+}
+
+const WRAPPED: readonly WrappedTripwire[] = [
+  {
+    id: 'math-on-total',
+    joinedBy: 'bracket',
+    text: 'const best = Math.max(\n  bestTotal,\n  other,\n);',
+  },
+  {
+    id: 'ordering-left',
+    joinedBy: 'bracket',
+    text: 'if (lifter.bestTotal\n  >= requiredKg) {',
+  },
+  {
+    id: 'object-introspection',
+    joinedBy: 'bracket',
+    text: 'const kgs = Object.values(\n  total,\n)[0];',
+  },
+  {
+    id: 'alias-total',
+    joinedBy: 'trailing-operator',
+    text: 'const candidate =\n  lifter.bestTotal;',
+  },
+  {
+    id: 'ordering-right',
+    joinedBy: 'trailing-operator',
+    text: 'const ok = requiredKg <=\n  lifter.bestTotal;',
+  },
+  {
+    id: 'member-read',
+    joinedBy: 'leading-operator',
+    text: 'return lifter.bestTotal\n  .kg;',
   },
 ];
 
@@ -732,7 +1940,10 @@ const BANNED: readonly BannedPattern[] = [
  *
  * The primary precision check is still `finds nothing in any shipped module` —
  * that one runs over the real files and cannot go stale. This corpus adds the
- * shapes the tree does not currently contain but legitimately could.
+ * shapes the tree does not currently contain but legitimately could, and it now
+ * carries the three shapes it was missing: a template literal, a wrapped call,
+ * and an `Object.freeze` carrying a total. Those are the shapes most likely to
+ * false-positive, and the corpus that omitted them was a comfortable subset.
  */
 const ALLOWED: readonly string[] = [
   'if (!Number.isInteger(slot.dayIndex) || slot.dayIndex < 0) {',
@@ -757,7 +1968,49 @@ const ALLOWED: readonly string[] = [
   'gate: CareerQualifyingGate<Total>,',
   'wiring: CareerStandingWiring = shippedCareerStandingWiring(),',
   'const requirement: Record<CareerQualifyingCategory, number | null> = {',
+  'let qualifyingTotal: Total | null = null;',
+
+  // Template literals: ~30 interpolations ship in this directory and the corpus
+  // had none at all, while `interpolate-total` is a subject-keyed row over
+  // exactly this shape.
+  'faults.push(`career: slot ${slot.slotId} needs ${slot.qualifyingTotalKg[category]} kg`);',
+  'faults.push(`career: the gate admits total #${index} at ${tiers[high]}`);',
+  'return `${federation.name} ${CAREER_TUNING.MEET_NAMES[tier]}`;',
+  'faults.push(`career: ${record.results.length} results, ${totals.length} totals`);',
+
+  // `Object.freeze` carrying a total, which `object-introspection` sits one verb
+  // away from.
+  'return Object.freeze({ ...lifter, bestTotal: standing.qualifyingTotal });',
+  'return Object.freeze({ total: contest.total, bodyweightKg: contest.bodyweightKg });',
+
+  // Wrapped calls, which the physical-line scan could never have false-positived
+  // on and the logical-line scan can.
+  'const outcome = recordMeetResult(record, lifter, offer.slot, {\n  total: offer.total,\n  bodyweightKg: offer.bodyweightKg,\n});',
+  'return Object.freeze({\n  ...lifter,\n  bestTotal: standing.qualifyingTotal,\n});',
+  'const requiredKg =\n  slot.qualifyingTotalKg[lifter.category];',
+  // The shape that broke `ordering-right` the day the joiner landed: a wrapped
+  // generic signature whose `>` closes a type argument list and is followed by
+  // `( total`. It is in the corpus rather than only in a `why` because a
+  // regression here is a false positive on a real declaration in a real file.
+  'export function qualifiedTierFor<Total>(\n  total: Total,\n  category: CareerQualifyingCategory,\n  gate: CareerQualifyingGate<Total>,\n): CareerTier | null {',
+  'export function careerGateFaults<Total>(\n  gate: CareerQualifyingGate<Total>,\n  totals: readonly Total[],\n): readonly string[] {',
+  'return Object.freeze({\n  meetsCompleted,\n  totalsPosted,\n  qualifiedTier,\n  qualifyingTotal,\n  qualifyingBodyweightKg,\n  qualifiedAboveCompeted: standingRank(qualifiedTier) > standingRank(highestTierCompeted),\n});',
 ];
+
+/** Every logical line a corpus entry becomes, as the scan would read it. */
+function scannedLines(text: string): readonly string[] {
+  return logicalLines(scannableCode(text));
+}
+
+/** The ids of every row that matches `text`, under each row's own scope. */
+function matchingRows(text: string): readonly string[] {
+  const hits: string[] = [];
+  for (const banned of BANNED) {
+    const lines = banned.scope === 'code' ? scannedLines(text) : logicalLines(text);
+    if (lines.some((line) => banned.pattern.test(line))) hits.push(banned.id);
+  }
+  return hits;
+}
 
 describe('no shipped module can strip an opaque total', () => {
   it('has the modules the ban walks', () => {
@@ -770,12 +2023,81 @@ describe('no shipped module can strip an opaque total', () => {
       'careerRecord.ts',
       'careerTuning.ts',
     ]);
-    expect(SOURCE_OF.size).toBe(SHIPPED.length);
+    expect(SOURCE_OF.size).toBe(4);
+  });
+
+  it('joins a wrapped call back into one line before it scans', () => {
+    // The joiner is itself a subject. Two properties, each with a case, plus a
+    // degeneracy guard — because a joiner that ran away and glued a whole file
+    // into one string would make every unbounded class in every pattern start
+    // crossing statements, and the tell would be a false positive somewhere
+    // else rather than here.
+    //
+    // Reddens on: reverting to `text.split('\n')`, on dropping any of the three
+    // continuation rules, or on counting `{` as a bracket.
+    expect(logicalLines('const best = Math.max(\n  bestTotal,\n);')).toEqual([
+      'const best = Math.max( bestTotal, );',
+    ]);
+    expect(logicalLines('const a = 1;\nconst b = 2;')).toEqual(['const a = 1;', 'const b = 2;']);
+    expect(logicalLines('function f() {\n  return 1;\n}')).toEqual([
+      'function f() {',
+      'return 1;',
+      '}',
+    ]);
+
+    // On the real modules: no logical line may carry two declarations, which is
+    // what a runaway join looks like from outside.
+    let degenerate = 0;
+    let joined = 0;
+    let scanned = 0;
+    for (const name of SHIPPED) {
+      for (const line of scannedLines(source(name))) {
+        if ((line.match(/\bexport (?:function|interface|const|type)\b/g) ?? []).length > 1) {
+          degenerate += 1;
+        }
+        scanned += 1;
+      }
+      joined += 1;
+    }
+    expect(degenerate).toBe(0);
+    expect(joined).toBe(4);
+    // Counts, not bounds, on what the joiner actually produced.
+    expect(scanned).toBe(1012);
+  });
+
+  it('catches a wrapped coercion a line-anchored scan walks past', () => {
+    // The measurement behind the joiner, and the half that makes it non-vacuous:
+    // every shape here must be MISSED by the scan this file used to run and
+    // CAUGHT by the one it runs now. A tripwire that fits on one line proves
+    // nothing about wrapping.
+    //
+    // Reddens on: reverting the scan to physical lines, which sends `caught` to
+    // zero, or on a `WRAPPED` entry that was never wrapped in the first place,
+    // which sends `missedByLineScan` down.
+    let caught = 0;
+    let missedByLineScan = 0;
+    const joins = new Set<string>();
+    for (const wrapped of WRAPPED) {
+      const row = BANNED.find((banned) => banned.id === wrapped.id) as BannedPattern;
+      expect(row, `no row named ${wrapped.id}`).toBeDefined();
+      const code = scannableCode(wrapped.text);
+      const physical = code.split('\n');
+      const logical = logicalLines(code);
+      if (!physical.some((line) => row.pattern.test(line))) missedByLineScan += 1;
+      if (logical.some((line) => row.pattern.test(line))) caught += 1;
+      joins.add(wrapped.joinedBy);
+    }
+    expect(caught).toBe(6);
+    expect(missedByLineScan).toBe(6);
+    expect(WRAPPED.length).toBe(6);
+    // All three continuation rules are exercised, so a rule deleted from
+    // `logicalLines` has a tripwire pointed at it.
+    expect([...joins].sort()).toEqual(['bracket', 'leading-operator', 'trailing-operator']);
   });
 
   it('finds nothing in any shipped module', () => {
     // The ban itself. Reddens on: any coercion of a `Total` to a number in a
-    // shipped module, by any of the thirty-four routes below.
+    // shipped module, by any of the routes below.
     const findings: string[] = [];
     let scanned = 0;
     let checks = 0;
@@ -786,9 +2108,11 @@ describe('no shipped module can strip an opaque total', () => {
       // string cannot pass silently.
       expect(code.length, `${name} stripped to nothing`).toBeGreaterThan(0);
       expect(code, `${name} lost its declarations to the strip`).toMatch(/export /);
+      const codeLines = logicalLines(code);
+      const sourceLines = logicalLines(raw);
       for (const banned of BANNED) {
-        const text = banned.scope === 'code' ? code : raw;
-        for (const line of text.split('\n')) {
+        const lines = banned.scope === 'code' ? codeLines : sourceLines;
+        for (const line of lines) {
           if (banned.pattern.test(line)) findings.push(`${name} [${banned.id}] ${line.trim()}`);
         }
         checks += 1;
@@ -799,37 +2123,73 @@ describe('no shipped module can strip an opaque total', () => {
     expect(findings.join('\n')).toBe('');
 
     // Counts, not bounds, and the one with a SUBJECT is the product: a module
-    // added to this directory or one that stopped being read moves 136 as
+    // added to this directory or one that stopped being read moves 180 as
     // surely as a shortened ban list does.
-    expect(scanned).toBe(SHIPPED.length);
+    expect(scanned).toBe(4);
     expect(checks).toBe(SHIPPED.length * BANNED.length);
-    expect(checks).toBe(136);
+    expect(checks).toBe(180);
     // `BANNED.length` on its own is a fact about THIS FILE and no state of
     // `src/career/` can move it — it is pinned because a shortened list should
     // be a signed edit, not because it is evidence about the subject.
-    expect(BANNED.length).toBe(34);
+    expect(BANNED.length).toBe(45);
     expect(new Set(BANNED.map((banned) => banned.id)).size).toBe(BANNED.length);
     expect(BANNED.filter((banned) => banned.scope === 'source').length).toBe(1);
   });
 
-  it('drives every banned pattern against a string it must catch', () => {
-    // Non-vacuity, one tripwire per row: a regex that stopped matching anything
-    // reports itself instead of passing quietly forever.
+  it('drives every branch of every banned pattern against a string it must catch', () => {
+    // Non-vacuity, one tripwire per named BRANCH rather than one per row: a
+    // regex whose alternation lost a limb reports itself instead of passing on
+    // the one limb somebody happened to write a string for.
     //
-    // The tripwires live on the rows rather than in a parallel array, because
-    // `src/empire/`'s ban keeps them in a second array and had to delete an
-    // `expect(tripwires.length).toBe(banned.length)` line that compared two
-    // arrays declared eight lines apart. Pairing them structurally removes the
-    // question.
+    // Reddens on: deleting a verb from `object-introspection`, an operator from
+    // `ordering-left`, a spelling from `ts-suppression`, or a prefix context
+    // from `unary-plus` — each of which was a live branch with no tripwire.
     let live = 0;
     for (const banned of BANNED) {
-      expect(banned.tripwire, `pattern ${banned.id} matches nothing`).toMatch(banned.pattern);
-      live += 1;
+      expect(banned.tripwires.length, `row ${banned.id} drives nothing`).toBeGreaterThan(0);
+      for (const tripwire of banned.tripwires) {
+        expect(tripwire, `pattern ${banned.id} does not match ${tripwire}`).toMatch(banned.pattern);
+        live += 1;
+      }
     }
-    expect(live).toBe(BANNED.length);
+    // Counts, not bounds, on the tripwire corpus itself.
+    expect(live).toBe(108);
+    expect(new Set(BANNED.flatMap((banned) => banned.tripwires)).size).toBe(107);
     // Every row says why it is here, so a reader deleting one knows what they
     // are deleting.
     expect(BANNED.filter((banned) => banned.why.length > 0).length).toBe(BANNED.length);
+  });
+
+  it('gives all but one row a tripwire no other row matches', () => {
+    // THE FIX FOR A WITNESS THAT PROVED THE BAN AND NOT THE ROW. `cast-of-total`
+    // and `as-shape` shared a tripwire string verbatim, and the mutation witness
+    // recorded for `default-gate` in careerCore.ts used a mutant three rows
+    // matched — so deleting `default-gate` left the mutant red and the witness
+    // said nothing about the row it was filed under.
+    //
+    // Reddens on: two rows widening until they overlap on their isolating
+    // strings, or a row deleted so that another row's isolating string stops
+    // being matched at all.
+    const notIsolated: string[] = [];
+    let isolated = 0;
+    for (const banned of BANNED) {
+      if (banned.isolating === null) {
+        notIsolated.push(banned.id);
+        continue;
+      }
+      const hits = matchingRows(banned.isolating);
+      expect(hits, `${banned.id} does not match its own isolating string`).toContain(banned.id);
+      if (hits.length !== 1) {
+        notIsolated.push(`${banned.id} shares with ${hits.filter((id) => id !== banned.id).join(', ')}`);
+      } else {
+        isolated += 1;
+      }
+    }
+    // One row has no isolating string and says so in its `why`: `unary-plus` is
+    // subsumed by `arith-right` on every shape it catches.
+    expect(notIsolated).toEqual(['unary-plus']);
+    expect(isolated).toBe(44);
+    expect(isolated + notIsolated.length).toBe(BANNED.length);
   });
 
   it('leaves this directory’s real idioms alone', () => {
@@ -838,22 +2198,34 @@ describe('no shipped module can strip an opaque total', () => {
     //
     // Reddens on: widening any row until it catches a legal comparison — the
     // most likely being an ordering row that starts matching `<Total>`, which
-    // is how the first draft of `ordering-right` failed.
+    // is how the first draft of `ordering-right` failed, or an unbounded
+    // character class walking across a joined line, which is how
+    // `paren-ordering` failed the day the joiner landed.
     const refusals: string[] = [];
     let pairs = 0;
-    for (const line of ALLOWED) {
+    let lines = 0;
+    for (const entry of ALLOWED) {
+      const entryLines = scannedLines(entry);
+      lines += entryLines.length;
       for (const banned of BANNED) {
         if (banned.scope === 'source') continue;
-        if (banned.pattern.test(scannableCode(line))) {
-          refusals.push(`[${banned.id}] ${line}`);
+        for (const line of entryLines) {
+          if (banned.pattern.test(line)) refusals.push(`[${banned.id}] ${line}`);
         }
         pairs += 1;
       }
     }
     expect(refusals.join('\n')).toBe('');
-    // Counts, not bounds, on the corpus itself.
-    expect(ALLOWED.length).toBe(22);
+    // Counts, not bounds, on the corpus itself. `lines` equalling
+    // `ALLOWED.length` is NOT an arithmetic identity even though it reads like
+    // one: six of these entries are written across several physical lines, and
+    // each is one logical line only because the joiner put it back together. A
+    // joiner that stopped joining sends this to 35 + 15 and reddens here rather
+    // than silently reverting the precision corpus to its old comfortable shape.
+    expect(ALLOWED.length).toBe(35);
     expect(pairs).toBe(ALLOWED.length * (BANNED.length - 1));
+    expect(lines).toBe(35);
+    expect(ALLOWED.filter((entry) => entry.includes('\n')).length).toBe(6);
   });
 
   it('reads the subject vocabulary the way its docstring says', () => {
@@ -885,12 +2257,18 @@ describe('no shipped module can strip an opaque total', () => {
       expect(subject.test(value), `${value} should not be a subject`).toBe(false);
       checked += 1;
     }
-    expect(checked).toBe(matches.length + misses.length);
     expect(checked).toBe(11);
     // The plural is the mirror image, and `totals.length` is why it exists.
     expect(plural.test('totals')).toBe(true);
     expect(plural.test('ghostTotalsKg')).toBe(false);
     expect(plural.test('totalsPosted')).toBe(false);
+    // The alias rows read the same vocabulary from the other side: a binding
+    // NAMED like a total is not a rename and stays legal.
+    const notATotal = new RegExp(`^${NOT_A_TOTAL_NAME}[A-Za-z_$][\\w$]*$`);
+    expect(notATotal.test('candidate')).toBe(true);
+    expect(notATotal.test('shown')).toBe(true);
+    expect(notATotal.test('total')).toBe(false);
+    expect(notATotal.test('qualifyingTotal')).toBe(false);
   });
 
   it('strips comments and quoted strings but not template holes', () => {

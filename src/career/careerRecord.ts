@@ -73,6 +73,15 @@
  * behavioural axis and a syntactic one; see `careerCore.ts`'s header, section 3,
  * for the measurement and for what is still not enforced.
  *
+ * The first version of that file was bypassed too, by a four-line mutant keyed
+ * on the total's printed digit width, because its probe used two totals and
+ * both sat outside the band real totals live in. What replaced it sweeps a band
+ * across every threshold and adds a substitution probe, and the functions in
+ * THIS file are in it by name: `qualifiedTierFor`, `careerStanding`,
+ * `standingAsOf`, `tierUnlockBetween`, `lifterWithStanding` and
+ * `careerGateFaults` each have to give the same answer when the total is
+ * swapped and the gate's answers are held fixed.
+ *
  * MUTATION WITNESS. Mutant, planted above the gate call in `qualifiedTierFor`:
  * `if (Number(total) >= requiredKg) return tier;`. Reddened:
  * `expect(qualifiedTierFor(HUGE_TOTAL_KG, 'mens', REFUSING_GATE)).toBe('local')`

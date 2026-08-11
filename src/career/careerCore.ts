@@ -124,25 +124,48 @@
  * passing, exit 0. So the claim rested on nobody having written one, which is
  * the thing the sentence promised was impossible.
  *
+ * AND THE FIRST FIX FOR THAT WAS BYPASSED IN TURN, WHICH IS WHY THE PARAGRAPH
+ * BELOW IS SHORTER THAN THE ONE IT REPLACES. The sentence that stood here said
+ * "EVERY OTHER ROUTE from a `Total` to a number is refused", backed by a probe
+ * whose domain was two points — a million kilograms and zero, both far outside
+ * the 260-680 band where a real total lives. Planting this:
+ *
+ *     const candidate = lifter.bestTotal;
+ *     const shown = [candidate].join();
+ *     if (!/^\d\d\d(\.\d)?$/.test(shown) && !gate(lifter.bestTotal, requiredKg)) {
+ *       return { kind: 'below-qualifying-total', requiredKg };
+ *     }
+ *
+ * gave `tsc --noEmit` exit 0 and 132 of 132 tests passing. A 200 kg novice is
+ * `eligible` at worlds under it. So the same defect, one level out: an empty
+ * domain inside the instrument written to close an empty domain.
+ *
  * What is true now, and by what:
  *
  *   - THE DIRECT FORM does not compile, and `tsc --noEmit` is what refuses it.
  *     That is A SEPARATE COMMAND FROM THE SUITE: vitest strips types without
  *     checking them, so a reader who runs only `npx vitest run` has not checked
  *     this at all. It is in the source ban below as well for that reason.
- *   - EVERY OTHER ROUTE from a `Total` to a number is refused by
- *     `careerOpacity.test.ts`, on two axes. A behavioural probe binds `Total` to
+ *   - A ROUTE FROM A `Total` TO A NUMBER SHOWS UP AS A DIFFERENT ANSWER, and
+ *     that is what `careerOpacity.test.ts` measures. It binds `Total` to
  *     `number` — which `careerCore.test.ts` cannot, because its wrapped
  *     `TestTotal` makes `Number(total)` `NaN` and every laundered comparison
- *     silently false — and asserts a refusing gate still refuses a total of a
- *     million kilograms. A 34-pattern source ban then catches a coercion that is
- *     present but unreachable, which the probe cannot see.
+ *     silently false — sweeps a band across every threshold in both categories
+ *     under six gates, and asserts the verdict equals what the gate alone
+ *     decided. Its general instrument is a SUBSTITUTION: the answer computed
+ *     from total `x` under gate `g` must equal the answer computed from any
+ *     other total `y` under the gate that replays `g`'s answers about `x`. A
+ *     module that reads nothing out of a total cannot tell those apart; one
+ *     that reads anything is separated by some pair, without the test naming
+ *     which read it was. A 45-pattern source ban then catches a coercion that
+ *     is present but unreachable, which no probe can see.
  *   - WHAT IS STILL NOT ENFORCED: the ban reads text, so it keys on this
- *     directory's naming convention for a total, and a total renamed to `t`
- *     walks past its subject-keyed half. The subject-independent half —
- *     `Number(`, `parseFloat`, `valueOf`, `as number`, `JSON.parse` and the
- *     rest — has no such hole, and the behavioural probe has none at all for a
- *     path it can reach.
+ *     directory's naming convention for a total. `alias-total` closes the
+ *     one-line rename that produced the second bypass; a rename at a FUNCTION
+ *     PARAMETER is still open. And the subject-independent half of the ban is a
+ *     list of the routes somebody has thought of — `join` was missing from it
+ *     while the file claimed it was closed — so the ban is defence in depth and
+ *     the substitution probe is the closure.
  *
  * MUTATION WITNESS. Mutant, planted at the qualifying check in
  * `meetEligibility`: `if (requiredKg !== null && Number(lifter.bestTotal) >=
@@ -152,15 +175,31 @@
  * says no`, and `expect(findings.join('\n')).toBe('')` inside `finds nothing in
  * any shipped module`.
  *
+ * MUTATION WITNESS for the second bypass, the four-line one above. Reddened:
+ * `expect(disagreements.length).toBe(0)` inside `matches the gate total by total
+ * and slot by slot, across the whole band`, `expect(faults.length).toBe(0)`
+ * inside `asks the gate once per gated verdict, with the lifter's own total`,
+ * `expect(subjectsDisagreeing.size).toBe(0)` inside `holds for every subject,
+ * every gate and every pair in the band`, and
+ * `expect(findings.join('\n')).toBe('')` inside `finds nothing in any shipped
+ * module` on the `alias-total` and `array-join` rows.
+ *
  * There is deliberately no default gate. A default is the thing that lets a
  * caller forget to inject, and a defaulted `(a, b) => a >= b` would be exactly
  * the locally-summed comparison the fence exists to refuse. That sentence also
  * had nothing behind it and now has the `default-gate` row of the same ban.
  *
- * MUTATION WITNESS. Mutant, on `meetEligibility`'s signature:
- * `gate: CareerQualifyingGate<Total> = (a, b) => (a as unknown as number) >= b,`.
- * Reddened: `expect(findings.join('\n')).toBe('')` inside `finds nothing in any
- * shipped module`.
+ * MUTATION WITNESS, RE-TAKEN BECAUSE THE FIRST ONE DID NOT ISOLATE ITS ROW. The
+ * mutant first recorded here was
+ * `gate: CareerQualifyingGate<Total> = (a, b) => (a as unknown as number) >= b,`,
+ * which matches `as-unknown`, `as-number` and `default-gate` — so deleting
+ * `default-gate` entirely left it red and the witness proved the ban bites
+ * rather than that this row does. Re-planted with the sentence's own subject,
+ * `gate: CareerQualifyingGate<Total> = (a, b) => a >= b,`, on
+ * `meetEligibility`'s signature. Reddened: `expect(findings.join('\n')).toBe('')`
+ * inside `finds nothing in any shipped module`, naming `[default-gate]` and
+ * nothing else. With the `default-gate` row deleted the same mutant leaves that
+ * assertion GREEN, which is the half the first witness never showed.
  *
  * `careerCore.test.ts`'s "imports nothing outside this directory" pins the
  * import list at `['./careerTuning']` and the tuning module's at `[]`.
