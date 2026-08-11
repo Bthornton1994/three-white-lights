@@ -556,9 +556,11 @@ describe('the band the numeric probe walks', () => {
 /**
  * A gate that records what it was asked.
  *
- * The C4 bypass short-circuits before the gate is called at all, so "was the
- * gate consulted, once, with this lifter's own total" is a property that
- * separates it from the shipped code even where the verdict happens to agree.
+ * The confirmed bypass short-circuits before the gate is called at all, so
+ * "was the gate consulted, once, with this lifter's own total" is a property
+ * that separates it from the shipped code even where the verdict agrees. It
+ * reddens with `... at 100kg asked 0 times`, which names the defect directly
+ * rather than reporting a verdict that happens to be wrong.
  */
 interface RecordingGate {
   readonly gate: CareerQualifyingGate<NumericTotal>;
@@ -598,10 +600,14 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     // stops a disagreement being hidden behind an unrelated reason. The pinned
     // `kinds` set is what enforces that rather than asserting it.
     //
-    // Reddens on: the C4 bypass, on any laundered comparison, and on a gate
-    // call that is skipped. MEASURED with
+    // Reddens on: the confirmed bypass, on any laundered comparison, and on a
+    // gate call that is skipped. MEASURED with
     // `const shown = [candidate].join(); if (!/^\d\d\d(\.\d)?$/.test(shown) &&
-    // !gate(...))` planted: `expected 4059 to be +0` on `disagreements`.
+    // !gate(...))` planted, verbatim from the run:
+    //   expected '[refuses-everything] cragmoor-barbell…' to be ''
+    //   + [refuses-everything] cragmoor-barbell-federation-regional-d21 at
+    //     100kg needs 450kg: gate said below-qualifying-total, calendar said
+    //     eligible
     const disagreements: string[] = [];
     const kinds = new Set<string>();
     let expectedEligible = 0;
@@ -646,8 +652,8 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
 
   it('asks the gate once per gated verdict, with the lifter’s own total', () => {
     // The branch immediately below the one above, per CLAUDE.md: a verdict can
-    // agree with the gate without the gate having been asked, and the C4 bypass
-    // is exactly that — `&&` short-circuits, the gate is never called, and for a
+    // agree with the gate without the gate having been asked, and the confirmed
+    // bypass is exactly that — `&&` short-circuits, the gate is never called, and for a
     // three-digit total the answer is decided by a regex on the printed form.
     //
     // Reddens on: any path that decides a gated slot without calling the gate,
@@ -982,9 +988,31 @@ describe('substituting the total behind a fixed gate changes nothing', () => {
     // differently from `x` while the gate's answers are held identical, and each
     // shows up here as one disagreement without this file naming it.
     //
-    // Reddens on: the C4 bypass. MEASURED with it planted:
-    // `expected 6570 to be +0`, naming `meetEligibility`, `selectableMeets`,
-    // `enterMeet` and `runEntryPlan`.
+    // Reddens on: the confirmed bypass. MEASURED with it planted, verbatim:
+    //   expected '[meetEligibility/refuses-everything] …' to be ''
+    //   + [meetEligibility/refuses-everything] 100kg -> 0kg
+    //   +   [{"kind":"eligible"}, and 32 more]
+    //   +   [{"kind":"below-qualifying-total","requiredKg":450}, and 32 more]
+    // A hundred-kilogram lifter is admitted to every gated meet by a gate that
+    // refuses everything, and swapping in any other total puts it back.
+    //
+    // AND A SECOND MUTANT, PLANTED TO SEPARATE THIS INSTRUMENT FROM THE BAN.
+    // This one contains no banned token at all — no `Number`, no `String`, no
+    // `join`, no cast of a total, no alias, no template hole. Planted in
+    // `standingOver`, `careerRecord.ts`:
+    //
+    //   const rung = CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER.regional.mens;
+    //   if (new Set([result.total]).has(rung as never)) {
+    //     continue;
+    //   }
+    //
+    // MEASURED: `npx tsc --noEmit` exit 0. `finds nothing in any shipped
+    // module` GREEN — all forty-five rows walk past it. `matches the gate total
+    // by total and slot by slot` GREEN, because the mutant is on the standing
+    // path rather than the per-slot verdict. What went red was this test, on
+    // `expected '[careerStanding/refuses-everything] 4…' to be ''`, and the
+    // spread census beside it. That is the one measurement that says the
+    // substitution probe is not a more expensive restatement of the ban.
     const faults: string[] = [];
     let pairs = 0;
     const subjectsDisagreeing = new Set<string>();
@@ -2073,7 +2101,25 @@ describe('no shipped module can strip an opaque total', () => {
     //
     // Reddens on: reverting the scan to physical lines, which sends `caught` to
     // zero, or on a `WRAPPED` entry that was never wrapped in the first place,
-    // which sends `missedByLineScan` down.
+    // which sends `missedByLineScan` down. MEASURED with
+    // `return text.split('\n');` as the first statement of `logicalLines`:
+    // `expected +0 to be 6`.
+    //
+    // AND MEASURED ON A REAL MODULE, NOT JUST ON THIS CORPUS, because a
+    // tripwire that lives in the test file is a weaker claim than a mutant in
+    // the tree. Planted in `meetEligibility`, replacing the `requiredKg` read:
+    //
+    //   const requiredKg = Math.max(
+    //     slot.qualifyingTotalKg[lifter.category] ?? 0,
+    //     lifter.bestTotal,
+    //   );
+    //
+    // With the joiner in place, `finds nothing in any shipped module` reddens on
+    // `careerCore.ts [math-on-total] const requiredKg = Math.max(
+    // slot.qualifyingTotalKg[lifter.category] ?? 0, lifter.bestTotal, );` and on
+    // that row alone. With `logicalLines` reverted to `text.split('\n')` and the
+    // same mutant still in the tree, that assertion is GREEN. So the wrap is
+    // what hid it, and the joiner is what finds it.
     let caught = 0;
     let missedByLineScan = 0;
     const joins = new Set<string>();

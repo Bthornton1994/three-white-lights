@@ -175,14 +175,26 @@
  * says no`, and `expect(findings.join('\n')).toBe('')` inside `finds nothing in
  * any shipped module`.
  *
- * MUTATION WITNESS for the second bypass, the four-line one above. Reddened:
- * `expect(disagreements.length).toBe(0)` inside `matches the gate total by total
- * and slot by slot, across the whole band`, `expect(faults.length).toBe(0)`
- * inside `asks the gate once per gated verdict, with the lifter's own total`,
- * `expect(subjectsDisagreeing.size).toBe(0)` inside `holds for every subject,
- * every gate and every pair in the band`, and
- * `expect(findings.join('\n')).toBe('')` inside `finds nothing in any shipped
- * module` on the `alias-total` and `array-join` rows.
+ * MUTATION WITNESS for the second bypass, the four-line one above. Seven tests
+ * reddened where the suite was 132 of 132 green before; the four that name the
+ * defect rather than a count are:
+ *
+ *   - `expect(disagreements.slice(0, 5).join('\n')).toBe('')` inside `matches
+ *     the gate total by total and slot by slot, across the whole band`, on
+ *     `cragmoor-barbell-federation-regional-d21 at 100kg needs 450kg: gate said
+ *     below-qualifying-total, calendar said eligible`.
+ *   - `expect(faults.slice(0, 5).join('\n')).toBe('')` inside `asks the gate
+ *     once per gated verdict, with the lifter's own total`, on
+ *     `... at 100kg asked 0 times`.
+ *   - `expect(faults.join('\n')).toBe('')` inside `holds for every subject,
+ *     every gate and every pair in the band`, on
+ *     `[meetEligibility/refuses-everything] 100kg -> 0kg`.
+ *   - `expect(findings.join('\n')).toBe('')` inside `finds nothing in any
+ *     shipped module`, on `careerCore.ts [array-join]` and
+ *     `careerCore.ts [alias-total]`.
+ *
+ * `npx tsc --noEmit` stays exit 0 under it, which is the point: the compiler was
+ * never the thing that would have caught this.
  *
  * There is deliberately no default gate. A default is the thing that lets a
  * caller forget to inject, and a defaulted `(a, b) => a >= b` would be exactly
@@ -197,9 +209,24 @@
  * rather than that this row does. Re-planted with the sentence's own subject,
  * `gate: CareerQualifyingGate<Total> = (a, b) => a >= b,`, on
  * `meetEligibility`'s signature. Reddened: `expect(findings.join('\n')).toBe('')`
- * inside `finds nothing in any shipped module`, naming `[default-gate]` and
- * nothing else. With the `default-gate` row deleted the same mutant leaves that
- * assertion GREEN, which is the half the first witness never showed.
+ * inside `finds nothing in any shipped module` — one test of twenty-four, on
+ * `careerCore.ts [default-gate] export function meetEligibility<Total>( slot:
+ * CareerMeetSlot, lifter: CareerLifter<Total>, todayDayIndex: number, gate:
+ * CareerQualifyingGate<Total> = (a, b) => a >= b, ): CareerEligibility {` and
+ * nothing else.
+ *
+ * ISOLATION, which is the half the first witness never showed. With the
+ * `default-gate` row deleted from `BANNED` and the same mutant in place, that
+ * assertion is GREEN and the only failures are the row-count pins
+ * (`expected 176 to be 180`, `expected 106 to be 108`, `expected 43 to be 44`).
+ * So the row catches this mutant and no other row does.
+ *
+ * Worth recording rather than tidying away: this mutant does NOT compile —
+ * `npx tsc --noEmit` exits 2 with `error TS2365: Operator '>=' cannot be applied
+ * to types 'Total' and 'number'`. That is the compiler doing its job on the
+ * `(a, b) => a >= b` spelling specifically, and it is not a reason to drop the
+ * row: a default gate written any other way (`= () => true`) compiles fine, and
+ * the row's second tripwire is that form.
  *
  * `careerCore.test.ts`'s "imports nothing outside this directory" pins the
  * import list at `['./careerTuning']` and the tuning module's at `[]`.
