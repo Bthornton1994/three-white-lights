@@ -116,6 +116,17 @@
  * run for about seven minutes after collection, that is a real hole and it is
  * why the fixed factor stays rather than being replaced by the scale.
  *
+ * THAT IT FIRES AT ALL IS MEASURED, and so is the direction it is wrong in.
+ * Driven from a process aged four seconds first — a fresh task gets a
+ * scheduler boost a minutes-old vitest worker does not — the probe reads a
+ * share of 1.000 on an idle box, and 0.566 to 0.641 against eight spinning
+ * burners on four cores, taking a 50000 ms budget to 135000-145000. Fair share
+ * at nine runnable processes on four cores is 0.44, so the probe UNDER-reads
+ * starvation by roughly a third and the scale it returns is smaller than the
+ * inflation it is scaling for. It is a floor on the correction rather than the
+ * correction, which is why the fixed factor carries the load and this is on
+ * top of it.
+ *
  * WHAT IT WOULD NOT HAVE CAUGHT, measured rather than assumed. Not every
  * inflation here is starvation. `streakEntitlement.test.ts` run alone against
  * two spinning CPU burners came in at 147.5s versus 148.5s idle, and against a
