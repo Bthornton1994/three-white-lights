@@ -7,8 +7,10 @@
  *
  * `careerOpacity.test.ts` holds the history in full and it is worth reading
  * first. The short version is that the claim "this directory never reads a
- * number out of a `Total`" has been bypassed three times, and each bypass
- * walked through the same hole one level further out:
+ * number out of a `Total`" has been bypassed four times, and each bypass
+ * walked through the same hole one level further out. The fourth walked past
+ * THIS file, so read item 2 of the limits list below before trusting anything
+ * here:
  *
  *   1. A laundered `Number(lifter.bestTotal) >= requiredKg`, against a claim
  *      backed by the type system alone.
@@ -21,17 +23,34 @@
  *      `src/game/meetTuning.ts`, which is the only distribution of totals this
  *      game currently produces — the gate is asked zero times and the verdict
  *      is `eligible` against a requirement of 680.
+ *   4. `new Set([...range]).has(lifter.bestTotal)`, against THIS file. A
+ *      membership test is not a property access, so no trap fires and the log
+ *      stays empty — and under a `number` binding it is value equality, so a
+ *      set built from a range ranks the total against an interval. 585 kg and
+ *      610 kg, both values of `ghostTotalsKg`, went to worlds with the gate
+ *      asked zero times, `tsc --noEmit` at exit 0 and 154 of 154 tests green.
  *
- * The root cause is one sentence: a sampled domain loses this game, because
- * whoever writes the next bypass picks the gap after seeing the samples. Fifty
- * points is more than two and it is still a set of points, and a predicate that
- * is constant on those points is invisible however much of the total it reads.
+ * The root cause of the first three is one sentence: a sampled domain loses
+ * this game, because whoever writes the next bypass picks the gap after seeing
+ * the samples. Fifty points is more than two and it is still a set of points,
+ * and a predicate that is constant on those points is invisible however much of
+ * the total it reads.
  *
  * So this file does not sample. It binds `Total` to a value that has no
  * readable state at all: a `Proxy` whose every trap records the read and then
  * throws. There is one value, it stands for every total, and the question it
  * answers is not "does the module behave the same at these totals" but "does
  * the module touch the total at all".
+ *
+ * THE ROOT CAUSE OF THE FOURTH IS A DIFFERENT ONE, and it is the reason this
+ * file's own sales pitch is now shorter. A `Proxy` removes the domain from
+ * reads that go THROUGH the proxy, which is the class of read this file's
+ * premise names. A membership test, an `includes`, a `Map` lookup, a `switch`
+ * and a `===` against a table are all reads of the total that are outside that
+ * premise, and adding traps does not reach them because there is no trap to
+ * add. What answers the fourth bypass is the plate-resolution domain in
+ * `careerOpacity.test.ts`, which is a domain again — a better-argued one, not
+ * an absent one.
  *
  * ===========================================================================
  * The three instruments and the property each one carries
@@ -101,11 +120,36 @@
  *      behave one way under this probe and another under a numeric binding, and
  *      only the numeric run comparison below would separate them — which is a
  *      sampled comparison again.
- *   2. Identity. `total === x`, `Object.is(total, x)`, `new Set([total]).has(y)`,
- *      `list.includes(total)`, a `WeakSet` membership test — all of these are
- *      reference comparisons and none of them calls a trap. Identity carries no
- *      ordering, so a read of it cannot rank two totals; it can still branch on
- *      whether two references are the same object.
+ *   2. Identity, and value equality wearing identity's clothes. `total === x`,
+ *      `Object.is(total, x)`, `new Set([...]).has(total)`,
+ *      `list.includes(total)`, a `WeakSet` membership test, a `Map` lookup, a
+ *      `switch` — none of these calls a trap, because none of them is a
+ *      PROPERTY read, and the premise of this whole file is that a read is a
+ *      property access.
+ *
+ *      THE SENTENCE THAT USED TO END THIS ITEM WAS FALSE AND IT COST A ROUND.
+ *      It read: "Identity carries no ordering, so a read of it cannot rank two
+ *      totals; it can still branch on whether two references are the same
+ *      object." That was validated at ONE sampled value — the mutant below,
+ *      planted at `QUALIFYING_TOTAL_KG_BY_TIER.regional.mens`, 450 kg, which is
+ *      a band point — and then written as a general property of identity.
+ *
+ *      It is not one. `Set.prototype.has` compares by SameValueZero, and under
+ *      the `number` binding the wiring piece uses that is VALUE equality, so a
+ *      set built from a RANGE ranks the total against an interval. The fourth
+ *      bypass is exactly that: one physical line, no numeric literal, no cast,
+ *      `tsc` exit 0, the whole directory green, and 585 kg and 610 kg — two
+ *      values of `MEET_LOCAL.ghostTotalsKg` — admitted to a meet requiring 680
+ *      with the gate asked zero times. Move the measured value 134 kg to the
+ *      right and the conclusion evaporates.
+ *
+ *      So the item stands and the reasoning under it does not: these reads are
+ *      invisible here, one of them ranks, and no number of extra traps changes
+ *      that because the class sits outside the premise. What stands against it
+ *      is the plate-resolution domain in `careerOpacity.test.ts`, and
+ *      `is invisible to the reads a proxy has no trap for, one of which ranks`
+ *      below now drives the ranking half rather than asserting the total equals
+ *      itself.
  *
  *      MEASURED, so this item is a finding rather than a worry. The mutant
  *      `careerOpacity.test.ts` records against its own substitution probe —
@@ -131,7 +175,7 @@
  *      probes narrowing `lo`/`hi` through the gate, then a decision off `lo`
  *      alone, never touching the proxy. `tsc` exit 0 and FIVE tests red,
  *      including `asks the injected gate and never compares a total itself` and
- *      `walks the ladder by the gate's answers alone, across the band`. So the
+ *      `walks the ladder by the gate's answers alone, across the domain`. So the
  *      per-function checks are broader than "meetEligibility and no other".
  *
  *      Attempt 2, subtler, because attempt 1 is loud in its call COUNT: the
@@ -273,13 +317,43 @@ const OPAQUE_PROBE = Object.freeze({
   /**
    * The kilogram values the blind gates answer off.
    *
-   * All non-integral, so none can collide with a day index, a rank, a count or
-   * a bodyweight under the identity mask; and none equals a qualifying
-   * threshold, which `stands for totals that collide with nothing` asserts.
+   * None of them is a number the readout already prints — not a threshold, not
+   * a day index, not an opening day, not an earliest-next-entry day, not a rank
+   * and not a count — because the mask is by identity and a stand-in that
+   * collided with one of those would be blanked where it appeared as that other
+   * quantity, making the two runs disagree for a reason that is not a read.
+   * `stands for totals that collide with nothing` builds that set from the
+   * shipped calendar and checks it, rather than approximating it with
+   * "non-integral".
+   *
    * 632.5 is the third bypass's own witness — the top of `ghostTotalsKg` — kept
    * because a value that broke the last instrument belongs in the next one.
+   *
+   * 701 IS THE INTEGRAL ONE, AND IT IS HERE BECAUSE THE OLD RULE MADE A WHOLE
+   * BRANCH SHAPE INVISIBLE. Every stand-in used to be non-integral by
+   * construction, so `Number.isInteger(total)` — which fires no proxy trap and
+   * is legal under the source ban — answered `false` on the opaque run and
+   * `false` on every numeric run too. The two runs agreed, and a module keyed
+   * on integrality was outside this instrument by arithmetic rather than by
+   * anything anybody decided. 701 is above every day index the probe can print
+   * and above every threshold on the table, so it is integral without being any
+   * of the quantities the old rule was protecting against.
+   *
+   * MUTATION WITNESS, AND ITS ISOLATION, because a bare pass is not evidence.
+   * Mutant, at `meetEligibility`'s qualifying check:
+   * `if (!Number.isInteger(lifter.bestTotal) && !gate(lifter.bestTotal,
+   * requiredKg)) {`. It needs no cast — `Number.isInteger` takes `unknown` —
+   * and `tsc --noEmit` is exit 0 under it. Reddened here:
+   * `expect(disagreements.length).toBe(0)` inside `records no read from any
+   * subject, under any gate, at any total`.
+   *
+   * ISOLATION, which is the half that says 701 did it rather than the file. The
+   * same mutant with 701 replaced by 701.5 — one character, the stand-in count
+   * unchanged at five so no census pin moves — leaves this whole file GREEN, 10
+   * of 10. So the integral stand-in is what sees this shape, and nothing else
+   * here does.
    */
-  STAND_IN_KG: Object.freeze([12.5, 472.25, 632.5, 1000.5]),
+  STAND_IN_KG: Object.freeze([12.5, 472.25, 632.5, 701, 1000.5]),
 
   /**
    * A SECOND total, handed to a function in a position it must discard.
@@ -336,6 +410,54 @@ const THRESHOLDS_KG: readonly number[] = Object.freeze(
     ),
   ].sort((left, right) => left - right),
 );
+
+/**
+ * The window the fourth bypass ranked against, as a list of kilogram values.
+ *
+ * The integers from the nationals requirement plus the entry gap up to, but not
+ * including, the worlds requirement minus the first nationals day — which is
+ * how the shipped line spelled it, out of tuned constants and no literal. It is
+ * rebuilt here from the same constants rather than transcribed, so a playtester
+ * moving a threshold moves this window with it and the check below still
+ * describes a real interval.
+ */
+const RANKING_WINDOW_KG: readonly number[] = Object.freeze(
+  [...Array(CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER.worlds.mens).keys()].slice(
+    CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER.nationals.mens +
+      CAREER_TUNING.MIN_DAYS_BETWEEN_ENTERED_MEETS,
+    CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER.worlds.mens -
+      CAREER_TUNING.FIRST_MEET_DAY_BY_TIER.nationals,
+  ),
+);
+
+/** Both stand-in roles in one list, so the collision guard walks all of them. */
+const ALL_STAND_INS_KG: readonly number[] = Object.freeze([
+  ...OPAQUE_PROBE.STAND_IN_KG,
+  OPAQUE_PROBE.OTHER_STAND_IN_KG,
+]);
+
+/**
+ * Every number the readout can print that is not a total.
+ *
+ * Built from the shipped calendar rather than described in prose, because the
+ * rule it replaces — "a stand-in must not be an integer" — was a proxy for this
+ * set and a lossy one in both directions. It excluded 701, which collides with
+ * nothing, and it would have admitted a non-integral collision if the tuning
+ * table ever grew one.
+ *
+ * The four sources are the four numeric fields a verdict, a lifter, a standing
+ * or an engagement census can carry: a qualifying requirement, a day index (of
+ * a slot, of the day it opens, or of the earliest next entry), a bodyweight,
+ * and a count or a rank.
+ */
+const PRINTED_NON_TOTALS: ReadonlySet<number> = new Set<number>([
+  ...THRESHOLDS_KG,
+  ...OPAQUE_PROBE.BODYWEIGHTS_KG,
+  ...CALENDAR.map((slot) => slot.dayIndex),
+  ...CALENDAR.map((slot) => slot.dayIndex - CAREER_TUNING.CALENDAR_VISIBLE_DAYS_AHEAD),
+  ...CALENDAR.map((slot) => slot.dayIndex + CAREER_TUNING.MIN_DAYS_BETWEEN_ENTERED_MEETS),
+  ...Array.from({ length: CALENDAR.length + 1 }, (_unused, index) => index),
+]);
 
 // ===========================================================================
 // 2. The opaque total
@@ -760,6 +882,49 @@ const SUBJECTS: readonly OpaqueSubject[] = [
 ];
 
 // ===========================================================================
+// 5b. The census that decides which functions are subjects
+// ===========================================================================
+
+/**
+ * An exported function whose type parameters mention `Total`.
+ *
+ * THE PATTERN THIS REPLACES WAS `/export function (\w+)<Total[,>]/g` OVER
+ * SOURCE WITH BLOCK COMMENTS STRIPPED, and it missed four shapes a critic
+ * listed. `<Total extends object>` failed on the character after the name;
+ * `<Category, Total>` failed because `Total` was not first; an arrow assigned
+ * to an exported `const` was not a `function` at all; and a signature sitting
+ * inside a `//` comment counted as a real export, because only block comments
+ * were removed.
+ *
+ * Every one of those is a way to add a driveable function that this file would
+ * then not drive while its own set equality read as complete — which is the
+ * fourth limit in the header claiming to be closed by construction while a
+ * construction it does not cover walks past.
+ *
+ * The nesting allowance is one level deep (`<Total, R extends Record<string,
+ * number>>`), which is what this directory actually writes. Two levels is not
+ * covered and is stated rather than left: a signature that needs it would be
+ * missed, and the tripwire corpus below is where a reader adds it.
+ */
+const GENERIC_OVER_TOTAL =
+  /export\s+(?:function\s+(\w+)|const\s+(\w+)\s*(?::[^=<>]*)?=\s*)<((?:[^<>]|<[^<>]*>)*)>/g;
+
+/** Source as the census reads it: block comments gone, line comments gone. */
+function withoutComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+}
+
+function exportsGenericOverTotal(text: string): readonly string[] {
+  const found: string[] = [];
+  const code = withoutComments(text);
+  for (const match of code.matchAll(GENERIC_OVER_TOTAL)) {
+    if (!/\bTotal\b/.test(match[3] ?? '')) continue;
+    found.push((match[1] ?? match[2]) as string);
+  }
+  return found;
+}
+
+// ===========================================================================
 // 6. The readout — a structural walk that masks the total by identity
 // ===========================================================================
 
@@ -823,8 +988,14 @@ describe('the opaque total the probe binds', () => {
   it('throws and records on every route the three known bypasses used', () => {
     // NON-VACUITY, and the first thing to read in this file. An instrument that
     // cannot catch the routes we already know about is worthless, so each of the
-    // three confirmed bypasses is driven at the value itself, plus the routes
-    // the source ban lists and two the ban has no row for.
+    // first three confirmed bypasses is driven at the value itself, plus the
+    // routes the source ban lists and two the ban has no row for.
+    //
+    // THE FOURTH BYPASS IS DELIBERATELY ABSENT FROM THIS CORPUS. It is a
+    // membership test rather than a property access, so nothing here catches it
+    // and putting it in this list would turn a green row into a false one. It is
+    // driven in `is invisible to the reads a proxy has no trap for, one of which
+    // ranks` instead, which is the honest place for it.
     //
     // Reddens on: a trap removed from the handler, or a trap that returns
     // instead of throwing.
@@ -919,14 +1090,28 @@ describe('the opaque total the probe binds', () => {
     expect(probe.reads()[0]).toBe('get(Symbol(Symbol.toPrimitive))');
   });
 
-  it('is invisible to the reads a proxy has no trap for', () => {
+  it('is invisible to the reads a proxy has no trap for, one of which ranks', () => {
     // THE HONESTY CHECK for the limits listed in the header, driven rather than
     // asserted in prose. Each of these reads something about the total and none
     // of them records anything, which is what the header says and what a reader
     // would otherwise have to take on trust.
     //
-    // Reddens on: a claim in the header's limit list becoming false — which
-    // would be good news and should be read as a prompt to move the item.
+    // THE VERSION THIS REPLACES COULD NOT FAIL FOR THE CLAIM IT SUPPORTED, and
+    // that is the whole reason it was rewritten. It drove
+    // `new Set([total]).has(total)` — the total against ITSELF — and asserted
+    // the answers were `['object','true']`. A set containing a value contains
+    // it, so no state of anything makes that red, and meanwhile the limits list
+    // beside it said "identity carries no ordering, so a read of it cannot rank
+    // two totals". That sentence was measured at one sampled value, it was
+    // false in general, and the fourth bypass is what it cost: under a `number`
+    // binding `Set.prototype.has` compares by SameValueZero, which is VALUE
+    // equality, so a set built from a RANGE ranks the total against an interval
+    // without firing a trap.
+    //
+    // Reddens on: a trap being added that catches one of these — which would be
+    // good news and should be read as a prompt to move the item out of the
+    // limits list; or on `Set.prototype.has` ceasing to separate a total inside
+    // the window from one outside it, which is the ranking half.
     const probe = opaqueTotal();
     const total = probe.total;
     const kinds = new Set<string>();
@@ -934,12 +1119,27 @@ describe('the opaque total the probe binds', () => {
     kinds.add(typeof total);
     kinds.add(String(total === probe.total));
     kinds.add(String(Object.is(total, probe.total)));
-    kinds.add(String(new Set([total]).has(total)));
     kinds.add(String([total].includes(total)));
     kinds.add(String(new WeakSet([total]).has(total)));
 
+    // The ranking read, at the opaque value: no trap fires, and the window
+    // answers `false` because a proxy is not a number.
+    const window = new Set<unknown>(RANKING_WINDOW_KG);
+    kinds.add(String(window.has(total)));
+
     expect(probe.reads()).toEqual([]);
-    expect([...kinds].sort()).toEqual(['object', 'true']);
+    expect([...kinds].sort()).toEqual(['false', 'object', 'true']);
+
+    // And the same read, at NUMBERS, separates a total inside the window from
+    // one outside it. This is the half the old version left unasserted, and it
+    // is the property the fourth bypass was built out of: two ghost totals from
+    // `MEET_LOCAL.ghostTotalsKg` land inside a window a band sweep stepped over.
+    expect(RANKING_WINDOW_KG.length).toBe(47);
+    expect(window.has(585)).toBe(true);
+    expect(window.has(610)).toBe(true);
+    expect(window.has(632.5)).toBe(false);
+    expect(window.has(583)).toBe(false);
+    expect(window.has(631)).toBe(false);
   });
 
   it('stands for totals that collide with nothing else the readout prints', () => {
@@ -948,22 +1148,101 @@ describe('the opaque total the probe binds', () => {
     // appears as THAT quantity, and the numeric run would disagree with the
     // opaque run for a reason that is not a read.
     //
-    // Reddens on: a stand-in that is an integer, that equals a threshold, or
-    // that equals one of the probe's bodyweights.
+    // TWO THINGS CHANGED HERE AND BOTH WERE HOLES A CRITIC FOUND. The guard used
+    // to walk `STAND_IN_KG` alone and pin `checked` at 4, so
+    // `OTHER_STAND_IN_KG` — the second total, the one `lifterWithStanding` has
+    // to discard — went through no check at all; it is in the walk now and the
+    // pin is 6. And the predicate used to be `Number.isInteger(kg) === false`,
+    // which is a proxy for "collides with a day index" and was wrong in both
+    // directions: see `STAND_IN_KG`'s own docstring for what banning integers
+    // made invisible.
+    //
+    // Reddens on: a stand-in equal to any number the readout can already print,
+    // a duplicate stand-in, or the census of printed numbers going empty.
     expect(THRESHOLDS_KG).toEqual([260, 340, 415, 450, 570, 680]);
+    // Counts on the census itself, so a collision set that had gone empty
+    // reports itself instead of clearing every stand-in.
+    expect(PRINTED_NON_TOTALS.size).toBe(191);
+    expect(PRINTED_NON_TOTALS.has(CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER.worlds.mens)).toBe(true);
+    expect(PRINTED_NON_TOTALS.has(THROUGH_DAY)).toBe(true);
+
     let checked = 0;
-    for (const kg of OPAQUE_PROBE.STAND_IN_KG) {
-      expect(Number.isInteger(kg), `${kg} is an integer and could be a day index`).toBe(false);
-      expect(THRESHOLDS_KG, `${kg} is a threshold`).not.toContain(kg);
-      expect(OPAQUE_PROBE.BODYWEIGHTS_KG, `${kg} is a bodyweight`).not.toContain(kg);
+    for (const kg of ALL_STAND_INS_KG) {
+      expect(
+        PRINTED_NON_TOTALS.has(kg),
+        `${kg} is a number the readout already prints as something other than a total`,
+      ).toBe(false);
       checked += 1;
     }
-    expect(checked).toBe(4);
+    expect(checked).toBe(6);
+    expect(new Set(ALL_STAND_INS_KG).size).toBe(6);
     expect(new Set(OPAQUE_PROBE.BODYWEIGHTS_KG).size).toBe(3);
+
+    // Exactly one stand-in is integral, and it is there so an integrality
+    // branch in shipped code takes a different path under the numeric run than
+    // under the opaque one. With none, the two runs agreed by construction.
+    expect(OPAQUE_PROBE.STAND_IN_KG.filter((kg) => Number.isInteger(kg))).toEqual([701]);
   });
 });
 
 describe('no shipped function reads anything out of a total', () => {
+  it('reads every shape an exported generic over Total can be written in', () => {
+    // The tripwire corpus for the census below. A set equality is only as wide
+    // as the scan that builds one of its sides, and this scan's previous
+    // version silently excluded four spellings — so the sides agreed and the
+    // subject list was short by however many of those the directory grew.
+    //
+    // Each line here is a shape that must be FOUND, followed by two that must
+    // not be: a generic over something that is not a total, and a signature
+    // inside a line comment.
+    //
+    // Reddens on: narrowing the pattern back to `<Total[,>]`, dropping the
+    // `const` arm, or dropping the line-comment strip. MEASURED with the old
+    // implementation restored, verbatim:
+    //   expected [ 'plain', 'nested', 'commentedOut' ] to deeply equal
+    //   [ 'plain', 'bounded', 'second', …(3) ]
+    // — four missed and one phantom, from one scanner.
+    //
+    // AND THE ISOLATION, which is what says this matters to the directory
+    // rather than to a corpus. With
+    // `export const totalIsListed = <Total,>(total: Total, seen: readonly
+    // Total[]): boolean => seen.includes(total);` planted in `careerRecord.ts`
+    // — an exported function generic over `Total` that nothing here drives —
+    // `tsc --noEmit` is exit 0 and the census below reddens on
+    // `expected [ 'admitsOffer', …(25) ] to deeply equal [ 'admitsOffer',
+    // …(26) ]`. Under the OLD scanner, with the same declaration in place, that
+    // census is GREEN and this test is the one and only thing that goes red.
+    const corpus = [
+      'export function plain<Total>(x: Total): Total { return x; }',
+      'export function bounded<Total extends object>(x: Total): Total { return x; }',
+      'export function second<Category, Total>(a: Category, b: Total): Total { return b; }',
+      'export function nested<Total, Rules extends Record<string, number>>(a: Total): Total { return a; }',
+      'export const arrow = <Total,>(x: Total): Total => x;',
+      'export const annotated: Shape = <Total>(x: Total): Total => x;',
+      'export function noTotalHere<Rules>(r: Rules): Rules { return r; }',
+      '// export function commentedOut<Total>(x: Total): Total { return x; }',
+      '/* export function blockCommented<Total>(x: Total): Total { return x; } */',
+    ].join('\n');
+
+    expect(exportsGenericOverTotal(corpus)).toEqual([
+      'plain',
+      'bounded',
+      'second',
+      'nested',
+      'arrow',
+      'annotated',
+    ]);
+    // Counts on both the corpus and the finding, so a corpus that lost a line
+    // reports itself rather than agreeing with a shorter expectation.
+    expect(corpus.split('\n').length).toBe(9);
+    expect(exportsGenericOverTotal(corpus).length).toBe(6);
+    // And the two shapes the old pattern got wrong in the OTHER direction: a
+    // commented-out export is a phantom, and this is where that is pinned.
+    expect(exportsGenericOverTotal(corpus)).not.toContain('commentedOut');
+    expect(exportsGenericOverTotal(corpus)).not.toContain('blockCommented');
+    expect(exportsGenericOverTotal(corpus)).not.toContain('noTotalHere');
+  });
+
   it('drives every exported function that is generic over Total', () => {
     // THE FOURTH LIMIT IN THE HEADER, closed by construction. The subject list
     // is a sampled domain of its own kind — a function nobody drove is a
@@ -986,9 +1265,8 @@ describe('no shipped function reads anything out of a total', () => {
 
     const exported = new Map<string, string>();
     for (const name of shipped) {
-      const code = readFileSync(path.join(here, name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-      for (const match of code.matchAll(/export function (\w+)<Total[,>]/g)) {
-        exported.set(match[1] as string, name);
+      for (const found of exportsGenericOverTotal(readFileSync(path.join(here, name), 'utf8'))) {
+        exported.set(found, name);
       }
     }
 
@@ -1089,7 +1367,7 @@ describe('no shipped function reads anything out of a total', () => {
     expect(leaked.length).toBe(0);
     // The domain, pinned as counts.
     expect(runs).toBe(SUBJECTS.length * GATE_SHAPES.length * OPAQUE_PROBE.STAND_IN_KG.length);
-    expect(runs).toBe(624);
+    expect(runs).toBe(780);
   });
 
   it('catches a lifter that keeps its own total instead of the standing’s', () => {

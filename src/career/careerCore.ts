@@ -159,9 +159,34 @@
  * is the top of `MEET_LOCAL.ghostTotalsKg`, the only distribution of totals the
  * game currently produces.
  *
- * Three rounds, three bypasses, and the same shape each time — the instrument
+ * AND THE THIRD FIX WAS BYPASSED, THROUGH A CHANNEL THE PROXY HAS NO TRAP FOR.
+ * The replacement bound `Total` to a `Proxy` and called the domain problem
+ * solved. One physical line again, on the same check:
+ *
+ *     if (!new Set<unknown>([...Array(CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER
+ *       .worlds.mens).keys()].slice(CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER
+ *       .nationals.mens + CAREER_TUNING.MIN_DAYS_BETWEEN_ENTERED_MEETS,
+ *       CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER.worlds.mens -
+ *       CAREER_TUNING.FIRST_MEET_DAY_BY_TIER.nationals)).has(lifter.bestTotal)
+ *       && !gate(lifter.bestTotal, requiredKg)) {
+ *
+ * `[...Array(680).keys()].slice(584, 631)` is the integers 584 to 630, built
+ * out of tuned constants with no literal in sight. `Set.prototype.has` compares
+ * by SameValueZero, which is not a property access, so no trap fires and the
+ * proxy's log stays empty — and under a `number` binding it is value equality,
+ * so a set built from a range ranks the total against an interval. Measured:
+ * `tsc --noEmit` exit 0, 6 files and 154 tests passing, exit 0. 585 kg and
+ * 610 kg — two of the fifteen values of `MEET_LOCAL.ghostTotalsKg` — are
+ * `eligible` at worlds with the gate asked zero times.
+ *
+ * Four rounds, four bypasses, and the same shape three times — the instrument
  * quantified over a set, and the next bypass was written after reading the set.
- * That is why the answer this time is not a wider band or another row.
+ * The fourth is a different shape and is worth keeping separate: it stepped
+ * outside an instrument's PREMISE rather than through its domain. What answers
+ * it is a domain again, argued from the sport instead of from the ladder: a
+ * 0.25 kg grid, which is finer than the 0.5 kg a bar can be changed by, so it
+ * contains every loadable total rather than passing near them. The full
+ * argument and what still survives it are in `careerOpacity.test.ts`'s header.
  *
  * What is true now, and by what:
  *
@@ -169,20 +194,25 @@
  *     That is A SEPARATE COMMAND FROM THE SUITE: vitest strips types without
  *     checking them, so a reader who runs only `npx vitest run` has not checked
  *     this at all. It is in the source ban below as well for that reason.
- *   - A READ OF THE TOTAL THROWS, and that is what `careerOpaqueTotal.test.ts`
- *     measures. It binds `Total` to a `Proxy` whose every trap records the read
- *     and then throws, and drives every exported function in this directory that
- *     is generic over `Total`, under six gate shapes. The value has no readable
- *     state, so there is no domain to sample and none to be empty: a coercion is
- *     caught at every total rather than at the fifty a band happened to hold.
- *     The record-then-throw order is deliberate — a module that catches its own
- *     violation still leaves the read in the log.
- *   - THE VERDICT AGREES WITH THE GATE ACROSS A BAND, which is a different
- *     question and is `careerOpacity.test.ts`'s. It binds `Total` to `number` —
- *     which `careerCore.test.ts` cannot, because its wrapped `TestTotal` makes
- *     `Number(total)` `NaN` and every laundered comparison silently false —
- *     sweeps a band across every threshold in both categories under six gates,
- *     and asserts the verdict equals what the gate alone decided. The opaque
+ *   - A PROPERTY READ OF THE TOTAL THROWS, and that is what
+ *     `careerOpaqueTotal.test.ts` measures. It binds `Total` to a `Proxy` whose
+ *     every trap records the read and then throws, and drives every exported
+ *     function in this directory that is generic over `Total`, under six gate
+ *     shapes. The value has no readable state, so a coercion is caught at every
+ *     total rather than at the fifty a band happened to hold. The
+ *     record-then-throw order is deliberate — a module that catches its own
+ *     violation still leaves the read in the log. What that buys stops at the
+ *     word PROPERTY: a membership test, an `includes`, a `Map` lookup and a
+ *     `switch` are reads of the total that fire no trap, and the fourth bypass
+ *     above is one. That is stated as a limit in that file's own header rather
+ *     than left for round five to find.
+ *   - THE VERDICT AGREES WITH THE GATE ACROSS A PLATE-RESOLUTION DOMAIN, which
+ *     is a different question and is `careerOpacity.test.ts`'s. It binds `Total`
+ *     to `number` — which `careerCore.test.ts` cannot, because its wrapped
+ *     `TestTotal` makes `Number(total)` `NaN` and every laundered comparison
+ *     silently false — sweeps a 0.25 kg grid from 0 to 1500 kg unioned with the
+ *     fifty-point band under six gates, and asserts the verdict equals what the
+ *     gate alone decided. The opaque
  *     probe cannot ask this, because a blind gate has no right answer to agree
  *     with. A 45-pattern source ban then catches a coercion that is present but
  *     unreachable, which no probe can see.
@@ -213,7 +243,7 @@
  * defect rather than a count are:
  *
  *   - `expect(disagreements.slice(0, 5).join('\n')).toBe('')` inside `matches
- *     the gate total by total and slot by slot, across the whole band`, on
+ *     the gate total by total and slot by slot, across the whole domain`, on
  *     `cragmoor-barbell-federation-regional-d21 at 100kg needs 450kg: gate said
  *     below-qualifying-total, calendar said eligible`.
  *   - `expect(faults.slice(0, 5).join('\n')).toBe('')` inside `asks the gate

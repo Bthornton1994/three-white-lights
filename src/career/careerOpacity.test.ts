@@ -96,6 +96,110 @@
  * and asks the questions those files cannot.
  *
  * ===========================================================================
+ * THE FOURTH BYPASS, AND THE ARGUMENT THAT REPLACES THE BAND
+ * ===========================================================================
+ *
+ * One physical line, replacing `meetEligibility`'s qualifying check:
+ *
+ *     if (!new Set<unknown>([...Array(CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER
+ *       .worlds.mens).keys()].slice(CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER
+ *       .nationals.mens + CAREER_TUNING.MIN_DAYS_BETWEEN_ENTERED_MEETS,
+ *       CAREER_TUNING.QUALIFYING_TOTAL_KG_BY_TIER.worlds.mens -
+ *       CAREER_TUNING.FIRST_MEET_DAY_BY_TIER.nationals)).has(lifter.bestTotal)
+ *       && !gate(lifter.bestTotal, requiredKg)) {
+ *
+ * `[...Array(680).keys()].slice(584, 631)` is the integers 584 to 630. No
+ * numeric literal, no string literal, no cast, one line. Measured:
+ * `tsc --noEmit` exit 0; `npx vitest run src/career` 6 files, 154 tests passing,
+ * exit 0. All four instruments blind. Two of the fifteen values in
+ * `MEET_LOCAL.ghostTotalsKg` — 585 and 610 — sit inside the window and go to
+ * worlds against a requirement of 680 with the gate asked zero times, while
+ * 632.5, the third bypass's own witness, sits 2.5 kg outside it and behaves
+ * correctly. The instrument holds exactly where it was tuned to.
+ *
+ * Two root causes, and the second is the one worth a section.
+ *
+ *   1. `Set.prototype.has` compares by SameValueZero, which is a read of the
+ *      total that is not a PROPERTY read. The opaque probe's premise is that a
+ *      read is a property access, and this is a whole class outside it —
+ *      `includes`, `indexOf`, `Map.has`, `===` against a table and a `switch`
+ *      are the rest of it. Adding traps does not reach them, because there is
+ *      no trap to add.
+ *   2. The band is a set of points, and four rounds have shown what that is
+ *      worth: whoever writes round five reads the set first.
+ *
+ * SO THE DOMAIN IS DERIVED FROM THE SPORT RATHER THAN FROM THE LADDER, and the
+ * argument is what is being shipped here — the grid is its consequence.
+ *
+ * A powerlifting total is the sum of three barbell loads. A bar is loaded
+ * symmetrically, so the smallest change to a single lift is a PAIR of the
+ * smallest disc a meet racks, and the smallest competition disc is 0.25 kg. The
+ * smallest change to a total is therefore 0.5 kg, and every loadable total is a
+ * multiple of it. A grid stepping 0.25 kg across the range a total occupies is
+ * one halving finer than that, so it CONTAINS every loadable total in the range
+ * instead of passing near them.
+ *
+ * Containment is the load-bearing step, and it is worth separating from the
+ * density that produces it:
+ *
+ *     If a domain contains every real total, then a predicate that agrees with
+ *     the gate at every point of the domain agrees with the gate at every real
+ *     total.
+ *
+ * A window that survives the domain is therefore a set of totals no bar can be
+ * loaded to. That is a weaker claim than "no window survives" and it is the
+ * true one; the sharper version would be a fifth absolute, and each of the four
+ * before it was falsified by the round that followed.
+ *
+ * The containment is checked rather than argued. `contains every total the game
+ * actually produces` reads `MEET_LOCAL.ghostTotalsKg` out of
+ * `src/game/meetTuning.ts` as text — the way `careerCore.test.ts` already reads
+ * that file, so no import edge appears — asserts all fifteen of its values are
+ * points of the domain, and asserts each is a whole number of the smallest
+ * plate pair. Reading the real distribution is the half of the argument that is
+ * a measurement; the sport is the half that covers a distribution nobody has
+ * written yet.
+ *
+ * WHAT SURVIVES, stated precisely rather than as a caveat:
+ *
+ *   - A window above 1500 kg. The grid stops there. 1500 is more than double
+ *     the top rung of the ladder and above the heaviest total posted in
+ *     competition — but that last clause is an assumption about human strength
+ *     rather than something this file measures.
+ *
+ *     MEASURED, not predicted. The same `Set` membership shape, over the two
+ *     totals `worlds.mens + nationals.mens + worlds.womens` (1665 kg) and that
+ *     plus the entry gap (1679 kg), planted at `meetEligibility`'s qualifying
+ *     check: `tsc --noEmit` exit 0 and `npx vitest run src/career` 6 files, 160
+ *     tests passing, exit 0. Every instrument in this directory is blind to it,
+ *     and the reason it is tolerable is that nobody has totalled 1665 kg.
+ *   - A window narrower than 0.25 kg sitting on a total off the half-kilogram
+ *     lattice. Nothing loaded from discs lands there, so the premise holds for a
+ *     total that came off a platform. It does not hold for a total that came out
+ *     of arithmetic: an average, a projection, a pounds-to-kilograms conversion,
+ *     a scaled figure. If a later piece puts one of those in `bestTotal` the
+ *     argument stops covering it, and what would notice is the containment check
+ *     going red — provided somebody adds the new distribution to it.
+ *
+ *     MEASURED the same way. A one-element window at
+ *     `regional.mens + regional.womens / MEET_INTERVAL_DAYS_BY_TIER.local` —
+ *     487.14285714285717 kg, inside the range and between two grid points —
+ *     leaves `tsc` at exit 0 and 160 of 160 tests passing. It is invisible and
+ *     it holds no total a bar can be loaded to, which is the residual doing
+ *     exactly what the argument says it does rather than an unnoticed hole.
+ *   - Anything not keyed on magnitude. Object identity, `typeof`, the ORDER or
+ *     the COUNT of gate calls, timing. Those are the opaque probe's subject and
+ *     its header lists what it in turn misses.
+ *   - A difference the observation masks. A bypass that changes a field the
+ *     readout blanks — the total's own — is invisible to any domain, which is
+ *     what `catches a lifter that keeps its own total instead of the standing's`
+ *     in `careerOpaqueTotal.test.ts` exists for.
+ *
+ * The honest summary is that the grid changes the SHAPE a surviving bypass has
+ * to take rather than proving there is none: it has to hide in a region no bar
+ * reaches, or in a channel that is not the number.
+ *
+ * ===========================================================================
  * What is enforced here, by what, and what is NOT
  * ===========================================================================
  *
@@ -105,13 +209,16 @@
  * described at the end of this list, because it is the one that answers the
  * defect all three of these share.
  *
- *   1. A BAND SWEEP (behavioural, domain). Binds `Total` to `number` and walks
- *      every threshold in `QUALIFYING_TOTAL_KG_BY_TIER` — below, just under,
- *      exactly at, just over and well above, in both categories — plus values
- *      chosen for their printed width and their decimal point, because the
- *      confirmed bypass keys on digit width. The property is the one that
- *      matters: the verdict equals what the injected gate alone decides, total
- *      by total and slot by slot, under six gates including a realistic one.
+ *   1. A DOMAIN SWEEP (behavioural, domain). Binds `Total` to `number` and
+ *      walks a 0.25 kg grid from 0 to 1500 kg — 6001 points — unioned with the
+ *      fifty-point band it replaced: every threshold in
+ *      `QUALIFYING_TOTAL_KG_BY_TIER` below, just under, exactly at, just over
+ *      and well above, in both categories, plus values chosen for their printed
+ *      width and their decimal point. The property is the one that matters: the
+ *      verdict equals what the injected gate alone decides, total by total and
+ *      slot by slot, under six gates including a realistic one. The grid's
+ *      argument is the next section and it is what makes this the answer to
+ *      round four rather than round four's band made wider.
  *      This is the one instrument here that checks the answer is right; the
  *      opaque probe cannot, because a blind gate has no right answer to agree
  *      with. (That sentence is in lower case deliberately and the reason is the
@@ -145,6 +252,15 @@
  *      632.5 kg lifter to a meet requiring 680 with the gate asked zero times.
  *      Widening the band moves the window rather than closing it.
  *
+ *      IT NOW RUNS TWICE, ON TWO AXES. The full six-gate by five-substitute
+ *      cross still runs over the fifty-point band, and a second pass runs three
+ *      gates and two substitutes over the whole plate-resolution domain. The
+ *      second is what a window between two band points has to survive; the
+ *      first is what a bypass keyed on a gate shape has to survive. Neither
+ *      subsumes the other, and the cross was narrowed rather than the domain
+ *      because the full product is about 2 million observations and roughly
+ *      72 s — measured by extrapolation from the band pass, not guessed.
+ *
  *   3. A SOURCE BAN (syntactic). Patterns over the shipped modules, each driven
  *      against a tripwire per branch of its alternation. This catches a coercion
  *      that is present but not yet reachable from any call the probes make —
@@ -154,18 +270,27 @@
  *      call at this repository's width and a line-anchored scan is defeated by
  *      `Math.max(\n  bestTotal,\n)`.
  *
- *   4. AN OPAQUE-TOTAL PROBE (behavioural, no domain), in
+ *   4. AN OPAQUE-TOTAL PROBE (behavioural, no domain OVER PROPERTY READS), in
  *      `careerOpaqueTotal.test.ts`. Binds `Total` to a `Proxy` whose every trap
  *      records the read and throws, and drives every exported function that is
- *      generic over `Total`. It is here in this list because it is the answer to
- *      the defect the three above share: each of them quantifies over a set of
- *      values or a set of tokens, and the next bypass is chosen after seeing the
- *      set. There is no set to choose against when the value has no readable
- *      state. It caught all three confirmed bypasses at every gate and every
- *      stand-in; the two of them the band sweep sees, it sees more cheaply, and
- *      the third it sees at all. Its own limits are listed in its header and
- *      they are real: `typeof`, identity, and magnitude extracted by asking the
- *      injected gate repeatedly.
+ *      generic over `Total`. It caught the first three confirmed bypasses at
+ *      every gate and every stand-in; the two of them the band sweep sees, it
+ *      sees more cheaply, and the third it sees at all.
+ *
+ *      THE SENTENCE THAT USED TO SIT HERE SAID IT WAS THE ANSWER TO THE DEFECT
+ *      THE OTHER THREE SHARE — "there is no set to choose against when the value
+ *      has no readable state" — and round four walked past it. The clause that
+ *      was doing the work is the one nobody wrote down: there is no set of
+ *      VALUES to choose against, but there is still a set of READ SHAPES, and it
+ *      is the shapes that go through a trap. `Set.prototype.has`,
+ *      `Array.prototype.includes`, `Map.prototype.has`, `===` against a table
+ *      and a `switch` are outside it, and they read the total's magnitude under
+ *      the numeric binding the wiring uses. That is a limit of the premise
+ *      rather than of the trap list, so it is not fixed by adding traps.
+ *
+ *      Its own limits are listed in its header and they are real: `typeof`,
+ *      identity and value equality wearing identity's clothes, and magnitude
+ *      extracted by asking the injected gate repeatedly.
  *
  * WHAT IS NOT ENFORCED, said plainly rather than left to be discovered:
  *
@@ -366,6 +491,16 @@ import {
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 
+/**
+ * `src/game/meetTuning.ts`, read as TEXT and never imported.
+ *
+ * `careerCore.test.ts` already reads this file the same way, for the
+ * `MeetDefinition` mirror and for the two federation strings. Reading rather
+ * than importing is what keeps `imports nothing outside this directory` true:
+ * the seam between `src/career/` and `src/game/` is a text seam on purpose.
+ */
+const MEET_TUNING_PATH = path.join(HERE, '..', 'game', 'meetTuning.ts');
+
 const SHIPPED = readdirSync(HERE)
   .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
   .sort();
@@ -489,6 +624,147 @@ function digitShape(kg: number): string {
   return String(kg).replace(/[0-9]/g, 'd');
 }
 
+// ---------------------------------------------------------------------------
+// The grid, and the argument it is derived from
+// ---------------------------------------------------------------------------
+
+/**
+ * The parameters of the dense domain, with the sport each one comes from.
+ *
+ * The band above is a set of points picked around the thresholds. Four rounds
+ * have shown what a set of points is worth against a bypass written by somebody
+ * who has read it: the fourth one keyed on `Set.prototype.has` over a range of
+ * integers that fits between two band points, and it admitted 585 kg and 610 kg
+ * — both of them values of `MEET_LOCAL.ghostTotalsKg` — to a meet requiring 680
+ * with the gate asked zero times.
+ *
+ * So the domain is derived from the sport instead of from the ladder. A
+ * powerlifting total is the sum of three barbell loads; a bar is loaded
+ * symmetrically from discs; the smallest disc a meet racks is 0.25 kg and it
+ * goes on in pairs. The smallest change to one lift is therefore 0.5 kg, and
+ * the smallest change to a total is the same. A grid stepping 0.25 kg is one
+ * halving finer than that, so every loadable total inside the range is a point
+ * of the grid rather than a value between two of them.
+ *
+ * What that buys is stated exactly in the header, and it is a containment
+ * argument rather than a density one: a predicate that agrees with the gate at
+ * every point of a domain containing every real total agrees with the gate at
+ * every real total. Density is how the containment is made robust to a
+ * distribution nobody has written yet; `contains every total the game actually
+ * produces` is how it is checked against the one that exists.
+ */
+const PLATE_GRID = Object.freeze({
+  /**
+   * The smallest disc a meet loads, in kilograms.
+   *
+   * 0.25 kg change plates are standard competition equipment. Below this a
+   * federation has nothing to put on the bar.
+   */
+  SMALLEST_COMPETITION_DISC_KG: 0.25,
+
+  /**
+   * How many of that disc go on to change the load: one per side.
+   *
+   * A separate constant rather than a `* 2` at the call site because it is the
+   * step from "the smallest disc" to "the smallest change to a lift", and that
+   * step is the whole reason the grid is finer than 0.5 kg.
+   */
+  DISCS_PER_LOADED_PAIR: 2,
+
+  /**
+   * The grid's spacing.
+   *
+   * Held below the smallest real change on purpose, and the margin is asserted
+   * rather than left to be read off the two numbers: `is a plate-resolution
+   * grid` pins the ratio at 2, so raising this to 0.75 reddens instead of
+   * quietly opening a gap a loadable total fits into.
+   */
+  STEP_KG: 0.25,
+
+  /**
+   * The bottom of the range.
+   *
+   * Zero rather than a plausible novice total, so a `!total` mutant and a
+   * falsy-total branch are inside the domain rather than outside it.
+   */
+  MIN_KG: 0,
+
+  /**
+   * The top of the range.
+   *
+   * More than double the top rung of the shipped ladder (680 kg) and more than
+   * double the top of `ghostTotalsKg` (632.5 kg), and above the heaviest total
+   * posted in competition by any lifter in any federation. That last clause is
+   * an assumption about the sport rather than something this file measures —
+   * see the residual in the header, which says what a window above this line
+   * would mean.
+   */
+  MAX_KG: 1500,
+});
+
+/**
+ * The finest a real total can be: one pair of the smallest disc.
+ *
+ * Derived rather than typed, so the two constants above are the thing a reader
+ * argues with.
+ */
+const REAL_TOTAL_RESOLUTION_KG =
+  PLATE_GRID.SMALLEST_COMPETITION_DISC_KG * PLATE_GRID.DISCS_PER_LOADED_PAIR;
+
+/**
+ * The grid itself.
+ *
+ * Built as `MIN + index * STEP` rather than by repeated addition. 0.25 is a
+ * dyadic rational so every product is exact in binary floating point, and
+ * `is a plate-resolution grid` asserts that every point divides by the step
+ * without remainder — a grid built by accumulating 0.1 would drift and the
+ * containment argument would be false without anything saying so.
+ */
+const PLATE_GRID_KG: readonly NumericTotal[] = Object.freeze(
+  Array.from(
+    { length: Math.round((PLATE_GRID.MAX_KG - PLATE_GRID.MIN_KG) / PLATE_GRID.STEP_KG) + 1 },
+    (_unused, index) => PLATE_GRID.MIN_KG + index * PLATE_GRID.STEP_KG,
+  ),
+);
+
+/**
+ * The domain every behavioural sweep below walks: the grid plus the band.
+ *
+ * The band's fifty points are kept rather than replaced. Two of them —
+ * `999.9` and `1_000_000` — are off the grid, and they carry the printed-width
+ * property round two needed: seven digits, and a decimal in a place no
+ * quarter-kilogram lands on. The rest are already grid points, which is itself
+ * a consequence of the threshold offsets being whole and half kilograms.
+ */
+const PROBE_TOTALS_KG: readonly NumericTotal[] = Object.freeze(
+  [...new Set<number>([...PLATE_GRID_KG, ...BAND_KG])].sort((left, right) => left - right),
+);
+
+/**
+ * `MEET_LOCAL.ghostTotalsKg`, parsed out of `meetTuning.ts`'s text.
+ *
+ * The only distribution of totals this game currently produces, and the
+ * reason the containment check below is a measurement rather than an appeal to
+ * the sport. Parsed rather than imported for the reason `MEET_TUNING_PATH`
+ * gives; a parse that came back empty would make the containment check pass
+ * trivially, so the length, the minimum and the maximum are all pinned beside
+ * it.
+ */
+function parseGhostTotalsKg(): readonly number[] {
+  const text = readFileSync(MEET_TUNING_PATH, 'utf8');
+  const block = /ghostTotalsKg:\s*Object\.freeze\(\[([^\]]*)\]\)/.exec(text);
+  if (block === null) {
+    throw new Error('career: meetTuning.ts has no ghostTotalsKg block for the probe to read');
+  }
+  return (block[1] as string)
+    .split(',')
+    .map((piece) => piece.trim())
+    .filter((piece) => piece !== '')
+    .map((piece) => Number(piece));
+}
+
+const GHOST_TOTALS_KG: readonly number[] = Object.freeze(parseGhostTotalsKg());
+
 const REFUSING_GATE: CareerQualifyingGate<NumericTotal> = () => false;
 const ADMITTING_GATE: CareerQualifyingGate<NumericTotal> = () => true;
 
@@ -549,7 +825,7 @@ function lifterAt(total: NumericTotal): CareerLifter<NumericTotal> {
   return { ...NUMERIC_LIFTER, bestTotal: total };
 }
 
-describe('the band the numeric probe walks', () => {
+describe('the domain the numeric probe walks', () => {
   it('crosses every qualifying threshold in both categories', () => {
     // The domain guard for every sweep in this file, and it sits here rather
     // than only beside one of them because the band is shared. Counts, not
@@ -600,6 +876,97 @@ describe('the band the numeric probe walks', () => {
       ddddddd: 1,
     });
   });
+
+  it('is a plate-resolution grid over the range a total occupies', () => {
+    // The shape of the dense domain, pinned as counts and as a widest gap.
+    //
+    // The gap is the load-bearing one: the containment argument in the header
+    // says a loadable total is a point of this domain, and that is true exactly
+    // when no interval inside the range is wider than a loadable total's own
+    // step. A grid trimmed at either end, or stepped coarser, moves one of
+    // these numbers.
+    //
+    // Reddens on: raising `STEP_KG` above half of `REAL_TOTAL_RESOLUTION_KG`,
+    // narrowing `MIN_KG`/`MAX_KG`, or a grid built by accumulation rather than
+    // by multiplication, which drifts off the lattice.
+    expect(REAL_TOTAL_RESOLUTION_KG).toBe(0.5);
+    expect(REAL_TOTAL_RESOLUTION_KG / PLATE_GRID.STEP_KG).toBe(2);
+    expect(PLATE_GRID_KG.length).toBe(6001);
+    expect(PLATE_GRID_KG[0]).toBe(0);
+    expect(PLATE_GRID_KG[PLATE_GRID_KG.length - 1]).toBe(1500);
+    expect(PROBE_TOTALS_KG.length).toBe(6003);
+
+    // Every point sits exactly on the lattice, and the widest gap inside the
+    // range is one step. Both are walked rather than reasoned about, because
+    // floating point is the thing that would break them quietly.
+    let offLattice = 0;
+    let widestGapKg = 0;
+    let walked = 0;
+    for (let index = 1; index < PROBE_TOTALS_KG.length; index += 1) {
+      const here = PROBE_TOTALS_KG[index] as number;
+      const before = PROBE_TOTALS_KG[index - 1] as number;
+      if (here <= PLATE_GRID.MAX_KG) {
+        const gap = here - before;
+        if (gap > widestGapKg) widestGapKg = gap;
+        walked += 1;
+      }
+      if (here <= PLATE_GRID.MAX_KG && !Number.isInteger(here / PLATE_GRID.STEP_KG)) {
+        offLattice += 1;
+      }
+    }
+    // 999.9 is a band value, not a grid point, so it is the one off-lattice
+    // total inside the range and it is named rather than tolerated silently.
+    // Division is exact here: 0.25 is a dyadic rational, so a point that
+    // divides by it without remainder does so in binary too.
+    expect(offLattice).toBe(1);
+    expect(PROBE_TOTALS_KG.filter((kg) => !Number.isInteger(kg / PLATE_GRID.STEP_KG))).toEqual([
+      999.9,
+    ]);
+    expect(widestGapKg).toBe(PLATE_GRID.STEP_KG);
+    expect(widestGapKg).toBeLessThanOrEqual(REAL_TOTAL_RESOLUTION_KG);
+    expect(walked).toBe(6001);
+  });
+
+  it('contains every total the game actually produces', () => {
+    // THE CONTAINMENT CHECK, and the half of the header's argument that is a
+    // measurement rather than an appeal to how a bar is loaded.
+    // `MEET_LOCAL.ghostTotalsKg` is the one distribution of totals this game
+    // ships, and 585 and 610 — two of its fifteen values — are what the fourth
+    // bypass admitted to worlds. Both are in the domain now, and so are the
+    // other thirteen.
+    //
+    // Read as text so no import edge is created; the length, the minimum and
+    // the maximum are pinned so a parse that came back empty reports itself
+    // rather than satisfying the filter below with nothing in it.
+    //
+    // Reddens on: a value added to `ghostTotalsKg` that is not on the grid, a
+    // grid whose range no longer covers that list, or a parse that stops
+    // finding the block.
+    expect(GHOST_TOTALS_KG.length).toBe(15);
+    expect(GHOST_TOTALS_KG.filter((kg) => Number.isNaN(kg))).toEqual([]);
+    expect(Math.min(...GHOST_TOTALS_KG)).toBe(380);
+    expect(Math.max(...GHOST_TOTALS_KG)).toBe(632.5);
+    expect(GHOST_TOTALS_KG).toContain(585);
+    expect(GHOST_TOTALS_KG).toContain(610);
+
+    const domain = new Set(PROBE_TOTALS_KG);
+    const missing = GHOST_TOTALS_KG.filter((kg) => !domain.has(kg));
+    expect(missing.join(', ')).toBe('');
+    expect(missing.length).toBe(0);
+
+    // And every one of them is loadable — an integer number of the smallest
+    // plate pair. That is the premise the grid's step was chosen against, and
+    // this is the one place the shipped distribution is asked to satisfy it.
+    let loadable = 0;
+    for (const kg of GHOST_TOTALS_KG) {
+      expect(
+        Number.isInteger(kg / REAL_TOTAL_RESOLUTION_KG),
+        `${kg} is not a multiple of ${REAL_TOTAL_RESOLUTION_KG}kg and could not be loaded`,
+      ).toBe(true);
+      loadable += 1;
+    }
+    expect(loadable).toBe(15);
+  });
 });
 
 // ===========================================================================
@@ -641,7 +1008,7 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     expect(GATED_SLOT_COUNT + OPEN_SLOT_COUNT).toBe(CALENDAR_SLOT_COUNT);
   });
 
-  it('matches the gate total by total and slot by slot, across the whole band', () => {
+  it('matches the gate total by total and slot by slot, across the whole domain', () => {
     // THE CHECK THE SECOND BYPASS IS VISIBLE TO, and the one the two-point
     // probe could not express. For every total in the band, every gated slot
     // and every gate, the verdict must be `eligible` exactly when the gate says
@@ -668,7 +1035,7 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     let triples = 0;
 
     for (const probe of PROBE_GATES) {
-      for (const total of BAND_KG) {
+      for (const total of PROBE_TOTALS_KG) {
         const lifter = lifterAt(total);
         for (const slot of GATED_SLOTS) {
           const requiredKg = slot.qualifyingTotalKg.mens as number;
@@ -696,10 +1063,10 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     // a subject, because a band that had drifted entirely above or entirely
     // below every threshold would send one of them to zero and leave the sweep
     // reading as coverage.
-    expect(triples).toBe(PROBE_GATES.length * BAND_KG.length * GATED_SLOT_COUNT);
-    expect(triples).toBe(9900);
-    expect(expectedEligible).toBe(4965);
-    expect(expectedRefused).toBe(4935);
+    expect(triples).toBe(PROBE_GATES.length * PROBE_TOTALS_KG.length * GATED_SLOT_COUNT);
+    expect(triples).toBe(1_188_594);
+    expect(expectedEligible).toBe(700_113);
+    expect(expectedRefused).toBe(488_481);
     expect([...kinds].sort()).toEqual(['below-qualifying-total', 'eligible']);
   });
 
@@ -715,7 +1082,7 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     const faults: string[] = [];
     let asked = 0;
     for (const probe of PROBE_GATES) {
-      for (const total of BAND_KG) {
+      for (const total of PROBE_TOTALS_KG) {
         const lifter = lifterAt(total);
         for (const slot of GATED_SLOTS) {
           const spy = recording(probe.gate);
@@ -735,7 +1102,7 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     }
     expect(faults.slice(0, 5).join('\n')).toBe('');
     expect(faults.length).toBe(0);
-    expect(asked).toBe(9900);
+    expect(asked).toBe(1_188_594);
 
     // Non-vacuity in the other direction: an OPEN tier asks the gate zero
     // times, so "exactly once" above is a property of the gated path rather
@@ -750,7 +1117,7 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     expect(openAsks).toBe(0);
   });
 
-  it('selects and enters exactly the slots the gate admits, across the band', () => {
+  it('selects and enters exactly the slots the gate admits, across the domain', () => {
     // The same property one level up, through `selectableMeets` and
     // `enterMeet`, which the two-point probe never called at all. A bypass
     // living in either would have been invisible: both take the gate and both
@@ -766,7 +1133,7 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     let refused = 0;
 
     for (const probe of PROBE_GATES) {
-      for (const total of BAND_KG) {
+      for (const total of PROBE_TOTALS_KG) {
         const lifter = lifterAt(total);
         // `selectableMeets` is taken on day zero, where the visibility window
         // decides which slots are even on screen, so the expectation is over
@@ -801,15 +1168,15 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
 
     expect(faults.slice(0, 5).join('\n')).toBe('');
     expect(faults.length).toBe(0);
-    expect(selections).toBe(PROBE_GATES.length * BAND_KG.length);
-    expect(selections).toBe(300);
-    expect(entries).toBe(1500);
+    expect(selections).toBe(PROBE_GATES.length * PROBE_TOTALS_KG.length);
+    expect(selections).toBe(36_018);
+    expect(entries).toBe(180_090);
     // Both outcomes really occur, so neither arm above is an empty domain.
-    expect(entered).toBe(738);
-    expect(refused).toBe(762);
+    expect(entered).toBe(104_573);
+    expect(refused).toBe(75_517);
   });
 
-  it('walks the ladder by the gate’s answers alone, across the band', () => {
+  it('walks the ladder by the gate’s answers alone, across the domain', () => {
     // `careerRecord.ts`'s half of the claim, over the band rather than at two
     // extremes. `qualifiedTierFor` is compared against a reading that knows
     // only what the gate answered — never the number — so an implementation
@@ -824,7 +1191,7 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     let readings = 0;
     for (const probe of PROBE_GATES) {
       for (const category of OPACITY_SWEEP.CATEGORIES) {
-        for (const total of BAND_KG) {
+        for (const total of PROBE_TOTALS_KG) {
           const admitted = CAREER_TUNING.MEET_TIERS.filter((tier) => {
             const requiredKg = qualifyingTotalKgFor(tier, category);
             return requiredKg === null || probe.gate(total, requiredKg);
@@ -844,8 +1211,8 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
     }
     expect(faults.slice(0, 5).join('\n')).toBe('');
     expect(faults.length).toBe(0);
-    expect(readings).toBe(PROBE_GATES.length * OPACITY_SWEEP.CATEGORIES.length * BAND_KG.length);
-    expect(readings).toBe(600);
+    expect(readings).toBe(PROBE_GATES.length * OPACITY_SWEEP.CATEGORIES.length * PROBE_TOTALS_KG.length);
+    expect(readings).toBe(72_036);
     // Non-vacuity: the sweep really does span the ladder rather than answering
     // `local` six hundred times, which is what a constant-gate-only probe saw.
     expect([...tiersSeen].sort()).toEqual(['local', 'nationals', 'regional', 'worlds']);
@@ -875,14 +1242,124 @@ describe('a numeric total is decided by the injected gate and by nothing else', 
  * contains no band point, so `x` and every `y` land on the same side of it.
  *
  * That is a property of the DOMAIN and not of the idea, so it cannot be repaired
- * by adding substitutes — the next window is chosen after reading the list. It
- * is repaired by not having a domain, which is `careerOpaqueTotal.test.ts`.
+ * by adding substitutes — the next window is chosen after reading the list.
+ *
+ * THE SENTENCE THAT USED TO END THIS PARAGRAPH SAID IT WAS REPAIRED BY NOT
+ * HAVING A DOMAIN, AND NAMED `careerOpaqueTotal.test.ts`. Round four went
+ * through that file, so the repair is not the absence of a domain — it is a
+ * domain nobody can choose a gap in, which is what the plate-resolution grid is
+ * for. A window has to avoid every quarter-kilogram between 0 and 1500 kg, and
+ * a set of totals with that property holds nothing a bar can be loaded to. The
+ * argument, and what it still leaves open, are in this file's header.
  */
 function tabulated(
   inner: CareerQualifyingGate<NumericTotal>,
   at: NumericTotal,
 ): CareerQualifyingGate<NumericTotal> {
   return (_total, requiredKg) => inner(at, requiredKg);
+}
+
+/**
+ * The parameters of the dense substitution pass, in one block.
+ *
+ * The pass below runs a narrower gate-by-substitute cross than the band sweep
+ * and a much wider total axis. Both numbers are here rather than at the call
+ * site, and the reasoning for each is beside the pass itself.
+ */
+/**
+ * A wall-clock budget for the substitution block, applied per BLOCK.
+ *
+ * `src/empire/engagement.test.ts` sets the house pattern and states the
+ * threshold for earning one: a block gets it if its slowest test exceeds a
+ * third of `vitest.config.ts`'s global 30 s, because load has been observed to
+ * stretch a file 2-3x. Applied here rather than skipped, with the numbers.
+ *
+ * MEASURED solo on an unloaded machine, this file's tests over 100 ms, slowest
+ * first, at the domain sizes shipped:
+ *
+ *   4853 ms  holds for every subject at plate resolution, in both directions
+ *   1057 ms  selects and enters exactly the slots the gate admits
+ *    510 ms  holds for every subject, every gate and every pair in the band
+ *    189 ms  matches the gate total by total and slot by slot
+ *    185 ms  asks the gate once per gated verdict
+ *
+ * The file was 0.73 s before this round and is 7.4 s after, all of it in the
+ * five above. On the passing numbers alone this block does NOT qualify: 4.9 s
+ * against a 10 s threshold.
+ *
+ * IT QUALIFIES ON THE FAILING ONES, WHICH THE HOUSE THRESHOLD DOES NOT ASK
+ * ABOUT AND SHOULD. With a `Set`-membership window planted in `standingOver`,
+ * the same test took 23613 ms — nearly 5x its passing time, because a sweep
+ * whose observations agree compares mostly identical strings and one whose
+ * observations differ does not. Under the 2-3x load this file will see in a
+ * whole-suite run, a genuine failure at 23.6 s becomes a 30 s timeout, and a
+ * timeout is the failure mode that reads as "the harness hung" rather than
+ * "the total was read". A budget that only fits the green path turns a red into
+ * a mystery.
+ *
+ * The value is the same 90 s the empire file uses: ~3.8x the slowest failing
+ * measurement, generous on purpose, because the guard exists to catch a hang
+ * and not to enforce a deadline. Re-measure rather than trusting this list; a
+ * stale table of "the heavy ones" is the mistake `vitest.config.ts`'s own
+ * comment records having made.
+ *
+ * VERIFIED TO PROPAGATE, BOTH DIRECTIONS, rather than assumed — a budget vitest
+ * quietly ignored would be a decoration reading as a fix:
+ *
+ *   - Set to `1_000`, the dense test reddens with the BLOCK's number rather
+ *     than the global one: `Error: Test timed out in 1000ms.`
+ *   - Under that same `1_000`, `selects and enters exactly the slots the gate
+ *     admits` (1057 ms, a different block) still passes, which it can only do
+ *     on the global 30 s. So the value is scoped to its own block.
+ *
+ * One direction alone proves nothing: a value that reached everything would
+ * pass the first check and fail the second.
+ */
+const DENSE_BLOCK_TIMEOUT_MS = 90_000;
+
+/**
+ * WHAT THE COST BOUGHT, so the trade is legible: the total axis went from 50
+ * points to 6003, and the dense pass's gate-by-substitute cross went from 30
+ * cells to 6. 396,198 pairs are checked in 198,297 observations, because a
+ * substituted observation depends on the tabulated gate and the tabulated gate
+ * depends on the total through six bits — which is asserted by the two checks
+ * above the dense pass rather than assumed.
+ */
+const DENSE_SUBSTITUTION = Object.freeze({
+  /**
+   * The gates the dense pass runs under: both constants, and one ordering.
+   *
+   * Named by id and looked up, rather than by index into `PROBE_GATES`, so a
+   * reorder of that list regrades the same three gates instead of three
+   * different ones.
+   */
+  GATE_IDS: Object.freeze(['refuses-everything', 'admits-everything', 'at-or-above'] as const),
+
+  /** The totals it swaps in: the two ends of the printed-width axis. */
+  SUBSTITUTES_KG: Object.freeze([0, 1_000_000]),
+
+  /**
+   * The four totals the cache's premise is driven at.
+   *
+   * One below every threshold, one on a rung, one at the top of the shipped
+   * ghost distribution, and one absurd — enough that every subject takes both
+   * arms of its own conditionals while the requirements it asks about are
+   * collected.
+   */
+  PREMISE_TOTALS_KG: Object.freeze([0, 450, 632.5, 1_000_000]),
+});
+
+/**
+ * `gate`'s answers about `at`, at every requirement on the shipped table.
+ *
+ * The key the dense pass caches a substituted observation on. It is the whole
+ * of what `tabulated(gate, at)` can express, PROVIDED every requirement a
+ * subject passes the gate is on that table — which is not assumed here, it is
+ * driven by `asks the injected gate only about requirements on the shipped
+ * table` and by `gives one substituted answer per key`.
+ */
+function gateAnswerKey(gate: CareerQualifyingGate<NumericTotal>, at: NumericTotal): string {
+  return THRESHOLDS_KG.map((requiredKg) => (gate(at, requiredKg) ? '1' : '0')).join('');
 }
 
 /**
@@ -1139,6 +1616,213 @@ describe('substituting the total behind a fixed gate changes nothing', () => {
     expect(SUBJECTS.length).toBe(11);
   });
 
+  it('asks the injected gate only about requirements on the shipped table', () => {
+    // The premise the dense pass below caches on, checked rather than argued.
+    //
+    // `tabulated(g, x)` is `(_total, requiredKg) => g(x, requiredKg)`, so it is
+    // determined by g's answers about x at every `requiredKg` a subject can
+    // pass. If those requirements are exactly the six on the shipped table then
+    // the whole function collapses to a six-bit key, and the dense pass can
+    // compute one substituted observation per key rather than one per total.
+    // That is an identity rather than a shortcut — but it is an identity ABOUT
+    // THE SUBJECTS, and it stops holding the moment one of them asks the gate
+    // about something else.
+    //
+    // Reddens on: any subject asking the gate about a number that is not a
+    // qualifying total on the table — the shifted-question shape
+    // (`requiredKg - 14`) that `careerOpaqueTotal.test.ts`'s attempt 2 used.
+    const asked = new Set<number>();
+    const watching = (inner: CareerQualifyingGate<NumericTotal>): CareerQualifyingGate<NumericTotal> =>
+      (total, requiredKg) => {
+        asked.add(requiredKg);
+        return inner(total, requiredKg);
+      };
+    let driven = 0;
+    for (const subject of SUBJECTS) {
+      for (const probe of PROBE_GATES) {
+        for (const total of DENSE_SUBSTITUTION.PREMISE_TOTALS_KG) {
+          subject.observe(total, watching(probe.gate));
+          driven += 1;
+        }
+      }
+    }
+    expect([...asked].sort((left, right) => left - right)).toEqual([...THRESHOLDS_KG]);
+    expect(asked.size).toBe(6);
+    expect(driven).toBe(SUBJECTS.length * PROBE_GATES.length * 4);
+    expect(driven).toBe(264);
+  });
+
+  it('gives one substituted answer per key, which is what the dense pass caches on', () => {
+    // The other half of the same premise, driven at the value rather than at
+    // the signature. Two totals that answer the realistic gate identically at
+    // every rung must produce byte-identical substituted observations, because
+    // the substituted side sees nothing but those answers.
+    //
+    // Reddens on: a subject whose substituted observation depends on the total
+    // it was tabulated at — which would mean the total is reaching it by some
+    // route other than the gate, and would make the cache below unsound in the
+    // direction that hides a fault.
+    const realistic = PROBE_GATES.find((probe) => probe.id === 'at-or-above') as ProbeGate;
+    const byKey = new Map<string, NumericTotal[]>();
+    for (const total of PROBE_TOTALS_KG) {
+      const key = gateAnswerKey(realistic.gate, total);
+      const held = byKey.get(key) ?? [];
+      if (held.length < 2) {
+        held.push(total);
+        byKey.set(key, held);
+      }
+    }
+    // Six thresholds, so an ascending gate has seven answer patterns and the
+    // grid reaches all of them. A key count of one would make the check below
+    // walk a single cell.
+    expect(byKey.size).toBe(7);
+
+    let compared = 0;
+    for (const [key, totals] of byKey) {
+      expect(totals.length, `only one total answers ${key}`).toBe(2);
+      const [first, second] = totals as [NumericTotal, NumericTotal];
+      expect(first).not.toBe(second);
+      for (const subject of SUBJECTS) {
+        for (const substitute of DENSE_SUBSTITUTION.SUBSTITUTES_KG) {
+          expect(
+            subject.observe(substitute, tabulated(realistic.gate, first)),
+            `${subject.id} at key ${key}`,
+          ).toBe(subject.observe(substitute, tabulated(realistic.gate, second)));
+          compared += 1;
+        }
+      }
+    }
+    expect(compared).toBe(7 * SUBJECTS.length * DENSE_SUBSTITUTION.SUBSTITUTES_KG.length);
+    expect(compared).toBe(154);
+  });
+
+  it('holds for every subject at plate resolution, in both directions', () => {
+    // THE DENSE PASS. The sweep above runs the full gate-by-substitute cross
+    // over fifty points; this one runs a narrower cross over the whole
+    // plate-resolution domain, and the two are on different axes on purpose.
+    // A window that fits between two band points is what the fourth bypass was
+    // made of, and no widening of the band closes that shape — a domain that
+    // contains every loadable total does.
+    //
+    // THREE GATES RATHER THAN SIX, and the choice is the argument. A bypass
+    // that changes any verdict changes it in one of two directions: admitting
+    // where the gate refused, or refusing where the gate admitted. Under
+    // `refuses-everything` the first is maximal and unmaskable; under
+    // `admits-everything` so is the second. `at-or-above` is the third because
+    // a bypass can be written to activate only when the gate's own answer is a
+    // particular thing, and both constants answer the same at every rung.
+    //
+    // TWO SUBSTITUTES RATHER THAN FIVE, at the two ends of the printed-width
+    // axis. One would very nearly do: the pass separates a window W from its
+    // complement as soon as some domain point falls on the opposite side of W
+    // from the substitute, and with a dense domain that is available unless W
+    // is everything — in which case the bypass is unconditional and the gate
+    // sweeps catch it. The second substitute is there so a window that happens
+    // to contain the first is still separated.
+    //
+    // Reddens on: the fourth bypass. MEASURED with it planted, verbatim from
+    // the run:
+    //   expected '[meetEligibility/refuses-everything] 584kg -> 0kg…' to be ''
+    //
+    // AND ON A SECOND MUTANT THAT NO GATE-AGREEMENT ORACLE COVERS, which is the
+    // measurement that says this pass is not a slower restatement of the sweeps
+    // above it. The same `Set`-over-a-range window planted in `standingOver` —
+    // `if (new Set<unknown>([...]).has(result.total)) { continue; }`, on the
+    // standing path rather than the per-slot verdict — leaves `tsc` at exit 0,
+    // leaves the band pass GREEN (585 and 610 are not band points), and reddens
+    // this one:
+    //   expected '[careerStanding/refuses-everything] 5…' to be ''
+    //   + [careerStanding/refuses-everything] 584kg -> 0kg
+    // That run also took 23613 ms against this test's 4853 ms passing time,
+    // which is what earned the block budget above.
+    const faults: string[] = [];
+    const subjectsDisagreeing = new Set<string>();
+    const substituted = new Map<string, string>();
+    const spread: Record<string, number> = {};
+    let pairs = 0;
+    let observations = 0;
+
+    for (const subject of SUBJECTS) {
+      const seen = new Set<string>();
+      for (const id of DENSE_SUBSTITUTION.GATE_IDS) {
+        const probe = PROBE_GATES.find((gate) => gate.id === id) as ProbeGate;
+        for (const total of PROBE_TOTALS_KG) {
+          const base = subject.observe(total, probe.gate);
+          seen.add(base);
+          observations += 1;
+          const key = gateAnswerKey(probe.gate, total);
+          for (const substitute of DENSE_SUBSTITUTION.SUBSTITUTES_KG) {
+            const cell = `${subject.id}|${probe.id}|${key}|${substitute}`;
+            let swapped = substituted.get(cell);
+            if (swapped === undefined) {
+              swapped = subject.observe(substitute, tabulated(probe.gate, total));
+              substituted.set(cell, swapped);
+              observations += 1;
+            }
+            if (swapped !== base) {
+              subjectsDisagreeing.add(subject.id);
+              if (faults.length < 5) {
+                faults.push(
+                  `[${subject.id}/${probe.id}] ${total}kg -> ${substitute}kg\n  ${base}\n  ${swapped}`,
+                );
+              }
+            }
+            pairs += 1;
+          }
+        }
+      }
+      spread[subject.id] = seen.size;
+    }
+
+    expect(faults.join('\n')).toBe('');
+    expect(subjectsDisagreeing.size).toBe(0);
+
+    // The domain, pinned as counts on both the pairs and the work actually
+    // done, so a cache that started returning a stale cell — or a domain that
+    // had been trimmed — reports itself rather than passing faster.
+    expect(pairs).toBe(
+      SUBJECTS.length *
+        DENSE_SUBSTITUTION.GATE_IDS.length *
+        PROBE_TOTALS_KG.length *
+        DENSE_SUBSTITUTION.SUBSTITUTES_KG.length,
+    );
+    expect(pairs).toBe(396_198);
+    expect(observations).toBe(198_297);
+    expect(substituted.size).toBe(198);
+
+    // The non-vacuity guard, dense this time. A subject whose observation is
+    // one string across six thousand totals has been called and has checked
+    // nothing, and the flat ones are named rather than folded into a total.
+    // These are counted under the three dense gates together, so they are not
+    // the same numbers as the band census below.
+    //
+    // Worth reading rather than skipping: these are the SAME eleven numbers the
+    // band census below reports under `at-or-above` alone. Six thousand totals
+    // produce no observation the fifty did not, and two more gates produce none
+    // either — which says the shipped code answers off the gate's six-bit reply
+    // and nothing else, and is the strongest thing in this file that a reader
+    // can check by eye. It is also the reason a bypass hides so well here: it
+    // has to move a number that is otherwise constant across the whole domain.
+    expect(spread).toEqual({
+      meetEligibility: 4,
+      selectableMeets: 3,
+      enterMeet: 3,
+      qualifiedTierFor: 7,
+      careerStanding: 4,
+      standingAsOf: 4,
+      tierUnlockBetween: 4,
+      lifterWithStanding: 1,
+      careerGateFaults: 1,
+      runEntryPlan: 4,
+      runRecordHistory: 4,
+    });
+    expect(
+      Object.keys(spread)
+        .filter((id) => spread[id] === 1)
+        .sort(),
+    ).toEqual(['careerGateFaults', 'lifterWithStanding']);
+  });
+
   it('reaches a different answer for a different total, subject by subject', () => {
     // The non-vacuity guard for the sweep above, and the one that matters most:
     // if a subject returned the same observation for every total in the band,
@@ -1214,7 +1898,7 @@ describe('substituting the total behind a fixed gate changes nothing', () => {
         .sort(),
     ).toEqual(['careerGateFaults', 'lifterWithStanding']);
   });
-});
+}, DENSE_BLOCK_TIMEOUT_MS);
 
 describe('the one loop in this directory that chooses between two totals', () => {
   it('picks the result that reached the tier, not the first and not the last', () => {
