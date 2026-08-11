@@ -69,6 +69,15 @@
  * build a TypeScript program run longer alone (0.65x to 0.88x in the suite,
  * warm filesystem cache being the likely reason).
  *
+ * Seven of the bases here are larger than that, and it is worth knowing which
+ * way that error runs. They were taken from a suite run that had another
+ * session's work on the box, so they carry some load inside the number the
+ * factor is meant to cover — 12052 ms for the doomed-sale door against 7459 ms
+ * on a quiet run. A basis that is too HIGH costs a longer wait before a hang is
+ * reported and nothing else; a basis that is too LOW fails a healthy run, which
+ * is the failure this file exists to stop. Where the two readings disagree the
+ * larger one is kept for that reason, and re-taking never lowers a basis.
+ *
  * HOW TO RE-TAKE IT, which is the part that has gone stale twice:
  *
  *   npx vitest run --reporter=json --outputFile.json=/tmp/suite.json

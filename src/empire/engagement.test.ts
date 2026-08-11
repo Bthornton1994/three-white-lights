@@ -1436,7 +1436,7 @@ describe('EXHAUSTIVE: every calendar of a window of check-in slots', () => {
 });
 
 describe('EXHAUSTIVE: every calendar of a grid coarse enough to enumerate whole', () => {
-  it('finds no violation, on a physio domain that is no longer empty', () => {
+  it('finds no violation, on a physio domain that is no longer empty', { timeout: budgetFrom(7_895) }, () => {
     // Every calendar of seven days at two check-ins a day — 114688 pairs, whole
     // rather than windowed. E8 recorded this grid's physio half as an EMPTY
     // domain: at one wall-clock purse the rung was never reached inside seven
@@ -1454,7 +1454,7 @@ describe('EXHAUSTIVE: every calendar of a grid coarse enough to enumerate whole'
 });
 
 describe('EXHAUSTIVE: every calendar of attended DAYS', () => {
-  it('finds no violation when the extra engagement is a whole day', () => {
+  it('finds no violation when the extra engagement is a whole day', { timeout: budgetFrom(8_540) }, () => {
     // The granularity finding, kept beside the slot-level one. Adding six
     // check-ins at once never hurt at this horizon; adding one does. A sweep
     // taken only at day granularity would have reported zero and been an empty
@@ -1469,7 +1469,7 @@ describe('EXHAUSTIVE: every calendar of attended DAYS', () => {
 // ---------------------------------------------------------------------------
 
 describe('SAMPLED: seeded histories at 20 and 40 days', () => {
-  it('reproduces the finding at 20 and 40 days', () => {
+  it('reproduces the finding at 20 and 40 days', { timeout: budgetFrom(8_249) }, () => {
     const [short, long] = ENGAGEMENT_SWEEP.SEEDED_HORIZON_DAYS;
     const [shortTrials, longTrials] = ENGAGEMENT_SWEEP.SEEDED_TRIALS;
     expect(seededSweep(short, shortTrials, ENGAGEMENT_SWEEP.SEEDS[0])).toEqual(MEASURED.SEEDED_20);
@@ -1487,7 +1487,7 @@ describe('SAMPLED: seeded histories at 60 and 100 days', () => {
 });
 
 describe('NEGATIVE CONTROLS on the sampled grid', () => {
-  it('pins all three controls above the shipped engine on the grid it is measured on', () => {
+  it('pins all three controls above the shipped engine on the grid it is measured on', { timeout: budgetFrom(8_642) }, () => {
     // Two deliberately-wired variants, on exactly the domain `MEASURED.SEEDED_20`
     // was taken on, so the three are one comparison.
     //

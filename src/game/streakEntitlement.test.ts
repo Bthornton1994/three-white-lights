@@ -1731,7 +1731,7 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     ).toEqual([]);
   });
 
-  it('THE RE-ALIAS SHAPE IS CAUGHT TOO, and the shape that is NOT is a declared limit', () => {
+  it('THE RE-ALIAS SHAPE IS CAUGHT TOO, and the shape that is NOT is a declared limit', { timeout: budgetFrom(8_016) }, () => {
     // `import * as E from '...'; E.creditCoveredDays(...)` is the second
     // spelling of the same evasion, and the brief that asked for this fix left
     // open whether it was covered. Measured, both ways:
@@ -2699,7 +2699,7 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     expect(responsive.currentInversions, 'bankable, responsive').toBeGreaterThan(0);
   });
 
-  it('A BANKABLE purchase is ALSO safe — expiry is a product choice, not a safety property', () => {
+  it('A BANKABLE purchase is ALSO safe — expiry is a product choice, not a safety property', { timeout: budgetFrom(9_617) }, () => {
     // CORRECTING A CLAIM THIS BRANCH MADE AND DID NOT CHECK. `grantCoveredDays`
     // expires a purchased day with its window, and the first version of GDD
     // §8.2 justified that by saying "nothing accumulates, so there is no wealth

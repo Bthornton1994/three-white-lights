@@ -3544,7 +3544,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
     ).toBe(0);
   });
 
-  it('[settling-is-terminal][a-sale-never-follows-a-settle][the-decision-ignores-the-rendered-offer][every-refusal-sentence-is-true-of-its-screen] THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days, at six placements against the window boundary and three render-day lags', () => {
+  it('[settling-is-terminal][a-sale-never-follows-a-settle][the-decision-ignores-the-rendered-offer][every-refusal-sentence-is-true-of-its-screen] THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days, at six placements against the window boundary and three render-day lags', { timeout: budgetFrom(12_052) }, () => {
     // THE HUMAN'S RULING, MEASURED. Two halves, and the second is the one that
     // hides a bug: the store must refuse an already-doomed absence, AND it must
     // not refuse any absence that is still salvageable. A store that answers
