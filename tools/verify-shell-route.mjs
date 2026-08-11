@@ -491,6 +491,179 @@ const BEAT_SAYS = Object.freeze({
   SECOND_MEET: 'Meet complete — results saved to your last recorded meet. Career calendar coming soon.',
 });
 
+// ###########################################################################
+// ###  GDD §6.3 — "THE REAL TENSION", ON THE ARM A PLAYER REACHES          #
+// ###########################################################################
+//
+// ===========================================================================
+// WHY THIS EXISTS, AND WHAT IT REPLACES
+// ===========================================================================
+// `attempt-select` appeared in this file's 181 checks exactly once, on a
+// negative about the nav pill, taken at `/?meet=select-after-miss` — down
+// `frozenMeetFor`'s `source === 'debug'` arm. Nothing had ever read §6.3's
+// floor weight, its floor sentence, its option weights, its deltas or its PR
+// styling on a screen a player pressed their way to, and `MEET_DRIVE`'s option
+// preference put `big` last, so `attempt-option-big` was a control no played
+// run had ever touched.
+//
+// The driver already stands on that screen six times per meet. What was
+// missing was a reader, so this is one: it runs inside the drive, before the
+// press, on every §6.3 screen of every meet this tool plays.
+//
+// ===========================================================================
+// THE PAIR IT IS REALLY HERE FOR
+// ===========================================================================
+// `AttemptOption.isPrAttempt` drives two renderings — the gold
+// `MEET_PALETTE.CARD_PR_EDGE` border, and `AttemptOption.prNote`'s sentence.
+// A node suite cannot see a border, so the claim that those two agree is
+// checkable in a browser and nowhere else. It is read here on both meets a
+// player opened, and the two meets are not the same subject:
+//
+//   - THE FIRST MEET OF AN APP RUN has no meets on record, so
+//     `previousBestByLift` answers all-null, no card is a PR attempt, and the
+//     right reading is ZERO gold borders and ZERO PR sentences over twelve
+//     cards. That is where the copy defect lived.
+//   - THE SECOND MEET reads the first one's bests, so a PR attempt is
+//     reachable — and it is the ONLY place in the shipped app where one is,
+//     because there is no career calendar and nothing persists a reload. The
+//     gold border had never been drawn to a screen in this tool's evidence.
+//
+// Both are needed. The first meet alone would let a build that never paints
+// the border pass; the second alone would let a build that always paints it.
+const MEET_SELECT_SAYS = Object.freeze({
+  /** src/game/meetTuning.ts — MEET_COPY.SELECT_FLOOR_RAISED. §6.3's bite. */
+  FLOOR_RAISED:
+    'A miss does not lower the bar. The lightest thing left is the weight that just beat you.',
+  /** src/game/meetTuning.ts — MEET_COPY.SELECT_FLOOR_AFTER_MAKE. */
+  FLOOR_AFTER_MAKE: 'Banked. From here the bar only goes up.',
+  /** src/game/meetTuning.ts — MEET_COPY.OPTION_PR_NOTE. */
+  PR_NOTE: 'A PR on the line.',
+  /** src/game/meetTuning.ts — MEET_COPY.SELECT_NOTHING_BANKED. */
+  NOTHING_BANKED: 'NOTHING BANKED',
+});
+
+/**
+ * src/meet/meetPalette.ts — MEET_PALETTE.CARD_PR_EDGE, and the rgb() a browser
+ * reports it as.
+ *
+ * Restated here and cross-checked against the palette at the end of the run,
+ * like every other constant this file compares pixels to. The conversion is
+ * done rather than transcribed so a re-tune of the hex moves what is looked
+ * for instead of silently un-matching.
+ */
+const CARD_PR_EDGE_RESTATED = '#ffd75e';
+
+/** '#rrggbb' as the `rgb(r, g, b)` a computed style comes back as. */
+function rgbOf(hex) {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (m === null) return null;
+  return `rgb(${Number.parseInt(m[1], 16)}, ${Number.parseInt(m[2], 16)}, ${Number.parseInt(m[3], 16)})`;
+}
+
+/**
+ * How many times §6.3's screen comes up in a meet played to its end.
+ *
+ * Openers are declared at weigh-in (GDD §6.1), so every lift produces one
+ * selection per attempt after the first: three lifts x two. Restated here and
+ * cross-checked against `ATTEMPTS_PER_LIFT` in `src/game/meet.ts`.
+ */
+const SELECTIONS_PER_MEET_RESTATED = 3 * (3 - 1);
+
+/** Two cards, never three — `AttemptSelectView`'s own header and §6.3's shape. */
+const CARDS_PER_SELECTION_RESTATED = 2;
+
+/**
+ * Every §6.3 screen this run read, in the order they were on the platform.
+ *
+ * Filled by `readAttemptSelect` from inside the drive and asserted afterwards,
+ * because the screen is gone the instant the press lands and a check written
+ * after the meet has nothing left to look at.
+ */
+const SELECT_SCREENS_SEEN = [];
+
+/**
+ * How many times this run has loaded the app, which is how many lifters it has
+ * had. Incremented by `open()`; see the block there.
+ */
+const APP_RUNS = { serial: 0 };
+
+/**
+ * WHAT ONE §6.3 SCREEN LOOKS LIKE, READ OFF THE PIXELS.
+ *
+ * Border colours come from `getComputedStyle`, not from the source: the whole
+ * point is that the gold is DRAWN. `borderTopColor` because React Native Web
+ * expands `borderColor` into the four sides and the top is the one that always
+ * survives that expansion.
+ */
+async function readAttemptSelect(page) {
+  return page.evaluate(() => {
+    const node = (id) => document.querySelector(`[data-testid="${id}"]`);
+    const text = (id) => {
+      const found = node(id);
+      return found === null ? null : found.textContent;
+    };
+    const cards = [];
+    for (const id of ['repeat', 'small', 'big']) {
+      const card = node(`attempt-option-${id}`);
+      if (card === null) continue;
+      const style = window.getComputedStyle(card);
+      cards.push({
+        id,
+        weight: text(`attempt-option-weight-${id}`),
+        delta: text(`attempt-option-delta-${id}`),
+        why: text(`attempt-option-why-${id}`),
+        prNote: text(`attempt-option-pr-note-${id}`),
+        borderColor: style.borderTopColor,
+      });
+    }
+    return {
+      // Read INSIDE the same evaluate as the pixels, so the address bar and the
+      // screen are the same instant rather than two reads with a press between.
+      href: window.location.href,
+      search: window.location.search,
+      title: text('attempt-select-title'),
+      banked: text('attempt-select-banked'),
+      floorWeight: text('attempt-select-floor-weight'),
+      floorText: text('attempt-select-floor-text'),
+      cards,
+    };
+  });
+}
+
+/** A weight as `formatWeight` prints it — a bare number, no unit — or null. */
+function weightNumber(printed) {
+  if (typeof printed !== 'string') return null;
+  const value = Number(printed.trim());
+  return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * WHICH CARD THE ROBOT TAKES ON THE SECOND MEET, and why it is not the safest.
+ *
+ * `MEET_DRIVE.SAFEST_OPTIONS` never reaches `big` after a make, so the bold arm
+ * of §6.3's dilemma had never been pressed in a played run. This policy presses
+ * it — but ONLY when the screen says a weight is already banked on this lift,
+ * because a lift with something banked cannot bomb out however the attempt
+ * goes (GDD §6.3's bomb-out is three misses on one lift). So the meet's ENDING
+ * is not put at risk to press a button, which would have traded one check for
+ * another.
+ *
+ * It is deliberately not applied to the FIRST meet. The second meet's PR
+ * attempts exist because its weights climb past the first meet's bests; driving
+ * the first meet bigger raises that bar by more than it raises the second's,
+ * and measurement says it removes the PR cards entirely.
+ */
+function takeTheBigJumpWhenSomethingIsBanked(ids, state) {
+  if (!ids.includes('big')) return null;
+  const banked = state.banked;
+  // AN UNREADABLE LINE IS A DECLINE, not a dare. If the banked line is missing
+  // the policy cannot know whether this lift can still bomb, and the safe
+  // answer is the one the driver had before this hook existed.
+  if (typeof banked !== 'string' || banked.trim() === '') return null;
+  if (banked.includes(MEET_SELECT_SAYS.NOTHING_BANKED)) return null;
+  return 'big';
+}
+
 /**
  * How many drawn screens this run has read each `BEAT_SAYS` line off.
  *
@@ -972,12 +1145,21 @@ function provenance() {
    * is now attributed to a device that no longer exists. A critic found that
    * the harness could certify such a record as current.
    *
-   * So the record carries a digest of this file and the driver it plays the
-   * session with. A reader comparing them against the tree can tell a stale
-   * instrument from a stale app, which the SHA alone cannot distinguish.
+   * So the record carries a digest of this file and the drivers it plays the
+   * session and the meets with. A reader comparing them against the tree can
+   * tell a stale instrument from a stale app, which the SHA alone cannot
+   * distinguish.
+   *
+   * `meetDrive.mjs` WAS MISSING FROM THIS LIST, and it is the driver every meet
+   * in this record was played by. Its `SAFEST_OPTIONS` decides which arm of GDD
+   * §6.3 is ever pressed and its `ON_SCREEN_MIN_OPACITY` decides what "drawn"
+   * means for every card — both exactly the kind of edit the paragraph above
+   * says a SHA cannot see, in a file the SHA-and-two-digests header implied was
+   * covered. It is the sibling of `sessionDrive.mjs`, one line below it in the
+   * import block, which is where this file keeps finding these.
    */
   record.instrument = Object.fromEntries(
-    ['verify-shell-route.mjs', 'sessionDrive.mjs'].map((name) => {
+    ['verify-shell-route.mjs', 'sessionDrive.mjs', 'meetDrive.mjs'].map((name) => {
       const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
       try {
         return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
@@ -1039,6 +1221,21 @@ page.on('pageerror', (e) => pageErrors.push(String(e.message)));
 await mkdir(outDir, { recursive: true });
 
 async function open(search, waitFor, settle = settleMs) {
+  // A `goto` IS A NEW APP RUN, AND SOMETHING HAS TO COUNT THEM.
+  //
+  // `appServer.ts` holds the app's one connection in module scope and
+  // `localSessionServer.ts` persists nothing, so a page load is a brand-new
+  // lifter: no meets on record, seed e1RM, FIRST TOTAL. Every `open()` in this
+  // file is therefore a boundary, and a check that compares two driven meets
+  // has to know whether they were the same lifter.
+  //
+  // Section 8a needed exactly that and would have got it wrong without this:
+  // meet 3 is opened after four `open()` calls, so it is the FIRST meet of its
+  // own app run and draws no PR attempt at all — correctly. Read as "the third
+  // meet, which should have a history", its six PR-less screens look like a
+  // defect. They are the harness reloading, and the number below is what says
+  // so.
+  APP_RUNS.serial += 1;
   await page.goto(`${url}${search}`, { waitUntil: 'load' });
   if (waitFor !== undefined) {
     await page.getByTestId(waitFor).waitFor({ state: 'visible', timeout: 120000 });
@@ -1400,6 +1597,36 @@ function numberInBlock(source, blockName, key) {
   }
   return null;
 }
+
+/**
+ * The single-quoted members of a bare `export const NAME = ['a', 'b'] …`.
+ *
+ * A THIRD list parser, and deliberately not a widening of `phaseListInSource`.
+ * That one requires `Object.freeze([`, which is how the tuning blocks and the
+ * phase unions are written; `meet.ts`'s `LIFT_ORDER` is a plain literal with
+ * `as const satisfies` after it. Widening the first to accept both shapes would
+ * make it stop being a statement about either — the pattern CLAUDE.md keeps
+ * catching one directory over. The fixture below carries both shapes so this
+ * one is shown to read its own and REFUSE the other's.
+ */
+function stringListInSource(source, name) {
+  const found = new RegExp(`export const ${name}\\s*(?::[^=]*)?=\\s*\\[([^\\]]*)\\]`).exec(source);
+  if (found === null) return null;
+  return [...found[1].matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
+}
+
+/**
+ * What `stringListInSource` must read, and what it must not.
+ *
+ * The refusal half is the load-bearing one: a frozen list is `phaseListInSource`'s
+ * subject, and a parser that answered for both would let a check written about
+ * one silently start reading the other.
+ */
+const LIST_FIXTURE = `
+  export const REAL_ORDER = ['squat', 'bench', 'deadlift'] as const satisfies readonly LiftKind[];
+  export const TYPED_ORDER: readonly string[] = ['one', 'two'];
+  export const FROZEN_ORDER = Object.freeze(['alpha', 'beta'] as const);
+`;
 
 /** The number a top-level `export const NAME = <number>;` is given, or null. */
 function constInSource(source, name) {
@@ -2314,7 +2541,92 @@ async function checkMeetRestatementsMatchTuning() {
       'MEET_COPY.WALKOUT_PROMPT is the line the hall-under-the-rep probe reads a CALM attempt off',
       `looked for WALKOUT_PROMPT: '${MEET_TAIL_SAYS.WALK_IT_OUT}' in meetTuning.ts`,
     );
+
+    // GDD §6.3'S FOUR LINES. Every one of them is a discriminator in section
+    // 8a: two sort the floor sentence into the miss branch or the banked one,
+    // one is the sentence the gold border is checked against, and one is what
+    // the big-jump policy reads to know a miss cannot bomb the lift. A copy
+    // edit to any of them would leave those checks comparing against a string
+    // no screen says — which is green, and measures nothing.
+    for (const [name, mine] of [
+      ['SELECT_FLOOR_RAISED', MEET_SELECT_SAYS.FLOOR_RAISED],
+      ['SELECT_FLOOR_AFTER_MAKE', MEET_SELECT_SAYS.FLOOR_AFTER_MAKE],
+      ['OPTION_PR_NOTE', MEET_SELECT_SAYS.PR_NOTE],
+      ['SELECT_NOTHING_BANKED', MEET_SELECT_SAYS.NOTHING_BANKED],
+    ]) {
+      check(
+        meetText.includes(`${name}: '${mine}'`),
+        `MEET_COPY.${name} is a line section 8a reads GDD §6.3’s screen by`,
+        `looked for ${name}: '${mine}' in meetTuning.ts`,
+      );
+    }
+    // AND THE SENTENCE IS IN ONE ENTRY, COUNTED. A pin that only asks whether
+    // the string is present passes just as happily when it is present TWICE —
+    // which is exactly the defect: the PR claim living in `OPTION_BIG_WHY` as
+    // well as in `OPTION_PR_NOTE`. Counting is the difference.
+    //
+    // COMMENTS STRIPPED FIRST, and finding that out cost this check its first
+    // run. `OPTION_BIG_WHY`'s doc comment quotes the withdrawn string verbatim,
+    // as the account of what it used to say — so the raw count is 2 and the
+    // check reddened over prose. A scan that counts its own documentation is
+    // measuring the wrong thing, and it happened twice on this piece: the unit
+    // suite's palette counter had the identical bug one file over.
+    const meetCode = meetText.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const prClaims = meetCode.split(MEET_SELECT_SAYS.PR_NOTE).length - 1;
+    check(
+      prClaims === 1,
+      'and the PR sentence occurs ONCE in meetTuning.ts’s code — putting it back into a card’s reason takes this to two',
+      `${prClaims} occurrence(s) of ${JSON.stringify(MEET_SELECT_SAYS.PR_NOTE)} in meetTuning.ts outside comments` +
+        ` (${meetText.split(MEET_SELECT_SAYS.PR_NOTE).length - 1} including them — the doc comment on OPTION_BIG_WHY` +
+        ' quotes the sentence it no longer prints)',
+    );
   }
+
+  // THE GOLD ITSELF, read back out of the palette that owns it. Section 8a
+  // compares a computed border colour against `CARD_PR_EDGE_RESTATED`; a
+  // re-tune of the hex with this pin absent would make every card read as
+  // "not a PR" and the agreement check would pass on all-false.
+  const paletteWhere = path.join(srcRoot, 'src', 'meet', 'meetPalette.ts');
+  const paletteText = await readFile(paletteWhere, 'utf8').catch(() => null);
+  check(
+    paletteText !== null && paletteText.includes(`CARD_PR_EDGE: '${CARD_PR_EDGE_RESTATED}'`),
+    'MEET_PALETTE.CARD_PR_EDGE is the gold section 8a looks for on a drawn card',
+    paletteText === null
+      ? `could not read ${paletteWhere}`
+      : `looked for CARD_PR_EDGE: '${CARD_PR_EDGE_RESTATED}' in meetPalette.ts, which section 8a reads as ${JSON.stringify(rgbOf(CARD_PR_EDGE_RESTATED))}`,
+  );
+
+  // AND HOW MANY TIMES §6.3'S SCREEN COMES UP, which is section 8a's domain
+  // size and therefore its whole non-vacuity guard.
+  check(
+    JSON.stringify(stringListInSource(LIST_FIXTURE, 'REAL_ORDER')) ===
+      JSON.stringify(['bench', 'deadlift', 'squat']) &&
+      JSON.stringify(stringListInSource(LIST_FIXTURE, 'TYPED_ORDER')) ===
+        JSON.stringify(['one', 'two']) &&
+      stringListInSource(LIST_FIXTURE, 'FROZEN_ORDER') === null &&
+      stringListInSource(LIST_FIXTURE, 'ABSENT_ORDER') === null,
+    'the bare-list parser reads a plain literal, reads a typed one, and refuses a frozen one and a missing one',
+    `fixture -> REAL_ORDER ${JSON.stringify(stringListInSource(LIST_FIXTURE, 'REAL_ORDER'))},` +
+      ` TYPED_ORDER ${JSON.stringify(stringListInSource(LIST_FIXTURE, 'TYPED_ORDER'))},` +
+      ` FROZEN_ORDER ${JSON.stringify(stringListInSource(LIST_FIXTURE, 'FROZEN_ORDER'))} (want null,` +
+      ` because that shape is phaseListInSource's subject),` +
+      ` ABSENT_ORDER ${JSON.stringify(stringListInSource(LIST_FIXTURE, 'ABSENT_ORDER'))} (want null)`,
+  );
+  const meetWhereRules = path.join(srcRoot, 'src', 'game', 'meet.ts');
+  const rulesText = await readFile(meetWhereRules, 'utf8').catch(() => null);
+  const attemptsPerLift = rulesText === null ? null : constInSource(rulesText, 'ATTEMPTS_PER_LIFT');
+  const liftOrder = rulesText === null ? null : stringListInSource(rulesText, 'LIFT_ORDER');
+  const theirSelections =
+    typeof attemptsPerLift === 'number' && liftOrder !== null
+      ? liftOrder.length * (attemptsPerLift - 1)
+      : null;
+  check(
+    theirSelections === SELECTIONS_PER_MEET_RESTATED,
+    'the number of §6.3 screens a whole meet contains is meet.ts’s own shape, not this tool’s guess',
+    theirSelections === null
+      ? `ATTEMPTS_PER_LIFT (${attemptsPerLift}) or LIFT_ORDER (${JSON.stringify(liftOrder)}) was not found in meet.ts`
+      : `meet.ts ${liftOrder?.length} lifts x (${attemptsPerLift} - 1) = ${theirSelections} vs this tool ${SELECTIONS_PER_MEET_RESTATED}`,
+  );
 
   // THE STAGE GEOMETRY THE HALL-UNDER-THE-REP BAND IS CUT FROM. Same
   // arrangement as `MOTION_MS` above: three numbers this tool restates, read
@@ -2789,6 +3101,13 @@ function beatMsForLine(line) {
 let lastMeetDepthSearch = null;
 
 /**
+ * Which meets this run actually drove, in order, by the tag they were driven
+ * under. The §6.3 section's domain, so a meet that never ran cannot be counted
+ * as one that ran and passed.
+ */
+const MEETS_DRIVEN = [];
+
+/**
  * The whole of a driven meet, reported as checks.
  *
  * SHARED BY THE THREE MEETS ON PURPOSE, so each is measured with the same
@@ -2798,7 +3117,12 @@ let lastMeetDepthSearch = null;
  * the caller rather than derived here, because "the second meet is refused" is
  * the claim, not an observation to be accommodated.
  */
-async function checkDrivenMeet(tag, searchIn, expected, whatEnding) {
+async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption) {
+  // Stamped with the app run it was played in, BEFORE it is played, so section
+  // 8a can tell "the second meet of one lifter" from "the first meet of the
+  // next one". See the block in `open()`.
+  const record = { tag, appRun: APP_RUNS.serial, ended: null };
+  MEETS_DRIVEN.push(record);
   const drive = await driveMeetToItsEnd(page, {
     search: searchIn,
     recapSettleMs,
@@ -2812,6 +3136,20 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding) {
       if (WALKOUT_TAIL_SEEN.timeline === null) await sampleTheTailIfThisIsAThird(state);
     },
     beforeFirstPress: photographTheHallUnderTheRep,
+    // THE SECOND BEAT THIS TOOL DOES MORE THAN WAIT THROUGH, and the one GDD
+    // §12.2 calls "The Real Tension". Runs with every card drawn and before the
+    // press, on every §6.3 screen of every meet. See the block above
+    // `MEET_SELECT_SAYS`.
+    onSelectSeen: async (state) => {
+      const screen = await readAttemptSelect(page);
+      SELECT_SCREENS_SEEN.push({
+        meet: tag,
+        choosing: state.choosing,
+        undrawn: state.undrawn,
+        ...screen,
+      });
+    },
+    chooseOption,
   });
   check(
     drive.ended === expected,
@@ -2843,8 +3181,323 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding) {
       .map((a) => `${a.attempt ?? '?'} @${a.holdMs ?? '?'}ms -> ${JSON.stringify(a.feedback ?? a.why ?? null)}`)
       .join(' | ')}`,
   );
+  // ALSO NOT AN ASSERTION. Which card §6.3's choice was answered with, in order,
+  // so a reader can see whether the run played the dilemma or ducked it.
+  note(`${tag}: §6.3 answered with ${JSON.stringify(drive.pressedOptions ?? [])}`);
+  record.ended = drive.ended;
   lastMeetDepthSearch = drive.search;
   return drive;
+}
+
+/**
+ * GDD §6.3, GRADED ON WHAT THE PLAYED MEETS ACTUALLY DREW.
+ *
+ * Called once, after both meets a player opened, over `SELECT_SCREENS_SEEN`.
+ * Every number below is a count of screens or cards this run really read; a
+ * drive that never reached §6.3 reports zeroes and reddens rather than passing
+ * an empty loop.
+ */
+function checkAttemptSelectOnThePlayedArm(meetsDriven) {
+  const seen = SELECT_SCREENS_SEEN;
+  const gold = rgbOf(CARD_PR_EDGE_RESTATED);
+  const expectedScreens = meetsDriven.length * SELECTIONS_PER_MEET_RESTATED;
+
+  // WHICH MEETS HAD A COMPETITION HISTORY BEHIND THEM, DERIVED RATHER THAN
+  // ASSUMED. A meet can flag a PR attempt only if an EARLIER meet IN THE SAME
+  // APP RUN recorded a result — a page load is a new lifter (see `open()`), and
+  // a meet that ended on the placeholder was refused and recorded nothing.
+  // Written as a derivation because the naive reading ("meet 1 is the first,
+  // the rest are seconds") is false of this run: meet 3 is the first meet of
+  // its own app run and has no more history than meet 1 does.
+  const historyBehind = new Map();
+  const recordedIn = new Set();
+  for (const meet of meetsDriven) {
+    historyBehind.set(meet.tag, recordedIn.has(meet.appRun));
+    if (meet.ended === 'recap') recordedIn.add(meet.appRun);
+  }
+  const withHistory = meetsDriven.filter((meet) => historyBehind.get(meet.tag) === true);
+  const withoutHistory = meetsDriven.filter((meet) => historyBehind.get(meet.tag) !== true);
+  note(
+    `§6.3 domain: ${meetsDriven
+      .map((m) => `${m.tag} (app run ${m.appRun}, ended '${m.ended}', history ${historyBehind.get(m.tag) === true ? 'yes' : 'no'})`)
+      .join('; ')}`,
+  );
+
+  // ---- the domain itself, before anything is said about it ----------------
+  check(
+    seen.length === expectedScreens,
+    `GDD §6.3’s screen was READ on the played arm, on every attempt that has one — ${expectedScreens} of them`,
+    `${meetsDriven.length} meet(s) driven (${meetsDriven.map((m) => m.tag).join(', ')}) x ${SELECTIONS_PER_MEET_RESTATED}` +
+      ` selections; read ${seen.length}` +
+      (seen.length === expectedScreens
+        ? ''
+        : ' — a short count means a meet ended early, and every count below is measured over a smaller domain than it claims'),
+  );
+  if (seen.length === 0) {
+    check(
+      false,
+      'SKIPPED: every §6.3 check below needs a played selection screen, and none was read',
+    );
+    return;
+  }
+
+  // ---- it is the player's meet, not a frozen frame ------------------------
+  const withQuery = seen.filter((screen) => screen.search !== '');
+  check(
+    withQuery.length === 0,
+    'CONTROL: and every one of them was read with NO QUERY STRING in the address bar, so none is a debug frame',
+    withQuery.length === 0
+      ? `${seen.length} screens read, all on ${JSON.stringify(seen[0]?.href ?? '')}`
+      : `${withQuery.length} of ${seen.length} carried one, first ${JSON.stringify(withQuery[0]?.href ?? '')}`,
+  );
+
+  const cards = seen.flatMap((screen) => screen.cards.map((card) => ({ screen, card })));
+  const wrongCardCount = seen.filter(
+    (screen) => screen.cards.length !== CARDS_PER_SELECTION_RESTATED,
+  );
+  check(
+    wrongCardCount.length === 0 && cards.length === seen.length * CARDS_PER_SELECTION_RESTATED,
+    `and every one offered exactly ${CARDS_PER_SELECTION_RESTATED} cards — §6.3 is a choice between two things`,
+    `${cards.length} cards over ${seen.length} screens` +
+      (wrongCardCount.length === 0
+        ? ''
+        : `; ${wrongCardCount.length} screen(s) offered a different number, first ${JSON.stringify(
+            wrongCardCount[0]?.cards.map((c) => c.id) ?? [],
+          )}`),
+  );
+
+  const stillFading = seen.filter((screen) => (screen.undrawn ?? []).length > 0);
+  check(
+    stillFading.length === 0,
+    'CONTROL: and both cards had finished fading in before they were read — presence is not visibility',
+    stillFading.length === 0
+      ? `${seen.length} screens, every card at opacity >= the drive's own threshold`
+      : `${stillFading.length} screen(s) read mid-fade, first ${JSON.stringify(stillFading[0]?.undrawn ?? [])}`,
+  );
+
+  // ---- THE FLOOR, WHICH IS §6.3'S ARGUMENT --------------------------------
+  const floorSentences = new Map([
+    [MEET_SELECT_SAYS.FLOOR_RAISED, 0],
+    [MEET_SELECT_SAYS.FLOOR_AFTER_MAKE, 0],
+  ]);
+  const unrecognisedFloorText = [];
+  const floorless = [];
+  for (const screen of seen) {
+    const said = (screen.floorText ?? '').trim();
+    if (floorSentences.has(said)) floorSentences.set(said, (floorSentences.get(said) ?? 0) + 1);
+    else unrecognisedFloorText.push(said.slice(0, 60));
+    if (weightNumber(screen.floorWeight) === null) floorless.push(screen.title);
+  }
+  check(
+    floorless.length === 0,
+    'THE FLOOR IS A NUMBER ON THE SCREEN — §6.3’s headline, read off every played selection',
+    floorless.length === 0
+      ? `${seen.length} floors read, first ${JSON.stringify(seen[0]?.floorWeight ?? null)} on ${JSON.stringify(seen[0]?.title ?? null)}`
+      : `${floorless.length} screen(s) drew no readable floor weight, first on ${JSON.stringify(floorless[0] ?? null)}`,
+  );
+  const raised = floorSentences.get(MEET_SELECT_SAYS.FLOOR_RAISED) ?? 0;
+  const afterMake = floorSentences.get(MEET_SELECT_SAYS.FLOOR_AFTER_MAKE) ?? 0;
+  check(
+    unrecognisedFloorText.length === 0 && raised + afterMake === seen.length,
+    'and the sentence under it is one of MEET_COPY’s two, on every one of them',
+    `${afterMake} said the banked line, ${raised} said the miss line, ${unrecognisedFloorText.length} said something else` +
+      (unrecognisedFloorText.length === 0 ? '' : `, first ${JSON.stringify(unrecognisedFloorText[0])}`),
+  );
+  // WHICH BRANCH THIS RUN DID NOT REACH, SAID OUT LOUD RATHER THAN LEFT AS A
+  // ZERO NOBODY LOOKS AT. §6.3's bite is the MISS branch, and whether the played
+  // arm reaches it is decided by the robot's depth search rather than by the
+  // app: a run where every attempt stood never draws that sentence at all. It
+  // is not a failure — a robot that lifts well is not a defect — but a section
+  // that printed nothing here would read as though the branch had been checked.
+  // The miss branch's own check runs on the DEBUG arm, and says so in its name.
+  if (raised === 0) {
+    note(
+      "§6.3's MISS branch was NOT reached on the played arm this run: all" +
+        ` ${afterMake} selections followed a good lift, so the floor was never the weight that just beat the` +
+        ' lifter. The two checks named "DEBUG ARM" earlier in this log are the only witnesses for that' +
+        ' sentence in this run, and they are on a different subject — the preview lifter, off ?meet=.',
+    );
+  }
+
+  // NO CARD MAY BE LIGHTER THAN THE FLOOR. The one-way ratchet, read off the
+  // drawn numbers rather than off the engine that produced them.
+  const belowTheFloor = [];
+  for (const { screen, card } of cards) {
+    const floor = weightNumber(screen.floorWeight);
+    const weight = weightNumber(card.weight);
+    if (floor === null || weight === null || weight < floor) {
+      belowTheFloor.push(`${screen.title} ${card.id} @${card.weight} vs floor ${screen.floorWeight}`);
+    }
+  }
+  check(
+    belowTheFloor.length === 0,
+    'NO CARD IS LIGHTER THAN THE FLOOR — the attempt cannot come back down (GDD §6.3)',
+    `${cards.length} cards checked against their screen's floor` +
+      (belowTheFloor.length === 0 ? '' : `; ${belowTheFloor.length} below it, first ${belowTheFloor[0]}`),
+  );
+
+  // AND A MISS RAISES IT. On a screen that says the miss line, the floor is the
+  // weight that was just on the bar — which is the card the drive pressed on the
+  // previous selection for this lift. Only comparable where there IS a previous
+  // selection for that lift, which is the third attempt; the second attempt's
+  // predecessor is the opener, declared at weigh-in and off this screen.
+  const declaredOn = new Map();
+  let comparable = 0;
+  const floorDisagreed = [];
+  for (const screen of seen) {
+    const lift = (screen.title ?? '').split('·')[0]?.trim() ?? '?';
+    const key = `${screen.meet}/${lift}`;
+    const previous = declaredOn.get(key);
+    const floor = weightNumber(screen.floorWeight);
+    const said = (screen.floorText ?? '').trim();
+    if (previous !== undefined && floor !== null) {
+      comparable += 1;
+      const missed = said === MEET_SELECT_SAYS.FLOOR_RAISED;
+      const holds = missed ? floor === previous : floor > previous;
+      if (!holds) {
+        floorDisagreed.push(
+          `${screen.meet} ${screen.title}: floor ${floor} after declaring ${previous}, saying ${JSON.stringify(said.slice(0, 32))}`,
+        );
+      }
+    }
+    const chosen = screen.cards.find((card) => card.id === screen.choosing);
+    const chosenWeight = weightNumber(chosen?.weight);
+    if (chosenWeight !== null) declaredOn.set(key, chosenWeight);
+  }
+  check(
+    floorDisagreed.length === 0 && comparable === meetsDriven.length * 3,
+    'AND A MISS RAISES IT: after a no-lift the floor IS the weight that just beat the lifter, and after a make it is above it',
+    `${comparable} selections had a previous declaration on the same lift to compare against` +
+      ` (expected ${meetsDriven.length * 3}, one per lift per meet)` +
+      (floorDisagreed.length === 0 ? '' : `; ${floorDisagreed.length} disagreed, first ${floorDisagreed[0]}`),
+  );
+
+  // ---- THE PAIR: the gold border and the PR sentence ----------------------
+  const goldCards = cards.filter(({ card }) => card.borderColor === gold);
+  const noteCards = cards.filter(({ card }) => card.prNote !== null);
+  const disagreed = cards.filter(
+    ({ card }) => (card.borderColor === gold) !== (card.prNote !== null),
+  );
+  check(
+    gold !== null,
+    'CONTROL: the gold this check looks for is a colour, converted from the palette’s hex rather than typed',
+    `MEET_PALETTE.CARD_PR_EDGE ${CARD_PR_EDGE_RESTATED} -> ${JSON.stringify(gold)}`,
+  );
+  check(
+    disagreed.length === 0,
+    'THE PR BORDER AND THE PR SENTENCE ARE ONE DECISION — every card wears both or neither',
+    `${cards.length} cards: ${goldCards.length} gold-edged, ${noteCards.length} carrying the sentence` +
+      (disagreed.length === 0
+        ? ''
+        : `; ${disagreed.length} disagreed, first ${disagreed[0]?.screen.meet} ${disagreed[0]?.screen.title}` +
+          ` ${disagreed[0]?.card.id} border ${JSON.stringify(disagreed[0]?.card.borderColor)}` +
+          ` note ${JSON.stringify(disagreed[0]?.card.prNote)}`),
+  );
+  const wrongNote = noteCards.filter(
+    ({ card }) => (card.prNote ?? '').trim() !== MEET_SELECT_SAYS.PR_NOTE,
+  );
+  check(
+    wrongNote.length === 0,
+    'and the sentence is MEET_COPY’s, word for word',
+    wrongNote.length === 0
+      ? `${noteCards.length} card(s) said ${JSON.stringify(MEET_SELECT_SAYS.PR_NOTE)}`
+      : `first mismatch ${JSON.stringify(wrongNote[0]?.card.prNote ?? null)}`,
+  );
+  const reasonClaimsPr = cards.filter(({ card }) =>
+    (card.why ?? '').includes(MEET_SELECT_SAYS.PR_NOTE),
+  );
+  check(
+    reasonClaimsPr.length === 0,
+    'and NO card’s reason claims a PR — the sentence that used to be printed unconditionally is gone from that line',
+    `${cards.length} reasons read` +
+      (reasonClaimsPr.length === 0
+        ? ''
+        : `; ${reasonClaimsPr.length} still claim one, first ${reasonClaimsPr[0]?.screen.meet}` +
+          ` ${reasonClaimsPr[0]?.screen.title} ${reasonClaimsPr[0]?.card.id}: ${JSON.stringify(reasonClaimsPr[0]?.card.why)}`),
+  );
+
+  // ---- NON-VACUITY, IN BOTH DIRECTIONS, ON THE PLAYED ARM -----------------
+  //
+  // The agreement above is satisfied by a build that never paints the border
+  // AND never prints the sentence, and by one that always does both. So the two
+  // meets are read separately, because they are different subjects.
+  const freshTags = new Set(withoutHistory.map((meet) => meet.tag));
+  const freshScreens = seen.filter((screen) => freshTags.has(screen.meet));
+  const freshCards = freshScreens.flatMap((screen) => screen.cards);
+  const freshGold = freshCards.filter((card) => card.borderColor === gold).length;
+  const freshNotes = freshCards.filter((card) => card.prNote !== null).length;
+  check(
+    withoutHistory.length > 0 &&
+      freshScreens.length === withoutHistory.length * SELECTIONS_PER_MEET_RESTATED &&
+      freshGold === 0 &&
+      freshNotes === 0,
+    'ON A MEET WITH NO COMPETITION HISTORY NOTHING CLAIMS A RECORD — no gold edge and no PR sentence, because there is no best to beat',
+    `${withoutHistory.length} such meet(s) (${withoutHistory.map((m) => m.tag).join(', ')}):` +
+      ` ${freshScreens.length} selections, ${freshCards.length} cards, ${freshGold} gold-edged,` +
+      ` ${freshNotes} carrying the sentence.` +
+      ' Before the copy fix this arm drew one card per selection reading "A PR on the line." with no border on any of them.',
+  );
+
+  const historyTags = new Set(withHistory.map((meet) => meet.tag));
+  const laterCards = cards.filter(({ screen }) => historyTags.has(screen.meet));
+  const laterGold = laterCards.filter(({ card }) => card.borderColor === gold);
+  // A SCREEN WHERE THE TWO COMPETE. CLAUDE.md: a negative whose two subjects
+  // cannot co-occur is decoration, so the count that matters is selections that
+  // drew a gold card AND a plain one side by side. Fragile in a way worth
+  // stating: which cards cross the previous best depends on the 2.5 kg
+  // declaration grid, and at the opener weights this lifter starts from the
+  // small jump and the previous best land on the SAME rung on two lifts out of
+  // three. The deadlift's larger jumps are what separates them. A run that
+  // reports zero here has not found a defect in the app — it has lost the
+  // separation, and the count is printed so a reader can see which.
+  const discriminating = seen.filter(
+    (screen) =>
+      screen.cards.some((card) => card.borderColor === gold) &&
+      screen.cards.some((card) => card.borderColor !== gold),
+  );
+  check(
+    withHistory.length > 0 && laterGold.length > 0,
+    'AND ON A MEET THAT READS AN EARLIER ONE’S BESTS IT IS DRAWN — the gold edge and its sentence, on the played arm',
+    `${withHistory.length} such meet(s) (${withHistory.map((m) => m.tag).join(', ') || 'none'}),` +
+      ` ${laterCards.length} cards, ${laterGold.length} gold-edged` +
+      (laterGold.length === 0
+        ? ' — no PR attempt was drawn at all, so the agreement above was measured on all-false'
+        : `, first ${laterGold[0]?.screen.title} ${laterGold[0]?.card.id} @${laterGold[0]?.card.weight}` +
+          ` saying ${JSON.stringify(laterGold[0]?.card.prNote)}`),
+  );
+  check(
+    discriminating.length > 0,
+    'and on a screen where the two COMPETE — one card gold, the other plain, at the same moment',
+    `${discriminating.length} of ${seen.length} selections drew both` +
+      (discriminating.length === 0
+        ? ' — every screen was all-gold or all-plain, so nothing here separates the two renderings'
+        : `, first ${discriminating[0]?.title}: ` +
+          (discriminating[0]?.cards ?? [])
+            .map((card) => `${card.id} @${card.weight} ${card.borderColor === gold ? 'GOLD' : 'plain'}`)
+            .join(' vs ')),
+  );
+
+  // ---- THE BOLD ARM, WHICH NO PLAYED RUN HAD EVER PRESSED -----------------
+  const pressed = seen.map((screen) => screen.choosing);
+  const bigPresses = pressed.filter((id) => id === 'big').length;
+  check(
+    bigPresses > 0,
+    'GDD §6.3’s BIG JUMP is PRESSED on the played arm — the bold arm of the dilemma, not just the safest card',
+    `§6.3 was answered ${JSON.stringify(pressed)}; ${bigPresses} of them took the big jump` +
+      (bigPresses === 0
+        ? ' — every selection of both meets said NOTHING BANKED when the policy looked, so it never armed'
+        : ''),
+  );
+
+  // Every card's delta is on the screen too, and it is the ratchet in words.
+  const deltaless = cards.filter(({ card }) => (card.delta ?? '').trim() === '');
+  check(
+    deltaless.length === 0,
+    'and every card prints what it adds to the bar',
+    deltaless.length === 0
+      ? `${cards.length} deltas read, e.g. ${JSON.stringify(cards[0]?.card.delta ?? null)}`
+      : `${deltaless.length} card(s) printed no delta`,
+  );
 }
 
 // ###########################################################################
@@ -3164,6 +3817,10 @@ if (!reachedMeet) {
         first.search,
         'placeholder',
         'THE SECOND MEET IS REFUSED AS ALREADY RECORDED, and GDD §6.1’s placeholder is what stands where §6.5’s recap was',
+        // FROM HERE THE ROBOT PLAYS §6.3'S DILEMMA. See the block above
+        // `takeTheBigJumpWhenSomethingIsBanked` for why it is armed on the
+        // second meet and not the first.
+        takeTheBigJumpWhenSomethingIsBanked,
       );
       playerOpenedMeet.second = {
         ended: second.ended,
@@ -3902,6 +4559,7 @@ const playedOut = { attempted: true };
         lastMeetDepthSearch ?? freshDepthSearch(),
         'recap',
         'THE MEET OPENED FROM THE ALREADY-TRAINED SURFACE IS PLAYED TO ITS END, so its way back is on screen (GDD §6.5)',
+        takeTheBigJumpWhenSomethingIsBanked,
       );
       returnLeg.meetEnded = third.ended;
       returnLeg.meetAttempts = third.attempts.length;
@@ -4232,6 +4890,39 @@ for (const [search, phase, what] of [
 }
 
 // ---------------------------------------------------------------------------
+// §6.3's MISS BRANCH, ON THE DEBUG ARM, AND LABELLED AS THE DEBUG ARM
+// ---------------------------------------------------------------------------
+//
+// The page is still on `/?meet=select-after-miss` from the loop above, which is
+// `frozenMeetFor`'s `source === 'debug'` branch and therefore a DIFFERENT
+// SUBJECT from section 8a's — `previewMeetPort()`'s scripted lifter, not the
+// app's own connection. It is here because §6.3's bite is the miss branch and
+// the played arm reaches it only when the robot misses: on a run where every
+// attempt stands, section 8a reads eighteen make-branch screens and zero miss
+// ones, and its own note says so.
+//
+// So this is a witness for a sentence, not a substitute for the played arm.
+// The header of the section 8a block is where the played arm's claim lives; do
+// not read this check as covering it.
+{
+  const missed = await readAttemptSelect(page);
+  const floor = weightNumber(missed.floorWeight);
+  const repeat = missed.cards.find((card) => card.id === 'repeat');
+  const repeatWeight = weightNumber(repeat?.weight);
+  check(
+    (missed.floorText ?? '').trim() === MEET_SELECT_SAYS.FLOOR_RAISED,
+    'DEBUG ARM: after a miss GDD §6.3’s floor says the miss line — "a miss does not lower the floor, it RAISES it"',
+    `?meet=select-after-miss says ${JSON.stringify((missed.floorText ?? '').slice(0, 80))}`,
+  );
+  check(
+    floor !== null && repeatWeight !== null && floor === repeatWeight,
+    'DEBUG ARM: and the lightest thing on offer IS that floor — the weight that just beat the lifter, offered again',
+    `floor ${JSON.stringify(missed.floorWeight)}, repeat card ${JSON.stringify(repeat?.weight ?? null)}` +
+      `, cards ${JSON.stringify(missed.cards.map((card) => `${card.id}@${card.weight}`))}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // GDD §6.3's bomb-out draws its OWN way out, and the shell stays off it.
 //
 // THE SLOWEST SCREEN IN THE GAME, AND THE ONE THIS TOOL GOT WRONG. Its exit is
@@ -4352,6 +5043,15 @@ await checkOnScreen(
 );
 
 // ###########################################################################
+// ###  8a. GDD §6.3 — "THE REAL TENSION", ON EVERY MEET A PLAYER OPENED     #
+// ###########################################################################
+//
+// Read during the drives above and graded here, after the last of them, so one
+// section covers every played meet rather than one section per meet drifting
+// apart. See the block above `MEET_SELECT_SAYS`.
+checkAttemptSelectOnThePlayedArm(MEETS_DRIVEN);
+
+// ###########################################################################
 // ###  8b. THE WALK-OUT'S TAIL IS ALIVE, ON A RUNNING CLOCK                 #
 // ###########################################################################
 //
@@ -4386,6 +5086,11 @@ await writeFile(
       // session, and the thing that says whether the drive converged or got
       // lucky. `attemptedSecond` is false on a run that never got that far.
       playerOpenedMeets: playerOpenedMeet,
+      // Section 8a's raw material: every GDD §6.3 screen this run stood on, as
+      // it was drawn, with the address bar it was read under. The checks above
+      // are assertions over this list, and a reader who disagrees with one of
+      // them can re-derive it from here rather than from the check's wording.
+      attemptSelectScreens: SELECT_SCREENS_SEEN,
       // Section 6c: the one return leg in this run taken on a day the player
       // HAS trained, which is the case `src/shell/appServer.ts` exists for.
       // `attempted: false` is a leg that never ran, and is not the same thing as

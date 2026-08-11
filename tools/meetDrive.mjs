@@ -43,6 +43,12 @@
  *   `onWalkoutEnded`    verify-meet-sound closes that mark.
  *   `beforeFirstPress`  verify-shell-route photographs the room the rep is
  *                       drawn in, before the mouse touches it.
+ *   `onSelectSeen`      verify-shell-route reads GDD §6.3's whole screen — the
+ *                       floor, the sentence, both cards and their borders —
+ *                       while it is up, because it is gone the instant the
+ *                       press below lands.
+ *   `chooseOption`      and decides which card that press goes to, when it
+ *                       wants something other than the cowardly default.
  *   `shouldStop`        verify-meet-sound leaves after the beat it came for
  *                       rather than playing eighteen more attempts for nothing.
  *
@@ -190,6 +196,12 @@ export const MEET_DRIVE = Object.freeze({
    * bomb-out, and a bomb-out is a different screen), so the robot takes the
    * lightest thing on offer and does not play §6.3's actual dilemma. It is not
    * a claim about what a player should do.
+   *
+   * A CALLER THAT WANTS THE DILEMMA PASSES `chooseOption`. This list is the
+   * DEFAULT, not the policy: it was the only policy for six waves, which made
+   * `attempt-option-big` a control no played run had ever pressed — an empty
+   * domain on the exact arm §6.3 is about. `verify-shell-route.mjs` now hands
+   * in a policy that takes the big jump where a miss cannot bomb the lift.
    */
   SAFEST_OPTIONS: Object.freeze(['repeat', 'small', 'big']),
 
@@ -263,6 +275,13 @@ export async function readMeetLoop(page) {
       walkoutLine: text('walkout-line'),
       /** The judges' one line. See MEET_DRIVE.FEEDBACK_HIGH for why not `attempt-detail`. */
       feedback: text('verdict-feedback'),
+      /**
+       * GDD §6.3's banked line, which is what says whether a miss on this lift
+       * could still bomb it. Read here rather than by the caller because a
+       * `chooseOption` policy needs it BEFORE the press, and this is the read
+       * the driver already does on every poll.
+       */
+      banked: text('attempt-select-banked'),
       /**
        * The option cards on offer, as whole testIDs. Filtered to the three
        * `AttemptOptionId`s so `attempt-option-weight-<id>` — a Text INSIDE each
@@ -406,10 +425,20 @@ export async function driveMeetToItsEnd(page, options = {}) {
     onWalkoutSeen,
     onWalkoutEnded,
     beforeFirstPress,
+    onSelectSeen,
+    chooseOption,
     shouldStop,
   } = options;
   const startedAt = Date.now();
   const attempts = [];
+  /**
+   * Which card GDD §6.3's choice was answered with, in order.
+   *
+   * Reported rather than asserted, like everything else here. It is what lets a
+   * caller say "the big arm was pressed" as a fact about this run instead of a
+   * fact about the default preference list.
+   */
+  const pressedOptions = [];
   let search = searchIn;
   /** The line the walk-out just before the current rep was showing. */
   let lastWalkoutLine = null;
@@ -420,6 +449,7 @@ export async function driveMeetToItsEnd(page, options = {}) {
       return {
         ended: 'stopped',
         attempts,
+        pressedOptions,
         search,
         ms: Date.now() - startedAt,
         why: 'the caller asked to leave here',
@@ -443,6 +473,7 @@ export async function driveMeetToItsEnd(page, options = {}) {
               ? 'placeholder'
               : 'waiting',
         attempts,
+        pressedOptions,
         search,
         ms: Date.now() - startedAt,
         why:
@@ -453,12 +484,13 @@ export async function driveMeetToItsEnd(page, options = {}) {
     }
 
     if (Date.now() - startedAt >= MEET_DRIVE.MEET_TIMEOUT_MS) {
-      return { ended: 'timeout', attempts, search, ms: Date.now() - startedAt, why: 'the meet ran past its deadline' };
+      return { ended: 'timeout', attempts, pressedOptions, search, ms: Date.now() - startedAt, why: 'the meet ran past its deadline' };
     }
     if (attempts.length > MEET_DRIVE.MAX_ATTEMPTS) {
       return {
         ended: 'overrun',
         attempts,
+        pressedOptions,
         search,
         ms: Date.now() - startedAt,
         why: `played ${attempts.length} attempts, and GDD §6.2 has ${MEET_DRIVE.MAX_ATTEMPTS}`,
@@ -468,7 +500,7 @@ export async function driveMeetToItsEnd(page, options = {}) {
     if (state.weighIn) {
       const pressed = await waitUntilDrawn(page, 'weigh-in-action', MEET_DRIVE.BEAT_TIMEOUT_MS);
       if (!pressed.drawn) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: `the weigh-in never drew its action — ${pressed.why}` };
+        return { ended: 'stuck', attempts, pressedOptions, search, ms: Date.now() - startedAt, why: `the weigh-in never drew its action — ${pressed.why}` };
       }
       await page.getByTestId('weigh-in-action').click({ timeout: 20000 }).catch(() => {});
       await untilMeet(page, (s) => !s.weighIn, MEET_DRIVE.BEAT_TIMEOUT_MS);
@@ -481,7 +513,7 @@ export async function driveMeetToItsEnd(page, options = {}) {
       // lifter's own e1RM and is the load the rest of the meet ratchets up from.
       const pressed = await waitUntilDrawn(page, 'openers-action', MEET_DRIVE.BEAT_TIMEOUT_MS);
       if (!pressed.drawn) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: `the openers never drew an action — ${pressed.why}` };
+        return { ended: 'stuck', attempts, pressedOptions, search, ms: Date.now() - startedAt, why: `the openers never drew an action — ${pressed.why}` };
       }
       await page.getByTestId('openers-action').click({ timeout: 20000 }).catch(() => {});
       await untilMeet(page, (s) => !s.openers, MEET_DRIVE.BEAT_TIMEOUT_MS);
@@ -493,22 +525,44 @@ export async function driveMeetToItsEnd(page, options = {}) {
       // they do. Waiting for a card rather than for the screen.
       const offered = await untilMeet(page, (s) => !s.select || s.options.length > 0, MEET_DRIVE.BEAT_TIMEOUT_MS);
       if (!offered.state.select) continue;
-      const want = MEET_DRIVE.SAFEST_OPTIONS.find((id) =>
-        offered.state.options.includes(`attempt-option-${id}`),
-      );
+      const ids = offered.state.options.map((id) => id.replace('attempt-option-', ''));
+      // THE CALLER'S POLICY FIRST, THE COWARD'S SECOND. A policy that names a
+      // card not on offer is ignored rather than obeyed — the driver may only
+      // press what §6.3 actually put on the screen.
+      const asked = chooseOption === undefined ? undefined : await chooseOption(ids, offered.state);
+      const want =
+        asked !== undefined && asked !== null && ids.includes(asked)
+          ? asked
+          : MEET_DRIVE.SAFEST_OPTIONS.find((id) => ids.includes(id));
       if (want === undefined) {
         return {
           ended: 'stuck',
           attempts,
+          pressedOptions,
           search,
           ms: Date.now() - startedAt,
           why: `GDD §6.3's choice offered none of ${MEET_DRIVE.SAFEST_OPTIONS.join('/')} — on screen: ${JSON.stringify(offered.state.options)}`,
         };
       }
+      // EVERY CARD DRAWN BEFORE THE READER LOOKS, not just the one about to be
+      // pressed. `ATTEMPT_CARD_STAGGER_MS` fades them in one at a time, so a
+      // reader that ran off the chosen card's arrival would photograph the
+      // other one mid-fade — which is this repository's own "presence is not
+      // visibility" defect at the sibling card. Scoped to callers that read,
+      // because it makes the press strictly later and nothing else needs it.
+      if (onSelectSeen !== undefined) {
+        const late = [];
+        for (const id of ids) {
+          const shown = await waitUntilDrawn(page, `attempt-option-${id}`, MEET_DRIVE.BEAT_TIMEOUT_MS);
+          if (!shown.drawn) late.push(`${id} (${shown.why})`);
+        }
+        await onSelectSeen({ ...offered.state, ids, choosing: want, undrawn: late });
+      }
       const drawn = await waitUntilDrawn(page, `attempt-option-${want}`, MEET_DRIVE.BEAT_TIMEOUT_MS);
       if (!drawn.drawn) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: `the ${want} option never finished fading in — ${drawn.why}` };
+        return { ended: 'stuck', attempts, pressedOptions, search, ms: Date.now() - startedAt, why: `the ${want} option never finished fading in — ${drawn.why}` };
       }
+      pressedOptions.push(want);
       await page.getByTestId(`attempt-option-${want}`).click({ timeout: 20000 }).catch(() => {});
       await untilMeet(page, (s) => !s.select, MEET_DRIVE.BEAT_TIMEOUT_MS);
       continue;
@@ -533,7 +587,7 @@ export async function driveMeetToItsEnd(page, options = {}) {
       const moved = await untilMeet(page, (s) => s.attempt || s.select || meetIsOver(s), MEET_DRIVE.BEAT_TIMEOUT_MS);
       if (state.walkout && onWalkoutEnded !== undefined) await onWalkoutEnded(state, moved.state);
       if (!moved.ok) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: 'a timed beat never handed on' };
+        return { ended: 'stuck', attempts, pressedOptions, search, ms: Date.now() - startedAt, why: 'a timed beat never handed on' };
       }
       continue;
     }
@@ -547,7 +601,7 @@ export async function driveMeetToItsEnd(page, options = {}) {
       });
       attempts.push({ attempt: label, ...rep });
       if (!rep.played) {
-        return { ended: 'stuck', attempts, search, ms: Date.now() - startedAt, why: rep.why };
+        return { ended: 'stuck', attempts, pressedOptions, search, ms: Date.now() - startedAt, why: rep.why };
       }
       search = adaptFromMeetFeedback(search, rep.feedback);
       continue;

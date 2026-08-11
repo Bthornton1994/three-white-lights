@@ -428,12 +428,31 @@ export interface AttemptOption {
   /** Kilos above the previous attempt. Exactly 0 on a repeat. */
   readonly deltaKg: number;
   readonly label: string;
+  /**
+   * Why a lifter would take this card. Never a claim about a record — the
+   * record claim is `prNote`, and `MEET_COPY.OPTION_BIG_WHY` has the account of
+   * why the two were separated.
+   */
   readonly why: string;
   /**
    * True when taking this option would put the lifter above their best
    * competition lift on this lift — GDD §6.3's "a PR on the line".
    */
   readonly isPrAttempt: boolean;
+  /**
+   * GDD §6.3's PR call-out for this card, or null when there is none.
+   *
+   * ONE FLAG, TWO RENDERINGS, AND NEITHER MAY OUTRUN THE OTHER. This is
+   * `MEET_COPY.OPTION_PR_NOTE` exactly when `isPrAttempt` is true and null
+   * otherwise, from the one expression below — so the sentence the card prints
+   * and the gold `MEET_PALETTE.CARD_PR_EDGE` border `AttemptSelectView` paints
+   * off `isPrAttempt` can never disagree about whether a record is on the bar.
+   * They did: the PR sentence was a static constant on the big card and said
+   * "A PR on the line" over 6 of 6 unbordered cards on a played first meet.
+   *
+   * `@guarantee pr-sentence-and-pr-border-are-one-decision`
+   */
+  readonly prNote: string | null;
 }
 
 /**
@@ -488,13 +507,16 @@ function optionFor(
   // Every weight offered is re-checked against the engine that will be asked to
   // accept it. An option the engine would refuse is dropped rather than shown.
   if (!isCallableWeightNow(state, weightKg)) return null;
+  // Read once, rendered twice. See `AttemptOption.prNote`.
+  const isPrAttempt = previousBestKg !== null && weightKg > previousBestKg;
   return {
     id,
     weightKg,
     deltaKg: scrub(weightKg - previousWeightKg),
     label,
     why,
-    isPrAttempt: previousBestKg !== null && weightKg > previousBestKg,
+    isPrAttempt,
+    prNote: isPrAttempt ? MEET_COPY.OPTION_PR_NOTE : null,
   };
 }
 

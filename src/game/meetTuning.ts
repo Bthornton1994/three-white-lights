@@ -1719,7 +1719,33 @@ export const MEET_COPY = Object.freeze({
   OPTION_SMALL: 'SMALL JUMP',
   OPTION_SMALL_WHY: 'Lock in a bigger total. Low risk.',
   OPTION_BIG: 'BIG JUMP',
-  OPTION_BIG_WHY: 'A PR on the line. Higher risk.',
+  /**
+   * Why you would take the big jump — and no longer a claim about a record.
+   *
+   * It used to read 'A PR on the line. Higher risk.' and it was printed
+   * unconditionally, while `AttemptOption.isPrAttempt` — the flag the gold
+   * border reads — is `previousBestKg !== null && weightKg > previousBestKg`.
+   * On a lifter's first meet `previousBestByLift` returns all-null, so every
+   * big card on that meet said "A PR on the line" over a card the app had
+   * decided was not a PR attempt: 6 of 6 on a played first meet, measured in
+   * `AttemptSelectView.test.ts`. It was false on later meets too, on every
+   * opener and second attempt under the lifter's best, which is most of them.
+   *
+   * The PR claim now lives in `OPTION_PR_NOTE`, which the engine attaches to
+   * whichever option actually crosses the lifter's best.
+   */
+  OPTION_BIG_WHY: 'The biggest jump on offer. Higher risk.',
+  /**
+   * GDD §6.3's "a PR on the line", printed on the card it is true of.
+   *
+   * `attemptDecisionFor` puts this on an option exactly when that option's
+   * `isPrAttempt` is true, which is the same field `AttemptSelectView` paints
+   * `MEET_PALETTE.CARD_PR_EDGE` from — so the sentence and the gold border are
+   * one decision rendered twice rather than two that can disagree.
+   *
+   * `@guarantee pr-sentence-and-pr-border-are-one-decision`
+   */
+  OPTION_PR_NOTE: 'A PR on the line.',
   OPTION_PUSH_PAST: 'GO PAST IT',
   OPTION_PUSH_PAST_WHY: 'Concede the miss and reach past it. Rescues the lift or spends the last attempt for nothing.',
   OPTION_BOMB_WARNING: 'Miss this and the meet is over with nothing on this lift.',
