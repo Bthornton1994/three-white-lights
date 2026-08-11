@@ -175,7 +175,7 @@
  * of the composition rather than a weakness in either file:
  *
  *   - `skipExpansion` moving `settledCompletion` as well as `idleCompletion`
- *     leaves this file's 49 checks green. The reason is measurable: across the
+ *     leaves this file's 50 checks green. The reason is measurable: across the
  *     whole grid a grant lands on a build that is still running six times, and
  *     every one of those builds is on the coach ladder, whose settled level no
  *     progression-reaching reading consults. Three checks in `expansion.test.ts`
@@ -195,7 +195,9 @@
  *     for the same file — importing `empireSweep.test.ts` for the sweep
  *     parameters registers that module's own five checks under this one — and
  *     the source count is the honest reading of "this file's checks".
- *     Re-taken at 49 on this branch: 49 of 49 green under the mutant.
+ *     Re-taken at 50 on this branch: 50 of 50 green under the mutant. It read
+ *     49 before §4c's day-anchor block added a check, and it is the same drift
+ *     the pin below exists to catch — caught, this time, by the pin.
  *     `@guarantee section-4a-denominator-is-measured`
  *   - `recruitmentRefusals` counting slots off `state.axes` instead of
  *     `state.settledAxes` also leaves this file green, because in this sweep the

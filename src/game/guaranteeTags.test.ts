@@ -731,13 +731,13 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // and the mutant was not re-run. The mutant below is that drift replayed.
     guarantee: 'section-4a-denominator-is-measured',
     mutatedFile: 'src/empire/empireInvariant.ts',
-    mutated: "leaves this file's 49 checks green",
+    mutated: "leaves this file's 50 checks green",
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(declared).toBe(declarations.length);',
     observed:
       "§4a's denominator is this file's own check count" +
       ' [section-4a-denominator-is-measured]\n' +
-      'AssertionError: expected 43 to be 49 // Object.is equality',
+      'AssertionError: expected 43 to be 50 // Object.is equality',
   },
   // -------------------------------------------------------------------------
   // GDD §6.5 — "PR" means one thing. FOUR MUTANTS FOR ONE TAG, deliberately.

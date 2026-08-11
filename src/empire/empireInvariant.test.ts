@@ -97,13 +97,20 @@ import {
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
+  EMPIRE_DAY_SPENDING_ANCHORS,
   EMPIRE_FUNDINGS,
   EMPIRE_SPENDING_POLICIES,
+  SHIPPED_DAY_SPENDING_ANCHOR,
   SHIPPED_FUNDING,
   SHIPPED_SPENDING_MOMENT,
   SHIPPED_SPENDING_POLICY,
+  anchorConsumesDayOnlyOnPurchase,
+  anchorHasOneTripPerDay,
   arrivalDays,
   axisSpendingOrder,
+  bookSpendsAtMoment,
+  booksSpentBy,
+  booksUnspentToday,
   compareDayLists,
   compareLedgers,
   composeTrainingIqRate,
@@ -111,18 +118,23 @@ import {
   empireRunFaults,
   grantSecondsAt,
   idleDayLedger,
+  isDaySpendingMoment,
   maySpendOnRoster,
   outputSeries,
   progressionDayLedger,
+  purchasesMade,
   rotatesAtMoment,
   runEmpire,
   savingForPhysio,
   spendingMoment,
+  spendingMomentForBooks,
   spendsAtMoment,
   stepGym,
   type AccelerantPlan,
+  type DayCheckInFacts,
   type EmpireDayEntry,
   type EmpireFunding,
+  type EmpirePolicy,
   type EmpireRun,
   type EmpireSpendingPolicy,
 } from './empireInvariant';
@@ -141,6 +153,7 @@ import {
 } from './expansion';
 import { EMPIRE_SWEEP, accelerantPlans, policyAt, socialInputs } from './empireSweep.test';
 import { rosterTrainingIqPerDay } from './npc';
+import { RECRUIT_BOOK } from './recruitment';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -1320,6 +1333,101 @@ describe('the spending policy is a parameter, and the shipped one is the loop th
     expect(boundary.nextAxis).toBe(1);
   });
 
+  it('answers every day anchor, and refuses the one question the per-purse anchor has no answer to', () => {
+    // THE DAY ANCHOR VOCABULARY, as unit tests rather than only through the
+    // 24576-pair sweep in `engagement.test.ts`. Every exported function §4c
+    // added is driven here, including the two refusals.
+    const facts = (
+      first: boolean,
+      last: boolean,
+      bought: boolean,
+    ): DayCheckInFacts => Object.freeze({
+      firstAttendedOfDay: first,
+      lastAttendedOfDay: last,
+      boughtEarlierToday: bought,
+    });
+
+    // Each attendance-derived anchor reads its own fact and only its own, so an
+    // anchor keyed on the wrong end of the day is red rather than plausible.
+    expect(isDaySpendingMoment('last-attended-check-in', facts(true, false, false))).toBe(false);
+    expect(isDaySpendingMoment('last-attended-check-in', facts(false, true, false))).toBe(true);
+    expect(isDaySpendingMoment('first-attended-check-in', facts(true, false, false))).toBe(true);
+    expect(isDaySpendingMoment('first-attended-check-in', facts(false, true, false))).toBe(false);
+    // The one-trip affordable anchor keys on neither end: it keys on whether
+    // the day's trip has already bought something.
+    expect(isDaySpendingMoment('first-affordable-check-in', facts(false, false, false))).toBe(true);
+    expect(isDaySpendingMoment('first-affordable-check-in', facts(true, true, true))).toBe(false);
+    // And the per-purse anchor has no single moment to name, so it throws
+    // rather than answering something plausible.
+    expect(() =>
+      isDaySpendingMoment('first-affordable-check-in-per-purse', facts(true, true, false)),
+    ).toThrow(/purse by purse/);
+
+    // The two predicates that route the driver, over the whole list rather than
+    // one member each, so a fifth anchor cannot arrive unclassified.
+    expect(
+      EMPIRE_DAY_SPENDING_ANCHORS.filter((anchor) => !anchorHasOneTripPerDay(anchor)),
+    ).toEqual(['first-affordable-check-in-per-purse']);
+    expect(
+      EMPIRE_DAY_SPENDING_ANCHORS.filter((anchor) => anchorConsumesDayOnlyOnPurchase(anchor)),
+    ).toEqual(['first-affordable-check-in']);
+    expect(EMPIRE_DAY_SPENDING_ANCHORS.length).toBe(4);
+    expect(anchorHasOneTripPerDay(SHIPPED_DAY_SPENDING_ANCHOR)).toBe(false);
+
+    // The purse bookkeeping: what is left to spend, and what a moment built
+    // from it may buy out of.
+    expect(booksUnspentToday([])).toEqual(EMPIRE_BOOKS);
+    const spentOne = booksUnspentToday([RECRUIT_BOOK]);
+    expect(spentOne.length).toBe(EMPIRE_BOOKS.length - 1);
+    expect(spentOne.includes(RECRUIT_BOOK)).toBe(false);
+    expect(booksUnspentToday([...EMPIRE_BOOKS])).toEqual([]);
+    const partial = spendingMomentForBooks('spend-once-per-calendar-day', spentOne, false);
+    expect(spendsAtMoment(partial)).toBe(true);
+    expect(bookSpendsAtMoment(partial, RECRUIT_BOOK)).toBe(false);
+    expect(bookSpendsAtMoment(partial, ACCELERATED_BOOK)).toBe(true);
+    expect(partial.advancesRotation).toBe(false);
+    const closed = spendingMomentForBooks('spend-once-per-calendar-day', [], true);
+    expect(spendsAtMoment(closed)).toBe(false);
+    // A purse the gym does not keep is a refusal rather than a silent no-op.
+    expect(() =>
+      spendingMomentForBooks('spend-once-per-calendar-day', ['not-a-book' as EmpireBook], false),
+    ).toThrow(/not one of the gym/);
+
+    // `purchasesMade` counts a recruitment when it is PAID FOR, which is the
+    // fact the affordable anchors read. Driven on a real gym: one check-in with
+    // spending open buys, the same check-in with every purse closed does not,
+    // and a lifter moving from `pending` to the roster leaves the meter alone.
+    const policy: EmpirePolicy = Object.freeze({
+      checkInsPerDay: EMPIRE_SWEEP.CHECK_INS_PER_DAY,
+      axisOrder: [...EMPIRE_SWEEP.AXIS_ORDER],
+      leaderboardMetric: EMPIRE_SWEEP.LEADERBOARD_METRIC,
+    });
+    const gap = EMPIRE_TUNING.SECONDS_PER_DAY / EMPIRE_SWEEP.CHECK_INS_PER_DAY;
+    let opened = createEmpireGym();
+    let shut = createEmpireGym();
+    let boughtAt = 0;
+    let shutBought = 0;
+    for (let checkIn = 1; checkIn <= EMPIRE_SWEEP.CHECK_INS_PER_DAY; checkIn += 1) {
+      const before = opened;
+      opened = stepGym(opened, policy, checkIn * gap, null, 0, SHIPPED_FUNDING, SHIPPED_SPENDING_MOMENT);
+      if (purchasesMade(opened) > purchasesMade(before)) {
+        boughtAt += 1;
+        expect(booksSpentBy(before, opened).length, `check-in ${checkIn}`).toBeGreaterThan(0);
+      } else {
+        expect(booksSpentBy(before, opened)).toEqual([]);
+      }
+      const shutBefore = shut;
+      shut = stepGym(shut, policy, checkIn * gap, null, 0, SHIPPED_FUNDING, closed);
+      if (purchasesMade(shut) > purchasesMade(shutBefore)) shutBought += 1;
+    }
+    // The domain: the open gym really did buy, so the closed gym's zero is a
+    // zero against something rather than a gym that could never afford a thing.
+    expect(boughtAt).toBeGreaterThan(0);
+    expect(shutBought).toBe(0);
+    expect(purchasesMade(shut)).toBe(0);
+    expect(booksSpentBy(createEmpireGym(), shut)).toEqual([]);
+  });
+
   it('sorts by price in both directions, on prices read from the tuning block', () => {
     // The two ordering arms are each other's control: on one purse they are
     // exact reverses, which no single-direction check could say.
@@ -1586,13 +1694,13 @@ describe('this module is pure, numerically clean and names nobody', () => {
     // `declarations` empty and this comparison a zero against a zero.
     expect(declarations.length).toBeGreaterThan(40);
     expect(declared).toBe(declarations.length);
-    expect(declared).toBe(49);
+    expect(declared).toBe(50);
 
     // And the comparison bites from both sides, shown rather than claimed. The
     // module's digit moving and the test file growing a check are the two ways
     // this sentence goes stale, and each is doctored here and caught.
     const staleDigit = source.replace(
-      "leaves this file's 49 checks green",
+      "leaves this file's 50 checks green",
       "leaves this file's 43 checks green",
     );
     expect(staleDigit).not.toBe(source);
