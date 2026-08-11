@@ -629,7 +629,7 @@ type ExclusionCensus = Record<NumberExclusion, number>;
  *     section style and not a quantity.
  */
 const NUMBER_EXCLUSIONS: Readonly<ExclusionCensus> = {
-  'section-coordinate': 14,
+  'section-coordinate': 15,
   'inside-an-identifier': 3,
   'quoted-code': 1,
   'list-ordinal': 1,

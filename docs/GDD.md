@@ -1733,13 +1733,59 @@ rung. **One purse's affordability closed every purse's day.**
 *What ships is the same sentence at the grain the third-book ruling already
 chose.* Each purse buys at most once a calendar day, at the first check-in of
 that day it can afford its next rung; a purse that can afford nothing waits.
-Adding a check-in can only make a purse's first affordable moment **earlier** or
-leave it, because money and reputation accrue on the wall clock and a check-in
-only reads them sooner — so the day a rung lands is monotone in attendance,
-purse by purse. **0** violating pairs on every domain measured: the 24576-pair
-window, the same window moved to day 4, every calendar of a coarse grid
-enumerated whole (114688 pairs), seeded 20 / 40 / 60 / 100-day sweeps, and the
-whole-day reading.
+
+*The zero is a measurement, not a construction, and this paragraph claimed
+otherwise for a wave.* It used to close: adding a check-in can only make a
+purse's first affordable moment **earlier** or leave it, because money and
+reputation accrue on the wall clock and a check-in only reads them sooner — *so
+the day a rung lands is monotone in attendance, purse by purse.* The premise is
+true. The conclusion does not follow from it, and both halves of that are
+measured rather than argued:
+
+- **The premise is true in a violating engine.** It talks about the anchor, the
+  per-purse split and wall-clock accrual. The roster's promotion path touches
+  none of the three, and `'one-way-door'` — same anchor, same purses, same
+  accrual, one parameter different — is **824** violating pairs of 24576. Every
+  word of the premise is true of that engine, so the premise is not what makes
+  this one safe.
+- **It is about *when* a rung lands and says nothing about *which*.** Two of the
+  four purses hold two ladders — space and spotter share the roster-slot purse,
+  coach and equipment share the Gym Bucks one — the spending loop takes the
+  first startable offer and stops, and the axis rotation advances once per
+  attended calendar day under this anchor. So an extra check-in on an
+  otherwise-empty day permanently shifts which ladder a two-ladder purse is
+  offered first. Measured on the 24576-pair window: in **3334** pairs the
+  more-engaged gym starts a *different axis* at the same position in its rung
+  order, every one of them inside the roster purse, and the traced shape is the
+  dearer 1000 spotter rung where the less-engaged gym took the cheaper 800 space
+  one. That is the mechanism the first-attended-check-in anchor was rejected for
+  at 1951 pairs, confined to the two-ladder purses rather than removed.
+
+*So what stands is the domains it was measured on — and two of the five this
+paragraph used to list were not measurements of the anchor at all.* The
+day-granularity policy is the only one that reads the anchor; the day-4 sweep
+and the 60/100-day sweep were both taken at the default per-check-in policy,
+which carries the anchor's name and asks it nothing. Before this correction the
+longest horizon the shipped day anchor had ever been measured at was **40 days,
+on 623 pairs from 6 seeded histories**. The claim is now the rows of
+`ANCHOR_DOMAINS` in `src/empire/engagement.test.ts` — one generated test each,
+every row asserting that its runs actually put questions to the anchor:
+
+| domain | anchors run | shipped | first-affordable | first-attended | last-attended |
+|---|---|---|---|---|---|
+| the 24576-pair window | 4 | **0** | 31 | 1951 | 6459 |
+| the same window at day 4 (2304 pairs) | 4 | **0** | 0 | 0 | 456 |
+| coarse grid, whole (114688 pairs) | 1 | **0** | — | — | — |
+| seeded 20 days (644 pairs) | 4 | **0** | 4 | 8 | 60 |
+| seeded 40 days (623 pairs) | 4 | **0** | 0 | 2 | 34 |
+| seeded 60 days (650 pairs) | 4 | **0** | 1 | 3 | 64 |
+| seeded 100 days (556 pairs) | 4 | **0** | 0 | 2 | 4 |
+| the whole-day reading (24576 pairs) | 1 | **0** | — | — | — |
+
+The 60- and 100-day rows are new and they came out zero; had they not, that
+would have outranked everything else on this page. No argument here rules out a
+longer horizon, a denser cadence or a different axis order — and the rung-swap
+mechanism above is the specific reason that caveat is not boilerplate.
 
 *The anchor is not what makes the engine safe on its own, and the right-hand
 column above is the measurement of that rather than a claim.* Under one pooled

@@ -2774,9 +2774,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // faults in `engagement.ts`: a one-trip anchor that bought on more
     // check-ins than it had buying days, a purse that bought twice in a day,
     // and more buying days than buying check-ins.
+    // 145 -> 147 when the day anchor's own consultation count arrived. Both new
+    // templates are in `engagement.ts`: `EngagementRun.rungOrder`'s `axis@level`
+    // key, and the fault that refuses a run whose anchor-decision count
+    // disagrees with its spending policy. No new single-quoted token, which is
+    // why that pin does not move with them.
     expect(singleQuoted.size).toBe(166);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(145);
+    expect(templateChunks.size).toBe(147);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -2927,7 +2932,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
     // 302 -> 311: the four day-anchor tokens and the five templates above.
-    expect(stringsChecked).toBe(311);
+    // 311 -> 313: the two templates the anchor-decision count added, above.
+    expect(stringsChecked).toBe(313);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
