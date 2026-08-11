@@ -619,9 +619,20 @@ export function createCareerLifter<Total>(
  * through a different path from the one that rendered the offer is how two
  * answers to one question get shipped.
  *
- * `lastEntryDayIndex` becomes the later of the old value and this slot's day,
- * so it is the latest meet entered rather than the most recently clicked. That
- * makes it independent of the order two entries happened to be made in.
+ * `lastEntryDayIndex` becomes this slot's day, and it only ever moves forward.
+ * It is written as a plain assignment rather than as
+ * `Math.max(previous, slot.dayIndex)`, and that is a correction rather than a
+ * shortcut: the guarded version shipped first, and mutation-testing it found
+ * NO INPUT that could tell the two apart. `meetEligibility` refuses any slot
+ * sitting earlier than `lastEntryDayIndex + MIN_DAYS_BETWEEN_ENTERED_MEETS`,
+ * so an accepted slot is always later than the last entry and the `max` was a
+ * branch no caller could reach — a defensive line that read as protection and
+ * could not have failed.
+ *
+ * What replaced it is a claim with a domain: `careerCore.test.ts` sweeps every
+ * slot against every prior entry day and asserts that an accepted entry always
+ * moves the day forward, with both the accepted and refused counts pinned.
+ * Removing the gap check reddens that; nothing reddened the `max`.
  */
 export function enterMeet<Total>(
   lifter: CareerLifter<Total>,
@@ -633,13 +644,12 @@ export function enterMeet<Total>(
   if (verdict.kind !== 'eligible') {
     return { kind: 'refused', reason: verdict };
   }
-  const previous = lifter.lastEntryDayIndex;
   return Object.freeze({
     kind: 'entered',
     lifter: Object.freeze({
       ...lifter,
       enteredSlotIds: Object.freeze([...lifter.enteredSlotIds, slot.slotId]),
-      lastEntryDayIndex: previous === null ? slot.dayIndex : Math.max(previous, slot.dayIndex),
+      lastEntryDayIndex: slot.dayIndex,
     }),
   });
 }

@@ -939,24 +939,49 @@ describe('enterMeet', () => {
     expect(outcome).toEqual({ kind: 'refused', reason: verdict });
   });
 
-  it('keeps the last entry day at the latest meet, whatever order they came in', () => {
-    // Reddens on: assigning `lastEntryDayIndex = slot.dayIndex` unconditionally,
-    // which would let entering an earlier meet reopen a gap that is closed.
-    const qualified: CareerLifter<TestTotal> = { ...NOVICE, bestTotal: kg(600) };
-    const late = enterMeet(qualified, slotOf('local', 105), 0, GATE);
-    if (late.kind !== 'entered') throw new Error('unreachable');
-    const then = enterMeet(late.lifter, slotOf('local', 7), 0, GATE);
-    // The earlier meet is refused outright, because it is inside the gap.
-    expect(then.kind).toBe('refused');
-    // And forcing the earlier entry through by hand still cannot lower it.
-    const forced = enterMeet(
-      { ...late.lifter, enteredSlotIds: [], lastEntryDayIndex: 105 },
-      slotOf('local', 119),
-      0,
-      GATE,
-    );
-    if (forced.kind !== 'entered') throw new Error('unreachable');
-    expect(forced.lifter.lastEntryDayIndex).toBe(119);
+  it('never moves the last entry day backwards, over every slot and every prior entry', () => {
+    // THIS TEST IS A REPLACEMENT FOR ONE THAT COULD NOT FAIL, and the history
+    // is the useful part. `enterMeet` first wrote
+    // `Math.max(previous, slot.dayIndex)`, guarded so that entering an earlier
+    // meet could not lower the day. Mutating that to a plain assignment left
+    // the suite entirely green: `meetEligibility` already refuses any slot
+    // earlier than `lastEntryDayIndex + MIN_DAYS_BETWEEN_ENTERED_MEETS`, so
+    // the guard's own case is unreachable through the API. The `max` was
+    // removed rather than kept with a test bolted on.
+    //
+    // What is asserted instead is the property the `max` was pretending to
+    // provide, over a domain wide enough to contain the failing case: every
+    // slot on the calendar against every prior entry day, accepted or refused.
+    //
+    // Reddens on: removing the `too-soon-after-last-meet` branch from
+    // `meetEligibility`, which is what actually holds the property.
+    const qualified: CareerLifter<TestTotal> = { ...NOVICE, bestTotal: kg(700) };
+    let accepted = 0;
+    let refused = 0;
+    let backwards = 0;
+    for (const slot of CALENDAR) {
+      for (let previous = 0; previous <= HORIZON; previous += 1) {
+        const before: CareerLifter<TestTotal> = {
+          ...qualified,
+          enteredSlotIds: ['some-earlier-meet'],
+          lastEntryDayIndex: previous,
+        };
+        const outcome = enterMeet(before, slot, slot.dayIndex, GATE);
+        if (outcome.kind !== 'entered') {
+          refused += 1;
+          continue;
+        }
+        accepted += 1;
+        if ((outcome.lifter.lastEntryDayIndex as number) < previous) backwards += 1;
+      }
+    }
+    // Pinned at zero, with the sweep's own size beside it so an empty domain
+    // reports itself. Both arms are non-empty: the refusals are the ones the
+    // gap rule turned away, and they are the reason zero is zero.
+    expect(backwards).toBe(0);
+    expect(accepted).toBe(17197);
+    expect(refused).toBe(18893);
+    expect(accepted + refused).toBe(CALENDAR.length * (HORIZON + 1));
   });
 
   it('holds a lifter to the gap between meets', () => {
