@@ -1070,6 +1070,77 @@ describe('the sponsor line does not reach the purse a physio level is bought fro
 // EXHAUSTIVE: every calendar of a window, at the ordinary cadence
 // ---------------------------------------------------------------------------
 
+/**
+ * A wall-clock budget for the sweeping blocks in this file, applied per BLOCK
+ * and not per test.
+ *
+ * WHY THERE IS ONE AT ALL. `vitest.config.ts` sets a 30 s global timeout and
+ * its comment sets the standard for exceeding it: *"those tests earn their
+ * time — they rasterise real frames and enumerate whole calendars — so the
+ * honest fix is a budget that fits the work, not a smaller sweep"*, and equally
+ * that raising the GLOBAL timeout would hide how thin the margin is elsewhere.
+ * So this is local. The global budget is untouched and every test outside these
+ * three blocks still fails at 30 s.
+ *
+ * MEASURED here, solo on an unloaded machine, every test in this file over 9 s,
+ * slowest first, with the block each belongs to:
+ *
+ *   40736 ms  [policy]  splits that arm by whether the extra check-in moved…
+ *   38670 ms  [policy]  measures the rotation phase removed: fixed order…
+ *   24436 ms  [policy]  measures the ordering reversed: costliest affordable…
+ *   22282 ms  [policy]  explains the save-for-physio zero instead of repeating
+ *   20363 ms  [policy]  finds five of the six policies zero at 40 seeded days
+ *   18769 ms  [policy]  reproduces the headline exactly under the shipped
+ *   17578 ms  [policy]  takes the whole-day reading under the first three
+ *   15876 ms  [policy]  takes the whole-day reading under the last three
+ *   12635 ms  [s60]     reproduces the finding at 60 and 100 days
+ *   11781 ms  [window]  measures chain A re-connected, as the control…
+ *   11505 ms  [policy]  measures the per-check-in granularity removed…
+ *   10121 ms  [policy]  finds five of the six policies zero at 20 seeded days
+ *    9329 ms  [window]  measures the shipped engine, and BOTH halves are zero
+ *    9162 ms  [window]  measures the SINGLE-PURSE engine, and it is not zero
+ *
+ * WHY THE BLOCK AND NOT THE TWO TESTS THAT ACTUALLY FAILED. The first version
+ * of this budget was attached to exactly the two tests measured over 30 s, and
+ * that was the mistake CLAUDE.md names as its own: *"a guard written for one
+ * hook — or one FIXTURE, or one ARM OF ONE `if` — must be applied to its
+ * sibling, mechanically"*. The two that reddened are not a different kind of
+ * test from the 24 s one directly beneath them; they are the same sweep run
+ * three times instead of twice, because each also takes the pre-ruling
+ * single-purse reading its zero is zero against. Under the parallel load of a
+ * whole-suite run a 24 s test and a 39 s test are the same risk, and the suite
+ * did in fact go red twice more after the narrow fix on runs whose failing test
+ * was never captured. Budgeting the block covers the siblings the narrow fix
+ * left one line away.
+ *
+ * THE THRESHOLD, STATED SO IT CAN BE APPLIED AGAIN. A block gets this budget if
+ * its slowest test exceeds a third of the global 30 s, because load has been
+ * observed to stretch this file roughly 2–3× (287 s solo against 610 s of test
+ * time in a whole-suite run). Three blocks qualify and they are the three tagged
+ * above; the five untagged blocks in this file top out at 7757 ms and keep the
+ * global budget, so a genuine slowdown in them is still red.
+ *
+ * The value is ~2.2× the slowest measurement. Re-measure rather than trusting
+ * this list if a run comes in near it — a stale list of "the heavy ones" is the
+ * exact mistake `vitest.config.ts`'s own comment records having made.
+ *
+ * VERIFIED TO PROPAGATE, BOTH DIRECTIONS, rather than assumed. A budget on a
+ * `describe` that vitest quietly ignored would be a decoration reading as a
+ * fix — the shape CLAUDE.md's vacuity rule is about — so it was mutated:
+ *
+ *   - Set to `1_000`, a tagged block's test reddens with the BLOCK's number,
+ *     not the global one: `Error: Test timed out in 1000ms.` on "reproduces
+ *     the finding at 60 and 100 days". So the third argument reaches the tests
+ *     inside; it is not being dropped.
+ *   - Under the same `1_000`, the untagged third-book block's 7757 ms test
+ *     still passes, which it could only do on the global 30 s budget. So the
+ *     block value is scoped to its own block rather than leaking file-wide.
+ *
+ * One direction alone proves nothing: a value that reached everything would
+ * pass the first check and fail the second.
+ */
+const SWEEP_BLOCK_TIMEOUT_MS = 90_000;
+
 describe('EXHAUSTIVE: every calendar of a window of check-in slots', () => {
   it('measures the shipped engine, and BOTH halves are zero', () => {
     const tally = windowedSweep(
@@ -1135,7 +1206,7 @@ describe('EXHAUSTIVE: every calendar of a window of check-in slots', () => {
     );
     expect(tally).toEqual(MEASURED.WINDOWED_LATE);
   });
-});
+}, SWEEP_BLOCK_TIMEOUT_MS);
 
 describe('EXHAUSTIVE: every calendar of a grid coarse enough to enumerate whole', () => {
   it('finds no violation, on a physio domain that is no longer empty', () => {
@@ -1186,7 +1257,7 @@ describe('SAMPLED: seeded histories at 60 and 100 days', () => {
     expect(seededSweep(short, shortTrials, ENGAGEMENT_SWEEP.SEEDS[2])).toEqual(MEASURED.SEEDED_60);
     expect(seededSweep(long, longTrials, ENGAGEMENT_SWEEP.SEEDS[3])).toEqual(MEASURED.SEEDED_100);
   });
-});
+}, SWEEP_BLOCK_TIMEOUT_MS);
 
 describe('NEGATIVE CONTROLS on the sampled grid', () => {
   it('pins all three controls above the shipped engine on the grid it is measured on', () => {
@@ -1515,38 +1586,6 @@ function policyDigest(tally: EngagementTally): Record<string, number> {
   };
 }
 
-/**
- * Two tests in this block need more than `vitest.config.ts`'s 30 s, and they are
- * given a budget rather than a smaller sweep.
- *
- * That config's own comment sets the standard: *"those tests earn their time —
- * they rasterise real frames and enumerate whole calendars — so the honest fix
- * is a budget that fits the work, not a smaller sweep"*, and equally that
- * raising the GLOBAL timeout would hide how thin the margin is elsewhere. So
- * this is local: the global budget is untouched and every other test in the
- * repository still fails at 30 s.
- *
- * MEASURED here, solo on an unloaded machine, the four slowest in this file:
- *
- *   40736 ms  splits that arm by whether the extra check-in moved the day…
- *   38670 ms  measures the rotation phase removed: fixed order, and cheapest…
- *   24436 ms  measures the ordering reversed: costliest affordable first
- *   22282 ms  explains the save-for-physio zero instead of repeating it
- *
- * The gap between the top two and the rest is not mysterious: the sibling arms
- * run two full windowed sweeps and these run three, because each also takes the
- * pre-ruling single-purse reading the zero is zero against. Deleting that would
- * turn a decomposition back into two blank readings, which is the trade this
- * file was written to refuse.
- *
- * The number is not a round guess — it is roughly 2.2× the slowest measurement,
- * because the suite runs these in parallel under load and the failure that
- * produced this comment was a 39 s test in a 30 s budget on a run whose whole
- * file took 287 s. Re-measure rather than trusting these four lines if a run
- * comes in near it; that is the mistake the config's own stale list records.
- */
-const SLOW_SWEEP_TIMEOUT_MS = 90_000;
-
 describe('the spending policy is the second independent variable, and it is swept', () => {
   it('drives the shipped policy through the same code path as the default', () => {
     // The drift guard the table needs. Naming the shipped policy explicitly and
@@ -1737,7 +1776,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(
       MEASURED_POLICY.WINDOWED_SINGLE_PURSE['fixed-order-no-rotation'].violatingPairs,
     ).toBe(2751);
-  }, SLOW_SWEEP_TIMEOUT_MS);
+  });
 
   it('measures the ordering reversed: costliest affordable first', () => {
     const tally = policyWindowed('costliest-affordable-first');
@@ -1907,7 +1946,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(movesMomentViolating + keepsMomentViolating).toBe(
       MEASURED_POLICY.WINDOWED['spend-once-per-calendar-day'].violatingPairs,
     );
-  }, SLOW_SWEEP_TIMEOUT_MS);
+  });
 
   it('names the second mechanism behind the five that remain: the recruit price curve', () => {
     // The five keeps-moment violators are not the spending moment, so they are
@@ -2037,7 +2076,7 @@ describe('the spending policy is the second independent variable, and it is swep
     expect(MEASURED_POLICY.WHOLE_DAY_VIOLATING_PAIRS['spend-once-per-calendar-day']).toBe(0);
     expect(MEASURED_POLICY.WHOLE_DAY_VIOLATING_PAIRS['rotate-greedy-per-check-in']).toBe(0);
   });
-});
+}, SWEEP_BLOCK_TIMEOUT_MS);
 
 // ---------------------------------------------------------------------------
 // The other half of the property: an extra TRAINED day
