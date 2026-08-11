@@ -722,10 +722,14 @@ API call. The effect for A and B is the same either way: **Empire shell wiring
 is on the integration tip without the normal review pass this document asks
 for.**
 
-**Standing order, binding on Session C until further notice:** do not merge,
-and do not push to any shared branch (`main`, `claude/agent-config-setup-m2r6ny`,
-or another session's branch), without explicit go-ahead in the Session C
-conversation. Open the PR, report it, wait. Applies to every future piece.
+**Standing order, binding on Session C until further notice:** no PR merges
+until the piece has been reviewed in the Session C conversation first —
+**including merges clicked in the GitHub UI**, not only merges Session C
+initiates itself. Do not push to any shared branch (`main`,
+`claude/agent-config-setup-m2r6ny`, or another session's branch) without
+explicit go-ahead in that conversation. Open the PR, report it, wait. Applies
+to every future Session C **feature/logic** PR. Coordination-only landings may
+merge only when that conversation explicitly authorises that PR.
 
 **Post-merge render check (Session C, same day, against `cbef6e9` locally):**
 player path session → open-empire → Empire floor → leave-empire → session
