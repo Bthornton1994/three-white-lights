@@ -775,6 +775,26 @@ export const COVERED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
   'expansionVocabularyFaults',
   'FORBIDDEN_UNLOCK_KEYS',
 
+  // ---- empire/empireInvariant.ts and empire/engagement.ts, the day anchor --
+  // Five more from the same directory, arriving with the piece that wrote
+  // `EMPIRE_DAY_SPENDING_ANCHORS` — WHICH check-in of a calendar day a §5
+  // player who shops once a day shops at. Data in this allowlist, added under
+  // the standing permission in the Session Coordination section, and none of
+  // them hands out a covered day.
+  //
+  // All five match on `purchas` and every one of them is about a GYM BUCKS
+  // purchase in the idle layer: `purchasesMade` counts expansions, promotions
+  // and recruitments begun so a day anchor can tell whether its shopping trip
+  // happened; `anchorConsumesDayOnlyOnPurchase` says which anchor lets an
+  // empty-handed trip leave the day still to spend; and the three in
+  // `engagement.ts` are the sweep's census fields, its driver and its fault
+  // list, which report the same purchases back.
+  'purchasesMade',
+  'anchorConsumesDayOnlyOnPurchase',
+  'EngagementCensus',
+  'runEngagement',
+  'engagementRunFaults',
+
   // ---- tuning/audit.ts -----------------------------------------------------
   // NOT ABOUT COVERED DAYS EITHER, and the clearest illustration of what the
   // wide predicate costs: `SOURCE_RULES` is the magic-number audit's file

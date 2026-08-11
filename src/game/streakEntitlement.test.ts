@@ -1120,6 +1120,7 @@ const PURCHASED_DAY_SCAN = {
   FILES_THAT_NAME_A_COVERED_DAY: [
     'empire/empireCore.ts',
     'empire/empireInvariant.ts',
+    'empire/engagement.ts',
     'empire/expansion.ts',
     'empire/reputation.ts',
     'game/currencyProvenance.ts',
@@ -1138,11 +1139,13 @@ const PURCHASED_DAY_SCAN = {
    * READ THE FILE COLUMN. Widening from the purchase word to the covered day
    * costs 31 declarations and reaches NO new file — the hole it closed was
    * inside modules the scan was already reading, which is why nothing about the
-   * file-level pin caught it.
+   * file-level pin caught it. (36 and one file at the counts below, which moved
+   * when GDD §5's day anchor added five declarations to `empire/engagement.ts`,
+   * a file the purchase word had not previously reached.)
    */
-  COVERAGE_FOUND: [94, 10] as readonly [number, number],
-  PURCHASE_WORD_FOUND: [63, 10] as readonly [number, number],
-  CREDIT_PATH_FOUND: [64, 10] as readonly [number, number],
+  COVERAGE_FOUND: [99, 11] as readonly [number, number],
+  PURCHASE_WORD_FOUND: [68, 11] as readonly [number, number],
+  CREDIT_PATH_FOUND: [69, 11] as readonly [number, number],
   NARROW_FOUND: [18, 3] as readonly [number, number],
 } as const;
 
@@ -1266,7 +1269,7 @@ const COVERED_DAY_SYMBOL_SCAN = {
    * The union of both passes, which is what `COVERED_DAY_TOUCHING_FUNCTIONS` is
    * asserted equal to. 88 textual + 9 symbol-only = 97.
    */
-  UNION_FOUND: 103,
+  UNION_FOUND: 108,
 
   /**
    * WHAT THIS PASS STILL DOES NOT SEE, pinned as a red line rather than implied
@@ -1934,6 +1937,7 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     expect(lostFiles).toEqual([
       'empire/empireCore.ts',
       'empire/empireInvariant.ts',
+      'empire/engagement.ts',
       'empire/expansion.ts',
       'empire/reputation.ts',
       'game/currencyProvenance.ts',

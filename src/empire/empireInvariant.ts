@@ -175,7 +175,7 @@
  * of the composition rather than a weakness in either file:
  *
  *   - `skipExpansion` moving `settledCompletion` as well as `idleCompletion`
- *     leaves this file's 49 checks green. The reason is measurable: across the
+ *     leaves this file's 50 checks green. The reason is measurable: across the
  *     whole grid a grant lands on a build that is still running six times, and
  *     every one of those builds is on the coach ladder, whose settled level no
  *     progression-reaching reading consults. Three checks in `expansion.test.ts`
@@ -195,7 +195,9 @@
  *     for the same file — importing `empireSweep.test.ts` for the sweep
  *     parameters registers that module's own five checks under this one — and
  *     the source count is the honest reading of "this file's checks".
- *     Re-taken at 49 on this branch: 49 of 49 green under the mutant.
+ *     Re-taken at 50 on this branch: 50 of 50 green under the mutant. It read
+ *     49 before §4c's day-anchor block added a check, and it is the same drift
+ *     the pin below exists to catch — caught, this time, by the pin.
  *     `@guarantee section-4a-denominator-is-measured`
  *   - `recruitmentRefusals` counting slots off `state.axes` instead of
  *     `state.settledAxes` also leaves this file green, because in this sweep the
@@ -212,10 +214,13 @@
  *
  * `engagement.test.ts` measured five pairs of 24576 in which the gym that
  * checked in MORE ended on a LOWER Training IQ series, under the
- * `'spend-once-per-calendar-day'` policy and in the arm where the extra
- * check-in did NOT move the day the simulated player spends at. Five is a
- * §12.3 breach; CLAUDE.md has no size below which "never punish daily
- * engagement" stops applying.
+ * `'spend-once-per-calendar-day'` policy at the `'last-attended-check-in'` day
+ * anchor, and in the arm where the extra check-in did NOT move the day the
+ * simulated player spends at. Five is a §12.3 breach; CLAUDE.md has no size
+ * below which "never punish daily engagement" stops applying. (That anchor is a
+ * control now — §4c — and the two checks about this repair stay on it, because
+ * it is where they were measured. The shipped anchor's own reading of the same
+ * repair is 824 of 24576, pinned beside them.)
  *
  * THE DIAGNOSIS ON RECORD WAS WRONG, AND IT WAS WRONG IN THREE PLACES AT ONCE
  * — GDD §5.4, `engagement.test.ts`'s own section header, and the ruling in
@@ -258,6 +263,70 @@
  * either way and this file pins both. Whether an idle layer that spends more of
  * its time at the budget PLAYS better is a question no measurement here can
  * answer, and it is the kind of question GDD §5.4 already sends to a human.
+ *
+ * ===========================================================================
+ * 4c. The day anchor — the half of "spends once a day" nobody had written down
+ * ===========================================================================
+ *
+ * §4b closed 5 pairs. The other 6459 lived on the arm where the extra check-in
+ * moved the day's DECISION MOMENT, and `engagement.test.ts` proved by
+ * counterfactual that they were the decision moment rather than anything §5
+ * prices, funds or times. That was a diagnosis and it was read as a boundary
+ * for a wave: a fact about one simulated player, disclosed and pinned.
+ *
+ * IT WAS NOT A BOUNDARY. A decision moment is a thing this directory WRITES,
+ * and the moment that was written was anti-monotone in engagement by
+ * construction. `'spend-once-per-calendar-day'` said "the last check-in the
+ * player takes"; adding a check-in can only move a day's last one LATER or
+ * leave it; money accrues on the wall clock and a purchase converts money into
+ * a wall-clock timer, so a later purchase starts a later build and finishes
+ * later. The extra check-in's only effect on the decision was to defer it.
+ *
+ * `EMPIRE_DAY_SPENDING_ANCHORS` writes the missing half down. Four readings,
+ * one domain — `engagement.test.ts`'s 24576-pair window — one comparator, one
+ * parameter apart:
+ *
+ *   anchor                                 shipped   single purse
+ *   first-affordable-check-in-per-purse          0           2887
+ *   first-affordable-check-in                   31           2878
+ *   first-attended-check-in                   1951           3104
+ *   last-attended-check-in                    6459           3908
+ *
+ * THE OBVIOUS REPAIR IS THE WRONG ONE AND IT WAS MEASURED RATHER THAN REASONED
+ * PAST. Moving the anchor to the day's first ATTENDED check-in makes it move
+ * earlier or not at all, which is the monotone direction — and it is worse in
+ * the other one: the gym shops with less money accrued and commits to a rung it
+ * would otherwise have skipped, or to nothing at all. 1951 pairs, worst deficit
+ * 0.263 Training IQ per day, twenty-six times the deferring anchor's worst
+ * deficit. Offering the trip again when it could buy nothing repairs that half
+ * and reaches 31.
+ *
+ * THE LAST 31 WERE ONE PURSE CLOSING EVERY PURSE'S DAY, and they were traced
+ * rather than argued. All 31 are one baseline shape: the extra check-in becomes
+ * the day's earliest, the gym shops there, the roster purse holds 460 Gym Bucks
+ * against a 500 `novice` and buys nothing, and the day is over for it because
+ * the roster-slot purse could afford its 800 space rung at that same moment.
+ *
+ * So the shipped anchor is declared at the grain the money already has. GDD
+ * §5.4's third-book ruling gave each funded output a purse nothing else may
+ * spend; the day anchor was declared one grain coarser than the thing it
+ * anchors, and that was the defect. Each purse now buys at most once a calendar
+ * day, at the first check-in of that day it can afford its next rung, and a
+ * purse that can afford nothing waits. Adding a check-in can only make a
+ * purse's first affordable moment earlier or leave it — money and reputation
+ * accrue on the wall clock and a check-in only reads them sooner — so the day a
+ * rung lands is monotone in attendance, purse by purse.
+ *
+ * WHAT THE ANCHOR IS NOT: the safety property on its own. Under the
+ * `'single-wall-clock-purse'` control every one of the four anchors is
+ * non-zero, 2887 to 3908. The purses removed the residue and the anchor is what
+ * makes them reachable in order; either alone is a violating engine, and the
+ * right-hand column above is the measurement of that rather than a claim.
+ *
+ * AND §4b's REPAIR SURVIVES THE RESPECIFICATION, which is worth pinning because
+ * a respecification can quietly remove a repair's subject and leave it looking
+ * ruled-in. `'one-way-door'` measures 824 violating pairs of 24576 at the
+ * shipped anchor, against the 5 the ruling was taken on.
  *
  * ===========================================================================
  * 5. The Training IQ ceiling is applied HERE, and that is not an accident
@@ -375,6 +444,11 @@ import {
   type ExpansionBuild,
   type ExpansionContext,
 } from './expansion';
+
+// Re-exported so a caller that has to name a purse — `engagement.ts`, driving
+// the per-purse day anchor — reads it from the module whose spending loop the
+// purse is a parameter of, rather than reaching past it into the ladder table.
+export type { EmpireBook };
 import { npcGymBucksPerHour, npcTrainingIqPerDay, rosterTrainingIqPerDay } from './npc';
 import {
   accrueProduction,
@@ -538,9 +612,12 @@ export interface EmpirePolicy {
  *   - `'save-for-physio-first'` — while the only thing standing between the gym
  *     and its next physio rung is money, nothing else on the wall-clock book is
  *     bought and no recruit is paid for.
- *   - `'spend-once-per-calendar-day'` — money accrues across the day and is
- *     spent at the last check-in the player takes in that calendar day. This is
- *     the spending GRANULARITY removed and nothing else.
+ *   - `'spend-once-per-calendar-day'` — money accrues across the day and each
+ *     purse is spent once in it, at the first check-in of that day the purse
+ *     can afford its next rung. This is the spending GRANULARITY removed and
+ *     nothing else. WHICH check-in that is was left unstated for several waves
+ *     and was carrying a §12.3 breach; `EMPIRE_DAY_SPENDING_ANCHORS` states it,
+ *     and §4c of the header is the measurement that chose between the readings.
  */
 export const EMPIRE_SPENDING_POLICIES = [
   'rotate-greedy-per-check-in',
@@ -559,31 +636,217 @@ export const SHIPPED_SPENDING_POLICY: EmpireSpendingPolicy = 'rotate-greedy-per-
 /** The axis whose ladder `'save-for-physio-first'` holds its money for. */
 const PHYSIO_AXIS: ExpansionAxis = 'physio';
 
+/** True for a policy that makes at most one spending trip per calendar day. */
+export function spendsOncePerDay(policy: EmpireSpendingPolicy): boolean {
+  return policy === 'spend-once-per-calendar-day';
+}
+
+// ---------------------------------------------------------------------------
+// WHICH check-in of the day a day-granularity policy spends at
+// ---------------------------------------------------------------------------
+
+/**
+ * The four DAY ANCHORS — WHICH check-in of a calendar day a player who shops
+ * once a day does their shopping at. See §4c of the header for the measurement
+ * that chose between them and the count each one produced.
+ *
+ *   - `'first-affordable-check-in-per-purse'` — SHIPPED. Each PURSE buys at
+ *     most once a calendar day, at the first check-in of that day at which it
+ *     can afford its next rung. A purse that can afford nothing yet is not
+ *     spent and waits for the next check-in.
+ *   - `'first-affordable-check-in'` — CONTROL. One trip for the whole gym: the
+ *     player opens the app, buys whatever any purse can afford, and is done for
+ *     the day. A purse that could not afford anything at that moment gets
+ *     nothing that day.
+ *   - `'first-attended-check-in'` — CONTROL. The day's trip is the first
+ *     check-in the player takes, whether or not it can buy anything. A day
+ *     whose first check-in is broke buys nothing at all.
+ *   - `'last-attended-check-in'` — CONTROL, and the specification this policy
+ *     shipped with until this piece. The day's takings are banked and spent at
+ *     the last check-in the player happens to take.
+ *
+ * The three controls are not options. Nothing in the game reads any of them;
+ * they are runnable so the shipped anchor's zero is a zero against numbers.
+ */
+export const EMPIRE_DAY_SPENDING_ANCHORS = [
+  'first-affordable-check-in-per-purse',
+  'first-affordable-check-in',
+  'first-attended-check-in',
+  'last-attended-check-in',
+] as const;
+
+export type EmpireDaySpendingAnchor = (typeof EMPIRE_DAY_SPENDING_ANCHORS)[number];
+
+/** The anchor the shipped engine runs a day-granularity policy at. */
+export const SHIPPED_DAY_SPENDING_ANCHOR: EmpireDaySpendingAnchor =
+  'first-affordable-check-in-per-purse';
+
+/**
+ * What a day anchor has to know about this check-in.
+ *
+ * All three are the caller's facts rather than derived ones, for the reason the
+ * old single field carried: under a partial attendance schedule the first and
+ * last check-ins a player takes in a day are not the first and last slots of
+ * the grid, and a policy that spends "at the day boundary" means the former.
+ * Deriving either from `wallSeconds` here would have been the latter.
+ */
+export interface DayCheckInFacts {
+  readonly firstAttendedOfDay: boolean;
+  readonly lastAttendedOfDay: boolean;
+  /** Whether this calendar day's trip has already bought something. */
+  readonly boughtEarlierToday: boolean;
+}
+
+/**
+ * Whether this check-in is the day's one spending trip, under `anchor`.
+ *
+ * Not asked of the per-purse anchor, which has no single trip to name: under it
+ * the question is asked once per purse and `booksUnspentToday` answers it.
+ */
+export function isDaySpendingMoment(
+  anchor: EmpireDaySpendingAnchor,
+  facts: DayCheckInFacts,
+): boolean {
+  if (anchor === 'last-attended-check-in') return facts.lastAttendedOfDay;
+  if (anchor === 'first-attended-check-in') return facts.firstAttendedOfDay;
+  if (anchor === 'first-affordable-check-in') return !facts.boughtEarlierToday;
+  throw new RangeError(
+    `${anchor} spends purse by purse, so it has no single spending moment to name`,
+  );
+}
+
+/**
+ * The purses a per-purse day still has to spend, given what it has spent.
+ *
+ * THE DAY IS SPENT PURSE BY PURSE AND NOT ALL AT ONCE, and the difference is
+ * the whole of this anchor rather than a refinement of it. Closing every purse
+ * on the first purchase any one of them makes is a runnable anchor of its own —
+ * `'first-affordable-check-in'` — and it measures 31 violating pairs on the
+ * window `engagement.test.ts` enumerates, against 0 here. The shape behind
+ * those 31, traced rather than argued: the extra check-in becomes the day's
+ * earliest, the gym shops there, the roster purse cannot yet afford its next
+ * lifter, and the day is over for it because some OTHER purse could afford its
+ * rung.
+ * `@guarantee the-day-shops-purse-by-purse`
+ */
+export function booksUnspentToday(spentToday: readonly EmpireBook[]): readonly EmpireBook[] {
+  return Object.freeze(EMPIRE_BOOKS.filter((book) => !spentToday.includes(book)));
+}
+
+/** True for an anchor that names one spending moment for the whole gym. */
+export function anchorHasOneTripPerDay(anchor: EmpireDaySpendingAnchor): boolean {
+  return anchor !== 'first-affordable-check-in-per-purse';
+}
+
+/**
+ * Whether an offered trip that bought NOTHING leaves the day still to spend.
+ *
+ * True for `'first-affordable-check-in'` alone, and it is the whole content of
+ * that anchor rather than a detail: an offer that bought nothing has to leave no
+ * trace at all, including no rotation of `EmpireGym.nextAxis`, or the number of
+ * broke check-ins a player takes would set the phase of which axis is offered
+ * first — which is the term GDD §5.4's third-book ruling was about, arriving
+ * back by another door.
+ */
+export function anchorConsumesDayOnlyOnPurchase(anchor: EmpireDaySpendingAnchor): boolean {
+  return anchor === 'first-affordable-check-in';
+}
+
+/**
+ * Purchases this gym has ever made — expansions, promotions, and recruitments
+ * BEGUN rather than landed.
+ *
+ * The meter `'first-affordable-check-in'` reads to decide whether a trip
+ * happened, and it counts a recruitment at the moment it is paid for:
+ * `EmpireGym.recruits` counts lifters who have JOINED, so it does not move on
+ * the day the money leaves. `recruits + pending.length` is the number ever
+ * begun, and a lifter moving from `pending` to the roster leaves it unchanged.
+ */
+export function purchasesMade(gym: EmpireGym): number {
+  return gym.expansions + gym.promotions + gym.recruits + gym.pending.length;
+}
+
 /**
  * One check-in as a spending policy sees it.
  *
- * `lastCheckInOfDay` is the caller's fact, not a derived one: under a partial
- * attendance schedule the last check-in a player takes in a day is not the last
- * slot of the grid, and a policy that spends "at the day boundary" means the
- * former. Deriving it from `wallSeconds` here would have been the latter.
+ * `spendableBooks` is the caller's fact — which of the gym's purses this
+ * check-in may buy out of. It is a LIST rather than a boolean because a
+ * day-granularity policy's day is spent purse by purse: GDD §5.4's third-book
+ * ruling gave each funded output a purse of its own, and a day anchor that
+ * closed all of them together on the first purchase any one of them made put
+ * the schedule back in charge of which spender reached its money first —
+ * measured at 31 violating pairs, and §4c of the header is the trace.
+ *
+ * The field carried the name `lastCheckInOfDay` while `'last-attended-check-in'`
+ * was the only anchor. A name that survives its own specification is the
+ * confident-sentence shape CLAUDE.md opens with, so it did not.
+ *
+ * `advancesRotation` is the second half of the same decision and is separate
+ * from `rotatesAtMoment` on purpose. `rotatesAtMoment` is a fact about the
+ * POLICY — whether the offer this moment makes is rotated by `nextAxis` at all.
+ * This is a fact about the MOMENT — whether the counter moves here. They were
+ * one predicate while every spending moment was also a rotation, and a
+ * per-purse day cannot express itself that way: it may spend at four check-ins
+ * of a day and must still advance the rotation once.
  */
 export interface SpendingMoment {
   readonly policy: EmpireSpendingPolicy;
-  readonly lastCheckInOfDay: boolean;
+  readonly spendableBooks: readonly EmpireBook[];
+  readonly advancesRotation: boolean;
 }
 
-/** A spending moment. Frozen, so a policy cannot be edited under a running gym. */
+/** No purse may spend. Shared, so a moment that buys nothing allocates nothing. */
+const NO_BOOKS: readonly EmpireBook[] = Object.freeze([]);
+
+/**
+ * A spending moment. Frozen, so a policy cannot be edited under a running gym.
+ *
+ * `daySpendingMoment` is read by a day-granularity policy alone, and it opens
+ * EVERY purse or none. Every other policy spends at every check-in whatever it
+ * is passed, which is the behaviour this two-argument form has always had and
+ * which `runEmpire` relies on: it passes the day-boundary fact at every tick
+ * under a policy that does not read it.
+ */
 export function spendingMoment(
   policy: EmpireSpendingPolicy,
-  lastCheckInOfDay: boolean,
+  daySpendingMoment: boolean,
 ): SpendingMoment {
-  return Object.freeze({ policy, lastCheckInOfDay });
+  const spends = !spendsOncePerDay(policy) || daySpendingMoment;
+  return Object.freeze({
+    policy,
+    spendableBooks: spends ? EMPIRE_BOOKS : NO_BOOKS,
+    advancesRotation: spends && rotatesForPolicy(policy),
+  });
+}
+
+/**
+ * A spending moment that opens only some purses — the per-purse day anchor.
+ *
+ * `advancesRotation` is named by the caller rather than derived, because under
+ * that anchor the day's rotation tick is a fact about the day's attendance and
+ * not about which purses happen to be unspent at this check-in.
+ */
+export function spendingMomentForBooks(
+  policy: EmpireSpendingPolicy,
+  spendableBooks: readonly EmpireBook[],
+  advancesRotation: boolean,
+): SpendingMoment {
+  for (const book of spendableBooks) {
+    if (!(EMPIRE_BOOKS as readonly EmpireBook[]).includes(book)) {
+      throw new RangeError(`${String(book)} is not one of the gym's books, so it cannot spend`);
+    }
+  }
+  return Object.freeze({
+    policy,
+    spendableBooks: Object.freeze([...spendableBooks]),
+    advancesRotation: advancesRotation && rotatesForPolicy(policy),
+  });
 }
 
 /**
  * The moment `stepGym` assumes when a caller names none.
  *
- * `lastCheckInOfDay` is `true` because the shipped policy does not read it —
+ * `daySpendingMoment` is `true` because the shipped policy does not read it —
  * which is asserted rather than asserted-in-prose: `empireInvariant.test.ts`
  * drives one check-in both ways and compares the whole gym.
  */
@@ -594,24 +857,66 @@ export const SHIPPED_SPENDING_MOMENT: SpendingMoment = spendingMoment(
 
 /** Whether this check-in spends anything at all. */
 export function spendsAtMoment(moment: SpendingMoment): boolean {
-  if (moment.policy === 'spend-once-per-calendar-day') return moment.lastCheckInOfDay;
-  return true;
+  return moment.spendableBooks.length > 0;
+}
+
+/** Whether this check-in may buy out of one named purse. */
+export function bookSpendsAtMoment(moment: SpendingMoment, book: EmpireBook): boolean {
+  return moment.spendableBooks.includes(book);
 }
 
 /**
- * Whether `EmpireGym.nextAxis` advances at this moment — and, on the same
- * answer, whether the offer this moment makes is rotated by it.
+ * The purses a step bought out of, derived from what the step actually bought.
  *
- * One predicate for the two because they are one decision: a policy whose offer
- * ignores the rotation and whose rotation still advanced would carry a counter
- * that decides nothing, and the phase term this is here to switch off would be
- * off in the offer and on in the state.
+ * Derived rather than reported, and that is the point: a `stepGym` that told
+ * the caller which purse it had spent from would be a second opinion about its
+ * own spending loop, and the two could drift. A build carries the axis it is
+ * building, a recruitment and a promotion are the roster purse by definition,
+ * and `offeredBookOf` is the same function the spending loop asks — so this
+ * cannot disagree with the loop about where the money came from.
+ */
+export function booksSpentBy(
+  before: EmpireGym,
+  after: EmpireGym,
+  funding: EmpireFunding = SHIPPED_FUNDING,
+): readonly EmpireBook[] {
+  const spent: EmpireBook[] = [];
+  for (let at = before.builds.length; at < after.builds.length; at += 1) {
+    const build = after.builds[at];
+    if (build === undefined) continue;
+    const book = offeredBookOf(build.axis, funding);
+    if (!spent.includes(book)) spent.push(book);
+  }
+  const rosterBefore = before.recruits + before.pending.length + before.promotions;
+  const rosterAfter = after.recruits + after.pending.length + after.promotions;
+  if (rosterAfter > rosterBefore) {
+    const book = recruitOfferedBook(funding);
+    if (!spent.includes(book)) spent.push(book);
+  }
+  return Object.freeze(spent);
+}
+
+/**
+ * Whether the offer this moment makes is rotated by `EmpireGym.nextAxis`.
+ *
+ * THIS USED TO ANSWER TWO QUESTIONS AND NOW ANSWERS ONE, and the split is
+ * recorded rather than done quietly. It read "whether the counter advances
+ * here, and on the same answer whether the offer is rotated by it", on the
+ * argument that a counter that decides nothing is worse than no counter. The
+ * argument still holds and the coupling did not: a per-purse day anchor spends
+ * at several check-ins of one day and must advance the counter once, so the two
+ * are no longer the same fact. `SpendingMoment.advancesRotation` is the other
+ * half, and every constructor of a moment derives it through
+ * `rotatesForPolicy` — so a policy whose offer ignores the rotation still
+ * cannot carry a counter that moves.
  */
 export function rotatesAtMoment(moment: SpendingMoment): boolean {
-  return (
-    moment.policy === 'rotate-greedy-per-check-in' ||
-    moment.policy === 'spend-once-per-calendar-day'
-  );
+  return rotatesForPolicy(moment.policy);
+}
+
+/** The policy half of the answer above, so a moment can be built from it. */
+function rotatesForPolicy(policy: EmpireSpendingPolicy): boolean {
+  return policy === 'rotate-greedy-per-check-in' || spendsOncePerDay(policy);
 }
 
 /**
@@ -756,7 +1061,10 @@ export function maySpendOnRoster(
   context: ExpansionContext,
   funding: EmpireFunding = SHIPPED_FUNDING,
 ): boolean {
-  if (!spendsAtMoment(moment)) return false;
+  // The roster's own purse rather than "does this moment spend at all", because
+  // under a per-purse day anchor the two are different questions and this is the
+  // sibling of the axis loop's own check.
+  if (!bookSpendsAtMoment(moment, recruitOfferedBook(funding))) return false;
   if (moment.policy !== 'save-for-physio-first') return true;
   if (!physioHolds(recruitOfferedBook(funding), funding)) return true;
   return !savingForPhysio(order, context);
@@ -1297,8 +1605,13 @@ export function stepGym(
   //    gyms rather than by this sentence.
   let expansions = gym.expansions;
   let nextAxis = gym.nextAxis;
-  if (policy.axisOrder.length > 0 && spendsAtMoment(moment)) {
+  if (policy.axisOrder.length > 0) {
     for (const book of EMPIRE_BOOKS) {
+      // Per purse rather than per moment, and `maySpendOnRoster` asks the same
+      // question about the roster's purse directly below. A day anchor that
+      // closed every purse on the first purchase any one of them made measured
+      // 31 violating pairs — §4c of the header.
+      if (!bookSpendsAtMoment(moment, book)) continue;
       const offers = axisSpendingOrder(
         moment,
         policy.axisOrder,
@@ -1324,7 +1637,7 @@ export function stepGym(
         break;
       }
     }
-    if (rotatesAtMoment(moment)) {
+    if (moment.advancesRotation) {
       nextAxis = (nextAxis + 1) % policy.axisOrder.length;
     }
   }
@@ -1504,9 +1817,11 @@ export function runEmpire(
         grantedCheckIns += 1;
         grantedSeconds += granted;
       }
-      // The moment is stated rather than defaulted, so `lastCheckInOfDay` is
+      // The moment is stated rather than defaulted, so `daySpendingMoment` is
       // true of this loop's own cadence instead of being a field nobody keeps
-      // honest because the shipped policy happens not to read it.
+      // honest because the shipped policy happens not to read it. This loop is
+      // full attendance, so its last slot IS the day's last attended check-in
+      // and the three anchors agree here; `runEngagement` is where they differ.
       gym = stepGym(
         gym,
         policy,
