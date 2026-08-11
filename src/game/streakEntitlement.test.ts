@@ -53,6 +53,7 @@ import {
 } from './streak';
 import {
   COVERED_DAY_PURCHASE_SWEEP,
+  DOOMED_BURN_COUNTERFACTUAL,
   ENTITLEMENT_VERIFICATION,
   MONOTONICITY_SWEEP,
   coveredDayPurchaseDays,
@@ -2137,6 +2138,117 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     expect(sessionKeyed.currentInversions).toBeGreaterThan(streakKeyed.currentInversions);
   });
 
+  it('[dropping-the-doomed-burn-measures-worse] DROPPING THE DOOMED BURN, RE-TAKEN AND PINNED AT EVERY LENGTH', () => {
+    // WHAT THIS CLOSES. The sentence "dropping the burn measures 1051 violating
+    // pairs at 60 days and 673 at 100" was restated in `streak.ts`,
+    // `streakEntitlement.ts`, a comment in this file and GDD §4.4 — and the
+    // 100-day half was pinned by NO ASSERTION ANYWHERE IN `src`. The 60-day
+    // half was carried by a comment inside `streak.test.ts`'s named test, which
+    // the numeric half of the `@guarantee` rule accepts and which that rule's
+    // own header calls a soft floor. Four confident restatements of one figure
+    // nothing re-derived.
+    //
+    // IT REPRODUCED, WHICH IS THE LESS INTERESTING OF THE TWO POSSIBLE ANSWERS
+    // AND IS RECORDED AS THE ONE THAT HAPPENED. 60 gives 1051 and 100 gives
+    // 673, at the parameters this repository already had written down.
+    //
+    // WHAT MAKES THIS AN ASSERTION RATHER THAN A RESTATEMENT: every measured
+    // row below comes out of `judge`, which runs `drive`, which calls the real
+    // `streakEntitlement.ts`. Nothing measured here is compared against itself.
+    // Two mutants are recorded for this tag in `guaranteeTags.test.ts`, one per
+    // direction, because the link check and the measurement fail on different
+    // edits and one witness would say nothing about the other.
+    //
+    // A THIRD MUTANT WAS TRIED FIRST AND STAYED GREEN, which is worth the line
+    // it costs. Dropping the `Math.min` from `drawableByThisAbsence` looks like
+    // a coverage-rule mutation and is a NO-OP at the shipped tuning:
+    // `COVERED_DAYS_PER_WINDOW` and `MAX_COVERED_DAYS_PER_ABSENCE` are both 2
+    // and this sweep buys nothing, so the min never binds. A mutant that does
+    // not change behaviour is not evidence that a test cannot bite.
+    //
+    // THE COST, STATED. Both arms at all four lengths is about fifteen seconds.
+    // The clean arm is also run by the SAMPLED test below and is deliberately
+    // re-run here, so the two rows of the published table are taken on ONE
+    // domain in ONE place rather than inferred across two tests that could
+    // drift onto different grids.
+    const lengths = DOOMED_BURN_COUNTERFACTUAL.LENGTHS;
+
+    // THE GRID IS THE BATTERY'S, NOT A LOCAL ONE. Asserted rather than assumed:
+    // a length added to ENTITLEMENT_VERIFICATION moves the rows below and must
+    // redden them rather than silently leaving a four-entry table describing a
+    // grid that grew.
+    expect(lengths).toEqual([40, 60, 80, 100]);
+
+    // (1) THE PROSE'S OWN NUMERALS, WRITTEN OUT, AND IT RUNS FIRST ON PURPOSE.
+    //     This is a LINK CHECK and is labelled as one: it compares the shared
+    //     constant against the figures the four sentences quote, so it reddens
+    //     when somebody re-takes the measurement and edits the constant without
+    //     touching the prose. That is the exact drift that produced this test.
+    //     It is NOT the check aimed at the engine — (2) is — and it is placed
+    //     above the sweeps so the two have separate mutation witnesses: an edit
+    //     to `streakSweep.ts`'s row reddens here, an edit to the entitlement
+    //     arithmetic reddens there, and neither witness can stand in for the
+    //     other.
+    expect(
+      [...DOOMED_BURN_COUNTERFACTUAL.VIOLATING_PAIRS_BY_LENGTH],
+      'the sentence in streak.ts, streakEntitlement.ts and GDD §4.4 says 1051 at 60 and 673 at 100',
+    ).toEqual([561, 1051, 710, 673]);
+
+    const dropped = lengths.map((length) => judge(sampledPairs(length), { ...DEFAULT, burnOnDoom: false }));
+    const kept = lengths.map((length) => judge(sampledPairs(length), DEFAULT));
+
+    // (2) THE PUBLISHED FIGURES, MEASURED. Pinned exactly, not bounded — a
+    //     bound lets the counterfactual drift and still read as evidence, and
+    //     the whole defect this test closes was a figure nobody could
+    //     re-derive.
+    expect(
+      dropped.map((verdict) => verdict.currentInversions),
+      'GDD §4.4 doomed-burn control row, currentStreak inversions',
+    ).toEqual([...DOOMED_BURN_COUNTERFACTUAL.VIOLATING_PAIRS_BY_LENGTH]);
+    expect(
+      dropped.map((verdict) => verdict.longestInversions),
+      'the lifetime-best row — the half that does not heal',
+    ).toEqual([...DOOMED_BURN_COUNTERFACTUAL.LONGEST_INVERSIONS_BY_LENGTH]);
+    expect(
+      dropped.map((verdict) => verdict.worstCurrentDeficit),
+      'MAGNITUDE, not frequency',
+    ).toEqual([...DOOMED_BURN_COUNTERFACTUAL.WORST_DEFICIT_BY_LENGTH]);
+
+    // (3) THE SHIPPED RULE IS ZERO ON THE SAME DOMAIN. Without this row the
+    //     figures above are a number with nothing to be worse than.
+    expect(kept.map((verdict) => verdict.currentInversions)).toEqual([0, 0, 0, 0]);
+    expect(kept.map((verdict) => verdict.longestInversions)).toEqual([0, 0, 0, 0]);
+
+    // (4) THE DIRECTION SURVIVES INDEPENDENTLY OF THE MAGNITUDES. Every length
+    //     is worse without the burn, on both fields, and this is asserted as an
+    //     inequality on the measured verdicts rather than read off the pinned
+    //     table — so it stays true if a retune moves all four figures.
+    for (let i = 0; i < lengths.length; i += 1) {
+      const worse = (dropped[i] as Verdict).currentInversions > (kept[i] as Verdict).currentInversions;
+      expect(worse, `L=${lengths[i]}: dropping the burn was not worse here`).toBe(true);
+    }
+
+    // (5) ANTI-VACUITY, PINNED AS COUNTS. The domain is the same on both arms
+    //     and it is not empty; the broken variant really did still consume
+    //     covered days, so it is "the burn dropped" and not "a lifter with no
+    //     coverage at all"; and dropping the burn strictly REDUCES consumption
+    //     at every length, which is the only direction the edit can move it.
+    expect(dropped.map((verdict) => verdict.pairsChecked)).toEqual([
+      ...DOOMED_BURN_COUNTERFACTUAL.PAIRS_CHECKED_BY_LENGTH,
+    ]);
+    expect(kept.map((verdict) => verdict.pairsChecked)).toEqual([
+      ...DOOMED_BURN_COUNTERFACTUAL.PAIRS_CHECKED_BY_LENGTH,
+    ]);
+    expect(dropped.map((verdict) => verdict.consumed)).toEqual([...DOOMED_BURN_COUNTERFACTUAL.CONSUMED_BY_LENGTH]);
+    expect(kept.map((verdict) => verdict.consumed)).toEqual([
+      ...DOOMED_BURN_COUNTERFACTUAL.CONSUMED_WITH_THE_BURN_BY_LENGTH,
+    ]);
+    for (let i = 0; i < lengths.length; i += 1) {
+      expect((dropped[i] as Verdict).consumed).toBeGreaterThan(0);
+      expect((dropped[i] as Verdict).consumed).toBeLessThan((kept[i] as Verdict).consumed);
+    }
+  });
+
   it('EXHAUSTIVE: every calendar of 8 to 16 days, both fields', () => {
     for (const length of MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS) {
       expectClean(`exhaustive L=${length}`, judge(exhaustivePairs(length), DEFAULT));
@@ -2928,7 +3040,8 @@ describe('the shipped engine is the composition this battery graded', () => {
     // `burnOnDoom: false` is the one variant of `drive` that is known to differ
     // from the shipped rule, and it is the negative control the battery already
     // relies on: GDD §4.2 RULE 2 says a doomed absence consumes what was armed,
-    // and dropping it measures 1051 violating pairs at 60 days.
+    // and what dropping it measures is pinned by
+    // `[dropping-the-doomed-burn-measures-worse]` rather than restated here.
     const withoutTheBurn: RunOptions = { ...DEFAULT, burnOnDoom: false };
     let disagreements = 0;
     let compared = 0;
@@ -2943,4 +3056,5 @@ describe('the shipped engine is the composition this battery graded', () => {
     expect(compared).toBe(MONOTONICITY_SWEEP.SEEDS.length * 40);
     expect(disagreements, 'the comparator cannot see a rule change').toBeGreaterThan(0);
   });
+
 });

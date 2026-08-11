@@ -397,7 +397,12 @@
  * `max(0, len - grace)`, which is subadditive, so splitting can only consume
  * less; the doomed branch has no such arithmetic and needs "take everything
  * left" instead, because the second piece of a split then finds nothing.
+ * Both figures live in `streakSweep.DOOMED_BURN_COUNTERFACTUAL` and are
+ * re-derived on every run by the second tag below. They were re-taken rather
+ * than trusted: half of this sentence had been restated in four places and
+ * asserted nowhere, and it reproduced.
  * `@guarantee doomed-absence-takes-what-is-left`
+ * `@guarantee dropping-the-doomed-burn-measures-worse`
  *
  * WHAT IS *NOT* GUARDED, said plainly because the opposite would be a claim
  * this file cannot back:
@@ -549,6 +554,14 @@
  * arithmetic to lean on, so its consumption has to be idempotent under
  * splitting instead, and "take everything left in the window" is the only thing
  * that is. What changed is the blast radius, not the rule.
+ *
+ * THE ROW IS NOT MONOTONE IN CALENDAR LENGTH AND READING TWO OF ITS FOUR CELLS
+ * MISLEADS. The full row is 561 / 1051 / 710 / 673 at 40 / 60 / 80 / 100, so
+ * quoting 60 and 100 alone suggests the broken variant heals as the calendar
+ * grows. It does not: the lifetime-best inversions rise at every step, 495 /
+ * 628 / 716 / 943, and the worst deficit does not shrink. A live run can
+ * recover later in a long calendar; a lifetime best cannot be un-lost. All of
+ * it is in `streakSweep.DOOMED_BURN_COUNTERFACTUAL`, re-derived every run.
  *
  * NO GRANT OF COVERED DAYS MAY BE KEYED TO ANYTHING THE LIFTER DOES. This is
  * the second thing the verification changed about the ruling and it is a
@@ -1514,8 +1527,12 @@ export interface AbsenceOutcome {
    * Equal to `recoveryDaysHolding` while the run is alive, and to EVERYTHING
    * LEFT IN THE WINDOW once it is not (GDD §4.2 RULE 2, carried into the
    * entitlement). The burn is kept because it is the only consumption that is
-   * idempotent under splitting an absence, and dropping it measures 1051
-   * violating pairs at 60 days — worse than the stock design it replaced.
+   * idempotent under splitting an absence, and dropping it is measured worse
+   * than the stock design it replaced — the whole row is in
+   * `streakSweep.DOOMED_BURN_COUNTERFACTUAL` and is re-derived by
+   * `[dropping-the-doomed-burn-measures-worse]`. Deliberately not restated as a
+   * figure here: this comment carried one for six waves and nothing re-derived
+   * it.
    *
    * "EVERYTHING LEFT IN THE WINDOW" MEANS THE LIVE ENTITLEMENT, INCLUDING A
    * COVERED DAY BOUGHT DURING THE ABSENCE — which reads harsh and is the only
