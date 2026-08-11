@@ -161,13 +161,23 @@
  * the design" and "the property is in one simulated player" can be told apart.
  * `engagement.test.ts` carries the table.
  *
+ * `spendsOn` is the counterfactual knob on that second variable, and nothing
+ * but the measurement below passes anything other than the run's own history:
+ * it says WHOSE attendance decides which check-in of each day a day-granularity
+ * policy spends at. Held at a less-engaged history's anchor, the extra check-in
+ * still collects, still accrues into every purse and still earns reputation —
+ * what it loses is the power to defer that day's purchase, and the residue goes
+ * with it. `@guarantee the-day-granularity-residue-is-the-decision-moment`
+ *
  * That distinction is what the table now reports rather than what it was
  * written to hope for. Five of the six policies are zero on every domain
  * measured; the sixth spends a whole day's takings at the last check-in the
  * player happens to take, so an extra evening check-in moves the purchase to
  * the evening. `engagement.test.ts` splits its count by exactly that and finds
- * 7240 of 7245 on the moving side — a fact about that model of a player, which
- * no arrangement of §5's purses reaches.
+ * 6459 of 6459 on the moving side — every one of them, after §5.3's promotion
+ * path closed the five that were on the other side. A fact about that model of
+ * a player, which no arrangement of §5's purses or prices reaches, and which
+ * `spendsOn` is the counterfactual for.
  */
 
 import {
@@ -185,6 +195,7 @@ import { EMPIRE_TUNING } from './empireTuning';
 import {
   NO_ACCELERANT,
   SHIPPED_FUNDING,
+  SHIPPED_ROSTER_UPGRADE,
   SHIPPED_SPENDING_POLICY,
   composeTrainingIqRate,
   createEmpireGym,
@@ -198,6 +209,7 @@ import {
   type EmpireGym,
   type EmpirePolicy,
   type EmpireSpendingPolicy,
+  type RosterUpgradeRule,
   type SocialInputs,
 } from './empireInvariant';
 import {
@@ -374,6 +386,15 @@ export interface EngagementCensus {
    */
   readonly spendingMoments: number;
   readonly recruits: number;
+  /**
+   * Rungs a lifter was moved up over the run.
+   *
+   * The non-vacuity denominator for the repair this file measures: the
+   * `'promote-in-place'` arm's zeros are about a mechanism, and a run that
+   * promoted nothing is a run the mechanism never touched. Zero under the
+   * `'one-way-door'` control by construction.
+   */
+  readonly promotions: number;
   readonly expansions: number;
   /** Gym Bucks a control took off the wall-clock book. Zero on the shipped wiring. */
   readonly upkeepCharged: number;
@@ -392,6 +413,8 @@ export interface EngagementRun {
   readonly wiring: EngagementWiring;
   /** The simulated player's spending policy this run was driven under. */
   readonly spending: EmpireSpendingPolicy;
+  /** Whether a filled roster slot could still move. See `empireInvariant.ts` §4b. */
+  readonly upgrades: RosterUpgradeRule;
   /** Every entry, in day order then in output order, as `EmpireDayEntry`. */
   readonly ledger: readonly EmpireDayEntry[];
   readonly census: EngagementCensus;
@@ -474,6 +497,8 @@ export function runEngagement(
   social: SocialInputs,
   wiring: EngagementWiring = shippedEngagementWiring(),
   spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
+  upgrades: RosterUpgradeRule = SHIPPED_ROSTER_UPGRADE,
+  spendsOn: EngagementHistory = history,
 ): EngagementRun {
   if (!Number.isInteger(days) || days < 1) {
     throw new RangeError(`a horizon must be a whole number of days at or above one, received ${days}.`);
@@ -484,6 +509,11 @@ export function runEngagement(
     );
   }
   const slots = days * policy.checkInsPerDay;
+  if (spendsOn.attended.length !== history.attended.length) {
+    throw new RangeError(
+      `a spending anchor of ${spendsOn.attended.length} slots cannot decide the days of a ${history.attended.length}-slot history`,
+    );
+  }
   if (history.attended.length !== slots) {
     throw new RangeError(
       `a history of ${history.attended.length} slots does not fit ${days} days at ${policy.checkInsPerDay} check-ins`,
@@ -515,7 +545,7 @@ export function runEngagement(
     // at noon has their day end at noon.
     let lastAttendedTick: number | null = null;
     for (let tick = 0; tick < policy.checkInsPerDay; tick += 1) {
-      if (history.attended[day * policy.checkInsPerDay + tick] === true) lastAttendedTick = tick;
+      if (spendsOn.attended[day * policy.checkInsPerDay + tick] === true) lastAttendedTick = tick;
     }
 
     for (let tick = 0; tick < policy.checkInsPerDay; tick += 1) {
@@ -532,6 +562,7 @@ export function runEngagement(
         0,
         funding,
         moment,
+        upgrades,
       );
       if (wiring.key === 'check-in-upkeep') {
         const before = wallClockTotal(gym);
@@ -601,6 +632,7 @@ export function runEngagement(
     days,
     wiring,
     spending,
+    upgrades,
     ledger: Object.freeze(ledger),
     census: Object.freeze({
       days,
@@ -609,6 +641,7 @@ export function runEngagement(
       trainedDays: history.trainedDays.length,
       spendingMoments,
       recruits: gym.recruits,
+      promotions: gym.promotions,
       expansions: gym.expansions,
       upkeepCharged,
       upkeepEvents,

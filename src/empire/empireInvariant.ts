@@ -90,7 +90,11 @@
  * checked in more often ended on a lower §5.2 Training IQ series in 2954 of
  * 24576 exhaustively enumerated pairs. So each funded output keeps a purse of
  * its own (`WallClockBooks`) and each purse gets its own slot in step 4 below,
- * and `'single-wall-clock-purse'` is the control that still measures the 2954.
+ * and `'single-wall-clock-purse'` is the control that still measures it. Its
+ * count is 3003 rather than 2954 now: §4b's promotion path changed how the
+ * pooled balance is spent, so the control is the pre-ruling FUNDING rule on the
+ * post-repair roster rather than a reproduction of the engine that measured
+ * 2954. Non-zero on the same domain either way, which is what it is for.
  *
  * Every wall-clock purse accrues at `settledGymBucksRatePerHour`, which reads
  * no state at all: it is the baseline line over the un-accelerated part of a
@@ -171,11 +175,28 @@
  * of the composition rather than a weakness in either file:
  *
  *   - `skipExpansion` moving `settledCompletion` as well as `idleCompletion`
- *     leaves this file's 43 checks green. The reason is measurable: across the
+ *     leaves this file's 49 checks green. The reason is measurable: across the
  *     whole grid a grant lands on a build that is still running six times, and
  *     every one of those builds is on the coach ladder, whose settled level no
  *     progression-reaching reading consults. Three checks in `expansion.test.ts`
  *     redden on it.
+ *
+ *     THAT DENOMINATOR IS PINNED, AND IT DRIFTED ONCE BECAUSE IT WAS NOT. It
+ *     read 43 for the waves in which five checks were added to
+ *     `empireInvariant.test.ts` and the mutant was never re-run against them, so
+ *     this map published a coverage claim over a file that was no longer the one
+ *     measured. `'§4a's denominator is this file's own check count'` is the pin:
+ *     it reads the number out of THIS sentence and compares it with the `it(`
+ *     declarations in `empireInvariant.test.ts`'s own source, in both
+ *     directions, so adding a check without re-taking the mutant is red rather
+ *     than silent.
+ *
+ *     The count is `it(` declarations in that file's SOURCE. Vitest reports more
+ *     for the same file — importing `empireSweep.test.ts` for the sweep
+ *     parameters registers that module's own five checks under this one — and
+ *     the source count is the honest reading of "this file's checks".
+ *     Re-taken at 49 on this branch: 49 of 49 green under the mutant.
+ *     `@guarantee section-4a-denominator-is-measured`
  *   - `recruitmentRefusals` counting slots off `state.axes` instead of
  *     `state.settledAxes` also leaves this file green, because in this sweep the
  *     wall-clock book binds a recruit before the slots do. One check in
@@ -184,6 +205,59 @@
  *
  * So a green run of this file alone is not evidence about the leaves, and the
  * two layers are independent for a structural reason rather than by luck.
+ *
+ * ===========================================================================
+ * 4b. The roster's one-way door — a §12.3 breach, and the diagnosis it had
+ * ===========================================================================
+ *
+ * `engagement.test.ts` measured five pairs of 24576 in which the gym that
+ * checked in MORE ended on a LOWER Training IQ series, under the
+ * `'spend-once-per-calendar-day'` policy and in the arm where the extra
+ * check-in did NOT move the day the simulated player spends at. Five is a
+ * §12.3 breach; CLAUDE.md has no size below which "never punish daily
+ * engagement" stops applying.
+ *
+ * THE DIAGNOSIS ON RECORD WAS WRONG, AND IT WAS WRONG IN THREE PLACES AT ONCE
+ * — GDD §5.4, `engagement.test.ts`'s own section header, and the ruling in
+ * CLAUDE.md that acted on them. All three said the cause was the recruit price
+ * ladder: `NPC_RECRUIT_COST_GYM_BUCKS / NPC_TIER_OUTPUT_MULTIPLIER` rises
+ * strictly across the tiers, `bestRecruitableTier` takes the priciest
+ * affordable rung, so more money at a decision buys less Training IQ per Buck.
+ *
+ * Traced on the shipped engine, all five come from one baseline and not one of
+ * them is that:
+ *
+ *   the diligent gym fills its fifth and last roster slot at check-in 30, at
+ *     reputation 48.8 — `club` opens at 50 — and takes a `novice`;
+ *   the idle gym fills the same slot six check-ins later at reputation 59.2,
+ *     and takes a `club`.
+ *
+ * The diligent gym bought the CHEAPER and MORE efficient rung and lost, because
+ * the scarce resource at that decision is the SLOT and not the Buck. The price
+ * curve is real and is not what these five are. Applying the recorded
+ * requirement literally — never take a rung worth less per Buck than a cheaper
+ * affordable one — makes every gym buy novices forever, empties §5.3's ladder
+ * out of the sweep, and closes these five by accident rather than by mechanism.
+ *
+ * THE MECHANISM: a filled slot was filled forever, and the ladder unlocks on
+ * reputation, which rises with time. Reaching your last slot earlier means
+ * committing it at a lower unlocked rung and holding that lifter for the rest
+ * of the run. Being early is the trap, and no arrangement of purses or prices
+ * reaches it because neither is what moved.
+ *
+ * THE REPAIR is `recruitment.ts`'s promotion section and `stepGym`'s step 6,
+ * and both differences telescope — price and timer — so a slot holding tier T
+ * has paid `recruitCost(T)` and carries `recruitSeconds(T)` from its first
+ * commitment, by every route. `'one-way-door'` is the engine without it, kept
+ * runnable, and it reproduces the five exactly.
+ *
+ * AN UNPLAYED BALANCE CONSEQUENCE, written here rather than left in a diff. A
+ * gym that can move a filled slot up reaches a larger roster subtotal sooner,
+ * so `TRAINING_IQ_DAILY_CEILING` binds on 1573 days of this file's grid where
+ * it bound on 468, over 39 runs where it bound on 13. The safety property holds
+ * either way and this file pins both. Whether an idle layer that spends more of
+ * its time at the budget PLAYS better is a question no measurement here can
+ * answer, and it is the kind of question GDD §5.4 already sends to a human.
  *
  * ===========================================================================
  * 5. The Training IQ ceiling is applied HERE, and that is not an accident
@@ -266,6 +340,7 @@ import {
   createEmpireState,
   mayAccelerate,
   rosterCapacity,
+  tierRung,
   type AppliedAccelerant,
   type EmpireClock,
   type EmpireOutput,
@@ -311,7 +386,9 @@ import {
   RECRUIT_BOOK,
   beginRecruitment,
   completeRecruitment,
+  mayPromote,
   mayRecruit,
+  promoteLifter,
   type RecruitmentSchedule,
 } from './recruitment';
 import { accrueReputation, accrueSponsorship } from './reputation';
@@ -370,7 +447,8 @@ export const NO_ACCELERANT: null = null;
  *     leaves the purses in lockstep and is therefore arithmetically the single
  *     book it replaces. This is the control the engagement zeros are zeros
  *     against: it is where 2954 of 24576 exhaustively enumerated pairs punished
- *     the more-engaged player.
+ *     the more-engaged player. It measures 3003 today, for the reason §3 of
+ *     this header gives.
  */
 export const EMPIRE_FUNDINGS = [
   'wall-clock-earned',
@@ -395,6 +473,27 @@ export const SHIPPED_FUNDING: EmpireFunding = 'wall-clock-earned';
 export function poolsWallClockBooks(funding: EmpireFunding): boolean {
   return funding !== SHIPPED_FUNDING;
 }
+
+// ---------------------------------------------------------------------------
+// Whether a filled roster slot can still move
+// ---------------------------------------------------------------------------
+
+/**
+ * The two engines the roster runs under. See §4b of the header.
+ *
+ * `'promote-in-place'` is what ships: a gym at capacity may move its
+ * lowest-tier lifter up to a tier its reputation has since unlocked, for the
+ * price difference. `'one-way-door'` is the engine as it stood before that — a
+ * slot, once filled, is filled forever — and it is a CONTROL rather than an
+ * option, kept runnable so the zeros this repair produces are zeros against the
+ * numbers it removes.
+ */
+export const ROSTER_UPGRADE_RULES = ['promote-in-place', 'one-way-door'] as const;
+
+export type RosterUpgradeRule = (typeof ROSTER_UPGRADE_RULES)[number];
+
+/** The rule the shipped engine runs on. */
+export const SHIPPED_ROSTER_UPGRADE: RosterUpgradeRule = 'promote-in-place';
 
 /** How the simulated player spends, per check-in. No magnitude lives here. */
 export interface EmpirePolicy {
@@ -709,6 +808,12 @@ export interface EmpireGym {
   /** Where the axis rotation is. */
   readonly nextAxis: number;
   readonly recruits: number;
+  /**
+   * Rungs this gym has moved a lifter up. The non-vacuity denominator for every
+   * zero the promotion path is meant to produce: a sweep that never promoted
+   * anything reports zeros about a mechanism that never fired.
+   */
+  readonly promotions: number;
   readonly expansions: number;
   /** Grants spent through `skipExpansion` rather than through the clock. */
   readonly buildSkips: number;
@@ -740,6 +845,8 @@ export interface EmpireRunCensus {
   /** Seconds of accelerant the plan handed the gym in total. */
   readonly grantedSeconds: number;
   readonly recruits: number;
+  /** Rungs a lifter was moved up. Zero under the `'one-way-door'` control. */
+  readonly promotions: number;
   readonly expansions: number;
   /** Grants spent through `skipExpansion`. Adds up with the next one. */
   readonly buildSkips: number;
@@ -916,6 +1023,7 @@ export function createEmpireGym(): EmpireGym {
     skippedSeconds: 0,
     nextAxis: 0,
     recruits: 0,
+    promotions: 0,
     expansions: 0,
     buildSkips: 0,
     clockSkips: 0,
@@ -939,6 +1047,40 @@ function bestRecruitableTier(state: EmpireState): NpcTier | null {
     const tier = tiers[at];
     if (tier === undefined) continue;
     if (mayRecruit(state, tier)) return tier;
+  }
+  return null;
+}
+
+/**
+ * The promotion a gym would take if it took one: the lowest-tier lifter on the
+ * roster, moved to the highest tier the gym may move them to.
+ *
+ * IT LIVES HERE, BESIDE `bestRecruitableTier`, AND NOT IN `recruitment.ts`.
+ * §5.3's module publishes a catalogue and takes a tier it was given; choosing
+ * one is a MODEL OF A PLAYER, and `recruitment.test.ts` pins by count that the
+ * ladder is enumerated in exactly one place in that module — the board — which
+ * is the source half of the no-gacha argument. A selector over tiers written
+ * there would have been a second place a tier is produced from something that
+ * is not a tier, which is the shape §5.3 refuses.
+ *
+ * Deliberately the same shape of greedy rule as its sibling — the composed loop models a player who spends
+ * what they have on the best thing in front of them, and the §12.3 property has
+ * to hold for that player rather than for a player chosen to make it hold.
+ *
+ * Ties are broken by roster order, which is join order, so the answer is a
+ * function of the state and nothing else.
+ */
+function bestPromotion(state: EmpireState): { lifterId: string; tier: NpcTier } | null {
+  let chosen: NpcLifter | null = null;
+  for (const lifter of state.roster) {
+    if (chosen === null || tierRung(lifter.tier) < tierRung(chosen.tier)) chosen = lifter;
+  }
+  if (chosen === null) return null;
+  const tiers = EMPIRE_TUNING.NPC_TIERS;
+  for (let index = tiers.length - 1; index >= 0; index -= 1) {
+    const tier = tiers[index];
+    if (tier === undefined) continue;
+    if (mayPromote(state, chosen, tier)) return Object.freeze({ lifterId: chosen.id, tier });
   }
   return null;
 }
@@ -1038,6 +1180,7 @@ export function stepGym(
   grantSeconds: number,
   funding: EmpireFunding = SHIPPED_FUNDING,
   moment: SpendingMoment = SHIPPED_SPENDING_MOMENT,
+  upgrades: RosterUpgradeRule = SHIPPED_ROSTER_UPGRADE,
 ): EmpireGym {
   if (!Number.isFinite(wallSeconds) || wallSeconds < 0) {
     throw new RangeError(`a wall-clock reading must be finite and at or above zero, received ${wallSeconds}.`);
@@ -1198,6 +1341,7 @@ export function stepGym(
     expansionContext(offered, builds),
     funding,
   );
+  let recruitedNow = false;
   if (rosterAllowed && state.roster.length + stillPending.length < capacity) {
     const tier = bestRecruitableTier(offered);
     if (tier !== null) {
@@ -1205,6 +1349,36 @@ export function stepGym(
       if (decision.kind === 'accepted') {
         state = withBooks(state, decision.state, funding);
         stillPending.push({ schedule: decision.schedule, id: `recruit-${recruits + stillPending.length}` });
+        recruitedNow = true;
+      }
+    }
+  }
+
+  // 6. Move a lifter up a rung, when there is no free slot to put a new one in.
+  //    §4b of the header is why this arm exists and what it measured; the price
+  //    is the difference, so the total a slot pays to hold a tier does not
+  //    depend on when the gym committed to it.
+  //
+  //    AT CAPACITY ONLY, and that is the narrow trigger rather than a general
+  //    one: while a slot is free, a new lifter is what the money buys, and the
+  //    trap this closes is specifically the money a gym CANNOT spend on a new
+  //    lifter. `recruitedNow` keeps a check-in to one roster purchase, so a
+  //    promotion never spends beside a recruitment in the same moment.
+  //
+  //    The state is re-offered rather than reused. `offered` was taken before
+  //    the recruitment above, and a promotion decided against a stale purse
+  //    would be the guard-written-for-one-arm shape CLAUDE.md records.
+  let promotions = gym.promotions;
+  if (upgrades === SHIPPED_ROSTER_UPGRADE && rosterAllowed && !recruitedNow) {
+    const promotable = offeredTo(state, funding);
+    if (promotable.roster.length + stillPending.length >= rosterCapacity(promotable.settledAxes)) {
+      const plan = bestPromotion(promotable);
+      if (plan !== null) {
+        const decision = promoteLifter(promotable, plan.lifterId, plan.tier);
+        if (decision.kind === 'accepted') {
+          state = withBooks(state, decision.state, funding);
+          promotions += 1;
+        }
       }
     }
   }
@@ -1217,6 +1391,7 @@ export function stepGym(
     skippedSeconds,
     nextAxis,
     recruits,
+    promotions,
     expansions,
     buildSkips,
     clockSkips,
@@ -1293,6 +1468,7 @@ export function runEmpire(
   plan: AccelerantPlan,
   social: SocialInputs,
   funding: EmpireFunding = SHIPPED_FUNDING,
+  upgrades: RosterUpgradeRule = SHIPPED_ROSTER_UPGRADE,
 ): EmpireRun {
   requireWholeAtLeastOne(days, 'a horizon');
   requireWholeAtLeastOne(policy.checkInsPerDay, 'a check-in cadence');
@@ -1339,6 +1515,7 @@ export function runEmpire(
         granted,
         funding,
         spendingMoment(SHIPPED_SPENDING_POLICY, tick === policy.checkInsPerDay - 1),
+        upgrades,
       );
       for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
         const taken = booksBefore[book] - gym.state.settledBooks[book];
@@ -1402,6 +1579,7 @@ export function runEmpire(
       grantedCheckIns,
       grantedSeconds,
       recruits: gym.recruits,
+      promotions: gym.promotions,
       expansions: gym.expansions,
       buildSkips: gym.buildSkips,
       clockSkips: gym.clockSkips,

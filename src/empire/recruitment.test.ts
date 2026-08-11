@@ -79,18 +79,23 @@ import {
 import { EMPIRE_TUNING } from './empireTuning';
 import { npcTrainingIqPerDay } from './npc';
 import {
+  PROMOTION_REFUSALS,
   RECRUIT_BOOK,
   RECRUITMENT_REFUSALS,
   beginRecruitment,
   completeRecruitment,
+  mayPromote,
   mayRecruit,
+  promoteLifter,
+  promotionQuote,
+  promotionRefusals,
   recruitmentBoard,
   recruitmentOffer,
   recruitmentQuote,
   recruitmentRefusals,
   recruitmentSchedule,
-  type RecruitmentSchedule,
 } from './recruitment';
+import type { RecruitmentSchedule } from './recruitment';
 
 // ---------------------------------------------------------------------------
 // The sweep's parameters, in one named block
@@ -338,7 +343,7 @@ describe('no rarity tier is reachable by spending currency', () => {
       countOf(recruitment, /export function recruitmentBoard[\s\S]*?NPC_TIERS\.map\(/g),
     ).toBe(1);
     // And the scan is live: it sees the declarations it is scoped over.
-    expect(countOf(recruitment, /export function /g)).toBe(8);
+    expect(countOf(recruitment, /export function /g)).toBe(12);
     expect(countOf(npc, /export function /g)).toBe(9);
   });
 });
@@ -964,13 +969,21 @@ describe('no source of entropy is reachable from these two modules', () => {
       filesRead += 1;
     }
     expect(filesRead).toBe(2);
-    expect(singleQuoted.size).toBe(9);
+    expect(singleQuoted.size).toBe(10);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(1);
+    expect(templateChunks.size).toBe(3);
     // The template collector really reaches this module's one runtime message,
     // named from the real source in both directions.
     expect(
       [...templateChunks].filter((chunk) => chunk.includes('roster holds')).length,
+    ).toBe(1);
+    // And the two the promotion path added, by match count rather than by
+    // presence, so a duplicated message is red instead of invisible.
+    expect(
+      [...templateChunks].filter((chunk) => chunk.includes('is not above')).length,
+    ).toBe(1);
+    expect(
+      [...templateChunks].filter((chunk) => chunk.includes('no lifter on this roster')).length,
     ).toBe(1);
 
     expect([...singleQuoted].filter((literal) => !literal.includes(' ')).sort()).toEqual([
@@ -979,6 +992,7 @@ describe('no source of entropy is reachable from these two modules', () => {
       'accepted',
       'gym-bucks',
       'gym-bucks-below-cost',
+      'not-a-higher-tier',
       'refused',
       'reputation-below-threshold',
       'roster-at-capacity',
@@ -991,7 +1005,7 @@ describe('no source of entropy is reachable from these two modules', () => {
       expect(personShaped.test(value), `${value} is shaped like a person's name`).toBe(false);
       stringsChecked += 1;
     }
-    expect(stringsChecked).toBe(10);
+    expect(stringsChecked).toBe(13);
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
@@ -1006,7 +1020,7 @@ describe('no source of entropy is reachable from these two modules', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(9);
+    expect(probes).toBe(10);
     expect(probes).toBe(singleQuoted.size);
   });
 
@@ -1051,7 +1065,16 @@ describe('the exported surface is pinned, so a new producer of a tier is a signe
       'rosterTrainingIqPerDay',
       'settledLoyaltyMultiplier',
     ]);
+    // The four promotion rows are §5.3's ladder losing its one-way door — see
+    // that module's promotion section. Every one of them takes the tier it is
+    // given and returns it, exactly as the recruitment rows do, so the
+    // no-gacha argument above is unchanged in shape: the GREEDY CHOICE over
+    // tiers is `empireInvariant.ts`'s `bestPromotion`, deliberately not here.
     expect(exportsOf('recruitment.ts')).toEqual([
+      'PROMOTION_REFUSALS',
+      'PromotionDecision',
+      'PromotionQuote',
+      'PromotionRefusal',
       'RECRUITMENT_REFUSALS',
       'RECRUIT_BOOK',
       'RecruitmentDecision',
@@ -1061,12 +1084,161 @@ describe('the exported surface is pinned, so a new producer of a tier is a signe
       'RecruitmentSchedule',
       'beginRecruitment',
       'completeRecruitment',
+      'mayPromote',
       'mayRecruit',
+      'promoteLifter',
+      'promotionQuote',
+      'promotionRefusals',
       'recruitmentBoard',
       'recruitmentOffer',
       'recruitmentQuote',
       'recruitmentRefusals',
       'recruitmentSchedule',
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Promotion — the ladder without its one-way door
+// ---------------------------------------------------------------------------
+
+describe('a slot reaches a tier at the same price and the same timer by every route', () => {
+  /** A gym holding one lifter at `tier`, with money and reputation to spare. */
+  function holding(tier: NpcTier, over: StateOverrides = {}): EmpireState {
+    const base = stateWith({ rosterSize: 0, ...over });
+    return Object.freeze({
+      ...base,
+      roster: Object.freeze([createNpcLifter('slot-0', tier, 'Placeholder', 1000, 2000)]),
+    });
+  }
+
+  it('prices a promotion at the difference, and times it at the difference', () => {
+    const quote = promotionQuote('novice', 'club');
+    expect(quote.costGymBucks).toBe(recruitCost('club') - recruitCost('novice'));
+    expect(quote.addedSeconds).toBe(recruitSeconds('club') - recruitSeconds('novice'));
+    expect(quote.reputationThreshold).toBe(recruitReputationThreshold('club'));
+    expect(quote.from).toBe('novice');
+    expect(quote.to).toBe('club');
+    // The magnitudes, so a re-priced ladder is a diff somebody signs.
+    expect(quote.costGymBucks).toBe(1500);
+    expect(quote.addedSeconds).toBe(240);
+  });
+
+  it('TELESCOPES: any route to a tier costs its price and carries its timer', () => {
+    // THE PROPERTY THE REPAIR IS, stated on the tables rather than on a sweep.
+    // Walking the ladder one rung at a time from `novice` must add up to the
+    // rung's own published price and its own published timer, at every rung and
+    // for every starting point — otherwise "being early is never a trap"
+    // depends on which route a gym happened to take.
+    const tiers = EMPIRE_TUNING.NPC_TIERS;
+    let routes = 0;
+    for (let from = 0; from < tiers.length; from += 1) {
+      for (let to = from + 1; to < tiers.length; to += 1) {
+        let paid = 0;
+        let waited = 0;
+        for (let step = from; step < to; step += 1) {
+          const quote = promotionQuote(tiers[step] as NpcTier, tiers[step + 1] as NpcTier);
+          paid += quote.costGymBucks;
+          waited += quote.addedSeconds;
+        }
+        const direct = promotionQuote(tiers[from] as NpcTier, tiers[to] as NpcTier);
+        expect(paid, `${String(tiers[from])} -> ${String(tiers[to])}`).toBe(direct.costGymBucks);
+        expect(waited, `${String(tiers[from])} -> ${String(tiers[to])}`).toBe(direct.addedSeconds);
+        // And against the recruitment tables themselves, which is the half that
+        // says a promoted slot matches a slot that was recruited outright.
+        expect(paid).toBe(recruitCost(tiers[to] as NpcTier) - recruitCost(tiers[from] as NpcTier));
+        expect(waited).toBe(
+          recruitSeconds(tiers[to] as NpcTier) - recruitSeconds(tiers[from] as NpcTier),
+        );
+        routes += 1;
+      }
+    }
+    // Counts rather than bounds: five tiers give ten ordered pairs, and a
+    // ladder that shrank to one rung would walk none of them.
+    expect(routes).toBe(10);
+  });
+
+  it('refuses a step that is not up the ladder', () => {
+    expect(() => promotionQuote('club', 'novice')).toThrow(RangeError);
+    expect(() => promotionQuote('club', 'club')).toThrow(RangeError);
+    const gym = holding('club', { reputation: 2000, gymBucks: 999999 });
+    const lifter = gym.roster[0] as NpcLifter;
+    expect(promotionRefusals(gym, lifter, 'novice')).toEqual(['not-a-higher-tier']);
+    expect(promotionRefusals(gym, lifter, 'club')).toEqual(['not-a-higher-tier']);
+    expect(mayPromote(gym, lifter, 'novice')).toBe(false);
+  });
+
+  it('refuses on reputation and on the purse, in the published order', () => {
+    const broke = holding('novice', { reputation: 0, gymBucks: 0 });
+    const lifter = broke.roster[0] as NpcLifter;
+    expect(promotionRefusals(broke, lifter, 'legendary')).toEqual([
+      'reputation-below-threshold',
+      'gym-bucks-below-cost',
+    ]);
+    expect(PROMOTION_REFUSALS).toEqual([
+      'not-a-higher-tier',
+      'reputation-below-threshold',
+      'gym-bucks-below-cost',
+    ]);
+    // One at a time, so the pair above is not two refusals that always co-occur.
+    const rich = holding('novice', { reputation: 0, gymBucks: 999999 });
+    expect(promotionRefusals(rich, rich.roster[0] as NpcLifter, 'legendary')).toEqual([
+      'reputation-below-threshold',
+    ]);
+    const famous = holding('novice', { reputation: 2000, gymBucks: 0 });
+    expect(promotionRefusals(famous, famous.roster[0] as NpcLifter, 'legendary')).toEqual([
+      'gym-bucks-below-cost',
+    ]);
+    expect(mayPromote(famous, famous.roster[0] as NpcLifter, 'legendary')).toBe(false);
+  });
+
+  it('reads the purse a recruit reads, and not the accelerated balance', () => {
+    // The gym is rich on the ACCELERATED book and empty on the wall-clock one.
+    // A promotion buys Training IQ, so it is priced against `RECRUIT_BOOK` for
+    // the reason `beginRecruitment` is — GDD §5.4's third-book ruling.
+    const gym = holding('novice', { reputation: 2000, gymBucks: 999999, settledGymBucks: 0 });
+    const lifter = gym.roster[0] as NpcLifter;
+    expect(gym.gymBucks).toBeGreaterThan(promotionQuote('novice', 'club').costGymBucks);
+    expect(promotionRefusals(gym, lifter, 'club')).toEqual(['gym-bucks-below-cost']);
+  });
+
+  it('charges the difference, keeps the lifter, and moves both clock stamps', () => {
+    const gym = holding('novice', { reputation: 2000, gymBucks: 0, settledGymBucks: 10000 });
+    const lifter = gym.roster[0] as NpcLifter;
+    const decision = promoteLifter(gym, lifter.id, 'club');
+    expect(decision.kind).toBe('accepted');
+    if (decision.kind !== 'accepted') throw new Error('unreachable');
+    const promoted = decision.state.roster[0] as NpcLifter;
+    expect(decision.state.roster.length).toBe(1);
+    expect(promoted.tier).toBe('club');
+    expect(promoted.id).toBe(lifter.id);
+    expect(promoted.displayName).toBe(lifter.displayName);
+    expect(promoted.joinedAt).toBe(lifter.joinedAt + 240);
+    expect(promoted.settledAt).toBe(lifter.settledAt + 240);
+    // A promoted slot's settle stamp is the stamp a slot recruited outright at
+    // the same first commitment would carry. Same fact as the telescoping
+    // check, read off a real state rather than off the tables.
+    expect(promoted.settledAt - recruitSeconds('club')).toBe(
+      lifter.settledAt - recruitSeconds('novice'),
+    );
+    expect(decision.state.settledBooks[RECRUIT_BOOK]).toBe(10000 - 1500);
+    // Nothing else on the wall-clock side moved.
+    let untouched = 0;
+    for (const book of WALL_CLOCK_FUNDED_OUTPUTS) {
+      if (book === RECRUIT_BOOK) continue;
+      expect(decision.state.settledBooks[book], book).toBe(gym.settledBooks[book]);
+      untouched += 1;
+    }
+    expect(untouched).toBe(WALL_CLOCK_FUNDED_OUTPUTS.length - 1);
+    expect(decision.state.gymBucks).toBe(gym.gymBucks);
+  });
+
+  it('hands back a refusal rather than a debit, and throws on a lifter it has not got', () => {
+    const broke = holding('novice', { reputation: 0, gymBucks: 0 });
+    const refused = promoteLifter(broke, 'slot-0', 'legendary');
+    expect(refused.kind).toBe('refused');
+    if (refused.kind !== 'refused') throw new Error('unreachable');
+    expect(refused.refusals).toEqual(['reputation-below-threshold', 'gym-bucks-below-cost']);
+    expect(() => promoteLifter(broke, 'nobody', 'club')).toThrow(RangeError);
   });
 });

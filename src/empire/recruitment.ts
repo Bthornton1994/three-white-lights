@@ -125,6 +125,7 @@ import {
   recruitReputationThreshold,
   recruitSeconds,
   rosterCapacity,
+  tierRung,
   type AcceleratedSeconds,
   type EmpireClock,
   type EmpireState,
@@ -344,6 +345,220 @@ export function beginRecruitment(state: EmpireState, tier: NpcTier): Recruitment
     }),
     schedule: recruitmentSchedule(tier, state.clock),
   });
+}
+
+// ---------------------------------------------------------------------------
+// Promotion — the same ladder without the one-way door
+// ---------------------------------------------------------------------------
+
+/**
+ * WHY THIS EXISTS, and it is a measurement rather than a feature request.
+ *
+ * §5.4's roster is a fixed number of slots, and until this section a slot, once
+ * filled, was filled forever. §5.3's tier ladder is gated on reputation, which
+ * rises with wall time and with the player's own check-ins. Put those two
+ * together and being EARLY is a trap: the gym that reaches its last free slot
+ * sooner fills it with the best tier its reputation has unlocked SO FAR, and
+ * then holds that lifter for the rest of the run while a slower gym reaches the
+ * same slot after the next threshold opens and holds a better one.
+ *
+ * That is not a hypothesis. On the shipped engine, under
+ * `'spend-once-per-calendar-day'`, five of the 24576 enumerated pairs punish
+ * the more-engaged gym and every one of them is this: the diligent gym fills
+ * its fifth slot at reputation 48.8 — `club` opens at 50 — and takes a
+ * `novice`, and the idle gym fills the same slot six check-ins later at
+ * reputation 59.2 and takes a `club`. Both then hold what they took. The
+ * diligent gym is behind on Training IQ for the rest of the horizon.
+ *
+ * `empireInvariant.ts` §4b carries the trace and `engagement.test.ts` pins it.
+ *
+ * WHAT THE FIX IS, AND WHY IT IS THE PRICE DIFFERENCE. A slot's occupant may be
+ * moved up to a tier the gym has since unlocked, for
+ * `recruitCost(to) - recruitCost(from)`. That number is the whole of it: the
+ * total a gym pays to hold tier T in a slot is `recruitCost(T)`, by whatever
+ * route it got there and in however many steps. So an early cheap lifter is
+ * never a sunk cost and a late expensive one is never a discount — the price of
+ * a tier stops depending on WHEN the gym committed, which is the thing that was
+ * punishing engagement.
+ *
+ * WHAT IT DOES NOT CHANGE, said plainly because each was a candidate:
+ *
+ *   - The reputation gate. A promotion asks `recruitReputationThreshold` for the
+ *     tier it moves to, exactly as a recruitment does. §5.3's legendary rung
+ *     still unlocks on a milestone and never on money.
+ *   - The price table. `NPC_RECRUIT_COST_GYM_BUCKS` is untouched, and so is
+ *     `NPC_TIER_OUTPUT_MULTIPLIER`. This is not a re-tune.
+ *   - The purse. A promotion is paid out of `RECRUIT_BOOK`, the wall-clock
+ *     Training IQ purse a recruit is paid out of, so GDD §5.4's third-book
+ *     ruling holds: no sponsor money and no accelerated money reaches it.
+ *   - Tenure. `joinedAt` and `settledAt` come across untouched, so a promotion
+ *     is the same lifter on a better rung rather than a new hire. That is what
+ *     §5.3's "output scales with gym tier + tenure/loyalty" already describes,
+ *     and it is also load-bearing: resetting tenure would make a promotion a
+ *     short-term LOSS, and a gym that promoted sooner would read lower for a
+ *     week — the same punishment one level down.
+ *
+ * `@guarantee a-filled-slot-is-not-a-one-way-door`
+ *
+ * NO TIMER, AND THAT IS A REFUSAL RATHER THAN A SIMPLIFICATION. GDD §8.3B sells
+ * skips for the build timer and the recruit timer, and §8.1 refuses anything
+ * bought that moves Sim progression. A promotion raises the Training IQ trickle,
+ * so a promotion timer would be a third sellable timer sitting directly on a
+ * progression-reaching output — the two-hop hazard `empireCore.ts` splits the
+ * clock for, with a shorter hop. An instant promotion has no timer to sell.
+ */
+
+/** Why a gym may not move a lifter up a rung, in the order they are reported. */
+export const PROMOTION_REFUSALS = [
+  /** The target is the lifter's own rung or below it. There is no demotion. */
+  'not-a-higher-tier',
+  /** §5.3's reputation gate, asked about the tier being moved TO. */
+  'reputation-below-threshold',
+  /** The price difference, against `RECRUIT_BOOK`. */
+  'gym-bucks-below-cost',
+] as const;
+
+export type PromotionRefusal = (typeof PROMOTION_REFUSALS)[number];
+
+/** Everything §5.3 publishes about moving a lifter from one rung to a higher one. */
+export interface PromotionQuote {
+  readonly from: NpcTier;
+  readonly to: NpcTier;
+  readonly costGymBucks: GymBucks;
+  readonly reputationThreshold: ReputationPoints;
+  /**
+   * Seconds the promotion adds to both of the lifter's clock stamps: the
+   * difference between the two rungs' recruit timers.
+   *
+   * THE PRICE ALONE WAS NOT ENOUGH, AND THIS IS THE MEASUREMENT THAT SAID SO.
+   * With the money telescoping and the timer not, a slot that reached `club` by
+   * promotion carried the `novice` timer — `settlesAt` 240 seconds earlier than
+   * a slot that recruited `club` outright — and that difference is permanent
+   * tenure. It reappeared as 2318 violating pairs of 16512 at a worst deficit of
+   * 0.000032 Training IQ per day: tiny, real, and in the punishing direction,
+   * because the diligent gym is the one that reaches a rung early enough to
+   * recruit it outright while the idle one arrives by promotion.
+   *
+   * With both telescoping, a slot holding tier T has paid `recruitCost(T)` and
+   * carries `recruitSeconds(T)` from the moment it was first committed, by every
+   * route and in any number of steps — `60 + 240 + 1500` is `regional`'s 1800,
+   * and `500 + 1500 + 6000` is its 8000. Path-independence is the property; the
+   * two differences are how it is obtained.
+   *
+   * `@guarantee a-slot-costs-the-same-by-every-route`
+   */
+  readonly addedSeconds: number;
+}
+
+/**
+ * The quote for moving a lifter up to `to`.
+ *
+ * A function of the two tiers and of nothing else, like `recruitmentQuote`.
+ * Throws on a pair that is not a step up, because that is a caller that skipped
+ * `promotionRefusals` rather than a gym that cannot afford something.
+ */
+export function promotionQuote(from: NpcTier, to: NpcTier): PromotionQuote {
+  if (tierRung(to) <= tierRung(from)) {
+    throw new RangeError(`${to} is not above ${from} on the recruitment ladder`);
+  }
+  const difference: number = recruitCost(to) - recruitCost(from);
+  return Object.freeze({
+    from,
+    to,
+    costGymBucks: asGymBucks(difference),
+    reputationThreshold: recruitReputationThreshold(to),
+    addedSeconds: recruitSeconds(to) - recruitSeconds(from),
+  });
+}
+
+/**
+ * Every reason this gym may not move this lifter to this tier, in
+ * `PROMOTION_REFUSALS` order. Empty means it may.
+ */
+export function promotionRefusals(
+  state: EmpireState,
+  lifter: NpcLifter,
+  to: NpcTier,
+): readonly PromotionRefusal[] {
+  if (tierRung(to) <= tierRung(lifter.tier)) {
+    return Object.freeze(['not-a-higher-tier' as PromotionRefusal]);
+  }
+  const quote = promotionQuote(lifter.tier, to);
+  const refusals: PromotionRefusal[] = [];
+  if (state.reputation < quote.reputationThreshold) {
+    refusals.push('reputation-below-threshold');
+  }
+  // The same book the recruitment verdict is taken against, for the same
+  // reason: this is roster money, it buys Training IQ, and `RECRUIT_BOOK` is
+  // the purse GDD §5.4's third-book ruling gave that output.
+  if (state.settledBooks[RECRUIT_BOOK] < quote.costGymBucks) {
+    refusals.push('gym-bucks-below-cost');
+  }
+  return Object.freeze(refusals);
+}
+
+/** Whether this gym may move this lifter to this tier right now. */
+export function mayPromote(state: EmpireState, lifter: NpcLifter, to: NpcTier): boolean {
+  return promotionRefusals(state, lifter, to).length === 0;
+}
+
+/** The outcome of asking to move a lifter up. Refused or accepted; no third arm. */
+export type PromotionDecision =
+  | {
+      readonly kind: 'refused';
+      readonly refusals: readonly PromotionRefusal[];
+    }
+  | {
+      readonly kind: 'accepted';
+      readonly state: EmpireState;
+      readonly quote: PromotionQuote;
+    };
+
+/**
+ * Charge the difference and put the lifter on the higher rung.
+ *
+ * The roster is rebuilt with the same lifter at the same index, carrying its own
+ * id, name and both clock stamps. Nothing else on the state moves, and the whole
+ * `assertEmpireState` battery runs on the result — the same re-validation
+ * `completeRecruitment` does, for the same reason.
+ */
+export function promoteLifter(
+  state: EmpireState,
+  lifterId: string,
+  to: NpcTier,
+): PromotionDecision {
+  const at = state.roster.findIndex((entry) => entry.id === lifterId);
+  const lifter = state.roster[at];
+  if (lifter === undefined) {
+    throw new RangeError(`no lifter on this roster is called ${lifterId}`);
+  }
+  const refusals = promotionRefusals(state, lifter, to);
+  if (refusals.length > 0) {
+    return Object.freeze({ kind: 'refused', refusals });
+  }
+  const quote = promotionQuote(lifter.tier, to);
+  // Widened to bare values for the same reason `completeRecruitment` widens
+  // them: `createNpcLifter` re-brands what it is given and refuses an
+  // already-branded argument. The four are in the constructor's own order.
+  const id: string = lifter.id;
+  const displayName: string = lifter.displayName;
+  // Both stamps move by the timer difference, which is what makes the tenure a
+  // slot carries a function of the tier it holds rather than of the route it
+  // took. See `PromotionQuote.addedSeconds`.
+  const joinedAt: number = lifter.joinedAt + quote.addedSeconds;
+  const settledAt: number = lifter.settledAt + quote.addedSeconds;
+  const promoted: NpcLifter = createNpcLifter(id, to, displayName, joinedAt, settledAt);
+  const remaining: number = state.settledBooks[RECRUIT_BOOK] - quote.costGymBucks;
+  const next: EmpireState = Object.freeze({
+    ...state,
+    roster: Object.freeze(state.roster.map((entry, index) => (index === at ? promoted : entry))),
+    settledBooks: Object.freeze({
+      ...state.settledBooks,
+      [RECRUIT_BOOK]: asGymBucks(remaining),
+    }),
+  });
+  assertEmpireState(next);
+  return Object.freeze({ kind: 'accepted', state: next, quote });
 }
 
 /**

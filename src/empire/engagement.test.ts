@@ -24,16 +24,25 @@
  * domain it gives:
  *
  *   policy                        shipped   single purse (pre-ruling)
- *   rotate-greedy-per-check-in          0        2954
- *   fixed-order-no-rotation             0        2751
- *   cheapest-affordable-first           0        2751
- *   costliest-affordable-first          0        3427
+ *   rotate-greedy-per-check-in          0        3003
+ *   fixed-order-no-rotation             0        2800
+ *   cheapest-affordable-first           0        2800
+ *   costliest-affordable-first          0        3503
  *   save-for-physio-first               0           0
- *   spend-once-per-calendar-day      7245       10122
+ *   spend-once-per-calendar-day      6459        3908
  *
- * all on 24576 pairs and 589824 compared elements. The right-hand column is
- * piece E8's table reproduced number for number by the control, which is what
- * says the control is the old engine rather than a new approximation of it.
+ * all on 24576 pairs and 589824 compared elements.
+ *
+ * The right-hand column moved when §5.3's promotion path landed, and saying so
+ * is the point of writing it down. It read 2954 / 2751 / 2751 / 3427 / 0 /
+ * 10122 — piece E8's own table, reproduced number for number, which is what
+ * said the control was the old engine rather than an approximation of it. A gym
+ * that can move a filled roster slot up spends differently, so this control is
+ * now the pre-third-book FUNDING rule on the post-repair roster rather than
+ * E8's whole engine. It is still a control: same domain, one parameter apart
+ * from the subject, non-zero on five of six policies. It is no longer a
+ * historical reproduction, and `'one-way-door'` is the parameter that
+ * reproduces the roster as it was.
  *
  * ===========================================================================
  * Why a purse per output is what removed it
@@ -57,34 +66,49 @@
  * The one arm that is not zero, and what is actually behind it
  * ===========================================================================
  *
- * `'spend-once-per-calendar-day'` is 7245 of 24576 on the window, 60 at twenty
- * seeded days and 44 at forty. It is a model of a player who banks the day's
+ * `'spend-once-per-calendar-day'` is 6459 of 24576 on the window, 60 at twenty
+ * seeded days and 34 at forty. It is a model of a player who banks the day's
  * takings and spends them at the last check-in THEY TAKE, and the sweep below
  * splits its violations by whether the extra check-in moved that moment:
  *
- *   the extra check-in is later than the day's last:  8064 pairs, 7240 violating
- *   the extra check-in is not:                       16512 pairs,    5 violating
+ *                                                shipped   one-way-door
+ *   the extra check-in is later than the day's
+ *     last, so the day's decision moment moves      6459           7240
+ *       (of 8064 pairs)
+ *   the extra check-in is earlier, so the moment
+ *     does not move                                    0              5
+ *       (of 16512 pairs)
  *
- * So 7240 of 7245 are one mechanism, and it is not §5's: a player who opens the
- * app again in the evening spends their day's money in the evening, and a build
- * started four hours later finishes four hours later. No purse arrangement
- * reaches it, because the money was never the thing that moved — the DECISION
- * MOMENT was. It is a property of that simulated player, and it is reported
- * rather than removed, because removing it means redefining `lastCheckInOfDay`
- * as the day's last SLOT, which is a different model of a player and not a fix
- * to the design.
+ * THE FIVE ON THE RIGHT WERE §5'S OWN AND THEY ARE CLOSED. The diagnosis this
+ * section carried for several waves — and GDD §5.4 with it, and the ruling that
+ * acted on both — said they were the recruit price ladder: cost per unit of
+ * output rises strictly across the tiers, `bestRecruitableTier` takes the
+ * priciest affordable rung, so more money buys less Training IQ per Buck. That
+ * was measured and it is FALSE of all five. In every one of them the diligent
+ * gym takes a `novice` at 500 Bucks per unit and the idle gym takes a `club` at
+ * 1250 — the diligent gym buys the cheaper and more efficient rung, and loses
+ * anyway, because the scarce thing at that decision is the roster SLOT.
  *
- * The remaining 5 are a SECOND mechanism and a real one, so they are named
- * separately. They all come from one baseline, and in each the more-engaged gym
- * banks more money by the same instant — an extra check-in splits a gap the
- * offline cap was truncating — and then buys a HIGHER NPC tier with it.
- * `NPC_RECRUIT_COST_GYM_BUCKS` divided by `NPC_TIER_OUTPUT_MULTIPLIER` rises
- * strictly along `NPC_TIERS` (500, 1250, 3200, 7500, 13846 Gym Bucks per unit
- * of Training IQ), and `bestRecruitableTier` buys the best tier it can afford,
- * so a gym with more money at one decision buys strictly LESS Training IQ per
- * Buck. That is a property of the recruit price table and of the simulated
- * player's choice rule — not of the purses, which is why it survives them — and
- * it is pinned as a unit fact below rather than left inside a sweep count.
+ * What they were: a slot, once filled, was filled forever, and §5.3's ladder
+ * unlocks on reputation, which rises with time. The diligent gym reaches its
+ * last free slot at reputation 48.8 — `club` opens at 50 — and commits it to a
+ * `novice`; the idle gym reaches the same slot six check-ins later at 59.2 and
+ * commits it to a `club`. Being early was the trap. `recruitment.ts`'s
+ * promotion section is the repair and `empireInvariant.ts` §4b is the trace;
+ * the check below drives the deciding moment directly rather than restating it.
+ *
+ * THE 6459 ON THE LEFT ARE THE SIMULATED PLAYER'S DECISION MOMENT, AND THAT IS
+ * MEASURED RATHER THAN ARGUED. `runEngagement`'s `spendsOn` says whose
+ * attendance decides which check-in of each day a day-granularity policy spends
+ * at. Re-run with the extra check-in still taken — still collecting, still
+ * earning reputation, still accruing into every purse — but the day's anchor
+ * held at the baseline's own, all 24576 pairs give 0 violating while 9731 of
+ * them still MOVE. Same engine, same money, same schedule: the only thing
+ * removed is the extra check-in's power to defer the day's purchase, and the
+ * violations go with it. A player who opens the app again in the evening and
+ * spends their day's money then has a build that starts in the evening; no
+ * arrangement of §5's purses or prices reaches that, because neither is what
+ * moved.
  *
  * ===========================================================================
  * What the coarse exhaustive grid now says, and what it used to say
@@ -126,11 +150,13 @@ import {
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   EMPIRE_SPENDING_POLICIES,
+  SHIPPED_ROSTER_UPGRADE,
   SHIPPED_SPENDING_POLICY,
   rosterRatesAt,
   runEmpire,
   type EmpirePolicy,
   type EmpireSpendingPolicy,
+  type RosterUpgradeRule,
   type SocialInputs,
 } from './empireInvariant';
 import {
@@ -310,17 +336,17 @@ export const ENGAGEMENT_SWEEP = Object.freeze({
 const MEASURED = Object.freeze({
   /**
    * The headline. Every calendar of the first two days, on a 12-day horizon.
-   * Zero violating pairs, against a comparator that moved 19778 of 24576 pairs
-   * and paid the more-engaged gym MORE on 205848 day-elements.
+   * Zero violating pairs, against a comparator that moved 21109 of 24576 pairs
+   * and paid the more-engaged gym MORE on 208396 day-elements.
    */
   WINDOWED_SHIPPED: {
     pairs: 24576,
     comparedElements: 589824,
-    movedPairs: 19778,
-    movedElements: 206884,
+    movedPairs: 21109,
+    movedElements: 209432,
     violatingPairs: 0,
     trainingIqLower: 0,
-    trainingIqHigher: 205848,
+    trainingIqHigher: 208396,
     physioLower: 0,
     physioHigher: 1036,
     physioArrivalLater: 0,
@@ -340,16 +366,16 @@ const MEASURED = Object.freeze({
   WINDOWED_SINGLE_PURSE: {
     pairs: 24576,
     comparedElements: 589824,
-    movedPairs: 17912,
-    movedElements: 188660,
-    violatingPairs: 2954,
-    trainingIqLower: 25772,
-    trainingIqHigher: 161852,
+    movedPairs: 18231,
+    movedElements: 187963,
+    violatingPairs: 3003,
+    trainingIqLower: 25725,
+    trainingIqHigher: 162238,
     physioLower: 0,
-    physioHigher: 1036,
+    physioHigher: 0,
     physioArrivalLater: 0,
-    physioArrivalEarlier: 1036,
-    pairsWherePhysioArrived: 24576,
+    physioArrivalEarlier: 0,
+    pairsWherePhysioArrived: 0,
     worstTrainingIqDeficit: 0.4513370000000001,
     worstPhysioDeficit: 0,
     worstArrivalDeficitDays: 0,
@@ -364,11 +390,11 @@ const MEASURED = Object.freeze({
   WINDOWED_ACCELERATED_PURSE: {
     pairs: 24576,
     comparedElements: 589824,
-    movedPairs: 19678,
-    movedElements: 213883,
-    violatingPairs: 3488,
-    trainingIqLower: 33455,
-    trainingIqHigher: 175754,
+    movedPairs: 23410,
+    movedElements: 218190,
+    violatingPairs: 3492,
+    trainingIqLower: 31739,
+    trainingIqHigher: 181777,
     physioLower: 263,
     physioHigher: 4411,
     physioArrivalLater: 263,
@@ -383,11 +409,11 @@ const MEASURED = Object.freeze({
   WINDOWED_LATE: {
     pairs: 2304,
     comparedElements: 55296,
-    movedPairs: 80,
-    movedElements: 80,
+    movedPairs: 718,
+    movedElements: 1443,
     violatingPairs: 0,
     trainingIqLower: 0,
-    trainingIqHigher: 0,
+    trainingIqHigher: 1363,
     physioLower: 0,
     physioHigher: 80,
     physioArrivalLater: 0,
@@ -425,11 +451,11 @@ const MEASURED = Object.freeze({
   WHOLE_DAY: {
     pairs: 24576,
     comparedElements: 589824,
-    movedPairs: 15515,
-    movedElements: 108790,
+    movedPairs: 22619,
+    movedElements: 159522,
     violatingPairs: 0,
     trainingIqLower: 0,
-    trainingIqHigher: 81936,
+    trainingIqHigher: 132668,
     physioLower: 0,
     physioHigher: 26854,
     physioArrivalLater: 0,
@@ -443,11 +469,11 @@ const MEASURED = Object.freeze({
   SEEDED_20: {
     pairs: 644,
     comparedElements: 25760,
-    movedPairs: 77,
-    movedElements: 1269,
+    movedPairs: 187,
+    movedElements: 1398,
     violatingPairs: 0,
     trainingIqLower: 0,
-    trainingIqHigher: 1252,
+    trainingIqHigher: 1381,
     physioLower: 0,
     physioHigher: 17,
     physioArrivalLater: 0,
@@ -461,11 +487,11 @@ const MEASURED = Object.freeze({
   SEEDED_40: {
     pairs: 623,
     comparedElements: 49840,
-    movedPairs: 315,
-    movedElements: 4494,
+    movedPairs: 385,
+    movedElements: 1353,
     violatingPairs: 0,
     trainingIqLower: 0,
-    trainingIqHigher: 4469,
+    trainingIqHigher: 1328,
     physioLower: 0,
     physioHigher: 25,
     physioArrivalLater: 0,
@@ -479,11 +505,11 @@ const MEASURED = Object.freeze({
   SEEDED_60: {
     pairs: 650,
     comparedElements: 78000,
-    movedPairs: 326,
-    movedElements: 10147,
+    movedPairs: 304,
+    movedElements: 857,
     violatingPairs: 0,
     trainingIqLower: 0,
-    trainingIqHigher: 10136,
+    trainingIqHigher: 846,
     physioLower: 0,
     physioHigher: 11,
     physioArrivalLater: 0,
@@ -497,11 +523,11 @@ const MEASURED = Object.freeze({
   SEEDED_100: {
     pairs: 556,
     comparedElements: 111200,
-    movedPairs: 175,
-    movedElements: 5689,
+    movedPairs: 145,
+    movedElements: 566,
     violatingPairs: 0,
     trainingIqLower: 0,
-    trainingIqHigher: 5689,
+    trainingIqHigher: 566,
     physioLower: 0,
     physioHigher: 0,
     physioArrivalLater: 0,
@@ -516,15 +542,15 @@ const MEASURED = Object.freeze({
   SEEDED_20_SINGLE_PURSE: {
     pairs: 644,
     comparedElements: 25760,
-    movedPairs: 102,
-    movedElements: 1628,
+    movedPairs: 176,
+    movedElements: 1709,
     violatingPairs: 4,
-    trainingIqLower: 21,
-    trainingIqHigher: 1588,
+    trainingIqLower: 19,
+    trainingIqHigher: 1670,
     physioLower: 0,
-    physioHigher: 19,
+    physioHigher: 20,
     physioArrivalLater: 0,
-    physioArrivalEarlier: 19,
+    physioArrivalEarlier: 20,
     pairsWherePhysioArrived: 644,
     worstTrainingIqDeficit: 0.0061029999999999696,
     worstPhysioDeficit: 0,
@@ -534,11 +560,11 @@ const MEASURED = Object.freeze({
   SEEDED_20_ACCELERATED_PURSE: {
     pairs: 644,
     comparedElements: 25760,
-    movedPairs: 94,
-    movedElements: 1699,
+    movedPairs: 210,
+    movedElements: 1825,
     violatingPairs: 12,
-    trainingIqLower: 150,
-    trainingIqHigher: 1527,
+    trainingIqLower: 143,
+    trainingIqHigher: 1660,
     physioLower: 2,
     physioHigher: 20,
     physioArrivalLater: 2,
@@ -552,11 +578,11 @@ const MEASURED = Object.freeze({
   SEEDED_20_CHECK_IN_UPKEEP: {
     pairs: 644,
     comparedElements: 25760,
-    movedPairs: 106,
-    movedElements: 1519,
-    violatingPairs: 34,
-    trainingIqLower: 280,
-    trainingIqHigher: 1184,
+    movedPairs: 167,
+    movedElements: 1618,
+    violatingPairs: 46,
+    trainingIqLower: 285,
+    trainingIqHigher: 1278,
     physioLower: 23,
     physioHigher: 32,
     physioArrivalLater: 23,
@@ -570,11 +596,11 @@ const MEASURED = Object.freeze({
   DIAG_SHIPPED: {
     pairs: 5120,
     comparedElements: 122880,
-    movedPairs: 3925,
-    movedElements: 42722,
+    movedPairs: 4216,
+    movedElements: 43213,
     violatingPairs: 0,
     trainingIqLower: 0,
-    trainingIqHigher: 42562,
+    trainingIqHigher: 43053,
     physioLower: 0,
     physioHigher: 160,
     physioArrivalLater: 0,
@@ -589,16 +615,16 @@ const MEASURED = Object.freeze({
   DIAG_SINGLE_PURSE: {
     pairs: 5120,
     comparedElements: 122880,
-    movedPairs: 3543,
-    movedElements: 38886,
-    violatingPairs: 566,
-    trainingIqLower: 5273,
-    trainingIqHigher: 33453,
+    movedPairs: 3557,
+    movedElements: 38740,
+    violatingPairs: 574,
+    trainingIqLower: 5324,
+    trainingIqHigher: 33416,
     physioLower: 0,
-    physioHigher: 160,
+    physioHigher: 0,
     physioArrivalLater: 0,
-    physioArrivalEarlier: 160,
-    pairsWherePhysioArrived: 5120,
+    physioArrivalEarlier: 0,
+    pairsWherePhysioArrived: 0,
     worstTrainingIqDeficit: 0.44200400000000006,
     worstPhysioDeficit: 0,
     worstArrivalDeficitDays: 0,
@@ -612,11 +638,11 @@ const MEASURED = Object.freeze({
   DIAG_ONE_PER_FUNDING_FAMILY: {
     pairs: 5120,
     comparedElements: 122880,
-    movedPairs: 3766,
-    movedElements: 40203,
+    movedPairs: 4034,
+    movedElements: 40568,
     violatingPairs: 0,
     trainingIqLower: 0,
-    trainingIqHigher: 40203,
+    trainingIqHigher: 40568,
     physioLower: 0,
     physioHigher: 0,
     physioArrivalLater: 0,
@@ -630,11 +656,11 @@ const MEASURED = Object.freeze({
   DIAG_NO_ROSTER_SLOT_AXES: {
     pairs: 5120,
     comparedElements: 122880,
-    movedPairs: 2417,
-    movedElements: 25038,
+    movedPairs: 3436,
+    movedElements: 26153,
     violatingPairs: 0,
     trainingIqLower: 0,
-    trainingIqHigher: 24878,
+    trainingIqHigher: 25993,
     physioLower: 0,
     physioHigher: 160,
     physioArrivalLater: 0,
@@ -674,9 +700,9 @@ const MEASURED = Object.freeze({
     comparedElements: 55296,
     movedPairs: 1416,
     movedElements: 10112,
-    violatingPairs: 128,
-    trainingIqLower: 603,
-    trainingIqHigher: 9429,
+    violatingPairs: 133,
+    trainingIqLower: 635,
+    trainingIqHigher: 9397,
     physioLower: 0,
     physioHigher: 80,
     physioArrivalLater: 0,
@@ -691,10 +717,10 @@ const MEASURED = Object.freeze({
   TRAINED_DAY_UPKEEP: {
     pairs: 45,
     comparedElements: 1800,
-    movedPairs: 6,
-    movedElements: 43,
-    violatingPairs: 6,
-    trainingIqLower: 38,
+    movedPairs: 13,
+    movedElements: 58,
+    violatingPairs: 13,
+    trainingIqLower: 53,
     trainingIqHigher: 0,
     physioLower: 5,
     physioHigher: 0,
@@ -1085,8 +1111,8 @@ describe('EXHAUSTIVE: every calendar of a window of check-in slots', () => {
     expect(tally.physioArrivalLater).toBe(0);
     expect(tally).toEqual(MEASURED.WINDOWED_SHIPPED);
     // The comparator is live on this domain, which is what stops the zero being
-    // a zero about a sweep that compared nothing: 19778 of 24576 pairs moved,
-    // and the more-engaged gym was paid MORE on 205848 day-elements.
+    // a zero about a sweep that compared nothing: 21109 of 24576 pairs moved,
+    // and the more-engaged gym was paid MORE on 208396 day-elements.
     expect(tally.movedPairs).toBeGreaterThan(0);
     expect(tally.trainingIqHigher).toBeGreaterThan(0);
   });
@@ -1103,8 +1129,8 @@ describe('EXHAUSTIVE: every calendar of a window of check-in slots', () => {
       ENGAGEMENT_SWEEP.WINDOW_SLOTS,
       'single-purse',
     );
-    expect(tally.violatingPairs).toBe(2954);
-    expect(tally.trainingIqLower).toBe(25772);
+    expect(tally.violatingPairs).toBe(3003);
+    expect(tally.trainingIqLower).toBe(25725);
     expect(tally).toEqual(MEASURED.WINDOWED_SINGLE_PURSE);
     // The two arms ran the same 24576 pairs and the same 589824 elements, so
     // the difference between them is the funding rule and nothing else.
@@ -1237,7 +1263,7 @@ describe('the term the third-book ruling removed, decomposed on one domain', () 
     // from. Every arm below is zero on the shipped engine, so without this line
     // the decomposition would be three zeros with nothing to decompose.
     expect(windowedSweep(days, 0, slots, 'single-purse')).toEqual(MEASURED.DIAG_SINGLE_PURSE);
-    expect(MEASURED.DIAG_SINGLE_PURSE.violatingPairs).toBe(566);
+    expect(MEASURED.DIAG_SINGLE_PURSE.violatingPairs).toBe(574);
     expect(MEASURED.DIAG_SHIPPED.violatingPairs).toBe(0);
     expect(
       windowedSweep(days, 0, slots, 'shipped', ENGAGEMENT_SWEEP.ONE_PER_FUNDING_FAMILY),
@@ -1274,11 +1300,11 @@ const MEASURED_POLICY = Object.freeze({
     'fixed-order-no-rotation': {
       pairs: 24576,
       comparedElements: 589824,
-      movedPairs: 19361,
-      movedElements: 201661,
+      movedPairs: 20895,
+      movedElements: 204554,
       violatingPairs: 0,
       trainingIqLower: 0,
-      trainingIqHigher: 200625,
+      trainingIqHigher: 203518,
       physioLower: 0,
       physioHigher: 1036,
       physioArrivalLater: 0,
@@ -1292,11 +1318,11 @@ const MEASURED_POLICY = Object.freeze({
     'costliest-affordable-first': {
       pairs: 24576,
       comparedElements: 589824,
-      movedPairs: 19993,
-      movedElements: 210029,
+      movedPairs: 21342,
+      movedElements: 212471,
       violatingPairs: 0,
       trainingIqLower: 0,
-      trainingIqHigher: 208993,
+      trainingIqHigher: 211435,
       physioLower: 0,
       physioHigher: 1036,
       physioArrivalLater: 0,
@@ -1310,11 +1336,11 @@ const MEASURED_POLICY = Object.freeze({
     'save-for-physio-first': {
       pairs: 24576,
       comparedElements: 589824,
-      movedPairs: 19361,
-      movedElements: 201661,
+      movedPairs: 20895,
+      movedElements: 204554,
       violatingPairs: 0,
       trainingIqLower: 0,
-      trainingIqHigher: 200625,
+      trainingIqHigher: 203518,
       physioLower: 0,
       physioHigher: 1036,
       physioArrivalLater: 0,
@@ -1329,16 +1355,16 @@ const MEASURED_POLICY = Object.freeze({
       pairs: 24576,
       comparedElements: 589824,
       movedPairs: 10403,
-      movedElements: 99837,
-      violatingPairs: 7245,
-      trainingIqLower: 64189,
-      trainingIqHigher: 35136,
+      movedElements: 92792,
+      violatingPairs: 6459,
+      trainingIqLower: 62878,
+      trainingIqHigher: 29402,
       physioLower: 0,
       physioHigher: 512,
       physioArrivalLater: 0,
       physioArrivalEarlier: 512,
       pairsWherePhysioArrived: 24576,
-      worstTrainingIqDeficit: 0.13604700000000003,
+      worstTrainingIqDeficit: 0.009975999999999985,
       worstPhysioDeficit: 0,
       worstArrivalDeficitDays: 0,
       lengthMismatches: 0,
@@ -1358,16 +1384,16 @@ const MEASURED_POLICY = Object.freeze({
     'fixed-order-no-rotation': {
       pairs: 24576,
       comparedElements: 589824,
-      movedPairs: 17580,
-      movedElements: 184963,
-      violatingPairs: 2751,
-      trainingIqLower: 22580,
-      trainingIqHigher: 161347,
+      movedPairs: 17880,
+      movedElements: 184243,
+      violatingPairs: 2800,
+      trainingIqLower: 22578,
+      trainingIqHigher: 161665,
       physioLower: 0,
-      physioHigher: 1036,
+      physioHigher: 0,
       physioArrivalLater: 0,
-      physioArrivalEarlier: 1036,
-      pairsWherePhysioArrived: 24576,
+      physioArrivalEarlier: 0,
+      pairsWherePhysioArrived: 0,
       worstTrainingIqDeficit: 0.4513370000000001,
       worstPhysioDeficit: 0,
       worstArrivalDeficitDays: 0,
@@ -1376,16 +1402,16 @@ const MEASURED_POLICY = Object.freeze({
     'costliest-affordable-first': {
       pairs: 24576,
       comparedElements: 589824,
-      movedPairs: 17479,
-      movedElements: 182777,
-      violatingPairs: 3427,
-      trainingIqLower: 28880,
-      trainingIqHigher: 152861,
+      movedPairs: 17843,
+      movedElements: 182137,
+      violatingPairs: 3503,
+      trainingIqLower: 28409,
+      trainingIqHigher: 153728,
       physioLower: 0,
-      physioHigher: 1036,
+      physioHigher: 0,
       physioArrivalLater: 0,
-      physioArrivalEarlier: 1036,
-      pairsWherePhysioArrived: 24576,
+      physioArrivalEarlier: 0,
+      pairsWherePhysioArrived: 0,
       worstTrainingIqDeficit: 0.43626699999999996,
       worstPhysioDeficit: 0,
       worstArrivalDeficitDays: 0,
@@ -1412,52 +1438,61 @@ const MEASURED_POLICY = Object.freeze({
     'spend-once-per-calendar-day': {
       pairs: 24576,
       comparedElements: 589824,
-      movedPairs: 13027,
-      movedElements: 132845,
-      violatingPairs: 10122,
-      trainingIqLower: 43482,
-      trainingIqHigher: 79507,
-      physioLower: 5504,
-      physioHigher: 4352,
-      physioArrivalLater: 5484,
-      physioArrivalEarlier: 3883,
-      pairsWherePhysioArrived: 24576,
-      worstTrainingIqDeficit: 0.6504590000000001,
-      worstPhysioDeficit: 1,
-      worstArrivalDeficitDays: 2,
+      movedPairs: 12682,
+      movedElements: 115008,
+      violatingPairs: 3908,
+      trainingIqLower: 39258,
+      trainingIqHigher: 75750,
+      physioLower: 0,
+      physioHigher: 0,
+      physioArrivalLater: 0,
+      physioArrivalEarlier: 0,
+      pairsWherePhysioArrived: 0,
+      worstTrainingIqDeficit: 0.807674,
+      worstPhysioDeficit: 0,
+      worstArrivalDeficitDays: 0,
       lengthMismatches: 0,
     },
   }),
 
-  /** The pre-ruling violating-pair counts alone, as the table the report quotes. */
+  /**
+   * The single-purse violating-pair counts alone, as the table the report quotes.
+   *
+   * These are the LIVE control's numbers, re-taken after §5.3's promotion path.
+   * Piece E8's own were 2954 / 2751 / 2751 / 3427 / 0 / 10122, and this table
+   * reproduced them exactly for several waves — which is what said the control
+   * was the old engine rather than an approximation of it. It is not that any
+   * more, and `engagement.test.ts`'s header says so rather than leaving the
+   * resemblance to be assumed.
+   */
   SINGLE_PURSE_VIOLATING_PAIRS: Object.freeze({
-    'rotate-greedy-per-check-in': 2954,
-    'fixed-order-no-rotation': 2751,
-    'cheapest-affordable-first': 2751,
-    'costliest-affordable-first': 3427,
+    'rotate-greedy-per-check-in': 3003,
+    'fixed-order-no-rotation': 2800,
+    'cheapest-affordable-first': 2800,
+    'costliest-affordable-first': 3503,
     'save-for-physio-first': 0,
-    'spend-once-per-calendar-day': 10122,
+    'spend-once-per-calendar-day': 3908,
   }),
 
   /**
    * The same six on a SECOND domain. Every arm is zero except the day-granularity
-   * one, which is 60 here and 44 at forty days.
+   * one, which is 60 here and 34 at forty days.
    */
   SEEDED_20: Object.freeze({
-    'rotate-greedy-per-check-in': { pairs: 644, movedPairs: 77, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
-    'fixed-order-no-rotation': { pairs: 644, movedPairs: 73, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
-    'cheapest-affordable-first': { pairs: 644, movedPairs: 73, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
-    'costliest-affordable-first': { pairs: 644, movedPairs: 80, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
-    'save-for-physio-first': { pairs: 644, movedPairs: 73, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
-    'spend-once-per-calendar-day': { pairs: 644, movedPairs: 69, violatingPairs: 60, trainingIqLower: 1010, physioArrivalLater: 6, worstTrainingIqDeficit: 0.00815699999999997 },
+    'rotate-greedy-per-check-in': { pairs: 644, movedPairs: 187, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
+    'fixed-order-no-rotation': { pairs: 644, movedPairs: 187, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
+    'cheapest-affordable-first': { pairs: 644, movedPairs: 187, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
+    'costliest-affordable-first': { pairs: 644, movedPairs: 189, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
+    'save-for-physio-first': { pairs: 644, movedPairs: 187, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
+    'spend-once-per-calendar-day': { pairs: 644, movedPairs: 78, violatingPairs: 60, trainingIqLower: 990, physioArrivalLater: 6, worstTrainingIqDeficit: 0.00815699999999997 },
   }),
   SEEDED_40: Object.freeze({
-    'rotate-greedy-per-check-in': { pairs: 623, movedPairs: 315, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
-    'fixed-order-no-rotation': { pairs: 623, movedPairs: 315, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
-    'cheapest-affordable-first': { pairs: 623, movedPairs: 315, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
-    'costliest-affordable-first': { pairs: 623, movedPairs: 315, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
-    'save-for-physio-first': { pairs: 623, movedPairs: 315, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
-    'spend-once-per-calendar-day': { pairs: 623, movedPairs: 250, violatingPairs: 44, trainingIqLower: 964, physioArrivalLater: 1, worstTrainingIqDeficit: 0.01576500000000003 },
+    'rotate-greedy-per-check-in': { pairs: 623, movedPairs: 385, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
+    'fixed-order-no-rotation': { pairs: 623, movedPairs: 385, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
+    'cheapest-affordable-first': { pairs: 623, movedPairs: 385, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
+    'costliest-affordable-first': { pairs: 623, movedPairs: 385, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
+    'save-for-physio-first': { pairs: 623, movedPairs: 385, violatingPairs: 0, trainingIqLower: 0, physioArrivalLater: 0, worstTrainingIqDeficit: 0 },
+    'spend-once-per-calendar-day': { pairs: 623, movedPairs: 243, violatingPairs: 34, trainingIqLower: 788, physioArrivalLater: 1, worstTrainingIqDeficit: 0.009975999999999985 },
   }),
 
   /**
@@ -1489,6 +1524,43 @@ const MEASURED_POLICY = Object.freeze({
 } as const);
 
 /** The headline windowed sweep under one policy and one wiring. Same domain, same comparator. */
+/** One run under a named roster-upgrade rule, everything else the sweep's own. */
+function upgradeRun(
+  days: number,
+  history: EngagementHistory,
+  cadence: number,
+  upgrades: RosterUpgradeRule,
+): EngagementRun {
+  return runEngagement(
+    days,
+    policyFor(cadence),
+    history,
+    socialFor(history),
+    shippedEngagementWiring(),
+    'spend-once-per-calendar-day',
+    upgrades,
+  );
+}
+
+/** One run whose day-granularity spending anchor is another history's. */
+function anchoredRun(
+  days: number,
+  history: EngagementHistory,
+  cadence: number,
+  spendsOn: EngagementHistory,
+): EngagementRun {
+  return runEngagement(
+    days,
+    policyFor(cadence),
+    history,
+    socialFor(history),
+    shippedEngagementWiring(),
+    'spend-once-per-calendar-day',
+    SHIPPED_ROSTER_UPGRADE,
+    spendsOn,
+  );
+}
+
 function policyWindowed(
   spending: EmpireSpendingPolicy,
   key: EngagementWiringKey = 'shipped',
@@ -1704,7 +1776,7 @@ describe('the spending policy is the second independent variable, and it is swep
     );
     expect(
       MEASURED_POLICY.WINDOWED_SINGLE_PURSE['fixed-order-no-rotation'].violatingPairs,
-    ).toBe(2751);
+    ).toBe(2800);
   });
 
   it('measures the ordering reversed: costliest affordable first', () => {
@@ -1756,8 +1828,8 @@ describe('the spending policy is the second independent variable, and it is swep
       ENGAGEMENT_SWEEP.AXIS_ORDER,
       'save-for-physio-first',
     );
-    expect(lateSingle.violatingPairs).toBe(128);
-    expect(lateSingle.trainingIqLower).toBe(603);
+    expect(lateSingle.violatingPairs).toBe(133);
+    expect(lateSingle.trainingIqLower).toBe(635);
     expect(lateSingle).toEqual(MEASURED.SAVER_LATE_SINGLE_PURSE);
     // The physio rung really does land on day 4 under this policy, which is
     // what puts the headline window inside the hold and the late window after
@@ -1793,10 +1865,10 @@ describe('the spending policy is the second independent variable, and it is swep
   });
 
   it('measures the per-check-in granularity removed, and splits the arm that is not zero', () => {
-    // THE ONE ARM THAT IS NOT ZERO. 7245 of 24576, and the split below says
-    // 7240 of them are one mechanism that no purse arrangement reaches.
+    // THE ONE ARM THAT IS NOT ZERO. 6459 of 24576, and the split below says
+    // every one of them is the decision moment rather than anything §5 owns.
     const tally = policyWindowed('spend-once-per-calendar-day');
-    expect(tally.violatingPairs).toBe(7245);
+    expect(tally.violatingPairs).toBe(6459);
     expect(tally).toEqual(MEASURED_POLICY.WINDOWED['spend-once-per-calendar-day']);
     // Better than the pre-ruling engine on the same domain, and better on the
     // physio half in particular: 5484 later arrivals become none.
@@ -1804,12 +1876,29 @@ describe('the spending policy is the second independent variable, and it is swep
       MEASURED_POLICY.WINDOWED_SINGLE_PURSE['spend-once-per-calendar-day'],
     );
     expect(tally.physioArrivalLater).toBe(0);
+    // AND THE SINGLE-PURSE CONTROL'S PHYSIO HALF IS NOW AN EMPTY DOMAIN, which
+    // is written down rather than quietly re-pinned. Before §5.3's promotion
+    // path this control put 5484 physio arrivals LATER, and that was the number
+    // the shipped physio zero was a zero against on this arm. With promotion in
+    // the loop the pooled wall-clock balance is drawn on by promotions too, so
+    // under this control the physio rung is never reached inside twelve days at
+    // all — 0 of 24576 pairs saw one arrive, on either side. A zero taken
+    // against that would be a zero about a hook that never fired.
+    //
+    // The physio control that is still live is `'accelerated-purse'`, pinned at
+    // 263 later arrivals over the same 24576 pairs with the domain full, and
+    // the subject's own physio domain is full at 24576. So the physio zero
+    // still has something to be a zero against; it is a different control than
+    // it was, and that is the honest statement rather than a re-pinned 0.
     expect(
-      MEASURED_POLICY.WINDOWED_SINGLE_PURSE['spend-once-per-calendar-day'].physioArrivalLater,
-    ).toBe(5484);
+      MEASURED_POLICY.WINDOWED_SINGLE_PURSE['spend-once-per-calendar-day'].pairsWherePhysioArrived,
+    ).toBe(0);
+    expect(MEASURED.WINDOWED_ACCELERATED_PURSE.physioArrivalLater).toBe(263);
+    expect(MEASURED.WINDOWED_ACCELERATED_PURSE.pairsWherePhysioArrived).toBe(24576);
+    expect(tally.pairsWherePhysioArrived).toBe(24576);
   });
 
-  it('splits that arm by whether the extra check-in moved the day it spends at', () => {
+  it('splits that arm by whether the extra check-in moved the day it spends at [a-filled-slot-is-not-a-one-way-door] [a-slot-costs-the-same-by-every-route]', () => {
     // The diagnosis, on the same twelve slots the headline enumerates, so the
     // two halves add up to the count above rather than describing another
     // domain. A pair is on the left when the extra check-in is later in its day
@@ -1823,6 +1912,7 @@ describe('the spending policy is the second independent variable, and it is swep
     let movesMomentViolating = 0;
     let keepsMoment = 0;
     let keepsMomentViolating = 0;
+    let promotedBaselines = 0;
     for (let mask = 0; mask < 1 << window; mask += 1) {
       const attended = (slot: number): boolean =>
         slot >= window ? true : (mask & (1 << slot)) !== 0;
@@ -1835,6 +1925,7 @@ describe('the spending policy is the second independent variable, and it is swep
         cadence,
         'spend-once-per-calendar-day',
       );
+      if (baseline.census.promotions > 0) promotedBaselines += 1;
       for (let bit = 0; bit < window; bit += 1) {
         if ((mask & (1 << bit)) !== 0) continue;
         const day = Math.floor(bit / cadence);
@@ -1862,12 +1953,22 @@ describe('the spending policy is the second independent variable, and it is swep
         }
       }
     }
+    // THE HEADLINE NUMBER FIRST, so a mutant that brings §5.3's one-way door
+    // back fails with "expected 5 to be 0" rather than with two elided objects
+    // — CLAUDE.md's "a check that bites but fails uselessly is half a check".
+    // Measured: without it, this exact mutant reddened on the elided form.
+    expect(keepsMomentViolating).toBe(0);
     expect({ movesMoment, movesMomentViolating, keepsMoment, keepsMomentViolating }).toEqual({
       movesMoment: 8064,
-      movesMomentViolating: 7240,
+      movesMomentViolating: 6459,
       keepsMoment: 16512,
-      keepsMomentViolating: 5,
+      keepsMomentViolating: 0,
     });
+    // NON-VACUITY FOR THE ZERO ON THE RIGHT. §5.3's promotion path is what took
+    // that arm from 5 to 0, so a zero taken over baselines that never promoted
+    // anything would be a zero about a path nothing used. Every one of the 4096
+    // baselines promotes, counted rather than bounded.
+    expect(promotedBaselines).toBe(1 << window);
     // The two halves are the headline count, so neither is a different domain.
     expect(movesMoment + keepsMoment).toBe(
       MEASURED_POLICY.WINDOWED['spend-once-per-calendar-day'].pairs,
@@ -1877,32 +1978,108 @@ describe('the spending policy is the second independent variable, and it is swep
     );
   });
 
-  it('names the second mechanism behind the five that remain: the recruit price curve', () => {
-    // The five keeps-moment violators are not the spending moment, so they are
-    // a mechanism of their own and it is a real one. In each, an extra check-in
-    // splits a gap the offline cap was truncating, so the more-engaged gym has
-    // MORE money at the same instant — and `bestRecruitableTier` spends it on
-    // the best tier it can afford, which is the worst tier per Buck.
+  it('closes the five that survived the purses, against the roster as it was', () => {
+    // THE CONTROL THE ZERO ABOVE IS A ZERO AGAINST. The check above measured
+    // the shipped roster on the keeps-moment arm and found 0; this one measures
+    // `'one-way-door'` — a filled roster slot filled forever, the engine before
+    // §5.3's promotion path — on the same 16512 pairs, and finds the five.
     //
-    // Gym Bucks per unit of Training IQ rises strictly along `NPC_TIERS`, so a
-    // gym with more money at one decision buys strictly less Training IQ with
-    // it. That is a property of the price table and of the simulated player's
-    // choice rule; no purse arrangement touches it, which is why it survives
-    // the third-book ruling. Stated as a unit fact so it cannot be mistaken for
-    // a sweep artefact, and so a re-priced ladder reddens here.
-    const perIq = EMPIRE_TUNING.NPC_TIERS.map(
-      (tier) =>
-        EMPIRE_TUNING.NPC_RECRUIT_COST_GYM_BUCKS[tier] /
-        EMPIRE_TUNING.NPC_TIER_OUTPUT_MULTIPLIER[tier],
-    );
-    let rises = 0;
-    for (let at = 1; at < perIq.length; at += 1) {
-      expect(perIq[at] as number).toBeGreaterThan(perIq[at - 1] as number);
-      rises += 1;
+    // The two are separate checks rather than two arms of one because the whole
+    // enumeration twice does not fit `vitest.config.ts`'s per-test budget. They
+    // enumerate the same masks over the same window and both pin `keepsMoment`
+    // at 16512, so "the same domain" is a measured equality and not a claim.
+    const days = ENGAGEMENT_SWEEP.WINDOW_HORIZON_DAYS;
+    const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
+    const window = ENGAGEMENT_SWEEP.SPEND_ONCE_WINDOW_SLOTS;
+    const slots = days * cadence;
+    let keepsMoment = 0;
+    let oneWayDoorViolating = 0;
+    let maskCount = 0;
+    let controlPromotions = 0;
+    for (let mask = 0; mask < 1 << window; mask += 1) {
+      const attended = (slot: number): boolean =>
+        slot >= window ? true : (mask & (1 << slot)) !== 0;
+      const history = historyFrom(slots, attended, BASE_TRAINED_DAYS);
+      const doorBase = upgradeRun(days, history, cadence, 'one-way-door');
+      controlPromotions += doorBase.census.promotions;
+      maskCount += 1;
+      for (let bit = 0; bit < window; bit += 1) {
+        if ((mask & (1 << bit)) !== 0) continue;
+        const day = Math.floor(bit / cadence);
+        let lastAttended = -1;
+        for (let tick = 0; tick < cadence; tick += 1) {
+          if (attended(day * cadence + tick)) lastAttended = tick;
+        }
+        if (bit - day * cadence > lastAttended) continue;
+        keepsMoment += 1;
+        const more = moreEngagedBy(history, bit);
+        if (compareEngagement(doorBase, upgradeRun(days, more, cadence, 'one-way-door')).violating) {
+          oneWayDoorViolating += 1;
+        }
+      }
     }
-    expect(rises).toBe(EMPIRE_TUNING.NPC_TIERS.length - 1);
-    expect(rises).toBe(4);
-    expect(perIq.map((cost) => Math.round(cost))).toEqual([500, 1250, 3200, 7500, 13846]);
+    // The domain, so a five cannot be a five about an enumeration that emptied,
+    // and so this arm is the arm the check above found zero on.
+    expect(maskCount).toBe(1 << window);
+    expect(keepsMoment).toBe(16512);
+    // The control really is the roster as it was: it promotes nothing at all.
+    expect(controlPromotions).toBe(0);
+    // And it carries the five.
+    expect(oneWayDoorViolating).toBe(5);
+  });
+
+  it('holds the decision moment and the other arm goes to zero too [the-day-granularity-residue-is-the-decision-moment]', () => {
+    // THE PROOF THAT THE REST IS THE SIMULATED PLAYER'S DECISION MOMENT rather
+    // than anything §5 prices, funds or times, and it is a counterfactual on
+    // the decision rule alone.
+    //
+    // The extra check-in is still taken in both runs: it collects, it accrues
+    // into every purse, it earns `REPUTATION_PER_CHECK_IN`. What `spendsOn`
+    // removes is its power to move the moment the day's banked money is spent
+    // at — the anchor is the baseline's own. Everything §5 owns is untouched.
+    //
+    // Restricted to the pairs where the moment DOES move, because those are the
+    // only ones the anchor changes anything for, and the pair count is pinned.
+    const days = ENGAGEMENT_SWEEP.WINDOW_HORIZON_DAYS;
+    const cadence = ENGAGEMENT_SWEEP.CHECK_INS_PER_DAY;
+    const window = ENGAGEMENT_SWEEP.SPEND_ONCE_WINDOW_SLOTS;
+    const slots = days * cadence;
+    let movesMoment = 0;
+    let freeAnchorViolating = 0;
+    let heldAnchorViolating = 0;
+    let heldAnchorMoved = 0;
+    for (let mask = 0; mask < 1 << window; mask += 1) {
+      const attended = (slot: number): boolean =>
+        slot >= window ? true : (mask & (1 << slot)) !== 0;
+      const history = historyFrom(slots, attended, BASE_TRAINED_DAYS);
+      const baseline = anchoredRun(days, history, cadence, history);
+      for (let bit = 0; bit < window; bit += 1) {
+        if ((mask & (1 << bit)) !== 0) continue;
+        const day = Math.floor(bit / cadence);
+        let lastAttended = -1;
+        for (let tick = 0; tick < cadence; tick += 1) {
+          if (attended(day * cadence + tick)) lastAttended = tick;
+        }
+        if (bit - day * cadence <= lastAttended) continue;
+        movesMoment += 1;
+        const more = moreEngagedBy(history, bit);
+        if (compareEngagement(baseline, anchoredRun(days, more, cadence, more)).violating) {
+          freeAnchorViolating += 1;
+        }
+        const held = compareEngagement(baseline, anchoredRun(days, more, cadence, history));
+        if (held.violating) heldAnchorViolating += 1;
+        if (held.movedElements > 0) heldAnchorMoved += 1;
+      }
+    }
+    expect(movesMoment).toBe(8064);
+    // With the anchor free — the shipped reading — this arm is the residue.
+    expect(freeAnchorViolating).toBe(6459);
+    // With the anchor held, and nothing else changed, it is zero.
+    expect(heldAnchorViolating).toBe(0);
+    // NON-VACUITY, and it is the load-bearing half: the held comparison is not
+    // comparing two identical runs. The extra check-in still moves the ledger
+    // on this many pairs — it just cannot defer the purchase any more.
+    expect(heldAnchorMoved).toBe(7263);
   });
 
   // The two readings below are each split in half, and the split is only about
@@ -1914,6 +2091,37 @@ describe('the spending policy is the second independent variable, and it is swep
   const SECOND_HALF = EMPIRE_SPENDING_POLICIES.slice(3);
 
   it('splits the two long readings without dropping a policy between the halves', () => {
+    // `SINGLE_PURSE_VIOLATING_PAIRS` is the header's right-hand column, and it
+    // was DECLARED AND READ BY NOTHING for as long as it has existed — a table
+    // a report quotes with no check behind it, which is the shape CLAUDE.md
+    // opens with. It is derived from the whole tallies here, in both
+    // directions, so the column and the measurement cannot come apart.
+    // Only four of the six carry a whole tally — `WINDOWED_SINGLE_PURSE` holds
+    // the ones a check drives — so the derivation is over those four and the
+    // count of them is pinned, rather than over a loop that would silently
+    // walk two keys that are not there.
+    let columns = 0;
+    for (const [spending, tally] of Object.entries(MEASURED_POLICY.WINDOWED_SINGLE_PURSE)) {
+      expect(
+        MEASURED_POLICY.SINGLE_PURSE_VIOLATING_PAIRS[spending as EmpireSpendingPolicy],
+        spending,
+      ).toBe(tally.violatingPairs);
+      columns += 1;
+    }
+    expect(columns).toBe(4);
+    expect(Object.keys(MEASURED_POLICY.SINGLE_PURSE_VIOLATING_PAIRS).sort()).toEqual(
+      [...EMPIRE_SPENDING_POLICIES].sort(),
+    );
+    // The two the tally table does not carry are measured by the sweep beside
+    // it — `windowedSweep(..., 'single-purse')` under each — so they are pinned
+    // here directly rather than left as the only two rows nothing checks.
+    expect(MEASURED_POLICY.SINGLE_PURSE_VIOLATING_PAIRS['rotate-greedy-per-check-in']).toBe(
+      MEASURED.WINDOWED_SINGLE_PURSE.violatingPairs,
+    );
+    expect(MEASURED_POLICY.SINGLE_PURSE_VIOLATING_PAIRS['cheapest-affordable-first']).toBe(
+      MEASURED_POLICY.SINGLE_PURSE_VIOLATING_PAIRS['fixed-order-no-rotation'],
+    );
+
     expect([...FIRST_HALF, ...SECOND_HALF]).toEqual([...EMPIRE_SPENDING_POLICIES]);
     expect(FIRST_HALF.length + SECOND_HALF.length).toBe(6);
     expect(FIRST_HALF.length).toBeGreaterThan(0);
@@ -2030,7 +2238,8 @@ describe('an extra trained day moves nothing the empire pays', () => {
     // `UPKEEP_GYM_BUCKS` it did not — see `TRAINED_DAY_UPKEEP_GYM_BUCKS` for
     // the measurement that made this a dial of its own rather than a shared one.
     expect(control.movedElements).toBeGreaterThan(0);
-    expect(control.violatingPairs).toBe(6);
+    expect(control.violatingPairs).toBe(13);
     expect(control.physioArrivalLater).toBe(5);
   });
 });
+
