@@ -289,7 +289,7 @@ describe('an interrupted verification leaves its marker standing', () => {
       expect(marker.interruption).toBe('BUDGET_EXCEEDED');
 
       const scan = watchdog(['--markers'], dir);
-      expect(scan.status).toBe(1);
+      expect(scan.status, `a budget breach must be a finding, and this scan said:\n${scan.stdout}`).toBe(1);
       expect(scan.stdout).toContain('BUDGET_EXCEEDED');
     },
     MARKER_TEST_TIMING.SLOW_CASE_MS,
@@ -311,7 +311,8 @@ describe('an interrupted verification leaves its marker standing', () => {
     const marker = theOneMarker(dir);
     expect(marker.status, 'a signalled command is not a verdict').toBe('INCOMPLETE');
     expect(marker.interruption).toBe('SIGNAL');
-    expect(watchdog(['--markers'], dir).status).toBe(1);
+    const signalScan = watchdog(['--markers'], dir);
+    expect(signalScan.status, `a signalled run must be a finding:\n${signalScan.stdout}`).toBe(1);
   });
 
   it('leaves it standing when the command never started at all', () => {
@@ -326,7 +327,8 @@ describe('an interrupted verification leaves its marker standing', () => {
     const marker = theOneMarker(dir);
     expect(marker.status).toBe('INCOMPLETE');
     expect(marker.interruption).toBe('COULD_NOT_START');
-    expect(watchdog(['--markers'], dir).status).toBe(1);
+    const noStartScan = watchdog(['--markers'], dir);
+    expect(noStartScan.status, `a run that never started must be a finding:\n${noStartScan.stdout}`).toBe(1);
   });
 });
 
@@ -457,7 +459,7 @@ describe('live versus stale', () => {
     plantIncomplete(dir, { ...runner, bootId: '00000000-0000-4000-8000-000000000000' });
 
     const scan = watchdog(['--markers'], dir);
-    expect(scan.status).toBe(1);
+    expect(scan.status, `a marker from another boot must be a finding, and this scan said:\n${scan.stdout}`).toBe(1);
     expect(scan.stdout).toContain('INTERRUPTED_MACHINE_RESTARTED');
     expect(scan.stdout).toContain('different boot id');
 
@@ -481,14 +483,15 @@ describe('live versus stale', () => {
     plantIncomplete(dir, { ...runner, bootEpochSeconds: (runner.bootEpochSeconds ?? 0) - tolerance - 1 });
 
     const scan = watchdog(['--markers'], dir);
-    expect(scan.status).toBe(1);
+    expect(scan.status, `a boot instant ${tolerance + 1}s away must be a finding, and this scan said:\n${scan.stdout}`).toBe(1);
     expect(scan.stdout).toContain('INTERRUPTED_MACHINE_RESTARTED');
 
     // And one second inside the tolerance is not a reboot — the arm that stops
     // an NTP correction reading as an interruption.
     const inside = tempDir('verify-marker-epoch-inside-');
     plantIncomplete(inside, { ...runner, bootEpochSeconds: (runner.bootEpochSeconds ?? 0) - tolerance + 1 });
-    expect(watchdog(['--markers'], inside).status).toBe(0);
+    const insideScan = watchdog(['--markers'], inside);
+    expect(insideScan.status, `a clock correction inside the tolerance is not a reboot:\n${insideScan.stdout}`).toBe(0);
   });
 
   it('calls a marker from another machine unresolved rather than passing it', () => {
@@ -506,7 +509,7 @@ describe('live versus stale', () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, `torn${MARKER_EXTENSION}`), '{"schema": 1, "status": "INCO');
     const scan = watchdog(['--markers'], dir);
-    expect(scan.status).toBe(1);
+    expect(scan.status, `a torn record must be a finding, and this scan said:\n${scan.stdout}`).toBe(1);
     expect(scan.stdout).toContain('UNREADABLE');
   });
 
@@ -533,7 +536,8 @@ describe('live versus stale', () => {
     expect(cleared.stdout).toContain('cleared');
     const left = markerFiles(dir).map((f) => path.basename(f));
     expect(left).toEqual([`planted${MARKER_EXTENSION}`]);
-    expect(watchdog(['--markers'], dir).status).toBe(0);
+    const afterClear = watchdog(['--markers'], dir);
+    expect(afterClear.status, `only the live marker should be left:\n${afterClear.stdout}`).toBe(0);
   });
 });
 
