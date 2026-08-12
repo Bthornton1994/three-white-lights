@@ -695,6 +695,64 @@ fix had walked straight past. **"Fix the reach and the predicate" is not a
 checklist you complete once** — every widening of one invites a new gap in the
 other, and the tell each time was that a *different* check went red.
 
+### THE COVERED-DAY GUARD IS BYPASSED BY NOT SPELLING THE WORDS — REPORTED, NOT FIXED
+
+`src/game/streakEntitlement.ts` and its test are Session A's, so this is a
+report. It is the more serious of the two reports in this section, because that
+guard exists for a GDD §12.3 refusal condition.
+
+**The reproduction, run rather than argued.** Appended to
+`src/empire/production.ts`, with `EMPIRE_FORBIDDEN_OUTPUTS` added to the
+import list that file already has:
+
+```ts
+export function idleMilestoneGrant(checkIns: number): { readonly kind: string; readonly days: number } {
+  return Object.freeze({
+    kind: EMPIRE_FORBIDDEN_OUTPUTS[0] as string,
+    days: Math.floor(checkIns / EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS),
+  });
+}
+```
+
+That grants a covered day, scaled by check-ins — which is exactly GDD §4.4's
+laundered path, empire income being check-in-keyed. **`tsc --noEmit` exit 0 and
+460 of 460 tests pass, `streakEntitlement.test.ts` included.**
+
+**It is isolated, which took three attempts and is the part worth reading.** A
+first version spelled the name by concatenation and used a bare `10`: caught, but
+by the **magic-number audit and the string census**, neither of which is about
+covered days. A second added a duplicate import: caught by `src/empire/`'s own
+import fence. Only the third — name read out of `EMPIRE_FORBIDDEN_OUTPUTS`
+itself, divisor a named tuning constant, no new import edge — leaves every
+accidental catcher silent. **A different check noticing by accident is not that
+check working**, and this file has now recorded that four times.
+
+**Why it gets through.** `NAMES_A_COVERED_DAY_OR_A_PURCHASE` is
+`/purchas|covered.?day|window-entitlement/i` over declaration source text. Any
+indirection defeats it, and the cleanest source for the string is the forbidden
+list the guard is written about.
+
+**This is the guard's THIRD axis.** Its own history in this section records it
+being wrong on **reach** (three hardcoded files, widened to the whole tree) and
+then wrong on **predicate** (`purchase` only, widened to three alternatives).
+Both fixes widened a source scan. This is the axis that says a source scan is the
+wrong instrument: the words are chosen by the author, so a scan for words is a
+scan for authors who cooperate.
+
+**Scope, stated so it is not read as worse than it is.** `src/empire/` is wired
+to no wallet, so nothing consumes such a grant today and no shipped behaviour is
+defective. **The defect is in the guard**, whose stated purpose is that a new way
+to hand out a covered day *forces a visible edit where a reviewer sees it*. It
+does not.
+
+**What would actually close it, offered rather than done.** `src/career/` spent
+four rounds learning that a source scan loses to the next unenumerated spelling
+and that the fix is behavioural — drive the subjects and read the outcome. The
+analogue here is to call every exported function in the directories under scan
+and assert none of them ever produces a value equal to a forbidden name. Session
+B can build that half for `src/empire/` without a crossing, and will if this is
+still open next round; the half that lives in `src/game/` is Session A's call.
+
 ### THE SUITE HAS A FLAKY WALL, IT IS IN SESSION A'S TERRITORY, AND SESSION B IS
 ### NOT TOUCHING IT
 
