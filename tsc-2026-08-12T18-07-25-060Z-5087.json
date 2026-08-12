@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "tsc-2026-08-12T18-07-25-060Z-5087",
+  "label": "tsc",
+  "command": [
+    "npx",
+    "tsc",
+    "--noEmit"
+  ],
+  "budgetSeconds": 180,
+  "startedAtIso": "2026-08-12T18:07:25.060Z",
+  "startedAtMs": 1786558045060,
+  "cwd": "/home/user/wt-marker-sync",
+  "commit": "197aacd0eb662bc71d780fd25857d9e6539c0277",
+  "branch": "claude/marker-survives-tree-death",
+  "dirty": 3,
+  "dirtyPaths": [
+    "tools/verifyMarker.mjs",
+    "tools/verifyMarker.test.ts",
+    "tools/watchdog.mjs"
+  ],
+  "runner": {
+    "pid": 5087,
+    "startTick": "272161",
+    "cmdline": "node tools/watchdog.mjs --budget 180 --label tsc -- npx tsc --noEmit",
+    "bootId": "af4e9eff-33fd-4a0f-9985-4643c4f0258b",
+    "bootEpochSeconds": 1786555323,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-12T18:07:25.545Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
