@@ -1245,7 +1245,26 @@ function deepScan(root: unknown, label: string): ScanResult {
           // invisible. Nothing in this file covers that.
           stacks += 1;
           const stackDescriptor = Object.getOwnPropertyDescriptor(node, key);
-          const raw = stackDescriptor?.get === undefined ? stackDescriptor?.value : undefined;
+          // BOTH SHAPES, AND THE SECOND ONE IS WHY THIS COMMENT EXISTS. The
+          // first version of this read only `descriptor.value`, which is the
+          // shape `Object.defineProperty(err, 'stack', { value })` produces.
+          // On this engine `new Error()` installs `stack` as an ACCESSOR, so
+          // the plainer `err.stack = <name>` goes through the setter and leaves
+          // no `value` at all — and it walked past a catcher written one branch
+          // above it, measured at 489 of 489 passing. Invoking the getter is
+          // what the walker already does for every other accessor.
+          let raw: unknown;
+          if (stackDescriptor !== undefined) {
+            if (stackDescriptor.get !== undefined) {
+              try {
+                raw = stackDescriptor.get.call(node);
+              } catch {
+                raw = undefined;
+              }
+            } else {
+              raw = stackDescriptor.value;
+            }
+          }
           if (typeof raw === 'string') {
             const stripped = normalise(raw.replace(STACK_FRAME_LINE, ' '));
             for (const name of BANNED_VOCABULARY) {
@@ -3542,6 +3561,15 @@ describe('instrument B bites — the tripwire the zeros are zero against', () =>
     const plantedScan = deepScan(planted, 'planted-error');
     expect(plantedScan.stacks).toBe(1);
     expect(plantedScan.stackFindings.length).toBe(1);
+
+    // The plainer route, and the one a real author would reach for first. On
+    // this engine `new Error()` installs `stack` as an ACCESSOR, so this leaves
+    // no `value` on the descriptor at all — the first version of the catcher
+    // read `descriptor.value` only and this walked straight past it, 489 of 489
+    // green. Both shapes, because one branch above the other is not coverage.
+    const assigned = new Error(SENTINELS.NPC_ID);
+    assigned.stack = core.EMPIRE_FORBIDDEN_OUTPUTS[0];
+    expect(deepScan(assigned, 'assigned-error').stackFindings.length).toBe(1);
     expect(plantedScan.stackFindings[0]).toContain(core.EMPIRE_FORBIDDEN_OUTPUTS[0]);
     // And the value is still absent from `strings`, so the census stays a
     // census of the machine-independent surface.
@@ -3618,7 +3646,7 @@ describe('the injected axes were varied, and the variation was measured', () => 
 // ---------------------------------------------------------------------------
 
 /**
- * Nine routes, planted into shipped modules one at a time, each run against
+ * Eleven routes, planted into shipped modules one at a time, each run against
  * `tsc --noEmit`, against this file, and against the three accidental catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
  * audit, its tree-wide string census, and its import fence.
@@ -3629,8 +3657,16 @@ describe('the injected axes were varied, and the variation was measured', () => 
  * `singleQuoted.size`; the first attempt at M4 named its hidden property
  * `'settlement'` and did the same; the first attempts at M2 and M5 REPLACED the
  * `'Placeholder'` literal rather than keeping it, which moved the census the
- * other way. Nine mutants took fifteen attempts. Every row below is the
+ * other way. Eleven mutants took eighteen attempts. Every row below is the
  * attempt that reached isolation.
+ *
+ * THE CENSUS NUMBERS QUOTED IN M1–M9 ARE FROM THE RUN THAT PLANTED THEM AND NO
+ * LONGER MATCH THIS FILE'S PINS. E12 moved every count in `DRIVE_CENSUS` when
+ * it widened the domains, so 'expected 227 to be 226' and 'expected 53748 to be
+ * 53688 nodes' are records of what reddened at the time rather than of what
+ * would redden today. They are left verbatim because a re-run is the only
+ * honest way to update them and none was taken; what is claimed is that each
+ * route was caught, not that these exact numbers are current.
  *
  * `caughtBy` is what reddened in THIS file. `alsoRed` is every other test that
  * went red, named rather than omitted — a co-catcher is not this guard working,
@@ -3794,6 +3830,33 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'empireCore.test.ts > finds every exported producer of a brand, and says how much it looked at',
     ]),
   }),
+  Object.freeze({
+    id: 'M10',
+    shape: '20 — a forbidden name on a branch the numeric domain never reached, and then on an ARM the fixture never produced',
+    where: "social.ts, `recordFriendVisit`, gymId replaced by the ban list's first member on day RIVAL_COMPARISON_PERIOD_DAYS",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument B / produces no banned name: expected 9 to be 7',
+      'instrument B / CONTAINS no banned name: + "recordFriendVisitrecordFriendVisit@7/sentinel-friend-gym-id-1/false#return.visits.3.gymId=covered-day"',
+      'instrument B / CONTAINS no banned name: + "recordFriendVisitrecordFriendVisit@7/sentinel-friend-gym-id-1/true#return.visits.3.gymId=covered-day"',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'M11',
+    shape: '21 — a forbidden name written onto Error.stack in a shipped refusal path, which the walker skipped as a key AND a value',
+    where: 'engagement.ts, `historyFrom`, `refusal.stack = <the ban list\'s first member>` before the throw',
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument B / walked a domain that is not empty: + "historyFromhistoryFrom@0/1#return.stack=covered-day"',
+      'instrument B / walked a domain that is not empty: + "historyFromhistoryFrom@0/2#return.stack=covered-day"',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([]),
+  }),
 ]);
 
 /**
@@ -3808,8 +3871,8 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
 const M8_WAS_SEMANTICALLY_CAUGHT = false;
 
 describe('the routes that were planted, and what each of them cost', () => {
-  it('records nine routes, every one isolated from the three accidental catchers', () => {
-    expect(PLANTED_ROUTES.length).toBe(9);
+  it('records eleven routes, every one isolated from the three accidental catchers', () => {
+    expect(PLANTED_ROUTES.length).toBe(11);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // A mutant that only trips the magic-number audit, the string census or
@@ -3821,10 +3884,14 @@ describe('the routes that were planted, and what each of them cost', () => {
       expect(route.shape.length, route.id).toBeGreaterThan(20);
       attempts += route.attempts;
     }
-    // Fifteen attempts for nine routes. The five extra are the accidents that
-    // had to be stripped: an empty-string fallback, a new property name, and
-    // two mutants that REPLACED a shipped literal instead of keeping it.
-    expect(attempts).toBe(15);
+    // Eighteen attempts for eleven routes: the fifteen the first nine took,
+    // plus one for M10 and two for M11. The extras are accidents that had to be
+    // stripped — an empty-string fallback, a new property name, two mutants
+    // that REPLACED a shipped literal instead of keeping it, and M11's first
+    // form, which used `Object.defineProperty(err, 'stack', …)` and moved
+    // `empireCore.test.ts`'s string census by one on the new `'stack'` literal,
+    // 160 against 159. Assigning through `err.stack` spells no new literal.
+    expect(attempts).toBe(18);
     expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(4);
   });
 
