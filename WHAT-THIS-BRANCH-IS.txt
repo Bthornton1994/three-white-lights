@@ -1,0 +1,24 @@
+verify/vm/probe-1 — LITTER, created 2026-08-12, and it cannot be deleted.
+
+WHAT IT IS.  While building the origin-sync half of tools/verifyMarker.mjs I had
+to find out which remote ref namespaces this environment's token can write. The
+answer was measured rather than assumed, and creating this branch was part of
+taking the measurement:
+
+    refs/verify/<host>/<id>   -> HTTP 403
+    refs/notes/verify-probe   -> HTTP 403
+    refs/tags/verify-probe-1  -> HTTP 403
+    refs/heads/verify/vm/...  -> accepted   <- this branch
+    any delete, any namespace -> HTTP 403
+
+WHY IT IS STILL HERE.  The last line. `git push origin --delete` returns 403 for
+this token in every namespace, so a ref created here is permanent. It is
+re-pointed at this commit so that whoever finds it can tell what it is instead of
+finding a blob reading {"probe":true} with no context.
+
+WHAT IT IS NOT.  It is not the verification-record namespace. That is
+`refs/heads/verify-markers/<host>`, it is written by `tools/watchdog.mjs
+--budget`, and it is read by `tools/watchdog.mjs --markers`. Nothing reads this
+branch.
+
+Safe to delete if anyone ever has a token that can.
