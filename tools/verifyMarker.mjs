@@ -1261,7 +1261,28 @@ export function formatRemoteSection(remote) {
     out.push('    where nothing has ever been wrapped looks like, so this checked NOTHING.');
     return out;
   }
-  for (const row of remote.rows) formatRow(out, row);
+  // COMPLETED RECORDS ARE COUNTED AND NOT LISTED, and this is the one place the
+  // remote section prints differently from the local one.
+  //
+  // The local directory is pruned to `COMPLETED_KEPT` per tree and is read by
+  // whoever just ran the command. The host ref accumulates up to
+  // `REMOTE_COMPLETED_KEPT` records from three sessions, and `--branches`
+  // prints this section at every wave start — so listing all of them is forty
+  // verdicts and two hundred lines wrapped around the one row that matters. A
+  // section nobody reads catches nothing, which is the failure this repository
+  // has already recorded for three instruments.
+  //
+  // A FINDING IS NEVER COLLAPSED, and neither is any state that is not a plain
+  // verdict: `REMOTE_ANOTHER_HOST` and `REMOTE_SUPERSEDED_BY_LOCAL` are both
+  // shown, because each says something a reader cannot get from a count.
+  // `verifyMarker.test.ts`'s retention check pins both halves — the collapsed
+  // count and the finding that is still listed beside it.
+  const listed = remote.rows.filter((row) => row.state !== MARKER_STATE.COMPLETE);
+  const completed = remote.scanned - listed.length;
+  if (completed > 0) {
+    out.push(`     ${completed} COMPLETE — a verdict exists for each, so none is a finding and none is listed.`);
+  }
+  for (const row of listed) formatRow(out, row);
   if (remote.findings.length > 0) {
     out.push(`\n  !! ${remote.findings.length} verification(s) on ${remote.remote} started and never wrote a verdict.`);
     out.push('     THE RESULT OF EACH IS UNKNOWN. It is not a pass — and these are the ones');

@@ -1234,6 +1234,23 @@ describe('the remote record survives retention, and the ref mapping has one spel
     // Counts, not bounds: the retained verdicts, the run just made, and the
     // incomplete one that is never cut.
     expect(names.length).toBe(REMOTE_COMPLETED_KEPT + 2);
+
+    // AND THE REPORT COLLAPSES THE VERDICTS AND NEVER THE FINDING. This is the
+    // only check whose domain is big enough to tell the two apart: with forty-odd
+    // records on one ref, a section that listed all of them is the wall of text
+    // that trains a reader to skip it, and one that collapsed the finding along
+    // with them would be worse than silent.
+    const scan = watchdog(['--markers'], sandbox.markers, sandbox.repo, sandbox.tool, sandbox.remote);
+    expect(scan.stdout, scan.stdout).toContain(`${REMOTE_COMPLETED_KEPT + 1} COMPLETE —`);
+    // The planted runner carries a foreign boot id, so this is the arm the
+    // classifier reaches; naming it rather than "some finding" is what makes a
+    // change of classification visible instead of silently still-green.
+    expect(scan.stdout, 'the interrupted record must still be listed in full').toContain(
+      'INTERRUPTED_MACHINE_RESTARTED',
+    );
+    expect(scan.stdout, 'naming the record and the command it was verifying').toContain('ancient-remote-incomplete');
+    expect(scan.stdout).toContain('npx vitest run');
+    expect(scan.status, `and it must still decide the exit code:\n${scan.stdout}`).toBe(1);
   }, MARKER_TEST_TIMING.SLOW_CASE_MS);
 
   it('writes and reads ONE local cache ref, because the mapping is derived and not respelled', () => {
