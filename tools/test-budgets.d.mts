@@ -16,7 +16,7 @@ export interface BudgetRow {
 }
 
 export interface BudgetFinding {
-  readonly kind: 'UNDECLARED' | 'THIN' | 'UNMATCHED' | 'EMPTY';
+  readonly kind: 'STALE' | 'UNDECLARED' | 'UNMATCHED' | 'EMPTY';
   readonly row?: BudgetRow;
   readonly reason?: string;
 }
@@ -38,4 +38,4 @@ export function grade(report: VitestJsonReport): {
   readonly findings: readonly BudgetFinding[];
   readonly declarationsSeen: number;
 };
-export const REPORT_FRACTION: number;
+export const STALE_RATIO: number;

@@ -26,7 +26,7 @@ import {
   scaleFromShare,
   unscaledBudgetFrom,
 } from './testBudget.mjs';
-import { declarationsIn, grade } from './test-budgets.mjs';
+import { STALE_RATIO, declarationsIn, grade } from './test-budgets.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const read = (relative: string): string => readFileSync(path.join(REPO_ROOT, relative), 'utf8');
@@ -221,11 +221,11 @@ describe('the grader that re-takes the measurements', () => {
     expect(declarations[2]?.title.test('something else')).toBe(false);
   });
 
-  it('reports a slow undeclared test, a thin declared one, and an empty report', () => {
-    // A fixture report rather than a real one, so the three findings are
-    // produced by the grader's own arithmetic. Red if any of the three
-    // branches stops firing — which is what a "no findings" default would do.
-    const fixture = {
+  it('reports a stale basis, a slow undeclared test, an unmatched one and an empty report', () => {
+    // A fixture report rather than a real one, so the findings are produced by
+    // the grader's own arithmetic. Red if any of the branches stops firing —
+    // which is what a "no findings" default would do.
+    const stale = grade({
       testResults: [
         {
           name: path.join(REPO_ROOT, 'src/game/streak.test.ts'),
@@ -235,9 +235,8 @@ describe('the grader that re-takes the measurements', () => {
           ],
         },
       ],
-    };
-    const thin = grade(fixture);
-    expect(thin.findings.map((finding) => finding.kind)).toEqual(['THIN']);
+    });
+    expect(stale.findings.map((finding) => finding.kind)).toEqual(['STALE']);
 
     const undeclared = grade({
       testResults: [
@@ -269,6 +268,42 @@ describe('the grader that re-takes the measurements', () => {
     // EMPTY rides along because this one-row fixture declares no budget at
     // all, which is the non-vacuity guard reporting itself rather than noise.
     expect(noBudget.findings.map((finding) => finding.kind)).toEqual(['UNDECLARED', 'EMPTY']);
+
+    // THE CASE THE REMOVED `THIN` CHECK COULD NOT SEE, which is the whole
+    // reason STALE exists. `lifterSprite`'s declared basis is 8918 ms, so the
+    // budget is 40000 ms; a run measuring 20000 ms sits at HALF the budget and
+    // would not have been reported, while being 2.24x the basis the budget is
+    // derived from. Red if the comparison moves back to the budget, and red if
+    // STALE_RATIO is raised past 2.24.
+    const floored = grade({
+      testResults: [
+        {
+          name: path.join(REPO_ROOT, 'src/art/lifterSprite.test.ts'),
+          assertionResults: [
+            { title: 'never lets the upper arm out past the fist, even at the cartoon radius', status: 'passed', duration: 20_000 },
+          ],
+        },
+      ],
+    });
+    expect(floored.findings.map((finding) => finding.kind)).toEqual(['STALE']);
+    expect(floored.rows[0]?.budgetMs).toBe(40_000);
+    expect((floored.rows[0]?.used ?? 0) < 0.51).toBe(true);
+
+    // ...and the same row just inside the ratio is not a finding, so the ratio
+    // is deciding rather than the title. 8918 x 1.5 = 13377.
+    expect(
+      grade({
+        testResults: [
+          {
+            name: path.join(REPO_ROOT, 'src/art/lifterSprite.test.ts'),
+            assertionResults: [
+              { title: 'never lets the upper arm out past the fist, even at the cartoon radius', status: 'passed', duration: 13_000 },
+            ],
+          },
+        ],
+      }).findings.map((finding) => finding.kind),
+    ).toEqual([]);
+    expect(STALE_RATIO).toBe(1.5);
     // ...and the same test just under the threshold is not a finding, so the
     // threshold is doing the deciding rather than the title.
     expect(

@@ -183,6 +183,16 @@
  * The largest test in the tree, `engagement`'s rotation-phase sweep, went
  * 35698 -> 90510 ms across those three runs, which is the 2.5x this is for.
  *
+ * FOUR IS CHOSEN, NOT TUNED, and the idle numbers are the reason to say so
+ * plainly rather than let a later reader infer otherwise. On a quiet box the
+ * worst budget usage in the whole suite is 14-22% depending on the run, so
+ * three quarters of the margin is never touched there. It is sized for the
+ * loaded case and for the 2.33x a neighbour inside the run can add, not for
+ * the idle one, and nobody has tuned it against a distribution — one number
+ * was picked to cover the worst compound observation with room. If a
+ * playtester or a later builder wants it smaller, the evidence to beat is the
+ * loaded column above, not the idle one.
+ *
  * The wall-time cost of all this is nothing: 430s idle against 440s before it.
  * The other repair that was considered — serialising the suite so durations
  * stop depending on neighbours — costs the difference between the wall clock
