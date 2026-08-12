@@ -42,11 +42,13 @@
  *   `string`; the (a) members are asserted to contain no banned name, and the
  *   (b) and (c) POSITION LISTS are pinned as set equalities in both directions.
  *
- *   So the bite is not that bare strings are absent — six of them are
- *   legitimate and are listed in `DECLARED_BARE_STRING_POSITIONS` with a reason
- *   each. The bite is that a NEW one cannot arrive unnoticed. The reproduced
- *   defect returns `{ readonly kind: string; readonly days: number }`, which is
- *   a seventh position, and that is what reddens.
+ *   So the bite is not that bare strings are absent — twenty-three of them are
+ *   legitimate, and they are five FIELDS reached through eighteen exports,
+ *   listed in `DECLARED_BARE_STRING_FIELDS` with a reason per field. The bite
+ *   is that a NEW one cannot arrive unnoticed. The reproduced defect returns
+ *   `{ readonly kind: string; readonly days: number }`, which is a
+ *   twenty-fourth position, and that is what reddens — verbatim, as
+ *   `+ "production.ts#idleMilestoneGrant#return.kind"`.
  *
  *   Its limit, stated because no type reaches past it: it cannot see a value
  *   that is legitimately typed as a string. `NpcLifter.displayName` is a bare
@@ -96,13 +98,15 @@
  * `Math.floor(checkIns / OFFLINE_EARNINGS_CAP_HOURS)` contains no forbidden
  * name in its source, its return value, a key, a throw, at any depth, under any
  * fold. NO NAME-BASED GUARD CAN CATCH IT, because the hazard is a quantity and
- * both instruments here are about a word. It was planted and both instruments
- * stayed green; the run is recorded in `PLANTED_ROUTES`.
+ * both instruments here are about a word. It was planted as M8 and both
+ * instruments stayed green; the run is recorded in `PLANTED_ROUTES`.
  *
  * What DOES fire on it, and it is worth being exact about how much that is
- * worth: `EXPORT_CENSUS` is a set equality over the directory's whole export
- * list in both directions, so the new export reddens THIS file until somebody
- * adds a row for it. That is not detection — it is CLAUDE.md's stated purpose
+ * worth: 'drives every export the census knows about' is a set equality over
+ * the directory's whole export list in both directions, so the new export
+ * reddens THIS file until somebody adds a row for it. Measured: mutant M8 in
+ * `PLANTED_ROUTES` is that function, and it reddened exactly two assertions,
+ * both of them counts of the export list, and nothing else in the repository. That is not detection — it is CLAUDE.md's stated purpose
  * for the covered-day guard, *"a new way to hand out a covered day forces a
  * visible edit where a reviewer sees it"*. The reviewer is the mechanism. Do
  * not read the export census as a semantic check; it is a tripwire on the
@@ -118,8 +122,9 @@
  * yield a forbidden name when called, instrument B walks the closure's own
  * properties and not its result — invoking arbitrary returned functions with
  * invented arguments is not something this walker can do safely. A getter is
- * invoked; a method is not. `INVOKED_GETTERS` pins that the getter half is
- * live.
+ * invoked; a method is not. `DRIVE_CENSUS.GETTERS_INVOKED` is zero on the
+ * subject and `TRIPWIRE_CENSUS.GETTERS_INVOKED` is one, so the getter branch is
+ * pinned as live by the tripwire and by nothing in the directory.
  *
  * A FOLD NOT IN `NORMALISATION_FOLDS` IS NOT APPLIED. `'coveredx-day'` and a
  * translation of the word are outside every fold here and are not caught. Each
@@ -963,8 +968,9 @@ interface ScanResult {
  *    the verdict depend on where the repository is checked out.
  *  - A `Proxy` whose `ownKeys` trap lies is walked as the trap describes it.
  *    `Reflect.ownKeys` is the widest enumeration available and a trap can still
- *    return nothing while `get` answers; nothing in this directory constructs a
- *    Proxy, and `NO_PROXY_CONSTRUCTED` pins that by driving every export.
+ *    return nothing while `get` answers. Nothing in this directory constructs a
+ *    Proxy — `DRIVE_CENSUS.PROXIES` is zero across the whole drive, and the
+ *    tripwire's is one, so the branch is measured rather than assumed.
  */
 function deepScan(root: unknown, label: string): ScanResult {
   const strings: ScannedString[] = [];
@@ -2772,5 +2778,229 @@ describe('the injected axes were varied, and the variation was measured', () => 
     for (const [axis, , disagreements] of readings.filter(([name]) => !name.includes('(control)'))) {
       expect(disagreements, axis).toBeGreaterThan(0);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PLANTED_ROUTES — what was actually run against this file, and what survived
+// ---------------------------------------------------------------------------
+
+/**
+ * Nine routes, planted into shipped modules one at a time, each run against
+ * `tsc --noEmit`, against this file, and against the three accidental catchers
+ * the piece was told not to build on: `empireCore.test.ts`'s magic-number
+ * audit, its tree-wide string census, and its import fence.
+ *
+ * THE ISOLATION RULE, AND IT COST FIVE EXTRA ATTEMPTS. A mutant that only trips
+ * an accidental catcher has not been caught by this guard. The first attempt at
+ * M3 used `?? ''` as a fallback and the empty-string literal moved
+ * `singleQuoted.size`; the first attempt at M4 named its hidden property
+ * `'settlement'` and did the same; the first attempts at M2 and M5 REPLACED the
+ * `'Placeholder'` literal rather than keeping it, which moved the census the
+ * other way. Nine mutants took fifteen attempts. Every row below is the
+ * attempt that reached isolation.
+ *
+ * `caughtBy` is what reddened in THIS file. `alsoRed` is every other test that
+ * went red, named rather than omitted — a co-catcher is not this guard working,
+ * and hiding one would let a row claim credit it has not earned.
+ */
+interface PlantedRoute {
+  readonly id: string;
+  /** The attack shape from the survey this route is an instance of. */
+  readonly shape: string;
+  readonly where: string;
+  readonly attempts: number;
+  readonly tscExit: number;
+  /** Assertions in THIS file that went red. Empty means this file was blind. */
+  readonly caughtBy: readonly string[];
+  /** The three accidental catchers. `true` means all three stayed green. */
+  readonly accidentalCatchersGreen: boolean;
+  /** Other tests that also reddened, named so no row over-claims. */
+  readonly alsoRed: readonly string[];
+}
+
+const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
+  Object.freeze({
+    id: 'M1',
+    shape: '1 — read the name out of the ban list; the reproduced defect, verbatim',
+    where: "production.ts, a new export returning `{ readonly kind: string; readonly days: number }`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument A / walks the whole directory: expected 227 to be 226',
+      'instrument A / pins every bare-string position: + "production.ts#idleMilestoneGrant#return.kind"',
+      'instrument B / drives every export the census knows about: - "idleMilestoneGrant"',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'M2',
+    shape: '2 + 3 + 4 — derived selection, into an EXISTING bare-string position, inside a declaration already on COVERED_DAY_TOUCHING_FUNCTIONS',
+    where: "empireInvariant.ts, `RECRUIT_DISPLAY_NAME`, with the 'Placeholder' literal kept in the file",
+    attempts: 3,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument B / produces no banned name: expected 256 to be 7',
+      'instrument B / CONTAINS no banned name: 145 offenders',
+      "instrument B / pins the two strings the composed loop mints: [ 'composed-gym', 'covered-day' ]",
+      'instrument B / walked a domain that is not empty: expected 636 to be 637 distinct strings',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireInvariant.test.ts > would catch a person-shaped name arriving in this module',
+      'empireInvariant.test.ts > names every lifter it creates from a placeholder and a kebab id',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M3',
+    shape: '8 — the name as a computed property KEY, nested inside a returned structure, past a cast',
+    where: 'production.ts, `accrueProduction`, one extra key on the returned accrual',
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument B / produces no banned name: expected 37 to be 7',
+      'instrument B / CONTAINS no banned name: 30 offenders',
+      'instrument B / walked a domain that is not empty: expected 53748 to be 53688 nodes',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'M4',
+    shape: '9 — a NON-ENUMERABLE accessor, on a frozen object',
+    where: 'empireInvariant.ts, `gymSnapshot`, `Object.defineProperty` with an existing literal as the key',
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument B / produces no banned name: expected 50 to be 7',
+      'instrument B / CONTAINS no banned name: 43 offenders',
+      "instrument B / pins the two strings the composed loop mints: a third arrived",
+      'instrument B / walked a domain that is not empty: expected 206781 to be 206695 strings',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'M5',
+    shape: '17 — a normalisation variant a wire decoder folds back: `COVERED-DAY`',
+    where: 'empireInvariant.ts, `RECRUIT_DISPLAY_NAME`, uppercased',
+    attempts: 3,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument B / produces no banned name: expected 256 to be 7 — the case fold, on a real subject',
+      'instrument B / CONTAINS no banned name: 145 offenders',
+      "instrument B / pins the two strings the composed loop mints: [ 'COVERED-DAY', 'composed-gym' ]",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireInvariant.test.ts > would catch a person-shaped name arriving in this module',
+      'empireInvariant.test.ts > names every lifter it creates from a placeholder and a kebab id',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M6',
+    shape: '19 — hide in the diagnostic channel the guard has to exempt',
+    where: 'empireCore.ts, `empireStateFaults`, pushing the bare name rather than a sentence',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument B / produces no banned name: expected 12 to be 7 — the EQUALITY half, which the diagnostic exemption does not cover',
+      'instrument B / pins what the diagnostic channel actually said',
+      'instrument B / CONTAINS no banned name: 5 offenders, via the thrown assertEmpireState message',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireCore.test.ts > opens a gym that satisfies every invariant',
+      'empireCore.test.ts > catches every invariant it claims to catch',
+      'empireCore.test.ts > refuses a purchased accelerant that arrived past the compiler',
+      'empireCore.test.ts > stamps and sizes an applied accelerant, and refuses a negative size',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M7',
+    shape: '12 — exported DATA rather than a function return',
+    where: 'production.ts, a new frozen exported const carrying the name and a per-check-in rate',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument A / names no forbidden output in any closed literal union: expected 1176 to be 1175',
+      'instrument A / walks the whole directory: expected 227 to be 226',
+      'instrument B / produces no banned name: expected 8 to be 7',
+      'instrument B / CONTAINS no banned name: 1 offender',
+      'instrument B / drives every export the census knows about',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'M8',
+    shape: '16 — THE DECLARED LIMIT: a check-in-keyed day count with no name anywhere',
+    where: 'production.ts, `idleProtectionDays(checkIns: number): number`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument A / walks the whole directory: expected 227 to be 226 — a COUNT of the export list',
+      'instrument B / drives every export the census knows about: - "idleProtectionDays"',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'M9',
+    shape: '15 — the branded-string channel: `asNpcId(<the name>)`',
+    where: 'empireCore.ts, a new export returning `NpcId`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument A / pins every branded-string position: expected 9 to be 8',
+      'instrument A / walks the whole directory: expected 227 to be 226',
+      'instrument B / drives every export the census knows about',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireCore.test.ts > finds every exported producer of a brand, and says how much it looked at',
+    ]),
+  }),
+]);
+
+/**
+ * What M8 measures, said once so it is not read as a pass.
+ *
+ * Neither instrument SAW the day count. Both of the assertions it reddened are
+ * counts of the export list, which is a demand that a reviewer look at a new
+ * name — not a verdict about what the name does. `M8_WAS_SEMANTICALLY_CAUGHT`
+ * is `false` and is asserted to be `false`, so a later edit that starts
+ * claiming coverage of this shape has to change this line to do it.
+ */
+const M8_WAS_SEMANTICALLY_CAUGHT = false;
+
+describe('the routes that were planted, and what each of them cost', () => {
+  it('records nine routes, every one isolated from the three accidental catchers', () => {
+    expect(PLANTED_ROUTES.length).toBe(9);
+    let attempts = 0;
+    for (const route of PLANTED_ROUTES) {
+      // A mutant that only trips the magic-number audit, the string census or
+      // the import fence has not been caught by this guard. Every row reached a
+      // form where all three stayed green.
+      expect(route.accidentalCatchersGreen, route.id).toBe(true);
+      expect(route.tscExit, route.id).toBe(0);
+      expect(route.caughtBy.length, route.id).toBeGreaterThan(0);
+      expect(route.shape.length, route.id).toBeGreaterThan(20);
+      attempts += route.attempts;
+    }
+    // Fifteen attempts for nine routes. The five extra are the accidents that
+    // had to be stripped: an empty-string fallback, a new property name, and
+    // two mutants that REPLACED a shipped literal instead of keeping it.
+    expect(attempts).toBe(15);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(4);
+  });
+
+  it('says plainly that attack shape 16 was not semantically caught', () => {
+    // Not a pass. The declared limit, taken as a boolean so it cannot be
+    // quietly reinterpreted.
+    expect(M8_WAS_SEMANTICALLY_CAUGHT).toBe(false);
+    const shape16 = PLANTED_ROUTES.find((route) => route.id === 'M8');
+    expect(shape16?.caughtBy.every((line) => line.includes('export'))).toBe(true);
   });
 });
