@@ -1652,20 +1652,47 @@ const STEP_COUNT = EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS * EMPIRE_SWEEP_CHE
  * swept at zero strings and its exemption from the containment check would be
  * an exemption from nothing.
  */
-const FAULTED_RUN: invariant.EmpireRun = Object.freeze({
-  ...invariant.runEmpire(1, policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY), planAt(null, 0), socialInputsAt()),
-  ledger: Object.freeze([]),
-});
+/*
+ * BUILT LAZILY, AND THE REASON IS A MEASURED FAILURE OF THIS FILE RATHER THAN A
+ * STYLE PREFERENCE.
+ *
+ * Both of these run the whole engine. While they were module-level `const`s, a
+ * planted mutant that made `runEmpire` throw took the file down at IMPORT time
+ * — vitest reported `Test Files 1 failed / Tests no tests` and a stack in
+ * `assertEmpireState`, with not one of this file's twenty-two checks named.
+ * The mutant WAS caught, and the output said nothing about which guarantee had
+ * broken. CLAUDE.md's rule is that a check which bites but fails uselessly is
+ * half a check, so the engine calls happen inside `driveEverything`, where a
+ * throw fails a named test instead of a whole suite.
+ */
+let faultedRunMemo: invariant.EmpireRun | null = null;
 
-const FAULTED_ENGAGEMENT_RUN: engagementModule.EngagementRun = Object.freeze({
-  ...engagementModule.runEngagement(
-    1,
-    policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY),
-    historyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY, 1),
-    socialInputsAt(),
-  ),
-  ledger: Object.freeze([]),
-});
+function faultedRun(): invariant.EmpireRun {
+  if (faultedRunMemo === null) {
+    faultedRunMemo = Object.freeze({
+      ...invariant.runEmpire(1, policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY), planAt(null, 0), socialInputsAt()),
+      ledger: Object.freeze([]),
+    });
+  }
+  return faultedRunMemo;
+}
+
+let faultedEngagementRunMemo: engagementModule.EngagementRun | null = null;
+
+function faultedEngagementRun(): engagementModule.EngagementRun {
+  if (faultedEngagementRunMemo === null) {
+    faultedEngagementRunMemo = Object.freeze({
+      ...engagementModule.runEngagement(
+        1,
+        policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY),
+        historyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY, 1),
+        socialInputsAt(),
+      ),
+      ledger: Object.freeze([]),
+    });
+  }
+  return faultedEngagementRunMemo;
+}
 
 const FAULTED_SOCIAL_CONTEXT: SocialContext = Object.freeze({
   ...socialContextAt([]),
@@ -2026,7 +2053,7 @@ function driveEverything(): readonly DrivenRow[] {
       }
     }
   }
-  drive('empireRunFaults', 'faulted', () => invariant.empireRunFaults(FAULTED_RUN), [FAULTED_RUN]);
+  drive('empireRunFaults', 'faulted', () => invariant.empireRunFaults(faultedRun()), [faultedRun()]);
 
   // --- engagement.ts
   for (const key of engagementModule.ENGAGEMENT_WIRINGS) {
@@ -2094,7 +2121,9 @@ function driveEverything(): readonly DrivenRow[] {
       }
     }
   }
-  drive('engagementRunFaults', 'faulted', () => engagementModule.engagementRunFaults(FAULTED_ENGAGEMENT_RUN), [FAULTED_ENGAGEMENT_RUN]);
+  drive('engagementRunFaults', 'faulted', () =>
+    engagementModule.engagementRunFaults(faultedEngagementRun()), [faultedEngagementRun()],
+  );
 
   // --- social.ts
   for (const payout of reputationModule.REPUTATION_PAYOUTS) {
