@@ -364,6 +364,35 @@ sessions reached from opposite ends: **§5's loop had to exist before its
 invariants had a subject.** It now does.
 
 
+### CROSSING 5, APPROVED AND NOT YET TAKEN: A `REVIEWABLE_CITATIONS` ROW SO §6.6 CAN NAME ITS SOURCE
+
+`src/career/flight.ts` implements a real governing body's published rules and
+**cannot name the body**. `REVIEWABLE_CITATIONS` in `src/licensing/realIp.ts`
+pins an exact per-file mention count for the whole tree, and `src/licensing/` is
+Session A's, so writing the name reddens `realIp.test.ts` until a row exists. The
+file works around it by describing the source — "the international governing
+body's *Technical Rules Book*, 2026 edition, effective 1 March 2026" — and says
+plainly that this is weaker than a URL a reader can click.
+
+**`realIp.ts`'s own ruling is that this is the allowed kind of mention.** A body
+whose published rule is being implemented is a **structural citation** and
+belongs on that list rather than being deleted; a federation name a *player sees*
+is the category (A) that is default-denied. A rulebook citation in a module
+header is the first kind. So the right end state is a row, not a paraphrase.
+
+**Approved by a human. The work is one row** for `src/career/flight.ts`, after
+which the file may carry the body's name and the rulebook URL. Session B has not
+edited `src/licensing/` and will not until this entry exists — which it now does.
+
+*Why the citation is worth having rather than tidy:* the rules were verified
+independently rather than taken from the builder. The placing chain the file
+ships — total, then lighter bodyweight, then who reached the total first —
+matches the published rule exactly; the 2026 edition it cites is real; and the
+claim that a flight may hold more than one category was corroborated from a
+second, independent source class ("a flight can be composed of a single weight
+class or any combination of weight classes"). The row points at a source that was
+actually read.
+
 ### SESSION B'S SCOPE AFTER CAREER: GDD §6.6 FLIGHTS, AND THE SEAM IS AGAIN A DECLARED NON-GOAL
 
 Written here before the work starts, as this section requires. GDD §2.1/§6.1's
@@ -1133,21 +1162,97 @@ injected gate never consulted.
 out.** Both endpoints were outside the band, so the two-point sweep could not
 express the property at all — and every count it pinned was honest.
 
-**What to do instead.** Derive the domain from the subject's own numbers rather
-than from what looks extreme: for each threshold the code contains, sample
-below, just below, exactly at, just above, above, and far away, plus the values
-that change an input's *shape* rather than its magnitude — digit width, sign,
-integer versus fractional, empty versus one versus many. Then pin the band's own
-size and its shape census, so a truncated or reshaped domain reports itself. The
-repaired probe sweeps 50 totals derived from `QUALIFYING_TOTAL_KG_BY_TIER` and
-pins a digit-shape census specifically because the bypass keyed on digit width;
-truncating it back to `[0, 1_000_000]` reddens eight tests.
+**What to do instead — and the first version of this paragraph was falsified one
+round after it was written, which is worth reading before the advice.** It said
+to derive the domain from the subject's own numbers, and held up a 50-point band
+derived from `QUALIFYING_TOTAL_KG_BY_TIER` as the repaired model. A later bypass
+beat that band with a window sitting *between* its samples — 584…630 kg,
+admitting a lifter at a meet requiring 680 with the gate never consulted, and two
+of the fifteen totals the shipped meet actually posts were inside it. Derivation
+from thresholds is not enough, because **the attacker picks the gap after seeing
+the samples**, and every count the band pinned was honest.
+
+What actually closes it is **containment, not density**: if the domain provably
+contains every value the subject can really take, a predicate that agrees with
+the reference at every domain point agrees at every real value. Density is only
+how containment is made robust to a distribution nobody has written down yet. So:
+
+1. Find what bounds the subject's real granularity, **in the subject's own domain
+   rather than in the type's**. For a powerlifting total it is plate math: the
+   smallest competition disc is 0.25 kg and goes on in pairs, so no real total
+   moves by less than 0.5 kg and a 0.25 kg grid contains every loadable one.
+2. Sweep at finer than that granularity across the whole plausible range, and
+   **check containment against the real distribution rather than asserting it** —
+   the repaired probe reads `ghostTotalsKg` out of `meetTuning.ts` as text and
+   asserts all fifteen values are domain points.
+3. Keep the shape values — digit width, sign, integer versus fractional,
+   empty/one/many — because a shape bug is not a magnitude bug, and one earlier
+   bypass keyed on digit width alone.
+4. Pin the domain's size and its shape census, so a truncated or reshaped domain
+   reports itself.
+
+**State the residual honestly, because a dense grid does not make a window
+impossible — it makes a surviving window narrower than a real value's
+granularity.** That is a weaker claim than the four absolutes that preceded it in
+this codebase, and it is the true one. The measured residuals are a window above
+the swept range, and a window off the lattice; both were planted and both are
+invisible, and both are stated at the constant they depend on.
 
 **The tell to look for in review:** a sweep whose inputs are round numbers,
 zeroes, maxima, or names like `HUGE` and `TINY`. Those are chosen for being
 memorable at the boundary of a type, not for being near a decision the code
 makes. Ask what number the *code* branches on, and whether the sweep straddles
 it.
+
+## Richness On One Axis Is Not Evidence About An Axis Nobody Varied
+
+**The sibling of the rule above, and it is worth separating because a sweep can
+pass that rule completely and still be blind.** That rule asks whether the domain
+reaches the region the subject is used in. This one asks a question one dimension
+out: *the domain is rich, derived from the code's own numbers, and honestly
+counted — but is it rich on the axis the property is about?*
+
+**The clean example, measured.** `src/career/` sweeps qualification under **six**
+injected gate shapes — refuse-everything, admit-everything, at-or-above,
+strictly-above, a band, and one that ignores the total — three of which disagree
+with raw magnitude. It swept *placing* over the same plate-resolution grid of
+8003 totals, 24009 points in all, and under **one** comparator:
+
+    const ASCENDING: TotalOrder<NumericTotal> = (left, right) => left - right;
+
+That comparator **is** raw magnitude. So the property "the sheet equals a placing
+counted from the injected order alone" was checked only against an order agreeing
+with kilograms at every point — and a module that ignored the comparator entirely
+and ranked by kilograms read out of an opaque total agreed at all of them.
+Planted: `tsc` exit 0, and the only red was a line-count census reacting to added
+lines. Three real ghost totals placed correctly with the injected comparator
+asked **zero** times.
+
+**The total axis had 8003 points and the order axis had one.** Every count the
+sweep pinned was honest, and densifying totals further could never have helped,
+because the property was about the order.
+
+**The tell in review.** Find every *injected* dependency a subject takes — a
+gate, a comparator, a clock, a policy, a random source — and ask of each: does
+the sweep vary it, and do the variations **disagree** with the thing being ruled
+out? An injected dependency that appears once in a sweep is an axis with one
+point however many points the other axes have, and a variation that agrees with
+the defect you fear is not a variation.
+
+**Measure the disagreement; do not assert it.** The repair sweeps five orders and
+pins, per order, how many of the 24009 points it moves against the control:
+`descending` 16006, `residue-then-size` 11434, `halves-over-wholes` 8006,
+`distance-from-threshold` 4558, and `ascending` **0**, sitting beside them as the
+number that says what a non-varying axis looks like. A sixth order that secretly
+agreed with magnitude would show up as another zero rather than as a reassuring
+green. The ceiling is recorded too — 16006 and not 24009, because an all-tied
+flight cannot be moved by any comparator — so the census documents its own
+maximum rather than implying the gap is a defect.
+
+Three further orders were **built and discarded** because their relabelling
+mapped real totals outside the range real totals occupy, so a magnitude read
+never engaged under them. A variation that leaves the subject's own domain is the
+same defect wearing the costume of the fix.
 
 ## Architecture Rules
 
@@ -1584,6 +1689,28 @@ physiology.
   path with an empty commit first** and verify it round-trips with `ls-remote`.
   That habit caught the sixth rewind while holding three builder branches, at a
   cost of one throwaway commit.
+
+- **DO NOT EDIT `CLAUDE.md` OR `docs/GDD.md` WHILE AGENTS THAT DEPEND ON THEM
+  ARE IN FLIGHT.** Every builder and critic brief in this run tells the agent to
+  read `CLAUDE.md` in full first, and a workflow spawns its later phases minutes
+  or hours after its earlier ones — so an edit mid-run means two agents on the
+  same piece graded against two different documents, and nothing in either
+  transcript would say so. Queue the edit and apply it when the tree is quiet;
+  `git worktree list` plus a commit-age check is how you find out whether it is.
+
+  This is cheap to obey and the failure it prevents is silent, which is the same
+  argument the wave-start bullet above makes for itself. Note the recursion the
+  first time it applied: the rule could not be written into this file at the
+  moment it was agreed, because agents were mid-flight.
+
+  **AND THE HOLD NEEDS AN EXPIRY, WHICH IS THE HALF THAT WAS LEARNED THE HARD
+  WAY.** The first hold ran for four rounds and the agent it was waiting on had
+  been dead for **twelve hours** — its transcript last written at 05:05, read at
+  17:20, against a 45-minute staleness threshold. A hold is only as good as the
+  liveness check behind it, so measure the agent before extending it: transcript
+  mtime, worktree commit age, and whether any process exists. "Still in flight"
+  is a claim, and this file already records five agents that died looking exactly
+  like slow ones.
 
 - **PUSH BEFORE YOU CLEAN UP, BECAUSE CLEANUP IS WHAT MAKES A REWIND
   UNRECOVERABLE.** Rewinds are survivable because origin is ahead. Tidying is
