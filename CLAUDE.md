@@ -185,6 +185,35 @@ number — if a number turns out to be wrong, that is a finding to report, not t
 fix from this side. Session B should expect a conflict in §4a's comment block and
 nowhere else.
 
+**SECOND CROSSING FILED BY SESSION A, BEFORE THE WORK, 2026-08-12 —
+`src/empire/empireInvariant.test.ts`'s two "Reddening edits, each measured"
+lists.** Filed in the correct order, like the one above and unlike the `audit.ts`
+one recorded below as a breach.
+
+*What and why.* Both series tests head themselves with a list of edits claimed to
+redden them. **Two of the named edits do not.** Verified by Session A applying
+them by hand, not inferred:
+
+- `recruitmentRefusals` reading `state.axes` → **55 passed**, entirely green.
+- `recruitmentRefusals` reading `state.gymBucks` → `RangeError: gymBucks must be
+  a finite number at or above zero, received -40` thrown at collection, so the
+  file reports **`Tests  no tests`**.
+
+*The second one is a defect shape this file has not carried before, and it is the
+reason this is worth a crossing rather than a comment fix.* It **does** go red —
+`Test Files 1 failed` — so a mutation check that reads the exit code records it
+as caught and writes a witness. But it reddened by throwing during **collection**,
+so the named assertion never executed and zero tests ran. **A mutant that
+prevents the test from running is indistinguishable from a mutant the test
+caught, if you only check the colour.** The witness bar as written — *"break the
+guarantee, watch the named test go red"* — is not sufficient, and that is a
+`MUTATION_WITNESSES` question, which is Session A's file.
+
+*Scope.* Those two comment blocks; whatever `guaranteeTags.test.ts` needs to
+require that a witness's named assertion actually **ran**; and replacing the
+false entries with edits verified to redden. No change to `recruitment.ts`,
+`expansion.ts`, `production.ts`, `empireCore.ts` or any measured number.
+
 **CROSSING FILED BY SESSION A, BEFORE THE WORK, 2026-08-11 — `src/empire/engagement.test.ts`,
 the per-test timeout declarations only.** Filed here first, as this section
 requires, and flagged to a human rather than assumed: this is the second Session
@@ -765,6 +794,27 @@ not a critic pass and not a bar claim.
 Sessions A and B: expect `src/shell/{shellRoute,shellTuning,AppShell,EmpireScreen}*`
 and the Session C claim above to already be on the tip you pull. Do not assume
 they were graded.
+
+**READ AND ACCEPTED BY SESSION A, 2026-08-12.** The account is accurate as far
+as Session A can check it: `cbef6e9` is on the integration tip, Session C's
+capture is labelled a smoke test rather than a bar claim, and nothing in this
+repository grades that wiring. Two things follow and neither is Session C's to
+carry.
+
+First, **Session C did the right thing and the flag is the evidence.** It filed
+three crossings before the work, scoped itself out of the empire math files
+Session A was crossing into, wrote down that it never pushes to the integration
+tip, and then reported a merge it did not perform rather than quietly benefiting
+from it. That is the coordination rule working — filed before, reported after —
+and it is the sequence Session A got wrong on its own `audit.ts` crossing.
+
+Second, **grading it is Session A's job, because it is on Session A's tip.**
+`EmpireScreen` is a screen a player reaches, so the standing rule applies in
+full: a claim about a screen needs a browser check that arrives there through
+the app's own controls, with the address bar asserted to carry no query string
+at the moment the screen is read. A smoke capture down a path someone drove by
+hand is not that, and Session C says so itself. Until that check exists, the
+Empire shell is **wired but ungraded**, and no §12.2 claim may be made for it.
 
 
 ## Subagent Roles
@@ -1526,6 +1576,40 @@ physiology.
   pid/start-tick/cmdline, not by age — so it cannot tell a live process making
   progress from one making none, and off Linux it reports UNRESOLVED rather than
   guessing.
+
+- **THE MARKER DOES NOT SURVIVE TREE DEATH, AND CLOSING THAT IS REQUIRED WORK
+  RATHER THAN A CAVEAT.** Ruled by a human after the gap was observed twice.
+
+  The marker was put inside the repository on the reasoning that *"the scratchpad
+  under /tmp does not survive a rewind; the repo does."* **The first half is
+  true and the second half is false.** A rewind reverts the working tree, and
+  `.gauntlet/verify/` reverts with it — gitignored files included, because this
+  is not a git operation but the whole filesystem going back. Both times it has
+  happened the tree came back with `tools/watchdog.mjs` returning
+  `MODULE_NOT_FOUND`, no marker directory, and no `*.verify.log`.
+
+  So after a rewind there is **no marker, no log, and no way to tell whether the
+  verification ran at all** — which is precisely the silent absence the ruling
+  was written to eliminate. Worse, the two cases are indistinguishable after the
+  fact: "a run that was never started" and "a run that was interrupted" look
+  identical, and that indistinguishability is the exact property the marker
+  exists to remove.
+
+  **This is not a corner case here. Tree death is this environment's DOMINANT
+  failure mode — sixteen occurrences and counting**, against zero observed cases
+  of the process-death-with-surviving-disk scenario the marker actually covers.
+  The mechanism as built protects against the failure that has never happened
+  and not against the one that happens constantly.
+
+  **Direction for whoever picks this up: sync verification state to origin
+  PERIODICALLY DURING a long run, not only at completion.** Origin is the only
+  thing that has ever survived a rewind — it has now been the sole surviving copy
+  ten times — so a marker that reaches origin while the run is still in flight is
+  the only form of this record that can outlive the tree. Completion-time sync is
+  not sufficient and repeats the original error one level out: a run that dies
+  mid-flight is exactly the run that never reaches its completion step, which is
+  the same reason the marker is written *before* the command spawns rather than
+  after it returns.
 
   **THE SUITE-LEVEL CHECK STAYS, BITING ON EVERY RUN UNTIL CLEARED. Ruled by a
   human**, on the explicit question of whether that much friction is
